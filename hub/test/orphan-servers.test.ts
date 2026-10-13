@@ -133,7 +133,7 @@ async function fakeOpenCode(t: import('node:test').TestContext) {
 for (const harness of ['codex', 'opencode', 'claude-code']) {
   test(`${harness}: stop waits for the server’s death, relaunch replaces it, and journal names what ended`, async t => {
     const root = await tempProject(t);
-    const fake = harness === 'codex' ? await fakeCodex(t) : harness === 'opencode' ? await fakeOpenCode(t) : await fakeClaude(t);
+    const fake = harness === 'codex' ? await fakeCodex(t, { turnMs: 10000 }) : harness === 'opencode' ? await fakeOpenCode(t) : await fakeClaude(t);
     const { discovery } = await startDaemon(t, root, { ...fake.env, CLAND_STOP_GRACE_MS: '200', FAKE_CODEX_TERM_DELAY_MS: '10000', FAKE_OPENCODE_IGNORE_TERM: '1', FAKE_OPENCODE_CHILD: '1', FAKE_CLAUDE_IGNORE_TERM: '1' });
     const ui = await connectUi(t, discovery);
     const launch = await ui.request({ type: 'session.launch', name: 'impl', harness }, 30_000);
@@ -141,9 +141,11 @@ for (const harness of ['codex', 'opencode', 'claude-code']) {
     const first = (launch.value as { process: Harness }).process;
     const resume = await ui.request({ type: 'session.resume', session: 'impl', relaunch: true }, 30_000);
     assert.equal(resume.ok, true, resume.error);
+    assert.equal((resume.value as { found: boolean; reason?: string }).found, true, JSON.stringify(resume.value));
     const second = (resume.value as { process: Harness }).process;
     const child = harness === 'opencode' ? (JSON.parse(await readFile(join((fake as { env: { FAKE_OPENCODE_HOME: string } }).env.FAKE_OPENCODE_HOME, 'servers', `${second.pid}.json`), 'utf8')) as { childPid: number }).childPid : null;
     assert.notEqual(first.pid, second.pid);
+    if (harness === 'codex') t.diagnostic(`Codex resume found:true; PID ${first.pid} -> ${second.pid}`);
     assert.equal(pidAlive(first.pid), false, 'relaunch awaits the old server');
     assert.equal(pidAlive(second.pid), true);
     const stop = await ui.request({ type: 'session.stop', session: 'impl' }, 15_000);

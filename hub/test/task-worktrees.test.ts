@@ -1,6 +1,7 @@
 // Task branches and worktrees (T-58; T-20 decisions D3, D7, D8): real Git on disk in a temporary project with a
 // territory, a real hub, the CLI as its own process, a Coordinator spoke over MCP and the fake Claude Code at the
 // harness boundary (the launch cwd, the claim, the WorktreeCreate hook it runs).
+import { onCleanup } from './process-cleanup.ts';
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync, spawn } from 'node:child_process';
@@ -152,7 +153,7 @@ test('cland session launch --item starts the Implementer in the worktree with th
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
-  t.after(() => coord.close());
+  onCleanup(t, () => coord.close());
   await coord.waitForPresence(['coord']);
   ok(await cland(root, 'task', 'create', 'Ship it', '--kind', 'task'));
   // the Coordinator claimed it first: no worktree yet (its spoke's claim makes one)
@@ -212,7 +213,7 @@ test('the spoke\'s session.launch with item launches in the worktree; item with 
   const fake = await fakeClaude(t);
   await startDaemon(t, root, fake.env);
   const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
-  t.after(() => coord.close());
+  onCleanup(t, () => coord.close());
   await coord.waitForPresence(['coord']);
   ok(await cland(root, 'task', 'create', 'Spoke item', '--kind', 'task'));
   ok(await cland(root, 'task', 'create', 'An epic', '--kind', 'epic'));
@@ -263,7 +264,7 @@ test("cland worktree prune shows a closed item's unmerged commits and removes it
 
   // from a session's shell: refused as the human's, before anything is listed or removed
   const spoke = await spawnSpoke({ discover: true, cwd: root, name: 'impl-9', sessionId: 'sess-impl-9', role: 'implementer' });
-  t.after(() => spoke.close());
+  onCleanup(t, () => spoke.close());
   await spoke.waitForPresence(['impl-9']);
   const refused = await clandWithEnv(root, { CLAND_SESSION_NAME: 'impl-9', CLAND_SESSION_ID: 'sess-impl-9' }, 'worktree', 'prune', '--yes');
   assert.equal(refused.code, 1, refused.stdout);
@@ -323,9 +324,9 @@ async function guardedHub(t: TestContext, options: { clock?: { now: number }; se
   const tips = manualTips();
   const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db'), log, scheduleTips: tips.scheduleTips });
   tracker.start();
-  t.after(() => tracker.stop());
+  onCleanup(t, () => tracker.stop());
   const hub = await startHub({ log, tracker, ...(options.clock ? { guard: { now: () => options.clock!.now } } : {}) });
-  t.after(() => hub.close());
+  onCleanup(t, () => hub.close());
   const process = { name: 'impl-1', harness: 'claude-code', role: 'implementer', sessionId: 'sess-impl-1', cwd: join(root, '.cland', 'worktrees', 'T-1'), item: 'T-1', status: 'running' } as HarnessProcessView;
   hub.dispatcher.useSessions({ retainedPool: () => false, launch: async () => process, list: options.sessionsList ?? (() => []), pendingStops: () => [] } as unknown as Sessions);
   return { root, records, tracker, hub };

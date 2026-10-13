@@ -1,3 +1,4 @@
+import { onCleanup } from './process-cleanup.ts';
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -28,7 +29,7 @@ async function project(t: TestContext, env: Record<string, string> = {}, verific
   if (verification) ok(await cland(root, 'push'));
   const ui = await connectUi(t, discovery);
   const rev = await spawnSpoke({ discover: true, cwd: root, name: 'rev', sessionId: 'reviewer-id', role: 'reviewer' });
-  t.after(() => rev.close());
+  onCleanup(t, () => rev.close());
   await rev.waitForPresence(['rev']);
   return { root, ui, rev, discovery };
 }
@@ -243,7 +244,7 @@ test('an in-flight legacy item reaches ready and merge only after every criterio
   const { root, ui, rev, discovery } = await project(t);
   const work = await task(root);
   const impl = await spawnSpoke({ discover: true, cwd: root, name: 'impl', sessionId: 'impl-id', role: 'implementer' });
-  t.after(() => impl.close());
+  onCleanup(t, () => impl.close());
   ok(await cland(root, 'task', 'claim', work.id, '--release'));
   ok(await cland(root, 'task', 'edit', work.id, '--assignee', 'impl'));
   const claimed = await impl.call<{ ok: boolean; error?: string }>('task.claim', { id: work.id });
@@ -387,7 +388,7 @@ test('the gate refuses in order: item/branch, missing or file-only review, wrong
   await refused(ui, root, work.id, 'review-provenance');
   // A Coordinator's rescue-run verdict is durable hub evidence, but not a Reviewer's verdict.
   const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', sessionId: 'coordinator-id', role: 'coordinator' });
-  t.after(() => coord.close());
+  onCleanup(t, () => coord.close());
   await coord.waitForPresence(['coord']);
   await review(coord, work.id);
   await refused(ui, root, work.id, 'review-role');
@@ -447,7 +448,7 @@ test('Per-item plan QA uses the latest clear current QA evidence and includes it
   const work = await task(root);
   await requireQa(root, ui, work.id);
   const qa = await spawnSpoke({ discover: true, cwd: root, name: 'qa-1', sessionId: 'qa-id', role: 'qa' });
-  t.after(() => qa.close());
+  onCleanup(t, () => qa.close());
   await qa.waitForPresence(['qa-1', 'rev']);
   // QA cannot record a review header through either surface, regardless of the text's by: line.
   const wrong = await qa.call<{ ok: boolean; code: string }>('task.comment', { id: work.id, verdict: 'review', result: 'clear', run: 'wrong-role' });
@@ -495,7 +496,7 @@ test('task view reports QA satisfaction from the same durable evidence as the me
   await refused(ui, root, work.id, 'qa-role');
   assert.equal((await read()).qaSatisfied, false);
   const qa = await spawnSpoke({ discover: true, cwd: root, name: 'qa-1', sessionId: 'qa-id', role: 'qa' });
-  t.after(() => qa.close());
+  onCleanup(t, () => qa.close());
   const accepted = await qa.call<{ ok: boolean; error?: string }>('task.comment', { id: work.id, verdict: 'qa', result: 'clear', run: 'accepted' });
   assert.equal(accepted.ok, true, accepted.error);
   await eventually('accepted QA is reported', async () => (await read()).qaSatisfied === true ? true : undefined);
@@ -516,7 +517,7 @@ test('the permission table refuses Implementer, Reviewer and QA on spoke and CLI
   const { root, ui, rev } = await project(t);
   const work = await task(root);
   const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', sessionId: 'coord-id', role: 'coordinator' });
-  t.after(() => coord.close());
+  onCleanup(t, () => coord.close());
   await coord.waitForPresence(['coord', 'rev']);
   for (const role of ['implementer', 'reviewer', 'qa']) {
     ok(await cland(root, 'role', 'set', 'rev', role));
@@ -557,7 +558,7 @@ test('simultaneous Coordinator spoke merges serialize and the second commit incl
   await review(rev, one.id);
   await review(rev, two.id);
   const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', sessionId: 'coord-id', role: 'coordinator' });
-  t.after(() => coord.close());
+  onCleanup(t, () => coord.close());
   await coord.waitForPresence(['coord', 'rev']);
   const before = git(root, 'rev-parse', 'dev');
   const results = await Promise.all([one, two].map((w) => coord.call<{ ok: boolean; commit: string; error?: string }>('merge', { item: w.id })));
@@ -920,7 +921,8 @@ async function observableProject(t: TestContext, run?: (real: Git) => Git, clock
   const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db'), git: run?.(gitIn(root)) ?? gitIn(root) });
   const records: Array<Record<string, unknown>> = [];
   const hub = await startHub({ tracker, store: new Store(join(root, '.cland', 'hub.db')), roles: fixedRoles(), log: r => { sink?.(r); records.push(r); }, ...(clock ? { guard: { now: () => clock.now } } : {}) });
-  t.after(async () => { await hub.close(); await tracker.stop(); });
+  onCleanup(t, () => hub.close());
+  onCleanup(t, () => tracker.stop());
   const ui = await connectWsUi(t, hub);
   const human = { id: 'human', name: 'human', role: null };
   const id = (await tracker.create(human, { title: 'Observed parser' })).id;
@@ -934,7 +936,7 @@ async function observableProject(t: TestContext, run?: (real: Git) => Git, clock
   git(worktree.path, 'commit', '-qm', 'Parser');
   assert.equal((await ui.request({ type: 'role.set', session: 'rev', role: 'reviewer' })).ok, true);
   const rev = await spawnSpoke({ hub, cwd: root, name: 'rev', sessionId: 'observed-rev', role: 'reviewer' });
-  t.after(() => rev.close());
+  onCleanup(t, () => rev.close());
   await rev.waitForPresence(['rev']);
   return { root, tracker, hub, ui, rev, records, work: { id, ...worktree } };
 }
@@ -1003,12 +1005,12 @@ test('release, topic closure and cleanup failures remain merged and retry the re
       let repair: () => void | Promise<void> = () => {};
       if (step === 'release') {
         const db = new DatabaseSync(join(root, '.cland', 'hub.db'));
-        t.after(() => db.close());
+        onCleanup(t, () => db.close());
         db.exec("create trigger fail_release before delete on tracker_claims begin select raise(abort, 'release failure'); end");
         repair = () => db.exec('drop trigger fail_release');
       } else if (step === 'topic close') {
         const db = new DatabaseSync(join(root, '.cland', 'hub.db'));
-        t.after(() => db.close());
+        onCleanup(t, () => db.close());
         db.exec("create trigger fail_topic before update of status on topics when old.item = 'T-1' begin select raise(abort, 'topic closure failure'); end");
         repair = () => db.exec('drop trigger fail_topic');
       } else if (step === 'branch cleanup') {
@@ -1276,7 +1278,7 @@ test('a cached green suite at a new identical tree never revives a stale criteri
 test('a task moving during a batched freshness read is rejected at the merge decision; the next operation sees its fresh review', async t => {
   const entered = Promise.withResolvers<void>();
   const released = Promise.withResolvers<void>();
-  t.after(() => released.resolve());
+  onCleanup(t, () => released.resolve());
   let hold = false;
   const { root, ui, rev, work } = await observableProject(t, real => async (args, input) => {
     const result = await real(args, input);

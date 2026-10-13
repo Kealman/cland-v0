@@ -44,6 +44,31 @@ export function captureProcess(pid: number | undefined): ProcessIdentity | null 
 }
 const directoryProcesses = new Map<string, Set<ProcessIdentity>>();
 const contextProcesses = new WeakMap<TestContext, Set<ProcessIdentity>>();
+type CleanupStep = () => unknown | Promise<unknown>;
+const contextCleanup = new WeakMap<TestContext, { resources: CleanupStep[]; directories: CleanupStep[] }>();
+function cleanupSteps(t: TestContext) {
+  let steps = contextCleanup.get(t);
+  if (!steps) {
+    steps = { resources: [], directories: [] };
+    contextCleanup.set(t, steps);
+    const owned = steps;
+    t.after(async () => {
+      const errors: unknown[] = [];
+      // Native after hooks stop at their first failure. One ownership hook keeps
+      // every resource disposal running, and removes directories only afterwards.
+      for (const step of [...owned.resources, ...owned.directories]) {
+        try { await step(); } catch (error) { errors.push(error); }
+      }
+      if (errors.length === 1) throw errors[0];
+      if (errors.length) throw new AggregateError(errors, 'test fixture cleanup failed');
+    });
+  }
+  return steps;
+}
+/** Dispose fixture resources in registration order, before any owned directory is removed. */
+export function onCleanup(t: TestContext, step: CleanupStep): void {
+  cleanupSteps(t).resources.push(step);
+}
 export function rememberProcess(pid: number | undefined, root?: string): void {
   if (pid === undefined) return;
   if (!recorded.has(pid)) {
@@ -344,7 +369,7 @@ export function ownProcess(t: TestContext | undefined, pid: number | undefined):
       if (ownedPids.get(identity.pid) === identity) ownedPids.delete(identity.pid);
     }
   };
-  t?.after(async () => { await cleanup(); });
+  if (t) onCleanup(t, cleanup);
   return cleanup;
 }
 export function ownDirectory(t: TestContext | undefined, path: string): () => Promise<void> {
@@ -360,6 +385,6 @@ export function ownDirectory(t: TestContext | undefined, path: string): () => Pr
     }
     directories.delete(root); directoryProcesses.delete(root);
   };
-  t?.after(async () => { await cleanup(); });
+  if (t) cleanupSteps(t).directories.push(cleanup);
   return cleanup;
 }

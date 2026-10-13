@@ -23,7 +23,16 @@ test('keeping an agent artifact updates the thread and palette across unkeep and
   const c = await startClient(t, bin, root);
   await c.waitScreen(s => s.includes('hub: connected'), 'connected');
   await c.lua(`require('cland.layout').show({kind='thread', id=${JSON.stringify(topic)}}, {insert=false})`);
-  await c.waitScreen(s => s.includes('1 artifacts'), 'thread history loaded');
+  await c.waitScreen(s => s.includes('1 artifacts'), 'artifact count loaded');
+  await eventually('artifact history is rendered before unfolding', async () => await c.lua(`
+    local thread = require('cland.views').topic(${JSON.stringify(topic)}).thread
+    local win = require('cland.layout').centre()
+    for _,m in ipairs(thread.messages) do
+      if m.artifact and m.artifact.id == ${JSON.stringify(a.id)} then
+        return thread.fold_ready[win] and thread:folded_count(win) > 0
+      end
+    end
+  `) || undefined);
   await c.input('zR');
   await c.waitScreen(s => s.includes(a.id) && s.includes('Agent report'), 'artifact chip');
   const placement = async () => await c.lua(`
@@ -125,6 +134,7 @@ test('prompt drafts are editable full buffers, survive hub events, reopen, and s
   t.after(() => coord.close());
   await coord.waitForPresence(['coord']);
   const c = await startClient(t, bin, root);
+  await c.waitScreen(s => s.includes('hub: connected'), 'connected before drafting');
   await c.input('<Esc>:Cland prompt Brief for T-12<CR>');
   await eventually('draft buffer', async () => await c.lua("return vim.b.cland_artifact") || undefined);
   assert.deepEqual(await c.lua("return {vim.bo.modifiable, vim.bo.readonly, vim.bo.buftype, vim.api.nvim_buf_get_lines(0,0,-1,false)}"), [true, false, '', ['']]);

@@ -1,3 +1,4 @@
+import { onCleanup } from './process-cleanup.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, rm, writeFile } from 'node:fs/promises';
@@ -20,7 +21,7 @@ test('session frames show review and QA holds as they are taken and released', a
     assert.equal(launched.ok, true, launched.error);
     const process = (launched.value as { process: HarnessProcessView }).process;
     const session = await spawnSpoke({ discover: true, cwd: root, name, sessionId: process.sessionId, role });
-    t.after(() => session.close());
+    onCleanup(t, () => session.close());
     await session.waitForPresence([name]);
     const start = ui.frames.length;
     assert.equal((await session.call<{ ok: boolean }>('task.hold', { id: item })).ok, true);
@@ -52,7 +53,7 @@ test('unknown-id Reviewer holds appear in session frames and remain isolated by 
   const item = (made.value as { item: { id: string } }).item.id;
   const first = await spawnSpoke({ discover: true, cwd: root, name: 'rev-first', sessionId: 'unknown', role: 'reviewer' });
   const second = await spawnSpoke({ discover: true, cwd: root, name: 'rev-second', sessionId: 'unknown', role: 'reviewer' });
-  t.after(async () => { await first.close(); await second.close(); });
+  onCleanup(t, () => first.close()); onCleanup(t, () => second.close());
   await first.waitForPresence(['rev-first', 'rev-second']);
   const start = ui.frames.length;
   assert.equal((await first.call<{ ok: boolean }>('task.hold', { id: item })).ok, true);
@@ -79,7 +80,7 @@ test('removing an indexed item clears its claim and verifier hold from session w
   const item = (made.value as { item: { id: string; path: string } }).item;
   const impl = await spawnSpoke({ discover: true, cwd: root, name: 'impl', sessionId: 'impl-id', role: 'implementer' });
   const rev = await spawnSpoke({ discover: true, cwd: root, name: 'rev', sessionId: 'rev-id', role: 'reviewer' });
-  t.after(async () => { await impl.close(); await rev.close(); });
+  onCleanup(t, () => impl.close()); onCleanup(t, () => rev.close());
   await rev.waitForPresence(['impl', 'rev']);
   assert.equal((await impl.call<{ ok: boolean }>('task.claim', { id: item.id })).ok, true);
   assert.equal((await rev.call<{ ok: boolean }>('task.hold', { id: item.id })).ok, true);
@@ -111,12 +112,12 @@ test('session work is empty after tracker shutdown while sessions still disconne
   const root = await tempProject(t);
   const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db') });
   tracker.start();
-  t.after(() => tracker.stop());
+  onCleanup(t, () => tracker.stop());
   const hub = await startHub({ tracker });
-  t.after(() => hub.close());
+  onCleanup(t, () => hub.close());
   const ui = await connectWsUi(t, hub);
   const rev = await spawnSpoke({ hub, name: 'rev-stopping', sessionId: 'stopping-id', role: 'reviewer' });
-  t.after(() => rev.close());
+  onCleanup(t, () => rev.close());
   await rev.waitForPresence(['rev-stopping']);
   const made = await ui.request({ type: 'task.create', title: 'Tracker shutdown work' });
   const item = (made.value as { item: { id: string } }).item.id;
@@ -141,7 +142,7 @@ test('session.list orders verifier holds newest first with their durable timesta
   assert.equal(launch.ok, true, launch.error);
   const processRow = (launch.value as { process: HarnessProcessView }).process;
   const rev = await spawnSpoke({ discover: true, cwd: root, name: processRow.name, sessionId: processRow.sessionId, role: 'reviewer' });
-  t.after(() => rev.close());
+  onCleanup(t, () => rev.close());
   await rev.waitForPresence([processRow.name]);
   for (const id of ids) assert.equal((await rev.call<{ ok: boolean }>('task.hold', { id })).ok, true);
   const list = await ui.request({ type: 'session.list' });
@@ -158,7 +159,7 @@ test('delivered verifier requests persist across restart and clear on hold, verd
   let ui = await connectUi(t, started.discovery);
   await ui.request({ type: 'subscribe' });
   const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord-pending', sessionId: 'coord-pending-id', role: 'coordinator' });
-  t.after(() => coord.close());
+  onCleanup(t, () => coord.close());
   const ids: string[] = [];
   for (const title of ['First request', 'Newer request']) {
     const made = await ui.request({ type: 'task.create', title });
@@ -168,7 +169,7 @@ test('delivered verifier requests persist across restart and clear on hold, verd
   assert.equal(launch.ok, true, launch.error);
   const processRow = (launch.value as { process: HarnessProcessView }).process;
   const rev = await spawnSpoke({ discover: true, cwd: root, name: processRow.name, sessionId: processRow.sessionId, role: 'reviewer' });
-  t.after(() => rev.close());
+  onCleanup(t, () => rev.close());
   await rev.waitForPresence(['coord-pending', processRow.name]);
   const row = async () => ((await ui.request({ type: 'session.list' })).value as { processes: HarnessProcessView[] }).processes.find(p => p.name === processRow.name)!;
   const request = async (text: string) => {
@@ -206,7 +207,7 @@ test('delivered verifier requests persist across restart and clear on hold, verd
   assert.equal(death.ok, true, death.error);
   const dying = (death.value as { process: HarnessProcessView }).process;
   const next = await spawnSpoke({ discover: true, cwd: root, name: dying.name, sessionId: dying.sessionId, assignRole: false });
-  t.after(() => next.close());
+  onCleanup(t, () => next.close());
   await next.waitForPresence(['coord-pending', dying.name]);
   await coord.call('send', { to: [dying.name], text: `qa request ${ids[0]}` });
   const dyingRow = async () => ((await ui.request({ type: 'session.list' })).value as { processes: HarnessProcessView[] }).processes.find(p => p.name === dying.name)!;

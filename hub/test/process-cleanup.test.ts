@@ -161,6 +161,51 @@ if (await fs.stat(dir).catch(() => null)) throw new Error('directory retained');
 `), [{ pid: -420020, signal: 'SIGKILL' }]);
 });
 
+test('owned teardown stops a live tracker before removing its project', () => {
+  assert.deepEqual(probe(`
+const { ownDirectory, onCleanup } = await import(${JSON.stringify(modulePath)});
+const { Tracker } = await import(${JSON.stringify(new URL('../src/tracker/tracker.ts', import.meta.url).href)});
+const fs = (await import('node:fs/promises')).default;
+const path = (await import('node:path')).join;
+const dir = await fs.mkdtemp('/tmp/cland-cleanup-order-');
+const hooks = []; const t = { after: fn => hooks.push(fn) };
+ownDirectory(t, dir);
+const tracker = new Tracker({ root: dir, db: path(dir, '.cland', 'hub.db') });
+tracker.start();
+let stopped = false;
+onCleanup(t, async () => { assert.ok(await fs.stat(dir)); await tracker.stop(); stopped = true; });
+const remove = fs.rm;
+fs.rm = async (...args) => { assert.equal(stopped, true, 'tracker stops before rm'); return remove(...args); };
+syncBuiltinESMExports();
+for (const hook of hooks) await hook();
+assert.equal(await fs.stat(dir).catch(() => null), null);
+`), []);
+});
+
+test('owned teardown preserves failures while disposing every resource and directory', () => {
+  assert.deepEqual(probe(`
+const { ownDirectory, onCleanup } = await import(${JSON.stringify(modulePath)});
+const fs = (await import('node:fs/promises')).default;
+const first = await fs.realpath(await fs.mkdtemp('/tmp/cland-cleanup-failed-'));
+const second = await fs.realpath(await fs.mkdtemp('/tmp/cland-cleanup-next-'));
+const hooks = []; const t = { after: fn => hooks.push(fn) };
+const cleanFirst = ownDirectory(t, first); ownDirectory(t, second);
+const disposeError = new Error('resource disposal failed');
+const removeError = Object.assign(new Error('directory not empty'), { code: 'ENOTEMPTY', path: first });
+let stopped = false;
+onCleanup(t, () => { throw disposeError; });
+onCleanup(t, () => { stopped = true; });
+const remove = fs.rm;
+fs.rm = async (...args) => { assert.equal(stopped, true); if (args[0] === first) throw removeError; return remove(...args); };
+syncBuiltinESMExports();
+assert.equal(hooks.length, 1);
+await assert.rejects(hooks[0](), error => error instanceof AggregateError && error.errors[0] === disposeError && error.errors[1] === removeError);
+assert.equal(stopped, true);
+assert.equal(await fs.stat(second).catch(() => null), null, 'later directory is removed after ENOTEMPTY');
+fs.rm = remove; syncBuiltinESMExports(); await cleanFirst();
+`), []);
+});
+
 test('owned teardown preserves an unrelated member joining its captured group', () => {
   assert.deepEqual(probe(`
 const { ownProcess } = await import(${JSON.stringify(modulePath)});

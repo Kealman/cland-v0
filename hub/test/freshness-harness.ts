@@ -1,4 +1,5 @@
 // Real tip reads, scheduled by the test instead of a wall-clock timer or tracker-change poke.
+import { onCleanup } from './process-cleanup.ts';
 import type { TestContext } from 'node:test';
 import { serveProject } from '../src/hub/daemon.ts';
 import type { TipSchedule } from '../src/tracker/freshness.ts';
@@ -22,7 +23,7 @@ export function manualTips() {
 export async function startFreshnessDaemon(t: TestContext, root: string) {
   const tips = manualTips();
   const daemon = await serveProject(root, { scheduleTips: tips.scheduleTips });
-  t.after(() => daemon.stop());
+  onCleanup(t, () => daemon.stop());
   if (!daemon.discovery) throw new Error('freshness daemon has no listeners');
   await tips.refresh();
   return { discovery: daemon.discovery, refresh: tips.refresh };

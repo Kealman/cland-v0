@@ -1,5 +1,6 @@
 // T-77 extends T-70/T-75 at the native boundary: tracker reads/mutations, serving-time scans,
 // and the shared Sessions launch layer. T-78 covers territory requests; native adapters remain T-79.
+import { onCleanup } from './process-cleanup.ts';
 import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -22,7 +23,8 @@ async function territoryHub(t: TestContext, log?: (entry: Record<string, unknown
   await copyPreparedProject(root, 'native-territory');
   const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db'), ...(files ? { files } : {}) });
   const hub = await startHub({ tracker, roles: fixedRoles(), ...(log ? { log } : {}) });
-  t.after(async () => { await hub.close(); await tracker.stop(); });
+  onCleanup(t, () => hub.close());
+  onCleanup(t, () => tracker.stop());
   const ui = await connectWsUi(t, hub);
   return { root, tracker, ui, git, hub };
 }
@@ -50,12 +52,12 @@ test('hub tracker mutations, reads, scans, and shared launches use no synchronou
     if (previousWatch === undefined) delete process.env.CLAND_TEST_WATCH_REFUSED;
     else process.env.CLAND_TEST_WATCH_REFUSED = previousWatch;
   }
-  t.after(() => tracker.stop());
+  onCleanup(t, () => tracker.stop());
   const hub = await startHub({ tracker });
-  t.after(() => hub.close());
+  onCleanup(t, () => hub.close());
   const table = new ProcessTable();
   const sessions = new Sessions({ root, core: hub.core, table });
-  t.after(() => { sessions.close(); table.close(); });
+  onCleanup(t, () => sessions.close()); onCleanup(t, () => table.close());
   const adapter: HarnessAdapter = {
     harness: 'test',
     capabilities: { history: 'none', usage: 'none', setModel: 'none', approvalRelay: 'none', states: { busy: 'none', idle: 'none', 'waiting for human': 'none', 'waiting for approval': 'none' } },
@@ -223,7 +225,7 @@ test('a parent swapped to a symlink during the initial path check refuses worktr
     }
   });
   syncBuiltinESMExports();
-  t.after(() => { t.mock.restoreAll(); syncBuiltinESMExports(); proceed.resolve(); });
+  onCleanup(t, () => t.mock.restoreAll()); onCleanup(t, () => syncBuiltinESMExports()); onCleanup(t, () => proceed.resolve());
   const claiming = ui.request({ type: 'task.claim', item: 'T-1' }, 30_000);
   await reached.promise;
   await fs.promises.rm(parent, { recursive: true });
@@ -241,7 +243,7 @@ test('a parent swapped to a symlink during the initial path check refuses worktr
 test('merge waits for an admitted verdict write and refuses its latest not-clear result', async t => {
   const reached = Promise.withResolvers<void>(), proceed = Promise.withResolvers<void>();
   let hold = false;
-  t.after(() => proceed.resolve());
+  onCleanup(t, () => proceed.resolve());
   const { root, ui, tracker, git } = await territoryHub(t, undefined, {
     ...fs.promises,
     rename: async (from, to) => {
@@ -293,7 +295,7 @@ test('an item reopened during the final path check keeps its worktree and branch
     return stat;
   });
   syncBuiltinESMExports();
-  t.after(() => { proceed.resolve(); t.mock.restoreAll(); syncBuiltinESMExports(); });
+  onCleanup(t, () => proceed.resolve()); onCleanup(t, () => t.mock.restoreAll()); onCleanup(t, () => syncBuiltinESMExports());
   watch = true;
   const pruning = ui.request({ type: 'worktree.prune', items: ['T-1'] }, 30_000);
   await reached.promise;
@@ -325,7 +327,7 @@ test('session aliases swapped inside across cleanup awaits refuse prune', async 
         return text;
       },
     });
-    t.after(() => proceed.resolve());
+    onCleanup(t, () => proceed.resolve());
     const lstat = fs.promises.lstat;
     t.mock.method(fs.promises, 'lstat', async (...args: Parameters<typeof lstat>) => {
       const stat = await lstat(...args);
@@ -333,7 +335,7 @@ test('session aliases swapped inside across cleanup awaits refuse prune', async 
       return stat;
     });
     syncBuiltinESMExports();
-    t.after(() => { t.mock.restoreAll(); syncBuiltinESMExports(); });
+    onCleanup(t, () => t.mock.restoreAll()); onCleanup(t, () => syncBuiltinESMExports());
     await ui.request({ type: 'task.create', title: 'Alias containment', kind: 'task' });
     await ui.request({ type: 'task.claim', item: 'T-1' });
     await ui.request({ type: 'task.close', item: 'T-1' });
@@ -342,7 +344,7 @@ test('session aliases swapped inside across cleanup awaits refuse prune', async 
     await fs.promises.symlink(outside, alias);
     await ui.request({ type: 'role.set', session: 'impl-alias', role: 'implementer' });
     const socket = new WebSocket(hub.url, { headers: { authorization: `Bearer ${TEST_SECRET}` } });
-    t.after(() => socket.terminate());
+    onCleanup(t, () => socket.terminate());
     const session = frameClient(line => socket.send(line), fn => socket.on('message', data => fn(`${String(data)}\n`)), () => socket.terminate());
     await new Promise<void>((resolve, reject) => { socket.once('open', resolve); socket.once('error', reject); });
     session.send({ type: 'hello', protocol: 2, cwd: alias, name: 'impl-alias', sessionId: 'alias-session' });
@@ -383,7 +385,7 @@ test('a parent swapped during the final leaf scan leaves no escaped creation', a
       }
     });
     syncBuiltinESMExports();
-    t.after(() => { proceed.resolve(); t.mock.restoreAll(); syncBuiltinESMExports(); });
+    onCleanup(t, () => proceed.resolve()); onCleanup(t, () => t.mock.restoreAll()); onCleanup(t, () => syncBuiltinESMExports());
     const claiming = ui.request({ type: 'task.claim', item: 'T-1' }, 30_000);
     await reached.promise;
     await fs.promises.rm(parent, { recursive: true });
@@ -425,7 +427,7 @@ test('creation rollback preserves a branch advanced during confinement verificat
     return actual;
   });
   syncBuiltinESMExports();
-  t.after(() => { swapped.resolve(); advanced.resolve(); t.mock.restoreAll(); syncBuiltinESMExports(); });
+  onCleanup(t, () => swapped.resolve()); onCleanup(t, () => advanced.resolve()); onCleanup(t, () => t.mock.restoreAll()); onCleanup(t, () => syncBuiltinESMExports());
   const claiming = ui.request({ type: 'task.claim', item: 'T-1' }, 30_000);
   await scanned.promise;
   await fs.promises.rm(parent, { recursive: true });
@@ -477,7 +479,7 @@ test('cached rollback listings preserve later commits and dirty work', async t =
         })();
       }));
     syncBuiltinESMExports();
-    t.after(() => { swapped.resolve(); advanced.resolve(); t.mock.restoreAll(); syncBuiltinESMExports(); });
+    onCleanup(t, () => swapped.resolve()); onCleanup(t, () => advanced.resolve()); onCleanup(t, () => t.mock.restoreAll()); onCleanup(t, () => syncBuiltinESMExports());
     const claiming = ui.request({ type: 'task.claim', item: 'T-1' }, 30_000);
     await scanned.promise;
     await fs.promises.rm(parent, { recursive: true });
@@ -536,7 +538,7 @@ test('detached cleanup recovery always preserves escaped worktrees', async t => 
         })();
       }));
     syncBuiltinESMExports();
-    t.after(() => { swapped.resolve(); advanced.resolve(); t.mock.restoreAll(); syncBuiltinESMExports(); });
+    onCleanup(t, () => swapped.resolve()); onCleanup(t, () => advanced.resolve()); onCleanup(t, () => t.mock.restoreAll()); onCleanup(t, () => syncBuiltinESMExports());
     const removing = assert.rejects(removeTaskWorktree(root, 'T-1', async () => {
       if (++checks === 2) await git('update-ref', '-d', `refs/heads/${branch}`, tip);
     }, { branch, tip }), err => {
@@ -577,7 +579,7 @@ test('an alias moved inside while a sibling final realpath awaits keeps the work
   for (const [name, cwd] of [['impl-alias', alias], ['impl-slow', slow]]) {
     await ui.request({ type: 'role.set', session: name, role: 'implementer' });
     const socket = new WebSocket(hub.url, { headers: { authorization: `Bearer ${TEST_SECRET}` } });
-    t.after(() => socket.terminate());
+    onCleanup(t, () => socket.terminate());
     const session = frameClient(line => socket.send(line), fn => socket.on('message', data => fn(`${String(data)}\n`)), () => socket.terminate());
     await new Promise<void>((resolve, reject) => { socket.once('open', resolve); socket.once('error', reject); });
     session.send({ type: 'hello', protocol: 2, cwd, name, sessionId: name });
@@ -593,7 +595,7 @@ test('an alias moved inside while a sibling final realpath awaits keeps the work
     return actual;
   });
   syncBuiltinESMExports();
-  t.after(() => { proceed.resolve(); t.mock.restoreAll(); syncBuiltinESMExports(); });
+  onCleanup(t, () => proceed.resolve()); onCleanup(t, () => t.mock.restoreAll()); onCleanup(t, () => syncBuiltinESMExports());
   const pruning = ui.request({ type: 'worktree.prune', items: ['T-1'] }, 30_000);
   await reached.promise;
   await fs.promises.rm(alias);
@@ -631,7 +633,7 @@ test('a replaced target inode during the final path check refuses cleanup', asyn
     return value;
   });
   syncBuiltinESMExports();
-  t.after(() => { proceed.resolve(); t.mock.restoreAll(); syncBuiltinESMExports(); });
+  onCleanup(t, () => proceed.resolve()); onCleanup(t, () => t.mock.restoreAll()); onCleanup(t, () => syncBuiltinESMExports());
   watch = true;
   const pruning = ui.request({ type: 'worktree.prune', items: ['T-1'] }, 30_000);
   await reached.promise;

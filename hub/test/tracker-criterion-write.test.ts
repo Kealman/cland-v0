@@ -1,3 +1,4 @@
+import { onCleanup } from './process-cleanup.ts';
 import test from 'node:test';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -15,7 +16,7 @@ test('MCP done assigns legacy ids and CLI done writes the checkbox and a mark', 
   const made = await ui.request({ type: 'task.create', title: 'Write criteria', body: 'Intro\n\n## Acceptance criteria\n- [ ] First\n- [x] Second\n\n## Other\nKeep this.' });
   const item = (made.value as { item: ItemView }).item;
   const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
-  t.after(() => coord.close());
+  onCleanup(t, () => coord.close());
   const marked = await coord.call<{ item: ItemView }>('task.criterion', { id: item.id, op: 'done', criterion: 'C1' });
   assert.deepEqual(marked.item.criteria.map(c => [c.id, c.checked, c.marks.map(m => m.kind)]), [['C1', true, ['done']], ['C2', true, []]]);
   assert.match(marked.item.body, /## Other\nKeep this\./);
@@ -34,7 +35,7 @@ test('verify and fail write run and note; failure clears done and reopens the ta
   const item = ((await ui.request({ type: 'task.create', title: 'Fail criteria', body: '## Acceptance criteria\n- [ ] First' })).value as { item: ItemView }).item;
   const rev = await spawnSpoke({ discover: true, cwd: root, name: 'rev', role: 'reviewer', sessionId: 'rev-id' });
   const qa = await spawnSpoke({ discover: true, cwd: root, name: 'qa-1', role: 'qa', sessionId: 'qa-id' });
-  t.after(() => rev.close()); t.after(() => qa.close());
+  onCleanup(t, () => rev.close()); onCleanup(t, () => qa.close());
   const legacy = ((await ui.request({ type: 'task.create', title: 'Legacy checkbox', body: '## Acceptance criteria\n- [x] Legacy checked without done' })).value as { item: ItemView }).item;
   const legacyVerified = await rev.call<{ item: ItemView }>('task.criterion', { id: legacy.id, op: 'verify', criterion: 'C1', run: 'legacy-1' });
   assert.equal(legacyVerified.item.criteria[0]?.checked, false, 'a hub-written verification checkbox mirrors the absent done mark');
@@ -91,7 +92,7 @@ test('each role is limited to its criterion operations and done requires a live 
   const sessions = [];
   for (const [name, role] of [['coord', 'coordinator'], ['impl', 'implementer'], ['rev', 'reviewer'], ['qa-1', 'qa'], ['none', undefined], ['aide-1', 'aide']] as const) {
     const spoke = await spawnSpoke({ discover: true, cwd: root, name, sessionId: `cli:${name}`, ...(role ? { role } : {}) });
-    sessions.push(spoke); t.after(() => spoke.close());
+    sessions.push(spoke); onCleanup(t, () => spoke.close());
     if (!role) {
       // Revoke a live connection: clearing before the asynchronous hello refuses admission instead of a tool.
       await spoke.waitForPresence([name]);
@@ -149,7 +150,7 @@ test('a criterion grant revoked during the write refuses without assigning ids',
   const { discovery } = await startDaemon(t, root, gate.env);
   const ui = await connectUi(t, discovery);
   const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
-  t.after(() => coord.close());
+  onCleanup(t, () => coord.close());
   const item = ((await ui.request({ type: 'task.create', title: 'Revoked', body: '## Acceptance criteria\n- [ ] First' })).value as { item: ItemView }).item;
   const original = await readFile(join(root, item.path), 'utf8');
   await gate.arm();
@@ -203,9 +204,9 @@ for (const save of ['capture', 'publish'] as const) {
         await files.link(from, to);
       },
     } });
-    t.after(() => tracker.stop());
+    onCleanup(t, () => tracker.stop());
     const hub = await startHub({ tracker });
-    t.after(() => hub.close());
+    onCleanup(t, () => hub.close());
     const ui = await connectWsUi(t, hub);
     const item = ((await ui.request({ type: 'task.create', title: 'Race', body: '## Acceptance criteria\n- [ ] First\n\n## Notes\nOriginal.' })).value as { item: ItemView }).item;
     armed = true;
@@ -239,8 +240,8 @@ test('a late in-place editor save refuses the mark and retains its recovery sour
       await files.unlink(path);
     },
   } });
-  t.after(() => tracker.stop()); t.after(async () => { await editor?.close(); });
-  const hub = await startHub({ tracker }); t.after(() => hub.close());
+  onCleanup(t, () => tracker.stop()); onCleanup(t, async () => { await editor?.close(); });
+  const hub = await startHub({ tracker }); onCleanup(t, () => hub.close());
   const ui = await connectWsUi(t, hub);
   const item = ((await ui.request({ type: 'task.create', title: 'Late save', body: '## Acceptance criteria\n- [ ] First\n\n## Notes\nOriginal.' })).value as { item: ItemView }).item;
   const path = join(root, item.path);

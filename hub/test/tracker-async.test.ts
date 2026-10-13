@@ -1,4 +1,5 @@
 // Tracker mutations through their public API; deferred native I/O makes ordering deterministic.
+import { onCleanup } from './process-cleanup.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import files from 'node:fs/promises';
@@ -24,7 +25,7 @@ test('concurrent comments and writes to other items commit in admission order', 
   const root = await tempProject(t);
   const entered = deferred();
   const release = deferred();
-  t.after(() => release.resolve());
+  onCleanup(t, () => release.resolve());
   let held = false;
   const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db'), files: {
     ...files,
@@ -33,7 +34,7 @@ test('concurrent comments and writes to other items commit in admission order', 
       return files.rename(from, to);
     },
   } });
-  t.after(() => tracker.stop());
+  onCleanup(t, () => tracker.stop());
   await tracker.create(human, { title: 'First' });
   await tracker.create(human, { title: 'Second' });
   held = true;
@@ -55,7 +56,7 @@ for (const racing of ['close', 'claim', 'verdict'] as const) {
     const root = await tempProject(t);
     const entered = deferred();
     const release = deferred();
-  t.after(() => release.resolve());
+  onCleanup(t, () => release.resolve());
     let hold = false;
     const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db'), files: { ...files,
       rename: async (from, to) => {
@@ -63,7 +64,7 @@ for (const racing of ['close', 'claim', 'verdict'] as const) {
         return files.rename(from, to);
       },
     } });
-    t.after(() => tracker.stop());
+    onCleanup(t, () => tracker.stop());
     await tracker.create(human, { title: 'Raced' });
     hold = true;
     const writing = tracker.comment(human, 'T-1', 'first');
@@ -101,7 +102,7 @@ for (const step of ['open', 'read', 'write', 'rename'] as const) {
         return files.rename(...args);
       },
     } });
-    t.after(() => tracker.stop());
+    onCleanup(t, () => tracker.stop());
     const item = await tracker.create(human, { title: 'Preserved' });
     const path = join(root, item.path);
     const old = await files.readFile(path, 'utf8');
@@ -119,7 +120,7 @@ test('a verdict returns only after rename and evidence indexing; restart reads t
   const root = await tempProject(t);
   const entered = deferred();
   const release = deferred();
-  t.after(() => release.resolve());
+  onCleanup(t, () => release.resolve());
   let hold = false;
   const db = join(root, '.cland', 'hub.db');
   const tracker = new Tracker({ root, db, files: { ...files, rename: async (from, to) => {
@@ -138,7 +139,7 @@ test('a verdict returns only after rename and evidence indexing; restart reads t
   assert.equal(result.verdicts[0]?.source, 'hub');
   await tracker.stop();
   const restarted = new Tracker({ root, db });
-  t.after(() => restarted.stop());
+  onCleanup(t, () => restarted.stop());
   restarted.start();
   const recorded = await restarted.viewAsync(item.id);
   assert.equal(recorded.comments.at(-1)?.verdict?.run, 'durable-run');
@@ -150,14 +151,14 @@ test('a watcher scan queued behind a held rename never reindexes the old file ov
   const root = await tempProject(t);
   const entered = deferred();
   const release = deferred();
-  t.after(() => release.resolve());
+  onCleanup(t, () => release.resolve());
   let hold = false;
   let reads = 0;
   const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db'), files: { ...files,
     readFile: async (...args) => { reads++; return files.readFile(...args); },
     rename: async (from, to) => { if (hold) { hold = false; entered.resolve(); await release.promise; } return files.rename(from, to); },
   } });
-  t.after(() => tracker.stop());
+  onCleanup(t, () => tracker.stop());
   const item = await tracker.create(human, { title: 'Watched' });
   hold = true;
   const writing = tracker.comment(human, item.id, 'committed');
@@ -192,7 +193,7 @@ test('a process crash after temporary write leaves the previous item intact; res
   assert.equal(await files.readFile(join(root, item.path), 'utf8'), old);
   assert.ok((await files.readdir(join(root, '.cland', 'tasks'))).some(n => n.endsWith('.tmp')));
   const restarted = new Tracker({ root, db });
-  t.after(() => restarted.stop());
+  onCleanup(t, () => restarted.stop());
   restarted.start();
   assert.deepEqual(restarted.list().map(i => i.id), [item.id]);
   assert.equal((await restarted.viewAsync(item.id)).comments.length, 0);
@@ -202,7 +203,7 @@ test('a verdict rechecks its writer after a deferred temporary write, before com
   const root = await tempProject(t);
   const entered = deferred();
   const release = deferred();
-  t.after(() => release.resolve());
+  onCleanup(t, () => release.resolve());
   let hold = false;
   const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db'), files: { ...files,
     writeFile: async (...args) => {
@@ -210,7 +211,7 @@ test('a verdict rechecks its writer after a deferred temporary write, before com
       if (hold) { hold = false; entered.resolve(); await release.promise; }
     },
   } });
-  t.after(() => tracker.stop());
+  onCleanup(t, () => tracker.stop());
   const item = await tracker.create(human, { title: 'Writer' });
   const writer = { id: 'reviewer-id', name: 'rev', role: 'reviewer' };
   hold = true;
@@ -231,13 +232,13 @@ test('an async view waits for previously admitted writes on that item', async t 
   const root = await tempProject(t);
   const entered = deferred();
   const release = deferred();
-  t.after(() => release.resolve());
+  onCleanup(t, () => release.resolve());
   let hold = false;
   const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db'), files: { ...files, rename: async (...args) => {
     if (hold) { hold = false; entered.resolve(); await release.promise; }
     return files.rename(...args);
   } } });
-  t.after(() => tracker.stop());
+  onCleanup(t, () => tracker.stop());
   const item = await tracker.create(human, { title: 'Read your writes' });
   hold = true;
   const writing = tracker.comment(human, item.id, 'visible');
@@ -255,13 +256,13 @@ test('concurrent first imports reserve their lookup before I/O and create one it
   const root = await tempProject(t);
   const entered = deferred();
   const release = deferred();
-  t.after(() => release.resolve());
+  onCleanup(t, () => release.resolve());
   let hold = true;
   const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db'), files: { ...files, readdir: async (...args) => {
     if (hold) { hold = false; entered.resolve(); await release.promise; }
     return files.readdir(...args);
   } } });
-  t.after(() => tracker.stop());
+  onCleanup(t, () => tracker.stop());
   const request = { type: 'task.import' as const, id: 'import', repo: 'test/project', issues: [imported] };
   const first = importIssues(tracker, human, request);
   await entered.promise;
@@ -277,14 +278,14 @@ test('a held watcher read of a file whose frontmatter id moved shares the close 
   const root = await tempProject(t);
   const entered = deferred();
   const release = deferred();
-  t.after(() => release.resolve());
+  onCleanup(t, () => release.resolve());
   let hold = false;
   const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db'), files: { ...files, readFile: async (...args) => {
     const text = await files.readFile(...args);
     if (hold) { hold = false; entered.resolve(); await release.promise; }
     return text;
   } } });
-  t.after(() => tracker.stop());
+  onCleanup(t, () => tracker.stop());
   const item = await tracker.create(human, { title: 'Moved identity' });
   const path = join(root, item.path);
   await files.writeFile(path, (await files.readFile(path, 'utf8')).replace('id: T-1', 'id: T-2'));
@@ -308,20 +309,20 @@ for (const operation of ['create', 'edit', 'close', 'comment', 'link', 'import',
     const root = await tempProject(t);
     const entered = deferred();
     const release = deferred();
-  t.after(() => release.resolve());
+  onCleanup(t, () => release.resolve());
     let hold = false;
     const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db'), files: { ...files, writeFile: async (...args) => {
       await files.writeFile(...args);
       if (hold) { hold = false; entered.resolve(); await release.promise; }
     } } });
-    t.after(() => tracker.stop());
+    onCleanup(t, () => tracker.stop());
     const item = await tracker.create(human, { title: 'Preserved', kind: 'spec' });
     const old = await files.readFile(join(root, item.path), 'utf8');
     const definitions = new Map(fixedRoles().get());
     const role = definitions.get('coordinator')!;
     definitions.set('coordinator', { ...role, permissions: { tools: [...role.permissions.tools, 'task.import'] } });
     const hub = await startHub({ tracker, roles: fixedRoles(definitions) });
-    t.after(() => hub.close());
+    onCleanup(t, () => hub.close());
     const ui = await connectWsUi(t, hub);
     assert.equal((await ui.request({ type: 'role.set', session: 'coord', role: 'coordinator' })).ok, true);
     const frames = {
@@ -361,7 +362,7 @@ test('parse/change and write preparation in one continuation count their combine
     if (slowWrite) { slowWrite = false; clock += 200; }
     return files.writeFile(...args);
   } } });
-  t.after(() => tracker.stop());
+  onCleanup(t, () => tracker.stop());
   const item = await tracker.create(human, { title: 'Timing' });
   slowChange = true;
   slowWrite = true;
@@ -380,7 +381,7 @@ test('import composition after file I/O is measured as resumed work', async t =>
     slow = true;
     return names;
   } } });
-  t.after(() => tracker.stop());
+  onCleanup(t, () => tracker.stop());
   const issue = { ...imported, get title() { if (slow) { slow = false; clock += 400; } return 'Timed import'; } };
   await importIssues(tracker, human, { type: 'task.import', id: 'timing', repo: 'test/project', issues: [issue] }, guard.resumer('task.import', 'timing'));
   assert.deepEqual(records.filter(r => r.event === 'slow-request').map(r => [r.tool, r.phase, r.ms]), [['task.import', 'resumed', 400]]);
@@ -401,7 +402,7 @@ test('post-commit logging and handle-close preparation count as one resumed cont
     fd.close = () => { if (slow) clock += 200; return close(); };
     return fd;
   } } });
-  t.after(() => tracker.stop());
+  onCleanup(t, () => tracker.stop());
   const item = await tracker.create(human, { title: 'Close timing' });
   slow = true;
   await tracker.comment(human, item.id, 'measured', undefined, guard.resumer('task.comment', 'timing'));
@@ -413,14 +414,14 @@ test('a hand rename and reindex while comments wait cannot split their commit qu
   const root = await tempProject(t);
   const entered = deferred();
   const release = deferred();
-  t.after(() => release.resolve());
+  onCleanup(t, () => release.resolve());
   let hold = false;
   let commentOpens = 0;
   const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db'), files: { ...files,
     open: (...args) => { if (String(args[0]).includes('T-1-')) commentOpens++; return files.open(...args); },
     rename: async (from, to) => { if (hold) { hold = false; entered.resolve(); await release.promise; } return files.rename(from, to); },
   } });
-  t.after(() => tracker.stop());
+  onCleanup(t, () => tracker.stop());
   const item = await tracker.create(human, { title: 'Rename target' });
   await tracker.create(human, { title: 'Queue blocker' });
   hold = true;
@@ -459,7 +460,7 @@ test('watcher metadata lookup and indexing count 150 + 150 ms as one resumed con
     metadata = true;
     return text;
   } } });
-  t.after(() => tracker.stop());
+  onCleanup(t, () => tracker.stop());
   const item = await tracker.create(human, { title: 'Watch timing' });
   await files.writeFile(join(root, item.path), (await files.readFile(join(root, item.path), 'utf8')).replace('title: Watch timing', 'title: Hand timing'));
   indexing = true;
@@ -484,7 +485,7 @@ test('scan candidate selection and first read dispatch count as one resumed cont
     readdir: async (...args) => { const names = await files.readdir(...args); candidates = true; return names; },
     readFile: (...args) => { if (dispatch) { dispatch = false; clock += 150; } return files.readFile(...args); },
   } });
-  t.after(() => tracker.stop());
+  onCleanup(t, () => tracker.stop());
   await tracker.create(human, { title: 'Scan dispatch' });
   candidates = false;
   dispatch = true;
@@ -514,7 +515,7 @@ test('partial read handling and dispatch of the next read count as one resumed c
       return fd;
     },
   } });
-  t.after(() => tracker.stop());
+  onCleanup(t, () => tracker.stop());
   const item = await tracker.create(human, { title: 'Partial read' });
   measured = true;
   await tracker.comment(human, item.id, 'measured', undefined, guard.resumer('task.comment', 'timing'));
@@ -543,7 +544,7 @@ test('a failed child scan drains slow reads before admitting the next tracker wr
       return files.readFile(...args);
     },
   } });
-  t.after(() => { release.resolve(); return tracker.stop(); });
+  onCleanup(t, () => release.resolve()); onCleanup(t, () => tracker.stop());
   await tracker.create(human, { title: 'Container', kind: 'epic' });
   await tracker.create(human, { title: 'Slow' });
   await tracker.create(human, { title: 'Failing' });
@@ -614,7 +615,7 @@ test('tracker stop abandons a held write and queued view, and a released write c
       if (hold) { hold = false; entered.resolve(); await release.promise; }
     } },
   });
-  t.after(async () => { release.resolve(); await tracker.stop(); });
+  onCleanup(t, () => release.resolve()); onCleanup(t, () => tracker.stop());
   const item = await tracker.create(human, { title: 'Held' });
   const before = await files.readFile(join(root, item.path), 'utf8');
   hold = true;
@@ -649,7 +650,7 @@ test('stall detection leaves the queue held and clears health when the operation
       if (hold) { hold = false; entered.resolve(); await release.promise; }
     } },
   });
-  t.after(async () => { release.resolve(); await tracker.stop(); });
+  onCleanup(t, () => release.resolve()); onCleanup(t, () => tracker.stop());
   const item = await tracker.create(human, { title: 'Recovers' });
   hold = true;
   const writing = tracker.comment(human, item.id, 'first');
@@ -689,7 +690,7 @@ for (const held of ['watch read', 'import reserve'] as const) {
         },
       },
     });
-    t.after(async () => { release.resolve(); await tracker.stop(); });
+    onCleanup(t, () => release.resolve()); onCleanup(t, () => tracker.stop());
     await tracker.create(human, { title: 'Held read' });
     hold = true;
     const work = held === 'watch read' ? tracker.rescanAsync()

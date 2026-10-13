@@ -1,3 +1,4 @@
+import { onCleanup } from './process-cleanup.ts';
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -55,7 +56,7 @@ test('only Coordinator and human shells push; role spoofing and unknown shell id
     const name = `caller-${role}`;
     const sessionId = `${role}-id`;
     const spoke = await spawnSpoke({ discover: true, cwd: root, name, sessionId, role });
-    t.after(() => spoke.close());
+    onCleanup(t, () => spoke.close());
     await spoke.waitForPresence([name]);
     const before = refs(root, territory);
     const env = { CLAND_SESSION_NAME: name, CLAND_SESSION_ID: sessionId, CLAND_ROLE: 'coordinator' };
@@ -177,7 +178,8 @@ test('record and lock-release failures after publication report successful push 
   const hub = await startHub({ tracker, store: new Store(join(root, '.cland', 'hub.db')), roles: fixedRoles(), log: entry => {
     if (entry.event === 'dev-pushed' && failRecord) throw new Error('record unavailable');
   } });
-  t.after(async () => { await hub.close(); await tracker.stop(); });
+  onCleanup(t, () => hub.close());
+  onCleanup(t, () => tracker.stop());
   const ui = await connectWsUi(t, hub);
   git(root, 'commit', '--allow-empty', '-qm', 'Tracker commit');
   const dev = git(root, 'rev-parse', 'dev');
@@ -250,7 +252,8 @@ test('push refuses pending landed merge or checkout recovery but permits a fully
   const { root, territory } = await repository(t);
   const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db') });
   const hub = await startHub({ tracker, store: new Store(join(root, '.cland', 'hub.db')), roles: fixedRoles() });
-  t.after(async () => { await hub.close(); await tracker.stop(); });
+  onCleanup(t, () => hub.close());
+  onCleanup(t, () => tracker.stop());
   const ui = await connectWsUi(t, hub);
   const human = { id: 'human', name: 'human', role: null };
   const item = await tracker.create(human, { title: 'Prepared task' });

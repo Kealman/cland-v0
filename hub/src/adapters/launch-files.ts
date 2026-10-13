@@ -29,7 +29,7 @@ export class LaunchRecoveryPending extends Error {
 
 export class LaunchFiles {
   readonly #undo: FileUndo[] = [];
-  readonly #children: Array<{ pid: number; identity: Promise<string | null>; graceMs: number; child?: ChildProcess }> = [];
+  readonly #children: Array<{ pid: number; identity: Promise<string | null>; graceMs: number; child?: ChildProcess; exited?: Promise<void> }> = [];
 
   get pids(): number[] { return this.#children.map(child => child.pid); }
 
@@ -88,7 +88,9 @@ export class LaunchFiles {
     if (child.pid === undefined) return;
     const pid = child.pid;
     const identity = processStarted(pid, undefined, this.resumed);
-    this.#children.push({ pid, identity, graceMs, child });
+    const exited = child.exitCode !== null || child.signalCode !== null ? Promise.resolve()
+      : new Promise<void>(resolve => child.once('exit', () => resolve()));
+    this.#children.push({ pid, identity, graceMs, child, exited });
     this.#log = log;
   }
 
@@ -100,11 +102,14 @@ export class LaunchFiles {
     return continueWith((function* (this: LaunchFiles): Generator<Promise<unknown>, void, unknown> {
       // Never undo a live child's resources. Failed verification leaves the complete recovery state intact.
       while (this.#children.length) {
-        const { pid, identity, graceMs, child } = this.#children[0]!;
+        const { pid, identity, graceMs, child, exited } = this.#children[0]!;
         const pidStarted = yield* wait(identity);
         if (!child || (child.exitCode === null && child.signalCode === null)) {
           if (!(yield* wait(endProcess({ pid, pidStarted }, log, graceMs, undefined, { resumed: this.resumed, allowReused: true })))) throw new Error(`could not roll back launched process ${pid}`);
         }
+        // OS disappearance can precede libuv's receipt under load. Native children
+        // settle that receipt before their resources are undone; restored receipts use OS proof.
+        if (exited) yield* wait(exited);
         this.#children.shift();
         if (checkpoint) checkpoint(yield* wait(this.snapshot()));
       }

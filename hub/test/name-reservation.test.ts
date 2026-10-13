@@ -1,3 +1,4 @@
+import { onCleanup } from './process-cleanup.ts';
 import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
@@ -21,15 +22,15 @@ async function pendingAlias(t: TestContext, log?: LogFn, faultAdoption = true) {
   const root = await tempProject(t);
   const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db') });
   tracker.start();
-  t.after(() => tracker.stop());
+  onCleanup(t, () => tracker.stop());
   let now = Date.now();
   const hub = await startHub({ tracker, store: new Store(join(root, '.cland', 'hub.db')), roles: fixedRoles(), now: () => new Date(now), retentionMs: 1, ...(log ? { log } : {}) });
   let hubClosed = false;
   const closeHub = async () => { if (hubClosed) return; hubClosed = true; await hub.close(); };
-  t.after(closeHub);
+  onCleanup(t, closeHub);
   const socket = join(root, 'hub.sock');
   const edge = await createSocketEdge({ path: socket, dispatcher: hub.dispatcher });
-  t.after(() => edge.close());
+  onCleanup(t, () => edge.close());
   const ui = await connectUi(t, { socket, secret: TEST_SECRET });
   await ui.request({ type: 'role.set', session: 'session-1', role: 'implementer' });
   const made = await ui.request({ type: 'task.create', title: 'Pending claimant', assignee: 'session-1' });
@@ -40,7 +41,7 @@ async function pendingAlias(t: TestContext, log?: LogFn, faultAdoption = true) {
     return nativePrepare.call(this, sql);
   });
   const owner = await spawnSpoke({ hub, name: 'session-1', sessionId: 'owner-id' });
-  t.after(() => owner.close());
+  onCleanup(t, () => owner.close());
   await owner.waitForPresence(['session-1']);
   assert.equal((await ui.request({ type: 'role.set', session: 'session-1', role: 'coordinator' })).ok, true);
   assert.equal((await owner.call<{ ok: boolean }>('rename', { name: 'renamed' })).ok, true);
@@ -52,7 +53,7 @@ async function pendingAlias(t: TestContext, log?: LogFn, faultAdoption = true) {
   const sessions = new Sessions({ root, core: hub.core, table, ...(log ? { log } : {}) });
   let sessionsClosed = false;
   const closeSessions = () => { if (sessionsClosed) return; sessionsClosed = true; sessions.close(); table.close(); };
-  t.after(closeSessions);
+  onCleanup(t, closeSessions);
   const starts: string[] = [];
   const watched: string[] = [];
   sessions.register({
@@ -67,7 +68,7 @@ async function pendingAlias(t: TestContext, log?: LogFn, faultAdoption = true) {
   hub.dispatcher.useSessions(sessions);
   const openHello = async (sessionId: string, name?: string, launchToken?: string) => {
     const client = await connectSocket(socket);
-    t.after(() => client.close());
+    onCleanup(t, () => client.close());
     client.send({ type: 'hello', protocol: 2, secret: TEST_SECRET, cwd: root, sessionId, ...(name === undefined ? {} : { name }), ...(launchToken ? { launchToken } : {}) });
     return { client, welcome: await client.next() };
   };
@@ -116,7 +117,7 @@ test('rename refuses another identity’s pending alias', async t => {
   assert.equal((await f.ui.request({ type: 'role.set', session: 'renamed', role: 'implementer' })).ok, true);
   assert.equal((await f.ui.request({ type: 'role.set', session: 'other', role: 'coordinator' })).ok, true);
   const other = await spawnSpoke({ hub: f.hub, name: 'other', sessionId: 'other-id' });
-  t.after(() => other.close());
+  onCleanup(t, () => other.close());
   await other.waitForPresence(['renamed', 'other']);
   const refused = await other.call<{ ok: boolean; error: string }>('rename', { name: 'session-1' });
   assert.equal(refused.ok, false);
@@ -137,10 +138,10 @@ for (const role of ['implementer', null]) {
 
 test('rename still refuses a live destination when two connections present the same session id', async t => {
   const hub = await startHub();
-  t.after(() => hub.close());
+  onCleanup(t, () => hub.close());
   const first = await spawnSpoke({ hub, name: 'first', role: 'coordinator', sessionId: 'shared-id' });
   const second = await spawnSpoke({ hub, name: 'second', role: 'coordinator', sessionId: 'shared-id' });
-  t.after(async () => { await first.close(); await second.close(); });
+  onCleanup(t, () => first.close()); onCleanup(t, () => second.close());
   await first.waitForPresence(['first', 'second']);
   const renamed = await first.call<{ ok: boolean; error: string }>('rename', { name: 'second' });
   assert.equal(renamed.ok, false);
@@ -155,12 +156,12 @@ function deferSpawn(t: TestContext, sessions: Sessions, options: { refuseStop?: 
   let release!: () => void;
   const started = new Promise<void>(done => { entered = done; });
   const gate = new Promise<void>(done => { release = done; });
-  t.after(() => release());
+  onCleanup(t, () => release());
   let stopEntered!: () => void;
   let finishStop!: () => void;
   const stopping = new Promise<void>(done => { stopEntered = done; });
   const stopGate = new Promise<void>(done => { finishStop = done; });
-  t.after(() => finishStop());
+  onCleanup(t, () => finishStop());
   const adapter = sessions.adapter('test');
   const stopped: string[] = [];
   sessions.register({ ...adapter,
@@ -249,7 +250,7 @@ test('a reconnectable offline identity is fenced while its next launch awaits th
   const previousGate = process.env.CLAND_TEST_PRIOR_PID_GATE;
   process.env.PATH = `${bin}:${previousPath}`;
   process.env.CLAND_TEST_PRIOR_PID_GATE = bin;
-  t.after(() => {
+  onCleanup(t, () => {
     process.env.PATH = previousPath;
     if (previousGate === undefined) delete process.env.CLAND_TEST_PRIOR_PID_GATE;
     else process.env.CLAND_TEST_PRIOR_PID_GATE = previousGate;
@@ -392,7 +393,7 @@ test('spawn rejection preserves a foreign owner who renames and reconnects at th
   let reject!: (error: Error) => void;
   const started = new Promise<void>(done => { entered = done; });
   const spawning = new Promise<never>((_, fail) => { reject = fail; });
-  t.after(() => reject(new Error('test finished')));
+  onCleanup(t, () => reject(new Error('test finished')));
   f.sessions.register({ ...f.sessions.adapter('test'), spawn: async () => { entered(); return spawning; } });
   const launching = f.launch('target');
   await started;
@@ -468,7 +469,7 @@ test('credentialed anonymous provenance survives pending cleanup and a hub resta
   assert.ok(f.table.pendingStops()[0]?.ownership?.sessionIds.includes('launched:target'));
   const r = await restartPending(t, f, true);
   const client = await connectSocket(join(f.root, 'hub.sock'));
-  t.after(() => client.close());
+  onCleanup(t, () => client.close());
   client.send({ type: 'hello', protocol: 2, secret: TEST_SECRET, cwd: f.root, sessionId: 'unknown', name: 'target', launchToken: credential() });
   assert.equal((await client.next()).type, 'welcome');
   assert.equal(r.hub.core.presence().find(s => s.name === 'target')?.sessionId, proven);
@@ -745,7 +746,7 @@ for (const returnedId of ['foreign-id', 'unknown']) test(`an anonymous credentia
   const previousGate = process.env.CLAND_TEST_PRIOR_PID_GATE;
   process.env.PATH = `${bin}:${previousPath}`;
   process.env.CLAND_TEST_PRIOR_PID_GATE = bin;
-  t.after(() => {
+  onCleanup(t, () => {
     process.env.PATH = previousPath;
     if (previousGate === undefined) delete process.env.CLAND_TEST_PRIOR_PID_GATE;
     else process.env.CLAND_TEST_PRIOR_PID_GATE = previousGate;
@@ -803,7 +804,7 @@ test('spawn rejection revokes its early hello grant by stable identity and relea
   await started;
   assert.ok(launchToken, 'the hub gave the adapter a launch credential');
   const target = await spawnSpoke({ hub: f.hub, name: 'target', sessionId: 'launched:target', launchToken });
-  t.after(() => target.close());
+  onCleanup(t, () => target.close());
   await target.waitForPresence(['renamed', 'target']);
   const changing = await f.ui.request({ type: 'role.set', session: 'target', role: 'reviewer' });
   reject(new Error('spawn failed after early hello'));
@@ -898,7 +899,7 @@ test('a rollback logger failure cannot suppress committed revocation and role pu
   const launching = f.launch('target');
   await started;
   const target = await spawnSpoke({ hub: f.hub, name: 'target', sessionId: 'launched:target', launchToken: credential() });
-  t.after(() => target.close());
+  onCleanup(t, () => target.close());
   await target.waitForPresence(['renamed', 'target']);
   release();
   assert.equal((await launching).ok, false);
@@ -949,7 +950,7 @@ test('an early-connected failed launch cannot rename while its stop is pending',
   const launching = f.launch('target', 'coordinator');
   await started;
   const target = await spawnSpoke({ hub: f.hub, name: 'target', sessionId: 'launched:target', launchToken: credential() });
-  t.after(() => target.close());
+  onCleanup(t, () => target.close());
   await target.waitForPresence(['renamed', 'target']);
   const early = await target.call<{ ok: boolean; error: string }>('rename', { name: 'early-renamed' });
   release();
@@ -1061,7 +1062,7 @@ test('failed publication retains recovery when accepted-row removal fails after 
   const unsubscribe = f.table.subscribe(process => {
     if (process.status === 'running') throw new Error('committed publication observer failed');
   });
-  t.after(unsubscribe);
+  onCleanup(t, unsubscribe);
   const prepare = DatabaseSync.prototype.prepare;
   let refuseRemoval = true;
   t.mock.method(DatabaseSync.prototype, 'prepare', function (this: DatabaseSync, sql: string) {
@@ -1100,7 +1101,7 @@ test('completed cleanup stages survive receipt-clear failure and do not roll bac
   const unsubscribe = f.table.subscribe(process => {
     if (process.status === 'running') throw new Error('committed publication observer failed');
   });
-  t.after(unsubscribe);
+  onCleanup(t, unsubscribe);
   const prepare = DatabaseSync.prototype.prepare;
   let refuseClear = true;
   t.mock.method(DatabaseSync.prototype, 'prepare', function (this: DatabaseSync, sql: string) {
@@ -1131,7 +1132,7 @@ test('pending-stop ownership and accepted-row quarantine are durable before awai
   const unsubscribe = f.table.subscribe(process => {
     if (process.status === 'running') throw new Error('committed publication observer failed');
   });
-  t.after(unsubscribe);
+  onCleanup(t, unsubscribe);
   const { release, stopping, finishStop } = deferSpawn(t, f.sessions, { holdStop: true });
   release();
   // A native second connection observes the committed transition while stop awaits.
@@ -1159,15 +1160,15 @@ async function restartPending(t: TestContext, f: Awaited<ReturnType<typeof pendi
   const db = join(f.root, '.cland', 'hub.db');
   const tracker = new Tracker({ root: f.root, db });
   tracker.start();
-  t.after(() => tracker.stop());
+  onCleanup(t, () => tracker.stop());
   const hub = await startHub({ tracker, store: new Store(db), roles: fixedRoles() });
-  t.after(() => hub.close());
+  onCleanup(t, () => hub.close());
   const socket = join(f.root, 'hub.sock');
   const edge = await createSocketEdge({ path: socket, dispatcher: hub.dispatcher });
-  t.after(() => edge.close());
+  onCleanup(t, () => edge.close());
   const table = new ProcessTable(db);
   const sessions = new Sessions({ root: f.root, core: hub.core, table });
-  t.after(() => { sessions.close(); table.close(); });
+  onCleanup(t, () => sessions.close()); onCleanup(t, () => table.close());
   const stopped: string[] = [];
   const watched: string[] = [];
   const disposed: string[] = [];
@@ -1228,7 +1229,7 @@ test('failed terminal publication retains its owned row and resumes fan-out and 
   await r.sessions.resumeAll();
   assert.deepEqual(r.stopped, [], 'already verified stop is never replayed');
   const owner = await spawnSpoke({ hub: r.hub, name: 'renamed', sessionId: 'owner-id' });
-  t.after(() => owner.close());
+  onCleanup(t, () => owner.close());
   await owner.waitForPresence(['renamed']);
   assert.equal((await r.ui.request({ type: 'topic.send', topic: 'general', to: ['renamed'], text: 'Recovered failed launch lifecycle' })).ok, true);
   const digest = await owner.waitForEvent(e => e.params.content.includes('Recovered failed launch lifecycle'));
@@ -1293,7 +1294,7 @@ for (const failure of ['stop refusal', 'settlement failure', 'stop save with gon
       await writeFile(join(bin, 'ps'), '#!/bin/sh\nexit 1\n');
       await chmod(join(bin, 'ps'), 0o755);
       process.env.PATH = `${bin}:${previousPath}`;
-      t.after(() => { process.env.PATH = previousPath; });
+      onCleanup(t, () => { process.env.PATH = previousPath; });
     }
     await r.sessions.resumeAll();
     assert.deepEqual(r.stopped, live ? ['launched:target'] : []);
@@ -1311,7 +1312,7 @@ for (const failure of ['stop refusal', 'settlement failure', 'stop save with gon
     assert.deepEqual((after.value as { pendingStops: unknown[] }).pendingStops, []);
     assert.deepEqual((after.value as { processes: unknown[] }).processes, []);
     const owner = await spawnSpoke({ hub: r.hub, name: 'target', sessionId: 'owner-id' });
-    t.after(() => owner.close());
+    onCleanup(t, () => owner.close());
     await owner.waitForPresence(['target']);
     const presence = await owner.call<{ sessions: Array<{ role: string }> }>('who');
     assert.equal(presence.sessions[0]?.role, 'implementer');
@@ -1324,7 +1325,7 @@ for (const failure of ['role transaction checkpoint', 'process receipt rollback 
     const unsubscribe = f.table.subscribe(process => {
       if (process.status === 'running') throw new Error('committed publication observer failed');
     });
-    t.after(unsubscribe);
+    onCleanup(t, unsubscribe);
     const prepare = DatabaseSync.prototype.prepare;
     let fault = true;
     t.mock.method(DatabaseSync.prototype, 'prepare', function (this: DatabaseSync, sql: string) {

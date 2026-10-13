@@ -1,4 +1,5 @@
 // Sibling rank through the agreed hub frame, CLI and MCP seams (T-122).
+import { onCleanup } from './process-cleanup.ts';
 import test, { type TestContext } from 'node:test';
 import { performance } from 'node:perf_hooks';
 import { compareRank, rankChanges } from '../src/tracker/rank.ts';
@@ -22,7 +23,7 @@ test('sparse rank moves persist, are idempotent, and CLI and MCP share rank then
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
-  t.after(() => coord.close());
+  onCleanup(t, () => coord.close());
   const items: Item[] = [];
   for (const title of ['A', 'B', 'C', 'D']) {
     const made = await coord.call<{ item: Item }>('task.create', { title });
@@ -88,7 +89,8 @@ for (const stage of ['planning', 'next write'] as const) {
     } });
     tracker.start();
     const hub = await startHub({ tracker, roles: fixedRoles(), requestGuard: guard });
-    t.after(async () => { await hub.close(); await tracker.stop(); });
+    onCleanup(t, () => hub.close());
+  onCleanup(t, () => tracker.stop());
     const ui = await connectWsUi(t, hub);
     // Intrinsic arithmetic/serialization and the native open prefix provide CPU time;
     // file waits are excluded. No tracker collaborators or diagnostic logs are replaced.
@@ -167,16 +169,16 @@ async function pausedWriteHub(t: TestContext) {
   const entered = new Promise<void>(done => { enter = done; });
   const released = new Promise<void>(done => { release = done; });
   let hold = false;
-  t.after(() => release());
+  onCleanup(t, () => release());
   const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db'), files: { ...files,
     writeFile: async (...args) => {
     await files.writeFile(...args);
     if (hold) { hold = false; enter(); await released; }
     },
   } });
-  t.after(() => tracker.stop());
+  onCleanup(t, () => tracker.stop());
   const hub = await startHub({ tracker, roles: fixedRoles() });
-  t.after(() => hub.close());
+  onCleanup(t, () => hub.close());
   const ui = await connectWsUi(t, hub);
   return { root, ui, release, pause: () => { hold = true; return entered; } };
 }
@@ -298,12 +300,12 @@ test('a failed high label removal retries without another rank write or a migrat
     }
     await files.rename(from, to);
   } } });
-  t.after(() => tracker.stop());
+  onCleanup(t, () => tracker.stop());
   const hub = await startHub({ tracker, roles: fixedRoles() });
-  t.after(() => hub.close());
+  onCleanup(t, () => hub.close());
   const socket = join(root, '.cland', 'hub.sock');
   const edge = await createSocketEdge({ path: socket, dispatcher: hub.dispatcher });
-  t.after(() => edge.close());
+  onCleanup(t, () => edge.close());
   await writeFile(join(root, '.cland', 'hub.json'), JSON.stringify({ socket, port: Number(new URL(hub.url).port), secret: TEST_SECRET, pid: process.pid, version: 'test' }));
   const ui = await connectWsUi(t, hub);
   await ui.request({ type: 'task.create', title: 'Ordinary' });
@@ -378,9 +380,9 @@ test('a failed dense batch reports its committed neighbor and a retry completes 
     },
   } });
   tracker.start();
-  t.after(() => tracker.stop());
+  onCleanup(t, () => tracker.stop());
   const hub = await startHub({ tracker, roles: fixedRoles() });
-  t.after(() => hub.close());
+  onCleanup(t, () => hub.close());
   const ui = await connectWsUi(t, hub);
   await ui.request({ type: 'task.view', item: 'T-3' });
   fail = true;

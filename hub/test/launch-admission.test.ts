@@ -1,3 +1,4 @@
+import { onCleanup } from './process-cleanup.ts';
 import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fsp from 'node:fs/promises';
@@ -24,10 +25,10 @@ async function fixture(t: TestContext, fresh: NonNullable<RolesSource['fresh']>,
   const definitions = (exclusive: boolean) => parseRoles(`[coordinator]\nexclusive = ${exclusive}\n[coordinator.launch]\nharness = "test"\n`);
   let config = definitions(exclusive);
   const hub = createHubBase({ secret: 'test', roles: { get: () => config, fresh }, ...(log ? { log } : {}), ...(requestGuard ? { requestGuard } : {}) });
-  t.after(() => hub.close());
+  onCleanup(t, () => hub.close());
   const table = new ProcessTable();
   const sessions = new Sessions({ core: hub.core, table, root });
-  t.after(() => { sessions.close(); table.close(); });
+  onCleanup(t, () => sessions.close()); onCleanup(t, () => table.close());
   const starts: string[] = [];
   sessions.register({
     harness: 'test',
@@ -50,7 +51,7 @@ test('crew admission and merge-stop continuations remain measured after lifecycl
   const core = hub.core;
   const table = new ProcessTable();
   const sessions = new Sessions({ core, table, root });
-  t.after(async () => { sessions.close(); table.close(); await hub.close(); });
+  onCleanup(t, () => sessions.close()); onCleanup(t, () => table.close()); onCleanup(t, () => hub.close());
   sessions.register({
     harness: 'test',
     capabilities: { history: 'none', usage: 'none', setModel: 'none', approvalRelay: 'none', states: { busy: 'none', idle: 'none', 'waiting for human': 'none', 'waiting for approval': 'none' } },
@@ -70,7 +71,7 @@ test('crew admission and merge-stop continuations remain measured after lifecycl
   assert.ok(measurements.length > 0);
   assert.ok(measurements.every(Boolean), 'every crew presence scan belongs to a measured synchronous stretch');
   const tracker = new Tracker({ root, db: ':memory:' });
-  t.after(() => tracker.stop());
+  onCleanup(t, () => tracker.stop());
   const item = await tracker.create({ id: 'human', name: 'human', role: null }, { title: 'Review container', kind: 'epic' });
   const worktrees = new TaskWorktrees({ tracker });
   const candidateScans: boolean[] = [];
@@ -100,7 +101,7 @@ for (const operation of ['launch', 'role.set'] as const) {
   test(`${operation}: first admission wins when the fresh read makes the role exclusive`, async t => {
     const entered = deferred();
     const gate = deferred();
-    t.after(() => gate.resolve());
+    onCleanup(t, () => gate.resolve());
     let reads = 0;
     const f = await fixture(t, async () => {
       if (++reads === 1) { entered.resolve(); await gate.promise; }
@@ -117,7 +118,7 @@ for (const operation of ['launch', 'role.set'] as const) {
     } else {
       const answers: Array<Record<string, unknown>> = [];
       const conversation = f.hub.dispatcher.open({ send: frame => answers.push(frame), close: () => {}, isOpen: () => true }, { authenticated: false, edge: 'stdio' });
-      t.after(() => conversation.closed());
+      onCleanup(t, () => conversation.closed());
       conversation.receive(JSON.stringify({ type: 'hello', protocol: 2, secret: 'test', client: 'cli' }));
       conversation.receive(JSON.stringify({ type: 'role.set', id: 'first', session: 'coord-1', role: 'coordinator' }));
       await entered.promise;
@@ -165,7 +166,7 @@ test('a pending admission refusal names the earlier request and tells the caller
 test('admission tickets let concurrent launches proceed when the fresh role remains nonexclusive', async t => {
   const entered = deferred();
   const gate = deferred();
-  t.after(() => gate.resolve());
+  onCleanup(t, () => gate.resolve());
   let reads = 0;
   const { sessions, starts } = await fixture(t, async () => {
     if (++reads === 1) { entered.resolve(); await gate.promise; }
@@ -184,14 +185,14 @@ test('admission tickets let concurrent launches proceed when the fresh role rema
 test('the first admitted exclusive role.set wins while its fresh read is deferred', async t => {
   const entered = deferred();
   const gate = deferred();
-  t.after(() => gate.resolve());
+  onCleanup(t, () => gate.resolve());
   let reads = 0;
   const { hub, core } = await fixture(t, async () => {
     if (++reads === 1) { entered.resolve(); await gate.promise; }
   });
   const answers: Array<Record<string, unknown>> = [];
   const conversation = hub.dispatcher.open({ send: frame => answers.push(frame), close: () => {}, isOpen: () => true }, { authenticated: false, edge: 'stdio' });
-  t.after(() => conversation.closed());
+  onCleanup(t, () => conversation.closed());
   conversation.receive(JSON.stringify({ type: 'hello', protocol: 2, secret: 'test', client: 'cli' }));
   conversation.receive(JSON.stringify({ type: 'role.set', id: 'first', session: 'coord-1', role: 'coordinator' }));
   await entered.promise;
@@ -214,7 +215,7 @@ test('a role.set whose fresh read fails releases admission without changing the 
   core.assignRole('target', 'implementer');
   const answers: Array<Record<string, unknown>> = [];
   const conversation = hub.dispatcher.open({ send: frame => answers.push(frame), close: () => {}, isOpen: () => true }, { authenticated: false, edge: 'stdio' });
-  t.after(() => conversation.closed());
+  onCleanup(t, () => conversation.closed());
   conversation.receive(JSON.stringify({ type: 'hello', protocol: 2, secret: 'test', client: 'cli' }));
   conversation.receive(JSON.stringify({ type: 'role.set', id: 'failed', session: 'target', role: 'coordinator' }));
   const failed = await eventually('failed assignment answered', () => answers.find(frame => frame.id === 'failed'));
@@ -229,7 +230,7 @@ test('a role.set move refused after the fresh read releases admission and preser
   core.assignRole('old', 'coordinator');
   const answers: Array<Record<string, unknown>> = [];
   const conversation = hub.dispatcher.open({ send: frame => answers.push(frame), close: () => {}, isOpen: () => true }, { authenticated: false, edge: 'stdio' });
-  t.after(() => conversation.closed());
+  onCleanup(t, () => conversation.closed());
   conversation.receive(JSON.stringify({ type: 'hello', protocol: 2, secret: 'test', client: 'cli' }));
   conversation.receive(JSON.stringify({ type: 'role.set', id: 'failed', session: 'target', role: 'coordinator', note: {} }));
   const failed = await eventually('refused move answered', () => answers.find(frame => frame.id === 'failed'));
@@ -243,7 +244,7 @@ test('a role.set move refused after the fresh read releases admission and preser
 test('the first admitted exclusive-role launch wins while its fresh roles read is deferred', async t => {
   const entered = deferred();
   const gate = deferred();
-  t.after(() => gate.resolve());
+  onCleanup(t, () => gate.resolve());
   let reads = 0;
   const { core, sessions, starts } = await fixture(t, async () => {
     if (++reads === 1) { entered.resolve(); await gate.promise; }
@@ -307,7 +308,7 @@ test('role assignment refusal, error conversion and admission release share one 
   t.mock.method(core, 'assignRole', () => { clock += 150; throw error; });
   const answers: Array<Record<string, unknown>> = [];
   const conversation = hub.dispatcher.open({ send: frame => answers.push(frame), close: () => {}, isOpen: () => true }, { authenticated: false, edge: 'stdio' });
-  t.after(() => conversation.closed());
+  onCleanup(t, () => conversation.closed());
   conversation.receive(JSON.stringify({ type: 'hello', protocol: 2, secret: 'test', client: 'cli' }));
   conversation.receive(JSON.stringify({ type: 'role.set', id: 'failed', session: 'target', role: 'coordinator' }));
   const answer = await eventually('refusal answered', () => answers.find(frame => frame.id === 'failed'));

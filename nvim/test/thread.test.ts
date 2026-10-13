@@ -603,6 +603,7 @@ test('delayed initial history preserves focused composer modes and an unfocused 
       vim.cmd('startinsert')
     `);
     else await c.input(mode === 'R' ? 'R' : 'i');
+    await eventually(`${mode} mode entered before releasing history`, async () => await c.mode() === mode ? true : undefined);
     assert.equal(await c.mode(), mode);
     const win = await c.lua<number>('return vim.api.nvim_get_current_win()');
     await c.control({ releaseSnapshots: ['topic.history'] });

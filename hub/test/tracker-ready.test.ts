@@ -1,4 +1,5 @@
 // Verifier holds and ready at the real hub frame / gate seams (T-121).
+import { onCleanup } from './process-cleanup.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -21,9 +22,9 @@ import { connectWsUi, startHub, tempProject } from './harness.ts';
 test('verifier holds move status beside the Implementer claim, and release on verdict or explicit release', async t => {
   const root = await tempProject(t);
   const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db') });
-  t.after(() => tracker.stop());
+  onCleanup(t, () => tracker.stop());
   const hub = await startHub({ tracker, roles: fixedRoles() });
-  t.after(() => hub.close());
+  onCleanup(t, () => hub.close());
   const ui = await connectWsUi(t, hub);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   for (const [session, role] of [['impl', 'implementer'], ['rev', 'reviewer'], ['qa-1', 'qa']] as const) {
@@ -71,7 +72,7 @@ for (const qaRequired of [false, true]) {
     assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
     const rev = await spawnSpoke({ discover: true, cwd: root, name: 'rev', sessionId: 'rev-id', role: 'reviewer' });
     const qa = await spawnSpoke({ discover: true, cwd: root, name: 'qa-1', role: 'qa' });
-    t.after(async () => { await rev.close(); await qa.close(); });
+    onCleanup(t, () => rev.close()); onCleanup(t, () => qa.close());
     const made = await ui.request({ type: 'task.create', title: 'Ready fixture' });
     const item = (made.value as { item: ItemView }).item;
     const claimed = await ui.request({ type: 'task.claim', item: item.id });
@@ -170,7 +171,7 @@ test(`a commit landing during ready ${pauseAt} cannot publish ready for an unrev
   let release!: () => void;
   const paused = new Promise<void>(done => { entered = done; });
   const released = new Promise<void>(done => { release = done; });
-  t.after(() => release());
+  onCleanup(t, () => release());
   let pause = false;
   let readEvidence = 0;
   const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db'), scheduleTips: tips.scheduleTips, files: { ...files,
@@ -189,15 +190,15 @@ test(`a commit landing during ready ${pauseAt} cannot publish ready for an unrev
     },
   } });
   tracker.start();
-  t.after(() => tracker.stop());
+  onCleanup(t, () => tracker.stop());
   await tips.refresh();
   const hub = await startHub({ tracker, roles: fixedRoles() });
-  t.after(() => hub.close());
+  onCleanup(t, () => hub.close());
   const ui = await connectWsUi(t, hub);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   assert.equal((await ui.request({ type: 'role.set', session: 'rev', role: 'reviewer' })).ok, true);
   const rev = await spawnSpoke({ hub, name: 'rev', role: 'reviewer' });
-  t.after(() => rev.close());
+  onCleanup(t, () => rev.close());
   const made = await ui.request({ type: 'task.create', title: 'Race' });
   const item = (made.value as { item: ItemView }).item;
   const claimed = await ui.request({ type: 'task.claim', item: item.id });
@@ -255,7 +256,7 @@ for (const pauseAt of ['queue', 'write'] as const) {
     let release!: () => void;
     const entered = new Promise<void>(done => { enter = done; });
     const released = new Promise<void>(done => { release = done; });
-    t.after(() => release());
+    onCleanup(t, () => release());
     let pause = false;
     const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db'), files: { ...files,
       writeFile: async (...args) => {
@@ -263,9 +264,9 @@ for (const pauseAt of ['queue', 'write'] as const) {
         if (pause) { pause = false; enter(); await released; }
       },
     } });
-    t.after(() => tracker.stop());
+    onCleanup(t, () => tracker.stop());
     const hub = await startHub({ tracker, roles: fixedRoles() });
-    t.after(() => hub.close());
+    onCleanup(t, () => hub.close());
     const ui = await connectWsUi(t, hub);
     assert.equal((await ui.request({ type: 'role.set', session: 'rev', role: 'reviewer' })).ok, true);
     const made = await ui.request({ type: 'task.create', title: 'Revoked hold' });
@@ -297,7 +298,7 @@ for (const outcome of ['unchanged', 'changed', 'failed'] as const) {
     let release!: () => void;
     const entered = new Promise<void>(done => { enter = done; });
     const released = new Promise<void>(done => { release = done; });
-    t.after(() => release());
+    onCleanup(t, () => release());
     let pause = false;
     const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db'), scheduleTips: tips.scheduleTips,
       git: async (args, input) => {
@@ -309,14 +310,14 @@ for (const outcome of ['unchanged', 'changed', 'failed'] as const) {
       },
     });
     tracker.start();
-    t.after(() => tracker.stop());
+    onCleanup(t, () => tracker.stop());
     await tips.refresh();
     const hub = await startHub({ tracker, roles: fixedRoles() });
-    t.after(() => hub.close());
+    onCleanup(t, () => hub.close());
     const ui = await connectWsUi(t, hub);
     assert.equal((await ui.request({ type: 'role.set', session: 'rev', role: 'reviewer' })).ok, true);
     const rev = await spawnSpoke({ hub, name: 'rev', role: 'reviewer' });
-    t.after(() => rev.close());
+    onCleanup(t, () => rev.close());
     const made = await ui.request({ type: 'task.create', title: 'Pending fixture' });
     const item = (made.value as { item: ItemView }).item;
     const claimed = await ui.request({ type: 'task.claim', item: item.id });
@@ -359,7 +360,7 @@ test('stop during hold rename releases the hold after publication on the tracker
   process.env = { ...process.env, ...fake.env };
   let unpause = () => {};
   const daemon = await serveProject(root, { log: () => {} });
-  t.after(async () => { unpause(); await daemon.stop(); process.env = priorEnv; });
+  onCleanup(t, () => unpause()); onCleanup(t, () => daemon.stop()); onCleanup(t, () => process.env = priorEnv);
   const ui = await connectUi(t, daemon.discovery!);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   assert.equal((await ui.request({ type: 'session.launch', name: 'rev', role: 'reviewer', harness: 'claude-code' }, 30_000)).ok, true);
@@ -373,7 +374,7 @@ test('stop during hold rename releases the hold after publication on the tracker
   const released = new Promise<void>(done => { release = done; });
   const rename = files.rename;
   unpause = () => { files.rename = rename; release(); };
-  t.after(unpause);
+  onCleanup(t, unpause);
   let pause = true;
   files.rename = async (...args) => {
     await rename(...args);
@@ -397,7 +398,7 @@ test('a hand edit during ready Git refresh converges to the edited verdicts with
   let release!: () => void;
   const entered = new Promise<void>(done => { enter = done; });
   const released = new Promise<void>(done => { release = done; });
-  t.after(() => release());
+  onCleanup(t, () => release());
   let pause = false;
   const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db'), files: { ...files,
     writeFile: async (path, text) => {
@@ -410,13 +411,13 @@ test('a hand edit during ready Git refresh converges to the edited verdicts with
     return out;
   } });
   tracker.start();
-  t.after(() => tracker.stop());
+  onCleanup(t, () => tracker.stop());
   const hub = await startHub({ tracker, roles: fixedRoles() });
-  t.after(() => hub.close());
+  onCleanup(t, () => hub.close());
   const ui = await connectWsUi(t, hub);
   assert.equal((await ui.request({ type: 'role.set', session: 'rev', role: 'reviewer' })).ok, true);
   const rev = await spawnSpoke({ hub, name: 'rev', role: 'reviewer' });
-  t.after(() => rev.close());
+  onCleanup(t, () => rev.close());
   const made = await ui.request({ type: 'task.create', title: 'Hand edited readiness' });
   const item = (made.value as { item: ItemView }).item;
   const claimed = await ui.request({ type: 'task.claim', item: item.id });
@@ -443,9 +444,9 @@ for (const release of ['verdict', 'explicit'] as const) {
   test(`hello adopts a pre-hello verifier hold and claim; ${release} releases that hold`, async t => {
     const root = await tempProject(t);
     const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db') });
-    t.after(() => tracker.stop());
+    onCleanup(t, () => tracker.stop());
     const hub = await startHub({ tracker, roles: fixedRoles() });
-    t.after(() => hub.close());
+    onCleanup(t, () => hub.close());
     const ui = await connectWsUi(t, hub);
     assert.equal((await ui.request({ type: 'role.set', session: 'rev', role: 'implementer' })).ok, true);
     const made = await ui.request({ type: 'task.create', title: 'Pre-hello verification', assignee: 'rev' });
@@ -458,7 +459,7 @@ for (const release of ['verdict', 'explicit'] as const) {
     const before = await read();
     assert.equal(before.holds[0]?.sessionId, 'name:rev');
     const rev = await spawnSpoke({ hub, name: 'rev', sessionId: 'rev-adopted', role: 'reviewer' });
-    t.after(() => rev.close());
+    onCleanup(t, () => rev.close());
     await rev.waitForPresence(['rev']);
     const adopted = await read();
     assert.equal(adopted.holds[0]?.sessionId, 'rev-adopted');
@@ -486,7 +487,7 @@ for (const mode of ['timing', 'timing-parented', 'retry'] as const) {
       const watch = nativeFiles.watch;
       t.mock.method(nativeFiles, 'watch', () => watch(quiet, () => {}));
       syncBuiltinESMExports();
-      t.after(() => { t.mock.restoreAll(); syncBuiltinESMExports(); });
+      onCleanup(t, () => t.mock.restoreAll()); onCleanup(t, () => syncBuiltinESMExports());
     }
     const tips = manualTips();
     const records: Array<Record<string, unknown>> = [];
@@ -527,14 +528,14 @@ for (const mode of ['timing', 'timing-parented', 'retry'] as const) {
       },
     });
     tracker.start();
-    t.after(() => tracker.stop());
+    onCleanup(t, () => tracker.stop());
     const hub = await startHub({ tracker, roles: fixedRoles() });
-    t.after(() => hub.close());
+    onCleanup(t, () => hub.close());
     agents.attach(hub.core);
     const ui = await connectWsUi(t, hub);
     assert.equal((await ui.request({ type: 'role.set', session: 'rev', role: 'reviewer' })).ok, true);
     const rev = await spawnSpoke({ hub, name: 'rev', role: 'reviewer' });
-    t.after(() => rev.close());
+    onCleanup(t, () => rev.close());
     const made = await ui.request({ type: 'task.create', title: 'Ready continuation' });
     const item = (made.value as { item: ItemView }).item;
     readyId = item.id;
@@ -592,7 +593,7 @@ test('restart reconciles a stop recorded before queued hold cleanup, preserving 
   await ui.waitFor(f => f.type === 'presence' && (f.sessions as Presence[]).some(s => s.name === 'rev' && s.role === 'reviewer'));
   assert.equal((await ui.request({ type: 'task.hold', item: item.id, as: { name: 'rev' } })).ok, true);
   const direct = await spawnSpoke({ discover: true, cwd: root, name: 'direct', sessionId: 'direct-reviewer', role: 'reviewer' });
-  t.after(() => direct.close());
+  onCleanup(t, () => direct.close());
   assert.equal((await direct.call<{ ok: boolean }>('task.hold', { id: item.id })).ok, true);
   assert.equal((await ui.request({ type: 'role.set', session: 'unknown-rev', role: 'reviewer' })).ok, true);
   assert.equal((await ui.request({ type: 'task.hold', item: item.id, as: { name: 'unknown-rev' } })).ok, true);
@@ -629,9 +630,9 @@ for (const header of [false, true]) {
     const tips = manualTips();
     const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db'), scheduleTips: tips.scheduleTips });
     tracker.start();
-    t.after(() => tracker.stop());
+    onCleanup(t, () => tracker.stop());
     const hub = await startHub({ tracker, roles: fixedRoles() });
-    t.after(() => hub.close());
+    onCleanup(t, () => hub.close());
     const ui = await connectWsUi(t, hub);
     assert.equal((await ui.request({ type: 'role.set', session: 'rev', role: 'implementer' })).ok, true);
     const made = await ui.request({ type: 'task.create', title: 'Pre-hello verdict', assignee: 'rev' });
@@ -651,7 +652,7 @@ for (const header of [false, true]) {
     const before = await ui.request({ type: 'merge', item: item.id }, 30_000);
     assert.deepEqual([before.ok, (before as { code?: string }).code], [false, 'review-claimant']);
     const rev = await spawnSpoke({ hub, name: 'rev', sessionId: 'rev-real', role: 'reviewer' });
-    t.after(() => rev.close());
+    onCleanup(t, () => rev.close());
     await rev.waitForPresence(['rev']);
     const view = ((await ui.request({ type: 'task.view', item: item.id })).value as { item: ItemView }).item;
     assert.equal(view.claim?.sessionId, 'rev-real');
@@ -670,9 +671,9 @@ test('failed SQLite identity adoption fences verifier work and a retry adopts cl
   const tips = manualTips();
   const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db'), scheduleTips: tips.scheduleTips });
   tracker.start();
-  t.after(() => tracker.stop());
+  onCleanup(t, () => tracker.stop());
   const hub = await startHub({ tracker, roles: fixedRoles() });
-  t.after(() => hub.close());
+  onCleanup(t, () => hub.close());
   const ui = await connectWsUi(t, hub);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   assert.equal((await ui.request({ type: 'role.set', session: 'rev', role: 'implementer' })).ok, true);
@@ -700,7 +701,7 @@ test('failed SQLite identity adoption fences verifier work and a retry adopts cl
     return prepare.call(this, sql);
   });
   const rev = await spawnSpoke({ hub, name: 'rev', sessionId: 'rev-real', role: 'reviewer' });
-  t.after(() => rev.close());
+  onCleanup(t, () => rev.close());
   await rev.waitForPresence(['rev']);
   const read = async () => ((await ui.request({ type: 'task.view', item: item.id })).value as { item: ItemView }).item;
   assert.ok(failures >= 1);
@@ -737,7 +738,7 @@ test(`restart rebuilds failed-adoption fences before real-id CLI releases or ver
   await repository(root);
   const tips = manualTips();
   let daemon = await serveProject(root, { log: () => {}, scheduleTips: tips.scheduleTips });
-  t.after(() => daemon.stop());
+  onCleanup(t, () => daemon.stop());
   const ui = await connectUi(t, daemon.discovery!);
   assert.equal((await ui.request({ type: 'role.set', session: 'rev', role: 'implementer' })).ok, true);
   const made = await ui.request({ type: 'task.create', title: 'Restart adoption', assignee: 'rev' });
@@ -763,7 +764,7 @@ test(`restart rebuilds failed-adoption fences before real-id CLI releases or ver
     return prepare.call(this, sql);
   });
   const rev = await spawnSpoke({ discover: true, cwd: root, name: 'rev', sessionId: 'rev-real', role: 'reviewer' });
-  t.after(() => rev.close());
+  onCleanup(t, () => rev.close());
   await rev.waitForPresence(['rev']);
   const before = ((await ui.request({ type: 'task.view', item: item.id })).value as { item: ItemView }).item;
   assert.ok(failures >= 1);
@@ -776,7 +777,7 @@ test(`restart rebuilds failed-adoption fences before real-id CLI releases or ver
     legacyId = (made.value as { item: ItemView }).item.id;
     assert.equal((await ui.request({ type: 'task.claim', item: legacyId, as: { name: 'legacy' } })).ok, true);
     const legacy = await spawnSpoke({ discover: true, cwd: root, name: 'legacy', sessionId: 'legacy-real', role: 'implementer' });
-    t.after(() => legacy.close());
+    onCleanup(t, () => legacy.close());
     await legacy.waitForPresence(['legacy']);
     await ui.request({ type: 'task.view', item: legacyId });
     await legacy.close();

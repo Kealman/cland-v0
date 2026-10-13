@@ -1,3 +1,4 @@
+import { onCleanup } from './process-cleanup.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
@@ -17,7 +18,7 @@ test('Reviewer reports resolve to the item claimant; unclaimed reports resolve t
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
   const impl = await spawnSpoke({ cwd: root, discover: true, name: 'impl', role: 'implementer', sessionId: 'impl-id' });
   const rev = await spawnSpoke({ cwd: root, discover: true, name: 'rev', role: 'reviewer', sessionId: 'rev-id' });
-  t.after(async () => { await coord.close(); await impl.close(); await rev.close(); });
+  onCleanup(t, () => coord.close()); onCleanup(t, () => impl.close()); onCleanup(t, () => rev.close());
   await coord.waitForPresence(['coord', 'impl', 'rev']);
   await rev.waitForEvent(e => e.params.meta?.kind === 'role' && e.params.content.includes('`to: ["lead T-<n>"]`'));
   const { item } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Item lead', assignee: 'impl' });
@@ -47,7 +48,7 @@ test('verdict events use the lead explicit subscription and QA reports use the s
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
   const impl = await spawnSpoke({ cwd: root, discover: true, name: 'impl', role: 'implementer', sessionId: 'impl-id' });
   const qa = await spawnSpoke({ cwd: root, discover: true, name: 'qa-one', role: 'qa', sessionId: 'qa-id' });
-  t.after(async () => { await coord.close(); await impl.close(); await qa.close(); });
+  onCleanup(t, () => coord.close()); onCleanup(t, () => impl.close()); onCleanup(t, () => qa.close());
   await qa.waitForPresence(['coord', 'impl', 'qa-one']);
   await qa.waitForEvent(e => e.params.meta?.kind === 'role' && e.params.content.includes('`to: ["lead T-<n>"]`'));
   const { item } = await coord.call<{ item: { id: string } }>('task.create', { title: 'QA lead', assignee: 'impl' });
@@ -67,18 +68,18 @@ test('a human claim falls back to Coordinator and item addressing preserves ordi
   const root = await tempProject(t);
   const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db') });
   tracker.start();
-  t.after(() => tracker.stop());
+  onCleanup(t, () => tracker.stop());
   const roles = new Map(fixedRoles().get());
   const reviewer = roles.get('reviewer')!;
   roles.set('reviewer', { ...reviewer, permissions: { tools: ['send:human', 'who'] } });
   const hub = await startHub({ tracker, roles: fixedRoles(roles) });
-  t.after(() => hub.close());
+  onCleanup(t, () => hub.close());
   const ui = await connectWsUi(t, hub);
   await ui.request({ type: 'role.set', session: 'coord', role: 'coordinator' });
   await ui.request({ type: 'role.set', session: 'rev', role: 'reviewer' });
   const coord = await spawnSpoke({ hub, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
   const rev = await spawnSpoke({ hub, name: 'rev', role: 'reviewer', sessionId: 'rev-id' });
-  t.after(async () => { await coord.close(); await rev.close(); });
+  onCleanup(t, () => coord.close()); onCleanup(t, () => rev.close());
   await coord.waitForPresence(['coord', 'rev']);
   const made = await ui.request({ type: 'task.create', title: 'Human claim' });
   const item = (made.value as { item: { id: string } }).item;
@@ -97,20 +98,20 @@ for (const change of ['claim', 'identity', 'close'] as const) {
     const root = await tempProject(t);
     const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db') });
     tracker.start();
-    t.after(() => tracker.stop());
+    onCleanup(t, () => tracker.stop());
     let entered!: () => void;
     let release!: () => void;
     const reading = new Promise<void>(resolve => { entered = resolve; });
     const gate = new Promise<void>(resolve => { release = resolve; });
-    t.after(() => release());
+    onCleanup(t, () => release());
     const hub = await startHub({ tracker, roles: fixedRoles(),
       readArtifact: async path => { const bytes = await readFile(path); entered(); await gate; return bytes; },
       control: { status: () => ({ root, pid: process.pid, port: 0, socket: '', version: 'test', startedAt: new Date().toISOString(), uptimeMs: 0 }), stop() {} },
     });
-    t.after(() => hub.close());
+    onCleanup(t, () => hub.close());
     const socket = join(root, 'hub.sock');
     const edge = await createSocketEdge({ path: socket, dispatcher: hub.dispatcher });
-    t.after(() => edge.close());
+    onCleanup(t, () => edge.close());
     const ui = await connectUi(t, { socket, secret: TEST_SECRET });
     for (const [session, role] of [['first', 'implementer'], ['second', 'implementer'], ['rev', 'reviewer']]) {
       assert.equal((await ui.request({ type: 'role.set', session, role })).ok, true);
@@ -121,7 +122,7 @@ for (const change of ['claim', 'identity', 'close'] as const) {
     const topic = (opened.value as { topic: { id: string } }).topic.id;
     assert.equal((await ui.request({ type: 'task.claim', item: item.id, as: { name: 'first' } })).ok, true);
     const rev = await spawnSpoke({ hub, name: 'rev', role: 'reviewer', sessionId: 'rev-id' });
-    t.after(() => rev.close());
+    onCleanup(t, () => rev.close());
     await rev.waitForPresence(['rev']);
     const madeArtifact = await ui.request({ type: 'artifact.create', kind: 'note', title: 'Review', topic, content: 'Review evidence' });
     assert.equal(madeArtifact.ok, true, madeArtifact.error);
@@ -136,7 +137,7 @@ for (const change of ['claim', 'identity', 'close'] as const) {
     }
     if (change === 'close') assert.equal((await ui.request({ type: 'task.close', item: item.id })).ok, true);
     const recipient = await spawnSpoke({ hub, name: change === 'claim' ? 'second' : 'first', role: 'implementer', sessionId: 'recipient-real' });
-    t.after(() => recipient.close());
+    onCleanup(t, () => recipient.close());
     await recipient.waitForPresence([change === 'claim' ? 'second' : 'first', 'rev']);
     release();
     const sent = await sending;
@@ -159,9 +160,9 @@ for (const cleanup of ['normal', 'interrupted'] as const) {
     const db = join(root, '.cland', 'hub.db');
     let tracker = new Tracker({ root, db });
     tracker.start();
-    t.after(() => tracker.stop());
+    onCleanup(t, () => tracker.stop());
     let hub = await startHub({ tracker, store: new Store(db), roles: fixedRoles() });
-    t.after(() => hub.close());
+    onCleanup(t, () => hub.close());
     let ui = await connectWsUi(t, hub);
     await ui.request({ type: 'role.set', session: 'impl', role: 'implementer' });
     await ui.request({ type: 'role.set', session: 'rev', role: 'reviewer' });
@@ -182,7 +183,7 @@ for (const cleanup of ['normal', 'interrupted'] as const) {
     });
     let impl = await spawnSpoke({ hub, name: 'impl', role: 'implementer', sessionId: 'impl-real' });
     let rev = await spawnSpoke({ hub, name: 'rev', role: 'reviewer', sessionId: 'rev-real' });
-    t.after(async () => { blocked = false; await impl.close(); await rev.close(); });
+    onCleanup(t, () => blocked = false); onCleanup(t, () => impl.close()); onCleanup(t, () => rev.close());
     await rev.waitForPresence(['impl', 'rev']);
     assert.ok(failures > 0);
     const before = await ui.request({ type: 'task.view', item: item.id });
@@ -257,7 +258,7 @@ for (const cleanup of ['normal', 'interrupted'] as const) {
     const secondView = await ui.request({ type: 'task.view', item: second.id });
     assert.equal((secondView.value as { item: { claim: { sessionId: string } } }).item.claim.sessionId, 'name:impl', 'the recycled name cannot adopt the previous claimant identity');
     const recycled = await spawnSpoke({ hub, name: 'impl', role: 'implementer', sessionId: 'recycled-real' });
-    t.after(() => recycled.close());
+    onCleanup(t, () => recycled.close());
     await recycled.waitForPresence(['impl', 'final', 'rev']);
     await rev.call('send', { to: [`lead ${second.id}`], text: 'for the new claimant' });
     await recycled.waitForEvent(e => e.params.content.includes('for the new claimant'));
@@ -272,7 +273,7 @@ test('a recorded lead recipient survives claim replacement and hub restart', asy
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
   const first = await spawnSpoke({ cwd: root, discover: true, name: 'first', role: 'implementer', sessionId: 'first-id' });
   const second = await spawnSpoke({ cwd: root, discover: true, name: 'second', role: 'implementer', sessionId: 'second-id' });
-  t.after(async () => { await coord.close(); await first.close(); await second.close(); });
+  onCleanup(t, () => coord.close()); onCleanup(t, () => first.close()); onCleanup(t, () => second.close());
   await coord.waitForPresence(['coord', 'first', 'second']);
   const { item } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Fixed recipient', assignee: 'first' });
   await first.call('task.claim', { id: item.id });
@@ -304,7 +305,7 @@ test('human @lead mentions reach the claimant, with explicit errors for closed, 
   const ui = await connectUi(t, discovery);
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
   const impl = await spawnSpoke({ cwd: root, discover: true, name: 'impl', role: 'implementer', sessionId: 'impl-id' });
-  t.after(async () => { await coord.close(); await impl.close(); });
+  onCleanup(t, () => coord.close()); onCleanup(t, () => impl.close());
   await coord.waitForPresence(['coord', 'impl']);
   const { item } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Human routing', assignee: 'impl' });
   await impl.call('task.claim', { id: item.id });

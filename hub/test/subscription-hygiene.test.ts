@@ -1,3 +1,4 @@
+import { onCleanup } from './process-cleanup.ts';
 import { DatabaseSync } from 'node:sqlite';
 import { mkdir, unlink, readFile, writeFile } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
@@ -19,21 +20,21 @@ test('launched, died and launched within sixty seconds preserve every transition
   const fake = await fakeClaude(t, { pollMs: 50 });
   let now = Date.now();
   const hub = await startHub({ now: () => new Date(now) });
-  t.after(() => hub.close());
+  onCleanup(t, () => hub.close());
   const dir = join(root, '.cland');
   await mkdir(dir, { recursive: true });
   const socket = join(dir, 'hub.sock');
   const edge = await createSocketEdge({ path: socket, dispatcher: hub.dispatcher });
-  t.after(() => edge.close());
+  onCleanup(t, () => edge.close());
   const discoveryFile = join(dir, 'hub.json');
   writeDiscovery(discoveryFile, { root, socket, port: hub.port, secret: TEST_SECRET, pid: process.pid, version: 'test' });
   const project = projectSessions({ core: hub.core, root, db: join(dir, 'hub.db'), discoveryFile, log: () => {}, env: { ...process.env, ...fake.env } });
-  t.after(() => project.close());
+  onCleanup(t, () => project.close());
   hub.dispatcher.useSessions(project.sessions);
   const ui = await connectWsUi(t, hub);
   await ui.request({ type: 'subscribe' });
   const coord = await spawnSpoke({ hub, cwd: root, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
-  t.after(() => coord.close());
+  onCleanup(t, () => coord.close());
   await coord.waitForPresence(['coord']);
   await coord.call('subscribe', { subject: { role: 'implementer' }, events: ['session.state'] });
   const launched = await ui.request({ type: 'session.launch', name: 'impl', role: 'implementer', harness: 'claude-code' });
@@ -45,7 +46,7 @@ test('launched, died and launched within sixty seconds preserve every transition
   now += 1000;
   const relaunched = await ui.request({ type: 'session.resume', session: 'impl', relaunch: true });
   assert.equal(relaunched.ok, true, relaunched.error);
-  t.after(() => killDaemon((relaunched.value as { process: { pid: number } }).process.pid));
+  onCleanup(t, () => killDaemon((relaunched.value as { process: { pid: number } }).process.pid));
   await ui.request({ type: 'topic.send', topic: 'general', text: '@coord consecutive lifecycle' });
   const digest = await coord.waitForEvent(e => e.params.content.includes('consecutive lifecycle'));
   assert.deepEqual(digest.params.content.match(/event · session.state · impl (launched|died)/g), [
@@ -62,7 +63,7 @@ async function setup(t: test.TestContext, config?: string, env: Record<string, s
   await ui.request({ type: 'subscribe' });
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
   const rev = await spawnSpoke({ cwd: root, discover: true, name: 'rev', role: 'reviewer', sessionId: 'rev-id' });
-  t.after(async () => { await coord.close(); await rev.close(); });
+  onCleanup(t, () => coord.close()); onCleanup(t, () => rev.close());
   await coord.waitForPresence(['coord', 'rev']);
   return { root, ui, coord, rev };
 }
@@ -96,7 +97,7 @@ test('coalescing and the event cap freeze per recipient across restart and parti
   const { discovery } = await startDaemon(t, root);
   const ui2 = await connectUi(t, discovery);
   const rev2 = await spawnSpoke({ cwd: root, discover: true, name: 'rev', role: 'reviewer', sessionId: 'rev-id' });
-  t.after(() => rev2.close());
+  onCleanup(t, () => rev2.close());
   const second = await rev2.waitForEvent(e => e.params.content.includes('frozen offline overflow'));
   assert.match(second.params.content, /claimed by coord \(×4\)/);
   assert.match(second.params.content, /and 3 more/);
@@ -191,7 +192,7 @@ for (const harness of ['claude-code', 'codex', 'opencode']) {
     const launched = await ui.request({ type: 'session.launch', name: 'coord', role: 'coordinator', harness }, 30_000);
     assert.equal(launched.ok, true, launched.error);
     const p = (launched.value as { process: { pid: number; sessionId: string; harnessId: string; harnessSessionId: string } }).process;
-    t.after(() => killDaemon(p.pid));
+    onCleanup(t, () => killDaemon(p.pid));
     if (harness !== 'codex') await clauseAnswered(ui, 'coord');
     await eventually('idle before steering', async () => {
       const status = await ui.request({ type: 'hub.status' });
@@ -233,7 +234,7 @@ for (const harness of ['claude-code', 'codex', 'opencode']) {
     }
     // Subscriber death removes every owned subscription. The final event remains queued for another subscriber.
     const watcher = await spawnSpoke({ cwd: root, discover: true, name: 'watcher', sessionId: 'watcher-id' });
-    t.after(() => watcher.close());
+    onCleanup(t, () => watcher.close());
     await watcher.waitForPresence(['watcher', 'coord']);
     await watcher.call('subscribe', { subject: { session: 'coord' }, events: ['usage'], threshold: { tokens: 999999999 } });
     await watcher.call('subscribe', { subject: { role: 'coordinator' }, events: ['session.state'] });
@@ -255,12 +256,12 @@ test('usage thresholds name cost or tokens, deduplicate overlapping subjects and
   let ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
-  t.after(() => coord.close());
+  onCleanup(t, () => coord.close());
   await coord.waitForPresence(['coord']);
   const launched = await ui.request({ type: 'session.launch', name: 'worker', role: 'implementer', harness: 'claude-code' });
   assert.equal(launched.ok, true, launched.error);
   const p = (launched.value as { process: { pid: number; sessionId: string } }).process;
-  t.after(() => killDaemon(p.pid));
+  onCleanup(t, () => killDaemon(p.pid));
   await ui.waitFor(f => f.type === 'session.state' && f.session === 'worker' && f.state === 'idle');
   await ui.waitFor(f => f.type === 'session.usage' && f.session === 'worker');
   await coord.waitForPresence(['coord', 'worker']);
@@ -309,13 +310,13 @@ test('the default coalescing window includes 59999 ms and excludes 60000 ms', as
   const root = await tempProject(t);
   let now = Date.now();
   const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db') });
-  t.after(() => tracker.stop());
+  onCleanup(t, () => tracker.stop());
   const hub = await startHub({ tracker, roles: fixedRoles(), now: () => new Date(now) });
-  t.after(() => hub.close());
+  onCleanup(t, () => hub.close());
   const ui = await connectWsUi(t, hub);
   assert.equal((await ui.request({ type: 'role.set', session: 'coord', role: 'coordinator' })).ok, true);
   const coord = await spawnSpoke({ hub, name: 'coord', role: 'coordinator' });
-  t.after(() => coord.close());
+  onCleanup(t, () => coord.close());
   await coord.waitForPresence(['coord']);
   const item = (await coord.call<{ item: { id: string } }>('task.create', { title: 'Default window' })).item.id;
   await coord.call('subscribe', { subject: { item }, events: ['task'] });
@@ -374,7 +375,7 @@ test('subtree subjects include sessions working on descendant items and survive 
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
-  t.after(() => coord.close());
+  onCleanup(t, () => coord.close());
   await coord.waitForPresence(['coord']);
   const parent = ((await ui.request({ type: 'task.create', title: 'Parent', kind: 'epic' })).value as { item: { id: string } }).item.id;
   const child = ((await ui.request({ type: 'task.create', title: 'Child', parent })).value as { item: { id: string } }).item.id;
@@ -382,7 +383,7 @@ test('subtree subjects include sessions working on descendant items and survive 
   const launched = await ui.request({ type: 'session.launch', name: 'worker', role: 'implementer', harness: 'claude-code', item: child }, 30_000);
   assert.equal(launched.ok, true, launched.error);
   const p = (launched.value as { process: { pid: number; sessionId: string } }).process;
-  t.after(() => killDaemon(p.pid));
+  onCleanup(t, () => killDaemon(p.pid));
   await coord.waitForPresence(['coord', 'worker']);
   await ui.waitFor(f => f.type === 'session.state' && f.session === 'worker' && f.state === 'idle');
   await ui.request({ type: 'session.signal', session: 'worker', launch: p.sessionId, event: 'permission', payload: { tool_name: 'Bash' }, at: Date.now() });
@@ -442,7 +443,7 @@ test('restart reconciles a committed stop once and retains role and ancestor sub
   let ui = await connectUi(t, discovery);
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
   const rev = await spawnSpoke({ cwd: root, discover: true, name: 'rev', role: 'reviewer', sessionId: 'rev-id' });
-  t.after(async () => { await coord.close(); await rev.close(); });
+  onCleanup(t, () => coord.close()); onCleanup(t, () => rev.close());
   await coord.waitForPresence(['coord', 'rev']);
   const parent = (await coord.call<{ item: { id: string } }>('task.create', { kind: 'epic', title: 'Recovery tree' })).item.id;
   const child = (await coord.call<{ item: { id: string } }>('task.create', { title: 'Recovery child', parent })).item.id;

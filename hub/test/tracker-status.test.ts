@@ -1,4 +1,5 @@
 // Explicit task status at the existing hub frame, CLI and MCP seams (T-120).
+import { onCleanup } from './process-cleanup.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
@@ -30,7 +31,7 @@ test('new tasks persist backlog across writes and restart; other kinds have no s
   assert.equal((await cland(root, 'hub', 'stop')).code, 0);
   await startDaemon(t, root);
   const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
-  t.after(() => coord.close());
+  onCleanup(t, () => coord.close());
   assert.equal((await coord.call<{ item: Item }>('task.view', { id: item.id })).item.status, 'backlog');
   for (const kind of ['release', 'epic', 'question', 'spec', 'map']) {
     const result = await coord.call<{ ok: boolean; item: Item }>('task.create', { title: kind, kind });
@@ -48,7 +49,7 @@ test('only human, Coordinator and the claiming Implementer can set status; done 
   const impl = await spawnSpoke({ discover: true, cwd: root, name: 'impl', role: 'implementer' });
   const rev = await spawnSpoke({ discover: true, cwd: root, name: 'rev', role: 'reviewer' });
   const qa = await spawnSpoke({ discover: true, cwd: root, name: 'qa-1', role: 'qa' });
-  t.after(async () => { await Promise.all([coord, impl, rev, qa].map(s => s.close())); });
+  for (const session of [coord, impl, rev, qa]) onCleanup(t, () => session.close());
   await coord.waitForPresence(['coord', 'impl', 'rev', 'qa-1']);
   const { item } = await coord.call<{ item: Item }>('task.create', { title: 'Parser', assignee: 'impl' });
   const read = async () => (await coord.call<{ item: Item }>('task.view', { id: item.id })).item;
@@ -152,7 +153,7 @@ test('a not-clear review or QA verdict returns a handed-over task to in progress
   const item = (made.value as { item: Item }).item;
   for (const [name, role] of [['rev', 'reviewer'], ['qa-1', 'qa']] as const) {
     const verifier = await spawnSpoke({ discover: true, cwd: root, name, role });
-    t.after(() => verifier.close());
+    onCleanup(t, () => verifier.close());
     assert.equal((await ui.request({ type: 'task.edit', item: item.id, status: 'review' })).ok, true);
     const verdict = role === 'reviewer' ? 'review' : 'qa';
     const run = `finding-${verdict}`;
@@ -187,7 +188,7 @@ test('merge preserves its gate and publishes done with closed state', async t =>
   const refused = await ui.request({ type: 'merge', item: item.id }, 30_000);
   assert.deepEqual([refused.ok, (refused as { code?: string }).code], [false, 'review-missing'], 'status never bypasses the gate');
   const rev = await spawnSpoke({ discover: true, cwd: root, name: 'rev', role: 'reviewer' });
-  t.after(() => rev.close());
+  onCleanup(t, () => rev.close());
   assert.equal((await rev.call<{ ok: boolean }>('task.comment', { id: item.id, verdict: 'review', result: 'clear', run: 'status-merge' })).ok, true);
   const merged = await cland(root, 'merge', item.id, '--json');
   assert.equal(merged.code, 0, merged.stderr);
@@ -205,7 +206,7 @@ for (const operation of ['claim', 'review'] as const) {
     let release!: () => void;
     const entered = new Promise<void>(done => { enter = done; });
     const released = new Promise<void>(done => { release = done; });
-    t.after(() => release());
+    onCleanup(t, () => release());
     let hold = false;
     const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db'), files: { ...files,
       writeFile: async (...args) => {
@@ -213,9 +214,9 @@ for (const operation of ['claim', 'review'] as const) {
         if (hold) { hold = false; enter(); await released; }
       },
     } });
-    t.after(() => tracker.stop());
+    onCleanup(t, () => tracker.stop());
     const hub = await startHub({ tracker, roles: fixedRoles() });
-    t.after(() => hub.close());
+    onCleanup(t, () => hub.close());
     const ui = await connectWsUi(t, hub);
     assert.equal((await ui.request({ type: 'role.set', session: 'impl', role: 'implementer' })).ok, true);
     const made = await ui.request({ type: 'task.create', title: 'Preserved', assignee: 'impl' });
@@ -240,12 +241,12 @@ for (const operation of ['claim', 'review'] as const) {
 test('a broad task.edit grant does not let another role set status', async t => {
   const root = await tempProject(t);
   const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db') });
-  t.after(() => tracker.stop());
+  onCleanup(t, () => tracker.stop());
   const definitions = new Map(fixedRoles().get());
   const reviewer = definitions.get('reviewer')!;
   definitions.set('reviewer', { ...reviewer, permissions: { tools: [...reviewer.permissions.tools, 'task.edit'] } });
   const hub = await startHub({ tracker, roles: fixedRoles(definitions) });
-  t.after(() => hub.close());
+  onCleanup(t, () => hub.close());
   const ui = await connectWsUi(t, hub);
   assert.equal((await ui.request({ type: 'role.set', session: 'rev', role: 'reviewer' })).ok, true);
   const made = await ui.request({ type: 'task.create', title: 'No status override' });
@@ -262,7 +263,7 @@ for (const pause of ['queue', 'write'] as const) {
     let release!: () => void;
     const entered = new Promise<void>(done => { enter = done; });
     const released = new Promise<void>(done => { release = done; });
-    t.after(() => release());
+    onCleanup(t, () => release());
     let hold = false;
     const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db'), files: { ...files,
       writeFile: async (...args) => {
@@ -270,15 +271,15 @@ for (const pause of ['queue', 'write'] as const) {
         if (hold) { hold = false; enter(); await released; }
       },
     } });
-    t.after(() => tracker.stop());
+    onCleanup(t, () => tracker.stop());
     const hub = await startHub({ tracker, roles: fixedRoles() });
-    t.after(() => hub.close());
+    onCleanup(t, () => hub.close());
     const ui = await connectWsUi(t, hub);
     assert.equal((await ui.request({ type: 'role.set', session: 'impl', role: 'implementer' })).ok, true);
     assert.equal((await ui.request({ type: 'role.set', session: 'next', role: 'qa' })).ok, true);
     const impl = await spawnSpoke({ hub, name: 'impl', sessionId: 'impl-id', role: 'implementer' });
     const next = await spawnSpoke({ hub, name: 'next', sessionId: 'next-id', role: 'qa' });
-    t.after(async () => { await Promise.all([impl.close(), next.close()]); });
+    onCleanup(t, () => impl.close()); onCleanup(t, () => next.close());
     await impl.waitForPresence(['impl', 'next']);
     const made = await ui.request({ type: 'task.create', title: 'Held', assignee: 'impl' });
     const item = (made.value as { item: Item }).item;

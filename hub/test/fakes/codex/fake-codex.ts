@@ -356,7 +356,6 @@ async function appServer(args: string[]): Promise<number> {
     const usage = { totalTokens: 12, inputTokens: 10, cachedInputTokens: 6, outputTokens: 2, reasoningOutputTokens: 1 };
     const total = { totalTokens: t.tokens, inputTokens: t.tokens / 12 * 10, cachedInputTokens: t.tokens / 12 * 6, outputTokens: t.tokens / 12 * 2, reasoningOutputTokens: t.tokens / 12 };
     toSubscribers(t.id, 'thread/tokenUsage/updated', { threadId: t.id, turnId, tokenUsage: { total, last: usage, modelContextWindow: 200000 } });
-    t.turns += 1;
     save(t);
     t.turnId = null;
     // as the real one: idle is sent before turn/completed
@@ -501,6 +500,9 @@ async function appServer(args: string[]): Promise<number> {
           log(`steered by turn/start: ${text}`);
           return lose ? { lost: true } : { result: { turn: { id: t.turnId, status: 'inProgress', items: [] } } };
         }
+        // A real first input materializes the rollout before model completion.
+        t.turns += 1;
+        save(t);
         t.turnId = randomUUID();
         t.queue.push({ text: text.includes('drop every recovery') ? 'ignored recovery input' : text, tool: toolOf(params) });
         log(`turn/start ${params.toolOutput ? `toolOutput ${(params.toolOutput as { name: string }).name}` : 'input'}${typeof params.effort === 'string' ? ` effort=${params.effort}` : ''}`);

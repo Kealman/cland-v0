@@ -1,4 +1,5 @@
 // Instrument the native process boundary while real session requests run in an in-process project hub.
+import { onCleanup } from './process-cleanup.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import cp from 'node:child_process';
@@ -19,10 +20,10 @@ import { connectSocket, connectUi, eventually, fakeCodex, startDaemon, tempProje
 test('shared permission gate, read/refusal dispatch and audit logging use no synchronous filesystem or process calls', async t => {
   const root = await tempProject(t);
   const daemon = await serveProject(root, { listen: 'never' });
-  t.after(() => daemon.stop());
+  onCleanup(t, () => daemon.stop());
   const answers: Array<Record<string, unknown>> = [];
   const conversation = daemon.hub.dispatcher.open({ send: frame => answers.push(frame), close: () => {}, isOpen: () => true }, { authenticated: false, edge: 'stdio' });
-  t.after(() => conversation.closed());
+  onCleanup(t, () => conversation.closed());
   conversation.receive(JSON.stringify({ type: 'hello', protocol: 2, secret: fs.readFileSync(daemon.layout.secret, 'utf8').trim(), client: 'guard' }));
   assert.ok(answers.some(frame => frame.type === 'welcome'));
   conversation.receive(JSON.stringify({ type: 'role.set', id: 'role', session: 'impl', role: 'implementer' }));
@@ -31,7 +32,7 @@ test('shared permission gate, read/refusal dispatch and audit logging use no syn
   const originalsCp = { spawnSync: cp.spawnSync, execFileSync: cp.execFileSync, execSync: cp.execSync };
   const calls: string[] = [];
   const restore = () => { Object.assign(fs, originalsFs); Object.assign(cp, originalsCp); syncBuiltinESMExports(); };
-  t.after(restore);
+  onCleanup(t, restore);
   for (const [native, originals] of [[fs, originalsFs], [cp, originalsCp]] as const) {
     for (const key of Object.keys(originals)) Object.assign(native, { [key]: () => { calls.push(key); throw new Error(`synchronous ${key} in request`); } });
   }
@@ -81,15 +82,15 @@ test('session launch, list, resume, relaunch and stop spawn no synchronous proce
   const previous = { ...process.env };
   Object.assign(process.env, fake.env);
   const daemon = await serveProject(root);
-  t.after(async () => { await daemon.stop(); process.env = previous; });
+  onCleanup(t, () => daemon.stop()); onCleanup(t, () => process.env = previous);
   const ui = await connectSocket(daemon.discovery!.socket);
-  t.after(() => ui.close());
+  onCleanup(t, () => ui.close());
   ui.send({ type: 'hello', protocol: 2, secret: daemon.discovery!.secret, client: 'instrumented' });
   assert.equal((await ui.next()).type, 'welcome');
   const originals = { spawnSync: cp.spawnSync, execSync: cp.execSync, execFileSync: cp.execFileSync };
   const calls: string[] = [];
   const restore = () => { Object.assign(cp, originals); syncBuiltinESMExports(); };
-  t.after(restore);
+  onCleanup(t, restore);
   for (const key of Object.keys(originals) as Array<keyof typeof originals>) {
     Object.assign(cp, { [key]: (command: string) => { calls.push(`${key}: ${command}`); throw new Error('synchronous process in a session request'); } });
   }
@@ -138,7 +139,7 @@ test('session stop counts post-await harness-ended logging as resumed work', asy
       while (performance.now() < until) { /* a real synchronous journal consumer */ }
     }
   } });
-  t.after(async () => { await daemon.stop(); process.env = previous; });
+  onCleanup(t, () => daemon.stop()); onCleanup(t, () => process.env = previous);
   const ui = await connectUi(t, daemon.discovery!);
   assert.equal((await ui.request({ type: 'session.launch', name: 'impl', harness: 'codex' }, 30_000)).ok, true);
   records.length = 0;
@@ -164,14 +165,14 @@ test('claim-conflict cleanup counts harness-ended logging as one resumed slow re
     }
   };
   const daemon = await serveProject(root, { log });
-  t.after(() => daemon.stop());
+  onCleanup(t, () => daemon.stop());
   await eventually('startup cleanup settled', async () => records.some(entry => entry.event === 'orphan-sweep-completed') ? true : undefined);
   const tracker = new Tracker({ root, db: daemon.layout.db, log });
-  t.after(() => tracker.stop());
+  onCleanup(t, () => tracker.stop());
   await tracker.create({ id: 'human', name: 'human', role: null }, { title: 'Contested', kind: 'task' });
   await tracker.claim({ id: 'sess-coord', name: 'coord', role: 'coordinator' }, 'T-1');
   const project = projectSessions({ core: daemon.hub.core, root, db: daemon.layout.db, discoveryFile: daemon.layout.discovery, log, env: { ...process.env, ...fake.env } });
-  t.after(() => project.close());
+  onCleanup(t, () => project.close());
   const launch = project.sessions.launch.bind(project.sessions);
   project.sessions.launch = async (request, resumed) => {
     const p = await launch(request, resumed);

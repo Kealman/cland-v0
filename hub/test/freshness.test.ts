@@ -1,5 +1,6 @@
 // Verdict freshness off the request path (T-67): the tracker against a real Git repository, with every git process
 // counted through the injected runner. `list` and `view` must start none; the answers arrive from the cache.
+import { onCleanup } from './process-cleanup.ts';
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -51,7 +52,7 @@ function counted(t: TestContext, root: string, options: { git?: Git } = {}) {
   };
   const tips = manualTips();
   const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db'), git: run, scheduleTips: tips.scheduleTips });
-  t.after(() => tracker.stop());
+  onCleanup(t, () => tracker.stop());
   const read = <T>(fn: () => T): T => {
     reading = true;
     try {
@@ -211,7 +212,8 @@ test('scheduled tip reads cannot starve a foreground refresh when Git is slower 
     settled: () => {},
     tipsMoved: () => {},
   });
-  t.after(() => { fresh.stop(); for (const done of pending.splice(0)) done(); });
+  onCleanup(t, () => fresh.stop());
+  onCleanup(t, () => { for (const done of pending.splice(0)) done(); });
   fresh.start();
   const background = poll();
   let finished = false;

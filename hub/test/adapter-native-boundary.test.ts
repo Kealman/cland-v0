@@ -15,7 +15,7 @@ import { ClaudeCodeAdapter } from '../src/adapters/claude-code.ts';
 import type { AdapterHost } from '../src/adapters/contract.ts';
 import { ToolForbidden } from '../src/roles/permissions.ts';
 import { RequestGuard } from '../src/hub/budget.ts';
-import { tempProject } from './harness.ts';
+import { eventually, tempProject } from './harness.ts';
 
 async function guarded(work: () => Promise<void>): Promise<void> {
   const savedFs = Object.fromEntries(Object.entries(fs).filter(([key, value]) => key.endsWith('Sync') && typeof value === 'function'));
@@ -199,6 +199,50 @@ for (const Adapter of adapters) test(`${Adapter.name}: a planted synchronous cal
   else t.mock.method(cp, 'spawn', (bin: string, args: string[], options: cp.SpawnOptions) => { planted(); return native(bin, args, options); });
   syncBuiltinESMExports();
   await assert.rejects(guarded(async () => { await f.adapter.spawn(f.request); }), /no synchronous native call/);
+});
+
+test('OpenCode rollback waits for its owned child exit receipt before undoing files', async t => {
+  const f = await fixture(t, OpenCodeAdapter);
+  f.setFault('no-url');
+  const receipt = Promise.withResolvers<void>();
+  let held = false;
+  let undoBeforeReceipt = false;
+  const spawn = cp.spawn;
+  t.mock.method(cp, 'spawn', (...args: Parameters<typeof cp.spawn>) => {
+    const child = Reflect.apply(spawn, cp, args);
+    if (args[0] !== 'fake-harness') return child;
+    const emit = child.emit.bind(child);
+    t.mock.method(child, 'emit', (event: string | symbol, ...values: unknown[]) => {
+      if (event !== 'exit') return emit(event, ...values);
+      // Model the interval between OS disappearance and libuv's child-exit receipt.
+      // Keep the real process, identity probes and signals; delay only its receipt.
+      const code = child.exitCode;
+      const signal = child.signalCode;
+      Object.assign(child, { exitCode: null, signalCode: null });
+      held = true;
+      void receipt.promise.then(() => {
+        Object.assign(child, { exitCode: code, signalCode: signal }); held = false;
+        emit(event, ...values);
+      });
+      return true;
+    });
+    return child;
+  });
+  for (const method of ['rm', 'rmdir'] as const) {
+    const native = fsp[method];
+    t.mock.method(fsp, method, (...args: unknown[]) => {
+      if (held && String(args[0]).startsWith(join(f.root, '.cland', 'opencode'))) undoBeforeReceipt = true;
+      return Reflect.apply(native, fsp, args);
+    });
+  }
+  syncBuiltinESMExports();
+  const launch = assert.rejects(f.adapter.spawn(f.request), /printed no url/);
+  try {
+    await eventually('OS confirms the owned child ended', () => f.events.some(e => e.event === 'harness-ended') ? true : undefined);
+    assert.equal(held, true, 'the native exit receipt remains deliberately pending');
+    assert.equal(undoBeforeReceipt, false, 'resource rollback waits for the native exit receipt');
+  } finally { receipt.resolve(); await launch; }
+  assert.ok(f.children.every(p => p.exitCode !== null || p.signalCode !== null));
 });
 
 for (const Adapter of adapters) {

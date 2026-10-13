@@ -1,6 +1,7 @@
 // The hub's request path under a flood (T-67), from the incident's shape: a UI client sending `task.list` over and
 // over on a project of twenty items with verdicts. Another client is not held up beyond a matching baseline, the repeats are
 // answered from the previous answer and logged once, and a handler over the budget is logged as `slow-request`.
+import { onCleanup } from './process-cleanup.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -92,7 +93,7 @@ test('a handler over the budget is logged as slow-request with its tool, client 
   // every reading of the clock is a second later: each handler takes 1000 ms by the guard's watch
   let clock = 0;
   const hub = await startHub({ log: (r) => records.push(r), guard: { now: () => (clock += 1000) } });
-  t.after(() => hub.close());
+  onCleanup(t, () => hub.close());
   const ui = await connectWsUi(t, hub, 'slow-ui');
   assert.equal((await ui.request({ type: 'topic.list' })).ok, true);
   const slow = records.filter((r) => r.event === 'slow-request');
@@ -113,9 +114,9 @@ test('a verdict write with a slow post-commit logger is timed as resumed work af
   const git: Git = (args) => new Promise((resolve) => setTimeout(() => resolve(args[0] === 'rev-parse' ? 'a'.repeat(40) : ''), 20));
   const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db'), log, git });
   tracker.start();
-  t.after(() => tracker.stop());
+  onCleanup(t, () => tracker.stop());
   const hub = await startHub({ log, tracker });
-  t.after(() => hub.close());
+  onCleanup(t, () => hub.close());
   const ui = await connectWsUi(t, hub, 'reviewer-ui');
   assert.equal((await ui.request({ type: 'task.create', title: 'Reviewed', branch: 't/x' })).ok, true);
   records.length = 0;
@@ -134,13 +135,13 @@ test('waiting for async Git is a slow-answer with its own counter, without a slo
   const git: Git = (args) => new Promise((resolve) => setTimeout(() => resolve(args[0] === 'rev-parse' ? 'a'.repeat(40) : ''), 150));
   const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db'), log, git });
   tracker.start();
-  t.after(() => tracker.stop());
+  onCleanup(t, () => tracker.stop());
   // A lower answer threshold keeps this test fast; the loop budget stays at its production value.
   const hub = await startHub({ log, tracker, guard: { answerBudgetMs: 100 }, control: { status: () => ({ pid: process.pid, port: 0, socket: '', version: 'test', root, startedAt: new Date().toISOString(), uptimeMs: 0 }), stop: () => {} } });
-  t.after(() => hub.close());
+  onCleanup(t, () => hub.close());
   const socket = join(root, 'hub.sock');
   const edge = await createSocketEdge({ path: socket, dispatcher: hub.dispatcher });
-  t.after(() => edge.close());
+  onCleanup(t, () => edge.close());
   const ui = await connectUi(t, { socket, secret: TEST_SECRET }, 'waiting-ui');
   await ui.request({ type: 'task.create', title: 'Reviewed', branch: 't/x' });
   records.length = 0;
@@ -163,12 +164,12 @@ for (const aggregate of [false, true]) for (const operation of ['launch', 'item-
     const root = await tempProject(t);
     const records: Array<Record<string, unknown>> = [];
     const tracker = operation === 'item-launch' ? new Tracker({ root, db: join(root, '.cland', 'hub.db') }) : undefined;
-    if (tracker) { tracker.start(); t.after(() => tracker.stop()); }
+    if (tracker) { tracker.start(); onCleanup(t, () => tracker.stop()); }
     const hub = await startHub({ log: (r) => records.push(r), ...(tracker ? { tracker } : {}) });
-    t.after(() => hub.close());
+    onCleanup(t, () => hub.close());
     const table = new ProcessTable();
     const sessions = new Sessions({ core: hub.core, table, root });
-    t.after(() => { sessions.close(); table.close(); });
+    onCleanup(t, () => sessions.close()); onCleanup(t, () => table.close());
     const wait = () => new Promise<void>((resolve) => setTimeout(resolve, 20));
     const block = (ms: number) => {
       const until = performance.now() + ms;
@@ -209,7 +210,7 @@ for (const aggregate of [false, true]) for (const operation of ['launch', 'item-
     const unsubscribeState = hub.core.subscribe((event) => {
       if (event.type === 'session.state') afterPublication();
     });
-    t.after(unsubscribeState);
+    onCleanup(t, unsubscribeState);
     const unsubscribe = hub.core.subscribe((event) => {
       if (event.type !== 'session.process') return;
       publications++;
@@ -217,7 +218,7 @@ for (const aggregate of [false, true]) for (const operation of ['launch', 'item-
       block(aggregate ? 200 : 400);
       nextPart = aggregate;
     });
-    t.after(unsubscribe);
+    onCleanup(t, unsubscribe);
     const type = launching ? 'session.launch' : operation === 'stop' ? 'session.stop' : 'session.resume';
     const result = await ui.request(launching ? launch : { type, session: 'test', relaunch: operation === 'relaunch' });
     assert.equal(result.ok, true, result.error);

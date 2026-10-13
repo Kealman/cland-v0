@@ -1,3 +1,4 @@
+import { onCleanup } from './process-cleanup.ts';
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -142,7 +143,7 @@ test('only the human and the Coordinator shell release; Implementer, Reviewer an
     const name = `caller-${role}`;
     const sessionId = `${role}-id`;
     const spoke = await spawnSpoke({ discover: true, cwd: root, name, sessionId, role });
-    t.after(() => spoke.close());
+    onCleanup(t, () => spoke.close());
     await spoke.waitForPresence([name]);
     const before = snapshot(root, territory, github);
     const r = await clandWithEnv(root, { CLAND_SESSION_NAME: name, CLAND_SESSION_ID: sessionId, CLAND_ROLE: 'coordinator' }, 'release', 'v0.1.0');
@@ -345,7 +346,8 @@ test('a release success-record failure retains its same-version recovery receipt
   const hub = await startHub({ tracker, store: new Store(join(root, '.cland', 'hub.db')), roles: fixedRoles(), log: entry => {
     if (entry.event === 'released' && fail) { fail = false; throw new Error('Fixture record failure'); }
   } });
-  t.after(async () => { await hub.close(); await tracker.stop(); });
+  onCleanup(t, () => hub.close());
+  onCleanup(t, () => tracker.stop());
   const ui = await connectWsUi(t, hub);
   const first = await ui.request({ type: 'release', version: 'v0.1.0' }, 30_000);
   assert.equal(first.ok, true, first.error);
@@ -398,7 +400,8 @@ test('sync success-record failure prevents a later merge until its same-replay r
   const hub = await startHub({ tracker, store: new Store(join(root, '.cland', 'hub.db')), roles: fixedRoles(), log: entry => {
     if (entry.event === 'synced' && fail) { fail = false; throw new Error('Fixture sync record failure'); }
   } });
-  t.after(async () => { await hub.close(); await tracker.stop(); });
+  onCleanup(t, () => hub.close());
+  onCleanup(t, () => tracker.stop());
   const ui = await connectWsUi(t, hub);
   const first = await ui.request({ type: 'sync' }, 30_000);
   assert.equal(first.ok, true, first.error);

@@ -12,6 +12,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { processStarted } from '../src/hub/lock.ts';
 import { clandWithEnv, connectUi, eventually, fakeClaude, fakeCodex, killDaemon, pidAlive, sleep, startDaemon, tempProject, type FrameClient } from './harness.ts';
 
 type Harness = { name: string; pid: number | null; status: string; state: string };
@@ -46,6 +47,13 @@ function reusePid(root: string, name: string, pid: number): void {
 async function harness(ui: FrameClient, name: string): Promise<Harness | undefined> {
   const r = await ui.request({ type: 'session.list' });
   return (r.value as { processes: Harness[] }).processes.find((p) => p.name === name);
+}
+
+function pidRow(root: string, name: string): { pid: number; pid_started: string | null; status: string; harness_id: string | null } {
+  const db = new DatabaseSync(join(root, '.cland', 'hub.db'));
+  try {
+    return db.prepare('select pid, pid_started, status, harness_id from harness_processes where name = ?').get(name) as ReturnType<typeof pidRow>;
+  } finally { db.close(); }
 }
 
 test('Codex: after a crash and a hub restart, neither resume, relaunch nor stop signals a pid that another process reuses', async (t) => {
@@ -98,12 +106,25 @@ test('Claude Code: a stop whose `claude stop` fails never SIGTERMs a pid that an
   const launched = await ui.request({ type: 'session.launch', name: 'cc', role: 'implementer', harness: 'claude-code' }, 30_000);
   assert.equal(launched.ok, true, launched.error);
   await eventually('pid known', async () => ((await harness(ui, 'cc'))?.pid ? true : undefined));
+  const original = pidRow(root, 'cc');
   const other = await bystander(t);
   reusePid(root, 'cc', other);
   // `claude stop` cannot find the session either
   const db = new DatabaseSync(join(root, '.cland', 'hub.db'));
   db.prepare("update harness_processes set harness_id = 'gone0000' where name = 'cc'").run();
   db.close();
+  const staged = pidRow(root, 'cc');
+  const originalAlive = pidAlive(original.pid);
+  const originalStarted = processStarted(original.pid);
+  const otherAlive = pidAlive(other);
+  const otherStarted = processStarted(other);
+  assert.equal(staged.status, 'running', `the refusal case requires a running row: ${JSON.stringify(staged)}`);
+  assert.equal(originalAlive, true, 'the original fake must remain alive before the refusal');
+  assert.notEqual(staged.pid_started, null, 'the original start identity must be recorded');
+  assert.equal(originalStarted, staged.pid_started, 'the staged start identity still belongs to the original fake');
+  assert.equal(staged.pid, other, 'the staged PID names the bystander');
+  assert.equal(otherAlive, true, 'the staged bystander is alive before stop');
+  assert.notEqual(otherStarted, staged.pid_started, 'the staged PID has a different start identity');
   const stopped = await ui.request({ type: 'session.stop', session: 'cc' }, 15_000);
   assert.equal(stopped.ok, false);
   assert.match(stopped.error ?? '', /could not stop "cc"/);
