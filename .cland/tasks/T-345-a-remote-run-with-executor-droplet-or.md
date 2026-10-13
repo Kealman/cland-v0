@@ -17,7 +17,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-13T20:53:45.864Z
-updated: 2026-10-13T20:53:47.879Z
+updated: 2026-10-13T22:28:57.777Z
 ---
 
 ## Summary
@@ -120,12 +120,7 @@ The package runner reads the selection through `selectionFromEnv` and never fetc
 
 ## Acceptance criteria
 
-- [ ] C1. A fixture task branch with a hub-only diff runs with `executor = "droplet"` against the fakes:
-  - the fake machine receives a bundle;
-  - its run sees `CLAND_SUITE_SELECTION` equal to the host's selection (`hub-only`), with `FORCE_COLOR=0` and `NO_COLOR=1`;
-  - it runs typecheck, then the selected test command, as `runner`.
-
-  One result is posted with the executor line, the lifetime and the cost. The fake API shows the droplet and the key deleted.
+- [ ] C1. A fixture task branch with a hub-only diff runs with `executor = "droplet"` against the fakes: the fake machine receives a bundle; its run sees `CLAND_SUITE_SELECTION` equal to the host's selection (`hub-only`), with `FORCE_COLOR=0` and `NO_COLOR=1`; it runs typecheck, then the selected test command, as `runner`. One result is posted with the executor line, the lifetime and the cost. The fake API shows the droplet and the key deleted.
 - [ ] C2. `--executor local` overrides a droplet default, and `--executor droplet` overrides a local default. An unknown value is refused. `cland task view --json` shows the run's `verify.executor`.
 - [ ] C3. A host typecheck failure posts a failed result and creates no droplet. A failing remote test posts one failed result with its failures. A remote typecheck failure stops before the tests.
 - [ ] C4. A long fake run shows up incrementally in the local log. Fake `ssh` failing for N calls mid-run does not end the run, and the final result is complete. A droplet deleted from the fake API mid-run yields one result with `remote machine lost`, and the lease is released.

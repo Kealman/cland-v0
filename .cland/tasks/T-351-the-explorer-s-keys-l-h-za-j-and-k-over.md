@@ -2,8 +2,8 @@
 id: T-351
 kind: task
 title: "The explorer's keys: l, h, za, j and k over the visible rows, s rebases the tree with breadcrumbs and ␣␣ goes back, D hides done items and A shows the archived roots, all kept in ui.json"
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 7
 labels:
@@ -17,7 +17,8 @@ blocked_by:
 topic: topic-221
 branch: t/T-351-the-explorer-s-keys-l-h-za-j-and-k-over
 created: 2026-10-13T20:53:51.511Z
-updated: 2026-10-13T22:04:21.335Z
+updated: 2026-10-13T22:36:26.339Z
+closed: 2026-10-13T22:36:26.339Z
 ---
 
 ## Summary
@@ -86,14 +87,28 @@ explorer = {
 
 ## Acceptance criteria
 
-- [ ] C1. `j` and `k` skip the column header, the release's breakdown rows and the stage labels. `3j` moves three item rows.
-- [ ] C2. `l` unfolds a node and on an open node steps to its first child. `h` folds an open node, and on a leaf goes to its parent and folds it. `za`, `zo` and `zc` on a leaf act on its parent. `zR` and `zM` unfold and fold the view.
-- [ ] C3. `s` on an epic rebases the tree on it with its path in the winbar. `s` on a task scopes to its epic with the cursor on the task. `␣␣` returns to the release view with the cursor on the epic, and `␣␣` from the root returns to the previous centre view.
-- [ ] C4. `D` hides done items in the whole tree, done epics included, and the winbar shows the count hidden in the current scope. `A` adds a closed release under `Other releases` and a closed root item under `Unscheduled`.
-- [ ] C5. After the debounce, `ui.json` holds `explorer.folds` by id, `scope`, `hide_done` and `archive`. A second workbench started on the same project restores them. An invalid `explorer` value is reported and replaced by the defaults without dropping the rest of the file.
-- [ ] C6. The `explorer` actions are in the registry with titles, and `␣?` lists them.
-- [ ] C7. `nvim/README.md`'s Explorer section has the key table, and the help line lists the keys.
+- [x] C1. `j` and `k` skip the column header, the release's breakdown rows and the stage labels. `3j` moves three item rows.
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-351-2 · 2026-10-13T22:35:43.865Z · commit 4abd56dd6680c02b067d6579d75113faee054ee6
+  - done: impl-351 · 2026-10-13T22:36:03.272Z
+- [x] C2. `l` unfolds a node and on an open node steps to its first child. `h` folds an open node, and on a leaf goes to its parent and folds it. `za`, `zo` and `zc` on a leaf act on its parent. `zR` and `zM` unfold and fold the view.
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-351-2 · 2026-10-13T22:35:43.865Z · commit 4abd56dd6680c02b067d6579d75113faee054ee6
+  - done: impl-351 · 2026-10-13T22:36:04.818Z
+- [x] C3. `s` on an epic rebases the tree on it with its path in the winbar. `s` on a task scopes to its epic with the cursor on the task. `␣␣` returns to the release view with the cursor on the epic, and `␣␣` from the root returns to the previous centre view.
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-351-2 · 2026-10-13T22:35:43.865Z · commit 4abd56dd6680c02b067d6579d75113faee054ee6
+  - done: impl-351 · 2026-10-13T22:36:05.988Z
+- [x] C4. `D` hides done items in the whole tree, done epics included, and the winbar shows the count hidden in the current scope. `A` adds a closed release under `Other releases` and a closed root item under `Unscheduled`.
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-351-2 · 2026-10-13T22:35:43.865Z · commit 4abd56dd6680c02b067d6579d75113faee054ee6
+  - done: impl-351 · 2026-10-13T22:36:08.196Z
+- [x] C5. After the debounce, `ui.json` holds `explorer.folds` by id, `scope`, `hide_done` and `archive`. A second workbench started on the same project restores them. An invalid `explorer` value is reported and replaced by the defaults without dropping the rest of the file.
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-351-2 · 2026-10-13T22:35:43.865Z · commit 4abd56dd6680c02b067d6579d75113faee054ee6
+  - done: impl-351 · 2026-10-13T22:36:10.127Z
+- [x] C6. The `explorer` actions are in the registry with titles, and `␣?` lists them.
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-351-2 · 2026-10-13T22:35:43.865Z · commit 4abd56dd6680c02b067d6579d75113faee054ee6
+  - done: impl-351 · 2026-10-13T22:36:11.562Z
+- [x] C7. `nvim/README.md`'s Explorer section has the key table, and the help line lists the keys.
   - verified: rev-23 [reviewer] · run rev-2026-10-13-351-1 · 2026-10-13T22:04:04.156Z · commit 4abd56dd6680c02b067d6579d75113faee054ee6
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-351-2 · 2026-10-13T22:35:43.865Z · commit 4abd56dd6680c02b067d6579d75113faee054ee6
+  - done: impl-351 · 2026-10-13T22:36:12.988Z
 
 ## Comments
 
@@ -117,3 +132,20 @@ Criteria: C7 verified.
 ### impl-351 · 2026-10-13T22:04:21.335Z
 
 Source clear rev-2026-10-13-351-1 at exact 4abd56dd6680c02b067d6579d75113faee054ee6 (A-2097), C7 verified. Submitted cland verify nvim after source verdict: df95412b-01dd-4d49-84dd-651e75970cd9; topic-221, rev-23, impl-351. Queue position 2 / worker null at submission. Tree clean; awaiting hub result and Reviewer final verdict.
+
+### rev-23 · 2026-10-13T22:35:43.865Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-351-2
+commit: 4abd56dd6680c02b067d6579d75113faee054ee6
+scope: evidence
+
+No high or medium findings. Exact-head cland verify df95412b / A-2101 widened to full and passed both typechecks and 1867/1867 tests, zero failures/cancellations/skips/todo. All 13 explorer cases pass including counted keys, scopes/Back, D/A counts, cold-start preferences, invalid-value isolation and action/help coverage. Source review A-2097 remains current. C1–C7 verified; implementation done marks remain the claimant's responsibility. A-2103: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2103-t-351-final-exact-head-evidence-review.md.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.
+
+### coord · 2026-10-13T22:36:26.339Z
+
+Merged 177f92cae8eec8e6188667a76d25a8f3bb5de113 onto dev.

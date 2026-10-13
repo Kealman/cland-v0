@@ -3,7 +3,7 @@ id: T-344
 kind: task
 title: "The prepared snapshot: cland executor prepare builds a droplet snapshot keyed by Node, the Neovim pin, the lockfile and the base commit, and acquire creates from it and waits until the machine takes commands"
 state: open
-status: planned
+status: in progress
 size: L
 labels:
   - v0.1.2
@@ -14,10 +14,10 @@ parent: E-271
 blocked_by:
   - T-342
   - T-343
-topic: null
-branch: null
+topic: topic-222
+branch: t/T-344-the-prepared-snapshot-cland-executor
 created: 2026-10-13T20:53:45.756Z
-updated: 2026-10-13T22:20:34.621Z
+updated: 2026-10-13T22:28:57.111Z
 ---
 
 ## Summary
@@ -125,13 +125,7 @@ Re-preparing is the human's or the Coordinator's call. Nothing prepares automati
 
 ## Acceptance criteria
 
-- [ ] C1. Against the fakes, `cland executor prepare` runs the whole sequence in order:
-  - it creates a builder with `provision.sh` as user data;
-  - it delivers the base bundle into `~/mirror.git` and `~/cland` as `runner`, runs `npm ci` and writes the image marker;
-  - it powers off, snapshots, transfers to the other regions and tags the image;
-  - it releases the builder, with its watchdog stopped.
-
-  The snapshot record has the four key fields. The journal has `executor-prepared`. One notice reports the key, the image, the regions, the lifetime and the cost.
+- [ ] C1. Against the fakes, `cland executor prepare` runs the whole sequence in order: it creates a builder with `provision.sh` as user data; it delivers the base bundle into `~/mirror.git` and `~/cland` as `runner`, runs `npm ci` and writes the image marker; it powers off, snapshots, transfers to the other regions and tags the image; it releases the builder, with its watchdog stopped. The snapshot record has the four key fields. The journal has `executor-prepared`. One notice reports the key, the image, the regions, the lifetime and the cost.
 - [ ] C2. A second prepare with the same key reports `current` and creates nothing. After `package-lock.json` changes, a prepare makes a new snapshot, then deletes the old one; the fake API lists one image.
 - [ ] C3. After prepare, acquire creates from the image id, only in regions holding it, with no user data. It returns only after SSH as `runner` answers and the image marker matches the key. On a marker mismatch, or past the 180 s bound, it releases the droplet and refuses.
 - [ ] C4. Failures leave things as they were. A failed snapshot action, an SSH timeout or `npm ci` exiting 1 each release the builder, delete any partial image, keep the old snapshot and journal `executor-prepare-failed` with the cause. A `prepare_size` with a larger disk than `size` is refused before any create.
@@ -139,3 +133,9 @@ Re-preparing is the human's or the Coordinator's call. Nothing prepares automati
 - [ ] C6. The sentinel token appears in none of these: the user data the fake API received, the fake machine's files, the fake `ssh` and `scp` argument lists and environments, the logs, the journal, the notice.
 - [ ] C7. Real check, posted on this item: one `cland executor prepare` in a scratch project on the branch, with the builder's lifetime and cost, the image's size, and `cland executor status` afterwards. The snapshot is deleted after the check, unless the Coordinator keeps it for ticket T-345.
 - [ ] C8. `hub/README.md` describes the snapshot, its key, `prepare`, staleness, storage cost and the `runner` user.
+
+## Comments
+
+### impl-344 · 2026-10-13T22:28:05.978Z
+
+Implementing at the ticket's pre-agreed frame-protocol/CLI seams. Prepare role control test went red before implementation and now passes. Reusable snapshot test covers builder provisioning, committed-base mirror/checkout, install, snapshot/transfer, replacement and token absence. The machine transport is private and strips DIGITALOCEAN_TOKEN from all delivery children.
