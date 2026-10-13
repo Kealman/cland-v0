@@ -2,8 +2,8 @@
 id: T-331
 kind: task
 title: "Size and regressions: tasks carry a required size from XS to XL and an optional regression_of, through the CLI and MCP, and the clauses and skills ask for both and for a Summary"
-state: open
-status: in progress
+state: closed
+status: done
 criterion_seq: 7
 labels:
   - v0.1.2
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-211
 branch: t/T-331-size-and-regressions-tasks-carry-a
 created: 2026-10-13T14:04:09.540Z
-updated: 2026-10-13T19:12:48.388Z
+updated: 2026-10-13T19:30:23.565Z
 ---
 
 ## Summary
@@ -88,21 +88,29 @@ E-270: Status, fields and instrumentation. Spec: `docs/spec/v0.1.2.md` §3.12 (W
 
 - [x] C1. Item tests: `size` parses each class, refuses another value and refuses a size on an epic. `regression_of` parses on a task and is refused on other kinds. Both round-trip, and a file without them reads unchanged.
   - done: impl-331 · 2026-10-13T17:46:40.701Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-331-8 · 2026-10-13T19:30:11.397Z · commit 854c2095154d5024cb3a5af7e13adaa8dd388d81
 - [x] C2. On a temporary project with a real hub, `cland task create "x" --kind task` and `cland task create "x"` are refused naming `XS, S, M, L or XL`. `--kind epic --size S` is refused. `--size S --regression-of T-<n>` on a landed task shows both fields in `cland task view` and `--json`.
   - done: impl-331 · 2026-10-13T17:46:41.014Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-331-8 · 2026-10-13T19:30:11.397Z · commit 854c2095154d5024cb3a5af7e13adaa8dd388d81
 - [x] C3. Through a real spoke, MCP `task.create` without `size` gets the same refusal. `task.edit` changes a size. `task.link` sets and clears `regression_of`. An open target, a non-task target and the item itself are each refused with their reason.
   - done: impl-331 · 2026-10-13T17:46:41.299Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-331-8 · 2026-10-13T19:30:11.397Z · commit 854c2095154d5024cb3a5af7e13adaa8dd388d81
 - [x] C4. `task.list` and the `task` event carry `size` and `regression_of` from the index.
   - done: impl-331 · 2026-10-13T17:46:41.599Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-331-8 · 2026-10-13T19:30:11.397Z · commit 854c2095154d5024cb3a5af7e13adaa8dd388d81
 - [x] C5. The clauses state the filing rule and the report rule. The roles snapshot tests pin the text. Every role's delivered clause stays at least 512 bytes under 8192, for the defaults and for this repo's `.cland/roles.toml`.
   - done: impl-331 · 2026-10-13T17:46:41.891Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-331-8 · 2026-10-13T19:30:11.397Z · commit 854c2095154d5024cb3a5af7e13adaa8dd388d81
 - [x] C6. The `to-tickets` and `plan-epic` skills ask for a size, a `## Summary` and `--regression-of` for rework. `skills/PATCHES.md` records the vendored patch, and `hub/test/skills-tracker.test.ts` passes with the new text.
   - done: impl-331 · 2026-10-13T17:46:42.184Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-331-8 · 2026-10-13T19:30:11.398Z · commit 854c2095154d5024cb3a5af7e13adaa8dd388d81
 - [x] C7. `hub/README.md`, `docs/agents/issue-tracker.md` with its template and `GLOSSARY.md` describe the size classes, the refusal, `regression_of` and the `## Summary` rule.
   - done: impl-331 · 2026-10-13T17:46:42.473Z
   - verified: rev-23 [reviewer] · run rev-2026-10-13-331-1 · 2026-10-13T17:48:54.057Z · commit 6fc0eb83b90efb84d6d16f1598d4cb01ca100b42
   - verified: rev-23 [reviewer] · run rev-2026-10-13-331-3 · 2026-10-13T18:40:12.197Z · commit 93eebe9bbb1da7edee89f82bb24c5ebd39fa10c7
   - verified: rev-23 [reviewer] · run rev-2026-10-13-331-5 · 2026-10-13T18:59:07.401Z · commit 0f96f5abacb14d038a1ab4706147147ecfea4d6a
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-331-7 · 2026-10-13T19:16:07.559Z · commit 854c2095154d5024cb3a5af7e13adaa8dd388d81
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-331-8 · 2026-10-13T19:30:11.398Z · commit 854c2095154d5024cb3a5af7e13adaa8dd388d81
 
 ## Comments
 
@@ -175,3 +183,31 @@ run: rev-2026-10-13-331-6
 commit: 0f96f5abacb14d038a1ab4706147147ecfea4d6a
 
 Medium — nvim/test/inbox-actions.test.ts:108 selects Give an answer after connection alone, before inbox row readiness; A-2035 throws missing Give an answer. Preserve free answer, failed draft/target, needs-you and exact frames while fixing the inherited shared test (Bugs, S). Typecheck/both packages ran, 1842/1843 pass, one fail; no product criterion failure inferred. C1–C6 final verification pending, C7 retained. Evidence A-2036: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2036-t-331-full-verification-not-clear-inbox-row-readiness.md.
+
+### rev-23 · 2026-10-13T19:16:07.559Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-331-7
+commit: 854c2095154d5024cb3a5af7e13adaa8dd388d81
+
+No high, medium, or low source findings remain. Shared 7fd169d4 separately clear: row readiness before original selection/r, preserving free-answer, failed draft/target, needs-you and exact frames. Cherry-pick matches, remaining dev delta tracker-only; A-2037 delayed red/green supports the fix. Product source unchanged; C7 refreshed, C1–C6 await complete same-head full evidence. Evidence A-2039: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2039-t-331-shared-ask-row-wait-and-source-delta-clear-at-854c2095.md.
+
+Criteria: C7 verified.
+
+### rev-23 · 2026-10-13T19:30:11.398Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-331-8
+commit: 854c2095154d5024cb3a5af7e13adaa8dd388d81
+
+No high, medium, or low findings remain. Complete exact-head A-2042 plus source assessments establish C1–C7: size/regression validation and indexed fields, CLI/MCP compatibility, clauses/headroom, skills and docs. Typecheck/all phases pass 1843/1843, zero skips/cancellations. Permission and shared readiness regressions pass; completion 47 queries/no full lists/files. Evidence A-2043: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2043-t-331-final-exact-head-review-clear.md.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.
+
+### coord · 2026-10-13T19:30:23.565Z
+
+Merged c5a7a89c26d18aac343132cb88f2ac454aed3de2 onto dev.

@@ -3,7 +3,7 @@ id: T-332
 kind: task
 title: "The verdict scope: a review verdict records full, delta or evidence, through --scope on cland task comment and MCP task.comment, and the Reviewer clause and the code-review skill say which"
 state: open
-status: backlog
+status: planned
 labels:
   - v0.1.2
   - hub
@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-13T14:04:09.652Z
-updated: 2026-10-13T14:04:16.947Z
+updated: 2026-10-13T19:30:24.288Z
 ---
 
 ## Summary
