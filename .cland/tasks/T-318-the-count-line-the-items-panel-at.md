@@ -3,19 +3,20 @@ id: T-318
 kind: task
 title: "The count line: the items panel at release scope ends with categories 4 · 23 open, Enter switches to the all filter, and every row shows its kind's prefix"
 state: open
-status: backlog
+status: review
+criterion_seq: 5
 labels:
   - v0.1.2
   - nvim
   - ready-for-agent
 assignee: null
-parent: T-269
+parent: E-269
 blocked_by:
   - T-315
-topic: null
-branch: null
+topic: topic-199
+branch: t/T-318-the-count-line-the-items-panel-at
 created: 2026-10-13T02:27:23.403Z
-updated: 2026-10-13T02:27:34.925Z
+updated: 2026-10-13T09:41:51.120Z
 ---
 
 ## Summary
@@ -63,8 +64,23 @@ T-269: Prefixes and categories. Spec: `docs/spec/v0.1.2.md` §3.2 (one count lin
 
 ## Acceptance criteria
 
-- [ ] C1. A Neovim headless test on the stub hub at release scope shows `categories <N> · <M> open` as the panel's last row, with N and M right for the fixture. A task event that adds an open item to a category raises M by one. With no open category the line is absent.
-- [ ] C2. Enter on the count line switches the panel to `all` with the cursor on the categories section. The key is in the action registry and listed by `␣?`.
-- [ ] C3. Under `all`, each open category shows as a folded row with its open count, and `za` unfolds it to its open items in rank order.
-- [ ] C4. The same test reads `R-` in the scope header, `E-` in the parent column of a task row and `C-` on a category row with `screenstring()`. The task's epic has no plan in the fixture, since a planned row shows its stage tag in that column.
-- [ ] C5. `nvim/README.md`'s items panel section describes the count line, Enter on it and the categories under `all`.
+- [x] C1. A Neovim headless test on the stub hub at release scope shows `categories <N> · <M> open` as the panel's last row, with N and M right for the fixture. A task event that adds an open item to a category raises M by one. With no open category the line is absent.
+  - done: impl-318 · 2026-10-13T09:16:29.168Z
+- [x] C2. Enter on the count line switches the panel to `all` with the cursor on the categories section. The key is in the action registry and listed by `␣?`.
+  - done: impl-318 · 2026-10-13T09:16:29.488Z
+- [x] C3. Under `all`, each open category shows as a folded row with its open count, and `za` unfolds it to its open items in rank order.
+  - done: impl-318 · 2026-10-13T09:16:29.802Z
+- [x] C4. The same test reads `R-` in the scope header, `E-` in the parent column of a task row and `C-` on a category row with `screenstring()`. The task's epic has no plan in the fixture, since a planned row shows its stage tag in that column.
+  - done: impl-318 · 2026-10-13T09:16:30.112Z
+- [x] C5. `nvim/README.md`'s items panel section describes the count line, Enter on it and the categories under `all`.
+  - done: impl-318 · 2026-10-13T09:16:31.049Z
+
+## Comments
+
+### impl-318 · 2026-10-13T09:15:41.955Z
+
+Implemented the live categories N · M open heading at release scope, Enter navigation to the all section, numeric category ordering, folded open counts and ranked open descendants. Canonical R-/E-/C- IDs are read on screen through a stub scenario with the nested ladder. Headless vboard tests and action registry audit pass; final integrated suite/review follow. The existing stub already accepts canonical IDs and exposes ladder, so no hub-side changes are needed.
+
+### impl-318 · 2026-10-13T09:41:51.120Z
+
+First all verification a354c2b9 stopped on an inherited T-314 stage-receipt restart readiness assertion before the Neovim phase (A-1880). Whole stage-qa.test.ts passed 3/3 at dev 9e7fa6c and 3/3 at 0fea853 (A-1882). Shared fix 2c0f43d waits on closed stage state after restart, preserving both closure/hash assertions; corrected file 12/12 green. Reviewer rev-23 cleared that shared fix (A-1884). T-318 now includes it at 2ec92bf; fetched and merged origin/dev (already current), pushed to origin. Re-requesting final exact-head review/full verification.

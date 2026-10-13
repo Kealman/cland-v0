@@ -3,21 +3,21 @@ id: T-316
 kind: task
 title: "The migration: cland task migrate renames, rewrites, retitles, seeds the four categories, retires the tech-debt label and reindexes"
 state: open
-status: backlog
+status: review
 criterion_seq: 10
 labels:
   - v0.1.2
   - hub
   - ready-for-agent
 assignee: null
-parent: T-269
+parent: E-269
 blocked_by:
   - T-313
   - T-315
-topic: null
-branch: null
+topic: topic-197
+branch: t/T-316-the-migration-cland-task-migrate-renames
 created: 2026-10-13T02:27:23.140Z
-updated: 2026-10-13T02:28:39.925Z
+updated: 2026-10-13T09:22:42.516Z
 ---
 
 ## Summary
@@ -87,19 +87,33 @@ Open task branches need no rebase, as the test above proves.
 
 ## Acceptance criteria
 
-- [ ] C1. A hub test on a temporary project runs `cland task migrate --dry-run --json`, then `cland task migrate --json`, and shows the applied plan equal to the dry run's. The files, the index and `cland task list --json` agree afterwards.
-- [ ] C2. A second run prints `nothing to do` and writes nothing. A tree half-migrated by hand completes on the next run with no duplicate number.
-- [ ] C3. A hub test shows each refusal: a merge in flight, a tracker write in flight, an Implementer caller, a linked worktree and a ladder without `category`. None writes a file.
-- [ ] C4. `git diff --stat` after the run shows renames and frontmatter changes only. Every body and every comment is byte for byte unchanged.
-- [ ] C5. The squash test above passes in both cases.
-- [ ] C6. The journal holds one `task-migrated` record with the counts, read after the `flushLogs` barrier.
-- [ ] C7. The Implementer runs the dry run and the run on a scratch copy of `dev`'s `.cland/tasks/` and attaches both outputs to the item topic as one artifact. They match, and a second run reports nothing to do.
-- [ ] C8. `hub/README.md`'s tracker section and `docs/agents/issue-tracker.md` (and its template) describe `cland task migrate`, its refusals and what it leaves alone.
-- [ ] C9. `cland task migrate` runs with the hub stopped, working on the item files and hub.db directly, and refuses while a hub answers on the project. `hub/README.md` and `docs/agents/issue-tracker.md` give the live-tracker procedure: stop the hub, `git tag pre-migration` on dev, copy `.cland/hub.db` beside it, run the migration, restart the hub on the migrated tree, relaunch every role session (their clauses and briefs carry T- ids). They also give the rollback, the tag plus the hub.db copy, restorable in minutes. A test on a temporary project runs the migration with the hub stopped and shows the refusal with a hub running.
-- [ ] C10. After the migration on a scratch copy, every old `T-<n>` id the human types or reads still resolves to its item: `cland task view` and the other CLI task commands, the MCP task tools, topic bindings, journal rows and the inbox rows naming items, and `gi` in a thread. A hub test with a real hub restarted on the migrated tree covers each surface. The explorer inherits the same resolver when it lands (T-276).
+- [x] C1. A hub test on a temporary project runs `cland task migrate --dry-run --json`, then `cland task migrate --json`, and shows the applied plan equal to the dry run's. The files, the index and `cland task list --json` agree afterwards.
+  - done: impl-316 · 2026-10-13T09:22:33.634Z
+- [x] C2. A second run prints `nothing to do` and writes nothing. A tree half-migrated by hand completes on the next run with no duplicate number.
+  - done: impl-316 · 2026-10-13T09:22:34.076Z
+- [x] C3. A hub test shows each refusal: a merge in flight, a tracker write in flight, an Implementer caller, a linked worktree and a ladder without `category`. None writes a file.
+  - done: impl-316 · 2026-10-13T09:22:34.645Z
+- [x] C4. `git diff --stat` after the run shows renames and frontmatter changes only. Every body and every comment is byte for byte unchanged.
+  - done: impl-316 · 2026-10-13T09:22:35.641Z
+- [x] C5. The squash test above passes in both cases.
+  - done: impl-316 · 2026-10-13T09:22:36.539Z
+- [x] C6. The journal holds one `task-migrated` record with the counts, read after the `flushLogs` barrier.
+  - done: impl-316 · 2026-10-13T09:22:37.187Z
+- [x] C7. The Implementer runs the dry run and the run on a scratch copy of `dev`'s `.cland/tasks/` and attaches both outputs to the item topic as one artifact. They match, and a second run reports nothing to do.
+  - done: impl-316 · 2026-10-13T09:22:38.049Z
+- [x] C8. `hub/README.md`'s tracker section and `docs/agents/issue-tracker.md` (and its template) describe `cland task migrate`, its refusals and what it leaves alone.
+  - done: impl-316 · 2026-10-13T09:22:39.464Z
+- [x] C9. `cland task migrate` runs with the hub stopped, working on the item files and hub.db directly, and refuses while a hub answers on the project. `hub/README.md` and `docs/agents/issue-tracker.md` give the live-tracker procedure: stop the hub, `git tag pre-migration` on dev, copy `.cland/hub.db` beside it, run the migration, restart the hub on the migrated tree, relaunch every role session (their clauses and briefs carry T- ids). They also give the rollback, the tag plus the hub.db copy, restorable in minutes. A test on a temporary project runs the migration with the hub stopped and shows the refusal with a hub running.
+  - done: impl-316 · 2026-10-13T09:22:40.847Z
+- [x] C10. After the migration on a scratch copy, every old `T-<n>` id the human types or reads still resolves to its item: `cland task view` and the other CLI task commands, the MCP task tools, topic bindings, journal rows and the inbox rows naming items, and `gi` in a thread. A hub test with a real hub restarted on the migrated tree covers each surface. The explorer inherits the same resolver when it lands (T-276).
+  - done: impl-316 · 2026-10-13T09:22:41.692Z
 
 ## Comments
 
 ### coord · 2026-10-13T02:28:39.925Z
 
 C9 and C10 added 2026-10-13 at the stand-in's request (D24). C9 runs the migration with the hub stopped. Its in-flight refusals in C3 therefore read the on-disk state, meaning merge locks and tracker write locks, not a hub frame. The CLI refuses while a hub answers. Reconcile C3 with C9 that way, and state it in the item.
+
+### impl-316 · 2026-10-13T09:09:43.333Z
+
+Implementation follows C9: preview and apply run with the hub stopped; C3 checks the on-disk merge/tracker locks and recovery state. Tests use the prescribed CLI/frame/territory seams on temporary projects only; the live tracker will not be migrated.

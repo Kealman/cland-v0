@@ -3,19 +3,20 @@ id: T-317
 kind: task
 title: "Agents file into categories: the clauses and the qa, triage and to-tickets skills file with --parent C-n, and idle_from in crew.toml feeds the Coordinator's idle-work rule"
 state: open
-status: backlog
+status: review
+criterion_seq: 6
 labels:
   - v0.1.2
   - hub
   - ready-for-agent
 assignee: null
-parent: T-269
+parent: E-269
 blocked_by:
   - T-315
-topic: null
-branch: null
+topic: topic-198
+branch: t/T-317-agents-file-into-categories-the-clauses
 created: 2026-10-13T02:27:23.273Z
-updated: 2026-10-13T02:27:34.692Z
+updated: 2026-10-13T09:25:15.520Z
 ---
 
 ## Summary
@@ -73,9 +74,21 @@ T-269: Prefixes and categories. Spec: `docs/spec/v0.1.2.md` §3.10 (Agents, Idle
 
 ## Acceptance criteria
 
-- [ ] C1. Crew tests parse and render `idle_from`, keep it before the tables and default it to `[]`. `cland crew set idle_from C-216` on a temporary project with a real hub shows `C-216` in `cland crew show` and `--json`, and `'[]'` empties it.
-- [ ] C2. `crew set` refuses an unknown id, a task, a closed category and a duplicate, each with its reason. A hand-edited entry naming a closed category is listed as ignored by `cland crew show`, and the rest of the file stays in force.
-- [ ] C3. A hub test reads the Coordinator's clause delivery after `crew set idle_from`: the staffing lines name the categories in order. With `[]`, they say category work is never taken.
-- [ ] C4. The default Coordinator clause states the idle-work rule, the epic-waits-for-promotion rule and the filing rule. The other roles' clauses state the report rule. The roles snapshot tests (`hub/test/roles-snapshot.test.ts`, `hub/test/roles.test.ts`) pin the new text, and this repo's `.cland/roles.toml` carries the same changes.
-- [ ] C5. The `qa`, `triage` and `to-tickets` skills and the tracker doc describe filing with `--parent C-<n>`. `hub/test/skills-tracker.test.ts` and `hub/test/skills-qa.test.ts` pass with the new text, and `skills/PATCHES.md` records the two vendored patches.
-- [ ] C6. `hub/README.md`'s crew staffing section describes `idle_from`, its validation and the staffing line.
+- [x] C1. Crew tests parse and render `idle_from`, keep it before the tables and default it to `[]`. `cland crew set idle_from C-216` on a temporary project with a real hub shows `C-216` in `cland crew show` and `--json`, and `'[]'` empties it.
+  - done: impl-317 · 2026-10-13T09:22:14.370Z
+- [x] C2. `crew set` refuses an unknown id, a task, a closed category and a duplicate, each with its reason. A hand-edited entry naming a closed category is listed as ignored by `cland crew show`, and the rest of the file stays in force.
+  - done: impl-317 · 2026-10-13T09:22:17.152Z
+- [x] C3. A hub test reads the Coordinator's clause delivery after `crew set idle_from`: the staffing lines name the categories in order. With `[]`, they say category work is never taken.
+  - done: impl-317 · 2026-10-13T09:22:18.547Z
+- [x] C4. The default Coordinator clause states the idle-work rule, the epic-waits-for-promotion rule and the filing rule. The other roles' clauses state the report rule. The roles snapshot tests (`hub/test/roles-snapshot.test.ts`, `hub/test/roles.test.ts`) pin the new text, and this repo's `.cland/roles.toml` carries the same changes.
+  - done: impl-317 · 2026-10-13T09:22:19.344Z
+- [x] C5. The `qa`, `triage` and `to-tickets` skills and the tracker doc describe filing with `--parent C-<n>`. `hub/test/skills-tracker.test.ts` and `hub/test/skills-qa.test.ts` pass with the new text, and `skills/PATCHES.md` records the two vendored patches.
+  - done: impl-317 · 2026-10-13T09:22:19.989Z
+- [x] C6. `hub/README.md`'s crew staffing section describes `idle_from`, its validation and the staffing line.
+  - done: impl-317 · 2026-10-13T09:22:20.480Z
+
+## Comments
+
+### impl-317 · 2026-10-13T09:09:54.548Z
+
+Implementing the agreed CLI/frame, crew parser/render and clause snapshot seams from C1–C6. No tool grants or item-selection hub logic. The Coordinator must relaunch after this merges to take up the changed base clause; later idle_from edits refresh staffing lines live.

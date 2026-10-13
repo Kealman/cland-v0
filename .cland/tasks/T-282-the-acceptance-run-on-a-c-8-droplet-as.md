@@ -3,7 +3,7 @@ id: T-282
 kind: task
 title: The acceptance run on a c-8 droplet as an ordinary user, and locally
 state: open
-status: in progress
+status: review
 criterion_seq: 6
 labels:
   - v0.1.2
@@ -14,10 +14,11 @@ parent: E-268
 blocked_by:
   - T-281
   - T-312
+  - T-321
 topic: topic-195
 branch: t/T-282-the-acceptance-run-on-a-c-8-droplet-as
 created: 2026-10-12T11:54:20.829Z
-updated: 2026-10-13T09:06:07.929Z
+updated: 2026-10-13T10:06:53.963Z
 ---
 
 ## Summary
@@ -56,7 +57,7 @@ Constraints:
   - done: impl-282 · 2026-10-13T07:23:44.354Z
   - verified: rev-26 [reviewer] · run rev-20261013-282-initial · 2026-10-13T07:26:32.022Z · commit 7eab38f67e1fd783148b30d175b37734f6410984
 - [ ] C2. The droplet run's log artifact shows `npm run typecheck && npm test` green on Ubuntu 24.04 with 8 vCPUs, as an ordinary user with a home under `/home`, with nothing added to the login environment, and the runner's list of platform skips by reason.
-  - failed: rev-26 [reviewer] · 2026-10-13T07:48:31.820Z · note A-1846 c-8 full run fails inbox-workload.test.ts:102 hold-response wait; hub1fail and Neovim never starts.
+  - failed: rev-26 [reviewer] · 2026-10-13T09:24:55.776Z · note A-1874 typecheck exits2 at inbox-workload.test.ts:73: unknown assertion message causes TS2345; npm test never ran.
 - [ ] C3. The droplet and the SSH key were destroyed; the tag listing afterwards is empty and is recorded in the item.
   - verified: rev-26 [reviewer] · run rev-20261013-282-1 · 2026-10-13T07:47:44.926Z · commit 7eab38f67e1fd783148b30d175b37734f6410984
 - [ ] C4. The `acct` totals for `git`, `ps` and Node are compared with the census of slice 3, and the difference is explained.
@@ -66,6 +67,7 @@ Constraints:
 - [x] C6. The suite is green on macOS through `cland verify` at the same head, and no test is weakened, skipped or retried.
   - done: impl-282 · 2026-10-13T07:24:42.456Z
   - verified: rev-26 [reviewer] · run rev-20261013-282-initial · 2026-10-13T07:26:33.197Z · commit 7eab38f67e1fd783148b30d175b37734f6410984
+  - verified: rev-26 [reviewer] · run rev-20261013-282-local · 2026-10-13T09:44:49.335Z · commit 5c0568a6bdaa5903216129bb8427b8a84a0ec0e7
 
 ## Comments
 
@@ -107,3 +109,31 @@ Cause at failed7eab38f proved by A-1857: each hold release synchronously hydrate
 ### impl-282 · 2026-10-13T09:06:07.929Z
 
 First post-regression Linux proof A-1864 at5168701 passed the original100-hold response/sweep section under16busy workers in unchanged4CPU container, but the later stop-7 OS ps probe failed. Ten-alone stage was not invoked. All workers/container/Desktop stopped before END. Coordinator classified this whole-case synthetic ps starvation outside acceptance, filed followupT-320 underT-216 needs-triage, and approved a fresh proof with16workers limited to the hold burst, reaped after unchanged sweep assertion and before stop phase, then ten unchanged full-file runs alone. Waiting for T-31511d93365 completion and empty queue; no assertion/deadline/retry/settings changed.
+
+### impl-282 · 2026-10-13T09:17:47.018Z
+
+A-1867 scoped Linux proof at5168701: hold-only16-worker contention exit0/42.44s and ten unchanged full-file runs6/6 each, no retries, all workers reaped before stop phase. Joint leases held through container/Desktop stop0; released09:15:48Z. Fresh fetched origin/dev9e7fa6c merged and pushed as2977d1aef6bfad4f7a14a28d3546967cb58b9db8, including T-315. Sole diff againstdev remains32-line regression; fresh-head targeted regression24queries green. Statusreview and renewed review request sent before final local cland verify all submission. Fresh c-8/lon1/$0.08–$0.13 notice sent; waiting explicitgo, no key import/create yet. Final cloud/local evidence will share2977d1a.
+
+### impl-282 · 2026-10-13T09:23:20.249Z
+
+Third create2977d1a is a provisioning stop caused by typecheck failure in the regression: TS2345 at inbox-workload.test.ts:73, released.error unknown passed to assert.equal message. npm test never invoked. A-1874 retains actual typecheck2/stamps/observer sanity0 and cleanup: droplet608651300 and key60058768 destroyed, cland tag[], key absent;142s/$0.0099. Initial report misattributed stop to observer, corrected immediately. CoordinatorD24 requires no audit observer/plain acct-only fourth run;8d6df745 additionally gates fourth notice on local npm run typecheck plus green same-head cland verify all in hand. No fourth resource created.
+
+### rev-26 · 2026-10-13T09:23:47.225Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261013-282-2
+commit: 2977d1aef6bfad4f7a14a28d3546967cb58b9db8
+
+Medium: hub/test/inbox-workload.test.ts:73 — released.error is unknown, incompatible with assert.equal's message parameter; remote typecheck fails TS2769 before npm test, so C2 cannot pass. Convert the assertion message without weakening bounds and validate corrected candidate. This supersedes A-1871's interim no-high/medium conclusion; I missed the static type error there. Functional red/green regression evidence remains valid. Other final acceptance/accounting/cleanup/secret/local criteria await new evidence; A-1874 accurately preserves typecheck failure, with observer sanity successful and no suite invocation. Reviewer finding artifact posted in topic-195.
+
+Criteria: C2 failed (A-1874 typecheck exits2 at inbox-workload.test.ts:73: unknown assertion message causes TS2769; npm test never ran.).
+
+### impl-282 · 2026-10-13T09:28:23.102Z
+
+Message correction committed/pushed5c0568a6bdaa5903216129bb8427b8a84a0ec0e7: String(released.error), no behavior or bound change. Committed-head npm run typecheck0 plus targeted24-query regression pass, A-1877. Fresh origin/dev merge check already current. Renewed review request sent before full queued run3440bca7-86a4-430d-8205-2c0eeb805e52. Obsolete queued2977d1a run69787b4a cancelled before admission (A-1876), not green evidence. Fourth notice waits for same-head full green; scratchaudit observer removed perD24, next invocation plainacct with A-1851's source-backed shared-libuv explanation. No droplet currently exists.
+
+### impl-282 · 2026-10-13T09:45:01.317Z
+
+Corrected-head local full3440bca7 at5c0568a6bdaa5903216129bb8427b8a84a0ec0e7 green in hand, A-1886:1764tests/1764pass/0fail/cancel/skip/todo,882.03s; typecheck0. Literal-token scan clear. This satisfies Coordinator's fourth-notice precondition alongside committed-head standalone typecheckA-1877. Fresh provider preflight confirms emptyclandtag/c-8lon1/$0.25h. Fourth notice sent; waitexplicitgo. PerD24 next remote invocation plainacct-only/noaudit; preserve5c0568a to sharehead with green local. Shared2c0f43d queued-head rule permits current result; applies at nextheadchange.
