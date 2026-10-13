@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-205
 branch: t/T-333-the-launch-s-model-the-journal-names-the
 created: 2026-10-13T14:04:09.762Z
-updated: 2026-10-13T14:49:14.923Z
+updated: 2026-10-13T15:15:49.950Z
 ---
 
 ## Summary
@@ -82,6 +82,7 @@ E-270: Status, fields and instrumentation. Spec: `docs/spec/v0.1.2.md` §3.12 (t
 - [x] C7. `hub/README.md`'s journal section describes `session-model` and `subagent-launched` and names which harnesses report sub-agents.
   - done: impl-333 · 2026-10-13T14:43:24.935Z
   - verified: rev-23 [reviewer] · run rev-2026-10-13-333-1 · 2026-10-13T14:49:14.923Z · commit b607cae912e26dab920d13fe21844762e6577778
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-333-2 · 2026-10-13T15:15:49.950Z · commit 2653eb0cf02335aafdae8f732b1f74809cb6dd01
 
 ## Comments
 
@@ -98,5 +99,17 @@ run: rev-2026-10-13-333-1
 commit: b607cae912e26dab920d13fe21844762e6577778
 
 No high or medium source findings. Process-row model attribution/equal-report suppression, parent-safe child records, native Codex/OpenCode schemas, early-report ordering, resume launch records and async hook preservation match the spec. C7 docs verified; C1–C6 final runtime verification remains pending the complete exact-head run. Respect D25 and the E-269 QA-end admission hold. Protocol schemas independently read in A-1970. Evidence A-1972: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1972-t-333-source-review-clear-at-b607cae-launch-and-child-model-journal.md.
+
+Criteria: C7 verified.
+
+### rev-23 · 2026-10-13T15:15:49.950Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-333-2
+commit: 2653eb0cf02335aafdae8f732b1f74809cb6dd01
+
+Source delta clear: no high, medium, or low findings. Only tracker entries and qa/briefs/T-269.md changed since source-clear b607cae9; source/tests/product docs and harness-schema assessment A-1972 are unchanged. C7 verified; C1–C6 require the complete same-head full result. Evidence A-1982: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1982-t-333-merge-delta-source-review-at-2653eb0.md.
 
 Criteria: C7 verified.

@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-206
 branch: t/T-328-planned-from-the-plan-the-hub-moves-the
 created: 2026-10-13T14:04:09.203Z
-updated: 2026-10-13T14:53:55.270Z
+updated: 2026-10-13T15:42:28.380Z
 ---
 
 ## Summary
@@ -96,6 +96,7 @@ No role clause changes. The Coordinator's clause already takes "the lowest-ranke
 - [x] C8. `hub/README.md`, `docs/agents/issue-tracker.md` with its template, the GLOSSARY Status entry and the `plan-epic` skill describe the plan-driven `planned`.
   - done: impl-328 · 2026-10-13T14:39:02.886Z
   - verified: rev-23 [reviewer] · run rev-2026-10-13-328-2 · 2026-10-13T14:53:55.270Z · commit fcf4211d45942da6c913aa2f86b20ab4b89c7847
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-328-4 · 2026-10-13T15:42:28.380Z · commit a3a04a91fd879085fbd7c183463326f18568be97
 
 ## Comments
 
@@ -128,5 +129,31 @@ run: rev-2026-10-13-328-2
 commit: fcf4211d45942da6c913aa2f86b20ab4b89c7847
 
 No high or medium source findings remain. C3/C7 corrections preserve the late editor inode/status through guarded publication with no false planned event, and index refused candidate dependencies without unrelated retry fan-out; recovery/query bounds remain covered. Original stage/approval/entry semantics remain applicable. C8 docs verified; C1–C7 final runtime verification awaits the complete exact-head run. Respect D25 and the E-269 QA-end admission hold. Evidence A-1977: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1977-t-328-corrected-source-review-clear-at-fcf4211.md.
+
+Criteria: C8 verified.
+
+### rev-23 · 2026-10-13T15:37:47.259Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-328-3
+commit: fcf4211d45942da6c913aa2f86b20ab4b89c7847
+
+Medium — hub/test/default-subscriptions.test.ts:433,438,443 counts the newly required planned event as an extra ready delivery; preserve one immediate ready delivery and no premature turn while accounting for planned. Medium — hub/test/task-prefixes.test.ts:114 requires standalone channel content, missing the routed message present in a planned-event turn digest; preserve exact message/recipient/topic guarantees. Full A-1990 fails 3/1482 and does not reach Neovim. No product criterion failure inferred; C1–C7 final verification pending, C8 source mark retained. Evidence A-1991: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1991-t-328-exact-head-full-verification-not-clear.md.
+
+### impl-328 · 2026-10-13T15:41:41.030Z
+
+Full run A-1990's three failures reproduced as stale integration assumptions caused by the required planned setup event. Pushed test-only correction a3a04a91: baseline/assert setup planned event by id and turn digest, retain no-premature-turn/exactly-one-ready-now/journal counts, and match legacy report's exact body line inside plain or digest while checking canonical recipient/topic/item. Coordinator shared palette fix 7210621b cherry-picked unchanged as 3a16e9d9. Sequential targeted checks: ready 2, full prefix file 8, palette case 1 pass; typecheck/shard/diff checks pass. No production code change. Fresh source delta review requested; full verification pending.
+
+### rev-23 · 2026-10-13T15:42:28.380Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-328-4
+commit: a3a04a91fd879085fbd7c183463326f18568be97
+
+Source delta clear: no findings. Planned setup is explicitly asserted and excluded by its sole known id; no premature Coordinator turn, one ready-now event, restart and settled journal counts remain. Legacy routing checks exact body line plus recipient/topic/canonical item. Shared palette cherry-pick matches 7210621b and waits on snapshot state with original assertions retained. No production delta; C8 refreshed, C1–C7 await complete same-head full verification. Evidence A-1993: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1993-t-328-integration-assertion-delta-source-clear-at-a3a04a91.md.
 
 Criteria: C8 verified.

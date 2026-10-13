@@ -2,8 +2,8 @@
 id: T-329
 kind: task
 title: "The release scope: the items panel at release scope lists only the release's own items, and the count line leads to the categories and the unscheduled items under all"
-state: open
-status: in progress
+state: closed
+status: done
 criterion_seq: 6
 labels:
   - v0.1.2
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-204
 branch: t/T-329-the-release-scope-the-items-panel-at
 created: 2026-10-13T14:04:09.323Z
-updated: 2026-10-13T14:59:48.765Z
+updated: 2026-10-13T15:50:47.341Z
 ---
 
 ## Summary
@@ -75,17 +75,24 @@ E-270: Status, fields and instrumentation. Spec: `docs/spec/v0.1.2.md` §3.2 (th
 
 - [x] C1. A Neovim headless test on the stub hub at release scope under `board` shows no row of a category's item and no unscheduled fold. The last row reads `categories <N> · <M> open · unscheduled <K>`, with N, M and K right for the fixture. The `work` and `done` filters show no such row either.
   - done: impl-329 · 2026-10-13T14:37:24.558Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-329-4 · 2026-10-13T15:50:29.202Z · commit f8c8b5826743a58ab97ce285b011f173f369cc2b
 - [x] C2. With no unscheduled item the line drops its unscheduled part. With no open category it shows only `unscheduled <K>`. With neither it is absent.
   - done: impl-329 · 2026-10-13T14:37:24.979Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-329-4 · 2026-10-13T15:50:29.202Z · commit f8c8b5826743a58ab97ce285b011f173f369cc2b
 - [x] C3. Enter on the count line switches the panel to `all` with the cursor on the line. The categories section and an `unscheduled (K)` fold follow it, and `za` unfolds the unscheduled items.
   - done: impl-329 · 2026-10-13T14:37:25.297Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-329-4 · 2026-10-13T15:50:29.202Z · commit f8c8b5826743a58ab97ce285b011f173f369cc2b
 - [x] C4. A task event that gives an unscheduled task a parent under the release shows the task at release scope and lowers K by one. The test waits on that state.
   - done: impl-329 · 2026-10-13T14:37:25.627Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-329-4 · 2026-10-13T15:50:29.202Z · commit f8c8b5826743a58ab97ce285b011f173f369cc2b
 - [x] C5. With no open release, the panel shows today's unscheduled view.
   - done: impl-329 · 2026-10-13T14:37:25.941Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-329-4 · 2026-10-13T15:50:29.202Z · commit f8c8b5826743a58ab97ce285b011f173f369cc2b
 - [x] C6. `nvim/README.md`'s items panel section describes the release scope, the count line and the `all` sections.
   - verified: rev-23 [reviewer] · run rev-2026-10-13-329-1 · 2026-10-13T14:37:01.795Z · commit c7aff82ccd4a8c8fb896291d49be922414f0b214
   - done: impl-329 · 2026-10-13T14:37:26.239Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-329-3 · 2026-10-13T15:16:18.922Z · commit f8c8b5826743a58ab97ce285b011f173f369cc2b
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-329-4 · 2026-10-13T15:50:29.202Z · commit f8c8b5826743a58ab97ce285b011f173f369cc2b
 
 ## Comments
 
@@ -118,3 +125,35 @@ Complete verification is not clear: A-1974 passed 1471/1472 hub tests but failed
 ### impl-329 · 2026-10-13T14:59:48.765Z
 
 Full run c109c331 failed an inherited hub readiness bound before Neovim (A-1974), peak 1m load 22.84. Coordinator-directed isolated comparisons passed opencode-adapter.test.ts 19/19 three times each at dev 87b9fbe and head c7aff82c; the case alone passed too. No fixed-wait race or isolated failure found; no source edits. Reported as Tech debt for C-216. Evidence A-1978 contains six whole-file logs and summary. Full verification awaits E-269 QA's machine-priority hold being lifted; source remains c7aff82c.
+
+### rev-23 · 2026-10-13T15:16:18.922Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-329-3
+commit: f8c8b5826743a58ab97ce285b011f173f369cc2b
+
+Source delta clear: no high, medium, or low findings. Only tracker entries and qa/briefs/T-269.md changed since A-1966 at c7aff82c; source/tests/product docs unchanged. C6 verified; C1–C5 await a complete same-head full result. Previous failed A-1974 is not green evidence; inherited catalog deadline issue classified as T-338 with isolated comparisons A-1978. Evidence A-1983: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1983-t-329-merge-delta-source-review-at-f8c8b58.md.
+
+Criteria: C6 verified.
+
+### impl-329 · 2026-10-13T15:49:58.744Z
+
+Fresh full verification fd78be16-dd14-4492-85fd-ceb4a50d48c5 passed at source-reviewed f8c8b5826743a58ab97ce285b011f173f369cc2b: 1794/1794 tests, 0 failures, including the complete Neovim phase. Evidence A-1994. The tree is clean and head unchanged; final C1–C5 runtime verification awaits Reviewer settlement. No palette fix cherry-pick needed for this green run.
+
+### rev-23 · 2026-10-13T15:50:29.202Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-329-4
+commit: f8c8b5826743a58ab97ce285b011f173f369cc2b
+
+No high, medium, or low findings. Source A-1966/A-1983 plus complete exact-head A-1994 establish C1–C6: scoped filters/counts, zero-part omissions, Enter/all/fold navigation, live parent/count update, no-release fallback and docs. Typecheck and all three phases pass, 1794/1794, exit 0, no skips/cancellations. Evidence A-1995: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1995-t-329-final-exact-head-review-clear.md.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### coord · 2026-10-13T15:50:47.341Z
+
+Merged 0a8ba9d96125b5d2d2daecea94bfded45a482371 onto dev.
