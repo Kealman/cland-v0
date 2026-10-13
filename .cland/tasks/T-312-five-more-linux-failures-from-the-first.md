@@ -2,8 +2,8 @@
 id: T-312
 kind: task
 title: "Five more Linux failures from the first all-phase container run: Codex relaunch PID, OpenCode no-url rollback, three Neovim cases"
-state: open
-status: review
+state: closed
+status: done
 criterion_seq: 5
 labels:
   - v0.1.2
@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-190
 branch: t/T-312-five-more-linux-failures-from-the-first
 created: 2026-10-13T01:50:19.683Z
-updated: 2026-10-13T05:37:25.419Z
+updated: 2026-10-13T07:16:39.094Z
 ---
 
 ## Summary
@@ -48,13 +48,20 @@ T-268: Suite spend and Linux portability. Evidence is in T-281's topic (topic-18
 
 - [x] C1. Each of the five failures has its cause named in the item and fixed there, with no test weakened, skipped or retried.
   - done: impl-312 · 2026-10-13T03:19:16.688Z
+  - verified: rev-26 [reviewer] · run rev-20261013-312-final · 2026-10-13T07:16:23.078Z · commit 01a51c5334c6de412fe11b59bfabe643f1164223
 - [x] C2. In the Ubuntu 24.04 container as an ordinary user, `orphan-servers` and `adapter-native-boundary` each pass ten runs in a row alone, and the three Neovim files pass ten runs in a row alone. The logs are published as artifacts in this item's topic.
   - done: impl-312 · 2026-10-13T03:19:17.710Z
-- [ ] C3. One container run of all phases (`npm run typecheck && npm test -- --all`) is green on Linux, with the platform skips listed by reason. Its log is published as an artifact.
-  - failed: rev-26 [reviewer] · 2026-10-13T04:51:30.945Z · note A-1799 Linux all-phase run fails pid-identity.test.ts:108 (stop ok:true, expected false) and stops before Neovim; required green all-phase result is absent.
-- [ ] C4. The suite is green on macOS through `cland verify`.
+  - verified: rev-26 [reviewer] · run rev-20261013-312-final · 2026-10-13T07:16:23.078Z · commit 01a51c5334c6de412fe11b59bfabe643f1164223
+- [x] C3. One container run of all phases (`npm run typecheck && npm test -- --all`) is green on Linux, with the platform skips listed by reason. Its log is published as an artifact.
+  - verified: rev-26 [reviewer] · run rev-20261013-312-linux · 2026-10-13T06:50:48.752Z · commit 01a51c5334c6de412fe11b59bfabe643f1164223
+  - done: impl-312 · 2026-10-13T07:15:22.141Z
+  - verified: rev-26 [reviewer] · run rev-20261013-312-final · 2026-10-13T07:16:23.078Z · commit 01a51c5334c6de412fe11b59bfabe643f1164223
+- [x] C4. The suite is green on macOS through `cland verify`.
+  - done: impl-312 · 2026-10-13T07:15:23.197Z
+  - verified: rev-26 [reviewer] · run rev-20261013-312-final · 2026-10-13T07:16:23.079Z · commit 01a51c5334c6de412fe11b59bfabe643f1164223
 - [x] C5. C5. The hub-phase hang of freshness.test.ts in the first T-312 Linux all-phase run (2026-10-13 ~03:00Z, worker idle in epoll while every other worker had finished) has its cause named in the item and fixed there, with no timeout raised, no skip and no retry. The file passes ten runs in a row alone in the Ubuntu container, and the evidence of the hang is published as an artifact in this item's topic.
   - done: impl-312 · 2026-10-13T04:06:46.233Z
+  - verified: rev-26 [reviewer] · run rev-20261013-312-final · 2026-10-13T07:16:23.079Z · commit 01a51c5334c6de412fe11b59bfabe643f1164223
 
 ## Comments
 
@@ -121,3 +128,31 @@ Approved diagnosis completed at e0724d68795f4410998269f9fe49ba6ac115ab90, 05:17:
 ### impl-312 · 2026-10-13T05:37:11.000Z
 
 Per Coordinator's 05:35:02 decision, A-1799's ok:true result is recorded as NOT REPRODUCED after targeted capture (A-1813: ten isolated whole files plus one loaded hub case, all preconditions holding and stop refused). No cause is claimed and production remains unchanged for this case. Permanent preconditions now name any running-row/liveness/recorded-start/staged-PID failure before stop. Temporary traces are removed in 31651ef. Readiness head 050aea7430936c0661e6b550bb23714b89b6706e merges origin/dev e27e08f. Original four target files and C5 proofs remain unchanged. A-1814 holds the one all-phase readiness runner with explicit Neovim diagnosis after failure. Machine order: T-275 QA, T-314 full run, then request readiness slot; C3/C4 still pending. C1 for the added PID case is unreproduced after targeted capture and guarded by permanent preconditions, subject to review of criterion wording under the Coordinator's decision.
+
+### impl-312 · 2026-10-13T06:50:19.744Z
+
+Actual Linux readiness passed at01a51c5334c6de412fe11b59bfabe643f1164223, 06:35:54–06:48:46 UTC, evidence A-1832. Typecheck0; one npm test -- --all0; hub1443tests/1440pass/3existing skips, Neovim307tests/304pass/3existing skips; total1750tests/1744pass/6skip, zero fail/cancel/todo. Original cases, freshness/shared shutdown, claim conflict and permanent PID guards/refusal/survival pass. Docker stop/Desktop stop0; our leases released before next T-314 run. Runner fallback guard corrected outside repository before any fallback: A-1828 prevents Neovim repetition if that phase already started; green all meant fallback unused. No candidate/test change or retry. A-1799 remains unreproduced, no cause claimed. C3 actual full Linux evidence now supplied; C4 final macOS hub-queued suite next after fresh dev merge.
+
+### impl-312 · 2026-10-13T07:05:40.012Z
+
+Coordinator supplied unchanged shared fix b361200804ecac7150b9f6afec03bfd476e6d8ca (layers.test.ts plan layer panel wait) from T-314. Apply at next head change, if one is needed. Current final macOS run4e40bdda at01a51c5 counts as-is under Coordinator decision28c8cb93-a953-47a3-9184-e6701b63a8e0; if green and merged at this head, shared fix reaches dev with T-314 instead. No source/head changed during the running final verification.
+
+### impl-312 · 2026-10-13T07:15:21.603Z
+
+Final macOS all-suite4e40bdda-9165-4d3e-897f-f80059919be1 completed green at01a51c5334c6de412fe11b59bfabe643f1164223, A-1837. Typecheck/all exit0,1750tests/1750pass, zero fail/cancel/skip/todo. Fresh origin/dev fetch+merge before submission was already up to date; no head or source change during run. Linux actual all-phase A-1832 at the same head is independently verified under rev-20261013-312-linux (A-1833). C3 and C4 implementation checks complete; final review requested. Shared b361200 remains deferred under Coordinator direction because this unchanged head's running suite counted as-is and is green; it reaches dev with T-314 if T-312 merges here. Worktree clean, branch pushed, claim retained until merge.
+
+### rev-26 · 2026-10-13T07:16:23.079Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261013-312-final
+commit: 01a51c5334c6de412fe11b59bfabe643f1164223
+
+No high or medium findings remain. Standards and spec checks are clear; all C1–C5 checked. Original cause fixes, C2 retained ten-file proofs and C5 teardown/error preservation verified; supplemental PID failure accurately remains unreproduced/guarded, without claiming a cause. Exact-head Linux A-1832 completes one all-phase run: 1750 tests/1744 pass/six fully reasoned existing skips, zero fail/cancel/todo. Exact-head ordinary macOS cland verify all 4e40bdda/A-1837 passes typecheck and 1750/1750, zero fail/cancel/skip/todo. Earlier failed evidence retained. Final evidence artifact posted in topic-190.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-10-13T07:16:39.094Z
+
+Merged a071775c4863c7e7bd4553acc633677912a5fc9b onto dev.

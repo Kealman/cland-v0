@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-193
 branch: t/T-314-any-prefix-resolves-the-hub-the-cli-the
 created: 2026-10-13T02:27:22.874Z
-updated: 2026-10-13T05:52:40.350Z
+updated: 2026-10-13T07:06:05.385Z
 ---
 
 ## Summary
@@ -103,6 +103,7 @@ Tasks keep `T-`. Task branches `t/T-<n>-<slug>`, worktrees `.cland/worktrees/T-<
   - failed: rev-23 [reviewer] · 2026-10-13T04:48:12.564Z · note Mixed-spelling overrides can bypass stage QA, and canonical parents invalidate unchanged legacy stage hashes.
 - [ ] C5. Two files with one number index once, and `task-duplicate-number` is logged with both names. The test reads `hub.log` after the `flushLogs` barrier.
 - [ ] C6. A Neovim headless test on the stub hub puts the cursor on `T-<n>` in a thread and presses `gi`. The item view of `E-<n>` opens. `A-12` in a thread is not taken as an item, and every kind prefix is highlighted.
+  - failed: rev-23 [reviewer] · 2026-10-13T06:36:46.152Z · note Thread item highlighting calls state.item_number without importing cland.state, breaking rendering and gi coverage.
 - [ ] C7. `docs/agents/issue-tracker.md` (and its template `skills/templates/docs/agents/issue-tracker.md`), `hub/README.md`'s tracker section and `nvim/README.md`'s motions section describe the prefixes, resolution by number and the canonical id.
 
 ## Comments
@@ -160,3 +161,20 @@ Criteria: C3 failed (Required legacy routing test reads a message field omitted 
 ### impl-314 · 2026-10-13T05:49:19.248Z
 
 A-1817 completed hub verification at 9cf0adb: 1447 pass / 2 test-contract failures; Neovim did not run. Corrected the new legacy routing assertion to inspect the actual recipient’s spoke delivery, and retained both open-child names/IDs independently of filename ordering. Product source is unchanged. The next full run waits for the protected T-275 QA slot; original dev close-gate case will be checked alone before resubmission.
+
+### rev-23 · 2026-10-13T06:36:46.153Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-314-4
+commit: 63f5e6ba7a62cd70961a8923a4028523ddbfcb94
+
+High — nvim/lua/cland/thread.lua:74: state is an unimported nil global; rendering an item reference throws and prevents the C6 legacy thread/gi test from starting.
+Exact-head full f9b29855 / A-1825 passes typecheck and all 1449 hub tests, but Neovim has 119 failures out of 308 (total 1638/1757). No skips/cancellations. C6 and QA THREAD screens expose the same missing dependency; other remaining failures need inspection after the fix. Evidence A-1826 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1826-t-314-neovim-verification-failure-at-63f5e6b.md). Earlier source-clear assessment corrected by runtime evidence.
+
+Criteria: C6 failed (Thread item highlighting calls state.item_number without importing cland.state, breaking rendering and gi coverage.).
+
+### impl-314 · 2026-10-13T07:06:05.385Z
+
+A-1834 completed both phases: all 1449 hub and 307/308 Neovim cases passed, including C6. The sole unchanged layer-filter test read an empty panel after a fixed 100 ms pause. Original dev and branch both pass that case alone. Coordinator authorized shared fix b361200: wait for loaded plan/items, requested filter and exact rendered inclusion/exclusion state; all assertions unchanged. Corrected layers.test.ts passes 14/14 (A-1835). Refreshed origin/dev is already integrated; full verification is resubmitted.
