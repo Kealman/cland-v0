@@ -3,20 +3,21 @@ id: T-315
 kind: task
 title: "The category kind: [tracker] levels takes a root kind beside the release, cland task create --kind category works, and unscheduled means no parent"
 state: open
-status: backlog
+status: review
+criterion_seq: 7
 labels:
   - v0.1.2
   - hub
   - nvim
   - ready-for-agent
 assignee: null
-parent: T-269
+parent: E-269
 blocked_by:
   - T-314
-topic: null
-branch: null
+topic: topic-196
+branch: t/T-315-the-category-kind-tracker-levels-takes-a
 created: 2026-10-13T02:27:23.006Z
-updated: 2026-10-13T02:27:34.223Z
+updated: 2026-10-13T08:55:49.351Z
 ---
 
 ## Summary
@@ -79,10 +80,59 @@ T-269: Prefixes and categories. Spec: `docs/spec/v0.1.2.md` §3.10 (A container 
 
 ## Acceptance criteria
 
-- [ ] C1. Config tests parse `[["release", "category"], "epic"]` and `["release", "epic"]`, and refuse duplicate kinds, a leaf or `map` as a level, a malformed level and two kinds with one prefix. `cland init` writes the new default. `cland update` rewrites the old default, keeps a custom ladder and reports both.
-- [ ] C2. A hub test on a temporary project shows the parenting rule with a category on create, link and kind edit: a category takes no parent, an epic and a task go under it, and a category under a release is refused.
-- [ ] C3. A hub test shows that a category refuses a version, a status and a rank, closes only with no open children, and needs no QA verdict to close.
-- [ ] C4. `cland task create "Docs" --kind category` and a task created with `--parent C-<n>` work through the CLI, and `cland task list --kind category` lists the category.
-- [ ] C5. `hub.status` carries the nested ladder beside the flat `levels`. `crew.toml` `leads` refuses `category`. The existing `tracker-levels` and `tracker-hierarchy` tests pass unchanged on the flat form.
-- [ ] C6. A Neovim headless test on the stub hub shows a task in a category absent from the release scope's unscheduled fold, and an item with no parent still in it.
-- [ ] C7. `docs/agents/issue-tracker.md` (and its template) describes the category kind, the parenting rule with categories and the narrowed unscheduled. `hub/README.md` describes the ladder and `hub.status`. The `[tracker]` comment in `cland init`'s config describes the list at a level.
+- [x] C1. Config tests parse `[["release", "category"], "epic"]` and `["release", "epic"]`, and refuse duplicate kinds, a leaf or `map` as a level, a malformed level and two kinds with one prefix. `cland init` writes the new default. `cland update` rewrites the old default, keeps a custom ladder and reports both.
+  - done: impl-315 · 2026-10-13T07:50:26.570Z
+- [x] C2. A hub test on a temporary project shows the parenting rule with a category on create, link and kind edit: a category takes no parent, an epic and a task go under it, and a category under a release is refused.
+  - done: impl-315 · 2026-10-13T07:50:26.975Z
+- [x] C3. A hub test shows that a category refuses a version, a status and a rank, closes only with no open children, and needs no QA verdict to close.
+  - done: impl-315 · 2026-10-13T07:50:27.263Z
+- [x] C4. `cland task create "Docs" --kind category` and a task created with `--parent C-<n>` work through the CLI, and `cland task list --kind category` lists the category.
+  - done: impl-315 · 2026-10-13T07:50:27.556Z
+- [x] C5. `hub.status` carries the nested ladder beside the flat `levels`. `crew.toml` `leads` refuses `category`. The existing `tracker-levels` and `tracker-hierarchy` tests pass unchanged on the flat form.
+  - done: impl-315 · 2026-10-13T08:04:10.641Z
+- [x] C6. A Neovim headless test on the stub hub shows a task in a category absent from the release scope's unscheduled fold, and an item with no parent still in it.
+  - done: impl-315 · 2026-10-13T08:41:35.858Z
+- [x] C7. `docs/agents/issue-tracker.md` (and its template) describes the category kind, the parenting rule with categories and the narrowed unscheduled. `hub/README.md` describes the ladder and `hub.status`. The `[tracker]` comment in `cland init`'s config describes the list at a level.
+  - done: impl-315 · 2026-10-13T07:50:28.431Z
+
+## Comments
+
+### impl-315 · 2026-10-13T07:34:00.600Z
+
+Implementing the nested ladder reader across tracker, hub and crew consumers. Flat hub.status levels stay compatible; category roots are excluded from release scopes and unscheduled now means no parent. Tests and init/update run only against temporary projects.
+
+### impl-315 · 2026-10-13T07:36:39.265Z
+
+Coordinator decision (41187c57): preserve existing epic scope cycling. The ticket's release-kind restriction applies at the root level: only the first root kind is a release scope; category and other root peers never cycle. Broader scope interaction belongs to the explorer epic.
+
+### impl-315 · 2026-10-13T08:03:34.051Z
+
+Full suite 685c2188 at 6cad72b: typecheck passed, 1453/1454 hub tests passed. A-1853 shows the sole failure at lead-permissions.test.ts:50: the obsolete 'unscheduled' diagnostic assertion. The focused command reproduced it red (3.2s), then passed green (4.1s) after updating the expected message and adding a forbidden response-code assertion. No production behavior changed. The next full suite waits for impl-282's reserved diagnostic-slot END.
+
+### rev-23 · 2026-10-13T08:03:50.087Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-315-1
+commit: 6cad72bbae80d015795ac4292ae64d0ab627ceb3
+
+Medium — hub/test/lead-permissions.test.ts:50 expects the old Coordinator/unscheduled diagnostic, so the intentional “outside a release subtree” refusal fails the compatibility run before Neovim. Update the expected wording while preserving every permission/subtree assertion. No other source blocker found. Evidence A-1854: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1854-t-315-review-at-6cad72b-stale-lead-diagnostic-assertion.md; exact-head A-1853 passed typecheck and 1453/1454 tests, zero skips/cancellations; final full verification remains pending.
+
+Criteria: C5 failed (Compatibility verification is blocked by lead-permissions.test.ts:50's stale refusal-message assertion; the exact-head full run stops before Neovim.).
+
+### rev-23 · 2026-10-13T08:39:48.970Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-315-2
+commit: 084ff280c7856ff67e947478a49cb1eac04ca449
+
+Medium — nvim/test/shell.test.ts:1375,1622,1654,1840 still expects parented map children in unscheduled; move their glyph/claim/event/snapshot assertions to map/all views while preserving exact counts, deletion, failed-snapshot and journal checks. Medium — nvim/test/shell.test.ts:2166 expects items.backlog override on parentless T-13; use a parented backlog fixture while retaining watch/dimming/count assertions. No additional product blocker; category headless and all hub tests pass. A-1860: 1758/1763, five Neovim failures, no skips/cancellations. Evidence A-1861: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1861-t-315-full-result-review-five-stale-neovim-shell-expectations.md.
+
+Criteria: C6 failed (Full Neovim integration has five stale shell expectations for parented map children and a parentless backlog override fixture; preserve their coverage while adapting to no-parent unscheduled.).
+
+### impl-315 · 2026-10-13T08:41:36.897Z
+
+A-1860: all hub tests passed; five Neovim shell cases retained old no-container semantics. The focused five-test command reproduced 0/5 passing, then passed 5/5 in 2.0s after test-only adaptations: map/all views preserve glyph/claim/grouping and delayed-snapshot uniqueness/deletion/journal coverage; the board claims scoped task T-13 and keeps the stub's current tracker source in sync with its emitted events; the backlog-override fixture has a release parent and retains watch/dim/count checks. C6 restored done. Fresh full run waits for impl-282's container-proof slot END.
