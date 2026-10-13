@@ -49,7 +49,7 @@ test('the first claim of an open task makes t/T-<n>-<slug> at dev and its worktr
   assert.notEqual(devTip, git(root, 'rev-parse', 'main'));
   const { discovery } = await startDaemon(t, root);
   const ui = await connectUi(t, discovery);
-  ok(await cland(root, 'task', 'create', 'Fix the parser', '--kind', 'task'));
+  ok(await cland(root, 'task', 'create', '--size', 'M', 'Fix the parser', '--kind', 'task'));
 
   const first = json<Claimed>(await cland(root, 'task', 'claim', 'T-1', '--json'));
   assert.equal(first.claim?.session, 'human');
@@ -77,7 +77,7 @@ test('the first claim of an open task makes t/T-<n>-<slug> at dev and its worktr
   assert.equal(git(root, 'rev-parse', 't/T-1-fix-the-parser'), tip);
   assert.equal((await agentsNotices(ui, 'worktree')).length, 1);
   // a branch the item already names is the one used (cland's own items carry theirs)
-  ok(await cland(root, 'task', 'create', 'Named branch', '--kind', 'task'));
+  ok(await cland(root, 'task', 'create', '--size', 'M', 'Named branch', '--kind', 'task'));
   ok(await cland(root, 'task', 'link', 'T-2', '--branch', 't/T-2-short'));
   assert.equal(json<Claimed>(await cland(root, 'task', 'claim', 'T-2', '--json')).worktree?.branch, 't/T-2-short');
 });
@@ -87,7 +87,7 @@ test('configured container worktree refusals choose an article from the kind', a
   await writeFile(join(root, '.cland/config.toml'), '[tracker]\nlevels = ["initiative", "feature"]\n');
   await startDaemon(t, root);
   for (const [kind, article, id] of [['initiative', 'an', 'I-1'], ['feature', 'a', 'F-2']]) {
-    ok(await cland(root, 'task', 'create', `Planning ${kind}`, '--kind', kind!));
+    ok(await cland(root, 'task', 'create', ...((kind!) === 'task' ? ['--size', 'M'] : []), `Planning ${kind}`, '--kind', kind!));
     const result = json<Claimed>(await cland(root, 'task', 'claim', id!, '--json'));
     assert.equal(result.worktree, null);
     assert.equal(result.reason, `${id} is ${article} ${kind}: only a task gets a branch and a worktree`);
@@ -98,8 +98,8 @@ test('configured container worktree refusals choose an article from the kind', a
 test('a release, epic, spec, question or map, a closed task, or a project without a territory gets no worktree; the claim works and says why', async (t) => {
   const root = await project(t);
   await startDaemon(t, root);
-  for (const kind of ['epic', 'spec', 'question', 'map']) ok(await cland(root, 'task', 'create', `A ${kind}`, '--kind', kind));
-  ok(await cland(root, 'task', 'create', 'Done already', '--kind', 'task'));
+  for (const kind of ['epic', 'spec', 'question', 'map']) ok(await cland(root, 'task', 'create', ...((kind) === 'task' ? ['--size', 'M'] : []), `A ${kind}`, '--kind', kind));
+  ok(await cland(root, 'task', 'create', '--size', 'M', 'Done already', '--kind', 'task'));
   ok(await cland(root, 'task', 'close', 'T-5'));
   ok(await cland(root, 'task', 'create', 'A release', '--kind', 'release'));
   const reasons: string[] = [];
@@ -123,7 +123,7 @@ test('a release, epic, spec, question or map, a closed task, or a project withou
 
   const bare = await project(t, { territory: false });
   await startDaemon(t, bare);
-  ok(await cland(bare, 'task', 'create', 'No territory', '--kind', 'task'));
+  ok(await cland(bare, 'task', 'create', '--size', 'M', 'No territory', '--kind', 'task'));
   const r = json<Claimed>(await cland(bare, 'task', 'claim', 'T-1', '--json'));
   assert.equal(r.claim?.session, 'human');
   assert.equal(r.worktree, null);
@@ -135,12 +135,12 @@ test("the territory's cland.taskBase decides the base branch over dev (cland's o
   git(root, 'commit', '--allow-empty', '-qm', 'On dev');
   git(join(root, '.cland', 'territory.git'), 'config', 'cland.taskBase', 'main');
   await startDaemon(t, root);
-  ok(await cland(root, 'task', 'create', 'From main', '--kind', 'task'));
+  ok(await cland(root, 'task', 'create', '--size', 'M', 'From main', '--kind', 'task'));
   const r = json<Claimed>(await cland(root, 'task', 'claim', 'T-1', '--json'));
   assert.equal(r.worktree?.base, 'main');
   assert.equal(git(root, 'rev-parse', 't/T-1-from-main'), git(root, 'rev-parse', 'main'));
   git(join(root, '.cland', 'territory.git'), 'config', 'cland.taskBase', 'gone');
-  ok(await cland(root, 'task', 'create', 'Bad base', '--kind', 'task'));
+  ok(await cland(root, 'task', 'create', '--size', 'M', 'Bad base', '--kind', 'task'));
   const bad = json<Claimed>(await cland(root, 'task', 'claim', 'T-2', '--json'));
   assert.equal(bad.claim?.session, 'human');
   assert.equal(bad.reason, "no worktree: the territory's cland.taskBase names gone, which has no local branch");
@@ -155,7 +155,7 @@ test('cland session launch --item starts the Implementer in the worktree with th
   const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
   onCleanup(t, () => coord.close());
   await coord.waitForPresence(['coord']);
-  ok(await cland(root, 'task', 'create', 'Ship it', '--kind', 'task'));
+  ok(await cland(root, 'task', 'create', '--size', 'M', 'Ship it', '--kind', 'task'));
   // the Coordinator claimed it first: no worktree yet (its spoke's claim makes one)
   const coordClaim = await coord.call<Claimed & { ok: boolean }>('task.claim', { id: 'T-1' });
   assert.equal(coordClaim.claim?.session, 'coord');
@@ -215,7 +215,7 @@ test('the spoke\'s session.launch with item launches in the worktree; item with 
   const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
   onCleanup(t, () => coord.close());
   await coord.waitForPresence(['coord']);
-  ok(await cland(root, 'task', 'create', 'Spoke item', '--kind', 'task'));
+  ok(await cland(root, 'task', 'create', '--size', 'M', 'Spoke item', '--kind', 'task'));
   ok(await cland(root, 'task', 'create', 'An epic', '--kind', 'epic'));
   const tool = (await coord.client.listTools()).tools.find((x) => x.name === 'session.launch');
   assert.ok(tool?.inputSchema.properties?.item);
@@ -253,7 +253,7 @@ test('the spoke\'s session.launch with item launches in the worktree; item with 
 test("cland worktree prune shows a closed item's unmerged commits and removes its worktree and branch only after y; a session's shell is refused", async (t) => {
   const root = await project(t);
   await startDaemon(t, root);
-  for (const title of ['Merged work', 'Kept work', 'Still open']) ok(await cland(root, 'task', 'create', title, '--kind', 'task'));
+  for (const title of ['Merged work', 'Kept work', 'Still open']) ok(await cland(root, 'task', 'create', '--size', 'M', title, '--kind', 'task'));
   for (const id of ['T-1', 'T-2', 'T-3']) ok(await cland(root, 'task', 'claim', id));
   const wt = (id: string) => join(root, '.cland', 'worktrees', id);
   await writeFile(join(wt('T-1'), 'one.txt'), '1\n');
@@ -336,7 +336,7 @@ test("session.launch with an item: a synchronous branch-link subscriber after Gi
   const clock = { now: 0 };
   const { records, tracker, hub } = await guardedHub(t, { clock });
   const ui = await connectWsUi(t, hub, 'launcher-ui');
-  assert.equal((await ui.request({ type: 'task.create', title: 'Guarded', kind: 'task' })).ok, true);
+  assert.equal((await ui.request({ size: 'M', type: 'task.create', title: 'Guarded', kind: 'task' })).ok, true);
   let measured = false;
   tracker.onChange(change => {
     if (!measured && change.id === 'T-1' && change.item?.branch) {
@@ -367,7 +367,7 @@ test('worktree.list: its work after the Git reads is timed as phase resumed (a s
     },
   });
   const ui = await connectWsUi(t, hub, 'list-ui');
-  assert.equal((await ui.request({ type: 'task.create', title: 'Listed', kind: 'task' })).ok, true);
+  assert.equal((await ui.request({ size: 'M', type: 'task.create', title: 'Listed', kind: 'task' })).ok, true);
   assert.equal(((await ui.request({ type: 'task.claim', item: 'T-1' })).value as Claimed).worktree?.item, 'T-1');
   records.length = 0;
   snapshots = 0;

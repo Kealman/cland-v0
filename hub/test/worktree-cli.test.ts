@@ -18,7 +18,7 @@ test('CLI commands from linked worktrees find the main project hub and write onl
   const root = await tempProject(t);
   git(root, 'init');
   const { discovery, refresh } = await startFreshnessDaemon(t, root);
-  const created = JSON.parse(ok(await cland(root, 'task', 'create', 'Main item', '--json')).stdout) as { item: { path: string } };
+  const created = JSON.parse(ok(await cland(root, 'task', 'create', '--size', 'M', 'Main item', '--json')).stdout) as { item: { path: string } };
   git(root, 'add', '.cland');
   git(root, '-c', 'user.name=Test', '-c', 'user.email=test@example.com', '-c', 'commit.gpgsign=false', 'commit', '-m', 'Project fixture');
   const inside = join(root, '.cland', 'worktrees', 'task');
@@ -42,7 +42,7 @@ test('CLI commands from linked worktrees find the main project hub and write onl
     ok(await cland(worktree, 'task', 'comment', 'T-1', `Written from ${worktree}`));
     assert.doesNotMatch(await readFile(join(worktree, created.item.path), 'utf8'), /Written from/);
     assert.match(await readFile(join(root, created.item.path), 'utf8'), /Written from/);
-    ok(await cland(worktree, 'task', 'create', 'Worktree item'));
+    ok(await cland(worktree, 'task', 'create', '--size', 'M', 'Worktree item'));
     assert.deepEqual(await readdir(join(worktree, '.cland', 'tasks')), ['T-1-main-item.md']);
     assert.match(ok(await cland(worktree, 'hub', 'start')).stdout, /hub already running/);
   }
@@ -53,7 +53,7 @@ test('CLI commands from linked worktrees find the main project hub and write onl
 test('an initialized non-worktree child remains its own project beside a running parent hub', async (t) => {
   const parent = await tempProject(t);
   const { discovery } = await startDaemon(t, parent);
-  ok(await cland(parent, 'task', 'create', 'Parent item'));
+  ok(await cland(parent, 'task', 'create', '--size', 'M', 'Parent item'));
   const child = join(parent, 'child');
   await mkdir(child);
   ok(await cland(parent, 'init', child, '--json'));
@@ -61,10 +61,10 @@ test('an initialized non-worktree child remains its own project beside a running
   const idle = await cland(child, 'hub', 'status', '--json');
   assert.equal(idle.code, 1, idle.stdout);
   assert.deepEqual(JSON.parse(idle.stdout), { running: false, root: child });
-  assert.equal((await cland(child, 'task', 'create', 'Must not reach parent')).code, 1);
+  assert.equal((await cland(child, 'task', 'create', '--size', 'M', 'Must not reach parent')).code, 1);
   const childHub = await startDaemon(t, child);
   assert.notEqual(childHub.discovery.pid, discovery.pid);
-  ok(await cland(child, 'task', 'create', 'Child item'));
+  ok(await cland(child, 'task', 'create', '--size', 'M', 'Child item'));
   assert.match(ok(await cland(child, 'task', 'view', 'T-1')).stdout, /Child item/);
   assert.match(ok(await cland(parent, 'task', 'view', 'T-1')).stdout, /Parent item/);
   assert.equal(JSON.parse(ok(await cland(parent, 'task', 'list', '--json')).stdout).items.length, 1);
@@ -102,7 +102,7 @@ test('CLAND_HUB_FILE selects the named hub from another project, including a cop
   const other = await tempProject(t);
   const { discovery } = await startDaemon(t, root);
   const otherHub = await startDaemon(t, other);
-  ok(await cland(root, 'task', 'create', 'Target item'));
+  ok(await cland(root, 'task', 'create', '--size', 'M', 'Target item'));
   const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
   t.after(() => coord.close());
   await coord.waitForPresence(['coord']);

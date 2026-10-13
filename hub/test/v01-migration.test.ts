@@ -26,7 +26,7 @@ test('the v0.1 migration creates once, reuses the open release on rerun and refu
   };
   for (let n = 1; n <= 117; n++) {
     const kind = n === 19 || n >= 107 ? 'epic' : 'task';
-    const result = await ui.request({ type: 'task.create', title: `Item ${n}`, kind, labels: n >= 107 ? ['v0.1'] : [] });
+    const result = await ui.request({ ...(['task'].includes(kind) ? { size: 'M' } : {}), type: 'task.create', title: `Item ${n}`, kind, labels: n >= 107 ? ['v0.1'] : [] });
     assert.equal(result.ok, true, result.error);
   }
   const first = await migrate(root);

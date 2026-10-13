@@ -28,7 +28,7 @@ async function fixture(t: import('node:test').TestContext, testScript: string, t
   t.after(() => spoke.close());
   await spoke.waitForPresence(['impl']);
   const env = { CLAND_SESSION_NAME: 'impl', CLAND_SESSION_ID: 'suite-caller', CLAND_ROLE: 'implementer' };
-  const created = JSON.parse((await cland(root, 'task', 'create', 'fixture', '--assignee', 'impl', '--json')).stdout) as { item: { id: string } };
+  const created = JSON.parse((await cland(root, 'task', 'create', '--size', 'M', 'fixture', '--assignee', 'impl', '--json')).stdout) as { item: { id: string } };
   const topicResult = await ui.request({ type: 'topic.create', title: 'Suite fixture', item: created.item.id });
   assert.equal(topicResult.ok, true, topicResult.error);
   const topic = (topicResult.value as { topic: { id: string } }).topic.id;
@@ -51,7 +51,7 @@ test('verify card follows branch jobs through finish and cache, updates the UI s
   const f = await fixture(t, 'node -e "process.exit(0)"');
   const git = await cacheRepository(f);
   const head = await git('rev-parse', 'HEAD');
-  const made = await f.ui.request({ type: 'task.create', title: 'Branch card', branch: 'candidate' });
+  const made = await f.ui.request({ size: 'M', type: 'task.create', title: 'Branch card', branch: 'candidate' });
   const item = (made.value as { item: ItemView }).item;
   await f.ui.request({ type: 'subscribe' });
   await f.spoke.call('subscribe', { subject: { item: item.id }, events: ['task'], digest: 'now' });
@@ -266,7 +266,7 @@ test('verify queue shows a hand holder, ordered waiters and unknown ETA; survive
   assert.equal((await f.ui.request({ type: 'role.set', session: 'other', role: 'implementer' })).ok, true);
   const other = await spawnSpoke({ discover: true, cwd: f.root, name: 'other', sessionId: 'queue-other', role: 'implementer' });
   t.after(() => other.close()); await other.waitForPresence(['other']);
-  const item = JSON.parse((await cland(f.root, 'task', 'create', 'other queue request', '--assignee', 'other', '--json')).stdout) as { item: { id: string } };
+  const item = JSON.parse((await cland(f.root, 'task', 'create', '--size', 'M', 'other queue request', '--assignee', 'other', '--json')).stdout) as { item: { id: string } };
   const topic = await f.ui.request({ type: 'topic.create', title: 'Other queue request', item: item.item.id });
   const otherTopic = (topic.value as { topic: { id: string } }).topic.id;
   const submitted = await clandWithEnv(f.root, { CLAND_SESSION_NAME: 'other', CLAND_SESSION_ID: 'queue-other' }, 'verify', 'all', '--report', otherTopic, '--to', 'rev', '--json');
@@ -873,7 +873,7 @@ test('a dead queued requester is cancelled with one posted note even after its r
   await git('config', 'user.name', 'Verification test'); await git('config', 'user.email', 'verify@example.invalid');
   await writeFile(join(f.root, '.gitignore'), '.cland/\nsuite.lock*\n');
   await git('add', '.'); await git('commit', '-m', 'fixture');
-  const created = JSON.parse((await cland(f.root, 'task', 'create', 'doomed verification', '--assignee', 'doomed', '--json')).stdout) as {item:{id:string}};
+  const created = JSON.parse((await cland(f.root, 'task', 'create', '--size', 'M', 'doomed verification', '--assignee', 'doomed', '--json')).stdout) as {item:{id:string}};
   const topicResult = await f.ui.request({type:'topic.create', title:'Doomed run', item:created.item.id});
   const topic = (topicResult.value as {topic:{id:string}}).topic.id;
   const launched = await f.ui.request({type:'session.launch', name:'doomed', role:'implementer', harness:'codex', item:created.item.id}, 30000);
@@ -909,7 +909,7 @@ test('priority admits integrated dev first, then item rank, preserving the queue
   await mkdir(join(f.root, 'suite.lock'));
   const low = await f.launch();
   assert.equal(low.pid, null, 'a hand lock blocks worker admission');
-  const created = JSON.parse((await cland(f.root, 'task', 'create', 'higher priority', '--assignee', 'high', '--json')).stdout) as {item:{id:string}};
+  const created = JSON.parse((await cland(f.root, 'task', 'create', '--size', 'M', 'higher priority', '--assignee', 'high', '--json')).stdout) as {item:{id:string}};
   await cland(f.root, 'task', 'rank', created.item.id, '--top');
   const topicResult = await f.ui.request({type:'topic.create', title:'High priority run', item:created.item.id});
   const highTopic = (topicResult.value as {topic:{id:string}}).topic.id;

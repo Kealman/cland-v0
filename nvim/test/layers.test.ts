@@ -53,7 +53,7 @@ test('real bound-topic verdict and death events show warning markers without cha
   await ui.request({ type: 'subscribe' });
   const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
   t.after(() => coord.close());
-  const created = await ui.request({ type: 'task.create', title: 'Warning evidence' });
+  const created = await ui.request({ size: 'M', type: 'task.create', title: 'Warning evidence' });
   assert.equal(created.ok, true, created.error);
   const item = (created.value as { item: { id: string } }).item.id;
   const bound = await ui.request({ type: 'topic.create', title: 'Warning evidence', item });

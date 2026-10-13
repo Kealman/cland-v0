@@ -1,6 +1,6 @@
 // The tracker's requests: the same frames from a spoke (WebSocket, the `task.*` tools) and from the CLI
 // (Unix socket). Field names follow the item's frontmatter (`blocked_by`), so a frame reads like the file.
-import { parseVerdictFilter, STATES, type Kind, type State, type Status } from './item.ts';
+import { parseVerdictFilter, STATES, type Kind, type State, type Status, type Size } from './item.ts';
 import type { HubFrame } from '../protocol.ts';
 import { nameRefusal, ROLE_NAMES } from '../names.ts';
 import type { Connection } from '../hub/core.ts';
@@ -15,12 +15,14 @@ export type TaskRequest =
       id: string;
       title: string;
       kind?: Kind;
+      size?: Size;
       version?: string;
       body?: string;
       labels?: string[];
       assignee?: string | null;
       parent?: string | null;
       blocked_by?: string[];
+      regression_of?: string;
       topic?: string | null;
       branch?: string | null;
       as?: ActorField;
@@ -39,6 +41,7 @@ export type TaskRequest =
       title?: string;
       body?: string;
       kind?: Kind;
+      size?: Size;
       state?: State;
       labels?: string[];
       add_labels?: string[];
@@ -47,7 +50,7 @@ export type TaskRequest =
       as?: ActorField;
     }
   | { type: 'task.close'; id: string; item: string; comment?: string; override?: string; as?: ActorField }
-  | { type: 'task.link'; id: string; item: string; parent?: string | null; blocked_by?: string[]; unblock?: string[]; topic?: string | null; branch?: string | null; as?: ActorField }
+  | { type: 'task.link'; id: string; item: string; parent?: string | null; regression_of?: string | null; blocked_by?: string[]; unblock?: string[]; topic?: string | null; branch?: string | null; as?: ActorField }
   | { type: 'task.hold'; id: string; item: string; release?: boolean; as?: ActorField }
   | { type: 'task.rank'; id: string; item: string; top?: boolean; before?: string; after?: string; as?: ActorField }
   | { type: 'task.claim'; id: string; item: string; release?: boolean; force?: boolean; as?: ActorField }
@@ -92,6 +95,7 @@ export async function handleTaskRequest(tracker: Tracker, frame: TaskRequest, ac
   switch (frame.type) {
     case 'task.create': {
       if (!isStr(f.title)) throw new TrackerError('`title` is required');
+      if ((frame.kind ?? 'task') === 'task' && frame.size === undefined) throw new TrackerError('a task needs a size: XS, S, M, L or XL');
       const { type: _t, id: _i, as: _a, ...input } = frame;
       return { item: await tracker.create(actor, input, resumed, authorize) };
     }

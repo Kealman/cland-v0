@@ -19,7 +19,7 @@ async function project(t: TestContext) {
   const rev = await spawnSpoke({ discover: true, cwd: root, name: 'rev', sessionId: 'reviewer-id', role: 'reviewer' });
   t.after(async () => { await aide.close(); await rev.close(); });
   await aide.waitForPresence(['aide-1', 'rev']);
-  const made = await aide.call<{ ok: boolean; item: ItemView }>('task.create', { title: 'Aide work' });
+  const made = await aide.call<{ ok: boolean; item: ItemView }>('task.create', { size: 'M', title: 'Aide work' });
   assert.equal(made.ok, true);
   const id = made.item.id;
   assert.equal((await aide.call<{ ok: boolean }>('task.edit', { id, status: 'planned' })).ok, true);

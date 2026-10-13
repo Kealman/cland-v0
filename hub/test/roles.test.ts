@@ -73,6 +73,8 @@ for (const source of ['defaults', 'project'] as const) test(`${source} clause sn
     const spoke = await spawnSpoke({ discover: true, cwd: root, name, sessionId: 'queue-' + role, role });
     t.after(() => spoke.close());
     const clause = (await spoke.waitForEvent(isClause)).params.content;
+    if (role === 'coordinator' || role === 'aide') assert.match(clause, /Tasks need `--size XS\|S\|M\|L\|XL`, a `## Summary` of 1–3 sentences and `--regression-of T-n`/);
+    else assert.match(clause, /naming its size \(XS, S, M, L or XL\) and category/);
     const replyBytes = Buffer.byteLength(`pong: ${clause}`, 'utf8');
     assert.ok(replyBytes <= MAX_TEXT_BYTES - CLAUSE_REPLY_HEADROOM_BYTES,
       `${source} ${role}: clause reply is ${replyBytes} bytes; reserve ${CLAUSE_REPLY_HEADROOM_BYTES} below the ${MAX_TEXT_BYTES}-byte send cap`);

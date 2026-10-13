@@ -58,7 +58,7 @@ for (const scenario of cases) {
       return status.sessions.some(s => s.name === 'worker' && s.state === 'idle') ? true : undefined;
     });
     await request({ type: 'session.signal', session: 'worker', event: 'permission', at: Date.now(), payload: { tool_name: 'Bash' } });
-    const { item } = await request<{ item: { id: string } }>({ type: 'task.create', title: 'Count evidence' });
+    const { item } = await request<{ item: { id: string } }>({ size: 'M', type: 'task.create', title: 'Count evidence' });
     for (const result of ['clear', 'not clear']) {
       await request({ type: 'task.comment', item: item.id, text: `Review ${result}.`, verdict: { verdict: 'review', result, run: `count-${result.replace(' ', '-')}` }, as: { name: 'rev', role: 'reviewer' } });
     }

@@ -105,7 +105,9 @@ test('r gives a free ask answer and failed row replies retain their draft and ta
       asks: [{ id: 'ask', topic: replyTopic, question: 'Give an answer', options: [], free: true, from: 'coord', since: ts, ts }],
       messages: [{ id: 'message', topic: replyTopic, subject: replyTopic.id, text: 'Reply draft', from: 'qa', since: ts, layer: 'now' }],
     } }) });
-  await c.waitScreen(s => s.includes('hub: connected'), 'connected'); await focus(c, 'full'); await select(c, 'Give an answer'); await c.input('r');
+  await c.waitScreen(s => s.includes('hub: connected'), 'connected'); await focus(c, 'full');
+  await c.waitScreen(s => s.includes('Give an answer'), 'free ask row before selection');
+  await select(c, 'Give an answer'); await c.input('r');
   await c.waitScreen(s => s.includes('Your answer to: Give an answer') && s.includes('INSERT'), 'free ask answer');
   await c.input('Free answer<CR>'); await c.waitScreen(s => /needs you\s+1\b/.test(s.split('\n')[0] ?? ''), 'ask answered');
   await focus(c, 'full'); await select(c, 'Reply draft'); await c.input('r');

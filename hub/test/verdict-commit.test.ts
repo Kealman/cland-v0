@@ -44,7 +44,7 @@ test('a verdict pins an explicit commit and CLI view returns the full SHA', asyn
   const root = await tempProject(t);
   const sha = await repository(root);
   await startDaemon(t, root);
-  const { item } = await task(root, 'create', 'Reviewed', '--branch', 't/test');
+  const { item } = await task(root, 'create', '--size', 'M', 'Reviewed', '--branch', 't/test');
   const result = await task(root, 'comment', item.id, 'ok', '--verdict', 'review', '--result', 'clear', '--run', 'r-1', '--commit', sha.slice(0, 12));
   assert.equal(result.item.verdicts[0]?.commit, sha);
   assert.equal((await task(root, 'view', item.id)).item.verdicts[0]?.commit, sha);
@@ -55,13 +55,13 @@ test('branch-tip defaults and absent branches are explained in the comment resul
   const root = await tempProject(t);
   const sha = await repository(root);
   await startDaemon(t, root);
-  await task(root, 'create', 'Reviewed', '--branch', 't/test');
+  await task(root, 'create', '--size', 'M', 'Reviewed', '--branch', 't/test');
   let r = await task(root, 'comment', 'T-1', 'ok', '--verdict', 'review', '--result', 'clear', '--run', 'r-1');
   assert.equal(r.item.verdicts[0]?.commit, sha);
   assert.equal(r.commit?.source, 'branch');
   assert.equal(r.commit?.sha, sha);
   assert.match(r.commit?.note ?? '', /branch tip/);
-  await task(root, 'create', 'No branch');
+  await task(root, 'create', '--size', 'M', 'No branch');
   r = await task(root, 'comment', 'T-2', 'ok', '--verdict', 'qa', '--result', 'clear', '--run', 'q-1');
   assert.equal(r.item.verdicts[0]?.commit, undefined);
   assert.equal(r.commit?.source, 'none');
@@ -78,7 +78,7 @@ test('hub verdict provenance survives restart and unrelated hand edits; forged a
   const root = await tempProject(t);
   const sha = await repository(root);
   await startDaemon(t, root);
-  const { item } = await task(root, 'create', 'Reviewed', '--branch', 't/test');
+  const { item } = await task(root, 'create', '--size', 'M', 'Reviewed', '--branch', 't/test');
   const reviewer = await spawnSpoke({ discover: true, cwd: root, name: 'rev-1', sessionId: 'reviewer-id', role: 'reviewer' });
   t.after(() => reviewer.close());
   await reviewer.waitForPresence(['rev-1']);
@@ -111,7 +111,7 @@ test('latest verdicts go stale after a change and stay current across a rebase t
   const root = await tempProject(t);
   const sha = await repository(root);
   const { refresh } = await startFreshnessDaemon(t, root);
-  await task(root, 'create', 'Reviewed', '--branch', 't/test');
+  await task(root, 'create', '--size', 'M', 'Reviewed', '--branch', 't/test');
   await task(root, 'comment', 'T-1', 'ok', '--verdict', 'review', '--result', 'clear', '--run', 'r-1');
   let view = await viewed(root, 'T-1', (i) => i.verdicts[0]?.current !== undefined);
   assert.equal(view.verdicts[0]?.current, true);
@@ -173,7 +173,7 @@ test('text verdicts retain their commit and invalid explicit SHAs leave the item
   const sha = await repository(root);
   git(root, 'branch', '-m', 'dev', 'main');
   const { refresh } = await startFreshnessDaemon(t, root);
-  const { item } = await task(root, 'create', 'Reviewed', '--branch', 't/test');
+  const { item } = await task(root, 'create', '--size', 'M', 'Reviewed', '--branch', 't/test');
   const header = `verdict: review\nresult: clear\nby: forged [reviewer]\nrun: r-1\ncommit: ${sha}\n\nChecked.`;
   const r = await task(root, 'comment', item.id, header);
   assert.equal(r.item.verdicts[0]?.commit, sha);
@@ -204,7 +204,7 @@ test('a hand-copied clear verdict cannot replay hub provenance after a later not
   const root = await tempProject(t);
   await repository(root);
   await startDaemon(t, root);
-  const { item } = await task(root, 'create', 'Reviewed', '--branch', 't/test');
+  const { item } = await task(root, 'create', '--size', 'M', 'Reviewed', '--branch', 't/test');
   const reviewer = await spawnSpoke({ discover: true, cwd: root, name: 'rev-1', sessionId: 'reviewer-id', role: 'reviewer' });
   t.after(() => reviewer.close());
   await reviewer.waitForPresence(['rev-1']);

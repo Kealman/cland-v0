@@ -107,7 +107,7 @@ test('worktree claim, listing and prune cross no synchronous native boundary', a
   const { ui } = await territoryHub(t);
   await guarded(async () => {
     for (const frame of [
-      { type: 'task.create', title: 'Prune me', kind: 'task' },
+      { size: 'M', type: 'task.create', title: 'Prune me', kind: 'task' },
       { type: 'task.claim', item: 'T-1' },
       { type: 'worktree.list' },
       { type: 'task.close', item: 'T-1' },
@@ -123,7 +123,7 @@ test('worktree claim, listing and prune cross no synchronous native boundary', a
 
 test('merge refusal, landing and recovery cross no synchronous native boundary', async t => {
   const { ui, root, git, tracker } = await territoryHub(t);
-  await ui.request({ type: 'task.create', title: 'Ship it', kind: 'task' });
+  await ui.request({ size: 'M', type: 'task.create', title: 'Ship it', kind: 'task' });
   await ui.request({ type: 'task.claim', item: 'T-1' });
   const view = await tracker.viewAsync('T-1');
   const path = join(root, '.cland', 'worktrees', 'T-1');
@@ -186,7 +186,7 @@ test('each territory request guard rejects a planted statSync on its request pat
         try { fs.statSync(root); } catch { /* the guard still records a swallowed native call */ }
       }
     });
-    await ui.request({ type: 'task.create', title: 'Native probe', kind: 'task' });
+    await ui.request({ size: 'M', type: 'task.create', title: 'Native probe', kind: 'task' });
     if (type !== 'worktree') {
       await ui.request({ type: 'task.claim', item: 'T-1' });
       const path = join(root, '.cland', 'worktrees', 'T-1');
@@ -213,7 +213,7 @@ test('a parent swapped to a symlink during the initial path check refuses worktr
   const parent = join(root, '.cland', 'worktrees');
   const path = join(parent, 'T-1');
   await fs.promises.mkdir(parent);
-  await ui.request({ type: 'task.create', title: 'Confined', kind: 'task' });
+  await ui.request({ size: 'M', type: 'task.create', title: 'Confined', kind: 'task' });
   const reached = Promise.withResolvers<void>(), proceed = Promise.withResolvers<void>();
   const lstat = fs.promises.lstat;
   let paused = false;
@@ -251,7 +251,7 @@ test('merge waits for an admitted verdict write and refuses its latest not-clear
       return fs.promises.rename(from, to);
     },
   });
-  await ui.request({ type: 'task.create', title: 'Latest verdict', kind: 'task' });
+  await ui.request({ size: 'M', type: 'task.create', title: 'Latest verdict', kind: 'task' });
   await ui.request({ type: 'task.claim', item: 'T-1' });
   await territoryGitAsync(join(root, '.cland', 'worktrees', 'T-1'), ['commit', '--allow-empty', '-qm', 'Reviewed']);
   const reviewer = { id: 'native-reviewer', name: 'rev', role: 'reviewer' };
@@ -284,7 +284,7 @@ test('an item reopened during the final path check keeps its worktree and branch
       return text;
     },
   });
-  await ui.request({ type: 'task.create', title: 'Reopened during path check', kind: 'task' });
+  await ui.request({ size: 'M', type: 'task.create', title: 'Reopened during path check', kind: 'task' });
   await ui.request({ type: 'task.claim', item: 'T-1' });
   await ui.request({ type: 'task.close', item: 'T-1' });
   const reached = Promise.withResolvers<void>(), proceed = Promise.withResolvers<void>();
@@ -336,7 +336,7 @@ test('session aliases swapped inside across cleanup awaits refuse prune', async 
     });
     syncBuiltinESMExports();
     onCleanup(t, () => t.mock.restoreAll()); onCleanup(t, () => syncBuiltinESMExports());
-    await ui.request({ type: 'task.create', title: 'Alias containment', kind: 'task' });
+    await ui.request({ size: 'M', type: 'task.create', title: 'Alias containment', kind: 'task' });
     await ui.request({ type: 'task.claim', item: 'T-1' });
     await ui.request({ type: 'task.close', item: 'T-1' });
     const outside = await tempProject(t, 'cland-session-alias-');
@@ -369,7 +369,7 @@ test('a parent swapped during the final leaf scan leaves no escaped creation', a
     const { root, ui, git } = await territoryHub(t);
     const branch = 't/T-1-final-escape';
     if (existingBranch) await git('branch', branch);
-    await ui.request({ type: 'task.create', title: 'Final escape', kind: 'task' });
+    await ui.request({ size: 'M', type: 'task.create', title: 'Final escape', kind: 'task' });
     const outside = await tempProject(t, 'cland-final-escape-');
     await fs.promises.writeFile(join(outside, 'keep.txt'), 'untouched\n');
     const parent = join(root, '.cland', 'worktrees'), path = join(parent, 'T-1');
@@ -406,7 +406,7 @@ test('a parent swapped during the final leaf scan leaves no escaped creation', a
 test('creation rollback preserves a branch advanced during confinement verification', async t => {
   const { root, ui, git } = await territoryHub(t);
   const branch = 't/T-1-advanced-escape';
-  await ui.request({ type: 'task.create', title: 'Advanced escape', kind: 'task' });
+  await ui.request({ size: 'M', type: 'task.create', title: 'Advanced escape', kind: 'task' });
   const outside = await tempProject(t, 'cland-advanced-escape-');
   const parent = join(root, '.cland', 'worktrees'), path = join(parent, 'T-1');
   await fs.promises.mkdir(parent);
@@ -456,7 +456,7 @@ test('cached rollback listings preserve later commits and dirty work', async t =
     const { root, ui, git } = await territoryHub(t);
     const branch = 't/T-1-cached-listing';
     if (existing) await git('branch', branch);
-    await ui.request({ type: 'task.create', title: 'Cached listing', kind: 'task' });
+    await ui.request({ size: 'M', type: 'task.create', title: 'Cached listing', kind: 'task' });
     const outside = await tempProject(t, 'cland-cached-listing-');
     const parent = join(root, '.cland', 'worktrees'), path = join(parent, 'T-1');
     await fs.promises.mkdir(parent);
@@ -509,7 +509,7 @@ test('detached cleanup recovery always preserves escaped worktrees', async t => 
   for (const at of ['confinement', 'cached listing']) await t.test(at, async t => {
     const { root, ui, git } = await territoryHub(t);
     const branch = 't/T-1-detached-recovery';
-    await ui.request({ type: 'task.create', title: 'Detached recovery', kind: 'task' });
+    await ui.request({ size: 'M', type: 'task.create', title: 'Detached recovery', kind: 'task' });
     await ui.request({ type: 'task.claim', item: 'T-1' });
     const tip = await git('rev-parse', `refs/heads/${branch}`);
     const outside = await tempProject(t, 'cland-detached-recovery-');
@@ -568,7 +568,7 @@ test('detached cleanup recovery always preserves escaped worktrees', async t => 
 
 test('an alias moved inside while a sibling final realpath awaits keeps the worktree and branch', async t => {
   const { root, ui, hub, git } = await territoryHub(t);
-  await ui.request({ type: 'task.create', title: 'Sibling alias', kind: 'task' });
+  await ui.request({ size: 'M', type: 'task.create', title: 'Sibling alias', kind: 'task' });
   await ui.request({ type: 'task.claim', item: 'T-1' });
   await ui.request({ type: 'task.close', item: 'T-1' });
   const outside = await tempProject(t, 'cland-sibling-alias-');
@@ -621,7 +621,7 @@ test('a replaced target inode during the final path check refuses cleanup', asyn
       return text;
     },
   });
-  await ui.request({ type: 'task.create', title: 'Target identity', kind: 'task' });
+  await ui.request({ size: 'M', type: 'task.create', title: 'Target identity', kind: 'task' });
   await ui.request({ type: 'task.claim', item: 'T-1' });
   await ui.request({ type: 'task.close', item: 'T-1' });
   const path = join(root, '.cland', 'worktrees', 'T-1'), kept = join(root, '.cland', 'kept-worktree');

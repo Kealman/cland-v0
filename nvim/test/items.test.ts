@@ -205,7 +205,7 @@ test('the item view shows verdict commits, red stale marks, and file-only proven
   git('commit', '-m', 'feature');
   const sha = git('rev-parse', 'HEAD');
   await startDaemon(t, root);
-  const created = await cland(root, 'task', 'create', 'Reviewed', '--branch', 't/test', '--json');
+  const created = await cland(root, 'task', 'create', '--size', 'M', 'Reviewed', '--branch', 't/test', '--json');
   assert.equal(created.code, 0, created.stderr);
   const item = JSON.parse(created.stdout).item as { path: string };
   const recorded = await cland(root, 'task', 'comment', 'T-1', 'Checked.', '--verdict', 'review', '--result', 'clear', '--run', 'r-1');

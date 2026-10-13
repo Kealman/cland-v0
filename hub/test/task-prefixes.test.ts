@@ -130,7 +130,7 @@ test('mixed lane and override prefixes retain after-stage QA policy', async t =>
   const { discovery } = await startDaemon(t, root);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'task.create', title: 'Epic', kind: 'epic' })).ok, true);
-  assert.equal((await ui.request({ type: 'task.create', title: 'Child', parent: 'T-1' })).ok, true);
+  assert.equal((await ui.request({ size: 'M', type: 'task.create', title: 'Child', parent: 'T-1' })).ok, true);
   const yaml = 'stages:\n  - name: build\n    qa: {scope: none, when: after-stage}\n    lanes: [[T-2]]\nitems:\n  E-2:\n    qa: {scope: full, when: after-stage}\n';
   const set = await ui.request({ type: 'task.plan', item: 'R-1', op: 'set', yaml });
   assert.equal(set.ok, true, JSON.stringify(set));

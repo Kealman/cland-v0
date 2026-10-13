@@ -15,7 +15,7 @@ test('a stopped Claude Implementer resumes its conversation, role and item claim
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
-  assert.equal((await ui.request({ type: 'task.create', title: 'Resume work' })).ok, true);
+  assert.equal((await ui.request({ size: 'M', type: 'task.create', title: 'Resume work' })).ok, true);
   const launch = await ui.request({ type: 'session.launch', name: 'impl', role: 'implementer', harness: 'claude-code', model: 'claude-fake-1', item: 'T-1' }, 30_000);
   assert.equal(launch.ok, true, launch.error);
   const before = (launch.value as { process: HarnessProcessView }).process;
@@ -47,7 +47,7 @@ for (const artifact of [false, true, null]) test(`a refused Codex resume offers 
   const fake = await fakeCodex(t);
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
-  assert.equal((await ui.request({ type: 'task.create', title: 'Fresh work' })).ok, true);
+  assert.equal((await ui.request({ size: 'M', type: 'task.create', title: 'Fresh work' })).ok, true);
   const text = 'Implement the fresh work from this recorded brief.';
   let brief: string | null = artifact === null ? null : text;
   if (artifact) {
@@ -98,7 +98,7 @@ for (const fresh of [false, true]) for (const loss of ['claim', 'closed', 'exclu
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   const role = loss === 'exclusive' ? 'coordinator' : loss === 'hold' ? 'reviewer' : 'implementer';
-  assert.equal((await ui.request({ type: 'task.create', title: 'Retained work' })).ok, true);
+  assert.equal((await ui.request({ size: 'M', type: 'task.create', title: 'Retained work' })).ok, true);
   const launch = await ui.request({ type: 'session.launch', name: 'old', role, harness: 'claude-code', model: 'claude-fake-1', ...(['claim', 'closed'].includes(loss) ? { item: 'T-1' } : {}) }, 30_000);
   assert.equal(launch.ok, true, launch.error);
   const before = (launch.value as { process: HarnessProcessView }).process;

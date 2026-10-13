@@ -52,7 +52,7 @@ test('invalid idle categories are refused on set and ignored individually on han
   const { discovery } = await startDaemon(t, root);
   const ui = await connectUi(t, discovery);
   const create = async (title: string, kind: string) => {
-    const result = await ui.request({ type: 'task.create', title, kind, body: '' });
+    const result = await ui.request({ ...(['task'].includes(kind) ? { size: 'M' } : {}), type: 'task.create', title, kind, body: '' });
     assert.equal(result.ok, true, JSON.stringify(result));
     return (result.value as { item: { id: string } }).item.id;
   };
@@ -101,7 +101,7 @@ test('idle validation selects the configured C root beside the release, excludin
   const { discovery } = await startDaemon(t, root);
   const ui = await connectUi(t, discovery);
   const create = async (kind: string) => {
-    const result = await ui.request({ type: 'task.create', title: kind, kind, body: '' });
+    const result = await ui.request({ ...(['task'].includes(kind) ? { size: 'M' } : {}), type: 'task.create', title: kind, kind, body: '' });
     assert.equal(result.ok, true, JSON.stringify(result));
     return (result.value as { item: { id: string } }).item.id;
   };

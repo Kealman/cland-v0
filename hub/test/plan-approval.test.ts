@@ -20,7 +20,7 @@ test('draft chains into per-group lanes, holds launches for approval, authorizes
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   const create = async (title: string, kind = 'task', parent?: string) => {
-    const result = await ui.request({ type: 'task.create', title, kind, parent, body: '## Acceptance criteria\n- [ ] C1. Works' });
+    const result = await ui.request({ ...(['task'].includes(kind) ? { size: 'M' } : {}), type: 'task.create', title, kind, parent, body: '## Acceptance criteria\n- [ ] C1. Works' });
     assert.equal(result.ok, true, result.error);
     return (result.value as { item: ItemView }).item;
   };
@@ -91,7 +91,7 @@ test('approval none is the default; no-plan and broken-plan approvals refuse', a
   const epic = (result.value as { item: ItemView }).item;
   assert.equal(epic.approval?.state, 'not required');
   assert.equal((await ui.request({ type: 'task.plan', op: 'approve', item: epic.id })).ok, false);
-  const child = (await ui.request({ type: 'task.create', title: 'Child', parent: epic.id })).value as { item: ItemView };
+  const child = (await ui.request({ size: 'M', type: 'task.create', title: 'Child', parent: epic.id })).value as { item: ItemView };
   const plan = { stages: [{ name: 'demo', qa: { scope: 'none', when: 'per-item' }, lanes: [[child.item.id]] }] };
   assert.equal((await ui.request({ type: 'task.plan', op: 'set', item: epic.id, yaml: stringify(plan) })).ok, true);
   const path = join(root, epic.path);
@@ -113,7 +113,7 @@ test('the inbox sees a refused plan recover when its missing child is created', 
     const listed = (await ui.request({ type: 'task.list' })).value as { items: ItemView[] };
     return listed.items.find(item => item.id === epic.id)?.planError?.includes('no such plan item') || undefined;
   });
-  const child = await ui.request({ type: 'task.create', title: 'Now present', parent: epic.id });
+  const child = await ui.request({ size: 'M', type: 'task.create', title: 'Now present', parent: epic.id });
   assert.equal(child.ok, true, child.error);
   const childId = (child.value as { item: ItemView }).item.id;
   const inbox = (await ui.request({ type: 'inbox.list' })).value as { plans: Array<{ id: string }> };

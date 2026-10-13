@@ -29,7 +29,7 @@ async function project(t: TestContext) {
 
 test('human cland push publishes tracker commits, preserves dirty staged work, ignores push URLs and is idempotent', async t => {
   const { root, territory } = await project(t);
-  ok(await cland(root, 'task', 'create', 'Tracker entry'));
+  ok(await cland(root, 'task', 'create', '--size', 'M', 'Tracker entry'));
   git(root, 'add', '.cland/tasks');
   git(root, 'commit', '-qm', 'Record tracker');
   const dev = git(root, 'rev-parse', 'dev');
@@ -133,7 +133,7 @@ test('a non-fast-forward names territory commits even when their objects are abs
 
 test('merge refuses unpublished root dev before preparation, preserving checkout, task and refs; explicit push then merge succeeds', async t => {
   const { root, territory } = await project(t);
-  const { item } = JSON.parse(ok(await cland(root, 'task', 'create', 'Parser', '--json')).stdout);
+  const { item } = JSON.parse(ok(await cland(root, 'task', 'create', '--size', 'M', 'Parser', '--json')).stdout);
   const { worktree } = JSON.parse(ok(await cland(root, 'task', 'claim', item.id, '--json')).stdout);
   await fs.writeFile(join(worktree.path, 'parser.txt'), 'done\n');
   git(worktree.path, 'add', 'parser.txt');

@@ -27,7 +27,7 @@ async function project(t: TestContext, gated = false, levels = ['release', 'epic
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const qa = await spawnSpoke({ discover: true, cwd: root, name: 'qa-demo', sessionId: 'qa-id', role: 'qa' });
   t.after(() => qa.close());
-  const create = await ui.request({ type: 'task.create', title: 'Epic demo', kind: levels[1], body: '## Definition of done\n- [ ] First demo\n- [ ] Second demo\n\n## Notes\nKeep this.' });
+  const create = await ui.request({ ...((levels[1]) === 'task' ? { size: 'M' } : {}), type: 'task.create', title: 'Epic demo', kind: levels[1], body: '## Definition of done\n- [ ] First demo\n- [ ] Second demo\n\n## Notes\nKeep this.' });
   assert.equal(create.ok, true, create.error);
   const item = (create.value as { item: ItemView }).item;
   const verdict = async (run: string, result = 'clear', verified?: string, commit?: string) => {
@@ -104,7 +104,7 @@ test('epic QA must be clear, written by QA through the hub, on the exact dev tip
 
 test('open children block even a clear epic verdict or human override; releases retain their close path', async t => {
   const { root, ui, item, verdict } = await project(t);
-  const child = (await ui.request({ type: 'task.create', title: 'Child', parent: item.id })).value as { item: ItemView };
+  const child = (await ui.request({ size: 'M', type: 'task.create', title: 'Child', parent: item.id })).value as { item: ItemView };
   await verdict('qa-1', 'clear', 'all');
   for (const args of [[], ['--override', 'human exception']]) {
     const refused = await cland(root, 'task', 'close', item.id, ...args);
@@ -245,7 +245,7 @@ test('reimporting an existing planning container cannot bypass QA or erase unver
     const newCriteria = await ui.request({ type: 'task.import', repo: 'test/project', issues: [{ ...issue, body: verified.item.body + '\n- [ ] C2. New unchecked demo', state: 'closed' }] });
     assert.equal(newCriteria.ok, false);
     assert.match(newCriteria.error ?? '', /C2.*not verified/);
-    const child = (await ui.request({ type: 'task.create', title: 'Imported epic child', parent: id })).value as { item: ItemView };
+    const child = (await ui.request({ size: 'M', type: 'task.create', title: 'Imported epic child', parent: id })).value as { item: ItemView };
     const openChildren = await ui.request({ type: 'task.import', repo: 'test/project', issues: [{ ...issue, body: verified.item.body, state: 'closed' }] });
     assert.equal(openChildren.ok, false);
     assert.match(openChildren.error ?? '', /open children.*Imported epic child/);
@@ -267,7 +267,7 @@ test('status-driven conversion of a planning container cannot bypass QA or open-
     assert.equal(unverified.ok, false);
     assert.match(unverified.error ?? '', /qa-missing/);
     assert.equal(await readFile(join(root, item.path), 'utf8'), source);
-    const child = (await ui.request({ type: 'task.create', title: 'Conversion child', parent: item.id })).value as { item: ItemView };
+    const child = (await ui.request({ size: 'M', type: 'task.create', title: 'Conversion child', parent: item.id })).value as { item: ItemView };
     const openChildren = await close();
     assert.equal(openChildren.ok, false);
     assert.match(openChildren.error ?? '', /open children.*Conversion child/);

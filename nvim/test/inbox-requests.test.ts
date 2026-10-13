@@ -18,7 +18,7 @@ test('the chip equals cland inbox before and after an Aide review request is rep
   const fake = await fakeClaude(t);
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
-  const created = await ui.request({ type: 'task.create', title: 'Demo review' });
+  const created = await ui.request({ size: 'M', type: 'task.create', title: 'Demo review' });
   assert.equal(created.ok, true, created.error);
   const subject = (created.value as { item: { id: string } }).item.id;
   const aide = await spawnSpoke({ discover: true, cwd: root, name: 'aide-1', role: 'aide', sessionId: 'sess-demo' });

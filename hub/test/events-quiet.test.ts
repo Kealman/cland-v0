@@ -77,7 +77,7 @@ test('real announced rows merge on pushes and list, and subtree filters include 
   const ui = await connectUi(t, daemon.discovery!);
   stop = async () => { ui.close(); await daemon.stop(); };
   const parent = ((await ui.request({ type: 'task.create', kind: 'epic', title: 'Parent' })).value as { item: { id: string } }).item.id;
-  const child = ((await ui.request({ type: 'task.create', parent, title: 'Child' })).value as { item: { id: string } }).item.id;
+  const child = ((await ui.request({ size: 'M', type: 'task.create', parent, title: 'Child' })).value as { item: { id: string } }).item.id;
   const spoke = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
   t.after(() => spoke.close());
   await spoke.waitForPresence(['coord']);
@@ -111,7 +111,7 @@ test('pending plan approvals, asks and waiting messages stay in the inbox; follo
   stop = async () => { ui.close(); await daemon.stop(); };
   const ok = async (frame: { type: string } & Record<string, unknown>) => { const r = await ui.request(frame); assert.equal(r.ok, true, r.error); return r.value; };
   const parent = (await ok({ type: 'task.create', kind: 'epic', title: 'Waiting plan' }) as { item: { id: string } }).item.id;
-  const child = (await ok({ type: 'task.create', title: 'Plan child', parent }) as { item: { id: string } }).item.id;
+  const child = (await ok({ size: 'M', type: 'task.create', title: 'Plan child', parent }) as { item: { id: string } }).item.id;
   await ok({ type: 'task.plan', item: parent, op: 'set', yaml: JSON.stringify({ stages: [{ name: 'Build', lanes: [[child]], qa: { scope: 'none', when: 'after-stage' } }] }) });
   const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
   t.after(() => coord.close()); await coord.waitForPresence(['coord']);
@@ -136,7 +136,7 @@ test('the first equal announcement after a real hub restart replaces the restore
   stop = () => daemon.stop();
   let ui = await connectUi(t, daemon.discovery!);
   stop = async () => { ui.close(); await daemon.stop(); };
-  const create = await ui.request({ type: 'task.create', title: 'Restart coalescing' });
+  const create = await ui.request({ size: 'M', type: 'task.create', title: 'Restart coalescing' });
   const item = (create.value as { item: { id: string } }).item.id;
   for (let i = 0; i < 10; i++) {
     const result = await ui.request({ type: 'task.edit', item, status: i % 2 ? 'backlog' : 'planned' });
@@ -210,7 +210,7 @@ test('hub stop cancels deferred session work before closing its databases', asyn
   await sweepDone;
 
   const { pending, callbacksFailed } = deferredAtDatabaseClose(t);
-  const created = await ui.request({ type: 'task.create', title: 'Pending shutdown projection' });
+  const created = await ui.request({ size: 'M', type: 'task.create', title: 'Pending shutdown projection' });
   assert.equal(created.ok, true, created.error);
   assert.ok(pending.size > 0, 'the frame left deferred work pending');
   await Promise.race([stop(), callbacksFailed]);
@@ -232,7 +232,7 @@ test('hub stop cancels deferred journal projections before closing the inbox pro
   const ui = await connectUi(t, daemon.discovery!);
   stop = async () => { ui.close(); await daemon.stop(); };
   await sweepDone;
-  const created = await ui.request({ type: 'task.create', title: 'Deferred journal at shutdown' });
+  const created = await ui.request({ size: 'M', type: 'task.create', title: 'Deferred journal at shutdown' });
   assert.equal(created.ok, true, created.error);
   const { pending, callbacksFailed } = deferredAtDatabaseClose(t);
   const changed = await ui.request({ type: 'task.edit', item: 'T-1', status: 'planned' });

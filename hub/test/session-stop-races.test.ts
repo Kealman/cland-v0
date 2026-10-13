@@ -54,7 +54,7 @@ test(`${harness}: ${stop} ${forced ? 'forced' : 'graceful'} stop emits stopped w
     FAKE_OPENCODE_CHILD: '1',
   } : {}) });
   const ui = await connectUi(t, discovery);
-  const created = await ui.request({ type: 'task.create', title: `${stop} stop` });
+  const created = await ui.request({ size: 'M', type: 'task.create', title: `${stop} stop` });
   assert.equal(created.ok, true, created.error);
   const item = (created.value as { item: { id: string } }).item.id;
   const launched = await ui.request({ type: 'session.launch', name: 'impl', harness, role: 'implementer', item }, 30_000);
@@ -125,7 +125,7 @@ process.exitCode = result.status ?? 1;
 `, { mode: 0o755 });
   const { discovery } = await startDaemon(t, root, { ...fake.env, PATH: `${bin}:${fake.env.PATH}` });
   const ui = await connectUi(t, discovery);
-  const created = await ui.request({ type: 'task.create', title: 'Stop during descendant exit' });
+  const created = await ui.request({ size: 'M', type: 'task.create', title: 'Stop during descendant exit' });
   assert.equal(created.ok, true, created.error);
   const item = (created.value as { item: { id: string } }).item.id;
   const launched = await ui.request({ type: 'session.launch', name: 'impl', harness: 'codex', role: 'implementer', ...(stop === 'post-merge' ? { item } : {}) }, 30_000);

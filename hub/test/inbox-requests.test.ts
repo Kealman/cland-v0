@@ -45,7 +45,7 @@ test('request validation names the fix and accepts each known subject and reques
   const impl = await spawnSpoke({ discover: true, cwd: root, name: 'impl', role: 'implementer', sessionId: 'sess-impl' });
   t.after(() => impl.close());
   await impl.waitForPresence(['impl']);
-  const item = await ui.request({ type: 'task.create', title: 'Review subject' });
+  const item = await ui.request({ size: 'M', type: 'task.create', title: 'Review subject' });
   assert.equal(item.ok, true, item.error);
   const id = (item.value as { item: { id: string } }).item.id;
   const artifact = await ui.request({ type: 'artifact.create', topic: 'general', title: 'Subject', kind: 'note', content: 'Review me' });
@@ -143,7 +143,7 @@ test('pending valid plans count only with human approval, and approval, invalida
   await writeFile(join(root, '.cland/config.toml'), '[plan]\napproval = "human"\n');
   const { discovery } = await startDaemon(t, root);
   const ui = await connectUi(t, discovery);
-  const create = async (title: string, kind: string, parent?: string) => (await ok<{ item: { id: string } }>(ui, { type: 'task.create', title, kind, ...(parent ? { parent } : {}) })).item.id;
+  const create = async (title: string, kind: string, parent?: string) => (await ok<{ item: { id: string } }>(ui, { ...(['task'].includes(kind) ? { size: 'M' } : {}), type: 'task.create', title, kind, ...(parent ? { parent } : {}) })).item.id;
   const epic = await create('Plan', 'epic');
   const task = await create('Work', 'task', epic);
   assert.equal((await ok<Inbox>(ui, { type: 'inbox.list' })).plans.length, 0, 'an epic without a valid plan does not wait');
@@ -176,7 +176,7 @@ test('pending valid plans count only with human approval, and approval, invalida
   const none = await startDaemon(t, other);
   const otherUi = await connectUi(t, none.discovery);
   const e = (await ok<{ item: { id: string } }>(otherUi, { type: 'task.create', title: 'No approval', kind: 'epic' })).item.id;
-  const w = (await ok<{ item: { id: string } }>(otherUi, { type: 'task.create', title: 'Work', parent: e })).item.id;
+  const w = (await ok<{ item: { id: string } }>(otherUi, { size: 'M', type: 'task.create', title: 'Work', parent: e })).item.id;
   await ok(otherUi, { type: 'task.plan', item: e, op: 'set', yaml: JSON.stringify({ stages: [{ name: 'Build', lanes: [[w]], qa: { scope: 'none', when: 'after-stage' } }] }) });
   assert.equal((await ok<Inbox>(otherUi, { type: 'inbox.list' })).plans.length, 0);
 });
@@ -229,7 +229,7 @@ test('only a human review or QA verdict replies to requests on its subject item'
   t.after(() => aide.close());
   t.after(() => reviewer.close());
   await aide.waitForPresence(['aide-1', 'rev-1']);
-  const id = (await ok<{ item: { id: string } }>(ui, { type: 'task.create', title: 'Review this' })).item.id;
+  const id = (await ok<{ item: { id: string } }>(ui, { size: 'M', type: 'task.create', title: 'Review this' })).item.id;
   assert.equal((await aide.call<{ ok: boolean }>('send', { kind: 'request', request: 'review', subject: id, text: 'Review' })).ok, true);
   const agentVerdict = await reviewer.call<{ ok: boolean; error?: string }>('task.comment', { id, text: 'Agent review', verdict: 'review', result: 'clear', run: 'agent-review' });
   assert.equal(agentVerdict.ok, true, agentVerdict.error);
@@ -322,7 +322,7 @@ test('cland inbox prints all four sections, all rows with ages, plan size and fi
   t.after(() => coord.close()); t.after(() => aide.close());
   await coord.waitForPresence(['coord', 'aide-1']);
   const epic = (await ok<{ item: { id: string } }>(ui, { type: 'task.create', kind: 'epic', title: 'Inbox plan' })).item.id;
-  const item = (await ok<{ item: { id: string } }>(ui, { type: 'task.create', title: 'Planned work', parent: epic })).item.id;
+  const item = (await ok<{ item: { id: string } }>(ui, { size: 'M', type: 'task.create', title: 'Planned work', parent: epic })).item.id;
   await ok(ui, { type: 'task.plan', item: epic, op: 'set', yaml: JSON.stringify({ stages: [{ name: 'Build', lanes: [[item]], qa: { scope: 'none', when: 'after-stage' } }] }) });
   await ok(ui, { type: 'session.launch', name: 'worker', role: 'implementer', harness: 'claude-code' });
   await eventually('worker idle', async () => {

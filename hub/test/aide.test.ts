@@ -85,7 +85,7 @@ test('Aide tracker, topics, artifacts and named sends work; crew operations name
   t.after(async () => { await aide.close(); await coord.close(); });
   await aide.waitForPresence(['aide-1', 'coord']);
   await aide.waitForEvent(e => e.params.meta?.kind === 'role' && e.params.content.includes('you hold the role Aide'));
-  const made = await aide.call<{ ok: boolean; item: { id: string } }>('task.create', { title: 'Human planning' });
+  const made = await aide.call<{ ok: boolean; item: { id: string } }>('task.create', { size: 'M', title: 'Human planning' });
   assert.equal(made.ok, true);
   const id = made.item.id;
   const call = async (tool: string, args: Record<string, unknown> = {}) => {
@@ -189,7 +189,7 @@ test('retained subscriptions cannot deliver Agents events to an Aide, and lead s
   let aide = await spawnSpoke({ cwd: root, discover: true, name: 'aide-1', role: 'reviewer', sessionId: 'aide-id' });
   t.after(async () => { await coord.close(); await aide.close(); });
   await coord.waitForPresence(['coord', 'aide-1']);
-  const { item } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Aide lead boundaries', assignee: 'aide-1' });
+  const { item } = await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Aide lead boundaries', assignee: 'aide-1' });
   assert.equal((await aide.call<{ ok: boolean }>('subscribe', { subject: { item: item.id }, events: ['task'] })).ok, true);
   await aide.close();
   await coord.call('task.edit', { id: item.id, status: 'planned' });

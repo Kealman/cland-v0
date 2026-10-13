@@ -1,7 +1,24 @@
 import { validTimestamp } from './criteria.ts';
-import { fileNameOf, type Item } from './item.ts';
+import { fileNameOf, sizeRefusal, type Size, type Item } from './item.ts';
 import { DEFAULT_LEVELS, Ladder, kindsFor } from './kinds.ts';
 import { parseItemReference, prefixOf } from './prefixes.ts';
+
+export type SizeAssignments = ReadonlyMap<number, Size>;
+
+/** Explicit author decisions only; aliases resolve by the same shared number as tracker requests. */
+export function parseSizeAssignments(raw: unknown, kinds?: readonly string[]): SizeAssignments {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new Error('sizes file must be a JSON object mapping item ids to XS, S, M, L or XL');
+  const sizes = new Map<number, Size>();
+  for (const [id, size] of Object.entries(raw)) {
+    const n = parseItemReference(id, kinds)?.n;
+    if (n === undefined) throw new Error(`sizes file: invalid item id ${id}`);
+    const refusal = sizeRefusal('task', size);
+    if (refusal) throw new Error(`sizes file ${id}: ${refusal}`);
+    if (sizes.has(n)) throw new Error(`sizes file: duplicate item number ${n}`);
+    sizes.set(n, size as Size);
+  }
+  return sizes;
+}
 
 export type ClosingTime = { time: string; source: 'receipt' | 'journal' | 'commit' };
 export type ClosingTimes = ReadonlyMap<number, readonly ClosingTime[]>;
@@ -12,7 +29,8 @@ export type MigrationPlan = {
   renames: Array<{ from: string; to: string }>;
   ids: Change[];
   references: Reference[];
-  unresolved: Array<{ file: string; item: string; field: 'parent' | 'blocked_by' | 'closed'; reference: string; index?: number }>;
+  unresolved: Array<{ file: string; item: string; field: 'parent' | 'blocked_by' | 'closed' | 'size'; reference: string; index?: number }>;
+  sizes: Array<{ file: string; item: string; size: Size }>;
   closed: Array<ClosingTime & { file: string; item: string }>;
   titles: Change[];
   categories: Array<
@@ -29,8 +47,8 @@ const stripTitle = (title: string): string => title.replace(/^(?:epic|release|sp
  * Entries identify source files so an applier can patch only named frontmatter fields.
  * Bodies, comments and unrelated metadata are deliberately absent from the delta.
  */
-export function planMigration(files: readonly MigrationFile[], nextNumber: number, containers: readonly string[] = new Ladder(DEFAULT_LEVELS).containers, closingTimes: ClosingTimes = new Map()): MigrationPlan {
-  const plan: MigrationPlan = { renames: [], ids: [], references: [], unresolved: [], titles: [], categories: [], labels: [], moves: [], closed: [] };
+export function planMigration(files: readonly MigrationFile[], nextNumber: number, containers: readonly string[] = new Ladder(DEFAULT_LEVELS).containers, closingTimes: ClosingTimes = new Map(), sizes?: SizeAssignments): MigrationPlan {
+  const plan: MigrationPlan = { renames: [], ids: [], references: [], unresolved: [], titles: [], categories: [], labels: [], moves: [], closed: [], sizes: [] };
   const kinds = [...kindsFor(DEFAULT_LEVELS), ...containers, 'category'];
   const numberOf = (entry: MigrationFile): number => {
     const match = /^([a-z]-\d+)(?:-[^/]*)?\.md$/i.exec(entry.file);
@@ -44,6 +62,11 @@ export function planMigration(files: readonly MigrationFile[], nextNumber: numbe
     const n = numberOf(entry);
     if (byNumber.has(n)) throw new Error(`multiple item files carry number ${n}`);
     byNumber.set(n, entry);
+  }
+  for (const n of sizes?.keys() ?? []) {
+    const target = byNumber.get(n);
+    if (!target) throw new Error(`sizes file: no item ${n}`);
+    if (target.item.fm.kind !== 'task') throw new Error(`sizes file: ${target.item.fm.id} is ${target.item.fm.kind}, not a task`);
   }
   if (!Number.isSafeInteger(nextNumber) || nextNumber <= Math.max(0, ...byNumber.keys())) throw new Error('nextNumber must be above every item number');
   const techDebt = sorted.find(({ item: { fm } }) => fm.parent === null && fm.state === 'open' &&
@@ -66,6 +89,11 @@ export function planMigration(files: readonly MigrationFile[], nextNumber: numbe
   for (const entry of sorted) {
     const { file, item: { fm } } = entry;
     const id = canonical(entry);
+    if (sizes && fm.kind === 'task' && fm.state === 'open' && fm.size === undefined) {
+      const size = sizes.get(numberOf(entry));
+      if (size) plan.sizes.push({ file, item: id, size });
+      else plan.unresolved.push({ file, item: id, field: 'size', reference: 'no author-assigned size' });
+    }
     if (fm.state === 'closed' && fm.closed === undefined) {
       const candidates = closingTimes.get(numberOf(entry)) ?? [];
       const candidate = ['receipt', 'journal', 'commit'].flatMap(source => candidates.filter(c => c.source === source && validTimestamp(c.time)).sort((a, b) => Date.parse(b.time) - Date.parse(a.time)))[0];

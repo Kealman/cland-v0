@@ -85,7 +85,7 @@ test('launched Claude sub-agents retain their parent role and launch item throug
   const fake = await fakeClaude(t);
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
-  const created = await ui.request({ type: 'task.create', title: 'Parent attribution' });
+  const created = await ui.request({ size: 'M', type: 'task.create', title: 'Parent attribution' });
   assert.equal(created.ok, true, created.error);
   const item = (created.value as { item: { id: string } }).item.id;
   const launched = await ui.request({ type: 'session.launch', name: 'impl', role: 'implementer', harness: 'claude-code', item, brief: 'spawn subagents' }, 30_000);

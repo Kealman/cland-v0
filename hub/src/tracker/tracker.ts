@@ -9,7 +9,7 @@
 import { parseDocument } from 'yaml';
 import { ToolForbidden } from '../roles/permissions.ts';
 import type { VerifyResult } from '../hub/suites.ts';
-import { planMigration, type MigrationPlan, type ClosingTimes } from './migrate.ts';
+import { planMigration, type MigrationPlan, type ClosingTimes, type SizeAssignments } from './migrate.ts';
 import { PlanError, parsePlan, planInBody, planOverride, planOverrideKey, withPlan, type QaPolicy, type EpicPlan } from './plan.ts';
 import { compareRank, effectiveRank, rankChanges } from './rank.ts';
 import type { MarkedCriterion } from '../protocol.ts';
@@ -38,6 +38,7 @@ import {
   serializeItem,
   STATES,
   statusRefusal,
+  sizeRefusal,
   rankable,
   VERDICT_KINDS,
   versionRefusal,
@@ -49,6 +50,7 @@ import {
   type Kind,
   type State,
   type Status,
+  type Size,
   type Verdict,
   type VerdictKind,
   type VerdictResult,
@@ -135,12 +137,14 @@ const verdictIdentity = (v: IndexedVerdict): string => JSON.stringify([v.author,
 export type CreateInput = {
   title: string;
   kind?: Kind;
+  size?: Size;
   version?: string;
   body?: string;
   labels?: string[];
   assignee?: string | null;
   parent?: string | null;
   blocked_by?: string[];
+  regression_of?: string;
   topic?: string | null;
   branch?: string | null;
 };
@@ -151,6 +155,7 @@ export type EditInput = {
   title?: string;
   body?: string;
   kind?: Kind;
+  size?: Size;
   state?: State;
   labels?: string[];
   add_labels?: string[];
@@ -162,6 +167,7 @@ export type LinkInput = {
   parent?: string | null;
   /** Blockers to add. */
   blocked_by?: string[];
+  regression_of?: string | null;
   /** Blockers to remove. */
   unblock?: string[];
   topic?: string | null;
@@ -1110,7 +1116,7 @@ export class Tracker {
 
   /** Offline applier: one storage admission, rename first, then patch only frontmatter.
    * The caller owns the project hub lock; no watcher or serving client runs here. */
-  migrate(actor: Actor, closingTimes: ClosingTimes = new Map()): Promise<MigrationPlan> {
+  migrate(actor: Actor, closingTimes: ClosingTimes = new Map(), sizes?: SizeAssignments): Promise<MigrationPlan> {
     return this.#serial(async resumed => {
       const entries: Array<{ file: string; item: Item; text: string }> = [];
       for (const file of (await this.#files.readdir(this.#dir)).filter(name => this.#fileNumber(name) !== null)) {
@@ -1118,7 +1124,7 @@ export class Tracker {
         entries.push({ file, text, item: parseItem(text, file, this.ladder) });
       }
       const max = Math.max(this.#index.highWater(), 0, ...entries.map(e => this.#fileNumber(e.file)!));
-      const plan = planMigration(entries, max + 1, this.ladder.containers, closingTimes);
+      const plan = planMigration(entries, max + 1, this.ladder.containers, closingTimes, sizes);
       const filesChange = Object.entries(plan).some(([key, changes]) => key !== 'unresolved' && changes.length);
       for (const entry of entries) {
         const { file, item } = entry;
@@ -1140,7 +1146,9 @@ export class Tracker {
         if (plan.labels.some(c => c.file === file)) set('labels', item.fm.labels.filter(label => label !== 'tech-debt'));
         for (const c of plan.moves.filter(c => c.file === file)) set('parent', c.to);
         const closed = plan.closed.find(c => c.file === file);
-        const closedOnly = !!closed && !changed;
+        const size = plan.sizes.find(c => c.file === file);
+        const fieldsOnly = !changed;
+        if (size) set('size', size.size);
         if (closed) set('closed', closed.time);
         const name = plan.renames.find(c => c.from === file)?.to ?? file;
         if (name !== file) await this.#files.rename(join(this.#dir, file), join(this.#dir, name));
@@ -1148,10 +1156,10 @@ export class Tracker {
         if (changed) {
           const newline = entry.text.startsWith('---\r\n') ? '\r\n' : '\n';
           const yaml = doc.toString().replace(/\n/g, newline);
-          // A closing-time-only backfill preserves even hand-formatted YAML and delimiters.
+          // A field-only backfill preserves even hand-formatted YAML and delimiters.
           const headerEnd = match[0].indexOf(match[1]!) + match[1]!.length;
-          text = closedOnly
-            ? entry.text.slice(0, headerEnd) + `${newline}closed: ${closed!.time}` + entry.text.slice(headerEnd)
+          text = fieldsOnly
+            ? entry.text.slice(0, headerEnd) + (size ? `${newline}size: ${size.size}` : '') + (closed ? `${newline}closed: ${closed.time}` : '') + entry.text.slice(headerEnd)
             : `---${newline}${yaml}---${newline}` + entry.text.slice(match[0].length);
           const tmp = join(this.#dir, `.${name}.${process.pid}.tmp`);
           try {
@@ -1253,6 +1261,7 @@ export class Tracker {
     item.fm.id = `${prefixOf(item.fm.kind)}-${idNumber(item.fm.id)}`;
     if (item.fm.parent) item.fm.parent = this.#referenceId(item.fm.parent) ?? item.fm.parent;
     item.fm.blocked_by = item.fm.blocked_by.map(id => this.#referenceId(id) ?? id);
+    if (item.fm.regression_of) item.fm.regression_of = this.#referenceId(item.fm.regression_of) ?? item.fm.regression_of;
     return item;
   }
 
@@ -1351,13 +1360,14 @@ export class Tracker {
     const indexed = this.#index.get(id);
     if (!indexed) throw new TrackerError(`no item ${id}`);
     if (source === 'file' && this.isPlanContainer(item.fm.kind)) this.#planCandidates.set(id, { item, source: 'hand' });
-    const { closed: _indexedClosed, ...indexedFields } = indexed;
+    const { closed: _indexedClosed, size: _indexedSize, regression_of: _indexedRegression, ...indexedFields } = indexed;
     const view: ItemView = {
       ...indexedFields,
       verdictBase: this.#fresh.base(),
       ...item.fm,
       parent: item.fm.parent ? this.#referenceId(item.fm.parent) ?? item.fm.parent : null,
       blocked_by: item.fm.blocked_by.map(id => this.#referenceId(id) ?? id),
+      ...(item.fm.regression_of !== undefined ? { regression_of: this.#referenceId(item.fm.regression_of) ?? item.fm.regression_of } : {}),
       rank: effectiveRank(item.fm),
       file,
       path: join(TASKS_REL, file),
@@ -1908,6 +1918,11 @@ export class Tracker {
       const refusal = versionRefusal(kind, input.version, this.ladder);
       if (refusal) throw new TrackerError(refusal);
     }
+    if (input.size !== undefined) {
+      const refusal = sizeRefusal(kind, input.size);
+      if (refusal) throw new TrackerError(refusal);
+    }
+    const regression = input.regression_of === undefined ? undefined : this.#regression(kind, input.regression_of, null);
     checkText(input.body ?? '', 'body');
     const parent = input.parent ? this.#ref(input.parent, null, 'parent') : null;
     this.#checkParent(kind, parent);
@@ -1927,6 +1942,8 @@ export class Tracker {
           ...(input.version !== undefined ? { version: input.version } : {}),
           title,
           state: 'open',
+          ...(input.size !== undefined ? { size: input.size } : {}),
+          ...(regression !== undefined ? { regression_of: regression } : {}),
           labels: uniq(input.labels ?? []),
           assignee: input.assignee ?? null,
           parent,
@@ -2201,6 +2218,13 @@ export class Tracker {
             fm.version = input.version;
           }
         }
+        if (input.size !== undefined) {
+          const refusal = sizeRefusal(fm.kind, input.size);
+          if (refusal) throw new TrackerError(refusal);
+          fm.size = input.size;
+        }
+        // Kind conversion drops task-only metadata, as it already does workflow status.
+        if (fm.kind !== 'task') { delete fm.size; delete fm.regression_of; }
         if (!rankable(fm.kind, this.ladder)) delete fm.rank;
         if (fm.kind !== 'task') delete fm.status;
         else this.#normalizeStatus(item);
@@ -2417,6 +2441,17 @@ export class Tracker {
     this.#changed(id);
   }
 
+  #regression(kind: Kind, raw: unknown, self: string | null): string {
+    if (kind !== 'task') throw new TrackerError(`regression_of belongs only to a task, not ${kind}`);
+    if (typeof raw !== 'string') throw new TrackerError('regression_of must be an item reference');
+    const target = this.#index.get(this.#require(raw).id)!;
+    if (self && idNumber(target.id) === idNumber(self)) throw new TrackerError('regression_of cannot name the item itself');
+    if (target.kind !== 'task') throw new TrackerError(`regression_of target ${target.id} must be a task`);
+    if (target.state !== 'closed') throw new TrackerError(`regression_of target ${target.id} must be closed`);
+    if (this.#index.mergeReceipt(target.id)?.base !== 'dev') throw new TrackerError(`regression_of target ${target.id} needs a landing receipt on dev`);
+    return target.id;
+  }
+
   link(actor: Actor, rawId: string, input: LinkInput, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<ItemView> {
     return this.#serial(async resumed => {
       const { id } = this.#require(rawId);
@@ -2431,6 +2466,11 @@ export class Tracker {
         fm.blocked_by = uniq([...fm.blocked_by, ...add]).filter((b) => !remove.includes(b));
         if (topic !== undefined) fm.topic = topic;
         if (input.branch !== undefined) fm.branch = input.branch || null;
+        if (input.regression_of !== undefined) {
+          if (fm.kind !== 'task') throw new TrackerError(`regression_of belongs only to a task, not ${fm.kind}`);
+          if (input.regression_of === null || input.regression_of === 'none') delete fm.regression_of;
+          else fm.regression_of = this.#regression(fm.kind, input.regression_of, id);
+        }
       }, resumed, undefined, () => { authorize(); this.#checkTopic(id, topic ?? null); });
       return resumed(() => {
         if (topic !== undefined) this.#topicBinding?.bound(id, topic);

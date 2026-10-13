@@ -13,7 +13,7 @@ test('configured containers work through CLI, MCP and the hub and enforce adjace
   await writeFile(join(root, '.cland/config.toml'), '[tracker]\nlevels = ["release", "epic", "feature"]\n');
   await startDaemon(t, root);
   for (const [title, kind, parent] of [['Release', 'release', undefined], ['Epic', 'epic', 'T-1'], ['Feature', 'feature', 'T-2']]) {
-    const made = await cland(root, 'task', 'create', title!, '--kind', kind!, ...(parent ? ['--parent', parent] : []), '--json');
+    const made = await cland(root, 'task', 'create', ...((kind!) === 'task' ? ['--size', 'M'] : []), title!, '--kind', kind!, ...(parent ? ['--parent', parent] : []), '--json');
     assert.equal(made.code, 0, made.stderr);
   }
   const ui = await connectUi(t, await readDiscovery(root));
@@ -33,7 +33,7 @@ test('configured containers work through CLI, MCP and the hub and enforce adjace
   const badLink = await ui.request({ type: 'task.link', item: 'T-3', parent: 'T-1' });
   assert.equal(badLink.ok, false);
   assert.match(badLink.error ?? '', /parenting rule/);
-  const leaf = await ui.request({ type: 'task.create', title: 'Feature work', parent: 'T-3' });
+  const leaf = await ui.request({ size: 'M', type: 'task.create', title: 'Feature work', parent: 'T-3' });
   assert.equal(leaf.ok, true);
   const child = (leaf.value as { item: { id: string } }).item.id;
   const badClose = await ui.request({ type: 'task.close', item: 'T-3' });
@@ -50,7 +50,7 @@ test('queued close sees the child committed while it waited for the tracker writ
   const ui = await connectUi(t, await readDiscovery(root));
   assert.equal((await ui.request({ type: 'task.create', title: 'Container', kind: 'epic' })).ok, true);
   await gate.arm();
-  const child = ui.request({ type: 'task.create', title: 'Queued child', parent: 'T-1' });
+  const child = ui.request({ size: 'M', type: 'task.create', title: 'Queued child', parent: 'T-1' });
   await gate.entered();
   const close = ui.request({ type: 'task.close', item: 'T-1' });
   // The following frame's answer confirms close was dispatched while the queue was held.
@@ -68,7 +68,7 @@ test('close rechecks a child reopened during the parent temporary write before r
   await startDaemon(t, root, gate.env);
   const ui = await connectUi(t, await readDiscovery(root));
   for (const frame of [{ title: 'Container', kind: 'epic' }, { title: 'Child', parent: 'T-1' }]) {
-    assert.equal((await ui.request({ type: 'task.create', ...frame })).ok, true);
+    assert.equal((await ui.request({ ...((!('kind' in frame) || frame.kind === 'task') ? { size: 'M' } : {}), type: 'task.create', ...frame })).ok, true);
   }
   assert.equal((await ui.request({ type: 'task.close', item: 'T-2' })).ok, true);
   const dir = join(root, '.cland/tasks');
@@ -97,7 +97,7 @@ test('close and every kind-change path discover an unindexed disk reparent', asy
     const ui = await connectUi(t, await readDiscovery(root));
     const issue = { number: 1, url: 'https://example.com/1', title: 'Container', body: '', labels: ['feature'], state: 'open', assignee: null, parent: null, blocked_by: [], comments: [], created: '2026-01-01T00:00:00.000Z' };
     assert.equal((await ui.request({ type: 'task.import', repo: 'test/project', issues: [issue] })).ok, true);
-    assert.equal((await ui.request({ type: 'task.create', title: 'Unparented child' })).ok, true);
+    assert.equal((await ui.request({ size: 'M', type: 'task.create', title: 'Unparented child' })).ok, true);
     const dir = join(root, '.cland/tasks');
     const parent = join(dir, 'F-1-container.md');
     const child = join(dir, 'T-2-unparented-child.md');
@@ -137,7 +137,7 @@ test('re-import cannot close an existing configured container over open children
   const ui = await connectUi(t, await readDiscovery(root));
   const issue = { number: 1, url: 'https://example.com/1', title: 'Imported feature', body: '', labels: ['feature'], state: 'open', assignee: null, parent: null, blocked_by: [], comments: [], created: '2026-01-01T00:00:00.000Z' };
   assert.equal((await ui.request({ type: 'task.import', repo: 'test/project', issues: [issue] })).ok, true);
-  assert.equal((await ui.request({ type: 'task.create', title: 'Open work', parent: 'T-1' })).ok, true);
+  assert.equal((await ui.request({ size: 'M', type: 'task.create', title: 'Open work', parent: 'T-1' })).ok, true);
   const file = join(root, '.cland/tasks/F-1-imported-feature.md');
   const before = await readFile(file, 'utf8');
   const close = (labels = issue.labels) => ui.request({ type: 'task.import', repo: 'test/project', issues: [{ ...issue, labels, state: 'closed' }] });
@@ -181,7 +181,7 @@ test('renamed top-level metadata survives restart; an empty ladder refuses forme
     assert.match(JSON.stringify(history.value), /I-1-plan\.md.*unknown kind/);
     return true;
   });
-  for (const kind of ['task', 'question', 'spec', 'map']) assert.equal((await cland(root, 'task', 'create', kind, '--kind', kind)).code, 0);
+  for (const kind of ['task', 'question', 'spec', 'map']) assert.equal((await cland(root, 'task', 'create', ...((kind) === 'task' ? ['--size', 'M'] : []), kind, '--kind', kind)).code, 0);
   const bad = await cland(root, 'task', 'create', 'Old container', '--kind', 'epic');
   assert.equal(bad.code, 1);
   assert.match(bad.stderr, /unknown kind/);
@@ -241,7 +241,7 @@ test('kind changes with children are refused by edit and reported for hand edits
   await startDaemon(t, root);
   const ui = await connectUi(t, await readDiscovery(root));
   assert.equal((await ui.request({ type: 'task.create', title: 'Container', kind: 'feature' })).ok, true);
-  assert.equal((await ui.request({ type: 'task.create', title: 'Child', parent: 'T-1' })).ok, true);
+  assert.equal((await ui.request({ size: 'M', type: 'task.create', title: 'Child', parent: 'T-1' })).ok, true);
   assert.equal((await ui.request({ type: 'task.close', item: 'T-2' })).ok, true);
   const file = join(root, '.cland/tasks/F-1-container.md');
   const before = await readFile(file, 'utf8');
@@ -264,7 +264,7 @@ test('a malformed indexed child stays visible and prevents close with its file n
   await startDaemon(t, root);
   const ui = await connectUi(t, await readDiscovery(root));
   for (const frame of [{ title: 'Epic', kind: 'epic' }, { title: 'Child', parent: 'T-1' }]) {
-    assert.equal((await ui.request({ type: 'task.create', ...frame })).ok, true);
+    assert.equal((await ui.request({ ...((!('kind' in frame) || frame.kind === 'task') ? { size: 'M' } : {}), type: 'task.create', ...frame })).ok, true);
   }
   const parent = join(root, '.cland/tasks/E-1-epic.md');
   const child = join(root, '.cland/tasks/T-2-child.md');
@@ -295,7 +295,7 @@ test('close validates a previously closed child file without waiting for the wat
   await startDaemon(t, root);
   const ui = await connectUi(t, await readDiscovery(root));
   for (const frame of [{ title: 'Epic', kind: 'epic' }, { title: 'Child', parent: 'T-1' }]) {
-    assert.equal((await ui.request({ type: 'task.create', ...frame })).ok, true);
+    assert.equal((await ui.request({ ...((!('kind' in frame) || frame.kind === 'task') ? { size: 'M' } : {}), type: 'task.create', ...frame })).ok, true);
   }
   assert.equal((await ui.request({ type: 'task.close', item: 'T-2' })).ok, true);
   const file = join(root, '.cland/tasks/T-2-child.md');
@@ -320,7 +320,7 @@ test('containers refuse close and closed-state edits naming open children, then 
     { title: 'Epic', kind: 'epic', parent: 'R-1' },
     { title: 'Parser', parent: 'E-2' },
     { title: 'Schema', kind: 'question', parent: 'E-2' },
-  ]) assert.equal((await ui.request({ type: 'task.create', ...frame })).ok, true);
+  ]) assert.equal((await ui.request({ ...((!('kind' in frame) || frame.kind === 'task') ? { size: 'M' } : {}), type: 'task.create', ...frame })).ok, true);
   const epicFile = join(root, '.cland/tasks/E-2-epic.md');
   const before = await readFile(epicFile, 'utf8');
   const bad = await cland(root, 'task', 'close', 'E-2', '--comment', 'Must not persist');
@@ -361,13 +361,13 @@ test('configured containers refuse status while task closes and kind changes ret
   const containerFile = 'F-1-container.md';
   const text = await readFile(join(root, '.cland/tasks', containerFile), 'utf8');
   assert.throws(() => parseItem(text.replace('state: open', 'state: open\nstatus: planned'), containerFile, ['feature']), /status belongs only to a task/);
-  assert.equal((await ui.request({ type: 'task.create', title: 'Child', parent: 'T-1' })).ok, true);
+  assert.equal((await ui.request({ size: 'M', type: 'task.create', title: 'Child', parent: 'T-1' })).ok, true);
   assert.equal((await ui.request({ type: 'task.close', item: 'T-1' })).ok, false);
   assert.equal((await ui.request({ type: 'task.close', item: 'T-2' })).ok, true);
   assert.deepEqual([(await read('T-2-child.md')).state, (await read('T-2-child.md')).status], ['closed', 'done']);
   assert.equal((await ui.request({ type: 'task.close', item: 'T-1' })).ok, true);
   assert.equal((await read(containerFile)).status, undefined);
-  assert.equal((await ui.request({ type: 'task.create', title: 'Convertible' })).ok, true);
+  assert.equal((await ui.request({ size: 'M', type: 'task.create', title: 'Convertible' })).ok, true);
   assert.equal((await ui.request({ type: 'task.edit', item: 'T-3', status: 'review' })).ok, true);
   assert.equal((await ui.request({ type: 'task.edit', item: 'T-3', kind: 'feature' })).ok, true);
   assert.equal((await read('F-3-convertible.md')).status, undefined);
@@ -393,7 +393,7 @@ test('category roots work through CLI, spoke and frames without release metadata
   assert.equal(docs.layer, 'background');
   const stored = await readFile(join(root, docs.path), 'utf8');
   assert.doesNotMatch(stored, /^rank:|^status:|^version:/m);
-  const work = await cland(root, 'task', 'create', 'Fix docs', '--parent', docs.id, '--json');
+  const work = await cland(root, 'task', 'create', '--size', 'M', 'Fix docs', '--parent', docs.id, '--json');
   assert.equal(work.code, 0, work.stderr);
   assert.equal(JSON.parse(work.stdout).item.parent, docs.id);
   assert.equal(JSON.parse(work.stdout).item.layer, 'background');
@@ -432,7 +432,7 @@ test('category roots work through CLI, spoke and frames without release metadata
   assert.equal((await ui.request({ type: 'task.link', item: epic.item.id, parent: 'R-4' })).ok, true);
   assert.equal((await ui.request({ type: 'task.link', item: epic.item.id, parent: docs.id })).ok, true);
   // A kind edit must validate both its parent and its existing children.
-  assert.equal((await ui.request({ type: 'task.create', title: 'Convertible', parent: docs.id })).ok, true);
+  assert.equal((await ui.request({ size: 'M', type: 'task.create', title: 'Convertible', parent: docs.id })).ok, true);
   assert.equal((await ui.request({ type: 'task.edit', item: 'T-5', kind: 'epic' })).ok, true);
   const badKind = await ui.request({ type: 'task.edit', item: 'E-5', kind: 'category' });
   assert.equal(badKind.ok, false);

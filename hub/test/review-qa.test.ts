@@ -52,7 +52,7 @@ async function setup(t: TestContext, verdicts: Partial<Record<'review' | 'qa', S
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
-  ok(await cland(root, 'task', 'create', 'Review and QA smoke: the cland task CLI', '--body', 'Check that `cland task list --state open` lists this item.'));
+  ok(await cland(root, 'task', 'create', '--size', 'M', 'Review and QA smoke: the cland task CLI', '--body', 'Check that `cland task list --state open` lists this item.'));
   const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', sessionId: 'sess-coord', role: 'coordinator' });
   t.after(() => coord.close());
   await coord.waitForPresence(['coord']);

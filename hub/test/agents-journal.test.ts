@@ -130,7 +130,7 @@ test('lifecycle events land in Agents as notices with kinds — role assignment 
 
   // a role that may claim any item under #30's permission table
   await ok(ui, { type: 'role.set', session: 'alpha', role: 'coordinator' });
-  assert.equal((await clandWithEnv(root, fake.env, 'task', 'create', 'Journal the hub')).code, 0);
+  assert.equal((await clandWithEnv(root, fake.env, 'task', 'create', '--size', 'M', 'Journal the hub')).code, 0);
   assert.equal((await alpha.call<{ ok: boolean }>('task.claim', { id: 'T-1' })).ok, true);
   assert.equal((await alpha.call<{ ok: boolean }>('task.claim', { id: 'T-1', release: true })).ok, true);
   await ok(ui, { type: 'role.clear', session: 'alpha' });
@@ -314,7 +314,7 @@ test('a lifecycle event journalled but not yet recorded in Agents when the hub d
   const root = await tempProject(t);
   const first = await startDaemon(t, root);
   let ui = await connectUi(t, first.discovery);
-  assert.equal((await cland(root, 'task', 'create', 'Recorded')).code, 0);
+  assert.equal((await cland(root, 'task', 'create', '--size', 'M', 'Recorded')).code, 0);
   assert.equal((await cland(root, 'task', 'claim', 'T-1', '--as', 'alpha')).code, 0);
   const recorded = await eventually('the claim in Agents', async () => (await history(ui, 'agents')).find((m) => m.kind === 'claim'));
   ui.close();
@@ -341,7 +341,7 @@ test('lifecycle notices retention removed are not brought back by the journal: n
   const root = await tempProject(t);
   const first = await startDaemon(t, root);
   const ui = await connectUi(t, first.discovery);
-  assert.equal((await cland(root, 'task', 'create', 'Recorded')).code, 0);
+  assert.equal((await cland(root, 'task', 'create', '--size', 'M', 'Recorded')).code, 0);
   assert.equal((await cland(root, 'task', 'claim', 'T-1', '--as', 'alpha')).code, 0);
   await eventually('the claim in Agents', async () => (await history(ui, 'agents')).find((m) => m.kind === 'claim'));
   ui.close();

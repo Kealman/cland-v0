@@ -21,7 +21,7 @@ test('Codex relaunch injects an early accepted clause and frees the queued QA re
     const { processes } = (await ui.request({ type: 'session.list' })).value as { processes: HarnessProcessView[] };
     return processes.find(p => p.name === 'qa-d')?.state === 'idle' || undefined;
   });
-  const { item } = await coord.call<{ item: { id: string } }>('task.create', { title: 'QA after early relaunch hello' });
+  const { item } = await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'QA after early relaunch hello' });
   await writeFile(join(fake.home, 'hold-thread-resume'), 'hold resume until the spoke accepts its clause');
   const mark = ui.frames.length;
   const resuming = ui.request({ type: 'session.resume', session: 'qa-d', relaunch: true }, 30_000);
@@ -97,8 +97,8 @@ for (const relaunch of [false, true]) {
     const history = async () => ((await ui.request({ type: 'topic.history', topic: 'agents' })).value as { messages: Array<Message & { stage?: string }> }).messages;
     assert.equal((await history()).find(m => m.text === progress)?.stage, 'queued');
     assert.equal((await fake.log(processRow.harnessId!)).includes(progress), false);
-    const { item: occupied } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Current QA hold' });
-    const { item } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Waiting QA with progress' });
+    const { item: occupied } = await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Current QA hold' });
+    const { item } = await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Waiting QA with progress' });
     assert.equal((await ui.request({ type: 'task.hold', item: occupied.id, as: { name: 'qa-d' } })).ok, true);
     const text = `qa request ${item.id}\nCommitted QA brief`;
     const queued = await coord.call<{ outcomes: SendOutcome[] }>('send', { to: ['qa'], text });
@@ -128,7 +128,7 @@ test('a free bare Reviewer can receive its first role request after accepting it
   t.after(() => rev.close());
   await rev.waitForPresence(['coord', 'rev-d']);
   await rev.waitForEvent(e => e.params.meta?.kind === 'role');
-  const { item } = await coord.call<{ item: { id: string } }>('task.create', { title: 'First bare review' });
+  const { item } = await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'First bare review' });
   const text = `review request ${item.id}\nFirst build`;
   const result = await coord.call<{ outcomes: SendOutcome[] }>('send', { to: ['reviewer'], text });
   assert.equal(result.outcomes[0]?.outcome, 'delivered');
@@ -159,7 +159,7 @@ test('three live Reviewers receive one request, and a repeat returns to the same
     const { processes } = (await ui.request({ type: 'session.list' })).value as { processes: HarnessProcessView[] };
     return processes.filter(p => p.role === 'reviewer' && p.state === 'idle').length === 3 || undefined;
   });
-  const { item } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Single verifier', assignee: 'impl' });
+  const { item } = await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Single verifier', assignee: 'impl' });
   await impl.call('task.claim', { id: item.id });
   const { topic } = await impl.call<{ topic: { id: string } }>('topic.create', { title: 'Single verifier', item: item.id });
   const send = (text: string) => impl.call<{ ok: boolean; outcomes: SendOutcome[] }>('send', { to: ['reviewer'], topic: topic.id, text });
@@ -180,7 +180,7 @@ test('three live Reviewers receive one request, and a repeat returns to the same
   const ordinary = 'Reviewer pool update';
   await send(ordinary);
   assert.deepEqual((await history()).find(m => m.text === ordinary)?.to, ['rev-1', 'rev-2', 'rev-3']);
-  const { item: other } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Other review' });
+  const { item: other } = await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Other review' });
   await reviewers[1]!.call('task.hold', { id: other.id });
   assert.equal((await ui.request({ type: 'session.stop', session: 'rev-1' })).ok, true);
   await eventually('fallback reviewer idle', async () => {
@@ -191,7 +191,7 @@ test('three live Reviewers receive one request, and a repeat returns to the same
   assert.equal((await send(fallback)).outcomes[0]?.resolvedTo, 'rev-3');
   assert.deepEqual((await history()).find(m => m.text === fallback)?.to, ['rev-3']);
   await reviewers[2]!.call('task.hold', { id: item.id });
-  const { item: waiting } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Waiting review' });
+  const { item: waiting } = await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Waiting review' });
   const unavailable = await coord.call<{ outcomes: SendOutcome[] }>('send', { to: ['reviewer'], text: `review request ${waiting.id}\nAll holders occupied` });
   assert.equal(unavailable.outcomes[0]?.outcome, 'queued');
   assert.match(unavailable.outcomes[0]!.reason!, /next free live verifier/);
@@ -211,7 +211,7 @@ test('queued QA requests survive sender rename and hub restart, and closed items
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
   t.after(() => coord.close());
   await coord.waitForPresence(['coord']);
-  const { item } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Queued QA' });
+  const { item } = await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Queued QA' });
   const { topic } = await coord.call<{ topic: { id: string } }>('topic.create', { title: 'Queued QA', item: item.id });
   const text = `qa request ${item.id}\nCommitted QA brief`;
   const result = await coord.call<{ outcomes: SendOutcome[] }>('send', { to: ['@qa'], text, topic: topic.id });
@@ -237,7 +237,7 @@ test('queued QA requests survive sender rename and hub restart, and closed items
   assert.deepEqual(history.messages.find(m => m.text === text)?.to, ['qa-d']);
   assert.equal(qa.events.filter(e => e.params.content === text).length, 1);
   await qa.call('task.hold', { id: item.id });
-  const { item: cancelled } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Cancelled QA' });
+  const { item: cancelled } = await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Cancelled QA' });
   const cancelledText = `qa request ${cancelled.id}\nBuild closed before selection`;
   assert.equal((await coord.call<{ outcomes: SendOutcome[] }>('send', { to: ['qa'], text: cancelledText })).outcomes[0]?.outcome, 'queued');
   assert.equal((await coord.call<{ ok: boolean }>('task.close', { id: cancelled.id })).ok, true);
@@ -270,7 +270,7 @@ test('QA affinity survives copied and reordered verdict headers, including stage
     const { processes } = (await ui.request({ type: 'session.list' })).value as { processes: HarnessProcessView[] };
     return processes.filter(p => p.role === 'qa' && p.state === 'idle').length === 2 || undefined;
   });
-  const { item } = await coord.call<{ item: { id: string; path: string } }>('task.create', { title: 'QA affinity' });
+  const { item } = await coord.call<{ item: { id: string; path: string } }>('task.create', { size: 'M', title: 'QA affinity' });
   await verifiers[0]!.call('task.comment', { id: item.id, verdict: 'qa', result: 'not clear', run: 'older-qa' });
   await verifiers[1]!.call('task.comment', { id: item.id, verdict: 'qa', result: 'not clear', run: 'previous-qa' });
   const file = join(root, item.path);

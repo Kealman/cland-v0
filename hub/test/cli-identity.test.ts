@@ -61,7 +61,7 @@ test('cland topic answer from a session\'s shell is refused with the typed error
   assert.match(nameOnly.stderr, /forbidden: topic\.answer \(only the human may do this; this call is ghost's/);
   const [ghost] = (await audits(t, root, 'topic.answer')).slice(-1);
   assert.deepEqual([ghost?.session, ghost?.role, ghost?.outcome], ['ghost', null, 'forbidden']);
-  const ghostTask = await clandWithEnv(root, { CLAND_SESSION_NAME: 'ghost' }, 'task', 'create', 'From nobody');
+  const ghostTask = await clandWithEnv(root, { CLAND_SESSION_NAME: 'ghost' }, 'task', 'create', '--size', 'M', 'From nobody');
   assert.notEqual(ghostTask.code, 0);
   assert.match(ghostTask.stderr, /forbidden: task\.create \(a session with no role has no tools\)/);
   assert.match((await cland(root, 'inbox')).stdout, new RegExp(`^ask ${asked.ask} `, 'm'), 'the ask is still open');
@@ -121,8 +121,8 @@ test('cland task view and task comment from a session\'s shell work as the sessi
   await startDaemon(t, root);
   await session(t, root, 'impl-1', 'implementer', 'sess-impl');
   const impl = shellOf('impl-1', 'sess-impl');
-  assert.equal((await cland(root, 'task', 'create', 'Mine', '--assignee', 'impl-1')).code, 0);
-  assert.equal((await cland(root, 'task', 'create', 'Not mine')).code, 0);
+  assert.equal((await cland(root, 'task', 'create', '--size', 'M', 'Mine', '--assignee', 'impl-1')).code, 0);
+  assert.equal((await cland(root, 'task', 'create', '--size', 'M', 'Not mine')).code, 0);
 
   const viewed = await clandWithEnv(root, impl, 'task', 'view', 'T-1', '--json');
   assert.equal(viewed.code, 0, viewed.stderr);

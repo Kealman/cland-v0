@@ -261,7 +261,7 @@ test("a topic bound to an item: the item's topic field is set, a second topic fo
   const { discovery } = await startDaemon(t, root);
   const ui = await connectUi(t, discovery);
   await ok(ui, { type: 'subscribe' });
-  const item = (await ok<{ item: { id: string } }>(ui, { type: 'task.create', title: 'Hub daemon and spoke hello' })).item.id;
+  const item = (await ok<{ item: { id: string } }>(ui, { size: 'M', type: 'task.create', title: 'Hub daemon and spoke hello' })).item.id;
   assert.equal(item, 'T-1');
 
   // an agent opens the task's topic
@@ -308,7 +308,7 @@ test('task.link and task.create with a topic go through the binding: one topic p
   const { discovery } = await startDaemon(t, root);
   const ui = await connectUi(t, discovery);
   await ok(ui, { type: 'subscribe' });
-  for (const title of ['First', 'Second']) await ok(ui, { type: 'task.create', title });
+  for (const title of ['First', 'Second']) await ok(ui, { size: 'M', type: 'task.create', title });
   const a = await create(ui, 'Topic A');
   const b = await create(ui, 'Topic B');
   const view = async (item: string) => (await ok<{ item: { topic: string | null; state: string } }>(ui, { type: 'task.view', item })).item;
@@ -323,7 +323,7 @@ test('task.link and task.create with a topic go through the binding: one topic p
   assert.equal(second.ok, false);
   assert.match(String(second.error), new RegExp(`${a.id} is already bound to T-1`));
   assert.equal((await view('T-2')).topic, null);
-  const made = await ui.request({ type: 'task.create', title: 'Third', topic: a.id });
+  const made = await ui.request({ size: 'M', type: 'task.create', title: 'Third', topic: a.id });
   assert.equal(made.ok, false);
   assert.match(String(made.error), new RegExp(`${a.id} is already bound to T-1`));
   assert.equal((await ok<{ items: unknown[] }>(ui, { type: 'task.list' })).items.length, 2, 'no item was created');
@@ -339,7 +339,7 @@ test('task.link and task.create with a topic go through the binding: one topic p
   assert.match(String((await ui.request({ type: 'task.link', item: 'T-2', topic: 'general' })).error), /standing/);
 
   // create binds too
-  const third = (await ok<{ item: { id: string; topic: string | null } }>(ui, { type: 'task.create', title: 'Third', topic: b.id })).item;
+  const third = (await ok<{ item: { id: string; topic: string | null } }>(ui, { size: 'M', type: 'task.create', title: 'Third', topic: b.id })).item;
   assert.equal(third.topic, b.id);
   assert.equal((await topicOf(ui, b.id)).item, third.id);
 
@@ -360,7 +360,7 @@ test('an item closed while the hub was stopped closes its topic when the hub sta
   const root = await tempProject(t);
   const first = await startDaemon(t, root);
   let ui = await connectUi(t, first.discovery);
-  await ok(ui, { type: 'task.create', title: 'Close me offline' });
+  await ok(ui, { size: 'M', type: 'task.create', title: 'Close me offline' });
   const topic = await create(ui, 'About T-1', 'T-1');
   assert.equal(topic.item, 'T-1');
   ui.close();

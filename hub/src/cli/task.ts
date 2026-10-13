@@ -11,18 +11,18 @@ import { planYaml, type EpicPlan } from '../tracker/plan.ts';
 import { IMPORT_USAGE, runImportGithub } from './task-import.ts';
 import type { MigrationPlan } from '../tracker/migrate.ts';
 
-export const TASK_USAGE = `  task create <title> [--kind k] [--version semver] [--body t | --body-file f] [--label l]… [--assignee a]
+export const TASK_USAGE = `  task create <title> [--kind k] [--size XS|S|M|L|XL] [--regression-of <id>] [--version semver] [--body t | --body-file f] [--label l]… [--assignee a]
                   [--parent <id>] [--blocked-by <id>]… [--topic t] [--branch b]
   task view <id> (any kind prefix in either case, or a bare number)
-  task migrate [--dry-run] [--json] (offline prefixes, references, titles, categories and retired labels)
+  task migrate [--dry-run] [--sizes <JSON-file>] [--json] (offline prefixes, references, titles, categories and retired labels)
   task plan migrate (retire qa-required labels, report policy fallbacks)
   task plan <set|show|approve> <epic-id> [--file plan.yaml] [--reason text]
   task list [--under <id>] [--state open|closed] [--label l]… [--kind k] [--assignee a] [--verdict review=clear]
   task comment <id> <text> [--verdict review|qa --result clear|"not clear" --run <id> [--commit <sha>] [--stage <name>] [--verified C1,C3|all | --failed "C1=note"]…]
-  task edit <id> [--version semver|none] [--title t] [--body t | --body-file f] [--kind k] [--state s] [--status s] [--label l]…
+  task edit <id> [--version semver|none] [--title t] [--body t | --body-file f] [--kind k] [--size XS|S|M|L|XL] [--state s] [--status s] [--label l]…
                   [--add-label l]… [--remove-label l]… [--assignee a|none]
   task close <id> [--comment t] [--override reason (human shell only)]
-  task link <id> [--parent <id>|none] [--blocked-by <id>]… [--unblock <id>]… [--topic t|none] [--branch b|none]
+  task link <id> [--regression-of <id>|none] [--parent <id>|none] [--blocked-by <id>]… [--unblock <id>]… [--topic t|none] [--branch b|none]
   task hold <id> [--release] (Reviewer or QA verification beside the claim)
   task criterion <id> <done|verify|fail|edit|remove> <C-n> [--run r] [--note t] [--text t]
   task criterion <id> add <text>
@@ -46,15 +46,15 @@ const COMMON = {
 } as const satisfies ParseArgsConfig['options'];
 
 const OPTIONS = {
-  migrate: { ...COMMON, 'dry-run': { type: 'boolean' } },
-  create: { ...COMMON, kind: { type: 'string' }, version: { type: 'string' }, body: { type: 'string' }, 'body-file': { type: 'string' }, label: { type: 'string', multiple: true }, assignee: { type: 'string' }, parent: { type: 'string' }, 'blocked-by': { type: 'string', multiple: true }, topic: { type: 'string' }, branch: { type: 'string' } },
+  migrate: { ...COMMON, sizes: { type: 'string' }, 'dry-run': { type: 'boolean' } },
+  create: { ...COMMON, kind: { type: 'string' }, size: { type: 'string' }, 'regression-of': { type: 'string' }, version: { type: 'string' }, body: { type: 'string' }, 'body-file': { type: 'string' }, label: { type: 'string', multiple: true }, assignee: { type: 'string' }, parent: { type: 'string' }, 'blocked-by': { type: 'string', multiple: true }, topic: { type: 'string' }, branch: { type: 'string' } },
   view: { ...COMMON },
   plan: { ...COMMON, file: { type: 'string' }, reason: { type: 'string' } },
   list: { ...COMMON, under: { type: 'string' }, state: { type: 'string' }, label: { type: 'string', multiple: true }, kind: { type: 'string' }, assignee: { type: 'string' }, verdict: { type: 'string' } },
   comment: { ...COMMON, verdict: { type: 'string' }, result: { type: 'string' }, run: { type: 'string' }, commit: { type: 'string' }, stage: { type: 'string' }, verified: { type: 'string' }, failed: { type: 'string', multiple: true }, 'body-file': { type: 'string' } },
-  edit: { ...COMMON, version: { type: 'string' }, title: { type: 'string' }, body: { type: 'string' }, 'body-file': { type: 'string' }, kind: { type: 'string' }, state: { type: 'string' }, status: { type: 'string' }, label: { type: 'string', multiple: true }, 'add-label': { type: 'string', multiple: true }, 'remove-label': { type: 'string', multiple: true }, assignee: { type: 'string' } },
+  edit: { ...COMMON, size: { type: 'string' }, version: { type: 'string' }, title: { type: 'string' }, body: { type: 'string' }, 'body-file': { type: 'string' }, kind: { type: 'string' }, state: { type: 'string' }, status: { type: 'string' }, label: { type: 'string', multiple: true }, 'add-label': { type: 'string', multiple: true }, 'remove-label': { type: 'string', multiple: true }, assignee: { type: 'string' } },
   close: { ...COMMON, comment: { type: 'string' }, override: { type: 'string' } },
-  link: { ...COMMON, parent: { type: 'string' }, 'blocked-by': { type: 'string', multiple: true }, unblock: { type: 'string', multiple: true }, topic: { type: 'string' }, branch: { type: 'string' } },
+  link: { ...COMMON, 'regression-of': { type: 'string' }, parent: { type: 'string' }, 'blocked-by': { type: 'string', multiple: true }, unblock: { type: 'string', multiple: true }, topic: { type: 'string' }, branch: { type: 'string' } },
   hold: { ...COMMON, release: { type: 'boolean' } },
   criterion: { ...COMMON, run: { type: 'string' }, note: { type: 'string' }, text: { type: 'string' } },
   rank: { ...COMMON, top: { type: 'boolean' }, before: { type: 'string' }, after: { type: 'string' } },
@@ -94,12 +94,14 @@ function frameOf(sub: Sub, positionals: string[], v: Values): { type: string } &
         type: 'task.create',
         title,
         kind: v.kind,
+        size: v.size,
         version: v.version,
         body: readBody(v),
         labels: v.label,
         assignee: v.assignee,
         parent: v.parent,
         blocked_by: v['blocked-by'],
+        regression_of: clearable(v['regression-of'] as string | undefined),
         topic: v.topic,
         branch: v.branch,
       }) as { type: string };
@@ -143,6 +145,7 @@ function frameOf(sub: Sub, positionals: string[], v: Values): { type: string } &
         title: v.title,
         body: readBody(v),
         kind: v.kind,
+        size: v.size,
         state: v.state,
         labels: v.label,
         add_labels: v['add-label'],
@@ -157,6 +160,7 @@ function frameOf(sub: Sub, positionals: string[], v: Values): { type: string } &
         item: needId(),
         parent: clearable(v.parent as string | undefined),
         blocked_by: v['blocked-by'],
+        regression_of: clearable(v['regression-of'] as string | undefined),
         unblock: v.unblock,
         topic: clearable(v.topic as string | undefined),
         branch: clearable(v.branch as string | undefined),
@@ -195,6 +199,8 @@ function viewText(i: ItemView): string {
     `  assignee  ${i.assignee ?? '-'}`,
     `  claim     ${claimText(i.claim)}`,
     `  parent    ${i.parent ?? '-'}`,
+    `  size      ${i.size ?? '-'}`,
+    `  regression_of ${i.regression_of ?? '-'}`,
     `  blocked   ${i.blocked_by.length ? i.blocked_by.join(', ') : '-'}`,
     `  topic     ${i.topic ?? '-'}`,
     `  branch    ${i.branch ?? '-'}`,
@@ -251,6 +257,7 @@ function migrationText(plan: MigrationPlan): string {
   const nothing = !Object.entries(plan).some(([part, changes]) => part !== 'unresolved' && changes.length);
   const lines = [
     ...(nothing ? ['nothing to do'] : []),
+    ...plan.sizes.map(c => `size ${c.item}: ${c.size} (author assignment)`),
     ...plan.closed.map(c => `closed ${c.item}: ${c.time} (${c.source})`),
     ...plan.renames.map(c => `rename ${c.from} → ${c.to}`),
     ...plan.ids.map(c => `id ${c.item}: ${c.from} → ${c.to}`),
@@ -325,7 +332,7 @@ export async function runTask(args: string[], cwd: string = process.cwd(), io: I
   if (s === 'migrate') {
     try {
       const { migrateOffline } = await import('../tracker/offline-migrate.ts');
-      const plan = await migrateOffline(cwd, values['dry-run'] === true, as);
+      const plan = await migrateOffline(cwd, values['dry-run'] === true, as, values.sizes as string | undefined);
       io.out(values.json ? `${JSON.stringify(plan)}\n` : migrationText(plan));
       return 0;
     } catch (err) {

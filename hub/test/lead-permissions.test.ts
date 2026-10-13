@@ -14,7 +14,7 @@ test('Lead launches and stops only sessions serving its live subtree', async t =
   const ui = await connectUi(t, discovery);
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator' });
   t.after(() => coord.close());
-  const create = async (title: string, kind = 'task', parent?: string) => (await coord.call<{ item: { id: string } }>('task.create', { title, kind, parent })).item.id;
+  const create = async (title: string, kind = 'task', parent?: string) => (await coord.call<{ item: { id: string } }>('task.create', { ...(['task'].includes(kind) ? { size: 'M' } : {}), title, kind, parent })).item.id;
   const epic = await create('Own epic', 'epic');
   const other = await create('Other epic', 'epic');
   const own = await create('Own task', 'task', epic);
@@ -106,7 +106,7 @@ test('a verifier spawned while its item leaves the Lead subtree is refused and c
   t.after(() => coord.close());
   const { item: epic } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Own epic', kind: 'epic' });
   const { item: other } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Other epic', kind: 'epic' });
-  const { item } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Verifier work', parent: epic.id });
+  const { item } = await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Verifier work', parent: epic.id });
   const launched = await coord.call<{ process: HarnessProcessView }>('session.launch', { name: 'lead-1', role: 'lead', item: epic.id, harness: 'claude-code' });
   const lead = await spawnSpoke({ cwd: root, discover: true, name: 'lead-1', sessionId: launched.process.sessionId, assignRole: false });
   t.after(() => lead.close());
@@ -168,7 +168,7 @@ test('lead-1 requests verifiers and merges its scheduled item through the ordina
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator' });
   const rev = await spawnSpoke({ cwd: root, discover: true, name: 'rev', role: 'reviewer' });
   t.after(async () => { await coord.close(); await rev.close(); });
-  const create = async (title: string, kind = 'task', parent?: string) => (await coord.call<{ item: { id: string } }>('task.create', { title, kind, parent })).item.id;
+  const create = async (title: string, kind = 'task', parent?: string) => (await coord.call<{ item: { id: string } }>('task.create', { ...(['task'].includes(kind) ? { size: 'M' } : {}), title, kind, parent })).item.id;
   const release = await create('Release', 'release');
   const epic = await create('Own epic', 'epic', release);
   const other = await create('Other epic', 'epic', release);
@@ -293,7 +293,7 @@ for (const boundary of ['version', 'thread-start']) {
     const ui = await connectUi(t, discovery);
     const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator' });
     t.after(() => coord.close());
-    const create = async (title: string, kind = 'task', parent?: string) => (await coord.call<{ item: { id: string } }>('task.create', { title, kind, parent })).item.id;
+    const create = async (title: string, kind = 'task', parent?: string) => (await coord.call<{ item: { id: string } }>('task.create', { ...(['task'].includes(kind) ? { size: 'M' } : {}), title, kind, parent })).item.id;
     const epic = await create('Own epic', 'epic');
     const other = await create('Other epic', 'epic');
     const item = await create('Native work', 'task', epic);

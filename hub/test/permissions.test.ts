@@ -102,9 +102,9 @@ test('every row of the permission table, for every role, over MCP: allowed calls
   const goneS = await spawn('gone', 'implementer');
   await coordS.waitForPresence(['coord', 'impl', 'rev', 'qa-1', 'gone']);
   // the items, by the human: T-1 is impl's (assigned), T-2 nobody's, T-3 for the Coordinator to close
-  ok(await cland(root, 'task', 'create', 'Own item', '--assignee', 'impl'));
-  ok(await cland(root, 'task', 'create', 'Other item'));
-  ok(await cland(root, 'task', 'create', 'To close'));
+  ok(await cland(root, 'task', 'create', '--size', 'M', 'Own item', '--assignee', 'impl'));
+  ok(await cland(root, 'task', 'create', '--size', 'M', 'Other item'));
+  ok(await cland(root, 'task', 'create', '--size', 'M', 'To close'));
 
   const coord = mcp(coordS, 'coord', 'sess-coord', 'coordinator', 'coord [Coordinator]');
   const impl = mcp(implS, 'impl', 'sess-impl', 'implementer', 'impl [Implementer]');
@@ -124,7 +124,7 @@ test('every row of the permission table, for every role, over MCP: allowed calls
     { tool: 'status', args: { text: 'coordinating' } },
     { tool: 'task.view', args: { id: 'T-2' } },
     { tool: 'task.list' },
-    { tool: 'task.create', args: { title: 'By the Coordinator' } },
+    { tool: 'task.create', args: { size: 'M', title: 'By the Coordinator' } },
     { tool: 'task.edit', args: { id: 'T-2', add_labels: ['triaged'] } },
     { tool: 'task.link', args: { id: 'T-2', branch: 't/2-other' } },
     { tool: 'task.claim', args: { id: 'T-2' } },
@@ -151,7 +151,7 @@ test('every row of the permission table, for every role, over MCP: allowed calls
     { tool: 'task.comment', args: { id: 'T-1', text: 'Working on it.' } },
     { tool: 'task.comment', args: { id: 'T-2', text: 'Not mine.' }, forbidden: 'task.comment', reason: /only on its own item/, target: ' T-2' },
     { tool: 'task.comment', args: { id: 'T-1', text: 'Self-review.', verdict: 'review', result: 'clear', run: 'r-self' }, forbidden: 'task.comment:verdict', reason: /may not write verdicts/, target: ' T-1' },
-    { tool: 'task.create', args: { title: 'Mine' }, forbidden: 'task.create', reason: /Implementer may not use task\.create/ },
+    { tool: 'task.create', args: { size: 'M', title: 'Mine' }, forbidden: 'task.create', reason: /Implementer may not use task\.create/ },
     { tool: 'task.edit', args: { id: 'T-1', assignee: 'rev' }, forbidden: 'task.edit:review', reason: /may set only review on its claimed item, without other edits/, target: ' T-1' },
     { tool: 'task.edit', args: { id: 'T-1', status: 'review', assignee: 'rev' }, forbidden: 'task.edit:review', reason: /may set only review on its claimed item, without other edits/, target: ' T-1' },
     { tool: 'task.edit', args: { id: 'T-1', status: 'planned' }, forbidden: 'task.edit:review', reason: /may set only review on its claimed item, without other edits/, target: ' T-1' },
@@ -184,7 +184,7 @@ test('every row of the permission table, for every role, over MCP: allowed calls
       { tool: 'task.comment', args: verdict(kind) },
       { tool: 'task.comment', args: { id: 'T-2', text: 'Just a remark.' }, forbidden: 'task.comment', reason: /may only comment verdicts/, target: ' T-2' },
       { tool: 'task.claim', args: { id: 'T-2' }, forbidden: 'task.claim', target: ' T-2' },
-      { tool: 'task.create', args: { title: 'x' }, forbidden: 'task.create' },
+      { tool: 'task.create', args: { size: 'M', title: 'x' }, forbidden: 'task.create' },
       { tool: 'task.edit', args: { id: 'T-2', title: 'y' }, forbidden: 'task.edit', target: ' T-2' },
       { tool: 'task.close', args: { id: 'T-2' }, forbidden: 'task.close', reason: new RegExp(`${who === rev ? 'Reviewer' : 'QA'} may not use task\\.close`), target: ' T-2' },
       { tool: 'task.link', args: { id: 'T-2', branch: 'x' }, forbidden: 'task.link', target: ' T-2' },
@@ -261,7 +261,7 @@ test('role.set changes what a session may do on its next call, without a reconne
   const first = await connectedAt();
 
   // the human creates an item through the UI's frame: not restricted by the table, audited as the human
-  const created = await ui.request({ type: 'task.create', title: 'For impl', assignee: 'impl' });
+  const created = await ui.request({ size: 'M', type: 'task.create', title: 'For impl', assignee: 'impl' });
   assert.equal(created.ok, true, created.error);
   const impl = mcp(s, 'impl', 'sess-impl', 'implementer', 'impl [Implementer]');
   await check(root, ui, impl, { tool: 'task.comment', args: { id: 'T-1', text: 'on it' } });
@@ -363,8 +363,8 @@ async function rawSpoke(t: TestContext, discovery: Discovery, name: string, cwd:
 
 test('the tools still to come are checked through the same table: one session, its role changed by the human between calls', async (t) => {
   const { root, ui, discovery } = await setup(t);
-  ok(await cland(root, 'task', 'create', 'Raw own', '--assignee', 'raw'));
-  ok(await cland(root, 'task', 'create', 'Not raw'));
+  ok(await cland(root, 'task', 'create', '--size', 'M', 'Raw own', '--assignee', 'raw'));
+  ok(await cland(root, 'task', 'create', '--size', 'M', 'Not raw'));
   assert.equal((await ui.request({ type: 'role.set', session: 'raw', role: 'coordinator' })).ok, true);
   const raw = await rawSpoke(t, discovery, 'raw', root);
   const unknown = /unknown request type/;
@@ -444,7 +444,7 @@ test('roles.toml is the table: an edited permission list is in force on the next
   assert.throws(() => parseRoles('[qa.launch]\nharness = "codex"\n[qa.permissions]\ntools = ["teleport"]\n'), /unknown tool "teleport"/);
 
   const { root, ui } = await setup(t);
-  ok(await cland(root, 'task', 'create', 'Item'));
+  ok(await cland(root, 'task', 'create', '--size', 'M', 'Item'));
   const s = await spawnSpoke({ discover: true, cwd: root, name: 'rev', sessionId: 'sess-rev', role: 'reviewer' });
   t.after(() => s.close());
   await s.waitForPresence(['rev']);

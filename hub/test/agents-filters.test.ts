@@ -18,8 +18,8 @@ test('Agents item history searches before the latest window and includes claims,
   await writeFile(join(root, '.cland/config.toml'), '[hygiene]\nrate_limit_max = 1000\nloop_breaker_max = 1000\n');
   const { discovery } = await startDaemon(t, root);
   const ui = await connectUi(t, discovery);
-  await ok(ui, { type: 'task.create', title: 'First', assignee: 'alpha' });
-  await ok(ui, { type: 'task.create', title: 'Second' });
+  await ok(ui, { size: 'M', type: 'task.create', title: 'First', assignee: 'alpha' });
+  await ok(ui, { size: 'M', type: 'task.create', title: 'Second' });
   const topic = (await ok<{ topic: { id: string } }>(ui, { type: 'topic.create', title: 'First topic', item: 'T-1' })).topic;
   const alpha = await spawnSpoke({ discover: true, cwd: root, name: 'alpha', sessionId: 'sess-alpha', role: 'implementer' });
   t.after(() => alpha.close());
@@ -54,8 +54,8 @@ test('session filters match sender, addressees and notice facts exactly; spoke i
   const root = await tempProject(t);
   const { discovery } = await startDaemon(t, root);
   const ui = await connectUi(t, discovery);
-  await ok(ui, { type: 'task.create', title: 'First', assignee: 'alpha' });
-  await ok(ui, { type: 'task.create', title: 'Second', assignee: 'alpha-2' });
+  await ok(ui, { size: 'M', type: 'task.create', title: 'First', assignee: 'alpha' });
+  await ok(ui, { size: 'M', type: 'task.create', title: 'Second', assignee: 'alpha-2' });
   const topic = (await ok<{ topic: { id: string } }>(ui, { type: 'topic.create', title: 'First topic', item: 'T-1' })).topic;
   const alpha = await spawnSpoke({ discover: true, cwd: root, name: 'alpha', sessionId: 'sess-alpha', role: 'implementer' });
   t.after(() => alpha.close());

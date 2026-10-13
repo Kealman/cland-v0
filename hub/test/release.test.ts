@@ -22,7 +22,7 @@ async function project(t: TestContext, env: Record<string, string> = {}) {
 }
 
 async function merged(root: string, title: string, file: string) {
-  const { item } = json<{ item: { id: string } }>(await cland(root, 'task', 'create', title, '--json'));
+  const { item } = json<{ item: { id: string } }>(await cland(root, 'task', 'create', '--size', 'M', title, '--json'));
   const { worktree } = json<{ worktree: { path: string } }>(await cland(root, 'task', 'claim', item.id, '--json'));
   await writeFile(join(worktree.path, file), 'finished\n');
   git(worktree.path, 'add', file);
@@ -289,7 +289,7 @@ test('a lost successful GitHub push reply recovers from its receipt even after t
 
 test('post-merge topic discussion permits CLI sync without reviving the task or its worktree', async t => {
   const { root, github, ui } = await project(t);
-  const { item } = json<{ item: { id: string } }>(await cland(root, 'task', 'create', 'Completed parser', '--json'));
+  const { item } = json<{ item: { id: string } }>(await cland(root, 'task', 'create', '--size', 'M', 'Completed parser', '--json'));
   const created = await ui.request({ type: 'topic.create', title: 'Parser discussion', item: item.id });
   assert.equal(created.ok, true, created.error);
   const topic = (created.value as { topic: { id: string } }).topic.id;
@@ -312,7 +312,7 @@ test('post-merge topic discussion permits CLI sync without reviving the task or 
 
 test('sync refuses a landed merge with pending tracker completion, preserving its retry identity', async (t) => {
   const { root, github, territory, discovery } = await project(t);
-  const { item } = json<{ item: { id: string; file: string } }>(await cland(root, 'task', 'create', 'Ship the parser', '--json'));
+  const { item } = json<{ item: { id: string; file: string } }>(await cland(root, 'task', 'create', '--size', 'M', 'Ship the parser', '--json'));
   const { worktree } = json<{ worktree: { path: string } }>(await cland(root, 'task', 'claim', item.id, '--json'));
   await writeFile(join(worktree.path, 'parser.txt'), 'finished\n');
   git(worktree.path, 'add', 'parser.txt');
@@ -363,7 +363,7 @@ test('a release success-record failure retains its same-version recovery receipt
 
 test('a fully rolled-back merge preparation does not prevent sync or a later merge', async (t) => {
   const { root, github, territory } = await project(t);
-  const { item } = json<{ item: { id: string } }>(await cland(root, 'task', 'create', 'Ship the parser', '--json'));
+  const { item } = json<{ item: { id: string } }>(await cland(root, 'task', 'create', '--size', 'M', 'Ship the parser', '--json'));
   const { worktree } = json<{ worktree: { path: string } }>(await cland(root, 'task', 'claim', item.id, '--json'));
   await writeFile(join(worktree.path, 'parser.txt'), 'finished\n');
   git(worktree.path, 'add', 'parser.txt');
@@ -386,7 +386,7 @@ test('a fully rolled-back merge preparation does not prevent sync or a later mer
 test('sync success-record failure prevents a later merge until its same-replay retry completes', async (t) => {
   const { root, github } = await project(t);
   await merged(root, 'Ship the parser', 'parser.txt');
-  const { item } = json<{ item: { id: string } }>(await cland(root, 'task', 'create', 'Later work', '--json'));
+  const { item } = json<{ item: { id: string } }>(await cland(root, 'task', 'create', '--size', 'M', 'Later work', '--json'));
   const id = item.id;
   const { worktree } = json<{ worktree: { path: string } }>(await cland(root, 'task', 'claim', id, '--json'));
   await writeFile(join(worktree.path, 'later.txt'), 'later\n');

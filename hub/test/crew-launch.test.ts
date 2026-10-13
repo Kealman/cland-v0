@@ -18,7 +18,7 @@ test('retained Reviewer pool reuses an idle member for review, caps busy and pen
   t.after(() => coord.close());
   await coord.waitForPresence(['coord']);
   assert.equal((await ui.request({ type: 'crew.set', key: 'reviewer.size', value: 2 })).ok, true);
-  const create = async () => (await coord.call<{ item: { id: string } }>('task.create', { title: 'Review build' })).item.id;
+  const create = async () => (await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Review build' })).item.id;
   const firstItem = await create();
   const secondItem = await create();
   const launch = (name: string, item?: string, brief?: string) => coord.call<{ ok: boolean; error?: string; process: HarnessProcessView }>('session.launch', { name, role: 'reviewer', harness: 'claude-code', ...(item ? { item } : {}), ...(brief ? { brief } : {}) });
@@ -72,7 +72,7 @@ test('Codex native first turn carries the current crew rule for an Implementer p
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'crew.set', key: 'implementer.policy', value: 'pool' })).ok, true);
   assert.equal((await ui.request({ type: 'crew.set', key: 'implementer.keep_context', value: true })).ok, true);
-  const made = await ui.request({ type: 'task.create', title: 'Native pool boundary' });
+  const made = await ui.request({ size: 'M', type: 'task.create', title: 'Native pool boundary' });
   const item = (made.value as { item: { id: string } }).item.id;
   const launched = await ui.request({ type: 'session.launch', name: 'native-impl', role: 'implementer', harness: 'codex', item });
   assert.equal(launched.ok, true, launched.error);
@@ -119,7 +119,7 @@ test(`an Implementer pool moves to the next task worktree after merge (${harness
   const ui = await connectUi(t, discovery);
   for (const [key, value] of [['implementer.policy', 'pool'], ['implementer.keep_context', keepContext]] as const)
     assert.equal((await ui.request({ type: 'crew.set', key, value })).ok, true);
-  const create = async (title: string) => ((await ui.request({ type: 'task.create', title })).value as { item: { id: string } }).item.id;
+  const create = async (title: string) => ((await ui.request({ size: 'M', type: 'task.create', title })).value as { item: { id: string } }).item.id;
   const first = await create('First pooled item');
   const second = await create('Second pooled item');
   type Launch = { process: HarnessProcessView; claim: { sessionId: string; session: string }; worktree: { path: string; branch: string } };
@@ -231,7 +231,7 @@ test('merge stops per-item implementers before cleanup, while stop_after never a
   const list = async () => ((await ui.request({ type: 'session.list' })).value as { processes: HarnessProcessView[] }).processes;
   for (const stopAfter of ['merge', 'never']) {
     assert.equal((await ui.request({ type: 'crew.set', key: 'implementer.stop_after', value: stopAfter })).ok, true);
-    const created = await ui.request({ type: 'task.create', title: `Merge ${stopAfter}` });
+    const created = await ui.request({ size: 'M', type: 'task.create', title: `Merge ${stopAfter}` });
     const item = (created.value as { item: { id: string } }).item;
     const launched = await ui.request({ type: 'session.launch', name: `impl-${stopAfter}`, role: 'implementer', harness: 'claude-code', item: item.id });
     assert.equal(launched.ok, true, launched.error);

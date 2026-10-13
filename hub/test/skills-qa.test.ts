@@ -34,7 +34,7 @@ test('QA findings outside the tested item are filed into Bugs by the Coordinator
   const category = await cland(root, 'task', 'create', 'Bugs', '--kind', 'category', '--json');
   assert.equal(category.code, 0, category.stderr);
   const parent = (JSON.parse(category.stdout) as { item: { id: string } }).item.id;
-  const filed = await cland(root, 'task', 'create', 'Aside finding', '--parent', parent, '--label', 'qa-found', '--label', 'needs-triage', '--body', 'CASE-1 at abc123: cland crew show reported an error.', '--json');
+  const filed = await cland(root, 'task', 'create', '--size', 'M', 'Aside finding', '--parent', parent, '--label', 'qa-found', '--label', 'needs-triage', '--body', 'CASE-1 at abc123: cland crew show reported an error.', '--json');
   assert.equal(filed.code, 0, filed.stderr);
   const item = (JSON.parse(filed.stdout) as { item: { parent: string; labels: string[] } }).item;
   assert.equal(item.parent, parent);
@@ -97,7 +97,7 @@ test('a brief of two cases: runs.jsonl gets one full line per case, a BLOCKED ca
   const root = await tempProject(t, 'cland-qa-skill-');
   await startDaemon(t, root);
   const hubFile = join(root, '.cland', 'hub.json');
-  const created = await cland(root, 'task', 'create', 'A fixture item', '--json');
+  const created = await cland(root, 'task', 'create', '--size', 'M', 'A fixture item', '--json');
   assert.equal(created.code, 0, created.stderr);
 
   const run = 'qa-2026-10-09-1';
@@ -156,7 +156,7 @@ test('a verdict that fails after the lines are appended leaves the lines; the ve
   const root = await tempProject(t, 'cland-qa-skill-');
   await startDaemon(t, root);
   const hubFile = join(root, '.cland', 'hub.json');
-  assert.equal((await cland(root, 'task', 'create', 'A fixture item', '--json')).code, 0);
+  assert.equal((await cland(root, 'task', 'create', '--size', 'M', 'A fixture item', '--json')).code, 0);
   const run = 'qa-2026-10-09-2';
   assert.equal(record(hubFile, {}, 'run', 'T-1', run, 'SHELL-001').code, 0);
   const runs = join(root, '.cland', 'qa', 'runs.jsonl');

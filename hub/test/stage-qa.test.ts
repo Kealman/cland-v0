@@ -30,7 +30,7 @@ async function fixture(t: test.TestContext, gated = false, count = 3, launchLead
   const qa = await spawnSpoke({ discover: true, cwd: root, name: 'qa-one', role: 'qa', sessionId: 'qa-session' });
   t.after(async () => { await rev.close(); await qa.close(); });
   const create = async (title: string, kind = 'task', parent?: string, body?: string) => {
-    const r = await ui.request({ type: 'task.create', title, kind, parent, body }); assert.equal(r.ok, true, r.error);
+    const r = await ui.request({ ...(['task'].includes(kind) ? { size: 'M' } : {}), type: 'task.create', title, kind, parent, body }); assert.equal(r.ok, true, r.error);
     return (r.value as { item: ItemView }).item;
   };
   const epic = await create('Stage demo', 'epic', undefined, '## Definition of done\n- [ ] C1. The integrated demo works');

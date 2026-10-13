@@ -21,7 +21,7 @@ test('Reviewer reports resolve to the item claimant; unclaimed reports resolve t
   onCleanup(t, () => coord.close()); onCleanup(t, () => impl.close()); onCleanup(t, () => rev.close());
   await coord.waitForPresence(['coord', 'impl', 'rev']);
   await rev.waitForEvent(e => e.params.meta?.kind === 'role' && e.params.content.includes('`to: ["lead T-<n>"]`'));
-  const { item } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Item lead', assignee: 'impl' });
+  const { item } = await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Item lead', assignee: 'impl' });
   assert.equal((await impl.call<{ ok: boolean }>('task.claim', { id: item.id })).ok, true);
   const text = `review not clear ${item.id}`;
   const sent = await rev.call<{ ok: boolean; outcomes: Array<{ to: string; outcome: string }> }>('send', { to: [`@lead ${item.id}`], text });
@@ -51,7 +51,7 @@ test('verdict events use the lead explicit subscription and QA reports use the s
   onCleanup(t, () => coord.close()); onCleanup(t, () => impl.close()); onCleanup(t, () => qa.close());
   await qa.waitForPresence(['coord', 'impl', 'qa-one']);
   await qa.waitForEvent(e => e.params.meta?.kind === 'role' && e.params.content.includes('`to: ["lead T-<n>"]`'));
-  const { item } = await coord.call<{ item: { id: string } }>('task.create', { title: 'QA lead', assignee: 'impl' });
+  const { item } = await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'QA lead', assignee: 'impl' });
   await impl.call('task.claim', { id: item.id });
   await impl.call('subscribe', { subject: { item: item.id }, events: ['task'] });
   assert.equal((await qa.call<{ ok: boolean }>('task.comment', { id: item.id, verdict: 'qa', result: 'not clear', run: 'lead-qa' })).ok, true);
@@ -81,7 +81,7 @@ test('a human claim falls back to Coordinator and item addressing preserves ordi
   const rev = await spawnSpoke({ hub, name: 'rev', role: 'reviewer', sessionId: 'rev-id' });
   onCleanup(t, () => coord.close()); onCleanup(t, () => rev.close());
   await coord.waitForPresence(['coord', 'rev']);
-  const made = await ui.request({ type: 'task.create', title: 'Human claim' });
+  const made = await ui.request({ size: 'M', type: 'task.create', title: 'Human claim' });
   const item = (made.value as { item: { id: string } }).item;
   assert.equal((await ui.request({ type: 'task.claim', item: item.id })).ok, true);
   const refused = await rev.call<{ ok: boolean; permission: string }>('send', { to: [`lead ${item.id}`], text: 'agents are outside my grant' });
@@ -116,7 +116,7 @@ for (const change of ['claim', 'identity', 'close'] as const) {
     for (const [session, role] of [['first', 'implementer'], ['second', 'implementer'], ['rev', 'reviewer']]) {
       assert.equal((await ui.request({ type: 'role.set', session, role })).ok, true);
     }
-    const made = await ui.request({ type: 'task.create', title: 'Deferred lead', assignee: 'first' });
+    const made = await ui.request({ size: 'M', type: 'task.create', title: 'Deferred lead', assignee: 'first' });
     const item = (made.value as { item: { id: string } }).item;
     const opened = await ui.request({ type: 'topic.create', title: 'Deferred review' });
     const topic = (opened.value as { topic: { id: string } }).topic.id;
@@ -166,7 +166,7 @@ for (const cleanup of ['normal', 'interrupted'] as const) {
     let ui = await connectWsUi(t, hub);
     await ui.request({ type: 'role.set', session: 'impl', role: 'implementer' });
     await ui.request({ type: 'role.set', session: 'rev', role: 'reviewer' });
-    const made = await ui.request({ type: 'task.create', title: 'Provisional lead', assignee: 'impl' });
+    const made = await ui.request({ size: 'M', type: 'task.create', title: 'Provisional lead', assignee: 'impl' });
     const item = (made.value as { item: { id: string } }).item;
     assert.equal((await ui.request({ type: 'task.claim', item: item.id, as: { name: 'impl' } })).ok, true);
     const prepare = DatabaseSync.prototype.prepare;
@@ -252,7 +252,7 @@ for (const cleanup of ['normal', 'interrupted'] as const) {
     await impl.waitForEvent(e => e.params.content.includes('after the name is available again'));
     assert.equal((await impl.call<{ ok: boolean }>('rename', { name: 'final' })).ok, true);
     assert.equal((await ui.request({ type: 'role.set', session: 'impl', role: 'implementer' })).ok, true);
-    const another = await ui.request({ type: 'task.create', title: 'Recycled provisional name', assignee: 'impl' });
+    const another = await ui.request({ size: 'M', type: 'task.create', title: 'Recycled provisional name', assignee: 'impl' });
     const second = (another.value as { item: { id: string } }).item;
     assert.equal((await ui.request({ type: 'task.claim', item: second.id, as: { name: 'impl' } })).ok, true);
     const secondView = await ui.request({ type: 'task.view', item: second.id });
@@ -275,7 +275,7 @@ test('a recorded lead recipient survives claim replacement and hub restart', asy
   const second = await spawnSpoke({ cwd: root, discover: true, name: 'second', role: 'implementer', sessionId: 'second-id' });
   onCleanup(t, () => coord.close()); onCleanup(t, () => first.close()); onCleanup(t, () => second.close());
   await coord.waitForPresence(['coord', 'first', 'second']);
-  const { item } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Fixed recipient', assignee: 'first' });
+  const { item } = await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Fixed recipient', assignee: 'first' });
   await first.call('task.claim', { id: item.id });
   const text = 'recorded for the first claimant';
   await coord.call('send', { to: [`@lead ${item.id}`], text, kind: 'progress' });
@@ -307,7 +307,7 @@ test('human @lead mentions reach the claimant, with explicit errors for closed, 
   const impl = await spawnSpoke({ cwd: root, discover: true, name: 'impl', role: 'implementer', sessionId: 'impl-id' });
   onCleanup(t, () => coord.close()); onCleanup(t, () => impl.close());
   await coord.waitForPresence(['coord', 'impl']);
-  const { item } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Human routing', assignee: 'impl' });
+  const { item } = await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Human routing', assignee: 'impl' });
   await impl.call('task.claim', { id: item.id });
   const human = await ui.request({ type: 'topic.send', topic: 'general', text: `@lead ${item.id}, please explain the review.` });
   assert.equal(human.ok, true, human.error);

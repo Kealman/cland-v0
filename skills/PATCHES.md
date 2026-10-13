@@ -9,6 +9,7 @@ Every patch is listed here. `skills-lock.json` keeps the upstream hash, so a re-
 - **File**: `.agents/skills/to-tickets/SKILL.md`, step 5 "Publish the tickets to the configured tracker".
 - **Upstream**: `skills/engineering/to-tickets/SKILL.md`, hash `5f871bdc46a9212222214ba399be4965374208af1bd7f48f1271bef72841dd31`.
 - **Change**: the "Local files" bullet now reads "**Local files** (the local-markdown tracker under `.scratch/`)", and the "A real issue tracker" bullet lists "GitHub, Linear, cland's `cland task`, …".
+- **Size and Summary (T-331)**: each ticket assigns `--size` (XS, S, M, L or XL), writes a `## Summary` of one to three sentences, and sets `--regression-of` for rework of landed tasks; both templates include Summary. The upstream hash is unchanged.
 - **Category filing (T-317)**: `.agents/skills/to-tickets/SKILL.md`, step 5, now defers tickets from a source with no release or epic to the tracker doc's "Categories" section. The upstream hash above is unchanged.
 - **Why**: cland's tracker is also one Markdown file per item, so "Local files" was ambiguous. An agent could take that branch and write `.scratch/` files instead of items with native `parent` and `blocked_by` edges.
 

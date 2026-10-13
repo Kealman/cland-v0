@@ -23,7 +23,7 @@ async function setup(t: test.TestContext, fallback: QaPolicy = { scope: 'none', 
   const qa = await spawnSpoke({ discover: true, cwd: root, name: 'qa-one', role: 'qa' });
   t.after(async () => { await rev.close(); await qa.close(); });
   const create = async (title: string, kind = 'task', parent?: string, labels?: string[]) => {
-    const r = await ui.request({ type: 'task.create', title, kind, parent, labels });
+    const r = await ui.request({ ...(['task'].includes(kind) ? { size: 'M' } : {}), type: 'task.create', title, kind, parent, labels });
     assert.equal(r.ok, true, r.error);
     return (r.value as { item: ItemView }).item;
   };

@@ -21,8 +21,8 @@ test('f completes items and sessions, filters history and live notices; F clears
   const root = await tempProject(t);
   const { discovery } = await startDaemon(t, root);
   const ui = await connectUi(t, discovery);
-  await ok(ui, { type: 'task.create', title: 'First', assignee: 'alpha' });
-  await ok(ui, { type: 'task.create', title: 'Second', assignee: 'other' });
+  await ok(ui, { size: 'M', type: 'task.create', title: 'First', assignee: 'alpha' });
+  await ok(ui, { size: 'M', type: 'task.create', title: 'Second', assignee: 'other' });
   const topic = (await ok<{ topic: { id: string } }>(ui, { type: 'topic.create', title: 'First topic', item: 'T-1' })).topic;
   const alpha = await spawnSpoke({ discover: true, cwd: root, name: 'alpha', sessionId: 'sess-alpha', role: 'implementer' });
   t.after(() => alpha.close());

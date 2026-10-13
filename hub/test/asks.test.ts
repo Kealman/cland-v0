@@ -243,7 +243,7 @@ test('on a project: closing the item cancels the ask; verdicts and role changes 
   const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator', sessionId: 'sess-coord' });
   t.after(() => coord.close());
   await coord.waitForPresence(['coord']);
-  const item = (await ok<{ item: { id: string } }>(ui, { type: 'task.create', title: 'Hub daemon' })).item.id;
+  const item = (await ok<{ item: { id: string } }>(ui, { size: 'M', type: 'task.create', title: 'Hub daemon' })).item.id;
   const topic = (await ok<{ topic: Topic }>(ui, { type: 'topic.create', title: 'T-1: port', item })).topic;
   const a = await ask(coord, topic.id, 'Fixed or free port?', ['fixed', 'free']);
   assert.equal(a.ok, true, JSON.stringify(a));
@@ -378,7 +378,7 @@ test('a verdict written as text appears in events without adding an inbox row', 
   const { discovery } = await startDaemon(t, root);
   const ui = await connectUi(t, discovery);
   await ok(ui, { type: 'subscribe' });
-  await ok(ui, { type: 'task.create', title: 'Textual verdict' });
+  await ok(ui, { size: 'M', type: 'task.create', title: 'Textual verdict' });
   await ok(ui, { type: 'task.comment', item: 'T-1', text: 'verdict: qa\nresult: clear\nby: qa-1 [qa]\nrun: q-7\n\nAll green.', as: { name: 'qa-1', role: 'qa' } });
   assert.ok((await ok<import('../src/protocol.ts').EventsPage>(ui, { type: 'events.list' })).rows.some(r => r.kind === 'verdict'));
   assert.equal((await inbox(ui)).needsYou, 0);

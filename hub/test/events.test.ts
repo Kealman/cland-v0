@@ -15,7 +15,7 @@ test('a real spoke verdict produces one event on pushes and journal pages, inclu
   let ui = await connectUi(t, daemon.discovery!);
   stop = async () => { ui.close(); await daemon.stop(); };
   await ui.request({ type: 'subscribe' });
-  const created = await ui.request({ type: 'task.create', title: 'One verdict, one row' });
+  const created = await ui.request({ size: 'M', type: 'task.create', title: 'One verdict, one row' });
   const item = (created.value as { item: { id: string } }).item.id;
   const spoke = await spawnSpoke({ discover: true, cwd: root, name: 'rev', role: 'reviewer' });
   t.after(() => spoke.close());
@@ -219,7 +219,7 @@ test('inbox retires notifications and dismissal frames while verdicts and role c
   const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
   t.after(() => coord.close());
   await coord.waitForPresence(['coord']);
-  const created = await ui.request({ type: 'task.create', title: 'Events replace notifications' });
+  const created = await ui.request({ size: 'M', type: 'task.create', title: 'Events replace notifications' });
   const item = (created.value as { item: { id: string } }).item.id;
   for (const result of ['clear', 'not clear']) {
     const verdict = await ui.request({ type: 'task.comment', item, text: `Review ${result}.`, verdict: { verdict: 'review', result, run: `retired-${result.replace(' ', '-')}` }, as: { name: 'rev', role: 'reviewer' } });

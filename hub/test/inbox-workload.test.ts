@@ -343,9 +343,9 @@ test('delivered verifier requests and session.list bursts never scan retained me
   await human.request({ type: 'role.set', id: 'role', session: 'verifier', role: 'reviewer' });
   verifier.send({ type: 'hello', protocol: 2, name: 'verifier', sessionId: 'verifier-id', cwd: root });
   await eventually('verifier hello', () => verifier.frames.some(f => f.type === 'welcome') || undefined);
-  await human.request({ type: 'task.create', id: 'item', title: 'Burst verification' });
+  await human.request({ size: 'M', type: 'task.create', id: 'item', title: 'Burst verification' });
   const first = ((human.frames.find(f => f.id === 'item')!.value as { item: { id: string } }).item.id);
-  const second = await human.request({ type: 'task.create', id: 'item-two', title: 'Newer burst request' });
+  const second = await human.request({ size: 'M', type: 'task.create', id: 'item-two', title: 'Newer burst request' });
   const item = (second.value as { item: { id: string } }).item.id;
   // Take the initial role clause before measuring request deliveries.
   for (const frame of verifier.frames.filter(f => f.type === 'role')) verifier.send({ type: 'ack', id: (frame.message as { id: string }).id });

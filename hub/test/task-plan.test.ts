@@ -19,7 +19,7 @@ async function setup(t: test.TestContext, levels?: string[]) {
   const { discovery } = await startDaemon(t, root);
   const ui = await connectUi(t, discovery);
   const create = async (title: string, kind = 'task', parent?: string) => {
-    const result = await ui.request({ type: 'task.create', title, kind, parent, body: '## Acceptance criteria\n- [ ] C1. Works\n\n## Notes\nKeep this prose.' });
+    const result = await ui.request({ ...(['task'].includes(kind) ? { size: 'M' } : {}), type: 'task.create', title, kind, parent, body: '## Acceptance criteria\n- [ ] C1. Works\n\n## Notes\nKeep this prose.' });
     assert.equal(result.ok, true, result.error);
     return (result.value as { item: ItemView }).item;
   };

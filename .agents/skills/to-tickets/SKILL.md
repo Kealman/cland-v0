@@ -67,9 +67,17 @@ Work the **frontier**: any ticket whose blockers are all done. For a purely line
 
 Do NOT close or modify any parent issue.
 
+Each ticket carries a size class (XS, S, M, L or XL) and a `## Summary` of one to three sentences; for rework of landed tasks, set `--regression-of` through the tracker doc. Assign the size when filing, using `--size` on cland.
+
 <local-ticket-template>
 
 # <NN>: <Ticket title>
+
+**Size:** XS, S, M, L or XL
+
+## Summary
+
+One to three sentences describing the work.
 
 **What to build:** the end-to-end behaviour this ticket makes work, from the user's perspective, not a layer-by-layer implementation list.
 
@@ -83,6 +91,10 @@ Do NOT close or modify any parent issue.
 </local-ticket-template>
 
 <issue-template>
+
+## Summary
+
+One to three sentences describing the work.
 
 ## Parent
 

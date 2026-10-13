@@ -7,7 +7,7 @@ import { compareRank, effectiveRank } from './rank.ts';
 import { createHash } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 import { parseItemReference, prefixOf } from './prefixes.ts';
-import { idNumber, type Comment, type Verdict, type Item, type Kind, type State, type Status, type VerdictKind, type VerdictResult } from './item.ts';
+import { idNumber, type Comment, type Verdict, type Item, type Kind, type State, type Status, type Size, type VerdictKind, type VerdictResult } from './item.ts';
 
 const SCHEMA = `
 create table if not exists tracker_items (
@@ -113,6 +113,8 @@ export type IndexedItem = {
   title: string;
   state: State;
   status?: Status;
+  size?: Size;
+  regression_of?: string;
   rank: number;
   labels: string[];
   assignee: string | null;
@@ -175,6 +177,7 @@ export class TrackerIndex {
     }
     if (!itemColumns.has('criteria_summary')) this.#db.exec("alter table tracker_items add column criteria_summary text not null default '[]'; update tracker_items set hash = ''");
     if (!itemColumns.has('closed')) this.#db.exec("alter table tracker_items add column closed text; update tracker_items set hash = ''");
+    for (const column of ['size', 'regression_of']) if (!itemColumns.has(column)) this.#db.exec(`alter table tracker_items add column ${column} text; update tracker_items set hash = ''`);
     if (!itemColumns.has('status')) this.#db.exec('alter table tracker_items add column status text');
     const claimColumns = new Set((this.#db.prepare('pragma table_info(tracker_claims)').all() as Row[]).map((r) => r.name as string));
     if (!claimColumns.has('session_id')) this.#db.exec('alter table tracker_claims add column session_id text');
@@ -232,10 +235,10 @@ export class TrackerIndex {
       this.#db.prepare('delete from tracker_items where id = ?').run(fm.id);
       this.#db
         .prepare(
-          `insert into tracker_items (id, n, file, kind, version, title, state, status, rank, assignee, parent, topic, branch, created, updated, closed, hash, source, indexed_at)
-           values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          `insert into tracker_items (id, n, file, kind, version, title, state, status, size, regression_of, rank, assignee, parent, topic, branch, created, updated, closed, hash, source, indexed_at)
+           values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
-        .run(fm.id, idNumber(fm.id), meta.file, fm.kind, fm.version ?? null, fm.title, fm.state, fm.status ?? null, fm.rank ?? null, fm.assignee, fm.parent, fm.topic, fm.branch, fm.created, fm.updated, fm.closed ?? null, meta.hash, meta.source, meta.indexedAt);
+        .run(fm.id, idNumber(fm.id), meta.file, fm.kind, fm.version ?? null, fm.title, fm.state, fm.status ?? null, fm.size ?? null, fm.regression_of ? this.#referenceKey(fm.regression_of) : null, fm.rank ?? null, fm.assignee, fm.parent, fm.topic, fm.branch, fm.created, fm.updated, fm.closed ?? null, meta.hash, meta.source, meta.indexedAt);
       const criteria = parseCriteria(item.body, !['task', 'question', 'spec', 'map'].includes(fm.kind)).criteria;
       this.#db.prepare('update tracker_items set criteria_ids = ?, criteria_summary = ? where id = ?').run(JSON.stringify(criteria.flatMap(c => c.id ? [c.id] : [])), JSON.stringify(summarizeCriteria(criteria)), fm.id);
       const label = this.#db.prepare('insert or ignore into tracker_labels (item_id, label) values (?, ?)');
@@ -409,6 +412,8 @@ export class TrackerIndex {
       title: r.title as string,
       state: r.state as State,
       ...(r.status !== null ? { status: r.status as Status } : {}),
+      ...(r.size !== null ? { size: r.size as Size } : {}),
+      ...(r.regression_of !== null ? { regression_of: this.#canonical(r.regression_of as string) } : {}),
       labels: (this.#db.prepare('select label from tracker_labels where item_id = ? order by rowid').all(id) as Row[]).map((x) => x.label as string),
       assignee: (r.assignee as string | null) ?? null,
       parent: r.parent ? this.#canonical(r.parent as string) : null,

@@ -21,7 +21,7 @@ test('CLI and MCP views expose structured criteria and marks without writing the
 
 ## Other
 - [ ] This is outside the criteria section`;
-  const made = await ui.request({ type: 'task.create', title: 'Criteria', body });
+  const made = await ui.request({ size: 'M', type: 'task.create', title: 'Criteria', body });
   assert.equal(made.ok, true, made.error);
   const item = (made.value as { item: View }).item;
   const before = await readFile(join(root, item.path), 'utf8');
@@ -51,7 +51,7 @@ test('orphan and wrongly indented mark lines are reported verbatim without inven
   - verified: qa-2 [QA] · run q-1 · 2026-10-09T11:00Z
 - [ ] C1. Actual criterion
     - done: impl-1 · 2026-10-09T10:00Z`;
-  const made = await ui.request({ type: 'task.create', title: 'Malformed', body });
+  const made = await ui.request({ size: 'M', type: 'task.create', title: 'Malformed', body });
   assert.equal(made.ok, true, made.error);
   const item = (made.value as { item: View }).item;
   const view = await ui.request({ type: 'task.view', item: item.id });
@@ -84,7 +84,7 @@ test('every criterion list sub-item is parsed or reported, including bullet whit
     '  -',
     '  1. An ordered supporting item',
   ].join('\n');
-  const made = await ui.request({ type: 'task.create', title: 'Sub-items', body });
+  const made = await ui.request({ size: 'M', type: 'task.create', title: 'Sub-items', body });
   assert.equal(made.ok, true, made.error);
   const item = (made.value as { item: View }).item;
   const before = await readFile(join(root, item.path), 'utf8');
@@ -128,7 +128,7 @@ test('hand edits re-index reworded and reordered criteria, preserve marks, and r
 - [x] C1. First
   - done: impl-1 · 2026-10-09T10:00Z
 - [ ] C8. Second`;
-  const made = await ui.request({ type: 'task.create', title: 'Hand edit', body });
+  const made = await ui.request({ size: 'M', type: 'task.create', title: 'Hand edit', body });
   assert.equal(made.ok, true, made.error);
   const item = (made.value as { item: View }).item;
   const file = join(root, item.path);
@@ -184,7 +184,7 @@ test('legacy criteria keep checkbox state but have no ids or inferred marks; abs
     ['## Definition of done\n- [x] Other section', []],
     ['', []],
   ] as const) {
-    const made = await ui.request({ type: 'task.create', title: 'Legacy', body });
+    const made = await ui.request({ size: 'M', type: 'task.create', title: 'Legacy', body });
     assert.equal(made.ok, true, made.error);
     const item = (made.value as { item: View }).item;
     const before = await readFile(join(root, item.path), 'utf8');
@@ -211,7 +211,7 @@ test('criteria parsing respects Markdown fences, section boundaries and wrapped 
     '  - done: impl-1 · 2026-02-30T10:00Z',
     '## Next section', '- [x] C5. Outside the section',
   ].join('\n');
-  const made = await ui.request({ type: 'task.create', title: 'Markdown', body });
+  const made = await ui.request({ size: 'M', type: 'task.create', title: 'Markdown', body });
   assert.equal(made.ok, true, made.error);
   const item = (made.value as { item: View }).item;
   const view = await ui.request({ type: 'task.view', item: item.id });

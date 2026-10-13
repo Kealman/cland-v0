@@ -11,6 +11,8 @@ export const STATES = ['open', 'closed'] as const;
 export type State = (typeof STATES)[number];
 export const STATUSES = ['backlog', 'planned', 'in progress', 'review', 'qa', 'ready', 'done'] as const;
 export type Status = (typeof STATUSES)[number];
+export const SIZES = ['XS', 'S', 'M', 'L', 'XL'] as const;
+export type Size = (typeof SIZES)[number];
 export const VERDICT_KINDS = ['review', 'qa'] as const;
 export type VerdictKind = (typeof VERDICT_KINDS)[number];
 export const RESULTS = ['clear', 'not clear'] as const;
@@ -26,6 +28,8 @@ export type Frontmatter = {
   state: State;
   /** Task workflow status; other kinds have none. */
   status?: Status;
+  /** Ex-ante class, assigned when a task is filed. */
+  size?: Size;
   /** Explicit sibling rank; absent means the numeric id times ten. */
   rank?: number;
   /** Highest criterion id allocated, including removed criteria. */
@@ -35,6 +39,8 @@ export type Frontmatter = {
   assignee: string | null;
   parent: string | null;
   blocked_by: string[];
+  /** Landed task whose work this task reworks. */
+  regression_of?: string;
   topic: string | null;
   branch: string | null;
   created: string;
@@ -139,6 +145,11 @@ export function statusRefusal(kind: Kind, status: unknown): string | null {
   return STATUSES.includes(status as Status) ? null : `status must be one of ${STATUSES.join(', ')}`;
 }
 
+export function sizeRefusal(kind: Kind, size: unknown): string | null {
+  if (kind !== 'task') return `size belongs only to a task, not ${kind}`;
+  return SIZES.includes(size as Size) ? null : 'size must be XS, S, M, L or XL';
+}
+
 // ------------------------------------------------------------------ reading
 
 export class ItemParseError extends Error {}
@@ -208,6 +219,17 @@ export function parseItem(text: string, fileName?: string, levels: LadderInput =
     const refusal = statusRefusal(kind, r.status);
     if (refusal) throw new ItemParseError(refusal);
     fm.status = r.status as Status;
+  }
+  if (r.size !== undefined) {
+    const refusal = sizeRefusal(kind, r.size);
+    if (refusal) throw new ItemParseError(refusal);
+    fm.size = r.size as Size;
+  }
+  if (r.regression_of !== undefined) {
+    if (kind !== 'task') throw new ItemParseError(`regression_of belongs only to a task, not ${kind}`);
+    const target = typeof r.regression_of === 'string' || typeof r.regression_of === 'number' ? referenceId(String(r.regression_of), kinds) : null;
+    if (!target) throw new ItemParseError('regression_of must be an item reference');
+    fm.regression_of = target;
   }
   if (r.rank !== undefined && r.rank !== null) {
     if (!rankable(kind, levels)) throw new ItemParseError('rank belongs only to tasks and containers below the top level');
@@ -303,6 +325,7 @@ export function serializeItem(item: Item): string {
     title: fm.title,
     state: fm.state,
     ...(fm.status !== undefined ? { status: fm.status } : {}),
+    ...(fm.size !== undefined ? { size: fm.size } : {}),
     ...(fm.rank !== undefined ? { rank: fm.rank } : {}),
     ...(fm.criterion_seq !== undefined ? { criterion_seq: fm.criterion_seq } : {}),
     ...(fm.plan_approval ? { plan_approval: fm.plan_approval } : {}),
@@ -310,6 +333,7 @@ export function serializeItem(item: Item): string {
     assignee: fm.assignee,
     parent: fm.parent,
     blocked_by: fm.blocked_by,
+    ...(fm.regression_of !== undefined ? { regression_of: fm.regression_of } : {}),
     topic: fm.topic,
     branch: fm.branch,
     created: fm.created,

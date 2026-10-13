@@ -43,7 +43,7 @@ test('release from an item refuses a missing version through the protocol and CL
 test('release from an item names non-release items, mismatched versions and open descendants', async t => {
   const { root, github, territory, ui } = await project(t);
   const release = await create(root, 'Next release', '--kind', 'release', '--version', '0.2.0');
-  const task = await create(root, 'Ordinary task');
+  const task = await create(root, 'Ordinary task', '--size', 'M');
   const refuse = async (item: string, error: RegExp, version?: string) => {
     const before = refs(root, territory, github);
     const result = await ui.request({ type: 'release', item, dryRun: true, ...(version === undefined ? {} : { version }) }, 30_000);
@@ -58,7 +58,7 @@ test('release from an item names non-release items, mismatched versions and open
   await refuse('T-999', /no item T-999/);
   await refuse(release.id, /v0.3.0.*R-1.*v0.2.0/, 'v0.3.0');
   const epic = await create(root, 'Closed epic', '--kind', 'epic', '--parent', release.id);
-  const child = await create(root, 'Open nested task', '--parent', epic.id);
+  const child = await create(root, 'Open nested task', '--size', 'M', '--parent', epic.id);
   // The tracker permits legacy trees to remain readable; descendants must still block publication.
   const path = join(root, epic.path);
   await writeFile(path, (await readFile(path, 'utf8')).replace('state: open', 'state: closed'));

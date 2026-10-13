@@ -166,6 +166,10 @@ _Avoid_: label, bucket, backlog (that is a status), unscheduled (no container at
 Where a task is in its workflow: backlog, planned, in progress, review, qa, ready or done. The hub moves it on claims, verdicts, merges and closes, and on an epic plan's current stage; the Coordinator and the human may set it directly. Containers, questions and specs have none.
 _Avoid_: state (that is open or closed), stage (that is a step of a plan), column, phase
 
+**Size**:
+An ex-ante class of a task (XS, S, M, L or XL), set by whoever files it.
+_Avoid_: estimate, points
+
 **Rank**:
 A task's or epic's place among its siblings. The lowest rank is next; moving an item to the top is how it is made a priority.
 _Avoid_: priority, order, weight, position

@@ -32,7 +32,7 @@ test('a hub that dies between a handover\'s commit and its claims finishes the m
   const spoke = await spokes(t, root);
   const a = await spoke('coord', 'coordinator');
   await spoke('next', 'implementer');
-  ok(await cland(root, 'task', 'create', 'Held by the Coordinator'));
+  ok(await cland(root, 'task', 'create', '--size', 'M', 'Held by the Coordinator'));
   assert.equal((await a.call<Result>('task.claim', { id: 'T-1' })).ok, true);
 
   // the hub is killed right after the move's transaction committed
@@ -61,7 +61,7 @@ test('a role moved to a name no session holds yet: its claims follow when a sess
   const ui = await connectUi(t, discovery);
   const spoke = await spokes(t, root);
   const a = await spoke('coord', 'coordinator');
-  ok(await cland(root, 'task', 'create', 'Held by the Coordinator'));
+  ok(await cland(root, 'task', 'create', '--size', 'M', 'Held by the Coordinator'));
   assert.equal((await a.call<Result>('task.claim', { id: 'T-1' })).ok, true);
   const moved = await ui.request({ type: 'role.set', session: 'later', role: 'coordinator', move: true });
   assert.equal(moved.ok, true, moved.error);
@@ -79,7 +79,7 @@ test('a role moved on again before its receiver ever connected: the first holder
   const ui = await connectUi(t, discovery);
   const spoke = await spokes(t, root);
   const a = await spoke('coord', 'coordinator');
-  ok(await cland(root, 'task', 'create', 'Held by the Coordinator'));
+  ok(await cland(root, 'task', 'create', '--size', 'M', 'Held by the Coordinator'));
   assert.equal((await a.call<Result>('task.claim', { id: 'T-1' })).ok, true);
   // coord → later (never connects) → final (connects only afterwards)
   const first = await ui.request({ type: 'role.set', session: 'later', role: 'coordinator', move: true });

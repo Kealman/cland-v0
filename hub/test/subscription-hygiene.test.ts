@@ -70,7 +70,7 @@ async function setup(t: test.TestContext, config?: string, env: Record<string, s
 
 test('coalescing and the event cap freeze per recipient across restart and partial delivery', async t => {
   const { root, ui, coord, rev } = await setup(t);
-  const made = await coord.call<{ item: { id: string } }>('task.create', { title: 'Counts' });
+  const made = await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Counts' });
   const item = made.item.id;
   for (const spoke of [coord, rev]) await spoke.call('subscribe', { subject: { item }, events: ['task'] });
   const claim = async () => {
@@ -118,8 +118,8 @@ test('coalescing and the event cap freeze per recipient across restart and parti
 test('topic and artifact events match item subtrees, and a closed topic sends its final event', async t => {
   const { root, ui, coord, rev } = await setup(t);
   const parent = (await coord.call<{ item: { id: string } }>('task.create', { kind: 'epic', title: 'Subtree' })).item.id;
-  const child = (await coord.call<{ item: { id: string } }>('task.create', { title: 'Child', parent })).item.id;
-  const other = (await coord.call<{ item: { id: string } }>('task.create', { title: 'Elsewhere' })).item.id;
+  const child = (await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Child', parent })).item.id;
+  const other = (await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Elsewhere' })).item.id;
   const topic = (await coord.call<{ topic: { id: string } }>('topic.create', { title: 'Child topic', item: child })).topic.id;
   const extra = (await coord.call<{ topic: { id: string } }>('topic.create', { title: 'Outside', item: other })).topic.id;
   await rev.call('subscribe', { subject: { subtree: parent }, events: ['topic', 'artifact', 'task'] });
@@ -153,7 +153,7 @@ test('events have their own durable limit, preserve final events, and consume no
   const fixture = await setup(t, '[hygiene]\nrate_limit_max = 2\nevent_limit_max = 2\nevent_limit_window_minutes = 10\n');
   const { root, coord } = fixture;
   let ui = fixture.ui;
-  const item = (await coord.call<{ item: { id: string } }>('task.create', { title: 'Limits' })).item.id;
+  const item = (await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Limits' })).item.id;
   await coord.call('subscribe', { subject: { item }, events: ['task'] });
   for (const status of ['planned', 'review']) await coord.call('task.edit', { id: item, status });
   ui.close();
@@ -198,7 +198,7 @@ for (const harness of ['claude-code', 'codex', 'opencode']) {
       const status = await ui.request({ type: 'hub.status' });
       return (status.value as { harnesses: Array<{ name: string; state: string }> }).harnesses.some(p => p.name === 'coord' && p.state === 'idle') || undefined;
     });
-    const item = ((await ui.request({ type: 'task.create', title: 'Immediate event' })).value as { item: { id: string } }).item.id;
+    const item = ((await ui.request({ size: 'M', type: 'task.create', title: 'Immediate event' })).value as { item: { id: string } }).item.id;
     const subscribed = await clandWithEnv(root, env, 'subscribe', 'item', item, '--event', 'task', '--digest', 'now', '--as', 'coord', '--json');
     assert.equal(subscribed.code, 0, subscribed.stderr);
     assert.equal(JSON.parse(subscribed.stdout).subscription.digest, 'now');
@@ -318,7 +318,7 @@ test('the default coalescing window includes 59999 ms and excludes 60000 ms', as
   const coord = await spawnSpoke({ hub, name: 'coord', role: 'coordinator' });
   onCleanup(t, () => coord.close());
   await coord.waitForPresence(['coord']);
-  const item = (await coord.call<{ item: { id: string } }>('task.create', { title: 'Default window' })).item.id;
+  const item = (await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Default window' })).item.id;
   await coord.call('subscribe', { subject: { item }, events: ['task'] });
   await coord.call('task.claim', { id: item });
   await coord.call('task.claim', { id: item, release: true });
@@ -336,7 +336,7 @@ test('the default coalescing window includes 59999 ms and excludes 60000 ms', as
 
 test('equal events outside the configured coalescing window remain separate', async t => {
   const { ui, coord } = await setup(t, undefined, { CLAND_TEST_EVENT_WINDOW_MS: '250' });
-  const item = (await coord.call<{ item: { id: string } }>('task.create', { title: 'Coalescing window' })).item.id;
+  const item = (await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Coalescing window' })).item.id;
   await coord.call('subscribe', { subject: { item }, events: ['task'] });
   await coord.call('task.claim', { id: item });
   await coord.call('task.claim', { id: item, release: true });
@@ -378,7 +378,7 @@ test('subtree subjects include sessions working on descendant items and survive 
   onCleanup(t, () => coord.close());
   await coord.waitForPresence(['coord']);
   const parent = ((await ui.request({ type: 'task.create', title: 'Parent', kind: 'epic' })).value as { item: { id: string } }).item.id;
-  const child = ((await ui.request({ type: 'task.create', title: 'Child', parent })).value as { item: { id: string } }).item.id;
+  const child = ((await ui.request({ size: 'M', type: 'task.create', title: 'Child', parent })).value as { item: { id: string } }).item.id;
   await coord.call('subscribe', { subject: { subtree: parent }, events: ['session.state'] });
   const launched = await ui.request({ type: 'session.launch', name: 'worker', role: 'implementer', harness: 'claude-code', item: child }, 30_000);
   assert.equal(launched.ok, true, launched.error);
@@ -400,7 +400,7 @@ test('subtree subjects include sessions working on descendant items and survive 
 test('deleting a subscribed topic records its final fact and ends only that exact subject', async t => {
   const { ui, coord, rev } = await setup(t);
   const parent = (await coord.call<{ item: { id: string } }>('task.create', { kind: 'epic', title: 'Delete tree' })).item.id;
-  const child = (await coord.call<{ item: { id: string } }>('task.create', { title: 'Delete child', parent })).item.id;
+  const child = (await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Delete child', parent })).item.id;
   const topic = (await coord.call<{ topic: { id: string } }>('topic.create', { title: 'Delete topic', item: child })).topic.id;
   await coord.call('subscribe', { subject: { topic }, events: ['artifact'] });
   await rev.call('subscribe', { subject: { subtree: parent }, events: ['topic'] });
@@ -418,8 +418,8 @@ test('removed and reparented descendants notify former ancestor subtrees without
   const { root, ui, coord, rev } = await setup(t);
   const parent = (await coord.call<{ item: { id: string } }>('task.create', { kind: 'epic', title: 'Original tree' })).item.id;
   const elsewhere = (await coord.call<{ item: { id: string } }>('task.create', { kind: 'epic', title: 'Destination tree' })).item.id;
-  const moved = (await coord.call<{ item: { id: string } }>('task.create', { title: 'Moved child', parent })).item.id;
-  const removed = (await coord.call<{ item: { id: string; path: string } }>('task.create', { title: 'Removed child', parent })).item;
+  const moved = (await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Moved child', parent })).item.id;
+  const removed = (await coord.call<{ item: { id: string; path: string } }>('task.create', { size: 'M', title: 'Removed child', parent })).item;
   await rev.call('subscribe', { subject: { subtree: parent }, events: ['task'] });
   await coord.call('subscribe', { subject: { item: removed.id }, events: ['artifact'] });
   assert.equal((await coord.call<{ ok: boolean }>('task.link', { id: moved, parent: elsewhere })).ok, true);
@@ -446,7 +446,7 @@ test('restart reconciles a committed stop once and retains role and ancestor sub
   onCleanup(t, () => coord.close()); onCleanup(t, () => rev.close());
   await coord.waitForPresence(['coord', 'rev']);
   const parent = (await coord.call<{ item: { id: string } }>('task.create', { kind: 'epic', title: 'Recovery tree' })).item.id;
-  const child = (await coord.call<{ item: { id: string } }>('task.create', { title: 'Recovery child', parent })).item.id;
+  const child = (await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Recovery child', parent })).item.id;
   assert.equal((await ui.request({ type: 'session.launch', name: 'worker', harness: 'codex', role: 'implementer', item: child })).ok, true);
   await coord.waitForPresence(['coord', 'rev', 'worker']);
   assert.equal((await ui.request({ type: 'crew.set', key: 'reviewer.size', value: 2 })).ok, true);

@@ -13,7 +13,7 @@ test('session frames show review and QA holds as they are taken and released', a
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
-  const made = await ui.request({ type: 'task.create', title: 'Verify session holds' });
+  const made = await ui.request({ size: 'M', type: 'task.create', title: 'Verify session holds' });
   const item = (made.value as { item: { id: string } }).item.id;
   for (const role of ['reviewer', 'qa'] as const) {
     const name = `verify-${role}`;
@@ -49,7 +49,7 @@ test('unknown-id Reviewer holds appear in session frames and remain isolated by 
   const { discovery } = await startDaemon(t, root);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
-  const made = await ui.request({ type: 'task.create', title: 'Unknown Reviewer hold' });
+  const made = await ui.request({ size: 'M', type: 'task.create', title: 'Unknown Reviewer hold' });
   const item = (made.value as { item: { id: string } }).item.id;
   const first = await spawnSpoke({ discover: true, cwd: root, name: 'rev-first', sessionId: 'unknown', role: 'reviewer' });
   const second = await spawnSpoke({ discover: true, cwd: root, name: 'rev-second', sessionId: 'unknown', role: 'reviewer' });
@@ -76,7 +76,7 @@ test('removing an indexed item clears its claim and verifier hold from session w
   const { discovery } = await startDaemon(t, root);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
-  const made = await ui.request({ type: 'task.create', title: 'Removed work', assignee: 'impl' });
+  const made = await ui.request({ size: 'M', type: 'task.create', title: 'Removed work', assignee: 'impl' });
   const item = (made.value as { item: { id: string; path: string } }).item;
   const impl = await spawnSpoke({ discover: true, cwd: root, name: 'impl', sessionId: 'impl-id', role: 'implementer' });
   const rev = await spawnSpoke({ discover: true, cwd: root, name: 'rev', sessionId: 'rev-id', role: 'reviewer' });
@@ -119,7 +119,7 @@ test('session work is empty after tracker shutdown while sessions still disconne
   const rev = await spawnSpoke({ hub, name: 'rev-stopping', sessionId: 'stopping-id', role: 'reviewer' });
   onCleanup(t, () => rev.close());
   await rev.waitForPresence(['rev-stopping']);
-  const made = await ui.request({ type: 'task.create', title: 'Tracker shutdown work' });
+  const made = await ui.request({ size: 'M', type: 'task.create', title: 'Tracker shutdown work' });
   const item = (made.value as { item: { id: string } }).item.id;
   assert.equal((await rev.call<{ ok: boolean }>('task.hold', { id: item })).ok, true);
   const heldAt = (await rev.call<{ item: { holds: { heldAt: string }[] } }>('task.view', { id: item })).item.holds[0]!.heldAt;
@@ -135,7 +135,7 @@ test('session.list orders verifier holds newest first with their durable timesta
   const ui = await connectUi(t, discovery);
   const ids: string[] = [];
   for (const title of ['Older hold', 'Latest hold']) {
-    const made = await ui.request({ type: 'task.create', title });
+    const made = await ui.request({ size: 'M', type: 'task.create', title });
     ids.push((made.value as { item: { id: string } }).item.id);
   }
   const launch = await ui.request({ type: 'session.launch', name: 'ordered-reviewer', role: 'reviewer', harness: 'claude-code' }, 30_000);
@@ -162,7 +162,7 @@ test('delivered verifier requests persist across restart and clear on hold, verd
   onCleanup(t, () => coord.close());
   const ids: string[] = [];
   for (const title of ['First request', 'Newer request']) {
-    const made = await ui.request({ type: 'task.create', title });
+    const made = await ui.request({ size: 'M', type: 'task.create', title });
     ids.push((made.value as { item: { id: string } }).item.id);
   }
   const launch = await ui.request({ type: 'session.launch', name: 'pending-reviewer', role: 'reviewer', harness: 'claude-code' }, 30_000);
@@ -223,7 +223,7 @@ test('a native first-turn verifier request counts as delivered pending work', as
   const fake = await fakeCodex(t);
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
-  const made = await ui.request({ type: 'task.create', title: 'Native first-turn review' });
+  const made = await ui.request({ size: 'M', type: 'task.create', title: 'Native first-turn review' });
   const item = (made.value as { item: { id: string } }).item.id;
   const launched = await ui.request({ type: 'session.launch', name: 'native-reviewer', role: 'reviewer', harness: 'codex', brief: `review request ${item}` }, 30_000);
   assert.equal(launched.ok, true, launched.error);

@@ -30,7 +30,7 @@ test('verifier holds move status beside the Implementer claim, and release on ve
   for (const [session, role] of [['impl', 'implementer'], ['rev', 'reviewer'], ['qa-1', 'qa']] as const) {
     assert.equal((await ui.request({ type: 'role.set', session, role })).ok, true);
   }
-  const made = await ui.request({ type: 'task.create', title: 'Verify', assignee: 'impl' });
+  const made = await ui.request({ size: 'M', type: 'task.create', title: 'Verify', assignee: 'impl' });
   const item = (made.value as { item: ItemView }).item;
   assert.equal((await ui.request({ type: 'task.claim', item: item.id, as: { name: 'impl' } })).ok, true);
   const read = async () => (await ui.request({ type: 'task.view', item: item.id })).value as { item: ItemView & { holds: Array<{ session: string; role: string }> } };
@@ -73,7 +73,7 @@ for (const qaRequired of [false, true]) {
     const rev = await spawnSpoke({ discover: true, cwd: root, name: 'rev', sessionId: 'rev-id', role: 'reviewer' });
     const qa = await spawnSpoke({ discover: true, cwd: root, name: 'qa-1', role: 'qa' });
     onCleanup(t, () => rev.close()); onCleanup(t, () => qa.close());
-    const made = await ui.request({ type: 'task.create', title: 'Ready fixture' });
+    const made = await ui.request({ size: 'M', type: 'task.create', title: 'Ready fixture' });
     const item = (made.value as { item: ItemView }).item;
     const claimed = await ui.request({ type: 'task.claim', item: item.id });
     const work = (claimed.value as { worktree: { path: string; branch: string } }).worktree;
@@ -199,7 +199,7 @@ test(`a commit landing during ready ${pauseAt} cannot publish ready for an unrev
   assert.equal((await ui.request({ type: 'role.set', session: 'rev', role: 'reviewer' })).ok, true);
   const rev = await spawnSpoke({ hub, name: 'rev', role: 'reviewer' });
   onCleanup(t, () => rev.close());
-  const made = await ui.request({ type: 'task.create', title: 'Race' });
+  const made = await ui.request({ size: 'M', type: 'task.create', title: 'Race' });
   const item = (made.value as { item: ItemView }).item;
   const claimed = await ui.request({ type: 'task.claim', item: item.id });
   const work = (claimed.value as { worktree: { path: string } }).worktree;
@@ -233,7 +233,7 @@ test('a launched verifier stop releases its hub hold and preserves the Implement
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   assert.equal((await ui.request({ type: 'role.set', session: 'impl', role: 'implementer' })).ok, true);
-  const made = await ui.request({ type: 'task.create', title: 'Stop verifier', assignee: 'impl' });
+  const made = await ui.request({ size: 'M', type: 'task.create', title: 'Stop verifier', assignee: 'impl' });
   const item = (made.value as { item: ItemView }).item;
   assert.equal((await ui.request({ type: 'task.claim', item: item.id, as: { name: 'impl' } })).ok, true);
   const launched = await ui.request({ type: 'session.launch', name: 'rev', role: 'reviewer', harness: 'claude-code' }, 30_000);
@@ -269,7 +269,7 @@ for (const pauseAt of ['queue', 'write'] as const) {
     onCleanup(t, () => hub.close());
     const ui = await connectWsUi(t, hub);
     assert.equal((await ui.request({ type: 'role.set', session: 'rev', role: 'reviewer' })).ok, true);
-    const made = await ui.request({ type: 'task.create', title: 'Revoked hold' });
+    const made = await ui.request({ size: 'M', type: 'task.create', title: 'Revoked hold' });
     const item = (made.value as { item: ItemView }).item;
     pause = true;
     const earlier = pauseAt === 'queue' ? ui.request({ type: 'task.comment', item: item.id, text: 'Earlier' }) : null;
@@ -318,7 +318,7 @@ for (const outcome of ['unchanged', 'changed', 'failed'] as const) {
     assert.equal((await ui.request({ type: 'role.set', session: 'rev', role: 'reviewer' })).ok, true);
     const rev = await spawnSpoke({ hub, name: 'rev', role: 'reviewer' });
     onCleanup(t, () => rev.close());
-    const made = await ui.request({ type: 'task.create', title: 'Pending fixture' });
+    const made = await ui.request({ size: 'M', type: 'task.create', title: 'Pending fixture' });
     const item = (made.value as { item: ItemView }).item;
     const claimed = await ui.request({ type: 'task.claim', item: item.id });
     const work = (claimed.value as { worktree: { path: string } }).worktree;
@@ -366,7 +366,7 @@ test('stop during hold rename releases the hold after publication on the tracker
   assert.equal((await ui.request({ type: 'session.launch', name: 'rev', role: 'reviewer', harness: 'claude-code' }, 30_000)).ok, true);
   // The launch answer can precede the spoke's hello, which adopts the verifier's identity.
   await ui.waitFor(f => f.type === 'presence' && (f.sessions as Presence[]).some(s => s.name === 'rev' && s.role === 'reviewer'));
-  const made = await ui.request({ type: 'task.create', title: 'Stop during hold' });
+  const made = await ui.request({ size: 'M', type: 'task.create', title: 'Stop during hold' });
   const item = (made.value as { item: ItemView }).item;
   let enter!: () => void;
   let release!: () => void;
@@ -418,7 +418,7 @@ test('a hand edit during ready Git refresh converges to the edited verdicts with
   assert.equal((await ui.request({ type: 'role.set', session: 'rev', role: 'reviewer' })).ok, true);
   const rev = await spawnSpoke({ hub, name: 'rev', role: 'reviewer' });
   onCleanup(t, () => rev.close());
-  const made = await ui.request({ type: 'task.create', title: 'Hand edited readiness' });
+  const made = await ui.request({ size: 'M', type: 'task.create', title: 'Hand edited readiness' });
   const item = (made.value as { item: ItemView }).item;
   const claimed = await ui.request({ type: 'task.claim', item: item.id });
   const work = (claimed.value as { worktree: { path: string } }).worktree;
@@ -449,7 +449,7 @@ for (const release of ['verdict', 'explicit'] as const) {
     onCleanup(t, () => hub.close());
     const ui = await connectWsUi(t, hub);
     assert.equal((await ui.request({ type: 'role.set', session: 'rev', role: 'implementer' })).ok, true);
-    const made = await ui.request({ type: 'task.create', title: 'Pre-hello verification', assignee: 'rev' });
+    const made = await ui.request({ size: 'M', type: 'task.create', title: 'Pre-hello verification', assignee: 'rev' });
     const item = (made.value as { item: ItemView }).item;
     const claimed = await ui.request({ type: 'task.claim', item: item.id, as: { name: 'rev' } });
     assert.equal(claimed.ok, true, JSON.stringify(claimed));
@@ -536,7 +536,7 @@ for (const mode of ['timing', 'timing-parented', 'retry'] as const) {
     assert.equal((await ui.request({ type: 'role.set', session: 'rev', role: 'reviewer' })).ok, true);
     const rev = await spawnSpoke({ hub, name: 'rev', role: 'reviewer' });
     onCleanup(t, () => rev.close());
-    const made = await ui.request({ type: 'task.create', title: 'Ready continuation' });
+    const made = await ui.request({ size: 'M', type: 'task.create', title: 'Ready continuation' });
     const item = (made.value as { item: ItemView }).item;
     readyId = item.id;
     if (mode === 'timing-parented') {
@@ -586,7 +586,7 @@ test('restart reconciles a stop recorded before queued hold cleanup, preserving 
   const ui = await connectUi(t, first.discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   assert.equal((await ui.request({ type: 'role.set', session: 'impl', role: 'implementer' })).ok, true);
-  const made = await ui.request({ type: 'task.create', title: 'Reconcile holds', assignee: 'impl' });
+  const made = await ui.request({ size: 'M', type: 'task.create', title: 'Reconcile holds', assignee: 'impl' });
   const item = (made.value as { item: ItemView }).item;
   assert.equal((await ui.request({ type: 'task.claim', item: item.id, as: { name: 'impl' } })).ok, true);
   assert.equal((await ui.request({ type: 'session.launch', name: 'rev', role: 'reviewer', harness: 'claude-code' }, 30_000)).ok, true);
@@ -635,7 +635,7 @@ for (const header of [false, true]) {
     onCleanup(t, () => hub.close());
     const ui = await connectWsUi(t, hub);
     assert.equal((await ui.request({ type: 'role.set', session: 'rev', role: 'implementer' })).ok, true);
-    const made = await ui.request({ type: 'task.create', title: 'Pre-hello verdict', assignee: 'rev' });
+    const made = await ui.request({ size: 'M', type: 'task.create', title: 'Pre-hello verdict', assignee: 'rev' });
     const item = (made.value as { item: ItemView }).item;
     const claimed = await ui.request({ type: 'task.claim', item: item.id, as: { name: 'rev' } });
     const work = (claimed.value as { worktree: { path: string } }).worktree;
@@ -677,7 +677,7 @@ test('failed SQLite identity adoption fences verifier work and a retry adopts cl
   const ui = await connectWsUi(t, hub);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   assert.equal((await ui.request({ type: 'role.set', session: 'rev', role: 'implementer' })).ok, true);
-  const made = await ui.request({ type: 'task.create', title: 'Failed adoption', assignee: 'rev' });
+  const made = await ui.request({ size: 'M', type: 'task.create', title: 'Failed adoption', assignee: 'rev' });
   const item = (made.value as { item: ItemView }).item;
   const claimed = await ui.request({ type: 'task.claim', item: item.id, as: { name: 'rev' } });
   const work = (claimed.value as { worktree: { path: string } }).worktree;
@@ -741,7 +741,7 @@ test(`restart rebuilds failed-adoption fences before real-id CLI releases or ver
   onCleanup(t, () => daemon.stop());
   const ui = await connectUi(t, daemon.discovery!);
   assert.equal((await ui.request({ type: 'role.set', session: 'rev', role: 'implementer' })).ok, true);
-  const made = await ui.request({ type: 'task.create', title: 'Restart adoption', assignee: 'rev' });
+  const made = await ui.request({ size: 'M', type: 'task.create', title: 'Restart adoption', assignee: 'rev' });
   const item = (made.value as { item: ItemView }).item;
   const claimed = await ui.request({ type: 'task.claim', item: item.id, as: { name: 'rev' } });
   const work = (claimed.value as { worktree: { path: string } }).worktree;
@@ -773,7 +773,7 @@ test(`restart rebuilds failed-adoption fences before real-id CLI releases or ver
   let legacyId: string | undefined;
   if (legacyClaim) {
     assert.equal((await ui.request({ type: 'role.set', session: 'legacy', role: 'implementer' })).ok, true);
-    const made = await ui.request({ type: 'task.create', title: 'Legacy identity', assignee: 'legacy' });
+    const made = await ui.request({ size: 'M', type: 'task.create', title: 'Legacy identity', assignee: 'legacy' });
     legacyId = (made.value as { item: ItemView }).item.id;
     assert.equal((await ui.request({ type: 'task.claim', item: legacyId, as: { name: 'legacy' } })).ok, true);
     const legacy = await spawnSpoke({ discover: true, cwd: root, name: 'legacy', sessionId: 'legacy-real', role: 'implementer' });

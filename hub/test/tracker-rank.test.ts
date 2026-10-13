@@ -26,7 +26,7 @@ test('sparse rank moves persist, are idempotent, and CLI and MCP share rank then
   onCleanup(t, () => coord.close());
   const items: Item[] = [];
   for (const title of ['A', 'B', 'C', 'D']) {
-    const made = await coord.call<{ item: Item }>('task.create', { title });
+    const made = await coord.call<{ item: Item }>('task.create', { size: 'M', title });
     items.push(made.item);
   }
   assert.deepEqual(items.map(i => i.rank), [10, 20, 30, 40]);
@@ -187,8 +187,8 @@ for (const change of ['rank', 'parent', 'grant'] as const) {
   test(`rank refuses a sibling ${change} change after its temporary write await`, async t => {
     const { root, ui, release, pause } = await pausedWriteHub(t);
     assert.equal((await ui.request({ type: 'role.set', session: 'coord', role: 'coordinator' })).ok, true);
-    const a = (await ui.request({ type: 'task.create', title: 'A' })).value as { item: Item };
-    const b = (await ui.request({ type: 'task.create', title: 'B' })).value as { item: Item };
+    const a = (await ui.request({ size: 'M', type: 'task.create', title: 'A' })).value as { item: Item };
+    const b = (await ui.request({ size: 'M', type: 'task.create', title: 'B' })).value as { item: Item };
     const original = await readFile(join(root, b.item.path), 'utf8');
     const paused = pause();
     const writing = ui.request({ type: 'task.rank', item: b.item.id, top: true, as: { name: 'coord' } });
@@ -208,7 +208,7 @@ for (const change of ['rank', 'parent', 'grant'] as const) {
 
 test('rank operations wait behind earlier writes and see each preceding rank without losing comments', async t => {
   const { ui, release, pause } = await pausedWriteHub(t);
-  for (const title of ['A', 'B']) assert.equal((await ui.request({ type: 'task.create', title })).ok, true);
+  for (const title of ['A', 'B']) assert.equal((await ui.request({ size: 'M', type: 'task.create', title })).ok, true);
   const paused = pause();
   const comment = ui.request({ type: 'task.comment', item: 'T-1', text: 'Earlier comment stays.' });
   await paused;
@@ -254,8 +254,8 @@ test('the high migration ranks singleton groups, including closed items, and a r
   await startDaemon(t, root);
   for (const title of ['One', 'Two']) assert.equal((await cland(root, 'task', 'create', title, '--kind', 'epic')).code, 0);
   for (const parent of ['T-1', 'T-2']) {
-    assert.equal((await cland(root, 'task', 'create', 'Ordinary', '--parent', parent)).code, 0);
-    assert.equal((await cland(root, 'task', 'create', 'High', '--label', 'high', '--parent', parent)).code, 0);
+    assert.equal((await cland(root, 'task', 'create', '--size', 'M', 'Ordinary', '--parent', parent)).code, 0);
+    assert.equal((await cland(root, 'task', 'create', '--size', 'M', 'High', '--label', 'high', '--parent', parent)).code, 0);
   }
   assert.equal((await cland(root, 'task', 'close', 'T-6')).code, 0);
   const first = await migration(root);
@@ -277,7 +277,7 @@ test('the high migration ranks singleton groups, including closed items, and a r
 test('the high migration refuses multiple labelled siblings before any writes, counting closed items', async t => {
   const root = await tempProject(t);
   await startDaemon(t, root);
-  for (const title of ['One', 'Two']) assert.equal((await cland(root, 'task', 'create', title, '--label', 'high')).code, 0);
+  for (const title of ['One', 'Two']) assert.equal((await cland(root, 'task', 'create', '--size', 'M', title, '--label', 'high')).code, 0);
   assert.equal((await cland(root, 'task', 'close', 'T-2')).code, 0);
   const listed = JSON.parse((await cland(root, 'task', 'list', '--json')).stdout) as { items: Item[] };
   const before = await Promise.all(listed.items.map(item => readFile(join(root, '.cland', 'tasks', item.file), 'utf8')));
@@ -308,8 +308,8 @@ test('a failed high label removal retries without another rank write or a migrat
   onCleanup(t, () => edge.close());
   await writeFile(join(root, '.cland', 'hub.json'), JSON.stringify({ socket, port: Number(new URL(hub.url).port), secret: TEST_SECRET, pid: process.pid, version: 'test' }));
   const ui = await connectWsUi(t, hub);
-  await ui.request({ type: 'task.create', title: 'Ordinary' });
-  const high = (await ui.request({ type: 'task.create', title: 'High', labels: ['high'] })).value as { item: Item };
+  await ui.request({ size: 'M', type: 'task.create', title: 'Ordinary' });
+  const high = (await ui.request({ size: 'M', type: 'task.create', title: 'High', labels: ['high'] })).value as { item: Item };
   target = join(root, high.item.path);
   fail = true;
   const failed = await migration(root);

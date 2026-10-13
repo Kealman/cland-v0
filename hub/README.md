@@ -1190,14 +1190,14 @@ approval arrive in their own slices. No role clause changes in T-183.
 
 | Command | Tool | What it does |
 | --- | --- | --- |
-| `cland task create <title> [--kind] [--version] [--body \| --body-file] [--label]… [--assignee] [--parent] [--blocked-by]… [--topic] [--branch]` | `task.create` | Writes a new item file. |
+| `cland task create <title> [--kind] [--size] [--regression-of] [--version] [--body \| --body-file] [--label]… [--assignee] [--parent] [--blocked-by]… [--topic] [--branch]` | `task.create` | Writes a new item file. |
 | `cland task view <id>` | `task.view` | Frontmatter, file path, ancestry, body, plan (and planError on an invalid hand save), criteria and their warnings, comments, verdicts and the claim. |
 | `cland task plan <set\|show> <epic-id> [--file plan.yaml]` | `task.plan` | Validates and writes, or shows, the epic plan (Epic plans above). |
 | `cland task list [--under T-n] [--state] [--label]… [--kind] [--assignee] [--verdict review=clear]` | `task.list` | Queries the index. Each item carries its claim and its verdicts in file order (the latest last). |
 | `cland task comment <id> <text> [--verdict review\|qa --result clear\|"not clear" --run <id> [--commit <sha>]]` | `task.comment` | Appends a comment, or a verdict. |
-| `cland task edit <id> [--version] [--title] [--body] [--kind] [--state] [--status] [--label]… [--add-label]… [--remove-label]… [--assignee]` | `task.edit` | Changes fields; `none` clears the assignee. |
+| `cland task edit <id> [--version] [--title] [--body] [--kind] [--size] [--state] [--status] [--label]… [--add-label]… [--remove-label]… [--assignee]` | `task.edit` | Changes fields; `none` clears the assignee. |
 | `cland task close <id> [--comment]` | `task.close` | Closes the item. |
-| `cland task link <id> [--parent] [--blocked-by]… [--unblock]… [--topic] [--branch]` | `task.link` | Sets the links; `none` clears one. |
+| `cland task link <id> [--regression-of] [--parent] [--blocked-by]… [--unblock]… [--topic] [--branch]` | `task.link` | Sets the links; `none` clears one. |
 | `cland task hold <id> [--release]` | `task.hold` | Reviewer or QA takes/releases its own verifier hold beside the Implementer claim. |
 | `cland task criterion <id> <op> …` | `task.criterion` | Done, verify, fail, add, edit and remove criteria with role and claim checks. |
 | `cland task rank <id> --top/--before T-n/--after T-n` | `task.rank` | Moves among siblings with minimal rank writes; returns changed and ordered sibling ids. |
@@ -1860,3 +1860,11 @@ An item's number is its identity. The hub returns the kind's canonical prefix (`
 Numeric resolution uses the indexed `tracker_items.n` column. The derived index and new ownership/evidence rows use a stable numeric lookup key spelled `T-<n>` internally; reads accept all kind prefixes and project canonical ids. Existing claims, holds, accepted plans, merge receipts, written verdicts, topic bindings, subscriptions and pending verification records are read by number without a startup rewrite. The process table projects its saved item reference through the same resolver. No journal, message, body, comment or branch is rewritten. Plans retain their reference spellings for approval hashing and compare lane membership by number.
 
 New files and their frontmatter ids use the kind's prefix and one shared counter. Kind changes keep the number and slug and rename the file prefix. Duplicate numbers index once, prefer the file whose prefix matches its kind, log `task-duplicate-number` with both names and show a warning in `task.view`. The hub publishes the prefix table as `hub.status.tracker.prefixes` for Neovim.
+
+### Task sizes and regression links
+
+Tasks filed through CLI or MCP require `size` (XS, S, M, L or XL), assigned ex ante by the author; other kinds refuse it. `task.create` without it returns `a task needs a size: XS, S, M, L or XL`. Use `cland task create "Rework" --size S --regression-of T-321` with a landed target, and `cland task edit T-n --size L` to change a class; size cannot be cleared. Existing unsized files stay readable. Required size is checked only at the request layer, so GitHub import and internal `Tracker.create` callers stay compatible and sizeless.
+
+Optional task `regression_of` names a closed task with a landing receipt on dev. Any recognized prefix or bare number resolves; reads show the target's canonical prefix. Create or `cland task link T-n --regression-of T-321` sets it, and `--regression-of none` (MCP null or none) clears it. Non-task, open, unlanded and self targets refuse with their reason. Both fields are file frontmatter and indexed columns used by `task.list`, `task.view` and task events, without list-time item reads. Every filed item carries a `## Summary` of one to three sentences; filing clauses and skills include the size and regression rules.
+
+Offline `cland task migrate --sizes sizes.json --dry-run --json` previews a JSON id-to-size assignment map; omit `--dry-run` to apply. It fills only unsized open tasks, preserves existing sizes and closed tasks, and reports missing author decisions as unresolved. No size is guessed. It uses the existing migration startup lock and preflight safeguards. See `docs/agents/issue-tracker.md` for the backup, count review, idempotent rerun, suggested E-270 assignments and scratch-copy procedure. The Coordinator applies during the restart carrying T-331, then relaunches every role session including itself to refresh MCP schemas and clauses.

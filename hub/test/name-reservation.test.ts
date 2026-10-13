@@ -33,7 +33,7 @@ async function pendingAlias(t: TestContext, log?: LogFn, faultAdoption = true) {
   onCleanup(t, () => edge.close());
   const ui = await connectUi(t, { socket, secret: TEST_SECRET });
   await ui.request({ type: 'role.set', session: 'session-1', role: 'implementer' });
-  const made = await ui.request({ type: 'task.create', title: 'Pending claimant', assignee: 'session-1' });
+  const made = await ui.request({ size: 'M', type: 'task.create', title: 'Pending claimant', assignee: 'session-1' });
   const item = (made.value as { item: { id: string } }).item.id;
   assert.equal((await ui.request({ type: 'task.claim', item, as: { name: 'session-1' } })).ok, true);
   t.mock.method(DatabaseSync.prototype, 'prepare', function (this: DatabaseSync, sql: string) {
@@ -183,7 +183,7 @@ for (const cleanup of ['stopped', 'refused'] as const) {
     const { started, release, stopped } = deferSpawn(t, f.sessions, { refuseStop: cleanup === 'refused' });
     const launching = f.launch('target', null);
     await started;
-    const made = await f.ui.request({ type: 'task.create', title: 'Claim during spawn', assignee: 'target' });
+    const made = await f.ui.request({ size: 'M', type: 'task.create', title: 'Claim during spawn', assignee: 'target' });
     const item = (made.value as { item: { id: string } }).item.id;
     // No status transition at claim: this name-conflict scenario starts with work already in progress.
     assert.equal((await f.ui.request({ type: 'task.edit', item, status: 'in progress' })).ok, true);
@@ -977,7 +977,7 @@ test('an unpublished row failure preserves the prior identity and its claimant l
   assert.equal(welcome.type, 'welcome');
   client.close(); await client.closed;
   await eventually('prior target offline', () => !f.hub.core.connectionOf('prior-target') || undefined);
-  const made = await f.ui.request({ type: 'task.create', title: 'Prior target claim', assignee: 'target' });
+  const made = await f.ui.request({ size: 'M', type: 'task.create', title: 'Prior target claim', assignee: 'target' });
   const item = (made.value as { item: { id: string } }).item.id;
   const claim = await f.ui.request({ type: 'task.claim', item, as: { name: 'target' } });
   assert.equal(claim.ok, true, claim.error);

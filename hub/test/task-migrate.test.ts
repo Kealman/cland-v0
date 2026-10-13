@@ -30,7 +30,7 @@ test('offline closed backfill previews receipt, journal and commit sources and c
   await startDaemon(t, root);
   const items: Array<{ id: string; path: string }> = [];
   for (const title of ['receipt', 'journal', 'commit', 'unresolved', 'already']) {
-    const made = await cland(root, 'task', 'create', title, '--json');
+    const made = await cland(root, 'task', 'create', '--size', 'M', title, '--json');
     assert.equal(made.code, 0, made.stderr);
     const item = JSON.parse(made.stdout).item;
     items.push(item);
@@ -339,4 +339,58 @@ test('fully migrated files repair a stale final index row, then a clean rerun wr
   assert.deepEqual(await fileTimes(), beforeTimes);
   assert.equal(await readFile(join(root, '.cland/log/hub.log'), 'utf8'), beforeLog);
   assert.equal(await readFile(join(root, '.cland/journal.jsonl'), 'utf8'), beforeJournal);
+});
+
+test('offline size backfill uses explicit decisions, previews without writes and applies once', async t => {
+  const root = await preparedProject(t);
+  await startDaemon(t, root);
+  assert.equal((await cland(root, 'hub', 'stop')).code, 0);
+  assert.equal((await cland(root, 'task', 'migrate')).code, 0);
+  const dir = join(root, '.cland/tasks');
+  for (const [n, kind, state, size] of [[328, 'task', 'open', ''], [329, 'task', 'open', 'size: XL\n'], [330, 'task', 'closed', ''], [331, 'task', 'open', ''], [332, 'epic', 'open', '']] as const) {
+    await writeFile(join(dir, `${kind === 'epic' ? 'E' : 'T'}-${n}-legacy.md`), `---\nid: T-${n}\nkind: ${kind}\ntitle: Legacy\nstate: ${state}\n${kind === 'task' ? `status: ${state === 'closed' ? 'done' : 'backlog'}\n` : ''}${size}labels: [] # keep my formatting\n---\n\n## Summary\n\nLegacy body.\n`);
+  }
+  // Get canonical prefixes and index in sync before the isolated size backfill.
+  assert.equal((await cland(root, 'task', 'migrate')).code, 0);
+  const sizesFile = join(root, 'sizes.json');
+  await writeFile(sizesFile, JSON.stringify({ 'E-328': 'M', 'T-329': 'S', 'T-330': 'L' }));
+  const beforeFiles = await filesSnapshot(root), beforeDb = indexSnapshot(root);
+  const preview = await cland(root, 'task', 'migrate', '--sizes', sizesFile, '--dry-run', '--json');
+  assert.equal(preview.code, 0, preview.stderr);
+  const plan = JSON.parse(preview.stdout) as MigrationPlan;
+  assert.deepEqual(plan.sizes.map(c => [c.item, c.size]), [['T-328', 'M']]);
+  assert.ok(plan.unresolved.some(c => c.item === 'T-331' && c.field === 'size'));
+  assert.deepEqual(await filesSnapshot(root), beforeFiles);
+  assert.deepEqual(indexSnapshot(root), beforeDb);
+  const applied = await cland(root, 'task', 'migrate', '--sizes', sizesFile, '--json');
+  assert.equal(applied.code, 0, applied.stderr);
+  assert.deepEqual(JSON.parse(applied.stdout), plan);
+  const changed = await filesSnapshot(root);
+  for (const [file, text] of beforeFiles) {
+    const after = changed.find(([name]) => name === file)![1];
+    assert.equal(file!.startsWith('T-328-') ? after!.replace(/^size: M\n/m, '') : after, text, file);
+  }
+  const dbAfter = indexSnapshot(root);
+  const rerun = await cland(root, 'task', 'migrate', '--sizes', sizesFile);
+  assert.equal(rerun.code, 0, rerun.stderr);
+  assert.match(rerun.stdout, /nothing to do/);
+  assert.deepEqual(await filesSnapshot(root), changed);
+  assert.deepEqual(indexSnapshot(root), dbAfter);
+  for (const invalid of [{ 'T-332': 'S' }, { '999': 'L' }, { '328': 'XXL' }, { 'T-328': 'M', 'E-328': 'L' }]) {
+    await writeFile(sizesFile, JSON.stringify(invalid));
+    const refused = await cland(root, 'task', 'migrate', '--sizes', sizesFile);
+    assert.equal(refused.code, 1);
+    assert.match(refused.stderr, /sizes file/);
+    assert.deepEqual(await filesSnapshot(root), changed);
+    assert.deepEqual(indexSnapshot(root), dbAfter);
+  }
+  await startDaemon(t, root);
+  for (const id of ['T-328', 'E-328', '328']) {
+    const result = await cland(root, 'task', 'view', id, '--json');
+    assert.equal(result.code, 0, result.stderr);
+    assert.equal(JSON.parse(result.stdout).item.size, 'M');
+  }
+  const live = await cland(root, 'task', 'migrate', '--sizes', sizesFile, '--dry-run');
+  assert.equal(live.code, 1);
+  assert.match(live.stderr, /hub is running/);
 });

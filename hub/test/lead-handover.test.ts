@@ -27,7 +27,7 @@ async function setup(t: TestContext, crash = false, direct = false) {
     return s;
   };
   const coord = await spoke('coord', 'coordinator');
-  const create = async (title: string, kind = 'task', parent?: string) => (await coord.call<{ item: { id: string } }>('task.create', { title, kind, ...(parent ? { parent } : {}) })).item.id;
+  const create = async (title: string, kind = 'task', parent?: string) => (await coord.call<{ item: { id: string } }>('task.create', { ...(['task'].includes(kind) ? { size: 'M' } : {}), title, kind, ...(parent ? { parent } : {}) })).item.id;
   const launch = async (name: string, item?: string) => {
     if (direct) {
       const s = await spoke(name, item ? 'lead' : 'implementer');

@@ -24,7 +24,7 @@ async function fixture(t: test.TestContext, approval = false, territory = false,
   const { discovery } = await startDaemon(t, root, gate?.env);
   const ui = await connectUi(t, discovery);
   const create = async (title: string, kind = 'task', parent?: string) => {
-    const r = await ui.request({ type: 'task.create', title, kind, parent });
+    const r = await ui.request({ ...(['task'].includes(kind) ? { size: 'M' } : {}), type: 'task.create', title, kind, parent });
     assert.equal(r.ok, true, r.error);
     return (r.value as { item: ItemView }).item;
   };
@@ -178,7 +178,7 @@ test('stage landing and ten close frames keep a fixed query budget with unrelate
   assert.ok(daemon.discovery);
   const ui = await connectUi(t, daemon.discovery);
   const create = async (title: string, kind = 'task', parent?: string) => {
-    const r = await ui.request({ type: 'task.create', title, kind, parent }); assert.equal(r.ok, true, r.error);
+    const r = await ui.request({ ...(['task'].includes(kind) ? { size: 'M' } : {}), type: 'task.create', title, kind, parent }); assert.equal(r.ok, true, r.error);
     return (r.value as { item: ItemView }).item;
   };
   const set = async (epic: ItemView, first: ItemView[], later?: ItemView[]) => {
@@ -314,7 +314,7 @@ test('a late in-place save after the publication hash read retains its status an
   const hub = await startHub({ tracker }); t.after(() => hub.close());
   const ui = await connectWsUi(t, hub); await ui.request({ type: 'subscribe' });
   const epic = ((await ui.request({ type: 'task.create', title: 'Late editor epic', kind: 'epic' })).value as { item: ItemView }).item;
-  const task = ((await ui.request({ type: 'task.create', title: 'Late editor task', parent: epic.id })).value as { item: ItemView }).item;
+  const task = ((await ui.request({ size: 'M', type: 'task.create', title: 'Late editor task', parent: epic.id })).value as { item: ItemView }).item;
   path = join(root, task.path); saved = (await readFile(path, 'utf8')).replace('status: backlog', 'status: review');
   editor = await files.open(path, 'r+');
   const plan: EpicPlan = { stages: [{ name: 'current', qa: { scope: 'none', when: 'per-item' }, lanes: [[task.id]] }] };
@@ -338,7 +338,7 @@ test('an indexed refused candidate recovers when its containing feature is repar
   await writeFile(join(root, '.cland/config.toml'), '[tracker]\nlevels = ["release", "epic", "feature"]\n');
   const { discovery } = await startDaemon(t, root), ui = await connectUi(t, discovery);
   const create = async (title: string, kind: string, parent?: string) => {
-    const r = await ui.request({ type: 'task.create', title, kind, parent }); assert.equal(r.ok, true, r.error);
+    const r = await ui.request({ ...(['task'].includes(kind) ? { size: 'M' } : {}), type: 'task.create', title, kind, parent }); assert.equal(r.ok, true, r.error);
     return (r.value as { item: ItemView }).item;
   };
   const epic = await create('Target', 'epic'), other = await create('Original', 'epic');

@@ -52,9 +52,17 @@ test('a 65-row list reads no item files; a verify finishing reads one summary wi
   const edge = await createSocketEdge({ path: socket, dispatcher: hub.dispatcher });
   t.after(() => edge.close());
   const ui = await connectUi(t, { socket, secret: TEST_SECRET });
-  const made = await ui.request({ type: 'task.create', title: 'Build card' });
+  const made = await ui.request({ size: 'S', type: 'task.create', title: 'Build card' });
   const item = (made.value as { item: ItemView }).item;
-  for (let n = 0; n < 64; n++) assert.equal((await ui.request({ type: 'task.create', title: `Unrelated ${n}` })).ok, true);
+  let landed: string | undefined;
+  for (let n = 0; n < 64; n++) {
+    const result = await ui.request({ size: 'M', type: 'task.create', title: `Unrelated ${n}` });
+    assert.equal(result.ok, true);
+    if (n === 0) landed = (result.value as { item: ItemView }).item.id;
+  }
+  assert.equal((await ui.request({ type: 'task.close', item: landed })).ok, true);
+  tracker.recordMerge(landed!, { branch: 't/landed', tip: 'a'.repeat(40), commit: 'b'.repeat(40), base: 'dev' });
+  assert.equal((await ui.request({ type: 'task.link', item: item.id, regression_of: landed })).ok, true);
   const topic = (await ui.request({ type: 'topic.create', title: 'Build', item: item.id })).value as { topic: { id: string } };
   await ui.request({ type: 'subscribe' });
   let fileReads = 0, measuringList = false, observing = false;
@@ -86,6 +94,8 @@ test('a 65-row list reads no item files; a verify finishing reads one summary wi
   });
   const list = await ui.request({ type: 'task.list' });
   assert.equal((list.value as { items: ItemSummary[] }).items.length, 65);
+  const indexedCard = (list.value as { items: ItemSummary[] }).items.find(i => i.id === item.id)!;
+  assert.deepEqual([indexedCard.size, indexedCard.regression_of], ['S', landed]);
   assert.equal(repeatedCriteriaReads, 0, 'list resolves counts from the already-selected rows');
   assert.equal(fileReads, 0);
   const run = await ui.request({ type: 'suite.start', mode: 'all', cwd: root, report: topic.topic.id, to: [] });
@@ -107,7 +117,10 @@ test('a 65-row list reads no item files; a verify finishing reads one summary wi
   t.diagnostic(`completion: ${queries} tracker queries; ${fullLists} full lists; ${fileReads} item file reads`);
   const cards = ui.frames.slice(from).filter(f => f.type === 'task' && (f.item as ItemSummary)?.id === item.id);
   assert.equal(cards.length, 1, 'one completion card, including the artifact');
-  for (const card of cards) assert.equal((card as { events?: unknown }).events, undefined);
+  for (const card of cards) {
+    assert.equal((card as { events?: unknown }).events, undefined);
+    assert.deepEqual([(card.item as ItemSummary).size, (card.item as ItemSummary).regression_of], ['S', landed]);
+  }
   // Repeated same-tick saves, even for the same final result, announce at most once.
   const at = ui.frames.length;
   tracker.verifyChanged(item.id, 'dev'); tracker.verifyChanged(item.id, 'dev'); tracker.verifyChanged(item.id, 'dev');
@@ -139,7 +152,7 @@ test('list criteria counts use exclusive mark precedence and exact branch and ep
   - verified: rev [reviewer] · run legacy · 2026-10-13T10:00Z`;
   const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
   t.after(() => coord.close());
-  const { item } = await coord.call<{ item: ItemView }>('task.create', { title: 'Counts', body, branch: 'dev' });
+  const { item } = await coord.call<{ item: ItemView }>('task.create', { size: 'M', title: 'Counts', body, branch: 'dev' });
   const counts = { total: 6, done: 1, verified: 1, stale: 2, failed: 1 };
   await eventually('counts resolve the current branch tip', async () => {
     const list = await coord.call<{ items: ItemSummary[] }>('task.list', {});
@@ -164,7 +177,7 @@ test('close, done and reopen publish the file closing time through CLI, MCP and 
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
   t.after(() => coord.close());
-  const { item } = await coord.call<{ item: { id: string; path: string } }>('task.create', { title: 'Closing time' });
+  const { item } = await coord.call<{ item: { id: string; path: string } }>('task.create', { size: 'M', title: 'Closing time' });
   const read = async () => (await coord.call<{ item: { closed?: string; state: string } }>('task.view', { id: item.id })).item;
   for (const args of [['close', item.id], ['edit', item.id, '--status', 'done']]) {
     const from = ui.frames.length;
@@ -209,7 +222,7 @@ test('closed is an optional ISO timestamp that round trips after updated', () =>
 test('hub closes after a hand reopen replace retained closed times, while already-closed retries keep them', async t => {
   const root = await tempProject(t);
   await startDaemon(t, root);
-  const made = await cland(root, 'task', 'create', 'Reclosed', '--json');
+  const made = await cland(root, 'task', 'create', '--size', 'M', 'Reclosed', '--json');
   const item = JSON.parse(made.stdout).item;
   const path = join(root, item.path);
   const old = '2001-01-01T00:00:00.000Z';

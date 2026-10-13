@@ -87,7 +87,7 @@ test('Lead launch requires an open epic or release; concurrent launches take onl
   });
   assert.match((await launch('no-node')).error!, /needs `item`/);
   for (const kind of ['task', 'question', 'spec', 'map', 'epic']) {
-    const { item } = await coord.call<{ item: { id: string } }>('task.create', { title: `Invalid ${kind}`, kind });
+    const { item } = await coord.call<{ item: { id: string } }>('task.create', { ...(['task'].includes(kind) ? { size: 'M' } : {}), title: `Invalid ${kind}`, kind });
     if (kind === 'epic') {
       const closed = await cland(root, 'task', 'close', item.id, '--override', 'Lead fixture: no epic demo');
       assert.equal(closed.code, 0, closed.stderr);

@@ -13,7 +13,7 @@ test('MCP done assigns legacy ids and CLI done writes the checkbox and a mark', 
   const root = await tempProject(t);
   const { discovery } = await startDaemon(t, root);
   const ui = await connectUi(t, discovery);
-  const made = await ui.request({ type: 'task.create', title: 'Write criteria', body: 'Intro\n\n## Acceptance criteria\n- [ ] First\n- [x] Second\n\n## Other\nKeep this.' });
+  const made = await ui.request({ size: 'M', type: 'task.create', title: 'Write criteria', body: 'Intro\n\n## Acceptance criteria\n- [ ] First\n- [x] Second\n\n## Other\nKeep this.' });
   const item = (made.value as { item: ItemView }).item;
   const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
   onCleanup(t, () => coord.close());
@@ -32,11 +32,11 @@ test('verify and fail write run and note; failure clears done and reopens the ta
   const { discovery } = await startDaemon(t, root);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
-  const item = ((await ui.request({ type: 'task.create', title: 'Fail criteria', body: '## Acceptance criteria\n- [ ] First' })).value as { item: ItemView }).item;
+  const item = ((await ui.request({ size: 'M', type: 'task.create', title: 'Fail criteria', body: '## Acceptance criteria\n- [ ] First' })).value as { item: ItemView }).item;
   const rev = await spawnSpoke({ discover: true, cwd: root, name: 'rev', role: 'reviewer', sessionId: 'rev-id' });
   const qa = await spawnSpoke({ discover: true, cwd: root, name: 'qa-1', role: 'qa', sessionId: 'qa-id' });
   onCleanup(t, () => rev.close()); onCleanup(t, () => qa.close());
-  const legacy = ((await ui.request({ type: 'task.create', title: 'Legacy checkbox', body: '## Acceptance criteria\n- [x] Legacy checked without done' })).value as { item: ItemView }).item;
+  const legacy = ((await ui.request({ size: 'M', type: 'task.create', title: 'Legacy checkbox', body: '## Acceptance criteria\n- [x] Legacy checked without done' })).value as { item: ItemView }).item;
   const legacyVerified = await rev.call<{ item: ItemView }>('task.criterion', { id: legacy.id, op: 'verify', criterion: 'C1', run: 'legacy-1' });
   assert.equal(legacyVerified.item.criteria[0]?.checked, false, 'a hub-written verification checkbox mirrors the absent done mark');
   await rev.call('subscribe', { subject: { item: item.id }, events: ['task'] });
@@ -69,7 +69,7 @@ test('add edit remove retain unrelated prose and never reuse an id after restart
   const root = await tempProject(t);
   const { discovery } = await startDaemon(t, root);
   const ui = await connectUi(t, discovery);
-  const item = ((await ui.request({ type: 'task.create', title: 'Edit criteria', body: '## Acceptance criteria\n- [ ] C7. Existing\n- [ ] Legacy\n\nKeep this prose.\n\n## Other\nDo not touch.' })).value as { item: ItemView }).item;
+  const item = ((await ui.request({ size: 'M', type: 'task.create', title: 'Edit criteria', body: '## Acceptance criteria\n- [ ] C7. Existing\n- [ ] Legacy\n\nKeep this prose.\n\n## Other\nDo not touch.' })).value as { item: ItemView }).item;
   for (const args of [['edit', 'C7', 'Reworded'], ['add', 'New one'], ['remove', 'C9']] as const) {
     const result = await cland(root, 'task', 'criterion', item.id, ...args, '--json');
     assert.equal(result.code, 0, result.stderr);
@@ -88,7 +88,7 @@ test('each role is limited to its criterion operations and done requires a live 
   const root = await tempProject(t);
   const { discovery } = await startDaemon(t, root);
   const ui = await connectUi(t, discovery);
-  const item = ((await ui.request({ type: 'task.create', title: 'Permissions', assignee: 'impl', body: '## Acceptance criteria\n- [ ] C1. First' })).value as { item: ItemView }).item;
+  const item = ((await ui.request({ size: 'M', type: 'task.create', title: 'Permissions', assignee: 'impl', body: '## Acceptance criteria\n- [ ] C1. First' })).value as { item: ItemView }).item;
   const sessions = [];
   for (const [name, role] of [['coord', 'coordinator'], ['impl', 'implementer'], ['rev', 'reviewer'], ['qa-1', 'qa'], ['none', undefined], ['aide-1', 'aide']] as const) {
     const spoke = await spawnSpoke({ discover: true, cwd: root, name, sessionId: `cli:${name}`, ...(role ? { role } : {}) });
@@ -127,7 +127,7 @@ test('a concurrent hand save refuses the criterion write and retry keeps both ch
   const gate = await taskWriteGate(t, root);
   const { discovery } = await startDaemon(t, root, gate.env);
   const ui = await connectUi(t, discovery);
-  const item = ((await ui.request({ type: 'task.create', title: 'Concurrent', body: '## Acceptance criteria\n- [ ] First\n\n## Notes\nOriginal.' })).value as { item: ItemView }).item;
+  const item = ((await ui.request({ size: 'M', type: 'task.create', title: 'Concurrent', body: '## Acceptance criteria\n- [ ] First\n\n## Notes\nOriginal.' })).value as { item: ItemView }).item;
   const path = join(root, item.path);
   await gate.arm();
   const writing = ui.request({ type: 'task.criterion', item: item.id, op: 'done', criterion: 'C1' });
@@ -151,7 +151,7 @@ test('a criterion grant revoked during the write refuses without assigning ids',
   const ui = await connectUi(t, discovery);
   const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
   onCleanup(t, () => coord.close());
-  const item = ((await ui.request({ type: 'task.create', title: 'Revoked', body: '## Acceptance criteria\n- [ ] First' })).value as { item: ItemView }).item;
+  const item = ((await ui.request({ size: 'M', type: 'task.create', title: 'Revoked', body: '## Acceptance criteria\n- [ ] First' })).value as { item: ItemView }).item;
   const original = await readFile(join(root, item.path), 'utf8');
   await gate.arm();
   const writing = coord.call<{ ok: boolean; code: string }>('task.criterion', { id: item.id, op: 'done', criterion: 'C1' });
@@ -168,7 +168,7 @@ test('marks preserve fenced examples and wrapped text and refuse malformed marks
   const { discovery } = await startDaemon(t, root);
   const ui = await connectUi(t, discovery);
   const body = '## Acceptance criteria\n- [ ] C1. Wrapped\n  continuation\n\n```\n- [ ] C99. Example\n```\n  - done: impl-1 · 2026-10-09T10:00Z\n\n## Other\nUntouched';
-  const item = ((await ui.request({ type: 'task.create', title: 'Source', body })).value as { item: ItemView }).item;
+  const item = ((await ui.request({ size: 'M', type: 'task.create', title: 'Source', body })).value as { item: ItemView }).item;
   const marked = await ui.request({ type: 'task.criterion', item: item.id, op: 'done', criterion: 'C1' });
   assert.equal(marked.ok, true, marked.error);
   assert.match((marked.value as { item: ItemView }).item.body, /```\n- \[ \] C99\. Example\n```/);
@@ -208,7 +208,7 @@ for (const save of ['capture', 'publish'] as const) {
     const hub = await startHub({ tracker });
     onCleanup(t, () => hub.close());
     const ui = await connectWsUi(t, hub);
-    const item = ((await ui.request({ type: 'task.create', title: 'Race', body: '## Acceptance criteria\n- [ ] First\n\n## Notes\nOriginal.' })).value as { item: ItemView }).item;
+    const item = ((await ui.request({ size: 'M', type: 'task.create', title: 'Race', body: '## Acceptance criteria\n- [ ] First\n\n## Notes\nOriginal.' })).value as { item: ItemView }).item;
     armed = true;
     const refused = await ui.request({ type: 'task.criterion', item: item.id, op: 'done', criterion: 'C1' });
     assert.equal(refused.ok, false); assert.match(refused.error!, /concurrent hand.*retry/);
@@ -243,7 +243,7 @@ test('a late in-place editor save refuses the mark and retains its recovery sour
   onCleanup(t, () => tracker.stop()); onCleanup(t, async () => { await editor?.close(); });
   const hub = await startHub({ tracker }); onCleanup(t, () => hub.close());
   const ui = await connectWsUi(t, hub);
-  const item = ((await ui.request({ type: 'task.create', title: 'Late save', body: '## Acceptance criteria\n- [ ] First\n\n## Notes\nOriginal.' })).value as { item: ItemView }).item;
+  const item = ((await ui.request({ size: 'M', type: 'task.create', title: 'Late save', body: '## Acceptance criteria\n- [ ] First\n\n## Notes\nOriginal.' })).value as { item: ItemView }).item;
   const path = join(root, item.path);
   edited = (await readFile(path, 'utf8')).replace('Original.', 'Late in-place save.');
   editor = await files.open(path, 'r+');
@@ -261,7 +261,7 @@ test('a late in-place editor save refuses the mark and retains its recovery sour
 test('a named human CLI actor can mark done and manage criteria but cannot verify', async t => {
   const root = await tempProject(t);
   await startDaemon(t, root);
-  const created = await cland(root, 'task', 'create', 'Named human', '--body', '## Acceptance criteria\n- [ ] First', '--json');
+  const created = await cland(root, 'task', 'create', '--size', 'M', 'Named human', '--body', '## Acceptance criteria\n- [ ] First', '--json');
   const item = (JSON.parse(created.stdout) as { item: ItemView }).item;
   for (const args of [['done', 'C1'], ['edit', 'C1', '--text', 'Reworded'], ['add', 'Second'], ['remove', 'C2']] as const) {
     const result = await cland(root, 'task', 'criterion', item.id, ...args, '--as', 'alice', '--json');
@@ -278,7 +278,7 @@ test('add refuses insertion inside an unclosed Markdown code fence without chang
   const { discovery } = await startDaemon(t, root);
   const ui = await connectUi(t, discovery);
   for (const body of ['## Acceptance criteria\n- [ ] First\n\n```markdown\nAn unfinished example', 'Details\n\n~~~\nAn unfinished example']) {
-    const item = ((await ui.request({ type: 'task.create', title: 'Open fence', body })).value as { item: ItemView }).item;
+    const item = ((await ui.request({ size: 'M', type: 'task.create', title: 'Open fence', body })).value as { item: ItemView }).item;
     const before = await readFile(join(root, item.path), 'utf8');
     const added = await ui.request({ type: 'task.criterion', item: item.id, op: 'add', text: 'Visible criterion' });
     assert.equal(added.ok, false); assert.match(added.error!, /unclosed.*fence/);
@@ -289,7 +289,7 @@ test('add refuses insertion inside an unclosed Markdown code fence without chang
 test('restart recovers an item after the criterion process is killed between capture and publication', async t => {
   const root = await tempProject(t);
   await startDaemon(t, root);
-  const made = await cland(root, 'task', 'create', 'Crash recovery', '--body', '## Acceptance criteria\n- [ ] First', '--json');
+  const made = await cland(root, 'task', 'create', '--size', 'M', 'Crash recovery', '--body', '## Acceptance criteria\n- [ ] First', '--json');
   assert.equal(made.code, 0, made.stderr);
   const item = (JSON.parse(made.stdout) as { item: ItemView }).item;
   const original = await readFile(join(root, item.path), 'utf8');

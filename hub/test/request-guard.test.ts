@@ -85,7 +85,7 @@ test('a client flooding task.list does not hold up another client; its repeats a
   assert.ok((status.requests?.replayed ?? 0) > 0, 'hub status counts the reads answered again');
 
   // a write ends the replay: the flooding client's next read sees it
-  const created = await flood.request({ type: 'task.create', title: 'After the flood' });
+  const created = await flood.request({ size: 'M', type: 'task.create', title: 'After the flood' });
   assert.equal(created.ok, true, created.error);
   assert.equal(((await flood.request({ type: 'task.list' })).value as { items: unknown[] }).items.length, 21);
 });
@@ -120,7 +120,7 @@ test('a verdict write with a slow post-commit logger is timed as resumed work af
   const hub = await startHub({ log, tracker });
   onCleanup(t, () => hub.close());
   const ui = await connectWsUi(t, hub, 'reviewer-ui');
-  assert.equal((await ui.request({ type: 'task.create', title: 'Reviewed', branch: 't/x' })).ok, true);
+  assert.equal((await ui.request({ size: 'M', type: 'task.create', title: 'Reviewed', branch: 't/x' })).ok, true);
   records.length = 0;
   const r = await ui.request({ type: 'task.comment', item: 'T-1', text: 'checked', verdict: { verdict: 'review', result: 'clear', run: 'r-1' } });
   assert.equal(r.ok, true, r.error);
@@ -145,7 +145,7 @@ test('waiting for async Git is a slow-answer with its own counter, without a slo
   const edge = await createSocketEdge({ path: socket, dispatcher: hub.dispatcher });
   onCleanup(t, () => edge.close());
   const ui = await connectUi(t, { socket, secret: TEST_SECRET }, 'waiting-ui');
-  await ui.request({ type: 'task.create', title: 'Reviewed', branch: 't/x' });
+  await ui.request({ size: 'M', type: 'task.create', title: 'Reviewed', branch: 't/x' });
   records.length = 0;
   const result = await ui.request({ type: 'task.comment', item: 'T-1', text: 'checked', verdict: { verdict: 'review', result: 'clear', run: 'r-1' } });
   assert.equal(result.ok, true, result.error);
@@ -203,7 +203,7 @@ for (const aggregate of [false, true]) for (const operation of ['launch', 'item-
     hub.dispatcher.useSessions(sessions);
     const ui = await connectWsUi(t, hub, 'lifecycle-ui');
     const launching = operation === 'launch' || operation === 'item-launch';
-    if (operation === 'item-launch') assert.equal((await ui.request({ type: 'task.create', title: 'Launched item' })).ok, true);
+    if (operation === 'item-launch') assert.equal((await ui.request({ size: 'M', type: 'task.create', title: 'Launched item' })).ok, true);
     const launch = { type: 'session.launch', name: 'test', harness: 'test', ...(operation === 'item-launch' ? { item: 'T-1', role: 'implementer' } : {}) };
     if (!launching) assert.equal((await ui.request(launch)).ok, true);
     records.length = 0;

@@ -19,8 +19,8 @@ test('an Implementer reports blocked up its item chain; unclaimed descendants us
   const lead = await spawnSpoke({ cwd: root, discover: true, name: 'lead-1', assignRole: false, sessionId: launched.process.sessionId });
   t.after(() => lead.close());
   await coord.waitForPresence(['coord', 'lead-1', 'impl']);
-  const { item } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Blocked work', parent: epic.id, assignee: 'impl' });
-  const { item: sibling } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Unclaimed work', parent: epic.id });
+  const { item } = await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Blocked work', parent: epic.id, assignee: 'impl' });
+  const { item: sibling } = await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Unclaimed work', parent: epic.id });
   assert.equal((await impl.call<{ ok: boolean }>('task.claim', { id: item.id })).ok, true);
   const { topic } = await impl.call<{ topic: { id: string } }>('topic.create', { title: 'Blocked work', item: item.id });
   const blocked = await impl.call<{ ok: boolean }>('send', { to: [`lead ${item.id}`], topic: topic.id, kind: 'report', text: 'blocked: need a decision' });
@@ -62,7 +62,7 @@ test('ready starts the nearest supervising Lead once, while intermediate events 
     assert.equal((await coord.call<{ ok: boolean }>('session.launch', { name, role: 'lead', item, harness: 'claude-code' })).ok, true);
   }
   await coord.waitForPresence(['coord', 'impl', 'rev', 'release-lead', 'lead-1']);
-  const { item } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Ready work', parent: epic.id, assignee: 'impl' });
+  const { item } = await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Ready work', parent: epic.id, assignee: 'impl' });
   await impl.call('task.claim', { id: item.id });
   await impl.call('task.edit', { id: item.id, status: 'review' });
   await rev.call('task.comment', { id: item.id, verdict: 'review', result: 'not clear', run: 'nested-finding' });
@@ -77,7 +77,7 @@ test('ready starts the nearest supervising Lead once, while intermediate events 
   const processes = await fake.sessions();
   const leadProcess = processes.find(p => p.name === 'lead-1')!;
   await eventually('ready itself starts the Lead harness', async () => (await fake.log(leadProcess.id)).includes('→ ready') || undefined);
-  const { item: unclaimed } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Unclaimed ready', parent: epic.id });
+  const { item: unclaimed } = await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Unclaimed ready', parent: epic.id });
   await coord.call('task.edit', { id: unclaimed.id, status: 'ready' });
   const later = await ui.request({ type: 'topic.history', topic: 'agents' });
   assert.deepEqual((later.value as { messages: Message[] }).messages.filter(m => m.text.includes(`task · ${unclaimed.id}`) && m.text.endsWith('→ ready')).map(m => [m.to, m.detail?.digest]), [[['lead-1'], 'now']]);
@@ -94,7 +94,7 @@ test('long idle and death climb from item to epic to release; stopped Leads leav
   await coord.waitForPresence(['coord']);
   const { item: release } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Lifecycle release', kind: 'release' });
   const { item: epic } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Lifecycle epic', kind: 'epic', parent: release.id });
-  const { item } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Lifecycle work', parent: epic.id, assignee: 'impl' });
+  const { item } = await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Lifecycle work', parent: epic.id, assignee: 'impl' });
   for (const [name, role, node] of [['release-lead', 'lead', release.id], ['lead-1', 'lead', epic.id], ['impl', 'implementer', item.id]]) {
     const launched = await coord.call<{ ok: boolean; error?: string }>('session.launch', { name, role, item: node, harness: 'claude-code' });
     assert.equal(launched.ok, true, launched.error);

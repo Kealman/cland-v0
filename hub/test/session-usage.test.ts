@@ -191,7 +191,7 @@ for (const harness of ['claude-code', 'opencode']) test(`${harness} journals tot
   await ui.request({ type: 'subscribe' });
   const items: string[] = [];
   for (const title of ['Implementation usage', 'Review usage']) {
-    const created = await ui.request({ type: 'task.create', title });
+    const created = await ui.request({ size: 'M', type: 'task.create', title });
     assert.equal(created.ok, true, created.error);
     items.push((created.value as { item: { id: string } }).item.id);
   }

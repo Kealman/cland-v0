@@ -56,7 +56,7 @@ test('the sessions item column shows verifier holds and returns to free on relea
   const root = await tempProject(t);
   const { discovery } = await startDaemon(t, root);
   const ui = await connectUi(t, discovery);
-  assert.equal((await ui.request({ type: 'task.create', title: 'Panel holds' })).ok, true);
+  assert.equal((await ui.request({ size: 'M', type: 'task.create', title: 'Panel holds' })).ok, true);
   const rev = await spawnSpoke({ discover: true, cwd: root, name: 'rev', sessionId: 'rev-id', role: 'reviewer' });
   const qa = await spawnSpoke({ discover: true, cwd: root, name: 'qa-one', sessionId: 'qa-id', role: 'qa' });
   t.after(async () => { await rev.close(); await qa.close(); });
@@ -71,7 +71,7 @@ test('the sessions item column shows verifier holds and returns to free on relea
     await c.waitScreen(s => row(s, name).includes('free'), `${name} free after release`);
   }
   // A retained claim beside verifier work: the claim is displayed first.
-  assert.equal((await ui.request({ type: 'task.create', title: 'Claim beside review', assignee: 'rev' })).ok, true);
+  assert.equal((await ui.request({ size: 'M', type: 'task.create', title: 'Claim beside review', assignee: 'rev' })).ok, true);
   assert.equal((await ui.request({ type: 'role.set', session: 'rev', role: 'implementer' })).ok, true);
   const claim = await rev.call<{ ok: boolean }>('task.claim', { id: 'T-2' });
   assert.equal(claim.ok, true, JSON.stringify(claim));

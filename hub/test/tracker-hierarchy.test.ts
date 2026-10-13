@@ -45,7 +45,7 @@ test('the hub enforces the parenting rule on create, link and kind edits without
   await startDaemon(t, root);
   const ui = await connectUi(t, await readDiscovery(root));
   const create = async (kind: string, parent?: string) => {
-    const r = await ui.request({ type: 'task.create', title: kind, kind, ...(parent ? { parent } : {}) });
+    const r = await ui.request({ ...(['task'].includes(kind ?? 'task') ? { size: 'M' } : {}), type: 'task.create', title: kind, kind, ...(parent ? { parent } : {}) });
     assert.equal(r.ok, true, r.error);
     return (r.value as { item: Item }).item.id;
   };
@@ -58,7 +58,7 @@ test('the hub enforces the parenting rule on create, link and kind edits without
   await create('spec', release);
   for (const [kind, parent] of [['epic', task], ['release', epic], ['task', task], ['spec', map], ['epic', map], ['map', release]]) {
     const before = (await ui.request({ type: 'task.list' })).value;
-    const refused = await ui.request({ type: 'task.create', title: 'Bad', kind, parent });
+    const refused = await ui.request({ ...(['task'].includes(kind ?? 'task') ? { size: 'M' } : {}), type: 'task.create', title: 'Bad', kind, parent });
     assert.equal(refused.ok, false, `${kind} under ${parent}`);
     assert.match(refused.error ?? '', /parenting rule/);
     assert.deepEqual((await ui.request({ type: 'task.list' })).value, before);
@@ -98,7 +98,7 @@ test('under selects descendants before other filters; CLI and MCP views return t
     { title: 'Direct leaf', kind: 'question', parent: 'R-1', labels: ['hub'] },
     { title: 'Unscheduled', kind: 'epic' },
     { title: 'Outside', parent: 'E-6', labels: ['hub'] },
-  ]) assert.equal((await ui.request({ type: 'task.create', ...frame })).ok, true);
+  ]) assert.equal((await ui.request({ ...((!('kind' in frame) || frame.kind === 'task') ? { size: 'M' } : {}), type: 'task.create', ...frame })).ok, true);
   assert.equal((await ui.request({ type: 'task.close', item: 'T-4' })).ok, true);
   assert.equal((await ui.request({ type: 'task.close', item: 'E-2', override: 'Hierarchy fixture: no epic demo' })).ok, true);
   // Reopening a leaf leaves its closed ancestor readable and included in subtree queries.
@@ -151,7 +151,7 @@ test('an unversioned release can be planned later; invalid version edits preserv
     assert.equal((await ui.request({ type: 'task.edit', item: 'T-1', version, title: 'Bad' })).ok, false);
     assert.equal(await readFile(file, 'utf8'), before);
   }
-  assert.equal((await cland(root, 'task', 'create', 'Task', '--version', '2.0.0')).code, 1);
+  assert.equal((await cland(root, 'task', 'create', '--size', 'M', 'Task', '--version', '2.0.0')).code, 1);
   const spoke = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
   t.after(() => spoke.close());
   const cleared = await spoke.call<{ ok: boolean; item: Item }>('task.edit', { id: 'T-1', version: null });
@@ -166,7 +166,7 @@ test('converting an item to a release adds Notes and preserves existing notes', 
   await startDaemon(t, root);
   const ui = await connectUi(t, await readDiscovery(root));
   for (const body of ['Goal.', 'Goal.\n\n## Notes\n\nAlready prepared.']) {
-    const made = await ui.request({ type: 'task.create', title: 'Convert', body });
+    const made = await ui.request({ size: 'M', type: 'task.create', title: 'Convert', body });
     assert.equal(made.ok, true, made.error);
     const id = (made.value as { item: Item }).item.id;
     const changed = await ui.request({ type: 'task.edit', item: id, kind: 'release', version: '0.1.0' });

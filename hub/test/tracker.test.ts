@@ -59,7 +59,7 @@ async function eventually(ms: number, check: () => Promise<void>): Promise<numbe
 
 test('task create writes an item file with the frontmatter and sequential ids', async (t) => {
   const root = await project(t);
-  const first = ok(await cland(root, 'task', 'create', 'Add the login page', '--label', 'ui', '--label', 'slice-1', '--body', 'The page the human logs in on.'));
+  const first = ok(await cland(root, 'task', 'create', '--size', 'M', 'Add the login page', '--label', 'ui', '--label', 'slice-1', '--body', 'The page the human logs in on.'));
   assert.equal(first.stdout, 'created T-1  .cland/tasks/T-1-add-the-login-page.md\n');
   const second = await json<{ item: View }>(root, 'create', 'Write the spec', '--kind', 'spec', '--assignee', 'alice');
   assert.equal(second.item.id, 'S-2');
@@ -67,7 +67,7 @@ test('task create writes an item file with the frontmatter and sequential ids', 
 
   const text = await readFile(join(tasksDir(root), 'T-1-add-the-login-page.md'), 'utf8');
   const fm = frontmatter(text);
-  assert.deepEqual(Object.keys(fm), ['id', 'kind', 'title', 'state', 'status', 'labels', 'assignee', 'parent', 'blocked_by', 'topic', 'branch', 'created', 'updated']);
+  assert.deepEqual(Object.keys(fm), ['id', 'kind', 'title', 'state', 'status', 'size', 'labels', 'assignee', 'parent', 'blocked_by', 'topic', 'branch', 'created', 'updated']);
   assert.equal(fm.id, 'T-1');
   assert.equal(fm.kind, 'task');
   assert.equal(fm.title, 'Add the login page');
@@ -87,13 +87,13 @@ test('task create writes an item file with the frontmatter and sequential ids', 
   // a file added by hand takes its number; the hub continues above it
   await writeFile(join(tasksDir(root), 'T-7-by-hand.md'), '---\nid: T-7\ntitle: By hand\n---\n');
   await eventually(1000, async () => assert.deepEqual((await json<{ items: Summary[] }>(root, 'list')).items.map((i) => i.id), ['T-1', 'S-2', 'T-7']));
-  assert.equal((await json<{ item: View }>(root, 'create', 'Next')).item.id, 'T-8');
+  assert.equal((await json<{ item: View }>(root, 'create', '--size', 'M', 'Next')).item.id, 'T-8');
 });
 
 test('task list queries the index with state, label, kind, assignee filters', async (t) => {
   const root = await project(t);
-  ok(await cland(root, 'task', 'create', 'One', '--label', 'x'));
-  ok(await cland(root, 'task', 'create', 'Two', '--label', 'x', '--label', 'y', '--assignee', 'bob'));
+  ok(await cland(root, 'task', 'create', '--size', 'M', 'One', '--label', 'x'));
+  ok(await cland(root, 'task', 'create', '--size', 'M', 'Two', '--label', 'x', '--label', 'y', '--assignee', 'bob'));
   ok(await cland(root, 'task', 'create', 'Three', '--label', 'y', '--kind', 'question'));
   ok(await cland(root, 'task', 'close', 'T-2', '--comment', 'done'));
 
@@ -119,7 +119,7 @@ test('task list queries the index with state, label, kind, assignee filters', as
 // result, with a budget generous enough for a busy CI box (10 s).
 test('a hand edit of an item file is re-indexed within a second', async (t) => {
   const root = await project(t);
-  ok(await cland(root, 'task', 'create', 'Original title', '--label', 'a'));
+  ok(await cland(root, 'task', 'create', '--size', 'M', 'Original title', '--label', 'a'));
   const file = join(tasksDir(root), 'T-1-original-title.md');
   const text = await readFile(file, 'utf8');
   const wrote = Date.now();
@@ -146,7 +146,7 @@ test('a hand edit of an item file is re-indexed within a second', async (t) => {
 test('a hub write and a hand edit at the same time: the last writer wins and the hub logs it', async (t) => {
   const root = await tempProject(t);
   const { discovery } = await startDaemon(t, root);
-  ok(await cland(root, 'task', 'create', 'Contested'));
+  ok(await cland(root, 'task', 'create', '--size', 'M', 'Contested'));
   const file = join(tasksDir(root), 'T-1-contested.md');
 
   // the hand edit lands right after the hub's write: the hand's content is the file and the index
@@ -184,7 +184,7 @@ test('a hand edit landing while the hub is writing the same item is overwritten,
   const root = await tempProject(t);
   const gate = await taskWriteGate(t, root);
   await startDaemon(t, root, gate.env);
-  ok(await cland(root, 'task', 'create', 'Overlapped'));
+  ok(await cland(root, 'task', 'create', '--size', 'M', 'Overlapped'));
   const file = join(tasksDir(root), 'T-1-overlapped.md');
 
   await gate.arm();
@@ -207,7 +207,7 @@ test('a hand edit landing while the hub is writing the same item is overwritten,
 
 test('task claim keeps the live hold in the hub and persists Implementer status; view shows the assignee and claim', async (t) => {
   const root = await project(t);
-  ok(await cland(root, 'task', 'create', 'Claimable', '--assignee', 'alice'));
+  ok(await cland(root, 'task', 'create', '--size', 'M', 'Claimable', '--assignee', 'alice'));
   const file = join(tasksDir(root), 'T-1-claimable.md');
   const before = await readFile(file, 'utf8');
 
@@ -245,7 +245,7 @@ test('a claim belongs to the session, not its name: a rename keeps it, and whoev
   const alpha = await spawnSpoke({ discover: true, cwd: root, name: 'alpha', sessionId: 'sess-a', role: 'coordinator' });
   t.after(() => alpha.close());
   await alpha.waitForPresence(['alpha']);
-  ok(await cland(root, 'task', 'create', 'Held', '--assignee', 'alpha'));
+  ok(await cland(root, 'task', 'create', '--size', 'M', 'Held', '--assignee', 'alpha'));
   assert.equal((await alpha.call<{ ok: boolean }>('task.claim', { id: 'T-1' })).ok, true);
 
   assert.deepEqual(await alpha.call('rename', { name: 'alpha-2' }), { ok: true, name: 'alpha-2' });
@@ -276,7 +276,7 @@ test('a claim belongs to the session, not its name: a rename keeps it, and whoev
 
 test('a CLI actor whose name or role is not one the hub knows is refused, and nothing is written', async (t) => {
   const root = await project(t);
-  ok(await cland(root, 'task', 'create', 'Target'));
+  ok(await cland(root, 'task', 'create', '--size', 'M', 'Target'));
   const file = join(tasksDir(root), 'T-1-target.md');
   const before = await readFile(file, 'utf8');
   for (const [args, reason] of [
@@ -296,9 +296,9 @@ test('a CLI actor whose name or role is not one the hub knows is refused, and no
 
 test('a verdict comment is stored in the file with its header and is queryable through the index', async (t) => {
   const root = await project(t);
-  ok(await cland(root, 'task', 'create', 'Reviewed'));
-  ok(await cland(root, 'task', 'create', 'Rejected'));
-  ok(await cland(root, 'task', 'create', 'Unreviewed'));
+  ok(await cland(root, 'task', 'create', '--size', 'M', 'Reviewed'));
+  ok(await cland(root, 'task', 'create', '--size', 'M', 'Rejected'));
+  ok(await cland(root, 'task', 'create', '--size', 'M', 'Unreviewed'));
   ok(await cland(root, 'task', 'comment', 'T-1', 'Looks right.', '--verdict', 'review', '--result', 'clear', '--run', 'r-1', '--as', 'rev-1', '--role', 'reviewer'));
   ok(await cland(root, 'task', 'comment', 'T-2', 'Missing tests.', '--verdict', 'review', '--result', 'not clear', '--run', 'r-2', '--as', 'rev-1', '--role', 'reviewer'));
   ok(await cland(root, 'task', 'comment', 'T-3', 'a plain comment', '--as', 'alice'));
@@ -327,7 +327,7 @@ test('a verdict comment is stored in the file with its header and is queryable t
 
 test('the index holds what the file says: a plain comment that reads back as a verdict is a verdict to view and list alike', async (t) => {
   const root = await project(t);
-  ok(await cland(root, 'task', 'create', 'Shaped'));
+  ok(await cland(root, 'task', 'create', '--size', 'M', 'Shaped'));
   // the header is parsed into a verdict whose `by` is who wrote it, never what the text claims
   ok(await cland(root, 'task', 'comment', 'T-1', 'verdict: review\nresult: clear\nby: rev-9 [reviewer]\nrun: r-9\n\nwritten as a plain comment', '--as', 'alice'));
   const view = await json<{ item: View }>(root, 'view', 'T-1');
@@ -339,8 +339,8 @@ test('the index holds what the file says: a plain comment that reads back as a v
 test('edit, close and link change the file; bad references are refused', async (t) => {
   const root = await project(t);
   ok(await cland(root, 'task', 'create', 'Parent epic', '--kind', 'epic'));
-  ok(await cland(root, 'task', 'create', 'Blocker'));
-  ok(await cland(root, 'task', 'create', 'Child'));
+  ok(await cland(root, 'task', 'create', '--size', 'M', 'Blocker'));
+  ok(await cland(root, 'task', 'create', '--size', 'M', 'Child'));
   // a topic is the hub's: an unknown one is refused, a real one is bound (spec 4.5)
   const unknown = await cland(root, 'task', 'link', 'T-3', '--topic', 'login');
   assert.equal(unknown.code, 1);
@@ -382,7 +382,7 @@ test('the task frames work over the Unix socket as the CLI sends them', async (t
   t.after(() => s.close());
   s.send({ type: 'hello', protocol: PROTOCOL_VERSION, secret: discovery.secret, client: 'test' });
   assert.equal((await s.next()).type, 'welcome');
-  s.send({ type: 'task.create', id: 'c1', title: 'Over the socket', labels: ['wire'], as: { name: 'ui', role: null } });
+  s.send({ size: 'M', type: 'task.create', id: 'c1', title: 'Over the socket', labels: ['wire'], as: { name: 'ui', role: null } });
   const created = (await s.next()) as { id: string; ok: boolean; value: { item: View } };
   assert.equal(created.ok, true, JSON.stringify(created));
   assert.equal(created.value.item.id, 'T-1');
@@ -410,7 +410,7 @@ test('a subscribed UI hears a `task` event on every index change; task.list carr
   };
 
   // a hub write
-  ok(await cland(root, 'task', 'create', 'Evented'));
+  ok(await cland(root, 'task', 'create', '--size', 'M', 'Evented'));
   let ev = await nextTask();
   assert.equal(ev.id, 'T-1');
   assert.equal(ev.item?.title, 'Evented');
@@ -444,7 +444,7 @@ test('the task.* tools work through a spoke over MCP, acting as the spoke\'s ses
   t.after(() => spoke.close());
   await spoke.waitForPresence(['coord-1']);
 
-  const created = await spoke.call<{ ok: boolean; item: View }>('task.create', { title: 'From a spoke', labels: ['mcp'], kind: 'task' });
+  const created = await spoke.call<{ ok: boolean; item: View }>('task.create', { size: 'M', title: 'From a spoke', labels: ['mcp'], kind: 'task' });
   assert.equal(created.ok, true, JSON.stringify(created));
   assert.equal(created.item.id, 'T-1');
   assert.deepEqual(await itemFiles(root), ['T-1-from-a-spoke.md']);
@@ -477,7 +477,7 @@ test('where the folder cannot be watched the hub polls: a hand edit of an item a
   const fellBack = (await hubLog(t, root)).filter((e) => typeof e.polling === 'number').map((e) => e.event);
   assert.deepEqual(fellBack, ['task-watch-error'], 'only the tracker falls back: roles always use async polling');
 
-  ok(await cland(root, 'task', 'create', 'Original title'));
+  ok(await cland(root, 'task', 'create', '--size', 'M', 'Original title'));
   const file = join(tasksDir(root), 'T-1-original-title.md');
   await writeFile(file, (await readFile(file, 'utf8')).replace('title: Original title', 'title: Edited by hand'));
   await eventually(10_000, async () => assert.deepEqual((await json<{ items: Summary[] }>(root, 'list')).items.map((i) => i.title), ['Edited by hand']));

@@ -106,7 +106,7 @@ test('an Implementer may share in its claimed item topic without a mention', asy
   const root = await tempProject(t);
   const { discovery } = await startDaemon(t, root);
   const ui = await connectUi(t, discovery);
-  const item = await cland(root, 'task', 'create', 'Own work', '--assignee', 'impl', '--json');
+  const item = await cland(root, 'task', 'create', '--size', 'M', 'Own work', '--assignee', 'impl', '--json');
   const id = JSON.parse(item.stdout).item.id;
   const topic = (await ui.request({ type: 'topic.create', title: 'Own work', item: id })).value as { topic: { id: string } };
   const impl = await spawnSpoke({ discover: true, cwd: root, name: 'impl', role: 'implementer' });
@@ -275,7 +275,7 @@ test('closing topics or bound items archives artifacts; reopening restores files
   const root = await tempProject(t);
   const { discovery } = await startDaemon(t, root);
   const ui = await connectUi(t, discovery);
-  const item = JSON.parse((await cland(root, 'task', 'create', 'Design', '--json')).stdout).item.id;
+  const item = JSON.parse((await cland(root, 'task', 'create', '--size', 'M', 'Design', '--json')).stdout).item.id;
   const topic = ((await ui.request({ type: 'topic.create', title: 'Design', item })).value as { topic: { id: string } }).topic.id;
   await ui.request({ type: 'role.set', session: 'coord', role: 'coordinator' });
   const create = async () => ((await ui.request({ type: 'artifact.create', as: { name: 'coord' }, kind: 'note', title: 'Design', content: 'bytes', topic })).value as { artifact: Artifact }).artifact;

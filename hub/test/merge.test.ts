@@ -35,7 +35,7 @@ async function project(t: TestContext, env: Record<string, string> = {}, verific
 }
 
 async function task(root: string, title = 'Ship the parser', file = 'parser.txt') {
-  const { item } = json<{ item: { id: string } }>(await cland(root, 'task', 'create', title, '--json'));
+  const { item } = json<{ item: { id: string } }>(await cland(root, 'task', 'create', '--size', 'M', title, '--json'));
   const { worktree } = json<{ worktree: { path: string; branch: string } }>(await cland(root, 'task', 'claim', item.id, '--json'));
   await writeFile(join(worktree.path, file), 'first\n');
   git(worktree.path, 'add', file);
@@ -138,7 +138,7 @@ test('CLI reopen of a landed task refuses with a follow-up path, then push succe
   ok(await cland(root, 'push'));
   assert.equal(existsSync(work.path), false);
   assert.equal(git(root, 'branch', '--list', work.branch), '');
-  const { item } = json<{ item: { id: string } }>(await cland(root, 'task', 'create', 'Parser follow-up', '--json'));
+  const { item } = json<{ item: { id: string } }>(await cland(root, 'task', 'create', '--size', 'M', 'Parser follow-up', '--json'));
   const { worktree } = json<{ worktree: { path: string } }>(await cland(root, 'task', 'claim', item.id, '--json'));
   assert.equal(git(worktree.path, 'rev-parse', 'HEAD'), git(root, 'rev-parse', 'dev'), 'a follow-up starts from current dev');
   assert.equal(await readFile(join(worktree.path, 'parser.txt'), 'utf8'), 'finished\n');
@@ -386,7 +386,7 @@ test('adding or failing a criterion revokes ready; done and separate verificatio
 
 test('the gate refuses in order: item/branch, missing or file-only review, wrong writer role, claimant, not clear, stale, and missing QA', async (t) => {
   const { root, ui, rev } = await project(t);
-  const unbranched = json<{ item: { id: string } }>(await cland(root, 'task', 'create', 'No branch', '--json')).item;
+  const unbranched = json<{ item: { id: string } }>(await cland(root, 'task', 'create', '--size', 'M', 'No branch', '--json')).item;
   await refused(ui, root, unbranched.id, 'merge-branch');
   ok(await cland(root, 'task', 'close', unbranched.id));
   await refused(ui, root, unbranched.id, 'merge-item');
@@ -955,7 +955,7 @@ test('foreground merge freshness fan-out after Git is measured as a resumed 400 
   const clock = { now: 0 };
   const { root, tracker, ui, rev, records, work } = await observableProject(t, undefined, clock);
   await review(rev, work.id);
-  const created = await ui.request({ type: 'task.create', title: 'A branch that will appear', branch: 't/later' });
+  const created = await ui.request({ size: 'M', type: 'task.create', title: 'A branch that will appear', branch: 't/later' });
   assert.equal(created.ok, true, created.error);
   const id = (created.value as { item: { id: string } }).item.id;
   const tip = git(work.path, 'rev-parse', 'HEAD');

@@ -11,7 +11,7 @@ test('a clear MCP verdict verifies selected legacy criteria with its run and rep
   const { discovery } = await startDaemon(t, root);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
-  const item = ((await ui.request({ type: 'task.create', title: 'Verdict criteria', body: '## Acceptance criteria\n- [ ] First\n- [ ] Second\n- [ ] Third\n\n## Notes\nKeep this.' })).value as { item: ItemView }).item;
+  const item = ((await ui.request({ size: 'M', type: 'task.create', title: 'Verdict criteria', body: '## Acceptance criteria\n- [ ] First\n- [ ] Second\n- [ ] Third\n\n## Notes\nKeep this.' })).value as { item: ItemView }).item;
   const rev = await spawnSpoke({ discover: true, cwd: root, name: 'rev', role: 'reviewer' });
   t.after(() => rev.close());
   await rev.call('subscribe', { subject: { item: item.id }, events: ['task'] });
@@ -45,7 +45,7 @@ test('not-clear QA verdicts fail criteria with notes, reopen and persist the rep
   const { discovery } = await startDaemon(t, root);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
-  const item = ((await ui.request({ type: 'task.create', title: 'QA failures', body: '## Acceptance criteria\n- [ ] First\n- [ ] Second' })).value as { item: ItemView }).item;
+  const item = ((await ui.request({ size: 'M', type: 'task.create', title: 'QA failures', body: '## Acceptance criteria\n- [ ] First\n- [ ] Second' })).value as { item: ItemView }).item;
   const topic = ((await ui.request({ type: 'topic.create', item: item.id, title: 'QA criteria' })).value as { topic: { id: string } }).topic;
   const qa = await spawnSpoke({ discover: true, cwd: root, name: 'qa-1', role: 'qa' });
   t.after(() => qa.close());
@@ -80,7 +80,7 @@ test('invalid or unauthorized criterion selections refuse the whole verdict with
   const root = await tempProject(t);
   const { discovery } = await startDaemon(t, root);
   const ui = await connectUi(t, discovery);
-  const item = ((await ui.request({ type: 'task.create', title: 'Refused verdict', body: '## Acceptance criteria\n- [ ] First\n- [ ] Second' })).value as { item: ItemView }).item;
+  const item = ((await ui.request({ size: 'M', type: 'task.create', title: 'Refused verdict', body: '## Acceptance criteria\n- [ ] First\n- [ ] Second' })).value as { item: ItemView }).item;
   const rev = await spawnSpoke({ discover: true, cwd: root, name: 'rev', role: 'reviewer' });
   const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
   t.after(() => rev.close()); t.after(() => coord.close());
@@ -118,7 +118,7 @@ test('a hand save or revoked criterion grant refuses verdict and marks together'
   const gate = await taskWriteGate(t, root);
   const { discovery } = await startDaemon(t, root, gate.env);
   const ui = await connectUi(t, discovery);
-  const item = ((await ui.request({ type: 'task.create', title: 'Concurrent verdict', body: '## Acceptance criteria\n- [ ] First\n\n## Notes\nOriginal.' })).value as { item: ItemView }).item;
+  const item = ((await ui.request({ size: 'M', type: 'task.create', title: 'Concurrent verdict', body: '## Acceptance criteria\n- [ ] First\n\n## Notes\nOriginal.' })).value as { item: ItemView }).item;
   const rev = await spawnSpoke({ discover: true, cwd: root, name: 'rev', role: 'reviewer' });
   t.after(() => rev.close());
   const path = join(root, item.path);

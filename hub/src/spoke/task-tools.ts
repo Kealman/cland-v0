@@ -1,6 +1,6 @@
 // The spoke's `task.*` tools: the tracker's requests as MCP tools. Arguments name the item `id`; the frame
 // carries it as `item` (a frame's `id` is the request's). The hub validates; the spoke only reshapes.
-import { STATUSES } from '../tracker/item.ts';
+import { STATUSES, SIZES } from '../tracker/item.ts';
 import type { TaskRequest } from '../tracker/requests.ts';
 import type { DistributiveOmit } from './hub-client.ts';
 
@@ -9,6 +9,7 @@ const strs = { type: 'array', items: { type: 'string' } } as const;
 const nullableStr = { type: ['string', 'null'] } as const;
 const itemId = { type: 'string', description: 'The item id: any kind prefix and number, or a bare number' } as const;
 const KIND = { type: 'string', description: 'Configured container kind, task, question, spec or map; the hub validates it' } as const;
+const SIZE = { type: 'string', enum: SIZES, description: 'Ex-ante task size; tasks only' } as const;
 const STATE = { type: 'string', enum: ['open', 'closed'] } as const;
 
 export const TASK_TOOLS = [
@@ -20,21 +21,21 @@ export const TASK_TOOLS = [
     inputSchema: { type: 'object', properties: { id: itemId, release: { type: 'boolean' } }, required: ['id'] } },
   {
     name: 'task.create',
-    description: "Create an item in the project's tracker (a Markdown file in .cland/tasks/, id with the kind's prefix and a shared number). Returns the item.",
+    description: "Create an item in the project's tracker (a Markdown file in .cland/tasks/, id with the kind's prefix and a shared number). A task needs a size: XS, S, M, L or XL. Returns the item.",
     inputSchema: {
       type: 'object',
-      properties: { title: str, kind: { ...KIND, description: 'Default task' }, version: { ...str, description: 'Release semver without the v; optional at creation' }, body: str, labels: strs, assignee: str, parent: itemId, blocked_by: strs, topic: str, branch: str },
+      properties: { title: str, kind: { ...KIND, description: 'Default task' }, size: SIZE, regression_of: itemId, version: { ...str, description: 'Release semver without the v; optional at creation' }, body: str, labels: strs, assignee: str, parent: itemId, blocked_by: strs, topic: str, branch: str },
       required: ['title'],
     },
   },
   {
     name: 'task.view',
-    description: 'One item: fields (including closed), file path, ancestry, body, comments, verdicts, claim, full criteria with criteriaCounts, and the task latest verify result.',
+    description: 'One item: fields (including closed, size and regression_of), file path, ancestry, body, comments, verdicts, claim, full criteria with criteriaCounts, and the task latest verify result.',
     inputSchema: { type: 'object', properties: { id: itemId }, required: ['id'] },
   },
   {
     name: 'task.list',
-    description: 'List items from the index, including closed, criteria counts and the task latest verify result. `under` selects descendants of an item (excluding itself). Filters combine; `label` items must all be present; `verdict` is `review=clear`, `qa=not clear`, … (the latest verdict of that kind).',
+    description: 'List items from the index, including closed, size, regression_of, criteria counts and the task latest verify result. `under` selects descendants of an item (excluding itself). Filters combine; `label` items must all be present; `verdict` is `review=clear`, `qa=not clear`, … (the latest verdict of that kind).',
     inputSchema: { type: 'object', properties: { under: itemId, state: STATE, label: strs, kind: KIND, assignee: str, verdict: str } },
   },
   {
@@ -48,8 +49,8 @@ export const TASK_TOOLS = [
   },
   {
     name: 'task.edit',
-    description: "Change an item's title, body, kind, version, state, status, labels (replace, add, remove) or assignee (null clears).",
-    inputSchema: { type: 'object', properties: { id: itemId, title: str, body: str, kind: KIND, version: nullableStr, state: STATE, status: { type: 'string', enum: STATUSES, description: 'Coordinator: any status. Implementer: review on its claimed item only.' }, labels: strs, add_labels: strs, remove_labels: strs, assignee: nullableStr }, required: ['id'] },
+    description: "Change an item's title, body, kind, version, state, status, size, labels (replace, add, remove) or assignee (null clears).",
+    inputSchema: { type: 'object', properties: { id: itemId, title: str, body: str, kind: KIND, size: SIZE, version: nullableStr, state: STATE, status: { type: 'string', enum: STATUSES, description: 'Coordinator: any status. Implementer: review on its claimed item only.' }, labels: strs, add_labels: strs, remove_labels: strs, assignee: nullableStr }, required: ['id'] },
   },
   {
     name: 'task.close',
@@ -58,8 +59,8 @@ export const TASK_TOOLS = [
   },
   {
     name: 'task.link',
-    description: 'Set an item\'s parent, add or remove blockers, set its topic or branch (null clears).',
-    inputSchema: { type: 'object', properties: { id: itemId, parent: nullableStr, blocked_by: { ...strs, description: 'Blockers to add' }, unblock: { ...strs, description: 'Blockers to remove' }, topic: nullableStr, branch: nullableStr }, required: ['id'] },
+    description: 'Set an item\'s parent, add or remove blockers, set its regression_of, topic or branch (null clears).',
+    inputSchema: { type: 'object', properties: { id: itemId, regression_of: { ...nullableStr, description: 'Landed task reworked; null or none clears' }, parent: nullableStr, blocked_by: { ...strs, description: 'Blockers to add' }, unblock: { ...strs, description: 'Blockers to remove' }, topic: nullableStr, branch: nullableStr }, required: ['id'] },
   },
   {
     name: 'task.rank',

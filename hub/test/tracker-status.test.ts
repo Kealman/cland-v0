@@ -20,7 +20,7 @@ test('new tasks persist backlog across writes and restart; other kinds have no s
   const { discovery } = await startDaemon(t, root);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
-  const made = await cland(root, 'task', 'create', 'Parser', '--json');
+  const made = await cland(root, 'task', 'create', '--size', 'M', 'Parser', '--json');
   assert.equal(made.code, 0, made.stderr);
   const item = (JSON.parse(made.stdout) as { item: Item }).item;
   assert.equal(item.status, 'backlog');
@@ -34,7 +34,7 @@ test('new tasks persist backlog across writes and restart; other kinds have no s
   onCleanup(t, () => coord.close());
   assert.equal((await coord.call<{ item: Item }>('task.view', { id: item.id })).item.status, 'backlog');
   for (const kind of ['release', 'epic', 'question', 'spec', 'map']) {
-    const result = await coord.call<{ ok: boolean; item: Item }>('task.create', { title: kind, kind });
+    const result = await coord.call<{ ok: boolean; item: Item }>('task.create', { ...(['task'].includes(kind) ? { size: 'M' } : {}), title: kind, kind });
     assert.equal(result.ok, true);
     assert.equal(result.item.status, undefined, kind);
   }
@@ -51,7 +51,7 @@ test('only human, Coordinator and the claiming Implementer can set status; done 
   const qa = await spawnSpoke({ discover: true, cwd: root, name: 'qa-1', role: 'qa' });
   for (const session of [coord, impl, rev, qa]) onCleanup(t, () => session.close());
   await coord.waitForPresence(['coord', 'impl', 'rev', 'qa-1']);
-  const { item } = await coord.call<{ item: Item }>('task.create', { title: 'Parser', assignee: 'impl' });
+  const { item } = await coord.call<{ item: Item }>('task.create', { size: 'M', title: 'Parser', assignee: 'impl' });
   const read = async () => (await coord.call<{ item: Item }>('task.view', { id: item.id })).item;
   let eventAt = ui.frames.length;
   const pair = async (status: string, state = 'open', changed = true) => {
@@ -92,7 +92,7 @@ test('only human, Coordinator and the claiming Implementer can set status; done 
   assert.equal((await coord.call<{ ok: boolean }>('task.edit', { id: item.id, state: 'open' })).ok, true);
   await pair('backlog');
   assert.equal((await ui.request({ type: 'task.edit', item: item.id, status: 'invalid' })).ok, false);
-  const other = await coord.call<{ item: Item }>('task.create', { title: 'Other' });
+  const other = await coord.call<{ item: Item }>('task.create', { size: 'M', title: 'Other' });
   assert.equal((await impl.call<{ ok: boolean }>('task.edit', { id: other.item.id, status: 'review' })).ok, false);
 });
 
@@ -103,7 +103,7 @@ test('legacy tasks gain status on index, preserve claims through restart, and re
   const impl = await spawnSpoke({ discover: true, cwd: root, name: 'impl', sessionId: 'impl-id', role: 'implementer' });
   const items: Item[] = [];
   for (const title of ['Unclaimed', 'Claimed', 'Closed']) {
-    const made = await cland(root, 'task', 'create', title, '--assignee', 'impl', '--json');
+    const made = await cland(root, 'task', 'create', '--size', 'M', title, '--assignee', 'impl', '--json');
     assert.equal(made.code, 0, made.stderr);
     items.push((JSON.parse(made.stdout) as { item: Item }).item);
   }
@@ -149,7 +149,7 @@ test('a not-clear review or QA verdict returns a handed-over task to in progress
   const { discovery } = await startDaemon(t, root);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
-  const made = await ui.request({ type: 'task.create', title: 'Fix findings' });
+  const made = await ui.request({ size: 'M', type: 'task.create', title: 'Fix findings' });
   const item = (made.value as { item: Item }).item;
   for (const [name, role] of [['rev', 'reviewer'], ['qa-1', 'qa']] as const) {
     const verifier = await spawnSpoke({ discover: true, cwd: root, name, role });
@@ -177,7 +177,7 @@ test('merge preserves its gate and publishes done with closed state', async t =>
   const { discovery } = await startDaemon(t, root);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
-  const made = await ui.request({ type: 'task.create', title: 'Merge status' });
+  const made = await ui.request({ size: 'M', type: 'task.create', title: 'Merge status' });
   const item = (made.value as { item: Item }).item;
   const claimed = await ui.request({ type: 'task.claim', item: item.id });
   const worktree = (claimed.value as { worktree: { path: string } }).worktree;
@@ -219,7 +219,7 @@ for (const operation of ['claim', 'review'] as const) {
     onCleanup(t, () => hub.close());
     const ui = await connectWsUi(t, hub);
     assert.equal((await ui.request({ type: 'role.set', session: 'impl', role: 'implementer' })).ok, true);
-    const made = await ui.request({ type: 'task.create', title: 'Preserved', assignee: 'impl' });
+    const made = await ui.request({ size: 'M', type: 'task.create', title: 'Preserved', assignee: 'impl' });
     const item = (made.value as { item: Item }).item;
     if (operation === 'review') assert.equal((await ui.request({ type: 'task.claim', item: item.id, as: { name: 'impl' } })).ok, true);
     const before = await readFile(join(root, item.path), 'utf8');
@@ -249,7 +249,7 @@ test('a broad task.edit grant does not let another role set status', async t => 
   onCleanup(t, () => hub.close());
   const ui = await connectWsUi(t, hub);
   assert.equal((await ui.request({ type: 'role.set', session: 'rev', role: 'reviewer' })).ok, true);
-  const made = await ui.request({ type: 'task.create', title: 'No status override' });
+  const made = await ui.request({ size: 'M', type: 'task.create', title: 'No status override' });
   const item = (made.value as { item: Item }).item;
   const denied = await ui.request({ type: 'task.edit', item: item.id, status: 'review', as: { name: 'rev' } });
   assert.deepEqual([denied.ok, (denied as { code?: string }).code], [false, 'forbidden']);
@@ -281,7 +281,7 @@ for (const pause of ['queue', 'write'] as const) {
     const next = await spawnSpoke({ hub, name: 'next', sessionId: 'next-id', role: 'qa' });
     onCleanup(t, () => impl.close()); onCleanup(t, () => next.close());
     await impl.waitForPresence(['impl', 'next']);
-    const made = await ui.request({ type: 'task.create', title: 'Held', assignee: 'impl' });
+    const made = await ui.request({ size: 'M', type: 'task.create', title: 'Held', assignee: 'impl' });
     const item = (made.value as { item: Item }).item;
     assert.equal((await impl.call<{ ok: boolean }>('task.claim', { id: item.id })).ok, true);
     hold = true;
@@ -308,7 +308,7 @@ test('startup preserves offline state edits, and migration removes an old hand-e
   await startDaemon(t, root);
   const items: Item[] = [];
   for (const title of ['Close offline', 'Reopen offline']) {
-    const made = await cland(root, 'task', 'create', title, '--json');
+    const made = await cland(root, 'task', 'create', '--size', 'M', title, '--json');
     assert.equal(made.code, 0, made.stderr);
     items.push((JSON.parse(made.stdout) as { item: Item }).item);
   }

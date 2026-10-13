@@ -1672,7 +1672,10 @@ test('disconnect releases snapshot journals even when another refresh is queued'
   await c.control({ waitSnapshot: 'task.list' });
   await c.control({ waitSnapshot: 'session.list' });
   await c.reconnect((s) => { s.items = [item('T-14', 'task', 'After reconnect')]; });
-  await c.input('<Esc><Space>i/unscheduled (<CR>za');
+  await c.input('<Esc><Space>i');
+  // Reconnecting precedes the item snapshot; an early search cannot be replayed when its heading arrives.
+  await c.waitScreen((x) => x.includes('unscheduled (1)'), 'unscheduled heading after reconnect');
+  await c.input('/unscheduled (<CR>za');
   await c.waitScreen((x) => x.includes('T-14 After reconnect'), 'fresh items after reconnect');
   assert.equal(await c.lua("return vim.tbl_count(require('cland').client.snapshots)"), 0, 'no journal belongs to the dead connection');
   assert.equal(await c.lua("return vim.tbl_count(require('cland').client.pending)"), 0, 'queued refreshes never request on the dead connection');

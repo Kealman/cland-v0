@@ -74,8 +74,8 @@ test('the Coordinator hands over with a note: B gets clause and note in one even
   const a = await spawn('coord', 'coordinator');
   const b = await spawn('next', 'implementer');
   await a.waitForPresence(['coord', 'next']);
-  ok(await cland(root, 'task', 'create', 'Tracker import'));
-  ok(await cland(root, 'task', 'create', 'Someone else'));
+  ok(await cland(root, 'task', 'create', '--size', 'M', 'Tracker import'));
+  ok(await cland(root, 'task', 'create', '--size', 'M', 'Someone else'));
 
   // before: A claims T-1, and the human asks the Coordinator something in General that A has not answered
   assert.equal((await a.call<Result>('task.claim', { id: 'T-1' })).ok, true);

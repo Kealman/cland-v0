@@ -575,7 +575,7 @@ test('a held tracker write reports a stall in hub status and bounded hub stop re
   const { discovery } = await startDaemon(t, root, {
     ...gate.env, CLAND_TEST_TRACKER_STALL_MS: '30', CLAND_TEST_TRACKER_STOP_MS: '30',
   });
-  assert.equal((await cland(root, 'task', 'create', 'Stalled')).code, 0);
+  assert.equal((await cland(root, 'task', 'create', '--size', 'M', 'Stalled')).code, 0);
   const path = join(root, '.cland', 'tasks', 'T-1-stalled.md');
   const before = await files.readFile(path, 'utf8');
   const ui = await connectUi(t, discovery);

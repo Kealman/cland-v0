@@ -16,7 +16,7 @@ test('prepared projects own their refs, index, config, hooks, worktrees, objects
   const hook = await readFile(join(second, '.cland/territory.git/hooks/update'), 'utf8');
   const { discovery } = await startDaemon(t, first);
   const ui = await connectUi(t, discovery);
-  const made = await ui.request({ type: 'task.create', title: 'Private task' });
+  const made = await ui.request({ size: 'M', type: 'task.create', title: 'Private task' });
   assert.equal(made.ok, true, made.error);
   const claimed = await ui.request({ type: 'task.claim', item: 'T-1' });
   assert.equal(claimed.ok, true, claimed.error);

@@ -18,10 +18,10 @@ import { validTimestamp } from './criteria.ts';
 import { parseItemReference } from './prefixes.ts';
 import { fileNumber, parseItem } from './item.ts';
 import { Ladder, kindsFor } from './kinds.ts';
-import { planMigration, type MigrationPlan, type ClosingTime } from './migrate.ts';
+import { planMigration, type MigrationPlan, type ClosingTime, parseSizeAssignments } from './migrate.ts';
 import { Tracker, type Actor } from './tracker.ts';
 
-export async function migrateOffline(cwd: string, dryRun: boolean, caller?: FrameActor): Promise<MigrationPlan> {
+export async function migrateOffline(cwd: string, dryRun: boolean, caller?: FrameActor, sizesFile?: string): Promise<MigrationPlan> {
   const root = projectRoot(cwd);
   if (await realpath(cwd) !== await realpath(root)) throw new Error('task migrate must run from the project root shell, not a linked worktree or subdirectory');
   const l = layout(root);
@@ -104,7 +104,8 @@ export async function migrateOffline(cwd: string, dryRun: boolean, caller?: Fram
       const time = await promisify(execFile)('git', ['show', '-s', '--format=%cI', `${commit}^{commit}`], { cwd: root }).then(r => r.stdout.trim(), () => null);
       addTime(n, time, 'commit');
     }
-    const plan = planMigration(entries, highWater + 1, ladder.containers, closingTimes);
+    const sizes = sizesFile === undefined ? undefined : parseSizeAssignments(JSON.parse(await readFile(resolve(cwd, sizesFile), 'utf8')), kindsFor(ladder));
+    const plan = planMigration(entries, highWater + 1, ladder.containers, closingTimes, sizes);
     const filesChange = Object.entries(plan).some(([key, value]) => key !== 'unresolved' && value.length);
     const indexCurrent = indexed.size === entries.length && entries.every(entry => {
       const row = indexed.get(fileNumber(entry.file, kindsFor(ladder))!);
@@ -117,7 +118,7 @@ export async function migrateOffline(cwd: string, dryRun: boolean, caller?: Fram
     const journal = new Journal(journalPath(l.dir));
     const log = journal.tap(jsonLinesLog(line => appendFileSync(l.log, line)));
     const tracker = new Tracker({ root: resolve(root), db: l.db, levels: config.tracker.levels, log });
-    try { return await tracker.migrate(actor, closingTimes); }
+    try { return await tracker.migrate(actor, closingTimes, sizes); }
     finally { await tracker.stop(); await journal.close(); }
   } finally { await lock.release(); }
 }

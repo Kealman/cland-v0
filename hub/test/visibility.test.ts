@@ -212,7 +212,7 @@ test('the hub places messages, sessions, items and artifacts by the default tabl
   assert.equal(read.messages.length, 0);
   assert.equal(read.needsYou, 0, 'read the report before checking that verdict notifications add no waits');
   const create = async (title: string, extra: Record<string, unknown> = {}) => {
-    const result = await ui.request({ type: 'task.create', title, ...extra });
+    const result = await ui.request({ ...((!('kind' in extra) || extra.kind === 'task') ? { size: 'M' } : {}), type: 'task.create', title, ...extra });
     assert.equal(result.ok, true, result.error);
     return (result.value as { item: { id: string; layer: string } }).item;
   };
@@ -285,7 +285,7 @@ test('hundreds of default verdict, death and idle events leave needsYou zero', a
   const { discovery } = await startDaemon(t, root, { ...fake.env, CLAND_IDLE_NOTIFY_MS: '40' });
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
-  const created = await ui.request({ type: 'task.create', title: 'Repeated verdict evidence' });
+  const created = await ui.request({ size: 'M', type: 'task.create', title: 'Repeated verdict evidence' });
   const item = (created.value as { item: { id: string } }).item.id;
   for (let i = 0; i < 200; i++) {
     const result = await ui.request({ type: 'task.comment', item, text: 'Evidence pending resolution.', verdict: { verdict: 'review', result: i % 2 ? 'clear' : 'not clear', run: `storm-${i}` }, as: { name: 'rev', role: 'reviewer' } });
@@ -421,7 +421,7 @@ test('D17 verdicts and deaths carry warn severity in events and the event log, n
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
-  const item = ((await ui.request({ type: 'task.create', title: 'Warning evidence' })).value as { item: { id: string } }).item.id;
+  const item = ((await ui.request({ size: 'M', type: 'task.create', title: 'Warning evidence' })).value as { item: { id: string } }).item.id;
   const topic = ((await ui.request({ type: 'topic.create', title: 'Warning evidence', item })).value as { topic: { id: string } }).topic.id;
   const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
   t.after(() => coord.close());

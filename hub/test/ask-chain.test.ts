@@ -92,7 +92,7 @@ test('a former receiving Lead cannot forward downward after the task is reparent
   const lead = await spawnSpoke({ cwd: root, discover: true, name: 'old-lead', assignRole: false, sessionId: launched.process.sessionId });
   t.after(() => lead.close());
   await coord.waitForPresence(['coord', 'impl', 'old-lead']);
-  const { item } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Moving task', parent: epic.id, assignee: 'impl' });
+  const { item } = await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Moving task', parent: epic.id, assignee: 'impl' });
   await impl.call('task.claim', { id: item.id });
   const { topic } = await impl.call<{ topic: { id: string } }>('topic.create', { title: 'Moving task', item: item.id });
   await impl.call('send', { topic: topic.id, to: [`lead ${item.id}`], kind: 'question', text: 'Moved policy?' });
@@ -114,7 +114,7 @@ test('a named question to an Aide remains an ordinary send rather than an unansw
   const impl = await spawnSpoke({ cwd: root, discover: true, name: 'impl', role: 'implementer', sessionId: 'impl-id' });
   t.after(() => aide.close()); t.after(() => impl.close());
   await impl.waitForPresence(['aide-1', 'impl']);
-  const { item } = await aide.call<{ item: { id: string } }>('task.create', { title: 'Aide question', assignee: 'aide-1' });
+  const { item } = await aide.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Aide question', assignee: 'aide-1' });
   await aide.call('task.claim', { id: item.id });
   const { topic } = await aide.call<{ topic: { id: string } }>('topic.create', { title: 'Aide question', item: item.id });
   assert.equal((await impl.call<{ ok: boolean }>('send', { topic: topic.id, to: ['aide-1'], kind: 'question', text: 'Aide policy?' })).ok, true);
@@ -221,7 +221,7 @@ test('a Lead answers locally or forwards an unchanged question to the root, whic
   const lead = await spawnSpoke({ cwd: root, discover: true, name: 'lead-1', assignRole: false, sessionId: launched.process.sessionId });
   t.after(() => lead.close());
   await coord.waitForPresence(['coord', 'impl', 'lead-1']);
-  const { item } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Question work', parent: epic.id, assignee: 'impl' });
+  const { item } = await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Question work', parent: epic.id, assignee: 'impl' });
   await impl.call('task.claim', { id: item.id });
   const { topic } = await impl.call<{ topic: { id: string } }>('topic.create', { title: 'Question work', item: item.id });
   const history = async () => (await ui.request({ type: 'topic.history', topic: topic.id })).value as { messages: TopicMessage[] };
@@ -299,7 +299,7 @@ test('a question climbs an epic and release one level per forward, reaching each
     leads.push({ name, spoke, harnessId: launched.process.harnessId });
   }
   await coord.waitForPresence(['coord', 'impl', 'release-lead', 'epic-lead']);
-  const { item } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Work', parent: epic.id, assignee: 'impl' });
+  const { item } = await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Work', parent: epic.id, assignee: 'impl' });
   await impl.call('task.claim', { id: item.id });
   const { topic } = await impl.call<{ topic: { id: string } }>('topic.create', { title: 'Work', item: item.id });
   const text = '  Which release policy?\nKeep this whitespace.  ';

@@ -15,7 +15,7 @@ test('default item subscriptions follow claims and explicit subscriptions widen 
   const impl = await spawnSpoke({ cwd: root, discover: true, name: 'impl', role: 'implementer', sessionId: 'impl-id' });
   t.after(async () => { await coord.close(); await impl.close(); });
   await coord.waitForPresence(['coord', 'impl']);
-  const { item } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Default ownership', assignee: 'impl' });
+  const { item } = await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Default ownership', assignee: 'impl' });
   const subjects = async (session: typeof coord) => (await session.call<{ subscriptions: Subscription[] }>('subscriptions')).subscriptions.map(s => s.subject);
   assert.deepEqual(await subjects(coord), [{ item: item.id }]);
   assert.deepEqual(await subjects(impl), []);
@@ -58,7 +58,7 @@ test('an Aide lead owns its subtree defaults without receiving crew broadcasts',
   await coord.waitForPresence(['coord', 'aide-1', 'rev']);
   const { item: parent } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Aide subtree', kind: 'epic' });
   await aide.call('task.claim', { id: parent.id });
-  const { item: child } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Inherited Aide default', parent: parent.id });
+  const { item: child } = await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Inherited Aide default', parent: parent.id });
   const listed = await ui.request({ type: 'hub.subscriptions' });
   assert.deepEqual((listed.value as { subscriptions: Array<Subscription & { subscriber: string }> }).subscriptions.map(s => [s.subscriber, s.subject, s.default]), [
     ['aide-1', { item: parent.id }, true], ['aide-1', { item: child.id }, true],
@@ -89,7 +89,7 @@ test('a coalesced explicit event keeps later default lead provenance after an Ai
   t.after(async () => { await coord.close(); await lead.close(); await rev.close(); });
   await coord.waitForPresence(['coord', 'lead-1', 'rev']);
   const { item: parent } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Future lead', kind: 'epic', assignee: 'lead-1' });
-  const { item: child } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Coalesced lead event', parent: parent.id });
+  const { item: child } = await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Coalesced lead event', parent: parent.id });
   await lead.call('subscribe', { subject: { item: child.id }, events: ['task'] });
   const verdict = { id: child.id, verdict: 'review', result: 'not clear', run: 'coalesced-default' };
   assert.equal((await rev.call<{ ok: boolean }>('task.comment', verdict)).ok, true);
@@ -118,7 +118,7 @@ test('a stopped pooled Reviewer reaches its item lead; a killed lead reaches the
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
   t.after(() => coord.close());
   await coord.waitForPresence(['coord']);
-  const { item } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Review lifecycle', assignee: 'impl' });
+  const { item } = await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Review lifecycle', assignee: 'impl' });
   const implLaunch = await ui.request({ type: 'session.launch', name: 'impl', role: 'implementer', harness: 'claude-code', item: item.id });
   assert.equal(implLaunch.ok, true, implLaunch.error);
   const implProcess = (implLaunch.value as { process: { pid: number; sessionId: string; harnessId: string } }).process;
@@ -180,7 +180,7 @@ test('a claim before hello already belongs to its lead and adopts that lead iden
   t.after(() => coord.close());
   await coord.waitForPresence(['coord']);
   assert.equal((await ui.request({ type: 'role.set', session: 'impl', role: 'implementer' })).ok, true);
-  const { item } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Pending lead', assignee: 'impl' });
+  const { item } = await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Pending lead', assignee: 'impl' });
   assert.equal((await ui.request({ type: 'task.claim', item: item.id, as: { name: 'impl' } })).ok, true);
   assert.deepEqual((await coord.call<{ subscriptions: Subscription[] }>('subscriptions')).subscriptions, []);
   const listing = await ui.request({ type: 'hub.subscriptions' });
@@ -206,7 +206,7 @@ test('a lead death while the hub is down reaches the offline Coordinator once af
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
   t.after(() => coord.close());
   await coord.waitForPresence(['coord']);
-  const { item } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Recover default', assignee: 'impl' });
+  const { item } = await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Recover default', assignee: 'impl' });
   const launched = await ui.request({ type: 'session.launch', name: 'impl', role: 'implementer', harness: 'claude-code', item: item.id });
   assert.equal(launched.ok, true, launched.error);
   const p = (launched.value as { process: { pid: number } }).process;
@@ -240,7 +240,7 @@ test('removing a claimed item sends its final default event to the previous lead
   const impl = await spawnSpoke({ cwd: root, discover: true, name: 'impl', role: 'implementer', sessionId: 'impl-id' });
   t.after(async () => { await coord.close(); await impl.close(); });
   await coord.waitForPresence(['coord', 'impl']);
-  const { item } = await coord.call<{ item: { id: string; path: string } }>('task.create', { title: 'Removed default', assignee: 'impl' });
+  const { item } = await coord.call<{ item: { id: string; path: string } }>('task.create', { size: 'M', title: 'Removed default', assignee: 'impl' });
   await impl.call('task.claim', { id: item.id });
   const { unlink } = await import('node:fs/promises');
   const { join } = await import('node:path');
@@ -266,7 +266,7 @@ for (const pendingReceipt of [false, true]) test(`terminal recovery routes an ol
   assert.equal(reviewer.ok, true, reviewer.error);
   const r = (reviewer.value as { process: { pid: number } }).process;
   t.after(() => killDaemon(r.pid));
-  const { item } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Terminal lead order', assignee: 'impl' });
+  const { item } = await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Terminal lead order', assignee: 'impl' });
   const implementer = await ui.request({ type: 'session.launch', name: 'impl', role: 'implementer', harness: 'claude-code', item: item.id });
   assert.equal(implementer.ok, true, implementer.error);
   const p = (implementer.value as { process: { pid: number } }).process;
@@ -324,7 +324,7 @@ test('unclaimed descendants inherit their nearest claimed ancestor lead', async 
   const child = await ui.request({ type: 'task.create', title: 'Unclaimed child', kind: 'epic', parent: parentId });
   assert.equal(child.ok, true, child.error);
   const childId = (child.value as { item: { id: string } }).item.id;
-  const grandchild = await ui.request({ type: 'task.create', title: 'Inherited grandchild', parent: childId });
+  const grandchild = await ui.request({ size: 'M', type: 'task.create', title: 'Inherited grandchild', parent: childId });
   assert.equal(grandchild.ok, true, grandchild.error);
   const grandchildId = (grandchild.value as { item: { id: string } }).item.id;
   assert.equal((await impl.call<{ ok: boolean }>('task.claim', { id: parentId })).ok, true);
@@ -355,7 +355,7 @@ test('anonymous hellos cannot give another name the claimant default identity', 
   const impl = await spawnSpoke({ cwd: root, discover: true, name: 'impl', role: 'implementer', sessionId: 'unknown' });
   t.after(async () => { await coord.close(); await rev.close(); await impl.close(); });
   await coord.waitForPresence(['coord', 'rev', 'impl']);
-  const { item } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Anonymous claimant', assignee: 'impl' });
+  const { item } = await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Anonymous claimant', assignee: 'impl' });
   assert.equal((await ui.request({ type: 'task.claim', item: item.id, as: { name: 'impl' } })).ok, true);
   await coord.call('task.edit', { id: item.id, status: 'review' });
   const history = await ui.request({ type: 'topic.history', topic: 'agents' });
@@ -379,7 +379,7 @@ for (const restart of [false, true]) test(`the item lead runs not-clear, re-revi
   t.after(async () => { await Promise.all([coord, impl, rev, qa].map(s => s.close())); });
   await coord.waitForPresence(['coord', 'impl', 'rev', 'qa-one']);
   const { item: epic } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Loop plan', kind: 'epic' });
-  const { item } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Own loop', assignee: 'impl', parent: epic.id });
+  const { item } = await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Own loop', assignee: 'impl', parent: epic.id });
   await coord.call('task.plan', { id: epic.id, op: 'set', yaml: `stages:\n- name: Loop\n  qa: {scope: affected, when: per-item}\n  lanes: [[${item.id}]]\n` });
   const plannedText = `event · task · ${item.id} status changed backlog → planned`;
   const plannedEvent = await eventually('planned setup event recorded for Coordinator', async () => {

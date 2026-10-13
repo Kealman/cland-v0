@@ -22,7 +22,7 @@ test('a real task merge starts the stopped Implementer item window', async t => 
   const ui = await connectUi(t, discovery);
   const pushed = await cland(root, 'push');
   assert.equal(pushed.code, 0, pushed.stderr);
-  assert.equal((await ui.request({ type: 'task.create', title: 'Archive after landing' })).ok, true);
+  assert.equal((await ui.request({ size: 'M', type: 'task.create', title: 'Archive after landing' })).ok, true);
   const launch = await ui.request({ type: 'session.launch', name: 'impl-merge', role: 'implementer', harness: 'claude-code', item: 'T-1' }, 30000);
   assert.equal(launch.ok, true, launch.error);
   const p = (launch.value as { process: HarnessProcessView }).process;
@@ -47,7 +47,7 @@ test('item windows follow launch items and the latest verifier work even after h
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
-  for (const title of ['Implementer item', 'Earlier held item', 'Latest held item', 'Reopened item']) assert.equal((await ui.request({ type: 'task.create', title })).ok, true);
+  for (const title of ['Implementer item', 'Earlier held item', 'Latest held item', 'Reopened item']) assert.equal((await ui.request({ size: 'M', type: 'task.create', title })).ok, true);
   for (const [name, role, item] of [['impl', 'implementer', 'T-1'], ['rev', 'reviewer', undefined], ['tester', 'qa', undefined], ['reopened', 'implementer', 'T-4']] as const) {
     const launch = await ui.request({ type: 'session.launch', name, role, harness: 'claude-code', ...(item ? { item } : {}) }, 30000);
     assert.equal(launch.ok, true, launch.error);
@@ -129,7 +129,7 @@ test('prune CLI and Coordinator tool delete only old archived records and retain
   await impl.waitForPresence(['impl']);
   const forbidden = await impl.call<{ ok: boolean; code: string }>('session.prune', { olderThan: '1s' });
   assert.deepEqual([forbidden.ok, forbidden.code], [false, 'forbidden']);
-  assert.equal((await ui.request({ type: 'task.create', title: 'Retained item after prune', assignee: 'old' })).ok, true);
+  assert.equal((await ui.request({ size: 'M', type: 'task.create', title: 'Retained item after prune', assignee: 'old' })).ok, true);
   for (const name of ['old', 'keep']) {
     const launch = await ui.request({ type: 'session.launch', name, role: name === 'old' ? 'implementer' : 'aide', harness: 'claude-code' }, 30000);
     assert.equal(launch.ok, true, launch.error);

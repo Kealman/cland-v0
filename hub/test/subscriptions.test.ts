@@ -18,7 +18,7 @@ test('caller-owned subscriptions hold task status events in the ordinary next-tu
   const impl = await spawnSpoke({ cwd: root, discover: true, name: 'impl', role: 'implementer', sessionId: 'impl-id' });
   t.after(async () => { await coord.close(); await impl.close(); });
   await coord.waitForPresence(['coord', 'impl']);
-  const { item } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Subscription target', assignee: 'impl' });
+  const { item } = await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Subscription target', assignee: 'impl' });
   await impl.call('task.claim', { id: item.id });
   const subscribed = await coord.call<{ ok: boolean; subscription: Subscription }>('subscribe', { subject: { item: item.id }, events: ['task'] });
   assert.equal(subscribed.ok, true, JSON.stringify(subscribed));
@@ -68,7 +68,7 @@ test('CLI and MCP share durable subscriptions; unsubscribing leaves the queued e
   const impl = await spawnSpoke({ cwd: root, discover: true, name: 'impl', role: 'implementer', sessionId: 'impl-id' });
   t.after(async () => { await coord.close(); await impl.close(); });
   await coord.waitForPresence(['coord', 'impl']);
-  const { item } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Durable subscription', assignee: 'impl' });
+  const { item } = await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Durable subscription', assignee: 'impl' });
   await impl.call('task.claim', { id: item.id });
   const created = await cland(root, 'subscribe', 'item', item.id, '--event', 'task', '--as', 'coord', '--json');
   assert.equal(created.code, 0, created.stderr);
@@ -110,7 +110,7 @@ test('an unchanged cached item emits its first committed status change after res
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
   t.after(() => coord.close());
   await coord.waitForPresence(['coord']);
-  const { item } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Unchanged cached item' });
+  const { item } = await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Unchanged cached item' });
   await coord.call('subscribe', { subject: { item: item.id }, events: ['task'] });
   ui.close();
   assert.equal((await cland(root, 'hub', 'stop')).code, 0);
@@ -138,7 +138,7 @@ test('adopting a provisional claim at hello does not announce another claim', as
   t.after(() => coord.close());
   await coord.waitForPresence(['coord']);
   assert.equal((await ui.request({ type: 'role.set', session: 'impl', role: 'implementer' })).ok, true);
-  const { item } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Provisional claim', assignee: 'impl' });
+  const { item } = await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Provisional claim', assignee: 'impl' });
   await coord.call('subscribe', { subject: { item: item.id }, events: ['task'] });
   assert.equal((await ui.request({ type: 'task.claim', item: item.id, as: { name: 'impl' } })).ok, true);
   const impl = await spawnSpoke({ cwd: root, discover: true, name: 'impl', role: 'implementer', sessionId: 'impl-real' });
@@ -242,7 +242,7 @@ test('task events report claims, verdicts and closes once; ordinary comments do 
   const rev = await spawnSpoke({ cwd: root, discover: true, name: 'rev', role: 'reviewer', sessionId: 'rev-id' });
   t.after(async () => { await coord.close(); await impl.close(); await rev.close(); });
   await coord.waitForPresence(['coord', 'impl', 'rev']);
-  const { item } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Workflow events', assignee: 'impl' });
+  const { item } = await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Workflow events', assignee: 'impl' });
   await coord.call('subscribe', { subject: { item: item.id }, events: ['task'] });
   assert.equal((await impl.call<{ ok: boolean }>('task.claim', { id: item.id })).ok, true);
   await impl.call('task.edit', { id: item.id, status: 'review' });
@@ -290,7 +290,7 @@ for (const harness of ['claude-code', 'codex', 'opencode']) {
     const sender = await spawnSpoke({ cwd: root, discover: true, name: 'impl', sessionId: 'sender' });
     t.after(() => sender.close());
     await sender.waitForPresence(['impl', 'coord']);
-    const made = await ui.request({ type: 'task.create', title: 'Harness subscription' });
+    const made = await ui.request({ size: 'M', type: 'task.create', title: 'Harness subscription' });
     const item = (made.value as { item: { id: string } }).item;
     const subscribed = await clandWithEnv(root, env, 'subscribe', 'item', item.id, '--event', 'task', '--as', 'coord', '--json');
     assert.equal(subscribed.code, 0, subscribed.stderr);
@@ -358,7 +358,7 @@ test('fan-out preserves independent recipient digests when one subscriber discon
   let qa = await spawnSpoke({ cwd: root, discover: true, name: 'qa-1', role: 'qa', sessionId: 'qa-id' });
   t.after(async () => { await coord.close(); await rev.close(); await qa.close(); });
   await coord.waitForPresence(['coord', 'rev', 'qa-1']);
-  const { item } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Fan-out' });
+  const { item } = await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Fan-out' });
   await rev.call('subscribe', { subject: { item: item.id }, events: ['task'] });
   const { subscription } = await qa.call<{ subscription: Subscription }>('subscribe', { subject: { item: item.id }, events: ['task'] });
   await qa.close();
@@ -394,7 +394,7 @@ test('subscribe and unsubscribe racing an awaited task write take effect before 
   const rev = await spawnSpoke({ cwd: root, discover: true, name: 'rev', role: 'reviewer', sessionId: 'rev-id' });
   t.after(async () => { await coord.close(); await rev.close(); });
   await coord.waitForPresence(['coord', 'rev']);
-  const { item } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Racing subscription' });
+  const { item } = await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Racing subscription' });
   for (const subscribing of [true, false]) {
     await gate.arm();
     const editing = ui.request({ type: 'task.edit', item: item.id, status: subscribing ? 'planned' : 'review' });

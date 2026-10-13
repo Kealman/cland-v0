@@ -32,6 +32,17 @@ test('tracker and vendored skills defer category filing to the Categories contra
   }
 });
 
+test('ticket and plan skills require size, Summary and landed rework links', async () => {
+  for (const skill of ['to-tickets', 'plan-epic']) {
+    const text = await readFile(new URL(`../../.agents/skills/${skill}/SKILL.md`, import.meta.url), 'utf8');
+    assert.match(text, /XS, S, M, L or XL/);
+    assert.match(text, /## Summary/);
+    assert.match(text, /one to three sentences/);
+    assert.match(text, /--regression-of/);
+    assert.match(text, /landed tasks/);
+  }
+});
+
 const hasJq = spawnSync('jq', ['--version']).status === 0;
 
 /** `cland <args>` in `cwd` with `input` on stdin (for `--body-file -`), with no `CLAND_*` variable from the test's environment. */
@@ -153,9 +164,9 @@ for (const parentKind of ['epic', 'release', 'category', null]) {
     const specBefore = (await itemFile(root, spec)).text;
     const source = `## Parent\n\n${spec}: Login with a magic link\n\n`;
     // to-tickets: the source spec is context in the body. Native parent edges point to its container.
-    const schema = await create(root, ['Store one-time login tokens', '--kind', 'task', ...ticketArgs, '--label', 'ready-for-agent'], source + '## What to build\n\nTokens.\n');
-    const send = await create(root, ['Send the magic link by email', '--kind', 'task', ...ticketArgs, '--blocked-by', schema, '--label', 'ready-for-agent'], source + '## What to build\n\nThe email.\n');
-    const land = await create(root, ['Log in from the link', '--kind', 'task', ...ticketArgs, '--blocked-by', schema, '--blocked-by', send, '--label', 'ready-for-agent'], source + '## What to build\n\nThe landing.\n');
+    const schema = await create(root, ['--size', 'M', 'Store one-time login tokens', '--kind', 'task', ...ticketArgs, '--label', 'ready-for-agent'], source + '## What to build\n\nTokens.\n');
+    const send = await create(root, ['--size', 'M', 'Send the magic link by email', '--kind', 'task', ...ticketArgs, '--blocked-by', schema, '--label', 'ready-for-agent'], source + '## What to build\n\nThe email.\n');
+    const land = await create(root, ['--size', 'M', 'Log in from the link', '--kind', 'task', ...ticketArgs, '--blocked-by', schema, '--blocked-by', send, '--label', 'ready-for-agent'], source + '## What to build\n\nThe landing.\n');
 
     const specFile = await itemFile(root, spec);
     assert.equal(specFile.fm.kind, 'spec');
@@ -204,12 +215,12 @@ test('wayfinder: a map item, child tickets wired in a second pass, claim by assi
   const root = await project(t);
   const map = await create(root, ['Magic-link login', '--kind', 'map', '--label', 'wayfinder:map'], MAP_BODY);
   // an item outside the map never reaches its frontier
-  await create(root, ['Unrelated chore']);
+  await create(root, ['--size', 'M', 'Unrelated chore']);
   // chart: the tickets first…
   const provider = await create(root, ['Which email provider sends the link?', '--kind', 'question', '--parent', map, '--label', 'wayfinder:research'], '## Question\n\nProvider?\n');
   const lifetime = await create(root, ['How long does a link live?', '--kind', 'question', '--parent', map, '--label', 'wayfinder:grilling'], '## Question\n\nLifetime?\n');
   const template = await create(root, ['What does the email say?', '--kind', 'question', '--parent', map, '--label', 'wayfinder:grilling'], '## Question\n\nCopy?\n');
-  const account = await create(root, ['Open a sandbox account with the provider', '--kind', 'task', '--parent', map, '--label', 'wayfinder:task'], '## Question\n\nSandbox.\n');
+  const account = await create(root, ['--size', 'M', 'Open a sandbox account with the provider', '--kind', 'task', '--parent', map, '--label', 'wayfinder:task'], '## Question\n\nSandbox.\n');
   // …then the blocking edges, once every ticket has its id
   ok(await cland(root, '', 'task', 'link', template, '--blocked-by', provider));
   ok(await cland(root, '', 'task', 'link', account, '--blocked-by', provider, '--blocked-by', lifetime));
@@ -254,10 +265,10 @@ test('wayfinder: a map item, child tickets wired in a second pass, claim by assi
 
 test('triage: the attention buckets through `task list`, the roles applied through `task edit`', async (t) => {
   const root = await project(t);
-  const fresh = await create(root, ['The login page flickers']);
-  const evaluating = await create(root, ['Remember the last email used', '--label', 'needs-triage']);
-  const waiting = await create(root, ['Links expire too soon', '--label', 'bug', '--label', 'needs-info']);
-  const rejected = await create(root, ['Log in with a fax', '--label', 'needs-triage']);
+  const fresh = await create(root, ['--size', 'M', 'The login page flickers']);
+  const evaluating = await create(root, ['--size', 'M', 'Remember the last email used', '--label', 'needs-triage']);
+  const waiting = await create(root, ['--size', 'M', 'Links expire too soon', '--label', 'bug', '--label', 'needs-info']);
+  const rejected = await create(root, ['--size', 'M', 'Log in with a fax', '--label', 'needs-triage']);
 
   // "show what needs attention": unlabeled, needs-triage, needs-info (oldest first: id order)
   const open = await list(root, '--state', 'open');
