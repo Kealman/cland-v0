@@ -1071,7 +1071,11 @@ export class Sessions {
       if (reservation) this.#core.launchSettled(process.name);
       const work = this.#resumeWork(process, desiredRole);
       this.#log({ event: 'session-resumed', session: process.name, harness: p.harness, pid: found.process.pid, state: found.state, relaunched: relaunch && p.status !== 'running', ...work });
-      if (found.state !== 'unknown') this.#signal(p.sessionId, { state: found.state, source: 'resume', at: Date.now() }, false);
+      const at = Date.now();
+      if (found.state !== 'unknown') this.#signal(p.sessionId, { state: found.state, source: 'resume', at }, false);
+      // A reconnect can acknowledge deliveries while the row is still stopped.
+      // Publication must retry them even when resume reports the same idle state.
+      this.#retry(process, at);
       return { found: true, process: this.view(process), ...work };
     };
     const settled = resumed(() => {
