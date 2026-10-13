@@ -2,8 +2,9 @@
 id: T-304
 kind: task
 title: 'Resume: r and "Resume session" relaunch a stopped session on its harness conversation, with a fresh launch on the same brief when it cannot'
-state: open
-status: review
+state: closed
+status: done
+criterion_seq: 5
 labels:
   - v0.1.2
   - ready-for-agent
@@ -15,7 +16,7 @@ blocked_by: []
 topic: topic-186
 branch: t/T-304-resume-r-and-resume-session-relaunch-a
 created: 2026-10-12T21:34:30.803Z
-updated: 2026-10-12T23:15:00.243Z
+updated: 2026-10-13T00:23:04.102Z
 ---
 
 ## Summary
@@ -83,11 +84,21 @@ Then the answer is `found: false` with the reason and an offer: `fresh: { brief:
 
 ## Acceptance criteria
 
-- [ ] C1. Resuming a stopped fake Claude Code Implementer relaunches the same harness conversation, with the same `harnessSessionId`, under the same name, role and claim. The role clause is delivered again.
-- [ ] C2. When another session holds the item's claim, or the exclusive role, the resume goes ahead without it and the answer and journal say so. A hub test covers the claim case and the exclusive-role case.
-- [ ] C3. A harness that cannot resume answers `found: false` with its reason and a fresh-launch offer. `--fresh` (`fresh: true`) launches under the same name and role with the brief recorded at launch, text or artifact id, and a hub test checks that the first input carries that brief.
-- [ ] C4. A Neovim headless test on the stub hub shows four things: `r` on a stopped row, the outcome note, the fresh-launch confirmation line with `f` and `n`, and "Resume session" in the palette and `␣?`.
-- [ ] C5. `hub/README.md`'s session frames and CLI table describe `--relaunch` on a stopped session, `--fresh` and the answer's fields. `nvim/README.md` describes `r` and the offer. The Coordinator's default clause names `cland session resume <name> --relaunch` and `--fresh`.
+- [x] C1. Resuming a stopped fake Claude Code Implementer relaunches the same harness conversation, with the same `harnessSessionId`, under the same name, role and claim. The role clause is delivered again.
+  - done: impl-304 · 2026-10-13T00:06:13.676Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-304-2 · 2026-10-13T00:22:45.372Z · commit e94be3e0d6ed61cb0da6b6db6aa332f816d3182c
+- [x] C2. When another session holds the item's claim, or the exclusive role, the resume goes ahead without it and the answer and journal say so. A hub test covers the claim case and the exclusive-role case.
+  - done: impl-304 · 2026-10-13T00:06:15.345Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-304-2 · 2026-10-13T00:22:45.372Z · commit e94be3e0d6ed61cb0da6b6db6aa332f816d3182c
+- [x] C3. A harness that cannot resume answers `found: false` with its reason and a fresh-launch offer. `--fresh` (`fresh: true`) launches under the same name and role with the brief recorded at launch, text or artifact id, and a hub test checks that the first input carries that brief.
+  - done: impl-304 · 2026-10-13T00:06:15.953Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-304-2 · 2026-10-13T00:22:45.372Z · commit e94be3e0d6ed61cb0da6b6db6aa332f816d3182c
+- [x] C4. A Neovim headless test on the stub hub shows four things: `r` on a stopped row, the outcome note, the fresh-launch confirmation line with `f` and `n`, and "Resume session" in the palette and `␣?`.
+  - done: impl-304 · 2026-10-13T00:06:16.594Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-304-2 · 2026-10-13T00:22:45.372Z · commit e94be3e0d6ed61cb0da6b6db6aa332f816d3182c
+- [x] C5. `hub/README.md`'s session frames and CLI table describe `--relaunch` on a stopped session, `--fresh` and the answer's fields. `nvim/README.md` describes `r` and the offer. The Coordinator's default clause names `cland session resume <name> --relaunch` and `--fresh`.
+  - done: impl-304 · 2026-10-13T00:06:17.057Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-304-2 · 2026-10-13T00:22:45.372Z · commit e94be3e0d6ed61cb0da6b6db6aa332f816d3182c
 
 ## Comments
 
@@ -98,3 +109,37 @@ Implementation started. Testing at the item's agreed seams: real hub session fra
 ### impl-304 · 2026-10-12T23:14:09.894Z
 
 C1–C5 implemented. Local tests: 12 resume frame/CLI cases, OpenCode missing-conversation plus failed-fresh-row recovery, four launch-recovery and six lifecycle serialization cases, headless resume UI, typecheck and shard lint passed. default-roles.ts changes the Coordinator clause only (no new tools); Coordinator relaunch after merge is required by the epic handoff. fake-claude.ts and harness.ts are untouched. Final review/full suite follow after fetching and merging origin/dev.
+
+### rev-23 · 2026-10-12T23:57:24.711Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-304-1
+commit: 1c9444a607104b82d5d2ba0721d8aac665f62242
+
+Medium — hub/test/fakes/codex/fake-codex.ts:507: new full-input log duplicates existing clause text, causing two exact-once assertions to count 2 instead of 1.
+Medium — hub/test/request-guard.test.ts:184: null conversation id now takes the refusal path, so both intended successful relaunch timing cases publish nothing.
+Exact-head full c29ee5bc exited 1, 1404/1408 passed; Neovim not reached. Preserve assertion strength when fixing both fixtures/probes. Evidence A-1694: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1694-t-304-full-verification-exposes-duplicate-fake-probe-and-stale-relaunch-fixture.md; A-1693 full log.
+
+Criteria: C1 failed (Full verification fails exact-once clause checks and both successful relaunch timing cases; repair the probe/valid-conversation fixture while preserving assertions.), C3 failed (New complete turn-input log duplicates the existing clause sentinel and breaks exact-once regression coverage; full verification is not green.).
+
+### impl-304 · 2026-10-13T00:22:42.122Z
+
+Fresh full verification d5977459-f6ad-491d-bbbf-c33f4549a958 passed at e94be3e0d6ed61cb0da6b6db6aa332f816d3182c: 1712/1712 tests, 0 failures, 0 skips, including hub-free, hub-machine and Neovim phases. Durable log A-1702. This matches the expected complete count and covers the four corrected regression checks. C1–C5 are marked implemented; awaiting the Reviewer's final exact-head verdict. Per-item QA scope is none.
+
+### rev-23 · 2026-10-13T00:22:45.372Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-304-2
+commit: e94be3e0d6ed61cb0da6b6db6aa332f816d3182c
+
+No high or medium findings remain. Both A-1694 probe/fixture regressions are corrected with assertions preserved. C1–C5 verified from source and exact-head fresh full d5977459: typecheck and 1712/1712 tests pass, zero failures/cancellations/skips. Evidence A-1703: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1703-t-304-final-review-at-e94be3e.md; full log A-1702.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-10-13T00:23:04.102Z
+
+Merged 8e52f5afd430e474db9293b670526ed242be3fe3 onto dev.

@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-181
 branch: t/T-281-the-five-linux-test-failures-fixed-at
 created: 2026-10-12T11:54:20.772Z
-updated: 2026-10-12T23:21:27.613Z
+updated: 2026-10-13T00:10:54.242Z
 ---
 
 ## Summary
@@ -55,7 +55,9 @@ Constraints:
   - done: impl-281 · 2026-10-12T21:22:45.572Z
 - [x] C2. The handover test waits for its audit records; the init test is root-safe and still fails when a committed file names the real home directory (shown by a test or a recorded check); each load-sensitive test's cause is named in the item and fixed by a wait for state or a test window, with no retry and no loosened assertion.
   - done: impl-281 · 2026-10-12T21:28:49.130Z
-- [ ] C3. In an Ubuntu 24.04 container limited to 8 CPUs, as an ordinary user, each of `aide`, `handover`, `init`, `lead-permissions` and `tracker-ready` passes ten runs in a row alone; the log is published as an artifact in this item's topic.
+- [x] C3. In an Ubuntu 24.04 container limited to 8 CPUs, as an ordinary user, each of `aide`, `handover`, `init`, `lead-permissions` and `tracker-ready` passes ten runs in a row alone; the log is published as an artifact in this item's topic.
+  - verified: rev-26 [reviewer] · run rev-20261013-281-linux · 2026-10-12T23:44:26.116Z · commit 336f125c78080c444f1f2e8e74460df6f5f6d1f9
+  - done: impl-281 · 2026-10-12T23:44:36.895Z
 - [ ] C4. The runner lists every skipped test with file, name and reason on macOS and on Linux, and the hub's suite report counts are unchanged by it.
 - [x] C5. `hub/README.md` describes the skip summary, any new test-window knob and how to run the suite on Linux.
   - done: impl-281 · 2026-10-12T21:23:29.415Z
@@ -112,3 +114,19 @@ T-309 integrated: fetched/merged origin/dev through 92a0f50 into task head b79b1
 ### impl-281 · 2026-10-12T23:21:20.132Z
 
 Refreshed and pushed 336f125 after merging origin/dev, including T-309 UTC lease identity and T-310. No task-hunk change or conflict. Combined Linux driver prepared: holds both host leases across ten solo runs per file and the container full run, publishes the proof log, then quits Docker. Coordinator order: wait for T-303's resubmitted ordinary run to finish, do not take its cancellation gap; T-281 then owns both Linux phases, and announces the end to Coordinator, impl-304 and impl-291.
+
+### impl-281 · 2026-10-12T23:44:37.533Z
+
+C3 complete in A-1687: all five files passed ten consecutive whole-file solo runs (fifty runs total) at336f125, one file at a time, ordinary /home/runner user, --init,4 local CPUs, no test/ps overrides. Started23:31:53Z, finished23:43:48Z. No failure, skip, cancellation or retry; prior interrupted batches excluded. The container full phase now runs at the same candidate under the retained joint host leases.
+
+### impl-281 · 2026-10-12T23:48:43.282Z
+
+Container full preflight A-1689 passed typecheck but refused recovery of two dead lease owners inherited from the copied T-280 image: saved run-root device/inode identity differed after the Docker snapshot. Corrected only private container lease files and their advertised dead roots after confirming both owner PIDs absent; no host lease or repository code changed. Owner/stat correction evidence published. Container/Desktop stopped during the wait for T-304's admitted run. Fetched/merged origin/dev4e75311, pushed full candidate6255631. C3 proof A-1687 at336f125 remains complete and verified; only full phase resumes.
+
+### impl-281 · 2026-10-13T00:10:15.835Z
+
+Container full phase at 6255631 finished with one failure outside the five original files: cli-identity.test.ts:95 reads hub.log without a flush barrier; the forbidden hub unmute audit is absent. T-291 b0fc308 adds the barrier to this exact helper. A-1698 preserves full output: free30/30,machine1367 tests1351pass1fail15skips, each with file/name/reason. Neovim did not run because hub failed. No rerun. Container stopped and Docker Desktop quit. C3 remains completed in A-1687; C4 coverage and refreshed final-head C6 pending.
+
+### impl-281 · 2026-10-13T00:10:54.242Z
+
+Coordinator decision: A-1698's single failure is the T-291 audit-log barrier class, fixed in its b0fc308 cli-identity helper. Wait for T-291 to merge into dev; then merge origin/dev without copying its hunk, take one protected all-phase container run, and follow with ordinary macOS cland verify all for refreshed C6. Do not repeat C3's 50 solo runs. The first full fixture lacked the documented jq prerequisite (12 of 15 existing skips); install jq in the private fixture before the corrected all-phase run. Docker remains quit while waiting.
