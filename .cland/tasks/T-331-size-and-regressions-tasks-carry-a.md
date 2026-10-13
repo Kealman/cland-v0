@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-211
 branch: t/T-331-size-and-regressions-tasks-carry-a
 created: 2026-10-13T14:04:09.540Z
-updated: 2026-10-13T18:54:10.778Z
+updated: 2026-10-13T19:12:48.388Z
 ---
 
 ## Summary
@@ -102,6 +102,7 @@ E-270: Status, fields and instrumentation. Spec: `docs/spec/v0.1.2.md` §3.12 (W
   - done: impl-331 · 2026-10-13T17:46:42.473Z
   - verified: rev-23 [reviewer] · run rev-2026-10-13-331-1 · 2026-10-13T17:48:54.057Z · commit 6fc0eb83b90efb84d6d16f1598d4cb01ca100b42
   - verified: rev-23 [reviewer] · run rev-2026-10-13-331-3 · 2026-10-13T18:40:12.197Z · commit 93eebe9bbb1da7edee89f82bb24c5ebd39fa10c7
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-331-5 · 2026-10-13T18:59:07.401Z · commit 0f96f5abacb14d038a1ab4706147147ecfea4d6a
 
 ## Comments
 
@@ -152,3 +153,25 @@ run: rev-2026-10-13-331-4
 commit: 93eebe9bbb1da7edee89f82bb24c5ebd39fa10c7
 
 Medium — nvim/test/shell.test.ts:1675 searches/folds before reconnect snapshots render; A-2029 shows E486 and a later folded unscheduled (1). Preserve fresh-row and zero snapshot/pending assertions with a readiness wait. Unchanged dev test; Coordinator df6e96b9 requires standalone shared fix/delayed replay proof. Full result 1842/1843, one failure, both packages/typecheck ran. No product criterion failure inferred; C1–C6 final verification pending, C7 retained. Evidence A-2030: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2030-t-331-full-verification-not-clear-reconnect-readiness-race.md.
+
+### rev-23 · 2026-10-13T18:59:07.401Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-331-5
+commit: 0f96f5abacb14d038a1ab4706147147ecfea4d6a
+
+No high, medium, or low source findings remain. Standalone shared 7d9bb4d reviewed separately: heading readiness precedes original search/fold; fresh-row and zero snapshots/pending assertions retained. Cherry-pick identical; other incoming changes tracker-only. A-2032 dev/head delayed red and green support the fix. C7 refreshed; C1–C6 await complete same-head full evidence. Evidence A-2034: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2034-t-331-shared-reconnect-wait-and-source-delta-clear-at-0f96f5ab.md.
+
+Criteria: C7 verified.
+
+### rev-23 · 2026-10-13T19:12:48.388Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-331-6
+commit: 0f96f5abacb14d038a1ab4706147147ecfea4d6a
+
+Medium — nvim/test/inbox-actions.test.ts:108 selects Give an answer after connection alone, before inbox row readiness; A-2035 throws missing Give an answer. Preserve free answer, failed draft/target, needs-you and exact frames while fixing the inherited shared test (Bugs, S). Typecheck/both packages ran, 1842/1843 pass, one fail; no product criterion failure inferred. C1–C6 final verification pending, C7 retained. Evidence A-2036: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2036-t-331-full-verification-not-clear-inbox-row-readiness.md.
