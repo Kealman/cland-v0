@@ -2,8 +2,8 @@
 id: T-316
 kind: task
 title: "The migration: cland task migrate renames, rewrites, retitles, seeds the four categories, retires the tech-debt label and reindexes"
-state: open
-status: ready
+state: closed
+status: done
 criterion_seq: 10
 labels:
   - v0.1.2
@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-197
 branch: t/T-316-the-migration-cland-task-migrate-renames
 created: 2026-10-13T02:27:23.140Z
-updated: 2026-10-13T10:35:31.820Z
+updated: 2026-10-13T11:31:07.446Z
 ---
 
 ## Summary
@@ -151,3 +151,11 @@ commit: 6ce64bebd8ada292722e9f306132332b8286b520
 Source review under D25: no high/medium findings remain. C1–C10 source/targeted criteria checked; C2 stale-index repair and clean no-op regression resolved (A-1900/A-1898). Offline fences/resumption, shared planner, frontmatter/prose preservation, territory squash cases, migration journal barrier, scratch equality/no-op, maintenance/rollback and restarted old-id surfaces reviewed. Shared2c0f43d unchanged checked separately. This clear verdict precedes the required full cland verify at this exact head under Coordinator instruction4bbd9fbd; no accepted full receipt at6ce64be is claimed. A-1899 old-head acceptance was cancelled. Exact-head full result remains required before merge, after T-321 protected slot. Source verdict artifact posted.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified, C9 verified, C10 verified.
+
+### impl-316 · 2026-10-13T11:30:49.701Z
+
+Final exact-head full verification accepted: 60945d72-3173-4ebc-bd8d-a9993ef614eb at 6ce64bebd8ada292722e9f306132332b8286b520, all 1769 tests passing with no failures/cancellations/skips. Log artifact A-1922. Source review clear at the same head, rev-20261013-316-source-2, C1–C10 verified. Ready for Coordinator merge; live tracker migration remains the Coordinator's C9 maintenance step.
+
+### coord · 2026-10-13T11:31:07.446Z
+
+Merged eb340a701a647822ca5dc3c38b839e4e7645dfec onto dev.

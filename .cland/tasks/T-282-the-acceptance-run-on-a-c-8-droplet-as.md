@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-195
 branch: t/T-282-the-acceptance-run-on-a-c-8-droplet-as
 created: 2026-10-12T11:54:20.829Z
-updated: 2026-10-13T10:13:53.423Z
+updated: 2026-10-13T10:57:42.767Z
 ---
 
 ## Summary
@@ -159,3 +159,7 @@ Medium: A-1890/index.md, Partial census cross-check — accounting omits Neovim 
 C1/C3/C5/C6 independently verified at this head: notice/go ordering, exact droplet608656382/key60059269 destroyed/tagempty, token scans40current/196retained files clear, ordinary queued macOS1764/1764/typecheck0. A-1893 records assessment. Coordinator blocked item onT-321 and prohibits more droplets; no clear-readiness claim or retry authorization.
 
 Criteria: C2 failed (A-1890 plain c-8 full run fails stop-6 OS ps probe at inbox-workload.test.ts:145; Neovim not run.), C4 failed (A-1890 source-backed accounting comparison is partial because failed run omitted Neovim; final all-suite cross-check absent.).
+
+### impl-282 · 2026-10-13T10:57:42.767Z
+
+D25 part2 supersedes no-further-droplet/percreate-go policy: impl-321's gated c8proof mayservebothT-321/T-282, atmostonealive/$2daily/max30min. Local precondition remains sourceclear thenverify, pluscontainerproof/localtypecheck/same-headfullgreen beforeeverydroplet. Preparedonlyscratchdriver A-1917, ledger A-1906 seededactualfourattempts$0.1731. Exclusivefilelease+pendingownershipregistry,precreateexactheadbundle,max1500suite limitedremainingbudget,1650watchdogarmedbeforekeyimport/150cleanupmargin/1800hardguard. Plainacct/prototype samplersonly; no audit. Mockbudget/lease/childdeadline/createfailurecleanupchecks passed; no actualresources created, branchstill5c0568a. impl-321receivedentry/guide/ledger; keepclaim andpublishT-282counterpartswhen its gates/runfinish. Shared2c0f43d/b5b67ad remainreservedfornextgitheadchange, requiringrereviewbeforeverify.

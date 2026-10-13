@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-200
 branch: t/T-321-inbox-workload-archive-startup-case
 created: 2026-10-13T10:06:48.166Z
-updated: 2026-10-13T10:52:31.076Z
+updated: 2026-10-13T11:20:37.575Z
 ---
 
 ## Summary
@@ -44,11 +44,16 @@ T-268: Suite spend and Linux portability. T-282's acceptance run is blocked on t
 - [x] C1. The cause of the droplet-only failure is named in the item, with evidence.
   - done: impl-321 · 2026-10-13T10:22:28.444Z
   - verified: rev-26 [reviewer] · run rev-20261013-321-source-2 · 2026-10-13T10:52:31.076Z · commit fa1807c4b45f2ca271c6d9518f9e4469022af427
+  - verified: rev-26 [reviewer] · run rev-20261013-321-source-3 · 2026-10-13T10:55:30.870Z · commit 4d9f6ac97746d466c7991686311dd08fa2a9f0cc
+  - verified: rev-26 [reviewer] · run rev-20261013-321-source-4 · 2026-10-13T11:18:13.718Z · commit 91badd26d298be4b30d3433f09e471d343548468
 - [x] C2. A local reproduction exists, as a test or as a recorded container recipe, that fails before the fix.
   - done: impl-321 · 2026-10-13T10:22:29.203Z
   - verified: rev-26 [reviewer] · run rev-20261013-321-source-2 · 2026-10-13T10:52:31.076Z · commit fa1807c4b45f2ca271c6d9518f9e4469022af427
-- [ ] C3. The fix is at the cause. The file passes ten times alone and once in a full run in the container, with every original bound unchanged.
-  - failed: rev-26 [reviewer] · 2026-10-13T10:47:55.624Z · note core.ts:562–563 re-reads every retained epic candidate on projection; 64 unrelated open/closed epics reproduce 9,872 prepares for eight stops, over the unchanged 1,000 budget.
+  - verified: rev-26 [reviewer] · run rev-20261013-321-source-3 · 2026-10-13T10:55:30.870Z · commit 4d9f6ac97746d466c7991686311dd08fa2a9f0cc
+  - verified: rev-26 [reviewer] · run rev-20261013-321-source-4 · 2026-10-13T11:18:13.718Z · commit 91badd26d298be4b30d3433f09e471d343548468
+- [x] C3. The fix is at the cause. The file passes ten times alone and once in a full run in the container, with every original bound unchanged.
+  - done: impl-321 · 2026-10-13T11:19:14.788Z
+  - verified: rev-26 [reviewer] · run rev-20261013-321-c3 · 2026-10-13T11:20:37.575Z · commit 91badd26d298be4b30d3433f09e471d343548468
 - [ ] C4. `cland verify` is green on macOS.
 
 ## Comments
@@ -84,3 +89,31 @@ commit: fa1807c4b45f2ca271c6d9518f9e4469022af427
 Source review under D25: no high/medium source finding remains. core.ts:316/362 use committed snapshots; tracker.ts:899–904/925 publishes changed plan refusal/acceptance through existing ItemChange, removing recurring retained-epic reads without losing missing-child/reparent freshness. A-1911 raw task/epic stop logs 240/288 queries resolve the earlier 9,872-query finding; inbox8/8 retains T-284 C7 and original sweep/query/OS bounds; plan approval3/3, gates8/8, task plans10/10 and typecheck green. Shared b5b67ad reviewed alone and unchanged as5d7b0f8; dev tracker/spec integration checked. C1/C2 verified for named synchronous hydration mechanism and supplied exact local red/green; original c-8 generic ps error still does not distinguish exit failure from timeout, so no stronger probe attribution claimed. C3 ten-file/full Linux and C4 macOS exact-head full gates remain unverified. Artifact records both axes; this source clear permits the authorized proof work, not merge readiness.
 
 Criteria: C1 verified, C2 verified.
+
+### rev-26 · 2026-10-13T10:55:30.870Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261013-321-source-3
+commit: 4d9f6ac97746d466c7991686311dd08fa2a9f0cc
+
+Source review under D25: no high/medium finding. A-1914's T-321 correction/evidence unchanged at merged head4d9f6ac; no hub/src or hub/test delta and shared plan readiness bytes unchanged. Integration contains landed T-318 Neovim category-count/navigation/prefix code and UI tests/docs plus tracker records, checked against rev-23 clear C1–C5/A-1913 full1766/1766 and merge0b5ca0e. git diff --check clean. C1/C2 marks renewed with prior c-8 generic-probe ambiguity explicitly retained. C3 approved ten-file/full Linux and C4 macOS full receipt still unverified; this source verdict clears exact-head subsequent macOS submission after protected-slot order, not merge readiness. Artifact records integration assessment.
+
+Criteria: C1 verified, C2 verified.
+
+### rev-26 · 2026-10-13T11:18:13.718Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261013-321-source-4
+commit: 91badd26d298be4b30d3433f09e471d343548468
+
+Source review under D25: no high/medium finding. hub/test/request-guard.test.ts:54–73 uses distinct equal-shaped T-6/T-8 baseline views, preventing incidental task.view replay within the existing 250ms argument-keyed window. All three500-read floods, latency limits, exact replay/logging assertions, write invalidation and flushLogs barrier unchanged; no production delta since A-1916. Confirms Coordinator's calibration assessment. C1/C2 renewed. C3 interpretation per Coordinator5e90457f accepts workload ten solo/full-run passes, but mark awaits published raw proof; failed overall container run remains failed evidence. Corrected Linux filter selected no named test, so exit0 is not counted. C4 exact-head macOS full still pending. Artifact records review and limits; source clear only, not final readiness.
+
+Criteria: C1 verified, C2 verified.
+
+### impl-321 · 2026-10-13T11:18:55.485Z
+
+Protected container proof at4d9f6ac: ten solo inbox files8/8 each; all8 workload cases pass inside overall FAILED full run (archive20.999s). Full exit1 due request-guard calibration legitimate repeated task.view; explicit nvim diagnostic309pass/3existing skips. Corrected91badd2 continuation matched zero named tests; exit0 INVALID, not proof; both container/Desktop shutdowns0, END posted. Coordinator2ee45fde waives separate Linux calibration green; corrected named macOS/c-8 full tests supply it. Source clear renewed A-1918 at91badd2; same-head standalone typecheck completed0.
