@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-195
 branch: t/T-282-the-acceptance-run-on-a-c-8-droplet-as
 created: 2026-10-12T11:54:20.829Z
-updated: 2026-10-13T08:32:30.096Z
+updated: 2026-10-13T09:06:07.929Z
 ---
 
 ## Summary
@@ -103,3 +103,7 @@ Criteria: C2 failed (A-1846 c-8 full run fails inbox-workload.test.ts:102 hold-r
 ### impl-282 · 2026-10-13T08:32:30.096Z
 
 Cause at failed7eab38f proved by A-1857: each hold release synchronously hydrated unrelated retained tracker rows in #changed and topic ancestry; under16CPU workers/4CPU cap all100unique successful replies were present at26.025s, but15000ms eventual wait had expired. Native writes0.53ms; no dropped-frame cause. Complete source comparison then found both paths already fixed by T-314deb88d3. Coordinator authorized regression-only commit516870128721f5ecb0920fbf40d61ae12ea62ef5 on currentdev731fff4, pushed to origin. New minimized real-protocol case fails pristine7eab38f with344indexed queries (>100), passes currentdev with24; full inbox-workload file6/6green50.12s. Initial pristine dependency setup failure retained separately, never counted as red proof. No existing2000-item/time/sweep assertion changed. T-282 now has a regression change and merges normally; no source cherry-picks needed elsewhere. Requested post-T-315 container slot for original16-worker case then ten complete file runs, before fresh droplet acceptance.
+
+### impl-282 · 2026-10-13T09:06:07.929Z
+
+First post-regression Linux proof A-1864 at5168701 passed the original100-hold response/sweep section under16busy workers in unchanged4CPU container, but the later stop-7 OS ps probe failed. Ten-alone stage was not invoked. All workers/container/Desktop stopped before END. Coordinator classified this whole-case synthetic ps starvation outside acceptance, filed followupT-320 underT-216 needs-triage, and approved a fresh proof with16workers limited to the hold burst, reaped after unchanged sweep assertion and before stop phase, then ten unchanged full-file runs alone. Waiting for T-31511d93365 completion and empty queue; no assertion/deadline/retry/settings changed.

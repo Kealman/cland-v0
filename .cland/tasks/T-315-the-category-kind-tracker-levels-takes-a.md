@@ -2,8 +2,8 @@
 id: T-315
 kind: task
 title: "The category kind: [tracker] levels takes a root kind beside the release, cland task create --kind category works, and unscheduled means no parent"
-state: open
-status: review
+state: closed
+status: done
 criterion_seq: 7
 labels:
   - v0.1.2
@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-196
 branch: t/T-315-the-category-kind-tracker-levels-takes-a
 created: 2026-10-13T02:27:23.006Z
-updated: 2026-10-13T08:55:49.351Z
+updated: 2026-10-13T09:08:41.605Z
 ---
 
 ## Summary
@@ -82,18 +82,25 @@ T-269: Prefixes and categories. Spec: `docs/spec/v0.1.2.md` §3.10 (A container 
 
 - [x] C1. Config tests parse `[["release", "category"], "epic"]` and `["release", "epic"]`, and refuse duplicate kinds, a leaf or `map` as a level, a malformed level and two kinds with one prefix. `cland init` writes the new default. `cland update` rewrites the old default, keeps a custom ladder and reports both.
   - done: impl-315 · 2026-10-13T07:50:26.570Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-315-3 · 2026-10-13T09:08:31.209Z · commit 79cb52c78232472b5b89fb9c9f420dc09d3df52f
 - [x] C2. A hub test on a temporary project shows the parenting rule with a category on create, link and kind edit: a category takes no parent, an epic and a task go under it, and a category under a release is refused.
   - done: impl-315 · 2026-10-13T07:50:26.975Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-315-3 · 2026-10-13T09:08:31.209Z · commit 79cb52c78232472b5b89fb9c9f420dc09d3df52f
 - [x] C3. A hub test shows that a category refuses a version, a status and a rank, closes only with no open children, and needs no QA verdict to close.
   - done: impl-315 · 2026-10-13T07:50:27.263Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-315-3 · 2026-10-13T09:08:31.209Z · commit 79cb52c78232472b5b89fb9c9f420dc09d3df52f
 - [x] C4. `cland task create "Docs" --kind category` and a task created with `--parent C-<n>` work through the CLI, and `cland task list --kind category` lists the category.
   - done: impl-315 · 2026-10-13T07:50:27.556Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-315-3 · 2026-10-13T09:08:31.209Z · commit 79cb52c78232472b5b89fb9c9f420dc09d3df52f
 - [x] C5. `hub.status` carries the nested ladder beside the flat `levels`. `crew.toml` `leads` refuses `category`. The existing `tracker-levels` and `tracker-hierarchy` tests pass unchanged on the flat form.
   - done: impl-315 · 2026-10-13T08:04:10.641Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-315-3 · 2026-10-13T09:08:31.209Z · commit 79cb52c78232472b5b89fb9c9f420dc09d3df52f
 - [x] C6. A Neovim headless test on the stub hub shows a task in a category absent from the release scope's unscheduled fold, and an item with no parent still in it.
   - done: impl-315 · 2026-10-13T08:41:35.858Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-315-3 · 2026-10-13T09:08:31.209Z · commit 79cb52c78232472b5b89fb9c9f420dc09d3df52f
 - [x] C7. `docs/agents/issue-tracker.md` (and its template) describes the category kind, the parenting rule with categories and the narrowed unscheduled. `hub/README.md` describes the ladder and `hub.status`. The `[tracker]` comment in `cland init`'s config describes the list at a level.
   - done: impl-315 · 2026-10-13T07:50:28.431Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-315-3 · 2026-10-13T09:08:31.209Z · commit 79cb52c78232472b5b89fb9c9f420dc09d3df52f
 
 ## Comments
 
@@ -136,3 +143,23 @@ Criteria: C6 failed (Full Neovim integration has five stale shell expectations f
 ### impl-315 · 2026-10-13T08:41:36.897Z
 
 A-1860: all hub tests passed; five Neovim shell cases retained old no-container semantics. The focused five-test command reproduced 0/5 passing, then passed 5/5 in 2.0s after test-only adaptations: map/all views preserve glyph/claim/grouping and delayed-snapshot uniqueness/deletion/journal coverage; the board claims scoped task T-13 and keeps the stub's current tracker source in sync with its emitted events; the backlog-override fixture has a release parent and retains watch/dim/count checks. C6 restored done. Fresh full run waits for impl-282's container-proof slot END.
+
+### impl-315 · 2026-10-13T09:08:13.185Z
+
+Final full run 11d93365 at 79cb52c is green: typecheck and all 1763 tests pass, zero fail/cancelled/skipped. Log artifact A-1865; origin/dev was fetched and merged before the run. Source review at this head is clear in A-1863; awaiting rev-23's final C1–C7 verdict and hub ready status. No further code or test changes are needed.
+
+### rev-23 · 2026-10-13T09:08:31.209Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-315-3
+commit: 79cb52c78232472b5b89fb9c9f420dc09d3df52f
+
+No high or medium findings remain. C1–C7 checked against the category/nested-ladder implementation, real hub/spoke/CLI coverage, headless UI and docs; corrected tests preserve their original permission, snapshot, glyph and visibility guarantees. Exact-head full cland verify 11d93365 / A-1865 passed typecheck and 1763/1763 tests across all three phases, zero failures/skips/cancellations. Evidence A-1866: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1866-t-315-final-review-clear-c1-c7-at-79cb52c.md.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.
+
+### coord · 2026-10-13T09:08:41.605Z
+
+Merged bfe70b90d7d840712fdad2b381a91b57dac51ae4 onto dev.
