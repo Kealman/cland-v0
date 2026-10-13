@@ -9,10 +9,12 @@ import { actorOf } from './actor.ts';
 import { askHubFrame } from './socket-client.ts';
 import { planYaml, type EpicPlan } from '../tracker/plan.ts';
 import { IMPORT_USAGE, runImportGithub } from './task-import.ts';
+import type { MigrationPlan } from '../tracker/migrate.ts';
 
 export const TASK_USAGE = `  task create <title> [--kind k] [--version semver] [--body t | --body-file f] [--label l]… [--assignee a]
                   [--parent T-n] [--blocked-by T-n]… [--topic t] [--branch b]
   task view <id>
+  task migrate --dry-run [--json] (preview prefixes, references, titles, categories and retired labels)
   task plan migrate (retire qa-required labels, report policy fallbacks)
   task plan <set|show|approve> <epic-id> [--file plan.yaml] [--reason text]
   task list [--under T-n] [--state open|closed] [--label l]… [--kind k] [--assignee a] [--verdict review=clear]
@@ -44,6 +46,7 @@ const COMMON = {
 } as const satisfies ParseArgsConfig['options'];
 
 const OPTIONS = {
+  migrate: { ...COMMON, 'dry-run': { type: 'boolean' } },
   create: { ...COMMON, kind: { type: 'string' }, version: { type: 'string' }, body: { type: 'string' }, 'body-file': { type: 'string' }, label: { type: 'string', multiple: true }, assignee: { type: 'string' }, parent: { type: 'string' }, 'blocked-by': { type: 'string', multiple: true }, topic: { type: 'string' }, branch: { type: 'string' } },
   view: { ...COMMON },
   plan: { ...COMMON, file: { type: 'string' }, reason: { type: 'string' } },
@@ -81,6 +84,9 @@ function frameOf(sub: Sub, positionals: string[], v: Values): { type: string } &
     return id;
   };
   switch (sub) {
+    case 'migrate':
+      if (positionals.length) throw new UsageError('task migrate takes no positional arguments');
+      return { type: 'task.migrate', dryRun: true };
     case 'create': {
       const title = positionals.join(' ').trim();
       if (!title) throw new UsageError('task create needs a title');
@@ -233,8 +239,26 @@ function listText(items: ItemSummary[]): string {
     .join('\n')}\n`;
 }
 
+function migrationText(plan: MigrationPlan): string {
+  const lines = [
+    ...plan.renames.map(c => `rename ${c.from} → ${c.to}`),
+    ...plan.ids.map(c => `id ${c.item}: ${c.from} → ${c.to}`),
+    ...plan.references.map(c => `${c.field}${c.index === undefined ? '' : `[${c.index}]`} ${c.item}: ${c.from} → ${c.to}`),
+    ...plan.unresolved.map(c => `unresolved ${c.field} ${c.item}: ${c.reference}`),
+    ...plan.titles.map(c => `title ${c.item}: ${c.from} → ${c.to}`),
+    ...plan.categories.map(c => c.action === 'convert' ? `category ${c.id} ${c.title}: ${c.fromKind} → ${c.kind}` : `category create ${c.file}: ${c.id} ${c.title}`),
+    ...plan.labels.map(c => `label ${c.item}: remove ${c.label}`),
+    ...plan.moves.map(c => `move ${c.item}: no parent → ${c.to}`),
+  ];
+  if (!lines.length) return 'nothing to do\n';
+  lines.push(Object.entries(plan).map(([part, changes]) => `${changes.length} ${part}`).join(', '));
+  return lines.join('\n') + '\n';
+}
+
 function humanOf(sub: Sub, value: Record<string, unknown>): string {
   switch (sub) {
+    case 'migrate':
+      return migrationText(value as MigrationPlan);
     case 'plan':
       if (typeof value.report === 'string') return value.report + '\n';
       const approval = value.approval as { state?: string; by?: string; at?: string } | undefined;
@@ -279,6 +303,10 @@ export async function runTask(args: string[], cwd: string = process.cwd(), io: I
   try {
     const parsed = parseArgs({ args: rest, options: OPTIONS[s], allowPositionals: true, strict: true });
     values = parsed.values as Values;
+    if (s === 'migrate' && values['dry-run'] !== true) {
+      io.err('cland: the migration itself is not built yet; use task migrate --dry-run\n');
+      return 1;
+    }
     frame = frameOf(s, parsed.positionals, values);
   } catch (err) {
     io.err(`cland: ${err instanceof Error ? err.message : String(err)}\n\nusage:\n${TASK_USAGE}`);

@@ -231,6 +231,9 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
       await edge?.close();
       await ws?.close();
       await sweep;
+      // Both journal and session projections depend on the adapters' open table.
+      hub.core.close();
+      await hub.dispatcher.close();
       adapters?.close();
       await tracker.stop();
       await crew.stop();

@@ -7,6 +7,7 @@
 // Verdict Git resolution belongs to its admitted operation; later tracker operations wait behind it.
 
 import { ToolForbidden } from '../roles/permissions.ts';
+import { planMigration, type MigrationPlan } from './migrate.ts';
 import { PlanError, parsePlan, planInBody, withPlan, type QaPolicy, type EpicPlan } from './plan.ts';
 import { compareRank, effectiveRank, rankChanges } from './rank.ts';
 import type { MarkedCriterion } from '../protocol.ts';
@@ -963,6 +964,23 @@ export class Tracker {
     const record = item.fm.plan_approval;
     if (plan && record?.hash === this.#planHash(plan)) return { required: this.#planApproval === 'human', state: 'approved', by: record.by, at: record.at };
     return { required: this.#planApproval === 'human', state: this.#planApproval === 'human' ? 'pending' : 'not required' };
+  }
+
+  /** Preview every item through the storage queue, without indexing or publishing anything. */
+  migrateDryRun(resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<MigrationPlan> {
+    return this.#serial(async resumed => {
+      resumed(authorize);
+      const names = await this.#files.readdir(this.#dir);
+      const entries: Array<{ file: string; item: Item }> = [];
+      for (const file of names.filter(name => fileNumber(name) !== null).sort()) {
+        const text = await this.#files.readFile(join(this.#dir, file), 'utf8');
+        entries.push(resumed(() => ({ file, item: parseItem(text, file, this.levels) })));
+      }
+      return resumed(() => {
+        authorize();
+        return planMigration(entries, this.#index.highWater() + 1, this.levels);
+      });
+    }, resumed, { operation: 'migration preview', item: null });
   }
 
   /** Explicit, resumable migration: write the plan before removing each legacy label. */

@@ -108,7 +108,7 @@ const HUMAN_SESSION = 'human';
  * What a CLI call made as a session may send beside the permission table's tools: reading the hub's state. Any
  * other frame is the human's alone.
  */
-const SESSION_CLI_FRAMES: ReadonlySet<string> = new Set(['crew.show', 'crew.set', 'artifact.list', 'hub.status', 'inbox.list', 'role.list', 'worktree.list', 'suite.start', 'suite.cancel', 'suite.queue']);
+const SESSION_CLI_FRAMES: ReadonlySet<string> = new Set(['task.migrate', 'crew.show', 'crew.set', 'artifact.list', 'hub.status', 'inbox.list', 'role.list', 'worktree.list', 'suite.start', 'suite.cancel', 'suite.queue']);
 
 /** Who a call is checked and audited as: a spoke's session, or the session a CLI call acts as. */
 type Caller = Pick<Connection, 'name' | 'sessionId' | 'role'>;
@@ -1321,6 +1321,21 @@ export class Dispatcher {
           const bad = Dispatcher.#verdictFromText(frame);
           if (bad !== null) return peer.send({ type: 'result', id: String(frame.id), ok: false, error: bad });
           return task(frame, 'client');
+        }
+        if (isClientRequest(frame) && frame.type === 'task.migrate') {
+          const reason = 'item migration belongs to the Coordinator or the human';
+          if (caller && caller.role !== 'coordinator') return this.#refuse(caller, frame, peer, frame.type, reason);
+          const authorize = () => {
+            const now = this.#asSession(frame);
+            if (caller && (!now || now.sessionId !== caller.sessionId || now.role !== 'coordinator')) throw new ToolForbidden(now?.role ?? null, frame.type, reason);
+          };
+          const tracker = this.#options.tracker;
+          if (!tracker) return peer.send(Dispatcher.#failure(frame.id, new Error('this hub has no tracker')));
+          const resumed = this.#guard.resumer(frame.type, client);
+          return later(frame.type, tracker.migrateDryRun(resumed, authorize).then(
+            value => resumed(() => ({ type: 'result', id: frame.id, ok: true, value })),
+            err => resumed(() => Dispatcher.#failure(frame.id, err)),
+          ));
         }
         if (isClientRequest(frame) && (frame.type === 'crew.show' || frame.type === 'crew.set')) {
           const crew = core.crew;

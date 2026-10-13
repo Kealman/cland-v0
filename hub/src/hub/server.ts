@@ -123,14 +123,14 @@ export function createHubBase(options: HubBaseOptions): HubBase {
     close: async () => {
       closing = true;
       clearImmediate(cleanupStart);
-      await dispatcher.close();
       clearInterval(pruneTimer);
+      core.close();
+      await dispatcher.close();
       await cleanup;
       unwatchEvents?.();
       unwatchItems?.();
       unbindTopics?.();
       unwatchVerdicts?.();
-      core.close();
       core.store.close();
     },
   };

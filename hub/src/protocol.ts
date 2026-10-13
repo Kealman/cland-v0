@@ -501,6 +501,7 @@ export type SuiteStart = { type: 'suite.start'; id: string; mode: 'auto' | 'all'
 export type SuiteCancel = { type: 'suite.cancel'; id: string; suite?: string };
 
 export type ClientRequest =
+  | { type: 'task.migrate'; id: string; dryRun: true }
   | { type: 'suite.queue'; id: string }
   | { type: 'visibility.set'; id: string; surface: 'topics' | 'sessions' | 'artifacts'; target: string; mode: 'pin' | 'mute' }
   | SuiteStart
@@ -733,6 +734,8 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
       return true;
     case 'crew.set':
       return typeof f.key === 'string' && f.value !== undefined;
+    case 'task.migrate':
+      return f.dryRun === true;
     case 'crew.show':
     case 'hub.subscriptions':
     case 'hub.status':

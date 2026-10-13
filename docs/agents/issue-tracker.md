@@ -12,6 +12,14 @@ From a linked Git worktree, the CLI follows its `.git` file to Git's common dire
 - Every `cland task` command takes `--json`. Read results with `--json` and `jq`; the plain output is for humans.
 - You act as `$CLAND_SESSION_NAME` (role `$CLAND_ROLE`) when cland launched your session, else as `human`. `--as <name> [--role <r>]` overrides. "Yourself" below means `${CLAND_SESSION_NAME:-human}`.
 
+## Previewing the prefix migration
+
+From the human's shell or the Coordinator's session, run `cland task migrate --dry-run` (add `--json` for the plan object). Other roles are refused. The command requires `--dry-run` until the migration applier is built.
+
+The preview lists file renames with their existing slugs, each item's kind prefix, rewritten `parent` and `blocked_by` references, and unresolved references that will stay as written. It strips leading kind words such as `Epic:` from titles, converts the open root Tech debt container to a category (or seeds it), seeds Bugs, Follow-ups and Ideas with the next shared numbers, retires every `tech-debt` label and moves unparented labelled items into Tech debt. Existing open root categories are reused by their cleaned titles. The last line gives counts; an empty plan prints `nothing to do`.
+
+The preview changes no item file or tracker index and writes no migration/domain journal event. Ordinary call audit records remain. Bodies, comments, topics, branches and timestamps are outside the migration. The planner returns only remaining changes for a partially migrated tree.
+
 ## GitHub Issues: retired
 
 The items were imported from this repo's GitHub Issues (`Kealman/cland-v0`) with `cland task import-github --all` (#38). The import gave each of issues #1–#42 the item of the same number (`T-23` is #23), so the `#<n>` references in the imported bodies and comments name the same items. An imported item carries `github: {repo, number, url}` in its frontmatter (`.item.github` in `view --json`).

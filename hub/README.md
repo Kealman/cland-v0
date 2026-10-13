@@ -924,6 +924,12 @@ and replaces the hub's total on each report. A new launch under a reused name st
 
 ## The tracker
 
+`cland task migrate --dry-run [--json]` previews the prefix/category migration through the real hub. Only the human's shell and the Coordinator may call its `task.migrate` frame (`dryRun: true`); it adds no MCP tool. Without `--dry-run`, the CLI exits 1 because applying the migration is not built yet.
+
+The pure `tracker/migrate.ts` planner takes every item filename and parsed item plus the next free shared number (`highWater() + 1`). It returns grouped renames, ids, references, unresolved references, titles, categories, retired labels and parent moves. Kind prefixes come from `tracker/prefixes.ts`; file slugs stay unchanged. It strips leading kind words followed by a colon, converts the open root Tech debt container (or seeds it), then seeds Bugs, Follow-ups and Ideas. Every `tech-debt` label retires, including on closed items; unparented labelled items move into Tech debt. Existing categories are reused, and reruns return only remaining changes. The plain CLI prints one line per change and counts; an empty plan prints `nothing to do`.
+
+The tracker reads the source files through its serial storage queue. The preview writes no item file, index row or migration/domain journal event; ordinary audit records remain. Bodies, comments, topics, branches and timestamps are outside the delta, which the later applier can reuse.
+
 One Markdown file per item in `.cland/tasks/`, `T-<n>-<slug>.md` (spec 4.6, ADR 0002). Ids are sequential per project and never reused: the hub hands out one above the highest in the folder and in the index. The file name keeps the slug of the title the item was created with.
 
 ```markdown

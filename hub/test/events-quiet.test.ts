@@ -1,7 +1,8 @@
-import test from 'node:test';
+import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { appendFile, mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
 import { serveProject } from '../src/hub/daemon.ts';
 import { connectUi, spawnSpoke, tempProject } from './harness.ts';
 import type { EventRow, EventsPage } from '../src/protocol.ts';
@@ -162,4 +163,82 @@ test('the first equal announcement after a real hub restart replaces the restore
   assert.equal(live.count, 6, 'live and restored occurrences form one group');
   const refreshed = (await ui.request({ type: 'events.list' })).value as EventsPage;
   assert.equal(refreshed.rows.find(r => r.id === live.id)?.count, live.count);
+});
+
+function deferredAtDatabaseClose(t: TestContext) {
+  // Control only the timer and SQLite boundaries. Keep real hub requests, adapters
+  // and databases; a pending projection must never query a closed process table.
+  const pending = new Map<NodeJS.Immediate, () => void>();
+  let rejectCallbacks!: (error: unknown) => void;
+  const callbacksFailed = new Promise<never>((_, reject) => { rejectCallbacks = reject; });
+  const schedule = globalThis.setImmediate;
+  const cancel = globalThis.clearImmediate;
+  t.mock.method(globalThis, 'setImmediate', (callback: (...args: unknown[]) => void, ...args: unknown[]) => {
+    const handle = schedule(() => {});
+    pending.set(handle, () => callback(...args));
+    return handle;
+  });
+  t.mock.method(globalThis, 'clearImmediate', (handle: NodeJS.Immediate | undefined) => {
+    if (handle) pending.delete(handle);
+    cancel(handle);
+  });
+  const close = DatabaseSync.prototype.close;
+  t.mock.method(DatabaseSync.prototype, 'close', function (this: DatabaseSync) {
+    close.call(this);
+    // Release held callbacks at the first database close, before the next await
+    // in stop can reach dispatcher shutdown. Cancellation still wins normally.
+    for (const [handle, callback] of pending) void Promise.resolve().then(() => {
+      if (!pending.delete(handle)) return;
+      callback();
+    }).catch(rejectCallbacks); // propagate callback errors to the test, never suppress them
+  });
+  return { pending, callbacksFailed };
+}
+
+test('hub stop cancels deferred session work before closing its databases', async t => {
+  let stop = async () => {};
+  t.after(() => stop());
+  const root = await tempProject(t);
+  let swept!: () => void;
+  const sweepDone = new Promise<void>(resolve => { swept = resolve; });
+  const daemon = await serveProject(root, { log: entry => {
+    if (entry.event === 'orphan-sweep-completed' || entry.event === 'orphan-sweep-failed') swept();
+  } });
+  stop = () => daemon.stop();
+  const ui = await connectUi(t, daemon.discovery!);
+  stop = async () => { ui.close(); await daemon.stop(); };
+  await sweepDone;
+
+  const { pending, callbacksFailed } = deferredAtDatabaseClose(t);
+  const created = await ui.request({ type: 'task.create', title: 'Pending shutdown projection' });
+  assert.equal(created.ok, true, created.error);
+  assert.ok(pending.size > 0, 'the frame left deferred work pending');
+  await Promise.race([stop(), callbacksFailed]);
+  await daemon.stopped;
+  assert.equal(pending.size, 0, 'shutdown cancels or drains every deferred callback');
+});
+
+
+test('hub stop cancels deferred journal projections before closing the inbox process provider', async t => {
+  let stop = async () => {};
+  t.after(() => stop());
+  const root = await tempProject(t);
+  let swept!: () => void;
+  const sweepDone = new Promise<void>(resolve => { swept = resolve; });
+  const daemon = await serveProject(root, { log: entry => {
+    if (entry.event === 'orphan-sweep-completed' || entry.event === 'orphan-sweep-failed') swept();
+  } });
+  stop = () => daemon.stop();
+  const ui = await connectUi(t, daemon.discovery!);
+  stop = async () => { ui.close(); await daemon.stop(); };
+  await sweepDone;
+  const created = await ui.request({ type: 'task.create', title: 'Deferred journal at shutdown' });
+  assert.equal(created.ok, true, created.error);
+  const { pending, callbacksFailed } = deferredAtDatabaseClose(t);
+  const changed = await ui.request({ type: 'task.edit', item: 'T-1', status: 'planned' });
+  assert.equal(changed.ok, true, changed.error);
+  assert.ok(pending.size > 0, 'the status event left deferred publications pending');
+  await Promise.race([stop(), callbacksFailed]);
+  await daemon.stopped;
+  assert.equal(pending.size, 0, 'shutdown cancels or drains every deferred callback');
 });
