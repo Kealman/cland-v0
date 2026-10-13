@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tempProject } from '../../hub/test/harness.ts';
 import { nvimOrSkip, startClient, type Client } from './harness.ts';
+import { waitInitialSnapshots } from './readiness.ts';
 const nvim = await nvimOrSkip();
 const skip = 'skip' in nvim ? nvim.skip : false;
 const bin = 'bin' in nvim ? nvim.bin : '';
@@ -38,6 +39,7 @@ for (const view of ['panel', 'full']) test(`${view} inbox shows four now section
   };
   const c = await startClient(t, bin, root, { CLAND_HUB_TRANSPORT: 'stdio', CLAND_COMMAND: JSON.stringify([process.execPath, STUB]), CLAND_STUB_SCENARIO_JSON: JSON.stringify(scenario), CLAND_STUB_CONTROL: path });
   await c.waitScreen(s => s.includes('hub: connected'), 'connected');
+  await waitInitialSnapshots(c);
   await c.input(view === 'panel' ? '<Esc> n' : '<Esc> N');
   let screen = await c.waitScreen(s => s.includes('MESSAGES TO YOU') && s.includes('▸ 2 more'), 'four sections');
   const order = ['ASKS AND APPROVALS', 'PLAN APPROVALS', 'REQUESTS TO YOU', 'MESSAGES TO YOU'].map(s => screen.indexOf(s));
@@ -75,7 +77,8 @@ test('waiting ages advance on the local clock with no inbox request or hub frame
   const root = await tempProject(t), path = join(root, 'stub.sock');
   const since = new Date(Date.now() - 55000).toISOString();
   const c = await startClient(t, bin, root, { CLAND_HUB_TRANSPORT: 'stdio', CLAND_COMMAND: JSON.stringify([process.execPath, STUB]), CLAND_STUB_CONTROL: path, CLAND_STUB_SCENARIO_JSON: JSON.stringify({ inbox: { messages: [{ id: 'm', topic: { id: 'general', title: 'General' }, from: 'qa', text: 'Aging row', since, layer: 'now' }] } }) });
-  await c.waitScreen(s => s.includes('hub: connected'), 'connected'); await c.input('<Esc> N');
+  await c.waitScreen(s => s.includes('hub: connected'), 'connected');
+  await waitInitialSnapshots(c); await c.input('<Esc> N');
   await c.waitScreen(s => /Aging row.*0 m/.test(s), 'initial age');
   await c.waitScreen(s => /Aging row.*1 m/.test(s), 'age reaches one minute', 10000);
   const calls = await new Promise<Array<{ type: string }>>((resolve, reject) => {

@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tempProject } from '../../hub/test/harness.ts';
 import { nvimOrSkip, startClient } from './harness.ts';
+import { waitInitialSnapshots } from './readiness.ts';
 
 const nvim = await nvimOrSkip();
 const skip = 'skip' in nvim ? nvim.skip : false;
@@ -22,6 +23,7 @@ test('gi on a legacy reference opens the canonical epic and only kind prefixes a
     ], messages: { general: [{ id: 'm1', from: 'coord', fromKind: 'agent', fromRole: 'coordinator', via: 'spoke', to: ['human'], text, ts: '2026-10-13T00:00:00Z', topic: 'general' }] } }),
   });
   await c.waitScreen(s => s.includes('References T-107') && s.includes('A-12'), 'legacy references in the thread');
+  await waitInitialSnapshots(c);
   await c.input('<Esc><C-w>kgg/A-12<CR>');
   assert.equal(await c.lua("return require('cland.motions').token()"), null);
   await c.input('gi');
@@ -85,6 +87,7 @@ test('old ids in topics, inbox and journal open migrated items through a restart
   await c.waitScreen(s => s.includes('General'), 'real hub initial screen');
   await ui.request({ type: 'topic.send', topic: 'general', text: 'Legacy reference T-3 still opens' });
   await c.waitScreen(s => s.includes('Legacy reference T-3'), 'legacy reference in real thread');
+  await waitInitialSnapshots(c);
   await c.input('<Esc><C-w>kgg/T-3<CR>gi');
   await c.waitScreen(s => s.includes('C-3 · item') && s.includes('Tech debt'), 'migrated category from old thread id');
   assert.equal(await c.lua("return require('cland.state').S.ui.view.id"), 'C-3');

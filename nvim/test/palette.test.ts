@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ownDirectory } from '../../hub/test/process-cleanup.ts';
 import { nvimOrSkip, startClient } from './harness.ts';
+import { waitInitialSnapshots } from './readiness.ts';
 import type { Scenario } from './stub-hub.ts';
 import { createConnection } from 'node:net';
 import { eventually, spawnSpoke, startDaemon, tempProject } from '../../hub/test/harness.ts';
@@ -27,6 +28,7 @@ async function start(t: TestContext, scenario: Scenario = {}) {
     CLAND_STUB_CONTROL: controlPath,
   });
   await c.waitScreen(s => s.includes('hub: connected'), 'connected');
+  await waitInitialSnapshots(c);
   return Object.assign(c, { root, control: (cmd: Record<string, unknown>) => new Promise<Record<string, unknown>>((resolve, reject) => {
     const sock = createConnection(controlPath);
     let text = '';

@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { createConnection } from 'node:net';
 import { ownDirectory } from '../../hub/test/process-cleanup.ts';
 import { nvimOrSkip, startClient } from './harness.ts';
+import { waitInitialSnapshots } from './readiness.ts';
 import type { Scenario } from './stub-hub.ts';
 const nvim = await nvimOrSkip();
 const skip = 'skip' in nvim ? nvim.skip : false;
@@ -32,6 +33,7 @@ async function start(t: TestContext, scenario = fixture) {
   const controlPath = join(root, 'stub.sock');
   const c = await startClient(t, bin, root, { CLAND_HUB_TRANSPORT: 'stdio', CLAND_COMMAND: JSON.stringify([process.execPath, STUB]), CLAND_STUB_SCENARIO_JSON: JSON.stringify({ inbox: {}, ...scenario }), CLAND_STUB_CONTROL: controlPath });
   await c.waitScreen(s => s.includes('hub: connected'), 'connected');
+  await waitInitialSnapshots(c);
   await c.input('<Esc><Space>i');
   await c.lua("local l=require('cland.layout'); vim.api.nvim_win_set_width(l.win.left,76)");
   return Object.assign(c, {

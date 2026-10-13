@@ -8,6 +8,7 @@ import { createConnection } from 'node:net';
 import { ownDirectory } from '../../hub/test/process-cleanup.ts';
 import { connectUi, eventually, fakeClaude, spawnSpoke, startDaemon, tempProject } from '../../hub/test/harness.ts';
 import { nvimOrSkip, startClient } from './harness.ts';
+import { waitInitialSnapshots } from './readiness.ts';
 import type { Scenario } from './stub-hub.ts';
 import type { EventRow } from '../../hub/src/protocol.ts';
 
@@ -28,6 +29,7 @@ async function start(t: TestContext, scenario: Scenario = {}) {
     CLAND_STUB_CONTROL: controlPath,
   });
   await c.waitScreen(s => s.includes('hub: connected'), 'connected');
+  await waitInitialSnapshots(c);
   return Object.assign(c, { root, control: (cmd: Record<string, unknown>) => new Promise<Record<string, unknown>>((resolve, reject) => {
     const sock = createConnection(controlPath);
     let text = '';

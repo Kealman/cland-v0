@@ -4,6 +4,7 @@ import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { cland, connectUi, eventually, spawnSpoke, startDaemon, tempProject } from '../../hub/test/harness.ts';
 import { nvimOrSkip, startClient } from './harness.ts';
+import { waitInitialSnapshots } from './readiness.ts';
 
 const nvim = await nvimOrSkip();
 const skip = 'skip' in nvim ? nvim.skip : false;
@@ -21,6 +22,7 @@ test('keeping an agent artifact updates the thread and palette across unkeep and
   assert.equal(result.ok, true, JSON.stringify(result));
   const a = result.artifact;
   const c = await startClient(t, bin, root);
+  await waitInitialSnapshots(c);
   await c.waitScreen(s => s.includes('hub: connected'), 'connected');
   await c.lua(`require('cland.layout').show({kind='thread', id=${JSON.stringify(topic)}}, {insert=false})`);
   await c.waitScreen(s => s.includes('1 artifacts'), 'artifact count loaded');
@@ -70,6 +72,7 @@ test('Coordinator artifacts in Agents open from the log and its topic list', { s
   const result = await coord.call<{ ok: boolean }>('artifact.create', { kind: 'note', title: 'Plan', content: '# Shared plan', topic: 'agents' });
   assert.equal(result.ok, true);
   const c = await startClient(t, bin, root);
+  await waitInitialSnapshots(c);
   await c.input('<Esc><Space>L');
   await c.waitScreen((s) => s.includes('▣ A-1 note · Plan') && s.includes('1 artifacts'), 'Agents chip and count');
   assert.equal(await c.lua("return require('cland.views').current_topic()"), 'agents');
@@ -95,6 +98,7 @@ test('artifact chip opens editable Mermaid source and the browser renderer, topi
   const opener = join(root, 'opener');
   await writeFile(opener, `#!/bin/sh\nprintf '%s\\n' "$1" >> '${opened}'\n`, { mode: 0o755 });
   const c = await startClient(t, bin, root, { CLAND_OPENER: opener });
+  await waitInitialSnapshots(c);
   await c.waitScreen((s) => s.includes('▣ A-1 diagram · Merge flow') && s.includes('1 artifacts'), 'artifact chip and count');
   await c.input('<Esc>');
   await c.lua(`local tv = require('cland.views').topic('general'); for i,l in ipairs(vim.api.nvim_buf_get_lines(tv.thread.buf, 0, -1, false)) do if l:find('▣') then vim.api.nvim_set_current_win(require('cland.layout').centre()); vim.api.nvim_win_set_cursor(0, {i,0}); break end end`);
@@ -134,6 +138,7 @@ test('prompt drafts are editable full buffers, survive hub events, reopen, and s
   t.after(() => coord.close());
   await coord.waitForPresence(['coord']);
   const c = await startClient(t, bin, root);
+  await waitInitialSnapshots(c);
   await c.waitScreen(s => s.includes('hub: connected'), 'connected before drafting');
   await c.input('<Esc>:Cland prompt Brief for T-12<CR>');
   await eventually('draft buffer', async () => await c.lua("return vim.b.cland_artifact") || undefined);
@@ -167,6 +172,7 @@ test('p in a topic artifact list promotes it and updates the list and picker mar
   const create = await cland(root, 'artifact', 'create', '--kind', 'note', '--title', 'Keep', '--content', '# Keep', '--topic', 'general', '--json');
   const a = JSON.parse(create.stdout).artifact;
   const c = await startClient(t, bin, root);
+  await waitInitialSnapshots(c);
   await c.waitScreen(s => s.includes('1 artifacts'), 'artifact loaded');
   await c.input('<Esc>');
   await c.lua("vim.api.nvim_set_current_win(require('cland.layout').centre())");
@@ -194,6 +200,7 @@ test('topic lists follow archive events and lists and pickers mark retained entr
   const a = (await coord.call<{ artifact: { id: string } }>('artifact.create', { kind: 'note', title: 'Old note', content: 'old bytes', topic })).artifact;
   await coord.close();
   const c = await startClient(t, bin, root);
+  await waitInitialSnapshots(c);
   await c.waitScreen(s => s.includes('hub: connected'), 'connected');
   await c.lua(`require('cland.layout').show({kind='artifacts', id=${JSON.stringify(topic)}}, {insert=false})`);
   await c.input('zR');
@@ -218,6 +225,7 @@ test('folder chips open their entry and old moved-file chips open inside the fol
   const folder = ((await ui.request({ type: 'artifact.create', kind: 'note', title: 'Folder', topic: 'general', folder: true, content: '# Folder entry' })).value as { artifact: { id: string; path: string } }).artifact;
   const source = ((await ui.request({ type: 'artifact.create', kind: 'note', title: 'Source', topic: 'general', content: '# Moved note' })).value as { artifact: { id: string } }).artifact;
   const c = await startClient(t, bin, root);
+  await waitInitialSnapshots(c);
   await c.waitScreen(s => s.includes('Folder') && s.includes('Source'), 'folder and source chips');
   await c.lua(`require('cland.artifacts').open(${JSON.stringify(folder.id)})`);
   await c.waitScreen(s => s.includes('# Folder entry'), 'folder entry');
@@ -238,6 +246,7 @@ test('moving an already-open prompt rebinds its editable buffer before the next 
   const make = async (folder = false) => ((await ui.request({ type: 'artifact.create', kind: 'prompt', title: 'Draft', topic: 'general', status: 'draft', content: 'Draft bytes', folder })).value as { artifact: { id: string; path: string } }).artifact;
   const source = await make(), folder = await make(true);
   const c = await startClient(t, bin, root);
+  await waitInitialSnapshots(c);
   await c.waitScreen(s => s.includes('hub: connected'), 'connected');
   await eventually('source artifact list loaded', async () => await c.lua(`return require('cland.artifacts').get(${JSON.stringify(source.id)}) ~= nil`) || undefined);
   await c.lua(`require('cland.artifacts').open(${JSON.stringify(source.id)})`);
@@ -258,6 +267,7 @@ test('a draft moved while disconnected resolves and rebinds on reconnect before 
   const make = async (folder = false) => ((await ui.request({ type: 'artifact.create', kind: 'prompt', title: 'Draft', topic: 'general', status: 'draft', content: 'Draft bytes', folder })).value as { artifact: { id: string; path: string } }).artifact;
   const source = await make(), folder = await make(true);
   const c = await startClient(t, bin, root);
+  await waitInitialSnapshots(c);
   await c.waitScreen(s => s.includes('hub: connected'), 'connected');
   await eventually('source artifact list loaded', async () => await c.lua(`return require('cland.artifacts').get(${JSON.stringify(source.id)}) ~= nil`) || undefined);
   await c.lua(`require('cland.artifacts').open(${JSON.stringify(source.id)})`);

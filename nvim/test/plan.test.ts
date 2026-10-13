@@ -9,6 +9,7 @@ import { connectUi, startDaemon, tempProject } from '../../hub/test/harness.ts';
 import type { ItemView } from '../../hub/src/tracker/tracker.ts';
 import type { EpicPlan } from '../../hub/src/tracker/plan.ts';
 import { nvimOrSkip, startClient, type Client } from './harness.ts';
+import { waitInitialSnapshots } from './readiness.ts';
 const nvim = await nvimOrSkip();
 const skip = 'skip' in nvim ? nvim.skip : false;
 const bin = 'bin' in nvim ? nvim.bin : '';
@@ -40,6 +41,7 @@ async function setup(t: test.TestContext) {
   assert.equal((await ui.request({ type: 'task.plan', item: epic.id, op: 'set', yaml: stringify(plan) })).ok, true);
   const client = await startClient(t, bin, root);
   await client.waitScreen(s => s.includes('hub: connected'), 'connected');
+  await waitInitialSnapshots(client);
   await client.input(`<Esc>:Cland view item ${epic.id}<CR>`);
   await client.waitScreen(s => s.includes('Panels'), 'epic item');
   return { root, ui, epic, a, b, c, outside, plan, client };

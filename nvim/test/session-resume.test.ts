@@ -28,6 +28,7 @@ test('r resumes stopped rows with an outcome, offers f/n/Esc, and Resume session
   await c.waitScreen(s => s.includes('hub: connected'), 'stopped row');
   await c.input('<Esc>');
   await c.lua("vim.cmd('stopinsert'); vim.api.nvim_set_current_win(require('cland.layout').win.right); vim.api.nvim_win_set_width(0, 90)");
+  await c.waitScreen(s => s.includes('more (1)'), 'stopped heading before unfolding');
   await c.input('zR');
   await c.waitScreen(s => s.includes('old [Implementer]'), 'stopped row expanded');
   await c.input('gg/old<CR>r');
@@ -44,6 +45,7 @@ test('r resumes stopped rows with an outcome, offers f/n/Esc, and Resume session
 
   await control({ set: { processes: [row], resumeReason: 'conversation gone', resumeBrief: 'A-1', holdSnapshots: [] } });
   await c.lua("require('cland').refresh_sessions()");
+  await c.lua("assert(vim.wait(5000, function() return not require('cland.state').session('old').live end), 'stopped row has not refreshed')");
   await c.waitScreen(s => s.includes('stopped'), 'stopped row refreshed');
   for (const cancel of ['n', '<Esc>']) {
     await c.input('r');

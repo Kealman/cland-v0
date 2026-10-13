@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tempProject } from '../../hub/test/harness.ts';
 import { nvimOrSkip, startClient } from './harness.ts';
+import { waitInitialSnapshots } from './readiness.ts';
 import type { EventRow } from '../../hub/src/protocol.ts';
 const nvim = await nvimOrSkip();
 const skip = 'skip' in nvim ? nvim.skip : false;
@@ -27,6 +28,7 @@ test('Events view opens through the registry, groups days, pages, folds and foll
     socket.write(`${JSON.stringify(command)}\n`);
   });
   await c.waitScreen(s => s.includes('hub: connected'), 'connected');
+  await waitInitialSnapshots(c);
   await c.input('<Esc> E');
   await c.waitScreen(s => s.includes('events · newest first') && s.includes('today') && s.includes('claimed event 0'), 'events first page');
   await c.input('G');
@@ -86,6 +88,7 @@ test('Enter opens each event subject, gi/gt/gs use the row references and the pa
   ];
   const c = await startClient(t, bin, root, { CLAND_HUB_TRANSPORT: 'stdio', CLAND_COMMAND: JSON.stringify([process.execPath, STUB]), CLAND_STUB_SCENARIO_JSON: JSON.stringify({ inbox: {}, events: subjects, items: [{ id: 'T-1', title: 'Event target', kind: 'task', state: 'open', status: 'in progress', labels: [], parent: null, blocked_by: [], body: 'Event item body', claim: { session: 'impl' } }], processes: [{ name: 'impl', sessionId: 'impl-id', status: 'stopped', state: 'unknown', harness: 'codex', cwd: root, pid: null }], artifacts: [{ id: 'A-1', kind: 'note', title: 'Event note', path: artifactPath, topic: 'general', status: 'shared', creator: 'human', creatorKind: 'human', createdAt: today }] }) });
   await c.waitScreen(s => s.includes('hub: connected'), 'connected');
+  await waitInitialSnapshots(c);
   const select = async (text: string) => {
     await c.input('<Esc> E');
     await c.waitScreen(s => s.includes('events · newest first') && s.includes(text), 'events loaded');

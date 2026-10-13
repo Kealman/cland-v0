@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tempProject } from '../../hub/test/harness.ts';
 import { nvimOrSkip, startClient } from './harness.ts';
+import { waitInitialSnapshots } from './readiness.ts';
 
 const nvim = await nvimOrSkip();
 const skip = 'skip' in nvim ? nvim.skip : false;
@@ -28,6 +29,7 @@ test('more shows the latest 20 stopped rows by stop time and the archived count 
     socket.write(`${JSON.stringify(command)}\n`);
   });
   await c.waitScreen(s => s.includes('hub: connected'), 'connected');
+  await waitInitialSnapshots(c);
   await c.input('<Esc>');
   await c.lua("vim.cmd('stopinsert'); vim.api.nvim_set_current_win(require('cland.layout').win.right); vim.api.nvim_win_set_width(0,90)");
   await c.waitScreen(s => s.includes('more (25) · 180 archived'), 'count from default list');
@@ -60,6 +62,7 @@ test('d archives a stopped Aide, A fetches its archive, r restores it, and live/
   const older = { ...old, name: 'older', label: 'older [Aide]', sessionId: 'older-id', archived: true, archivedAt: '2026-10-11T00:00:00Z' };
   const c = await startClient(t, bin, root, { CLAND_HUB_TRANSPORT: 'stdio', CLAND_COMMAND: JSON.stringify([process.execPath, STUB]), CLAND_STUB_SCENARIO_JSON: JSON.stringify({ inbox: {}, processes: [old, muted, older], presence: [{ name: 'manual', role: 'implementer', state: 'idle', sessionId: 'manual-id' }] }) });
   await c.waitScreen(s => s.includes('hub: connected'), 'connected');
+  await waitInitialSnapshots(c);
   await c.input('<Esc>');
   await c.lua("vim.cmd('stopinsert'); vim.api.nvim_set_current_win(require('cland.layout').win.right); vim.api.nvim_win_set_width(0, 90)");
   await c.input('gg/old-aide<CR>d');

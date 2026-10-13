@@ -20,6 +20,9 @@ import { kindsFor, Ladder } from '../../hub/src/tracker/kinds.ts';
 //                        {"release": {"error"?: "…"}}  answer the held topic.send requests
 //                        {"waitSnapshot": type, "snapshotCount"?: n}  wait until n answers are captured
 //                        {"releaseSnapshots": [types], "snapshotError"?: "…"}  release newest first
+//   CLAND_STUB_SNAPSHOT_DELAY_MS  delay the first hub.status and task.list answers per connection
+//                               for the readiness sweep; explicit holdSnapshots still wins
+//   CLAND_STUB_ROLE_DELAY_MS      likewise delay the initial role.list reply for launcher defaults
 import { createServer, type Socket } from 'node:net';
 import { readFileSync, rmSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
@@ -127,9 +130,13 @@ const projected = (frame: unknown) => visibility().frame(frame as Frame);
 const write = (frame: unknown) => process.stdout.write(`${JSON.stringify(projected(frame))}\n`);
 const snapshots: Array<{ type: string; release: (error?: string) => void }> = [];
 const snapshotWaiters: Array<{ type: string; count: number; resolve: () => void }> = [];
+const initialReplay = new Set(['hub.status', 'task.list', 'role.list']);
+const snapshotDelayMs = Number(process.env.CLAND_STUB_SNAPSHOT_DELAY_MS ?? 0);
+const roleDelayMs = Number(process.env.CLAND_STUB_ROLE_DELAY_MS ?? 0);
 const ok = (id: unknown, value: unknown) => {
   const type = requests.find((f) => f.id === id)?.type;
   const frame = { type: 'result', id, ok: true, value };
+  const initial = type && initialReplay.delete(type);
   if (type && scenario.holdSnapshots?.includes(type)) {
     const deferred = Promise.withResolvers<string | undefined>();
     const captured = structuredClone(frame);
@@ -141,7 +148,11 @@ const ok = (id: unknown, value: unknown) => {
     void deferred.promise.then((error) => error ? fail(id, error) : write(captured));
     return;
   }
-  write(frame);
+  const delayMs = type === 'role.list' ? roleDelayMs : snapshotDelayMs;
+  if (initial && delayMs > 0) {
+    const captured = structuredClone(frame);
+    setTimeout(() => write(captured), delayMs);
+  } else write(frame);
 };
 const fail = (id: unknown, error: string) => write({ type: 'result', id, ok: false, error });
 

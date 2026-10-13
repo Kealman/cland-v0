@@ -12,6 +12,7 @@ import { tmpdir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { centreOf, clock as clockOf, nvimOrSkip, startClient, type Client } from './harness.ts';
+import { waitInitialSnapshots } from './readiness.ts';
 import type { Scenario } from './stub-hub.ts';
 
 const nvim = await nvimOrSkip();
@@ -79,7 +80,7 @@ type Shell = Client & {
   reconnect: (edit?: (s: Scenario) => void) => Promise<void>;
 };
 
-async function startShell(t: TestContext, edit: (s: Scenario) => void = () => {}, env: Record<string, string> = {}): Promise<Shell> {
+async function startShell(t: TestContext, edit: (s: Scenario) => void = () => {}, env: Record<string, string> = {}, initialSnapshots = true): Promise<Shell> {
   const dir = await mkdtemp(join(tmpdir(), 'cland-sh-'));
   ownDirectory(t, dir);
   const root = join(dir, 'proj-shell');
@@ -153,6 +154,7 @@ async function startShell(t: TestContext, edit: (s: Scenario) => void = () => {}
     }
   };
   await c.waitScreen((s) => s.includes('Starting T-12') && s.includes('coord-1'), 'the workbench on General');
+  if (initialSnapshots) await waitInitialSnapshots(c);
   return Object.assign(c, { root, keylog, control, rewrite, reconnect });
 }
 
@@ -1769,7 +1771,7 @@ test('overlapping delayed panel snapshots keep topic, session, artifact and inbo
     s.coordinator = 'coord-1';
     s.inbox = { asks: [{ id: 'a-2', question: 'Old ask', topic: { id: 'general', title: 'General' }, from: 'coord-1', options: ['Yes'], free: true, ts: ts(1) }] };
     s.holdSnapshots = types;
-  });
+  }, {}, false); // This case deliberately acts on live events before its initial snapshots land.
   for (const type of types) await c.control({ waitSnapshot: type });
   const latestTopic = { ...oldTopic, title: 'Updated topic', status: 'waiting for human' };
   await c.control({ emits: [

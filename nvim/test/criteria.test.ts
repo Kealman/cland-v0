@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { startDaemon, tempProject } from '../../hub/test/harness.ts';
 import { nvimOrSkip, startClient, type Client } from './harness.ts';
+import { waitInitialSnapshots } from './readiness.ts';
 const nvim = await nvimOrSkip();
 const skip = 'skip' in nvim ? nvim.skip : false;
 const bin = 'bin' in nvim ? nvim.bin : '';
@@ -37,6 +38,7 @@ test('hub marks drive item glyphs, authors and notes; legacy checked boxes stay 
   ];
   const c = await startClient(t, bin, root, {CLAND_HUB_TRANSPORT:'stdio',CLAND_COMMAND:JSON.stringify([process.execPath,STUB]),CLAND_STUB_SCENARIO_JSON:JSON.stringify({items:[{id:'T-2',kind:'task',title:'Criteria display',state:'open',status:'in progress',file:'T-2.md',body:'## Acceptance criteria\n- [x] Source checkbox must be replaced\n## Notes\nNotes survive.',criteria:marks}]})});
   await c.waitScreen(s=>s.includes('hub: connected'),'connected');
+  await waitInitialSnapshots(c);
   await c.input('<Esc>:Cland view item T-2<CR>');
   await c.waitScreen(s=>s.includes('Open legacy'),'criteria');
   for (const width of [80,120]) {
@@ -65,6 +67,7 @@ test('wide and combining criteria text and marks fit 80/120 layouts; repeated he
     }]})
   });
   await c.waitScreen(s=>s.includes('hub: connected'),'connected');
+  await waitInitialSnapshots(c);
   await c.lua("local l=require('cland.layout'); l.preset('steady'); l.right_panel('inbox')");
   await c.input('<Esc>:Cland view item T-2<CR>');
   await c.waitScreen(s=>s.includes('✗ C1.'),'Unicode criterion rendered');
@@ -99,6 +102,7 @@ test('human criterion keys preserve marks and removed ids; panel, cards and grap
   await writeFile(path,source([1,2,3,4].map(i=>criterion(i,i<4,head)).join('\n')).replace('status: in progress', 'status: in progress\nbranch: dev'));
   await startDaemon(t,root); const c=await startClient(t,bin,root);
   await c.waitScreen(s=>s.includes('hub: connected'),'connected');
+  await waitInitialSnapshots(c);
   await c.input('<Esc><Space>i');
   await c.lua("vim.api.nvim_win_set_width(require('cland.layout').win.left,60)");
   await c.waitScreen(s=>/T-2.*3\/4/.test(s),'initial panel 3/4');

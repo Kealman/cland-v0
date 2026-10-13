@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ownDirectory } from '../../hub/test/process-cleanup.ts';
 import { nvimOrSkip, startClient, type Client } from './harness.ts';
+import { waitInitialSnapshots } from './readiness.ts';
 
 const nvim = await nvimOrSkip();
 const skip = 'skip' in nvim ? nvim.skip : false;
@@ -24,6 +25,7 @@ async function client(t: TestContext, root: string) {
     CLAND_HUB_TRANSPORT: 'stdio', CLAND_COMMAND: JSON.stringify([process.execPath, STUB]),
   });
   await c.waitScreen((s) => s.includes('hub: connected'), 'the stub hub connected');
+  await waitInitialSnapshots(c);
   return c;
 }
 async function quit(c: Client) {

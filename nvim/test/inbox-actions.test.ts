@@ -88,7 +88,9 @@ test('r on a message arms its exact reply, sending archives it as answered; empt
   const root = await tempProject(t), path = join(root, 'stub.sock'), messagesTopic = topic('message-topic');
   const c = await startClient(t, bin, root, { CLAND_HUB_TRANSPORT: 'stdio', CLAND_COMMAND: JSON.stringify([process.execPath, STUB]), CLAND_STUB_CONTROL: path,
     CLAND_STUB_SCENARIO_JSON: JSON.stringify({ topics: [topic('general'), topic('agents'), messagesTopic], inbox: { messages: [{ id: 'm', topic: messagesTopic, subject: messagesTopic.id, text: 'Answer me', from: 'qa', since: ts }] } }) });
-  await c.waitScreen(s => s.includes('hub: connected'), 'connected'); await focus(c, 'full'); await select(c, 'Answer me'); await c.input('r');
+  await c.waitScreen(s => s.includes('hub: connected'), 'connected'); await focus(c, 'full');
+  await c.waitScreen(s => s.includes('Answer me'), 'message row before selection');
+  await select(c, 'Answer me'); await c.input('r');
   await c.waitScreen(s => s.includes('Reply to: Answer me') && s.includes('INSERT'), 'message reply');
   await c.input('Answered<CR>'); await c.waitScreen(s => /needs you\s+0\b/.test(s.split('\n')[0] ?? ''), 'answered');
   await focus(c, 'full'); await c.waitScreen(s => s.includes('nothing needs you') && s.includes('▸ archive · 1 rows left today'), 'empty archive line');

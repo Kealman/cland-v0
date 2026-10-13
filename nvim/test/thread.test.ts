@@ -9,6 +9,7 @@ import { createConnection } from 'node:net';
 import { ownDirectory } from '../../hub/test/process-cleanup.ts';
 import { eventually, spawnSpoke, startDaemon, tempProject } from '../../hub/test/harness.ts';
 import { nvimOrSkip, startClient } from './harness.ts';
+import { waitInitialSnapshots } from './readiness.ts';
 import type { Scenario } from './stub-hub.ts';
 
 const nvim = await nvimOrSkip();
@@ -361,6 +362,10 @@ async function start(t: TestContext, scenario: Scenario, timeZone = 'UTC', chart
     CLAND_STUB_SCENARIO_JSON: JSON.stringify({ inbox: {}, ...scenario }), CLAND_STUB_CONTROL: controlPath,
   });
   await c.waitScreen(s => s.includes('hub: connected'), 'connected');
+  await waitInitialSnapshots(c);
+  if (!scenario.holdSnapshots?.includes('topic.history')) {
+    await c.lua("assert(vim.wait(5000, function() for journal in pairs(require('cland').client.snapshots) do if journal.request.type == 'topic.history' then return false end end; return true end), 'initial thread history has not landed')");
+  }
   if (charting) await c.input('<Esc>:Cland preset charting<CR>');
   return Object.assign(c, { control: (cmd: Record<string, unknown>) => new Promise<Record<string, unknown>>((resolve, reject) => {
     const sock = createConnection(controlPath);

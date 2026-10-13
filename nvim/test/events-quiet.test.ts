@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tempProject } from '../../hub/test/harness.ts';
 import { nvimOrSkip, startClient } from './harness.ts';
+import { waitInitialSnapshots } from './readiness.ts';
 import type { EventKind, EventRow } from '../../hub/src/protocol.ts';
 const nvim = await nvimOrSkip();
 const skip = 'skip' in nvim ? nvim.skip : false;
@@ -38,6 +39,7 @@ test('one row per verdict counts once in the live inbox, warnings view and saved
   const env = { CLAND_STUB_CONTROL: controlPath, CLAND_HUB_TRANSPORT: 'stdio', CLAND_COMMAND: JSON.stringify([process.execPath, STUB]), CLAND_STUB_SCENARIO_JSON: JSON.stringify(scenario) };
   const c = await startClient(t, bin, root, env);
   await c.waitScreen(s => s.includes('hub: connected'), 'connected');
+  await waitInitialSnapshots(c);
   await c.input('<Esc> N');
   await c.waitScreen(s => s.includes('△ 0 new events since your last look · ⚠ 0'), 'initial empty events line');
   await control({ set: { events: [rows[1]] }, emit: { type: 'event', row: rows[1] } });
@@ -58,6 +60,7 @@ test('one row per verdict counts once in the live inbox, warnings view and saved
   await c.input(':qa!<CR>');
   const cold = await startClient(t, bin, root, { ...env, CLAND_STUB_SCENARIO_JSON: JSON.stringify({ ...scenario, events: rows }) });
   await cold.waitScreen(s => s.includes('hub: connected'), 'cold connected');
+  await waitInitialSnapshots(cold);
   await cold.input('<Esc> E');
   await cold.waitScreen(s => s.includes('kind: verdict · ⚠ warnings only') && s.includes('review not clear'), 'saved filter replays one warning row');
   assert.deepEqual((await cold.lua<EventRow[]>("return require('cland.events').rows")).map(r => r.id), [rows[1]!.id]);
@@ -85,6 +88,7 @@ test('events keys, warning/dim presentation, independent mutes, last look and co
   const env = { CLAND_STUB_CONTROL: controlPath, CLAND_HUB_TRANSPORT: 'stdio', CLAND_COMMAND: JSON.stringify([process.execPath, STUB]), CLAND_STUB_SCENARIO_JSON: JSON.stringify(scenario) };
   const c = await startClient(t, bin, root, env);
   await c.waitScreen(s => s.includes('hub: connected'), 'connected');
+  await waitInitialSnapshots(c);
   await c.input('<Esc> N');
   await c.waitScreen(s => s.includes('△ 200+ new events since your last look · ⚠ 25'), 'capped inbox count in the empty state');
   await c.input('Ge');
@@ -140,6 +144,7 @@ test('events keys, warning/dim presentation, independent mutes, last look and co
   await c.input(':qa!<CR>');
   const cold = await startClient(t, bin, root, env);
   await cold.waitScreen(s => s.includes('hub: connected'), 'cold connected');
+  await waitInitialSnapshots(cold);
   await cold.input('<Esc> E');
   await cold.waitScreen(s => s.includes('kind: verdict · ⚠ warnings only') && s.includes('verdict evidence'), 'filter survives a cold workbench start');
 });
@@ -155,6 +160,7 @@ test('hidden and batched replacement chains retain the selected group and older 
     const socket = createConnection(controlPath); socket.setEncoding('utf8'); socket.on('error', reject); socket.on('data', () => { socket.end(); resolve(); }); socket.write(JSON.stringify(command) + '\n');
   });
   await c.waitScreen(s => s.includes('hub: connected'), 'connected');
+  await waitInitialSnapshots(c);
   await c.input('<Esc> E');
   await c.waitScreen(s => s.includes('selected group'), 'group loaded');
   await c.input('GA');

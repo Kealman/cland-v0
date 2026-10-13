@@ -6,6 +6,7 @@ import { createConnection } from 'node:net';
 import { fileURLToPath } from 'node:url';
 import { connectUi, eventually, spawnSpoke, startDaemon, tempProject } from '../../hub/test/harness.ts';
 import { nvimOrSkip, startClient, type Client } from './harness.ts';
+import { waitInitialSnapshots } from './readiness.ts';
 
 const nvim = await nvimOrSkip();
 const skip = 'skip' in nvim ? nvim.skip : false;
@@ -25,6 +26,7 @@ test('Artifacts browser creates v0.2 notes, saves two folder files in place and 
   const ui = await connectUi(t, discovery);
   const c = await startClient(t, bin, root);
   await c.waitScreen(s => s.includes('hub: connected'), 'connected');
+  await waitInitialSnapshots(c);
   await c.input('<Esc>:Cland view artifacts general<CR>');
   await c.waitScreen(s => s.includes('Mine') && s.includes('This topic') && s.includes('Kept') && s.includes('Archived'), 'browser sections');
   await c.input('n');
@@ -78,6 +80,7 @@ test('browser folds background and archive, keeps live selection, moves a file i
   assert.equal(agent.ok, true, JSON.stringify(agent));
   const c = await startClient(t, bin, root);
   await c.waitScreen(s => s.includes('hub: connected'), 'connected');
+  await waitInitialSnapshots(c);
   await c.input('<Esc>:Cland view artifacts ' + topic + '<CR>');
   await c.waitScreen(s => s.includes('Mine (2)') && s.includes('Implementers (1)'), 'mine and role counts');
   const screen = (await c.screen()).join('\n');
@@ -129,6 +132,7 @@ test('s preserves composer text, deduplicates attachments and restores them afte
   const a = ((await ui.request({ type: 'artifact.create', kind: 'note', title: 'Retry notes', topic: 'general', content: '# Notes' })).value as { artifact: { id: string } }).artifact;
   const c = await startClient(t, bin, root);
   await c.waitScreen(s => s.includes('hub: connected'), 'connected');
+  await waitInitialSnapshots(c);
   await c.input('Draft text<Esc>:Cland view artifacts general<CR>');
   await c.waitScreen(s => s.includes('Retry notes') && s.includes('Mine'), 'browser');
   await row(c, 'Retry notes');
@@ -178,6 +182,7 @@ test('hub artifact layer overrides make reports in other topics visible without 
   assert.equal(result.ok, true, JSON.stringify(result));
   const c = await startClient(t, bin, root);
   await c.waitScreen(s => s.includes('hub: connected'), 'connected');
+  await waitInitialSnapshots(c);
   await c.input('<Esc>:Cland view artifacts general<CR>');
   await c.waitScreen(s => s.includes('Raised report') && s.includes('Implementers (1)'), 'override shown through By role');
 });
@@ -198,6 +203,7 @@ test('zR unfolds the background subgroup of a role that also contains a kept art
   assert.equal(background.ok, true, JSON.stringify(background));
   const c = await startClient(t, bin, root);
   await c.waitScreen(s => s.includes('hub: connected'), 'connected');
+  await waitInitialSnapshots(c);
   await c.input('<Esc>:Cland view artifacts general<CR>');
   await c.waitScreen(s => s.includes('Implementers (2)') && s.includes('more (1)'), 'mixed role');
   assert.ok(!(await c.screen()).join('\n').includes('Other background report'));
@@ -219,6 +225,7 @@ test('pending message attachments survive both a refused and an accepted ask ans
   const a = ((await ui.request({type:'artifact.create',kind:'note',title:'Pending notes',topic:'general',content:'# Notes'})).value as {artifact:{id:string}}).artifact;
   const c = await startClient(t, bin, root);
   await c.waitScreen(s => s.includes('hub: connected'), 'connected');
+  await waitInitialSnapshots(c);
   await c.input('<Esc>:Cland view artifacts general<CR>');
   await c.waitScreen(s => s.includes('Pending notes') && s.includes('Mine'), 'browser');
   await row(c, 'Pending notes');
@@ -226,6 +233,7 @@ test('pending message attachments survive both a refused and an accepted ask ans
   await c.waitScreen(s => s.includes('attached: ' + a.id), 'attachment staged');
   await c.input('<Esc>');
   await c.lua("vim.api.nvim_set_current_win(require('cland.layout').centre())");
+  await c.waitScreen(s => s.includes('Choose the next path'), 'ask history before selecting its row');
   await row(c, 'Choose the next path');
   await c.input('i');
   await c.waitScreen(s => s.includes('answer to:'), 'free answer armed');
@@ -263,6 +271,7 @@ test('s rejects foreign-topic and archived selections, and stale attachments can
   assert.equal((await ui.request({type:'artifact.archive',artifact:archived.id})).ok, true);
   const c = await startClient(t, bin, root);
   await c.waitScreen(s => s.includes('hub: connected'), 'connected');
+  await waitInitialSnapshots(c);
   await c.input('<Esc>:Cland view artifacts general<CR>');
   await c.waitScreen(s => s.includes('Foreign notes') && s.includes('Mine'), 'global mine');
   await row(c, 'Foreign notes');
@@ -319,6 +328,7 @@ test('a refused ordinary send restores artifacts when an ask was armed while its
       inbox:{asks:[{id:'ask-pending',question,topic:{id:'general',title:'General'},options:['Start','Wait'],from:'coord',ts:new Date().toISOString()}]}}),
   });
   await c.waitScreen(s => s.includes('hub: connected'), 'stub connected');
+  await waitInitialSnapshots(c);
   await c.input('<Esc>:Cland view artifacts general<CR>');
   await c.waitScreen(s => s.includes('Pending artifact') && s.includes('Mine'), 'browser');
   await row(c, 'Pending artifact');
@@ -362,6 +372,7 @@ test('artifact pin and mute keys share hub layers with the thread, palette and b
   const id = result.artifact.id;
   const c = await startClient(t, bin, root);
   await c.waitScreen(s => s.includes('hub: connected'), 'connected');
+  await waitInitialSnapshots(c);
   await c.input('<Esc>:Cland view artifacts ' + topic + '<CR>');
   await c.waitScreen(s => s.includes('more (1)'), 'background report folded');
   await row(c, 'more (1)');
@@ -403,6 +414,7 @@ test('x asks before deleting; cancel keeps bytes and confirm updates the browser
   await ui.request({type:'topic.send',topic:'general',text:'Notes attached',artifacts:[a.id]});
   const c = await startClient(t, bin, root);
   await c.waitScreen(s => s.includes('hub: connected'), 'connected');
+  await waitInitialSnapshots(c);
   await c.input('<Esc>:Cland view artifacts general<CR>');
   await c.waitScreen(s => s.includes('Disposable notes') && s.includes('Mine'), 'browser');
   await row(c, 'Disposable notes');

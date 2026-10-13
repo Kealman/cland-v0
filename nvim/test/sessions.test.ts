@@ -11,6 +11,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { connectUi, fakeClaude, killDaemon, spawnSpoke, startDaemon, tempProject } from '../../hub/test/harness.ts';
 import { nvimOrSkip, startClient, type Client } from './harness.ts';
+import { waitInitialSnapshots } from './readiness.ts';
 
 const nvim = await nvimOrSkip();
 const skip = 'skip' in nvim ? nvim.skip : false;
@@ -102,6 +103,7 @@ test('Claude Code, Codex and OpenCode sessions launched from the UI show in the 
   const ui = await connectUi(t, discovery);
   const c = await startClient(t, bin, root, { ...env, CLAND_REFRESH_MS: '500' });
   await c.waitScreen((x) => x.includes('SESSIONS') && statusLine(x).includes('hub: connected'), 'the workbench, connected');
+  await waitInitialSnapshots(c);
   await c.input('<Esc>');
 
   await launch(c, 'coord', 'coordinator', 'claude-code', 'claude-fake-1');

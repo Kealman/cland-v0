@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import type { TopicMessage } from '../../hub/src/protocol.ts';
 import { connectUi, spawnSpoke, startDaemon, tempProject, type FrameClient } from '../../hub/test/harness.ts';
 import { centreOf, nvimOrSkip, startClient } from './harness.ts';
+import { waitInitialSnapshots } from './readiness.ts';
 
 const nvim = await nvimOrSkip();
 const skip = 'skip' in nvim ? nvim.skip : false;
@@ -36,6 +37,7 @@ test('f completes items and sessions, filters history and live notices; F clears
   await beta.call('send', { to: ['alpha'], text: 'message to alpha' });
   const c = await startClient(t, bin, root);
   await c.waitScreen((s) => s.includes('General') && s.includes('alpha [Implementer]'), 'connected workbench');
+  await waitInitialSnapshots(c);
   await c.input('<Esc><Space>L');
   await c.waitScreen((s) => centreOf(s).includes('claimed T-2'), 'unfiltered history');
   await c.input('fT-1<Tab><CR>');
@@ -85,6 +87,7 @@ test('a session named loop excludes another pair’s loop metadata in live entri
   await loop.waitForPresence(['loop', 'alpha', 'beta']);
   const c = await startClient(t, bin, root);
   await c.waitScreen((s) => s.includes('loop [Implementer]'), 'connected sessions');
+  await waitInitialSnapshots(c);
   await c.input('<Esc><Space>L');
   await c.waitScreen((s) => centreOf(s).includes('loop assigned Implementer'), 'history loaded');
   await c.input('floop<CR>');

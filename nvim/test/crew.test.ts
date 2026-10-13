@@ -4,6 +4,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { clandWithEnv, startDaemon, tempProject } from '../../hub/test/harness.ts';
 import { nvimOrSkip, startClient } from './harness.ts';
+import { waitInitialSnapshots } from './readiness.ts';
 
 const nvim = await nvimOrSkip();
 const skip = 'skip' in nvim ? nvim.skip : false;
@@ -13,6 +14,7 @@ test('sessions header follows crew CLI and hand edits, retaining the last good s
   const root = await tempProject(t);
   await startDaemon(t, root);
   const c = await startClient(t, bin, root);
+  await waitInitialSnapshots(c);
   await c.input('<Space>s');
   await c.lua("vim.api.nvim_win_set_width(require('cland.layout').win.right, 80)");
   await c.waitScreen(s => s.includes('rev pool 1'), 'initial crew in the sessions header');

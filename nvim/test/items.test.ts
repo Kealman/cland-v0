@@ -8,6 +8,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { cland, clandWithEnv, fakeClaude, startDaemon, tempProject } from '../../hub/test/harness.ts';
 import { nvimOrSkip, startClient } from './harness.ts';
+import { waitInitialSnapshots } from './readiness.ts';
 
 const nvim = await nvimOrSkip();
 const skip = 'skip' in nvim ? nvim.skip : false;
@@ -62,6 +63,7 @@ test('the epic row, item fields and sessions panel show its launched Lead', { sk
   const launched = await clandWithEnv(root, fake.env, 'session', 'launch', 'lead-1', '--role', 'lead', '--item', 'T-1', '--harness', 'claude-code');
   assert.equal(launched.code, 0, launched.stderr);
   const c = await startClient(t, bin, root);
+  await waitInitialSnapshots(c);
   await c.waitScreen(s => s.includes('General'), 'the workbench');
   await c.input('<Esc><Space>i');
   await c.lua("vim.api.nvim_win_set_width(require('cland.layout').win.left,85)");
@@ -82,6 +84,7 @@ test('configured containers with no children show container counts in the panel 
   }
   await startDaemon(t, root);
   const c = await startClient(t, bin, root);
+  await waitInitialSnapshots(c);
   await c.waitScreen(s => s.includes('General'), 'the workbench');
   await c.input('<Esc><Space>i');
   await c.lua("vim.api.nvim_win_set_width(require('cland.layout').win.left,70)");
@@ -108,6 +111,7 @@ test('against a real hub: the tree, the map grouping, the item view and the boar
   assert.equal(claimed.code, 0, claimed.stderr);
 
   const c = await startClient(t, bin, root);
+  await waitInitialSnapshots(c);
   await c.waitScreen((s) => s.includes('General'), 'the workbench');
   await c.input('<Esc><Space>i');
   await c.lua("vim.api.nvim_win_set_width(require('cland.layout').win.left,70)");
@@ -216,6 +220,7 @@ test('the item view shows verdict commits, red stale marks, and file-only proven
   git('add', 'feature');
   git('commit', '-m', 'changed');
   const c = await startClient(t, bin, root);
+  await waitInitialSnapshots(c);
   await c.waitScreen((s) => s.includes('General'), 'the workbench');
   await c.input('<Esc>:Cland view item T-1<CR>');
   const screen = await c.waitScreen((s) => s.includes('VERDICTS · 2') && s.includes('stale'), 'the stale verdict');

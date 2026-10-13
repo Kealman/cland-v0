@@ -10,6 +10,7 @@ import { setTimeout as poll } from 'node:timers/promises';
 import { ownDirectory } from '../../hub/test/process-cleanup.ts';
 import { eventually } from '../../hub/test/harness.ts';
 import { nvimOrSkip, startClient } from './harness.ts';
+import { waitInitialSnapshots } from './readiness.ts';
 import type { Scenario } from './stub-hub.ts';
 
 const nvim = await nvimOrSkip();
@@ -31,6 +32,7 @@ async function start(t: TestContext, scenario = fixture) {
   const controlPath = join(root, 'stub.sock');
   const c = await startClient(t, bin, root, { CLAND_HUB_TRANSPORT: 'stdio', CLAND_COMMAND: JSON.stringify([process.execPath, STUB]), CLAND_STUB_SCENARIO_JSON: JSON.stringify(scenario), CLAND_STUB_CONTROL: controlPath });
   await c.waitScreen(s => s.includes('hub: connected'), 'connected');
+  await waitInitialSnapshots(c);
   return Object.assign(c, {
     control: (cmd: Record<string, unknown>) => new Promise<void>((resolve, reject) => {
       const sock = createConnection(controlPath); let text = ''; sock.setEncoding('utf8'); sock.on('error', reject);
