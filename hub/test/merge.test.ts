@@ -59,7 +59,7 @@ test('a current hub review lands one squash commit in the root and territory, cl
   const topic = await ui.request({ type: 'topic.create', title: 'Parser', item: work.id });
   assert.equal(topic.ok, true, topic.error);
   const before = git(root, 'rev-parse', 'dev');
-  assert.equal((await rev.call<{ ok: boolean }>('task.comment', { id: work.id, verdict: 'review', result: 'clear', run: 'rev-1' })).ok, true);
+  assert.equal((await rev.call<{ ok: boolean }>('task.comment', { id: work.id, verdict: 'review', scope: 'full', result: 'clear', run: 'rev-1' })).ok, true);
   await eventually('ready without criteria', async () => {
     const v = json<{ item: { status: string; criteria: unknown[] } }>(await cland(root, 'task', 'view', work.id, '--json'));
     assert.deepEqual(v.item.criteria, []);
@@ -93,7 +93,7 @@ test('a current hub review lands one squash commit in the root and territory, cl
 });
 
 async function review(rev: Awaited<ReturnType<typeof spawnSpoke>>, id: string, result = 'clear', run = 'rev-1') {
-  const r = await rev.call<{ ok: boolean; error?: string }>('task.comment', { id, verdict: 'review', result, run });
+  const r = await rev.call<{ ok: boolean; error?: string }>('task.comment', { id, verdict: 'review', scope: 'full', result, run });
   assert.equal(r.ok, true, r.error);
 }
 
@@ -272,7 +272,7 @@ test('an in-flight legacy item reaches ready and merge only after every criterio
     assert.equal(result.ok, true, result.error);
   };
   const verify = async (verified: string, run: string) => {
-    ok(await clandWithEnv(root, { CLAND_SESSION_NAME: 'rev', CLAND_SESSION_ID: 'reviewer-id' }, 'task', 'comment', work.id, 'Checked', '--verdict', 'review', '--result', 'clear', '--run', run, '--verified', verified));
+    ok(await clandWithEnv(root, { CLAND_SESSION_NAME: 'rev', CLAND_SESSION_ID: 'reviewer-id' }, 'task', 'comment', work.id, 'Checked', '--verdict', 'review', '--scope', 'full', '--result', 'clear', '--run', run, '--verified', verified));
   };
   await done('C1');
   assert.deepEqual((await read()).criteria.map(c => c.id), ['C1', 'C2']);
@@ -310,7 +310,7 @@ test('criterion verification follows the exact branch head even when the review 
   const read = async () => json<{ item: ItemView }>(await cland(root, 'task', 'view', work.id, '--json')).item;
   const verify = async (verified: string, run: string, commit?: string) => {
     const result = await rev.call<{ ok: boolean; error?: string }>('task.comment', {
-      id: work.id, verdict: 'review', result: 'clear', run, verified, ...(commit ? { commit } : {}),
+      id: work.id, verdict: 'review', scope: 'full', result: 'clear', run, verified, ...(commit ? { commit } : {}),
     });
     assert.equal(result.ok, true, result.error);
   };
@@ -378,7 +378,7 @@ test('adding or failing a criterion revokes ready; done and separate verificatio
   assert.match(failure.error!, /C1.*not done.*not verified/);
   ok(await cland(root, 'task', 'criterion', work.id, 'done', 'C1'));
   await refused(ui, root, work.id, 'criteria-incomplete');
-  const fixed = await rev.call<{ ok: boolean; error?: string }>('task.comment', { id: work.id, verdict: 'review', result: 'clear', run: 'fixed', verified: 'all' });
+  const fixed = await rev.call<{ ok: boolean; error?: string }>('task.comment', { id: work.id, verdict: 'review', scope: 'full', result: 'clear', run: 'fixed', verified: 'all' });
   assert.equal(fixed.ok, true, fixed.error);
   await status('ready');
   ok(await cland(root, 'merge', work.id));
@@ -461,7 +461,7 @@ test('Per-item plan QA uses the latest clear current QA evidence and includes it
   onCleanup(t, () => qa.close());
   await qa.waitForPresence(['qa-1', 'rev']);
   // QA cannot record a review header through either surface, regardless of the text's by: line.
-  const wrong = await qa.call<{ ok: boolean; code: string }>('task.comment', { id: work.id, verdict: 'review', result: 'clear', run: 'wrong-role' });
+  const wrong = await qa.call<{ ok: boolean; code: string }>('task.comment', { id: work.id, verdict: 'review', scope: 'full', result: 'clear', run: 'wrong-role' });
   assert.equal(wrong.code, 'forbidden');
   await review(rev, work.id);
   const qaVerdict = async (result: string, run: string) => {
@@ -631,7 +631,7 @@ test('patch-equivalent rebases stay reviewed, and later file-only headers cannot
 test('a named human CLI actor cannot impersonate a Reviewer with --role; override still checks conflicts', async (t) => {
   const { root, ui } = await project(t);
   const work = await task(root, 'Conflict', 'README.md');
-  ok(await cland(root, 'task', 'comment', work.id, 'CLI label only', '--as', 'pretend-reviewer', '--role', 'reviewer', '--verdict', 'review', '--result', 'clear', '--run', 'cli-run'));
+  ok(await cland(root, 'task', 'comment', work.id, 'CLI label only', '--as', 'pretend-reviewer', '--role', 'reviewer', '--verdict', 'review', '--scope', 'full', '--result', 'clear', '--run', 'cli-run'));
   await refused(ui, root, work.id, 'review-role');
   await writeFile(join(root, 'README.md'), 'dev edit\n');
   git(root, 'commit', '-qam', 'Conflict on dev');
@@ -959,7 +959,7 @@ test('foreground merge freshness fan-out after Git is measured as a resumed 400 
   assert.equal(created.ok, true, created.error);
   const id = (created.value as { item: { id: string } }).item.id;
   const tip = git(work.path, 'rev-parse', 'HEAD');
-  assert.equal((await rev.call<{ ok: boolean }>('task.comment', { id, verdict: 'review', result: 'clear', run: 'later', commit: tip })).ok, true);
+  assert.equal((await rev.call<{ ok: boolean }>('task.comment', { id, verdict: 'review', scope: 'full', result: 'clear', run: 'later', commit: tip })).ok, true);
   await eventually('missing branch settled stale', async () => {
     await tracker.refreshFreshness();
     return tracker.view(id).verdicts[0]?.current === false ? true : undefined;
@@ -985,7 +985,7 @@ test('a verdict whose session changes role while Git resolves uses the role and 
       return real(args, input);
     });
     paused = true;
-    const writing = rev.call<{ ok: boolean; code?: string; error?: string }>('task.comment', { id: work.id, verdict: 'review', result: 'clear', run: 'role-await' });
+    const writing = rev.call<{ ok: boolean; code?: string; error?: string }>('task.comment', { id: work.id, verdict: 'review', scope: 'full', result: 'clear', run: 'role-await' });
     await reached.promise;
     assert.equal((await ui.request({ type: 'role.set', session: 'rev', role })).ok, true);
     release.resolve();
@@ -1258,7 +1258,7 @@ test('a cached green suite at a new identical tree never revives a stale criteri
   const original = await run();
   assert.match((await completion(original.id)).text, /exit 0/);
   const verify = async (commit: string, run: string) => {
-    const result = await rev.call<{ ok: boolean; error?: string }>('task.comment', { id: work.id, verdict: 'review', result: 'clear', run, commit, verified: 'all' });
+    const result = await rev.call<{ ok: boolean; error?: string }>('task.comment', { id: work.id, verdict: 'review', scope: 'full', result: 'clear', run, commit, verified: 'all' });
     assert.equal(result.ok, true, result.error);
   };
   await verify(a, 'review-a');

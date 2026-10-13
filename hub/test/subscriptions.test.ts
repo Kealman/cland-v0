@@ -246,13 +246,13 @@ test('task events report claims, verdicts and closes once; ordinary comments do 
   await coord.call('subscribe', { subject: { item: item.id }, events: ['task'] });
   assert.equal((await impl.call<{ ok: boolean }>('task.claim', { id: item.id })).ok, true);
   await impl.call('task.edit', { id: item.id, status: 'review' });
-  assert.equal((await rev.call<{ ok: boolean }>('task.comment', { id: item.id, verdict: 'review', result: 'not clear', run: 'subscription-review' })).ok, true);
+  assert.equal((await rev.call<{ ok: boolean }>('task.comment', { id: item.id, verdict: 'review', scope: 'full', result: 'not clear', run: 'subscription-review' })).ok, true);
   await coord.call('task.comment', { id: item.id, text: 'An ordinary note.' });
   await coord.call('task.close', { id: item.id });
   await impl.call('send', { to: ['coord'], text: 'workflow digest' });
   const received = await coord.waitForEvent(e => e.params.meta?.from === 'impl' && e.params.content.includes('workflow digest'));
   assert.match(received.params.content, /claimed by impl/);
-  assert.match(received.params.content, /verdict posted review not clear · subscription-review/);
+  assert.match(received.params.content, /verdict posted review not clear · full · subscription-review/);
   assert.match(received.params.content, /status changed review → in progress/);
   assert.match(received.params.content, /closed/);
   const history = await ui.request({ type: 'topic.history', topic: 'agents' });
@@ -262,7 +262,7 @@ test('task events report claims, verdicts and closes once; ordinary comments do 
     `event · task · ${item.id} claimed by impl`,
     `event · task · ${item.id} status changed in progress → review`,
     `event · task · ${item.id} status changed review → in progress`,
-    `event · task · ${item.id} verdict posted review not clear · subscription-review`,
+    `event · task · ${item.id} verdict posted review not clear · full · subscription-review`,
     `event · task · ${item.id} status changed in progress → done`,
     `event · task · ${item.id} closed`,
   ]);

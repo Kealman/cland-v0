@@ -40,7 +40,7 @@ async function setup(t: test.TestContext, fallback: QaPolicy = { scope: 'none', 
     assert.equal(r.ok, true, r.error);
   };
   const review = async (verified?: string) => {
-    const r = await rev.call<{ ok: boolean; error?: string }>('task.comment', { id: item.id, verdict: 'review', result: 'clear', run: 'review', verified });
+    const r = await rev.call<{ ok: boolean; error?: string }>('task.comment', { id: item.id, verdict: 'review', scope: 'full', result: 'clear', run: 'review', verified });
     assert.equal(r.ok, true, r.error);
     await eventually('current review', async () => (await read()).verdicts[0]?.current === true ? true : undefined);
   };

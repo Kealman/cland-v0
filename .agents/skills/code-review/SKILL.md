@@ -20,6 +20,8 @@ Default subscriptions deliver item status/verdict and verifier death or long idl
 
 Review source first, before the full verification run. A clear source verdict at the exact reviewed head lets the Implementer run `cland verify` there. A fix or changed head needs a new source review before another run. When the post-verdict result arrives, check that it names the reviewed head and record the final verdict; a failed run is not clear. An unchanged head may reuse an earlier green run through the tree-hash cache. A source verdict alone is not final verification evidence.
 
+Record every review verdict with `--scope full|delta|evidence` (MCP `task.comment`: `scope`). Use `full` for a first review or reworked design, `delta` after `dev` moved under a reviewed branch, and `evidence` for suite evidence alone. Older unscoped verdicts remain unknown; QA carries no scope.
+
 ## Process
 
 ### 1. Pin the fixed point
@@ -83,7 +85,7 @@ If the spec is missing, skip the Spec sub-agent and note this in the final repor
 
 ### 5. Verify the criteria
 
-When holding the Reviewer role, use the item's `task.view` criteria as the checklist. Record which stable ids the review established and which failed. Write a source review verdict with `task.comment`: `verdict: "review"`, `result`, `run` and the reviewed `commit`. A clear verdict includes `verified: "C1,C3"` for source-established criteria; leave run-dependent criteria unverified until the same-head post-verdict result arrives, then write the final verdict with all criteria checked across source review and that result. Use `verified: "all"` only when every criterion was checked. A not-clear verdict includes `failed: [{ criterion: "C2", note: "what failed" }]` for each failed criterion. Each note is nonempty and single-line. For a separate mark use `task.criterion` verify with the criterion id and run, or fail with the id and note. Unchecked criteria remain unverified. The hub records the marks and lists them in the verdict report.
+When holding the Reviewer role, use the item's `task.view` criteria as the checklist. Record which stable ids the review established and which failed. Write a source review verdict with `task.comment`: `verdict: "review"`, `result`, `run`, `scope` and the reviewed `commit`. A clear verdict includes `verified: "C1,C3"` for source-established criteria; leave run-dependent criteria unverified until the same-head post-verdict result arrives, then write the final verdict with all criteria checked across source review and that result. Use `verified: "all"` only when every criterion was checked. A not-clear verdict includes `failed: [{ criterion: "C2", note: "what failed" }]` for each failed criterion. Each note is nonempty and single-line. For a separate mark use `task.criterion` verify with the criterion id and run, or fail with the id and note. Unchecked criteria remain unverified. The hub records the marks and lists them in the verdict report.
 
 ### 6. Aggregate
 

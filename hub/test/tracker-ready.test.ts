@@ -47,7 +47,7 @@ test('verifier holds move status beside the Implementer claim, and release on ve
     assert.deepEqual((event.item as typeof view).claim, claim);
   }
   assert.equal((await read()).item.holds.length, 2);
-  assert.equal((await ui.request({ type: 'task.comment', item: item.id, verdict: { verdict: 'review', result: 'not clear', run: 'rev-1' }, as: { name: 'rev' } })).ok, true);
+  assert.equal((await ui.request({ type: 'task.comment', item: item.id, verdict: { verdict: 'review', scope: 'full', result: 'not clear', run: 'rev-1' }, as: { name: 'rev' } })).ok, true);
   assert.deepEqual((await read()).item.holds.map(h => h.session), ['qa-1']);
   assert.equal((await ui.request({ type: 'task.hold', item: item.id, release: true, as: { name: 'qa-1' } })).ok, true);
   assert.deepEqual((await read()).item.holds, []);
@@ -87,7 +87,7 @@ for (const qaRequired of [false, true]) {
       assert.match(await readFile(join(root, item.path), 'utf8'), new RegExp(`status: ${expected}\\n`));
     };
     const verdict = async (who: typeof rev, kind: 'review' | 'qa', run: string) => {
-      const result = await who.call<{ ok: boolean; error?: string }>('task.comment', { id: item.id, verdict: kind, result: 'clear', run });
+      const result = await who.call<{ ok: boolean; error?: string }>('task.comment', { id: item.id, verdict: kind, ...(kind === 'review' ? { scope: 'full' } : {}), result: 'clear', run });
       assert.equal(result.ok, true, result.error);
     };
     await verdict(rev, 'review', 'reviewed');
@@ -207,7 +207,7 @@ test(`a commit landing during ready ${pauseAt} cannot publish ready for an unrev
   git(work.path, 'add', 'feature');
   git(work.path, 'commit', '-qm', 'Reviewed');
   pause = true;
-  assert.equal((await rev.call<{ ok: boolean }>('task.comment', { id: item.id, verdict: 'review', result: 'clear', run: 'race' })).ok, true);
+  assert.equal((await rev.call<{ ok: boolean }>('task.comment', { id: item.id, verdict: 'review', scope: 'full', result: 'clear', run: 'race' })).ok, true);
   await paused;
   await writeFile(join(work.path, 'feature'), 'unreviewed\n');
   git(work.path, 'commit', '-qam', 'Commit during ready');
@@ -325,7 +325,7 @@ for (const outcome of ['unchanged', 'changed', 'failed'] as const) {
     await writeFile(join(work.path, 'feature'), 'reviewed\n');
     git(work.path, 'add', 'feature');
     git(work.path, 'commit', '-qm', 'Reviewed');
-    assert.equal((await rev.call<{ ok: boolean }>('task.comment', { id: item.id, verdict: 'review', result: 'clear', run: 'pending' })).ok, true);
+    assert.equal((await rev.call<{ ok: boolean }>('task.comment', { id: item.id, verdict: 'review', scope: 'full', result: 'clear', run: 'pending' })).ok, true);
     const read = async () => ((await ui.request({ type: 'task.view', item: item.id })).value as { item: ItemView }).item;
     await eventually('ready', async () => (await read()).status === 'ready' ? true : undefined);
     if (outcome === 'changed') {
@@ -425,7 +425,7 @@ test('a hand edit during ready Git refresh converges to the edited verdicts with
   await writeFile(join(work.path, 'feature'), 'reviewed\n');
   git(work.path, 'add', 'feature');
   git(work.path, 'commit', '-qm', 'Reviewed');
-  assert.equal((await rev.call<{ ok: boolean }>('task.comment', { id: item.id, verdict: 'review', result: 'clear', run: 'hand-edit' })).ok, true);
+  assert.equal((await rev.call<{ ok: boolean }>('task.comment', { id: item.id, verdict: 'review', scope: 'full', result: 'clear', run: 'hand-edit' })).ok, true);
   await entered;
   const path = join(root, item.path);
   const text = await readFile(path, 'utf8');
@@ -467,7 +467,7 @@ for (const release of ['verdict', 'explicit'] as const) {
     assert.equal(adopted.claim?.sessionId, 'rev-adopted');
     assert.equal(adopted.claim?.claimedAt, before.claim?.claimedAt);
     const result = release === 'verdict'
-      ? await rev.call<{ ok: boolean }>('task.comment', { id: item.id, verdict: 'review', result: 'not clear', run: 'adopted' })
+      ? await rev.call<{ ok: boolean }>('task.comment', { id: item.id, verdict: 'review', scope: 'full', result: 'not clear', run: 'adopted' })
       : await rev.call<{ ok: boolean }>('task.hold', { id: item.id, release: true });
     assert.equal(result.ok, true);
     assert.deepEqual((await read()).holds, []);
@@ -552,7 +552,7 @@ for (const mode of ['timing', 'timing-parented', 'retry'] as const) {
     git(work.path, 'add', 'feature');
     git(work.path, 'commit', '-qm', 'Reviewed');
     await tips.refresh();
-    assert.equal((await rev.call<{ ok: boolean }>('task.comment', { id: item.id, verdict: 'review', result: 'clear', run: mode })).ok, true);
+    assert.equal((await rev.call<{ ok: boolean }>('task.comment', { id: item.id, verdict: 'review', scope: 'full', result: 'clear', run: mode })).ok, true);
     if (timing) {
       await eventually('ready', async () => tracker.list().find(row => row.id === readyId)?.status === 'ready' ? true : undefined);
       assert.deepEqual(records.filter(r => r.event === 'slow-request').map(r => [r.tool, r.phase, r.ms]), [['tracker.ready', 'resumed', 300]], JSON.stringify({ clock, slowParse, slowOpen, armRead }));
@@ -646,8 +646,8 @@ for (const header of [false, true]) {
     assert.equal((await ui.request({ type: 'role.set', session: 'rev', role: 'reviewer' })).ok, true);
     assert.equal((await ui.request({ type: 'task.hold', item: item.id, as: { name: 'rev' } })).ok, true);
     const verdict = await ui.request({ type: 'task.comment', item: item.id, as: { name: 'rev' }, ...(header
-      ? { text: 'verdict: review\nresult: clear\nby: rev [reviewer]\nrun: before-hello\n' }
-      : { verdict: { verdict: 'review', result: 'clear', run: 'before-hello' } }) });
+      ? { text: 'verdict: review\nresult: clear\nby: rev [reviewer]\nrun: before-hello\nscope: full\n' }
+      : { verdict: { verdict: 'review', scope: 'full', result: 'clear', run: 'before-hello' } }) });
     assert.equal(verdict.ok, true, JSON.stringify(verdict));
     const before = await ui.request({ type: 'merge', item: item.id }, 30_000);
     assert.deepEqual([before.ok, (before as { code?: string }).code], [false, 'review-claimant']);
@@ -687,7 +687,7 @@ test('failed SQLite identity adoption fences verifier work and a retry adopts cl
   await tips.refresh();
   assert.equal((await ui.request({ type: 'role.set', session: 'rev', role: 'reviewer' })).ok, true);
   assert.equal((await ui.request({ type: 'task.hold', item: item.id, as: { name: 'rev' } })).ok, true);
-  assert.equal((await ui.request({ type: 'task.comment', item: item.id, as: { name: 'rev' }, verdict: { verdict: 'review', result: 'clear', run: 'before-failure' } })).ok, true);
+  assert.equal((await ui.request({ type: 'task.comment', item: item.id, as: { name: 'rev' }, verdict: { verdict: 'review', scope: 'full', result: 'clear', run: 'before-failure' } })).ok, true);
   const { DatabaseSync } = await import('node:sqlite');
   const prepare = DatabaseSync.prototype.prepare;
   let block = true;
@@ -709,7 +709,7 @@ test('failed SQLite identity adoption fences verifier work and a retry adopts cl
   const evidence = tracker.mergeView(item.id);
   assert.equal(evidence.claim?.sessionId, 'rev-real', 'gate evidence resolves the authoritative hello identity before durable adoption');
   assert.equal(evidence.verdicts[0]?.writer?.sessionId, 'rev-real');
-  const refused = await rev.call<{ ok: boolean; error?: string }>('task.comment', { id: item.id, verdict: 'review', result: 'clear', run: 'after-failure' });
+  const refused = await rev.call<{ ok: boolean; error?: string }>('task.comment', { id: item.id, verdict: 'review', scope: 'full', result: 'clear', run: 'after-failure' });
   assert.equal(refused.ok, false, JSON.stringify(refused));
   assert.match(refused.error ?? '', /adoption.*SQLITE_BUSY/);
   const held = await rev.call<{ ok: boolean }>('task.hold', { id: item.id });
@@ -724,7 +724,7 @@ test('failed SQLite identity adoption fences verifier work and a retry adopts cl
   assert.equal(adopted.claim?.sessionId, 'rev-real');
   assert.equal(adopted.verdicts[0]?.writer?.sessionId, 'rev-real');
   assert.equal(adopted.holds[0]?.sessionId, 'rev-real');
-  assert.equal((await rev.call<{ ok: boolean }>('task.comment', { id: item.id, verdict: 'review', result: 'clear', run: 'after-retry' })).ok, true);
+  assert.equal((await rev.call<{ ok: boolean }>('task.comment', { id: item.id, verdict: 'review', scope: 'full', result: 'clear', run: 'after-retry' })).ok, true);
   const after = await ui.request({ type: 'merge', item: item.id }, 30_000);
   assert.deepEqual([after.ok, (after as { code?: string }).code], [false, 'review-claimant']);
   assert.notEqual((await read()).status, 'ready');
@@ -750,7 +750,7 @@ test(`restart rebuilds failed-adoption fences before real-id CLI releases or ver
   git(work.path, 'commit', '-qm', 'Reviewed');
   await tips.refresh();
   assert.equal((await ui.request({ type: 'role.set', session: 'rev', role: 'reviewer' })).ok, true);
-  assert.equal((await ui.request({ type: 'task.comment', item: item.id, as: { name: 'rev' }, verdict: { verdict: 'review', result: 'clear', run: 'before-restart' } })).ok, true);
+  assert.equal((await ui.request({ type: 'task.comment', item: item.id, as: { name: 'rev' }, verdict: { verdict: 'review', scope: 'full', result: 'clear', run: 'before-restart' } })).ok, true);
   assert.equal((await ui.request({ type: 'task.hold', item: item.id, as: { name: 'rev' } })).ok, true);
   const { DatabaseSync } = await import('node:sqlite');
   const prepare = DatabaseSync.prototype.prepare;
@@ -810,7 +810,7 @@ test(`restart rebuilds failed-adoption fences before real-id CLI releases or ver
   assert.equal(adopted.claim?.claimedAt, before.claim?.claimedAt);
   assert.equal(adopted.verdicts[0]?.writer?.sessionId, 'rev-real');
   assert.equal((await clandWithEnv(root, env, 'task', 'hold', item.id)).code, 0);
-  const verdict = await clandWithEnv(root, env, 'task', 'comment', item.id, 'after restart', '--verdict', 'review', '--result', 'clear', '--run', 'after-restart');
+  const verdict = await clandWithEnv(root, env, 'task', 'comment', item.id, 'after restart', '--verdict', 'review', '--scope', 'full', '--result', 'clear', '--run', 'after-restart');
   assert.equal(verdict.code, 0, verdict.stderr);
   assert.deepEqual((await read()).holds, []);
   const gate = await ui2.request({ type: 'merge', item: item.id }, 30_000);

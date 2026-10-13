@@ -127,7 +127,7 @@ for (const qa of [false, true]) test(`landing stage one advances stage two${qa ?
     const git = (...args: string[]) => execFileSync('git', args, { cwd: work, encoding: 'utf8' }).trim();
     await writeFile(join(work, `feature-${item.id}`), 'stage feature\n');
     git('add', `feature-${item.id}`); git('commit', '-qm', 'Stage feature');
-    assert.equal((await rev.call<{ ok: boolean }>('task.comment', { id: item.id, verdict: 'review', result: 'clear', run: `review-${item.id}` })).ok, true);
+    assert.equal((await rev.call<{ ok: boolean }>('task.comment', { id: item.id, verdict: 'review', scope: 'full', result: 'clear', run: `review-${item.id}` })).ok, true);
     await f.status(item.id, 'ready');
     const merged = await cland(f.root, 'merge', item.id, '--json');
     assert.equal(merged.code, 0, merged.stderr);
@@ -212,7 +212,7 @@ test('stage landing and ten close frames keep a fixed query budget with unrelate
   const claim = await ui.request({ type: 'task.claim', item: first.id }); assert.equal(claim.ok, true, claim.error);
   const work = (claim.value as { worktree: { path: string } }).worktree.path;
   execFileSync('git', ['commit', '--allow-empty', '-qm', 'Measured landing'], { cwd: work });
-  assert.equal((await rev.call<{ ok: boolean }>('task.comment', { id: first.id, verdict: 'review', result: 'clear', run: 'measured-review' })).ok, true);
+  assert.equal((await rev.call<{ ok: boolean }>('task.comment', { id: first.id, verdict: 'review', scope: 'full', result: 'clear', run: 'measured-review' })).ok, true);
   const read = async (id: string) => ((await ui.request({ type: 'task.view', item: id })).value as { item: ItemView }).item;
   await eventually('measured task ready', async () => (await read(first.id)).status === 'ready' ? true : undefined);
   let observing = false, queries = 0, turn = 0, refusedReads = 0;

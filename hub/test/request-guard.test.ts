@@ -122,7 +122,7 @@ test('a verdict write with a slow post-commit logger is timed as resumed work af
   const ui = await connectWsUi(t, hub, 'reviewer-ui');
   assert.equal((await ui.request({ size: 'M', type: 'task.create', title: 'Reviewed', branch: 't/x' })).ok, true);
   records.length = 0;
-  const r = await ui.request({ type: 'task.comment', item: 'T-1', text: 'checked', verdict: { verdict: 'review', result: 'clear', run: 'r-1' } });
+  const r = await ui.request({ type: 'task.comment', item: 'T-1', text: 'checked', verdict: { verdict: 'review', scope: 'full', result: 'clear', run: 'r-1' } });
   assert.equal(r.ok, true, r.error);
   const slow = records.filter((x) => x.event === 'slow-request' && x.tool === 'task.comment');
   assert.deepEqual(slow.map((x) => [x.phase, x.client]), [['resumed', 'reviewer-ui']], JSON.stringify(slow));
@@ -147,7 +147,7 @@ test('waiting for async Git is a slow-answer with its own counter, without a slo
   const ui = await connectUi(t, { socket, secret: TEST_SECRET }, 'waiting-ui');
   await ui.request({ size: 'M', type: 'task.create', title: 'Reviewed', branch: 't/x' });
   records.length = 0;
-  const result = await ui.request({ type: 'task.comment', item: 'T-1', text: 'checked', verdict: { verdict: 'review', result: 'clear', run: 'r-1' } });
+  const result = await ui.request({ type: 'task.comment', item: 'T-1', text: 'checked', verdict: { verdict: 'review', scope: 'full', result: 'clear', run: 'r-1' } });
   assert.equal(result.ok, true, result.error);
   const slow = records.filter((r) => r.event === 'slow-answer' && r.tool === 'task.comment');
   assert.equal(slow.length, 1, JSON.stringify(records));

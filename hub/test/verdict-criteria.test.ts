@@ -15,7 +15,7 @@ test('a clear MCP verdict verifies selected legacy criteria with its run and rep
   const rev = await spawnSpoke({ discover: true, cwd: root, name: 'rev', role: 'reviewer' });
   t.after(() => rev.close());
   await rev.call('subscribe', { subject: { item: item.id }, events: ['task'] });
-  const result = await rev.call<{ ok: boolean; item: ItemView }>('task.comment', { id: item.id, verdict: 'review', result: 'clear', run: 'rev-1', verified: 'C1,C3', text: 'Checked first and third.' });
+  const result = await rev.call<{ ok: boolean; item: ItemView }>('task.comment', { id: item.id, verdict: 'review', scope: 'full', result: 'clear', run: 'rev-1', verified: 'C1,C3', text: 'Checked first and third.' });
   assert.equal(result.ok, true);
   assert.deepEqual(result.item.criteria.map(c => [c.id, c.checked, c.marks.map(m => m.kind)]), [['C1', false, ['verified']], ['C2', false, []], ['C3', false, ['verified']]]);
   for (const c of [result.item.criteria[0]!, result.item.criteria[2]!]) {
@@ -28,7 +28,7 @@ test('a clear MCP verdict verifies selected legacy criteria with its run and rep
   const message = frame.message as { text: string; criteria: unknown };
   assert.match(message.text, /C1.*C3/);
   assert.deepEqual(message.criteria, [{ id: 'C1', mark: 'verified' }, { id: 'C3', mark: 'verified' }]);
-  const cli = await cland(root, 'task', 'comment', item.id, 'All checked', '--verdict', 'review', '--result', 'clear', '--run', 'rev-all', '--verified', 'all', '--as', 'rev', '--json');
+  const cli = await cland(root, 'task', 'comment', item.id, 'All checked', '--verdict', 'review', '--scope', 'full', '--result', 'clear', '--run', 'rev-all', '--verified', 'all', '--as', 'rev', '--json');
   assert.equal(cli.code, 0, cli.stderr);
   const all = (JSON.parse(cli.stdout) as { item: ItemView }).item;
   assert.equal(all.criteria.length, 3);
@@ -95,16 +95,16 @@ test('invalid or unauthorized criterion selections refuse the whole verdict with
     [{ result: 'not clear', failed: [{ criterion: 'C1', note: 'First\nSecond' }] }, /needs a note/],
     [{ run: 'two words', verified: 'all' }, /run id/],
   ] as const) {
-    const result = await rev.call<{ ok: boolean; error: string }>('task.comment', { id: item.id, verdict: 'review', result: 'clear', run: 'refused', ...extra });
+    const result = await rev.call<{ ok: boolean; error: string }>('task.comment', { id: item.id, verdict: 'review', scope: 'full', result: 'clear', run: 'refused', ...extra });
     assert.equal(result.ok, false, JSON.stringify(extra));
     assert.match(result.error, error);
     assert.equal(await readFile(join(root, item.path), 'utf8'), source);
   }
-  const refused = await coord.call<{ ok: boolean; error: string }>('task.comment', { id: item.id, verdict: 'review', result: 'clear', run: 'coord-1', verified: 'all' });
+  const refused = await coord.call<{ ok: boolean; error: string }>('task.comment', { id: item.id, verdict: 'review', scope: 'full', result: 'clear', run: 'coord-1', verified: 'all' });
   assert.equal(refused.ok, false);
   assert.match(refused.error, /require Reviewer or QA/);
   assert.equal(await readFile(join(root, item.path), 'utf8'), source);
-  const human = await cland(root, 'task', 'comment', item.id, 'Human verdict', '--verdict', 'review', '--result', 'clear', '--run', 'human-1', '--verified', 'all');
+  const human = await cland(root, 'task', 'comment', item.id, 'Human verdict', '--verdict', 'review', '--scope', 'full', '--result', 'clear', '--run', 'human-1', '--verified', 'all');
   assert.notEqual(human.code, 0);
   assert.match(human.stderr, /require Reviewer or QA/);
   const plain = await cland(root, 'task', 'comment', item.id, 'plain', '--verified', 'all');
@@ -123,7 +123,7 @@ test('a hand save or revoked criterion grant refuses verdict and marks together'
   t.after(() => rev.close());
   const path = join(root, item.path);
   await gate.arm();
-  const writing = rev.call<{ ok: boolean; error: string }>('task.comment', { id: item.id, verdict: 'review', result: 'clear', run: 'raced', verified: 'all' });
+  const writing = rev.call<{ ok: boolean; error: string }>('task.comment', { id: item.id, verdict: 'review', scope: 'full', result: 'clear', run: 'raced', verified: 'all' });
   await gate.entered();
   const edited = (await readFile(path, 'utf8')).replace('Original.', 'Hand saved.');
   await writeFile(path, edited);
@@ -133,7 +133,7 @@ test('a hand save or revoked criterion grant refuses verdict and marks together'
   assert.match(raced.error, /concurrent hand edit/);
   assert.equal(await readFile(path, 'utf8'), edited);
   await gate.arm();
-  const revoked = rev.call<{ ok: boolean; code: string }>('task.comment', { id: item.id, verdict: 'review', result: 'clear', run: 'revoked', verified: 'all' });
+  const revoked = rev.call<{ ok: boolean; code: string }>('task.comment', { id: item.id, verdict: 'review', scope: 'full', result: 'clear', run: 'revoked', verified: 'all' });
   await gate.entered();
   const roles = join(root, '.cland', 'roles.toml');
   const roleText = await readFile(roles, 'utf8');

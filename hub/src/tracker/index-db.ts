@@ -7,7 +7,7 @@ import { compareRank, effectiveRank } from './rank.ts';
 import { createHash } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 import { parseItemReference, prefixOf } from './prefixes.ts';
-import { idNumber, type Comment, type Verdict, type Item, type Kind, type State, type Status, type Size, type VerdictKind, type VerdictResult } from './item.ts';
+import { idNumber, type Comment, type Verdict, type Item, type Kind, type State, type Status, type Size, type VerdictKind, type VerdictResult, type ReviewScope } from './item.ts';
 
 const SCHEMA = `
 create table if not exists tracker_items (
@@ -182,7 +182,9 @@ export class TrackerIndex {
     const claimColumns = new Set((this.#db.prepare('pragma table_info(tracker_claims)').all() as Row[]).map((r) => r.name as string));
     if (!claimColumns.has('session_id')) this.#db.exec('alter table tracker_claims add column session_id text');
     const verdictColumns = new Set((this.#db.prepare('pragma table_info(tracker_verdicts)').all() as Row[]).map((r) => r.name));
-    for (const column of ['commit_sha', 'comment_key', 'stage', 'stage_hash']) if (!verdictColumns.has(column)) this.#db.exec(`alter table tracker_verdicts add column ${column} text`);
+    for (const column of ['commit_sha', 'comment_key', 'stage', 'stage_hash', 'scope']) if (!verdictColumns.has(column)) this.#db.exec(`alter table tracker_verdicts add column ${column} text`);
+    const writtenColumns = new Set((this.#db.prepare('pragma table_info(tracker_written_verdicts)').all() as Row[]).map(r => r.name));
+    if (!writtenColumns.has('scope')) this.#db.exec('alter table tracker_written_verdicts add column scope text');
     const mergeColumns = new Set((this.#db.prepare('pragma table_info(tracker_merges)').all() as Row[]).map(r => r.name));
     if (!mergeColumns.has('checkout_recovery')) this.#db.exec('alter table tracker_merges add column checkout_recovery text');
     if (!mergeColumns.has('merged_at')) this.#db.exec('alter table tracker_merges add column merged_at text');
@@ -248,11 +250,11 @@ export class TrackerIndex {
       const last = item.comments.at(-1);
       if (writer && last?.verdict) {
         const v = last.verdict;
-        this.#db.prepare('insert or ignore into tracker_written_verdicts (item_id, comment_key, verdict, result, run, commit_sha, session_id, role, at) values (?, ?, ?, ?, ?, ?, ?, ?, ?)').run(fm.id, commentKey(last), v.verdict, v.result, v.run, v.commit ?? null, writer.id, writer.role, last.at);
+        this.#db.prepare('insert or ignore into tracker_written_verdicts (item_id, comment_key, verdict, result, run, commit_sha, session_id, role, at, scope) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').run(fm.id, commentKey(last), v.verdict, v.result, v.run, v.commit ?? null, writer.id, writer.role, last.at, v.scope ?? null);
       }
-      const verdict = this.#db.prepare('insert into tracker_verdicts (item_id, seq, verdict, result, by, run, author, at, commit_sha, comment_key, stage, stage_hash) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+      const verdict = this.#db.prepare('insert into tracker_verdicts (item_id, seq, verdict, result, by, run, author, at, commit_sha, comment_key, stage, stage_hash, scope) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
       item.comments.forEach((c, seq) => {
-        if (c.verdict) verdict.run(fm.id, seq, c.verdict.verdict, c.verdict.result, c.verdict.by, c.verdict.run, c.author, c.at, c.verdict.commit ?? null, commentKey(c), c.verdict.stage ?? null, c.verdict.stage_hash ?? null);
+        if (c.verdict) verdict.run(fm.id, seq, c.verdict.verdict, c.verdict.result, c.verdict.by, c.verdict.run, c.author, c.at, c.verdict.commit ?? null, commentKey(c), c.verdict.stage ?? null, c.verdict.stage_hash ?? null, c.verdict.scope ?? null);
       });
       this.#raiseHighWater(idNumber(fm.id));
     });
@@ -431,12 +433,12 @@ export class TrackerIndex {
 
   /** Every item's verdicts, in file order: what `task.list` shows beside each summary. */
   verdicts(item?: string): Map<string, IndexedVerdict[]> {
-    const rows = this.#db.prepare(`select item_id, verdict, result, by, run, author, at, commit_sha, comment_key, stage, stage_hash from tracker_verdicts ${item ? 'where item_id = ?' : ''} order by item_id, seq`).all(...(item ? [this.#key(item)] : [])) as Row[];
+    const rows = this.#db.prepare(`select item_id, verdict, result, by, run, author, at, commit_sha, comment_key, stage, stage_hash, scope from tracker_verdicts ${item ? 'where item_id = ?' : ''} order by item_id, seq`).all(...(item ? [this.#key(item)] : [])) as Row[];
     const out = new Map<string, KeyedVerdict[]>();
     for (const r of rows) {
       const id = this.#canonical(r.item_id as string);
       const list = out.get(id) ?? [];
-      list.push({ verdict: { verdict: r.verdict as VerdictKind, result: r.result as VerdictResult, by: r.by as string, run: r.run as string, author: r.author as string, at: r.at as string, ...(r.commit_sha ? { commit: r.commit_sha as string } : {}), ...(r.stage ? { stage: r.stage as string } : {}), ...(r.stage_hash ? { stage_hash: r.stage_hash as string } : {}) }, key: r.comment_key as string });
+      list.push({ verdict: { verdict: r.verdict as VerdictKind, result: r.result as VerdictResult, by: r.by as string, run: r.run as string, author: r.author as string, at: r.at as string, ...(r.commit_sha ? { commit: r.commit_sha as string } : {}), ...(r.scope !== null ? { scope: r.scope as ReviewScope } : {}), ...(r.stage ? { stage: r.stage as string } : {}), ...(r.stage_hash ? { stage_hash: r.stage_hash as string } : {}) }, key: r.comment_key as string });
       out.set(id, list);
     }
     return new Map([...out].map(([id, list]) => [id, this.markVerdicts(id, list)]));
@@ -634,5 +636,5 @@ const claimOfRow = (r: Row): Claim => ({
 /** A comment's identity survives unrelated edits and index rebuilds, but not changes to the verdict. */
 export function commentKey(c: Comment): string {
   const v = c.verdict;
-  return createHash('sha256').update(JSON.stringify([c.author, c.at, v?.verdict, v?.result, v?.by, v?.run, v?.commit ?? null, c.text, ...(v?.stage !== undefined || v?.stage_hash !== undefined ? [v?.stage ?? null, v?.stage_hash ?? null] : [])])).digest('hex');
+  return createHash('sha256').update(JSON.stringify([c.author, c.at, v?.verdict, v?.result, v?.by, v?.run, v?.commit ?? null, c.text, ...(v?.stage !== undefined || v?.stage_hash !== undefined ? [v?.stage ?? null, v?.stage_hash ?? null] : []), ...(v?.scope !== undefined ? [v.scope] : [])])).digest('hex');
 }

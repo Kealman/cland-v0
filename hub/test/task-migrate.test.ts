@@ -276,7 +276,7 @@ for (const editContainer of [false, true]) test(`an older task branch lands afte
   const rev = await spawnSpoke({ discover: true, cwd: root, name: 'rev', role: 'reviewer', sessionId: 'sess-rev' });
   t.after(() => rev.close());
   await rev.waitForPresence(['rev']);
-  const verdict = await rev.call<{ ok: boolean; error?: string }>('task.comment', { id: 'T-2', verdict: 'review', result: 'clear', run: 'migration-merge' });
+  const verdict = await rev.call<{ ok: boolean; error?: string }>('task.comment', { id: 'T-2', verdict: 'review', scope: 'full', result: 'clear', run: 'migration-merge' });
   assert.equal(verdict.ok, true, verdict.error);
   await eventually('review ready', async () => {
     const view = await cland(root, 'task', 'view', 'T-2', '--json');

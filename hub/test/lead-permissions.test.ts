@@ -215,7 +215,7 @@ test('lead-1 requests verifiers and merges its scheduled item through the ordina
   const driver = join(root, '.cland/merge-driver.mjs');
   await writeFile(driver, `import { existsSync, writeFileSync } from 'node:fs';\nimport { setTimeout } from 'node:timers/promises';\nwriteFileSync(${JSON.stringify(marker)}, 'ready');\nconst deadline = Date.now() + 20000;\nwhile (!existsSync(${JSON.stringify(proceed)}) && Date.now() < deadline) await setTimeout(10);\nwriteFileSync(process.argv[2], 'shipped\\n');\n`);
   git(root, 'config', 'merge.cland-test.driver', `"${process.execPath}" "${driver}" %A`);
-  assert.equal((await rev.call<{ ok: boolean }>('task.comment', { id: own, verdict: 'review', result: 'clear', run: 'lead-demo' })).ok, true);
+  assert.equal((await rev.call<{ ok: boolean }>('task.comment', { id: own, verdict: 'review', scope: 'full', result: 'clear', run: 'lead-demo' })).ok, true);
   const refs = git(root, 'show-ref');
   let preparationResult: unknown;
   const preparing = lead.call<{ ok: boolean; code: string; reason: string }>('merge', { item: own }).then(result => { preparationResult = result; return result; });

@@ -197,7 +197,7 @@ test('delivered verifier requests persist across restart and clear on hold, verd
   await rev.call('task.hold', { id: ids[1], release: true });
   await request(`review request ${ids[0]}`);
   await eventually('request before verdict', async () => (await row()).pending?.item === ids[0] || undefined);
-  assert.equal((await rev.call<{ ok: boolean }>('task.comment', { id: ids[0], verdict: 'review', result: 'clear', run: 'pending-verdict', text: 'Reviewed' })).ok, true);
+  assert.equal((await rev.call<{ ok: boolean }>('task.comment', { id: ids[0], verdict: 'review', scope: 'full', result: 'clear', run: 'pending-verdict', text: 'Reviewed' })).ok, true);
   assert.equal((await row()).pending, undefined);
   await request(`qa request ${ids[1]}`);
   await eventually('request before stop', async () => (await row()).pending?.item === ids[1] || undefined);

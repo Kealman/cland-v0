@@ -128,7 +128,7 @@ test('a review request from the Coordinator reaches the Codex session holding Re
   await request(coord, 'review', 'reviewer', 'T-1', 'Check that `cland task list --state open` lists the item.');
   const reviewReport = await reportFrom(coord, 'rev', 'review ');
   assert.match(reviewReport.params.content, /(?:^|\n)review clear T-1 \(run rev-run-1\)(?:\n|$)/);
-  assert.match(reviewReport.params.content, /event · task · T-1 verdict posted review clear · rev-run-1/);
+  assert.match(reviewReport.params.content, /event · task · T-1 verdict posted review clear · full · rev-run-1/);
   assert.equal(reviewReport.params.meta?.from_role, 'reviewer');
   let item = (await view(root, 'T-1')).item;
   assert.deepEqual(item.verdicts.map((v) => [v.verdict, v.result, v.by, v.run]), [['review', 'clear', 'rev [reviewer]', 'rev-run-1']]);
@@ -148,11 +148,11 @@ test('a review request from the Coordinator reaches the Codex session holding Re
 
   // `cland task view` shows both; the item's file holds the header as the hub wrote it
   const shown = ok(await cland(root, 'task', 'view', 'T-1')).stdout;
-  assert.match(shown, /rev · \S+ {2}\[verdict review: clear, by rev \[reviewer\], run rev-run-1\]/);
+  assert.match(shown, /rev · \S+ {2}\[verdict review: clear, by rev \[reviewer\], run rev-run-1, scope full\]/);
   assert.match(shown, /qa-1 · \S+ {2}\[verdict qa: not clear, by qa-1 \[qa\], run qa-run-1\]/);
   const files = await readdir(join(root, '.cland', 'tasks'));
   const file = await readFile(join(root, '.cland', 'tasks', files.find((f) => f.startsWith('T-1-')) as string), 'utf8');
-  assert.match(file, /\nverdict: review\nresult: clear\nby: rev \[reviewer\]\nrun: rev-run-1\n\nFindings, by severity:/);
+  assert.match(file, /\nverdict: review\nresult: clear\nby: rev \[reviewer\]\nrun: rev-run-1\nscope: full\n\nFindings, by severity:/);
   assert.match(file, /\nverdict: qa\nresult: not clear\nby: qa-1 \[qa\]\nrun: qa-run-1\n\nRan:/);
 });
 

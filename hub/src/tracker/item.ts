@@ -54,7 +54,10 @@ export type Frontmatter = {
 /** The GitHub issue an item was imported from: kept through every write, otherwise ignored by the hub. */
 export type GithubRef = { repo: string; number: number; url: string };
 
-export type Verdict = { verdict: VerdictKind; result: VerdictResult; by: string; run: string; commit?: string; stage?: string; stage_hash?: string };
+export const REVIEW_SCOPES = ['full', 'delta', 'evidence'] as const;
+export type ReviewScope = (typeof REVIEW_SCOPES)[number];
+
+export type Verdict = { verdict: VerdictKind; result: VerdictResult; by: string; run: string; commit?: string; scope?: ReviewScope; stage?: string; stage_hash?: string };
 
 export type Comment = {
   author: string;
@@ -68,7 +71,7 @@ export type Item = { fm: Frontmatter; body: string; comments: Comment[] };
 
 export const COMMENTS_HEADING = '## Comments';
 const COMMENT_HEADER = /^### (.+?) · (\S+)\s*$/;
-const VERDICT_LINE = /^(verdict|result|by|run|commit|stage|stage_hash):\s*(.*?)\s*$/;
+const VERDICT_LINE = /^(verdict|result|by|run|commit|scope|stage|stage_hash):\s*(.*?)\s*$/;
 /** Stable numeric lookup key; display ids are supplied by the index, from the kind. */
 export function normalizeId(raw: string, kinds?: readonly string[]): string | null {
   const ref = parseItemReference(raw, kinds);
@@ -283,9 +286,9 @@ function parseComments(lines: string[]): Comment[] {
 
 /** A comment text whose first lines are a verdict header, split into the verdict's fields and the rest (its `by`,
  *  whatever it says, is not kept: the hub writes who recorded it). Null when it does not read as a verdict. */
-export function verdictOfText(text: string): { verdict: VerdictKind; result: VerdictResult; run: string; commit?: string; stage?: string; text: string } | null {
+export function verdictOfText(text: string): { verdict: VerdictKind; result: VerdictResult; run: string; commit?: string; scope?: ReviewScope; stage?: string; text: string } | null {
   const c = commentOf('', '', text.trim());
-  return c.verdict ? { verdict: c.verdict.verdict, result: c.verdict.result, run: c.verdict.run, ...(c.verdict.commit ? { commit: c.verdict.commit } : {}), ...(c.verdict.stage ? { stage: c.verdict.stage } : {}), text: c.text } : null;
+  return c.verdict ? { verdict: c.verdict.verdict, result: c.verdict.result, run: c.verdict.run, ...(c.verdict.commit ? { commit: c.verdict.commit } : {}), ...(c.verdict.scope !== undefined ? { scope: c.verdict.scope } : {}), ...(c.verdict.stage ? { stage: c.verdict.stage } : {}), text: c.text } : null;
 }
 
 /** Whether a comment's text reads back as a verdict (its first lines a verdict header), as every reader takes it. */
@@ -308,7 +311,7 @@ function commentOf(author: string, at: string, text: string): Comment {
       author,
       at,
       text: lines.slice(i).join('\n').trim(),
-      verdict: { verdict: verdict as VerdictKind, result: result as VerdictResult, by: header.by ?? author, run: header.run ?? '', ...(header.commit ? { commit: header.commit } : {}), ...(header.stage ? { stage: header.stage } : {}), ...(header.stage_hash ? { stage_hash: header.stage_hash } : {}) },
+      verdict: { verdict: verdict as VerdictKind, result: result as VerdictResult, by: header.by ?? author, run: header.run ?? '', ...(header.commit ? { commit: header.commit } : {}), ...(header.scope !== undefined ? { scope: header.scope as ReviewScope } : {}), ...(header.stage ? { stage: header.stage } : {}), ...(header.stage_hash ? { stage_hash: header.stage_hash } : {}) },
     };
   }
   return { author, at, text };
@@ -355,6 +358,7 @@ export function serializeComment(c: Comment): string {
   let text = '';
   if (c.verdict) text += `verdict: ${c.verdict.verdict}\nresult: ${c.verdict.result}\nby: ${c.verdict.by}\nrun: ${c.verdict.run}\n`;
   if (c.verdict?.commit) text += `commit: ${c.verdict.commit}\n`;
+  if (c.verdict?.scope !== undefined) text += `scope: ${c.verdict.scope}\n`;
   if (c.verdict?.stage) text += `stage: ${c.verdict.stage}\n`;
   if (c.verdict?.stage_hash) text += `stage_hash: ${c.verdict.stage_hash}\n`;
   if (c.text.trim()) text += `${c.verdict ? '\n' : ''}${c.text.trim()}\n`;

@@ -157,13 +157,13 @@ test('a not-clear review or QA verdict returns a handed-over task to in progress
     assert.equal((await ui.request({ type: 'task.edit', item: item.id, status: 'review' })).ok, true);
     const verdict = role === 'reviewer' ? 'review' : 'qa';
     const run = `finding-${verdict}`;
-    assert.equal((await verifier.call<{ ok: boolean }>('task.comment', { id: item.id, verdict, result: 'not clear', run })).ok, true);
+    assert.equal((await verifier.call<{ ok: boolean }>('task.comment', { id: item.id, verdict, ...(verdict === 'review' ? { scope: 'full' } : {}), result: 'not clear', run })).ok, true);
     const view = await ui.request({ type: 'task.view', item: item.id });
     assert.deepEqual([(view.value as { item: Item }).item.status, (view.value as { item: Item }).item.state], ['in progress', 'open']);
     const event = await ui.waitFor(f => f.type === 'task' && (f.item as { verdicts?: Array<{ run: string }> } | undefined)?.verdicts?.some(v => v.run === run) === true);
     assert.equal((event.item as Item).status, 'in progress');
     assert.equal((await ui.request({ type: 'task.edit', item: item.id, status: 'review' })).ok, true);
-    assert.equal((await verifier.call<{ ok: boolean }>('task.comment', { id: item.id, verdict, result: 'clear', run: `clear-${verdict}` })).ok, true);
+    assert.equal((await verifier.call<{ ok: boolean }>('task.comment', { id: item.id, verdict, ...(verdict === 'review' ? { scope: 'full' } : {}), result: 'clear', run: `clear-${verdict}` })).ok, true);
     const clear = await ui.request({ type: 'task.view', item: item.id });
     assert.equal((clear.value as { item: Item }).item.status, 'review', 'clear verdicts do not set ready in this slice');
   }
@@ -189,7 +189,7 @@ test('merge preserves its gate and publishes done with closed state', async t =>
   assert.deepEqual([refused.ok, (refused as { code?: string }).code], [false, 'review-missing'], 'status never bypasses the gate');
   const rev = await spawnSpoke({ discover: true, cwd: root, name: 'rev', role: 'reviewer' });
   onCleanup(t, () => rev.close());
-  assert.equal((await rev.call<{ ok: boolean }>('task.comment', { id: item.id, verdict: 'review', result: 'clear', run: 'status-merge' })).ok, true);
+  assert.equal((await rev.call<{ ok: boolean }>('task.comment', { id: item.id, verdict: 'review', scope: 'full', result: 'clear', run: 'status-merge' })).ok, true);
   const merged = await cland(root, 'merge', item.id, '--json');
   assert.equal(merged.code, 0, merged.stderr);
   const view = await ui.request({ type: 'task.view', item: item.id });

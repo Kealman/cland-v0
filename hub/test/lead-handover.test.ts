@@ -101,7 +101,7 @@ test('lead-1 hands its node and question to lead-2; the next verdict reaches the
   const uiState = await ui.request({ type: 'role.state', role: 'lead', session: 'lead-2' });
   assert.deepEqual((uiState.value as RoleState).claims, state.claims);
   assert.equal((await ui.request({ type: 'role.state', role: 'lead' })).ok, false);
-  assert.equal((await rev.call<Result>('task.comment', { id: task, verdict: 'review', result: 'not clear', run: 'after-handover' })).ok, true);
+  assert.equal((await rev.call<Result>('task.comment', { id: task, verdict: 'review', scope: 'full', result: 'not clear', run: 'after-handover' })).ok, true);
   // Progress events fold into the successor's next turn, which this ordinary report starts.
   await rev.call('send', { to: [`lead ${task}`], text: 'Inspect the next verdict.' });
   await eventually('the next verdict reaches lead-2 harness', async () => (await fake.log(b.harnessId)).includes(`${task} verdict posted review not clear`) || undefined);
@@ -194,7 +194,7 @@ test('the human hands a node to an offline successor, then launches it and the n
   const state = await later.s.call<Result & RoleState>('role.state');
   assert.equal(state.note?.sections.goals_now, 'Human move');
   const rev = await spoke('rev', 'reviewer');
-  assert.equal((await rev.call<Result>('task.comment', { id: task, verdict: 'review', result: 'not clear', run: 'after-offline-handover' })).ok, true);
+  assert.equal((await rev.call<Result>('task.comment', { id: task, verdict: 'review', scope: 'full', result: 'not clear', run: 'after-offline-handover' })).ok, true);
   await rev.call('send', { to: [`lead ${task}`], text: 'Inspect the successor verdict.' });
   await eventually('the next verdict reaches the launched successor', async () => (await fake.log(later.harnessId)).includes(`${task} verdict posted review not clear`) || undefined);
 });

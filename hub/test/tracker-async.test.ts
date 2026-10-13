@@ -71,7 +71,7 @@ for (const racing of ['close', 'claim', 'verdict'] as const) {
     await entered.promise;
     const raced = racing === 'close' ? tracker.close(human, 'T-1', 'done')
       : racing === 'claim' ? tracker.claim(human, 'T-1')
-      : tracker.comment(human, 'T-1', 'reviewed', { verdict: 'review', result: 'clear', run: 'review-one' });
+      : tracker.comment(human, 'T-1', 'reviewed', { verdict: 'review', scope: 'full', result: 'clear', run: 'review-one' });
     release.resolve();
     await Promise.all([writing, raced]);
     const view = await tracker.viewAsync('T-1');
@@ -130,7 +130,7 @@ test('a verdict returns only after rename and evidence indexing; restart reads t
   const item = await tracker.create(human, { title: 'Durable' });
   hold = true;
   let answered = false;
-  const writing = tracker.comment({ id: 'reviewer-id', name: 'rev', role: 'reviewer' }, item.id, 'checked', { verdict: 'review', result: 'clear', run: 'durable-run' }).then(view => { answered = true; return view; });
+  const writing = tracker.comment({ id: 'reviewer-id', name: 'rev', role: 'reviewer' }, item.id, 'checked', { verdict: 'review', scope: 'full', result: 'clear', run: 'durable-run' }).then(view => { answered = true; return view; });
   await entered.promise;
   assert.equal(answered, false);
   assert.equal(tracker.view(item.id).verdicts.length, 0);
@@ -216,7 +216,7 @@ test('a verdict rechecks its writer after a deferred temporary write, before com
   const writer = { id: 'reviewer-id', name: 'rev', role: 'reviewer' };
   hold = true;
   let role = 'reviewer';
-  const writing = tracker.comment(writer, item.id, 'checked', { verdict: 'review', result: 'clear', run: 'writer-run' }, undefined, () => ({ ...writer, role }));
+  const writing = tracker.comment(writer, item.id, 'checked', { verdict: 'review', scope: 'full', result: 'clear', run: 'writer-run' }, undefined, () => ({ ...writer, role }));
   await entered.promise;
   role = 'implementer';
   release.resolve();

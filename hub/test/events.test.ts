@@ -22,7 +22,7 @@ test('a real spoke verdict produces one event on pushes and journal pages, inclu
   await spoke.waitForPresence(['rev']);
   for (const result of ['not clear', 'clear'] as const) {
     const start = ui.frames.length;
-    const verdict = await spoke.call<{ ok: boolean }>('task.comment', { id: item, text: 'Check the fold.', verdict: 'review', result, run: `one-row-${result.replace(' ', '-')}` });
+    const verdict = await spoke.call<{ ok: boolean }>('task.comment', { id: item, text: 'Check the fold.', verdict: 'review', scope: 'full', result, run: `one-row-${result.replace(' ', '-')}` });
     assert.equal(verdict.ok, true, JSON.stringify(verdict));
     assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
     const pushed = ui.frames.slice(start).filter(f => f.type === 'event' && (f.row as EventRow)?.kind === 'verdict');
@@ -222,7 +222,7 @@ test('inbox retires notifications and dismissal frames while verdicts and role c
   const created = await ui.request({ size: 'M', type: 'task.create', title: 'Events replace notifications' });
   const item = (created.value as { item: { id: string } }).item.id;
   for (const result of ['clear', 'not clear']) {
-    const verdict = await ui.request({ type: 'task.comment', item, text: `Review ${result}.`, verdict: { verdict: 'review', result, run: `retired-${result.replace(' ', '-')}` }, as: { name: 'rev', role: 'reviewer' } });
+    const verdict = await ui.request({ type: 'task.comment', item, text: `Review ${result}.`, verdict: { verdict: 'review', scope: 'full', result, run: `retired-${result.replace(' ', '-')}` }, as: { name: 'rev', role: 'reviewer' } });
     assert.equal(verdict.ok, true, verdict.error);
   }
   const page = (await ui.request({ type: 'events.list' })).value as EventsPage;

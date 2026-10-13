@@ -79,7 +79,7 @@ test('hub tracker mutations, reads, scans, and shared launches use no synchronou
       { type: 'task.edit', item: 'T-1', body: 'edited' },
       { type: 'task.link', item: 'T-1', parent: 'T-2' },
       { type: 'task.comment', item: 'T-1', text: 'plain' },
-      { type: 'task.comment', item: 'T-1', text: 'checked', verdict: { verdict: 'review', result: 'clear', run: 'native-run' } },
+      { type: 'task.comment', item: 'T-1', text: 'checked', verdict: { verdict: 'review', scope: 'full', result: 'clear', run: 'native-run' } },
       { type: 'task.claim', item: 'T-1' },
       { type: 'topic.create', title: 'Bound', item: 'T-1' },
       { type: 'session.launch', name: 'plain', harness: 'test' },
@@ -255,11 +255,11 @@ test('merge waits for an admitted verdict write and refuses its latest not-clear
   await ui.request({ type: 'task.claim', item: 'T-1' });
   await territoryGitAsync(join(root, '.cland', 'worktrees', 'T-1'), ['commit', '--allow-empty', '-qm', 'Reviewed']);
   const reviewer = { id: 'native-reviewer', name: 'rev', role: 'reviewer' };
-  await tracker.comment(reviewer, 'T-1', '', { verdict: 'review', result: 'clear', run: 'clear-before-wait' });
+  await tracker.comment(reviewer, 'T-1', '', { verdict: 'review', scope: 'full', result: 'clear', run: 'clear-before-wait' });
   await tracker.refreshFreshness();
   const before = await git('rev-parse', 'dev');
   hold = true;
-  const writing = tracker.comment(reviewer, 'T-1', '', { verdict: 'review', result: 'not clear', run: 'not-clear-during-wait' });
+  const writing = tracker.comment(reviewer, 'T-1', '', { verdict: 'review', scope: 'full', result: 'not clear', run: 'not-clear-during-wait' });
   await reached.promise;
   let answered = false;
   const merging = ui.request({ type: 'merge', item: 'T-1' }, 30_000).then(r => { answered = true; return r; });

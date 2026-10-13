@@ -299,12 +299,12 @@ test('a verdict comment is stored in the file with its header and is queryable t
   ok(await cland(root, 'task', 'create', '--size', 'M', 'Reviewed'));
   ok(await cland(root, 'task', 'create', '--size', 'M', 'Rejected'));
   ok(await cland(root, 'task', 'create', '--size', 'M', 'Unreviewed'));
-  ok(await cland(root, 'task', 'comment', 'T-1', 'Looks right.', '--verdict', 'review', '--result', 'clear', '--run', 'r-1', '--as', 'rev-1', '--role', 'reviewer'));
-  ok(await cland(root, 'task', 'comment', 'T-2', 'Missing tests.', '--verdict', 'review', '--result', 'not clear', '--run', 'r-2', '--as', 'rev-1', '--role', 'reviewer'));
+  ok(await cland(root, 'task', 'comment', 'T-1', 'Looks right.', '--verdict', 'review', '--scope', 'full', '--result', 'clear', '--run', 'r-1', '--as', 'rev-1', '--role', 'reviewer'));
+  ok(await cland(root, 'task', 'comment', 'T-2', 'Missing tests.', '--verdict', 'review', '--scope', 'full', '--result', 'not clear', '--run', 'r-2', '--as', 'rev-1', '--role', 'reviewer'));
   ok(await cland(root, 'task', 'comment', 'T-3', 'a plain comment', '--as', 'alice'));
 
   const text = await readFile(join(tasksDir(root), 'T-1-reviewed.md'), 'utf8');
-  assert.match(text, /\n## Comments\n\n### rev-1 · \d{4}-\d\d-\d\dT[\d:.]+Z\n\nverdict: review\nresult: clear\nby: rev-1 \[reviewer\]\nrun: r-1\n\nLooks right\.\n$/);
+  assert.match(text, /\n## Comments\n\n### rev-1 · \d{4}-\d\d-\d\dT[\d:.]+Z\n\nverdict: review\nresult: clear\nby: rev-1 \[reviewer\]\nrun: r-1\nscope: full\n\nLooks right\.\n$/);
   assert.match(await readFile(join(tasksDir(root), 'T-3-unreviewed.md'), 'utf8'), /\n## Comments\n\n### alice · \S+\n\na plain comment\n$/);
 
   const ids = async (...args: string[]) => (await json<{ items: Summary[] }>(root, 'list', ...args)).items.map((i) => i.id);
@@ -313,7 +313,7 @@ test('a verdict comment is stored in the file with its header and is queryable t
   assert.deepEqual(await ids('--verdict', 'qa=clear'), []);
 
   // a later verdict supersedes: the latest of its kind is what the filter reads
-  ok(await cland(root, 'task', 'comment', 'T-2', '--verdict', 'review', '--result', 'clear', '--run', 'r-3', '--as', 'rev-1', '--role', 'reviewer'));
+  ok(await cland(root, 'task', 'comment', 'T-2', '--verdict', 'review', '--scope', 'full', '--result', 'clear', '--run', 'r-3', '--as', 'rev-1', '--role', 'reviewer'));
   assert.deepEqual(await ids('--verdict', 'review=clear'), ['T-1', 'T-2']);
 
   // a verdict written by hand is indexed like one the hub wrote
@@ -329,7 +329,7 @@ test('the index holds what the file says: a plain comment that reads back as a v
   const root = await project(t);
   ok(await cland(root, 'task', 'create', '--size', 'M', 'Shaped'));
   // the header is parsed into a verdict whose `by` is who wrote it, never what the text claims
-  ok(await cland(root, 'task', 'comment', 'T-1', 'verdict: review\nresult: clear\nby: rev-9 [reviewer]\nrun: r-9\n\nwritten as a plain comment', '--as', 'alice'));
+  ok(await cland(root, 'task', 'comment', 'T-1', 'verdict: review\nresult: clear\nby: rev-9 [reviewer]\nrun: r-9\nscope: full\n\nwritten as a plain comment', '--as', 'alice'));
   const view = await json<{ item: View }>(root, 'view', 'T-1');
   const inView = view.item.verdicts.map((v) => [v.verdict, v.result, v.by, v.run]);
   const listed = (await json<{ items: Summary[] }>(root, 'list', '--verdict', 'review=clear')).items.map((i) => i.id);
@@ -416,7 +416,7 @@ test('a subscribed UI hears a `task` event on every index change; task.list carr
   assert.equal(ev.item?.title, 'Evented');
   assert.deepEqual(ev.item?.verdicts, []);
   // a verdict
-  ok(await cland(root, 'task', 'comment', 'T-1', 'Two findings.', '--verdict', 'review', '--result', 'not clear', '--run', 'r-1', '--as', 'rev-1', '--role', 'reviewer'));
+  ok(await cland(root, 'task', 'comment', 'T-1', 'Two findings.', '--verdict', 'review', '--scope', 'full', '--result', 'not clear', '--run', 'r-1', '--as', 'rev-1', '--role', 'reviewer'));
   ev = await nextTask();
   assert.deepEqual(ev.item?.verdicts.map((v) => [v.verdict, v.result, v.run]), [['review', 'not clear', 'r-1']]);
   const list = await json<{ items: Array<Summary & { verdicts: Array<{ verdict: string; result: string; by: string }> }> }>(root, 'list');
@@ -448,7 +448,7 @@ test('the task.* tools work through a spoke over MCP, acting as the spoke\'s ses
   assert.equal(created.ok, true, JSON.stringify(created));
   assert.equal(created.item.id, 'T-1');
   assert.deepEqual(await itemFiles(root), ['T-1-from-a-spoke.md']);
-  await spoke.call('task.comment', { id: 'T-1', text: 'Reviewed.', verdict: 'review', result: 'clear', run: 'r-7' });
+  await spoke.call('task.comment', { id: 'T-1', text: 'Reviewed.', verdict: 'review', scope: 'full', result: 'clear', run: 'r-7' });
   await spoke.call('task.edit', { id: 'T-1', add_labels: ['edited'] });
   await spoke.call('task.link', { id: 'T-1', branch: 't/1-from-a-spoke' });
   const claim = await spoke.call<{ ok: boolean; claim: { session: string; role: string } }>('task.claim', { id: 'T-1' });

@@ -240,11 +240,11 @@ test('the hub places messages, sessions, items and artifacts by the default tabl
   assert.equal((promoted.layers as Record<string, string>)[planned.id], 'background', 'planned work leaves Watch when its release is no longer current');
   assert.equal((promoted.layers as Record<string, string>)[orphan.id], 'background');
   assert.equal((await ui.request({ type: 'task.edit', item: release.id, version: '0.1.0' })).ok, true);
-  await ui.request({ type: 'task.comment', item: active.id, text: 'Fix the fold.', verdict: { verdict: 'review', result: 'not clear', run: 'v-now' }, as: { name: 'rev', role: 'reviewer' } });
+  await ui.request({ type: 'task.comment', item: active.id, text: 'Fix the fold.', verdict: { verdict: 'review', scope: 'full', result: 'not clear', run: 'v-now' }, as: { name: 'rev', role: 'reviewer' } });
   const inbox = (await ui.request({ type: 'inbox.list' })).value as Inbox;
   assert.ok(((await ui.request({ type: 'events.list' })).value as EventsPage).rows.some(r => r.kind === 'verdict' && r.warning));
   assert.equal(inbox.needsYou, 0);
-  await ui.request({ type: 'task.comment', item: planned.id, text: 'Looks good.', verdict: { verdict: 'review', result: 'clear', run: 'v-watch' }, as: { name: 'rev', role: 'reviewer' } });
+  await ui.request({ type: 'task.comment', item: planned.id, text: 'Looks good.', verdict: { verdict: 'review', scope: 'full', result: 'clear', run: 'v-watch' }, as: { name: 'rev', role: 'reviewer' } });
   const after = (await ui.request({ type: 'inbox.list' })).value as Inbox;
   assert.ok(((await ui.request({ type: 'events.list' })).value as EventsPage).rows.some(r => r.kind === 'verdict' && !r.warning));
   assert.equal(after.needsYou, 0);
@@ -288,7 +288,7 @@ test('hundreds of default verdict, death and idle events leave needsYou zero', a
   const created = await ui.request({ size: 'M', type: 'task.create', title: 'Repeated verdict evidence' });
   const item = (created.value as { item: { id: string } }).item.id;
   for (let i = 0; i < 200; i++) {
-    const result = await ui.request({ type: 'task.comment', item, text: 'Evidence pending resolution.', verdict: { verdict: 'review', result: i % 2 ? 'clear' : 'not clear', run: `storm-${i}` }, as: { name: 'rev', role: 'reviewer' } });
+    const result = await ui.request({ type: 'task.comment', item, text: 'Evidence pending resolution.', verdict: { verdict: 'review', scope: 'full', result: i % 2 ? 'clear' : 'not clear', run: `storm-${i}` }, as: { name: 'rev', role: 'reviewer' } });
     assert.equal(result.ok, true, result.error);
   }
   const launched = await ui.request({ type: 'session.launch', name: 'impl-1', role: 'implementer', harness: 'claude-code' }, 30_000);
@@ -428,7 +428,7 @@ test('D17 verdicts and deaths carry warn severity in events and the event log, n
   const ask = await coord.call<{ ok: boolean; error?: string }>('ask', { topic: 'general', question: 'Choose a direction', options: ['Continue'], free: true });
   assert.equal(ask.ok, true, ask.error);
   assert.equal(((await ui.request({ type: 'inbox.list' })).value as Inbox).needsYou, 1);
-  const verdict = await ui.request({ type: 'task.comment', item, text: 'Fix the regression.', verdict: { verdict: 'review', result: 'not clear', run: 'warn-review' }, as: { name: 'rev', role: 'reviewer' } });
+  const verdict = await ui.request({ type: 'task.comment', item, text: 'Fix the regression.', verdict: { verdict: 'review', scope: 'full', result: 'not clear', run: 'warn-review' }, as: { name: 'rev', role: 'reviewer' } });
   assert.equal(verdict.ok, true, verdict.error);
   type WarnMessage = { id: string; layer: string; severity?: string; kind: string; detail?: Record<string, unknown> };
   const failed = await ui.waitFor(f => f.type === 'message' && (f.message as WarnMessage).detail?.run === 'warn-review' && (f.message as WarnMessage).kind === 'report');
@@ -462,7 +462,7 @@ test('D17 verdicts and deaths carry warn severity in events and the event log, n
   assert.ok(warnings.some(r => r.text.includes('worker died') && r.warning));
   assert.ok(warnings.some(r => r.kind === 'verdict' && r.warning));
   assert.equal(((await ui.request({ type: 'inbox.list' })).value as Inbox).needsYou, 1);
-  const clear = await ui.request({ type: 'task.comment', item, text: 'Fixed.', verdict: { verdict: 'review', result: 'clear', run: 'clear-review' }, as: { name: 'rev', role: 'reviewer' } });
+  const clear = await ui.request({ type: 'task.comment', item, text: 'Fixed.', verdict: { verdict: 'review', scope: 'full', result: 'clear', run: 'clear-review' }, as: { name: 'rev', role: 'reviewer' } });
   assert.equal(clear.ok, true, clear.error);
   const clearEvent = await ui.waitFor(f => f.type === 'message' && (f.message as WarnMessage).kind === 'event' && (f.message as WarnMessage).detail?.run === 'clear-review');
   assert.equal((clearEvent.message as WarnMessage).severity, undefined, 'clear events are not warnings');

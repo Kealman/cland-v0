@@ -28,6 +28,8 @@ Every patch is listed here. `skills-lock.json` keeps the upstream hash, so a re-
 - **Why**: the claimant runs its review loop without a Coordinator relay (T-143).
 - **D25 (T-322)**: review source before full verification, record a clear source verdict at the exact reviewed head with only source-established criteria verified, then settle the final verdict when the same-head post-verdict result arrives. Fixes require new source review before another run; an unchanged head may use the tree-hash cache.
 
+- **Review scope (T-332)**: "Hub review requests" requires `--scope full|delta|evidence` (MCP `scope`), defines each pass and preserves older unscoped records as unknown; step 5 includes scope with the verdict fields. QA carries none.
+
 ## implement
 
 - **File**: `.agents/skills/implement/SKILL.md`, implementation checks and the hub handover.

@@ -373,7 +373,7 @@ export class Dispatcher {
     const v = verdictOfText(frame.text);
     if (!v) return null;
     if (readsAsVerdict(v.text)) return 'a verdict comment carries one verdict header: its text may not start with another';
-    frame.verdict = { verdict: v.verdict, result: v.result, run: v.run, ...(v.commit ? { commit: v.commit } : {}), ...(v.stage ? { stage: v.stage } : {}) };
+    frame.verdict = { verdict: v.verdict, result: v.result, run: v.run, ...(v.commit ? { commit: v.commit } : {}), ...(v.scope !== undefined ? { scope: v.scope } : {}), ...(v.stage ? { stage: v.stage } : {}) };
     frame.text = v.text;
     return null;
   }

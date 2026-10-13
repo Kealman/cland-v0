@@ -65,7 +65,7 @@ test('ready starts the nearest supervising Lead once, while intermediate events 
   const { item } = await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Ready work', parent: epic.id, assignee: 'impl' });
   await impl.call('task.claim', { id: item.id });
   await impl.call('task.edit', { id: item.id, status: 'review' });
-  await rev.call('task.comment', { id: item.id, verdict: 'review', result: 'not clear', run: 'nested-finding' });
+  await rev.call('task.comment', { id: item.id, verdict: 'review', scope: 'full', result: 'not clear', run: 'nested-finding' });
   await rev.call('send', { to: [`lead ${item.id}`], text: 'finding for the Implementer' });
   assert.match((await impl.waitForEvent(e => e.params.content.includes('finding for the Implementer'))).params.content, /verdict posted review not clear/);
   await coord.call('task.edit', { id: item.id, status: 'ready' });

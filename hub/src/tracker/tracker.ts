@@ -35,6 +35,8 @@ import {
   UnknownKindError,
   parseItem,
   RESULTS,
+  REVIEW_SCOPES,
+  type ReviewScope,
   serializeItem,
   STATES,
   statusRefusal,
@@ -132,7 +134,7 @@ export type ItemSummary = IndexedItem & Pick<Partial<ItemView>, 'plan' | 'planEr
 /** An index change, as a subscribed UI hears it (the `task` event): the item as `task.list` shows it, or null when its file is gone. */
 export type ItemChange = { id: string; item: ItemSummary | null; siblings?: string[]; events?: string[]; postedVerdicts?: Verdict[]; previousAncestry?: string[] };
 
-const verdictIdentity = (v: IndexedVerdict): string => JSON.stringify([v.author, v.at, v.verdict, v.result, v.run, v.commit ?? null, v.by, v.stage ?? null, v.stage_hash ?? null]);
+const verdictIdentity = (v: IndexedVerdict): string => JSON.stringify([v.author, v.at, v.verdict, v.result, v.run, v.commit ?? null, v.by, v.stage ?? null, v.stage_hash ?? null, v.scope ?? null]);
 
 export type CreateInput = {
   title: string;
@@ -175,7 +177,7 @@ export type LinkInput = {
 };
 
 export type VerdictReport = { topic: string | null; text: string; criteria?: MarkedCriterion[] };
-export type VerdictInput = { verdict: VerdictKind; result: VerdictResult; run: string; commit?: string; stage?: string; verified?: string; failed?: { criterion: string; note: string }[] };
+export type VerdictInput = { verdict: VerdictKind; result: VerdictResult; run: string; commit?: string; scope?: ReviewScope; stage?: string; verified?: string; failed?: { criterion: string; note: string }[] };
 
 export class TrackerError extends Error {
   /** `git-unavailable`: Git did not answer a question the write needs (a verdict's commit, a branch tip). */
@@ -573,7 +575,7 @@ export class Tracker {
         if (count) remaining.set(key, count - 1);
         else {
           postedVerdicts.push(verdict);
-          events.push(`verdict posted ${verdict.verdict} ${verdict.result}${verdict.stage ? ` · stage ${verdict.stage}` : ''} · ${verdict.run}`);
+          events.push(`verdict posted ${verdict.verdict} ${verdict.result}${verdict.scope ? ` · ${verdict.scope}` : ''}${verdict.stage ? ` · stage ${verdict.stage}` : ''} · ${verdict.run}`);
         }
       }
       if (previous.state !== 'closed' && item.state === 'closed') events.push('closed');
@@ -1981,9 +1983,11 @@ export class Tracker {
     let v: Verdict | undefined;
     if (verdict) {
       if (!VERDICT_KINDS.includes(verdict.verdict)) throw new TrackerError(`verdict must be ${VERDICT_KINDS.join(' or ')}`);
+      if (verdict.verdict === 'review' && (verdict.scope === undefined || !REVIEW_SCOPES.includes(verdict.scope))) throw new TrackerError('a review verdict needs scope: full, delta or evidence');
+      if (verdict.verdict === 'qa' && verdict.scope !== undefined) throw new TrackerError('a QA verdict carries no scope');
       if (!RESULTS.includes(verdict.result)) throw new TrackerError(`result must be ${RESULTS.map((r) => `"${r}"`).join(' or ')}`);
       if (!verdict.run?.trim() || /\n/.test(verdict.run)) throw new TrackerError('a verdict needs a run id (one line)');
-      v = { verdict: verdict.verdict, result: verdict.result, by: formatVerdictBy(actor.name, actor.role), run: verdict.run.trim() };
+      v = { verdict: verdict.verdict, result: verdict.result, by: formatVerdictBy(actor.name, actor.role), run: verdict.run.trim(), ...(verdict.scope !== undefined ? { scope: verdict.scope } : {}) };
       if (verdict.commit !== undefined) {
         if (typeof verdict.commit !== 'string' || !/^[0-9a-f]{4,64}$/i.test(verdict.commit)) throw new TrackerError('commit must be a Git commit SHA');
       }

@@ -231,10 +231,10 @@ test('only a human review or QA verdict replies to requests on its subject item'
   await aide.waitForPresence(['aide-1', 'rev-1']);
   const id = (await ok<{ item: { id: string } }>(ui, { size: 'M', type: 'task.create', title: 'Review this' })).item.id;
   assert.equal((await aide.call<{ ok: boolean }>('send', { kind: 'request', request: 'review', subject: id, text: 'Review' })).ok, true);
-  const agentVerdict = await reviewer.call<{ ok: boolean; error?: string }>('task.comment', { id, text: 'Agent review', verdict: 'review', result: 'clear', run: 'agent-review' });
+  const agentVerdict = await reviewer.call<{ ok: boolean; error?: string }>('task.comment', { id, text: 'Agent review', verdict: 'review', scope: 'full', result: 'clear', run: 'agent-review' });
   assert.equal(agentVerdict.ok, true, agentVerdict.error);
   assert.equal((await ok<Inbox>(ui, { type: 'inbox.list' })).requests.length, 1);
-  await ok(ui, { type: 'task.comment', item: id, text: 'Human review', verdict: { verdict: 'review', result: 'clear', run: 'human-review' } });
+  await ok(ui, { type: 'task.comment', item: id, text: 'Human review', verdict: { verdict: 'review', scope: 'full', result: 'clear', run: 'human-review' } });
   assert.equal((await ok<Inbox>(ui, { type: 'inbox.list' })).requests.length, 0);
   assert.equal((await aide.call<{ ok: boolean }>('send', { kind: 'request', request: 'qa', subject: id, text: 'QA' })).ok, true);
   await ok(ui, { type: 'task.comment', item: id, text: 'Human QA', verdict: { verdict: 'qa', result: 'clear', run: 'human-qa' } });
@@ -292,7 +292,7 @@ test('progress and hub notices preserve a waiting topic report until it is read'
   const progress = await ok<Inbox>(ui, { type: 'inbox.list' });
   assert.deepEqual(progress.messages, before.messages);
   assert.equal(progress.needsYou, 1);
-  await ok(ui, { type: 'task.comment', item: epic, text: 'Review notice', verdict: { verdict: 'review', result: 'clear', run: 'notice-review' } });
+  await ok(ui, { type: 'task.comment', item: epic, text: 'Review notice', verdict: { verdict: 'review', scope: 'full', result: 'clear', run: 'notice-review' } });
   const history = await ok<{ messages: Array<{ fromKind: string; kind?: string }> }>(ui, { type: 'topic.history', topic });
   assert.ok(history.messages.some(m => m.fromKind === 'hub'), 'a real hub notice was appended to the waiting topic');
   const afterNotice = await ok<Inbox>(ui, { type: 'inbox.list' });

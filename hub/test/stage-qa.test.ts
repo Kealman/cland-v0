@@ -44,7 +44,7 @@ async function fixture(t: test.TestContext, gated = false, count = 3, launchLead
       const r = await ui.request({ type: 'task.claim', item: item.id }); assert.equal(r.ok, true, r.error);
       const work = (r.value as { worktree: { path: string } }).worktree.path;
       await writeFile(join(work, `feature-${i}`), `feature ${i}\n`); git(work, 'add', `feature-${i}`); git(work, 'commit', '-qm', `Feature ${i}`);
-      assert.equal((await rev.call<{ ok: boolean }>('task.comment', { id: item.id, verdict: 'review', result: 'clear', run: `review-${i}` })).ok, true);
+      assert.equal((await rev.call<{ ok: boolean }>('task.comment', { id: item.id, verdict: 'review', scope: 'full', result: 'clear', run: `review-${i}` })).ok, true);
       await eventually('review makes after-stage item ready', async () => (await read(item.id)).status === 'ready' ? true : undefined);
       const merged = await ui.request({ type: 'merge', item: item.id }, 30_000); assert.equal(merged.ok, true, merged.error);
       assert.equal((await read(item.id)).verdicts.some(v => v.verdict === 'qa'), false);
@@ -88,8 +88,9 @@ test('three review-only merges, one stage QA on dev, not-clear/retry, restart an
 
 test('stage verdict refuses premature QA, wrong roles, stale builds, unknown stages and epic criterion marks', async t => {
   const f = await fixture(t);
+  assert.match((await f.verdict('clear', { scope: 'full' })).error ?? '', /QA verdict.*scope/i);
   assert.match((await f.verdict()).error ?? '', /all stage items must merge/);
-  const review = await f.rev.call<{ ok: boolean; error?: string }>('task.comment', { id: f.epic.id, verdict: 'review', result: 'clear', run: 'wrong-role', stage: 'Stage 1' });
+  const review = await f.rev.call<{ ok: boolean; error?: string }>('task.comment', { id: f.epic.id, verdict: 'review', scope: 'full', result: 'clear', run: 'wrong-role', stage: 'Stage 1' });
   assert.equal(review.ok, false); assert.match(review.error ?? '', /only a live QA/);
   for (const item of f.items) assert.equal((await f.ui.request({ type: 'task.edit', item: item.id, state: 'closed' })).ok, true);
   assert.match((await f.verdict()).error ?? '', /all stage items must merge/);

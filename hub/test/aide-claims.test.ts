@@ -62,7 +62,7 @@ test('an Aide claim creates its worktree, makes it the lead, and lands through i
   view = await aide.call<{ item: ItemView }>('task.view', { id });
   assert.equal(view.item.status, 'review', 'an idempotent claim preserves handover status');
   assert.equal((await rev.call<{ ok: boolean }>('task.hold', { id })).ok, true);
-  assert.equal((await rev.call<{ ok: boolean }>('task.comment', { id, verdict: 'review', result: 'clear', run: 'aide-review' })).ok, true);
+  assert.equal((await rev.call<{ ok: boolean }>('task.comment', { id, verdict: 'review', scope: 'full', result: 'clear', run: 'aide-review' })).ok, true);
   await eventually('independent review makes the Aide item ready', async () => {
     const current = await aide.call<{ item: ItemView }>('task.view', { id });
     return current.item.status === 'ready' ? true : undefined;
@@ -94,14 +94,14 @@ for (const kind of ['review', 'qa'] as const) {
       assert.equal((await ui.request({ type: 'task.link', item: id, parent: epic })).ok, true);
       const planned = await ui.request({ type: 'task.plan', item: epic, op: 'set', yaml: `stages:\n- name: Required QA\n  qa: {scope: affected, when: per-item}\n  lanes: [[${id}]]\n` });
       assert.equal(planned.ok, true, planned.error);
-      assert.equal((await rev.call<{ ok: boolean }>('task.comment', { id, verdict: 'review', result: 'clear', run: 'independent-review' })).ok, true);
+      assert.equal((await rev.call<{ ok: boolean }>('task.comment', { id, verdict: 'review', scope: 'full', result: 'clear', run: 'independent-review' })).ok, true);
       await eventually('independent review is current', async () => {
         const view = await aide.call<{ item: ItemView }>('task.view', { id });
         return view.item.verdicts[0]?.current === true ? true : undefined;
       });
     }
     assert.equal((await ui.request({ type: 'role.set', session: 'aide-1', role: kind === 'review' ? 'reviewer' : 'qa' })).ok, true);
-    assert.equal((await aide.call<{ ok: boolean }>('task.comment', { id, verdict: kind, result: 'clear', run: 'self-verdict' })).ok, true);
+    assert.equal((await aide.call<{ ok: boolean }>('task.comment', { id, verdict: kind, ...(kind === 'review' ? { scope: 'full' } : {}), result: 'clear', run: 'self-verdict' })).ok, true);
     const refs = git(root, 'show-ref');
     const gate = await ui.request({ type: 'merge', item: id }, 30_000);
     assert.equal(gate.ok, false, JSON.stringify(gate));

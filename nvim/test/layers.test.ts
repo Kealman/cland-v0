@@ -60,7 +60,7 @@ test('real bound-topic verdict and death events show warning markers without cha
   assert.equal(bound.ok, true, bound.error);
   const c = await startClient(t, bin, root);
   await c.waitScreen(s => s.includes('hub: connected'), 'real hub connected');
-  const verdict = await ui.request({ type: 'task.comment', item, text: 'Fix the warning.', verdict: { verdict: 'review', result: 'not clear', run: 'headless-warning' }, as: { name: 'rev', role: 'reviewer' } });
+  const verdict = await ui.request({ type: 'task.comment', item, text: 'Fix the warning.', verdict: { verdict: 'review', scope: 'full', result: 'not clear', run: 'headless-warning' }, as: { name: 'rev', role: 'reviewer' } });
   assert.equal(verdict.ok, true, verdict.error);
   const launch = await ui.request({ type: 'session.launch', name: 'worker', role: 'implementer', harness: 'claude-code' }, 30_000);
   assert.equal(launch.ok, true, launch.error);
@@ -80,7 +80,7 @@ test('real bound-topic verdict and death events show warning markers without cha
   await c.input('<Space>L');
   await c.waitScreen(s => s.includes(`⚠ event · task · ${item} verdict posted review not clear`) && s.includes('⚠ event · session.state · worker died'), 'real warning subscription events in Agents');
   const log = (await c.lua<string[]>("return vim.api.nvim_buf_get_lines(0, 0, -1, false)")).join('\n');
-  assert.match(log, new RegExp(`⚠ event · task · ${item} verdict posted review not clear · headless-warning`));
+  assert.match(log, new RegExp(`⚠ event · task · ${item} verdict posted review not clear · full · headless-warning`));
   assert.match(log, /⚠ event · session.state · worker died/);
   assert.equal(await c.lua("return require('cland.state').needs_you()"), 0);
 });

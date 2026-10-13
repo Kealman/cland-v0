@@ -361,7 +361,7 @@ async function appServer(args: string[]): Promise<number> {
         const kind = request[1] as VerdictKind;
         const itemId = request[2] as string;
         const from = /\bfrom="([^"]+)"/.exec(item.text)?.[1] ?? 'coordinator';
-        const answer = await callTool('task.comment', { id: itemId, verdict: kind, result: script.result, run: script.run, text: script.text });
+        const answer = await callTool('task.comment', { id: itemId, verdict: kind, ...(kind === 'review' ? { scope: 'full' } : {}), result: script.result, run: script.run, text: script.text });
         const parsed = parseJson<{ ok: boolean; error?: string }>(answer);
         const report = parsed?.ok ? `${kind} ${script.result} ${itemId} (run ${script.run})` : `${kind} refused ${itemId}: ${parsed?.error ?? answer ?? 'no answer'}`;
         await callTool('send', { to: [from], text: report, ...where });

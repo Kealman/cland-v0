@@ -66,9 +66,9 @@ test('an Aide lead owns its subtree defaults without receiving crew broadcasts',
   await coord.call('task.edit', { id: child.id, status: 'review' });
   await coord.call('send', { to: ['aide-1'], text: 'Aide default turn' });
   assert.match((await aide.waitForEvent(e => e.params.content.includes('Aide default turn'))).params.content, /status changed backlog → review/);
-  await rev.call('task.comment', { id: child.id, verdict: 'review', result: 'not clear', run: 'aide-default' });
+  await rev.call('task.comment', { id: child.id, verdict: 'review', scope: 'full', result: 'not clear', run: 'aide-default' });
   await rev.call('send', { to: [`lead ${parent.id}`], text: 'Aide verdict turn' });
-  assert.match((await aide.waitForEvent(e => e.params.content.includes('Aide verdict turn'))).params.content, /verdict posted review not clear · aide-default/);
+  assert.match((await aide.waitForEvent(e => e.params.content.includes('Aide verdict turn'))).params.content, /verdict posted review not clear · full · aide-default/);
   await coord.call('send', { to: ['all'], text: 'crew broadcast only' });
   await coord.call('send', { to: ['aide-1'], text: 'Aide direct barrier' });
   const direct = await aide.waitForEvent(e => e.params.content.includes('Aide direct barrier'));
@@ -76,7 +76,7 @@ test('an Aide lead owns its subtree defaults without receiving crew broadcasts',
   assert.equal(aide.events.some(e => e.params.content.includes('crew broadcast only')), false);
   const history = await ui.request({ type: 'topic.history', topic: 'agents' });
   const events = (history.value as { messages: Message[] }).messages.filter(m => m.kind === 'event');
-  assert.deepEqual(events.filter(m => m.text === `event · task · ${child.id} status changed backlog → review` || m.text === `event · task · ${child.id} verdict posted review not clear · aide-default`).map(m => m.to), [['aide-1'], ['aide-1']]);
+  assert.deepEqual(events.filter(m => m.text === `event · task · ${child.id} status changed backlog → review` || m.text === `event · task · ${child.id} verdict posted review not clear · full · aide-default`).map(m => m.to), [['aide-1'], ['aide-1']]);
 });
 
 test('a coalesced explicit event keeps later default lead provenance after an Aide transition', async t => {
@@ -91,9 +91,9 @@ test('a coalesced explicit event keeps later default lead provenance after an Ai
   const { item: parent } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Future lead', kind: 'epic', assignee: 'lead-1' });
   const { item: child } = await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Coalesced lead event', parent: parent.id });
   await lead.call('subscribe', { subject: { item: child.id }, events: ['task'] });
-  const verdict = { id: child.id, verdict: 'review', result: 'not clear', run: 'coalesced-default' };
+  const verdict = { id: child.id, verdict: 'review', scope: 'full', result: 'not clear', run: 'coalesced-default' };
   assert.equal((await rev.call<{ ok: boolean }>('task.comment', verdict)).ok, true);
-  const text = `event · task · ${child.id} verdict posted review not clear · coalesced-default`;
+  const text = `event · task · ${child.id} verdict posted review not clear · full · coalesced-default`;
   const before = await ui.request({ type: 'topic.history', topic: 'agents' });
   const original = (before.value as { messages: Message[] }).messages.find(m => m.text === text);
   assert.ok(original);
@@ -401,7 +401,7 @@ for (const restart of [false, true]) test(`the item lead runs not-clear, re-revi
   await impl.call('task.edit', { id: item.id, status: 'review' });
   await request(rev, 'reviewer', `review request ${item.id} first pass`);
   await rev.call('task.hold', { id: item.id });
-  await rev.call('task.comment', { id: item.id, verdict: 'review', result: 'not clear', run: 'loop-first' });
+  await rev.call('task.comment', { id: item.id, verdict: 'review', scope: 'full', result: 'not clear', run: 'loop-first' });
   await rev.call('send', { to: [`lead ${item.id}`], kind: 'report', text: `review not clear ${item.id}` });
   const finding = await impl.waitForEvent(e => e.params.content.includes(`review not clear ${item.id}`));
   assert.match(finding.params.content, /verdict posted review not clear/);
@@ -411,7 +411,7 @@ for (const restart of [false, true]) test(`the item lead runs not-clear, re-revi
   git(work, 'commit', '-qm', 'Fix findings');
   await request(rev, 'reviewer', `review request ${item.id} fixed pass`);
   await rev.call('task.hold', { id: item.id });
-  await rev.call('task.comment', { id: item.id, verdict: 'review', result: 'clear', run: 'loop-fixed' });
+  await rev.call('task.comment', { id: item.id, verdict: 'review', scope: 'full', result: 'clear', run: 'loop-fixed' });
   await rev.call('send', { to: [`lead ${item.id}`], text: `review clear ${item.id}` });
   await impl.waitForEvent(e => e.params.content.includes(`review clear ${item.id}`));
   await request(qa, 'qa', `qa request ${item.id} qa/briefs/${item.id}.md`);

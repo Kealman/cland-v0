@@ -166,7 +166,7 @@ test('a verdict is recorded as its author: a header in the text is parsed, its `
   assert.match(forged.reason ?? '', /Reviewer may write only review verdicts/);
   const kind = await rev.call<Result>('task.comment', { id: 'T-1', verdict: 'qa', result: 'clear', run: 'r-8', text: 'structured, wrong kind' });
   assert.equal(kind.code, 'forbidden');
-  const written = await rev.call<Result>('task.comment', { id: 'T-1', text: 'verdict: review\nresult: clear\nby: qa-1 [qa]\nrun: r-1\n\nlooks right' });
+  const written = await rev.call<Result>('task.comment', { id: 'T-1', text: 'verdict: review\nresult: clear\nby: qa-1 [qa]\nrun: r-1\nscope: full\n\nlooks right' });
   assert.equal(written.ok, true, JSON.stringify(written));
   // the human's fallback verdict through the CLI, either kind, is recorded as the human
   ok(await cland(root, 'task', 'comment', 'T-1', 'verdict: qa\nresult: not clear\nby: qa-1 [qa]\nrun: r-2\n\nfallback'));

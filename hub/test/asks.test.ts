@@ -257,7 +257,7 @@ test('on a project: closing the item cancels the ask; verdicts and role changes 
   await coord.waitForEvent((e) => String(e.params.content).includes('was cancelled: T-1 was closed'));
   assert.equal((await topicOf(ui, topic.id)).status, 'closed');
 
-  await ok(ui, { type: 'task.comment', item, text: 'Two findings.', verdict: { verdict: 'review', result: 'not clear', run: 'r-1' }, as: { name: 'rev-1', role: 'reviewer' } });
+  await ok(ui, { type: 'task.comment', item, text: 'Two findings.', verdict: { verdict: 'review', scope: 'full', result: 'not clear', run: 'r-1' }, as: { name: 'rev-1', role: 'reviewer' } });
   await ok(ui, { type: 'role.set', session: 'rev-1', role: 'reviewer' });
   const events = await ok<import('../src/protocol.ts').EventsPage>(ui, { type: 'events.list' });
   assert.ok(events.rows.some(r => r.kind === 'verdict' && r.warning));

@@ -111,7 +111,7 @@ test('every row of the permission table, for every role, over MCP: allowed calls
   const rev = mcp(revS, 'rev', 'sess-rev', 'reviewer', 'rev [Reviewer]');
   const qa = mcp(qaS, 'qa-1', 'sess-qa-1', 'qa', 'qa-1 [QA]');
   const text = 'secret words';
-  const verdict = (kind: string) => ({ id: 'T-2', text: 'Looked.', verdict: kind, result: 'clear', run: `r-${kind}` });
+  const verdict = (kind: string) => ({ id: 'T-2', text: 'Looked.', verdict: kind, ...(kind === 'review' ? { scope: 'full' } : {}), result: 'clear', run: `r-${kind}` });
   const toHuman: Case = { tool: 'send', args: { text }, target: ' to the human' };
   const notHuman = /only the Coordinator writes to the human/;
 
@@ -150,7 +150,7 @@ test('every row of the permission table, for every role, over MCP: allowed calls
     { tool: 'task.claim', args: { id: 'T-2' }, forbidden: 'task.claim', reason: /claim only its own item/, target: ' T-2' },
     { tool: 'task.comment', args: { id: 'T-1', text: 'Working on it.' } },
     { tool: 'task.comment', args: { id: 'T-2', text: 'Not mine.' }, forbidden: 'task.comment', reason: /only on its own item/, target: ' T-2' },
-    { tool: 'task.comment', args: { id: 'T-1', text: 'Self-review.', verdict: 'review', result: 'clear', run: 'r-self' }, forbidden: 'task.comment:verdict', reason: /may not write verdicts/, target: ' T-1' },
+    { tool: 'task.comment', args: { id: 'T-1', text: 'Self-review.', verdict: 'review', scope: 'full', result: 'clear', run: 'r-self' }, forbidden: 'task.comment:verdict', reason: /may not write verdicts/, target: ' T-1' },
     { tool: 'task.create', args: { size: 'M', title: 'Mine' }, forbidden: 'task.create', reason: /Implementer may not use task\.create/ },
     { tool: 'task.edit', args: { id: 'T-1', assignee: 'rev' }, forbidden: 'task.edit:review', reason: /may set only review on its claimed item, without other edits/, target: ' T-1' },
     { tool: 'task.edit', args: { id: 'T-1', status: 'review', assignee: 'rev' }, forbidden: 'task.edit:review', reason: /may set only review on its claimed item, without other edits/, target: ' T-1' },
@@ -270,7 +270,7 @@ test('role.set changes what a session may do on its next call, without a reconne
   assert.equal((await ui.request({ type: 'role.set', session: 'impl', role: 'reviewer' })).ok, true);
   const asReviewer = { ...impl, role: 'reviewer', label: 'impl [Reviewer]' };
   await check(root, ui, asReviewer, { tool: 'task.comment', args: { id: 'T-1', text: 'on it, still?' }, forbidden: 'task.comment', reason: /Reviewer may only comment verdicts/, target: ' T-1' });
-  await check(root, ui, asReviewer, { tool: 'task.comment', args: { id: 'T-1', verdict: 'review', result: 'not clear', run: 'r-1' } });
+  await check(root, ui, asReviewer, { tool: 'task.comment', args: { id: 'T-1', verdict: 'review', scope: 'full', result: 'not clear', run: 'r-1' } });
   // and back
   assert.equal((await ui.request({ type: 'role.set', session: 'impl', role: 'implementer' })).ok, true);
   await check(root, ui, impl, { tool: 'task.comment', args: { id: 'T-1', text: 'back to work' } });

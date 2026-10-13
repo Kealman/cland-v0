@@ -131,7 +131,7 @@ A session's live hold on an item while it works on it, kept by the hub; distinct
 _Avoid_: lock, checkout, assignment
 
 **Verdict**:
-A structured comment on an item that records the result of a review or a QA run: clear or not clear, by which session and role, from which run.
+A structured comment on an item that records the result of a review or a QA run: clear or not clear, by which session and role, from which run and, for a review, its scope.
 _Avoid_: review result, report, approval
 
 **Criterion**:

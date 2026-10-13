@@ -60,7 +60,7 @@ for (const scenario of cases) {
     await request({ type: 'session.signal', session: 'worker', event: 'permission', at: Date.now(), payload: { tool_name: 'Bash' } });
     const { item } = await request<{ item: { id: string } }>({ size: 'M', type: 'task.create', title: 'Count evidence' });
     for (const result of ['clear', 'not clear']) {
-      await request({ type: 'task.comment', item: item.id, text: `Review ${result}.`, verdict: { verdict: 'review', result, run: `count-${result.replace(' ', '-')}` }, as: { name: 'rev', role: 'reviewer' } });
+      await request({ type: 'task.comment', item: item.id, text: `Review ${result}.`, verdict: { verdict: 'review', scope: 'full', result, run: `count-${result.replace(' ', '-')}` }, as: { name: 'rev', role: 'reviewer' } });
     }
     const c = await startClient(t, bin, root);
     await c.waitScreen(s => s.includes('hub: connected'), 'real hub connected');

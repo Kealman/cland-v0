@@ -173,7 +173,7 @@ test('three live Reviewers receive one request, and a repeat returns to the same
   const beforeVerdict = `review request ${item.id}\nRepeat before hold`;
   assert.equal((await send(beforeVerdict)).outcomes[0]?.resolvedTo, 'rev-1');
   await reviewers[0]!.call('task.hold', { id: item.id });
-  await reviewers[0]!.call('task.comment', { id: item.id, verdict: 'review', result: 'not clear', run: 'first-build' });
+  await reviewers[0]!.call('task.comment', { id: item.id, verdict: 'review', scope: 'full', result: 'not clear', run: 'first-build' });
   const second = `review request ${item.id}\nFixed build`;
   assert.equal((await send(second)).outcomes[0]?.resolvedTo, 'rev-1');
   assert.deepEqual((await history()).find(m => m.text === second)?.to, ['rev-1']);

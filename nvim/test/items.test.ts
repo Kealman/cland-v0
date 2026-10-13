@@ -208,7 +208,7 @@ test('the item view shows verdict commits, red stale marks, and file-only proven
   const created = await cland(root, 'task', 'create', '--size', 'M', 'Reviewed', '--branch', 't/test', '--json');
   assert.equal(created.code, 0, created.stderr);
   const item = JSON.parse(created.stdout).item as { path: string };
-  const recorded = await cland(root, 'task', 'comment', 'T-1', 'Checked.', '--verdict', 'review', '--result', 'clear', '--run', 'r-1');
+  const recorded = await cland(root, 'task', 'comment', 'T-1', 'Checked.', '--verdict', 'review', '--scope', 'full', '--result', 'clear', '--run', 'r-1');
   assert.equal(recorded.code, 0, recorded.stderr);
   const file = join(root, item.path);
   await writeFile(file, (await readFile(file, 'utf8')) + '\n' + verdictComment('qa-1', 'qa', 'qa', 'clear', 'q-1', 6, 'Imported.'));

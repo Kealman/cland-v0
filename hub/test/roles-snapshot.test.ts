@@ -35,6 +35,13 @@ test('default and project clauses pin category filing and idle work without addi
   }
 });
 
+test('default and project Reviewer clauses pin the review scope rule', async () => {
+  const rule = 'Give `scope` full for a first review or reworked design, delta after `dev` moved under a reviewed branch, evidence for suite evidence alone.';
+  for (const text of [DEFAULT_ROLES_TOML, await readFile(new URL('../../.cland/roles.toml', import.meta.url), 'utf8')]) {
+    assert.ok(parseRoles(text).get('reviewer')!.clause.includes(rule));
+  }
+});
+
 test('roles edits refresh within 500 ms plus async I/O, and malformed or missing edits retain the last good permissions', async t => {
   const root = await tempProject(t);
   const dir = join(root, '.cland');

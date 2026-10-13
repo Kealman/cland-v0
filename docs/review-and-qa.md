@@ -119,16 +119,17 @@ verdict: review
 result: not clear
 by: rev-1 [reviewer]
 run: rev-2026-10-08-1
+scope: full
 
 - high: hub/src/tracker/tracker.ts:212 a closed item keeps its claim.
 - low: hub/README.md:440 the example lacks `--run`.
 ```
 
-`verdict` is `review` or `qa`, `result` is `clear` or `not clear`, `by` is the session with its role (the hub writes it), `run` is the writer's id for that pass. A later verdict of the same kind supersedes the earlier one.
+`verdict` is `review` or `qa`, `result` is `clear` or `not clear`, `by` is the session with its role (the hub writes it), `run` is the writer's id for that pass. A later verdict of the same kind supersedes the earlier one. A review verdict requires `--scope full|delta|evidence` (MCP `scope`): `full` for a first review or reworked design, `delta` after `dev` moved under a reviewed branch, `evidence` for suite evidence alone. QA, including stage QA, carries no scope. Older verdicts without scope remain unknown. Scope does not affect the merge gate.
 
 ## Where the verdict shows
 
-- `cland task view T-12` (and `task.view`) lists each comment, verdicts as `[verdict review: not clear, by rev-1 [reviewer], run rev-2026-10-08-1]`, and returns `verdicts` in `--json`.
+- `cland task view T-12` (and `task.view`) lists each comment, verdicts as `[verdict review: not clear, by rev-1 [reviewer], run rev-2026-10-08-1, scope full]`, and returns `verdicts` in `--json`.
 - `cland task list --verdict review=clear` (or `qa="not clear"`, and `task.list` with `verdict`) lists the items whose latest verdict of that kind matches.
 - The item view in the Neovim UI (ticket #36) shows the verdicts in its own section, and the board shows the latest verdict of each kind on the card ("review clear", "qa not clear", red for not clear). Until #36 lands, the CLI is the display.
 
