@@ -3,7 +3,7 @@ id: T-321
 kind: task
 title: inbox-workload archive-startup case fails on a c-8 droplet but not locally or in the 4-CPU container
 state: open
-status: review
+status: ready
 criterion_seq: 4
 labels:
   - v0.1.2
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-200
 branch: t/T-321-inbox-workload-archive-startup-case
 created: 2026-10-13T10:06:48.166Z
-updated: 2026-10-13T11:20:37.575Z
+updated: 2026-10-13T11:59:17.391Z
 ---
 
 ## Summary
@@ -46,15 +46,20 @@ T-268: Suite spend and Linux portability. T-282's acceptance run is blocked on t
   - verified: rev-26 [reviewer] · run rev-20261013-321-source-2 · 2026-10-13T10:52:31.076Z · commit fa1807c4b45f2ca271c6d9518f9e4469022af427
   - verified: rev-26 [reviewer] · run rev-20261013-321-source-3 · 2026-10-13T10:55:30.870Z · commit 4d9f6ac97746d466c7991686311dd08fa2a9f0cc
   - verified: rev-26 [reviewer] · run rev-20261013-321-source-4 · 2026-10-13T11:18:13.718Z · commit 91badd26d298be4b30d3433f09e471d343548468
+  - verified: rev-26 [reviewer] · run rev-20261013-321-macos-final · 2026-10-13T11:58:45.594Z · commit 91badd26d298be4b30d3433f09e471d343548468
 - [x] C2. A local reproduction exists, as a test or as a recorded container recipe, that fails before the fix.
   - done: impl-321 · 2026-10-13T10:22:29.203Z
   - verified: rev-26 [reviewer] · run rev-20261013-321-source-2 · 2026-10-13T10:52:31.076Z · commit fa1807c4b45f2ca271c6d9518f9e4469022af427
   - verified: rev-26 [reviewer] · run rev-20261013-321-source-3 · 2026-10-13T10:55:30.870Z · commit 4d9f6ac97746d466c7991686311dd08fa2a9f0cc
   - verified: rev-26 [reviewer] · run rev-20261013-321-source-4 · 2026-10-13T11:18:13.718Z · commit 91badd26d298be4b30d3433f09e471d343548468
+  - verified: rev-26 [reviewer] · run rev-20261013-321-macos-final · 2026-10-13T11:58:45.594Z · commit 91badd26d298be4b30d3433f09e471d343548468
 - [x] C3. The fix is at the cause. The file passes ten times alone and once in a full run in the container, with every original bound unchanged.
   - done: impl-321 · 2026-10-13T11:19:14.788Z
   - verified: rev-26 [reviewer] · run rev-20261013-321-c3 · 2026-10-13T11:20:37.575Z · commit 91badd26d298be4b30d3433f09e471d343548468
-- [ ] C4. `cland verify` is green on macOS.
+  - verified: rev-26 [reviewer] · run rev-20261013-321-macos-final · 2026-10-13T11:58:45.594Z · commit 91badd26d298be4b30d3433f09e471d343548468
+- [x] C4. `cland verify` is green on macOS.
+  - done: impl-321 · 2026-10-13T11:58:07.268Z
+  - verified: rev-26 [reviewer] · run rev-20261013-321-macos-final · 2026-10-13T11:58:45.594Z · commit 91badd26d298be4b30d3433f09e471d343548468
 
 ## Comments
 
@@ -117,3 +122,23 @@ Criteria: C1 verified, C2 verified.
 ### impl-321 · 2026-10-13T11:18:55.485Z
 
 Protected container proof at4d9f6ac: ten solo inbox files8/8 each; all8 workload cases pass inside overall FAILED full run (archive20.999s). Full exit1 due request-guard calibration legitimate repeated task.view; explicit nvim diagnostic309pass/3existing skips. Corrected91badd2 continuation matched zero named tests; exit0 INVALID, not proof; both container/Desktop shutdowns0, END posted. Coordinator2ee45fde waives separate Linux calibration green; corrected named macOS/c-8 full tests supply it. Source clear renewed A-1918 at91badd2; same-head standalone typecheck completed0.
+
+### impl-321 · 2026-10-13T11:58:24.484Z
+
+Exact-head macOS full A-1928 completed exit0 at91badd2:1770pass/0fail/0skip, all phases, typecheck0. Authorized D25 c-8 driver started at~11:58Z with sourceclearA-1918, containerA-1919/C3A-1921, standalone typecheck0. Shared A-1906 exclusive ownership ledger and watchdog/30min lifetime/destroy-on-exit enforced; fresh state. Frozen exacthead91badd2. Resource create/destroy/cost receipts follow.
+
+### rev-26 · 2026-10-13T11:58:45.594Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261013-321-macos-final
+commit: 91badd26d298be4b30d3433f09e471d343548468
+
+Post-verdict macOS review: no high/medium finding. C1–C4 checked under Coordinator5e90457f/2ee45fde workload-only C3 reading. Accepted A-1928 full run7380dd9c passes typecheck and1770/1770 (free36,machine1422,nvim312), zero fail/cancel/skip/todo. Raw named corrected request-guard test, task/epic bounds, archive workload and plan recovery pass; local/origin refs match unchanged reviewed91badd2. A-1921 Linux workload proof remains valid; its overall failed full and invalid zero-selection continuation remain explicitly excluded. Original c-8 generic ps ambiguity retained. Separate c-8 full acceptance/calibration gate remains pending: keep branch/head frozen through that proof and do not treat this macOS/task-criteria clear as cloud readiness. Artifact records receipt and freeze; no Reviewer tests run.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### impl-321 · 2026-10-13T11:59:17.391Z
+
+T-321 D25 c-8 create: provider id608685978, namecland-proto-20261013-115815, tagcland, lon1/c-8/Ubuntu24.04, provider creation11:58:18Z. Frozen candidate91badd26d298be4b30d3433f09e471d343548468. Gates A-1918/A-1919/A-1921/A-1928; ordinary runner planned, no assertion bounds changed. Shared A-1906 ownership reserve$0.1250 ($0.25/h), watchdog1650s and maximum1800s lifecycle including cleanup. Run in progress; no result yet.

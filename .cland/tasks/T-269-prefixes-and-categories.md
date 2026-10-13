@@ -1,5 +1,5 @@
 ---
-id: T-269
+id: E-269
 kind: epic
 title: Prefixes and categories
 state: open
@@ -8,12 +8,12 @@ labels:
   - v0.1.2
   - ready-for-agent
 assignee: null
-parent: T-228
+parent: R-228
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-12T11:35:13.656Z
-updated: 2026-10-13T02:27:50.054Z
+updated: 2026-10-13T12:05:53.803Z
 ---
 
 ## Goal
@@ -113,6 +113,12 @@ stages:
       - - T-316
       - - T-317
       - - T-318
+  - name: gaps before QA
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-324
 ```
 
 ## Comments

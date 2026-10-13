@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-201
 branch: t/T-322-d25-implementers-verify-only-after-a
 created: 2026-10-13T10:34:03.049Z
-updated: 2026-10-13T10:50:48.482Z
+updated: 2026-10-13T11:46:41.900Z
 ---
 
 ## Summary
@@ -42,9 +42,11 @@ Decision D25 (`docs/spec/v0.1.md` §4, 2026-10-13): an Implementer requests revi
 - [x] C1. The default Implementer clause, and the Lead clause where it requests review, state the D25 order: review first, verify after a clear verdict at the exact reviewed head, and a new review after a fix. `.cland/roles.toml` carries the same text.
   - done: impl-322 · 2026-10-13T10:39:49.880Z
   - verified: rev-26 [reviewer] · run rev-20261013-322-source-1 · 2026-10-13T10:50:33.052Z · commit e54bba10d40d0115225b62a98377a411b8e271b7
+  - verified: rev-26 [reviewer] · run rev-20261013-322-source-2 · 2026-10-13T11:46:41.900Z · commit c4ad029914dbf1dacb98f56e4e74133e66921386
 - [x] C2. The Reviewer clause and the merge, qa and code-review skills agree with the order, with vendored patches recorded.
   - done: impl-322 · 2026-10-13T10:39:50.842Z
   - verified: rev-26 [reviewer] · run rev-20261013-322-source-1 · 2026-10-13T10:50:33.052Z · commit e54bba10d40d0115225b62a98377a411b8e271b7
+  - verified: rev-26 [reviewer] · run rev-20261013-322-source-2 · 2026-10-13T11:46:41.900Z · commit c4ad029914dbf1dacb98f56e4e74133e66921386
 - [ ] C3. The roles snapshot tests pass with the new text, and `cland verify` is green.
 
 ## Comments
@@ -68,3 +70,15 @@ Criteria: C1 verified, C2 verified.
 ### impl-322 · 2026-10-13T10:50:48.482Z
 
 Source review clear at e54bba10d40d0115225b62a98377a411b8e271b7, run rev-20261013-322-source-1, C1/C2 verified (A-1912). C3 remains pending. Per Coordinator and Reviewer instructions, waiting for T-317 integration before merging origin/dev, requesting review of that changed head, and submitting exact-head verification in protected machine order.
+
+### rev-26 · 2026-10-13T11:46:41.900Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261013-322-source-2
+commit: c4ad029914dbf1dacb98f56e4e74133e66921386
+
+Source review under D25: no high/medium finding. C1/C2 renewed. Merge combined diff preserves default/project category-aware Coordinator/Lead routing and D25 ordering, tracker template Review/Categories/migration sections, both QA and vendored patch entries. Independently compared changed lines: task delta versus current dev identical to A-1912's reviewed12-file77+/24- delta; no production/grant/cache/gate change. git diff --check clean. C3 post-verdict full same-head cland verify still pending; source clear only. Coordinator relaunch after eventual merge required. Artifact records Standards/Spec integration assessment.
+
+Criteria: C1 verified, C2 verified.

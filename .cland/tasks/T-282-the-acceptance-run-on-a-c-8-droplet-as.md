@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-195
 branch: t/T-282-the-acceptance-run-on-a-c-8-droplet-as
 created: 2026-10-12T11:54:20.829Z
-updated: 2026-10-13T10:57:42.767Z
+updated: 2026-10-13T12:00:08.434Z
 ---
 
 ## Summary
@@ -163,3 +163,7 @@ Criteria: C2 failed (A-1890 plain c-8 full run fails stop-6 OS ps probe at inbox
 ### impl-282 · 2026-10-13T10:57:42.767Z
 
 D25 part2 supersedes no-further-droplet/percreate-go policy: impl-321's gated c8proof mayservebothT-321/T-282, atmostonealive/$2daily/max30min. Local precondition remains sourceclear thenverify, pluscontainerproof/localtypecheck/same-headfullgreen beforeeverydroplet. Preparedonlyscratchdriver A-1917, ledger A-1906 seededactualfourattempts$0.1731. Exclusivefilelease+pendingownershipregistry,precreateexactheadbundle,max1500suite limitedremainingbudget,1650watchdogarmedbeforekeyimport/150cleanupmargin/1800hardguard. Plainacct/prototype samplersonly; no audit. Mockbudget/lease/childdeadline/createfailurecleanupchecks passed; no actualresources created, branchstill5c0568a. impl-321receivedentry/guide/ledger; keepclaim andpublishT-282counterpartswhen its gates/runfinish. Shared2c0f43d/b5b67ad remainreservedfornextgitheadchange, requiringrereviewbeforeverify.
+
+### impl-282 · 2026-10-13T12:00:08.434Z
+
+D25 shared acceptance create counterpart fromimpl-321: provider608685978/namecland-proto-20261013-115815/tagcland/lon1c8Ubuntu24.04, creation11:58:18Z. Frozenhead91badd26d298be4b30d3433f09e471d343548468; exactheadsourceclearA-1918/containerA-1919+C3reviewA-1921/standalonetypecheck0/fullmacA-1928 1770pass0fail0skip gatesinhand. SoleactiveA-1906ledgerownerimpl-321/reserve$0.1250 at$0.25h; priorconfirmedspend$0.1731. D25 driverA-1917/watchdog1650/max1800lifecycle/cleanupmargin,ordinaryrunner/plainacct,nochangedassertions. ThisrunservesbothT-321/T-282 perCoordinator203baef1. Noresultyet; actualrun-stamps/fullphasecounts andtag/keyabsence requiredbeforegreenacceptanceclaim. T-282branch5c0568a unchanged/claimretained; no competingcreate.
