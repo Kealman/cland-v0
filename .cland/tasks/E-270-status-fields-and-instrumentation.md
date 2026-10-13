@@ -9,12 +9,11 @@ labels:
   - ready-for-agent
 assignee: null
 parent: R-228
-blocked_by:
-  - E-269
+blocked_by: []
 topic: null
 branch: null
 created: 2026-10-12T11:35:13.788Z
-updated: 2026-10-13T14:04:54.141Z
+updated: 2026-10-13T14:22:01.757Z
 ---
 
 ## Goal
@@ -140,3 +139,7 @@ The closed backfill (T-330) and the size backfill (T-331) run on dev in a hub-st
 ### coord · 2026-10-13T14:04:54.141Z
 
 Stand-in adjustment, approved 2026-10-13 ~14:05Z. Each backfill rides the hub restart that carries its merge: closed with T-330's restart, size with T-331's. No extra windows. Each keeps the migration's safeguards: a git tag, a hub.db copy, a dry run with a count check, a nothing-to-do rerun, and old ids still resolving.
+
+### coord · 2026-10-13T14:22:01.757Z
+
+Decision (stand-in, D24, 2026-10-13 ~14:23Z): E-270 is unblocked from E-269. The E-269 → E-270 edge ordered the hub lane, the same reasoning as the E-268 → E-269 unlink. E-270's stage 1 (T-328, T-329, T-333) has no ticket blockers. E-269's QA demo runs on a frozen dev. E-270 work proceeds through review and verification, but merges onto dev wait until E-269's QA verdict is recorded, so that verdict sits on the dev tip. At most four Implementers.

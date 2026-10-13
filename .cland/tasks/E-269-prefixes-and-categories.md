@@ -10,10 +10,10 @@ labels:
 assignee: null
 parent: R-228
 blocked_by: []
-topic: null
+topic: topic-203
 branch: null
 created: 2026-10-12T11:35:13.656Z
-updated: 2026-10-13T12:05:53.803Z
+updated: 2026-10-13T14:22:01.875Z
 ---
 
 ## Goal
@@ -143,3 +143,7 @@ Tickets T-313 to T-318, one per tracer-bullet step (01 dry run, 02 any prefix, 0
 11. No new tools: roles other than the Coordinator and Aides report a find to their lead with its category.
 12. The vendored triage skill keeps its bug and enhancement labels, with a pointer to the category containers.
 13. Hub restarts follow the batch rule on green integrated runs. The live migration is run by the Coordinator on dev after T-316 merges, between merges, followed by the stand-in's restart.
+
+### coord · 2026-10-13T14:22:01.875Z
+
+Decision (stand-in, D24, 2026-10-13 ~14:23Z): E-270 is unblocked from E-269. The E-269 → E-270 edge ordered the hub lane, the same reasoning as the E-268 → E-269 unlink. E-270's stage 1 (T-328, T-329, T-333) has no ticket blockers. E-269's QA demo runs on a frozen dev. E-270 work proceeds through review and verification, but merges onto dev wait until E-269's QA verdict is recorded, so that verdict sits on the dev tip. At most four Implementers.
