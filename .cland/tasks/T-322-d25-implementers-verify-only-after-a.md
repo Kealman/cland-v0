@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-201
 branch: t/T-322-d25-implementers-verify-only-after-a
 created: 2026-10-13T10:34:03.049Z
-updated: 2026-10-13T11:46:41.900Z
+updated: 2026-10-13T12:25:30.883Z
 ---
 
 ## Summary
@@ -43,11 +43,14 @@ Decision D25 (`docs/spec/v0.1.md` §4, 2026-10-13): an Implementer requests revi
   - done: impl-322 · 2026-10-13T10:39:49.880Z
   - verified: rev-26 [reviewer] · run rev-20261013-322-source-1 · 2026-10-13T10:50:33.052Z · commit e54bba10d40d0115225b62a98377a411b8e271b7
   - verified: rev-26 [reviewer] · run rev-20261013-322-source-2 · 2026-10-13T11:46:41.900Z · commit c4ad029914dbf1dacb98f56e4e74133e66921386
+  - verified: rev-26 [reviewer] · run rev-20261013-322-source-3 · 2026-10-13T12:25:30.883Z · commit 6acf2f3749ca1c8dd2fe85fd48805e28cfbebc9e
 - [x] C2. The Reviewer clause and the merge, qa and code-review skills agree with the order, with vendored patches recorded.
   - done: impl-322 · 2026-10-13T10:39:50.842Z
   - verified: rev-26 [reviewer] · run rev-20261013-322-source-1 · 2026-10-13T10:50:33.052Z · commit e54bba10d40d0115225b62a98377a411b8e271b7
   - verified: rev-26 [reviewer] · run rev-20261013-322-source-2 · 2026-10-13T11:46:41.900Z · commit c4ad029914dbf1dacb98f56e4e74133e66921386
+  - verified: rev-26 [reviewer] · run rev-20261013-322-source-3 · 2026-10-13T12:25:30.883Z · commit 6acf2f3749ca1c8dd2fe85fd48805e28cfbebc9e
 - [ ] C3. The roles snapshot tests pass with the new text, and `cland verify` is green.
+  - failed: rev-26 [reviewer] · 2026-10-13T12:12:25.053Z · note Accepted full A-1931 exits1: 29 hub failures, including roles.test.ts:263 clause-first-turn timeout and inbox-workload.test.ts:113 stop-7 OS probe refusal; Neovim not reached.
 
 ## Comments
 
@@ -80,5 +83,37 @@ run: rev-20261013-322-source-2
 commit: c4ad029914dbf1dacb98f56e4e74133e66921386
 
 Source review under D25: no high/medium finding. C1/C2 renewed. Merge combined diff preserves default/project category-aware Coordinator/Lead routing and D25 ordering, tracker template Review/Categories/migration sections, both QA and vendored patch entries. Independently compared changed lines: task delta versus current dev identical to A-1912's reviewed12-file77+/24- delta; no production/grant/cache/gate change. git diff --check clean. C3 post-verdict full same-head cland verify still pending; source clear only. Coordinator relaunch after eventual merge required. Artifact records Standards/Spec integration assessment.
+
+Criteria: C1 verified, C2 verified.
+
+### rev-26 · 2026-10-13T12:12:25.053Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261013-322-final-1
+commit: c4ad029914dbf1dacb98f56e4e74133e66921386
+
+Medium — hub/test/roles.test.ts:263: launched Coordinator first-turn clause case times out15000ms, so required complete role suite is not green. Both changed default/project D25 snapshot cases pass, but that does not satisfy C3. Medium — hub/test/inbox-workload.test.ts:113: stop-7 returns cannot inspect the OS process table: ps failed or timed out. A-1931 full bdc5895c exits1: free36/36, machine1429tests1400pass29fail, total1465/1436pass29fail; no cancel/skip/todo, Neovim not started. Broad fake-harness/frame timeouts preserved; cause not inferred. C1/C2 source marks remain current; final readiness not clear. Artifact records evidence. Corrected/integrated head requires renewed source review before another run under D25; no Reviewer tests or retries.
+
+Criteria: C3 failed (Accepted full A-1931 exits1: 29 hub failures, including roles.test.ts:263 clause-first-turn timeout and inbox-workload.test.ts:113 stop-7 OS probe refusal; Neovim not reached.).
+
+### impl-322 · 2026-10-13T12:17:24.584Z
+
+Diagnosis: full run bdc5895c peaked at 1m load 14.74, but isolated Claude adapter checks show a T-322-specific failure (dev 51c9d67: 6/6 pass; c4ad029: 4/6 pass, 2 clause-echo timeouts). OpenCode at c4ad029: 11/19 pass, 8 clause-echo timeouts; dev comparison running. T-322 grows the project Coordinator clause echo from 7909 to 8265 UTF-8 bytes across the 8192-byte send cap. Tightening wording without dropping D25/T-317 rules. Regression guard reserves 512 bytes below MAX_TEXT_BYTES for every default and project role's delivered clause reply, including staffing text. Full run will wait for T-321 integration and new source review.
+
+### impl-322 · 2026-10-13T12:23:19.352Z
+
+Byte-budget fix pushed at 6acf2f3749ca1c8dd2fe85fd48805e28cfbebc9e after merging origin/dev 51c9d67. Tightened Coordinator wording in defaults/project with all rules retained; added delivered-clause reply budget for all six roles, reserving 512 bytes under the 8192 cap. Final Coordinator replies: defaults 7628, project 7672 bytes. Regression guard was red before fix, green after. Fixed whole Claude adapter 6/6 and OpenCode adapter 19/19; whole roles 8/8 after tightening, final snapshots 2/2 after last wording adjustment. Isolated baseline/failed/fixed logs and diagnosis are in A-1937. C3 remains pending T-321 integration, exact-head source review and green full run.
+
+### rev-26 · 2026-10-13T12:25:30.883Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261013-322-source-3
+commit: 6acf2f3749ca1c8dd2fe85fd48805e28cfbebc9e
+
+Source review: no high/medium finding in byte correction. C1/C2 renewed. Default/project Coordinator shortening preserves decision/ask routing, epic/staffing order, item QA/lead duties, rescue evidence, merge/override rules, subscriptions/resume and unchanged D25/T-317 clauses. roles.test.ts:76 measures every default/project delivered role clause pong reply as UTF-8 against unchanged8192 cap with512headroom; existing assertions retained. A-1937 isolated baseline/red/fixed logs establish clause-byte failure and corrected Claude6/6, OpenCode19/19, roles8/8; delivered byte guard red8233/8277 and final reported7628/7672. No production/grant/cache/gate/cap change; git diff --check clean. C3 remains failed/pending full; A-1931 preserved. Coordinator requires T-321 integration before next full, renewed exact-head source review after merge. Artifact records evidence; Coordinator relaunch after eventual merge required.
 
 Criteria: C1 verified, C2 verified.

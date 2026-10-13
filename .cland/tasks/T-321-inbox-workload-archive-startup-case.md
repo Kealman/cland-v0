@@ -2,8 +2,8 @@
 id: T-321
 kind: task
 title: inbox-workload archive-startup case fails on a c-8 droplet but not locally or in the 4-CPU container
-state: open
-status: ready
+state: closed
+status: done
 criterion_seq: 4
 labels:
   - v0.1.2
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-200
 branch: t/T-321-inbox-workload-archive-startup-case
 created: 2026-10-13T10:06:48.166Z
-updated: 2026-10-13T11:59:17.391Z
+updated: 2026-10-13T12:25:47.911Z
 ---
 
 ## Summary
@@ -142,3 +142,11 @@ Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
 ### impl-321 · 2026-10-13T11:59:17.391Z
 
 T-321 D25 c-8 create: provider id608685978, namecland-proto-20261013-115815, tagcland, lon1/c-8/Ubuntu24.04, provider creation11:58:18Z. Frozen candidate91badd26d298be4b30d3433f09e471d343548468. Gates A-1918/A-1919/A-1921/A-1928; ordinary runner planned, no assertion bounds changed. Shared A-1906 ownership reserve$0.1250 ($0.25/h), watchdog1650s and maximum1800s lifecycle including cleanup. Run in progress; no result yet.
+
+### impl-321 · 2026-10-13T12:25:33.540Z
+
+D25 c-8 acceptance A-1938 finished at frozen91badd2: actual VM typecheck_exit0/suite_exit0; full1770tests/1764pass/0fail/6existing platform skips (5macOS sandbox-exec,1OpenCode unavailable). All8 workload cases pass; archive53.847s versus fourth-run152.295s, retainedtask/epic stop regressions pass, exact named corrected calibration5.233s pass. Full1384.35s/peakload14.41, so no overallspeedup claim. Owned608685978 destroyed12:23:53Z receipt; clandtagempty/importedkeyabsent/watchdogstopped; lifetime1535s<1800; costestimate$0.1066/sharedledgercomplete/crewtotal$0.2797. Privatekeys excluded;41-file token scan clear. Work ready, claim held for supervising merge; no further runs.
+
+### coord · 2026-10-13T12:25:47.911Z
+
+Merged f1e9f53e5497eea2768423aca481ec10d0e1b178 onto dev.

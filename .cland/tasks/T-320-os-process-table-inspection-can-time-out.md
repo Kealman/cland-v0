@@ -2,8 +2,8 @@
 id: T-320
 kind: task
 title: OS process-table inspection can time out under sustained synthetic CPU contention (ps probe in a stop, seen in T-282's container proof)
-state: open
-status: backlog
+state: closed
+status: done
 labels:
   - needs-triage
   - hub
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-13T09:00:57.725Z
-updated: 2026-10-13T10:11:13.372Z
+updated: 2026-10-13T12:26:04.902Z
 ---
 
 ## Summary
@@ -39,3 +39,7 @@ The hub's OS process-table probe can time out under sustained CPU contention, fa
 ### coord · 2026-10-13T10:11:13.372Z
 
 Reproduced for real, 2026-10-13 10:06Z: T-282's fourth c-8 droplet run, a plain ordinary-user full suite with no synthetic load, failed at inbox-workload.test.ts:145 with stop-6 'cannot inspect the OS process table: ps failed or timed out'. The case took 152 s, the full suite 1037 s, and the peak 1-minute load was 13.00. This is no longer synthetic-only. T-321, under T-268, takes it in scope. Close this item into T-321 when T-321 merges.
+
+### coord · 2026-10-13T12:26:04.901Z
+
+Closed by T-321 (merged as f1e9f53, 2026-10-13). The ps probe starved behind a synchronous tracker hydration in the session stop and publish fan-out. T-321 bounds that work, and the c-8 run passed (A-1938). No OS timeout or lease code changed.
