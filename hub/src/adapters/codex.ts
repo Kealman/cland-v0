@@ -36,7 +36,7 @@ import { turnError } from './turn-error.ts';
 import type { Message, SessionState, SessionUsage, TopicRef } from '../protocol.ts';
 import { codexCounts } from './usage.ts';
 import { VERSION } from '../version.ts';
-import { envelope, envelopeIds, InjectUncertain, type AdapterHost, type Capabilities, type HarnessAdapter, type HarnessProcess, type Interpretation, type LaunchPolicy, type ResumeResult, type SpawnRequest } from './contract.ts';
+import { envelope, envelopeIds, InjectUncertain, type AdapterHost, type Capabilities, type HarnessAdapter, type HarnessProcess, type Interpretation, type SubagentLaunch, type LaunchPolicy, type ResumeResult, type SpawnRequest } from './contract.ts';
 import { AppServerClient, RpcError, RpcNoAnswer, type ServerRequest } from './codex/app-server.ts';
 import { processAlive } from './processes.ts';
 import { endProcess } from '../system-processes.ts';
@@ -281,6 +281,11 @@ type Live = {
   turnId: string | null;
   tokens: Record<string, unknown> | null;
   rateLimits: Record<string, unknown> | null;
+  /** One activity is announced at start and completion; retain receipts only for the active turn. */
+  subagentItems?: Set<string>;
+  earlySubagents?: SubagentLaunch[];
+  legacySubagents?: Map<string, SubagentLaunch>;
+  activityAgents?: Set<string>;
 };
 
 /** An accepted input not yet seen taken up: its envelope, the shape it was admitted in, and how often it was
@@ -434,6 +439,23 @@ export class CodexAdapter implements HarnessAdapter {
           return;
         case 'item/started':
         case 'item/completed': {
+          const item = params.item as { type?: string; id?: string; kind?: string; agentThreadId?: string; model?: string; tool?: string; status?: string; receiverThreadIds?: unknown[] } | undefined;
+          if (mine(params) && item?.type === 'subAgentActivity' && item.kind === 'started' && typeof item.id === 'string' && !(live.subagentItems ??= new Set()).has(item.id)) {
+            (live.subagentItems ??= new Set()).add(item.id);
+            if (typeof item.agentThreadId === 'string') (live.activityAgents ??= new Set()).add(item.agentThreadId);
+            const subagent: SubagentLaunch = {
+              ...(typeof item.agentThreadId === 'string' ? { id: item.agentThreadId } : {}),
+              ...(typeof item.model === 'string' ? { model: item.model } : {}),
+            };
+            this.#subagent(live, subagent);
+          }
+          // Older servers have spawn tool calls, but no resolved-model activity. Wait for the turn's
+          // end so a newer activity wins even when the tool call arrived first.
+          if (mine(params) && method === 'item/completed' && item?.type === 'collabAgentToolCall' && item.tool === 'spawnAgent' && item.status === 'completed') {
+            for (const id of item.receiverThreadIds ?? []) if (typeof id === 'string') {
+              (live.legacySubagents ??= new Map()).set(id, { id, ...(typeof item.model === 'string' ? { model: item.model } : {}) });
+            }
+          }
           // an input the turn took up is an item of the turn (`turnInput`): a message seen there is no longer owed
           const input = mine(params) ? turnInput(params.item as TurnItem | undefined) : null;
           if (input) this.#takenUp(live.p.sessionId, String(params.turnId), input.text);
@@ -448,6 +470,10 @@ export class CodexAdapter implements HarnessAdapter {
         }
         case 'turn/completed': {
           if (!mine(params)) return;
+          for (const [id, subagent] of live.legacySubagents ?? []) if (!live.activityAgents?.has(id)) this.#subagent(live, subagent);
+          live.legacySubagents?.clear();
+          live.activityAgents?.clear();
+          live.subagentItems?.clear();
           const turn = params.turn as { id?: string; status?: string; error?: unknown } | undefined;
           const key = `${live.p.sessionId}:${turn?.id ?? live.turnId}`;
           const messages = [...(this.#turnInputs.get(key) ?? [])];
@@ -504,6 +530,11 @@ export class CodexAdapter implements HarnessAdapter {
       // a closed connection is a dead app-server, or one the next poll reconnects to
       if (live.p.pid !== null && !pidAlive(live.p.pid)) this.#gone(live, `pid ${live.p.pid} is gone`);
     });
+  }
+
+  #subagent(live: Live, subagent: SubagentLaunch): void {
+    if (this.#watched.has(live.p.sessionId)) this.#host.signal(live.p.sessionId, { source: 'app-server', at: Date.now(), subagent });
+    else (live.earlySubagents ??= []).push(subagent);
   }
 
   #updateState(live: Live, state: SessionState): void {
@@ -838,6 +869,8 @@ export class CodexAdapter implements HarnessAdapter {
       this.#live.set(p.sessionId, live);
     } else live.p = p;
     this.#watched.add(p.sessionId);
+    for (const subagent of live.earlySubagents ?? []) this.#host.signal(p.sessionId, { source: 'app-server', at: Date.now(), subagent });
+    delete live.earlySubagents;
     for (const error of this.#earlyFailures.get(p.sessionId) ?? []) this.#host.turnFailed?.(p.sessionId, error, []);
     this.#earlyFailures.delete(p.sessionId);
     // what the app-server said before the process-table row existed

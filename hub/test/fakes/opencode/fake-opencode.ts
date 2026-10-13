@@ -171,6 +171,12 @@ async function serve(args: string[]): Promise<number> {
     emit('session.step.started', { sessionID: session.id, agent: 'build', model: session.model, assistantMessageID: rid('msg') });
     const body = /<channel [^>]*>\n([\s\S]*)\n<\/channel>/.exec(text)?.[1] ?? text;
     await sleep(body.includes('take your time') ? 2000 : turnMs);
+    if (body.includes('spawn subagents')) {
+      emit('session.created', { sessionID: 'unrelated-child', parentID: 'other-parent', model: session.model });
+      for (const [sessionID, model] of [['known-child', { providerID: 'opencode', id: 'child-1' }], ['unknown-child', null]]) {
+        emit('session.created', { sessionID, parentID: session.id, agent: 'explore', ...(model ? { model } : {}) });
+      }
+    }
     if (body.includes('fail this turn') || session.model.id === 'exo-free') throw new Error('Upstream request failed: Endpoint is unavailable\nupstream details');
     if (body.includes('needs approval')) {
       const id = rid('per');

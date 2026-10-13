@@ -318,6 +318,18 @@ async function appServer(args: string[]): Promise<number> {
       }
       await sleep(TURN_MS);
       const body = /<channel [^>]*>\n([\s\S]*?)\n<\/channel>/.exec(item.text)?.[1];
+      if (body?.includes('spawn legacy subagent')) {
+        toSubscribers(t.id, 'item/completed', { threadId: t.id, turnId, item: { type: 'collabAgentToolCall', id: randomUUID(), tool: 'spawnAgent', status: 'completed', senderThreadId: t.id, receiverThreadIds: ['legacy-child'], model: 'gpt-legacy-1', prompt: null, reasoningEffort: null, agentsStates: {} } });
+      }
+      if (body?.includes('spawn subagents')) {
+        for (const [agentThreadId, model] of [['known-child', 'gpt-child-1'], ['unknown-child', null]]) {
+          toSubscribers(t.id, 'item/completed', { threadId: t.id, turnId, item: { type: 'collabAgentToolCall', id: randomUUID(), tool: 'spawnAgent', status: 'completed', receiverThreadIds: [agentThreadId], model: null } });
+          const child = { type: 'subAgentActivity', id: randomUUID(), kind: 'started', agentThreadId, agentPath: '/child', model, reasoningEffort: null };
+          if (model === null) toSubscribers(t.id, 'item/started', { threadId: t.id, turnId, item: child });
+          toSubscribers(t.id, 'item/completed', { threadId: t.id, turnId, item: child });
+          toSubscribers(t.id, 'item/started', { threadId: t.id, turnId, item: { ...child, kind: 'completed' } });
+        }
+      }
       if (body === undefined) continue; // the clause, or text that is no cland message: nothing to answer
       if (body.includes('fail this turn') || body.includes('fail recovered turn before response')) {
         error = { message: 'Upstream request failed: Endpoint is unavailable\nupstream details' };
@@ -508,6 +520,9 @@ async function appServer(args: string[]): Promise<number> {
         log(`turn/start ${params.toolOutput ? `toolOutput ${(params.toolOutput as { name: string }).name}` : 'input'}${typeof params.effort === 'string' ? ` effort=${params.effort}` : ''}`);
         setStatus(t, { type: 'active', activeFlags: [] });
         toSubscribers(t.id, 'turn/started', { threadId: t.id, turn: { id: t.turnId, status: 'inProgress', items: [] } });
+        if (process.env.FAKE_CODEX_SUBAGENT_AT_LAUNCH === '1' && t.turns === 1) {
+          toSubscribers(t.id, 'item/completed', { threadId: t.id, turnId: t.turnId, item: { type: 'subAgentActivity', id: randomUUID(), kind: 'started', agentThreadId: 'early-child', model: 'gpt-early-child', agentPath: '/child', reasoningEffort: null } });
+        }
         const acceptedTurn = t.turnId;
         void runTurn(t);
         if (text.includes('fail recovered turn before response')) {

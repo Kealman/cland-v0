@@ -74,6 +74,8 @@ export const HOOK_EVENTS: Readonly<Record<string, string>> = {
   Notification: 'notification',
   Elicitation: 'elicitation',
   SessionEnd: 'session-end',
+  SubagentStart: 'subagent-start',
+  SubagentStop: 'subagent-stop',
 };
 
 /** One entry of `claude agents --json` (agent view, research preview): only the fields cland reads. */
@@ -123,6 +125,14 @@ export function stateOfAgent(entry: AgentEntry): SessionState {
 export function interpret(event: string, payload: Record<string, unknown>): Interpretation {
   const ids = (text: unknown): string[] => (typeof text === 'string' ? [...text.matchAll(/msg_id="([^"]+)"/g)].map((m) => m[1] as string) : Array.isArray(payload.ids) ? payload.ids.filter((x): x is string => typeof x === 'string') : []);
   switch (event) {
+    case 'subagent-start':
+      return { subagent: {
+        ...(typeof payload.agent_id === 'string' ? { id: payload.agent_id } : {}),
+        ...(typeof payload.agent_type === 'string' ? { type: payload.agent_type } : {}),
+        ...(typeof payload.model === 'string' ? { model: payload.model } : {}),
+      } };
+    case 'subagent-stop':
+      return {};
     case 'session-start':
       return { state: 'idle', ...(typeof payload.model === 'string' ? { model: payload.model } : {}) };
     case 'turn-start':

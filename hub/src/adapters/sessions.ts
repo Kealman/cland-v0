@@ -827,11 +827,11 @@ export class Sessions {
           // owned row too, but leave the prior binding intact on an unpublished failure.
           if (this.#table.get(p.name)?.sessionId === p.sessionId) this.#core.rememberLaunchIdentity(p.name, p.sessionId, launchToken);
         }
-        adapter.watch(p);
         if (reservation) this.#core.launchSettled(request.name);
         this.#lastAt.delete(p.sessionId);
         this.#lastPush.delete(p.sessionId);
         this.#log({ event: 'session-launched', session: p.name, harness: p.harness, pid: p.pid, harnessId: p.harnessId, sessionId: p.sessionId, harnessSessionId: p.harnessSessionId, model: p.model, effort, role: p.role, cwd: p.cwd, ...(p.item ? { item: p.item } : {}), early: this.#launching.get(p.name)?.length ?? 0 });
+        adapter.watch(p);
         const early = this.#launching.get(request.name) ?? [];
         this.#launching.delete(request.name);
         for (const connect of this.#earlyBridges.get(p.name) ?? []) connect();
@@ -1064,6 +1064,7 @@ export class Sessions {
       const current = row();
       const process: HarnessProcess = { ...found.process, name: current.name, role: current.role, item: current.item ?? null, launchBrief: current.launchBrief ?? null, effort: current.effort ?? null, pidStarted, stoppedAt: null, archivedAt: null, archivedBy: null };
       this.#table.put(process);
+      this.#log({ event: 'session-launched', session: process.name, sessionId: process.sessionId, harness: process.harness, harnessSessionId: process.harnessSessionId, harnessId: process.harnessId, pid: process.pid, model: process.model, effort: process.effort ?? null, role: process.role, cwd: process.cwd, ...(process.item ? { item: process.item } : {}), resumed: true });
       if (current.archivedAt) this.#log({ event: 'session-unarchived', session: process.name, sessionId: process.sessionId, by: current.archivedBy, reason: 'resume' });
       adapter.watch(process);
       this.#core.publishProcess(this.view(process));
@@ -1178,7 +1179,7 @@ export class Sessions {
     if (harnessSessionId && harnessSessionId !== (p.harnessSessionId ?? p.sessionId)) this.#table.update(p.name, { harnessSessionId });
     const meaning = adapter.interpret(frame.event, payload, p);
     for (const id of meaning.confirms ?? []) this.#confirm(p, id);
-    if (meaning.model && meaning.model !== p.model) this.#table.update(p.name, { model: meaning.model });
+    this.#recordHarness(p, meaning);
     if (meaning.usage) {
       adapter.noteUsage?.(p, meaning.usage);
       this.#usageChanged(p.sessionId);
@@ -1189,14 +1190,28 @@ export class Sessions {
       // A failure may beat its input's confirmation. The adapter reconciles them by harness identity.
       if (meaning.failureMessages) void meaning.failureMessages.then((messages) => this.#notifyTurnSenders(p.sessionId, error, messages));
     }
-    if (!meaning.state) return { applied: false };
+    if (!meaning.state) return { applied: Boolean(meaning.model || meaning.subagent) };
     const applied = this.#signal(p.sessionId, { state: meaning.state, source: frame.event.startsWith('mod-') ? 'mod' : 'hook', at: frame.at ?? Date.now(), ...(meaning.approvalCommand !== undefined ? { approvalCommand: meaning.approvalCommand } : {}) }, true);
     return { applied, state: this.#core.sessionState(p.sessionId) };
+  }
+
+  #recordHarness(p: HarnessProcess, report: { model?: string; subagent?: { id?: string; type?: string; model?: string } }): void {
+    const identity = { session: p.name, sessionId: p.sessionId, harness: p.harness, role: p.role, item: p.item ?? null };
+    if (report.model && report.model !== p.model) {
+      this.#table.update(p.name, { model: report.model });
+      this.#log({ event: 'session-model', ...identity, model: report.model, source: 'harness' });
+    }
+    if (report.subagent) {
+      const agent = report.subagent;
+      this.#log({ event: 'subagent-launched', ...identity, ...(agent.id ? { agentId: agent.id } : {}), ...(agent.type ? { agentType: agent.type } : {}), model: agent.model || 'unknown' });
+    }
   }
 
   #signal(sessionId: string, signal: StateSignal, push: boolean): boolean {
     const p = this.#table.bySessionId(sessionId);
     if (!p || p.status !== 'running') return false;
+    this.#recordHarness(p, signal);
+    if (!signal.state) return Boolean(signal.model || signal.subagent);
     const now = Date.now();
     const current = this.#core.sessionState(sessionId);
     if (push) {

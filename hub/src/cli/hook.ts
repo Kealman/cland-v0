@@ -24,7 +24,7 @@ export const HOOK_USAGE = `  hook <event>    from inside a launched session (its
 `;
 
 /** The payload fields the hub reads; the prompt itself never leaves the session, only the message ids it carries. */
-const KEPT = ['session_id', 'prompt_id', 'hook_event_name', 'tool_name', 'notification_type', 'model', 'source', 'reason', 'message', 'usage', 'isAborted', 'ids', 'error', 'error_details'] as const;
+const KEPT = ['session_id', 'prompt_id', 'hook_event_name', 'tool_name', 'notification_type', 'agent_id', 'agent_type', 'model', 'source', 'reason', 'message', 'usage', 'isAborted', 'ids', 'error', 'error_details'] as const;
 
 function flag(args: string[], name: string): string | undefined {
   const i = args.indexOf(name);

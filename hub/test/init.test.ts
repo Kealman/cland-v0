@@ -612,3 +612,22 @@ test('tracker config accepts peer levels and rejects malformed, duplicate and co
   assert.throws(() => configuredLevels([['release', 'roadmap'], 'epic']), /release and roadmap both use R/);
   assert.throws(() => configuredLevels(['release', ['epic', 'effort']]), /epic and effort both use E/);
 });
+
+test('init and update merge async sub-agent hooks while keeping user hooks', async t => {
+  const root = await tempProject(t);
+  await gitRepo(root);
+  await mkdir(join(root, '.claude'));
+  const own = { matcher: 'Explore', hooks: [{ type: 'command', command: './observe-child.sh' }] };
+  await writeFile(join(root, '.claude', 'settings.json'), JSON.stringify({ hooks: { SubagentStart: [own], SubagentStop: [own] } }));
+  for (const command of ['init', 'update'] as const) {
+    await run(root, command);
+    const settings = JSON.parse(await readFile(join(root, '.claude', 'settings.json'), 'utf8')) as { hooks: Record<string, Array<{ hooks: Array<{ command: string; async?: boolean }> }>> };
+    for (const [event, signal] of [['SubagentStart', 'subagent-start'], ['SubagentStop', 'subagent-stop']]) {
+      assert.equal(settings.hooks[event!]?.length, 2);
+      assert.deepEqual(settings.hooks[event!]?.[0], own);
+      const added = settings.hooks[event!]?.[1]?.hooks[0];
+      assert.equal(added?.async, true);
+      assert.ok(added?.command.includes(`cland hook ${signal} # managed by cland`));
+    }
+  }
+});

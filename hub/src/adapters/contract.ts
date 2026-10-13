@@ -120,9 +120,10 @@ export type SpawnRequest = LaunchPolicy & {
   item?: string | null;
 };
 
-/** A state signal from the harness, with where it came from and when it happened (ms epoch): an older signal
- *  than the last one applied is dropped, so out-of-order hooks never move a session back. */
-export type StateSignal = { state: SessionState; source: string; at: number; approvalCommand?: string };
+/** A native sub-agent start; absent model means unknown, never the parent model. */
+export type SubagentLaunch = { id?: string; type?: string; model?: string };
+/** A harness report with optional state and launch metadata. State ordering drops older signals. */
+export type StateSignal = { state?: SessionState; source: string; at: number; approvalCommand?: string; model?: string; subagent?: SubagentLaunch };
 
 /** What the hub gives an adapter: the project, how a launched session reaches the hub, and where signals go. */
 export type AdapterHost = {
@@ -137,7 +138,7 @@ export type AdapterHost = {
   /** The spoke's entry, which the harness starts as its MCP server. */
   spoke: string;
   log: (entry: Record<string, unknown>) => void;
-  /** A state signal the adapter read from outside the session (a poll); push signals come through the hub's `session.signal`. */
+  /** A native harness report (state, model or sub-agent start); hook reports use `session.signal`. */
   signal: (sessionId: string, signal: StateSignal) => void;
   /** Adapter-owned usage changed; the hub coalesces snapshots per session. */
   usageChanged?: (sessionId: string) => void;
@@ -155,7 +156,7 @@ export type AdapterHost = {
 };
 
 /** What one signal from inside the session (a hook, the mod) means: a state, the model, usage, messages it confirms. */
-export type Interpretation = { state?: SessionState; approvalCommand?: string; model?: string; usage?: Record<string, unknown>; confirms?: string[]; turnError?: string; failureMessages?: Promise<string[]> };
+export type Interpretation = { state?: SessionState; approvalCommand?: string; model?: string; subagent?: SubagentLaunch; usage?: Record<string, unknown>; confirms?: string[]; turnError?: string; failureMessages?: Promise<string[]> };
 
 /** The frame an in-session bridge receives: submit this message as a turn, then confirm it. */
 export type InjectFrame = { type: 'inject'; session: string; message: string; text: string };

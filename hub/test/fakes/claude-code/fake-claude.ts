@@ -394,7 +394,7 @@ async function runSession(id: string): Promise<number> {
     else void shutdown();
   });
 
-  await runHooks('SessionStart', { source: job.resume ? 'resume' : 'startup', model: job.model ?? 'claude-fake-1' });
+  await runHooks('SessionStart', { source: job.resume ? 'resume' : 'startup', ...(job.model ? { model: job.model } : {}) });
   await dispatch('session.start', { cwd: job.cwd, surface: 'terminal', isInteractive: true }, (e) => ({ cwd: e.cwd }));
   log('session ready');
 
@@ -433,6 +433,12 @@ async function runSession(id: string): Promise<number> {
       await runHooks('StopFailure', { error: 'server_error', error_details: 'Upstream request failed: Endpoint is unavailable\nupstream details' });
       await dispatch('turn.complete', { turnId, isAborted: false, reason: 'error' }, () => ({}));
       continue;
+    }
+    if (body.includes('spawn subagents')) {
+      for (const [agent_id, model] of [['known-child', 'claude-child-1'], ['unknown-child', null]]) {
+        await runHooks('SubagentStart', { agent_id, agent_type: 'Explore', ...(model ? { model } : {}) });
+        await runHooks('SubagentStop', { agent_id, agent_type: 'Explore' });
+      }
     }
     const rename = actionable ? /^rename to (\S+)$/.exec(body.trim()) : null;
     if (rename) await callTool('rename', { name: rename[1] });

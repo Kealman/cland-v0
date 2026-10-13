@@ -95,6 +95,7 @@
     "hub/test/session-events.test.ts": "machine",
     "hub/test/session-holds.test.ts": "machine",
     "hub/test/session-launch.test.ts": "machine",
+    "hub/test/session-model.test.ts": "machine",
     "hub/test/session-stop-races.test.ts": "machine",
     "hub/test/skills-qa.test.ts": "machine",
     "hub/test/skills-tracker.test.ts": "machine",

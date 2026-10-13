@@ -301,6 +301,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
   }
 
   #apply(w: Watch, change: Change, at: number): void {
+    if (change.model) this.#host.signal(w.process.sessionId, { model: change.model, source: 'sse', at });
     if (change.ended) {
       const messages = [...w.turnMessages];
       w.turnMessages.clear();
@@ -331,6 +332,14 @@ export class OpenCodeAdapter implements HarnessAdapter {
           (e) => {
             // An admission can queue the next turn: only delivered inbox items fed this execution.
             const d = e.data ?? {};
+            if (e.type === 'session.created' && d.parentID === w.tracker.sessionId) {
+              const model = d.model as ModelRef | undefined;
+              this.#host.signal(w.process.sessionId, { source: 'sse', at: e.created ?? Date.now(), subagent: {
+                ...(typeof d.sessionID === 'string' ? { id: d.sessionID } : {}),
+                ...(typeof d.agent === 'string' ? { type: d.agent } : {}),
+                ...(model && typeof model.id === 'string' && typeof model.providerID === 'string' ? { model: formatModel(model) } : {}),
+              } });
+            }
             if (d.sessionID === w.tracker.sessionId && typeof d.inboxID === 'string') {
               if (e.type === 'session.inbox.enqueued') {
                 const text = (d.item as { payload?: { text?: unknown } } | undefined)?.payload?.text;
