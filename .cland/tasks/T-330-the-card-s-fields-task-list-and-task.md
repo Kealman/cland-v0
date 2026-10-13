@@ -2,8 +2,8 @@
 id: T-330
 kind: task
 title: "The card's fields: task.list and task.view carry the closing time, the criteria counts and a task's latest cland verify result, with the closing times backfilled by cland task migrate"
-state: open
-status: review
+state: closed
+status: done
 criterion_seq: 8
 labels:
   - v0.1.2
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-208
 branch: t/T-330-the-card-s-fields-task-list-and-task
 created: 2026-10-13T14:04:09.431Z
-updated: 2026-10-13T17:06:23.879Z
+updated: 2026-10-13T17:28:30.781Z
 ---
 
 ## Summary
@@ -87,24 +87,32 @@ E-270: Status, fields and instrumentation. Spec: `docs/spec/v0.1.2.md` §3.9 (th
 
 - [x] C1. Item tests: `closed` parses, round-trips and refuses a malformed time. A hub test on a temporary project shows it written by `cland task close`, by `cland merge` and by an edit to `done`, and cleared by a reopen.
   - done: impl-330 · 2026-10-13T16:41:53.374Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-330-5 · 2026-10-13T17:28:19.578Z · commit 86ea5dbacce23b73eab85d9f9e50cbd5472a30ac
 - [x] C2. `task.list`, `task.view` and the `task` event carry `closed` from the index. `IndexDb.closedAt` returns it ahead of its fallbacks.
   - done: impl-330 · 2026-10-13T16:36:40.076Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-330-5 · 2026-10-13T17:28:19.578Z · commit 86ea5dbacce23b73eab85d9f9e50cbd5472a30ac
 - [x] C3. Planner unit tests cover the `closed` part: each source in order, an unresolved item, an item already carrying `closed`, and an empty plan on a rerun. A hub test runs `cland task migrate --dry-run` and the migration on a temporary project with receipts and journal records, and checks that only `closed` lines changed.
   - done: impl-330 · 2026-10-13T16:36:40.782Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-330-5 · 2026-10-13T17:28:19.578Z · commit 86ea5dbacce23b73eab85d9f9e50cbd5472a30ac
 - [x] C4. A hub test with a task holding done, current verified, stale and failed criteria shows the same counts in `task.list` as `task.view`'s criteria give. A list over 64 items reads no item file.
   - done: impl-330 · 2026-10-13T17:05:38.879Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-330-5 · 2026-10-13T17:28:19.578Z · commit 86ea5dbacce23b73eab85d9f9e50cbd5472a30ac
 - [x] C5. A verify job finishing for a task's branch sets `verify` in `task.list` and sends one `task` event to a subscribed UI with no event text. A subscribed session receives no delivery for it.
   - done: impl-330 · 2026-10-13T16:36:42.130Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-330-5 · 2026-10-13T17:28:19.578Z · commit 86ea5dbacce23b73eab85d9f9e50cbd5472a30ac
 - [x] C6. A query-count regression with 64 unrelated items: one verify job finishing stays under a fixed query bound and calls no full list.
   - done: impl-330 · 2026-10-13T17:05:40.433Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-330-5 · 2026-10-13T17:28:19.578Z · commit 86ea5dbacce23b73eab85d9f9e50cbd5472a30ac
 - [x] C7. The Implementer runs the dry run on a scratch copy of `dev`'s `.cland/tasks/`, journal and `hub.db`, and attaches its output to the item topic as an artifact. It names the source of each time and lists the unresolved items.
   - done: impl-330 · 2026-10-13T16:36:43.628Z
   - verified: rev-23 [reviewer] · run rev-2026-10-13-330-2 · 2026-10-13T16:42:46.553Z · commit 7667ff7d93ff7e548f1716e52abe164a98032d47
   - verified: rev-23 [reviewer] · run rev-2026-10-13-330-4 · 2026-10-13T17:06:23.879Z · commit 86ea5dbacce23b73eab85d9f9e50cbd5472a30ac
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-330-5 · 2026-10-13T17:28:19.579Z · commit 86ea5dbacce23b73eab85d9f9e50cbd5472a30ac
 - [x] C8. `hub/README.md` and `docs/agents/issue-tracker.md` with its template describe `closed`, `criteria`, `verify` and the `closed` part of the migration.
   - done: impl-330 · 2026-10-13T16:36:44.541Z
   - verified: rev-23 [reviewer] · run rev-2026-10-13-330-2 · 2026-10-13T16:42:46.554Z · commit 7667ff7d93ff7e548f1716e52abe164a98032d47
   - verified: rev-23 [reviewer] · run rev-2026-10-13-330-4 · 2026-10-13T17:06:23.879Z · commit 86ea5dbacce23b73eab85d9f9e50cbd5472a30ac
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-330-5 · 2026-10-13T17:28:19.579Z · commit 86ea5dbacce23b73eab85d9f9e50cbd5472a30ac
 
 ## Comments
 
@@ -165,3 +173,23 @@ commit: 86ea5dbacce23b73eab85d9f9e50cbd5472a30ac
 No high, medium, or low source findings remain. Counts reuse parsed criteria from the selected row via private WeakMap, preserving wire shape/precedence and eliminating duplicate SELECTs. Archive tracer recognizes closed-first SQL; exact one-lookup, stage ceilings and card no-full-list/file/one-event guards remain. Tracker-only dev delta reviewed; C7/C8 refreshed. C1–C6 await complete same-head full verification after restart admission. Evidence A-2012: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2012-t-330-workload-correction-source-clear-at-86ea5dba.md.
 
 Criteria: C7 verified, C8 verified.
+
+### impl-330 · 2026-10-13T17:28:04.171Z
+
+Full same-head verification 18e2c42b passed at 86ea5dbacce23b73eab85d9f9e50cbd5472a30ac: 1830/1830 tests, zero failures, including hub and Neovim. Durable log A-2015: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2015-suite-18e2c42b-052f-4505-b347-e94e4ded1535-all-at-86ea5db.log. Awaiting the Reviewer's final criterion verdict; claim retained.
+
+### rev-23 · 2026-10-13T17:28:19.579Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-330-5
+commit: 86ea5dbacce23b73eab85d9f9e50cbd5472a30ac
+
+No high, medium, or low findings remain. Source A-2007/A-2012, scratch A-2003 and complete exact-head A-2015 establish C1–C8: close lifecycle/backfill, indexed counts, latest silent verify projection and bounded workload. Typecheck/all phases pass 1830/1830 with zero skips/cancellations. Retained-time and workload regressions pass; completion 45 queries/no full lists/files/one event. Evidence A-2016: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2016-t-330-final-exact-head-review-clear.md.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified.
+
+### coord · 2026-10-13T17:28:30.781Z
+
+Merged 207eb7c7d5536c364cd38dff4c1242f5eea9bd6b onto dev.

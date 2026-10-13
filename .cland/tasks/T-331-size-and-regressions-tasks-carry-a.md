@@ -3,7 +3,7 @@ id: T-331
 kind: task
 title: "Size and regressions: tasks carry a required size from XS to XL and an optional regression_of, through the CLI and MCP, and the clauses and skills ask for both and for a Summary"
 state: open
-status: backlog
+status: planned
 labels:
   - v0.1.2
   - hub
@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-13T14:04:09.540Z
-updated: 2026-10-13T14:04:16.739Z
+updated: 2026-10-13T17:28:31.509Z
 ---
 
 ## Summary
