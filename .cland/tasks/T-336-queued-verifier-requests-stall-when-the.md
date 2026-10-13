@@ -2,8 +2,8 @@
 id: T-336
 kind: task
 title: A relaunched session's role clause acked while its process row reads stopped is never injected, so queued verifier requests stall until another turn
-state: open
-status: ready
+state: closed
+status: done
 criterion_seq: 2
 labels:
   - hub
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-207
 branch: t/T-336-queued-verifier-requests-stall-when-the
 created: 2026-10-13T14:35:05.030Z
-updated: 2026-10-13T15:35:47.450Z
+updated: 2026-10-13T16:31:05.306Z
 ---
 
 ## Summary
@@ -112,3 +112,7 @@ commit: d609ac595e4b77ac63851d4491c7360c4f045578
 Source review clear: no high/medium finding. nvim/test/palette.test.ts:163–167 adds only a bounded fixture-state wait for T-12/T-13 plus loaded tracker ladder; false maps to undefined for eventually. Original keys, assertions, screen bound, harness and production are preserved. Reviewed shared 7210621b alone; cherry-picked file blob matches exactly. T-336 resume implementation/C1/C2 frame tests remain unchanged and passed in A-1984. A-1988 describes controlled delayed-snapshot red/green and 18/18 normal file; this is summarized Implementer evidence, not independent raw receipt verification. A-1989 records source review. Accepted full verification and final verdict at d609ac59 remain required; prior failed/cancelled receipts retained.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-13T16:31:05.306Z
+
+Merged f9e499f5fbf4e324d5bd855bf5558f3cbd0cdcd0 onto dev.

@@ -3,7 +3,7 @@ id: T-334
 kind: task
 title: "Usage in the journal: a session-usage record at each changed session.usage publication and one at stop, with role, item, harness, model, totals and cost or rate-limit share, on all three adapters"
 state: open
-status: backlog
+status: in progress
 labels:
   - v0.1.2
   - hub
@@ -12,10 +12,10 @@ assignee: null
 parent: E-270
 blocked_by:
   - T-333
-topic: null
-branch: null
+topic: topic-209
+branch: t/T-334-usage-in-the-journal-a-session-usage
 created: 2026-10-13T14:04:09.872Z
-updated: 2026-10-13T14:04:17.360Z
+updated: 2026-10-13T16:18:51.704Z
 ---
 
 ## Summary
@@ -72,3 +72,9 @@ The role comes from the store and the item from the session's launch item, as `p
 - [ ] C3. Each record names the session, its id, role, item, harness and model. A session with no usage leaves no record at stop.
 - [ ] C4. A hub test with two roles and two items sums the final records per role and per item and matches the `jq` line in `hub/README.md`, applied to `cland hub journal --kind session-usage --json`.
 - [ ] C5. `hub/README.md`'s journal section describes `session-usage`, its fields, the equal-publication rule and the `jq` line.
+
+## Comments
+
+### impl-334 · 2026-10-13T16:18:51.704Z
+
+Implementation started. Test seams: session.launch/stop through the frame protocol with existing fake adapters, journal queries through frames and CLI after flushLogs. Attribution follows launch.item (E-270 decision 11); no tracker hydration.

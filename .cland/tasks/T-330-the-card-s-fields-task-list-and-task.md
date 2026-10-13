@@ -3,7 +3,7 @@ id: T-330
 kind: task
 title: "The card's fields: task.list and task.view carry the closing time, the criteria counts and a task's latest cland verify result, with the closing times backfilled by cland task migrate"
 state: open
-status: backlog
+status: in progress
 labels:
   - v0.1.2
   - hub
@@ -12,10 +12,10 @@ assignee: null
 parent: E-270
 blocked_by:
   - T-328
-topic: null
-branch: null
+topic: topic-208
+branch: t/T-330-the-card-s-fields-task-list-and-task
 created: 2026-10-13T14:04:09.431Z
-updated: 2026-10-13T14:04:16.534Z
+updated: 2026-10-13T16:18:53.544Z
 ---
 
 ## Summary
@@ -92,3 +92,9 @@ E-270: Status, fields and instrumentation. Spec: `docs/spec/v0.1.2.md` §3.9 (th
 - [ ] C6. A query-count regression with 64 unrelated items: one verify job finishing stays under a fixed query bound and calls no full list.
 - [ ] C7. The Implementer runs the dry run on a scratch copy of `dev`'s `.cland/tasks/`, journal and `hub.db`, and attaches its output to the item topic as an artifact. It names the source of each time and lists the unresolved items.
 - [ ] C8. `hub/README.md` and `docs/agents/issue-tracker.md` with its template describe `closed`, `criteria`, `verify` and the `closed` part of the migration.
+
+## Comments
+
+### impl-330 · 2026-10-13T16:18:53.544Z
+
+Implementation plan: closed persistence/index and scratch-only migration first, then indexed criteria counts and Suites→dispatcher→tracker latest-result wiring. Tests use the ticket's frame/CLI, item and pure planner seams; no new harness hooks.
