@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-190
 branch: t/T-312-five-more-linux-failures-from-the-first
 created: 2026-10-13T01:50:19.683Z
-updated: 2026-10-13T02:15:28.459Z
+updated: 2026-10-13T02:22:43.643Z
 ---
 
 ## Summary
@@ -49,3 +49,9 @@ T-268: Suite spend and Linux portability. Evidence is in T-281's topic (topic-18
 - [ ] C2. In the Ubuntu 24.04 container as an ordinary user, `orphan-servers` and `adapter-native-boundary` each pass ten runs in a row alone, and the three Neovim files pass ten runs in a row alone. The logs are published as artifacts in this item's topic.
 - [ ] C3. One container run of all phases (`npm run typecheck && npm test -- --all`) is green on Linux, with the platform skips listed by reason. Its log is published as an artifact.
 - [ ] C4. The suite is green on macOS through `cland verify`.
+
+## Comments
+
+### impl-312 · 2026-10-13T02:22:43.643Z
+
+Codex relaunch cause: the frame is ok but its value is found:false ('no rollout found for thread id'), returning the retained stopped row; the PID comparison hid that reason. fake-codex persisted turns>0 only at turn completion. Linux termination is faster than the default 300 ms fake turn; a 10 s fake first turn deterministically reproduces the identical old-PID failure on macOS (A-1741), while ordinary dev baseline passes. Real contract source: upstream openai/codex commit 12cca49c81c8aa6a37a5cc4e39964ee3b70f9458, codex-rs/core/src/session/mod.rs, record_user_prompt_and_emit_turn_item calls ensure_rollout_materialized after recording first user input, before model completion: https://github.com/openai/codex/blob/12cca49c81c8aa6a37a5cc4e39964ee3b70f9458/codex-rs/core/src/session/mod.rs#L5036-L5095 . The fake now persists at first turn start; regression keeps the 10 s turn (so completion cannot make it green) and explicitly requires resume.value.found before comparing PIDs. No production PID reporting change is needed.

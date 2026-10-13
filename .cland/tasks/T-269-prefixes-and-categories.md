@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-12T11:35:13.656Z
-updated: 2026-10-13T02:15:28.888Z
+updated: 2026-10-13T02:27:50.054Z
 ---
 
 ## Goal
@@ -83,8 +83,57 @@ The Coordinator runs the migration on the live tracker as soon as its slice merg
 - Branch: `prototype/explorer` (`nvim/EXPLORER-PROTOTYPE.md`).
 - Mockups: `docs/design/main-screen/Categories.dc.html`, `Explorer.dc.html`; `screens/v012-categories.png`, `screens/v012-explorer.png`.
 
+## Plan
+
+```yaml
+stages:
+  - name: the migration, dry run
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-313
+  - name: any prefix resolves
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-314
+  - name: the category kind
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-315
+  - name: migration, filing and the count line
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-316
+      - - T-317
+      - - T-318
+```
+
 ## Comments
 
 ### coord · 2026-10-13T02:15:28.888Z
 
 Decision D24 (stand-in, 2026-10-13 ~02:20Z, answering the Coordinator's ask 07efe23c): T-269 is unblocked from T-268. The T-268 → T-269 edge ordered the hub lane; it did not reflect a code dependency. T-268's remainder (T-312, then T-282's droplet acceptance run, then its QA demo) is Linux-only and touches no tracker or item code. Conditions: T-269's live-tracker migration lands with a hub restart run by the stand-in, on a green integrated run and an empty queue; the Linux container slot keeps priority for T-312 so T-268 does not stall behind T-269's suites.
+
+### coord · 2026-10-13T02:27:42.266Z
+
+Tickets T-313 to T-318, one per tracer-bullet step (01 dry run, 02 any prefix, 03 category kind, 04 migration, 05 agents and idle_from, 06 count line). Coordinator decisions where the spec is silent:
+1. The hub shows the canonical id from the item's kind as soon as T-314 merges (E-107 for an epic whose file still says T-107).
+2. A kind edit keeps the number and renames the file and its id to the new prefix.
+3. Hub rows stored with T- ids (claims, holds, plans, topic bindings, subscriptions, pending verifications) resolve by number. No rewrite at hub start.
+4. A configured kind's prefix is its first letter. A ladder whose letters collide is refused.
+5. Tech debt is T-216 in this repo. Elsewhere it is the open root container titled Tech debt, or a new one.
+6. Files keep their slug.
+7. cland update rewrites levels only when it holds the old default.
+8. Categories have no rank and sort by number.
+9. The count line follows the epic (categories N · M open), not the mockup.
+10. T-318 adds a minimal categories section under the all filter, as the explorer's stand-in.
+11. No new tools: roles other than the Coordinator and Aides report a find to their lead with its category.
+12. The vendored triage skill keeps its bug and enhancement labels, with a pointer to the category containers.
+13. Hub restarts follow the batch rule on green integrated runs. The live migration is run by the Coordinator on dev after T-316 merges, between merges, followed by the stand-in's restart.
