@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-12T11:35:13.788Z
-updated: 2026-10-12T11:35:19.392Z
+updated: 2026-10-13T14:04:25.992Z
 ---
 
 ## Goal
@@ -84,3 +84,55 @@ The build's own epics run on plans, so from this epic on `planned` in the panels
 - ADRs: `docs/adr/0002-tracker-files-are-the-source-of-truth.md`, `docs/adr/0007-events-reach-sessions-as-deliveries.md`.
 - Branches: `research/model-performance`, `prototype/explorer`.
 - Mockups: `docs/design/main-screen/CardTask.dc.html`, `CardEpic.dc.html` (where the fields show).
+
+## Plan
+
+```yaml
+stages:
+  - name: tracker, release scope, launch model
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-328
+      - - T-329
+      - - T-333
+  - name: card fields and usage
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-330
+      - - T-334
+  - name: size and regressions
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-331
+  - name: the verdict scope
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-332
+```
+
+## Comments
+
+### coord · 2026-10-13T14:04:25.992Z
+
+Tickets T-328 to T-334 (drafts 01 to 07; slice 5 split into the verdict scope T-332 and the launch's model T-333). Plan: 4 stages. Coordinator decisions on the drafts' open questions:
+1. The required size is refused at the request layer. The tests gain a size in one separate commit. Import and hub-internal creates stay sizeless.
+2. The demo's --regression-of uses a landed task (for example T-321), not the open T-254.
+3. The Coordinator clause is about 8 bytes under its 512-byte headroom, so T-331 and T-332 cut as many bytes as they add. Both rebase on T-322's size guard.
+4. planned moves each task once per stage entry, recorded in tracker_meta. Nothing moves until the plan is approved.
+5. A closed epic's stages read as closed, and nothing is written.
+6. The closing-time backfill uses the receipt merged_at, then the journal, then the receipt commit's git time. Items with no source stay unresolved.
+7. verified counts only marks current at the branch tip, beside stale and failed counts.
+8. The tracker reads the verify jobs through a function the dispatcher passes in at startup, like useSessionIdentity. That is existing wiring, not a new seam.
+9. The layer views stay as they are. Only the board, work and done filters narrow to the release.
+10. Sub-agent models are recorded where a harness gives a signal. With no signal, nothing is recorded.
+11. Usage is charged to the session's launch item.
+12. Role sessions relaunch after T-331 and T-332 merge, the Coordinator after T-331.
+The closed backfill (T-330) and the size backfill (T-331) run on dev in a hub-stopped window with the stand-in, like the migration. E-270 starts when E-269 closes on its QA demo.
