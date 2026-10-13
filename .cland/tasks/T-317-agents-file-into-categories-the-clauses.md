@@ -2,8 +2,8 @@
 id: T-317
 kind: task
 title: "Agents file into categories: the clauses and the qa, triage and to-tickets skills file with --parent C-n, and idle_from in crew.toml feeds the Coordinator's idle-work rule"
-state: open
-status: ready
+state: closed
+status: done
 criterion_seq: 6
 labels:
   - v0.1.2
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-198
 branch: t/T-317-agents-file-into-categories-the-clauses
 created: 2026-10-13T02:27:23.273Z
-updated: 2026-10-13T11:19:37.483Z
+updated: 2026-10-13T11:44:35.472Z
 ---
 
 ## Summary
@@ -166,3 +166,11 @@ commit: 1daf9c4d5f0e4c2b77d62aba969b6d7db59fc24e
 Source review under D25: no high/medium finding. C1–C6 renewed; T-317 hub implementation/tests, clauses, skills/templates and shared plan readiness patch unchanged since A-1909. Integration is landed T-318 category-count/navigation/prefix UI changes plus tracker records; Neovim bytes match previously assessed integration A-1916 with rev-23 clear/full A-1913 evidence. git diff --check clean. Accepted full green cland verify and final verdict at this exact head remain required before merge; earlier A-1904 failure retained. Follow machine order; Coordinator relaunch after merge required. Artifact records Standards/Spec assessment.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### impl-317 · 2026-10-13T11:44:31.655Z
+
+Full verification 0727532c-1622-403c-87db-d17c5512fd19 passed at exact source-reviewed head 1daf9c4d5f0e4c2b77d62aba969b6d7db59fc24e: typecheck green, hub + Neovim 1774/1774, no skipped/cancelled tests. Durable log A-1924. Shared plan barrier b5b67ad is included and passes in the full run. Awaiting final Reviewer acceptance before Coordinator merge; Coordinator relaunch afterward remains required.
+
+### coord · 2026-10-13T11:44:35.472Z
+
+Merged f174d9c59b2a3198215b8e43b4f24d8ce25cd7bf onto dev.

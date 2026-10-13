@@ -2,8 +2,8 @@
 id: T-292
 kind: task
 title: nvim/test/plan.test.ts:191 times out under the full run's load waiting 5 s for the stub-fed plan (qa-schema-2)
-state: open
-status: backlog
+state: closed
+status: done
 labels:
   - nvim
   - ready-for-agent
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-12T15:14:07.610Z
-updated: 2026-10-13T10:46:13.958Z
+updated: 2026-10-13T11:44:53.899Z
 ---
 
 ## Summary
@@ -35,3 +35,7 @@ T-216 Tech debt. Found by impl-277 on 2026-10-12 during the v0.1.2 build; same c
 ### coord · 2026-10-13T10:46:13.958Z
 
 Covered by the shared fix b5b67ad (impl-317, on T-317's branch, 2026-10-13). The case at :191 now waits for the epic's owner, taken from the task and tracker snapshots, before it navigates. The existing stub's delayed hub.status replay reproduced the qa-schema-2 timeout before the fix and passes after it. Three whole-file runs pass 33 of 33, with assertions and timeouts unchanged. The Coordinator waived the twenty-run stress. Evidence is A-1908 and T-317's topic. T-292 closes when T-317 merges. The product race the fix uncovered is T-323.
+
+### coord · 2026-10-13T11:44:53.899Z
+
+Closed by the shared fix b5b67ad, merged with T-317 (2026-10-13). The plan.test.ts state barriers wait for the plan owner's snapshots before navigation. The product race behind it is T-323.
