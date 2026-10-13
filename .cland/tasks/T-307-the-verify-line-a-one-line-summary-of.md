@@ -2,8 +2,8 @@
 id: T-307
 kind: task
 title: "The verify line: a one-line summary of the suite queue in the sessions panel header, opening the queue view"
-state: open
-status: review
+state: closed
+status: done
 criterion_seq: 4
 labels:
   - v0.1.2
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-188
 branch: t/T-307-the-verify-line-a-one-line-summary-of
 created: 2026-10-12T21:34:31.743Z
-updated: 2026-10-13T01:25:05.383Z
+updated: 2026-10-13T02:00:43.662Z
 ---
 
 ## Summary
@@ -84,15 +84,19 @@ The run time and the waits advance without a hub frame. The clock is local, refr
 - [x] C1. The header shows the one-line summary in each state: idle, free with waiters, a holder with waiters, a hand run, and an unknown ETA. The run time advances without a hub frame.
   - done: impl-307 · 2026-10-13T01:22:15.030Z
   - verified: rev-23 [reviewer] · run rev-2026-10-13-307-1 · 2026-10-13T01:23:10.571Z · commit fd230d3b046c96293f53c8b583e1f65d4a75628f
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-307-2 · 2026-10-13T02:00:27.500Z · commit f0bdfbe667eb298338b6bd0f569fb2e93d731293
 - [x] C2. Enter on the summary line and the palette action "Open verification queue" open the queue view in the centre. It shows the holder, the waiters in order with their waits and admission ETAs, and the metrics line, and `q` closes it.
   - done: impl-307 · 2026-10-13T01:22:15.430Z
   - verified: rev-23 [reviewer] · run rev-2026-10-13-307-1 · 2026-10-13T01:23:10.572Z · commit fd230d3b046c96293f53c8b583e1f65d4a75628f
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-307-2 · 2026-10-13T02:00:27.500Z · commit f0bdfbe667eb298338b6bd0f569fb2e93d731293
 - [x] C3. A Neovim headless test on the stub hub runs the demo: one running and two waiting give the header's holder, run time and `2 waiting`, and Enter gives the order and ETAs. The existing race test between snapshot and event still passes.
   - done: impl-307 · 2026-10-13T01:22:15.733Z
   - verified: rev-23 [reviewer] · run rev-2026-10-13-307-1 · 2026-10-13T01:23:10.572Z · commit fd230d3b046c96293f53c8b583e1f65d4a75628f
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-307-2 · 2026-10-13T02:00:27.500Z · commit f0bdfbe667eb298338b6bd0f569fb2e93d731293
 - [x] C4. `nvim/README.md` describes the summary line, its states and the queue view with its keys. The `cland verify queue` paragraph of `hub/README.md` names the panel's summary line and view as its human-facing form.
   - done: impl-307 · 2026-10-13T01:22:16.050Z
   - verified: rev-23 [reviewer] · run rev-2026-10-13-307-1 · 2026-10-13T01:23:10.572Z · commit fd230d3b046c96293f53c8b583e1f65d4a75628f
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-307-2 · 2026-10-13T02:00:27.501Z · commit f0bdfbe667eb298338b6bd0f569fb2e93d731293
 
 ## Comments
 
@@ -127,3 +131,23 @@ Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
 ### impl-307 · 2026-10-13T01:24:52.952Z
 
 Resolved merge refusal by merging origin/dev d3ae375 at f0bdfbe667eb298338b6bd0f569fb2e93d731293. init.lua help-table conflict preserves T-305's archive keys/help and T-307's queue-view help. Archive registry/mappings and verification registration/clock both remain. Targeted Neovim session-archive, verification-view and verification-queue tests pass; diff check passes. Pushed integrated head; refreshing review and exact-head suite.
+
+### impl-307 · 2026-10-13T02:00:05.060Z
+
+Integrated exact-head suite 2e7f3751-bc81-4bfa-b679-22e0bd024e70 passed at f0bdfbe667eb298338b6bd0f569fb2e93d731293: typecheck and full suite, 1,718/1,718 tests pass, zero failures/skips. Log A-1737. Reviewer integration assessment A-1726 clear; requested refreshed C1–C4 final verdict with this run.
+
+### rev-23 · 2026-10-13T02:00:27.501Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-307-2
+commit: f0bdfbe667eb298338b6bd0f569fb2e93d731293
+
+No high or medium findings. C1–C4 reverified at the integrated head: merge retains archive and Verify UI/help; exact-head full 2e7f3751 passes typecheck and 1718/1718 tests with zero failures/cancellations/skips. Queue demo/local clock, snapshot/event race and archive coexistence cases pass. Evidence A-1738: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1738-t-307-final-integrated-review-at-f0bdfbe.md; full log A-1737.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-13T02:00:43.662Z
+
+Merged aa41954498803bb73d1a61ba72c86cd093094f29 onto dev.

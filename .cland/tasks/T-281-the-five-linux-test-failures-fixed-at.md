@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-181
 branch: t/T-281-the-five-linux-test-failures-fixed-at
 created: 2026-10-12T11:54:20.772Z
-updated: 2026-10-13T01:49:47.118Z
+updated: 2026-10-13T01:51:38.188Z
 ---
 
 ## Summary
@@ -144,3 +144,11 @@ Merged published origin/dev b48bba2 including T-291's flush barriers and T-304, 
 ### impl-281 · 2026-10-13T01:49:47.118Z
 
 Protected Linux slot finished: Docker Desktop quit 01:48:18.142Z and original joint UTC lease owners released after supervisor normal cleanup. No source/test changes inside slot. A-1727 hub2fail/3skips; A-1731 explicit Neovim3fail/3skips, all six unique skips complete. A-1732 proves actual suiteSummary unchanged by reporter lines on macOS and Linux; C4 done. A-1729 isolated adapter64/64 each of5. A-1734 orphan5/5fail at Codex same-response-PID assertion while each run observes a replacement app-server with distinct PID/startticks, excluding PID reuse in those observed pairs. A-1735 preserves completion/lease metadata. Unintended stopped selection A-1730 excluded. C6 final ordinary macOS suite still pending; new Linux failures remain visible for attribution.
+
+### impl-281 · 2026-10-13T01:50:43.807Z
+
+Coordinator scope decision: the all-phase Linux evidence is NOT green: A-1727 contains two hub failures, A-1731 three Neovim failures. These five are outside T-281's original five T-256 causes and skip-list scope; they moved to T-312 under T-268, blocked by T-281, with preserved artifacts. C1-C5 stand on A-1687/A-1732; reviewer verified C4. No attribution or fixes for T-312 will be made in this branch. Next fetch/merge origin/dev c5c58ab and ordinary macOS cland verify all for fresh C6, then final review assessment. I will claim T-312 after T-281 merges, as directed.
+
+### impl-281 · 2026-10-13T01:51:38.188Z
+
+Final ordinary macOS C6 submitted through cland verify all: a4d445da-495a-4815-9e9f-0e837f09ddf8 at pushed clean head76353e8 after fetching/merging origin/dev18f2242. Result addressed rev-26/impl-281, project queue position1. Final review request sent before submission. Idle for hub result; Docker remains stopped. Five new Linux failures remain recorded in T-312, not changed in this branch.
