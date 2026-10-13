@@ -24,7 +24,7 @@ import { cleanupOwnedProcesses, ownDirectory, ownProcess, recordedProcess, remem
 export const SPOKE_ENTRY = fileURLToPath(new URL('../bin/cland-spoke.ts', import.meta.url));
 
 /** The tools the spoke serves — the one list every surface assertion reads. */
-export const DOCUMENTED_TOOLS = ['artifact.archive', 'artifact.create', 'artifact.keep', 'artifact.list', 'artifact.move', 'artifact.promote', 'ask', 'ask.answer', 'ask.forward', 'history', 'merge', 'rename', 'resolve', 'role.handover', 'role.state', 'send', 'session.launch', 'status', 'subscribe', 'subscriptions', 'task.claim', 'task.close', 'task.comment', 'task.create', 'task.criterion', 'task.edit', 'task.hold', 'task.link', 'task.list', 'task.plan', 'task.rank', 'task.view', 'topic.create', 'unsubscribe', 'who'] as const;
+export const DOCUMENTED_TOOLS = ['artifact.archive', 'artifact.create', 'artifact.keep', 'artifact.list', 'artifact.move', 'artifact.promote', 'ask', 'ask.answer', 'ask.forward', 'history', 'merge', 'rename', 'resolve', 'role.handover', 'role.state', 'send', 'session.archive', 'session.launch', 'status', 'subscribe', 'subscriptions', 'task.claim', 'task.close', 'task.comment', 'task.create', 'task.criterion', 'task.edit', 'task.hold', 'task.link', 'task.list', 'task.plan', 'task.rank', 'task.view', 'topic.create', 'unsubscribe', 'who'] as const;
 
 export const ChannelEvent = z.object({
   method: z.literal('notifications/claude/channel'),

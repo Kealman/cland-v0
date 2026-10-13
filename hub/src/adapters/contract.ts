@@ -39,6 +39,9 @@ export type HarnessProcess = {
    *  what `--resume` takes and what its hooks carry as `session_id`. */
   harnessSessionId: string | null;
   startedAt: string;
+  stoppedAt?: string | null;
+  archivedAt?: string | null;
+  archivedBy?: 'hand' | 'rule' | null;
   status: 'running' | 'exited' | 'stopped';
   /** The Lead’s epic or release, or the item whose task worktree the session was launched in (`session.launch` with an item; its cwd is that
    *  worktree), else null. */

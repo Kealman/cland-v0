@@ -143,7 +143,13 @@ both waiting for human and waiting for approval; unknown live sessions sit in id
 with a `?` glyph. Background sessions start behind `more (N)`; fold keys, Enter
 or Tab on that header reveal them, newest first. Ordinary stopped sessions are
 Background by default. Aides keep their hub Now layer even when stopped.
-`A` shows or hides Archive, independently of the background fold.
+`d` archives a stopped session and says `<name> archived · A shows the archive`.
+Live rows say to stop first with `x`; an unlaunched row has no record to archive.
+`A` fetches and shows or hides Archive, independently of the background fold,
+newest archived first. It also shows rows placed in the archive layer by `gM`.
+Explicitly archived sessions leave NOW, WATCH, the background groups, top-bar
+counts and the palette's `@` source. `r` on an archive row resumes it and restores
+its group. `d` and `A` appear in the footer, Keys and the action registry.
 Project `[visibility.sessions]` overrides govern placement, including live sessions
 moved to Background and stopped sessions moved to Archive. The workbench uses the
 hub's layers from list results and live frames without deriving a separate policy.

@@ -55,7 +55,10 @@ create table if not exists harness_processes (
   pid_started text,
   item text,
   brief text,
-  effort text
+  effort text,
+  stopped_at text,
+  archived_at text,
+  archived_by text
 );
 create index if not exists harness_processes_session on harness_processes (session_id);
 create table if not exists harness_pending_stops (
@@ -95,6 +98,9 @@ const toProcess = (r: Row): HarnessProcess => ({
   sessionId: r.session_id as string,
   harnessSessionId: (r.harness_session_id as string | null) ?? null,
   startedAt: r.started_at as string,
+  stoppedAt: (r.stopped_at as string | null) ?? null,
+  archivedAt: (r.archived_at as string | null) ?? null,
+  archivedBy: (r.archived_by as HarnessProcess['archivedBy']) ?? null,
   status: r.status as HarnessProcess['status'],
   pidStarted: (r.pid_started as string | null) ?? null,
   item: (r.item as string | null) ?? null,
@@ -116,6 +122,8 @@ export class ProcessTable {
     if (!columns.has('pid_started')) this.#db.exec('alter table harness_processes add column pid_started text');
     if (!columns.has('brief')) this.#db.exec('alter table harness_processes add column brief text');
     if (!columns.has('effort')) this.#db.exec('alter table harness_processes add column effort text');
+    // Old stopped rows remain undated: no journal backfill on startup.
+    for (const column of ['stopped_at', 'archived_at', 'archived_by']) if (!columns.has(column)) this.#db.exec(`alter table harness_processes add column ${column} text`);
     if (!columns.has('item')) this.#db.exec('alter table harness_processes add column item text');
   }
 
@@ -138,12 +146,12 @@ export class ProcessTable {
   put(p: HarnessProcess): void {
     this.#db
       .prepare(
-        `insert into harness_processes (name, harness, role, model, cwd, pid, harness_id, session_id, harness_session_id, started_at, status, pid_started, item, brief, effort) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `insert into harness_processes (name, harness, role, model, cwd, pid, harness_id, session_id, harness_session_id, started_at, status, pid_started, item, brief, effort, stopped_at, archived_at, archived_by) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          on conflict (name) do update set harness = excluded.harness, role = excluded.role, model = excluded.model, cwd = excluded.cwd, pid = excluded.pid,
            harness_id = excluded.harness_id, session_id = excluded.session_id, harness_session_id = excluded.harness_session_id, started_at = excluded.started_at, status = excluded.status,
-           pid_started = excluded.pid_started, item = excluded.item, brief = excluded.brief, effort = excluded.effort`,
+           pid_started = excluded.pid_started, item = excluded.item, brief = excluded.brief, effort = excluded.effort, stopped_at = excluded.stopped_at, archived_at = excluded.archived_at, archived_by = excluded.archived_by`,
       )
-      .run(p.name, p.harness, p.role, p.model, p.cwd, p.pid, p.harnessId, p.sessionId, p.harnessSessionId, p.startedAt, p.status, p.pidStarted ?? null, p.item ?? null, p.launchBrief ?? null, p.effort ?? null);
+      .run(p.name, p.harness, p.role, p.model, p.cwd, p.pid, p.harnessId, p.sessionId, p.harnessSessionId, p.startedAt, p.status, p.pidStarted ?? null, p.item ?? null, p.launchBrief ?? null, p.effort ?? null, p.stoppedAt ?? null, p.archivedAt ?? null, p.archivedBy ?? null);
     this.#changed(p.name);
   }
 
@@ -169,10 +177,11 @@ export class ProcessTable {
     return true;
   }
 
-  update(name: string, change: Partial<Pick<HarnessProcess, 'pid' | 'harnessId' | 'harnessSessionId' | 'model' | 'status' | 'role' | 'pidStarted'>>): void {
+  update(name: string, change: Partial<Pick<HarnessProcess, 'pid' | 'harnessId' | 'harnessSessionId' | 'model' | 'status' | 'role' | 'pidStarted' | 'stoppedAt' | 'archivedAt' | 'archivedBy'>>): void {
+    if (change.status && change.status !== 'running' && change.stoppedAt === undefined) change = { ...change, stoppedAt: new Date().toISOString() };
     const sets: string[] = [];
     const values: Array<string | number | null> = [];
-    const column = { pid: 'pid', harnessId: 'harness_id', harnessSessionId: 'harness_session_id', model: 'model', status: 'status', role: 'role', pidStarted: 'pid_started' } as const;
+    const column = { pid: 'pid', harnessId: 'harness_id', harnessSessionId: 'harness_session_id', model: 'model', status: 'status', role: 'role', pidStarted: 'pid_started', stoppedAt: 'stopped_at', archivedAt: 'archived_at', archivedBy: 'archived_by' } as const;
     for (const [k, v] of Object.entries(change) as Array<[keyof typeof column, string | number | null]>) {
       sets.push(`${column[k]} = ?`);
       values.push(v);

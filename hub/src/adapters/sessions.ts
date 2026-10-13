@@ -407,6 +407,10 @@ export class Sessions {
       sessionId: p.sessionId,
       harnessSessionId: p.harnessSessionId,
       startedAt: p.startedAt,
+      stoppedAt: p.stoppedAt ?? null,
+      archived: !!p.archivedAt,
+      archivedAt: p.archivedAt ?? null,
+      archivedBy: p.archivedBy ?? null,
       status: p.status,
       state: p.status === 'running' ? this.#core.sessionState(p.sessionId) : 'unknown',
       ...(approvalCommand !== undefined ? { approvalCommand } : {}),
@@ -427,8 +431,8 @@ export class Sessions {
     this.#usageTimers.set(sessionId, timer);
   }
 
-  list(): HarnessProcessView[] {
-    return this.#table.all().filter(p => !this.#pendingStops.has(p.sessionId)).map((p) => this.view(p));
+  list(archived = false): HarnessProcessView[] {
+    return this.#table.all().filter(p => !!p.archivedAt === archived && !this.#pendingStops.has(p.sessionId)).map((p) => this.view(p));
   }
 
   /** Durable failed launches remain supervised pending stop, apart from accepted process rows. */
@@ -832,6 +836,28 @@ export class Sessions {
     } finally { if (!released) resumed(() => slot.release()); }
   }
 
+  /** Serialize archiving with stop/resume so a resumed live row cannot be hidden. */
+  async archive(name: string, actor: string, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<HarnessProcessView> {
+    authorize();
+    const identity = this.#process(name).sessionId;
+    const slot = this.#lifecycleSlot(identity);
+    try {
+      if (slot.ready) await slot.ready;
+      return resumed(() => {
+        authorize();
+        const p = this.#table.bySessionId(identity);
+        if (!p) throw new Error(`session "${name}" was replaced while waiting for its lifecycle slot`);
+        if (this.#pendingStops.has(identity)) throw new Error(`failed launch of "${p.name}" is still supervised; cleanup is pending`);
+        if (p.status === 'running') throw new Error(`session "${p.name}" is running; stop it first`);
+        if (!p.archivedAt) {
+          this.#table.update(p.name, { archivedAt: new Date().toISOString(), archivedBy: 'hand' });
+          this.#log({ event: 'session-archived', session: p.name, sessionId: identity, by: 'hand', actor });
+        }
+        return this.view(this.#process(p.name));
+      });
+    } finally { resumed(() => slot.release()); }
+  }
+
   /** Re-find one session (or relaunch it); a session that cannot be re-found is `unknown` and journalled. */
   async resume(name: string, relaunch = false, resumed: Resumed = untimed, authorize: () => void = () => {}, fresh = false): Promise<SessionResumeAnswer> {
     authorize();
@@ -870,6 +896,7 @@ export class Sessions {
     return resumed(() => {
       const work = this.#resumeWork(this.#process(process.name), original.role);
       if (original.launchBrief == null) work.notes.push('no brief recorded');
+      if (original.archivedAt) this.#log({ event: 'session-unarchived', session: process.name, sessionId: process.sessionId, by: original.archivedBy, reason: 'resume' });
       this.#log({ event: 'session-resumed', session: process.name, harness: process.harness, relaunched: true, fresh: true, ...work });
       return { found: true, process, ...work };
     });
@@ -933,8 +960,9 @@ export class Sessions {
     const publish = (found: Extract<ResumeResult, { found: true }>, pidStarted: string | null) => {
       // Re-read after any identity probe: a rename, item or role change made while awaiting stays in place.
       const current = row();
-      const process: HarnessProcess = { ...found.process, name: current.name, role: current.role, item: current.item ?? null, launchBrief: current.launchBrief ?? null, effort: current.effort ?? null, pidStarted };
+      const process: HarnessProcess = { ...found.process, name: current.name, role: current.role, item: current.item ?? null, launchBrief: current.launchBrief ?? null, effort: current.effort ?? null, pidStarted, stoppedAt: null, archivedAt: null, archivedBy: null };
       this.#table.put(process);
+      if (current.archivedAt) this.#log({ event: 'session-unarchived', session: process.name, sessionId: process.sessionId, by: current.archivedBy, reason: 'resume' });
       adapter.watch(process);
       this.#core.publishProcess(this.view(process));
       if (reservation) this.#core.launchSettled(process.name);

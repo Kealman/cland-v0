@@ -859,13 +859,18 @@ What the real Codex showed in the first smoke (0.160.0, `gpt-5.6-luna`): `turn/s
 | Request | Result `value` | Who |
 | --- | --- | --- |
 | `{"type":"session.launch","id":…,"name":…,"role"?,"model"?,"harness"?,"effort"?,"cwd"?,"item"?,"brief"?}` | `{"process":HarnessProcess}`; a role's launch defaults fill the rest. `brief`: text or an artifact id, carried once after the clause in the first input. With `item`: `{"process","claim","worktree","reason"?}` (Task branches and worktrees) | UI, CLI, spokes whose role grants `session.launch` (the Coordinator) |
-| `{"type":"session.list","id":…}` | `{"processes":[HarnessProcess…],"adapters":{"claude-code":Capabilities,"opencode":Capabilities,"codex":Capabilities},"coordinator"}` | UI, CLI, spokes whose role grants `session.launch` |
+| `{"type":"session.list","id":…, "archived"?:true}` | `{"archived":count,"processes":[HarnessProcess…],"adapters":{"claude-code":Capabilities,"opencode":Capabilities,"codex":Capabilities},"coordinator"}` | UI, CLI, spokes whose role grants `session.launch` |
 | `{"type":"session.attach","id":…,"session":…}` | `{"command":"claude attach 1a2b3c4d"}` | UI, CLI |
+| `{"type":"session.archive","id":…, "session":…}` | `{"process":…}`; stopped/exited only | UI, human CLI, Coordinator |
 | `{"type":"session.stop","id":…,"session":…}` | `{"process":…}` | UI, CLI |
 | `{"type":"session.resume","id":…,"session":…,"relaunch"?:true,"fresh"?:true}` | `{"found","reason"?,"process","role","claim","notes", "fresh"?:{"brief"}}` | UI, CLI |
 | `{"type":"session.retry","id":…,"session":…,"message":"<message id>"}` | `{"retried":true}`; refused unless that delivery is `uncertain` | UI, CLI |
 | `{"type":"session.signal","id":…,"session":…,"launch"?:…,"event":…,"at":…,"payload":{…}}` | `{"applied","state"?}` | `cland hook` |
 | `{"type":"session.bridge","id":…,"session":…,"launch"?:…}` | `{"bridged":true}`, then `{"type":"inject","session","message","text"}` frames | `cland hook bridge` |
+
+`session.archive` archives a stopped or exited process row; a running row is refused with "stop it first". `cland session archive <name>` does the same from the human's shell. Only the human and Coordinator have permission; other roles are refused. The Coordinator's `session.archive` tool is fixed at launch, so relaunch an existing Coordinator after updating.
+
+Default `session.list` and `cland session list --json` exclude archived rows and return `archived: <count>`. `session.list` with `archived: true`, or `cland session list --archived` (also with `--json`), returns only archived rows. Archived rows leave `hub.status.harnesses`, live groups, counts and the palette. Their `session.process` event carries `archived: true` and the archive layer, including when pinned. The process view carries nullable `stoppedAt`, `archivedAt` and `archivedBy` (`hand` or `rule`). Existing stopped rows gain nullable columns without journal backfill; later stops record their time. New launches under reused names replace these marks. The journal retains earlier launches and stops and appends `session-archived` with session, sessionId, by and actor. Successful native or fresh resume clears either kind of mark and journals `session-unarchived`; failed resume keeps the archive.
 
 `session.resume` returns `role` (the restored role or null), `claim` (the currently owned item id or null) and `notes[]` describing what did not return. An occupied exclusive role stays with its current holder; a closed or reassigned item stays unclaimed by the resumed session. Verifier holds are released at stop and never restored: the verifier must retake them. The role clause is delivered again on the resumed hello. A successful relaunch journals `session-resumed` with `relaunched: true`, the role, claim and notes.
 

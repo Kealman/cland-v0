@@ -10,7 +10,8 @@ export const SESSION_USAGE = `  session launch <name> [--role r] [--model m] [--
                   (.cland/roles.toml) fill the harness, model and effort not given; --item starts an
                   Implementer in its task worktree, or a Lead on an open epic/release at the root, with its claim;
                   --brief delivers text or an artifact's content once after the role clause
-  session list    the sessions the hub launched, with their state (--json for JSON)
+  session list [--archived]    launched sessions and the archived count (--json for JSON); --archived shows only the archive
+  session archive <name>  archive a stopped or exited session
   session attach <name>   print the command that attaches a terminal to the session
   session stop <name>     stop the session through its harness
   session resume <name> [--relaunch | --fresh]   re-find the session's process; --relaunch starts a new one on the same
@@ -60,14 +61,20 @@ export async function runSession(args: string[], cwd: string = process.cwd()): P
       return 0;
     }
     case 'list': {
-      const v = (await askHubFrame(d, { type: 'session.list' })) as { processes: HarnessProcessView[]; coordinator?: string | null };
-      out(v, `${v.processes.length ? v.processes.map(line).join('\n') : 'no sessions launched'}\n${v.coordinator ? `coordinator: ${v.coordinator}` : 'no coordinator'}`);
+      const v = (await askHubFrame(d, { type: 'session.list', archived: rest.includes('--archived') })) as { processes: HarnessProcessView[]; coordinator?: string | null; archived: number };
+      out(v, `${v.processes.length ? v.processes.map(line).join('\n') : 'no sessions launched'}\n${v.coordinator ? `coordinator: ${v.coordinator}` : 'no coordinator'}\narchived: ${v.archived}`);
       return 0;
     }
     case 'attach': {
       if (!name) throw new Error('usage: cland session attach <name>');
       const v = (await askHubFrame(d, { type: 'session.attach', session: name })) as { command: string };
       out(v, v.command);
+      return 0;
+    }
+    case 'archive': {
+      if (!name) throw new Error('usage: cland session archive <name>');
+      const v = (await askHubFrame(d, { type: 'session.archive', session: name })) as { process: HarnessProcessView };
+      out(v, `archived ${line(v.process)}`);
       return 0;
     }
     case 'stop': {

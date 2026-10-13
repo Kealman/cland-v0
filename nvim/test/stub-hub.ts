@@ -277,7 +277,7 @@ function answer(f: Frame) {
       return ok(f.id, { topic });
     }
     case 'session.list':
-      return ok(f.id, { processes: scenario.processes ?? [], adapters: scenario.adapters ?? {} });
+      return ok(f.id, { processes: (scenario.processes ?? []).filter(p => !!p.archived === (f.archived === true)), archived: (scenario.processes ?? []).filter(p => p.archived).length, adapters: scenario.adapters ?? {} });
     case 'session.attach': {
       const command = scenario.attach?.[String(f.session)];
       return command ? ok(f.id, { command }) : fail(f.id, `no session named ${String(f.session)}`);
@@ -297,11 +297,19 @@ function answer(f: Frame) {
       write({ type: 'session.state', session: p.name, sessionId: p.sessionId, state: 'unknown', source: 'stopped', ts: now() });
       return ok(f.id, { process: p });
     }
+    case 'session.archive': {
+      const p = scenario.processes?.find(x => x.name === f.session);
+      if (!p) return fail(f.id, 'no record to archive');
+      if (p.status === 'running') return fail(f.id, 'stop it first');
+      Object.assign(p, { archived: true, archivedAt: now() });
+      write({ type: 'session.process', process: p });
+      return ok(f.id, { process: p });
+    }
     case 'session.resume': {
       const p = scenario.processes?.find(x => x.name === f.session);
       if (!p) return fail(f.id, `no session "${String(f.session)}" was launched by this hub`);
       if (scenario.resumeReason && f.fresh !== true) return ok(f.id, { found: false, process: p, reason: scenario.resumeReason, fresh: { brief: scenario.resumeBrief ?? null }, notes: [] });
-      Object.assign(p, { status: 'running', state: 'idle' });
+      Object.assign(p, { status: 'running', state: 'idle', archived: false, archivedAt: null });
       write({ type: 'session.process', process: p });
       return ok(f.id, { found: true, process: p, role: p.role, claim: null, notes: scenario.resumeNotes ?? [] });
     }

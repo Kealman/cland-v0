@@ -13,6 +13,7 @@ function M.reset(opts)
     project = opts.root and vim.fn.fnamemodify(opts.root, ':t') or 'cland',
     hub = { state = 'idle', detail = nil },
     topics = {}, -- Topic, as topic.list returns them
+    archived_processes = {}, -- explicitly archived rows, fetched when A opens the archive
     processes = {}, -- HarnessProcess rows from session.list
     presence = {}, -- connected sessions from hub.status (spokes started by hand included)
     adapters = {}, -- harness → capability table
@@ -139,12 +140,18 @@ function M.unread_total()
 end
 
 --- Every session the shell knows: the launched ones (session.list), then connected spokes nobody launched.
-function M.sessions()
+function M.sessions(include_archived)
   local out, seen = {}, {}
-  for _, p in ipairs(M.S.processes) do
+  local processes = vim.list_extend({}, M.S.processes)
+  if include_archived then vim.list_extend(processes, M.S.archived_processes)
+  else for _, p in ipairs(M.S.archived_processes) do seen[p.name] = true end end
+  for _, p in ipairs(processes) do
     local live = p.status == 'running'
     out[#out + 1] = {
-      layer = p.layer,
+      layer = p.archived and 'archive' or p.layer,
+      archived = p.archived,
+      archivedAt = type(p.archivedAt) == 'string' and p.archivedAt or nil,
+      startedAt = p.startedAt,
       name = p.name,
       role = p.role,
       label = M.label(p.name, p.role, p.label),
@@ -214,7 +221,7 @@ function M.role_def(role)
 end
 
 function M.session(name)
-  for _, s in ipairs(M.sessions()) do
+  for _, s in ipairs(M.sessions(true)) do
     if s.name == name then
       return s
     end
@@ -347,18 +354,18 @@ function M.upsert_process(process)
   if type(process) ~= 'table' or not process.name or not process.sessionId then
     return
   end
-  local rows = {}
-  for _, p in ipairs(M.S.processes) do
-    if p.name ~= process.name and p.sessionId ~= process.sessionId then
-      rows[#rows + 1] = p
+  for _, key in ipairs({ 'processes', 'archived_processes' }) do
+    local rows = {}
+    for _, p in ipairs(M.S[key]) do
+      if p.name ~= process.name and p.sessionId ~= process.sessionId then rows[#rows + 1] = p end
     end
+    if (key == 'archived_processes') == (process.archived == true) then rows[#rows + 1] = process end
+    table.sort(rows, function(a, b)
+      local at, bt = a.startedAt or '', b.startedAt or ''
+      return at == bt and a.name < b.name or at < bt
+    end)
+    M.S[key] = rows
   end
-  rows[#rows + 1] = process
-  table.sort(rows, function(a, b)
-    local at, bt = a.startedAt or '', b.startedAt or ''
-    return at == bt and a.name < b.name or at < bt
-  end)
-  M.S.processes = rows
   M.changed()
 end
 

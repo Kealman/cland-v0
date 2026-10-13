@@ -291,10 +291,10 @@ local function session_row(c, s, group)
   end
 end
 
-local SESSIONS_FOOTER = { ' ↵ attach · C-v split · c capabilities', ' l launch · a Aide · x stop · r resume', ' za more · A archive' }
+local SESSIONS_FOOTER = { ' ↵ attach · C-v split · c capabilities', ' l launch · a Aide · x stop · r resume', ' d archive · za more · A archive' }
 
 local function render_sessions(c)
-  local list = state.sessions()
+  local list = state.sessions(state.S.ui.sessions_archive)
   local queue = state.S.verification
   if type(queue) == 'table' then
     local function seconds(ms) return type(ms) == 'number' and (math.ceil(ms / 1000) .. 's') or 'unknown' end
@@ -333,7 +333,7 @@ local function render_sessions(c)
   local layers = { now = {}, watch = {}, background = {}, archive = {} }
   for _, s in ipairs(list) do
     -- Older hubs omit the layer: keep their sessions visible without classifying state here.
-    local layer = require('cland.visibility').layer(s) or 'now'
+    local layer = s.archived and 'archive' or require('cland.visibility').layer(s) or 'now'
     table.insert(layers[layer], s)
   end
   for _, layer in ipairs({ 'now', 'watch' }) do
@@ -362,7 +362,11 @@ local function render_sessions(c)
   if state.S.ui.sessions_archive then
     c:add({})
     c:add({ { ' ARCHIVE · ' .. #layers.archive, 'ClandDim' } }, nil, { section = 'archive' })
-    for i = #layers.archive, 1, -1 do session_row(c, layers.archive[i], 'archive') end
+    table.sort(layers.archive, function(a, b)
+      local at, bt = a.archivedAt or a.startedAt or '', b.archivedAt or b.startedAt or ''
+      return at == bt and a.name < b.name or at > bt
+    end)
+    for _, s in ipairs(layers.archive) do session_row(c, s, 'archive') end
   end
   return SESSIONS_FOOTER
 end
@@ -566,6 +570,7 @@ function M.session_keys(b)
   map('<C-v>', on_row(function(name)
     require('cland.layout').show_split({ kind = 'session', id = name })
   end), 'attach in a vertical split')
+  map('d', on_row(sessions.archive), 'archive the stopped session')
   map('r', on_row(sessions.resume), 'resume the session')
   map('x', on_row(sessions.ask_stop), 'stop the session (asks first)')
   map('L', on_row(function(name)
@@ -579,6 +584,7 @@ function M.session_keys(b)
   end
   map('A', function()
     state.S.ui.sessions_archive = not state.S.ui.sessions_archive
+    if state.S.ui.sessions_archive then require('cland').refresh_archive() end
     state.changed()
   end, 'show or hide archived sessions')
   -- the cursor's row is the selected session, the one whose second line shows

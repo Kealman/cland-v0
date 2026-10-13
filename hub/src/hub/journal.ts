@@ -54,6 +54,8 @@ export const JOURNALLED: ReadonlySet<string> = new Set([
   'refused-role',
   'session-launched',
   'session-reused',
+  'session-archived',
+  'session-unarchived',
   'session-stopped',
   'session-resumed',
   'harness-exited',
@@ -420,7 +422,7 @@ export function eventRow(r: JournalRecord, offset = ''): EventRow | null {
     // New session/task/topic events have their own one-line announcement.
     if (r.eventsVersion && !['session-resumed', 'task-merged', 'merge-resumed', 'topic-created', 'topic-status', 'task-plan-changed', 'task-plan-approved'].includes(r.event)) return null;
     if (r.eventsVersion && r.event === 'topic-status' && ['waiting for human', 'closed'].includes(String(r.to))) return null;
-    if (['session-launched', 'session-resumed', 'session-stopped', 'harness-exited', 'harness-ended', 'session-state', 'role-handover'].includes(r.event)) {
+    if (['session-launched', 'session-resumed', 'session-stopped', 'session-archived', 'session-unarchived', 'harness-exited', 'harness-ended', 'session-state', 'role-handover'].includes(r.event)) {
       kind = 'session'; subject = session ? { kind: 'session', id: session } : undefined;
       text ??= `${session} ${r.event.replace('session-', '')}${r.state ? ` ${r.state}` : ''}`;
     } else if (['task-claimed', 'task-merged', 'merge-resumed', 'task-plan-changed', 'task-plan-approved'].includes(r.event)) {

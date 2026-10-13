@@ -54,6 +54,7 @@ export const KNOWN_TOOLS: readonly string[] = [
   'task.hold',
   'task.import',
   'session.launch',
+  'session.archive',
   // from the session's shell only (the `cland` CLI, T-49): the spoke has no such tools
   'session.stop',
   'session.resume',
@@ -103,6 +104,7 @@ export const DEFAULT_PERMISSIONS: Readonly<Record<string, readonly string[]>> = 
     'session.launch',
     'session.stop',
     'session.resume',
+    'session.archive',
     'hub.stop',
     'role.handover',
     'merge',

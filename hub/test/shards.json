@@ -86,6 +86,7 @@
     "hub/test/roles-timing.test.ts": "machine",
     "hub/test/roles.test.ts": "machine",
     "hub/test/routing.test.ts": "machine",
+    "hub/test/session-archive.test.ts": "machine",
     "hub/test/session-async-processes.test.ts": "machine",
     "hub/test/session-brief.test.ts": "machine",
     "hub/test/session-resume.test.ts": "machine",

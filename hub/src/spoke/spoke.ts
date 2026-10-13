@@ -139,6 +139,11 @@ const TOOLS = [
     inputSchema: { type: 'object', properties: { name: { type: 'string' } }, required: ['name'] },
   },
   {
+    name: 'session.archive',
+    description: 'Archive a stopped or exited session; a live session must be stopped first. The journal is retained.',
+    inputSchema: { type: 'object', properties: { session: { type: 'string' } }, required: ['session'] },
+  },
+  {
     name: 'session.launch',
     description:
       'Launch a new harness session through the hub (its process runs in the background; the human attaches to it from the UI). Returns the session with its state and the command that attaches a terminal to it.',
@@ -420,6 +425,11 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env): Promise<Sp
         case 'role.state': {
           const value = (await hub.request({ type: 'role.state' })) as Record<string, unknown>;
           return text({ ok: true, ...value });
+        }
+        case 'session.archive': {
+          if (typeof args.session !== 'string') return text({ ok: false, error: 'session.archive needs `session`' }, true);
+          const value = await hub.request({ type: 'session.archive', session: args.session });
+          return text({ ok: true, ...(value as Record<string, unknown>) });
         }
         case 'session.launch': {
           if (typeof args.name !== 'string') return text({ ok: false, error: 'session.launch needs `name`' }, true);

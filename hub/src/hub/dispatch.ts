@@ -148,7 +148,7 @@ export class Dispatcher {
     this.#guard = options.requestGuard ?? new RequestGuard({ ...options.guard, log: this.#log });
     this.#rolesSnapshot = options.core.roles?.get();
     const root = options.control?.status().root;
-    this.#suites = root ? new Suites(options.core.store, root, (job, checkpointArtifact) => this.#reportSuite(job, checkpointArtifact), { ...options.verification, log: this.#log, onQueue: queue => options.core.publishVerification(queue), requesterDead: actor => this.#sessions?.list().some(p => p.sessionId === actor.sessionId && p.status !== 'running') ?? false }) : null;
+    this.#suites = root ? new Suites(options.core.store, root, (job, checkpointArtifact) => this.#reportSuite(job, checkpointArtifact), { ...options.verification, log: this.#log, onQueue: queue => options.core.publishVerification(queue), requesterDead: actor => [...(this.#sessions?.list() ?? []), ...(this.#sessions?.list(true) ?? [])].some(p => p.sessionId === actor.sessionId && p.status !== 'running') }) : null;
     // what a read shows changed: no earlier answer is replayed
     options.core.subscribe(event => {
       this.#guard.changed();
@@ -863,6 +863,7 @@ export class Dispatcher {
         this.#worktrees ?? undefined,
         (write) => this.#guard.measure(frame.type, kind === 'spoke' ? (name ?? '?') : client, write, 'resumed'),
         authorize,
+        original?.name ?? 'human',
       ).then((result) => {
         if (peer.isOpen()) peer.send(result);
         else settle(result);

@@ -50,7 +50,7 @@ for _, scope in ipairs({'items', 'sessions', 'topics', 'inbox'}) do
   group(scope, {{'<CR>', scope == 'sessions' and 'Attach selected session (or toggle background fold)' or 'Open row in centre'}, {'<2-LeftMouse>', 'Open row in centre with mouse'}})
 end
 group('sessions', {{'l','Launch a session'}, {'a','Launch an Aide'}, {'<C-v>','Attach session in split'},
-  {'x','Stop selected session (confirm)'}, {'r','Resume session'}, {'f','Launch session fresh with its brief'}, {'L','Agents log for selected session'},
+  {'d','Archive stopped session'}, {'x','Stop selected session (confirm)'}, {'r','Resume session'}, {'f','Launch session fresh with its brief'}, {'L','Agents log for selected session'},
   {'c','Session adapter capabilities'}, {'y','Confirm stopping session'},
   {'za','Toggle background sessions fold'}, {'zo','Open background sessions fold'}, {'zc','Close background sessions fold'},
   {'zR','Open all background sessions'}, {'zM','Fold all background sessions'}, {'<Tab>','Toggle background sessions fold'},

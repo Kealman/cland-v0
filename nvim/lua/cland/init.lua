@@ -117,7 +117,20 @@ local function after(n, done)
   end
 end
 
+local refresh_archive = single_flight(function(done)
+  M.client:snapshot({ type = 'session.list', archived = true }, function(err, value, events)
+    if not err and value then
+      state.S.archived_processes = value.processes or {}
+      replay_sessions(events, true)
+      state.changed()
+    end
+    done()
+  end)
+end)
+M.refresh_archive = refresh_archive
+
 local refresh_sessions = single_flight(function(done)
+  if state.S.ui.sessions_archive then refresh_archive() end
   local answered = after(4, done)
   M.client:snapshot({ type = 'session.list' }, function(err, value, events)
     if not err and value then
@@ -320,7 +333,7 @@ M.HELP = {
   '          za/zo/zc folds · zR background · A archive · :w saves files · q back · R render Mermaid',
   'Prompts   :Cland prompt [title] · :w saves · :Cland prompt send|attach · ␣ps sends · ␣pa attaches',
   'Sessions  ␣l launch · ↵ attach · C-v split · l launch · x stop · c capabilities',
-  '          r Resume session · f Launch session fresh with its brief (when offered) · n or Esc cancel',
+  '          d archive · A show/hide archive · r Resume session · f Launch session fresh with its brief (when offered) · n or Esc cancel',
   'Presets   :Cland preset charting | watch | steady (examples, never modes)',
   'Views     :Cland view thread <topic> | session <name> | item <id> | plan <epic> | board | log | inbox',
   '',

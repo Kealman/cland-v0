@@ -247,6 +247,20 @@ function M.ask_stop(name)
   state.changed()
 end
 
+--- d only archives a launched, stopped row; the process event moves it out of every group.
+function M.archive(name)
+  local s = state.session(name)
+  if not s then return end
+  if not s.launched then return note(name .. ' was not launched by cland: there is no record to archive', 'ClandAmber') end
+  if s.live then return note(name .. ' is running: stop it first with x', 'ClandAmber') end
+  if not (M.client and M.client:connected()) then return note('cannot archive ' .. name .. ': not connected to the hub', 'ClandRed') end
+  M.client:request({ type = 'session.archive', session = name }, function(err, value)
+    if err then return note('archive ' .. name .. ' refused: ' .. tostring(err):gsub('\n', ' '), 'ClandRed') end
+    if value and value.process then state.upsert_process(value.process) end
+    note(name .. ' archived · A shows the archive', 'ClandDim')
+  end)
+end
+
 local function resume_request(name, fresh)
   if not (M.client and M.client:connected()) then
     return note('cannot resume ' .. name .. ': not connected to the hub', 'ClandRed')
@@ -259,11 +273,7 @@ local function resume_request(name, fresh)
     if err then return note('resume ' .. name .. ' refused: ' .. tostring(err):gsub('\n', ' '), 'ClandRed') end
     if value and value.found then
       local p = value.process
-      if p then
-        for i, row in ipairs(state.S.processes) do
-          if row.name == p.name then state.S.processes[i] = p end
-        end
-      end
+      if p then state.upsert_process(p) end
       local text = name .. (fresh and ' launched fresh' or ' resumed')
       if #(value.notes or {}) > 0 then text = text .. ' · ' .. table.concat(value.notes, ' · ') end
       note(text, 'ClandDim')

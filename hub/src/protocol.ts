@@ -684,6 +684,10 @@ export type HarnessProcessView = {
   /** The harness's own conversation id, where it differs from `sessionId` (Claude Code's background sessions pick their own). */
   harnessSessionId: string | null;
   startedAt: string;
+  stoppedAt?: string | null;
+  archived?: boolean;
+  archivedAt?: string | null;
+  archivedBy?: 'hand' | 'rule' | null;
   /** `running`, `exited` (the process died on its own), `stopped` (through cland). */
   status: 'running' | 'exited' | 'stopped';
   state: SessionState;

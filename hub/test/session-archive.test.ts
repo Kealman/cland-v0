@@ -1,0 +1,135 @@
+// Archive through the real hub, a real spoke and the human CLI; fakes sit at the harness boundary.
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdir, readFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
+import { ProcessTable } from '../src/adapters/processes.ts';
+import type { HarnessProcessView } from '../src/protocol.ts';
+import { cland, connectUi, fakeClaude, fakeCodex, spawnSpoke, startDaemon, tempProject, eventually } from './harness.ts';
+
+type List = { processes: HarnessProcessView[]; archived: number };
+
+test('archive refuses live and unlaunched rows, hides stopped rows, retains their journal, and resume restores them', async t => {
+  const root = await tempProject(t);
+  const fake = await fakeClaude(t);
+  const { discovery } = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
+  const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
+  t.after(() => coord.close());
+  await coord.waitForPresence(['coord']);
+  assert.ok((await coord.client.listTools()).tools.some(tool => tool.name === 'session.archive'));
+  const impl = await spawnSpoke({ discover: true, cwd: root, name: 'impl', role: 'implementer' });
+  t.after(() => impl.close());
+  await impl.waitForPresence(['impl']);
+  const forbidden = await impl.call<{ ok: boolean; code: string }>('session.archive', { session: 'old' });
+  assert.equal(forbidden.ok, false);
+  assert.equal(forbidden.code, 'forbidden');
+  const unlaunched = await ui.request({ type: 'session.archive', session: 'impl' });
+  assert.equal(unlaunched.ok, false);
+  assert.match(unlaunched.error!, /no session.*was launched/);
+  const launched = await ui.request({ type: 'session.launch', name: 'old', role: 'aide', harness: 'claude-code' }, 30_000);
+  assert.equal(launched.ok, true, launched.error);
+  const before = (launched.value as { process: HarnessProcessView }).process;
+  await eventually('Aide receives its role clause', async () => (await fake.log(before.harnessId!)).includes('you hold the role Aide') || undefined);
+  const live = await ui.request({ type: 'session.archive', session: 'old' });
+  assert.equal(live.ok, false);
+  assert.match(live.error!, /stop it first/);
+  const stopped = await ui.request({ type: 'session.stop', session: 'old' }, 30_000);
+  assert.equal(stopped.ok, true, stopped.error);
+  assert.ok((stopped.value as { process: HarnessProcessView }).process.stoppedAt);
+  // A pin cannot put an explicitly archived row back in a live group.
+  assert.equal((await ui.request({ type: 'visibility.set', surface: 'sessions', target: 'old', mode: 'pin' })).ok, true);
+  const archived = await coord.call<{ ok: boolean; error?: string; process: HarnessProcessView }>('session.archive', { session: 'old' });
+  assert.equal(archived.ok, true, archived.error);
+  assert.equal(archived.process.archived, true);
+  assert.equal(archived.process.layer, 'archive');
+  assert.equal(archived.process.archivedBy, 'hand');
+  const event = await ui.waitFor(f => f.type === 'session.process' && (f.process as HarnessProcessView).archived === true);
+  assert.equal((event.process as HarnessProcessView).name, 'old');
+  const list = (await ui.request({ type: 'session.list' })).value as List;
+  assert.deepEqual(list.processes, []);
+  assert.equal(list.archived, 1);
+  assert.deepEqual(((await ui.request({ type: 'session.list', archived: true })).value as List).processes.map(p => p.name), ['old']);
+  for (const archived of [false, true]) {
+    const result = await cland(root, 'session', 'list', '--json', ...(archived ? ['--archived'] : []));
+    assert.equal(result.code, 0, result.stderr);
+    const rows = JSON.parse(result.stdout) as List;
+    assert.equal(rows.archived, 1);
+    assert.deepEqual(rows.processes.map(p => p.name), archived ? ['old'] : []);
+  }
+  const text = await cland(root, 'session', 'list', '--archived');
+  assert.equal(text.code, 0, text.stderr);
+  assert.match(text.stdout, /old \[Aide\]/);
+  // Repeating the human CLI archive is idempotent and does not erase earlier lifecycle records.
+  const repeat = await cland(root, 'session', 'archive', 'old', '--json');
+  assert.equal(repeat.code, 0, repeat.stderr);
+  assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
+  const journal = (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).split('\n').filter(Boolean).map(line => JSON.parse(line) as Record<string, unknown>);
+  for (const event of ['session-launched', 'session-stopped', 'session-archived']) assert.ok(journal.some(e => e.event === event && e.session === 'old'), event);
+  const mark = journal.filter(e => e.event === 'session-archived' && e.session === 'old');
+  assert.equal(mark.length, 1);
+  assert.deepEqual([mark[0]!.sessionId, mark[0]!.by, mark[0]!.actor], [before.sessionId, 'hand', 'coord']);
+  const resumed = await ui.request({ type: 'session.resume', session: 'old', relaunch: true }, 30_000);
+  assert.equal(resumed.ok, true, resumed.error);
+  const after = resumed.value as { found: boolean; process: HarnessProcessView };
+  assert.equal(after.found, true);
+  assert.equal(after.process.archived, false);
+  assert.equal(after.process.archivedAt, null);
+  assert.equal(after.process.stoppedAt, null);
+  assert.equal(after.process.sessionId, before.sessionId);
+  assert.deepEqual(((await ui.request({ type: 'session.list' })).value as List).processes.map(p => p.name), ['old']);
+  assert.deepEqual(((await ui.request({ type: 'session.list', archived: true })).value as List).processes, []);
+  assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
+  assert.match(await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8'), /"event":"session-unarchived"/);
+});
+
+test('migration retains old stopped rows without reading the journal, and name reuse clears archive metadata', async t => {
+  const root = await tempProject(t);
+  const path = join(root, 'old.db');
+  const db = new DatabaseSync(path);
+  db.exec(`create table harness_processes (name text primary key, harness text not null, role text, model text, cwd text not null, pid integer, harness_id text, session_id text not null, started_at text not null, status text not null);
+    insert into harness_processes values ('old', 'claude-code', 'aide', null, '.', null, null, 'old-id', '2026-01-01T00:00:00Z', 'stopped');`);
+  db.close();
+  const table = new ProcessTable(path);
+  t.after(() => table.close());
+  const row = table.get('old')!;
+  assert.equal(row.sessionId, 'old-id');
+  assert.equal(row.stoppedAt, null);
+  table.update('old', { archivedAt: '2026-10-13T00:00:00Z', archivedBy: 'rule' });
+  assert.equal(table.get('old')!.archivedBy, 'rule');
+  table.put({ ...row, sessionId: 'new-id', status: 'running' });
+  assert.equal(table.get('old')!.archivedAt, null);
+  assert.equal(table.get('old')!.archivedBy, null);
+});
+
+for (const by of ['hand', 'rule'] as const) test(`fresh resume clears a durable ${by} archive after a refused native resume`, async t => {
+  const root = await tempProject(t);
+  await mkdir(join(root, '.cland'), { recursive: true });
+  const table = new ProcessTable(join(root, '.cland', 'hub.db'));
+  table.put({ name: 'old', harness: 'codex', role: 'aide', model: 'gpt-fake-1', cwd: root, pid: null, harnessId: null, sessionId: 'old-id', harnessSessionId: null, startedAt: '2026-01-01T00:00:00Z', status: 'exited', stoppedAt: '2026-01-02T00:00:00Z', archivedAt: '2026-01-03T00:00:00Z', archivedBy: by, launchBrief: 'Continue this archived work.' });
+  table.close();
+  const fake = await fakeCodex(t);
+  const { discovery } = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  const before = (await ui.request({ type: 'session.list', archived: true })).value as List;
+  assert.equal(before.processes[0]!.archivedBy, by, 'restart retains the archive metadata');
+  const failed = await ui.request({ type: 'session.resume', session: 'old', relaunch: true });
+  assert.equal(failed.ok, true, failed.error);
+  const offer = failed.value as { found: boolean; process: HarnessProcessView; fresh: { brief: string } };
+  assert.equal(offer.found, false);
+  assert.equal(offer.process.archived, true, 'a failed resume retains the mark');
+  assert.equal(offer.fresh.brief, 'Continue this archived work.');
+  const fresh = await cland(root, 'session', 'resume', 'old', '--fresh', '--json');
+  assert.equal(fresh.code, 0, fresh.stderr);
+  const after = JSON.parse(fresh.stdout) as { found: boolean; process: HarnessProcessView };
+  assert.equal(after.found, true);
+  assert.equal(after.process.archived, false);
+  assert.equal(after.process.sessionId, 'old-id');
+  assert.deepEqual(((await ui.request({ type: 'session.list', archived: true })).value as List).processes, []);
+  assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
+  const journal = (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).split('\n').filter(Boolean).map(line => JSON.parse(line) as Record<string, unknown>);
+  const unarchived = journal.find(e => e.event === 'session-unarchived');
+  assert.equal(unarchived?.by, by);
+});

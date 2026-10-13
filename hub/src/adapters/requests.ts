@@ -5,8 +5,9 @@
 //                                                              launch defaults (roles.toml) fill what is not given; with `item`
 //                                                              (an Implementer's task or a Lead's epic/release): {process, claim, worktree, reason?}, in the
 //                                                              item's worktree (`src/hub/worktrees.ts`)
-//   session.list    {}                                         → {processes, adapters: {<harness>: capabilities}, coordinator}
+//   session.list    {archived?: true}                                         → {processes, archived: count, adapters: {<harness>: capabilities}, coordinator}
 //   session.attach  {session}                                  → {command}
+//   session.archive {session}                                  → {process}   human and Coordinator; stopped/exited only
 //   session.stop    {session}                                  → {process}
 //   session.resume  {session, relaunch?, fresh?}               → {found, reason?, process, role, claim, notes[], fresh?: {brief}}
 //   session.retry   {session, message}                         → {retried: true}   the human: an `uncertain` delivery sent again
@@ -23,16 +24,17 @@ import { ToolForbidden } from '../roles/permissions.ts';
 
 export type SessionRequest =
   | { type: 'session.launch'; id: string; name: string; role?: string; model?: string; harness?: string; cwd?: string; effort?: string; item?: string; brief?: string }
-  | { type: 'session.list'; id: string }
+  | { type: 'session.list'; id: string; archived?: boolean }
   | { type: 'session.attach'; id: string; session: string }
+  | { type: 'session.archive'; id: string; session: string }
   | { type: 'session.stop'; id: string; session: string }
   | { type: 'session.resume'; id: string; session: string; relaunch?: boolean; fresh?: boolean }
   | { type: 'session.retry'; id: string; session: string; message: string }
   | { type: 'session.signal'; id: string; session?: string; sessionId?: string; launch?: string; event: string; at?: number; payload?: Record<string, unknown> }
   | { type: 'session.bridge'; id: string; session: string; launch?: string };
 
-/** What a spoke may ask, when its role grants `session.launch` (the permission table, `roles/permissions.ts`); the rest is the UI's and the hooks'. */
-export const SPOKE_SESSION_REQUESTS: ReadonlySet<string> = new Set(['session.launch', 'session.list']);
+/** Spoke session requests are still checked by the role permission table; stop/resume remain shell-only. */
+export const SPOKE_SESSION_REQUESTS: ReadonlySet<string> = new Set(['session.launch', 'session.list', 'session.archive']);
 
 const optString = (v: unknown) => v === undefined || typeof v === 'string';
 
@@ -42,8 +44,9 @@ export function isSessionRequest(f: Record<string, unknown>): f is SessionReques
     case 'session.launch':
       return typeof f.name === 'string' && optString(f.role) && optString(f.model) && optString(f.harness) && optString(f.cwd) && optString(f.effort) && optString(f.item) && optString(f.brief);
     case 'session.list':
-      return true;
+      return f.archived === undefined || typeof f.archived === 'boolean';
     case 'session.attach':
+    case 'session.archive':
     case 'session.stop':
       return typeof f.session === 'string';
     case 'session.bridge':
@@ -71,7 +74,7 @@ export type BridgePeer = { send: (frame: HubFrame) => void; isOpen: () => boolea
 
 /** Answer one session request; the result frame comes when the work is done (a launch waits for the harness). */
 /** `resumed` times the synchronous lifecycle work after adapter or Git awaits: the hub's guard. */
-export async function answerSession(sessions: Sessions | undefined, frame: SessionRequest, peer: BridgePeer, worktrees?: TaskWorktrees, resumed?: Resumed, authorize?: () => void): Promise<HubFrame> {
+export async function answerSession(sessions: Sessions | undefined, frame: SessionRequest, peer: BridgePeer, worktrees?: TaskWorktrees, resumed?: Resumed, authorize?: () => void, actor = 'human'): Promise<HubFrame> {
   const ok = (value: unknown): HubFrame => ({ type: 'result', id: frame.id, ok: true, value });
   if (!sessions) return { type: 'result', id: frame.id, ok: false, error: 'this hub launches no sessions (it serves no project)' };
   try {
@@ -91,9 +94,11 @@ export async function answerSession(sessions: Sessions | undefined, frame: Sessi
         return ok(await worktrees.launch(sessions, { ...request, item: frame.item }, resumed, authorize));
       }
       case 'session.list':
-        return ok({ processes: sessions.list(), pendingStops: sessions.pendingStops(), adapters: sessions.capabilities(), coordinator: sessions.coordinator() });
+        return ok({ processes: sessions.list(frame.archived ?? false), archived: sessions.list(true).length, pendingStops: sessions.pendingStops(), adapters: sessions.capabilities(), coordinator: sessions.coordinator() });
       case 'session.attach':
         return ok({ command: sessions.attachCommand(frame.session) });
+      case 'session.archive':
+        return ok({ process: await sessions.archive(frame.session, actor, resumed, authorize) });
       case 'session.stop':
         return ok({ process: await sessions.stop(frame.session, resumed, authorize) });
       case 'session.resume':

@@ -8,7 +8,7 @@ export const DEFAULT_VISIBILITY = {
   messages: { human: 'now', ask: 'now', not_clear: 'watch', clear: 'watch', coordinator_report: 'watch', agent: 'background', old: 'archive' },
   // Warnings inform the human; asks, approvals and waiting topics need a response.
   inbox: { plan: 'watch', ask: 'now', approval: 'now', waiting: 'now', not_clear: 'watch', death: 'watch', clear: 'watch', release: 'watch', import: 'watch', idle: 'watch', other: 'background' },
-  sessions: { aide: 'now', waiting: 'now', busy: 'now', idle: 'watch', stopped: 'background' },
+  sessions: { aide: 'now', waiting: 'now', busy: 'now', idle: 'watch', stopped: 'background', archived: 'archive' },
   items: { active: 'now', planned: 'watch', backlog: 'background', unscheduled: 'background', done: 'background', closed_release: 'archive' },
   artifacts: { human: 'watch', coordinator: 'watch', kept: 'watch', agent: 'background', archived: 'archive' },
   // Topics are palette entries, too; their status supplies the same four-layer vocabulary.
@@ -138,6 +138,7 @@ export class Visibility {
     const mode = direct ?? choice('topics', topic) ?? choice('sessions', session);
     if (mode === 'pin') layer = 'now';
     if (mode === 'mute') layer = ({ now: 'watch', watch: 'background', background: 'archive', archive: 'archive' } as const)[layer];
+    if (surface === 'sessions' && cell === 'archived') layer = 'archive';
     return { ...object, layer, ...(severity ? { severity } : {}) };
   }
 
@@ -161,6 +162,7 @@ export class Visibility {
       case 'inbox':
         return r.kind === 'verdict' ? r.result === 'not clear' ? 'not_clear' : r.result === 'clear' ? 'clear' : 'other' : Object.hasOwn(DEFAULT_VISIBILITY.inbox, String(r.kind)) ? String(r.kind) : 'other';
       case 'sessions':
+        if (r.archived === true || r.archivedAt) return 'archived';
         if (r.role === 'aide') return 'aide';
         if (r.live === false || ['exited', 'stopped', 'failed'].includes(String(r.status))) return 'stopped';
         return String(r.state).startsWith('waiting') ? 'waiting' : r.state === 'busy' ? 'busy' : 'idle';
