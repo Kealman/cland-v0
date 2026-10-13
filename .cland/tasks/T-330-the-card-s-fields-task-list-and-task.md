@@ -3,7 +3,8 @@ id: T-330
 kind: task
 title: "The card's fields: task.list and task.view carry the closing time, the criteria counts and a task's latest cland verify result, with the closing times backfilled by cland task migrate"
 state: open
-status: in progress
+status: review
+criterion_seq: 8
 labels:
   - v0.1.2
   - hub
@@ -15,7 +16,7 @@ blocked_by:
 topic: topic-208
 branch: t/T-330-the-card-s-fields-task-list-and-task
 created: 2026-10-13T14:04:09.431Z
-updated: 2026-10-13T16:18:53.544Z
+updated: 2026-10-13T16:42:46.554Z
 ---
 
 ## Summary
@@ -84,17 +85,59 @@ E-270: Status, fields and instrumentation. Spec: `docs/spec/v0.1.2.md` §3.9 (th
 
 ## Acceptance criteria
 
-- [ ] C1. Item tests: `closed` parses, round-trips and refuses a malformed time. A hub test on a temporary project shows it written by `cland task close`, by `cland merge` and by an edit to `done`, and cleared by a reopen.
-- [ ] C2. `task.list`, `task.view` and the `task` event carry `closed` from the index. `IndexDb.closedAt` returns it ahead of its fallbacks.
-- [ ] C3. Planner unit tests cover the `closed` part: each source in order, an unresolved item, an item already carrying `closed`, and an empty plan on a rerun. A hub test runs `cland task migrate --dry-run` and the migration on a temporary project with receipts and journal records, and checks that only `closed` lines changed.
-- [ ] C4. A hub test with a task holding done, current verified, stale and failed criteria shows the same counts in `task.list` as `task.view`'s criteria give. A list over 64 items reads no item file.
-- [ ] C5. A verify job finishing for a task's branch sets `verify` in `task.list` and sends one `task` event to a subscribed UI with no event text. A subscribed session receives no delivery for it.
-- [ ] C6. A query-count regression with 64 unrelated items: one verify job finishing stays under a fixed query bound and calls no full list.
-- [ ] C7. The Implementer runs the dry run on a scratch copy of `dev`'s `.cland/tasks/`, journal and `hub.db`, and attaches its output to the item topic as an artifact. It names the source of each time and lists the unresolved items.
-- [ ] C8. `hub/README.md` and `docs/agents/issue-tracker.md` with its template describe `closed`, `criteria`, `verify` and the `closed` part of the migration.
+- [x] C1. Item tests: `closed` parses, round-trips and refuses a malformed time. A hub test on a temporary project shows it written by `cland task close`, by `cland merge` and by an edit to `done`, and cleared by a reopen.
+  - done: impl-330 · 2026-10-13T16:41:53.374Z
+- [x] C2. `task.list`, `task.view` and the `task` event carry `closed` from the index. `IndexDb.closedAt` returns it ahead of its fallbacks.
+  - done: impl-330 · 2026-10-13T16:36:40.076Z
+- [x] C3. Planner unit tests cover the `closed` part: each source in order, an unresolved item, an item already carrying `closed`, and an empty plan on a rerun. A hub test runs `cland task migrate --dry-run` and the migration on a temporary project with receipts and journal records, and checks that only `closed` lines changed.
+  - done: impl-330 · 2026-10-13T16:36:40.782Z
+- [x] C4. A hub test with a task holding done, current verified, stale and failed criteria shows the same counts in `task.list` as `task.view`'s criteria give. A list over 64 items reads no item file.
+  - done: impl-330 · 2026-10-13T16:36:41.338Z
+- [x] C5. A verify job finishing for a task's branch sets `verify` in `task.list` and sends one `task` event to a subscribed UI with no event text. A subscribed session receives no delivery for it.
+  - done: impl-330 · 2026-10-13T16:36:42.130Z
+- [x] C6. A query-count regression with 64 unrelated items: one verify job finishing stays under a fixed query bound and calls no full list.
+  - done: impl-330 · 2026-10-13T16:36:42.846Z
+- [x] C7. The Implementer runs the dry run on a scratch copy of `dev`'s `.cland/tasks/`, journal and `hub.db`, and attaches its output to the item topic as an artifact. It names the source of each time and lists the unresolved items.
+  - done: impl-330 · 2026-10-13T16:36:43.628Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-330-2 · 2026-10-13T16:42:46.553Z · commit 7667ff7d93ff7e548f1716e52abe164a98032d47
+- [x] C8. `hub/README.md` and `docs/agents/issue-tracker.md` with its template describe `closed`, `criteria`, `verify` and the `closed` part of the migration.
+  - done: impl-330 · 2026-10-13T16:36:44.541Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-330-2 · 2026-10-13T16:42:46.554Z · commit 7667ff7d93ff7e548f1716e52abe164a98032d47
 
 ## Comments
 
 ### impl-330 · 2026-10-13T16:18:53.544Z
 
 Implementation plan: closed persistence/index and scratch-only migration first, then indexed criteria counts and Suites→dispatcher→tracker latest-result wiring. Tests use the ticket's frame/CLI, item and pure planner seams; no new harness hooks.
+
+### impl-330 · 2026-10-13T16:38:20.122Z
+
+Implementation committed/pushed at 267d9d16 after merging origin/dev ec1fe36d. Review assigned to rev-23. Targeted checks/typecheck/shard lint pass; 64-item completion regression measures 45 tracker queries, no full list or item reads, one terminal event. A-2005 records implementation/validation; A-2003 records scratch-only backfill (265 sourced closing times, 39 unresolved; preview/apply match, rerun no writes). Full verification waits for the clear source verdict; QA policy none/after-stage.
+
+### rev-23 · 2026-10-13T16:41:17.764Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-330-1
+commit: 267d9d16aab37cd1c6724eb63a8626d15b3fbec3
+
+Medium — hub/src/tracker/tracker.ts:1851,2223 uses closed ??= on open→closed, retaining a previous closing timestamp after a hand reopen. Set a fresh time on that transition and preserve already-closed retry times; cover close/edit/merge. No other source blockers found; indexed counts, silent latest verify wiring, scratch backfill A-2003 and docs reviewed. Full verification pending after a corrected source verdict. Evidence A-2006: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2006-t-330-source-review-not-clear-retained-closing-time.md.
+
+Criteria: C1 failed (An accepted hand reopen retaining closed causes subsequent hub close/merge/edit-to-done to retain the old closing time instead of writing the new transition time.).
+
+### impl-330 · 2026-10-13T16:42:08.445Z
+
+Review C1 correction pushed as 7667ff7d: actual open→closed transitions replace a hand-retained stale closed time; already-closed retries remain idempotent. Real-hub regression went red→green across close/edit done/edit closed, and the merge regression with retained old time passes. Typecheck/diff check pass; source re-review requested before verification.
+
+### rev-23 · 2026-10-13T16:42:46.554Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-330-2
+commit: 7667ff7d93ff7e548f1716e52abe164a98032d47
+
+No high, medium, or low source findings remain. Actual open→closed transitions overwrite retained timestamps; already-closed retries preserve them. Real close/edit/merge regressions retain existing coverage. Original complete source assessment A-2006 remains applicable; scratch backfill A-2003 and docs establish C7/C8. C1–C6 await complete same-head full verification. Evidence A-2007: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2007-t-330-corrected-source-review-clear-at-7667ff7d.md.
+
+Criteria: C7 verified, C8 verified.

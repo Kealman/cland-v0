@@ -3,7 +3,8 @@ id: T-334
 kind: task
 title: "Usage in the journal: a session-usage record at each changed session.usage publication and one at stop, with role, item, harness, model, totals and cost or rate-limit share, on all three adapters"
 state: open
-status: in progress
+status: review
+criterion_seq: 5
 labels:
   - v0.1.2
   - hub
@@ -15,7 +16,7 @@ blocked_by:
 topic: topic-209
 branch: t/T-334-usage-in-the-journal-a-session-usage
 created: 2026-10-13T14:04:09.872Z
-updated: 2026-10-13T16:18:51.704Z
+updated: 2026-10-13T16:36:03.973Z
 ---
 
 ## Summary
@@ -67,14 +68,36 @@ The role comes from the store and the item from the session's launch item, as `p
 
 ## Acceptance criteria
 
-- [ ] C1. A fake Codex session with two different publications and one equal publication leaves two `session-usage` records. Its stop adds one `final` record with the last totals and the rate-limit share.
-- [ ] C2. Fake Claude Code and OpenCode sessions leave records the same way, with `cost` where the fake reports it.
-- [ ] C3. Each record names the session, its id, role, item, harness and model. A session with no usage leaves no record at stop.
-- [ ] C4. A hub test with two roles and two items sums the final records per role and per item and matches the `jq` line in `hub/README.md`, applied to `cland hub journal --kind session-usage --json`.
-- [ ] C5. `hub/README.md`'s journal section describes `session-usage`, its fields, the equal-publication rule and the `jq` line.
+- [x] C1. A fake Codex session with two different publications and one equal publication leaves two `session-usage` records. Its stop adds one `final` record with the last totals and the rate-limit share.
+  - done: impl-334 · 2026-10-13T16:32:51.908Z
+- [x] C2. Fake Claude Code and OpenCode sessions leave records the same way, with `cost` where the fake reports it.
+  - done: impl-334 · 2026-10-13T16:32:53.459Z
+- [x] C3. Each record names the session, its id, role, item, harness and model. A session with no usage leaves no record at stop.
+  - done: impl-334 · 2026-10-13T16:32:54.461Z
+- [x] C4. A hub test with two roles and two items sums the final records per role and per item and matches the `jq` line in `hub/README.md`, applied to `cland hub journal --kind session-usage --json`.
+  - done: impl-334 · 2026-10-13T16:32:55.786Z
+- [x] C5. `hub/README.md`'s journal section describes `session-usage`, its fields, the equal-publication rule and the `jq` line.
+  - done: impl-334 · 2026-10-13T16:32:56.652Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-334-1 · 2026-10-13T16:36:03.973Z · commit 7422ec79d77d034cd1eb0e12a2a1f452628ef2fd
 
 ## Comments
 
 ### impl-334 · 2026-10-13T16:18:51.704Z
 
 Implementation started. Test seams: session.launch/stop through the frame protocol with existing fake adapters, journal queries through frames and CLI after flushLogs. Attribution follows launch.item (E-270 decision 11); no tracker hydration.
+
+### impl-334 · 2026-10-13T16:34:03.552Z
+
+Implemented C1-C5 at 7422ec79d77d034cd1eb0e12a2a1f452628ef2fd on t/T-334-usage-in-the-journal-a-session-usage, pushed to origin. Fetched and merged origin/dev (ec1fe36d). Typecheck passed; session-usage.test.ts: 8/8 passed; shard lint passed. The merged T-336 relaunch change was followed by a passing lifecycle test. Evidence: A-2002, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2002-t-334-implementation-and-targeted-verification.md. Review requested before full verification per D25.
+
+### rev-23 · 2026-10-13T16:36:03.973Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-334-1
+commit: 7422ec79d77d034cd1eb0e12a2a1f452628ef2fd
+
+No high, medium, or low source findings. Existing throttled publication records changed totals/limits with bounded snapshots; terminal publication captures pending adapter usage once before role cleanup, with Codex retained stop usage and prune/reset cleanup. Real frame/CLI tests preserve barriers and execute the documented jq aggregation; no new timers/seams or tracker/journal reads. C5 verified; C1–C4 await complete same-head full verification. Evidence A-2004: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2004-t-334-source-review-clear-at-7422ec79.md.
+
+Criteria: C5 verified.

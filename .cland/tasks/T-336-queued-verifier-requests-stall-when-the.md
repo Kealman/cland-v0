@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-207
 branch: t/T-336-queued-verifier-requests-stall-when-the
 created: 2026-10-13T14:35:05.030Z
-updated: 2026-10-13T16:31:05.306Z
+updated: 2026-10-13T16:31:34.659Z
 ---
 
 ## Summary
@@ -39,11 +39,13 @@ A queued review or QA request is not assigned to an idle verifier that has deliv
   - verified: rev-26 [reviewer] · run rev-20261013-336-source-1 · 2026-10-13T14:51:27.723Z · commit 3c185dc2dddeb3019c7c04e4a1e9ec2ca00aa5bf
   - verified: rev-26 [reviewer] · run rev-20261013-336-source-2 · 2026-10-13T15:28:37.556Z · commit 3c185dc2dddeb3019c7c04e4a1e9ec2ca00aa5bf
   - verified: rev-26 [reviewer] · run rev-20261013-336-source-3 · 2026-10-13T15:35:46.218Z · commit d609ac595e4b77ac63851d4491c7360c4f045578
+  - verified: rev-26 [reviewer] · run rev-20261013-336-final-2 · 2026-10-13T16:31:34.659Z · commit d609ac595e4b77ac63851d4491c7360c4f045578
 - [x] C2. A frame test on a real hub covers it, including after a relaunch.
   - done: impl-336 · 2026-10-13T14:48:28.015Z
   - verified: rev-26 [reviewer] · run rev-20261013-336-source-1 · 2026-10-13T14:51:27.723Z · commit 3c185dc2dddeb3019c7c04e4a1e9ec2ca00aa5bf
   - verified: rev-26 [reviewer] · run rev-20261013-336-source-2 · 2026-10-13T15:28:37.556Z · commit 3c185dc2dddeb3019c7c04e4a1e9ec2ca00aa5bf
   - verified: rev-26 [reviewer] · run rev-20261013-336-source-3 · 2026-10-13T15:35:46.218Z · commit d609ac595e4b77ac63851d4491c7360c4f045578
+  - verified: rev-26 [reviewer] · run rev-20261013-336-final-2 · 2026-10-13T16:31:34.659Z · commit d609ac595e4b77ac63851d4491c7360c4f045578
 
 ## Comments
 
@@ -116,3 +118,15 @@ Criteria: C1 verified, C2 verified.
 ### coord · 2026-10-13T16:31:05.306Z
 
 Merged f9e499f5fbf4e324d5bd855bf5558f3cbd0cdcd0 onto dev.
+
+### rev-26 · 2026-10-13T16:31:34.659Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261013-336-final-2
+commit: d609ac595e4b77ac63851d4491c7360c4f045578
+
+Final review clear: no high/medium finding remains. Accepted same-head full 730da95f / A-2000 completes typecheck and all phases, 1794/1794 (36 free, 1439 hub machine, 319 Neovim), zero fail/cancel/skip/todo, exit 0. C1/C2 held-progress assignment and forced early-clause relaunch frame cases explicitly pass; prior source assessment A-1975/A-1989 checked their assertions and delivery protections. Previously failing palette case passes after separately reviewed unchanged shared T-301 readiness delta. A-2001 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2001-t-336-final-review-clear-at-d609ac59-all-1794-tests-pass.md) records evidence; earlier failed/cancelled receipts retained. Topic closed during review, reporting Coordinator; Reviewer ran no tests or edits.
+
+Criteria: C1 verified, C2 verified.
