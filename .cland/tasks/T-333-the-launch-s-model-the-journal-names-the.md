@@ -2,8 +2,8 @@
 id: T-333
 kind: task
 title: "The launch's model: the journal names the model of every launch where the harness reports it, the first turn's model when the launch named none, and each sub-agent's model or unknown"
-state: open
-status: review
+state: closed
+status: done
 criterion_seq: 7
 labels:
   - v0.1.2
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-205
 branch: t/T-333-the-launch-s-model-the-journal-names-the
 created: 2026-10-13T14:04:09.762Z
-updated: 2026-10-13T15:15:49.950Z
+updated: 2026-10-13T16:17:34.736Z
 ---
 
 ## Summary
@@ -69,20 +69,27 @@ E-270: Status, fields and instrumentation. Spec: `docs/spec/v0.1.2.md` §3.12 (t
 
 - [x] C1. A fake Claude session launched without a model journals `session-launched` with a null model, then one `session-model` with the model of its first turn. A second turn with the same model writes nothing.
   - done: impl-333 · 2026-10-13T14:43:19.774Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-333-3 · 2026-10-13T16:17:14.008Z · commit 2653eb0cf02335aafdae8f732b1f74809cb6dd01
 - [x] C2. A fake Claude session launched with `--model` writes no `session-model` line while the harness reports the same model.
   - done: impl-333 · 2026-10-13T14:43:21.286Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-333-3 · 2026-10-13T16:17:14.008Z · commit 2653eb0cf02335aafdae8f732b1f74809cb6dd01
 - [x] C3. Fake Codex and OpenCode sessions launched without a model journal `session-launched` naming the chosen model.
   - done: impl-333 · 2026-10-13T14:43:21.980Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-333-3 · 2026-10-13T16:17:14.009Z · commit 2653eb0cf02335aafdae8f732b1f74809cb6dd01
 - [x] C4. A fake Claude sub-agent start with a model journals `subagent-launched` naming it. One without a model journals `"unknown"`. Both name the parent session, role and item.
   - done: impl-333 · 2026-10-13T14:43:22.801Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-333-3 · 2026-10-13T16:17:14.010Z · commit 2653eb0cf02335aafdae8f732b1f74809cb6dd01
 - [x] C5. A relaunch writes its own launch record and, when needed, its own `session-model` line.
   - done: impl-333 · 2026-10-13T14:43:23.339Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-333-3 · 2026-10-13T16:17:14.010Z · commit 2653eb0cf02335aafdae8f732b1f74809cb6dd01
 - [x] C6. `cland init` and `cland update` merge the two new hooks into `.claude/settings.json` and keep the user's own hooks (`hub/test/init.test.ts`).
   - done: impl-333 · 2026-10-13T14:43:24.374Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-333-3 · 2026-10-13T16:17:14.010Z · commit 2653eb0cf02335aafdae8f732b1f74809cb6dd01
 - [x] C7. `hub/README.md`'s journal section describes `session-model` and `subagent-launched` and names which harnesses report sub-agents.
   - done: impl-333 · 2026-10-13T14:43:24.935Z
   - verified: rev-23 [reviewer] · run rev-2026-10-13-333-1 · 2026-10-13T14:49:14.923Z · commit b607cae912e26dab920d13fe21844762e6577778
   - verified: rev-23 [reviewer] · run rev-2026-10-13-333-2 · 2026-10-13T15:15:49.950Z · commit 2653eb0cf02335aafdae8f732b1f74809cb6dd01
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-333-3 · 2026-10-13T16:17:14.011Z · commit 2653eb0cf02335aafdae8f732b1f74809cb6dd01
 
 ## Comments
 
@@ -113,3 +120,23 @@ commit: 2653eb0cf02335aafdae8f732b1f74809cb6dd01
 Source delta clear: no high, medium, or low findings. Only tracker entries and qa/briefs/T-269.md changed since source-clear b607cae9; source/tests/product docs and harness-schema assessment A-1972 are unchanged. C7 verified; C1–C6 require the complete same-head full result. Evidence A-1982: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1982-t-333-merge-delta-source-review-at-2653eb0.md.
 
 Criteria: C7 verified.
+
+### impl-333 · 2026-10-13T16:16:46.105Z
+
+Full exact-head verification d82f7c0f-86ea-4606-a773-55a444866ae5 passed at 2653eb0cf02335aafdae8f732b1f74809cb6dd01: exit 0, 1803 tests passed, zero failures/cancellations/skips. Durable log A-1998. Reviewer rev-23 received the result directly and will settle the final runtime marks/verdict. No palette-only failure occurred; no shared fix or head change was needed.
+
+### rev-23 · 2026-10-13T16:17:14.011Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-333-3
+commit: 2653eb0cf02335aafdae8f732b1f74809cb6dd01
+
+No high, medium, or low findings remain. Source A-1972/A-1982 and exact schemas A-1970 plus complete same-head A-1998 establish C1–C7: launch/model deduplication, child attribution/unknown fallback, resume/relaunch records, hook preservation and docs. Typecheck and all phases pass 1803/1803, exit 0, zero skips/cancellations. Claude missing SubagentStart model remains correctly unknown as qualified in A-1972. Evidence A-1999: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1999-t-333-final-exact-head-review-clear.md.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.
+
+### coord · 2026-10-13T16:17:34.736Z
+
+Merged 3df4ddd3521b2e08f93af47233ccc2f36753f08b onto dev.
