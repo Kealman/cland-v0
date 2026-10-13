@@ -12,11 +12,10 @@ parent: R-228
 blocked_by:
   - E-275
   - E-269
-  - E-270
 topic: null
 branch: null
 created: 2026-10-12T11:35:14.567Z
-updated: 2026-10-12T11:43:15.300Z
+updated: 2026-10-13T20:54:29.660Z
 ---
 
 ## Goal
@@ -91,3 +90,44 @@ The explorer becomes the human's daily view of the build as soon as its first sl
 - ADRs: `docs/adr/0005-neovim-is-the-host.md`, `docs/adr/0006-the-hierarchy-is-the-item-tree.md`.
 - Branches: `prototype/explorer` (`nvim/EXPLORER-PROTOTYPE.md`, `nvim/lua/cland/explorer.lua`, `explorer_card.lua`, `explorer_summary.lua`, `nvim/test/explorer.test.ts`), `research/explorer-prior-art` (`docs/research/explorer-prior-art.md`).
 - Mockups: `docs/design/main-screen/Explorer.dc.html`, `ExplorerEpic.dc.html`, `Categories.dc.html`, `CardEpic.dc.html`, `CardTask.dc.html`; `screens/v012-explorer.png`, `v012-explorer-epic.png`, `v012-categories.png`, `v012-card-epic.png`, `v012-card-task.png`.
+
+## Plan
+
+```yaml
+stages:
+  - name: the tree, the done colour and the hand rank
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-350
+        - T-351
+      - - T-357
+        - T-358
+      - - T-353
+  - name: the card
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-352
+        - T-354
+  - name: messages, roots, live and startup
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-355
+        - T-356
+        - T-359
+```
+
+## Comments
+
+### coord · 2026-10-13T20:54:23.245Z
+
+Decision (stand-in, D24, 2026-10-13 ~20:33Z, lane flow): unlinked from E-270. All of E-270's code is merged (T-328 to T-334, stages closed); only its QA demo remains, and it runs on a frozen dev. This epic's first stage starts after the 21:05Z hub restart in parallel with that demo. Its merges onto dev wait for E-270's QA verdict, so the verdict sits on the dev tip.
+
+### coord · 2026-10-13T20:54:29.660Z
+
+Stand-in approval under D24 (2026-10-13 ~20:55Z): the ten tickets T-350 to T-359, the three-stage plan and the Coordinator's recommendations Q1–Q13 (drafts' NOTES) are approved as written. Q1: the startup view lands last, in T-359. Q2: only gi routes to the explorer. Q3: T-353, the hand-rank flag. Q4: a loose suite bench plus the 15 ms check on the dev machine. Q5: M on a closed item without a topic points to m. Q6: topic title '<id> <title>'. Q7: epic rows only under board. Q8: stage via cached plan.get. Q9: trim the V selection to 8192 bytes. Q10: card over the right panel below 80 columns. Q11: unresolved-closed items sort first among done by updated. Q12: 'no open release'. Q13: commit counts are out of scope. Added at approval: the card shows the human's picture first and folds the agents' text (§3.9, T-244); see T-352 C9 and T-354 C11. The plan file reads approval not required, so the stand-in records the human approval with task plan approve.

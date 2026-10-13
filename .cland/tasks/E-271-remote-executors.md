@@ -9,12 +9,11 @@ labels:
   - ready-for-agent
 assignee: null
 parent: R-228
-blocked_by:
-  - E-270
+blocked_by: []
 topic: null
 branch: null
 created: 2026-10-12T11:35:13.919Z
-updated: 2026-10-13T20:35:11.449Z
+updated: 2026-10-13T20:54:23.357Z
 ---
 
 ## Goal
@@ -107,8 +106,64 @@ The stand-in decided under D24 (`docs/spec/v0.1.md` §4, D27):
 - **The DoD demo.** It may run 2 or 3 droplets at once, for at most 15 minutes, once, under the $3 cap. It posts the create, destroy and cost on this epic. The Coordinator tells the stand-in before it starts.
 - **Droplet size.** c-8 stays the default for acceptance runs. The executor takes the size per run from config. The demo may include one c-16 run to answer the speed question with numbers: the hub phase time and the cost per run, recorded on this epic for the retrospective. Phases are not split across droplets in this release, which closes the E-268 open question above.
 
+## Plan
+
+```yaml
+stages:
+  - name: the interface and droplet leases
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-342
+      - - T-343
+  - name: the prepared snapshot
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-344
+  - name: a remote run
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-345
+  - name: remote safety
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-346
+  - name: the remote budget, the clauses and the second backend's gate
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-347
+      - - T-348
+      - - T-349
+```
+
 ## Comments
 
 ### human · 2026-10-12T11:38:44.526Z
 
 Addendum recorded (2026-10-12, the human through cland-impl): local and remote execution stay switchable, a per-run choice with a per-project default; the scheduler, result cache and reporting are shared; no silent fallback. In docs/spec/v0.1.2.md §3.14 and this epic's Contents.
+
+### coord · 2026-10-13T20:54:23.135Z
+
+Decision (stand-in, D24, 2026-10-13 ~20:33Z, lane flow): unlinked from E-270. All of E-270's code is merged (T-328 to T-334, stages closed); only its QA demo remains, and it runs on a frozen dev. This epic's first stage starts after the 21:05Z hub restart in parallel with that demo. Its merges onto dev wait for E-270's QA verdict, so the verdict sits on the dev tip.
+
+### coord · 2026-10-13T20:54:23.357Z
+
+Stand-in answers under D24 (2026-10-13 ~21:00Z) on the ticket drafts:
+- Q3: read the 15-min demo bound as each demo droplet's lifetime, enforced by the hub (lifetime = "15m" in QA's scratch project). The parallel and hub-stop runs use nvim-only diffs. One c-16 run gets its own 25-min lifetime to record the hub-phase time. Demo total under $0.50.
+- Q4: the spend ledger is host-wide at ~/.cland/executor/spend.json, cland's first per-user state. executor status prints its path and today's total (T-346 C8).
+- Q5: tags are cland plus cland-p-<hash>. Any cland droplet past lifetime + 10 min is reaped by whoever sweeps.
+- Q6: the hand driver retires when T-346 merges.
+- Q7: Implementers' real checks in T-343 to T-345 follow D25 by hand: smallest size for lifecycle checks, posted on the item, counted in $2/day.
+- Q11: the MicroVM bound is today's c-8 full suite + 10% ≈ 1375 s (T-349).
+- Q12: when T-349's stage begins, the Coordinator asks the stand-in, who by default runs it from the human's shell.
+Coordinator decisions, approved: config under [verification] with duration strings; --executor local|droplet (the spec's "cloud" becomes "droplet"); manual re-prepare; a dirty candidate goes local with a warn; the runner user; caffeinate on macOS (T-343 C9).
+Hub restarts during this epic come from the stand-in's login shell, so DIGITALOCEAN_TOKEN is present.

@@ -1,0 +1,87 @@
+---
+id: T-358
+kind: task
+title: "The items panel at release scope: the release's epics as folded rows with done/total and the status breakdown in rank order, an unfolded epic showing its status sections, the epic tab row kept, and Direct tasks (N) after the epics"
+state: open
+status: planned
+size: M
+labels:
+  - v0.1.2
+  - nvim
+  - ready-for-agent
+assignee: null
+parent: E-276
+blocked_by:
+  - T-357
+topic: null
+branch: null
+created: 2026-10-13T20:53:52.261Z
+updated: 2026-10-13T20:54:01.863Z
+---
+
+## Summary
+
+At release scope the items panel's board lists the release's epics as folded rows, each with done/total and its status breakdown, in rank order. An epic unfolds into its status sections as the epic scope draws them. The release's direct tasks sit under a folded `Direct tasks (N)` row after the epics. The epic tab row stays for narrowing to one epic, and the categories count line stays at the bottom.
+
+## Parent
+
+E-276: The explorer and the card, tracer bullet 5. Spec: `docs/spec/v0.1.2.md` §3.11 (decided in T-237, and with the mockups on 2026-10-12 for Direct tasks). Built before it: T-329 (the release scope lists only the release's own items, and the count line's unscheduled part) and T-318 (the count line). The colour of done rows comes from ticket T-357.
+
+## What to build
+
+**Where it applies.** The `board` filter at release scope, when `items.scope()` is of the release kind and no epic tab is selected (`vboard.parent_filter()` is nil).
+
+- With an epic tab selected (`p`, `P`, `<Tab>`), the panel shows that epic's status sections as today.
+- The `work`, `you` and `done` filters and the layer views keep their flat lists: they cut across epics.
+- `all` and `map` are unchanged.
+
+**The epic rows.** In `nvim/lua/cland/vboard.lua`'s `render`, after the scope's header row:
+
+- One row per epic under the release (`items.children(scope.id)` of the level below):
+  - the fold glyph ▸ or ▾ and the derived glyph (closed ●, any task in work ◐, any planned ○ in the text colour, else ○ dim, as ticket T-350 derives it);
+  - the id and title;
+  - on the right, `done/total` over its tasks and the breakdown: the non-zero counts in words, in status order (`1 ◐ · 2 rev · 3 planned · 4 backlog`), cut from the right to fit the panel's width.
+- Live epics come in rank order. Closed epics follow in the order they closed (`closed`), in the done colour.
+- An epic with a lead claim shows the lead before the fraction, as the scope header does.
+
+**An unfolded epic** shows its status sections as the epic scope does: `IN PROGRESS`, `REVIEW`, `QA`, `READY`, `PLANNED`, then the backlog fold and `DONE`.
+
+- They are indented one level and composed by `vboard.compose` narrowed to that epic, through the same function the tab path uses.
+- Empty sections inside an unfolded epic are left out, to keep the panel short.
+- The `next` mark stays the release's next planned task, computed over the whole release before narrowing.
+
+**Direct tasks.** After the epics, a folded `Direct tasks (N)` row counts the release's direct tasks, with the same breakdown. Unfolded, it shows their status sections. When the release has no epics, the row is still folded (§3.8, the prototype's answer 1).
+
+**Folds.** Epic rows and the Direct tasks row fold with `za`, `zo`, `zc`, `zR` and `zM`, through `state.S.ui.items_folds` keyed `board:<epic id>` and `board:direct:<release id>`, apart from the `all` tree's folds, which use the bare id. They are folded by default. Enter keeps opening the row under the cursor, epic rows included, as today. `K`, `J` and `T` on an epic row rank the epic among its siblings (`task.rank`), as they do today on any level item.
+
+**What stays.** The epic tab row on top. The header summary (`board · N in work · M done`). The leaves fold (`questions and specs`) and the `more` fold, now inside each epic's sections. The categories count line at the bottom (T-318, T-329) with Enter switching to `all`.
+
+**Docs.** `nvim/README.md`'s items panel section: the release scope's epic rows, the breakdown, Direct tasks, the folds and the tab row.
+
+**Demo** (the epic's tracer bullet 5). The items panel at R-228 lists the release's epics in rank order with their fractions. `za` on one shows its status sections. `Direct tasks (N)` follows the epics.
+
+**Out of scope.**
+
+- The explorer (tickets T-350 to 07).
+- Changing the `work`, `you` or `done` filters, or the layer views.
+- The centre board (`␣b`): its columns stay.
+
+**Constraints.**
+
+- Neovim is the host, with no plugins (ADR 0005).
+- Tests run headless on the stub hub through the frame protocol, one `nvim --headless` per test, keys by `nvim_input`, the screen read with `screenstring()`. Extend `nvim/test/vboard.test.ts` (its `categories` scenario already has R-228 with E-269). Add a second epic, a closed epic, a direct task and an epic tab selection.
+- Update `qa/cases/PANELS-*.lua` and `ITEMS-*.lua` that assert the release scope's flat sections. A case with a ladder of `["epic"]` has no release scope and is unaffected.
+- Redraws stay coalesced once per tick (T-293). The breakdown is computed in the render pass from `state.S.items`, with no hub request.
+- Tests wait on state, never on a sleep. Every key goes through the action registry; no new key.
+- A Neovim-only delta needs `npm run test:nvim` green. Suites run through `cland verify`, only after a clear source review and at the exact reviewed head (D25), and only when `cland verify queue --json` shows no holder.
+- Commit on the task branch and push it to `origin`. `dev` is reached only through `cland merge`. Everything is in English.
+
+## Acceptance criteria
+
+- [ ] C1. At release scope under `board`, the panel lists the release's epics as folded rows in rank order with `done/total` and the breakdown, and the closed epic last in the done colour.
+- [ ] C2. `za` on an epic row shows its status sections indented, without empty sections. `za` again folds it, and the fold survives a hub event.
+- [ ] C3. `Direct tasks (N)` follows the epics, folded, and unfolds into the direct tasks' sections. A release with no epics shows it folded.
+- [ ] C4. Selecting an epic tab shows that epic's sections as before. The `work`, `you` and `done` filters are unchanged.
+- [ ] C5. The categories count line is the last row, and Enter on it still switches to `all`.
+- [ ] C6. `K` on an epic row sends `task.rank` for the epic, and the rows reorder on the `task` event.
+- [ ] C7. The swept QA cases pass. `nvim/README.md` describes the release scope's epic rows.
