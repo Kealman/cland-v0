@@ -2,6 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
+import { createConnection } from 'node:net';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tempProject } from '../../hub/test/harness.ts';
@@ -11,6 +12,43 @@ const nvim = await nvimOrSkip();
 const skip = 'skip' in nvim ? nvim.skip : false;
 const bin = 'bin' in nvim ? nvim.bin : '';
 const STUB = fileURLToPath(new URL('./stub-hub.ts', import.meta.url));
+
+test('more shows the latest 20 stopped rows by stop time and the archived count without fetching the archive', { skip }, async t => {
+  const root = await tempProject(t);
+  await mkdir(join(root, '.git'), { recursive: true });
+  await mkdir(join(root, '.cland'), { recursive: true });
+  const processes = Array.from({ length: 25 }, (_, i) => ({ name: `crew-${i + 1}`, sessionId: `id-${i + 1}`, role: 'implementer', harness: 'claude-code', status: 'stopped', startedAt: `2026-09-${String(25 - i).padStart(2, '0')}T00:00:00Z`, stoppedAt: `2026-10-${String(i + 1).padStart(2, '0')}T00:00:00Z` }));
+  const archived = Array.from({ length: 180 }, (_, i) => ({ ...processes[0], name: `archived-${i}`, sessionId: `archived-id-${i}`, archived: true }));
+  const controlPath = join(root, 'stub.sock');
+  const c = await startClient(t, bin, root, { CLAND_HUB_TRANSPORT: 'stdio', CLAND_COMMAND: JSON.stringify([process.execPath, STUB]), CLAND_STUB_SCENARIO_JSON: JSON.stringify({ inbox: {}, processes: [...processes, ...archived] }), CLAND_STUB_CONTROL: controlPath });
+  const control = (command: Record<string, unknown>) => new Promise<Record<string, unknown>>((resolve, reject) => {
+    const socket = createConnection(controlPath); let text = '';
+    socket.setEncoding('utf8'); socket.on('error', reject);
+    socket.on('data', data => { text += data; if (text.includes('\n')) { socket.end(); resolve(JSON.parse(text.slice(0, text.indexOf('\n')))); } });
+    socket.write(`${JSON.stringify(command)}\n`);
+  });
+  await c.waitScreen(s => s.includes('hub: connected'), 'connected');
+  await c.input('<Esc>');
+  await c.lua("vim.cmd('stopinsert'); vim.api.nvim_set_current_win(require('cland.layout').win.right); vim.api.nvim_win_set_width(0,90)");
+  await c.waitScreen(s => s.includes('more (25) · 180 archived'), 'count from default list');
+  await c.input('gg/more (25)<CR>za');
+  await c.waitScreen(s => s.includes('crew-25'), 'unfolded latest stopped rows');
+  const lines = await c.lua<string[]>("return vim.api.nvim_buf_get_lines(require('cland.panels').bufs.sessions,0,-1,false)");
+  const rows = lines.filter(l => /crew-\d+ \[/.test(l));
+  assert.equal(rows.length, 20);
+  assert.match(rows[0]!, /crew-25 /);
+  assert.match(rows.at(-1)!, /crew-6 /);
+  assert.ok(lines.some(l => l.trim() === '5 older'));
+  assert.deepEqual(await c.lua("return require('cland.state').S.archived_processes"), [], 'archive rows were not fetched to compute count');
+  const changedRow = { ...processes[24], archived: true };
+  await control({ emits: [{ type: 'session.process', process: changedRow, archived: 181 }, { type: 'session.process', process: changedRow, archived: 181 }] });
+  await c.waitScreen(s => s.includes('more (24) · 181 archived'), 'live authoritative archive count is idempotent');
+  await control({ emit: { type: 'sessions.pruned', sessionIds: [changedRow.sessionId], archived: 180 } });
+  await c.waitScreen(s => s.includes('more (24) · 180 archived'), 'prune updates count and removes fetched row');
+  assert.deepEqual(await c.lua("return require('cland.state').S.archived_processes"), []);
+  const requests = (await control({ requests: true })).requests as Array<Record<string, unknown>>;
+  assert.ok(requests.filter(r => r.type === 'session.list').every(r => !r.archived), 'count updates never fetch the archive');
+});
 
 test('d archives a stopped Aide, A fetches its archive, r restores it, and live/unlaunched rows refuse d', { skip }, async t => {
   const root = await tempProject(t);

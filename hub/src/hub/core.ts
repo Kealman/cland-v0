@@ -458,7 +458,7 @@ export class HubCore {
   }
 
   /** Adapter-owned process facts go through the same subscription as the core's events. */
-  publishProcess(process: HarnessProcessView): void {
+  publishProcess(process: HarnessProcessView, archived?: number): void {
     if (process.status !== 'running') {
       this.#store.clearMeta(`pending-verification:${this.sessionIdentity(process.sessionId)}`);
       process = { ...process };
@@ -485,8 +485,18 @@ export class HubCore {
         this.#store.setMeta(checkpoint, signature);
       });
     }
-    this.#emit({ type: 'session.process', process });
+    this.#emit({ type: 'session.process', process, ...(archived === undefined ? {} : { archived }) });
   }
+
+  pruneProcess(process: Pick<HarnessProcessView, 'name' | 'sessionId'>): void {
+    this.#store.pruneSession(process.name, process.sessionId);
+    this.#states.delete(process.sessionId);
+    this.#approvalCommands.delete(process.sessionId);
+    this.#processFacts.delete(process.sessionId);
+    this.#processItems.delete(process.sessionId);
+  }
+
+  publishPruned(sessionIds: string[], archived: number): void { this.#emit({ type: 'sessions.pruned', sessionIds, archived }); }
 
   publishCleanup(sessionId: string, pending: boolean): void {
     this.#emit({ type: 'session.cleanup', sessionId, state: pending ? 'pending stop' : 'settled' });

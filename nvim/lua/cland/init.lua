@@ -71,7 +71,12 @@ local function replay_sessions(events, processes)
   for _, e in ipairs(events) do
     if e.type == 'session.role' then state.set_session_role(e.session, e.role)
     elseif e.type == 'session.state' then state.set_session_state(e.session, e.state, e.approvalCommand, e.layer)
-    elseif processes and e.type == 'session.process' then state.upsert_process(e.process)
+    elseif processes and e.type == 'session.process' then
+      state.upsert_process(e.process)
+      if type(e.archived) == 'number' then state.S.archived_count = e.archived end
+    elseif processes and e.type == 'sessions.pruned' then
+      for _, id in ipairs(e.sessionIds or {}) do state.remove_process(id) end
+      state.S.archived_count = e.archived
     elseif processes and e.type == 'session.cleanup' then state.remove_process(e.sessionId)
     elseif processes and e.type == 'session.usage' then state.set_session_usage(e.sessionId, e.usage)
     elseif not processes then
@@ -121,6 +126,7 @@ local refresh_archive = single_flight(function(done)
   M.client:snapshot({ type = 'session.list', archived = true }, function(err, value, events)
     if not err and value then
       state.S.archived_processes = value.processes or {}
+      state.S.archived_count = value.archived or 0
       replay_sessions(events, true)
       state.changed()
     end
@@ -135,6 +141,7 @@ local refresh_sessions = single_flight(function(done)
   M.client:snapshot({ type = 'session.list' }, function(err, value, events)
     if not err and value then
       state.S.processes = value.processes or {}
+      state.S.archived_count = value.archived or 0
       state.S.adapters = value.adapters or {}
       replay_sessions(events, true)
       state.changed()
@@ -292,6 +299,13 @@ local function wire_client(client)
   end)
   client:on('session.process', function(event)
     state.upsert_process(event.process)
+    if type(event.archived) == 'number' then state.S.archived_count = event.archived end
+    state.changed()
+  end)
+  client:on('sessions.pruned', function(event)
+    for _, id in ipairs(event.sessionIds or {}) do state.remove_process(id) end
+    state.S.archived_count = event.archived
+    state.changed()
   end)
   client:on('session.cleanup', function(event)
     state.remove_process(event.sessionId)

@@ -27,6 +27,7 @@ export type SessionRequest =
   | { type: 'session.list'; id: string; archived?: boolean }
   | { type: 'session.attach'; id: string; session: string }
   | { type: 'session.archive'; id: string; session: string }
+  | { type: 'session.prune'; id: string; olderThan: string; dryRun?: boolean }
   | { type: 'session.stop'; id: string; session: string }
   | { type: 'session.resume'; id: string; session: string; relaunch?: boolean; fresh?: boolean }
   | { type: 'session.retry'; id: string; session: string; message: string }
@@ -34,7 +35,7 @@ export type SessionRequest =
   | { type: 'session.bridge'; id: string; session: string; launch?: string };
 
 /** Spoke session requests are still checked by the role permission table; stop/resume remain shell-only. */
-export const SPOKE_SESSION_REQUESTS: ReadonlySet<string> = new Set(['session.launch', 'session.list', 'session.archive']);
+export const SPOKE_SESSION_REQUESTS: ReadonlySet<string> = new Set(['session.launch', 'session.list', 'session.archive', 'session.prune']);
 
 const optString = (v: unknown) => v === undefined || typeof v === 'string';
 
@@ -45,6 +46,8 @@ export function isSessionRequest(f: Record<string, unknown>): f is SessionReques
       return typeof f.name === 'string' && optString(f.role) && optString(f.model) && optString(f.harness) && optString(f.cwd) && optString(f.effort) && optString(f.item) && optString(f.brief);
     case 'session.list':
       return f.archived === undefined || typeof f.archived === 'boolean';
+    case 'session.prune':
+      return typeof f.olderThan === 'string' && (f.dryRun === undefined || typeof f.dryRun === 'boolean');
     case 'session.attach':
     case 'session.archive':
     case 'session.stop':
@@ -94,11 +97,14 @@ export async function answerSession(sessions: Sessions | undefined, frame: Sessi
         return ok(await worktrees.launch(sessions, { ...request, item: frame.item }, resumed, authorize));
       }
       case 'session.list':
-        return ok({ processes: sessions.list(frame.archived ?? false), archived: sessions.list(true).length, pendingStops: sessions.pendingStops(), adapters: sessions.capabilities(), coordinator: sessions.coordinator() });
+        return ok({ processes: sessions.list(frame.archived ?? false), archived: sessions.archivedCount(), pendingStops: sessions.pendingStops(), adapters: sessions.capabilities(), coordinator: sessions.coordinator() });
       case 'session.attach':
         return ok({ command: sessions.attachCommand(frame.session) });
       case 'session.archive':
         return ok({ process: await sessions.archive(frame.session, actor, resumed, authorize) });
+      case 'session.prune':
+        authorize?.();
+        return ok(sessions.prune(frame.olderThan, frame.dryRun ?? false));
       case 'session.stop':
         return ok({ process: await sessions.stop(frame.session, resumed, authorize) });
       case 'session.resume':

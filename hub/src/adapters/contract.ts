@@ -40,6 +40,9 @@ export type HarnessProcess = {
   harnessSessionId: string | null;
   startedAt: string;
   stoppedAt?: string | null;
+  /** Latest crew item retained after claims/holds are released. Never a resume claim. */
+  cleanupItem?: string | null;
+  cleanupHeldAt?: string | null;
   archivedAt?: string | null;
   archivedBy?: 'hand' | 'rule' | null;
   status: 'running' | 'exited' | 'stopped';
@@ -185,6 +188,8 @@ export interface HarnessAdapter {
   /** Running totals and latest turn/step (only where `capabilities.usage` is not `none`). */
   usage?(process: HarnessProcess): SessionUsage | null;
   noteUsage?(process: HarnessProcess, usage: Record<string, unknown>): void;
+  /** Prune adapter-owned totals and supervision for an archived terminal row. */
+  forget?(sessionId: string): void;
   /** The session was renamed (`process` is its row under the new name): files the adapter keeps by name follow it. */
   renamed?(process: HarnessProcess, from: string): void;
   /** Start watching a process (after spawn or resume): the polled fallback and the liveness check. */

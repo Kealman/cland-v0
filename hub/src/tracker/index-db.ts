@@ -168,6 +168,7 @@ export class TrackerIndex {
     for (const column of ['commit_sha', 'comment_key', 'stage', 'stage_hash']) if (!verdictColumns.has(column)) this.#db.exec(`alter table tracker_verdicts add column ${column} text`);
     const mergeColumns = new Set((this.#db.prepare('pragma table_info(tracker_merges)').all() as Row[]).map(r => r.name));
     if (!mergeColumns.has('checkout_recovery')) this.#db.exec('alter table tracker_merges add column checkout_recovery text');
+    if (!mergeColumns.has('merged_at')) this.#db.exec('alter table tracker_merges add column merged_at text');
   }
 
   close(): void {
@@ -190,6 +191,9 @@ export class TrackerIndex {
   put(item: Item, meta: IndexMeta, writer?: { id: string; role: string | null }): void {
     const fm = item.fm;
     this.#tx(() => {
+      const key = `closed-at:${fm.id}`;
+      if (fm.state === 'open') this.#db.prepare('delete from tracker_meta where key = ?').run(key);
+      else this.#db.prepare('insert or ignore into tracker_meta (key, value) values (?, ?)').run(key, fm.updated);
       this.#db.prepare('delete from tracker_items where id = ?').run(fm.id);
       this.#db
         .prepare(
@@ -385,8 +389,20 @@ export class TrackerIndex {
   }
 
   recordMerge(id: string, receipt: MergeReceipt): void {
-    this.#db.prepare('insert into tracker_merges (item_id, branch, tip, base, commit_sha, override_reason, checkout_recovery) values (?, ?, ?, ?, ?, ?, ?) on conflict (item_id) do update set branch = excluded.branch, tip = excluded.tip, base = excluded.base, commit_sha = excluded.commit_sha, override_reason = excluded.override_reason, checkout_recovery = excluded.checkout_recovery')
-      .run(id, receipt.branch, receipt.tip, receipt.base, receipt.commit, receipt.override ?? null, receipt.checkout ? JSON.stringify(receipt.checkout) : null);
+    this.#db.prepare(`insert into tracker_merges (item_id, branch, tip, base, commit_sha, override_reason, checkout_recovery, merged_at) values (?, ?, ?, ?, ?, ?, ?, ?)
+      on conflict (item_id) do update set branch = excluded.branch, tip = excluded.tip, base = excluded.base,
+      merged_at = case when tracker_merges.commit_sha = excluded.commit_sha then coalesce(tracker_merges.merged_at, excluded.merged_at) else excluded.merged_at end,
+      commit_sha = excluded.commit_sha, override_reason = excluded.override_reason, checkout_recovery = excluded.checkout_recovery`)
+      .run(id, receipt.branch, receipt.tip, receipt.base, receipt.commit, receipt.override ?? null, receipt.checkout ? JSON.stringify(receipt.checkout) : null, new Date().toISOString());
+  }
+
+  /** Indexed lifecycle time, without materialising bodies, verdicts or journal history. */
+  closedAt(id: string): string | null {
+    const row = this.#db.prepare(`select coalesce(m.merged_at, t.value, i.updated) as at from tracker_items i
+      left join tracker_merges m on m.item_id = i.id
+      left join tracker_meta t on t.key = 'closed-at:' || i.id
+      where i.id = ? and i.state = 'closed'`).get(id) as Row | undefined;
+    return row?.at as string | null ?? null;
   }
 
   mergeReceipt(id: string): MergeReceipt | null {
@@ -424,6 +440,15 @@ export class TrackerIndex {
     const rows = this.#db.prepare('select item_id from tracker_holds where session_id = ?').all(sessionId) as Row[];
     this.#db.prepare('delete from tracker_holds where session_id = ?').run(sessionId);
     return rows.map(r => r.item_id as string);
+  }
+
+  pruneSession(sessionId: string): string[] {
+    return this.#tx(() => {
+      const rows = this.#db.prepare('select item_id from tracker_holds where session_id = ? union select item_id from tracker_claims where session_id = ?').all(sessionId, sessionId) as Row[];
+      this.#db.prepare('delete from tracker_holds where session_id = ?').run(sessionId);
+      this.#db.prepare('delete from tracker_claims where session_id = ?').run(sessionId);
+      return rows.map(row => row.item_id as string);
+    });
   }
 
   /** Durable provisional identities are the startup reconciliation source, including failed adoptions. */

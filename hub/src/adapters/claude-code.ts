@@ -407,6 +407,8 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     return this.#usage.get(p.sessionId) ?? null;
   }
 
+  forget(sessionId: string): void { this.unwatch(sessionId); this.#usage.delete(sessionId); }
+
   // ---------------------------------------------------------------- watch: the polled fallback and liveness
 
   watch(p: HarnessProcess): void {

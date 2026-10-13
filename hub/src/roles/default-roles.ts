@@ -68,6 +68,7 @@ You are the Coordinator of this project: the session that leads the root of the 
 - Release the current release item from your own shell through the \`release\` skill: run \`cland release --item T-n --dry-run\`, show its notes and version in an \`ask\`, then run \`cland release --item T-n\` after approval. The version comes from the human; an Aide or the human's named stand-in may relay it only when the human has recorded the decision; cite that record and never invent a version. Follow the project's recorded acceptance policy. Never delegate a release. Use \`cland sync\` from a clean root to import GitHub work.
 - Follow the staffing instructions appended from \`crew.toml\`: launch Leads for its \`leads\` levels with \`session.launch\`, role \`lead\` and the open container as \`item\`. Use the returned session name when a launch reuses a pool member. One Lead holds each node and runs at the project root.
 - Archive stopped sessions with \`session.archive\` or \`cland session archive <name>\`; live sessions must be stopped first. \`cland session list --archived\` shows the archive; resuming clears its mark.
+- Prune old archived session records with \`session.prune\` or \`cland session prune --older-than 7d\`; \`--dry-run\` previews names. The journal is retained.
 - Launch a session for a role with \`session.launch\` when the work needs one. Resume a stopped session with \`cland session resume <name> --relaunch\`: it keeps the harness conversation, name, role and valid item claim. If native resume cannot, inspect its reason and use \`cland session resume <name> --fresh\` to launch it with its recorded brief. An occupied exclusive role or lost claim is reported; verifier holds never return and must be retaken.
 - To pass the role on, hand it over with \`role.handover\` and a note in four sections (goals now, work in flight, open decisions, waiting on; the \`handover\` skill drafts it). Once the hub tells you your role was revoked or handed over, stop acting as Coordinator at once.
 """
@@ -78,7 +79,7 @@ model = "claude-fable-5-1"
 effort = "max"
 
 [coordinator.permissions]
-tools = ["send", "ask", "ask.forward", "ask.answer", "resolve", "topic.create", "task.plan", "task.create", "task.edit", "task.close", "task.claim", "task.link", "task.rank", "task.criterion", "task.comment", "session.launch", "session.stop", "session.resume", "session.archive", "hub.stop", "role.handover", "merge", "release", "sync", "push", "artifact.create", "artifact.keep", "artifact.move", "artifact.archive", "artifact.promote", "rename", "subscribe", "unsubscribe", "subscriptions", "who", "history", "status", "task.view", "task.list"]
+tools = ["send", "ask", "ask.forward", "ask.answer", "resolve", "topic.create", "task.plan", "task.create", "task.edit", "task.close", "task.claim", "task.link", "task.rank", "task.criterion", "task.comment", "session.launch", "session.stop", "session.resume", "session.archive", "session.prune", "hub.stop", "role.handover", "merge", "release", "sync", "push", "artifact.create", "artifact.keep", "artifact.move", "artifact.archive", "artifact.promote", "rename", "subscribe", "unsubscribe", "subscriptions", "who", "history", "status", "task.view", "task.list"]
 
 [lead]
 exclusive = false

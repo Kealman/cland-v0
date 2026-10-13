@@ -272,6 +272,8 @@ export class OpenCodeAdapter implements HarnessAdapter {
     return this.#usage.get(p.sessionId) ?? null;
   }
 
+  forget(sessionId: string): void { this.unwatch(sessionId); this.#usage.delete(sessionId); }
+
   // ---------------------------------------------------------------- watch: the event stream and liveness
 
   watch(p: HarnessProcess): void {

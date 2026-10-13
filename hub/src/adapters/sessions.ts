@@ -26,6 +26,9 @@ import type { Resumed } from '../hub/worktrees.ts';
 import { clauseText } from '../roles/clause.ts';
 import { systemProcesses } from '../system-processes.ts';
 import { LaunchFiles, LaunchRecoveryPending } from './launch-files.ts';
+import type { Tracker } from '../tracker/tracker.ts';
+import type { ProjectConfig } from '../init/config.ts';
+import { durationMs } from '../duration.ts';
 
 /** A signal posted from inside a session (`cland hook <event>`). */
 export type SignalFrame = { session?: string; sessionId?: string; launch?: string; event: string; at?: number; payload?: Record<string, unknown> };
@@ -54,6 +57,8 @@ export type SessionsOptions = {
   log?: LogFn;
   /** How long after a push signal a polled signal is still ignored, ms. */
   pushTrustMs?: number;
+  tracker?: Tracker | undefined;
+  cleanup?: ProjectConfig['sessions'] | undefined;
 };
 
 /** At most one latest usage snapshot per session per second, with a trailing update. */
@@ -101,6 +106,12 @@ export class Sessions {
   readonly #lifecycle = new Map<string, Promise<void>>();
   readonly #crewAdmissions = new Map<string, string>();
   readonly #reusing = new Set<string>();
+  readonly #tracker: Tracker | undefined;
+  readonly #cleanup: ProjectConfig['sessions'];
+  #archiveTimer: ReturnType<typeof setTimeout> | null = null;
+  #archiveTick: ReturnType<typeof setImmediate> | null = null;
+  #sweeping = false;
+  #untracker: (() => void) | undefined;
 
   retainedPool(role: string | null | undefined): boolean {
     const rule = role ? this.#core.crew?.get().crew[role] : undefined;
@@ -243,6 +254,20 @@ export class Sessions {
     this.#root = options.root;
     this.#log = options.log ?? (() => {});
     this.#pushTrustMs = options.pushTrustMs ?? 15_000;
+    this.#tracker = options.tracker;
+    this.#cleanup = options.cleanup ?? { archiveAfterItemMs: 3600000, archiveAfterStopMs: 86400000 };
+    this.#untracker = this.#tracker?.onChange(change => {
+      // Remember verifier work when it is held, before stop/verdict releases erase it.
+      for (const hold of change.item?.holds ?? []) {
+        const row = this.#table.bySessionId(hold.sessionId);
+        if (!row || row.status !== 'running' || (row.role !== 'reviewer' && row.role !== 'qa')) continue;
+        if (!row.cleanupHeldAt || hold.heldAt > row.cleanupHeldAt) this.#table.update(row.name, { cleanupItem: change.id, cleanupHeldAt: hold.heldAt });
+      }
+      const claim = change.item?.claim;
+      const claimant = claim && this.#table.bySessionId(claim.sessionId);
+      if (claimant?.status === 'running' && claimant.role === 'implementer' && claimant.cleanupItem !== change.id) this.#table.update(claimant.name, { cleanupItem: change.id });
+      this.#scheduleArchive();
+    });
     // Recovery must select the persisted recipient's delivery mode before recording its final event.
     this.#core.eventSteering(id => { const p = this.#table.bySessionId(id); return p?.harness === 'codex' || p?.harness === 'opencode'; });
     for (const entry of this.#table.pendingStops()) this.#pendingStops.set(entry.process.sessionId, entry);
@@ -280,12 +305,13 @@ export class Sessions {
         ?? [...this.#launchIdentities.values()].find(identity => identity.prior === id || identity.sessionIds.has(id))?.name
         ?? null;
     });
-    this.#unprocess = this.#table.subscribe((p) => {
+    this.#unprocess = this.#table.subscribe((p, archived) => {
       // Quarantined status is not a verified exit. Metadata changes must leave the
       // final fact to cleanup, which publishes it only after the original process is gone.
       if (!this.#pendingStops.has(p.sessionId)) {
         if (p.status !== 'running') for (const [credential, first] of this.#firstHello) if (first.acceptedId === p.sessionId) this.#firstHello.delete(credential);
-        this.#core.publishProcess(this.view(p));
+        this.#core.publishProcess(this.view(p), archived);
+        this.#scheduleArchive();
       }
     });
     this.#core.onDelivered((messageId, _name, sessionId) => this.#inject(sessionId, messageId));
@@ -433,6 +459,82 @@ export class Sessions {
 
   list(archived = false): HarnessProcessView[] {
     return this.#table.all().filter(p => !!p.archivedAt === archived && !this.#pendingStops.has(p.sessionId)).map((p) => this.view(p));
+  }
+
+  archivedCount(): number {
+    return this.#table.archivedCount() - [...this.#pendingStops.values()].filter(p => this.#table.bySessionId(p.process.sessionId)?.archivedAt).length;
+  }
+
+  #scheduleArchive(): void {
+    if (this.#closed || this.#sweeping || this.#archiveTick) return;
+    this.#archiveTick = setImmediate(() => {
+      this.#archiveTick = null;
+      this.sweepArchive();
+    });
+  }
+
+  /** Startup and coalesced lifecycle/timer triggers share one bounded, batched sweep. */
+  sweepArchive(): void {
+    if (this.#closed) return;
+    if (this.#archiveTick) clearImmediate(this.#archiveTick);
+    this.#archiveTick = null;
+    if (this.#archiveTimer) clearTimeout(this.#archiveTimer);
+    this.#archiveTimer = null;
+    this.#sweeping = true;
+    try {
+      const now = Date.now(), at = new Date(now).toISOString();
+      let next = now + 60000;
+      const dated: string[] = [];
+      const due: Array<{ process: HarnessProcess; rule: string }> = [];
+      const times = new Map<string, string | null>();
+      const rows = this.#table.all();
+      for (const p of rows) {
+        if (p.status === 'running' || this.#pendingStops.has(p.sessionId)) continue;
+        if (!p.stoppedAt) dated.push(p.name);
+        if (p.archivedAt || p.role === 'aide') continue;
+        const item = p.role === 'implementer' ? p.cleanupItem ?? p.item : ['reviewer', 'qa'].includes(p.role ?? '') ? p.cleanupItem : null;
+        if (item && !times.has(item)) times.set(item, this.#tracker?.closedAt(item) ?? null);
+        const closed = item ? times.get(item) : null;
+        const rule = closed ? 'item' : 'stop';
+        const deadline = closed ? Date.parse(closed) + this.#cleanup.archiveAfterItemMs : Date.parse(p.stoppedAt ?? at) + this.#cleanup.archiveAfterStopMs;
+        if (deadline <= now && !this.#lifecycle.has(p.sessionId)) due.push({ process: p, rule });
+        else next = Math.min(next, Math.max(now + 100, deadline));
+      }
+      if (dated.length || due.length) this.#table.archiveBatch(dated, due.map(d => d.process.name), at);
+      for (const { process: p, rule } of due) this.#log({ event: 'session-archived', session: p.name, sessionId: p.sessionId, by: 'rule', rule });
+      this.#log({ event: 'session-archive-sweep', rows: rows.length, dated: dated.length, archived: due.length, batches: dated.length || due.length ? 1 : 0 });
+      this.#archiveTimer = setTimeout(() => { this.#archiveTimer = null; this.#scheduleArchive(); }, Math.max(1, next - now));
+      this.#archiveTimer.unref();
+    } finally { this.#sweeping = false; }
+  }
+
+  #stopItem(p: HarnessProcess): string | null {
+    const holds = this.#core.sessionHolds(p);
+    if (p.role === 'implementer') return p.item ?? holds.find(h => h.role === 'item')?.item ?? p.cleanupItem ?? null;
+    if (p.role === 'reviewer' || p.role === 'qa') return p.cleanupItem ?? holds.find(h => h.role !== 'item')?.item ?? null;
+    return null;
+  }
+
+  prune(olderThan: string, dryRun: boolean): { names: string[]; dryRun: boolean } {
+    const cutoff = Date.now() - durationMs(olderThan);
+    const rows = this.#table.all().filter(p => p.archivedAt && p.status !== 'running' && p.stoppedAt && Date.parse(p.stoppedAt) < cutoff && !this.#pendingStops.has(p.sessionId) && !this.#lifecycle.has(p.sessionId));
+    const names = rows.map(p => p.name);
+    if (!dryRun && rows.length) {
+      for (const p of rows) {
+        this.#tracker?.pruneSession(p.sessionId, p.name);
+        this.#core.pruneProcess(p);
+        this.#adapters.get(p.harness)?.forget?.(p.sessionId);
+        const timer = this.#usageTimers.get(p.sessionId);
+        if (timer) clearTimeout(timer);
+        this.#usageTimers.delete(p.sessionId);
+        this.#lastAt.delete(p.sessionId);
+        this.#lastPush.delete(p.sessionId);
+      }
+      this.#table.removeBatch(rows);
+      this.#core.publishPruned(rows.map(p => p.sessionId), this.#table.archivedCount());
+      this.#log({ event: 'sessions-pruned', names });
+    }
+    return { names, dryRun };
   }
 
   /** Durable failed launches remain supervised pending stop, apart from accepted process rows. */
@@ -825,7 +927,7 @@ export class Sessions {
       return resumed(() => {
         try {
           const current = this.#table.bySessionId(p.sessionId) ?? p;
-          this.#table.update(current.name, { status: 'stopped' });
+          this.#table.update(current.name, { status: 'stopped', cleanupItem: this.#stopItem(current) });
           if (process.env.CLAND_TEST_CRASH_AT === 'stop-recorded') process.kill(process.pid, 'SIGKILL');
           this.#core.setSessionState(p.sessionId, current.name, 'unknown', 'stopped');
           this.#log({ event: 'session-stopped', session: current.name, harness: p.harness });
@@ -1147,7 +1249,7 @@ export class Sessions {
     }
     const p = this.#table.bySessionId(sessionId);
     if (!p || p.status !== 'running') return;
-    this.#table.update(p.name, { status: 'exited' });
+    this.#table.update(p.name, { status: 'exited', cleanupItem: this.#stopItem(p) });
     // journalled (`journal.ts`) and recorded in Agents as a death (`agents-topic.ts`)
     this.#log({ event: 'harness-exited', session: p.name, harness: p.harness, pid: p.pid, detail });
     this.#core.setSessionState(sessionId, p.name, 'unknown', 'process');
@@ -1266,6 +1368,9 @@ export class Sessions {
 
   close(): void {
     this.#closed = true;
+    if (this.#archiveTimer) clearTimeout(this.#archiveTimer);
+    if (this.#archiveTick) clearImmediate(this.#archiveTick);
+    this.#untracker?.();
     if (this.#stopRetry) clearInterval(this.#stopRetry);
     this.#stopRetry = null;
     for (const a of this.#adapters.values()) a.close();

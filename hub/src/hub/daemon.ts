@@ -276,8 +276,9 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
   }
 
   // the adapters: launched harness sessions, re-found after a restart once the hub is reachable again
-  adapters = projectSessions({ core: hub.core, root, db: l.db, discoveryFile: l.discovery, log });
+  adapters = projectSessions({ core: hub.core, root, db: l.db, discoveryFile: l.discovery, log, tracker, cleanup: config?.sessions });
   hub.dispatcher.useSessions(adapters.sessions);
+  adapters.sessions.sweepArchive();
 
   const discovery: Discovery = { root, socket: l.socket, port: ws.port, secret, pid: process.pid, version: VERSION };
   writeDiscovery(l.discovery, discovery);

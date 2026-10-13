@@ -14,6 +14,7 @@ function M.reset(opts)
     hub = { state = 'idle', detail = nil },
     topics = {}, -- Topic, as topic.list returns them
     archived_processes = {}, -- explicitly archived rows, fetched when A opens the archive
+    archived_count = 0,
     processes = {}, -- HarnessProcess rows from session.list
     presence = {}, -- connected sessions from hub.status (spokes started by hand included)
     adapters = {}, -- harness → capability table
@@ -152,6 +153,7 @@ function M.sessions(include_archived)
       archived = p.archived,
       archivedAt = type(p.archivedAt) == 'string' and p.archivedAt or nil,
       startedAt = p.startedAt,
+      stoppedAt = p.stoppedAt,
       name = p.name,
       role = p.role,
       label = M.label(p.name, p.role, p.label),
@@ -372,11 +374,13 @@ end
 --- A rejected launch leaves accepted rows by identity; another launch may already own its old name.
 function M.remove_process(sessionId)
   if not sessionId then return end
-  local rows = {}
-  for _, p in ipairs(M.S.processes) do
-    if p.sessionId ~= sessionId then rows[#rows + 1] = p end
+  for _, key in ipairs({ 'processes', 'archived_processes' }) do
+    local rows = {}
+    for _, p in ipairs(M.S[key]) do
+      if p.sessionId ~= sessionId then rows[#rows + 1] = p end
+    end
+    M.S[key] = rows
   end
-  M.S.processes = rows
   M.changed()
 end
 

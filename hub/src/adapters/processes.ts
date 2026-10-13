@@ -104,13 +104,15 @@ const toProcess = (r: Row): HarnessProcess => ({
   status: r.status as HarnessProcess['status'],
   pidStarted: (r.pid_started as string | null) ?? null,
   item: (r.item as string | null) ?? null,
+  cleanupItem: (r.cleanup_item as string | null) ?? null,
+  cleanupHeldAt: (r.cleanup_held_at as string | null) ?? null,
   launchBrief: (r.brief as string | null) ?? null,
   effort: (r.effort as string | null) ?? null,
 });
 
 export class ProcessTable {
   readonly #db: DatabaseSync;
-  readonly #listeners = new Set<(process: HarnessProcess) => void>();
+  readonly #listeners = new Set<(process: HarnessProcess, archived: number) => void>();
 
   constructor(path: string = ':memory:') {
     this.#db = new DatabaseSync(path);
@@ -125,17 +127,22 @@ export class ProcessTable {
     // Old stopped rows remain undated: no journal backfill on startup.
     for (const column of ['stopped_at', 'archived_at', 'archived_by']) if (!columns.has(column)) this.#db.exec(`alter table harness_processes add column ${column} text`);
     if (!columns.has('item')) this.#db.exec('alter table harness_processes add column item text');
+    if (!columns.has('cleanup_item')) this.#db.exec('alter table harness_processes add column cleanup_item text');
+    if (!columns.has('cleanup_held_at')) this.#db.exec('alter table harness_processes add column cleanup_held_at text');
   }
 
   /** Every committed row change, including renames: the sessions layer publishes its public view. */
-  subscribe(listener: (process: HarnessProcess) => void): () => void {
+  subscribe(listener: (process: HarnessProcess, archived: number) => void): () => void {
     this.#listeners.add(listener);
     return () => this.#listeners.delete(listener);
   }
 
-  #changed(name: string): void {
+  #changed(name: string, archived?: number): void {
     const process = this.get(name);
-    if (process) for (const listener of this.#listeners) listener(process);
+    if (process && this.#listeners.size) {
+      const count = archived ?? this.archivedCount();
+      for (const listener of this.#listeners) listener(process, count);
+    }
   }
 
   close(): void {
@@ -146,12 +153,12 @@ export class ProcessTable {
   put(p: HarnessProcess): void {
     this.#db
       .prepare(
-        `insert into harness_processes (name, harness, role, model, cwd, pid, harness_id, session_id, harness_session_id, started_at, status, pid_started, item, brief, effort, stopped_at, archived_at, archived_by) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `insert into harness_processes (name, harness, role, model, cwd, pid, harness_id, session_id, harness_session_id, started_at, status, pid_started, item, brief, effort, stopped_at, archived_at, archived_by, cleanup_item, cleanup_held_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          on conflict (name) do update set harness = excluded.harness, role = excluded.role, model = excluded.model, cwd = excluded.cwd, pid = excluded.pid,
            harness_id = excluded.harness_id, session_id = excluded.session_id, harness_session_id = excluded.harness_session_id, started_at = excluded.started_at, status = excluded.status,
-           pid_started = excluded.pid_started, item = excluded.item, brief = excluded.brief, effort = excluded.effort, stopped_at = excluded.stopped_at, archived_at = excluded.archived_at, archived_by = excluded.archived_by`,
+           pid_started = excluded.pid_started, item = excluded.item, brief = excluded.brief, effort = excluded.effort, stopped_at = excluded.stopped_at, archived_at = excluded.archived_at, archived_by = excluded.archived_by, cleanup_item = excluded.cleanup_item, cleanup_held_at = excluded.cleanup_held_at`,
       )
-      .run(p.name, p.harness, p.role, p.model, p.cwd, p.pid, p.harnessId, p.sessionId, p.harnessSessionId, p.startedAt, p.status, p.pidStarted ?? null, p.item ?? null, p.launchBrief ?? null, p.effort ?? null, p.stoppedAt ?? null, p.archivedAt ?? null, p.archivedBy ?? null);
+      .run(p.name, p.harness, p.role, p.model, p.cwd, p.pid, p.harnessId, p.sessionId, p.harnessSessionId, p.startedAt, p.status, p.pidStarted ?? null, p.item ?? null, p.launchBrief ?? null, p.effort ?? null, p.stoppedAt ?? null, p.archivedAt ?? null, p.archivedBy ?? null, p.cleanupItem ?? null, p.cleanupHeldAt ?? null);
     this.#changed(p.name);
   }
 
@@ -177,11 +184,11 @@ export class ProcessTable {
     return true;
   }
 
-  update(name: string, change: Partial<Pick<HarnessProcess, 'pid' | 'harnessId' | 'harnessSessionId' | 'model' | 'status' | 'role' | 'pidStarted' | 'stoppedAt' | 'archivedAt' | 'archivedBy'>>): void {
+  update(name: string, change: Partial<Pick<HarnessProcess, 'pid' | 'harnessId' | 'harnessSessionId' | 'model' | 'status' | 'role' | 'pidStarted' | 'stoppedAt' | 'archivedAt' | 'archivedBy' | 'cleanupItem' | 'cleanupHeldAt'>>): void {
     if (change.status && change.status !== 'running' && change.stoppedAt === undefined) change = { ...change, stoppedAt: new Date().toISOString() };
     const sets: string[] = [];
     const values: Array<string | number | null> = [];
-    const column = { pid: 'pid', harnessId: 'harness_id', harnessSessionId: 'harness_session_id', model: 'model', status: 'status', role: 'role', pidStarted: 'pid_started', stoppedAt: 'stopped_at', archivedAt: 'archived_at', archivedBy: 'archived_by' } as const;
+    const column = { pid: 'pid', harnessId: 'harness_id', harnessSessionId: 'harness_session_id', model: 'model', status: 'status', role: 'role', pidStarted: 'pid_started', stoppedAt: 'stopped_at', archivedAt: 'archived_at', archivedBy: 'archived_by', cleanupItem: 'cleanup_item', cleanupHeldAt: 'cleanup_held_at' } as const;
     for (const [k, v] of Object.entries(change) as Array<[keyof typeof column, string | number | null]>) {
       sets.push(`${column[k]} = ?`);
       values.push(v);
@@ -207,8 +214,33 @@ export class ProcessTable {
     return (this.#db.prepare('select * from harness_processes order by started_at, name').all() as Row[]).map(toProcess);
   }
 
+  archivedCount(): number { return Number(this.#db.prepare('select count(*) as n from harness_processes where archived_at is not null').get()!.n); }
+
   running(): HarnessProcess[] {
     return this.all().filter((p) => p.status === 'running');
+  }
+
+  /** One transaction for the whole sweep; observers see only its final row views. */
+  archiveBatch(dated: string[], archived: string[], at: string): void {
+    this.#db.exec('begin immediate');
+    try {
+      const date = this.#db.prepare('update harness_processes set stopped_at = ? where name = ? and stopped_at is null');
+      const archive = this.#db.prepare("update harness_processes set archived_at = ?, archived_by = 'rule' where name = ?");
+      for (const name of dated) date.run(at, name);
+      for (const name of archived) archive.run(at, name);
+      this.#db.exec('commit');
+    } catch (error) { this.#db.exec('rollback'); throw error; }
+    const count = this.archivedCount();
+    for (const name of new Set([...dated, ...archived])) this.#changed(name, count);
+  }
+
+  removeBatch(rows: HarnessProcess[]): void {
+    this.#db.exec('begin immediate');
+    try {
+      const remove = this.#db.prepare('delete from harness_processes where name = ? and session_id = ?');
+      for (const row of rows) remove.run(row.name, row.sessionId);
+      this.#db.exec('commit');
+    } catch (error) { this.#db.exec('rollback'); throw error; }
   }
 
   /** Failed launch ownership is keyed by identity, so it cannot replace a name's accepted process. */

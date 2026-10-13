@@ -302,7 +302,7 @@ function answer(f: Frame) {
       if (!p) return fail(f.id, 'no record to archive');
       if (p.status === 'running') return fail(f.id, 'stop it first');
       Object.assign(p, { archived: true, archivedAt: now() });
-      write({ type: 'session.process', process: p });
+      write({ type: 'session.process', process: p, archived: (scenario.processes ?? []).filter(p => p.archived).length });
       return ok(f.id, { process: p });
     }
     case 'session.resume': {
@@ -310,7 +310,7 @@ function answer(f: Frame) {
       if (!p) return fail(f.id, `no session "${String(f.session)}" was launched by this hub`);
       if (scenario.resumeReason && f.fresh !== true) return ok(f.id, { found: false, process: p, reason: scenario.resumeReason, fresh: { brief: scenario.resumeBrief ?? null }, notes: [] });
       Object.assign(p, { status: 'running', state: 'idle', archived: false, archivedAt: null });
-      write({ type: 'session.process', process: p });
+      write({ type: 'session.process', process: p, archived: (scenario.processes ?? []).filter(p => p.archived).length });
       return ok(f.id, { found: true, process: p, role: p.role, claim: null, notes: scenario.resumeNotes ?? [] });
     }
     case 'role.list':

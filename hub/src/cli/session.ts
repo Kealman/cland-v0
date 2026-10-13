@@ -12,6 +12,7 @@ export const SESSION_USAGE = `  session launch <name> [--role r] [--model m] [--
                   --brief delivers text or an artifact's content once after the role clause
   session list [--archived]    launched sessions and the archived count (--json for JSON); --archived shows only the archive
   session archive <name>  archive a stopped or exited session
+  session prune --older-than <duration> [--dry-run]  remove old archived session records; keep the journal
   session attach <name>   print the command that attaches a terminal to the session
   session stop <name>     stop the session through its harness
   session resume <name> [--relaunch | --fresh]   re-find the session's process; --relaunch starts a new one on the same
@@ -75,6 +76,13 @@ export async function runSession(args: string[], cwd: string = process.cwd()): P
       if (!name) throw new Error('usage: cland session archive <name>');
       const v = (await askHubFrame(d, { type: 'session.archive', session: name })) as { process: HarnessProcessView };
       out(v, `archived ${line(v.process)}`);
+      return 0;
+    }
+    case 'prune': {
+      const olderThan = flag(rest, '--older-than');
+      if (!olderThan) throw new Error('usage: cland session prune --older-than <duration> [--dry-run]');
+      const v = await askHubFrame(d, { type: 'session.prune', olderThan, dryRun: rest.includes('--dry-run') }) as { names: string[]; dryRun: boolean };
+      out(v, `${v.dryRun ? 'would prune' : 'pruned'} ${v.names.length} session(s)${v.names.length ? ': ' + v.names.join(', ') : ''}`);
       return 0;
     }
     case 'stop': {

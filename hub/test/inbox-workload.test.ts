@@ -1,7 +1,7 @@
 // Real project startup and the JSON-lines protocol; native SQLite tracing observes work without replacing it.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdir, mkdtemp, realpath } from 'node:fs/promises';
+import { mkdir, mkdtemp, realpath, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { PassThrough } from 'node:stream';
@@ -15,6 +15,8 @@ import { ownDirectory } from './process-cleanup.ts';
 import type { Inbox } from '../src/protocol.ts';
 import { createHubBase, type HubBase } from '../src/hub/server.ts';
 import { eventRow, type JournalRecord } from '../src/hub/journal.ts';
+import { Tracker } from '../src/tracker/tracker.ts';
+import type { HarnessProcessView } from '../src/protocol.ts';
 
 const tick = () => new Promise<void>(resolve => setImmediate(resolve));
 function pipe(daemon: Pick<Daemon, 'hub'>) {
@@ -41,6 +43,79 @@ function pipe(daemon: Pick<Daemon, 'hub'>) {
     batch: (batch: Array<Record<string, unknown>>) => input.write(batch.map(f => JSON.stringify(f)).join('\n') + '\n'),
     close: () => { input.end(); output.end(); } };
 }
+
+test('archive startup batches hundreds of stops; item and stop bursts schedule one sweep per tick with thousands of retained items and messages', async t => {
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'cland-archive-work-'))), db = join(root, '.cland', 'hub.db');
+  const cleanup = ownDirectory(undefined, root);
+  let stop = async () => {};
+  t.after(async () => { try { await stop(); } finally { await cleanup(); } });
+  await mkdir(join(root, '.cland'), { recursive: true });
+  await writeFile(join(root, '.cland', 'config.toml'), '[sessions]\narchive_after_item = "1s"\narchive_after_stop = "1s"\n');
+  const tracker = new Tracker({ root, db });
+  const actor = { id: 'human', name: 'human', role: null, human: true };
+  for (let i = 0; i < 2000; i++) await tracker.create(actor, { title: `Retained item ${i}` });
+  await tracker.stop();
+  const seed = new Store(db), ts = new Date(Date.now() - 86400000).toISOString();
+  seed.transaction(() => {
+    for (let i = 0; i < 3000; i++) seed.record({ id: `old-${i}`, from: 'old', fromKind: 'agent', via: 'session', to: [], text: 'Retained message', ts }, [], Date.now());
+  });
+  seed.close();
+  const processes = new ProcessTable(db);
+  for (let i = 0; i < 256; i++) processes.put({ name: `old-${i}`, harness: 'claude-code', role: 'implementer', item: 'T-1', model: null, cwd: root, pid: null, harnessId: null, sessionId: `old-id-${i}`, harnessSessionId: null, startedAt: ts, stoppedAt: ts, status: 'stopped' });
+  processes.close();
+  const prepare = DatabaseSync.prototype.prepare;
+  let batches = 0, lifecycleLookups = 0, archiveCounts = 0;
+  // A native tracer counts queries without retaining node:test's per-call stack/arguments on this large store.
+  DatabaseSync.prototype.prepare = function(this: DatabaseSync, ...args: Parameters<typeof prepare>) {
+    if (args[0].startsWith('update harness_processes set archived_at')) batches++;
+    if (args[0].includes('coalesce(m.merged_at')) lifecycleLookups++;
+    if (args[0] === 'select count(*) as n from harness_processes where archived_at is not null') archiveCounts++;
+    return prepare.apply(this, args);
+  };
+  t.after(() => { DatabaseSync.prototype.prepare = prepare; });
+  const records: Array<Record<string, unknown>> = [];
+  let turn = 0;
+  let turnTimer: ReturnType<typeof setImmediate>;
+  const nextTurn = () => { turn++; turnTimer = setImmediate(nextTurn); };
+  nextTurn();
+  t.after(() => clearImmediate(turnTimer));
+  const daemon = await serveProject(root, { log: entry => records.push({ ...entry, turn }) });
+  const human = pipe(daemon), verifier = pipe(daemon);
+  stop = async () => { human.close(); verifier.close(); await daemon.stop(); };
+  await tick();
+  const startup = records.filter(r => r.event === 'session-archive-sweep');
+  assert.equal(startup.length, 1, 'one sweep at startup');
+  assert.deepEqual([startup[0]!.rows, startup[0]!.archived, startup[0]!.batches], [256, 256, 1]);
+  assert.equal(batches, 1, 'one native archive batch for every due row');
+  assert.equal(lifecycleLookups, 1, 'one indexed item timestamp lookup for a shared item');
+  assert.equal(archiveCounts, 1, 'one authoritative count scan for the whole startup batch');
+  human.send({ type: 'hello', protocol: 2, client: 'ui' });
+  const archived = await human.request({ type: 'session.list', id: 'archive', archived: true });
+  assert.equal((archived.value as { archived: number }).archived, 256);
+  assert.ok((archived.value as { processes: HarnessProcessView[] }).processes.every(p => p.archivedBy === 'rule'));
+  await human.request({ type: 'role.set', id: 'role', session: 'verifier', role: 'reviewer' });
+  verifier.send({ type: 'hello', protocol: 2, name: 'verifier', sessionId: 'verifier-id', cwd: root });
+  await eventually('verifier connected', () => verifier.frames.some(f => f.type === 'welcome') || undefined);
+  await tick();
+  const before = records.filter(r => r.event === 'session-archive-sweep').length;
+  verifier.batch(Array.from({ length: 100 }, (_, i) => ({ type: 'task.hold', id: `hold-${i}`, item: `T-${i + 1}`, release: true })));
+  await eventually('all protocol holds committed', () => verifier.frames.filter(f => f.type === 'result' && String(f.id).startsWith('hold-')).length === 100 || undefined);
+  await tick();
+  assert.equal(records.filter(r => r.event === 'session-archive-sweep').length - before, 1, '100 item events in one input chunk coalesce into one sweep');
+  // Fixtures represent live, unconnected harness rows with no OS process, so stop needs no external process.
+  const live = new ProcessTable(db);
+  for (let i = 0; i < 8; i++) live.put({ name: `new-${i}`, harness: 'codex', role: null, model: null, cwd: root, pid: 2147483646, harnessId: null, sessionId: `new-id-${i}`, harnessSessionId: null, startedAt: new Date().toISOString(), status: 'running' });
+  live.close();
+  const beforeStops = records.filter(r => r.event === 'session-archive-sweep').length;
+  human.batch(Array.from({ length: 8 }, (_, i) => ({ type: 'session.stop', id: `stop-${i}`, session: `new-${i}` })));
+  await eventually('all protocol stops committed', () => human.frames.filter(f => f.type === 'result' && String(f.id).startsWith('stop-')).length === 8 || undefined);
+  const stopped = human.frames.filter(f => String(f.id).startsWith('stop-'));
+  assert.ok(stopped.every(f => f.ok), `stop frames succeeded: ${JSON.stringify(stopped.find(f => !f.ok))}`);
+  await tick();
+  const sweeps = records.filter(r => r.event === 'session-archive-sweep').slice(beforeStops);
+  assert.ok(sweeps.length > 0, 'stops trigger cleanup');
+  assert.equal(sweeps.length, new Set(sweeps.map(r => r.turn)).size, 'asynchronous stops produce at most one sweep in each event-loop tick');
+});
 
 test('startup with 256 remembered processes and thousands of messages, then two 100-event protocol bursts, uses a fixed inbox query budget', async t => {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'cland-inbox-work-'))), db = join(root, '.cland', 'hub.db');

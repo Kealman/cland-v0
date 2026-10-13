@@ -346,10 +346,18 @@ local function render_sessions(c)
     c:add({})
   end
   local open = not state.folded('stopped')
-  c:add({ { ' ' .. (open and '▾ ' or '▸ ') .. 'more (' .. #layers.background .. ')', 'ClandDim' } }, nil, { fold = 'stopped' })
+  c:add({ { ' ' .. (open and '▾ ' or '▸ ') .. 'more (' .. #layers.background .. ') · ' .. state.S.archived_count .. ' archived', 'ClandDim' } }, nil, { fold = 'stopped' })
   if open then
-    -- Latest first, as with the former stopped fold.
-    for i = #layers.background, 1, -1 do session_row(c, layers.background[i], 'background') end
+    table.sort(layers.background, function(a, b)
+      local at, bt = a.stoppedAt or a.startedAt or '', b.stoppedAt or b.startedAt or ''
+      return at == bt and a.name < b.name or at > bt
+    end)
+    local stopped = 0
+    for _, s in ipairs(layers.background) do
+      if not s.live then stopped = stopped + 1 end
+      if s.live or stopped <= 20 then session_row(c, s, 'background') end
+    end
+    if stopped > 20 then c:add({ { ' ' .. (stopped - 20) .. ' older', 'ClandDim' } }) end
   end
   if state.S.ui.sessions_archive then
     c:add({})

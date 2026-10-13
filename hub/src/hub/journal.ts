@@ -55,6 +55,7 @@ export const JOURNALLED: ReadonlySet<string> = new Set([
   'session-launched',
   'session-reused',
   'session-archived',
+  'sessions-pruned',
   'session-unarchived',
   'session-stopped',
   'session-resumed',

@@ -238,7 +238,8 @@ export type HubEvent =
   /** The connected sessions, replaced on a hello, last spoke leaving, rename, status or role change. */
   | { type: 'presence'; sessions: Presence[] }
   /** A process-table row changed: the same view as session.list, replaced by stable session id or name. */
-  | { type: 'session.process'; process: HarnessProcessView }
+  | { type: 'session.process'; process: HarnessProcessView; archived?: number }
+  | { type: 'sessions.pruned'; sessionIds: string[]; archived: number }
   /** Failed launch supervision changed; no accepted process row is implied. */
   | { type: 'session.cleanup'; sessionId: string; state: 'pending stop' | 'settled' }
   /** Latest usage totals, coalesced per launch; old launches must never update a new row under the same name. */

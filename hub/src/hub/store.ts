@@ -369,6 +369,18 @@ export class Store implements HygieneMemory {
     return { queued };
   }
 
+  /** Only session bookkeeping. Historical messages, deliveries and subscriptions stay readable. */
+  pruneSession(name: string, sessionId: string): void {
+    this.transaction(() => {
+      this.#db.prepare('delete from sessions where name = ? and (session_id = ? or session_id is null)').run(name, sessionId);
+      this.#db.prepare('delete from launch_reservations where name = ?').run(name);
+      this.#db.prepare('delete from subscription_usage where session_id = ?').run(sessionId);
+      for (const prefix of ['pending-verification:', 'subscription-terminal:', 'pool-handoff:']) this.clearMeta(prefix + sessionId);
+      this.#db.prepare("delete from meta where key like 'session-alias:%' and value = ?").run(sessionId);
+      this.#db.prepare("delete from meta where key like 'verifier-request:%' and json_extract(value, '$.sessionId') = ?").run(sessionId);
+    });
+  }
+
   /** Sessions seen since `since` (ms epoch) — the ones `@all` or a glob still reaches; older ones are history. */
   knownSessions(since = 0): KnownSession[] {
     return (this.#db.prepare('select name, last_seen, status, role from sessions where last_seen >= ? order by name').all(since) as Row[]).map(toKnown);

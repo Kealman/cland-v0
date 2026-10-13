@@ -1296,6 +1296,13 @@ export class Tracker {
   recordMerge(rawId: string, receipt: MergeReceipt): void { this.#index.recordMerge(this.#require(rawId).id, receipt); }
   mergeReceipt(rawId: string): MergeReceipt | null { return this.#index.mergeReceipt(normalizeId(rawId) ?? rawId); }
 
+  closedAt(id: string): string | null { return this.#index.closedAt(id); }
+  pruneSession(sessionId: string, name: string): void {
+    const changed = new Set(this.#index.pruneSession(this.#sessionId(sessionId)));
+    for (const id of this.#index.pruneSession(`name:${name}`)) changed.add(id);
+    for (const id of changed) this.#changed(id);
+  }
+
   /** Idempotent follow-ups, kept separate so a failure names the step after a successful landing. */
   finishMerge(actor: Actor, rawId: string, comment: string, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<{ step: string; error: string } | null> {
     return this.#serial(async resumed => {

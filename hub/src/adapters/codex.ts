@@ -827,6 +827,8 @@ export class CodexAdapter implements HarnessAdapter {
     };
   }
 
+  forget(sessionId: string): void { this.unwatch(sessionId); this.#live.delete(sessionId); }
+
   // ---------------------------------------------------------------- watch: liveness and the connection
 
   watch(p: HarnessProcess): void {

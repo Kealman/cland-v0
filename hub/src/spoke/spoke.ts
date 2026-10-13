@@ -144,6 +144,11 @@ const TOOLS = [
     inputSchema: { type: 'object', properties: { session: { type: 'string' } }, required: ['session'] },
   },
   {
+    name: 'session.prune',
+    description: 'Delete archived session records older than a stop-age duration (1s, 1m, 1h, 1d). dryRun lists names without deleting. Journal and traffic are retained.',
+    inputSchema: { type: 'object', properties: { olderThan: { type: 'string' }, dryRun: { type: 'boolean' } }, required: ['olderThan'] },
+  },
+  {
     name: 'session.launch',
     description:
       'Launch a new harness session through the hub (its process runs in the background; the human attaches to it from the UI). Returns the session with its state and the command that attaches a terminal to it.',
@@ -429,6 +434,11 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env): Promise<Sp
         case 'session.archive': {
           if (typeof args.session !== 'string') return text({ ok: false, error: 'session.archive needs `session`' }, true);
           const value = await hub.request({ type: 'session.archive', session: args.session });
+          return text({ ok: true, ...(value as Record<string, unknown>) });
+        }
+        case 'session.prune': {
+          if (typeof args.olderThan !== 'string') return text({ ok: false, error: 'session.prune needs `olderThan`' }, true);
+          const value = await hub.request({ type: 'session.prune', olderThan: args.olderThan, ...(typeof args.dryRun === 'boolean' ? { dryRun: args.dryRun } : {}) });
           return text({ ok: true, ...(value as Record<string, unknown>) });
         }
         case 'session.launch': {

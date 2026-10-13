@@ -162,8 +162,11 @@ palette list its key. Use `cland verify cancel` to cancel a run.
 The panel shows **NOW**, then **WATCH**, with **yours** (live Aides),
 **waiting, busy and idle** groups inside their hub-assigned layer. Waiting includes
 both waiting for human and waiting for approval; unknown live sessions sit in idle
-with a `?` glyph. Background sessions start behind `more (N)`; fold keys, Enter
-or Tab on that header reveal them, newest first. Ordinary stopped sessions are
+with a `?` glyph. Background sessions start behind `more (N) · M archived`; fold keys, Enter
+or Tab on that header reveal them. Unfolded, it shows at most the latest 20 stopped
+sessions by stop time, newest first; the rest become `N older`. Live background
+sessions remain visible. The archived count comes from `session.list` and live
+`session.process` frames, without fetching the archive. Ordinary stopped sessions are
 Background by default. Aides keep their hub Now layer even when stopped.
 `d` archives a stopped session and says `<name> archived · A shows the archive`.
 Live rows say to stop first with `x`; an unlaunched row has no record to archive.

@@ -10,11 +10,13 @@ import { parse } from 'smol-toml';
 import { EVENT_LIMIT, LOOP_BREAKER, MAX_TEXT_BYTES, RATE_LIMIT, type LoopBreaker, type RateLimit } from '../hub/hygiene.ts';
 import { MANAGED_MARK } from '../project.ts';
 import { VERSION } from '../version.ts';
+import { durationMs } from '../duration.ts';
 import { isManagedFile, readText, writeIfChanged, type Report } from './files.ts';
 
 export type ProjectConfig = {
   name: string;
   verification: { budget: number; lockPath: string; cacheMaxAgeMs: number };
+  sessions: { archiveAfterItemMs: number; archiveAfterStopMs: number };
   visibility: VisibilityOverrides;
   tracker: { levels: string[] };
   plan: { approval: 'none' | 'human'; qaDefault: QaPolicy };
@@ -28,6 +30,7 @@ const MINUTE = 60_000;
 export const defaultConfig = (name: string): ProjectConfig => ({
   name,
   verification: { budget: 1, lockPath: '/tmp/cland-suite.lock', cacheMaxAgeMs: 86400000 },
+  sessions: { archiveAfterItemMs: 3600000, archiveAfterStopMs: 86400000 },
   visibility: {},
   tracker: { levels: [...DEFAULT_LEVELS] },
   plan: { approval: 'none', qaDefault: { scope: 'none', when: 'per-item' } },
@@ -52,6 +55,11 @@ budget = ${c.verification.budget}
 lock_path = ${JSON.stringify(c.verification.lockPath)}
 # Reuse green candidate trees for this many minutes; 0 disables caching.
 cache_max_age_minutes = ${minutes(c.verification.cacheMaxAgeMs)}
+
+[sessions]
+# Archive stopped crew after their item closes, otherwise after their stop. Aides are excluded.
+archive_after_item = "${c.sessions.archiveAfterItemMs / 1000}s"
+archive_after_stop = "${c.sessions.archiveAfterStopMs / 1000}s"
 
 # Container kinds, ordered top-down. Leaf kinds are task, question and spec; map is outside the ladder.
 [tracker]
@@ -97,6 +105,13 @@ const positive = (v: unknown): number | undefined => (typeof v === 'number' && N
 export function parseConfig(text: string, fallbackName: string): ProjectConfig {
   const doc = parse(text) as Record<string, unknown>;
   const c = defaultConfig(fallbackName);
+  const sessions = (doc.sessions ?? {}) as Record<string, unknown>;
+  for (const [key, field] of [['archive_after_item', 'archiveAfterItemMs'], ['archive_after_stop', 'archiveAfterStopMs']] as const) {
+    if (sessions[key] !== undefined) {
+      if (typeof sessions[key] !== 'string') throw new Error(`sessions.${key} must be a duration string`);
+      c.sessions[field] = durationMs(sessions[key]);
+    }
+  }
   const verification = (doc.verification ?? {}) as Record<string, unknown>;
   if (typeof verification.budget === 'number' && Number.isSafeInteger(verification.budget) && verification.budget > 0) c.verification.budget = verification.budget;
   if (typeof verification.lock_path === 'string' && verification.lock_path.startsWith('/')) c.verification.lockPath = verification.lock_path;
