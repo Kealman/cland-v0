@@ -3,7 +3,8 @@ id: T-332
 kind: task
 title: "The verdict scope: a review verdict records full, delta or evidence, through --scope on cland task comment and MCP task.comment, and the Reviewer clause and the code-review skill say which"
 state: open
-status: planned
+status: review
+criterion_seq: 6
 labels:
   - v0.1.2
   - hub
@@ -12,10 +13,10 @@ assignee: null
 parent: E-270
 blocked_by:
   - T-331
-topic: null
-branch: null
+topic: topic-213
+branch: t/T-332-the-verdict-scope-a-review-verdict
 created: 2026-10-13T14:04:09.652Z
-updated: 2026-10-13T19:30:24.288Z
+updated: 2026-10-13T19:41:22.886Z
 ---
 
 ## Summary
@@ -72,9 +73,38 @@ E-270: Status, fields and instrumentation. Spec: `docs/spec/v0.1.2.md` §3.12 (t
 
 ## Acceptance criteria
 
-- [ ] C1. Item tests: the `scope` header round-trips for each value. A verdict file without it reads unchanged with no scope.
-- [ ] C2. On a temporary project with a real hub, `cland task comment --verdict review` without `--scope` is refused naming the three values. With `--scope delta` it records, and `cland task view` and `--json` show it. A QA verdict with `--scope` is refused.
-- [ ] C3. Through a real spoke, MCP `task.comment` from a Reviewer session gets the same refusal and records the scope when given.
-- [ ] C4. `task.list` and the `task` event carry the scope from the index. The existing merge gate tests (`hub/test/merge.test.ts`, `hub/test/review-qa.test.ts`, `hub/test/verdict-commit.test.ts`) pass with scoped verdicts and decide as before.
-- [ ] C5. The Reviewer clause states the rule. The roles snapshot tests pin it, and every role's delivered clause stays at least 512 bytes under 8192, for the defaults and for `.cland/roles.toml`.
-- [ ] C6. The `code-review` skill records `--scope`, and `skills/PATCHES.md` records the patch. `docs/review-and-qa.md`, `docs/agents/issue-tracker.md` with its template, `GLOSSARY.md` and `hub/README.md` describe the scope.
+- [x] C1. Item tests: the `scope` header round-trips for each value. A verdict file without it reads unchanged with no scope.
+  - done: impl-332 · 2026-10-13T19:39:19.832Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-332-1 · 2026-10-13T19:41:22.886Z · commit d35c83256183a91cbd620f5c13b1ea5d2784da6d
+- [x] C2. On a temporary project with a real hub, `cland task comment --verdict review` without `--scope` is refused naming the three values. With `--scope delta` it records, and `cland task view` and `--json` show it. A QA verdict with `--scope` is refused.
+  - done: impl-332 · 2026-10-13T19:39:20.290Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-332-1 · 2026-10-13T19:41:22.886Z · commit d35c83256183a91cbd620f5c13b1ea5d2784da6d
+- [x] C3. Through a real spoke, MCP `task.comment` from a Reviewer session gets the same refusal and records the scope when given.
+  - done: impl-332 · 2026-10-13T19:39:20.850Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-332-1 · 2026-10-13T19:41:22.886Z · commit d35c83256183a91cbd620f5c13b1ea5d2784da6d
+- [x] C4. `task.list` and the `task` event carry the scope from the index. The existing merge gate tests (`hub/test/merge.test.ts`, `hub/test/review-qa.test.ts`, `hub/test/verdict-commit.test.ts`) pass with scoped verdicts and decide as before.
+  - done: impl-332 · 2026-10-13T19:39:21.336Z
+- [x] C5. The Reviewer clause states the rule. The roles snapshot tests pin it, and every role's delivered clause stays at least 512 bytes under 8192, for the defaults and for `.cland/roles.toml`.
+  - done: impl-332 · 2026-10-13T19:39:22.119Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-332-1 · 2026-10-13T19:41:22.886Z · commit d35c83256183a91cbd620f5c13b1ea5d2784da6d
+- [x] C6. The `code-review` skill records `--scope`, and `skills/PATCHES.md` records the patch. `docs/review-and-qa.md`, `docs/agents/issue-tracker.md` with its template, `GLOSSARY.md` and `hub/README.md` describe the scope.
+  - done: impl-332 · 2026-10-13T19:39:22.571Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-332-1 · 2026-10-13T19:41:22.886Z · commit d35c83256183a91cbd620f5c13b1ea5d2784da6d
+
+## Comments
+
+### impl-332 · 2026-10-13T19:36:24.827Z
+
+Implemented review scope across verdict headers, tracker validation, both index tables, CLI, MCP and text-header dispatch. Added real hub/spoke coverage, scope round-trips, legacy byte preservation and restart checks; merge-gate code is unchanged. Reviewer scope guidance and docs updated. Targeted roles and review/QA smoke checks pass; completing provenance and gate regression checks before source review.
+
+### rev-23 · 2026-10-13T19:41:22.886Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-332-1
+commit: d35c83256183a91cbd620f5c13b1ea5d2784da6d
+
+No high or medium findings. Full source review covers scope validation, all request surfaces, headers, additive index persistence, legacy provenance and docs; targeted evidence A-2045 supports C1/C2/C3/C5, source establishes C6. C4 remains pending full exact-head cland verify gate confirmation. This pass is full scope; the live hub/schema predates that field. A-2047: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2047-t-332-full-source-review-at-d35c832.md.
+
+Criteria: C1 verified, C2 verified, C3 verified, C5 verified, C6 verified.

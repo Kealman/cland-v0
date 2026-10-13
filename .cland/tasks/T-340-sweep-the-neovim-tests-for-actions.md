@@ -3,7 +3,7 @@ id: T-340
 kind: task
 title: Sweep the Neovim tests for actions before their snapshots land (four flakes of one class on 2026-10-13)
 state: open
-status: in progress
+status: review
 criterion_seq: 3
 labels:
   - v0.1.2
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-212
 branch: t/T-340-sweep-the-neovim-tests-for-actions
 created: 2026-10-13T19:12:35.068Z
-updated: 2026-10-13T19:30:02.989Z
+updated: 2026-10-13T19:41:57.305Z
 ---
 
 ## Summary
@@ -32,7 +32,8 @@ Four Neovim test flakes on 2026-10-13 had one cause: a test pressed keys before 
 ## Acceptance criteria
 
 - [x] C1. Every Neovim test that acts after connect or reconnect waits for its readiness state, listed in the item.
-  - done: impl-340 · 2026-10-13T19:30:02.989Z
+  - done: impl-340 · 2026-10-13T19:40:26.752Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-340-2 · 2026-10-13T19:41:57.305Z · commit b03c4bb1f074497d3ddf2c2dae354949170d66d4
 - [ ] C2. The Neovim suite passes under a delayed initial-snapshot replay, and passes normally.
 - [ ] C3. No assertion is weakened, no timeout raised, and no retry added. `cland verify` is green.
 
@@ -90,3 +91,43 @@ Controlled evidence:
 - Neovim TypeScript check passes.
 
 C2 remaining: Coordinator-authorized sequential sweep of every test file with delay, only when verify queue has no holder/waiters; stop on admission and resume afterward. Normal full validation stays cland verify all after clear source review.
+
+### rev-23 · 2026-10-13T19:37:16.847Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-340-1
+commit: e86410a47b090fd28dc0f72e60d3bd9f15ba555b
+
+Medium — nvim/test/readiness.ts:15: only snapshot journals/inbox are checked, leaving role.list pending while shell.test.ts:808 selects reviewer; launcher.lua:74 records the role without defaults and will not refill merely on late role-state arrival. C1 failed; C2/C3 remain pending complete delayed replay and exact-head cland verify. Other source checks found no assertion weakening, timeout increase or action retry. Evidence A-2044: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2044-t-340-source-review-startup-role-readiness-gap.md.
+
+Criteria: C1 failed (Ordinary startup does not wait for plain role.list; launcher actions can select a role before its defaults land.).
+
+### impl-340 · 2026-10-13T19:40:26.720Z
+
+T-340 review correction: role readiness
+
+Head: b03c4bb1f074497d3ddf2c2dae354949170d66d4; base origin/dev cb5f71af.
+
+The startup helper now additionally waits for the configured role state. role.list is a plain request rather than a snapshot journal, and the launcher reads its defaults when the role is selected. Ordinary fixtures all configure at least one role; task/topic/session/artifact lists can still be empty. Deliberate held snapshot and history cases are unchanged.
+
+Controlled feedback loop: CLAND_STUB_ROLE_DELAY_MS=1000 node --test --test-name-pattern='the launcher: ␣l opens' nvim/test/shell.test.ts.
+- Before the role-state guard: 0/1 passed, exact existing reviewer-defaults screen assertion fails after 10000 ms (no Codex/model/effort prefill).
+- After the guard: 1/1 passed, 2098.8 ms total.
+- Full palette file with CLAND_STUB_SNAPSHOT_DELAY_MS=1000 CLAND_STUB_ROLE_DELAY_MS=1000: 18/18 passed, including the configured single-Aide role/prefill case.
+- Neovim TypeScript and diff checks pass.
+
+A-2040's file/action audit remains applicable with this added role-state dependency at all ordinary startup callers. No assertion, action or timeout changed. Both replay controls stay in nvim/test and apply only to the initial replies, preserving explicit hold/release priority. The 30-file sweep will use both 1000 ms replay controls after the Coordinator's hub-back notice. As decided, qa.test.ts end-to-end --qa cases preserve their pinned isolated environment and explicit state waits (ENV-001); no wrapper or production change.
+
+### rev-23 · 2026-10-13T19:41:57.305Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-340-2
+commit: b03c4bb1f074497d3ddf2c2dae354949170d66d4
+
+No remaining high or medium findings. Ordinary startup now waits for configured role state before launcher defaults are consumed; A-2046 proves the unchanged launcher check red then green with delayed role.list. C1 verified from the complete action audit and correction. Assertions, timeouts, action sequences and explicit held snapshots remain intact. C2/C3 await the complete delayed replay and normal exact-head cland verify after the Coordinator's hub-back window. A-2048: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2048-t-340-corrected-source-review-at-b03c4bb.md.
+
+Criteria: C1 verified.

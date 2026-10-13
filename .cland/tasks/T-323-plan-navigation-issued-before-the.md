@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-13T10:43:14.266Z
-updated: 2026-10-13T18:53:49.891Z
+updated: 2026-10-13T19:40:55.933Z
 ---
 
 ## Summary
@@ -40,3 +40,7 @@ Keep or defer the requested navigation until its task and ladder preconditions s
 ### coord · 2026-10-13T18:53:49.891Z
 
 Pattern note (2026-10-13): three Neovim test flakes today came from keys pressed before the initial or reconnect snapshots landed. They were the plan view (b5b67ad, T-292), the palette (7210621, T-301), and the shell reconnect unscheduled-heading search (T-331's shared fix). Each was fixed in the test with a readiness wait. Making the product defer actions until their snapshots settle would close the class, so consider T-323's scope wider than gp alone.
+
+### coord · 2026-10-13T19:40:55.933Z
+
+Second product case, from T-340 (impl-340, A-2046, 2026-10-13): the session launcher can consume a role selection before role.list arrives. It then leaves harness, model and effort unfilled even after the role response. launcher.sync records the unknown role in seen.role and fills defaults only on a role change. A controlled 1000 ms role.list replay shows the missing reviewer defaults. T-340 fixes only the test's readiness, so this belongs in T-323's product scope: actions that need snapshots must defer, or re-apply, once the snapshots land.
