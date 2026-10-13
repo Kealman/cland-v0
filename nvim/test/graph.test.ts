@@ -34,9 +34,9 @@ async function start(t: TestContext, scenario = fixture) {
   await c.waitScreen(s => s.includes('hub: connected'), 'connected');
   await waitInitialSnapshots(c);
   return Object.assign(c, {
-    control: (cmd: Record<string, unknown>) => new Promise<void>((resolve, reject) => {
+    control: (cmd: Record<string, unknown>) => new Promise<Record<string, unknown>>((resolve, reject) => {
       const sock = createConnection(controlPath); let text = ''; sock.setEncoding('utf8'); sock.on('error', reject);
-      sock.on('data', chunk => { text += chunk; if (text.includes('\n')) { sock.end(); resolve(); } });
+      sock.on('data', chunk => { text += chunk; if (text.includes('\n')) { sock.end(); resolve(JSON.parse(text.slice(0, text.indexOf('\n')))); } });
       sock.write(JSON.stringify(cmd) + '\n');
     }),
   });
@@ -168,27 +168,23 @@ test('Space G opens the first ranked epic; p/P include the release and command o
   await c.waitScreen(s => s.includes('Graph · T-5 Future epic'), 'graph returns');
 });
 
-test('nodes use hub status, asks, claims, latest verdict and parsed criteria; done tray nodes fold and dim', { skip }, async t => {
+test('nodes use summary criteria and readable done titles with green glyphs; done tray still folds', { skip }, async t => {
   const c = await start(t, { ...fixture,
     inbox: { asks: [{ id: 'ask-1', topic: { id: 'topic-10' }, question: 'Choose?' }] },
     items: fixture.items!.map(it => it.id === 'T-10' ? { ...it,
       claim: { session: 'impl-10', role: 'implementer' }, topic: 'topic-10',
       body: '## Acceptance criteria\n- [x] First\n- [x] Second\n- [x] Third',
-      criteria: [
-        { id: 'C1', checked: true, marks: [{ kind: 'done' }] },
-        { id: 'C2', checked: true, marks: [{ kind: 'verified' }] },
-        { id: 'C3', checked: true, marks: [{ kind: 'failed' }] },
-      ],
+      criteria: { total: 3, done: 1, verified: 1, stale: 1, failed: 0 },
       verdicts: [{ verdict: 'review', result: 'clear' }, { verdict: 'qa', result: 'not clear' }],
     } : it).concat([
       { id: 'T-11', kind: 'task', title: 'Hub ready', status: 'ready', state: 'open', parent: 'T-3', blocked_by: ['T-10'],
         claim: { session: 'review-11', role: 'reviewer' }, verdicts: [{ verdict: 'review', result: 'not clear' }],
-        body: '## Acceptance criteria\n- [x] First\n- [ ] Second' },
+        body: '## Acceptance criteria\n- [x] First\n- [ ] Second', criteria: { total: 2, done: 0, verified: 0, stale: 0, failed: 0 } },
       { id: 'T-12', kind: 'task', title: 'Linked done', status: 'done', state: 'closed', parent: 'T-3', blocked_by: ['T-11'] },
       { id: 'T-13', kind: 'task', title: 'Tray done', status: 'done', state: 'closed', parent: 'T-3', blocked_by: [] },
     ]) });
   await c.input('<Esc><Space>G');
-  await c.waitScreen(s => s.includes('1/3') && s.includes('0/2'), 'criteria fetched');
+  await c.waitScreen(s => s.includes('1/3') && s.includes('0/2'), 'summary criteria drawn');
   const text = () => c.lua<string>("return table.concat(vim.api.nvim_buf_get_lines(vim.api.nvim_get_current_buf(),0,-1,false),'\\n')");
   const shown = await text();
   assert.match(shown, /○ T-10 Hub planned/);
@@ -197,10 +193,60 @@ test('nodes use hub status, asks, claims, latest verdict and parsed criteria; do
   assert.ok(!shown.includes('Tray done'));
   assert.ok(!shown.includes('✓ review'), 'only latest verdict shown');
   const highlights = () => c.lua<Record<string, string>>(`local b=vim.api.nvim_get_current_buf(); local lines=vim.api.nvim_buf_get_lines(b,0,-1,false); local out={}; for _,m in ipairs(vim.api.nvim_buf_get_extmarks(b,vim.api.nvim_create_namespace('cland.graph'),0,-1,{details=true})) do local text=(lines[m[2]+1] or ''):sub(m[3]+1,m[4].end_col); if text:find('◉',1,true) then out.ready=m[4].hl_group end; if text:find('Linked done',1,true) then out.linked=m[4].hl_group end; if text:find('Tray done',1,true) then out.tray=m[4].hl_group end end; return out`);
-  assert.deepEqual(await highlights(), { ready: 'ClandGreen', linked: 'ClandDim' });
+  assert.deepEqual(await highlights(), { ready: 'ClandGreen', linked: 'ClandDone' });
   await c.input('d'); await c.waitScreen(s => s.includes('Tray done'), 'done unfolds');
-  assert.equal((await highlights()).tray, 'ClandDim');
+  assert.equal((await highlights()).tray, 'ClandDone');
   await c.input('d'); await c.waitScreen(s => !s.includes('Tray done'), 'done folds again');
+  assert.match(await text(), /1 stale/);
+  const done = await c.lua(`local b=require('cland.graph').b; local lines=vim.api.nvim_buf_get_lines(b,0,-1,false); local out={}; for _,m in ipairs(vim.api.nvim_buf_get_extmarks(b,vim.api.nvim_create_namespace('cland.graph'),0,-1,{details=true})) do if lines[m[2]+1]:find('Linked done',1,true) then local text=lines[m[2]+1]:sub(m[3]+1,m[4].end_col); if text=='●' then out.glyph=m[4].hl_group end end end; for _,name in ipairs({'ClandDone','ClandDoneBar','ClandDoneChip'}) do local h=vim.api.nvim_get_hl(0,{name=name}); out[name]={fg=h.fg,strikethrough=h.strikethrough or false} end; return out`);
+  assert.deepEqual(done, { glyph: 'ClandGreen', ClandDone: { fg: 0x98bfa2, strikethrough: false }, ClandDoneBar: { fg: 0x98bfa2, strikethrough: false }, ClandDoneChip: { fg: 0x98bfa2, strikethrough: false } });
+  const frames = await c.control({ requests: true });
+  assert.equal((frames.requests as Array<{ type: string }>).filter(f => f.type === 'task.view').length, 0);
+});
+
+test('release graph containers show child completion and active task counts, including the done tray', { skip }, async t => {
+  const scenario: Scenario = { ...fixture, items: fixture.items!.concat([
+    { id: 'T-99', kind: 'map', title: 'Release collection', state: 'open' },
+    ...['done', 'in progress', 'review', 'qa', 'ready', 'planned', 'backlog'].map((status, i) => ({
+      id: `T-${20 + i}`, kind: 'task', title: status, status, state: status === 'done' ? 'closed' : 'open', parent: 'T-2',
+    })),
+    { id: 'T-30', kind: 'task', title: 'Finished', state: 'closed', status: 'done', parent: 'T-6' },
+    { id: 'T-31', kind: 'task', title: 'Also finished', state: 'closed', status: 'done', parent: 'T-6' },
+    { id: 'T-32', kind: 'question', title: 'Decided', state: 'closed', parent: 'T-2' },
+  ]).map(it => it.id === 'T-1' ? { ...it, parent: 'T-99' } : it) };
+  const c = await start(t, scenario);
+  await c.input('<Esc>:Cland graph T-1<CR>');
+  await c.waitScreen(s => s.includes('1/7 · 4 in work') && s.includes('1 done folded'), 'epic task counts');
+  await c.input('d');
+  await c.waitScreen(s => s.includes('Closed epic') && s.includes('2/2 · 0 in work'), 'done epic full title and fraction');
+  const titles = await c.lua(`local b=require('cland.graph').b; local lines=vim.api.nvim_buf_get_lines(b,0,-1,false); for _,m in ipairs(vim.api.nvim_buf_get_extmarks(b,vim.api.nvim_create_namespace('cland.graph'),0,-1,{details=true})) do if lines[m[2]+1]:sub(m[3]+1,m[4].end_col)=='Closed epic' then return m[4].hl_group end end`);
+  assert.equal(titles, 'ClandDone');
+  const active = { ...scenario.items!.find(it => it.id === 'T-25'), id: 'T-25', status: 'review' };
+  await c.control({ emit: { type: 'task', id: active.id, item: active } });
+  await c.waitScreen(s => s.includes('1/7 · 5 in work'), 'child event updates the container label');
+  await c.input(':Cland graph T-99<CR>');
+  await c.waitScreen(s => s.includes('1/3 · 5 in work'), 'release counts epics and active tasks throughout its subtree');
+  const frames = await c.control({ requests: true });
+  assert.equal((frames.requests as Array<{ type: string }>).filter(f => f.type === 'task.view').length, 0);
+});
+
+test('graph progress follows configured ladder peers and counts only tasks at the leaf container level', { skip }, async t => {
+  const c = await start(t, { tracker: { levels: ['initiative', 'feature'], ladder: [['initiative', 'category'], ['feature', 'track']] }, items: [
+    { id: 'T-9', kind: 'map', title: 'Portfolio', state: 'open' },
+    { id: 'T-1', kind: 'initiative', title: 'Configured root', parent: 'T-9', state: 'open' },
+    { id: 'T-2', kind: 'feature', title: 'Active feature', parent: 'T-1', state: 'open' },
+    { id: 'T-3', kind: 'feature', title: 'Done feature', parent: 'T-1', state: 'closed' },
+    { id: 'T-4', kind: 'track', title: 'Done peer', parent: 'T-1', state: 'closed' },
+    ...['done', 'review', 'planned'].map((status, i) => ({ id: `T-${10 + i}`, kind: 'task', title: status,
+      status, state: status === 'done' ? 'closed' : 'open', parent: 'T-2' })),
+    { id: 'T-13', kind: 'question', title: 'Done question', state: 'closed', parent: 'T-2' },
+    { id: 'T-14', kind: 'task', title: 'Direct task', state: 'open', status: 'qa', parent: 'T-1' },
+    { id: 'T-15', kind: 'question', title: 'Root question', state: 'closed', parent: 'T-1' },
+  ] });
+  await c.input('<Esc>:Cland graph T-1<CR>');
+  await c.waitScreen(s => s.includes('1/3 · 1 in work'), 'feature excludes its decided question and planned activity');
+  await c.input(':Cland graph T-9<CR>');
+  await c.waitScreen(s => s.includes('2/3 · 2 in work'), 'root counts both configured child kinds and descendant activity');
 });
 
 test('vertical layers turn sideways; reduction, cycles and outside blockers are visible', { skip }, async t => {
@@ -357,7 +403,7 @@ test('sideways scrolling keeps the selected label visible at 80 columns, includi
 });
 
 test('visible hub updates retain the node through reflow; no-op task details and unrelated events write nothing', { skip }, async t => {
-  const scenario = { ...cursorFixture, items: cursorFixture.items!.map(it => it.id === 'T-10' ? { ...it, body: '## Acceptance criteria\n- [ ] Check' } : it) };
+  const scenario = { ...cursorFixture, items: cursorFixture.items!.map(it => it.id === 'T-10' ? { ...it, criteria: { total: 1, done: 0, verified: 0, stale: 0, failed: 0 } } : it) };
   const c = await start(t, scenario);
   await c.input('<Esc><Space>G'); await node(c, 'T-10');
   await c.waitScreen(s => s.includes('0/1'), 'initial fraction');
@@ -368,7 +414,7 @@ test('visible hub updates retain the node through reflow; no-op task details and
   await c.control({ emit: { type: 'task', id: updated.id, item: updated } });
   await c.waitScreen(s => s.includes('impl-10'), 'claim is drawn'); await node(c, 'T-10');
   assert.ok((await c.lua<number>("return vim.api.nvim_buf_get_changedtick(require('cland.graph').b)")) > Number(before));
-  const reflow = { ...updated, body: '## Acceptance criteria\n- [x] C1. Check\n  - verified: qa-1 [qa] · run q-1 · 2026-10-10T10:00Z', verdicts: [{ verdict: 'review', result: 'clear', current: true }] };
+  const reflow = { ...updated, criteria: { total: 1, done: 1, verified: 1, stale: 0, failed: 0 }, body: '## Acceptance criteria\n- [x] C1. Check\n  - verified: qa-1 [qa] · run q-1 · 2026-10-10T10:00Z', verdicts: [{ verdict: 'review', result: 'clear', current: true }] };
   scenario.items = scenario.items!.map(it => it.id === updated.id ? reflow : it);
   await c.control({ set: { items: scenario.items } });
   await c.control({ emit: { type: 'task', id: reflow.id, item: reflow } });
@@ -393,7 +439,7 @@ test('visible hub updates retain the node through reflow; no-op task details and
   scenario.items = scenario.items!.map(it => it.id === updated.id ? noOp : it);
   await c.control({ set: { items: scenario.items } });
   await c.control({ emit: { type: 'task', id: noOp.id, item: noOp } });
-  await waitRendered(c, `local d=require('cland.item_view').detail['T-10']; local g=require('cland.graph'); return d and d.comments[1] and d.comments[1].text=='Invisible comment' and not require('cland.item_view').pending['T-10'] and g.model.nodes['T-14']~=nil`, v => v === true, 'no-op detail completes');
+  await waitRendered(c, `local d=require('cland.state').item('T-10'); local g=require('cland.graph'); return d and d.comments[1] and d.comments[1].text=='Invisible comment' and g.model.nodes['T-14']~=nil`, v => v === true, 'no-op summary applied');
   // Read in the next RPC after the response's scheduled render.
   assert.deepEqual(await c.lua(`local g=require('cland.graph'); return {tick=vim.api.nvim_buf_get_changedtick(g.b), marks=vim.api.nvim_buf_get_extmarks(g.b,vim.api.nvim_create_namespace('cland.graph.focus'),0,-1,{details=true})}`), stable);
   await c.control({ emit: { type: 'task', id: 'T-5', item: { ...fixture.items!.find(it => it.id === 'T-5'), title: 'Unrelated change' } } });

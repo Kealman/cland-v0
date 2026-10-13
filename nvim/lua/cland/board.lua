@@ -60,7 +60,7 @@ local function card(it, w)
     if i == 2 and #lines > 2 then
       text = text .. ' …'
     end
-    L[#L + 1] = { { text, it.state == 'closed' and 'ClandDim' or 'ClandText' } }
+    L[#L + 1] = { { text, it.state == 'closed' and 'ClandDone' or 'ClandText' } }
   end
   local c = items.claim(it)
   if c then

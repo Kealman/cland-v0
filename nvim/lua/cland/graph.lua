@@ -76,16 +76,35 @@ local function latest_verdict(it)
   end
 end
 
+-- Completion counts the container's children; release activity spans its tasks.
+local function container_progress(it)
+  local done, total, work = 0, 0, 0
+  local level = items.level_of(it)
+  local child_kinds = level and (items.ladder()[level + 1] or { 'task' })
+  for _, child in ipairs(items.children(it.id)) do
+    if not child_kinds or vim.tbl_contains(child_kinds, child.kind) then
+      total = total + 1
+      if child.state == 'closed' or child.status == 'done' then done = done + 1 end
+    end
+  end
+  for _, task in ipairs(state.S.items) do
+    if task.kind == 'task' and task.state ~= 'closed'
+      and vim.tbl_contains({ 'in progress', 'review', 'qa', 'ready' }, task.status)
+      and require('cland.vboard').under(task, it.id) then work = work + 1 end
+  end
+  return done .. '/' .. total .. ' · ' .. work .. ' in work'
+end
+
 --- Badge rows stay separate so the claim cannot clip the verdict or fraction.
 function M.label(it, width, stage)
   local done = it.status == 'done' or it.state == 'closed'
-  local function chunk(text, group) return { text, done and 'ClandDim' or group } end
+  local function chunk(text, group) return { text, group } end
   local glyph = items.GLYPH[items.status(it)] or items.GLYPH.open
   local head = { chunk(glyph[1], glyph[2]), chunk(' ' .. it.id .. ' ', 'ClandDim') }
   if stage then head[#head + 1] = chunk(stage .. ' ', 'ClandDim') end
   if not done and #items.open_blockers(it) > 0 then head[#head + 1] = chunk('◌ ', 'ClandDim') end
   local title = vim.split(vim.trim(it.title or ''), '\n', { plain = true })[1] or ''
-  head[#head + 1] = chunk(title, 'ClandText')
+  head[#head + 1] = chunk(title, done and 'ClandDone' or 'ClandText')
   local lines, who, evidence = { head }, {}, {}
   local asks, claim = items.asks(it), items.claim(it)
   if asks > 0 then who[#who + 1] = chunk('?' .. asks .. ' ', 'ClandAmber') end
@@ -96,10 +115,19 @@ function M.label(it, width, stage)
   if v then
     evidence[#evidence + 1] = chunk((v.result == 'clear' and '✓ ' or '✗ ') .. v.verdict, verdict_group)
   end
-  local verified, total = M.fraction(it)
-  if total > 0 then
+  if items.is_container(it) then
     if #evidence > 0 then evidence[#evidence + 1] = chunk(' · ', 'ClandFaint') end
-    evidence[#evidence + 1] = chunk(verified .. '/' .. total, verified == total and 'ClandGreen' or 'ClandDim')
+    evidence[#evidence + 1] = chunk(container_progress(it), 'ClandDim')
+  else
+    local verified, total, stale = M.fraction(it)
+    if total > 0 then
+      if #evidence > 0 then evidence[#evidence + 1] = chunk(' · ', 'ClandFaint') end
+      evidence[#evidence + 1] = chunk(verified .. '/' .. total, verified == total and 'ClandGreen' or 'ClandDim')
+    end
+    if stale > 0 then
+      if #evidence > 0 then evidence[#evidence + 1] = chunk(' · ', 'ClandFaint') end
+      evidence[#evidence + 1] = chunk(stale .. ' stale', 'ClandAmber')
+    end
   end
   if #evidence > 0 then lines[#lines + 1] = evidence end
   if width then

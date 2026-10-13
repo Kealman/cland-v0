@@ -27,7 +27,7 @@ import { createServer, type Socket } from 'node:net';
 import { readFileSync, rmSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
-import { parseCriteria } from '../../hub/src/tracker/criteria.ts';
+import { countCriteria, parseCriteria, summarizeCriteria, type Criterion } from '../../hub/src/tracker/criteria.ts';
 import { VisibilityPreferenceFile } from '../../hub/src/hub/visibility-preferences.ts';
 import { Visibility } from '../../hub/src/hub/visibility.ts';
 import { defaultConfig, readProjectConfig } from '../../hub/src/init/config.ts';
@@ -126,7 +126,25 @@ const visibility = () => new Visibility({
   // Age scenarios can pin the hub clock independently of message timestamps.
   now: () => new Date(process.env.CLAND_STUB_NOW ?? Date.now()),
 });
-const projected = (frame: unknown) => visibility().frame(frame as Frame);
+// Legacy fixtures carry full criteria beside their bodies. Put native counts on
+// summary frames while retaining full criteria for task.view; explicit counts win.
+const summary = (item: Record<string, unknown>) => {
+  if (item.criteria && !Array.isArray(item.criteria)) return item;
+  const criteria = (Array.isArray(item.criteria) ? item.criteria : parseCriteria(String(item.body ?? '')).criteria) as Criterion[];
+  const tip = 'stub-current-head';
+  const current = criteria.map(c => ({ ...c, marks: (c.marks ?? []).map(m => m.kind === 'verified'
+    ? { ...m, commit: m.current === false ? 'stub-old-head' : tip } : m) }));
+  return { ...item, criteria: countCriteria(summarizeCriteria(current), tip) };
+};
+const projected = (frame: unknown) => {
+  const f = frame as Frame;
+  if (f.type === 'task' && f.item) return visibility().frame({ ...f, item: summary(f.item as Record<string, unknown>) });
+  if (f.type === 'result' && f.ok === true && requests.find(r => r.id === f.id)?.type === 'task.list') {
+    const value = f.value as { items: Array<Record<string, unknown>> };
+    return visibility().frame({ ...f, value: { ...value, items: value.items.map(summary) } });
+  }
+  return visibility().frame(f);
+};
 const write = (frame: unknown) => process.stdout.write(`${JSON.stringify(projected(frame))}\n`);
 const snapshots: Array<{ type: string; release: (error?: string) => void }> = [];
 const snapshotWaiters: Array<{ type: string; count: number; resolve: () => void }> = [];
@@ -401,7 +419,7 @@ function answer(f: Frame) {
       if (scenario.holdView) return;
       const item = scenario.items?.find((i) => i.id === f.item);
       if (!item) return fail(f.id, `no item ${String(f.item)}`);
-      return ok(f.id, { item: { body: '', comments: [], verdicts: [], ...parseCriteria(String(item.body ?? '')), ...item, path: `.cland/tasks/${String(item.file)}` } });
+      return ok(f.id, { item: { body: '', comments: [], verdicts: [], ...parseCriteria(String(item.body ?? '')), ...item, criteria: Array.isArray(item.criteria) ? item.criteria : parseCriteria(String(item.body ?? '')).criteria, path: `.cland/tasks/${String(item.file)}` } });
     }
     default:
       return fail(f.id, `the stub hub does not answer ${String(f.type)}`);

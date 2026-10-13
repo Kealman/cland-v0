@@ -52,6 +52,32 @@ const leftOf = (text: string): string =>
     .join('\n');
 const statusLine = (s: string) => s.split('\n')[43] ?? '';
 
+test('the all tree keeps closed container and task titles in the done colour', { skip }, async t => {
+  const root = await tempProject(t);
+  await mkdir(join(root, '.cland/tasks'), { recursive: true });
+  await writeFile(join(root, '.cland/config.toml'), '[tracker]\nlevels = ["release", "epic"]\n');
+  for (const [id, title, fields] of [
+    ['T-1', 'Current release', { kind: 'release', version: '1.0.0' }],
+    ['T-2', 'Closed container', { kind: 'epic', parent: 'T-1', state: 'closed' }],
+    ['T-3', 'Closed task', { parent: 'T-2', state: 'closed' }],
+  ] as const) await writeFile(join(root, `.cland/tasks/${id}-item.md`), itemFile(id, title, fields));
+  await startDaemon(t, root);
+  const c = await startClient(t, bin, root);
+  await waitInitialSnapshots(c);
+  await c.input('<Esc><Space>i6zR');
+  await c.waitScreen(s => s.includes('Closed container') && s.includes('Closed task'), 'closed tree unfolded');
+  const marks = await c.lua<Record<string, string>>(`
+    local b=require('cland.panels').buf('items'); local lines=vim.api.nvim_buf_get_lines(b,0,-1,false); local out={}
+    for _,m in ipairs(vim.api.nvim_buf_get_extmarks(b,-1,0,-1,{details=true})) do
+      local text=lines[m[2]+1]:sub(m[3]+1,m[4].end_col)
+      for _,title in ipairs({'Closed container','Closed task'}) do
+        if text:find(title,1,true) then out[title]=m[4].hl_group end
+      end
+    end
+    return out`);
+  assert.deepEqual(marks, { 'Closed container': 'ClandDone', 'Closed task': 'ClandDone' });
+});
+
 test('the epic row, item fields and sessions panel show its launched Lead', { skip }, async t => {
   const root = await tempProject(t);
   const fake = await fakeClaude(t);

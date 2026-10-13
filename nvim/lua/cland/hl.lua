@@ -12,12 +12,12 @@ local M = {}
 M.P = {
   bg = '#0b0e14', panel = '#10141b', bar = '#10141b', composer = '#0d1117', mine = '#141a23',
   border = '#222a35', chip = '#1a212c', chipb = '#2a3340', sel = '#182131', keyon = '#1b2a3f', term = '#07090d',
-  text = '#d6dbe4', dim = '#8a94a3', faint = '#5a6370', ink = '#1a1400',
+  text = '#d6dbe4', done = '#98bfa2', dim = '#8a94a3', faint = '#5a6370', ink = '#1a1400',
   violet = '#bc8cff', pink = '#f778ba', sky = '#56d4dd',
   amber = '#f0b429', teal = '#35c4a0', green = '#7ddc8a', red = '#ff7b72', blue = '#6aa5ff', bluel = '#9cc3ff',
 }
 
-local TWINS = { 'ClandText', 'ClandBold', 'ClandDim', 'ClandFaint', 'ClandAmber', 'ClandTeal', 'ClandGreen', 'ClandRed', 'ClandBlue' }
+local TWINS = { 'ClandText', 'ClandDone', 'ClandBold', 'ClandDim', 'ClandFaint', 'ClandAmber', 'ClandTeal', 'ClandGreen', 'ClandRed', 'ClandBlue' }
 
 function M.setup()
   local P = M.P
@@ -44,6 +44,7 @@ function M.setup()
   set('MsgArea', { fg = P.dim, bg = P.bg })
 
   set('ClandText', { fg = P.text })
+  set('ClandDone', { fg = P.done })
   set('ClandBold', { fg = P.text, bold = true })
   set('ClandDim', { fg = P.dim })
   set('ClandFaint', { fg = P.faint })

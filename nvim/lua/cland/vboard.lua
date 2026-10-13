@@ -106,10 +106,10 @@ local function panel_composition()
   return out
 end
 
---- One source for panel rows, board cards and graph nodes: hub verification marks.
+--- Panel rows, board cards and graph nodes read the hub's summary counts.
 function M.fraction(it)
-  local d = require('cland.item_view').get(it.id)
-  return require('cland.criteria').fraction(d and d.criteria)
+  local counts = type(it.criteria) == 'table' and it.criteria or {}
+  return counts.verified or 0, counts.total or 0, counts.stale or 0
 end
 
 local function verdict_mark(v)
@@ -146,7 +146,7 @@ local function row(c, it, bucket, next_id)
   local tag = epic and plan.stage_tag(epic, it.id)
   if parent then left[#left + 1] = { (tag or parent.id) .. ' › ', 'ClandDim' } end
   if epic and plan.changes(epic).items[it.id] then left[#left + 1] = { '△ ', 'ClandPlanChange' } end
-  left[#left + 1] = { it.title or '', items.is_container(it) and 'ClandBold' or 'ClandText' }
+  left[#left + 1] = { it.title or '', (it.state == 'closed' or it.status == 'done') and 'ClandDone' or (items.is_container(it) and 'ClandBold' or 'ClandText') }
   local right = {}
   local function put(chunk)
     if #right > 0 then right[#right + 1] = { ' ' } end

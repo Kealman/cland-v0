@@ -542,7 +542,7 @@ local function row(c, it, depth, open_count, flat)
   local g, ghl = M.glyph(it)
   local kids = #M.children(it.id) > 0
   local container = kids or M.is_container(it)
-  local title_hl = it.state == 'closed' and 'ClandDim' or (container and 'ClandBold' or nil)
+  local title_hl = it.state == 'closed' and 'ClandDone' or (container and 'ClandBold' or nil)
   local plan = require('cland.plan')
   local epic = plan.owner(it.id)
   local tag = epic and plan.stage_tag(epic, it.id)
