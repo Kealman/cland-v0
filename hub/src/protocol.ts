@@ -524,6 +524,7 @@ export type ClientRequest =
   /** What runs: the hub's process and the connected sessions. */
   | { type: 'crew.show'; id: string }
   | { type: 'executor.status' | 'executor.reap'; id: string }
+  | { type: 'executor.prepare'; id: string; report?: string }
   | { type: 'crew.set'; id: string; key: string; value: unknown }
   | { type: 'hub.subscriptions'; id: string }
   | { type: 'hub.status'; id: string; flushLogs?: boolean }
@@ -756,6 +757,8 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
     case 'subscribe':
     case 'role.list':
       return true;
+    case 'executor.prepare':
+      return f.report === undefined || typeof f.report === 'string';
     case 'inbox.list':
       return f.archive === undefined || typeof f.archive === 'boolean';
     case 'inbox.decline':

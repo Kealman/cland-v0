@@ -1240,7 +1240,37 @@ have a 15-second bound and do not retry creates. The lifecycle needs permission
 to read the account, sizes and regions, and to create, read and delete droplets
 and account SSH keys. See the [DigitalOcean API reference](https://docs.digitalocean.com/reference/api/reference/).
 
-`cland executor status [--json]` reports token presence, live leases, their names,
+`cland executor prepare [--report <topic>] [--json]` submits a hub-owned snapshot
+job and exits. Status shows its step and elapsed time; one hub notice in the
+chosen topic (General by default) reports the key, image, regions, duration,
+builder lifetime and cost. A second prepare while one runs is refused.
+Preparation and the other executor controls belong to the human and Coordinator.
+
+The snapshot contains the packages, the host's exact Node version, pinned Neovim,
+`node_modules`, the ordinary `runner` user, a bare repository mirror and a checkout
+of the base. Its key combines Node, the Neovim tag and Linux digest, the committed
+base's lockfile SHA-256, and `origin/dev` after a fetch from the local territory.
+A matching prepare reports `current`; a new key builds a replacement and deletes
+the previous image only after the new image completes. Failures clean up the
+builder and partial image while keeping the previous snapshot. Snapshot storage
+costs about $0.06 per GB-month; status includes the image's size in GB.
+
+The record lives in `.cland/run/executor/snapshot.json`, mirrored in `hub.db` under
+`executor-snapshot`. Status lists its key and `current` or `stale: base|lock|node|nvim`
+for the inputs that moved. A moved base increases future delivery bundles;
+changed install inputs need reseeding during a run. Re-preparing is a human or
+Coordinator choice; cland never prepares automatically.
+
+Acquire creates from the image, without user data, only in regions holding it.
+It waits up to 180 seconds for SSH as `runner` to answer and for the image marker
+to match the recorded key; a mismatch or timeout releases the droplet. Without
+an image it refuses with `no prepared snapshot; run cland executor prepare`.
+The image's per-boot script copies the newly injected root key to `runner`.
+Private SSH/SCP calls use the lease key, ignore host SSH config and known-hosts
+files, have explicit time bounds and strip `DIGITALOCEAN_TOKEN` from children.
+`CLAND_SSH_BIN` and `CLAND_SCP_BIN` select alternative transports for tests.
+
+`cland executor status [--json]` also reports token presence, live leases, their names,
 ids, sizes, regions, ages and deadlines, whether each watchdog is alive, today's
 released-lease cost in USD, and the number of droplets tagged `cland`.
 `cland executor reap [--json]` deletes this project's tagged droplets with no live
@@ -1280,15 +1310,39 @@ lifetime = "110m"
 
 [verification.droplet]
 size = "c-8"
+prepare_size = "c-8"
 regions = ["lon1", "nyc1", "sfo2"]
 image = "ubuntu-24-04-x64"
 ```
 
+`prepare_size` selects the builder; its disk must be no larger than `size`'s disk
+so the resulting snapshot fits a run. Prepare refuses an oversized builder
+before creating anything. The builder uses the same lease, tags, watchdog and
+release as a run, installs the exact versions with digest checks, delivers from
+the territory and runs `npm ci` as `runner`. It powers off before snapshotting,
+polls actions under a twenty-minute bound, transfers to configured regions and
+tags the image `cland` and `cland-p-<hash>`, then releases the builder.
+
+Preparation owns its promise through shutdown: stopping the hub cancels machine
+work and drains release and the outcome notice before closing the database.
+Before submitting a snapshot action it saves image-recovery ownership under
+`.cland/run/executor/snapshot-recovery/`. Restart and the lease retry timer retain
+that ownership through late actions, delayed catalogues and refused image
+deletions. Status lists outstanding recovery. An ambiguous old-image deletion
+keeps the completed replacement until provider state decides whether to retain
+it or restore the previous image; a failed catalogue read never counts as
+absence. Recovery matches images to their builder, so a later prepare of the
+same key cannot lose its image to an older failed attempt.
+Once retirement is submitted, old-image presence may be stale or deletion may
+still be running: cland keeps the replacement and retries retirement until the
+old image is absent. Only an unstarted or definitely rejected delete permits
+rollback to the old image.
+
 Droplet settings are read again at every acquire; invalid values are refused with
 their config key named. The first available configured region offering the size
 wins. Acquire polls until the droplet is active with a public IPv4 address, under
-a five-minute bound. This lifecycle stage does not yet expose droplet suite runs
-or image preparation; those are the next remote executor stages.
+a five-minute bound, before checking machine readiness. Remote suite delivery
+and execution are the next executor stage.
 
 ### Tests
 

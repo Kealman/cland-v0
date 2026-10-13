@@ -1,8 +1,11 @@
-export type Size = { slug: string; available: boolean; price_hourly: number; regions: string[] };
+export type Size = { slug: string; available: boolean; price_hourly: number; regions: string[]; disk?: number };
 export type Region = { slug: string; available: boolean; sizes: string[] };
 export type Key = { id: number; name: string; public_key: string };
 export type Droplet = { id: number; name: string; tags: string[]; created_at: string; status: string; networks: { v4: { type: string; ip_address: string }[] } };
-export type CreateDroplet = { name: string; tags: string[]; size: string; region: string; image: string | number; ssh_keys: number[] };
+export type CreateDroplet = { name: string; tags: string[]; size: string; region: string; image: string | number; ssh_keys: number[]; user_data?: string };
+
+export type Action = { id: number; status: 'in-progress' | 'completed' | 'errored'; resource_id?: number; type?: string };
+export type SnapshotImage = { id: number; name: string; regions: string[]; size_gigabytes: number; min_disk_size: number; created_at: string; resource_id?: string };
 
 export const apiTimeoutMs = (): number => {
   const value = Number(process.env.CLAND_TEST_DIGITALOCEAN_TIMEOUT_MS);
@@ -61,5 +64,15 @@ export class DigitalOceanApi {
   async importKey(name: string, publicKey: string): Promise<Key> { return (await this.#call<{ ssh_key: Key }>('POST', '/account/keys', { name, public_key: publicKey })).ssh_key; }
   async deleteDroplet(id: number): Promise<void> { await this.#delete(`/droplets/${id}`); }
   async deleteKey(id: number): Promise<void> { await this.#delete(`/account/keys/${id}`); }
+  async dropletAction(id: number, type: 'power_off' | 'snapshot', name?: string, deadline?: number): Promise<Action> { return (await this.#call<{ action: Action }>('POST', `/droplets/${id}/actions`, { type, ...(name ? { name } : {}) }, deadline)).action; }
+  async action(id: number, deadline?: number): Promise<Action> { return (await this.#call<{ action: Action }>('GET', `/actions/${id}`, undefined, deadline)).action; }
+  actions(): Promise<Action[]> { return this.#list('/actions', 'actions'); }
+  async snapshots(deadline?: number): Promise<SnapshotImage[]> {
+    // The snapshots endpoint represents ids as strings; create and image actions use numbers.
+    return (await this.#list<SnapshotImage>('/snapshots?resource_type=droplet', 'snapshots', deadline)).map(image => ({ ...image, id: Number(image.id) }));
+  }
+  async transferImage(id: number, region: string, deadline?: number): Promise<Action> { return (await this.#call<{ action: Action }>('POST', `/images/${id}/actions`, { type: 'transfer', region }, deadline)).action; }
+  async tagImage(id: number, tag: string): Promise<void> { await this.#call('POST', '/tags', { name: tag }); await this.#call('POST', `/tags/${encodeURIComponent(tag)}/resources`, { resources: [{ resource_id: String(id), resource_type: 'image' }] }); }
+  deleteSnapshot(id: number): Promise<void> { return this.#delete(`/snapshots/${id}`); }
   async #delete(path: string): Promise<void> { try { await this.#call('DELETE', path); } catch (err) { if (!(err instanceof DigitalOceanError) || err.status !== 404) throw err; } }
 }

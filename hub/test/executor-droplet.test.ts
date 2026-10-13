@@ -3,7 +3,8 @@ import { test } from 'node:test';
 import { clandWithEnv, connectUi, startDaemon, tempProject, eventually, spawnSpoke, pidAlive } from './harness.ts';
 import { fakeDigitalOcean } from './fakes/digitalocean/fake-api.ts';
 import { mkdir, readFile, writeFile, readdir, stat, symlink } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
+import { preparedDropletFixture } from './droplet-fixture.ts';
 import { createHash } from 'node:crypto';
 import { flushProjectLogs } from './harness.ts';
 import { DropletExecutor } from '../src/executor/droplet/droplet.ts';
@@ -14,8 +15,9 @@ import { promisify } from 'node:util';
 
 const exec = promisify(execFile);
 
-function providerEnv(t: TestContext, url: string, lifetimePoll = '25') {
-  const env = { DIGITALOCEAN_TOKEN: 'sentinel-lifecycle', CLAND_DIGITALOCEAN_API: url, CLAND_TEST_DROPLET_POLL_MS: lifetimePoll, CLAND_TEST_DROPLET_RELEASE_MS: '500', CLAND_TEST_DROPLET_RETRY_MS: '50' };
+async function providerEnv(t: TestContext, api: Awaited<ReturnType<typeof fakeDigitalOcean>>, root: string, lifetimePoll = '25') {
+  await preparedDropletFixture(root, api);
+  const env = { DIGITALOCEAN_TOKEN: 'sentinel-lifecycle', CLAND_DIGITALOCEAN_API: api.url, CLAND_SSH_BIN: resolve('hub/test/fakes/digitalocean/ssh'), CLAND_SCP_BIN: resolve('hub/test/fakes/digitalocean/scp'), CLAND_TEST_FAKE_MACHINE_ROOT: api.stateRoot, CLAND_TEST_DROPLET_POLL_MS: lifetimePoll, CLAND_TEST_DROPLET_RELEASE_MS: '500', CLAND_TEST_DROPLET_RETRY_MS: '50' };
   for (const [key, value] of Object.entries(env)) {
     const old = process.env[key]; process.env[key] = value;
     t.after(() => { if (old === undefined) delete process.env[key]; else process.env[key] = old; });
@@ -54,7 +56,7 @@ test('executor status names a missing token; reap refuses without it; CLI contro
 test('an acquisition deadline destroys resources and keeps no active lease', async t => {
   const root = await tempProject(t);
   const api = await fakeDigitalOcean('sentinel-lifecycle'); t.after(() => api.close());
-  providerEnv(t, api.url);
+  await providerEnv(t, api, root);
   api.faults.activeAfter = 100000;
   process.env.CLAND_TEST_DROPLET_ACQUIRE_MS = '250';
   t.after(() => { delete process.env.CLAND_TEST_DROPLET_ACQUIRE_MS; });
@@ -71,7 +73,7 @@ test('an acquisition deadline destroys resources and keeps no active lease', asy
 test('a late create after a lost response is discovered and deleted before forgetting its lease', async t => {
   const root = await tempProject(t);
   const api = await fakeDigitalOcean('sentinel-lifecycle'); t.after(() => api.close());
-  providerEnv(t, api.url);
+  await providerEnv(t, api, root);
   process.env.CLAND_TEST_DIGITALOCEAN_TIMEOUT_MS = '50';
   t.after(() => { delete process.env.CLAND_TEST_DIGITALOCEAN_TIMEOUT_MS; });
   api.faults.delayMs = 200; api.faults.delayPath = '/droplets';
@@ -88,7 +90,7 @@ test('a late create after a lost response is discovered and deleted before forge
 test('an ambiguous SSH key import stays armed until the late key is discovered and deleted', async t => {
   const root = await tempProject(t);
   const api = await fakeDigitalOcean('sentinel-lifecycle'); t.after(() => api.close());
-  const env = providerEnv(t, api.url);
+  const env = await providerEnv(t, api, root);
   process.env.CLAND_TEST_DIGITALOCEAN_TIMEOUT_MS = '100';
   process.env.CLAND_TEST_DROPLET_RELEASE_MS = '100';
   t.after(() => { delete process.env.CLAND_TEST_DIGITALOCEAN_TIMEOUT_MS; });
@@ -121,7 +123,7 @@ test('an ambiguous SSH key import stays armed until the late key is discovered a
 test('acquire reloads the droplet table, selects the first offered region and names invalid settings', async t => {
   const root = await tempProject(t);
   const api = await fakeDigitalOcean('sentinel-lifecycle'); t.after(() => api.close());
-  providerEnv(t, api.url);
+  await providerEnv(t, api, root);
   await mkdir(join(root, '.cland'), { recursive: true });
   const path = join(root, '.cland/config.toml');
   await symlink(root, join(root, 'alias'));
@@ -130,7 +132,7 @@ test('acquire reloads the droplet table, selects the first offered region and na
   ownProcess(t, first.watchdog!.pid); await executor.release(first);
   const expected = `cland-p-${createHash('sha256').update(`${root}\0${root.split('/').at(-1)}`).digest('hex').slice(0, 12)}`;
   assert.ok(first.tags.includes(expected), 'an alias of the project has the canonical project tag');
-  api.sizes.push({ slug: 'small', available: true, price_hourly: 0.06, regions: ['nyc1'] });
+  api.sizes.push({ slug: 'small', available: true, price_hourly: 0.06, disk: 10, regions: ['nyc1'] });
   api.regions.find(r => r.slug === 'nyc1')!.sizes.push('small');
   await writeFile(path, '[verification]\nlifetime = "10s"\n[verification.droplet]\nsize = "small"\nregions = ["lon1", "nyc1"]\nimage = "ubuntu-24-04-x64"\n');
   const second = await executor.acquire({ id: 'second-config' }, new Date(Date.now() + 300000).toISOString());
@@ -149,7 +151,7 @@ test('the detached watchdog survives a stopped hub; restart consumes its receipt
   await mkdir(join(root, '.cland'), { recursive: true });
   await writeFile(join(root, '.cland/config.toml'), '[verification]\nlifetime = "3s"\n');
   const api = await fakeDigitalOcean('sentinel-lifecycle'); t.after(() => api.close());
-  const env = providerEnv(t, api.url);
+  const env = await providerEnv(t, api, root);
   const started = await startDaemon(t, root, env);
   const ui = await connectUi(t, started.discovery);
   const executor = new DropletExecutor(root);
@@ -188,7 +190,7 @@ test('acquire persists an armed lease before create, waits for a public IP, and 
   const root = await tempProject(t);
   const api = await fakeDigitalOcean('sentinel-lifecycle');
   t.after(() => api.close());
-  providerEnv(t, api.url);
+  await providerEnv(t, api, root);
   api.beforeCreate(async () => {
     const base = join(root, '.cland/run/executor/leases');
     const [id] = await readdir(base);
@@ -222,7 +224,7 @@ test('acquire persists an armed lease before create, waits for a public IP, and 
 test('failed creates are bounded, never retried, and errors and durable state redact the token', async t => {
   const root = await tempProject(t);
   const api = await fakeDigitalOcean('sentinel-lifecycle'); t.after(() => api.close());
-  providerEnv(t, api.url);
+  await providerEnv(t, api, root);
   const executor = new DropletExecutor(root);
   for (const status of [422, 429]) {
     api.faults.create = status; api.faults.echoToken = true;
@@ -250,7 +252,7 @@ test('failed creates are bounded, never retried, and errors and durable state re
 test('restart discovers an interrupted create by name and retries an unconfirmed release', async t => {
   const root = await tempProject(t);
   const api = await fakeDigitalOcean('sentinel-lifecycle'); t.after(() => api.close());
-  const env = providerEnv(t, api.url);
+  const env = await providerEnv(t, api, root);
   const executor = new DropletExecutor(root);
   const lease = await executor.acquire({ id: 'interrupted' }, new Date(Date.now() + 300000).toISOString());
   ownProcess(t, lease.watchdog!.pid);
@@ -275,7 +277,7 @@ test('restart discovers an interrupted create by name and retries an unconfirmed
 test('restart re-arms a live creating lease with a dead watchdog', async t => {
   const root = await tempProject(t);
   const api = await fakeDigitalOcean('sentinel-lifecycle'); t.after(() => api.close());
-  const env = providerEnv(t, api.url);
+  const env = await providerEnv(t, api, root);
   const executor = new DropletExecutor(root);
   const lease = await executor.acquire({ id: 'still-creating' }, new Date(Date.now() + 300000).toISOString());
   ownProcess(t, lease.watchdog!.pid);
@@ -298,7 +300,7 @@ test('restart re-arms a live creating lease with a dead watchdog', async t => {
 test('macOS inhibits idle sleep while the lease lives and drops the inhibitor after release', { skip: process.platform !== 'darwin' }, async t => {
   const root = await tempProject(t);
   const api = await fakeDigitalOcean('sentinel-lifecycle'); t.after(() => api.close());
-  providerEnv(t, api.url);
+  await providerEnv(t, api, root);
   const executor = new DropletExecutor(root);
   const lease = await executor.acquire({ id: 'sleep' }, new Date(Date.now() + 300000).toISOString());
   ownProcess(t, lease.watchdog!.pid);

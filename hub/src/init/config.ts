@@ -15,7 +15,7 @@ import { isManagedFile, readText, writeIfChanged, type Report } from './files.ts
 
 export type ProjectConfig = {
   name: string;
-  verification: { budget: number; lockPath: string; cacheMaxAgeMs: number; lifetimeMs: number; droplet: { size: string; regions: string[]; image: string } };
+  verification: { budget: number; lockPath: string; cacheMaxAgeMs: number; lifetimeMs: number; droplet: { size: string; prepare_size: string; regions: string[]; image: string } };
   sessions: { archiveAfterItemMs: number; archiveAfterStopMs: number };
   visibility: VisibilityOverrides;
   tracker: { levels: Levels };
@@ -29,7 +29,7 @@ const MINUTE = 60_000;
 
 export const defaultConfig = (name: string): ProjectConfig => ({
   name,
-  verification: { budget: 1, lockPath: '/tmp/cland-suite.lock', cacheMaxAgeMs: 86400000, lifetimeMs: 6600000, droplet: { size: 'c-8', regions: ['lon1', 'nyc1', 'sfo2'], image: 'ubuntu-24-04-x64' } },
+  verification: { budget: 1, lockPath: '/tmp/cland-suite.lock', cacheMaxAgeMs: 86400000, lifetimeMs: 6600000, droplet: { size: 'c-8', prepare_size: 'c-8', regions: ['lon1', 'nyc1', 'sfo2'], image: 'ubuntu-24-04-x64' } },
   sessions: { archiveAfterItemMs: 3600000, archiveAfterStopMs: 86400000 },
   visibility: {},
   tracker: { levels: [...DEFAULT_LEVELS] },
@@ -59,6 +59,7 @@ lifetime = "${c.verification.lifetimeMs % MINUTE === 0 ? `${minutes(c.verificati
 
 [verification.droplet]
 size = ${JSON.stringify(c.verification.droplet.size)}
+prepare_size = ${JSON.stringify(c.verification.droplet.prepare_size)}
 regions = ${JSON.stringify(c.verification.droplet.regions)}
 image = ${JSON.stringify(c.verification.droplet.image)}
 
@@ -129,7 +130,7 @@ export function parseConfig(text: string, fallbackName: string): ProjectConfig {
     const droplet = verification.droplet;
     if (!droplet || typeof droplet !== 'object' || Array.isArray(droplet) || droplet instanceof Date) throw new Error('verification.droplet must be a table');
     const values = droplet as Record<string, unknown>;
-    for (const key of ['size', 'image'] as const) if (values[key] !== undefined) {
+    for (const key of ['size', 'image', 'prepare_size'] as const) if (values[key] !== undefined) {
       if (typeof values[key] !== 'string' || !/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(values[key])) throw new Error(`verification.droplet.${key} must be a nonempty slug`);
       c.verification.droplet[key] = values[key];
     }

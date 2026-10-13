@@ -110,7 +110,7 @@ const HUMAN_SESSION = 'human';
  * What a CLI call made as a session may send beside the permission table's tools: reading the hub's state. Any
  * other frame is the human's alone.
  */
-const SESSION_CLI_FRAMES: ReadonlySet<string> = new Set(['executor.status', 'executor.reap', 'task.migrate', 'crew.show', 'crew.set', 'artifact.list', 'hub.status', 'inbox.list', 'role.list', 'worktree.list', 'suite.start', 'suite.cancel', 'suite.queue']);
+const SESSION_CLI_FRAMES: ReadonlySet<string> = new Set(['executor.status', 'executor.reap', 'executor.prepare', 'task.migrate', 'crew.show', 'crew.set', 'artifact.list', 'hub.status', 'inbox.list', 'role.list', 'worktree.list', 'suite.start', 'suite.cancel', 'suite.queue']);
 
 /** Who a call is checked and audited as: a spoke's session, or the session a CLI call acts as. */
 type Caller = Pick<Connection, 'name' | 'sessionId' | 'role'>;
@@ -207,6 +207,7 @@ export class Dispatcher {
     if (this.#dropletTimer) clearInterval(this.#dropletTimer);
     await this.#dropletReady;
     await this.#dropletWork;
+    await this.#droplets?.close();
     if (this.#workImmediate) clearImmediate(this.#workImmediate);
     this.#workImmediate = null;
     this.#merges?.stop();
@@ -1348,13 +1349,21 @@ export class Dispatcher {
           if (caller && caller.role !== 'coordinator') return this.#refuse(caller, frame, peer, frame.type, reason);
           return peer.send(Dispatcher.#failure(frame.id, new Error('the hub is running; stop the hub and run cland task migrate from the project root shell')));
         }
-        if (isClientRequest(frame) && (frame.type === 'executor.status' || frame.type === 'executor.reap')) {
+        if (isClientRequest(frame) && (frame.type === 'executor.status' || frame.type === 'executor.reap' || frame.type === 'executor.prepare')) {
           if (caller && caller.role !== 'coordinator') return this.#refuse(caller, frame, peer, frame.type, 'executor controls belong to the Coordinator or the human');
           if (!this.#droplets) return peer.send(Dispatcher.#failure(frame.id, new Error('this hub serves no project for executors')));
           const authorize = () => {
             const now = this.#asSession(frame);
             if (caller && (!now || now.sessionId !== caller.sessionId || now.role !== 'coordinator')) throw new ToolForbidden(now?.role ?? null, frame.type, 'executor controls belong to the Coordinator or the human');
           };
+          if (frame.type === 'executor.prepare') {
+            const topic = frame.report === undefined ? core.store.topic('general') : core.topics().find(topic => topic.id === frame.report || topic.title === frame.report);
+            if (!topic) return peer.send(Dispatcher.#failure(frame.id, new Error('unknown prepare report topic')));
+            return later(frame.type, this.#dropletReady.then(() => {
+              const value = this.#droplets!.submitPrepare(text => core.noticeInTopic(topic.id, { kind: 'report', text }), authorize);
+              return { type: 'result' as const, id: frame.id, ok: true as const, value };
+            }).catch(error => Dispatcher.#failure(frame.id, error)));
+          }
           return later(frame.type, this.#dropletReady.then(async () => { authorize(); return frame.type === 'executor.status' ? await this.#droplets!.inspect() : await this.#droplets!.reap(authorize); }).then(
             value => ({ type: 'result' as const, id: frame.id, ok: true, value }), err => Dispatcher.#failure(frame.id, err),
           ));

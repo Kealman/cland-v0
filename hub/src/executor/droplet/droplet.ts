@@ -12,15 +12,24 @@ import { DigitalOceanApi, DigitalOceanError } from './api.ts';
 import { accountRelease, leaseDir, liveLease, readLease, readLeases, writeLease, type DropletLease, type WatchdogReceipt } from './lease.ts';
 import { armWatchdog, pause, stopWatchdog, testTiming, watchdogAlive } from './watchdog.ts';
 import { deleteLeaseResources } from './cleanup.ts';
+import { readRecoveries, recoverSnapshots } from './snapshot-recovery.ts';
+import { machineEnv } from './machine.ts';
+import { prepareKey, prepareSnapshot, readSnapshot, staleParts, sameKey, waitForMachine, type PrepareKey, type Prepared } from './prepare.ts';
 import type { Executor, Released, RunRef } from '../executor.ts';
 
 const exec = promisify(execFile);
+type PrepareJob = { state: 'running' | 'done' | 'failed'; started: string; finished?: string; step: string; key?: PrepareKey; result?: Prepared; error?: string };
 
 /** Owns the project's durable droplet lifecycle, independently of suite delivery. */
 export class DropletExecutor implements Pick<Executor, 'acquire' | 'release'> {
   readonly root: string;
   readonly store: Store | undefined;
   readonly log: LogFn;
+  #prepareJob: PrepareJob | null = null;
+  #prepareWork: Promise<void> | null = null;
+  #prepareAbort: AbortController | null = null;
+  #closing = false;
+  #keyWork: Promise<PrepareKey> | null = null;
   readonly #releases = new Map<string, Promise<Released>>();
   constructor(root: string, store?: Store, log: LogFn = () => {}) { this.root = realpathSync(root); this.store = store; this.log = log; }
 
@@ -37,12 +46,23 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'release'> {
   async acquire(run: Pick<RunRef, 'id'>, deadline: string): Promise<DropletLease> {
     const runDeadline = Date.parse(deadline);
     if (!Number.isFinite(runDeadline) || runDeadline <= Date.now()) throw new Error('droplet acquisition deadline reached');
+    const snapshot = await readSnapshot(this.root);
+    if (!snapshot) throw new Error('no prepared snapshot; run cland executor prepare');
+    const config = await this.#config();
+    const lease = await this.#acquire(run, deadline, { size: config.verification.droplet.size, regions: config.verification.droplet.regions.filter(region => snapshot.regions.includes(region)), image: snapshot.image, minDiskSize: snapshot.minDiskSize });
+    try { await waitForMachine(this.root, lease, snapshot.key); return lease; }
+    catch (error) { await this.release(lease); throw error; }
+  }
+
+  async #acquire(run: Pick<RunRef, 'id'>, deadline: string, input: { size: string; regions: string[]; image: string | number; minDiskSize?: number; user_data?: string }): Promise<DropletLease> {
+    const runDeadline = Date.parse(deadline);
     const config = await this.#config();
     const api = new DigitalOceanApi();
-    const { size, regions, image } = config.verification.droplet;
+    const { size, regions, image } = input;
     const sizes = await api.sizes(runDeadline);
     const selected = sizes.find(s => s.slug === size && s.available);
     if (!selected || !Number.isFinite(selected.price_hourly) || selected.price_hourly < 0) throw new Error(`droplet size ${size} is unavailable or has no valid price`);
+    if (input.minDiskSize !== undefined && (!Number.isFinite(selected.disk) || selected.disk! < input.minDiskSize)) throw new Error(`prepared snapshot disk does not fit size ${size}`);
     const offered = await api.regions(runDeadline);
     const region = regions.find(r => selected.regions.includes(r) && offered.some(o => o.slug === r && o.available && o.sizes.includes(size)));
     if (!region) throw new Error(`droplet size ${size} unavailable in regions ${regions.join(', ')}`);
@@ -54,7 +74,7 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'release'> {
     const dir = leaseDir(this.root, lease);
     await mkdir(dir, { recursive: true, mode: 0o700 });
     try {
-      await exec('ssh-keygen', ['-t', 'ed25519', '-N', '', '-f', join(dir, 'key'), '-C', name], { timeout: 15000 });
+      await exec('ssh-keygen', ['-t', 'ed25519', '-N', '', '-f', join(dir, 'key'), '-C', name], { timeout: 15000, env: machineEnv() });
       await chmod(join(dir, 'key'), 0o600);
       await this.#save(lease);
       lease.watchdog = await armWatchdog(dir);
@@ -70,7 +90,7 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'release'> {
       if (Date.now() >= limit) throw new Error('droplet acquisition deadline reached');
       lease.createStarted = new Date().toISOString();
       await this.#save(lease);
-      const droplet = await api.create({ name, tags: lease.tags, size, region, image, ssh_keys: [key.id] }, limit);
+      const droplet = await api.create({ name, tags: lease.tags, size, region, image, ssh_keys: [key.id], ...(input.user_data ? { user_data: input.user_data } : {}) }, limit);
       lease.createFinished = new Date().toISOString();
       lease.resource = droplet.id;
       await this.#save(lease);
@@ -96,6 +116,51 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'release'> {
       await this.release(lease);
       throw error;
     }
+  }
+
+  #key(): Promise<PrepareKey> {
+    this.#keyWork ??= prepareKey(this.root).finally(() => { this.#keyWork = null; });
+    return this.#keyWork;
+  }
+
+  submitPrepare(report: (text: string) => void, authorize: () => void = () => {}): { state: 'submitted'; summary: string } {
+    authorize();
+    if (this.#closing) throw new Error('hub is stopping');
+    if (this.#prepareJob?.state === 'running') throw new Error('snapshot preparation already running');
+    if (!process.env.DIGITALOCEAN_TOKEN) throw new Error('DIGITALOCEAN_TOKEN is required');
+    const job: PrepareJob = { state: 'running', started: new Date().toISOString(), step: 'key' };
+    this.#prepareJob = job;
+    this.#prepareAbort = new AbortController();
+    this.#prepareWork = this.#key().then(key => { job.key = key; return this.prepare(key, step => { this.#prepareAbort?.signal.throwIfAborted(); authorize(); job.step = step; }); }).then(result => {
+      job.state = 'done'; job.finished = new Date().toISOString(); job.result = result; report(result.summary);
+    }, error => {
+      job.state = 'failed'; job.finished = new Date().toISOString(); job.error = error instanceof Error ? error.message : 'snapshot preparation failed';
+      const durationMs = Date.now() - Date.parse(job.started);
+      if (job.step === 'key') this.log({ event: 'executor-prepare-failed', key: job.key ?? null, image: null, regions: [], durationMs, lifetimeMs: 0, costUsd: 0, cause: job.error });
+      report(`snapshot prepare failed: ${job.error}\nkey ${JSON.stringify(job.key ?? null)}; image none; duration ${Math.round(durationMs / 1000)}s`);
+    }).finally(() => { this.#prepareWork = null; this.#prepareAbort = null; });
+    return { state: 'submitted', summary: 'snapshot preparation submitted; see cland executor status' };
+  }
+
+  async prepare(key: PrepareKey, step: (step: string) => void = () => {}): Promise<Prepared> {
+    const recoveries = await readRecoveries(this.root);
+    if (recoveries.some(record => record.phase !== 'cleanup' || record.requested && record.actionState !== 'completed' && record.actionState !== 'errored')) throw new Error('snapshot recovery pending; see cland executor status');
+    const config = await this.#config();
+    const { prepare_size, size, regions, image } = config.verification.droplet;
+    const current = await readSnapshot(this.root);
+    if (current && sameKey(current.key, key)) return prepareSnapshot({ root: this.root, project: projectName(config.name), regions, tags: [], key, store: this.store, log: this.log, signal: this.#prepareAbort?.signal, step, builder: async () => { throw new Error('current snapshot needs no builder'); }, release: lease => this.release(lease) });
+    const sizes = await new DigitalOceanApi().sizes();
+    const builder = sizes.find(s => s.slug === prepare_size && s.available);
+    const run = sizes.find(s => s.slug === size && s.available);
+    if (!builder || !run || !Number.isFinite(builder.disk) || !Number.isFinite(run.disk)) throw new Error('prepare_size and size need available disks');
+    if (builder.disk! > run.disk!) throw new Error(`verification.droplet.prepare_size ${prepare_size} disk exceeds run size ${size}`);
+    return prepareSnapshot({ root: this.root, project: projectName(config.name), regions, tags: ['cland', projectTag(this.root, config.name)], key, maxDiskSize: run.disk!, store: this.store, log: this.log, signal: this.#prepareAbort?.signal, step,
+      builder: user_data => this.#acquire({ id: 'executor-prepare' }, new Date(Date.now() + config.verification.lifetimeMs).toISOString(), { size: prepare_size, regions, image, user_data }), release: lease => this.release(lease) });
+  }
+
+  async close(): Promise<void> {
+    this.#closing = true; this.#prepareAbort?.abort();
+    await this.#prepareWork;
   }
 
   async release(lease: DropletLease): Promise<Released> {
@@ -135,16 +200,27 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'release'> {
   }
 
   async inspect() {
-    const token = Boolean(process.env.DIGITALOCEAN_TOKEN);
-    const all = await readLeases(this.root);
-    const leases = await Promise.all(all.filter(l => l.state !== 'released').map(async l => ({ name: l.name, id: l.resource, region: l.region, size: l.size, state: l.state, ageMs: Date.now() - Date.parse(l.created), deadline: l.deadline, watchdogAlive: await watchdogAlive(l) })));
-    const today = new Date().toISOString().slice(0, 10);
-    const todayCostUsd = all.filter(l => l.state === 'released' && l.released?.startsWith(today)).reduce((total, l) => total + (l.costUsd ?? 0), 0);
-    let taggedDroplets: number | null = null;
-    let providerError: string | undefined;
-    if (token) try { taggedDroplets = (await new DigitalOceanApi().droplets('cland')).length; } catch { providerError = 'provider unavailable'; }
-    const summary = [`token: ${token ? 'present' : 'absent (DIGITALOCEAN_TOKEN)'}`, ...(!leases.length ? ['leases: none'] : leases.map(l => `${l.name} id=${l.id ?? 'pending'} ${l.region} ${l.size} ${l.state} age=${Math.round(l.ageMs / 1000)}s deadline=${l.deadline} watchdog=${l.watchdogAlive ? 'alive' : 'dead'}`)), `today: $${todayCostUsd.toFixed(4)}`, `tagged droplets: ${taggedDroplets ?? providerError ?? 'unavailable'}`].join('\n');
-    return { token, leases, todayCostUsd, taggedDroplets, ...(providerError ? { providerError } : {}), summary };
+    for (;;) {
+      const job = this.#prepareJob;
+      const jobState = job?.state;
+      const snapshot = await readSnapshot(this.root);
+      const freshness = snapshot ? staleParts(snapshot, await this.#key()) : [];
+      const prepare = this.#prepareJob ? { ...this.#prepareJob, elapsedMs: (this.#prepareJob.finished ? Date.parse(this.#prepareJob.finished) : Date.now()) - Date.parse(this.#prepareJob.started) } : null;
+      const snapshotRecovery = await readRecoveries(this.root);
+      const token = Boolean(process.env.DIGITALOCEAN_TOKEN);
+      const all = await readLeases(this.root);
+      const leases = await Promise.all(all.filter(l => l.state !== 'released').map(async l => ({ name: l.name, id: l.resource, region: l.region, size: l.size, state: l.state, ageMs: Date.now() - Date.parse(l.created), deadline: l.deadline, watchdogAlive: await watchdogAlive(l) })));
+      const today = new Date().toISOString().slice(0, 10);
+      const todayCostUsd = all.filter(l => l.state === 'released' && l.released?.startsWith(today)).reduce((total, l) => total + (l.costUsd ?? 0), 0);
+      let taggedDroplets: number | null = null;
+      let providerError: string | undefined;
+      if (token) try { taggedDroplets = (await new DigitalOceanApi().droplets('cland')).length; } catch { providerError = 'provider unavailable'; }
+      // A job may replace/restore the record while provider and Git reads yield.
+      // Return a coherent snapshot and terminal job state from the same observation.
+      if (job !== this.#prepareJob || jobState !== job?.state) continue;
+      const summary = [snapshot ? `snapshot: ${snapshot.name} image=${snapshot.image} ${freshness.length ? `stale: ${freshness.join('|')}` : 'current'} key=${JSON.stringify(snapshot.key)}` : 'snapshot: none', ...(prepare ? [`prepare: ${prepare.state} ${prepare.step} elapsed=${Math.round(prepare.elapsedMs / 1000)}s`] : []), ...snapshotRecovery.map(record => `snapshot recovery: ${record.name} ${record.phase}`), `token: ${token ? 'present' : 'absent (DIGITALOCEAN_TOKEN)'}`, ...(!leases.length ? ['leases: none'] : leases.map(l => `${l.name} id=${l.id ?? 'pending'} ${l.region} ${l.size} ${l.state} age=${Math.round(l.ageMs / 1000)}s deadline=${l.deadline} watchdog=${l.watchdogAlive ? 'alive' : 'dead'}`)), `today: $${todayCostUsd.toFixed(4)}`, `tagged droplets: ${taggedDroplets ?? providerError ?? 'unavailable'}`].join('\n');
+      return { snapshotRecovery, snapshot: snapshot ? { ...snapshot, freshness: freshness.length ? `stale: ${freshness.join('|')}` : 'current' } : null, prepare, token, leases, todayCostUsd, taggedDroplets, ...(providerError ? { providerError } : {}), summary };
+    }
   }
 
   /** Restart repair and releasing-only retries. General orphan sweeping belongs to the safety stage. */
@@ -172,6 +248,7 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'release'> {
       }
       if (lease.state === 'releasing' || Date.parse(lease.deadline) <= Date.now() || restart && (lease.state === 'active' || lease.state === 'creating' && lease.resource === null)) await this.release(lease);
     }
+    if (this.#prepareJob?.state !== 'running') await recoverSnapshots(this.root, this.store, this.log);
     this.store?.setMeta('executor-leases', JSON.stringify(await readLeases(this.root)));
   }
   async reap(authorize: () => void = () => {}) {

@@ -142,6 +142,7 @@
     "hub/test/verdict-criteria.test.ts": "machine",
     "hub/test/verifier-routing.test.ts": "machine",
     "hub/test/visibility.test.ts": "machine",
-    "hub/test/worktree-cli.test.ts": "machine"
+    "hub/test/worktree-cli.test.ts": "machine",
+    "hub/test/executor-prepare.test.ts": "machine"
   }
 }
