@@ -3,7 +3,7 @@ id: T-314
 kind: task
 title: "Any prefix resolves: the hub, the CLI, the MCP task tools, the plan parser and gi take any kind prefix by its number, and every surface shows the kind's own"
 state: open
-status: backlog
+status: in progress
 labels:
   - v0.1.2
   - hub
@@ -13,10 +13,10 @@ assignee: null
 parent: T-269
 blocked_by:
   - T-313
-topic: null
-branch: null
+topic: topic-193
+branch: t/T-314-any-prefix-resolves-the-hub-the-cli-the
 created: 2026-10-13T02:27:22.874Z
-updated: 2026-10-13T02:27:33.986Z
+updated: 2026-10-13T04:24:29.517Z
 ---
 
 ## Summary
