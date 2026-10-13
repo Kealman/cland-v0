@@ -3,7 +3,7 @@ id: T-331
 kind: task
 title: "Size and regressions: tasks carry a required size from XS to XL and an optional regression_of, through the CLI and MCP, and the clauses and skills ask for both and for a Summary"
 state: open
-status: review
+status: in progress
 criterion_seq: 7
 labels:
   - v0.1.2
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-211
 branch: t/T-331-size-and-regressions-tasks-carry-a
 created: 2026-10-13T14:04:09.540Z
-updated: 2026-10-13T17:48:54.057Z
+updated: 2026-10-13T18:54:10.778Z
 ---
 
 ## Summary
@@ -101,6 +101,7 @@ E-270: Status, fields and instrumentation. Spec: `docs/spec/v0.1.2.md` §3.12 (W
 - [x] C7. `hub/README.md`, `docs/agents/issue-tracker.md` with its template and `GLOSSARY.md` describe the size classes, the refusal, `regression_of` and the `## Summary` rule.
   - done: impl-331 · 2026-10-13T17:46:42.473Z
   - verified: rev-23 [reviewer] · run rev-2026-10-13-331-1 · 2026-10-13T17:48:54.057Z · commit 6fc0eb83b90efb84d6d16f1598d4cb01ca100b42
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-331-3 · 2026-10-13T18:40:12.197Z · commit 93eebe9bbb1da7edee89f82bb24c5ebd39fa10c7
 
 ## Comments
 
@@ -119,3 +120,35 @@ commit: 6fc0eb83b90efb84d6d16f1598d4cb01ca100b42
 No high, medium, or low source findings. Separate fixture sweep preserves assertions/harness/bounds. Required size stays at the request layer; task-only parse/edit/index fields and numeric landed regression validation/clearing match scope. Explicit offline assignment safeguards, clause compression and skills patch reviewed. C7 docs verified; C1–C6 await complete same-head full evidence, including headroom/skills guards. Wait for E-268 END before submission. Evidence A-2020: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2020-t-331-full-source-review-clear-at-6fc0eb83.md.
 
 Criteria: C7 verified.
+
+### rev-23 · 2026-10-13T18:37:26.680Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-331-2
+commit: 6fc0eb83b90efb84d6d16f1598d4cb01ca100b42
+
+Medium — hub/test/permissions.test.ts:127 omits size from the allowed Coordinator create case; required-size validation refuses it and aborts permission/audit coverage. Add size while retaining all allowed/refused/Agents/audit assertions and forbidden-case precedence checks. A-2024 fails 1/1521 and does not reach Neovim; no product criterion failure inferred, C1–C6 final verification pending, C7 retained. Evidence A-2025: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2025-t-331-full-verification-not-clear-permission-fixture-missing-size.md.
+
+### rev-23 · 2026-10-13T18:40:12.197Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-331-3
+commit: 93eebe9bbb1da7edee89f82bb24c5ebd39fa10c7
+
+No high, medium, or low source findings remain. Three permission-table create fixtures now supply size, preserving allowed/refused/notice/audit assertions. Product source unchanged; incoming tracker/QA/spec amendments reviewed without feature scope change. A-2020 assessment applies; C7 refreshed, C1–C6 await complete same-head full evidence. Evidence A-2027: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2027-t-331-permission-fixture-delta-source-clear-at-93eebe9b.md.
+
+Criteria: C7 verified.
+
+### rev-23 · 2026-10-13T18:54:10.778Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-331-4
+commit: 93eebe9bbb1da7edee89f82bb24c5ebd39fa10c7
+
+Medium — nvim/test/shell.test.ts:1675 searches/folds before reconnect snapshots render; A-2029 shows E486 and a later folded unscheduled (1). Preserve fresh-row and zero snapshot/pending assertions with a readiness wait. Unchanged dev test; Coordinator df6e96b9 requires standalone shared fix/delayed replay proof. Full result 1842/1843, one failure, both packages/typecheck ran. No product criterion failure inferred; C1–C6 final verification pending, C7 retained. Evidence A-2030: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2030-t-331-full-verification-not-clear-reconnect-readiness-race.md.

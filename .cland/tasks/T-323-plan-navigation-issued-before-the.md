@@ -1,8 +1,7 @@
 ---
 id: T-323
 kind: task
-title: Plan navigation issued before the initial task and ladder snapshots is
-  discarded instead of deferred
+title: Plan navigation issued before the initial task and ladder snapshots is discarded instead of deferred
 state: open
 status: backlog
 labels:
@@ -14,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-13T10:43:14.266Z
-updated: 2026-10-13T10:43:14.266Z
+updated: 2026-10-13T18:53:49.891Z
 ---
 
 ## Summary
@@ -35,3 +34,9 @@ Keep or defer the requested navigation until its task and ladder preconditions s
 
 - [ ] C1. `gp` and `:Cland view plan <id>` issued before the initial snapshots open the plan once they arrive, or report clearly that the item is not an epic or in one.
 - [ ] C2. A headless test on the stub hub with delayed `hub.status` and `task.list` covers both outcomes.
+
+## Comments
+
+### coord · 2026-10-13T18:53:49.891Z
+
+Pattern note (2026-10-13): three Neovim test flakes today came from keys pressed before the initial or reconnect snapshots landed. They were the plan view (b5b67ad, T-292), the palette (7210621, T-301), and the shell reconnect unscheduled-heading search (T-331's shared fix). Each was fixed in the test with a readiness wait. Making the product defer actions until their snapshots settle would close the class, so consider T-323's scope wider than gp alone.

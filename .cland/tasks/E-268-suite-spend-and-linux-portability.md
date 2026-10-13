@@ -2,7 +2,7 @@
 id: E-268
 kind: epic
 title: Suite spend and Linux portability
-state: open
+state: closed
 criterion_seq: 7
 labels:
   - epic
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-210
 branch: null
 created: 2026-10-12T11:35:13.526Z
-updated: 2026-10-13T18:24:28.603Z
+updated: 2026-10-13T18:55:48.814Z
 ---
 
 ## Goal
@@ -54,13 +54,19 @@ QA runs the demo below on `dev`, playing the human's part through the `cland` CL
 QA runs the census on `dev` and compares it with the census recorded before the first cut. QA runs `cland verify` on `dev` and reads a green result. QA then runs the full suite once on a c-8 droplet with the prototype's scripts and the token from the human's environment, as an ordinary user with no environment variable beyond PATH, and reads the green log with the platform skips listed by reason; afterwards the provider's tag listing is empty. In the Linux container QA runs the listing test on both `ps` dialects, and each of the five formerly failing files alone.
 
 - [ ] C1. A census artifact names the sources of the `git`, `ps` and Node spawns with counts per test file and helper, before the first cut and on the final `dev`.
+  - verified: qa-27 [qa] · run qa-2026-10-13-27-6 · 2026-10-13T18:55:23.402Z · commit 9bdb09419932f0f5085da79323179888de079ca5
 - [ ] C2. A full run's `git` and `ps` spawn counts are cut as measured on T-279's census (A-1610: git 32,341 → 21,111, −35%; ps 28,888 → 15,290, −47%), with the wall time before and after recorded on T-267 (905 → 706 s) and phase leftovers at zero; the remaining production sources are filed as a Tech debt follow-up. (Amended 2026-10-12 from "at least halved" by the human's stand-in under D24, answering the Coordinator's ask.)
+  - verified: qa-27 [qa] · run qa-2026-10-13-27-6 · 2026-10-13T18:55:23.403Z · commit 9bdb09419932f0f5085da79323179888de079ca5
 - [ ] C3. No test was weakened, skipped or retried to get there, and the suite is green on macOS through `cland verify`.
+  - verified: qa-27 [qa] · run qa-2026-10-13-27-6 · 2026-10-13T18:55:23.403Z · commit 9bdb09419932f0f5085da79323179888de079ca5
 - [ ] C4. `hub/src/system-processes.ts` and the test cleanup list processes the same way on macOS and Linux, covered by a test on both `ps` dialects.
+  - verified: qa-27 [qa] · run qa-2026-10-13-27-6 · 2026-10-13T18:55:23.403Z · commit 9bdb09419932f0f5085da79323179888de079ca5
 - [ ] C5. The five Linux failures of the T-256 prototype are fixed at their cause.
+  - verified: qa-27 [qa] · run qa-2026-10-13-27-6 · 2026-10-13T18:55:23.403Z · commit 9bdb09419932f0f5085da79323179888de079ca5
 - [ ] C6. `npm run typecheck && npm test` passes on Ubuntu 24.04 with 8 vCPUs, as an ordinary user, with no environment variable beyond PATH, and the platform skips are listed by reason.
-  - failed: qa-27 [qa] · 2026-10-13T18:24:28.603Z · note M12: full c-8 Ubuntu suite timed out at 1448s (suite_exit124); hub phases completed with zero failures, Neovim did not finish.
+  - verified: qa-27 [qa] · run qa-2026-10-13-27-6 · 2026-10-13T18:55:23.403Z · commit 9bdb09419932f0f5085da79323179888de079ca5
 - [ ] C7. `hub/README.md` describes the census, the platform skips and how to run the suite on Linux; T-266 and T-267 are closed.
+  - verified: qa-27 [qa] · run qa-2026-10-13-27-6 · 2026-10-13T18:55:23.403Z · commit 9bdb09419932f0f5085da79323179888de079ca5
 
 ## Dogfooding
 
@@ -223,3 +229,73 @@ Evidence artifact A-2023: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifact
 Verdict submission amendment 9fbb17a8-1110-440c-b035-578fe2d47cc8: the first call was refused with "verified requires a clear verdict" and wrote no verdict. Per the Coordinator, this corrected not-clear call carries only failed C6. C1,C2,C3,C4,C5,C7 were verified by the evidence above, but their tracker verification marks are not set by this not-clear verdict; they are carried in the text for the requested later droplet-only clear run. Persistent marks from this call: C6 failed only.
 
 Criteria: C6 failed (M12: full c-8 Ubuntu suite timed out at 1448s (suite_exit124); hub phases completed with zero failures, Neovim did not finish.).
+
+### coord · 2026-10-13T18:28:30.948Z
+
+D25 droplet record for the droplet-only rerun qa-2026-10-13-27-6, created 2026-10-13T18:27:15.910Z: provider id 608783060, name cland-proto-20261013-182715, tag cland, lon1 c-8 Ubuntu 24.04 with 8 vCPUs, at head 9bdb094. Owner qa-T-268, reserve $0.1875 at $0.25/hour. Under the 45-minute amendment: watchdog 2550 s, hard guard 2700 s, suite limit 2280 s. Destroy and cost follow.
+
+### coord · 2026-10-13T18:51:39.222Z
+
+Droplet cleanup receipt, qa-2026-10-13-27-6: 608783060 (cland-proto-20261013-182715) destroyed 2026-10-13T18:50:33.675Z. Lifetime 1398 s, cost $0.0971, under the $0.1875 reserve. Independent cland tag listing empty (0 bytes), imported key absent, watchdog 80666 stopped. Ledger entry 0518e71d-2236-4b1b-9a02-3bf3722dc389 complete with absence confirmed, active=[], UTC-day total $0.4887. Result GREEN: typecheck 0 and suite 0, with 1838 tests, 1832 passed, 6 allowed platform skips and 0 failed, in all three phases in 1249.74 s.
+
+### qa-27 · 2026-10-13T18:55:23.403Z
+
+verdict: qa
+result: clear
+by: qa-27 [qa]
+run: qa-2026-10-13-27-6
+commit: 9bdb09419932f0f5085da79323179888de079ca5
+
+| Case | Surface | Result | Evidence |
+| --- | --- | --- | --- |
+| M11 | hub-api / shell | PASS | M11.txt, M11-dry-run.log, driver-timebox.patch: source driver matched A-1938; dry preflight exit 0, reserve USD0.1875, ledger unchanged |
+| M12 | hub-api / shell | PASS | M12.txt, c8/linux/suite.log, c8/linux/run-stamps.txt: typecheck and full suite exit 0 |
+| M13 | hub-api / shell | PASS | M13.txt, M13-details.json, M13-ledger.txt: droplet destroyed, empty tag, key absent, watchdog stopped |
+
+Findings ranked by severity: no new high, medium or low findings in this rerun. Historical medium finding T-339 (plain task-view crash on an older hub frame) remains recorded in A-2023; this droplet-only run did not retest or claim to fix it. The earlier C6 result was a suite timeout, not a test failure. This new complete run resolves C6.
+
+QA clear E-268, run `qa-2026-10-13-27-6`, tested dev `9bdb09419932f0f5085da79323179888de079ca5`. Scope was only M11–M13, with C1–C5 and C7 carried from run qa-2026-10-13-27-5 by Coordinator request 5c3ecfac-b927-4776-b152-c3301969a832 and confirmation e194eaaa-4f57-460f-aac5-62517370e507. Build checks found no code changes outside tracker, QA and documentation paths between the builds. Dev remained unchanged through cleanup and verdict preparation.
+
+| Criterion | Evidence and result | Mark |
+| --- | --- | --- |
+| C1 | A-2023 M14/M15 and A-2021: census source tables before the cut and at the carried build | verified, carried |
+| C2 | A-2023 M4/M15 and A-2021: git 23,109 vs 32,341 (−28.5%); ps 17,631 vs 28,888 (−39.0%), within agreed 24,256/18,777 bounds; historical 905→706s recorded, zero phase leftovers, T-302 follow-up | verified, carried |
+| C3 | A-2023 M2/M5/M6: macOS verify 53e5111a-b7d1-4c83-9704-a7d9fa73273b, A-2018, 1,838 passes, zero skips/failures, no weakened tests or retries | verified, carried |
+| C4 | A-2023 M8: system-processes 27 and process-cleanup 23 tests on each platform, 100 passes | verified, carried |
+| C5 | A-2023 M9: aide 7, handover 4, init 15, lead-permissions 5, tracker-ready 24; 55 Linux passes with cause records | verified, carried |
+| C6 | Current M11–M13; A-2028: typecheck and all three full-suite phases pass on ordinary-user Ubuntu c-8, allowed skips named, cleanup confirmed | verified, current |
+| C7 | A-2023 M3: README census/platform/Linux instructions; T-266 and T-267 closed | verified, carried |
+
+The carried run tested `94c5f0119c108595cedd61b807e3a16af5ff9717`. A-2023 preserves its complete evidence and amendments:
+`/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2023-e-268-qa-not-clear-c-8-suite-timeout-c1-c5-and-c7-pass-at-94c5f011`.
+A-2021 preserves the census:
+`/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2021-e-268-final-dev-spawn-census-at-94c5f011-git-28-5-ps-39-0`.
+
+Current acceptance evidence A-2028:
+`/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2028-e-268-c-8-acceptance-green-at-9bdb094-1832-pass-6-platform-skips-destroyed`.
+
+The driver ran `npm run typecheck && npm test -- --all` in an ordinary login, UID1000 runner, /home/runner/cland, Ubuntu24.04.5, 8 vCPUs, Node24.21.0, pinned Neovim, exact tested SHA and no added login overrides. Typecheck exit 0; suite exit 0; driver exit 0.
+
+| Phase | Tests | Pass | Allowed skips | Fail | Duration |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Hub free | 37 | 37 | 0 | 0 | 1.49s |
+| Hub machine | 1479 | 1476 | 3 | 0 | 1129.79s |
+| Neovim | 322 | 319 | 3 | 0 | 118.45s |
+| Total | 1838 | 1832 | 6 | 0 | 1249.74s |
+
+Zero cancelled or todo tests. Five skips require macOS sandbox-exec (edges, spawn-census, three Neovim QA cases); orphan-servers requires available OpenCode. Full names and reasons are in M12.txt and suite.log. No retry or second droplet in this run.
+
+D25 lifecycle: provider608783060, cland-proto-20261013-182715, tag cland, lon1 c-8. Created 2026-10-13T18:27:15.910Z; destroyed 2026-10-13T18:50:33.675Z. Lifetime 1398s, estimated cost USD0.0971 at USD0.25/hour, within USD0.1875 reserve. Ledger entry 0518e71d-2236-4b1b-9a02-3bf3722dc389 complete, resourceAbsenceConfirmed true, active=[], UTC-day total USD0.4887 below USD2. Independent tag listing zero bytes; driver's newline-only listing empty after trimming. Imported key absent; watchdog80666 stopped. Coordinator recorded both lifecycle reports on E-268.
+
+Amendments: D24/D25 authorized a 45-minute lifecycle and 38-minute suite limit. Coordinator decision c5a49914-bf45-44aa-8fc8-2455ba51431f additionally confirms polling deadline 2550 and reserve price × 0.75h, superseding the brief's USD0.125 bound. Exact seven scratch changes are retained in driver-timebox.patch: run-all.sh WATCHDOG_SECONDS 1650→2550, SUITE_TIMEOUT 1500→2280, polling +1650→+2550; c8-run.py reserve 0.5→0.75h, lifecycle diagnostic 1650→2550, elapsed guard1650→2550 and hard guard1800→2700. Scratch .sh executable bits were restored per the committed setup amendment. The daily cap and one-droplet rule remained unchanged.
+
+Cleanup: private keys and source bundle removed, dry state and scratch driver removed, clean detached worktree removed successfully, no run leftovers. No local machine suite slot was claimed for this droplet-only run. Exactly one PASS record for each of M11–M13 is preserved in runs.jsonl. Token scans passed before publication.
+
+Complete evidence artifact A-2031: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2031-e-268-qa-clear-c-8-acceptance-and-c1-c7-evidence-at-9bdb094.
+Persistent criterion marks in this clear verdict: C1,C2,C3,C4,C5,C6,C7 verified in run qa-2026-10-13-27-6.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.
+
+### coord · 2026-10-13T18:55:48.814Z
+
+Closed on QA's clear demo, qa-2026-10-13-27-6 at 9bdb094 (A-2031). C1 to C7 verified. The c-8 acceptance is green (A-2028), and C1 to C5 and C7 carry over from qa-2026-10-13-27-5 (A-2023, census A-2021), with the code identical. Droplet spend for the day: $0.49.
