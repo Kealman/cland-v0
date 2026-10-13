@@ -2,8 +2,8 @@
 id: T-324
 kind: task
 title: "The release row shows its version: R-228 0.1.2 Working with items (T-269 DoD gap)"
-state: open
-status: review
+state: closed
+status: done
 criterion_seq: 3
 labels:
   - v0.1.2
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-202
 branch: t/T-324-the-release-row-shows-its-version-r-228
 created: 2026-10-13T12:05:47.468Z
-updated: 2026-10-13T12:34:11.075Z
+updated: 2026-10-13T13:50:31.526Z
 ---
 
 ## Summary
@@ -46,12 +46,17 @@ T-269: Prefixes and categories. Spec: `docs/spec/v0.1.2.md` §3.1, the titles.
   - done: impl-324 · 2026-10-13T12:14:27.253Z
   - verified: rev-23 [reviewer] · run rev-2026-10-13-324-2 · 2026-10-13T12:15:33.006Z · commit a9c8952458ca17c4f8a1930f56b38b3728272ada
   - verified: rev-23 [reviewer] · run rev-2026-10-13-324-4 · 2026-10-13T12:34:11.074Z · commit 5f21ccb7bfc2a4c54c15cf81b40041e98dc5fb23
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-324-5 · 2026-10-13T13:37:04.124Z · commit b5da10d308f3c5170864b134ed8f181a440c3e9f
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-324-6 · 2026-10-13T13:50:15.272Z · commit b5da10d308f3c5170864b134ed8f181a440c3e9f
 - [x] C2. `cland task view` on a release heads with id, version and title.
   - done: impl-324 · 2026-10-13T12:12:33.685Z
   - verified: rev-23 [reviewer] · run rev-2026-10-13-324-2 · 2026-10-13T12:15:33.006Z · commit a9c8952458ca17c4f8a1930f56b38b3728272ada
   - verified: rev-23 [reviewer] · run rev-2026-10-13-324-4 · 2026-10-13T12:34:11.075Z · commit 5f21ccb7bfc2a4c54c15cf81b40041e98dc5fb23
-- [ ] C3. Headless and CLI tests cover both cases, `nvim/README.md` shows the release row, and `cland verify` is green.
-  - failed: rev-23 [reviewer] · 2026-10-13T12:31:48.449Z · note Complete verification fails three stale Neovim release-heading expectations at qa.test.ts:203,396 and shell.test.ts:1302; retain their QA sandbox and scope/fold checks when correcting them.
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-324-5 · 2026-10-13T13:37:04.125Z · commit b5da10d308f3c5170864b134ed8f181a440c3e9f
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-324-6 · 2026-10-13T13:50:15.272Z · commit b5da10d308f3c5170864b134ed8f181a440c3e9f
+- [x] C3. Headless and CLI tests cover both cases, `nvim/README.md` shows the release row, and `cland verify` is green.
+  - done: impl-324 · 2026-10-13T13:49:43.555Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-324-6 · 2026-10-13T13:50:15.272Z · commit b5da10d308f3c5170864b134ed8f181a440c3e9f
 
 ## Comments
 
@@ -114,3 +119,35 @@ commit: 5f21ccb7bfc2a4c54c15cf81b40041e98dc5fb23
 No high or medium source findings. The three stale QA/scope heading expectations are corrected exactly; sandbox/state/folding/orphan assertions and STATE-001.lua remain unchanged. Dev/T-321 integration has no conflict-resolution delta and retains version ancestry/formatting. C1/C2 verification refreshed at this head; C3 remains pending the complete green cland verify result under D25. Evidence A-1948: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1948-t-324-corrected-integration-review-clear-at-5f21ccb.md.
 
 Criteria: C1 verified, C2 verified.
+
+### rev-23 · 2026-10-13T13:37:04.125Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-324-5
+commit: b5da10d308f3c5170864b134ed8f181a440c3e9f
+
+No high or medium integration findings. Migrated dev eefc0ef adds only tracker records/item migration and managed config; hub/Neovim source and tests are unchanged, including configured-kind and stale-heading fixes. C1/C2 verification refreshed at b5da10d. C3 remains pending a fresh complete green cland verify result under D25. Evidence A-1957: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1957-t-324-migrated-dev-delta-review-clear-at-b5da10d.md.
+
+Criteria: C1 verified, C2 verified.
+
+### impl-324 · 2026-10-13T13:49:44.234Z
+
+Final full verification at reviewed head b5da10d308f3c5170864b134ed8f181a440c3e9f is green: run 6ea7a56f-7a18-489b-9cc8-4dad4cedd45b, 1791/1791 passed, zero failures/skips. Evidence A-1959 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1959-suite-6ea7a56f-7a18-489b-9cc8-4dad4cedd45b-all-at-b5da10d.log. C3 marked done; awaiting the Reviewer's exact-head final verification.
+
+### rev-23 · 2026-10-13T13:50:15.272Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-324-6
+commit: b5da10d308f3c5170864b134ed8f181a440c3e9f
+
+No high or medium findings remain. C1–C3 verified at the unchanged head: configured release id/version/title formatting and duplicate suppression on all UI/CLI surfaces, retained QA/scope checks, tests and README. Complete exact-head cland verify 6ea7a56f / A-1959 passed typecheck and 1791/1791 across all phases, zero failures/skips/cancellations. Prior source/integration reviews remain applicable. Evidence A-1960: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1960-t-324-final-review-clear-c1-c3-at-b5da10d.md.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-13T13:50:31.526Z
+
+Merged 17f4009694bfae492fac1d48f435e8095e8b429e onto dev.

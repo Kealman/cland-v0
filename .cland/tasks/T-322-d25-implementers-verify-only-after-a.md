@@ -1,8 +1,7 @@
 ---
 id: T-322
 kind: task
-title: "D25: Implementers verify only after a clear review verdict, at the exact
-  reviewed head (clauses and skills)"
+title: "D25: Implementers verify only after a clear review verdict, at the exact reviewed head (clauses and skills)"
 state: open
 status: review
 criterion_seq: 3
@@ -15,7 +14,7 @@ blocked_by: []
 topic: topic-201
 branch: t/T-322-d25-implementers-verify-only-after-a
 created: 2026-10-13T10:34:03.049Z
-updated: 2026-10-13T12:46:42.429Z
+updated: 2026-10-13T13:38:33.117Z
 ---
 
 ## Summary
@@ -46,6 +45,7 @@ Decision D25 (`docs/spec/v0.1.md` §4, 2026-10-13): an Implementer requests revi
   - verified: rev-26 [reviewer] · run rev-20261013-322-source-3 · 2026-10-13T12:25:30.883Z · commit 6acf2f3749ca1c8dd2fe85fd48805e28cfbebc9e
   - verified: rev-26 [reviewer] · run rev-20261013-322-source-4 · 2026-10-13T12:29:21.704Z · commit b38d37d25ce5942eab8c86e740ed9af61c6326c3
   - verified: rev-26 [reviewer] · run rev-20261013-322-source-5 · 2026-10-13T12:46:42.429Z · commit 78fac1ffb69da1d78db16946d8550467fc272fe8
+  - verified: rev-26 [reviewer] · run rev-20261013-322-source-6 · 2026-10-13T13:38:33.117Z · commit 3b9a01a835dd4d30b6ed73d67dafc3cef81707c0
 - [x] C2. The Reviewer clause and the merge, qa and code-review skills agree with the order, with vendored patches recorded.
   - done: impl-322 · 2026-10-13T10:39:50.842Z
   - verified: rev-26 [reviewer] · run rev-20261013-322-source-1 · 2026-10-13T10:50:33.052Z · commit e54bba10d40d0115225b62a98377a411b8e271b7
@@ -53,6 +53,7 @@ Decision D25 (`docs/spec/v0.1.md` §4, 2026-10-13): an Implementer requests revi
   - verified: rev-26 [reviewer] · run rev-20261013-322-source-3 · 2026-10-13T12:25:30.883Z · commit 6acf2f3749ca1c8dd2fe85fd48805e28cfbebc9e
   - verified: rev-26 [reviewer] · run rev-20261013-322-source-4 · 2026-10-13T12:29:21.704Z · commit b38d37d25ce5942eab8c86e740ed9af61c6326c3
   - verified: rev-26 [reviewer] · run rev-20261013-322-source-5 · 2026-10-13T12:46:42.429Z · commit 78fac1ffb69da1d78db16946d8550467fc272fe8
+  - verified: rev-26 [reviewer] · run rev-20261013-322-source-6 · 2026-10-13T13:38:33.117Z · commit 3b9a01a835dd4d30b6ed73d67dafc3cef81707c0
 - [ ] C3. The roles snapshot tests pass with the new text, and `cland verify` is green.
   - failed: rev-26 [reviewer] · 2026-10-13T12:45:20.722Z · note A-1950 full exits1: review-qa.test.ts:104 and surface.test.ts:62 existing wording guards fail against compact Coordinator clause; Neovim not reached.
 
@@ -159,5 +160,17 @@ run: rev-20261013-322-source-5
 commit: 78fac1ffb69da1d78db16946d8550467fc272fe8
 
 Source review clear: no high/medium finding. C1/C2 renewed. Three exact expectation updates preserve reviewed compact-clause requirements: item-lead review/QA/not-clear/retry ownership, Coordinator fallback outside claimed Lead subtrees, exclusive human-decision routing. No semantic assertion dropped or relaxed; byte guard/production/skills/docs/bounds unchanged. A-1951 reports targeted1/1 per file; git diff --check clean. Correct precise prior surface failure reference is surface.test.ts:75 (earlier:62 was inaccurate); review-qa:104 unchanged. C3 failed A-1950 remains pending accepted full green. Follow Coordinator migration/hub restart, integrate origin/dev and renew source review at changed head before full submission. Artifact records both axes; no Reviewer tests.
+
+Criteria: C1 verified, C2 verified.
+
+### rev-26 · 2026-10-13T13:38:33.117Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261013-322-source-6
+commit: 3b9a01a835dd4d30b6ed73d67dafc3cef81707c0
+
+Source review clear: no high/medium finding. C1/C2 renewed at3b9a01a. Own source added/removed lines versus migrated dev identical to prior reviewed delta; strict compact-wording assertions, D25 skills/docs/clauses and8192cap/512headroom guard unchanged. Migration integration changes tracker prefixes/references/parentC-216 and project config peer-root hierarchy/explicit defaults only outside tracker; crew idle[]/Reviewer subagentsfalse retained. Task diff --check clean; inherited generated-config blank EOF has no functional impact. Coordinator maintenance-over3bd7aa2b authorizes admission/re-review then submission; A-1956 reports targeted wording/snapshot passes. C3 awaits accepted full green exact-head receipt; prior failed logs retained. Artifact records axes; no Reviewer tests. Coordinator relaunch after eventual merge required.
 
 Criteria: C1 verified, C2 verified.
