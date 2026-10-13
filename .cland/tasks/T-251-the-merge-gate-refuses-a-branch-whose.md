@@ -1,7 +1,8 @@
 ---
 id: T-251
 kind: task
-title: The merge gate refuses a branch whose hub test files aren't all classified in the shard manifest
+title: The merge gate refuses a branch whose hub test files aren't all
+  classified in the shard manifest
 state: closed
 status: done
 criterion_seq: 3
@@ -9,7 +10,7 @@ labels:
   - v0.1.1
   - ready-for-agent
 assignee: impl-251
-parent: T-230
+parent: E-230
 blocked_by: []
 topic: topic-162
 branch: t/T-251-the-merge-gate-refuses-a-branch-whose

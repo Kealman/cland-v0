@@ -1,15 +1,15 @@
 ---
 id: T-213
 kind: task
-title: "Two more load-sensitive hub tests: Codex launch access stop wait and crew non-table refusal"
+title: "Two more load-sensitive hub tests: Codex launch access stop wait and
+  crew non-table refusal"
 state: closed
 status: done
 criterion_seq: 2
 labels:
-  - tech-debt
   - ready-for-agent
 assignee: impl-213
-parent: T-230
+parent: E-230
 blocked_by: []
 topic: topic-153
 branch: t/T-213-two-more-load-sensitive-hub-tests-codex

@@ -1,7 +1,9 @@
 ---
 id: T-143
 kind: task
-title: "The item runs its own loop: the Implementer requests its own review and QA, the Coordinator merges on ready; one v0.1 ticket measured from the journal"
+title: "The item runs its own loop: the Implementer requests its own review and
+  QA, the Coordinator merges on ready; one v0.1 ticket measured from the
+  journal"
 state: closed
 status: done
 criterion_seq: 4
@@ -9,7 +11,7 @@ labels:
   - v0.1
   - ready-for-agent
 assignee: null
-parent: T-108
+parent: E-108
 blocked_by:
   - T-142
 topic: topic-88

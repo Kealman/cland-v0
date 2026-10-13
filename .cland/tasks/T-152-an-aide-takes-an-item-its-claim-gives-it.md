@@ -1,14 +1,15 @@
 ---
 id: T-152
 kind: task
-title: "An Aide takes an item: its claim gives it the worktree and branch, moves status, makes it the lead, and its work passes the same gate"
+title: "An Aide takes an item: its claim gives it the worktree and branch, moves
+  status, makes it the lead, and its work passes the same gate"
 state: closed
 status: done
 labels:
   - v0.1
   - ready-for-agent
 assignee: null
-parent: T-111
+parent: E-111
 blocked_by:
   - T-148
 topic: topic-81

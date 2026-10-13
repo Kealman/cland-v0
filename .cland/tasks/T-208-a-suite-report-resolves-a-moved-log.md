@@ -9,7 +9,7 @@ labels:
   - v0.1
   - ready-for-agent
 assignee: impl-208
-parent: T-115
+parent: E-115
 blocked_by: []
 topic: topic-126
 branch: t/T-208-a-suite-report-resolves-a-moved-log

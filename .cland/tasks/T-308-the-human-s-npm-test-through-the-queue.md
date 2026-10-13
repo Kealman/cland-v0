@@ -1,7 +1,8 @@
 ---
 id: T-308
 kind: task
-title: "The human's npm test through the queue: the local runner waits for a slot in the hub's suite queue, unless --force"
+title: "The human's npm test through the queue: the local runner waits for a
+  slot in the hub's suite queue, unless --force"
 state: closed
 status: done
 criterion_seq: 5
@@ -10,7 +11,7 @@ labels:
   - ready-for-agent
   - hub
 assignee: null
-parent: T-275
+parent: E-275
 blocked_by: []
 topic: topic-192
 branch: t/T-308-the-human-s-npm-test-through-the-queue

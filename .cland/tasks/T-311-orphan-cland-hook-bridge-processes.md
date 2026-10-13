@@ -1,14 +1,14 @@
 ---
 id: T-311
 kind: task
-title: "Orphan cland hook bridge processes outlive test runs: 64 bound to temporary projects since Oct 8"
+title: "Orphan cland hook bridge processes outlive test runs: 64 bound to
+  temporary projects since Oct 8"
 state: open
 status: backlog
 labels:
   - needs-triage
-  - tech-debt
 assignee: null
-parent: T-294
+parent: R-294
 blocked_by: []
 topic: null
 branch: null

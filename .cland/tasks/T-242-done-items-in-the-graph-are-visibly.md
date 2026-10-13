@@ -1,14 +1,15 @@
 ---
 id: T-242
 kind: task
-title: Done items in the graph are visibly distinct from backlog, and container nodes show their children's progress
+title: Done items in the graph are visibly distinct from backlog, and container
+  nodes show their children's progress
 state: closed
 status: done
 labels:
   - v0.1.2
   - ready-for-human
 assignee: null
-parent: T-228
+parent: R-228
 blocked_by: []
 topic: null
 branch: null

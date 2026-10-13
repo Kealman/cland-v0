@@ -1,14 +1,15 @@
 ---
 id: T-47
 kind: task
-title: "Session usage: a running total per session, the same meaning for every adapter"
+title: "Session usage: a running total per session, the same meaning for every
+  adapter"
 state: closed
 status: done
 labels:
   - ready-for-agent
   - slice-1
 assignee: impl-47
-parent: T-19
+parent: E-19
 blocked_by: []
 topic: topic-6
 branch: t/T-47-session-usage-totals

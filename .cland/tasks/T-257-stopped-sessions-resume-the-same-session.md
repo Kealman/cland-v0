@@ -1,14 +1,15 @@
 ---
 id: T-257
 kind: task
-title: "Stopped sessions: resume the same session, archive one from the panel, and a cleanup rule so stopped sessions do not pile up"
+title: "Stopped sessions: resume the same session, archive one from the panel,
+  and a cleanup rule so stopped sessions do not pile up"
 state: closed
 status: done
 labels:
   - v0.1.2
   - ready-for-human
 assignee: null
-parent: T-228
+parent: R-228
 blocked_by: []
 topic: null
 branch: null

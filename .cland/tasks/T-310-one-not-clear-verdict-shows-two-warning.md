@@ -12,7 +12,7 @@ labels:
   - qa-found
   - ready-for-agent
 assignee: null
-parent: T-274
+parent: E-274
 blocked_by: []
 topic: topic-184
 branch: t/T-310-one-not-clear-verdict-shows-two-warning

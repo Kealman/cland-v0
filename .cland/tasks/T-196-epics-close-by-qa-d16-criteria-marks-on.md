@@ -1,7 +1,8 @@
 ---
 id: T-196
 kind: task
-title: "Epics close by QA (D16): criteria marks on containers, and task.close requires a clear QA verdict with every criterion verified"
+title: "Epics close by QA (D16): criteria marks on containers, and task.close
+  requires a clear QA verdict with every criterion verified"
 state: closed
 status: done
 criterion_seq: 5
@@ -9,7 +10,7 @@ labels:
   - v0.1
   - ready-for-agent
 assignee: impl-196
-parent: T-117
+parent: E-117
 blocked_by: []
 topic: topic-98
 branch: t/T-196-epics-close-by-qa-d16-criteria-marks-on

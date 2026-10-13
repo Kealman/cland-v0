@@ -1,7 +1,8 @@
 ---
 id: T-179
 kind: task
-title: "Asks up the chain: a lead answers or forwards an ask one level up; only the root's lead asks the human"
+title: "Asks up the chain: a lead answers or forwards an ask one level up; only
+  the root's lead asks the human"
 state: closed
 status: done
 criterion_seq: 4
@@ -9,7 +10,7 @@ labels:
   - v0.1
   - ready-for-agent
 assignee: impl-179
-parent: T-113
+parent: E-113
 blocked_by:
   - T-176
 topic: topic-108

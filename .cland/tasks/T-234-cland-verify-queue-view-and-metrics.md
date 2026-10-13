@@ -1,7 +1,8 @@
 ---
 id: T-234
 kind: task
-title: "cland verify queue view and metrics: holder, waiters, waits, ETA, in the CLI and the workbench"
+title: "cland verify queue view and metrics: holder, waiters, waits, ETA, in the
+  CLI and the workbench"
 state: closed
 status: done
 criterion_seq: 4
@@ -9,7 +10,7 @@ labels:
   - v0.1.1
   - ready-for-agent
 assignee: impl-234
-parent: T-230
+parent: E-230
 blocked_by:
   - T-232
 topic: topic-157

@@ -8,7 +8,7 @@ labels:
   - ready-for-agent
   - slice-2
 assignee: impl-54
-parent: T-20
+parent: E-20
 blocked_by: []
 topic: topic-11
 branch: t/T-54-verdict-commit-and-provenance

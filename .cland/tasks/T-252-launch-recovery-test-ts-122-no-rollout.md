@@ -1,16 +1,17 @@
 ---
 id: T-252
 kind: task
-title: 'launch-recovery.test.ts:122 "no rollout found for thread id" about 1 in 5 runs: the fake Codex saves its rollout only after the first turn while the test relaunches at once'
+title: 'launch-recovery.test.ts:122 "no rollout found for thread id" about 1 in
+  5 runs: the fake Codex saves its rollout only after the first turn while the
+  test relaunches at once'
 state: closed
 status: done
 criterion_seq: 3
 labels:
   - v0.1.1
   - ready-for-agent
-  - tech-debt
 assignee: impl-252
-parent: T-229
+parent: E-229
 blocked_by: []
 topic: topic-166
 branch: t/T-252-launch-recovery-test-ts-122-no-rollout

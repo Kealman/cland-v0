@@ -1,7 +1,8 @@
 ---
 id: T-191
 kind: task
-title: "Layers on the inbox and the sessions: now and watch shown, background in the Agents log only, more (N) folds, archive by action"
+title: "Layers on the inbox and the sessions: now and watch shown, background in
+  the Agents log only, more (N) folds, archive by action"
 state: closed
 status: done
 criterion_seq: 4
@@ -9,7 +10,7 @@ labels:
   - v0.1
   - ready-for-agent
 assignee: impl-191
-parent: T-115
+parent: E-115
 blocked_by:
   - T-190
 topic: topic-120

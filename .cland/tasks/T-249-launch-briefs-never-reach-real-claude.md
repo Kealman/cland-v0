@@ -1,7 +1,8 @@
 ---
 id: T-249
 kind: task
-title: "Launch briefs never reach real Claude Code sessions: launch_brief_ready stays 0 after the first turn, so only the role clause arrives"
+title: "Launch briefs never reach real Claude Code sessions: launch_brief_ready
+  stays 0 after the first turn, so only the role clause arrives"
 state: closed
 status: done
 criterion_seq: 3
@@ -10,7 +11,7 @@ labels:
   - ready-for-agent
   - v0.1.1
 assignee: impl-249
-parent: T-229
+parent: E-229
 blocked_by: []
 topic: topic-151
 branch: t/T-249-launch-briefs-never-reach-real-claude

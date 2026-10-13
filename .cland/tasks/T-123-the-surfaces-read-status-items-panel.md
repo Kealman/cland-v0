@@ -1,14 +1,16 @@
 ---
 id: T-123
 kind: task
-title: "The surfaces read status: items panel filters in status terms, the tree folded by level with unscheduled last, the current release in the top bar, the board's status columns scoped to the release; T-80 closes"
+title: "The surfaces read status: items panel filters in status terms, the tree
+  folded by level with unscheduled last, the current release in the top bar, the
+  board's status columns scoped to the release; T-80 closes"
 state: closed
 status: done
 labels:
   - ready-for-agent
   - v0.1
 assignee: null
-parent: T-107
+parent: E-107
 blocked_by:
   - T-119
   - T-121

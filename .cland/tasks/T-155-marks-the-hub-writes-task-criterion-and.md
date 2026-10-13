@@ -1,14 +1,16 @@
 ---
 id: T-155
 kind: task
-title: "Marks the hub writes: task.criterion and cland task criterion for done, verify, fail, add, edit and remove, limited to the parties §3.4 names; ids never reused; the criterion marked event"
+title: "Marks the hub writes: task.criterion and cland task criterion for done,
+  verify, fail, add, edit and remove, limited to the parties §3.4 names; ids
+  never reused; the criterion marked event"
 state: closed
 status: done
 labels:
   - v0.1
   - ready-for-agent
 assignee: null
-parent: T-112
+parent: E-112
 blocked_by:
   - T-154
 topic: topic-71

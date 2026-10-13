@@ -1,14 +1,15 @@
 ---
 id: T-57
 kind: task
-title: "cland --headless --qa: a scripted QA case drives a headless workbench and exits with its verdict"
+title: "cland --headless --qa: a scripted QA case drives a headless workbench
+  and exits with its verdict"
 state: closed
 status: done
 labels:
   - ready-for-agent
   - slice-2
 assignee: impl-57
-parent: T-20
+parent: E-20
 blocked_by: []
 topic: topic-14
 branch: t/T-57-headless-qa-runner

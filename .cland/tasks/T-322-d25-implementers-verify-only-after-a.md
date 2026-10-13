@@ -1,16 +1,16 @@
 ---
 id: T-322
 kind: task
-title: "D25: Implementers verify only after a clear review verdict, at the exact reviewed head (clauses and skills)"
+title: "D25: Implementers verify only after a clear review verdict, at the exact
+  reviewed head (clauses and skills)"
 state: open
 status: review
 criterion_seq: 3
 labels:
-  - tech-debt
   - hub
   - ready-for-agent
 assignee: null
-parent: E-216
+parent: C-216
 blocked_by: []
 topic: topic-201
 branch: t/T-322-d25-implementers-verify-only-after-a

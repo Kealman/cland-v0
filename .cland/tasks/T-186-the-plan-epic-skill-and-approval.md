@@ -1,7 +1,8 @@
 ---
 id: T-186
 kind: task
-title: "The plan-epic skill and approval: drafting a plan, [plan] approval, task.plan approve, per-group lanes"
+title: "The plan-epic skill and approval: drafting a plan, [plan] approval,
+  task.plan approve, per-group lanes"
 state: closed
 status: done
 criterion_seq: 5
@@ -9,7 +10,7 @@ labels:
   - v0.1
   - ready-for-agent
 assignee: impl-186
-parent: T-114
+parent: E-114
 blocked_by:
   - T-183
 topic: topic-111

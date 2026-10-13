@@ -1,7 +1,8 @@
 ---
 id: T-199
 kind: task
-title: A lead's review or QA request reaches one verifier, not every holder of the role
+title: A lead's review or QA request reaches one verifier, not every holder of
+  the role
 state: closed
 status: done
 criterion_seq: 4
@@ -9,7 +10,7 @@ labels:
   - v0.1
   - ready-for-agent
 assignee: impl-199
-parent: T-108
+parent: E-108
 blocked_by: []
 topic: topic-130
 branch: t/T-199-a-lead-s-review-or-qa-request-reaches

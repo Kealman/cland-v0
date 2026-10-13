@@ -1,7 +1,8 @@
 ---
 id: T-188
 kind: task
-title: "The plan view mid-way: closed and open stages, change marks in the watch colour, S2 tags on item rows"
+title: "The plan view mid-way: closed and open stages, change marks in the watch
+  colour, S2 tags on item rows"
 state: closed
 status: done
 criterion_seq: 4
@@ -9,7 +10,7 @@ labels:
   - v0.1
   - ready-for-agent
 assignee: impl-188
-parent: T-114
+parent: E-114
 blocked_by:
   - T-187
   - T-185

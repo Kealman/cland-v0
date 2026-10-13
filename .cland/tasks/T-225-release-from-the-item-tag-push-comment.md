@@ -1,7 +1,8 @@
 ---
 id: T-225
 kind: task
-title: "Release from the item: tag, push, comment the tag on the item and close it; the release skill and Coordinator clause release from the item"
+title: "Release from the item: tag, push, comment the tag on the item and close
+  it; the release skill and Coordinator clause release from the item"
 state: closed
 status: done
 criterion_seq: 4
@@ -9,7 +10,7 @@ labels:
   - ready-for-agent
   - v0.1
 assignee: impl-225
-parent: T-117
+parent: E-117
 blocked_by:
   - T-224
 topic: topic-139

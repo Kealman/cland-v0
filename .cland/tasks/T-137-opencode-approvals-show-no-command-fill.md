@@ -1,15 +1,15 @@
 ---
 id: T-137
 kind: task
-title: "OpenCode approvals show no command: fill approvalCommand from OpenCode's permission data"
+title: "OpenCode approvals show no command: fill approvalCommand from OpenCode's
+  permission data"
 state: closed
 status: done
 criterion_seq: 4
 labels:
-  - tech-debt
   - ready-for-agent
 assignee: impl-137
-parent: T-229
+parent: E-229
 blocked_by: []
 topic: topic-164
 branch: t/T-137-opencode-approvals-show-no-command-fill

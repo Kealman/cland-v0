@@ -1,7 +1,8 @@
 ---
 id: T-168
 kind: task
-title: "Sessions panel shows a verifier's held item, tagged with its role, instead of free: holds in the hub's session data"
+title: "Sessions panel shows a verifier's held item, tagged with its role,
+  instead of free: holds in the hub's session data"
 state: closed
 status: done
 labels:
@@ -9,7 +10,7 @@ labels:
   - ready-for-agent
   - bug
 assignee: null
-parent: T-107
+parent: E-107
 blocked_by: []
 topic: topic-75
 branch: t/T-168-sessions-panel-shows-a-verifier-s-held

@@ -1,14 +1,16 @@
 ---
 id: T-127
 kind: task
-title: "Sessions grouped by state: waiting, busy and idle groups, a folded stopped line, the expanding selected row with the approval's command, and the sessions chip"
+title: "Sessions grouped by state: waiting, busy and idle groups, a folded
+  stopped line, the expanding selected row with the approval's command, and the
+  sessions chip"
 state: closed
 status: done
 labels:
   - ready-for-agent
   - v0.1
 assignee: null
-parent: T-109
+parent: E-109
 blocked_by:
   - T-126
 topic: topic-48

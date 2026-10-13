@@ -1,7 +1,8 @@
 ---
 id: T-184
 kind: task
-title: "The gate reads the plan: QA policy per stage or override, qa_default, qa-required retired and migrated, ready from the policy"
+title: "The gate reads the plan: QA policy per stage or override, qa_default,
+  qa-required retired and migrated, ready from the policy"
 state: closed
 status: done
 criterion_seq: 4
@@ -9,7 +10,7 @@ labels:
   - v0.1
   - ready-for-agent
 assignee: impl-184
-parent: T-114
+parent: E-114
 blocked_by:
   - T-183
 topic: topic-101

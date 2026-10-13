@@ -1,14 +1,15 @@
 ---
 id: T-164
 kind: task
-title: "Launch role notice: 'took <Role> at launch' goes missing when spawn acceptance and the first hello race (T-141 regression)"
+title: "Launch role notice: 'took <Role> at launch' goes missing when spawn
+  acceptance and the first hello race (T-141 regression)"
 state: closed
 status: done
 labels:
   - v0.1
   - ready-for-agent
 assignee: null
-parent: T-108
+parent: E-108
 blocked_by: []
 topic: topic-73
 branch: t/T-164-launch-role-notice-took-role-at-launch

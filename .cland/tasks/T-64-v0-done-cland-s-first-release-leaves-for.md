@@ -1,14 +1,15 @@
 ---
 id: T-64
 kind: task
-title: "v0 done: cland's first release leaves for GitHub through cland release from inside cland"
+title: "v0 done: cland's first release leaves for GitHub through cland release
+  from inside cland"
 state: closed
 status: done
 labels:
   - ready-for-human
   - slice-2
 assignee: null
-parent: T-20
+parent: E-20
 blocked_by:
   - T-53
   - T-54

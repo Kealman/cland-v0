@@ -1,16 +1,16 @@
 ---
 id: T-102
 kind: task
-title: "Process termination ownership outside the sweep: overlapping doctors on deleted hubs, direct endProcess calls, and the SIGCONT doc"
+title: "Process termination ownership outside the sweep: overlapping doctors on
+  deleted hubs, direct endProcess calls, and the SIGCONT doc"
 state: closed
 status: done
 criterion_seq: 4
 labels:
   - hub
-  - tech-debt
   - ready-for-agent
 assignee: impl-102
-parent: T-229
+parent: E-229
 blocked_by:
   - T-129
 topic: topic-158

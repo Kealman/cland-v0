@@ -1,14 +1,15 @@
 ---
 id: T-80
 kind: task
-title: 'Items panel: the "in work" filter hides items between review and QA and planned items'
+title: 'Items panel: the "in work" filter hides items between review and QA and
+  planned items'
 state: closed
 status: done
 labels:
   - needs-triage
   - ui
 assignee: null
-parent: T-19
+parent: E-19
 blocked_by: []
 topic: null
 branch: null

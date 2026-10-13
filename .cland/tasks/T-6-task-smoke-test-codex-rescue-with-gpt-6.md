@@ -1,13 +1,13 @@
 ---
 id: T-6
 kind: task
-title: "Task: smoke-test codex:rescue with gpt 6.1 sol and gpt 6 astra"
+title: "smoke-test codex:rescue with gpt 6.1 sol and gpt 6 astra"
 state: closed
 status: done
 labels:
   - wayfinder:task
 assignee: Kealman
-parent: T-1
+parent: M-1
 blocked_by: []
 topic: null
 branch: null

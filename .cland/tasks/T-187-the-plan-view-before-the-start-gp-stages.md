@@ -1,7 +1,8 @@
 ---
 id: T-187
 kind: task
-title: "The plan view before the start: gp, stages with lanes as columns, QA lines, the approval card"
+title: "The plan view before the start: gp, stages with lanes as columns, QA
+  lines, the approval card"
 state: closed
 status: done
 criterion_seq: 4
@@ -9,7 +10,7 @@ labels:
   - v0.1
   - ready-for-agent
 assignee: impl-187
-parent: T-114
+parent: E-114
 blocked_by:
   - T-183
 topic: topic-99

@@ -1,14 +1,16 @@
 ---
 id: T-140
 kind: task
-title: "The other events and the hygiene: topic, usage and artifact events, subtree subjects, digest now, coalescing, the digest cap, lifetimes, the events' limit and cland hub subscriptions"
+title: "The other events and the hygiene: topic, usage and artifact events,
+  subtree subjects, digest now, coalescing, the digest cap, lifetimes, the
+  events' limit and cland hub subscriptions"
 state: closed
 status: done
 labels:
   - v0.1
   - ready-for-agent
 assignee: null
-parent: T-108
+parent: E-108
 blocked_by:
   - T-139
 topic: topic-57

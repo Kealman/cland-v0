@@ -1,14 +1,16 @@
 ---
 id: T-142
 kind: task
-title: "Default subscriptions of leads: the Coordinator holds the tree less claimed items, an item's lead its item; death and long idle reach the node's lead or the next one up"
+title: "Default subscriptions of leads: the Coordinator holds the tree less
+  claimed items, an item's lead its item; death and long idle reach the node's
+  lead or the next one up"
 state: closed
 status: done
 labels:
   - v0.1
   - ready-for-agent
 assignee: null
-parent: T-108
+parent: E-108
 blocked_by:
   - T-140
   - T-141

@@ -1,7 +1,9 @@
 ---
 id: T-190
 kind: task
-title: "One visibility classifier: messages, inbox events, sessions, items and artifacts placed by the default table, [visibility] overrides; thread, top bar and palette move onto it"
+title: "One visibility classifier: messages, inbox events, sessions, items and
+  artifacts placed by the default table, [visibility] overrides; thread, top bar
+  and palette move onto it"
 state: closed
 status: done
 criterion_seq: 4
@@ -9,7 +11,7 @@ labels:
   - v0.1
   - ready-for-agent
 assignee: null
-parent: T-115
+parent: E-115
 blocked_by: []
 topic: topic-92
 branch: t/T-190-one-visibility-classifier-messages-inbox

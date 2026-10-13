@@ -1,7 +1,8 @@
 ---
 id: T-166
 kind: task
-title: Inbox notifications newest first, capped at the last N with a count of earlier ones
+title: Inbox notifications newest first, capped at the last N with a count of
+  earlier ones
 state: closed
 status: done
 criterion_seq: 4
@@ -9,7 +10,7 @@ labels:
   - v0.1
   - ready-for-agent
 assignee: impl-166
-parent: T-115
+parent: E-115
 blocked_by: []
 topic: topic-131
 branch: t/T-166-inbox-notifications-newest-first-capped

@@ -8,7 +8,7 @@ labels:
   - ready-for-agent
   - slice-2
 assignee: impl-56
-parent: T-20
+parent: E-20
 blocked_by: []
 topic: topic-13
 branch: t/T-56-agents-topic-filters

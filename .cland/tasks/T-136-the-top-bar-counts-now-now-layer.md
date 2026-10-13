@@ -1,14 +1,15 @@
 ---
 id: T-136
 kind: task
-title: "The top bar counts now: now-layer messages and asks only, through the message-layer rule"
+title: "The top bar counts now: now-layer messages and asks only, through the
+  message-layer rule"
 state: closed
 status: done
 labels:
   - v0.1
   - ready-for-agent
 assignee: null
-parent: T-110
+parent: E-110
 blocked_by:
   - T-134
 topic: topic-60

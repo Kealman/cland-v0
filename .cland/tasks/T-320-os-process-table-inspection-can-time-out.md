@@ -1,14 +1,15 @@
 ---
 id: T-320
 kind: task
-title: OS process-table inspection can time out under sustained synthetic CPU contention (ps probe in a stop, seen in T-282's container proof)
+title: OS process-table inspection can time out under sustained synthetic CPU
+  contention (ps probe in a stop, seen in T-282's container proof)
 state: closed
 status: done
 labels:
   - needs-triage
   - hub
 assignee: null
-parent: E-216
+parent: C-216
 blocked_by: []
 topic: null
 branch: null

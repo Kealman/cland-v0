@@ -1,14 +1,15 @@
 ---
 id: T-156
 kind: task
-title: "Verdicts verify: --verified with ids or all on a verdict, failed criteria with notes, the Reviewer and QA clauses and skills verify by id"
+title: "Verdicts verify: --verified with ids or all on a verdict, failed
+  criteria with notes, the Reviewer and QA clauses and skills verify by id"
 state: closed
 status: done
 labels:
   - v0.1
   - ready-for-agent
 assignee: null
-parent: T-112
+parent: E-112
 blocked_by:
   - T-155
 topic: topic-86

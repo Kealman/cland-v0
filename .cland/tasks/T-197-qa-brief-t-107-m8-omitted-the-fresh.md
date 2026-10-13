@@ -8,7 +8,7 @@ labels:
   - qa-found
   - needs-triage
 assignee: null
-parent: T-107
+parent: E-107
 blocked_by: []
 topic: null
 branch: null

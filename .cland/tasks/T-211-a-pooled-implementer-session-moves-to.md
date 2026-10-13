@@ -6,10 +6,9 @@ state: closed
 status: done
 criterion_seq: 3
 labels:
-  - tech-debt
   - ready-for-agent
 assignee: impl-211
-parent: T-229
+parent: E-229
 blocked_by: []
 topic: topic-160
 branch: t/T-211-a-pooled-implementer-session-moves-to

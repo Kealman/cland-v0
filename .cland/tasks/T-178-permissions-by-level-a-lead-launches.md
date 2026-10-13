@@ -1,7 +1,8 @@
 ---
 id: T-178
 kind: task
-title: "Permissions by level: a Lead launches, stops, requests review and merges inside its subtree; refusals name the level"
+title: "Permissions by level: a Lead launches, stops, requests review and merges
+  inside its subtree; refusals name the level"
 state: closed
 status: done
 criterion_seq: 4
@@ -9,7 +10,7 @@ labels:
   - v0.1
   - ready-for-agent
 assignee: impl-178
-parent: T-113
+parent: E-113
 blocked_by:
   - T-176
 topic: topic-107

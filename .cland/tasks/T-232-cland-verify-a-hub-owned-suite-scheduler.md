@@ -1,7 +1,8 @@
 ---
 id: T-232
 kind: task
-title: "cland verify: a hub-owned suite scheduler with admission by load budget and priority, replacing the lock file as the source of truth"
+title: "cland verify: a hub-owned suite scheduler with admission by load budget
+  and priority, replacing the lock file as the source of truth"
 state: closed
 status: done
 criterion_seq: 5
@@ -9,7 +10,7 @@ labels:
   - v0.1.1
   - ready-for-agent
 assignee: impl-232
-parent: T-230
+parent: E-230
 blocked_by: []
 topic: topic-143
 branch: t/T-232-cland-verify-a-hub-owned-suite-scheduler

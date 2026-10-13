@@ -1,14 +1,16 @@
 ---
 id: T-157
 kind: task
-title: "The criteria gate: cland merge refuses until every criterion is done and verified and names them; ready waits for the same; in-flight items are not stranded"
+title: "The criteria gate: cland merge refuses until every criterion is done and
+  verified and names them; ready waits for the same; in-flight items are not
+  stranded"
 state: closed
 status: done
 labels:
   - v0.1
   - ready-for-agent
 assignee: null
-parent: T-112
+parent: E-112
 blocked_by:
   - T-155
   - T-156

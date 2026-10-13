@@ -1,15 +1,15 @@
 ---
 id: T-214
 kind: task
-title: "The suite runner picks its phases from the diff: hub-only changes skip the Neovim phase, Neovim-only changes skip the hub phase"
+title: "The suite runner picks its phases from the diff: hub-only changes skip
+  the Neovim phase, Neovim-only changes skip the hub phase"
 state: closed
 status: done
 criterion_seq: 5
 labels:
-  - tech-debt
   - ready-for-agent
 assignee: impl-214
-parent: T-216
+parent: C-216
 blocked_by:
   - T-174
 topic: topic-127

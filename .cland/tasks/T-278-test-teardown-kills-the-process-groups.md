@@ -1,7 +1,8 @@
 ---
 id: T-278
 kind: task
-title: Test teardown kills the process groups it started; the machine-wide scan once per phase
+title: Test teardown kills the process groups it started; the machine-wide scan
+  once per phase
 state: closed
 status: done
 criterion_seq: 6
@@ -10,7 +11,7 @@ labels:
   - hub
   - ready-for-agent
 assignee: null
-parent: T-268
+parent: E-268
 blocked_by:
   - T-277
 topic: topic-175

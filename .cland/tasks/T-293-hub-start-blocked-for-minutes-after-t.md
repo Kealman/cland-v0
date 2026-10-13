@@ -1,13 +1,14 @@
 ---
 id: T-293
 kind: task
-title: "Hub start blocked for minutes after T-283: the inbox recomputed on every event with a quadratic replied subquery"
+title: "Hub start blocked for minutes after T-283: the inbox recomputed on every
+  event with a quadratic replied subquery"
 state: closed
 status: done
 labels:
   - ready-for-agent
 assignee: null
-parent: T-216
+parent: C-216
 blocked_by: []
 topic: null
 branch: null

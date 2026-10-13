@@ -1,14 +1,15 @@
 ---
 id: T-245
 kind: task
-title: Categories of items that gather outside the epics (tech debt, bugs, follow-ups, ideas)
+title: Categories of items that gather outside the epics (tech debt, bugs,
+  follow-ups, ideas)
 state: closed
 status: done
 labels:
   - v0.1.2
   - ready-for-human
 assignee: null
-parent: T-228
+parent: R-228
 blocked_by: []
 topic: null
 branch: null

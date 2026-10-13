@@ -1,17 +1,18 @@
 ---
 id: T-226
 kind: task
-title: A role-addressed review request with no free verifier returns "empty"; find why a live idle verifier wasn't eligible, and decide whether the request should queue
+title: A role-addressed review request with no free verifier returns "empty";
+  find why a live idle verifier wasn't eligible, and decide whether the request
+  should queue
 state: closed
 status: done
 criterion_seq: 3
 labels:
   - qa-found
   - ready-for-agent
-  - tech-debt
   - low
 assignee: impl-226
-parent: T-229
+parent: E-229
 blocked_by: []
 topic: topic-146
 branch: t/T-226-a-role-addressed-review-request-with-no

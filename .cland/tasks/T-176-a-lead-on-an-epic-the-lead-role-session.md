@@ -1,7 +1,8 @@
 ---
 id: T-176
 kind: task
-title: "A Lead on an epic: the lead role, session.launch naming an epic gives its lead claim, only the Coordinator launches Leads"
+title: "A Lead on an epic: the lead role, session.launch naming an epic gives
+  its lead claim, only the Coordinator launches Leads"
 state: closed
 status: done
 criterion_seq: 4
@@ -9,7 +10,7 @@ labels:
   - v0.1
   - ready-for-agent
 assignee: null
-parent: T-113
+parent: E-113
 blocked_by: []
 topic: topic-91
 branch: t/T-176-a-lead-on-an-epic-the-lead-role-session

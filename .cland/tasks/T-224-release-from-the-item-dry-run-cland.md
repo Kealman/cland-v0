@@ -1,7 +1,9 @@
 ---
 id: T-224
 kind: task
-title: "Release from the item, dry run: `cland release --item T-n --dry-run` refuses open children or a missing version, and previews the tag and the notes"
+title: "Release from the item, dry run: `cland release --item T-n --dry-run`
+  refuses open children or a missing version, and previews the tag and the
+  notes"
 state: closed
 status: done
 criterion_seq: 4
@@ -9,7 +11,7 @@ labels:
   - ready-for-agent
   - v0.1
 assignee: impl-224
-parent: T-117
+parent: E-117
 blocked_by: []
 topic: topic-138
 branch: t/T-224-release-from-the-item-dry-run-cland

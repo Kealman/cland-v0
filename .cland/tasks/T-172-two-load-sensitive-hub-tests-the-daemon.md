@@ -1,16 +1,16 @@
 ---
 id: T-172
 kind: task
-title: "Two load-sensitive hub tests: the daemon stop-log order and the handover audit read race their background writes"
+title: "Two load-sensitive hub tests: the daemon stop-log order and the handover
+  audit read race their background writes"
 state: closed
 status: done
 criterion_seq: 3
 labels:
-  - tech-debt
   - ready-for-agent
   - high
 assignee: impl-172
-parent: T-19
+parent: E-19
 blocked_by: []
 topic: topic-110
 branch: t/T-172-two-load-sensitive-hub-tests-the-daemon

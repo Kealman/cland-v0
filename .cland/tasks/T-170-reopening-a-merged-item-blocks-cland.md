@@ -1,15 +1,15 @@
 ---
 id: T-170
 kind: task
-title: "Reopening a merged item blocks cland push and strands its worktree: one rule for reopen after merge"
+title: "Reopening a merged item blocks cland push and strands its worktree: one
+  rule for reopen after merge"
 state: closed
 status: done
 criterion_seq: 4
 labels:
-  - tech-debt
   - ready-for-agent
 assignee: impl-170
-parent: T-229
+parent: E-229
 blocked_by: []
 topic: topic-161
 branch: t/T-170-reopening-a-merged-item-blocks-cland

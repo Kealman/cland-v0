@@ -1,14 +1,15 @@
 ---
 id: T-58
 kind: task
-title: "task branches: claiming a task makes its branch from dev in its own worktree, and its Implementer launches there"
+title: "task branches: claiming a task makes its branch from dev in its own
+  worktree, and its Implementer launches there"
 state: closed
 status: done
 labels:
   - ready-for-agent
   - slice-2
 assignee: impl-58
-parent: T-20
+parent: E-20
 blocked_by:
   - T-53
 topic: topic-16

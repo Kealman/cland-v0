@@ -1,7 +1,8 @@
 ---
 id: T-183
 kind: task
-title: "The plan in the epic's file: the ## Plan YAML block, task.plan set and show, validation, journalled changes"
+title: "The plan in the epic's file: the ## Plan YAML block, task.plan set and
+  show, validation, journalled changes"
 state: closed
 status: done
 criterion_seq: 4
@@ -9,7 +10,7 @@ labels:
   - v0.1
   - ready-for-agent
 assignee: null
-parent: T-114
+parent: E-114
 blocked_by: []
 topic: topic-90
 branch: t/T-183-the-plan-in-the-epic-s-file-the-plan

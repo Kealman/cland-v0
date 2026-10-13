@@ -1,7 +1,8 @@
 ---
 id: T-162
 kind: task
-title: "Graph stages: stage tags on nodes, s groups columns by stage and names edges against the plan, gp on a stage"
+title: "Graph stages: stage tags on nodes, s groups columns by stage and names
+  edges against the plan, gp on a stage"
 state: closed
 status: done
 criterion_seq: 5
@@ -9,7 +10,7 @@ labels:
   - v0.1
   - ready-for-agent
 assignee: impl-162
-parent: T-116
+parent: E-116
 blocked_by:
   - T-161
   - T-183

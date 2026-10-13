@@ -1,7 +1,8 @@
 ---
 id: T-195
 kind: task
-title: "The Artifacts browser: the centre view with mine, this topic, kept, by role and archived, editing in place, attaching with s"
+title: "The Artifacts browser: the centre view with mine, this topic, kept, by
+  role and archived, editing in place, attaching with s"
 state: closed
 status: done
 criterion_seq: 4
@@ -9,7 +10,7 @@ labels:
   - v0.1
   - ready-for-agent
 assignee: impl-195b
-parent: T-115
+parent: E-115
 blocked_by:
   - T-193
   - T-194

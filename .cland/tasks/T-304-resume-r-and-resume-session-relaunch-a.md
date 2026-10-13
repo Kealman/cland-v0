@@ -1,7 +1,8 @@
 ---
 id: T-304
 kind: task
-title: 'Resume: r and "Resume session" relaunch a stopped session on its harness conversation, with a fresh launch on the same brief when it cannot'
+title: 'Resume: r and "Resume session" relaunch a stopped session on its harness
+  conversation, with a fresh launch on the same brief when it cannot'
 state: closed
 status: done
 criterion_seq: 5
@@ -11,7 +12,7 @@ labels:
   - hub
   - nvim
 assignee: null
-parent: T-275
+parent: E-275
 blocked_by: []
 topic: topic-186
 branch: t/T-304-resume-r-and-resume-session-relaunch-a

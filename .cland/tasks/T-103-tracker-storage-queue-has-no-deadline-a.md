@@ -7,10 +7,9 @@ status: done
 criterion_seq: 4
 labels:
   - hub
-  - tech-debt
   - ready-for-agent
 assignee: impl-103
-parent: T-229
+parent: E-229
 blocked_by: []
 topic: topic-163
 branch: t/T-103-tracker-storage-queue-has-no-deadline-a

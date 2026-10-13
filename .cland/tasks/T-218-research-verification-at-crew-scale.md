@@ -1,14 +1,14 @@
 ---
 id: T-218
 kind: task
-title: "Research: verification at crew scale (suite anatomy, test architecture, merge queues, cland verify)"
+title: "Research: verification at crew scale (suite anatomy, test architecture,
+  merge queues, cland verify)"
 state: open
 status: backlog
 labels:
-  - tech-debt
   - research
 assignee: null
-parent: T-216
+parent: C-216
 blocked_by: []
 topic: null
 branch: null

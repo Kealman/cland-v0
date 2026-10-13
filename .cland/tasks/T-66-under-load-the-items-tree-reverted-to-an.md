@@ -1,14 +1,15 @@
 ---
 id: T-66
 kind: task
-title: "Under load the items tree reverted to an earlier snapshot after live updates: a late full list overwriting newer events?"
+title: "Under load the items tree reverted to an earlier snapshot after live
+  updates: a late full list overwriting newer events?"
 state: closed
 status: done
 labels:
   - slice-1
   - ready-for-agent
 assignee: null
-parent: T-19
+parent: E-19
 blocked_by: []
 topic: topic-34
 branch: t/T-66-under-load-the-items-tree-reverted-to-an

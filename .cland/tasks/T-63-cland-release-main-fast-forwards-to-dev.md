@@ -1,14 +1,15 @@
 ---
 id: T-63
 kind: task
-title: "cland release: main fast-forwards to dev, tagged with notes from the items, and goes to GitHub; cland sync brings GitHub back"
+title: "cland release: main fast-forwards to dev, tagged with notes from the
+  items, and goes to GitHub; cland sync brings GitHub back"
 state: closed
 status: done
 labels:
   - ready-for-agent
   - slice-2
 assignee: impl-63
-parent: T-20
+parent: E-20
 blocked_by:
   - T-59
 topic: topic-25

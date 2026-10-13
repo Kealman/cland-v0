@@ -1,7 +1,8 @@
 ---
 id: T-193
 kind: task
-title: "Folder artifacts and their lifetime: folder with an entry file, human and Aide artifacts never expire, kept, artifact.keep, move and archive"
+title: "Folder artifacts and their lifetime: folder with an entry file, human
+  and Aide artifacts never expire, kept, artifact.keep, move and archive"
 state: closed
 status: done
 criterion_seq: 4
@@ -9,7 +10,7 @@ labels:
   - v0.1
   - ready-for-agent
 assignee: impl-193
-parent: T-115
+parent: E-115
 blocked_by: []
 topic: topic-102
 branch: t/T-193-folder-artifacts-and-their-lifetime

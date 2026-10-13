@@ -1,14 +1,16 @@
 ---
 id: T-121
 kind: task
-title: "Ready and the verifier holds: ready when the gate's verdicts are clear, withdrawn when one goes stale; Reviewer and QA take a hold beside the Implementer's claim"
+title: "Ready and the verifier holds: ready when the gate's verdicts are clear,
+  withdrawn when one goes stale; Reviewer and QA take a hold beside the
+  Implementer's claim"
 state: closed
 status: done
 labels:
   - ready-for-agent
   - v0.1
 assignee: null
-parent: T-107
+parent: E-107
 blocked_by:
   - T-120
 topic: topic-47

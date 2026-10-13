@@ -1,14 +1,15 @@
 ---
 id: T-219
 kind: task
-title: "Delete an artifact from the browser: x with confirmation, a human-only delete frame"
+title: "Delete an artifact from the browser: x with confirmation, a human-only
+  delete frame"
 state: closed
 status: done
 criterion_seq: 4
 labels:
   - ready-for-agent
 assignee: impl-219
-parent: T-115
+parent: E-115
 blocked_by:
   - T-195
 topic: topic-132

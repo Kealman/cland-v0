@@ -1,14 +1,14 @@
 ---
 id: T-144
 kind: task
-title: Retention keeps another recipient's settled progress notes while a broadcast trigger is pending
+title: Retention keeps another recipient's settled progress notes while a
+  broadcast trigger is pending
 state: closed
 status: done
 labels:
-  - tech-debt
   - ready-for-agent
 assignee: null
-parent: T-19
+parent: E-19
 blocked_by: []
 topic: topic-65
 branch: t/T-144-retention-keeps-another-recipient-s

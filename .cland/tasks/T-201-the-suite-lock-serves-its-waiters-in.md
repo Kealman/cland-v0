@@ -6,11 +6,10 @@ state: closed
 status: done
 criterion_seq: 4
 labels:
-  - tech-debt
   - ready-for-agent
   - high
 assignee: impl-201
-parent: T-19
+parent: E-19
 blocked_by: []
 topic: topic-105
 branch: t/T-201-the-suite-lock-serves-its-waiters-in

@@ -1,7 +1,8 @@
 ---
 id: T-296
 kind: task
-title: "OpenCode servers get their own database: the shared database lets OpenCode's background service resume cland's sessions (#51213)"
+title: "OpenCode servers get their own database: the shared database lets
+  OpenCode's background service resume cland's sessions (#51213)"
 state: open
 status: backlog
 labels:
@@ -9,7 +10,7 @@ labels:
   - hub
   - bug
 assignee: null
-parent: T-294
+parent: R-294
 blocked_by: []
 topic: null
 branch: null

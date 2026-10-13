@@ -1,14 +1,16 @@
 ---
 id: T-154
 kind: task
-title: "Criteria in the view: the hub parses Acceptance criteria into ids, text and marks, returned as criteria; legacy checkboxes read unmarked; hand edits keep ids and marks"
+title: "Criteria in the view: the hub parses Acceptance criteria into ids, text
+  and marks, returned as criteria; legacy checkboxes read unmarked; hand edits
+  keep ids and marks"
 state: closed
 status: done
 labels:
   - v0.1
   - ready-for-agent
 assignee: null
-parent: T-112
+parent: E-112
 blocked_by: []
 topic: topic-67
 branch: t/T-154-criteria-in-the-view-the-hub-parses

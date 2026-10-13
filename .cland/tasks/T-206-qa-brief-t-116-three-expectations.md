@@ -1,14 +1,15 @@
 ---
 id: T-206
 kind: task
-title: "QA brief T-116: three expectations disagree with the product (release chip, Unplanned band, live verify)"
+title: "QA brief T-116: three expectations disagree with the product (release
+  chip, Unplanned band, live verify)"
 state: closed
 status: done
 labels:
   - qa-found
   - needs-triage
 assignee: null
-parent: T-116
+parent: E-116
 blocked_by: []
 topic: null
 branch: null

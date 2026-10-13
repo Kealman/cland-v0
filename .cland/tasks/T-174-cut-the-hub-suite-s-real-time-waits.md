@@ -1,16 +1,16 @@
 ---
 id: T-174
 kind: task
-title: "Cut the hub suite's real-time waits: configurable test windows, full suite under 5 minutes"
+title: "Cut the hub suite's real-time waits: configurable test windows, full
+  suite under 5 minutes"
 state: closed
 status: done
 criterion_seq: 4
 labels:
-  - tech-debt
   - ready-for-agent
   - high
 assignee: impl-174
-parent: T-216
+parent: C-216
 blocked_by: []
 topic: topic-119
 branch: t/T-174-cut-the-hub-suite-s-real-time-waits

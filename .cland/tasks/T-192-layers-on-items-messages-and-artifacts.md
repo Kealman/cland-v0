@@ -1,7 +1,8 @@
 ---
 id: T-192
 kind: task
-title: Layers on items, messages and artifacts; pins and mutes on topics, sessions and artifacts kept in ui.json
+title: Layers on items, messages and artifacts; pins and mutes on topics,
+  sessions and artifacts kept in ui.json
 state: closed
 status: done
 criterion_seq: 4
@@ -9,7 +10,7 @@ labels:
   - v0.1
   - ready-for-agent
 assignee: impl-192
-parent: T-115
+parent: E-115
 blocked_by:
   - T-190
 topic: topic-134

@@ -1,16 +1,16 @@
 ---
 id: T-202
 kind: task
-title: A spoke with no session name does not connect, instead of retrying into a refusal
+title: A spoke with no session name does not connect, instead of retrying into a
+  refusal
 state: closed
 status: done
 criterion_seq: 3
 labels:
-  - tech-debt
   - low
   - ready-for-agent
 assignee: impl-202
-parent: T-229
+parent: E-229
 blocked_by: []
 topic: topic-148
 branch: t/T-202-a-spoke-with-no-session-name-does-not

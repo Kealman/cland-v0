@@ -1,7 +1,8 @@
 ---
 id: T-171
 kind: task
-title: The hub owns not-clear verdicts and deaths in needsYou, each with a resolution rule
+title: The hub owns not-clear verdicts and deaths in needsYou, each with a
+  resolution rule
 state: closed
 status: done
 criterion_seq: 4
@@ -9,7 +10,7 @@ labels:
   - v0.1
   - ready-for-agent
 assignee: impl-171
-parent: T-115
+parent: E-115
 blocked_by: []
 topic: topic-129
 branch: t/T-171-the-hub-owns-not-clear-verdicts-and

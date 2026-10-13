@@ -1,14 +1,15 @@
 ---
 id: T-69
 kind: task
-title: The test harness takes a machine-wide lock before spawning daemons, runs the hub suite at bounded concurrency, and kills its daemons on failure
+title: The test harness takes a machine-wide lock before spawning daemons, runs
+  the hub suite at bounded concurrency, and kills its daemons on failure
 state: closed
 status: done
 labels:
   - ready-for-agent
   - tests
 assignee: impl-69
-parent: T-19
+parent: E-19
 blocked_by: []
 topic: topic-20
 branch: t/T-69-suite-lock-and-daemon-cleanup

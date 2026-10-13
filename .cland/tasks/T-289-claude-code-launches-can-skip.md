@@ -1,7 +1,8 @@
 ---
 id: T-289
 kind: task
-title: "Claude Code launches can skip permissions: a roles.toml launch option passes --dangerously-skip-permissions"
+title: "Claude Code launches can skip permissions: a roles.toml launch option
+  passes --dangerously-skip-permissions"
 state: closed
 status: done
 rank: 1730
@@ -9,7 +10,7 @@ criterion_seq: 3
 labels:
   - ready-for-agent
 assignee: null
-parent: T-216
+parent: C-216
 blocked_by: []
 topic: topic-172
 branch: t/T-289-claude-code-launches-can-skip

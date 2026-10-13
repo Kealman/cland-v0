@@ -1,7 +1,8 @@
 ---
 id: T-267
 kind: task
-title: "Suite spend: 36k git and 20k ps spawns per run; measure the sources and cut them where there is room"
+title: "Suite spend: 36k git and 20k ps spawns per run; measure the sources and
+  cut them where there is room"
 state: closed
 status: done
 criterion_seq: 3
@@ -9,7 +10,7 @@ labels:
   - v0.1.2
   - hub
 assignee: null
-parent: T-268
+parent: E-268
 blocked_by: []
 topic: null
 branch: null

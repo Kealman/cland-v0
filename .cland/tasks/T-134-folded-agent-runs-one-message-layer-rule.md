@@ -1,14 +1,15 @@
 ---
 id: T-134
 kind: task
-title: "Folded agent runs: one message-layer rule, manual per-run folds with the fold keys and Enter, the folded count, what never folds"
+title: "Folded agent runs: one message-layer rule, manual per-run folds with the
+  fold keys and Enter, the folded count, what never folds"
 state: closed
 status: done
 labels:
   - v0.1
   - ready-for-agent
 assignee: null
-parent: T-110
+parent: E-110
 blocked_by:
   - T-133
 topic: topic-56

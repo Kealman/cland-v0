@@ -1,7 +1,8 @@
 ---
 id: T-291
 kind: task
-title: "Tests that read hub.log or journal.jsonl right after an event race the hub's asynchronous writes: audit them and wait on the flushLogs barrier"
+title: "Tests that read hub.log or journal.jsonl right after an event race the
+  hub's asynchronous writes: audit them and wait on the flushLogs barrier"
 state: closed
 status: done
 criterion_seq: 3
@@ -10,7 +11,7 @@ labels:
   - ready-for-agent
   - v0.1.2
 assignee: null
-parent: T-216
+parent: C-216
 blocked_by: []
 topic: topic-177
 branch: t/T-291-tests-that-read-hub-log-or-journal-jsonl

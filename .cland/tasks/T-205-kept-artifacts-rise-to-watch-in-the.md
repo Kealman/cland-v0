@@ -9,7 +9,7 @@ labels:
   - v0.1
   - ready-for-agent
 assignee: impl-205
-parent: T-115
+parent: E-115
 blocked_by:
   - T-190
   - T-193

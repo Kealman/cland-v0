@@ -1,14 +1,16 @@
 ---
 id: T-139
 kind: task
-title: "Subscriptions to sessions and items: subscribe, unsubscribe and subscriptions with session.state and task events, delivered as one-line hub deliveries at the next turn"
+title: "Subscriptions to sessions and items: subscribe, unsubscribe and
+  subscriptions with session.state and task events, delivered as one-line hub
+  deliveries at the next turn"
 state: closed
 status: done
 labels:
   - v0.1
   - ready-for-agent
 assignee: null
-parent: T-108
+parent: E-108
 blocked_by:
   - T-138
 topic: topic-55

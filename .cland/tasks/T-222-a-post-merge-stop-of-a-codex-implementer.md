@@ -1,15 +1,15 @@
 ---
 id: T-222
 kind: task
-title: A post-merge stop of a Codex Implementer is recorded as a death, and `cland session stop` refuses on its process identity
+title: A post-merge stop of a Codex Implementer is recorded as a death, and
+  `cland session stop` refuses on its process identity
 state: closed
 status: done
 criterion_seq: 3
 labels:
   - ready-for-agent
-  - tech-debt
 assignee: impl-222
-parent: T-229
+parent: E-229
 blocked_by:
   - T-147
 topic: topic-147

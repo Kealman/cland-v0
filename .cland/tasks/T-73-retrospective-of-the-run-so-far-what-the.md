@@ -1,14 +1,15 @@
 ---
 id: T-73
 kind: task
-title: "Retrospective of the run so far: what the run notes say about pace, failure patterns and process, for planning the rest of v0"
+title: "Retrospective of the run so far: what the run notes say about pace,
+  failure patterns and process, for planning the rest of v0"
 state: closed
 status: done
 labels:
   - ready-for-agent
   - process
 assignee: impl-73
-parent: T-20
+parent: E-20
 blocked_by: []
 topic: topic-26
 branch: t/T-73-retrospective-of-the-run-so-far-what-the

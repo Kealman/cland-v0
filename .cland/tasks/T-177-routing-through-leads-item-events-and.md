@@ -1,7 +1,8 @@
 ---
 id: T-177
 kind: task
-title: "Routing through Leads: item events and reports climb through Leads; Leads hold their subtree's default subscriptions"
+title: "Routing through Leads: item events and reports climb through Leads;
+  Leads hold their subtree's default subscriptions"
 state: closed
 status: done
 criterion_seq: 4
@@ -9,7 +10,7 @@ labels:
   - v0.1
   - ready-for-agent
 assignee: impl-177
-parent: T-113
+parent: E-113
 blocked_by:
   - T-176
 topic: topic-103

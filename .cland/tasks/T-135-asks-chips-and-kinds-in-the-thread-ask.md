@@ -1,14 +1,15 @@
 ---
 id: T-135
 kind: task
-title: "Asks, chips and kinds in the thread: ask cards answered in place, artifact chips, the kind on each header, watch dimming"
+title: "Asks, chips and kinds in the thread: ask cards answered in place,
+  artifact chips, the kind on each header, watch dimming"
 state: closed
 status: done
 labels:
   - v0.1
   - ready-for-agent
 assignee: null
-parent: T-110
+parent: E-110
 blocked_by:
   - T-134
 topic: topic-59

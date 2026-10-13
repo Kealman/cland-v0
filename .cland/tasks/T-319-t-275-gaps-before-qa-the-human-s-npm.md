@@ -1,7 +1,9 @@
 ---
 id: T-319
 kind: task
-title: "T-275 gaps before QA: the human's npm test ahead of ranked items, the human holder shown as human, the queue line and prune in the clauses and READMEs"
+title: "T-275 gaps before QA: the human's npm test ahead of ranked items, the
+  human holder shown as human, the queue line and prune in the clauses and
+  READMEs"
 state: closed
 status: done
 criterion_seq: 5
@@ -11,7 +13,7 @@ labels:
   - nvim
   - ready-for-agent
 assignee: null
-parent: T-275
+parent: E-275
 blocked_by: []
 topic: topic-194
 branch: t/T-319-t-275-gaps-before-qa-the-human-s-npm

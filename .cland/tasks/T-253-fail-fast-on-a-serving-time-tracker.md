@@ -6,9 +6,8 @@ state: open
 status: backlog
 labels:
   - hub
-  - tech-debt
 assignee: null
-parent: T-273
+parent: E-273
 blocked_by: []
 topic: null
 branch: null

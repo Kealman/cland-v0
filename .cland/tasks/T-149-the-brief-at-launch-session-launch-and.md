@@ -1,14 +1,16 @@
 ---
 id: T-149
 kind: task
-title: "The brief at launch: session.launch and the CLI take a brief (text or artifact), delivered once after the role clause on all three adapters, never again on reconnect"
+title: "The brief at launch: session.launch and the CLI take a brief (text or
+  artifact), delivered once after the role clause on all three adapters, never
+  again on reconnect"
 state: closed
 status: done
 labels:
   - v0.1
   - ready-for-agent
 assignee: null
-parent: T-111
+parent: E-111
 blocked_by:
   - T-141
 topic: topic-68

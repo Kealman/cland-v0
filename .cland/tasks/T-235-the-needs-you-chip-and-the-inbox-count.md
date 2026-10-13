@@ -1,7 +1,8 @@
 ---
 id: T-235
 kind: task
-title: The needs-you chip and the inbox count the same entries in every layer configuration
+title: The needs-you chip and the inbox count the same entries in every layer
+  configuration
 state: closed
 status: done
 criterion_seq: 3
@@ -9,7 +10,7 @@ labels:
   - v0.1.1
   - ready-for-agent
 assignee: impl-235
-parent: T-231
+parent: E-231
 blocked_by: []
 topic: topic-149
 branch: t/T-235-the-needs-you-chip-and-the-inbox-count

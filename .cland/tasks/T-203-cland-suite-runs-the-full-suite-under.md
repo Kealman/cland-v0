@@ -1,16 +1,16 @@
 ---
 id: T-203
 kind: task
-title: cland suite runs the full suite under the lock and posts one result for its session
+title: cland suite runs the full suite under the lock and posts one result for
+  its session
 state: closed
 status: done
 criterion_seq: 5
 labels:
-  - tech-debt
   - high
   - ready-for-agent
 assignee: impl-203
-parent: T-19
+parent: E-19
 blocked_by: []
 topic: topic-104
 branch: t/T-203-cland-suite-runs-the-full-suite-under

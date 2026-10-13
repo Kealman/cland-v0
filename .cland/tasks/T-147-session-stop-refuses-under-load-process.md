@@ -1,15 +1,15 @@
 ---
 id: T-147
 kind: task
-title: "Session stop refuses under load: 'process identity cannot be verified' on a session the hub launched"
+title: "Session stop refuses under load: 'process identity cannot be verified'
+  on a session the hub launched"
 state: closed
 status: done
 criterion_seq: 4
 labels:
-  - tech-debt
   - ready-for-agent
 assignee: impl-147
-parent: T-229
+parent: E-229
 blocked_by: []
 topic: topic-145
 branch: t/T-147-session-stop-refuses-under-load-process

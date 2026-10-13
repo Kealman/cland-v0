@@ -6,10 +6,9 @@ state: closed
 status: done
 criterion_seq: 4
 labels:
-  - tech-debt
   - ready-for-agent
 assignee: impl-215
-parent: T-230
+parent: E-230
 blocked_by:
   - T-174
   - T-232

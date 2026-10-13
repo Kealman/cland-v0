@@ -1,14 +1,14 @@
 ---
 id: T-131
 kind: task
-title: CLI commands that need no database still import node:sqlite; its ExperimentalWarning pollutes exact stderr
+title: CLI commands that need no database still import node:sqlite; its
+  ExperimentalWarning pollutes exact stderr
 state: closed
 status: done
 labels:
-  - tech-debt
   - ready-for-agent
 assignee: null
-parent: T-19
+parent: E-19
 blocked_by: []
 topic: topic-63
 branch: t/T-131-cli-commands-that-need-no-database-still

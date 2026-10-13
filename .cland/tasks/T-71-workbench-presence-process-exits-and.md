@@ -1,7 +1,8 @@
 ---
 id: T-71
 kind: task
-title: "Workbench: presence, process exits and token totals as hub events, so the sessions panel stops polling session.list"
+title: "Workbench: presence, process exits and token totals as hub events, so
+  the sessions panel stops polling session.list"
 state: closed
 status: done
 labels:
@@ -10,7 +11,7 @@ labels:
   - hub
   - nvim
 assignee: impl-71
-parent: T-20
+parent: E-20
 blocked_by:
   - T-67
 topic: topic-24

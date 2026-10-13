@@ -1,7 +1,8 @@
 ---
 id: T-180
 kind: task
-title: "Handover of a node: a Lead's claim, subscriptions and note move to the next Lead"
+title: "Handover of a node: a Lead's claim, subscriptions and note move to the
+  next Lead"
 state: closed
 status: done
 criterion_seq: 4
@@ -9,7 +10,7 @@ labels:
   - v0.1
   - ready-for-agent
 assignee: impl-180
-parent: T-113
+parent: E-113
 blocked_by:
   - T-176
   - T-177

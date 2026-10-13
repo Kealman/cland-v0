@@ -11,7 +11,7 @@ labels:
   - nvim
   - ready-for-agent
 assignee: null
-parent: T-274
+parent: E-274
 blocked_by: []
 topic: topic-171
 branch: t/T-283-the-request-send-kind-and-needsyou-over

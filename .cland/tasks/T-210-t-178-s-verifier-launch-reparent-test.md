@@ -1,16 +1,16 @@
 ---
 id: T-210
 kind: task
-title: T-178's verifier-launch reparent test sees a different protective refusal under full-suite load
+title: T-178's verifier-launch reparent test sees a different protective refusal
+  under full-suite load
 state: closed
 status: done
 criterion_seq: 3
 labels:
-  - tech-debt
   - ready-for-agent
   - high
 assignee: impl-210
-parent: T-19
+parent: E-19
 blocked_by: []
 topic: topic-114
 branch: t/T-210-t-178-s-verifier-launch-reparent-test

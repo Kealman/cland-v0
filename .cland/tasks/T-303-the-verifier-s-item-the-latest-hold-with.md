@@ -1,7 +1,8 @@
 ---
 id: T-303
 kind: task
-title: "The verifier's item: the latest hold with +N, and a pending request dimmed until the hold"
+title: "The verifier's item: the latest hold with +N, and a pending request
+  dimmed until the hold"
 state: closed
 status: done
 criterion_seq: 6
@@ -11,7 +12,7 @@ labels:
   - hub
   - nvim
 assignee: null
-parent: T-275
+parent: E-275
 blocked_by: []
 topic: topic-185
 branch: t/T-303-the-verifier-s-item-the-latest-hold-with

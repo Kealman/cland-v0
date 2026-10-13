@@ -1,14 +1,16 @@
 ---
 id: T-120
 kind: task
-title: "Status on events: the status field, moved by claims, verdicts, merges, closes and reopens; set by hand only by the Coordinator, the human and the Implementer's review"
+title: "Status on events: the status field, moved by claims, verdicts, merges,
+  closes and reopens; set by hand only by the Coordinator, the human and the
+  Implementer's review"
 state: closed
 status: done
 labels:
   - ready-for-agent
   - v0.1
 assignee: null
-parent: T-107
+parent: E-107
 blocked_by:
   - T-118
 topic: topic-45

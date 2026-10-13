@@ -1,14 +1,15 @@
 ---
 id: T-51
 kind: task
-title: "A Codex session's spoke replaced with no attach behind it: the session's tool calls then fail silently until a stop and relaunch"
+title: "A Codex session's spoke replaced with no attach behind it: the session's
+  tool calls then fail silently until a stop and relaunch"
 state: closed
 status: done
 labels:
   - slice-1
   - ready-for-agent
 assignee: impl-51
-parent: T-19
+parent: E-19
 blocked_by: []
 topic: topic-8
 branch: t/T-51-replaced-spoke-stale-state

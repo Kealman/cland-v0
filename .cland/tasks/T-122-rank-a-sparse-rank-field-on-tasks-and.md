@@ -1,14 +1,16 @@
 ---
 id: T-122
 kind: task
-title: "Rank: a sparse rank field on tasks and epics, cland task rank, lists sorted by rank then id, the Coordinator's next-item rule; the high label retires"
+title: "Rank: a sparse rank field on tasks and epics, cland task rank, lists
+  sorted by rank then id, the Coordinator's next-item rule; the high label
+  retires"
 state: closed
 status: done
 labels:
   - ready-for-agent
   - v0.1
 assignee: null
-parent: T-107
+parent: E-107
 blocked_by:
   - T-118
 topic: topic-49

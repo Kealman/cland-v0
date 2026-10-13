@@ -1,14 +1,15 @@
 ---
 id: T-223
 kind: task
-title: The plan view's watch-marks / last-look receipt test hits "Invalid buf" under load
+title: The plan view's watch-marks / last-look receipt test hits "Invalid buf"
+  under load
 state: closed
 status: done
 criterion_seq: 3
 labels:
   - ready-for-agent
 assignee: impl-223
-parent: T-216
+parent: C-216
 blocked_by: []
 topic: topic-135
 branch: t/T-223-the-plan-view-s-watch-marks-last-look

@@ -1,14 +1,15 @@
 ---
 id: T-237
 kind: task
-title: Release scope shows the release's epics as rows with a status breakdown, and drills down to tasks at epic scope
+title: Release scope shows the release's epics as rows with a status breakdown,
+  and drills down to tasks at epic scope
 state: closed
 status: done
 labels:
   - v0.1.2
   - ready-for-human
 assignee: null
-parent: T-228
+parent: R-228
 blocked_by: []
 topic: null
 branch: null

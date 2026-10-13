@@ -1,14 +1,15 @@
 ---
 id: T-302
 kind: task
-title: "Suite spend, the production remainder: territory git operations, verdict reads, doctor probes and identity checks"
+title: "Suite spend, the production remainder: territory git operations, verdict
+  reads, doctor probes and identity checks"
 state: open
 status: backlog
 labels:
   - hub
   - ready-for-agent
 assignee: null
-parent: T-216
+parent: C-216
 blocked_by: []
 topic: null
 branch: null

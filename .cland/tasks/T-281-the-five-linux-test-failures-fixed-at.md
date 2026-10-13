@@ -1,7 +1,8 @@
 ---
 id: T-281
 kind: task
-title: The five Linux test failures fixed at their cause; platform skips listed by reason
+title: The five Linux test failures fixed at their cause; platform skips listed
+  by reason
 state: closed
 status: done
 criterion_seq: 6
@@ -10,7 +11,7 @@ labels:
   - hub
   - ready-for-agent
 assignee: null
-parent: T-268
+parent: E-268
 blocked_by:
   - T-279
   - T-280

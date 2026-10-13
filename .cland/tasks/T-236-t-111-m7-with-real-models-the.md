@@ -1,7 +1,8 @@
 ---
 id: T-236
 kind: task
-title: "T-111 M7 with real models: the Coordinator follows through on an Aide's decision, run in a scratch project"
+title: "T-111 M7 with real models: the Coordinator follows through on an Aide's
+  decision, run in a scratch project"
 state: closed
 status: done
 criterion_seq: 3
@@ -9,7 +10,7 @@ labels:
   - v0.1.1
   - ready-for-agent
 assignee: impl-236
-parent: T-231
+parent: E-231
 blocked_by: []
 topic: topic-150
 branch: t/T-236-t-111-m7-with-real-models-the

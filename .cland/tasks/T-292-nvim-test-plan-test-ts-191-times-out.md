@@ -1,14 +1,15 @@
 ---
 id: T-292
 kind: task
-title: nvim/test/plan.test.ts:191 times out under the full run's load waiting 5 s for the stub-fed plan (qa-schema-2)
+title: nvim/test/plan.test.ts:191 times out under the full run's load waiting 5
+  s for the stub-fed plan (qa-schema-2)
 state: closed
 status: done
 labels:
   - nvim
   - ready-for-agent
 assignee: null
-parent: E-216
+parent: C-216
 blocked_by: []
 topic: null
 branch: null

@@ -5,10 +5,9 @@ title: "Incident log: lost suite runs and stalled leads waiting on them"
 state: closed
 status: done
 labels:
-  - tech-debt
   - ready-for-human
 assignee: null
-parent: T-216
+parent: C-216
 blocked_by: []
 topic: null
 branch: null

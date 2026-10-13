@@ -1,7 +1,8 @@
 ---
 id: T-312
 kind: task
-title: "Five more Linux failures from the first all-phase container run: Codex relaunch PID, OpenCode no-url rollback, three Neovim cases"
+title: "Five more Linux failures from the first all-phase container run: Codex
+  relaunch PID, OpenCode no-url rollback, three Neovim cases"
 state: closed
 status: done
 criterion_seq: 5
@@ -11,7 +12,7 @@ labels:
   - nvim
   - ready-for-agent
 assignee: null
-parent: T-268
+parent: E-268
 blocked_by:
   - T-281
 topic: topic-190

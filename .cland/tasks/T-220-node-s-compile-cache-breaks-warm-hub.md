@@ -1,16 +1,16 @@
 ---
 id: T-220
 kind: task
-title: "Node's compile cache breaks warm hub loads on Node 24: re-enable it only on a safe runtime"
+title: "Node's compile cache breaks warm hub loads on Node 24: re-enable it only
+  on a safe runtime"
 state: closed
 status: done
 criterion_seq: 3
 labels:
   - ready-for-agent
-  - tech-debt
   - low
 assignee: impl-220
-parent: T-230
+parent: E-230
 blocked_by: []
 topic: topic-142
 branch: t/T-220-node-s-compile-cache-breaks-warm-hub

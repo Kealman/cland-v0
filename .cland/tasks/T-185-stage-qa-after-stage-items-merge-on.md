@@ -1,7 +1,8 @@
 ---
 id: T-185
 kind: task
-title: "Stage QA: after-stage items merge on review; one QA run on dev closes the stage with a verdict naming it"
+title: "Stage QA: after-stage items merge on review; one QA run on dev closes
+  the stage with a verdict naming it"
 state: closed
 status: done
 criterion_seq: 4
@@ -9,7 +10,7 @@ labels:
   - v0.1
   - ready-for-agent
 assignee: impl-185
-parent: T-114
+parent: E-114
 blocked_by:
   - T-184
 topic: topic-117

@@ -1,14 +1,15 @@
 ---
 id: T-141
 kind: task
-title: "The item's lead: the claimant leads its item; events, reports and verdicts route to it; @lead T-n resolves to it, else to the Coordinator"
+title: "The item's lead: the claimant leads its item; events, reports and
+  verdicts route to it; @lead T-n resolves to it, else to the Coordinator"
 state: closed
 status: done
 labels:
   - v0.1
   - ready-for-agent
 assignee: null
-parent: T-108
+parent: E-108
 blocked_by:
   - T-139
 topic: topic-58

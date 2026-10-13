@@ -1,14 +1,15 @@
 ---
 id: T-163
 kind: task
-title: "The graph legible at size: node widths for 120 to 200 columns, o sideways, the GRAPH-001 successor on the hub's fields, the README"
+title: "The graph legible at size: node widths for 120 to 200 columns, o
+  sideways, the GRAPH-001 successor on the hub's fields, the README"
 state: closed
 status: done
 labels:
   - v0.1
   - ready-for-agent
 assignee: null
-parent: T-116
+parent: E-116
 blocked_by:
   - T-161
 topic: topic-79

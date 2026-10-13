@@ -1,7 +1,8 @@
 ---
 id: T-306
 kind: task
-title: 'Archive by rule and prune: stopped crew sessions archive themselves, the "more" fold shows the latest 20, and cland session prune --older-than'
+title: 'Archive by rule and prune: stopped crew sessions archive themselves, the
+  "more" fold shows the latest 20, and cland session prune --older-than'
 state: closed
 status: done
 criterion_seq: 5
@@ -11,7 +12,7 @@ labels:
   - hub
   - nvim
 assignee: null
-parent: T-275
+parent: E-275
 blocked_by:
   - T-305
 topic: topic-189

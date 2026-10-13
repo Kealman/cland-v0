@@ -11,7 +11,7 @@ labels:
   - nvim
   - ready-for-agent
 assignee: null
-parent: T-274
+parent: E-274
 blocked_by:
   - T-286
 topic: topic-174

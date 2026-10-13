@@ -1,15 +1,15 @@
 ---
 id: T-212
 kind: task
-title: cland suite cancel stops a session's own queued or running suite and posts the cancellation
+title: cland suite cancel stops a session's own queued or running suite and
+  posts the cancellation
 state: closed
 status: done
 criterion_seq: 4
 labels:
-  - tech-debt
   - ready-for-agent
 assignee: impl-212
-parent: T-230
+parent: E-230
 blocked_by: []
 topic: topic-144
 branch: t/T-212-cland-suite-cancel-stops-a-session-s-own

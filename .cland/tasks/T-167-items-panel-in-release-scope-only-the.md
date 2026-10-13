@@ -1,7 +1,8 @@
 ---
 id: T-167
 kind: task
-title: "Items panel in release scope: only the release's items; unscheduled holds open orphans only, never done items or other epics' subtrees"
+title: "Items panel in release scope: only the release's items; unscheduled
+  holds open orphans only, never done items or other epics' subtrees"
 state: closed
 status: done
 rank: 1170
@@ -10,7 +11,7 @@ labels:
   - ready-for-agent
   - bug
 assignee: null
-parent: T-107
+parent: E-107
 blocked_by: []
 topic: topic-76
 branch: t/T-167-items-panel-in-release-scope-only-the

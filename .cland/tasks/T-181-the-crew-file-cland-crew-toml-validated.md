@@ -1,7 +1,8 @@
 ---
 id: T-181
 kind: task
-title: "The crew file: .cland/crew.toml, validated and reloaded, cland crew show and set, the sessions header summary"
+title: "The crew file: .cland/crew.toml, validated and reloaded, cland crew show
+  and set, the sessions header summary"
 state: closed
 status: done
 criterion_seq: 4
@@ -9,7 +10,7 @@ labels:
   - v0.1
   - ready-for-agent
 assignee: null
-parent: T-113
+parent: E-113
 blocked_by: []
 topic: topic-89
 branch: t/T-181-the-crew-file-cland-crew-toml-validated

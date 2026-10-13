@@ -1,14 +1,15 @@
 ---
 id: T-119
 kind: task
-title: "Containers from config: [tracker] levels replaces the hard-coded container kinds; a container with open children cannot close"
+title: "Containers from config: [tracker] levels replaces the hard-coded
+  container kinds; a container with open children cannot close"
 state: closed
 status: done
 labels:
   - ready-for-agent
   - v0.1
 assignee: null
-parent: T-107
+parent: E-107
 blocked_by:
   - T-118
 topic: topic-44

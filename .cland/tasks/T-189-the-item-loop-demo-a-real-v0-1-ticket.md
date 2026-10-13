@@ -1,14 +1,15 @@
 ---
 id: T-189
 kind: task
-title: "The item-loop demo: a real v0.1 ticket from claim to ready with one Coordinator delivery, measured from the journal"
+title: "The item-loop demo: a real v0.1 ticket from claim to ready with one
+  Coordinator delivery, measured from the journal"
 state: closed
 status: done
 labels:
   - v0.1
   - ready-for-agent
 assignee: null
-parent: T-108
+parent: E-108
 blocked_by:
   - T-143
 topic: null

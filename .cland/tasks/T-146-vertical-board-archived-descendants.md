@@ -1,14 +1,14 @@
 ---
 id: T-146
 kind: task
-title: "Vertical board: archived descendants duplicate when archive and unscheduled folds are both open; the fraction reads cache internals"
+title: "Vertical board: archived descendants duplicate when archive and
+  unscheduled folds are both open; the fraction reads cache internals"
 state: closed
 status: done
 labels:
-  - tech-debt
   - ready-for-agent
 assignee: null
-parent: T-19
+parent: E-19
 blocked_by: []
 topic: topic-61
 branch: t/T-146-vertical-board-archived-descendants

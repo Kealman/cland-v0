@@ -1,14 +1,15 @@
 ---
 id: T-72
 kind: task
-title: freshness.test.ts "a branch the last tip read did not hold" races the 2 s tip timer and fails under load
+title: freshness.test.ts "a branch the last tip read did not hold" races the 2 s
+  tip timer and fails under load
 state: closed
 status: done
 labels:
   - ready-for-agent
   - tests
 assignee: impl-72
-parent: T-20
+parent: E-20
 blocked_by: []
 topic: topic-22
 branch: t/T-72-freshness-test-seam

@@ -8,7 +8,7 @@ labels:
   - ready-for-agent
   - hub
 assignee: null
-parent: T-19
+parent: E-19
 blocked_by: []
 topic: topic-33
 branch: t/T-76-orphan-sweep-misses-the-live-app-server

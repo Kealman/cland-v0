@@ -8,7 +8,7 @@ labels:
   - ready-for-agent
   - slice-1
 assignee: Kealman
-parent: T-19
+parent: E-19
 blocked_by:
   - T-32
 topic: null

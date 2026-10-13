@@ -1,7 +1,8 @@
 ---
 id: T-279
 kind: task
-title: A prepared fixture repository per worker; the hub phase's repeated setup batched
+title: A prepared fixture repository per worker; the hub phase's repeated setup
+  batched
 state: closed
 status: done
 criterion_seq: 6
@@ -10,7 +11,7 @@ labels:
   - hub
   - ready-for-agent
 assignee: null
-parent: T-268
+parent: E-268
 blocked_by:
   - T-277
   - T-278

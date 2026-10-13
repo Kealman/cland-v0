@@ -1,7 +1,8 @@
 ---
 id: T-305
 kind: task
-title: "Archive by hand: d archives a session row, A shows the archive, and archived sessions leave the groups and the default session.list"
+title: "Archive by hand: d archives a session row, A shows the archive, and
+  archived sessions leave the groups and the default session.list"
 state: closed
 status: done
 criterion_seq: 6
@@ -11,7 +12,7 @@ labels:
   - hub
   - nvim
 assignee: null
-parent: T-275
+parent: E-275
 blocked_by:
   - T-304
 topic: topic-187

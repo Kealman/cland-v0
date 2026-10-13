@@ -5,10 +5,9 @@ title: "The Neovim suite takes its own lock: test:nvim never waits behind a hub 
 state: closed
 status: done
 labels:
-  - tech-debt
   - ready-for-agent
 assignee: null
-parent: T-19
+parent: E-19
 blocked_by: []
 topic: topic-83
 branch: t/T-173-the-neovim-suite-takes-its-own-lock-test

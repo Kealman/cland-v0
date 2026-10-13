@@ -1,14 +1,14 @@
 ---
 id: T-254
 kind: task
-title: A cancelled suite attempt should not supersede green cache evidence for its tree
+title: A cancelled suite attempt should not supersede green cache evidence for
+  its tree
 state: open
 status: backlog
 labels:
   - hub
-  - tech-debt
 assignee: null
-parent: T-273
+parent: E-273
 blocked_by: []
 topic: null
 branch: null

@@ -6,11 +6,10 @@ state: closed
 status: done
 criterion_seq: 4
 labels:
-  - tech-debt
   - high
   - ready-for-agent
 assignee: impl-207
-parent: T-19
+parent: E-19
 blocked_by: []
 topic: topic-109
 branch: t/T-207-a-full-suite-keeps-its-queue-place

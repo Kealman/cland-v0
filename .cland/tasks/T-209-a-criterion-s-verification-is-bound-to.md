@@ -1,7 +1,8 @@
 ---
 id: T-209
 kind: task
-title: A criterion's verification is bound to the head it was verified at; a new head reopens it
+title: A criterion's verification is bound to the head it was verified at; a new
+  head reopens it
 state: closed
 status: done
 criterion_seq: 4
@@ -10,7 +11,7 @@ labels:
   - high
   - ready-for-agent
 assignee: impl-209
-parent: T-216
+parent: C-216
 blocked_by: []
 topic: topic-112
 branch: t/T-209-a-criterion-s-verification-is-bound-to

@@ -1,7 +1,9 @@
 ---
 id: T-74
 kind: task
-title: "The Coordinator's tracker and docs commits have no sanctioned path to the territory's dev: the hook refuses them, and the only workaround is the raw marker"
+title: "The Coordinator's tracker and docs commits have no sanctioned path to
+  the territory's dev: the hook refuses them, and the only workaround is the raw
+  marker"
 state: closed
 status: done
 labels:
@@ -9,7 +11,7 @@ labels:
   - slice-2
   - territory
 assignee: null
-parent: T-19
+parent: E-19
 blocked_by: []
 topic: topic-31
 branch: t/T-74-the-coordinator-s-tracker-and-docs

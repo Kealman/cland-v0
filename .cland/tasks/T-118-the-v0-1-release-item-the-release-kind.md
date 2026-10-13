@@ -1,14 +1,15 @@
 ---
 id: T-118
 kind: task
-title: "The v0.1 release item: the release kind, the parenting rule, list --under and the path header; v0.1 created and its epics re-parented"
+title: "The v0.1 release item: the release kind, the parenting rule, list
+  --under and the path header; v0.1 created and its epics re-parented"
 state: closed
 status: done
 labels:
   - ready-for-agent
   - v0.1
 assignee: null
-parent: T-107
+parent: E-107
 blocked_by: []
 topic: topic-41
 branch: t/T-118-the-v0-1-release-item-the-release-kind

@@ -1,14 +1,16 @@
 ---
 id: T-159
 kind: task
-title: "The graph layout: a pure Lua module for cycles, reduction, layers, dummy vertices, ordering, tracks and the tray, on a display-column canvas, vertical and sideways"
+title: "The graph layout: a pure Lua module for cycles, reduction, layers, dummy
+  vertices, ordering, tracks and the tray, on a display-column canvas, vertical
+  and sideways"
 state: closed
 status: done
 labels:
   - v0.1
   - ready-for-agent
 assignee: null
-parent: T-116
+parent: E-116
 blocked_by: []
 topic: topic-66
 branch: t/T-159-the-graph-layout-a-pure-lua-module-for

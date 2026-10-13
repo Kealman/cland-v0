@@ -8,7 +8,7 @@ labels:
   - ready-for-agent
   - slice-1
 assignee: impl-44
-parent: T-19
+parent: E-19
 blocked_by: []
 topic: topic-3
 branch: t/T-44-cli-hub-from-worktree

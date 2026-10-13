@@ -1,7 +1,8 @@
 ---
 id: T-233
 kind: task
-title: "cland verify result cache: a green result keyed by the candidate tree, reused for the same tree and accepted by the gate"
+title: "cland verify result cache: a green result keyed by the candidate tree,
+  reused for the same tree and accepted by the gate"
 state: closed
 status: done
 criterion_seq: 4
@@ -9,7 +10,7 @@ labels:
   - v0.1.1
   - ready-for-agent
 assignee: impl-233
-parent: T-230
+parent: E-230
 blocked_by:
   - T-232
 topic: topic-152

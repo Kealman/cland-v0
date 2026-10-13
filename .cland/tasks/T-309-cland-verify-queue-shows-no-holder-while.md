@@ -1,7 +1,8 @@
 ---
 id: T-309
 kind: task
-title: cland verify queue shows no holder while a hand run holds the legacy machine lease, and a stale sweep may take a live holder's lease
+title: cland verify queue shows no holder while a hand run holds the legacy
+  machine lease, and a stale sweep may take a live holder's lease
 state: closed
 status: done
 criterion_seq: 3
@@ -11,7 +12,7 @@ labels:
   - ready-for-agent
   - v0.1.2
 assignee: null
-parent: T-216
+parent: C-216
 blocked_by: []
 topic: topic-183
 branch: t/T-309-cland-verify-queue-shows-no-holder-while

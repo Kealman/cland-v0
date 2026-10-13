@@ -1,7 +1,9 @@
 ---
 id: T-314
 kind: task
-title: "Any prefix resolves: the hub, the CLI, the MCP task tools, the plan parser and gi take any kind prefix by its number, and every surface shows the kind's own"
+title: "Any prefix resolves: the hub, the CLI, the MCP task tools, the plan
+  parser and gi take any kind prefix by its number, and every surface shows the
+  kind's own"
 state: closed
 status: done
 criterion_seq: 7
@@ -11,7 +13,7 @@ labels:
   - nvim
   - ready-for-agent
 assignee: null
-parent: T-269
+parent: E-269
 blocked_by:
   - T-313
 topic: topic-193

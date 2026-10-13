@@ -1,14 +1,15 @@
 ---
 id: T-301
 kind: task
-title: nvim/test/palette.test.ts "item prefix opens an item; C-v opens another beside the centre" times out under the full run's load
+title: nvim/test/palette.test.ts "item prefix opens an item; C-v opens another
+  beside the centre" times out under the full run's load
 state: open
 status: backlog
 labels:
   - nvim
   - ready-for-agent
 assignee: null
-parent: T-216
+parent: C-216
 blocked_by: []
 topic: null
 branch: null

@@ -1,7 +1,8 @@
 ---
 id: T-67
 kind: task
-title: "No git in the hub's request handlers: verdict freshness computed off the request path, a per-request time budget, and no UI polling floods"
+title: "No git in the hub's request handlers: verdict freshness computed off the
+  request path, a per-request time budget, and no UI polling floods"
 state: closed
 status: done
 rank: 520
@@ -10,7 +11,7 @@ labels:
   - slice-2
   - hub
 assignee: impl-67
-parent: T-20
+parent: E-20
 blocked_by: []
 topic: topic-18
 branch: t/T-67-task-list-freshness-cache

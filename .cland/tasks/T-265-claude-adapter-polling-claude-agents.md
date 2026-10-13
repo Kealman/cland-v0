@@ -1,14 +1,14 @@
 ---
 id: T-265
 kind: task
-title: "Claude adapter: polling claude agents --json near token expiry can log a config directory out (claude-code#95822)"
+title: "Claude adapter: polling claude agents --json near token expiry can log a
+  config directory out (claude-code#95822)"
 state: open
 status: backlog
 labels:
   - hub
-  - tech-debt
 assignee: null
-parent: T-272
+parent: E-272
 blocked_by: []
 topic: null
 branch: null

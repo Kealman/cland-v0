@@ -1,14 +1,15 @@
 ---
 id: T-53
 kind: task
-title: "cland init: the project's origin becomes a local territory, GitHub becomes `github`, and `--undo` puts it back"
+title: "cland init: the project's origin becomes a local territory, GitHub
+  becomes `github`, and `--undo` puts it back"
 state: closed
 status: done
 labels:
   - ready-for-agent
   - slice-2
 assignee: impl-53
-parent: T-20
+parent: E-20
 blocked_by: []
 topic: topic-10
 branch: t/T-53-cland-init-territory

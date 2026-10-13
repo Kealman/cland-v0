@@ -1,7 +1,8 @@
 ---
 id: T-182
 kind: task
-title: "Launches follow the crew: caps and singletons, idle pool reuse, per-item stop after merge, subagents in clauses"
+title: "Launches follow the crew: caps and singletons, idle pool reuse, per-item
+  stop after merge, subagents in clauses"
 state: closed
 status: done
 criterion_seq: 4
@@ -9,7 +10,7 @@ labels:
   - v0.1
   - ready-for-agent
 assignee: impl-182
-parent: T-113
+parent: E-113
 blocked_by:
   - T-176
   - T-181

@@ -1,14 +1,15 @@
 ---
 id: T-60
 kind: task
-title: "prompt drafting: a long prompt is written in a full buffer as a prompt artifact, then sent or attached"
+title: "prompt drafting: a long prompt is written in a full buffer as a prompt
+  artifact, then sent or attached"
 state: closed
 status: done
 labels:
   - ready-for-agent
   - slice-2
 assignee: null
-parent: T-20
+parent: E-20
 blocked_by:
   - T-55
 topic: topic-27

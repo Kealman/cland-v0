@@ -1,14 +1,15 @@
 ---
 id: T-61
 kind: task
-title: "artifacts kept or let go: promote into the repo, archive with the topic, delete after the retention period"
+title: "artifacts kept or let go: promote into the repo, archive with the topic,
+  delete after the retention period"
 state: closed
 status: done
 labels:
   - ready-for-agent
   - slice-2
 assignee: null
-parent: T-20
+parent: E-20
 blocked_by:
   - T-55
 topic: topic-29

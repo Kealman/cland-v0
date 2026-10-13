@@ -1,14 +1,16 @@
 ---
 id: T-128
 kind: task
-title: "The vertical board: the items panel as a board of the current release on the hub's status and rank, with sections, folds, the next mark, the epic tab row, K, J and T, and e and E with the pick kept in ui.json"
+title: "The vertical board: the items panel as a board of the current release on
+  the hub's status and rank, with sections, folds, the next mark, the epic tab
+  row, K, J and T, and e and E with the pick kept in ui.json"
 state: closed
 status: done
 labels:
   - ready-for-agent
   - v0.1
 assignee: null
-parent: T-109
+parent: E-109
 blocked_by:
   - T-126
   - T-123

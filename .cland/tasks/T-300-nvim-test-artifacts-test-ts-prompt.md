@@ -1,14 +1,15 @@
 ---
 id: T-300
 kind: task
-title: nvim/test/artifacts.test.ts "prompt drafts are editable full buffers" fails under the full run's load and passes alone
+title: nvim/test/artifacts.test.ts "prompt drafts are editable full buffers"
+  fails under the full run's load and passes alone
 state: open
 status: backlog
 labels:
   - nvim
   - ready-for-agent
 assignee: null
-parent: T-216
+parent: C-216
 blocked_by: []
 topic: null
 branch: null

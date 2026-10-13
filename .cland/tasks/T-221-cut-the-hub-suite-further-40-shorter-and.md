@@ -1,14 +1,15 @@
 ---
 id: T-221
 kind: task
-title: "Cut the hub suite further: 40% shorter and under 5 minutes, measured back to back against dev"
+title: "Cut the hub suite further: 40% shorter and under 5 minutes, measured
+  back to back against dev"
 state: closed
 status: done
 criterion_seq: 4
 labels:
   - ready-for-agent
 assignee: impl-221
-parent: T-216
+parent: C-216
 blocked_by:
   - T-214
 topic: topic-133

@@ -1,14 +1,15 @@
 ---
 id: T-132
 kind: task
-title: "Message blocks: header, role gutter, the human's band, day rules, delivery stage; appends touch only their own lines"
+title: "Message blocks: header, role gutter, the human's band, day rules,
+  delivery stage; appends touch only their own lines"
 state: closed
 status: done
 labels:
   - v0.1
   - ready-for-agent
 assignee: null
-parent: T-110
+parent: E-110
 blocked_by:
   - T-127
 topic: topic-50

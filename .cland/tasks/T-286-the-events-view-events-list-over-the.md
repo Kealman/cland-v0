@@ -11,7 +11,7 @@ labels:
   - nvim
   - ready-for-agent
 assignee: null
-parent: T-274
+parent: E-274
 blocked_by: []
 topic: topic-169
 branch: t/T-286-the-events-view-events-list-over-the

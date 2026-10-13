@@ -1,14 +1,15 @@
 ---
 id: T-79
 kind: task
-title: "Harness adapters do synchronous fs while spawning a session: Codex mkdirSync, rmSync, openSync and closeSync on launch"
+title: "Harness adapters do synchronous fs while spawning a session: Codex
+  mkdirSync, rmSync, openSync and closeSync on launch"
 state: closed
 status: done
 labels:
   - hub
   - ready-for-agent
 assignee: null
-parent: T-19
+parent: E-19
 blocked_by: []
 topic: topic-40
 branch: t/T-79-harness-adapters-do-synchronous-fs-while

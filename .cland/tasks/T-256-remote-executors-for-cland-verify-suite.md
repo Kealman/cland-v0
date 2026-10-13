@@ -1,13 +1,14 @@
 ---
 id: T-256
 kind: task
-title: "Remote executors for cland verify: suite runs on cloud VMs behind a provider-agnostic executor interface (DigitalOcean first)"
+title: "Remote executors for cland verify: suite runs on cloud VMs behind a
+  provider-agnostic executor interface (DigitalOcean first)"
 state: closed
 status: done
 labels:
   - ready-for-human
 assignee: null
-parent: T-228
+parent: R-228
 blocked_by: []
 topic: null
 branch: null

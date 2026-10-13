@@ -1,14 +1,15 @@
 ---
 id: T-59
 kind: task
-title: "cland merge: the gate takes a task with clear verdicts onto dev as one squash commit"
+title: "cland merge: the gate takes a task with clear verdicts onto dev as one
+  squash commit"
 state: closed
 status: done
 labels:
   - ready-for-agent
   - slice-2
 assignee: impl-59
-parent: T-20
+parent: E-20
 blocked_by:
   - T-53
   - T-54

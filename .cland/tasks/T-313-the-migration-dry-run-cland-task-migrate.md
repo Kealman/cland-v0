@@ -1,7 +1,9 @@
 ---
 id: T-313
 kind: task
-title: "The migration, dry run: cland task migrate --dry-run prints every rename, id, reference, title, seeded category and retired label, and writes nothing"
+title: "The migration, dry run: cland task migrate --dry-run prints every
+  rename, id, reference, title, seeded category and retired label, and writes
+  nothing"
 state: closed
 status: done
 criterion_seq: 6
@@ -10,7 +12,7 @@ labels:
   - hub
   - ready-for-agent
 assignee: null
-parent: T-269
+parent: E-269
 blocked_by: []
 topic: topic-191
 branch: t/T-313-the-migration-dry-run-cland-task-migrate

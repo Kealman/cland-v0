@@ -1,7 +1,8 @@
 ---
 id: T-217
 kind: task
-title: A handover successor that is not yet live can be launched onto the node it already holds
+title: A handover successor that is not yet live can be launched onto the node
+  it already holds
 state: closed
 status: done
 criterion_seq: 3
@@ -10,7 +11,7 @@ labels:
   - v0.1
   - ready-for-agent
 assignee: impl-217
-parent: T-113
+parent: E-113
 blocked_by: []
 topic: topic-124
 branch: t/T-217-a-handover-successor-that-is-not-yet

@@ -1,14 +1,15 @@
 ---
 id: T-133
 kind: task
-title: "Markdown per message: per-body tree-sitter parse with cached conceal spans, plain fallback, verdict colours, blue item ids, 80-column safe"
+title: "Markdown per message: per-body tree-sitter parse with cached conceal
+  spans, plain fallback, verdict colours, blue item ids, 80-column safe"
 state: closed
 status: done
 labels:
   - v0.1
   - ready-for-agent
 assignee: null
-parent: T-110
+parent: E-110
 blocked_by:
   - T-132
 topic: topic-53

@@ -1,14 +1,15 @@
 ---
 id: T-151
 kind: task
-title: "The Aide speaks for the human: the crew's clauses say so; the thread's speaks-for-you mark and dashed blue bar; Aide messages never fold"
+title: "The Aide speaks for the human: the crew's clauses say so; the thread's
+  speaks-for-you mark and dashed blue bar; Aide messages never fold"
 state: closed
 status: done
 labels:
   - v0.1
   - ready-for-agent
 assignee: null
-parent: T-111
+parent: E-111
 blocked_by:
   - T-148
   - T-135

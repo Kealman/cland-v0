@@ -1,14 +1,16 @@
 ---
 id: T-161
 kind: task
-title: "Graph cursor and live updates: node motions with edges highlighted, the winbar, Enter, gi, gt and gs, sideways scroll, redraw only on a visible change"
+title: "Graph cursor and live updates: node motions with edges highlighted, the
+  winbar, Enter, gi, gt and gs, sideways scroll, redraw only on a visible
+  change"
 state: closed
 status: done
 labels:
   - v0.1
   - ready-for-agent
 assignee: null
-parent: T-116
+parent: E-116
 blocked_by:
   - T-160
 topic: topic-78

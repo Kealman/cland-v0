@@ -1,7 +1,8 @@
 ---
 id: T-194
 kind: task
-title: "The artifact CLI: cland artifact new, open, keep, move, archive and promote, a folder promoted into the repository"
+title: "The artifact CLI: cland artifact new, open, keep, move, archive and
+  promote, a folder promoted into the repository"
 state: closed
 status: done
 criterion_seq: 4
@@ -9,7 +10,7 @@ labels:
   - v0.1
   - ready-for-agent
 assignee: impl-195
-parent: T-115
+parent: E-115
 blocked_by:
   - T-193
 topic: topic-118

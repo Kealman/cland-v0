@@ -1,14 +1,15 @@
 ---
 id: T-106
 kind: task
-title: "Spoke tools are callable before the hub's welcome and fail with \"not connected yet\": queue or wait for readiness"
+title: "Spoke tools are callable before the hub's welcome and fail with \"not
+  connected yet\": queue or wait for readiness"
 state: closed
 status: done
 labels:
   - hub
   - ready-for-agent
 assignee: null
-parent: T-19
+parent: E-19
 blocked_by: []
 topic: topic-39
 branch: t/T-106-spoke-tools-are-callable-before-the-hub

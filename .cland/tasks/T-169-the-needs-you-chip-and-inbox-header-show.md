@@ -1,7 +1,8 @@
 ---
 id: T-169
 kind: task
-title: "The needs-you chip and inbox header show the hub's needsYou only: Neovim computes nothing (T-165 follow-up, 112 from notifications)"
+title: "The needs-you chip and inbox header show the hub's needsYou only: Neovim
+  computes nothing (T-165 follow-up, 112 from notifications)"
 state: closed
 status: done
 rank: 1300
@@ -10,7 +11,7 @@ labels:
   - ready-for-agent
   - bug
 assignee: null
-parent: T-110
+parent: E-110
 blocked_by: []
 topic: topic-77
 branch: t/T-169-the-needs-you-chip-and-inbox-header-show

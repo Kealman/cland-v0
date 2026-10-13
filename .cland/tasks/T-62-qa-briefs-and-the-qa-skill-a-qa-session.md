@@ -1,14 +1,15 @@
 ---
 id: T-62
 kind: task
-title: "QA briefs and the qa skill: a QA session runs an item's brief and records its verdict and runs"
+title: "QA briefs and the qa skill: a QA session runs an item's brief and
+  records its verdict and runs"
 state: closed
 status: done
 labels:
   - ready-for-agent
   - slice-2
 assignee: null
-parent: T-20
+parent: E-20
 blocked_by:
   - T-54
   - T-57

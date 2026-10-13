@@ -1,16 +1,16 @@
 ---
 id: T-250
 kind: task
-title: 'tracker-ready "ready and the merge gate agree … qa_default per-item=true": merge yields no result within 30 s under load'
+title: 'tracker-ready "ready and the merge gate agree … qa_default
+  per-item=true": merge yields no result within 30 s under load'
 state: closed
 status: done
 criterion_seq: 3
 labels:
   - v0.1.1
   - ready-for-agent
-  - tech-debt
 assignee: impl-250
-parent: T-230
+parent: E-230
 blocked_by: []
 topic: topic-159
 branch: t/T-250-tracker-ready-ready-and-the-merge-gate

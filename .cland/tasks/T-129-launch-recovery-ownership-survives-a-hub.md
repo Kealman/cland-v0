@@ -1,16 +1,16 @@
 ---
 id: T-129
 kind: task
-title: "Launch recovery ownership survives a hub restart: a failed spawn's pending cleanup is persisted and gates reuse until it settles"
+title: "Launch recovery ownership survives a hub restart: a failed spawn's
+  pending cleanup is persisted and gates reuse until it settles"
 state: closed
 status: done
 criterion_seq: 3
 labels:
   - hub
-  - tech-debt
   - ready-for-agent
 assignee: impl-129
-parent: T-229
+parent: E-229
 blocked_by: []
 topic: topic-156
 branch: t/T-129-launch-recovery-ownership-survives-a-hub

@@ -1,13 +1,14 @@
 ---
 id: T-255
 kind: task
-title: "Per-model task performance: track how each task went by the model that did it, to route tokens across many models"
+title: "Per-model task performance: track how each task went by the model that
+  did it, to route tokens across many models"
 state: closed
 status: done
 labels:
   - ready-for-human
 assignee: null
-parent: T-228
+parent: R-228
 blocked_by: []
 topic: null
 branch: null

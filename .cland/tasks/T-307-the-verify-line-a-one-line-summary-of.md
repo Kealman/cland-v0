@@ -1,7 +1,8 @@
 ---
 id: T-307
 kind: task
-title: "The verify line: a one-line summary of the suite queue in the sessions panel header, opening the queue view"
+title: "The verify line: a one-line summary of the suite queue in the sessions
+  panel header, opening the queue view"
 state: closed
 status: done
 criterion_seq: 4
@@ -10,7 +11,7 @@ labels:
   - ready-for-agent
   - nvim
 assignee: null
-parent: T-275
+parent: E-275
 blocked_by: []
 topic: topic-188
 branch: t/T-307-the-verify-line-a-one-line-summary-of

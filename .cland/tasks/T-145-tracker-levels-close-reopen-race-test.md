@@ -1,14 +1,14 @@
 ---
 id: T-145
 kind: task
-title: tracker-levels close/reopen race test depends on a 300 ms pause and fails under load
+title: tracker-levels close/reopen race test depends on a 300 ms pause and fails
+  under load
 state: closed
 status: done
 labels:
-  - tech-debt
   - ready-for-agent
 assignee: null
-parent: T-19
+parent: E-19
 blocked_by: []
 topic: topic-64
 branch: t/T-145-tracker-levels-close-reopen-race-test

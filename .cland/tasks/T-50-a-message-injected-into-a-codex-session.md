@@ -1,14 +1,15 @@
 ---
 id: T-50
 kind: task
-title: A message injected into a Codex session in the last second of its turn is marked injected but never acted on
+title: A message injected into a Codex session in the last second of its turn is
+  marked injected but never acted on
 state: closed
 status: done
 labels:
   - slice-1
   - ready-for-agent
 assignee: impl-50
-parent: T-19
+parent: E-19
 blocked_by: []
 topic: topic-9
 branch: t/T-50-steer-lost-at-turn-end

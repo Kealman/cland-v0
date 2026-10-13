@@ -1,14 +1,16 @@
 ---
 id: T-160
 kind: task
-title: "The graph view: ␣G and :Cland graph, the release's open containers as parents with p and P, nodes on the hub's status, claims, verdicts and criteria, the tray"
+title: "The graph view: ␣G and :Cland graph, the release's open containers as
+  parents with p and P, nodes on the hub's status, claims, verdicts and
+  criteria, the tray"
 state: closed
 status: done
 labels:
   - v0.1
   - ready-for-agent
 assignee: null
-parent: T-116
+parent: E-116
 blocked_by:
   - T-159
 topic: topic-72
