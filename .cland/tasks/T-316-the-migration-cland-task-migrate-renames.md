@@ -4,6 +4,7 @@ kind: task
 title: "The migration: cland task migrate renames, rewrites, retitles, seeds the four categories, retires the tech-debt label and reindexes"
 state: open
 status: backlog
+criterion_seq: 10
 labels:
   - v0.1.2
   - hub
@@ -16,7 +17,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-13T02:27:23.140Z
-updated: 2026-10-13T02:27:34.462Z
+updated: 2026-10-13T02:28:39.925Z
 ---
 
 ## Summary
@@ -94,3 +95,11 @@ Open task branches need no rebase, as the test above proves.
 - [ ] C6. The journal holds one `task-migrated` record with the counts, read after the `flushLogs` barrier.
 - [ ] C7. The Implementer runs the dry run and the run on a scratch copy of `dev`'s `.cland/tasks/` and attaches both outputs to the item topic as one artifact. They match, and a second run reports nothing to do.
 - [ ] C8. `hub/README.md`'s tracker section and `docs/agents/issue-tracker.md` (and its template) describe `cland task migrate`, its refusals and what it leaves alone.
+- [ ] C9. `cland task migrate` runs with the hub stopped, working on the item files and hub.db directly, and refuses while a hub answers on the project. `hub/README.md` and `docs/agents/issue-tracker.md` give the live-tracker procedure: stop the hub, `git tag pre-migration` on dev, copy `.cland/hub.db` beside it, run the migration, restart the hub on the migrated tree, relaunch every role session (their clauses and briefs carry T- ids). They also give the rollback, the tag plus the hub.db copy, restorable in minutes. A test on a temporary project runs the migration with the hub stopped and shows the refusal with a hub running.
+- [ ] C10. After the migration on a scratch copy, every old `T-<n>` id the human types or reads still resolves to its item: `cland task view` and the other CLI task commands, the MCP task tools, topic bindings, journal rows and the inbox rows naming items, and `gi` in a thread. A hub test with a real hub restarted on the migrated tree covers each surface. The explorer inherits the same resolver when it lands (T-276).
+
+## Comments
+
+### coord · 2026-10-13T02:28:39.925Z
+
+C9 and C10 added 2026-10-13 at the stand-in's request (D24). C9 runs the migration with the hub stopped. Its in-flight refusals in C3 therefore read the on-disk state, meaning merge locks and tracker write locks, not a hub frame. The CLI refuses while a hub answers. Reconcile C3 with C9 that way, and state it in the item.

@@ -3,7 +3,7 @@ id: T-313
 kind: task
 title: "The migration, dry run: cland task migrate --dry-run prints every rename, id, reference, title, seeded category and retired label, and writes nothing"
 state: open
-status: backlog
+status: in progress
 labels:
   - v0.1.2
   - hub
@@ -12,9 +12,9 @@ assignee: null
 parent: T-269
 blocked_by: []
 topic: null
-branch: null
+branch: t/T-313-the-migration-dry-run-cland-task-migrate
 created: 2026-10-13T02:27:22.740Z
-updated: 2026-10-13T02:27:33.758Z
+updated: 2026-10-13T02:28:10.638Z
 ---
 
 ## Summary
