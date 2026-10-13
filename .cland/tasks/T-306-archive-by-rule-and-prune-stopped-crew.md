@@ -3,7 +3,7 @@ id: T-306
 kind: task
 title: 'Archive by rule and prune: stopped crew sessions archive themselves, the "more" fold shows the latest 20, and cland session prune --older-than'
 state: open
-status: in progress
+status: review
 labels:
   - v0.1.2
   - ready-for-agent
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-189
 branch: t/T-306-archive-by-rule-and-prune-stopped-crew
 created: 2026-10-12T21:34:31.521Z
-updated: 2026-10-13T02:01:47.806Z
+updated: 2026-10-13T02:31:06.589Z
 ---
 
 ## Summary
@@ -92,3 +92,7 @@ The archived count comes from ticket 03's `session.list` count and from the `ses
 ### impl-306 · 2026-10-13T02:01:47.806Z
 
 Implementing archive rules and prune on T-305. Epic decisions applied: prune age is stopped_at; legacy rows receive stopped_at on first sweep with no journal backfill. session.prune will join Coordinator tools and default clause; Coordinator must relaunch after merge.
+
+### impl-306 · 2026-10-13T02:30:27.069Z
+
+Implementation committed and pushed at 142f058b509f7738ee5bd97728eb23d3ed6e6ac3 (branch t/T-306-archive-by-rule-and-prune-stopped-crew), with origin/dev e2a80ba fetched and merged before final suite. C1-C5 covered by real-hub/CLI/spoke cleanup tests, bounded startup/event workload test, and headless Neovim fold/count test. Targeted suites and typecheck pass; requesting review then ordinary cland verify all. Coordinator tools/default clause now include session.prune / cland session prune: relaunch Coordinator after merge.

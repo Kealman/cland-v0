@@ -4,6 +4,7 @@ kind: task
 title: "The migration, dry run: cland task migrate --dry-run prints every rename, id, reference, title, seeded category and retired label, and writes nothing"
 state: open
 status: in progress
+criterion_seq: 6
 labels:
   - v0.1.2
   - hub
@@ -11,10 +12,10 @@ labels:
 assignee: null
 parent: T-269
 blocked_by: []
-topic: null
+topic: topic-191
 branch: t/T-313-the-migration-dry-run-cland-task-migrate
 created: 2026-10-13T02:27:22.740Z
-updated: 2026-10-13T02:28:10.638Z
+updated: 2026-10-13T02:34:12.072Z
 ---
 
 ## Summary
@@ -75,7 +76,17 @@ A tree that is already migrated gives an empty plan. Each part is idempotent on 
 
 - [ ] C1. Planner unit tests cover each part: renames for every non-task kind, tasks untouched, ids, `parent` and `blocked_by` rewrites, an unresolved reference, each stripped kind word in mixed case, `Research:` kept, a version-only release title, Tech debt from an existing container and created new, three new categories on the next numbers, the label removed everywhere and the unparented labelled item moved.
 - [ ] C2. The planner gives an empty plan for a migrated tree and only the remaining steps for a half-migrated one.
-- [ ] C3. A hub test on a temporary project with a real hub runs `cland task migrate --dry-run` and `--json`. It checks the printed plan and that the item files, the index and the journal are unchanged (the journal read after the `flushLogs` barrier).
+- [ ] C3. A hub test on a temporary project with a real hub runs `cland task migrate --dry-run` and `--json`. It checks the printed plan, and that the item files and the index are unchanged. It also checks that the journal holds no migration or domain record (no `task-migrated`, no item change, no index rewrite), read after the `flushLogs` barrier. Ordinary audit entries for the calls themselves are allowed. (Edited 2026-10-13 by the Coordinator, answering impl-313's question.)
 - [ ] C4. A hub test shows the frame refused for an Implementer session and allowed for the human and the Coordinator.
 - [ ] C5. The Implementer runs the dry run on a scratch copy of `dev`'s `.cland/tasks/` and attaches its output to the item topic as an artifact. It shows `T-228 → R-228`, `T-107 → E-107`, `T-216 → C-216 Tech debt` and three new categories, and `git status` in the copy stays clean.
 - [ ] C6. `hub/README.md`'s tracker section and `docs/agents/issue-tracker.md` describe `cland task migrate --dry-run` and what it plans.
+
+## Comments
+
+### impl-313 · 2026-10-13T02:32:30.384Z
+
+Implementation uses planMigration(files, nextNumber, containers) as a pure field-level delta. Prefix parsing is isolated in prefixes.ts. The new frame is CLI-only like crew.set, with an explicit Coordinator/human boundary and authorization rechecked after queued reads; no MCP role tool list changes.
+
+### impl-313 · 2026-10-13T02:33:54.752Z
+
+C3 clarified by Coordinator decision 514a8ffe: the item files and tracker index must be unchanged and no migration/domain record may be written. Ordinary audit entries remain required and are allowed, including task.migrate and hub.status flushLogs. No journal special case was added.

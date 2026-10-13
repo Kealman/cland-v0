@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-190
 branch: t/T-312-five-more-linux-failures-from-the-first
 created: 2026-10-13T01:50:19.683Z
-updated: 2026-10-13T02:22:43.643Z
+updated: 2026-10-13T02:33:58.330Z
 ---
 
 ## Summary
@@ -55,3 +55,15 @@ T-268: Suite spend and Linux portability. Evidence is in T-281's topic (topic-18
 ### impl-312 · 2026-10-13T02:22:43.643Z
 
 Codex relaunch cause: the frame is ok but its value is found:false ('no rollout found for thread id'), returning the retained stopped row; the PID comparison hid that reason. fake-codex persisted turns>0 only at turn completion. Linux termination is faster than the default 300 ms fake turn; a 10 s fake first turn deterministically reproduces the identical old-PID failure on macOS (A-1741), while ordinary dev baseline passes. Real contract source: upstream openai/codex commit 12cca49c81c8aa6a37a5cc4e39964ee3b70f9458, codex-rs/core/src/session/mod.rs, record_user_prompt_and_emit_turn_item calls ensure_rollout_materialized after recording first user input, before model completion: https://github.com/openai/codex/blob/12cca49c81c8aa6a37a5cc4e39964ee3b70f9458/codex-rs/core/src/session/mod.rs#L5036-L5095 . The fake now persists at first turn start; regression keeps the 10 s turn (so completion cannot make it green) and explicitly requires resume.value.found before comparing PIDs. No production PID reporting change is needed.
+
+### impl-312 · 2026-10-13T02:29:22.234Z
+
+OpenCode no-url rollback cause: endProcess confirms OS process disappearance (and excludes zombies) before Node/libuv necessarily delivers the native ChildProcess exit receipt. Under load, LaunchFiles.rollback removed resources and rejected spawn while exitCode and signalCode were still null. The existing native adapter-boundary seam now gates only that receipt while retaining real child/OS identities/signals, and checks session resources cannot be undone early. It fails before the fix and passes after it. LaunchFiles now captures the exit promise when owning a native child, and awaits it after verified termination before resource undo; recovered durable receipts without a native ChildProcess continue using OS proof. Unchanged original no-url assertion retained; complete adapter-native-boundary file passes 65/65. A-1742 was archived as superseded: its first diagnostic also counted termination-lease cleanup; final red proof narrows the observation to this fixture's session resources.
+
+### impl-312 · 2026-10-13T02:31:10.332Z
+
+Three Neovim causes: (1) artifacts keeping waited only for the artifact-list count, which arrives independently of topic.history. A held real protocol history response proves count=1 with thread messages=0; early zR has no run to open, then history creates the default closed fold (A-1748). Test retains the count wait and now also waits for the actual artifact message and rendered folded run before zR, retaining keep/unkeep/restart/palette assertions. (2) prompt draft issued :Cland prompt immediately after nvim listening, before the hub welcome/connect handshake. The command correctly refuses 'prompt: the hub is not connected'; the originally issued command never becomes a draft after welcome (A-1747). Test now waits hub:connected before the one command. This is the same T-300 case/cause: load makes the handshake lag behind the immediate RPC command. (3) delayed-history test asserted Terminal mode immediately after startinsert; A-1731's line 606 fails BEFORE releasing history, with native terminal-normal nt. The test now waits for the requested mode before retaining the original exact assertion and releasing history; all post-history mode/focus/tail/status assertions remain. Protocol-gated red source A-1746 and green A-1749; no permanent seam added. Artifacts file passes 9/9; thread validation in progress.
+
+### impl-312 · 2026-10-13T02:33:58.330Z
+
+Pinned Neovim's own help confirms delayed-history precondition: v0.12.5 runtime/doc/insert.txt :startinsert (lines 2032–2039) starts Insert/Terminal mode just after executing the command, and inside a function/script only after it finishes. The Linux failure was the pre-history mode assertion at line 606, before snapshot release. The exact mode assertion remains and now follows a state wait. Fixed complete macOS files: adapter-native-boundary 65/65, codex-adapter 35/35, artifacts 9/9, thread 24/24; typecheck passes after correcting the test fault injection's readonly-field typing. Temporary UI protocol relay source was preserved as A-1746 and removed from the repo.
