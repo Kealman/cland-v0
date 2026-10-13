@@ -2,8 +2,8 @@
 id: T-328
 kind: task
 title: "Planned from the plan: the hub moves the current stage's backlog tasks to planned, moves the next stage when one completes, and a closed epic reports its stages closed"
-state: open
-status: review
+state: closed
+status: done
 criterion_seq: 8
 labels:
   - v0.1.2
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-206
 branch: t/T-328-planned-from-the-plan-the-hub-moves-the
 created: 2026-10-13T14:04:09.203Z
-updated: 2026-10-13T15:42:28.380Z
+updated: 2026-10-13T16:04:09.237Z
 ---
 
 ## Summary
@@ -81,22 +81,30 @@ No role clause changes. The Coordinator's clause already takes "the lowest-ranke
 
 - [x] C1. A hub test on a temporary project sets a two-stage plan with `cland task plan set`. `cland task list --under E-<n> --json` then shows stage one's tasks `planned` and stage two's `backlog`.
   - done: impl-328 · 2026-10-13T14:38:55.376Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-328-5 · 2026-10-13T16:03:52.099Z · commit a3a04a91fd879085fbd7c183463326f18568be97
 - [x] C2. Landing stage one's tasks through `cland merge` turns stage two's backlog tasks `planned`. With an after-stage QA policy on stage one, stage two moves only after the clear stage verdict.
   - done: impl-328 · 2026-10-13T14:38:56.563Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-328-5 · 2026-10-13T16:03:52.099Z · commit a3a04a91fd879085fbd7c183463326f18568be97
 - [x] C3. A task of stage two already `in progress` is not touched. A task of the current stage set back to `backlog` by hand stays `backlog` after a later recompute. No item ever moves to `backlog`.
   - done: impl-328 · 2026-10-13T14:49:58.785Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-328-5 · 2026-10-13T16:03:52.099Z · commit a3a04a91fd879085fbd7c183463326f18568be97
 - [x] C4. An epic without a plan moves nothing. An epic whose plan waits for approval moves nothing until `cland task plan approve`.
   - done: impl-328 · 2026-10-13T14:38:58.469Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-328-5 · 2026-10-13T16:03:52.099Z · commit a3a04a91fd879085fbd7c183463326f18568be97
 - [x] C5. Closing the epic shows every stage `closed` in `cland task plan show` and `task.view`. Reopening it restores the derived states.
   - done: impl-328 · 2026-10-13T14:38:59.373Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-328-5 · 2026-10-13T16:03:52.099Z · commit a3a04a91fd879085fbd7c183463326f18568be97
 - [x] C6. Each move logs `task-written` with op `planned`, read from the journal after the `flushLogs` barrier. A session subscribed to the epic's subtree receives one `status changed backlog → planned` event per moved task.
   - done: impl-328 · 2026-10-13T14:39:01.621Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-328-5 · 2026-10-13T16:03:52.099Z · commit a3a04a91fd879085fbd7c183463326f18568be97
 - [x] C7. A query-count regression with 64 unrelated items and 8 unrelated epics with plans: one stage item landing stays under a fixed query bound, and a burst of ten closes in one tick runs one recompute per affected epic.
   - done: impl-328 · 2026-10-13T14:49:59.699Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-328-5 · 2026-10-13T16:03:52.100Z · commit a3a04a91fd879085fbd7c183463326f18568be97
 - [x] C8. `hub/README.md`, `docs/agents/issue-tracker.md` with its template, the GLOSSARY Status entry and the `plan-epic` skill describe the plan-driven `planned`.
   - done: impl-328 · 2026-10-13T14:39:02.886Z
   - verified: rev-23 [reviewer] · run rev-2026-10-13-328-2 · 2026-10-13T14:53:55.270Z · commit fcf4211d45942da6c913aa2f86b20ab4b89c7847
   - verified: rev-23 [reviewer] · run rev-2026-10-13-328-4 · 2026-10-13T15:42:28.380Z · commit a3a04a91fd879085fbd7c183463326f18568be97
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-328-5 · 2026-10-13T16:03:52.100Z · commit a3a04a91fd879085fbd7c183463326f18568be97
 
 ## Comments
 
@@ -157,3 +165,19 @@ commit: a3a04a91fd879085fbd7c183463326f18568be97
 Source delta clear: no findings. Planned setup is explicitly asserted and excluded by its sole known id; no premature Coordinator turn, one ready-now event, restart and settled journal counts remain. Legacy routing checks exact body line plus recipient/topic/canonical item. Shared palette cherry-pick matches 7210621b and waits on snapshot state with original assertions retained. No production delta; C8 refreshed, C1–C7 await complete same-head full verification. Evidence A-1993: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1993-t-328-integration-assertion-delta-source-clear-at-a3a04a91.md.
 
 Criteria: C8 verified.
+
+### rev-23 · 2026-10-13T16:03:52.100Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-328-5
+commit: a3a04a91fd879085fbd7c183463326f18568be97
+
+No high, medium, or low findings remain. Source A-1977/A-1993 and complete exact-head A-1996 establish C1–C8, including stage/QA activation, hand-save preservation, subscribed journal events, closed/reopened stages and bounded candidate work. Typecheck and all phases pass 1801/1801, exit 0, zero skips/cancellations. Previously failing integration cases are green with reviewed assertions. Evidence A-1997: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1997-t-328-final-exact-head-review-clear.md.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified.
+
+### coord · 2026-10-13T16:04:09.237Z
+
+Merged 7b9cc31af14b689b52ff68d49b94eeea28cccd11 onto dev.

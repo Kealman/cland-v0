@@ -2,8 +2,8 @@
 id: T-301
 kind: task
 title: nvim/test/palette.test.ts "item prefix opens an item; C-v opens another beside the centre" times out under the full run's load
-state: open
-status: backlog
+state: closed
+status: done
 labels:
   - nvim
   - ready-for-agent
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-12T19:50:26.478Z
-updated: 2026-10-13T15:34:40.527Z
+updated: 2026-10-13T16:04:25.392Z
 ---
 
 ## Summary
@@ -39,3 +39,7 @@ Recurred 2026-10-13 in T-336's full run 3cf0415f (A-1984, peak load 17.86). It d
 ### coord · 2026-10-13T15:34:40.527Z
 
 Fixed by shared commit 7210621 (impl-336, branch shared/T-301-palette-snapshot-wait, 2026-10-13). The test waits for its items and the loaded tracker ladder before the palette keys, with the assertions unchanged. A delayed hub.status and task.list replay fails before the fix and passes after it (A-1988). T-301 closes when the first branch carrying it merges, likely T-336.
+
+### coord · 2026-10-13T16:04:25.392Z
+
+Closed by the shared fix 7210621, which reached dev with T-328's merge (2026-10-13).
