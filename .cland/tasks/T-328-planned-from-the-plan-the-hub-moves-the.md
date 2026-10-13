@@ -3,7 +3,8 @@ id: T-328
 kind: task
 title: "Planned from the plan: the hub moves the current stage's backlog tasks to planned, moves the next stage when one completes, and a closed epic reports its stages closed"
 state: open
-status: backlog
+status: review
+criterion_seq: 8
 labels:
   - v0.1.2
   - hub
@@ -11,10 +12,10 @@ labels:
 assignee: null
 parent: E-270
 blocked_by: []
-topic: null
-branch: null
+topic: topic-206
+branch: t/T-328-planned-from-the-plan-the-hub-moves-the
 created: 2026-10-13T14:04:09.203Z
-updated: 2026-10-13T14:04:16.229Z
+updated: 2026-10-13T14:53:55.270Z
 ---
 
 ## Summary
@@ -78,11 +79,54 @@ No role clause changes. The Coordinator's clause already takes "the lowest-ranke
 
 ## Acceptance criteria
 
-- [ ] C1. A hub test on a temporary project sets a two-stage plan with `cland task plan set`. `cland task list --under E-<n> --json` then shows stage one's tasks `planned` and stage two's `backlog`.
-- [ ] C2. Landing stage one's tasks through `cland merge` turns stage two's backlog tasks `planned`. With an after-stage QA policy on stage one, stage two moves only after the clear stage verdict.
-- [ ] C3. A task of stage two already `in progress` is not touched. A task of the current stage set back to `backlog` by hand stays `backlog` after a later recompute. No item ever moves to `backlog`.
-- [ ] C4. An epic without a plan moves nothing. An epic whose plan waits for approval moves nothing until `cland task plan approve`.
-- [ ] C5. Closing the epic shows every stage `closed` in `cland task plan show` and `task.view`. Reopening it restores the derived states.
-- [ ] C6. Each move logs `task-written` with op `planned`, read from the journal after the `flushLogs` barrier. A session subscribed to the epic's subtree receives one `status changed backlog → planned` event per moved task.
-- [ ] C7. A query-count regression with 64 unrelated items and 8 unrelated epics with plans: one stage item landing stays under a fixed query bound, and a burst of ten closes in one tick runs one recompute per affected epic.
-- [ ] C8. `hub/README.md`, `docs/agents/issue-tracker.md` with its template, the GLOSSARY Status entry and the `plan-epic` skill describe the plan-driven `planned`.
+- [x] C1. A hub test on a temporary project sets a two-stage plan with `cland task plan set`. `cland task list --under E-<n> --json` then shows stage one's tasks `planned` and stage two's `backlog`.
+  - done: impl-328 · 2026-10-13T14:38:55.376Z
+- [x] C2. Landing stage one's tasks through `cland merge` turns stage two's backlog tasks `planned`. With an after-stage QA policy on stage one, stage two moves only after the clear stage verdict.
+  - done: impl-328 · 2026-10-13T14:38:56.563Z
+- [x] C3. A task of stage two already `in progress` is not touched. A task of the current stage set back to `backlog` by hand stays `backlog` after a later recompute. No item ever moves to `backlog`.
+  - done: impl-328 · 2026-10-13T14:49:58.785Z
+- [x] C4. An epic without a plan moves nothing. An epic whose plan waits for approval moves nothing until `cland task plan approve`.
+  - done: impl-328 · 2026-10-13T14:38:58.469Z
+- [x] C5. Closing the epic shows every stage `closed` in `cland task plan show` and `task.view`. Reopening it restores the derived states.
+  - done: impl-328 · 2026-10-13T14:38:59.373Z
+- [x] C6. Each move logs `task-written` with op `planned`, read from the journal after the `flushLogs` barrier. A session subscribed to the epic's subtree receives one `status changed backlog → planned` event per moved task.
+  - done: impl-328 · 2026-10-13T14:39:01.621Z
+- [x] C7. A query-count regression with 64 unrelated items and 8 unrelated epics with plans: one stage item landing stays under a fixed query bound, and a burst of ten closes in one tick runs one recompute per affected epic.
+  - done: impl-328 · 2026-10-13T14:49:59.699Z
+- [x] C8. `hub/README.md`, `docs/agents/issue-tracker.md` with its template, the GLOSSARY Status entry and the `plan-epic` skill describe the plan-driven `planned`.
+  - done: impl-328 · 2026-10-13T14:39:02.886Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-328-2 · 2026-10-13T14:53:55.270Z · commit fcf4211d45942da6c913aa2f86b20ab4b89c7847
+
+## Comments
+
+### impl-328 · 2026-10-13T14:39:03.591Z
+
+Implemented durable plan-stage entry tracking and indexed affected-epic lookup. Current-stage backlog tasks move through hub #mutate as op planned; plan acceptance/approval, stage completion/QA and startup trigger coalesced checks. Closed epics report closed stages without planned writes. CLI/frame tests cover merges, approval, hand resets/new members, restart/offline changes, subscribed events/journal and native query bounds. Concurrent hand status saves win during a gated planned write. Targeted checks: 68 tests across planned-stage, task-plan, plan-approval, stage-qa and tracker-async passed; typecheck and shard admission passed. Full verification follows clear source review per D25.
+
+### rev-23 · 2026-10-13T14:43:30.400Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-328-1
+commit: 355b9c7d5de611fb11316c862289e14c23f60b81
+
+Medium — hub/src/tracker/tracker.ts:1691,1701 checks planned source only before rename; a late in-place save is detected after rename but only criterion writes refuse/capture it, so a human status can be overwritten. Cover that window and retain the saved source/status. Medium — hub/src/tracker/tracker.ts:971 retries every refused plan on each affected task write, making planned work depend on unrelated invalid epics; index candidate dependencies and add refused-plan workload coverage. Full run remains pending D25/QA priority. Evidence A-1968: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1968-t-328-source-review-not-clear-hand-save-race-and-refused-plan-fan-out.md.
+
+Criteria: C3 failed (A late in-place hand save after the planned pre-rename hash read is overwritten; post-rename source protection handles only criterion writes.), C7 failed (Each planned task write retries all refused plan candidates via #planErrors.keys, so work is not bounded to indexed affected epics.).
+
+### impl-328 · 2026-10-13T14:50:00.204Z
+
+Corrected C3/C7 findings from source review rev-2026-10-13-328-1. Planned writes now use the existing guarded capture/link mechanism, detect the post-publication old-fd save, and restore the saved inode only over the generated publication using the same guard. The late-window regression retains the hand review status and source and announces no planned event. Accepted and parseable candidate plan dependencies share the reverse index; removal/reparent/criterion/new-child recovery targets only affected candidates. Added eight unrelated refused plans to the workload; old source reproduced 192 unrelated validation reads, corrected source counts zero. Candidate ancestor-reparent recovery passes. Targeted checks after correction: planned-stage 10, task-plan 10, plan-approval 3 and tracker-criterion-write 13 (36 total) pass; typecheck, shard admission and diff check pass. Fresh source review is required before any full verification; E-269 QA priority remains in force.
+
+### rev-23 · 2026-10-13T14:53:55.270Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-328-2
+commit: fcf4211d45942da6c913aa2f86b20ab4b89c7847
+
+No high or medium source findings remain. C3/C7 corrections preserve the late editor inode/status through guarded publication with no false planned event, and index refused candidate dependencies without unrelated retry fan-out; recovery/query bounds remain covered. Original stage/approval/entry semantics remain applicable. C8 docs verified; C1–C7 final runtime verification awaits the complete exact-head run. Respect D25 and the E-269 QA-end admission hold. Evidence A-1977: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1977-t-328-corrected-source-review-clear-at-fcf4211.md.
+
+Criteria: C8 verified.

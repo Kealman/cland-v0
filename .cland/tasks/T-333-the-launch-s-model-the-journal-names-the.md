@@ -3,7 +3,8 @@ id: T-333
 kind: task
 title: "The launch's model: the journal names the model of every launch where the harness reports it, the first turn's model when the launch named none, and each sub-agent's model or unknown"
 state: open
-status: backlog
+status: review
+criterion_seq: 7
 labels:
   - v0.1.2
   - hub
@@ -11,10 +12,10 @@ labels:
 assignee: null
 parent: E-270
 blocked_by: []
-topic: null
-branch: null
+topic: topic-205
+branch: t/T-333-the-launch-s-model-the-journal-names-the
 created: 2026-10-13T14:04:09.762Z
-updated: 2026-10-13T14:04:17.153Z
+updated: 2026-10-13T14:49:14.923Z
 ---
 
 ## Summary
@@ -66,10 +67,36 @@ E-270: Status, fields and instrumentation. Spec: `docs/spec/v0.1.2.md` §3.12 (t
 
 ## Acceptance criteria
 
-- [ ] C1. A fake Claude session launched without a model journals `session-launched` with a null model, then one `session-model` with the model of its first turn. A second turn with the same model writes nothing.
-- [ ] C2. A fake Claude session launched with `--model` writes no `session-model` line while the harness reports the same model.
-- [ ] C3. Fake Codex and OpenCode sessions launched without a model journal `session-launched` naming the chosen model.
-- [ ] C4. A fake Claude sub-agent start with a model journals `subagent-launched` naming it. One without a model journals `"unknown"`. Both name the parent session, role and item.
-- [ ] C5. A relaunch writes its own launch record and, when needed, its own `session-model` line.
-- [ ] C6. `cland init` and `cland update` merge the two new hooks into `.claude/settings.json` and keep the user's own hooks (`hub/test/init.test.ts`).
-- [ ] C7. `hub/README.md`'s journal section describes `session-model` and `subagent-launched` and names which harnesses report sub-agents.
+- [x] C1. A fake Claude session launched without a model journals `session-launched` with a null model, then one `session-model` with the model of its first turn. A second turn with the same model writes nothing.
+  - done: impl-333 · 2026-10-13T14:43:19.774Z
+- [x] C2. A fake Claude session launched with `--model` writes no `session-model` line while the harness reports the same model.
+  - done: impl-333 · 2026-10-13T14:43:21.286Z
+- [x] C3. Fake Codex and OpenCode sessions launched without a model journal `session-launched` naming the chosen model.
+  - done: impl-333 · 2026-10-13T14:43:21.980Z
+- [x] C4. A fake Claude sub-agent start with a model journals `subagent-launched` naming it. One without a model journals `"unknown"`. Both name the parent session, role and item.
+  - done: impl-333 · 2026-10-13T14:43:22.801Z
+- [x] C5. A relaunch writes its own launch record and, when needed, its own `session-model` line.
+  - done: impl-333 · 2026-10-13T14:43:23.339Z
+- [x] C6. `cland init` and `cland update` merge the two new hooks into `.claude/settings.json` and keep the user's own hooks (`hub/test/init.test.ts`).
+  - done: impl-333 · 2026-10-13T14:43:24.374Z
+- [x] C7. `hub/README.md`'s journal section describes `session-model` and `subagent-launched` and names which harnesses report sub-agents.
+  - done: impl-333 · 2026-10-13T14:43:24.935Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-333-1 · 2026-10-13T14:49:14.923Z · commit b607cae912e26dab920d13fe21844762e6577778
+
+## Comments
+
+### impl-333 · 2026-10-13T14:43:26.417Z
+
+Implemented launch/model journal records through the existing adapter signal path, async Claude sub-agent hooks plus CLI identity payload fields, and native Codex/OpenCode sub-agent starts. Codex prefers resolved-model activities, deduplicates start/completion, retains early reports and falls back to legacy spawn signals at turn completion. Attribution uses the process row and launch item, with no tracker reads. Targeted session-model tests: 10 passed, plus the newly added live-resume case passed separately; init.test.ts: 15 passed. Every journal read uses the flushLogs barrier and CLI. Protocol evidence: A-1965. Full verification is held per Coordinator decision until E-269 QA ends; source review comes first.
+
+### rev-23 · 2026-10-13T14:49:14.923Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-333-1
+commit: b607cae912e26dab920d13fe21844762e6577778
+
+No high or medium source findings. Process-row model attribution/equal-report suppression, parent-safe child records, native Codex/OpenCode schemas, early-report ordering, resume launch records and async hook preservation match the spec. C7 docs verified; C1–C6 final runtime verification remains pending the complete exact-head run. Respect D25 and the E-269 QA-end admission hold. Protocol schemas independently read in A-1970. Evidence A-1972: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1972-t-333-source-review-clear-at-b607cae-launch-and-child-model-journal.md.
+
+Criteria: C7 verified.

@@ -3,7 +3,8 @@ id: T-329
 kind: task
 title: "The release scope: the items panel at release scope lists only the release's own items, and the count line leads to the categories and the unscheduled items under all"
 state: open
-status: backlog
+status: in progress
+criterion_seq: 6
 labels:
   - v0.1.2
   - nvim
@@ -11,10 +12,10 @@ labels:
 assignee: null
 parent: E-270
 blocked_by: []
-topic: null
-branch: null
+topic: topic-204
+branch: t/T-329-the-release-scope-the-items-panel-at
 created: 2026-10-13T14:04:09.323Z
-updated: 2026-10-13T14:04:09.323Z
+updated: 2026-10-13T14:59:48.765Z
 ---
 
 ## Summary
@@ -72,9 +73,48 @@ E-270: Status, fields and instrumentation. Spec: `docs/spec/v0.1.2.md` §3.2 (th
 
 ## Acceptance criteria
 
-- [ ] C1. A Neovim headless test on the stub hub at release scope under `board` shows no row of a category's item and no unscheduled fold. The last row reads `categories <N> · <M> open · unscheduled <K>`, with N, M and K right for the fixture. The `work` and `done` filters show no such row either.
-- [ ] C2. With no unscheduled item the line drops its unscheduled part. With no open category it shows only `unscheduled <K>`. With neither it is absent.
-- [ ] C3. Enter on the count line switches the panel to `all` with the cursor on the line. The categories section and an `unscheduled (K)` fold follow it, and `za` unfolds the unscheduled items.
-- [ ] C4. A task event that gives an unscheduled task a parent under the release shows the task at release scope and lowers K by one. The test waits on that state.
-- [ ] C5. With no open release, the panel shows today's unscheduled view.
-- [ ] C6. `nvim/README.md`'s items panel section describes the release scope, the count line and the `all` sections.
+- [x] C1. A Neovim headless test on the stub hub at release scope under `board` shows no row of a category's item and no unscheduled fold. The last row reads `categories <N> · <M> open · unscheduled <K>`, with N, M and K right for the fixture. The `work` and `done` filters show no such row either.
+  - done: impl-329 · 2026-10-13T14:37:24.558Z
+- [x] C2. With no unscheduled item the line drops its unscheduled part. With no open category it shows only `unscheduled <K>`. With neither it is absent.
+  - done: impl-329 · 2026-10-13T14:37:24.979Z
+- [x] C3. Enter on the count line switches the panel to `all` with the cursor on the line. The categories section and an `unscheduled (K)` fold follow it, and `za` unfolds the unscheduled items.
+  - done: impl-329 · 2026-10-13T14:37:25.297Z
+- [x] C4. A task event that gives an unscheduled task a parent under the release shows the task at release scope and lowers K by one. The test waits on that state.
+  - done: impl-329 · 2026-10-13T14:37:25.627Z
+- [x] C5. With no open release, the panel shows today's unscheduled view.
+  - done: impl-329 · 2026-10-13T14:37:25.941Z
+- [x] C6. `nvim/README.md`'s items panel section describes the release scope, the count line and the `all` sections.
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-329-1 · 2026-10-13T14:37:01.795Z · commit c7aff82ccd4a8c8fb896291d49be922414f0b214
+  - done: impl-329 · 2026-10-13T14:37:26.239Z
+
+## Comments
+
+### impl-329 · 2026-10-13T14:28:42.388Z
+
+Implemented and pushed c7aff82c. Scoped board/work/done exclude loose roots; the live category count line adds unscheduled K; Enter reaches all with loose roots folded after categories. Layer views stay global. Focused headless tests passed: vboard 20, shell 84, real-hub items 4, PANELS-012/013 2, plus the zero-open-part case. Source review requested before full verification (D25).
+
+### rev-23 · 2026-10-13T14:37:01.795Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-329-1
+commit: c7aff82ccd4a8c8fb896291d49be922414f0b214
+
+No high or medium source findings. Scoped board/work/done exclude loose roots; live N/M/K count parts, all loose-tree fold, Enter/cursor, parent-event transition and no-scope fallback match the spec; global layer views remain. Adapted tests retain their rank/glyph/map/fold/state guarantees. C6 docs verified. C1–C5 final runtime verification awaits the complete exact-head run under D25. task.view currently has no done marks; the Implementer must post its own. Evidence A-1966: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1966-t-329-source-review-clear-at-c7aff82-scoped-rows-and-loose-item-navigation.md.
+
+Criteria: C6 verified.
+
+### rev-23 · 2026-10-13T14:52:08.689Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-329-2
+commit: c7aff82ccd4a8c8fb896291d49be922414f0b214
+
+Complete verification is not clear: A-1974 passed 1471/1472 hub tests but failed hub/test/opencode-adapter.test.ts:250 waiting for two fake changing catalogs within 5000ms; Neovim never ran. No T-329 hub delta or product criterion failure is inferred, so no criterion is failed from this inherited partial run and C1–C5 remain unverified. Diagnose under the shared-fix rule without weakening deadline/fallback assertions; changed heads require new source review. A-1966 source assessment remains applicable. Evidence A-1976: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1976-t-329-final-run-not-clear-inherited-opencode-catalog-wait.md.
+
+### impl-329 · 2026-10-13T14:59:48.765Z
+
+Full run c109c331 failed an inherited hub readiness bound before Neovim (A-1974), peak 1m load 22.84. Coordinator-directed isolated comparisons passed opencode-adapter.test.ts 19/19 three times each at dev 87b9fbe and head c7aff82c; the case alone passed too. No fixed-wait race or isolated failure found; no source edits. Reported as Tech debt for C-216. Evidence A-1978 contains six whole-file logs and summary. Full verification awaits E-269 QA's machine-priority hold being lifted; source remains c7aff82c.
