@@ -1327,17 +1327,7 @@ export class Dispatcher {
         if (isClientRequest(frame) && frame.type === 'task.migrate') {
           const reason = 'item migration belongs to the Coordinator or the human';
           if (caller && caller.role !== 'coordinator') return this.#refuse(caller, frame, peer, frame.type, reason);
-          const authorize = () => {
-            const now = this.#asSession(frame);
-            if (caller && (!now || now.sessionId !== caller.sessionId || now.role !== 'coordinator')) throw new ToolForbidden(now?.role ?? null, frame.type, reason);
-          };
-          const tracker = this.#options.tracker;
-          if (!tracker) return peer.send(Dispatcher.#failure(frame.id, new Error('this hub has no tracker')));
-          const resumed = this.#guard.resumer(frame.type, client);
-          return later(frame.type, tracker.migrateDryRun(resumed, authorize).then(
-            value => resumed(() => ({ type: 'result', id: frame.id, ok: true, value })),
-            err => resumed(() => Dispatcher.#failure(frame.id, err)),
-          ));
+          return peer.send(Dispatcher.#failure(frame.id, new Error('the hub is running; stop the hub and run cland task migrate from the project root shell')));
         }
         if (isClientRequest(frame) && (frame.type === 'crew.show' || frame.type === 'crew.set')) {
           const crew = core.crew;

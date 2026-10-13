@@ -1,6 +1,6 @@
 # Issue tracker: cland
 
-Issues, specs and tickets for this repo live as **items** in cland's own tracker: one Markdown file per item in `.cland/tasks/` (`<id>-<slug>.md`), committed with the work. Use the `cland task` CLI for every operation; in this repo run it as `node hub/bin/cland.ts task …` from the repo root (or put `hub/bin/cland.ts` on PATH as `cland`). It talks to the project's hub, so a hub must be running: if a command says `no hub running`, run `node hub/bin/cland.ts hub start`. Don't write item files by hand when a command can do it.
+Issues, specs and tickets for this repo live as **items** in cland's own tracker: one Markdown file per item in `.cland/tasks/` (`<id>-<slug>.md`), committed with the work. Use the `cland task` CLI for every operation; in this repo run it as `node hub/bin/cland.ts task …` from the repo root (or put `hub/bin/cland.ts` on PATH as `cland`). Ordinary commands talk to the project's hub (the offline `task migrate` command requires it stopped), so a hub must be running: if a command says `no hub running`, run `node hub/bin/cland.ts hub start`. Don't write item files by hand when a command can do it.
 
 From a linked Git worktree, the CLI follows its `.git` file to Git's common directory and finds the main worktree's `.cland/hub.json`, even when the worktree is outside the project folder. A copied `.cland/` without `hub.json` does not become a separate project. `CLAND_HUB_FILE`, when set by a launched session or explicitly, overrides discovery from any directory. All tracker writes go through that hub into its root's `.cland/tasks` — the main worktree's item files, never the working session's worktree copy. `cland hub start` starts the cwd's resolved project hub and does not use this override.
 
@@ -15,13 +15,30 @@ From a linked Git worktree, the CLI follows its `.git` file to Git's common dire
 
 The container ladder is configured in `.cland/config.toml`: `[tracker] levels = [["release", "category"], "epic"]`. A string is a level of one kind, so the old flat form still parses. Kinds at a level take any kind at the immediately preceding level as parent; leaves take any container. The first kind of the first level alone owns release versions and current-release selection. Other root kinds are led by the Coordinator. Kind names must be unique, exclude leaves and map, and have distinct first-letter prefixes. `cland init` writes the new default; `cland update` upgrades only the old default `["release", "epic"]` and reports custom ladders as kept. Restart the hub to apply a ladder change.
 
-## Previewing the prefix migration
+## Migrating prefixes and categories
 
-From the human's shell or the Coordinator's session, run `cland task migrate --dry-run` (add `--json` for the plan object). Other roles are refused. The command requires `--dry-run` until the migration applier is built.
+From the project root's human shell or the Coordinator's session, with the hub stopped, run `cland task migrate --dry-run` to inspect the plan, then `cland task migrate` to apply it. Add `--json` for the plan object; preview and apply share the planner and return the same format. It works directly on item files and `hub.db`, holding the hub startup lock until completion. A running hub refuses both commands; its `task.migrate` frame also refuses. No MCP migration tool is added.
 
-The preview lists file renames with their existing slugs, each item's kind prefix, rewritten `parent` and `blocked_by` references, and unresolved references that will stay as written. It strips leading kind words such as `Epic:` from titles, converts the open root Tech debt container to a category (or seeds it), seeds Bugs, Follow-ups and Ideas with the next shared numbers, retires every `tech-debt` label and moves unparented labelled items into Tech debt. Existing open root categories are reused by their cleaned titles. The last line gives counts; an empty plan prints `nothing to do`.
+The plan lists file renames preserving existing slugs, each item's kind prefix, rewritten `parent` and `blocked_by`, title changes and unresolved references left as written. It strips leading kind words such as `Epic:`, converts the open root Tech debt container to a category (or seeds it), seeds Bugs, Follow-ups and Ideas on the shared counter, retires every `tech-debt` label and moves unparented labelled items into Tech debt. Existing open root categories are reused by their cleaned titles.
 
-The preview changes no item file or tracker index and writes no migration/domain journal event. Ordinary call audit records remain. Bodies, comments, topics, branches and timestamps are outside the migration. The planner returns only remaining changes for a partially migrated tree.
+Apply renames each file before atomically replacing its frontmatter, so interruption leaves one file per number. References-only changes are written in place. It rebuilds the affected index and records one `task-migrated` journal event with counts and caller through the log tap. Preview writes no item, index or journal record. A clean second run reports `nothing to do` and writes nothing; a partially migrated tree gets only its remaining changes. If the last file was published before an interrupted index write, apply repairs the derived index even with an empty file plan, leaving every item file unchanged. Preview never repairs the index. A pending temporary write or criterion capture must be recovered before retrying.
+
+Both modes refuse a linked worktree or subdirectory, any caller other than the human or Coordinator, an on-disk territory/merge lock, tracker lock or temporary write, a pending criterion capture, an unfinished merge receipt, and pending `cland sync` or `cland release` recovery. A ladder without root `category` refuses with instructions to run `cland update` and restart the hub. These are on-disk checks, since the migration requires the serving hub to be stopped.
+
+Bodies, comments, existing timestamps, journal history, artifacts, topic bindings, branches and worktrees keep their original bytes and ids. Task filenames keep `T-`. Every old `T-<n>` reference keeps resolving by number after restart, including CLI and MCP task operations, topic bindings, inbox and journal references and `gi` in a thread. Older task branches can still squash-merge; an edit to a renamed container follows Git rename detection or refuses with `merge-conflict`, rather than creating a second item file.
+
+### Live-tracker procedure and rollback
+
+The Coordinator performs the live migration on `dev` after this slice merges, with a green integrated verification and an empty suite queue. Implementers use temporary projects and scratch copies only.
+
+1. Run `cland update` to provision the root category ladder. Arrange the stand-in's maintenance window and stop the hub (`cland hub stop`).
+2. On the root's clean `dev`, create `git tag pre-migration` and copy `.cland/hub.db` beside it as `.cland/hub.db.pre-migration`. Stop must have completed before the copy; keep the tag and database backup until acceptance.
+3. Run `cland task migrate --dry-run --json` and keep its output as an artifact after restart. Inspect the plan, then run `cland task migrate --json` and compare it with the preview. Run once more to confirm `nothing to do`.
+4. Restart the hub on the migrated tree (`cland hub start`) and relaunch every role session: their previously delivered clauses and briefs carry the old ids. Check old ids resolve and the category tree agrees with the plan.
+5. Commit the renamed item files on `dev` and publish with `cland push`.
+
+To roll back within minutes, stop the restarted hub and all role sessions. Preserve any later work first. Restore the pre-migration tracker tree with `git restore --source=pre-migration --staged --worktree -- .cland/tasks` (this also removes newly seeded tracked files; remove any still-untracked migration-created category files named by the kept plan). Restore `.cland/hub.db.pre-migration` over `.cland/hub.db` and remove obsolete `.cland/hub.db-wal` and `.cland/hub.db-shm` only while the hub is stopped. Keep the append-only journal. Commit the restored tracker if the migration was committed, restart the hub and relaunch roles. The tag restores the item files; the database copy restores hub state and its index together.
+
 
 ## GitHub Issues: retired
 

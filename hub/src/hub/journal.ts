@@ -94,6 +94,7 @@ export const JOURNALLED: ReadonlySet<string> = new Set([
   'task-plan-changed',
   'task-plan-approved',
   'task-qa-migrated',
+  'task-migrated',
   'task-qa-migration-fallback',
   'task-plan-refused',
   'task-unreadable',

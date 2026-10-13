@@ -14,7 +14,7 @@ import type { MigrationPlan } from '../tracker/migrate.ts';
 export const TASK_USAGE = `  task create <title> [--kind k] [--version semver] [--body t | --body-file f] [--label l]… [--assignee a]
                   [--parent <id>] [--blocked-by <id>]… [--topic t] [--branch b]
   task view <id> (any kind prefix in either case, or a bare number)
-  task migrate --dry-run [--json] (preview prefixes, references, titles, categories and retired labels)
+  task migrate [--dry-run] [--json] (offline prefixes, references, titles, categories and retired labels)
   task plan migrate (retire qa-required labels, report policy fallbacks)
   task plan <set|show|approve> <epic-id> [--file plan.yaml] [--reason text]
   task list [--under <id>] [--state open|closed] [--label l]… [--kind k] [--assignee a] [--verdict review=clear]
@@ -86,7 +86,7 @@ function frameOf(sub: Sub, positionals: string[], v: Values): { type: string } &
   switch (sub) {
     case 'migrate':
       if (positionals.length) throw new UsageError('task migrate takes no positional arguments');
-      return { type: 'task.migrate', dryRun: true };
+      return { type: 'task.migrate', dryRun: v['dry-run'] === true };
     case 'create': {
       const title = positionals.join(' ').trim();
       if (!title) throw new UsageError('task create needs a title');
@@ -241,6 +241,7 @@ function listText(items: ItemSummary[]): string {
 }
 
 function migrationText(plan: MigrationPlan): string {
+  if (!Object.entries(plan).some(([part, changes]) => part !== 'unresolved' && changes.length)) return 'nothing to do\n';
   const lines = [
     ...plan.renames.map(c => `rename ${c.from} → ${c.to}`),
     ...plan.ids.map(c => `id ${c.item}: ${c.from} → ${c.to}`),
@@ -304,10 +305,6 @@ export async function runTask(args: string[], cwd: string = process.cwd(), io: I
   try {
     const parsed = parseArgs({ args: rest, options: OPTIONS[s], allowPositionals: true, strict: true });
     values = parsed.values as Values;
-    if (s === 'migrate' && values['dry-run'] !== true) {
-      io.err('cland: the migration itself is not built yet; use task migrate --dry-run\n');
-      return 1;
-    }
     frame = frameOf(s, parsed.positionals, values);
   } catch (err) {
     io.err(`cland: ${err instanceof Error ? err.message : String(err)}\n\nusage:\n${TASK_USAGE}`);
@@ -316,6 +313,17 @@ export async function runTask(args: string[], cwd: string = process.cwd(), io: I
   const as = actorOf(values, env, io);
   if (as) frame.as = as;
 
+  if (s === 'migrate') {
+    try {
+      const { migrateOffline } = await import('../tracker/offline-migrate.ts');
+      const plan = await migrateOffline(cwd, values['dry-run'] === true, as);
+      io.out(values.json ? `${JSON.stringify(plan)}\n` : migrationText(plan));
+      return 0;
+    } catch (err) {
+      io.err(`cland: ${err instanceof Error ? err.message : String(err)}\n`);
+      return 1;
+    }
+  }
   const root = projectRoot(cwd);
   const d = readDiscovery(hubDiscovery(cwd, env));
   if (!d || !pidAlive(d.pid)) {

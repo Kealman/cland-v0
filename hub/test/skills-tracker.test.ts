@@ -99,7 +99,7 @@ async function frontier(root: string, map: string): Promise<string[]> {
 
 // ------------------------------------------------------------------ the template's commands are real
 
-test('every `cland task` command the template names parses: it reaches the hub check, not a usage error', async (t) => {
+test('every `cland task` command the template names parses and reaches its hub or offline preflight', async (t) => {
   const text = await readFile(TEMPLATE, 'utf8');
   const commands = [...text.matchAll(/cland task [a-z]+[^`|\n]*/g)]
     .map((m) => m[0].split('<<')[0]!.trim())
@@ -110,14 +110,15 @@ test('every `cland task` command the template names parses: it reaches the hub c
   assert.ok(commands.length >= 15, `only ${commands.length} commands found in the template`);
   const subs = new Set(commands.map((c) => c.split(/\s+/)[2]));
   for (const sub of ['create', 'view', 'list', 'comment', 'edit', 'close', 'link', 'claim']) assert.ok(subs.has(sub), `the template never names \`cland task ${sub}\``);
-  // no hub here: a command that parses fails with "no hub running" (1); a bad flag is a usage error (2)
+  // No hub/tracker here: ordinary commands reach discovery, migration reaches offline preflight.
+  // Either parsed command exits 1; a bad flag is a usage error (2).
   const root = await tempProject(t, 'cland-skills-nohub-');
   await writeFile(join(root, 'x'), 'body\n');
   for (const c of commands) {
     const args = c.split(/\s+/).slice(1);
     const r = await cland(root, '', ...args);
     assert.equal(r.code, 1, `\`${c}\` exits ${r.code}:\n${r.stderr}`);
-    assert.match(r.stderr, /no hub running/, c);
+    assert.match(r.stderr, args[1] === 'migrate' ? /existing tracker.*cland init/ : /no hub running/, c);
   }
 });
 

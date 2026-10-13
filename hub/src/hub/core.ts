@@ -352,6 +352,9 @@ export class HubCore {
 
   /** Same projection for the journal and live rows, independent of visibility preferences. */
   eventsProject(filter: EventsFilter = {}): (row: EventRow, record: JournalRecord) => EventRow | null {
+    const canonical = (id: string) => this.#items?.resolveId?.(id) ?? id;
+    if (filter.subject?.kind === 'item') filter = { ...filter, subject: { ...filter.subject, id: canonical(filter.subject.id) } };
+    if (filter.muted) filter = { ...filter, muted: filter.muted.map(subject => subject.kind === 'item' ? { ...subject, id: canonical(subject.id) } : subject) };
     const inbox = this.inbox.list();
     const waitingTopics = new Set([...inbox.waiting.map(t => t.id), ...inbox.asks.map(a => a.topic.id), ...inbox.messages.map(m => m.topic.id), ...inbox.requests.map(r => r.topic.id)]);
     const items = new Map((this.#items?.list?.() ?? []).map(i => [i.id, i]));
@@ -359,6 +362,7 @@ export class HubCore {
     const descendants = filter.subject?.kind === 'item' ? new Set((this.#items?.list?.() ?? []).filter(i => i.id === filter.subject!.id || this.#items?.ancestry?.(i.id)?.includes(filter.subject!.id)).map(i => i.id)) : null;
     descendants?.add(filter.subject!.id);
     return (row, record) => {
+      if (row.item || row.subject.kind === 'item') row = { ...row, ...(row.item ? { item: canonical(row.item) } : {}), ...(row.subject.kind === 'item' ? { subject: { ...row.subject, id: canonical(row.subject.id) } } : {}) };
       if (row.kind === 'topic' && /waiting for human/.test(row.text) && waitingTopics.has(row.subject.id)) return null;
       if (record.event === 'notification' && record.kind === 'plan' && pendingPlans.has(row.subject.id)) return null;
       const cell = record.event === 'notification' ? String(record.kind === 'verdict' ? record.result === 'not clear' ? 'not_clear' : 'clear' : record.kind)

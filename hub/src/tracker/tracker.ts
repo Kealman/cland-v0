@@ -6,6 +6,7 @@
 // concurrent hand saves; other writes keep their last-writer-wins policy.
 // Verdict Git resolution belongs to its admitted operation; later tracker operations wait behind it.
 
+import { parseDocument } from 'yaml';
 import { ToolForbidden } from '../roles/permissions.ts';
 import { planMigration, type MigrationPlan } from './migrate.ts';
 import { PlanError, parsePlan, planInBody, planOverride, planOverrideKey, withPlan, type QaPolicy, type EpicPlan } from './plan.ts';
@@ -999,6 +1000,69 @@ export class Tracker {
         return planMigration(entries, this.#index.highWater() + 1, this.ladder.containers);
       });
     }, resumed, { operation: 'migration preview', item: null });
+  }
+
+  /** Offline applier: one storage admission, rename first, then patch only frontmatter.
+   * The caller owns the project hub lock; no watcher or serving client runs here. */
+  migrate(actor: Actor): Promise<MigrationPlan> {
+    return this.#serial(async resumed => {
+      const entries: Array<{ file: string; item: Item; text: string }> = [];
+      for (const file of (await this.#files.readdir(this.#dir)).filter(name => this.#fileNumber(name) !== null)) {
+        const text = await this.#files.readFile(join(this.#dir, file), 'utf8');
+        entries.push({ file, text, item: parseItem(text, file, this.ladder) });
+      }
+      const max = Math.max(this.#index.highWater(), 0, ...entries.map(e => this.#fileNumber(e.file)!));
+      const plan = planMigration(entries, max + 1, this.ladder.containers);
+      const filesChange = Object.entries(plan).some(([key, changes]) => key !== 'unresolved' && changes.length);
+      for (const entry of entries) {
+        const { file, item } = entry;
+        const match = /^---\r?\n([\s\S]*?)\r?\n---[^\S\r\n]*(?:\r?\n|$)/.exec(entry.text)!;
+        const doc = parseDocument(match[1]!);
+        let changed = false;
+        const set = (key: string, value: unknown) => { doc.set(key, value); changed = true; };
+        for (const c of plan.ids.filter(c => c.file === file)) set('id', c.to);
+        for (const c of plan.titles.filter(c => c.file === file)) set('title', c.to);
+        for (const c of plan.categories.filter(c => c.action === 'convert' && c.file === file)) {
+          set('kind', c.kind);
+          for (const key of ['rank', 'status', 'version']) doc.delete(key);
+        }
+        const blocked = [...item.fm.blocked_by];
+        for (const c of plan.references.filter(c => c.file === file)) {
+          if (c.field === 'parent') set('parent', c.to);
+          else { blocked[c.index!] = c.to; set('blocked_by', blocked); }
+        }
+        if (plan.labels.some(c => c.file === file)) set('labels', item.fm.labels.filter(label => label !== 'tech-debt'));
+        for (const c of plan.moves.filter(c => c.file === file)) set('parent', c.to);
+        const name = plan.renames.find(c => c.from === file)?.to ?? file;
+        if (name !== file) await this.#files.rename(join(this.#dir, file), join(this.#dir, name));
+        let text = entry.text;
+        if (changed) {
+          const newline = entry.text.startsWith('---\r\n') ? '\r\n' : '\n';
+          const yaml = doc.toString().replace(/\n/g, newline);
+          text = `---${newline}${yaml}---${newline}` + entry.text.slice(match[0].length);
+          const tmp = join(this.#dir, `.${name}.${process.pid}.tmp`);
+          try {
+            await this.#files.writeFile(tmp, text);
+            await this.#files.rename(tmp, join(this.#dir, name));
+          } finally { await this.#files.unlink(tmp).catch(() => {}); }
+        }
+        const written = parseItem(text, name, this.ladder);
+        const meta = this.#index.metaOf(written.fm.id);
+        if (meta?.file !== name || meta.hash !== hashOf(text)) {
+          this.#index.put(written, { file: name, hash: hashOf(text), source: 'hub', indexedAt: this.#now().getTime() });
+          this.#plansAfterIndex(written, 'hand');
+        }
+      }
+      const present = new Set(entries.map(entry => this.#fileNumber(entry.file)!));
+      for (const id of this.#index.ids()) if (!present.has(idNumber(id))) this.#index.remove(id);
+      for (const category of plan.categories) if (category.action === 'create') {
+        const created = await this.#create(actor, { title: category.title, kind: category.kind }, resumed, () => {});
+        if (created.id !== category.id) throw new TrackerError(`migration counter changed: expected ${category.id}, got ${created.id}`);
+      }
+      if (filesChange) this.#log({ event: 'task-migrated', counts: Object.fromEntries(Object.entries(plan).map(([part, changes]) => [part, changes.length])), by: actor.name });
+      else this.#log({ event: 'task-migration-index-repaired', by: actor.name });
+      return plan;
+    }, untimed, { operation: 'item migration', item: null });
   }
 
   /** Explicit, resumable migration: write the plan before removing each legacy label. */
