@@ -2,8 +2,8 @@
 id: T-281
 kind: task
 title: The five Linux test failures fixed at their cause; platform skips listed by reason
-state: open
-status: review
+state: closed
+status: done
 criterion_seq: 6
 labels:
   - v0.1.2
@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-181
 branch: t/T-281-the-five-linux-test-failures-fixed-at
 created: 2026-10-12T11:54:20.772Z
-updated: 2026-10-13T01:51:38.188Z
+updated: 2026-10-13T02:14:25.052Z
 ---
 
 ## Summary
@@ -53,19 +53,25 @@ Constraints:
 
 - [x] C1. The fake Claude session survives a hook that exits before reading its stdin; a test reproduces that hook on macOS and proves the session keeps answering.
   - done: impl-281 · 2026-10-12T21:22:45.572Z
+  - verified: rev-26 [reviewer] · run rev-20261013-281-final · 2026-10-13T02:14:12.442Z · commit 76353e858ef49255168720d249f15fb8ec5d7ae5
 - [x] C2. The handover test waits for its audit records; the init test is root-safe and still fails when a committed file names the real home directory (shown by a test or a recorded check); each load-sensitive test's cause is named in the item and fixed by a wait for state or a test window, with no retry and no loosened assertion.
   - done: impl-281 · 2026-10-12T21:28:49.130Z
+  - verified: rev-26 [reviewer] · run rev-20261013-281-final · 2026-10-13T02:14:12.443Z · commit 76353e858ef49255168720d249f15fb8ec5d7ae5
 - [x] C3. In an Ubuntu 24.04 container limited to 8 CPUs, as an ordinary user, each of `aide`, `handover`, `init`, `lead-permissions` and `tracker-ready` passes ten runs in a row alone; the log is published as an artifact in this item's topic.
   - verified: rev-26 [reviewer] · run rev-20261013-281-linux · 2026-10-12T23:44:26.116Z · commit 336f125c78080c444f1f2e8e74460df6f5f6d1f9
   - done: impl-281 · 2026-10-12T23:44:36.895Z
+  - verified: rev-26 [reviewer] · run rev-20261013-281-final · 2026-10-13T02:14:12.443Z · commit 76353e858ef49255168720d249f15fb8ec5d7ae5
 - [x] C4. The runner lists every skipped test with file, name and reason on macOS and on Linux, and the hub's suite report counts are unchanged by it.
   - done: impl-281 · 2026-10-13T01:45:39.940Z
   - verified: rev-26 [reviewer] · run rev-20261013-281-skips · 2026-10-13T01:46:02.366Z · commit fba159906fcc5459c97becbde906577f9fc8072c
+  - verified: rev-26 [reviewer] · run rev-20261013-281-final · 2026-10-13T02:14:12.443Z · commit 76353e858ef49255168720d249f15fb8ec5d7ae5
 - [x] C5. `hub/README.md` describes the skip summary, any new test-window knob and how to run the suite on Linux.
   - done: impl-281 · 2026-10-12T21:23:29.415Z
+  - verified: rev-26 [reviewer] · run rev-20261013-281-final · 2026-10-13T02:14:12.443Z · commit 76353e858ef49255168720d249f15fb8ec5d7ae5
 - [x] C6. The suite is green on macOS through `cland verify`, and no test is weakened, skipped or retried.
-  - done: impl-281 · 2026-10-12T22:08:10.489Z
   - verified: rev-26 [reviewer] · run rev-20261013-281-host · 2026-10-12T22:08:12.908Z · commit 0e80988b97f73a9f052954d34b68e974c72bf625
+  - done: impl-281 · 2026-10-13T02:12:49.853Z
+  - verified: rev-26 [reviewer] · run rev-20261013-281-final · 2026-10-13T02:14:12.443Z · commit 76353e858ef49255168720d249f15fb8ec5d7ae5
 
 ## Comments
 
@@ -152,3 +158,23 @@ Coordinator scope decision: the all-phase Linux evidence is NOT green: A-1727 co
 ### impl-281 · 2026-10-13T01:51:38.188Z
 
 Final ordinary macOS C6 submitted through cland verify all: a4d445da-495a-4815-9e9f-0e837f09ddf8 at pushed clean head76353e8 after fetching/merging origin/dev18f2242. Result addressed rev-26/impl-281, project queue position1. Final review request sent before submission. Idle for hub result; Docker remains stopped. Five new Linux failures remain recorded in T-312, not changed in this branch.
+
+### impl-281 · 2026-10-13T02:12:50.165Z
+
+Fresh C6 complete: ordinary macOS cland verify all a4d445da-495a-4815-9e9f-0e837f09ddf8 at pushed76353e8 passed1719/1719,fail/cancel/skip/todo0,716.99s. A-1739 is the durable log. All three phases emit suite skip details0; actual exported suiteSummary is exactly unchanged with those reporter lines removed. Final reviewer assessment pending. Linux all-phase failures remain visible and scoped to T-312 per Coordinator; Docker stays stopped.
+
+### rev-26 · 2026-10-13T02:14:12.443Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261013-281-final
+commit: 76353e858ef49255168720d249f15fb8ec5d7ae5
+
+No outstanding high or medium finding in T-281's scoped change. Final evidence: A-1740. C1/C2/C5 implementation and causes checked; handover barrier and exact assertions retained. C3's 50 consecutive Linux solo passes in A-1687 are retained per the Coordinator's explicit direction and four-CPU local bound; reviewed task hunks unchanged through dev merges. C4's six complete Linux skip records and unchanged actual suiteSummary checked in A-1733; final Mac summary equality also checked. C6 ordinary cland verify all a4d445da at this exact head passed typecheck and 1719/1719, with zero fail/cancel/skip/todo (A-1739). All six criteria refreshed for this reviewed candidate. Limitation: additional Linux hub/Neovim results are NOT green; their five preserved failures were explicitly assigned to out-of-scope T-312. This verdict does not claim general Linux suite readiness.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### coord · 2026-10-13T02:14:25.052Z
+
+Merged 001c36c1d79f575c49c2a229992d9d643b0f4bf3 onto dev.

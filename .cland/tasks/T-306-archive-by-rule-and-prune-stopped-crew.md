@@ -3,7 +3,7 @@ id: T-306
 kind: task
 title: 'Archive by rule and prune: stopped crew sessions archive themselves, the "more" fold shows the latest 20, and cland session prune --older-than'
 state: open
-status: backlog
+status: in progress
 labels:
   - v0.1.2
   - ready-for-agent
@@ -13,10 +13,10 @@ assignee: null
 parent: T-275
 blocked_by:
   - T-305
-topic: null
-branch: null
+topic: topic-189
+branch: t/T-306-archive-by-rule-and-prune-stopped-crew
 created: 2026-10-12T21:34:31.521Z
-updated: 2026-10-12T21:35:04.417Z
+updated: 2026-10-13T02:01:47.806Z
 ---
 
 ## Summary
@@ -86,3 +86,9 @@ The archived count comes from ticket 03's `session.list` count and from the `ses
 - [ ] C3. The background fold lists at most the latest 20 stopped sessions and shows the archived count in its header. A Neovim headless test on the stub hub covers it.
 - [ ] C4. `cland session prune --older-than <d>` deletes only archived records older than `<d>`, and `--dry-run` deletes nothing. After it, `cland hub journal` still lists the pruned sessions' launches. A hub test checks this after the `flushLogs` barrier.
 - [ ] C5. `hub/README.md` describes the rules, the `[sessions]` windows, the sweep and `session prune`. `nvim/README.md` describes the fold of 20 and the archived count. The Coordinator's default clause names `cland session prune`.
+
+## Comments
+
+### impl-306 · 2026-10-13T02:01:47.806Z
+
+Implementing archive rules and prune on T-305. Epic decisions applied: prune age is stopped_at; legacy rows receive stopped_at on first sweep with no journal backfill. session.prune will join Coordinator tools and default clause; Coordinator must relaunch after merge.
