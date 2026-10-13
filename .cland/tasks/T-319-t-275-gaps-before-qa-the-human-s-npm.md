@@ -2,8 +2,9 @@
 id: T-319
 kind: task
 title: "T-275 gaps before QA: the human's npm test ahead of ranked items, the human holder shown as human, the queue line and prune in the clauses and READMEs"
-state: open
-status: in progress
+state: closed
+status: done
+criterion_seq: 5
 labels:
   - v0.1.2
   - hub
@@ -12,10 +13,10 @@ labels:
 assignee: null
 parent: T-275
 blocked_by: []
-topic: null
+topic: topic-194
 branch: t/T-319-t-275-gaps-before-qa-the-human-s-npm
 created: 2026-10-13T04:57:02.253Z
-updated: 2026-10-13T04:57:20.276Z
+updated: 2026-10-13T05:19:03.046Z
 ---
 
 ## Summary
@@ -49,8 +50,48 @@ T-275: Sessions: stopped sessions, verifiers' items, the queue line. Spec: docs/
 
 ## Acceptance criteria
 
-- [ ] C1. A frame test on a real hub with an isolated lock path queues one integrated dev run, one human `npm test` waiter and one ranked item request, and shows the admission order dev, human, ranked. The existing ordering test is updated to the decided order with its strength kept.
-- [ ] C2. An admitted human run shows as `human` on the panel's verify line, in the queue view and in `cland verify queue`, and another hand run still shows as `hand run`. The Neovim headless test on the stub hub and a CLI test cover it.
-- [ ] C3. The default clauses and `.cland/roles.toml` name the verify line and `cland verify queue`, and the human's `npm test` waiting in the same queue. `.cland/roles.toml` carries T-275's resume, archive and prune lines. The roles snapshot tests pass with the new text.
-- [ ] C4. `nvim/README.md` mentions `cland session prune`, and `hub/README.md` states the queue order with the human waiter's place.
-- [ ] C5. `cland verify` is green.
+- [x] C1. A frame test on a real hub with an isolated lock path queues one integrated dev run, one human `npm test` waiter and one ranked item request, and shows the admission order dev, human, ranked. The existing ordering test is updated to the decided order with its strength kept.
+  - verified: rev-26 [reviewer] · run rev-20261013-319-final · 2026-10-13T05:18:25.960Z · commit 4ff71fdbca5c7dc8d78552da56e7d9abb94d22c1
+  - done: impl-319 · 2026-10-13T05:18:52.854Z
+- [x] C2. An admitted human run shows as `human` on the panel's verify line, in the queue view and in `cland verify queue`, and another hand run still shows as `hand run`. The Neovim headless test on the stub hub and a CLI test cover it.
+  - verified: rev-26 [reviewer] · run rev-20261013-319-final · 2026-10-13T05:18:25.960Z · commit 4ff71fdbca5c7dc8d78552da56e7d9abb94d22c1
+  - done: impl-319 · 2026-10-13T05:18:53.459Z
+- [x] C3. The default clauses and `.cland/roles.toml` name the verify line and `cland verify queue`, and the human's `npm test` waiting in the same queue. `.cland/roles.toml` carries T-275's resume, archive and prune lines. The roles snapshot tests pass with the new text.
+  - verified: rev-26 [reviewer] · run rev-20261013-319-final · 2026-10-13T05:18:25.960Z · commit 4ff71fdbca5c7dc8d78552da56e7d9abb94d22c1
+  - done: impl-319 · 2026-10-13T05:18:53.810Z
+- [x] C4. `nvim/README.md` mentions `cland session prune`, and `hub/README.md` states the queue order with the human waiter's place.
+  - verified: rev-26 [reviewer] · run rev-20261013-319-final · 2026-10-13T05:18:25.960Z · commit 4ff71fdbca5c7dc8d78552da56e7d9abb94d22c1
+  - done: impl-319 · 2026-10-13T05:18:54.142Z
+- [x] C5. `cland verify` is green.
+  - verified: rev-26 [reviewer] · run rev-20261013-319-final · 2026-10-13T05:18:25.960Z · commit 4ff71fdbca5c7dc8d78552da56e7d9abb94d22c1
+  - done: impl-319 · 2026-10-13T05:18:54.585Z
+
+## Comments
+
+### impl-319 · 2026-10-13T04:58:40.340Z
+
+Confirmed T-275 decision (4) and read T-308 (27f03bd) and T-307 (aa41954). Seams under test are the real temporary hub's suite.start/suite.slot/suite.queue frames with isolated verification.lock_path, verify queue CLI text, delivered role clauses, and headless Neovim on the stub hub. Existing human FIFO test now fails on the old ranked-first order. Coordinator must relaunch after merge to receive the updated clause.
+
+### impl-319 · 2026-10-13T05:04:54.723Z
+
+Pushed candidate 4ff71fdbca5c7dc8d78552da56e7d9abb94d22c1 after fetching and merging origin/dev. Typecheck and targeted frame, CLI, clause snapshot and headless Neovim tests pass; evidence artifact A-1805 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1805-t-319-candidate-and-verification-evidence.md. Review requested before final suite; hub assigned rev-26. cland verify all cf33baf5-4975-4c82-81e1-2da0b2e60d13 admitted. Waiting for suite and verdict. Coordinator relaunch required after merge.
+
+### impl-319 · 2026-10-13T05:17:36.475Z
+
+Final cland verify all cf33baf5-4975-4c82-81e1-2da0b2e60d13 passed at exact candidate 4ff71fdbca5c7dc8d78552da56e7d9abb94d22c1: 1747 tests passed, 0 failed/cancelled/skipped. C5 evidence is A-1810 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1810-suite-cf33baf5-4975-4c82-81e1-2da0b2e60d13-all-at-4ff71fd.log. Reviewer has reported no high/medium code findings and received the exact-head suite result; final verdict pending. Direct completion/release report sent to impl-312 for its protected Linux slot. Coordinator relaunch remains required after merge.
+
+### rev-26 · 2026-10-13T05:18:25.960Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261013-319-final
+commit: 4ff71fdbca5c7dc8d78552da56e7d9abb94d22c1
+
+No outstanding high or medium finding. C1–C5 checked against T-319, T-275 decision (4), and spec §§3.5/3.6: actual isolated-frame dev→human FIFO→ranked admissions, human/other-hand labels, delivered default/project clauses and grants, and consistent prune/queue docs. Exact-head ordinary full cland verify cf33baf5 passed typecheck and 1747/1747 with zero fail/cancel/skip/todo (A-1810); queue, clause and headless UI regressions green. Detailed evidence A-1811/final review artifact in this topic. Claimant must retain done marks; Coordinator relaunch required after merge.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-10-13T05:19:03.046Z
+
+Merged 95c6a6450ab78ba5843714e6d2213bc66ee3e31c onto dev.

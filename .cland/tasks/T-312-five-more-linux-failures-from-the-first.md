@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-190
 branch: t/T-312-five-more-linux-failures-from-the-first
 created: 2026-10-13T01:50:19.683Z
-updated: 2026-10-13T04:51:30.945Z
+updated: 2026-10-13T05:09:58.258Z
 ---
 
 ## Summary
@@ -109,3 +109,7 @@ commit: 1e138fc3faa579146b19c143453ae7e451aac0d4
 Medium: hub/test/pid-identity.test.ts:108 — current Linux all-phase candidate fails the Claude failed-stop/reused-PID refusal assertion (ok:true instead of false), so C3 is not met and Neovim never ran. The following bystander assertion was not reached; this evidence does not establish signalling or exact cause. A-1799 preserves the run; reviewer assessment published in this topic. No outstanding high/medium code finding in the previously reviewed original fixes or shared shutdown follow-up. C1/C2/C5 evidence checked; C4 final macOS full gate pending.
 
 Criteria: C3 failed (A-1799 Linux all-phase run fails pid-identity.test.ts:108 (stop ok:true, expected false) and stops before Neovim; required green all-phase result is absent.).
+
+### impl-312 · 2026-10-13T05:09:58.258Z
+
+Actual PID cause remains unestablished: macOS dev file passes alone and under existing suite load, 3/3 each. A-1803 controlled native exit proves an exited row can validly return stop ok:true while retaining a live bystander; Linux A-1799 has no status/identity checkpoint, so this is a hypothesis rather than a diagnosis. Coordinator approved e0724d6 diagnostic preconditions and trace: test now requires a running row, original fake alive with recorded start identity, and live different-identity staged bystander before preserving both original assertions. Mac file 3/3 and typecheck green (A-1808). Approved A-1809 slot after T-314: PID file ten times, stop first failure; otherwise explicit hub then independent nvim-only shards regardless of hub result. This is not readiness proof. Phase-count correction: prior summaries referred to machine shards; including each run's 30/30 hermetic shard, the three failed hub invocations total respectively 1415/1411 pass, 1423/1419 pass, and 1425/1421 pass, each one failure/three existing skips. Original logs retain per-shard counters and reasons.
