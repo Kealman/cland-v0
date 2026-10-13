@@ -1372,12 +1372,11 @@ test('the items panel: vertical sections, hub glyphs, right-aligned claims and c
   await c.input('/backlog (<CR>za');
   await c.waitScreen(x=>x.includes('T-13 T-1 › Codex adapter'),'backlog unfolds');
   await c.input('/unscheduled (<CR>za');
-  s=await c.waitScreen(x=>x.includes('CRDT spike'),'unscheduled unfolds');
+  s=await c.waitScreen(x=>x.includes('T-5 Slice 2 map'),'unscheduled unfolds');
   panel=leftOf(s);
   assert.match(panel, /^ ○ T-5 Slice 2 map +1\/4$/m, 'map progress stays visible');
-  assert.match(panel, /^ ◌ T-8 T-5 › Auth scheme +$/m, 'open blocker remains visible');
-  assert.match(panel, /^ ◑ T-9 T-5 › CRDT spike +sub-1$/m, 'assignee stays a badge on an open question');
-  assert.deepEqual(idsOf(itemRows(s)), ['T-2','T-12','T-3','T-10','T-11','T-13','T-5','T-7','T-8','T-9']);
+  assert.doesNotMatch(panel, /T-[789] /, 'parented map children are outside unscheduled');
+  assert.deepEqual(idsOf(itemRows(s)), ['T-2','T-12','T-3','T-10','T-11','T-13','T-5']);
 
   const rowsOf = async (key: string, header: string) => {
     await c.input(key);
@@ -1605,11 +1604,9 @@ test('a delayed items snapshot keeps a newer claim, new item and removed file', 
   const c = await startShell(t, withItems);
   await c.input('<Esc><Space>i');
   await c.waitScreen(x=>x.includes('backlog (1)'),'board initial folds');
-  await c.input('/backlog (<CR>za');
-  await c.waitScreen(x=>x.includes('T-13 T-1 › Codex adapter'),'backlog visible');
-  await c.input('/unscheduled (<CR>za');
+  await c.input('6zR');
   await c.lua("vim.api.nvim_win_set_width(require('cland.layout').win.left,70)");
-  await c.waitScreen((x) => x.includes('ITEMS') && x.includes('T-13'), 'the initial items');
+  await c.waitScreen(x => x.includes('T-7 Transport') && x.includes('T-13 Codex adapter'), 'all-items tree');
   await c.control({ set: { holdSnapshots: ['task.list'] } });
   await c.lua("require('cland').refresh()");
   // The control socket's barrier proves the old answer was captured before the events.
@@ -1619,7 +1616,7 @@ test('a delayed items snapshot keeps a newer claim, new item and removed file', 
     { type: 'task', id: 'T-14', item: item('T-14', 'task', 'New item') },
     { type: 'task', id: 'T-13', item: null },
   ] });
-  const newer = (x: string) => /^ ◐ T-7 T-5 › Transport +impl-2\s*$/m.test(leftOf(x)) && x.includes('T-14 New item') && !leftOf(x).includes('T-13');
+  const newer = (x: string) => /^ +◐ T-7 Transport +impl-2\s*$/m.test(leftOf(x)) && x.includes('T-14 New item') && !leftOf(x).includes('T-13');
   await c.waitScreen(newer, 'the newer task events');
   await c.control({ releaseSnapshots: ['task.list'] });
   await c.lua("assert(vim.wait(5000, function() return next(require('cland').client.pending) == nil end))");
@@ -1630,11 +1627,9 @@ test('events already reflected in a delayed items snapshot are idempotent; a fai
   const c = await startShell(t, withItems);
   await c.input('<Esc><Space>i');
   await c.waitScreen(x=>x.includes('backlog (1)'),'board initial folds');
-  await c.input('/backlog (<CR>za');
-  await c.waitScreen(x=>x.includes('T-13 T-1 › Codex adapter'),'backlog visible');
-  await c.input('/unscheduled (<CR>za');
+  await c.input('6zR');
   await c.lua("vim.api.nvim_win_set_width(require('cland.layout').win.left,70)");
-  await c.waitScreen((x) => x.includes('T-13'), 'initial items');
+  await c.waitScreen(x => x.includes('T-7 Transport') && x.includes('T-13 Codex adapter'), 'all-items tree');
   const changed = item('T-7', 'question', 'Transport', { parent: 'T-5', claim: claimBy('impl-2') });
   const added = item('T-14', 'task', 'New item');
   const scenario = baseScenario(''); withItems(scenario);
@@ -1651,7 +1646,7 @@ test('events already reflected in a delayed items snapshot are idempotent; a fai
     await c.lua("assert(vim.wait(5000, function() return next(require('cland').client.pending) == nil end))");
     const screen = leftOf((await c.screen()).join('\n'));
     assert.equal(screen.match(/T-14 New item/g)?.length, 1);
-    assert.equal(screen.match(/T-7 T-5 › Transport/g)?.length, 1);
+    assert.equal(screen.match(/T-7 Transport/g)?.length, 1);
     assert.ok(!screen.includes('T-13'));
     assert.equal(await c.lua("return vim.tbl_count(require('cland').client.snapshots)"), 0, 'completed requests release their journals');
   }
@@ -1835,16 +1830,21 @@ test('the vertical board follows task events: a claim, a new backlog row, a remo
   await c.waitScreen(x=>x.includes('backlog (1)'),'board');
   await c.input('/backlog (<CR>za');
   await c.waitScreen(x=>x.includes('T-13 T-1 › Codex adapter'),'backlog visible');
-  await c.input('/unscheduled (<CR>za');
   await c.lua("vim.api.nvim_win_set_width(require('cland.layout').win.left,70)");
-  await c.waitScreen((x) => x.includes('ITEMS') && x.includes('Transport'), 'the items panel');
-  await c.control({ emit: { type: 'task', id: 'T-7', item: item('T-7', 'question', 'Transport', { parent: 'T-5', claim: claimBy('impl-2') }) } });
-  await c.waitScreen((x) => /^ ◐ T-7 T-5 › Transport +impl-2\s*$/m.test(leftOf(x)), 'T-7 claimed');
-  await c.control({ emit: { type: 'task', id: 'T-14', item: item('T-14', 'task', 'Born by hand', { parent: 'T-1' }) } });
-  await c.waitScreen((x) => /^ ○ T-14 T-1 › Born by hand +$/m.test(leftOf(x)) && x.includes('backlog (2)'), 'T-14 in the parent backlog');
+  await c.waitScreen((x) => x.includes('ITEMS') && x.includes('T-13 T-1 › Codex adapter'), 'the items panel');
+  const scenario = baseScenario(''); withItems(scenario);
+  const claimed = item('T-13', 'task', 'Codex adapter', { parent: 'T-1', status: 'in progress', claim: claimBy('impl-2') });
+  const claimedItems = scenario.items!.map(it => it.id === claimed.id ? claimed : it);
+  // The hub projects placements from the current tracker, so its snapshot source must match each event.
+  await c.control({ set: { items: claimedItems }, emit: { type: 'task', id: claimed.id, item: claimed } });
+  await c.waitScreen((x) => /^ ◐ T-13 T-1 › Codex adapter +impl-2\s*$/m.test(leftOf(x)), 'T-13 claimed');
+  const added = item('T-14', 'task', 'Born by hand', { parent: 'T-1' });
+  const addedItems = claimedItems.concat(added);
+  await c.control({ set: { items: addedItems }, emit: { type: 'task', id: added.id, item: added } });
+  await c.waitScreen((x) => /^ ○ T-14 T-1 › Born by hand +$/m.test(leftOf(x)) && x.includes('backlog (1)'), 'T-14 in the parent backlog');
   const rows = idsOf(itemRows(await c.screen().then((l) => l.join('\n'))));
-  assert.deepEqual(rows.slice(0, 7), ['T-2','T-12','T-3','T-10','T-11','T-13','T-14'], 'new child joins its parent backlog, ordered by rank then id');
-  await c.control({ emit: { type: 'task', id: 'T-13', item: null } });
+  assert.deepEqual(rows.slice(0, 7), ['T-2','T-12','T-13','T-3','T-10','T-11','T-14'], 'new child joins its parent backlog, ordered by rank then id');
+  await c.control({ set: { items: addedItems.filter(it => it.id !== claimed.id) }, emit: { type: 'task', id: claimed.id, item: null } });
   await c.waitScreen((x) => !leftOf(x).includes('T-13') && / ITEMS +board · 5 in work · 1 done │/.test(x) && x.includes('backlog (1)'), 'T-13 gone');
 
 });
@@ -2156,6 +2156,8 @@ test('visibility overrides drive thread folds, palette dimming and session count
   const c = await startShell(t, s => {
     s.visibility = { inbox: { idle: 'now' }, messages: { agent: 'now' }, sessions: { idle: 'now' }, items: { backlog: 'watch' } };
     s.inbox = { asks: [], approvals: [], waiting: [] };
+    s.items!.push(item('R-1', 'release', 'Backlog scope', { version: '1.0.0' }));
+    s.items!.find(it => it.id === 'T-13')!.parent = 'R-1';
     s.messages!.general!.push({ id: 'raised', from: 'impl-1', fromKind: 'agent', fromRole: 'implementer', to: ['coord-1'], kind: 'report', text: 'Raised agent report', topic: 'general', ts: ts(12) });
     s.processes![1]!.state = 'idle';
   });

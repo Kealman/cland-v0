@@ -376,3 +376,78 @@ test('configured containers refuse status while task closes and kind changes ret
   assert.equal((await ui.request({ type: 'task.edit', item: 'T-3', state: 'open' })).ok, true);
   assert.equal((await read('T-3-convertible.md')).status, 'backlog');
 });
+
+
+test('category roots work through CLI, spoke and frames without release metadata or QA', async t => {
+  const root = await tempProject(t);
+  await startDaemon(t, root);
+  const ui = await connectUi(t, await readDiscovery(root));
+  const status = (await ui.request({ type: 'hub.status' })).value as { tracker: { levels: string[]; ladder: string[][] } };
+  assert.deepEqual(status.tracker.levels, ['release', 'epic']);
+  assert.deepEqual(status.tracker.ladder, [['release', 'category'], ['epic']]);
+  const category = await cland(root, 'task', 'create', 'Docs', '--kind', 'category', '--json');
+  assert.equal(category.code, 0, category.stderr);
+  const docs = JSON.parse(category.stdout).item;
+  assert.equal(docs.id, 'C-1');
+  assert.equal(docs.parent, null);
+  assert.equal(docs.layer, 'background');
+  const stored = await readFile(join(root, docs.path), 'utf8');
+  assert.doesNotMatch(stored, /^rank:|^status:|^version:/m);
+  const work = await cland(root, 'task', 'create', 'Fix docs', '--parent', docs.id, '--json');
+  assert.equal(work.code, 0, work.stderr);
+  assert.equal(JSON.parse(work.stdout).item.parent, docs.id);
+  assert.equal(JSON.parse(work.stdout).item.layer, 'background');
+  const categories = await cland(root, 'task', 'list', '--kind', 'category', '--json');
+  assert.equal(categories.code, 0, categories.stderr);
+  assert.deepEqual(JSON.parse(categories.stdout).items.map((item: { id: string }) => item.id), [docs.id]);
+  const spoke = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
+  t.after(() => spoke.close());
+  const epic = await spoke.call<{ ok: boolean; item: { id: string } }>('task.create', { title: 'Docs plan', kind: 'epic', parent: docs.id });
+  assert.equal(epic.ok, true);
+  assert.equal((await ui.request({ type: 'task.create', title: 'Release', kind: 'release', version: '1.0.0' })).ok, true);
+  for (const frame of [
+    { type: 'task.create', title: 'Nested category', kind: 'category', parent: 'R-4' },
+    { type: 'task.create', title: 'Nested category', kind: 'category', parent: docs.id },
+    { type: 'task.link', item: docs.id, parent: 'R-4' },
+    { type: 'task.link', item: docs.id, parent: epic.item.id },
+  ]) {
+    const refused = await ui.request(frame);
+    assert.equal(refused.ok, false);
+    assert.match(refused.error ?? '', /parenting rule.*category/);
+  }
+  for (const frame of [
+    { type: 'task.create', title: 'Versioned category', kind: 'category', version: '1.0.0' },
+    { type: 'task.edit', item: docs.id, version: '1.0.0' },
+    { type: 'task.edit', item: docs.id, status: 'backlog' },
+    { type: 'task.rank', item: docs.id, top: true },
+  ]) {
+    const refused = await ui.request(frame);
+    assert.equal(refused.ok, false);
+    assert.match(refused.error ?? '', /version belongs only|status belongs only|rank belongs only/);
+  }
+  const crew = await ui.request({ type: 'crew.set', key: 'leads', value: ['category'] });
+  assert.equal(crew.ok, false);
+  assert.match(crew.error ?? '', /leads/);
+  assert.equal((await ui.request({ type: 'crew.set', key: 'leads', value: ['release', 'epic'] })).ok, true);
+  assert.equal((await ui.request({ type: 'task.link', item: epic.item.id, parent: 'R-4' })).ok, true);
+  assert.equal((await ui.request({ type: 'task.link', item: epic.item.id, parent: docs.id })).ok, true);
+  // A kind edit must validate both its parent and its existing children.
+  assert.equal((await ui.request({ type: 'task.create', title: 'Convertible', parent: docs.id })).ok, true);
+  assert.equal((await ui.request({ type: 'task.edit', item: 'T-5', kind: 'epic' })).ok, true);
+  const badKind = await ui.request({ type: 'task.edit', item: 'E-5', kind: 'category' });
+  assert.equal(badKind.ok, false);
+  assert.match(badKind.error ?? '', /parenting rule/);
+  assert.equal((await ui.request({ type: 'task.link', item: 'E-5', parent: null })).ok, true);
+  assert.equal((await ui.request({ type: 'task.edit', item: 'E-5', kind: 'category' })).ok, true);
+  // Empty categories close without the planning level's QA gate.
+  assert.equal((await ui.request({ type: 'task.close', item: 'C-5' })).ok, true);
+  assert.equal((await ui.request({ type: 'task.edit', item: docs.id, kind: 'epic' })).ok, false);
+  for (const frame of [{ type: 'task.close', item: docs.id }, { type: 'task.edit', item: docs.id, state: 'closed' }]) {
+    const refused = await ui.request(frame);
+    assert.equal(refused.ok, false);
+    assert.match(refused.error ?? '', /open children/);
+  }
+  assert.equal((await ui.request({ type: 'task.link', item: epic.item.id, parent: 'R-4' })).ok, true);
+  assert.equal((await ui.request({ type: 'task.close', item: 'T-2' })).ok, true);
+  assert.equal((await cland(root, 'task', 'close', docs.id)).code, 0);
+});

@@ -67,7 +67,7 @@ function M.compose()
           elseif not items.is_container(it) then out.leaves[#out.leaves + 1] = it end
         end
       end
-    elseif items.unscheduled(it) then
+    elseif items.unscheduled(it) and not items.is_level(it) then
       out.unscheduled[#out.unscheduled + 1] = it
     end
   end
@@ -283,7 +283,7 @@ end
 function M.rank(step)
   local info = info_at()
   local it = info and info.item and state.item(info.item)
-  if it and it.kind == state.S.tracker.levels[1] then return state.say('top-level containers do not carry rank') end
+  if it and items.level_of(it) == 1 then return state.say('top-level containers do not carry rank') end
   if not it or (it.kind ~= 'task' and not items.is_level(it)) then return end
   local request = { type = 'task.rank', item = it.id }
   if step == 0 then request.top = true else

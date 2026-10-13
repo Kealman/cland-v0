@@ -1,3 +1,4 @@
+import type { Ladder } from '../tracker/kinds.ts';
 import { parseItemReference } from '../tracker/prefixes.ts';
 import { normalizeId, idNumber } from '../tracker/item.ts';
 // The hub's core: presence, names, routing and store-and-forward. Transport-free, so the network
@@ -157,7 +158,7 @@ export type CoreOptions = {
   idleNotifyMs?: number;
   visibility?: VisibilityOverrides;
   visibilityPreferences?: import('./visibility-preferences.ts').VisibilityPreferenceFile;
-  topLevel?: () => string;
+  ladder?: Ladder;
 };
 
 /** A hub notice recorded in a topic (Agents: the lifecycle record, spec 4.5): its kind, its text, who it is
@@ -263,7 +264,7 @@ export class HubCore {
     this.#items = options.items ?? null;
     this.#store.setItemResolver(id => this.#items?.resolveId?.(id) ?? null);
     this.#sessionHolds = options.sessionHolds ?? (() => []);
-    this.visibility = new Visibility({ preferences: options.visibilityPreferences, overrides: options.visibility ?? {}, now: this.#now, role: name => this.#store.roleOf(name), process: id => this.#processFacts.get(id), items: () => this.#items?.list?.() ?? [], topLevel: options.topLevel ?? (() => 'release') });
+    this.visibility = new Visibility({ preferences: options.visibilityPreferences, overrides: options.visibility ?? {}, now: this.#now, role: name => this.#store.roleOf(name), process: id => this.#processFacts.get(id), items: () => this.#items?.list?.() ?? [], ...(options.ladder ? { ladder: options.ladder } : {}) });
     for (const item of this.#items?.list?.() ?? []) if (item.state !== 'closed') this.#defaultItems.set(`T-${idNumber(item.id)}`, item);
     this.#queueTtlMs = options.queueTtlMs ?? QUEUE_TTL_MS;
     this.#retentionMs = options.retentionMs ?? RETENTION_MS;

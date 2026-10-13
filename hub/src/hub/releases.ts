@@ -83,7 +83,7 @@ export class Releases {
           const view = await this.tracker.viewAsync(item, resumed);
           version = resumed(() => {
             authorize();
-            if (view.kind !== this.tracker.levels[0]) throw new ReleaseError('release-item', `${view.id} is not a release item (kind: ${view.kind})`);
+            if (view.kind !== this.tracker.ladder.top) throw new ReleaseError('release-item', `${view.id} is not a release item (kind: ${view.kind})`);
             if (!view.version) throw new ReleaseError('release-version', `${view.id} has no version; set its release version first`);
             if (version !== undefined && version !== `v${view.version}`) throw new ReleaseError('release-version', `${version} disagrees with ${view.id}'s version v${view.version}`);
             const open = this.tracker.list({ under: view.id, state: 'open' });
@@ -91,7 +91,7 @@ export class Releases {
             releaseItem = view.id;
             return `v${view.version}`;
           });
-          const epics = resumed(() => this.tracker.list().filter(child => child.parent === view.id && child.kind === this.tracker.levels[1]));
+          const epics = resumed(() => this.tracker.list().filter(child => child.parent === view.id && this.tracker.isPlanContainer(child.kind)));
           const deliverables: string[] = [];
           for (const epic of epics) {
             const child = await this.tracker.viewAsync(epic.id, resumed);

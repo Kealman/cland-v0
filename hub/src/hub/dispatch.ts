@@ -404,7 +404,7 @@ export class Dispatcher {
     if (!['session.launch', 'session.stop', 'merge'].includes(type) && !request) return null;
     const tracker = this.#options.tracker;
     const items = tracker?.list() ?? [];
-    const node = items.find(i => i.state === 'open' && tracker?.levels.includes(i.kind) && i.claim?.role === 'lead' && this.core.sessionIdentity(i.claim.sessionId) === connection.sessionId);
+    const node = items.find(i => i.state === 'open' && tracker?.ladder.canLead(i.kind) && i.claim?.role === 'lead' && this.core.sessionIdentity(i.claim.sessionId) === connection.sessionId);
     if (!node) return 'Lead level: no live container claim; only a claimed subtree may be managed';
     const reason = (target: string) => `Lead level at ${node.kind} ${node.id}: ${target} is outside your subtree; send the request to lead ${node.id}`;
     const inside = (id: string | null | undefined): boolean => {
@@ -435,11 +435,11 @@ export class Dispatcher {
       let target = items.find(i => i.id === tracker?.resolveId(item!));
       const seen = new Set<string>();
       while (target && !seen.has(target.id)) {
-        if (target.kind === tracker?.levels[0]) return null;
+        if (target.kind === tracker?.ladder.top) return null;
         seen.add(target.id);
         target = items.find(i => i.id === target!.parent);
       }
-      return 'root level: only the Coordinator merges unscheduled items';
+      return 'root level: only the Coordinator merges items outside a release subtree';
     }
     return null;
   }
@@ -1231,7 +1231,7 @@ export class Dispatcher {
             const verification = this.#suites?.snapshot();
             const base = control.status();
             const tracker = this.#options.tracker;
-            return { type: 'result', id: frame.id, ok: true, value: { ...base, ...(tracker ? { tracker: { levels: [...tracker.levels], prefixes: Object.fromEntries([...tracker.kinds, 'category'].map(kind => [kind, prefixOf(kind)])), ...base.tracker, storage: tracker.storageStatus() } } : {}), sessions: core.presence(), suites: this.#suites?.status() ?? [], ...(verification ? { verification } : {}), coordinator: core.coordinator(), needsYou: core.inbox.needsYou(), requests: { ...this.#guard.counters } } satisfies HubStatus };
+            return { type: 'result', id: frame.id, ok: true, value: { ...base, ...(tracker ? { tracker: { ...base.tracker, levels: tracker.ladder.flat, ladder: tracker.ladder.levels.map(level => [...level]), prefixes: Object.fromEntries([...tracker.kinds, 'category'].map(kind => [kind, prefixOf(kind)])), storage: tracker.storageStatus() } } : {}), sessions: core.presence(), suites: this.#suites?.status() ?? [], ...(verification ? { verification } : {}), coordinator: core.coordinator(), needsYou: core.inbox.needsYou(), requests: { ...this.#guard.counters } } satisfies HubStatus };
           };
           if (frame.flushLogs === true && control.flushLogs) {
             const resumed = this.#guard.resumer(frame.type, client);

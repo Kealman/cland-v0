@@ -161,7 +161,7 @@ export class TaskWorktrees {
     resumed(() => authorize?.());
     const verifier = request.role === 'reviewer' || request.role === 'qa';
     if (verifier && view.state !== 'open') throw new Error(`${view.id} is closed: no verifier launch`);
-    if (request.role === 'lead' && (view.state !== 'open' || !this.#tracker.levels.includes(view.kind))) {
+    if (request.role === 'lead' && (view.state !== 'open' || !this.#tracker.ladder.canLead(view.kind))) {
       throw new Error('a Lead needs an open configured container');
     }
     if (request.role === 'implementer') resumed(() => this.#tracker.assertPlanLaunch(view.id));
@@ -188,7 +188,7 @@ export class TaskWorktrees {
       try {
         const now = await this.#tracker.viewAsync(view.id, resumed);
         if (verifier && now.state !== 'open') throw new Error(`${view.id} is closed: no verifier launch`);
-        if (request.role === 'lead' && (now.state !== 'open' || !this.#tracker.levels.includes(now.kind))) throw new Error('a Lead needs an open configured container');
+        if (request.role === 'lead' && (now.state !== 'open' || !this.#tracker.ladder.canLead(now.kind))) throw new Error('a Lead needs an open configured container');
         const reason = await this.#ineligible(now);
         resumed(() => authorize?.());
         let worktree: TaskWorktree | null = null;

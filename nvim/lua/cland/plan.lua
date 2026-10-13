@@ -69,7 +69,7 @@ end
 function M.owner(id)
   local seen, it = {}, state.item(id or '')
   while it and not seen[it.id] do
-    if it.kind == state.S.tracker.levels[2] then return it.id end
+    if items.level_of(it) == 2 then return it.id end
     seen[it.id] = true
     it = items.present(it.parent) and state.item(it.parent) or nil
   end

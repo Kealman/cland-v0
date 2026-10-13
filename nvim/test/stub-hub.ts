@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { prefixOf } from '../../hub/src/tracker/prefixes.ts';
-import { kindsFor } from '../../hub/src/tracker/kinds.ts';
+import { kindsFor, Ladder } from '../../hub/src/tracker/kinds.ts';
 // A stub hub for the shell's tests: it speaks the UI's frames (hub/README.md, "The UI's frames" and the
 // `session.*` frames) as JSON lines on stdin and stdout, the way `cland hub serve --stdio` does, from a
 // scripted scenario. The client spawns it through CLAND_COMMAND as `<stub> hub serve --stdio`.
@@ -45,7 +45,7 @@ export type Scenario = {
   coordinator?: string | null;
   /** `role.list`'s roles; absent, the four default roles with their launch defaults. */
   roles?: Array<Record<string, unknown>>;
-  tracker?: { levels: string[]; prefixes?: Record<string, string> };
+  tracker?: { levels: string[]; ladder?: string[][]; prefixes?: Record<string, string> };
   /** How `session.launch` answers: absent, it adds an idle running process; a string refuses with it. */
   launchError?: string;
   /** How `session.stop` answers: absent, it marks the process stopped; a string refuses with it. */
@@ -119,7 +119,7 @@ const visibility = () => new Visibility({
   overrides: scenario.visibility ?? readProjectConfig(join(process.cwd(), '.cland/config.toml'), process.cwd())?.visibility ?? {},
   role: name => String([...(scenario.presence ?? []), ...(scenario.processes ?? [])].find(s => s.name === name)?.role ?? '') || null,
   process: id => scenario.processes?.find(p => p.sessionId === id),
-  items: () => scenario.items ?? [], topLevel: () => scenario.tracker?.levels[0] ?? 'release',
+  items: () => scenario.items ?? [], ladder: new Ladder(scenario.tracker?.ladder ?? scenario.tracker?.levels ?? readProjectConfig(join(process.cwd(), '.cland/config.toml'), process.cwd())?.tracker.levels),
   // Age scenarios can pin the hub clock independently of message timestamps.
   now: () => new Date(process.env.CLAND_STUB_NOW ?? Date.now()),
 });
@@ -319,7 +319,8 @@ function answer(f: Frame) {
       return ok(f.id, { roles: scenario.roles ?? DEFAULT_ROLES, coordinator: scenario.coordinator ?? null });
     case 'hub.status': {
       const config = readProjectConfig(join(process.cwd(), '.cland/config.toml'), process.cwd()) ?? defaultConfig(process.cwd());
-      return ok(f.id, { keys: config.keys, tracker: { ...(scenario.tracker ?? config.tracker), prefixes: scenario.tracker?.prefixes ?? Object.fromEntries([...kindsFor((scenario.tracker ?? config.tracker).levels), 'category'].map(kind => [kind, prefixOf(kind)])) }, sessions: scenario.presence ?? [], ...(scenario.verification ? { verification: scenario.verification } : {}), ...(scenario.coordinator !== undefined ? { coordinator: scenario.coordinator } : {}), ...(scenario.inbox ? { needsYou: inboxValue().needsYou } : {}) });
+      const ladder = new Ladder(scenario.tracker?.ladder ?? scenario.tracker?.levels ?? config.tracker.levels);
+      return ok(f.id, { keys: config.keys, tracker: { levels: ladder.flat, ladder: ladder.levels.map(level => [...level]), prefixes: scenario.tracker?.prefixes ?? Object.fromEntries([...kindsFor(ladder), 'category'].map(kind => [kind, prefixOf(kind)])) }, sessions: scenario.presence ?? [], ...(scenario.verification ? { verification: scenario.verification } : {}), ...(scenario.coordinator !== undefined ? { coordinator: scenario.coordinator } : {}), ...(scenario.inbox ? { needsYou: inboxValue().needsYou } : {}) });
     }
     case 'events.list': {
       const start = Number(f.before ?? 0);

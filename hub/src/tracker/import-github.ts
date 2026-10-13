@@ -3,7 +3,7 @@ import { idNumber } from './item.ts';
 // The hub's side of `cland task import-github` (spec 6, tracker bootstrap): a batch of GitHub issues, already
 // fetched by the CLI, becomes items. An issue is found again by the `github` reference its item carries, so a
 // re-run updates in place; an item whose text would not change is not written at all.
-import { DEFAULT_LEVELS } from './kinds.ts';
+import { DEFAULT_LEVELS, ladderOf, type LadderInput } from './kinds.ts';
 import { COMMENTS_HEADING, type Comment, type Item, type Kind } from './item.ts';
 import type { Resumed } from '../hub/budget.ts';
 import { TrackerError, type Actor, type Tracker } from './tracker.ts';
@@ -36,8 +36,8 @@ export type ImportOutcome = {
 };
 
 /** A configured container label becomes that kind, `wayfinder:map` → map, `wayfinder:task` → task, any other `wayfinder:*` → question, else task (the kinds the own-tracker template gives them). */
-export function kindOfLabels(labels: string[], levels: readonly string[] = DEFAULT_LEVELS): Kind {
-  const container = levels.find(level => labels.includes(level));
+export function kindOfLabels(labels: string[], levels: LadderInput = DEFAULT_LEVELS): Kind {
+  const container = ladderOf(levels).containers.find(level => labels.includes(level));
   if (container) return container;
   if (labels.includes('wayfinder:map')) return 'map';
   if (labels.some((l) => l.startsWith('wayfinder:') && l !== 'wayfinder:task')) return 'question';
@@ -73,7 +73,7 @@ const refText = (r: IssueRef, repo: string): string => (r.repo.toLowerCase() ===
 export function mergeIssue(
   existing: Item | null,
   issue: ImportedIssue,
-  ctx: { levels?: readonly string[]; id: string; repo: string; resolve: (r: IssueRef) => string | null },
+  ctx: { levels?: LadderInput; id: string; repo: string; resolve: (r: IssueRef) => string | null },
 ): { item: Item; commentsAdded: number; unresolved: IssueRef[] } {
   const unresolved: IssueRef[] = [];
   const ref = (r: IssueRef): string => {
@@ -157,7 +157,7 @@ export function importIssues(tracker: Tracker, actor: Actor, req: ImportRequest,
       const missing = [...new Set(req.issues.map(issue => key({ repo: req.repo, number: issue.number })))].filter(k => !ids.has(k));
       const reserved = await Promise.all(missing.map(() => batch.reserveIdAsync(resumed)));
       return resumed(() => {
-        missing.forEach((k, i) => { const issue = req.issues.find(issue => key({ repo: req.repo, number: issue.number }) === k)!; ids.set(k, `${prefixOf(kindOfLabels(issue.labels, tracker.levels))}-${idNumber(reserved[i]!)}`); });
+        missing.forEach((k, i) => { const issue = req.issues.find(issue => key({ repo: req.repo, number: issue.number }) === k)!; ids.set(k, `${prefixOf(kindOfLabels(issue.labels, tracker.ladder))}-${idNumber(reserved[i]!)}`); });
         const resolve = (r: IssueRef): string | null => ids.get(key(r)) ?? null;
         const results: ImportOutcome[] = [];
         let offset = 0;
@@ -168,7 +168,7 @@ export function importIssues(tracker: Tracker, actor: Actor, req: ImportRequest,
           if (!issue) return Promise.resolve({ repo: req.repo, results });
           const existing = byKey.get(key({ repo: req.repo, number: issue.number })) ?? null;
           const id = ids.get(key({ repo: req.repo, number: issue.number }))!;
-          const { item, commentsAdded, unresolved } = mergeIssue(existing?.item ?? null, issue, { id, repo: req.repo, resolve, levels: tracker.levels });
+          const { item, commentsAdded, unresolved } = mergeIssue(existing?.item ?? null, issue, { id, repo: req.repo, resolve, levels: tracker.ladder });
           return batch.writeItem(actor, 'import', item, existing, resumed, authorize).then(outcome => resumed(() => next({ number: issue.number, id: tracker.resolveId(id) ?? id, outcome, comments_added: commentsAdded, unresolved })));
         };
         return next();

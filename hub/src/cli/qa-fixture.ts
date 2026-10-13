@@ -5,7 +5,7 @@ import { parseItemReference } from '../tracker/prefixes.ts';
 // item reads back as it was given; every path stays inside `dir`, the run's directory.
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { defaultConfig, parseConfig } from '../init/config.ts';
-import { kindsFor } from '../tracker/kinds.ts';
+import { kindsFor, type Levels } from '../tracker/kinds.ts';
 import { join, resolve, sep } from 'node:path';
 import { fileNameOf, parseItem, serializeItem, STATES, type Comment, type Item, type Kind, type State } from '../tracker/item.ts';
 
@@ -19,7 +19,7 @@ export type Fixture = { dir: string; project: string; items?: FixtureItem[]; rol
 const text = (v: unknown): string | null => (typeof v === 'string' && v !== '' ? v : null);
 const texts = (v: unknown): string[] => (Array.isArray(v) ? v.map(String) : []);
 
-function itemOf(raw: FixtureItem, levels: readonly string[]): Item {
+function itemOf(raw: FixtureItem, levels: Levels): Item {
   const id = String(raw.id);
   if (!parseItemReference(id, [...kindsFor(levels), 'category'])) throw new Error(`the fixture's item id ${JSON.stringify(raw.id)} is not an item id`);
   const kind = (text(raw.kind) ?? 'task') as Kind;

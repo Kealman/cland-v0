@@ -137,7 +137,7 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
   const roles = new RolesFile(l.roles, log, undefined, requestGuard.resumer('roles.refresh'));
   // the hygiene thresholds of `.cland/config.toml`; the built-in defaults when it is missing or unreadable
   if (config) log({ event: 'config-loaded', path: l.config, hygiene: config.hygiene });
-  const crew = new CrewFile(l.crew, log, config => hub?.core.publishCrew(config), tracker.levels, requestGuard.resumer('crew.refresh'));
+  const crew = new CrewFile(l.crew, log, config => hub?.core.publishCrew(config), tracker.ladder, requestGuard.resumer('crew.refresh'));
   let adapters: ProjectSessions | null = null;
   let ws: WebSocketEdge | null = null;
   let edge: SocketEdge | null = null;
@@ -199,7 +199,7 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
           startedAt: startedAt.toISOString(),
           crew: { config: crew.get(), summary: crewSummary(crew.get()) },
           keys: config?.keys ?? { layouts: [] },
-          tracker: config?.tracker ?? { levels: [...tracker.levels] },
+          tracker: { levels: tracker.ladder.flat, ladder: tracker.ladder.levels.map(level => [...level]) },
           uptimeMs: Date.now() - startedAt.getTime(),
           harnesses: adapters?.sessions.list() ?? [],
         }),

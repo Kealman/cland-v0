@@ -13,7 +13,7 @@ import { compareRank, effectiveRank, rankChanges } from './rank.ts';
 import type { MarkedCriterion } from '../protocol.ts';
 import { annotateCriteria, criterionRefusal, criteriaSource, parseCriteria, type Criterion, type CriterionWarning } from './criteria.ts';
 import { parseItemReference, prefixOf } from './prefixes.ts';
-import { DEFAULT_LEVELS, kindsFor, kindWithArticle, isPlanningContainer } from './kinds.ts';
+import { DEFAULT_LEVELS, kindsFor, kindWithArticle, isPlanningContainer, Ladder, type Levels } from './kinds.ts';
 import { landedTask, taskBase, territoryPath } from '../territory.ts';
 import { createHash, randomUUID } from 'node:crypto';
 import { existsSync, linkSync, unlinkSync, mkdirSync, readdirSync, readFileSync, statSync, type Stats } from 'node:fs';
@@ -201,12 +201,14 @@ export type TrackerFiles = Pick<typeof files, 'open' | 'rename' | 'unlink' | 'li
 };
 
 export class Tracker {
-  readonly levels: readonly string[];
+  readonly ladder: Ladder;
+  /** Legacy clients read the first kind of each level. */
+  get levels(): readonly string[] { return this.ladder.flat; }
   readonly #qaDefault: QaPolicy;
   readonly #planApproval: 'none' | 'human';
-  get kinds(): string[] { return kindsFor(this.levels); }
+  get kinds(): string[] { return kindsFor(this.ladder); }
   /** The default epic occupies the second configured container level. */
-  isPlanContainer(kind: Kind): boolean { return this.levels[1] !== undefined && kind === this.levels[1]; }
+  isPlanContainer(kind: Kind): boolean { return isPlanningContainer(kind, this.ladder); }
   readonly #files: TrackerFiles;
   #queue: Promise<unknown> = Promise.resolve();
   readonly #storageWork = new Set<StorageWork>();
@@ -262,7 +264,7 @@ export class Tracker {
   readonly #announced = new Map<string, ItemSummary>();
   readonly #shown = new Map<string, string>();
 
-  constructor(options: { storageStallMs?: number; stopTimeoutMs?: number; planHistory?: ReadonlyArray<Record<string, unknown>>; planApproval?: 'none' | 'human'; qaDefault?: QaPolicy; levels?: readonly string[]; watchResumed?: Resumed; files?: TrackerFiles; root: string; db: string; log?: LogFn; now?: () => Date; writeGate?: () => Promise<void>; git?: Git; tipCheckMs?: number; scheduleTips?: TipSchedule }) {
+  constructor(options: { storageStallMs?: number; stopTimeoutMs?: number; planHistory?: ReadonlyArray<Record<string, unknown>>; planApproval?: 'none' | 'human'; qaDefault?: QaPolicy; levels?: Levels; watchResumed?: Resumed; files?: TrackerFiles; root: string; db: string; log?: LogFn; now?: () => Date; writeGate?: () => Promise<void>; git?: Git; tipCheckMs?: number; scheduleTips?: TipSchedule }) {
     for (const entry of options.planHistory ?? []) {
       if ((entry.event !== 'task-plan-changed' && entry.event !== 'task-plan-approved') || typeof entry.id !== 'string' || typeof entry.ts !== 'string' || typeof entry.by !== 'string') continue;
       const id = typeof entry.planHistoryId === 'string' ? entry.planHistoryId : typeof entry.agentsNotice === 'string' ? entry.agentsNotice : randomUUID();
@@ -279,7 +281,7 @@ export class Tracker {
     }
     this.#planApproval = options.planApproval ?? 'none';
     this.#qaDefault = options.qaDefault ?? { scope: 'none', when: 'per-item' };
-    this.levels = Object.freeze([...(options.levels ?? DEFAULT_LEVELS)]);
+    this.ladder = new Ladder(options.levels);
     this.#storageStallMs = options.storageStallMs ?? STORAGE_STALL_MS;
     this.#stopTimeoutMs = options.stopTimeoutMs ?? STORAGE_STOP_MS;
     const storage = options.files ?? files;
@@ -365,7 +367,7 @@ export class Tracker {
 
   /** Every item's freshness may have moved with a branch tip: announce the ones whose known answers changed. */
   #tipsMoved(): void {
-    for (const item of this.list()) if (item.branch || isPlanningContainer(item.kind, this.levels) || item.verdicts.length || item.status === 'ready') { this.#announce(item.id, true); this.#scheduleReady(item.id); }
+    for (const item of this.list()) if (item.branch || isPlanningContainer(item.kind, this.ladder) || item.verdicts.length || item.status === 'ready') { this.#announce(item.id, true); this.#scheduleReady(item.id); }
   }
 
   /** Freshness, verdicts and branch changes converge on one queued workflow check. */
@@ -424,7 +426,7 @@ export class Tracker {
     const { file, revision } = resumed(() => ({ ...this.#require(id), revision: this.#revisions.get(id) }));
     const text = await this.#files.readFile(join(this.#dir, file), 'utf8');
     const checking = resumed(() => {
-      const parsed = this.#parseItem(text, file, this.levels);
+      const parsed = this.#parseItem(text, file, this.ladder);
       const prepare = () => {
         const current = this.#viewOf(id, file, parsed);
         const desired = this.#readyStatus(current);
@@ -439,9 +441,9 @@ export class Tracker {
           const latest = await this.#files.readFile(join(this.#dir, file), 'utf8');
           await this.#fresh.refresh(resumed);
           const afterGit = await this.#files.readFile(join(this.#dir, file), 'utf8');
-          await this.#refreshPlans(resumed(() => this.#parseItem(afterGit, file, this.levels)), resumed);
+          await this.#refreshPlans(resumed(() => this.#parseItem(afterGit, file, this.ladder)), resumed);
           resumed(() => {
-            const now = this.#viewOf(id, file, this.#parseItem(afterGit, file, this.levels));
+            const now = this.#viewOf(id, file, this.#parseItem(afterGit, file, this.ladder));
             if (this.#revisions.get(id) !== revision || afterGit !== latest || latest !== text || this.#readyStatus(now) !== desired) throw new ReadyChanged();
           });
         });
@@ -468,7 +470,7 @@ export class Tracker {
     const indexed = this.#index.get(id);
     id = indexed?.id ?? id;
     const item: ItemSummary | null = indexed ? { ...indexed, ...this.#inboxPlan(id), claim: this.#index.claimOf(id), holds: this.#index.holdsOf(id), verdicts: this.#annotateVerdicts(id, indexed.kind, indexed.branch, this.#index.verdicts(id).get(id) ?? []), verdictBase: this.#fresh.base() } : null;
-    const shown = item ? JSON.stringify([item.verdictBase, this.#fresh.tip(isPlanningContainer(item.kind, this.levels) ? 'dev' : item.branch), item.verdicts.map((v) => v.current ?? null)]) : '';
+    const shown = item ? JSON.stringify([item.verdictBase, this.#fresh.tip(isPlanningContainer(item.kind, this.ladder) ? 'dev' : item.branch), item.verdicts.map((v) => v.current ?? null)]) : '';
     if (ifMoved && (this.#shown.get(`T-${idNumber(id)}`) === shown || (item && pending(item.verdicts)))) return;
     const previous = this.#announced.get(`T-${idNumber(id)}`);
     // Keep the pre-change path before removal/reparenting changes the indexed tree.
@@ -689,7 +691,7 @@ export class Tracker {
     const known = knownId ? this.#index.metaOf(knownId) : null;
     let item: Item;
     try {
-      item = this.#parseItem(text, name, this.levels);
+      item = this.#parseItem(text, name, this.ladder);
     } catch (err) {
       this.#indexFailure(name, err);
       return;
@@ -812,7 +814,7 @@ export class Tracker {
     }
     return resumed(() => {
       let id: string;
-      try { id = this.#parseItem(text, name, this.levels).fm.id; }
+      try { id = this.#parseItem(text, name, this.ladder).fm.id; }
       catch (err) { this.#indexFailure(name, err); return; }
       const previous = this.#index.metaOf(id);
       if (!previous || previous.file === name) return this.#indexFile(name, text, false, resumed);
@@ -990,11 +992,11 @@ export class Tracker {
       const entries: Array<{ file: string; item: Item }> = [];
       for (const file of names.filter(name => this.#fileNumber(name) !== null).sort()) {
         const text = await this.#files.readFile(join(this.#dir, file), 'utf8');
-        entries.push(resumed(() => ({ file, item: parseItem(text, file, this.levels) })));
+        entries.push(resumed(() => ({ file, item: parseItem(text, file, this.ladder) })));
       }
       return resumed(() => {
         authorize();
-        return planMigration(entries, this.#index.highWater() + 1, this.levels);
+        return planMigration(entries, this.#index.highWater() + 1, this.ladder.containers);
       });
     }, resumed, { operation: 'migration preview', item: null });
   }
@@ -1008,7 +1010,7 @@ export class Tracker {
       // including after restart, so an interrupted response never hides an already changed policy.
       for (const row of resumed(() => this.#index.list())) {
         const text = await this.#files.readFile(join(this.#dir, row.file), 'utf8');
-        const item = resumed(() => this.#parseItem(text, row.file, this.levels));
+        const item = resumed(() => this.#parseItem(text, row.file, this.ladder));
         if (item.comments.some(c => c.text === QA_FALLBACK_WARNING)) fallback.push(row.id);
         if (item.fm.labels.includes('qa-required')) labelled.push(item);
       }
@@ -1069,7 +1071,7 @@ export class Tracker {
     return ref ? (this.#stopping ? null : this.#index.resolve(`T-${ref.n}`)) ?? `T-${ref.n}` : null;
   }
 
-  #parseItem(text: string, file?: string, levels = this.levels): Item {
+  #parseItem(text: string, file?: string, levels = this.ladder): Item {
     const item = parseItem(text, file, levels);
     item.fm.id = `${prefixOf(item.fm.kind)}-${idNumber(item.fm.id)}`;
     if (item.fm.parent) item.fm.parent = this.#referenceId(item.fm.parent) ?? item.fm.parent;
@@ -1092,7 +1094,7 @@ export class Tracker {
     // the file is the truth; the index's row is only how it was found
     let item: Item;
     try {
-      item = this.#parseItem(readFileSync(join(this.#dir, file), 'utf8'), file, this.levels);
+      item = this.#parseItem(readFileSync(join(this.#dir, file), 'utf8'), file, this.ladder);
     } catch (err) {
       throw new TrackerError(`${id}: ${join(TASKS_REL, file)} cannot be read: ${err instanceof Error ? err.message : String(err)}`);
     }
@@ -1116,10 +1118,10 @@ export class Tracker {
       } catch (err) {
         return resumed(() => { throw new TrackerError(`${id}: ${join(TASKS_REL, file)} cannot be read: ${err instanceof Error ? err.message : String(err)}`); });
       }
-      await this.#refreshPlans(resumed(() => this.#parseItem(text, file, this.levels)), resumed);
+      await this.#refreshPlans(resumed(() => this.#parseItem(text, file, this.ladder)), resumed);
       return resumed(() => {
         let view: ItemView;
-        try { view = this.#viewOf(id, file, this.#parseItem(text, file, this.levels)); }
+        try { view = this.#viewOf(id, file, this.#parseItem(text, file, this.ladder)); }
         catch (err) { throw new TrackerError(`${id}: ${join(TASKS_REL, file)} cannot be read: ${err instanceof Error ? err.message : String(err)}`); }
         // Evidence and claims are read after the file await, within the same tracker admission.
         return evidence ? this.#mergeViewOf(view) : view;
@@ -1146,7 +1148,7 @@ export class Tracker {
       for (const { id, file } of ancestors) {
         const text = await this.#files.readFile(join(this.#dir, file), 'utf8');
         resumed(() => {
-          const parent = this.#parseItem(text, file, this.levels);
+          const parent = this.#parseItem(text, file, this.ladder);
           this.#planCandidates.set(id, { item: parent, source: 'hand' });
           this.#acceptPlan(parent, 'hand');
         });
@@ -1206,8 +1208,8 @@ export class Tracker {
   }
 
   #criteriaOf(item: Item): { criteria: Criterion[]; criteriaWarnings: CriterionWarning[] } {
-    const parsed = parseCriteria(item.body, this.levels.includes(item.fm.kind));
-    const branch = isPlanningContainer(item.fm.kind, this.levels) ? 'dev' : item.fm.branch;
+    const parsed = parseCriteria(item.body, this.ladder.containers.includes(item.fm.kind));
+    const branch = isPlanningContainer(item.fm.kind, this.ladder) ? 'dev' : item.fm.branch;
     // A landed task keeps its final build's marks after its branch is pruned.
     // Reopened or manually closed tasks without a receipt still use live branch freshness.
     const receipt = item.fm.kind === 'task' && item.fm.state === 'closed' ? this.#index.mergeReceipt(item.fm.id) : null;
@@ -1252,7 +1254,7 @@ export class Tracker {
 
   /** An epic verdict covers the exact integration build, including empty commits; task patch equivalence does not apply. */
   #annotateVerdicts(id: string, kind: Kind, branch: string | null, verdicts: IndexedVerdict[]): IndexedVerdict[] {
-    if (!isPlanningContainer(kind, this.levels)) return this.#fresh.annotate(id, branch, verdicts);
+    if (!isPlanningContainer(kind, this.ladder)) return this.#fresh.annotate(id, branch, verdicts);
     const tip = this.#fresh.tip('dev');
     return verdicts.map((v, i) => verdicts.slice(i + 1).some(w => w.verdict === v.verdict && w.stage === v.stage && w.source === 'hub') ? v : {
       ...v, current: v.stage === undefined ? !!tip && v.commit === tip : this.#stageCurrent(id, v),
@@ -1308,7 +1310,7 @@ export class Tracker {
     const { id, file } = resumed(() => this.#require(rawId));
     const source = await this.#files.readFile(join(this.#dir, file), 'utf8');
     const snapshot = resumed(() => {
-      const item = this.#parseItem(source, file, this.levels);
+      const item = this.#parseItem(source, file, this.ladder);
       const plan = this.#validPlan(item);
       if (!this.isPlanContainer(item.fm.kind) || !plan || this.#planErrors.has(id)) throw new TrackerError('stage QA needs a valid epic plan');
       this.#acceptPlan(item, 'hand');
@@ -1337,7 +1339,7 @@ export class Tracker {
 
   #checkEpicClose(view: ItemView, tip: string | null): void {
     try {
-      const evidence = this.#mergeViewOf({ ...view, kind: this.levels[1]! });
+      const evidence = this.#mergeViewOf({ ...view, kind: this.ladder.planning[0]! });
       gateEpicVerdict({ ...evidence, criteria: annotateCriteria(evidence.criteria, tip), verdicts: evidence.verdicts.map(v => ({ ...v, current: !!tip && v.commit === tip })) });
     }
     catch (err) {
@@ -1352,7 +1354,7 @@ export class Tracker {
     const { file } = resumed(() => this.#require(id));
     const text = await this.#files.readFile(join(this.#dir, file), 'utf8');
     return resumed(() => {
-      const live = this.#parseItem(text, file, this.levels);
+      const live = this.#parseItem(text, file, this.ladder);
       if (serializeItem(live) !== source) throw new TrackerError(`${id}: epic evidence changed while closing; retry`);
       return { tip, view: this.#viewOf(id, file, live) };
     });
@@ -1383,7 +1385,7 @@ export class Tracker {
           this.#setStatus(item, 'done');
           if (!item.comments.some(c => c.text === comment)) item.comments.push({ author: actor.name, at: this.#now().toISOString(), text: comment });
         }, resumed, undefined, () => { authorize(); this.#checkClose(closing.id, closing.kind, children); }, undefined, async () => {
-          if (this.levels.includes(closing.kind)) children = await this.#scanChildren(closing.id, resumed);
+          if (this.ladder.containers.includes(closing.kind)) children = await this.#scanChildren(closing.id, resumed);
         });
         return resumed(() => {
           step = 'release';
@@ -1519,7 +1521,7 @@ export class Tracker {
     if (active) active.item = item.fm.id;
     this.#normalizeStatus(item);
     const text = serializeItem(item);
-    const written = this.#parseItem(text, name, this.levels);
+    const written = this.#parseItem(text, name, this.ladder);
     this.#validPlan(written);
     const oldName = name;
     if (read && this.#index.get(read.id)?.kind !== item.fm.kind) name = name.replace(/^[a-z]-\d+/i, item.fm.id);
@@ -1611,7 +1613,7 @@ export class Tracker {
       const written = await resumed(() => {
         const meta = this.#index.metaOf(id);
         let item: Item;
-        try { item = this.#parseItem(text, file, this.levels); }
+        try { item = this.#parseItem(text, file, this.ladder); }
         catch (err) { throw new TrackerError(`${id}: ${join(TASKS_REL, file)} cannot be read (${err instanceof ItemParseError ? err.message : String(err)}); fix the file by hand first`); }
         if (meta && meta.hash !== hashOf(text)) this.#log({ event: 'task-conflict', id, file, winner: 'hub', op, note: 'a hand edit not yet indexed was read and the hub write applied on top of it; last writer wins' });
         const wasClosedTask = item.fm.kind === 'task' && item.fm.state === 'closed';
@@ -1657,7 +1659,7 @@ export class Tracker {
     if (parent === null) return;
     const indexed = this.#index.get(parent);
     if (!indexed) throw new TrackerError(`parent: no item ${parent}`);
-    const refusal = parentingRefusal(kind, indexed.kind, this.levels);
+    const refusal = parentingRefusal(kind, indexed.kind, this.ladder);
     if (refusal) throw new TrackerError(`${refusal} (parent ${parent})`);
   }
 
@@ -1671,7 +1673,7 @@ export class Tracker {
     const kind = input.kind ?? 'task';
     if (!this.kinds.includes(kind)) throw new TrackerError(`unknown kind "${kind}" (one of ${this.kinds.join(', ')})`);
     if (input.version !== undefined) {
-      const refusal = versionRefusal(kind, input.version, this.levels);
+      const refusal = versionRefusal(kind, input.version, this.ladder);
       if (refusal) throw new TrackerError(refusal);
     }
     checkText(input.body ?? '', 'body');
@@ -1702,7 +1704,7 @@ export class Tracker {
           created: now,
           updated: now,
         },
-        body: kind === this.levels[0] ? withReleaseNotes(input.body ?? '') : input.body?.trim() ?? '',
+        body: kind === this.ladder.top ? withReleaseNotes(input.body ?? '') : input.body?.trim() ?? '',
         comments: [],
       };
       const written = await this.#write(name, item, resumed, undefined, undefined, () => { authorize(); this.#checkTopic(id, topic); }, undefined, undefined, actor);
@@ -1810,7 +1812,7 @@ export class Tracker {
     }
     if (v) {
       const indexed = this.#index.get(this.#require(rawId).id);
-      const branch = isPlanningContainer(indexed?.kind, this.levels) ? 'dev' : indexed?.branch ?? null;
+      const branch = isPlanningContainer(indexed?.kind, this.ladder) ? 'dev' : indexed?.branch ?? null;
       if (branch) return this.#resolve(`refs/heads/${branch}`, `the tip of branch ${branch}`).then(sha => resumed(() => {
         tip = { branch, sha };
         return write();
@@ -1826,7 +1828,7 @@ export class Tracker {
       if (stageSource !== undefined && serializeItem(item) !== stageSource) throw new TrackerError('stage QA epic changed before writing; retry');
       if (v && !v.commit) {
         // a hand edit moved the branch meanwhile: the tip the cache last read for it
-        const branch = isPlanningContainer(item.fm.kind, this.levels) ? 'dev' : item.fm.branch;
+        const branch = isPlanningContainer(item.fm.kind, this.ladder) ? 'dev' : item.fm.branch;
         const sha = branch === tip?.branch ? tip.sha : this.#fresh.tip(branch);
         if (sha) v.commit = sha;
       }
@@ -1846,7 +1848,7 @@ export class Tracker {
       item.comments.push({ author: actor.name, at: this.#now().toISOString(), text: [body, summary].filter(Boolean).join('\n\n'), ...(v ? { verdict: v } : {}) });
       if (v?.result === 'not clear' && v.stage === undefined) {
         this.#setStatus(item, 'in progress');
-        if (this.levels.includes(item.fm.kind)) item.fm.state = 'open';
+        if (this.ladder.containers.includes(item.fm.kind)) item.fm.state = 'open';
       }
     }, resumed, actor, beforeCommit, v ? () => this.#index.setHold(this.#referenceId(rawId) ?? rawId, this.#sessionId(actor.id), null) : undefined, beforeRename);
     return resumed(() => {
@@ -1902,7 +1904,7 @@ export class Tracker {
     const settled = await resumed(() => Promise.allSettled(names.filter(name => this.#fileNumber(name) !== null).map(async file => {
       try {
         const text = await this.#files.readFile(join(this.#dir, file), 'utf8');
-        return resumed(() => ({ ...this.#parseItem(text, file, this.levels).fm, file }));
+        return resumed(() => ({ ...this.#parseItem(text, file, this.ladder).fm, file }));
       } catch (err) {
         return resumed(() => { throw new TrackerError(`${join(TASKS_REL, file)} cannot be read (${err instanceof Error ? err.message : String(err)})`); });
       }
@@ -1918,13 +1920,13 @@ export class Tracker {
   #checkKindChange(previous: Kind | undefined, next: Kind, children: readonly Child[]): void {
     if (previous === undefined || previous === next) return;
     for (const child of children) {
-      const refusal = parentingRefusal(child.kind, next, this.levels);
+      const refusal = parentingRefusal(child.kind, next, this.ladder);
       if (refusal) throw new TrackerError(`${refusal} (child ${child.id})`);
     }
   }
 
   #checkClose(id: string, kind: Kind, children: readonly Child[]): void {
-    if (!this.levels.includes(kind)) return;
+    if (!this.ladder.containers.includes(kind)) return;
     const open = children.filter(child => child.state === 'open');
     if (open.length) throw new TrackerError(`${id}: cannot close ${kindWithArticle(kind)} with open children: ${open.map(child => `${child.id} ${child.title} (${join(TASKS_REL, child.file)})`).join(', ')}; close or move them first`);
   }
@@ -1945,29 +1947,29 @@ export class Tracker {
         const fm = item.fm;
         const previousKind = fm.kind;
         const previousState = fm.state;
-        if (isPlanningContainer(previousKind, this.levels) || isPlanningContainer(input.kind, this.levels)) epicSource = serializeItem(item);
+        if (isPlanningContainer(previousKind, this.ladder) || isPlanningContainer(input.kind, this.ladder)) epicSource = serializeItem(item);
         if (input.title !== undefined) fm.title = input.title.trim();
         if (input.body !== undefined) item.body = input.body.trim();
         if (input.kind !== undefined && input.kind !== fm.kind) {
           this.#checkParent(input.kind, fm.parent);
           changingKind = { id: fm.id, previous: fm.kind, next: input.kind };
           if (fm.version !== undefined && input.version !== null) {
-            const refusal = versionRefusal(input.kind, fm.version, this.levels);
+            const refusal = versionRefusal(input.kind, fm.version, this.ladder);
             if (refusal) throw new TrackerError(refusal);
           }
           fm.kind = input.kind;
           fm.id = `${prefixOf(fm.kind)}-${idNumber(fm.id)}`;
-          if (fm.kind === this.levels[0]) item.body = withReleaseNotes(item.body);
+          if (fm.kind === this.ladder.top) item.body = withReleaseNotes(item.body);
         }
         if (input.version !== undefined) {
           if (input.version === null) delete fm.version;
           else {
-            const refusal = versionRefusal(fm.kind, input.version, this.levels);
+            const refusal = versionRefusal(fm.kind, input.version, this.ladder);
             if (refusal) throw new TrackerError(refusal);
             fm.version = input.version;
           }
         }
-        if (!rankable(fm.kind, this.levels)) delete fm.rank;
+        if (!rankable(fm.kind, this.ladder)) delete fm.rank;
         if (fm.kind !== 'task') delete fm.status;
         else this.#normalizeStatus(item);
         if (input.state !== undefined) {
@@ -1988,7 +1990,7 @@ export class Tracker {
         if (input.assignee !== undefined) fm.assignee = input.assignee || null;
         if (fm.state === 'closed' && (previousState === 'open' || input.state === 'closed' || input.status === 'done')) {
           closing = { id: fm.id, kinds: [previousKind, fm.kind] };
-          if (closing.kinds.some(kind => isPlanningContainer(kind, this.levels))) epicEvidence = this.#viewOf(fm.id, this.#require(fm.id).file, { ...item, fm: { ...fm, kind: this.levels[1]! } }, 'proposal');
+          if (closing.kinds.some(kind => isPlanningContainer(kind, this.ladder))) epicEvidence = this.#viewOf(fm.id, this.#require(fm.id).file, { ...item, fm: { ...fm, kind: this.ladder.planning[0]! } }, 'proposal');
         }
       }, resumed, undefined, () => {
         authorize();
@@ -1996,7 +1998,7 @@ export class Tracker {
         if (changingKind) this.#checkKindChange(changingKind.previous, changingKind.next, children);
         if (epicEvidence) this.#checkEpicClose(epicEvidence, epicTip);
       }, undefined, async () => {
-        const id = changingKind?.id ?? (closing?.kinds.some(kind => this.levels.includes(kind)) ? closing.id : undefined);
+        const id = changingKind?.id ?? (closing?.kinds.some(kind => this.ladder.containers.includes(kind)) ? closing.id : undefined);
         if (epicEvidence) {
           const refreshed = await this.#epicCloseEvidence(epicEvidence.id, epicSource!, resumed);
           resumed(() => { epicTip = refreshed.tip; });
@@ -2021,8 +2023,8 @@ export class Tracker {
   }
 
   #prepareCriteria(item: Item) {
-    if (item.fm.kind !== 'task' && !this.levels.includes(item.fm.kind)) throw new TrackerError('criteria operations require a task or container');
-    const parsed = criteriaSource(item.body, this.levels.includes(item.fm.kind));
+    if (item.fm.kind !== 'task' && !this.ladder.containers.includes(item.fm.kind)) throw new TrackerError('criteria operations require a task or container');
+    const parsed = criteriaSource(item.body, this.ladder.containers.includes(item.fm.kind));
     if (parsed.criteriaWarnings.length) throw new TrackerError('fix malformed criterion sub-items before changing criteria');
     const ids = parsed.criteria.flatMap(c => c.id ? [c.id] : []);
     if (new Set(ids).size !== ids.length) throw new TrackerError('duplicate criterion ids; fix the section first');
@@ -2041,7 +2043,7 @@ export class Tracker {
     }
     item.fm.criterion_seq = sequence;
     item.body = lines.join('\n');
-    return criteriaSource(item.body, this.levels.includes(item.fm.kind));
+    return criteriaSource(item.body, this.ladder.containers.includes(item.fm.kind));
   }
 
   #changeCriterion(item: Item, actor: Actor, input: { op: string; criterion?: string; text?: string; note?: string; run?: string; commit?: string }): string {
@@ -2074,7 +2076,7 @@ export class Tracker {
         marks = [{ kind: 'failed', by: formatVerdictBy(actor.name, actor.role), at: timestamp, note: input.note!.trim() }];
         checked = false;
         this.#setStatus(item, 'in progress');
-        if (this.levels.includes(item.fm.kind)) item.fm.state = 'open';
+        if (this.ladder.containers.includes(item.fm.kind)) item.fm.state = 'open';
       } else if (input.op === 'edit') text = input.text!.trim();
       const indent = ' '.repeat(source.indent);
       const block = input.op === 'remove' ? [] : [
@@ -2110,7 +2112,7 @@ export class Tracker {
       let commit: string | null = null;
       if (input.op === 'verify') {
         const indexed = this.#index.get(id)!;
-        const branch = isPlanningContainer(indexed.kind, this.levels) ? 'dev' : indexed.branch;
+        const branch = isPlanningContainer(indexed.kind, this.ladder) ? 'dev' : indexed.branch;
         if (branch) {
           commit = await this.#resolve(`refs/heads/${branch}`, `the verification build on ${branch}`);
           resumed(() => { check(); if (commit) this.#fresh.noteTip(branch, commit); });
@@ -2146,7 +2148,7 @@ export class Tracker {
       let epicTip: string | null = null;
       const view = await this.#mutate(rawId, actor, 'close', (item) => {
         closing = { id: item.fm.id, kind: item.fm.kind };
-        if (isPlanningContainer(closing.kind, this.levels)) source = serializeItem(item);
+        if (isPlanningContainer(closing.kind, this.ladder)) source = serializeItem(item);
         item.fm.state = 'closed';
         this.#setStatus(item, 'done');
         if (body) item.comments.push({ author: actor.name, at: this.#now().toISOString(), text: body });
@@ -2158,11 +2160,11 @@ export class Tracker {
           else this.#log({ event: 'epic-close-overridden', id: closing.id, by: actor.name, override: override.trim(), criteria: incompleteEpicCriteria(evidence, evidence.verdicts.filter(v => v.source === 'hub' && v.verdict === 'qa' && v.stage === undefined).at(-1)) });
         }
       }, undefined, async () => {
-        if (isPlanningContainer(closing.kind, this.levels)) {
+        if (isPlanningContainer(closing.kind, this.ladder)) {
           const refreshed = await this.#epicCloseEvidence(closing.id, source!, resumed, override === undefined);
           resumed(() => { epicTip = refreshed.tip; evidence = refreshed.view; });
         }
-        if (this.levels.includes(closing.kind)) children = await this.#scanChildren(closing.id, resumed);
+        if (this.ladder.containers.includes(closing.kind)) children = await this.#scanChildren(closing.id, resumed);
       });
       return resumed(() => {
         this.#releaseOnClose(view.id);
@@ -2221,7 +2223,7 @@ export class Tracker {
           authorize();
           const item = records.find(row => row.id === id);
           if (!item) throw new TrackerError(`no item ${id}`);
-          if (!rankable(item.kind, this.levels)) throw new TrackerError('rank belongs only to tasks and containers below the top level');
+          if (!rankable(item.kind, this.ladder)) throw new TrackerError('rank belongs only to tasks and containers below the top level');
           const siblings = records.filter(row => row.parent === item.parent).sort(compareRank);
           const rest = siblings.filter(row => row.id !== id);
           let slot = 0;
@@ -2236,7 +2238,7 @@ export class Tracker {
           const order = rest.map(row => row.id);
           order.splice(slot, 0, id);
           if (order.every((value, index) => value === siblings[index]?.id)) return { changes: new Map<string, number>(), order, parent: item.parent };
-          const changes = rankChanges(rest, item, slot, new Set(siblings.filter(row => rankable(row.kind, this.levels)).map(row => row.id)));
+          const changes = rankChanges(rest, item, slot, new Set(siblings.filter(row => rankable(row.kind, this.ladder)).map(row => row.id)));
           return { changes, order, parent: item.parent };
         })();
         const fingerprint = (rows: typeof records): string => JSON.stringify(rows.filter(row => row.parent === plan.parent || row.id === id).sort(compareRank));
@@ -2283,7 +2285,7 @@ export class Tracker {
   async #readRankView(id: string, resumed: Resumed): Promise<ItemView> {
     const { file } = this.#require(id);
     const text = await this.#files.readFile(join(this.#dir, file), 'utf8');
-    return resumed(() => this.#viewOf(id, file, this.#parseItem(text, file, this.levels)));
+    return resumed(() => this.#viewOf(id, file, this.#parseItem(text, file, this.ladder)));
   }
 
   async #rankRecords(resumed: Resumed): Promise<Array<{ id: string; kind: Kind; parent: string | null; rank: number; file: string }>> {
@@ -2291,7 +2293,7 @@ export class Tracker {
     const settled = await resumed(() => Promise.allSettled(names.filter(name => this.#fileNumber(name) !== null).map(async file => {
       const text = await this.#files.readFile(join(this.#dir, file), 'utf8');
       return resumed(() => {
-        const fm = this.#parseItem(text, file, this.levels).fm;
+        const fm = this.#parseItem(text, file, this.ladder).fm;
         return { id: fm.id, kind: fm.kind, parent: fm.parent, rank: effectiveRank(fm), file };
       });
     })));
@@ -2321,7 +2323,7 @@ export class Tracker {
     for (const file of this.#itemFiles()) {
       try {
         const text = readFileSync(join(this.#dir, file), 'utf8');
-        out.push({ file, text, item: parseItem(text, file, this.levels) });
+        out.push({ file, text, item: parseItem(text, file, this.ladder) });
       } catch {
         /* gone or unreadable: the watcher reports it */
       }
@@ -2338,7 +2340,7 @@ export class Tracker {
     const found = await resumed(() => Promise.all(names.filter(n => this.#fileNumber(n) !== null).map(async file => {
       try {
         const text = await this.#files.readFile(join(this.#dir, file), 'utf8');
-        return resumed(() => ({ file, text, item: parseItem(text, file, this.levels) }));
+        return resumed(() => ({ file, text, item: parseItem(text, file, this.ladder) }));
       } catch { return null; } // unreadable files are reported by the watcher
     })));
     return resumed(() => found.filter(item => item !== null));
@@ -2379,11 +2381,11 @@ export class Tracker {
 
   async #writeItem(actor: Actor, op: string, item: Item, existing: { file: string; text: string } | null, resumed: Resumed, authorize: () => void): Promise<'created' | 'updated' | 'unchanged'> {
     const file = existing?.file ?? fileNameOf(item.fm.id, item.fm.title);
-    const previousItem = existing ? this.#parseItem(existing.text, file, this.levels) : null;
+    const previousItem = existing ? this.#parseItem(existing.text, file, this.ladder) : null;
     const previous = previousItem?.fm ?? null;
     const closing = previous?.state === 'open' && item.fm.state === 'closed';
     const changingKind = previous !== null && previous.kind !== item.fm.kind;
-    const closingEpic = closing && [previous?.kind, item.fm.kind].some(kind => isPlanningContainer(kind, this.levels));
+    const closingEpic = closing && [previous?.kind, item.fm.kind].some(kind => isPlanningContainer(kind, this.ladder));
     let epicEvidence: { tip: string | null; view: ItemView } | undefined;
     let children: Child[] = [];
     const refresh = async () => {
@@ -2391,7 +2393,7 @@ export class Tracker {
         const refreshed = await this.#epicCloseEvidence(item.fm.id, serializeItem(previousItem!), resumed);
         resumed(() => { epicEvidence = refreshed; });
       }
-      if (changingKind || closing && previous && [previous.kind, item.fm.kind].some(kind => this.levels.includes(kind))) children = await this.#scanChildren(item.fm.id, resumed);
+      if (changingKind || closing && previous && [previous.kind, item.fm.kind].some(kind => this.ladder.containers.includes(kind))) children = await this.#scanChildren(item.fm.id, resumed);
     };
     const check = () => {
       authorize();
@@ -2401,8 +2403,8 @@ export class Tracker {
       }
       this.#checkKindChange(previous?.kind, item.fm.kind, children);
       if (epicEvidence) {
-        if (isPlanningContainer(previous?.kind, this.levels)) this.#checkEpicClose(epicEvidence.view, epicEvidence.tip);
-        this.#checkEpicClose(this.#viewOf(item.fm.id, file, { ...item, fm: { ...item.fm, kind: this.levels[1]! } }, 'proposal'), epicEvidence.tip);
+        if (isPlanningContainer(previous?.kind, this.ladder)) this.#checkEpicClose(epicEvidence.view, epicEvidence.tip);
+        this.#checkEpicClose(this.#viewOf(item.fm.id, file, { ...item, fm: { ...item.fm, kind: this.ladder.planning[0]! } }, 'proposal'), epicEvidence.tip);
       }
     };
     const prepare = (): Promise<'created' | 'updated' | 'unchanged'> => {
@@ -2541,7 +2543,7 @@ export class Tracker {
         const held = this.#index.claimOf(id);
         if (!options.release && actor.role === 'lead') {
           const item = this.#index.get(id);
-          if (item?.state !== 'open' || !this.levels.includes(item.kind)) throw new TrackerError('a Lead needs an open configured container');
+          if (item?.state !== 'open' || !this.ladder.canLead(item.kind)) throw new TrackerError('a Lead needs an open configured container');
           const other = this.list().find(item => item.id !== id && item.claim && this.sameSession(item.claim.sessionId, actor.id));
           if (other) throw new TrackerError(`a Lead holds one node: ${actor.name} already claims ${other.id}`);
           if (held && !this.sameSession(held.sessionId, actor.id) && held.role === 'lead') throw new TrackerError(`${id} is claimed by ${held.session} (lead): release it first`);

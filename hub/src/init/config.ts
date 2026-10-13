@@ -4,7 +4,7 @@
 // alone. The hub reads the thresholds at start; a missing or unreadable file means the built-in defaults.
 import { qaPolicy, type QaPolicy } from '../tracker/plan.ts';
 import { visibilityOverrides, type VisibilityOverrides } from '../hub/visibility.ts';
-import { DEFAULT_LEVELS, configuredLevels } from '../tracker/kinds.ts';
+import { DEFAULT_LEVELS, configuredLevels, Ladder, type Levels } from '../tracker/kinds.ts';
 import { basename } from 'node:path';
 import { parse } from 'smol-toml';
 import { EVENT_LIMIT, LOOP_BREAKER, MAX_TEXT_BYTES, RATE_LIMIT, type LoopBreaker, type RateLimit } from '../hub/hygiene.ts';
@@ -18,7 +18,7 @@ export type ProjectConfig = {
   verification: { budget: number; lockPath: string; cacheMaxAgeMs: number };
   sessions: { archiveAfterItemMs: number; archiveAfterStopMs: number };
   visibility: VisibilityOverrides;
-  tracker: { levels: string[] };
+  tracker: { levels: Levels };
   plan: { approval: 'none' | 'human'; qaDefault: QaPolicy };
   artifacts: { retentionDays: number };
   keys: { layouts: string[] };
@@ -61,7 +61,8 @@ cache_max_age_minutes = ${minutes(c.verification.cacheMaxAgeMs)}
 archive_after_item = "${c.sessions.archiveAfterItemMs / 1000}s"
 archive_after_stop = "${c.sessions.archiveAfterStopMs / 1000}s"
 
-# Container kinds, ordered top-down. Leaf kinds are task, question and spec; map is outside the ladder.
+# Container kinds, ordered top-down; a list at a level groups peers. The first kind owns releases.
+# Other root kinds (category by default) have no version or rank. Leaves and map are outside the ladder.
 [tracker]
 levels = ${JSON.stringify(c.tracker.levels)}
 
@@ -175,5 +176,16 @@ export function provisionConfig(report: Report, path: string, root: string): voi
       return;
     }
   }
+  let ladderNote: string | undefined;
+  if (current !== null) {
+    if (JSON.stringify(config.tracker.levels) === JSON.stringify(new Ladder(DEFAULT_LEVELS).flat)) {
+      config.tracker.levels = [...DEFAULT_LEVELS];
+      ladderNote = 'tracker levels: old default rewritten to [["release","category"],"epic"]';
+    } else {
+      ladderNote = `tracker levels kept: ${JSON.stringify(config.tracker.levels)}`;
+    }
+  }
   writeIfChanged(report, path, renderConfig(config), current);
+  const change = report.changes.at(-1);
+  if (ladderNote && change && change.action !== 'kept') change.note = ladderNote;
 }

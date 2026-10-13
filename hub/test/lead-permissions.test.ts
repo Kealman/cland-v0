@@ -45,9 +45,10 @@ test('Lead launches and stops only sessions serving its live subtree', async t =
   assert.equal((await coord.call<{ ok: boolean }>('task.link', { id: foreign, parent: epic })).ok, true);
   assert.equal((await stop('foreign-worker')).code, 0);
   assert.equal((await fake.sessions()).some(s => s.name === 'unbound-worker'), false);
-  const unscheduled = await lead.call<{ ok: boolean; reason: string }>('merge', { item: own });
-  assert.equal(unscheduled.ok, false);
-  assert.match(unscheduled.reason, /root level.*Coordinator.*unscheduled/);
+  const outsideRelease = await lead.call<{ ok: boolean; code: string; reason: string }>('merge', { item: own });
+  assert.equal(outsideRelease.ok, false);
+  assert.equal(outsideRelease.code, 'forbidden');
+  assert.match(outsideRelease.reason, /root level.*Coordinator.*outside a release subtree/);
   const foreignAgain = await create('Foreign verification', 'task', other);
   const verifier = await lead.call<{ ok: boolean; process: HarnessProcessView }>('session.launch', { name: 'qa-pool', role: 'qa', item: own, harness: 'claude-code' });
   assert.equal(verifier.ok, true);

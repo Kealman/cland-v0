@@ -1,3 +1,4 @@
+import { Ladder } from '../tracker/kinds.ts';
 // §3.5 policy lives in the hub. Layers are projections, not stored decisions: history,
 // snapshots and live frames all use today's clock, role identities and project defaults.
 import type { HubFrame } from '../protocol.ts';
@@ -93,15 +94,15 @@ export class Visibility {
   readonly #process: (sessionId: string) => Row | undefined;
   readonly #now: () => Date;
   readonly #items: () => Row[];
-  readonly #topLevel: () => string;
-  constructor(options: { preferences?: VisibilityPreferenceFile | undefined; overrides?: VisibilityOverrides; role?: (name: string) => string | null; process?: (sessionId: string) => Row | undefined; now?: () => Date; items?: () => Row[]; topLevel?: () => string } = {}) {
+  readonly #ladder: Ladder;
+  constructor(options: { preferences?: VisibilityPreferenceFile | undefined; overrides?: VisibilityOverrides; role?: (name: string) => string | null; process?: (sessionId: string) => Row | undefined; now?: () => Date; items?: () => Row[]; ladder?: Ladder } = {}) {
     this.#overrides = options.overrides ?? {};
     this.preferences = options.preferences;
     this.#role = options.role ?? (() => null);
     this.#process = options.process ?? (() => undefined);
     this.#now = options.now ?? (() => new Date());
     this.#items = options.items ?? (() => []);
-    this.#topLevel = options.topLevel ?? (() => 'release');
+    this.#ladder = options.ladder ?? new Ladder();
   }
 
   layer(surface: Surface, kind: string): Layer {
@@ -167,12 +168,12 @@ export class Visibility {
         if (r.live === false || ['exited', 'stopped', 'failed'].includes(String(r.status))) return 'stopped';
         return String(r.state).startsWith('waiting') ? 'waiting' : r.state === 'busy' ? 'busy' : 'idle';
       case 'items': {
-        if (r.state === 'closed' && r.kind === this.#topLevel()) return 'closed_release';
+        if (r.state === 'closed' && r.kind === this.#ladder.top) return 'closed_release';
         if (r.state === 'closed' || r.status === 'done') return 'done';
         const current = (activeItems ?? this.#currentItems()).has(r.id);
         if (r.status === 'planned' && current) return 'planned';
         if (['in progress', 'review', 'qa', 'ready'].includes(String(r.status)) && current) return 'active';
-        return r.status === 'backlog' ? 'backlog' : 'unscheduled';
+        return !this.#ladder.containers.includes(String(r.kind)) && (r.parent === null || r.parent === undefined || r.parent === '') ? 'unscheduled' : 'backlog';
       }
       case 'artifacts': {
         const authorRole = Object.hasOwn(r, 'creatorRole') ? r.creatorRole : this.#role(String(r.creator));
@@ -186,7 +187,7 @@ export class Visibility {
   }
 
   #currentItems(items = this.#items()): Set<unknown> {
-    const current = items.filter(i => i.kind === this.#topLevel() && i.state === 'open').sort((a, b) => versionCompare(a.version, b.version) || Number(String(a.id).slice(2)) - Number(String(b.id).slice(2)))[0];
+    const current = items.filter(i => i.kind === this.#ladder.top && i.state === 'open').sort((a, b) => versionCompare(a.version, b.version) || Number(String(a.id).slice(2)) - Number(String(b.id).slice(2)))[0];
     const active = new Set<unknown>();
     if (!current) return active;
     const children = new Map<unknown, unknown[]>();

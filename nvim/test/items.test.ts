@@ -122,7 +122,8 @@ test('against a real hub: the tree, the map grouping, the item view and the boar
   await c.input('1');
   await c.waitScreen(x=>x.includes('unscheduled ('),'board filter restored');
   await c.input('/unscheduled (<CR>za');
-  await c.waitScreen(x => /◌ Q-8 M-5 › Auth scheme/.test(x), 'open blocker in unfolded unscheduled');
+  const unscheduled = await c.waitScreen(x => /M-5 Slice 2 map/.test(x), 'unparented map in unfolded unscheduled');
+  assert.doesNotMatch(leftOf(unscheduled), /Q-8.*Auth scheme/, 'a map child has a parent and is not unscheduled');
 
   // the map grouping
   await c.input('5');
@@ -165,9 +166,11 @@ test('against a real hub: the tree, the map grouping, the item view and the boar
   await c.input('<Space>b');
   await c.waitScreen((x) => statusLine(x).includes('T-3 · item'), 'the board closed');
   await c.lua("vim.api.nvim_win_set_width(require('cland.layout').win.left,70)");
+  await c.input('<Esc><C-h>6zR<C-l>');
+  await c.waitScreen(x => /○ Q-7 Transport/.test(leftOf(x)), 'map children in the all-items tree');
   const written = Date.now();
   await writeFile(join(tasks, 'T-10-born-by-hand.md'), itemFile('T-10', 'Born by hand', { parent: 'T-5', kind: 'question' }));
-  await c.waitScreen((x) => /^ ○ Q-10 M-5 › Born by hand +$/m.test(leftOf(x)), 'Q-10 in the panel', 3000);
+  await c.waitScreen((x) => /^ +○ Q-10 Born by hand +$/m.test(leftOf(x)), 'Q-10 in the panel', 3000);
   const took = Date.now() - written;
   assert.ok(took < 1000, `the panel followed the file in ${took} ms`);
 
@@ -180,7 +183,7 @@ test('against a real hub: the tree, the map grouping, the item view and the boar
   assert.equal(await c.lua<string>('return vim.bo.buftype'), '');
   await c.input(':%s/^title: Transport$/title: Transport over QUIC/<CR>:w<CR>');
   const saved = Date.now();
-  await c.waitScreen((x) => /^ ○ Q-7 M-5 › Transport over QUIC +$/m.test(leftOf(x)), 'the new title in the panel', 3000);
+  await c.waitScreen((x) => /^ +○ Q-7 Transport over QUIC +$/m.test(leftOf(x)), 'the new title in the panel', 3000);
   const took2 = Date.now() - saved;
   assert.ok(took2 < 1000, `the panel followed the save in ${took2} ms`);
   const list = JSON.parse((await cland(root, 'task', 'list', '--json')).stdout) as { items: Array<{ id: string; title: string }> };

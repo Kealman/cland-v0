@@ -224,3 +224,27 @@ test('criteria follow same-timestamp task edits and every row/highlight fits a n
     assert.ok(budget.rows.every(row => row.text <= budget.width), `rows fit ${budget.width} cells`);
   }
 });
+
+
+test('category tasks leave the release unscheduled fold and root peers never cycle as release scopes', { skip }, async t => {
+  const categoryFixture: Scenario = { tracker: { levels: ['release', 'epic'], ladder: [['release', 'category'], ['epic']] }, items: [
+    { id: 'R-1', kind: 'release', title: 'Release scope', state: 'open', version: '1.0.0', parent: null },
+    { id: 'C-2', kind: 'category', title: 'Docs category', state: 'open', parent: null },
+    task(10, 'planned', 'R-1', { title: 'Scheduled work' }),
+    task(11, 'planned', 'C-2', { title: 'Category work' }),
+    task(12, 'planned', '', { title: 'Unparented work' }),
+    task(13, 'planned', 'M-3', { title: 'Map child' }),
+    { id: 'M-3', kind: 'map', title: 'Map root', state: 'open', parent: null },
+  ] };
+  const c = await start(t, categoryFixture);
+  await c.waitScreen(s => s.includes('Scheduled work') && s.includes('unscheduled (2)'), 'release board and no-parent count');
+  await c.input('/unscheduled (<CR>za');
+  const screen = await c.waitScreen(s => s.includes('Unparented work') && s.includes('Map root'), 'unfolded unscheduled items');
+  assert.ok(!screen.includes('Category work'));
+  assert.ok(!screen.includes('Map child'));
+  assert.deepEqual(await c.lua("local out={}; for _,it in ipairs(require('cland.items').scopes()) do out[#out+1]=it.id end; return out"), ['R-1']);
+  assert.equal(await c.lua("return require('cland.items').is_container(require('cland.state').item('C-2'))"), true);
+  await c.input('e');
+  assert.equal(await c.lua("return require('cland.items').scope().id"), 'R-1');
+  assert.deepEqual(await c.lua("return require('cland.actions').audit()"), []);
+});

@@ -133,7 +133,7 @@ export async function handleTaskRequest(tracker: Tracker, frame: TaskRequest, ac
       if (!recorded) return { item };
       const sha = recorded.commit ?? null;
       const source = frame.verdict?.commit !== undefined ? 'explicit' : sha ? 'branch' : 'none';
-      const note = source === 'explicit' ? `verdict commit: ${sha}` : source === 'branch' ? `verdict records branch tip ${isPlanningContainer(item.kind, tracker.levels) ? 'dev' : item.branch}: ${sha}` : 'verdict has no commit: the item has no resolving branch';
+      const note = source === 'explicit' ? `verdict commit: ${sha}` : source === 'branch' ? `verdict records branch tip ${isPlanningContainer(item.kind, tracker.ladder) ? 'dev' : item.branch}: ${sha}` : 'verdict has no commit: the item has no resolving branch';
       return { item, commit: { sha, source, note } };
     }
     case 'task.criterion':

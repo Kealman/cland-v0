@@ -13,7 +13,9 @@ import { fileURLToPath } from 'node:url';
 import { join, relative } from 'node:path';
 import ts from 'typescript';
 import { EVENT_KINDS } from '../src/protocol.ts';
-import { DEFAULT_LEVELS } from '../src/tracker/kinds.ts';
+import { Ladder } from '../src/tracker/kinds.ts';
+
+const DEFAULT_CONTAINERS = new Ladder().containers;
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const config = ts.readConfigFile(join(root, 'hub/tsconfig.json'), ts.sys.readFile);
@@ -34,9 +36,9 @@ function containerLiterals(rel: string, source: ts.SourceFile, checker: ts.TypeC
       && checker.getTypeArguments(type as ts.TypeReference).some(part => contains(part, match, seen));
   };
   const hasKind = (type: ts.Type): boolean => contains(type, part => part.aliasSymbol?.getName() === 'Kind');
-  const hasLevel = (type: ts.Type): boolean => contains(type, part => part.isStringLiteral() && DEFAULT_LEVELS.includes(part.value));
+  const hasLevel = (type: ts.Type): boolean => contains(type, part => part.isStringLiteral() && DEFAULT_CONTAINERS.includes(part.value));
   const literal = (node: ts.Node): node is ts.StringLiteral | ts.NoSubstitutionTemplateLiteral =>
-    (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) && DEFAULT_LEVELS.includes(node.text);
+    (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) && DEFAULT_CONTAINERS.includes(node.text);
   const defaults = (node: ts.Node): boolean => {
     if (rel !== 'hub/src/tracker/kinds.ts') return false;
     for (let parent = node.parent; parent && parent !== source; parent = parent.parent) {
@@ -46,6 +48,8 @@ function containerLiterals(rel: string, source: ts.SourceFile, checker: ts.TypeC
   };
   const flagged = new Set<ts.Node>();
   const flag = (node: ts.Node): void => {
+    // The prefix migration deliberately seeds and converts this one fixed kind.
+    if (rel === 'hub/src/tracker/migrate.ts' && literal(node) && node.text === 'category') return;
     if (defaults(node) || flagged.has(node)) return;
     flagged.add(node);
     failures.push(`${rel}:${source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1}`);
@@ -94,7 +98,7 @@ function luaContainerLiterals(rel: string, source: string): string[] {
     const rest = declaration?.[1]?.replace(literal, '').replace(/[\s,]/g, '');
     return rest === '' && JSON.stringify(values) === JSON.stringify(EVENT_KINDS) ? [] : [rel + ': invalid EventKind declaration'];
   }
-  return [...source.matchAll(/["']([^"']*)["']/g)].filter(m => DEFAULT_LEVELS.includes(m[1]!)).map(() => rel);
+  return [...source.matchAll(/["']([^"']*)["']/g)].filter(m => DEFAULT_CONTAINERS.includes(m[1]!)).map(() => rel);
 }
 
 async function productionFiles(dir: string): Promise<string[]> {
@@ -157,6 +161,7 @@ test('compiler guard follows aliases and inference while preserving operational 
     "const entries: Kind[] = ['release'];",
     "item.kind = 'release';",
     "const name = 'epic';",
+    "kind === 'category';",
   ];
   const allowed = [
     "const values = ['release']; values.includes(kind);",

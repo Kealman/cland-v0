@@ -68,7 +68,7 @@ export function createHubBase(options: HubBaseOptions): HubBase {
   const tracker = options.tracker;
   const core = new HubCore({ ...options, ...(tracker ? {
     items: trackerItems(tracker),
-    topLevel: () => tracker.levels[0]!,
+    ladder: tracker.ladder,
     sessionHolds: sessionId => tracker.sessionHolds(sessionId),
   } : {}) });
   // closing a unit of work closes its topic (spec 4.5)

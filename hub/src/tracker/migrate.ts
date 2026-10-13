@@ -1,5 +1,5 @@
 import { fileNameOf, type Item } from './item.ts';
-import { DEFAULT_LEVELS, kindsFor } from './kinds.ts';
+import { DEFAULT_LEVELS, Ladder, kindsFor } from './kinds.ts';
 import { parseItemReference, prefixOf } from './prefixes.ts';
 
 export type MigrationFile = { file: string; item: Item };
@@ -25,7 +25,7 @@ const stripTitle = (title: string): string => title.replace(/^(?:epic|release|sp
  * Entries identify source files so an applier can patch only named frontmatter fields.
  * Bodies, comments and unrelated metadata are deliberately absent from the delta.
  */
-export function planMigration(files: readonly MigrationFile[], nextNumber: number, containers: readonly string[] = DEFAULT_LEVELS): MigrationPlan {
+export function planMigration(files: readonly MigrationFile[], nextNumber: number, containers: readonly string[] = new Ladder(DEFAULT_LEVELS).containers): MigrationPlan {
   const plan: MigrationPlan = { renames: [], ids: [], references: [], unresolved: [], titles: [], categories: [], labels: [], moves: [] };
   const kinds = [...kindsFor(DEFAULT_LEVELS), ...containers, 'category'];
   const numberOf = (entry: MigrationFile): number => {

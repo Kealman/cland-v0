@@ -3,7 +3,7 @@
 // Pure: text in, text out; nothing here touches the disk.
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 import { parseItemReference } from './prefixes.ts';
-import { DEFAULT_LEVELS, kindsFor, kindWithArticle } from './kinds.ts';
+import { DEFAULT_LEVELS, kindsFor, kindWithArticle, ladderOf, type LadderInput } from './kinds.ts';
 // Keep Kind visible to the compiler after inference/destructuring; every configured string remains assignable.
 export type Kind = string & {};
 export const STATES = ['open', 'closed'] as const;
@@ -105,12 +105,13 @@ export function parseVerdictFilter(raw: string): { verdict: VerdictKind; result:
 }
 
 /** Configured ladder; maps sit outside it and hold wayfinder questions/tasks. */
-export function parentingRefusal(child: Kind, parent: Kind, levels: readonly string[] = DEFAULT_LEVELS): string | null {
-  const level = levels.indexOf(child);
-  const allowed = level >= 0 ? level > 0 && parent === levels[level - 1]
+export function parentingRefusal(child: Kind, parent: Kind, levels: LadderInput = DEFAULT_LEVELS): string | null {
+  const ladder = ladderOf(levels);
+  const level = ladder.levelOf(child);
+  const allowed = level >= 0 ? level > 0 && ladder.levels[level - 1]!.includes(parent)
     : child === 'map' ? false
-    : levels.includes(parent) || parent === 'map' && (child === 'question' || child === 'task');
-  return allowed ? null : `parenting rule: ${kindWithArticle(child)} cannot be under ${kindWithArticle(parent)}; containers take the preceding level (${levels.join(' › ') || 'none'}), leaves take any container, and map takes question or task`;
+    : ladder.containers.includes(parent) || parent === 'map' && (child === 'question' || child === 'task');
+  return allowed ? null : `parenting rule: ${kindWithArticle(child)} cannot be under ${kindWithArticle(parent)}; containers take the preceding level (${ladder.levels.map(level => level.join(' / ')).join(' › ') || 'none'}), leaves take any container, and map takes question or task`;
 }
 
 /** The top-level container starts with a Notes section, preserving text the author already prepared. */
@@ -122,13 +123,13 @@ export function withReleaseNotes(body: string): string {
 // SemVer 2.0: core and numeric prerelease identifiers have no leading zero; build identifiers may.
 const SEMVER = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*))*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/;
 export const isSemverVersion = (version: unknown): version is string => typeof version === 'string' && SEMVER.test(version) && !/\s/.test(version);
-export function versionRefusal(kind: Kind, version: unknown, levels: readonly string[] = DEFAULT_LEVELS): string | null {
-  if (kind !== levels[0]) return `version belongs only to ${kindWithArticle(levels[0] ?? 'top-level container')} item`;
+export function versionRefusal(kind: Kind, version: unknown, levels: LadderInput = DEFAULT_LEVELS): string | null {
+  if (kind !== ladderOf(levels).top) return `version belongs only to ${kindWithArticle(ladderOf(levels).top ?? 'top-level container')} item`;
   return isSemverVersion(version) ? null : 'version must be semver without the v (for example 0.1.0)';
 }
 
 /** Tasks and containers below the configured top level are ranked among siblings. */
-export const rankable = (kind: Kind, levels: readonly string[]): boolean => kind === 'task' || levels.slice(1).includes(kind);
+export const rankable = (kind: Kind, levels: LadderInput): boolean => kind === 'task' || ladderOf(levels).levelOf(kind) > 0;
 
 export function statusRefusal(kind: Kind, status: unknown): string | null {
   if (kind !== 'task') return 'status belongs only to a task';
@@ -156,7 +157,7 @@ const ref = (v: unknown, kinds?: readonly string[]): string | null => {
  * label is a list of one, `12` is `T-12`. Only a file with no frontmatter, unparsable YAML, an unknown
  * kind, state or status, status on a non-task, an invalid release version, or no id at all (neither in the frontmatter nor in `fileName`) is refused.
  */
-export function parseItem(text: string, fileName?: string, levels: readonly string[] = DEFAULT_LEVELS): Item {
+export function parseItem(text: string, fileName?: string, levels: LadderInput = DEFAULT_LEVELS): Item {
   const src = text.replace(/\r\n/g, '\n');
   const m = /^---\n([\s\S]*?)\n---[ \t]*(?:\n|$)/.exec(src);
   if (!m) throw new ItemParseError('no YAML frontmatter (the file must start with a --- line)');

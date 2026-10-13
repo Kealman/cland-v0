@@ -2,7 +2,7 @@
 import { readFile, writeFile, rename, unlink } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { parse, stringify as serialize } from 'smol-toml';
-import { DEFAULT_LEVELS } from './tracker/kinds.ts';
+import { DEFAULT_LEVELS, ladderOf, type LadderInput } from './tracker/kinds.ts';
 import type { LogFn } from './log.ts';
 import type { Resumed } from './hub/budget.ts';
 
@@ -30,13 +30,14 @@ function isPlainTable(v: unknown): v is Record<string, unknown> {
 function keys(doc: Record<string, unknown>, allowed: readonly string[], where: string): void {
   for (const key of Object.keys(doc)) if (!allowed.includes(key)) throw new Error(`${where}: unknown key ${key}`);
 }
-export function parseCrew(text: string, levels: readonly string[] = DEFAULT_LEVELS): CrewConfig {
+export function parseCrew(text: string, levels: LadderInput = DEFAULT_LEVELS): CrewConfig {
   const doc = parse(text);
   if (!isPlainTable(doc)) throw new Error('crew.toml must contain a table');
   keys(doc, ['leads', 'crew'], 'crew.toml');
   const out = defaultCrew();
+  const ladder = ladderOf(levels);
   if (doc.leads !== undefined) {
-    if (!Array.isArray(doc.leads) || !doc.leads.every(v => typeof v === 'string' && levels.includes(v)) || new Set(doc.leads).size !== doc.leads.length) throw new Error(`leads must be a unique list of container levels (${levels.join(', ')})`);
+    if (!Array.isArray(doc.leads) || !doc.leads.every(v => typeof v === 'string' && ladder.canLead(v)) || new Set(doc.leads).size !== doc.leads.length) throw new Error(`leads must be a unique list of container levels (${ladder.containers.filter(kind => ladder.canLead(kind)).join(', ')})`);
     out.leads = doc.leads as string[];
   }
   if (doc.crew === undefined) return out;
@@ -99,9 +100,9 @@ export class CrewFile implements CrewSource {
   readonly path: string;
   readonly log: LogFn;
   readonly changed: (config: CrewConfig) => void;
-  readonly levels: readonly string[];
+  readonly levels: LadderInput;
   readonly resumed: Resumed;
-  constructor(path: string, log: LogFn, changed: (config: CrewConfig) => void, levels: readonly string[], resumed: Resumed = work => work()) {
+  constructor(path: string, log: LogFn, changed: (config: CrewConfig) => void, levels: LadderInput, resumed: Resumed = work => work()) {
     this.path = path; this.log = log; this.changed = changed; this.levels = levels; this.resumed = resumed;
   }
   get(): CrewConfig { return this.#config; }

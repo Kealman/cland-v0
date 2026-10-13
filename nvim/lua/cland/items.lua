@@ -1,4 +1,4 @@
--- Tracker-backed items: status and rank come from task summaries/events, levels from hub.status.
+-- Tracker-backed items: status and rank come from task summaries/events, ladder from hub.status.
 -- Asks, blockers and verdict marks remain badges; they never determine a task's workflow.
 local state = require('cland.state')
 
@@ -293,14 +293,28 @@ function M.default_release()
   return M.open_releases()[1]
 end
 
+--- Nested hierarchy, with compatibility for hubs that only send the flat levels.
+function M.ladder()
+  if state.S.tracker.ladder then return state.S.tracker.ladder end
+  local out = {}
+  for _, kind in ipairs(state.S.tracker.levels) do out[#out + 1] = { kind } end
+  return out
+end
+
+function M.level_of(it)
+  for i, level in ipairs(M.ladder()) do
+    if vim.tbl_contains(level, it.kind) then return i end
+  end
+end
+
 function M.is_level(it)
-  return vim.tbl_contains(state.S.tracker.levels, it.kind)
+  return M.level_of(it) ~= nil
 end
 
 function M.scopes()
   local out = {}
   for _, it in ipairs(M.ordered()) do
-    if M.is_level(it) and it.state == 'open' then out[#out + 1] = it end
+    if M.is_level(it) and (M.level_of(it) > 1 or it.kind == state.S.tracker.levels[1]) and it.state == 'open' then out[#out + 1] = it end
   end
   return out
 end
@@ -308,7 +322,7 @@ end
 function M.scope()
   local pick = state.S.ui.current_release
   local it = pick and state.item(pick)
-  if it and it.state == 'open' and M.is_level(it) then return it end
+  if it and it.state == 'open' and M.is_level(it) and (M.level_of(it) > 1 or it.kind == state.S.tracker.levels[1]) then return it end
   return M.default_release()
 end
 
@@ -334,9 +348,9 @@ function M.container_of(it)
   end
 end
 
---- Only open items outside configured container trees belong in the board's orphan fold.
+--- Unscheduled is an open, not-done item with no parent.
 function M.unscheduled(it)
-  return it.state == 'open' and it.status ~= 'done' and not M.container_of(it)
+  return it.state == 'open' and it.status ~= 'done' and not present(it.parent)
 end
 
 --- Preorder the hub tree: each level uses the shared rank comparator and final sibling events.
@@ -451,7 +465,7 @@ end
 
 --- Container kinds come from the hub; maps sit outside the configured ladder.
 function M.is_container(it)
-  return it.kind == 'map' or vim.tbl_contains(state.S.tracker.levels, it.kind)
+  return it.kind == 'map' or M.is_level(it)
 end
 
 function M.folded(it)

@@ -9,6 +9,8 @@ import { chmod, lstat, mkdir, readdir, readFile, readlink, rename, rm, symlink, 
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { configuredLevels, Ladder } from '../src/tracker/kinds.ts';
+import { parseConfig } from '../src/init/config.ts';
 import { HOOK_EVENTS } from '../src/adapters/claude-code.ts';
 import { CLI_ENTRY, clandWithEnv, connectUi, eventually, fakeClaude, startDaemon, tempProject, type CliResult } from './harness.ts';
 
@@ -38,10 +40,15 @@ test('init writes tracker levels and update preserves a changed or empty ladder'
   assert.equal(await readFile(crewPath, 'utf8'), customCrew, 'init and update preserve project staffing');
   const path = join(root, '.cland/config.toml');
   const initial = await readFile(path, 'utf8');
-  assert.match(initial, /\[tracker\]\nlevels = \["release","epic"\]/);
+  assert.match(initial, /\[tracker\]\nlevels = \[\["release","category"\],"epic"\]/);
+  await writeFile(path, initial.replace(/levels = \[[^\n]*\]/, 'levels = ["release", "epic"]'));
+  const upgraded = await run(root, 'update');
+  assert.ok(upgraded.some(change => change.note?.includes('old default rewritten')));
+  assert.match(await readFile(path, 'utf8'), /levels = \[\["release","category"\],"epic"\]/);
   for (const levels of ['["initiative", "feature"]', '[]']) {
     await writeFile(path, initial.replace(/levels = \[[^\n]*\]/, `levels = ${levels}`));
-    await run(root, 'update');
+    const kept = await run(root, 'update');
+    assert.ok(kept.some(change => change.note === `tracker levels kept: ${levels.replace(/ /g, '')}`));
     const changed = await readFile(path, 'utf8');
     assert.match(changed, new RegExp(`\\[tracker\\]\\nlevels = ${levels.replace(/ /g, '').replace(/[\[\]]/g, '\\$&')}`));
     await run(root, 'update');
@@ -589,4 +596,19 @@ test('a file of the human\'s inside a managed skill is never adopted: a later re
   await run(root, 'update', { CLAND_SKILLS_SOURCE_OVERRIDE: v2 });
   assert.equal(await readFile(join(root, '.agents', 'skills', 'tdd', 'NOTES.md'), 'utf8'), 'cland notes\n');
   assert.deepEqual((await manifestOf()).tdd, ['NOTES.md', 'SKILL.md']);
+});
+
+
+test('tracker config accepts peer levels and rejects malformed, duplicate and colliding kind names', () => {
+  for (const levels of [['release', 'epic'], [['release', 'category'], 'epic']]) {
+    assert.deepEqual(parseConfig(`[tracker]\nlevels = ${JSON.stringify(levels)}`, 'scratch').tracker.levels, levels);
+    const ladder = new Ladder(levels);
+    assert.equal(ladder.top, 'release');
+    assert.deepEqual(ladder.flat, ['release', 'epic']);
+  }
+  for (const levels of [['release', ['category', 'release']], [['release', 'task']], [['release', 'question']], [['release', 'spec']], [['release', 'map']], [[]], [1], [[['release']]], ['Release']]) {
+    assert.throws(() => configuredLevels(levels), /levels/);
+  }
+  assert.throws(() => configuredLevels([['release', 'roadmap'], 'epic']), /release and roadmap both use R/);
+  assert.throws(() => configuredLevels(['release', ['epic', 'effort']]), /epic and effort both use E/);
 });
