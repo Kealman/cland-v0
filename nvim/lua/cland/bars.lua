@@ -248,7 +248,7 @@ function M.status()
   if mode == 't' then
     hint = 'C-h/j/k/l focus · C-\\ leaves · then ␣␣ back'
   elseif role == 'explorer' then
-    hint = 'za toggle fold · j k move · ␣␣ back'
+    hint = 'l h fold · s scope · ␣␣ back · D done · A archive'
   elseif role == 'composer' and mode == 'i' then
     hint = 'Enter sends · S-Enter newline · Esc leaves'
   elseif role == 'inbox' or role == 'inbox_full' then

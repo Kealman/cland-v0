@@ -88,7 +88,11 @@ group('log', {{'r','Reply to message sender'}, {'<CR>','Open artifact chip'}, {'
   {'f','Filter Agents by item or session'}, {'F','Clear Agents filter'}})
 group('composer', {{'<M-CR>','Newline in message'}}, 'i')
 add('composer', 'q', 'Cancel reply')
-group('explorer', {{'za','Toggle explorer fold'}, {'j','Move down one line'}, {'k','Move up one line'}})
+group('explorer', {{'j','Next explorer item row'}, {'k','Previous explorer item row'},
+  {'l','Unfold explorer node or step to its first child'}, {'h','Fold explorer node or its parent'},
+  {'za','Toggle explorer fold'}, {'zo','Open explorer fold'}, {'zc','Close explorer fold'},
+  {'zR','Unfold every explorer node'}, {'zM','Fold every explorer node'}, {'s','Scope explorer to this node'},
+  {'D','Hide or show done explorer items'}, {'A','Show or hide archived explorer roots'}})
 group('plan', {{'a','Approve epic plan'}, {'d','Discuss plan with the Lead'}, {'e','Edit epic plan file'}})
 group('item', {{'e','Edit item file'}, {'L','Agents log for this item'},
   {'ca','Add criterion'}, {'ce','Edit selected criterion'}, {'cd','Remove selected criterion (confirm)'}})

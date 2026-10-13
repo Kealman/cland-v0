@@ -331,7 +331,8 @@ M.HELP = {
   '          ␣T topics docked above the inbox · ↵ in a panel opens the row in the centre',
   'Plan      gp epic plan · a approve · d discuss with the Lead · e edit plan',
   'Centre    ␣g General · ␣L Agents log · ␣b board · ␣G graph · ␣N inbox full width · ␣E events · ␣␣ the previous centre view',
-  'Explorer  ␣e · :Cland explorer [id] · za toggle fold · j k move',
+  'Explorer  ␣e · :Cland explorer [id] · j k item rows (counts) · l h fold · s scope · ␣␣ back',
+  '          za/zo/zc toggle/open/close · zR zM all · D done · A archive',
   'Graph     h/j/k/l nodes · ^/$ ends · ↵ item · gi/gt/gs · p/P parent · d done · o turn · r edges · :Cland graph [T-n]',
   'Agents    ␣L the log: lifecycle events and agent-to-agent messages · r on a message replies to its sender',
   'Motions   gi its item · gt its topic · gs its session (a reference under the cursor wins)',
@@ -368,7 +369,7 @@ function M.help()
     elseif action.id == 'global:<leader>e' then
       for r, line in ipairs(lines) do
         if line:match('^ Explorer ') then
-          lines[r] = ' Explorer  ' .. action.key .. ' · ' .. action.title .. ' · :Cland explorer [id] · za toggle fold · j k move'
+          lines[r] = ' Explorer  ' .. action.key .. ' · ' .. action.title .. ' · :Cland explorer [id] · j k item rows (counts) · l h fold · s scope · ␣␣ back'
         end
       end
     end

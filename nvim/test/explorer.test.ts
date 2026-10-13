@@ -36,6 +36,7 @@ test('Space e and the explorer command open a release tree on real hub summaries
 
 import { createConnection } from 'node:net';
 import { fileURLToPath } from 'node:url';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import type { Scenario } from './stub-hub.ts';
 import type { Client } from './harness.ts';
 const STUB = fileURLToPath(new URL('./stub-hub.ts', import.meta.url));
@@ -67,8 +68,8 @@ const fixture: Scenario = { items: [
   {id:'T-22',kind:'task',title:'Planned epic task',parent:'E-2',status:'planned',state:'open'},
 ], processes:[{name:'coord',role:'coordinator',state:'idle',status:'running'}] };
 
-async function stub(t: test.TestContext, scenario = fixture) {
-  const root = await tempProject(t);
+async function stub(t: test.TestContext, scenario = fixture, projectRoot?: string) {
+  const root = projectRoot ?? await tempProject(t);
   const controlPath = `${root}/stub.sock`;
   const c = await startClient(t,bin,root,{CLAND_HUB_TRANSPORT:'stdio',CLAND_COMMAND:JSON.stringify([process.execPath,STUB]),CLAND_STUB_SCENARIO_JSON:JSON.stringify(scenario),CLAND_STUB_CONTROL:controlPath});
   await c.rpc.request('nvim_ui_try_resize',200,50);
@@ -80,7 +81,7 @@ async function stub(t: test.TestContext, scenario = fixture) {
     socket.on('data',chunk => { data+=chunk; if(data.includes('\n')) { socket.end(); resolve(JSON.parse(data)); } });
     socket.write(JSON.stringify(command)+'\n');
   });
-  return {c,control};
+  return {c,control,root};
 }
 async function text(c: Client) {
   return c.lua<string>("return table.concat(vim.api.nvim_buf_get_lines(require('cland.explorer').b,0,-1,false),'\\n')");
@@ -88,6 +89,155 @@ async function text(c: Client) {
 async function select(c:Client, key:string) {
   await c.lua("local key=...; local e=require('cland.explorer'); for r,row in ipairs(e.rows) do if row.key==key then vim.api.nvim_win_set_cursor(e.tree_win(),{r,0}); return end end; error('missing row '..key)",key);
 }
+async function cursor(c:Client) {
+  return c.lua<string>("local e=require('cland.explorer'); return e.key_at(vim.api.nvim_win_get_cursor(e.tree_win())[1])");
+}
+async function at(c:Client, key:string) {
+  await c.lua("local key=...; assert(vim.wait(5000,function() local e=require('cland.explorer'); return e.key_at(vim.api.nvim_win_get_cursor(e.tree_win())[1])==key end),'cursor '..key)",key);
+}
+
+test('outline keys skip detail and stage labels, respect counts and fold the leaf parent', {skip}, async t => {
+  const {c}=await stub(t);
+  await c.input('<Esc><Space>e');
+  await c.waitScreen(s=>s.includes('First epic'),'release tree');
+  await select(c,'R-1'); await c.input('j'); await at(c,'E-3');
+  await c.input('3j'); await at(c,':direct:R-1');
+  await c.input('3k'); await at(c,'E-3');
+  await c.input('l'); await c.waitScreen(s=>s.includes('S1 the tree'),'epic unfolded');
+  assert.equal(await cursor(c),'E-3');
+  await c.input('l'); await at(c,'T-10');
+  await c.input('6j'); await at(c,'T-17');
+  await c.input('k'); await at(c,'T-15');
+  await c.input('h'); await at(c,'E-3');
+  await c.waitScreen(s=>!s.includes('Task in progress'),'parent folded');
+  await c.input('l');
+  await c.waitScreen(s=>s.includes('Task in progress'),'parent unfolded again');
+  await c.input('lzo'); await at(c,'T-10');
+  await c.input('zc'); await at(c,'E-3');
+  await c.waitScreen(s=>!s.includes('Task in progress'),'zc on leaf folds parent');
+  await c.input('l'); await c.waitScreen(s=>s.includes('Task in progress'),'za parent reopened');
+  await c.input('l'); await at(c,'T-10');
+  await c.input('za'); await at(c,'E-3');
+  await c.waitScreen(s=>!s.includes('Task in progress'),'za on leaf folds parent');
+  await c.input('zR'); await c.waitScreen(s=>s.includes('Task in progress')&&s.includes('Unscheduled task')&&s.includes('Direct task'),'all unfolded');
+  await select(c,'T-10'); await c.input('zM'); await at(c,'E-3');
+  await c.waitScreen(s=>!s.includes('Task in progress')&&!s.includes('Unscheduled task'),'all folded');
+  await select(c,'R-1'); await c.input('hzcza');
+  assert.ok((await text(c)).includes('First epic'),'root stays open');
+});
+
+test('scopes carry breadcrumbs and back restores the originating row and preceding centre view', {skip}, async t => {
+  const {c}=await stub(t);
+  await c.input('<Esc><Space>e');
+  await c.waitScreen(s=>s.includes('First epic'),'release tree');
+  await select(c,'E-3'); await c.input('s');
+  await c.waitScreen(s=>s.includes('R-1 0.1.2 Working with items › E-3 First epic')&&s.includes('Task in progress'),'epic scope breadcrumbs');
+  await at(c,'E-3');
+  await c.input('hzcza'); assert.ok((await text(c)).includes('Task in progress'),'scope root stays open');
+  await c.input('<Space><Space>'); await at(c,'E-3');
+  await c.waitScreen(s=>s.includes('Categories (1)'),'back to release tree');
+  await c.input('l'); await c.waitScreen(s=>s.includes('Task in progress'),'expand epic');
+  await select(c,'T-17'); await c.input('s'); await at(c,'T-17');
+  await c.waitScreen(s=>s.includes('› E-3 First epic')&&!s.includes('Categories (1)'),'leaf scopes to its epic');
+  await c.input('<Space><Space>'); await at(c,'T-17');
+  await select(c,':direct:R-1'); await c.input('s');
+  await c.waitScreen(s=>s.includes('R-1 0.1.2 Working with items › Direct tasks')&&s.includes('T-7 Direct task'),'virtual scope breadcrumbs');
+  await c.input('<Space><Space>'); await at(c,':direct:R-1');
+  await select(c,':unscheduled'); await c.input('s');
+  await c.waitScreen(s=>s.includes('EXPLORER Unscheduled')&&s.includes('Unscheduled task'),'virtual root scope');
+  await c.input('<Space><Space>'); await at(c,':unscheduled');
+  await c.input('<Space><Space>');
+  await c.waitScreen(s=>s.includes('General ·')&&!s.includes('EXPLORER'),'root back to previous centre');
+});
+
+test('D hides done items across the tree and A exposes archived roots with scope-only counts', {skip}, async t => {
+  const {c}=await stub(t,{...fixture,items:[...fixture.items!,
+    {id:'R-30',kind:'release',title:'Archived release',state:'closed',version:'0.0.1',rank:0},
+    {id:'T-31',kind:'task',title:'Archived unscheduled task',state:'closed',status:'done'},
+    {id:'T-32',kind:'task',title:'Category done task',parent:'C-5',state:'closed',status:'done'},
+  ]});
+  await c.input('<Esc><Space>e');
+  await c.waitScreen(s=>s.includes('done shown · 5 · D'),'folded descendants counted in release');
+  await c.input('zR'); await c.waitScreen(s=>s.includes('Category done task'),'all roots unfolded');
+  await select(c,'T-16'); await c.input('D'); await at(c,'E-3');
+  await c.waitScreen(s=>s.includes('done hidden · 5 · D')&&!s.includes('Closed epic')&&!s.includes('Category done task')&&!s.includes('Task done'),'done hidden globally');
+  await c.input('s'); await c.waitScreen(s=>s.includes('done hidden · 4 · D'),'epic count ignores other roots');
+  await c.input('<Space><Space>'); await at(c,'E-3');
+  await c.input('D'); await c.waitScreen(s=>s.includes('done shown · 5 · D')&&s.includes('Task done'),'done restored');
+  await c.input('A'); await c.waitScreen(s=>s.includes('Archived release')&&s.includes('Archived unscheduled task'),'archive roots shown');
+  const archived=await text(c);
+  assert.ok(archived.indexOf('Future release')<archived.indexOf('Archived release'),'live releases precede archived ones');
+  await select(c,'R-30'); await c.input('A'); await at(c,':releases');
+  await c.waitScreen(s=>!s.includes('Archived release')&&!s.includes('Archived unscheduled task'),'archive roots hidden');
+  await c.input('s'); await c.waitScreen(s=>s.includes('EXPLORER Other releases')&&s.includes('done shown · 0 · D'),'virtual scope done count');
+  await c.input('A'); await c.waitScreen(s=>s.includes('Archived release')&&s.includes('done shown · 1 · D'),'archived scope count');
+  await c.input('D'); await c.waitScreen(s=>!s.includes('Archived release')&&s.includes('done hidden · 1 · D'),'count independent of done filter');
+});
+
+test('explorer preferences debounce to ui.json and reopen after a cold workbench start', {skip}, async t => {
+  const {c,root}=await stub(t);
+  await c.input('<Esc><Space>e'); await c.waitScreen(s=>s.includes('First epic'),'release tree');
+  await select(c,'E-2'); await c.input('zc');
+  await select(c,'E-3'); await c.input('l'); await c.waitScreen(s=>s.includes('Task in progress'),'unfold to save');
+  await c.input('s'); await c.waitScreen(s=>s.includes('› E-3 First epic'),'scope to save');
+  await c.input('DA'); await c.waitScreen(s=>s.includes('done hidden · 4 · D')&&!s.includes('Task done'),'preferences changed');
+  await c.lua(`assert(vim.wait(5000,function()
+    local ok,data=pcall(function() return vim.json.decode(table.concat(vim.fn.readfile(require('cland.state').S.root..'/.cland/ui.json'),'\\n')) end)
+    return ok and data.explorer and data.explorer.scope=='E-3' and data.explorer.archive and data.explorer.hide_done
+  end)); require('cland.ui').flush()`);
+  const saved=JSON.parse(await readFile(`${root}/.cland/ui.json`,'utf8'));
+  assert.equal(saved.version,2);
+  assert.deepEqual(saved.explorer,{folds:{'E-2':false,'E-3':true},scope:'E-3',hide_done:true,archive:true,card_width:null});
+  await c.lua("vim.cmd('qa!')").catch(()=>{}); await c.rpc.closed;
+  // A valid but stale fold is cleaned once the new workbench knows its tracker.
+  saved.explorer.folds['E-999']=true;
+  saved.explorer.folds['E-10']=true; // T-10 exists, but its old prefix is not a held item id.
+  saved.future_preference={kept:true};
+  await writeFile(`${root}/.cland/ui.json`,JSON.stringify(saved));
+  const {c:fresh}=await stub(t,fixture,root);
+  await fresh.input('<Esc><Space>e');
+  await fresh.waitScreen(s=>s.includes('› E-3 First epic')&&s.includes('done hidden · 4 · D'),'cold scope and D restored');
+  await fresh.lua("require('cland.ui').changed(); require('cland.ui').flush()");
+  const restored=JSON.parse(await readFile(`${root}/.cland/ui.json`,'utf8'));
+  assert.deepEqual(restored.explorer,{folds:{'E-2':false,'E-3':true},scope:'E-3',hide_done:true,archive:true,card_width:null});
+  assert.deepEqual(restored.future_preference,{kept:true});
+  await fresh.input('<Space><Space><Space>e');
+  await fresh.waitScreen(s=>s.includes('› E-3 First epic'),'Space e reopens saved scope');
+  await fresh.input(':Cland explorer R-1<CR>');
+  await fresh.waitScreen(s=>s.includes('EXPLORER R-1')&&s.includes('Task in progress')&&!s.includes('Task done')&&!s.includes('Planned epic task'),'saved human folds restored at release');
+});
+
+test('invalid explorer preferences reset alone and are reported while other ui.json keys survive', {skip}, async t => {
+  for(const invalid of [false,[],{folds:{'E-0':true}},{folds:{'E-3':'open'}},{scope:42},{hide_done:'yes'},{archive:1},{card_width:'wide'}]) {
+    const root=await tempProject(t);
+    await mkdir(`${root}/.cland`,{recursive:true});
+    await writeFile(`${root}/.cland/ui.json`,JSON.stringify({version:2,panels:{left:false,right:'inbox',dock:false},sizes:{right:46},items_filter:'all',explorer:invalid,future_preference:{kept:true}}));
+    const {c}=await stub(t,fixture,root);
+    assert.equal(await c.lua("return require('cland.state').S.ui.right"),'inbox');
+    assert.match(String(await c.lua("return require('cland.state').S.flash.text")),/invalid explorer.*defaults/);
+    await c.input('<Esc><Space>e'); await c.waitScreen(s=>s.includes('done shown · 5 · D'),'invalid explorer default');
+    await c.input('D'); await c.waitScreen(s=>s.includes('done hidden · 5 · D'),'default can change');
+    await c.lua("require('cland.ui').changed(); require('cland.ui').flush()");
+    const saved=JSON.parse(await readFile(`${root}/.cland/ui.json`,'utf8'));
+    assert.deepEqual(saved.explorer,{folds:{},scope:null,hide_done:true,archive:false,card_width:null});
+    assert.equal(saved.items_filter,'all'); assert.deepEqual(saved.sizes,{right:46});
+    assert.deepEqual(saved.future_preference,{kept:true});
+    await c.lua("vim.cmd('qa!')").catch(()=>{}); await c.rpc.closed;
+  }
+});
+
+test('the explorer registry, key help and status hint advertise every outline action', {skip}, async t => {
+  const {c}=await stub(t);
+  await c.input('<Esc><Space>e');
+  await c.waitScreen(s=>s.includes('l h fold · s scope · ␣␣ back · D done · A archive'),'explorer status hint');
+  const actions=await c.lua<Array<{id:string;title:string;key:string}>>("local out={}; for _,a in ipairs(require('cland.actions').all()) do if a.id:match('^explorer:') then out[#out+1]={id=a.id,title=a.title,key=a.key} end end; return out");
+  assert.deepEqual(actions.map(a=>a.id).sort(),['j','k','l','h','za','zo','zc','zR','zM','s','D','A'].map(k=>`explorer:${k}`).sort());
+  for(const action of actions) { assert.ok(action.title.length>0); assert.ok(action.key.endsWith('in explorer')); }
+  assert.deepEqual(await c.lua("return require('cland.actions').audit()"),[]);
+  await c.input('<Space>?');
+  const screen=await c.waitScreen(s=>s.includes('zR zM all')&&s.includes('za/zo/zc')&&s.includes('D done · A archive'),'explorer keys in help');
+  assert.ok(screen.includes('Open explorer'));
+});
 async function highlights(c:Client, id:string) {
   return c.lua<string[]>(`local id=...; local e=require('cland.explorer'); local row; for r,info in ipairs(e.rows) do if info.key==id then row=r-1 end end; local groups={}; for _,m in ipairs(vim.api.nvim_buf_get_extmarks(e.b,vim.api.nvim_create_namespace('cland.explorer'),{row,0},{row,-1},{details=true})) do groups[#groups+1]=m[4].hl_group end; return groups`,id);
 }
@@ -189,7 +339,7 @@ test('the root winbar counts done nodes only under its named release', {skip}, a
     {id:'T-6',kind:'task',title:'Future done',parent:'R-5',status:'done',state:'closed',closed:'2025-12-01T00:00:00Z'},
   ]});
   await c.input('<Esc><Space>e');
-  await c.waitScreen(s=>s.includes('EXPLORER R-1')&&s.includes('● 1 done'),'release-only done count');
+  await c.waitScreen(s=>s.includes('EXPLORER R-1')&&s.includes('done shown · 1 · D'),'release-only done count');
   await c.input(':Cland explorer C-3<CR>');
-  await c.waitScreen(s=>s.includes('EXPLORER C-3')&&s.includes('● 1 done'),'scoped category count');
+  await c.waitScreen(s=>s.includes('EXPLORER C-3')&&s.includes('done shown · 1 · D'),'scoped category count');
 });

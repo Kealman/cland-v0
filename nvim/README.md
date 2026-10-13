@@ -416,7 +416,7 @@ clients keep their existing snapshot behavior. No polling delay or longer timeou
 | `lua/cland/views.lua` | One topic view per topic, the topic actions (create, close, resolve, read), the item view and the board through their modules, the Agents log through `agents_log.lua`, and the inbox full width through `inbox.lua`. |
 | `lua/cland/items.lua` | Hub status/rank/levels, release scope, glyphs, filters, folds, map groups and badges, the `task` event, and the items panel (tree, filters, keys). |
 | `lua/cland/item_view.lua` | The item view: the fields column, the body, the verdicts and comments from `task.view`; `e` edits the file. |
-| `lua/cland/explorer.lua` | The centre outline from item summaries: roots, status bars, stage groups, rank then close order, in-memory folds and cursor identity. |
+| `lua/cland/explorer.lua` | The centre outline from item summaries: roots, status bars, stage groups, rank then close order, saved folds and scopes, and cursor identity. |
 | `lua/cland/board.lua` | The board: seven hub-status columns scoped to open parents of the current release; parent filters; `↵` opens the card under the cursor. |
 | `lua/cland/graph.lua` | The experimental graph view over `graph_layout.lua`: release parent cycle, hub node fields, criteria adapter, folded tray, node cursor and edge focus, winbar, scrolling and visible-change updates. |
 | `lua/cland/sessions.lua` | Session terminals: the attach command from `session.attach`, one request in flight per session, re-attaching after a restart. The panel's stop (`session.stop` after the confirmation line) and the capability table float. |
@@ -649,7 +649,21 @@ Item motions accept every kind prefix supplied by `hub.status.tracker.prefixes`,
 
 ## Explorer
 
-`␣e` or `:Cland explorer` opens the current release as a centre outline. `:Cland explorer [id]` scopes it to an item; any item prefix resolves. `za` toggles the row's fold, and plain `j` and `k` move through the lines. Folds stay in memory. The release starts open one level, followed by folded Categories, Unscheduled and Other releases roots. Direct tasks sit under their own folded row after the epics, including a release with no epics. The winbar counts done nodes under its scope; in the root view this is only the named release, excluding the other roots.
+`␣e` or `:Cland explorer` opens the saved scope, defaulting to the current release as a centre outline. `:Cland explorer [id]` scopes it to an item; any item prefix resolves. The release starts open one level, followed by folded Categories, Unscheduled and Other releases roots. Direct tasks sit under their own folded row after the epics, including a release with no epics.
+
+| Key | Action |
+| --- | --- |
+| `j` / `k` | Next / previous item row, skipping headers, release breakdowns and stage labels. Counts work, for example `3j`. |
+| `l` | Unfold a node; on an open node, step to its first child. A leaf stays selected. |
+| `h` | Fold an open node; on a leaf or folded node, move to its parent and fold it. The scope root stays open. |
+| `za` / `zo` / `zc` | Toggle / open / close the node. On a leaf, act on its parent. |
+| `zR` / `zM` | Unfold / fold every node in the current view, keeping the scope root open. |
+| `s` | Rebase the tree on this node; on a leaf, scope to its container and keep the leaf selected. Virtual rows can be scopes. |
+| `␣␣` | Return to the previous scope with its selected row; from the root, return to the previous centre view. |
+| `D` | Hide / show done items throughout the tree, including done epics. |
+| `A` | Show / hide closed releases under Other releases and closed root items under Unscheduled. |
+
+The winbar and top context show the scope's breadcrumbs, including the owner of a virtual scope. The winbar ends with `done shown · N · D` or `done hidden · N · D`: done nodes under this scope, folded descendants included. In the root view this counts only the named release. Folds, scope, `D` and `A` persist under `explorer` in version 2 of `.cland/ui.json`; invalid explorer preferences reset to defaults while the other preferences survive. Missing item folds are dropped on the next write. Changes keep the selected row by identity or move to its nearest visible ancestor.
 
 The release row carries its version, title, epics done/total and status bar. Two label rows show its tasks' fraction, bar and status counts. Epic rows show tasks done/total, the task bar, counts in progress/review/QA, the current plan stage and the Lead (or Coordinator while no lead levels are configured). Task rows show the claim or verifier hold, latest review and QA verdicts with their rounds, and verified/total criteria from the summary. Done rows show the closing time; blocked tasks name their open blockers. Columns drop from the right as the centre narrows, and lines never wrap.
 

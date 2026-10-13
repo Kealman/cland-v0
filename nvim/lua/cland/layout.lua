@@ -381,6 +381,7 @@ function M.show(view, opts)
     view = { kind = 'log' }
   end
   local ui = state.S.ui
+  if ui.view.kind == 'explorer' then require('cland.explorer').remember() end
   if not same(ui.view, view) then
     table.insert(ui.hist, ui.view)
     while #ui.hist > 40 do
@@ -454,6 +455,7 @@ end
 --- ␣␣: the previous centre view; twice returns, like CTRL-^.
 function M.back()
   local ui = state.S.ui
+  if ui.view.kind == 'explorer' then require('cland.explorer').remember() end
   local prev = table.remove(ui.hist)
   while prev and same(prev, ui.view) do
     prev = table.remove(ui.hist)
@@ -462,7 +464,8 @@ function M.back()
     state.say('no previous centre view')
     return
   end
-  table.insert(ui.hist, ui.view)
+  -- Explorer scopes form a back stack; other centre views retain the CTRL-^ toggle.
+  if ui.view.kind ~= 'explorer' then table.insert(ui.hist, ui.view) end
   if ui.view.kind == 'events' then require('cland.events').visit_look = nil end
   if prev.kind == 'events' then require('cland.events').visit() end
   if prev.kind == 'plan' then require('cland.plan').enter(prev.id) end

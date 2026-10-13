@@ -4,6 +4,20 @@ local uv = vim.uv
 local M = { DEBOUNCE_MS = 200 }
 local path, timer, pending, saved, warned
 
+function M.explorer_defaults()
+  return {folds=vim.empty_dict(),hide_done=false,archive=false}
+end
+
+local function explorer_snapshot(ui)
+  local e = ui.explorer or M.explorer_defaults()
+  local folds, ids = vim.empty_dict(), {}
+  for _, it in ipairs(state.S.items) do ids[it.id] = true end
+  for key, open in pairs(e.folds) do
+    if key:match('^:') or not state.S.items_loaded or ids[key] then folds[key] = open end
+  end
+  return {folds=folds,scope=e.scope or vim.NIL,hide_done=e.hide_done,archive=e.archive,card_width=e.card_width or vim.NIL}
+end
+
 local function snapshot()
   local ui = state.S.ui
   return {
@@ -15,7 +29,24 @@ local function snapshot()
     sizes = vim.deepcopy(ui.sizes),
     items_filter = ui.items_filter,
     current_release = ui.current_release or vim.NIL,
+    explorer = explorer_snapshot(ui),
   }
+end
+
+local function validate_explorer(e)
+  assert(type(e) == 'table' and not vim.islist(e), 'invalid explorer')
+  if e.folds == nil then e.folds = vim.empty_dict() end
+  assert(type(e.folds) == 'table' and not vim.islist(e.folds), 'invalid explorer folds')
+  local function key(k) return type(k) == 'string' and (k:match('^%a%-[1-9]%d*$') or k:match('^:')) end
+  for k, open in pairs(e.folds) do assert(key(k) and type(open) == 'boolean', 'invalid explorer fold') end
+  assert(e.scope == nil or key(e.scope), 'invalid explorer scope')
+  for _, field in ipairs({'hide_done','archive'}) do
+    assert(e[field] == nil or type(e[field]) == 'boolean', 'invalid explorer ' .. field)
+    if e[field] == nil then e[field] = false end
+  end
+  assert(e.card_width == nil or (type(e.card_width) == 'number' and e.card_width >= 1 and e.card_width < 100000
+    and e.card_width == math.floor(e.card_width)), 'invalid explorer card width')
+  return e
 end
 
 local function validate(data)
@@ -52,6 +83,11 @@ local function validate(data)
   assert(e.filter.subject == nil or subject(e.filter.subject), 'invalid events subject')
   for _, s in ipairs(e.muted) do assert(subject(s), 'invalid events mute') end
   assert(e.last_look == nil or type(e.last_look) == 'string' and e.last_look:match('^%d%d%d%d%-%d%d%-%d%dT'), 'invalid events last look')
+  if data.explorer == nil then data.explorer = M.explorer_defaults() else
+    local ok, explorer = pcall(validate_explorer, data.explorer)
+    data.explorer = ok and explorer or M.explorer_defaults()
+    data.explorer_invalid = not ok
+  end
   return data
 end
 
@@ -61,6 +97,7 @@ function M.load(root)
   local ui = state.S.ui
   ui.plan_seen = vim.empty_dict()
   ui.events = { filter = vim.empty_dict(), muted = {} }
+  ui.explorer = M.explorer_defaults()
   ui.preset, ui.left, ui.right, ui.dock = nil, false, 'sessions', false
   ui.sizes, ui.items_filter, ui.current_release = vim.empty_dict(), 'board', nil
   local _, _, stat_code = uv.fs_stat(path)
@@ -73,6 +110,8 @@ function M.load(root)
     ui.preset = data.preset
     ui.left, ui.right, ui.dock = data.panels.left, data.panels.right, data.panels.dock
     ui.sizes, ui.items_filter, ui.current_release = data.sizes, data.items_filter, data.current_release
+    ui.explorer = data.explorer
+    if data.explorer_invalid then state.say('ui.json: invalid explorer preferences; using explorer defaults', 'ClandAmberBar') end
     if ui.preset then ui.view = vim.deepcopy(require('cland.layout').PRESETS[ui.preset].view) end
   elseif stat_code ~= 'ENOENT' then
     state.say('ui.json unreadable or invalid; using default layout', 'ClandAmberBar')
