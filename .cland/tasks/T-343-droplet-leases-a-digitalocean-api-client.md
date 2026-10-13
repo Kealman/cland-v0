@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-216
 branch: t/T-343-droplet-leases-a-digitalocean-api-client
 created: 2026-10-13T20:53:45.647Z
-updated: 2026-10-13T21:27:30.355Z
+updated: 2026-10-13T21:43:15.814Z
 ---
 
 ## Summary
@@ -154,11 +154,13 @@ It also deletes keys named `cland-<project>-*` that have no live lease. It never
 - [x] C8. Real check, posted on this item with create, destroy and cost: one stray droplet of the smallest size, made by hand with the `cland` and project tags, is deleted by `cland executor reap`. The tag listing is empty afterwards.
   - done: impl-343 · 2026-10-13T21:18:20.547Z
   - verified: rev-23 [reviewer] · run rev-2026-10-13-343-2 · 2026-10-13T21:27:05.013Z · commit 7dbec3140c4a272e640871d0e53dba506e7c0e42
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-343-3 · 2026-10-13T21:42:53.967Z · commit cf378e31ef2479cec49ed970d0bf0c5dda3bfa74
 - [x] C9. On macOS the watchdog holds `caffeinate -i -w <its pid>` while its lease is live, so a sleeping hub host cannot strand a billing droplet. A test on macOS sees the `caffeinate` child for a live lease and none after release (Coordinator decision, approved by the stand-in under D24 on 2026-10-13).
   - done: impl-343 · 2026-10-13T21:18:20.911Z
 - [x] C10. `hub/README.md` describes the token, the tags, the lease, the watchdog, reap, status and the config keys.
   - done: impl-343 · 2026-10-13T21:18:21.305Z
   - verified: rev-23 [reviewer] · run rev-2026-10-13-343-2 · 2026-10-13T21:27:05.013Z · commit 7dbec3140c4a272e640871d0e53dba506e7c0e42
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-343-3 · 2026-10-13T21:42:53.967Z · commit cf378e31ef2479cec49ed970d0bf0c5dda3bfa74
 
 ## Comments
 
@@ -216,3 +218,24 @@ Criteria: C8 verified, C10 verified.
 ### impl-343 · 2026-10-13T21:27:30.355Z
 
 Full source review clear at 7dbec314 (rev-2026-10-13-343-2, A-2080); C8/C10 verified. Queued cland verify all at exact head 7dbec3140c4a272e640871d0e53dba506e7c0e42, run 289bf011-2281-4f21-a3ef-5ffa28633f69, position 1, reporting to rev-23 and impl-343 in topic-216. Working tree clean. Awaiting the hub result and Reviewer’s final evidence verdict.
+
+### impl-343 · 2026-10-13T21:39:01.653Z
+
+Integrated T-342 at the Coordinator's request. Cancelled old run 289bf011 before changing head (A-2087; 37 passed, no failures, cancelled exit 143). Merged dev 113818fb/T-342 7945c5b cleanly, then typed the lifecycle against shared Lease/RunRef/Released and Executor acquire/release. New head cf378e31ef2479cec49ed970d0bf0c5dda3bfa74 pushed. Combined typecheck and shard lint pass; targeted droplet 12/12 and local executor 3/3 pass, run one file at a time. Requesting source review before replacement verify; real C8 evidence A-2072 retained.
+
+### rev-23 · 2026-10-13T21:42:53.967Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-343-3
+commit: cf378e31ef2479cec49ed970d0bf0c5dda3bfa74
+scope: delta
+
+No high or medium findings. Incoming T-342 executor/local/suite code matches the previously reviewed implementation; protocol, dispatcher and README preserve both integrations. T-343 changes only shared Lease/RunRef/Released typing, with lifecycle and security behavior unchanged. C8/C10 refreshed from retained A-2072 evidence/docs; C1–C7/C9 await replacement exact-head full verification. A-2087 was intentionally cancelled and is not green evidence. A-2092: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2092-t-343-delta-source-review-at-cf378e31.md.
+
+Criteria: C8 verified, C10 verified.
+
+### impl-343 · 2026-10-13T21:43:15.814Z
+
+Delta source review clear at cf378e31 (rev-2026-10-13-343-3, A-2092). Replacement cland verify all queued at exact head cf378e31ef2479cec49ed970d0bf0c5dda3bfa74, run 7cad6696-2196-4e99-91f6-dcc3675931e3, position 1. Reports to rev-23 and impl-343 in topic-216. Clean working tree; awaiting full-suite evidence and the final Reviewer verdict.

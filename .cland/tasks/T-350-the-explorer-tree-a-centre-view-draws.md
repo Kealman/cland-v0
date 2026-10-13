@@ -2,8 +2,8 @@
 id: T-350
 kind: task
 title: "The explorer tree: a centre view draws the current release as an outline of its epics and tasks, with the rows per level, live items by rank and done items in closing order, and the folded roots"
-state: open
-status: review
+state: closed
+status: done
 size: L
 criterion_seq: 8
 labels:
@@ -16,7 +16,8 @@ blocked_by: []
 topic: topic-217
 branch: t/T-350-the-explorer-tree-a-centre-view-draws
 created: 2026-10-13T20:53:51.399Z
-updated: 2026-10-13T21:12:26.130Z
+updated: 2026-10-13T21:52:03.804Z
+closed: 2026-10-13T21:52:03.804Z
 ---
 
 ## Summary
@@ -121,21 +122,29 @@ An epic derives from its tasks. A release derives from its epics, or from its di
 
 - [x] C1. `␣e` and `:Cland explorer` open the explorer in the centre. `:Cland explorer E-2` (any prefix) opens it scoped to that item. The top bar, the context line and `␣?` name it.
   - done: impl-350 · 2026-10-13T21:10:22.076Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-350-3 · 2026-10-13T21:51:41.210Z · commit 45e032e8fdc4ae9c2e29892dbb431a9e3571c764
 - [x] C2. On a stub fixture with a release, three epics (one closed), tasks in every status, a category and an unscheduled item, the screen shows the release row with epics done/total and its two label rows, the epics in rank order with the closed one last in the done colour, each epic's bar, counts, stage and lead, `Direct tasks (N)` folded, and `Categories`, `Unscheduled` and `Other releases` folded.
   - done: impl-350 · 2026-10-13T21:04:56.923Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-350-3 · 2026-10-13T21:51:41.211Z · commit 45e032e8fdc4ae9c2e29892dbb431a9e3571c764
 - [x] C3. A task row shows its claim, the reviewer's hold while in review, `merged <when>` from `closed` when done, the latest verdict with its round, and verified/total from the summary's `criteria`. The test checks that no `task.view` frame reached the stub hub while the tree was drawn.
   - done: impl-350 · 2026-10-13T21:04:57.314Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-350-3 · 2026-10-13T21:51:41.211Z · commit 45e032e8fdc4ae9c2e29892dbb431a9e3571c764
 - [x] C4. An epic with a plan groups its live tasks under one label per stage with the stage's state and merged count, and its done tasks under one `done` label in the order of their `closed` times.
   - done: impl-350 · 2026-10-13T21:04:57.847Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-350-3 · 2026-10-13T21:51:41.211Z · commit 45e032e8fdc4ae9c2e29892dbb431a9e3571c764
 - [x] C5. A container's glyph derives from its children: ◐ with a task in review, ○ in the text colour with only planned tasks, ● green when closed. A release with no epic derives from its direct tasks.
   - done: impl-350 · 2026-10-13T21:10:23.668Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-350-3 · 2026-10-13T21:51:41.211Z · commit 45e032e8fdc4ae9c2e29892dbb431a9e3571c764
 - [x] C6. A second render with no visible change does not rewrite the buffer. The test counts buffer writes through `nvim_buf_attach` `on_lines` or a render counter. `za` on an epic unfolds it with the cursor kept on the epic.
   - done: impl-350 · 2026-10-13T21:04:58.715Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-350-3 · 2026-10-13T21:51:41.211Z · commit 45e032e8fdc4ae9c2e29892dbb431a9e3571c764
 - [x] C7. At 120 and 80 columns the right columns drop right to left and no row wraps.
   - done: impl-350 · 2026-10-13T21:04:59.344Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-350-3 · 2026-10-13T21:51:41.212Z · commit 45e032e8fdc4ae9c2e29892dbb431a9e3571c764
 - [x] C8. `nvim/README.md` (Explorer section and Modules), the help line and `qa/cases/EXPLORER-001.lua` describe and exercise the view.
   - done: impl-350 · 2026-10-13T21:05:00.094Z
   - verified: rev-23 [reviewer] · run rev-2026-10-13-350-2 · 2026-10-13T21:12:26.130Z · commit 45e032e8fdc4ae9c2e29892dbb431a9e3571c764
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-350-3 · 2026-10-13T21:51:41.212Z · commit 45e032e8fdc4ae9c2e29892dbb431a9e3571c764
 
 ## Comments
 
@@ -172,3 +181,20 @@ scope: full
 No remaining high or medium findings. Configured root handling is centralized in a hub-ladder predicate; nil-scope done count is restricted to the release subtree per Coordinator e438215c. Dedicated configured/direct-task and unrelated-done-item regressions cover the fixes. Full preceding review A-2065 remains applicable. C8 verified; C1–C7 await exact-head complete Neovim verification. A-2069: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2069-t-350-corrected-full-source-review-at-45e032e.md.
 
 Criteria: C8 verified.
+
+### rev-23 · 2026-10-13T21:51:41.212Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-350-3
+commit: 45e032e8fdc4ae9c2e29892dbb431a9e3571c764
+scope: evidence
+
+No high or medium findings. Exact-head full cland verify 35cdd40c / A-2094 passed typecheck and all 1854/1854 tests across three phases, with zero failures/cancellations/skips/todo. Explorer fixtures and real-hub entry, summary-only rows, stage ordering, configured roots, scoped counts, no-op writes, fold cursor and narrow layouts all pass. Source review A-2069 remains applicable. C1–C8 verified. A-2095: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2095-t-350-final-exact-head-evidence-review.md.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified.
+
+### coord · 2026-10-13T21:52:03.804Z
+
+Merged cc823753c97d3ce3ddf3dbd46993ec84804d6917 onto dev.
