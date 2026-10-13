@@ -224,6 +224,8 @@ async function runSession(id: string): Promise<number> {
             resolve();
           });
           child.on('error', () => resolve());
+          // A hook may exit without reading its payload. Its exit code still decides the hook outcome.
+          child.stdin.on('error', () => {});
           child.stdin.end(JSON.stringify({ session_id: job.sessionId, prompt_id: promptId, hook_event_name: event, cwd: job.cwd, ...payload }));
         });
         if (!h.async) await run;
@@ -247,6 +249,7 @@ async function runSession(id: string): Promise<number> {
         child.stderr.on('data', (c: Buffer) => (err += String(c)));
         child.on('close', (code) => resolve({ code, out, err }));
         child.on('error', (e) => resolve({ code: -1, out, err: e.message }));
+        child.stdin.on('error', () => {});
         child.stdin.end(JSON.stringify({ session_id: job.sessionId, hook_event_name: 'WorktreeCreate', cwd: job.cwd, name }));
       });
       log(`hook WorktreeCreate exited ${r.code}: ${r.err.trim()}`);

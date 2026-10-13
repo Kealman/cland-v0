@@ -16,6 +16,13 @@ const REPO = fileURLToPath(new URL('../../', import.meta.url));
 const SOURCE_SKILLS = join(REPO, '.agents', 'skills');
 const VERSION = (JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8')) as { version: string }).version;
 
+function assertNoMachinePath(text: string, machine: string, file: string): void {
+  const escaped = machine.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  // An absolute path starts outside another path and ends at a component boundary (including a child slash).
+  const path = new RegExp(`(?:^|[^\\w./~-])${escaped}(?=$|[^\\w.~-])`);
+  assert.ok(!path.test(text), `${file} names ${machine}`);
+}
+
 test('init writes tracker levels and update preserves a changed or empty ladder', async t => {
   const root = await tempProject(t);
   await gitRepo(root);
@@ -178,8 +185,12 @@ test('cland init on an empty repository: git status shows exactly the committed 
     const path = join(root, f);
     if ((await lstat(path)).isSymbolicLink()) continue;
     const text = await readFile(path, 'utf8');
-    for (const machine of [root, homedir(), REPO.replace(/\/$/, '')]) assert.ok(!text.includes(machine), `${f} names ${machine}`);
+    for (const machine of [root, homedir(), REPO.replace(/\/$/, '')]) assertNoMachinePath(text, machine, f);
   }
+  // Exercise the same assertion on a path in the committed set with the actual home written into it.
+  await writeFile(join(root, 'AGENTS.md'), `Read files from ${homedir()}/private.\n`);
+  const injected = await readFile(join(root, 'AGENTS.md'), 'utf8');
+  assert.throws(() => assertNoMachinePath(injected, homedir(), 'AGENTS.md'), /AGENTS\.md names/);
 });
 
 test('cland init on a repository with its own AGENTS.md, CLAUDE.md, settings, docs and skills: theirs stays, only the managed parts are added', async (t) => {

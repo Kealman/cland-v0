@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { cland, clandWithEnv, connectUi, eventually, fakeClaude, fakeCodex, spawnSpoke, startDaemon, tempProject } from './harness.ts';
+import { cland, clandWithEnv, connectUi, eventually, fakeClaude, fakeCodex, spawnSpoke, startDaemon, tempProject, testWaitMs } from './harness.ts';
 import { execFileSync } from 'node:child_process';
 import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -95,8 +95,10 @@ test('a verifier spawned while its item leaves the Lead subtree is refused and c
   await mkdir(bin, { recursive: true });
   const marker = join(bin, 'spawned');
   const proceed = join(bin, 'proceed');
+  // This starts a worktree and a complete harness before publishing the marker; 15 s is too short under load.
+  const spawnWindowMs = testWaitMs(30_000);
   const realClaude = join(fake.env.PATH!.split(':')[0]!, 'claude');
-  await writeFile(join(bin, 'claude'), `#!/usr/bin/env node\nimport { spawnSync } from 'node:child_process';\nimport { existsSync, writeFileSync } from 'node:fs';\nimport { setTimeout } from 'node:timers/promises';\nconst args = process.argv.slice(2);\nconst result = spawnSync(${JSON.stringify(realClaude)}, args, { env: process.env, encoding: 'utf8' });\nif (args.includes('--bg') && args.includes('late-verifier')) {\n  writeFileSync(${JSON.stringify(marker)}, 'ready');\n  const deadline = Date.now() + 20000;\n  while (!existsSync(${JSON.stringify(proceed)}) && Date.now() < deadline) await setTimeout(10);\n}\nprocess.stdout.write(result.stdout ?? '');\nprocess.stderr.write(result.stderr ?? '');\nprocess.exit(result.status ?? 1);\n`, { mode: 0o755 });
+  await writeFile(join(bin, 'claude'), `#!/usr/bin/env node\nimport { spawnSync } from 'node:child_process';\nimport { existsSync, writeFileSync } from 'node:fs';\nimport { setTimeout } from 'node:timers/promises';\nconst args = process.argv.slice(2);\nconst result = spawnSync(${JSON.stringify(realClaude)}, args, { env: process.env, encoding: 'utf8' });\nif (args.includes('--bg') && args.includes('late-verifier')) {\n  writeFileSync(${JSON.stringify(marker)}, 'ready');\n  while (!existsSync(${JSON.stringify(proceed)})) await setTimeout(10);\n}\nprocess.stdout.write(result.stdout ?? '');\nprocess.stderr.write(result.stderr ?? '');\nprocess.exit(result.status ?? 1);\n`, { mode: 0o755 });
   const { discovery } = await startDaemon(t, root, { ...fake.env, PATH: `${bin}:${fake.env.PATH}` });
   const ui = await connectUi(t, discovery);
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator' });
@@ -108,7 +110,7 @@ test('a verifier spawned while its item leaves the Lead subtree is refused and c
   const lead = await spawnSpoke({ cwd: root, discover: true, name: 'lead-1', sessionId: launched.process.sessionId, assignRole: false });
   t.after(() => lead.close());
   const launching = lead.call<{ ok: boolean; code: string; reason: string }>('session.launch', { name: 'late-verifier', role: 'reviewer', item: item.id, harness: 'claude-code' });
-  await eventually('fake verifier has spawned but its adapter has not returned', () => existsSync(marker) ? true : undefined);
+  await eventually('fake verifier has spawned but its adapter has not returned', () => existsSync(marker) ? true : undefined, spawnWindowMs);
   assert.equal((await coord.call<{ ok: boolean }>('task.edit', { id: item.id, state: 'closed' })).ok, true);
   const pruned = await ui.request({ type: 'worktree.prune', items: [item.id] });
   assert.equal(pruned.ok, true);

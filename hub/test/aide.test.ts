@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, clandWithEnv, clauseAnswered, connectUi, fakeClaude, spawnSpoke, startDaemon, tempProject } from './harness.ts';
+import { cland, clandWithEnv, clauseAnswered, connectUi, eventually, fakeClaude, spawnSpoke, startDaemon, tempProject } from './harness.ts';
 import { DEFAULTS, parseRoles } from '../src/roles/config.ts';
 import { DEFAULT_PERMISSIONS, decide, KNOWN_TOOLS } from '../src/roles/permissions.ts';
 import type { Artifact, Message } from '../src/protocol.ts';
@@ -49,6 +49,31 @@ test('cland init writes the Aide defaults and CLI launches several Aides with no
   }
   const status = await ui.request({ type: 'hub.status' });
   assert.deepEqual((status.value as { sessions: Array<{ name: string; role: string }> }).sessions.filter(s => s.role === 'aide').map(s => s.name).sort(), ['aide-1', 'aide-2']);
+});
+
+test('a fake Claude Aide keeps answering when a settings hook exits without reading stdin', async t => {
+  const root = await tempProject(t);
+  const fake = await fakeClaude(t);
+  await mkdir(join(root, '.cland'), { recursive: true });
+  await writeFile(join(root, '.cland/config.toml'), '[hygiene]\nmax_text_bytes = 2097152\n');
+  await mkdir(join(root, '.claude'));
+  await writeFile(join(root, '.claude/settings.json'), JSON.stringify({ hooks: {
+    UserPromptSubmit: [{ hooks: [{ type: 'command', command: 'exec 0<&-; exit 23' }] }],
+  } }));
+  const { discovery } = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
+  const launch = await cland(root, 'session', 'launch', 'aide-1', '--role', 'aide', '--json');
+  assert.equal(launch.code, 0, launch.stderr);
+  const { process } = JSON.parse(launch.stdout) as { process: { harnessId: string } };
+  await clauseAnswered(ui, 'aide-1');
+  // More than a pipe can buffer: even on macOS the write is still pending when the hook closes stdin.
+  for (const text of ['payload '.repeat(65536), 'answer after the closed stdin']) {
+    assert.equal((await ui.request({ type: 'topic.send', topic: 'general', text, to: ['aide-1'] })).ok, true);
+    await ui.waitFor(f => f.type === 'message' && (f.message as Message).from === 'aide-1' && (f.message as Message).text === `pong: ${text}`, 15_000)
+      .catch(async () => { throw new Error(`Aide did not answer after the hook closed stdin:\n${(await fake.log(process.harnessId)).slice(-2000)}`); });
+  }
+  await eventually('the hook exit code is retained', async () => (await fake.log(process.harnessId)).includes('hook UserPromptSubmit exited 23:') || undefined);
 });
 
 test('Aide tracker, topics, artifacts and named sends work; crew operations name the refusing rule', async t => {

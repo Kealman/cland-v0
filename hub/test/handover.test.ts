@@ -33,7 +33,8 @@ const NOTE = { goals_now: 'Ship T-1.', work_in_flight: 'T-1 importer, half done.
 const isRole = (e: ChannelEvent) => e.params.meta?.kind === 'role';
 
 const audits = async (root: string, ui: FrameClient): Promise<Audit[]> => {
-  assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
+  const flushed = await ui.request({ type: 'hub.status', flushLogs: true });
+  assert.equal(flushed.ok, true, JSON.stringify(flushed));
   return (await readFile(join(root, '.cland', 'log', 'hub.log'), 'utf8'))
     .split('\n')
     .filter((l) => l.includes('"event":"audit"'))
@@ -207,7 +208,10 @@ test('a handover without a complete note is refused with the typed error naming 
   const impl = await b.call<Result>('role.handover', { to: 'coord', note: NOTE });
   assert.deepEqual([impl.code, impl.permission, impl.role], ['forbidden', 'role.handover', 'implementer']);
   // the refusals are audited
-  const records = (await audits(root, ui)).filter((r) => r.tool === 'role.handover');
+  const records = await eventually('all handover refusals are audited', async () => {
+    const records = (await audits(root, ui)).filter(r => r.tool === 'role.handover');
+    return records.some(r => r.session === 'next' && r.outcome === 'forbidden') ? records : undefined;
+  });
   assert.deepEqual(
     records.map((r) => [r.session, r.outcome]),
     [

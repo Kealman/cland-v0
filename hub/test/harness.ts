@@ -590,8 +590,14 @@ export async function fakeClaude(
 export const clauseAnswered = (ui: FrameClient, session: string, timeoutMs = 15_000) =>
   ui.waitFor((f) => f.type === 'message' && (f.message as { from: string }).from === session && (f.message as { text: string }).text.startsWith('pong: cland hub: you hold the role'), timeoutMs);
 
+/** Test-only failure budget; production processes never read this setting. */
+export function testWaitMs(fallbackMs = 15_000): number {
+  const configured = Number(process.env.CLAND_TEST_WAIT_MS);
+  return Number.isFinite(configured) && configured > 0 ? configured : fallbackMs;
+}
+
 /** Poll until `check` returns a value (not undefined), or fail with what was last seen. */
-export async function eventually<T>(what: string, check: () => Promise<T | undefined> | T | undefined, timeoutMs = 15_000): Promise<T> {
+export async function eventually<T>(what: string, check: () => Promise<T | undefined> | T | undefined, timeoutMs = testWaitMs()): Promise<T> {
   const deadline = Date.now() + timeoutMs;
   let last: unknown;
   while (Date.now() < deadline) {

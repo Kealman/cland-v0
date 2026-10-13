@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import test, { type TestContext } from 'node:test';
 import { ownDirectory } from './process-cleanup.ts';
 import { fileURLToPath } from 'node:url';
+import { suiteSummary } from '../src/hub/suites.ts';
 
 const runner = fileURLToPath(new URL('./run-suite.ts', import.meta.url));
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -35,6 +36,28 @@ async function until(check: () => boolean | Promise<boolean>) {
   for (let n = 0; n < 800; n++) { if (await check()) return; await delay(25); }
   throw new Error('runner did not reach the expected state');
 }
+
+test('the runner lists static and runtime skips by file, name and reason without changing suite counts', async t => {
+  const dir = await fixture(t);
+  const file = join(dir, 'skips.mjs');
+  const reason = 'needs a platform tool\nand "its configuration"';
+  await writeFile(file, `import test from 'node:test';
+test('platform case', { skip: ${JSON.stringify(reason)} }, () => {});
+test('runtime prerequisite', t => t.skip('binary absent'));
+test('ordinary pass', () => {});`);
+  const suite = run(t, dir, file, 'all');
+  assert.equal(await suite.done, 0, suite.output());
+  const output = suite.output();
+  const details = output.split('\n').filter(line => line.startsWith('suite skip {')).map(line => JSON.parse(line.slice('suite skip '.length)));
+  assert.deepEqual(details, [
+    { file: 'skips.mjs', name: 'platform case', reason },
+    { file: 'skips.mjs', name: 'runtime prerequisite', reason: 'binary absent' },
+    { file: 'skips.mjs', name: 'platform case', reason },
+    { file: 'skips.mjs', name: 'runtime prerequisite', reason: 'binary absent' },
+  ]);
+  assert.match(suiteSummary(output), /tests 6;.*pass 2;.*skipped 4/);
+  assert.equal(suiteSummary(output), suiteSummary(output.split('\n').filter(line => !line.startsWith('suite skip ')).join('\n')));
+});
 
 for (const mode of ['hub', 'nvim'] as const) {
   test(`two ${mode} suite invocations serialize and report the holder`, async (t) => {

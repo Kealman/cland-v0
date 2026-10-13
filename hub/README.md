@@ -1363,6 +1363,15 @@ abandoned manual lock with the `rmdir` command printed by the waiter, naming
 either `/tmp/cland-suite.lock` or `/tmp/cland-suite-nvim.lock`.
 `CLAND_TEST_SKIP_LOCK=1` skips the lock in isolated CI jobs.
 
+`CLAND_TEST_WAIT_MS` is a test-harness-only failure deadline: a finite positive
+number sets the default budget for `eventually` and the gated verifier's startup
+wait. Without it (or with an invalid value), `eventually` retains 15 seconds and
+the verifier startup wait gets 30 seconds to prepare its worktree and start its
+harness under load. Explicit deadlines on other waits stay as specified. The
+verifier fixture releases its adapter only after the competing tracker operations
+finish, without a timed gate opening. No production timeout changes. Linux proof
+runs use the defaults, with this variable unset.
+
 `CLAND_TEST_EVENT_WINDOW_MS` is a test-only daemon knob: a finite positive number
 sets the equal-event coalescing window in milliseconds. Without it (or with an
 invalid value), the production window remains 60 seconds. The window-boundary
@@ -1393,6 +1402,33 @@ The machine shards run at concurrency 4; hermetic shards run at 1. Targeted sing
 `node --test hub/test/daemon.test.ts`. If calling the runner directly, use
 `node hub/test/run-suite.ts hub` or `node hub/test/run-suite.ts nvim`; raw
 `node --test` is reserved for targeted runs.
+
+Each phase ends with `suite skip details N` and one `suite skip` JSON record per
+skipped test, containing its repository-relative file, name and reason. Both
+static platform skips and runtime prerequisite skips appear on macOS and Linux;
+for a skip without an authored reason the record says so. The ordinary Node
+reporter still owns the test counts: these detail lines do not match the hub's
+`# skipped N` / `ℹ skipped N` count diagnostics and cannot double their totals.
+
+#### Running the suite on Linux
+
+Use Ubuntu 24.04 with `git`, `curl`, `ca-certificates`, `build-essential`,
+`python3`, `jq`, `lsof`, `xz-utils`, `procps` and `locales` installed. Use Node
+24.13 or later in the 24.x line (see `package.json`), run `npm ci`, then
+`node nvim/bin/nvim-path.ts` to fetch and verify the release pinned by
+`nvim/NVIM_VERSION` and `nvim/NVIM_SHA256SUMS`. Run as an ordinary login user with
+a home under `/home`, with no added environment settings (normal login `HOME`,
+`USER`, `LANG` and `PATH` suffice): `npm run typecheck && npm test -- --all`.
+`PS_PERSONALITY` and `CLAND_TEST_*` overrides are unnecessary. Agent runs still
+follow the verification queue rules above.
+
+For a local container, use `docker run --init` and an explicit CPU limit within
+the host's available CPUs. A real init must reap orphaned descendants; using
+`sleep infinity` as PID 1 alone leaves zombies that invalidate process-exit
+tests. The macOS `sandbox-exec` cases are listed as skips on Linux, along with
+an absent real OpenCode binary or any missing prerequisites. Installing OpenCode
+is optional; its fake adapter coverage still runs. Root runs additionally list
+the permission-denial recovery case that root cannot exercise.
 
 The runner uses a short temporary directory for each phase (Unix socket paths must
 fit). After the test process exits, one machine-wide discovery sweep is the safety

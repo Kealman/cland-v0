@@ -80,7 +80,7 @@ export async function runSuite(suites: string[][], options: { lockDir?: string; 
         machine = await acquire([machineDir], () => interruption.signal !== null, holder);
         machineWait = Date.now() - phaseStarted;
       }
-      const env: NodeJS.ProcessEnv = { ...process.env, TMPDIR: root, TMP: root, TEMP: root, TEST_SUITE_RUN_ID: holder.token };
+      const env: NodeJS.ProcessEnv = { ...process.env, TMPDIR: root, TMP: root, TEMP: root, TEST_SUITE_RUN_ID: holder.token, TEST_SUITE_CWD: holder.worktree };
       delete env.NODE_TEST_CONTEXT;
       if (!root) throw new Error('suite phase root is missing');
       const gate = join(root, `start-${index}`);
@@ -98,7 +98,11 @@ process.chdir(cwd);`);
         return existsSync(path) || arg.includes('*') ? path : arg;
       });
       if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
-      active = spawn(process.execPath, ['--import', bootstrap, ...absoluteArgs], { cwd: root, env, detached: true, stdio: 'inherit' });
+      const reporters = args.includes('--test') ? [
+        '--test-reporter=spec', '--test-reporter-destination=stdout',
+        `--test-reporter=${fileURLToPath(new URL('./skip-reporter.ts', import.meta.url))}`, '--test-reporter-destination=stdout',
+      ] : [];
+      active = spawn(process.execPath, ['--import', bootstrap, ...reporters, ...absoluteArgs], { cwd: root, env, detached: true, stdio: 'inherit' });
       // Install exit listeners before publication awaits; the bootstrap cannot start tests yet.
       const done = new Promise<number>((resolve, reject) => { active!.once('error', reject); active!.once('exit', (value, signal) => resolve(value ?? (signal === 'SIGINT' ? 130 : 143))); });
       activeIdentity = captureProcess(active.pid);
