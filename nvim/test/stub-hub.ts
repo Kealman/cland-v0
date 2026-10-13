@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { prefixOf } from '../../hub/src/tracker/prefixes.ts';
+import { kindsFor } from '../../hub/src/tracker/kinds.ts';
 // A stub hub for the shell's tests: it speaks the UI's frames (hub/README.md, "The UI's frames" and the
 // `session.*` frames) as JSON lines on stdin and stdout, the way `cland hub serve --stdio` does, from a
 // scripted scenario. The client spawns it through CLAND_COMMAND as `<stub> hub serve --stdio`.
@@ -43,7 +45,7 @@ export type Scenario = {
   coordinator?: string | null;
   /** `role.list`'s roles; absent, the four default roles with their launch defaults. */
   roles?: Array<Record<string, unknown>>;
-  tracker?: { levels: string[] };
+  tracker?: { levels: string[]; prefixes?: Record<string, string> };
   /** How `session.launch` answers: absent, it adds an idle running process; a string refuses with it. */
   launchError?: string;
   /** How `session.stop` answers: absent, it marks the process stopped; a string refuses with it. */
@@ -317,7 +319,7 @@ function answer(f: Frame) {
       return ok(f.id, { roles: scenario.roles ?? DEFAULT_ROLES, coordinator: scenario.coordinator ?? null });
     case 'hub.status': {
       const config = readProjectConfig(join(process.cwd(), '.cland/config.toml'), process.cwd()) ?? defaultConfig(process.cwd());
-      return ok(f.id, { keys: config.keys, tracker: scenario.tracker ?? config.tracker, sessions: scenario.presence ?? [], ...(scenario.verification ? { verification: scenario.verification } : {}), ...(scenario.coordinator !== undefined ? { coordinator: scenario.coordinator } : {}), ...(scenario.inbox ? { needsYou: inboxValue().needsYou } : {}) });
+      return ok(f.id, { keys: config.keys, tracker: { ...(scenario.tracker ?? config.tracker), prefixes: scenario.tracker?.prefixes ?? Object.fromEntries([...kindsFor((scenario.tracker ?? config.tracker).levels), 'category'].map(kind => [kind, prefixOf(kind)])) }, sessions: scenario.presence ?? [], ...(scenario.verification ? { verification: scenario.verification } : {}), ...(scenario.coordinator !== undefined ? { coordinator: scenario.coordinator } : {}), ...(scenario.inbox ? { needsYou: inboxValue().needsYou } : {}) });
     }
     case 'events.list': {
       const start = Number(f.before ?? 0);

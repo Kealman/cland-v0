@@ -7,7 +7,7 @@ import type { DistributiveOmit } from './hub-client.ts';
 const str = { type: 'string' } as const;
 const strs = { type: 'array', items: { type: 'string' } } as const;
 const nullableStr = { type: ['string', 'null'] } as const;
-const itemId = { type: 'string', description: 'The item id, T-<n>' } as const;
+const itemId = { type: 'string', description: 'The item id: any kind prefix and number, or a bare number' } as const;
 const KIND = { type: 'string', description: 'Configured container kind, task, question, spec or map; the hub validates it' } as const;
 const STATE = { type: 'string', enum: ['open', 'closed'] } as const;
 
@@ -20,7 +20,7 @@ export const TASK_TOOLS = [
     inputSchema: { type: 'object', properties: { id: itemId, release: { type: 'boolean' } }, required: ['id'] } },
   {
     name: 'task.create',
-    description: "Create an item in the project's tracker (a Markdown file in .cland/tasks/, id T-<n>). Returns the item.",
+    description: "Create an item in the project's tracker (a Markdown file in .cland/tasks/, id with the kind's prefix and a shared number). Returns the item.",
     inputSchema: {
       type: 'object',
       properties: { title: str, kind: { ...KIND, description: 'Default task' }, version: { ...str, description: 'Release semver without the v; optional at creation' }, body: str, labels: strs, assignee: str, parent: itemId, blocked_by: strs, topic: str, branch: str },

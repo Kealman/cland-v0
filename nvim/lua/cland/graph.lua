@@ -54,11 +54,11 @@ end
 
 function M.open(id)
   if id and id ~= '' then
-    id = id:match('^%d+$') and ('T-' .. id) or id:upper()
     local it = state.item(id)
     if not it or not items.is_container(it) then
       return state.say('graph: ' .. id .. ' is not a known container', 'ClandRedBar')
     end
+    id = it.id
   else id = nil end
   require('cland.layout').show({ kind = 'graph', id = id }, { insert = false })
 end

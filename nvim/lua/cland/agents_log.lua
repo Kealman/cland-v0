@@ -307,7 +307,7 @@ function M.prompt_filter()
     if value == '' then
       return
     end
-    M.set_filter(value:match('^T%-%d+$') and { item = value } or { session = value })
+    M.set_filter(state.item_number(value) and { item = value } or { session = value })
   end)
 end
 

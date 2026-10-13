@@ -264,8 +264,8 @@ test('the high migration ranks singleton groups, including closed items, and a r
   assert.deepEqual(migrated.moved.map(item => item.id), ['T-4', 'T-6']);
   assert.deepEqual(migrated.retired, ['T-4', 'T-6']);
   const listed = JSON.parse((await cland(root, 'task', 'list', '--json')).stdout) as { items: Array<Item & { labels: string[] }> };
-  assert.deepEqual(listed.items.filter(item => item.parent === 'T-1').map(item => item.id), ['T-4', 'T-3']);
-  assert.deepEqual(listed.items.filter(item => item.parent === 'T-2').map(item => item.id), ['T-6', 'T-5']);
+  assert.deepEqual(listed.items.filter(item => item.parent === 'E-1').map(item => item.id), ['T-4', 'T-3']);
+  assert.deepEqual(listed.items.filter(item => item.parent === 'E-2').map(item => item.id), ['T-6', 'T-5']);
   assert.equal(listed.items.some(item => item.labels.includes('high')), false);
   const before = await Promise.all(listed.items.map(item => readFile(join(root, '.cland', 'tasks', item.file), 'utf8')));
   const again = await migration(root);
@@ -341,9 +341,9 @@ test('dense equal ranks make room with the fewest neighbors while preserving an 
   assert.equal(result.code, 0, result.stderr);
   const moved = JSON.parse(result.stdout) as { changed: string[]; siblings: string[] };
   assert.deepEqual(moved.changed, ['T-1', 'T-2', 'T-3']);
-  assert.deepEqual(moved.siblings, ['T-6', 'T-3', 'T-1', 'T-2', 'T-5']);
+  assert.deepEqual(moved.siblings, ['Q-6', 'T-3', 'T-1', 'T-2', 'T-5']);
   const listed = JSON.parse((await cland(root, 'task', 'list', '--json')).stdout) as { items: Item[] };
-  assert.deepEqual(listed.items.map(i => [i.id, i.rank]), [['T-6', 60], ['T-3', 61], ['T-1', 62], ['T-2', 62], ['T-5', 62]]);
+  assert.deepEqual(listed.items.map(i => [i.id, i.rank]), [['Q-6', 60], ['T-3', 61], ['T-1', 62], ['T-2', 62], ['T-5', 62]]);
 });
 
 

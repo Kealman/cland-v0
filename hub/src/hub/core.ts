@@ -1,3 +1,5 @@
+import { parseItemReference } from '../tracker/prefixes.ts';
+import { normalizeId, idNumber } from '../tracker/item.ts';
 // The hub's core: presence, names, routing and store-and-forward. Transport-free, so the network
 // edge (`./server.ts`) is one thin layer over it.
 import { crewSummary, type CrewConfig, type CrewSource } from '../crew.ts';
@@ -259,9 +261,10 @@ export class HubCore {
     this.#roles = options.roles ?? null;
     this.crew = options.crew;
     this.#items = options.items ?? null;
+    this.#store.setItemResolver(id => this.#items?.resolveId?.(id) ?? null);
     this.#sessionHolds = options.sessionHolds ?? (() => []);
     this.visibility = new Visibility({ preferences: options.visibilityPreferences, overrides: options.visibility ?? {}, now: this.#now, role: name => this.#store.roleOf(name), process: id => this.#processFacts.get(id), items: () => this.#items?.list?.() ?? [], topLevel: options.topLevel ?? (() => 'release') });
-    for (const item of this.#items?.list?.() ?? []) if (item.state !== 'closed') this.#defaultItems.set(item.id, item);
+    for (const item of this.#items?.list?.() ?? []) if (item.state !== 'closed') this.#defaultItems.set(`T-${idNumber(item.id)}`, item);
     this.#queueTtlMs = options.queueTtlMs ?? QUEUE_TTL_MS;
     this.#retentionMs = options.retentionMs ?? RETENTION_MS;
     this.#hygiene = new Hygiene({
@@ -435,7 +438,7 @@ export class HubCore {
   /** Seed ownership facts without publishing or advancing terminal checkpoints. */
   seedProcess(process: HarnessProcessView): void {
     this.#processFacts.set(process.sessionId, { status: process.status, role: process.role });
-    this.#processItems.set(process.sessionId, process.item);
+    this.#processItems.set(process.sessionId, process.item ? this.#items?.resolveId?.(process.item) ?? process.item : null);
   }
 
   /** Seed active rows; recover a committed stop whose publication was interrupted by a hub crash. */
@@ -506,10 +509,10 @@ export class HubCore {
     this.#afterCommit(() => this.#drainVerifierRequests());
     if (change.item === null) {
       this.#terminalEvent({ item: change.id }, 'task', `${change.id} removed`, change.previousAncestry ? { ancestry: change.previousAncestry } : {});
-      this.#defaultItems.delete(change.id);
+      this.#defaultItems.delete(`T-${idNumber(change.id)}`);
       return;
     }
-    if (change.item.state !== 'closed') this.#defaultItems.set(change.id, change.item);
+    if (change.item.state !== 'closed') this.#defaultItems.set(`T-${idNumber(change.id)}`, change.item);
     // Reparenting ends membership in departed ancestor subtrees, not those ancestor subscriptions.
     const current = this.#items?.ancestry?.(change.id) ?? [change.id];
     const departed = change.previousAncestry?.filter(id => !current.includes(id)) ?? [];
@@ -534,7 +537,7 @@ export class HubCore {
         this.publishEvent({ item: change.id }, 'task', `${change.id} ${text}`, context);
       }
     }
-    if (change.item.state === 'closed') this.#defaultItems.delete(change.id);
+    if (change.item.state === 'closed') this.#defaultItems.delete(`T-${idNumber(change.id)}`);
   }
 
   /** Immediate events still use the ordinary delivery queue and the adapter's ordinary injection. */
@@ -584,8 +587,25 @@ export class HubCore {
   }
 
   #defaultItemSet(includeItem?: string): Map<string, DefaultItem> {
+    if (includeItem && this.#items?.get) {
+      const path = this.#items.ancestry?.(includeItem) ?? [includeItem];
+      const items = new Map<string, DefaultItem>(path.flatMap(id => { const item = this.#items?.get?.(id); return item && item.state !== 'closed' ? [[item.id, item] as const] : []; }));
+      const previous = this.#defaultItems.get(`T-${idNumber(includeItem)}`);
+      if (previous && !items.has(previous.id)) {
+        items.set(previous.id, previous);
+        const seen = new Set([previous.id]);
+        for (let parent = previous.parent; parent && !seen.has(parent);) {
+          seen.add(parent);
+          const ancestor = this.#items.get(parent);
+          if (!ancestor) break;
+          if (ancestor.state !== 'closed') items.set(ancestor.id, ancestor);
+          parent = ancestor.parent;
+        }
+      }
+      return items;
+    }
     const items = new Map<string, DefaultItem>((this.#items?.list?.() ?? []).filter(item => item.state !== 'closed').map(item => [item.id, item]));
-    const removed = includeItem && this.#defaultItems.get(includeItem);
+    const removed = includeItem && this.#defaultItems.get(`T-${idNumber(includeItem)}`);
     if (removed && !items.has(removed.id)) items.set(removed.id, removed);
     return items;
   }
@@ -602,12 +622,23 @@ export class HubCore {
     return [...this.#store.allSubscriptions(), ...defaults];
   }
 
+  #sameItem(a: string | null | undefined, b: string | null | undefined): boolean {
+    if (!a || !b) return false;
+    if (a === b) return true;
+    if (!Number.isSafeInteger(idNumber(a)) || idNumber(a) !== idNumber(b)) return false;
+    const resolved = this.#items?.resolveId?.(a);
+    return resolved ? resolved === this.#items?.resolveId?.(b) : normalizeId(a) !== null && normalizeId(a) === normalizeId(b);
+  }
+
   #eventMatches(s: OwnedSubscription, subject: SubscriptionSubject, context: EventContext): boolean {
     if (JSON.stringify(s.subject) === JSON.stringify(subject)) return true;
     if ('role' in s.subject) return s.subject.role === context.role;
     const item = 'item' in subject ? subject.item : context.item;
-    if ('item' in s.subject) return item === s.subject.item;
-    if ('subtree' in s.subject && item) return item === s.subject.subtree || ((context.ancestry ?? this.#items?.ancestry?.(item))?.includes(s.subject.subtree) ?? false);
+    if ('item' in s.subject) return this.#sameItem(item, s.subject.item);
+    if ('subtree' in s.subject && item) {
+      const subtree = s.subject.subtree;
+      return this.#sameItem(item, subtree) || ((context.ancestry ?? this.#items?.ancestry?.(item))?.some(id => this.#sameItem(id, subtree)) ?? false);
+    }
     return false;
   }
 
@@ -768,12 +799,14 @@ export class HubCore {
   }
 
   #itemLead(item: string, except: string): string | null {
+    item = this.#items?.resolveId?.(item) ?? item;
     const found = this.#items?.lead(item);
     if (!found) throw new Error(`no item ${item}: address coordinator instead`);
     if (found.state === 'closed') throw new Error(`${item} is closed: address coordinator instead`);
     // Reports from a node's own lead climb to the next lead. Other senders address
     // the nearest owner, including inherited ownership for unclaimed descendants.
-    const owner = this.#nodeOwner(item, this.#defaultItemSet(), this.sessionIdentity(`name:${except}`));
+    const nodes = this.#items?.get ? new Map((this.#items.ancestry?.(item) ?? [item]).flatMap(id => { const node = this.#items?.get?.(id); return node ? [[node.id, node] as const] : []; })) : this.#defaultItemSet();
+    const owner = this.#nodeOwner(item, nodes, this.sessionIdentity(`name:${except}`));
     const name = owner ? this.#leadName(owner) : null;
     return name && name !== HUMAN ? name : null;
   }
@@ -1181,13 +1214,15 @@ export class HubCore {
 
   sessionPending(session: Pick<Connection, 'name' | 'sessionId' | 'role'>): PendingVerification | undefined {
     const stored = this.#store.meta(`pending-verification:${this.sessionIdentity(sessionActor(session, UNKNOWN_SESSION).id)}`);
-    return stored ? JSON.parse(stored) as PendingVerification : undefined;
+    if (!stored) return undefined;
+    const pending = JSON.parse(stored) as PendingVerification;
+    return { ...pending, item: this.#items?.resolveId?.(pending.item) ?? pending.item };
   }
 
   clearPendingVerification(name: string, item: string): void {
     const id = this.sessionIdentity(`name:${name}`), key = `pending-verification:${id}`;
     const stored = this.#store.meta(key);
-    if (!stored || (JSON.parse(stored) as PendingVerification).item !== item) return;
+    if (!stored || !this.#sameItem((JSON.parse(stored) as PendingVerification).item, item)) return;
     this.#store.clearMeta(key);
     this.#schedulePresence();
   }
@@ -1195,13 +1230,13 @@ export class HubCore {
   /** Delivery acceptance captures only the delivered first line, never the message history. */
   #rememberVerification(connection: Pick<Connection, 'name' | 'sessionId' | 'role'>, message: Message): boolean {
     if (connection.role !== 'reviewer' && connection.role !== 'qa') return false;
-    const request = /^(review|qa) request ([A-Za-z]+-([1-9]\d*))(?:[ \t]+stage[ \t]+[^\r\n]+)?[ \t]*(?:\r?\n|$)/.exec(message.text);
+    const request = /^(review|qa) request ((?:[A-Za-z]-)?[1-9]\d*)(?:[ \t]+stage[ \t]+[^\r\n]+)?[ \t]*(?:\r?\n|$)/.exec(message.text);
     if (!request) return false;
-    const item = this.#items?.list?.().find(i => i.id.split('-').at(-1) === request[3]);
+    const item = this.#items?.resolveId?.(request[2]!) ?? null;
     if (!item) return false;
     const key = `pending-verification:${this.sessionIdentity(sessionActor(connection, UNKNOWN_SESSION).id)}`;
-    const pending = this.sessionHolds(connection).some(h => h.item === item.id)
-      ? null : JSON.stringify({ item: item.id, kind: request[1] });
+    const pending = this.sessionHolds(connection).some(h => h.item === item)
+      ? null : JSON.stringify({ item, kind: request[1] });
     if (this.#store.meta(key) === pending) return false;
     if (pending === null) this.#store.clearMeta(key);
     else this.#store.setMeta(key, pending);
@@ -1955,8 +1990,8 @@ export class HubCore {
     const empty: Array<{ tag: string; reason: string }> = []; // tags that reach nobody but the sender — a fact, never a refusal
     const tagOf = new Map<string, string[]>(); // tag → the session names it resolved to
     for (const tag of HubCore.#normalized(tags)) {
-      const lead = /^lead\s+(T-[1-9]\d*)$/.exec(tag);
-      if (/^lead\s/.test(tag) && !lead) throw new Error(`invalid item lead address "${tag}": use @lead T-<n>, or address coordinator instead`);
+      const lead = /^lead\s+((?:[A-Za-z]-)?[1-9]\d*)$/.exec(tag);
+      if (/^lead\s/.test(tag) && (!lead || !(this.#items?.resolveId ? this.#items.resolveId(lead[1]!) : parseItemReference(lead[1]!)))) throw new Error(`invalid item lead address "${tag}": use @lead T-<n>, or address coordinator instead`);
       const claimant = lead ? this.#itemLead(lead[1]!, except) : null;
       const target = lead ? this.coordinator() ?? COORDINATOR : tag;
       const r = claimant ? { kind: 'session' as const, name: claimant } : resolveTag(target, ctx);
@@ -2003,15 +2038,15 @@ export class HubCore {
 
   /** Only a lead's item request narrows role addressing; ordinary role traffic still broadcasts. */
   #verifierRequest(from: string, role: string | null, text: string, topic: Topic): { item: ItemSummary; role: 'reviewer' | 'qa' } | undefined {
-    const request = /^(review|qa) request (T-[1-9]\d*)(?:[ \t]+stage[ \t]+[^\r\n]+)?[ \t]*(?:\r?\n|$)/.exec(text);
-    if (!request || (topic.id !== AGENTS.id && topic.item !== request[2])) return;
-    const items = this.#items?.list?.() ?? [];
-    const item = items.find(i => i.id === request[2] && i.state === 'open');
-    if (!item) return;
+    const request = /^(review|qa) request ((?:[A-Za-z]-)?[1-9]\d*)(?:[ \t]+stage[ \t]+[^\r\n]+)?[ \t]*(?:\r?\n|$)/.exec(text);
+    if (!request || (topic.id !== AGENTS.id && !this.#sameItem(topic.item, request[2]))) return;
+    const items = this.#items?.get ? [] : this.#items?.list?.() ?? [];
+    const item = this.#items?.get?.(request[2]!) ?? items.find(i => this.#sameItem(i.id, request[2]) && i.state === 'open');
+    if (!item || item.state !== 'open') return;
     const sender = this.sessionIdentity(`name:${from}`);
     const owns = (i: ItemSummary) => i.claim && this.sessionIdentity(i.claim.sessionId) === sender;
     const ancestor = role === 'lead' && (this.#items?.ancestry?.(item.id) ?? []).some(id => {
-      const node = items.find(i => i.id === id);
+      const node = this.#items?.get?.(id) ?? items.find(i => i.id === id);
       return node && owns(node);
     });
     if (role !== COORDINATOR && !(role === 'implementer' && owns(item)) && !ancestor) return;
@@ -2022,14 +2057,14 @@ export class HubCore {
     const live = [...this.#live.values()].filter(c => c.role === role && c.name !== except).sort((a, b) => a.name.localeCompare(b.name));
     const held = item.holds.find(h => h.role === role);
     const verdict = this.#items?.lastVerifier?.(item.id, role);
-    const prior = this.#store.meta(`verifier-request:${item.id}:${role}`);
+    const prior = this.#store.meta(`verifier-request:T-${idNumber(item.id)}:${role}`);
     const request = prior ? JSON.parse(prior) as { sessionId: string; at: string } : undefined;
     const previous = held?.sessionId ?? (verdict && (!request || verdict.at > request.at)
       ? verdict.sessionId : request?.sessionId);
     const existing = previous && live.find(c => c.sessionId === this.sessionIdentity(previous));
     if (existing) return existing.name;
     // A launch can reserve an idle member before its brief is sent.
-    const reserved = live.find(c => this.#store.meta(`pool-handoff:${c.sessionId}`) === item.id);
+    const reserved = live.find(c => this.#sameItem(this.#store.meta(`pool-handoff:${c.sessionId}`), item.id));
     if (reserved) return reserved.name;
     return live.find(c => ['idle', 'unknown'].includes(this.sessionState(c.sessionId))
       && !this.sessionHolds(c).length && !this.#store.hasPendingWork(c.name, this.#processFacts.get(c.sessionId)?.status === 'running')
@@ -2068,7 +2103,7 @@ export class HubCore {
           else {
             const assigned = this.#store.assignVerifierRequest(message.id, role, name!);
             const selected = this.#live.get(name!)!;
-            this.#store.setMeta(`verifier-request:${queued.item}:${role}`, JSON.stringify({ sessionId: selected.sessionId, at: this.#now().toISOString() }));
+            this.#store.setMeta(`verifier-request:T-${idNumber(queued.item)}:${role}`, JSON.stringify({ sessionId: selected.sessionId, at: this.#now().toISOString() }));
             this.#afterCommit(() => {
               this.#emitMessage(assigned);
               this.#send(assigned, name!);
@@ -2235,7 +2270,7 @@ export class HubCore {
         const topic = this.#store.topic(topicId);
         if (!topic) throw new TopicRefusal(`no topic "${topicId}"`);
         if (topic.standing) throw new TopicRefusal(`${topic.title} is a standing topic: it is bound to no item`);
-        if (topic.item !== null && topic.item !== item) throw new TopicRefusal(`${topic.id} is already bound to ${topic.item}; one item per topic`);
+        if (topic.item !== null && !this.#sameItem(topic.item, item)) throw new TopicRefusal(`${topic.id} is already bound to ${topic.item}; one item per topic`);
         const existing = item === null ? null : this.#store.topicOfItem(item);
         if (existing && existing.id !== topic.id) throw new TopicRefusal(`${item} already has a topic: "${existing.title}" (${existing.id}); one topic per unit of work: write there`);
       },
@@ -2413,9 +2448,11 @@ export class HubCore {
       if (to.length) throw new Error('a request is for the human: omit to or use an empty to');
       if (typeof request !== 'string' || !['review', 'qa', 'handover'].includes(request)) throw new Error('set request to review, qa or handover');
       if (typeof subject !== 'string' || !subject.trim()) throw new Error('a request needs subject: name a known item (T-n), artifact (A-n) or session');
-      const known = /^T-[1-9]\d*$/.test(subject) ? this.#items?.list?.().some(i => i.id === subject)
+      const itemSubject = this.#items?.resolveId?.(subject);
+      const known = itemSubject ? true : parseItemReference(subject) ? false
         : /^A-[1-9]\d*$/.test(subject) ? this.#store.artifact(subject) !== null
         : this.#store.knownSessions().some(s => s.name === subject);
+      if (itemSubject) subject = itemSubject;
       if (!known) throw new Error(`unknown subject "${subject}": name a known item (T-n), artifact (A-n) or session`);
     }
     const sender = actor ?? this.#live.get(from);
@@ -2510,7 +2547,7 @@ export class HubCore {
         for (const { tag } of waiting) this.#store.queueVerifierRequest(message.id, verifier!.item.id, tag as 'reviewer' | 'qa');
         if (verifier) {
           const selected = [...sessions].filter(name => this.#live.get(name)?.role === verifier.role);
-          if (selected.length === 1) this.#store.setMeta(`verifier-request:${verifier.item.id}:${verifier.role}`, JSON.stringify({ sessionId: this.#live.get(selected[0]!)!.sessionId, at: message.ts }));
+          if (selected.length === 1) this.#store.setMeta(`verifier-request:T-${idNumber(verifier.item.id)}:${verifier.role}`, JSON.stringify({ sessionId: this.#live.get(selected[0]!)!.sessionId, at: message.ts }));
         }
         this.asks.recordQuestion(message);
         this.asks.recordAnswer(message);

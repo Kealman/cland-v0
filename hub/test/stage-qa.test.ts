@@ -217,3 +217,29 @@ test('a transient ancestry failure retries and recovers at the same dev SHA with
   await eventually('successful background ancestry closes the stage', async () => (await f.read()).stages?.[0]?.state === 'closed' ? true : undefined);
   assert.equal(git(f.root, 'rev-parse', 'dev'), descendant, 'Git recovery needs no new build');
 });
+
+test('stage receipt hashes remain compatible with legacy parent ids', async t => {
+  const f = await fixture(t, false, 1);
+  await f.land();
+  const clear = await f.verdict();
+  assert.equal(clear.ok, true, clear.error);
+  const view = await f.read();
+  const child = await f.read(f.items[0]!.id);
+  const receipt = (await f.ui.request({ type: 'task.view', item: child.id })).value as { item: ItemView };
+  const dev = git(f.root, 'rev-parse', 'dev');
+  // This is the pre-prefix snapshot shape: task lane spellings and landing facts used T-n parents.
+  const legacyParent = `T-${f.epic.id.split('-')[1]}`;
+  const facts = [{ id: child.id, state: 'closed', parent: legacyParent, kind: 'task', commit: dev, base: 'dev', belongs: true }];
+  const { createHash } = await import('node:crypto');
+  const legacyHash = createHash('sha256').update(JSON.stringify([f.plan.stages[0], [[child.id, null]], facts])).digest('hex');
+  assert.equal(view.stages?.[0]?.verdict?.stage_hash, legacyHash);
+  assert.equal(view.stages?.[0]?.verdict?.commit, dev);
+  assert.equal(receipt.item.parent, f.epic.id);
+  const stopped = await cland(f.root, 'hub', 'stop');
+  assert.equal(stopped.code, 0, stopped.stderr);
+  const { discovery } = await startDaemon(t, f.root);
+  const ui = await connectUi(t, discovery);
+  const restored = ((await ui.request({ type: 'task.view', item: legacyParent })).value as { item: ItemView }).item;
+  assert.equal(restored.stages?.[0]?.state, 'closed');
+  assert.equal(restored.stages?.[0]?.verdict?.stage_hash, legacyHash);
+});

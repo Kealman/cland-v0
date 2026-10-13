@@ -1,7 +1,7 @@
 -- id: ITEMS-001
 -- title: A fixture item shows in the items panel and in its view
--- preconditions: a fixture project with the epic T-1 and its child T-2; the stdio hub
--- expected: T-2 is listed in the items panel under T-1; Enter on its row opens its view
+-- preconditions: a fixture project with the epic E-1 and its child T-2; the stdio hub
+-- expected: T-2 is listed in the items panel under E-1; Enter on its row opens its view
 -- since: T-57
 -- regression: no
 return {
@@ -10,12 +10,12 @@ return {
     project = 'qa-items',
     config = '[tracker]\nlevels = ["epic"]\n',
     items = {
-      { id = 'T-1', kind = 'epic', title = 'Workbench shell' },
+      { id = 'E-1', kind = 'epic', title = 'Workbench shell' },
       {
         id = 'T-2',
         status = 'backlog',
         title = 'Items panel',
-        parent = 'T-1',
+        parent = 'E-1',
         labels = { 'ui' },
         body = 'The tree of items, each under its parent.',
         comments = { { author = 'impl-1', text = 'Ready for review.' } },
@@ -32,10 +32,10 @@ return {
     vim.api.nvim_win_set_width(require('cland.layout').win.left,60)
     qa.keys('<Esc>')
     qa.wait_for(function()
-      return qa.screen():find('T-2 T-1 › Items panel', 1, true)
+      return qa.screen():find('T-2 E-1 › Items panel', 1, true)
     end, 5000, 'T-2 in the items panel')
     local screen = qa.screen()
-    qa.expect(screen:find('T-1 Workbench shell', 1, true), 'the parent T-1 is in the panel')
+    qa.expect(screen:find('E-1 Workbench shell', 1, true), 'the parent E-1 is in the panel')
     qa.expect(screen:find('0/1', 1, true), 'the epic shows its children done: 0/1')
     qa.expect(qa.state().panels.left == true, 'the state says the items panel is open')
 
@@ -48,6 +48,6 @@ return {
     end, 5000, 'the item view of T-2 with its body')
     screen = qa.screen()
     qa.expect(screen:find('Ready for review.', 1, true), 'the comment is in the item view')
-    qa.expect(screen:find('T-1', 1, true) and screen:find('ui', 1, true), 'the fields column names the parent and the label')
+    qa.expect(screen:find('E-1', 1, true) and screen:find('ui', 1, true), 'the fields column names the parent and the label')
   end,
 }

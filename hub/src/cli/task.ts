@@ -12,21 +12,21 @@ import { IMPORT_USAGE, runImportGithub } from './task-import.ts';
 import type { MigrationPlan } from '../tracker/migrate.ts';
 
 export const TASK_USAGE = `  task create <title> [--kind k] [--version semver] [--body t | --body-file f] [--label l]… [--assignee a]
-                  [--parent T-n] [--blocked-by T-n]… [--topic t] [--branch b]
-  task view <id>
+                  [--parent <id>] [--blocked-by <id>]… [--topic t] [--branch b]
+  task view <id> (any kind prefix in either case, or a bare number)
   task migrate --dry-run [--json] (preview prefixes, references, titles, categories and retired labels)
   task plan migrate (retire qa-required labels, report policy fallbacks)
   task plan <set|show|approve> <epic-id> [--file plan.yaml] [--reason text]
-  task list [--under T-n] [--state open|closed] [--label l]… [--kind k] [--assignee a] [--verdict review=clear]
+  task list [--under <id>] [--state open|closed] [--label l]… [--kind k] [--assignee a] [--verdict review=clear]
   task comment <id> <text> [--verdict review|qa --result clear|"not clear" --run <id> [--commit <sha>] [--stage <name>] [--verified C1,C3|all | --failed "C1=note"]…]
   task edit <id> [--version semver|none] [--title t] [--body t | --body-file f] [--kind k] [--state s] [--status s] [--label l]…
                   [--add-label l]… [--remove-label l]… [--assignee a|none]
   task close <id> [--comment t] [--override reason (human shell only)]
-  task link <id> [--parent T-n|none] [--blocked-by T-n]… [--unblock T-n]… [--topic t|none] [--branch b|none]
+  task link <id> [--parent <id>|none] [--blocked-by <id>]… [--unblock <id>]… [--topic t|none] [--branch b|none]
   task hold <id> [--release] (Reviewer or QA verification beside the claim)
   task criterion <id> <done|verify|fail|edit|remove> <C-n> [--run r] [--note t] [--text t]
   task criterion <id> add <text>
-  task rank <id> <--top | --before T-n | --after T-n>
+  task rank <id> <--top | --before <id> | --after <id>>
   task claim <id> [--release] [--force]
                   claiming an open task in a project with a territory makes (or reuses) its branch
                   t/T-<n>-<slug> and its worktree .cland/worktrees/T-<n>
@@ -80,7 +80,7 @@ const defined = (o: Record<string, unknown>): Record<string, unknown> => Object.
 function frameOf(sub: Sub, positionals: string[], v: Values): { type: string } & Record<string, unknown> {
   const needId = (): string => {
     const id = positionals[0];
-    if (!id) throw new UsageError(`task ${sub} needs an item id (T-<n>)`);
+    if (!id) throw new UsageError(`task ${sub} needs an item id (any kind prefix and number, or a bare number)`);
     return id;
   };
   switch (sub) {
@@ -200,6 +200,7 @@ function viewText(i: ItemView): string {
     `  updated   ${i.updated}`,
     ...(i.github ? [`  github    ${i.github.repo}#${i.github.number}  ${i.github.url}`] : []),
     `  file      ${i.path}`,
+    ...(i.warnings ?? []).map(warning => `  warning   ${warning}`),
   ];
   if (i.body) lines.push('', i.body);
   const stale = i.criteria.flatMap(c => c.marks.flatMap(m => m.kind === 'verified' && m.current === false

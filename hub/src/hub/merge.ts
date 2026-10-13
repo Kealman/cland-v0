@@ -5,7 +5,6 @@ import { access } from 'node:fs/promises';
 import { join } from 'node:path';
 import { MergeError } from '../merge.ts';
 import { gateVerdicts, incompleteCriteria } from '../tracker/gate-verdicts.ts';
-import { normalizeId } from '../tracker/item.ts';
 import type { Actor, ItemView, Tracker } from '../tracker/tracker.ts';
 import { landedTask, reconcileTaskCheckout, restoreTaskCheckout, squashTask, territoryGitAsync, territoryPath, withTerritoryLockAsync } from '../territory.ts';
 import type { Resumed, TaskWorktrees } from './worktrees.ts';
@@ -62,7 +61,7 @@ export class TaskMerges {
   }
 
   merge(id: string, actor: Actor, resumed: Resumed, override?: string, authorize: () => void = () => {}): Promise<MergeResult> {
-    id = normalizeId(id) ?? id;
+    id = this.tracker.resolveId(id) ?? id;
     return this.worktrees.serial(async (): Promise<MergeResult> => {
       const state: { landed: { commit: string; base: string } | null } = { landed: null };
       let reason = override;

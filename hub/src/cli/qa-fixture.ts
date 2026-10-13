@@ -1,3 +1,4 @@
+import { parseItemReference } from '../tracker/prefixes.ts';
 // `cland --qa-fixture`: a QA case's fixture project written to disk (#57). The case's Neovim
 // (`nvim/lua/cland/qa.lua`) runs it before it starts the fixture's hub, with the fixture as JSON on stdin:
 // `{ dir, project, items, roles, config }`. The item files come from the tracker's own writer, so a fixture
@@ -11,7 +12,6 @@ import { fileNameOf, parseItem, serializeItem, STATES, type Comment, type Item, 
 /** The time a fixture item or comment carries when the case gives none: every run shows the same. */
 export const FIXTURE_STAMP = '2026-01-01T00:00:00.000Z';
 const PROJECT_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
-const ITEM_ID = /^T-[1-9]\d*$/;
 
 type FixtureItem = Record<string, unknown> & { id?: unknown; title?: unknown; comments?: unknown };
 export type Fixture = { dir: string; project: string; items?: FixtureItem[]; roles?: string; config?: string };
@@ -21,7 +21,7 @@ const texts = (v: unknown): string[] => (Array.isArray(v) ? v.map(String) : []);
 
 function itemOf(raw: FixtureItem, levels: readonly string[]): Item {
   const id = String(raw.id);
-  if (!ITEM_ID.test(id)) throw new Error(`the fixture's item id ${JSON.stringify(raw.id)} is not T-<n>`);
+  if (!parseItemReference(id, [...kindsFor(levels), 'category'])) throw new Error(`the fixture's item id ${JSON.stringify(raw.id)} is not an item id`);
   const kind = (text(raw.kind) ?? 'task') as Kind;
   const kinds = kindsFor(levels);
   if (!kinds.includes(kind)) throw new Error(`${id}: unknown kind "${kind}" (one of ${kinds.join(', ')})`);

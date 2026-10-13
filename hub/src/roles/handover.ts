@@ -9,7 +9,6 @@ import { UNKNOWN_SESSION, type HubCore } from '../hub/core.ts';
 import { ROLE_LABELS, ROLE_NAMES } from '../names.ts';
 import type { RoleHolder, RoleState } from '../protocol.ts';
 import { isRoleRecord, parseNote, renderNote, type PendingClaims, type RoleRecord } from './note.ts';
-import { normalizeId } from '../tracker/item.ts';
 import type { Tracker } from '../tracker/tracker.ts';
 
 const label = (role: string) => ROLE_LABELS[role] ?? role;
@@ -52,7 +51,7 @@ export function handOver(
   // commit, from that record, and again at the next start if the hub died in between (the move is idempotent)
   // a transfer still pending from an earlier move (its receiver never connected) is carried along, never dropped
   const item = args.role === 'lead' && args.from !== null ? ctx.core.leadNode(args.from) : args.item;
-  if (args.item && normalizeId(args.item) !== item) throw new Error('Lead handover must name the current holder’s node');
+  if (args.item && (!ctx.tracker?.resolveId(args.item) || ctx.tracker.resolveId(args.item) !== ctx.tracker.resolveId(item ?? ''))) throw new Error('Lead handover must name the current holder’s node');
   const recordKey = args.role === 'lead' ? `lead:${item}` : args.role;
   const stored = ctx.core.store.roleRecord(recordKey);
   const prior = isRoleRecord(stored) ? stored.claims : null;
@@ -152,7 +151,8 @@ export function roleState(ctx: HandoverContext, role: string, session?: string):
     }
   }
 
-  const item = record.item ?? (role === 'lead' ? claims[0]?.item : undefined);
+  const rawItem = record.item ?? (role === 'lead' ? claims[0]?.item : undefined);
+  const item = rawItem ? ctx.tracker?.resolveId(rawItem) ?? rawItem : undefined;
   return {
     role,
     ...(item ? { item } : {}),

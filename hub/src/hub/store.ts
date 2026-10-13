@@ -1,3 +1,6 @@
+import { parseItemReference } from '../tracker/prefixes.ts';
+import { idNumber } from '../tracker/item.ts';
+const itemKey = (id: string): string => Number.isSafeInteger(idNumber(id)) ? `T-${idNumber(id)}` : id;
 // The hub's memory: every message, every delivery's state, every session the hub has seen — one
 // SQLite file through node:sqlite (WAL), or `:memory:` for tests.
 import { DatabaseSync } from 'node:sqlite';
@@ -325,9 +328,25 @@ export function hasRoleMappedSession(path: string, sessionId: string): boolean {
 
 export class Store implements HygieneMemory {
   readonly #db: DatabaseSync;
+  #itemResolver: (id: string) => string | null = () => null;
+
+  setItemResolver(resolve: (id: string) => string | null): void { this.#itemResolver = resolve; }
+
+  #canonicalItem(id: string): string { return this.#itemResolver(id) ?? id; }
+  #canonicalTopic(topic: Topic): Topic { return topic.item ? { ...topic, item: this.#canonicalItem(topic.item) } : topic; }
+  #subject(subject: SubscriptionSubject, display = false): SubscriptionSubject {
+    const resolve = (id: string) => display ? this.#canonicalItem(id) : itemKey(id);
+    return 'item' in subject ? { item: resolve(subject.item) } : 'subtree' in subject ? { subtree: resolve(subject.subtree) } : subject;
+  }
+
 
   constructor(path: string = ':memory:') {
     this.#db = new DatabaseSync(path);
+    this.#db.function('item_number', { deterministic: true }, raw => {
+      if (typeof raw !== 'string') return null;
+      const parsed = parseItemReference(raw);
+      return parsed?.n ?? (this.#itemResolver(raw) ? idNumber(raw) : null);
+    });
     this.#db.exec('pragma journal_mode = wal; pragma foreign_keys = on;');
     this.#db.exec(SCHEMA);
     this.#migrate();
@@ -551,6 +570,7 @@ export class Store implements HygieneMemory {
 
   /** A role's state as the hub keeps it (#31: its handover note and its latest move), as JSON, or null. */
   roleRecord(role: string): unknown {
+    if (role.startsWith('lead:')) role = `lead:${itemKey(role.slice(5))}`;
     const row = this.#db.prepare('select value from role_state where role = ?').get(role) as Row | undefined;
     return row ? (JSON.parse(row.value as string) as unknown) : null;
   }
@@ -561,6 +581,7 @@ export class Store implements HygieneMemory {
   }
 
   saveRoleRecord(role: string, value: unknown): void {
+    if (role.startsWith('lead:')) role = `lead:${itemKey(role.slice(5))}`;
     this.#db.prepare('insert into role_state (role, value) values (?, ?) on conflict (role) do update set value = excluded.value').run(role, JSON.stringify(value));
   }
 
@@ -667,7 +688,7 @@ export class Store implements HygieneMemory {
   allSubscriptions(): OwnedSubscription[] {
     return (this.#db.prepare('select * from subscriptions order by rowid').all() as Row[]).map(row => ({
       id: row.id as string, subscriberId: row.subscriber_id as string,
-      subject: JSON.parse(row.subject_json as string), events: JSON.parse(row.events_json as string),
+      subject: this.#subject(JSON.parse(row.subject_json as string), true), events: JSON.parse(row.events_json as string),
       digest: row.digest as Subscription['digest'],
       ...(row.threshold_json ? { threshold: JSON.parse(row.threshold_json as string) } : {}),
     }));
@@ -679,11 +700,11 @@ export class Store implements HygieneMemory {
 
   addSubscription(subscriberId: string, subscription: Subscription): Subscription {
     return this.#transaction(() => {
-      const existing = this.subscriptions(subscriberId).find(s => JSON.stringify([s.subject, s.events, s.digest, s.threshold]) === JSON.stringify([subscription.subject, subscription.events, subscription.digest, subscription.threshold]));
+      const existing = this.subscriptions(subscriberId).find(s => JSON.stringify([this.#subject(s.subject), s.events, s.digest, s.threshold]) === JSON.stringify([this.#subject(subscription.subject), subscription.events, subscription.digest, subscription.threshold]));
       if (existing) return existing;
       this.#db.prepare('insert into subscriptions (id, subscriber_id, subject_json, events_json, digest, threshold_json) values (?, ?, ?, ?, ?, ?)')
-        .run(subscription.id, subscriberId, JSON.stringify(subscription.subject), JSON.stringify(subscription.events), subscription.digest, subscription.threshold ? JSON.stringify(subscription.threshold) : null);
-      return subscription;
+        .run(subscription.id, subscriberId, JSON.stringify(this.#subject(subscription.subject)), JSON.stringify(subscription.events), subscription.digest, subscription.threshold ? JSON.stringify(subscription.threshold) : null);
+      return { ...subscription, subject: this.#subject(subscription.subject, true) };
     });
   }
 
@@ -696,7 +717,7 @@ export class Store implements HygieneMemory {
   }
 
   endSubject(subject: SubscriptionSubject): void {
-    this.#db.prepare('delete from subscriptions where subject_json = ?').run(JSON.stringify(subject));
+    this.#db.prepare('delete from subscriptions where subject_json = ?').run(JSON.stringify(this.#subject(subject)));
   }
 
   usageCrossed(subscription: string, sessionId: string, above: boolean): boolean {
@@ -824,6 +845,7 @@ export class Store implements HygieneMemory {
   }
 
   queueVerifierRequest(messageId: string, item: string, role: 'reviewer' | 'qa'): void {
+    item = item ? itemKey(item) : item;
     this.#db.prepare('update deliveries set verifier_item = ?, verifier_role = ? where message_id = ? and session = ?')
       .run(item, role, messageId, `@verifier:${role}`);
   }
@@ -831,7 +853,7 @@ export class Store implements HygieneMemory {
   queuedVerifierRequests(): Array<{ message: Message; item: string; role: 'reviewer' | 'qa'; senderId: string | null; queuedAt: number }> {
     return (this.#db.prepare(`select m.*, d.verifier_item, d.verifier_role, d.queued_at from deliveries d join messages m on m.id = d.message_id
       where d.verifier_item is not null and d.state = 'queued' order by m.seq`).all() as Row[]).map(row => ({
-      message: toMessage(row), item: row.verifier_item as string, role: row.verifier_role as 'reviewer' | 'qa',
+      message: toMessage(row), item: this.#canonicalItem(row.verifier_item as string), role: row.verifier_role as 'reviewer' | 'qa',
       senderId: row.from_session_id as string | null, queuedAt: row.queued_at as number,
     }));
   }
@@ -1077,7 +1099,7 @@ export class Store implements HygieneMemory {
 
   topic(id: string): Topic | null {
     const row = this.#db.prepare(`${TOPIC_SELECT} where t.id = ?`).get(id) as Row | undefined;
-    return row ? toTopic(row) : null;
+    return row ? this.#canonicalTopic(toTopic(row)) : null;
   }
 
   /** Standing topics first (in creation order), then those waiting for the human, then the rest by latest
@@ -1090,11 +1112,12 @@ export class Store implements HygieneMemory {
              case when status = 'waiting for human' then 0 when last_message_at is null then 2 else 1 end, updated_at desc, rid`,
         )
         .all() as Row[]
-    ).map(toTopic);
+    ).map(row => this.#canonicalTopic(toTopic(row)));
   }
 
   /** A new topic, open; `item` binds it (the unique index refuses a second topic for one item). */
   createTopic(id: string, title: string, item: string | null, now: string): void {
+    item = item ? itemKey(item) : item;
     this.#db.prepare("insert into topics (id, title, status, standing, created_at, updated_at, item) values (?, ?, 'open', 0, ?, ?, ?)").run(id, title, now, now, item);
   }
 
@@ -1106,12 +1129,14 @@ export class Store implements HygieneMemory {
 
   /** The topic bound to an item, or null. */
   topicOfItem(item: string): Topic | null {
+    item = item ? itemKey(item) : item;
     const row = this.#db.prepare(`${TOPIC_SELECT} where t.item = ?`).get(item) as Row | undefined;
-    return row ? toTopic(row) : null;
+    return row ? this.#canonicalTopic(toTopic(row)) : null;
   }
 
   /** Bind `item` to `topic` (null: to none): whatever topic held the item lets it go first. One binding a side. */
   setItemTopic(item: string, topic: string | null): void {
+    item = item ? itemKey(item) : item;
     this.#transaction(() => {
       this.#db.prepare('update topics set item = null where item = ?').run(item);
       if (topic !== null) this.#db.prepare('update topics set item = ? where id = ?').run(item, topic);
@@ -1158,12 +1183,14 @@ export class Store implements HygieneMemory {
 
   /** The session an item was assigned to by the hub (its name then, and its session id when the hub knew it). */
   assigneeOf(item: string): { name: string; sessionId: string | null } | null {
+    item = item ? itemKey(item) : item;
     const row = this.#db.prepare('select name, session_id from assignees where item = ?').get(item) as Row | undefined;
     return row ? { name: row.name as string, sessionId: (row.session_id as string | null) ?? null } : null;
   }
 
   /** Bind an item's assignee to a session (null name: the item has none). */
   bindAssignee(item: string, name: string | null, sessionId: string | null): void {
+    item = item ? itemKey(item) : item;
     if (name === null) this.#db.prepare('delete from assignees where item = ?').run(item);
     else this.#db.prepare('insert into assignees (item, name, session_id) values (?, ?, ?) on conflict (item) do update set name = excluded.name, session_id = excluded.session_id').run(item, name, sessionId);
   }
@@ -1231,8 +1258,8 @@ export class Store implements HygieneMemory {
     // Exact JSON values, including arrays/nested facts, avoid matching T-1 to T-12 or alpha to alpha-2.
     // Filter before LIMIT: old matches remain reachable past the unfiltered window.
     if (filter.item !== undefined) {
-      clauses.push("exists (select 1 from json_tree(coalesce(notice_detail, '{}')) where type = 'text' and value in (?, ?))");
-      args.push(filter.item, this.topicOfItem(filter.item)?.id ?? null);
+      clauses.push("exists (select 1 from json_tree(coalesce(notice_detail, '{}')) where type = 'text' and (value = ? or item_number(value) = ?))");
+      args.push(this.topicOfItem(filter.item)?.id ?? null, Number(filter.item.split('-').at(-1)));
     }
     if (filter.session !== undefined) {
       // Only session-bearing facts: harness/role/rule metadata can equal a valid session name.

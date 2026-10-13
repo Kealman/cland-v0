@@ -27,9 +27,9 @@ function M.token()
   if not word then
     return nil
   end
-  local id = word:match('%f[%w](%u%-%d+)%f[^%w]')
-  if id then
-    return { item = id }
+  local id = word:match('%f[%w](%a%-%d+)%f[^%w]')
+  if id and state.item_number(id) then
+    return { item = (state.item(id) or {}).id or id }
   end
   for _, s in ipairs(state.sessions()) do
     local a, b = word:find(s.name, 1, true)
@@ -101,7 +101,7 @@ end
 
 function M.item_of(s)
   if s.item then
-    return s.item
+    return (state.item(s.item) or {}).id or s.item
   end
   if s.session then
     return state.item_of_session(s.session)
@@ -109,7 +109,7 @@ function M.item_of(s)
   if s.topic then
     local t = state.topic(s.topic)
     if t and t.item and t.item ~= vim.NIL then
-      return t.item
+      return (state.item(t.item) or {}).id or t.item
     end
   end
 end

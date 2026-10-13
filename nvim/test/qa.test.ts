@@ -219,7 +219,7 @@ test('ITEMS-001 passes against its own stdio hub, and against the stub hub with 
   assert.equal(real.line.hub, 'stdio');
   const screen = (real.line.evidence as { screen: string }).screen;
   assert.match(screen, /T-2 ITEMS PANEL/);
-  assert.match(screen, /parent +T-1 Workbench shell/);
+  assert.match(screen, /parent +E-1 Workbench shell/);
   assert.match(screen, /The tree of items, each under its parent\./);
 
   const stub = await qa(t, [`${SHIPPED}ITEMS-001.lua`, '--hub', 'stub']);
@@ -252,7 +252,7 @@ test('fixture values YAML would read as structure reach the client whole, the sa
     const { items } = (run.line.evidence as { state: { items: Array<Record<string, unknown>> } }).state;
     const fields = (i: Record<string, unknown> | undefined) => [i?.id, i?.kind, i?.title, i?.state, i?.labels, i?.assignee ?? null, i?.parent ?? null, i?.blocked_by, i?.branch ?? null];
     assert.deepEqual(fields(items[0]), ['T-1', 'task', 'Labels: "quoted", with a comma [and brackets] # and a hash', 'open', ['priority, high', 'ui: shell'], 'impl-1', null, [], 't/1-labels'], hub);
-    assert.deepEqual(fields(items[1]), ['T-2', 'question', 'Blocked', 'closed', [], null, 'T-1', ['T-1'], null], hub);
+    assert.deepEqual(fields(items[1]), ['Q-2', 'question', 'Blocked', 'closed', [], null, 'T-1', ['T-1'], null], hub);
     const screen = (run.line.evidence as { screen: string }).screen;
     // the fields column is narrow: the labels start there, whole in the state above
     assert.match(screen, /kind +task · priority,/, hub);
@@ -264,7 +264,7 @@ test('fixture values YAML would read as structure reach the client whole, the sa
 test('a fixture that would write outside the run directory (its project name, an item id) is BLOCKED before any write', { skip }, async (t) => {
   // the run's temp dir is this test's own, so anything written beside the run directory shows
   const tmp = realpathSync(await tempDir(t, 'cland-qa-tmp-'));
-  for (const [name, why] of [['ESCAPE-001', /the fixture's project "\.\.\/live" is not a plain directory name/], ['ESCAPE-002', /the fixture's item id "\.\.\/\.\.\/T-1" is not T-<n>/]] as const) {
+  for (const [name, why] of [['ESCAPE-001', /the fixture's project "\.\.\/live" is not a plain directory name/], ['ESCAPE-002', /the fixture's item id "\.\.\/\.\.\/T-1" is not an item id/]] as const) {
     for (const hub of ['stdio', 'stub']) {
       const run = await qa(t, [`${CASES}${name}.lua`, '--hub', hub], { env: { TMPDIR: tmp } });
       assert.equal(run.line.result, 'BLOCKED', JSON.stringify(run.line));

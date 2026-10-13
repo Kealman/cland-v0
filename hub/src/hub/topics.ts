@@ -70,6 +70,8 @@ export function vacancyWarning(roles: string[]): string | undefined {
  */
 export type TopicItems = {
   list?: () => ItemSummary[];
+  resolveId?: (raw: string) => string | null;
+  get?: (raw: string) => ItemSummary | null;
   ancestry?: (item: string) => string[];
   /** Current indexed ownership, without file I/O: resolution and recording must not yield. */
   lead: (item: string) => { state: string; claim: Claim | null } | null;
@@ -88,12 +90,9 @@ export function trackerItems(tracker: Tracker): TopicItems {
   const hub = { id: 'hub', name: 'hub', role: null };
   return {
     list: () => tracker.list(),
-    ancestry: (item) => {
-      const parents = new Map(tracker.list().map(i => [i.id, i.parent]));
-      const path: string[] = [];
-      for (let id: string | null | undefined = item; id && !path.includes(id); id = parents.get(id)) path.push(id);
-      return path;
-    },
+    resolveId: raw => tracker.resolveId(raw),
+    get: raw => tracker.summary(raw),
+    ancestry: item => tracker.ancestry(item),
     lead: item => tracker.itemLead(item),
     lastVerifier: (item, role) => tracker.lastVerifier(item, role),
     provisionalSession: name => tracker.hasProvisionalSession(name),

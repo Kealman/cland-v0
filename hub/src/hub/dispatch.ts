@@ -1,3 +1,4 @@
+import { prefixOf } from '../tracker/prefixes.ts';
 // The hub's frame dispatcher: one conversation per connection, transport-agnostic. A transport hands it
 // raw frames and a peer to answer through (send a frame, close); the WebSocket edge, the Unix socket edge
 // and the stdio edge share it, so the protocol lives in one place.
@@ -41,7 +42,7 @@ import {
 import type { LogFn } from '../log.ts';
 import { HygieneError } from './hygiene.ts';
 import { answerTask, isTaskRequest, sessionActor, type TaskRequest } from '../tracker/requests.ts';
-import { normalizeId, readsAsVerdict, verdictOfText } from '../tracker/item.ts';
+import { readsAsVerdict, verdictOfText } from '../tracker/item.ts';
 import type { Actor, Tracker } from '../tracker/tracker.ts';
 import { answerSession, isSessionRequest, SPOKE_SESSION_REQUESTS } from '../adapters/requests.ts';
 import type { Sessions } from '../adapters/sessions.ts';
@@ -397,8 +398,8 @@ export class Dispatcher {
       return `root level: only the Coordinator may use ${type}`;
     }
     const request = type === 'send' && frame.kind !== 'request' && typeof frame.text === 'string'
-      ? /^(?:review|qa) request (T-[1-9]\d*)\s*(?:\n|$)/.exec(frame.text)
-        ?? /^qa request (T-[1-9]\d*)[ \t]+stage[ \t]+\S[^\r\n]*(?:\r?\n|$)/.exec(frame.text)
+      ? /^(?:review|qa) request ((?:[A-Za-z]-)?[1-9]\d*)\s*(?:\n|$)/.exec(frame.text)
+        ?? /^qa request ((?:[A-Za-z]-)?[1-9]\d*)[ \t]+stage[ \t]+\S[^\r\n]*(?:\r?\n|$)/.exec(frame.text)
       : null;
     if (!['session.launch', 'session.stop', 'merge'].includes(type) && !request) return null;
     const tracker = this.#options.tracker;
@@ -408,7 +409,7 @@ export class Dispatcher {
     const reason = (target: string) => `Lead level at ${node.kind} ${node.id}: ${target} is outside your subtree; send the request to lead ${node.id}`;
     const inside = (id: string | null | undefined): boolean => {
       const seen = new Set<string>();
-      let item = items.find(i => i.id === normalizeId(id ?? ''));
+      let item = items.find(i => i.id === tracker?.resolveId(id ?? ''));
       while (item && !seen.has(item.id)) {
         if (item.id === node.id) return true;
         seen.add(item.id);
@@ -431,7 +432,7 @@ export class Dispatcher {
       if (!['implementer', 'reviewer', 'qa'].includes(role ?? '')) return reason(`launch of role ${role ?? '(none)'}`);
     }
     if (type === 'merge') {
-      let target = items.find(i => i.id === normalizeId(item!));
+      let target = items.find(i => i.id === tracker?.resolveId(item!));
       const seen = new Set<string>();
       while (target && !seen.has(target.id)) {
         if (target.kind === tracker?.levels[0]) return null;
@@ -454,7 +455,7 @@ export class Dispatcher {
     const own = (): boolean | undefined => {
       if (!tracker || item === null) return false;
       // Ownership is an indexed permission fact; request authorization never reads an item file.
-      const view = tracker.list().find(value => value.id === normalizeId(item));
+      const view = tracker.summary(item);
       if (!view) return undefined; // no such item: the tool says so itself
       const actor = sessionActor(connection, UNKNOWN_SESSION);
       if (view.claim && tracker.sameSession(view.claim.sessionId, actor.id)) return true;
@@ -481,7 +482,7 @@ export class Dispatcher {
         status: frame.status,
         statusOnly: Object.keys(frame).every(key => ['type', 'id', 'item', 'as', 'status'].includes(key)),
         claimed: () => {
-          const claim = item !== null ? tracker?.list().find(value => value.id === normalizeId(item))?.claim : null;
+          const claim = item !== null ? tracker?.summary(item)?.claim : null;
           return !!claim && !!tracker?.sameSession(claim.sessionId, sessionActor(connection, UNKNOWN_SESSION).id);
         },
       } : {}),
@@ -533,7 +534,7 @@ export class Dispatcher {
     this.#artifactTopic(caller, topic);
     const names = new Set([...core.presence().map(p => p.name), ...core.store.knownSessions().map(p => p.name)]);
     for (const target of to) {
-      if (!names.has(target) && !ROLE_NAMES.includes(target) && target !== 'all' && !target.includes('*') && !/^lead T-\d+$/.test(target)) throw new Error(`no suite recipient named ${target}`);
+      if (!names.has(target) && !ROLE_NAMES.includes(target) && target !== 'all' && !target.includes('*') && !/^lead (?:[A-Za-z]-)?\d+$/.test(target)) throw new Error(`no suite recipient named ${target}`);
     }
     return caller;
   }
@@ -939,10 +940,10 @@ export class Dispatcher {
         let value: unknown;
         switch (frame.type) {
           case 'event.subscribe': {
-            const input = subscriptionInput(frame.subject, frame.events, frame.digest, frame.threshold);
+            const input = subscriptionInput(frame.subject, frame.events, frame.digest, frame.threshold, this.#options.tracker ? [...this.#options.tracker.kinds, 'category'] : undefined);
             const subject = input.subject;
             const itemId = 'item' in subject ? subject.item : 'subtree' in subject ? subject.subtree : null;
-            if (itemId && !this.#options.tracker?.list().some(item => item.id === itemId)) throw new Error(`no item ${itemId}`);
+            if (itemId && !this.#options.tracker?.resolveId(itemId)) throw new Error(`no item ${itemId}`);
             if ('topic' in subject && !core.store.topic(subject.topic)) throw new Error(`no topic ${subject.topic}`);
             if ('role' in subject && !ROLE_NAMES.includes(subject.role)) throw new Error(`unknown role ${subject.role}`);
             value = { subscription: core.store.addSubscription(caller.sessionId, { id: randomUUID(), ...input }) };
@@ -1230,7 +1231,7 @@ export class Dispatcher {
             const verification = this.#suites?.snapshot();
             const base = control.status();
             const tracker = this.#options.tracker;
-            return { type: 'result', id: frame.id, ok: true, value: { ...base, ...(tracker ? { tracker: { levels: [...tracker.levels], ...base.tracker, storage: tracker.storageStatus() } } : {}), sessions: core.presence(), suites: this.#suites?.status() ?? [], ...(verification ? { verification } : {}), coordinator: core.coordinator(), needsYou: core.inbox.needsYou(), requests: { ...this.#guard.counters } } satisfies HubStatus };
+            return { type: 'result', id: frame.id, ok: true, value: { ...base, ...(tracker ? { tracker: { levels: [...tracker.levels], prefixes: Object.fromEntries([...tracker.kinds, 'category'].map(kind => [kind, prefixOf(kind)])), ...base.tracker, storage: tracker.storageStatus() } } : {}), sessions: core.presence(), suites: this.#suites?.status() ?? [], ...(verification ? { verification } : {}), coordinator: core.coordinator(), needsYou: core.inbox.needsYou(), requests: { ...this.#guard.counters } } satisfies HubStatus };
           };
           if (frame.flushLogs === true && control.flushLogs) {
             const resumed = this.#guard.resumer(frame.type, client);

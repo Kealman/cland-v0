@@ -110,6 +110,7 @@
     "hub/test/surface.test.ts": "machine",
     "hub/test/system-processes.test.ts": "machine",
     "hub/test/task-migrate.test.ts": "machine",
+    "hub/test/task-prefixes.test.ts": "machine",
     "hub/test/task-plan.test.ts": "machine",
     "hub/test/task-worktrees.test.ts": "machine",
     "hub/test/termination-ownership.test.ts": "machine",

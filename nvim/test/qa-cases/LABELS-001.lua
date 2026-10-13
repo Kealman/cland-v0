@@ -12,7 +12,7 @@ return {
         body = 'A body.\n\n---\n\nWith a rule in it.',
         comments = { { author = 'rev-1', text = 'A comment: with a colon.' } },
       },
-      { id = 'T-2', title = 'Blocked', blocked_by = { 'T-1' }, parent = 'T-1', state = 'closed', kind = 'question' },
+      { id = 'Q-2', title = 'Blocked', blocked_by = { 'T-1' }, parent = 'T-1', state = 'closed', kind = 'question' },
     },
   },
   run = function(qa)

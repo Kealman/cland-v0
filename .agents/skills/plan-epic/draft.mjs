@@ -10,7 +10,7 @@ function read(...args) {
   return JSON.parse(result.stdout);
 }
 try {
-  if (!/^T-[1-9]\d*$/.test(epic || '')) throw new Error('usage: draft.mjs T-<epic> [--scope none|affected|full] [--when per-item|after-stage]');
+  if (!epic) throw new Error('usage: draft.mjs <epic-id> [--scope none|affected|full] [--when per-item|after-stage]');
   if (!['none', 'affected', 'full'].includes(scope) || !['per-item', 'after-stage'].includes(when)) throw new Error('invalid QA policy');
   const parent = read('task', 'view', epic).item;
   if (parent.plan) throw new Error('epic already has a plan: revise its accepted stages instead of replacing them with a first draft');

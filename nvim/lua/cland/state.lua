@@ -107,7 +107,7 @@ end
 --- The topic bound to an item, if any.
 function M.topic_of_item(id)
   for _, t in ipairs(M.S.topics) do
-    if t.item == id then
+    if M.item_number(t.item) and M.item_number(t.item) == M.item_number(id) then
       return t
     end
   end
@@ -335,12 +335,43 @@ function M.needs_you()
   return M.S.needs_you
 end
 
-function M.item(id)
-  for _, it in ipairs(M.S.items) do
-    if it.id == id then
-      return it
-    end
+--- Recognized references use the hub's prefix table; older hubs know only T- ids.
+function M.item_number(id)
+  if type(id) ~= 'string' then return nil end
+  local prefix, digits = id:match('^([%a])%-(%d+)$')
+  if not digits then digits = id:match('^(%d+)$') end
+  local n = tonumber(digits)
+  if not n or n < 1 or n > 9007199254740991 then return nil end
+  if prefix then
+    prefix = prefix:upper()
+    local known = false
+    if M.S.tracker.prefixes then
+      for _, value in pairs(M.S.tracker.prefixes) do if value == prefix then known = true; break end end
+    else known = prefix == 'T' end
+    if not known then return nil end
   end
+  return n
+end
+
+local indexed_items, by_number
+function M.index_items()
+  indexed_items, by_number = M.S.items, {}
+  for _, item in ipairs(M.S.items) do
+    local n = tonumber(item.id:match('%-(%d+)$'))
+    if n then by_number[n] = item end
+  end
+end
+
+function M.index_item(id, item)
+  if indexed_items ~= M.S.items then M.index_items() end
+  local n = tonumber(id:match('%-(%d+)$'))
+  if n then by_number[n] = item end
+end
+
+function M.item(id)
+  if indexed_items ~= M.S.items then M.index_items() end
+  local n = M.item_number(id)
+  return n and by_number[n] or nil
 end
 
 function M.item_of_session(name)

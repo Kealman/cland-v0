@@ -32,10 +32,10 @@ test('release from an item refuses a missing version through the protocol and CL
   const beforeItem = await readFile(join(root, item.path), 'utf8');
   const result = await ui.request({ type: 'release', item: item.id, dryRun: true }, 30_000);
   assert.equal(result.ok, false);
-  assert.match(result.error ?? '', /T-1.*no version/);
+  assert.match(result.error ?? '', /R-1.*no version/);
   const cli = await cland(root, 'release', '--item', item.id, '--dry-run');
   assert.notEqual(cli.code, 0);
-  assert.match(cli.stderr, /T-1.*no version/);
+  assert.match(cli.stderr, /R-1.*no version/);
   assert.equal(refs(root, territory, github), beforeRefs);
   assert.equal(await readFile(join(root, item.path), 'utf8'), beforeItem);
 });
@@ -56,7 +56,7 @@ test('release from an item names non-release items, mismatched versions and open
   };
   await refuse(task.id, /T-2.*not a release.*task/);
   await refuse('T-999', /no item T-999/);
-  await refuse(release.id, /v0.3.0.*T-1.*v0.2.0/, 'v0.3.0');
+  await refuse(release.id, /v0.3.0.*R-1.*v0.2.0/, 'v0.3.0');
   const epic = await create(root, 'Closed epic', '--kind', 'epic', '--parent', release.id);
   const child = await create(root, 'Open nested task', '--parent', epic.id);
   // The tracker permits legacy trees to remain readable; descendants must still block publication.
@@ -65,9 +65,9 @@ test('release from an item names non-release items, mismatched versions and open
   ok(await cland(root, 'task', 'view', epic.id, '--json'));
   await refuse(release.id, /open children[\s\S]*T-4 Open nested task/);
   const direct = await create(root, 'Open epic', '--kind', 'epic', '--parent', release.id);
-  await refuse(release.id, /open children[\s\S]*T-4 Open nested task[\s\S]*T-5 Open epic/);
+  await refuse(release.id, /open children[\s\S]*T-4 Open nested task[\s\S]*E-5 Open epic/);
   assert.equal(child.id, 'T-4');
-  assert.equal(direct.id, 'T-5');
+  assert.equal(direct.id, 'E-5');
 });
 
 test('item dry-run previews its Notes, epic deliverables and existing commit notes in order and stays read-only', async t => {
@@ -81,7 +81,7 @@ test('item dry-run previews its Notes, epic deliverables and existing commit not
   const beforeRefs = refs(root, territory, github);
   const beforeItem = await readFile(join(root, release.path), 'utf8');
   const beforeEpic = await readFile(join(root, epic.path), 'utf8');
-  const expected = 'Highlights for people.\n\n### Compatibility\n\nKeep existing workflows.\n\nT-2 Parser: Ship v0.2.0 with fast parsing.\n\nRecord release plan\nPolish the parser';
+  const expected = 'Highlights for people.\n\n### Compatibility\n\nKeep existing workflows.\n\nE-2 Parser: Ship v0.2.0 with fast parsing.\n\nRecord release plan\nPolish the parser';
   const result = await ui.request({ type: 'release', item: release.id, dryRun: true }, 30_000);
   assert.equal(result.ok, true, result.error);
   const preview = result.value as ReleaseResult;
@@ -154,7 +154,7 @@ test('a published item release retries its pinned build after tracker closure fa
   for (const args of [['v0.1.0'], ['--item', other.id]]) {
     const wrong = await cland(root, 'release', ...args);
     assert.notEqual(wrong.code, 0);
-    assert.match(wrong.stderr, /pending release.*T-1/);
+    assert.match(wrong.stderr, /pending release.*R-1/);
     assert.equal(refs(root, territory, github), before);
   }
   await rm(obstruction, { recursive: true });

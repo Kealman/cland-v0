@@ -8,10 +8,11 @@
 
 import { ToolForbidden } from '../roles/permissions.ts';
 import { planMigration, type MigrationPlan } from './migrate.ts';
-import { PlanError, parsePlan, planInBody, withPlan, type QaPolicy, type EpicPlan } from './plan.ts';
+import { PlanError, parsePlan, planInBody, planOverride, planOverrideKey, withPlan, type QaPolicy, type EpicPlan } from './plan.ts';
 import { compareRank, effectiveRank, rankChanges } from './rank.ts';
 import type { MarkedCriterion } from '../protocol.ts';
 import { annotateCriteria, criterionRefusal, criteriaSource, parseCriteria, type Criterion, type CriterionWarning } from './criteria.ts';
+import { parseItemReference, prefixOf } from './prefixes.ts';
 import { DEFAULT_LEVELS, kindsFor, kindWithArticle, isPlanningContainer } from './kinds.ts';
 import { landedTask, taskBase, territoryPath } from '../territory.ts';
 import { createHash, randomUUID } from 'node:crypto';
@@ -26,10 +27,10 @@ import {
   COMMENTS_HEADING,
   fileNameOf,
   fileNumber,
+  idNumber,
   formatVerdictBy,
   ItemParseError,
   UnknownKindError,
-  normalizeId,
   parseItem,
   RESULTS,
   serializeItem,
@@ -104,6 +105,7 @@ export type ItemView = IndexedItem & {
   qaSatisfied?: boolean;
   /** A closed task with a durable landing receipt on dev, as required by stage closure. */
   merged?: boolean;
+  warnings?: string[];
   planError?: string;
   stages?: Array<{ name: string; state: 'open' | 'closed'; qa: QaPolicy; items: string[]; verdict?: IndexedVerdict }>;
   planHistory?: PlanHistoryEntry[];
@@ -267,12 +269,12 @@ export class Tracker {
       try {
         const record: PlanHistoryEntry = { id, ts: entry.ts, event: entry.event === 'task-plan-changed' ? 'changed' : 'approved', by: entry.by };
         if (record.event === 'changed') {
-          record.previous = entry.previous === null ? null : parsePlan(JSON.stringify(entry.previous));
-          record.plan = entry.plan === null ? null : parsePlan(JSON.stringify(entry.plan));
+          record.previous = entry.previous === null ? null : parsePlan(JSON.stringify(entry.previous), [...kindsFor(options.levels ?? DEFAULT_LEVELS), 'category']);
+          record.plan = entry.plan === null ? null : parsePlan(JSON.stringify(entry.plan), [...kindsFor(options.levels ?? DEFAULT_LEVELS), 'category']);
           if (typeof entry.reason === 'string') record.reason = entry.reason;
         }
-        const history = this.#planHistory.get(entry.id) ?? [];
-        history.push(record); this.#planHistory.set(entry.id, history);
+        const history = this.#planHistory.get(`T-${idNumber(entry.id)}`) ?? [];
+        history.push(record); this.#planHistory.set(`T-${idNumber(entry.id)}`, history);
       } catch { /* A malformed journal entry cannot become accepted-plan history. */ }
     }
     this.#planApproval = options.planApproval ?? 'none';
@@ -299,7 +301,7 @@ export class Tracker {
     this.#log = options.log ?? (() => {});
     this.#now = options.now ?? (() => new Date());
     mkdirSync(this.#dir, { recursive: true });
-    this.#index = new TrackerIndex(options.db);
+    this.#index = new TrackerIndex(options.db, [...this.kinds, 'category']);
     this.#git = options.git ?? gitIn(options.root);
     this.#fresh = new Freshness({
       git: this.#git,
@@ -354,7 +356,7 @@ export class Tracker {
     this.#announce(id, false);
     this.#scheduleReady(id);
     // Reparenting/removing any ancestor can change a task's plan even when no plan text changes.
-    for (const child of this.#index.list()) {
+    for (const child of this.#index.list({ under: id })) {
       if (child.kind !== 'task' || !this.#ancestorIds(child.parent).includes(id)) continue;
       this.#revisions.set(child.id, (this.#revisions.get(child.id) ?? 0) + 1);
       this.#scheduleReady(child.id);
@@ -373,7 +375,7 @@ export class Tracker {
     if (this.#readyRetries.has(id)) return;
     if (this.#readyChecks.has(id)) { this.#readyAgain.add(id); return; }
     if (this.#stopping || indexed?.kind !== 'task' || indexed.state !== 'open'
-      || (!indexed.branch && !this.#index.verdicts().get(id)?.length) || (!this.#index.verdicts().get(id)?.length && indexed.status !== 'ready')) return;
+      || (!indexed.branch && !this.#index.verdicts(id).get(id)?.length) || (!this.#index.verdicts(id).get(id)?.length && indexed.status !== 'ready')) return;
     this.#readyChecks.add(id);
     this.#runBackground(() => this.#serial(async resumed => {
       try { await this.#checkReady(id, resumed); }
@@ -422,7 +424,7 @@ export class Tracker {
     const { file, revision } = resumed(() => ({ ...this.#require(id), revision: this.#revisions.get(id) }));
     const text = await this.#files.readFile(join(this.#dir, file), 'utf8');
     const checking = resumed(() => {
-      const parsed = parseItem(text, file, this.levels);
+      const parsed = this.#parseItem(text, file, this.levels);
       const prepare = () => {
         const current = this.#viewOf(id, file, parsed);
         const desired = this.#readyStatus(current);
@@ -437,9 +439,9 @@ export class Tracker {
           const latest = await this.#files.readFile(join(this.#dir, file), 'utf8');
           await this.#fresh.refresh(resumed);
           const afterGit = await this.#files.readFile(join(this.#dir, file), 'utf8');
-          await this.#refreshPlans(resumed(() => parseItem(afterGit, file, this.levels)), resumed);
+          await this.#refreshPlans(resumed(() => this.#parseItem(afterGit, file, this.levels)), resumed);
           resumed(() => {
-            const now = this.#viewOf(id, file, parseItem(afterGit, file, this.levels));
+            const now = this.#viewOf(id, file, this.#parseItem(afterGit, file, this.levels));
             if (this.#revisions.get(id) !== revision || afterGit !== latest || latest !== text || this.#readyStatus(now) !== desired) throw new ReadyChanged();
           });
         });
@@ -464,13 +466,14 @@ export class Tracker {
    */
   #announce(id: string, ifMoved: boolean, siblings?: string[]): void {
     const indexed = this.#index.get(id);
-    const item: ItemSummary | null = indexed ? { ...indexed, ...this.#inboxPlan(id), claim: this.#index.claimOf(id), holds: this.#index.holdsOf(id), verdicts: this.#annotateVerdicts(id, indexed.kind, indexed.branch, this.#index.verdicts().get(id) ?? []), verdictBase: this.#fresh.base() } : null;
+    id = indexed?.id ?? id;
+    const item: ItemSummary | null = indexed ? { ...indexed, ...this.#inboxPlan(id), claim: this.#index.claimOf(id), holds: this.#index.holdsOf(id), verdicts: this.#annotateVerdicts(id, indexed.kind, indexed.branch, this.#index.verdicts(id).get(id) ?? []), verdictBase: this.#fresh.base() } : null;
     const shown = item ? JSON.stringify([item.verdictBase, this.#fresh.tip(isPlanningContainer(item.kind, this.levels) ? 'dev' : item.branch), item.verdicts.map((v) => v.current ?? null)]) : '';
-    if (ifMoved && (this.#shown.get(id) === shown || (item && pending(item.verdicts)))) return;
-    const previous = this.#announced.get(id);
+    if (ifMoved && (this.#shown.get(`T-${idNumber(id)}`) === shown || (item && pending(item.verdicts)))) return;
+    const previous = this.#announced.get(`T-${idNumber(id)}`);
     // Keep the pre-change path before removal/reparenting changes the indexed tree.
     const previousAncestry: string[] = [];
-    for (let ancestor: string | null | undefined = previous?.id; ancestor && !previousAncestry.includes(ancestor); ancestor = this.#announced.get(ancestor)?.parent) previousAncestry.push(ancestor);
+    for (let ancestor: string | null | undefined = previous?.id; ancestor && !previousAncestry.includes(ancestor); ancestor = this.#announced.get(`T-${idNumber(ancestor)}`)?.parent) previousAncestry.push(ancestor);
     const events: string[] = [];
     const postedVerdicts: Verdict[] = [];
     if (previous && item) {
@@ -491,10 +494,10 @@ export class Tracker {
       }
       if (previous.state !== 'closed' && item.state === 'closed') events.push('closed');
     }
-    if (item) this.#announced.set(id, item);
-    else this.#announced.delete(id);
-    if (item) this.#shown.set(id, shown);
-    else this.#shown.delete(id);
+    if (item) this.#announced.set(`T-${idNumber(id)}`, item);
+    else this.#announced.delete(`T-${idNumber(id)}`);
+    if (item) this.#shown.set(`T-${idNumber(id)}`, shown);
+    else this.#shown.delete(`T-${idNumber(id)}`);
     if (this.#changeListeners.size === 0) return;
     for (const listener of [...this.#changeListeners]) {
       try {
@@ -527,7 +530,7 @@ export class Tracker {
       const intent = join(this.#dir, marker);
       try {
         const value = JSON.parse(readFileSync(intent, 'utf8')) as { file?: unknown; captured?: unknown };
-        if (typeof value.file !== 'string' || typeof value.captured !== 'string' || basename(value.file) !== value.file || basename(value.captured) !== value.captured || fileNumber(value.file) === null || !value.captured.startsWith(`${value.file}.`) || !value.captured.endsWith('.conflict')) throw new Error('invalid criterion capture intent');
+        if (typeof value.file !== 'string' || typeof value.captured !== 'string' || basename(value.file) !== value.file || basename(value.captured) !== value.captured || this.#fileNumber(value.file) === null || !value.captured.startsWith(`${value.file}.`) || !value.captured.endsWith('.conflict')) throw new Error('invalid criterion capture intent');
         const path = join(this.#dir, value.file);
         try {
           linkSync(join(this.#dir, value.captured), path);
@@ -550,13 +553,13 @@ export class Tracker {
     this.#bootstrapping = false;
     this.rescan();
     // Unchanged cached files skip #changed; every indexed item still needs a restart baseline.
-    for (const item of this.list()) this.#announced.set(item.id, item);
+    for (const item of this.list()) this.#announced.set(`T-${idNumber(item.id)}`, item);
     this.#watcher = watchFolder(
       this.#dir,
       {
         changed: (name) => {
           if (name === null) this.#scheduleRescan();
-          else if (fileNumber(name) !== null) this.#schedule(name);
+          else if (this.#fileNumber(name) !== null) this.#schedule(name);
         },
         // every file is read only when the folder's listing or a file's time or size moved
         poll: () => {
@@ -649,13 +652,13 @@ export class Tracker {
 
   #itemFiles(): string[] {
     return readdirSync(this.#dir)
-      .filter((n) => fileNumber(n) !== null)
-      .sort((a, b) => (fileNumber(a) ?? 0) - (fileNumber(b) ?? 0) || a.localeCompare(b));
+      .filter((n) => this.#fileNumber(n) !== null)
+      .sort((a, b) => (this.#fileNumber(a) ?? 0) - (this.#fileNumber(b) ?? 0) || a.localeCompare(b));
   }
 
   /** The whole folder against the index: every file read, every row whose file is gone dropped. */
   rescan(): void {
-    const files = this.#itemFiles();
+    const files = [...new Set([...this.#itemFiles(), ...this.#index.ids().flatMap(id => { const meta = this.#index.metaOf(id); return meta ? [meta.file] : []; })])];
     for (const name of files) this.#syncFile(name);
     const present = new Set(files);
     for (const id of this.#index.ids()) {
@@ -675,7 +678,7 @@ export class Tracker {
       else this.#indexFailure(name, err);
       return;
     }
-    const id = normalizeId(`T-${fileNumber(name)}`);
+    const id = this.#referenceId(`T-${this.#fileNumber(name)}`);
     const previous = id ? this.#index.metaOf(id) : null;
     this.#indexFile(name, text, !!(previous && previous.file !== name && existsSync(join(this.#dir, previous.file))));
   }
@@ -686,7 +689,7 @@ export class Tracker {
     const known = knownId ? this.#index.metaOf(knownId) : null;
     let item: Item;
     try {
-      item = parseItem(text, name, this.levels);
+      item = this.#parseItem(text, name, this.levels);
     } catch (err) {
       this.#indexFailure(name, err);
       return;
@@ -700,7 +703,7 @@ export class Tracker {
     }
     const id = item.fm.id;
     // the id moved out of this file (someone rewrote it by hand): the old row goes
-    if (knownId && knownId !== id) {
+    if (knownId && idNumber(knownId) !== idNumber(id)) {
       this.#index.remove(knownId);
       this.#planCandidates.delete(knownId);
       this.#changed(knownId);
@@ -709,6 +712,15 @@ export class Tracker {
     if (prior && prior.kind !== item.fm.kind) {
       try { this.#checkKindChange(prior.kind, item.fm.kind, this.#index.children(id)); }
       catch (err) { this.#log({ event: 'task-parenting-warning', file: name, error: err instanceof Error ? err.message : String(err) }); }
+    }
+    const existing = this.#index.metaOf(id);
+    if (existing && duplicate && existing.file !== name) {
+      const files = [...new Set([...(this.#duplicates.get(idNumber(id)) ?? []), existing.file, name])].sort();
+      this.#duplicates.set(idNumber(id), files);
+      const ownPrefix = `${prefixOf(item.fm.kind)}-`;
+      const preferred = name.toUpperCase().startsWith(ownPrefix) && !existing.file.toUpperCase().startsWith(ownPrefix);
+      this.#log({ event: 'task-duplicate-number', n: idNumber(id), files, indexed: preferred ? name : existing.file });
+      if (!preferred) return;
     }
     const statusBasis = prior;
     const migrated = this.#normalizeStatus(item, statusBasis);
@@ -721,9 +733,6 @@ export class Tracker {
       }));
     }
     const previous = this.#index.metaOf(id);
-    if (previous && duplicate) {
-      this.#log({ event: 'task-duplicate-id', id, files: [previous.file, name], indexed: name });
-    }
     const now = this.#now().getTime();
     if (previous?.source === 'hub' && now - previous.indexedAt < CONCURRENT_MS) {
       this.#log({ event: 'task-conflict', id, file: name, winner: 'hand', note: `a hand edit replaced the hub's write of ${new Date(previous.indexedAt).toISOString()}; last writer wins` });
@@ -756,7 +765,7 @@ export class Tracker {
     const resumed = this.#watchResumed;
     try {
       const names = await this.#files.readdir(this.#dir);
-      const stamps = await resumed(() => Promise.all(names.filter(n => fileNumber(n) !== null).sort().map(async name => {
+      const stamps = await resumed(() => Promise.all(names.filter(n => this.#fileNumber(n) !== null).sort().map(async name => {
         try {
           const info = await this.#files.stat(join(this.#dir, name));
           return resumed(() => `${name}:${info.mtimeMs}:${info.size}:${info.ino}`);
@@ -774,7 +783,7 @@ export class Tracker {
   async #rescanAsync(resumed: Resumed): Promise<void> {
     const names = await this.#files.readdir(this.#dir);
     return resumed(() => {
-      const candidates = new Set([...names.filter(n => fileNumber(n) !== null), ...this.#index.ids().flatMap(id => {
+      const candidates = new Set([...names.filter(n => this.#fileNumber(n) !== null), ...this.#index.ids().flatMap(id => {
         const meta = this.#index.metaOf(id);
         return meta ? [meta.file] : [];
       })]);
@@ -789,7 +798,7 @@ export class Tracker {
   }
 
   #syncFileAsync(name: string, resumed: Resumed): Promise<void> {
-    return this.#serial(resumed => this.#readWatchedFile(name, resumed), resumed, { operation: 'watch read', item: `T-${fileNumber(name)}` });
+    return this.#serial(resumed => this.#readWatchedFile(name, resumed), resumed, { operation: 'watch read', item: `T-${this.#fileNumber(name)}` });
   }
 
   async #readWatchedFile(name: string, resumed: Resumed): Promise<void> {
@@ -803,7 +812,7 @@ export class Tracker {
     }
     return resumed(() => {
       let id: string;
-      try { id = parseItem(text, name, this.levels).fm.id; }
+      try { id = this.#parseItem(text, name, this.levels).fm.id; }
       catch (err) { this.#indexFailure(name, err); return; }
       const previous = this.#index.metaOf(id);
       if (!previous || previous.file === name) return this.#indexFile(name, text, false, resumed);
@@ -813,6 +822,11 @@ export class Tracker {
   }
 
   #dropFile(name: string): void {
+    const n = this.#fileNumber(name);
+    if (n !== null && this.#duplicates.has(n)) {
+      const remaining = this.#duplicates.get(n)!.filter(file => file !== name);
+      if (remaining.length < 2) this.#duplicates.delete(n); else this.#duplicates.set(n, remaining);
+    }
     const id = this.#index.idOfFile(name);
     if (!id) return;
     this.#index.remove(id);
@@ -820,6 +834,7 @@ export class Tracker {
     this.#planErrors.delete(id);
     if (!this.#bootstrapping) this.#retryPlans();
     this.#log({ event: 'task-removed', id, file: name });
+    this.#scheduleRescan();
     this.#changed(id);
   }
 
@@ -830,7 +845,7 @@ export class Tracker {
   }
 
   #validPlan(item: Item): EpicPlan | null {
-    const plan = planInBody(item.body);
+    const plan = planInBody(item.body, [...this.kinds, 'category']);
     if (!plan) return null;
     if (!this.isPlanContainer(item.fm.kind)) throw new PlanError('a plan belongs only to an epic');
     for (const stage of plan.stages) for (const lane of stage.lanes) for (const id of lane) {
@@ -839,11 +854,11 @@ export class Tracker {
       if (child.kind !== 'task') throw new PlanError(`${id}: a lane item must be a task`);
       const seen = new Set<string>();
       let parent = child.parent;
-      while (parent && parent !== item.fm.id && !seen.has(parent)) {
+      while (parent && idNumber(parent) !== idNumber(item.fm.id) && !seen.has(parent)) {
         seen.add(parent);
         parent = this.#index.get(parent)?.parent ?? null;
       }
-      if (parent !== item.fm.id) throw new PlanError(`${id}: plan item is not under epic ${item.fm.id}`);
+      if (!parent || idNumber(parent) !== idNumber(item.fm.id)) throw new PlanError(`${id}: plan item is not under epic ${item.fm.id}`);
     }
     for (const [id, override] of Object.entries(plan.items ?? {})) {
       const ids = this.#index.criterionIds(id);
@@ -861,6 +876,7 @@ export class Tracker {
   }
 
   #plansAfterIndex(item: Item, source: 'hub' | 'hand', writer?: Actor, reason?: string): void {
+    for (const id of this.#planCandidates.keys()) if (idNumber(id) === idNumber(item.fm.id) && id !== item.fm.id) { this.#planCandidates.delete(id); this.#planErrors.delete(id); }
     if (this.isPlanContainer(item.fm.kind)) this.#planCandidates.set(item.fm.id, { item, source, ...(writer ? { writer } : {}) });
     else this.#planCandidates.delete(item.fm.id);
     if (this.#bootstrapping) return;
@@ -892,7 +908,7 @@ export class Tracker {
     }
     this.#index.rememberPlan(id, state.plan);
     // A changed epic policy invalidates prepared readiness writes for its tasks too.
-    for (const child of this.#index.list()) {
+    for (const child of this.#index.list({ under: id })) {
       if (child.kind === 'task' && this.#ancestorIds(child.parent).includes(id)) this.#changed(child.id);
     }
     const record: PlanHistoryEntry = { id: randomUUID(), ts: this.#now().toISOString(), event: 'changed', by: writer?.name ?? (source === 'hand' ? 'hand' : 'hub'), previous, plan: state.plan, ...(reason ? { reason } : {}) };
@@ -902,9 +918,9 @@ export class Tracker {
   }
 
   #rememberPlanEvent(id: string, record: PlanHistoryEntry): void {
-    const history = this.#planHistory.get(id) ?? [];
+    const history = this.#planHistory.get(`T-${idNumber(id)}`) ?? [];
     history.push(record);
-    this.#planHistory.set(id, history);
+    this.#planHistory.set(`T-${idNumber(id)}`, history);
   }
 
   /** Plans use the same admitted read/modify/publication cycle as other item writes. */
@@ -913,13 +929,13 @@ export class Tracker {
       checkText(yaml, 'plan YAML');
       if (reason !== undefined) checkText(reason, 'plan change reason');
       let plan: EpicPlan;
-      try { plan = parsePlan(yaml); }
+      try { plan = parsePlan(yaml, [...this.kinds, 'category']); }
       catch (err) { throw new TrackerError(err instanceof Error ? err.message : String(err)); }
       return this.#mutate(rawId, actor, 'plan set', item => {
         if (!this.isPlanContainer(item.fm.kind)) throw new TrackerError('a plan belongs only to an epic');
         item.body = withPlan(item.body, plan);
       }, resumed, undefined, authorize, undefined, undefined, false, reason);
-    }, resumed, { operation: 'plan set', item: normalizeId(rawId) ?? rawId });
+    }, resumed, { operation: 'plan set', item: this.#referenceId(rawId) ?? rawId });
   }
 
   approvePlan(actor: Actor, rawId: string, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<ItemView> {
@@ -936,11 +952,11 @@ export class Tracker {
       if (item.fm.plan_approval?.hash !== hash) item.fm.plan_approval = { hash, by: actor.name, at: this.#now().toISOString() };
       record = item.fm.plan_approval!;
     }, resumed, undefined, check, () => {
-      const id = normalizeId(rawId)!;
+      const id = this.#referenceId(rawId)!;
       const event: PlanHistoryEntry = { id: randomUUID(), ts: record.at, event: 'approved', by: record.by };
       this.#rememberPlanEvent(id, event);
       this.#log({ event: 'task-plan-approved', id, ...record, ts: event.ts, planHistoryId: event.id });
-    }, undefined, true), resumed, { operation: 'plan approve', item: normalizeId(rawId) ?? rawId });
+    }, undefined, true), resumed, { operation: 'plan approve', item: this.#referenceId(rawId) ?? rawId });
   }
 
   /** Launch approval is an indexed fact; safe to recheck after every lifecycle await. */
@@ -972,7 +988,7 @@ export class Tracker {
       resumed(authorize);
       const names = await this.#files.readdir(this.#dir);
       const entries: Array<{ file: string; item: Item }> = [];
-      for (const file of names.filter(name => fileNumber(name) !== null).sort()) {
+      for (const file of names.filter(name => this.#fileNumber(name) !== null).sort()) {
         const text = await this.#files.readFile(join(this.#dir, file), 'utf8');
         entries.push(resumed(() => ({ file, item: parseItem(text, file, this.levels) })));
       }
@@ -992,7 +1008,7 @@ export class Tracker {
       // including after restart, so an interrupted response never hides an already changed policy.
       for (const row of resumed(() => this.#index.list())) {
         const text = await this.#files.readFile(join(this.#dir, row.file), 'utf8');
-        const item = resumed(() => parseItem(text, row.file, this.levels));
+        const item = resumed(() => this.#parseItem(text, row.file, this.levels));
         if (item.comments.some(c => c.text === QA_FALLBACK_WARNING)) fallback.push(row.id);
         if (item.fm.labels.includes('qa-required')) labelled.push(item);
       }
@@ -1005,14 +1021,15 @@ export class Tracker {
             const state = this.#planState(parent);
             if (state.planError || !state.plan) throw new TrackerError(`${epic}: fix the plan before migrating QA: ${state.planError ?? 'no plan'}`);
             const plan = structuredClone(state.plan);
-            if (!plan.stages.some(s => s.lanes.some(lane => lane.includes(id)))) {
+            if (!plan.stages.some(s => s.lanes.some(lane => lane.some(childId => idNumber(childId) === idNumber(id))))) {
               let name = 'Legacy QA';
               while (plan.stages.some(s => s.name === name)) name += ' migration';
               plan.stages.push({ name, qa: { scope: 'affected', when: 'per-item' }, lanes: [[id]] });
             }
             plan.items ??= {};
-            const prior = plan.items[id]?.qa ?? plan.stages.find(s => s.lanes.some(lane => lane.includes(id)))!.qa;
-            plan.items[id] = { ...plan.items[id], qa: { scope: prior.scope === 'none' ? 'affected' : prior.scope, when: 'per-item' } };
+            const key = planOverrideKey(plan, id) ?? id;
+            const prior = planOverride(plan, id)?.qa ?? plan.stages.find(s => s.lanes.some(lane => lane.some(childId => idNumber(childId) === idNumber(id))))!.qa;
+            plan.items[key] = { ...plan.items[key], qa: { scope: prior.scope === 'none' ? 'affected' : prior.scope, when: 'per-item' } };
             parent.body = withPlan(parent.body, plan);
           }, resumed, undefined, authorize);
           migrated.push(id);
@@ -1037,9 +1054,32 @@ export class Tracker {
 
   // ---------------------------------------------------------------- reading
 
+  readonly #duplicates = new Map<number, string[]>();
+
+  #fileNumber(name: string): number | null { return fileNumber(name, [...this.kinds, 'category']); }
+
+  /** Resolve recognized references using the numeric index, never a list scan. */
+  resolveId(raw: string): string | null {
+    const ref = parseItemReference(raw, [...this.kinds, 'category']);
+    return ref && !this.#stopping ? this.#index.resolve(`T-${ref.n}`) : null;
+  }
+
+  #referenceId(raw: string): string | null {
+    const ref = parseItemReference(raw, [...this.kinds, 'category']);
+    return ref ? (this.#stopping ? null : this.#index.resolve(`T-${ref.n}`)) ?? `T-${ref.n}` : null;
+  }
+
+  #parseItem(text: string, file?: string, levels = this.levels): Item {
+    const item = parseItem(text, file, levels);
+    item.fm.id = `${prefixOf(item.fm.kind)}-${idNumber(item.fm.id)}`;
+    if (item.fm.parent) item.fm.parent = this.#referenceId(item.fm.parent) ?? item.fm.parent;
+    item.fm.blocked_by = item.fm.blocked_by.map(id => this.#referenceId(id) ?? id);
+    return item;
+  }
+
   #require(rawId: string): { id: string; file: string } {
-    const id = normalizeId(rawId);
-    if (!id) throw new TrackerError(`"${rawId}" is not an item id (T-<n>)`);
+    const id = this.#referenceId(rawId);
+    if (!id) throw new TrackerError(`"${rawId}" is not an item id (a kind prefix and number)`);
     const meta = this.#index.metaOf(id);
     if (!meta) throw new TrackerError(`no item ${id}`);
     return { id, file: meta.file };
@@ -1052,7 +1092,7 @@ export class Tracker {
     // the file is the truth; the index's row is only how it was found
     let item: Item;
     try {
-      item = parseItem(readFileSync(join(this.#dir, file), 'utf8'), file, this.levels);
+      item = this.#parseItem(readFileSync(join(this.#dir, file), 'utf8'), file, this.levels);
     } catch (err) {
       throw new TrackerError(`${id}: ${join(TASKS_REL, file)} cannot be read: ${err instanceof Error ? err.message : String(err)}`);
     }
@@ -1076,15 +1116,15 @@ export class Tracker {
       } catch (err) {
         return resumed(() => { throw new TrackerError(`${id}: ${join(TASKS_REL, file)} cannot be read: ${err instanceof Error ? err.message : String(err)}`); });
       }
-      await this.#refreshPlans(resumed(() => parseItem(text, file, this.levels)), resumed);
+      await this.#refreshPlans(resumed(() => this.#parseItem(text, file, this.levels)), resumed);
       return resumed(() => {
         let view: ItemView;
-        try { view = this.#viewOf(id, file, parseItem(text, file, this.levels)); }
+        try { view = this.#viewOf(id, file, this.#parseItem(text, file, this.levels)); }
         catch (err) { throw new TrackerError(`${id}: ${join(TASKS_REL, file)} cannot be read: ${err instanceof Error ? err.message : String(err)}`); }
         // Evidence and claims are read after the file await, within the same tracker admission.
         return evidence ? this.#mergeViewOf(view) : view;
       });
-    }, resumed, { operation: 'view', item: normalizeId(rawId) ?? rawId });
+    }, resumed, { operation: 'view', item: this.#referenceId(rawId) ?? rawId });
   }
 
   #ancestorIds(parent: string | null): string[] {
@@ -1106,7 +1146,7 @@ export class Tracker {
       for (const { id, file } of ancestors) {
         const text = await this.#files.readFile(join(this.#dir, file), 'utf8');
         resumed(() => {
-          const parent = parseItem(text, file, this.levels);
+          const parent = this.#parseItem(text, file, this.levels);
           this.#planCandidates.set(id, { item: parent, source: 'hand' });
           this.#acceptPlan(parent, 'hand');
         });
@@ -1117,14 +1157,18 @@ export class Tracker {
   #qaFor(item: Item): { qaPolicy: QaPolicy; qaCriteria: string[] } {
     for (const id of this.#ancestorIds(item.fm.parent)) {
       const plan = this.#index.plan(id);
-      const stage = plan?.stages.find(s => s.lanes.some(lane => lane.includes(item.fm.id)));
-      if (stage) return { qaPolicy: plan!.items?.[item.fm.id]?.qa ?? stage.qa, qaCriteria: plan!.items?.[item.fm.id]?.qa_criteria ?? [] };
+      const stage = plan?.stages.find(s => s.lanes.some(lane => lane.some(id => idNumber(id) === idNumber(item.fm.id))));
+      if (stage) {
+        const override = planOverride(plan!, item.fm.id);
+        return { qaPolicy: override?.qa ?? stage.qa, qaCriteria: override?.qa_criteria ?? [] };
+      }
     }
     return { qaPolicy: this.#qaDefault, qaCriteria: [] };
   }
 
   #viewOf(id: string, file: string, item: Item, source: 'file' | 'proposal' = 'file'): ItemView {
     this.#normalizeStatus(item);
+    id = item.fm.id;
     const indexed = this.#index.get(id);
     if (!indexed) throw new TrackerError(`no item ${id}`);
     if (source === 'file' && this.isPlanContainer(item.fm.kind)) this.#planCandidates.set(id, { item, source: 'hand' });
@@ -1132,16 +1176,19 @@ export class Tracker {
       ...indexed,
       verdictBase: this.#fresh.base(),
       ...item.fm,
+      parent: item.fm.parent ? this.#referenceId(item.fm.parent) ?? item.fm.parent : null,
+      blocked_by: item.fm.blocked_by.map(id => this.#referenceId(id) ?? id),
       rank: effectiveRank(item.fm),
       file,
       path: join(TASKS_REL, file),
+      ...(this.#duplicates.has(idNumber(id)) ? { warnings: [`duplicate item number ${idNumber(id)}: ${this.#duplicates.get(idNumber(id))!.join(', ')}`] } : {}),
       ancestry: this.#ancestry(item),
       body: item.body,
       // A read may see a valid hand save before its watcher turn. Retain and journal that exact plan
       // before showing it, so a following invalid save cannot restore an older version.
       // Gate previews are unpublished proposals, so they must not retain or journal a plan.
       ...(source === 'file' ? this.#acceptPlan(item, 'hand') : this.#planState(item)),
-      ...(this.isPlanContainer(item.fm.kind) ? { approval: this.#approvalOf(item), stages: this.#stagesOf(item), planHistory: [...(this.#planHistory.get(id) ?? [])] } : {}),
+      ...(this.isPlanContainer(item.fm.kind) ? { approval: this.#approvalOf(item), stages: this.#stagesOf(item), planHistory: [...(this.#planHistory.get(`T-${idNumber(id)}`) ?? [])] } : {}),
       ...this.#criteriaOf(item),
       ...this.#qaFor(item),
       comments: item.comments,
@@ -1219,12 +1266,12 @@ export class Tracker {
     const items = stage.lanes.flat();
     const facts = items.map(childId => {
       const child = this.#index.get(childId), receipt = this.#index.mergeReceipt(childId);
-      return { id: childId, state: child?.state, parent: child?.parent, kind: child?.kind, commit: receipt?.commit ?? null, base: receipt?.base ?? null,
+      return { id: childId, state: child?.state, parent: child?.parent ? `T-${idNumber(child.parent)}` : child?.parent, kind: child?.kind, commit: receipt?.commit ?? null, base: receipt?.base ?? null,
         belongs: !!child && this.#ancestorIds(child.parent).includes(id) };
     });
-    const overrides = items.map(childId => [childId, plan!.items?.[childId] ?? null]);
+    const overrides = items.map(childId => [childId, planOverride(plan!, childId) ?? null]);
     // An item's after-stage override still needs integrated QA even when the stage default uses per-item/none.
-    const policies = [stage.qa, ...items.flatMap(childId => plan!.items?.[childId]?.qa ? [plan!.items[childId]!.qa!] : [])]
+    const policies = [stage.qa, ...items.flatMap(childId => planOverride(plan!, childId)?.qa ? [planOverride(plan!, childId)!.qa!] : [])]
       .filter(qa => qa.when === 'after-stage' && qa.scope !== 'none');
     const qa: QaPolicy = policies.length ? { scope: policies.some(qa => qa.scope === 'full') ? 'full' : 'affected', when: 'after-stage' } : stage.qa;
     return { hash: createHash('sha256').update(JSON.stringify([stage, overrides, facts])).digest('hex'),
@@ -1261,7 +1308,7 @@ export class Tracker {
     const { id, file } = resumed(() => this.#require(rawId));
     const source = await this.#files.readFile(join(this.#dir, file), 'utf8');
     const snapshot = resumed(() => {
-      const item = parseItem(source, file, this.levels);
+      const item = this.#parseItem(source, file, this.levels);
       const plan = this.#validPlan(item);
       if (!this.isPlanContainer(item.fm.kind) || !plan || this.#planErrors.has(id)) throw new TrackerError('stage QA needs a valid epic plan');
       this.#acceptPlan(item, 'hand');
@@ -1305,14 +1352,14 @@ export class Tracker {
     const { file } = resumed(() => this.#require(id));
     const text = await this.#files.readFile(join(this.#dir, file), 'utf8');
     return resumed(() => {
-      const live = parseItem(text, file, this.levels);
+      const live = this.#parseItem(text, file, this.levels);
       if (serializeItem(live) !== source) throw new TrackerError(`${id}: epic evidence changed while closing; retry`);
       return { tip, view: this.#viewOf(id, file, live) };
     });
   }
 
   recordMerge(rawId: string, receipt: MergeReceipt): void { this.#index.recordMerge(this.#require(rawId).id, receipt); }
-  mergeReceipt(rawId: string): MergeReceipt | null { return this.#index.mergeReceipt(normalizeId(rawId) ?? rawId); }
+  mergeReceipt(rawId: string): MergeReceipt | null { return this.#index.mergeReceipt(this.#referenceId(rawId) ?? rawId); }
 
   closedAt(id: string): string | null { return this.#index.closedAt(id); }
   pruneSession(sessionId: string, name: string): void {
@@ -1346,7 +1393,7 @@ export class Tracker {
           return null;
         });
       } catch (err) { return resumed(() => ({ step, error: err instanceof Error ? err.message : String(err) })); }
-    }, resumed, { operation: 'finish merge', item: normalizeId(rawId) ?? rawId });
+    }, resumed, { operation: 'finish merge', item: this.#referenceId(rawId) ?? rawId });
   }
 
   list(filter: ListFilter = {}): ItemSummary[] {
@@ -1355,6 +1402,19 @@ export class Tracker {
     const verdicts = this.#index.verdicts();
     const base = this.#fresh.base();
     return this.#index.list(filter).map((i) => ({ ...i, ...this.#inboxPlan(i.id), claim: claims.get(i.id) ?? null, holds: this.#index.holdsOf(i.id), verdictBase: base, verdicts: this.#annotateVerdicts(i.id, i.kind, i.branch, verdicts.get(i.id) ?? []) }));
+  }
+
+  summary(raw: string): ItemSummary | null {
+    const id = this.resolveId(raw);
+    const item = id ? this.#index.get(id) : null;
+    return item ? { ...item, ...this.#inboxPlan(item.id), claim: this.#index.claimOf(item.id),
+      holds: this.#index.holdsOf(item.id), verdictBase: this.#fresh.base(),
+      verdicts: this.#annotateVerdicts(item.id, item.kind, item.branch, this.#index.verdicts(item.id).get(item.id) ?? []) } : null;
+  }
+
+  ancestry(raw: string): string[] {
+    const item = this.#index.get(raw);
+    return item ? [item.id, ...this.#ancestorIds(item.parent)] : [];
   }
 
   #inboxPlan(id: string): Pick<Partial<ItemView>, 'plan' | 'planError' | 'approval'> {
@@ -1459,8 +1519,11 @@ export class Tracker {
     if (active) active.item = item.fm.id;
     this.#normalizeStatus(item);
     const text = serializeItem(item);
-    const written = parseItem(text, name, this.levels);
+    const written = this.#parseItem(text, name, this.levels);
     this.#validPlan(written);
+    const oldName = name;
+    if (read && this.#index.get(read.id)?.kind !== item.fm.kind) name = name.replace(/^[a-z]-\d+/i, item.fm.id);
+    const oldPath = join(this.#dir, oldName);
     const path = join(this.#dir, name);
     const tmp = join(this.#dir, `.${name}.${process.pid}.tmp`);
     try {
@@ -1468,11 +1531,15 @@ export class Tracker {
       // No fsync was used by the synchronous implementation: completion promises atomic replacement,
       // not survival of power loss. A process crash before rename leaves the previous item intact.
       if (this.#writeGate) await this.#writeGate();
-      const before = read ? await this.#files.readFile(path, 'utf8').then(text => resumed(() => hashOf(text)), () => null) : null;
+      const before = read ? await this.#files.readFile(oldPath, 'utf8').then(text => resumed(() => hashOf(text)), () => null) : null;
       if (beforeRename) await resumed(beforeRename);
       if (read?.op === 'criterion' && before !== read.hash) throw new TrackerError(`${read.id}: concurrent hand edit; criterion write refused, retry`);
       if (read?.op === 'criterion') await this.#replaceCriterion(path, tmp, read.hash, resumed, beforeCommit, path => { read.captured = path; });
-      else await resumed(() => { beforeCommit?.(); return this.#files.rename(tmp, path); });
+      else if (name !== oldName) {
+        await resumed(() => { beforeCommit?.(); return this.#files.link(tmp, path); });
+        await this.#files.unlink(oldPath);
+        await this.#files.unlink(tmp);
+      } else await resumed(() => { beforeCommit?.(); return this.#files.rename(tmp, path); });
       const replacedText = read ? await readWhole(read.fd, resumed).catch(() => null) : null;
       const replaced = replacedText === null ? null : resumed(() => hashOf(replacedText));
       if (read?.op === 'criterion' && replaced !== read.hash) throw new TrackerError(`${read.id}: concurrent in-place hand edit; criterion write refused, recover ${read.captured} and retry`);
@@ -1544,7 +1611,7 @@ export class Tracker {
       const written = await resumed(() => {
         const meta = this.#index.metaOf(id);
         let item: Item;
-        try { item = parseItem(text, file, this.levels); }
+        try { item = this.#parseItem(text, file, this.levels); }
         catch (err) { throw new TrackerError(`${id}: ${join(TASKS_REL, file)} cannot be read (${err instanceof ItemParseError ? err.message : String(err)}); fix the file by hand first`); }
         if (meta && meta.hash !== hashOf(text)) this.#log({ event: 'task-conflict', id, file, winner: 'hub', op, note: 'a hand edit not yet indexed was read and the hub write applied on top of it; last writer wins' });
         const wasClosedTask = item.fm.kind === 'task' && item.fm.state === 'closed';
@@ -1573,14 +1640,14 @@ export class Tracker {
       try {
         if ('error' in result) throw result.error;
         this.#log({ event: 'task-written', id, file, op, by: actor.name });
-        return this.#viewOf(id, file, result.written);
+        return this.#viewOf(result.written.fm.id, this.#index.metaOf(result.written.fm.id)!.file, result.written);
       } finally { await fd.close(); }
     });
   }
 
   #ref(raw: string, self: string | null, what: string): string {
-    const id = normalizeId(raw);
-    if (!id) throw new TrackerError(`${what}: "${raw}" is not an item id (T-<n>)`);
+    const id = this.#referenceId(raw);
+    if (!id) throw new TrackerError(`${what}: "${raw}" is not an item id (a kind prefix and number)`);
     if (id === self) throw new TrackerError(`${what}: an item cannot reference itself`);
     if (!this.#index.metaOf(id)) throw new TrackerError(`${what}: no item ${id}`);
     return id;
@@ -1615,8 +1682,8 @@ export class Tracker {
     this.#checkTopic(null, topic);
     const names = await this.#files.readdir(this.#dir);
     return resumed(async () => {
-      const maxFile = Math.max(0, ...names.map((n) => fileNumber(n) ?? 0));
-      const id = this.#index.allocate(maxFile);
+      const maxFile = Math.max(0, ...names.map((n) => this.#fileNumber(n) ?? 0));
+      const id = `${prefixOf(kind)}-${this.#index.allocate(maxFile)}`;
       const name = fileNameOf(id, title);
       const now = this.#now().toISOString();
       const item: Item = {
@@ -1652,7 +1719,7 @@ export class Tracker {
    * it. `resumed` times each synchronous continuation after Git and file I/O.
    */
   comment(actor: Actor, rawId: string, text: string, verdict?: VerdictInput, resumed: Resumed = untimed, currentActor?: () => Actor): Promise<ItemView> {
-    return this.#serial(resumed => this.#comment(actor, rawId, text, verdict, resumed, currentActor), resumed, { operation: 'comment', item: normalizeId(rawId) ?? rawId });
+    return this.#serial(resumed => this.#comment(actor, rawId, text, verdict, resumed, currentActor), resumed, { operation: 'comment', item: this.#referenceId(rawId) ?? rawId });
   }
 
   #comment(actor: Actor, rawId: string, text: string, verdict: VerdictInput | undefined, resumed: Resumed, currentActor?: () => Actor): Promise<ItemView> {
@@ -1684,7 +1751,7 @@ export class Tracker {
           const writer = currentActor ? currentActor() : actor;
           this.#ensureSession(writer);
           if (writer.role !== 'qa' || writer.id !== actor.id) throw new TrackerError('stage QA writer changed; retry');
-          const claim = this.#index.claimOf(normalizeId(rawId)!);
+          const claim = this.#index.claimOf(this.#referenceId(rawId)!);
           if (claim && ['implementer', 'aide'].includes(claim.role ?? '') && this.sameSession(claim.sessionId, writer.id)) throw new TrackerError('the claiming session cannot supply stage QA');
           v!.by = formatVerdictBy(writer.name, writer.role);
           let checked = evidence;
@@ -1692,7 +1759,7 @@ export class Tracker {
             const now = currentActor ? currentActor() : writer;
             this.#ensureSession(now);
             if (now.id !== writer.id || now.name !== writer.name || now.role !== 'qa') throw new TrackerError('stage QA writer changed; nothing written, retry');
-            if (checked.tip !== evidence.tip || checked.hash !== evidence.hash || checked.source !== evidence.source || this.#stageSnapshot(normalizeId(rawId)!, v!.stage!)?.hash !== evidence.hash) throw new TrackerError('stage QA evidence changed while writing; nothing written, retry');
+            if (checked.tip !== evidence.tip || checked.hash !== evidence.hash || checked.source !== evidence.source || this.#stageSnapshot(this.#referenceId(rawId)!, v!.stage!)?.hash !== evidence.hash) throw new TrackerError('stage QA evidence changed while writing; nothing written, retry');
             this.#fresh.noteTip('dev', checked.tip);
           }, verdict, async () => { checked = await this.#stageEvidence(rawId, v!.stage!, resumed); }, evidence.canonical);
         });
@@ -1781,7 +1848,7 @@ export class Tracker {
         this.#setStatus(item, 'in progress');
         if (this.levels.includes(item.fm.kind)) item.fm.state = 'open';
       }
-    }, resumed, actor, beforeCommit, v ? () => this.#index.setHold(normalizeId(rawId) ?? rawId, this.#sessionId(actor.id), null) : undefined, beforeRename);
+    }, resumed, actor, beforeCommit, v ? () => this.#index.setHold(this.#referenceId(rawId) ?? rawId, this.#sessionId(actor.id), null) : undefined, beforeRename);
     return resumed(() => {
       for (const c of marked) this.#criterionEvent(view.id, c.id, c.mark);
       // what is announced is what the file records, however it came: a structured verdict, or a text that reads back
@@ -1832,10 +1899,10 @@ export class Tracker {
   /** One directory pass after the final write await: disk parents, not lagging index rows, own discovery. */
   async #scanChildren(id: string, resumed: Resumed): Promise<Child[]> {
     const names = await this.#files.readdir(this.#dir);
-    const settled = await resumed(() => Promise.allSettled(names.filter(name => fileNumber(name) !== null).map(async file => {
+    const settled = await resumed(() => Promise.allSettled(names.filter(name => this.#fileNumber(name) !== null).map(async file => {
       try {
         const text = await this.#files.readFile(join(this.#dir, file), 'utf8');
-        return resumed(() => ({ ...parseItem(text, file, this.levels).fm, file }));
+        return resumed(() => ({ ...this.#parseItem(text, file, this.levels).fm, file }));
       } catch (err) {
         return resumed(() => { throw new TrackerError(`${join(TASKS_REL, file)} cannot be read (${err instanceof Error ? err.message : String(err)})`); });
       }
@@ -1889,6 +1956,7 @@ export class Tracker {
             if (refusal) throw new TrackerError(refusal);
           }
           fm.kind = input.kind;
+          fm.id = `${prefixOf(fm.kind)}-${idNumber(fm.id)}`;
           if (fm.kind === this.levels[0]) item.body = withReleaseNotes(item.body);
         }
         if (input.version !== undefined) {
@@ -1942,7 +2010,7 @@ export class Tracker {
         }
         return { ...view, claim: this.#index.claimOf(view.id) };
       });
-    }, resumed, { operation: 'edit', item: normalizeId(rawId) ?? rawId });
+    }, resumed, { operation: 'edit', item: this.#referenceId(rawId) ?? rawId });
   }
 
   #criterionEvent(id: string, criterion: string, mark: string): void {
@@ -2056,7 +2124,7 @@ export class Tracker {
         this.#criterionEvent(id, criterion, input.op === 'verify' ? 'verified' : input.op === 'fail' ? 'failed' : input.op);
         return view;
       });
-    }, resumed, { operation: 'criterion', item: normalizeId(rawId) ?? rawId });
+    }, resumed, { operation: 'criterion', item: this.#referenceId(rawId) ?? rawId });
   }
 
   close(actor: Actor, rawId: string, comment?: string, resumed: Resumed = untimed, authorize: () => void = () => {}, override?: string): Promise<ItemView> {
@@ -2101,7 +2169,7 @@ export class Tracker {
         this.#closed(view.id);
         return { ...view, claim: this.#index.claimOf(view.id) };
       });
-    }, resumed, { operation: 'close', item: normalizeId(rawId) ?? rawId });
+    }, resumed, { operation: 'close', item: this.#referenceId(rawId) ?? rawId });
   }
 
   #releaseOnClose(id: string): void {
@@ -2118,7 +2186,7 @@ export class Tracker {
       const { id } = this.#require(rawId);
       const parent = input.parent === undefined ? undefined : input.parent === null ? null : this.#ref(input.parent, id, 'parent');
       const add = (input.blocked_by ?? []).map((b) => this.#ref(b, id, 'blocked_by'));
-      const remove = (input.unblock ?? []).map((b) => normalizeId(b) ?? b);
+      const remove = (input.unblock ?? []).map((b) => this.#referenceId(b) ?? b);
       const topic = input.topic === undefined ? undefined : input.topic?.trim() || null;
       if (topic !== undefined) this.#checkTopic(id, topic);
       const view = await this.#mutate(id, actor, 'link', (item) => {
@@ -2132,7 +2200,7 @@ export class Tracker {
         if (topic !== undefined) this.#topicBinding?.bound(id, topic);
         return view;
       });
-    }, resumed, { operation: 'link', item: normalizeId(rawId) ?? rawId });
+    }, resumed, { operation: 'link', item: this.#referenceId(rawId) ?? rawId });
   }
 
   /** Ranking holds the same queue as all other tracker writes. Disk ranks are checked again after
@@ -2159,7 +2227,7 @@ export class Tracker {
           let slot = 0;
           const reference = input.before ?? input.after;
           if (reference !== undefined) {
-            const target = records.find(row => row.id === normalizeId(reference));
+            const target = records.find(row => row.id === this.#referenceId(reference));
             if (!target) throw new TrackerError(`no item ${reference}`);
             if (target.id === id) throw new TrackerError('an item cannot be ranked relative to itself');
             if (target.parent !== item.parent) throw new TrackerError('rank target must have the same parent');
@@ -2208,22 +2276,22 @@ export class Tracker {
           throw error;
         });
       }
-    }, resumed, { operation: 'rank', item: normalizeId(rawId) ?? rawId });
+    }, resumed, { operation: 'rank', item: this.#referenceId(rawId) ?? rawId });
   }
 
   /** Reads remain inside rank's admission (calling viewAsync here would queue behind ourselves). */
   async #readRankView(id: string, resumed: Resumed): Promise<ItemView> {
     const { file } = this.#require(id);
     const text = await this.#files.readFile(join(this.#dir, file), 'utf8');
-    return resumed(() => this.#viewOf(id, file, parseItem(text, file, this.levels)));
+    return resumed(() => this.#viewOf(id, file, this.#parseItem(text, file, this.levels)));
   }
 
   async #rankRecords(resumed: Resumed): Promise<Array<{ id: string; kind: Kind; parent: string | null; rank: number; file: string }>> {
     const names = await this.#files.readdir(this.#dir);
-    const settled = await resumed(() => Promise.allSettled(names.filter(name => fileNumber(name) !== null).map(async file => {
+    const settled = await resumed(() => Promise.allSettled(names.filter(name => this.#fileNumber(name) !== null).map(async file => {
       const text = await this.#files.readFile(join(this.#dir, file), 'utf8');
       return resumed(() => {
-        const fm = parseItem(text, file, this.levels).fm;
+        const fm = this.#parseItem(text, file, this.levels).fm;
         return { id: fm.id, kind: fm.kind, parent: fm.parent, rank: effectiveRank(fm), file };
       });
     })));
@@ -2242,7 +2310,7 @@ export class Tracker {
         if (item.fm.topic !== null && item.fm.topic !== topic) throw new TrackerError(`${item.fm.id} already has a topic`);
         item.fm.topic = topic;
       }, resumed, undefined, authorize);
-    }, resumed, { operation: 'topic binding', item: normalizeId(rawId) ?? rawId });
+    }, resumed, { operation: 'topic binding', item: this.#referenceId(rawId) ?? rawId });
   }
 
   // ---------------------------------------------------------------- imports
@@ -2267,7 +2335,7 @@ export class Tracker {
 
   async #filesAsync(resumed: Resumed): Promise<Array<{ file: string; text: string; item: Item }>> {
     const names = await this.#files.readdir(this.#dir);
-    const found = await resumed(() => Promise.all(names.filter(n => fileNumber(n) !== null).map(async file => {
+    const found = await resumed(() => Promise.all(names.filter(n => this.#fileNumber(n) !== null).map(async file => {
       try {
         const text = await this.#files.readFile(join(this.#dir, file), 'utf8');
         return resumed(() => ({ file, text, item: parseItem(text, file, this.levels) }));
@@ -2291,13 +2359,13 @@ export class Tracker {
 
   async #reserveIdAsync(resumed: Resumed): Promise<string> {
     const names = await this.#files.readdir(this.#dir);
-    return resumed(() => this.#index.allocate(Math.max(0, ...names.map(n => fileNumber(n) ?? 0))));
+    return resumed(() => `T-${this.#index.allocate(Math.max(0, ...names.map(n => this.#fileNumber(n) ?? 0)))}`);
   }
 
   /** Reserve the next item id before its file exists (an import numbers a whole batch before it links it). */
   reserveId(): string {
-    const maxFile = Math.max(0, ...readdirSync(this.#dir).map((n) => fileNumber(n) ?? 0));
-    return this.#index.allocate(maxFile);
+    const maxFile = Math.max(0, ...readdirSync(this.#dir).map((n) => this.#fileNumber(n) ?? 0));
+    return `T-${this.#index.allocate(maxFile)}`;
   }
 
   /**
@@ -2311,7 +2379,7 @@ export class Tracker {
 
   async #writeItem(actor: Actor, op: string, item: Item, existing: { file: string; text: string } | null, resumed: Resumed, authorize: () => void): Promise<'created' | 'updated' | 'unchanged'> {
     const file = existing?.file ?? fileNameOf(item.fm.id, item.fm.title);
-    const previousItem = existing ? parseItem(existing.text, file, this.levels) : null;
+    const previousItem = existing ? this.#parseItem(existing.text, file, this.levels) : null;
     const previous = previousItem?.fm ?? null;
     const closing = previous?.state === 'open' && item.fm.state === 'closed';
     const changingKind = previous !== null && previous.kind !== item.fm.kind;
@@ -2456,7 +2524,7 @@ export class Tracker {
           () => this.#index.setHold(id, this.#sessionId(actor.id), { ...hold, sessionId: this.#sessionId(actor.id) }));
       }
       return resumed(() => ({ id, holds: this.#index.holdsOf(id) }));
-    }, resumed, { operation: 'hold', item: normalizeId(rawId) ?? rawId });
+    }, resumed, { operation: 'hold', item: this.#referenceId(rawId) ?? rawId });
   }
 
   /** The live claim is an index fact, read without opening the item file. */
@@ -2505,7 +2573,7 @@ export class Tracker {
           ...(held && held.sessionId !== this.#sessionId(actor.id) ? { took: held.session } : {}) });
         return { id, claim: this.#index.claimOf(id) };
       });
-    }, resumed, { operation: 'claim', item: normalizeId(rawId) ?? rawId });
+    }, resumed, { operation: 'claim', item: this.#referenceId(rawId) ?? rawId });
   }
 }
 

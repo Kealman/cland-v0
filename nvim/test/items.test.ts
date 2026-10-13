@@ -65,12 +65,12 @@ test('the epic row, item fields and sessions panel show its launched Lead', { sk
   await c.waitScreen(s => s.includes('General'), 'the workbench');
   await c.input('<Esc><Space>i');
   await c.lua("vim.api.nvim_win_set_width(require('cland.layout').win.left,85)");
-  const panel = await c.waitScreen(s => /T-1 Led epic.*lead-1 \[Lead\].*0\/0/.test(s), 'the epic Lead badge');
+  const panel = await c.waitScreen(s => /E-1 Led epic.*lead-1 \[Lead\].*0\/0/.test(s), 'the epic Lead badge');
   assert.match(panel, /lead-1 \[Lead\]/);
   await c.input(':Cland view item T-1<CR>');
   await c.waitScreen(s => /claim.*lead-1 \[Lead\]/.test(s), 'the item claim fields');
   await c.input('<Esc><Space>s');
-  await c.waitScreen(s => s.includes('lead-1 [Lead]') && s.includes('T-1'), 'the Lead session and its epic');
+  await c.waitScreen(s => s.includes('lead-1 [Lead]') && s.includes('E-1'), 'the Lead session and its epic');
 });
 
 test('configured containers with no children show container counts in the panel and stay outside board cards', { skip }, async t => {
@@ -86,9 +86,9 @@ test('configured containers with no children show container counts in the panel 
   await c.input('<Esc><Space>i');
   await c.lua("vim.api.nvim_win_set_width(require('cland.layout').win.left,70)");
   await c.input('6zR');
-  const panel = await c.waitScreen(s => /T-2 feature.*0\/0/.test(s), 'the configured empty container');
-  assert.match(panel, /T-1 initiative +0\/3/);
-  assert.match(panel, /T-6 map +0\/0/);
+  const panel = await c.waitScreen(s => /F-2 feature.*0\/0/.test(s), 'the configured empty container');
+  assert.match(panel, /I-1 initiative +0\/3/);
+  assert.match(panel, /M-6 map +0\/0/);
   await c.input('<Space>b');
   const screen = await c.waitScreen(s => s.includes('BACKLOG') && s.includes('T-3'), 'task board card');
   // The panel may still be open, so inspect the board's public column result as well.
@@ -111,18 +111,18 @@ test('against a real hub: the tree, the map grouping, the item view and the boar
   await c.waitScreen((s) => s.includes('General'), 'the workbench');
   await c.input('<Esc><Space>i');
   await c.lua("vim.api.nvim_win_set_width(require('cland.layout').win.left,70)");
-  let s = await c.waitScreen((x) => x.includes('Review passed') && /T-2 T-1 › Items panel +impl-1/.test(x), 'the items panel with the claim');
+  let s = await c.waitScreen((x) => x.includes('Review passed') && /T-2 E-1 › Items panel +impl-1/.test(x), 'the items panel with the claim');
   const panel = leftOf(s);
-  assert.match(panel, /^ T-1 Workbench shell +1\/4\s*$/m);
-  assert.match(panel, /^ ◐ T-2 T-1 › Items panel +impl-1$/m);
-  assert.match(panel, /^ ◉ T-3 T-1 › Board view +✗ review$/m, 'a not-clear review stays review with a failed verdict mark');
-  assert.doesNotMatch(panel, /T-4 T-1 › Item view/, 'done is hidden from the board');
+  assert.match(panel, /^ E-1 Workbench shell +1\/4\s*$/m);
+  assert.match(panel, /^ ◐ T-2 E-1 › Items panel +impl-1$/m);
+  assert.match(panel, /^ ◉ T-3 E-1 › Board view +✗ review$/m, 'a not-clear review stays review with a failed verdict mark');
+  assert.doesNotMatch(panel, /T-4 E-1 › Item view/, 'done is hidden from the board');
   await c.input('4');
-  await c.waitScreen(x => /● T-4 T-1 › Item view/.test(x), 'done filter reveals the closed row');
+  await c.waitScreen(x => /● T-4 E-1 › Item view/.test(x), 'done filter reveals the closed row');
   await c.input('1');
   await c.waitScreen(x=>x.includes('unscheduled ('),'board filter restored');
   await c.input('/unscheduled (<CR>za');
-  await c.waitScreen(x => /◌ T-8 T-5 › Auth scheme/.test(x), 'open blocker in unfolded unscheduled');
+  await c.waitScreen(x => /◌ Q-8 M-5 › Auth scheme/.test(x), 'open blocker in unfolded unscheduled');
 
   // the map grouping
   await c.input('5');
@@ -130,8 +130,8 @@ test('against a real hub: the tree, the map grouping, the item view and the boar
   const map = leftOf(s)
     .split('\n')
     .map((l) => l.trim().replace(/^[▾▸] /, '').replace(/\s+/g, ' '))
-    .filter((l) => /^[○●◐◑◆◌] T-\d+ |^[A-Z][A-Z -]+ · \d+$/.test(l));
-  assert.deepEqual(map, ['○ T-5 Slice 2 map 1/3', 'DECIDED · 1', '● T-6 Which store', 'FRONTIER · 1', '○ T-7 Transport', 'IN WORK BY SUB-AGENTS · 0', 'BLOCKED · 1', '◌ T-8 Auth scheme']);
+    .filter((l) => /^[○●◐◑◆◌] [MQ]-\d+ |^[A-Z][A-Z -]+ · \d+$/.test(l));
+  assert.deepEqual(map, ['○ M-5 Slice 2 map 1/3', 'DECIDED · 1', '● Q-6 Which store', 'FRONTIER · 1', '○ Q-7 Transport', 'IN WORK BY SUB-AGENTS · 0', 'BLOCKED · 1', '◌ Q-8 Auth scheme']);
   await c.input('1');
 
   await c.lua("vim.api.nvim_win_set_width(require('cland.layout').win.left,35)");
@@ -139,7 +139,7 @@ test('against a real hub: the tree, the map grouping, the item view and the boar
   await c.input(':Cland view item T-3<CR>');
   s = await c.waitScreen((x) => x.includes('COMMENTS · 2'), 'the item view of T-3');
   assert.match(s, /◉ T-3 · open · review · task/);
-  assert.match(s, /parent {5}T-1 Workbench shell/);
+  assert.match(s, /parent {5}E-1 Workbench shell/);
   assert.match(s, /Six columns derived from the item\./);
   assert.match(s, /✗ review not clear · by rev-1 \[Reviewer\] · run r-2/);
   assert.match(s, /Ready for review\./);
@@ -167,24 +167,24 @@ test('against a real hub: the tree, the map grouping, the item view and the boar
   await c.lua("vim.api.nvim_win_set_width(require('cland.layout').win.left,70)");
   const written = Date.now();
   await writeFile(join(tasks, 'T-10-born-by-hand.md'), itemFile('T-10', 'Born by hand', { parent: 'T-5', kind: 'question' }));
-  await c.waitScreen((x) => /^ ○ T-10 T-5 › Born by hand +$/m.test(leftOf(x)), 'T-10 in the panel', 3000);
+  await c.waitScreen((x) => /^ ○ Q-10 M-5 › Born by hand +$/m.test(leftOf(x)), 'Q-10 in the panel', 3000);
   const took = Date.now() - written;
   assert.ok(took < 1000, `the panel followed the file in ${took} ms`);
 
   // e opens the file in a normal buffer; a save re-indexes it
   await c.input(':Cland view item T-7<CR>');
-  await c.waitScreen((x) => statusLine(x).includes('T-7 · item') && x.includes('COMMENTS · 0'), 'the item view of T-7');
+  await c.waitScreen((x) => statusLine(x).includes('Q-7 · item') && x.includes('COMMENTS · 0'), 'the item view of Q-7');
   await c.input('e');
   await c.waitScreen((x) => statusLine(x).includes('editing .cland/tasks/T-7-transport.md'), 'the file open');
   assert.equal(await c.lua<string>('return vim.fn.expand("%:t")'), 'T-7-transport.md');
   assert.equal(await c.lua<string>('return vim.bo.buftype'), '');
   await c.input(':%s/^title: Transport$/title: Transport over QUIC/<CR>:w<CR>');
   const saved = Date.now();
-  await c.waitScreen((x) => /^ ○ T-7 T-5 › Transport over QUIC +$/m.test(leftOf(x)), 'the new title in the panel', 3000);
+  await c.waitScreen((x) => /^ ○ Q-7 M-5 › Transport over QUIC +$/m.test(leftOf(x)), 'the new title in the panel', 3000);
   const took2 = Date.now() - saved;
   assert.ok(took2 < 1000, `the panel followed the save in ${took2} ms`);
   const list = JSON.parse((await cland(root, 'task', 'list', '--json')).stdout) as { items: Array<{ id: string; title: string }> };
-  assert.equal(list.items.find((i) => i.id === 'T-7')?.title, 'Transport over QUIC', 'the hub re-indexed the save');
+  assert.equal(list.items.find((i) => i.id === 'Q-7')?.title, 'Transport over QUIC', 'the hub re-indexed the save');
 });
 
 

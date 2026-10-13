@@ -68,11 +68,11 @@ test('the hub enforces the parenting rule on create, link and kind edits without
     assert.equal(refused.ok, false);
     assert.match(refused.error ?? '', /parenting rule|cannot reference itself/);
   }
-  const before = await readFile(join(root, '.cland/tasks/T-2-epic.md'), 'utf8');
+  const before = await readFile(join(root, '.cland/tasks/E-2-epic.md'), 'utf8');
   const edit = await ui.request({ type: 'task.edit', item: epic, kind: 'task', title: 'Must not change' });
   assert.equal(edit.ok, false, 'changing a container kind cannot leave its children under a leaf');
   assert.match(edit.error ?? '', /parenting rule/);
-  assert.equal(await readFile(join(root, '.cland/tasks/T-2-epic.md'), 'utf8'), before);
+  assert.equal(await readFile(join(root, '.cland/tasks/E-2-epic.md'), 'utf8'), before);
   assert.equal((await ui.request({ type: 'task.link', item: task, parent: release })).ok, true);
   assert.equal((await ui.request({ type: 'task.link', item: epic, parent: null })).ok, true);
   // The same rule is applied by the CLI and MCP tool, not just raw frames.
@@ -92,15 +92,15 @@ test('under selects descendants before other filters; CLI and MCP views return t
   const ui = await connectUi(t, await readDiscovery(root));
   for (const frame of [
     { title: 'v0.1', kind: 'release', version: '0.1.0' },
-    { title: 'Schema', kind: 'epic', parent: 'T-1' },
-    { title: 'Other epic', kind: 'epic', parent: 'T-1' },
-    { title: 'Parser', parent: 'T-2', labels: ['hub'] },
-    { title: 'Direct leaf', kind: 'question', parent: 'T-1', labels: ['hub'] },
+    { title: 'Schema', kind: 'epic', parent: 'R-1' },
+    { title: 'Other epic', kind: 'epic', parent: 'R-1' },
+    { title: 'Parser', parent: 'E-2', labels: ['hub'] },
+    { title: 'Direct leaf', kind: 'question', parent: 'R-1', labels: ['hub'] },
     { title: 'Unscheduled', kind: 'epic' },
-    { title: 'Outside', parent: 'T-6', labels: ['hub'] },
+    { title: 'Outside', parent: 'E-6', labels: ['hub'] },
   ]) assert.equal((await ui.request({ type: 'task.create', ...frame })).ok, true);
   assert.equal((await ui.request({ type: 'task.close', item: 'T-4' })).ok, true);
-  assert.equal((await ui.request({ type: 'task.close', item: 'T-2', override: 'Hierarchy fixture: no epic demo' })).ok, true);
+  assert.equal((await ui.request({ type: 'task.close', item: 'E-2', override: 'Hierarchy fixture: no epic demo' })).ok, true);
   // Reopening a leaf leaves its closed ancestor readable and included in subtree queries.
   assert.equal((await ui.request({ type: 'task.edit', item: 'T-4', state: 'open' })).ok, true);
   const ids = async (filter: Record<string, unknown>) => {
@@ -108,33 +108,33 @@ test('under selects descendants before other filters; CLI and MCP views return t
     assert.equal(r.ok, true, r.error);
     return (r.value as { items: Item[] }).items.map(item => item.id);
   };
-  assert.deepEqual(await ids({ under: '1' }), ['T-2', 'T-3', 'T-4', 'T-5']);
-  assert.deepEqual(await ids({ under: 'T-1', kind: 'epic' }), ['T-2', 'T-3']);
-  assert.deepEqual(await ids({ under: 'T-1', state: 'open', labels: ['hub'] }), ['T-4', 'T-5']);
-  assert.deepEqual(await ids({ under: 'T-2' }), ['T-4']);
+  assert.deepEqual(await ids({ under: '1' }), ['E-2', 'E-3', 'T-4', 'Q-5']);
+  assert.deepEqual(await ids({ under: 'R-1', kind: 'epic' }), ['E-2', 'E-3']);
+  assert.deepEqual(await ids({ under: 'R-1', state: 'open', labels: ['hub'] }), ['T-4', 'Q-5']);
+  assert.deepEqual(await ids({ under: 'E-2' }), ['T-4']);
   assert.deepEqual(await ids({ under: 'T-4' }), []);
   for (const under of ['T-99', 'invalid', 12]) assert.equal((await ui.request({ type: 'task.list', under })).ok, false);
   const plain = await cland(root, 'task', 'view', 'T-4');
   assert.equal(plain.code, 0, plain.stderr);
-  assert.equal(plain.stdout.split('\n')[0], 'T-1  v0.1 › T-2  Schema › T-4  Parser');
-  const listed = await cland(root, 'task', 'list', '--under', 'T-1', '--kind', 'epic', '--json');
+  assert.equal(plain.stdout.split('\n')[0], 'R-1  v0.1 › E-2  Schema › T-4  Parser');
+  const listed = await cland(root, 'task', 'list', '--under', 'R-1', '--kind', 'epic', '--json');
   assert.equal(listed.code, 0, listed.stderr);
-  assert.deepEqual((JSON.parse(listed.stdout) as { items: Item[] }).items.map(item => item.id), ['T-2', 'T-3']);
+  assert.deepEqual((JSON.parse(listed.stdout) as { items: Item[] }).items.map(item => item.id), ['E-2', 'E-3']);
   const spoke = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
   t.after(() => spoke.close());
-  const mcpList = await spoke.call<{ items: Item[] }>('task.list', { under: 'T-1', kind: 'epic' });
-  assert.deepEqual(mcpList.items.map(item => item.id), ['T-2', 'T-3']);
+  const mcpList = await spoke.call<{ items: Item[] }>('task.list', { under: 'R-1', kind: 'epic' });
+  assert.deepEqual(mcpList.items.map(item => item.id), ['E-2', 'E-3']);
   const view = await spoke.call<{ item: Item }>('task.view', { id: 'T-4' });
   assert.deepEqual(view.item.ancestry, [
-    { id: 'T-1', kind: 'release', title: 'v0.1' },
-    { id: 'T-2', kind: 'epic', title: 'Schema' },
+    { id: 'R-1', kind: 'release', title: 'v0.1' },
+    { id: 'E-2', kind: 'epic', title: 'Schema' },
     { id: 'T-4', kind: 'task', title: 'Parser' },
   ]);
   assert.equal(view.item.path, '.cland/tasks/T-4-parser.md', 'file path keeps its existing meaning');
-  assert.equal((await ui.request({ type: 'task.link', item: 'T-2', parent: null })).ok, true);
+  assert.equal((await ui.request({ type: 'task.link', item: 'E-2', parent: null })).ok, true);
   const moved = await spoke.call<{ item: Item }>('task.view', { id: 'T-4' });
-  assert.deepEqual(moved.item.ancestry.map(item => item.id), ['T-2', 'T-4']);
-  assert.deepEqual(await ids({ under: 'T-1' }), ['T-3', 'T-5']);
+  assert.deepEqual(moved.item.ancestry.map(item => item.id), ['E-2', 'T-4']);
+  assert.deepEqual(await ids({ under: 'R-1' }), ['E-3', 'Q-5']);
 });
 
 test('an unversioned release can be planned later; invalid version edits preserve the previous file', async t => {
@@ -144,7 +144,7 @@ test('an unversioned release can be planned later; invalid version edits preserv
   const edit = await cland(root, 'task', 'edit', 'T-1', '--version', '2.0.0', '--json');
   assert.equal(edit.code, 0, edit.stderr);
   assert.equal((JSON.parse(edit.stdout) as { item: Item }).item.version, '2.0.0');
-  const file = join(root, '.cland/tasks/T-1-later.md');
+  const file = join(root, '.cland/tasks/R-1-later.md');
   const before = await readFile(file, 'utf8');
   const ui = await connectUi(t, await readDiscovery(root));
   for (const version of ['v2.0.0', 2]) {

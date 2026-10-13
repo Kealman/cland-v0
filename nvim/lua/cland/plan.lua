@@ -28,9 +28,16 @@ local function wrap(s, w)
   return out
 end
 
+local function receipt(id)
+  local n = state.item_number(id)
+  for key, value in pairs(state.S.ui.plan_seen or {}) do
+    if n and state.item_number(key) == n then return value end
+  end
+end
+
 function M.enter(id)
   M.stale[id] = true
-  M.visits[id] = { seen = (state.S.ui.plan_seen or {})[id], acknowledge = true }
+  M.visits[id] = { seen = receipt(id), acknowledge = true }
 end
 
 -- Preserve the hub's publication order, including changes with identical timestamps.
@@ -45,7 +52,7 @@ local function history_from_detail(id, value)
   local visit = M.visits[id]
   if visit and visit.acknowledge and state.S.ui.view.kind == 'plan' and state.S.ui.view.id == id then
     state.S.ui.plan_seen = state.S.ui.plan_seen or {}
-    state.S.ui.plan_seen[id] = history[#history] and history[#history].id or nil
+    state.S.ui.plan_seen['T-' .. state.item_number(id)] = history[#history] and history[#history].id or nil
     visit.acknowledge = false
     require('cland.ui').changed()
   end
@@ -190,7 +197,7 @@ end
 
 function M.changes(id)
   local visit = M.visits[id]
-  local receipt = (state.S.ui.plan_seen or {})[id]
+  local receipt = receipt(id)
   if visit and state.S.ui.view.kind == 'plan' and state.S.ui.view.id == id then receipt = visit.seen end
   local history = M.history[id] or {}
   local since = 0

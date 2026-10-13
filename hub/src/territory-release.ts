@@ -1,3 +1,4 @@
+import { parseItemReference } from './tracker/prefixes.ts';
 // Release orchestration uses only the territory's async Git runner and lock. The annotated object is prepared
 // without a tag ref, so a rejected atomic GitHub push leaves every local ref unchanged.
 import { access } from 'node:fs/promises';
@@ -130,7 +131,7 @@ export async function releaseGit(root: string, version: string | undefined, dryR
     const items: Array<{ id: string; subject: string }> = [], other: string[] = [];
     for (const message of history.split('\x1e').map(s => s.trim()).filter(Boolean)) {
       const [subject, trailers = ''] = message.split('\0');
-      const ids = trailers.split('\n').map(s => s.trim()).filter(s => /^T-\d+$/.test(s));
+      const ids = trailers.split('\n').map(s => s.trim()).filter(s => parseItemReference(s) !== null);
       if (ids.length) for (const id of ids) items.push({ id, subject: subject! });
       else other.push(subject!);
     }

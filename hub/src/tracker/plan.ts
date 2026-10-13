@@ -1,12 +1,24 @@
 // Epic plans are file content. This module owns their YAML shape and Markdown section;
 // the tracker supplies membership/criterion facts and keeps the last accepted version.
 import { parse, stringify } from 'yaml';
+import { idNumber } from './item.ts';
+import { parseItemReference } from './prefixes.ts';
 
 export type QaPolicy = { scope: 'none' | 'affected' | 'full'; when: 'per-item' | 'after-stage' };
 export type EpicPlan = {
   stages: Array<{ name: string; qa: QaPolicy; lanes: string[][] }>;
   items?: Record<string, { qa?: QaPolicy; qa_criteria?: string[] }>;
 };
+/** Preserve plan spelling for approval hashes; match policy overrides by numeric identity. */
+export function planOverrideKey(plan: EpicPlan, id: string): string | undefined {
+  return Object.keys(plan.items ?? {}).find(key => idNumber(key) === idNumber(id));
+}
+
+export function planOverride(plan: EpicPlan, id: string): NonNullable<EpicPlan['items']>[string] | undefined {
+  const key = planOverrideKey(plan, id);
+  return key === undefined ? undefined : plan.items?.[key];
+}
+
 export class PlanError extends Error {}
 
 const mapping = (raw: unknown, where: string): Record<string, unknown> => {
@@ -28,7 +40,7 @@ export function qaPolicy(raw: unknown, where = 'qa'): QaPolicy {
   return { scope: r.scope as QaPolicy['scope'], when: r.when as QaPolicy['when'] };
 }
 
-export function parsePlan(yaml: string): EpicPlan {
+export function parsePlan(yaml: string, kinds?: readonly string[]): EpicPlan {
   let raw: unknown;
   try { raw = parse(yaml, { uniqueKeys: true, maxAliasCount: 100 }); }
   catch (err) { throw new PlanError(`plan is not valid YAML: ${err instanceof Error ? err.message.split('\n')[0] : String(err)}`); }
@@ -44,9 +56,9 @@ export function parsePlan(yaml: string): EpicPlan {
     if (names.has(name)) throw new PlanError(`duplicate stage name ${name}`);
     names.add(name);
     const lanes = nonempty(s.lanes, `${where}.lanes`).map((lane, laneIndex) => nonempty(lane, `${where}.lanes[${laneIndex + 1}]`).map(id => {
-      if (typeof id !== 'string' || !/^T-[1-9]\d*$/.test(id)) throw new PlanError(`${where}: lane item must be an id such as T-55`);
-      if (seen.has(id)) throw new PlanError(`${id} appears in more than one lane position`);
-      seen.add(id);
+      if (typeof id !== 'string' || !parseItemReference(id, kinds)) throw new PlanError(`${where}: lane item must be an id such as T-55`);
+      if (seen.has(String(parseItemReference(id, kinds)!.n))) throw new PlanError(`${id} appears in more than one lane position`);
+      seen.add(String(parseItemReference(id, kinds)!.n));
       return id;
     }));
     return { name, qa: qaPolicy(s.qa, `${where}.qa`), lanes };
@@ -55,8 +67,12 @@ export function parsePlan(yaml: string): EpicPlan {
   if (r.items !== undefined) {
     const items = mapping(r.items, 'items');
     plan.items = {};
+    const overridden = new Set<number>();
     for (const [id, raw] of Object.entries(items)) {
-      if (!seen.has(id)) throw new PlanError(`items.${id}: override item is not in a plan lane`);
+      if (!parseItemReference(id, kinds) || !seen.has(String(parseItemReference(id, kinds)!.n))) throw new PlanError(`items.${id}: override item is not in a plan lane`);
+      const n = parseItemReference(id, kinds)!.n;
+      if (overridden.has(n)) throw new PlanError(`items.${id}: duplicate override for item number ${n}`);
+      overridden.add(n);
       const item = mapping(raw, `items.${id}`);
       keys(item, ['qa', 'qa_criteria'], `items.${id}`);
       if (item.qa === undefined && item.qa_criteria === undefined) throw new PlanError(`items.${id}: needs qa or qa_criteria`);
@@ -95,7 +111,7 @@ function section(body: string): Section | null {
   return start < 0 ? null : { start, end, lines };
 }
 
-export function planInBody(body: string): EpicPlan | null {
+export function planInBody(body: string, kinds?: readonly string[]): EpicPlan | null {
   // Ordinary items need no plan parsing, even if unrelated prose has an unfinished fence.
   if (!/^## Plan[ \t]*$/m.test(body)) return null;
   const found = section(body);
@@ -103,7 +119,7 @@ export function planInBody(body: string): EpicPlan | null {
   const text = found.lines.slice(found.start + 1, found.end).join('\n').trim();
   const block = /^(`{3,}|~{3,})(?:yaml|yml)[ \t]*\n([\s\S]*?)\n\1[ \t]*$/.exec(text);
   if (!block) throw new PlanError('## Plan must contain exactly one fenced yaml block');
-  return parsePlan(block[2]!);
+  return parsePlan(block[2]!, kinds);
 }
 
 export function withPlan(body: string, plan: EpicPlan): string {

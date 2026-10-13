@@ -59,7 +59,7 @@ const runImport = async (root: string, env: Env, ...args: string[]): Promise<Sum
 /** Every item file in the project, by name. */
 async function snapshot(root: string): Promise<Map<string, string>> {
   const dir = join(root, '.cland', 'tasks');
-  const names = (await readdir(dir)).filter((n) => /^T-\d+-.*\.md$/.test(n)).sort();
+  const names = (await readdir(dir)).filter((n) => n.endsWith('.md')).sort();
   return new Map(await Promise.all(names.map(async (n) => [n, await readFile(join(dir, n), 'utf8')] as const)));
 }
 

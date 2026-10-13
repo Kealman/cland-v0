@@ -425,7 +425,7 @@ export class Sessions {
       label: withRole(p.name, p.role),
       model: p.model,
       cwd: p.cwd,
-      item: p.item ?? null,
+      item: p.item ? this.#tracker?.resolveId(p.item) ?? p.item : null,
       holds: this.#core.sessionHolds(p),
       ...(pending ? { pending } : {}),
       pid: p.pid,

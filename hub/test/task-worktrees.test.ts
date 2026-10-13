@@ -86,7 +86,7 @@ test('configured container worktree refusals choose an article from the kind', a
   const root = await project(t);
   await writeFile(join(root, '.cland/config.toml'), '[tracker]\nlevels = ["initiative", "feature"]\n');
   await startDaemon(t, root);
-  for (const [kind, article, id] of [['initiative', 'an', 'T-1'], ['feature', 'a', 'T-2']]) {
+  for (const [kind, article, id] of [['initiative', 'an', 'I-1'], ['feature', 'a', 'F-2']]) {
     ok(await cland(root, 'task', 'create', `Planning ${kind}`, '--kind', kind!));
     const result = json<Claimed>(await cland(root, 'task', 'claim', id!, '--json'));
     assert.equal(result.worktree, null);
@@ -110,14 +110,14 @@ test('a release, epic, spec, question or map, a closed task, or a project withou
     reasons.push(r.reason ?? '');
   }
   assert.deepEqual(reasons, [
-    'T-1 is an epic: only a task gets a branch and a worktree',
-    'T-2 is a spec: only a task gets a branch and a worktree',
-    'T-3 is a question: only a task gets a branch and a worktree',
-    'T-4 is a map: only a task gets a branch and a worktree',
+    'E-1 is an epic: only a task gets a branch and a worktree',
+    'S-2 is a spec: only a task gets a branch and a worktree',
+    'Q-3 is a question: only a task gets a branch and a worktree',
+    'M-4 is a map: only a task gets a branch and a worktree',
     'T-5 is closed: no worktree',
-    'T-6 is a release: only a task gets a branch and a worktree',
+    'R-6 is a release: only a task gets a branch and a worktree',
   ]);
-  assert.match(ok(await cland(root, 'task', 'claim', 'T-1')).stdout, /worktree {2}none: T-1 is an epic/);
+  assert.match(ok(await cland(root, 'task', 'claim', 'T-1')).stdout, /worktree {2}none: E-1 is an epic/);
   assert.equal(existsSync(join(root, '.cland', 'worktrees')), false);
   assert.equal(git(root, 'branch', '--list', 't/*'), '');
 
@@ -244,9 +244,9 @@ test('the spoke\'s session.launch with item launches in the worktree; item with 
   const epic = await coord.call<Launch>('session.launch', { name: 'impl-3', role: 'implementer', harness: 'claude-code', item: 'T-2' });
   assert.equal(epic.ok, true, epic.error);
   assert.equal(epic.process.cwd, root);
-  assert.equal(epic.process.item, 'T-2');
+  assert.equal(epic.process.item, 'E-2');
   assert.equal(epic.worktree, null);
-  assert.equal(epic.reason, 'T-2 is an epic: only a task gets a branch and a worktree');
+  assert.equal(epic.reason, 'E-2 is an epic: only a task gets a branch and a worktree');
   assert.equal(epic.claim?.session, 'impl-3');
 });
 

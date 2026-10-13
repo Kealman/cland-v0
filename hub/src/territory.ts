@@ -1,3 +1,4 @@
+import { parseItemReference } from './tracker/prefixes.ts';
 // The territory's Git commands live here. Init needs no hub; later hub operations use the same lock and runner.
 import { execFile, spawnSync } from 'node:child_process';
 import { chmodSync, existsSync, mkdirSync, realpathSync, rmSync, statSync } from 'node:fs';
@@ -382,7 +383,7 @@ export async function listTaskWorktrees(root: string): Promise<Array<Worktree & 
   for (const w of await worktrees(root)) {
     const parent = resolve(w.path, '..');
     const name = w.path.slice(parent.length + 1);
-    if (/^T-\d+$/.test(name) && await samePath(parent, dir)) found.push({ ...w, item: name });
+    if (parseItemReference(name) !== null && await samePath(parent, dir)) found.push({ ...w, item: name });
   }
   return found;
 }
@@ -474,7 +475,7 @@ export type TaskWorktree = { item: string; branch: string; path: string; base: s
  */
 export async function ensureTaskWorktree(root: string, item: { id: string; slug: string; branch: string | null }, resumed: <T>(work: () => T) => T = work => work(), authorize: () => void = () => {}): Promise<TaskWorktree> {
   if (!(await hasTerritory(root))) throw new Error('the project has no territory (run cland init)');
-  if (!/^T-\d+$/.test(item.id)) throw new Error(`not an item id: ${item.id}`);
+  if (parseItemReference(item.id) === null) throw new Error(`not an item id: ${item.id}`);
   return withTerritoryLockAsync(root, async () => {
     const path = taskWorktreePath(root, item.id);
     await checkWorktreePath(root, path, resumed);

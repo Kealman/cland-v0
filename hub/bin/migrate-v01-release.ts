@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // T-118's one-off repository migration. Run from the main project root after merging and restarting the hub.
 // Every read/write uses cland task; reruns reuse one open 0.1.0 release and skip already-parented epics.
+import { idNumber } from '../src/tracker/item.ts';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
@@ -38,7 +39,7 @@ async function migrate(): Promise<void> {
   const matches = items.filter(item => item.kind === 'release' && item.state === 'open' && item.version === '0.1.0');
   if (matches.length > 1) throw new Error(`multiple open releases with version 0.1.0: ${matches.map(item => `${item.id} (${item.title})`).join(', ')}; resolve the duplicates before migrating`);
   const epics = epicIds.map(id => {
-    const item = items.find(item => item.id === id);
+    const item = items.find(item => idNumber(item.id) === idNumber(id));
     if (!item || item.kind !== 'epic' || !item.labels.includes('v0.1')) throw new Error(`${id} must be an epic labelled v0.1; nothing was changed`);
     return item;
   });
@@ -49,12 +50,12 @@ async function migrate(): Promise<void> {
     console.log(`created ${release.id}: ${release.title}`);
   }
   for (const epic of epics) {
-    if (epic.parent === release.id) continue;
+    if (epic.parent && idNumber(epic.parent) === idNumber(release.id)) continue;
     await task('link', epic.id, '--parent', release.id);
     console.log(`${epic.id} → ${release.id}`);
   }
   const subtree = await task<{ items: Item[] }>('list', '--under', release.id, '--kind', 'epic');
-  if (JSON.stringify(subtree.items.map(item => item.id)) !== JSON.stringify(epicIds)) throw new Error(`${release.id}: expected exactly T-107 through T-117; inspect the subtree before committing`);
+  if (JSON.stringify(subtree.items.map(item => idNumber(item.id))) !== JSON.stringify(epicIds.map(idNumber))) throw new Error(`${release.id}: expected exactly T-107 through T-117; inspect the subtree before committing`);
   console.log(`${release.id}: verified eleven v0.1 epics; no v0 item was changed`);
 }
 

@@ -33,11 +33,11 @@ local function validate(data)
     assert(type(size) == 'number' and size >= 1 and size < 100000 and size == math.floor(size), 'invalid size')
   end
   assert(vim.tbl_contains(require('cland.items').FILTERS, data.items_filter) or vim.tbl_contains(require('cland.items').LAYERS, data.items_filter), 'invalid items filter')
-  assert(data.current_release == nil or (type(data.current_release) == 'string' and data.current_release:match('^T%-[1-9]%d*$')), 'invalid release pick')
+  assert(data.current_release == nil or (type(data.current_release) == 'string' and data.current_release:match('^%a%-[1-9]%d*$')), 'invalid release pick')
   data.plan_seen = data.plan_seen or vim.empty_dict()
   assert(type(data.plan_seen) == 'table', 'invalid plan receipts')
   for id, receipt in pairs(data.plan_seen) do
-    assert(type(id) == 'string' and id:match('^T%-[1-9]%d*$') and type(receipt) == 'string', 'invalid plan receipt')
+    assert(type(id) == 'string' and id:match('^%a%-[1-9]%d*$') and type(receipt) == 'string', 'invalid plan receipt')
   end
   data.events = data.events or { filter = vim.empty_dict(), muted = {} }
   local e = data.events

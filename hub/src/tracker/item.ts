@@ -2,6 +2,7 @@
 // item's text as the body, comments under `## Comments`, verdicts as comments with a structured header.
 // Pure: text in, text out; nothing here touches the disk.
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
+import { parseItemReference } from './prefixes.ts';
 import { DEFAULT_LEVELS, kindsFor, kindWithArticle } from './kinds.ts';
 // Keep Kind visible to the compiler after inference/destructuring; every configured string remains assignable.
 export type Kind = string & {};
@@ -59,20 +60,18 @@ export type Item = { fm: Frontmatter; body: string; comments: Comment[] };
 export const COMMENTS_HEADING = '## Comments';
 const COMMENT_HEADER = /^### (.+?) · (\S+)\s*$/;
 const VERDICT_LINE = /^(verdict|result|by|run|commit|stage|stage_hash):\s*(.*?)\s*$/;
-const FILE_NAME = /^T-(\d+)(?:-[^/]*)?\.md$/;
-
-/** `T-12`, `t-12`, `12` → `T-12`; null when it is not an item id. */
-export function normalizeId(raw: string): string | null {
-  const m = /^(?:[Tt]-)?(\d+)$/.exec(raw.trim());
-  return m ? `T-${Number(m[1])}` : null;
+/** Stable numeric lookup key; display ids are supplied by the index, from the kind. */
+export function normalizeId(raw: string, kinds?: readonly string[]): string | null {
+  const ref = parseItemReference(raw, kinds);
+  return ref ? `T-${ref.n}` : null;
 }
 
-export const idNumber = (id: string): number => Number(id.slice(2));
+export const idNumber = (id: string): number => Number(/(?:^|-)(\d+)$/.exec(id)?.[1] ?? NaN);
 
-/** The item number a file name carries, or null when the name is not an item file. */
-export function fileNumber(name: string): number | null {
-  const m = FILE_NAME.exec(name);
-  return m ? Number(m[1]) : null;
+/** The item number a recognized file name carries. Configured kinds supply their prefixes. */
+export function fileNumber(name: string, kinds?: readonly string[]): number | null {
+  const match = /^([a-z]-\d+)(?:-[^/]*)?\.md$/i.exec(name);
+  return match ? parseItemReference(match[1]!, kinds)?.n ?? null : null;
 }
 
 /** A short slug from a title: lowercase words joined by hyphens, cut at a word boundary. */
@@ -143,9 +142,13 @@ export class UnknownKindError extends ItemParseError {}
 
 const str = (v: unknown): string | null => (v === null || v === undefined || v === '' ? null : String(v));
 const list = (v: unknown): string[] => (v === null || v === undefined ? [] : Array.isArray(v) ? v.map(String).filter(Boolean) : [String(v)]);
-const ref = (v: unknown): string | null => {
+const referenceId = (raw: string, kinds?: readonly string[]): string | null => {
+  const parsed = parseItemReference(raw, kinds);
+  return parsed ? `${parsed.prefix ?? 'T'}-${parsed.n}` : null;
+};
+const ref = (v: unknown, kinds?: readonly string[]): string | null => {
   const s = str(v);
-  return s === null ? null : (normalizeId(s) ?? s);
+  return s === null ? null : (referenceId(s, kinds) ?? s);
 };
 
 /**
@@ -165,12 +168,13 @@ export function parseItem(text: string, fileName?: string, levels: readonly stri
   }
   if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) throw new ItemParseError('frontmatter is not a mapping');
   const r = raw as Record<string, unknown>;
-  const fromName = fileName !== undefined ? fileNumber(fileName) : null;
-  const id = ref(r.id) ?? (fromName !== null ? `T-${fromName}` : null);
-  if (id === null || normalizeId(id) === null) throw new ItemParseError(`no item id (frontmatter id: ${JSON.stringify(r.id ?? null)})`);
+  const kinds = [...kindsFor(levels), 'category'];
   const kind = (str(r.kind) ?? 'task') as Kind;
-  const kinds = kindsFor(levels);
-  if (!kinds.includes(kind)) throw new UnknownKindError(`unknown kind "${kind}" (one of ${kinds.join(', ')})`);
+  const acceptedKinds = kindsFor(levels);
+  if (!acceptedKinds.includes(kind)) throw new UnknownKindError(`unknown kind "${kind}" (one of ${acceptedKinds.join(', ')})`);
+  const fromName = fileName !== undefined ? fileNumber(fileName, kinds) : null;
+  const id = ref(r.id, kinds) ?? (fromName !== null ? `T-${fromName}` : null);
+  if (id === null || normalizeId(id, kinds) === null) throw new ItemParseError(`no item id (frontmatter id: ${JSON.stringify(r.id ?? null)})`);
   const state = (str(r.state) ?? 'open') as State;
   if (!STATES.includes(state)) throw new ItemParseError(`unknown state "${state}" (open or closed)`);
   const fm: Frontmatter = {
@@ -180,8 +184,8 @@ export function parseItem(text: string, fileName?: string, levels: readonly stri
     state,
     labels: list(r.labels),
     assignee: str(r.assignee),
-    parent: ref(r.parent),
-    blocked_by: list(r.blocked_by).map((b) => normalizeId(b) ?? b),
+    parent: ref(r.parent, kinds),
+    blocked_by: list(r.blocked_by).map((b) => referenceId(b, kinds) ?? b),
     topic: str(r.topic),
     branch: str(r.branch),
     created: str(r.created) ?? '',

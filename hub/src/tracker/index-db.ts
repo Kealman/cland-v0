@@ -6,6 +6,7 @@ import type { EpicPlan } from './plan.ts';
 import { compareRank, effectiveRank } from './rank.ts';
 import { createHash } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
+import { parseItemReference, prefixOf } from './prefixes.ts';
 import { idNumber, type Comment, type Verdict, type Item, type Kind, type State, type Status, type VerdictKind, type VerdictResult } from './item.ts';
 
 const SCHEMA = `
@@ -149,11 +150,14 @@ type Row = Record<string, string | number | null>;
 
 export class TrackerIndex {
   readonly #db: DatabaseSync;
+  readonly #kinds: readonly string[] | undefined;
 
-  constructor(path: string) {
+  constructor(path: string, kinds?: readonly string[]) {
+    this.#kinds = kinds;
     this.#db = new DatabaseSync(path);
     this.#db.exec('pragma journal_mode = wal; pragma foreign_keys = on; pragma busy_timeout = 5000;');
     this.#db.exec(SCHEMA);
+    this.#db.exec('create index if not exists tracker_items_number on tracker_items (n); create index if not exists tracker_items_parent on tracker_items (parent); create index if not exists tracker_items_file on tracker_items (file)');
     // Additive columns for databases created by earlier hub versions.
     const itemColumns = new Set((this.#db.prepare('pragma table_info(tracker_items)').all() as Row[]).map(r => r.name));
     if (!itemColumns.has('version')) this.#db.exec('alter table tracker_items add column version text');
@@ -170,6 +174,20 @@ export class TrackerIndex {
     if (!mergeColumns.has('checkout_recovery')) this.#db.exec('alter table tracker_merges add column checkout_recovery text');
     if (!mergeColumns.has('merged_at')) this.#db.exec('alter table tracker_merges add column merged_at text');
   }
+
+  #key(id: string): string { const n = idNumber(id); return Number.isSafeInteger(n) && n > 0 ? `T-${n}` : id; }
+
+  #referenceKey(id: string): string { return parseItemReference(id, this.#kinds) ? this.#key(id) : id; }
+
+  /** Numeric lookup uses tracker_items.n, indexed independently of the source file prefix. */
+  resolve(id: string): string | null {
+    const n = parseItemReference(id, this.#kinds)?.n;
+    if (n === undefined) return null;
+    const row = this.#db.prepare('select kind from tracker_items where n = ?').get(n) as Row | undefined;
+    return row ? `${prefixOf(row.kind as string)}-${n}` : null;
+  }
+
+  #canonical(id: string): string { return this.resolve(id) ?? id; }
 
   close(): void {
     this.#db.close();
@@ -189,7 +207,9 @@ export class TrackerIndex {
 
   /** Index one item's current version, replacing whatever the index held for its id. */
   put(item: Item, meta: IndexMeta, writer?: { id: string; role: string | null }): void {
-    const fm = item.fm;
+    const fm = { ...item.fm, id: `T-${idNumber(item.fm.id)}`,
+      parent: item.fm.parent ? this.#referenceKey(item.fm.parent) : null,
+      blocked_by: item.fm.blocked_by.map(id => this.#referenceKey(id)) };
     this.#tx(() => {
       const key = `closed-at:${fm.id}`;
       if (fm.state === 'open') this.#db.prepare('delete from tracker_meta where key = ?').run(key);
@@ -220,38 +240,43 @@ export class TrackerIndex {
   }
 
   criterionIds(id: string): string[] {
+    id = this.#key(id);
     const row = this.#db.prepare('select criteria_ids from tracker_items where id = ?').get(id) as Row | undefined;
     return row ? JSON.parse(row.criteria_ids as string) as string[] : [];
   }
 
   plan(id: string): EpicPlan | null {
+    id = this.#key(id);
     const row = this.#db.prepare('select plan_json from tracker_plans where item_id = ?').get(id) as Row | undefined;
     return row ? JSON.parse(row.plan_json as string) as EpicPlan : null;
   }
 
   rememberPlan(id: string, plan: EpicPlan | null): void {
+    id = this.#key(id);
     if (plan === null) this.#db.prepare('delete from tracker_plans where item_id = ?').run(id);
     else this.#db.prepare('insert into tracker_plans (item_id, plan_json) values (?, ?) on conflict(item_id) do update set plan_json = excluded.plan_json').run(id, JSON.stringify(plan));
   }
 
   remove(id: string): void {
+    id = this.#key(id);
     this.rememberPlan(id, null);
     this.#db.prepare('delete from tracker_items where id = ?').run(id);
   }
 
   /** The index's view of which file holds which id, and what it last saw there. */
   metaOf(id: string): IndexMeta | null {
+    id = this.#key(id);
     const r = this.#db.prepare('select file, hash, source, indexed_at from tracker_items where id = ?').get(id) as Row | undefined;
     return r ? { file: r.file as string, hash: r.hash as string, source: r.source as Source, indexedAt: r.indexed_at as number } : null;
   }
 
   idOfFile(file: string): string | null {
     const r = this.#db.prepare('select id from tracker_items where file = ?').get(file) as Row | undefined;
-    return (r?.id as string | undefined) ?? null;
+    return r ? this.#canonical(r.id as string) : null;
   }
 
   ids(): string[] {
-    return (this.#db.prepare('select id from tracker_items order by n').all() as Row[]).map((r) => r.id as string);
+    return (this.#db.prepare('select id from tracker_items order by n').all() as Row[]).map((r) => this.#canonical(r.id as string));
   }
 
   /** The highest item number ever indexed: an id is never handed out twice, even after its file is gone. */
@@ -266,10 +291,10 @@ export class TrackerIndex {
   }
 
   /** Reserve the next id: one above everything the index and `fileMax` (the folder's highest) know of. */
-  allocate(fileMax: number): string {
+  allocate(fileMax: number): number {
     const n = Math.max(this.highWater(), fileMax) + 1;
     this.#raiseHighWater(n);
-    return `T-${n}`;
+    return n;
   }
 
   list(filter: ListFilter = {}): IndexedItem[] {
@@ -280,7 +305,7 @@ export class TrackerIndex {
         select id from tracker_items where parent = ?
         union select child.id from tracker_items child join subtree on child.parent = subtree.id
       ) select id from subtree where id != ?)`);
-      args.push(filter.under, filter.under);
+      args.push(this.#key(filter.under), this.#key(filter.under));
     }
     if (filter.state) {
       where.push('i.state = ?');
@@ -308,11 +333,13 @@ export class TrackerIndex {
 
   /** Direct children only; hand-edit warnings need no unrelated labels or blockers. */
   children(id: string): IndexedItem[] {
+    id = this.#key(id);
     const rows = this.#db.prepare('select i.* from tracker_items i where parent = ?').all(id) as Row[];
     return rows.map(row => this.#hydrate(row)).sort(compareRank);
   }
 
   get(id: string): IndexedItem | null {
+    id = this.#key(id);
     const r = this.#db.prepare('select * from tracker_items where id = ?').get(id) as Row | undefined;
     return r ? this.#hydrate(r) : null;
   }
@@ -320,7 +347,7 @@ export class TrackerIndex {
   #hydrate(r: Row): IndexedItem {
     const id = r.id as string;
     return {
-      id,
+      id: this.#canonical(id),
       kind: r.kind as Kind,
       rank: effectiveRank({ id, rank: r.rank as number | null }),
       ...(r.version !== null ? { version: r.version as string } : {}),
@@ -329,8 +356,8 @@ export class TrackerIndex {
       ...(r.status !== null ? { status: r.status as Status } : {}),
       labels: (this.#db.prepare('select label from tracker_labels where item_id = ? order by rowid').all(id) as Row[]).map((x) => x.label as string),
       assignee: (r.assignee as string | null) ?? null,
-      parent: (r.parent as string | null) ?? null,
-      blocked_by: (this.#db.prepare('select blocker from tracker_blocked_by where item_id = ? order by rowid').all(id) as Row[]).map((x) => x.blocker as string),
+      parent: r.parent ? this.#canonical(r.parent as string) : null,
+      blocked_by: (this.#db.prepare('select blocker from tracker_blocked_by where item_id = ? order by rowid').all(id) as Row[]).map((x) => this.#canonical(x.blocker as string)),
       topic: (r.topic as string | null) ?? null,
       branch: (r.branch as string | null) ?? null,
       created: r.created as string,
@@ -340,11 +367,11 @@ export class TrackerIndex {
   }
 
   /** Every item's verdicts, in file order: what `task.list` shows beside each summary. */
-  verdicts(): Map<string, IndexedVerdict[]> {
-    const rows = this.#db.prepare('select item_id, verdict, result, by, run, author, at, commit_sha, comment_key, stage, stage_hash from tracker_verdicts order by item_id, seq').all() as Row[];
+  verdicts(item?: string): Map<string, IndexedVerdict[]> {
+    const rows = this.#db.prepare(`select item_id, verdict, result, by, run, author, at, commit_sha, comment_key, stage, stage_hash from tracker_verdicts ${item ? 'where item_id = ?' : ''} order by item_id, seq`).all(...(item ? [this.#key(item)] : [])) as Row[];
     const out = new Map<string, KeyedVerdict[]>();
     for (const r of rows) {
-      const id = r.item_id as string;
+      const id = this.#canonical(r.item_id as string);
       const list = out.get(id) ?? [];
       list.push({ verdict: { verdict: r.verdict as VerdictKind, result: r.result as VerdictResult, by: r.by as string, run: r.run as string, author: r.author as string, at: r.at as string, ...(r.commit_sha ? { commit: r.commit_sha as string } : {}), ...(r.stage ? { stage: r.stage as string } : {}), ...(r.stage_hash ? { stage_hash: r.stage_hash as string } : {}) }, key: r.comment_key as string });
       out.set(id, list);
@@ -355,6 +382,7 @@ export class TrackerIndex {
   /** Each durable record can match only once, in write order, across the item's file-ordered comments.
    *  A copied comment cannot replay earlier evidence after a later verdict, even if its original is removed. */
   markVerdicts(id: string, verdicts: KeyedVerdict[]): IndexedVerdict[] {
+    id = this.#key(id);
     // rowid is the durable table's insertion order, independent of file sequence numbers and edited times.
     const rows = this.#db.prepare('select rowid as written_order, comment_key, session_id, role from tracker_written_verdicts where item_id = ? order by rowid').all(id) as Row[];
     const records = new Map(rows.map(r => [r.comment_key as string, r]));
@@ -369,6 +397,7 @@ export class TrackerIndex {
 
   /** The gate's evidence follows durable write order, and every recorded comment must still be present. */
   mergeVerdicts(id: string, verdicts: KeyedVerdict[]): { verdicts: IndexedVerdict[]; missing?: { run: string; commit: string | null } } {
+    id = this.#key(id);
     const present = new Map(verdicts.map(v => [v.key, v.verdict]));
     const rows = this.#db.prepare('select comment_key, run, commit_sha, session_id, role from tracker_written_verdicts where item_id = ? order by rowid').all(id) as Row[];
     const selected: IndexedVerdict[] = [];
@@ -382,6 +411,7 @@ export class TrackerIndex {
 
   /** Routing affinity follows authenticated verifier writes, independent of edited comment headers. */
   lastVerifier(item: string, role: 'reviewer' | 'qa'): { sessionId: string; at: string } | null {
+    item = this.#key(item);
     const row = this.#db.prepare(`select session_id, at from tracker_written_verdicts
       where item_id = ? and role = ? and verdict = ? order by rowid desc limit 1`)
       .get(item, role, role === 'reviewer' ? 'review' : 'qa') as Row | undefined;
@@ -389,6 +419,7 @@ export class TrackerIndex {
   }
 
   recordMerge(id: string, receipt: MergeReceipt): void {
+    id = this.#key(id);
     this.#db.prepare(`insert into tracker_merges (item_id, branch, tip, base, commit_sha, override_reason, checkout_recovery, merged_at) values (?, ?, ?, ?, ?, ?, ?, ?)
       on conflict (item_id) do update set branch = excluded.branch, tip = excluded.tip, base = excluded.base,
       merged_at = case when tracker_merges.commit_sha = excluded.commit_sha then coalesce(tracker_merges.merged_at, excluded.merged_at) else excluded.merged_at end,
@@ -398,6 +429,7 @@ export class TrackerIndex {
 
   /** Indexed lifecycle time, without materialising bodies, verdicts or journal history. */
   closedAt(id: string): string | null {
+    id = this.#key(id);
     const row = this.#db.prepare(`select coalesce(m.merged_at, t.value, i.updated) as at from tracker_items i
       left join tracker_merges m on m.item_id = i.id
       left join tracker_meta t on t.key = 'closed-at:' || i.id
@@ -406,11 +438,13 @@ export class TrackerIndex {
   }
 
   mergeReceipt(id: string): MergeReceipt | null {
+    id = this.#key(id);
     const row = this.#db.prepare('select * from tracker_merges where item_id = ?').get(id) as Row | undefined;
     return row ? { branch: row.branch as string, tip: row.tip as string, base: row.base as string, commit: row.commit_sha as string, ...(row.override_reason === null ? {} : { override: row.override_reason as string }), ...(row.checkout_recovery === null ? {} : { checkout: JSON.parse(row.checkout_recovery as string) as CheckoutRecovery }) } : null;
   }
 
   holdsOf(id: string): VerifierHold[] {
+    id = this.#key(id);
     const rows = this.#db.prepare('select * from tracker_holds where item_id = ? order by held_at, session_id').all(id) as Row[];
     return rows.map(r => ({ session: r.session as string, sessionId: r.session_id as string,
       role: r.role as VerifierHold['role'], heldAt: r.held_at as string }));
@@ -421,7 +455,7 @@ export class TrackerIndex {
     const rows = this.#db.prepare('select h.* from tracker_holds h join tracker_items i on i.id = h.item_id order by h.item_id, h.held_at, h.session_id').all() as Row[];
     const holds = new Map<string, VerifierHold[]>();
     for (const row of rows) {
-      const item = row.item_id as string;
+      const item = this.#canonical(row.item_id as string);
       const list = holds.get(item) ?? [];
       list.push({ session: row.session as string, sessionId: row.session_id as string,
         role: row.role as VerifierHold['role'], heldAt: row.held_at as string });
@@ -431,6 +465,7 @@ export class TrackerIndex {
   }
 
   setHold(id: string, sessionId: string, hold: VerifierHold | null): void {
+    id = this.#key(id);
     if (!hold) this.#db.prepare('delete from tracker_holds where item_id = ? and session_id = ?').run(id, sessionId);
     else this.#db.prepare('insert into tracker_holds (item_id, session_id, session, role, held_at) values (?, ?, ?, ?, ?) on conflict (item_id, session_id) do update set session = excluded.session, role = excluded.role')
       .run(id, sessionId, hold.session, hold.role, hold.heldAt);
@@ -439,7 +474,7 @@ export class TrackerIndex {
   releaseHolds(sessionId: string): string[] {
     const rows = this.#db.prepare('select item_id from tracker_holds where session_id = ?').all(sessionId) as Row[];
     this.#db.prepare('delete from tracker_holds where session_id = ?').run(sessionId);
-    return rows.map(r => r.item_id as string);
+    return rows.map(r => this.#canonical(r.item_id as string));
   }
 
   pruneSession(sessionId: string): string[] {
@@ -447,7 +482,7 @@ export class TrackerIndex {
       const rows = this.#db.prepare('select item_id from tracker_holds where session_id = ? union select item_id from tracker_claims where session_id = ?').all(sessionId, sessionId) as Row[];
       this.#db.prepare('delete from tracker_holds where session_id = ?').run(sessionId);
       this.#db.prepare('delete from tracker_claims where session_id = ?').run(sessionId);
-      return rows.map(row => row.item_id as string);
+      return rows.map(row => this.#canonical(row.item_id as string));
     });
   }
 
@@ -487,31 +522,34 @@ export class TrackerIndex {
   // ---------------------------------------------------------------- claims
 
   claimOf(id: string): Claim | null {
+    id = this.#key(id);
     const r = this.#db.prepare('select session, session_id, role, claimed_at from tracker_claims where item_id = ?').get(id) as Row | undefined;
     return r ? claimOfRow(r) : null;
   }
 
   claims(): Map<string, Claim> {
     const rows = this.#db.prepare('select item_id, session, session_id, role, claimed_at from tracker_claims').all() as Row[];
-    return new Map(rows.map((r) => [r.item_id as string, claimOfRow(r)]));
+    return new Map(rows.map((r) => [this.#canonical(r.item_id as string), claimOfRow(r)]));
   }
 
   /** Current session work excludes claims whose item has left the rebuildable index. */
   indexedClaims(): Map<string, Claim> {
     const rows = this.#db.prepare('select c.* from tracker_claims c join tracker_items i on i.id = c.item_id').all() as Row[];
-    return new Map(rows.map(r => [r.item_id as string, claimOfRow(r)]));
+    return new Map(rows.map(r => [this.#canonical(r.item_id as string), claimOfRow(r)]));
   }
 
   /** Every claim held by one session (by id) is held by another, in one statement (a role's handover, #31).
    *  Returns the items moved with their claims as they were. */
   moveClaims(fromSessionId: string, to: { session: string; sessionId: string; role: string | null }, item?: string): Array<{ item: string; was: Claim }> {
+    if (item !== undefined) item = this.#canonical(item);
     const was = [...this.claims()].filter(([id, c]) => c.sessionId === fromSessionId && (item === undefined || id === item));
     if (!was.length) return [];
-    this.#db.prepare('update tracker_claims set session = ?, session_id = ?, role = ? where session_id = ? and (? is null or item_id = ?)').run(to.session, to.sessionId, to.role, fromSessionId, item ?? null, item ?? null);
+    this.#db.prepare('update tracker_claims set session = ?, session_id = ?, role = ? where session_id = ? and (? is null or item_id = ?)').run(to.session, to.sessionId, to.role, fromSessionId, item ? this.#key(item) : null, item ? this.#key(item) : null);
     return was.map(([item, c]) => ({ item, was: c }));
   }
 
   setClaim(id: string, claim: Claim | null): void {
+    id = this.#key(id);
     if (claim === null) this.#db.prepare('delete from tracker_claims where item_id = ?').run(id);
     else
       this.#db

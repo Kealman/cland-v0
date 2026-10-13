@@ -1,3 +1,5 @@
+import { prefixOf } from './prefixes.ts';
+import { idNumber } from './item.ts';
 // The hub's side of `cland task import-github` (spec 6, tracker bootstrap): a batch of GitHub issues, already
 // fetched by the CLI, becomes items. An issue is found again by the `github` reference its item carries, so a
 // re-run updates in place; an item whose text would not change is not written at all.
@@ -155,7 +157,7 @@ export function importIssues(tracker: Tracker, actor: Actor, req: ImportRequest,
       const missing = [...new Set(req.issues.map(issue => key({ repo: req.repo, number: issue.number })))].filter(k => !ids.has(k));
       const reserved = await Promise.all(missing.map(() => batch.reserveIdAsync(resumed)));
       return resumed(() => {
-        missing.forEach((k, i) => ids.set(k, reserved[i]!));
+        missing.forEach((k, i) => { const issue = req.issues.find(issue => key({ repo: req.repo, number: issue.number }) === k)!; ids.set(k, `${prefixOf(kindOfLabels(issue.labels, tracker.levels))}-${idNumber(reserved[i]!)}`); });
         const resolve = (r: IssueRef): string | null => ids.get(key(r)) ?? null;
         const results: ImportOutcome[] = [];
         let offset = 0;
@@ -167,7 +169,7 @@ export function importIssues(tracker: Tracker, actor: Actor, req: ImportRequest,
           const existing = byKey.get(key({ repo: req.repo, number: issue.number })) ?? null;
           const id = ids.get(key({ repo: req.repo, number: issue.number }))!;
           const { item, commentsAdded, unresolved } = mergeIssue(existing?.item ?? null, issue, { id, repo: req.repo, resolve, levels: tracker.levels });
-          return batch.writeItem(actor, 'import', item, existing, resumed, authorize).then(outcome => resumed(() => next({ number: issue.number, id, outcome, comments_added: commentsAdded, unresolved })));
+          return batch.writeItem(actor, 'import', item, existing, resumed, authorize).then(outcome => resumed(() => next({ number: issue.number, id: tracker.resolveId(id) ?? id, outcome, comments_added: commentsAdded, unresolved })));
         };
         return next();
       });

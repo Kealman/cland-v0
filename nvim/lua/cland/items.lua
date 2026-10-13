@@ -233,13 +233,14 @@ function M.apply_event(ev)
   end
   local item = type(ev.item) == 'table' and ev.item or nil
   for i, it in ipairs(state.S.items) do
-    if it.id == id then
+    if tonumber(it.id:match('%-(%d+)$')) == tonumber(id:match('%-(%d+)$')) then
       state.S.sibling_orders[parent_key(it)] = nil
       if item then state.S.items[i] = item else table.remove(state.S.items, i) end
+      state.index_item(id, item)
       break
     end
   end
-  if item and not state.item(id) then table.insert(state.S.items, item) end
+  if item and not state.item(id) then table.insert(state.S.items, item); state.index_item(id, item) end
   if item then
     state.S.sibling_orders[parent_key(item)] = nil
     if type(ev.siblings) == 'table' then state.S.sibling_orders[parent_key(item)] = ev.siblings end

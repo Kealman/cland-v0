@@ -627,7 +627,7 @@ export type HubStatus = {
   /** Keyboard layouts from config.toml, read at hub start; the UI uses these for langmap. */
   keys?: { layouts: string[] };
   /** Loaded tracker container levels, ordered top-down; the UI uses these for release scope. */
-  tracker?: { levels: string[]; storage?: import('./tracker/tracker.ts').TrackerStorageStatus };
+  tracker?: { levels: string[]; prefixes?: Record<string, string>; storage?: import('./tracker/tracker.ts').TrackerStorageStatus };
   pid: number;
   port: number;
   socket: string;

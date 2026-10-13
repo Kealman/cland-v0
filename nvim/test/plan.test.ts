@@ -251,7 +251,7 @@ test('a moved item keeps watch marks and its reason until the next plan visit, w
   assert.ok(text.includes('Keep panel work together'), 'history keeps the reason after acknowledgement');
   await client.lua("require('cland.ui').flush()");
   const saved = JSON.parse(await readFile(join(root, '.cland/ui.json'), 'utf8'));
-  assert.ok(saved.plan_seen[epic.id]);
+  assert.ok(saved.plan_seen[`T-${epic.id.split('-')[1]}`]);
   const reconnected = await startClient(t, bin, root);
   await reconnected.waitScreen(s => s.includes('hub: connected') && s.includes('Panels'), 'second client has the epic before navigation');
   await reconnected.input(`<Esc>:Cland view plan ${epic.id}<CR>`);
@@ -309,13 +309,13 @@ test(':restart of a plan with unseen changes records its restored visit', { skip
   await client.input('gp');
   await waitPlan(client, epic.id, 'registry and sessions');
   await client.lua("local id=...; assert(vim.wait(5000,function() local v=require('cland.plan').visits[id]; return v and not v.acknowledge end,20))", epic.id);
-  const originalReceipt = await client.lua<string>("return require('cland.state').S.ui.plan_seen[...]", epic.id);
+  const originalReceipt = await client.lua<string>("local s=require('cland.state'); return s.S.ui.plan_seen['T-'..s.item_number(...)]", epic.id);
   const changed = structuredClone(plan);
   changed.stages[0]!.lanes = changed.stages[0]!.lanes.filter(lane => !lane.includes(b.id));
   changed.stages[1]!.lanes.push([b.id]);
   assert.equal((await ui.request({ type: 'task.plan', item: epic.id, op: 'set', yaml: stringify(changed), reason: 'New changes while the view is open' })).ok, true);
   await waitPlan(client, epic.id, 'New changes while the view is open');
-  assert.equal(await client.lua<string>("return require('cland.state').S.ui.plan_seen[...]", epic.id), originalReceipt);
+  assert.equal(await client.lua<string>("local s=require('cland.state'); return s.S.ui.plan_seen['T-'..s.item_number(...)]", epic.id), originalReceipt);
   const moved = client.restarted();
   await client.input('<Esc>:restart<CR>');
   await moved;
@@ -324,7 +324,7 @@ test(':restart of a plan with unseen changes records its restored visit', { skip
   await client.lua("require('cland.ui').flush()");
   const saved = JSON.parse(await readFile(join(root, '.cland/ui.json'), 'utf8'));
   const shown = (await ui.request({ type: 'task.plan', item: epic.id, op: 'show' })).value as { history: Array<{ id: string }> };
-  assert.equal(saved.plan_seen[epic.id], shown.history.at(-1)?.id, 'restored view records the new last look');
+  assert.equal(saved.plan_seen[`T-${epic.id.split('-')[1]}`], shown.history.at(-1)?.id, 'restored view records the new last look');
   await client.input(`<Esc>:Cland view item ${epic.id}<CR>gp`);
   await waitPlan(client, epic.id, 'plan view');
   assert.ok(!(await planText(client, epic.id)).includes('△ changed'), 'reopening does not repeat already-seen marks');

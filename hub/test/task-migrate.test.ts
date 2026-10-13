@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile, readdir } from 'node:fs/promises';
+import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { DatabaseSync } from 'node:sqlite';
 import { join } from 'node:path';
 import { cland, clandWithEnv, connectUi, spawnSpoke, startDaemon, tempProject } from './harness.ts';
@@ -21,17 +21,21 @@ const filesSnapshot = async (root: string) => {
 
 test('migration preview through real hub, spokes and CLI plans changes without tracker writes', async t => {
   const root = await tempProject(t);
+  // New creates already use canonical prefixes; the migration preview needs actual legacy source files.
+  const dir = join(root, '.cland/tasks');
+  await mkdir(dir, { recursive: true });
+  const fixtures = [
+    ['T-1-release-v0-1-1.md', 1, 'release', 'Release: v0.1.1', 'version: 0.1.1\n'],
+    ['T-2-epic-feature.md', 2, 'epic', 'Epic: Feature', 'parent: T-1\n'],
+    ['T-3-tech-debt.md', 3, 'epic', 'Tech debt', ''],
+    ['T-4-task-unscheduled-debt.md', 4, 'task', 'Task: Unscheduled debt', 'status: backlog\nlabels: [tech-debt]\n'],
+    ['T-5-scheduled-debt.md', 5, 'task', 'Scheduled debt', 'status: backlog\nlabels: [tech-debt]\nparent: T-3\nblocked_by: [T-2]\n'],
+  ] as const;
+  for (const [file, n, kind, title, extra] of fixtures) {
+    await writeFile(join(dir, file), `---\nid: T-${n}\nkind: ${kind}\ntitle: ${JSON.stringify(title)}\nstate: open\n${extra}---\n`);
+  }
   const { discovery } = await startDaemon(t, root);
   const ui = await connectUi(t, discovery);
-  const create = async (fields: Record<string, unknown>) => {
-    const result = await ui.request({ type: 'task.create', ...fields });
-    assert.equal(result.ok, true, JSON.stringify(result));
-  };
-  await create({ title: 'Release: v0.1.1', kind: 'release', version: '0.1.1' });
-  await create({ title: 'Epic: Feature', kind: 'epic', parent: 'T-1' });
-  await create({ title: 'Tech debt', kind: 'epic' });
-  await create({ title: 'Task: Unscheduled debt', labels: ['tech-debt'] });
-  await create({ title: 'Scheduled debt', labels: ['tech-debt'], parent: 'T-3', blocked_by: ['T-2'] });
   for (const [name, role] of [['coord', 'coordinator'], ['impl', 'implementer']] as const) {
     const spoke = await spawnSpoke({ discover: true, cwd: root, name, role, sessionId: `sess-${name}` });
     t.after(() => spoke.close());

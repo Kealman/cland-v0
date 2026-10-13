@@ -1,6 +1,7 @@
 -- Topic message blocks (T-132), ported from the accepted T-97 prototype.
 -- Manual background runs (T-134), asks/chips/kinds and watch presentation (T-135).
 local api = vim.api
+local state = require('cland.state')
 local hl = require('cland.hl')
 local fit = require('cland.bars').fit
 local md = require('cland.thread_md')
@@ -69,9 +70,11 @@ end
 local function item_marks(line, row, marks)
   local from = 1
   while true do
-    local a, z = line:find('%f[%w]T%-%d+%f[^%w]', from)
+    local a, z = line:find('%f[%w]%a%-%d+%f[^%w]', from)
     if not a then break end
-    marks[#marks + 1] = { row = row, col = a - 1, opts = { end_col = z, hl_group = 'ClandBlue', priority = 140 } }
+    if state.item_number(line:sub(a, z)) then
+      marks[#marks + 1] = { row = row, col = a - 1, opts = { end_col = z, hl_group = 'ClandBlue', priority = 140 } }
+    end
     from = z + 1
   end
 end

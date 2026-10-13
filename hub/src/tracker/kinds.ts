@@ -18,5 +18,7 @@ export function configuredLevels(value: unknown): string[] {
   if (new Set(value).size !== value.length || value.some(v => kindsFor([]).includes(v))) {
     throw new Error('[tracker] levels must be unique container names, excluding task, question, spec and map');
   }
+  const prefixes = value.map(kind => kind[0]!.toUpperCase());
+  if (new Set(prefixes).size !== prefixes.length) throw new Error('[tracker] kind prefixes must be unique (the first letter of each kind)');
   return [...value];
 }

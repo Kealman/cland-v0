@@ -1,3 +1,4 @@
+import { parseItemReference } from './tracker/prefixes.ts';
 // Session-owned event subscriptions. The UI's connection-scoped `subscribe` is a separate protocol.
 import type { Subscription, SubscriptionEvent, SubscriptionRequest, SubscriptionSubject, UsageThreshold } from './protocol.ts';
 import { nameRefusal } from './names.ts';
@@ -6,7 +7,7 @@ export function isSubscriptionRequest(frame: Record<string, unknown>): frame is 
   return typeof frame.id === 'string' && ['event.subscribe', 'event.unsubscribe', 'event.subscriptions'].includes(String(frame.type));
 }
 
-export function subscriptionSubject(value: unknown): SubscriptionSubject {
+export function subscriptionSubject(value: unknown, kinds?: readonly string[]): SubscriptionSubject {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('subject must name exactly one session, item, topic, role or subtree');
   const subject = value as Record<string, unknown>;
   const keys = Object.keys(subject);
@@ -20,12 +21,12 @@ export function subscriptionSubject(value: unknown): SubscriptionSubject {
   }
   if (key === 'role') return { role: target };
   if (key === 'topic') return { topic: target };
-  if ((key === 'item' || key === 'subtree') && /^T-[1-9]\d*$/.test(target)) return key === 'item' ? { item: target } : { subtree: target };
+  if ((key === 'item' || key === 'subtree') && parseItemReference(target, kinds) !== null) return key === 'item' ? { item: target } : { subtree: target };
   throw new Error('subject must name a session, item (T-<n>), topic, role or subtree (T-<n>)');
 }
 
-export function subscriptionInput(subject: unknown, events: unknown, digest: unknown = 'turn', threshold?: unknown): Pick<Subscription, 'subject' | 'events' | 'digest' | 'threshold'> {
-  const parsed = subscriptionSubject(subject);
+export function subscriptionInput(subject: unknown, events: unknown, digest: unknown = 'turn', threshold?: unknown, kinds?: readonly string[]): Pick<Subscription, 'subject' | 'events' | 'digest' | 'threshold'> {
+  const parsed = subscriptionSubject(subject, kinds);
   const supported: SubscriptionEvent[] = 'session' in parsed || 'role' in parsed ? ['session.state', 'usage', 'artifact']
     : 'topic' in parsed ? ['topic', 'artifact'] : ['task', 'session.state', 'topic', 'usage', 'artifact'];
   if (!Array.isArray(events) || !events.length || events.some(e => !supported.includes(e))) throw new Error(`${supported.join(', ')} are the supported events for this subject`);

@@ -371,6 +371,10 @@ end
 
 --- Show `view` ({kind = thread|session|item|board|graph|log|inbox, id}) in the centre.
 function M.show(view, opts)
+  if view.kind == 'item' or view.kind == 'plan' then
+    local item = state.item(view.id)
+    if item then view = vim.tbl_extend('force', view, { id = item.id }) end
+  end
   -- Agents is read as its log, not as a thread with a composer (#34)
   if view.kind == 'thread' and view.id == 'agents' then
     view = { kind = 'log' }

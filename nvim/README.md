@@ -640,3 +640,5 @@ title `v0.2 notes`, then Enter on its row. Press `n` on the folder to make
 the folder, write a message and Enter. `test/artifact-browser.test.ts` exercises
 this demo against a real hub and headless Neovim, plus folds, keep/unkeep, move,
 promotion, archive and retrying an attachment after a refused send.
+
+Item motions accept every kind prefix supplied by `hub.status.tracker.prefixes`, in either case. `gi` on a legacy `T-107` reference opens the canonical epic `E-107`; item views and graph scopes use the canonical id. Threads highlight recognized kind prefixes, and `A-12` remains an artifact reference. A bare number is accepted when choosing an item or graph scope. Saved release choices and plan receipts may keep old prefixes: item lookup compares their numbers.

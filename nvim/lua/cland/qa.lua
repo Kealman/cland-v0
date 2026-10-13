@@ -189,8 +189,8 @@ local function build_fixture(case, tmp, hub)
     blocked(('the fixture\'s project "%s" is not a plain directory name'):format(tostring(project)))
   end
   for _, item in ipairs(fixture.items or {}) do
-    if type(item.id) ~= 'string' or not item.id:match('^T%-[1-9]%d*$') then
-      blocked(('the fixture\'s item id "%s" is not T-<n>'):format(tostring(item.id)))
+    if type(item.id) ~= 'string' or not item.id:match('^%a%-[1-9]%d*$') then
+      blocked(('the fixture\'s item id "%s" is not an item id'):format(tostring(item.id)))
     end
   end
   if tmp == '' then
