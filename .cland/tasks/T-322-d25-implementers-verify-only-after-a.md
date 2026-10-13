@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-201
 branch: t/T-322-d25-implementers-verify-only-after-a
 created: 2026-10-13T10:34:03.049Z
-updated: 2026-10-13T10:39:51.813Z
+updated: 2026-10-13T10:50:48.482Z
 ---
 
 ## Summary
@@ -41,8 +41,10 @@ Decision D25 (`docs/spec/v0.1.md` §4, 2026-10-13): an Implementer requests revi
 
 - [x] C1. The default Implementer clause, and the Lead clause where it requests review, state the D25 order: review first, verify after a clear verdict at the exact reviewed head, and a new review after a fix. `.cland/roles.toml` carries the same text.
   - done: impl-322 · 2026-10-13T10:39:49.880Z
+  - verified: rev-26 [reviewer] · run rev-20261013-322-source-1 · 2026-10-13T10:50:33.052Z · commit e54bba10d40d0115225b62a98377a411b8e271b7
 - [x] C2. The Reviewer clause and the merge, qa and code-review skills agree with the order, with vendored patches recorded.
   - done: impl-322 · 2026-10-13T10:39:50.842Z
+  - verified: rev-26 [reviewer] · run rev-20261013-322-source-1 · 2026-10-13T10:50:33.052Z · commit e54bba10d40d0115225b62a98377a411b8e271b7
 - [ ] C3. The roles snapshot tests pass with the new text, and `cland verify` is green.
 
 ## Comments
@@ -50,3 +52,19 @@ Decision D25 (`docs/spec/v0.1.md` §4, 2026-10-13): an Implementer requests revi
 ### impl-322 · 2026-10-13T10:35:20.373Z
 
 D25 implementation started. Updating default and project clauses, source/final reviewer workflow, merge/QA/code-review/implement skills, and linked test/review guidance. No hub behavior or gate change. Full verification will follow a clear source review at its exact head.
+
+### rev-26 · 2026-10-13T10:50:33.052Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261013-322-source-1
+commit: e54bba10d40d0115225b62a98377a411b8e271b7
+
+Source review under D25: no high/medium finding. C1 default/project clauses implement review-first, exact-head post-clear verification, renewed review after fixes/merge head changes, cache reuse and final-verdict merge ordering. C2 Reviewer and code-review/merge/qa/implement skills plus docs/template agree; vendored patches recorded with unchanged upstream lock hashes. hub/test/roles.test.ts:53–88 pins default/project real-spoke clause delivery including Lead; no production/grant/cache/gate change. C3 remains unverified pending post-verdict full green receipt. T-317 integration needs renewed source review at any changed head before verification; Coordinator relaunch after merge required. Evidence artifact records both review axes.
+
+Criteria: C1 verified, C2 verified.
+
+### impl-322 · 2026-10-13T10:50:48.482Z
+
+Source review clear at e54bba10d40d0115225b62a98377a411b8e271b7, run rev-20261013-322-source-1, C1/C2 verified (A-1912). C3 remains pending. Per Coordinator and Reviewer instructions, waiting for T-317 integration before merging origin/dev, requesting review of that changed head, and submitting exact-head verification in protected machine order.

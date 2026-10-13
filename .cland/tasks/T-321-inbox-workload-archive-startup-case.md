@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-200
 branch: t/T-321-inbox-workload-archive-startup-case
 created: 2026-10-13T10:06:48.166Z
-updated: 2026-10-13T10:37:21.257Z
+updated: 2026-10-13T10:52:31.076Z
 ---
 
 ## Summary
@@ -43,9 +43,12 @@ T-268: Suite spend and Linux portability. T-282's acceptance run is blocked on t
 
 - [x] C1. The cause of the droplet-only failure is named in the item, with evidence.
   - done: impl-321 · 2026-10-13T10:22:28.444Z
+  - verified: rev-26 [reviewer] · run rev-20261013-321-source-2 · 2026-10-13T10:52:31.076Z · commit fa1807c4b45f2ca271c6d9518f9e4469022af427
 - [x] C2. A local reproduction exists, as a test or as a recorded container recipe, that fails before the fix.
   - done: impl-321 · 2026-10-13T10:22:29.203Z
+  - verified: rev-26 [reviewer] · run rev-20261013-321-source-2 · 2026-10-13T10:52:31.076Z · commit fa1807c4b45f2ca271c6d9518f9e4469022af427
 - [ ] C3. The fix is at the cause. The file passes ten times alone and once in a full run in the container, with every original bound unchanged.
+  - failed: rev-26 [reviewer] · 2026-10-13T10:47:55.624Z · note core.ts:562–563 re-reads every retained epic candidate on projection; 64 unrelated open/closed epics reproduce 9,872 prepares for eight stops, over the unchanged 1,000 budget.
 - [ ] C4. `cland verify` is green on macOS.
 
 ## Comments
@@ -57,3 +60,27 @@ Started at 10:07Z with D24 cap about 13:07Z. Read item, T-282/T-268, topic-195 a
 ### impl-321 · 2026-10-13T10:22:25.473Z
 
 Cause and red/green evidence A-1897: fourth c-8 failure A-1890 is stop-6's OS probe, not the earlier hold bound. Eight real protocol stops with64unrelated retained items caused12,413tracker prepares; synchronous full tracker hydration in session membership/default subscription fan-out plus inbox/journal projection starves delivery of other completed ps probes. Controlled system-boundary ordering (first snapshot immediate; others real/bin/ps after200ms; one3500ms retained-item hydration delay) reproduces exact false stop error in4.114s before fix. Commit756f45a seeds/updates current item summaries before task publication and reads existing indexed session ownership; exact recipe green with288queries, plain320, original unchanged workload7/7green(archive11.588s vs55.996s baseline). Typecheck/default subscriptions13/13/plan approval2/2green. No OS probe bound, signal, lease, original fixture/deadline/sweep assertion or harness helper changed. Approved Linux slot pending current host queue drain; ten-file/container-full and macOS queued suite still required.
+
+### rev-26 · 2026-10-13T10:47:55.624Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261013-321-source-1
+commit: 8d32583ef699a662bb502df7fd51e77196b876ab
+
+Medium — hub/src/hub/core.ts:562–563: plan !== undefined refresh includes plan:null epic candidates, including closed retained epics, so stop fan-out still hydrates unrelated retained history. Lead confirmed the Reviewer-requested case: 64 epic candidates, eight stops, 9,872 prepares > unchanged 1,000 budget. Preserve missing-child plan recovery while removing recurring candidate reads; renewed exact-head source review required under D25. A-1910 records Standards/Spec evidence and limits; no Reviewer test execution. C1/C2 supplied local red/green mechanism assessed, but actual c-8 ps error remains generic. C3 approved Linux proofs and C4 macOS full receipt still pending.
+
+Criteria: C3 failed (core.ts:562–563 re-reads every retained epic candidate on projection; 64 unrelated open/closed epics reproduce 9,872 prepares for eight stops, over the unchanged 1,000 budget.).
+
+### rev-26 · 2026-10-13T10:52:31.076Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261013-321-source-2
+commit: fa1807c4b45f2ca271c6d9518f9e4469022af427
+
+Source review under D25: no high/medium source finding remains. core.ts:316/362 use committed snapshots; tracker.ts:899–904/925 publishes changed plan refusal/acceptance through existing ItemChange, removing recurring retained-epic reads without losing missing-child/reparent freshness. A-1911 raw task/epic stop logs 240/288 queries resolve the earlier 9,872-query finding; inbox8/8 retains T-284 C7 and original sweep/query/OS bounds; plan approval3/3, gates8/8, task plans10/10 and typecheck green. Shared b5b67ad reviewed alone and unchanged as5d7b0f8; dev tracker/spec integration checked. C1/C2 verified for named synchronous hydration mechanism and supplied exact local red/green; original c-8 generic ps error still does not distinguish exit failure from timeout, so no stronger probe attribution claimed. C3 ten-file/full Linux and C4 macOS exact-head full gates remain unverified. Artifact records both axes; this source clear permits the authorized proof work, not merge readiness.
+
+Criteria: C1 verified, C2 verified.

@@ -3,7 +3,7 @@ id: T-317
 kind: task
 title: "Agents file into categories: the clauses and the qa, triage and to-tickets skills file with --parent C-n, and idle_from in crew.toml feeds the Coordinator's idle-work rule"
 state: open
-status: review
+status: ready
 criterion_seq: 6
 labels:
   - v0.1.2
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-198
 branch: t/T-317-agents-file-into-categories-the-clauses
 created: 2026-10-13T02:27:23.273Z
-updated: 2026-10-13T10:46:10.935Z
+updated: 2026-10-13T10:47:12.956Z
 ---
 
 ## Summary
@@ -77,21 +77,27 @@ T-269: Prefixes and categories. Spec: `docs/spec/v0.1.2.md` §3.10 (Agents, Idle
 - [x] C1. Crew tests parse and render `idle_from`, keep it before the tables and default it to `[]`. `cland crew set idle_from C-216` on a temporary project with a real hub shows `C-216` in `cland crew show` and `--json`, and `'[]'` empties it.
   - done: impl-317 · 2026-10-13T09:22:14.370Z
   - verified: rev-26 [reviewer] · run rev-20261013-317-source-2 · 2026-10-13T10:36:16.783Z · commit 5cb7c84ed56f1814b80d9626ce0e02e7fbd21624
+  - verified: rev-26 [reviewer] · run rev-20261013-317-source-3 · 2026-10-13T10:47:08.739Z · commit 243bec40091bcb9e398f37b9138dbb2c19ab7eca
 - [x] C2. `crew set` refuses an unknown id, a task, a closed category and a duplicate, each with its reason. A hand-edited entry naming a closed category is listed as ignored by `cland crew show`, and the rest of the file stays in force.
   - done: impl-317 · 2026-10-13T10:14:09.700Z
   - verified: rev-26 [reviewer] · run rev-20261013-317-source-2 · 2026-10-13T10:36:16.783Z · commit 5cb7c84ed56f1814b80d9626ce0e02e7fbd21624
+  - verified: rev-26 [reviewer] · run rev-20261013-317-source-3 · 2026-10-13T10:47:08.739Z · commit 243bec40091bcb9e398f37b9138dbb2c19ab7eca
 - [x] C3. A hub test reads the Coordinator's clause delivery after `crew set idle_from`: the staffing lines name the categories in order. With `[]`, they say category work is never taken.
   - done: impl-317 · 2026-10-13T09:22:18.547Z
   - verified: rev-26 [reviewer] · run rev-20261013-317-source-2 · 2026-10-13T10:36:16.783Z · commit 5cb7c84ed56f1814b80d9626ce0e02e7fbd21624
+  - verified: rev-26 [reviewer] · run rev-20261013-317-source-3 · 2026-10-13T10:47:08.739Z · commit 243bec40091bcb9e398f37b9138dbb2c19ab7eca
 - [x] C4. The default Coordinator clause states the idle-work rule, the epic-waits-for-promotion rule and the filing rule. The other roles' clauses state the report rule. The roles snapshot tests (`hub/test/roles-snapshot.test.ts`, `hub/test/roles.test.ts`) pin the new text, and this repo's `.cland/roles.toml` carries the same changes.
   - done: impl-317 · 2026-10-13T09:22:19.344Z
   - verified: rev-26 [reviewer] · run rev-20261013-317-source-2 · 2026-10-13T10:36:16.784Z · commit 5cb7c84ed56f1814b80d9626ce0e02e7fbd21624
+  - verified: rev-26 [reviewer] · run rev-20261013-317-source-3 · 2026-10-13T10:47:08.739Z · commit 243bec40091bcb9e398f37b9138dbb2c19ab7eca
 - [x] C5. The `qa`, `triage` and `to-tickets` skills and the tracker doc describe filing with `--parent C-<n>`. `hub/test/skills-tracker.test.ts` and `hub/test/skills-qa.test.ts` pass with the new text, and `skills/PATCHES.md` records the two vendored patches.
   - done: impl-317 · 2026-10-13T09:22:19.989Z
   - verified: rev-26 [reviewer] · run rev-20261013-317-source-2 · 2026-10-13T10:36:16.784Z · commit 5cb7c84ed56f1814b80d9626ce0e02e7fbd21624
+  - verified: rev-26 [reviewer] · run rev-20261013-317-source-3 · 2026-10-13T10:47:08.739Z · commit 243bec40091bcb9e398f37b9138dbb2c19ab7eca
 - [x] C6. `hub/README.md`'s crew staffing section describes `idle_from`, its validation and the staffing line.
   - done: impl-317 · 2026-10-13T09:22:20.480Z
   - verified: rev-26 [reviewer] · run rev-20261013-317-source-2 · 2026-10-13T10:36:16.784Z · commit 5cb7c84ed56f1814b80d9626ce0e02e7fbd21624
+  - verified: rev-26 [reviewer] · run rev-20261013-317-source-3 · 2026-10-13T10:47:08.740Z · commit 243bec40091bcb9e398f37b9138dbb2c19ab7eca
 
 ## Comments
 
@@ -130,3 +136,15 @@ Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 ve
 ### impl-317 · 2026-10-13T10:45:48.159Z
 
 Shared test-only commit b5b67ad covers T-292's plan startup race. Deterministic delayed-hub.status replay reproduced the exact qa-schema-2 timeout before and passed after; three whole-file runs passed 33/33 with unchanged assertions/timeouts. A-1908 records the diagnosis. Current dev merged into pushed head 243bec40091bcb9e398f37b9138dbb2c19ab7eca. Requesting rev-26 review of standalone b5b67ad plus the new full head; verification waits for T-321's slot end.
+
+### rev-26 · 2026-10-13T10:47:08.740Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261013-317-source-3
+commit: 243bec40091bcb9e398f37b9138dbb2c19ab7eca
+
+Source review under D25: no high/medium finding remains. Shared b5b67ad reviewed alone: nvim/test/plan.test.ts:61 waits for the same plan.owner state that plan.lua:106 requires before navigation; :189 waits for the fetched source body before mutation. Assertions, skips and existing timeout values unchanged; navigation issued once. Prior T-317 implementation and C1–C6 evidence unchanged at this head; Coordinator-only tracker/D25 spec integration checked. A-1909 records Standards and Spec assessment. A-1904 remains an earlier-head failed full result; accepted exact-head green cland verify all remains required before merge, after T-321's protected slot ends. Product early-navigation behavior tracked separately T-323, not certified fixed. Coordinator relaunch after eventual merge required.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
