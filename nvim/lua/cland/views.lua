@@ -144,6 +144,7 @@ end
 M.TITLES = {
   board = 'Board',
   events = 'Events',
+  verification = 'Verification queue',
   log = 'Agents log',
   inbox = 'Inbox · full width',
 }
@@ -207,6 +208,9 @@ function M.placeholder(v)
     if v.id then
       vim.b[b].cland_item = v.kind == 'item' and v.id or nil
     end
+    if v.kind == 'verification' then
+      require('cland.actions').map('n', 'q', require('cland.layout').back, { buffer = b, nowait = true, silent = true })
+    end
     M.bufs[k] = b
   end
   M.render_placeholder(v)
@@ -214,6 +218,7 @@ function M.placeholder(v)
 end
 
 local function lines_for(v)
+  if v.kind == 'verification' then return require('cland.verification').lines() end
   return { '', ' ' .. v.kind }
 end
 

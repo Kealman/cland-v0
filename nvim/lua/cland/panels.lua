@@ -104,6 +104,8 @@ end
 function M.row_key(info)
   if not info then
     return nil
+  elseif info.verification then
+    return 'verification'
   elseif info.item then
     return 'item:' .. info.item
   elseif info.session then
@@ -297,17 +299,7 @@ local function render_sessions(c)
   local list = state.sessions(state.S.ui.sessions_archive)
   local queue = state.S.verification
   if type(queue) == 'table' then
-    local function seconds(ms) return type(ms) == 'number' and (math.ceil(ms / 1000) .. 's') or 'unknown' end
-    local holder = type(queue.holder) == 'table' and queue.holder or nil
-    local waiters = queue.waiters or {}
-    local names = {}
-    for _, w in ipairs(waiters) do names[#names + 1] = w.session .. ' (' .. seconds(w.waitMs) .. ')' end
-    local line = 'verify: ' .. (holder and (holder.kind == 'hand run' and 'hand run' or holder.session) or (#waiters == 0 and 'idle' or 'free'))
-    if holder and holder.kind == 'hand run' then
-      line = line .. ' · pid ' .. tostring(holder.pid or 'unknown') .. ' · ' .. (holder.worktree or 'worktree unknown') .. ' · since ' .. (holder.since or 'unknown')
-    end
-    if #names > 0 then line = line .. ' · waiting ' .. table.concat(names, ' → ') .. ' · next ETA ' .. seconds(waiters[1].etaMs) end
-    wrapped(c, line, 'ClandDim')
+    c:add({ { require('cland.verification').summary(), 'ClandDim' } }, nil, { verification = true })
     c:add({})
   end
   local confirm = state.S.ui.confirm
@@ -537,6 +529,8 @@ local function open_row(buf)
     end
     state.set_fold(info.fold, not state.folded(info.fold))
     state.changed()
+  elseif info.verification then
+    require('cland.actions').run('verification.open')
   elseif info.session then
     layout.show({ kind = 'session', id = info.session }, { insert = true })
   elseif info.topic then

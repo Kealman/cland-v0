@@ -135,6 +135,28 @@ Space is the leader (`␣`); `␣?` shows the keys in Neovim.
 | `C-h` `C-j` `C-k` `C-l` | every mode | Focus left, down, up or right; entering a composer or terminal resumes typing. Use the English layout for these chords. |
 | `C-\` (also `C-\ C-n`) | session terminal | Leave Terminal mode immediately; Esc still goes to the harness. |
 
+### Verification queue
+
+The sessions header's single `verify:` row summarizes the suite queue:
+`verify: impl-3 4m · 2 waiting · next ~6m`. It omits the waiting count when
+zero; `next ?` means no estimate is available. During admission it reads
+`verify: free · 2 waiting`, and an empty queue reads `verify: idle`.
+Compatibility holders appear as `hand run`; human queue entries keep their
+`human` session name. Long summaries are cut to the panel's display width,
+never wrapped. Run times and elapsed waits advance on a local clock without
+asking the hub for frames; durations read `45s`, `4m` and `1h 5m`.
+
+Press Enter on that row or select **Open verification queue** in the palette
+(no global key). The centre view shows the holder's session, item, mode, run
+time, remaining ETA, PID, worktree and start; ordered waiters show their
+position, session, item, mode, elapsed wait and admission ETA. The metrics
+line shows run and wait medians and p90 over the last N runs. Estimates come
+from the hub's median run history and unknown values remain `?`. An empty
+view says `nothing running · nothing waiting` and keeps its metrics.
+Hub queue frames and the local clock update the view through the coalesced
+redraw scheduler. `q` returns to the previous centre view; `␣?` and the
+palette list its key. Use `cland verify cancel` to cancel a run.
+
 ### Session layers and state groups (T-127, T-191)
 
 The panel shows **NOW**, then **WATCH**, with **yours** (live Aides),

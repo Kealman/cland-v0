@@ -1241,8 +1241,12 @@ cached result as evidence; no tree equivalence is applied to review or QA marks.
 
 `cland verify queue [--json]` shows the holder (including compatibility **hand run**
 holders), the scheduler's ordered waiters, elapsed waits and estimated time until
-admission. The sessions panel renders the same queue live from `verification.queue`
-events; `hub status --json` includes it as `verification`, with the scheduler's
+admission. Its human-facing form is the sessions panel's one-line `verify:`
+summary (holder, run time, waiting count and next ETA). Enter on the summary
+or the palette's **Open verification queue** opens the centre queue view with
+ordered waiters, elapsed waits, admission ETAs and timing metrics; `q` returns.
+Both follow the same queue live from `verification.queue` events;
+`hub status --json` includes it as `verification`, with the scheduler's
 latest compatibility-holder observation (refreshed each second). An explicit CLI
 queue read refreshes ownership immediately. Status metadata and recorded timing
 metrics never wait for OS probes. JSON `version: 1` uses

@@ -79,7 +79,7 @@ local function replay_sessions(events, processes)
       elseif e.type == 'role.vacant' then state.S.hub_coordinator = { name = nil }
       elseif e.type == 'role.filled' then state.S.hub_coordinator = { name = e.session }
       elseif e.type == 'crew' then state.S.crew = { config = e.config, summary = e.summary }
-      elseif e.type == 'verification.queue' then state.S.verification = e.queue
+      elseif e.type == 'verification.queue' then require('cland.verification').set(e.queue)
       elseif e.type == 'inbox' then state.set_inbox(e.inbox) end
     end
   end
@@ -147,7 +147,7 @@ local refresh_sessions = single_flight(function(done)
     if not err and value then
       state.S.presence = value.sessions or {}
       state.S.crew = type(value.crew) == 'table' and value.crew or nil
-      state.S.verification = type(value.verification) == 'table' and value.verification or nil
+      require('cland.verification').set(value.verification)
       require('cland.keys').layouts(value.keys and value.keys.layouts or {})
       state.S.tracker = type(value.tracker) == 'table' and value.tracker or { levels = {} }
       if value.coordinator == vim.NIL then
@@ -275,7 +275,7 @@ local function wire_client(client)
     state.changed()
   end)
   client:on('verification.queue', function(event)
-    state.S.verification = event.queue
+    require('cland.verification').set(event.queue)
     state.changed()
   end)
   client:on('session.role', function(event)
@@ -334,6 +334,7 @@ M.HELP = {
   'Prompts   :Cland prompt [title] · :w saves · :Cland prompt send|attach · ␣ps sends · ␣pa attaches',
   'Sessions  ␣l launch · ↵ attach · C-v split · l launch · x stop · c capabilities',
   '          d archive · A show/hide archive · r Resume session · f Launch session fresh with its brief (when offered) · n or Esc cancel',
+  'Verify    ↵ on verify: opens the verification queue · palette: Open verification queue · q Previous centre view',
   'Presets   :Cland preset charting | watch | steady (examples, never modes)',
   'Views     :Cland view thread <topic> | session <name> | item <id> | plan <epic> | board | log | inbox',
   '',
@@ -562,6 +563,7 @@ function M.start(opts)
   M.client = hub.new({ root = root, transport = transport, cli = opts.cli or cli_command(repo), serve_args = opts.serve_args })
   wire_client(M.client)
   require('cland.views').setup(M.client)
+  require('cland.verification').start_clock()
   require('cland.sessions').setup(M.client)
   require('cland.item_view').setup(M.client)
   require('cland.plan').setup(M.client)
