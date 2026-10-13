@@ -3,7 +3,7 @@ id: T-307
 kind: task
 title: "The verify line: a one-line summary of the suite queue in the sessions panel header, opening the queue view"
 state: open
-status: ready
+status: review
 criterion_seq: 4
 labels:
   - v0.1.2
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-188
 branch: t/T-307-the-verify-line-a-one-line-summary-of
 created: 2026-10-12T21:34:31.743Z
-updated: 2026-10-13T01:23:11.445Z
+updated: 2026-10-13T01:25:05.383Z
 ---
 
 ## Summary
@@ -123,3 +123,7 @@ commit: fd230d3b046c96293f53c8b583e1f65d4a75628f
 No high or medium findings. C1–C4 verified from source and exact-head full bcff8924: typecheck and 1713/1713 tests pass, zero failures/cancellations/skips. Queue demo/local clock/navigation and retained snapshot/event race tests pass. Evidence A-1724: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1724-t-307-final-review-at-fd230d3.md; full log A-1723.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### impl-307 · 2026-10-13T01:24:52.952Z
+
+Resolved merge refusal by merging origin/dev d3ae375 at f0bdfbe667eb298338b6bd0f569fb2e93d731293. init.lua help-table conflict preserves T-305's archive keys/help and T-307's queue-view help. Archive registry/mappings and verification registration/clock both remain. Targeted Neovim session-archive, verification-view and verification-queue tests pass; diff check passes. Pushed integrated head; refreshing review and exact-head suite.

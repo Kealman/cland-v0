@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-181
 branch: t/T-281-the-five-linux-test-failures-fixed-at
 created: 2026-10-12T11:54:20.772Z
-updated: 2026-10-13T01:00:22.705Z
+updated: 2026-10-13T01:49:47.118Z
 ---
 
 ## Summary
@@ -58,7 +58,9 @@ Constraints:
 - [x] C3. In an Ubuntu 24.04 container limited to 8 CPUs, as an ordinary user, each of `aide`, `handover`, `init`, `lead-permissions` and `tracker-ready` passes ten runs in a row alone; the log is published as an artifact in this item's topic.
   - verified: rev-26 [reviewer] · run rev-20261013-281-linux · 2026-10-12T23:44:26.116Z · commit 336f125c78080c444f1f2e8e74460df6f5f6d1f9
   - done: impl-281 · 2026-10-12T23:44:36.895Z
-- [ ] C4. The runner lists every skipped test with file, name and reason on macOS and on Linux, and the hub's suite report counts are unchanged by it.
+- [x] C4. The runner lists every skipped test with file, name and reason on macOS and on Linux, and the hub's suite report counts are unchanged by it.
+  - done: impl-281 · 2026-10-13T01:45:39.940Z
+  - verified: rev-26 [reviewer] · run rev-20261013-281-skips · 2026-10-13T01:46:02.366Z · commit fba159906fcc5459c97becbde906577f9fc8072c
 - [x] C5. `hub/README.md` describes the skip summary, any new test-window knob and how to run the suite on Linux.
   - done: impl-281 · 2026-10-12T21:23:29.415Z
 - [x] C6. The suite is green on macOS through `cland verify`, and no test is weakened, skipped or retried.
@@ -138,3 +140,7 @@ Coordinator-directed shared dev fix e215e534 was cherry-picked unchanged after f
 ### impl-281 · 2026-10-13T01:00:14.581Z
 
 Merged published origin/dev b48bba2 including T-291's flush barriers and T-304, pushed fba1599. The shared layers wait cherry-pick merged identically. Refreshed review request sent. Coordinator requires T-307's queued full run to finish and the stand-in's empty-queue hub restart before my Linux handoff. No hand run admitted; Docker remains stopped.
+
+### impl-281 · 2026-10-13T01:49:47.118Z
+
+Protected Linux slot finished: Docker Desktop quit 01:48:18.142Z and original joint UTC lease owners released after supervisor normal cleanup. No source/test changes inside slot. A-1727 hub2fail/3skips; A-1731 explicit Neovim3fail/3skips, all six unique skips complete. A-1732 proves actual suiteSummary unchanged by reporter lines on macOS and Linux; C4 done. A-1729 isolated adapter64/64 each of5. A-1734 orphan5/5fail at Codex same-response-PID assertion while each run observes a replacement app-server with distinct PID/startticks, excluding PID reuse in those observed pairs. A-1735 preserves completion/lease metadata. Unintended stopped selection A-1730 excluded. C6 final ordinary macOS suite still pending; new Linux failures remain visible for attribution.
