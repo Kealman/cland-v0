@@ -119,11 +119,10 @@ test('against a real hub: the tree, the map grouping, the item view and the boar
   assert.doesNotMatch(panel, /T-4 E-1 › Item view/, 'done is hidden from the board');
   await c.input('4');
   await c.waitScreen(x => /● T-4 E-1 › Item view/.test(x), 'done filter reveals the closed row');
-  await c.input('1');
-  await c.waitScreen(x=>x.includes('unscheduled ('),'board filter restored');
+  await c.input('6');
+  await c.waitScreen(x => x.includes('unscheduled (1)'), 'all groups the unparented map');
   await c.input('/unscheduled (<CR>za');
-  const unscheduled = await c.waitScreen(x => /M-5 Slice 2 map/.test(x), 'unparented map in unfolded unscheduled');
-  assert.doesNotMatch(leftOf(unscheduled), /Q-8.*Auth scheme/, 'a map child has a parent and is not unscheduled');
+  await c.waitScreen(x => /M-5 Slice 2 map/.test(x), 'all reaches the unparented map');
 
   // the map grouping
   await c.input('5');

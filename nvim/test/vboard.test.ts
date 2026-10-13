@@ -57,6 +57,7 @@ const categories: Scenario = {
     task(404, 'backlog', 'C-216', { rank: 10 }),
     task(405, 'done', 'C-216'),
     task(406, 'backlog', 'C-401'),
+    task(408, 'planned', ''), task(409, 'review', ''),
   ],
 };
 
@@ -92,21 +93,21 @@ test('release versions appear once in the scope, all tree, top bar and item head
 
 test('release scope ends with live counts of open categories and their open descendants', { skip }, async t => {
   const c = await start(t, categories);
-  const screen = await c.waitScreen(s => s.includes('categories 2 · 3 open'), 'category count line');
+  const screen = await c.waitScreen(s => s.includes('categories 2 · 3 open · unscheduled 2'), 'category count line');
   assert.match(screen, /R-228 0.1.2 Working with items/);
   assert.match(screen, /T-318 E-269 › Row 318/);
   const lines = await panel(c);
-  assert.equal(lines.filter(line => line.trim()).at(-3)?.trim(), 'categories 2 · 3 open', 'last content row before the two footer lines');
+  assert.equal(lines.filter(line => line.trim()).at(-3)?.trim(), 'categories 2 · 3 open · unscheduled 2', 'last content row before the two footer lines');
   await c.control({ emit: { type: 'task', id: 'T-407', item: task(407, 'backlog', 'E-402') } });
-  await c.waitScreen(s => s.includes('categories 2 · 4 open'), 'new descendant increments the count');
+  await c.waitScreen(s => s.includes('categories 2 · 4 open · unscheduled 2'), 'new descendant increments the count');
   for (const key of ['2', '1']) {
     await c.input(key);
     await c.waitScreen(s => s.includes(key === '2' ? 'in work ·' : 'board ·'), 'filter changed');
-    assert.match((await panel(c)).join('\n'), /categories 2 · 4 open/);
+    assert.match((await panel(c)).join('\n'), /categories 2 · 4 open · unscheduled 2/);
   }
   for (const [key, label] of [['gn', 'now'], ['gw', 'watch'], ['gb', 'background'], ['gA', 'archive']]) {
     await c.input(key!);
-    await c.waitScreen(s => s.includes(label! + ' ·') && s.includes('categories 2 · 4 open'), 'category counts under the layer filter');
+    await c.waitScreen(s => s.includes(label! + ' ·') && s.includes('categories 2 · 4 open · unscheduled 2'), 'category counts under the layer filter');
   }
   for (const key of ['3', '4', '5']) {
     await c.input(key);
@@ -114,13 +115,55 @@ test('release scope ends with live counts of open categories and their open desc
     assert.doesNotMatch((await panel(c)).join('\n'), /categories \d/);
   }
   await c.input('1');
-  await c.waitScreen(s => s.includes('categories 2 · 4 open'), 'release board restored');
+  await c.waitScreen(s => s.includes('categories 2 · 4 open · unscheduled 2'), 'release board restored');
   for (const id of ['C-216', 'C-400']) {
     const item = { ...categories.items!.find(it => it.id === id), state: 'closed' };
     await c.control({ emit: { type: 'task', id, item } });
   }
-  await c.waitScreen(s => !s.includes('categories 2 · 4 open') && !s.includes('categories 1 ·'), 'no open category hides the line');
-  assert.doesNotMatch((await panel(c)).join('\n'), /categories \d/);
+  await c.waitScreen(s => !s.includes('categories 2 · 4 open · unscheduled 2') && !s.includes('categories 1 ·'), 'no open category hides the category part');
+  assert.match((await panel(c)).join('\n'), /unscheduled 2/);
+});
+
+test('release board/work/done exclude categories and loose items; a parent event lowers the loose count', { skip }, async t => {
+  const c = await start(t, categories);
+  for (const [key, label] of [['1', 'board · 1 in work · 0 done'], ['2', 'in work · 1'], ['4', 'DONE · 0']]) {
+    await c.input(key!);
+    const screen = await c.waitScreen(s => s.includes(label!), 'scoped ' + key);
+    assert.doesNotMatch(screen, /Row 40[34589]|unscheduled \(/);
+  }
+  await c.input('1');
+  const moved = task(408, 'planned', 'E-269');
+  await c.control({ set: { items: categories.items!.map(it => it.id === 'T-408' ? moved : it) } });
+  await c.control({ emit: { type: 'task', id: 'T-408', item: moved } });
+  await c.waitScreen(s => s.includes('T-408 E-269 › Row 408') && s.includes('categories 2 · 3 open · unscheduled 1'), 'parent event moves the row and count together');
+  assert.equal(await c.lua("return require('cland.state').item('T-408').parent"), 'E-269');
+});
+
+test('count line omits zero parts and disappears when both groups are empty', { skip }, async t => {
+  const c = await start(t, categories);
+  for (const id of ['T-408', 'T-409']) await c.control({ emit: { type: 'task', id, item: null } });
+  await c.waitScreen(s => s.includes('categories 2 · 3 open') && !s.includes('unscheduled 2'), 'no unscheduled part');
+  assert.equal((await panel(c)).filter(line => line.trim()).at(-3)?.trim(), 'categories 2 · 3 open');
+  for (const id of ['E-402', 'T-403', 'T-404']) await c.control({ emit: { type: 'task', id, item: null } });
+  await c.waitScreen(s => s.includes('categories 2') && !s.includes('3 open'), 'empty categories omit the open part');
+  assert.equal((await panel(c)).filter(line => line.trim()).at(-3)?.trim(), 'categories 2');
+  for (const id of ['C-216', 'C-400']) await c.control({ emit: { type: 'task', id, item: { ...categories.items!.find(it => it.id === id), state: 'closed' } } });
+  await c.waitScreen(s => !s.includes('categories 2') && !s.includes('categories 1'), 'both groups empty');
+  assert.doesNotMatch((await panel(c)).join('\n'), /categories \d|unscheduled \d/);
+  await c.control({ emit: { type: 'task', id: 'T-408', item: task(408, 'planned', '') } });
+  await c.waitScreen(s => s.includes('unscheduled 1'), 'unscheduled-only line');
+  assert.equal((await panel(c)).filter(line => line.trim()).at(-3)?.trim(), 'unscheduled 1');
+  await c.input('/unscheduled 1<CR><CR>');
+  await c.waitScreen(s => s.includes('all ·') && s.includes('▸ unscheduled (1)'), 'unscheduled-only Enter reaches all');
+  assert.match(String(await c.lua('return vim.api.nvim_get_current_line()')), /^ unscheduled 1$/);
+});
+
+test('without an open release the board keeps its unscheduled view', { skip }, async t => {
+  const c = await start(t, { items: [task(1, 'planned', ''), task(2, 'review', '')] });
+  const screen = await c.waitScreen(s => s.includes('no open container: unscheduled') && s.includes('unscheduled (2)'), 'no-release fallback');
+  assert.doesNotMatch(screen, /categories \d/);
+  await c.input('/unscheduled (<CR>za');
+  await c.waitScreen(s => s.includes('Row 1') && s.includes('Row 2'), 'fallback loose tasks unfolded');
 });
 
 test('category roots follow the configured ladder and the count line belongs only to release scope', { skip }, async t => {
@@ -143,13 +186,16 @@ test('category roots follow the configured ladder and the count line belongs onl
 
 test('Enter reaches folded categories in all, za reveals ranked open items, and help lists the action', { skip }, async t => {
   const c = await start(t, categories);
-  await c.waitScreen(s => s.includes('categories 2 · 3 open'), 'count line before navigation');
+  await c.waitScreen(s => s.includes('categories 2 · 3 open · unscheduled 2'), 'count line before navigation');
   await c.input('/categories 2<CR><CR>');
   const screen = await c.waitScreen(s => s.includes('all ·') && /▸ ○ C-216 Tech debt +3 open/.test(s), 'folded categories under all');
   assert.match(screen, /▸ ○ C-400 Ideas +0 open/);
   assert.doesNotMatch(screen, /Row 40[345]/);
-  assert.match(String(await c.lua('return vim.api.nvim_get_current_line()')), /categories 2 · 3 open/, 'cursor on the categories heading');
-  await c.input('jza');
+  assert.match(String(await c.lua('return vim.api.nvim_get_current_line()')), /categories 2 · 3 open · unscheduled 2/, 'cursor on the categories heading');
+  await c.input('/unscheduled (<CR>za');
+  const loose = await c.waitScreen(s => s.includes('Row 408') && s.includes('Row 409'), 'unscheduled unfolded under all');
+  assert.ok(loose.indexOf('unscheduled (2)') > loose.indexOf('C-400 Ideas'), 'unscheduled follows categories');
+  await c.input('za/C-216<CR>za');
   const expanded = await c.waitScreen(s => /▾ ○ C-216 Tech debt/.test(s) && s.includes('T-403 Row 403'), 'category unfolded');
   assert.ok(expanded.indexOf('T-404 Row 404') < expanded.indexOf('T-403 Row 403'), 'open descendants follow rank');
   assert.doesNotMatch(expanded, /T-405 Row 405/, 'closed items stay out of the open section');
@@ -178,19 +224,20 @@ test('release board excludes legacy trees and done orphans; all reveals every it
   ] };
   const c = await start(t, scenario);
   assert.equal(await c.lua("return require('cland.items').filter()"), 'board', 'fresh projects default to the scoped board');
-  assert.deepEqual(await c.lua(`local out={}; for _,it in ipairs(require('cland.vboard').compose().unscheduled) do out[#out+1]=it.id end; return out`), ['T-30']);
+  assert.deepEqual(await c.lua(`local out={}; for _,it in ipairs(require('cland.vboard').compose().unscheduled) do out[#out+1]=it.id end; return out`), []);
   for (const width of [80, 120]) {
     await c.rpc.request('nvim_ui_try_resize', width, 45);
     await c.lua("local s=require('cland.state'); s.S.ui.items_folds={}; require('cland.items').set_filter('board')");
     await c.waitScreen(s => s.includes('board · 1 in work · 1 done'), 'scoped board summary');
     const text = (await panel(c)).join('\n');
-    assert.match(text, /▸ unscheduled \(1\)/);
+    assert.doesNotMatch(text, /unscheduled \(/);
+    assert.match(text, /unscheduled 1/);
     assert.doesNotMatch(text, /T-30 Row 30/, '§3.5: unscheduled planned work is Background until unfolded');
     for (const id of ['T-19', 'T-20', 'T-140', 'T-1', 'T-31', 'T-32']) assert.doesNotMatch(text, new RegExp(` ${id} `));
     await c.lua("require('cland.vboard').fold('all open')");
-    await c.waitScreen(s => s.includes('Row 30'), 'open unscheduled orphan');
+    await c.waitScreen(s => s.includes('Row 168'), 'scoped folds opened');
     const rows = () => c.lua<string[]>(`local p=require('cland.panels'); local b=p.buf('items'); local out={}; for i=1,vim.api.nvim_buf_line_count(b) do local info=p.row_at(b,i); if info and info.item then out[#out+1]=info.item end end; return out`);
-    assert.deepEqual(await rows(), ['T-130', 'T-167', 'T-30', 'T-107', 'T-168'], 'unfolding also reveals scoped background containers and done work');
+    assert.deepEqual(await rows(), ['T-130', 'T-167', 'T-107', 'T-168'], 'unfolding also reveals scoped background containers and done work');
     const columns = await c.lua(`local out={}; for status,list in pairs(require('cland.board').columns()) do out[status]={}; for _,it in ipairs(list) do out[status][#out[status]+1]=it.id end end; return out`);
     assert.deepEqual(columns, { backlog: [], planned: ['T-167'], 'in progress': [], review: [], qa: [], ready: [], done: ['T-168'] });
     await c.input('6zR');
@@ -233,7 +280,7 @@ test('an open scope under an archived release stays out of unscheduled and appea
     task(9, 'planned', 'T-8'),
   ] });
   await c.input('ezR');
-  await c.waitScreen(s => s.includes('T-8 Open archived epic') && s.includes('▾ unscheduled (0)'), 'archived epic scope');
+  await c.waitScreen(s => s.includes('T-8 Open archived epic') && !s.includes('unscheduled ('), 'archived epic scope');
   assert.equal(await c.lua("return require('cland.items').scope().id"), 'T-8');
   const text = (await panel(c)).join('\n');
   assert.doesNotMatch(text, /T-2 Archived release|Row 3/);
@@ -244,7 +291,7 @@ test('an open scope under an archived release stays out of unscheduled and appea
   await c.waitScreen(s => s.includes('T-1 0.1.0 Current release') && !s.includes('T-8 Open archived epic'), 'original scope');
   assert.equal(await c.lua("return require('cland.items').scope().id"), 'T-1');
 });
-test('the board shows hub sections, epic rank, status glyphs, verdicts, criteria and folded background and unscheduled work', { skip }, async t => {
+test('the board shows hub sections, rank, glyphs, verdicts and criteria; all reaches unscheduled work', { skip }, async t => {
   const c = await start(t);
   await c.waitScreen(s => s.includes('board · 7 in work · 1 done'), 'board summary');
   await c.waitScreen(s => s.includes('1/2'), 'criteria fetched');
@@ -256,13 +303,17 @@ test('the board shows hub sections, epic rank, status glyphs, verdicts, criteria
   assert.match(text, /◌ T-14/);
   assert.match(text, /○ T-16.*next/);
   assert.ok(text.indexOf('T-16') < text.indexOf('T-14'), 'epic rank precedes task rank');
-  assert.match(text, /▸ backlog \(1\)/); assert.match(text, /▸ unscheduled \(1\)/);
+  assert.match(text, /▸ backlog \(1\)/); assert.doesNotMatch(text, /unscheduled \(/); assert.match(text, /unscheduled 1/);
   assert.doesNotMatch(text, /T-20 Row 20/, '§3.5: planned outside the current release is Background');
   for (const id of ['T-17', 'T-18', 'T-19']) assert.ok(!lines.some(l => new RegExp(` ${id} `).test(l)), `${id} starts hidden`);
   assert.match(text, /epic.*all.*Tracker.*Panels/);
   await c.input('/backlog (<CR>za'); await c.waitScreen(s => s.includes('Row 17'), 'backlog opens');
   await c.input('za'); await c.waitScreen(s => !s.includes('Row 17'), 'backlog closes');
-  await c.input('/unscheduled (<CR>za'); await c.waitScreen(s => s.includes('Row 20'), 'unscheduled planned work remains reachable');
+  await c.input('/unscheduled 1<CR><CR>');
+  await c.waitScreen(s => s.includes('all ·') && s.includes('unscheduled (1)'), 'all rendered');
+  await c.input('/unscheduled (<CR>za'); await c.waitScreen(s => s.includes('Row 20'), 'unscheduled planned work reachable in all');
+  await c.input('1');
+  await c.waitScreen(s => s.includes('board · 7'), 'board restored');
   const glyphs = await c.lua<Record<string, string>>(`local out={}; local b=require('cland.panels').buf('items'); local lines=vim.api.nvim_buf_get_lines(b,0,-1,false); for _,m in ipairs(vim.api.nvim_buf_get_extmarks(b,-1,0,-1,{details=true})) do local text=(lines[m[2]+1] or ''):sub(m[3]+1,m[4].end_col); if text=='◉' or text=='1/1' or text=='next' then out[(lines[m[2]+1] or ''):match('T%-%d+')..':'..text]=m[4].hl_group end end; return out`);
   assert.equal(glyphs['T-11:◉'], 'ClandAmber'); assert.equal(glyphs['T-13:◉'], 'ClandGreen'); assert.equal(glyphs['T-13:1/1'], 'ClandGreen'); assert.equal(glyphs['T-16:next'], 'ClandTeal');
   await c.input('<Space>i<Space>s<Space>b');
@@ -355,11 +406,13 @@ test('category tasks leave the release unscheduled fold and root peers never cyc
     { id: 'M-3', kind: 'map', title: 'Map root', state: 'open', parent: null },
   ] };
   const c = await start(t, categoryFixture);
-  await c.waitScreen(s => s.includes('Scheduled work') && s.includes('unscheduled (2)'), 'release board and no-parent count');
+  await c.waitScreen(s => s.includes('Scheduled work') && s.includes('unscheduled 2'), 'release board and no-parent count');
+  await c.input('/unscheduled 2<CR><CR>');
+  await c.waitScreen(s => s.includes('all ·') && s.includes('unscheduled (2)'), 'all rendered');
   await c.input('/unscheduled (<CR>za');
   const screen = await c.waitScreen(s => s.includes('Unparented work') && s.includes('Map root'), 'unfolded unscheduled items');
   assert.ok(!screen.includes('Category work'));
-  assert.ok(!screen.includes('Map child'));
+  assert.ok(screen.includes('Map child'), 'all retains the unscheduled map tree');
   assert.deepEqual(await c.lua("local out={}; for _,it in ipairs(require('cland.items').scopes()) do out[#out+1]=it.id end; return out"), ['R-1']);
   assert.equal(await c.lua("return require('cland.items').is_container(require('cland.state').item('C-2'))"), true);
   await c.input('e');

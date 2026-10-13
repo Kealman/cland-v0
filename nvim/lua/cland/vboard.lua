@@ -67,7 +67,7 @@ function M.compose()
           elseif not items.is_container(it) then out.leaves[#out.leaves + 1] = it end
         end
       end
-    elseif items.unscheduled(it) and not items.is_level(it) then
+    elseif not scope and items.unscheduled(it) and not items.is_level(it) then
       out.unscheduled[#out.unscheduled + 1] = it
     end
   end
@@ -243,11 +243,13 @@ function M.render(c)
       end
       if #leaves > 0 then fold(c, 'leaves', 'questions and specs', leaves, f) end
     end
-    local unscheduled = {}
-    for _, it in ipairs(b.unscheduled) do
-      if f == 'board' and selected(it, f) then row(c, it, 'unscheduled') else unscheduled[#unscheduled + 1] = it end
+    if not b.scope then
+      local unscheduled = {}
+      for _, it in ipairs(b.unscheduled) do
+        if f == 'board' and selected(it, f) then row(c, it, 'unscheduled') else unscheduled[#unscheduled + 1] = it end
+      end
+      fold(c, 'unscheduled', 'unscheduled', unscheduled, f)
     end
-    fold(c, 'unscheduled', 'unscheduled', unscheduled, f)
     if f == 'board' then
       local more = {}
       for _, it in ipairs(items.ordered()) do

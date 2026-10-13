@@ -342,10 +342,27 @@ end
 
 --- A selectable heading shared by the release board and the all tree.
 function M.categories_line(c)
-  local scope, list, total = M.scope(), M.open_categories(), 0
-  if not scope or scope.kind ~= state.S.tracker.levels[1] or #list == 0 then return false end
-  for _, category in ipairs(list) do total = total + #M.category_items(category) end
-  c:add({ { ' categories ' .. #list .. ' · ' .. total .. ' open', 'ClandSection' } }, nil, { categories = true })
+  local scope = M.scope()
+  if not scope or scope.kind ~= state.S.tracker.levels[1] then return false end
+  local categories, total, unscheduled = 0, 0, 0
+  for _, it in ipairs(state.S.items) do
+    if M.is_category(it) and it.state == 'open' then categories = categories + 1 end
+    if M.unscheduled(it) and not M.is_level(it) then unscheduled = unscheduled + 1 end
+    if it.state == 'open' then
+      local parent, seen = present(it.parent) and state.item(it.parent), {}
+      while parent and not seen[parent.id] do
+        seen[parent.id] = true
+        if M.is_category(parent) and parent.state == 'open' then total = total + 1; break end
+        parent = present(parent.parent) and state.item(parent.parent) or nil
+      end
+    end
+  end
+  local parts = {}
+  if categories > 0 then parts[#parts + 1] = 'categories ' .. categories end
+  if total > 0 then parts[#parts + 1] = total .. ' open' end
+  if unscheduled > 0 then parts[#parts + 1] = 'unscheduled ' .. unscheduled end
+  if #parts == 0 then return false end
+  c:add({ { ' ' .. table.concat(parts, ' · '), 'ClandSection' } }, nil, { categories = true })
   if M.follow_categories then c.cursor_to = #c.lines; M.follow_categories = nil end
   return true
 end
@@ -566,8 +583,15 @@ function M.render(c)
     end
     local categories = M.open_categories()
     local scope = M.scope()
-    local grouped = scope and scope.kind == state.S.tracker.levels[1] and #categories > 0
+    local grouped = scope and scope.kind == state.S.tracker.levels[1]
+    local unscheduled = {}
     if grouped then
+      for _, it in ipairs(M.ordered()) do
+        if M.unscheduled(it) and not M.is_level(it) then
+          unscheduled[#unscheduled + 1] = it
+          walk(it, 0, true)
+        end
+      end
       for _, category in ipairs(categories) do
         seen[category.id] = true
         for _, it in ipairs(M.all()) do
@@ -583,6 +607,16 @@ function M.render(c)
         row(c, category, 0, #open)
         -- This temporary section is a flat ranked list of open descendants.
         if not M.folded(category) then for _, it in ipairs(open) do row(c, it, 1, nil, true) end end
+      end
+      if #unscheduled > 0 then
+        local closed = state.S.ui.items_folds.unscheduled ~= false
+        c:add({ { ' ' .. (closed and '▸ ' or '▾ ') .. 'unscheduled (' .. #unscheduled .. ')', 'ClandSection' } }, nil, { fold = 'unscheduled' })
+        local board = require('cland.vboard')
+        if board.follow_fold == 'unscheduled' then c.cursor_to = #c.lines; board.follow_fold = nil end
+        if not closed then
+          seen = {} -- Loose trees were hidden from the ordinary roots; visit them here.
+          for _, it in ipairs(unscheduled) do walk(it, 1, false) end
+        end
       end
     end
     if #state.S.items == 0 then c:add({ { ' No items in .cland/tasks yet.', 'ClandDim' } }) end

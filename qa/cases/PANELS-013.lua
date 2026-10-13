@@ -30,17 +30,19 @@ return {
     api.nvim_win_set_width(require('cland.layout').win.left,70)
     qa.wait_for(function() return qa.screen():find('board · 8 in work · 1 done',1,true) and qa.screen():find('1/2',1,true) and qa.screen():find('1/1',1,true) end,5000,'board with criteria')
     local screen=qa.screen()
-    for _,text in ipairs({'IN PROGRESS · 1','REVIEW · 1','QA · 1','READY · 1','PLANNED · 4','▸ backlog (1)','▸ unscheduled (1)','✗ review','for Reviewer','1/1'}) do
+    for _,text in ipairs({'IN PROGRESS · 1','REVIEW · 1','QA · 1','READY · 1','PLANNED · 4','▸ backlog (1)','unscheduled 1','✗ review','for Reviewer','1/1'}) do
       qa.expect(screen:find(text,1,true)~=nil,text)
     end
     qa.expect(screen:find('○ T-16',1,true)<screen:find('◌ T-14',1,true),'epic rank before task rank')
     qa.expect(not screen:find('Row 17',1,true) and not screen:find('Row 18',1,true) and not screen:find('Row 19',1,true),'backlog, done and unscheduled hidden')
     qa.keys('/backlog (<CR>za')
     qa.wait_for(function() return qa.screen():find('Row 17',1,true) end,5000,'backlog opens')
-    -- §3.5 Items: planned without release membership is unscheduled Background.
-    qa.keys('za/unscheduled (<CR>za')
+    -- Loose work is reached through the count line in all.
+    qa.keys('za/unscheduled 1<CR><CR>')
+    qa.wait_for(function() return qa.screen():find('unscheduled (1)',1,true) end,5000,'all rendered')
+    qa.keys('/unscheduled (<CR>za')
     qa.wait_for(function() return qa.screen():find('Row 19',1,true) end,5000,'unscheduled opens')
-    qa.keys('zap') -- Tracker
+    qa.keys('1p') -- Tracker
     qa.keys('p') -- Panels
     qa.wait_for(function() return not qa.screen():find('Row 16',1,true) end,5000,'Panels epic tab')
     qa.keys('/T-20<CR>T')

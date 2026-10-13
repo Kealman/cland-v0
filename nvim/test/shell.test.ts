@@ -1276,7 +1276,7 @@ test('the client agrees with the shared rank fixture and applies the final sibli
   await c.waitScreen(s => JSON.stringify(idsOf(itemRows(s))) === JSON.stringify(order), 'final sibling order');
 });
 
-test('configured levels choose the lowest semver release; all folds closed trees and board keeps unscheduled last', { skip }, async t => {
+test('configured levels choose the lowest semver release; all folds closed trees and work stays in scope', { skip }, async t => {
   const c = await startShell(t, s => {
     s.tracker = { levels: ['initiative', 'feature', 'component'] };
     s.items = [
@@ -1309,10 +1309,10 @@ test('configured levels choose the lowest semver release; all folds closed trees
   await c.input('za');
   await c.waitScreen(s => !s.includes('T-9 Folded done task'), 'closed component folds');
   await c.input('2');
-  await c.waitScreen(s => s.includes('in work · 2'), 'work filter redrawn');
-  await c.input('/unscheduled (<CR>za');
-  screen = await c.waitScreen(s => idsOf(itemRows(s)).includes('T-13'), 'current work plus unscheduled');
-  assert.deepEqual(idsOf(itemRows(screen)), ['T-10', 'T-13']);
+  await c.waitScreen(s => s.includes('in work · 1'), 'work filter redrawn');
+  screen = await c.waitScreen(s => idsOf(itemRows(s)).includes('T-10'), 'current work only');
+  assert.deepEqual(idsOf(itemRows(screen)), ['T-10']);
+  assert.doesNotMatch(leftOf(screen), /unscheduled \(/);
   await c.input('4');
   screen = await c.waitScreen(s => s.includes('done · 1') && s.includes('Folded done task'), 'current done tasks including closed parents');
   assert.deepEqual(idsOf(itemRows(screen)), ['T-9']);
@@ -1371,12 +1371,7 @@ test('the items panel: vertical sections, hub glyphs, right-aligned claims and c
   assert.deepEqual(idsOf(itemRows(s)), ['T-2','T-12','T-3','T-10','T-11']);
   await c.input('/backlog (<CR>za');
   await c.waitScreen(x=>x.includes('T-13 T-1 › Codex adapter'),'backlog unfolds');
-  await c.input('/unscheduled (<CR>za');
-  s=await c.waitScreen(x=>x.includes('T-5 Slice 2 map'),'unscheduled unfolds');
-  panel=leftOf(s);
-  assert.match(panel, /^ ○ T-5 Slice 2 map +1\/4$/m, 'map progress stays visible');
-  assert.doesNotMatch(panel, /T-[789] /, 'parented map children are outside unscheduled');
-  assert.deepEqual(idsOf(itemRows(s)), ['T-2','T-12','T-3','T-10','T-11','T-13','T-5']);
+  assert.doesNotMatch(leftOf((await c.screen()).join('\n')), /unscheduled \(|T-5 Slice 2 map/);
 
   const rowsOf = async (key: string, header: string) => {
     await c.input(key);
