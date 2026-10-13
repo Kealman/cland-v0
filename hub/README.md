@@ -469,6 +469,39 @@ A read (`task.list`, `task.view`, `session.list`, `topic.list`, `topic.history`,
 
 **The journal** (spec 4.2, decision #13) is `.cland/journal.jsonl`: one JSON object per line, `{"ts":"<ISO>","event":"<event>",…}`, the hub log's own shape. It is a filter over the log closure every part of the hub logs through, so an event is journalled by being logged. It holds the domain events: `hub-started` and `hub-stopped` (written by the daemon at each start and clean stop), `config-loaded`; messages as metadata (`send`, `send-refused`, `human-send`: id, topic, sender, addressees, `bytes`, `replyTo`, outcomes; never the text); deliveries (`acked`, `injected`, `dropped`, `role-queue-claimed`); sessions (`hello`, `bye`, `rename`, `replaced`, `kick`, `refused-role`, `session-launched`, `session-model`, `subagent-launched`, `session-stopped`, `session-resumed`, `harness-exited`, `session-state`); roles (`role-assigned`, `role-cleared`, `role-clause`, `role-revoked`, `role-handover`, `coordinator-vacant`, `coordinator-filled`); topics (`topic-created`, `topic-status`); asks and the inbox (`ask`, `ask-answered`, `ask-withdrawn`, `ask-cancelled`, `notification`, #33); the tracker (`task-written`, `task-claimed`, `task-released`, `task-conflict`, `task-removed`); hygiene (`loop-breaker`, `unmuted`, `rate-limited`); and the audit records (`audit`, #30). The file is opened for appending: a restart adds a `hub-started` line after the last one and never truncates. A last line cut off mid-write (a crash) is ended with a newline before anything else is written, so it stays one unreadable line and every later record parses; a short write is continued until the whole record is out. `Journal.write(record)` enqueues a record that is not a log line. The process log, everything the hub says, stays in `.cland/log/hub.log`, through a separate ordered async append queue. The CLI and every transport use this same sink for ordinary events once serving. Startup, listener and orphan-sweep diagnostics and fatal logging errors retain stderr: a stdio parent can see why listeners failed to bind. Node writes file-backed stdio synchronously, so request-time audit and refusal events never use that sink.
 
+**Session usage.** Each changed `session.usage` publication writes a `session-usage`
+line with `session`, `sessionId`, the current store `role`, the session's launch
+`item` (null without one), `harness`, `model`, `total` (`UsageCounts`, including
+USD `cost` when reported), optional `rateLimits` (Codex's reported account share),
+and `final: false`. Changing a claim or verifier hold does not change its charge
+item. Claude Code's mod turn completions, Codex's token and rate-limit updates,
+and OpenCode's steps use the same path. Publications remain coalesced to at most
+one per second per session; equal totals and rate limits write nothing, even if
+the latest turn or raw token report differs. Comparison keeps one snapshot per
+session in memory and reads neither tracker items nor journal history. The first
+publication after a hub restart writes again.
+
+A successful stop, harness exit or relaunch's stop writes one `final: true` line
+with the latest reported usage, including an update still waiting for publication.
+A session that reported no totals or rate limits writes no final line. Repeating
+stop on an already stopped session writes no second final line. Tokens or cost
+absent from a report are unknown, rather than zero. Read the records and sum the
+latest final totals for each cland session per role and launch item:
+
+```sh
+cland hub journal --kind session-usage --json | jq -s '
+  map(select(.final)) | group_by(.sessionId) | map(last)
+  | group_by([.role, .item])
+  | map({role: .[0].role, item: .[0].item,
+      totalTokens: ([.[].total.totalTokens] | if any(. == null) then null else add end),
+      cost: ([.[].total.cost] | if any(. == null) then null else add end)})'
+```
+
+Taking the latest final per session avoids counting retained conversation totals
+twice after a relaunch. Sessions still running have no final record yet. The cost
+sum stays null if any contributing session did not report cost; Codex's rate-limit
+shares remain on the records and are not summed as monetary costs.
+
 Launch models are recorded without reading the tracker:
 
 - `session-launched` names the launch's `session`, `sessionId`, `harness`, `role`, launch `item` when present, and `model` (null when not yet reported). Codex's `thread/start` response and OpenCode's selected model populate the record even without an explicit model. Every successful resume or relaunch writes its own launch record with the reported model.

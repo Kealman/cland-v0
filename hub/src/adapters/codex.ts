@@ -311,6 +311,8 @@ export class CodexAdapter implements HarnessAdapter {
   readonly #env: NodeJS.ProcessEnv;
   /** By cland session id. */
   readonly #live = new Map<string, Live>();
+  /** Keep terminal totals after the app-server connection is released, until resume or prune. */
+  readonly #stoppedUsage = new Map<string, SessionUsage>();
   /** Watched session ids: their pids are checked and their connections kept. */
   readonly #watched = new Set<string>();
   /** Inputs being admitted, then associated with the actual turn id (idle can precede completion). */
@@ -846,7 +848,8 @@ export class CodexAdapter implements HarnessAdapter {
 
   usage(p: HarnessProcess): SessionUsage | null {
     const live = this.#live.get(p.sessionId);
-    if (!live || (!live.tokens && !live.rateLimits)) return null;
+    if (!live) return this.#stoppedUsage.get(p.sessionId) ?? null;
+    if (!live.tokens && !live.rateLimits) return null;
     const total = codexCounts(live.tokens?.total);
     const last = codexCounts(live.tokens?.last);
     return {
@@ -858,11 +861,12 @@ export class CodexAdapter implements HarnessAdapter {
     };
   }
 
-  forget(sessionId: string): void { this.unwatch(sessionId); this.#live.delete(sessionId); }
+  forget(sessionId: string): void { this.unwatch(sessionId); this.#live.delete(sessionId); this.#stoppedUsage.delete(sessionId); }
 
   // ---------------------------------------------------------------- watch: liveness and the connection
 
   watch(p: HarnessProcess): void {
+    this.#stoppedUsage.delete(p.sessionId);
     let live = this.#live.get(p.sessionId);
     if (!live) {
       live = { p, client: null, connecting: null, state: 'unknown', eventSequence: 0, turnId: null, tokens: null, rateLimits: null };
@@ -952,6 +956,8 @@ export class CodexAdapter implements HarnessAdapter {
     } finally {
       resumed(() => {
         if (ended) {
+          const usage = this.usage(p);
+          if (usage) this.#stoppedUsage.set(p.sessionId, usage);
           this.#unwatch(p.sessionId);
           const live = this.#live.get(p.sessionId);
           if (live) this.#updateState(live, 'unknown');
@@ -1035,6 +1041,7 @@ export class CodexAdapter implements HarnessAdapter {
     // the app-servers keep running: a restarted hub re-finds them
     for (const live of this.#live.values()) live.client?.close();
     this.#live.clear();
+    this.#stoppedUsage.clear();
   }
 }
 

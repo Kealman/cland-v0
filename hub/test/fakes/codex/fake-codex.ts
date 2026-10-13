@@ -246,6 +246,7 @@ async function appServer(args: string[]): Promise<number> {
 
   const conns = new Set<Conn>();
   const threads = new Map<string, Thread>();
+  let usedPercent = 6;
   const pendingApprovals = new Map<string, () => void>();
   let approveAll: (() => void) | null = null;
   const send = (c: Conn, frame: unknown) => {
@@ -294,6 +295,9 @@ async function appServer(args: string[]): Promise<number> {
     });
 
   const runTurn = async (t: Thread) => {
+    let repeatUsage = false;
+    let limitsOnly = false;
+    let usageBurst = false;
     const turnId = t.turnId as string;
     let error: { message: string } | null = null;
     const record: TurnRecord = { id: turnId, status: 'inProgress', items: [] };
@@ -312,6 +316,9 @@ async function appServer(args: string[]): Promise<number> {
             ? { type: 'functionCallOutput', id: `fco_${randomUUID()}`, name: item.tool.name, namespace: item.tool.namespace ?? null, output: item.text }
             : { type: 'userMessage', id: randomUUID(), content: [{ type: 'text', text: item.text }] };
       record.items.push(taken);
+      repeatUsage ||= item.text.includes('repeat usage');
+      limitsOnly ||= item.text.includes('rate limits only');
+      usageBurst ||= item.text.includes('usage burst');
       if (!item.text.includes('leave unannounced')) toSubscribers(t.id, 'item/completed', { threadId: t.id, turnId, item: taken });
       if (item.text === 'newer recovery turn') {
         while (!existsSync(join(HOME, 'release-newer-turn'))) await sleep(5);
@@ -364,10 +371,15 @@ async function appServer(args: string[]): Promise<number> {
       if (rename) await callTool('rename', { name: rename[1] });
       await callTool('send', { text: `pong: ${body}`, ...where });
     }
-    t.tokens += 12;
+    if (!repeatUsage && !limitsOnly) t.tokens += 12;
     const usage = { totalTokens: 12, inputTokens: 10, cachedInputTokens: 6, outputTokens: 2, reasoningOutputTokens: 1 };
     const total = { totalTokens: t.tokens, inputTokens: t.tokens / 12 * 10, cachedInputTokens: t.tokens / 12 * 6, outputTokens: t.tokens / 12 * 2, reasoningOutputTokens: t.tokens / 12 };
-    toSubscribers(t.id, 'thread/tokenUsage/updated', { threadId: t.id, turnId, tokenUsage: { total, last: usage, modelContextWindow: 200000 } });
+    for (let report = 0; report < (usageBurst ? 10 : 1); report++)
+      toSubscribers(t.id, 'thread/tokenUsage/updated', { threadId: t.id, turnId, tokenUsage: { total, last: usage, modelContextWindow: repeatUsage ? 100000 : 200000 } });
+    if (limitsOnly) {
+      usedPercent = 9;
+      toSubscribers(t.id, 'account/rateLimits/updated', { rateLimits: { limitId: 'codex', primary: { usedPercent, windowDurationMins: 10080, resetsAt: 1791955620 }, secondary: null } });
+    }
     save(t);
     t.turnId = null;
     // as the real one: idle is sent before turn/completed
@@ -568,7 +580,7 @@ async function appServer(args: string[]): Promise<number> {
         return loseOnce(text) ? { lost: true } : { result: { turnId: t.turnId } };
       }
       case 'account/rateLimits/read':
-        return { result: { rateLimits: { limitId: 'codex', primary: { usedPercent: 6, windowDurationMins: 10080, resetsAt: 1791955620 }, secondary: null } } };
+        return { result: { rateLimits: { limitId: 'codex', primary: { usedPercent, windowDurationMins: 10080, resetsAt: 1791955620 }, secondary: null } } };
       default:
         return { error: { code: -32601, message: `method not found: ${method}` } };
     }

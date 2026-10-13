@@ -58,6 +58,7 @@ export const JOURNALLED: ReadonlySet<string> = new Set([
   'refused-role',
   'session-launched',
   'session-model',
+  'session-usage',
   'subagent-launched',
   'session-reused',
   'session-archived',

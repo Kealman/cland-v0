@@ -6,6 +6,7 @@ import { normalizeId, idNumber } from '../tracker/item.ts';
 import { crewSummary, type CrewConfig, type CrewSource } from '../crew.ts';
 import type { Resumed } from './budget.ts';
 import { randomUUID } from 'node:crypto';
+import { isDeepStrictEqual } from 'node:util';
 import {
   PROTOCOL_VERSION,
   UPDATE_HINT,
@@ -237,7 +238,8 @@ export class HubCore {
   #canSteerEvents: (sessionId: string) => boolean = () => false;
   readonly #processItems = new Map<string, string | null>();
   readonly #artifactStates = new Map<string, Artifact['status']>();
-  readonly #processFacts = new Map<string, Pick<HarnessProcessView, 'status' | 'role'>>();
+  readonly #processFacts = new Map<string, Pick<HarnessProcessView, 'status' | 'role' | 'harness' | 'model'>>();
+  readonly #usageRecords = new Map<string, { usage: Pick<SessionUsage, 'total' | 'rateLimits'>; final: boolean }>();
   #publishedPresence = '[]';
   #presenceImmediate: NodeJS.Immediate | null = null;
   #items: TopicItems | null;
@@ -447,7 +449,7 @@ export class HubCore {
 
   /** Seed ownership facts without publishing or advancing terminal checkpoints. */
   seedProcess(process: HarnessProcessView): void {
-    this.#processFacts.set(process.sessionId, { status: process.status, role: process.role });
+    this.#processFacts.set(process.sessionId, { status: process.status, role: process.role, harness: process.harness, model: process.model });
     this.#processItems.set(process.sessionId, process.item ? this.#items?.resolveId?.(process.item) ?? process.item : null);
   }
 
@@ -484,9 +486,11 @@ export class HubCore {
     const suffix = items.map(item => ` · ${item}`).join('');
     const checkpoint = `subscription-terminal:${process.sessionId}`;
     if (process.status === 'running') {
+      if (previous !== process.status && this.#usageRecords.get(process.sessionId)?.final) this.#usageRecords.delete(process.sessionId);
       this.#store.setMeta(checkpoint, '');
       if (previous !== process.status) this.publishEvent({ session: process.name }, 'session.state', `${process.name} launched${suffix}`, context);
     } else {
+      this.#recordUsage(process.name, process.sessionId, process.usage, true);
       // Status is committed before ProcessTable listeners run. The checkpoint and closure share the event commit.
       const signature = JSON.stringify([process.startedAt, process.status]);
       this.#store.transaction(() => {
@@ -507,6 +511,7 @@ export class HubCore {
     this.#approvalCommands.delete(process.sessionId);
     this.#processFacts.delete(process.sessionId);
     this.#processItems.delete(process.sessionId);
+    this.#usageRecords.delete(process.sessionId);
   }
 
   publishPruned(sessionIds: string[], archived: number): void { this.#emit({ type: 'sessions.pruned', sessionIds, archived }); }
@@ -739,6 +744,8 @@ export class HubCore {
   }
 
   publishUsage(session: string, sessionId: string, usage: SessionUsage): void {
+    if (this.#processFacts.get(sessionId)?.status !== 'running') return;
+    this.#recordUsage(session, sessionId, usage, false);
     const subject = { session };
     const context = { role: this.#store.roleOf(session), item: this.#processItems.get(sessionId) ?? null };
     const crossings = new Map<string, OwnedSubscription[]>();
@@ -755,6 +762,20 @@ export class HubCore {
     }
     for (const [text, subscriptions] of crossings) this.publishEvent(subject, 'usage', text, context, subscriptions);
     this.#emit({ type: 'session.usage', session, sessionId, usage });
+  }
+
+  /** Compare only published totals and limits; never read the tracker or journal. */
+  #recordUsage(session: string, sessionId: string, reported: SessionUsage | undefined, final: boolean): void {
+    const previous = this.#usageRecords.get(sessionId);
+    if (previous?.final) return;
+    const usage = reported ? { ...(reported.total ? { total: reported.total } : {}), ...(reported.rateLimits ? { rateLimits: reported.rateLimits } : {}) } : previous?.usage;
+    if (!usage || (!usage.total && !usage.rateLimits)) return;
+    if (!final && isDeepStrictEqual(previous?.usage, usage)) return;
+    const snapshot = structuredClone(usage);
+    const facts = this.#processFacts.get(sessionId);
+    this.#usageRecords.set(sessionId, { usage: snapshot, final });
+    this.#log({ event: 'session-usage', session, sessionId, role: this.#store.roleOf(session), item: this.#processItems.get(sessionId) ?? null,
+      harness: facts?.harness ?? null, model: reported?.model ?? facts?.model ?? null, ...snapshot, final });
   }
 
   /** Work changes rebuild presence once, after the current burst of deliveries/holds. */
