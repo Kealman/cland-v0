@@ -60,10 +60,40 @@ const categories: Scenario = {
   ],
 };
 
+test('release versions appear once in the scope, all tree, top bar and item header', { skip }, async t => {
+  for (const [title, version, heading, kind = 'release', id = 'R-228'] of [
+    ['Working with items', '0.1.2', 'R-228 0.1.2 Working with items'],
+    ['v0.1.1', '0.1.1', 'R-228 v0.1.1'],
+    ['0.1.0', '0.1.0', 'R-228 0.1.0'],
+    ['Unversioned', undefined, 'R-228 Unversioned'],
+    ['Configured release', '0.3.0', 'I-228 0.3.0 Configured release', 'initiative', 'I-228'],
+  ] as const) {
+    await t.test(title, async t => {
+      const c = await start(t, { tracker: { levels: [kind, 'epic'] }, items: [
+        { id, kind, title, version, state: 'open', file: `${id}-release.md` },
+        { id: 'E-269', kind: 'epic', title: 'Prefixes and categories', state: 'open', parent: id },
+      ] });
+      const screen = await c.waitScreen(s => s.includes('board ·'), 'release scope');
+      assert.ok(screen.split('\n')[0]!.includes(heading), 'top bar: ' + screen.split('\n')[0]);
+      assert.ok(screen.split('\n').slice(1).some(row => row.split('│')[0]!.trim().startsWith(heading + ' ')), 'scope header: ' + screen);
+      await c.input('6');
+      const tree = await c.waitScreen(s => s.includes('all · 2 items'), 'all tree');
+      assert.ok(tree.split('\n').some(row => row.split('│')[0]!.includes('○ ' + heading)), 'tree: ' + tree);
+      assert.ok(tree.includes('E-269 Prefixes and categories'), 'other kinds keep their titles');
+      await c.input(`:Cland view item ${id}<CR>`);
+      const item = await c.waitScreen(s => s.includes(`${id} · item`) && s.includes(`.cland/tasks/${id}-release.md`), 'release item view');
+      assert.ok(item.split('\n').slice(1).some(row => row.split('│')[1]?.trim() === heading), 'item header: ' + item);
+      if (title === 'v0.1.1' || title === '0.1.0') {
+        assert.ok(!item.includes(`${version} ${title}`), 'a version-only title is never repeated');
+      }
+    });
+  }
+});
+
 test('release scope ends with live counts of open categories and their open descendants', { skip }, async t => {
   const c = await start(t, categories);
   const screen = await c.waitScreen(s => s.includes('categories 2 · 3 open'), 'category count line');
-  assert.match(screen, /R-228 Working with items/);
+  assert.match(screen, /R-228 0.1.2 Working with items/);
   assert.match(screen, /T-318 E-269 › Row 318/);
   const lines = await panel(c);
   assert.equal(lines.filter(line => line.trim()).at(-3)?.trim(), 'categories 2 · 3 open', 'last content row before the two footer lines');
@@ -211,7 +241,7 @@ test('an open scope under an archived release stays out of unscheduled and appea
   await c.waitScreen(s => s.includes('all · 5 items'), 'explicit all tree');
   assert.equal((await panel(c)).filter(line => line.includes('T-8 ')).length, 1, 'selected scope has no duplicate header');
   await c.input('1E');
-  await c.waitScreen(s => s.includes('T-1 Current release') && !s.includes('T-8 Open archived epic'), 'original scope');
+  await c.waitScreen(s => s.includes('T-1 0.1.0 Current release') && !s.includes('T-8 Open archived epic'), 'original scope');
   assert.equal(await c.lua("return require('cland.items').scope().id"), 'T-1');
 });
 test('the board shows hub sections, epic rank, status glyphs, verdicts, criteria and folded background and unscheduled work', { skip }, async t => {

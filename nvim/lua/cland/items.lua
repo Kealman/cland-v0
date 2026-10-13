@@ -23,6 +23,15 @@ local function present(v)
 end
 M.present = present
 
+--- Keep version-only release titles intact; otherwise put the version before the title.
+function M.display_title(it)
+  local title = it.title or ''
+  if present(it.version) and title ~= it.version and title ~= 'v' .. it.version then
+    return it.version .. ' ' .. title
+  end
+  return title
+end
+
 function M.num(id)
   return tonumber(tostring(id or ''):match('(%d+)')) or 0
 end
@@ -523,7 +532,7 @@ local function row(c, it, depth, open_count, flat)
   local changed = epic and plan.changes(epic).items[it.id]
   local fold = container and not flat and (M.folded(it) and '▸ ' or '▾ ') or ''
   c:add(
-    { { ' ' .. ('  '):rep(depth) .. fold }, { g, ghl }, { ' ' }, { it.id, 'ClandDim' }, { tag and (' ' .. tag .. ' ›') or '', 'ClandDim' }, { changed and ' △' or '', 'ClandPlanChange' }, { ' ' .. (it.title or ''), title_hl } },
+    { { ' ' .. ('  '):rep(depth) .. fold }, { g, ghl }, { ' ' }, { it.id, 'ClandDim' }, { tag and (' ' .. tag .. ' ›') or '', 'ClandDim' }, { changed and ' △' or '', 'ClandPlanChange' }, { ' ' .. M.display_title(it), title_hl } },
     open_count and { { open_count .. ' open', 'ClandDim' } } or right_of(it, container),
     { item = it.id, fold = container and not flat and it.id or nil }
   )

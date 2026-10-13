@@ -82,7 +82,9 @@ function M.topbar()
   }
   local release = require('cland.items').current_release()
   if release then
-    table.insert(left, 3, { ' ' .. release.title .. ' ', 'ClandTextChip' })
+    local title = require('cland.items').display_title(release)
+    if release.kind == S.tracker.levels[1] then title = release.id .. ' ' .. title end
+    table.insert(left, 3, { ' ' .. title .. ' ', 'ClandTextChip' })
   end
   local right = {}
   local coord = state.coordinator()

@@ -200,7 +200,7 @@ test('qa.state() holds the stub scenario: the sessions with their states, the ro
   assert.equal(state.needs_you, 1);
   assert.deepEqual(state.items.map((i) => [i.id, i.title, i.claim?.session ?? null]), [['T-1', 'Workbench shell', null], ['T-2', 'Items panel', 'impl-1']]);
   // what the state says is what the screen shows
-  assert.match(screen, /cland qa-state +Workbench shell │ General/);
+  assert.match(screen, /cland qa-state +T-1 Workbench shell │ General/);
   assert.match(screen, /T-1 Workbench shell/);
   assert.match(screen, /T-2 T-1 › Items panel +impl-1/);
   assert.match(screen, /Which should win\?/);
@@ -393,7 +393,7 @@ test('with every file write denied, as in a read-only rescue run, a stub-hub cas
   assert.equal(run.code, 0);
   assert.equal(run.line.hub, 'stub');
   const evidence = run.line.evidence as { screen: string; state: { sessions: unknown[] } };
-  assert.match(evidence.screen, /cland qa-state +Workbench shell │ General/);
+  assert.match(evidence.screen, /cland qa-state +T-1 Workbench shell │ General/);
   assert.equal(evidence.state.sessions.length, 2);
 
   const shipped = await qa(t, [`${SHIPPED}SHELL-001.lua`, '--hub', 'stub'], { prefix: readOnly });

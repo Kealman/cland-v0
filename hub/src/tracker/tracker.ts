@@ -93,7 +93,7 @@ export type ItemView = IndexedItem & {
   /** The file, relative to the project root. */
   path: string;
   /** Root-to-item header path, including this item; distinct from the file path. */
-  ancestry: Array<Pick<IndexedItem, 'id' | 'kind' | 'title'>>;
+  ancestry: Array<Pick<IndexedItem, 'id' | 'kind' | 'title' | 'version'>>;
   /** The integration branch used for patch-id comparisons, or null when neither exists. */
   verdictBase: string | null;
   body: string;
@@ -1290,11 +1290,11 @@ export class Tracker {
   #ancestry(item: Item): ItemView['ancestry'] {
     const path: ItemView['ancestry'] = [];
     const seen = new Set<string>();
-    let node: Pick<IndexedItem, 'id' | 'kind' | 'title' | 'parent'> | null = item.fm;
+    let node: Pick<IndexedItem, 'id' | 'kind' | 'title' | 'version' | 'parent'> | null = item.fm;
     // Legacy/hand-edited parents may be missing or cyclic; never hang a read.
     while (node && !seen.has(node.id)) {
       seen.add(node.id);
-      path.push({ id: node.id, kind: node.kind, title: node.title });
+      path.push({ id: node.id, kind: node.kind, title: node.title, ...(node.version !== undefined ? { version: node.version } : {}) });
       node = node.parent ? this.#index.get(node.parent) : null;
     }
     return path.reverse();

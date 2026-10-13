@@ -211,7 +211,7 @@ function M.render(c)
     local right, lead = {}, items.lead_label(b.scope)
     if lead then right[#right + 1] = { lead .. ' ', 'ClandTeal' } end
     right[#right + 1] = { done .. '/' .. #kids, 'ClandDim' }
-    c:add({ { ' ' .. b.scope.id .. ' ' .. b.scope.title, 'ClandBold' } }, right, { item = b.scope.id })
+    c:add({ { ' ' .. b.scope.id .. ' ' .. items.display_title(b.scope), 'ClandBold' } }, right, { item = b.scope.id })
   else c:add({ { ' no open container: unscheduled', 'ClandDim' } }) end
   if f == 'you' then
     local any = false

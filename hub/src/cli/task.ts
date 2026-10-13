@@ -181,7 +181,11 @@ const claimText = (c: Claim | null): string => (c ? `${c.session}${c.role ? ` ($
 
 function viewText(i: ItemView): string {
   const lines = [
-    i.ancestry.map(node => `${node.id}  ${node.title}`).join(' › '),
+    i.ancestry.map(node => {
+      const version = node.version;
+      const showVersion = version && node.title !== version && node.title !== `v${version}`;
+      return `${node.id}  ${showVersion ? `${version}  ` : ''}${node.title}`;
+    }).join(' › '),
     `  kind      ${i.kind}`,
     ...(i.version !== undefined ? [`  version   ${i.version}`] : []),
     `  state     ${i.state}`,

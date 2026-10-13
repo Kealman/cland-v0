@@ -116,7 +116,7 @@ test('under selects descendants before other filters; CLI and MCP views return t
   for (const under of ['T-99', 'invalid', 12]) assert.equal((await ui.request({ type: 'task.list', under })).ok, false);
   const plain = await cland(root, 'task', 'view', 'T-4');
   assert.equal(plain.code, 0, plain.stderr);
-  assert.equal(plain.stdout.split('\n')[0], 'R-1  v0.1 › E-2  Schema › T-4  Parser');
+  assert.equal(plain.stdout.split('\n')[0], 'R-1  0.1.0  v0.1 › E-2  Schema › T-4  Parser');
   const listed = await cland(root, 'task', 'list', '--under', 'R-1', '--kind', 'epic', '--json');
   assert.equal(listed.code, 0, listed.stderr);
   assert.deepEqual((JSON.parse(listed.stdout) as { items: Item[] }).items.map(item => item.id), ['E-2', 'E-3']);
@@ -126,7 +126,7 @@ test('under selects descendants before other filters; CLI and MCP views return t
   assert.deepEqual(mcpList.items.map(item => item.id), ['E-2', 'E-3']);
   const view = await spoke.call<{ item: Item }>('task.view', { id: 'T-4' });
   assert.deepEqual(view.item.ancestry, [
-    { id: 'R-1', kind: 'release', title: 'v0.1' },
+    { id: 'R-1', kind: 'release', title: 'v0.1', version: '0.1.0' },
     { id: 'E-2', kind: 'epic', title: 'Schema' },
     { id: 'T-4', kind: 'task', title: 'Parser' },
   ]);

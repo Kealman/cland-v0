@@ -1299,7 +1299,7 @@ test('configured levels choose the lowest semver release; all folds closed trees
   await c.lua("vim.api.nvim_win_set_width(require('cland.layout').win.left,65)");
   let screen = await c.waitScreen(s => s.includes('Current beta two') && s.includes('T-10 T-7 › Current work'), 'current configured release');
   assert.match(topBar(screen), /Current beta two/);
-  assert.match(leftOf(screen), /T-3 Current beta two/);
+  assert.match(leftOf(screen), /T-3 1\.2\.0-beta\.2\+build Current beta two/);
   assert.doesNotMatch(leftOf(screen), /Closed component|T-5 Unversioned/);
   assert.doesNotMatch(leftOf(screen), /Folded done task|Future work|Archived task/);
   await c.input('6');

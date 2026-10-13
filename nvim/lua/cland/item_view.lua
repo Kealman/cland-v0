@@ -199,7 +199,9 @@ local function body_lines(it, d, width)
       add({ { (' '):rep(indent or 1) .. l, group } })
     end
   end
-  text(it.title or '', 'ClandBold')
+  local title = items.display_title(it)
+  if it.kind == state.S.tracker.levels[1] then title = it.id .. ' ' .. title end
+  text(title, 'ClandBold')
   text(((d and d.path) or ('.cland/tasks/' .. (it.file or ''))) .. ' · updated ' .. hhmm(it.updated), 'ClandDim')
   add({ { ' ' .. ('─'):rep(math.max(1, width - 2)), 'ClandFaint' } })
   if not d then
