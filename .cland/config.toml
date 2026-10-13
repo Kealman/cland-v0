@@ -4,9 +4,27 @@
 [project]
 name = "v0"
 
-# Container kinds, ordered top-down. Leaf kinds are task, question and spec; map is outside the ladder.
+[verification]
+# Admission budget; the legacy compatibility lease remains an additional limit.
+budget = 1
+lock_path = "/tmp/cland-suite.lock"
+# Reuse green candidate trees for this many minutes; 0 disables caching.
+cache_max_age_minutes = 1440
+
+[sessions]
+# Archive stopped crew after their item closes, otherwise after their stop. Aides are excluded.
+archive_after_item = "3600s"
+archive_after_stop = "86400s"
+
+# Container kinds, ordered top-down; a list at a level groups peers. The first kind owns releases.
+# Other root kinds (category by default) have no version or rank. Leaves and map are outside the ladder.
 [tracker]
-levels = ["release", "epic"]
+levels = [["release","category"],"epic"]
+
+[plan]
+approval = "none"
+# QA for tasks outside any plan. Review is always required.
+qa_default = { scope = "none", when = "per-item" }
 
 # Keyboard layouts for Neovim Normal-mode letters (currently: ru). Ctrl focus chords use English.
 [keys]
@@ -27,6 +45,10 @@ loop_breaker_mute_minutes = 10
 # the largest message text, in bytes
 max_text_bytes = 8192
 
+# Archived artifact files are removed after this many days; their index entries stay.
 [artifacts]
-# days an archived artifact keeps its file before cleanup deletes it (T-61)
 retention_days = 30
+
+# Surface.kind = layer (now, watch, background, archive); read at hub start.
+[visibility]
+
