@@ -498,6 +498,8 @@ export type ClientHello = {
 };
 
 export type SuiteStart = { type: 'suite.start'; id: string; mode: 'auto' | 'all' | 'hub' | 'nvim'; cwd: string; report: string; to?: string[]; fresh?: boolean };
+export type SuiteSlot = { type: 'suite.slot' | 'suite.forced'; id: string; mode: string; cwd: string; head: string; pid: number; token: string };
+export type SuiteSlotResult = { id: string; admitted: boolean; locks: string[]; queue: VerificationQueue };
 export type SuiteCancel = { type: 'suite.cancel'; id: string; suite?: string };
 
 export type ClientRequest =
@@ -505,6 +507,7 @@ export type ClientRequest =
   | { type: 'suite.queue'; id: string }
   | { type: 'visibility.set'; id: string; surface: 'topics' | 'sessions' | 'artifacts'; target: string; mode: 'pin' | 'mute' }
   | SuiteStart
+  | SuiteSlot
   | SuiteCancel
   | ReleaseRequest
   | { type: 'sync'; id: string }
@@ -603,6 +606,7 @@ export type SuiteStatus = {
 
 /** Milliseconds throughout. Null means there is no duration evidence yet. ETA is time until admission. */
 export type VerificationWaiter = {
+  kind?: 'run' | 'hand run';
   id: string; session: string; item: string | null; mode: string; worktree: string;
   position: number; queuedAt: string | null; waitMs: number; etaMs: number | null; expectedRunMs: number | null;
 };
@@ -709,6 +713,9 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
   switch (f.type) {
     case 'visibility.set':
       return typeof f.surface === 'string' && ['topics', 'sessions', 'artifacts'].includes(f.surface) && typeof f.target === 'string' && f.target.length > 0 && (f.mode === 'pin' || f.mode === 'mute');
+    case 'suite.slot':
+    case 'suite.forced':
+      return ['full', 'hub-only', 'nvim-only'].includes(String(f.mode)) && typeof f.cwd === 'string' && typeof f.head === 'string' && Number.isSafeInteger(f.pid) && Number(f.pid) > 0 && typeof f.token === 'string' && f.token.length > 0;
     case 'suite.start':
       return (f.fresh === undefined || typeof f.fresh === 'boolean') && ['auto', 'all', 'hub', 'nvim'].includes(String(f.mode)) && typeof f.cwd === 'string' && typeof f.report === 'string' && (f.to === undefined || (Array.isArray(f.to) && f.to.every(v => typeof v === 'string')));
     case 'suite.cancel':

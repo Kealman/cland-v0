@@ -1,5 +1,9 @@
 // One machine ticket admits an invocation; full runs retain both locks across phases.
-import { spawn } from 'node:child_process';
+import { createConnection } from 'node:net';
+import { promisify } from 'node:util';
+import { execFile, spawn } from 'node:child_process';
+import { hubDiscovery, readDiscovery } from '../src/project.ts';
+import { PROTOCOL_VERSION, parseFrame, type SuiteSlotResult } from '../src/protocol.ts';
 import { existsSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
 import { mkdir, realpath, stat, writeFile } from 'node:fs/promises';
@@ -13,10 +17,10 @@ import { packageShards, type SuiteShard } from '../src/suite-shards.ts';
 import { describeSelection, selectPackageSuite, selectionFromEnv, type SuiteSelection, type SuiteRequest } from '../src/suite-selection.ts';
 
 type Interruption = { signal: 'SIGINT' | 'SIGTERM' | null };
-export async function runSuite(suites: string[][], options: { lockDir?: string; lockDirs?: string[]; cwd?: string; interruption?: Interruption; selection?: SuiteSelection; phaseNames?: string[]; resources?: Array<'free' | 'machine'>; workers?: number[] } = {}): Promise<number> {
+export async function runSuite(suites: string[][], options: { lockDir?: string; lockDirs?: string[]; cwd?: string; interruption?: Interruption; selection?: SuiteSelection; phaseNames?: string[]; resources?: Array<'free' | 'machine'>; workers?: number[]; force?: boolean; token?: string } = {}): Promise<number> {
   const interruption = options.interruption ?? { signal: null };
   let active: ReturnType<typeof spawn> | undefined;
-  let runId = randomBytes(10).toString('base64url');
+  let runId = options.token ?? randomBytes(10).toString('base64url');
   let activeIdentity: ProcessIdentity | null = null;
   const handlers = (['SIGINT', 'SIGTERM'] as const).map((signal) => {
     const handler = () => {
@@ -38,7 +42,7 @@ export async function runSuite(suites: string[][], options: { lockDir?: string; 
   const sample = setInterval(() => { peak = Math.max(peak, loadavg()[0]!); }, 1000);
   try {
     if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
-    if (process.env.CLAND_TEST_SKIP_LOCK !== '1') {
+    if (!options.force && process.env.CLAND_TEST_SKIP_LOCK !== '1') {
       const dirs = options.lockDirs ?? [options.lockDir ?? '/tmp/cland-suite.lock'];
       leases.push(...(options.resources ? await acquireBroker(dirs, () => interruption.signal !== null, holder) : await borrowLease(dirs, holder) ?? await acquire(dirs, () => interruption.signal !== null, holder)));
       runId = holder.token;
@@ -75,7 +79,7 @@ export async function runSuite(suites: string[][], options: { lockDir?: string; 
       }
       const phaseStarted = Date.now();
       let machineWait = 0;
-      if (options.resources?.[index] === 'machine' && process.env.CLAND_TEST_SKIP_LOCK !== '1') {
+      if (options.resources?.[index] === 'machine' && !options.force && process.env.CLAND_TEST_SKIP_LOCK !== '1') {
         const machineDir = `${(options.lockDirs ?? [options.lockDir ?? '/tmp/cland-suite.lock'])[0]}.machine`;
         machine = await acquire([machineDir], () => interruption.signal !== null, holder);
         machineWait = Date.now() - phaseStarted;
@@ -139,8 +143,89 @@ process.chdir(cwd);`);
   }
 }
 
+// Keep the human's socket open through admission and lease acquisition. Each poll
+// is an ordinary frame; closing this socket removes only this invocation's slot.
+async function humanQueue(cwd: string, selection: SuiteSelection, token: string, force: boolean, interrupted: () => boolean): Promise<{ close: () => void; locks?: string[] } | null> {
+  const discovery = readDiscovery(hubDiscovery(cwd));
+  if (!discovery) {
+    process.stderr.write(force ? 'no hub queue is in use; --force runs unlocked\n' : 'no hub queue is in use; using the compatibility lease\n');
+    return null;
+  }
+  const socket = createConnection(discovery.socket);
+  socket.setEncoding('utf8');
+  const pending = new Map<string, { resolve: (value: unknown) => void; reject: (error: Error) => void }>();
+  let buffer = ''; let welcomed = false; let failure: Error | null = null;
+  const fail = (error: Error) => { failure = error; for (const p of pending.values()) p.reject(error); pending.clear(); };
+  socket.on('error', fail);
+  socket.on('close', () => fail(new Error('human suite queue connection closed')));
+  socket.on('connect', () => socket.write(`${JSON.stringify({ type: 'hello', protocol: PROTOCOL_VERSION, secret: discovery.secret, client: 'cli' })}\n`));
+  socket.on('data', (chunk: string) => {
+    buffer += chunk;
+    let nl: number;
+    while ((nl = buffer.indexOf('\n')) >= 0) {
+      const frame = parseFrame(buffer.slice(0, nl)); buffer = buffer.slice(nl + 1);
+      if (frame?.type === 'welcome') welcomed = true;
+      else if (frame?.type === 'error') fail(new Error(String(frame.message)));
+      else if (frame?.type === 'result' && typeof frame.id === 'string') {
+        const p = pending.get(frame.id); pending.delete(frame.id);
+        if (frame.ok) p?.resolve(frame.value); else p?.reject(new Error(String(frame.error)));
+      }
+    }
+  });
+  const close = () => socket.destroy();
+  const signal = () => close();
+  process.on('SIGINT', signal); process.on('SIGTERM', signal);
+  const release = () => { process.off('SIGINT', signal); process.off('SIGTERM', signal); close(); };
+  let joined = false;
+  try {
+    const deadline = Date.now() + 3000;
+    while (!welcomed && !failure && !interrupted() && Date.now() < deadline) await pause(25);
+    if (failure) throw failure;
+    if (interrupted()) throw new Error('human suite interrupted');
+    if (!welcomed) throw new Error('hub did not answer within 3 seconds');
+    const head = await promisify(execFile)('git', ['rev-parse', 'HEAD'], { cwd, timeout: 3000 }).then(r => r.stdout.trim(), () => 'unknown');
+    const input = { type: force ? 'suite.forced' : 'suite.slot', mode: selection.mode, cwd: resolve(cwd), head, pid: process.pid, token };
+    let sequence = 0;
+    const request = async (): Promise<SuiteSlotResult> => {
+      if (failure) throw failure;
+      const id = `${token}:${++sequence}`;
+      return await new Promise<SuiteSlotResult>((resolve, reject) => {
+        const timer = setTimeout(() => { pending.delete(id); reject(new Error('hub suite slot did not answer')); }, joined ? 10_000 : 3000);
+        pending.set(id, { resolve: value => { clearTimeout(timer); resolve(value as SuiteSlotResult); }, reject: error => { clearTimeout(timer); reject(error); } });
+        socket.write(`${JSON.stringify({ ...input, id })}\n`);
+      });
+    };
+    let result = await request(); joined = true;
+    if (force) { release(); return { close: () => {} }; }
+    let last = ''; let printed = 0;
+    while (!result.admitted) {
+      if (interrupted()) throw new Error('human suite interrupted');
+      const waiter = result.queue.waiters.find(w => w.id === result.id);
+      const holder = result.queue.holder;
+      const duration = (ms: number | null) => ms === null ? 'unknown' : `${Math.ceil(ms / 1000)}s`;
+      const place = `${waiter?.position ?? '?'} of ${result.queue.waiters.length}`;
+      const eta = duration(waiter?.etaMs ?? null);
+      const signature = `${place}:${eta}:${holder?.session}:${holder?.pid}`;
+      if (signature !== last || Date.now() - printed >= 60_000) {
+        process.stderr.write(`waiting for the suite queue: place ${place} · ${holder?.session ?? holder?.kind ?? 'no holder'} runs ${duration(holder?.runMs ?? null)} · ETA ~${eta}\n`);
+        last = signature; printed = Date.now();
+      }
+      await pause(250);
+      result = await request();
+    }
+    return { close: release, locks: result.locks };
+  } catch (error) {
+    release();
+    if (interrupted() || joined) throw error;
+    process.stderr.write(force ? 'no hub queue is in use; --force runs unlocked\n' : 'no hub queue is in use; using the compatibility lease\n');
+    return null;
+  }
+}
+
 export async function runPackageSuite(mode: string, extra: string[] = [], options: { cwd?: string; lockDirs?: { hub: string; nvim: string } } = {}): Promise<number> {
   if (!['auto', 'all', 'hub', 'nvim'].includes(mode)) throw new Error(`unknown suite: ${mode}`);
+  const force = extra.includes('--force');
+  extra = extra.filter(arg => arg !== '--force');
   const cwd = options.cwd ?? fileURLToPath(new URL('../../', import.meta.url));
   const inherited = inheritedLease();
   const locks = options.lockDirs ?? { hub: inherited?.dirs[0] ?? '/tmp/cland-suite.lock', nvim: inherited?.dirs[1] ?? '/tmp/cland-suite-nvim.lock' };
@@ -152,7 +237,7 @@ export async function runPackageSuite(mode: string, extra: string[] = [], option
   // Reserve both locks jointly before a full run starts. Taking Neovim later
   // while holding machine would deadlock a live legacy Neovim-first waiter.
   // A single ticket/lease spans both phases; single-phase admission is unchanged.
-  const lockDirs = extra.length && mode === 'hub' ? [locks.hub] : [locks.hub, locks.nvim];
+  let lockDirs = extra.length && mode === 'hub' ? [locks.hub] : [locks.hub, locks.nvim];
   const interruption: Interruption = { signal: null };
   // Keep the first signal latched through final cleanup, after runSuite evaluates its return.
   const handlers = (['SIGINT', 'SIGTERM'] as const).map(signal => {
@@ -160,10 +245,20 @@ export async function runPackageSuite(mode: string, extra: string[] = [], option
     process.on(signal, handler);
     return { signal, handler };
   });
+  let queue: Awaited<ReturnType<typeof humanQueue>> = null;
+  const token = randomBytes(10).toString('base64url');
   try {
-    const code = await runSuite(suites, { cwd, lockDirs, interruption, selection, phaseNames: phases.map(phase => phase.name), ...(!extra.length ? { resources: phases.map(phase => phase.resource), workers: phases.map(phase => phase.workers) } : {}) });
+    if (force || (!inherited && !process.env.CLAND_SESSION_NAME && process.env.CLAND_TEST_SKIP_LOCK !== '1')) {
+      queue = await humanQueue(cwd, selection, token, force, () => interruption.signal !== null);
+      if (queue?.locks && !options.lockDirs) lockDirs = queue.locks;
+    }
+    const code = await runSuite(suites, { cwd, lockDirs, interruption, selection, force, token, phaseNames: phases.map(phase => phase.name), ...(!extra.length ? { resources: phases.map(phase => phase.resource), workers: phases.map(phase => phase.workers) } : {}) });
     return interruption.signal ? (interruption.signal === 'SIGINT' ? 130 : 143) : code;
+  } catch (error) {
+    if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
+    throw error;
   } finally {
+    queue?.close();
     for (const { signal, handler } of handlers) process.off(signal, handler);
   }
 }
@@ -175,5 +270,5 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   const mode = filtered[0] && ['auto', 'all', 'hub', 'nvim'].includes(filtered[0]) ? filtered.shift()! : 'auto';
   const packageRoot = fileURLToPath(new URL('../../', import.meta.url));
   const cwd = resolve(process.cwd()) === resolve(packageRoot, 'hub') ? packageRoot : process.cwd();
-  process.exitCode = await runPackageSuite(forceAll ? 'all' : mode, forceAll || mode === 'all' ? [] : filtered, { cwd });
+  process.exitCode = await runPackageSuite(forceAll ? 'all' : mode, forceAll || mode === 'all' ? filtered.filter(arg => arg === '--force') : filtered, { cwd });
 }

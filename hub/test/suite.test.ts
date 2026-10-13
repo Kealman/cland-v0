@@ -1293,3 +1293,146 @@ test('a package subdirectory cannot borrow root-tree cache evidence for differen
   assert.equal(subdirectory.cached, undefined);
   assert.match((await eventually('package failure', async () => (await f.results())[1])).text, /exit 1/);
 });
+
+async function humanRunnerFixture(t: import('node:test').TestContext) {
+  const f = await fixture(t, `${process.execPath} crew.mjs`);
+  await writeFile(join(f.root, 'crew.mjs'), `import { existsSync, writeFileSync } from 'node:fs';
+writeFileSync('crew-started', 'yes'); while (!existsSync('crew-finish')) await new Promise(r => setTimeout(r, 25));`);
+  await writeFile(join(f.root, 'human.test.mjs'), `import test from 'node:test'; import { writeFileSync, existsSync } from 'node:fs';
+test('tiny human target', async () => { writeFileSync('human-started', 'yes'); while (existsSync('human-hold') && !existsSync('human-finish')) await new Promise(r => setTimeout(r, 25)); });`);
+  const runner = fileURLToPath(new URL('./run-suite.ts', import.meta.url));
+  const locks = { hub: join(f.root, 'suite.lock'), nvim: join(f.root, 'suite.lock-nvim') };
+  await writeFile(join(f.root, 'human-entry.mjs'), `import { runPackageSuite } from ${JSON.stringify(runner)};
+process.exitCode = await runPackageSuite(process.env.CLAND_SUITE_LEASE ? 'all' : 'hub', ['human.test.mjs', ...process.argv.slice(2)], ${JSON.stringify({ cwd: f.root, lockDirs: locks })});`);
+  const start = (extra: string[] = [], envExtra: NodeJS.ProcessEnv = {}) => {
+    const env: NodeJS.ProcessEnv = { ...process.env, CLAND_HUB_FILE: join(f.root, '.cland', 'hub.json'), CLAND_TEST_SKIP_LOCK: '0', NODE_TEST_CONTEXT: '', ...envExtra };
+    delete env.CLAND_SESSION_NAME; delete env.CLAND_SESSION_ID; delete env.CLAND_ROLE; delete env.CLAND_SUITE_LEASE;
+    Object.assign(env, envExtra);
+    const child = spawn(process.execPath, ['human-entry.mjs', ...extra], { cwd: f.root, env, stdio: ['ignore', 'pipe', 'pipe'] });
+    ownProcess(t, child.pid!);
+    let output = '';
+    child.stdout.on('data', chunk => { output += String(chunk); }); child.stderr.on('data', chunk => { output += String(chunk); });
+    const done = new Promise<number | null>((resolve, reject) => { child.once('error', reject); child.once('close', resolve); });
+    t.after(async () => { if (child.exitCode === null && child.signalCode === null) child.kill('SIGTERM'); await done; });
+    return { child, done, output: () => output };
+  };
+  const queue = async () => (await f.ui.request({ type: 'suite.queue' })).value as VerificationQueue;
+  const journal = async () => {
+    assert.equal((await f.ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
+    return (await readFile(join(f.root, '.cland', 'journal.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line) as Record<string, unknown>);
+  };
+  return { ...f, start, queue, journal, locks };
+}
+
+test('a human package runner waits in the hub order and takes the compatibility slot after admission', async t => {
+  const f = await humanRunnerFixture(t);
+  await f.launch();
+  await eventually('crew holder started', async () => await stat(join(f.root, 'crew-started')).catch(() => undefined));
+  await writeFile(join(f.root, 'human-hold'), 'yes');
+  const human = f.start();
+  await eventually('human queue diagnostic', () => human.output().includes('waiting for the suite queue: place 1 of 1') ? true : undefined);
+  assert.match(human.output(), /ETA ~/);
+  const cli = await cland(f.root, 'verify', 'queue', '--json');
+  assert.equal(cli.code, 0, cli.stderr);
+  const q = JSON.parse(cli.stdout) as VerificationQueue;
+  assert.equal(q.waiters[0]?.session, 'human'); assert.equal(q.waiters[0]?.kind, 'hand run');
+  await assert.rejects(stat(join(f.root, 'human-started')), { code: 'ENOENT' });
+  await writeFile(join(f.root, 'crew-finish'), 'yes');
+  await eventually('human admitted and running', async () => await stat(join(f.root, 'human-started')).catch(() => undefined));
+  assert.equal((await f.queue()).holder?.session, 'human');
+  await writeFile(join(f.root, 'human-finish'), 'yes');
+  assert.equal(await human.done, 0, human.output());
+  await eventually('human slot left', async () => (await f.journal()).find(e => e.event === 'verification-human-left'));
+  const events = await f.journal();
+  assert.ok(events.some(e => e.event === 'verification-human-queued'));
+  assert.ok(events.some(e => e.event === 'verification-human-admitted' && Number(e.waitMs) > 0));
+});
+
+for (const signal of ['SIGINT', 'SIGTERM'] as const) test(`an interrupted human waiter leaves the hub queue on ${signal}`, async t => {
+  const f = await humanRunnerFixture(t);
+  await mkdir(f.locks.hub); // An isolated ownerless compatibility holder keeps admission closed.
+  const human = f.start();
+  await eventually('human queued', async () => (await f.queue()).waiters.find(w => w.session === 'human'));
+  human.child.kill(signal);
+  assert.equal(await human.done, signal === 'SIGINT' ? 130 : 143, human.output());
+  await eventually('human waiter removed', async () => (await f.queue()).waiters.length === 0 ? true : undefined);
+  assert.ok(await stat(f.locks.hub), 'interruption preserves the unrelated holder');
+  assert.ok((await f.journal()).some(e => e.event === 'verification-human-left' && e.reason === 'connection closed'));
+});
+
+test('a forced human package runner starts beside a holder and journals the exact bypass', async t => {
+  const f = await humanRunnerFixture(t);
+  await f.launch();
+  await eventually('crew holder started', async () => await stat(join(f.root, 'crew-started')).catch(() => undefined));
+  const forced = f.start(['--force']);
+  assert.equal(await forced.done, 0, forced.output());
+  assert.ok(await stat(join(f.root, 'human-started')));
+  await assert.rejects(stat(join(f.root, 'crew-finish')), { code: 'ENOENT' });
+  const events = await f.journal();
+  const entry = events.find(e => e.event === 'verification-forced');
+  assert.equal(entry?.worktree, f.root); assert.equal(entry?.mode, 'hub-only');
+  assert.equal((entry?.holder as VerificationQueue['holder'])?.session, 'impl');
+  assert.equal(events.some(e => e.event === 'verification-human-queued'), false);
+  await writeFile(join(f.root, 'crew-finish'), 'yes');
+  await eventually('crew finished', async () => (await f.results())[0]);
+});
+
+test('session-shell and inherited-worker package runners never request a human slot', async t => {
+  const f = await humanRunnerFixture(t);
+  const session = f.start([], { CLAND_SESSION_NAME: 'isolated-session' });
+  assert.equal(await session.done, 0, session.output());
+  assert.doesNotMatch(session.output(), /suite queue|no hub queue/);
+  // The real worker acquires and exports its verified lease to this package runner.
+  await mkdir(join(f.root, 'hub', 'test'), { recursive: true });
+  await writeFile(join(f.root, 'hub', 'test', 'run-suite.ts'), await readFile(fileURLToPath(new URL('./run-suite.ts', import.meta.url)), 'utf8'));
+  await writeFile(join(f.root, 'package.json'), JSON.stringify({ scripts: { typecheck: 'node -e "process.exit(0)"', test: `${process.execPath} human-entry.mjs` } }));
+  await f.launch();
+  const result = await eventually('borrowed human entry finished', async () => (await f.results())[0]);
+  assert.match(result.text, /all exit 0/);
+  assert.equal((await f.journal()).some(e => e.event === 'verification-human-queued'), false);
+});
+
+test('a human slot reserves admission briefly and releases a client that never takes its lease', async t => {
+  const f = await humanRunnerFixture(t);
+  const client = await connectUi(t, f.discovery, 'cli');
+  const input = { type: 'suite.slot', mode: 'hub-only', cwd: f.root, head: 'fixture-head', pid: process.pid, token: 'abandoned-human' };
+  assert.equal((await client.request(input)).ok, true);
+  await eventually('human reservation admitted', async () => (await f.queue()).holder?.session === 'human' ? true : undefined);
+  assert.equal((await f.queue()).holder?.kind, 'hand run');
+  await eventually('human grace expired', async () => (await f.journal()).find(e => e.event === 'verification-human-left' && e.reason === 'admission grace expired'));
+  assert.equal((await f.queue()).holder, null);
+  assert.equal((await client.request(input)).ok, false, 'an expired client cannot silently restart its abandoned request');
+});
+
+test('without an answering hub plain human runs retain the lease and --force runs unlocked', async t => {
+  const f = await humanRunnerFixture(t);
+  await mkdir(f.locks.hub);
+  const missing = { CLAND_HUB_FILE: join(f.root, 'no-hub.json') };
+  const normal = f.start([], missing);
+  await eventually('no hub fallback waiting on compatibility lock', () => normal.output().includes('waiting for the suite lock') ? true : undefined);
+  assert.match(normal.output(), /no hub queue is in use; using the compatibility lease/);
+  const forced = f.start(['--force'], missing);
+  assert.equal(await forced.done, 0, forced.output());
+  assert.match(forced.output(), /no hub queue is in use; --force runs unlocked/);
+  assert.ok(await stat(f.locks.hub));
+  await rm(f.locks.hub, { recursive: true });
+  assert.equal(await normal.done, 0, normal.output());
+  assert.equal((await f.journal()).some(e => e.event === 'verification-forced' || e.event === 'verification-human-queued'), false);
+});
+
+test('human slots share enqueue order while ranked item requests retain priority', async t => {
+  const f = await humanRunnerFixture(t);
+  await mkdir(f.locks.hub);
+  const first = await connectUi(t, f.discovery, 'cli');
+  const input = { type: 'suite.slot', mode: 'hub-only', cwd: f.root, head: 'fixture-head', pid: process.pid, token: 'first-human' };
+  const a = (await first.request(input)).value as { id: string };
+  const job = await f.launch();
+  const second = await connectUi(t, f.discovery, 'cli');
+  const b = (await second.request({ ...input, token: 'second-human' })).value as { id: string };
+  assert.deepEqual((await f.queue()).waiters.map(w => w.id), [job.id, a.id, b.id]);
+  first.close(); second.close();
+  await eventually('both human sockets left', async () => (await f.queue()).waiters.length === 1 ? true : undefined);
+  await writeFile(join(f.root, 'crew-finish'), 'yes');
+  await rm(f.locks.hub, { recursive: true });
+  await eventually('ranked worker finished', async () => (await f.results())[0]);
+});

@@ -1260,6 +1260,35 @@ The merge gate and T-209 criterion freshness remain exact-head: a cache hit alon
 never refreshes a stale mark. The Reviewer must verify the new head using the posted
 cached result as evidence; no tree equivalence is applied to review or QA marks.
 
+A human's `npm test` outside a cland session asks this same scheduler for a
+connection-owned slot before taking the compatibility lease. The runner prints
+its queue position, holder elapsed time and ETA as they change, and at least once
+a minute. Integrated Coordinator dev runs come first, then ranked item runs;
+humans join unranked runs in enqueue order. Their waiters have `kind: "hand run"`
+and `session: "human"`. Admission reserves ten seconds to acquire the lease;
+closing the connection removes the waiter, and an unused reservation expires.
+The journal records `verification-human-queued`, `verification-human-admitted`
+and `verification-human-left`, including waiting time. A linked worktree finds
+the main project's hub through the usual discovery path. With no answering hub
+within a few seconds, the runner prints that no hub queue is in use and takes
+the compatibility lease as before.
+
+`npm test -- --force` removes the flag from the test arguments and runs unlocked
+beside the holder. Before starting, it sends `suite.forced`; the hub journals
+`verification-forced` with worktree, head, selected mode and the holder it ran
+beside. With no answering hub, it prints that it runs unlocked. Unique phase
+roots and process cleanup still apply. Use this only for an intentional bypass.
+Session-shell `npm test` retains the compatibility-lease path; it is not the
+human queue path. Inherited hub worker leases are borrowed directly. Crew full
+runs go through `cland verify`.
+
+The human runner frames sit beside `suite.start`:
+
+| Frame | Result and lifetime |
+| --- | --- |
+| `{"type":"suite.slot","id":…, "mode":"full"|"hub-only"|"nvim-only", "cwd":…, "head":…, "pid":…, "token":…}` | `{id, admitted, locks, queue}`. First call registers a human waiter; repeated calls on the same socket poll it. Keep the connection open through the run. An expired reservation returns an error. `token` matches the runner's compatibility owner. |
+| `{"type":"suite.forced","id":…, "mode":…, "cwd":…, "head":…, "pid":…, "token":…}` | `{}` after journalling the bypass; no slot or lease is taken. |
+
 `cland verify queue [--json]` shows the holder (including compatibility **hand run**
 holders), the scheduler's ordered waiters, elapsed waits and estimated time until
 admission. Its human-facing form is the sessions panel's one-line `verify:`

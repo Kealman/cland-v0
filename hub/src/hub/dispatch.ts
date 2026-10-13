@@ -666,6 +666,7 @@ export class Dispatcher {
     let client = '';
     let kind: 'spoke' | 'client' | null = null;
     let done = false;
+    let humanSlot = false;
     let name: string | null = null;
     let spoke: SpokeSocket | null = null;
     let connection: Connection | null = null;
@@ -1352,6 +1353,19 @@ export class Dispatcher {
             () => resumed(() => ({ type: 'result', id: frame.id, ok: true, value: value() })),
             err => resumed(() => Dispatcher.#failure(frame.id, err)),
           ));
+        }
+        if (isClientRequest(frame) && (frame.type === 'suite.slot' || frame.type === 'suite.forced')) {
+          if (!this.#suites) return peer.send(Dispatcher.#failure(frame.id, new Error('this hub serves no project for suites')));
+          if (caller) return this.#refuse(caller, frame, peer, frame.type, 'human suite slots belong to runners outside a cland session');
+          if (!isAbsolute(frame.cwd)) return peer.send(Dispatcher.#failure(frame.id, new Error('suite cwd must be absolute')));
+          if (frame.type === 'suite.forced') {
+            return later(frame.type, this.#suites.forced(frame).then(() => ({ type: 'result', id: frame.id, ok: true, value: {} }), error => Dispatcher.#failure(frame.id, error)));
+          }
+          try {
+            const owner = peer;
+            if (!humanSlot) { humanSlot = true; onClose.push(() => this.#suites?.leave(owner)); }
+            return peer.send({ type: 'result', id: frame.id, ok: true, value: this.#suites.slot(frame, owner) });
+          } catch (error) { return peer.send(Dispatcher.#failure(frame.id, error)); }
         }
         if (frame.type === 'suite.cancel' && isClientRequest(frame)) {
           if (!this.#suites) return peer.send(Dispatcher.#failure(frame.id, new Error('this hub serves no project for suites')));

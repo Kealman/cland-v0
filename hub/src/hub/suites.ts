@@ -8,7 +8,7 @@ import { lintHubShards, lintHubShardTree, ShardManifestError } from '../suite-sh
 import { candidateTree } from '../verification-tree.ts';
 import { pidAlive } from '../project.ts';
 import { promisify } from 'node:util';
-import type { SuiteStatus, VerificationQueue, VerificationHolder, DurationStats } from '../protocol.ts';
+import type { SuiteStatus, VerificationQueue, VerificationHolder, DurationStats, SuiteSlot, SuiteSlotResult } from '../protocol.ts';
 import type { LogFn } from '../log.ts';
 import type { Store } from './store.ts';
 import { systemProcesses, endProcess } from '../system-processes.ts';
@@ -34,6 +34,8 @@ export type SuiteJob = {
   locks?: string[]; requesterDied?: boolean;
 };
 export type SuiteSchedulerOptions = { budget?: number; cacheMaxAgeMs?: number; locks?: string[]; requesterDead?: (actor: SuiteActor) => boolean; log?: LogFn; onQueue?: (queue: VerificationQueue) => void };
+type HumanSlot = Omit<SuiteSlot, 'type'> & { queued: string; admittedAt?: string; left?: boolean };
+const HUMAN_GRACE_MS = 10_000;
 const KEY = 'suite-jobs';
 const exec = promisify(execFile);
 const METRICS_WINDOW = 20;
@@ -77,6 +79,7 @@ export class Suites {
   readonly #launching = new Set<string>();
   readonly #budget: number;
   readonly #options: SuiteSchedulerOptions;
+  readonly #humans = new Map<object, HumanSlot>();
   #lastQueue = '';
   #compatibility: Awaited<ReturnType<typeof compatibilityHolder>> = null;
   constructor(store: Store, root: string, report: (job: Readonly<SuiteJob>, checkpointArtifact: (id: string) => void) => Promise<void>, options: SuiteSchedulerOptions = {}) {
@@ -177,7 +180,43 @@ export class Suites {
     if (this.#jobs.some(j => this.#active(j) && (j.actor?.sessionId ?? 'human') === identity)) throw new Error('this session already has a suite queued or running');
     this.#jobs.push(job); this.#save();
     await this.#check();
-    return { id, pid: job.pid, topic: job.topic, position: job.state === 'queued' ? this.#queue().findIndex(j => j.id === id) + 1 : 1, ...(job.cached ? { cached: job.cached } : {}) };
+    return { id, pid: job.pid, topic: job.topic, position: job.state === 'queued' ? this.#ordered().findIndex(j => j.id === id) + 1 : 1, ...(job.cached ? { cached: job.cached } : {}) };
+  }
+  // Connection-owned reservations have no worker or result; a restart closes their owners.
+  slot(input: SuiteSlot, owner: object): SuiteSlotResult {
+    let slot = this.#humans.get(owner);
+    if (!slot) {
+      slot = { ...input, id: randomUUID(), queued: new Date().toISOString() };
+      this.#humans.set(owner, slot);
+      this.#options.log?.({ event: 'verification-human-queued', ...slot, session: 'human' });
+      void this.#check();
+    }
+    if (slot.left) throw new Error('human suite reservation expired; submit again');
+    return { id: slot.id, admitted: Boolean(slot.admittedAt), locks: this.#locks(), queue: this.snapshot() };
+  }
+  leave(owner: object, reason = 'connection closed'): void {
+    const slot = this.#humans.get(owner);
+    if (!slot) return;
+    if (!slot.left) {
+      slot.left = true;
+      this.#options.log?.({ event: 'verification-human-left', id: slot.id, session: 'human', cwd: slot.cwd, head: slot.head, mode: slot.mode, reason, waitMs: elapsed(slot.queued, Date.parse(slot.admittedAt ?? new Date().toISOString())) });
+    }
+    if (reason === 'connection closed' || reason === 'hub closing') this.#humans.delete(owner);
+    void this.#check();
+  }
+  async forced(input: SuiteSlot): Promise<void> {
+    const queue = await this.queue();
+    this.#options.log?.({ event: 'verification-forced', session: 'human', cwd: input.cwd, worktree: input.cwd, head: input.head, mode: input.mode, pid: input.pid, holder: queue.holder });
+  }
+  #locks(): string[] { return this.#options.locks ?? ['/tmp/cland-suite.lock', '/tmp/cland-suite-nvim.lock']; }
+  // Humans have no item rank: integrated dev and ranked items precede them.
+  // Unranked runs and humans share enqueue order; existing runs win exact timestamp ties.
+  #ordered(): Array<SuiteJob | HumanSlot> {
+    return [...this.#queue(), ...[...this.#humans.values()].filter(s => !s.left && !s.admittedAt)].sort((a, b) => {
+      const integrated = (s: SuiteJob | HumanSlot) => 'actor' in s && s.integrated === true;
+      const rank = (s: SuiteJob | HumanSlot) => 'actor' in s ? s.priority ?? Number.MAX_SAFE_INTEGER : Number.MAX_SAFE_INTEGER;
+      return Number(integrated(b)) - Number(integrated(a)) || rank(a) - rank(b) || a.queued!.localeCompare(b.queued!);
+    });
   }
   #cached(tree: string, mode: SuiteSelection['mode']): SuiteJob | undefined {
     // A failed or pending fresh attempt supersedes earlier green evidence for this key.
@@ -245,8 +284,21 @@ export class Suites {
     if (this.#closed) return;
     const active = this.#jobs.filter(j => !j.reported && (j.state !== 'queued' && !j.outcome || j.outcome && j.outcome.code !== 0 && !j.cleaned)).length;
     if (active >= this.#budget) return;
-    const next = this.#queue()[0];
-    if (next && !await compatibilityOccupied(next.locks!) && !this.#closed && next.state === 'queued' && !next.outcome) await this.#launch(next);
+    this.#compatibility = await compatibilityHolder(this.#locks());
+    for (const [owner, slot] of this.#humans) {
+      if (slot.left || !slot.admittedAt) continue;
+      if (this.#compatibility?.holder?.token === slot.token) return;
+      if (Date.now() - Date.parse(slot.admittedAt) < HUMAN_GRACE_MS) return;
+      this.leave(owner, 'admission grace expired');
+    }
+    const next = this.#ordered()[0];
+    if (!next || await compatibilityOccupied(this.#locks()) || this.#closed) return;
+    if ('actor' in next) {
+      if (next.state === 'queued' && !next.outcome) await this.#launch(next);
+    } else if (!next.left && !next.admittedAt && [...this.#humans.values()].includes(next)) {
+      next.admittedAt = new Date().toISOString();
+      this.#options.log?.({ event: 'verification-human-admitted', id: next.id, session: 'human', cwd: next.cwd, head: next.head, mode: next.mode, waitMs: elapsed(next.queued, Date.now()), graceMs: HUMAN_GRACE_MS });
+    }
   }
   #inspectJob(job: SuiteJob): Promise<void> {
     const pending = this.#inspecting.get(job.id);
@@ -339,9 +391,12 @@ export class Suites {
     // not bias the estimate for an actual queued execution, which missed the cache.
     const estimate = (mode: string | null) => durations(recent.filter(j => !j.cached && j.outcome?.code === 0 && j.admittedAt && (mode === null || (j.selection?.mode ?? j.mode) === mode)).map(j => j.runMs)).medianMs;
     const active = this.#jobs.find(j => j.state !== 'queued' && (j.pid !== null || j.state === 'launching') && this.#active(j));
+    const human = [...this.#humans.values()].find(s => !s.left && s.admittedAt && (!shim || shim.holder?.token === s.token));
     let holder: VerificationHolder | null = null;
     if (shim && (!active || shim.holder?.pid !== active.pid)) {
-      holder = { kind: 'hand run', id: null, session: null, item: null, mode: null, pid: shim.holder?.pid ?? null, worktree: shim.holder?.worktree ?? null, since: shim.since, runMs: elapsed(shim.since, now), etaMs: null };
+      holder = { kind: 'hand run', id: human?.id ?? null, session: human ? 'human' : null, item: null, mode: human?.mode ?? null, pid: shim.holder?.pid ?? null, worktree: shim.holder?.worktree ?? null, since: shim.since, runMs: elapsed(shim.since, now), etaMs: null };
+    } else if (human) {
+      holder = { kind: 'hand run', id: human.id, session: 'human', item: null, mode: human.mode, pid: human.pid, worktree: human.cwd, since: human.admittedAt!, runMs: elapsed(human.admittedAt, now), etaMs: null };
     } else if (active) {
       holder = { kind: 'run', id: active.id, session: active.actor?.name ?? 'human', item: active.item ?? null, mode: active.selection?.mode ?? active.mode, pid: active.pid, worktree: active.cwd, since: active.admittedAt ?? null, runMs: elapsed(active.admittedAt, now), etaMs: null };
     }
@@ -350,17 +405,18 @@ export class Suites {
       holder.etaMs = expected === null || holder.runMs === null || (holder.kind === 'hand run' && !shim?.holder) ? null : Math.max(0, expected - holder.runMs);
     }
     let eta = holder ? holder.etaMs : 0;
-    const queued = this.#queue();
+    const queued = this.#ordered();
     // A racing hand run can own the shim while the admitted worker waits for it.
     if (active && holder?.kind === 'hand run') queued.unshift(active);
     return { version: 1, at: new Date(now).toISOString(), holder,
       waiters: queued.map((j, i) => {
-        const mode = j.selection?.mode ?? j.mode;
+        const job = 'actor' in j ? j : null;
+        const mode = job?.selection?.mode ?? j.mode;
         const expectedRunMs = estimate(mode);
-        const waiter = { id: j.id, session: j.actor?.name ?? 'human', item: j.item ?? null, mode, worktree: j.cwd, position: i + 1, queuedAt: j.queued ?? null, waitMs: elapsed(j.queued, now) ?? 0, etaMs: eta, expectedRunMs };
+        const waiter = { kind: job ? 'run' as const : 'hand run' as const, id: j.id, session: job?.actor?.name ?? 'human', item: job?.item ?? null, mode, worktree: j.cwd, position: i + 1, queuedAt: j.queued ?? null, waitMs: elapsed(j.queued, now) ?? 0, etaMs: eta, expectedRunMs };
         eta = eta === null || expectedRunMs === null ? null : eta + expectedRunMs;
         return waiter;
       }), metrics };
   }
-  async close(): Promise<void> { this.#closed = true; clearInterval(this.#timer); await Promise.allSettled(this.#starting); await this.#checking; await Promise.allSettled(this.#inspecting.values()); }
+  async close(): Promise<void> { this.#closed = true; for (const owner of this.#humans.keys()) this.leave(owner, 'hub closing'); clearInterval(this.#timer); await Promise.allSettled(this.#starting); await this.#checking; await Promise.allSettled(this.#inspecting.values()); }
 }

@@ -25,6 +25,10 @@ export const journalPath = (clandDir: string): string => join(clandDir, JOURNAL_
  */
 export const JOURNALLED: ReadonlySet<string> = new Set([
   'verification-timing',
+  'verification-human-queued',
+  'verification-human-admitted',
+  'verification-human-left',
+  'verification-forced',
   'event-announced',
   'suite-result',
   // the hub's life
