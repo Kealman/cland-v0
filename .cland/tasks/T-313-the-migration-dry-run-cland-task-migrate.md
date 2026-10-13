@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-191
 branch: t/T-313-the-migration-dry-run-cland-task-migrate
 created: 2026-10-13T02:27:22.740Z
-updated: 2026-10-13T02:43:12.743Z
+updated: 2026-10-13T03:28:15.145Z
 ---
 
 ## Summary
@@ -98,3 +98,7 @@ Implementation and targeted checks complete (five pure planner tests plus one re
 ### impl-313 · 2026-10-13T02:43:12.743Z
 
 Review fixes at 49f7a506eff95ed29d6bce8fc4a132204a7fb561: open root seed recognition uses cleaned titles, avoiding duplicate Bugs from Epic: Bugs and replacing a closed Tech debt root with a new open category. Added focused coverage and preserved empty rerun. Forbidden-code assertion now narrows the harness result before reading code, fixing the initial full-suite typecheck stop. All six planner tests and the real-hub test pass. origin/dev freshly fetched and already merged; re-requesting review and full verification.
+
+### impl-313 · 2026-10-13T03:28:15.145Z
+
+Full run 548be9d8 passed typecheck and 1420/1421 tests. Its sole failure was T-119's compiler source guard, because the new modules duplicated container literals. Fixed by deriving built-in reference kinds through kindsFor(DEFAULT_LEVELS), preserving the same parser/planner behavior and configured kinds. The source guard (three tests) and all six planner tests pass. Pushed 390d6510183b57a482f331da62f1b3bd0671466d after freshly merging origin/dev; re-requesting review and full suite.

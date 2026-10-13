@@ -3,7 +3,7 @@ id: T-312
 kind: task
 title: "Five more Linux failures from the first all-phase container run: Codex relaunch PID, OpenCode no-url rollback, three Neovim cases"
 state: open
-status: in progress
+status: review
 criterion_seq: 5
 labels:
   - v0.1.2
@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-190
 branch: t/T-312-five-more-linux-failures-from-the-first
 created: 2026-10-13T01:50:19.683Z
-updated: 2026-10-13T03:12:26.413Z
+updated: 2026-10-13T03:37:37.529Z
 ---
 
 ## Summary
@@ -46,8 +46,10 @@ T-268: Suite spend and Linux portability. Evidence is in T-281's topic (topic-18
 
 ## Acceptance criteria
 
-- [ ] C1. Each of the five failures has its cause named in the item and fixed there, with no test weakened, skipped or retried.
-- [ ] C2. In the Ubuntu 24.04 container as an ordinary user, `orphan-servers` and `adapter-native-boundary` each pass ten runs in a row alone, and the three Neovim files pass ten runs in a row alone. The logs are published as artifacts in this item's topic.
+- [x] C1. Each of the five failures has its cause named in the item and fixed there, with no test weakened, skipped or retried.
+  - done: impl-312 · 2026-10-13T03:19:16.688Z
+- [x] C2. In the Ubuntu 24.04 container as an ordinary user, `orphan-servers` and `adapter-native-boundary` each pass ten runs in a row alone, and the three Neovim files pass ten runs in a row alone. The logs are published as artifacts in this item's topic.
+  - done: impl-312 · 2026-10-13T03:19:17.710Z
 - [ ] C3. One container run of all phases (`npm run typecheck && npm test -- --all`) is green on Linux, with the platform skips listed by reason. Its log is published as an artifact.
 - [ ] C4. The suite is green on macOS through `cland verify`.
 - [ ] C5. C5. The hub-phase hang of freshness.test.ts in the first T-312 Linux all-phase run (2026-10-13 ~03:00Z, worker idle in epoll while every other worker had finished) has its cause named in the item and fixed there, with no timeout raised, no skip and no retry. The file passes ten runs in a row alone in the Ubuntu container, and the evidence of the hang is published as an artifact in this item's topic.
@@ -69,3 +71,19 @@ Three Neovim causes: (1) artifacts keeping waited only for the artifact-list cou
 ### impl-312 · 2026-10-13T02:33:58.330Z
 
 Pinned Neovim's own help confirms delayed-history precondition: v0.12.5 runtime/doc/insert.txt :startinsert (lines 2032–2039) starts Insert/Terminal mode just after executing the command, and inside a function/script only after it finishes. The Linux failure was the pre-history mode assertion at line 606, before snapshot release. The exact mode assertion remains and now follows a state wait. Fixed complete macOS files: adapter-native-boundary 65/65, codex-adapter 35/35, artifacts 9/9, thread 24/24; typecheck passes after correcting the test fault injection's readonly-field typing. Temporary UI protocol relay source was preserved as A-1746 and removed from the repo.
+
+### impl-312 · 2026-10-13T03:19:20.183Z
+
+A-1760 publishes the complete protected-slot evidence at 5e8842a: 20 four-worker macOS artifacts runs and all 40 isolated Ubuntu runs green (ten per unique file; artifacts covers both keeping and draft). Every orphan run correlates found:true with distinct observed app-server births. Typecheck passed, but C3 is blocked: freshness's first subtest rm hook failed ENOTEMPTY on .cland/tasks, so its later tracker.stop hook never ran. Inspector shows all six subtests finished, including the last scheduled-tip starvation case; a referenced inotify/FSEventWrap plus deleted SQLite handles kept the worker alive. No child/fake/hub/bridge from that file survived. /proc, process tree, inspector state and final reporter output retained. TERM of only PID74253 flushed the hub result: 1381 pass / 1 fail / 3 skips; nvim phase did not run. Docker/container stop=0 and both leases released at 03:16:42Z. Coordinator assigned this teardown cause to C5; existing 40 proofs stand unless their files change.
+
+### impl-312 · 2026-10-13T03:28:43.890Z
+
+C5 cause and candidate: the first freshness subtest registered tempProject removal before tracker.stop. A live watcher/background tracker write raced recursive rm, which failed ENOTEMPTY; Node's after-hook loop then skipped tracker.stop. The referenced FSEventWrap and deleted SQLite handles kept the finished worker alive. macOS dev file passed 6/6 alone and 6/6 under existing suite load, so the ordinary-alone shared-fix trigger did not reproduce. A controlled native removal probe reproduces the same teardown cause on dev and passes on the candidate. One standalone shared-fix commit 4426831 is pushed: fixture ownership runs resource callbacks before directories, attempts every registered step, and preserves original or aggregated errors. Matching direct-tracker hook patterns were audited and migrated in freshness, item-lead, launch-admission, merge, name-reservation, push, release, request-guard, session-async-processes, session-holds, subscription-hygiene, task-worktrees, tracker-async, tracker-criterion-write, tracker-native-boundary, tracker-rank, tracker-ready and tracker-status; freshness-harness now shares the same lifecycle. Composite callbacks were split so early disposal failure cannot skip later resources. Regression boundaries verify live tracker stop precedes rm and disposal/ENOTEMPTY failures remain visible while later resources/directories are cleaned. A-1763: cleanup 23/23, freshness 6/6, tracker native 29/29, frame readiness 24/24, final typecheck green. A-1761 was archived because its first publication preceded the last migration typecheck failure; that syntax was corrected and rechecked in A-1763. The four original target files are unchanged since the forty Linux proofs at 5e8842a.
+
+### impl-312 · 2026-10-13T03:31:58.749Z
+
+Audit also checked hub/src/hub/worktrees.test.ts outside hub/test: its direct tracker fixtures already await tracker.stop before rm in one teardown callback, so it does not share the removal-before-stop cause and was left unchanged. No native t.after tracker.stop registrations remain in the migrated hub/test fixtures.
+
+### impl-312 · 2026-10-13T03:37:37.529Z
+
+Evidence-count correction from review: each Linux orphan file in the original forty-run proof has 24 tests total, 23 passes, zero failures and one existing real-OpenCode-prerequisite skip, not 24 actual passes. All ten observer correlations remain found:true with distinct observed old/new PIDs. Corrected full proof bundle is A-1768; A-1760 was archived as a superseded summary, and identical original logs/hang captures remain in A-1768. C2 remains done: all ten complete files succeeded, and no skip was introduced. Pinned Codex contract source excerpts and verified SHA256s are now published in A-1767, with the TurnStart recording/persistence call chain and the distinction that real admission replies are not persistence barriers.

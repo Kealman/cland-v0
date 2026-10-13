@@ -2,8 +2,8 @@
 id: T-306
 kind: task
 title: 'Archive by rule and prune: stopped crew sessions archive themselves, the "more" fold shows the latest 20, and cland session prune --older-than'
-state: open
-status: review
+state: closed
+status: done
 criterion_seq: 5
 labels:
   - v0.1.2
@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-189
 branch: t/T-306-archive-by-rule-and-prune-stopped-crew
 created: 2026-10-12T21:34:31.521Z
-updated: 2026-10-13T02:45:29.510Z
+updated: 2026-10-13T03:40:56.366Z
 ---
 
 ## Summary
@@ -82,13 +82,21 @@ The archived count comes from ticket 03's `session.list` count and from the `ses
 
 ## Acceptance criteria
 
-- [ ] C1. With shortened windows, a stopped Implementer, and a stopped Reviewer by its latest held item, archive one window after the item merged or closed. A crew session without such an item archives after the stop window. A stopped Aide is never archived by rule. Hub tests on a real hub with fake sessions cover each case.
-- [ ] C2. A regression test bounds the work. On a store with hundreds of stopped rows and thousands of items and messages, hub start runs one batched sweep. A burst of item and stop events produces one sweep per tick, never one per event.
-  - failed: rev-23 [reviewer] · 2026-10-13T02:35:32.278Z · note Batch row notifications perform one full archived-count scan per changed row; carry a single batch count and bound count reads in the native regression.
-- [ ] C3. The background fold lists at most the latest 20 stopped sessions and shows the archived count in its header. A Neovim headless test on the stub hub covers it.
-- [ ] C4. `cland session prune --older-than <d>` deletes only archived records older than `<d>`, and `--dry-run` deletes nothing. After it, `cland hub journal` still lists the pruned sessions' launches. A hub test checks this after the `flushLogs` barrier.
-- [ ] C5. `hub/README.md` describes the rules, the `[sessions]` windows, the sweep and `session prune`. `nvim/README.md` describes the fold of 20 and the archived count. The Coordinator's default clause names `cland session prune`.
-  - failed: rev-23 [reviewer] · 2026-10-13T02:35:32.279Z · note New session.prune spoke tool is absent from DOCUMENTED_TOOLS; existing exact surface/count assertions will fail.
+- [x] C1. With shortened windows, a stopped Implementer, and a stopped Reviewer by its latest held item, archive one window after the item merged or closed. A crew session without such an item archives after the stop window. A stopped Aide is never archived by rule. Hub tests on a real hub with fake sessions cover each case.
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-306-2 · 2026-10-13T03:40:23.971Z · commit a5b302fb5a14c715449196f9ca42aa8c4e7e9947
+  - done: impl-306 · 2026-10-13T03:40:40.408Z
+- [x] C2. A regression test bounds the work. On a store with hundreds of stopped rows and thousands of items and messages, hub start runs one batched sweep. A burst of item and stop events produces one sweep per tick, never one per event.
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-306-2 · 2026-10-13T03:40:23.971Z · commit a5b302fb5a14c715449196f9ca42aa8c4e7e9947
+  - done: impl-306 · 2026-10-13T03:40:41.439Z
+- [x] C3. The background fold lists at most the latest 20 stopped sessions and shows the archived count in its header. A Neovim headless test on the stub hub covers it.
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-306-2 · 2026-10-13T03:40:23.971Z · commit a5b302fb5a14c715449196f9ca42aa8c4e7e9947
+  - done: impl-306 · 2026-10-13T03:40:42.221Z
+- [x] C4. `cland session prune --older-than <d>` deletes only archived records older than `<d>`, and `--dry-run` deletes nothing. After it, `cland hub journal` still lists the pruned sessions' launches. A hub test checks this after the `flushLogs` barrier.
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-306-2 · 2026-10-13T03:40:23.971Z · commit a5b302fb5a14c715449196f9ca42aa8c4e7e9947
+  - done: impl-306 · 2026-10-13T03:40:42.986Z
+- [x] C5. `hub/README.md` describes the rules, the `[sessions]` windows, the sweep and `session prune`. `nvim/README.md` describes the fold of 20 and the archived count. The Coordinator's default clause names `cland session prune`.
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-306-2 · 2026-10-13T03:40:23.971Z · commit a5b302fb5a14c715449196f9ca42aa8c4e7e9947
+  - done: impl-306 · 2026-10-13T03:40:43.789Z
 
 ## Comments
 
@@ -117,3 +125,23 @@ Criteria: C2 failed (Batch row notifications perform one full archived-count sca
 ### impl-306 · 2026-10-13T02:45:19.788Z
 
 Fixed rev-2026-10-13-306-1 at 29a9cb4: one authoritative archive count is now shared by all batch row notifications; native tracer regression failed red with 256 count scans and passes with exactly one. Added session.prune to DOCUMENTED_TOOLS, leaving exact surface/count assertions unchanged. Inbox workload 5/5, surface 3/3, resilience 11/11, spoke identity 4/4 and typecheck pass. Prior full run had only the four inventory failures. Fresh full verification awaits T-312's protected Linux slot release.
+
+### impl-306 · 2026-10-13T03:39:55.162Z
+
+Final ordinary full verification 6a4c2dbc is green at a5b302fb5a14c715449196f9ca42aa8c4e7e9947: all exit 0, 1,727/1,727 passed, no failures or skips, including hub and Neovim. Durable log A-1770 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1770-suite-6a4c2dbc-777c-48e5-b075-329d53ff2614-all-at-a5b302f.log). origin/dev 8570bc2 was fetched and merged before submission. Awaiting final C1-C5 Reviewer verdict; claim retained until merge. Coordinator relaunch after merge remains required for session.prune.
+
+### rev-23 · 2026-10-13T03:40:23.971Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-306-2
+commit: a5b302fb5a14c715449196f9ca42aa8c4e7e9947
+
+No high or medium findings remain. C1–C5 verified; both A-1750 findings are corrected with stronger count tracing and unchanged exact surface assertions. Exact-head full 6a4c2dbc passes typecheck and 1727/1727 tests, zero failures/cancellations/skips. Archive rules/workload, latest-20/counts and prune/retention cases pass. Evidence A-1771: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1771-t-306-final-review-at-a5b302f.md; full log A-1770. Implementer done marks were unchecked at the pre-verdict read.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-10-13T03:40:56.366Z
+
+Merged 36e25b7eabfbb83f4d3a25542b0f7b473a22cca9 onto dev.
