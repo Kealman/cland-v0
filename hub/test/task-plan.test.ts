@@ -40,7 +40,6 @@ test('a two-stage plan is written by CLI, shown by MCP and view JSON, changed an
   const { root, ui, epic, a, b, c, plan } = await setup(t);
   const planFile = join(root, 'plan.yaml');
   await writeFile(planFile, stringify(plan));
-  const children = await Promise.all([a, b, c].map(item => readFile(join(root, item.path), 'utf8')));
   assert.equal((await ui.request({ type: 'task.comment', item: epic.id, text: 'Keep this comment.' })).ok, true);
   const cli = await cland(root, 'task', 'plan', 'set', epic.id, '--file', planFile, '--json');
   assert.equal(cli.code, 0, cli.stderr);
@@ -57,6 +56,11 @@ test('a two-stage plan is written by CLI, shown by MCP and view JSON, changed an
   const shown = await coord.call<Result>('task.plan', { id: epic.id, op: 'show' });
   assert.equal(shown.ok, true, shown.error);
   assert.deepEqual(shown.plan, plan);
+  await eventually('current-stage tasks planned', async () => {
+    const tasks = await Promise.all([a, b].map(item => ui.request({ type: 'task.view', item: item.id })));
+    return tasks.every(r => (r.value as { item: ItemView }).item.status === 'planned') ? true : undefined;
+  });
+  const children = await Promise.all([a, b, c].map(item => readFile(join(root, item.path), 'utf8')));
   const changed = structuredClone(plan);
   changed.stages[0]!.lanes = [[a.id], [b.id]];
   const update = await coord.call<Result>('task.plan', { id: epic.id, op: 'set', yaml: stringify(changed), reason: 'Split work for parallel lanes' });
@@ -65,6 +69,7 @@ test('a two-stage plan is written by CLI, shown by MCP and view JSON, changed an
   assert.equal((await readFile(join(root, epic.path), 'utf8')).match(/^## Plan$/gm)?.length, 1);
   assert.deepEqual(await Promise.all([a, b, c].map(item => readFile(join(root, item.path), 'utf8'))), children);
   await eventually('journal contains both changes', async () => {
+    assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
     const records = (await readFile(join(root, '.cland/journal.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line));
     const changes = records.filter(record => record.event === 'task-plan-changed');
     return changes.length === 2 ? changes : undefined;
@@ -160,6 +165,7 @@ test('invalid hand edits keep the accepted plan across restart, and valid hand e
   const broken = original.replace('scope: affected', 'scope: broken');
   await writeFile(file, broken);
   await eventually('watcher refuses plan', async () => {
+    assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
     const records = await readFile(join(root, '.cland/journal.jsonl'), 'utf8');
     return records.includes('"event":"task-plan-refused"') ? true : undefined;
   });
@@ -168,13 +174,15 @@ test('invalid hand edits keep the accepted plan across restart, and valid hand e
   assert.match(view.item.planError ?? '', /scope must/);
   assert.equal(await readFile(file, 'utf8'), broken);
   assert.equal((await cland(root, 'hub', 'stop')).code, 0);
-  await startDaemon(t, root);
+  const restart = await startDaemon(t, root);
+  const restartedUi = await connectUi(t, restart.discovery);
   const restarted = await cland(root, 'task', 'plan', 'show', epic.id, '--json');
   assert.equal(restarted.code, 0, restarted.stderr);
   assert.deepEqual(JSON.parse(restarted.stdout).plan, plan);
   assert.match(JSON.parse(restarted.stdout).planError, /scope must/);
   await writeFile(file, original.replace('scope: affected', 'scope: full'));
   await eventually('valid hand plan is journalled', async () => {
+    assert.equal((await restartedUi.request({ type: 'hub.status', flushLogs: true })).ok, true);
     const records = (await readFile(join(root, '.cland/journal.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line));
     return records.some(record => record.event === 'task-plan-changed' && record.by === 'hand' && record.source === 'hand' && record.previous && record.plan?.stages[0]?.qa.scope === 'full') ? true : undefined;
   });
@@ -192,6 +200,7 @@ test('an epic-first hand save is accepted and retained when its child criterion 
   assert.notEqual(changedEpic, originalEpic);
   await writeFile(epicFile, changedEpic);
   await eventually('epic is indexed before its missing child criterion', async () => {
+    assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
     const log = await readFile(join(root, '.cland/journal.jsonl'), 'utf8');
     return log.includes(`"error":"${c.id}: no criterion C2"`) ? true : undefined;
   });
@@ -203,10 +212,12 @@ test('an epic-first hand save is accepted and retained when its child criterion 
   });
   // Let the watcher process the child's save, then prove the read and retained version agree.
   await eventually('child save reaches the tracker index', async () => {
+    assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
     const log = await readFile(join(root, '.cland/log/hub.log'), 'utf8');
     return log.split('\n').some(line => line.includes('"event":"task-reindexed"') && line.includes(`"id":"${c.id}"`)) ? true : undefined;
   });
   await eventually('dependent plan is accepted and journalled before a plan read', async () => {
+    assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
     const records = (await readFile(join(root, '.cland/journal.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line));
     return records.some(record => record.event === 'task-plan-changed' && record.plan?.items?.[c.id]?.qa_criteria?.[0] === 'C2') ? true : undefined;
   });
@@ -216,6 +227,7 @@ test('an epic-first hand save is accepted and retained when its child criterion 
   const broken = await ui.request({ type: 'task.plan', item: epic.id, op: 'show' });
   assert.match((broken.value as Result).planError ?? '', /scope must/);
   assert.deepEqual((broken.value as Result).plan?.items?.[c.id]?.qa_criteria, ['C2']);
+  assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
   const changes = (await readFile(join(root, '.cland/journal.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line)).filter(record => record.event === 'task-plan-changed');
   assert.ok(changes.some(record => record.plan?.items?.[c.id]?.qa_criteria?.[0] === 'C2'), 'accepted dependent plan change is journalled');
 });

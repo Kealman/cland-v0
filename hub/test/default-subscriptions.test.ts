@@ -381,6 +381,12 @@ for (const restart of [false, true]) test(`the item lead runs not-clear, re-revi
   const { item: epic } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Loop plan', kind: 'epic' });
   const { item } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Own loop', assignee: 'impl', parent: epic.id });
   await coord.call('task.plan', { id: epic.id, op: 'set', yaml: `stages:\n- name: Loop\n  qa: {scope: affected, when: per-item}\n  lanes: [[${item.id}]]\n` });
+  const plannedText = `event · task · ${item.id} status changed backlog → planned`;
+  const plannedEvent = await eventually('planned setup event recorded for Coordinator', async () => {
+    const history = await ui.request({ type: 'topic.history', topic: 'agents' });
+    return (history.value as { messages: Message[] }).messages.find(m => m.kind === 'event' && m.to.includes('coord') && m.text === plannedText);
+  });
+  assert.equal(plannedEvent.detail?.digest, 'turn', 'planning waits for the Coordinator next turn');
   const claimed = await impl.call<{ ok: boolean; worktree: { path: string } }>('task.claim', { id: item.id });
   assert.equal(claimed.ok, true);
   const work = claimed.worktree.path;
@@ -417,7 +423,7 @@ for (const restart of [false, true]) test(`the item lead runs not-clear, re-revi
   const readyText = `event · task · ${item.id} status changed qa → ready`;
   const readyHistory = async () => {
     const history = await ui.request({ type: 'topic.history', topic: 'agents' });
-    return (history.value as { messages: Message[] }).messages.filter(m => m.kind === 'event' && m.to.includes('coord') && m.text.includes(`task · ${item.id}`));
+    return (history.value as { messages: Message[] }).messages.filter(m => m.kind === 'event' && m.to.includes('coord') && m.text.includes(`task · ${item.id}`) && m.id !== plannedEvent.id);
   };
   await eventually('one ready event recorded for Coordinator', async () => (await readyHistory()).some(m => m.text === readyText) ? true : undefined);
   if (restart) {
@@ -434,9 +440,10 @@ for (const restart of [false, true]) test(`the item lead runs not-clear, re-revi
   assert.equal(deliveries[0]?.detail?.digest, 'now');
   assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
   const journal = (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).split('\n').filter(Boolean).map(line => JSON.parse(line));
-  assert.equal(journal.filter(e => e.event === 'event-delivery' && e.subject?.item === item.id && e.to?.includes('coord')).length, 1);
+  assert.equal(journal.filter(e => e.event === 'event-delivery' && e.id === plannedEvent.id && e.to?.includes('coord') && e.digest === 'turn').length, 1, 'the setup planned event is accounted for separately');
+  assert.equal(journal.filter(e => e.event === 'event-delivery' && e.subject?.item === item.id && e.to?.includes('coord') && e.id !== plannedEvent.id).length, 1);
   await sleep(100);
   assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
   const settled = (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).split('\n').filter(Boolean).map(line => JSON.parse(line));
-  assert.equal(settled.filter(e => e.event === 'event-delivery' && e.subject?.item === item.id && e.to?.includes('coord')).length, 1, 'still one ready delivery after settling');
+  assert.equal(settled.filter(e => e.event === 'event-delivery' && e.subject?.item === item.id && e.to?.includes('coord') && e.id !== plannedEvent.id).length, 1, 'still one ready delivery after settling');
 });

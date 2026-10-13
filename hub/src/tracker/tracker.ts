@@ -2,7 +2,7 @@
 // index (spec 4.6, ADR 0002).
 //
 // One queue owns every read/change/commit cycle and serving-time watcher read. The atomic
-// replacement completes before indexing, notification and the returned result. Criterion writes refuse
+// replacement completes before indexing, notification and the returned result. Criterion and planned writes refuse
 // concurrent hand saves; other writes keep their last-writer-wins policy.
 // Verdict Git resolution belongs to its admitted operation; later tracker operations wait behind it.
 
@@ -230,6 +230,8 @@ export class Tracker {
   readonly #planHistory = new Map<string, PlanHistoryEntry[]>();
   /** Parsed file candidates, including temporarily invalid plans waiting for dependent hand saves. */
   readonly #planCandidates = new Map<string, { item: Item; source: 'hub' | 'hand'; writer?: Actor }>();
+  readonly #plannedChecks = new Set<string>();
+  #plannedTimer: NodeJS.Immediate | null = null;
   readonly #background = new Set<Promise<unknown>>();
   readonly #watchResumed: Resumed;
   /** The folder as the last poll saw it (only used when it cannot be watched). */
@@ -312,7 +314,7 @@ export class Tracker {
       log: this.#log,
       ...(options.tipCheckMs !== undefined ? { intervalMs: options.tipCheckMs } : {}),
       ...(options.scheduleTips ? { scheduleTips: options.scheduleTips } : {}),
-      settled: (ids) => ids.forEach((id) => { this.#announce(id, true); this.#scheduleReady(id); }),
+      settled: (ids) => ids.forEach((id) => { this.#announce(id, true); this.#scheduleReady(id); this.#schedulePlannedFor(id); }),
       tipsMoved: () => this.#tipsMoved(),
     });
   }
@@ -353,16 +355,82 @@ export class Tracker {
   }
 
   /** The index changed for `id`: the `task` event, and a fresh look at the branch tips (a verdict may need one). */
-  #changed(id: string): void {
+  #changed(id: string, planned = false): void {
     this.#revisions.set(id, (this.#revisions.get(id) ?? 0) + 1);
     this.#fresh.poke();
     this.#announce(id, false);
     this.#scheduleReady(id);
+    if (!planned && !this.#bootstrapping) this.#schedulePlannedFor(id);
     // Reparenting/removing any ancestor can change a task's plan even when no plan text changes.
     for (const child of this.#index.list({ under: id })) {
       if (child.kind !== 'task' || !this.#ancestorIds(child.parent).includes(id)) continue;
       this.#revisions.set(child.id, (this.#revisions.get(child.id) ?? 0) + 1);
       this.#scheduleReady(child.id);
+    }
+  }
+
+  #schedulePlannedFor(id: string): void {
+    for (const epic of this.#index.plansContaining(id)) this.#schedulePlanned(epic);
+    if (this.#index.plan(id)) this.#schedulePlanned(id);
+  }
+
+  /** One queued pass per affected epic per tick; no tracker-wide file or row hydration. */
+  #schedulePlanned(id: string): void {
+    if (this.#stopping) return;
+    this.#plannedChecks.add(id);
+    if (this.#plannedTimer) return;
+    this.#plannedTimer = setImmediate(() => {
+      this.#plannedTimer = null;
+      const ids = [...this.#plannedChecks];
+      this.#plannedChecks.clear();
+      for (const epic of ids) this.#runBackground(() => this.#serial(resumed => this.#checkPlanned(epic, resumed), this.#watchResumed, { operation: 'planned check', item: epic }));
+    });
+    this.#plannedTimer.unref();
+  }
+
+  async #checkPlanned(id: string, resumed: Resumed): Promise<void> {
+    const file = resumed(() => {
+      const row = this.#index.get(id);
+      if (row?.state !== 'open' || !this.isPlanContainer(row.kind)) return null;
+      if (!this.#index.plan(id)) {
+        this.#index.rememberPlannedEntry(id, { stage: null, items: [] });
+        return null;
+      }
+      return row.file;
+    });
+    if (!file) return;
+    const text = await this.#files.readFile(join(this.#dir, file), 'utf8');
+    const work = resumed(() => {
+      const item = this.#parseItem(text, file, this.ladder);
+      if (item.fm.state !== 'open' || this.#approvalOf(item).state === 'pending') return null;
+      const stage = this.#stagesOf(item).find(stage => stage.state === 'open');
+      const previous = this.#index.plannedEntry(id);
+      const entry = previous?.stage === (stage?.name ?? null) ? previous : { stage: stage?.name ?? null, items: [] as number[] };
+      this.#index.rememberPlannedEntry(id, entry);
+      return { entry, items: stage?.items ?? [] };
+    });
+    if (!work) return;
+    for (const childId of work.items) {
+      const child = resumed(() => this.#index.get(childId));
+      if (!child || child.kind !== 'task' || work.entry.items.includes(idNumber(childId))) continue;
+      // Remember existing hand statuses too: joining a stage never overrides them later.
+      if (child.state === 'open' && child.status === 'backlog') {
+        try {
+          await resumed(() => this.#mutate(childId, { id: 'hub', name: 'hub', role: null }, 'planned', item => {
+            if (item.fm.kind !== 'task' || item.fm.state !== 'open' || item.fm.status !== 'backlog') throw new PlannedChanged();
+            this.#setStatus(item, 'planned');
+          }, resumed));
+        } catch (err) {
+          if (!(err instanceof PlannedChanged)) throw err;
+          // A save during native I/O wins. Retry from the committed index on the next tick.
+          resumed(() => this.#schedulePlanned(id));
+          return;
+        }
+      }
+      resumed(() => {
+        work.entry.items.push(idNumber(childId));
+        this.#index.rememberPlannedEntry(id, work.entry);
+      });
     }
   }
 
@@ -584,6 +652,7 @@ export class Tracker {
     );
     this.#polled = this.#folderStamp();
     this.#fresh.start();
+    for (const [id, candidate] of this.#planCandidates) if (candidate.item.fm.state === 'open' && this.#index.plan(id)) this.#schedulePlanned(id);
   }
 
   /** The item files with their times and sizes: what a poll compares when the folder cannot be watched. */
@@ -614,6 +683,8 @@ export class Tracker {
     for (const retry of this.#readyRetries.values()) clearTimeout(retry);
     this.#readyRetries.clear();
     if (this.#rescanTimer) clearTimeout(this.#rescanTimer);
+    if (this.#plannedTimer) clearImmediate(this.#plannedTimer);
+    this.#plannedChecks.clear();
     this.#stopping = (async () => {
       let timer: NodeJS.Timeout | undefined;
       const drained = Promise.allSettled([...this.#background, this.#queue]).then(() => true);
@@ -832,10 +903,12 @@ export class Tracker {
     }
     const id = this.#index.idOfFile(name);
     if (!id) return;
+    const affected = new Set(this.#index.plansContaining(id));
+    for (const child of this.#index.list({ under: id })) for (const epic of this.#index.plansContaining(child.id)) affected.add(epic);
     this.#index.remove(id);
     this.#planCandidates.delete(id);
     this.#planErrors.delete(id);
-    if (!this.#bootstrapping) this.#retryPlans();
+    if (!this.#bootstrapping) this.#retryPlans(id, [...affected]);
     this.#log({ event: 'task-removed', id, file: name });
     this.#scheduleRescan();
     this.#changed(id);
@@ -879,24 +952,38 @@ export class Tracker {
   }
 
   #plansAfterIndex(item: Item, source: 'hub' | 'hand', writer?: Actor, reason?: string): void {
-    for (const id of this.#planCandidates.keys()) if (idNumber(id) === idNumber(item.fm.id) && id !== item.fm.id) { this.#planCandidates.delete(id); this.#planErrors.delete(id); }
+    for (const kind of this.kinds) {
+      const id = `${prefixOf(kind)}-${idNumber(item.fm.id)}`;
+      if (id !== item.fm.id) { this.#planCandidates.delete(id); this.#planErrors.delete(id); }
+    }
     if (this.isPlanContainer(item.fm.kind)) this.#planCandidates.set(item.fm.id, { item, source, ...(writer ? { writer } : {}) });
     else this.#planCandidates.delete(item.fm.id);
     if (this.#bootstrapping) return;
     this.#acceptPlan(item, source, writer, reason);
     // Criterion, kind or parent changes can make a previously refused epic candidate valid.
-    this.#retryPlans(item.fm.id);
+    const affected = new Set(this.#index.plansContaining(item.fm.id));
+    // A container reparent can change membership of every lane item below it.
+    if (item.fm.kind !== 'task') for (const child of this.#index.list({ under: item.fm.id })) {
+      for (const epic of this.#index.plansContaining(child.id)) affected.add(epic);
+    }
+    this.#retryPlans(item.fm.id, [...affected]);
   }
 
-  #retryPlans(except?: string): void {
-    for (const [id, candidate] of this.#planCandidates) {
-      if (id !== except) this.#acceptPlan(candidate.item, candidate.source, candidate.writer);
+  #retryPlans(except?: string, affected?: string[]): void {
+    const ids = affected ?? this.#planCandidates.keys();
+    for (const id of ids) {
+      const candidate = this.#planCandidates.get(id);
+      if (id !== except && candidate) this.#acceptPlan(candidate.item, candidate.source, candidate.writer);
     }
   }
 
   #acceptPlan(item: Item, source: 'hub' | 'hand', writer?: Actor, reason?: string): { plan: EpicPlan | null; planError?: string } {
     const state = this.#planState(item), id = item.fm.id;
     if (state.planError) {
+      let candidate: EpicPlan | null = null;
+      try { candidate = planInBody(item.body, [...this.kinds, 'category']); }
+      catch (err) { if (!(err instanceof PlanError)) throw err; }
+      this.#index.rememberPlanCandidate(id, candidate);
       const changed = this.#planErrors.get(id) !== state.planError;
       this.#planErrors.set(id, state.planError);
       if (changed) {
@@ -906,6 +993,7 @@ export class Tracker {
       return state;
     }
     const recovered = this.#planErrors.delete(id);
+    if (recovered) this.#index.rememberPlanCandidate(id, state.plan);
     const previous = this.#index.plan(id);
     if (JSON.stringify(previous) === JSON.stringify(state.plan)) {
       // A read can observe a refused save before the watcher indexes it. Restoring
@@ -914,6 +1002,7 @@ export class Tracker {
       return state;
     }
     this.#index.rememberPlan(id, state.plan);
+    this.#schedulePlanned(id);
     // A changed epic policy invalidates prepared readiness writes for its tasks too.
     for (const child of this.#index.list({ under: id })) {
       if (child.kind === 'task' && this.#ancestorIds(child.parent).includes(id)) this.#changed(child.id);
@@ -1369,7 +1458,7 @@ export class Tracker {
       const snapshot = this.#stageSnapshot(item.fm.id, stage.name)!;
       const verdict = evidence.missing ? undefined : evidence.verdicts.filter(v => v.stage === stage.name).at(-1);
       const needsQa = snapshot.qa.when === 'after-stage' && snapshot.qa.scope !== 'none';
-      const closed = snapshot.merged && (!needsQa || !!verdict && verdict.result === 'clear' && this.#stageCurrent(item.fm.id, verdict));
+      const closed = item.fm.state === 'closed' || snapshot.merged && (!needsQa || !!verdict && verdict.result === 'clear' && this.#stageCurrent(item.fm.id, verdict));
       return { name: stage.name, state: closed ? 'closed' : 'open', qa: snapshot.qa, items: snapshot.items,
         ...(verdict ? { verdict: { ...verdict, current: this.#stageCurrent(item.fm.id, verdict) } } : {}) };
     });
@@ -1585,7 +1674,8 @@ export class Tracker {
    * text read and the file handle it was read through. A hand edit can land between that read and the
    * rename — written to the path (an editor's save-by-rename, or in place before the rename) or into the
    * replaced file in place up to the rename. Either is looked for, just before and just after the rename,
-   * and reported: the hub's write is the file, the hand edit is overwritten (last writer wins).
+   * and reported: ordinary writes use last-writer-wins; criterion and planned writes capture their
+   * source and guard publication so concurrent editor saves survive.
    */
   async #write(name: string, item: Item, resumed: Resumed, read?: { id: string; op: string; hash: string; fd: FileHandle; captured?: string }, verdictWriter?: Actor, beforeCommit?: () => void, committed?: () => void, beforeRename?: () => Promise<void>, planWriter?: Actor, planReason?: string): Promise<Item> {
     const active = [...this.#storageWork].find(work => work.started !== null);
@@ -1606,8 +1696,9 @@ export class Tracker {
       if (this.#writeGate) await this.#writeGate();
       const before = read ? await this.#files.readFile(oldPath, 'utf8').then(text => resumed(() => hashOf(text)), () => null) : null;
       if (beforeRename) await resumed(beforeRename);
+      if (read?.op === 'planned' && before !== read.hash) throw new PlannedChanged();
       if (read?.op === 'criterion' && before !== read.hash) throw new TrackerError(`${read.id}: concurrent hand edit; criterion write refused, retry`);
-      if (read?.op === 'criterion') await this.#replaceCriterion(path, tmp, read.hash, resumed, beforeCommit, path => { read.captured = path; });
+      if (read?.op === 'criterion' || read?.op === 'planned') await this.#replaceCriterion(path, tmp, read.hash, resumed, beforeCommit, path => { read.captured = path; });
       else if (name !== oldName) {
         await resumed(() => { beforeCommit?.(); return this.#files.link(tmp, path); });
         await this.#files.unlink(oldPath);
@@ -1615,13 +1706,14 @@ export class Tracker {
       } else await resumed(() => { beforeCommit?.(); return this.#files.rename(tmp, path); });
       const replacedText = read ? await readWhole(read.fd, resumed).catch(() => null) : null;
       const replaced = replacedText === null ? null : resumed(() => hashOf(replacedText));
+      if (read?.op === 'planned' && replaced !== read.hash) throw new PlannedChanged();
       if (read?.op === 'criterion' && replaced !== read.hash) throw new TrackerError(`${read.id}: concurrent in-place hand edit; criterion write refused, recover ${read.captured} and retry`);
       return resumed(() => {
         if (read?.captured) this.#log({ event: 'task-criterion-source', id: read.id, path: read.captured, note: 'retained source protects late saves through an already open editor handle' });
         this.#index.put(written, { file: name, hash: hashOf(text), source: 'hub', indexedAt: this.#now().getTime() }, verdictWriter ? { ...verdictWriter, id: this.#sessionId(verdictWriter.id) } : undefined);
         this.#plansAfterIndex(written, 'hub', planWriter, planReason);
         committed?.();
-        this.#changed(written.fm.id);
+        this.#changed(written.fm.id, read?.op === 'planned');
         if (read && (before !== read.hash || replaced !== read.hash)) {
           this.#log({ event: 'task-conflict', id: read.id, file: name, winner: 'hub', op: read.op,
             note: 'a hand edit landed while the hub was writing this item and was overwritten by the hub write; last writer wins' });
@@ -1631,7 +1723,31 @@ export class Tracker {
     } catch (err) {
       // A failed temporary write or rename must not masquerade as a committed item.
       await resumed(() => this.#files.unlink(tmp)).catch(() => {});
+      if (read?.op === 'planned' && read.captured) {
+        const saved = await resumed(() => this.#files.readFile(read.captured!, 'utf8')).catch(() => null);
+        const changed = resumed(() => saved !== null && hashOf(saved) !== read.hash);
+        if (changed) await this.#restorePlannedSource(path, read.captured, resumed(() => hashOf(text)), resumed);
+        if (changed || err instanceof TrackerError && err.message.includes('concurrent')) {
+          resumed(() => this.#log({ event: 'task-conflict', id: read.id, file: name, winner: 'hand', op: read.op,
+            path: read.captured, note: 'planned publication refused; the editor source is retained and its hand save wins' }));
+          throw new PlannedChanged();
+        }
+      }
       return resumed(() => { throw err; });
+    }
+  }
+
+  /** Restore only our own generated publication, using the same capture/link guard as the write.
+   * Linking the saved inode also keeps a still-open editor handle attached to the canonical path. */
+  async #restorePlannedSource(path: string, captured: string, publishedHash: string, resumed: Resumed): Promise<void> {
+    const current = await resumed(() => this.#files.readFile(path, 'utf8')).catch(() => null);
+    if (resumed(() => current === null || hashOf(current) !== publishedHash)) return;
+    const tmp = `${path}.${randomUUID()}.tmp`;
+    await resumed(() => this.#files.link(captured, tmp));
+    try {
+      await this.#replaceCriterion(path, tmp, publishedHash, resumed);
+    } finally {
+      await resumed(() => this.#files.unlink(tmp)).catch(() => {});
     }
   }
 
@@ -2670,6 +2786,7 @@ async function readWhole(fd: FileHandle, resumed: Resumed): Promise<string> {
 }
 
 class ReadyChanged extends Error {}
+class PlannedChanged extends Error {}
 
 const uniq = (xs: string[]): string[] => [...new Set(xs.map((x) => x.trim()).filter(Boolean))];
 

@@ -111,9 +111,10 @@ test('legacy claims, topics, subscriptions and approved plans survive restart an
   assert.ok(subscriptions.subscriptions.some(s => s.subject.subtree === 'E-10'));
   const routed = await coord.call<{ ok: boolean; outcomes: Array<{ to: string; resolvedTo?: string }> }>('send', { to: ['lead R-10'], topic: topic.topic.id, text: 'Resolve legacy epic by number' });
   assert.equal(routed.ok, true, JSON.stringify(routed));
-  const delivered = await nextLead.waitForEvent(event => event.params.content === 'Resolve legacy epic by number');
+  const delivered = await nextLead.waitForEvent(event => /(?:^|\n)Resolve legacy epic by number(?:\n|$)/.test(event.params.content));
   assert.equal(delivered.params.meta?.to, 'lead-two');
   assert.equal(delivered.params.meta?.topic, topic.topic.id);
+  assert.equal(delivered.params.meta?.topic_item, 'E-10');
   const review = await coord.call<{ ok: boolean; outcomes: Array<{ to: string; resolvedTo?: string }> }>('send', { to: ['reviewer'], topic: topic.topic.id, text: 'review request E-10\nVerify canonical identity' });
   assert.equal(review.ok, true, JSON.stringify(review));
   assert.ok(review.outcomes.some(outcome => outcome.resolvedTo === 'reviewer-one'));

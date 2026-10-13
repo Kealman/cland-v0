@@ -160,6 +160,11 @@ test('session notices and stop confirmations terminate within budgets of zero, o
 
 test('item prefix opens an item; C-v opens another beside the centre', { skip }, async t => {
   const c = await start(t, { items: [item('T-12', 'Centre item'), item('T-13', 'Split item')] });
+  // Connection precedes the initial task and tracker snapshots. Choosing from
+  // an empty palette discards the navigation; later snapshots cannot recover it.
+  await eventually('palette items from task and tracker snapshots', async () => await c.lua<boolean>(
+    "local s=require('cland.state'); return s.item('T-12') ~= nil and s.item('T-13') ~= nil and #s.S.tracker.levels > 0",
+  ) || undefined, 5_000);
   await c.input('<Esc><Space>p#T-12<CR>');
   await c.waitScreen(s => s.includes('T-12 · item'), 'centre item');
   await c.input('<Space>p#T-13<C-v>');

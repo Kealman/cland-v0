@@ -67,6 +67,11 @@ create table if not exists tracker_plans (
   item_id text primary key,
   plan_json text not null
 );
+create table if not exists tracker_plan_items (
+  epic_id text not null,
+  n integer not null,
+  primary key (n, epic_id)
+);
 create table if not exists tracker_claims (
   item_id text primary key,
   session text not null,
@@ -173,6 +178,11 @@ export class TrackerIndex {
     const mergeColumns = new Set((this.#db.prepare('pragma table_info(tracker_merges)').all() as Row[]).map(r => r.name));
     if (!mergeColumns.has('checkout_recovery')) this.#db.exec('alter table tracker_merges add column checkout_recovery text');
     if (!mergeColumns.has('merged_at')) this.#db.exec('alter table tracker_merges add column merged_at text');
+    // Rebuild the reverse membership index once, including retained plans from older hubs.
+    this.#db.exec('delete from tracker_plan_items');
+    for (const row of this.#db.prepare('select item_id, plan_json from tracker_plans').all() as Row[]) {
+      this.#rememberPlanItems(row.item_id as string, JSON.parse(row.plan_json as string) as EpicPlan);
+    }
   }
 
   #key(id: string): string { const n = idNumber(id); return Number.isSafeInteger(n) && n > 0 ? `T-${n}` : id; }
@@ -253,8 +263,39 @@ export class TrackerIndex {
 
   rememberPlan(id: string, plan: EpicPlan | null): void {
     id = this.#key(id);
-    if (plan === null) this.#db.prepare('delete from tracker_plans where item_id = ?').run(id);
-    else this.#db.prepare('insert into tracker_plans (item_id, plan_json) values (?, ?) on conflict(item_id) do update set plan_json = excluded.plan_json').run(id, JSON.stringify(plan));
+    this.#tx(() => {
+      if (plan === null) this.#db.prepare('delete from tracker_plans where item_id = ?').run(id);
+      else this.#db.prepare('insert into tracker_plans (item_id, plan_json) values (?, ?) on conflict(item_id) do update set plan_json = excluded.plan_json').run(id, JSON.stringify(plan));
+      this.#rememberPlanItems(id, plan);
+    });
+  }
+
+  #rememberPlanItems(id: string, plan: EpicPlan | null, candidate?: EpicPlan | null): void {
+    this.#db.prepare('delete from tracker_plan_items where epic_id = ?').run(id);
+    const insert = this.#db.prepare('insert or ignore into tracker_plan_items (epic_id, n) values (?, ?)');
+    for (const source of [plan, candidate]) for (const stage of source?.stages ?? []) for (const child of stage.lanes.flat()) insert.run(id, idNumber(child));
+  }
+
+  /** A refused semantic candidate still depends on its missing child, criteria or parenting. */
+  rememberPlanCandidate(id: string, candidate: EpicPlan | null): void {
+    id = this.#key(id);
+    this.#tx(() => this.#rememberPlanItems(id, this.plan(id), candidate));
+  }
+
+  /** Accepted plans and parseable candidates affected by one item, without unrelated hydration. */
+  plansContaining(id: string): string[] {
+    return (this.#db.prepare('select epic_id from tracker_plan_items where n = ?').all(idNumber(id)) as Row[])
+      .map(row => this.#canonical(row.epic_id as string));
+  }
+
+  plannedEntry(id: string): { stage: string | null; items: number[] } | null {
+    const row = this.#db.prepare('select value from tracker_meta where key = ?').get(`planned-entry:${idNumber(id)}`) as Row | undefined;
+    return row ? JSON.parse(row.value as string) as { stage: string | null; items: number[] } : null;
+  }
+
+  rememberPlannedEntry(id: string, entry: { stage: string | null; items: number[] }): void {
+    this.#db.prepare('insert into tracker_meta (key, value) values (?, ?) on conflict(key) do update set value = excluded.value')
+      .run(`planned-entry:${idNumber(id)}`, JSON.stringify(entry));
   }
 
   remove(id: string): void {

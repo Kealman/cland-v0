@@ -163,7 +163,7 @@ A root-level container for items that belong to no release or epic: Tech debt, B
 _Avoid_: label, bucket, backlog (that is a status), unscheduled (no container at all)
 
 **Status**:
-Where a task is in its workflow: backlog, planned, in progress, review, qa, ready or done. The hub moves it on claims, verdicts, merges and closes; the Coordinator and the human may set it directly. Containers, questions and specs have none.
+Where a task is in its workflow: backlog, planned, in progress, review, qa, ready or done. The hub moves it on claims, verdicts, merges and closes, and on an epic plan's current stage; the Coordinator and the human may set it directly. Containers, questions and specs have none.
 _Avoid_: state (that is open or closed), stage (that is a step of a plan), column, phase
 
 **Rank**:
