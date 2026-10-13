@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-193
 branch: t/T-314-any-prefix-resolves-the-hub-the-cli-the
 created: 2026-10-13T02:27:22.874Z
-updated: 2026-10-13T05:15:51.545Z
+updated: 2026-10-13T05:52:40.350Z
 ---
 
 ## Summary
@@ -96,9 +96,9 @@ Tasks keep `T-`. Task branches `t/T-<n>-<slug>`, worktrees `.cland/worktrees/T-<
 - [ ] C1. A hub test on a temporary project with a real hub writes an epic file as `T-<n>` and views it as `E-<n>`, `R-<n>`, `T-<n>`, `e-<n>` and `<n>`. Each shows the same item headed `E-<n>`. `cland task list --json` shows every kind with its own prefix. An unknown number is refused, and `A-<n>` is refused as not an item id.
   - failed: rev-23 [reviewer] · 2026-10-13T04:48:12.564Z · note Per-event default-item scans break bounded lookup work; removal leaves canonical plan caches behind.
 - [ ] C2. `task.create` writes the kind's prefix in the id and the file name, and one counter serves every prefix: after a hand-written `E-500` file, the next item is 501. A kind edit keeps the number and renames the file to the new prefix.
-  - failed: rev-23 [reviewer] · 2026-10-13T04:55:23.788Z · note Configured feature kind-change regression reads E-1 instead of F-1 and retains a stale T-1 notice path.
+  - failed: rev-23 [reviewer] · 2026-10-13T05:49:01.396Z · note Configured container gate test requires an incidental child order changed by canonical file prefixes.
 - [ ] C3. A hub test writes a lead claim, a topic binding, a subscription and a plan against an epic as `T-<n>`, restarts the hub, and shows each still matching `E-<n>`. `send` to `lead E-<n>`, a `review request E-<n>` first line and `subscribe` on subtree `E-<n>` route as they did with `T-<n>`.
-  - failed: rev-23 [reviewer] · 2026-10-13T04:55:23.788Z · note Ancestry-only default cache loses the surviving parent Lead when a child is removed.
+  - failed: rev-23 [reviewer] · 2026-10-13T05:49:01.395Z · note Required legacy routing test reads a message field omitted by spoke send and fails before completing.
 - [ ] C4. Plan lanes accept any kind prefix, and an approved plan stays approved across the change.
   - failed: rev-23 [reviewer] · 2026-10-13T04:48:12.564Z · note Mixed-spelling overrides can bypass stage QA, and canonical parents invalidate unchanged legacy stage hashes.
 - [ ] C5. Two files with one number index once, and `task-duplicate-number` is logged with both names. The test reads `hub.log` after the `flushLogs` barrier.
@@ -142,3 +142,21 @@ Medium — hub/test/tracker-levels.test.ts:246: the feature fixture creates F-1-
 All six original A-1798 blocking findings are addressed in source, with new regression coverage. Evidence A-1802 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1802-t-314-correction-review-at-ee3fc91-terminal-routing-and-fixture-paths.md). A-1801 stopped before tests; complete c137ae11 at this head remains pending.
 
 Criteria: C3 failed (Ancestry-only default cache loses the surviving parent Lead when a child is removed.), C2 failed (Configured feature kind-change regression reads E-1 instead of F-1 and retains a stale T-1 notice path.).
+
+### rev-23 · 2026-10-13T05:49:01.396Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-314-3
+commit: 9cf0adba00bf0f32d651b9e9ec5860d1d2232a37
+
+Medium — hub/test/task-prefixes.test.ts:114: spoke send omits message; routed.message.to throws before the routing regression completes.
+Medium — hub/test/tracker-levels.test.ts:328: correct Q-4/T-3 child refusal fails a regex requiring the former file ordering.
+Source/integration remain clear (A-1812/A-1815), but full fceebc7d / A-1817 exits 1 with 1447/1449 hub tests; no Neovim phase. Preserve exact recipients and both child identities/gates while correcting the test contracts. Evidence A-1818 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1818-t-314-final-verification-blocked-by-two-test-contracts-at-9cf0adb.md).
+
+Criteria: C3 failed (Required legacy routing test reads a message field omitted by spoke send and fails before completing.), C2 failed (Configured container gate test requires an incidental child order changed by canonical file prefixes.).
+
+### impl-314 · 2026-10-13T05:49:19.248Z
+
+A-1817 completed hub verification at 9cf0adb: 1447 pass / 2 test-contract failures; Neovim did not run. Corrected the new legacy routing assertion to inspect the actual recipient’s spoke delivery, and retained both open-child names/IDs independently of filename ordering. Product source is unchanged. The next full run waits for the protected T-275 QA slot; original dev close-gate case will be checked alone before resubmission.

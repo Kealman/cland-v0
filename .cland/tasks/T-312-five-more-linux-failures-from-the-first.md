@@ -3,7 +3,7 @@ id: T-312
 kind: task
 title: "Five more Linux failures from the first all-phase container run: Codex relaunch PID, OpenCode no-url rollback, three Neovim cases"
 state: open
-status: in progress
+status: review
 criterion_seq: 5
 labels:
   - v0.1.2
@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-190
 branch: t/T-312-five-more-linux-failures-from-the-first
 created: 2026-10-13T01:50:19.683Z
-updated: 2026-10-13T05:09:58.258Z
+updated: 2026-10-13T05:37:25.419Z
 ---
 
 ## Summary
@@ -113,3 +113,11 @@ Criteria: C3 failed (A-1799 Linux all-phase run fails pid-identity.test.ts:108 (
 ### impl-312 · 2026-10-13T05:09:58.258Z
 
 Actual PID cause remains unestablished: macOS dev file passes alone and under existing suite load, 3/3 each. A-1803 controlled native exit proves an exited row can validly return stop ok:true while retaining a live bystander; Linux A-1799 has no status/identity checkpoint, so this is a hypothesis rather than a diagnosis. Coordinator approved e0724d6 diagnostic preconditions and trace: test now requires a running row, original fake alive with recorded start identity, and live different-identity staged bystander before preserving both original assertions. Mac file 3/3 and typecheck green (A-1808). Approved A-1809 slot after T-314: PID file ten times, stop first failure; otherwise explicit hub then independent nvim-only shards regardless of hub result. This is not readiness proof. Phase-count correction: prior summaries referred to machine shards; including each run's 30/30 hermetic shard, the three failed hub invocations total respectively 1415/1411 pass, 1423/1419 pass, and 1425/1421 pass, each one failure/three existing skips. Original logs retain per-shard counters and reasons.
+
+### impl-312 · 2026-10-13T05:34:42.198Z
+
+Approved diagnosis completed at e0724d68795f4410998269f9fe49ba6ac115ab90, 05:17:58–05:32:45 UTC. A-1813: ten isolated pid-identity files each 3/3; typecheck green; explicit full hub 1425 tests / 1422 pass / 3 existing skips / zero fail; explicit full Neovim 307 tests / 304 pass / 3 existing sandbox skips / zero fail. All eleven Claude traces show staged running row, original fake alive at recorded identity, live bystander at different identity, ok:false refusal and both alive afterward. A-1799's earlier ok:true failure did not reproduce, so the prior actual cause remains unknown; the deliberately exited-row experiment is a sufficient hypothesis only. This slot is diagnosis only and does not complete C3/C4. Docker container and Desktop stopped with exit 0, leases released, queue no holder. Asked Lead for decision on readiness candidate retaining required strict preconditions, removing temporary trace, merging latest dev and running actual all-phase verification.
+
+### impl-312 · 2026-10-13T05:37:11.000Z
+
+Per Coordinator's 05:35:02 decision, A-1799's ok:true result is recorded as NOT REPRODUCED after targeted capture (A-1813: ten isolated whole files plus one loaded hub case, all preconditions holding and stop refused). No cause is claimed and production remains unchanged for this case. Permanent preconditions now name any running-row/liveness/recorded-start/staged-PID failure before stop. Temporary traces are removed in 31651ef. Readiness head 050aea7430936c0661e6b550bb23714b89b6706e merges origin/dev e27e08f. Original four target files and C5 proofs remain unchanged. A-1814 holds the one all-phase readiness runner with explicit Neovim diagnosis after failure. Machine order: T-275 QA, T-314 full run, then request readiness slot; C3/C4 still pending. C1 for the added PID case is unreproduced after targeted capture and guarded by permanent preconditions, subject to review of criterion wording under the Coordinator's decision.
