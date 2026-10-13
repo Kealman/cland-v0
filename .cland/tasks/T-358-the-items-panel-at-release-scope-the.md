@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-219
 branch: t/T-358-the-items-panel-at-release-scope-the
 created: 2026-10-13T20:53:52.261Z
-updated: 2026-10-13T21:34:50.208Z
+updated: 2026-10-13T23:09:34.149Z
 ---
 
 ## Summary
@@ -86,7 +86,7 @@ E-276: The explorer and the card, tracer bullet 5. Spec: `docs/spec/v0.1.2.md` �
 - [x] C3. `Direct tasks (N)` follows the epics, folded, and unfolds into the direct tasks' sections. A release with no epics shows it folded.
   - done: impl-358 · 2026-10-13T21:29:40.777Z
 - [x] C4. Selecting an epic tab shows that epic's sections as before. The `work`, `you` and `done` filters are unchanged.
-  - done: impl-358 · 2026-10-13T21:29:41.674Z
+  - done: impl-358 · 2026-10-13T23:07:57.507Z
 - [x] C5. The categories count line is the last row, and Enter on it still switches to `all`.
   - done: impl-358 · 2026-10-13T21:29:42.551Z
 - [x] C6. `K` on an epic row sends `task.rank` for the epic, and the rows reorder on the `task` event.
@@ -94,6 +94,7 @@ E-276: The explorer and the card, tracer bullet 5. Spec: `docs/spec/v0.1.2.md` �
 - [x] C7. The swept QA cases pass. `nvim/README.md` describes the release scope's epic rows.
   - done: impl-358 · 2026-10-13T21:29:43.946Z
   - verified: rev-23 [reviewer] · run rev-2026-10-13-358-2 · 2026-10-13T21:34:12.880Z · commit e89e40a0e4b7827e4d7bc3469ae92aabb72f6840
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-358-4 · 2026-10-13T23:09:17.318Z · commit 85482c368610f529e3e3206861be6af21dceaf31
 
 ## Comments
 
@@ -134,3 +135,39 @@ Criteria: C7 verified.
 ### impl-358 · 2026-10-13T21:34:50.208Z
 
 Corrected source review rev-2026-10-13-358-2 is clear at e89e40a0 (A-2084); C7 verified, C1–C6 await exact-head verification. Per Coordinator clarification of the no-holder line, enqueued cland verify nvim run de9f942f-26f4-4216-9045-bdd7b0820b28 at queue position 3, addressed to rev-23/impl-358, with no force. Holding the reviewed head unchanged until its hub result.
+
+### rev-23 · 2026-10-13T23:06:46.376Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-358-3
+commit: e89e40a0e4b7827e4d7bc3469ae92aabb72f6840
+scope: evidence
+
+Medium — nvim/lua/cland/vboard.lua:375–390: zR selects release-board fold keys for the active plan panel; layers.test.ts:389 fails after zR. Honor plan.panel_id and retain that regression unchanged.
+Medium — nvim/test/layers.test.ts:322/353; plan.test.ts:271; shell.test.ts:1302; thread.test.ts:513: five descendant-row waits need navigation through the new folded outer groups, retaining all assertions.
+A-2115 full run failed 6 tests (1848/1854), exit 1; typechecks/hub phases pass, no skips/cancellations. C4 failed; other run-dependent criteria remain pending. Source fix/adaptation needs a new source review before verification. A-2116: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2116-t-358-failed-full-evidence-plan-fold-regression-and-five-folded-row-waits.md.
+
+Criteria: C4 failed (Batch-fold dispatch updates release-board keys while the plan panel is active, regressing its existing background section behavior (layers.test.ts:389).).
+
+### impl-358 · 2026-10-13T23:07:56.923Z
+
+Diagnosed A-2115/A-2116: one product regression (plan panel zR dispatched to release-board folds), five legitimate outer-group navigation updates. M.fold now honors plan.panel_id first; the plan-layer test remains unchanged and passes. Updated five tests only to open their corresponding epic/direct group; all assertions retained. Layers 14/14, vboard 24/24 and affected plan/shell/thread 1/1 each pass; typecheck/diff check green. Corrected head pushed for source re-review before a new hub run; integrated dev control remains running.
+
+### rev-23 · 2026-10-13T23:09:17.318Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-358-4
+commit: 85482c368610f529e3e3206861be6af21dceaf31
+scope: full
+
+No high or medium findings. Active plan.panel_id now selects the plan background fold before release-board namespaces, matching the render dispatch; the original plan-layer test is unchanged and green. Five navigation adaptations open matching outer groups while preserving all assertions and existing snapshot readiness. Full original source scope A-2084 retained. C7 QA/docs refreshed from unchanged evidence; C1–C6 await new exact-head cland verify. Failed A-2115 is not green evidence. A-2118: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2118-t-358-corrected-full-source-review-at-85482c36.md.
+
+Criteria: C7 verified.
+
+### impl-358 · 2026-10-13T23:09:34.149Z
+
+Source re-review rev-2026-10-13-358-4 is clear at 85482c368610f529e3e3206861be6af21dceaf31 (A-2118), with C7 refreshed and C1–C6 pending exact-head verification. Submitted fresh cland verify nvim run a3bb9a99-93ba-4a0d-b782-8c45aab7129c, position 2 behind the integrated dev control and T-344, addressed to rev-23/impl-358. Head remains clean and unchanged; going idle for hub result.
