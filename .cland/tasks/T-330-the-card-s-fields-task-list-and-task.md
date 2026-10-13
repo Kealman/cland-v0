@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-208
 branch: t/T-330-the-card-s-fields-task-list-and-task
 created: 2026-10-13T14:04:09.431Z
-updated: 2026-10-13T16:42:46.554Z
+updated: 2026-10-13T17:06:23.879Z
 ---
 
 ## Summary
@@ -92,17 +92,19 @@ E-270: Status, fields and instrumentation. Spec: `docs/spec/v0.1.2.md` §3.9 (th
 - [x] C3. Planner unit tests cover the `closed` part: each source in order, an unresolved item, an item already carrying `closed`, and an empty plan on a rerun. A hub test runs `cland task migrate --dry-run` and the migration on a temporary project with receipts and journal records, and checks that only `closed` lines changed.
   - done: impl-330 · 2026-10-13T16:36:40.782Z
 - [x] C4. A hub test with a task holding done, current verified, stale and failed criteria shows the same counts in `task.list` as `task.view`'s criteria give. A list over 64 items reads no item file.
-  - done: impl-330 · 2026-10-13T16:36:41.338Z
+  - done: impl-330 · 2026-10-13T17:05:38.879Z
 - [x] C5. A verify job finishing for a task's branch sets `verify` in `task.list` and sends one `task` event to a subscribed UI with no event text. A subscribed session receives no delivery for it.
   - done: impl-330 · 2026-10-13T16:36:42.130Z
 - [x] C6. A query-count regression with 64 unrelated items: one verify job finishing stays under a fixed query bound and calls no full list.
-  - done: impl-330 · 2026-10-13T16:36:42.846Z
+  - done: impl-330 · 2026-10-13T17:05:40.433Z
 - [x] C7. The Implementer runs the dry run on a scratch copy of `dev`'s `.cland/tasks/`, journal and `hub.db`, and attaches its output to the item topic as an artifact. It names the source of each time and lists the unresolved items.
   - done: impl-330 · 2026-10-13T16:36:43.628Z
   - verified: rev-23 [reviewer] · run rev-2026-10-13-330-2 · 2026-10-13T16:42:46.553Z · commit 7667ff7d93ff7e548f1716e52abe164a98032d47
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-330-4 · 2026-10-13T17:06:23.879Z · commit 86ea5dbacce23b73eab85d9f9e50cbd5472a30ac
 - [x] C8. `hub/README.md` and `docs/agents/issue-tracker.md` with its template describe `closed`, `criteria`, `verify` and the `closed` part of the migration.
   - done: impl-330 · 2026-10-13T16:36:44.541Z
   - verified: rev-23 [reviewer] · run rev-2026-10-13-330-2 · 2026-10-13T16:42:46.554Z · commit 7667ff7d93ff7e548f1716e52abe164a98032d47
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-330-4 · 2026-10-13T17:06:23.879Z · commit 86ea5dbacce23b73eab85d9f9e50cbd5472a30ac
 
 ## Comments
 
@@ -139,5 +141,27 @@ run: rev-2026-10-13-330-2
 commit: 7667ff7d93ff7e548f1716e52abe164a98032d47
 
 No high, medium, or low source findings remain. Actual open→closed transitions overwrite retained timestamps; already-closed retries preserve them. Real close/edit/merge regressions retain existing coverage. Original complete source assessment A-2006 remains applicable; scratch backfill A-2003 and docs establish C7/C8. C1–C6 await complete same-head full verification. Evidence A-2007: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2007-t-330-corrected-source-review-clear-at-7667ff7d.md.
+
+Criteria: C7 verified, C8 verified.
+
+### rev-23 · 2026-10-13T16:59:41.843Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-330-3
+commit: 7667ff7d93ff7e548f1716e52abe164a98032d47
+
+Medium — hub/test/inbox-workload.test.ts:144 matches old closedAt SQL, yielding zero instead of one; update recognition while keeping exact lookup/batch/count assertions. Medium — hub/src/tracker/tracker.ts:1588 / index-db.ts:261 adds redundant per-row criteria reads; full stage-landing workload now exceeds its fixed bound (10174 > 10000), requiring diagnosis/optimization without raising it. A-2009 fails two tests and does not reach Neovim. Specific verify C6 guard passed at 46 queries; no criterion failure inferred, C1–C6 final verification pending, C7/C8 retained. Evidence A-2010: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2010-t-330-exact-head-full-verification-not-clear-workload-guards.md.
+
+### rev-23 · 2026-10-13T17:06:23.879Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-330-4
+commit: 86ea5dbacce23b73eab85d9f9e50cbd5472a30ac
+
+No high, medium, or low source findings remain. Counts reuse parsed criteria from the selected row via private WeakMap, preserving wire shape/precedence and eliminating duplicate SELECTs. Archive tracer recognizes closed-first SQL; exact one-lookup, stage ceilings and card no-full-list/file/one-event guards remain. Tracker-only dev delta reviewed; C7/C8 refreshed. C1–C6 await complete same-head full verification after restart admission. Evidence A-2012: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2012-t-330-workload-correction-source-clear-at-86ea5dba.md.
 
 Criteria: C7 verified, C8 verified.

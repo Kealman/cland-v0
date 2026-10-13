@@ -2,8 +2,8 @@
 id: T-334
 kind: task
 title: "Usage in the journal: a session-usage record at each changed session.usage publication and one at stop, with role, item, harness, model, totals and cost or rate-limit share, on all three adapters"
-state: open
-status: review
+state: closed
+status: done
 criterion_seq: 5
 labels:
   - v0.1.2
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-209
 branch: t/T-334-usage-in-the-journal-a-session-usage
 created: 2026-10-13T14:04:09.872Z
-updated: 2026-10-13T16:36:03.973Z
+updated: 2026-10-13T17:13:56.538Z
 ---
 
 ## Summary
@@ -70,15 +70,20 @@ The role comes from the store and the item from the session's launch item, as `p
 
 - [x] C1. A fake Codex session with two different publications and one equal publication leaves two `session-usage` records. Its stop adds one `final` record with the last totals and the rate-limit share.
   - done: impl-334 · 2026-10-13T16:32:51.908Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-334-2 · 2026-10-13T17:13:46.318Z · commit 7422ec79d77d034cd1eb0e12a2a1f452628ef2fd
 - [x] C2. Fake Claude Code and OpenCode sessions leave records the same way, with `cost` where the fake reports it.
   - done: impl-334 · 2026-10-13T16:32:53.459Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-334-2 · 2026-10-13T17:13:46.318Z · commit 7422ec79d77d034cd1eb0e12a2a1f452628ef2fd
 - [x] C3. Each record names the session, its id, role, item, harness and model. A session with no usage leaves no record at stop.
   - done: impl-334 · 2026-10-13T16:32:54.461Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-334-2 · 2026-10-13T17:13:46.318Z · commit 7422ec79d77d034cd1eb0e12a2a1f452628ef2fd
 - [x] C4. A hub test with two roles and two items sums the final records per role and per item and matches the `jq` line in `hub/README.md`, applied to `cland hub journal --kind session-usage --json`.
   - done: impl-334 · 2026-10-13T16:32:55.786Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-334-2 · 2026-10-13T17:13:46.318Z · commit 7422ec79d77d034cd1eb0e12a2a1f452628ef2fd
 - [x] C5. `hub/README.md`'s journal section describes `session-usage`, its fields, the equal-publication rule and the `jq` line.
   - done: impl-334 · 2026-10-13T16:32:56.652Z
   - verified: rev-23 [reviewer] · run rev-2026-10-13-334-1 · 2026-10-13T16:36:03.973Z · commit 7422ec79d77d034cd1eb0e12a2a1f452628ef2fd
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-334-2 · 2026-10-13T17:13:46.319Z · commit 7422ec79d77d034cd1eb0e12a2a1f452628ef2fd
 
 ## Comments
 
@@ -101,3 +106,23 @@ commit: 7422ec79d77d034cd1eb0e12a2a1f452628ef2fd
 No high, medium, or low source findings. Existing throttled publication records changed totals/limits with bounded snapshots; terminal publication captures pending adapter usage once before role cleanup, with Codex retained stop usage and prune/reset cleanup. Real frame/CLI tests preserve barriers and execute the documented jq aggregation; no new timers/seams or tracker/journal reads. C5 verified; C1–C4 await complete same-head full verification. Evidence A-2004: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2004-t-334-source-review-clear-at-7422ec79.md.
 
 Criteria: C5 verified.
+
+### impl-334 · 2026-10-13T17:12:58.227Z
+
+Full verification green at the exact source-reviewed head 7422ec79d77d034cd1eb0e12a2a1f452628ef2fd. Run 2bb85891-a91b-45f8-936d-2d4e5d3d77a2: exit 0; 1827 tests passed, 0 failed/cancelled/skipped. Durable log A-2013: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2013-suite-2bb85891-a91b-45f8-936d-2d4e5d3d77a2-all-at-7422ec7.log. Awaiting rev-23's final same-head verdict. No further verification submission before the Coordinator's hub-restart notice.
+
+### rev-23 · 2026-10-13T17:13:46.319Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-334-2
+commit: 7422ec79d77d034cd1eb0e12a2a1f452628ef2fd
+
+No high, medium, or low findings. Source A-2004 and complete exact-head A-2013 establish C1–C5, including changed/equal publications, pending/final usage, all adapter attribution, exact CLI jq sums and docs. Typecheck and all three phases pass 1827/1827, exit 0, zero skips/cancellations. Evidence A-2014: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2014-t-334-final-exact-head-review-clear.md.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-10-13T17:13:56.538Z
+
+Merged 33fed86faa42e37d88a7b824faedbeaf59a252d5 onto dev.
