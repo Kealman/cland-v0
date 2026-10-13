@@ -1,7 +1,7 @@
 // Real project startup and the JSON-lines protocol; native SQLite tracing observes work without replacing it.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdir, mkdtemp, realpath, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, realpath, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { PassThrough } from 'node:stream';
@@ -43,6 +43,79 @@ function pipe(daemon: Pick<Daemon, 'hub'>) {
     batch: (batch: Array<Record<string, unknown>>) => input.write(batch.map(f => JSON.stringify(f)).join('\n') + '\n'),
     close: () => { input.end(); output.end(); } };
 }
+
+for (const kind of ['task', 'epic'] as const)
+test(`a protocol stop burst does bounded indexed work despite unrelated retained ${kind} items`, async t => {
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'cland-stop-work-'))), db = join(root, '.cland', 'hub.db');
+  const cleanup = ownDirectory(undefined, root);
+  let stop = async () => {};
+  t.after(async () => { try { await stop(); } finally { await cleanup(); } });
+  const tracker = new Tracker({ root, db });
+  const actor = { id: 'human', name: 'human', role: null, human: true };
+  for (let i = 0; i < 64; i++) {
+    const item = await tracker.create(actor, { title: `Unrelated retained item ${i}`, kind });
+    if (kind === 'epic' && i % 2 === 0) {
+      const path = join(root, item.path);
+      await writeFile(path, (await readFile(path, 'utf8')).replace('state: open', 'state: closed'));
+    }
+  }
+  await tracker.rescanAsync();
+  await tracker.stop();
+  const daemon = await serveProject(root, { log: () => {} });
+  const human = pipe(daemon);
+  stop = async () => { human.close(); await daemon.stop(); };
+  human.send({ type: 'hello', protocol: 2, client: 'ui' });
+  await tick();
+  const table = new ProcessTable(db);
+  for (let i = 0; i < 8; i++) table.put({ name: `stop-${i}`, harness: 'codex', role: null, model: null, cwd: root, pid: 2147483646, harnessId: null, sessionId: `stop-id-${i}`, harnessSessionId: null, startedAt: new Date().toISOString(), status: 'running' });
+  table.close();
+  const prepare = DatabaseSync.prototype.prepare;
+  let queries = 0;
+  DatabaseSync.prototype.prepare = function(this: DatabaseSync, ...args: Parameters<typeof prepare>) {
+    if (args[0].includes('tracker_')) queries++;
+    return prepare.apply(this, args);
+  };
+  t.after(() => { DatabaseSync.prototype.prepare = prepare; });
+  human.batch(Array.from({ length: 8 }, (_, i) => ({ type: 'session.stop', id: `stop-${i}`, session: `stop-${i}` })));
+  await eventually('all protocol stops committed', () => human.frames.filter(f => f.type === 'result' && String(f.id).startsWith('stop-')).length === 8 || undefined);
+  const stopped = human.frames.filter(f => String(f.id).startsWith('stop-'));
+  assert.ok(stopped.every(f => f.ok), `stop frames succeeded: ${JSON.stringify(stopped.find(f => !f.ok))}`);
+  await tick();
+  t.diagnostic(`stop-burst indexed queries: ${queries}`);
+  assert.ok(queries < 1000, `eight stops hydrated unrelated retained items (${queries} indexed queries)`);
+});
+
+test('a task hold release reads bounded indexed work despite unrelated retained items', async t => {
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'cland-hold-work-'))), db = join(root, '.cland', 'hub.db');
+  const cleanup = ownDirectory(undefined, root);
+  let stop = async () => {};
+  t.after(async () => { try { await stop(); } finally { await cleanup(); } });
+  const tracker = new Tracker({ root, db });
+  const actor = { id: 'human', name: 'human', role: null, human: true };
+  const target = await tracker.create(actor, { title: 'Hold target' });
+  for (let i = 0; i < 64; i++) await tracker.create(actor, { title: `Unrelated item ${i}` });
+  await tracker.stop();
+  const daemon = await serveProject(root, { listen: 'never', log: () => {} });
+  const human = pipe(daemon), verifier = pipe(daemon);
+  stop = async () => { human.close(); verifier.close(); await daemon.stop(); };
+  human.send({ type: 'hello', protocol: 2, client: 'ui' });
+  assert.equal((await human.request({ type: 'role.set', id: 'role', session: 'verifier', role: 'reviewer' })).ok, true);
+  verifier.send({ type: 'hello', protocol: 2, name: 'verifier', sessionId: 'verifier-id', cwd: root });
+  await eventually('verifier connected', () => verifier.frames.some(f => f.type === 'welcome') || undefined);
+  await tick();
+  const prepare = DatabaseSync.prototype.prepare;
+  let queries = 0;
+  DatabaseSync.prototype.prepare = function(this: DatabaseSync, ...args: Parameters<typeof prepare>) {
+    queries++;
+    return prepare.apply(this, args);
+  };
+  t.after(() => { DatabaseSync.prototype.prepare = prepare; });
+  const released = await verifier.request({ type: 'task.hold', id: 'release', item: target.id, release: true });
+  assert.equal(released.ok, true, String(released.error));
+  t.diagnostic(`hold-release indexed queries: ${queries}`);
+  assert.ok(queries > 0, 'the native tracer observes indexed work');
+  assert.ok(queries <= 100, `one hold release used ${queries} indexed queries for 64 unrelated items`);
+});
 
 test('archive startup batches hundreds of stops; item and stop bursts schedule one sweep per tick with thousands of retained items and messages', async t => {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'cland-archive-work-'))), db = join(root, '.cland', 'hub.db');

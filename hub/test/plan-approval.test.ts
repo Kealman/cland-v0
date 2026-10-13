@@ -98,3 +98,32 @@ test('approval none is the default; no-plan and broken-plan approvals refuse', a
   await writeFile(path, (await readFile(path, 'utf8')).replace('scope: none', 'scope: broken'));
   assert.equal((await ui.request({ type: 'task.plan', op: 'approve', item: epic.id })).ok, false);
 });
+
+test('the inbox sees a refused plan recover when its missing child is created', async t => {
+  const root = await tempProject(t);
+  await mkdir(join(root, '.cland'), { recursive: true });
+  await writeFile(join(root, '.cland/config.toml'), '[plan]\napproval = "human"\n');
+  const { discovery } = await startDaemon(t, root);
+  const ui = await connectUi(t, discovery);
+  const created = await ui.request({ type: 'task.create', title: 'Future child', kind: 'epic' });
+  const epic = (created.value as { item: ItemView }).item;
+  const path = join(root, epic.path);
+  await writeFile(path, `${await readFile(path, 'utf8')}\n## Plan\n\n\`\`\`yaml\nstages:\n  - name: recovered\n    qa: {scope: none, when: per-item}\n    lanes: [[T-2]]\n\`\`\`\n`);
+  await eventually('missing child plan refused', async () => {
+    const listed = (await ui.request({ type: 'task.list' })).value as { items: ItemView[] };
+    return listed.items.find(item => item.id === epic.id)?.planError?.includes('no such plan item') || undefined;
+  });
+  const child = await ui.request({ type: 'task.create', title: 'Now present', parent: epic.id });
+  assert.equal(child.ok, true, child.error);
+  const childId = (child.value as { item: ItemView }).item.id;
+  const inbox = (await ui.request({ type: 'inbox.list' })).value as { plans: Array<{ id: string }> };
+  assert.ok(inbox.plans.some(plan => plan.id === epic.id), 'recovered plan immediately waits for approval');
+  const other = await ui.request({ type: 'task.create', title: 'Other parent', kind: 'epic' });
+  const otherId = (other.value as { item: ItemView }).item.id;
+  assert.equal((await ui.request({ type: 'task.link', item: childId, parent: otherId })).ok, true);
+  const invalidated = (await ui.request({ type: 'inbox.list' })).value as { plans: Array<{ id: string }> };
+  assert.ok(!invalidated.plans.some(plan => plan.id === epic.id), 'moving the child invalidates the waiting plan');
+  assert.equal((await ui.request({ type: 'task.link', item: childId, parent: epic.id })).ok, true);
+  const recovered = (await ui.request({ type: 'inbox.list' })).value as { plans: Array<{ id: string }> };
+  assert.ok(recovered.plans.some(plan => plan.id === epic.id), 'restoring the child recovers the same accepted plan');
+});

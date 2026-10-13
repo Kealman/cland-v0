@@ -897,8 +897,12 @@ export class Tracker {
   #acceptPlan(item: Item, source: 'hub' | 'hand', writer?: Actor, reason?: string): { plan: EpicPlan | null; planError?: string } {
     const state = this.#planState(item), id = item.fm.id;
     if (state.planError) {
-      if (this.#planErrors.get(id) !== state.planError) this.#log({ event: 'task-plan-refused', id, file: this.#index.metaOf(id)?.file, error: state.planError, source });
+      const changed = this.#planErrors.get(id) !== state.planError;
       this.#planErrors.set(id, state.planError);
+      if (changed) {
+        this.#log({ event: 'task-plan-refused', id, file: this.#index.metaOf(id)?.file, error: state.planError, source });
+        this.#announce(id, false);
+      }
       return state;
     }
     const recovered = this.#planErrors.delete(id);
@@ -917,6 +921,9 @@ export class Tracker {
     const record: PlanHistoryEntry = { id: randomUUID(), ts: this.#now().toISOString(), event: 'changed', by: writer?.name ?? (source === 'hand' ? 'hand' : 'hub'), previous, plan: state.plan, ...(reason ? { reason } : {}) };
     this.#rememberPlanEvent(id, record);
     this.#log({ ...record, event: 'task-plan-changed', id, planHistoryId: record.id, source });
+    // Another item's creation/reparenting can change this candidate without a
+    // write to its own file. Live summary projections need that committed change.
+    this.#announce(id, false);
     return state;
   }
 

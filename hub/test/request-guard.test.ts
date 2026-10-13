@@ -51,15 +51,17 @@ test('a client flooding task.list does not hold up another client; its repeats a
 
   // Calibrate the cost of this same burst with no competing client. This includes scheduling,
   // transport and serializing 500 twenty-item answers, which the handler's CPU budget does not.
-  const baseline = async () => {
+  const baseline = async (item: string) => {
     const started = performance.now();
     const burst = Array.from({ length: 500 }, () => flood.request({ type: 'task.list' }, 30_000));
-    const view = await flood.request({ type: 'task.view', item: 'T-7' }, 30_000);
+    const view = await flood.request({ type: 'task.view', item }, 30_000);
     assert.equal(view.ok, true);
     assert.ok((await Promise.all(burst)).every(a => a.ok));
     return performance.now() - started;
   };
-  const before = await baseline();
+  // Distinct, equally sized fixtures make both calibrations actual reads, even
+  // when faster projections put the whole experiment inside the replay window.
+  const before = await baseline('T-6');
   // the incident's burst: hundreds of identical reads in flight at once, while the other client asks its own
   const burst = Array.from({ length: 500 }, () => flood.request({ type: 'task.list' }, 30_000));
   const started = performance.now();
@@ -68,7 +70,7 @@ test('a client flooding task.list does not hold up another client; its repeats a
   assert.equal(view.ok, true);
   const answers = await Promise.all(burst);
   assert.ok(answers.every((a) => a.ok && (a.value as { items: unknown[] }).items.length === 20), 'every flooded read is answered');
-  const after = await baseline();
+  const after = await baseline('T-8');
   const calibrated = Math.max(before, after);
   t.diagnostic(`other client ${Math.round(waited)} ms; same-client burst baseline ${Math.round(before)}/${Math.round(after)} ms`);
   assert.ok(waited < Math.max(BUDGET_MS * 2, calibrated * 2), `the other client waited ${Math.round(waited)} ms behind the flood; baseline ${Math.round(calibrated)} ms`);

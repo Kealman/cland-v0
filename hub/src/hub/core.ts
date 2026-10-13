@@ -244,6 +244,8 @@ export class HubCore {
   readonly #sessionHolds: (sessionId: string) => SessionHold[];
   /** The last indexed ownership survives a watcher removal until its final fan-out. */
   readonly #defaultItems = new Map<string, DefaultItem>();
+  /** Current committed summaries for live projections; refreshed before task fan-out. */
+  readonly #itemSnapshots = new Map<string, ItemSummary>();
   /** What subscribers last heard of each topic (status, warning, binding, title): a change is a `topic` event. */
   readonly #publishedTopics = new Map<string, string>();
   readonly #topicStatuses = new Map<string, TopicStatus>();
@@ -264,8 +266,11 @@ export class HubCore {
     this.#items = options.items ?? null;
     this.#store.setItemResolver(id => this.#items?.resolveId?.(id) ?? null);
     this.#sessionHolds = options.sessionHolds ?? (() => []);
-    this.visibility = new Visibility({ preferences: options.visibilityPreferences, overrides: options.visibility ?? {}, now: this.#now, role: name => this.#store.roleOf(name), process: id => this.#processFacts.get(id), items: () => this.#items?.list?.() ?? [], ...(options.ladder ? { ladder: options.ladder } : {}) });
-    for (const item of this.#items?.list?.() ?? []) if (item.state !== 'closed') this.#defaultItems.set(`T-${idNumber(item.id)}`, item);
+    this.visibility = new Visibility({ preferences: options.visibilityPreferences, overrides: options.visibility ?? {}, now: this.#now, role: name => this.#store.roleOf(name), process: id => this.#processFacts.get(id), items: () => [...this.#itemSnapshots.values()], ...(options.ladder ? { ladder: options.ladder } : {}) });
+    for (const item of this.#items?.list?.() ?? []) {
+      this.#itemSnapshots.set(`T-${idNumber(item.id)}`, item);
+      if (item.state !== 'closed') this.#defaultItems.set(`T-${idNumber(item.id)}`, item);
+    }
     this.#queueTtlMs = options.queueTtlMs ?? QUEUE_TTL_MS;
     this.#retentionMs = options.retentionMs ?? RETENTION_MS;
     this.#hygiene = new Hygiene({
@@ -308,7 +313,7 @@ export class HubCore {
       log: this.#log,
       emit: (e) => this.#emit(e),
       topics: () => this.#store.topics(),
-      items: () => this.#items?.list?.() ?? [],
+      items: () => [...this.#itemSnapshots.values()],
       presence: () => this.presence(),
       stateOf: (id) => this.sessionState(id),
       idleNotifyMs: options.idleNotifyMs ?? IDLE_NOTIFY_MS,
@@ -357,9 +362,9 @@ export class HubCore {
     if (filter.muted) filter = { ...filter, muted: filter.muted.map(subject => subject.kind === 'item' ? { ...subject, id: canonical(subject.id) } : subject) };
     const inbox = this.inbox.list();
     const waitingTopics = new Set([...inbox.waiting.map(t => t.id), ...inbox.asks.map(a => a.topic.id), ...inbox.messages.map(m => m.topic.id), ...inbox.requests.map(r => r.topic.id)]);
-    const items = new Map((this.#items?.list?.() ?? []).map(i => [i.id, i]));
+    const items = new Map([...this.#itemSnapshots.values()].map(i => [i.id, i]));
     const pendingPlans = new Set(inbox.plans.map(p => p.id));
-    const descendants = filter.subject?.kind === 'item' ? new Set((this.#items?.list?.() ?? []).filter(i => i.id === filter.subject!.id || this.#items?.ancestry?.(i.id)?.includes(filter.subject!.id)).map(i => i.id)) : null;
+    const descendants = filter.subject?.kind === 'item' ? new Set([...this.#itemSnapshots.values()].filter(i => i.id === filter.subject!.id || this.#items?.ancestry?.(i.id)?.includes(filter.subject!.id)).map(i => i.id)) : null;
     descendants?.add(filter.subject!.id);
     return (row, record) => {
       if (row.item || row.subject.kind === 'item') row = { ...row, ...(row.item ? { item: canonical(row.item) } : {}), ...(row.subject.kind === 'item' ? { subject: { ...row.subject, id: canonical(row.subject.id) } } : {}) };
@@ -511,6 +516,8 @@ export class HubCore {
   }
 
   publishTask(change: ItemChange): void {
+    if (change.item) this.#itemSnapshots.set(`T-${idNumber(change.id)}`, change.item);
+    else this.#itemSnapshots.delete(`T-${idNumber(change.id)}`);
     this.#afterCommit(() => this.#drainVerifierRequests());
     if (change.item === null) {
       this.#terminalEvent({ item: change.id }, 'task', `${change.id} removed`, change.previousAncestry ? { ancestry: change.previousAncestry } : {});
@@ -549,7 +556,8 @@ export class HubCore {
   eventSteering(canSteer: (sessionId: string) => boolean): void { this.#canSteerEvents = canSteer; }
 
   #sessionItems(sessionId: string): string[] {
-    return (this.#items?.list?.() ?? []).filter(i => i.state !== 'closed' && [i.claim, ...i.holds].some(h => h && this.sessionIdentity(h.sessionId) === sessionId)).map(i => i.id);
+    return [...new Set(this.#sessionHolds(sessionId).map(hold => hold.item))]
+      .filter(item => this.#items?.lead(item)?.state !== 'closed');
   }
 
   /** A default can belong to a role-known lead whose first hello has not arrived yet. */
@@ -609,7 +617,10 @@ export class HubCore {
       }
       return items;
     }
-    const items = new Map<string, DefaultItem>((this.#items?.list?.() ?? []).filter(item => item.state !== 'closed').map(item => [item.id, item]));
+    // Startup seeds this projection and publishTask updates it synchronously on every
+    // committed change. Session lifecycle fan-out must not hydrate all retained items
+    // while other asynchronous OS probes are waiting to deliver their answers.
+    const items = new Map<string, DefaultItem>([...this.#itemSnapshots.values()].filter(item => item.state !== 'closed').map(item => [item.id, item]));
     const removed = includeItem && this.#defaultItems.get(`T-${idNumber(includeItem)}`);
     if (removed && !items.has(removed.id)) items.set(removed.id, removed);
     return items;
