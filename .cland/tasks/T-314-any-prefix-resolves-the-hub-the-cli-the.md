@@ -4,6 +4,7 @@ kind: task
 title: "Any prefix resolves: the hub, the CLI, the MCP task tools, the plan parser and gi take any kind prefix by its number, and every surface shows the kind's own"
 state: open
 status: in progress
+criterion_seq: 7
 labels:
   - v0.1.2
   - hub
@@ -16,7 +17,7 @@ blocked_by:
 topic: topic-193
 branch: t/T-314-any-prefix-resolves-the-hub-the-cli-the
 created: 2026-10-13T02:27:22.874Z
-updated: 2026-10-13T04:24:29.517Z
+updated: 2026-10-13T04:55:23.788Z
 ---
 
 ## Summary
@@ -93,9 +94,51 @@ Tasks keep `T-`. Task branches `t/T-<n>-<slug>`, worktrees `.cland/worktrees/T-<
 ## Acceptance criteria
 
 - [ ] C1. A hub test on a temporary project with a real hub writes an epic file as `T-<n>` and views it as `E-<n>`, `R-<n>`, `T-<n>`, `e-<n>` and `<n>`. Each shows the same item headed `E-<n>`. `cland task list --json` shows every kind with its own prefix. An unknown number is refused, and `A-<n>` is refused as not an item id.
+  - failed: rev-23 [reviewer] · 2026-10-13T04:48:12.564Z · note Per-event default-item scans break bounded lookup work; removal leaves canonical plan caches behind.
 - [ ] C2. `task.create` writes the kind's prefix in the id and the file name, and one counter serves every prefix: after a hand-written `E-500` file, the next item is 501. A kind edit keeps the number and renames the file to the new prefix.
+  - failed: rev-23 [reviewer] · 2026-10-13T04:55:23.788Z · note Configured feature kind-change regression reads E-1 instead of F-1 and retains a stale T-1 notice path.
 - [ ] C3. A hub test writes a lead claim, a topic binding, a subscription and a plan against an epic as `T-<n>`, restarts the hub, and shows each still matching `E-<n>`. `send` to `lead E-<n>`, a `review request E-<n>` first line and `subscribe` on subtree `E-<n>` route as they did with `T-<n>`.
+  - failed: rev-23 [reviewer] · 2026-10-13T04:55:23.788Z · note Ancestry-only default cache loses the surviving parent Lead when a child is removed.
 - [ ] C4. Plan lanes accept any kind prefix, and an approved plan stays approved across the change.
+  - failed: rev-23 [reviewer] · 2026-10-13T04:48:12.564Z · note Mixed-spelling overrides can bypass stage QA, and canonical parents invalidate unchanged legacy stage hashes.
 - [ ] C5. Two files with one number index once, and `task-duplicate-number` is logged with both names. The test reads `hub.log` after the `flushLogs` barrier.
 - [ ] C6. A Neovim headless test on the stub hub puts the cursor on `T-<n>` in a thread and presses `gi`. The item view of `E-<n>` opens. `A-12` in a thread is not taken as an item, and every kind prefix is highlighted.
 - [ ] C7. `docs/agents/issue-tracker.md` (and its template `skills/templates/docs/agents/issue-tracker.md`), `hub/README.md`'s tracker section and `nvim/README.md`'s motions section describe the prefixes, resolution by number and the canonical id.
+
+## Comments
+
+### impl-314 · 2026-10-13T04:38:51.310Z
+
+Implemented numeric indexed resolution, canonical kind ids and edges, shared creation counter, kind-edit file renames, duplicate-number preference/warnings, old hub-state lookup keys without startup rewrite, routing/subscription/plan parsing and Neovim prefix consumers. Added real daemon/spoke/CLI and headless Neovim regression coverage; preparing first queued verification after merging latest origin/dev.
+
+### rev-23 · 2026-10-13T04:48:12.564Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-314-1
+commit: d631897202a6c927506bcb9007d6ca1d629275b7
+
+High — hub/src/tracker/tracker.ts:1273: exact-key override lookup ignores accepted numeric aliases and can bypass required stage QA.
+Medium — hub/src/tracker/tracker.ts:1268: displayed parent prefix changes invalidate unchanged legacy stage QA hashes.
+Medium — hub/src/hub/core.ts:515: every task event scans all cached items and performs indexed resolutions per unrelated item.
+Medium — hub/src/hub/core.ts:2037: affinity reads T-n while both assignment paths write canonical E-n/R-n keys.
+Medium — hub/src/hub/core.ts:1717; hub/src/roles/handover.ts:55: legacy lead:T-n records are missed by canonical lead:E-n queries.
+Medium — hub/src/tracker/tracker.ts:832: stable T-n deletion misses canonical plan candidate/error keys, retaining an orphan plan candidate.
+Evidence and two low advisory notes: A-1798 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1798-t-314-review-findings-at-d631897.md). Stub-hub shebang fixed at this head. Cancelled suites are not green evidence.
+
+Criteria: C1 failed (Per-event default-item scans break bounded lookup work; removal leaves canonical plan caches behind.), C3 failed (Legacy Lead records and non-task verifier assignment affinity use inconsistent prefix keys.), C4 failed (Mixed-spelling overrides can bypass stage QA, and canonical parents invalidate unchanged legacy stage hashes.).
+
+### rev-23 · 2026-10-13T04:55:23.788Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-314-2
+commit: ee3fc91fb7210e4c5601c0896efb6182000114dd
+
+Medium — hub/src/hub/core.ts:591: removed children have no indexed ancestry, so the cached child alone cannot route the terminal notice to its parent Lead.
+Medium — hub/test/tracker-levels.test.ts:246: the feature fixture creates F-1-container.md but reads E-1-container.md; the later notice still expects T-1.
+All six original A-1798 blocking findings are addressed in source, with new regression coverage. Evidence A-1802 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1802-t-314-correction-review-at-ee3fc91-terminal-routing-and-fixture-paths.md). A-1801 stopped before tests; complete c137ae11 at this head remains pending.
+
+Criteria: C3 failed (Ancestry-only default cache loses the surviving parent Lead when a child is removed.), C2 failed (Configured feature kind-change regression reads E-1 instead of F-1 and retains a stale T-1 notice path.).

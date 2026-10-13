@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-12T11:35:14.436Z
-updated: 2026-10-12T21:35:21.321Z
+updated: 2026-10-13T04:57:07.313Z
 ---
 
 ## Goal
@@ -116,6 +116,12 @@ stages:
       when: after-stage
     lanes:
       - - T-308
+  - name: gaps before QA
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-319
 ```
 
 ## Comments

@@ -3,7 +3,7 @@ id: T-312
 kind: task
 title: "Five more Linux failures from the first all-phase container run: Codex relaunch PID, OpenCode no-url rollback, three Neovim cases"
 state: open
-status: review
+status: in progress
 criterion_seq: 5
 labels:
   - v0.1.2
@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-190
 branch: t/T-312-five-more-linux-failures-from-the-first
 created: 2026-10-13T01:50:19.683Z
-updated: 2026-10-13T04:12:00.576Z
+updated: 2026-10-13T04:51:30.945Z
 ---
 
 ## Summary
@@ -51,6 +51,7 @@ T-268: Suite spend and Linux portability. Evidence is in T-281's topic (topic-18
 - [x] C2. In the Ubuntu 24.04 container as an ordinary user, `orphan-servers` and `adapter-native-boundary` each pass ten runs in a row alone, and the three Neovim files pass ten runs in a row alone. The logs are published as artifacts in this item's topic.
   - done: impl-312 · 2026-10-13T03:19:17.710Z
 - [ ] C3. One container run of all phases (`npm run typecheck && npm test -- --all`) is green on Linux, with the platform skips listed by reason. Its log is published as an artifact.
+  - failed: rev-26 [reviewer] · 2026-10-13T04:51:30.945Z · note A-1799 Linux all-phase run fails pid-identity.test.ts:108 (stop ok:true, expected false) and stops before Neovim; required green all-phase result is absent.
 - [ ] C4. The suite is green on macOS through `cland verify`.
 - [x] C5. C5. The hub-phase hang of freshness.test.ts in the first T-312 Linux all-phase run (2026-10-13 ~03:00Z, worker idle in epoll while every other worker had finished) has its cause named in the item and fixed there, with no timeout raised, no skip and no retry. The file passes ten runs in a row alone in the Ubuntu container, and the evidence of the hang is published as an artifact in this item's topic.
   - done: impl-312 · 2026-10-13T04:06:46.233Z
@@ -96,3 +97,15 @@ A-1780 publishes the complete second Linux slot at integrated c79a8a5. Ten isola
 ### impl-312 · 2026-10-13T04:12:00.576Z
 
 Third-slot candidate 1e138fc is pushed and published in A-1785: supplied 64cb036/ffced58 are unchanged cherry-picks (6a8205d/2e1e517), then origin/dev fetched/merged. Independent real-frame regression from impl-313 and rev-26 review confirm the first patch missed HubCore's journalImmediate; the follow-up closes Core before Dispatcher/adapters and async drains, covering the exact A-1780 eventsProject/InboxBoard closed-table stack. At the candidate, events-quiet 6/6 and session-async-processes 5/5 pass; all original four isolated-proof files are unchanged from 5e8842a. Coordinator approved exactly one all-phase Linux run at 1e138fc/A-1785 after T-313 and T-308 existing queued runs finish and queue is empty, with no additional handoff unless a hub restart is posted. Earlier failed evidence stays in A-1780; C3/C4 remain incomplete.
+
+### rev-26 · 2026-10-13T04:51:30.945Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261013-312-1
+commit: 1e138fc3faa579146b19c143453ae7e451aac0d4
+
+Medium: hub/test/pid-identity.test.ts:108 — current Linux all-phase candidate fails the Claude failed-stop/reused-PID refusal assertion (ok:true instead of false), so C3 is not met and Neovim never ran. The following bystander assertion was not reached; this evidence does not establish signalling or exact cause. A-1799 preserves the run; reviewer assessment published in this topic. No outstanding high/medium code finding in the previously reviewed original fixes or shared shutdown follow-up. C1/C2/C5 evidence checked; C4 final macOS full gate pending.
+
+Criteria: C3 failed (A-1799 Linux all-phase run fails pid-identity.test.ts:108 (stop ok:true, expected false) and stops before Neovim; required green all-phase result is absent.).
