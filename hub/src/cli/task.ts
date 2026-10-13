@@ -194,7 +194,7 @@ function viewText(i: ItemView): string {
     ...(i.version !== undefined ? [`  version   ${i.version}`] : []),
     `  state     ${i.state}`,
     ...(i.status !== undefined ? [`  status    ${i.status}`] : []),
-    `  rank      ${i.rank}`,
+    `  rank      ${i.rank} (${i.rank_set ? 'set' : 'default'})`,
     `  labels    ${i.labels.length ? i.labels.join(', ') : '-'}`,
     `  assignee  ${i.assignee ?? '-'}`,
     `  claim     ${claimText(i.claim)}`,

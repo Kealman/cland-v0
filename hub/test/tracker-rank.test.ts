@@ -8,6 +8,8 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import assert from 'node:assert/strict';
+import nativeFiles from 'node:fs';
+import { syncBuiltinESMExports } from 'node:module';
 import files, { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { Tracker } from '../src/tracker/tracker.ts';
 import { createSocketEdge } from '../src/hub/socket.ts';
@@ -15,7 +17,83 @@ import { fixedRoles } from '../src/roles/config.ts';
 import { join } from 'node:path';
 import { cland, connectUi, connectWsUi, spawnSpoke, startDaemon, startHub, tempProject, TEST_SECRET } from './harness.ts';
 
-type Item = { id: string; rank?: number; path: string; file: string; parent: string | null };
+type Item = { id: string; rank?: number; rank_set?: true; path: string; file: string; parent: string | null };
+
+test('lists and views distinguish default ranks from explicit ranks, including zero and the default value', async t => {
+  const root = await tempProject(t);
+  await fixture(root, [{ id: 'T-1' }, { id: 'T-2', rank: 20 }, { id: 'T-3', rank: 0 }]);
+  const { discovery } = await startDaemon(t, root);
+  const ui = await connectUi(t, discovery);
+  const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
+  onCleanup(t, () => coord.close());
+  const listed = await ui.request({ type: 'task.list' });
+  assert.equal(listed.ok, true);
+  const mcp = await coord.call<{ items: Item[] }>('task.list', {});
+  const cli = await cland(root, 'task', 'list', '--json');
+  assert.equal(cli.code, 0, cli.stderr);
+  for (const items of [(listed.value as { items: Item[] }).items, mcp.items, (JSON.parse(cli.stdout) as { items: Item[] }).items]) {
+    assert.deepEqual(items.map(i => [i.id, i.rank]), [['T-3', 0], ['T-1', 10], ['T-2', 20]]);
+    assert.equal(Object.hasOwn(items[1]!, 'rank_set'), false);
+    assert.equal(items[0]!.rank_set, true);
+    assert.equal(items[2]!.rank_set, true);
+  }
+  for (const [id, rank, set] of [['T-1', 10, false], ['T-2', 20, true], ['T-3', 0, true]] as const) {
+    const viewed = await ui.request({ type: 'task.view', item: id });
+    assert.equal(viewed.ok, true);
+    const item = (viewed.value as { item: Item }).item;
+    assert.equal(item.rank, rank);
+    assert.equal(Object.hasOwn(item, 'rank_set'), set);
+    if (set) assert.equal(item.rank_set, true);
+  }
+});
+
+test('CLI views label the effective rank as default or set', async t => {
+  const root = await tempProject(t);
+  await fixture(root, [{ id: 'T-1' }, { id: 'T-2', rank: 0 }]);
+  await startDaemon(t, root);
+  const implicit = await cland(root, 'task', 'view', 'T-1');
+  assert.equal(implicit.code, 0, implicit.stderr);
+  assert.match(implicit.stdout, /^\s+rank\s+10 \(default\)$/m);
+  const explicit = await cland(root, 'task', 'view', 'T-2');
+  assert.equal(explicit.code, 0, explicit.stderr);
+  assert.match(explicit.stdout, /^\s+rank\s+0 \(set\)$/m);
+});
+
+test('views keep rank and rank_set consistent with a hand save before watcher re-index', async t => {
+  const root = await tempProject(t);
+  await fixture(root, [{ id: 'T-1', status: 'backlog' }, { id: 'T-2', rank: 0, status: 'backlog' }]);
+  // Hold watcher delivery at the native boundary so the list retains its prior index rows.
+  const quiet = await tempProject(t);
+  const watch = nativeFiles.watch;
+  t.mock.method(nativeFiles, 'watch', () => watch(quiet, () => {}));
+  syncBuiltinESMExports();
+  onCleanup(t, () => t.mock.restoreAll());
+  onCleanup(t, () => syncBuiltinESMExports());
+  const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db') });
+  tracker.start();
+  onCleanup(t, () => tracker.stop());
+  const hub = await startHub({ tracker, roles: fixedRoles() });
+  onCleanup(t, () => hub.close());
+  const ui = await connectWsUi(t, hub);
+  const added = join(root, '.cland', 'tasks', 'T-1-fixture.md');
+  const removed = join(root, '.cland', 'tasks', 'T-2-fixture.md');
+  await writeFile(added, (await readFile(added, 'utf8')).replace('kind: task', 'kind: task\nrank: 5'));
+  await writeFile(removed, (await readFile(removed, 'utf8')).replace(/^rank: .*\n/m, ''));
+  const listed = await ui.request({ type: 'task.list' });
+  assert.equal(listed.ok, true);
+  const items = (listed.value as { items: Item[] }).items;
+  assert.deepEqual(items.map(i => [i.id, i.rank]), [['T-2', 0], ['T-1', 10]]);
+  assert.equal(items[0]!.rank_set, true);
+  assert.equal(Object.hasOwn(items[1]!, 'rank_set'), false);
+  const explicit = await ui.request({ type: 'task.view', item: 'T-1' });
+  const implicit = await ui.request({ type: 'task.view', item: 'T-2' });
+  assert.equal(explicit.ok, true);
+  assert.equal(implicit.ok, true);
+  assert.equal((explicit.value as { item: Item }).item.rank, 5);
+  assert.equal((explicit.value as { item: Item }).item.rank_set, true);
+  assert.equal((implicit.value as { item: Item }).item.rank, 20);
+  assert.equal(Object.hasOwn((implicit.value as { item: Item }).item, 'rank_set'), false);
+});
 
 test('sparse rank moves persist, are idempotent, and CLI and MCP share rank then id order', async t => {
   const root = await tempProject(t);
@@ -53,6 +131,54 @@ test('sparse rank moves persist, are idempotent, and CLI and MCP share rank then
   await startDaemon(t, root);
   const restart = await cland(root, 'task', 'list', '--json');
   assert.deepEqual((JSON.parse(restart.stdout) as { items: Item[] }).items.map(i => i.id), ['T-3', 'T-4', 'T-2', 'T-1']);
+});
+
+test('a dense move marks every written sibling and its task event as explicitly ranked', async t => {
+  const root = await tempProject(t);
+  await fixture(root, [{ id: 'T-1' }, { id: 'T-2' }, { id: 'T-3', rank: 9 }, { id: 'T-4', rank: 11 }, { id: 'T-5' }]);
+  const { discovery } = await startDaemon(t, root);
+  const ui = await connectUi(t, discovery);
+  assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
+  const moved = await cland(root, 'task', 'rank', 'T-2', '--before', 'T-1', '--json');
+  assert.equal(moved.code, 0, moved.stderr);
+  assert.deepEqual((JSON.parse(moved.stdout) as { changed: string[] }).changed, ['T-1', 'T-2']);
+  for (const id of ['T-1', 'T-2']) {
+    assert.match(await readFile(join(root, '.cland', 'tasks', `${id}-fixture.md`), 'utf8'), /^rank: /m);
+    const event = await ui.waitFor(f => f.type === 'task' && (f.item as Item | undefined)?.id === id);
+    assert.equal((event.item as Item).rank_set, true);
+    const viewed = await ui.request({ type: 'task.view', item: id });
+    assert.equal(viewed.ok, true);
+    assert.equal((viewed.value as { item: Item }).item.rank_set, true);
+  }
+  const listed = await ui.request({ type: 'task.list' });
+  assert.equal(listed.ok, true);
+  const items = (listed.value as { items: Item[] }).items;
+  assert.deepEqual(items.map(i => i.id), ['T-3', 'T-2', 'T-1', 'T-4', 'T-5']);
+  assert.deepEqual(items.slice(0, 4).map(i => i.rank_set), [true, true, true, true]);
+  assert.equal(Object.hasOwn(items[4]!, 'rank_set'), false);
+});
+
+test('removing a frontmatter rank clears rank_set in the re-index event, list and view', async t => {
+  const root = await tempProject(t);
+  await fixture(root, [{ id: 'T-1', rank: 0 }]);
+  const { discovery } = await startDaemon(t, root);
+  const ui = await connectUi(t, discovery);
+  assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
+  const before = await ui.request({ type: 'task.view', item: 'T-1' });
+  assert.equal(before.ok, true);
+  assert.equal((before.value as { item: Item }).item.rank_set, true);
+  const eventAt = ui.frames.length;
+  const path = join(root, '.cland', 'tasks', 'T-1-fixture.md');
+  await writeFile(path, (await readFile(path, 'utf8')).replace(/^rank: .*\n/m, ''));
+  const event = await ui.waitFor(f => ui.frames.indexOf(f) >= eventAt && f.type === 'task' && (f.item as Item | undefined)?.id === 'T-1' && (f.item as Item).rank === 10);
+  const listed = await ui.request({ type: 'task.list' });
+  const viewed = await ui.request({ type: 'task.view', item: 'T-1' });
+  assert.equal(listed.ok, true);
+  assert.equal(viewed.ok, true);
+  for (const item of [event.item as Item, (listed.value as { items: Item[] }).items[0]!, (viewed.value as { item: Item }).item]) {
+    assert.equal(item.rank, 10);
+    assert.equal(Object.hasOwn(item, 'rank_set'), false);
+  }
 });
 
 

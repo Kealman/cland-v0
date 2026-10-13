@@ -1362,7 +1362,7 @@ export class Tracker {
     const indexed = this.#index.get(id);
     if (!indexed) throw new TrackerError(`no item ${id}`);
     if (source === 'file' && this.isPlanContainer(item.fm.kind)) this.#planCandidates.set(id, { item, source: 'hand' });
-    const { closed: _indexedClosed, size: _indexedSize, regression_of: _indexedRegression, ...indexedFields } = indexed;
+    const { closed: _indexedClosed, size: _indexedSize, regression_of: _indexedRegression, rank_set: _indexedRankSet, ...indexedFields } = indexed;
     const view: ItemView = {
       ...indexedFields,
       verdictBase: this.#fresh.base(),
@@ -1371,6 +1371,7 @@ export class Tracker {
       blocked_by: item.fm.blocked_by.map(id => this.#referenceId(id) ?? id),
       ...(item.fm.regression_of !== undefined ? { regression_of: this.#referenceId(item.fm.regression_of) ?? item.fm.regression_of } : {}),
       rank: effectiveRank(item.fm),
+      ...(item.fm.rank !== undefined ? { rank_set: true as const } : {}),
       file,
       path: join(TASKS_REL, file),
       ...(this.#duplicates.has(idNumber(id)) ? { warnings: [`duplicate item number ${idNumber(id)}: ${this.#duplicates.get(idNumber(id))!.join(', ')}`] } : {}),

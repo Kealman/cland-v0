@@ -116,6 +116,7 @@ export type IndexedItem = {
   size?: Size;
   regression_of?: string;
   rank: number;
+  rank_set?: true;
   labels: string[];
   assignee: string | null;
   parent: string | null;
@@ -410,6 +411,7 @@ export class TrackerIndex {
       id: this.#canonical(id),
       kind: r.kind as Kind,
       rank: effectiveRank({ id, rank: r.rank as number | null }),
+      ...(r.rank !== null ? { rank_set: true as const } : {}),
       ...(r.version !== null ? { version: r.version as string } : {}),
       title: r.title as string,
       state: r.state as State,
