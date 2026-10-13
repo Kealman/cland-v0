@@ -16,6 +16,7 @@ topic: topic-119
 branch: t/T-174-cut-the-hub-suite-s-real-time-waits
 created: 2026-10-10T12:06:34.631Z
 updated: 2026-10-11T11:08:34.329Z
+closed: 2026-10-11T10:18:15.723Z
 ---
 
 ## Parent

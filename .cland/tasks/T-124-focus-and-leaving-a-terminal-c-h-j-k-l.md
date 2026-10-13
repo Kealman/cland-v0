@@ -16,6 +16,7 @@ topic: topic-42
 branch: t/T-124-focus-and-leaving-a-terminal-c-h-j-k-l
 created: 2026-10-09T21:57:02.030Z
 updated: 2026-10-10T00:58:17.996Z
+closed: 2026-10-09T22:29:06.821Z
 ---
 
 ## Parent

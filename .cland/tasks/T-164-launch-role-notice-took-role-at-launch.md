@@ -15,6 +15,7 @@ topic: topic-73
 branch: t/T-164-launch-role-notice-took-role-at-launch
 created: 2026-10-10T08:59:53.666Z
 updated: 2026-10-10T09:42:26.982Z
+closed: 2026-10-10T09:42:27.048Z
 ---
 
 ## Parent

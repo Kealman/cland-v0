@@ -15,6 +15,7 @@ topic: topic-145
 branch: t/T-147-session-stop-refuses-under-load-process
 created: 2026-10-10T03:55:04.116Z
 updated: 2026-10-11T18:26:09.272Z
+closed: 2026-10-11T18:26:09.468Z
 ---
 
 ## Parent

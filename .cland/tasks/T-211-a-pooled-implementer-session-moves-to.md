@@ -14,6 +14,7 @@ topic: topic-160
 branch: t/T-211-a-pooled-implementer-session-moves-to
 created: 2026-10-11T05:00:24.480Z
 updated: 2026-10-12T00:36:34.378Z
+closed: 2026-10-12T00:36:34.548Z
 ---
 
 ## What to build

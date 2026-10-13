@@ -15,6 +15,7 @@ topic: topic-26
 branch: t/T-73-retrospective-of-the-run-so-far-what-the
 created: 2026-10-09T14:57:57.906Z
 updated: 2026-10-10T00:58:17.820Z
+closed: 2026-10-09T15:13:02.379Z
 ---
 
 ## Parent

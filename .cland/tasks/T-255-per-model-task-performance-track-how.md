@@ -14,6 +14,7 @@ topic: null
 branch: null
 created: 2026-10-12T06:08:23.359Z
 updated: 2026-10-12T11:35:34.826Z
+closed: 2026-10-12T11:35:34.857Z
 ---
 
 Observation from the human (2026-10-12 morning, after v0.1.1), relayed by the stand-in cland-impl.

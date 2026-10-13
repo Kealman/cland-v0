@@ -19,6 +19,7 @@ topic: topic-122
 branch: t/T-188-the-plan-view-mid-way-closed-and-open
 created: 2026-10-10T15:38:38.467Z
 updated: 2026-10-11T10:32:02.360Z
+closed: 2026-10-11T10:32:02.499Z
 ---
 
 ## Parent

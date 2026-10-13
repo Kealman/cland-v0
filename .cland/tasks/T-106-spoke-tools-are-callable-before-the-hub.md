@@ -15,6 +15,7 @@ topic: topic-39
 branch: t/T-106-spoke-tools-are-callable-before-the-hub
 created: 2026-10-09T20:55:16.129Z
 updated: 2026-10-10T00:58:17.926Z
+closed: 2026-10-09T21:39:24.511Z
 ---
 
 ## Parent

@@ -19,6 +19,7 @@ github:
   repo: Kealman/cland-v0
   number: 20
   url: https://github.com/Kealman/cland-v0/issues/20
+closed: 2026-10-09T16:44:26.545Z
 ---
 
 Spec: `docs/spec/v0.md` on `main` (section 7). Depends on the slice 1 epic #19. ADRs: `docs/adr/0002-tracker-files-are-the-source-of-truth.md`, `0003-hub-is-a-per-project-daemon-from-the-bcas-core.md` (stdio addendum), `0004-agents-work-on-a-local-git-territory.md`. Research: branches `research/git-engines` and `research/qa-astra`. Decisions: https://github.com/Kealman/cland-v0/issues/14 (git strategy), https://github.com/Kealman/cland-v0/issues/9 (artifacts), https://github.com/Kealman/cland-v0/issues/16 (QA research), https://github.com/Kealman/cland-v0/issues/13 (hub, stdio transport).

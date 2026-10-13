@@ -17,6 +17,7 @@ topic: topic-169
 branch: t/T-286-the-events-view-events-list-over-the
 created: 2026-10-12T11:57:19.740Z
 updated: 2026-10-12T13:03:28.752Z
+closed: 2026-10-12T13:03:29.099Z
 ---
 
 ## Summary

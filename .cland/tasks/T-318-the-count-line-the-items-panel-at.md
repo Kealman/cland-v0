@@ -17,6 +17,7 @@ topic: topic-199
 branch: t/T-318-the-count-line-the-items-panel-at
 created: 2026-10-13T02:27:23.403Z
 updated: 2026-10-13T10:53:30.969Z
+closed: 2026-10-13T10:53:30.351Z
 ---
 
 ## Summary

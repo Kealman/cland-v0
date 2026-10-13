@@ -17,6 +17,7 @@ topic: topic-134
 branch: t/T-192-layers-on-items-messages-and-artifacts
 created: 2026-10-10T16:25:06.507Z
 updated: 2026-10-11T14:46:51.383Z
+closed: 2026-10-11T14:46:51.522Z
 ---
 
 ## Parent

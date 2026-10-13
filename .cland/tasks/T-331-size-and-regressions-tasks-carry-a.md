@@ -17,6 +17,7 @@ topic: topic-211
 branch: t/T-331-size-and-regressions-tasks-carry-a
 created: 2026-10-13T14:04:09.540Z
 updated: 2026-10-13T19:30:23.565Z
+closed: 2026-10-13T19:30:22.796Z
 ---
 
 ## Summary

@@ -25,6 +25,7 @@ github:
   repo: Kealman/cland-v0
   number: 42
   url: https://github.com/Kealman/cland-v0/issues/42
+closed: 2026-10-09T14:52:19.359Z
 ---
 
 ## Parent

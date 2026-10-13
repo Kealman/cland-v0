@@ -17,6 +17,7 @@ topic: topic-118
 branch: t/T-194-the-artifact-cli-cland-artifact-new-open
 created: 2026-10-10T16:25:06.974Z
 updated: 2026-10-11T08:57:59.477Z
+closed: 2026-10-11T08:57:59.620Z
 ---
 
 ## Parent

@@ -16,6 +16,7 @@ topic: topic-170
 branch: t/T-277-a-spawn-census-of-one-full-suite-run-per
 created: 2026-10-12T11:54:20.551Z
 updated: 2026-10-12T15:48:15.485Z
+closed: 2026-10-12T15:48:15.550Z
 ---
 
 ## Summary

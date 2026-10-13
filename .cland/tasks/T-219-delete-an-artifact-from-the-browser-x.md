@@ -16,6 +16,7 @@ topic: topic-132
 branch: t/T-219-delete-an-artifact-from-the-browser-x
 created: 2026-10-11T08:59:55.948Z
 updated: 2026-10-11T14:07:22.774Z
+closed: 2026-10-11T14:07:22.910Z
 ---
 
 ## What to build

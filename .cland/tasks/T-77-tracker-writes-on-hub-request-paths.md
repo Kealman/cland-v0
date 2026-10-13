@@ -15,6 +15,7 @@ topic: topic-35
 branch: t/T-77-tracker-writes-on-hub-request-paths
 created: 2026-10-09T16:57:34.637Z
 updated: 2026-10-10T00:58:17.863Z
+closed: 2026-10-09T19:54:47.777Z
 ---
 
 ## Parent

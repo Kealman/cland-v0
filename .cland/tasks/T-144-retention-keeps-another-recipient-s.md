@@ -14,6 +14,7 @@ topic: topic-65
 branch: t/T-144-retention-keeps-another-recipient-s
 created: 2026-10-10T02:47:01.224Z
 updated: 2026-10-10T07:15:02.135Z
+closed: 2026-10-10T07:15:02.137Z
 ---
 
 ## Parent

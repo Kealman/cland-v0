@@ -17,6 +17,7 @@ topic: topic-46
 branch: t/T-126-the-action-registry-and-the-palette
 created: 2026-10-09T21:57:18.399Z
 updated: 2026-10-10T00:58:18.009Z
+closed: 2026-10-10T00:23:51.880Z
 ---
 
 ## Parent

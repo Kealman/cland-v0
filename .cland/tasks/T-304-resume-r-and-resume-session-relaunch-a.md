@@ -18,6 +18,7 @@ topic: topic-186
 branch: t/T-304-resume-r-and-resume-session-relaunch-a
 created: 2026-10-12T21:34:30.803Z
 updated: 2026-10-13T00:23:04.102Z
+closed: 2026-10-13T00:23:04.291Z
 ---
 
 ## Summary

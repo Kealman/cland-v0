@@ -19,6 +19,7 @@ topic: topic-195
 branch: t/T-282-the-acceptance-run-on-a-c-8-droplet-as
 created: 2026-10-12T11:54:20.829Z
 updated: 2026-10-13T12:36:32.328Z
+closed: 2026-10-13T12:36:32.480Z
 ---
 
 ## Summary

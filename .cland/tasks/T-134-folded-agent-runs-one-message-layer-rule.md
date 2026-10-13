@@ -16,6 +16,7 @@ topic: topic-56
 branch: t/T-134-folded-agent-runs-one-message-layer-rule
 created: 2026-10-10T01:20:46.817Z
 updated: 2026-10-10T04:56:55.500Z
+closed: 2026-10-10T04:56:42.522Z
 ---
 
 ## Parent

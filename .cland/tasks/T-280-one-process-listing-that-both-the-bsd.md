@@ -17,6 +17,7 @@ topic: topic-179
 branch: t/T-280-one-process-listing-that-both-the-bsd
 created: 2026-10-12T11:54:20.717Z
 updated: 2026-10-12T21:12:50.102Z
+closed: 2026-10-12T21:12:50.339Z
 ---
 
 ## Summary

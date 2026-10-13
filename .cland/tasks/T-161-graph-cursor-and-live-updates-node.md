@@ -17,6 +17,7 @@ topic: topic-78
 branch: t/T-161-graph-cursor-and-live-updates-node
 created: 2026-10-10T07:49:36.665Z
 updated: 2026-10-10T11:06:03.438Z
+closed: 2026-10-10T11:06:03.451Z
 ---
 
 ## Parent

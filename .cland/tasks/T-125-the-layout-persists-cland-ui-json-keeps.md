@@ -16,6 +16,7 @@ topic: topic-43
 branch: t/T-125-the-layout-persists-cland-ui-json-keeps
 created: 2026-10-09T21:57:18.371Z
 updated: 2026-10-10T00:58:18.003Z
+closed: 2026-10-09T23:43:56.082Z
 ---
 
 ## Parent

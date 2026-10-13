@@ -19,6 +19,7 @@ topic: topic-194
 branch: t/T-319-t-275-gaps-before-qa-the-human-s-npm
 created: 2026-10-13T04:57:02.253Z
 updated: 2026-10-13T05:19:03.046Z
+closed: 2026-10-13T05:19:02.450Z
 ---
 
 ## Summary

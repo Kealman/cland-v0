@@ -16,6 +16,7 @@ topic: topic-172
 branch: t/T-289-claude-code-launches-can-skip
 created: 2026-10-12T12:05:11.282Z
 updated: 2026-10-12T12:15:19.370Z
+closed: 2026-10-12T12:11:49.308Z
 ---
 
 Human request (2026-10-12): hub-launched Claude Code sessions should be able to run with `claude --dangerously-skip-permissions`, chosen per role in roles.toml, the same way Codex roles choose `approval` and `sandbox`.

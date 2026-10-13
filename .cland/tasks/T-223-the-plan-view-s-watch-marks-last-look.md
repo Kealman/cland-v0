@@ -15,6 +15,7 @@ topic: topic-135
 branch: t/T-223-the-plan-view-s-watch-marks-last-look
 created: 2026-10-11T12:47:57.203Z
 updated: 2026-10-11T15:08:26.590Z
+closed: 2026-10-11T15:08:26.717Z
 ---
 
 ## What happened

@@ -17,6 +17,7 @@ topic: topic-192
 branch: t/T-308-the-human-s-npm-test-through-the-queue
 created: 2026-10-12T21:34:31.980Z
 updated: 2026-10-13T04:36:15.375Z
+closed: 2026-10-13T04:36:13.784Z
 ---
 
 ## Summary

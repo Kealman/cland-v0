@@ -16,6 +16,7 @@ topic: topic-102
 branch: t/T-193-folder-artifacts-and-their-lifetime
 created: 2026-10-10T16:25:06.772Z
 updated: 2026-10-11T00:43:43.432Z
+closed: 2026-10-11T00:43:43.575Z
 ---
 
 ## Parent

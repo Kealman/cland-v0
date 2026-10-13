@@ -16,6 +16,7 @@ topic: topic-142
 branch: t/T-220-node-s-compile-cache-breaks-warm-hub
 created: 2026-10-11T09:22:48.031Z
 updated: 2026-10-11T18:11:37.347Z
+closed: 2026-10-11T18:11:37.820Z
 ---
 
 ## What happened

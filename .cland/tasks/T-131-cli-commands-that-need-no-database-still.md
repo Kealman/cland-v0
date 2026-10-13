@@ -14,6 +14,7 @@ topic: topic-63
 branch: t/T-131-cli-commands-that-need-no-database-still
 created: 2026-10-10T00:25:36.040Z
 updated: 2026-10-10T06:28:14.265Z
+closed: 2026-10-10T06:28:14.267Z
 ---
 
 ## Parent

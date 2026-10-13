@@ -17,6 +17,7 @@ topic: topic-202
 branch: t/T-324-the-release-row-shows-its-version-r-228
 created: 2026-10-13T12:05:47.468Z
 updated: 2026-10-13T13:50:31.526Z
+closed: 2026-10-13T13:50:28.721Z
 ---
 
 ## Summary

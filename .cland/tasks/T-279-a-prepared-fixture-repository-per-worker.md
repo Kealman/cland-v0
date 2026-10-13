@@ -19,6 +19,7 @@ topic: topic-178
 branch: t/T-279-a-prepared-fixture-repository-per-worker
 created: 2026-10-12T11:54:20.662Z
 updated: 2026-10-12T20:15:23.445Z
+closed: 2026-10-12T20:15:23.664Z
 ---
 
 ## Summary

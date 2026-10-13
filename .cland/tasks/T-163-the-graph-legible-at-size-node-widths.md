@@ -16,6 +16,7 @@ topic: topic-79
 branch: t/T-163-the-graph-legible-at-size-node-widths
 created: 2026-10-10T07:49:36.868Z
 updated: 2026-10-10T12:43:04.333Z
+closed: 2026-10-10T12:43:04.401Z
 ---
 
 ## Parent

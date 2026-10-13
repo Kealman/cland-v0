@@ -15,6 +15,7 @@ topic: topic-201
 branch: t/T-322-d25-implementers-verify-only-after-a
 created: 2026-10-13T10:34:03.049Z
 updated: 2026-10-13T14:04:45.648Z
+closed: 2026-10-13T14:04:45.117Z
 ---
 
 ## Summary

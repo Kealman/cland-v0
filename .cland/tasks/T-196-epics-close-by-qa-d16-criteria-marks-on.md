@@ -16,6 +16,7 @@ topic: topic-98
 branch: t/T-196-epics-close-by-qa-d16-criteria-marks-on
 created: 2026-10-10T16:41:01.014Z
 updated: 2026-10-10T20:11:40.029Z
+closed: 2026-10-10T20:11:40.248Z
 ---
 
 ## Parent

@@ -15,6 +15,7 @@ topic: topic-20
 branch: t/T-69-suite-lock-and-daemon-cleanup
 created: 2026-10-09T10:44:01.109Z
 updated: 2026-10-10T00:58:17.752Z
+closed: 2026-10-09T13:31:15.370Z
 ---
 
 ## Parent

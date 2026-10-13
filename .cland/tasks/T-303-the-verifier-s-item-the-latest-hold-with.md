@@ -18,6 +18,7 @@ topic: topic-185
 branch: t/T-303-the-verifier-s-item-the-latest-hold-with
 created: 2026-10-12T21:34:30.315Z
 updated: 2026-10-12T23:31:51.527Z
+closed: 2026-10-12T23:31:53.464Z
 ---
 
 ## Summary

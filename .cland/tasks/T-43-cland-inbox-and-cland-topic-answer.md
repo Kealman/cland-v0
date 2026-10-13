@@ -14,6 +14,7 @@ topic: topic-1
 branch: t/T-43-cland-inbox-topic-answer
 created: 2026-10-08T18:56:39.124Z
 updated: 2026-10-10T00:58:17.503Z
+closed: 2026-10-08T19:47:17.340Z
 ---
 
 ## Parent

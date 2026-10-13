@@ -16,6 +16,7 @@ topic: topic-91
 branch: t/T-176-a-lead-on-an-epic-the-lead-role-session
 created: 2026-10-10T15:38:35.506Z
 updated: 2026-10-10T19:23:13.308Z
+closed: 2026-10-10T19:23:13.445Z
 ---
 
 ## Parent

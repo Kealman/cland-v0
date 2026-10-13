@@ -16,6 +16,7 @@ topic: topic-212
 branch: t/T-340-sweep-the-neovim-tests-for-actions
 created: 2026-10-13T19:12:35.068Z
 updated: 2026-10-13T19:41:57.305Z
+size: M
 ---
 
 ## Summary

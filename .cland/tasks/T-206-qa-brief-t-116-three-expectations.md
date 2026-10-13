@@ -15,6 +15,7 @@ topic: null
 branch: null
 created: 2026-10-10T21:34:08.108Z
 updated: 2026-10-10T21:36:43.412Z
+closed: 2026-10-10T21:36:43.496Z
 ---
 
 Found by qa-16 in T-116's demo (topic-106). The product matches the spec; the brief was wrong.

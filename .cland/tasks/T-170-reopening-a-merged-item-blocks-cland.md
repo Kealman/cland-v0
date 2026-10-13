@@ -15,6 +15,7 @@ topic: topic-161
 branch: t/T-170-reopening-a-merged-item-blocks-cland
 created: 2026-10-10T10:13:29.682Z
 updated: 2026-10-12T03:13:36.032Z
+closed: 2026-10-12T01:32:20.786Z
 ---
 
 ## Parent

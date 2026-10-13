@@ -16,6 +16,7 @@ topic: topic-86
 branch: t/T-156-verdicts-verify-verified-with-ids-or-all
 created: 2026-10-10T07:49:36.173Z
 updated: 2026-10-10T14:25:22.109Z
+closed: 2026-10-10T14:25:22.117Z
 ---
 
 ## Parent

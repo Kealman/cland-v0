@@ -17,6 +17,7 @@ topic: topic-31
 branch: t/T-74-the-coordinator-s-tracker-and-docs
 created: 2026-10-09T15:00:48.091Z
 updated: 2026-10-10T00:58:17.832Z
+closed: 2026-10-09T17:56:27.229Z
 ---
 
 ## Parent

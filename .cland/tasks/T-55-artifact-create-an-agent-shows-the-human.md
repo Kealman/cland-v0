@@ -15,6 +15,7 @@ topic: topic-12
 branch: t/T-55-artifact-create
 created: 2026-10-09T08:33:53.670Z
 updated: 2026-10-10T00:58:17.646Z
+closed: 2026-10-09T10:14:10.152Z
 ---
 
 ## Parent

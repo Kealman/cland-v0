@@ -18,6 +18,7 @@ topic: topic-54
 branch: t/T-128-the-vertical-board-the-items-panel-as-a
 created: 2026-10-09T21:57:34.784Z
 updated: 2026-10-10T03:41:41.727Z
+closed: 2026-10-10T03:41:27.096Z
 ---
 
 ## Parent

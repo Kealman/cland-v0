@@ -15,6 +15,7 @@ topic: topic-41
 branch: t/T-118-the-v0-1-release-item-the-release-kind
 created: 2026-10-09T21:56:01.700Z
 updated: 2026-10-10T00:58:17.932Z
+closed: 2026-10-09T23:00:39.234Z
 ---
 
 ## Parent

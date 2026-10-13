@@ -18,6 +18,7 @@ topic: topic-115
 branch: t/T-180-handover-of-a-node-a-lead-s-claim
 created: 2026-10-10T15:38:36.547Z
 updated: 2026-10-11T06:13:06.355Z
+closed: 2026-10-11T06:13:06.468Z
 ---
 
 ## Parent

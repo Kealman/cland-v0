@@ -16,6 +16,7 @@ topic: topic-200
 branch: t/T-321-inbox-workload-archive-startup-case
 created: 2026-10-13T10:06:48.166Z
 updated: 2026-10-13T12:25:47.911Z
+closed: 2026-10-13T12:25:43.083Z
 ---
 
 ## Summary

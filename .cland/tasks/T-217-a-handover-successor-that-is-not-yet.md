@@ -17,6 +17,7 @@ topic: topic-124
 branch: t/T-217-a-handover-successor-that-is-not-yet
 created: 2026-10-11T08:22:14.796Z
 updated: 2026-10-11T10:51:56.528Z
+closed: 2026-10-11T10:51:56.745Z
 ---
 
 Found by qa-17 in T-113's demo (topic-123, run qa-2026-10-11-17, M10).

@@ -17,6 +17,7 @@ topic: topic-158
 branch: t/T-102-process-termination-ownership-outside
 created: 2026-10-09T19:16:42.280Z
 updated: 2026-10-11T23:37:31.875Z
+closed: 2026-10-11T23:37:32.133Z
 ---
 
 ## Parent

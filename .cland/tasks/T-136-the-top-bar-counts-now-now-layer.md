@@ -16,6 +16,7 @@ topic: topic-60
 branch: t/T-136-the-top-bar-counts-now-now-layer
 created: 2026-10-10T01:20:47.341Z
 updated: 2026-10-10T06:04:54.002Z
+closed: 2026-10-10T06:04:54.004Z
 ---
 
 ## Parent

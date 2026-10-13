@@ -17,6 +17,7 @@ topic: topic-171
 branch: t/T-283-the-request-send-kind-and-needsyou-over
 created: 2026-10-12T11:57:19.566Z
 updated: 2026-10-12T14:30:47.426Z
+closed: 2026-10-12T14:30:48.089Z
 ---
 
 ## Summary

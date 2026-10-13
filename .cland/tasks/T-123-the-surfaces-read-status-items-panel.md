@@ -19,6 +19,7 @@ topic: topic-51
 branch: t/T-123-the-surfaces-read-status-items-panel
 created: 2026-10-09T21:56:50.147Z
 updated: 2026-10-10T03:09:46.185Z
+closed: 2026-10-10T03:09:21.383Z
 ---
 
 ## Parent

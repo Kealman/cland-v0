@@ -17,6 +17,7 @@ topic: topic-208
 branch: t/T-330-the-card-s-fields-task-list-and-task
 created: 2026-10-13T14:04:09.431Z
 updated: 2026-10-13T17:28:30.781Z
+closed: 2026-10-13T17:28:30.188Z
 ---
 
 ## Summary

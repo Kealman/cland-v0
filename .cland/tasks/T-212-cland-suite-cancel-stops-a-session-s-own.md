@@ -15,6 +15,7 @@ topic: topic-144
 branch: t/T-212-cland-suite-cancel-stops-a-session-s-own
 created: 2026-10-11T05:16:28.859Z
 updated: 2026-10-11T18:40:59.055Z
+closed: 2026-10-11T18:40:59.163Z
 ---
 
 ## What to build

@@ -16,6 +16,7 @@ topic: topic-53
 branch: t/T-133-markdown-per-message-per-body-tree
 created: 2026-10-10T01:20:46.534Z
 updated: 2026-10-10T03:56:39.396Z
+closed: 2026-10-10T03:56:24.758Z
 ---
 
 ## Parent

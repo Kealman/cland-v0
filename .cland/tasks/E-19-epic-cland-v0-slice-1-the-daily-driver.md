@@ -18,6 +18,7 @@ github:
   repo: Kealman/cland-v0
   number: 19
   url: https://github.com/Kealman/cland-v0/issues/19
+closed: 2026-10-11T06:40:28.781Z
 ---
 
 Spec: `docs/spec/v0.md` on `main` (sections 6 and 7 hold the slices). Wayfinder map: https://github.com/Kealman/cland-v0/issues/1 (closed; its Decisions so far index every decision). ADRs: `docs/adr/0001-roles-are-hub-held-state.md`, `0002-tracker-files-are-the-source-of-truth.md`, `0003-hub-is-a-per-project-daemon-from-the-bcas-core.md`, `0004-agents-work-on-a-local-git-territory.md`, `0005-neovim-is-the-host.md`. Glossary: `GLOSSARY.md`. Research (branches `research/<name>`, file `docs/research/<name>.md`): bcas-hub, harness-surfaces, neovim-engine, git-engines, qa-astra. Prototypes (branches, never merged): `prototype/nvim-host` (engine), `prototype/chat-screen` (superseded layouts), `prototype/workbench` (the accepted main screen). Design canvas: https://claude.ai/artifact/PMVXaxAkQJQ6mSNEo3k7eB. Design files in the repo: `docs/design/main-screen/` on `main` (mockups, previews, README with the precedence rule).

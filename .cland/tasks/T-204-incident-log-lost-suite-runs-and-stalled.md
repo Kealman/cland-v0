@@ -13,6 +13,7 @@ topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
 updated: 2026-10-12T19:05:57.028Z
+closed: 2026-10-11T17:49:12.289Z
 ---
 
 A running log, kept at the human's request, of incidents where a suite run or its result got lost, or a lead sat idle waiting for one. We'll decide what to do about the pattern later. Possible directions: T-201 (fair suite lock), a `cland suite --report` helper (the T-189 finding), a hub queue for shared resources (v0.1.1 observation).

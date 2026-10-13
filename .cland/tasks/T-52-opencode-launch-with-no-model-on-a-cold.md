@@ -15,6 +15,7 @@ topic: topic-17
 branch: t/T-52-opencode-cold-catalog
 created: 2026-10-09T08:04:42.494Z
 updated: 2026-10-10T00:58:17.568Z
+closed: 2026-10-09T12:19:09.825Z
 ---
 
 ## Parent

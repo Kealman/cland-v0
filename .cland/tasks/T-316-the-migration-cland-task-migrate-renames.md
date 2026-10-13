@@ -18,6 +18,7 @@ topic: topic-197
 branch: t/T-316-the-migration-cland-task-migrate-renames
 created: 2026-10-13T02:27:23.140Z
 updated: 2026-10-13T11:31:55.316Z
+closed: 2026-10-13T11:31:05.108Z
 ---
 
 ## Summary

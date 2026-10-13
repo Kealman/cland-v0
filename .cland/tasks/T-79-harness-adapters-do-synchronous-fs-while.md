@@ -15,6 +15,7 @@ topic: topic-40
 branch: t/T-79-harness-adapters-do-synchronous-fs-while
 created: 2026-10-09T18:47:17.580Z
 updated: 2026-10-10T00:58:17.878Z
+closed: 2026-10-09T22:48:13.401Z
 ---
 
 ## Parent

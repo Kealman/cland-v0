@@ -14,6 +14,7 @@ topic: topic-11
 branch: t/T-54-verdict-commit-and-provenance
 created: 2026-10-09T08:33:53.658Z
 updated: 2026-10-10T00:58:17.638Z
+closed: 2026-10-09T10:00:10.487Z
 ---
 
 ## Parent

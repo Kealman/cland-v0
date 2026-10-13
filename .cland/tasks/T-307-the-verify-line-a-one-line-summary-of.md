@@ -17,6 +17,7 @@ topic: topic-188
 branch: t/T-307-the-verify-line-a-one-line-summary-of
 created: 2026-10-12T21:34:31.743Z
 updated: 2026-10-13T02:00:43.662Z
+closed: 2026-10-13T02:00:43.975Z
 ---
 
 ## Summary

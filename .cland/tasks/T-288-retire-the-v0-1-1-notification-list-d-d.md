@@ -20,6 +20,7 @@ topic: topic-180
 branch: t/T-288-retire-the-v0-1-1-notification-list-d-d
 created: 2026-10-12T11:57:19.861Z
 updated: 2026-10-12T21:25:59.945Z
+closed: 2026-10-12T21:26:00.063Z
 ---
 
 ## Summary

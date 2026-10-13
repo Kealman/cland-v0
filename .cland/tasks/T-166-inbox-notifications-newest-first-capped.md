@@ -16,6 +16,7 @@ topic: topic-131
 branch: t/T-166-inbox-notifications-newest-first-capped
 created: 2026-10-10T09:19:59.990Z
 updated: 2026-10-11T14:07:18.392Z
+closed: 2026-10-11T14:07:18.424Z
 ---
 
 ## Parent

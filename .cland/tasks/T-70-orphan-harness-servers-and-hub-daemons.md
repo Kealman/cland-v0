@@ -15,6 +15,7 @@ topic: topic-23
 branch: t/T-70-orphan-servers-and-sync-ps
 created: 2026-10-09T10:44:01.288Z
 updated: 2026-10-10T00:58:17.781Z
+closed: 2026-10-09T15:19:48.070Z
 ---
 
 ## Parent

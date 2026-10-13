@@ -19,6 +19,7 @@ topic: topic-187
 branch: t/T-305-archive-by-hand-d-archives-a-session-row
 created: 2026-10-12T21:34:31.202Z
 updated: 2026-10-13T01:22:47.491Z
+closed: 2026-10-13T01:22:47.614Z
 ---
 
 ## Summary

@@ -17,6 +17,7 @@ topic: topic-47
 branch: t/T-121-ready-and-the-verifier-holds-ready-when
 created: 2026-10-09T21:56:37.696Z
 updated: 2026-10-10T01:25:09.675Z
+closed: 2026-10-10T01:24:47.587Z
 ---
 
 ## Parent

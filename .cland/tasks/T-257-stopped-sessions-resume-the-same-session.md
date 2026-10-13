@@ -15,6 +15,7 @@ topic: null
 branch: null
 created: 2026-10-12T08:33:25.047Z
 updated: 2026-10-12T11:35:35.147Z
+closed: 2026-10-12T11:35:35.180Z
 ---
 
 Observation from the human (2026-10-12, after v0.1.1), relayed by the cland-design session.

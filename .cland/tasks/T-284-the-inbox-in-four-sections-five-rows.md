@@ -17,6 +17,7 @@ topic: topic-173
 branch: t/T-284-the-inbox-in-four-sections-five-rows
 created: 2026-10-12T11:57:19.628Z
 updated: 2026-10-12T17:21:51.289Z
+closed: 2026-10-12T17:21:51.447Z
 ---
 
 ## Summary

@@ -16,6 +16,7 @@ topic: topic-159
 branch: t/T-250-tracker-ready-ready-and-the-merge-gate
 created: 2026-10-11T21:10:12.396Z
 updated: 2026-10-12T00:50:07.238Z
+closed: 2026-10-12T00:50:07.468Z
 ---
 
 ## What happened

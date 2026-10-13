@@ -16,6 +16,7 @@ topic: topic-66
 branch: t/T-159-the-graph-layout-a-pure-lua-module-for
 created: 2026-10-10T07:49:36.464Z
 updated: 2026-10-10T08:45:36.103Z
+closed: 2026-10-10T08:45:36.112Z
 ---
 
 ## Parent

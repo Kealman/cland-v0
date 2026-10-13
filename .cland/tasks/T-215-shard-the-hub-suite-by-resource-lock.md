@@ -16,6 +16,7 @@ topic: topic-154
 branch: t/T-215-shard-the-hub-suite-by-resource-lock
 created: 2026-10-11T06:30:53.758Z
 updated: 2026-10-12T00:05:28.624Z
+closed: 2026-10-11T23:03:42.285Z
 ---
 
 ## What to build

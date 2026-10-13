@@ -14,6 +14,7 @@ topic: null
 branch: null
 created: 2026-10-12T15:15:29.550Z
 updated: 2026-10-12T21:39:28.787Z
+closed: 2026-10-12T21:39:28.908Z
 ---
 
 Dev defect found and fixed by the stand-in (cland-impl) on 2026-10-12, 14:47–15:15Z, while the hub was down after the batch restart on ab772d8 (T-289, T-286, T-283).

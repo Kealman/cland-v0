@@ -15,6 +15,7 @@ topic: topic-37
 branch: t/T-78-merge-worktree-and-release-checks-still
 created: 2026-10-09T18:46:27.376Z
 updated: 2026-10-10T00:58:17.872Z
+closed: 2026-10-09T22:03:34.918Z
 ---
 
 ## Parent

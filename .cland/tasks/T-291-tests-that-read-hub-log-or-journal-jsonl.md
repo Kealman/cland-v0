@@ -17,6 +17,7 @@ topic: topic-177
 branch: t/T-291-tests-that-read-hub-log-or-journal-jsonl
 created: 2026-10-12T13:45:45.431Z
 updated: 2026-10-13T00:59:02.779Z
+closed: 2026-10-13T00:59:03.943Z
 ---
 
 ## Summary

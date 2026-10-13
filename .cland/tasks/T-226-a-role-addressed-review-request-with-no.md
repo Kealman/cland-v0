@@ -18,6 +18,7 @@ topic: topic-146
 branch: t/T-226-a-role-addressed-review-request-with-no
 created: 2026-10-11T15:43:30.494Z
 updated: 2026-10-11T20:05:53.924Z
+closed: 2026-10-11T20:05:54.267Z
 ---
 
 ## What happened

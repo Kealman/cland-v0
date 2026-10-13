@@ -16,6 +16,7 @@ topic: topic-29
 branch: t/T-61-artifacts-kept-or-let-go-promote-into
 created: 2026-10-09T08:34:54.761Z
 updated: 2026-10-10T00:58:17.698Z
+closed: 2026-10-09T16:13:51.165Z
 ---
 
 ## Parent

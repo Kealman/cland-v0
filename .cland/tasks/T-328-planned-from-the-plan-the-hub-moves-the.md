@@ -16,6 +16,7 @@ topic: topic-206
 branch: t/T-328-planned-from-the-plan-the-hub-moves-the
 created: 2026-10-13T14:04:09.203Z
 updated: 2026-10-13T16:04:09.237Z
+closed: 2026-10-13T16:04:07.052Z
 ---
 
 ## Summary

@@ -19,6 +19,7 @@ topic: topic-100
 branch: t/T-162-graph-stages-stage-tags-on-nodes-s
 created: 2026-10-10T07:49:36.763Z
 updated: 2026-10-10T21:27:20.016Z
+closed: 2026-10-10T21:27:20.176Z
 ---
 
 ## Parent

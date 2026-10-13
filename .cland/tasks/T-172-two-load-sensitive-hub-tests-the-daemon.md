@@ -16,6 +16,7 @@ topic: topic-110
 branch: t/T-172-two-load-sensitive-hub-tests-the-daemon
 created: 2026-10-10T10:45:43.912Z
 updated: 2026-10-11T01:56:18.782Z
+closed: 2026-10-11T01:56:03.334Z
 ---
 
 ## Parent

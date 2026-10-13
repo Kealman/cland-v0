@@ -17,6 +17,7 @@ topic: topic-48
 branch: t/T-127-sessions-grouped-by-state-waiting-busy
 created: 2026-10-09T21:57:34.743Z
 updated: 2026-10-10T01:26:30.646Z
+closed: 2026-10-10T01:25:46.260Z
 ---
 
 ## Parent

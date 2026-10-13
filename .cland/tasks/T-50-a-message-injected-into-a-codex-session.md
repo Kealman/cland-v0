@@ -15,6 +15,7 @@ topic: topic-9
 branch: t/T-50-steer-lost-at-turn-end
 created: 2026-10-09T07:04:04.157Z
 updated: 2026-10-10T00:58:17.552Z
+closed: 2026-10-09T10:28:21.294Z
 ---
 
 ## Parent

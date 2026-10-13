@@ -17,6 +17,7 @@ topic: topic-68
 branch: t/T-149-the-brief-at-launch-session-launch-and
 created: 2026-10-10T05:33:00.327Z
 updated: 2026-10-10T10:28:45.580Z
+closed: 2026-10-10T10:28:45.596Z
 ---
 
 ## Parent

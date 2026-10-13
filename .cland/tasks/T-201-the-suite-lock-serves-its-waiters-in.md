@@ -15,6 +15,7 @@ topic: topic-105
 branch: t/T-201-the-suite-lock-serves-its-waiters-in
 created: 2026-10-10T17:49:08.493Z
 updated: 2026-10-10T21:37:18.559Z
+closed: 2026-10-10T21:37:18.642Z
 ---
 
 ## What to build

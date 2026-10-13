@@ -17,6 +17,7 @@ topic: topic-213
 branch: t/T-332-the-verdict-scope-a-review-verdict
 created: 2026-10-13T14:04:09.652Z
 updated: 2026-10-13T19:41:22.886Z
+size: M
 ---
 
 ## Summary

@@ -17,6 +17,7 @@ topic: topic-101
 branch: t/T-184-the-gate-reads-the-plan-qa-policy-per
 created: 2026-10-10T15:38:37.537Z
 updated: 2026-10-11T01:36:02.140Z
+closed: 2026-10-11T01:36:02.156Z
 ---
 
 ## Parent

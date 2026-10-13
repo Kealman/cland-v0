@@ -14,6 +14,7 @@ topic: null
 branch: null
 created: 2026-10-10T16:58:19.973Z
 updated: 2026-10-10T17:04:18.969Z
+closed: 2026-10-10T17:04:19.058Z
 ---
 
 Found by qa-15 in T-110's demo (verdict qa-2026-10-10-15-110-c, M6/C6, at e3b702e; report in topic-95).

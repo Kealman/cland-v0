@@ -17,6 +17,7 @@ topic: topic-99
 branch: t/T-187-the-plan-view-before-the-start-gp-stages
 created: 2026-10-10T15:38:38.260Z
 updated: 2026-10-10T19:28:28.669Z
+closed: 2026-10-10T19:28:28.728Z
 ---
 
 ## Parent

@@ -16,6 +16,7 @@ topic: topic-59
 branch: t/T-135-asks-chips-and-kinds-in-the-thread-ask
 created: 2026-10-10T01:20:47.097Z
 updated: 2026-10-10T06:05:00.831Z
+closed: 2026-10-10T06:05:00.833Z
 ---
 
 ## Parent

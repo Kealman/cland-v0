@@ -17,6 +17,7 @@ topic: topic-111
 branch: t/T-186-the-plan-epic-skill-and-approval
 created: 2026-10-10T15:38:38.001Z
 updated: 2026-10-11T04:54:40.018Z
+closed: 2026-10-11T04:54:40.230Z
 ---
 
 ## Parent

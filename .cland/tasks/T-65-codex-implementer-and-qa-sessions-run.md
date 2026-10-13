@@ -15,6 +15,7 @@ topic: topic-15
 branch: t/T-65-codex-full-access-defaults
 created: 2026-10-09T08:55:35.290Z
 updated: 2026-10-10T00:58:17.721Z
+closed: 2026-10-09T10:23:53.701Z
 ---
 
 ## Parent

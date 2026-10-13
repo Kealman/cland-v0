@@ -17,6 +17,7 @@ topic: topic-151
 branch: t/T-249-launch-briefs-never-reach-real-claude
 created: 2026-10-11T20:10:39.716Z
 updated: 2026-10-11T21:21:33.055Z
+closed: 2026-10-11T21:21:33.455Z
 ---
 
 ## What happened

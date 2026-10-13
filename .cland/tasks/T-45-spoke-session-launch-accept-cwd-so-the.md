@@ -15,6 +15,7 @@ topic: topic-4
 branch: t/T-45-session-launch-cwd
 created: 2026-10-08T19:01:49.042Z
 updated: 2026-10-10T00:58:17.519Z
+closed: 2026-10-09T06:43:23.475Z
 ---
 
 ## Parent

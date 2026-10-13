@@ -16,6 +16,7 @@ topic: topic-75
 branch: t/T-168-sessions-panel-shows-a-verifier-s-held
 created: 2026-10-10T09:29:11.949Z
 updated: 2026-10-10T12:43:20.653Z
+closed: 2026-10-10T12:43:20.683Z
 ---
 
 ## Parent

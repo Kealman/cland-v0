@@ -16,6 +16,7 @@ topic: topic-147
 branch: t/T-222-a-post-merge-stop-of-a-codex-implementer
 created: 2026-10-11T10:48:25.372Z
 updated: 2026-10-11T19:23:09.351Z
+closed: 2026-10-11T19:23:09.665Z
 ---
 
 ## What happened

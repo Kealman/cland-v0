@@ -18,6 +18,7 @@ topic: topic-88
 branch: t/T-143-the-item-runs-its-own-loop-the
 created: 2026-10-10T01:52:19.293Z
 updated: 2026-10-10T17:02:29.214Z
+closed: 2026-10-10T17:02:29.672Z
 ---
 
 ## Parent

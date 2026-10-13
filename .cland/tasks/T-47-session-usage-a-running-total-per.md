@@ -15,6 +15,7 @@ topic: topic-6
 branch: t/T-47-session-usage-totals
 created: 2026-10-08T19:48:52.597Z
 updated: 2026-10-10T00:58:17.535Z
+closed: 2026-10-09T07:26:20.132Z
 ---
 
 ## Parent

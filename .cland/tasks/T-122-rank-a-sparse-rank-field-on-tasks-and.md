@@ -17,6 +17,7 @@ topic: topic-49
 branch: t/T-122-rank-a-sparse-rank-field-on-tasks-and
 created: 2026-10-09T21:56:37.730Z
 updated: 2026-10-10T02:17:43.083Z
+closed: 2026-10-10T01:50:10.874Z
 ---
 
 ## Parent

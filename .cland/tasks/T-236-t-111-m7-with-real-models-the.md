@@ -16,6 +16,7 @@ topic: topic-150
 branch: t/T-236-t-111-m7-with-real-models-the
 created: 2026-10-11T17:48:35.701Z
 updated: 2026-10-11T20:15:36.442Z
+closed: 2026-10-11T20:15:36.730Z
 ---
 
 ## What to build

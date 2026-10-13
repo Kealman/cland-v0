@@ -16,6 +16,7 @@ topic: topic-123
 branch: null
 created: 2026-10-09T21:51:34.152Z
 updated: 2026-10-11T10:52:46.454Z
+closed: 2026-10-11T10:52:46.619Z
 ---
 
 ## Goal

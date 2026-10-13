@@ -18,6 +18,7 @@ topic: topic-70
 branch: t/T-142-default-subscriptions-of-leads-the
 created: 2026-10-10T01:52:19.101Z
 updated: 2026-10-10T14:56:35.435Z
+closed: 2026-10-10T14:56:35.452Z
 ---
 
 ## Parent

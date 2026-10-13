@@ -15,6 +15,7 @@ topic: topic-2
 branch: t/T-48-codex-qa-sandbox
 created: 2026-10-08T19:48:52.717Z
 updated: 2026-10-10T00:58:17.540Z
+closed: 2026-10-09T07:57:23.488Z
 ---
 
 ## Parent

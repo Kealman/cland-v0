@@ -14,6 +14,7 @@ topic: topic-13
 branch: t/T-56-agents-topic-filters
 created: 2026-10-09T08:33:53.682Z
 updated: 2026-10-10T00:58:17.651Z
+closed: 2026-10-09T09:47:05.397Z
 ---
 
 ## Parent

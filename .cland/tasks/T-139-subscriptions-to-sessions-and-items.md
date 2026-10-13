@@ -17,6 +17,7 @@ topic: topic-55
 branch: t/T-139-subscriptions-to-sessions-and-items
 created: 2026-10-10T01:52:18.322Z
 updated: 2026-10-10T03:59:20.506Z
+closed: 2026-10-10T03:58:36.172Z
 ---
 
 ## Parent

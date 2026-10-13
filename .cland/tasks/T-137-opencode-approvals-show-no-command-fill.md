@@ -15,6 +15,7 @@ topic: topic-164
 branch: t/T-137-opencode-approvals-show-no-command-fill
 created: 2026-10-10T01:26:12.435Z
 updated: 2026-10-12T02:01:10.715Z
+closed: 2026-10-12T02:01:10.911Z
 ---
 
 ## Parent

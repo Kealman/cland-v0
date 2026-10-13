@@ -17,6 +17,7 @@ topic: topic-198
 branch: t/T-317-agents-file-into-categories-the-clauses
 created: 2026-10-13T02:27:23.273Z
 updated: 2026-10-13T11:45:10.956Z
+closed: 2026-10-13T11:44:29.944Z
 ---
 
 ## Summary

@@ -18,6 +18,7 @@ topic: topic-176
 branch: t/T-285-acting-from-an-inbox-row-r-replies-d
 created: 2026-10-12T11:57:19.680Z
 updated: 2026-10-12T20:02:20.780Z
+closed: 2026-10-12T20:02:20.991Z
 ---
 
 ## Summary

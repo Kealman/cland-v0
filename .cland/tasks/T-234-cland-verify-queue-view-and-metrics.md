@@ -17,6 +17,7 @@ topic: topic-157
 branch: t/T-234-cland-verify-queue-view-and-metrics
 created: 2026-10-11T17:48:35.460Z
 updated: 2026-10-11T23:52:33.887Z
+closed: 2026-10-11T23:52:34.129Z
 ---
 
 ## What to build

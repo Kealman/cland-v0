@@ -18,6 +18,7 @@ topic: topic-196
 branch: t/T-315-the-category-kind-tracker-levels-takes-a
 created: 2026-10-13T02:27:23.006Z
 updated: 2026-10-13T09:08:41.605Z
+closed: 2026-10-13T09:08:40.541Z
 ---
 
 ## Summary

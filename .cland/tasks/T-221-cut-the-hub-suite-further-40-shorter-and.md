@@ -16,6 +16,7 @@ topic: topic-133
 branch: t/T-221-cut-the-hub-suite-further-40-shorter-and
 created: 2026-10-11T10:13:17.213Z
 updated: 2026-10-11T13:41:15.272Z
+closed: 2026-10-11T13:41:15.405Z
 ---
 
 ## Context

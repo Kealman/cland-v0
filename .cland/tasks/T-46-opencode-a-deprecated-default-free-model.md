@@ -15,6 +15,7 @@ topic: topic-5
 branch: t/T-46-opencode-failed-turn-and-default-model
 created: 2026-10-08T19:09:47.340Z
 updated: 2026-10-10T00:58:17.526Z
+closed: 2026-10-09T08:09:28.067Z
 ---
 
 ## Parent

@@ -17,6 +17,7 @@ topic: topic-72
 branch: t/T-160-the-graph-view-g-and-cland-graph-the
 created: 2026-10-10T07:49:36.565Z
 updated: 2026-10-10T10:49:10.088Z
+closed: 2026-10-10T10:49:10.093Z
 ---
 
 ## Parent

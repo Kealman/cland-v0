@@ -14,6 +14,7 @@ topic: null
 branch: null
 created: 2026-10-12T08:21:26.188Z
 updated: 2026-10-12T11:38:10.042Z
+closed: 2026-10-12T11:35:35.014Z
 ---
 
 Remote executors for `cland verify`: suite runs on cloud VMs through a provider-agnostic executor interface, so the crew stops queueing behind one machine and the project pays per minute.

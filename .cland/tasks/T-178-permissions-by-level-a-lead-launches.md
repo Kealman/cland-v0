@@ -17,6 +17,7 @@ topic: topic-107
 branch: t/T-178-permissions-by-level-a-lead-launches
 created: 2026-10-10T15:38:36.029Z
 updated: 2026-10-11T02:40:27.216Z
+closed: 2026-10-11T02:40:27.304Z
 ---
 
 ## Parent

@@ -15,6 +15,7 @@ topic: topic-14
 branch: t/T-57-headless-qa-runner
 created: 2026-10-09T08:33:53.699Z
 updated: 2026-10-10T00:58:17.659Z
+closed: 2026-10-09T10:28:20.012Z
 ---
 
 ## Parent

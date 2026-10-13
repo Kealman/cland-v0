@@ -16,6 +16,7 @@ topic: topic-162
 branch: t/T-251-the-merge-gate-refuses-a-branch-whose
 created: 2026-10-12T00:05:36.212Z
 updated: 2026-10-12T01:04:00.104Z
+closed: 2026-10-12T01:04:00.401Z
 ---
 
 ## What happened

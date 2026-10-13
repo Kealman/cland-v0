@@ -16,6 +16,7 @@ topic: topic-27
 branch: t/T-60-prompt-drafting-a-long-prompt-is-written
 created: 2026-10-09T08:34:54.748Z
 updated: 2026-10-10T00:58:17.688Z
+closed: 2026-10-09T15:57:57.912Z
 ---
 
 ## Parent

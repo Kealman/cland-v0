@@ -17,6 +17,7 @@ topic: topic-71
 branch: t/T-155-marks-the-hub-writes-task-criterion-and
 created: 2026-10-10T07:49:36.076Z
 updated: 2026-10-10T12:29:52.739Z
+closed: 2026-10-10T12:29:52.780Z
 ---
 
 ## Parent

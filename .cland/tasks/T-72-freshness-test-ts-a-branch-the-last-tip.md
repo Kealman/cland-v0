@@ -15,6 +15,7 @@ topic: topic-22
 branch: t/T-72-freshness-test-seam
 created: 2026-10-09T11:55:08.930Z
 updated: 2026-10-10T00:58:17.807Z
+closed: 2026-10-09T12:51:01.270Z
 ---
 
 ## Parent

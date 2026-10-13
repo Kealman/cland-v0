@@ -17,6 +17,7 @@ topic: topic-77
 branch: t/T-169-the-needs-you-chip-and-inbox-header-show
 created: 2026-10-10T10:12:46.650Z
 updated: 2026-10-10T10:31:04.531Z
+closed: 2026-10-10T10:31:04.563Z
 ---
 
 ## Parent

@@ -17,6 +17,7 @@ topic: topic-85
 branch: t/T-158-criteria-on-screen-glyphs-and-marks-in
 created: 2026-10-10T07:49:36.367Z
 updated: 2026-10-10T13:55:04.579Z
+closed: 2026-10-10T13:55:04.608Z
 ---
 
 ## Parent

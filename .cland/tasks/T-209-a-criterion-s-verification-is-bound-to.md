@@ -17,6 +17,7 @@ topic: topic-112
 branch: t/T-209-a-criterion-s-verification-is-bound-to
 created: 2026-10-11T01:45:38.211Z
 updated: 2026-10-11T08:39:25.685Z
+closed: 2026-10-11T08:39:25.823Z
 ---
 
 ## What to build

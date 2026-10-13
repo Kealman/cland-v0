@@ -16,6 +16,7 @@ topic: topic-129
 branch: t/T-171-the-hub-owns-not-clear-verdicts-and
 created: 2026-10-10T10:13:42.333Z
 updated: 2026-10-11T12:34:55.055Z
+closed: 2026-10-11T12:34:42.223Z
 ---
 
 ## Parent

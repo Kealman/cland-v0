@@ -15,6 +15,7 @@ topic: topic-126
 branch: t/T-208-a-suite-report-resolves-a-moved-log
 created: 2026-10-11T01:44:33.392Z
 updated: 2026-10-11T09:58:05.276Z
+closed: 2026-10-11T09:58:05.410Z
 ---
 
 ## What to build

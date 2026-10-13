@@ -15,6 +15,7 @@ topic: topic-32
 branch: t/T-75-shared-synchronous-i-o-on-every-hub
 created: 2026-10-09T15:35:43.178Z
 updated: 2026-10-10T00:58:17.844Z
+closed: 2026-10-09T18:05:23.225Z
 ---
 
 ## Parent

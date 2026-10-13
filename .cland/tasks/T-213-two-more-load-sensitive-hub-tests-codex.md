@@ -15,6 +15,7 @@ topic: topic-153
 branch: t/T-213-two-more-load-sensitive-hub-tests-codex
 created: 2026-10-11T05:55:12.001Z
 updated: 2026-10-11T23:38:31.787Z
+closed: 2026-10-11T23:38:32.407Z
 ---
 
 ## What to build

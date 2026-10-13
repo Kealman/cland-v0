@@ -19,6 +19,7 @@ topic: topic-80
 branch: t/T-150-launching-an-aide-from-the-workbench-the
 created: 2026-10-10T05:33:00.581Z
 updated: 2026-10-10T11:36:44.679Z
+closed: 2026-10-10T11:36:44.696Z
 ---
 
 ## Parent

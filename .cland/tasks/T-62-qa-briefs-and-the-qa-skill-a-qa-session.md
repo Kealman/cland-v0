@@ -17,6 +17,7 @@ topic: topic-28
 branch: t/T-62-qa-briefs-and-the-qa-skill-a-qa-session
 created: 2026-10-09T08:34:54.777Z
 updated: 2026-10-10T00:58:17.703Z
+closed: 2026-10-09T16:27:17.149Z
 ---
 
 ## Parent

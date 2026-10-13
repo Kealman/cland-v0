@@ -16,6 +16,7 @@ topic: topic-148
 branch: t/T-202-a-spoke-with-no-session-name-does-not
 created: 2026-10-10T17:49:31.970Z
 updated: 2026-10-11T20:51:18.849Z
+closed: 2026-10-11T20:51:19.122Z
 ---
 
 ## What to build

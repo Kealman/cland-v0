@@ -16,6 +16,7 @@ topic: topic-127
 branch: t/T-214-the-suite-runner-picks-its-phases-from
 created: 2026-10-11T06:30:53.442Z
 updated: 2026-10-11T11:54:19.640Z
+closed: 2026-10-11T11:54:19.870Z
 ---
 
 ## What to build

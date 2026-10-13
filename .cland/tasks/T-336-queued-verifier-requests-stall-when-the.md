@@ -16,6 +16,7 @@ topic: topic-207
 branch: t/T-336-queued-verifier-requests-stall-when-the
 created: 2026-10-13T14:35:05.030Z
 updated: 2026-10-13T16:31:34.659Z
+closed: 2026-10-13T16:31:04.504Z
 ---
 
 ## Summary

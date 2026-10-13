@@ -17,6 +17,7 @@ topic: topic-152
 branch: t/T-233-cland-verify-result-cache-a-green-result
 created: 2026-10-11T17:48:35.341Z
 updated: 2026-10-11T21:36:40.414Z
+closed: 2026-10-11T21:36:40.564Z
 ---
 
 ## What to build

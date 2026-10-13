@@ -16,6 +16,7 @@ topic: topic-50
 branch: t/T-132-message-blocks-header-role-gutter-the
 created: 2026-10-10T01:20:46.278Z
 updated: 2026-10-10T02:41:37.534Z
+closed: 2026-10-10T02:41:22.609Z
 ---
 
 ## Parent

@@ -17,6 +17,7 @@ topic: topic-19
 branch: t/T-68-codex-redelivery-idle-shape
 created: 2026-10-09T10:21:50.136Z
 updated: 2026-10-10T02:17:25.918Z
+closed: 2026-10-09T11:29:29.673Z
 ---
 
 ## Parent

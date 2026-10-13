@@ -16,6 +16,7 @@ topic: topic-104
 branch: t/T-203-cland-suite-runs-the-full-suite-under
 created: 2026-10-10T18:38:59.088Z
 updated: 2026-10-11T00:24:59.989Z
+closed: 2026-10-11T00:25:00.110Z
 ---
 
 ## What to build

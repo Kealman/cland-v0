@@ -16,6 +16,7 @@ topic: topic-149
 branch: t/T-235-the-needs-you-chip-and-the-inbox-count
 created: 2026-10-11T17:48:35.582Z
 updated: 2026-10-11T20:36:05.178Z
+closed: 2026-10-11T20:36:05.371Z
 ---
 
 ## What happened

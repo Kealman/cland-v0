@@ -17,6 +17,7 @@ topic: topic-120
 branch: t/T-191-layers-on-the-inbox-and-the-sessions-now
 created: 2026-10-10T16:25:06.253Z
 updated: 2026-10-11T08:18:01.203Z
+closed: 2026-10-11T08:18:01.362Z
 ---
 
 ## Parent

@@ -17,6 +17,7 @@ topic: topic-45
 branch: t/T-120-status-on-events-the-status-field-moved
 created: 2026-10-09T21:56:19.707Z
 updated: 2026-10-10T00:58:17.953Z
+closed: 2026-10-09T23:55:19.569Z
 ---
 
 ## Parent

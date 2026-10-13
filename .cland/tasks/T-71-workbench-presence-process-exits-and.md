@@ -18,6 +18,7 @@ topic: topic-24
 branch: t/T-71-sessions-panel-events
 created: 2026-10-09T10:46:33.920Z
 updated: 2026-10-10T00:58:17.791Z
+closed: 2026-10-09T14:26:56.305Z
 ---
 
 ## Parent

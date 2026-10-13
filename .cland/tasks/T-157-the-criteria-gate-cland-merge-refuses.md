@@ -18,6 +18,7 @@ topic: topic-87
 branch: t/T-157-the-criteria-gate-cland-merge-refuses
 created: 2026-10-10T07:49:36.269Z
 updated: 2026-10-10T15:08:11.848Z
+closed: 2026-10-10T15:08:11.870Z
 ---
 
 ## Parent

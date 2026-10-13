@@ -17,6 +17,7 @@ topic: topic-166
 branch: t/T-252-launch-recovery-test-ts-122-no-rollout
 created: 2026-10-12T00:15:33.334Z
 updated: 2026-10-12T02:28:32.407Z
+closed: 2026-10-12T02:28:32.606Z
 ---
 
 ## What happened

@@ -17,6 +17,7 @@ topic: topic-82
 branch: t/T-151-the-aide-speaks-for-the-human-the-crew-s
 created: 2026-10-10T05:33:00.860Z
 updated: 2026-10-10T12:24:56.697Z
+closed: 2026-10-10T12:24:56.711Z
 ---
 
 ## Parent

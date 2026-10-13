@@ -16,6 +16,7 @@ topic: topic-143
 branch: t/T-232-cland-verify-a-hub-owned-suite-scheduler
 created: 2026-10-11T17:48:35.223Z
 updated: 2026-10-11T20:20:22.136Z
+closed: 2026-10-11T20:20:22.380Z
 ---
 
 ## What to build

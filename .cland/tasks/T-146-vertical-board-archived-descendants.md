@@ -14,6 +14,7 @@ topic: topic-61
 branch: t/T-146-vertical-board-archived-descendants
 created: 2026-10-10T03:33:57.937Z
 updated: 2026-10-10T06:06:34.049Z
+closed: 2026-10-10T06:06:34.051Z
 ---
 
 ## Parent

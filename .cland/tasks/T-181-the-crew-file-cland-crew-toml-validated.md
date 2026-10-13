@@ -16,6 +16,7 @@ topic: topic-89
 branch: t/T-181-the-crew-file-cland-crew-toml-validated
 created: 2026-10-10T15:38:36.819Z
 updated: 2026-10-10T17:20:51.506Z
+closed: 2026-10-10T17:20:51.607Z
 ---
 
 ## Parent

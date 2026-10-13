@@ -15,6 +15,7 @@ topic: topic-52
 branch: t/T-138-progress-notes-ride-the-next-turn-send
 created: 2026-10-10T01:52:18.096Z
 updated: 2026-10-10T03:13:11.367Z
+closed: 2026-10-10T03:12:48.126Z
 ---
 
 ## Parent

@@ -17,6 +17,7 @@ topic: topic-209
 branch: t/T-334-usage-in-the-journal-a-session-usage
 created: 2026-10-13T14:04:09.872Z
 updated: 2026-10-13T17:13:56.538Z
+closed: 2026-10-13T17:13:55.867Z
 ---
 
 ## Summary

@@ -15,6 +15,7 @@ topic: topic-109
 branch: t/T-207-a-full-suite-keeps-its-queue-place
 created: 2026-10-10T22:56:33.438Z
 updated: 2026-10-11T01:28:27.407Z
+closed: 2026-10-10T23:09:38.933Z
 ---
 
 ## What to build

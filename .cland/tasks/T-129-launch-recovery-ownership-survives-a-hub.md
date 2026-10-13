@@ -16,6 +16,7 @@ topic: topic-156
 branch: t/T-129-launch-recovery-ownership-survives-a-hub
 created: 2026-10-09T22:17:07.427Z
 updated: 2026-10-11T22:20:01.449Z
+closed: 2026-10-11T22:20:01.696Z
 ---
 
 ## Parent

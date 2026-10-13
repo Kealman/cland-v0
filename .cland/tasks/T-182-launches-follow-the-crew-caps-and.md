@@ -18,6 +18,7 @@ topic: topic-116
 branch: t/T-182-launches-follow-the-crew-caps-and
 created: 2026-10-10T15:38:37.088Z
 updated: 2026-10-11T08:14:53.981Z
+closed: 2026-10-11T08:14:54.162Z
 ---
 
 ## Parent

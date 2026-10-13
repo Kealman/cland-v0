@@ -17,6 +17,7 @@ topic: topic-113
 branch: t/T-205-kept-artifacts-rise-to-watch-in-the
 created: 2026-10-10T20:08:34.923Z
 updated: 2026-10-11T06:50:52.296Z
+closed: 2026-10-11T06:50:52.443Z
 ---
 
 ## What to build

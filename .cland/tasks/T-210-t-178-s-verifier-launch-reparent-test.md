@@ -16,6 +16,7 @@ topic: topic-114
 branch: t/T-210-t-178-s-verifier-launch-reparent-test
 created: 2026-10-11T03:50:08.620Z
 updated: 2026-10-11T05:17:44.969Z
+closed: 2026-10-11T05:17:40.647Z
 ---
 
 ## What to build

@@ -17,6 +17,7 @@ topic: topic-18
 branch: t/T-67-task-list-freshness-cache
 created: 2026-10-09T10:19:03.465Z
 updated: 2026-10-10T02:17:25.312Z
+closed: 2026-10-09T11:38:00.141Z
 ---
 
 ## Parent

@@ -14,6 +14,7 @@ topic: topic-3
 branch: t/T-44-cli-hub-from-worktree
 created: 2026-10-08T19:01:49.025Z
 updated: 2026-10-10T00:58:17.510Z
+closed: 2026-10-09T06:54:35.340Z
 ---
 
 ## Parent

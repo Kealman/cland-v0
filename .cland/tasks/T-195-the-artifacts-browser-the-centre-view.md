@@ -18,6 +18,7 @@ topic: topic-125
 branch: t/T-195-the-artifacts-browser-the-centre-view
 created: 2026-10-10T16:25:07.170Z
 updated: 2026-10-11T11:22:26.625Z
+closed: 2026-10-11T11:22:26.656Z
 ---
 
 ## Parent

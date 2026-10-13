@@ -19,6 +19,7 @@ topic: topic-189
 branch: t/T-306-archive-by-rule-and-prune-stopped-crew
 created: 2026-10-12T21:34:31.521Z
 updated: 2026-10-13T03:40:56.366Z
+closed: 2026-10-13T03:40:56.779Z
 ---
 
 ## Summary

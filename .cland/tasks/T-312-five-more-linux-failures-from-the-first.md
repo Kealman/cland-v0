@@ -19,6 +19,7 @@ topic: topic-190
 branch: t/T-312-five-more-linux-failures-from-the-first
 created: 2026-10-13T01:50:19.683Z
 updated: 2026-10-13T07:16:39.094Z
+closed: 2026-10-13T07:16:34.088Z
 ---
 
 ## Summary

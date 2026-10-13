@@ -14,6 +14,7 @@ topic: topic-62
 branch: t/T-153-vertical-board-a-selected-scope-under-an
 created: 2026-10-10T06:06:44.959Z
 updated: 2026-10-10T06:13:12.616Z
+closed: 2026-10-10T06:13:12.644Z
 ---
 
 ## Parent

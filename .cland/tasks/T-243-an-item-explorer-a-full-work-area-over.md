@@ -14,6 +14,7 @@ topic: null
 branch: null
 created: 2026-10-11T17:49:02.317Z
 updated: 2026-10-12T11:35:34.015Z
+closed: 2026-10-12T11:35:34.047Z
 ---
 
 ## Open question

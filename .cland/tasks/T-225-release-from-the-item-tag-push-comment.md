@@ -17,6 +17,7 @@ topic: topic-139
 branch: t/T-225-release-from-the-item-tag-push-comment
 created: 2026-10-11T15:38:17.485Z
 updated: 2026-10-11T16:45:18.541Z
+closed: 2026-10-11T16:45:18.660Z
 ---
 
 ## Parent

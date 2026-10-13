@@ -16,6 +16,7 @@ topic: topic-205
 branch: t/T-333-the-launch-s-model-the-journal-names-the
 created: 2026-10-13T14:04:09.762Z
 updated: 2026-10-13T16:17:34.736Z
+closed: 2026-10-13T16:17:32.054Z
 ---
 
 ## Summary

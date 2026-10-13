@@ -16,6 +16,7 @@ topic: topic-204
 branch: t/T-329-the-release-scope-the-items-panel-at
 created: 2026-10-13T14:04:09.323Z
 updated: 2026-10-13T15:50:47.341Z
+closed: 2026-10-13T15:50:45.614Z
 ---
 
 ## Summary

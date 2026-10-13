@@ -18,6 +18,7 @@ topic: topic-174
 branch: t/T-287-events-view-quiet-rows-warnings-filters
 created: 2026-10-12T11:57:19.803Z
 updated: 2026-10-12T16:58:52.761Z
+closed: 2026-10-12T16:58:46.347Z
 ---
 
 ## Summary

@@ -18,6 +18,7 @@ topic: topic-183
 branch: t/T-309-cland-verify-queue-shows-no-holder-while
 created: 2026-10-12T21:49:51.411Z
 updated: 2026-10-12T22:32:26.571Z
+closed: 2026-10-12T22:32:26.602Z
 ---
 
 ## Summary

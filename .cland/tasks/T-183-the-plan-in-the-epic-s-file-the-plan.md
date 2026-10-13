@@ -16,6 +16,7 @@ topic: topic-90
 branch: t/T-183-the-plan-in-the-epic-s-file-the-plan
 created: 2026-10-10T15:38:37.301Z
 updated: 2026-10-10T17:51:23.010Z
+closed: 2026-10-10T17:51:23.157Z
 ---
 
 ## Parent

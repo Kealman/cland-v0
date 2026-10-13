@@ -18,6 +18,7 @@ topic: topic-175
 branch: t/T-278-test-teardown-kills-the-process-groups
 created: 2026-10-12T11:54:20.614Z
 updated: 2026-10-12T19:20:04.447Z
+closed: 2026-10-12T19:20:04.622Z
 ---
 
 ## Summary

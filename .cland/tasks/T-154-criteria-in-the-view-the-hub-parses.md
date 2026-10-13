@@ -16,6 +16,7 @@ topic: topic-67
 branch: t/T-154-criteria-in-the-view-the-hub-parses
 created: 2026-10-10T07:49:35.981Z
 updated: 2026-10-10T08:30:57.745Z
+closed: 2026-10-10T08:30:57.765Z
 ---
 
 ## Parent

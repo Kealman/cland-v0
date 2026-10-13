@@ -20,6 +20,7 @@ topic: topic-193
 branch: t/T-314-any-prefix-resolves-the-hub-the-cli-the
 created: 2026-10-13T02:27:22.874Z
 updated: 2026-10-13T07:29:16.625Z
+closed: 2026-10-13T07:29:16.004Z
 ---
 
 ## Summary

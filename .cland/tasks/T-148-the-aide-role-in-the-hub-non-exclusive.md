@@ -17,6 +17,7 @@ topic: topic-69
 branch: t/T-148-the-aide-role-in-the-hub-non-exclusive
 created: 2026-10-10T05:33:00.073Z
 updated: 2026-10-10T11:20:54.132Z
+closed: 2026-10-10T11:20:54.143Z
 ---
 
 ## Parent
