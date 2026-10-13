@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-12T11:35:13.919Z
-updated: 2026-10-13T18:25:09.921Z
+updated: 2026-10-13T20:35:11.449Z
 ---
 
 ## Goal
@@ -95,6 +95,17 @@ This epic builds on that driver as its first backend rather than starting from t
 - The four creates cost about $0.17.
 
 **Open question from E-268 (2026-10-13).** A c-8 runs the hub phase alone in about 1420 s, where the Mac runs the whole suite in about 870 s. The 45-minute c-8 cap from the D25 amendment fits today. Remote executors need either a larger droplet, such as c-16, or the suite split across two droplets per run.
+
+## D27: limits and the droplet size (2026-10-13)
+
+The stand-in decided under D24 (`docs/spec/v0.1.md` §4, D27):
+
+- **D25 still governs the hand driver.** D25's limits govern T-282's hand driver until this epic's hub-owned executor enforces budgets itself. Those limits are one droplet at a time, 30 or 45 minutes, and $2 a day.
+- **Config defaults.** This epic ships `remote_budget`, the lifetime, the run timeout and a daily cap as config the hub enforces. The docs keep the defaults in Choices: 4, 110 min, 75 min and $5 a day.
+- **This project during the build.** `.cland/config.toml` sets budget 2, lifetime 60 min, run timeout 50 min and $3 a day. The human may raise these later.
+- **Enforcement.** The hub refuses a create beyond the budget or the daily cap, and sweeps every droplet past its lifetime. The `cland` tag is mandatory.
+- **The DoD demo.** It may run 2 or 3 droplets at once, for at most 15 minutes, once, under the $3 cap. It posts the create, destroy and cost on this epic. The Coordinator tells the stand-in before it starts.
+- **Droplet size.** c-8 stays the default for acceptance runs. The executor takes the size per run from config. The demo may include one c-16 run to answer the speed question with numbers: the hub phase time and the cost per run, recorded on this epic for the retrospective. Phases are not split across droplets in this release, which closes the E-268 open question above.
 
 ## Comments
 

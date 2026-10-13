@@ -2,8 +2,9 @@
 id: T-340
 kind: task
 title: Sweep the Neovim tests for actions before their snapshots land (four flakes of one class on 2026-10-13)
-state: open
-status: review
+state: closed
+status: done
+size: M
 criterion_seq: 3
 labels:
   - v0.1.2
@@ -15,8 +16,8 @@ blocked_by: []
 topic: topic-212
 branch: t/T-340-sweep-the-neovim-tests-for-actions
 created: 2026-10-13T19:12:35.068Z
-updated: 2026-10-13T19:41:57.305Z
-size: M
+updated: 2026-10-13T20:24:57.775Z
+closed: 2026-10-13T20:24:57.775Z
 ---
 
 ## Summary
@@ -35,8 +36,13 @@ Four Neovim test flakes on 2026-10-13 had one cause: a test pressed keys before 
 - [x] C1. Every Neovim test that acts after connect or reconnect waits for its readiness state, listed in the item.
   - done: impl-340 · 2026-10-13T19:40:26.752Z
   - verified: rev-23 [reviewer] · run rev-2026-10-13-340-2 · 2026-10-13T19:41:57.305Z · commit b03c4bb1f074497d3ddf2c2dae354949170d66d4
-- [ ] C2. The Neovim suite passes under a delayed initial-snapshot replay, and passes normally.
-- [ ] C3. No assertion is weakened, no timeout raised, and no retry added. `cland verify` is green.
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-340-3 · 2026-10-13T20:24:49.110Z · commit b03c4bb1f074497d3ddf2c2dae354949170d66d4
+- [x] C2. The Neovim suite passes under a delayed initial-snapshot replay, and passes normally.
+  - done: impl-340 · 2026-10-13T20:24:41.533Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-340-3 · 2026-10-13T20:24:49.110Z · commit b03c4bb1f074497d3ddf2c2dae354949170d66d4
+- [x] C3. No assertion is weakened, no timeout raised, and no retry added. `cland verify` is green.
+  - done: impl-340 · 2026-10-13T20:24:41.814Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-340-3 · 2026-10-13T20:24:49.110Z · commit b03c4bb1f074497d3ddf2c2dae354949170d66d4
 
 ## Comments
 
@@ -132,3 +138,27 @@ commit: b03c4bb1f074497d3ddf2c2dae354949170d66d4
 No remaining high or medium findings. Ordinary startup now waits for configured role state before launcher defaults are consumed; A-2046 proves the unchanged launcher check red then green with delayed role.list. C1 verified from the complete action audit and correction. Assertions, timeouts, action sequences and explicit held snapshots remain intact. C2/C3 await the complete delayed replay and normal exact-head cland verify after the Coordinator's hub-back window. A-2048: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2048-t-340-corrected-source-review-at-b03c4bb.md.
 
 Criteria: C1 verified.
+
+### impl-340 · 2026-10-13T20:11:07.492Z
+
+C2 delayed replay complete at source-reviewed b03c4bb1f074497d3ddf2c2dae354949170d66d4: all 30 Neovim files run serially, 322/322 tests passed, no failures/skips/cancellations; per-file time totals 434.530 s. Initial hub.status/task.list and role.list replies used 1000 ms replay delays. Queue checked empty before every file, no pause occurred. A-2052 contains index.md, results.json and every raw TAP log at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2052-t-340-complete-delayed-replay-30-files-322-tests. QA-runner cases retained their pinned environment/state waits as decided (46/46 passed). Normal exact-head cland verify all is being submitted now; C2/C3 remain pending that result.
+
+### impl-340 · 2026-10-13T20:24:42.099Z
+
+C2/C3 complete at b03c4bb1f074497d3ddf2c2dae354949170d66d4. Delayed serial Neovim sweep A-2052 passed 30/30 files and 322/322 tests, with no failures/skips/cancellations. Normal exact-head cland verify all 28714871-0bdb-4eda-9753-185232452364 is green: 1843/1843 tests, no failures/skips/cancellations, typecheck passed; durable log A-2053 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2053-suite-28714871-0bdb-4eda-9753-185232452364-all-at-b03c4bb.log. Source head and action/assertion/timeout preservation remain as reviewed. C2/C3 marked done; awaiting Reviewer's same-head final verdict and hub ready event.
+
+### rev-23 · 2026-10-13T20:24:49.110Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-340-3
+commit: b03c4bb1f074497d3ddf2c2dae354949170d66d4
+
+No high or medium findings remain. A-2052 covers every one of the 30 Neovim test files: 322/322 pass under the delayed replay, with zero failures/skips/cancellations. A-2053 exact-head cland verify all 28714871 passed typecheck and 1843/1843 tests, including normal Neovim 322/322. Source preservation checks remain A-2048. All C1–C3 verified; implementer C2/C3 done marks remain its responsibility. A-2054: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2054-t-340-final-delayed-and-normal-verification.md.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-13T20:24:57.775Z
+
+Merged cf838de8bca86a5f2fe4a4a0a22ee23747fd4efa onto dev.
