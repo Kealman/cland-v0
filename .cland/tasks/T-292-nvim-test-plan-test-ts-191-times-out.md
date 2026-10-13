@@ -8,12 +8,12 @@ labels:
   - nvim
   - ready-for-agent
 assignee: null
-parent: T-216
+parent: E-216
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-12T15:14:07.610Z
-updated: 2026-10-12T15:14:07.610Z
+updated: 2026-10-13T10:46:13.958Z
 ---
 
 ## Summary
@@ -29,3 +29,9 @@ T-216 Tech debt. Found by impl-277 on 2026-10-12 during the v0.1.2 build; same c
 - [ ] The cause is named in the item (race on the stub's push or a window too short under load).
 - [ ] The case waits for the plan state or gets a documented test-only window; its assertions are unchanged in strength.
 - [ ] The file passes 20 runs under four concurrent workers; `npm run test:nvim` passes.
+
+## Comments
+
+### coord · 2026-10-13T10:46:13.958Z
+
+Covered by the shared fix b5b67ad (impl-317, on T-317's branch, 2026-10-13). The case at :191 now waits for the epic's owner, taken from the task and tracker snapshots, before it navigates. The existing stub's delayed hub.status replay reproduced the qa-schema-2 timeout before the fix and passes after it. Three whole-file runs pass 33 of 33, with assertions and timeouts unchanged. The Coordinator waived the twenty-run stress. Evidence is A-1908 and T-317's topic. T-292 closes when T-317 merges. The product race the fix uncovered is T-323.

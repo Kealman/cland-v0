@@ -3,7 +3,7 @@ id: T-317
 kind: task
 title: "Agents file into categories: the clauses and the qa, triage and to-tickets skills file with --parent C-n, and idle_from in crew.toml feeds the Coordinator's idle-work rule"
 state: open
-status: ready
+status: review
 criterion_seq: 6
 labels:
   - v0.1.2
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-198
 branch: t/T-317-agents-file-into-categories-the-clauses
 created: 2026-10-13T02:27:23.273Z
-updated: 2026-10-13T10:36:19.165Z
+updated: 2026-10-13T10:46:10.935Z
 ---
 
 ## Summary
@@ -126,3 +126,7 @@ commit: 5cb7c84ed56f1814b80d9626ce0e02e7fbd21624
 Source review under D25: no high/medium finding remains. C1–C6 checked: canonical ordered idle list, semantic set/refusal and hand reload, real-spoke clause refresh, default/project idle and category reporting/filling rules with unchanged grants, minimal vendored patches/templates and README. C2 typed-kind architectural violation resolved by configured non-release C-root selection with unchanged guard and added docs-before-category real-hub case. Shared2c0f43d unchanged separately reviewed. A-1879/A-1895 and source verdict artifact record evidence. D25 requires clear source before full verification; already queued5c53298c keeps its place and its accepted exact-head result remains required before merge. No full green result claimed here. Coordinator relaunch after merge required.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### impl-317 · 2026-10-13T10:45:48.159Z
+
+Shared test-only commit b5b67ad covers T-292's plan startup race. Deterministic delayed-hub.status replay reproduced the exact qa-schema-2 timeout before and passed after; three whole-file runs passed 33/33 with unchanged assertions/timeouts. A-1908 records the diagnosis. Current dev merged into pushed head 243bec40091bcb9e398f37b9138dbb2c19ab7eca. Requesting rev-26 review of standalone b5b67ad plus the new full head; verification waits for T-321's slot end.
