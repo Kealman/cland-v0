@@ -3,8 +3,9 @@ id: T-364
 kind: task
 title: "Idle accounts through the harness: an account with no running session is polled at most every 15 minutes through claude -p /usage or a short-lived codex app-server, never through a provider's endpoint"
 state: open
-status: planned
+status: in progress
 size: L
+criterion_seq: 8
 labels:
   - v0.1.2
   - hub
@@ -14,10 +15,10 @@ parent: E-272
 blocked_by:
   - T-362
   - T-363
-topic: null
-branch: null
+topic: topic-240
+branch: t/T-364-idle-accounts-through-the-harness-an
 created: 2026-10-13T23:42:54.330Z
-updated: 2026-10-14T07:07:20.748Z
+updated: 2026-10-14T07:37:50.231Z
 ---
 
 ## Summary
@@ -101,11 +102,38 @@ The probes in `docs/research/account-limits/` show the commands: `claude-usage.s
 
 ## Acceptance criteria
 
-- [ ] C1. At hub start, an idle fake Claude account and an idle fake Codex account are each polled once, under their own directory: the invocation logs show `-p /usage` with `CLAUDE_CONFIG_DIR` and `app-server` with `CODEX_HOME`. `cland account list --json` then shows their windows with `source: poll`, the Claude per-model weekly window included.
-- [ ] C2. An account with a running session is not polled. An OpenCode account is never polled and shows `no limit data`.
-- [ ] C3. A hub restart within the floor of the last poll polls nothing. With the floor shortened, the timer polls each idle account once per floor and never runs two polls at once for one account.
-- [ ] C4. `account.poll`, from the workbench opening the sessions panel or from `cland account list --refresh`, polls an idle account whose last poll is older than the minimum, and returns the cached reading otherwise.
-- [ ] C5. A failed poll (the fake exits 1 with a 429 line, or hangs past the bound and is killed) doubles that account's floor up to 60 minutes and journals `account-poll-failed` with one line. A later success restores the floor. A signed-out answer shows `signedOut` on the account and polls no faster.
+- [x] C1. At hub start, an idle fake Claude account and an idle fake Codex account are each polled once, under their own directory: the invocation logs show `-p /usage` with `CLAUDE_CONFIG_DIR` and `app-server` with `CODEX_HOME`. `cland account list --json` then shows their windows with `source: poll`, the Claude per-model weekly window included.
+  - done: impl-364 · 2026-10-14T07:32:04.622Z
+- [x] C2. An account with a running session is not polled. An OpenCode account is never polled and shows `no limit data`.
+  - done: impl-364 · 2026-10-14T07:32:05.764Z
+- [x] C3. A hub restart within the floor of the last poll polls nothing. With the floor shortened, the timer polls each idle account once per floor and never runs two polls at once for one account.
+  - done: impl-364 · 2026-10-14T07:32:07.988Z
+- [x] C4. `account.poll`, from the workbench opening the sessions panel or from `cland account list --refresh`, polls an idle account whose last poll is older than the minimum, and returns the cached reading otherwise.
+  - done: impl-364 · 2026-10-14T07:32:08.961Z
+- [x] C5. A failed poll (the fake exits 1 with a 429 line, or hangs past the bound and is killed) doubles that account's floor up to 60 minutes and journals `account-poll-failed` with one line. A later success restores the floor. A signed-out answer shows `signedOut` on the account and polls no faster.
+  - done: impl-364 · 2026-10-14T07:32:10.162Z
 - [ ] C6. The source scan finds no provider host, no usage path and no read of a credential store in `hub/src`. The runtime recorder sees no non-loopback connection during a poll cycle. No poll runs `agents --json`, `auth status` or `doctor`.
-- [ ] C7. A poll process runs with the account's overlay, without the removed auth variables and without any `CLAND_*` variable, in a scratch directory under `.cland/run/accounts/`.
-- [ ] C8. `hub/README.md` describes the triggers, the floor, the minimum, the backoff, the commands it runs and the commands it never runs.
+  - failed: rev-23 [reviewer] · 2026-10-14T07:37:50.231Z · note Generic fixture daemon startup inherits host account registry/directories and real harness defaults, allowing automatic polls of real accounts during tests.
+- [x] C7. A poll process runs with the account's overlay, without the removed auth variables and without any `CLAND_*` variable, in a scratch directory under `.cland/run/accounts/`.
+  - done: impl-364 · 2026-10-14T07:32:12.233Z
+- [x] C8. `hub/README.md` describes the triggers, the floor, the minimum, the backoff, the commands it runs and the commands it never runs.
+  - done: impl-364 · 2026-10-14T07:32:13.369Z
+
+## Comments
+
+### impl-364 · 2026-10-14T07:26:41.655Z
+
+Implemented idle harness polling with persisted floors/backoff, two-process admission, signed-out views, protocol/CLI/panel triggers, and sanitized scratch process environments. Protocol-first poll tests (9) and headless panel-opening test pass; runtime preload records zero non-loopback connections. Source guard preserves the Coordinator-approved passive OpenCode metadata/install literals and names the DigitalOcean client exception. Completing adapter/registry regression checks before source review.
+
+### rev-23 · 2026-10-14T07:37:50.231Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-364-1
+commit: e9259dc8dbe9f2e8560541ee52dc53815152a4f8
+scope: full
+
+Medium — hub/src/hub/daemon.ts:296–298 / hub/test/harness.ts:247–253: new automatic startup polls reach host XDG/HOME registry/default claude/codex from ordinary existing fixture daemons. Selected scratch poll tests do not isolate the full suite. C6 no-real-harness boundary fails: isolate existing fixture startup registry/account dirs/default fake binaries while preserving explicit overrides and fake controller/cleanup identity; no production disable seam/new helper. Complete twenty-file review found no further high/medium issues. Corrected-head source review before full/shared-fix integration required. A-2286: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2286-t-364-complete-source-review-not-clear-fixture-account-isolation.md.
+
+Criteria: C6 failed (Generic fixture daemon startup inherits host account registry/directories and real harness defaults, allowing automatic polls of real accounts during tests.).

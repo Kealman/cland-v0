@@ -2,8 +2,8 @@
 id: T-375
 kind: task
 title: executor-droplet watchdog-restart test gets a fake 404 during acquire under suite load
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 4
 labels:
@@ -18,7 +18,8 @@ regression_of: T-343
 topic: topic-237
 branch: t/T-375-executor-droplet-watchdog-restart-test
 created: 2026-10-14T06:26:05.430Z
-updated: 2026-10-14T07:01:04.813Z
+updated: 2026-10-14T07:39:38.503Z
+closed: 2026-10-14T07:39:38.503Z
 ---
 
 ## Summary
@@ -37,16 +38,20 @@ updated: 2026-10-14T07:01:04.813Z
   - done: impl-375 · 2026-10-14T06:36:23.971Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-375-1 · 2026-10-14T06:38:02.754Z · commit 19c0e356775b4d17fd1ec588b6f2a3e39dae8072
   - verified: rev-23 [reviewer] · run rev-2026-10-14-375-3 · 2026-10-14T06:49:42.436Z · commit 07433e45e8a7d092f3c819b852c12991d8a5e119
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-375-4 · 2026-10-14T07:23:55.278Z · commit 07433e45e8a7d092f3c819b852c12991d8a5e119
 - [x] C2. The test's timing becomes readiness-based, or its lifetime is decoupled from acquire's polling, and the survival, restart and cleanup assertions stay unchanged. If the cause is in hub code, the hub is fixed instead.
   - done: impl-375 · 2026-10-14T06:36:25.891Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-375-1 · 2026-10-14T06:38:02.754Z · commit 19c0e356775b4d17fd1ec588b6f2a3e39dae8072
   - verified: rev-23 [reviewer] · run rev-2026-10-14-375-3 · 2026-10-14T06:49:42.436Z · commit 07433e45e8a7d092f3c819b852c12991d8a5e119
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-375-4 · 2026-10-14T07:23:55.278Z · commit 07433e45e8a7d092f3c819b852c12991d8a5e119
 - [x] C3. The fix is one commit, so it can be cherry-picked into every live branch.
   - done: impl-375 · 2026-10-14T06:36:29.025Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-375-1 · 2026-10-14T06:38:02.754Z · commit 19c0e356775b4d17fd1ec588b6f2a3e39dae8072
   - verified: rev-23 [reviewer] · run rev-2026-10-14-375-3 · 2026-10-14T06:49:42.436Z · commit 07433e45e8a7d092f3c819b852c12991d8a5e119
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-375-4 · 2026-10-14T07:23:55.278Z · commit 07433e45e8a7d092f3c819b852c12991d8a5e119
 - [x] C4. The executor-droplet file passes 20 consecutive targeted runs under four parallel CPU workers on macOS.
   - done: impl-375 · 2026-10-14T07:01:03.267Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-375-4 · 2026-10-14T07:23:55.278Z · commit 07433e45e8a7d092f3c819b852c12991d8a5e119
 
 ## Comments
 
@@ -104,3 +109,20 @@ Criteria: C1 verified, C2 verified, C3 verified.
 ### impl-375 · 2026-10-14T07:01:04.813Z
 
 C4 complete at exact reviewed 07433e45: twenty consecutive complete executor-droplet.test.ts runs under four parallel CPU Worker threads on macOS arm64, Node v24.21.0. All 13 cases passed in each run (260/260 test cases, no failures/skips), total file-run duration about 596s. Runner exit 0 followed awaited termination of all workers. Durable artifact A-2276 contains exact runner, all twenty TAP logs and summary.json. Working tree clean/head unchanged throughout. Both initial failure batches remain recorded; only this changed-head reviewed batch qualifies. Full verification is now submitted at the same reviewed head.
+
+### rev-23 · 2026-10-14T07:23:55.278Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-375-4
+commit: 07433e45e8a7d092f3c819b852c12991d8a5e119
+scope: evidence
+
+No findings remain. C4 A-2276 verifies twenty consecutive complete-file macOS/four-worker runs at amended head, 260/260, no failures/skips/retries; old failed A-2267 excluded. Exact-head full 88a09ec6/A-2283 passes typecheck and 1980/1980 (37 free, 1577 hub machine, 366 Neovim), zero failures/cancellations/skips/todo. Original watchdog/restart/cleanup and deadline assertions pass; complete source A-2272 retained. C1–C4 all checked. A-2284: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2284-t-375-final-review-clear-amended-load-batch-and-full-suite.md.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-14T07:39:38.503Z
+
+Merged 3c79acbececa1a5df5dc2029fc9f3e9c3300d8ca onto dev.

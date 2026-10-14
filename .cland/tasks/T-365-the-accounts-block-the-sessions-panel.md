@@ -3,8 +3,9 @@ id: T-365
 kind: task
 title: "The accounts block: the sessions panel opens with one line per account showing the windows its source sent, with the used share, the reset time and the reading's age, and each session's meta line names its account"
 state: open
-status: planned
+status: review
 size: M
+criterion_seq: 8
 labels:
   - v0.1.2
   - nvim
@@ -13,10 +14,10 @@ assignee: null
 parent: E-272
 blocked_by:
   - T-363
-topic: null
-branch: null
+topic: topic-239
+branch: t/T-365-the-accounts-block-the-sessions-panel
 created: 2026-10-13T23:42:54.607Z
-updated: 2026-10-14T07:07:21.628Z
+updated: 2026-10-14T07:17:09.354Z
 ---
 
 ## Summary
@@ -84,3 +85,23 @@ Add the read to the snapshot that `nvim/lua/cland/init.lua` waits for, as `sessi
 - [ ] C6. The expanded row of a session on codex-b reads `Codex · gpt-6.1-sol · codex-b`, and a default-account session's row names no account.
 - [ ] C7. At a panel width of 30 columns, every block line fits, with windows wrapped onto continuation lines.
 - [ ] C8. `nvim/README.md` describes the block, its colours, its fold and the meta line's account.
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-365-1 · 2026-10-14T07:17:09.354Z · commit c91124c077a74a492b4ec99aeb976187374dd142
+
+## Comments
+
+### impl-365 · 2026-10-14T07:13:32.181Z
+
+Implementation and headless seam coverage added: real hub + scratch XDG registry + fake Codex weekly push, named session account meta, source-shaped Claude 3-window readings, source severity vs share colors through extmarks, stale dimming, local reset formats under Asia/Kolkata, 30-column wrapping, action-registry fold and ui.json restart persistence. Targeted account cases pass; npm run typecheck passes. Tests extend existing nvim/test/sessions.test.ts, so no new hub shard entry is required.
+
+### rev-23 · 2026-10-14T07:17:09.354Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-365-1
+commit: c91124c077a74a492b4ec99aeb976187374dd142
+scope: full
+
+No high/medium findings across nine files. Snapshot/event replay, source-window shape/order, severity/threshold/stale/local-reset rendering, width wrapping, registry fold persistence and named/default metadata match C1–C8. Real-hub fake-harness tests/readiness and existing assertions retained, no timer/poll/provider or hub seam. C8 docs verified; C1–C7/full pending. Adopt Coordinator's landed T-375/T-376 fixes and request changed-head delta review before ordinary full verification. A-2282: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2282-t-365-complete-account-panel-source-review-clear.md.
+
+Criteria: C8 verified.
