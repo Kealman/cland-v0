@@ -122,6 +122,19 @@ local function after(n, done)
   end
 end
 
+-- Accounts are read once per connection; subsequent readings arrive as events.
+local function refresh_accounts()
+  M.client:snapshot({ type = 'account.list' }, function(err, value, events)
+    if not err and value then
+      state.S.accounts = value.accounts or {}
+      for _, event in ipairs(events) do
+        if event.type == 'account' then state.upsert_account(event.account) end
+      end
+      state.changed()
+    end
+  end)
+end
+
 local refresh_archive = single_flight(function(done)
   M.client:snapshot({ type = 'session.list', archived = true }, function(err, value, events)
     if not err and value then
@@ -227,6 +240,7 @@ local function wire_client(client)
     state.changed()
   end)
   client:on('connected', function()
+    refresh_accounts()
     M.refresh()
     require('cland.events').refresh_summary()
     if state.S.ui.view.kind == 'events' then require('cland.events').enter() end
@@ -283,6 +297,7 @@ local function wire_client(client)
     state.S.crew = { config = event.config, summary = event.summary }
     state.changed()
   end)
+  client:on('account', function(event) state.upsert_account(event.account) end)
   client:on('verification.queue', function(event)
     require('cland.verification').set(event.queue)
     state.changed()

@@ -167,6 +167,9 @@ function M.session_meta_parts(s)
   if s.model then
     head[#head + 1] = s.model
   end
+  if type(s.account) == 'string' and s.account ~= '' and not s.account:match('^default:') then
+    head[#head + 1] = s.account
+  end
   local tail = M.session_words(s)
   local usage = s.live and M.usage_text(s.usage) or nil
   if usage then
@@ -295,9 +298,10 @@ local function session_row(c, s, group)
   end
 end
 
-local SESSIONS_FOOTER = { ' ↵ attach · C-v split · c capabilities', ' l launch · a Aide · x stop · r resume', ' d archive · za more · A archive' }
+local SESSIONS_FOOTER = { ' ↵ attach · C-v split · c capabilities', ' l launch · a Aide · x stop · r resume', ' d archive · za folds · A archive' }
 
 local function render_sessions(c)
+  require('cland.accounts').render(c)
   local list = state.sessions(state.S.ui.sessions_archive)
   local queue = state.S.verification
   if type(queue) == 'table' then
@@ -413,13 +417,18 @@ function M.sessions_cursor(b)
   end
 end
 
---- Fold keys affect Background only; Archive needs its own explicit action.
+--- Accounts fold on their header; all-fold keys affect Background only.
 function M.session_fold(b, how)
   local info = M.row_at(b, api.nvim_win_get_cursor(0)[1])
+  if info and info.fold == 'accounts' and how ~= 'all open' and how ~= 'all closed' then
+    state.set_fold('accounts', how == 'toggle' and not state.folded('accounts') or how == 'close')
+    state.changed()
+    return
+  end
   if how == 'all open' or how == 'all closed' then
     state.set_fold('stopped', how == 'all closed')
   elseif not (info and (info.fold == 'stopped' or info.group == 'background')) then
-    return state.say('za folds and unfolds background sessions: put the cursor on "more"')
+    return state.say('za folds Accounts or background sessions: put the cursor on a header')
   else
     state.set_fold('stopped', how == 'toggle' and not state.folded('stopped') or how == 'close')
   end
@@ -588,7 +597,7 @@ function M.session_keys(b)
   for lhs, how in pairs({ za = 'toggle', zo = 'open', zc = 'close', zR = 'all open', zM = 'all closed', ['<Tab>'] = 'toggle' }) do
     map(lhs, function()
       M.session_fold(b, how)
-    end, 'background sessions: ' .. how)
+    end, 'accounts or background sessions: ' .. how)
   end
   map('A', function()
     state.S.ui.sessions_archive = not state.S.ui.sessions_archive

@@ -5,12 +5,12 @@ import { ownDirectory } from '../../hub/test/process-cleanup.ts';
 // line of its own), and a killed one turns `unknown` while the hub's log records the death.
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, readdir, readFile, realpath } from 'node:fs/promises';
+import { mkdir, mkdtemp, readdir, readFile, realpath, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { connectUi, fakeClaude, killDaemon, spawnSpoke, startDaemon, tempProject } from '../../hub/test/harness.ts';
-import { nvimOrSkip, startClient, type Client } from './harness.ts';
+import { connectUi, fakeClaude, fakeCodex, killDaemon, spawnSpoke, startDaemon, tempProject } from '../../hub/test/harness.ts';
+import { clock, nvimOrSkip, startClient, type Client } from './harness.ts';
 import { waitInitialSnapshots } from './readiness.ts';
 
 const nvim = await nvimOrSkip();
@@ -160,4 +160,143 @@ test('Claude Code, Codex and OpenCode sessions launched from the UI show in the 
   const stoppedLogs = await ui.request({ type: 'hub.status', flushLogs: true });
   assert.equal(stoppedLogs.ok, true, stoppedLogs.error);
   assert.match(await hubLog(root), /"event":"session-stopped","session":"rev"/);
+});
+
+// T-365: accounts through the same real-hub, fake-harness UI seam.
+async function highlights(c: Client): Promise<Array<{ text: string; group: string }>> {
+  return c.lua(`local b=require('cland.panels').bufs.sessions
+    local lines=vim.api.nvim_buf_get_lines(b,0,-1,false); local out={}
+    for _,m in ipairs(vim.api.nvim_buf_get_extmarks(b,vim.api.nvim_create_namespace('cland.panels'),0,-1,{details=true})) do
+      out[#out+1]={text=lines[m[2]+1]:sub(m[3]+1,m[4].end_col),group=m[4].hl_group}
+    end
+    return out`);
+}
+
+test('accounts open above verification, show a fake Codex weekly window and follow pushes without re-reading', { skip }, async t => {
+  const root = await tempProject(t);
+  const config = join(root, 'config');
+  const home = join(root, 'codex-b');
+  await mkdir(join(config, 'cland'), { recursive: true });
+  await mkdir(home);
+  await writeFile(join(config, 'cland', 'accounts.toml'), `[accounts.codex-b]\nharness = "codex"\nhome = ${JSON.stringify(home)}\n[accounts.oc-b]\nharness = "opencode"\n[accounts.unread]\nharness = "claude-code"\n`);
+  const fake = await fakeCodex(t);
+  const reset = new Date();
+  reset.setHours(23, 59, 0, 0);
+  const limits = (usedPercent: number) => ({ rateLimits: { primary: { usedPercent, windowDurationMins: 10080, resetsAt: reset.getTime() / 1000 }, secondary: null } });
+  const path = join(fake.home, 'rate-limits.json');
+  await writeFile(path, JSON.stringify({ [home]: limits(19) }));
+  const env = { ...fake.env, XDG_CONFIG_HOME: config };
+  const { discovery } = await startDaemon(t, root, env);
+  const ui = await connectUi(t, discovery);
+  const launch = await ui.request({ type: 'session.launch', name: 'rev-x', role: 'reviewer', harness: 'codex', model: 'gpt-6.1-sol', account: 'codex-b' }, 30000);
+  assert.equal(launch.ok, true, launch.error);
+  const c = await startClient(t, bin, root, env);
+  await waitInitialSnapshots(c);
+  await c.lua("vim.api.nvim_set_current_win(require('cland.layout').win.right); vim.api.nvim_win_set_width(0, 80)");
+  const shown = await c.waitScreen(s => s.includes(`wk 19% ↻${clock(reset.toISOString())}`), 'weekly account reading');
+  assert.ok(shown.indexOf('Accounts') < shown.indexOf('verify:'));
+  assert.match(shown, /oc-b\s+no limit data/);
+  assert.match(shown, /unread\s+no reading yet/);
+  await c.input('<Esc>gg/rev-x<CR>');
+  await c.waitScreen(s => s.includes('Codex · gpt-6.1-sol · codex-b'), 'named account in session meta');
+  // Fail any subsequent account.list locally: the push alone must update the screen.
+  await c.lua(`local c = require('cland').client; local request = c.request
+    c.request = function(self, frame, ...) assert(frame.type ~= 'account.list', 'unexpected account re-read'); return request(self, frame, ...) end`);
+  await writeFile(path, JSON.stringify({ [home]: limits(91) }));
+  assert.equal((await ui.request({ type: 'topic.send', topic: 'general', to: ['rev-x'], text: '@rev-x rate limits only' })).ok, true);
+  await c.waitScreen(s => s.includes('wk 91%'), 'account push updates weekly window');
+  assert.ok((await highlights(c)).some(m => m.text.includes('wk 91%') && m.group === 'ClandRed'));
+  await writeFile(path, JSON.stringify({ [home]: limits(75) }));
+  assert.equal((await ui.request({ type: 'topic.send', topic: 'general', to: ['rev-x'], text: '@rev-x rate limits only' })).ok, true);
+  await c.waitScreen(s => s.includes('wk 75%'), '75 percent threshold');
+  assert.ok((await highlights(c)).some(m => m.text.includes('wk 75%') && m.group === 'ClandAmber'));
+  await c.input('ggza');
+  await c.waitScreen(s => s.includes('Accounts (3)') && !s.includes('wk 75%'), 'folded accounts');
+  await c.lua(`assert(vim.wait(5000,function()
+    local ok,d=pcall(function() return vim.json.decode(table.concat(vim.fn.readfile(require('cland.state').S.root..'/.cland/ui.json'),'\\n')) end)
+    return ok and d.accounts_folded == true
+  end),'accounts fold was not saved')`);
+  assert.equal(JSON.parse(await readFile(join(root, '.cland/ui.json'), 'utf8')).accounts_folded, true);
+  const moved = c.restarted();
+  await c.input(':restart<CR>');
+  await moved;
+  await waitInitialSnapshots(c);
+  await c.waitScreen(s => s.includes('Accounts (3)'), 'fold restored after restart');
+  await c.lua("vim.api.nvim_set_current_win(require('cland.layout').win.right)");
+  await c.input('ggza');
+  await c.waitScreen(s => s.includes('wk 75%') && !s.includes('Accounts (3)'), 'accounts unfolded');
+
+});
+
+test('source windows keep severity, local resets and stale age, wrap at 30 columns and leave default sessions unnamed', { skip }, async t => {
+  const root = await tempProject(t);
+  const config = join(root, 'config');
+  await mkdir(join(config, 'cland'), { recursive: true });
+  await writeFile(join(config, 'cland', 'accounts.toml'), '[accounts.claude-a]\nharness = "claude-code"\n');
+  const fake = await fakeClaude(t);
+  // Use a non-UTC zone to exercise reset conversion at the same UI boundary.
+  const env = { ...fake.env, XDG_CONFIG_HOME: config, CLAUDE_CONFIG_DIR: config, TZ: 'Asia/Kolkata' };
+  const { discovery } = await startDaemon(t, root, env);
+  const ui = await connectUi(t, discovery);
+  const launch = async (name: string, account?: string) => {
+    const r = await ui.request({ type: 'session.launch', name, harness: 'claude-code', role: 'implementer', account }, 30000);
+    assert.equal(r.ok, true, r.error);
+    return (r.value as { process: { sessionId: string } }).process;
+  };
+  const named = await launch('impl-a', 'claude-a');
+  const plain = await launch('impl-default');
+  const now = Date.now();
+  const today = new Date(now + 60_000).toISOString();
+  const tomorrow = new Date(now + 86400_000).toISOString();
+  const later = new Date(now + 14 * 86400_000).toISOString();
+  const local = (iso: string, options: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat('en-GB', { timeZone: env.TZ, ...options }).format(new Date(iso));
+  const time = (iso: string) => local(iso, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+  const date = new Date(now + 14 * 86400_000 + 5.5 * 3600_000).toISOString().slice(0, 10);
+  const windows = [
+    { kind: 'five_hour', percentUsed: 12.4, resetsAt: today, severity: 'warning' },
+    { kind: 'seven_day', percentUsed: 3, resetsAt: tomorrow, severity: 'critical' },
+    { kind: 'Fable', percentUsed: 98, resetsAt: later, severity: 'normal' },
+  ];
+  const signal = async (name: string, id: string, at: number) => {
+    const r = await ui.request({ type: 'session.signal', session: name, launch: id, event: 'mod-measure', at, payload: { rateLimits: windows } });
+    assert.equal(r.ok, true, r.error);
+  };
+  await signal('impl-a', named.sessionId, now - 31 * 60_000);
+  await signal('impl-default', plain.sessionId, now);
+  const c = await startClient(t, bin, root, env);
+  await waitInitialSnapshots(c);
+  await c.lua("vim.api.nvim_set_current_win(require('cland.layout').win.right); vim.api.nvim_win_set_width(0, 100)");
+  const stale = await c.waitScreen(s => s.includes('31m') && s.includes('Fable 98%'), 'three windows and stale age');
+  assert.match(stale, /claude-a\s+5h 12%/);
+  assert.ok(stale.includes(`↻${time(today)}`));
+  assert.ok(stale.includes(`↻${local(tomorrow, { weekday: 'short' })} ${time(tomorrow)}`));
+  assert.ok(stale.includes(`↻${date}`));
+  assert.ok(stale.indexOf('claude-a') < stale.indexOf('default:claude-code'));
+  const dim = await highlights(c);
+  assert.ok(dim.some(m => m.text.includes('31m') && m.group === 'ClandDim'));
+  assert.ok(dim.some(m => m.text.includes('5h 12%') && m.group === 'ClandDim'));
+  // Fresh default reading: the source's grade takes precedence even at a 98% share.
+  assert.ok(dim.some(m => m.text.includes('5h 12%') && m.group === 'ClandAmber'));
+  assert.ok(dim.some(m => m.text.includes('wk 3%') && m.group === 'ClandRed'));
+  assert.ok(dim.some(m => m.text.includes('Fable 98%') && m.group === 'ClandText'));
+  await c.input('<Esc>gg/impl-default<CR>');
+  await c.waitScreen(s => s.includes('Claude Code ·') && s.includes('impl-default'), 'default session expanded');
+  const meta = await c.lua<string[]>(`local b=require('cland.panels').bufs.sessions; local out={}
+    for _,line in ipairs(vim.api.nvim_buf_get_lines(b,0,-1,false)) do if line:match('^   Claude Code') then out[#out+1]=line end end
+    return out`);
+  assert.equal(meta.length, 1);
+  assert.doesNotMatch(meta[0]!, /default:|claude-a/);
+  await c.lua("vim.api.nvim_win_set_width(0, 30); require('cland.state').changed()");
+  const narrow = await c.waitScreen(s => s.includes('Fable 98%') && s.includes('31m'), 'wrapped windows');
+  assert.ok(narrow.includes(`↻${date}`));
+  const lines = await c.lua<Array<{ text: string; width: number }>>(`local out={}
+    for _,line in ipairs(vim.api.nvim_buf_get_lines(require('cland.panels').bufs.sessions,0,-1,false)) do
+      if line:find('verify:',1,true) then break end
+      out[#out+1]={text=line,width=vim.api.nvim_strwidth(line)}
+    end
+    return out`);
+  assert.ok(lines.every(line => line.width <= 30), JSON.stringify(lines));
+  assert.equal(lines.filter(line => line.text.includes('Fable 98%')).length, 2);
+  assert.ok(lines.some(line => /^   wk 3%/.test(line.text)), 'whole windows wrap to indented continuation lines');
+  assert.ok(lines.every(line => !line.text.includes('…')), 'wrapping retains all source text');
 });

@@ -28,6 +28,7 @@ local function snapshot()
     panels = { left = ui.left, right = ui.right or vim.NIL, dock = ui.dock },
     sizes = vim.deepcopy(ui.sizes),
     items_filter = ui.items_filter,
+    accounts_folded = ui.accounts_folded,
     current_release = ui.current_release or vim.NIL,
     explorer = explorer_snapshot(ui),
   }
@@ -65,6 +66,7 @@ local function validate(data)
   end
   assert(vim.tbl_contains(require('cland.items').FILTERS, data.items_filter) or vim.tbl_contains(require('cland.items').LAYERS, data.items_filter), 'invalid items filter')
   assert(data.current_release == nil or (type(data.current_release) == 'string' and data.current_release:match('^%a%-[1-9]%d*$')), 'invalid release pick')
+  assert(data.accounts_folded == nil or type(data.accounts_folded) == 'boolean', 'invalid accounts fold')
   data.plan_seen = data.plan_seen or vim.empty_dict()
   assert(type(data.plan_seen) == 'table', 'invalid plan receipts')
   for id, receipt in pairs(data.plan_seen) do
@@ -97,6 +99,7 @@ function M.load(root)
   local ui = state.S.ui
   ui.plan_seen = vim.empty_dict()
   ui.events = { filter = vim.empty_dict(), muted = {} }
+  ui.accounts_folded = false
   ui.explorer = M.explorer_defaults()
   ui.preset, ui.left, ui.right, ui.dock = nil, false, 'sessions', false
   ui.sizes, ui.items_filter, ui.current_release = vim.empty_dict(), 'board', nil
@@ -105,6 +108,7 @@ function M.load(root)
     return validate(vim.json.decode(table.concat(vim.fn.readfile(path), '\n'), { luanil = { object = true, array = true } }))
   end)
   if ok then
+    ui.accounts_folded = data.accounts_folded or false
     ui.plan_seen = data.plan_seen
     ui.events = data.events
     ui.preset = data.preset

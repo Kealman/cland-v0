@@ -58,8 +58,8 @@ group('verification', {{'q', 'Previous centre view'}})
 group('sessions', {{'l','Launch a session'}, {'a','Launch an Aide'}, {'<C-v>','Attach session in split'},
   {'d','Archive stopped session'}, {'x','Stop selected session (confirm)'}, {'r','Resume session'}, {'f','Launch session fresh with its brief'}, {'L','Agents log for selected session'},
   {'c','Session adapter capabilities'}, {'y','Confirm stopping session'},
-  {'za','Toggle background sessions fold'}, {'zo','Open background sessions fold'}, {'zc','Close background sessions fold'},
-  {'zR','Open all background sessions'}, {'zM','Fold all background sessions'}, {'<Tab>','Toggle background sessions fold'},
+  {'za','Toggle accounts or background sessions fold'}, {'zo','Open accounts or background sessions fold'}, {'zc','Close accounts or background sessions fold'},
+  {'zR','Open all background sessions'}, {'zM','Fold all background sessions'}, {'<Tab>','Toggle accounts or background sessions fold'},
   {'A','Show or hide session archive'}, {'n','Keep session unchanged'}, {'<Esc>','Cancel session confirmation'}})
 group('topics', {{'n','New topic'}, {'c','Close selected topic'}, {'r','Resolve selected topic'}})
 for i, title in ipairs({'Release board','Items in work','Items needing you','Done items','Map items','All items'}) do

@@ -33,13 +33,14 @@ test('sessions queue line follows hub snapshots and events, including events rac
   const busy: VerificationQueue = { ...idle, holder: { kind: 'run', id: 'run-1', session: 'impl', item: 'T-1', mode: 'full', pid: 42, worktree: '/candidate', since: idle.at, runMs: 1000, etaMs: 20000 }, waiters: [{ id: 'run-2', session: 'next', item: 'T-2', mode: 'full', worktree: '/next', position: 1, queuedAt: idle.at, waitMs: 5000, etaMs: 20000, expectedRunMs: 21000 }] };
   await control({ emit: { type: 'verification.queue', queue: busy } });
   await c.waitScreen(s => s.includes('verify: impl 1s · 1 waiting · next ~20s'), 'live holder, waiter and next ETA');
-  await c.input('<Esc><C-l>gg<CR><Space>s');
+  // Accounts precede verification; select the summary by its visible text.
+  await c.input('<Esc><C-l>gg/^verify:<CR><CR><Space>s');
   await c.waitScreen(s => s.includes('1. next') && s.includes('waiting 5s') && s.includes('admission ETA ~20s'), 'waiter identity and ETA in queue view');
   await c.input('q<Space>s');
   const human = { ...busy, holder: { ...busy.holder!, kind: 'hand run', session: 'human' } };
   await control({ emit: { type: 'verification.queue', queue: human } });
   await c.waitScreen(s => s.includes('verify: human 1s · 1 waiting · next ~20s'), 'admitted human summary');
-  await c.input('<C-l>gg<CR><Space>s');
+  await c.input('<C-l>gg/^verify:<CR><CR><Space>s');
   await c.waitScreen(s => s.includes('Holder: human') && s.includes('pid 42') && s.includes('/candidate'), 'human holder in queue view');
   await c.input('q<Space>s');
   const hand = { ...busy, holder: { ...busy.holder!, kind: 'hand run', id: null, session: null }, waiters: [{ ...busy.waiters[0]!, waitMs: 8000, etaMs: null }] };
@@ -48,7 +49,7 @@ test('sessions queue line follows hub snapshots and events, including events rac
   await control({ waitSnapshot: 'hub.status' });
   await control({ emit: { type: 'verification.queue', queue: hand } });
   await c.waitScreen(s => s.includes('verify: hand run 1s · 1 waiting · next ~20s'), 'hand-run summary while old status snapshot waits');
-  await c.input('<C-l>gg<CR><Space>s');
+  await c.input('<C-l>gg/^verify:<CR><CR><Space>s');
   await c.waitScreen(s => s.includes('Holder: hand run') && s.includes('pid 42') && s.includes('/candidate') && s.includes('since 2026-10-11T00:00:00Z') && s.includes('1. next') && s.includes('waiting 8s') && s.includes('admission ETA ?'), 'hand-run identity, start and unknown waiter ETA in queue view');
   await c.input('q<Space>s');
   await control({ releaseSnapshots: ['hub.status'] });

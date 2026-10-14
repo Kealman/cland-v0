@@ -37,7 +37,8 @@ test('verify summary opens the ordered queue and ages locally; palette and keys 
   await emit(busy);
   await c.waitScreen(s => s.includes('verify: impl-3 3m · 2 waiting · next ~6m'), 'holder summary');
   await c.waitScreen(s => s.includes('verify: impl-3 4m · 2 waiting'), 'run clock without another frame');
-  await c.input('<Esc><C-l>gg<CR>');
+  // Accounts precede verification; select the summary by its visible text.
+  await c.input('<Esc><C-l>gg/^verify:<CR><CR>');
   await c.input('<Space>s'); // Give the queue the full centre width.
   let screen = await c.waitScreen(s => s.includes('Verification queue') && s.includes('1. next-a') && s.includes('2. next-b'), 'queue demo');
   assert.ok(screen.indexOf('1. next-a') < screen.indexOf('2. next-b'), screen);

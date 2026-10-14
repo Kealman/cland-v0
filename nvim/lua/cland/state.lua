@@ -15,6 +15,7 @@ function M.reset(opts)
     topics = {}, -- Topic, as topic.list returns them
     archived_processes = {}, -- explicitly archived rows, fetched when A opens the archive
     archived_count = 0,
+    accounts = {}, -- account.list and account events, in registry order
     processes = {}, -- HarnessProcess rows from session.list
     presence = {}, -- connected sessions from hub.status (spokes started by hand included)
     adapters = {}, -- harness → capability table
@@ -43,6 +44,7 @@ function M.reset(opts)
       board_parent = nil, -- optional open container within the current release
       current_release = nil, -- the human's selected open container; nil uses the semver current release
       sessions_sel = nil, -- the cursor-selected session, expanded in the panel
+      accounts_folded = false,
       sessions_stopped_folded = true, -- the background layer (legacy key: stopped)
       sessions_archive = false,
       inbox_archive = false,
@@ -160,6 +162,7 @@ function M.sessions(include_archived)
       label = M.label(p.name, p.role, p.label),
       harness = p.harness,
       model = p.model,
+      account = p.account,
       cwd = p.cwd,
       state = live and (p.state or 'unknown') or 'unknown',
       status = p.status,
@@ -259,11 +262,13 @@ function M.reliability(s)
 end
 
 function M.folded(key)
+  if key == 'accounts' then return M.S.ui.accounts_folded end
   return key == 'stopped' and M.S.ui.sessions_stopped_folded
 end
 
 function M.set_fold(key, folded)
   if key == 'stopped' then M.S.ui.sessions_stopped_folded = folded end
+  if key == 'accounts' then M.S.ui.accounts_folded = folded end
 end
 
 -- The session count shares the hub classifier used by every surface.
@@ -381,6 +386,20 @@ function M.item_of_session(name)
       return it.id
     end
   end
+end
+
+--- Replace a reading by account name; new default accounts join after registry entries.
+function M.upsert_account(account)
+  if type(account) ~= 'table' or not account.name then return end
+  for i, previous in ipairs(M.S.accounts) do
+    if previous.name == account.name then
+      M.S.accounts[i] = account
+      M.changed()
+      return
+    end
+  end
+  table.insert(M.S.accounts, account)
+  M.changed()
 end
 
 --- A complete process view: renames and reused names replace the previous row.

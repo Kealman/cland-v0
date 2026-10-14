@@ -8,7 +8,7 @@ export async function waitInitialSnapshots(client: Client): Promise<void> {
   await client.waitScreen(s => s.includes('hub: connected'), 'connected before initial snapshots');
   await client.lua(`
     local types = { ['hub.status']=true, ['task.list']=true, ['topic.list']=true,
-      ['session.list']=true, ['artifact.list']=true }
+      ['session.list']=true, ['account.list']=true, ['artifact.list']=true }
     assert(vim.wait(5000, function()
       local c = require('cland').client
       if not c:connected() or c.inbox_waiters then return false end
