@@ -3,7 +3,7 @@ id: T-389
 kind: task
 title: "Timing diet: fake harnesses default to fast turns and polls with explicit slow opt-ins, timer-bound tests run on env-controlled schedules, and fixed sleeps become event waits"
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 8
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-264
 branch: t/T-389-timing-diet-fake-harnesses-default-to
 created: 2026-10-14T12:28:10.336Z
-updated: 2026-10-14T23:25:51.385Z
+updated: 2026-10-14T23:53:01.007Z
 ---
 
 ## Summary
@@ -61,37 +61,45 @@ The Implementer posts the list of every sleep touched with its class.
   - verified: rev-23 [reviewer] · run rev-2026-10-14-389-3 · 2026-10-14T21:54:18.308Z · commit dddf97804f795fe226ef48d91daa26e629ce46da
   - verified: rev-23 [reviewer] · run rev-2026-10-14-389-5 · 2026-10-14T22:33:40.682Z · commit 5d47648d5dfd4907a4a038052568c95edce02dc6
   - verified: rev-23 [reviewer] · run rev-2026-10-14-389-7 · 2026-10-14T23:25:13.138Z · commit e11eceda8c2d9d71c2510371e4c8ca836324468f
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-389-8 · 2026-10-14T23:52:57.896Z · commit e11eceda8c2d9d71c2510371e4c8ca836324468f
 - [x] C2. Measured alone on an idle machine, the three timer-bound tests ("prepare, run, fallback, cancel…" 33.0 s, "…default 30-second schedule…" 32.3 s, "the remote shell and the host deadline…" 15.1 s) each take under 5 s; before/after times and the one-minute load are posted on the item.
   - done: impl-389 · 2026-10-14T21:58:41.284Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-389-8 · 2026-10-14T23:52:57.896Z · commit e11eceda8c2d9d71c2510371e4c8ca836324468f
 - [x] C3. The 30-second default is still asserted, from the resolved schedule the hub reports with the env unset, and the sharing and early-stop behaviour is asserted at a short override.
   - verified: rev-23 [reviewer] · run rev-2026-10-14-389-1 · 2026-10-14T21:17:11.827Z · commit ef57847105ccd2da5851e1dff087075ff2b6ebb1
   - done: impl-389 · 2026-10-14T21:17:34.270Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-389-3 · 2026-10-14T21:54:18.308Z · commit dddf97804f795fe226ef48d91daa26e629ce46da
   - verified: rev-23 [reviewer] · run rev-2026-10-14-389-5 · 2026-10-14T22:33:40.682Z · commit 5d47648d5dfd4907a4a038052568c95edce02dc6
   - verified: rev-23 [reviewer] · run rev-2026-10-14-389-7 · 2026-10-14T23:25:13.138Z · commit e11eceda8c2d9d71c2510371e4c8ca836324468f
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-389-8 · 2026-10-14T23:52:57.896Z · commit e11eceda8c2d9d71c2510371e4c8ca836324468f
 - [x] C4. Every sleep of 0.5 s or more in `hub/test` and `nvim/test` is either an event wait, an interval multiple with its interval named, or kept with a comment, and the classified list is posted on the item.
   - verified: rev-23 [reviewer] · run rev-2026-10-14-389-1 · 2026-10-14T21:17:11.827Z · commit ef57847105ccd2da5851e1dff087075ff2b6ebb1
   - done: impl-389 · 2026-10-14T21:17:35.425Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-389-3 · 2026-10-14T21:54:18.308Z · commit dddf97804f795fe226ef48d91daa26e629ce46da
   - verified: rev-23 [reviewer] · run rev-2026-10-14-389-5 · 2026-10-14T22:33:40.682Z · commit 5d47648d5dfd4907a4a038052568c95edce02dc6
   - verified: rev-23 [reviewer] · run rev-2026-10-14-389-7 · 2026-10-14T23:25:13.138Z · commit e11eceda8c2d9d71c2510371e4c8ca836324468f
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-389-8 · 2026-10-14T23:52:57.896Z · commit e11eceda8c2d9d71c2510371e4c8ca836324468f
 - [x] C5. Measured: the whole-file times of `codex-adapter.test.ts`, `claude-code-adapter.test.ts`, `opencode-adapter.test.ts` and `session-usage.test.ts` on an idle machine fall by at least 25% in sum (median of three runs each), with before/after posted.
   - done: impl-389 · 2026-10-14T21:17:36.179Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-389-8 · 2026-10-14T23:52:57.897Z · commit e11eceda8c2d9d71c2510371e4c8ca836324468f
 - [x] C6. No assertion changes its meaning: the review request lists every changed assertion with what it still proves, and no test is skipped or deleted.
   - verified: rev-23 [reviewer] · run rev-2026-10-14-389-1 · 2026-10-14T21:17:11.827Z · commit ef57847105ccd2da5851e1dff087075ff2b6ebb1
   - done: impl-389 · 2026-10-14T21:53:04.275Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-389-3 · 2026-10-14T21:54:18.308Z · commit dddf97804f795fe226ef48d91daa26e629ce46da
   - verified: rev-23 [reviewer] · run rev-2026-10-14-389-5 · 2026-10-14T22:33:40.682Z · commit 5d47648d5dfd4907a4a038052568c95edce02dc6
   - verified: rev-23 [reviewer] · run rev-2026-10-14-389-7 · 2026-10-14T23:25:13.138Z · commit e11eceda8c2d9d71c2510371e4c8ca836324468f
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-389-8 · 2026-10-14T23:52:57.897Z · commit e11eceda8c2d9d71c2510371e4c8ca836324468f
 - [x] C7. Any race exposed by the fast defaults is reported as a Bug with its size, and its test's opt-in names that bug.
   - done: impl-389 · 2026-10-14T23:24:31.901Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-389-7 · 2026-10-14T23:25:13.138Z · commit e11eceda8c2d9d71c2510371e4c8ca836324468f
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-389-8 · 2026-10-14T23:52:57.897Z · commit e11eceda8c2d9d71c2510371e4c8ca836324468f
 - [x] C8. `hub/README.md` (the fake harnesses) and the comments at the top of the three fakes describe the fast defaults and how to opt into slow turns.
   - verified: rev-23 [reviewer] · run rev-2026-10-14-389-1 · 2026-10-14T21:17:11.827Z · commit ef57847105ccd2da5851e1dff087075ff2b6ebb1
   - done: impl-389 · 2026-10-14T21:17:39.158Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-389-3 · 2026-10-14T21:54:18.308Z · commit dddf97804f795fe226ef48d91daa26e629ce46da
   - verified: rev-23 [reviewer] · run rev-2026-10-14-389-5 · 2026-10-14T22:33:40.682Z · commit 5d47648d5dfd4907a4a038052568c95edce02dc6
   - verified: rev-23 [reviewer] · run rev-2026-10-14-389-7 · 2026-10-14T23:25:13.138Z · commit e11eceda8c2d9d71c2510371e4c8ca836324468f
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-389-8 · 2026-10-14T23:52:57.897Z · commit e11eceda8c2d9d71c2510371e4c8ca836324468f
 
 ## Comments
 
@@ -250,3 +258,20 @@ Criteria: C1 verified, C3 verified, C4 verified, C6 verified, C7 verified, C8 ve
 ### impl-389 · 2026-10-14T23:25:51.385Z
 
 Corrected source clear rev-2026-10-14-389-7 / A-2597 at e11eceda; C7 verified and source criteria refreshed. New exact-head local no-mode verification7e936a2a-4167-4f2d-b486-74cdbbe17e17 submitted, queue position1 behind impl-432, recipients rev-23/impl-389. Clean pushed head unchanged after verdict; all diagnostics removed. Idle awaiting accepted gate/final C2/C5 marks/merge, claim retained.
+
+### impl-389 · 2026-10-14T23:52:24.769Z
+
+Exact reviewed-head local no-mode verification7e936a2a-4167-4f2d-b486-74cdbbe17e17 passed at e11eceda: full mode,2075/2075 pass,0fail/cancel/skip/todo; hub and Neovim phases complete. Darwin arm64,Node24.21.0,Neovim0.12.5; queue619.43s, suite967.44s, peak1m load14.86. Result A-2600, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2600-suite-7e936a2a-4167-4f2d-b486-74cdbbe17e17-auto-at-e11eced.log. Clean source unchanged after source verdictrev-2026-10-14-389-7. C2 corrected watchdog refresh A-2577/A-2578 and C5 26.27% paired reduction A-2558 already checked by reviewer; awaiting final marks/verdict and supervising merge. Claim retained, no new source change.
+
+### rev-23 · 2026-10-14T23:52:57.897Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-389-8
+commit: e11eceda8c2d9d71c2510371e4c8ca836324468f
+scope: evidence
+
+Final clear; all C1–C8 claimant done marks confirmed, unchanged clean head. Local no-mode full 7e936a2a/A-2600 passes root typecheck and 2075/2075 (37 free, 1651 hub, 387 Neovim), zero failures/cancellations/skips/todo. Source A-2565/A-2576/A-2587/A-2597 retained; corrected audit, observer, parent-state and timing cases pass. C2/C5 judged under direct Coordinator2235f1f7 loaded A/B amendment, not idle/absolute under5. Refreshed watchdog A-2577/A-2578 median33.688→16.829s including stop, six green; unchanged shell/host16.529→13.521s and Claude33.149→7.005s keep A-2563 provenance, historical failed baseline disclosed. C5 raw24 green samples A-2558/A-2564 recalculate310.177282→228.694178s,26.269849% reduction; later independent corrections do not change measured cases/controls, no whole-suite or idle claim. Earlier4b2735cc/A-2572 scan race, fa8df54b/A-2582 T-441 and67ff8613/A-2593 parent-state failure all retained with reviewed corrections. All original assertions preserved, no high/medium findings. A-2601: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2601-t-389-final-exact-head-gate-and-loaded-timing-criteria.md.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified.
