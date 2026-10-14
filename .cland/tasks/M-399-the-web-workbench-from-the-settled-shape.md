@@ -1,0 +1,40 @@
+---
+id: M-399
+kind: map
+title: "The web workbench: from the settled shape to spec v0.2, mockups, a prototype and the epics"
+state: open
+labels:
+  - wayfinder:map
+assignee: null
+parent: null
+blocked_by: []
+topic: null
+branch: null
+created: 2026-10-14T13:03:48.458Z
+updated: 2026-10-14T13:03:48.458Z
+---
+
+## Destination
+
+Spec v0.2 (`docs/spec/v0.2.md`) complete and the v0.2 epics published under the release item R-377: the web workbench with everything the Neovim workbench shows and does, in the browser, the hub as the single source, Neovim kept as the console alternative.
+
+## Notes
+
+Charted on 2026-10-14 in the cland-design session from the human's direction of the same day, after two grilling rounds; what they settled is recorded in `docs/spec/v0.2.md` §3.1 to §3.8 (two clients of one protocol, the shell with a rail, a main area and a drawer, snapshot and deltas, threads and actions, editing parity with Neovim, notifications and the phone, serving and security, the scope of 0.2.0 without a terminal). This map stands on its own because a map cannot sit under a release. Skills: research, prototype (web mockups as a Design artifact on the human's current account with sources in docs/design/web/, then a clickable React prototype), grilling. Standing preferences: every artifact in English; sub-agents never use the hub; research on research/<name> branches and prototypes on prototype/<name>, never merged; recorders apply resolutions one at a time; the build of 0.2.0 starts after the v0.1.2 workbench lane.
+
+## Decisions so far
+
+(none yet)
+
+## Not yet specified
+
+- Direct edits in the web (drag to rank, move between epics): 0.2.x, after living with the web.
+- A harness terminal in the browser: a later theme; the protocol extension must not preclude it (research now).
+- Several projects in one browser (a home page over known hubs): later; 0.2.0 is per project.
+- The Accounts area's content beyond v0.1.2 §3.13 (limits per account) and the Artifacts area beyond v0.1 §3.6.
+- Sharing a read-only view with someone else (a reviewer, a client): out of the human's own session model; later.
+
+## Out of scope
+
+- The Neovim workbench's own evolution: it stays the alternative and takes the protocol extension when it needs it; nothing in this map changes its views.
+- Cloud hosting or an account service for cland: the hub serves the web on the human's machine or network only.
