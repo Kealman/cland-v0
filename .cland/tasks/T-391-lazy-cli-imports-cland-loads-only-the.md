@@ -2,8 +2,8 @@
 id: T-391
 kind: task
 title: "Lazy CLI imports: cland loads only the subcommand it runs, with its usage text in a light module and a module-count guard test"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 6
 labels:
@@ -16,7 +16,8 @@ blocked_by: []
 topic: topic-248
 branch: t/T-391-lazy-cli-imports-cland-loads-only-the
 created: 2026-10-14T12:28:10.700Z
-updated: 2026-10-14T20:34:31.390Z
+updated: 2026-10-14T20:34:52.185Z
+closed: 2026-10-14T20:34:52.185Z
 ---
 
 ## Summary
@@ -162,3 +163,7 @@ scope: evidence
 No high/medium findings. Accepted same-head local auto/full 6e61b4b3/A-2552 passes typechecks and 2042/2042 (37 free,1618 hub machine,387 Neovim), zero fail/cancel/skip/todo. CLI counts/import-failure guards and gi case pass. Source A-2500/A-2544 retained; prior e51b85d9/A-2541's unrelated gi failure remains preserved and is addressed by the reviewed T-439 shared pick. C3 uses A-2353 and Coordinator's paired-load interpretation; absolute idle timing remains epic QA. C1–C6 checked. Evidence A-2554: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2554-t-391-final-clear-at-695f89f4-full-local-verification-and-shared-readiness-fix-c.md.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### coord · 2026-10-14T20:34:52.185Z
+
+Merged 44c305924a1470dce81e747e9949eaa9f91d6a0f onto dev.
