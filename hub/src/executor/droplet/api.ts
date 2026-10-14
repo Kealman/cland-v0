@@ -26,18 +26,25 @@ export class DigitalOceanApi {
     const base = process.env.CLAND_DIGITALOCEAN_API ?? 'https://api.digitalocean.com/v2';
     const url = new URL(`${base.replace(/\/$/, '')}${path}`);
     const redact = (value: unknown): string => String(value ?? '').split(token).join('[redacted]');
-    const timeout = Math.ceil(Math.min(apiTimeoutMs(), deadline === undefined ? Infinity : deadline - Date.now()));
+    const remaining = deadline === undefined ? Infinity : deadline - Date.now();
+    const transportTimeout = apiTimeoutMs();
+    const timeout = Math.ceil(Math.min(transportTimeout, remaining));
     if (timeout <= 0) throw new DigitalOceanError(0, 'deadline', 'request deadline reached');
+    const signal = AbortSignal.timeout(timeout);
     try {
-      const response = await fetch(url, { method, headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, ...(body === undefined ? {} : { body: JSON.stringify(body) }), signal: AbortSignal.timeout(timeout), redirect: 'error' });
+      const response = await fetch(url, { method, headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, ...(body === undefined ? {} : { body: JSON.stringify(body) }), signal, redirect: 'error' });
       if (response.status === 204) return undefined as T;
       let value: Record<string, unknown>;
       try { value = await response.json() as Record<string, unknown>; }
-      catch { throw new DigitalOceanError(response.status, 'response', 'invalid JSON response'); }
+      catch (error) {
+        if (signal.aborted) throw error;
+        throw new DigitalOceanError(response.status, 'response', 'invalid JSON response');
+      }
       if (!response.ok) throw new DigitalOceanError(response.status, redact(value.id), redact(value.message));
       return value as T;
     } catch (error) {
       if (error instanceof DigitalOceanError) throw error;
+      if (signal.aborted && remaining <= transportTimeout) throw new DigitalOceanError(0, 'deadline', 'request deadline reached');
       throw new DigitalOceanError(0, 'transport', 'request failed or exceeded its time bound');
     }
   }

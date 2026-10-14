@@ -8,6 +8,8 @@ import { preparedDropletFixture } from './droplet-fixture.ts';
 import { createHash } from 'node:crypto';
 import { flushProjectLogs } from './harness.ts';
 import { DropletExecutor } from '../src/executor/droplet/droplet.ts';
+import { writeLease } from '../src/executor/droplet/lease.ts';
+import { DigitalOceanApi, DigitalOceanError } from '../src/executor/droplet/api.ts';
 import { ownProcess } from './process-cleanup.ts';
 import type { TestContext } from 'node:test';
 import { execFile } from 'node:child_process';
@@ -51,6 +53,24 @@ test('executor status names a missing token; reap refuses without it; CLI contro
       }
     }
   }
+});
+
+test('provider requests distinguish deadline aborts from transport time bounds', async t => {
+  const root = await tempProject(t);
+  const api = await fakeDigitalOcean('sentinel-lifecycle'); t.after(() => api.close());
+  await providerEnv(t, api, root);
+  api.faults.delayMs = 200;
+  const provider = new DigitalOceanApi();
+  await assert.rejects(provider.sizes(Date.now() + 50), error =>
+    error instanceof DigitalOceanError && error.status === 0 && error.id === 'deadline');
+  const previousTimeout = process.env.CLAND_TEST_DIGITALOCEAN_TIMEOUT_MS;
+  process.env.CLAND_TEST_DIGITALOCEAN_TIMEOUT_MS = '50';
+  t.after(() => {
+    if (previousTimeout === undefined) delete process.env.CLAND_TEST_DIGITALOCEAN_TIMEOUT_MS;
+    else process.env.CLAND_TEST_DIGITALOCEAN_TIMEOUT_MS = previousTimeout;
+  });
+  await assert.rejects(provider.sizes(Date.now() + 300000), error =>
+    error instanceof DigitalOceanError && error.status === 0 && error.id === 'transport');
 });
 
 test('an acquisition deadline destroys resources and keeps no active lease', async t => {
@@ -149,11 +169,20 @@ test('acquire reloads the droplet table, selects the first offered region and na
 test('the detached watchdog survives a stopped hub; restart consumes its receipt and hides released leases', async t => {
   const root = await tempProject(t);
   await mkdir(join(root, '.cland'), { recursive: true });
-  await writeFile(join(root, '.cland/config.toml'), '[verification]\nlifetime = "3s"\nrun_timeout = "1s"\n');
+  await writeFile(join(root, '.cland/config.toml'), '[verification]\nlifetime = "5m"\nrun_timeout = "1s"\n');
   const api = await fakeDigitalOcean('sentinel-lifecycle'); t.after(() => api.close());
   const env = await providerEnv(t, api, root);
+  const previousPoll = process.env.CLAND_TEST_DROPLET_WATCHDOG_POLL_MS;
+  process.env.CLAND_TEST_DROPLET_WATCHDOG_POLL_MS = '25';
+  t.after(() => {
+    if (previousPoll === undefined) delete process.env.CLAND_TEST_DROPLET_WATCHDOG_POLL_MS;
+    else process.env.CLAND_TEST_DROPLET_WATCHDOG_POLL_MS = previousPoll;
+  });
   const started = await startDaemon(t, root, env);
   const ui = await connectUi(t, started.discovery);
+  // Direct acquisition must wait for the hub's interrupted-create recovery.
+  const ready = await ui.request({ type: 'executor.status' });
+  assert.equal(ready.ok, true, ready.error);
   const executor = new DropletExecutor(root);
   const lease = await executor.acquire({ id: 'watchdog' }, new Date(Date.now() + 300000).toISOString());
   ownProcess(t, lease.watchdog!.pid);
@@ -161,6 +190,11 @@ test('the detached watchdog survives a stopped hub; restart consumes its receipt
   assert.ok(!rows.includes('sentinel-lifecycle'));
   assert.equal((await ui.request({ type: 'hub.stop' })).ok, true);
   await eventually('hub has stopped before the watchdog deadline', () => !pidAlive(started.discovery.pid) ? true : undefined);
+  assert.ok(pidAlive(lease.watchdog!.pid), 'the watchdog survives hub shutdown');
+  assert.equal(api.droplets.length, 1);
+  assert.equal(api.keys.length, 1);
+  // Expire only after acquisition and hub shutdown, regardless of host load.
+  await writeLease(root, { ...lease, deadline: new Date().toISOString() });
   const dir = join(root, '.cland/run/executor/leases', lease.lease);
   await eventually('watchdog confirms deletion without the hub', async () => {
     try { return JSON.parse(await readFile(join(dir, 'watchdog.json'), 'utf8')); } catch { return undefined; }
