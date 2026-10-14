@@ -2,8 +2,8 @@
 id: T-364
 kind: task
 title: "Idle accounts through the harness: an account with no running session is polled at most every 15 minutes through claude -p /usage or a short-lived codex app-server, never through a provider's endpoint"
-state: open
-status: review
+state: closed
+status: done
 size: L
 criterion_seq: 8
 labels:
@@ -18,7 +18,8 @@ blocked_by:
 topic: topic-240
 branch: t/T-364-idle-accounts-through-the-harness-an
 created: 2026-10-13T23:42:54.330Z
-updated: 2026-10-14T08:28:17.340Z
+updated: 2026-10-14T09:30:34.177Z
+closed: 2026-10-14T09:30:34.177Z
 ---
 
 ## Summary
@@ -104,22 +105,30 @@ The probes in `docs/research/account-limits/` show the commands: `claude-usage.s
 
 - [x] C1. At hub start, an idle fake Claude account and an idle fake Codex account are each polled once, under their own directory: the invocation logs show `-p /usage` with `CLAUDE_CONFIG_DIR` and `app-server` with `CODEX_HOME`. `cland account list --json` then shows their windows with `source: poll`, the Claude per-model weekly window included.
   - done: impl-364 · 2026-10-14T07:32:04.622Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-364-4 · 2026-10-14T09:30:10.775Z · commit 80c75d1e3ad32a4eb163affd53689d0f4c2e3377
 - [x] C2. An account with a running session is not polled. An OpenCode account is never polled and shows `no limit data`.
   - done: impl-364 · 2026-10-14T07:32:05.764Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-364-4 · 2026-10-14T09:30:10.775Z · commit 80c75d1e3ad32a4eb163affd53689d0f4c2e3377
 - [x] C3. A hub restart within the floor of the last poll polls nothing. With the floor shortened, the timer polls each idle account once per floor and never runs two polls at once for one account.
   - done: impl-364 · 2026-10-14T07:32:07.988Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-364-4 · 2026-10-14T09:30:10.776Z · commit 80c75d1e3ad32a4eb163affd53689d0f4c2e3377
 - [x] C4. `account.poll`, from the workbench opening the sessions panel or from `cland account list --refresh`, polls an idle account whose last poll is older than the minimum, and returns the cached reading otherwise.
   - done: impl-364 · 2026-10-14T07:32:08.961Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-364-4 · 2026-10-14T09:30:10.776Z · commit 80c75d1e3ad32a4eb163affd53689d0f4c2e3377
 - [x] C5. A failed poll (the fake exits 1 with a 429 line, or hangs past the bound and is killed) doubles that account's floor up to 60 minutes and journals `account-poll-failed` with one line. A later success restores the floor. A signed-out answer shows `signedOut` on the account and polls no faster.
   - done: impl-364 · 2026-10-14T07:32:10.162Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-364-4 · 2026-10-14T09:30:10.776Z · commit 80c75d1e3ad32a4eb163affd53689d0f4c2e3377
 - [x] C6. The source scan finds no provider host, no usage path and no read of a credential store in `hub/src`. The runtime recorder sees no non-loopback connection during a poll cycle. No poll runs `agents --json`, `auth status` or `doctor`.
   - done: impl-364 · 2026-10-14T07:49:53.756Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-364-4 · 2026-10-14T09:30:10.776Z · commit 80c75d1e3ad32a4eb163affd53689d0f4c2e3377
 - [x] C7. A poll process runs with the account's overlay, without the removed auth variables and without any `CLAND_*` variable, in a scratch directory under `.cland/run/accounts/`.
   - done: impl-364 · 2026-10-14T07:32:12.233Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-364-4 · 2026-10-14T09:30:10.776Z · commit 80c75d1e3ad32a4eb163affd53689d0f4c2e3377
 - [x] C8. `hub/README.md` describes the triggers, the floor, the minimum, the backoff, the commands it runs and the commands it never runs.
   - done: impl-364 · 2026-10-14T07:32:13.369Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-364-2 · 2026-10-14T07:56:38.450Z · commit d2ac7a49de76c925aee78acd7748ba9d0c1adb11
   - verified: rev-23 [reviewer] · run rev-2026-10-14-364-3 · 2026-10-14T08:28:17.340Z · commit 80c75d1e3ad32a4eb163affd53689d0f4c2e3377
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-364-4 · 2026-10-14T09:30:10.777Z · commit 80c75d1e3ad32a4eb163affd53689d0f4c2e3377
 
 ## Comments
 
@@ -165,3 +174,24 @@ scope: delta
 No high or medium findings. Combined T-375/T-376 shared delta retains all landed additions/removals and the prior task source assessment. Only the three T-376 test files changed; all match the landed files. T-375 API and lifecycle files already integrated at the previous head still match exactly. The poller and corrected fixture-isolation implementation are unchanged. C8 refreshed. C1–C7 await exact-head full verification. One full cland verify may now run at this exact head through the queue. A-2296: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2296-t-364-combined-shared-fix-delta-source-clear.md.
 
 Criteria: C8 verified.
+
+### impl-364 · 2026-10-14T09:29:40.010Z
+
+Exact reviewed-head full verification 13021c9d passed at 80c75d1e: root typechecks and 1995/1995 tests, zero failures/cancellations/skips/todo. Local darwin arm64, Node v24.21.0, Neovim v0.12.5. A-2311 is the durable full log. Both shared fixes are present; working tree remains clean and head unchanged. Awaiting Reviewer's final same-head verdict.
+
+### rev-23 · 2026-10-14T09:30:10.777Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-364-4
+commit: 80c75d1e3ad32a4eb163affd53689d0f4c2e3377
+scope: evidence
+
+No high or medium findings. Clean unchanged source-reviewed head. A-2311 full 13021c9d passes typecheck/all phases: 1995/1995, zero failures/cancellations/skips/todo. All ten poller cases, corrected inherited-default isolation, no-nonloopback/source guards and opening-only Neovim poll case pass. A-2290/A-2296 source reviews remain applicable; C1–C8 verified. A-2312: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2312-t-364-final-exact-head-verification-clear.md.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified.
+
+### coord · 2026-10-14T09:30:34.177Z
+
+Merged 9bf10c8d181bf8a42b4ee4416a4eb81144320c16 onto dev.

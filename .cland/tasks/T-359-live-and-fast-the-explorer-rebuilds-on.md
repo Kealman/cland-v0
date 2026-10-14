@@ -3,8 +3,9 @@ id: T-359
 kind: task
 title: "Live and fast: the explorer rebuilds on every hub event, redraws only on a visible change with the cursor kept on its item, builds a 300-item tree in under 15 ms, and is the centre view at startup"
 state: open
-status: planned
+status: review
 size: M
+criterion_seq: 7
 labels:
   - v0.1.2
   - nvim
@@ -13,10 +14,10 @@ assignee: null
 parent: E-276
 blocked_by:
   - T-356
-topic: null
-branch: null
+topic: topic-242
+branch: t/T-359-live-and-fast-the-explorer-rebuilds-on
 created: 2026-10-13T20:53:52.374Z
-updated: 2026-10-14T02:11:39.079Z
+updated: 2026-10-14T09:28:23.753Z
 ---
 
 ## Summary
@@ -95,10 +96,22 @@ The scope's history entries keep their own cursor keys, so `␣␣` still lands 
 
 ## Acceptance criteria
 
-- [ ] C1. A `task` event that moves the task under the cursor from `planned` to `in progress` (to another stage group) moves its row, and the cursor and the card stay on it.
-- [ ] C2. Removing the item under the cursor puts the cursor on the next item of the old order. Removing the last one puts it on the previous one. Reparenting the cursor's item into a folded epic puts it on that epic.
-- [ ] C3. A burst of 20 `task` events for items under a folded epic, whose visible counts do not change, causes no buffer write of the tree or the card. A `task` event that changes a visible count causes exactly one.
-- [ ] C4. `bench()` over the 300-item fixture with every node unfolded returns medians. The test asserts the bound and prints them, and the Implementer's dev-machine run, attached as an artifact, reads under 15 ms.
-- [ ] C5. A workbench started with no restart snapshot and no preset opens on the explorer at the kept scope. A preset or a restart snapshot opens as before.
+- [x] C1. A `task` event that moves the task under the cursor from `planned` to `in progress` (to another stage group) moves its row, and the cursor and the card stay on it.
+  - done: impl-359 · 2026-10-14T09:27:46.642Z
+- [x] C2. Removing the item under the cursor puts the cursor on the next item of the old order. Removing the last one puts it on the previous one. Reparenting the cursor's item into a folded epic puts it on that epic.
+  - done: impl-359 · 2026-10-14T09:27:47.549Z
+- [x] C3. A burst of 20 `task` events for items under a folded epic, whose visible counts do not change, causes no buffer write of the tree or the card. A `task` event that changes a visible count causes exactly one.
+  - done: impl-359 · 2026-10-14T09:27:48.223Z
+- [x] C4. `bench()` over the 300-item fixture with every node unfolded returns medians. The test asserts the bound and prints them, and the Implementer's dev-machine run, attached as an artifact, reads under 15 ms.
+  - done: impl-359 · 2026-10-14T09:27:49.218Z
+- [x] C5. A workbench started with no restart snapshot and no preset opens on the explorer at the kept scope. A preset or a restart snapshot opens as before.
+  - done: impl-359 · 2026-10-14T09:27:51.177Z
 - [ ] C6. `startClient`'s default and the QA runner's default keep General as the start for existing tests and cases. `npm run test:nvim` is green.
-- [ ] C7. `nvim/README.md` describes startup, live updates, the cursor's fallback order and the bench. The help line and the GLOSSARY's Explorer entry agree with the build.
+- [x] C7. `nvim/README.md` describes startup, live updates, the cursor's fallback order and the bench. The help line and the GLOSSARY's Explorer entry agree with the build.
+  - done: impl-359 · 2026-10-14T09:27:51.785Z
+
+## Comments
+
+### impl-359 · 2026-10-14T09:22:14.708Z
+
+Implemented cursor removal fallback and folded reparenting, visible-only event rendering with unchanged-buffer comparisons, updated-based detail invalidation, startup explorer, harness/QA General defaults and a restorative benchmark. First explorer-file run: 18/18 pass; fully unfolded 300-item dev-machine build median 8.414542 ms, write 2.089917 ms. Benchmark artifact posted in topic-242. Checking startup compatibility before requesting source review; full suite follows a clear source verdict.

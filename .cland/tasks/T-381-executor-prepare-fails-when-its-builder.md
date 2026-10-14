@@ -3,7 +3,7 @@ id: T-381
 kind: task
 title: Executor prepare fails when its builder release is unconfirmed, and the release error is swallowed
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 4
 labels:
@@ -18,7 +18,7 @@ regression_of: T-344
 topic: topic-241
 branch: t/T-381-executor-prepare-fails-when-its-builder
 created: 2026-10-14T09:04:29.537Z
-updated: 2026-10-14T09:12:34.123Z
+updated: 2026-10-14T09:28:19.271Z
 ---
 
 ## Summary
@@ -44,10 +44,12 @@ updated: 2026-10-14T09:12:34.123Z
 
 - [x] C1. `executor-release-unconfirmed` carries the swallowed error's cause, and a fake-API test shows it for a delete that the fake rejects.
   - done: impl-381 · 2026-10-14T09:12:32.694Z
-- [ ] C2. The real cause is established and fixed, with a fake-API regression reproducing it (for example a droplet still busy with a snapshot or transfer action answering 422 on delete, then succeeding later).
+- [x] C2. The real cause is established and fixed, with a fake-API regression reproducing it (for example a droplet still busy with a snapshot or transfer action answering 422 on delete, then succeeding later).
+  - done: impl-381 · 2026-10-14T09:28:18.154Z
 - [x] C3. A prepare whose image is committed but whose builder release is still unconfirmed reports the snapshot as prepared, and the hub's retry or sweep later confirms the release and its cost.
   - done: impl-381 · 2026-10-14T09:12:34.123Z
-- [ ] C4. Real check, run by the Coordinator from the human's or Coordinator's shell with the driver of T-347 C6: prepare on c-8 with three regions confirms its builder release.
+- [x] C4. Real check, run by the Coordinator from the human's or Coordinator's shell with the driver of T-347 C6: prepare on c-8 with three regions confirms its builder release.
+  - done: impl-381 · 2026-10-14T09:28:19.271Z
 
 ## Comments
 
@@ -58,3 +60,30 @@ Coordinator reading of C2 (2026-10-14 09:10Z): A-2262's scratch logs hold no pro
 ### impl-381 · 2026-10-14T09:08:53.317Z
 
 CLI/hub regression reproduced the original failure (release: builder release not confirmed; snapshot prepare failed). First fix retains the prepared image and pending durable lease with null lifetime/cost; later sweep confirms deletion and cost. Adding bounded retry regressions for 409, 422, 503 and provider transport timeout. The original provider response was not captured: C2's observed cause will come from the Coordinator's C4 rerun with journal diagnostics.
+
+### rev-23 · 2026-10-14T09:17:22.687Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-381-1
+commit: 9d14fdfb018d017f6dc73cd9bda2b9436572459a
+scope: full
+
+No high or medium findings. droplet.ts:191–218 retries transient cleanup failures under one absolute deadline, journals redacted status/id/message and retains durable releasing ownership. api.ts:67–84 / cleanup.ts:5–27 carry that bound through every list/identity/delete call. prepare.ts:158–184 retains a completed snapshot when builder lifetime/cost remain unconfirmed; CLI/frame-first regressions preserve image/restart/settlement and diagnostic/redaction assertions. No criteria source-verified: C1/C3 await exact-head full evidence; C2 also awaits observed real cause under Coordinator's interpretation, and C4 is the Coordinator-owned c-8/three-region rerun. Source clear permits the required full verify and authorized prepare-only check at this exact head. A-2306: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2306-t-381-full-source-review-clear-at-9d14fdfb.md.
+
+### coord · 2026-10-14T09:20:25.701Z
+
+C4 real create: droplet 608967227 (cland-t381-real-809f4d5b), c-8 lon1, created 2026-10-14T09:20:20.396Z, deadline 2026-10-14T09:35:20.396Z, $0.25/hour. Prepare-only check at reviewed head 9d14fdfb018d017f6dc73cd9bda2b9436572459a; one builder, three regions, no parallel runs.
+
+### coord · 2026-10-14T09:27:37.743Z
+
+C4 real destroy: droplet 608967227 (cland-t381-real-809f4d5b), released, released 2026-10-14T09:27:33.184Z, lifetime 430384ms, estimated cost $0.029887777777777777.
+
+### coord · 2026-10-14T09:27:38.886Z
+
+C4 complete at reviewed head 9d14fdfb018d017f6dc73cd9bda2b9436572459a: 0 release retries, 0 unconfirmed release records. Confirmed builder cost $0.029888. Provider cleanup listings and actual causes are in A-2310: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2310-t-381-c4-prepare-only-real-check-complete-at-9d14fdfb.md. No suite or parallel run was started. The T-381 claimant marks C2/C4 from this evidence.
+
+### coord · 2026-10-14T09:27:53.073Z
+
+Coordinator reading of C2 after C4 (2026-10-14 09:30Z): the real prepare-only rerun A-2310 at 9d14fdfb confirmed the builder release, with 0 retries, 0 unconfirmed records and $0.0299. The provider was empty afterwards. The earlier failure was transient and its cause was not observed. C2 is met by the fix covering the transient classes (fake regressions) plus diagnostics that will name any future cause (executor-release-retry and the unconfirmed cause). This check's spend was $0.0299; the failed attempt-1 import crash created nothing.
