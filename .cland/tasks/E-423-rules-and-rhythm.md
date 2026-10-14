@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-14T16:43:04.090Z
-updated: 2026-10-14T16:43:04.090Z
+updated: 2026-10-14T16:46:45.637Z
 ---
 
 ## Summary
@@ -27,7 +27,7 @@ Every session of every harness reads the same project rules, a broken chain of e
 ## Contents
 
 - **§3.2 The rulebook.**
-  - **The file.** `.cland/RULES.md` in the project: one rule per heading with an id `R-n`, a scope (all roles or named roles), the date, the reason and a status (active, retired). AGENTS.md stays the hand-written static instructions, and the harness memories become caches of what the rulebook holds.
+  - **The file.** `.cland/RULES.md` in the project: one rule per heading with an id a plain number, a scope (all roles or named roles), the date, the reason and a status (active, retired). AGENTS.md stays the hand-written static instructions, and the harness memories become caches of what the rulebook holds.
   - **How a rule is added.** `cland rule add` from the shell or the workbench, and a `rule.add` tool for sessions: the Coordinator records a rule when the human states one in a thread, instead of writing it into its private memory. A rule is edited and retired the same way.
   - **How it reaches sessions.** The hub puts the rules of a role into its clause at launch and into the brief, and delivers a new or changed rule to running sessions as a delivery (ADR 0007). The workbench shows the rulebook with each rule's origin.
   - **The seed.** One Aide task migrates the rules this project accumulated in the planning session's and the stand-in's memories: briefs address the role; no long foreground commands; one suite at a time; verdicts go to the lead; no routing around refusals; the batch-merge rule; verify the head before merging; check the verify queue before committing on `dev`.
@@ -45,11 +45,11 @@ Not in this epic: the rulebook and the heartbeat in the web workbench (v0.2); ru
 
 Choices where the spec is silent:
 
-- **The file's shape.** Each rule is a heading `## R-<n> <short title>`, then one line per field (`Scope: all` or `Scope: coordinator, implementer`; `Date:`; `Status: active` or `Status: retired <date>`; `Origin:`; `Reason:`), then the rule's text as a paragraph. Numbers count up in the file and are never reused, and a retired rule stays in it. The hub writes the file and re-reads it when it changes, as it does `roles.toml`, so a hand edit or a merge that changes it is read and delivered too; a file that does not parse is logged and the last good version stays in force. `cland init` writes an empty rulebook with a one-line header.
-- **Rule ids beside item ids.** `R-` is also the release prefix, and any prefix with a number resolves an item (v0.1.2 §3.1). Outside the rulebook a rule is always written `rule R-<n>`: clauses, briefs, deliveries and the events view use that form, and the workbench resolves `rule R-<n>` to the rulebook while a bare `R-<n>` stays an item reference. Rule numbers are the rulebook's own, not the item counter's.
+- **The file's shape.** Each rule is a heading `## <n> <short title>`, then one line per field (`Scope: all` or `Scope: coordinator, implementer`; `Date:`; `Status: active` or `Status: retired <date>`; `Origin:`; `Reason:`), then the rule's text as a paragraph. Numbers count up in the file and are never reused, and a retired rule stays in it. The hub writes the file and re-reads it when it changes, as it does `roles.toml`, so a hand edit or a merge that changes it is read and delivered too; a file that does not parse is logged and the last good version stays in force. `cland init` writes an empty rulebook with a one-line header.
+- **Rule ids beside item ids.** `R-` is also the release prefix, and any prefix with a number resolves an item (v0.1.2 §3.1). Outside the rulebook a rule is always written `rule <n>`: clauses, briefs, deliveries and the events view use that form, and the workbench resolves `rule <n>` to the rulebook while a bare `<n>` stays an item reference. Rule numbers are the rulebook's own, not the item counter's.
 - **The commands and tools.** `cland rule add <text> --scope <roles>|all --reason <text>`, `cland rule edit <id> [--text t] [--scope s] [--reason r]`, `cland rule retire <id> --reason <text>`, `cland rule list [--all] [--role r]` and `cland rule show <id>`, each with `--json`. The session tools `rule.add`, `rule.edit` and `rule.retire` take the same fields plus an origin, and every role may read with `rule.list`.
 - **Who records a rule.** The write tools belong to the Coordinator and the Aide. A Coordinator's write names as its origin the human's message that stated the rule (its topic and message id), and the hub refuses one whose origin is not a message by the human, so the Coordinator never invents a rule. An Aide speaks for the human, so its rule names the Aide as its origin. Other roles propose a rule to the Coordinator in their item topic. The shell and the workbench record `shell` or `workbench` as the origin, and the seed records the memory file.
-- **What the clause carries.** After the clause text, a section "Project rules for your role" lists each active rule in scope as `rule R-<n>: <text> (reason: <reason>)`, in id order; a role with none says so. The brief at launch ends with the same list, so a session reads the rules before its first action. Retired rules appear in neither.
+- **What the clause carries.** After the clause text, a section "Project rules for your role" lists each active rule in scope as `rule <n>: <text> (reason: <reason>)`, in id order; a role with none says so. The brief at launch ends with the same list, so a session reads the rules before its first action. Retired rules appear in neither.
 - **How a change arrives.** A new, edited or retired rule is an event of the new kind `rule`. The hub delivers it to every running session whose role is in its scope, with no subscription needed, at the session's next turn (`digest: turn`), carrying the rule's full new text or its retirement. A session that missed it still gets the current rules in the clause the hub re-sends at a reconnect. It is never a needs-you, and the events view shows it.
 - **The rulebook view.** `␣R`, free today, and the palette action "Rulebook" open the rulebook in the centre: one row per rule with its id, scope, status and date, active rules first and retired ones dimmed. Enter unfolds the text, the reason and the origin, and `gt` on an origin in a thread opens the topic at that message. `a` writes a new rule in a compose buffer (text, scope, reason) and records it on write, `e` edits the rule under the cursor, and `X` retires it with a reason.
 - **Memories as caches.** The Coordinator's and the Aide's clauses say to record a rule with `rule.add` and never only in a harness memory; a memory that repeats a rule names its id.
@@ -83,7 +83,7 @@ QA runs the demo below on `dev`, playing the human's part through the `cland` CL
 
 In a scratch project with the fake harnesses, QA launches a fake Claude Code Coordinator and a fake Codex Implementer. A rule added from the shell with the scope `implementer` reaches the Implementer at its next turn and appears in its clause after a reconnect, and not in the Coordinator's; an edit and a retirement reach it the same way. The Coordinator's `rule.add` from the human's message records a rule with that origin, while one with no human origin and an Implementer's are refused. In the headless workbench QA opens the rulebook with `␣R`, reads each rule's scope, status and date, unfolds one to its reason and origin, follows a thread origin to the human's message, and adds a rule from the view. With `cland crew set coordinator.heartbeat 1m`, QA plants a review item with no request, a ready item, a session idle past `idle_minutes`, a run that never reported and an unanswered ask, and reads each in the next heartbeat's digest; with the Coordinator busy, the heartbeat folds into its next turn's digest; the inbox count does not change, and the events view shows the heartbeat rows under their kind. QA links two scratch epics with `--follows`, merges the first one's last ticket and reads the follow met; a ticket of the second that touches a file the first changed is held with a refusal naming the pending demo, another merges, and the held one merges after the first epic's verdict. The demo runs at a named `dev` commit, and a commit that lands on `dev` meanwhile on other files does not block the verdict. On the live project, `cland rule list` shows the eight seeded rules with their origins.
 
-- [ ] C1. `.cland/RULES.md` holds one rule per heading with an id `R-n`, a scope, the date, the reason, a status and an origin; `cland rule add`, `edit`, `retire`, `list` and `show` read and write it, and the `rule.add`, `rule.edit` and `rule.retire` tools do the same for the Coordinator, from a human message only, and for the Aide.
+- [ ] C1. `.cland/RULES.md` holds one rule per heading with an id a plain number, a scope, the date, the reason, a status and an origin; `cland rule add`, `edit`, `retire`, `list` and `show` read and write it, and the `rule.add`, `rule.edit` and `rule.retire` tools do the same for the Coordinator, from a human message only, and for the Aide.
 - [ ] C2. Every role's clause carries the active rules in its scope, and the brief at launch lists them; a retired rule appears in neither.
 - [ ] C3. A new, edited or retired rule reaches each running session in its scope at its next turn as an event of kind `rule`, never a needs-you, and the clause re-sent at a reconnect carries the current rules.
 - [ ] C4. The workbench's rulebook view lists the rules with their scope, status and date, shows each rule's reason and origin, opens a thread origin at its message, and adds, edits and retires a rule.
@@ -106,7 +106,7 @@ The build uses each part as soon as it merges. When the heartbeat slice merges a
   - A long rulebook lengthens every clause, which is why a clause carries only the rules in its scope.
   - The hold could stall the next epic; it applies only to files the predecessor changed and lifts on the predecessor's verdict.
   - The demo lease shares `remote_budget` and the $3 daily cap with verification and E-387's sharded close runs, so a busy day sends a demo to the local machine.
-  - Rule ids share the release prefix; the `rule R-<n>` form keeps them apart.
+  - Rule ids share the release prefix; the `rule <n>` form keeps them apart.
 - **Size.** About eight sessions on the v0 scale.
 - **Order.** First in the rules lane, with no blocker. "OpenCode v2 hygiene" follows it, and "Release v0.1.3 from the item" waits for the ends of both lanes.
 
@@ -118,3 +118,5 @@ The build uses each part as soon as it merges. When the heartbeat slice merges a
 - Code: `hub/src/roles/clause.ts` (`clauseText`, `staffingClause`), `hub/src/crew.ts`, `hub/src/hub/inbox.ts` (`idleNotifyMs`), `hub/src/protocol.ts` (`EVENT_KINDS`), `nvim/lua/cland/event_kinds.lua`, `hub/src/tracker/tracker.ts`, `hub/src/merge.ts`, `hub/src/executor/`.
 - Skills: `qa`, `merge`, `to-tickets`, `plan-epic`.
 - GLOSSARY: Rulebook, Rule, Heartbeat, Follows, Role clause, Event, Subscription, Aide, Lease.
+
+Amendment (2026-10-14, the lead): rules carry a plain number and are written "rule 12" everywhere; no letter prefix, since `R-n` is a release id and any prefix resolves an item.

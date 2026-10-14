@@ -227,7 +227,7 @@ The project's own rules for how its work is done, kept with the project and fed 
 _Avoid_: memory (a session's private notes), guidelines, AGENTS.md (the static instructions)
 
 **Rule**:
-One entry of the Rulebook: an id, a scope of roles, the date, the reason and a status; active until retired.
+One entry of the Rulebook: a number ("rule 12", never a letter prefix, which items use), a scope of roles, the date, the reason and a status; active until retired.
 _Avoid_: policy (that is the launch policy of a role), preference, tip
 
 **Heartbeat**:
