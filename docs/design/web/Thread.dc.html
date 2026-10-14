@@ -63,7 +63,7 @@ button{cursor:pointer}
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 13h5l1.5 3h5l1.5-3h5"></path><path d="M5.5 5h13l2.5 8v6H3v-6z"></path></svg>
         <span style="position: absolute; top: 2px; right: 0; min-width: 16px; padding: 0 4px; border-radius: 8px; background: #f0b429; color: #1a1400; font-family: 'JetBrains Mono', monospace; font-size: 10px; line-height: 15px; font-weight: 700; text-align: center">3</span>
       </a>
-      <a href="#explorer" class="hv" aria-label="Items" title="Items · ␣e" style="display: flex; align-items: center; justify-content: center; width: 44px; height: 40px; border-radius: 8px; color: #a7b0bc">
+      <a href="#items" class="hv" aria-label="Items" title="Items · ␣e" style="display: flex; align-items: center; justify-content: center; width: 44px; height: 40px; border-radius: 8px; color: #a7b0bc">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h6M7 4v13h5M7 10.5h5"></path><rect x="13" y="8" width="7.5" height="5" rx="1"></rect><rect x="13" y="14.5" width="7.5" height="5" rx="1"></rect></svg>
       </a>
       <a href="#sessions" class="hv" aria-label="Sessions, 9 busy" title="Sessions · ␣s" style="position: relative; display: flex; align-items: center; justify-content: center; width: 44px; height: 40px; border-radius: 8px; color: #a7b0bc">
@@ -253,7 +253,6 @@ button{cursor:pointer}
                   <div style="display: flex; flex-direction: column; gap: 6px">
                     <button type="button" class="op" style="display: flex; align-items: center; gap: 10px; min-height: 36px; padding: 6px 10px; border: 1px solid #4f4220; border-radius: 6px; background: #19150d; text-align: left; font-size: 13px"><kbd style="font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 16px; padding: 0 5px; border: 1px solid #6b5823; border-radius: 4px; background: #2a2312; color: #f0b429">1</kbd><span>Run C6 now: two c-8 droplets in lon1, 15 minutes each, about $0.10</span></button>
                     <button type="button" class="op" style="display: flex; align-items: center; gap: 10px; min-height: 36px; padding: 6px 10px; border: 1px solid #4f4220; border-radius: 6px; background: #19150d; text-align: left; font-size: 13px"><kbd style="font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 16px; padding: 0 5px; border: 1px solid #6b5823; border-radius: 4px; background: #2a2312; color: #f0b429">2</kbd><span>Wait for T-398, then one fresh full run and C6 on the merged head</span></button>
-                    <button type="button" class="op" style="display: flex; align-items: center; gap: 10px; min-height: 36px; padding: 6px 10px; border: 1px solid #4f4220; border-radius: 6px; background: #19150d; text-align: left; font-size: 13px"><kbd style="font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 16px; padding: 0 5px; border: 1px solid #6b5823; border-radius: 4px; background: #2a2312; color: #f0b429">3</kbd><span>Ask me later</span></button>
                   </div>
                   <div style="display: flex; flex-direction: column; gap: 4px">
                     <label for="ans-347" style="font-size: 12px; color: #b9ae93">Or answer in your own words</label>
@@ -351,7 +350,7 @@ button{cursor:pointer}
               <dt style="color: #8a94a3">Status</dt><dd style="margin: 0"><span style="color: #35c4a0">◐ in progress</span> <span style="color: #8a94a3">since 12:41</span></dd>
               <dt style="color: #8a94a3">Claim</dt><dd style="margin: 0"><span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #35c4a0">impl-347</span> <span style="color: #8a94a3">Implementer · idle 58 m</span></dd>
               <dt style="color: #8a94a3">Holds</dt><dd style="margin: 0"><span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #35c4a0">rev-23</span> <span style="color: #8a94a3">Reviewer · since 03:23</span></dd>
-              <dt style="color: #8a94a3">Rank</dt><dd style="margin: 0">1st live of 8 <span style="color: #8a94a3">· size M · layer now</span></dd>
+              <dt style="color: #8a94a3">Layer</dt><dd style="margin: 0">now <span style="color: #8a94a3">· size M</span></dd>
               <dt style="color: #8a94a3">Labels</dt><dd style="margin: 0; font-family: 'JetBrains Mono', monospace; font-size: 11.5px">v0.1.2 · hub</dd>
             </dl>
           </section>
@@ -392,7 +391,7 @@ button{cursor:pointer}
               <input id="qm-347-pane" type="text" placeholder="Message coord about T-347…" style="flex: 1; min-width: 0; height: 28px; padding: 0 4px; border: 0; background: transparent; font-size: 13px" />
               <button type="submit" style="height: 26px; padding: 0 10px; border: 0; border-radius: 6px; background: #6aa5ff; color: #0b1424; font-size: 12.5px; font-weight: 600">Send</button>
             </div>
-            <label for="qm-347-pane" style="font-size: 12px; color: #8a94a3">To coord in topic-233, the thread on the left</label>
+            <label for="qm-347-pane" style="font-size: 12px; color: #8a94a3">To coord in General with T-347; <kbd style="font-family: 'JetBrains Mono', monospace; font-size: 10.5px; line-height: 14px; padding: 0 4px; border: 1px solid #3a4452; border-radius: 3px; background: #141a23; color: #d6dbe4">M</kbd> sends in topic-233</label>
           </form>
         </div>
       </section>

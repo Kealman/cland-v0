@@ -33,7 +33,7 @@ button{cursor:pointer}
       <span>Working with items</span>
       <span aria-hidden="true" style="font-size: 10px; color: #8a94a3">▾</span>
     </button>
-    <span title="P2: The top strip holds the project, the current release as a chip that switches the release (Explorer, Board, Plan and Graph follow it), the search button that opens the palette on Cmd+K, the Coordinator's chip, the needs-you pill (the inbox count in amber, a green check at zero), the hub's connection dot and ? for the keys." style="display: inline-block; padding: 0 5px; border-radius: 3px; background: #e6e9ef; color: #0b0e14; font-family: 'JetBrains Mono', monospace; font-size: 10px; line-height: 15px; font-weight: 700; white-space: nowrap; cursor: help">proposal P2</span>
+    <span title="P2: The top strip holds the project, the current release as a chip that switches the release (the Items area and its views follow it), the search button that opens the palette on Cmd+K, the Coordinator's chip, the needs-you pill (the inbox count in amber, a green check at zero), the hub's connection dot and ? for the keys." style="display: inline-block; padding: 0 5px; border-radius: 3px; background: #e6e9ef; color: #0b0e14; font-family: 'JetBrains Mono', monospace; font-size: 10px; line-height: 15px; font-weight: 700; white-space: nowrap; cursor: help">proposal P2</span>
     <button type="button" class="bt" style="margin-left: 20px; display: flex; align-items: center; gap: 10px; width: 23rem; height: 32px; padding: 0 8px 0 12px; border: 1px solid #2a3340; border-radius: 8px; background: #0b0e14; color: #8a94a3; text-align: left">
       <span style="flex: 1">Search items, sessions, topics and actions</span>
       <kbd style="font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 16px; padding: 0 5px; border: 1px solid #3a4452; border-radius: 4px; background: #141a23; color: #d6dbe4">⌘K</kbd>
@@ -63,7 +63,7 @@ button{cursor:pointer}
         <span style="flex: 1">Inbox</span>
         <span style="min-width: 20px; padding: 0 6px; border-radius: 10px; background: #f0b429; color: #1a1400; font-family: 'JetBrains Mono', monospace; font-size: 11.5px; line-height: 18px; font-weight: 700; text-align: center">3</span>
       </a>
-      <a href="#explorer" aria-current="page" style="display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 10px; border-radius: 6px; background: #182131; color: #eef1f5; font-weight: 600; text-decoration: none">
+      <a href="#items" aria-current="page" style="display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 10px; border-radius: 6px; background: #182131; color: #eef1f5; font-weight: 600; text-decoration: none">
         <span style="flex: 1">Items</span>
       </a>
       <a href="#sessions" class="hv" style="display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 10px; border-radius: 6px; color: #d6dbe4; text-decoration: none">
@@ -84,7 +84,7 @@ button{cursor:pointer}
         <span style="flex: 1">Accounts</span>
       </a>
       <div style="padding: 8px 10px 0">
-        <span title="P1: The rail lists the ten areas of spec v0.2 section 3.2 in the spec's order, as words, with a count only where it asks for attention: the inbox count as an amber badge, busy sessions in teal, new events in the watch colour. Hovering or focusing an area shows its key, the Neovim leader letter where one exists (Space n, e, b, s, t, G, E); the current area carries the selection background. Here Board is hovered." style="display: inline-block; padding: 0 5px; border-radius: 3px; background: #e6e9ef; color: #0b0e14; font-family: 'JetBrains Mono', monospace; font-size: 10px; line-height: 15px; font-weight: 700; white-space: nowrap; cursor: help">proposal P1</span>
+        <span title="P1: The rail lists the seven areas of spec v0.2 section 3.2 in the spec's order, as words: Inbox, Items, Sessions, Topics, Events, Artifacts and Accounts; Board, Graph and Plan are views of the Items area, not areas. A count shows only where it asks for attention: the inbox count as an amber badge, busy sessions in teal, new events in the watch colour. Hovering or focusing an area shows its key, the Neovim leader letter where one exists (Space n, e, s, t, E, a); the current area carries the selection background. Here Items is current." style="display: inline-block; padding: 0 5px; border-radius: 3px; background: #e6e9ef; color: #0b0e14; font-family: 'JetBrains Mono', monospace; font-size: 10px; line-height: 15px; font-weight: 700; white-space: nowrap; cursor: help">proposal P1</span>
       </div>
       <div style="margin-top: auto; padding-top: 16px; display: flex; flex-direction: column; gap: 6px">
         <button type="button" class="bt" style="display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 10px; border: 1px solid #222a35; border-radius: 6px; background: transparent; color: #8a94a3; font-size: 12.5px; text-align: left">
@@ -94,7 +94,7 @@ button{cursor:pointer}
     </nav>
 
     <main style="min-width: 0; display: flex; flex-direction: column; background: #0b0e14">
-      <div style="display: flex; align-items: center; gap: 12px; height: 52px; padding: 0 20px; border-bottom: 1px solid #1a212b">
+      <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; min-height: 52px; box-sizing: border-box; padding: 8px 20px; border-bottom: 1px solid #1a212b">
         <h1 style="margin: 0; font-size: 16px; line-height: 22px; font-weight: 600; color: #eef1f5">Items</h1>
         <div role="group" aria-label="View" style="display: inline-flex; align-items: center; gap: 2px; padding: 2px; border: 1px solid #222a35; border-radius: 7px; background: #0d1117">
           <button type="button" aria-pressed="true" style="height: 24px; padding: 0 10px; border: 0; border-radius: 5px; background: #182131; color: #eef1f5; font-size: 12.5px; font-weight: 600; cursor: pointer">Tree</button>
@@ -169,7 +169,7 @@ button{cursor:pointer}
             <span aria-hidden="true" style="color: #8a94a3; font-size: 10px">▾</span>
             <span style="color: #35c4a0; font-size: 12px">◐</span>
             <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #8a94a3">E-271</span>
-            <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; color: #eef1f5">Remote executors</span>
+            <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; color: #eef1f5"><span title="1st by rank in R-228" style="font-family: 'JetBrains Mono', monospace; font-size: 11.5px; font-weight: 400; color: #8a94a3">1</span> Remote executors</span>
             <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; text-align: right">7/8</span>
             <span role="img" aria-label="7 done, 1 in progress" style="display: flex; gap: 2px; align-items: center">
               <span style="width: 7px; height: 12px; border-radius: 2px; background: #7ddc8a"></span><span style="width: 7px; height: 12px; border-radius: 2px; background: #7ddc8a"></span><span style="width: 7px; height: 12px; border-radius: 2px; background: #7ddc8a"></span><span style="width: 7px; height: 12px; border-radius: 2px; background: #7ddc8a"></span><span style="width: 7px; height: 12px; border-radius: 2px; background: #7ddc8a"></span><span style="width: 7px; height: 12px; border-radius: 2px; background: #7ddc8a"></span><span style="width: 7px; height: 12px; border-radius: 2px; background: #7ddc8a"></span><span style="width: 7px; height: 12px; border-radius: 2px; background: #35c4a0"></span>
@@ -196,7 +196,7 @@ button{cursor:pointer}
             <span></span>
             <span style="color: #35c4a0; font-size: 12px">◐</span>
             <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #a7b0bc">T-347</span>
-            <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #eef1f5">The remote budget: remote runs are admitted up to remote_budget in parallel beside the local slot of one</span>
+            <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #eef1f5"><span title="1st by rank in E-271" style="font-family: 'JetBrains Mono', monospace; font-size: 11.5px; font-weight: 400; color: #8a94a3">1</span> The remote budget: remote runs are admitted up to remote_budget in parallel beside the local slot of one</span>
             <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis"><span style="color: #35c4a0">impl-347</span> <span style="color: #8a94a3">Implementer</span></span>
             <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #ff7b72; white-space: nowrap">✗ review r11</span>
             <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; text-align: right; color: #a7b0bc">6/7</span>
@@ -269,7 +269,7 @@ button{cursor:pointer}
             <span aria-hidden="true" style="color: #8a94a3; font-size: 10px">▸</span>
             <span style="color: #35c4a0; font-size: 12px">◐</span>
             <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #8a94a3">E-272</span>
-            <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; color: #eef1f5">Accounts and limits</span>
+            <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; color: #eef1f5"><span title="2nd by rank in R-228" style="font-family: 'JetBrains Mono', monospace; font-size: 11.5px; font-weight: 400; color: #8a94a3">2</span> Accounts and limits</span>
             <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; text-align: right">7/8</span>
             <span role="img" aria-label="7 done, 1 in qa" style="display: flex; gap: 2px; align-items: center">
               <span style="width: 7px; height: 12px; border-radius: 2px; background: #7ddc8a"></span><span style="width: 7px; height: 12px; border-radius: 2px; background: #7ddc8a"></span><span style="width: 7px; height: 12px; border-radius: 2px; background: #7ddc8a"></span><span style="width: 7px; height: 12px; border-radius: 2px; background: #7ddc8a"></span><span style="width: 7px; height: 12px; border-radius: 2px; background: #7ddc8a"></span><span style="width: 7px; height: 12px; border-radius: 2px; background: #7ddc8a"></span><span style="width: 7px; height: 12px; border-radius: 2px; background: #7ddc8a"></span><span style="width: 7px; height: 12px; border-radius: 2px; background: #f0b429"></span>
@@ -284,7 +284,7 @@ button{cursor:pointer}
             <span aria-hidden="true" style="color: #8a94a3; font-size: 10px">▸</span>
             <span style="color: #35c4a0; font-size: 12px">◐</span>
             <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #8a94a3">E-276</span>
-            <span style="display: flex; align-items: center; gap: 8px; min-width: 0; white-space: nowrap; overflow: hidden; font-weight: 500; color: #eef1f5"><span style="overflow: hidden; text-overflow: ellipsis">The explorer and the card</span><span title="P4: The keyboard cursor is the focus: its row (T-347 here) takes the selection background and a 2 px blue ring; j and k move it, and the card follows it. Hover (E-276 here) only lightens a row and never moves the cursor or the card; a click moves both." style="display: inline-block; padding: 0 5px; border-radius: 3px; background: #e6e9ef; color: #0b0e14; font-family: 'JetBrains Mono', monospace; font-size: 10px; line-height: 15px; font-weight: 700; white-space: nowrap; cursor: help">proposal P4</span></span>
+            <span style="display: flex; align-items: center; gap: 8px; min-width: 0; white-space: nowrap; overflow: hidden; font-weight: 500; color: #eef1f5"><span style="overflow: hidden; text-overflow: ellipsis"><span title="3rd by rank in R-228" style="font-family: 'JetBrains Mono', monospace; font-size: 11.5px; font-weight: 400; color: #8a94a3">3</span> The explorer and the card</span><span title="P4: The keyboard cursor is the focus: its row (T-347 here) takes the selection background and a 2 px blue ring; j and k move it, and the card follows it. Hover (E-276 here) only lightens a row and never moves the cursor or the card; a click moves both." style="display: inline-block; padding: 0 5px; border-radius: 3px; background: #e6e9ef; color: #0b0e14; font-family: 'JetBrains Mono', monospace; font-size: 10px; line-height: 15px; font-weight: 700; white-space: nowrap; cursor: help">proposal P4</span></span>
             <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; text-align: right">9/10</span>
             <span role="img" aria-label="9 done, 1 in progress" style="display: flex; gap: 2px; align-items: center">
               <span style="width: 7px; height: 12px; border-radius: 2px; background: #7ddc8a"></span><span style="width: 7px; height: 12px; border-radius: 2px; background: #7ddc8a"></span><span style="width: 7px; height: 12px; border-radius: 2px; background: #7ddc8a"></span><span style="width: 7px; height: 12px; border-radius: 2px; background: #7ddc8a"></span><span style="width: 7px; height: 12px; border-radius: 2px; background: #7ddc8a"></span><span style="width: 7px; height: 12px; border-radius: 2px; background: #7ddc8a"></span><span style="width: 7px; height: 12px; border-radius: 2px; background: #7ddc8a"></span><span style="width: 7px; height: 12px; border-radius: 2px; background: #7ddc8a"></span><span style="width: 7px; height: 12px; border-radius: 2px; background: #7ddc8a"></span><span style="width: 7px; height: 12px; border-radius: 2px; background: #35c4a0"></span>
@@ -299,7 +299,7 @@ button{cursor:pointer}
             <span aria-hidden="true" style="color: #8a94a3; font-size: 10px">▸</span>
             <span style="color: #35c4a0; font-size: 12px">◐</span>
             <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #8a94a3">E-386</span>
-            <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; color: #eef1f5">Test speed: quick wins</span>
+            <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; color: #eef1f5"><span title="4th by rank in R-228" style="font-family: 'JetBrains Mono', monospace; font-size: 11.5px; font-weight: 400; color: #8a94a3">4</span> Test speed: quick wins</span>
             <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; text-align: right">0/5</span>
             <span role="img" aria-label="2 in review, 1 in progress, 2 in backlog" style="display: flex; gap: 2px; align-items: center">
               <span style="width: 7px; height: 12px; border-radius: 2px; background: #f0b429"></span><span style="width: 7px; height: 12px; border-radius: 2px; background: #f0b429"></span><span style="width: 7px; height: 12px; border-radius: 2px; background: #35c4a0"></span><span style="width: 7px; height: 12px; border-radius: 2px; background: #2a3340"></span><span style="width: 7px; height: 12px; border-radius: 2px; background: #2a3340"></span>
@@ -314,7 +314,7 @@ button{cursor:pointer}
             <span aria-hidden="true" style="color: #8a94a3; font-size: 10px">▸</span>
             <span style="color: #8a94a3; font-size: 12px">○</span>
             <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #8a94a3">E-273</span>
-            <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #8a94a3">Release v0.1.2 from the item</span>
+            <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #8a94a3"><span title="5th by rank in R-228" style="font-family: 'JetBrains Mono', monospace; font-size: 11.5px; font-weight: 400; color: #8a94a3">5</span> Release v0.1.2 from the item</span>
             <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; text-align: right; color: #8a94a3">0/2</span>
             <span role="img" aria-label="2 in backlog" style="display: flex; gap: 2px; align-items: center">
               <span style="width: 7px; height: 12px; border-radius: 2px; background: #2a3340"></span><span style="width: 7px; height: 12px; border-radius: 2px; background: #2a3340"></span>
@@ -421,7 +421,7 @@ button{cursor:pointer}
           <div role="treeitem" aria-level="3" class="hv" style="display: grid; grid-template-columns: 14px 16px 50px minmax(0, 1fr) 150px 100px 40px; column-gap: 8px; align-items: center; height: 30px; padding: 0 12px 0 48px; border-radius: 6px">
             <span></span><span style="color: #8a94a3; font-size: 12px">○</span>
             <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #8a94a3">T-370</span>
-            <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #8a94a3">Claude Code mod bridge uses $.process.spawn, which the installed mods API no longer offers</span>
+            <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #8a94a3"><span title="1st by rank in C-325" style="font-family: 'JetBrains Mono', monospace; font-size: 11.5px; font-weight: 400; color: #8a94a3">1</span> Claude Code mod bridge uses $.process.spawn, which the installed mods API no longer offers</span>
             <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #8a94a3">backlog · M</span>
             <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #8a94a3">—</span>
             <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; text-align: right; color: #8a94a3">0/3</span>
@@ -429,7 +429,7 @@ button{cursor:pointer}
           <div role="treeitem" aria-level="3" class="hv" style="display: grid; grid-template-columns: 14px 16px 50px minmax(0, 1fr) 150px 100px 40px; column-gap: 8px; align-items: center; height: 30px; padding: 0 12px 0 48px; border-radius: 6px">
             <span></span><span style="color: #8a94a3; font-size: 12px">○</span>
             <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #8a94a3">T-372</span>
-            <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #8a94a3">A hub-relaunched Claude Code session's row stays exited and its pid unrecorded, so deliveries stop</span>
+            <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #8a94a3"><span title="2nd by rank in C-325" style="font-family: 'JetBrains Mono', monospace; font-size: 11.5px; font-weight: 400; color: #8a94a3">2</span> A hub-relaunched Claude Code session's row stays exited and its pid unrecorded, so deliveries stop</span>
             <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #8a94a3">backlog · S</span>
             <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #8a94a3">—</span>
             <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; text-align: right; color: #8a94a3">0/2</span>
@@ -437,7 +437,7 @@ button{cursor:pointer}
           <div role="treeitem" aria-level="3" class="hv" style="display: grid; grid-template-columns: 14px 16px 50px minmax(0, 1fr) 150px 100px 40px; column-gap: 8px; align-items: center; height: 30px; padding: 0 12px 0 48px; border-radius: 6px">
             <span></span><span style="color: #8a94a3; font-size: 12px">○</span>
             <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #8a94a3">T-360</span>
-            <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #8a94a3">Codex fake harness replies to the first channel block of a digest instead of the message addressed to it</span>
+            <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #8a94a3"><span title="3rd by rank in C-325" style="font-family: 'JetBrains Mono', monospace; font-size: 11.5px; font-weight: 400; color: #8a94a3">3</span> Codex fake harness replies to the first channel block of a digest instead of the message addressed to it</span>
             <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #8a94a3">backlog · S</span>
             <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #8a94a3">—</span>
             <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; text-align: right; color: #8a94a3">0/2</span>
@@ -508,7 +508,6 @@ button{cursor:pointer}
           <h3 style="margin: 0; font-size: 12.5px; line-height: 18px; font-weight: 600; color: #8a94a3">Facts</h3>
           <dl style="margin: 0; display: grid; grid-template-columns: 88px minmax(0, 1fr); column-gap: 12px; row-gap: 3px; font-size: 13px; line-height: 19px">
             <dt style="color: #8a94a3">Status</dt><dd style="margin: 0"><span style="color: #35c4a0">◐ in progress</span> <span style="color: #8a94a3">since rev-23's verdict at 12:41</span></dd>
-            <dt style="color: #8a94a3">Rank</dt><dd style="margin: 0">1st live of 8 in E-271 <span style="color: #8a94a3">· stage S5</span></dd>
             <dt style="color: #8a94a3">Layer</dt><dd style="margin: 0">now</dd>
             <dt style="color: #8a94a3">Size</dt><dd style="margin: 0">M</dd>
             <dt style="color: #8a94a3">Labels</dt><dd style="margin: 0; display: flex; gap: 6px"><span style="padding: 0 6px; border: 1px solid #2a3340; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 11.5px; line-height: 18px">v0.1.2</span><span style="padding: 0 6px; border: 1px solid #2a3340; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 11.5px; line-height: 18px">hub</span></dd>
@@ -572,10 +571,10 @@ button{cursor:pointer}
             <button type="submit" style="height: 28px; padding: 0 12px; border: 0; border-radius: 6px; background: #6aa5ff; color: #0b1424; font-size: 12.5px; font-weight: 600">Send</button>
           </div>
           <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 12px; color: #8a94a3">
-            <label for="qm-347">To coord in topic-233</label>
-            <button type="button" class="bt" style="height: 22px; padding: 0 7px; border: 1px solid #2a3340; border-radius: 5px; background: #141a23; font-size: 12px">General instead</button>
+            <label for="qm-347">To coord in General</label>
+            <button type="button" class="bt" style="display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 3px 0 7px; border: 1px solid #2a3340; border-radius: 5px; background: #141a23; font-size: 12px">topic-233 instead <kbd style="font-family: 'JetBrains Mono', monospace; font-size: 10.5px; line-height: 14px; padding: 0 4px; border: 1px solid #3a4452; border-radius: 3px; background: #10141b; color: #d6dbe4">M</kbd></button>
             <span>T-347 and the card line under the cursor ride along</span>
-            <span title="P8: The card's quick message stays one line; m focuses it. It goes to the Coordinator in the item's topic when the item has one, and the switch beside it sends to General instead, the M and m of the Neovim build. The item and the card line under the cursor ride along." style="display: inline-block; padding: 0 5px; border-radius: 3px; background: #e6e9ef; color: #0b0e14; font-family: 'JetBrains Mono', monospace; font-size: 10px; line-height: 15px; font-weight: 700; white-space: nowrap; cursor: help">proposal P8</span>
+            <span title="P8: The card's quick message stays one line; m focuses it. It goes to the Coordinator in General with the item's context, and the switch beside it, or M, sends to the item's topic instead (creating it when the item has none): the m and M of the Neovim build, spec v0.2 section 3.4. The item and the card line under the cursor ride along." style="display: inline-block; padding: 0 5px; border-radius: 3px; background: #e6e9ef; color: #0b0e14; font-family: 'JetBrains Mono', monospace; font-size: 10px; line-height: 15px; font-weight: 700; white-space: nowrap; cursor: help">proposal P8</span>
           </div>
         </form>
       </div>
@@ -588,14 +587,14 @@ button{cursor:pointer}
       <h2 style="margin: 0; font-size: 14px; line-height: 20px; font-weight: 600; color: #eef1f5">Proposals on this board</h2>
       <p style="margin: 0; max-width: 46rem; font-size: 12.5px; line-height: 19px; color: #a7b0bc"><span style="white-space: nowrap">Q-404</span>, spec v0.2 §3.2 with v0.1.2 §3.8 and §3.9. Wednesday 14 October, 13:42: the same moment as the Thread, Sessions and Phone boards. A white sticker marks a choice the spec leaves open; hover it for the full note.</p>
       <ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; max-width: 48rem">
-        <li style="display: grid; grid-template-columns: 82px minmax(0, 1fr); gap: 10px; font-size: 12.5px; line-height: 18px; color: #c9d1dc"><span><span style="display: inline-block; padding: 0 5px; border-radius: 3px; background: #e6e9ef; color: #0b0e14; font-family: 'JetBrains Mono', monospace; font-size: 10px; line-height: 15px; font-weight: 700; white-space: nowrap">proposal P1</span></span><span>The rail: the ten areas as words in the spec's order, a count only where it asks for attention, the key on hover and focus.</span></li>
+        <li style="display: grid; grid-template-columns: 82px minmax(0, 1fr); gap: 10px; font-size: 12.5px; line-height: 18px; color: #c9d1dc"><span><span style="display: inline-block; padding: 0 5px; border-radius: 3px; background: #e6e9ef; color: #0b0e14; font-family: 'JetBrains Mono', monospace; font-size: 10px; line-height: 15px; font-weight: 700; white-space: nowrap">proposal P1</span></span><span>The rail: the seven areas as words in the spec's order, a count only where it asks for attention, the key on hover and focus.</span></li>
         <li style="display: grid; grid-template-columns: 82px minmax(0, 1fr); gap: 10px; font-size: 12.5px; line-height: 18px; color: #c9d1dc"><span><span style="display: inline-block; padding: 0 5px; border-radius: 3px; background: #e6e9ef; color: #0b0e14; font-family: 'JetBrains Mono', monospace; font-size: 10px; line-height: 15px; font-weight: 700; white-space: nowrap">proposal P2</span></span><span>The top strip: project, release switcher, search on ⌘K, the Coordinator, the needs-you pill, the hub's live dot and the keys.</span></li>
         <li style="display: grid; grid-template-columns: 82px minmax(0, 1fr); gap: 10px; font-size: 12.5px; line-height: 18px; color: #c9d1dc"><span><span style="display: inline-block; padding: 0 5px; border-radius: 3px; background: #e6e9ef; color: #0b0e14; font-family: 'JetBrains Mono', monospace; font-size: 10px; line-height: 15px; font-weight: 700; white-space: nowrap">proposal P3</span></span><span>Golos Text for prose, with its Cyrillic; JetBrains Mono for ids, counts, times, keys and code; sentence-case headings.</span></li>
         <li style="display: grid; grid-template-columns: 82px minmax(0, 1fr); gap: 10px; font-size: 12.5px; line-height: 18px; color: #c9d1dc"><span><span style="display: inline-block; padding: 0 5px; border-radius: 3px; background: #e6e9ef; color: #0b0e14; font-family: 'JetBrains Mono', monospace; font-size: 10px; line-height: 15px; font-weight: 700; white-space: nowrap">proposal P4</span></span><span>The keyboard cursor is the focus: selection background and a blue ring on T-347. Hover only lightens a row, here E-276.</span></li>
         <li style="display: grid; grid-template-columns: 82px minmax(0, 1fr); gap: 10px; font-size: 12.5px; line-height: 18px; color: #c9d1dc"><span><span style="display: inline-block; padding: 0 5px; border-radius: 3px; background: #e6e9ef; color: #0b0e14; font-family: 'JetBrains Mono', monospace; font-size: 10px; line-height: 15px; font-weight: 700; white-space: nowrap">proposal P5</span></span><span>The tree's columns on one grid under a sticky header; one cell per child up to 16 children, a proportional bar beyond.</span></li>
         <li style="display: grid; grid-template-columns: 82px minmax(0, 1fr); gap: 10px; font-size: 12.5px; line-height: 18px; color: #c9d1dc"><span><span style="display: inline-block; padding: 0 5px; border-radius: 3px; background: #e6e9ef; color: #0b0e14; font-family: 'JetBrains Mono', monospace; font-size: 10px; line-height: 15px; font-weight: 700; white-space: nowrap">proposal P6</span></span><span>The drawer holds the card of the row under the cursor, with Split and Close; with nothing selected it stays closed.</span></li>
         <li style="display: grid; grid-template-columns: 82px minmax(0, 1fr); gap: 10px; font-size: 12.5px; line-height: 18px; color: #c9d1dc"><span><span style="display: inline-block; padding: 0 5px; border-radius: 3px; background: #e6e9ef; color: #0b0e14; font-family: 'JetBrains Mono', monospace; font-size: 10px; line-height: 15px; font-weight: 700; white-space: nowrap">proposal P7</span></span><span>The palette, sketched on the right: one input, the five prefixes, results grouped by kind with the matches in blue.</span></li>
-        <li style="display: grid; grid-template-columns: 82px minmax(0, 1fr); gap: 10px; font-size: 12.5px; line-height: 18px; color: #c9d1dc"><span><span style="display: inline-block; padding: 0 5px; border-radius: 3px; background: #e6e9ef; color: #0b0e14; font-family: 'JetBrains Mono', monospace; font-size: 10px; line-height: 15px; font-weight: 700; white-space: nowrap">proposal P8</span></span><span>The quick message stays one line on the card and goes to the item's topic, with a switch to General.</span></li>
+        <li style="display: grid; grid-template-columns: 82px minmax(0, 1fr); gap: 10px; font-size: 12.5px; line-height: 18px; color: #c9d1dc"><span><span style="display: inline-block; padding: 0 5px; border-radius: 3px; background: #e6e9ef; color: #0b0e14; font-family: 'JetBrains Mono', monospace; font-size: 10px; line-height: 15px; font-weight: 700; white-space: nowrap">proposal P8</span></span><span>The quick message stays one line on the card and goes to General with the item's context, with a switch, or M, to the item's topic.</span></li>
         <li style="display: grid; grid-template-columns: 82px minmax(0, 1fr); gap: 10px; font-size: 12.5px; line-height: 18px; color: #c9d1dc"><span><span style="display: inline-block; padding: 0 5px; border-radius: 3px; background: #e6e9ef; color: #0b0e14; font-family: 'JetBrains Mono', monospace; font-size: 10px; line-height: 15px; font-weight: 700; white-space: nowrap">proposal P9</span></span><span>The card's blocks in the order of v0.1.2 §3.9; criteria wrap; the verdict boxed all round in its colour.</span></li>
       </ul>
     </div>
@@ -642,7 +641,7 @@ button{cursor:pointer}
 </div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":2342}}'>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":2320}}'>
 class Component extends DCLogic {
   renderVals() { return {}; }
 }

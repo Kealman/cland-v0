@@ -63,7 +63,7 @@ button{cursor:pointer}
         <span style="flex: 1">Inbox</span>
         <span style="min-width: 20px; padding: 0 6px; border-radius: 10px; background: #f0b429; color: #1a1400; font-family: 'JetBrains Mono', monospace; font-size: 11.5px; line-height: 18px; font-weight: 700; text-align: center">11</span>
       </a>
-      <a href="#explorer" class="hv" style="display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 10px; border-radius: 6px; color: #d6dbe4; text-decoration: none"><span style="flex: 1">Items</span></a>
+      <a href="#items" class="hv" style="display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 10px; border-radius: 6px; color: #d6dbe4; text-decoration: none"><span style="flex: 1">Items</span></a>
       <a href="#sessions" class="hv" style="display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 10px; border-radius: 6px; color: #d6dbe4; text-decoration: none"><span style="flex: 1">Sessions</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #35c4a0">6 busy</span></a>
       <a href="#topics" class="hv" style="display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 10px; border-radius: 6px; color: #d6dbe4; text-decoration: none"><span style="flex: 1">Topics</span></a>
       <a href="#events" class="hv" style="display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 10px; border-radius: 6px; color: #d6dbe4; text-decoration: none"><span style="flex: 1">Events</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #c2a15e">41 new</span></a>
@@ -80,7 +80,6 @@ button{cursor:pointer}
         <span style="font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: #f0b429">11 need you</span>
         <span style="font-size: 12px; color: #8a94a3">the oldest waits 8 h 08 m</span>
         <span title="P17: Inbox rows are a table: the glyph, the subject, the text in prose, the sender in the role colour and the waiting age right-aligned. The selected row unfolds in place with real buttons; r, d and Enter work as in Neovim, and the keyboard cursor carries the focus ring." style="display: inline-block; padding: 0 5px; border-radius: 3px; background: #e6e9ef; color: #0b0e14; font-family: 'JetBrains Mono', monospace; font-size: 10px; line-height: 15px; font-weight: 700; white-space: nowrap; cursor: help">proposal P17</span>
-        <span style="margin-left: auto; font-size: 12px; color: #8a94a3">by kind · newest first · five a section</span>
       </div>
 
       <div style="display: flex; flex-direction: column; padding: 6px 8px 12px">
@@ -88,7 +87,6 @@ button{cursor:pointer}
         <div style="display: flex; align-items: baseline; gap: 8px; padding: 14px 12px 6px">
           <h2 style="margin: 0; font-size: 13.5px; line-height: 20px; font-weight: 600; color: #eef1f5">Asks and approvals</h2>
           <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #f0b429">7</span>
-          <span style="margin-left: auto; font-size: 12px; color: #8a94a3">asks are answered here · approvals here or in their session</span>
         </div>
 
         <div style="display: flex; flex-direction: column; border-radius: 8px; background: #182131; outline: 2px solid #6aa5ff; outline-offset: -2px">
@@ -104,7 +102,6 @@ button{cursor:pointer}
             <div style="display: flex; flex-direction: column; gap: 6px">
               <button type="button" class="op" style="display: flex; align-items: center; gap: 10px; min-height: 34px; padding: 5px 10px; border: 1px solid #4f4220; border-radius: 6px; background: #19150d; text-align: left; font-size: 13px"><kbd style="font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 16px; padding: 0 5px; border: 1px solid #6b5823; border-radius: 4px; background: #2a2312; color: #f0b429">1</kbd><span>Wait for T-381, then rerun C6 on the merged head</span></button>
               <button type="button" class="op" style="display: flex; align-items: center; gap: 10px; min-height: 34px; padding: 5px 10px; border: 1px solid #4f4220; border-radius: 6px; background: #19150d; text-align: left; font-size: 13px"><kbd style="font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 16px; padding: 0 5px; border: 1px solid #6b5823; border-radius: 4px; background: #2a2312; color: #f0b429">2</kbd><span>Rerun now on 205897b with the release check skipped</span></button>
-              <button type="button" class="op" style="display: flex; align-items: center; gap: 10px; min-height: 34px; padding: 5px 10px; border: 1px solid #4f4220; border-radius: 6px; background: #19150d; text-align: left; font-size: 13px"><kbd style="font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 16px; padding: 0 5px; border: 1px solid #6b5823; border-radius: 4px; background: #2a2312; color: #f0b429">3</kbd><span>Ask me later</span></button>
             </div>
             <div style="display: flex; flex-direction: column; gap: 4px">
               <label for="ans-347-inbox" style="font-size: 12px; color: #a7b0bc">Or answer in your own words</label>
@@ -150,14 +147,12 @@ button{cursor:pointer}
         <div style="display: flex; align-items: baseline; gap: 8px; padding: 18px 12px 6px">
           <h2 style="margin: 0; font-size: 13.5px; line-height: 20px; font-weight: 600; color: #eef1f5">Plan approvals</h2>
           <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #8a94a3">0</span>
-          <span style="margin-left: auto; font-size: 12px; color: #8a94a3">↵ opens the plan view · a approves there</span>
         </div>
-        <div style="display: flex; align-items: center; gap: 10px; min-height: 34px; padding: 0 12px 0 38px; font-size: 12.5px; color: #8a94a3"><span>Nothing waits for your approval. An epic whose plan runs under <code style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #a7b0bc">[plan] approval = "human"</code> lands here before its first session starts.</span><span title="P18: A section with nothing in it stays, as one muted line that says what would land there, so the four sections keep their places and the eye learns them." style="display: inline-block; padding: 0 5px; border-radius: 3px; background: #e6e9ef; color: #0b0e14; font-family: 'JetBrains Mono', monospace; font-size: 10px; line-height: 15px; font-weight: 700; white-space: nowrap; cursor: help">proposal P18</span></div>
+        <div style="display: flex; align-items: center; gap: 10px; min-height: 34px; padding: 0 12px 0 38px; font-size: 12.5px; color: #8a94a3"><span>Nothing waits for your approval. A plan under <code style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #a7b0bc">[plan] approval = "human"</code> lands here.</span><span title="P18: A section with nothing in it stays, as one muted line that says what would land there, so the four sections keep their places and the eye learns them." style="display: inline-block; padding: 0 5px; border-radius: 3px; background: #e6e9ef; color: #0b0e14; font-family: 'JetBrains Mono', monospace; font-size: 10px; line-height: 15px; font-weight: 700; white-space: nowrap; cursor: help">proposal P18</span></div>
 
         <div style="display: flex; align-items: baseline; gap: 8px; padding: 18px 12px 6px">
           <h2 style="margin: 0; font-size: 13.5px; line-height: 20px; font-weight: 600; color: #eef1f5">Requests to you</h2>
           <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #f0b429">2</span>
-          <span style="margin-left: auto; font-size: 12px; color: #8a94a3">do it and reply · d declines and tells the sender</span>
         </div>
         <div role="button" tabindex="-1" class="hv" style="display: grid; grid-template-columns: 16px 56px minmax(0, 1fr) 160px 76px; column-gap: 10px; align-items: center; height: 36px; padding: 0 12px; border-radius: 6px">
           <span style="color: #f0b429">◉</span>
@@ -177,7 +172,6 @@ button{cursor:pointer}
         <div style="display: flex; align-items: baseline; gap: 8px; padding: 18px 12px 6px">
           <h2 style="margin: 0; font-size: 13.5px; line-height: 20px; font-weight: 600; color: #eef1f5">Messages to you</h2>
           <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #f0b429">2</span>
-          <span style="margin-left: auto; font-size: 12px; color: #8a94a3">↵ read · r reply · d mark read</span>
         </div>
         <div role="button" tabindex="-1" class="hv" style="display: grid; grid-template-columns: 16px 56px minmax(0, 1fr) 160px 76px; column-gap: 10px; align-items: center; height: 36px; padding: 0 12px; border-radius: 6px">
           <span aria-hidden="true" style="justify-self: center; width: 3px; height: 14px; border-radius: 2px; background: #35c4a0"></span>
@@ -272,7 +266,6 @@ button{cursor:pointer}
               <ol style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 3px; font-size: 12.5px; line-height: 18px">
                 <li style="display: flex; gap: 8px"><span style="font-family: 'JetBrains Mono', monospace; color: #f0b429">1</span><span>Wait for T-381, then rerun C6 on the merged head</span></li>
                 <li style="display: flex; gap: 8px"><span style="font-family: 'JetBrains Mono', monospace; color: #f0b429">2</span><span>Rerun now on 205897b with the release check skipped</span></li>
-                <li style="display: flex; gap: 8px"><span style="font-family: 'JetBrains Mono', monospace; color: #f0b429">3</span><span>Ask me later</span></li>
               </ol>
               <span style="font-size: 12px; color: #b9ae93">1 to 3 answer from here too; the answer lands in this topic</span>
             </div>
@@ -305,7 +298,7 @@ button{cursor:pointer}
 </div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1373}}'>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1367}}'>
 class Component extends DCLogic {
   renderVals() { return {}; }
 }

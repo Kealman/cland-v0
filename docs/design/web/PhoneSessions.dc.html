@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>cland web: the sessions on a phone</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;700&amp;display=swap">
+<style>
+body{margin:0;background:#0b0e14;font-family:'Golos Text',system-ui,sans-serif}
+a{color:#6aa5ff;text-decoration:none}
+a:hover{color:#9cc3ff;text-decoration:underline}
+button,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+button:disabled{cursor:not-allowed}
+:focus-visible{outline:2px solid #6aa5ff;outline-offset:1px}
+::placeholder{color:#8a94a3;opacity:1}
+.op:hover{background:#2a2312 !important;border-color:#f0b429 !important}
+</style>
+</helmet>
+<div style="position: relative; width: 390px; height: 844px; overflow: hidden; display: flex; flex-direction: column; background: #0b0e14; color: #d6dbe4; font-family: 'Golos Text', system-ui, sans-serif; font-size: 14px; line-height: 20px">
+  <div aria-hidden="true" style="display: flex; align-items: center; justify-content: space-between; height: 44px; padding: 0 26px 0 30px; flex: none">
+    <span style="font-size: 15px; font-weight: 600; color: #eef1f5">13:46</span>
+    <span style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: #d6dbe4"><span>Wi-Fi</span><span style="display: inline-flex; align-items: center; width: 24px; height: 11px; padding: 1px; box-sizing: border-box; border: 1px solid #a7b0bc; border-radius: 3px"><span style="width: 78%; height: 100%; border-radius: 1px; background: #d6dbe4"></span></span></span>
+  </div>
+
+  <header style="position: relative; display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 8px 0 16px; box-sizing: border-box; border-bottom: 1px solid #222a35; background: #10141b; flex: none">
+    <span style="font-weight: 600; color: #eef1f5">cland-v0</span>
+    <span style="padding: 0 6px; border: 1px solid #2a3340; border-radius: 5px; font-family: 'JetBrains Mono', monospace; font-size: 11.5px; line-height: 20px; color: #a7b0bc">0.1.2</span>
+    <a href="#inbox" aria-label="3 need you" style="margin-left: auto; display: inline-flex; align-items: center; height: 44px; padding: 0 2px; text-decoration: none"><span style="display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 11px; box-sizing: border-box; border-radius: 15px; background: #f0b429; color: #1a1400; font-weight: 600; font-size: 13px"><span aria-hidden="true" style="font-size: 10px">▲</span>3</span></a>
+    <button type="button" aria-label="Search items, sessions, topics and actions" style="display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; padding: 0; border: 1px solid #2a3340; border-radius: 10px; background: #141a23; color: #d6dbe4">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"></circle><path d="M16 16l4.5 4.5"></path></svg>
+    </button>
+  </header>
+
+  <main style="position: relative; flex: 1; min-height: 0; overflow: hidden; display: block">
+    <div style="display: flex; align-items: baseline; gap: 8px; padding: 10px 16px 2px">
+      <h1 style="margin: 0; font-size: 18px; line-height: 24px; font-weight: 600; color: #eef1f5">Sessions</h1>
+      <span style="font-size: 12.5px; color: #8a94a3; white-space: nowrap"><span style="color: #f0b429">2 waiting</span> · <span style="color: #35c4a0">7 busy</span> · 3 idle · 1 yours</span>
+    </div>
+
+    <h2 style="position: relative; margin: 0">
+      <button type="button" aria-expanded="true" style="display: flex; align-items: center; gap: 8px; width: 100%; height: 44px; padding: 0 16px; border: 0; background: transparent; color: #eef1f5; font-size: 14px; line-height: 20px; font-weight: 600; text-align: left"><span aria-hidden="true" style="display: inline-block; width: 12px; font-size: 10px; color: #8a94a3">▾</span><span>Accounts</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 12.5px; font-weight: 400; color: #8a94a3">5</span></button><span title="P28: The accounts block is one strip of cells in the registry&#x27;s order: the name, the window with the highest used share and that share, and a thin meter along the cell&#x27;s foot, amber from 75 percent and red from 90. A limited account turns red and shows its reset time; an account without data shows a dash. A tap opens the Accounts area, read-only." style="position: absolute; top: 15px; right: 16px; display: inline-block; padding: 0 5px; border-radius: 3px; background: #e6e9ef; color: #0b0e14; font-family: 'JetBrains Mono', monospace; font-size: 10px; line-height: 15px; font-weight: 700; white-space: nowrap; cursor: help">proposal P28</span>
+    </h2>
+    <ul aria-label="Account meters" style="list-style: none; display: flex; gap: 5px; margin: 0; padding: 0 16px 6px">
+      <li style="flex: 1 1 auto; min-width: 0"><a href="#account-claude-main" title="claude-main · Claude Code · 5h 38% ↻16:10 · wk 71% ↻Thu 09:00 · read 2 m ago from coord" aria-label="claude-main, weekly window 71 percent used" style="position: relative; display: flex; flex-direction: column; justify-content: center; height: 44px; padding: 0 7px 2px; box-sizing: border-box; overflow: hidden; border: 1px solid #222a35; border-radius: 8px; background: #10141b; color: #d6dbe4; text-decoration: none; font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 16px; white-space: nowrap"><span style="color: #d6dbe4">claude-main</span><span><span style="color: #8a94a3">wk</span> 71%</span><span aria-hidden="true" style="position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: #1e2631"><span style="display: block; width: 71%; height: 100%; background: #a7b0bc"></span></span></a></li>
+      <li style="flex: 1 1 auto; min-width: 0"><a href="#account-claude-b" title="claude-b · Claude Code · limited until 15:00, hit at 12:31 by aide-2 · 5h 100% · wk 88% · wk opus 92% · polled 14 m ago" aria-label="claude-b, limited until 15:00" style="position: relative; display: flex; flex-direction: column; justify-content: center; height: 44px; padding: 0 7px 2px; box-sizing: border-box; overflow: hidden; border: 1px solid #5a2a28; border-radius: 8px; background: #1a0f11; color: #d6dbe4; text-decoration: none; font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 16px; white-space: nowrap"><span style="color: #ff7b72">claude-b</span><span style="color: #ff7b72">✗ 15:00</span><span aria-hidden="true" style="position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: #1e2631"><span style="display: block; width: 100%; height: 100%; background: #ff7b72"></span></span></a></li>
+      <li style="flex: 1 1 auto; min-width: 0"><a href="#account-codex-a" title="codex-a · Codex · 5h 81% ↻14:20 · wk 47% ↻Mon 07:12 · read under 1 m ago from impl-385" aria-label="codex-a, five-hour window 81 percent used" style="position: relative; display: flex; flex-direction: column; justify-content: center; height: 44px; padding: 0 7px 2px; box-sizing: border-box; overflow: hidden; border: 1px solid #222a35; border-radius: 8px; background: #10141b; color: #d6dbe4; text-decoration: none; font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 16px; white-space: nowrap"><span style="color: #d6dbe4">codex-a</span><span><span style="color: #8a94a3">5h</span> <span style="color: #f0b429">81%</span></span><span aria-hidden="true" style="position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: #1e2631"><span style="display: block; width: 81%; height: 100%; background: #f0b429"></span></span></a></li>
+      <li style="flex: 1 1 auto; min-width: 0"><a href="#account-codex-b" title="codex-b · Codex · 5h 12% ↻17:55 · wk 19% ↻Sun 04:03 · polled 9 m ago" aria-label="codex-b, weekly window 19 percent used" style="position: relative; display: flex; flex-direction: column; justify-content: center; height: 44px; padding: 0 7px 2px; box-sizing: border-box; overflow: hidden; border: 1px solid #222a35; border-radius: 8px; background: #10141b; color: #d6dbe4; text-decoration: none; font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 16px; white-space: nowrap"><span style="color: #d6dbe4">codex-b</span><span><span style="color: #8a94a3">wk</span> 19%</span><span aria-hidden="true" style="position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: #1e2631"><span style="display: block; width: 19%; height: 100%; background: #a7b0bc"></span></span></a></li>
+      <li style="flex: 1 1 auto; min-width: 0"><a href="#account-oc-b" title="oc-b · OpenCode · no limit data" aria-label="oc-b, no limit data" style="position: relative; display: flex; flex-direction: column; justify-content: center; height: 44px; padding: 0 7px 2px; box-sizing: border-box; overflow: hidden; border: 1px solid #222a35; border-radius: 8px; background: #10141b; color: #d6dbe4; text-decoration: none; font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 16px; white-space: nowrap"><span style="color: #d6dbe4">oc-b</span><span><span style="color: #8a94a3">—</span></span></a></li>
+    </ul>
+
+    <a href="#verify-queue" style="position: relative; display: flex; align-items: center; gap: 8px; height: 44px; margin: 2px 16px 2px; padding: 0 10px 0 12px; box-sizing: border-box; border: 1px solid #222a35; border-radius: 8px; background: #0d1117; color: #d6dbe4; text-decoration: none; white-space: nowrap">
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 11.5px">verify: impl-385 10m · remote 2/2 · 2 waiting</span>
+      <span aria-hidden="true" style="margin-left: auto; font-size: 18px; color: #8a94a3">›</span>
+      <span title="P29: The verify line keeps the one-line summary of v0.1.2 section 3.6 and opens the queue view as a full-height sheet: the slots, the waiters with their wait and ETA, and the metrics. The in-place queue view of P21 is too wide for a phone." style="position: absolute; top: -8px; right: 10px; display: inline-block; padding: 0 5px; border-radius: 3px; background: #e6e9ef; color: #0b0e14; font-family: 'JetBrains Mono', monospace; font-size: 10px; line-height: 15px; font-weight: 700; white-space: nowrap; cursor: help">proposal P29</span>
+    </a>
+
+    <h2 style="position: relative; margin: 0">
+      <button type="button" aria-expanded="true" style="display: flex; align-items: center; gap: 8px; width: 100%; height: 44px; padding: 0 16px; border: 0; background: transparent; color: #eef1f5; font-size: 14px; line-height: 20px; font-weight: 600; text-align: left"><span aria-hidden="true" style="display: inline-block; width: 12px; font-size: 10px; color: #8a94a3">▾</span><span>Yours</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 12.5px; font-weight: 400; color: #8a94a3">1</span></button>
+    </h2>
+    <a href="#session-aide-2" style="position: relative; display: grid; grid-template-columns: 14px minmax(0, 1fr) auto; grid-template-rows: 20px 18px; column-gap: 8px; row-gap: 3px; align-content: center; min-height: 52px; margin: 0 8px; padding: 0 10px; box-sizing: border-box; border-radius: 10px; color: #d6dbe4; text-decoration: none">
+      <span aria-hidden="true" style="grid-row: 1; grid-column: 1; color: #8a94a3; font-size: 13px">○</span>
+      <span style="grid-row: 1; grid-column: 2; display: flex; align-items: baseline; gap: 8px; min-width: 0; white-space: nowrap"><span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 500; color: #eef1f5">aide-2</span><span style="font-size: 12.5px; color: #6aa5ff">Aide</span></span>
+      <span style="grid-row: 1; grid-column: 3; justify-self: end; font-size: 12.5px; color: #8a94a3; white-space: nowrap">idle 1 h 15 m</span>
+      <span style="grid-row: 2; grid-column: 2 / 4; display: flex; align-items: baseline; gap: 6px; min-width: 0; overflow: hidden; white-space: nowrap; font-size: 12.5px; color: #8a94a3"><span>Claude Code</span><span aria-hidden="true">·</span><span style="color: #ff7b72">claude-b limited until 15:00</span></span>
+    </a>
+    <h2 style="position: relative; margin: 0">
+      <button type="button" aria-expanded="true" style="display: flex; align-items: center; gap: 8px; width: 100%; height: 44px; padding: 0 16px; border: 0; background: transparent; color: #eef1f5; font-size: 14px; line-height: 20px; font-weight: 600; text-align: left"><span aria-hidden="true" style="display: inline-block; width: 12px; font-size: 10px; color: #8a94a3">▾</span><span>Waiting</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 12.5px; font-weight: 400; color: #f0b429">2</span></button><span title="P30: The list has no row actions and no swipe actions. Stop, Resume, Archive and Capabilities sit on the session&#x27;s page, and Stop and Archive ask for a confirmation, so a scroll never stops a session." style="position: absolute; top: 15px; right: 16px; display: inline-block; padding: 0 5px; border-radius: 3px; background: #e6e9ef; color: #0b0e14; font-family: 'JetBrains Mono', monospace; font-size: 10px; line-height: 15px; font-weight: 700; white-space: nowrap; cursor: help">proposal P30</span>
+    </h2>
+    <a href="#session-impl-398" style="position: relative; display: grid; grid-template-columns: 14px minmax(0, 1fr) auto; grid-template-rows: 20px 18px; column-gap: 8px; row-gap: 3px; align-content: center; min-height: 52px; margin: 0 8px; padding: 0 10px; box-sizing: border-box; border-radius: 10px; color: #d6dbe4; text-decoration: none">
+      <span aria-hidden="true" style="grid-row: 1; grid-column: 1; color: #f0b429; font-size: 13px">▲</span>
+      <span style="grid-row: 1; grid-column: 2; display: flex; align-items: baseline; gap: 8px; min-width: 0; white-space: nowrap"><span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 500; color: #eef1f5">impl-398</span><span style="font-size: 12.5px; color: #bc8cff">Implementer</span></span>
+      <span style="grid-row: 1; grid-column: 3; justify-self: end; font-size: 12.5px; color: #f0b429; white-space: nowrap">waiting for approval 10 m</span>
+      <span style="grid-row: 2; grid-column: 2 / 4; display: flex; align-items: baseline; gap: 6px; min-width: 0; overflow: hidden; white-space: nowrap; font-size: 12.5px; color: #8a94a3"><span>Codex</span><span aria-hidden="true">·</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #35c4a0; white-space: nowrap">T-398</span><span aria-hidden="true">·</span><span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: #a7b0bc">node --test --test-concurrency=1 hub/test/lead-handover.test.ts</span></span>
+    </a>
+    <a href="#session-impl-397" style="position: relative; display: grid; grid-template-columns: 14px minmax(0, 1fr) auto; grid-template-rows: 20px 18px; column-gap: 8px; row-gap: 3px; align-content: center; min-height: 52px; margin: 0 8px; padding: 0 10px; box-sizing: border-box; border-radius: 10px; color: #d6dbe4; text-decoration: none">
+      <span aria-hidden="true" style="grid-row: 1; grid-column: 1; color: #f0b429; font-size: 13px">▲</span>
+      <span style="grid-row: 1; grid-column: 2; display: flex; align-items: baseline; gap: 8px; min-width: 0; white-space: nowrap"><span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 500; color: #eef1f5">impl-397</span><span style="font-size: 12.5px; color: #bc8cff">Implementer</span></span>
+      <span style="grid-row: 1; grid-column: 3; justify-self: end; font-size: 12.5px; color: #f0b429; white-space: nowrap">waiting for approval 6 m</span>
+      <span style="grid-row: 2; grid-column: 2 / 4; display: flex; align-items: baseline; gap: 6px; min-width: 0; overflow: hidden; white-space: nowrap; font-size: 12.5px; color: #8a94a3"><span>Codex</span><span aria-hidden="true">·</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #35c4a0; white-space: nowrap">T-397</span><span aria-hidden="true">·</span><span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: #a7b0bc">node --test hub/test/suite.test.ts</span></span>
+    </a>
+    <h2 style="position: relative; margin: 0">
+      <button type="button" aria-expanded="false" style="display: flex; align-items: center; gap: 8px; width: 100%; height: 44px; padding: 0 16px; border: 0; background: transparent; color: #eef1f5; font-size: 14px; line-height: 20px; font-weight: 600; text-align: left"><span aria-hidden="true" style="display: inline-block; width: 12px; font-size: 10px; color: #8a94a3">▸</span><span>Busy</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 12.5px; font-weight: 400; color: #35c4a0">7</span></button><span title="Decided (spec v0.2 section 3.2): every group and block folds, and the fold is remembered per client in the browser. This phone keeps Busy folded while the desktop board keeps Idle folded." style="position: absolute; top: 15px; right: 16px; display: inline-block; padding: 0 5px; border-radius: 3px; background: #c2a15e; color: #0b0e14; font-family: 'JetBrains Mono', monospace; font-size: 10px; line-height: 15px; font-weight: 700; white-space: nowrap; cursor: help">folds remembered</span>
+    </h2>
+    <h2 style="position: relative; margin: 0">
+      <button type="button" aria-expanded="true" style="display: flex; align-items: center; gap: 8px; width: 100%; height: 44px; padding: 0 16px; border: 0; background: transparent; color: #eef1f5; font-size: 14px; line-height: 20px; font-weight: 600; text-align: left"><span aria-hidden="true" style="display: inline-block; width: 12px; font-size: 10px; color: #8a94a3">▾</span><span>Idle</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 12.5px; font-weight: 400; color: #8a94a3">3</span></button>
+    </h2>
+    <a href="#session-impl-347" style="position: relative; display: grid; grid-template-columns: 14px minmax(0, 1fr) auto; grid-template-rows: 20px 18px; column-gap: 8px; row-gap: 3px; align-content: center; min-height: 52px; margin: 0 8px; padding: 0 10px; box-sizing: border-box; border-radius: 10px; color: #d6dbe4; text-decoration: none">
+      <span aria-hidden="true" style="grid-row: 1; grid-column: 1; color: #8a94a3; font-size: 13px">○</span>
+      <span style="grid-row: 1; grid-column: 2; display: flex; align-items: baseline; gap: 8px; min-width: 0; white-space: nowrap"><span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 500; color: #eef1f5">impl-347</span><span style="font-size: 12.5px; color: #bc8cff">Implementer</span></span>
+      <span style="grid-row: 1; grid-column: 3; justify-self: end; font-size: 12.5px; color: #8a94a3; white-space: nowrap">idle 1 h 02 m</span>
+      <span style="grid-row: 2; grid-column: 2 / 4; display: flex; align-items: baseline; gap: 6px; min-width: 0; overflow: hidden; white-space: nowrap; font-size: 12.5px; color: #8a94a3"><span>Codex</span><span aria-hidden="true">·</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #35c4a0; white-space: nowrap">T-347</span></span>
+    </a>
+    <a href="#session-rev-19" style="position: relative; display: grid; grid-template-columns: 14px minmax(0, 1fr) auto; grid-template-rows: 20px 18px; column-gap: 8px; row-gap: 3px; align-content: center; min-height: 52px; margin: 0 8px; padding: 0 10px; box-sizing: border-box; border-radius: 10px; color: #d6dbe4; text-decoration: none">
+      <span aria-hidden="true" style="grid-row: 1; grid-column: 1; color: #8a94a3; font-size: 13px">○</span>
+      <span style="grid-row: 1; grid-column: 2; display: flex; align-items: baseline; gap: 8px; min-width: 0; white-space: nowrap"><span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 500; color: #eef1f5">rev-19</span><span style="font-size: 12.5px; color: #f778ba">Reviewer</span></span>
+      <span style="grid-row: 1; grid-column: 3; justify-self: end; font-size: 12.5px; color: #8a94a3; white-space: nowrap">idle 1 m</span>
+      <span style="grid-row: 2; grid-column: 2 / 4; display: flex; align-items: baseline; gap: 6px; min-width: 0; overflow: hidden; white-space: nowrap; font-size: 12.5px; color: #8a94a3"><span>Codex</span><span aria-hidden="true">·</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #35c4a0; white-space: nowrap">T-385 review</span><span title="P27: A session row is two lines, 52 px tall: the glyph, the name and the role in its colour, with the state and its age at the right; below them the harness and the item, which is the claim, a verifier&#x27;s hold with its role and +N, or a requested item dimmed until the hold exists. A waiting row adds the command it waits on. Model, account and usage move to the session&#x27;s page, which a tap opens." style="margin-left: auto; display: inline-block; padding: 0 5px; border-radius: 3px; background: #e6e9ef; color: #0b0e14; font-family: 'JetBrains Mono', monospace; font-size: 10px; line-height: 15px; font-weight: 700; white-space: nowrap; cursor: help">proposal P27</span></span>
+    </a>
+    <a href="#session-qa-22" style="position: relative; display: grid; grid-template-columns: 14px minmax(0, 1fr) auto; grid-template-rows: 20px 18px; column-gap: 8px; row-gap: 3px; align-content: center; min-height: 52px; margin: 0 8px; padding: 0 10px; box-sizing: border-box; border-radius: 10px; color: #d6dbe4; text-decoration: none">
+      <span aria-hidden="true" style="grid-row: 1; grid-column: 1; color: #8a94a3; font-size: 13px">○</span>
+      <span style="grid-row: 1; grid-column: 2; display: flex; align-items: baseline; gap: 8px; min-width: 0; white-space: nowrap"><span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 500; color: #eef1f5">qa-22</span><span style="font-size: 12.5px; color: #56d4dd">QA</span></span>
+      <span style="grid-row: 1; grid-column: 3; justify-self: end; font-size: 12.5px; color: #8a94a3; white-space: nowrap">idle 2 m</span>
+      <span style="grid-row: 2; grid-column: 2 / 4; display: flex; align-items: baseline; gap: 6px; min-width: 0; overflow: hidden; white-space: nowrap; font-size: 12.5px; color: #8a94a3"><span>Codex</span><span aria-hidden="true">·</span><span title="requested by coord at 13:45; not held yet" style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #8a94a3; white-space: nowrap">T-389 qa</span></span>
+    </a>
+  </main>
+
+  <nav aria-label="Areas" style="position: relative; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); height: 84px; padding: 0 4px 22px; box-sizing: border-box; border-top: 1px solid #222a35; background: #10141b; flex: none">
+    <span title="P26: At phone width the bottom bar holds Inbox, Topics, Sessions, Events and More. More opens a small sheet above the bar, without a scrim, with Items, Artifacts and Accounts, each opening read-only; More again or a swipe down closes it. This amends P24, which reached those areas through search only; search stays in the header." style="position: absolute; top: -9px; right: 10px; display: inline-block; padding: 0 5px; border-radius: 3px; background: #e6e9ef; color: #0b0e14; font-family: 'JetBrains Mono', monospace; font-size: 10px; line-height: 15px; font-weight: 700; white-space: nowrap; cursor: help">proposal P26</span>
+    <a href="#inbox" style="position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: #a7b0bc; text-decoration: none">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 13h5l1.5 3h5l1.5-3h5"></path><path d="M5.5 5h13l2.5 8v6H3v-6z"></path></svg>
+      <span style="font-size: 11.5px">Inbox</span>
+      <span style="position: absolute; top: 8px; left: 52%; min-width: 16px; padding: 0 4px; box-sizing: border-box; border-radius: 8px; background: #f0b429; color: #1a1400; font-family: 'JetBrains Mono', monospace; font-size: 10px; line-height: 15px; font-weight: 700; text-align: center">3</span>
+    </a>
+    <a href="#topics" style="position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: #a7b0bc; text-decoration: none">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5h16v10H10l-4.5 3.5v-3.5H4z"></path></svg>
+      <span style="font-size: 11.5px">Topics</span>
+    </a>
+    <a href="#sessions" aria-current="page" style="position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: #eef1f5; text-decoration: none">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M7 10l2.5 2L7 14M12 14h4"></path></svg>
+      <span style="font-size: 11.5px; font-weight: 600">Sessions</span>
+      <span style="position: absolute; top: 8px; left: 52%; min-width: 16px; padding: 0 4px; box-sizing: border-box; border-radius: 8px; background: #123a31; color: #35c4a0; font-family: 'JetBrains Mono', monospace; font-size: 10px; line-height: 15px; font-weight: 700; text-align: center">7</span>
+    </a>
+    <a href="#events" style="position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: #a7b0bc; text-decoration: none">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l2.5-6 5 12 2.5-6H21"></path></svg>
+      <span style="font-size: 11.5px">Events</span>
+      <span style="position: absolute; top: 8px; left: 52%; min-width: 16px; padding: 0 4px; box-sizing: border-box; border-radius: 8px; background: #2e2716; color: #c2a15e; font-family: 'JetBrains Mono', monospace; font-size: 10px; line-height: 15px; font-weight: 700; text-align: center">16</span>
+    </a>
+    <button type="button" aria-expanded="false" aria-controls="more-sheet" style="position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; margin: 5px 3px; padding: 0; border: 0; border-radius: 12px; background: transparent; color: #a7b0bc">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true"><circle cx="5.5" cy="12" r="1.6"></circle><circle cx="12" cy="12" r="1.6"></circle><circle cx="18.5" cy="12" r="1.6"></circle></svg>
+      <span style="font-size: 11.5px">More</span>
+    </button>
+    <span aria-hidden="true" style="position: absolute; left: 50%; bottom: 8px; width: 134px; height: 5px; margin-left: -67px; border-radius: 3px; background: #d6dbe4"></span>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
