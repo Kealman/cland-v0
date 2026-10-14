@@ -6,9 +6,10 @@
 // - Answer latency: total receipt-to-answer time, including waits, over `ANSWER_BUDGET_MS` is a separate
 //   `slow-answer` event and counter; it never counts as blocking the event loop.
 // - The repeat guard: a read a connection sends again within `REPEAT_MS` of the same read's answer, with nothing
-//   written anywhere in between, is answered with that answer again instead of being handled. A client hears
-//   nothing older than it would have had it asked a moment earlier, and its own write is always seen (any write
-//   on any connection ends every replay). It is logged once per connection and tool as `too-fast`.
+//   written anywhere in between, is answered with that answer again instead of being handled.
+//   Pending identical reads in the same generation share their first answer, too: a cold burst cannot queue the
+//   handler again before that answer's promise resumes. A client hears nothing older than it would have had it
+//   asked a moment earlier, and its own write is always seen (any write on any connection ends every replay). It is logged once per connection and tool as `too-fast`.
 import type { LogFn } from '../log.ts';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import type { HubFrame } from '../protocol.ts';
@@ -127,7 +128,9 @@ export class ConversationGuard {
   /** A read's key → its latest answer, when and in which generation it was given. */
   readonly #answers = new Map<string, { at: number; generation: number; frame: HubFrame & { type: 'result' } }>();
   /** Request id → the read it asked, until answered. */
-  readonly #asked = new Map<string, { key: string; generation: number }>();
+  readonly #asked = new Map<string, { key: string; generation: number; repeats: string[] }>();
+  /** A read's key → the handler that pending repeats can join in the same generation. */
+  readonly #reading = new Map<string, { generation: number; repeats: string[] }>();
   readonly #told = new Set<string>();
   readonly #pending = new Map<string, { tool: string; client: string; started: number }>();
 
@@ -137,10 +140,10 @@ export class ConversationGuard {
   }
 
   /**
-   * A frame about to be handled: the answer to send instead when it repeats a read too fast, else null (handle it).
+   * A frame about to be handled: a completed answer, 'pending' if it shares an in-flight answer, or null (handle it).
    * A frame that is no read is a write: every replay ends.
    */
-  replay(frame: Record<string, unknown>, client: string): HubFrame | null {
+  replay(frame: Record<string, unknown>, client: string): HubFrame | 'pending' | null {
     const type = String(frame.type);
     if (typeof frame.id !== 'string') return null;
     this.#pending.set(frame.id, { tool: type, client, started: this.#hub.now() });
@@ -154,28 +157,43 @@ export class ConversationGuard {
     const last = this.#answers.get(key);
     if (last && last.generation === this.#hub.generation && this.#hub.now() - last.at < this.#hub.repeatMs) {
       this.#pending.delete(frame.id);
-      this.#hub.counters.replayed++;
-      if (!this.#told.has(type)) {
-        this.#told.add(type);
-        this.#log({ event: 'too-fast', tool: type, client, repeatMs: this.#hub.repeatMs, note: 'the same read again too soon: answered with its previous answer (logged once per connection and tool)' });
-      }
+      this.#repeated(type, client);
       return { ...last.frame, id };
     }
-    this.#asked.set(id, { key, generation: this.#hub.generation });
+    const reading = this.#reading.get(key);
+    if (reading && reading.generation === this.#hub.generation) {
+      reading.repeats.push(id);
+      this.#repeated(type, client);
+      return 'pending';
+    }
+    const repeats: string[] = [];
+    const asked = { key, generation: this.#hub.generation, repeats };
+    this.#asked.set(id, asked);
+    this.#reading.set(key, asked);
     return null;
   }
 
-  /** A result on its way out: a read's successful answer is kept for a repeat. */
-  answered(frame: HubFrame): void {
-    if (frame.type !== 'result') return;
+  #repeated(type: string, client: string): void {
+    this.#hub.counters.replayed++;
+    if (this.#told.has(type)) return;
+    this.#told.add(type);
+    this.#log({ event: 'too-fast', tool: type, client, repeatMs: this.#hub.repeatMs, note: 'the same read repeated: sharing its pending or previous answer (logged once per connection and tool)' });
+  }
+
+  /** Keep a successful read's answer and return correlated answers for reads that joined it while pending. */
+  answered(frame: HubFrame): HubFrame[] {
+    if (frame.type !== 'result') return [];
     const pending = this.#pending.get(frame.id);
     this.#pending.delete(frame.id);
     if (pending) this.#hub.answerElapsed(pending.tool, pending.client, pending.started);
     const asked = this.#asked.get(frame.id);
-    if (!asked) return;
+    if (!asked) return [];
     this.#asked.delete(frame.id);
-    if (!frame.ok || asked.generation !== this.#hub.generation) return;
-    this.#answers.set(asked.key, { at: this.#hub.now(), generation: asked.generation, frame });
-    if (this.#answers.size > 64) this.#answers.delete(this.#answers.keys().next().value!);
+    if (this.#reading.get(asked.key) === asked) this.#reading.delete(asked.key);
+    if (frame.ok && asked.generation === this.#hub.generation) {
+      this.#answers.set(asked.key, { at: this.#hub.now(), generation: asked.generation, frame });
+      if (this.#answers.size > 64) this.#answers.delete(this.#answers.keys().next().value!);
+    }
+    return asked.repeats.map(id => ({ ...frame, id }));
   }
 }

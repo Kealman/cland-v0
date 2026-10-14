@@ -687,7 +687,7 @@ export class Dispatcher {
       send: (frame) => {
         settle(frame);
         wire.send(core.visibility.frame(frame));
-        guard.answered(frame);
+        for (const repeated of guard.answered(frame)) peer.send(repeated);
       },
       close: (code, reason) => wire.close(code, reason),
       isOpen: () => wire.isOpen(),
@@ -1294,7 +1294,7 @@ export class Dispatcher {
         this.#guard.changed();
       }
       const again = guard.replay(frame, kind === 'spoke' ? (name ?? '?') : client);
-      if (again) wire.send(core.visibility.frame(again));
+      if (again && again !== 'pending') wire.send(core.visibility.frame(again));
       return again !== null;
     };
 

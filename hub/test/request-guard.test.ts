@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { connectUi, connectWsUi, startDaemon, startHub, tempProject, TEST_SECRET } from './harness.ts';
+import { connectSocket, connectUi, connectWsUi, startDaemon, startHub, tempProject, TEST_SECRET } from './harness.ts';
 import { createSocketEdge } from '../src/hub/socket.ts';
 import { Sessions } from '../src/adapters/sessions.ts';
 import { ProcessTable } from '../src/adapters/processes.ts';
@@ -88,6 +88,56 @@ test('a client flooding task.list does not hold up another client; its repeats a
   const created = await flood.request({ size: 'M', type: 'task.create', title: 'After the flood' });
   assert.equal(created.ok, true, created.error);
   assert.equal(((await flood.request({ type: 'task.list' })).value as { items: unknown[] }).items.length, 21);
+});
+
+test('a cold task.list burst in one socket write shares its pending answer', async (t) => {
+  const root = await tempProject(t);
+  await project(root, 0);
+  // No verdict refreshes: every read in this experiment has the same generation.
+  for (let i = 1; i <= 20; i++) {
+    await writeFile(join(root, '.cland', 'tasks', `T-${i}-item.md`), `---\nid: T-${i}\ntitle: Item ${i}\n---\n\nBody.\n`);
+  }
+  const { discovery } = await startDaemon(t, root);
+  const flood = await connectSocket(discovery.socket);
+  t.after(() => flood.close());
+  flood.send({ type: 'hello', protocol: 2, secret: discovery.secret, client: 'cold-flood' });
+  assert.equal((await flood.next()).type, 'welcome');
+
+  // No answer has been cached. A single write reproduces Linux's batching of the
+  // flood before the promise delivering the first task.list answer can resume.
+  flood.write(Array.from({ length: 500 }, (_, i) => JSON.stringify({ type: 'task.list', id: `cold-${i}` }) + '\n').join(''));
+  const ids = new Set<unknown>();
+  for (let i = 0; i < 500; i++) {
+    const answer = await flood.next(30_000);
+    assert.equal(answer.ok, true);
+    assert.equal((answer.value as { items: unknown[] }).items.length, 20);
+    ids.add(answer.id);
+  }
+  assert.deepEqual(ids, new Set(Array.from({ length: 500 }, (_, i) => `cold-${i}`)), 'every request receives its own correlated answer');
+  flood.send({ type: 'hub.status', id: 'status' });
+  const status = (await flood.next()).value as HubStatus;
+  assert.equal(status.requests?.replayed, 499, 'only the first cold read needs handling');
+
+  // A write between two pending pairs starts a new read generation. The tracker
+  // serializes task.view and task.edit, so the pairs must see different titles.
+  flood.write([
+    { type: 'task.view', item: 'T-1', id: 'before-1' },
+    { type: 'task.view', item: 'T-1', id: 'before-2' },
+    { type: 'task.edit', item: 'T-1', title: 'Renamed', id: 'write' },
+    { type: 'task.view', item: 'T-1', id: 'after-1' },
+    { type: 'task.view', item: 'T-1', id: 'after-2' },
+  ].map(frame => JSON.stringify(frame) + '\n').join(''));
+  const titles = new Map<unknown, string>();
+  for (let i = 0; i < 5; i++) {
+    const answer = await flood.next(30_000);
+    assert.equal(answer.ok, true);
+    titles.set(answer.id, (answer.value as { item: { title: string } }).item.title);
+  }
+  assert.deepEqual([...titles].sort(), [
+    ['after-1', 'Renamed'], ['after-2', 'Renamed'],
+    ['before-1', 'Item 1'], ['before-2', 'Item 1'],
+    ['write', 'Renamed'],
+  ]);
 });
 
 test('a handler over the budget is logged as slow-request with its tool, client and duration, and counted', async (t) => {
