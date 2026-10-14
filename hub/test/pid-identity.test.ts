@@ -18,6 +18,7 @@ import { clandWithEnv, connectUi, eventually, fakeClaude, fakeCodex, killDaemon,
 type Harness = { name: string; pid: number | null; status: string; state: string };
 
 /** Wait into the next wall-clock second: `ps -o lstart=` (the start time identity is checked by) has whole seconds. */
+// lstart has one-second resolution: a replacement needs a different wall-clock second.
 const nextSecond = () => sleep(1000 - (Date.now() % 1000) + 50);
 
 /** An unrelated process: what a reused pid belongs to. Killed when the test ends. It starts in a second of its own,
@@ -137,7 +138,7 @@ test('OpenCode: stop never signals a pid that another process reuses', async (t)
   const root = await tempProject(t);
   const home = await realpath(await mkdtemp(join(tmpdir(), 'fake-opencode-')));
   const cleanupHome = ownDirectory(undefined, home);
-  const env = { PATH: `${FAKE_OPENCODE_DIR}:${process.env.PATH ?? ''}`, FAKE_OPENCODE_HOME: home, FAKE_OPENCODE_TURN_MS: '100', CLAND_ADAPTER_POLL_MS: '200' };
+  const env = { PATH: `${FAKE_OPENCODE_DIR}:${process.env.PATH ?? ''}`, FAKE_OPENCODE_HOME: home, FAKE_OPENCODE_TURN_MS: '30', CLAND_ADAPTER_POLL_MS: '50' };
   t.after(async () => {
     for (const f of await readdir(join(home, 'servers')).catch(() => [] as string[])) {
       const s = JSON.parse(await readFile(join(home, 'servers', f), 'utf8').catch(() => 'null')) as { pid: number } | null;

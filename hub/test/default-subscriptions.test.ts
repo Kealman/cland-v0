@@ -111,8 +111,10 @@ test('a coalesced explicit event keeps later default lead provenance after an Ai
 
 test('a stopped pooled Reviewer reaches its item lead; a killed lead reaches the Coordinator with warning events', async t => {
   const root = await tempProject(t);
+  // Keep pushed states authoritative while the idle notification timer runs.
   const fake = await fakeClaude(t, { pollMs: 50, pushTrustMs: 120_000 });
-  const { discovery } = await startDaemon(t, root, { ...fake.env, CLAND_IDLE_NOTIFY_MS: '800' });
+  const idleNotifyMs = 800;
+  const { discovery } = await startDaemon(t, root, { ...fake.env, CLAND_IDLE_NOTIFY_MS: String(idleNotifyMs) });
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
@@ -139,7 +141,7 @@ test('a stopped pooled Reviewer reaches its item lead; a killed lead reaches the
   await signal('rev', 'turn-start');
   await signal('rev', 'turn-end');
   await signal('rev', 'turn-start');
-  await sleep(900);
+  await sleep(1.125 * idleNotifyMs); // Negative: busy cancels the configured 800 ms idle timer.
   assert.equal(ui.frames.some(f => f.type === 'message' && (f.message as Message).text === 'event · session.state · rev idle 1 min'), false, 'returning to busy cancels the idle timer');
   await signal('rev', 'turn-end');
   const idle = await ui.waitFor(f => f.type === 'message' && (f.message as Message).text === 'event · session.state · rev idle 1 min');

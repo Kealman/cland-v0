@@ -78,6 +78,7 @@ export class Sessions {
   readonly #root: string;
   readonly #log: LogFn;
   readonly #pushTrustMs: number;
+  readonly #usageEventMs: number;
   readonly #adapters = new Map<string, HarnessAdapter>();
   /** By session id: when the last applied signal happened, and when the last push signal arrived. */
   readonly #lastAt = new Map<string, number>();
@@ -265,6 +266,8 @@ export class Sessions {
     this.#root = options.root;
     this.#log = options.log ?? (() => {});
     this.#pushTrustMs = options.pushTrustMs ?? 15_000;
+    const usageEventMs = Number(process.env.CLAND_TEST_USAGE_EVENT_MS);
+    this.#usageEventMs = Number.isFinite(usageEventMs) && usageEventMs > 0 ? usageEventMs : USAGE_EVENT_MS;
     this.#tracker = options.tracker;
     this.#cleanup = options.cleanup ?? { archiveAfterItemMs: 3600000, archiveAfterStopMs: 86400000 };
     this.#untracker = this.#tracker?.onChange(change => {
@@ -503,7 +506,7 @@ export class Sessions {
         const account = p.account ?? `default:${p.harness}`;
         const reading = this.#pendingLimits.get(account);
         if (reading) {
-          if (this.#limitsPublishing.has(account) || Date.now() - (this.#limitsPublishedAt.get(account) ?? 0) < USAGE_EVENT_MS) this.#usageChanged(sessionId);
+          if (this.#limitsPublishing.has(account) || Date.now() - (this.#limitsPublishedAt.get(account) ?? 0) < this.#usageEventMs) this.#usageChanged(sessionId);
           else {
             this.#pendingLimits.delete(account);
             this.#limitsPublishing.add(account);
@@ -514,7 +517,7 @@ export class Sessions {
           }
         }
       }
-    }, USAGE_EVENT_MS);
+    }, this.#usageEventMs);
     timer.unref();
     this.#usageTimers.set(sessionId, timer);
   }

@@ -605,6 +605,7 @@ test(`a broad deciding-file list publishes once below the ${cap}-byte cap and st
 }
 
 test('suite CLI exits before its worker, posts one artifact-backed result as caller, and rejects duplicate active runs', async t => {
+  // Artificial work: leave the package running while the caller exits and duplicate admission is refused.
   const f = await fixture(t, 'node -e "setTimeout(()=>{console.log(\'ℹ tests 2\\nℹ pass 2\\nℹ fail 0\')},1200)"');
   const job = await f.launch();
   assert.equal(job.position, 1);
@@ -626,6 +627,7 @@ test('suite CLI exits before its worker, posts one artifact-backed result as cal
 });
 
 test('suite worker SIGKILL produces one crash result with its log', async t => {
+  // Artificial hold: this test kills or cancels the worker before the 30-second failure ceiling.
   const f = await fixture(t, 'node -e "setTimeout(()=>{},30000)"');
   const job = await f.launch();
   await eventually('package test started', async () => {
@@ -640,6 +642,7 @@ test('suite worker SIGKILL produces one crash result with its log', async t => {
 });
 
 test('suite cancel defaults to the caller’s active run, stops its child and posts one cancelled result', async t => {
+  // Artificial hold: this test kills or cancels the worker before the 30-second failure ceiling.
   const f = await fixture(t, 'node -e "require(\'fs\').writeFileSync(\'child-pid\',String(process.pid));setTimeout(()=>{},30000)"');
   const job = await f.launch();
   const child = await eventually('package child started', async () => readFile(join(f.root, 'child-pid'), 'utf8').then(Number, () => undefined));
@@ -665,6 +668,7 @@ test('suite cancel defaults to the caller’s active run, stops its child and po
 });
 
 test('suite cancel refuses another session’s run while the human can cancel it by id', async t => {
+  // Artificial hold: this test kills or cancels the worker before the 30-second failure ceiling.
   const f = await fixture(t, 'node -e "setTimeout(()=>{},30000)"', undefined, '[hygiene]\nmax_text_bytes = 384\n');
   const rev = await spawnSpoke({ discover: true, cwd: f.root, name: 'rev', sessionId: 'suite-reviewer', role: 'reviewer' });
   t.after(() => rev.close());
@@ -745,6 +749,7 @@ test('suite cancel cleans a running lock runner’s children and temporary root 
   const lock = join(f.root, 'suite.lock');
   const runner = fileURLToPath(new URL('./run-suite.ts', import.meta.url));
   await writeFile(join(f.root, 'running.mjs'), `import { runSuite } from ${JSON.stringify(runner)}; process.exitCode = await runSuite([['--test', 'holding.mjs']], { lockDirs: ${JSON.stringify([lock, `${lock}-nvim`])}, cwd: ${JSON.stringify(f.root)} });`);
+  // Artificial hold: cancellation ends this child; the 30-second timer is a failure ceiling.
   await writeFile(join(f.root, 'holding.mjs'), `import test from 'node:test'; import { writeFile } from 'node:fs/promises'; test('holding', async () => { await writeFile(${JSON.stringify(join(f.root, 'holder.json'))}, JSON.stringify({ pid: process.pid, root: process.env.TMPDIR })); await new Promise(r => setTimeout(r, 30000)); });`);
   const job = await f.launch();
   const holder = await eventually('runner child started', async () => readFile(join(f.root, 'holder.json'), 'utf8').then(text => JSON.parse(text) as { pid: number; root: string }, () => undefined));
@@ -761,6 +766,7 @@ test('suite cancel cleans a running lock runner’s children and temporary root 
 });
 
 test('cancelled results held by reporting permissions survive restart and publish once', async t => {
+  // Artificial hold: this test kills or cancels the worker before the 30-second failure ceiling.
   const f = await fixture(t, 'node -e "setTimeout(()=>{},30000)"');
   const job = await f.launch();
   await eventually('worker test started', async () => (await readFile(join(f.root, '.cland', 'run', 'suites', job.id, 'suite.log'), 'utf8')).includes('$ npm test') ? true : undefined);
@@ -789,6 +795,7 @@ test('cancelled results held by reporting permissions survive restart and publis
 });
 
 test('a worker killed while the hub is down is reported after restart and its package children are cleaned', async t => {
+  // Artificial hold: this test kills or cancels the worker before the 30-second failure ceiling.
   const f = await fixture(t, 'node -e "require(\'fs\').writeFileSync(\'child-pid\',String(process.pid));setTimeout(()=>{},30000)"');
   const job = await f.launch();
   const child = await eventually('package child identity', async () => readFile(join(f.root, 'child-pid'), 'utf8').then(Number, () => undefined));
@@ -824,6 +831,7 @@ test('submission requires caller artifact and send permissions before spawning',
 });
 
 test('hub restart recovers a worker that outlives it, without replaying the result', async t => {
+  // Artificial work: the worker must outlive the hub stop/restart to prove recovery without replay.
   const f = await fixture(t, 'node -e "setTimeout(()=>{console.log(\'ℹ tests 1\\nℹ pass 1\')},1800)"');
   const job = await f.launch();
   assert.equal((await cland(f.root, 'hub', 'stop')).code, 0);
@@ -1282,6 +1290,7 @@ fs.mkdir = async (...args) => {
   const root = String(args[0]);
   if (root.split('/').at(-1).startsWith('cland-suite-') && !existsSync(${JSON.stringify(marker)})) {
     await fs.writeFile(${JSON.stringify(marker)}, root);
+    // Artificial hold: kill the worker while borrowed-root publication is in flight.
     await new Promise(resolve => setTimeout(resolve, 30000));
   }
   return result;
@@ -1412,7 +1421,7 @@ test('verify --fresh runs despite a green cache and cache hits do not extend exp
   const cached = await f.launch();
   assert.equal(cached.cached?.run, forced.id);
   await eventually('cached completion', async () => (await f.results())[2]);
-  await new Promise(resolve => setTimeout(resolve, 6100));
+  await new Promise(resolve => setTimeout(resolve, 6100)); // Expiry: exceed the configured 0.1-minute cache lifetime without refreshing it.
   const expired = await f.launch();
   assert.equal(expired.cached, undefined);
   await eventually('expired completion', async () => (await f.results())[3]);

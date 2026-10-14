@@ -136,9 +136,9 @@ test('OpenCode restart recovery restores owned configuration, password and log w
   const root = await tempProject(t);
   const home = await tempProject(t, 'fake-opencode-');
   const { blocked, env } = await identityFence(root, {
-    PATH: process.env.PATH ?? '', FAKE_OPENCODE_HOME: home,
+    PATH: process.env.PATH ?? '', FAKE_OPENCODE_HOME: home, FAKE_OPENCODE_TURN_MS: '30',
     CLAND_OPENCODE_BIN: fileURLToPath(new URL('./fakes/opencode/opencode', import.meta.url)),
-    CLAND_STOP_GRACE_MS: '50', CLAND_ADAPTER_POLL_MS: '200',
+    CLAND_STOP_GRACE_MS: '50', CLAND_ADAPTER_POLL_MS: '50',
   });
   const dir = join(root, '.cland/opencode/impl');
   await mkdir(dir, { recursive: true });

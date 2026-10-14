@@ -183,6 +183,7 @@ test('pending valid plans count only with human approval, and approval, invalida
 
 test('asks and a fake harness command approval wait with ages, then journal each leave reason once', async t => {
   const root = await tempProject(t);
+  // Keep pushed approval and idle states authoritative throughout the inbox assertions.
   const fake = await fakeClaude(t, { pollMs: 60_000, pushTrustMs: 120_000 });
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
@@ -314,6 +315,7 @@ test('cland inbox prints all four sections, all rows with ages, plan size and fi
   const root = await tempProject(t);
   await mkdir(join(root, '.cland'), { recursive: true });
   await writeFile(join(root, '.cland/config.toml'), '[plan]\napproval = "human"\n');
+  // Keep pushed approval and idle states authoritative throughout the inbox assertions.
   const fake = await fakeClaude(t, { pollMs: 60_000, pushTrustMs: 120_000 });
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);

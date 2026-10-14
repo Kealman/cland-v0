@@ -88,6 +88,7 @@ test('ready starts the nearest supervising Lead once, while intermediate events 
 
 test('long idle and death climb from item to epic to release; stopped Leads leave inherited routing', async t => {
   const root = await tempProject(t);
+  // Keep pushed idle and death states authoritative while testing inherited routing.
   const fake = await fakeClaude(t, { pollMs: 50, pushTrustMs: 120_000 });
   const { discovery } = await startDaemon(t, root, { ...fake.env, CLAND_IDLE_NOTIFY_MS: '800' });
   const ui = await connectUi(t, discovery);

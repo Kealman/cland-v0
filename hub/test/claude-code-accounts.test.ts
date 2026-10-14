@@ -9,13 +9,13 @@ import { clandWithEnv, connectUi, eventually, FAKE_CLAUDE_DIR, fakeClaude, killD
 
 async function fixture(t: TestContext, extraEnv: Record<string, string> = {}) {
   const root = await tempProject(t);
-  const fake = await fakeClaude(t, { pollMs: 200 });
+  const fake = await fakeClaude(t);
   const config = join(root, 'registry');
   const dirs = { a: join(root, 'claude-a'), b: join(root, "claude-b's directory"), idle: join(root, 'idle'), default: join(root, 'default') };
   for (const dir of [...Object.values(dirs), join(config, 'cland')]) await mkdir(dir, { recursive: true });
   const registry = join(config, 'cland', 'accounts.toml');
   await writeFile(registry, Object.entries(dirs).filter(([name]) => name !== 'default').map(([name, dir]) => `[accounts.claude-${name}]\nharness = "claude-code"\nconfig_dir = ${JSON.stringify(dir)}\n`).join(''));
-  const env = { ...fake.env, CLAND_CLAUDE_BIN: join(FAKE_CLAUDE_DIR, 'claude'), XDG_CONFIG_HOME: config, CLAUDE_CONFIG_DIR: dirs.default, ANTHROPIC_API_KEY: 'fake-key', ANTHROPIC_AUTH_TOKEN: 'fake-auth', CLAUDE_CODE_OAUTH_TOKEN: 'fake-oauth', ...extraEnv };
+  const env: Record<string, string> = { ...fake.env, CLAND_CLAUDE_BIN: join(FAKE_CLAUDE_DIR, 'claude'), XDG_CONFIG_HOME: config, CLAUDE_CONFIG_DIR: dirs.default, ANTHROPIC_API_KEY: 'fake-key', ANTHROPIC_AUTH_TOKEN: 'fake-auth', CLAUDE_CODE_OAUTH_TOKEN: 'fake-oauth', ...extraEnv };
   const { discovery } = await startDaemon(t, root, env);
   const ui = await connectUi(t, discovery);
   const jobs = async () => Promise.all((await readdir(join(fake.home, 'jobs'))).filter(file => /^[^.]+\.json$/.test(file)).map(async file => JSON.parse(await readFile(join(fake.home, 'jobs', file), 'utf8')) as { id: string; sessionId: string; name: string; configDir: string; authVariables: string[]; resume: boolean }));
@@ -67,16 +67,19 @@ test('discovery, watch and restart share each live directory schedule; saved dir
   for (const dir of [f.dirs.a, f.dirs.b, f.dirs.default]) {
     const own = polls.filter(c => c.configDir === dir);
     assert.ok(own.length >= 2);
-    for (let i = 1; i < own.length; i++) assert.ok(own[i]!.at - own[i - 1]!.at >= 200, 'one agents invocation per directory per interval, discovery included');
+    for (let i = 1; i < own.length; i++) assert.ok(own[i]!.at - own[i - 1]!.at >= Number(f.env.CLAND_CLAUDE_AGENTS_MS), 'one agents invocation per directory per interval, discovery included');
   }
   assert.ok(!polls.some(c => c.configDir === f.dirs.idle));
   const originalJobs = await f.jobs();
   // After a restart, all four rows re-find their native conversation from the shared snapshots.
   assert.equal((await clandWithEnv(f.root, f.env, 'hub', 'stop')).code, 0);
   await writeFile(f.registry, `[accounts.claude-a]\nharness = "claude-code"\nconfig_dir = ${JSON.stringify(f.dirs.idle)}\n`);
-  await sleep(2100); // Let the saved floor expire while the hub is stopped.
+  // Keep a long restart interval: four explicit resumes must share one snapshot.
+  const restartAgentsMs = 2000;
+  const lastPollAt = Math.max(...(await f.calls()).filter(c => c.args[0] === 'agents').map(c => c.at));
+  await eventually('saved floor expires while stopped', () => Date.now() - lastPollAt >= restartAgentsMs ? true : undefined);
   const before = (await f.calls()).length;
-  const { discovery } = await startDaemon(t, f.root, { ...f.env, CLAUDE_CONFIG_DIR: f.dirs.idle, CLAND_CLAUDE_AGENTS_MS: '2000' });
+  const { discovery } = await startDaemon(t, f.root, { ...f.env, CLAUDE_CONFIG_DIR: f.dirs.idle, CLAND_CLAUDE_AGENTS_MS: String(restartAgentsMs) });
   const ui = await connectUi(t, discovery);
   for (const p of [a, anotherA, b, unpinned]) {
     const r = await ui.request({ type: 'session.resume', session: p.name }, 30000);
@@ -109,7 +112,7 @@ test('discovery, watch and restart share each live directory schedule; saved dir
     assert.equal(r.ok, true, r.error);
   }
   const stoppedAt = (await f.calls()).length;
-  await sleep(2300);
+  await sleep(1.15 * restartAgentsMs); // Negative: no directory polling after one full interval.
   assert.equal((await f.calls()).length, stoppedAt, 'no directory is polled after its last session stops');
 });
 
@@ -166,7 +169,7 @@ test('a failed account launch names its directory and sign-in or trust remedies 
   const r = await f.ui.request({ type: 'session.launch', name: 'failed', account: 'claude-b' });
   assert.equal(r.ok, false);
   for (const text of ['claude-b', f.dirs.b, 'CLAUDE_CONFIG_DIR=', 'claude auth login', 'trust the project', f.root]) assert.ok(r.error?.includes(text), `error names ${text}`);
-  await sleep(700);
+  await sleep(4 * Number(f.env.CLAND_CLAUDE_AGENTS_MS)); // Negative: failed launch makes no discovery calls for four intervals.
   assert.deepEqual((await f.calls()).filter(c => c.args[0] !== '-p').map(c => c.args[0]), ['--bg']);
   assert.deepEqual(await f.jobs(), []);
 });

@@ -2031,6 +2031,26 @@ abandoned manual lock with the `rmdir` command printed by the waiter, naming
 either `/tmp/cland-suite.lock` or `/tmp/cland-suite-nvim.lock`.
 `CLAND_TEST_SKIP_LOCK=1` skips the lock in isolated CI jobs.
 
+The fake harness fixtures use **30 ms turns**, **50 ms adapter polls**, **100 ms
+Claude push trust**, and a **150 ms Codex refuse window**. Direct invocations of
+the fake executables retain their 300 ms turn and 1500 ms Codex refusal fallbacks.
+Pass `turnMs`, `pollMs` or `pushTrustMs` to `fakeClaude` / `fakeCodex` (or set the
+fake's `FAKE_*_TURN_MS` in a standalone fixture) when a test needs a slower turn or
+suppressed polling. Comment each opt-in with the race or behaviour it stages.
+OpenCode's existing “take your time” input also selects a slow turn. A fast-default
+race is a Bug to report to the item's lead; any temporary slow opt-in names it.
+
+Positive waits use frames, journal records or `eventually`. Negative waits span
+named schedule intervals; wall-clock boundary and real deadline proofs retain
+comments explaining the wait. Claude logs its resolved `claude-schedule` so a
+default can be asserted without waiting out 30 seconds. Executor fixtures can
+scale runtime deadlines with `CLAND_TEST_EXECUTOR_LIFETIME_MS` and
+`CLAND_TEST_EXECUTOR_RUN_TIMEOUT_MS`, alongside the existing sweep, watchdog and
+collection timing knobs. These do not change config parsing or validation.
+`CLAND_TEST_USAGE_EVENT_MS` similarly scales the existing Sessions usage and
+account-limit publication window. Usage fixtures use 100 ms; stop-before-publication
+cases and the real-window account-limits test retain the 1000 ms production default.
+
 `CLAND_TEST_WAIT_MS` is a test-harness-only failure deadline: a finite positive
 number sets the default budget for `eventually` and the gated verifier's startup
 wait. Without it (or with an invalid value), `eventually` retains 15 seconds and

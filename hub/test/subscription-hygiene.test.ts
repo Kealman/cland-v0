@@ -184,9 +184,10 @@ test('events have their own durable limit, preserve final events, and consume no
 for (const harness of ['claude-code', 'codex', 'opencode']) {
   test(`${harness}: digest now steers through the existing queue or waits for the next turn`, async t => {
     const root = await tempProject(t);
+    // Keep the turn open for digest-now steering; suppress fallback polls of the staged state.
     const fake = harness === 'claude-code' ? await fakeClaude(t, { pollMs: 10_000, turnMs: 2500 }) : harness === 'codex' ? await fakeCodex(t, { pollMs: 10_000, turnMs: 2500 }) : null;
     const home = fake?.home ?? join(root, '.fake-opencode');
-    const env = fake?.env ?? { PATH: `${fileURLToPath(new URL('./fakes/opencode', import.meta.url))}:${process.env.PATH ?? ''}`, FAKE_OPENCODE_HOME: home, CLAND_ADAPTER_POLL_MS: '10000', CLAND_INJECT_TIMEOUT_MS: '5000' };
+    const env = fake?.env ?? { PATH: `${fileURLToPath(new URL('./fakes/opencode', import.meta.url))}:${process.env.PATH ?? ''}`, FAKE_OPENCODE_HOME: home, FAKE_OPENCODE_TURN_MS: '30', CLAND_ADAPTER_POLL_MS: '10000', CLAND_INJECT_TIMEOUT_MS: '5000' };
     const { discovery } = await startDaemon(t, root, env);
     const ui = await connectUi(t, discovery);
     await ui.request({ type: 'subscribe' });
@@ -203,6 +204,7 @@ for (const harness of ['claude-code', 'codex', 'opencode']) {
     const subscribed = await clandWithEnv(root, env, 'subscribe', 'item', item, '--event', 'task', '--digest', 'now', '--as', 'coord', '--json');
     assert.equal(subscribed.code, 0, subscribed.stderr);
     assert.equal(JSON.parse(subscribed.stdout).subscription.digest, 'now');
+    // OpenCode's explicit slow-turn input keeps the digest-now event in the running turn.
     await ui.request({ type: 'topic.send', topic: 'general', text: '@coord take your time with a running turn' });
     await ui.waitFor(f => f.type === 'session.state' && f.session === 'coord' && f.state === 'busy');
     if (harness !== 'claude-code') {
@@ -252,6 +254,7 @@ for (const harness of ['claude-code', 'codex', 'opencode']) {
 
 test('usage thresholds name cost or tokens, deduplicate overlapping subjects and survive restart', async t => {
   const root = await tempProject(t);
+  // Suppress fallback polls while pushed usage and lifecycle states drive the subscription assertions.
   const fake = await fakeClaude(t, { pollMs: 10_000 });
   let { discovery } = await startDaemon(t, root, fake.env);
   let ui = await connectUi(t, discovery);
@@ -371,6 +374,7 @@ test('subtree subjects include sessions working on descendant items and survive 
   const root = await tempProject(t);
   const git = (...args: string[]) => execFileSync('git', args, { cwd: root, encoding: 'utf8' });
   await copyPreparedProject(root);
+  // Suppress fallback polls while pushed usage and lifecycle states drive the subscription assertions.
   const fake = await fakeClaude(t, { pollMs: 10_000 });
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);

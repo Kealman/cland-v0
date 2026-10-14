@@ -67,7 +67,8 @@ for (const qaRequired of [false, true]) {
     const root = await tempProject(t);
     await repository(root);
     if (qaRequired) await writeFile(join(root, '.cland/config.toml'), '[plan]\nqa_default = {scope = "affected", when = "per-item"}\n');
-    const { discovery } = await startDaemon(t, root, { CLAND_TEST_TIP_CHECK_MS: '250' });
+    const tipCheckMs = 250;
+    const { discovery } = await startDaemon(t, root, { CLAND_TEST_TIP_CHECK_MS: String(tipCheckMs) });
     const ui = await connectUi(t, discovery);
     assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
     const rev = await spawnSpoke({ discover: true, cwd: root, name: 'rev', sessionId: 'rev-id', role: 'reviewer' });
@@ -117,7 +118,7 @@ for (const qaRequired of [false, true]) {
     const failed = await rev.call<{ item: ItemView }>('task.criterion', { id: item.id, op: 'fail', criterion: 'C1', note: 'Still broken' });
     assert.equal(failed.item.status, 'in progress');
     await ui.request({ type: 'task.edit', item: item.id, title: 'Failure remains in progress' });
-    await sleep(600); // allow background readiness/freshness work to settle
+    await sleep(2.4 * tipCheckMs); // Negative: span two freshness checks without promoting a failed criterion.
     assert.equal((await read()).status, 'in progress');
     await ui.request({ type: 'task.edit', item: item.id, body: '' });
     await status('ready');
@@ -562,7 +563,7 @@ for (const mode of ['timing', 'timing-parented', 'retry'] as const) {
       assert.ok(attempts.length <= 4, `unbounded retries: ${attempts.length}`);
       assert.ok(attempts.every((at, i) => i === 0 || at - attempts[i - 1]! >= 40), 'every retry backs off');
       await eventually('retry limit', async () => attempts.length >= 10 ? true : undefined, 20_000);
-      await new Promise<void>(done => setTimeout(done, 1100));
+      await new Promise<void>(done => setTimeout(done, 1100)); // Negative: exceed the maximum one-second readiness retry backoff.
       assert.equal(attempts.length, 10, 'attempts stop at the limit');
       const history = await ui.request({ type: 'topic.history', topic: 'agents' });
       const messages = (history.value as { messages: Array<{ kind?: string; text: string }> }).messages;

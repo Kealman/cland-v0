@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import { readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { parse as parseYaml } from 'yaml';
+import { CONCURRENT_MS } from '../src/tracker/tracker.ts';
 import { PROTOCOL_VERSION } from '../src/protocol.ts';
 import { taskWriteGate } from './tracker-write-gate.ts';
 import { cland, flushProjectLogs, connectSocket, connectUi, readDiscovery, sleep, spawnSpoke, startDaemon, tempProject, type CliResult } from './harness.ts';
@@ -160,7 +161,7 @@ test('a hub write and a hand edit at the same time: the last writer wins and the
   // the hub's write lands right after a hand edit (before the watcher saw it): the hub's write is the
   // file, made on top of what the hand wrote, and the index agrees
   // (over a socket already open: a CLI process takes longer to start than the watcher's debounce)
-  await sleep(2100);
+  await sleep(1.05 * CONCURRENT_MS); // Expiry: leave the previous write conflict window before staging the next race.
   const s = await connectSocket(discovery.socket);
   t.after(() => s.close());
   s.send({ type: 'hello', protocol: PROTOCOL_VERSION, secret: discovery.secret, client: 'test' });

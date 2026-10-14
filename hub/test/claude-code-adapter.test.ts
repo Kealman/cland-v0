@@ -16,6 +16,7 @@ type StateEvent = { type: 'session.state'; session: string; state: string; sourc
 
 test('a Claude Code StopFailure is recorded in Agents and the events view and reported to the sender', async (t) => {
   const root = await tempProject(t);
+  // Keep pushed hook states observable and authoritative while staging the turn.
   const fake = await fakeClaude(t, { pollMs: 600_000, turnMs: 1000 });
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
@@ -241,7 +242,7 @@ test('an inject the harness never confirmed stays delivered, is logged, and is r
   const clause = await eventually('the clause recorded', async () => /"event":"role-clause","session":"coord"[^\n]*"id":"([^"]+)"/.exec(await hubLog(root, ui))?.[1]);
   await eventually('the unconfirmed inject logged', async () => ((await hubLog(root, ui)).includes(`"event":"inject-unconfirmed","session":"coord","id":"${clause}"`) ? true : undefined));
   const injected = async () => (await hubLog(root, ui)).includes(`"event":"injected","id":"${clause}"`);
-  await sleep(1000); // polls keep finding the session idle: that is no new idle, nothing is retried
+  await sleep(5 * Number(fake.env.CLAND_ADAPTER_POLL_MS)); // Negative: five idle polls must not retry.
   assert.equal(await injected(), false, 'not confirmed: still delivered');
 
   // the next turn ends idle: what waited is injected again, and this time confirmed
@@ -254,7 +255,7 @@ test('an inject the harness never confirmed stays delivered, is logged, and is r
 
 test('after a hub restart, resume re-finds the running session through the process table and state reporting continues', async (t) => {
   const root = await tempProject(t);
-  // a slow poll: after the restart the states must come from the hooks and the mod, not the fallback
+  // A slow poll keeps restarted states on the hook/mod path; a long turn keeps busy observable during hook startup.
   const fake = await fakeClaude(t, { pollMs: 10_000, turnMs: 1000 });
   const first = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, first.discovery);
@@ -315,7 +316,7 @@ test('a message for a session with no adapter stays delivered; an unknown sessio
   const sent = await ui.request({ type: 'topic.send', topic: 'general', text: 'hi', to: ['plain'] });
   const id = (sent.value as { message: { id: string } }).message.id;
   await ui.waitFor((f) => f.type === 'delivery' && f.message === id && f.stage === 'delivered');
-  await sleep(500);
+  await sleep(3 * Number(fake.env.CLAND_ADAPTER_POLL_MS)); // Negative: three idle polls cannot inject a message without an adapter.
   assert.ok(!ui.frames.some((f) => f.type === 'delivery' && f.message === id && f.stage === 'injected'));
 });
 
@@ -323,11 +324,18 @@ test('a message for a session with no adapter stays delivered; an unknown sessio
 test('Claude discovery and watch share the default 30-second schedule, and stop works before the next pid arrives', async (t) => {
   const root = await tempProject(t);
   const fake = await fakeClaude(t);
-  // Leave the agents interval at its production default; speed up only pid liveness.
-  const env = { ...fake.env, CLAND_ADAPTER_POLL_MS: '100', CLAND_CLAUDE_AGENTS_MS: '', CLAUDE_CONFIG_DIR: fake.home };
+  // Prove the production default as resolved data, then exercise its schedule at a short override.
+  const defaults = await startDaemon(t, root, { ...fake.env, CLAND_CLAUDE_AGENTS_MS: '' });
+  const defaultUi = await connectUi(t, defaults.discovery);
+  assert.match(await hubLog(root, defaultUi), /"event":"claude-schedule","agentsMs":30000/);
+  defaultUi.close();
+  assert.equal((await clandWithEnv(root, fake.env, 'hub', 'stop')).code, 0);
+  // Keep the next discovery behind the stop request, so stop must work without a discovered pid.
+  const agentsMs = 3000;
+  const env = { ...fake.env, CLAND_CLAUDE_AGENTS_MS: String(agentsMs), CLAUDE_CONFIG_DIR: fake.home };
   const { discovery } = await startDaemon(t, root, env);
   const ui = await connectUi(t, discovery);
-  await sleep(300);
+  await sleep(6 * Number(fake.env.CLAND_ADAPTER_POLL_MS)); // Negative: an idle directory stays quiet across six polls.
   assert.equal((await fake.calls()).length, 0, 'an idle directory runs no CLI');
   await launch(ui, 'first');
   ui.close();
@@ -338,25 +346,24 @@ test('Claude discovery and watch share the default 30-second schedule, and stop 
   const second = await launch(ui2, 'second');
   assert.equal(second.pid, null, 'the next launch does not bypass the schedule');
   assert.equal((await ui2.request({ type: 'session.stop', session: 'second' })).ok, true);
-  await sleep(600);
   const calls = await fake.calls();
   const polls = calls.filter(c => c.args[0] === 'agents');
   assert.equal(polls.length, 1, 'launch discovery and watch use one call');
   assert.equal(polls[0]?.configDir, fake.home);
   assert.ok(calls.some(c => c.args[0] === 'stop' && c.args[1] === second.harnessId));
-  await eventually('the next scheduled agents call', async () => (await fake.calls()).filter(c => c.args[0] === 'agents').length >= 2 ? true : undefined, 35_000);
+  await eventually('the next scheduled agents call', async () => (await fake.calls()).filter(c => c.args[0] === 'agents').length >= 2 ? true : undefined);
   const scheduled = (await fake.calls()).filter(c => c.args[0] === 'agents');
-  for (let i = 1; i < scheduled.length; i++) assert.ok(scheduled[i]!.at - scheduled[i - 1]!.at >= 30_000, 'every agents call is at least 30 seconds apart');
+  for (let i = 1; i < scheduled.length; i++) assert.ok(scheduled[i]!.at - scheduled[i - 1]!.at >= agentsMs, 'every agents call respects the resolved interval');
   assert.equal((await ui2.request({ type: 'session.stop', session: 'first' })).ok, true);
   const count = (await fake.calls()).length;
-  await sleep(400);
+  await sleep(8 * Number(fake.env.CLAND_ADAPTER_POLL_MS)); // Negative: eight liveness polls cannot run the stopped agents watch.
   assert.equal((await fake.calls()).length, count, 'no CLI after the last watch ends');
 });
 
 
 test('a signed-out Claude directory is reported once, remains quiet across restart, and recovers only on explicit success', async (t) => {
   const root = await tempProject(t);
-  const fake = await fakeClaude(t, { pollMs: 200, lateBg: true });
+  const fake = await fakeClaude(t, { lateBg: true });
   const env = { ...fake.env, CLAUDE_CONFIG_DIR: fake.home };
   const { discovery } = await startDaemon(t, root, env);
   const ui = await connectUi(t, discovery);
@@ -378,13 +385,13 @@ test('a signed-out Claude directory is reported once, remains quiet across resta
   await sleep(100);
   assert.equal(sender.events.filter(e => e.params.content.includes(`signed out: ${fake.home}; see the Agents notice`)).length, 1, 'one sender delivery per latched directory');
   const count = (await fake.calls()).length;
-  await sleep(700);
+  await sleep(4 * Number(fake.env.CLAND_ADAPTER_POLL_MS)); // Negative: a latched watch stays silent for four polls.
   assert.equal((await fake.calls()).length, count, 'the latched watch makes no CLI calls');
   ui.close();
   assert.equal((await clandWithEnv(root, env, 'hub', 'stop')).code, 0);
   const restarted = await startDaemon(t, root, env);
   const ui2 = await connectUi(t, restarted.discovery);
-  await sleep(500);
+  await sleep(3 * Number(fake.env.CLAND_ADAPTER_POLL_MS)); // Negative: three idle polls cannot lift the signed-out latch.
   assert.equal((await fake.calls()).length, count, 'latched startup resume makes no CLI calls');
   await ui2.request({ ...signal, event: 'turn-start', payload: { prompt_id: 'auth-turn', ids: [inputId] } });
   await ui2.request(signal);
@@ -419,7 +426,7 @@ test('a signed-out Claude directory is reported once, remains quiet across resta
   await ui2.request(again);
   const latched = (await fake.calls()).filter(c => c.args[0] === 'agents').length;
   await ui2.request({ ...again, payload: { hook_event_name: 'StopFailure', error: 'server_error' } });
-  await sleep(500);
+  await sleep(3 * Number(fake.env.CLAND_ADAPTER_POLL_MS)); // Negative: three idle polls cannot lift the signed-out latch.
   assert.equal((await fake.calls()).filter(c => c.args[0] === 'agents').length, latched, 'another StopFailure never lifts the latch');
   await ui2.request({ ...again, payload: { hook_event_name: 'Stop' } });
   await eventually('a pushed success resumes polling', async () => (await fake.calls()).filter(c => c.args[0] === 'agents').length > latched ? true : undefined);
@@ -432,7 +439,7 @@ test('an expired --bg launch latches a directory once without any discovery or r
   const { discovery } = await startDaemon(t, root, { ...fake.env, CLAUDE_CONFIG_DIR: fake.home });
   const ui = await connectUi(t, discovery);
   for (const name of ['one', 'two']) assert.equal((await ui.request({ type: 'session.launch', harness: 'claude-code', name })).ok, false);
-  await sleep(600);
+  await sleep(3 * Number(fake.env.CLAND_ADAPTER_POLL_MS)); // Negative: a failed launch never starts discovery.
   assert.deepEqual((await fake.calls()).map(c => c.args[0]), ['--bg', '--bg']);
   await flushProjectLogs(t, root);
   const journal = await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8');

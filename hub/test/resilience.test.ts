@@ -147,7 +147,7 @@ test('a spoke whose session vanished (stdin ended without an MCP close) exits in
   const stderr: string[] = [];
   child.stderr.on('data', (c: Buffer) => stderr.push(c.toString()));
   const exited = new Promise<number | null>((resolve) => child.on('exit', (code) => resolve(code)));
-  await new Promise((r) => setTimeout(r, 700)); // let it start
+  await new Promise((r) => setTimeout(r, 700)); // Negative: the spoke stays alive with open stdin and no MCP hello.
   assert.equal(child.exitCode, null, 'alive while its stdin is open');
   child.stdin.end();
   const code = await Promise.race([exited, new Promise<'timeout'>((r) => setTimeout(() => r('timeout'), 3000))]);

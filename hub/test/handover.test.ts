@@ -285,6 +285,7 @@ test('the human reassigns with role.set: without a note (move), with a note (CLI
 });
 
 test('revocation mid-turn: the human reassigns while the launched Coordinator is busy; its next call is refused and the revocation reaches it', async (t) => {
+  // Keep the Coordinator mid-turn while the human revokes its role.
   const fake = await fakeClaude(t, { turnMs: 2500 });
   const { root, ui, spawn } = await setup(t, fake.env);
   const launched = (await ui.request({ type: 'session.launch', name: 'coord', role: 'coordinator', model: 'claude-fake-1' }, 30_000)) as { ok: boolean; error?: string; value?: { process: { harnessId: string } } };

@@ -11,6 +11,7 @@ import type { HarnessProcessView } from '../src/protocol.ts';
 
 test('retained Reviewer pool reuses an idle member for review, caps busy and pending launches, and releases failed admissions', async t => {
   const root = await tempProject(t);
+  // Keep reviewers busy while the next pool admission tests the busy cap.
   const fake = await fakeClaude(t, { turnMs: 1000 });
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
@@ -104,7 +105,7 @@ async function pooledHarness(t: TestContext, harness: string) {
   t.after(async () => { for (const row of await live()) await killDaemon(row.pid); });
   return {
     home, live,
-    env: { PATH: `${fileURLToPath(new URL('./fakes/opencode', import.meta.url))}:${process.env.PATH ?? ''}`, FAKE_OPENCODE_HOME: home, CLAND_ADAPTER_POLL_MS: '200' },
+    env: { PATH: `${fileURLToPath(new URL('./fakes/opencode', import.meta.url))}:${process.env.PATH ?? ''}`, FAKE_OPENCODE_HOME: home, FAKE_OPENCODE_TURN_MS: '30', CLAND_ADAPTER_POLL_MS: '50' },
     log: (p: HarnessProcessView) => readFile(join(home, 'prompts', `${p.harnessSessionId}.log`), 'utf8').catch(() => ''),
   };
 }

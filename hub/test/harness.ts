@@ -552,11 +552,11 @@ export async function fakeClaude(
   const env = {
     PATH: `${FAKE_CLAUDE_DIR}:${process.env.PATH ?? ''}`,
     FAKE_CLAUDE_HOME: home,
-    CLAND_CLAUDE_AGENTS_MS: String(timings.pollMs ?? 200),
-    FAKE_CLAUDE_TURN_MS: String(timings.turnMs ?? 300),
-    CLAND_ADAPTER_POLL_MS: String(timings.pollMs ?? 200),
+    CLAND_CLAUDE_AGENTS_MS: String(timings.pollMs ?? 50),
+    FAKE_CLAUDE_TURN_MS: String(timings.turnMs ?? 30),
+    CLAND_ADAPTER_POLL_MS: String(timings.pollMs ?? 50),
     CLAND_INJECT_TIMEOUT_MS: String(timings.injectTimeoutMs ?? 5000),
-    CLAND_PUSH_TRUST_MS: String(timings.pushTrustMs ?? 1000),
+    CLAND_PUSH_TRUST_MS: String(timings.pushTrustMs ?? 100),
     ...(timings.dropFirst ? { FAKE_CLAUDE_DROP_FIRST: '1' } : {}),
     ...(timings.lateBg ? { FAKE_CLAUDE_LATE_BG: timings.lateBg === 'bridged' ? 'bridged' : '1' } : {}),
     ...(timings.stopCrash ? { FAKE_CLAUDE_STOP_CRASH: '1' } : {}),
@@ -650,8 +650,10 @@ export async function fakeCodex(t: TestContext, options: { pollMs?: number; inje
   const env = {
     PATH: `${FAKE_CODEX_DIR}:${process.env.PATH ?? ''}`,
     FAKE_CODEX_HOME: home,
-    FAKE_CODEX_TURN_MS: String(options.turnMs ?? 300),
-    CLAND_ADAPTER_POLL_MS: String(options.pollMs ?? 200),
+    FAKE_CODEX_TURN_MS: String(options.turnMs ?? 30),
+    FAKE_CODEX_REFUSE_MS: '150',
+    CLAND_PUSH_TRUST_MS: '100',
+    CLAND_ADAPTER_POLL_MS: String(options.pollMs ?? 50),
     CLAND_INJECT_TIMEOUT_MS: String(options.injectTimeoutMs ?? 5000),
     ...options.env,
   };

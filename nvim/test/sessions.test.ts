@@ -95,9 +95,10 @@ test('Claude Code, Codex and OpenCode sessions launched from the UI show in the 
     ...claude.env,
     PATH: `${FAKE_CODEX_DIR}:${FAKE_OPENCODE_DIR}:${claude.env.PATH}`,
     FAKE_CODEX_HOME: codexHome,
-    FAKE_CODEX_TURN_MS: '300',
+    FAKE_CODEX_TURN_MS: '30',
+    FAKE_CODEX_REFUSE_MS: '150',
     FAKE_OPENCODE_HOME: opencodeHome,
-    FAKE_OPENCODE_TURN_MS: '300',
+    FAKE_OPENCODE_TURN_MS: '30',
   };
   const { discovery } = await startDaemon(t, root, env);
   const ui = await connectUi(t, discovery);
@@ -313,7 +314,7 @@ test('hard limits show red account names and reset or until-cleared text; cleari
   const ocHome = await fakeHome(t, 'fake-oc-limited-');
   const reset = new Date(Date.now() + 120_000).toISOString();
   await writeFile(join(home, 'rate-limits.json'), JSON.stringify({ rateLimits: { primary: { usedPercent: 0, windowDurationMins: 10080, resetsAt: Date.parse(reset) / 1000 }, secondary: null } }));
-  const env = { ...fake.env, XDG_CONFIG_HOME: config, FAKE_OPENCODE_HOME: ocHome, PATH: `${FAKE_CODEX_DIR}:${FAKE_OPENCODE_DIR}:${process.env.PATH ?? ''}` };
+  const env = { ...fake.env, XDG_CONFIG_HOME: config, FAKE_OPENCODE_HOME: ocHome, FAKE_OPENCODE_TURN_MS: '30', PATH: `${FAKE_CODEX_DIR}:${FAKE_OPENCODE_DIR}:${process.env.PATH ?? ''}` };
   const { discovery } = await startDaemon(t, root, env);
   const ui = await connectUi(t, discovery);
   for (const [name, account, role] of [['codex', 'codex-a', 'reviewer'], ['oc', 'oc-b', 'qa']]) {

@@ -167,6 +167,7 @@ export async function fakeDigitalOcean(token: string) {
       if (method === 'DELETE') {
         const failure = faults.deleteFailures.shift();
         if (failure === 'timeout') {
+          // Fault injection: exceed the caller's API deadline before returning the delete failure.
           await new Promise(resolve => setTimeout(resolve, 2000));
           return answer(503, { id: 'unavailable', message: 'delete transport delayed' });
         }

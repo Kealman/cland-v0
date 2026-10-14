@@ -34,7 +34,7 @@ async function fakeCodex(t: TestContext, verdicts: Partial<Record<'review' | 'qa
   const home = await realpath(await mkdtemp(join(tmpdir(), 'fake-codex-')));
   const cleanupHome = ownDirectory(undefined, home);
   await writeFile(join(home, 'verdicts.json'), JSON.stringify(verdicts));
-  const env = { PATH: `${FAKE_CODEX_DIR}:${process.env.PATH ?? ''}`, FAKE_CODEX_HOME: home, FAKE_CODEX_TURN_MS: '100', CLAND_ADAPTER_POLL_MS: '200', CLAND_INJECT_TIMEOUT_MS: '5000' };
+  const env = { PATH: `${FAKE_CODEX_DIR}:${process.env.PATH ?? ''}`, FAKE_CODEX_HOME: home, FAKE_CODEX_TURN_MS: '30', FAKE_CODEX_REFUSE_MS: '150', CLAND_ADAPTER_POLL_MS: '50', CLAND_INJECT_TIMEOUT_MS: '5000' };
   const pids = async () => {
     const files = await readdir(join(home, 'servers')).catch(() => [] as string[]);
     return (await Promise.all(files.map(async (f) => (JSON.parse(await readFile(join(home, 'servers', f), 'utf8')) as { pid: number }).pid))).filter(pidAlive);

@@ -449,7 +449,7 @@ export class Suites {
       const remote = job.executor === 'droplet';
       if (remote && !job.outcome && Date.now() < (job.nextPoll ?? 0)) return;
       if (remote) job.nextPoll = Date.now() + testTiming('CLAND_TEST_DROPLET_RUN_POLL_MS', 10000);
-      const timeoutMs = this.#options.runTimeoutMs ?? 4500000;
+      const timeoutMs = testTiming('CLAND_TEST_EXECUTOR_RUN_TIMEOUT_MS', this.#options.runTimeoutMs ?? 4500000);
       const startedAt = (job.lease as DropletLease | undefined)?.execution?.startedAt ?? job.admittedAt;
       if (remote && !job.outcome && job.lease && startedAt && Date.now() - Date.parse(startedAt) > timeoutMs + testTiming('CLAND_TEST_EXECUTOR_TIMEOUT_GRACE_MS', 120000)) {
         job.timedOut = true; job.outcome = { code: 124, cause: `run timeout ${this.#options.runTimeout ?? '75m'}` }; this.#save(job);

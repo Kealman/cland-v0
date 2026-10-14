@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { cland, connectUi, eventually, FAKE_CLAUDE_DIR, FAKE_CODEX_DIR, fakeClaude, fakeCodex, sleep, startDaemon, tempProject, type FrameClient } from './harness.ts';
+import { USAGE_EVENT_MS } from '../src/adapters/sessions.ts';
 import type { AccountList, AccountView } from '../src/accounts/limits.ts';
 import type { HarnessProcessView } from '../src/protocol.ts';
 
@@ -117,7 +118,7 @@ test('fake Codex pushes account windows and sparse per-model updates while reads
   reading.rateLimitsByLimitId.review.primary.usedPercent = 27;
   await writeFile(path, JSON.stringify({ [home]: reading }));
   await writeFile(join(fake.home, 'release-rate-limits-read'), '1');
-  await sleep(1200);
+  await sleep(1.2 * USAGE_EVENT_MS); // Negative: an equal read must stay silent beyond the publication interval.
   assert.equal((await journal(root, ui)).length, 2, 'read after sparse push is equal and silent');
   // A new full read removes omitted buckets, and durations are not fixed to two labels.
   await writeFile(path, JSON.stringify({ [home]: { rateLimits: { limitId: 'codex', primary: { usedPercent: 22, windowDurationMins: 10080, resetsAt: 1792123380 }, secondary: { usedPercent: 31, windowDurationMins: 2880, resetsAt: 1792036980, severity: 'warning' } } } }));

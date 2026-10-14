@@ -53,7 +53,7 @@ test('an inject whose answer never came is uncertain: never replayed at the next
   await eventually('uncertain', async () => ((await hubLog(root, ui)).includes(`"event":"inject-uncertain","id":"${id}"`) ? true : undefined));
   // the session went idle after the turn: nothing is replayed
   await idle(ui, 'coord');
-  await sleep(1500);
+  await sleep(8 * Number(fake.env.CLAND_ADAPTER_POLL_MS)); // Negative: eight idle polls cannot replay an uncertain inject.
   assert.equal(pongs(ui, text), 1, 'the message ran once');
   assert.equal(((await fake.log(coord.pid as number)).match(/item: <channel [^\n]*>\nplease lose the answer/g) ?? []).length, 1);
   assert.ok(!ui.frames.some((f) => f.type === 'delivery' && f.message === id && f.stage === 'injected'));
@@ -76,6 +76,7 @@ test('an inject whose answer never came is uncertain: never replayed at the next
 
 test('a lost connection to an idle app-server: what failed to inject meanwhile is retried when the connection is back', async (t) => {
   const root = await tempProject(t);
+  // Keep reconnection refused while the test submits a message to the disconnected idle server.
   const fake = await fakeCodex(t, { env: { FAKE_CODEX_REFUSE_MS: '2500' } });
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
@@ -112,6 +113,7 @@ for (const [what, text] of [
 ] as const) {
   test(`${what} after turn/start was accepted is uncertain: the turn is never replayed`, async (t) => {
     const root = await tempProject(t);
+    // Keep a brief outage after acceptance so the uncertain-inject path precedes reconnection.
     const fake = await fakeCodex(t, { env: { FAKE_CODEX_REFUSE_MS: '300' } });
     const { discovery } = await startDaemon(t, root, fake.env);
     const ui = await connectUi(t, discovery);
@@ -124,7 +126,7 @@ for (const [what, text] of [
     await eventually('uncertain', async () => ((await hubLog(root, ui)).includes(`"event":"inject-uncertain","id":"${id}"`) ? true : undefined));
     // the connection is back and the session idle: nothing is replayed
     await idle(ui, 'coord');
-    await sleep(1500);
+    await sleep(8 * Number(fake.env.CLAND_ADAPTER_POLL_MS)); // Negative: eight idle polls cannot replay an uncertain inject.
     assert.equal(pongs(ui, text), 1, 'the message ran once');
     assert.equal(((await fake.log(coord.pid as number)).match(new RegExp(`item: <channel [^\\n]*>\\n${text}`, 'g')) ?? []).length, 1);
     assert.ok(!ui.frames.some((f) => f.type === 'delivery' && f.message === id && f.stage === 'injected'));

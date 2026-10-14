@@ -1,5 +1,5 @@
 // Usage journal contracts through a daemon, real spoke, fake harnesses and CLI.
-import { test } from 'node:test';
+import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
@@ -7,6 +7,11 @@ import { fileURLToPath } from 'node:url';
 import { withDiscoveredPid, cland, connectUi, eventually, fakeClaude, fakeCodex, spawnSpoke, startDaemon, tempProject, type FrameClient } from './harness.ts';
 import { copyPreparedProject } from './prepared-project.ts';
 import type { HarnessProcessView, SessionUsage } from '../src/protocol.ts';
+
+// Shorten the existing publication window without changing usage/journal behavior.
+function startUsageDaemon(t: TestContext, root: string, env: Record<string, string>, usageEventMs = 100) {
+  return startDaemon(t, root, { ...env, CLAND_TEST_USAGE_EVENT_MS: String(usageEventMs) });
+}
 
 async function records(root: string, ui: FrameClient): Promise<Array<Record<string, unknown>>> {
   assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
@@ -26,7 +31,7 @@ async function turn(ui: FrameClient, p: HarnessProcessView, text: string): Promi
 test('Codex journals changed totals once, skips equal publications, and stops with final usage', async t => {
   const root = await tempProject(t);
   const fake = await fakeCodex(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await startUsageDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const launched = await ui.request({ type: 'session.launch', name: 'impl', role: 'implementer', harness: 'codex' });
@@ -60,7 +65,7 @@ test('Codex journals changed totals once, skips equal publications, and stops wi
 test('Codex coalesces a usage burst and journals a rate-limit-only change', async t => {
   const root = await tempProject(t);
   const fake = await fakeCodex(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await startUsageDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const launched = await ui.request({ type: 'session.launch', name: 'burst', role: 'implementer', harness: 'codex' });
@@ -81,7 +86,8 @@ test('Codex coalesces a usage burst and journals a rate-limit-only change', asyn
 test('no-usage stop stays silent and CLI stop captures usage before the publication timer', async t => {
   const root = await tempProject(t);
   const fake = await fakeClaude(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  // The CLI stop must capture pending usage before the publication window closes.
+  const { discovery } = await startUsageDaemon(t, root, fake.env, 1000);
   const ui = await connectUi(t, discovery);
   const launched = await ui.request({ type: 'session.launch', name: 'quiet', harness: 'claude-code' });
   assert.equal(launched.ok, true, launched.error);
@@ -108,7 +114,8 @@ test('no-usage stop stays silent and CLI stop captures usage before the publicat
 test('Codex stop captures a token report that has not yet been published', async t => {
   const root = await tempProject(t);
   const fake = await fakeCodex(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  // Keep the token report pending across adapter observation and the stop request.
+  const { discovery } = await startUsageDaemon(t, root, fake.env, 1000);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const launched = await ui.request({ type: 'session.launch', name: 'pending', role: 'implementer', harness: 'codex' });
@@ -129,7 +136,7 @@ test('Codex stop captures a token report that has not yet been published', async
 test('a harness exit and a relaunch stop each leave exactly one final record', async t => {
   const root = await tempProject(t);
   const fake = await fakeClaude(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await startUsageDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const launched = await ui.request({ type: 'session.launch', name: 'lifecycle', role: 'implementer', harness: 'claude-code' });
@@ -142,6 +149,8 @@ test('a harness exit and a relaunch stop each leave exactly one final record', a
   assert.notEqual(replacement.pid, p.pid);
   let journal = await records(root, ui);
   assert.deepEqual(journal.filter(r => r.final).map(r => [(r.total as { totalTokens: number }).totalTokens, r.role]), [[19, 'implementer']]);
+  // The resumed role-clause turn must publish before turn() waits for the requested turn (T-389 usage staging race).
+  await ui.waitFor(f => f.type === 'session.usage' && f.sessionId === p.sessionId && (f.usage as SessionUsage).total?.totalTokens === 38);
   const latest = await turn(ui, replacement, 'Another turn after relaunch');
   process.kill(replacement.pid!, 'SIGTERM');
   await ui.waitFor(f => f.type === 'session.process' && (f.process as HarnessProcessView).sessionId === p.sessionId && (f.process as HarnessProcessView).status === 'exited', 15_000);
@@ -156,7 +165,7 @@ test('a harness exit and a relaunch stop each leave exactly one final record', a
 test('the first publication after hub restart is recorded again without replaying history', async t => {
   const root = await tempProject(t);
   const fake = await fakeCodex(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await startUsageDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const launched = await ui.request({ type: 'session.launch', name: 'restart', harness: 'codex' });
@@ -166,7 +175,7 @@ test('the first publication after hub restart is recorded again without replayin
   const before = await records(root, ui);
   assert.equal(before.length, 1);
   assert.equal((await cland(root, 'hub', 'stop')).code, 0);
-  const next = await startDaemon(t, root, fake.env);
+  const next = await startUsageDaemon(t, root, fake.env);
   const nextUi = await connectUi(t, next.discovery);
   await nextUi.request({ type: 'subscribe' });
   await eventually('first restarted publication journalled', async () => (await records(root, nextUi)).length === 2 || undefined);
@@ -184,9 +193,10 @@ for (const harness of ['claude-code', 'opencode']) test(`${harness} journals tot
   const env = harness === 'claude-code' ? (await fakeClaude(t)).env : {
     CLAND_OPENCODE_BIN: fileURLToPath(new URL('./fakes/opencode/opencode', import.meta.url)),
     FAKE_OPENCODE_HOME: await tempProject(t, 'fake-usage-opencode-'),
-    CLAND_ADAPTER_POLL_MS: '200',
+    CLAND_ADAPTER_POLL_MS: '50',
+    FAKE_OPENCODE_TURN_MS: '30',
   };
-  const { discovery } = await startDaemon(t, root, env);
+  const { discovery } = await startUsageDaemon(t, root, env);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const items: string[] = [];

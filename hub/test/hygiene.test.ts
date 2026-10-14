@@ -49,7 +49,7 @@ test('two agents in a reply loop are muted for the mute time in both directions,
     assert.ok(log.some((e) => e.event === 'loop-breaker' && e.pair === 'alpha|beta'), 'the mute is journalled');
     const third = await alpha.call<Send>('send', { to: ['beta', 'gamma'], text: 'gamma is fine' });
     assert.deepEqual(third.outcomes?.map((o) => `${o.to}:${o.outcome}`), ['beta:refused', 'gamma:delivered'], 'only the muted pair is refused');
-    await sleep(650);
+    await sleep(650); // Expiry: exceed the 600 ms loop-breaker mute before a fresh volley.
     for (let i = 0; i < 4; i += 1) {
       const r = await (i % 2 ? beta : alpha).call<Send>('send', { to: [i % 2 ? 'alpha' : 'beta'], text: `after the mute ${i}` });
       assert.equal(r.outcomes?.[0]?.outcome, 'delivered', `after the mute, message ${i}: the count started afresh`);
@@ -115,7 +115,8 @@ test('a socket that misses two heartbeats is closed and the spoke reconnects wit
 
 test('a peer whose bytes still arrive is alive: a socket in the middle of one large frame is not cut off; a silent one beside it is', async () => {
   const log: Array<Record<string, unknown>> = [];
-  const hub = await startHub({ heartbeatMs: 100, log: (e) => log.push(e) });
+  const heartbeatMs = 100;
+  const hub = await startHub({ heartbeatMs, log: (e) => log.push(e) });
   /** A session over the raw edge: hello, welcome — then nothing from the client library at all. */
   const connect = (name: string): Promise<WebSocket> =>
     new Promise((resolve, reject) => {
@@ -143,7 +144,7 @@ test('a peer whose bytes still arrive is alive: a socket in the middle of one la
   raw.write(header);
   const trickle = setInterval(() => raw.write(Buffer.from('{"a":1}')), 30);
   try {
-    await sleep(700); // seven heartbeat intervals: the sweep has run on both sockets many times
+    await sleep(7 * heartbeatMs); // Negative: seven heartbeat sweeps preserve the socket receiving bytes.
     assert.ok(closed.has('silent'), 'the silent socket was cut off after two missed heartbeats');
     assert.ok(!closed.has('uploading'), 'the socket whose bytes kept arriving was not');
     assert.equal(uploading.readyState, WebSocket.OPEN);

@@ -22,7 +22,7 @@ async function fixture(t: TestContext, extraEnv: Record<string, string> = {}, fa
   await writeFile(join(root, 'claude-b', 'usage-report.json'), JSON.stringify({ rate_limits: { limits: [] } }));
   await writeFile(join(root, '.cland', 'roles.toml'), '[reviewer.launch]\nharness = "codex"\naccount = "codex-a"\n');
   await writeFile(join(root, '.cland', 'crew.toml'), '[crew.reviewer]\npolicy = "pool"\nsize = 4\nkeep_context = true\n');
-  const env = { ...claude.env, ...codex.env, XDG_CONFIG_HOME: config, FAKE_OPENCODE_HOME: oc, CLAND_TEST_ACCOUNT_POLL_MINIMUM_MS: '1',
+  const env = { ...claude.env, ...codex.env, XDG_CONFIG_HOME: config, FAKE_OPENCODE_HOME: oc, FAKE_OPENCODE_TURN_MS: '30', CLAND_TEST_ACCOUNT_POLL_MINIMUM_MS: '1',
     PATH: ['claude-code', 'codex', 'opencode'].map(h => fileURLToPath(new URL(`./fakes/${h}`, import.meta.url))).join(':') + ':' + (process.env.PATH ?? ''), ...extraEnv };
   const daemon = await startDaemon(t, root, env);
   const ui = await connectUi(t, daemon.discovery);

@@ -166,6 +166,7 @@ test('project visibility raises an idle event to a warning without changing need
   const root = await tempProject(t);
   await mkdir(join(root, '.cland'), { recursive: true });
   await writeFile(join(root, '.cland/config.toml'), '[visibility]\ninbox.idle = "now"\n');
+  // Keep pushed idle states authoritative while testing notification visibility.
   const fake = await fakeClaude(t, { pollMs: 60_000, pushTrustMs: 120_000 });
   const { discovery } = await startDaemon(t, root, { ...fake.env, CLAND_IDLE_NOTIFY_MS: '100' });
   const ui = await connectUi(t, discovery);
@@ -281,6 +282,7 @@ test('history reclassifies retained messages after seven days, with project age 
 
 test('hundreds of default verdict, death and idle events leave needsYou zero', async t => {
   const root = await tempProject(t);
+  // Keep pushed idle states authoritative while testing notification visibility.
   const fake = await fakeClaude(t, { pollMs: 50, pushTrustMs: 120_000 });
   const { discovery } = await startDaemon(t, root, { ...fake.env, CLAND_IDLE_NOTIFY_MS: '40' });
   const ui = await connectUi(t, discovery);

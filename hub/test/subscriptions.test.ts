@@ -271,9 +271,10 @@ test('task events report claims, verdicts and closes once; ordinary comments do 
 for (const harness of ['claude-code', 'codex', 'opencode']) {
   test(`${harness}: events and progress use one ordered next-turn digest, before and after restart`, async t => {
     const root = await tempProject(t);
+    // Suppress fallback polls while the test stages pushed session states.
     const fake = harness === 'claude-code' ? await fakeClaude(t, { pollMs: 10_000 }) : harness === 'codex' ? await fakeCodex(t, { pollMs: 10_000 }) : null;
     const home = fake?.home ?? join(root, '.fake-opencode');
-    const env = fake?.env ?? { PATH: `${fileURLToPath(new URL('./fakes/opencode', import.meta.url))}:${process.env.PATH ?? ''}`, FAKE_OPENCODE_HOME: home, CLAND_ADAPTER_POLL_MS: '10000', CLAND_INJECT_TIMEOUT_MS: '5000' };
+    const env = fake?.env ?? { PATH: `${fileURLToPath(new URL('./fakes/opencode', import.meta.url))}:${process.env.PATH ?? ''}`, FAKE_OPENCODE_HOME: home, FAKE_OPENCODE_TURN_MS: '30', CLAND_ADAPTER_POLL_MS: '10000', CLAND_INJECT_TIMEOUT_MS: '5000' };
     let { discovery } = await startDaemon(t, root, env);
     let ui = await connectUi(t, discovery);
     await ui.request({ type: 'subscribe' });

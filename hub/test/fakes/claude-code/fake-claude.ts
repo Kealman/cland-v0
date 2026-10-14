@@ -40,6 +40,9 @@
 // FAKE_CLAUDE_DROP_FIRST=1 drops the first prompt the mod submits (as a harness hook would), so it is never confirmed.
 // State lives under FAKE_CLAUDE_HOME (sessions/<id>.json, jobs/<id>.json, jobs/<id>.log). FAKE_CLAUDE_TURN_MS is
 // how long a turn "thinks" (default 300).
+// Test fixtures set 30 ms turns (adapter polls 50 ms; Claude push trust 100 ms).
+// Direct use retains the 300 ms fallback. To stage a slow turn, pass turnMs to the
+// fixture or set FAKE_CLAUDE_TURN_MS explicitly, with a comment naming the race/behaviour.
 import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';

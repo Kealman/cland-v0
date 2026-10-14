@@ -56,7 +56,8 @@ for (const explicit of [false, true]) test(`Claude journals the first turn model
 
 test('sub-agent hooks journal parent attribution and never change the parent model or state', async t => {
   const root = await tempProject(t);
-  const fake = await fakeClaude(t);
+  // T-389 staging race: native idle polls must not overwrite the synthetic parent turn during journal reads.
+  const fake = await fakeClaude(t, { pushTrustMs: 120_000 });
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   const launched = await ui.request({ type: 'session.launch', name: 'parent', harness: 'claude-code', model: 'parent-model' });
@@ -107,8 +108,8 @@ for (const harness of ['codex', 'opencode']) test(`${harness} journals its selec
   const home = await tempProject(t, 'fake-model-opencode-');
   const env = harness === 'codex' ? (await fakeCodex(t)).env : {
     PATH: `${fileURLToPath(new URL('./fakes/opencode', import.meta.url))}:${process.env.PATH ?? ''}`,
-    FAKE_OPENCODE_HOME: home,
-    CLAND_ADAPTER_POLL_MS: '200',
+    FAKE_OPENCODE_HOME: home, FAKE_OPENCODE_TURN_MS: '30',
+    CLAND_ADAPTER_POLL_MS: '50',
   };
   const { discovery } = await startDaemon(t, root, env);
   const ui = await connectUi(t, discovery);

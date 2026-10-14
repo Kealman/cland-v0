@@ -99,17 +99,18 @@ test('last poll survives restart; a running named or default account and OpenCod
 test('manual refresh respects the minimum, timer respects the floor, and queued calls share one poll', async t => {
   const f = await setup(t);
   await writeFile(join(f.claude, 'usage-hold'), '1');
-  const { discovery } = await startDaemon(t, f.root, { ...f.env, CLAND_TEST_ACCOUNT_POLL_FLOOR_MS: '1800', CLAND_TEST_ACCOUNT_POLL_MINIMUM_MS: '1000' });
+  const floorMs = 600, minimumMs = 200;
+  const { discovery } = await startDaemon(t, f.root, { ...f.env, CLAND_TEST_ACCOUNT_POLL_FLOOR_MS: String(floorMs), CLAND_TEST_ACCOUNT_POLL_MINIMUM_MS: String(minimumMs) });
   const ui = await connectUi(t, discovery);
   await eventually('held poll started', async () => (await ccPolls(f)).length === 1 || undefined);
   const requests = Array.from({ length: 4 }, () => ui.request({ type: 'account.poll' }, 15000));
-  await new Promise(r => setTimeout(r, 1100));
+  await new Promise(r => setTimeout(r, 1.1 * minimumMs)); // Negative: single flight persists beyond the configured manual minimum.
   assert.equal((await ccPolls(f)).length, 1, 'still single flight beyond the manual minimum');
   await writeFile(join(f.claude, 'usage-release'), '1');
   for (const result of await Promise.all(requests)) assert.equal(result.ok, true, result.error);
   await eventually('timer polls again', async () => (await ccPolls(f)).length >= 2 || undefined);
   const calls = await ccPolls(f);
-  assert.ok(Number(calls[1]!.at) - Number(calls[0]!.at) >= 1800, JSON.stringify(calls));
+  assert.ok(Number(calls[1]!.at) - Number(calls[0]!.at) >= floorMs, JSON.stringify(calls));
   const before = calls.length;
   assert.equal((await ui.request({ type: 'account.poll' })).ok, true);
   assert.equal((await ccPolls(f)).length, before, 'manual minimum keeps cached reading');
@@ -285,7 +286,7 @@ test('manual frame and CLI refresh poll after five-minute minimum even before th
   await writeFile(join(f.claude, 'usage-hold'), '1');
   const result = cland(f.root, 'account', 'list', '--refresh', '--json');
   await eventually('CLI poll held', async () => (await ccPolls(f)).length === 3 || undefined);
-  await new Promise(r => setTimeout(r, 3200));
+  await new Promise(r => setTimeout(r, 3200)); // Deadline: a held CLI refresh must outlive the ordinary three-second read budget.
   await writeFile(join(f.claude, 'usage-release'), '1');
   const cli = await result;
   assert.equal(cli.code, 0, cli.stderr);

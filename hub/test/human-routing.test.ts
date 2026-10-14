@@ -118,7 +118,8 @@ test('the same role named twice is one addressee: the send succeeds, is publishe
 });
 
 test('a delivery dropped past the TTL moves the stage, and the UI hears it', async (t) => {
-  const hub = await hubFor(t, { queueTtlMs: 1500 });
+  const queueTtlMs = 500;
+  const hub = await hubFor(t, { queueTtlMs });
   const a = await spoke(t, hub, 'a', 'sess-a');
   const b = await spoke(t, hub, 'b', 'sess-b');
   await a.waitForPresence(['a', 'b']);
@@ -133,7 +134,7 @@ test('a delivery dropped past the TTL moves the stage, and the UI hears it', asy
   await sleep(300);
   assert.equal(ui.frames.some((f) => f.type === 'delivery'), false, 'b still waits: the stage stays queued');
 
-  await sleep(1500);
+  await sleep(queueTtlMs); // Expiry: the offline delivery must age past the queue TTL.
   const back = await spoke(t, hub, 'b', 'sess-b');
   await deliveryOf(ui, both.message.id, 'delivered');
   await deliveryOf(ui, onlyB.message.id, 'dropped');

@@ -213,6 +213,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     this.#pollMs = options.pollMs ?? 5000;
     this.#injectTimeoutMs = options.injectTimeoutMs ?? 60_000;
     this.#agentsMs = options.agentsMs ?? 30_000;
+    this.#host.log({ event: 'claude-schedule', agentsMs: this.#agentsMs, pollMs: this.#pollMs });
     this.#stopGraceMs = options.stopGraceMs ?? 5000;
     const env: NodeJS.ProcessEnv = {};
     for (const [k, v] of Object.entries(options.env ?? process.env)) if (!k.startsWith('CLAND_') || k === 'CLAND_CLAUDE_BIN') env[k] = v;

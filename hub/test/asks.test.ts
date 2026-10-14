@@ -276,6 +276,7 @@ test('on a project: closing the item cancels the ask; verdicts and role changes 
 test('a session entering waiting for approval is an approval within one event, with its attach command, and leaves when the state changes; needsYou = asks + approvals + waiting', async (t) => {
   const root = await tempProject(t);
   // pushed states only: the fallback poll would read the fake's own idle back
+  // Keep pushed approval and idle states authoritative throughout the inbox assertions.
   const fake = await fakeClaude(t, { pollMs: 60_000, pushTrustMs: 120_000 });
   const { discovery } = await startDaemon(t, root, { ...fake.env, CLAND_IDLE_NOTIFY_MS: '400' });
   const ui = await connectUi(t, discovery);
@@ -307,12 +308,13 @@ test('a session entering waiting for approval is an approval within one event, w
   assert.equal(gone.needsYou, 1);
   // Long idle defaults to watch (CLAND_IDLE_NOTIFY_MS here; [inbox] idle_minutes in config).
   await ok(ui, { type: 'session.signal', session: 'impl-1', event: 'turn-end', at: Date.now(), payload: {} });
-  await sleep(500);
+  await eventually('long idle appears in events', async () => (await ok<import('../src/protocol.ts').EventsPage>(ui, { type: 'events.list' })).rows.some(r => r.text.includes('idle 1 min')) ? true : undefined);
   assert.ok((await ok<import('../src/protocol.ts').EventsPage>(ui, { type: 'events.list' })).rows.some(r => r.text.includes('idle 1 min')));
 });
 
 test('a launched session that renamed itself is one approval, with its attach command (review of #33)', async (t) => {
   const root = await tempProject(t);
+  // Keep pushed approval and idle states authoritative throughout the inbox assertions.
   const fake = await fakeClaude(t, { pollMs: 60_000, pushTrustMs: 120_000 });
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);

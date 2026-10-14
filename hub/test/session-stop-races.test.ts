@@ -42,8 +42,8 @@ test(`${harness}: ${stop} ${forced ? 'forced' : 'graceful'} stop emits stopped w
     env: {
       CLAND_OPENCODE_BIN: fileURLToPath(new URL('./fakes/opencode/opencode', import.meta.url)),
       FAKE_OPENCODE_HOME: await tempProject(t, 'fake-opencode-'),
-      FAKE_OPENCODE_TURN_MS: '100',
-      CLAND_ADAPTER_POLL_MS: '200',
+      FAKE_OPENCODE_TURN_MS: '30',
+      CLAND_ADAPTER_POLL_MS: '50',
     },
   };
   const { discovery } = await startDaemon(t, root, { ...fake.env, ...(forced ? {

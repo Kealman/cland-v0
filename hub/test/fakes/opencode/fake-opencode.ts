@@ -34,6 +34,9 @@
 // servers/<pid>.json (the live servers, for the tests' cleanup), prompts/<ses>.log (each prompt and its delivery).
 // Recovery probes: hold-session publishes session-running and waits for release-session;
 // fail-session refuses creation without ending the server.
+// Test fixtures set 30 ms turns (adapter polls 50 ms; Claude push trust 100 ms).
+// Direct use retains the 300 ms fallback. To stage a slow turn, pass turnMs to the
+// fixture or set FAKE_OPENCODE_TURN_MS explicitly, with a comment naming the race/behaviour.
 import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -170,6 +173,7 @@ async function serve(args: string[]): Promise<number> {
   const answer = async (session: SessionInfo, text: string) => {
     emit('session.step.started', { sessionID: session.id, agent: 'build', model: session.model, assistantMessageID: rid('msg') });
     const body = /<channel [^>]*>\n([\s\S]*)\n<\/channel>/.exec(text)?.[1] ?? text;
+    // Explicit slow-turn input stages steering, cancellation and outage races.
     await sleep(body.includes('take your time') ? 2000 : turnMs);
     if (body.includes('spawn subagents')) {
       emit('session.created', { sessionID: 'unrelated-child', parentID: 'other-parent', model: session.model });

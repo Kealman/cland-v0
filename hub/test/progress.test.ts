@@ -53,11 +53,12 @@ test('progress stays queued and reaches the spoke in one ordered digest with the
 for (const harness of ['claude-code', 'codex', 'opencode']) {
   test(`${harness}: three progress notes start no turn, one ordered digest reaches the next report, including across restart`, async (t) => {
     const root = await tempProject(t);
+    // Suppress fallback polls so progress delivery follows the staged pushed state.
     const fake = harness === 'claude-code' ? await fakeClaude(t, { pollMs: 10_000 }) : harness === 'codex' ? await fakeCodex(t, { pollMs: 10_000 }) : null;
     const home = fake?.home ?? join(root, '.fake-opencode');
     const env = fake?.env ?? {
       PATH: `${fileURLToPath(new URL('./fakes/opencode', import.meta.url))}:${process.env.PATH ?? ''}`,
-      FAKE_OPENCODE_HOME: home, CLAND_ADAPTER_POLL_MS: '10000', CLAND_INJECT_TIMEOUT_MS: '5000',
+      FAKE_OPENCODE_HOME: home, FAKE_OPENCODE_TURN_MS: '30', CLAND_ADAPTER_POLL_MS: '10000', CLAND_INJECT_TIMEOUT_MS: '5000',
     };
     const first = await startDaemon(t, root, env);
     let ui = await connectUi(t, first.discovery);

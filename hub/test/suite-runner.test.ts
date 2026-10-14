@@ -10,6 +10,8 @@ import { fileURLToPath } from 'node:url';
 import { suiteSummary } from '../src/hub/suites.ts';
 
 const runner = fileURLToPath(new URL('./run-suite.ts', import.meta.url));
+// Admission retries every 250 ms, including when the competing waiter is paused.
+const admissionPollMs = 250;
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 async function fixture(t: TestContext) {
   const dir = await mkdtemp(join(tmpdir(), 'cland-runner-test-'));
@@ -64,6 +66,7 @@ for (const mode of ['hub', 'nvim'] as const) {
     const dir = await fixture(t);
     const journal = join(dir, 'journal');
     const file = join(dir, 'pass.mjs');
+    // Artificial work: hold admission 500 ms so concurrent runners must serialize.
     await writeFile(file, `import assert from 'node:assert/strict'; import { appendFile, readFile } from 'node:fs/promises'; import test from 'node:test'; test('fixture', async () => { const owner = JSON.parse(await readFile(${JSON.stringify(`${lockPath(dir, mode)}.owner`)}, 'utf8')); assert.equal(owner.runner.pid, process.ppid); assert.equal(typeof owner.runner.started, 'string'); await appendFile(${JSON.stringify(journal)}, 'start\\n'); await new Promise(r => setTimeout(r, 500)); await appendFile(${JSON.stringify(journal)}, 'end\\n'); });`);
     const first = run(t, dir, file, mode);
     await until(async () => (await readFile(journal, 'utf8').catch(() => '')).includes('start')).catch(error => { throw new Error(String(error) + '\n' + first.output()); });
@@ -81,6 +84,7 @@ for (const mode of ['hub', 'nvim'] as const) {
     const dir = await fixture(t);
     const marker = join(dir, 'holder.json');
     const holding = join(dir, 'held.mjs');
+    // Artificial hold: the interruption test kills this child before its failure ceiling.
     await writeFile(holding, `import test from 'node:test'; import { writeFile } from 'node:fs/promises'; test('holder', async () => { await writeFile(${JSON.stringify(marker)}, JSON.stringify({ pid: process.pid, root: process.env.TMPDIR })); await new Promise(r => setTimeout(r, 60000)); });`);
     const holder = run(t, dir, holding, mode, false, { TZ: 'UTC' });
     await until(async () => (await readFile(marker, 'utf8').catch(() => '')).length > 0);
@@ -224,7 +228,7 @@ for (const mode of ['hub', 'nvim'] as const) {
         await until(() => suite.output().includes('WARNING: ownerless manual suite lock'));
         assert.match(suite.output(), /age 96[0-9]s; no owner recorded \(a manual lock\); if no suite is running, remove it with/);
         assert.ok(suite.output().includes(`rmdir ${lock}`));
-        await delay(1200);
+        await delay(5 * admissionPollMs); // Negative: five admission polls cannot take a protected lock.
         assert.equal(suite.child.exitCode, null);
         assert.deepEqual(await import('node:fs/promises').then(({ readdir }) => readdir(lock)), []);
         suite.child.kill('SIGTERM');
@@ -347,7 +351,7 @@ for (const started of [new Date().toISOString(), null, 'unreadable-start-time'])
     const suite = run(t, dir, file);
     await until(() => suite.output().includes('waiting for the suite lock') || suite.output().includes('taking over stale suite lock'));
     assert.match(suite.output(), /holder from an older version/);
-    await delay(1200);
+    await delay(5 * admissionPollMs); // Negative: five admission polls cannot take a protected lock.
     assert.equal(suite.child.exitCode, null);
     assert.deepEqual(JSON.parse(await readFile(`${lock}.owner`, 'utf8')), metadata);
     suite.child.kill('SIGTERM');
@@ -377,6 +381,7 @@ test('intentional fixture', async t => {
   if (!launched.ok) throw new Error(JSON.stringify(launched));
   await clauseAnswered(ui, 'coord');
   await writeFile(${JSON.stringify(marker)}, JSON.stringify({ root, suiteRoot: process.env.TMPDIR, pid: discovery.pid, sessions: await fake.sessions() }));
+  // Artificial hold: suite interruption must kill this still-running test.
   ${outcome === 'failure' ? "throw new Error('intentional failure after daemon start');" : 'await new Promise(r => setTimeout(r, 60000));'}
 });`);
     const suite = run(t, dir, file);
@@ -535,7 +540,7 @@ for (const outcome of ['resume', 'kill', 'reused PID'] as const) {
     await writeFile(release, 'go');
     assert.equal(await holder.done, 0, holder.output());
     if (outcome !== 'kill') {
-      await delay(700); // several later polling opportunities after release
+      await delay(3 * admissionPollMs); // Negative: three admission polls cannot overtake the older waiter.
       assert.equal(await readFile(journal, 'utf8').catch(() => ''), '');
       assert.equal(b.child.exitCode, null);
       assert.equal(c.child.exitCode, null);
@@ -577,7 +582,7 @@ test('tickets register before guard polling so an earlier contended waiter canno
   assert.ok(a && b && c);
   await writeFile(release, 'go');
   assert.equal(await done, 0, guardError);
-  await delay(700);
+  await delay(3 * admissionPollMs); // Negative: three admission polls cannot overtake the older waiter.
   assert.equal(await readFile(journal, 'utf8').catch(() => ''), '');
   assert.equal(b.child.exitCode, null);
   assert.equal(c.child.exitCode, null);
@@ -642,7 +647,7 @@ for (const mode of ['nvim', 'all'] as const) {
     await writeFile(release, 'go');
     assert.equal(await holder.done, 0, holder.output());
     // Let the new poller observe the free machine before allowing old to retry.
-    await delay(700);
+    await delay(3 * admissionPollMs); // Negative: three admission polls cannot overtake the older waiter.
     const { existsSync } = await import('node:fs');
     assert.equal(existsSync(machine), false, 'new must not hold machine while old owns Neovim');
     assert.equal(next.child.exitCode, null);

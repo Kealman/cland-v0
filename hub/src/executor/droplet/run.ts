@@ -48,7 +48,7 @@ export class DropletRun {
     const config = await readFile(join(this.#root, '.cland/config.toml'), 'utf8').then(text => parseConfig(text, basename(this.#root)), error => { if (error.code === 'ENOENT') return defaultConfig(basename(this.#root)); throw error; });
     const script = (await readFile(fileURLToPath(new URL('./run.sh', import.meta.url)), 'utf8'))
       .replace('@RUN_ID@', lease.run).replace('@COMMANDS@', commands)
-      .replace('@RUN_TIMEOUT@', String(config.verification.runTimeoutMs / 1000));
+      .replace('@RUN_TIMEOUT@', String(testTiming('CLAND_TEST_EXECUTOR_RUN_TIMEOUT_MS', config.verification.runTimeoutMs) / 1000));
     await writeFile(join(local, 'run.sh'), script, { mode: 0o600 });
     for (const file of ['tree.bundle', 'env', 'run.sh']) await this.#machine.put(lease, join(local, file), `runs/${lease.run}/${file}`);
     const lock = quote(snapshot.key.lock);

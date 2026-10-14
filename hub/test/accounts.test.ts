@@ -46,9 +46,9 @@ async function fixture(t: import('node:test').TestContext, roles = '', prepared 
   if (roles) await writeFile(join(root, '.cland', 'roles.toml'), roles);
   const registry = join(config, 'cland', 'accounts.toml');
   await writeFile(registry, `[accounts.codex-a]\nharness = "codex"\nhome = ${JSON.stringify(join(root, 'codex-a'))}\n[accounts.codex-b]\nharness = "codex"\nhome = ${JSON.stringify(join(root, 'codex-b'))}\n[accounts.oc-data]\nharness = "opencode"\ndata_home = ${JSON.stringify(join(root, 'oc-data'))}\n[accounts.oc-db]\nharness = "opencode"\ndb = ${JSON.stringify(join(root, 'oc-db', 'store.db'))}\n[accounts.claude-b]\nharness = "claude-code"\n`);
-  const env = { CLAUDE_CONFIG_DIR: join(root, 'missing-claude'), CLAND_CLAUDE_BIN: join(FAKE_CLAUDE_DIR, 'claude'), CLAND_CODEX_BIN: join(FAKE_CODEX_DIR, 'codex'), CODEX_HOME: join(root, 'codex-a'), XDG_DATA_HOME: join(root, 'oc-data'), XDG_CONFIG_HOME: config, FAKE_CODEX_HOME: codex, FAKE_OPENCODE_HOME: opencode,
+  const env = { CLAUDE_CONFIG_DIR: join(root, 'missing-claude'), CLAND_CLAUDE_BIN: join(FAKE_CLAUDE_DIR, 'claude'), CLAND_CODEX_BIN: join(FAKE_CODEX_DIR, 'codex'), CODEX_HOME: join(root, 'codex-a'), XDG_DATA_HOME: join(root, 'oc-data'), XDG_CONFIG_HOME: config, FAKE_CODEX_HOME: codex, FAKE_CODEX_TURN_MS: '30', FAKE_CODEX_REFUSE_MS: '150', FAKE_OPENCODE_HOME: opencode, FAKE_OPENCODE_TURN_MS: '30',
     PATH: `${fileURLToPath(new URL('./fakes/codex', import.meta.url))}:${fileURLToPath(new URL('./fakes/opencode', import.meta.url))}:${process.env.PATH ?? ''}`,
-    CLAND_ADAPTER_POLL_MS: '200', CLAND_INJECT_TIMEOUT_MS: '5000', ...extraEnv(root) };
+    CLAND_ADAPTER_POLL_MS: '50', CLAND_INJECT_TIMEOUT_MS: '5000', ...extraEnv(root) };
   const { discovery } = await startDaemon(t, root, env);
   const ui = await connectUi(t, discovery);
   const servers = async (harness = 'codex') => {

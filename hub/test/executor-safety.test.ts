@@ -108,7 +108,7 @@ test('two protocol projects reserve against one cap and confirmed release replac
 
 test('the remote shell and the host deadline both end a timed-out run once and release', async t => {
   for (const mode of ['shell', 'host'] as const) await t.test(mode, async t => {
-    const f = await fixture(t, { test: longTest, config: `lifetime="15m"\nrun_timeout="${mode === 'shell' ? '2s' : '5m'}"`, env: { CLAND_TEST_EXECUTOR_TIMEOUT_GRACE_MS: '50' } });
+    const f = await fixture(t, { test: longTest, config: `lifetime="15m"\nrun_timeout="${mode === 'shell' ? '2s' : '5m'}"`, env: { CLAND_TEST_EXECUTOR_TIMEOUT_GRACE_MS: '50', ...(mode === 'shell' ? { CLAND_TEST_EXECUTOR_RUN_TIMEOUT_MS: '200' } : {}) } });
     const run = await f.launch(); await f.remote(run.id);
     if (mode === 'host') {
       // Durable admission predates the configured deadline; reattach through the protocol.
@@ -262,7 +262,7 @@ test('provider list awaits cannot turn a concurrently acquired droplet or key in
 });
 
 test('prepare, run, fallback, cancel and stopped-hub watchdog leave the sentinel nowhere', async t => {
-  const f = await fixture(t, { test: longTest, config: 'lifetime="20s"\nrun_timeout="18s"', env: { CLAND_TEST_EXECUTOR_MARGIN_MS: '1', CLAND_TEST_EXECUTOR_COLLECTION_MARGIN_MS: '1' } });
+  const f = await fixture(t, { test: longTest, config: 'lifetime="20s"\nrun_timeout="18s"', env: { CLAND_TEST_EXECUTOR_MARGIN_MS: '1', CLAND_TEST_EXECUTOR_COLLECTION_MARGIN_MS: '1', CLAND_TEST_EXECUTOR_LIFETIME_MS: '4000' } });
   await rm(join(f.root, '.cland/run/executor/snapshot.json'));
   assert.equal((await cland(f.root, 'executor', 'prepare', '--report', 'general')).code, 0);
   await eventually('prepare finished', async () => {
@@ -285,11 +285,19 @@ test('prepare, run, fallback, cancel and stopped-hub watchdog leave the sentinel
   const restart = await startDaemon(t, f.root, f.env); const ui = await connectUi(t, restart.discovery);
   assert.match((await f.result(crash.id, ui)).text, /remote machine lifetime expired/);
   assert.equal((await f.messages(crash.id, ui)).length, 1);
+  // The shortened lifetime can publish the crash result before the fallback lease's release settles.
+  await eventually('all executor leases finish releasing', async () => {
+    const status = (await ui.request({ type: 'executor.status' })).value as { leases: unknown[] };
+    return status.leases.length === 0 ? true : undefined;
+  });
   const status = JSON.parse((await cland(f.root, 'executor', 'status', '--json')).stdout);
   assert.deepEqual(status.leases, []); assert.equal(status.taggedDroplets, 0); assert.equal(status.spend.reserved, 0);
   await flushProjectLogs(t, f.root);
   const journal = await readFile(join(f.root, '.cland/journal.jsonl'), 'utf8');
   assert.match(journal, /executor-watchdog-fired/); assert.match(journal, /executor-sweep/);
+  // Live resource/result/journal checks are complete. Stop the restarted hub before
+  // auditing persisted bytes, so its spend-ledger sweeps cannot rotate lock directories.
+  assert.equal((await cland(f.root, 'hub', 'stop')).code, 0);
   const scan = async (dir: string): Promise<void> => {
     for (const entry of await readdir(dir, { withFileTypes: true })) {
       const path = join(dir, entry.name);

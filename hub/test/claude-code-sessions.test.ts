@@ -95,6 +95,7 @@ function hook(root: string, event: string, o: { session: string; launch?: string
 
 test('signal order is the order the harness fired them: a Stop whose hook process started slowly does not outrank the next turn start', async (t) => {
   const root = await tempProject(t);
+  // Suppress fallback polls so delayed hook ordering alone controls the staged state.
   const fake = await fakeClaude(t, { pollMs: 10_000 });
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
@@ -117,6 +118,7 @@ test('signal order is the order the harness fired them: a Stop whose hook proces
 
 test('late Claude start and StopFailure hooks keep failure notes with their own turn sender', async (t) => {
   const root = await tempProject(t);
+  // Suppress fallback polls so delayed hook ordering alone controls the staged state.
   const fake = await fakeClaude(t, { pollMs: 600_000 });
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);

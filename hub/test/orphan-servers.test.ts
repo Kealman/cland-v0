@@ -15,6 +15,14 @@ import { fileURLToPath } from 'node:url';
 import { ownDirectory, ownProcess } from './process-cleanup.ts';
 
 type Harness = { pid: number; name: string };
+async function startupSweep(root: string, pid: number): Promise<void> {
+  await eventually('this daemon completed its startup sweep', async () => {
+    const rows = (await readFile(join(root, '.cland/log/hub.log'), 'utf8')).split('\n').filter(line => line.startsWith('{')).map(line => JSON.parse(line));
+    const serving = rows.findLastIndex(row => row.event === 'serving' && row.pid === pid);
+    return serving >= 0 && rows.slice(serving + 1).some(row => row.event === 'orphan-sweep-completed') ? true : undefined;
+  });
+}
+
 async function leftoverCodex(t: import('node:test').TestContext, status: string) {
   const root = await tempProject(t);
   const fake = await fakeCodex(t);
@@ -42,8 +50,8 @@ test('an exited server with an unknown recorded start time is reported but never
   assert.match(orphan.reason, /session impl.*identity cannot be verified/);
   assert.deepEqual(await sweepOrphans(root, () => {}), []);
   await clandWithEnv(root, env, 'doctor', '--fix', '--json');
-  await startDaemon(t, root, env);
-  await sleep(500);
+  const restarted = await startDaemon(t, root, env);
+  await startupSweep(root, restarted.discovery.pid);
   assert.equal(pidAlive(pid), true);
 });
 
@@ -59,8 +67,8 @@ test('a reused pid is preserved even when its server has project cwd, socket and
   assert.deepEqual(await sweepOrphans(root, () => {}), []);
   const fixed = await clandWithEnv(root, env, 'doctor', '--fix', '--json');
   assert.match(fixed.stdout, /PID was reused/);
-  await startDaemon(t, root, env);
-  await sleep(500);
+  const restarted = await startDaemon(t, root, env);
+  await startupSweep(root, restarted.discovery.pid);
   assert.equal(pidAlive(pid), true);
 });
 
@@ -128,11 +136,12 @@ const OPENCODE_FAKE = fileURLToPath(new URL('./fakes/opencode/opencode', import.
 async function fakeOpenCode(t: import('node:test').TestContext) {
   const home = await realpath(await mkdtemp(join(tmpdir(), 'fake-opencode-')));
   ownDirectory(t, home);
-  return { env: { CLAND_OPENCODE_BIN: OPENCODE_FAKE, FAKE_OPENCODE_HOME: home, FAKE_OPENCODE_TURN_MS: '100', CLAND_ADAPTER_POLL_MS: '200' } };
+  return { env: { CLAND_OPENCODE_BIN: OPENCODE_FAKE, FAKE_OPENCODE_HOME: home, FAKE_OPENCODE_TURN_MS: '30', CLAND_ADAPTER_POLL_MS: '50' } };
 }
 for (const harness of ['codex', 'opencode', 'claude-code']) {
   test(`${harness}: stop waits for the server’s death, relaunch replaces it, and journal names what ended`, async t => {
     const root = await tempProject(t);
+    // Keep the fake turn running while stop and relaunch prove server death.
     const fake = harness === 'codex' ? await fakeCodex(t, { turnMs: 10000 }) : harness === 'opencode' ? await fakeOpenCode(t) : await fakeClaude(t);
     const { discovery } = await startDaemon(t, root, { ...fake.env, CLAND_STOP_GRACE_MS: '200', FAKE_CODEX_TERM_DELAY_MS: '10000', FAKE_OPENCODE_IGNORE_TERM: '1', FAKE_OPENCODE_CHILD: '1', FAKE_CLAUDE_IGNORE_TERM: '1' });
     const ui = await connectUi(t, discovery);
@@ -274,7 +283,7 @@ setInterval(() => {}, 1000);
   ui.close();
   await clandWithEnv(root, env, 'hub', 'stop');
   const second = await startDaemon(t, root, env);
-  await sleep(500);
+  await startupSweep(root, second.discovery.pid);
   assert.equal(pidAlive(p.pid), true);
   assert.equal(pidAlive(child.pid), true, 'the verified running wrapper protects its server child');
   const next = await connectUi(t, second.discovery);
@@ -425,7 +434,7 @@ test('the shared sweep deadline preserves remaining servers and prevents later s
   const start = performance.now();
   await assert.rejects(sweepOrphans(root, () => {}, 'harness', { deadline: Date.now() + 400 }), /deadline|failed|timed out/);
   assert.ok(performance.now() - start < 1500, 'all workers settle within the shared bound');
-  await sleep(1300);
+  await sleep(1300); // Negative: exceed the one-second escalation grace after the expired sweep deadline.
   assert.equal(pidAlive(pid), true, 'no worker keeps signalling after the deadline');
 });
 

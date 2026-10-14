@@ -48,7 +48,7 @@ test('doctors from different projects end one deleted hub and its fake harness t
   const fake = { env: {
     CLAND_OPENCODE_BIN: fileURLToPath(new URL('./fakes/opencode/opencode', import.meta.url)),
     FAKE_OPENCODE_HOME: home, FAKE_OPENCODE_IGNORE_TERM: '1', FAKE_OPENCODE_CHILD: '1',
-    FAKE_OPENCODE_TURN_MS: '100', CLAND_ADAPTER_POLL_MS: '200',
+    FAKE_OPENCODE_TURN_MS: '30', CLAND_ADAPTER_POLL_MS: '50',
   } };
   const signals = join(scope, 'hub-signals');
   const preload = join(scope, 'slow-shutdown.mjs');

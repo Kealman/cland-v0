@@ -51,8 +51,8 @@ async function fakeOpenCode(t: TestContext, timings: { pollMs?: number; injectTi
   const env = {
     PATH: `${FAKE_OPENCODE_DIR}:${process.env.PATH ?? ''}`,
     FAKE_OPENCODE_HOME: home,
-    FAKE_OPENCODE_TURN_MS: String(timings.turnMs ?? 300),
-    CLAND_ADAPTER_POLL_MS: String(timings.pollMs ?? 200),
+    FAKE_OPENCODE_TURN_MS: String(timings.turnMs ?? 30),
+    CLAND_ADAPTER_POLL_MS: String(timings.pollMs ?? 50),
     CLAND_INJECT_TIMEOUT_MS: String(timings.injectTimeoutMs ?? 5000),
   };
   const servers = async () => {
@@ -119,6 +119,7 @@ async function api(h: Harness, root: string, method: string, path: string, body?
 
 test('a launched OpenCode session: its own server, the spoke connects, a UI message goes queued → delivered → injected, the reply comes back, the state follows the event stream', { skip: NO_PS }, async (t) => {
   const root = await tempProject(t);
+  // Suppress polling while SSE outage and stream recovery determine the observed state.
   const fake = await fakeOpenCode(t, { pollMs: 10_000 });
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
@@ -317,6 +318,7 @@ test('OpenCode failure attribution follows delivered inbox items when two idle a
 
 test('OpenCode forgets prior execution inputs when completion is missed during an SSE outage', async (t) => {
   const root = await tempProject(t);
+  // Keep the turn running while the test disconnects SSE, so only recovery discovers its completion.
   const fake = await fakeOpenCode(t, { turnMs: 1000 });
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
@@ -345,6 +347,7 @@ test('OpenCode forgets prior execution inputs when completion is missed during a
 
 test('a message sent while the session works steers the running turn; one sent while idle is queued', async (t) => {
   const root = await tempProject(t);
+  // Suppress polling while SSE outage and stream recovery determine the observed state.
   const fake = await fakeOpenCode(t, { pollMs: 10_000 });
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
@@ -355,6 +358,7 @@ test('a message sent while the session works steers the running turn; one sent w
   await presentAs(ui, 'impl', 'idle');
   const clauseTurn = stateEvents(ui, 'impl').length;
 
+  // The fake's explicit slow-turn input leaves time to steer before this turn completes.
   const first = await sendGeneral(ui, 'take your time with this one');
   await presentAs(ui, 'impl', 'busy');
   const second = await sendGeneral(ui, 'and this too');
@@ -463,6 +467,7 @@ test('OpenCode ignores a late command lookup after its approval ends and another
 
 test('a pending permission is waiting for approval within one event, and the reply brings the turn back; a form is waiting for human', async (t) => {
   const root = await tempProject(t);
+  // Suppress polling while SSE outage and stream recovery determine the observed state.
   const fake = await fakeOpenCode(t, { pollMs: 10_000 });
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
@@ -506,6 +511,7 @@ test('a pending permission is waiting for approval within one event, and the rep
 
 test('a killed OpenCode server: the state turns unknown and the hub logs it once', async (t) => {
   const root = await tempProject(t);
+  // Suppress polling while SSE outage and stream recovery determine the observed state.
   const fake = await fakeOpenCode(t, { pollMs: 10_000 });
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
@@ -540,6 +546,7 @@ test('a killed OpenCode server: the state turns unknown and the hub logs it once
 
 test('after a hub restart, resume re-finds the OpenCode server and session through the process table and the event stream goes on', async (t) => {
   const root = await tempProject(t);
+  // Suppress polling while SSE outage and stream recovery determine the observed state.
   const fake = await fakeOpenCode(t, { pollMs: 10_000 });
   const first = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, first.discovery);

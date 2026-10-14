@@ -491,7 +491,8 @@ test('the workbench reads sessions and presence once per connect; events update 
   await c.input('<Esc>');
   await c.waitScreen((x) => x.includes('SESSIONS'), 'the sessions panel');
   // Beyond the former default timer as well as the accelerated timer used by this fixture.
-  await sleep(5500);
+  const formerRefreshMs = 5000;
+  await sleep(1.1 * formerRefreshMs); // Negative: span the removed production poll, as well as this fixture's 300 ms timer.
   for (const type of ['task.list', 'session.list', 'hub.status', 'role.list', 'inbox.list']) {
     assert.equal(await asked(type), 1, `${type} once on connecting`);
   }

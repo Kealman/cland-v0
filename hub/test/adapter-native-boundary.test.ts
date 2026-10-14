@@ -361,7 +361,7 @@ for (const Adapter of [CodexAdapter, OpenCodeAdapter]) test(`${Adapter.name}: un
   if (Adapter === CodexAdapter) assert.equal(f.closedClients(), 0, 'the live connection remains owned while the child survives');
   await assert.rejects(f.adapter.spawn(f.request), /still supervised/);
   assert.equal(f.children.length, 1, 'pending ownership blocks another launch on the same resources');
-  await new Promise(resolve => setTimeout(resolve, 1100));
+  await new Promise(resolve => setTimeout(resolve, 1100)); // Negative: span the one-second launch-recovery retry without releasing unverified resources.
   assert.ok((await fsp.stat(log)).isFile(), 'supervision retries preserve resources while the child still cannot be verified');
   const child = f.children[0]!;
   child.kill(); await once(child, 'exit');

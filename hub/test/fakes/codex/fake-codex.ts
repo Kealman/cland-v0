@@ -62,6 +62,10 @@
 // State lives under FAKE_CODEX_HOME: servers/<pid>.json (pid, socket, argv, its CLAND_* environment and PATH), threads/<id>.json (the "rollout"),
 // log/<pid>.log. FAKE_CODEX_TURN_MS is how long each answer "thinks" (default 300). FAKE_CODEX_TERM_DELAY_MS is how long the
 // app-server takes to exit after SIGTERM (default 0), its turn running on meanwhile.
+// Test fixtures set 30 ms turns (adapter polls 50 ms; Claude push trust 100 ms).
+// Direct use retains the 300 ms fallback. To stage a slow turn, pass turnMs to the
+// fixture or set FAKE_CODEX_TURN_MS explicitly, with a comment naming the race/behaviour.
+// fakeCodex also sets FAKE_CODEX_REFUSE_MS=150; direct use retains 1500 ms.
 import { createInterface } from 'node:readline';
 import { randomUUID } from 'node:crypto';
 import { appendFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';

@@ -92,7 +92,8 @@ type Presence = { name: string; sessionId: string; state: string; status: string
 
 for (const accepted of [false, true]) test(`Codex failure before a pending steer response notifies only admitted senders (${accepted ? 'accepted' : 'rejected'})`, async (t) => {
   const root = await tempProject(t);
-  const fake = await fakeCodex(t);
+  // Keep the failure turn busy across presence sampling so the steer is submitted before completion (T-389 finding).
+  const fake = await fakeCodex(t, { turnMs: 300 });
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
@@ -135,8 +136,10 @@ async function fakeCodex(t: TestContext, timings: { pollMs?: number; injectTimeo
   const env = {
     PATH: `${FAKE_CODEX_DIR}:${process.env.PATH ?? ''}`,
     FAKE_CODEX_HOME: home,
-    FAKE_CODEX_TURN_MS: String(timings.turnMs ?? 300),
-    CLAND_ADAPTER_POLL_MS: String(timings.pollMs ?? 200),
+    FAKE_CODEX_TURN_MS: String(timings.turnMs ?? 30),
+    FAKE_CODEX_REFUSE_MS: '150',
+    CLAND_PUSH_TRUST_MS: '100',
+    CLAND_ADAPTER_POLL_MS: String(timings.pollMs ?? 50),
     CLAND_INJECT_TIMEOUT_MS: String(timings.injectTimeoutMs ?? 5000),
   };
   const servers = async () => {
@@ -869,7 +872,7 @@ test('a turn whose input items the hub cannot classify is reported once as unrea
 
 for (const mode of ['rejected', 'unanswered']) test(`a successful completion before a late ${mode} steer response never replays a pending admission`, async (t) => {
   const root = await tempProject(t);
-  const fake = await fakeCodex(t, { injectTimeoutMs: 1500, turnMs: 100 });
+  const fake = await fakeCodex(t, { injectTimeoutMs: 1500 });
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
@@ -892,7 +895,7 @@ for (const mode of ['rejected', 'unanswered']) test(`a successful completion bef
 
 test('a recovery accepted and dropped in a newer turn retains its obligation', async (t) => {
   const root = await tempProject(t);
-  const fake = await fakeCodex(t, { turnMs: 100 });
+  const fake = await fakeCodex(t);
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
@@ -926,7 +929,7 @@ test('a recovery accepted and dropped in a newer turn retains its obligation', a
 
 test('a recovered turn failing before its admission response notifies the original sender', async (t) => {
   const root = await tempProject(t);
-  const fake = await fakeCodex(t, { turnMs: 100 });
+  const fake = await fakeCodex(t);
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
@@ -955,7 +958,7 @@ test('a recovered turn failing before its admission response notifies the origin
 
 test('a refused recovery request records journal, Agents and events-view failure and tells the sender', async (t) => {
   const root = await tempProject(t);
-  const fake = await fakeCodex(t, { turnMs: 100 });
+  const fake = await fakeCodex(t);
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
@@ -986,7 +989,7 @@ test('a refused recovery request records journal, Agents and events-view failure
 
 for (const mode of ['reject', 'accept', 'accept dropped']) test(`a successful completion reconciles a late ${mode} pending steer response`, async (t) => {
   const root = await tempProject(t);
-  const fake = await fakeCodex(t, { turnMs: 100 });
+  const fake = await fakeCodex(t);
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
@@ -1014,7 +1017,7 @@ for (const mode of ['reject', 'accept', 'accept dropped']) test(`a successful co
 
 test('repeated dropped recoveries stop with a visible failure after two attempts', async (t) => {
   const root = await tempProject(t);
-  const fake = await fakeCodex(t, { turnMs: 100 });
+  const fake = await fakeCodex(t);
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });

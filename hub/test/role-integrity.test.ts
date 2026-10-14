@@ -20,7 +20,8 @@ async function holders(ui: FrameClient, role: string): Promise<string[]> {
 
 test('a Coordinator remembered past the queue TTL that reconnects after another took the role is refused it; the UI learns', async (t) => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root, { CLAND_QUEUE_TTL_MS: '1500' });
+  const queueTtlMs = 300;
+  const { discovery } = await startDaemon(t, root, { CLAND_QUEUE_TTL_MS: String(queueTtlMs) });
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
 
@@ -29,7 +30,7 @@ test('a Coordinator remembered past the queue TTL that reconnects after another 
   await old.close();
   await ui.waitFor((f) => f.type === 'role.vacant');
   // past the TTL the old holder no longer counts: the human gives the role to another session
-  await sleep(1800);
+  await sleep(1.2 * queueTtlMs); // Expiry: exceed the remembered holder TTL.
   const set = await ui.request({ type: 'role.set', session: 'coord-b', role: 'coordinator' });
   assert.equal(set.ok, true, set.error);
   const b = await spawnSpoke({ discover: true, cwd: root, name: 'coord-b', sessionId: 'sess-b', assignRole: false });
@@ -113,7 +114,10 @@ test('a launch for the role the name already holds carries the clause once: in t
   assert.equal(launched.ok, true, launched.error);
   const pid = (launched.value as { process: Harness }).process.pid as number;
   await presentAs(ui, 'rev-1', 'idle');
-  await sleep(1000);
+  await eventually('the first role clause is recorded', async () => {
+    await ui.request({ type: 'hub.status', flushLogs: true });
+    return (await hubLog(root)).includes('"event":"role-clause","session":"rev-1"') ? true : undefined;
+  });
   assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
   const clauses = (await hubLog(root)).split('\n').filter((l) => l.includes('"event":"role-clause"') && l.includes('"session":"rev-1"'));
   assert.equal(clauses.length, 1, clauses.join('\n'));
