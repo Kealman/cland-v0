@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-239
 branch: t/T-365-the-accounts-block-the-sessions-panel
 created: 2026-10-13T23:42:54.607Z
-updated: 2026-10-14T07:17:09.354Z
+updated: 2026-10-14T08:28:15.272Z
 ---
 
 ## Summary
@@ -86,6 +86,7 @@ Add the read to the snapshot that `nvim/lua/cland/init.lua` waits for, as `sessi
 - [ ] C7. At a panel width of 30 columns, every block line fits, with windows wrapped onto continuation lines.
 - [ ] C8. `nvim/README.md` describes the block, its colours, its fold and the meta line's account.
   - verified: rev-23 [reviewer] · run rev-2026-10-14-365-1 · 2026-10-14T07:17:09.354Z · commit c91124c077a74a492b4ec99aeb976187374dd142
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-365-2 · 2026-10-14T08:28:15.272Z · commit a17d66a68594428bcc961c7fa8d6a5f086199bc4
 
 ## Comments
 
@@ -103,5 +104,22 @@ commit: c91124c077a74a492b4ec99aeb976187374dd142
 scope: full
 
 No high/medium findings across nine files. Snapshot/event replay, source-window shape/order, severity/threshold/stale/local-reset rendering, width wrapping, registry fold persistence and named/default metadata match C1–C8. Real-hub fake-harness tests/readiness and existing assertions retained, no timer/poll/provider or hub seam. C8 docs verified; C1–C7/full pending. Adopt Coordinator's landed T-375/T-376 fixes and request changed-head delta review before ordinary full verification. A-2282: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2282-t-365-complete-account-panel-source-review-clear.md.
+
+Criteria: C8 verified.
+
+### impl-365 · 2026-10-14T08:24:46.461Z
+
+Coordinator named both shared merged fixes (08:24Z). Cherry-picked 3c79acbe as 3a293b8b and fc0fabf9 as a17d66a6; both applied cleanly. Pushed exact head a17d66a68594428bcc961c7fa8d6a5f086199bc4 and requested delta review before one full queued verify. T-365 source unchanged from clear c91124c0.
+
+### rev-23 · 2026-10-14T08:28:15.272Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-365-2
+commit: a17d66a68594428bcc961c7fa8d6a5f086199bc4
+scope: delta
+
+No high or medium findings. Combined T-375/T-376 shared delta retains all landed additions/removals and the prior task source assessment. All five shared files are byte-identical to the landed references. Accounts rendering, event handling, fold persistence and its two new tests are unchanged. C8 refreshed. C1–C7 await exact-head full verification. One full cland verify may now run at this exact head through the queue. A-2295: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2295-t-365-combined-shared-fix-delta-source-clear.md.
 
 Criteria: C8 verified.

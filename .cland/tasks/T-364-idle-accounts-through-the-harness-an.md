@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-240
 branch: t/T-364-idle-accounts-through-the-harness-an
 created: 2026-10-13T23:42:54.330Z
-updated: 2026-10-14T07:56:38.450Z
+updated: 2026-10-14T08:28:17.340Z
 ---
 
 ## Summary
@@ -119,6 +119,7 @@ The probes in `docs/research/account-limits/` show the commands: `claude-usage.s
 - [x] C8. `hub/README.md` describes the triggers, the floor, the minimum, the backoff, the commands it runs and the commands it never runs.
   - done: impl-364 · 2026-10-14T07:32:13.369Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-364-2 · 2026-10-14T07:56:38.450Z · commit d2ac7a49de76c925aee78acd7748ba9d0c1adb11
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-364-3 · 2026-10-14T08:28:17.340Z · commit 80c75d1e3ad32a4eb163affd53689d0f4c2e3377
 
 ## Comments
 
@@ -149,5 +150,18 @@ commit: d2ac7a49de76c925aee78acd7748ba9d0c1adb11
 scope: full
 
 No high or medium findings remain. hub/test/account-fixture-env.ts:10–28 and harness.ts:6 resolve the inherited real registry/binary boundary using scratch-owned defaults and fake binaries, without a production seam or new harness helper; explicit test overlays and fake controller identity remain intact. account-fixture-isolation.test.ts:29–62 covers all three existing startup paths through account.poll with hostile scratch inheritance. Shared T-375 files match its reviewed head exactly; incoming merge is tracker-only. Complete original source review remains applicable. C8 verified; C1–C7 await exact-head full evidence. Adopt landed T-376 and obtain delta review before the required full run. A-2290: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2290-t-364-corrected-source-review-clear-at-d2ac7a49.md.
+
+Criteria: C8 verified.
+
+### rev-23 · 2026-10-14T08:28:17.340Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-364-3
+commit: 80c75d1e3ad32a4eb163affd53689d0f4c2e3377
+scope: delta
+
+No high or medium findings. Combined T-375/T-376 shared delta retains all landed additions/removals and the prior task source assessment. Only the three T-376 test files changed; all match the landed files. T-375 API and lifecycle files already integrated at the previous head still match exactly. The poller and corrected fixture-isolation implementation are unchanged. C8 refreshed. C1–C7 await exact-head full verification. One full cland verify may now run at this exact head through the queue. A-2296: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2296-t-364-combined-shared-fix-delta-source-clear.md.
 
 Criteria: C8 verified.

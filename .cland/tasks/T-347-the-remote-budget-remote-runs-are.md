@@ -3,7 +3,7 @@ id: T-347
 kind: task
 title: "The remote budget: remote runs are admitted up to remote_budget in parallel beside the local slot of one, the local slot takes a droplet run only when the remote budget is full, and cland verify queue names each run's executor"
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 7
 labels:
@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-233
 branch: t/T-347-the-remote-budget-remote-runs-are
 created: 2026-10-13T20:53:46.081Z
-updated: 2026-10-14T07:40:16.758Z
+updated: 2026-10-14T09:04:37.797Z
 ---
 
 ## Summary
@@ -84,20 +84,27 @@ Prior work: T-215 kept the local budget at one (`verification-budget-capped`). T
 
 - [x] C1. With `remote_budget = 3`, three sessions submit `cland verify --executor droplet` at once. Three fake droplets run in parallel, and while they run, a fourth session's local run and a human hand run take the local slot in turn.
   - done: impl-347 · 2026-10-14T03:18:53.491Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-347-9 · 2026-10-14T08:55:43.401Z · commit 205897b4aed6ff59590908c2fa53cde755dd5fac
 - [x] C2. With `remote_budget = 2` and the local slot free, a third droplet run goes to the local slot. It gets one warn notice with the cause `remote budget full` and a `verification-executor-fallback` record. With the local slot busy too, it waits and is admitted to the first slot that frees.
   - done: impl-347 · 2026-10-14T03:18:54.476Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-347-9 · 2026-10-14T08:55:43.401Z · commit 205897b4aed6ff59590908c2fa53cde755dd5fac
 - [x] C3. `cland verify queue` and `--json` show the local holder, both remote runs with droplet name, size and region, and each waiter's requested executor. Every existing queue assertion in `hub/test/suite.test.ts` still passes.
   - done: impl-347 · 2026-10-14T03:49:42.979Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-347-9 · 2026-10-14T08:55:43.401Z · commit 205897b4aed6ff59590908c2fa53cde755dd5fac
 - [x] C4. A local waiter held by a hand holder does not block a droplet waiter behind it. A droplet waiter refused for the cap falls back and does not block the queue.
   - done: impl-347 · 2026-10-14T03:18:55.766Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-347-9 · 2026-10-14T08:55:43.401Z · commit 205897b4aed6ff59590908c2fa53cde755dd5fac
 - [x] C5. The fake API never sees more than `remote_budget` live droplets from one hub, and every acquire passes the shared spend cap.
   - done: impl-347 · 2026-10-14T03:18:56.287Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-347-9 · 2026-10-14T08:55:43.401Z · commit 205897b4aed6ff59590908c2fa53cde755dd5fac
 - [ ] C6. Real check, posted on this item: two nvim-only branches verify at once on two droplets in a scratch project, with both results, `cland verify queue` captured during the runs, and the costs.
 - [x] C7. `hub/README.md` and `docs/agents/tests.md` describe `remote_budget`, the slot rule and the queue lines.
   - done: impl-347 · 2026-10-14T03:18:56.994Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-347-2 · 2026-10-14T03:27:35.135Z · commit 130e3fcd2563630041775d18405990ae1150622c
   - verified: rev-23 [reviewer] · run rev-2026-10-14-347-4 · 2026-10-14T03:50:02.091Z · commit 2bea4c2ebf8bee59fc346344565e1dcc95f47559
   - verified: rev-23 [reviewer] · run rev-2026-10-14-347-6 · 2026-10-14T06:12:32.305Z · commit e116b78e47d61e8799b57e3ad8e86624f0a8f3a6
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-347-8 · 2026-10-14T08:28:21.323Z · commit 205897b4aed6ff59590908c2fa53cde755dd5fac
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-347-9 · 2026-10-14T08:55:43.401Z · commit 205897b4aed6ff59590908c2fa53cde755dd5fac
 
 ## Comments
 
@@ -235,3 +242,59 @@ Medium — nvim/test/explorer-card.test.ts:196: immediate zR→select T-10 lacks
 ### impl-347 · 2026-10-14T07:40:16.758Z
 
 Coordinator c34f944a: integrated dev run f52cc4fc is green (1982/1982, A-2287). Shared T-375 merged as 3c79acbececa1a5df5dc2029fc9f3e9c3300d8ca, executor-droplet race fixes plus production API deadline cause. T-376 explorer readiness is still verifying. Keeping T-347 unchanged at e116b78e; once T-376 merges, cherry-pick both commits, one combined delta source review and one fresh full verification, then Coordinator-run C6 after green.
+
+### impl-347 · 2026-10-14T08:26:39.034Z
+
+Both shared fixes cherry-picked and pushed at 205897b4aed6ff59590908c2fa53cde755dd5fac: T-375 3c79acbe as e00368d4 (API deadline cause + lifecycle races), T-376 fc0fabf9 as 205897b4 (explorer/card/vboard readiness). T-347 admission/queue code unchanged. Targeted lifecycle/deadline cases 4/4 and previously failing card case 1/1, typecheck/shards/diff check pass. Combined delta review assigned rev-23; A-2294 records evidence. One fresh exact-head full follows source-clear, then notify Coordinator for C6.
+
+### rev-23 · 2026-10-14T08:28:21.323Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-347-8
+commit: 205897b4aed6ff59590908c2fa53cde755dd5fac
+scope: delta
+
+No high or medium findings. Combined T-375/T-376 shared delta retains all landed additions/removals and the prior task source assessment. The shared additions/removals match exactly. Four files match the landed references; explorer.test.ts retains only its pre-existing branch difference from later T-355 message-key coverage, with no assertion removed by this delta. T-347 admission/config/queue code and its own tests are unchanged. The former missing-row failure now has the reviewed expanded-row barrier. C7 refreshed. C1–C5 await exact-head full verification; C6 remains Coordinator-owned and pending the green result. One full cland verify may now run at this exact head through the queue. A-2298: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2298-t-347-combined-shared-fix-delta-source-clear.md.
+
+Criteria: C7 verified.
+
+### impl-347 · 2026-10-14T08:28:55.779Z
+
+Combined source delta-clear at 205897b4aed6ff59590908c2fa53cde755dd5fac, rev-23 run rev-2026-10-14-347-8 / A-2298. One fresh full verify submitted through shared queue: bb07de2b-3b11-4a4a-af68-069e39c92023, PID null while queued, recipients rev-23/impl-347, topic-233. Both shared T-375/T-376 fixes included. Waiting for result at unchanged head; Coordinator runs C6 after green using A-2262 with required clean cloud preflight. Claimant then marks C6 done and requests final evidence settlement.
+
+### rev-23 · 2026-10-14T08:55:43.401Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-347-9
+commit: 205897b4aed6ff59590908c2fa53cde755dd5fac
+scope: evidence
+
+No high or medium findings. Exact-head full bb07de2b/A-2301 passes typecheck and all phases: 1975/1975, zero failures/cancellations/skips/todo, exit 0. Remote/local/human coexistence, both fallback paths, queue/human grace, cap/shared-spend reservations and former card readiness case pass. A-2298 source review remains applicable; clean unchanged head confirmed. C1–C5 and C7 verified. C6 remains unverified pending Coordinator-owned real two-droplet scratch results, queue capture and costs. A-2302: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2302-t-347-exact-head-full-evidence-clear-c6-pending.md.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C7 verified.
+
+### impl-347 · 2026-10-14T08:55:49.954Z
+
+Exact-head fresh full bb07de2b/A-2301 is green at source delta-cleared 205897b4aed6ff59590908c2fa53cde755dd5fac: both typechecks, 1975/1975 pass, zero fail/cancel/skip/todo. Shared T-369/T-375/T-376 fixes included. Coordinator notified immediately to run C6 through A-2262 with this expected-head argument and clean provider preflight under standing go. Keeping head unchanged; claimant marks C6 done after the evidence artifact posts, then rev-23 final settlement.
+
+### coord · 2026-10-14T08:56:13.881Z
+
+C6 real create: 608961348 (cland-t347-real-4cdee42e), c-8 lon1, run executor-prepare, created 2026-10-14T08:56:11.333Z, deadline 2026-10-14T09:11:11.333Z; $0.25/hour. Scratch remote_budget=2, lifetime=15m, daily cap=$3. Source reviewed at 205897b4aed6ff59590908c2fa53cde755dd5fac.
+
+### impl-347 · 2026-10-14T08:57:00.204Z
+
+rev-23 accepted exact-head full bb07de2b/A-2301 (1975/1975, both typechecks, no skip/failure), A-2302 / rev-2026-10-14-347-9, verifying C1-C5/C7. Coordinator 1e5a0436 is now running C6 from its shell via A-2262 at unchanged 205897b4; preflight source clean/token presence/syntax passed, stand-in notified. Awaiting C6 real receipts/queue/cost/cleanup artifact; claimant then marks C6 done and sends final evidence to rev-23. Head stays unchanged until merge.
+
+### coord · 2026-10-14T09:04:37.797Z
+
+C6 real attempt 1 (Coordinator, driver A-2262 at 205897b4, 2026-10-14):
+- Builder 608961348 (c-8 lon1) was created at 08:56:11Z and prepared image 249754241, transferred to lon1, nyc1 and sfo2 in 454 s.
+- Prepare then failed at its release stage: 'builder release not confirmed', with two executor-release-unconfirmed records at 09:03:42Z.
+- The driver's cleanup released the builder and deleted the image. The provider listing afterwards showed no cland droplets and no snapshots. Estimated cost about $0.03 (about 8 min of c-8).
+- No parallel runs were reached.
+- Filed T-381 (regression_of T-344): the release error is swallowed, and prepare fails on an unconfirmed release.
+- C6 waits for T-381.

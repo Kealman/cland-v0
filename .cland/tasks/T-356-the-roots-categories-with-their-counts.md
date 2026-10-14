@@ -3,7 +3,7 @@ id: T-356
 kind: task
 title: "The roots: Categories with their counts, top three, N more, the done count D hides and the idle-work mark from idle_from; Unscheduled with the maps; Other releases with A for the closed ones; and a card for each root"
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 7
 labels:
@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-236
 branch: t/T-356-the-roots-categories-with-their-counts
 created: 2026-10-13T20:53:52.040Z
-updated: 2026-10-14T06:26:43.412Z
+updated: 2026-10-14T09:12:07.329Z
 ---
 
 ## Summary
@@ -85,18 +85,25 @@ E-276: The explorer and the card, tracer bullet 4. Spec: `docs/spec/v0.1.2.md` �
 
 - [x] C1. The Categories root row names each category with its open count. A category with five open items shows its top three by rank and `2 more`, which unfolds into the other two.
   - done: impl-356 · 2026-10-14T05:50:12.061Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-356-5 · 2026-10-14T09:12:03.716Z · commit 68fb9a70dce19d759b599a14d2c2aad3ee2ddfff
 - [x] C2. A category row shows `<open> open · <done> done`. With `D` on, its done items give way to `D hides <n> done`.
   - done: impl-356 · 2026-10-14T05:50:13.822Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-356-5 · 2026-10-14T09:12:03.716Z · commit 68fb9a70dce19d759b599a14d2c2aad3ee2ddfff
 - [x] C3. With `idle_from = ["C-216"]` in the stub's crew config, C-216's row carries `idle work`. A `crew` event that empties `idle_from` removes the mark without a restart.
   - done: impl-356 · 2026-10-14T05:50:15.014Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-356-5 · 2026-10-14T09:12:03.716Z · commit 68fb9a70dce19d759b599a14d2c2aad3ee2ddfff
 - [x] C4. Unscheduled lists the map first, then the unscheduled task. `A` adds a closed root item.
   - done: impl-356 · 2026-10-14T05:50:15.680Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-356-5 · 2026-10-14T09:12:03.717Z · commit 68fb9a70dce19d759b599a14d2c2aad3ee2ddfff
 - [x] C5. Other releases lists the open future release and says the closed one is behind `A`. `A` adds it, newest first.
   - done: impl-356 · 2026-10-14T05:50:16.628Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-356-5 · 2026-10-14T09:12:03.717Z · commit 68fb9a70dce19d759b599a14d2c2aad3ee2ddfff
 - [x] C6. Each root's card names what it holds, with up to 12 item lines. Enter on one reveals that item in the tree.
   - done: impl-356 · 2026-10-14T05:50:18.257Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-356-5 · 2026-10-14T09:12:03.717Z · commit 68fb9a70dce19d759b599a14d2c2aad3ee2ddfff
 - [x] C7. `qa/cases/EXPLORER-002.lua` passes on the stub hub. `nvim/README.md` and the help line describe the roots and `A`.
   - done: impl-356 · 2026-10-14T05:50:19.162Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-356-5 · 2026-10-14T09:12:03.717Z · commit 68fb9a70dce19d759b599a14d2c2aad3ee2ddfff
 
 ## Comments
 
@@ -136,3 +143,27 @@ commit: 2e2ffce1bc71c29eb418bc7fb99ccb21ac4e38cd
 scope: delta
 
 No high/medium delta findings. Entire four-line test patch exactly matches final-reviewed/landed T-369 e5bd6b89; assertions and 5s waits retained, explorer/production source unchanged. Complete source A-2252 retained. C1–C7 remain unverified; old full A-2258 remains red. Coordinator a5f8d3e8 holds replacement verification until shared watchdog correction; request changed-head review when adopted. A-2263: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2263-t-356-shared-observer-readiness-delta-source-clear.md.
+
+### rev-23 · 2026-10-14T08:28:19.134Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-356-4
+commit: 68fb9a70dce19d759b599a14d2c2aad3ee2ddfff
+scope: delta
+
+No high or medium findings. Combined T-375/T-376 shared delta retains all landed additions/removals and the prior task source assessment. The shared additions/removals match exactly. Four files are byte-identical to the landed references; explorer.test.ts retains its previously reviewed T-356 expanded actual-row and folded Unscheduled-preview assertions. The new readiness barriers coexist with those assertions. Explorer implementation and eight roots tests are unchanged. C1–C7 await exact-head full verification, including the QA case. One full cland verify may now run at this exact head through the queue. A-2297: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2297-t-356-combined-shared-fix-delta-source-clear.md.
+
+### rev-23 · 2026-10-14T09:12:03.717Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-356-5
+commit: 68fb9a70dce19d759b599a14d2c2aad3ee2ddfff
+scope: evidence
+
+No high or medium findings. Exact source-reviewed head is clean and unchanged. A-2304 full c974cd00 passes typecheck and all phases: 1989/1989, zero failures/cancellations/skips/todo, exit 0. Real-hub category summaries, top-three/more/counts/D, live crew idle work, Unscheduled/Other releases/archive ordering, root-card cap/reveal and EXPLORER-002 headless QA runner all pass. A-2252/A-2297 source assessments remain applicable; C1–C7 verified. A-2305: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2305-t-356-final-exact-head-evidence-clear.md.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.
