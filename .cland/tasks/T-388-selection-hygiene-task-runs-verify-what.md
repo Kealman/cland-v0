@@ -2,8 +2,8 @@
 id: T-388
 kind: task
 title: "Selection hygiene: task runs verify what the diff selects, with package rules widened to Neovim-only for nvim/** and hub-only for everything else"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 7
 labels:
@@ -16,7 +16,8 @@ blocked_by: []
 topic: topic-247
 branch: t/T-388-selection-hygiene-task-runs-verify-what
 created: 2026-10-14T12:28:09.900Z
-updated: 2026-10-14T18:51:03.554Z
+updated: 2026-10-14T18:51:28.957Z
+closed: 2026-10-14T18:51:28.957Z
 ---
 
 ## Summary
@@ -213,3 +214,7 @@ scope: evidence
 Final evidence refreshed after claimant done marks, at unchanged reviewed head. No high or medium findings. Claimant C1–C7 done marks confirmed. Existing exact-head full 23d2db26/A-2474 remains green: typecheck,2063/2063,zero failures/skips/cancellations. C4 A-2497 remains112.24s under Coordinator ce993e22’s exclusive local humanQueue amendment, ordinary locks/no force and admission proof checked. All prior source/replay/docs/expectation findings remain clear. Evidence A-2498: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2498-t-388-final-c4-measurement-and-exact-head-verdict.md.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.
+
+### coord · 2026-10-14T18:51:28.957Z
+
+Merged 96da73c313b670c0374dcf999f916bbd92394db1 onto dev.

@@ -17,7 +17,7 @@ blocked_by: []
 topic: topic-255
 branch: t/T-429-request-guard-flood-test-fails-on-linux
 created: 2026-10-14T17:14:43.503Z
-updated: 2026-10-14T18:50:35.696Z
+updated: 2026-10-14T18:51:15.414Z
 closed: 2026-10-14T18:50:35.696Z
 ---
 
@@ -41,14 +41,17 @@ Find why the other client waits longer behind the flood on Linux: scheduling und
   - done: impl-429 · 2026-10-14T17:27:17.988Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-429-1 · 2026-10-14T17:29:21.833Z · commit d3071031c0fc2e646cdff77d3f42e916da5e776a
   - verified: rev-23 [reviewer] · run rev-2026-10-14-429-3 · 2026-10-14T18:40:40.284Z · commit d3071031c0fc2e646cdff77d3f42e916da5e776a
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-429-4 · 2026-10-14T18:51:15.414Z · commit d3071031c0fc2e646cdff77d3f42e916da5e776a
 - [x] C2. On macOS the file passes 5/5 whole-file runs, and the test still fails when the guard is bypassed, so it still detects a starved client.
   - done: impl-429 · 2026-10-14T17:27:21.234Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-429-1 · 2026-10-14T17:29:21.833Z · commit d3071031c0fc2e646cdff77d3f42e916da5e776a
   - verified: rev-23 [reviewer] · run rev-2026-10-14-429-3 · 2026-10-14T18:40:40.284Z · commit d3071031c0fc2e646cdff77d3f42e916da5e776a
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-429-4 · 2026-10-14T18:51:15.414Z · commit d3071031c0fc2e646cdff77d3f42e916da5e776a
 - [x] C3. A `cland verify --executor droplet` of the fix branch (diff selection) is green on Linux and runs this file.
   - verified: rev-23 [reviewer] · run rev-2026-10-14-429-c3 · 2026-10-14T17:58:27.414Z · commit d3071031c0fc2e646cdff77d3f42e916da5e776a
   - verified: rev-23 [reviewer] · run rev-2026-10-14-429-3 · 2026-10-14T18:40:40.284Z · commit d3071031c0fc2e646cdff77d3f42e916da5e776a
   - done: impl-429 · 2026-10-14T18:50:04.726Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-429-4 · 2026-10-14T18:51:15.414Z · commit d3071031c0fc2e646cdff77d3f42e916da5e776a
 
 ## Comments
 
@@ -106,3 +109,16 @@ Restoring C3 done after Coordinator merge-gate notice 36b67357-d3ad-4b7b-8e61-eb
 ### coord · 2026-10-14T18:50:35.696Z
 
 Merged 5a8248724f15257d957a25eb5bbe220ba0199830 onto dev.
+
+### rev-23 · 2026-10-14T18:51:15.414Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-429-4
+commit: d3071031c0fc2e646cdff77d3f42e916da5e776a
+scope: evidence
+
+Final evidence refreshed after claimant done marks, at unchanged reviewed head. No high or medium findings. Claimant C1–C3 done marks confirmed, including restored C3. Existing local gate42895a87/A-2519 remains green:typecheck,2041/2041,zero failures/skips/cancellations. Scoped Linux C3 A-2481 remains15 target cases green under Coordinator ab3ea386; overall red T-432/T-433 and3platform skips retained,not complete Linux green. Source/C1/C2 unchanged. Evidence A-2520: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2520-t-429-final-local-gate-and-scoped-linux-fairness-proof.md.
+
+Criteria: C1 verified, C2 verified, C3 verified.
