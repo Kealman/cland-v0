@@ -2,8 +2,8 @@
 id: T-369
 kind: task
 title: verifier-routing three-Reviewer test times out on a c-8 Linux droplet (5 s channel wait)
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 4
 labels:
@@ -17,7 +17,8 @@ blocked_by: []
 topic: topic-235
 branch: t/T-369-verifier-routing-three-reviewer-test
 created: 2026-10-14T01:33:54.938Z
-updated: 2026-10-14T04:37:31.054Z
+updated: 2026-10-14T06:09:30.482Z
+closed: 2026-10-14T06:09:30.482Z
 ---
 
 ## Summary
@@ -42,14 +43,18 @@ T-347's full run 355e5bec at 2bea4c2e (A-2229), local darwin arm64 under suite l
 - [x] C1. The cause is established and written down, late delivery (timing) or a lost or misrouted request (routing bug), with a targeted reproduction under load on dev.
   - done: impl-369 · 2026-10-14T04:23:33.324Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-369-1 · 2026-10-14T04:24:56.742Z · commit 73ab7e402bdfe1d94bc3970ab7dcbe7c12fb22a0
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-369-2 · 2026-10-14T06:09:14.627Z · commit 73ab7e402bdfe1d94bc3970ab7dcbe7c12fb22a0
 - [x] C2. If it is timing, the waits become readiness-based or scaled as in the T-340 sweep; if it is routing, the hub is fixed. Either way the routing and exact-once assertions are kept.
   - done: impl-369 · 2026-10-14T04:23:34.878Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-369-1 · 2026-10-14T04:24:56.742Z · commit 73ab7e402bdfe1d94bc3970ab7dcbe7c12fb22a0
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-369-2 · 2026-10-14T06:09:14.627Z · commit 73ab7e402bdfe1d94bc3970ab7dcbe7c12fb22a0
 - [x] C3. The fix is one commit, so it can be cherry-picked into every live branch under the shared-fix rule.
   - done: impl-369 · 2026-10-14T04:23:39.206Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-369-1 · 2026-10-14T04:24:56.742Z · commit 73ab7e402bdfe1d94bc3970ab7dcbe7c12fb22a0
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-369-2 · 2026-10-14T06:09:14.627Z · commit 73ab7e402bdfe1d94bc3970ab7dcbe7c12fb22a0
 - [x] C4. The verifier-routing file passes 20 consecutive targeted runs under a parallel load generator on macOS.
   - done: impl-369 · 2026-10-14T04:37:18.685Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-369-2 · 2026-10-14T06:09:14.627Z · commit 73ab7e402bdfe1d94bc3970ab7dcbe7c12fb22a0
 
 ## Comments
 
@@ -73,3 +78,24 @@ Criteria: C1 verified, C2 verified, C3 verified.
 ### impl-369 · 2026-10-14T04:37:31.054Z
 
 C4 complete at reviewed/pushed head 73ab7e402bdfe1d94bc3970ab7dcbe7c12fb22a0: 20 consecutive `node --test hub/test/verifier-routing.test.ts` complete-file invocations under four continuous parallel Node CPU workers on macOS arm64 / Node v24.21.0, one invocation at a time. Every run passed 7/7; total 140 passes, 0 failures, 810.574s test wall time. No filters, retries, deadlines overridden or source mutations. Workers terminated; diagnostic scratch worktrees removed and committed worktree clean. A-2239 contains all 20 durations and A-2240 contains all logs, both in topic-235. Source review clear is rev-2026-10-14-369-1 (A-2236). Enqueueing ordinary same-head full verify next.
+
+### impl-369 · 2026-10-14T06:08:52.335Z
+
+Same-head full verification passed: 2a11cc0a-5232-456b-be6e-37ffd1da4c17 at 73ab7e402bdfe1d94bc3970ab7dcbe7c12fb22a0, local macOS arm64 / Node v24.21.0 / Neovim v0.12.5. Typecheck and full suites green, 1966 passed, 0 failed/cancelled/skipped. A-2254 is the durable full log in topic-235; the three-live-Reviewers case passed in 9.772s. Current task worktree is clean and still at the exact source-reviewed head. C4's twenty complete-file load runs are in A-2239/A-2240. Awaiting final same-head reviewer verdict and Coordinator merge; claim retained.
+
+### rev-23 · 2026-10-14T06:09:14.628Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-369-2
+commit: 73ab7e402bdfe1d94bc3970ab7dcbe7c12fb22a0
+scope: evidence
+
+No findings remain. A-2239/A-2240 verify C4's twenty consecutive complete-file macOS/four-worker load runs: 140/140, no filters/retries/deadline overrides/skips. Exact-head ordinary full 2a11cc0a/A-2254 passes typecheck and 1966/1966 (37 free, 1572 hub machine, 357 Neovim), zero failures/cancellations/skips/todo. C1–C3 complete source A-2236 retained; C1–C4 all checked. A-2255: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2255-t-369-final-review-clear-twenty-load-runs-and-full-suite.md.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-14T06:09:30.482Z
+
+Merged e5bd6b89f058a5e3384087975cf1ddcf356e33c3 onto dev.

@@ -3,8 +3,9 @@ id: T-356
 kind: task
 title: "The roots: Categories with their counts, top three, N more, the done count D hides and the idle-work mark from idle_from; Unscheduled with the maps; Other releases with A for the closed ones; and a card for each root"
 state: open
-status: planned
+status: review
 size: M
+criterion_seq: 7
 labels:
   - v0.1.2
   - nvim
@@ -13,10 +14,10 @@ assignee: null
 parent: E-276
 blocked_by:
   - T-355
-topic: null
-branch: null
+topic: topic-236
+branch: t/T-356-the-roots-categories-with-their-counts
 created: 2026-10-13T20:53:52.040Z
-updated: 2026-10-14T02:11:37.826Z
+updated: 2026-10-14T05:53:39.039Z
 ---
 
 ## Summary
@@ -82,10 +83,34 @@ E-276: The explorer and the card, tracer bullet 4. Spec: `docs/spec/v0.1.2.md` �
 
 ## Acceptance criteria
 
-- [ ] C1. The Categories root row names each category with its open count. A category with five open items shows its top three by rank and `2 more`, which unfolds into the other two.
-- [ ] C2. A category row shows `<open> open · <done> done`. With `D` on, its done items give way to `D hides <n> done`.
-- [ ] C3. With `idle_from = ["C-216"]` in the stub's crew config, C-216's row carries `idle work`. A `crew` event that empties `idle_from` removes the mark without a restart.
-- [ ] C4. Unscheduled lists the map first, then the unscheduled task. `A` adds a closed root item.
-- [ ] C5. Other releases lists the open future release and says the closed one is behind `A`. `A` adds it, newest first.
-- [ ] C6. Each root's card names what it holds, with up to 12 item lines. Enter on one reveals that item in the tree.
-- [ ] C7. `qa/cases/EXPLORER-002.lua` passes on the stub hub. `nvim/README.md` and the help line describe the roots and `A`.
+- [x] C1. The Categories root row names each category with its open count. A category with five open items shows its top three by rank and `2 more`, which unfolds into the other two.
+  - done: impl-356 · 2026-10-14T05:50:12.061Z
+- [x] C2. A category row shows `<open> open · <done> done`. With `D` on, its done items give way to `D hides <n> done`.
+  - done: impl-356 · 2026-10-14T05:50:13.822Z
+- [x] C3. With `idle_from = ["C-216"]` in the stub's crew config, C-216's row carries `idle work`. A `crew` event that empties `idle_from` removes the mark without a restart.
+  - done: impl-356 · 2026-10-14T05:50:15.014Z
+- [x] C4. Unscheduled lists the map first, then the unscheduled task. `A` adds a closed root item.
+  - done: impl-356 · 2026-10-14T05:50:15.680Z
+- [x] C5. Other releases lists the open future release and says the closed one is behind `A`. `A` adds it, newest first.
+  - done: impl-356 · 2026-10-14T05:50:16.628Z
+- [x] C6. Each root's card names what it holds, with up to 12 item lines. Enter on one reveals that item in the tree.
+  - done: impl-356 · 2026-10-14T05:50:18.257Z
+- [x] C7. `qa/cases/EXPLORER-002.lua` passes on the stub hub. `nvim/README.md` and the help line describe the roots and `A`.
+  - done: impl-356 · 2026-10-14T05:50:19.162Z
+
+## Comments
+
+### impl-356 · 2026-10-14T05:47:08.127Z
+
+Implemented category counts/top-three/N more, hidden done placeholders, live idle_from marks, maps-first Unscheduled and archived releases, and glyph/reference root cards. Targeted real-hub and stub-screen tests pass; EXPLORER-002 is being checked through the headless QA runner. Typecheck passes. Full verification will follow the source review.
+
+### rev-23 · 2026-10-14T05:53:39.039Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-356-1
+commit: 6176764737073a1970ae813965f50c77609b3f89
+scope: full
+
+No high/medium findings across all eight changed files. Counts/top-three/more/D placeholder, live crew marks, maps/version/archive ordering, virtual-card reference cap/colours and reveal match C1–C7; category messaging retains T-355. Existing fold assertion distinguishes preview text from actual item rows with exclusion retained. Frame/readiness/registered-key coverage and EXPLORER-002 are present. C1–C7 remain run-dependent pending exact-head ordinary verification. A-2252: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2252-t-356-complete-explorer-roots-source-review-clear.md. Source clear only; no per-item QA scope.

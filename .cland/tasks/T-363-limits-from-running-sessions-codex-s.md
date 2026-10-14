@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-229
 branch: t/T-363-limits-from-running-sessions-codex-s
 created: 2026-10-13T23:42:53.883Z
-updated: 2026-10-14T02:28:21.488Z
+updated: 2026-10-14T05:53:30.995Z
 ---
 
 ## Summary
@@ -100,15 +100,21 @@ Prior work: T-334, the `session-usage` records, which already carry Codex's `rat
 ## Acceptance criteria
 
 - [ ] C1. A fake Codex session on codex-b whose app-server sends `account/rateLimits/updated` shows in `cland account list --json` under codex-b with each window's label, `usedPercent`, `resetsAt` and `windowMins`, the reading's `at`, and `source` naming the session.
+  - verified: rev-26 [reviewer] · run rev-20261014-363-final-1 · 2026-10-14T05:53:30.994Z · commit ecc1888d38c4225dd78f67e4de8e486a96e55bc5
 - [ ] C2. A Codex bucket in `rateLimitsByLimitId` appears as its own window labelled by its limit name. A sparse update merges into the last read. A null `secondary` is absent and never shown as 0%.
-  - failed: rev-26 [reviewer] · 2026-10-14T01:50:55.217Z · note A non-codex compatibility rateLimits bucket is rendered as an invented codex window and duplicated when also present in rateLimitsByLimitId.
+  - verified: rev-26 [reviewer] · run rev-20261014-363-final-1 · 2026-10-14T05:53:30.995Z · commit ecc1888d38c4225dd78f67e4de8e486a96e55bc5
 - [ ] C3. A fake Claude Code session, whose mod receives `session.measure` with `rateLimits` changed, posts `mod-measure`, and `cland account list --json` shows its `5h` and `wk` windows with their resets. A measure whose `changed` omits `rateLimits` posts nothing.
+  - verified: rev-26 [reviewer] · run rev-20261014-363-final-1 · 2026-10-14T05:53:30.995Z · commit ecc1888d38c4225dd78f67e4de8e486a96e55bc5
 - [ ] C4. With two sessions on one account, the newest reading by `at` wins. After a hub restart, `cland account list` shows the last reading with its original `at`.
+  - verified: rev-26 [reviewer] · run rev-20261014-363-final-1 · 2026-10-14T05:53:30.995Z · commit ecc1888d38c4225dd78f67e4de8e486a96e55bc5
 - [ ] C5. An OpenCode account shows `no limit data` in text, and `windows: []` with `source: null` in JSON. A registered account that never reported shows `no reading yet`. A session with no account reports under `default:<harness>`.
+  - verified: rev-26 [reviewer] · run rev-20261014-363-final-1 · 2026-10-14T05:53:30.995Z · commit ecc1888d38c4225dd78f67e4de8e486a96e55bc5
 - [ ] C6. A UI client receives one `account` event per changed reading, at most one per account per second, and none for an equal reading. After the `flushLogs` barrier, the journal holds one `account-limits` record per change.
+  - verified: rev-26 [reviewer] · run rev-20261014-363-final-1 · 2026-10-14T05:53:30.995Z · commit ecc1888d38c4225dd78f67e4de8e486a96e55bc5
 - [ ] C7. `hub/README.md` describes the sources, the window's shape, the store, `cland account list`, the `account` event and the `account-limits` record.
   - verified: rev-26 [reviewer] · run rev-20261014-363-source-2 · 2026-10-14T01:53:45.962Z · commit d7f3a670a7ae5b9a6254cebacc8087dc4bff554b
   - verified: rev-26 [reviewer] · run rev-20261014-363-source-3 · 2026-10-14T02:28:21.488Z · commit ecc1888d38c4225dd78f67e4de8e486a96e55bc5
+  - verified: rev-26 [reviewer] · run rev-20261014-363-final-1 · 2026-10-14T05:53:30.995Z · commit ecc1888d38c4225dd78f67e4de8e486a96e55bc5
 
 ## Comments
 
@@ -154,3 +160,16 @@ scope: delta
 No high/medium findings. The only delta is the byte-identical standalone shared T-371 patch 8fe4c02d, restricted to 16 hub/test files. Exact-session PID discovery preserves original lifecycle/replacement/cleanup assertions and intentional null-PID coverage; T-363 implementation and docs are unchanged from A-2172. Standards and Spec clear. C7 source verification renewed; C1–C6 and final settlement await accepted same-head full verification. Evidence A-2195: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2195-t-363-source-delta-clear-at-ecc1888d-exact-shared-pid-discovery-test-fix.md.
 
 Criteria: C7 verified.
+
+### rev-26 · 2026-10-14T05:53:30.995Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261014-363-final-1
+commit: ecc1888d38c4225dd78f67e4de8e486a96e55bc5
+scope: evidence
+
+No remaining high/medium findings. Accepted 55285baf/A-2251 matches the exact source-reviewed and current branch head. Both typechecks and 1943/1943 tests pass (37 free + 1555 hub + 351 Neovim), zero fail/cancel/skip/todo. All account-limit integration cases pass, including corrected compatibility bucket identity, sparse updates, real Claude mod filtering, newest/restart/default/OpenCode behavior, event spacing and silent equal/journal checks. C1–C7 verified across source A-2172/A-2195 and this receipt; earlier C2 failure superseded by verified execution. Standards and Spec clear; QA scope none. Evidence A-2253: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2253-t-363-final-review-clear-at-ecc1888d-all-criteria-and-1943-1943-checked.md.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.
