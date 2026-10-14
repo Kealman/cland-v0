@@ -76,15 +76,20 @@ function C.compose(key, width)
     text(node and node.label or key,'ClandBold')
     local about = {
       [':categories'] = 'Categories hold items outside every release and epic.',
-      [':unscheduled'] = 'Items with no container. A shows the closed ones too.',
-      [':releases'] = 'Other open releases. A also shows archived releases.',
+      [':unscheduled'] = 'Items with no container, with A showing the closed ones too.',
+      [':releases'] = 'Other open releases, with A also showing archived releases.',
     }
-    text(about[key] or ('Tasks directly under ' .. (node and node.owner or 'this container') .. ', outside any epic.'))
+    text(about[key] or (node and node.more
+      and ('Remaining live items in ' .. node.owner .. ', after its top three by rank.')
+      or ('Tasks directly under ' .. (node and node.owner or 'this container') .. ', outside any epic.')))
     local list = {}
     for _, child in ipairs(node and E.children(ix,node) or {}) do if child.it then list[#list+1] = child.it end end
     section('holds · ' .. #list .. ' items')
     for n=1,math.min(12,#list) do
-      rows[#rows+1] = require('cland.bars').fit({{list[n].id .. ' ','ClandDim'},{items.display_title(list[n]),'ClandText'}},width)
+      local it = list[n]
+      local glyph, hl = E.glyph(ix,it)
+      rows[#rows+1] = require('cland.bars').fit({{glyph .. ' ',hl},{it.id .. ' ','ClandDim'},
+        {items.display_title(it),E.done(it) and 'ClandDone' or 'ClandText'}},width)
       rows[#rows].ref = list[n].id
     end
     if #list > 12 then text((#list-12) .. ' more · l unfolds them in the tree','ClandFaint') end

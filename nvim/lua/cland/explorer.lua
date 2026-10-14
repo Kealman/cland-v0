@@ -170,17 +170,42 @@ function M.root_release()
 end
 
 function M.categories(ix)
-  return vim.tbl_filter(function(it) return items.is_category(it) and (it.state == 'open' or M.reveal_open[it.id]) end, M.kids(ix, ''))
+  local out = items.open_categories()
+  for _, it in ipairs(state.S.items) do
+    if items.is_category(it) and it.state ~= 'open' and M.reveal_open[it.id] then out[#out + 1] = it end
+  end
+  table.sort(out, function(a,b) return items.num(a.id) < items.num(b.id) end)
+  return out
 end
 function M.unscheduled(ix)
-  return vim.tbl_filter(function(it)
-    return not M.is_release(it) and not items.is_category(it) and (it.state == 'open' or M.ui().archive or M.reveal_open[it.id])
+  local list = vim.tbl_filter(function(it)
+    return not present(it.parent) and not M.is_release(it) and not items.is_category(it)
+      and (it.state == 'open' or M.ui().archive or M.reveal_open[it.id])
   end, M.kids(ix, ''))
+  local live, dn = M.live_done(list)
+  table.sort(live,function(a,b)
+    if (a.kind == 'map') ~= (b.kind == 'map') then return a.kind == 'map' end
+    return items.compare_rank(a,b)
+  end)
+  return vim.list_extend(live,dn)
+end
+function M.closed_releases(ix, root)
+  local closed = vim.tbl_filter(function(it)
+    return M.is_release(it) and it.state ~= 'open' and (not root or it.id ~= root.id)
+  end,state.S.items)
+  table.sort(closed,function(a,b)
+    local at, bt = present(a.closed) and a.closed or a.updated or '', present(b.closed) and b.closed or b.updated or ''
+    if at ~= bt then return at > bt end
+    return items.num(a.id) > items.num(b.id)
+  end)
+  return closed
 end
 function M.other_releases(ix, root)
-  return vim.tbl_filter(function(it)
-    return M.is_release(it) and (it.state == 'open' or M.ui().archive or M.reveal_open[it.id]) and (not root or it.id ~= root.id)
-  end, M.kids(ix, ''))
+  local out = vim.tbl_filter(function(it) return M.is_release(it) and (not root or it.id ~= root.id) end,items.open_releases())
+  for _, it in ipairs(M.closed_releases(ix,root)) do
+    if M.ui().archive or M.reveal_open[it.id] then out[#out+1] = it end
+  end
+  return out
 end
 
 local function item_node(ix, it, extra)
@@ -225,11 +250,9 @@ function M.children(ix, node)
     if node.key == ':categories' then
       add(M.categories(ix))
     elseif node.key == ':unscheduled' then
-      local live, dn = M.live_done(M.unscheduled(ix))
-      add(live); add(dn)
+      add(M.unscheduled(ix))
     elseif node.key == ':releases' then
-      local live, dn = M.live_done(M.other_releases(ix, M.root_release()))
-      add(live); add(dn)
+      add(M.other_releases(ix, M.root_release()))
     else
       local live, dn = M.live_done(node.list or {})
       add(live); add(dn)
@@ -252,6 +275,18 @@ function M.children(ix, node)
     return out
   end
   local live, dn = M.live_done(kids)
+  if items.is_category(it) then
+    add(vim.list_slice(live, 1, 3))
+    if #live > 3 then
+      out[#out + 1] = virtual(':more:' .. it.id, (#live - 3) .. ' more',
+        { list = vim.list_slice(live, 4), owner = it.id, more = true })
+    end
+    add(dn)
+    local hidden = 0
+    for _, k in ipairs(dn) do if M.ui().hide_done and not M.reveal_open[k.id] then hidden = hidden + 1 end end
+    if hidden > 0 then out[#out + 1] = label_row({{'D hides ' .. hidden .. ' done', 'ClandFaint'}}) end
+    return out
+  end
   local stages = M.stages(it)
   if stages then
     -- an epic with a plan: one label per stage over its live tasks, rank order inside a stage; the done
@@ -299,6 +334,11 @@ function M.node_for(ix, key)
   if key == ':categories' then return virtual(key, 'Categories') end
   if key == ':unscheduled' then return virtual(key, 'Unscheduled') end
   if key == ':releases' then return virtual(key, 'Other releases') end
+  local category = key:match('^:more:(.+)$')
+  if category and ix.by[category] and items.is_category(ix.by[category]) then
+    local live = M.live_done(M.kids(ix, category))
+    return virtual(key, math.max(0,#live-3) .. ' more', {list=vim.list_slice(live,4),owner=category,more=true})
+  end
   local owner = key:match('^:direct:(.+)$')
   if owner and ix.by[owner] then
     local leaves = vim.tbl_filter(function(k) return not M.is_container(ix, k) end, M.kids(ix, owner))
@@ -315,6 +355,7 @@ function M.is_open(node)
   if M.reveal_open[node.key] then return true end
   local folded = M.ui().folds[node.key]
   if folded ~= nil then return folded end
+  if node.it and items.is_category(node.it) then return true end
   return node.scope_root == true or node.release_root == true
 end
 
@@ -468,6 +509,13 @@ function M.lead(it)
   return coord and coord.name or '—', 'ClandDim'
 end
 
+function M.idle_mark(it)
+  local from = state.S.crew and state.S.crew.config and state.S.crew.config.idle_from or {}
+  for n, id in ipairs(from) do
+    if id == it.id then return 'idle work' .. (#from > 1 and (' ' .. n) or '') end
+  end
+end
+
 function M.stage_in_work(it)
   local stages = M.stages(it)
   if not stages then return nil end
@@ -550,9 +598,37 @@ function M.glyph(ix, it)
 end
 
 local function virtual_text(ix, node)
-  local list = node.key == ':categories' and M.categories(ix)
-    or node.key == ':unscheduled' and M.unscheduled(ix)
-    or node.key == ':releases' and M.other_releases(ix, M.root_release()) or node.list or {}
+  if node.key == ':categories' then
+    local cats, names, count = M.categories(ix), {}, 0
+    for _, category in ipairs(cats) do
+      local live = M.live_done(M.kids(ix,category.id))
+      count = count + #live
+      names[#names+1] = items.display_title(category) .. ' ' .. #live .. ' open'
+    end
+    return ('Categories (%d) · %d open'):format(#cats,count), table.concat(names,' · ')
+  end
+  if node.more then return node.label, '' end
+  if node.key == ':unscheduled' then
+    local list, names = M.unscheduled(ix), {}
+    for n=1,math.min(2,#list) do names[#names+1] = list[n].id .. ' ' .. items.display_title(list[n]) end
+    return ('Unscheduled (%d)'):format(#list), table.concat(names,' · ') .. (#list > 2 and ' …' or '')
+  end
+  if node.key == ':releases' then
+    local root = M.root_release()
+    local list, closed, names = M.other_releases(ix,root), M.closed_releases(ix,root), {}
+    for _, release in ipairs(list) do
+      if release.state == 'open' then names[#names+1] = release.version or release.id end
+    end
+    local description = #names > 0 and (table.concat(names,', ') .. ' open') or 'no other open release'
+    if #closed > 0 then
+      names = {}
+      for _, release in ipairs(closed) do names[#names+1] = present(release.version) and ('v' .. release.version) or release.id end
+      description = description .. ' · ' .. table.concat(names,' and ') .. ' closed'
+        .. (M.ui().archive and ', shown (A)' or ' · A shows them')
+    end
+    return ('Other releases (%d)'):format(#list), description
+  end
+  local list = node.list or {}
   return ('%s (%d)'):format(node.label, #list), ''
 end
 
@@ -624,7 +700,18 @@ function M.rows_of(ix, scope, width)
     else
       left[#left + 1] = { items.display_title(it), title_hl }
     end
-    local right = container and container_cols(ix, it, cols) or leaf_cols(it, cols)
+    local right
+    if items.is_category(it) then
+      local live, dn = M.live_done(M.kids(ix,it.id))
+      left[#left+1] = {'  ' .. #live .. ' open · ' .. #dn .. ' done','ClandDim'}
+      local mark = M.idle_mark(it)
+      if mark then left[#left+1] = {'  ' .. mark,'ClandTeal'} end
+      local statuses = {}
+      for _, task in ipairs(M.leaves(ix,it.id)) do statuses[#statuses+1] = M.leaf_status(task) end
+      right = M.cells(statuses,cols.bar)
+    else
+      right = container and container_cols(ix,it,cols) or leaf_cols(it,cols)
+    end
     rows[#rows + 1] = { info = info, left = left, right = right }
     if node.release_root and depth == 0 then
       -- the release row's second and third lines (P5): its tasks, one cell each, and the count per status
@@ -961,6 +1048,15 @@ function M.reveal(id)
   if not holds then scope = nil end
   M.reveal_open = {}
   for _, ancestor in ipairs(ancestors) do M.reveal_open[ancestor.id] = true end
+  -- A referenced category item may be below the top three or contain the target.
+  for n, ancestor in ipairs(ancestors) do
+    if items.is_category(ancestor) and ancestors[n+1] then
+      local live = M.live_done(M.kids(ix,ancestor.id))
+      for pos, child in ipairs(live) do
+        if pos > 3 and child.id == ancestors[n+1].id then M.reveal_open[':more:' .. ancestor.id] = true end
+      end
+    end
+  end
   if root then
     if items.is_category(root) then M.reveal_open[':categories'] = true
     elseif M.is_release(root) then

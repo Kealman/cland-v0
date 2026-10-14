@@ -654,6 +654,10 @@ Item motions accept every kind prefix supplied by `hub.status.tracker.prefixes`,
 
 `␣e` or `:Cland explorer` opens the saved scope, defaulting to the current release as a centre outline. `:Cland explorer [id]` scopes it to an item; any item prefix resolves. The release starts open one level, followed by folded Categories, Unscheduled and Other releases roots. Direct tasks sit under their own folded row after the epics, including a release with no epics.
 
+Categories names each open category with its open count, in id order. Each category starts unfolded on its top three live items by rank, then a folded `N more` row for the rest, followed by done items in closing order. Its row shows `<open> open · <done> done` and a bar over its tasks. `D` replaces hidden done items with a faint `D hides N done` line. Categories named by `idle_from` in `crew.toml` carry a teal `idle work` mark, numbered in configured order when several are named; crew changes update it live.
+
+Unscheduled holds items with no parent: maps first, then the other items, each group by rank. Its folded row previews the first two ids and titles. Other releases names the open releases beyond the current root in version order, and names closed releases behind `A`. `A` adds closed releases newest first and closed Unscheduled items in closing order. Categories, Unscheduled, Other releases, Direct tasks and `N more` each have a card describing their holdings, with up to twelve referenced item lines and a remaining count. Enter on a holding reveals it in the tree.
+
 | Key | Action |
 | --- | --- |
 | `j` / `k` | Next / previous item row, skipping headers, release breakdowns and stage labels. Counts work, for example `3j`. |

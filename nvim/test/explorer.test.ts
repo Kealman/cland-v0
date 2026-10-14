@@ -119,9 +119,9 @@ test('outline keys skip detail and stage labels, respect counts and fold the lea
   await c.input('l'); await at(c,'T-10');
   await c.input('za'); await at(c,'E-3');
   await c.waitScreen(s=>!s.includes('Task in progress'),'za on leaf folds parent');
-  await c.input('zR'); await c.waitScreen(s=>s.includes('Task in progress')&&s.includes('Unscheduled task')&&s.includes('Direct task'),'all unfolded');
+  await c.input('zR'); await c.waitScreen(s=>s.includes('Task in progress')&&s.includes('○ T-6 Unscheduled task')&&s.includes('Direct task'),'all unfolded');
   await select(c,'T-10'); await c.input('zM'); await at(c,'E-3');
-  await c.waitScreen(s=>!s.includes('Task in progress')&&!s.includes('Unscheduled task'),'all folded');
+  await c.waitScreen(s=>!s.includes('Task in progress')&&!s.includes('○ T-6 Unscheduled task')&&s.includes('Unscheduled task'),'all folded with root preview');
   await select(c,'R-1'); await c.input('hzcza');
   await c.waitScreen(s=>s.includes('First epic'),'root stays unfolded');
   assert.ok((await text(c)).includes('First epic'),'root stays open');

@@ -98,6 +98,12 @@ for (const name of ['GRAPH-001', 'ITEMS-002', 'PANELS-005', 'PANELS-006', 'PANEL
   });
 }
 
+test('EXPLORER-002 passes through the headless QA runner', { skip }, async t => {
+  const run = await qa(t, [`${SHIPPED}EXPLORER-002.lua`]);
+  assert.equal(run.line.result, 'PASS', JSON.stringify(run.line));
+  assert.equal(run.code, 0);
+});
+
 test('SHELL-001 passes against its own stdio hub: exit 0 and one JSON line with the result, the duration, the build and the evidence inline', { skip }, async (t) => {
   const run = await qa(t, [`${SHIPPED}SHELL-001.lua`]);
   assert.equal(run.line.result, 'PASS', JSON.stringify(run.line));

@@ -35,6 +35,7 @@ import { defaultConfig, readProjectConfig } from '../../hub/src/init/config.ts';
 export type Scenario = {
   events?: import('../../hub/src/protocol.ts').EventRow[];
   verification?: import('../../hub/src/protocol.ts').VerificationQueue;
+  crew?: { config: Record<string, unknown>; summary: string };
   topics?: Array<Record<string, unknown>>;
   messages?: Record<string, Array<Record<string, unknown>>>;
   processes?: Array<Record<string, unknown>>;
@@ -355,7 +356,7 @@ function answer(f: Frame) {
     case 'hub.status': {
       const config = readProjectConfig(join(process.cwd(), '.cland/config.toml'), process.cwd()) ?? defaultConfig(process.cwd());
       const ladder = new Ladder(scenario.tracker?.ladder ?? scenario.tracker?.levels ?? config.tracker.levels);
-      return ok(f.id, { keys: config.keys, tracker: { levels: ladder.flat, ladder: ladder.levels.map(level => [...level]), prefixes: scenario.tracker?.prefixes ?? Object.fromEntries([...kindsFor(ladder), 'category'].map(kind => [kind, prefixOf(kind)])) }, sessions: scenario.presence ?? [], ...(scenario.verification ? { verification: scenario.verification } : {}), ...(scenario.coordinator !== undefined ? { coordinator: scenario.coordinator } : {}), ...(scenario.inbox ? { needsYou: inboxValue().needsYou } : {}) });
+      return ok(f.id, { keys: config.keys, tracker: { levels: ladder.flat, ladder: ladder.levels.map(level => [...level]), prefixes: scenario.tracker?.prefixes ?? Object.fromEntries([...kindsFor(ladder), 'category'].map(kind => [kind, prefixOf(kind)])) }, sessions: scenario.presence ?? [], ...(scenario.crew ? { crew: scenario.crew } : {}), ...(scenario.verification ? { verification: scenario.verification } : {}), ...(scenario.coordinator !== undefined ? { coordinator: scenario.coordinator } : {}), ...(scenario.inbox ? { needsYou: inboxValue().needsYou } : {}) });
     }
     case 'events.list': {
       const start = Number(f.before ?? 0);
