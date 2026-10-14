@@ -3,7 +3,7 @@ id: T-355
 kind: task
 title: "The messages: m sends to General with the item context, M creates the item's topic when it has none and sends there, and a visual selection goes to General with one line per item, naming items by their display ids"
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - v0.1.2
@@ -16,7 +16,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-13T20:53:51.934Z
-updated: 2026-10-13T20:53:54.467Z
+updated: 2026-10-14T02:11:36.419Z
 ---
 
 ## Summary

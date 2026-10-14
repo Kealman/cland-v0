@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-10-14T01:22:46.246Z
+updated: 2026-10-14T01:55:39.048Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -223,3 +223,7 @@ Incident 2026-10-13 20:38Z: integrated dev run f4d2f183 at cf838de was cancelled
 ### human · 2026-10-14T01:22:46.246Z
 
 Incident (stand-in, 2026-10-14 01:33Z): the stand-in restarted the hub while impl-361's verify (pid 63646, since 01:20Z) held the queue and one cland droplet was alive for T-345; the restart script ran unconditionally after the queue watcher reported 'still busy'. Hub code at the tip was green (5ba76a49 at 86c1af8). Remedy: the restart step now re-checks the queue and the cland tag immediately before stopping the hub. Coord checks impl-361's run and the droplet lease.
+
+### coord · 2026-10-14T01:55:39.048Z
+
+Incident 2026-10-14 01:54Z: integrated run d80d1b41 at 3dae3b5 failed 1/1589 after 935 s. session-holds.test.ts:215 got assert.ok(dying.pid) as null under a 1-minute load of 25.85. Since T-265, a Claude launch returns before its pid is discovered; the test passes alone. Remedy: T-371 (XS, regression_of T-265), a shared test fix cherry-picked into live branches. Merges are held until a green integrated run includes it. Separately, the stand-in restarted the hub at 01:21:51Z with a non-empty queue; impl-361's run survived and C9's droplet was unaffected.

@@ -3,8 +3,9 @@ id: T-363
 kind: task
 title: "Limits from running sessions: Codex's rate-limit events and Claude Code's status-line windows, forwarded by the cland mod, are kept per account with their age, and cland account list and an account event show them"
 state: open
-status: in progress
+status: review
 size: M
+criterion_seq: 7
 labels:
   - v0.1.2
   - hub
@@ -16,7 +17,7 @@ blocked_by:
 topic: topic-229
 branch: t/T-363-limits-from-running-sessions-codex-s
 created: 2026-10-13T23:42:53.883Z
-updated: 2026-10-14T01:36:22.654Z
+updated: 2026-10-14T01:53:45.962Z
 ---
 
 ## Summary
@@ -100,8 +101,42 @@ Prior work: T-334, the `session-usage` records, which already carry Codex's `rat
 
 - [ ] C1. A fake Codex session on codex-b whose app-server sends `account/rateLimits/updated` shows in `cland account list --json` under codex-b with each window's label, `usedPercent`, `resetsAt` and `windowMins`, the reading's `at`, and `source` naming the session.
 - [ ] C2. A Codex bucket in `rateLimitsByLimitId` appears as its own window labelled by its limit name. A sparse update merges into the last read. A null `secondary` is absent and never shown as 0%.
+  - failed: rev-26 [reviewer] · 2026-10-14T01:50:55.217Z · note A non-codex compatibility rateLimits bucket is rendered as an invented codex window and duplicated when also present in rateLimitsByLimitId.
 - [ ] C3. A fake Claude Code session, whose mod receives `session.measure` with `rateLimits` changed, posts `mod-measure`, and `cland account list --json` shows its `5h` and `wk` windows with their resets. A measure whose `changed` omits `rateLimits` posts nothing.
 - [ ] C4. With two sessions on one account, the newest reading by `at` wins. After a hub restart, `cland account list` shows the last reading with its original `at`.
 - [ ] C5. An OpenCode account shows `no limit data` in text, and `windows: []` with `source: null` in JSON. A registered account that never reported shows `no reading yet`. A session with no account reports under `default:<harness>`.
 - [ ] C6. A UI client receives one `account` event per changed reading, at most one per account per second, and none for an equal reading. After the `flushLogs` barrier, the journal holds one `account-limits` record per change.
 - [ ] C7. `hub/README.md` describes the sources, the window's shape, the store, `cland account list`, the `account` event and the `account-limits` record.
+  - verified: rev-26 [reviewer] · run rev-20261014-363-source-2 · 2026-10-14T01:53:45.962Z · commit d7f3a670a7ae5b9a6254cebacc8087dc4bff554b
+
+## Comments
+
+### impl-363 · 2026-10-14T01:40:31.572Z
+
+Implementing limits.ts, the Codex sparse merge, Claude mod-measure bridge, durable account listing/events and journal records on the existing usage timer. The referenced docs/research/account-limits.md is absent from this checkout and root; checked the installed Claude mods API types instead (SessionRateLimit resetsAt is ISO). Protocol-first regression coverage is being added.
+
+### rev-26 · 2026-10-14T01:50:55.217Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261014-363-source-1
+commit: 9a0337b8a3f6cbd8bfc4b069f5c6ce8b9707e86e
+scope: full
+
+Medium — hub/src/accounts/limits.ts:39: A compatibility rateLimits snapshot with limitId=review is rendered as codex:primary, then rendered again from rateLimitsByLimitId.review; this duplicates the source pool and gives its first copy the wrong label. Respect its actual id/name and deduplicate, with a fake/frame regression. Full source review at the named head; no full suite run. Standards: no high/medium finding. Spec: one medium. The serialized publication refinement is sound; execution criteria remain pending. Evidence artifact records the remaining checks.
+
+Criteria: C2 failed (A non-codex compatibility rateLimits bucket is rendered as an invented codex window and duplicated when also present in rateLimitsByLimitId.).
+
+### rev-26 · 2026-10-14T01:53:45.962Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261014-363-source-2
+commit: d7f3a670a7ae5b9a6254cebacc8087dc4bff554b
+scope: full
+
+No remaining high/medium findings. hub/src/accounts/limits.ts:39 now respects compatibility limitId and deduplicates matching by-id buckets; hub/src/adapters/codex.ts:564 retains that identity for id-omitting sparse updates. The real daemon/fake regression covers both response forms and the sparse push. Standards and Spec clear. Source C7 verified; C1–C6 execution and final C2 settlement remain pending accepted same-head full verification. Evidence A-2172: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2172-t-363-source-clear-at-d7f3a670-compatibility-bucket-identity-preserved.md.
+
+Criteria: C7 verified.

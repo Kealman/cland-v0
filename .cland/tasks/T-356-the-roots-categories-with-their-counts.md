@@ -3,7 +3,7 @@ id: T-356
 kind: task
 title: "The roots: Categories with their counts, top three, N more, the done count D hides and the idle-work mark from idle_from; Unscheduled with the maps; Other releases with A for the closed ones; and a card for each root"
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - v0.1.2
@@ -16,7 +16,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-13T20:53:52.040Z
-updated: 2026-10-13T20:53:54.672Z
+updated: 2026-10-14T02:11:37.826Z
 ---
 
 ## Summary

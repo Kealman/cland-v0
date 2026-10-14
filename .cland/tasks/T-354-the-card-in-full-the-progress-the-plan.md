@@ -2,8 +2,8 @@
 id: T-354
 kind: task
 title: "The card in full: the progress, the plan stage, the latest verdict with its round, reason and scope, the relations with regression_of, the branch and the latest cland verify, the dates and last activity, the Decision block, zb, and the card over the right panel when the centre is narrow"
-state: open
-status: review
+state: closed
+status: done
 size: L
 criterion_seq: 11
 labels:
@@ -18,7 +18,8 @@ blocked_by:
 topic: topic-227
 branch: t/T-354-the-card-in-full-the-progress-the-plan
 created: 2026-10-13T20:53:51.826Z
-updated: 2026-10-14T01:38:29.050Z
+updated: 2026-10-14T02:11:34.160Z
+closed: 2026-10-14T02:11:34.160Z
 ---
 
 ## Summary
@@ -103,26 +104,39 @@ E-276: The explorer and the card, tracer bullet 2. Spec: `docs/spec/v0.1.2.md` �
 
 - [x] C1. A task's card shows its criteria with marks and the `N of M verified` header from the summary's counts. The latest verdict shows its round, scope, by and role, and its one-line reason from the comment. The branch and suite block shows `verify`'s result, job, head and time.
   - done: impl-354 · 2026-10-14T01:38:28.590Z
+  - verified: rev-26 [reviewer] · run rev-20261014-354-final-1 · 2026-10-14T02:11:13.602Z · commit dfeffbec36e97b39ca702372f8538517105a0782
 - [x] C2. An epic's card shows its children's cells and counts in words, the cells per stage, and the plan block with the stage in work, its merged count and the approval. A closed epic's plan reads every stage closed.
   - done: impl-354 · 2026-10-14T01:33:54.702Z
+  - verified: rev-26 [reviewer] · run rev-20261014-354-final-1 · 2026-10-14T02:11:13.602Z · commit dfeffbec36e97b39ca702372f8538517105a0782
 - [x] C3. The relations show blocked by, blocks and `regression of` with each end's state. `last` names whether it came from the item's `updated` or its topic's latest message. A container's latest verdict and last activity name the item in its subtree.
   - done: impl-354 · 2026-10-14T01:33:55.119Z
+  - verified: rev-26 [reviewer] · run rev-20261014-354-final-1 · 2026-10-14T02:11:13.603Z · commit dfeffbec36e97b39ca702372f8538517105a0782
 - [x] C4. The rank fact shows `rank <n>` only for an item whose summary has `rank_set`. Otherwise only the ordinal.
   - done: impl-354 · 2026-10-14T01:33:55.839Z
+  - verified: rev-26 [reviewer] · run rev-20261014-354-source-2 · 2026-10-14T01:39:42.514Z · commit dfeffbec36e97b39ca702372f8538517105a0782
+  - verified: rev-26 [reviewer] · run rev-20261014-354-final-1 · 2026-10-14T02:11:13.603Z · commit dfeffbec36e97b39ca702372f8538517105a0782
 - [x] C5. A body with a `Resolution …` comment shows the Decision block. One without shows none.
   - done: impl-354 · 2026-10-14T01:33:56.450Z
+  - verified: rev-26 [reviewer] · run rev-20261014-354-final-1 · 2026-10-14T02:11:13.603Z · commit dfeffbec36e97b39ca702372f8538517105a0782
 - [x] C6. The fold line names the body's `##` headings and word count. `zb` unfolds the body in the card and folds it again, from the tree and from the card.
   - done: impl-354 · 2026-10-14T01:33:56.879Z
+  - verified: rev-26 [reviewer] · run rev-20261014-354-final-1 · 2026-10-14T02:11:13.603Z · commit dfeffbec36e97b39ca702372f8538517105a0782
 - [x] C7. Enter on the blocker's line in the focused card reveals the blocker in the tree with its card.
   - done: impl-354 · 2026-10-14T01:33:57.256Z
+  - verified: rev-26 [reviewer] · run rev-20261014-354-final-1 · 2026-10-14T02:11:13.604Z · commit dfeffbec36e97b39ca702372f8538517105a0782
 - [x] C8. With both side panels open at 200x50, the card takes the right panel's place, and the right panel returns when `␣g` opens General. `ui.json`'s `panels.right` is unchanged.
   - done: impl-354 · 2026-10-14T01:33:57.775Z
+  - verified: rev-26 [reviewer] · run rev-20261014-354-final-1 · 2026-10-14T02:11:13.604Z · commit dfeffbec36e97b39ca702372f8538517105a0782
 - [x] C9. Moving over every row of the fixture tree sends `task.view` only for rows the cursor rested on (frame log), and never for a row passed with `j` held.
   - done: impl-354 · 2026-10-14T01:33:58.153Z
+  - verified: rev-26 [reviewer] · run rev-20261014-354-final-1 · 2026-10-14T02:11:13.604Z · commit dfeffbec36e97b39ca702372f8538517105a0782
 - [x] C10. `nvim/README.md` describes the card's blocks and their sources, `zb`, Enter on a reference and the narrow layout.
   - done: impl-354 · 2026-10-14T01:33:58.750Z
+  - verified: rev-26 [reviewer] · run rev-20261014-354-source-2 · 2026-10-14T01:39:42.514Z · commit dfeffbec36e97b39ca702372f8538517105a0782
+  - verified: rev-26 [reviewer] · run rev-20261014-354-final-1 · 2026-10-14T02:11:13.604Z · commit dfeffbec36e97b39ca702372f8538517105a0782
 - [x] C11. The human's picture first and the agents' text folded. The blocks run in this order: summary, facts, progress, plan, verdict, relations, branch and suite, dates, the Decision block, then the agents' text as one fold line. On every first open of an item's card, and after a hub event redraws it, the agents' text is folded. Only `zb` unfolds it, and it never pushes the human's blocks out of view (spec §3.9, T-244).
   - done: impl-354 · 2026-10-14T01:33:59.241Z
+  - verified: rev-26 [reviewer] · run rev-20261014-354-final-1 · 2026-10-14T02:11:13.604Z · commit dfeffbec36e97b39ca702372f8538517105a0782
 
 ## Comments
 
@@ -142,3 +156,33 @@ scope: full
 Medium — explorer_card.lua:283–285: real hub Verdict.by already includes name [role]; state.label appends a second inferred Reviewer/QA role. Preserve historical formatted provenance and test the real wire shape, not only bare-name fixtures. Medium — explorer.lua:906–913: new keys-only winbar deletes inherited CARD id/kind/glyph/status; retain selected identity with adaptive fitting and regression coverage. Standards: no independent high/medium finding; other block/cache/reference/fold/layout paths checked, closed-stage timestamps match Coordinator decision. A-2160 records full source findings. No suite authorized until corrected-head source clear; Reviewer ran no tests/edits.
 
 Criteria: C1 failed (Verdict.by already includes the recorded role; state.label appends another inferred role, duplicating or misrepresenting provenance.).
+
+### rev-26 · 2026-10-14T01:39:42.514Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261014-354-source-2
+commit: dfeffbec36e97b39ca702372f8538517105a0782
+scope: delta
+
+Corrected delta source clear: no high/medium finding remains. explorer_card.lua uses item_view.by for formatted recorded roles and fallback only for bare names; real wire fixture covers role once. explorer.lua restores selected id/kind/glyph/status with adaptive key hints and narrow identity alternatives; real-hub assertions now check identity plus all six keys. Prior full source A-2160 retained; integrated T-361 independently reviewed and own diff stays within Neovim scope. C4 rank_set gate/C10 docs source verified. Other execution-dependent criteria await accepted same-head Neovim verification and final evidence verdict. A-2163 records assessment; Reviewer ran no tests/edits.
+
+Criteria: C4 verified, C10 verified.
+
+### rev-26 · 2026-10-14T02:11:13.605Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261014-354-final-1
+commit: dfeffbec36e97b39ca702372f8538517105a0782
+scope: evidence
+
+No remaining high/medium findings. Accepted f5cb75eb/A-2185 names the exact source-reviewed head; requested nvim widened to full, typecheck and all 1929 tests pass (37 free + 1535 hub + 357 Neovim), zero fail/cancel/skip/todo. All C1–C11 checked against source A-2160/A-2163 and the passing card/provenance/relations/fold/reveal/narrow/cache regressions. Standards and Spec clear. QA scope none. Evidence A-2186: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2186-t-354-final-review-clear-at-dfeffbec-complete-card-and-full-1929-1929-checked.md.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified, C9 verified, C10 verified, C11 verified.
+
+### coord · 2026-10-14T02:11:34.160Z
+
+Merged 8e1d931060e0b9d0bec61ea7513553253561b17a onto dev.

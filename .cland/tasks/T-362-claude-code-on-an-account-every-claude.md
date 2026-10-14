@@ -3,8 +3,9 @@ id: T-362
 kind: task
 title: "Claude Code on an account: every claude command for a session runs under its account's CLAUDE_CONFIG_DIR, and agents --json is polled once per config directory that has live sessions"
 state: open
-status: in progress
+status: review
 size: M
+criterion_seq: 9
 labels:
   - v0.1.2
   - hub
@@ -17,7 +18,7 @@ blocked_by:
 topic: topic-228
 branch: t/T-362-claude-code-on-an-account-every-claude
 created: 2026-10-13T23:42:53.650Z
-updated: 2026-10-14T01:36:21.102Z
+updated: 2026-10-14T01:51:54.279Z
 ---
 
 ## Summary
@@ -80,12 +81,54 @@ Upstream: anthropics/claude-code#95822, open on 2026-10-14.
 
 ## Acceptance criteria
 
-- [ ] C1. Sessions launched on claude-a and claude-b: the fake's invocation log shows each session's `--bg`, `agents --json` and `stop` under its own account's `CLAUDE_CONFIG_DIR`, and each job record shows that directory.
-- [ ] C2. With sessions live under two directories and a short `CLAND_ADAPTER_POLL_MS`, the log has at most one `agents --json` per directory per interval, launch discovery included. It has none for a registered directory with no session, and none for a directory after its last session stopped.
-- [ ] C3. After a hub restart with sessions under two directories, resume makes one `agents --json` per directory and re-finds every session, and a relaunch runs `--bg --resume` under the row's directory.
-- [ ] C4. The row's `attach` for a claude-b session is `CLAUDE_CONFIG_DIR=<dir> claude attach <id>`, and running it attaches to that directory's session in the fake. A default session's attach command is unchanged.
-- [ ] C5. A session on a named Claude Code account does not receive `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN` or `CLAUDE_CODE_OAUTH_TOKEN` from the hub's environment (the fake records the names it saw), and a default session still does.
-- [ ] C6. A hub started with `CLAUDE_CONFIG_DIR` set polls that directory for default sessions and records it on their rows.
-- [ ] C7. A logged-out claude-b directory gives one event and one message naming account claude-b and its directory, while claude-a sessions keep working and their poll is unchanged.
-- [ ] C8. A failed `--bg` on an account names the account, the directory and the sign-in or trust remedy, and is not retried.
-- [ ] C9. `hub/README.md` describes the overlay per command, the per-directory polling and its interval, and the removed variables.
+- [x] C1. Sessions launched on claude-a and claude-b: the fake's invocation log shows each session's `--bg`, `agents --json` and `stop` under its own account's `CLAUDE_CONFIG_DIR`, and each job record shows that directory.
+  - done: impl-362 · 2026-10-14T01:46:28.722Z
+- [x] C2. With sessions live under two directories and a short `CLAND_ADAPTER_POLL_MS`, the log has at most one `agents --json` per directory per interval, launch discovery included. It has none for a registered directory with no session, and none for a directory after its last session stopped.
+  - done: impl-362 · 2026-10-14T01:46:29.369Z
+- [x] C3. After a hub restart with sessions under two directories, resume makes one `agents --json` per directory and re-finds every session, and a relaunch runs `--bg --resume` under the row's directory.
+  - done: impl-362 · 2026-10-14T01:46:30.117Z
+- [x] C4. The row's `attach` for a claude-b session is `CLAUDE_CONFIG_DIR=<dir> claude attach <id>`, and running it attaches to that directory's session in the fake. A default session's attach command is unchanged.
+  - done: impl-362 · 2026-10-14T01:46:30.968Z
+- [x] C5. A session on a named Claude Code account does not receive `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN` or `CLAUDE_CODE_OAUTH_TOKEN` from the hub's environment (the fake records the names it saw), and a default session still does.
+  - done: impl-362 · 2026-10-14T01:46:31.745Z
+- [x] C6. A hub started with `CLAUDE_CONFIG_DIR` set polls that directory for default sessions and records it on their rows.
+  - done: impl-362 · 2026-10-14T01:46:32.373Z
+- [x] C7. A logged-out claude-b directory gives one event and one message naming account claude-b and its directory, while claude-a sessions keep working and their poll is unchanged.
+  - done: impl-362 · 2026-10-14T01:51:01.020Z
+- [x] C8. A failed `--bg` on an account names the account, the directory and the sign-in or trust remedy, and is not retried.
+  - done: impl-362 · 2026-10-14T01:46:34.011Z
+- [x] C9. `hub/README.md` describes the overlay per command, the per-directory polling and its interval, and the removed variables.
+  - done: impl-362 · 2026-10-14T01:46:34.696Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-362-2 · 2026-10-14T01:51:54.279Z · commit b9c38b66a08e4994e812b17f41653b66fcf3b698
+
+## Comments
+
+### impl-362 · 2026-10-14T01:42:09.010Z
+
+Implementation now supports named Claude accounts, saves the default effective directory, scopes polling/signed-out latches by directory, and removes the three inherited auth variables for named accounts. New frame/fake tests cover command overlays, attach quoting, auth isolation, per-directory budgets, restart/relaunch retention, and independent signed-out recovery. Initial targeted account test passes; existing Claude and registry regressions are being checked before review.
+
+### rev-23 · 2026-10-14T01:49:37.884Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-362-1
+commit: 308d1754176f49f2ee0617ed04a9dd5df0f22046
+scope: full
+
+Medium — hub/test/claude-code-accounts.test.ts:126–129: a fixed 900ms sleep precedes the positive claude-a poll-count assertion, so slow CLI/scheduler work can fail correct account isolation. Use eventual readiness for the new a invocation and retain all signed-out b/count/state/event/notice/no-probe assertions. Complete source review found no additional high/medium production issue. C7 failed; C1–C6/C8 await corrected source and exact-head full evidence; C9 docs checked. A-2167: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2167-t-362-full-source-review-account-overlay-clear-c7-timing-blocker.md.
+
+Criteria: C7 failed (The new signed-out isolation test requires a claude-a invocation after a fixed 900ms sleep; delayed CLI/scheduler work can fail correct behavior. Wait for the observed invocation while retaining all b/count/event/notice assertions.).
+
+### rev-23 · 2026-10-14T01:51:54.279Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-362-2
+commit: b9c38b66a08e4994e812b17f41653b66fcf3b698
+scope: full
+
+No high/medium findings remain. The C7 test now waits for the observed claude-a agents invocation; all b-count/a-growth/state/journal/notice/no-probe assertions remain unchanged. Only test readiness changed; complete account/environment/polling source review A-2167 remains applicable. C9 docs verified; C1–C8 await exact-head ordinary full cland verify evidence. A-2170: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2170-t-362-corrected-full-source-clear-at-b9c38b66.md. This is source clear, not final readiness.
+
+Criteria: C9 verified.

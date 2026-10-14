@@ -3,7 +3,7 @@ id: T-359
 kind: task
 title: "Live and fast: the explorer rebuilds on every hub event, redraws only on a visible change with the cursor kept on its item, builds a 300-item tree in under 15 ms, and is the centre view at startup"
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - v0.1.2
@@ -16,7 +16,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-13T20:53:52.374Z
-updated: 2026-10-13T20:53:55.290Z
+updated: 2026-10-14T02:11:39.079Z
 ---
 
 ## Summary
