@@ -2,8 +2,8 @@
 id: T-432
 kind: task
 title: "executor-prepare test fails under load: expected 422, got 0 at line 137"
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -18,7 +18,8 @@ regression_of: T-344
 topic: topic-259
 branch: t/T-432-executor-prepare-test-fails-under-load
 created: 2026-10-14T17:38:31.303Z
-updated: 2026-10-14T23:36:18.032Z
+updated: 2026-10-14T23:36:31.642Z
+closed: 2026-10-14T23:36:31.642Z
 ---
 
 ## Summary
@@ -103,3 +104,7 @@ scope: evidence
 Final clear; C1/C2 claimant done marks confirmed at unchanged clean head. Local no-mode full 7123a262/A-2598 passes root typecheck and 2040/2040 (37 free, 1616 hub machine, 387 Neovim), zero failures/cancellations/skips/todo. Release test and corrected gi case pass. C1/source A-2488 retains matching-lease unconfirmed wait, actual 422 retry/repeated DELETE proof and snapshot/accounting/restart assertions. C2 A-2485 five serial whole-file passes 85/85 with same full-holder overlap retained; executor-prepare source unchanged by shared adoption. Earlier71f43e3c/A-2588 red solely on T-439; exact landed fix reviewed A-2591 and affected case now green. No high/medium findings. A-2599: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2599-t-432-final-exact-head-gate-and-loaded-release-test-proof.md.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-14T23:36:31.642Z
+
+Merged f020d2c97fbdd60f9488fb095c61482698bfa3f9 onto dev.
