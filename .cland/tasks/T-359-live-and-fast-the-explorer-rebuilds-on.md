@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-242
 branch: t/T-359-live-and-fast-the-explorer-rebuilds-on
 created: 2026-10-13T20:53:52.374Z
-updated: 2026-10-14T09:28:23.753Z
+updated: 2026-10-14T10:14:19.940Z
 ---
 
 ## Summary
@@ -107,11 +107,76 @@ The scope's history entries keep their own cursor keys, so `␣␣` still lands 
 - [x] C5. A workbench started with no restart snapshot and no preset opens on the explorer at the kept scope. A preset or a restart snapshot opens as before.
   - done: impl-359 · 2026-10-14T09:27:51.177Z
 - [ ] C6. `startClient`'s default and the QA runner's default keep General as the start for existing tests and cases. `npm run test:nvim` is green.
+  - failed: rev-23 [reviewer] · 2026-10-14T10:04:22.006Z · note Exact-head full-expanded Neovim verification fails criteria.test.ts and ITEMS-002: unchanged-timestamp hand saves do not invalidate detailed criterion marks.
 - [x] C7. `nvim/README.md` describes startup, live updates, the cursor's fallback order and the bench. The help line and the GLOSSARY's Explorer entry agree with the build.
   - done: impl-359 · 2026-10-14T09:27:51.785Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-359-1 · 2026-10-14T09:33:13.764Z · commit 66350c2b0f7046e653d9d86e762608494259812f
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-359-4 · 2026-10-14T10:14:19.940Z · commit f769586c03293bd64b5c8c7911af09086425dfbd
 
 ## Comments
 
 ### impl-359 · 2026-10-14T09:22:14.708Z
 
 Implemented cursor removal fallback and folded reparenting, visible-only event rendering with unchanged-buffer comparisons, updated-based detail invalidation, startup explorer, harness/QA General defaults and a restorative benchmark. First explorer-file run: 18/18 pass; fully unfolded 300-item dev-machine build median 8.414542 ms, write 2.089917 ms. Benchmark artifact posted in topic-242. Checking startup compatibility before requesting source review; full suite follows a clear source verdict.
+
+### rev-23 · 2026-10-14T09:33:13.764Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-359-1
+commit: 66350c2b0f7046e653d9d86e762608494259812f
+scope: full
+
+No high or medium findings in the thirteen-file source pass. explorer.lua:1138–1200 preserves identity/removal order/folded ancestor and card selection; visible layout rendering keeps existing coalescing and text/highlight write comparisons. item_view.lua:118–126 refetches on changed updated/missing/failed details, with reconnect invalidation retained. bench restores preferences/selection and reports separate build/write medians; A-2309's dev build is under 15 ms. init.lua:625–628 preserves presets/snapshots; harness/QA default General and explorer opt-ins preserve startup premises. C7 documentation/help/GLOSSARY verified; C1–C6 await exact-head suite evidence. Submit cland verify nvim through queue admission at this exact head. A-2313: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2313-t-359-full-source-review-clear-at-66350c2b.md.
+
+Criteria: C7 verified.
+
+### rev-23 · 2026-10-14T10:04:22.007Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-359-2
+commit: 66350c2b0f7046e653d9d86e762608494259812f
+scope: evidence
+
+Medium — nvim/lua/cland/item_view.lua:118–120: updated-only invalidation suppresses real watched hand saves retaining frontmatter updated; summary shows verified 4/4 while cached detail still shows ◐ C4. Existing criteria.test.ts:122–125 and qa/cases/ITEMS-002.lua intentionally assert this contract; preserve both and correct cache freshness while retaining duplicate-event coverage. Initial source review missed this compatibility regression. A-2318 full-expanded d4d6df89 is red (1996/1998, zero skips/cancellations); C6 failed. Corrected head needs source review before replacement verification. A-2319: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2319-t-359-full-evidence-not-clear-unchanged-timestamp-detail-cache.md.
+
+Criteria: C6 failed (Exact-head full-expanded Neovim verification fails criteria.test.ts and ITEMS-002: unchanged-timestamp hand saves do not invalidate detailed criterion marks.).
+
+### impl-359 · 2026-10-14T10:04:27.136Z
+
+Verify d4d6df89 at 66350c2b widened to full, 1996/1998 pass. Both failures were a shared-cache regression for legacy item views on hand saves retaining updated; unchanged existing criteria and ITEMS-002 tests reproduced it. Fixed in pushed e4f867bd: legacy reads consume event staleness, explorer-card reads opt into updated-only caching; reconnect refresh retained. Both failing tests and duplicate-event/folded-burst explorer tests now pass. Source re-review requested before new exact-head verify.
+
+### coord · 2026-10-14T10:05:53.448Z
+
+Coordinator decision (2026-10-14 10:06Z, asked by rev-23): the card refetches the shown item's task.view when 'updated' changes, or when the event summary disagrees with the cached detail: criteria counts, latest verdict, verify result or head, status, or claim. A same-timestamp save that changes marks then refreshes the card, and a duplicate event with no changes costs nothing. There is still only one fetch per shown item and no refetch on every event. A test covers a watched criteria save that keeps 'updated', with the card's mark following.
+
+### rev-23 · 2026-10-14T10:06:19.586Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-359-3
+commit: e4f867bd7dc8fc58bad178066aff6dd7b00a72b1
+scope: full
+
+Medium — nvim/lua/cland/item_view.lua:129–130 / explorer_card.lua:100/175: updated_only still leaves Explorer detail stale after a same-timestamp criteria save, so current summary 4/4 can appear above old C4 marks. Legacy compatibility is restored and no other high/medium delta issue was found. Coordinator decision 95f11a9d amends the contract to refresh the shown item when updated changes OR summary fields disagree (criteria, latest verdict kind/result/run, verify result/head, status, claim), preserving no-fetch identical events and unshown items. Implement the prescribed watched-save card regression and request new-head source review before another suite. C6 remains failed/pending from A-2318. A-2320: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2320-t-359-corrected-cache-source-not-clear-card-summary-disagreement.md.
+
+### impl-359 · 2026-10-14T10:13:09.879Z
+
+Coordinator-amended card freshness implemented and pushed at f769586c. Cached details now refresh on timestamp changes or task-summary disagreement in criteria counts, latest verdict kind/result/run, verify result/head, status or claim; identical events remain fetch-free and legacy view event refresh is retained. New real-hub watched-save card regression went red then green with unchanged updated. Criteria 5/5, card 15/15, live duplicate/folded-burst 2/2, nvim TypeScript and diff checks pass. Evidence artifact A-2321 in topic-242. Source re-review requested before the next full verify.
+
+### rev-23 · 2026-10-14T10:14:19.940Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-359-4
+commit: f769586c03293bd64b5c8c7911af09086425dfbd
+scope: full
+
+No high or medium findings. item_view.lua content_signal now implements Coordinator amendment 95f11a9d: current summary criteria counts, last verdict kind/result/run, verify result/head, status and claim are compared with cached full detail; timestamp/reconnect/legacy event freshness remains. Both card reads deduplicate identical signals. New real-hub watched same-timestamp C4 save and exact shown-item signal-fetch tests cover the regression without changing the original failed checks; stub criteriaCounts matches full-frame shape. A-2319/A-2320 source blockers resolved; prior startup/live/cursor/bench review retained. C7 refreshed; C1–C6 await exact-head cland verify nvim, and C6's failed gate still needs successful evidence/done mark. A-2322: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2322-t-359-amended-cache-contract-source-clear-at-f769586c.md.
+
+Criteria: C7 verified.

@@ -2,8 +2,8 @@
 id: T-365
 kind: task
 title: "The accounts block: the sessions panel opens with one line per account showing the windows its source sent, with the used share, the reset time and the reading's age, and each session's meta line names its account"
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 8
 labels:
@@ -17,7 +17,8 @@ blocked_by:
 topic: topic-239
 branch: t/T-365-the-accounts-block-the-sessions-panel
 created: 2026-10-13T23:42:54.607Z
-updated: 2026-10-14T08:28:15.272Z
+updated: 2026-10-14T10:19:38.470Z
+closed: 2026-10-14T10:19:38.470Z
 ---
 
 ## Summary
@@ -77,16 +78,33 @@ Add the read to the snapshot that `nvim/lua/cland/init.lua` waits for, as `sessi
 
 ## Acceptance criteria
 
-- [ ] C1. A headless workbench against a real hub, with a fake Codex session on codex-b that reported a weekly window, shows the accounts block as the panel's first lines, with `codex-b`, its weekly share and its reset, read by `screenstring()`.
-- [ ] C2. Windows render as the source sent them. A Claude account with 5-hour, weekly and per-model weekly windows shows three, and a Codex account with one weekly window shows one.
-- [ ] C3. An OpenCode account shows `no limit data`, and an account with no reading `no reading yet`. A reading older than 30 minutes shows its age, dimmed.
-- [ ] C4. A window is coloured by the source's severity when it sent one, and otherwise amber from 75% and red from 90%, as the extmarks show.
-- [ ] C5. A new `account` event updates the line without a timer or a re-read. `za` on the header folds the block to `Accounts (N)` and back, through the action registry, and the fold survives a restart through `ui.json`.
-- [ ] C6. The expanded row of a session on codex-b reads `Codex · gpt-6.1-sol · codex-b`, and a default-account session's row names no account.
-- [ ] C7. At a panel width of 30 columns, every block line fits, with windows wrapped onto continuation lines.
-- [ ] C8. `nvim/README.md` describes the block, its colours, its fold and the meta line's account.
+- [x] C1. A headless workbench against a real hub, with a fake Codex session on codex-b that reported a weekly window, shows the accounts block as the panel's first lines, with `codex-b`, its weekly share and its reset, read by `screenstring()`.
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-365-5 · 2026-10-14T10:18:58.121Z · commit 4a6f7fe88def6a97279c38dc1296cba939f2dd36
+  - done: impl-365 · 2026-10-14T10:19:16.009Z
+- [x] C2. Windows render as the source sent them. A Claude account with 5-hour, weekly and per-model weekly windows shows three, and a Codex account with one weekly window shows one.
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-365-5 · 2026-10-14T10:18:58.121Z · commit 4a6f7fe88def6a97279c38dc1296cba939f2dd36
+  - done: impl-365 · 2026-10-14T10:19:17.137Z
+- [x] C3. An OpenCode account shows `no limit data`, and an account with no reading `no reading yet`. A reading older than 30 minutes shows its age, dimmed.
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-365-5 · 2026-10-14T10:18:58.121Z · commit 4a6f7fe88def6a97279c38dc1296cba939f2dd36
+  - done: impl-365 · 2026-10-14T10:19:17.942Z
+- [x] C4. A window is coloured by the source's severity when it sent one, and otherwise amber from 75% and red from 90%, as the extmarks show.
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-365-5 · 2026-10-14T10:18:58.121Z · commit 4a6f7fe88def6a97279c38dc1296cba939f2dd36
+  - done: impl-365 · 2026-10-14T10:19:18.659Z
+- [x] C5. A new `account` event updates the line without a timer or a re-read. `za` on the header folds the block to `Accounts (N)` and back, through the action registry, and the fold survives a restart through `ui.json`.
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-365-5 · 2026-10-14T10:18:58.121Z · commit 4a6f7fe88def6a97279c38dc1296cba939f2dd36
+  - done: impl-365 · 2026-10-14T10:19:19.484Z
+- [x] C6. The expanded row of a session on codex-b reads `Codex · gpt-6.1-sol · codex-b`, and a default-account session's row names no account.
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-365-5 · 2026-10-14T10:18:58.121Z · commit 4a6f7fe88def6a97279c38dc1296cba939f2dd36
+  - done: impl-365 · 2026-10-14T10:19:20.034Z
+- [x] C7. At a panel width of 30 columns, every block line fits, with windows wrapped onto continuation lines.
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-365-5 · 2026-10-14T10:18:58.122Z · commit 4a6f7fe88def6a97279c38dc1296cba939f2dd36
+  - done: impl-365 · 2026-10-14T10:19:21.001Z
+- [x] C8. `nvim/README.md` describes the block, its colours, its fold and the meta line's account.
   - verified: rev-23 [reviewer] · run rev-2026-10-14-365-1 · 2026-10-14T07:17:09.354Z · commit c91124c077a74a492b4ec99aeb976187374dd142
   - verified: rev-23 [reviewer] · run rev-2026-10-14-365-2 · 2026-10-14T08:28:15.272Z · commit a17d66a68594428bcc961c7fa8d6a5f086199bc4
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-365-4 · 2026-10-14T09:48:02.918Z · commit 4a6f7fe88def6a97279c38dc1296cba939f2dd36
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-365-5 · 2026-10-14T10:18:58.122Z · commit 4a6f7fe88def6a97279c38dc1296cba939f2dd36
+  - done: impl-365 · 2026-10-14T10:19:21.730Z
 
 ## Comments
 
@@ -123,3 +141,52 @@ scope: delta
 No high or medium findings. Combined T-375/T-376 shared delta retains all landed additions/removals and the prior task source assessment. All five shared files are byte-identical to the landed references. Accounts rendering, event handling, fold persistence and its two new tests are unchanged. C8 refreshed. C1–C7 await exact-head full verification. One full cland verify may now run at this exact head through the queue. A-2295: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2295-t-365-combined-shared-fix-delta-source-clear.md.
 
 Criteria: C8 verified.
+
+### impl-365 · 2026-10-14T09:47:15.018Z
+
+Full verify 1dcec9e9 at a17d66a6: 1983/1985, with two verification tests assuming row 1 was verify:. Both failures reproduce in targeted file runs. Fixed only navigation in those existing tests to select ^verify: visibly before Enter, retaining every original assertion; both targeted files now pass. Pushed 4a6f7fe8 and requested corrected-head source review before another full run. Red/green evidence A-2316.
+
+### rev-23 · 2026-10-14T09:47:28.985Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-365-3
+commit: a17d66a68594428bcc961c7fa8d6a5f086199bc4
+scope: evidence
+
+Medium — nvim/test/verification-queue.test.ts:36 and nvim/test/verification-view.test.ts:40: gg selects the new Accounts header instead of verify:, so Enter never opens the queue; both failure screens remain General. Full 1dcec9e9/A-2314 is red: 1983/1985, zero skips/cancellations. This is T-365 layout-related test navigation, confirmed in isolated reproduction; retain all queue assertions and select the actual verification row. No individual feature criterion failed from these navigation errors; C1–C7 remain unverified, C8 source assessment retained. Corrected-head source review required before another full. A-2315: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2315-t-365-full-evidence-not-clear-verification-row-selection.md.
+
+### rev-23 · 2026-10-14T09:48:02.918Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-365-4
+commit: 4a6f7fe88def6a97279c38dc1296cba939f2dd36
+scope: delta
+
+No high or medium findings. verification-queue.test.ts:37/43/52 and verification-view.test.ts:41 select the observable ^verify: row before Enter after existing summary readiness barriers. All original queue/ETA/order/refresh/palette/clock/action-audit assertions and deadlines retained; only test navigation changes. A-2315 findings resolved; A-2282/A-2295 source reviews remain applicable. C8 refreshed; C1–C7 await one new exact-head full verify. Failed A-2314 supplies no clearance. A-2317: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2317-t-365-verification-row-correction-source-clear.md.
+
+Criteria: C8 verified.
+
+### impl-365 · 2026-10-14T10:18:11.862Z
+
+Replacement full verification 8faa2906-94a2-4efb-81cc-370b07b46932 passed at exact reviewed 4a6f7fe88def6a97279c38dc1296cba939f2dd36: 1985/1985, zero failed/skipped/cancelled. Local darwin arm64, Node v24.21.0, Neovim v0.12.5; typecheck included. Durable full log A-2323. Awaiting Reviewer final same-head evidence verdict; claim retained for merge.
+
+### rev-23 · 2026-10-14T10:18:58.122Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-365-5
+commit: 4a6f7fe88def6a97279c38dc1296cba939f2dd36
+scope: evidence
+
+No high or medium findings. Clean unchanged source-reviewed head. A-2323 full 8faa2906 passes typecheck/all phases: 1985/1985, zero failures/cancellations/skips/todo. Both account UI cases establish source windows, severity, reset/age formatting, push-only update, persistent fold, named/default meta and 30-column wrapping; both former verification navigation cases pass. Prior A-2282/A-2295/A-2317 source reviews remain applicable. C1–C8 verified; Implementer done marks still required for readiness. A-2324: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2324-t-365-final-exact-head-evidence-clear.md.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified.
+
+### coord · 2026-10-14T10:19:38.470Z
+
+Merged 68ee5f2d7a44decb28b4f6d8edf86d38cb4c7210 onto dev.

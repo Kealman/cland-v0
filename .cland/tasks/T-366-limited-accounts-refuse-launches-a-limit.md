@@ -3,7 +3,7 @@ id: T-366
 kind: task
 title: "Limited accounts refuse launches: a limit-hit signal from Claude Code, Codex or OpenCode marks the account limited until its reset, a launch on it is refused naming the reset, and cland account clear lifts the mark"
 state: open
-status: backlog
+status: planned
 size: L
 criterion_seq: 9
 labels:
@@ -18,7 +18,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-13T23:42:54.826Z
-updated: 2026-10-13T23:44:25.889Z
+updated: 2026-10-14T10:19:40.074Z
 ---
 
 ## Summary

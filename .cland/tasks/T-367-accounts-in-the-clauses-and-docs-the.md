@@ -3,7 +3,7 @@ id: T-367
 kind: task
 title: "Accounts in the clauses and docs: the Coordinator's clause turns a refused launch into an ask listing the harness's other accounts, cland init's roles.toml describes account, and the READMEs and GLOSSARY describe accounts, limits and the limited mark"
 state: open
-status: backlog
+status: planned
 size: S
 criterion_seq: 7
 labels:
@@ -18,7 +18,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-13T23:42:55.063Z
-updated: 2026-10-13T23:44:25.055Z
+updated: 2026-10-14T10:19:40.821Z
 ---
 
 ## Summary
