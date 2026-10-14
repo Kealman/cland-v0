@@ -2,8 +2,8 @@
 id: T-441
 kind: task
 title: session-holds verifier-request test misses its channel event (observer-spoke race, 1 in 5 alone)
-state: open
-status: ready
+state: closed
+status: done
 size: S
 rank: 2282
 criterion_seq: 3
@@ -18,7 +18,8 @@ regression_of: T-398
 topic: topic-265
 branch: t/T-441-session-holds-verifier-request-test
 created: 2026-10-14T21:26:59.664Z
-updated: 2026-10-14T22:30:29.693Z
+updated: 2026-10-14T22:30:46.677Z
+closed: 2026-10-14T22:30:46.677Z
 ---
 
 ## Summary
@@ -101,3 +102,7 @@ scope: evidence
 Final clear; C1–C3 claimant done marks confirmed, unchanged clean head. Source A-2571 and A-2570 deterministic 2-red/2-green, ten serial files 70/70 beside full holder and 43-file readiness inventory retained. First exact-head run 2c0e86a1/A-2579 red 1699/1700 only on untouched sessions.test.ts:331 midnight reset-label defect (filed Bugs/S): reset+120s crosses local day, correct weekday label mismatches today-only expectation. Direct Coordinator a612e0fd authorized one unchanged-head retry after the time window. Retry 44a4159f/A-2584 passes root typecheck and 1700/1700 (37 free, 1651 hub machine, 12 Neovim smoke), zero failures/cancellations/skips/todo; repaired verifier and prior failed display cases both pass. No high/medium T-441 findings remain. A-2585: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2585-t-441-final-evidence-green-authorized-retry-and-retained-midnight-failure.md.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-14T22:30:46.677Z
+
+Merged 41f9d59b9085e58363ba4ccb16409622f45bf33b onto dev.
