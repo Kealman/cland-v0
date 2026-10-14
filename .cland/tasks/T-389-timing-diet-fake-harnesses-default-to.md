@@ -3,7 +3,7 @@ id: T-389
 kind: task
 title: "Timing diet: fake harnesses default to fast turns and polls with explicit slow opt-ins, timer-bound tests run on env-controlled schedules, and fixed sleeps become event waits"
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 8
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-264
 branch: t/T-389-timing-diet-fake-harnesses-default-to
 created: 2026-10-14T12:28:10.336Z
-updated: 2026-10-14T22:15:55.418Z
+updated: 2026-10-14T23:25:51.385Z
 ---
 
 ## Summary
@@ -59,30 +59,39 @@ The Implementer posts the list of every sleep touched with its class.
   - verified: rev-23 [reviewer] · run rev-2026-10-14-389-1 · 2026-10-14T21:17:11.827Z · commit ef57847105ccd2da5851e1dff087075ff2b6ebb1
   - done: impl-389 · 2026-10-14T21:17:31.616Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-389-3 · 2026-10-14T21:54:18.308Z · commit dddf97804f795fe226ef48d91daa26e629ce46da
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-389-5 · 2026-10-14T22:33:40.682Z · commit 5d47648d5dfd4907a4a038052568c95edce02dc6
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-389-7 · 2026-10-14T23:25:13.138Z · commit e11eceda8c2d9d71c2510371e4c8ca836324468f
 - [x] C2. Measured alone on an idle machine, the three timer-bound tests ("prepare, run, fallback, cancel…" 33.0 s, "…default 30-second schedule…" 32.3 s, "the remote shell and the host deadline…" 15.1 s) each take under 5 s; before/after times and the one-minute load are posted on the item.
   - done: impl-389 · 2026-10-14T21:58:41.284Z
 - [x] C3. The 30-second default is still asserted, from the resolved schedule the hub reports with the env unset, and the sharing and early-stop behaviour is asserted at a short override.
   - verified: rev-23 [reviewer] · run rev-2026-10-14-389-1 · 2026-10-14T21:17:11.827Z · commit ef57847105ccd2da5851e1dff087075ff2b6ebb1
   - done: impl-389 · 2026-10-14T21:17:34.270Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-389-3 · 2026-10-14T21:54:18.308Z · commit dddf97804f795fe226ef48d91daa26e629ce46da
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-389-5 · 2026-10-14T22:33:40.682Z · commit 5d47648d5dfd4907a4a038052568c95edce02dc6
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-389-7 · 2026-10-14T23:25:13.138Z · commit e11eceda8c2d9d71c2510371e4c8ca836324468f
 - [x] C4. Every sleep of 0.5 s or more in `hub/test` and `nvim/test` is either an event wait, an interval multiple with its interval named, or kept with a comment, and the classified list is posted on the item.
   - verified: rev-23 [reviewer] · run rev-2026-10-14-389-1 · 2026-10-14T21:17:11.827Z · commit ef57847105ccd2da5851e1dff087075ff2b6ebb1
   - done: impl-389 · 2026-10-14T21:17:35.425Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-389-3 · 2026-10-14T21:54:18.308Z · commit dddf97804f795fe226ef48d91daa26e629ce46da
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-389-5 · 2026-10-14T22:33:40.682Z · commit 5d47648d5dfd4907a4a038052568c95edce02dc6
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-389-7 · 2026-10-14T23:25:13.138Z · commit e11eceda8c2d9d71c2510371e4c8ca836324468f
 - [x] C5. Measured: the whole-file times of `codex-adapter.test.ts`, `claude-code-adapter.test.ts`, `opencode-adapter.test.ts` and `session-usage.test.ts` on an idle machine fall by at least 25% in sum (median of three runs each), with before/after posted.
   - done: impl-389 · 2026-10-14T21:17:36.179Z
 - [x] C6. No assertion changes its meaning: the review request lists every changed assertion with what it still proves, and no test is skipped or deleted.
   - verified: rev-23 [reviewer] · run rev-2026-10-14-389-1 · 2026-10-14T21:17:11.827Z · commit ef57847105ccd2da5851e1dff087075ff2b6ebb1
   - done: impl-389 · 2026-10-14T21:53:04.275Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-389-3 · 2026-10-14T21:54:18.308Z · commit dddf97804f795fe226ef48d91daa26e629ce46da
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-389-5 · 2026-10-14T22:33:40.682Z · commit 5d47648d5dfd4907a4a038052568c95edce02dc6
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-389-7 · 2026-10-14T23:25:13.138Z · commit e11eceda8c2d9d71c2510371e4c8ca836324468f
 - [x] C7. Any race exposed by the fast defaults is reported as a Bug with its size, and its test's opt-in names that bug.
-  - verified: rev-23 [reviewer] · run rev-2026-10-14-389-1 · 2026-10-14T21:17:11.827Z · commit ef57847105ccd2da5851e1dff087075ff2b6ebb1
-  - done: impl-389 · 2026-10-14T21:53:05.721Z
-  - verified: rev-23 [reviewer] · run rev-2026-10-14-389-3 · 2026-10-14T21:54:18.308Z · commit dddf97804f795fe226ef48d91daa26e629ce46da
+  - done: impl-389 · 2026-10-14T23:24:31.901Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-389-7 · 2026-10-14T23:25:13.138Z · commit e11eceda8c2d9d71c2510371e4c8ca836324468f
 - [x] C8. `hub/README.md` (the fake harnesses) and the comments at the top of the three fakes describe the fast defaults and how to opt into slow turns.
   - verified: rev-23 [reviewer] · run rev-2026-10-14-389-1 · 2026-10-14T21:17:11.827Z · commit ef57847105ccd2da5851e1dff087075ff2b6ebb1
   - done: impl-389 · 2026-10-14T21:17:39.158Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-389-3 · 2026-10-14T21:54:18.308Z · commit dddf97804f795fe226ef48d91daa26e629ce46da
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-389-5 · 2026-10-14T22:33:40.682Z · commit 5d47648d5dfd4907a4a038052568c95edce02dc6
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-389-7 · 2026-10-14T23:25:13.138Z · commit e11eceda8c2d9d71c2510371e4c8ca836324468f
 
 ## Comments
 
@@ -186,3 +195,58 @@ Medium gate finding — hub/test/session-holds.test.ts:160: untouched pending-ve
 ### impl-389 · 2026-10-14T22:15:55.418Z
 
 Gate fa8df54b/A-2582 failed1/1688 solely on known T-441 session-holds:160 observer-restart race; corrected executor audit passed, no T-389 source regression inferred (Reviewer A-2583). Coordinator decision20be7a7b-eb79-444c-8a61-7929ec807568 (22:15:33Z): wait for T-441 to land; after Coordinator posts its merge commit, cherry-pick only that one shared-fix commit, do not merge all dev; request rev-23 delta review of cherry-pick alone, then rerun local no-mode verification. Remain idle at unchanged clean dddf9780 until announced commit. Subscribed to T-441 task events; claim retained.
+
+### impl-389 · 2026-10-14T22:33:09.823Z
+
+Shared blocker resolved as Coordinator directed: T-441 landed41f9d59b; cherry-picked only that commit as5d47648d5dfd4907a4a038052568c95edce02dc6, no full dev merge (specific decisions20be7a7b/2982cf84). Clean and pushed to local origin. One-file7-line delta only, resulting session-holds.test.ts identical to merged fix; no original assertion/deadline changed. Whole session-holds7/7 passes (restart case9.387s), full hub/Neovim typecheck and diff check green. Complete delta/output A-2586, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2586-t-389-shared-t-441-cherry-pick-and-seven-green-tests.md. T-389 timing/audit source and measured cases unchanged. Requesting rev-23 delta review of cherry-pick alone before new same-head local no-mode verification.
+
+### rev-23 · 2026-10-14T22:33:40.682Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-389-5
+commit: 5d47648d5dfd4907a4a038052568c95edce02dc6
+scope: delta
+
+No high/medium Standards/Spec findings. Sole session-holds delta exactly matches reviewed f303e8d0 and landed T-441 41f9d59b; direct Coordinator 20be7a7b shared-fix-only disposition followed. Observer/native restart ordering restored, assertions/event cursors/deadlines unchanged. A-2586 whole file 7/7 and root typecheck pass; clean current tip/diff confirmed. T-389 timings, fake defaults, audit and measured cases unchanged; source A-2565/A-2576 retained, source criteria refreshed. Corrected watchdog pairs A-2577/A-2578 and C5 A-2558 retain provenance, no timing repeat needed for independent test delta. C2/C5/readiness await complete same-head local no-mode gate; fa8df54b/A-2582 remains earlier red on corrected T-441. A-2587: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2587-t-389-source-delta-exact-landed-t-441-patch.md.
+
+Criteria: C1 verified, C3 verified, C4 verified, C6 verified, C7 verified, C8 verified.
+
+### impl-389 · 2026-10-14T22:34:19.902Z
+
+Delta source clear rev-2026-10-14-389-5 / A-2587 at exact5d47648d; reviewer refreshed source criteria and confirmed unchanged paired measurements remain applicable. New same-head local no-mode verify67ff8613-6f30-414f-a121-35d3967e34ab submitted, queue position2 behind integrated Coordinator run/current impl-432 holder, result recipients rev-23/impl-389. No mode/force override; clean pushed head unchanged after verdict. Idle pending hub gate result, final C2/C5 verdict and supervising merge; claim retained.
+
+### rev-23 · 2026-10-14T23:19:33.670Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-389-6
+commit: 5d47648d5dfd4907a4a038052568c95edce02dc6
+scope: evidence
+
+Medium — hub/test/session-model.test.ts:59/:79: parent sub-agent test expects busy but sees idle. It injects synthetic turn-start, runs journal CLI, then checks state under 100 ms push trust/50 ms fallback; fallback overriding staged busy is the source-supported hypothesis, not proof that child hooks mutated parent state. Local full 67ff8613/A-2593 exits 1, 1687/1688 hub cases pass, zero skips/cancellations; Neovim not reached. Bugs/XS reported. Changed file/shared fixture timings make untouched-test retry inapplicable. C7 failed pending reproduced staging correction with original attribution/model/state assertions preserved, then fresh source review and claimant done mark. C2/C5/readiness remain pending accepted exact-head gate. A-2594: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2594-t-389-gate-blocked-by-synthetic-parent-state-staging.md.
+
+Criteria: C7 failed (Parent sub-agent fixture loses synthetic busy state under fast defaults; reproduce and explicitly stage the parent-state proof without weakening its assertion.).
+
+### impl-389 · 2026-10-14T23:24:33.319Z
+
+Corrected C7 parent-state staging race at pushed clean e11eceda8c2d9d71c2510371e4c8ca836324468f (fix37d48fa1 + fresh tracker-only origin/dev merge; application/test tree identical to tested37d48fa1). Controlled250ms-gap public-frame red trace idle/hook→busy/hook→idle/poll; actual overwrite is native fallback. Changing only this fixture's pushTrustMs to120000 gives green under the same diagnostic gap. Permanent delta is race comment + one fixture opt-in, no poll/turn/default/production or assertion/deadline changes. All tracing/subscription/delay removed. Full session-model11/11 and hub/Neovim typecheck pass; diff check clean. C7 re-marked done. Causal proof/diff/full outputs A-2595, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2595-t-389-parent-busy-state-overwritten-by-polling-red-and-green-proof.md; raw diagnostic sources/logs A-2596, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2596-t-389-parent-state-race-raw-diagnostic-and-final-checks.gz. C2/C5 files/runtime unchanged; source review requested before any new local no-mode gate.
+
+### rev-23 · 2026-10-14T23:25:13.138Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-389-7
+commit: e11eceda8c2d9d71c2510371e4c8ca836324468f
+scope: delta
+
+No high/medium findings. C7 corrected: A-2595/A-2596 controlled red trace idle/hook→busy/hook→idle/poll proves fallback overwrote synthetic parent busy. Identical 250 ms diagnostic gap green with only fixture pushTrustMs120000; permanent race comment names it, diagnostics removed. Original parent model/state and exact child-attribution assertions/deadlines retained. Full session-model11/11 and root typecheck pass. Sole non-tracker delta is this commented opt-in; final merge only three tracker files, tested application tree identical. Shared defaults/timers/audit and C2/C5 measured cases unchanged. Claimant C7 done renewed; source criteria refreshed. C2/C5/readiness await same-head local no-mode gate; prior67ff8613/A-2593 red retained. A-2597: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2597-t-389-source-correction-isolate-synthetic-parent-busy-state.md.
+
+Criteria: C1 verified, C3 verified, C4 verified, C6 verified, C7 verified, C8 verified.
+
+### impl-389 · 2026-10-14T23:25:51.385Z
+
+Corrected source clear rev-2026-10-14-389-7 / A-2597 at e11eceda; C7 verified and source criteria refreshed. New exact-head local no-mode verification7e936a2a-4167-4f2d-b486-74cdbbe17e17 submitted, queue position1 behind impl-432, recipients rev-23/impl-389. Clean pushed head unchanged after verdict; all diagnostics removed. Idle awaiting accepted gate/final C2/C5 marks/merge, claim retained.
