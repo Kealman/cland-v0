@@ -3,7 +3,7 @@ id: T-430
 kind: task
 title: Three hub tests fail intermittently on Linux droplets (init database locked, merge restart ref movement, executor-safety same-name keys)
 state: open
-status: in progress
+status: ready
 size: M
 rank: 2311
 criterion_seq: 3
@@ -17,7 +17,7 @@ blocked_by: []
 topic: topic-256
 branch: t/T-430-three-hub-tests-fail-intermittently-on
 created: 2026-10-14T17:14:45.492Z
-updated: 2026-10-14T18:23:59.004Z
+updated: 2026-10-14T18:58:46.668Z
 ---
 
 ## Summary
@@ -42,11 +42,14 @@ For each test, find whether it is a Linux-specific race (SQLite locking, timing,
   - done: impl-430 · 2026-10-14T17:31:55.607Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-430-1 · 2026-10-14T17:42:08.188Z · commit 564e7a4c840f803858990a4dd43ebb498d679f5e
   - verified: rev-23 [reviewer] · run rev-2026-10-14-430-2 · 2026-10-14T18:17:13.181Z · commit 564e7a4c840f803858990a4dd43ebb498d679f5e
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-430-4 · 2026-10-14T18:58:43.669Z · commit 564e7a4c840f803858990a4dd43ebb498d679f5e
 - [x] C2. On macOS each of the three files passes 5/5 whole-file runs.
   - done: impl-430 · 2026-10-14T18:15:51.027Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-430-2 · 2026-10-14T18:17:13.181Z · commit 564e7a4c840f803858990a4dd43ebb498d679f5e
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-430-4 · 2026-10-14T18:58:43.669Z · commit 564e7a4c840f803858990a4dd43ebb498d679f5e
 - [x] C3. A `cland verify --executor droplet` of the fix branch (diff selection) is green on Linux and runs the three files.
   - done: impl-430 · 2026-10-14T18:23:05.413Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-430-4 · 2026-10-14T18:58:43.669Z · commit 564e7a4c840f803858990a4dd43ebb498d679f5e
 
 ## Comments
 
@@ -98,3 +101,16 @@ commit: 564e7a4c840f803858990a4dd43ebb498d679f5e
 scope: evidence
 
 Linux target-file C3 proof established under directly-read Coordinator9ad37b30: all init/merge/executor-safety cases pass, including pinned regressions, no target skips. Overall077a0297/A-2501 remains red:1648pass/3fail/3platform skips,Neovim not reached; c-8 lon1 Linux x64,1509s/$0.1048. Medium outside gate findings — accounts.test.ts:240 pool-size1 OpenCode handoff refusal; suite-remote-budget.test.ts:205 expected remote-budget1/1 warning missing (Bugs S each); request-guard:76 known T-429. No causal T-430 source defect asserted. C1/C2 retained; no C3 failure mark because scoped proof passes. Final verification awaits instructed same-head local gate; no droplet retry. A-2503: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2503-t-430-linux-target-files-pass-local-gate-and-outside-findings-pending.md.
+
+### rev-23 · 2026-10-14T18:58:43.669Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-430-4
+commit: 564e7a4c840f803858990a4dd43ebb498d679f5e
+scope: evidence
+
+Final clear; C1–C3 verified, claimant done marks confirmed, unchanged clean564e7a4c. Local gate b63e4ae6/A-2523 passes root typecheck and2041/2041 (37free,1617hub,387Neovim),zero failure/cancel/skip/todo. C3 scoped Linux077a0297/A-2501 passes all init/merge/executor-safety cases,no target skips,under directly-read Coordinator9ad37b30/180cd67e. Overall Linux red retained for T-429/T-434/T-435,3platform skips,1509s/$0.1048;not complete Linux green. Source/C1 A-2478 and C2 fifteen macOS whole-file passes/430 cases A-2490/A-2494 stand. No high/medium T-430 findings. A-2524: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2524-t-430-final-local-gate-and-scoped-linux-target-file-proof.md.
+
+Criteria: C1 verified, C2 verified, C3 verified.

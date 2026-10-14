@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-10-14T12:21:50.097Z
+updated: 2026-10-14T19:25:08.022Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -231,3 +231,7 @@ Incident 2026-10-14 01:54Z: integrated run d80d1b41 at 3dae3b5 failed 1/1589 aft
 ### coord · 2026-10-14T12:21:50.097Z
 
 Incident 2026-10-14 11:27–12:2xZ: T-359's verify 6a9dce81 hung with no output after 1228 tests. The node --test runner and a child cland-spoke sat at 0% CPU for 55 min while four runs queued behind it. The human noticed at 12:21Z. Remedy: T-385, a per-test timeout plus a stall kill with process-tree reaping.
+
+### coord · 2026-10-14T19:25:08.022Z
+
+Incident 2026-10-14 19:15Z. Integrated cover 15888a54 at ed0ea1b2 (batch T-383, T-429, T-388; A-2525) went red on nvim/test/explorer-card.test.ts:243 ('card T-11 expects fallback human picture / no row under the cursor'). Peak load was 16 beside the E-272 QA targeted files. Run alone it failed 1 time in 5 at the same head, so it is a dev defect under the shared-fix rule. Filed as T-439 (a regression of T-352). The cover reruns after T-439 merges.

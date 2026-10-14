@@ -2,7 +2,8 @@
 id: E-272
 kind: epic
 title: Accounts and limits
-state: open
+state: closed
+criterion_seq: 7
 labels:
   - epic
   - v0.1.2
@@ -13,7 +14,8 @@ blocked_by: []
 topic: topic-253
 branch: null
 created: 2026-10-12T11:35:14.048Z
-updated: 2026-10-14T16:39:22.402Z
+updated: 2026-10-14T19:35:27.316Z
+closed: 2026-10-14T19:35:27.316Z
 ---
 
 ## Goal
@@ -56,13 +58,20 @@ QA runs the demo below on `dev`, playing the human's part through the `cland` CL
 
 In a scratch project with the fake harnesses and a scratch registry (two Claude Code accounts, two Codex accounts, one OpenCode account, under an `XDG_CONFIG_HOME` of QA's own), QA pins the Reviewer role to codex-b, launches a Reviewer and a Claude session on claude-b, and reads in the fakes' recorded environments that every adapter process for each session ran in its account's directory. The fakes push limits; `cland account list` and the headless workbench's accounts block show the windows each source sent, and the OpenCode account shows no limit data. An idle account is polled once through its harness within 15 minutes. A fake `usageLimitExceeded` marks codex-a limited and highlighted; the next launch on it is refused naming its reset; `cland account clear` lifts the mark. No launch moves to another account by itself.
 
-- [ ] `~/.config/cland/accounts.toml` holds names and paths only; `roles.toml` and launches name accounts; the account is recorded on the session and shown on its row.
-- [ ] Every process the adapter starts or queries for a session, `agents --json` included, runs in the account's environment.
-- [ ] Limits come from running sessions first, and idle accounts are polled at most every 15 minutes through the harness only; no code path calls a provider's endpoint with a token cland reads.
-- [ ] The sessions panel opens with the accounts block: per account, the windows the source sent with the used share and the reset time; a limited account is highlighted; OpenCode shows no limit data.
-- [ ] A limit-hit signal from any of the three harnesses marks the account limited and refuses new launches on it; nothing fails over, rotates or picks another account by itself.
-- [ ] The Claude adapter polls `claude agents --json` at most once per 30 seconds per config directory, and a logged-out directory gives one event and one message to the human with no retry storm (T-265).
-- [ ] `hub/README.md`, `nvim/README.md`, the Coordinator's clause and `cland init`'s defaults describe accounts, limits and the limited mark.
+- [ ] C1. `~/.config/cland/accounts.toml` holds names and paths only; `roles.toml` and launches name accounts; the account is recorded on the session and shown on its row.
+  - verified: qa-27 [qa] · run qa-2026-10-14-27-11 · 2026-10-14T19:34:58.481Z · commit ed0ea1b2dbf050c3380daeca03c4b7d8ad09317b
+- [ ] C2. Every process the adapter starts or queries for a session, `agents --json` included, runs in the account's environment.
+  - verified: qa-27 [qa] · run qa-2026-10-14-27-11 · 2026-10-14T19:34:58.481Z · commit ed0ea1b2dbf050c3380daeca03c4b7d8ad09317b
+- [ ] C3. Limits come from running sessions first, and idle accounts are polled at most every 15 minutes through the harness only; no code path calls a provider's endpoint with a token cland reads.
+  - verified: qa-27 [qa] · run qa-2026-10-14-27-11 · 2026-10-14T19:34:58.481Z · commit ed0ea1b2dbf050c3380daeca03c4b7d8ad09317b
+- [ ] C4. The sessions panel opens with the accounts block: per account, the windows the source sent with the used share and the reset time; a limited account is highlighted; OpenCode shows no limit data.
+  - verified: qa-27 [qa] · run qa-2026-10-14-27-11 · 2026-10-14T19:34:58.481Z · commit ed0ea1b2dbf050c3380daeca03c4b7d8ad09317b
+- [ ] C5. A limit-hit signal from any of the three harnesses marks the account limited and refuses new launches on it; nothing fails over, rotates or picks another account by itself.
+  - verified: qa-27 [qa] · run qa-2026-10-14-27-11 · 2026-10-14T19:34:58.482Z · commit ed0ea1b2dbf050c3380daeca03c4b7d8ad09317b
+- [ ] C6. The Claude adapter polls `claude agents --json` at most once per 30 seconds per config directory, and a logged-out directory gives one event and one message to the human with no retry storm (T-265).
+  - verified: qa-27 [qa] · run qa-2026-10-14-27-11 · 2026-10-14T19:34:58.482Z · commit ed0ea1b2dbf050c3380daeca03c4b7d8ad09317b
+- [ ] C7. `hub/README.md`, `nvim/README.md`, the Coordinator's clause and `cland init`'s defaults describe accounts, limits and the limited mark.
+  - verified: qa-27 [qa] · run qa-2026-10-14-27-11 · 2026-10-14T19:34:58.482Z · commit ed0ea1b2dbf050c3380daeca03c4b7d8ad09317b
 
 ## Dogfooding
 
@@ -134,3 +143,85 @@ Coordinator decisions on the drafts' open questions, adopted as recommended:
 - b10: a missing directory refuses the launch, naming the sign-in command.
 - b11: the account-limits journal record is kept, written only on change.
 T-265 was amended with a Summary, Parent, What to build and single-line criteria. The two-directory demo moves to T-362.
+
+### qa-27 · 2026-10-14T19:34:58.482Z
+
+verdict: qa
+result: clear
+by: qa-27 [qa]
+run: qa-2026-10-14-27-11
+commit: ed0ea1b2dbf050c3380daeca03c4b7d8ad09317b
+
+| Case | Result | Evidence and observation |
+| --- | --- | --- |
+| M0 | PASS | M0.txt and JSON: eight children closed/done, four stages closed, ten ancestors; T-383 merged; T-372 open and outside scope. |
+| M1 | PASS | M1.txt: build/runtime, queue, locks and process/load baseline. |
+| M2 | PASS | M2.log: accounts 14/14. |
+| M3 | PASS | M3.log: Claude accounts 5/5. |
+| M4 | PASS | M4.log: Claude adapter 9/9. |
+| M5 | PASS | M5.log: limit readings 3/3. |
+| M6 | PASS | M6.log: account poller 10/10. |
+| M7 | PASS amended | M7.log: one outer isolation test, which asserts the generated inner test. |
+| M8 | PASS | M8.log: hard limits 10/10. |
+| M9 | PASS | M9-roles.log 2/2; M9-init.log 1/1. |
+| M10 | PASS | M10.log: three matched Neovim tests, no skips. |
+| M11 | PASS | M11.log: panel-open polling 1/1. |
+| PANELS-009 | PASS | Catalogue screen and state captures; exit 0. |
+| PANELS-016 | PASS | Catalogue screen and state captures; exit 0. |
+| M12 | PASS | Both catalogue cases above. |
+| M13 | PASS | M13-source/docs/role-lines: exactly two passive URL references; no account network-call matches; all doc counts exact. Matching sections read in full. |
+| M14 | PASS | M14-*: scratch isolation gates; five registry accounts; exactly four sanitized initial polls; one cached refresh; recorder loaded in hub and poll PIDs. |
+| M15 | PASS | M15-*: malformed, unknown, conflicting and missing-directory refusals; unpinned launch allowed; no refused rows or extra Codex processes. |
+| M16 | PASS | M16-*: seven launches with correct role pin, override and default accounts, matching journal and session rows. |
+| M17 | PASS amended | M17-*: every process environment and attach correct; five successful attaches and wrong-directory attach exit 1; two cached version probes. |
+| M18 | PASS | M18-*: saved account survives role edit/relaunch; Claude stop/resume on claude-b with no inherited auth. T-372 did not occur. |
+| M19 | PASS | M19-window/all: five calls per active directory in 150 seconds; minimum gaps 30,241/30,223 ms; no idle Claude directory, auth or doctor polling. |
+| M20 | PASS amended | M20-*: one signed-out notice; zero calls in the paused window; latch held across restart until fake pushed success; first call 375 ms afterward. Original mismatch retained. |
+| M21 | PASS amended | M21-*: sparse update adds one record/event; equal full read adds none; Claude unchanged measure silent; changed measure and manual hook visible; refresh polls only idle claude-a once. |
+| M22 | PASS amended | M22-amended/block/narrow/meta/folded: six ordered rows, exact colours and reset clocks, live update with list count 0, reopen poll count 1, width/max-width 30, fold persisted. |
+| M23 | PASS | M23-*: retryable errors mark none; three hard marks/notices/Coordinator events; duplicate adds none; typed refusals create no processes; one after-hit read each; correct red UI. |
+| M24 | PASS amended | M24-*: three marks survive unchanged, all six running sessions re-found; limited relaunch refuses before a process; Claude calls 2/1 in 45 seconds, no short gaps. |
+| M25 | PASS amended | M25-*: all three role clear refusals; two hand lifts; reset lift at 19:31:04.007Z, 7 ms after R5; names bold; original-account relaunch succeeds despite 100% reading; clause present; zero hub asks. |
+| M26 | PASS | M26-*: 56 default and 53 claude-b agents calls; min 30,185/30,165 ms; eight polls with repeated gaps ≥433,597 ms; zero non-loopback records; all three hubs and seven poll PIDs instrumented; directories confined to scratch. |
+| M27 | PASS | M27-*: sessions, hub, Neovim and drivers stopped; every recorded fake PID dead; no forced kill needed; zero shared-lock references; captures preserved and scratch removed. Other crew queue work remains untouched. |
+
+All 59 targeted tests passed, with zero failures and zero skips.
+
+## Findings
+
+- Low — T-437, fake harness gap (M20). `hub stop` / `hubstart` caused the running fake Claude session to answer its reconnect delivery successfully while its `logged-out` input still existed. `fake-claude.ts:108` checks that input for `agents`/`--bg`, not the running session turn. The successful hook at 19:11:27.588Z correctly lifted the latch; the first `agents` call followed at 19:11:27.963Z. This is not a product latch defect. Evidence: M20-first.txt, M20-restart-diagnostic.txt and M20-amendment.txt.
+- No high or medium findings. No product defect remains under the authorized brief amendments.
+
+## Brief amendments and observation deviations
+
+1. The request allows one targeted file beside the integrated cover, excludes only the named tracker/planning paths from the final code gate, and recognizes T-383's merged fix. T-434 is not an epic child; its handoff test passed here.
+2. M7 expects one top-level test: `account-fixture-isolation.test.ts:14` runs the generated test at line 32 and asserts its success at lines 60–61. Coordinator decision `0c1108c1`.
+3. M14's append-only network recorder creates its main file only for a non-loopback attempt. The absent file, with `.loaded` covering all relevant PIDs, means zero attempts. The original `wc` error is preserved. Similarly, M15's absent version-probe file is a zero baseline, unchanged afterward.
+4. M17 expects one Codex version probe per distinct account environment, not per launch: `codex.ts:352–363` caches by `JSON.stringify(accountEnv)`. Two homes mean two probes. Coordinator decision `24135c0a`.
+5. M20's original restart expectation mismatch is preserved. Under decision `7c7ec5d5` and confirmation `6b0a832e`, the latch survives until the first pushed success; calls after it are expected. M20(g)'s warning is N/A after that lift; its other recovery checks passed. T-437 records the fake gap.
+6. M20 and M24 Codex `at` refreshes followed new successful reconnect turns; windows and sources did not change. README permits equal readings to refresh age silently. This is not evidence of lost persistence.
+7. M21(d) sent an ISO string `at`, while `cli/hook.ts:103` preserves numeric event times. The brief's payload format was wrong; its fallback reading time was 555 ms later. Windows and hook exit passed. Coordinator decisions `ac8d724b` and `0a84fa87`; no product timestamp finding.
+8. M22 startup is Explorer on this build, so the right window is absent. Original helper errors/screens are retained. Navigate to General, leave Insert mode, show sessions, and only then start the observation counter. The amended checks passed without changing their expectations. All later account dumps use explicit output files.
+9. M24's “every row running again” means rows that were running before restart; the four deliberately stopped rows correctly remained stopped.
+10. M25's helper again landed on Explorer. Two authorized clears occurred before their pre-clear visual was captured; that visual is missing. No marks were restored or extra clears made. Decision `84fc87a4` permits combined evidence: M24's exact three persisted marks plus M25-after-clears-live, which shows persisted claude-b still red after Neovim restart, and codex-a/oc-b cleared with bold names.
+
+## Criterion coverage
+
+| Id | Brief checks |
+| --- | --- |
+| C1 | M2, M14–M16, M22 |
+| C2 | M2–M3, M7, M17–M18, M26 |
+| C3 | M5–M7, M11, M13–M14, M21, M26 |
+| C4 | M10–M12, M22–M23 |
+| C5 | M8, M10, M23–M25 |
+| C6 | M3–M4, M19–M20, M26 |
+| C7 | M9, M13–M14, M25 |
+
+Final result: clear. All criteria C1–C7 are covered by this run. The final build gate is empty; HEAD and dev remain `ed0ea1b2dbf050c3380daeca03c4b7d8ad09317b`. Evidence includes the scripts actually executed under `driver/`, fake captures under `fakes/`, flushed scratch logs under `scratch/`, and the per-case ledger in `runs.jsonl`.
+
+
+Build and verdict commit: `ed0ea1b2dbf050c3380daeca03c4b7d8ad09317b`; run `qa-2026-10-14-27-11`. Full evidence: A-2530, `/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2530-e-272-qa-full-evidence-qa-2026-10-14-27-11` (README.md entry). Marks: verify C1,C2,C3,C4,C5,C6,C7; none failed. All 31 case records are PASS, including amended checks; original mismatch outputs retained.
+
+Required verdict note: A-2531, `/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2531-e-272-qa-clear-cases-amendments-finding-and-criteria.md`.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.

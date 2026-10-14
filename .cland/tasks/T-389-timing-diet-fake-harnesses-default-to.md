@@ -3,7 +3,7 @@ id: T-389
 kind: task
 title: "Timing diet: fake harnesses default to fast turns and polls with explicit slow opt-ins, timer-bound tests run on env-controlled schedules, and fixed sleeps become event waits"
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - v0.1.2
@@ -13,9 +13,9 @@ assignee: null
 parent: E-386
 blocked_by: []
 topic: null
-branch: null
+branch: t/T-389-timing-diet-fake-harnesses-default-to
 created: 2026-10-14T12:28:10.336Z
-updated: 2026-10-14T12:28:23.777Z
+updated: 2026-10-14T19:36:05.048Z
 ---
 
 ## Summary

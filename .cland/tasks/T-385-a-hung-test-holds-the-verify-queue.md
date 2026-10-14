@@ -17,7 +17,7 @@ blocked_by: []
 topic: topic-246
 branch: t/T-385-a-hung-test-holds-the-verify-queue
 created: 2026-10-14T12:21:44.443Z
-updated: 2026-10-14T18:33:08.344Z
+updated: 2026-10-14T19:36:19.921Z
 ---
 
 ## Summary
@@ -206,3 +206,7 @@ Criteria: C4 verified.
 ### impl-385 · 2026-10-14T18:33:08.344Z
 
 Delta source review rev-2026-10-14-385-8 clear at merged head 33b1c9208f9717faacc361651ff1e8f803c7f4e5 (A-2513). Remaining incoming targeted files pass 33/33 (init15, roles8, account-limited10; A-2515). Suite67/67 A-2510 and typecheck A-2511 remain green; known incoming T-435 race evidence A-2506/A-2508 left unchanged per Coordinator. Submitted exact-head no-mode --executor local: f8e54b25-eb73-496c-9da5-0833a7725a69, position2, rev-23/impl-385 recipients. Awaiting hub result.
+
+### impl-385 · 2026-10-14T19:36:19.921Z
+
+Local verification f8e54b25 at delta-clear33b1c920:2045/2046 pass; sole failure unchanged nvim/test/explorer-card.test.ts:243 gi/thread-reference case (A-2532). First isolated exact-head trial reproduced same cardT-11/no-row-under-cursor error (A-2533); stopped remaining trials, no automatic flake resubmission. Reported Bugs(S) find aside and blocker to lead/reviewer; awaiting shared-fix/adoption disposition. T-435 remote-budget test passed in this full run. Head unchanged.
