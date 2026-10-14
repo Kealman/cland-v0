@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>cland web: the inbox on the now layer</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;700&amp;display=swap">
+<style>
+body{margin:0;background:#0b0e14;font-family:'Golos Text',system-ui,sans-serif}
+a{color:#6aa5ff;text-decoration:none}
+a:hover{color:#9cc3ff;text-decoration:underline}
+button,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid #6aa5ff;outline-offset:1px}
+::placeholder{color:#8a94a3;opacity:1}
+.hv:hover{background:#131923 !important}
+.bt:hover{background:#1a222d !important;border-color:#3d4a5c !important}
+.op:hover{background:#2a2312 !important;border-color:#f0b429 !important}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #0b0e14; color: #d6dbe4; font-family: 'Golos Text', system-ui, sans-serif; font-size: 13px; line-height: 20px">
+<div style="max-width: 1440px; margin: 0 auto; display: flex; flex-direction: column">
+
+  <header style="display: flex; align-items: center; gap: 12px; height: 48px; padding: 0 16px; background: #10141b; border-bottom: 1px solid #222a35">
+    <a href="#home" style="font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 700; color: #eef1f5; text-decoration: none">cland</a>
+    <span style="font-weight: 600; color: #d6dbe4">cland-v0</span>
+    <button type="button" class="bt" aria-label="Current release R-228 0.1.2 Working with items; change the release" style="display: inline-flex; align-items: center; gap: 8px; height: 30px; padding: 0 10px; border: 1px solid #2a3340; border-radius: 6px; background: #141a23">
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #8a94a3">R-228</span>
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700">0.1.2</span>
+      <span>Working with items</span>
+      <span aria-hidden="true" style="font-size: 10px; color: #8a94a3">▾</span>
+    </button>
+    <button type="button" class="bt" style="margin-left: 20px; display: flex; align-items: center; gap: 10px; width: 23rem; height: 32px; padding: 0 8px 0 12px; border: 1px solid #2a3340; border-radius: 8px; background: #0b0e14; color: #8a94a3; text-align: left">
+      <span style="flex: 1">Search items, sessions, topics and actions</span>
+      <kbd style="font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 16px; padding: 0 5px; border: 1px solid #3a4452; border-radius: 4px; background: #141a23; color: #d6dbe4">⌘K</kbd>
+    </button>
+    <div style="margin-left: auto; display: flex; align-items: center; gap: 10px">
+      <a href="#session-coord" class="bt" style="display: inline-flex; align-items: center; gap: 7px; height: 30px; padding: 0 10px; border: 1px solid #2a3340; border-radius: 6px; background: #141a23; color: #d6dbe4; text-decoration: none">
+        <span aria-hidden="true" style="color: #35c4a0">●</span>
+        <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px">coord</span>
+        <span style="color: #8a94a3">Coordinator · busy</span>
+      </a>
+      <a href="#inbox" style="display: inline-flex; align-items: center; gap: 7px; height: 30px; padding: 0 12px; border-radius: 15px; background: #f0b429; color: #1a1400; font-weight: 600; text-decoration: none">
+        <span aria-hidden="true" style="font-size: 11px">▲</span>
+        <span>11 need you</span>
+      </a>
+      <span title="Connected to the hub: the snapshot at 09:38, then 41 deltas" style="display: inline-flex; align-items: center; gap: 6px; padding: 0 4px; color: #8a94a3; font-size: 12px">
+        <span aria-hidden="true" style="width: 7px; height: 7px; border-radius: 50%; background: #7ddc8a"></span>
+        <span>live</span>
+      </span>
+      <button type="button" class="bt" aria-label="Keys" style="width: 30px; height: 30px; padding: 0; border: 1px solid #2a3340; border-radius: 6px; background: #141a23; font-family: 'JetBrains Mono', monospace; font-size: 13px">?</button>
+    </div>
+  </header>
+
+  <div style="display: grid; grid-template-columns: 11.5rem minmax(0, 1fr) 26.5rem; align-items: stretch">
+
+    <nav aria-label="Areas" style="display: flex; flex-direction: column; gap: 2px; padding: 12px 8px 12px; background: #10141b; border-right: 1px solid #222a35">
+      <a href="#inbox" aria-current="page" style="display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 10px; border-radius: 6px; background: #182131; color: #eef1f5; font-weight: 600; text-decoration: none">
+        <span style="flex: 1">Inbox</span>
+        <span style="min-width: 20px; padding: 0 6px; border-radius: 10px; background: #f0b429; color: #1a1400; font-family: 'JetBrains Mono', monospace; font-size: 11.5px; line-height: 18px; font-weight: 700; text-align: center">11</span>
+      </a>
+      <a href="#explorer" class="hv" style="display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 10px; border-radius: 6px; color: #d6dbe4; text-decoration: none"><span style="flex: 1">Items</span></a>
+      <a href="#sessions" class="hv" style="display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 10px; border-radius: 6px; color: #d6dbe4; text-decoration: none"><span style="flex: 1">Sessions</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #35c4a0">6 busy</span></a>
+      <a href="#topics" class="hv" style="display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 10px; border-radius: 6px; color: #d6dbe4; text-decoration: none"><span style="flex: 1">Topics</span></a>
+      <a href="#events" class="hv" style="display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 10px; border-radius: 6px; color: #d6dbe4; text-decoration: none"><span style="flex: 1">Events</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #c2a15e">41 new</span></a>
+      <a href="#artifacts" class="hv" style="display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 10px; border-radius: 6px; color: #d6dbe4; text-decoration: none"><span style="flex: 1">Artifacts</span></a>
+      <a href="#accounts" class="hv" style="display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 10px; border-radius: 6px; color: #d6dbe4; text-decoration: none"><span style="flex: 1">Accounts</span></a>
+      <div style="margin-top: auto; padding-top: 16px">
+        <button type="button" class="bt" style="display: flex; align-items: center; gap: 8px; width: 100%; height: 30px; padding: 0 10px; border: 1px solid #222a35; border-radius: 6px; background: transparent; color: #8a94a3; font-size: 12.5px; text-align: left"><span aria-hidden="true">‹</span><span>Collapse the rail</span></button>
+      </div>
+    </nav>
+
+    <main style="min-width: 0; display: flex; flex-direction: column; background: #0b0e14">
+      <div style="display: flex; align-items: center; gap: 12px; height: 52px; padding: 0 20px; border-bottom: 1px solid #1a212b; white-space: nowrap">
+        <h1 style="margin: 0; font-size: 16px; line-height: 22px; font-weight: 600; color: #eef1f5">Inbox</h1>
+        <span style="font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: #f0b429">11 need you</span>
+        <span style="font-size: 12px; color: #8a94a3">the oldest waits 8 h 08 m</span>
+        <span title="P17: Inbox rows are a table: the glyph, the subject, the text in prose, the sender in the role colour and the waiting age right-aligned. The selected row unfolds in place with real buttons; r, d and Enter work as in Neovim, and the keyboard cursor carries the focus ring." style="display: inline-block; padding: 0 5px; border-radius: 3px; background: #e6e9ef; color: #0b0e14; font-family: 'JetBrains Mono', monospace; font-size: 10px; line-height: 15px; font-weight: 700; white-space: nowrap; cursor: help">proposal P17</span>
+        <span style="margin-left: auto; font-size: 12px; color: #8a94a3">by kind · newest first · five a section</span>
+      </div>
+
+      <div style="display: flex; flex-direction: column; padding: 6px 8px 12px">
+
+        <div style="display: flex; align-items: baseline; gap: 8px; padding: 14px 12px 6px">
+          <h2 style="margin: 0; font-size: 13.5px; line-height: 20px; font-weight: 600; color: #eef1f5">Asks and approvals</h2>
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #f0b429">7</span>
+          <span style="margin-left: auto; font-size: 12px; color: #8a94a3">asks are answered here · approvals here or in their session</span>
+        </div>
+
+        <div style="display: flex; flex-direction: column; border-radius: 8px; background: #182131; outline: 2px solid #6aa5ff; outline-offset: -2px">
+          <div role="button" tabindex="0" aria-expanded="true" style="display: grid; grid-template-columns: 16px 56px minmax(0, 1fr) 160px 76px; column-gap: 10px; align-items: center; height: 36px; padding: 0 12px">
+            <span style="color: #f0b429; font-weight: 700">?</span>
+            <a href="#T-347" style="font-family: 'JetBrains Mono', monospace; font-size: 12px; white-space: nowrap">T-347</a>
+            <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #eef1f5; font-weight: 500">C6 attempt 1 stopped at the builder release: rerun after T-381, or now?</span>
+            <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis"><span style="font-family: 'JetBrains Mono', monospace; font-size: 12px">coord</span> <span style="font-size: 12px; color: #35c4a0">Coordinator</span></span>
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; text-align: right; white-space: nowrap; color: #f0b429">34 m</span>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 10px; padding: 2px 16px 14px 94px">
+            <p style="margin: 0; font-size: 14px; line-height: 21px; color: #eef1f5">C6 attempt 1 stopped at the builder release: prepare failed with “builder release not confirmed”, and <span style="white-space: nowrap">T-381</span> now covers the swallowed error. Rerun C6 after <span style="white-space: nowrap">T-381</span> merges, or rerun now on 205897b with the release check skipped?</p>
+            <div style="display: flex; flex-direction: column; gap: 6px">
+              <button type="button" class="op" style="display: flex; align-items: center; gap: 10px; min-height: 34px; padding: 5px 10px; border: 1px solid #4f4220; border-radius: 6px; background: #19150d; text-align: left; font-size: 13px"><kbd style="font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 16px; padding: 0 5px; border: 1px solid #6b5823; border-radius: 4px; background: #2a2312; color: #f0b429">1</kbd><span>Wait for T-381, then rerun C6 on the merged head</span></button>
+              <button type="button" class="op" style="display: flex; align-items: center; gap: 10px; min-height: 34px; padding: 5px 10px; border: 1px solid #4f4220; border-radius: 6px; background: #19150d; text-align: left; font-size: 13px"><kbd style="font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 16px; padding: 0 5px; border: 1px solid #6b5823; border-radius: 4px; background: #2a2312; color: #f0b429">2</kbd><span>Rerun now on 205897b with the release check skipped</span></button>
+              <button type="button" class="op" style="display: flex; align-items: center; gap: 10px; min-height: 34px; padding: 5px 10px; border: 1px solid #4f4220; border-radius: 6px; background: #19150d; text-align: left; font-size: 13px"><kbd style="font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 16px; padding: 0 5px; border: 1px solid #6b5823; border-radius: 4px; background: #2a2312; color: #f0b429">3</kbd><span>Ask me later</span></button>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 4px">
+              <label for="ans-347-inbox" style="font-size: 12px; color: #a7b0bc">Or answer in your own words</label>
+              <div style="display: flex; gap: 8px">
+                <input id="ans-347-inbox" type="text" placeholder="Your answer to coord…" style="flex: 1; min-width: 0; height: 32px; padding: 0 10px; border: 1px solid #2a3340; border-radius: 6px; background: #0b0e14; font-size: 13px" />
+                <button type="button" style="height: 32px; padding: 0 14px; border: 0; border-radius: 6px; background: #6aa5ff; color: #0b1424; font-size: 13px; font-weight: 600">Send answer</button>
+              </div>
+            </div>
+            <div style="display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: #8a94a3"><span>asked 09:06 in <a href="#topic-233" style="font-family: 'JetBrains Mono', monospace; white-space: nowrap">topic-233</a></span><span>the thread is in the drawer</span><span style="margin-left: auto"><kbd style="font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 16px; padding: 0 5px; border: 1px solid #3a4452; border-radius: 4px; background: #141a23; color: #d6dbe4">gt</kbd> topic <kbd style="font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 16px; padding: 0 5px; border: 1px solid #3a4452; border-radius: 4px; background: #141a23; color: #d6dbe4">gi</kbd> card</span></div>
+          </div>
+        </div>
+
+        <div role="button" tabindex="-1" class="hv" style="display: grid; grid-template-columns: 16px 56px minmax(0, 1fr) 160px 76px; column-gap: 10px; align-items: center; height: 36px; padding: 0 12px; border-radius: 6px; margin-top: 2px">
+          <span style="color: #f0b429">▲</span>
+          <a href="#T-385" style="font-family: 'JetBrains Mono', monospace; font-size: 12px; white-space: nowrap">T-385</a>
+          <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap"><span style="color: #8a94a3">run</span> <code style="font-family: 'JetBrains Mono', monospace; font-size: 12px">kill -TERM 56937</code> <span style="color: #8a94a3">· the hung suite worker</span></span>
+          <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis"><span style="font-family: 'JetBrains Mono', monospace; font-size: 12px">impl-385</span> <span style="font-size: 12px; color: #bc8cff">Implementer</span></span>
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; text-align: right; white-space: nowrap; color: #f0b429">41 m</span>
+        </div>
+        <div role="button" tabindex="-1" class="hv" style="display: grid; grid-template-columns: 16px 56px minmax(0, 1fr) 160px 76px; column-gap: 10px; align-items: center; height: 36px; padding: 0 12px; border-radius: 6px">
+          <span style="color: #f0b429; font-weight: 700">?</span>
+          <a href="#E-386" style="font-family: 'JetBrains Mono', monospace; font-size: 12px; white-space: nowrap">E-386</a>
+          <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap">T-388 and T-391 both edit hub/test/shards.json: one integrated run for both, or one each?</span>
+          <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis"><span style="font-family: 'JetBrains Mono', monospace; font-size: 12px">coord</span> <span style="font-size: 12px; color: #35c4a0">Coordinator</span></span>
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; text-align: right; white-space: nowrap; color: #f0b429">1 h 12 m</span>
+        </div>
+        <div role="button" tabindex="-1" class="hv" style="display: grid; grid-template-columns: 16px 56px minmax(0, 1fr) 160px 76px; column-gap: 10px; align-items: center; height: 36px; padding: 0 12px; border-radius: 6px">
+          <span style="color: #f0b429">▲</span>
+          <a href="#E-271" style="font-family: 'JetBrains Mono', monospace; font-size: 12px; white-space: nowrap">E-271</a>
+          <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap"><span style="color: #8a94a3">run</span> <code style="font-family: 'JetBrains Mono', monospace; font-size: 12px">doctl compute droplet list --tag-name cland</code></span>
+          <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis"><span style="font-family: 'JetBrains Mono', monospace; font-size: 12px">qa-22</span> <span style="font-size: 12px; color: #56d4dd">QA</span></span>
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; text-align: right; white-space: nowrap; color: #f0b429">2 h 05 m</span>
+        </div>
+        <div role="button" tabindex="-1" class="hv" style="display: grid; grid-template-columns: 16px 56px minmax(0, 1fr) 160px 76px; column-gap: 10px; align-items: center; height: 36px; padding: 0 12px; border-radius: 6px">
+          <span style="color: #f0b429; font-weight: 700">?</span>
+          <a href="#T-382" style="font-family: 'JetBrains Mono', monospace; font-size: 12px; white-space: nowrap">T-382</a>
+          <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap">The accounts test still fails 1 in 20 on dev after the fix: merge with a flake ticket, or hold it?</span>
+          <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis"><span style="font-family: 'JetBrains Mono', monospace; font-size: 12px">coord</span> <span style="font-size: 12px; color: #35c4a0">Coordinator</span></span>
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; text-align: right; white-space: nowrap; color: #f0b429">3 h 18 m</span>
+        </div>
+        <button type="button" class="hv" aria-expanded="false" style="display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 12px 0 38px; border: 0; border-radius: 6px; background: transparent; color: #8a94a3; font-size: 12.5px; text-align: left"><span aria-hidden="true" style="font-size: 10px">▸</span><span>2 more</span><span>· the oldest waits <span style="color: #f0b429">8 h 08 m</span>, since 01:32</span><kbd style="margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 16px; padding: 0 5px; border: 1px solid #3a4452; border-radius: 4px; background: #141a23; color: #d6dbe4">za</kbd></button>
+
+        <div style="display: flex; align-items: baseline; gap: 8px; padding: 18px 12px 6px">
+          <h2 style="margin: 0; font-size: 13.5px; line-height: 20px; font-weight: 600; color: #eef1f5">Plan approvals</h2>
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #8a94a3">0</span>
+          <span style="margin-left: auto; font-size: 12px; color: #8a94a3">↵ opens the plan view · a approves there</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px; min-height: 34px; padding: 0 12px 0 38px; font-size: 12.5px; color: #8a94a3"><span>Nothing waits for your approval. An epic whose plan runs under <code style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #a7b0bc">[plan] approval = "human"</code> lands here before its first session starts.</span><span title="P18: A section with nothing in it stays, as one muted line that says what would land there, so the four sections keep their places and the eye learns them." style="display: inline-block; padding: 0 5px; border-radius: 3px; background: #e6e9ef; color: #0b0e14; font-family: 'JetBrains Mono', monospace; font-size: 10px; line-height: 15px; font-weight: 700; white-space: nowrap; cursor: help">proposal P18</span></div>
+
+        <div style="display: flex; align-items: baseline; gap: 8px; padding: 18px 12px 6px">
+          <h2 style="margin: 0; font-size: 13.5px; line-height: 20px; font-weight: 600; color: #eef1f5">Requests to you</h2>
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #f0b429">2</span>
+          <span style="margin-left: auto; font-size: 12px; color: #8a94a3">do it and reply · d declines and tells the sender</span>
+        </div>
+        <div role="button" tabindex="-1" class="hv" style="display: grid; grid-template-columns: 16px 56px minmax(0, 1fr) 160px 76px; column-gap: 10px; align-items: center; height: 36px; padding: 0 12px; border-radius: 6px">
+          <span style="color: #f0b429">◉</span>
+          <a href="#A-2370" style="font-family: 'JetBrains Mono', monospace; font-size: 12px; white-space: nowrap">A-2370</a>
+          <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap"><span style="color: #8a94a3">review request ·</span> the v0.2 spec draft, §3.1 to §3.8</span>
+          <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis"><span style="font-family: 'JetBrains Mono', monospace; font-size: 12px">aide-2</span> <span style="font-size: 12px; color: #6aa5ff">Aide</span></span>
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; text-align: right; white-space: nowrap; color: #f0b429">52 m</span>
+        </div>
+        <div role="button" tabindex="-1" class="hv" style="display: grid; grid-template-columns: 16px 56px minmax(0, 1fr) 160px 76px; column-gap: 10px; align-items: center; height: 36px; padding: 0 12px; border-radius: 6px">
+          <span style="color: #f0b429">⇄</span>
+          <a href="#T-248" style="font-family: 'JetBrains Mono', monospace; font-size: 12px; white-space: nowrap">T-248</a>
+          <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap"><span style="color: #8a94a3">handover ·</span> key matrix: Ghostty done, tmux left · note A-2331</span>
+          <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis"><span style="font-family: 'JetBrains Mono', monospace; font-size: 12px">aide-1</span> <span style="font-size: 12px; color: #6aa5ff">Aide</span> <span style="font-size: 12px; color: #8a94a3">stopped</span></span>
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; text-align: right; white-space: nowrap; color: #f0b429">10 h 30 m</span>
+        </div>
+
+        <div style="display: flex; align-items: baseline; gap: 8px; padding: 18px 12px 6px">
+          <h2 style="margin: 0; font-size: 13.5px; line-height: 20px; font-weight: 600; color: #eef1f5">Messages to you</h2>
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #f0b429">2</span>
+          <span style="margin-left: auto; font-size: 12px; color: #8a94a3">↵ read · r reply · d mark read</span>
+        </div>
+        <div role="button" tabindex="-1" class="hv" style="display: grid; grid-template-columns: 16px 56px minmax(0, 1fr) 160px 76px; column-gap: 10px; align-items: center; height: 36px; padding: 0 12px; border-radius: 6px">
+          <span aria-hidden="true" style="justify-self: center; width: 3px; height: 14px; border-radius: 2px; background: #35c4a0"></span>
+          <a href="#general" style="font-size: 12.5px">General</a>
+          <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap"><span style="color: #8a94a3">decision ·</span> T-398 goes before T-397: both touch the observer spoke, and T-398 is the wider sweep</span>
+          <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis"><span style="font-family: 'JetBrains Mono', monospace; font-size: 12px">coord</span> <span style="font-size: 12px; color: #35c4a0">Coordinator</span></span>
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; text-align: right; white-space: nowrap; color: #8a94a3">1 h 35 m</span>
+        </div>
+        <div role="button" tabindex="-1" class="hv" style="display: grid; grid-template-columns: 16px 56px minmax(0, 1fr) 160px 76px; column-gap: 10px; align-items: center; height: 36px; padding: 0 12px; border-radius: 6px">
+          <span aria-hidden="true" style="justify-self: center; width: 3px; height: 14px; border-radius: 2px; background: #56d4dd"></span>
+          <a href="#E-271" style="font-family: 'JetBrains Mono', monospace; font-size: 12px; white-space: nowrap">E-271</a>
+          <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap">The c-16 run took 4 m 52 s against 6 m 40 s on c-8; A-2340 has the phase times</span>
+          <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis"><span style="font-family: 'JetBrains Mono', monospace; font-size: 12px">qa-22</span> <span style="font-size: 12px; color: #56d4dd">QA</span></span>
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; text-align: right; white-space: nowrap; color: #8a94a3">2 h 28 m</span>
+        </div>
+
+        <div style="height: 1px; margin: 18px 12px 6px; background: #1a212b"></div>
+        <button type="button" class="hv" style="display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 12px; border: 0; border-radius: 6px; background: transparent; color: #c2a15e; font-size: 13px; text-align: left"><span aria-hidden="true">△</span><span>41 new events since your last look at 23:52 yesterday</span><span style="color: #f0b429">⚠ 3</span><span style="color: #8a94a3">opens the events view</span><kbd style="margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 16px; padding: 0 5px; border: 1px solid #3a4452; border-radius: 4px; background: #141a23; color: #d6dbe4">E</kbd></button>
+        <button type="button" class="hv" aria-expanded="false" style="display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 12px; border: 0; border-radius: 6px; background: transparent; color: #8a94a3; font-size: 12.5px; text-align: left"><span aria-hidden="true" style="font-size: 10px">▸</span><span>Archive · 6 rows left the inbox today</span><kbd style="margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 16px; padding: 0 5px; border: 1px solid #3a4452; border-radius: 4px; background: #141a23; color: #d6dbe4">A</kbd></button>
+      </div>
+
+      <div style="margin-top: auto; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; padding: 10px 20px; border-top: 1px solid #1a212b; color: #8a94a3; font-size: 12px">
+        <span><kbd style="font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 16px; padding: 0 5px; border: 1px solid #3a4452; border-radius: 4px; background: #141a23; color: #d6dbe4">j</kbd> <kbd style="font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 16px; padding: 0 5px; border: 1px solid #3a4452; border-radius: 4px; background: #141a23; color: #d6dbe4">k</kbd> move</span>
+        <span><kbd style="font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 16px; padding: 0 5px; border: 1px solid #3a4452; border-radius: 4px; background: #141a23; color: #d6dbe4">↵</kbd> open</span>
+        <span><kbd style="font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 16px; padding: 0 5px; border: 1px solid #3a4452; border-radius: 4px; background: #141a23; color: #d6dbe4">1</kbd>–<kbd style="font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 16px; padding: 0 5px; border: 1px solid #3a4452; border-radius: 4px; background: #141a23; color: #d6dbe4">9</kbd> answer</span>
+        <span><kbd style="font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 16px; padding: 0 5px; border: 1px solid #3a4452; border-radius: 4px; background: #141a23; color: #d6dbe4">i</kbd> free answer</span>
+        <span><kbd style="font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 16px; padding: 0 5px; border: 1px solid #3a4452; border-radius: 4px; background: #141a23; color: #d6dbe4">r</kbd> reply</span>
+        <span><kbd style="font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 16px; padding: 0 5px; border: 1px solid #3a4452; border-radius: 4px; background: #141a23; color: #d6dbe4">d</kbd> decline or mark read</span>
+        <span><kbd style="font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 16px; padding: 0 5px; border: 1px solid #3a4452; border-radius: 4px; background: #141a23; color: #d6dbe4">gi</kbd> <kbd style="font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 16px; padding: 0 5px; border: 1px solid #3a4452; border-radius: 4px; background: #141a23; color: #d6dbe4">gt</kbd> <kbd style="font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 16px; padding: 0 5px; border: 1px solid #3a4452; border-radius: 4px; background: #141a23; color: #d6dbe4">gs</kbd> <kbd style="font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 16px; padding: 0 5px; border: 1px solid #3a4452; border-radius: 4px; background: #141a23; color: #d6dbe4">gp</kbd> jump</span>
+        <span style="margin-left: auto"><kbd style="font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 16px; padding: 0 5px; border: 1px solid #3a4452; border-radius: 4px; background: #141a23; color: #d6dbe4">?</kbd> all keys</span>
+      </div>
+    </main>
+
+    <aside aria-label="Thread of topic-233" style="min-width: 0; display: flex; flex-direction: column; background: #0d1117; border-left: 1px solid #222a35">
+      <div style="display: flex; align-items: center; gap: 8px; height: 52px; padding: 0 12px 0 16px; border-bottom: 1px solid #1a212b; white-space: nowrap">
+        <span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; font-weight: 600; color: #eef1f5">T-347 The remote budget</span>
+        <span title="P19: The drawer follows the selected inbox row with the thread of its topic, scrolled to the row's message, with a one-line reply at its foot. For an approval it shows the session's recent thread instead, as on the Sessions board." style="display: inline-block; padding: 0 5px; border-radius: 3px; background: #e6e9ef; color: #0b0e14; font-family: 'JetBrains Mono', monospace; font-size: 10px; line-height: 15px; font-weight: 700; white-space: nowrap; cursor: help">proposal P19</span>
+        <div style="margin-left: auto; display: flex; align-items: center; gap: 6px">
+          <button type="button" class="bt" title="Open the topic in the Topics area" style="display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 8px; border: 1px solid #2a3340; border-radius: 6px; background: #141a23; font-size: 12.5px">Open <kbd style="font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 16px; padding: 0 4px; border: 1px solid #3a4452; border-radius: 4px; background: #10141b; color: #d6dbe4">gt</kbd></button>
+          <button type="button" class="bt" aria-label="Close the drawer" style="width: 28px; height: 28px; padding: 0; border: 1px solid #2a3340; border-radius: 6px; background: #141a23; font-size: 15px; line-height: 1">×</button>
+        </div>
+      </div>
+
+      <div role="log" aria-label="Messages in topic-233" style="display: flex; flex-direction: column; gap: 4px; padding: 12px 16px 16px">
+        <button type="button" class="bt" style="align-self: center; display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 12px; border: 1px solid #222a35; border-radius: 13px; background: transparent; color: #8a94a3; font-size: 12px"><span aria-hidden="true">▴</span>31 earlier messages, since Tue 20:53</button>
+        <div role="separator" style="display: flex; align-items: center; gap: 10px; margin: 6px 0 2px; color: #8a94a3; font-size: 12px"><span style="flex: 1; height: 1px; background: #222a35"></span><span>Wednesday 14 October · today</span><span style="flex: 1; height: 1px; background: #222a35"></span></div>
+
+        <button type="button" class="hv" aria-expanded="false" style="display: grid; grid-template-columns: 3px minmax(0, 1fr); column-gap: 10px; width: 100%; padding: 4px 0; border: 0; border-radius: 4px; background: transparent; color: #8a94a3; text-align: left">
+          <span aria-hidden="true" style="justify-self: center; width: 1px; background: #bc8cff"></span>
+          <span style="display: flex; align-items: center; gap: 7px; font-size: 12.5px; white-space: nowrap"><span aria-hidden="true" style="font-size: 10px">▸</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 12px">impl-347</span><span>→</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 12px">rev-23</span><span>9 messages</span><span style="margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 11.5px">03:06–08:57</span></span>
+        </button>
+
+        <article style="display: grid; grid-template-columns: 3px minmax(0, 1fr); column-gap: 10px; padding: 6px 0">
+          <span aria-hidden="true" style="border-radius: 2px; background: #35c4a0; opacity: 0.45"></span>
+          <div style="min-width: 0">
+            <header style="display: flex; align-items: baseline; gap: 7px; white-space: nowrap">
+              <span style="font-weight: 600; color: #c9d1dc">coord</span>
+              <span style="font-size: 12px; color: #35c4a0">Coordinator</span>
+              <span style="font-size: 12px; color: #8a94a3">→ impl-347, you · report</span>
+              <time style="margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: #8a94a3">08:56</time>
+            </header>
+            <p style="margin: 2px 0 0; font-size: 13px; line-height: 20px; color: #a7b0bc">C6 real create: droplet cland-t347-real, c-8 in lon1, lifetime to 09:11, $0.25 an hour. Scratch remote_budget 2, daily cap $3.</p>
+          </div>
+        </article>
+
+        <article style="display: grid; grid-template-columns: 3px minmax(0, 1fr); column-gap: 10px; padding: 6px 0">
+          <span aria-hidden="true" style="border-radius: 2px; background: #35c4a0; opacity: 0.45"></span>
+          <div style="min-width: 0">
+            <header style="display: flex; align-items: baseline; gap: 7px; white-space: nowrap">
+              <span style="font-weight: 600; color: #c9d1dc">coord</span>
+              <span style="font-size: 12px; color: #35c4a0">Coordinator</span>
+              <span style="font-size: 12px; color: #8a94a3">→ you · report</span>
+              <time style="margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: #8a94a3">09:05</time>
+            </header>
+            <p style="margin: 2px 0 0; font-size: 13px; line-height: 20px; color: #a7b0bc">C6 attempt 1 stopped at the builder release. The driver's cleanup released the builder and deleted the image; no cland droplets or snapshots remain. Cost about $0.03. Filed <a href="#T-381" style="font-family: 'JetBrains Mono', monospace; font-size: 12px; white-space: nowrap">T-381</a>, a regression of <a href="#T-344" style="font-family: 'JetBrains Mono', monospace; font-size: 12px; white-space: nowrap">T-344</a>.</p>
+          </div>
+        </article>
+
+        <article style="display: grid; grid-template-columns: 3px minmax(0, 1fr); column-gap: 10px; padding: 6px 0">
+          <span aria-hidden="true" style="border-radius: 2px; background: #35c4a0"></span>
+          <div style="min-width: 0">
+            <header style="display: flex; align-items: baseline; gap: 7px; white-space: nowrap">
+              <span style="font-weight: 600; color: #eef1f5">coord</span>
+              <span style="font-size: 12px; color: #35c4a0">Coordinator</span>
+              <span style="font-size: 12px; color: #8a94a3">→ you · question</span>
+              <span style="margin-left: auto; font-size: 12px; color: #f0b429">▲ 34 m</span>
+              <time style="font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: #8a94a3">09:06</time>
+            </header>
+            <div style="margin-top: 6px; display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border: 1px solid #4a3b17; border-radius: 8px; background: #211c12">
+              <div style="display: flex; align-items: center; gap: 8px"><span style="color: #f0b429; font-weight: 600">? Ask</span><span style="font-size: 12px; color: #b9ae93">the row unfolded on the left</span></div>
+              <p style="margin: 0; font-size: 13px; line-height: 20px; color: #eef1f5">C6 attempt 1 stopped at the builder release: prepare failed with “builder release not confirmed”, and <span style="white-space: nowrap">T-381</span> now covers the swallowed error. Rerun C6 after <span style="white-space: nowrap">T-381</span> merges, or rerun now on 205897b with the release check skipped?</p>
+              <ol style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 3px; font-size: 12.5px; line-height: 18px">
+                <li style="display: flex; gap: 8px"><span style="font-family: 'JetBrains Mono', monospace; color: #f0b429">1</span><span>Wait for T-381, then rerun C6 on the merged head</span></li>
+                <li style="display: flex; gap: 8px"><span style="font-family: 'JetBrains Mono', monospace; color: #f0b429">2</span><span>Rerun now on 205897b with the release check skipped</span></li>
+                <li style="display: flex; gap: 8px"><span style="font-family: 'JetBrains Mono', monospace; color: #f0b429">3</span><span>Ask me later</span></li>
+              </ol>
+              <span style="font-size: 12px; color: #b9ae93">1 to 3 answer from here too; the answer lands in this topic</span>
+            </div>
+          </div>
+        </article>
+      </div>
+
+      <form aria-label="Reply in topic-233" style="margin: auto 0 0; display: flex; flex-direction: column; gap: 4px; padding: 12px 16px 16px; border-top: 1px solid #1a212b">
+        <div style="display: flex; align-items: center; gap: 8px; height: 38px; padding: 0 6px 0 10px; border: 1px solid #2a3340; border-radius: 8px; background: #0b0e14">
+          <kbd style="font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 16px; padding: 0 5px; border: 1px solid #3a4452; border-radius: 4px; background: #141a23; color: #d6dbe4">r</kbd>
+          <input id="reply-233" type="text" placeholder="Reply in topic-233…" style="flex: 1; min-width: 0; height: 28px; padding: 0 4px; border: 0; background: transparent; font-size: 13px" />
+          <button type="submit" style="height: 26px; padding: 0 10px; border: 0; border-radius: 6px; background: #6aa5ff; color: #0b1424; font-size: 12.5px; font-weight: 600">Send</button>
+        </div>
+        <label for="reply-233" style="font-size: 12px; color: #8a94a3">To coord in topic-233 · a message, not the answer</label>
+      </form>
+    </aside>
+
+  </div>
+
+  <section aria-label="Notes on this board" style="display: flex; flex-direction: column; gap: 12px; padding: 32px 24px 48px; border-top: 1px dashed #3d4756">
+    <h2 style="margin: 0; font-size: 14px; line-height: 20px; font-weight: 600; color: #eef1f5">Proposals on this board</h2>
+    <p style="margin: 0; max-width: 62rem; font-size: 12.5px; line-height: 19px; color: #a7b0bc"><span style="white-space: nowrap">Q-404</span>, spec v0.2 §3.2 with v0.1.2 §3.7. Wednesday 14 October, 09:40, after the night run: eleven rows wait. The four sections keep the order of §3.7, each newest first with five rows and a fold that names the oldest wait. The selected ask is unfolded in place and carries the keyboard focus; the drawer shows its topic. The human answers it at 09:41, as the Thread board records.</p>
+    <ul style="list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 32px">
+      <li style="display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: 10px; font-size: 12.5px; line-height: 18px; color: #c9d1dc"><span><span style="display: inline-block; padding: 0 5px; border-radius: 3px; background: #e6e9ef; color: #0b0e14; font-family: 'JetBrains Mono', monospace; font-size: 10px; line-height: 15px; font-weight: 700; white-space: nowrap">proposal P17</span></span><span>Rows as a table with the waiting age at the right; the selected row unfolds in place with real buttons.</span></li>
+      <li style="display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: 10px; font-size: 12.5px; line-height: 18px; color: #c9d1dc"><span><span style="display: inline-block; padding: 0 5px; border-radius: 3px; background: #e6e9ef; color: #0b0e14; font-family: 'JetBrains Mono', monospace; font-size: 10px; line-height: 15px; font-weight: 700; white-space: nowrap">proposal P18</span></span><span>An empty section stays as one muted line that says what would land there.</span></li>
+      <li style="display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: 10px; font-size: 12.5px; line-height: 18px; color: #c9d1dc"><span><span style="display: inline-block; padding: 0 5px; border-radius: 3px; background: #e6e9ef; color: #0b0e14; font-family: 'JetBrains Mono', monospace; font-size: 10px; line-height: 15px; font-weight: 700; white-space: nowrap">proposal P19</span></span><span>The drawer shows the selected row's topic, scrolled to its message, with a one-line reply.</span></li>
+    </ul>
+  </section>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1373}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

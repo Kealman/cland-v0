@@ -1,0 +1,19 @@
+{
+  "v": 3,
+  "createdOnFiles": { "v": 1, "at": "2026-10-14T12:30:00Z" },
+  "title": "cland Web Workbench",
+  "launch": { "view": "canvas" },
+  "pages": [],
+  "boards": {
+    "Main.dc.html": { "x": 0, "y": 0, "w": 1440, "h": 2342, "title": "Shell: the rail, the explorer, the card in the drawer (Q-404)", "expand": "fill" },
+    "Thread.dc.html": { "x": 1520, "y": 0, "w": 1440, "h": 1945, "title": "Topics: a thread with an ask card and the composer, split with the card (Q-404)", "expand": "fill" },
+    "Inbox.dc.html": { "x": 3040, "y": 0, "w": 1440, "h": 1373, "title": "Inbox on the now layer, the selected ask unfolded, the drawer with its thread (Q-404)", "expand": "fill" },
+    "Sessions.dc.html": { "x": 4560, "y": 0, "w": 1440, "h": 1873, "title": "Sessions: groups, the verify queue, the accounts meters, a session's thread (Q-404)", "expand": "fill" },
+    "Phone.dc.html": { "x": 6080, "y": 0, "w": 390, "h": 844, "title": "Phone: the inbox with an ask open as a bottom sheet (Q-404, previews Q-406)" }
+  },
+  "order": ["Main.dc.html", "Thread.dc.html", "Inbox.dc.html", "Sessions.dc.html", "Phone.dc.html"],
+  "notes": {
+    "t1": { "x": 0, "y": -300, "text": "cland web workbench, v0.2: the shell with a rail, a main area and a drawer, in the browser; everything the Neovim workbench shows and does (map M-399, ticket Q-404). White stickers are proposals where the spec is silent; hover for the full text.", "kind": "title1", "maxW": 6470 }
+  },
+  "designSystems": []
+}

@@ -1,0 +1,426 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>cland web: a thread with the card in a second pane</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;700&amp;display=swap">
+<style>
+body{margin:0;background:#0b0e14;font-family:'Golos Text',system-ui,sans-serif}
+a{color:#6aa5ff;text-decoration:none}
+a:hover{color:#9cc3ff;text-decoration:underline}
+button,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid #6aa5ff;outline-offset:1px}
+::placeholder{color:#8a94a3;opacity:1}
+.hv:hover{background:#131923 !important}
+.bt:hover{background:#1a222d !important;border-color:#3d4a5c !important}
+.op:hover{background:#2a2312 !important;border-color:#f0b429 !important}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #0b0e14; color: #d6dbe4; font-family: 'Golos Text', system-ui, sans-serif; font-size: 13px; line-height: 20px">
+<div style="max-width: 1440px; margin: 0 auto; display: flex; flex-direction: column">
+
+  <header style="display: flex; align-items: center; gap: 12px; height: 48px; padding: 0 16px; background: #10141b; border-bottom: 1px solid #222a35">
+    <a href="#home" style="font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 700; color: #eef1f5; text-decoration: none">cland</a>
+    <span style="font-weight: 600; color: #d6dbe4">cland-v0</span>
+    <button type="button" class="bt" aria-label="Current release R-228 0.1.2 Working with items; change the release" style="display: inline-flex; align-items: center; gap: 8px; height: 30px; padding: 0 10px; border: 1px solid #2a3340; border-radius: 6px; background: #141a23">
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #8a94a3">R-228</span>
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700">0.1.2</span>
+      <span>Working with items</span>
+      <span aria-hidden="true" style="font-size: 10px; color: #8a94a3">▾</span>
+    </button>
+    <button type="button" class="bt" style="margin-left: 20px; display: flex; align-items: center; gap: 10px; width: 23rem; height: 32px; padding: 0 8px 0 12px; border: 1px solid #2a3340; border-radius: 8px; background: #0b0e14; color: #8a94a3; text-align: left">
+      <span style="flex: 1">Search items, sessions, topics and actions</span>
+      <kbd style="font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 16px; padding: 0 5px; border: 1px solid #3a4452; border-radius: 4px; background: #141a23; color: #d6dbe4">⌘K</kbd>
+    </button>
+    <div style="margin-left: auto; display: flex; align-items: center; gap: 10px">
+      <a href="#session-coord" class="bt" style="display: inline-flex; align-items: center; gap: 7px; height: 30px; padding: 0 10px; border: 1px solid #2a3340; border-radius: 6px; background: #141a23; color: #d6dbe4; text-decoration: none">
+        <span aria-hidden="true" style="color: #35c4a0">●</span>
+        <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px">coord</span>
+        <span style="color: #8a94a3">Coordinator · busy</span>
+      </a>
+      <a href="#inbox" style="display: inline-flex; align-items: center; gap: 7px; height: 30px; padding: 0 12px; border-radius: 15px; background: #f0b429; color: #1a1400; font-weight: 600; text-decoration: none">
+        <span aria-hidden="true" style="font-size: 11px">▲</span>
+        <span>3 need you</span>
+      </a>
+      <span title="Connected to the hub: the snapshot at 09:02, then 2,140 deltas" style="display: inline-flex; align-items: center; gap: 6px; padding: 0 4px; color: #8a94a3; font-size: 12px">
+        <span aria-hidden="true" style="width: 7px; height: 7px; border-radius: 50%; background: #7ddc8a"></span>
+        <span>live</span>
+      </span>
+      <button type="button" class="bt" aria-label="Keys" style="width: 30px; height: 30px; padding: 0; border: 1px solid #2a3340; border-radius: 6px; background: #141a23; font-family: 'JetBrains Mono', monospace; font-size: 13px">?</button>
+    </div>
+  </header>
+
+  <div style="display: grid; grid-template-columns: 3.75rem minmax(0, 1fr); align-items: stretch">
+
+    <nav aria-label="Areas" style="display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 0 12px; background: #10141b; border-right: 1px solid #222a35">
+      <a href="#inbox" class="hv" aria-label="Inbox, 3 need you" title="Inbox · ␣n" style="position: relative; display: flex; align-items: center; justify-content: center; width: 44px; height: 40px; border-radius: 8px; color: #a7b0bc; text-decoration: none">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 13h5l1.5 3h5l1.5-3h5"></path><path d="M5.5 5h13l2.5 8v6H3v-6z"></path></svg>
+        <span style="position: absolute; top: 2px; right: 0; min-width: 16px; padding: 0 4px; border-radius: 8px; background: #f0b429; color: #1a1400; font-family: 'JetBrains Mono', monospace; font-size: 10px; line-height: 15px; font-weight: 700; text-align: center">3</span>
+      </a>
+      <a href="#explorer" class="hv" aria-label="Items" title="Items · ␣e" style="display: flex; align-items: center; justify-content: center; width: 44px; height: 40px; border-radius: 8px; color: #a7b0bc">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h6M7 4v13h5M7 10.5h5"></path><rect x="13" y="8" width="7.5" height="5" rx="1"></rect><rect x="13" y="14.5" width="7.5" height="5" rx="1"></rect></svg>
+      </a>
+      <a href="#sessions" class="hv" aria-label="Sessions, 9 busy" title="Sessions · ␣s" style="position: relative; display: flex; align-items: center; justify-content: center; width: 44px; height: 40px; border-radius: 8px; color: #a7b0bc">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M7 10l2.5 2L7 14M12 14h4"></path></svg>
+        <span style="position: absolute; top: 2px; right: 0; min-width: 16px; padding: 0 4px; border-radius: 8px; background: #123a31; color: #35c4a0; font-family: 'JetBrains Mono', monospace; font-size: 10px; line-height: 15px; font-weight: 700; text-align: center">9</span>
+      </a>
+      <a href="#topics" aria-current="page" aria-label="Topics" title="Topics · ␣t" style="display: flex; align-items: center; justify-content: center; width: 44px; height: 40px; border-radius: 8px; background: #182131; color: #eef1f5">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5h16v10H10l-4.5 3.5v-3.5H4z"></path></svg>
+      </a>
+      <a href="#events" class="hv" aria-label="Events, 16 new" title="Events · ␣E" style="position: relative; display: flex; align-items: center; justify-content: center; width: 44px; height: 40px; border-radius: 8px; color: #a7b0bc">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l2.5-6 5 12 2.5-6H21"></path></svg>
+        <span style="position: absolute; top: 2px; right: 0; min-width: 16px; padding: 0 4px; border-radius: 8px; background: #2e2716; color: #c2a15e; font-family: 'JetBrains Mono', monospace; font-size: 10px; line-height: 15px; font-weight: 700; text-align: center">16</span>
+      </a>
+      <a href="#artifacts" class="hv" aria-label="Artifacts" title="Artifacts · ␣a" style="display: flex; align-items: center; justify-content: center; width: 44px; height: 40px; border-radius: 8px; color: #a7b0bc">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h7l4 4v14H7z"></path><path d="M14 3v4h4M10 12h5M10 16h5"></path></svg>
+      </a>
+      <a href="#accounts" class="hv" aria-label="Accounts" title="Accounts" style="display: flex; align-items: center; justify-content: center; width: 44px; height: 40px; border-radius: 8px; color: #a7b0bc">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 16.5a7.5 7.5 0 1 1 15 0"></path><path d="M12 16.5l3.5-4.5M4 20h16"></path></svg>
+      </a>
+      <span title="P10: The rail collapses to a 60 px column of stroke icons, with the counts as small badges and each label and key as a tooltip. A button at its foot toggles it; it collapses by itself below 1280 px and while the main area is split; the browser keeps the choice." style="margin-top: 8px; display: inline-block; width: 46px; padding: 1px 3px; border-radius: 3px; background: #e6e9ef; color: #0b0e14; font-family: 'JetBrains Mono', monospace; font-size: 10px; line-height: 13px; font-weight: 700; text-align: center; cursor: help">proposal P10</span>
+      <button type="button" class="bt" aria-label="Expand the rail" style="margin-top: auto; width: 40px; height: 30px; padding: 0; border: 1px solid #222a35; border-radius: 6px; background: transparent; color: #8a94a3; font-size: 14px">›</button>
+    </nav>
+
+    <div style="min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) 6px 23.5rem; align-items: stretch">
+
+      <section aria-label="Pane 1: Topics" style="min-width: 0; display: grid; grid-template-columns: 15.5rem minmax(0, 1fr); background: #0b0e14">
+
+        <div style="min-width: 0; display: flex; flex-direction: column; background: #0d1117; border-right: 1px solid #1a212b">
+          <div style="display: flex; align-items: center; gap: 8px; height: 56px; padding: 0 12px 0 16px; border-bottom: 1px solid #1a212b">
+            <h1 style="margin: 0; font-size: 16px; line-height: 22px; font-weight: 600; color: #eef1f5">Topics</h1>
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #8a94a3">9 open</span>
+          </div>
+          <div style="padding: 10px 10px 6px">
+            <label for="topic-filter" style="display: block; margin: 0 2px 4px; font-size: 12px; color: #8a94a3">Filter topics</label>
+            <input id="topic-filter" type="text" placeholder="title, item or session" style="width: 100%; box-sizing: border-box; height: 30px; padding: 0 10px; border: 1px solid #2a3340; border-radius: 6px; background: #0b0e14; font-size: 12.5px" />
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 2px; padding: 4px 0 12px">
+            <div style="display: flex; align-items: baseline; gap: 6px; padding: 8px 16px 4px; font-size: 12px; font-weight: 600; color: #8a94a3">Waiting for you <span style="font-family: 'JetBrains Mono', monospace; font-weight: 400; color: #f0b429">1</span></div>
+            <a href="#topic-233" aria-current="true" style="display: flex; flex-direction: column; gap: 1px; margin: 0 6px; padding: 7px 10px; border-radius: 6px; background: #182131; color: #d6dbe4; text-decoration: none">
+              <span style="display: flex; align-items: center; gap: 6px; min-width: 0"><span aria-hidden="true" style="color: #f0b429; font-size: 11px">▲</span><span style="flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; color: #eef1f5">T-347 The remote budget</span></span>
+              <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: #8a94a3">topic-233 · coord asked · 12:44</span>
+            </a>
+            <div style="display: flex; align-items: baseline; gap: 6px; padding: 12px 16px 4px; font-size: 12px; font-weight: 600; color: #8a94a3">Standing <span style="font-family: 'JetBrains Mono', monospace; font-weight: 400">2</span></div>
+            <a href="#general" class="hv" style="display: flex; flex-direction: column; gap: 1px; margin: 0 6px; padding: 7px 10px; border-radius: 6px; background: #0f141c; border: 1px solid #1a212b; color: #d6dbe4; text-decoration: none">
+              <span style="display: flex; align-items: center; gap: 6px"><span aria-hidden="true" style="color: #8a94a3; font-size: 10px">◆</span><span style="flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; color: #eef1f5">General</span><span style="font-size: 11.5px; color: #8a94a3">the project</span></span>
+              <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: #8a94a3">coord: T-398 goes before T-397 · 13:12</span>
+            </a>
+            <a href="#agents" class="hv" style="display: flex; flex-direction: column; gap: 1px; margin: 2px 6px 0; padding: 7px 10px; border-radius: 6px; background: #0f141c; border: 1px solid #1a212b; color: #d6dbe4; text-decoration: none">
+              <span style="display: flex; align-items: center; gap: 6px"><span aria-hidden="true" style="color: #8a94a3; font-size: 10px">◆</span><span style="flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; color: #eef1f5">Agents</span><span style="font-size: 11.5px; color: #8a94a3">read-only</span></span>
+              <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: #8a94a3">agent-to-agent log · ␣L · 13:41</span>
+            </a>
+            <div style="display: flex; align-items: baseline; gap: 6px; margin-top: 6px; padding: 12px 16px 4px; border-top: 1px solid #1a212b; font-size: 12px; font-weight: 600; color: #8a94a3">Items <span style="font-family: 'JetBrains Mono', monospace; font-weight: 400">6</span><span style="flex: 1"></span><span style="font-weight: 400; font-size: 11.5px">opened under an item</span></div>
+            <a href="#topic-241" class="hv" style="display: flex; flex-direction: column; gap: 1px; margin: 0 6px; padding: 7px 10px; border-radius: 6px; color: #d6dbe4; text-decoration: none">
+              <span style="display: flex; align-items: center; gap: 6px"><span style="flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">T-385 A hung test holds the verify queue</span><span style="min-width: 16px; padding: 0 5px; border-radius: 8px; background: #1e2631; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; line-height: 16px; text-align: center">2</span></span>
+              <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: #8a94a3">topic-241 · 2 unread · 13:30</span>
+            </a>
+            <a href="#topic-246" class="hv" style="display: flex; flex-direction: column; gap: 1px; margin: 0 6px; padding: 7px 10px; border-radius: 6px; color: #d6dbe4; text-decoration: none">
+              <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap">T-398 Observer-spoke race sweep</span>
+              <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: #8a94a3">topic-246 · 13:34</span>
+            </a>
+            <a href="#topic-238" class="hv" style="display: flex; flex-direction: column; gap: 1px; margin: 0 6px; padding: 7px 10px; border-radius: 6px; color: #d6dbe4; text-decoration: none">
+              <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap">E-386 Test speed: quick wins</span>
+              <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: #8a94a3">topic-238 · 12:58</span>
+            </a>
+            <a href="#topic-226" class="hv" style="display: flex; flex-direction: column; gap: 1px; margin: 0 6px; padding: 7px 10px; border-radius: 6px; color: #d6dbe4; text-decoration: none">
+              <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap">T-359 Live and fast</span>
+              <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: #8a94a3">topic-226 · 12:20</span>
+            </a>
+            <a href="#topic-235" class="hv" style="display: flex; flex-direction: column; gap: 1px; margin: 0 6px; padding: 7px 10px; border-radius: 6px; color: #d6dbe4; text-decoration: none">
+              <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap">T-367 Accounts in the clauses and docs</span>
+              <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: #8a94a3">topic-235 · 11:47</span>
+            </a>
+            <a href="#topic-243" class="hv" style="display: flex; flex-direction: column; gap: 1px; margin: 0 6px; padding: 7px 10px; border-radius: 6px; color: #d6dbe4; text-decoration: none">
+              <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap">M-399 The web workbench</span>
+              <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: #8a94a3">topic-243 · 10:05</span>
+            </a>
+            <button type="button" class="hv" aria-expanded="false" style="display: flex; align-items: center; gap: 6px; margin: 8px 6px 0; padding: 6px 10px; border: 0; border-radius: 6px; background: transparent; color: #8a94a3; font-size: 12.5px; text-align: left"><span aria-hidden="true" style="font-size: 10px">▸</span>Closed <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px">41</span></button>
+          </div>
+        </div>
+
+        <div style="min-width: 0; display: flex; flex-direction: column">
+          <div style="display: flex; flex-direction: column; justify-content: center; gap: 2px; height: 56px; padding: 0 16px 0 20px; border-bottom: 1px solid #1a212b">
+            <div style="display: flex; align-items: center; gap: 10px">
+              <h2 style="margin: 0; font-size: 15px; line-height: 21px; font-weight: 600; color: #eef1f5; white-space: nowrap">T-347 The remote budget</h2>
+              <span style="display: inline-flex; align-items: center; gap: 5px; padding: 0 8px; border: 1px solid #5c4a1a; border-radius: 11px; color: #f0b429; font-size: 12px; line-height: 20px; white-space: nowrap">▲ waiting for you</span>
+              <div style="margin-left: auto; display: flex; align-items: center; gap: 6px">
+                <button type="button" class="bt" aria-pressed="true" style="display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 8px; border: 1px solid #3d4a5c; border-radius: 6px; background: #182131; font-size: 12.5px">Card in pane 2 <kbd style="font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 16px; padding: 0 4px; border: 1px solid #3a4452; border-radius: 4px; background: #10141b; color: #d6dbe4">⌘↵</kbd></button>
+                <button type="button" class="bt" style="display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 8px; border: 1px solid #2a3340; border-radius: 6px; background: #141a23; font-size: 12.5px">Resolve <kbd style="font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 16px; padding: 0 4px; border: 1px solid #3a4452; border-radius: 4px; background: #10141b; color: #d6dbe4">␣r</kbd></button>
+              </div>
+            </div>
+            <div style="font-size: 12px; color: #8a94a3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis"><span style="font-family: 'JetBrains Mono', monospace">topic-233</span> · bound to <a href="#T-347" style="font-family: 'JetBrains Mono', monospace; white-space: nowrap">T-347</a> · messages go to the Coordinator unless you mention a session</div>
+          </div>
+
+          <div role="log" aria-label="Messages in topic-233" style="flex: 1; display: flex; flex-direction: column; gap: 4px; padding: 12px 20px 18px">
+            <button type="button" class="bt" style="align-self: center; display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 12px; border: 1px solid #222a35; border-radius: 13px; background: transparent; color: #8a94a3; font-size: 12px"><span aria-hidden="true">▴</span>38 earlier messages, since Tue 20:53</button>
+            <div role="separator" style="display: flex; align-items: center; gap: 10px; margin: 6px 0 2px; color: #8a94a3; font-size: 12px"><span style="flex: 1; height: 1px; background: #222a35"></span><span>Wednesday 14 October · today</span><span style="flex: 1; height: 1px; background: #222a35"></span></div>
+
+            <article style="display: grid; grid-template-columns: 3px minmax(0, 1fr); column-gap: 12px; padding: 6px 0">
+              <span aria-hidden="true" style="border-radius: 2px; background: #35c4a0; opacity: 0.45"></span>
+              <div style="min-width: 0">
+                <header style="display: flex; align-items: baseline; gap: 8px; white-space: nowrap">
+                  <span style="font-weight: 600; color: #c9d1dc">coord</span>
+                  <span style="font-size: 12px; color: #35c4a0">Coordinator</span>
+                  <span style="font-size: 12px; color: #8a94a3">→ you · report</span>
+                  <time style="margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: #8a94a3">09:05</time>
+                </header>
+                <div style="margin-top: 2px; font-size: 13.5px; line-height: 21px; color: #a7b0bc">
+                  <p style="margin: 0">C6 attempt 1 stopped at the builder release: <code style="padding: 1px 5px; border-radius: 4px; background: #1a212c; color: #d6dbe4; font-family: 'JetBrains Mono', monospace; font-size: 12px">executor prepare</code> failed with “builder release not confirmed”. The driver's cleanup released the builder and deleted the image, and the provider listing shows no cland droplets or snapshots. Cost about $0.03.</p>
+                  <p style="margin: 4px 0 0">Filed <a href="#T-381" style="font-family: 'JetBrains Mono', monospace; font-size: 12.5px; white-space: nowrap">T-381</a>, a regression of <a href="#T-344" style="font-family: 'JetBrains Mono', monospace; font-size: 12.5px; white-space: nowrap">T-344</a>. C6 waits for it.</p>
+                </div>
+              </div>
+            </article>
+
+            <article style="display: grid; grid-template-columns: 3px minmax(0, 1fr); column-gap: 12px; padding: 6px 0">
+              <span aria-hidden="true" style="border-radius: 2px; background: #35c4a0; opacity: 0.45"></span>
+              <div style="min-width: 0">
+                <header style="display: flex; align-items: baseline; gap: 8px; white-space: nowrap">
+                  <span style="font-weight: 600; color: #c9d1dc">coord</span>
+                  <span style="font-size: 12px; color: #35c4a0">Coordinator</span>
+                  <span style="font-size: 12px; color: #8a94a3">→ you · question</span>
+                  <time style="margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: #8a94a3">09:06</time>
+                </header>
+                <div style="margin-top: 4px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding: 6px 6px 6px 10px; border: 1px solid #222a35; border-radius: 6px; font-size: 12.5px; color: #a7b0bc">
+                  <span style="color: #7ddc8a">✓</span><span>Ask answered by you at 09:41:</span><span style="color: #d6dbe4">1, wait for T-381, then rerun C6 on the merged head</span>
+                  <button type="button" class="bt" style="margin-left: auto; height: 24px; padding: 0 8px; border: 1px solid #2a3340; border-radius: 5px; background: #141a23; font-size: 12px">Show the ask</button>
+                </div>
+              </div>
+            </article>
+
+            <article style="display: grid; grid-template-columns: 3px minmax(0, 1fr); column-gap: 12px; margin: 4px -20px; padding: 9px 20px; background: #131b29">
+              <span aria-hidden="true" style="border-radius: 2px; background: #6aa5ff"></span>
+              <div style="min-width: 0">
+                <header style="display: flex; align-items: baseline; gap: 8px; white-space: nowrap">
+                  <span style="font-weight: 600; color: #6aa5ff">you</span>
+                  <span style="font-size: 12px; color: #8a94a3">→ coord · message</span>
+                  <span style="margin-left: auto; font-size: 11.5px; color: #35c4a0">✓✓ injected</span>
+                  <time style="font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: #8a94a3">09:43</time>
+                </header>
+                <p style="margin: 2px 0 0; font-size: 13.5px; line-height: 21px; color: #eef1f5">And keep C6 inside D27: at most two c-8 droplets, 15 minutes each, under the daily cap.</p>
+              </div>
+            </article>
+
+            <button type="button" class="hv" aria-expanded="false" style="display: grid; grid-template-columns: 3px minmax(0, 1fr); column-gap: 12px; width: 100%; padding: 4px 0; border: 0; border-radius: 4px; background: transparent; color: #8a94a3; text-align: left">
+              <span aria-hidden="true" style="justify-self: center; width: 1px; background: #bc8cff"></span>
+              <span style="display: flex; align-items: center; gap: 8px; font-size: 12.5px; white-space: nowrap"><span aria-hidden="true" style="font-size: 10px">▸</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 12px">impl-347</span><span>→</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 12px">rev-23, coord</span><span>7 messages</span><span title="P13: A folded agent run is one quiet button row: both sessions, the message count and the time span. Enter or a click unfolds it in place; za works as in Neovim. Asks, verdicts, answers and anything to or from the human never fold." style="display: inline-block; padding: 0 5px; border-radius: 3px; background: #e6e9ef; color: #0b0e14; font-family: 'JetBrains Mono', monospace; font-size: 10px; line-height: 15px; font-weight: 700; white-space: nowrap; cursor: help">proposal P13</span><span style="margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 11.5px">10:54–12:39</span><kbd style="font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 16px; padding: 0 5px; border: 1px solid #3a4452; border-radius: 4px; background: #141a23; color: #d6dbe4">za</kbd></span>
+            </button>
+
+            <article style="display: grid; grid-template-columns: 3px minmax(0, 1fr); column-gap: 12px; padding: 8px 0">
+              <span aria-hidden="true" style="border-radius: 2px; background: #f778ba"></span>
+              <div style="min-width: 0">
+                <header style="display: flex; align-items: baseline; gap: 8px; white-space: nowrap">
+                  <span style="font-weight: 600; color: #eef1f5">rev-23</span>
+                  <span style="font-size: 12px; color: #f778ba">Reviewer</span>
+                  <span style="font-size: 12px; color: #8a94a3">→ impl-347, coord · verdict</span>
+                  <span title="P12: A message is a header (sender in bold, role in its colour, addressees, kind, time, delivery stage) over a Markdown body in the prose face. The role colour is a 3 px bar in its own gutter column, apart from the body; the human's band fills the whole row; no message is a boxed card. Watch-layer messages dim their bar and text." style="display: inline-block; padding: 0 5px; border-radius: 3px; background: #e6e9ef; color: #0b0e14; font-family: 'JetBrains Mono', monospace; font-size: 10px; line-height: 15px; font-weight: 700; white-space: nowrap; cursor: help">proposal P12</span>
+                  <time style="margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: #8a94a3">12:41</time>
+                </header>
+                <div style="margin-top: 4px; display: flex; flex-direction: column; gap: 7px">
+                  <div style="display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px"><span style="color: #ff7b72; font-weight: 600">✗ Review not clear</span><a href="#T-347" style="font-family: 'JetBrains Mono', monospace; font-size: 12.5px; white-space: nowrap">T-347</a><span style="font-size: 12px; color: #8a94a3">round 11 · scope evidence · run rev-2026-10-14-347-11 · on cbbe697</span></div>
+                  <p style="margin: 0; font-size: 13.5px; line-height: 21px">Medium: <code style="padding: 1px 5px; border-radius: 4px; background: #1a212c; font-family: 'JetBrains Mono', monospace; font-size: 12px">hub/test/lead-handover.test.ts:50</code> waits 5000 ms for the new Lead's channel event. Typecheck and 1,641 of 1,642 hub tests pass; Neovim is not reached. The test is unchanged from <code style="padding: 1px 5px; border-radius: 4px; background: #1a212c; font-family: 'JetBrains Mono', monospace; font-size: 12px">dev</code>, so no <span style="white-space: nowrap">T-347</span> criterion fails.</p>
+                  <div aria-label="Criteria marks" style="display: flex; flex-wrap: wrap; gap: 4px 12px; font-family: 'JetBrains Mono', monospace; font-size: 12px">
+                    <span><span style="color: #7ddc8a">●</span> C1</span><span><span style="color: #7ddc8a">●</span> C2</span><span><span style="color: #7ddc8a">●</span> C3</span><span><span style="color: #7ddc8a">●</span> C4</span><span><span style="color: #7ddc8a">●</span> C5 <span style="color: #8a94a3">verified r9</span></span><span><span style="color: #8a94a3">○</span> C6 <span style="color: #8a94a3">open</span></span><span><span style="color: #7ddc8a">●</span> C7 <span style="color: #8a94a3">verified r10</span></span>
+                  </div>
+                  <a href="#A-2362" class="bt" style="align-self: flex-start; display: inline-flex; align-items: center; gap: 8px; max-width: 100%; height: 28px; padding: 0 10px; border: 1px solid #2a3340; border-radius: 6px; background: #10141b; color: #d6dbe4; text-decoration: none; white-space: nowrap"><span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #6aa5ff">A-2362</span><span style="padding: 0 5px; border: 1px solid #2a3340; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; line-height: 16px; color: #8a94a3">md</span><span style="overflow: hidden; text-overflow: ellipsis">T-347 exact-head evidence not clear: lead-handover wait</span></a>
+                </div>
+              </div>
+            </article>
+
+            <button type="button" class="hv" aria-expanded="false" style="display: grid; grid-template-columns: 3px minmax(0, 1fr); column-gap: 12px; width: 100%; padding: 4px 0; border: 0; border-radius: 4px; background: transparent; color: #8a94a3; text-align: left">
+              <span aria-hidden="true" style="justify-self: center; width: 1px; background: #bc8cff"></span>
+              <span style="display: flex; align-items: center; gap: 8px; font-size: 12.5px; white-space: nowrap"><span aria-hidden="true" style="font-size: 10px">▸</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 12px">impl-347</span><span>→</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 12px">coord</span><span>2 messages</span><span style="margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 11.5px">12:41–12:42</span><kbd style="font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 16px; padding: 0 5px; border: 1px solid #3a4452; border-radius: 4px; background: #141a23; color: #d6dbe4">za</kbd></span>
+            </button>
+
+            <article style="display: grid; grid-template-columns: 3px minmax(0, 1fr); column-gap: 12px; padding: 8px 0">
+              <span aria-hidden="true" style="border-radius: 2px; background: #35c4a0"></span>
+              <div style="min-width: 0">
+                <header style="display: flex; align-items: baseline; gap: 8px; white-space: nowrap">
+                  <span style="font-weight: 600; color: #eef1f5">coord</span>
+                  <span style="font-size: 12px; color: #35c4a0">Coordinator</span>
+                  <span style="font-size: 12px; color: #8a94a3">→ you · question</span>
+                  <span style="margin-left: auto; font-size: 12px; color: #f0b429">▲ waiting for you · 58 m</span>
+                  <time style="font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: #8a94a3">12:44</time>
+                </header>
+                <div role="group" aria-label="Ask from coord on T-347" style="margin-top: 6px; display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; border: 1px solid #4a3b17; border-radius: 8px; background: #211c12">
+                  <div style="display: flex; align-items: center; gap: 8px"><span style="color: #f0b429; font-weight: 600">? Ask</span><a href="#T-347" style="font-family: 'JetBrains Mono', monospace; font-size: 12.5px; white-space: nowrap">T-347</a><span style="color: #c9d1dc">The remote budget</span><span title="P14: An ask is an amber card: its question, each option a button with its number key (a click or the key answers at once), a free-answer field with Send answer, and a link to the same ask in the inbox. An answered ask folds to one line naming the answer, who gave it and when, as the 09:06 ask above." style="display: inline-block; padding: 0 5px; border-radius: 3px; background: #e6e9ef; color: #0b0e14; font-family: 'JetBrains Mono', monospace; font-size: 10px; line-height: 15px; font-weight: 700; white-space: nowrap; cursor: help">proposal P14</span></div>
+                  <p style="margin: 0; font-size: 14px; line-height: 21px; color: #eef1f5"><span style="white-space: nowrap">T-398</span>, the observer-spoke race sweep, holds <span style="white-space: nowrap">T-347's</span> full rerun, and impl-398 expects to merge it near 16:00. C6 itself needs only two real droplets. Run C6 now on cbbe697, or wait for <span style="white-space: nowrap">T-398</span>?</p>
+                  <div style="display: flex; flex-direction: column; gap: 6px">
+                    <button type="button" class="op" style="display: flex; align-items: center; gap: 10px; min-height: 36px; padding: 6px 10px; border: 1px solid #4f4220; border-radius: 6px; background: #19150d; text-align: left; font-size: 13px"><kbd style="font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 16px; padding: 0 5px; border: 1px solid #6b5823; border-radius: 4px; background: #2a2312; color: #f0b429">1</kbd><span>Run C6 now: two c-8 droplets in lon1, 15 minutes each, about $0.10</span></button>
+                    <button type="button" class="op" style="display: flex; align-items: center; gap: 10px; min-height: 36px; padding: 6px 10px; border: 1px solid #4f4220; border-radius: 6px; background: #19150d; text-align: left; font-size: 13px"><kbd style="font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 16px; padding: 0 5px; border: 1px solid #6b5823; border-radius: 4px; background: #2a2312; color: #f0b429">2</kbd><span>Wait for T-398, then one fresh full run and C6 on the merged head</span></button>
+                    <button type="button" class="op" style="display: flex; align-items: center; gap: 10px; min-height: 36px; padding: 6px 10px; border: 1px solid #4f4220; border-radius: 6px; background: #19150d; text-align: left; font-size: 13px"><kbd style="font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 16px; padding: 0 5px; border: 1px solid #6b5823; border-radius: 4px; background: #2a2312; color: #f0b429">3</kbd><span>Ask me later</span></button>
+                  </div>
+                  <div style="display: flex; flex-direction: column; gap: 4px">
+                    <label for="ans-347" style="font-size: 12px; color: #b9ae93">Or answer in your own words</label>
+                    <div style="display: flex; gap: 8px">
+                      <input id="ans-347" type="text" placeholder="Your answer to coord…" style="flex: 1; min-width: 0; height: 32px; padding: 0 10px; border: 1px solid #4f4220; border-radius: 6px; background: #0f0d08; font-size: 13px" />
+                      <button type="button" style="height: 32px; padding: 0 14px; border: 0; border-radius: 6px; background: #6aa5ff; color: #0b1424; font-size: 13px; font-weight: 600">Send answer</button>
+                    </div>
+                  </div>
+                  <div style="display: flex; gap: 14px; font-size: 12px; color: #b9ae93"><span>1 to 3 answer at once · i writes a free answer</span><a href="#inbox" style="margin-left: auto">The same ask in the inbox</a></div>
+                </div>
+
+                <figure style="margin: 10px 0 0; border: 1px solid #2a3340; border-radius: 8px; overflow: hidden; background: #0d1117">
+                  <figcaption style="display: flex; align-items: center; gap: 8px; height: 38px; padding: 0 8px 0 12px; border-bottom: 1px solid #222a35; font-size: 12.5px; white-space: nowrap">
+                    <a href="#A-2366" style="font-family: 'JetBrains Mono', monospace; font-size: 12px; white-space: nowrap">A-2366</a>
+                    <span style="padding: 0 5px; border: 1px solid #2a3340; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; line-height: 16px; color: #8a94a3">html</span>
+                    <span style="min-width: 0; overflow: hidden; text-overflow: ellipsis">C6 run plan: two droplets, lifetime and cost</span>
+                    <span style="color: #8a94a3">coord · 12:45</span>
+                    <span title="P15: An HTML artifact renders inline at a fixed 240 px in a sandboxed iframe (scripts allowed, same-origin and top navigation not), under a header with its id, kind, title and author; Open full and Open in a pane take it larger. A file or folder artifact stays a chip, as A-2362 above. The Coordinator's ask and the artifact it posts next share one header." style="display: inline-block; padding: 0 5px; border-radius: 3px; background: #e6e9ef; color: #0b0e14; font-family: 'JetBrains Mono', monospace; font-size: 10px; line-height: 15px; font-weight: 700; white-space: nowrap; cursor: help">proposal P15</span>
+                    <span style="margin-left: auto; display: flex; gap: 6px">
+                      <button type="button" class="bt" style="height: 26px; padding: 0 8px; border: 1px solid #2a3340; border-radius: 5px; background: #141a23; font-size: 12px">Open full</button>
+                      <button type="button" class="bt" style="height: 26px; padding: 0 8px; border: 1px solid #2a3340; border-radius: 5px; background: #141a23; font-size: 12px">Open in a pane</button>
+                    </span>
+                  </figcaption>
+                  <div style="position: relative; height: 240px; box-sizing: border-box; padding: 18px 22px; display: flex; flex-direction: column; gap: 12px; background: #11161e; outline: 1px dashed #3d4756; outline-offset: -8px">
+                    <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 12px"><span style="font-size: 15px; font-weight: 600; color: #eef1f5">C6 run plan</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #8a94a3">placeholder · the page renders here in a sandboxed iframe</span></div>
+                    <div style="display: grid; grid-template-columns: 150px minmax(0, 1fr) 64px; column-gap: 12px; row-gap: 10px; align-items: center; font-size: 12px">
+                      <span style="font-family: 'JetBrains Mono', monospace; color: #c9d1dc">cland-c6-a · c-8</span>
+                      <span style="display: flex; height: 10px; border-radius: 3px; overflow: hidden; background: #1a212c"><span style="flex: 7; background: #3d4756"></span><span style="flex: 6; background: #35c4a0"></span><span style="flex: 2"></span></span>
+                      <span style="text-align: right; color: #8a94a3">≤ 15 min</span>
+                      <span style="font-family: 'JetBrains Mono', monospace; color: #c9d1dc">cland-c6-b · c-8</span>
+                      <span style="display: flex; height: 10px; border-radius: 3px; overflow: hidden; background: #1a212c"><span style="flex: 7; background: #3d4756"></span><span style="flex: 5; background: #35c4a0"></span><span style="flex: 3"></span></span>
+                      <span style="text-align: right; color: #8a94a3">≤ 15 min</span>
+                      <span></span>
+                      <span style="display: flex; justify-content: space-between; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #8a94a3"><span>0</span><span>5</span><span>10</span><span>15 min</span></span>
+                      <span></span>
+                    </div>
+                    <div style="display: flex; gap: 16px; font-size: 12px; color: #a7b0bc"><span><span style="display: inline-block; width: 10px; height: 8px; border-radius: 2px; background: #3d4756"></span> prepare from the snapshot</span><span><span style="display: inline-block; width: 10px; height: 8px; border-radius: 2px; background: #35c4a0"></span> the nvim-only selection</span></div>
+                    <div style="margin-top: auto; display: flex; gap: 20px; font-size: 12.5px"><span>about <b style="font-weight: 600">$0.10</b> for both</span><span style="color: #8a94a3">today $1.12 of the $3 cap</span><span style="color: #8a94a3">lon1 · tag cland · destroy on exit</span></div>
+                  </div>
+                </figure>
+              </div>
+            </article>
+          </div>
+
+          <form aria-label="Composer for topic-233" style="display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 10px 20px 14px; border-top: 1px solid #222a35; background: #0d1117">
+            <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px">
+              <span style="font-size: 12px; color: #8a94a3">Kind</span>
+              <div role="group" aria-label="Send kind" style="display: inline-flex; border: 1px solid #2a3340; border-radius: 6px; overflow: hidden">
+                <button type="button" aria-pressed="true" style="height: 26px; padding: 0 10px; border: 0; background: #182131; color: #eef1f5; font-size: 12.5px">Message</button>
+                <button type="button" aria-pressed="false" class="hv" style="height: 26px; padding: 0 10px; border: 0; border-left: 1px solid #2a3340; background: transparent; color: #a7b0bc; font-size: 12.5px">Decision</button>
+                <button type="button" aria-pressed="false" class="hv" style="height: 26px; padding: 0 10px; border: 0; border-left: 1px solid #2a3340; background: transparent; color: #a7b0bc; font-size: 12.5px">Question</button>
+              </div>
+              <span style="margin-left: 6px; font-size: 12px; color: #8a94a3">To</span>
+              <span style="display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 4px 0 8px; border: 1px solid #24584b; border-radius: 6px; background: #0f1d1a"><span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #35c4a0">coord</span><span style="font-size: 12px; color: #8a94a3">Coordinator</span><button type="button" aria-label="Remove coord" style="width: 18px; height: 18px; padding: 0; border: 0; border-radius: 4px; background: transparent; color: #8a94a3; font-size: 13px; line-height: 1">×</button></span>
+                            <span title="P16: The composer names its addressee as a chip (the Coordinator by default in an item's topic; @ mentions a session) and its send kind as a segmented control: Message, Decision, Question. Enter sends, Shift+Enter breaks a line, ~ attaches an artifact. Armed by an ask or a reply, its first line says what it answers." style="display: inline-block; padding: 0 5px; border-radius: 3px; background: #e6e9ef; color: #0b0e14; font-family: 'JetBrains Mono', monospace; font-size: 10px; line-height: 15px; font-weight: 700; white-space: nowrap; cursor: help">proposal P16</span>
+              <span style="margin-left: auto; font-size: 12px; color: #8a94a3">last sent 09:43 · <span style="color: #35c4a0">✓✓ injected</span></span>
+            </div>
+            <label for="compose-233" style="font-size: 12px; color: #8a94a3">Your message in topic-233</label>
+            <textarea id="compose-233" rows="3" placeholder="Write to coord… @ mentions a session instead" style="display: block; width: 100%; box-sizing: border-box; min-height: 66px; padding: 10px 12px; border: 1px solid #2a3340; border-radius: 8px; background: #0b0e14; font-size: 13.5px; line-height: 20px; resize: vertical"></textarea>
+            <div style="display: flex; align-items: center; gap: 10px">
+              <button type="button" class="bt" style="display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border: 1px solid #2a3340; border-radius: 6px; background: #141a23; font-size: 12.5px">Attach an artifact <kbd style="font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 16px; padding: 0 4px; border: 1px solid #3a4452; border-radius: 4px; background: #10141b; color: #d6dbe4">~</kbd></button>
+              <span style="font-size: 12px; color: #8a94a3">Enter sends · Shift+Enter breaks a line</span>
+              <button type="submit" style="margin-left: auto; height: 30px; padding: 0 16px; border: 0; border-radius: 6px; background: #6aa5ff; color: #0b1424; font-size: 13px; font-weight: 600">Send</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <div role="separator" aria-orientation="vertical" aria-label="Drag to resize the panes" tabindex="0" style="position: relative; background: #0b0e14; border-left: 1px solid #222a35; border-right: 1px solid #222a35; cursor: col-resize">
+        <span aria-hidden="true" style="position: absolute; top: 140px; left: 1px; width: 2px; height: 28px; border-radius: 1px; background: #4a5566"></span>
+      </div>
+
+      <section aria-label="Pane 2: the card of T-347" style="min-width: 0; display: flex; flex-direction: column; background: #0d1117">
+        <div style="display: flex; align-items: center; gap: 8px; height: 56px; padding: 0 10px 0 16px; border-bottom: 1px solid #1a212b">
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 500; color: #eef1f5">T-347</span>
+          <span style="display: inline-flex; align-items: center; gap: 5px; padding: 0 8px; border: 1px solid #24584b; border-radius: 11px; color: #35c4a0; font-size: 12px; line-height: 20px; white-space: nowrap">◐ in progress</span>
+          <span title="P11: Cmd+\ splits the main area into two panes; Cmd+Enter on a row opens it in the other pane. Each pane has its own header with Swap and Close, and the divider drags (2:1 by default). While the area is split the drawer stays closed, so a third column never squeezes the thread. A narrow card shows the criteria as one row of marks and spells out only the open and failed ones." style="display: inline-block; padding: 0 5px; border-radius: 3px; background: #e6e9ef; color: #0b0e14; font-family: 'JetBrains Mono', monospace; font-size: 10px; line-height: 15px; font-weight: 700; white-space: nowrap; cursor: help">proposal P11</span>
+          <div style="margin-left: auto; display: flex; align-items: center; gap: 6px">
+            <button type="button" class="bt" aria-label="Swap the panes" title="Swap the panes" style="width: 28px; height: 28px; padding: 0; border: 1px solid #2a3340; border-radius: 6px; background: #141a23; font-size: 13px">⇄</button>
+            <button type="button" class="bt" aria-label="Close pane 2" title="Close pane 2 · ⌘W" style="width: 28px; height: 28px; padding: 0; border: 1px solid #2a3340; border-radius: 6px; background: #141a23; font-size: 15px; line-height: 1">×</button>
+          </div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 12px; padding: 14px 16px 18px">
+          <nav aria-label="Path" style="display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; font-size: 12px; color: #8a94a3">
+            <a href="#R-228" style="font-family: 'JetBrains Mono', monospace; white-space: nowrap">R-228</a><span aria-hidden="true">›</span>
+            <a href="#E-271" style="font-family: 'JetBrains Mono', monospace; white-space: nowrap">E-271</a><span>Remote executors</span><span aria-hidden="true">›</span>
+            <span style="font-family: 'JetBrains Mono', monospace">S5</span>
+          </nav>
+          <h2 style="margin: -4px 0 0; font-size: 15px; line-height: 21px; font-weight: 600; color: #eef1f5">The remote budget: remote runs are admitted up to remote_budget in parallel beside the local slot of one, the local slot takes a droplet run only when the remote budget is full, and cland verify queue names each run's executor</h2>
+          <p style="margin: 0; font-size: 13px; line-height: 19px">The scheduler gets two kinds of slot: the local slot of one and up to remote_budget droplet slots, fed by one ordered queue. A droplet run takes the local slot only when the remote budget is full.</p>
+
+          <section aria-label="Facts" style="display: flex; flex-direction: column; gap: 6px; padding-top: 12px; border-top: 1px solid #1a212b">
+            <h3 style="margin: 0; font-size: 12.5px; line-height: 18px; font-weight: 600; color: #8a94a3">Facts</h3>
+            <dl style="margin: 0; display: grid; grid-template-columns: 76px minmax(0, 1fr); column-gap: 10px; row-gap: 3px; font-size: 12.5px; line-height: 18px">
+              <dt style="color: #8a94a3">Status</dt><dd style="margin: 0"><span style="color: #35c4a0">◐ in progress</span> <span style="color: #8a94a3">since 12:41</span></dd>
+              <dt style="color: #8a94a3">Claim</dt><dd style="margin: 0"><span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #35c4a0">impl-347</span> <span style="color: #8a94a3">Implementer · idle 58 m</span></dd>
+              <dt style="color: #8a94a3">Holds</dt><dd style="margin: 0"><span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #35c4a0">rev-23</span> <span style="color: #8a94a3">Reviewer · since 03:23</span></dd>
+              <dt style="color: #8a94a3">Rank</dt><dd style="margin: 0">1st live of 8 <span style="color: #8a94a3">· size M · layer now</span></dd>
+              <dt style="color: #8a94a3">Labels</dt><dd style="margin: 0; font-family: 'JetBrains Mono', monospace; font-size: 11.5px">v0.1.2 · hub</dd>
+            </dl>
+          </section>
+
+          <section aria-label="Criteria" style="display: flex; flex-direction: column; gap: 6px; padding-top: 12px; border-top: 1px solid #1a212b">
+            <h3 style="margin: 0; display: flex; align-items: baseline; font-size: 12.5px; line-height: 18px; font-weight: 600; color: #8a94a3">Criteria<span style="margin-left: auto; font-weight: 400"><span style="color: #7ddc8a">6</span> of 7 verified</span></h3>
+            <div aria-label="Criteria marks" style="display: flex; flex-wrap: wrap; gap: 4px 10px; font-family: 'JetBrains Mono', monospace; font-size: 12px">
+              <span><span style="color: #7ddc8a">●</span> C1</span><span><span style="color: #7ddc8a">●</span> C2</span><span><span style="color: #7ddc8a">●</span> C3</span><span><span style="color: #7ddc8a">●</span> C4</span><span><span style="color: #7ddc8a">●</span> C5</span><span><span style="color: #8a94a3">○</span> C6</span><span><span style="color: #7ddc8a">●</span> C7</span>
+            </div>
+            <p style="margin: 0; font-size: 12.5px; line-height: 18px"><span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #8a94a3">C6 open</span> Real check: two branches verify at once on two droplets, with the costs</p>
+          </section>
+
+          <section aria-label="Latest verdict" style="display: flex; flex-direction: column; gap: 6px; padding-top: 12px; border-top: 1px solid #1a212b">
+            <h3 style="margin: 0; font-size: 12.5px; line-height: 18px; font-weight: 600; color: #8a94a3">Latest verdict</h3>
+            <div style="display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; border: 1px solid #5a2a28; border-radius: 8px; background: #150e10">
+              <div style="display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px"><span style="color: #ff7b72; font-weight: 600">✗ Review not clear</span><span style="font-size: 12px; color: #8a94a3">rev-23 · r11 · evidence · 12:41</span></div>
+              <p style="margin: 0; font-size: 12.5px; line-height: 18px">The exact-head run times out in lead-handover.test.ts:50; no <span style="white-space: nowrap">T-347</span> criterion fails.</p>
+            </div>
+          </section>
+
+          <section aria-label="Branch, relations and dates" style="display: flex; flex-direction: column; gap: 6px; padding-top: 12px; border-top: 1px solid #1a212b">
+            <h3 style="margin: 0; font-size: 12.5px; line-height: 18px; font-weight: 600; color: #8a94a3">Branch, relations and dates</h3>
+            <dl style="margin: 0; display: grid; grid-template-columns: 76px minmax(0, 1fr); column-gap: 10px; row-gap: 3px; font-size: 12.5px; line-height: 18px">
+              <dt style="color: #8a94a3">Branch</dt><dd style="margin: 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: 'JetBrains Mono', monospace; font-size: 11.5px">t/T-347-the-remote-budget-remote-runs-are</dd>
+              <dt style="color: #8a94a3">Suite</dt><dd style="margin: 0"><span style="color: #ff7b72">✗ red</span> <span style="color: #8a94a3">1,641 of 1,642 hub · 12:38</span></dd>
+              <dt style="color: #8a94a3">Blocked by</dt><dd style="margin: 0"><a href="#T-346" style="font-family: 'JetBrains Mono', monospace; font-size: 12px; white-space: nowrap">T-346</a> <span style="color: #7ddc8a">● done</span></dd>
+              <dt style="color: #8a94a3">Blocks</dt><dd style="margin: 0; color: #8a94a3">nothing</dd>
+              <dt style="color: #8a94a3">Created</dt><dd style="margin: 0">Tue 20:53 <span style="color: #8a94a3">by coord</span></dd>
+              <dt style="color: #8a94a3">Last</dt><dd style="margin: 0">12:44 <span style="color: #8a94a3">coord asked you</span></dd>
+            </dl>
+          </section>
+
+          <button type="button" class="bt" aria-expanded="false" style="display: flex; align-items: center; gap: 8px; width: 100%; padding: 7px 10px; border: 1px solid #1a212b; border-radius: 6px; background: transparent; color: #8a94a3; font-size: 12.5px; text-align: left"><span aria-hidden="true">▸</span><span style="color: #d6dbe4">Agents' text</span><span style="flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">3.4k words</span><kbd style="font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 16px; padding: 0 5px; border: 1px solid #3a4452; border-radius: 4px; background: #141a23; color: #d6dbe4">zb</kbd></button>
+
+          <form aria-label="Quick message to the Coordinator" style="display: flex; flex-direction: column; gap: 4px; margin: 0">
+            <div style="display: flex; align-items: center; gap: 8px; height: 38px; padding: 0 6px 0 10px; border: 1px solid #2a3340; border-radius: 8px; background: #0b0e14">
+              <kbd style="font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 16px; padding: 0 5px; border: 1px solid #3a4452; border-radius: 4px; background: #141a23; color: #d6dbe4">m</kbd>
+              <input id="qm-347-pane" type="text" placeholder="Message coord about T-347…" style="flex: 1; min-width: 0; height: 28px; padding: 0 4px; border: 0; background: transparent; font-size: 13px" />
+              <button type="submit" style="height: 26px; padding: 0 10px; border: 0; border-radius: 6px; background: #6aa5ff; color: #0b1424; font-size: 12.5px; font-weight: 600">Send</button>
+            </div>
+            <label for="qm-347-pane" style="font-size: 12px; color: #8a94a3">To coord in topic-233, the thread on the left</label>
+          </form>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+  <section aria-label="Notes on this board" style="display: flex; flex-direction: column; gap: 12px; padding: 32px 24px 48px; border-top: 1px dashed #3d4756">
+    <h2 style="margin: 0; font-size: 14px; line-height: 20px; font-weight: 600; color: #eef1f5">Proposals on this board</h2>
+    <p style="margin: 0; max-width: 60rem; font-size: 12.5px; line-height: 19px; color: #a7b0bc"><span style="white-space: nowrap">Q-404</span>, spec v0.2 §3.2 and §3.4 with v0.1 §3.14. Wednesday 14 October, 13:42. The Topics area fills pane 1 with the <span style="white-space: nowrap">T-347</span> topic open; pane 2 holds <span style="white-space: nowrap">T-347's</span> card, narrow; the drawer is closed while the area is split, and the rail is collapsed. The 09:06 ask is the one the Inbox board shows open at 09:40.</p>
+    <ul style="list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 40px">
+      <li style="display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: 10px; font-size: 12.5px; line-height: 18px; color: #c9d1dc"><span><span style="display: inline-block; padding: 0 5px; border-radius: 3px; background: #e6e9ef; color: #0b0e14; font-family: 'JetBrains Mono', monospace; font-size: 10px; line-height: 15px; font-weight: 700; white-space: nowrap">proposal P10</span></span><span>The rail collapses to icons with count badges and tooltips; by a button, below 1280 px, or while the area is split.</span></li>
+      <li style="display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: 10px; font-size: 12.5px; line-height: 18px; color: #c9d1dc"><span><span style="display: inline-block; padding: 0 5px; border-radius: 3px; background: #e6e9ef; color: #0b0e14; font-family: 'JetBrains Mono', monospace; font-size: 10px; line-height: 15px; font-weight: 700; white-space: nowrap">proposal P11</span></span><span>The split: ⌘\ splits, ⌘↵ opens a row in the other pane, panes swap and close, the divider drags; the drawer closes while split.</span></li>
+      <li style="display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: 10px; font-size: 12.5px; line-height: 18px; color: #c9d1dc"><span><span style="display: inline-block; padding: 0 5px; border-radius: 3px; background: #e6e9ef; color: #0b0e14; font-family: 'JetBrains Mono', monospace; font-size: 10px; line-height: 15px; font-weight: 700; white-space: nowrap">proposal P12</span></span><span>A message: header over a Markdown body; the role colour as a 3 px gutter bar apart from the body; the human's band across the row.</span></li>
+      <li style="display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: 10px; font-size: 12.5px; line-height: 18px; color: #c9d1dc"><span><span style="display: inline-block; padding: 0 5px; border-radius: 3px; background: #e6e9ef; color: #0b0e14; font-family: 'JetBrains Mono', monospace; font-size: 10px; line-height: 15px; font-weight: 700; white-space: nowrap">proposal P13</span></span><span>A folded agent run: one quiet row with both sessions, the count and the span; a click or za unfolds it.</span></li>
+      <li style="display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: 10px; font-size: 12.5px; line-height: 18px; color: #c9d1dc"><span><span style="display: inline-block; padding: 0 5px; border-radius: 3px; background: #e6e9ef; color: #0b0e14; font-family: 'JetBrains Mono', monospace; font-size: 10px; line-height: 15px; font-weight: 700; white-space: nowrap">proposal P14</span></span><span>The ask card: option buttons with number keys, a free answer, Send answer; an answered ask folds to one line.</span></li>
+      <li style="display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: 10px; font-size: 12.5px; line-height: 18px; color: #c9d1dc"><span><span style="display: inline-block; padding: 0 5px; border-radius: 3px; background: #e6e9ef; color: #0b0e14; font-family: 'JetBrains Mono', monospace; font-size: 10px; line-height: 15px; font-weight: 700; white-space: nowrap">proposal P15</span></span><span>An HTML artifact inline at 240 px in a sandboxed iframe, with Open full and Open in a pane; other kinds stay chips.</span></li>
+      <li style="display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: 10px; font-size: 12.5px; line-height: 18px; color: #c9d1dc"><span><span style="display: inline-block; padding: 0 5px; border-radius: 3px; background: #e6e9ef; color: #0b0e14; font-family: 'JetBrains Mono', monospace; font-size: 10px; line-height: 15px; font-weight: 700; white-space: nowrap">proposal P16</span></span><span>The composer: the send kind as Message, Decision or Question; the addressee as a chip; Enter sends, ~ attaches.</span></li>
+    </ul>
+  </section>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1945}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
