@@ -12,10 +12,10 @@ labels:
 assignee: null
 parent: E-386
 blocked_by: []
-topic: null
+topic: topic-264
 branch: t/T-389-timing-diet-fake-harnesses-default-to
 created: 2026-10-14T12:28:10.336Z
-updated: 2026-10-14T19:36:05.048Z
+updated: 2026-10-14T19:36:22.343Z
 ---
 
 ## Summary

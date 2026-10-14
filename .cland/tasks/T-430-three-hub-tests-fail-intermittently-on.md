@@ -2,8 +2,8 @@
 id: T-430
 kind: task
 title: Three hub tests fail intermittently on Linux droplets (init database locked, merge restart ref movement, executor-safety same-name keys)
-state: open
-status: ready
+state: closed
+status: done
 size: M
 rank: 2311
 criterion_seq: 3
@@ -17,7 +17,8 @@ blocked_by: []
 topic: topic-256
 branch: t/T-430-three-hub-tests-fail-intermittently-on
 created: 2026-10-14T17:14:45.492Z
-updated: 2026-10-14T18:58:46.668Z
+updated: 2026-10-14T19:36:29.085Z
+closed: 2026-10-14T19:36:29.085Z
 ---
 
 ## Summary
@@ -114,3 +115,7 @@ scope: evidence
 Final clear; C1–C3 verified, claimant done marks confirmed, unchanged clean564e7a4c. Local gate b63e4ae6/A-2523 passes root typecheck and2041/2041 (37free,1617hub,387Neovim),zero failure/cancel/skip/todo. C3 scoped Linux077a0297/A-2501 passes all init/merge/executor-safety cases,no target skips,under directly-read Coordinator9ad37b30/180cd67e. Overall Linux red retained for T-429/T-434/T-435,3platform skips,1509s/$0.1048;not complete Linux green. Source/C1 A-2478 and C2 fifteen macOS whole-file passes/430 cases A-2490/A-2494 stand. No high/medium T-430 findings. A-2524: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2524-t-430-final-local-gate-and-scoped-linux-target-file-proof.md.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-14T19:36:29.085Z
+
+Merged a9429e97f69e8613af04f0ebda266c66ef4e53d6 onto dev.

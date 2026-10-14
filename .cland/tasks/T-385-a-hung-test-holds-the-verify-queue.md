@@ -3,7 +3,7 @@ id: T-385
 kind: task
 title: "A hung test holds the verify queue forever: no per-test timeout and no stall kill"
 state: open
-status: review
+status: in progress
 size: S
 criterion_seq: 4
 labels:
@@ -17,7 +17,7 @@ blocked_by: []
 topic: topic-246
 branch: t/T-385-a-hung-test-holds-the-verify-queue
 created: 2026-10-14T12:21:44.443Z
-updated: 2026-10-14T19:36:19.921Z
+updated: 2026-10-14T19:36:38.201Z
 ---
 
 ## Summary
@@ -210,3 +210,14 @@ Delta source review rev-2026-10-14-385-8 clear at merged head 33b1c9208f9717faac
 ### impl-385 · 2026-10-14T19:36:19.921Z
 
 Local verification f8e54b25 at delta-clear33b1c920:2045/2046 pass; sole failure unchanged nvim/test/explorer-card.test.ts:243 gi/thread-reference case (A-2532). First isolated exact-head trial reproduced same cardT-11/no-row-under-cursor error (A-2533); stopped remaining trials, no automatic flake resubmission. Reported Bugs(S) find aside and blocker to lead/reviewer; awaiting shared-fix/adoption disposition. T-435 remote-budget test passed in this full run. Head unchanged.
+
+### rev-23 · 2026-10-14T19:36:38.201Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-385-9
+commit: 33b1c9208f9717faacc361651ff1e8f803c7f4e5
+scope: evidence
+
+Medium gate finding — nvim/test/explorer-card.test.ts:243 gi/card readiness: local f8e54b25/A-2532 exits 1 with 2045/2046 passing and the exact T-11/no-row symptom. First isolated trial A-2533 also fails; no five-pass retry qualification. Known shared defect T-439, whose fixed source is clear at f648da42 (A-2529), normal gate 958ea746 queued. No T-385 product defect inferred; delta source A-2513/C4 remains applicable. C1–C3 final marks remain pending accepted verification at the eventual reviewed head; this red gate is not readiness. A-2534: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2534-t-385-merged-head-local-gate-blocked-by-t-439-readiness-race.md.
