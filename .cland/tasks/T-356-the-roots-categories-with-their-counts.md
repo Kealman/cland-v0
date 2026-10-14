@@ -2,8 +2,8 @@
 id: T-356
 kind: task
 title: "The roots: Categories with their counts, top three, N more, the done count D hides and the idle-work mark from idle_from; Unscheduled with the maps; Other releases with A for the closed ones; and a card for each root"
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 7
 labels:
@@ -17,7 +17,8 @@ blocked_by:
 topic: topic-236
 branch: t/T-356-the-roots-categories-with-their-counts
 created: 2026-10-13T20:53:52.040Z
-updated: 2026-10-14T09:12:07.329Z
+updated: 2026-10-14T09:12:43.243Z
+closed: 2026-10-14T09:12:43.243Z
 ---
 
 ## Summary
@@ -167,3 +168,7 @@ scope: evidence
 No high or medium findings. Exact source-reviewed head is clean and unchanged. A-2304 full c974cd00 passes typecheck and all phases: 1989/1989, zero failures/cancellations/skips/todo, exit 0. Real-hub category summaries, top-three/more/counts/D, live crew idle work, Unscheduled/Other releases/archive ordering, root-card cap/reveal and EXPLORER-002 headless QA runner all pass. A-2252/A-2297 source assessments remain applicable; C1–C7 verified. A-2305: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2305-t-356-final-exact-head-evidence-clear.md.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.
+
+### coord · 2026-10-14T09:12:43.243Z
+
+Merged adbc3b54e18800491da42180e43addbb3ef7dfbf onto dev.

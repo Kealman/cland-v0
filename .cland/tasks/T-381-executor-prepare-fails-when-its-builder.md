@@ -5,6 +5,7 @@ title: Executor prepare fails when its builder release is unconfirmed, and the r
 state: open
 status: in progress
 size: S
+criterion_seq: 4
 labels:
   - v0.1.2
   - hub
@@ -17,7 +18,7 @@ regression_of: T-344
 topic: topic-241
 branch: t/T-381-executor-prepare-fails-when-its-builder
 created: 2026-10-14T09:04:29.537Z
-updated: 2026-10-14T09:08:53.317Z
+updated: 2026-10-14T09:12:34.123Z
 ---
 
 ## Summary
@@ -41,9 +42,11 @@ updated: 2026-10-14T09:08:53.317Z
 
 ## Acceptance criteria
 
-- [ ] C1. `executor-release-unconfirmed` carries the swallowed error's cause, and a fake-API test shows it for a delete that the fake rejects.
+- [x] C1. `executor-release-unconfirmed` carries the swallowed error's cause, and a fake-API test shows it for a delete that the fake rejects.
+  - done: impl-381 · 2026-10-14T09:12:32.694Z
 - [ ] C2. The real cause is established and fixed, with a fake-API regression reproducing it (for example a droplet still busy with a snapshot or transfer action answering 422 on delete, then succeeding later).
-- [ ] C3. A prepare whose image is committed but whose builder release is still unconfirmed reports the snapshot as prepared, and the hub's retry or sweep later confirms the release and its cost.
+- [x] C3. A prepare whose image is committed but whose builder release is still unconfirmed reports the snapshot as prepared, and the hub's retry or sweep later confirms the release and its cost.
+  - done: impl-381 · 2026-10-14T09:12:34.123Z
 - [ ] C4. Real check, run by the Coordinator from the human's or Coordinator's shell with the driver of T-347 C6: prepare on c-8 with three regions confirms its builder release.
 
 ## Comments
