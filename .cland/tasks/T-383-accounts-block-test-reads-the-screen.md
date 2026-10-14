@@ -2,8 +2,8 @@
 id: T-383
 kind: task
 title: Accounts-block test reads the screen before both account rows land (sessions.test.ts:274 under load)
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 rank: 2360
 criterion_seq: 3
@@ -19,7 +19,8 @@ regression_of: T-365
 topic: topic-245
 branch: t/T-383-accounts-block-test-reads-the-screen
 created: 2026-10-14T10:53:08.521Z
-updated: 2026-10-14T17:53:27.797Z
+updated: 2026-10-14T18:18:01.121Z
+closed: 2026-10-14T18:18:01.121Z
 ---
 
 ## Summary
@@ -133,3 +134,7 @@ scope: evidence
 No high/medium findings. Accepted same-head local auto/full 64076084/A-2479 passes both typechecks and2007/2007 (37free,1592hub machine,378Neovim), zero fail/cancel/skip/todo; account screen cases execute and pass. Human/Coordinator7df2bdac explicitly directs this local result to supersede red droplet ba071efd/A-2466; no Linux green claim. Source C1/C2 A-2443 retained. C3 verified under Coordinator15:57:08 premerge reading: solo sessions4/4 plus green full at reviewed head. Twenty four-worker macOS runs remain due postmerge in first quiet window; failure reopens regression. Earlier failed/cancelled receipts retained. Evidence A-2480: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2480-t-383-final-review-clear-at-be11ca8e-same-head-local-full-passes.md.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-14T18:18:01.121Z
+
+Merged 3a5396923c064ce6ceb1f3fb0ee159a79be33051 onto dev.

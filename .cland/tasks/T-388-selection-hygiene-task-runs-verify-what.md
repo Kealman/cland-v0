@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-247
 branch: t/T-388-selection-hygiene-task-runs-verify-what
 created: 2026-10-14T12:28:09.900Z
-updated: 2026-10-14T17:33:53.970Z
+updated: 2026-10-14T18:18:09.137Z
 ---
 
 ## Summary
@@ -162,3 +162,7 @@ scope: evidence
 No high or medium source/suite findings. Exact-head auto full 23d2db26/A-2474 passes root typecheck and 2063/2063 (37 free, 1639 hub machine, 387 Neovim), zero failures/cancellations/skips/todo. Droplet request fell back local because remote budget 2/2 full; platform darwin arm64 Node24.21.0 Neovim0.12.5. Clean head/worktree unchanged. C1/C2 computed rules/import coverage now verified; C3/C5/C6/C7 source/replay assessment retained. All corrected reason/cap cases pass. Previous red eac22c41/A-2456 fixed by new source, not unchanged retry. C4 remains pending authorized empty-queue nvim-only total-phase timing; full run Neovim duration alone is not that proof. A-2475: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2475-t-388-green-exact-head-selection-evidence-c4-timing-pending.md.
 
 Criteria: C1 verified, C2 verified, C3 verified, C5 verified, C6 verified, C7 verified.
+
+### impl-388 · 2026-10-14T18:18:09.137Z
+
+C4 measurement completed once at unchanged reviewed/green head 952d1f7f, per Coordinator ce993e22's humanQueue admission refinement. Start 18:14:48Z, admitted 18:15:24Z, finish 18:17:16Z; exit 0. Printed suite duration 112.24s (<180s), lock wait 0.01s, peak 1m load 12.07. Admission queue shows this nvim-only measurement as sole local holder, four task waiters behind it, one concurrent remote run. A-2497 contains exact command, timestamps, full log and queue snapshot. No --force and no source changes; asking rev-23 to verify C4.
