@@ -3,7 +3,7 @@ id: T-367
 kind: task
 title: "Accounts in the clauses and docs: the Coordinator's clause turns a refused launch into an ask listing the harness's other accounts, cland init's roles.toml describes account, and the READMEs and GLOSSARY describe accounts, limits and the limited mark"
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 7
 labels:
@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-250
 branch: t/T-367-accounts-in-the-clauses-and-docs-the
 created: 2026-10-13T23:42:55.063Z
-updated: 2026-10-14T13:47:12.350Z
+updated: 2026-10-14T15:38:53.925Z
 ---
 
 ## Summary
@@ -92,26 +92,33 @@ Link it from the adapter sections.
 
 - [x] C1. The Coordinator's clause, in `default-roles.ts` and in this project's `.cland/roles.toml`, says to answer an `account-limited` refusal with an ask that names the account, its reset and the harness's other accounts, never to relaunch on another account unasked, and how to apply the answer, and a test finds it in the delivered clause.
   - done: impl-367 · 2026-10-14T13:08:30.543Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-367-4 · 2026-10-14T15:38:50.404Z · commit fda5858eb2083463a481983145ea4f0c08a0a16b
 - [x] C2. The Lead's clause says to report an `account-limited` refusal to `lead T-<n>` and never to ask the human or pick another account, and a test finds it.
   - done: impl-367 · 2026-10-14T13:08:31.558Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-367-4 · 2026-10-14T15:38:50.404Z · commit fda5858eb2083463a481983145ea4f0c08a0a16b
 - [x] C3. A project freshly made by `cland init` has a `roles.toml` whose header documents `account` and whose launch tables carry the commented-out key, and init writes no `accounts.toml`.
   - done: impl-367 · 2026-10-14T13:08:32.894Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-367-4 · 2026-10-14T15:38:50.404Z · commit fda5858eb2083463a481983145ea4f0c08a0a16b
 - [x] C4. `hub/README.md` has one "Accounts and limits" section covering the registry, the environment per adapter, the polling rules, the sources, `cland account list` and `clear`, the signals, the mark, the refusal and the terms, and the adapter sections link to it.
   - done: impl-367 · 2026-10-14T13:08:34.458Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-367-1 · 2026-10-14T13:12:14.320Z · commit 4f64eb0b794d677aa3a050ee67e4a473bf0fddab
   - verified: rev-23 [reviewer] · run rev-2026-10-14-367-3 · 2026-10-14T13:47:12.350Z · commit fda5858eb2083463a481983145ea4f0c08a0a16b
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-367-4 · 2026-10-14T15:38:50.404Z · commit fda5858eb2083463a481983145ea4f0c08a0a16b
 - [x] C5. `nvim/README.md` describes the accounts block and the limited highlight in one place, and `GLOSSARY.md` defines Account and Limited account.
   - done: impl-367 · 2026-10-14T13:08:35.787Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-367-1 · 2026-10-14T13:12:14.320Z · commit 4f64eb0b794d677aa3a050ee67e4a473bf0fddab
   - verified: rev-23 [reviewer] · run rev-2026-10-14-367-3 · 2026-10-14T13:47:12.350Z · commit fda5858eb2083463a481983145ea4f0c08a0a16b
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-367-4 · 2026-10-14T15:38:50.404Z · commit fda5858eb2083463a481983145ea4f0c08a0a16b
 - [x] C6. hub/README.md has one section listing cland's per-user state: the executor spend ledger (~/.cland/executor/spend.json, T-346) and the accounts registry (~/.config/cland/accounts.toml), with their paths, owners and what each holds (stand-in, D24, 2026-10-13).
   - done: impl-367 · 2026-10-14T13:08:38.465Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-367-1 · 2026-10-14T13:12:14.320Z · commit 4f64eb0b794d677aa3a050ee67e4a473bf0fddab
   - verified: rev-23 [reviewer] · run rev-2026-10-14-367-3 · 2026-10-14T13:47:12.350Z · commit fda5858eb2083463a481983145ea4f0c08a0a16b
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-367-4 · 2026-10-14T15:38:50.405Z · commit fda5858eb2083463a481983145ea4f0c08a0a16b
 - [x] C7. The ask the Coordinator's clause makes from an account-limited refusal names the limited account and its reset time, and lists the harness's other accounts with their current used share, so the human picks without opening anything (stand-in, D24, 2026-10-13).
   - done: impl-367 · 2026-10-14T13:08:39.738Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-367-1 · 2026-10-14T13:12:14.322Z · commit 4f64eb0b794d677aa3a050ee67e4a473bf0fddab
   - verified: rev-23 [reviewer] · run rev-2026-10-14-367-3 · 2026-10-14T13:47:12.350Z · commit fda5858eb2083463a481983145ea4f0c08a0a16b
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-367-4 · 2026-10-14T15:38:50.405Z · commit fda5858eb2083463a481983145ea4f0c08a0a16b
 
 ## Comments
 
@@ -159,3 +166,16 @@ scope: full
 Corrected source clear; no high or medium findings. Both existing Coordinator statements are restored verbatim in default/project clauses, with no test/cap/headroom change. A-2397's sequential review-qa 3/3 and roles 8/8 include unchanged 512-byte reply reserve. Account instructions, init comments, docs/glossary/user-state and project release decisions remain as fully reviewed in A-2382. C4–C7 refreshed; C1–C3 await new exact-head no-mode verification. Earlier 8616bb37/A-2393 remains red evidence of this corrected mismatch, not gate clearance. A-2402: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2402-t-367-corrected-clause-source-clear-at-fda5858e.md.
 
 Criteria: C4 verified, C5 verified, C6 verified, C7 verified.
+
+### rev-23 · 2026-10-14T15:38:50.405Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-367-4
+commit: fda5858eb2083463a481983145ea4f0c08a0a16b
+scope: evidence
+
+Final clear; no high or medium findings. Exact-head auto full c67edfef/A-2430 passes root typecheck and 2023/2023 (37 free, 1607 hub machine, 379 Neovim), zero failures/cancellations/skips/todo. Reviewed clean head/worktree unchanged. C1–C3 delivered Coordinator/Lead account clauses and fresh-init behavior now verified; C4–C7 docs/glossary/user-state/ask content retained from source A-2382/A-2402. Restored existing review/QA wording and unchanged reply headroom pass. Earlier red 8616bb37/A-2393 was corrected source mismatch, not unchanged retry. A-2431: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2431-t-367-final-exact-head-account-clauses-and-docs-verification.md.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.
