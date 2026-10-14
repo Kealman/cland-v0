@@ -2,8 +2,8 @@
 id: T-355
 kind: task
 title: "The messages: m sends to General with the item context, M creates the item's topic when it has none and sends there, and a visual selection goes to General with one line per item, naming items by their display ids"
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 8
 labels:
@@ -17,7 +17,8 @@ blocked_by:
 topic: topic-232
 branch: t/T-355-the-messages-m-sends-to-general-with-the
 created: 2026-10-13T20:53:51.934Z
-updated: 2026-10-14T04:55:30.149Z
+updated: 2026-10-14T05:37:51.886Z
+closed: 2026-10-14T05:37:51.886Z
 ---
 
 ## Summary
@@ -100,29 +101,37 @@ card line: <the card line under the cursor, trimmed>   (only from the card)
 - [x] C1. `m` on a task row opens the composer with the context. `↵` sends one `topic.send` to General with `to = ["coordinator"]`, the text, a blank line, the scope line and the item's line, with the display id.
   - done: impl-355 · 2026-10-14T02:25:23.058Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-355-6 · 2026-10-14T04:52:07.868Z · commit 812fa578b1e2cea815ebdcbc4614875da0d7324f
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-355-8 · 2026-10-14T05:23:01.224Z · commit 4168a6e4870384d9188d2b0de199ca6b937005a5
 - [x] C2. `m` from the card adds the `card line:` line for the line under the card's cursor.
   - done: impl-355 · 2026-10-14T02:25:23.514Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-355-6 · 2026-10-14T04:52:07.868Z · commit 812fa578b1e2cea815ebdcbc4614875da0d7324f
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-355-8 · 2026-10-14T05:23:01.224Z · commit 4168a6e4870384d9188d2b0de199ca6b937005a5
 - [x] C3. `M` on an item with a topic sends into that topic. `M` on an open item without one sends `topic.create` with `item`, then `topic.send` into the new topic. The item's card then reads `M in <id>'s topic`.
   - done: impl-355 · 2026-10-14T02:25:24.112Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-355-6 · 2026-10-14T04:52:07.868Z · commit 812fa578b1e2cea815ebdcbc4614875da0d7324f
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-355-8 · 2026-10-14T05:23:01.225Z · commit 4168a6e4870384d9188d2b0de199ca6b937005a5
 - [x] C4. `M` on a closed item without a topic sends nothing and says why.
   - done: impl-355 · 2026-10-14T02:25:24.582Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-355-6 · 2026-10-14T04:52:07.868Z · commit 812fa578b1e2cea815ebdcbc4614875da0d7324f
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-355-8 · 2026-10-14T05:23:01.225Z · commit 4168a6e4870384d9188d2b0de199ca6b937005a5
 - [x] C5. `V` over three rows and `m` sends one message to General with `3 items selected` and three item lines. Label rows inside the selection are skipped.
   - done: impl-355 · 2026-10-14T02:25:25.201Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-355-6 · 2026-10-14T04:52:07.869Z · commit 812fa578b1e2cea815ebdcbc4614875da0d7324f
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-355-8 · 2026-10-14T05:23:01.225Z · commit 4168a6e4870384d9188d2b0de199ca6b937005a5
 - [x] C6. `Esc` keeps the draft, and the next `m` on the same item or selection shows it. A refused send keeps the draft. A 300-row selection is cut under 8192 bytes with `… and K more`.
   - done: impl-355 · 2026-10-14T02:25:25.829Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-355-6 · 2026-10-14T04:52:07.869Z · commit 812fa578b1e2cea815ebdcbc4614875da0d7324f
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-355-8 · 2026-10-14T05:23:01.225Z · commit 4168a6e4870384d9188d2b0de199ca6b937005a5
 - [x] C7. Both clause sources deliver the explorer line to the Coordinator within the byte guard (`hub/test/roles.test.ts`).
   - done: impl-355 · 2026-10-14T03:15:52.323Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-355-6 · 2026-10-14T04:52:07.869Z · commit 812fa578b1e2cea815ebdcbc4614875da0d7324f
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-355-8 · 2026-10-14T05:23:01.225Z · commit 4168a6e4870384d9188d2b0de199ca6b937005a5
 - [x] C8. `nvim/README.md`, the help lines and the Coordinator's clause describe the messages.
   - done: impl-355 · 2026-10-14T04:00:26.228Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-355-5 · 2026-10-14T04:01:08.818Z · commit 812fa578b1e2cea815ebdcbc4614875da0d7324f
   - verified: rev-23 [reviewer] · run rev-2026-10-14-355-6 · 2026-10-14T04:52:07.869Z · commit 812fa578b1e2cea815ebdcbc4614875da0d7324f
   - verified: rev-23 [reviewer] · run rev-2026-10-14-355-7 · 2026-10-14T04:55:30.149Z · commit 4168a6e4870384d9188d2b0de199ca6b937005a5
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-355-8 · 2026-10-14T05:23:01.225Z · commit 4168a6e4870384d9188d2b0de199ca6b937005a5
 
 ## Comments
 
@@ -238,3 +247,24 @@ scope: delta
 No high/medium integration findings. Both clause sources retain explorer and executor instructions, guarded Coordinator/review ownership and byte budget; role assertions combine both parents without removal. All nvim source/help/tests and shared PID cases match previous reviewed head, incoming nonoverlap matches landed dev exactly, and harness adds only landed token/ledger isolation. C8 source refreshed; C1–C7 require fresh integrated-head full evidence. A-2244: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2244-t-355-integration-delta-clear-executor-and-explorer-clauses.md.
 
 Criteria: C8 verified.
+
+### impl-355 · 2026-10-14T05:22:35.819Z
+
+Fresh full verification 2f91baec at delta-reviewed merge head 4168a6e4 passed typecheck and 1975/1975 tests, no failures/skips/cancellations. Log A-2247: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2247-suite-2f91baec-5c12-43a6-bc26-cbc9a9d369a6-all-at-4168a6e.log. Working tree is clean at that exact head. Reviewer receives the result directly; waiting for final verdict and the Coordinator's integrated-dev merge window.
+
+### rev-23 · 2026-10-14T05:23:01.225Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-355-8
+commit: 4168a6e4870384d9188d2b0de199ca6b937005a5
+scope: evidence
+
+No findings remain. Integrated exact-head full 2f91baec/A-2247 exits 0: typecheck, 37 hub free + 1572 hub machine + 366 Neovim = 1975/1975, zero failures/cancellations/skips/todo. Combined explorer/executor delivered-clause guards and explorer real-frame/help/draft/selection/cap cases pass. Complete feature review and integration source A-2244 retained; C1–C8 all refreshed. A-2248: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2248-t-355-integrated-final-review-clear-1975-tests.md.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified.
+
+### coord · 2026-10-14T05:37:51.886Z
+
+Merged 1848a6078de338eb6a3a58be704a4da55ec8c00c onto dev.
