@@ -11,7 +11,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-14T13:03:48.458Z
-updated: 2026-10-14T13:37:01.080Z
+updated: 2026-10-14T13:49:02.060Z
 ---
 
 ## Destination
@@ -25,6 +25,7 @@ Charted on 2026-10-14 in the cland-design session from the human's direction of 
 ## Decisions so far
 
 - The hub's client surface for a browser: what the Neovim plugin consumes, what a browser needs on top (Q-400, .cland/tasks/Q-400-the-hub-s-client-surface-for-a-browser.md): the frame protocol carries over as it is (37 requests, 21 pushed frames, one dispatcher), several human clients already work, but a browser cannot connect today (the spokes' port is loopback-only, bearer-only and refuses client hellos), there are no sequence numbers and Neovim re-reads everything after a drop; the missing pieces cost about nine sessions plus three for hub-computed fields and read marks; the browser's entry is a one-time token and a cookie, never the secret; approving a command has no frame; HTTPS is needed off localhost. docs/research/web-client-surface.md on research/web-client-surface.
+- Prior art: web interfaces for agent orchestration, threads with approvals, keyboard-first planning (Q-401, .cland/tasks/Q-401-prior-art-web-interfaces-for-agent.md): every multi-agent screen puts needs-you first with what each row waits on and for how long; approvals are fast when collected in one place and answered with keys, slow when answerable only inside a thread; timers that decide for the human cause trouble; reconnection is where products lose approvals, the designs that work are a snapshot plus numbered updates; on phones the needs-you list is home and nobody plans there; copy and avoid lists per §3.2, §3.4, §3.6 and three questions for Q-408 (asks as both inbox row and thread card with one state in the hub, folded runs in place or in the drawer, the composer's send key and queue). Correction: OpenCode v2 kept its web UI behind `opencode pair` (a one-time link, a 30-day cookie). docs/research/web-prior-art.md on research/web-prior-art.
 
 ## Not yet specified
 
