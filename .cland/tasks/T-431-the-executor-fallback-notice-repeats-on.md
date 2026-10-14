@@ -3,7 +3,7 @@ id: T-431
 kind: task
 title: The executor-fallback notice repeats on every scheduler tick for the run's whole life
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 3
 labels:
@@ -17,7 +17,7 @@ regression_of: T-346
 topic: topic-257
 branch: t/T-431-the-executor-fallback-notice-repeats-on
 created: 2026-10-14T17:24:52.261Z
-updated: 2026-10-14T17:31:42.304Z
+updated: 2026-10-14T21:27:53.591Z
 ---
 
 ## Summary
@@ -37,11 +37,14 @@ Send the fallback notice once per verify id. On a hub restart, a run that alread
 
 - [x] C1. A run that falls back to local produces exactly one `executor-fallback` notice and one `verification-executor-fallback` log line over its whole life, across scheduler ticks.
   - done: impl-431 · 2026-10-14T17:29:56.433Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-431-2 · 2026-10-14T21:27:51.675Z · commit 5c7d175d02ded4a501f8e0582b05db6602f07f6d
 - [x] C2. After a hub restart, a restored fallback run does not repeat the notice.
   - done: impl-431 · 2026-10-14T17:29:58.832Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-431-2 · 2026-10-14T21:27:51.675Z · commit 5c7d175d02ded4a501f8e0582b05db6602f07f6d
 - [x] C3. A test drives at least 20 scheduler ticks on a fallback run and counts the notices.
   - done: impl-431 · 2026-10-14T17:30:02.529Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-431-1 · 2026-10-14T17:31:42.304Z · commit 5c7d175d02ded4a501f8e0582b05db6602f07f6d
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-431-2 · 2026-10-14T21:27:51.675Z · commit 5c7d175d02ded4a501f8e0582b05db6602f07f6d
 
 ## Comments
 
@@ -61,3 +64,16 @@ scope: full
 No high or medium Standards/Spec findings. Existing durable fallbackLogged now guards both notice callback and log, including pre-fix saved records; no new state/seam, admission/text unchanged. C3 verified from A-2470 red 20 callbacks then green tests driving 20 scheduler inspections and 20 more after real SQLite reopen for both unannounced and already-announced records. Existing real-frame budget tests retain actual one-notice/warn and journal one-log assertions. C1/C2 await complete exact-head no-mode local verify under 17:18 human executor decision. Saved-checkpoint restart is covered; no new crash-atomic mechanism claimed. A-2473: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2473-t-431-source-review-shared-durable-fallback-checkpoint.md.
 
 Criteria: C3 verified.
+
+### rev-23 · 2026-10-14T21:27:51.675Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-431-2
+commit: 5c7d175d02ded4a501f8e0582b05db6602f07f6d
+scope: evidence
+
+Final clear; C1–C3 claimant done marks confirmed, unchanged clean source-reviewed head. Local no-mode full 5c8f0ea4/A-2566 passes root typecheck and 2042/2042 (37 free, 1618 hub machine, 387 Neovim), zero failures/cancellations/skips/todo. Both initially unannounced/already-announced fallback tests pass 20 inspections plus 20 after real SQLite reopen; real-frame one-notice/one-journal assertions retained. Source A-2473 stands: shared durable fallbackLogged guards callback and warn log without admission/text changes or new state/seam. Saved-checkpoint restart covered; no new crash-atomic delivery guarantee claimed. No high/medium Standards/Spec findings. A-2567: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2567-t-431-final-exact-head-fallback-notice-verification.md.
+
+Criteria: C1 verified, C2 verified, C3 verified.

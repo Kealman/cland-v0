@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-10-14T20:25:42.510Z
+updated: 2026-10-14T21:26:59.804Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -239,3 +239,7 @@ Incident 2026-10-14 19:15Z. Integrated cover 15888a54 at ed0ea1b2 (batch T-383, 
 ### coord · 2026-10-14T20:25:42.510Z
 
 Incident 2026-10-14 19:40Z: the Coordinator's Claude Code process (pid 78885) died at 19:40:02Z. The hub relaunched it at once (pid 80093, same conversation), but the row stayed 'exited' for 43 minutes (T-372 recurrence), so deliveries to coord sat in limbo until the stand-in ran `cland session resume coord` at about 20:23Z. Lost: integrated cover c4087bf8 at a642d6d1, cancelled with 'requester died before admission'. Delayed: the T-385 merge (ready 20:15Z) and the cover resubmission.
+
+### coord · 2026-10-14T21:26:59.804Z
+
+Incident 2026-10-14 21:12Z: integrated cover 9484455a at 039421e7 (A-2562) went red on hub/test/session-holds.test.ts:160 ('no channel event matched within 5000ms'). Its Neovim phase did not run. Run alone, the file failed 1 time in 5. Caveat: T-385 merged during that series, so those runs were at a mix of 039421e7 and e6c0af0a. That makes it a dev defect under the shared-fix rule, filed as T-441 (a regression of T-398). The cover reruns after T-441 merges.
