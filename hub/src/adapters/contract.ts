@@ -150,6 +150,8 @@ export type AdapterHost = {
   adapterState?: { read: (key: string) => string | null; write: (key: string, value: string) => void };
   /** A native harness report (state, model or sub-agent start); hook reports use `session.signal`. */
   signal: (sessionId: string, signal: StateSignal) => void;
+  /** A hard limit classified from the harness's machine-readable error field. */
+  limitHit?: (sessionId: string, hit: { reason: string; resetsAt?: string }) => void;
   /** Adapter-owned usage changed; the hub coalesces snapshots per session. */
   usageChanged?: (sessionId: string) => void;
   /** A turn ended in error, with the hub messages that fed it (including steers), when known. */
@@ -166,7 +168,7 @@ export type AdapterHost = {
 };
 
 /** What one signal from inside the session (a hook, the mod) means: a state, the model, usage, messages it confirms. */
-export type Interpretation = { state?: SessionState; approvalCommand?: string; model?: string; subagent?: SubagentLaunch; usage?: Record<string, unknown>; rateLimits?: { windows: import('../accounts/limits.ts').LimitWindow[]; at?: string }; confirms?: string[]; turnError?: string; failureAudience?: 'senders'; failureDedupe?: { key: string; episode: string }; failureMessages?: Promise<string[]> };
+export type Interpretation = { limitHit?: { reason: string; resetsAt?: string }; state?: SessionState; approvalCommand?: string; model?: string; subagent?: SubagentLaunch; usage?: Record<string, unknown>; rateLimits?: { windows: import('../accounts/limits.ts').LimitWindow[]; at?: string }; confirms?: string[]; turnError?: string; failureAudience?: 'senders'; failureDedupe?: { key: string; episode: string }; failureMessages?: Promise<string[]> };
 
 /** The frame an in-session bridge receives: submit this message as a turn, then confirm it. */
 export type InjectFrame = { type: 'inject'; session: string; message: string; text: string };
@@ -200,6 +202,8 @@ export interface HarnessAdapter {
   stateReason?(process: HarnessProcess): string | null;
   /** Running totals and latest turn/step (only where `capabilities.usage` is not `none`). */
   usage?(process: HarnessProcess): SessionUsage | null;
+  /** Read a live account through its existing harness connection. */
+  readAccountLimits?(process: HarnessProcess): Promise<import('../accounts/limits.ts').LimitWindow[]>;
   noteUsage?(process: HarnessProcess, usage: Record<string, unknown>): void;
   /** Prune adapter-owned totals and supervision for an archived terminal row. */
   forget?(sessionId: string): void;
@@ -216,7 +220,7 @@ export interface HarnessAdapter {
    * what the harness says it is doing. With `relaunch`, a process that is gone is started again on its own
    * conversation id, under `policy` (its role's launch defaults as they are now).
    */
-  resume(process: HarnessProcess, options?: { relaunch?: boolean; policy?: LaunchPolicy; resumed?: Resumed }): Promise<ResumeResult>;
+  resume(process: HarnessProcess, options?: { relaunch?: boolean; authorize?: () => void; policy?: LaunchPolicy; resumed?: Resumed }): Promise<ResumeResult>;
   /** The hub stops: timers end; the harness processes keep running (they outlive the hub). */
   close(): void;
 }

@@ -73,6 +73,8 @@ export const JOURNALLED: ReadonlySet<string> = new Set([
   'session-model',
   'session-usage',
   'account-limits',
+  'account-limited',
+  'account-limit-lifted',
   'account-polled',
   'account-poll-failed',
   'subagent-launched',
@@ -463,7 +465,7 @@ export function eventRow(r: JournalRecord, offset = ''): EventRow | null {
   if (kind === 'artifact') glyph = 'A';
   else if (kind === 'usage') glyph = '$';
   else if (kind === 'release') glyph = '◈';
-  else if (r.kind === 'executor-fallback') glyph = '⚠';
+  else if (r.kind === 'executor-fallback' || r.kind === 'account-limited') glyph = '⚠';
   else if (kind === 'verdict') glyph = (r.verdict as { result?: string } | undefined)?.result === 'not clear' || r.result === 'not clear' || text.includes('not clear') ? '⚠' : '✓';
   else if (kind === 'suite') { /* the outcome above owns the suite glyph */ }
   else if (kind === 'session' && (r.lifecycle === 'died' || r.kind === 'death' || /died|harness-exited/.test(text))) glyph = '⚠';

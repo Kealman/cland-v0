@@ -302,6 +302,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
   }
 
   #apply(w: Watch, change: Change, at: number): void {
+    if (change.limitHit) this.#host.limitHit?.(w.process.sessionId, change.limitHit);
     if (change.model) this.#host.signal(w.process.sessionId, { model: change.model, source: 'sse', at });
     if (change.ended) {
       const messages = [...w.turnMessages];
@@ -430,7 +431,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
     }
   }
 
-  async resume(p: HarnessProcess, options: { relaunch?: boolean; resumed?: Resumed } = {}): Promise<ResumeResult> {
+  async resume(p: HarnessProcess, options: { relaunch?: boolean; authorize?: () => void; resumed?: Resumed } = {}): Promise<ResumeResult> {
     return continueWith((function* (this: OpenCodeAdapter): Generator<Promise<unknown>, ResumeResult, unknown> {
       const resumed = options.resumed ?? untimed;
       this.#recoveries.assertAvailable(p.name, p.sessionId);
@@ -462,7 +463,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
       if (!options.relaunch)
         return { found: false, reason };
       yield* wait(this.stop(p, options.resumed));
-      const process_ = yield* wait(this.#launch({ account: p.account ?? null, accountEnv: p.accountEnv ?? null, name: p.name, role: p.role, model: p.model, cwd: p.cwd, sessionId: p.sessionId, harnessSessionId: p.harnessSessionId }, true, resumed));
+      const process_ = yield* wait(this.#launch({ account: p.account ?? null, accountEnv: p.accountEnv ?? null, name: p.name, role: p.role, model: p.model, cwd: p.cwd, sessionId: p.sessionId, harnessSessionId: p.harnessSessionId }, true, resumed, undefined, options.authorize));
       return { found: true, process: process_, state: 'unknown' as SessionState };
     }).call(this), options.resumed ?? untimed);
   }

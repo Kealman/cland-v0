@@ -207,7 +207,7 @@ export type InboxMessage = { layer?: Layer; id: string; from: string; fromRole?:
 export type InboxRowKind = 'ask' | 'approval' | 'plan' | 'request' | 'message';
 export type InboxDeparture = { kind: InboxRowKind; id: string; subject: string; since: string; ts: string; text?: string; reason: 'answered' | 'withdrawn' | 'cancelled' | 'approved' | 'closed' | 'invalidated' | 'replied' | 'declined' | 'read' };
 
-export type NotificationKind = 'executor-fallback' | 'plan' | 'verdict' | 'role' | 'death' | 'idle' | 'delivery-uncertain' | 'turn-failed' | 'release' | 'import';
+export type NotificationKind = 'account-limited' | 'executor-fallback' | 'plan' | 'verdict' | 'role' | 'death' | 'idle' | 'delivery-uncertain' | 'turn-failed' | 'release' | 'import';
 
 /** The four now sections (§3.7); waiting remains as topic metadata for older clients. */
 export type Inbox = { asks: InboxAsk[]; approvals: InboxApproval[]; plans: InboxPlan[]; requests: InboxRequest[]; messages: InboxMessage[]; waiting: Topic[]; needsYou: number; archiveToday?: number; archive?: InboxDeparture[] };
@@ -374,7 +374,7 @@ export type HubFrame =
   | { type: 'result'; id: string; ok: true; value: unknown }
   /** A failed request. `code: 'forbidden'`: the permission table refused it (spec 4.4): `permission` is the one
    *  missing (`tool` or `tool:scope`), `role` the caller's at call time, `reason` why. `refusal`: a hygiene refusal (typed). */
-  | { type: 'result'; id: string; ok: false; error: string; files?: string[]; recovery?: { commit: string; base: string }; code?: 'verify-shards' | import('./territory-push.ts').PushCode | import('./release.ts').ReleaseCode | import('./merge.ts').MergeCode | 'forbidden' | 'note-incomplete' | 'invalid-cwd' | 'git-unavailable' | 'artifact-kind' | 'artifact-source' | 'artifact-topic' | 'artifact-title' | 'artifact-unavailable' | 'artifact-path' | 'artifact-busy'; permission?: string; role?: string | null; reason?: string; missing?: string[]; refusal?: HygieneRefusal }
+  | { type: 'result'; id: string; ok: false; error: string; files?: string[]; recovery?: { commit: string; base: string }; account?: string; resetsAt?: string | null; code?: 'account-limited' | 'verify-shards' | import('./territory-push.ts').PushCode | import('./release.ts').ReleaseCode | import('./merge.ts').MergeCode | 'forbidden' | 'note-incomplete' | 'invalid-cwd' | 'git-unavailable' | 'artifact-kind' | 'artifact-source' | 'artifact-topic' | 'artifact-title' | 'artifact-unavailable' | 'artifact-path' | 'artifact-busy'; permission?: string; role?: string | null; reason?: string; missing?: string[]; refusal?: HygieneRefusal }
   | { type: 'error'; code: RefusalCode; message: string }
   /** To a harness's in-session bridge (the Claude Code mod): submit this message as a turn, then confirm it (`session.signal` `injected`). */
   | { type: 'inject'; session: string; message: string; text: string }
@@ -504,6 +504,7 @@ export type SuiteSlotResult = { id: string; admitted: boolean; locks: string[]; 
 export type SuiteCancel = { type: 'suite.cancel'; id: string; suite?: string };
 
 export type ClientRequest =
+  | { type: 'account.clear'; id: string; account: string }
   | { type: 'account.list'; id: string }
   | { type: 'account.poll'; id: string }
   | { type: 'task.migrate'; id: string; dryRun: true }
@@ -733,6 +734,8 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
       return (f.executor === undefined || ['local', 'droplet'].includes(String(f.executor))) && (f.fresh === undefined || typeof f.fresh === 'boolean') && ['auto', 'all', 'hub', 'nvim'].includes(String(f.mode)) && typeof f.cwd === 'string' && typeof f.report === 'string' && (f.to === undefined || (Array.isArray(f.to) && f.to.every(v => typeof v === 'string')));
     case 'suite.cancel':
       return f.suite === undefined || (typeof f.suite === 'string' && f.suite.trim().length > 0);
+    case 'account.clear':
+      return typeof f.account === 'string' && f.account.length > 0;
     case 'account.poll':
     case 'account.list':
     case 'suite.queue':

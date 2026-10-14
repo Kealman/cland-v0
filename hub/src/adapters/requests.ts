@@ -16,6 +16,7 @@
 //
 // `launch` is the cland session id the launch gave the session's hooks and mod: a signal or bridge of an
 // earlier launch under the same name is ignored or refused.
+import { AccountLimited } from '../accounts/limits.ts';
 import type { HubFrame } from '../protocol.ts';
 import type { InjectFrame } from './contract.ts';
 import { InvalidLaunchCwd, type Sessions } from './sessions.ts';
@@ -138,6 +139,7 @@ export async function answerSession(sessions: Sessions | undefined, frame: Sessi
       }
     }
   } catch (err) {
+    if (err instanceof AccountLimited) return { type: 'result', id: frame.id, ok: false, error: err.message, code: err.code, account: err.account, resetsAt: err.resetsAt };
     if (err instanceof ToolForbidden) return { type: 'result', id: frame.id, ok: false, error: err.message, code: 'forbidden', permission: err.permission, role: err.role, reason: err.reason };
     if (err instanceof InvalidLaunchCwd) return { type: 'result', id: frame.id, ok: false, error: err.message, code: 'invalid-cwd' };
     return { type: 'result', id: frame.id, ok: false, error: err instanceof Error ? err.message : String(err) };

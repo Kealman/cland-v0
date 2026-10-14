@@ -5,7 +5,22 @@ import type { Account, Accounts } from './registry.ts';
 export type LimitWindow = { id: string; label: string; usedPercent: number; resetsAt: string; windowMins?: number; severity?: string; scope?: string };
 export type LimitSource = { kind: 'session'; session: string } | { kind: 'poll' };
 export type AccountReading = { account: string; harness: string; windows: LimitWindow[]; at: string; source: LimitSource; signedOut?: boolean };
-export type AccountView = Account & { windows: LimitWindow[]; at: string | null; source: LimitSource | null; signedOut?: boolean };
+export type AccountLimit = { since: string; reason: string; session: string; resetsAt: string | null };
+export const fullWindowReset = (windows: LimitWindow[]): string | null => windows.filter(w => w.usedPercent >= 100 && Date.parse(w.resetsAt) > Date.now()).map(w => w.resetsAt).sort().at(-1) ?? null;
+export const limitUntil = (resetsAt: string | null): string => resetsAt ? `${new Date(resetsAt).toLocaleString('en-GB', { weekday: 'short', hour: '2-digit', minute: '2-digit' })} (${resetsAt})` : 'cleared';
+
+export class AccountLimited extends Error {
+  readonly code = 'account-limited';
+  readonly account: string;
+  readonly resetsAt: string | null;
+  constructor(account: string, resetsAt: string | null) {
+    super(`account ${account} is limited until ${limitUntil(resetsAt)}; launch on another account with --account`);
+    this.account = account;
+    this.resetsAt = resetsAt;
+  }
+}
+
+export type AccountView = Account & { limited?: AccountLimit; windows: LimitWindow[]; at: string | null; source: LimitSource | null; signedOut?: boolean };
 export type AccountList = Omit<Accounts, 'accounts'> & { accounts: AccountView[] };
 
 const object = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -65,13 +80,21 @@ export function claudeWindows(value: unknown): LimitWindow[] {
 
 /** Durable newest-wins store. A repeated window/source refreshes age silently. */
 export class AccountLimits {
+  readonly #marks = new Map<string, AccountLimit>();
   readonly #readings = new Map<string, AccountReading>();
   readonly #state: { read(key: string): string | null; write(key: string, value: string): void };
   constructor(state: { read(key: string): string | null; write(key: string, value: string): void }) {
     this.#state = state;
     const saved = state.read('account-limits');
+    const marks = state.read('account-limited');
+    if (marks) for (const [name, mark] of JSON.parse(marks) as Array<[string, AccountLimit]>) this.#marks.set(name, mark);
     if (saved) for (const reading of JSON.parse(saved) as AccountReading[]) this.#readings.set(reading.account, reading);
   }
+  limited(name: string): AccountLimit | undefined { return this.#marks.get(name); }
+  marks(): Array<[string, AccountLimit]> { return [...this.#marks]; }
+  mark(name: string, mark: AccountLimit): void { this.#marks.set(name, mark); this.#saveMarks(); }
+  clear(name: string): boolean { const changed = this.#marks.delete(name); if (changed) this.#saveMarks(); return changed; }
+  #saveMarks(): void { this.#state.write('account-limited', JSON.stringify([...this.#marks])); }
   update(reading: AccountReading): boolean {
     const previous = this.#readings.get(reading.account);
     if (previous && (Date.parse(previous.at) > Date.parse(reading.at) || previous.at === reading.at && previous.source.kind === 'session' && reading.source.kind === 'poll')) return false;
@@ -84,11 +107,14 @@ export class AccountLimits {
   view(account: Account): AccountView {
     const saved = this.#readings.get(account.name);
     const reading = account.harness !== 'opencode' && saved?.harness === account.harness ? saved : undefined;
-    return { ...account, windows: reading?.windows ?? [], at: reading?.at ?? null, source: reading?.source ?? null, ...(reading?.signedOut ? { signedOut: true } : {}) };
+    return { ...account, ...(this.#marks.has(account.name) ? { limited: this.#marks.get(account.name)! } : {}), windows: reading?.windows ?? [], at: reading?.at ?? null, source: reading?.source ?? null, ...(reading?.signedOut ? { signedOut: true } : {}) };
   }
   list(registry: Accounts): AccountList {
     const accounts = registry.accounts.map(a => this.view(a));
-    for (const reading of this.#readings.values()) if (reading.account.startsWith('default:')) accounts.push(this.view({ name: reading.account, harness: reading.harness, path: null, variable: reading.harness === 'codex' ? 'CODEX_HOME' : 'CLAUDE_CONFIG_DIR' }));
+    for (const name of new Set([...this.#readings.keys(), ...this.#marks.keys()])) if (name.startsWith('default:')) {
+      const harness = name.slice('default:'.length);
+      accounts.push(this.view({ name, harness, path: null, variable: harness === 'codex' ? 'CODEX_HOME' : harness === 'opencode' ? 'XDG_DATA_HOME' : 'CLAUDE_CONFIG_DIR' }));
+    }
     return { ...registry, accounts: accounts.sort((a, b) => a.name.localeCompare(b.name)) };
   }
 }

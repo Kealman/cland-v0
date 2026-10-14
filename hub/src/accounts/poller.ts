@@ -50,6 +50,8 @@ export class AccountPoller {
   readonly #root: string;
   readonly #log: LogFn;
   readonly #schedule = new Map<string, Schedule>();
+  readonly #hitNames = new Set<string>();
+  readonly #hits = new Map<string, { timer: NodeJS.Timeout | null; work: Promise<void>; finish: () => void }>();
   readonly #pending = new Map<string, Promise<void>>();
   readonly #queue: Array<() => void> = [];
   readonly #kills = new Set<() => void>();
@@ -62,20 +64,63 @@ export class AccountPoller {
   constructor(core: HubCore, sessions: Sessions, root: string, log: LogFn) {
     this.#core = core; this.#sessions = sessions; this.#root = root; this.#log = log;
     const saved = core.store.meta('account-polls');
+    const hits = core.store.meta('account-hit-polls');
+    if (hits) for (const name of JSON.parse(hits) as string[]) this.#hitNames.add(name);
     if (saved) for (const [name, state] of JSON.parse(saved) as Array<[string, Schedule]>) this.#schedule.set(name, state);
   }
   start(): void {
     if (this.#closed || this.#timer) return;
+    for (const name of this.#hitNames) void this.poll(name);
     void this.#all(false).catch(() => {});
     this.#timer = setInterval(() => { void this.#all(false).catch(() => {}); }, Math.min(this.#floor, 60_000));
     this.#timer.unref();
   }
   async refresh(): Promise<AccountList> { await this.#all(true); return this.#core.accountLimits.list(await readAccounts()); }
-  /** A limit-hit caller may read a running account, under the same minimum and backoff. */
-  async poll(name: string): Promise<void> {
-    const registry = await readAccounts();
-    const account = this.#core.accountLimits.list(registry).accounts.find(a => a.name === name);
-    if (account) await this.#enqueue(account, true, true);
+  /** One after-hit read waits for the minimum/backoff instead of losing a recent hit. */
+  poll(name: string): Promise<void> {
+    if (this.#closed) return Promise.resolve();
+    const existing = this.#hits.get(name);
+    if (existing) return existing.work;
+    this.#hitNames.add(name);
+    this.#saveHits();
+    let resolve!: () => void;
+    const work = new Promise<void>(done => { resolve = done; });
+    const hit = { timer: null as NodeJS.Timeout | null, work, finish: () => {
+      if (this.#hits.get(name) !== hit) return;
+      clearTimeout(hit.timer ?? undefined);
+      this.#hits.delete(name);
+      // Close cancels local waits, but a restart must retain the outstanding hit.
+      if (!this.#closed) { this.#hitNames.delete(name); this.#saveHits(); }
+      resolve();
+    } };
+    this.#hits.set(name, hit);
+    const attempt = () => {
+      if (this.#closed || !this.#core.accountLimits.limited(name)) { hit.finish(); return; }
+      const pending = this.#pending.get(name);
+      if (pending) { void pending.then(attempt); return; }
+      const delay = this.#wait(name, true);
+      if (delay > 0) {
+        hit.timer = setTimeout(attempt, Math.min(delay, 2 ** 31 - 1));
+        hit.timer.unref();
+        return;
+      }
+      void readAccounts().then(registry => {
+        if (this.#closed || !this.#core.accountLimits.limited(name)) { hit.finish(); return; }
+        // Registry I/O can overlap a manual or timer poll; re-read eligibility before admission.
+        if (this.#pending.has(name) || this.#wait(name, true) > 0) { attempt(); return; }
+        const account = this.#core.accountLimits.list(registry).accounts.find(a => a.name === name);
+        if (!account) { hit.finish(); return; }
+        void this.#enqueue(account, true, true).then(hit.finish, hit.finish);
+      }, hit.finish);
+    };
+    attempt();
+    return work;
+  }
+  #saveHits(): void { this.#core.store.setMeta('account-hit-polls', JSON.stringify([...this.#hitNames])); }
+  #wait(name: string, refresh: boolean): number {
+    const state = this.#schedule.get(name);
+    const floor = state?.failures ? this.#floor * 2 ** Math.min(state.failures, 2) : refresh ? this.#minimum : this.#floor;
+    return state ? Math.max(0, state.at + floor - Date.now()) : 0;
   }
   async #all(refresh: boolean): Promise<void> {
     if (this.#closed) return;
@@ -90,11 +135,7 @@ export class AccountPoller {
     if (this.#closed || !['claude-code', 'codex'].includes(account.harness) || !hit && !this.#idle(account)) return Promise.resolve();
     const pending = this.#pending.get(account.name);
     if (pending) return pending;
-    const ready = () => {
-      const state = this.#schedule.get(account.name);
-      const floor = state?.failures ? this.#floor * 2 ** Math.min(state.failures, 2) : refresh ? this.#minimum : this.#floor;
-      return !state || Date.now() - state.at >= floor;
-    };
+    const ready = () => this.#wait(account.name, refresh) === 0;
     if (!ready()) return Promise.resolve();
     const work = new Promise<void>(resolve => {
       const run = () => {
@@ -142,6 +183,10 @@ export class AccountPoller {
     }
   }
   async #read(account: Account): Promise<LimitWindow[]> {
+    if (account.harness === 'codex') {
+      const live = await this.#sessions.readAccountLimits(account.name);
+      if (live !== null) return live;
+    }
     const selection = await selectAccount(account, account.harness);
     const env = accountEnvironment(process.env, selection.accountEnv);
     for (const key of Object.keys(env)) if (key.startsWith('CLAND_') || ['ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN', 'CLAUDE_CODE_OAUTH_TOKEN'].includes(key)) delete env[key];
@@ -216,6 +261,7 @@ export class AccountPoller {
   async close(): Promise<void> {
     this.#closed = true;
     if (this.#timer) clearInterval(this.#timer);
+    for (const hit of [...this.#hits.values()]) hit.finish();
     for (const kill of this.#kills) kill();
     while (this.#queue.length) this.#queue.shift()?.();
     await Promise.all(this.#pending.values());

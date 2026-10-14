@@ -1,3 +1,4 @@
+import { AccountLimited } from '../accounts/limits.ts';
 import { prefixOf } from '../tracker/prefixes.ts';
 import { DropletExecutor } from '../executor/droplet/droplet.ts';
 // The hub's frame dispatcher: one conversation per connection, transport-agnostic. A transport hands it
@@ -112,7 +113,7 @@ const HUMAN_SESSION = 'human';
  * What a CLI call made as a session may send beside the permission table's tools: reading the hub's state. Any
  * other frame is the human's alone.
  */
-const SESSION_CLI_FRAMES: ReadonlySet<string> = new Set(['account.list', 'account.poll', 'executor.status', 'executor.reap', 'executor.prepare', 'task.migrate', 'crew.show', 'crew.set', 'artifact.list', 'hub.status', 'inbox.list', 'role.list', 'worktree.list', 'suite.start', 'suite.cancel', 'suite.queue']);
+const SESSION_CLI_FRAMES: ReadonlySet<string> = new Set(['account.clear', 'account.list', 'account.poll', 'executor.status', 'executor.reap', 'executor.prepare', 'task.migrate', 'crew.show', 'crew.set', 'artifact.list', 'hub.status', 'inbox.list', 'role.list', 'worktree.list', 'suite.start', 'suite.cancel', 'suite.queue']);
 
 /** Who a call is checked and audited as: a spoke's session, or the session a CLI call acts as. */
 type Caller = Pick<Connection, 'name' | 'sessionId' | 'role'>;
@@ -231,7 +232,7 @@ export class Dispatcher {
     });
   }
 
-  useAccountPoller(poller: AccountPoller): void { this.#accountPoller = poller; }
+  useAccountPoller(poller: AccountPoller): void { this.#accountPoller = poller; this.core.useAccountPoller(poller); }
 
   useSessions(sessions: Sessions | undefined): void {
     this.#sessions = sessions;
@@ -282,6 +283,7 @@ export class Dispatcher {
 
   /** A failed request's result: a handover note without its four sections is typed (`note-incomplete`, `missing`). */
   static #failure(id: string, err: unknown): HubFrame {
+    if (err instanceof AccountLimited) return { type: 'result', id, ok: false, error: err.message, code: err.code, account: err.account, resetsAt: err.resetsAt };
     if (err instanceof PushError) return { type: 'result', id, ok: false, error: err.message, code: err.code };
     if (err instanceof ReleaseError) return { type: 'result', id, ok: false, error: err.message, code: err.code, ...(err.files ? { files: err.files } : {}) };
     if (err instanceof SuiteAdmissionError) return { type: 'result', id, ok: false, error: err.message, code: err.code, files: err.files };
@@ -1379,6 +1381,19 @@ export class Dispatcher {
           return later(frame.type, this.#dropletReady.then(async () => { authorize(); return frame.type === 'executor.status' ? await this.#droplets!.inspect() : await this.#droplets!.reap(authorize); }).then(
             value => ({ type: 'result' as const, id: frame.id, ok: true, value }), err => Dispatcher.#failure(frame.id, err),
           ));
+        }
+        if (isClientRequest(frame) && frame.type === 'account.clear') {
+          const resumed = this.#guard.resumer(frame.type, client);
+          if (caller && caller.role !== 'coordinator') return this.#refuse(caller, frame, peer, 'account.clear', 'account clearing belongs to the Coordinator or the human');
+          const authorize = () => {
+            const now = this.#asSession(frame);
+            if (caller && (!now || now.sessionId !== caller.sessionId || now.role !== 'coordinator')) throw new ToolForbidden(now?.role ?? null, 'account.clear', 'account clearing belongs to the Coordinator or the human');
+          };
+          return later(frame.type, readAccounts().then(registry => resumed(() => {
+            authorize();
+            if (!core.accountLimits.list(registry).accounts.some(a => a.name === frame.account)) throw new Error(`unknown account "${frame.account}"`);
+            return { type: 'result', id: frame.id, ok: true, value: { account: frame.account, cleared: core.clearAccountLimit(frame.account, 'hand') } } as HubFrame;
+          }), error => resumed(() => Dispatcher.#failure(frame.id, error))));
         }
         if (isClientRequest(frame) && (frame.type === 'crew.show' || frame.type === 'crew.set')) {
           const crew = core.crew;

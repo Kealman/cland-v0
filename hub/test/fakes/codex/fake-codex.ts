@@ -304,7 +304,7 @@ async function appServer(args: string[]): Promise<number> {
     let limitsOnly = false;
     let usageBurst = false;
     const turnId = t.turnId as string;
-    let error: { message: string } | null = null;
+    let error: { message: string; codexErrorInfo?: string } | null = null;
     const record: TurnRecord = { id: turnId, status: 'inProgress', items: [] };
     (t.history ??= []).push(record);
     for (let item = t.queue.shift(); item; item = t.queue.shift()) {
@@ -343,6 +343,20 @@ async function appServer(args: string[]): Promise<number> {
         }
       }
       if (body === undefined) continue; // the clause, or text that is no cland message: nothing to answer
+      if (body.includes('hit the usage limit') || body.includes('hit a rate limit')) {
+        const quota = body.includes('hit the usage limit');
+        if (quota) {
+          const reading = rateLimits();
+          const bucket = reading.rateLimits as { primary?: { resetsAt?: number } } | undefined;
+          const limits = { rateLimits: { limitId: 'codex', primary: { usedPercent: 100, windowDurationMins: 10080, resetsAt: bucket?.primary?.resetsAt ?? Date.now() / 1000 + 3600 }, secondary: null } };
+          writeFileSync(join(process.env.CODEX_HOME ?? HOME, 'rate-limits.json'), JSON.stringify(limits));
+          toSubscribers(t.id, 'account/rateLimits/updated', limits);
+        }
+        error = { message: quota ? 'Usage limit reached' : 'Retryable rate limit', codexErrorInfo: quota ? 'usageLimitExceeded' : 'rateLimitExceeded' };
+        if (!body.includes('completed signal only')) toSubscribers(t.id, 'error', { threadId: t.id, turnId, error, willRetry: false });
+        t.queue.length = 0;
+        break;
+      }
       if (body.includes('fail this turn') || body.includes('fail recovered turn before response')) {
         error = { message: 'Upstream request failed: Endpoint is unavailable\nupstream details' };
         t.queue.length = 0;

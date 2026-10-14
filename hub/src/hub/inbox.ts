@@ -129,6 +129,9 @@ export class InboxBoard {
         if (event.message.topic === 'agents' && event.message.fromKind === 'hub' && event.message.kind === 'turn-failed') {
           this.#notify('turn-failed', event.message.text, typeof event.message.detail?.session === 'string' ? { session: event.message.detail.session } : {});
         }
+        if (event.message.topic === 'agents' && event.message.fromKind === 'hub' && event.message.kind === 'account-limited') {
+          this.#notify('account-limited', event.message.text, typeof event.message.detail?.session === 'string' ? { session: event.message.detail.session } : {});
+        }
         // a handover (#31) moves a role between two sessions: its `handover` notice in Agents (#34) says who handed
         // what to whom, once, where its two `session.role` events would make two rows
         if (event.message.topic === 'agents' && event.message.fromKind === 'hub' && event.message.kind === 'handover') {

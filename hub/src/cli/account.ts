@@ -1,12 +1,18 @@
 import { hubDiscovery, readDiscovery } from '../project.ts';
 import { askHubFrame } from './socket-client.ts';
-import type { AccountList, AccountView } from '../accounts/limits.ts';
+import { limitUntil, type AccountList, type AccountView } from '../accounts/limits.ts';
 
-export const ACCOUNT_USAGE = `  account list [--refresh] [--json]   list the user-level account names, harnesses, paths and limit windows\n`;
+export const ACCOUNT_USAGE = `  account list [--refresh] [--json]   list the user-level account names, harnesses, paths and limit windows\n  account clear <name>              lift an account's limited mark by hand\n`;
 export async function runAccount(args: string[], cwd = process.cwd()): Promise<number> {
-  if (args[0] !== 'list' || args.slice(1).some(a => a !== '--json' && a !== '--refresh')) throw new Error(`usage: cland account list [--refresh] [--json]`);
+  const clear = args[0] === 'clear' && args.length === 2 && !!args[1];
+  if (!clear && (args[0] !== 'list' || args.slice(1).some(a => a !== '--json' && a !== '--refresh'))) throw new Error(`usage: cland account list [--refresh] [--json] | clear <name>`);
   const discovery = readDiscovery(hubDiscovery(cwd));
   if (!discovery) throw new Error('no hub runs for this project — run `cland hub start`');
+  if (clear) {
+    const result = await askHubFrame(discovery, { type: 'account.clear', account: args[1]! }) as { account: string; cleared: boolean };
+    process.stdout.write(`account ${result.account}: ${result.cleared ? 'limit cleared' : 'no limited mark'}\n`);
+    return 0;
+  }
   const refresh = args.includes('--refresh');
   // Two bounded polls at a time; a large registry can require several batches.
   const count = refresh ? (await askHubFrame(discovery, { type: 'account.list' }) as AccountList).accounts.length : 0;
@@ -20,6 +26,7 @@ export async function runAccount(args: string[], cwd = process.cwd()): Promise<n
 }
 
 function limitsText(account: AccountView): string {
+  if (account.limited) return `limited · until ${limitUntil(account.limited.resetsAt)}`;
   if (account.harness === 'opencode') return 'no limit data';
   if (account.signedOut) return 'signed out';
   if (!account.at) return 'no reading yet';

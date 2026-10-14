@@ -604,11 +604,48 @@ for unpinned sessions; default entries with readings also appear in the list.
 The newest reading by `at` wins across sessions, and restart retains its
 original timestamp. `source` is `{kind: "session", session}` for these readings;
 `{kind: "poll"}` identifies an idle harness poll. Updates share the existing
-one-second usage coalescer, with no extra timer. UI subscribers receive
-`{type: "account", account: <the list view>}` at most once a second per account.
+one-second usage coalescer, with no extra timer. Reading updates send UI subscribers
+`{type: "account", account: <the list view>}` at most once a second per account;
+limited marks and their lifts publish immediately.
 Equal windows and source refresh age silently. A changed reading also writes
 one `account-limits` journal record with `account`, `harness`, `windows`, `at`
 and `source`, so the build's weekly spend can be read from the journal.
+
+A hard limit hit marks the account `limited: {since, reason, session, resetsAt}`
+in account views and `account` events. Classification uses machine-readable
+fields only: Claude Code's `StopFailure.error == "rate_limit"`, Codex's
+`error.codexErrorInfo == "usageLimitExceeded"` on `error` or a failed
+`turn/completed`, and OpenCode's `session.execution.failed.error.type ==
+"provider.quota"`. Claude `overloaded` and `server_error`, Codex
+`rateLimitExceeded`, and OpenCode `provider.rate-limit` make no mark.
+Reaching 100% in a reading alone makes no mark.
+
+Marks persist in `hub.db` meta under `account-limited`. Claude and Codex use
+the latest full window's future reset; expired cached windows leave a new
+hit held `until cleared` while the after-hit poll learns its reset; when several windows are full, the latest
+reset keeps the account blocked until all have reset. An after-hit poll can
+supply or confirm it. OpenCode has no reset: its mark says `until cleared`.
+The hub journals `account-limited` and posts one warn notice in Agents, the
+inbox and to the Coordinator, then calls `poll(account)` once under the
+polling floor below. A repeated hit while the mark holds adds neither a
+notice nor a poll. With a running Codex session the poll uses its live
+app-server's `account/rateLimits/read`, without starting another process.
+
+New launches, explicit relaunches and retained pool handoffs on that account
+are refused before process creation, whether the account was explicit or
+pinned to the role. The typed result has `code: "account-limited"`, `account`
+and `resetsAt` (ISO or null), with text naming the account and local and ISO
+reset time, or `until cleared`, and suggesting `--account`. The hub never
+fails over, rotates accounts, picks another account or moves or stops running
+sessions. Re-finding a live session after a hub restart remains allowed.
+Only the Coordinator turns a refusal into a question for the human.
+
+A timer lifts a mark at its reset, also checked at every launch. The human or
+Coordinator may run `cland account clear <name>` to lift it immediately;
+other roles receive an inline `forbidden` refusal for `account.clear`.
+Clearing is a CLI/frame operation, not an MCP tool. A lift journals
+`account-limit-lifted` with `by: "reset"` or `by: "hand"` and sends an account
+event to remove the workbench's red limited line.
 
 Idle accounts (no running session by registry name or `default:<harness>`) are
 polled at hub start and on a timer, at most once every 15 minutes. Last attempt,
@@ -617,8 +654,10 @@ completion time and failure backoff persist in `hub.db` meta under
 Opening the sessions panel sends `account.poll` once per opening;
 `cland account list --refresh` sends the same frame. These explicit refreshes
 and the `poll(account)` limit-hit entry point use a five-minute minimum and
-return the cached reading when it is younger. Limit-hit polling may read a
-running account; other triggers skip it. OpenCode is never polled.
+return the cached reading when it is younger. An after-hit read waits for
+that minimum or failure backoff to expire; its pending request survives a
+hub restart, and duplicate hits share the one read. Limit-hit polling may
+read a running account; other triggers skip it. OpenCode is never polled.
 
 The hub runs `claude -p "/usage" --output-format stream-json --verbose` with
 `CLAUDE_CONFIG_DIR`, or a short-lived `codex app-server` with `CODEX_HOME` over

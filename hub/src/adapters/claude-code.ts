@@ -147,7 +147,7 @@ export function interpret(event: string, payload: Record<string, unknown>): Inte
       return { state: 'busy', ...(confirms.length ? { confirms } : {}) };
     }
     case 'turn-end':
-      return { state: 'idle', ...(payload.hook_event_name === 'StopFailure' || payload.error ? { turnError: turnError(payload.error_details ?? payload.error) } : {}) };
+      return { state: 'idle', ...(payload.hook_event_name === 'StopFailure' && payload.error === 'rate_limit' ? { limitHit: { reason: 'rate_limit' } } : {}), ...(payload.hook_event_name === 'StopFailure' || payload.error ? { turnError: turnError(payload.error_details ?? payload.error) } : {}) };
     case 'mod-turn-complete': {
       const usage = typeof payload.usage === 'object' && payload.usage !== null ? (payload.usage as Record<string, unknown>) : undefined;
       return { state: 'idle', ...(usage ? { usage } : {}), ...(usage && typeof usage.model === 'string' ? { model: usage.model } : {}) };
@@ -599,7 +599,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     }
   }
 
-  async resume(p: HarnessProcess, options: { relaunch?: boolean; policy?: LaunchPolicy; resumed?: Resumed } = {}): Promise<ResumeResult> {
+  async resume(p: HarnessProcess, options: { relaunch?: boolean; authorize?: () => void; policy?: LaunchPolicy; resumed?: Resumed } = {}): Promise<ResumeResult> {
     return continueWith((function* (this: ClaudeCodeAdapter): Generator<Promise<unknown>, ResumeResult, unknown> {
       const resumed = options.resumed ?? untimed;
       p.accountEnv ??= { CLAUDE_CONFIG_DIR: this.#configDir };
@@ -642,7 +642,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
       if (!options.relaunch)
         return { found: false, reason: entry ? 'listed by claude agents, but its process is gone' : 'not listed by claude agents --json' };
       yield* wait(this.stop(p, options.resumed));
-      const process = yield* wait(this.#launch({ account: p.account ?? null, accountEnv: p.accountEnv, name: p.name, harness: p.harness, role: p.role, model: p.model, cwd: p.cwd, sessionId: p.sessionId, harnessSessionId: p.harnessSessionId, item: p.item ?? null }, true, p.effort ?? null, resumed, undefined, () => {}, options.policy?.permissions ?? null));
+      const process = yield* wait(this.#launch({ account: p.account ?? null, accountEnv: p.accountEnv, name: p.name, harness: p.harness, role: p.role, model: p.model, cwd: p.cwd, sessionId: p.sessionId, harnessSessionId: p.harnessSessionId, item: p.item ?? null }, true, p.effort ?? null, resumed, undefined, options.authorize ?? (() => {}), options.policy?.permissions ?? null));
       return { found: true, process, state: 'unknown' };
     }).call(this), options.resumed ?? untimed);
   }

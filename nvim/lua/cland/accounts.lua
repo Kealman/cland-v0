@@ -75,8 +75,11 @@ local function account_line(c, account, now)
     end
     put(text, group)
   end
-  append(' ' .. account.name, stale and 'ClandDim' or 'ClandBold')
-  if account.signedOut then
+  append(' ' .. account.name, account.limited and 'ClandRed' or stale and 'ClandDim' or 'ClandBold')
+  if account.limited then
+    append('✗ limited', 'ClandRed', '  ')
+    append(account.limited.resetsAt and ('↻' .. reset_time(account.limited.resetsAt, now)) or 'until cleared', 'ClandRed', ' · ')
+  elseif account.signedOut then
     append('signed out', 'ClandDim', '  ')
   elseif account.harness == 'opencode' then
     append('no limit data', 'ClandDim', '  ')

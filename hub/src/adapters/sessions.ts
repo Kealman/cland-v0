@@ -1,4 +1,4 @@
-import { codexWindows, type AccountReading } from '../accounts/limits.ts';
+import { AccountLimited, codexWindows, type AccountReading } from '../accounts/limits.ts';
 import { artifactEntry } from '../hub/artifact-folder.ts';
 // The hub's side of the adapters: launching sessions, the process table, each session's state, and the
 // delivery pipeline's last stage. Transport-free; `./requests.ts` puts frames on it.
@@ -99,6 +99,7 @@ export class Sessions {
   readonly #unhello: () => void;
   /** While the hub vacates a dead session's role: the process table keeps the role a relaunch takes back. */
   #vacating = false;
+  readonly #earlyLimitHits = new Map<string, { reason: string; resetsAt?: string }>();
   readonly #pendingLimits = new Map<string, AccountReading>();
   readonly #limitsPublishing = new Set<string>();
   readonly #limitsPublishedAt = new Map<string, number>();
@@ -158,6 +159,7 @@ export class Sessions {
         authorize();
         const current = this.#table.bySessionId(candidate.sessionId);
         if (!current || !this.retainedPool(role) || !this.#reuseEligible(current, role, cwd)) throw new Error('idle pool member changed during admission; retry');
+        this.#core.checkAccountLimit(current.account ?? `default:${current.harness}`);
         this.#table.put({ ...current, item: request.item ?? null });
         // Reserve the handoff even when the caller sends the review request separately.
         if (!brief) this.#core.store.setMeta(`pool-handoff:${current.sessionId}`, request.item!);
@@ -185,6 +187,7 @@ export class Sessions {
     });
     const handoffAuthorized = () => {
       authorize();
+      this.#core.checkAccountLimit(current.account ?? `default:${current.harness}`);
       if (!this.#implementerPool(role) || this.retainedPool(role) !== (resumeConversation !== undefined)) throw new Error('crew policy changed during pool handoff; retry');
     };
     try {
@@ -380,6 +383,7 @@ export class Sessions {
       durableLaunchRecovery: true,
       log: this.#log,
       adapterState: { read: key => this.#core.store.meta(key), write: (key, value) => this.#core.store.setMeta(key, value) },
+      limitHit: (sessionId, hit) => this.#limitHit(sessionId, hit),
       usageChanged: (sessionId) => this.#usageChanged(sessionId),
       signal: (sessionId, signal) => this.#signal(sessionId, signal, false),
       turnFailed: (sessionId, error, messages) => this.#turnFailed(sessionId, error, messages),
@@ -455,6 +459,32 @@ export class Sessions {
       attach: p.status === 'running' && adapter ? adapter.attachCommand(p) : null,
       ...(usage ? { usage } : {}),
     };
+  }
+
+  #limitHit(sessionId: string, hit: { reason: string; resetsAt?: string }): void {
+    if (this.#closed) return;
+    const p = this.#table.bySessionId(sessionId);
+    if (!p) {
+      if (this.#launching.size) this.#earlyLimitHits.set(sessionId, hit);
+      return;
+    }
+    if (p.status !== 'running') return;
+    const name = p.account ?? `default:${p.harness}`;
+    const pending = this.#pendingLimits.get(name);
+    // Settle a queued reading first: the durable store selects the newest across sessions and polls.
+    if (pending) {
+      this.#pendingLimits.delete(name);
+      void this.#core.publishAccountLimits(pending).catch(() => {});
+    }
+    this.#core.limitAccount(name, p.harness, p.name, hit);
+  }
+
+  async readAccountLimits(name: string): Promise<AccountReading['windows'] | null> {
+    const p = this.#table.running().find(p => p.harness === 'codex' && (p.account ?? `default:${p.harness}`) === name);
+    if (!p) return null;
+    const adapter = this.adapter(p.harness);
+    if (!adapter.readAccountLimits) throw new Error('live harness cannot read account limits');
+    return adapter.readAccountLimits(p);
   }
 
   #usageChanged(sessionId: string): void {
@@ -728,6 +758,7 @@ export class Sessions {
       return resumed(() => this.#launchNew(request, role, resumed, authorize));
     if (this.#core.roles?.fresh) await this.#core.roles.fresh(resumed);
     const effective = await this.#accountRequest(request, role, resumed);
+    resumed(() => this.#core.checkAccountLimit(effective.resolvedAccount.account ?? `default:${effective.harness}`));
     const reused = await resumed(() => this.#reuse(effective, role, resumed, authorize));
     return resumed(() => reused ?? this.#launchNew(effective, role, resumed, authorize));
   }
@@ -743,6 +774,9 @@ export class Sessions {
     if (this.#launching.has(request.name)) throw new Error(`session "${request.name}" is being launched`);
     if (this.#crewAdmissions.has(request.name)) throw new Error(`session "${request.name}" is reserved for a pool handoff`);
     const existingIds = this.#knownLaunchIds();
+    const defaults = role ? this.#core.roles?.get().get(role)?.launch : null;
+    const account = 'resolvedAccount' in request ? request.resolvedAccount.account : request.account !== undefined ? request.account : !request.harness || request.harness === defaults?.harness ? defaults?.account : null;
+    this.#core.checkAccountLimit(account ?? `default:${request.harness ?? defaults?.harness ?? DEFAULT_HARNESS}`);
     // Ticket every named role before I/O: even a nonexclusive cached definition may become exclusive at fresh.
     this.#checkCrew(request.name, role);
     const admission = role !== null ? this.#core.admitRole(request.name, role) : null;
@@ -794,6 +828,7 @@ export class Sessions {
           if (request.role == null && this.#core.store.roleOf(request.name) !== role) throw new Error(`session "${request.name}" changed role while launching; retry the launch`);
           const reserved = this.#core.nameReservation(request.name);
           if (reserved) throw new Error(reserved);
+          this.#core.checkAccountLimit(selectedRequest.resolvedAccount.account ?? `default:${selectedRequest.harness}`);
           if (!info?.isDirectory()) throw new InvalidLaunchCwd(`launch cwd "${cwd}" is not an accessible directory`);
           reservation = role !== null && this.#core.roles ? this.#core.reserveLaunchRole(request.name, role) : null;
           if (process.env.CLAND_TEST_CRASH_AT === 'launch-reserved') process.kill(process.pid, 'SIGKILL');
@@ -856,7 +891,7 @@ export class Sessions {
     let accepted = false;
     try {
       if (brief) this.#core.recordLaunchBrief(brief, launchToken, clause !== null && adapter.clauseAtSpawn === true);
-      owned = await adapter.spawn({ ...selected, name: request.name, ...(retainedId ? { sessionId: retainedId } : {}), launchToken, role, model, cwd, ...(resumeConversation ? { resumeConversation } : {}), ...(effort ? { effort } : {}), ...(clause !== null ? { clause } : {}), ...(brief && clause !== null ? { brief } : {}), ...(item !== null ? { item } : {}), ...policy }, resumed, authorize);
+      owned = await adapter.spawn({ ...selected, name: request.name, ...(retainedId ? { sessionId: retainedId } : {}), launchToken, role, model, cwd, ...(resumeConversation ? { resumeConversation } : {}), ...(effort ? { effort } : {}), ...(clause !== null ? { clause } : {}), ...(brief && clause !== null ? { brief } : {}), ...(item !== null ? { item } : {}), ...policy }, resumed, () => { authorize(); this.#core.checkAccountLimit(selected.account ?? `default:${harness}`); });
       resumed(() => {
         if (resumeConversation && owned!.harnessSessionId !== resumeConversation) throw new Error(`harness did not retain conversation ${resumeConversation}`);
         if (retainedId && owned!.sessionId !== retainedId) throw new Error(`fresh resume did not retain cland identity ${retainedId}`);
@@ -888,6 +923,9 @@ export class Sessions {
         this.#lastPush.delete(p.sessionId);
         this.#log({ event: 'session-launched', account: p.account ?? null, session: p.name, harness: p.harness, pid: p.pid, harnessId: p.harnessId, sessionId: p.sessionId, harnessSessionId: p.harnessSessionId, model: p.model, effort, role: p.role, cwd: p.cwd, ...(p.item ? { item: p.item } : {}), early: this.#launching.get(p.name)?.length ?? 0 });
         adapter.watch(p);
+        const hit = this.#earlyLimitHits.get(p.sessionId);
+        this.#earlyLimitHits.delete(p.sessionId);
+        if (hit) this.#limitHit(p.sessionId, hit);
         const early = this.#launching.get(request.name) ?? [];
         this.#launching.delete(request.name);
         for (const connect of this.#earlyBridges.get(p.name) ?? []) connect();
@@ -945,6 +983,8 @@ export class Sessions {
         this.#earlyBridges.delete(request.name);
         if (!accepted) this.#firstHello.delete(launchToken);
         this.#launching.delete(request.name);
+        for (const id of identity.sessionIds) this.#earlyLimitHits.delete(id);
+        if (!this.#launching.size) this.#earlyLimitHits.clear();
         this.#launchIdentities.delete(launchToken);
         releaseAdmission();
       });
@@ -1063,6 +1103,7 @@ export class Sessions {
   async #resume(name: string, relaunch: boolean, resumed: Resumed): Promise<SessionResumeAnswer> {
     let p = this.#process(name);
     const adapter = this.adapter(p.harness);
+    if (relaunch) this.#core.checkAccountLimit(p.account ?? `default:${p.harness}`);
     const desiredRole = p.role;
     if (relaunch && !p.harnessSessionId) return { found: false, reason: 'no harness conversation id recorded', process: this.view(p), ...this.#resumeWork(p), fresh: { brief: p.launchBrief ?? null } };
     let reservation: { previous: string | null; previousSessionId: string | null } | null = null;
@@ -1086,14 +1127,16 @@ export class Sessions {
         this.#log({ event: 'session-stopped', session: row().name, harness: p.harness, relaunching: true });
         p = row();
         // The adapter's synchronous prefix belongs to this stretch, up to its next await.
-        return adapter.resume(p, { relaunch, resumed, policy: this.#launchPolicy(p.role) });
+        this.#core.checkAccountLimit(p.account ?? `default:${p.harness}`);
+        return adapter.resume(p, { relaunch, resumed, authorize: () => { if (relaunch) this.#core.checkAccountLimit(p.account ?? `default:${p.harness}`); }, policy: this.#launchPolicy(p.role) });
       });
     } else {
-      resuming = adapter.resume(p, { relaunch, resumed, policy: this.#launchPolicy(p.role) });
+      resuming = adapter.resume(p, { relaunch, resumed, authorize: () => { if (relaunch) this.#core.checkAccountLimit(p.account ?? `default:${p.harness}`); }, policy: this.#launchPolicy(p.role) });
     }
     let r: ResumeResult;
     try { r = await resuming; }
     catch (cause) {
+      if (cause instanceof AccountLimited) throw cause;
       if (cause instanceof LaunchRecoveryPending) {
         const entry = resumed(() => {
           const child = cause.files.children[0];
@@ -1248,6 +1291,7 @@ export class Sessions {
       this.#queueLimits(p, meaning.rateLimits.windows, meaning.rateLimits.at ?? new Date(frame.at ?? Date.now()).toISOString());
       this.#usageChanged(p.sessionId);
     }
+    if (meaning.limitHit) this.#limitHit(p.sessionId, meaning.limitHit);
     if (meaning.turnError) {
       const error = meaning.turnError;
       if (meaning.failureAudience !== 'senders') this.#turnFailed(p.sessionId, error, []);
@@ -1463,6 +1507,7 @@ export class Sessions {
 
   close(): void {
     this.#closed = true;
+    this.#earlyLimitHits.clear();
     if (this.#archiveTimer) clearTimeout(this.#archiveTimer);
     if (this.#archiveTick) clearImmediate(this.#archiveTick);
     this.#untracker?.();

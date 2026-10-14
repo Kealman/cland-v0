@@ -1,4 +1,5 @@
-import { AccountLimits, type AccountReading } from '../accounts/limits.ts';
+import type { AccountPoller } from '../accounts/poller.ts';
+import { AccountLimits, AccountLimited, fullWindowReset, limitUntil, type AccountReading } from '../accounts/limits.ts';
 import { readAccounts } from '../accounts/registry.ts';
 import type { Ladder } from '../tracker/kinds.ts';
 import { parseItemReference } from '../tracker/prefixes.ts';
@@ -242,6 +243,9 @@ export class HubCore {
   readonly #artifactStates = new Map<string, Artifact['status']>();
   readonly #processFacts = new Map<string, Pick<HarnessProcessView, 'status' | 'role' | 'harness' | 'model' | 'account'>>();
   readonly accountLimits: AccountLimits;
+  #accountPoller: AccountPoller | undefined;
+  #limitTimer: NodeJS.Timeout | undefined;
+  useAccountPoller(poller: AccountPoller): void { this.#accountPoller = poller; this.#scheduleLimits(); }
   readonly #usageRecords = new Map<string, { usage: Pick<SessionUsage, 'total' | 'rateLimits' | 'rateLimitsByLimitId'>; final: boolean }>();
   #publishedPresence = '[]';
   #presenceImmediate: NodeJS.Immediate | null = null;
@@ -350,6 +354,7 @@ export class HubCore {
     if (this.#journalImmediate) clearImmediate(this.#journalImmediate);
     this.#journalImmediate = null;
     this.#journalRows = [];
+    clearTimeout(this.#limitTimer);
     this.inbox.close();
   }
 
@@ -747,12 +752,64 @@ export class HubCore {
     });
   }
 
-  async publishAccountLimits(reading: AccountReading): Promise<void> {
-    if (!this.accountLimits.update(reading)) return;
-    this.#log({ event: 'account-limits', ...reading });
+  async #publishAccount(name: string, harness: string): Promise<void> {
     const registry = await readAccounts();
-    const account = registry.accounts.find(a => a.name === reading.account) ?? { name: reading.account, harness: reading.harness, path: null, variable: reading.harness === 'codex' ? 'CODEX_HOME' : 'CLAUDE_CONFIG_DIR' };
+    const account = registry.accounts.find(a => a.name === name) ?? { name, harness, path: null, variable: harness === 'codex' ? 'CODEX_HOME' : harness === 'opencode' ? 'XDG_DATA_HOME' : 'CLAUDE_CONFIG_DIR' };
     if (!this.#closed) this.#emit({ type: 'account', account: this.accountLimits.view(account) });
+  }
+
+  #scheduleLimits(): void {
+    clearTimeout(this.#limitTimer);
+    if (this.#closed) return;
+    const resets = this.accountLimits.marks().flatMap(([, m]) => m.resetsAt ? [Date.parse(m.resetsAt)] : []);
+    if (!resets.length) return;
+    this.#limitTimer = setTimeout(() => {
+      for (const [name, mark] of this.accountLimits.marks()) if (mark.resetsAt && Date.parse(mark.resetsAt) <= Date.now()) this.clearAccountLimit(name, 'reset');
+      this.#scheduleLimits();
+    }, Math.min(2 ** 31 - 1, Math.max(0, Math.min(...resets) - Date.now())));
+    this.#limitTimer.unref();
+  }
+
+  checkAccountLimit(name: string): void {
+    const mark = this.accountLimits.limited(name);
+    if (mark?.resetsAt && Date.parse(mark.resetsAt) <= Date.now()) this.clearAccountLimit(name, 'reset');
+    else if (mark) throw new AccountLimited(name, mark.resetsAt);
+  }
+
+  clearAccountLimit(name: string, by: 'hand' | 'reset'): boolean {
+    const mark = this.accountLimits.limited(name);
+    if (!mark || !this.accountLimits.clear(name)) return false;
+    this.#log({ event: 'account-limit-lifted', account: name, by });
+    void this.#publishAccount(name, name.startsWith('default:') ? name.slice(8) : '').catch(() => {});
+    this.#scheduleLimits();
+    return true;
+  }
+
+  limitAccount(name: string, harness: string, session: string, hit: { reason: string; resetsAt?: string }): void {
+    const held = this.accountLimits.limited(name);
+    if (held?.resetsAt && Date.parse(held.resetsAt) <= Date.now()) this.clearAccountLimit(name, 'reset');
+    if (this.accountLimits.limited(name)) return;
+    const reset = hit.resetsAt && Date.parse(hit.resetsAt) > Date.now() ? new Date(hit.resetsAt).toISOString() : null;
+    const windows = this.accountLimits.view({ name, harness, path: null, variable: '' }).windows;
+    const mark = { since: new Date().toISOString(), reason: hit.reason, session, resetsAt: harness === 'opencode' ? null : fullWindowReset(windows) ?? reset };
+    this.accountLimits.mark(name, mark);
+    this.#log({ event: 'account-limited', account: name, ...mark });
+    void this.#publishAccount(name, harness).catch(() => {});
+    this.#scheduleLimits();
+    void this.#accountPoller?.poll(name).catch(() => {});
+  }
+
+  async publishAccountLimits(reading: AccountReading): Promise<void> {
+    const changed = this.accountLimits.update(reading);
+    const mark = this.accountLimits.limited(reading.account);
+    const reset = fullWindowReset(this.accountLimits.view({ name: reading.account, harness: reading.harness, path: null, variable: '' }).windows);
+    const resetChanged = !!mark && !!reset && reset !== mark.resetsAt;
+    if (resetChanged) {
+      this.accountLimits.mark(reading.account, { ...mark!, resetsAt: reset });
+      this.#scheduleLimits();
+    }
+    if (changed) this.#log({ event: 'account-limits', ...reading });
+    if (changed || resetChanged) await this.#publishAccount(reading.account, reading.harness);
   }
 
   publishUsage(session: string, sessionId: string, usage: SessionUsage): void {

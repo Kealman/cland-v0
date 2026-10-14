@@ -17,7 +17,7 @@ import { turnError } from '../turn-error.ts';
 
 export type Usage = { model?: string; inputTokens: number; outputTokens: number; reasoningTokens: number; cacheReadTokens: number; cacheWriteTokens: number; cost: number };
 
-export type Change = { state?: SessionState; approvalCommand?: string; usage?: Usage; model?: string; ended?: true; turnError?: string };
+export type Change = { limitHit?: { reason: string }; state?: SessionState; approvalCommand?: string; usage?: Usage; model?: string; ended?: true; turnError?: string };
 
 type PendingPermission = { id: string; approvalCommand: string | undefined };
 
@@ -86,7 +86,7 @@ export class SessionTracker {
         this.running = false;
         this.permissions.clear();
         this.forms.clear();
-        return { ...this.#emit(), ended: true, ...(e.type === 'session.execution.failed' ? { turnError: turnError(d.error) } : {}) };
+        return { ...this.#emit(), ended: true, ...(e.type === 'session.execution.failed' ? { turnError: turnError(d.error), ...(typeof d.error === 'object' && d.error !== null && (d.error as Record<string, unknown>).type === 'provider.quota' ? { limitHit: { reason: 'provider.quota' } } : {}) } : {}) };
       case 'permission.asked': {
         const id = str(d.id);
         if (id) this.#permission({ ...d, id });

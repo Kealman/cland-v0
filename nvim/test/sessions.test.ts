@@ -300,3 +300,44 @@ test('source windows keep severity, local resets and stale age, wrap at 30 colum
   assert.ok(lines.some(line => /^   wk 3%/.test(line.text)), 'whole windows wrap to indented continuation lines');
   assert.ok(lines.every(line => !line.text.includes('…')), 'wrapping retains all source text');
 });
+
+test('hard limits show red account names and reset or until-cleared text; clearing removes the mark by push', { skip }, async t => {
+  const root = await tempProject(t);
+  const config = join(root, 'config');
+  const home = join(root, 'codex-a');
+  await mkdir(join(config, 'cland'), { recursive: true });
+  await mkdir(home);
+  await mkdir(join(root, 'oc-b'));
+  await writeFile(join(config, 'cland', 'accounts.toml'), `[accounts.codex-a]\nharness = "codex"\nhome = ${JSON.stringify(home)}\n[accounts.oc-b]\nharness = "opencode"\ndata_home = ${JSON.stringify(join(root, 'oc-b'))}\n`);
+  const fake = await fakeCodex(t);
+  const ocHome = await fakeHome(t, 'fake-oc-limited-');
+  const reset = new Date(Date.now() + 120_000).toISOString();
+  await writeFile(join(home, 'rate-limits.json'), JSON.stringify({ rateLimits: { primary: { usedPercent: 0, windowDurationMins: 10080, resetsAt: Date.parse(reset) / 1000 }, secondary: null } }));
+  const env = { ...fake.env, XDG_CONFIG_HOME: config, FAKE_OPENCODE_HOME: ocHome, PATH: `${FAKE_CODEX_DIR}:${FAKE_OPENCODE_DIR}:${process.env.PATH ?? ''}` };
+  const { discovery } = await startDaemon(t, root, env);
+  const ui = await connectUi(t, discovery);
+  for (const [name, account, role] of [['codex', 'codex-a', 'reviewer'], ['oc', 'oc-b', 'qa']]) {
+    const r = await ui.request({ type: 'session.launch', name, account, role }, 30_000);
+    assert.equal(r.ok, true, r.error);
+  }
+  const c = await startClient(t, bin, root, env);
+  await waitInitialSnapshots(c);
+  await c.lua("vim.api.nvim_set_current_win(require('cland.layout').win.right); vim.api.nvim_win_set_width(0, 80)");
+  await c.waitScreen(s => s.includes('codex-a') && s.includes('oc-b'), 'accounts listed');
+  // A mark and its removal must reach the panel through events alone.
+  await c.lua(`local c=require('cland').client; local request=c.request
+    c.request=function(self,frame,...) assert(frame.type~='account.list','unexpected account re-read'); return request(self,frame,...) end`);
+  for (const name of ['codex', 'oc']) assert.equal((await ui.request({ type: 'topic.send', topic: 'general', to: [name], text: `@${name} hit the usage limit` })).ok, true);
+  const screen = await c.waitScreen(s => s.includes(`codex-a  ✗ limited · ↻${clock(reset)}`) && s.includes('oc-b  ✗ limited · until cleared'), 'limited account lines');
+  assert.match(screen, /limited/);
+  const red = await highlights(c);
+  for (const name of ['codex-a', 'oc-b']) assert.ok(red.some(m => m.text.includes(name) && m.group === 'ClandRed'));
+  assert.ok(red.some(m => m.text.includes('until cleared') && m.group === 'ClandRed'));
+  for (const account of ['codex-a', 'oc-b']) assert.equal((await ui.request({ type: 'account.clear', account })).ok, true);
+  await c.waitScreen(s => !s.includes('✗ limited') && s.includes('oc-b  no limit data'), 'cleared account event');
+  const cleared = await highlights(c);
+  for (const name of ['codex-a', 'oc-b']) {
+    assert.ok(cleared.some(m => m.text.includes(name) && m.group === 'ClandBold'));
+    assert.ok(!cleared.some(m => m.text.includes(name) && m.group === 'ClandRed'));
+  }
+});

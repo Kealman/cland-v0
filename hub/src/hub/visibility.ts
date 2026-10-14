@@ -62,6 +62,7 @@ export function warningSeverity(surface: Surface, r: Row): 'warn' | undefined {
     );
     if (messageVerdict(r) === 'not clear' || eventWarning) return 'warn';
   }
+  if ((surface === 'inbox' || surface === 'messages') && r.kind === 'account-limited') return 'warn';
   if (surface === 'inbox' && (r.kind === 'executor-fallback' || r.kind === 'death' || (r.kind === 'verdict' && r.result === 'not clear'))) return 'warn';
 }
 

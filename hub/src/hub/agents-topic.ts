@@ -12,13 +12,14 @@
 // journal closes that gap: an event that makes a notice is journalled with the notice's id (`agentsNotice`), and at
 // the next start `replayAgentsRecord` records every journalled notice after the last one recorded (the store's
 // checkpoint, which retention never prunes), under that id (once: `noticeInTopic` skips an id it already holds).
+import { limitUntil } from '../accounts/limits.ts';
 import { randomUUID } from 'node:crypto';
 import { ROLE_LABELS, withRole } from '../names.ts';
 import type { LogEntry, LogFn } from '../log.ts';
 import { AGENTS, AGENTS_JOURNAL_CHECKPOINT, type HubCore, type TopicNotice } from './core.ts';
 
 /** The kinds of the lifecycle notices this module records (the handover, mute, unmute and refusal kinds are posted directly). */
-export const LIFECYCLE_KINDS = ['session-start', 'session-stop', 'session-death', 'spoke-joined', 'turn-failed', 'claude-signed-out', 'redelivered', 'role-assign', 'role-revoke', 'claim', 'release', 'merge', 'worktree', 'handover', 'mute', 'unmute', 'refusal', 'ready-paused', 'plan'] as const;
+export const LIFECYCLE_KINDS = ['session-start', 'session-stop', 'session-death', 'spoke-joined', 'turn-failed', 'claude-signed-out', 'account-limited', 'redelivered', 'role-assign', 'role-revoke', 'claim', 'release', 'merge', 'worktree', 'handover', 'mute', 'unmute', 'refusal', 'ready-paused', 'plan'] as const;
 
 const str = (v: unknown): string | null => (typeof v === 'string' && v !== '' ? v : null);
 const roleName = (role: string | null): string => (role ? (ROLE_LABELS[role] ?? role) : 'no role');
@@ -43,6 +44,8 @@ export function lifecycleNotice(entry: LogEntry, label: (name: string) => string
       return { kind: 'refusal', text: `${String(entry.file)}: config refused: ${String(entry.error)}; keeping the defaults`, detail: { file: entry.file } };
     case 'task-ready-paused':
       return { kind: 'ready-paused', text: `${String(entry.id)}: ready check paused after ${String(entry.attempts)} failed attempts: ${String(entry.error)}. The next item or branch event retries it.`, detail: { item: entry.id, error: entry.error, attempts: entry.attempts } };
+    case 'account-limited':
+      return { kind: 'account-limited', to: ['coordinator'], text: `account ${String(entry.account)} hit its limit (${String(entry.reason)}); launches on it are refused until ${limitUntil(str(entry.resetsAt))}`, detail: { account: entry.account, reason: entry.reason, resetsAt: entry.resetsAt ?? null, session: entry.session } };
     case 'claude-signed-out':
       return { kind: 'claude-signed-out', text: `Claude${entry.account ? ` account ${String(entry.account)}` : ''} config directory ${String(entry.configDir)} is signed out. Sign in with ${String(entry.login)}. Polling is paused until a pushed success or a successful explicit launch.`, detail: { configDir: entry.configDir, account: entry.account ?? null } };
     case 'turn-failed':
@@ -145,7 +148,7 @@ export function agentsRecord(): { tap: (log: LogFn) => LogFn; attach: (core: Hub
     // The domain write finishes before the record is written, including startup index transactions.
     queueMicrotask(() => {
       if (target.store.message(notice.id as string) !== null) return;
-      try { target.noticeInTopic(AGENTS.id, notice); }
+      try { if (notice.kind === 'account-limited') target.noticeTo(AGENTS.id, notice); else target.noticeInTopic(AGENTS.id, notice); }
       catch (err) { log({ event: 'agents-record-failed', kind: notice.kind, error: err instanceof Error ? err.message : String(err) }); }
     });
   };
@@ -201,7 +204,8 @@ export function replayAgentsRecord(core: HubCore, records: ReadonlyArray<Record<
     const notice = lifecycleNotice(r as LogEntry, (name) => core.label(name));
     if (!notice) continue;
     try {
-      core.noticeInTopic(AGENTS.id, { ...notice, id: r.agentsNotice as string });
+      const replay = { ...notice, id: r.agentsNotice as string };
+      if (notice.kind === 'account-limited') core.noticeTo(AGENTS.id, replay); else core.noticeInTopic(AGENTS.id, replay);
       replayed++;
     } catch (err) {
       log({ event: 'agents-record-failed', kind: notice.kind, error: err instanceof Error ? err.message : String(err) });

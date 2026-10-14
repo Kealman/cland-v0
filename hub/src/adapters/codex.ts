@@ -37,7 +37,7 @@ import type { Message, SessionState, SessionUsage, TopicRef } from '../protocol.
 import { codexCounts } from './usage.ts';
 import { accountPrefix } from '../accounts/registry.ts';
 import { VERSION } from '../version.ts';
-import { mergeLimits } from '../accounts/limits.ts';
+import { mergeLimits, codexWindows, fullWindowReset, type LimitWindow } from '../accounts/limits.ts';
 import { envelope, envelopeIds, InjectUncertain, type AdapterHost, type Capabilities, type HarnessAdapter, type HarnessProcess, type Interpretation, type SubagentLaunch, type LaunchPolicy, type ResumeResult, type SpawnRequest } from './contract.ts';
 import { AppServerClient, RpcError, RpcNoAnswer, type ServerRequest } from './codex/app-server.ts';
 import { processAlive } from './processes.ts';
@@ -476,6 +476,9 @@ export class CodexAdapter implements HarnessAdapter {
           }
           return;
         }
+        case 'error':
+          if (mine(params)) this.#limitError(live, params.error);
+          return;
         case 'turn/completed': {
           if (!mine(params)) return;
           for (const [id, subagent] of live.legacySubagents ?? []) if (!live.activityAgents?.has(id)) this.#subagent(live, subagent);
@@ -483,6 +486,7 @@ export class CodexAdapter implements HarnessAdapter {
           live.activityAgents?.clear();
           live.subagentItems?.clear();
           const turn = params.turn as { id?: string; status?: string; error?: unknown } | undefined;
+          const limited = this.#limitError(live, turn?.error);
           const key = `${live.p.sessionId}:${turn?.id ?? live.turnId}`;
           const messages = [...(this.#turnInputs.get(key) ?? [])];
           this.#turnInputs.delete(key);
@@ -498,7 +502,7 @@ export class CodexAdapter implements HarnessAdapter {
           const owed = this.#steers.get(key);
           this.#steers.delete(key);
           if (owed?.size && !error && turn?.id) void this.#redeliver(live, turn.id, owed);
-          void this.#readRateLimits(live);
+          if (!limited) void this.#readRateLimits(live);
           return;
         }
         case 'thread/tokenUsage/updated':
@@ -576,6 +580,24 @@ export class CodexAdapter implements HarnessAdapter {
     }
     live.rateLimitsAt = new Date().toISOString();
     this.#host.usageChanged?.(live.p.sessionId);
+  }
+
+  #limitError(live: Live, error: unknown): boolean {
+    if (!error || typeof error !== 'object' || (error as Record<string, unknown>).codexErrorInfo !== 'usageLimitExceeded') return false;
+    const reset = fullWindowReset(codexWindows(live.rateLimits, live.rateLimitsByLimitId));
+    this.#host.limitHit?.(live.p.sessionId, { reason: 'usageLimitExceeded', ...(reset ? { resetsAt: reset } : {}) });
+    return true;
+  }
+
+  async readAccountLimits(p: HarnessProcess): Promise<LimitWindow[]> {
+    const live = this.#live.get(p.sessionId);
+    if (!live?.client) throw new Error('live app-server disconnected');
+    const r = await live.client.request<{ rateLimits?: Record<string, unknown>; rateLimitsByLimitId?: Record<string, unknown> }>('account/rateLimits/read', {}, 15_000);
+    live.rateLimits = r.rateLimits ?? null;
+    if (r.rateLimitsByLimitId) live.rateLimitsByLimitId = r.rateLimitsByLimitId; else delete live.rateLimitsByLimitId;
+    live.rateLimitsAt = new Date().toISOString();
+    this.#host.usageChanged?.(p.sessionId);
+    return codexWindows(live.rateLimits, live.rateLimitsByLimitId);
   }
 
   async #readRateLimits(live: Live): Promise<void> {
@@ -1002,7 +1024,7 @@ export class CodexAdapter implements HarnessAdapter {
     }
   }
 
-  async resume(p: HarnessProcess, options: { relaunch?: boolean; policy?: LaunchPolicy; resumed?: Resumed } = {}): Promise<ResumeResult> {
+  async resume(p: HarnessProcess, options: { relaunch?: boolean; authorize?: () => void; policy?: LaunchPolicy; resumed?: Resumed } = {}): Promise<ResumeResult> {
     return continueWith((function* (this: CodexAdapter): Generator<Promise<unknown>, ResumeResult, unknown> {
       const resumed = options.resumed ?? untimed;
       this.#recoveries.assertAvailable(p.name, p.sessionId);
@@ -1042,7 +1064,7 @@ export class CodexAdapter implements HarnessAdapter {
       try {
         yield* wait(this.#checkVersion(p.cwd, p.accountEnv, resumed));
         const policy = yield* wait(this.#threadPolicy(p.cwd, options.policy ?? {}, files, resumed));
-        ({ pid, client } = yield* wait(this.#startServer(p, socket, policy.overrides, files, resumed)));
+        ({ pid, client } = yield* wait(this.#startServer(p, socket, policy.overrides, files, resumed, undefined, options.authorize)));
         this.#attach(live, client);
         const r = yield* wait(this.#subscribe(live, client, { cwd: p.cwd, ...(p.model ? { model: p.model } : {}), ...policy.thread }, resumed));
         if (this.#snapshotIsCurrent(live, r)) this.#updateState(live, r.state);

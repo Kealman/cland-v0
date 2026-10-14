@@ -462,13 +462,15 @@ async function runSession(id: string): Promise<number> {
       return /^(?:@\S+\s+)*(?:worktree\s+\S+|cland\s+.+)$/.test(text)
         || /^rename to \S+$/.test(text)
         || text.includes('fail this turn')
+        || text.includes('hit the usage limit')
+        || text.includes('hit an overloaded error')
         || text.includes('needs approval');
     });
     const body = command?.[2] ?? /<channel [^>]*>\n([\s\S]*)\n<\/channel>/.exec(next.text)?.[1] ?? next.text;
     const actionable = command !== undefined || channels.length === 0;
-    if (actionable && body.includes('fail this turn')) {
+    if (actionable && (body.includes('fail this turn') || body.includes('hit the usage limit') || body.includes('hit an overloaded error'))) {
       setStatus('idle');
-      await runHooks('StopFailure', { error: 'server_error', error_details: 'Upstream request failed: Endpoint is unavailable\nupstream details' });
+      await runHooks('StopFailure', { error: body.includes('hit the usage limit') ? 'rate_limit' : body.includes('hit an overloaded error') ? 'overloaded' : 'server_error', error_details: body.includes('hit the usage limit') || body.includes('hit an overloaded error') ? '429 Too Many Requests' : 'Upstream request failed: Endpoint is unavailable\nupstream details' });
       await dispatch('turn.complete', { turnId, isAborted: false, reason: 'error' }, () => ({}));
       continue;
     }

@@ -177,6 +177,7 @@ async function serve(args: string[]): Promise<number> {
         emit('session.created', { sessionID, parentID: session.id, agent: 'explore', ...(model ? { model } : {}) });
       }
     }
+    if (body.includes('hit the usage limit') || body.includes('hit a rate limit')) throw Object.assign(new Error('Provider limit'), { type: body.includes('hit the usage limit') ? 'provider.quota' : 'provider.rate-limit' });
     if (body.includes('fail this turn') || session.model.id === 'exo-free') throw new Error('Upstream request failed: Endpoint is unavailable\nupstream details');
     if (body.includes('needs approval')) {
       const id = rid('per');
@@ -221,7 +222,7 @@ async function serve(args: string[]): Promise<number> {
       }
       emit('session.execution.succeeded', { sessionID: session.id });
     } catch (error) {
-      emit('session.execution.failed', { sessionID: session.id, error: { name: 'APIError', data: { message: (error as Error).message } } });
+      emit('session.execution.failed', { sessionID: session.id, error: { ...('type' in (error as Error) ? { type: (error as Error & { type: string }).type } : {}), name: 'APIError', data: { message: (error as Error).message } } });
     }
     if (run.queued.length) {
       run.inputs.push(run.queued.shift() as Input);
