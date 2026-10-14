@@ -50,6 +50,7 @@ async function unfoldGroups(c: Pick<Awaited<ReturnType<typeof start>>, 'lua' | '
   for (const key of keys) {
     await c.lua(`local key=...; local p=require('cland.panels'); local b=p.buf('items'); local w=vim.fn.bufwinid(b); vim.api.nvim_set_current_win(w); for i=1,vim.api.nvim_buf_line_count(b) do local info=p.row_at(b,i); if info and info.fold==key then vim.api.nvim_win_set_cursor(w,{i,0}); return end end; error('missing fold '..key)`, key);
     await c.input('zo');
+    await c.lua(`local key=...; assert(vim.wait(5000,function() local p=require('cland.panels'); local b=p.buf('items'); for i,line in ipairs(vim.api.nvim_buf_get_lines(b,0,-1,false)) do local info=p.row_at(b,i); if info and info.fold==key then return line:find('▾',1,true)~=nil end end; return false end),'rendered open group '..key)`, key);
   }
 }
 const panel = (c: Awaited<ReturnType<typeof start>>) => c.lua<string[]>("return vim.api.nvim_buf_get_lines(require('cland.panels').buf('items'),0,-1,false)");
@@ -354,6 +355,7 @@ test('release board excludes legacy trees and done orphans; all reveals every it
     assert.deepEqual(columns, { backlog: [], planned: ['T-167'], 'in progress': [], review: [], qa: [], ready: [], done: ['T-168'] });
     await c.input('6zR');
     await c.waitScreen(s => s.includes('all ·'), 'explicit all filter');
+    await c.waitScreen(s => scenario.items!.every(it => s.split('\n').some(line => line.split('│')[0]!.includes(' ' + it.id + ' '))), 'all item rows unfolded');
     assert.deepEqual((await rows()).sort(), scenario.items!.map(it => String(it.id)).sort(), 'all lists every item exactly once after unfolding');
     const budget = await c.lua<{ width: number; widths: number[] }>(`local p=require('cland.panels'); local b=p.buf('items'); local w=vim.fn.bufwinid(b); local lines=vim.api.nvim_buf_get_lines(b,0,-1,false); local widths={}; for _,line in ipairs(lines) do widths[#widths+1]=vim.api.nvim_strwidth(line) end; for _,m in ipairs(vim.api.nvim_buf_get_extmarks(b,-1,0,-1,{details=true})) do assert(m[4].end_col<=#lines[m[2]+1]) end; return {width=vim.api.nvim_win_get_width(w), widths=widths}`);
     assert.ok(budget.widths.every(w => w <= budget.width), `panel rows fit at ${width} columns`);
@@ -380,6 +382,7 @@ test('archived ancestry stays scheduled and the scoped done filter includes clos
   assert.doesNotMatch(text, /Row [379]/);
   await c.input('6zR');
   await c.waitScreen(s => s.includes('all · 9 items'), 'all trees unfolded');
+  await c.waitScreen(s => scenario.items!.every(it => s.split('\n').some(line => line.split('│')[0]!.includes(' ' + it.id + ' '))), 'all archived item rows unfolded');
   const rows = await c.lua<string[]>(`local p=require('cland.panels'); local b=p.buf('items'); local out={}; for i=1,vim.api.nvim_buf_line_count(b) do local info=p.row_at(b,i); if info and info.item then out[#out+1]=info.item end end; return out`);
   assert.deepEqual(rows.sort(), scenario.items!.map(it => String(it.id)).sort());
 });
@@ -393,11 +396,13 @@ test('an open scope under an archived release stays out of unscheduled and appea
   ] });
   await c.input('ezR');
   await c.waitScreen(s => s.includes('T-8 Open archived epic') && !s.includes('unscheduled ('), 'archived epic scope');
+  await c.waitScreen(s => s.includes('T-9 T-8 › Row 9'), 'archived epic task unfolded');
   assert.equal(await c.lua("return require('cland.items').scope().id"), 'T-8');
   const text = (await panel(c)).join('\n');
   assert.doesNotMatch(text, /T-2 Archived release|Row 3/);
   await c.input('6zR');
   await c.waitScreen(s => s.includes('all · 5 items'), 'explicit all tree');
+  await c.waitScreen(s => s.includes('T-3 Row 3') && s.includes('T-9 Row 9'), 'archived descendants unfolded in all');
   assert.equal((await panel(c)).filter(line => line.includes('T-8 ')).length, 1, 'selected scope has no duplicate header');
   await c.input('1E');
   await c.waitScreen(s => s.includes('T-1 0.1.0 Current release') && !s.includes('T-8 Open archived epic'), 'original scope');
@@ -456,6 +461,7 @@ test('done panel rows and board titles use the done colour; summary fractions ne
   assert.deepEqual(await titleGroup("require('cland.panels').buf('items')", 'Row 18'), ['ClandDone']);
   await c.input('1');
   await c.waitScreen(s => s.includes('DONE · 1') && s.includes('Row 18'), 'done section on the board filter');
+  await c.waitScreen(s => s.includes('board ·') && s.includes('Row 18'), 'board filter applied');
   assert.deepEqual(await titleGroup("require('cland.panels').buf('items')", 'Row 18'), ['ClandDone']);
   await c.input('<Space>i<Space>s<Space>b');
   await c.waitScreen(s => s.includes('DONE') && s.includes('Row 18') && s.includes('2/4') && s.includes('1 stale'), 'done column and summary progress');

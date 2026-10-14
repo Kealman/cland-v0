@@ -123,6 +123,7 @@ test('outline keys skip detail and stage labels, respect counts and fold the lea
   await select(c,'T-10'); await c.input('zM'); await at(c,'E-3');
   await c.waitScreen(s=>!s.includes('Task in progress')&&!s.includes('Unscheduled task'),'all folded');
   await select(c,'R-1'); await c.input('hzcza');
+  await c.waitScreen(s=>s.includes('First epic'),'root stays unfolded');
   assert.ok((await text(c)).includes('First epic'),'root stays open');
 });
 
@@ -133,7 +134,7 @@ test('scopes carry breadcrumbs and back restores the originating row and precedi
   await select(c,'E-3'); await c.input('s');
   await c.waitScreen(s=>s.includes('R-1 0.1.2 Working with items › E-3 First epic')&&s.includes('Task in progress'),'epic scope breadcrumbs');
   await at(c,'E-3');
-  await c.input('hzcza'); assert.ok((await text(c)).includes('Task in progress'),'scope root stays open');
+  await c.input('hzcza'); await c.waitScreen(s=>s.includes('Task in progress'),'scope root stays unfolded'); assert.ok((await text(c)).includes('Task in progress'),'scope root stays open');
   await c.input('<Space><Space>'); await at(c,'E-3');
   await c.waitScreen(s=>s.includes('Categories (1)'),'back to release tree');
   await c.input('l'); await c.waitScreen(s=>s.includes('Task in progress'),'expand epic');

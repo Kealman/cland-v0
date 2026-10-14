@@ -34,15 +34,15 @@ test('the explorer card reads parsed body from a real hub and Enter/h preserve t
   const id=await create('task','Show human summary',e,'## Summary\nThe card starts with the human picture.\n\n## Agents\nDo not draw this body.');
   const c=await startClient(t,bin,root); await c.rpc.request('nvim_ui_try_resize',200,50); await waitInitialSnapshots(c);
   await c.input('<Esc><Space>e'); await c.waitScreen(s=>s.includes('Explorer'),'explorer');
-  await c.input('zR'); await select(c,id); await shown(c,id,'human picture.');
+  await c.input('zR'); await c.waitScreen(s=>s.split('\n').some(line=>line.trimStart().startsWith('○ '+id+' Show human summary')),'expanded task row'); await select(c,id); await shown(c,id,'human picture.');
   await c.waitScreen(s=>s.includes('CARD')&&s.includes('human picture.'),'card screen');
   assert.ok(!(await card(c)).includes('Do not draw this body'));
   const cursor=await c.lua("return vim.api.nvim_win_get_cursor(require('cland.explorer').tree_win())");
   const winbar=await c.lua<string>("local e=require('cland.explorer'); return vim.api.nvim_eval_statusline(e.card_winbar(e.card.win),{winid=e.card.win,maxwidth=vim.api.nvim_win_get_width(e.card.win),use_winbar=true}).str");
   assert.ok(winbar.includes('CARD')&&winbar.includes(id)&&winbar.includes('task')&&winbar.includes('backlog'),'card header preserves item identity');
   for(const key of ['↵','h','zb','gt','gs','gp']) assert.ok(winbar.includes(key),'card header key '+key);
-  await c.input('<CR>'); assert.equal(await c.lua('return vim.b.cland_role'),'card');
-  await c.input('jkh'); assert.equal(await c.lua('return vim.b.cland_role'),'explorer');
+  await c.input('<CR>'); await c.lua("assert(vim.wait(5000,function() return vim.b.cland_role=='card' end),'card focused')"); assert.equal(await c.lua('return vim.b.cland_role'),'card');
+  await c.input('jkh'); await c.lua("assert(vim.wait(5000,function() return vim.b.cland_role=='explorer' end),'tree focused')"); assert.equal(await c.lua('return vim.b.cland_role'),'explorer');
   assert.deepEqual(await c.lua("return vim.api.nvim_win_get_cursor(require('cland.explorer').tree_win())"),cursor);
 });
 
@@ -77,7 +77,7 @@ test('a task card shows progress, verdict reason, relations, suite and the folde
       {author:'human',at,text:'Resolution: retain the original body. Keep it folded.'}]};
   const {c}=await stub(t,{...fixture,items:fixture.items!.map(i=>i.id==='T-10'?task:i)});
   await c.input('<Esc><Space>e'); await c.waitScreen(s=>s.includes('The explorer'),'tree');
-  await c.input('zR'); await select(c,'T-10'); await shown(c,'T-10','written human picture.');
+  await c.input('zR'); await c.waitScreen(s=>/^\s*[◉○◐●] T-10 Written summary task/m.test(s),'expanded task row'); await select(c,'T-10'); await shown(c,'T-10','written human picture.');
   const text=await card(c);
   for(const value of ['1 of 2 verified','1 failed','0 stale','● C1','✗ C2','verified · rev-26 · r2','Missing scope.',
     'review · not clear','rev-26 [Reviewer]','r2','delta','The scope is missing.','run r1','rank 1','regression of',
@@ -144,7 +144,7 @@ test('empty and stale card evidence stays explicit, and live suite states come f
   const scenario={...fixture,items:fixture.items!.map(i=>i.id==='T-10'?task:i.id==='E-2'?{...i,plan:null,stages:[]}:i)};
   const {c,control}=await stub(t,scenario);
   await c.input('<Esc><Space>e'); await c.waitScreen(s=>s.includes('The explorer'),'tree');
-  await c.input('zR'); await select(c,'T-10'); await shown(c,'T-10','Old proof.');
+  await c.input('zR'); await c.waitScreen(s=>/^\s*[◉○◐●] T-10 Written summary task/m.test(s),'expanded task row'); await select(c,'T-10'); await shown(c,'T-10','Old proof.');
   const text=await card(c);
   for(const value of ['0 of 3 verified','1 stale','○ C1','◐ C2','◌ C3','none yet','no cland verify run for this task','ordinal 1st']) assert.ok(text.includes(value),value+'\n'+text);
   assert.ok(!text.includes('DECISION')); assert.ok(!text.includes('rank 1'));
@@ -160,7 +160,7 @@ test('zb alone unfolds agents text; hub redraw folds it and Enter on a relation 
   const task={...fixture.items!.find(i=>i.id==='T-10'),blocked_by:['T-11']};
   const {c,control}=await stub(t,{...fixture,items:fixture.items!.map(i=>i.id==='T-10'?task:i)});
   await c.input('<Esc><Space>e'); await c.waitScreen(s=>s.includes('The explorer'),'tree');
-  await c.input('zR'); await select(c,'T-10'); await shown(c,'T-10','written human picture.');
+  await c.input('zR'); await c.waitScreen(s=>/^\s*[◉○◐●] T-10 Written summary task/m.test(s),'expanded task row'); await select(c,'T-10'); await shown(c,'T-10','written human picture.');
   await c.input('zb'); await shown(c,'T-10','Agents only.');
   await c.input('<CR>zb'); await shown(c,'T-10',"▸ agents' text");
   assert.ok(!(await card(c)).includes('Agents only.'));
@@ -193,16 +193,16 @@ test('the narrow explorer card replaces the right panel and restores it for Gene
 
 test('card follows rows with written or fallback summaries and task/container facts', {skip}, async t=> {
   const {c}=await stub(t); await c.input('<Esc><Space>e'); await c.waitScreen(s=>s.includes('The explorer'),'tree');
-  await c.input('zR'); await select(c,'T-10'); await shown(c,'T-10','written human picture.');
+  await c.input('zR'); await c.waitScreen(s=>/^\s*[◉○◐●] T-10 Written summary task/m.test(s),'expanded task row'); await select(c,'T-10'); await shown(c,'T-10','written human picture.');
   let text=await card(c);
   for(const expected of ['R-1 0.1.2 Working with items','E-2','S1','Written summary task','SUMMARY','FACTS','review','now','nvim','ready-for-agent','L','impl [Implementer]','rev [Reviewer]','since','1st of 22 in E-2']) assert.ok(text.includes(expected),expected+'\n'+text);
   assert.ok(!text.includes('fallback from')); assert.ok(!text.includes('Agents only'));
   await select(c,'T-11'); await shown(c,'T-11','fallback human picture.'); text=await card(c);
   assert.ok(text.includes('fallback from ## Problem · no ## Summary yet'));
   assert.ok(await c.lua("local e=require('cland.explorer'); for _,m in ipairs(e.card.marks) do if m[4]=='ClandFaint' and e.card.lines[m[1]+1]:find('fallback from',1,true) then return true end end; return false"),'fallback provenance is dimmed'); assert.ok(!text.includes('Found by')); assert.ok(!text.includes('Third omitted'));
-  await c.input('l'); assert.equal(await c.lua('return vim.b.cland_role'),'card');
+  await c.input('l'); await c.lua("assert(vim.wait(5000,function() return vim.b.cland_role=='card' end),'card focused')"); assert.equal(await c.lua('return vim.b.cland_role'),'card');
   assert.equal(await c.lua<string>("return require('cland.motions').context().item"),'E-2','the parent path carries the parent reference');
-  await c.input('<Space><Space>'); assert.equal(await c.lua('return vim.b.cland_role'),'explorer');
+  await c.input('<Space><Space>'); await c.lua("assert(vim.wait(5000,function() return vim.b.cland_role=='explorer' end),'tree focused')"); assert.equal(await c.lua('return vim.b.cland_role'),'explorer');
   await select(c,'E-2'); await shown(c,'E-2',', derived'); text=await card(c);
   for(const expected of ['in work, derived','now','coord','T-10','impl [Implementer]','rev [Reviewer]']) assert.ok(text.includes(expected),expected+'\n'+text);
   await select(c,':categories'); await shown(c,':categories','C-3 Ideas');
@@ -212,7 +212,7 @@ test('card follows rows with written or fallback summaries and task/container fa
 test('rapid j movement fetches only the rested row, reuses cached details and refreshes on updated', {skip}, async t=> {
   const {c,control}=await stub(t);
   await c.input('<Esc><Space>e'); await c.waitScreen(s=>s.includes('The explorer'),'tree');
-  await c.input('zR'); await select(c,'T-10'); await shown(c,'T-10','written human picture.');
+  await c.input('zR'); await c.waitScreen(s=>/^\s*[◉○◐●] T-10 Written summary task/m.test(s),'expanded task row'); await select(c,'T-10'); await shown(c,'T-10','written human picture.');
   const before=(await control({requests:true})).requests.length;
   await c.input('j'.repeat(21)); await shown(c,'T-49','Resting on task 19.');
   const views=(await control({requests:true})).requests.slice(before).filter(r=>r.type==='task.view');
@@ -234,7 +234,7 @@ test('rapid j movement fetches only the rested row, reuses cached details and re
 test('loading summary retains facts and deferred detail answers update the card', {skip}, async t=> {
   const {c,control}=await stub(t,{...fixture,holdSnapshots:['task.view']});
   await c.input('<Esc><Space>e'); await c.waitScreen(s=>s.includes('The explorer'),'tree');
-  await c.input('zR'); await select(c,'T-10'); await shown(c,'T-10',"loading the agents' text…");
+  await c.input('zR'); await c.waitScreen(s=>/^\s*[◉○◐●] T-10 Written summary task/m.test(s),'expanded task row'); await select(c,'T-10'); await shown(c,'T-10',"loading the agents' text…");
   assert.ok((await card(c)).includes('impl [Implementer]'));
   await control({set:{holdSnapshots:[]},releaseSnapshots:['task.view']});
   await shown(c,'T-10','written human picture.');
@@ -299,8 +299,8 @@ test('gi reveals category, direct and archived items beyond the current scope wi
   const old={id:'T-91',kind:'task',title:'Archived task',parent:'R-90',state:'closed',status:'done',body:'## Summary\nArchived human picture.'};
   const direct={id:'T-92',kind:'task',title:'Direct task',parent:'R-1',state:'open',status:'planned',body:'## Summary\nDirect human picture.'};
   const {c,root}=await stub(t,{...fixture,items:[...fixture.items!,archived,old,direct]});
-  await c.input('<Esc>:Cland explorer E-2<CR>'); await c.waitScreen(s=>s.includes('The explorer'),'epic scope');
-  await c.input('D');
+  await c.input('<Esc>:Cland explorer E-2<CR>'); await c.waitScreen(s=>s.includes('› E-2 The explorer')&&/^\s*[◉○◐●] T-10 Written summary task/m.test(s),'epic scope');
+  await c.input('D'); await c.waitScreen(s=>s.includes('done hidden'),'done filter applied');
   const prefs=await c.lua("local e=require('cland.explorer').ui();return {folds=e.folds,hide_done=e.hide_done,archive=e.archive}");
   for(const [id,summary] of [['T-4','no summary'],['T-92','Direct human picture.'],['T-91','Archived human picture.']]) {
     await c.input(':Cland view item '+id+'<CR>gi'); await shown(c,id!,summary!);
