@@ -151,42 +151,61 @@ test('same-name hubs preserve each other’s in-flight keys and conservatively a
   const second = await fixture(t, { name: 'same', api: first.api, test: longTest, env: { CLAND_EXECUTOR_STATE: state, CLAND_TEST_EXECUTOR_SWEEP_MS: '200' } });
   let resume!: () => void;
   const blocked = new Promise<void>(resolve => { resume = resolve; });
-  t.after(() => resume());
-  first.api.beforeCreate(() => blocked);
+  let creates = 0;
+  first.api.beforeCreate(() => { creates++; return blocked; });
   const a = await first.launch(); const b = await second.launch();
-  await eventually('both keys imported before either create completes', () => first.api.keys.length === 2 ? true : undefined);
-  const left = await lease(first.root); const right = await lease(second.root);
-  const tagA = projectTag(first.root, 'same'), tagB = projectTag(second.root, 'same');
-  assert.ok(left.value.keyName.startsWith(`${tagA}-`)); assert.ok(right.value.keyName.startsWith(`${tagB}-`));
-  assert.notEqual(tagA, tagB);
-  for (const f of [first, second]) assert.equal((await cland(f.root, 'executor', 'reap')).code, 0);
-  assert.equal(first.api.keys.length, 2);
+  try {
+    await eventually('both creates blocked with durable key identities', () => creates === 2 ? true : undefined);
+    const left = await lease(first.root); const right = await lease(second.root);
+    const tagA = projectTag(first.root, 'same'), tagB = projectTag(second.root, 'same');
+    assert.ok(left.value.keyName.startsWith(`${tagA}-`)); assert.ok(right.value.keyName.startsWith(`${tagB}-`));
+    assert.notEqual(tagA, tagB);
+    for (const f of [first, second]) assert.equal((await cland(f.root, 'executor', 'reap')).code, 0);
+    assert.equal(first.api.keys.length, 2);
 
-  // The other project's live legacy lease is old enough but still protects its key.
-  const foreignKey = first.api.keys.find(key => key.name === right.value.keyName)!;
-  const originalName = foreignKey.name;
-  foreignKey.name = 'cland-same-live';
-  right.value.keyName = foreignKey.name; right.value.keyImportStarted = new Date(Date.now() - 3600000).toISOString();
-  await writeFile(right.path, JSON.stringify(right.value));
-  const old = new Date(Date.now() - 3600000).toISOString();
-  for (const [id, name, created] of [[8100, 'cland-same-old', old], [8101, 'cland-same-young', new Date().toISOString()]] as const) {
-    first.api.keys.push({ id, name, public_key: 'public' });
-    const history: DropletLease = { ...left.value, lease: `legacy-${id}`, keyName: name, keyImportStarted: created, created, state: 'released', resource: null, costUsd: 0, released: created };
-    delete history.watchdog; delete history.execution;
-    await writeLease(second.root, history);
+    // The other project's live legacy lease is old enough but still protects its key.
+    const foreignKey = first.api.keys.find(key => key.name === right.value.keyName)!;
+    const originalName = foreignKey.name;
+    right.value.keyName = 'cland-same-live'; right.value.keyImportStarted = new Date(Date.now() - 3600000).toISOString();
+    await writeLease(second.root, right.value);
+    // A list taken before the rename can still carry the old name. The imported
+    // key's stable provider id must protect it across that observation window.
+    assert.equal((await cland(first.root, 'executor', 'reap')).code, 0);
+    assert.ok(first.api.keys.some(key => key.id === foreignKey.id), 'a live key survives a stale provider name');
+    foreignKey.name = right.value.keyName;
+    const old = new Date(Date.now() - 3600000).toISOString();
+    for (const [id, name, created] of [[8100, 'cland-same-old', old], [8101, 'cland-same-young', new Date().toISOString()]] as const) {
+      first.api.keys.push({ id, name, public_key: 'public' });
+      const history: DropletLease = { ...left.value, lease: `legacy-${id}`, keyName: name, keyImportStarted: created, created, state: 'released', resource: null, costUsd: 0, released: created };
+      delete history.watchdog; delete history.execution;
+      await writeLease(second.root, history);
+    }
+    first.api.keys.push({ id: 8102, name: 'cland-same-unknown-age', public_key: 'public' });
+    assert.equal((await cland(first.root, 'executor', 'reap')).code, 0);
+    assert.ok(!first.api.keys.some(key => key.id === 8100));
+    assert.ok(first.api.keys.some(key => key.id === 8101)); assert.ok(first.api.keys.some(key => key.id === 8102));
+    assert.ok(first.api.keys.some(key => key.name === 'cland-same-live'));
+    foreignKey.name = originalName; right.value.keyName = originalName; delete right.value.keyImportStarted;
+    await writeLease(second.root, right.value);
+    resume();
+    const machineA = await first.remote(a.id), machineB = await second.remote(b.id);
+    await writeFile(join(machineA.home, 'finish'), 'done'); await writeFile(join(machineB.home, 'finish'), 'done');
+    await first.result(a.id); await second.result(b.id);
+    assert.deepEqual(first.api.droplets, []);
+  } catch (error) {
+    for (const f of [first, second]) {
+      await flushProjectLogs(t, f.root);
+      t.diagnostic((await readFile(join(f.root, '.cland/journal.jsonl'), 'utf8')).split('\n').filter(line => /executor-|suite-/.test(line)).join('\n'));
+    }
+    throw error;
+  } finally {
+    // Release the provider barrier and settle both acquisitions before the fake
+    // provider removes its snapshots, including when an assertion fails.
+    resume();
+    for (const [f, run] of [[first, a], [second, b]] as const) await cland(f.root, 'verify', 'cancel', run.id);
+    await first.result(a.id); await second.result(b.id);
+    for (const f of [first, second]) await cland(f.root, 'hub', 'stop');
   }
-  first.api.keys.push({ id: 8102, name: 'cland-same-unknown-age', public_key: 'public' });
-  assert.equal((await cland(first.root, 'executor', 'reap')).code, 0);
-  assert.ok(!first.api.keys.some(key => key.id === 8100));
-  assert.ok(first.api.keys.some(key => key.id === 8101)); assert.ok(first.api.keys.some(key => key.id === 8102));
-  assert.ok(first.api.keys.some(key => key.name === 'cland-same-live'));
-  foreignKey.name = originalName; right.value.keyName = originalName; delete right.value.keyImportStarted;
-  await writeFile(right.path, JSON.stringify(right.value));
-  resume();
-  const machineA = await first.remote(a.id), machineB = await second.remote(b.id);
-  await writeFile(join(machineA.home, 'finish'), 'done'); await writeFile(join(machineB.home, 'finish'), 'done');
-  await first.result(a.id); await second.result(b.id);
-  assert.deepEqual(first.api.droplets, []);
 });
 
 test('a short-lived hub preserves a foreign live lease beyond its own lifetime threshold', async t => {

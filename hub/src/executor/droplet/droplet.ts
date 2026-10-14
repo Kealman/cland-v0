@@ -332,7 +332,8 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
     const deletedKeys: number[] = [];
     for (const key of await api.keys()) {
       const known = await hostLeases(this.root);
-      if (known.some(lease => liveLease(lease) && lease.keyName === key.name)) continue;
+      // Provider lists and lease updates can observe opposite sides of a rename.
+      if (known.some(lease => liveLease(lease) && (lease.keyName === key.name || lease.keyId === key.id))) continue;
       const legacy = key.name.startsWith(`cland-${projectName(config.name)}-`);
       const oldLease = known.find(lease => lease.keyName === key.name);
       // DO's key object has no creation time: an unaged legacy key stays untouched.

@@ -1071,12 +1071,28 @@ test('restart after local ref movement but before territory push republishes the
   assert.equal(git(root, 'rev-list', '--count', `${before}..dev`), '1');
   await rm(hook);
   await startDaemon(t, root);
-  const retried = json<{ commit: string; followUp?: unknown }>(await cland(root, 'merge', work.id, '--json'));
+  // A reconnecting session can defer cleanup independently of publishing the
+  // recovered commit. Keep that state observable instead of relying on timing.
+  const holder = await spawnSpoke({ discover: true, cwd: work.path, name: 'cleanup-peer', sessionId: 'cleanup-peer', role: 'implementer' });
+  onCleanup(t, () => holder.close());
+  await holder.waitForPresence(['cleanup-peer']);
+  const retried = json<{ commit: string; cleanup: string; followUp?: unknown }>(await cland(root, 'merge', work.id, '--json'));
+  const diagnostics = async () => {
+    await flushProjectLogs(t, root);
+    const journal = (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).split('\n').filter(line => /merge|worktree|cleanup-peer/.test(line));
+    return `${JSON.stringify(retried)}\n${journal.join('\n')}`;
+  };
   assert.equal(retried.commit, local);
-  assert.equal(retried.followUp, undefined);
+  assert.equal(retried.followUp, undefined, await diagnostics());
+  assert.equal(retried.cleanup, 'waiting for sessions', await diagnostics());
   assert.equal(git(root, 'rev-list', '--count', `${before}..dev`), '1');
   assert.equal(git(join(root, '.cland', 'territory.git'), 'rev-parse', 'dev'), local);
-  assert.equal(existsSync(work.path), false);
+  await holder.close();
+  try {
+    await eventually('recovered merge worktree cleanup', () => !existsSync(work.path) && git(root, 'branch', '--list', work.branch) === '' ? true : undefined);
+  } catch (error) {
+    throw new Error(`${error instanceof Error ? error.message : String(error)}\n${await diagnostics()}`, { cause: error });
+  }
 });
 
 test('a failed external log sink still returns the landed commit and retries only follow-ups', async (t) => {

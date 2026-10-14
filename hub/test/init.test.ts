@@ -7,6 +7,7 @@ import { execFile, spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { chmod, lstat, mkdir, readdir, readFile, readlink, rename, rm, symlink, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
+import { DatabaseSync } from 'node:sqlite';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { configuredLevels, Ladder } from '../src/tracker/kinds.ts';
@@ -451,6 +452,22 @@ test('a Claude Code session launched in the initialised project gets the project
   const second = await launch('cc-2');
   assert.deepEqual(second.instructions.map((i) => i.file), ['CLAUDE.md', 'AGENTS.md']);
   assert.equal(second.instructions[1]?.text.trim(), block);
+});
+
+test('init waits for an overlapping hub database writer', async t => {
+  const root = await tempProject(t, 'cland-init-writer-');
+  await gitRepo(root);
+  await run(root, 'init');
+  const writer = new DatabaseSync(join(root, '.cland', 'hub.db'));
+  writer.exec('begin immediate');
+  // Keep the writer through CLI startup, then let init finish against the same store.
+  const release = setTimeout(() => writer.exec('commit'), 2000);
+  try {
+    await run(root, 'init');
+  } finally {
+    clearTimeout(release);
+    writer.close();
+  }
 });
 
 // ------------------------------------------------------------------ the manifest, symlinks and ownership (review of #39)
