@@ -2,8 +2,8 @@
 id: T-362
 kind: task
 title: "Claude Code on an account: every claude command for a session runs under its account's CLAUDE_CONFIG_DIR, and agents --json is polled once per config directory that has live sessions"
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 9
 labels:
@@ -18,7 +18,8 @@ blocked_by:
 topic: topic-228
 branch: t/T-362-claude-code-on-an-account-every-claude
 created: 2026-10-13T23:42:53.650Z
-updated: 2026-10-14T03:32:48.199Z
+updated: 2026-10-14T05:08:02.257Z
+closed: 2026-10-14T05:08:02.257Z
 ---
 
 ## Summary
@@ -84,33 +85,42 @@ Upstream: anthropics/claude-code#95822, open on 2026-10-14.
 - [x] C1. Sessions launched on claude-a and claude-b: the fake's invocation log shows each session's `--bg`, `agents --json` and `stop` under its own account's `CLAUDE_CONFIG_DIR`, and each job record shows that directory.
   - done: impl-362 · 2026-10-14T01:46:28.722Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-362-4 · 2026-10-14T03:29:03.030Z · commit d8690923d4858beba892430e7bf6d47eb53b782b
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-362-6 · 2026-10-14T05:07:43.173Z · commit f1fb783c14eeea7abdc64afed56fd6109e9f8bc7
 - [x] C2. With sessions live under two directories and a short `CLAND_ADAPTER_POLL_MS`, the log has at most one `agents --json` per directory per interval, launch discovery included. It has none for a registered directory with no session, and none for a directory after its last session stopped.
   - done: impl-362 · 2026-10-14T01:46:29.369Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-362-4 · 2026-10-14T03:29:03.031Z · commit d8690923d4858beba892430e7bf6d47eb53b782b
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-362-6 · 2026-10-14T05:07:43.173Z · commit f1fb783c14eeea7abdc64afed56fd6109e9f8bc7
 - [x] C3. After a hub restart with sessions under two directories, resume makes one `agents --json` per directory and re-finds every session, and a relaunch runs `--bg --resume` under the row's directory.
   - done: impl-362 · 2026-10-14T01:46:30.117Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-362-4 · 2026-10-14T03:29:03.031Z · commit d8690923d4858beba892430e7bf6d47eb53b782b
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-362-6 · 2026-10-14T05:07:43.173Z · commit f1fb783c14eeea7abdc64afed56fd6109e9f8bc7
 - [x] C4. The row's `attach` for a claude-b session is `CLAUDE_CONFIG_DIR=<dir> claude attach <id>`, and running it attaches to that directory's session in the fake. A default session's attach command is unchanged.
   - done: impl-362 · 2026-10-14T01:46:30.968Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-362-4 · 2026-10-14T03:29:03.031Z · commit d8690923d4858beba892430e7bf6d47eb53b782b
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-362-6 · 2026-10-14T05:07:43.174Z · commit f1fb783c14eeea7abdc64afed56fd6109e9f8bc7
 - [x] C5. A session on a named Claude Code account does not receive `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN` or `CLAUDE_CODE_OAUTH_TOKEN` from the hub's environment (the fake records the names it saw), and a default session still does.
   - done: impl-362 · 2026-10-14T01:46:31.745Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-362-4 · 2026-10-14T03:29:03.031Z · commit d8690923d4858beba892430e7bf6d47eb53b782b
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-362-6 · 2026-10-14T05:07:43.174Z · commit f1fb783c14eeea7abdc64afed56fd6109e9f8bc7
 - [x] C6. A hub started with `CLAUDE_CONFIG_DIR` set polls that directory for default sessions and records it on their rows.
   - done: impl-362 · 2026-10-14T01:46:32.373Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-362-4 · 2026-10-14T03:29:03.032Z · commit d8690923d4858beba892430e7bf6d47eb53b782b
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-362-6 · 2026-10-14T05:07:43.174Z · commit f1fb783c14eeea7abdc64afed56fd6109e9f8bc7
 - [x] C7. A logged-out claude-b directory gives one event and one message naming account claude-b and its directory, while claude-a sessions keep working and their poll is unchanged.
   - done: impl-362 · 2026-10-14T01:51:01.020Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-362-4 · 2026-10-14T03:29:03.032Z · commit d8690923d4858beba892430e7bf6d47eb53b782b
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-362-6 · 2026-10-14T05:07:43.174Z · commit f1fb783c14eeea7abdc64afed56fd6109e9f8bc7
 - [x] C8. A failed `--bg` on an account names the account, the directory and the sign-in or trust remedy, and is not retried.
   - done: impl-362 · 2026-10-14T01:46:34.011Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-362-4 · 2026-10-14T03:29:03.032Z · commit d8690923d4858beba892430e7bf6d47eb53b782b
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-362-6 · 2026-10-14T05:07:43.174Z · commit f1fb783c14eeea7abdc64afed56fd6109e9f8bc7
 - [x] C9. `hub/README.md` describes the overlay per command, the per-directory polling and its interval, and the removed variables.
   - done: impl-362 · 2026-10-14T01:46:34.696Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-362-2 · 2026-10-14T01:51:54.279Z · commit b9c38b66a08e4994e812b17f41653b66fcf3b698
   - verified: rev-23 [reviewer] · run rev-2026-10-14-362-3 · 2026-10-14T02:28:11.579Z · commit d8690923d4858beba892430e7bf6d47eb53b782b
   - verified: rev-23 [reviewer] · run rev-2026-10-14-362-4 · 2026-10-14T03:29:03.032Z · commit d8690923d4858beba892430e7bf6d47eb53b782b
   - verified: rev-23 [reviewer] · run rev-2026-10-14-362-5 · 2026-10-14T03:32:48.199Z · commit f1fb783c14eeea7abdc64afed56fd6109e9f8bc7
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-362-6 · 2026-10-14T05:07:43.174Z · commit f1fb783c14eeea7abdc64afed56fd6109e9f8bc7
 
 ## Comments
 
@@ -182,3 +192,20 @@ scope: delta
 No high/medium integration findings. Shard manifest retains every parent entry/classification, including Claude accounts and executor-run/safety. Task-specific production/fake/account and shared PID tests unchanged; incoming non-overlap matches dev, README/harness integration checked. Incoming T-346/T-354 have merged clear review/full evidence; previous T-362 complete scope retained. C9 docs refreshed; C1–C8 require new exact-head ordinary full/cache evidence, not old d8690923 result. A-2216: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2216-t-362-dev-integration-source-clear-at-f1fb783c.md. Source delta clear only.
 
 Criteria: C9 verified.
+
+### rev-23 · 2026-10-14T05:07:43.174Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-362-6
+commit: f1fb783c14eeea7abdc64afed56fd6109e9f8bc7
+scope: evidence
+
+No findings remain. Integrated exact-head full a1f2442f/A-2245 exits 0: typecheck, 37 hub free + 1576 hub machine + 357 Neovim = 1970/1970, zero failures/cancellations/skips/todo. Account directory/commands/auth exclusion/attach, independent schedules, restart and signed-out cases pass; complete source/readiness/shared-PID/integration assessments retained. C1–C9 all checked. A-2246: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2246-t-362-integrated-head-final-review-clear-account-polling.md.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified, C9 verified.
+
+### coord · 2026-10-14T05:08:02.257Z
+
+Merged eb32246f5228c758ab890982ffc91b9b3d9e78e2 onto dev.

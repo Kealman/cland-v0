@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-232
 branch: t/T-355-the-messages-m-sends-to-general-with-the
 created: 2026-10-13T20:53:51.934Z
-updated: 2026-10-14T04:01:08.818Z
+updated: 2026-10-14T04:55:30.149Z
 ---
 
 ## Summary
@@ -99,21 +99,30 @@ card line: <the card line under the cursor, trimmed>   (only from the card)
 
 - [x] C1. `m` on a task row opens the composer with the context. `↵` sends one `topic.send` to General with `to = ["coordinator"]`, the text, a blank line, the scope line and the item's line, with the display id.
   - done: impl-355 · 2026-10-14T02:25:23.058Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-355-6 · 2026-10-14T04:52:07.868Z · commit 812fa578b1e2cea815ebdcbc4614875da0d7324f
 - [x] C2. `m` from the card adds the `card line:` line for the line under the card's cursor.
   - done: impl-355 · 2026-10-14T02:25:23.514Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-355-6 · 2026-10-14T04:52:07.868Z · commit 812fa578b1e2cea815ebdcbc4614875da0d7324f
 - [x] C3. `M` on an item with a topic sends into that topic. `M` on an open item without one sends `topic.create` with `item`, then `topic.send` into the new topic. The item's card then reads `M in <id>'s topic`.
   - done: impl-355 · 2026-10-14T02:25:24.112Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-355-6 · 2026-10-14T04:52:07.868Z · commit 812fa578b1e2cea815ebdcbc4614875da0d7324f
 - [x] C4. `M` on a closed item without a topic sends nothing and says why.
   - done: impl-355 · 2026-10-14T02:25:24.582Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-355-6 · 2026-10-14T04:52:07.868Z · commit 812fa578b1e2cea815ebdcbc4614875da0d7324f
 - [x] C5. `V` over three rows and `m` sends one message to General with `3 items selected` and three item lines. Label rows inside the selection are skipped.
   - done: impl-355 · 2026-10-14T02:25:25.201Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-355-6 · 2026-10-14T04:52:07.869Z · commit 812fa578b1e2cea815ebdcbc4614875da0d7324f
 - [x] C6. `Esc` keeps the draft, and the next `m` on the same item or selection shows it. A refused send keeps the draft. A 300-row selection is cut under 8192 bytes with `… and K more`.
   - done: impl-355 · 2026-10-14T02:25:25.829Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-355-6 · 2026-10-14T04:52:07.869Z · commit 812fa578b1e2cea815ebdcbc4614875da0d7324f
 - [x] C7. Both clause sources deliver the explorer line to the Coordinator within the byte guard (`hub/test/roles.test.ts`).
   - done: impl-355 · 2026-10-14T03:15:52.323Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-355-6 · 2026-10-14T04:52:07.869Z · commit 812fa578b1e2cea815ebdcbc4614875da0d7324f
 - [x] C8. `nvim/README.md`, the help lines and the Coordinator's clause describe the messages.
   - done: impl-355 · 2026-10-14T04:00:26.228Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-355-5 · 2026-10-14T04:01:08.818Z · commit 812fa578b1e2cea815ebdcbc4614875da0d7324f
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-355-6 · 2026-10-14T04:52:07.869Z · commit 812fa578b1e2cea815ebdcbc4614875da0d7324f
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-355-7 · 2026-10-14T04:55:30.149Z · commit 4168a6e4870384d9188d2b0de199ca6b937005a5
 
 ## Comments
 
@@ -193,5 +202,39 @@ commit: 812fa578b1e2cea815ebdcbc4614875da0d7324f
 scope: full
 
 No high/medium findings remain in corrected source. The exact inventory now includes m/M while preserving every previous action and mapping audit. Static Keys instructions match composer destinations, selection context, send/newline and draft-preserving close; status/help checks are stronger. Earlier complete feature/role review remains applicable. C8 source verified; C1–C7 and complete fresh exact-head full evidence pending. A-2228: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2228-t-355-corrected-keys-and-action-inventory-source-clear.md.
+
+Criteria: C8 verified.
+
+### impl-355 · 2026-10-14T04:51:47.447Z
+
+Fresh full verification d6714fad at source-reviewed head 812fa578 passed: 1955/1955 tests, no failures/skips, typecheck included. Durable log A-2241: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2241-suite-d6714fad-589c-4a5c-8025-ec7dcdd1e0d1-all-at-812fa57.log. Working tree remains clean at that head. Awaiting the Reviewer’s final same-head verdict; the hub will notify the supervising lead when ready.
+
+### rev-23 · 2026-10-14T04:52:07.869Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-355-6
+commit: 812fa578b1e2cea815ebdcbc4614875da0d7324f
+scope: evidence
+
+No findings remain. Exact-head full d6714fad/A-2241 exits 0: typecheck, 37 hub free + 1552 hub machine + 366 Neovim = 1955/1955, zero failures/cancellations/skips/todo. Real hub delivery/topic binding and composer/context/draft/refusal/selection/cap cases pass, as do repaired registry/help/status and delivered default/project byte guards. Complete source assessments A-2197/A-2206/A-2228 retained; C1–C8 all checked. A-2242: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2242-t-355-final-exact-head-review-clear-explorer-messages.md.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified.
+
+### impl-355 · 2026-10-14T04:54:48.289Z
+
+Coordinator merge conflicted with T-348 executor clauses. Per b8689dab merged origin/dev 4e127928, preserving both executor and explorer instructions in both clause sources and existing byte limits. Committed/pushed 4168a6e4. Typecheck and all 8 roles.test.ts tests, including both delivered-clause guards, pass. A-2243 records resolution; delta source review requested before new full exact-head verification.
+
+### rev-23 · 2026-10-14T04:55:30.149Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-355-7
+commit: 4168a6e4870384d9188d2b0de199ca6b937005a5
+scope: delta
+
+No high/medium integration findings. Both clause sources retain explorer and executor instructions, guarded Coordinator/review ownership and byte budget; role assertions combine both parents without removal. All nvim source/help/tests and shared PID cases match previous reviewed head, incoming nonoverlap matches landed dev exactly, and harness adds only landed token/ledger isolation. C8 source refreshed; C1–C7 require fresh integrated-head full evidence. A-2244: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2244-t-355-integration-delta-clear-executor-and-explorer-clauses.md.
 
 Criteria: C8 verified.
