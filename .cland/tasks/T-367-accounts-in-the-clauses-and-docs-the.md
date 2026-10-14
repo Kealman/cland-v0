@@ -3,7 +3,7 @@ id: T-367
 kind: task
 title: "Accounts in the clauses and docs: the Coordinator's clause turns a refused launch into an ask listing the harness's other accounts, cland init's roles.toml describes account, and the READMEs and GLOSSARY describe accounts, limits and the limited mark"
 state: open
-status: planned
+status: review
 size: S
 criterion_seq: 7
 labels:
@@ -15,10 +15,10 @@ assignee: null
 parent: E-272
 blocked_by:
   - T-366
-topic: null
-branch: null
+topic: topic-250
+branch: t/T-367-accounts-in-the-clauses-and-docs-the
 created: 2026-10-13T23:42:55.063Z
-updated: 2026-10-14T10:19:40.821Z
+updated: 2026-10-14T13:47:12.350Z
 ---
 
 ## Summary
@@ -90,10 +90,72 @@ Link it from the adapter sections.
 
 ## Acceptance criteria
 
-- [ ] C1. The Coordinator's clause, in `default-roles.ts` and in this project's `.cland/roles.toml`, says to answer an `account-limited` refusal with an ask that names the account, its reset and the harness's other accounts, never to relaunch on another account unasked, and how to apply the answer, and a test finds it in the delivered clause.
-- [ ] C2. The Lead's clause says to report an `account-limited` refusal to `lead T-<n>` and never to ask the human or pick another account, and a test finds it.
-- [ ] C3. A project freshly made by `cland init` has a `roles.toml` whose header documents `account` and whose launch tables carry the commented-out key, and init writes no `accounts.toml`.
-- [ ] C4. `hub/README.md` has one "Accounts and limits" section covering the registry, the environment per adapter, the polling rules, the sources, `cland account list` and `clear`, the signals, the mark, the refusal and the terms, and the adapter sections link to it.
-- [ ] C5. `nvim/README.md` describes the accounts block and the limited highlight in one place, and `GLOSSARY.md` defines Account and Limited account.
-- [ ] C6. hub/README.md has one section listing cland's per-user state: the executor spend ledger (~/.cland/executor/spend.json, T-346) and the accounts registry (~/.config/cland/accounts.toml), with their paths, owners and what each holds (stand-in, D24, 2026-10-13).
-- [ ] C7. The ask the Coordinator's clause makes from an account-limited refusal names the limited account and its reset time, and lists the harness's other accounts with their current used share, so the human picks without opening anything (stand-in, D24, 2026-10-13).
+- [x] C1. The Coordinator's clause, in `default-roles.ts` and in this project's `.cland/roles.toml`, says to answer an `account-limited` refusal with an ask that names the account, its reset and the harness's other accounts, never to relaunch on another account unasked, and how to apply the answer, and a test finds it in the delivered clause.
+  - done: impl-367 · 2026-10-14T13:08:30.543Z
+- [x] C2. The Lead's clause says to report an `account-limited` refusal to `lead T-<n>` and never to ask the human or pick another account, and a test finds it.
+  - done: impl-367 · 2026-10-14T13:08:31.558Z
+- [x] C3. A project freshly made by `cland init` has a `roles.toml` whose header documents `account` and whose launch tables carry the commented-out key, and init writes no `accounts.toml`.
+  - done: impl-367 · 2026-10-14T13:08:32.894Z
+- [x] C4. `hub/README.md` has one "Accounts and limits" section covering the registry, the environment per adapter, the polling rules, the sources, `cland account list` and `clear`, the signals, the mark, the refusal and the terms, and the adapter sections link to it.
+  - done: impl-367 · 2026-10-14T13:08:34.458Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-367-1 · 2026-10-14T13:12:14.320Z · commit 4f64eb0b794d677aa3a050ee67e4a473bf0fddab
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-367-3 · 2026-10-14T13:47:12.350Z · commit fda5858eb2083463a481983145ea4f0c08a0a16b
+- [x] C5. `nvim/README.md` describes the accounts block and the limited highlight in one place, and `GLOSSARY.md` defines Account and Limited account.
+  - done: impl-367 · 2026-10-14T13:08:35.787Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-367-1 · 2026-10-14T13:12:14.320Z · commit 4f64eb0b794d677aa3a050ee67e4a473bf0fddab
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-367-3 · 2026-10-14T13:47:12.350Z · commit fda5858eb2083463a481983145ea4f0c08a0a16b
+- [x] C6. hub/README.md has one section listing cland's per-user state: the executor spend ledger (~/.cland/executor/spend.json, T-346) and the accounts registry (~/.config/cland/accounts.toml), with their paths, owners and what each holds (stand-in, D24, 2026-10-13).
+  - done: impl-367 · 2026-10-14T13:08:38.465Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-367-1 · 2026-10-14T13:12:14.320Z · commit 4f64eb0b794d677aa3a050ee67e4a473bf0fddab
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-367-3 · 2026-10-14T13:47:12.350Z · commit fda5858eb2083463a481983145ea4f0c08a0a16b
+- [x] C7. The ask the Coordinator's clause makes from an account-limited refusal names the limited account and its reset time, and lists the harness's other accounts with their current used share, so the human picks without opening anything (stand-in, D24, 2026-10-13).
+  - done: impl-367 · 2026-10-14T13:08:39.738Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-367-1 · 2026-10-14T13:12:14.322Z · commit 4f64eb0b794d677aa3a050ee67e4a473bf0fddab
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-367-3 · 2026-10-14T13:47:12.350Z · commit fda5858eb2083463a481983145ea4f0c08a0a16b
+
+## Comments
+
+### impl-367 · 2026-10-14T13:06:34.517Z
+
+Implemented account-limited routing in the default and project Coordinator/Lead clauses, the init account documentation, consolidated Accounts and limits sections and per-user state inventory, plus Account/Limited account glossary entries. Clause tests passed for both default and project snapshots; the first red run also caught clause size, so existing Coordinator wording was condensed without changing its instructions to retain the 512-byte reply reserve. Fresh-init coverage exercises scratch XDG_CONFIG_HOME and all six launch tables. Running the complete touched test files sequentially before review.
+
+### rev-23 · 2026-10-14T13:12:14.322Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-367-1
+commit: 4f64eb0b794d677aa3a050ee67e4a473bf0fddab
+scope: full
+
+Source clear; no high or medium findings. Both commits/all seven files reviewed. Coordinator asks with limited account/reset and other same-harness accounts' used windows, applies only the human/stand-in choice and never moves running sessions; Lead reports upward without replacement choice. Consolidated hub/nvim/glossary and per-user-state docs match shipped behavior. Coordinator condensation retains obligations and project D18/D19; existing reply cap/512-byte headroom and prior test assertions remain. C4–C7 source-verified. C1–C3 await exact-head diff-selected cland verify with no mode under D29. A-2382: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2382-t-367-full-source-clear-at-4f64eb0b.md.
+
+Criteria: C4 verified, C5 verified, C6 verified, C7 verified.
+
+### rev-23 · 2026-10-14T13:45:30.450Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-367-2
+commit: 4f64eb0b794d677aa3a050ee67e4a473bf0fddab
+scope: evidence
+
+Medium — hub/test/review-qa.test.ts:104–105 / default Coordinator clause: A-2393 fails the pre-existing explicit item-lead review/QA/not-clear/retry statement; the unclaimed-item fallback phrase at :105 was also replaced. The source pass missed these exact checks. Restore both tested obligations in default/project clauses while preserving the 512-byte headroom and existing tests, then request corrected source review. 8616bb37 is red: typecheck and 1643/1644 hub tests, no Neovim phase. This reads changed clauses and is deterministic, so the untouched-test flake rule does not apply. C1–C3 final verification remains pending; C4–C7 source marks otherwise stand. A-2396: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2396-t-367-red-verification-coordinator-clause-contract-mismatch.md.
+
+### impl-367 · 2026-10-14T13:46:21.030Z
+
+Corrected at fda5858eb2083463a481983145ea4f0c08a0a16b (pushed): restored both original Coordinator contract sentences in default/project clauses after 8616bb37's deterministic review-qa failure. Sequential targeted tests pass: review-qa.test.ts 3/3 and roles.test.ts 8/8, including unchanged 512-byte reply reserve. No assertions were weakened; no runtime behavior changes. Evidence A-2397. Requesting fresh source clearance before new verification.
+
+### rev-23 · 2026-10-14T13:47:12.350Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-367-3
+commit: fda5858eb2083463a481983145ea4f0c08a0a16b
+scope: full
+
+Corrected source clear; no high or medium findings. Both existing Coordinator statements are restored verbatim in default/project clauses, with no test/cap/headroom change. A-2397's sequential review-qa 3/3 and roles 8/8 include unchanged 512-byte reply reserve. Account instructions, init comments, docs/glossary/user-state and project release decisions remain as fully reviewed in A-2382. C4–C7 refreshed; C1–C3 await new exact-head no-mode verification. Earlier 8616bb37/A-2393 remains red evidence of this corrected mismatch, not gate clearance. A-2402: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2402-t-367-corrected-clause-source-clear-at-fda5858e.md.
+
+Criteria: C4 verified, C5 verified, C6 verified, C7 verified.

@@ -5,7 +5,8 @@ title: "claude-code-accounts test is flaky on dev: a signed-out directory polled
 state: open
 status: review
 size: S
-criterion_seq: 4
+rank: 2369
+criterion_seq: 5
 labels:
   - v0.1.2
   - hub
@@ -18,7 +19,7 @@ regression_of: T-362
 topic: topic-244
 branch: t/T-382-claude-code-accounts-test-is-flaky-on
 created: 2026-10-14T10:44:29.457Z
-updated: 2026-10-14T11:10:34.548Z
+updated: 2026-10-14T13:46:39.138Z
 ---
 
 ## Summary
@@ -39,11 +40,15 @@ updated: 2026-10-14T11:10:34.548Z
 - [x] C1. The cause of the extra poll is established and written down: either a second `agents --json` reaching a latched directory (the product, T-265/T-362), or the test counting a call made before the latch was set (the test).
   - done: impl-382 · 2026-10-14T10:58:49.205Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-382-1 · 2026-10-14T11:00:35.110Z · commit 53f84e47a74b80485b9ce138118e588fa6ec1718
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-382-3 · 2026-10-14T13:34:29.339Z · commit 52f5a39a8b0be70f527a70011e1feca02480a46d
 - [x] C2. If it's the product, the latch is fixed so that no CLI call reaches a latched directory after the signed-out signal. If it's the test, its counting window is made exact. Either way the signed-out assertions keep their meaning.
   - done: impl-382 · 2026-10-14T10:58:50.531Z
 - [x] C3. The final `session.stop` refusal under load is diagnosed: the test records the refusal reason, and the cause is fixed or shown to be the same race.
   - done: impl-382 · 2026-10-14T10:58:52.248Z
 - [ ] C4. The fix is one commit; the file passes 20 consecutive whole-file runs alone and 10 under four parallel CPU workers on macOS.
+- [x] C5. hub/test/task-prefixes.test.ts 'non-task review requests keep verifier affinity across alternate prefixes' waits for each reviewer spoke's role-clause delivery and ack before the affinity request, so initial role delivery cannot make reviewer-z temporarily ineligible. The resolvedTo assertion is unchanged, and the file passes 20 consecutive solo whole-file runs (found aside 2026-10-14, A-2383 and A-2385; failed 1/3 alone).
+  - done: impl-382 · 2026-10-14T13:31:35.559Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-382-3 · 2026-10-14T13:34:29.339Z · commit 52f5a39a8b0be70f527a70011e1feca02480a46d
 
 ## Comments
 
@@ -67,3 +72,39 @@ Criteria: C1 verified.
 ### impl-382 · 2026-10-14T11:10:34.548Z
 
 At reviewed head 53f84e47a74b80485b9ce138118e588fa6ec1718, all 20 consecutive whole-file solo runs passed on macOS arm64 / Node v24.21.0 (100/100 cases). Durable evidence A-2340. Full verify 90e5e6e8 is queued at the same head, addressed to rev-23 and impl-382. C4 remains incomplete until 10 whole-file runs with four CPU workers in a holder-free queue; no stress workers running. Subscribed to T-383 task events (currently last queued run) to recheck the quiet slot without polling items.
+
+### rev-23 · 2026-10-14T13:21:01.712Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-382-2
+commit: 53f84e47a74b80485b9ce138118e588fa6ec1718
+scope: evidence
+
+Medium — hub/test/task-prefixes.test.ts:160 / verification gate: exact-head 90e5e6e8/A-2383 fails the initial request resolving to reviewer-z. Typecheck and 1628/1629 hub cases pass; Neovim is not reached. The test is untouched by T-382 and cause unclassified, so no individual feature criterion is newly failed. C1's diagnosis mark stands; C2/C3 final evidence and C4 loaded stress remain pending. Bugs · S aside filed to lead. Coordinator 0eeed23b permits one same-head no-mode rerun only after 5/5 isolated passes and aside filing; final evidence must name both runs and flake ticket. A-2338 remains source assessment. A-2384: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2384-t-382-red-verification-untouched-verifier-affinity-case.md.
+
+### impl-382 · 2026-10-14T13:21:53.068Z
+
+Verification blocked: full run 90e5e6e8/A-2383 failed only untouched hub/test/task-prefixes.test.ts:160 (initial review request did not resolve reviewer-z). Isolated whole-file checks at the exact reviewed 53f84e47 passed runs 1 and 2, then failed run 3 with the same assertion; A-2385. The Coordinator's 5/5 prerequisite is not met, so the one allowed same-head rerun was not submitted. Reported to lead T-382 and rev-23 for T-398/shared-fix handling. C4's loaded proof still waits for the holder-free queue after T-398.
+
+### impl-382 · 2026-10-14T13:32:38.571Z
+
+Coordinator expanded scope with C5. Amended shared commit 52f5a39a on latest origin/dev 31dd9918 (one task commit, clean). Both reviewer spokes now wait for their delivered reviewer role clause and its exact msg_id ack in flushed real hub logs before the affinity request; both resolvedTo assertions unchanged. 20/20 updated whole-file task-prefixes solo runs (160/160 cases) at amended head, A-2388. Claude account file recheck 5/5 at amended head, 35.18s. Delta review requested from rev-23; no new verify before source-clear. C4 loaded stress remains pending quiet window after T-398.
+
+### rev-23 · 2026-10-14T13:34:29.339Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-382-3
+commit: 52f5a39a8b0be70f527a70011e1feca02480a46d
+scope: delta
+
+Delta source clear; no high or medium findings. Original Claude test blob and atomic PID/identity fix are retained on the already reviewed T-381/T-366 dev base. C5 waits for each reviewer's delivered role clause and exact-msg_id ack in flushed real logs; both resolvedTo assertions remain unchanged. A-2388 verifies 20 whole-file passes/160 cases at this amended head, zero fail/cancelled/skipped/todo. C1 diagnosis refreshed and C5 verified. C2/C3 await new exact-head no-mode verification; C4 quiet-window CPU-loaded proof remains pending. Old red 90e5e6e8/A-2383 is superseded by a source fix, not flake-rule clearance. A-2391: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2391-t-382-amended-source-delta-clear-and-c5-readiness-proof.md.
+
+Criteria: C1 verified, C5 verified.
+
+### impl-382 · 2026-10-14T13:46:39.138Z
+
+Refreshed C4 solo evidence at amended/reviewed 52f5a39a: 20/20 consecutive Claude account whole-file runs (100/100 cases), A-2398. C5 already 20/20 whole-file task-prefixes (160/160 cases), A-2388. No-mode verify 490b6904 submitted after delta-clear; the hub selected full automatically. Queue currently has T-398 as holder, with T-382 next, so loaded C4 proof remains pending. Source/worktree unchanged and clean.
