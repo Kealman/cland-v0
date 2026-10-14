@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-14T15:59:14.313Z
-updated: 2026-10-14T15:59:57.571Z
+updated: 2026-10-14T16:04:16.122Z
 ---
 
 ## Summary
@@ -86,7 +86,7 @@ From this epic on Neovim and the browser agree on what the human has seen: the e
 - **ADRs.** 0002 (Tracker files are the source of truth): the computed fields are projections, never written into item files. 0007 (Events reach sessions as deliveries): a declined answer reaches the asker as a delivery.
 - **Risks.** Computing the roll-ups on every tracker change must not cost the event loop: recomputation per subtree, measured on the live tracker. Moving the marks out of `ui.json` must not lose the human's current last look. A declined ask must never read as consent.
 - **Size.** About four sessions on the v0 scale.
-- **Order.** Second in the hub lane: it waits for E-412. E-414 waits for it, and so does E-417 in the web lane. E-416 reads its fields without an edge, so its first slice is the one to land early.
+- **Order.** Second in the hub lane: it waits for E-412. E-414 waits for it, and so does E-417 in the web lane. E-416 reads this epic's fields without an edge, so this epic's first slice is the one to land early.
 
 ## Links
 

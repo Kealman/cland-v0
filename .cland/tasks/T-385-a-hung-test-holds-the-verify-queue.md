@@ -3,7 +3,7 @@ id: T-385
 kind: task
 title: "A hung test holds the verify queue forever: no per-test timeout and no stall kill"
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 4
 labels:
@@ -17,7 +17,7 @@ blocked_by: []
 topic: topic-246
 branch: t/T-385-a-hung-test-holds-the-verify-queue
 created: 2026-10-14T12:21:44.443Z
-updated: 2026-10-14T13:58:27.485Z
+updated: 2026-10-14T18:16:31.973Z
 ---
 
 ## Summary
@@ -35,13 +35,18 @@ A full verify can hang forever. T-359's run 6a9dce81 stopped producing output af
 
 - [x] C1. Every test file runs with a per-test timeout, for example `--test-timeout` set from a duration manifest or a default of 120 s, so a hung test fails with its name instead of blocking.
   - done: impl-385 · 2026-10-14T12:35:29.096Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-385-7 · 2026-10-14T18:16:29.996Z · commit b40e992784790b9e4a37626dfa3cf7e9836dad06
 - [x] C2. The suite worker kills a run whose log has been silent for longer than a configured stall limit (default 10 min). The result reads `stalled: no output for <n> min` and names the last started tests. The process tree, test children and spokes included, is reaped.
   - done: impl-385 · 2026-10-14T13:48:02.595Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-385-7 · 2026-10-14T18:16:29.996Z · commit b40e992784790b9e4a37626dfa3cf7e9836dad06
 - [x] C3. A test reproduces a hung test file and shows the timeout failure, and another shows the stall kill and cleanup with no orphan processes left.
   - done: impl-385 · 2026-10-14T12:41:20.416Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-385-7 · 2026-10-14T18:16:29.996Z · commit b40e992784790b9e4a37626dfa3cf7e9836dad06
 - [x] C4. The hanging test from run 6a9dce81 is identified from its log and fixed, or filed separately with evidence.
   - done: impl-385 · 2026-10-14T12:32:34.448Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-385-3 · 2026-10-14T13:54:50.143Z · commit 699bf7b51b55479ccaf5c56faf2206b26dc97567
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-385-5 · 2026-10-14T16:26:06.837Z · commit b40e992784790b9e4a37626dfa3cf7e9836dad06
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-385-7 · 2026-10-14T18:16:29.996Z · commit b40e992784790b9e4a37626dfa3cf7e9836dad06
 
 ## Comments
 
@@ -107,3 +112,75 @@ Criteria: C4 verified.
 ### impl-385 · 2026-10-14T13:58:27.485Z
 
 After clear source review rev-2026-10-14-385-3 (A-2405), submitted no-mode cland verify at exact head 699bf7b51b55479ccaf5c56faf2206b26dc97567. Run 6930503c-e90b-4e95-89d6-635151bf9128 queued at position 4; result recipients rev-23 and impl-385. Waiting for hub result.
+
+### rev-23 · 2026-10-14T16:16:58.292Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-385-4
+commit: 699bf7b51b55479ccaf5c56faf2206b26dc97567
+scope: evidence
+
+Medium — hub/test/claude-code-accounts.test.ts:131 / verification gate: 6930503c/A-2444 exits 1, signed-out directory count 2 vs 1; 1639/1640 hub pass, Neovim not reached. Untouched case matches merged T-382’s known pre-latch counting-window defect; inspected head still has hook-only startup readiness and sleep(250) baseline, missing ee3f2393’s correction. Source A-2405/C4 stand; C1–C3 pending full passing gate, no new individual T-385 feature failure asserted. Shared-fix adoption reported to lead; any changed head requires delta source review before no-mode verify after hub-back. A-2446: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2446-t-385-red-verification-known-t-382-correction-absent.md.
+
+### impl-385 · 2026-10-14T16:24:57.615Z
+
+Integrated Coordinator-requested landed fixes after red verify 6930503c (A-2444): T-382 ee3f2393 cherry-picked as 104eff19, T-398 8af83889 as b40e9927. Pushed exact head b40e992784790b9e4a37626dfa3cf7e9836dad06. All ten changed test files pass sequentially, 70/70; root typecheck and diff check pass (A-2448). Requesting delta source review of shared-fix integration; no-mode verification is held until Coordinator's hub-back post. T-385 implementation unchanged from source-clear 699bf7b5.
+
+### rev-23 · 2026-10-14T16:26:06.837Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-385-5
+commit: b40e992784790b9e4a37626dfa3cf7e9836dad06
+scope: delta
+
+No high or medium delta findings. Shared T-382 ee3f2393 and T-398 8af83889 applied without changed patch semantics: T-398 exact whole diff, T-382 exact added/removed lines and test blobs; sessions/fake full-blob differences are prior unrelated T-366 base context. T-385 supervisor/warning implementation unchanged under A-2405’s Coordinator C2 exception. A-2448 ten sequential files 70/70, zero failure/cancel/skip/todo, root typecheck/diff check clean. C4 refreshed through T-397 filing; C1–C3 await complete exact-head no-mode verify after hub-back. Prior red 6930503c/A-2444 was known T-382 correction absent; old-head isolated passes not used for unchanged retry. A-2449: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2449-t-385-shared-t-382-t-398-delta-source-clearance.md.
+
+Criteria: C4 verified.
+
+### impl-385 · 2026-10-14T16:38:39.924Z
+
+After clear delta source review rev-2026-10-14-385-5 (A-2449) and Coordinator hub-back post, submitted no-mode verify --executor droplet at exact head b40e992784790b9e4a37626dfa3cf7e9836dad06: run 44f177e9-f200-4d2b-8769-3562ae31b134. Hub fallback: no prepared snapshot, running locally. Reported to Coordinator/reviewer; keeping the run/head intact and awaiting hub result.
+
+### impl-385 · 2026-10-14T16:49:04.508Z
+
+Coordinator snapshot-ready instruction 01c3c1e4: cancelled queued local-fallback 44f177e9 (A-2453) and resubmitted same-head no-mode --executor droplet with rev-23/impl-385 recipients. CLI acknowledgement timed out; reconciled task.view confirms b1603160-39e7-494f-8e96-87248f3ef907 accepted, executor droplet, state launching, exact reviewed b40e992784790b9e4a37626dfa3cf7e9836dad06. No duplicate retry.
+
+### impl-385 · 2026-10-14T17:13:21.039Z
+
+Droplet verification b1603160 at exact source-clear b40e9927 failed outside T-385's changed test files: init re-init while live Claude session (`database is locked`, init.test.ts:438), restart merge fixture leaves task worktree (merge.test.ts:1079), flooding responsiveness timing (request-guard.test.ts:76,708ms vs204ms baseline). A-2465; Linux x64 c-8 lon1, lifetime1403s, cost$0.0974;1635pass/3fail/3skip. Reported Bugs finds aside to lead (S each) and reviewer. No automatic multi-failure retry; awaiting shared-fix/adoption or Linux diagnosis disposition.
+
+### rev-23 · 2026-10-14T17:13:42.214Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-385-6
+commit: b40e992784790b9e4a37626dfa3cf7e9836dad06
+scope: evidence
+
+Medium — hub/test/init.test.ts:438/:90: cland init returns database locked, so Linux full gate fails. Medium — hub/test/merge.test.ts:1079: ref-movement restart expected false, got true. Medium — hub/test/request-guard.test.ts:76: competing client waited 708ms, baseline 204ms, outside asserted bound. A-2465 droplet b1603160 exits 1: typecheck succeeds, 1635 pass/3 fail/3 macOS-only skips, Neovim not reached; c-8 lon1 Linux x64, lifetime1403s/$0.0974. Changed timeout/stall cases pass; no T-385 causal source defect asserted. Bugs S aside each reported to lead; multiple failures do not qualify for single-test same-head retry. Source A-2449/C4 stand, C1–C3 pending passing complete evidence, no individual feature criterion newly failed. A-2467: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2467-t-385-linux-verification-red-three-outside-test-blockers.md.
+
+### impl-385 · 2026-10-14T17:19:03.119Z
+
+Human decision de65131f relayed by Coordinator 7df2bdac permits local task verification pending shared Linux fixes T-429/T-430; Reviewer judges same-head local instead of red droplet. Submitted no-mode --executor local at unchanged source-clear b40e992784790b9e4a37626dfa3cf7e9836dad06:0e68bdde-744e-4733-a2d8-13306ca6da00, queued position2, rev-23/impl-385 recipients. Awaiting hub result.
+
+### impl-385 · 2026-10-14T18:15:38.535Z
+
+Authorized same-head local verification 0e68bdde-744e-4733-a2d8-13306ca6da00 passed at source-clear b40e992784790b9e4a37626dfa3cf7e9836dad06:2019/2019, full hub+Neovim, no failures/skips; A-2489. darwin arm64 Node24.21.0 Neovim0.12.5,1351.94s. Reviewer notified for C1–C3/final evidence verdict under human decision de65131f superseding red Linux b1603160. No head changes.
+
+### rev-23 · 2026-10-14T18:16:29.996Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-385-7
+commit: b40e992784790b9e4a37626dfa3cf7e9836dad06
+scope: evidence
+
+Final clear; C1–C4 verified at unchanged clean b40e9927. Authorized same-head local0e68bdde/A-2489 passes typecheck and2019/2019 (37free,1604hub,378Neovim),zero failures/cancellations/skips/todo. Timeout, silent-tree/spoke cleanup, fast-exit warning/successor and partial-output cases pass. C2 remains under Coordinator0e5224c8 exception: verified identities terminated; unknown writer preserved with explicit failed incomplete cleanup and one warning before admission release; T-410 follows exact ownership. C4 remains T-397 filing, original cause unproven. Red Linuxb1603160/A-2465 superseded for gate by human de65131f/Coordinator7df2bdac, blockers T-429/T-430 retained, no Linux green claim. A-2491: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2491-t-385-final-local-gate-bounded-hangs-and-incomplete-cleanup-contract.md.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.

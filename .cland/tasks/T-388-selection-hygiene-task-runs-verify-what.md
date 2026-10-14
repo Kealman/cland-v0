@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-247
 branch: t/T-388-selection-hygiene-task-runs-verify-what
 created: 2026-10-14T12:28:09.900Z
-updated: 2026-10-14T12:43:13.158Z
+updated: 2026-10-14T17:33:53.970Z
 ---
 
 ## Summary
@@ -55,17 +55,26 @@ The smoke baselines (`HUB_SMOKE`, `NVIM_SMOKE`) and the integrated-`dev`-is-full
 ## Acceptance criteria
 
 - [ ] C1. `chooseSuiteMode` implements the five rules above in order, and `hub/test/suite-selection.test.ts` covers each rule with at least one path list, including a docs-only diff (hub-only), a `.cland/tasks`-only diff (hub-only), an `nvim/lua/cland/hub.lua` diff (full) and a `hub/test/harness.ts` diff (full).
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-388-5 · 2026-10-14T17:33:53.969Z · commit 952d1f7fd803fd9b2b25230b791958c3c7e820d2
 - [ ] C2. The hub files imported by `nvim/test/**` are computed from the source at selection time, and a test proves that adding a new import of a hub file to an `nvim/test` file makes that hub file select full.
-  - failed: rev-23 [reviewer] · 2026-10-14T12:39:50.246Z · note Source-derived dependencies omit literal backtick dynamic imports and helper export-from/export-star hub dependencies, allowing hub-only selection for shared modules.
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-388-5 · 2026-10-14T17:33:53.969Z · commit 952d1f7fd803fd9b2b25230b791958c3c7e820d2
 - [ ] C3. The replay over the 40 merges `83b74c6`..`f174d9c` runs full on at most 25 (37 before), and both tables (before and after) are posted on the item with one line per merge.
   - verified: rev-23 [reviewer] · run rev-2026-10-14-388-2 · 2026-10-14T12:43:13.158Z · commit 5c5a6490d219fcb9fe1b86539bcbe8cb5328d54f
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-388-4 · 2026-10-14T16:58:53.646Z · commit 952d1f7fd803fd9b2b25230b791958c3c7e820d2
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-388-5 · 2026-10-14T17:33:53.969Z · commit 952d1f7fd803fd9b2b25230b791958c3c7e820d2
 - [ ] C4. Measured: the phases a `nvim-only` selection runs (hub smoke plus the Neovim phase), run through `node hub/test/run-suite.ts` with that selection in `CLAND_SUITE_SELECTION` on an empty verify queue, finish in under 3 minutes (a full run is about 15); the duration line is posted on the item, and the live check after merge is the epic's demo.
 - [ ] C5. Every existing `suite-selection.test.ts` assertion that still applies keeps its meaning; each changed expectation is listed in the review request with the rule that changed it.
   - verified: rev-23 [reviewer] · run rev-2026-10-14-388-2 · 2026-10-14T12:43:13.158Z · commit 5c5a6490d219fcb9fe1b86539bcbe8cb5328d54f
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-388-4 · 2026-10-14T16:58:53.647Z · commit 952d1f7fd803fd9b2b25230b791958c3c7e820d2
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-388-5 · 2026-10-14T17:33:53.969Z · commit 952d1f7fd803fd9b2b25230b791958c3c7e820d2
 - [ ] C6. `docs/agents/tests.md`, the Implementer clause in `default-roles.ts` and `.cland/roles.toml`, and the `qa` skill no longer prescribe `cland verify all` for task runs, and state D29's split between task runs and integrated `dev` runs.
   - verified: rev-23 [reviewer] · run rev-2026-10-14-388-2 · 2026-10-14T12:43:13.158Z · commit 5c5a6490d219fcb9fe1b86539bcbe8cb5328d54f
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-388-4 · 2026-10-14T16:58:53.647Z · commit 952d1f7fd803fd9b2b25230b791958c3c7e820d2
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-388-5 · 2026-10-14T17:33:53.969Z · commit 952d1f7fd803fd9b2b25230b791958c3c7e820d2
 - [ ] C7. `hub/README.md` (Tests) describes the package rules, the full set and the computed import list, and the reason strings name the deciding rule.
   - verified: rev-23 [reviewer] · run rev-2026-10-14-388-2 · 2026-10-14T12:43:13.158Z · commit 5c5a6490d219fcb9fe1b86539bcbe8cb5328d54f
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-388-4 · 2026-10-14T16:58:53.647Z · commit 952d1f7fd803fd9b2b25230b791958c3c7e820d2
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-388-5 · 2026-10-14T17:33:53.970Z · commit 952d1f7fd803fd9b2b25230b791958c3c7e820d2
 
 ## Comments
 
@@ -108,3 +117,48 @@ scope: full
 Corrected source clear; no high or medium findings. Literal backtick imports and helper named/star/type re-exports are collected; interpolated templates fail closed to full with a reason. Added parser/admission cases retain helper cycles, hub boundary and existing assertions. C3 replay remains 40 rows, 37/2/1 → 26/9/5 under Coordinator's revised ≤28 criterion; C5 accounting and C6/C7 docs/clauses are source-established. C1/C2 await exact-head verification; C4 awaits the explicitly authorized empty-queue Neovim-only timing check. Use no-mode cland verify under D29. Evidence A-2368: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2368-t-388-corrected-source-clear-at-5c5a6490.md.
 
 Criteria: C3 verified, C5 verified, C6 verified, C7 verified.
+
+### rev-23 · 2026-10-14T16:55:57.131Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-388-3
+commit: 5c5a6490d219fcb9fe1b86539bcbe8cb5328d54f
+scope: evidence
+
+Medium — hub/test/suite.test.ts:414,442: three exact-head integration cases retain old 'package-local diff against fetched dev' expectations; actual correct T-388 rules are 'all paths outside nvim/' or 'all paths under nvim/'. A-2456 eac22c41 exits 1, 1654/1657 hub pass, Neovim not reached; local fallback because remote budget 2/2 full. Deterministic task-related assertion mismatch, not flake. Update exact rule expectations while retaining modes, transported paths, 768/384 caps, complete inventory, Unicode/platform and one-publication assertions; name those changes in re-review. C3/C5/C6/C7 source marks stand; C1/C2 and C4 pending. No new individual feature criterion failure asserted; failed gate not clearance. A-2457: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2457-t-388-red-gate-integration-tests-retain-old-selection-reasons.md.
+
+### impl-388 · 2026-10-14T16:57:47.634Z
+
+Corrected A-2456's three stale integration reason assertions in 4291e236. Exact hub-only reason now names rule 5, and both 768/384-byte Neovim reports name rule 4. All transport/force-full/cap/Unicode/log completeness/single-publication assertions remain. The three-test targeted loop reproduced red then passed green; after a clean origin/dev merge, new pushed head 952d1f7f passes those three report tests, all 61 selection tests and hub typecheck. Replay unchanged 26/9/5. A-2458 records each changed expectation; requesting corrected source review before another no-mode verify.
+
+### rev-23 · 2026-10-14T16:58:53.647Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-388-4
+commit: 952d1f7fd803fd9b2b25230b791958c3c7e820d2
+scope: delta
+
+No high or medium correction/merge findings. Three reason assertions now exactly name rule 5 hub-only outside nvim and rule 4 nvim-only under nvim, preserving cap/full-list/single-publication/transport/force-full/Unicode/platform checks. A-2458 accounts for changed expectations, A-2459 red and A-2460 merged-head 3/3 green. Clean dev a7e07635 merge has no combined conflict diff; selector and 61-test file byte-identical to prior source-clear 5c5a6490. Merged D29 clauses/docs retain no-mode task split and computed import safety; D28 guidance retained. C3/C5/C6/C7 refreshed (replay 26/9/5 under revised ≤28); C1/C2 await new exact-head verify, C4 pending quiet-window timing. Earlier A-2456 remains red, not gate evidence. A-2462: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2462-t-388-corrected-reasons-and-dev-integration-source-review.md.
+
+Criteria: C3 verified, C5 verified, C6 verified, C7 verified.
+
+### impl-388 · 2026-10-14T17:33:25.054Z
+
+Exact reviewed-head verification 23d2db26 is green at 952d1f7f: 2063/2063, local darwin arm64, Node v24.21.0, Neovim v0.12.5; log A-2474. Local fallback was remote budget 2/2 full. Full suite wall 1327.33s; Neovim phase 109.39s. C4 remains pending its authorized single nvim-only timing measurement, which must run in the Coordinator's announced empty-queue window after T-382/T-383 stress work. No source changes pending.
+
+### rev-23 · 2026-10-14T17:33:53.970Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-388-5
+commit: 952d1f7fd803fd9b2b25230b791958c3c7e820d2
+scope: evidence
+
+No high or medium source/suite findings. Exact-head auto full 23d2db26/A-2474 passes root typecheck and 2063/2063 (37 free, 1639 hub machine, 387 Neovim), zero failures/cancellations/skips/todo. Droplet request fell back local because remote budget 2/2 full; platform darwin arm64 Node24.21.0 Neovim0.12.5. Clean head/worktree unchanged. C1/C2 computed rules/import coverage now verified; C3/C5/C6/C7 source/replay assessment retained. All corrected reason/cap cases pass. Previous red eac22c41/A-2456 fixed by new source, not unchanged retry. C4 remains pending authorized empty-queue nvim-only total-phase timing; full run Neovim duration alone is not that proof. A-2475: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2475-t-388-green-exact-head-selection-evidence-c4-timing-pending.md.
+
+Criteria: C1 verified, C2 verified, C3 verified, C5 verified, C6 verified, C7 verified.

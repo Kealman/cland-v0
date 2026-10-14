@@ -16,10 +16,10 @@ parent: R-228
 blocked_by:
   - E-275
   - E-269
-topic: null
+topic: topic-254
 branch: null
 created: 2026-10-12T11:35:14.567Z
-updated: 2026-10-13T20:55:30.859Z
+updated: 2026-10-14T16:39:24.946Z
 ---
 
 ## Goal

@@ -16,7 +16,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-13T20:53:46.294Z
-updated: 2026-10-14T03:36:38.646Z
+updated: 2026-10-14T16:41:57.350Z
 closed: 2026-10-14T03:36:38.646Z
 ---
 
@@ -68,7 +68,8 @@ Nothing in the repository. The steps:
   - done: human · 2026-10-14T03:36:35.178Z
 - [x] C4. The published files are clear of the token by a literal scan made while the token was available.
   - done: human · 2026-10-14T03:36:36.134Z
-- [ ] C5. On a pass, the MicroVM backend is filed under Follow-ups with a link to the artifact. On a fail, E-271 records the result and nothing is filed.
+- [x] C5. On a pass, the MicroVM backend is filed under Follow-ups with a link to the artifact. On a fail, E-271 records the result and nothing is filed.
+  - done: coord · 2026-10-14T16:41:57.350Z
 
 ## Comments
 

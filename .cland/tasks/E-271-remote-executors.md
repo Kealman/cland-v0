@@ -2,7 +2,8 @@
 id: E-271
 kind: epic
 title: Remote executors
-state: open
+state: closed
+criterion_seq: 7
 labels:
   - epic
   - v0.1.2
@@ -10,10 +11,11 @@ labels:
 assignee: null
 parent: R-228
 blocked_by: []
-topic: null
+topic: topic-252
 branch: null
 created: 2026-10-12T11:35:13.919Z
-updated: 2026-10-14T11:30:53.604Z
+updated: 2026-10-14T18:17:45.123Z
+closed: 2026-10-14T18:17:45.123Z
 ---
 
 ## Goal
@@ -56,13 +58,20 @@ QA runs the demo below on `dev`, playing the human's part through the `cland` CL
 
 In a scratch project with a copy of `dev` and a hub started with the token in its environment, QA sets `[verify] executor = "droplet"`, runs `cland executor prepare`, then `cland verify` on two branches at once, and reads two green results naming their droplets, lifetimes and costs while `cland verify queue` shows both remote. QA stops the hub during a third run and reads the watchdog's deletion and the next start's sweep in the journal; `cland executor status` and the provider's tag listing are empty afterwards. With no token, `cland verify` runs locally with a warn-level event naming the variable. QA searches the journal, the hub log, the artifacts and the item files for the token's value without printing it, and finds nothing. The experiment's artifact is on this epic. The demo costs under a dollar of droplet time.
 
-- [ ] The executor interface (acquire, deliver, prepare, start, status, log, cancel, release, reap) has the local machine and droplets behind it, and nothing in it assumes SSH.
-- [ ] A remote run creates from a prepared snapshot, delivers the bundle with `CLAND_SUITE_SELECTION`, runs as an ordinary user, and posts its result as a local run does, naming the executor, the platform, the lifetime and the cost.
-- [ ] A durable lease, a per-lease watchdog, the sweep by tag, the run timeout and the daily spend cap leave no machine billing after a hub crash or a hung run.
-- [ ] Remote runs have their own budget beside the local cap of one; without a token or past the cap, runs fall back to local with a warn-level event.
-- [ ] The token is read from the environment at use and appears in no file, record or log cland writes, and never on the machine.
-- [ ] The MicroVM experiment's result is recorded on this epic, and the second backend follows it as decided.
-- [ ] `hub/README.md`, the Implementer and QA clauses and the `merge` and `qa` skills describe the executors, their configuration and their cost.
+- [ ] C1. The executor interface (acquire, deliver, prepare, start, status, log, cancel, release, reap) has the local machine and droplets behind it, and nothing in it assumes SSH.
+  - verified: qa-27 [qa] · run qa-2026-10-14-27-9 · 2026-10-14T18:17:15.933Z · commit 7f7a4dd12c19a764cb82af0f700727c401c3c69c
+- [ ] C2. A remote run creates from a prepared snapshot, delivers the bundle with `CLAND_SUITE_SELECTION`, runs as an ordinary user, and posts its result as a local run does, naming the executor, the platform, the lifetime and the cost.
+  - verified: qa-27 [qa] · run qa-2026-10-14-27-9 · 2026-10-14T18:17:15.933Z · commit 7f7a4dd12c19a764cb82af0f700727c401c3c69c
+- [ ] C3. A durable lease, a per-lease watchdog, the sweep by tag, the run timeout and the daily spend cap leave no machine billing after a hub crash or a hung run.
+  - verified: qa-27 [qa] · run qa-2026-10-14-27-9 · 2026-10-14T18:17:15.933Z · commit 7f7a4dd12c19a764cb82af0f700727c401c3c69c
+- [ ] C4. Remote runs have their own budget beside the local cap of one; without a token or past the cap, runs fall back to local with a warn-level event.
+  - verified: qa-27 [qa] · run qa-2026-10-14-27-9 · 2026-10-14T18:17:15.934Z · commit 7f7a4dd12c19a764cb82af0f700727c401c3c69c
+- [ ] C5. The token is read from the environment at use and appears in no file, record or log cland writes, and never on the machine.
+  - verified: qa-27 [qa] · run qa-2026-10-14-27-9 · 2026-10-14T18:17:15.934Z · commit 7f7a4dd12c19a764cb82af0f700727c401c3c69c
+- [ ] C6. The MicroVM experiment's result is recorded on this epic, and the second backend follows it as decided.
+  - verified: qa-27 [qa] · run qa-2026-10-14-27-9 · 2026-10-14T18:17:15.934Z · commit 7f7a4dd12c19a764cb82af0f700727c401c3c69c
+- [ ] C7. `hub/README.md`, the Implementer and QA clauses and the `merge` and `qa` skills describe the executors, their configuration and their cost.
+  - verified: qa-27 [qa] · run qa-2026-10-14-27-9 · 2026-10-14T18:17:15.934Z · commit 7f7a4dd12c19a764cb82af0f700727c401c3c69c
 
 ## Dogfooding
 
@@ -196,3 +205,100 @@ D27 amendment (stand-in under D24, 2026-10-14): the single c-16 speed run in QA'
 ### coord · 2026-10-14T11:30:53.604Z
 
 Decision of the human (2026-10-14 11:30Z, answer to ask 0b1f1115): the project switches its verification to droplets right after T-347 merges and the hub restarts, before E-271's QA verdict. QA runs in parallel. Config: executor = "droplet" and remote_budget = 2, with D27's lifetime 60m, run timeout 50m and $3/day. The macOS-only cases are covered by the release's final local run.
+
+### coord · 2026-10-14T18:11:15.393Z
+
+QA demo qa-2026-10-14-27-9, recorded for qa-27 (QA posts by send only):
+- M8 builder: 609090465, c-8 lon1, 142.6 s, $0.0099.
+- M9 hub-stop run: 609092023, c-8 lon1; the watchdog deleted it at its 15 m lifetime (17:47:55Z); recovered result exit 124, $0.0626.
+- M10 c-16 speed run: 609097811, lon1, $0.50/h; hub phase 1057.29 s (hub machine 1055.84 s on 4 workers, peak load 10.95); lifetime 1135.0 s; $0.1576. One accounts.test.ts failure got its one targeted repeat. Against the c-8 references (hub phase ~1420 s; T-345 1351 s for $0.0938), the c-16 is about 25% faster at about 1.7x the cost per run. Not a controlled benchmark.
+- Demo spend so far: $0.2301.
+
+### qa-27 · 2026-10-14T18:17:15.934Z
+
+verdict: qa
+result: clear
+by: qa-27 [qa]
+run: qa-2026-10-14-27-9
+commit: 7f7a4dd12c19a764cb82af0f700727c401c3c69c
+
+| Check | Surface | Result | Evidence / observation |
+| --- | --- | --- | --- |
+| M0 | hub-api | PASS, amended | M0-amended evidence: all children closed/done and code merges on dev; T-349 5/5 done; stages 1–4 closed, stage 5 open under the evidence-only-task ruling. Initial BLOCKED retained. |
+| M1 | hub-api | PASS | M1 preflight, offers and queue captures; Node 24.21.0; c-8/c-16 lon1 available; private scratch lock. |
+| M2 | hub-api | PASS | M2.txt and executor test log: 3/3; interface reading follows the epic's accepted seven-of-nine distinction. |
+| M3 | hub-api | PASS, amended repeat | executor-run 16/16. executor-prepare initially 16/17, then authorized whole-file repeat 17/17, zero skips. Both logs retained. |
+| M4 | hub-api | PASS | executor-droplet 13/13; named lifecycle, key and watchdog checks. |
+| M5 | hub-api | PASS | executor-safety 20/20; shared cap, fallback, sweep and foreign live-lease protection. |
+| M6 | hub-api | PASS | suite-remote-budget 8/8. |
+| M7 | hub-api | PASS | M7 setup: scratch dev and origin/dev at S, own territory only, clean candidate, private lock, successful start and zero sweep failures. |
+| M8 | hub-api | PASS, amended | M8-final.txt: prepared image 249785393 current at S; one prepared event and notice; builder released. Terminal prepare state is done/prepared. |
+| M9 | hub-api | PASS | M9 watchdog, queue, journal and result captures: stopped hub, independent deletion at deadline, clean sweep, one recovered timeout result with cost. |
+| M10 | hub-api | PASS for executor criteria | M10 result, log, env, queue and release captures. Real c-16 hub-only run posted once; unrelated accounts failure repeated alone, 14/14 passing. |
+| M11 | hub-api | PASS | M11.txt: absent token, one warn and fallback to local, cancelled within 6.7s, no lease or accounting change. |
+| M12 | hub-api | PASS, amended | A-2423 and T-347 final C6 comments: two concurrent c-8 runs, remote 2/2, both results, release/cleanup proof, $0.0676. Known red tests retained. |
+| M13 | hub-api | PASS | Owned snapshot deleted and confirmed absent; no scratch resources/watchdogs; total droplet cost $0.230131041667, below $0.50. |
+| M14 | hub-api | PASS | M14 scan: 647 files, zero token hits; both process-table scans zero hits; neither delivered env contains the token variable. |
+| M15 | hub-api | PASS | A-2217 read in full; MicroVM FAIL as run is recorded on E-271; no MicroVM backend item in C-326. |
+| M16 | hub-api | PASS, amended | README, clauses, skills and domain docs checked; roles test ran twice as prescribed, 8/8 each; cap judged by README table row 1501. |
+| M17 | hub-api | PASS | No scratch processes or directories; provider readbacks clean for this project; amended S-to-dev diff empty; final evidence scan clean. |
+
+QA verdict: **clear** for E-271 under the committed brief and Coordinator amendments. Run **qa-2026-10-14-27-9**, by **qa-27 [QA]**. All final checks in scope passed. Initial M0 BLOCKED and M3 FAIL records remain alongside their authorized passing checks.
+
+## Findings, ranked by severity
+
+No high or medium finding against E-271.
+
+1. **Low — M3, hub/test/executor-prepare.test.ts:137.** `tclean node --test hub/test/executor-prepare.test.ts` initially failed the unconfirmed builder-deletion case: expected HTTP 422, observed 0, under the impl-388 local holder. The Coordinator authorized one whole-file repeat beside the next holder; it passed all 17 tests with zero failures/skips. Decision 552fd2e2 accepts M3 and retains this as a load-sensitive test finding. Reported to Coordinator for filing. See M3-executor-prepare.log and M3-rerun-executor-prepare.log.
+2. **Low — M10, hub/test/accounts.test.ts:220/240 (launch assertion :61).** Scratch `cland verify --fresh --report general --json`, run 0cdfb9e0, selected hub-only and failed one OpenCode retained-handoff case on Linux: `crew.implementer: pool size 1 reached (pool-impl)`, false !== true. The prescribed `tclean node --test hub/test/accounts.test.ts` repeat passed 14/14, zero failures/skips, in 58.2s. This is a Linux/load-sensitive test observation outside E-271, reported to Coordinator for filing. The brief explicitly judges M10 on executor behavior even when such product tests fail. See M10-suite.log and M10-accounts-repeat.log. This run is not green suite evidence.
+
+## Build and criterion marks
+
+Product build S: **a7e07635ea07b95272b43beada4ebe8faa376c2f**. Every scratch branch derives from S. Tested candidates: hub-stop 33342b465690be544217e7776171c2814b37d7fb; speed c7dcf2ed5c5294508e678d6620d305ab02133df3; no-token 019d48fad4e78234ba20ec8e20266f5f671b0097. Each candidate adds only its brief-prescribed probe comment.
+
+Verdict dev commit: **7f7a4dd12c19a764cb82af0f700727c401c3c69c**. The Coordinator authorized planning commits 298ccf7f and 0f4d0385 (only docs/spec/v0.1.3.md and GLOSSARY.md), plus tracker commit 7f7a4dd1. The final comparison excluding those two documents, .cland and qa/briefs is empty. No hub/ or nvim/ code moved.
+
+Criterion marks for this verdict: **C1, C2, C3, C4, C5, C6, C7 verified**. The pre-verdict read showed seven null ids in the brief's stated order; the verdict stamps by position. Mapping: C1 M2; C2 M3/M8/M10; C3 M4/M5/M8/M9/M13; C4 M5/M6/M10/M11/M12; C5 M4/M5/M14; C6 M15; C7 M16. M0/M1/M7/M17 are gates. The stamped texts and marks are checked after the verdict write.
+
+## Real runs, cleanup and speed
+
+| Role | Provider id | Created UTC | Released / confirmed UTC | Lifetime ms | Cost USD |
+| --- | --- | --- | --- | --- | --- |
+| c-8 builder | 609090465 | 17:26:27.072 | 17:28:52.064 | 142616 | 0.009903888889 |
+| c-8 hub-stop | 609092023 | 17:32:55.272 | 17:48:00.560 | 901299 | 0.062590208333 |
+| c-16 speed | 609097811 | 17:50:40.670 | 18:09:38.165 | 1134986 | 0.157636944444 |
+
+Total **$0.230131041667**, below **$0.50**. All were in lon1, one scratch droplet at a time. Creates, destroys, costs and speed were sent to the Coordinator for recording on E-271. The watchdog run has no executor-lease-released row; its machine cost comes from its single recovered suite-result, as the brief allows.
+
+M9: scratch hub stopped 17:34:09Z after snapshot-match and remote typecheck output. Watchdog fired 17:47:55.275Z at its deadline, deleted 609092023, confirmed 17:48:00.560Z. Restart recorded one watchdog event, a zero-failure sweep and one result: exit 124, run timeout 5m, droplet c-8 lon1, 901s/$0.0626. Its platform is unavailable after the interrupted run; the brief accepts this timeout result. Queue was remote 1/2, local none. No foreign droplet was reaped.
+
+M10: exactly one result, Linux x64 6.8.0-142-generic, Node v24.21.0, Neovim v0.12.5. 1653 tests: 1649 pass, 1 fail, 3 macOS skips, zero cancelled/todo. Log paths show /home/runner; dependencies and Neovim match the prepared snapshot. Delivered env has exactly CLAND_SUITE_SELECTION, FORCE_COLOR, NO_COLOR; mode hub-only, deciding file hub/test/task-size.test.ts. Queue remote 1/2, local none.
+
+```
+shard duration hub free 1.45s; workers 1; resource free; machine wait 0.00s
+shard duration hub machine 1055.84s; workers 4; resource machine; machine wait 0.01s
+suite duration 1057.29s; lock wait 0.04s; peak 1m load 10.95
+```
+
+Hub-phase sum = 1.45 + 1055.84 = **1057.29s**; lifetime **1134.986s** at **$0.50/hour**. References: c-8 hub phase about 1420s (E-268/A-2217), T-345 c-8 run 1351s/$0.0938. The measured hub phase is about 25.5% shorter than the 1420s reference. These different-tree runs are not a controlled benchmark.
+
+Owned snapshot **249785393**, cland-qa-t271-341986a75486, was deleted with absent=true. Final provider listings contain no scratch droplets, keys or snapshots. Live-project droplet 609099559, key 60094902 and snapshot 249784854 remain untouched. Ledger spent at cleanup **$0.755828498233**, with **$0.25** reserved for the live project; this project's reservations are gone. Scratch hub, watchdogs, worktree, project and private lock directory are removed. Machine-wide lock differences belong to crew runs, documented by the before/after queue captures.
+
+## Brief amendments and deviations
+
+- **f24dcc11 (M0):** the initial blocker is retained. Coordinator marked T-349 C5 done; re-read is 5/5 done, zero verified. Stages 1–4 closed and stage 5 open are expected because T-349 closed on evidence without a merge. This does not fail this run.
+- **Request 11165005 and 62f3fe31:** live-project droplets may coexist with the single scratch droplet. Judge empty listings and reservations by scratch ownership. Registered host leases protect foreign live resources and use their own deadlines; no foreign reaped event occurred.
+- **3186ce91:** after the recorded queue wait, one targeted file may run beside a local holder. No full local QA suite was started. The brief's M11 fallback was cancelled promptly.
+- **8d8b2a81:** keep scratch build S, allow only the named planning/tracker commits, use the amended code comparison and current full dev SHA for the verdict.
+- **126e517a (M16):** judge the cap by README row 1501, daily_spend_usd default 5 / D27 value 3 and surrounding USD text, not the literal `$3` grep. The prescribed loop included roles.test.ts twice; both 8/8, both summaries retained, the second log occupies the prescribed shared path.
+- **bb4eb92d (M8):** completed preparation is `prepare.state = done` with `result.state = prepared`, not `prepare: null`. Current snapshot, released builder and empty scratch leases/listings establish PASS.
+- **0ba37fc0 (M12):** follow T-347's final C6 disposition and A-2423. Exit-0, queue-JSON and per-run destroy-post requirements are superseded by the accepted machinery evidence: two concurrent c-8 runs, text remote 2/2, both results, aggregate release/empty-provider receipt, $0.0676. Red tests are the known T-411/T-383 findings. No new parallel run was performed.
+- **552fd2e2 (M3):** one whole-file repeat beside the new holder, with no other QA test file concurrent. A pass accepts M3 with the initial failure retained as low. Repeat passed 17/17; no third attempt.
+- The epic's pre-existing **Reading of DoD C1** accepts seven operations through Executor and backend-specific prepare/reap signatures. M2 follows that ruling, without claiming a unified nine-method interface.
+
+The amended expectations are explicit Coordinator decisions, not changes to product code. No product fixes were made. See amendments.txt, run-notes.md, copied helpers and recorded-checks.json for the audit trail.
+
+
+Durable evidence: A-2493, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2493-e-271-qa-evidence-qa-2026-10-14-27-9 (README.md entry).
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.
