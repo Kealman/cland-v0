@@ -3,7 +3,7 @@ id: T-345
 kind: task
 title: "A remote run: with executor = droplet or --executor droplet, cland verify delivers a bundle and the hub's suite selection to a droplet, runs detached as an ordinary user, polls status and log by offset, and posts the result with the droplet, its lifetime and its cost"
 state: open
-status: in progress
+status: review
 size: L
 criterion_seq: 10
 labels:
@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-223
 branch: t/T-345-a-remote-run-with-executor-droplet-or
 created: 2026-10-13T20:53:45.864Z
-updated: 2026-10-14T00:18:21.311Z
+updated: 2026-10-14T01:06:24.390Z
 ---
 
 ## Summary
@@ -123,25 +123,35 @@ The package runner reads the selection through `selectionFromEnv` and never fetc
 
 - [x] C1. A fixture task branch with a hub-only diff runs with `executor = "droplet"` against the fakes: the fake machine receives a bundle; its run sees `CLAND_SUITE_SELECTION` equal to the host's selection (`hub-only`), with `FORCE_COLOR=0` and `NO_COLOR=1`; it runs typecheck, then the selected test command, as `runner`. One result is posted with the executor line, the lifetime and the cost. The fake API shows the droplet and the key deleted.
   - done: impl-345 · 2026-10-13T23:49:36.002Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-345-5 · 2026-10-14T01:06:24.389Z · commit f7e696654e88c941273dc3be93024f48a22f774c
 - [x] C2. `--executor local` overrides a droplet default, and `--executor droplet` overrides a local default. An unknown value is refused. `cland task view --json` shows the run's `verify.executor`.
   - done: impl-345 · 2026-10-13T23:49:41.238Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-345-5 · 2026-10-14T01:06:24.389Z · commit f7e696654e88c941273dc3be93024f48a22f774c
 - [x] C3. A host typecheck failure posts a failed result and creates no droplet. A failing remote test posts one failed result with its failures. A remote typecheck failure stops before the tests.
   - done: impl-345 · 2026-10-13T23:49:42.498Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-345-5 · 2026-10-14T01:06:24.389Z · commit f7e696654e88c941273dc3be93024f48a22f774c
 - [x] C4. A long fake run shows up incrementally in the local log. Fake `ssh` failing for N calls mid-run does not end the run, and the final result is complete. A droplet deleted from the fake API mid-run yields one result with `remote machine lost`, and the lease is released.
   - done: impl-345 · 2026-10-13T23:57:27.168Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-345-5 · 2026-10-14T01:06:24.389Z · commit f7e696654e88c941273dc3be93024f48a22f774c
 - [x] C5. `cland verify cancel` mid-run stops the remote group, posts one cancelled result and destroys the droplet.
   - done: impl-345 · 2026-10-13T23:49:44.047Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-345-5 · 2026-10-14T01:06:24.390Z · commit f7e696654e88c941273dc3be93024f48a22f774c
 - [x] C6. With `cland hub stop` and start mid-run, the hub reattaches through the lease and reports exactly once.
   - done: impl-345 · 2026-10-13T23:57:27.914Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-345-5 · 2026-10-14T01:06:24.390Z · commit f7e696654e88c941273dc3be93024f48a22f774c
 - [x] C7. A green droplet result is a cache hit for a later `--executor local` request on the same tree and mode, and names `droplet`.
   - done: impl-345 · 2026-10-13T23:49:45.452Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-345-5 · 2026-10-14T01:06:24.390Z · commit f7e696654e88c941273dc3be93024f48a22f774c
 - [x] C8. The sentinel token appears nowhere: not in the bundle, the env file, `run.sh`, the fake machine's files, the logs, the journal, the result or the artifact.
   - done: impl-345 · 2026-10-13T23:49:46.429Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-345-5 · 2026-10-14T01:06:24.390Z · commit f7e696654e88c941273dc3be93024f48a22f774c
 - [ ] C9. Real check, posted on this item: one `cland verify --executor droplet` of this repository at the branch head on c-8, with its result, platform, lifetime and cost, and an empty tag listing afterwards.
   - failed: rev-23 [reviewer] · 2026-10-14T00:18:21.311Z · note The real c-8 attempt cannot authenticate runner within 180 seconds: inherited snapshot clean removes its key-copy hook; no remote suite result was established.
 - [x] C10. `hub/README.md` describes choosing the executor, delivery, the selection, the result line and what a Linux result proves.
   - done: impl-345 · 2026-10-13T23:49:47.766Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-345-2 · 2026-10-14T00:00:25.926Z · commit 0f85b00dfdb4d6c2c292bde6eb260aa0c0ded3d7
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-345-4 · 2026-10-14T00:26:19.966Z · commit f7e696654e88c941273dc3be93024f48a22f774c
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-345-5 · 2026-10-14T01:06:24.390Z · commit f7e696654e88c941273dc3be93024f48a22f774c
 
 ## Comments
 
@@ -189,3 +199,33 @@ scope: evidence
 Medium — hub/src/executor/droplet/prepare.ts:126: inherited image preparation installs the runner-key hook before cloud-init clean removes it; concrete C9 diagnosis reports root SSH succeeds but runner keys/hook are absent. Fake clean=true masks the boot defect. C9 failed; separate T-368 fix and modeled prepare→snapshot acquire regression need source review before fresh image/run evidence. A-2134 was intentionally cancelled before edits; it is not the defect and provides no green verification. Prior admission/restart source review remains applicable. A-2136: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2136-t-345-c9-not-clear-inherited-snapshot-key-hook-deleted-during-clean.md.
 
 Criteria: C9 failed (The real c-8 attempt cannot authenticate runner within 180 seconds: inherited snapshot clean removes its key-copy hook; no remote suite result was established.).
+
+### impl-345 · 2026-10-14T00:24:51.241Z
+
+C9 exposed T-344's runner key hook being deleted by cloud-init clean; Coordinator filed T-368 and authorized its fix here. Separate commit f7e69665 installs the hook after cleaning and adds realistic fake key injection/authorization plus a prepare→snapshot acquire regression (red before fix, green after). Evidence A-2142/A-2135. Preparation 11/11 and remote 16/16 targeted checks pass; replacement source review requested. Old full run cancelled; bad image and all droplets removed. C9 awaits a fresh fixed-code snapshot and exact reviewed-head run.
+
+### rev-23 · 2026-10-14T00:26:19.966Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-345-4
+commit: f7e696654e88c941273dc3be93024f48a22f774c
+scope: delta
+
+No high or medium source findings. Separate T-368 commit correctly installs the key-copy hook after clean; the fake models clean/root-only injection/boot/SSH authorization, with old-order red/new-order green prepare→acquire coverage. Incoming T-265/T-358 code matches reviewed heads and final evidence. Prior complete T-345 scope retained. C10 refreshed; C1–C8 await new exact-head full verification, C9 a fresh fixed-code image and bounded reviewed-head c-8 result/cleanup. Old failure/cancellation remain non-green evidence. A-2144: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2144-t-345-delta-source-clear-t-368-image-boot-fix-and-dev-integration.md.
+
+Criteria: C10 verified.
+
+### rev-23 · 2026-10-14T01:06:24.390Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-345-5
+commit: f7e696654e88c941273dc3be93024f48a22f774c
+scope: evidence
+
+No high or medium findings in source/full suite. Exact-head full cland verify 89660b57 / A-2151 passed both typechecks and 1917/1917 tests, zero failures/cancellations/skips/todo. All remote frame, admission/restart, secret/cache/accounting and realistic snapshot-boot regressions pass. A-2144 remains current. C1–C8/C10 verified; C9 remains unverified pending fresh fixed-code image, reviewed-head c-8 result and sanitized cleanup/cost receipt. This is not final task readiness. A-2152: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2152-t-345-exact-head-full-evidence-clear-real-c9-pending.md.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified, C10 verified.

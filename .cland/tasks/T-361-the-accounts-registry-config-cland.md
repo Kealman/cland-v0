@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-225
 branch: t/T-361-the-accounts-registry-config-cland
 created: 2026-10-13T23:42:53.266Z
-updated: 2026-10-14T00:00:05.971Z
+updated: 2026-10-14T00:39:19.007Z
 ---
 
 ## Summary
@@ -128,6 +128,7 @@ data_home = "~/.local/share/oc-b"   # XDG_DATA_HOME; or db = "…" for OPENCODE_
 - [x] C9. `hub/README.md` describes the registry, its path and shape, `account` in `roles.toml`, `--account`, the row's `account` and the refusals.
   - done: impl-361 · 2026-10-13T23:57:36.164Z
   - verified: rev-26 [reviewer] · run rev-20261013-361-source-1 · 2026-10-14T00:00:05.971Z · commit 3a07fa11713538e2fbafbe447a3f91c4385132aa
+  - verified: rev-26 [reviewer] · run rev-20261014-361-source-2 · 2026-10-14T00:39:19.007Z · commit 4254d565c6cf9f3b71b04cfeae3071ad75e54063
 
 ## Comments
 
@@ -145,5 +146,29 @@ commit: 3a07fa11713538e2fbafbe447a3f91c4385132aa
 scope: full
 
 Full source review clear: no high/medium finding in Standards or Spec. Registry validation/fresh selection, role/request harness precedence, nullable row migration and stored overlays are coherent; native/fresh/restart resume and pool handoff retain recorded account/environment, with pool matching by account+harness. Codex probes/server and OpenCode server/attach receive overlay; data_home clears inherited DB. Journal facts and account.list shell permission paths checked. Existing assertions/bounds preserved; new tests scratch-owned and journal read uses flushLogs. C9 README verified; C1–C8 execution-dependent criteria remain unverified pending accepted same-head full. A-2128 summarizes targeted passes, not independently read raw evidence. A-2130 records both axes; Reviewer ran no tests/edits.
+
+Criteria: C9 verified.
+
+### rev-26 · 2026-10-14T00:37:01.847Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261014-361-final-1
+commit: 3a07fa11713538e2fbafbe447a3f91c4385132aa
+scope: evidence
+
+Medium — nvim/test/sessions.test.ts:122: failed A-2146 assumes adjacent JSON launch event/session fields; added account intervenes although the expected coord record exists. Full gate fails:1907/1908, Neovim338/339; typecheck/hub and all14 account cases pass. Preserve event+session assertions using parsed fields; renewed source review required before corrective suite. No account criterion failure is inferred; C9 source remains checked, C1–C8 final marks await accepted green receipt. A-2147 records evidence; Reviewer ran no tests/edits.
+
+### rev-26 · 2026-10-14T00:39:19.007Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261014-361-source-2
+commit: 4254d565c6cf9f3b71b04cfeae3071ad75e54063
+scope: delta
+
+Delta source review clear: no high/medium finding. sessions.test.ts:122–127 checks parsed event/session fields after flushLogs and adds account:null, preserving all scenario assertions and bounds. All22 original account-file changed-line sets match against respective old/new bases; protocol retains account plus landed stateReason/warning, and stored account selection/resume paths remain. Prior full source A-2130 retained; T-265/T-358 are independently reviewed landed integration. C9 verified; C1–C8 final marks await accepted same-head full. A-2148 reports correction checks; A-2149 records source delta. Preserve failed A-2146; Reviewer ran no tests/edits.
 
 Criteria: C9 verified.

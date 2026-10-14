@@ -2,8 +2,8 @@
 id: T-352
 kind: task
 title: "The card beside the tree: the card follows the cursor with the summary, its provenance line and the facts, Enter focuses it, gi opens the explorer on the item, and gI keeps the v0.1 item view"
-state: open
-status: review
+state: closed
+status: done
 size: L
 criterion_seq: 9
 labels:
@@ -17,7 +17,8 @@ blocked_by:
 topic: topic-226
 branch: t/T-352-the-card-beside-the-tree-the-card
 created: 2026-10-13T20:53:51.618Z
-updated: 2026-10-14T00:21:16.272Z
+updated: 2026-10-14T01:20:56.119Z
+closed: 2026-10-14T01:20:56.119Z
 ---
 
 ## Summary
@@ -123,24 +124,74 @@ E-276: The explorer and the card, tracer bullet 1 (the first card) and the `gi` 
 
 - [x] C1. The card follows the cursor: moving onto a task shows its card within the debounce, and moving back onto the same row does not redraw the card. Holding `j` over ten rows sends no `task.view` for the rows passed. The stub hub's frame log shows it.
   - done: impl-352 · 2026-10-14T00:21:00.901Z
+  - verified: rev-26 [reviewer] · run rev-20261014-352-final-1 · 2026-10-14T01:20:36.769Z · commit 032c63861f7e1d562ef6cea84270283250917c47
 - [x] C2. A task with a `## Summary` shows it with no provenance line. A task without one shows the fallback text and `fallback from ## <heading> · no ## Summary yet`. The summary unit tests pass on the seven cases.
   - done: impl-352 · 2026-10-14T00:21:01.291Z
+  - verified: rev-26 [reviewer] · run rev-20261014-352-final-1 · 2026-10-14T01:20:36.769Z · commit 032c63861f7e1d562ef6cea84270283250917c47
 - [x] C3. The facts show a task's status, layer, labels, size, parent path, lead, claim and holds with roles, and the ordinal `Nth of M in <container>`. An epic's card shows its derived status with `, derived`, the highest layer of its tasks, and the claims and holds on its tasks.
   - done: impl-352 · 2026-10-14T00:21:01.671Z
+  - verified: rev-26 [reviewer] · run rev-20261014-352-source-1 · 2026-10-14T00:24:22.260Z · commit 032c63861f7e1d562ef6cea84270283250917c47
+  - verified: rev-26 [reviewer] · run rev-20261014-352-final-1 · 2026-10-14T01:20:36.769Z · commit 032c63861f7e1d562ef6cea84270283250917c47
 - [x] C4. Enter and `l` on a leaf focus the card, whose winbar lists its keys. `h` and `␣␣` in the card return to the tree with the cursor unchanged.
   - done: impl-352 · 2026-10-14T00:21:02.040Z
+  - verified: rev-26 [reviewer] · run rev-20261014-352-source-1 · 2026-10-14T00:24:22.260Z · commit 032c63861f7e1d562ef6cea84270283250917c47
+  - verified: rev-26 [reviewer] · run rev-20261014-352-final-1 · 2026-10-14T01:20:36.769Z · commit 032c63861f7e1d562ef6cea84270283250917c47
 - [x] C5. `gi` on an id in a thread opens the explorer with the card on that item and its ancestors unfolded. The human's folds in `ui.json` do not change. `gI` and the palette's item pick open the v0.1 item view.
   - done: impl-352 · 2026-10-14T00:21:02.528Z
+  - verified: rev-26 [reviewer] · run rev-20261014-352-source-1 · 2026-10-14T00:24:22.260Z · commit 032c63861f7e1d562ef6cea84270283250917c47
+  - verified: rev-26 [reviewer] · run rev-20261014-352-final-1 · 2026-10-14T01:20:36.769Z · commit 032c63861f7e1d562ef6cea84270283250917c47
 - [x] C6. The card's width is 42 % of the explorer within 36 to 72 columns. A resize is kept in `ui.json` as `explorer.card_width`, and the card closes when another centre view opens.
   - done: impl-352 · 2026-10-14T00:21:02.903Z
-- [ ] C7. The swept tests and `qa/cases/GRAPH-001.lua` pass with `gI` or with card assertions. `npm run test:nvim` is green.
+  - verified: rev-26 [reviewer] · run rev-20261014-352-source-1 · 2026-10-14T00:24:22.260Z · commit 032c63861f7e1d562ef6cea84270283250917c47
+  - verified: rev-26 [reviewer] · run rev-20261014-352-final-1 · 2026-10-14T01:20:36.770Z · commit 032c63861f7e1d562ef6cea84270283250917c47
+- [x] C7. The swept tests and `qa/cases/GRAPH-001.lua` pass with `gI` or with card assertions. `npm run test:nvim` is green.
+  - done: impl-352 · 2026-10-14T01:20:18.989Z
+  - verified: rev-26 [reviewer] · run rev-20261014-352-final-1 · 2026-10-14T01:20:36.770Z · commit 032c63861f7e1d562ef6cea84270283250917c47
 - [x] C8. `nvim/README.md`, the help lines and the Modules list describe the card, the summary rule, `gi` and `gI`.
   - done: impl-352 · 2026-10-14T00:21:03.289Z
+  - verified: rev-26 [reviewer] · run rev-20261014-352-source-1 · 2026-10-14T00:24:22.260Z · commit 032c63861f7e1d562ef6cea84270283250917c47
+  - verified: rev-26 [reviewer] · run rev-20261014-352-final-1 · 2026-10-14T01:20:36.770Z · commit 032c63861f7e1d562ef6cea84270283250917c47
 - [x] C9. The human's picture comes first. The card opens with the summary and the facts, never with the agents' Markdown body. The body is not drawn in this ticket; ticket T-354 adds it folded behind `zb` (spec §3.9, T-244).
   - done: impl-352 · 2026-10-14T00:21:03.659Z
+  - verified: rev-26 [reviewer] · run rev-20261014-352-source-1 · 2026-10-14T00:24:22.260Z · commit 032c63861f7e1d562ef6cea84270283250917c47
+  - verified: rev-26 [reviewer] · run rev-20261014-352-final-1 · 2026-10-14T01:20:36.770Z · commit 032c63861f7e1d562ef6cea84270283250917c47
 
 ## Comments
 
 ### impl-352 · 2026-10-14T00:13:38.036Z
 
 Summary port and the first card are implemented. Targeted tests pass for real-hub parsed-body loading, seven summary rules, task/container facts, focus/back, debounce frame counts (twenty passed rows fetch only the rested task), cache reuse + updated refresh, loading facts, gi transient reveal, gI/palette full-body view, and manual-width cold restart. Completing the existing test sweep and docs; full suite waits for source review.
+
+### rev-26 · 2026-10-14T00:24:22.260Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261014-352-source-1
+commit: 032c63861f7e1d562ef6cea84270283250917c47
+scope: full
+
+Full source review clear: no high/medium Standards/Spec finding. Card compose/content, shared item_view cache, 100ms follow timer/current-row guard, changed text+highlight compare, centre exclusion/view close, persisted width baseline, focus/back and transient gi reveal checked. gI/palette retain item view; standalone sweep preserves original assertions, with dedicated card frame-count coverage for passed rows. Summary prototype changes match task's full written section/nil provenance/colon-only lead-in requirements. C3,C4,C5,C6,C8,C9 established by source/docs and supplied 200x50 capture; C1/C2 execution and C7 Neovim suite remain pending. A-2139 summarizes targeted evidence; A-2143 records review. Require accepted same-head cland verify nvim and final evidence verdict; Reviewer ran no tests/edits.
+
+Criteria: C3 verified, C4 verified, C5 verified, C6 verified, C8 verified, C9 verified.
+
+### impl-352 · 2026-10-14T00:24:50.783Z
+
+Source-clear rev-20261014-352-source-1 / A-2143 at 032c63861f7e1d562ef6cea84270283250917c47; C3,C4,C5,C6,C8,C9 verified. Submitted cland verify nvim after source clear at that unchanged head: a89618b5-138f-4437-be9c-87e3dc743b3b, queue position 2 / worker null. Report topic-226, rev-26, impl-352. Tree clean; idle until the hub result and Reviewer final evidence verdict. C7 done remains pending the accepted suite.
+
+### rev-26 · 2026-10-14T01:20:36.770Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261014-352-final-1
+commit: 032c63861f7e1d562ef6cea84270283250917c47
+scope: evidence
+
+Final evidence clear: no high/medium finding remains. Accepted same-head a89618b5/A-2153 expands requested nvim to full and passes typecheck plus1906/1906 (37 free,1518 hub machine,351 Neovim), zero fail/cancel/skip/todo, exit0. C1 rapid-j/debounce/frame-count/cache/tick and C2 seven-rule summary tests pass. C7 all swept compatibility cases and GRAPH-001 runner explicitly pass; full Neovim green. C3–C6/C8/C9 source-established in A-2143, with matching card behavior cases passing. A-2154 records evidence. Reviewer ran no tests/edits.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified, C9 verified.
+
+### coord · 2026-10-14T01:20:56.119Z
+
+Merged 0a65b026e97b20091d63ebde06f7e715e8382c26 onto dev.
