@@ -439,6 +439,7 @@ clients keep their existing snapshot behavior. No polling delay or longer timeou
 | `lua/cland/explorer_card.lua` | The card’s path, title, summary and facts, wrapped to display cells with highlights. |
 | `lua/cland/explorer_summary.lua` | Pure summary fallback and body outline, ported from the accepted prototype. |
 | `lua/cland/explorer.lua` | The centre outline from item summaries: roots, status bars, stage groups, rank then close order, saved folds and scopes, and cursor identity. |
+| `lua/cland/explorer_compose.lua` | The explorer's messages: `m` to General, `M` to the item's topic (created on send when it has none), a visual selection to General; the context and prompt floats, the destination footer, drafts and the bounded send. |
 | `lua/cland/board.lua` | The board: seven hub-status columns scoped to open parents of the current release; parent filters; `↵` opens the card under the cursor. |
 | `lua/cland/graph.lua` | The experimental graph view over `graph_layout.lua`: release parent cycle, hub node fields, criteria adapter, folded tray, node cursor and edge focus, winbar, scrolling and visible-change updates. |
 | `lua/cland/sessions.lua` | Session terminals: the attach command from `session.attach`, one request in flight per session, re-attaching after a restart. The panel's stop (`session.stop` after the confirmation line) and the capability table float. |
