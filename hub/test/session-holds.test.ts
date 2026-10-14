@@ -175,7 +175,7 @@ test('delivered verifier requests persist across restart and clear on hold, verd
   const processRow = (launch.value as { process: HarnessProcessView }).process;
   // Wait for the native MCP spoke before connecting the observer.
   await ui.waitFor(f => f.type === 'session.usage' && f.sessionId === processRow.sessionId);
-  const rev = await spawnSpoke({ discover: true, cwd: root, name: processRow.name, sessionId: processRow.sessionId, role: 'reviewer' });
+  let rev = await spawnSpoke({ discover: true, cwd: root, name: processRow.name, sessionId: processRow.sessionId, role: 'reviewer' });
   onCleanup(t, () => rev.close());
   await rev.waitForPresence(['coord-pending', processRow.name]);
   const row = async () => ((await ui.request({ type: 'session.list' })).value as { processes: HarnessProcessView[] }).processes.find(p => p.name === processRow.name)!;
@@ -192,11 +192,16 @@ test('delivered verifier requests persist across restart and clear on hold, verd
   assert.deepEqual((await row()).pending, { item: ids[1], kind: 'qa' });
   await request('review request Q-999999');
   assert.equal((await row()).pending?.item, ids[1], 'unknown items do not replace pending work');
+  await rev.close();
   assert.equal((await cland(root, 'hub', 'stop')).code, 0);
   const restarted = await startDaemon(t, root, fake.env);
   ui = await connectUi(t, restarted.discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   assert.deepEqual((await row()).pending, { item: ids[1], kind: 'qa' });
+  // Only the native spoke can now make the reviewer present. Reattach the observer after it,
+  // since restart reconnects the two spokes independently and deliveries go to the newest.
+  await coord.waitForPresence(['coord-pending', processRow.name]);
+  rev = await spawnSpoke({ discover: true, cwd: root, name: processRow.name, sessionId: processRow.sessionId, assignRole: false });
   await rev.waitForPresence(['coord-pending', processRow.name]);
   assert.equal((await rev.call<{ ok: boolean }>('task.hold', { id: ids[1] })).ok, true);
   assert.equal((await row()).pending, undefined);
