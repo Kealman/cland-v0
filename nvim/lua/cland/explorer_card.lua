@@ -97,7 +97,7 @@ function C.compose(key, width)
   end
   local it = ix.by[key]
   if not it then text(key .. ' is no longer in the tracker','ClandDim'); return C.paint(rows) end
-  local d = require('cland.item_view').get(it.id)
+  local d = require('cland.item_view').get(it.id, {summary_only=true})
   local container = E.is_container(ix,it)
   local chain, p, seen = {}, items.present(it.parent) and ix.by[it.parent] or nil, {}
   while p and not seen[p.id] do
@@ -281,7 +281,7 @@ function C.compose(key, width)
     end
   end
   if verdict then
-    local detail = owner.id == it.id and d or require('cland.item_view').get(owner.id)
+    local detail = owner.id == it.id and d or require('cland.item_view').get(owner.id, {summary_only=true})
     if container then text('in its tasks · ' .. owner.id .. ' ' .. items.display_title(owner),'ClandDim',owner.id) end
     local ok = verdict.result == 'clear'
     text((ok and '✓ ' or '✗ ') .. verdict.verdict .. ' · ' .. verdict.result,ok and 'ClandGreen' or 'ClandRed',owner.id)

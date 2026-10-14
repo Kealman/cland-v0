@@ -68,7 +68,7 @@ return rows`;
  * Start the client in `root` as cland-nvim would (NVIM_APPNAME=cland, --clean -u init.lua), headless, and
  * attach a UI of COLUMNS×LINES over the RPC channel, as a terminal UI would (redraws are ignored).
  */
-export async function startClient(t: TestContext, bin: string, root: string, env: Record<string, string> = {}): Promise<Client> {
+export async function startClient(t: TestContext, bin: string, root: string, env: Record<string, string> = {}, opts: { centre?: 'general' | 'explorer' } = {}): Promise<Client> {
   if (!env.CLAND_COMMAND) await isolateVerification(root);
   const dir = await mkdtemp(join(tmpdir(), 'cland-nv-'));
   ownDirectory(t, dir);
@@ -151,6 +151,15 @@ export async function startClient(t: TestContext, bin: string, root: string, env
       throw new Error(`the screen never showed ${what} within ${timeoutMs} ms:\n${last.map((l) => `|${l}|`).join('\n')}\n${stderr}`);
     },
   };
+  if (opts.centre !== 'explorer') {
+    await client.waitScreen(s => s.includes('EXPLORER') || s.includes('General') || s.includes('BOARD'), 'first workbench screen');
+    await client.input('<Esc><Space>g');
+    await client.waitScreen(s => s.includes('General') && !s.includes('EXPLORER') && !s.includes('BOARD'), 'General test centre');
+    await client.lua(`assert(vim.wait(5000, function()
+      local s = require('cland.state').S
+      return s.ui.view.kind == 'thread' and s.ui.view.id == 'general' and vim.b.cland_role == 'composer'
+    end), 'General composer at test startup')`);
+  }
   return client;
 }
 

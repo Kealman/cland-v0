@@ -13,8 +13,8 @@ function M.setup(client)
     if open then state.changed() end
   end
   for _, event in ipairs({'connected','visibility','task','topic','message','event','crew','verification.queue',
-    'session.state','session.role','role.vacant','role.filled','inbox','presence','session.process','sessions.pruned','session.cleanup','session.usage'}) do
-    client:on(event,fold_text)
+    'session.state','session.role','role.vacant','role.filled','inbox','presence','session.process','sessions.pruned','session.cleanup','session.usage','hub.status'}) do
+    client:on(event,function() fold_text(); state.changed() end)
   end
 end
 
@@ -360,6 +360,10 @@ function M.is_open(node)
 end
 
 function M.walk(ix, scope, all, visit)
+  if not state.S.items_loaded then
+    visit({note='loading the items…'},0,nil)
+    return
+  end
   local function rec(node, depth, parent)
     visit(node, depth, parent)
     if node.label_row or not node.expandable then return end
@@ -1131,14 +1135,20 @@ function M.count_done(ix, scope)
   end
   return count
 end
-function M.render()
+function M.render(view)
   local b, scope = M.buf(), M.scope_key()
-  M.ui().scope = scope
+  if view then scope = view.id end
+  if state.S.ui.view.kind == 'explorer' then M.ui().scope = scope end
+  M.renders = (M.renders or 0) + 1
   local win = M.tree_win()
   local width = api.nvim_win_get_width(win ~= -1 and win or require('cland.layout').centre()) - 1
   local key = win ~= -1 and M.drawn_scope == scope and M.key_at(api.nvim_win_get_cursor(win)[1]) or M.sel[scope or '']
-  local parents = {}
-  for _, row in ipairs(M.rows) do if row.key then parents[row.key] = row.parent end end
+  local parents, order, pos = {}, {}, nil
+  for _, row in ipairs(M.rows) do if row.key then
+    parents[row.key] = row.parent
+    order[#order + 1] = row.key
+    if row.key == key then pos = #order end
+  end end
   local ix = M.index()
   local lines, marks, rows = M.paint(M.rows_of(ix, scope, width), width)
   local changed = not vim.deep_equal(lines, M.lines) or not vim.deep_equal(marks, M.marks)
@@ -1153,12 +1163,33 @@ function M.render()
   end
   M.rows, M.drawn_scope, M.window_width = rows, scope, width + 1
   M.done_in_view = M.count_done(ix, scope)
-  if win ~= -1 and (changed or M.position_scope ~= (scope or '')) then
+  if win ~= -1 and (changed or M.position_scope ~= (scope or '') or M.key_at(api.nvim_win_get_cursor(win)[1]) ~= key) then
     local at, row = {}, nil
     for r, info in ipairs(rows) do if info.target then at[info.key] = r; row = row or r end end
-    local seen = {}
-    while key and not at[key] and not seen[key] do seen[key] = true; key = parents[key] end
-    row = at[key] or row or 1
+    local chosen = at[key]
+    -- A surviving item hidden by a fold or reparenting belongs on its drawn ancestor.
+    local ancestor, seen = key, {}
+    while ix.by[key] and not chosen and ancestor and not seen[ancestor] do
+      seen[ancestor] = true
+      local it = ix.by[ancestor]
+      if it then
+        ancestor = present(it.parent) and it.parent
+          or (items.is_category(it) and ':categories')
+          or (M.is_release(it) and ':releases') or ':unscheduled'
+      else ancestor = parents[ancestor] end
+      chosen = at[ancestor]
+    end
+    if not chosen and pos then
+      for i = pos + 1, #order do if at[order[i]] then chosen = at[order[i]]; break end end
+      if not chosen then
+        for i = pos - 1, 1, -1 do if at[order[i]] then chosen = at[order[i]]; break end end
+      end
+    end
+    ancestor, seen = key, {}
+    while not chosen and ancestor and not seen[ancestor] do
+      seen[ancestor] = true; ancestor = parents[ancestor]; chosen = at[ancestor]
+    end
+    row = chosen or row or 1
     api.nvim_win_set_cursor(win, {row,0})
     M.sel[scope or ''] = rows[row].key
     M.position_scope = scope or ''
@@ -1202,7 +1233,61 @@ function M.context() return 'Explorer · ' .. table.concat(M.crumbs(M.scope_key(
 function M.winbar(win)
   local bars = require('cland.bars')
   return bars.stl({{' EXPLORER ', win == api.nvim_get_current_win() and 'ClandHeadFocus' or 'ClandHead'},
-    {table.concat(M.crumbs(M.scope_key()), ' › '), 'ClandDimBar'}}) .. '%<%#WinBar#%=' .. bars.stl({{
+    {table.concat(M.crumbs(M.drawn_scope), ' › '), 'ClandDimBar'}}) .. '%<%#WinBar#%=' .. bars.stl({{
       (M.ui().hide_done and 'done hidden · ' or 'done shown · ') .. (M.done_in_view or 0) .. ' · D ', 'ClandDimBar'}})
+end
+-- Diagnostic timings use the actual painted rows and extmarks, including an unconditional write.
+-- The benchmark restores human folds, filters and cursor after measuring the fully expanded view.
+function M.bench(n, card_ids)
+  n = n or 20
+  assert(type(n) == 'number' and n >= 1 and n == math.floor(n), 'bench needs a positive iteration count')
+  if type(card_ids) == 'string' then card_ids = {card_ids} end
+  card_ids = card_ids or (M.card.key and {M.card.key} or {})
+  local out, ui = {}, M.ui()
+  local scope, win = M.drawn_scope, M.tree_win()
+  local width = win ~= -1 and api.nvim_win_get_width(win) - 1 or 99
+  local saved = {folds=vim.deepcopy(ui.folds),archive=ui.archive,hide_done=ui.hide_done}
+  local key = win ~= -1 and M.key_at(api.nvim_win_get_cursor(win)[1]) or nil
+  local function median(xs) table.sort(xs); return xs[math.floor((#xs+1)/2)] end
+  local function write(b, namespace, lines, marks)
+    vim.bo[b].modifiable = true
+    api.nvim_buf_set_lines(b,0,-1,false,lines)
+    vim.bo[b].modifiable = false
+    api.nvim_buf_clear_namespace(b,namespace,0,-1)
+    for _, m in ipairs(marks) do api.nvim_buf_set_extmark(b,namespace,m[1],m[2],{end_col=m[3],hl_group=m[4]}) end
+  end
+  local function run(label, build, b, namespace, w)
+    local model, draw, count = {}, {}, 0
+    for _=1,n do
+      local t0 = vim.uv.hrtime()
+      local lines, marks = build()
+      local t1 = vim.uv.hrtime()
+      write(b,namespace,lines,marks)
+      local t2 = vim.uv.hrtime()
+      model[#model+1], draw[#draw+1], count = (t1-t0)/1e6, (t2-t1)/1e6, #lines
+    end
+    out[#out+1] = {label=label,rows=count,model_ms=median(model),draw_ms=median(draw),width=w}
+  end
+  local ok, err = xpcall(function()
+    local function build() return M.paint(M.rows_of(M.index(),scope,width),width) end
+    run('as drawn',build,M.buf(),ns,width)
+    ui.archive, ui.hide_done = true, false
+    M.walk(M.index(),scope,true,function(node)
+      if node.expandable and not node.label_row then ui.folds[node.key] = true end
+    end)
+    run('every node unfolded, closed releases shown',build,M.buf(),ns,width)
+    for _, id in ipairs(card_ids) do
+      run('card '..id,function() return require('cland.explorer_card').compose(id,60) end,M.card_buf(),card_ns,60)
+    end
+  end,debug.traceback)
+  ui.folds, ui.archive, ui.hide_done = saved.folds, saved.archive, saved.hide_done
+  M.lines, M.marks, M.card.lines, M.card.marks = nil, nil, nil, nil
+  if win ~= -1 then
+    -- Writes can clamp the physical cursor before the original rows have been restored.
+    M.sel[scope or ''], M.drawn_scope, M.position_scope = key, nil, nil
+    M.render({id=scope})
+  end
+  if not ok then error(err) end
+  return out
 end
 return M

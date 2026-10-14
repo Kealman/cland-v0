@@ -19,8 +19,9 @@ test('Space e and the explorer command open a release tree on real hub summaries
   };
   const release = await create('release', 'Working with items');
   const epic = await create('epic', 'The explorer', release);
-  await create('task', 'Draw the tree', epic);
-  const c = await startClient(t, bin, root);
+  const task = await create('task', 'Draw the tree', epic);
+  await ui.request({type:'task.edit',item:task,status:'planned'});
+  const c = await startClient(t, bin, root, {}, {centre:'explorer'});
   await c.rpc.request('nvim_ui_try_resize', 200, 50);
   await waitInitialSnapshots(c);
   await c.input('<Esc><Space>e');
@@ -29,6 +30,11 @@ test('Space e and the explorer command open a release tree on real hub summaries
   await c.input(`:Cland explorer T-${epic.split('-')[1]}<CR>`);
   await c.waitScreen(s => s.includes('Draw the tree'), 'epic scoped using any prefix');
   assert.equal(await c.lua("return require('cland.state').S.ui.view.id"), epic);
+  await select(c,task); await c.input('<CR>h');
+  assert.equal((await ui.request({type:'task.edit',item:task,status:'in progress'})).ok,true);
+  await c.lua("local id=...;assert(vim.wait(5000,function() return require('cland.state').item(id).status=='in progress' end))",task);
+  assert.equal(await cursor(c),task,'real task frames preserve cursor identity');
+  assert.equal(await c.lua("return require('cland.explorer').card.key"),task);
   assert.deepEqual(await c.lua("return require('cland.actions').audit()"), []);
   await c.input('<Space>?');
   await c.waitScreen(s => s.includes('Open explorer') && s.includes('␣e'), 'explorer key in registry help');
@@ -68,10 +74,10 @@ const fixture: Scenario = { items: [
   {id:'T-22',kind:'task',title:'Planned epic task',parent:'E-2',status:'planned',state:'open'},
 ], processes:[{name:'coord',role:'coordinator',state:'idle',status:'running'}] };
 
-async function stub(t: test.TestContext, scenario = fixture, projectRoot?: string) {
+async function stub(t: test.TestContext, scenario = fixture, projectRoot?: string, centre: 'general' | 'explorer' = 'explorer') {
   const root = projectRoot ?? await tempProject(t);
   const controlPath = `${root}/stub.sock`;
-  const c = await startClient(t,bin,root,{CLAND_HUB_TRANSPORT:'stdio',CLAND_COMMAND:JSON.stringify([process.execPath,STUB]),CLAND_STUB_SCENARIO_JSON:JSON.stringify(scenario),CLAND_STUB_CONTROL:controlPath});
+  const c = await startClient(t,bin,root,{CLAND_HUB_TRANSPORT:'stdio',CLAND_COMMAND:JSON.stringify([process.execPath,STUB]),CLAND_STUB_SCENARIO_JSON:JSON.stringify(scenario),CLAND_STUB_CONTROL:controlPath},{centre});
   await c.rpc.request('nvim_ui_try_resize',200,50);
   if (scenario.holdSnapshots?.includes('task.list')) await c.waitScreen(s=>s.includes('hub: connected'),'connected with held item snapshot');
   else await waitInitialSnapshots(c);
@@ -129,7 +135,7 @@ test('outline keys skip detail and stage labels, respect counts and fold the lea
 
 test('scopes carry breadcrumbs and back restores the originating row and preceding centre view', {skip}, async t => {
   const {c}=await stub(t);
-  await c.input('<Esc><Space>e');
+  await c.input('<Esc><Space>g<Esc><Space>e');
   await c.waitScreen(s=>s.includes('First epic'),'release tree');
   await select(c,'E-3'); await c.input('s');
   await c.waitScreen(s=>s.includes('R-1 0.1.2 Working with items › E-3 First epic')&&s.includes('Task in progress'),'epic scope breadcrumbs');
@@ -196,6 +202,8 @@ test('explorer preferences debounce to ui.json and reopen after a cold workbench
   saved.future_preference={kept:true};
   await writeFile(`${root}/.cland/ui.json`,JSON.stringify(saved));
   const {c:fresh}=await stub(t,fixture,root);
+  assert.equal(await fresh.lua("return require('cland.state').S.ui.view.id"),'E-3','startup uses the kept scope');
+  assert.equal(await fresh.lua("return vim.b.cland_role"),'explorer');
   await fresh.input('<Esc><Space>e');
   await fresh.waitScreen(s=>s.includes('› E-3 First epic')&&s.includes('done hidden · 4 · D'),'cold scope and D restored');
   await fresh.lua("require('cland.ui').changed(); require('cland.ui').flush()");
@@ -346,4 +354,151 @@ test('the root winbar counts done nodes only under its named release', {skip}, a
   await c.waitScreen(s=>s.includes('EXPLORER R-1')&&s.includes('done shown · 1 · D'),'release-only done count');
   await c.input(':Cland explorer C-3<CR>');
   await c.waitScreen(s=>s.includes('EXPLORER C-3')&&s.includes('done shown · 1 · D'),'scoped category count');
+});
+
+test('live removal restores the next key, then the previous key, and keeps the card on the cursor', {skip}, async t => {
+  const {c,control}=await stub(t);
+  await c.input('<Esc>:Cland explorer E-3<CR>');
+  await c.waitScreen(s=>s.includes('Task planned'),'scoped tasks');
+  await select(c,'T-14'); await c.input('<CR>h');
+  await c.waitScreen(s=>s.includes('CARD') && s.includes('T-14 · task'),'card on selected item');
+  await control({emit:{type:'task',id:'T-14'}});
+  await at(c,'T-15');
+  await c.lua("assert(vim.wait(5000,function() return require('cland.explorer').card.key=='T-15' end))");
+  await select(c,'T-20');
+  await control({emit:{type:'task',id:'T-20'}});
+  await at(c,'T-16');
+});
+
+test('status and stage changes move a row while its cursor and cached card keep the item', {skip}, async t => {
+  const {c,control}=await stub(t);
+  await c.input(':Cland explorer E-3<CR>');
+  await c.waitScreen(s=>s.includes('Task planned'),'scoped stage rows');
+  await select(c,'T-14'); await c.input('<CR>h');
+  await c.lua("assert(vim.wait(5000,function() return require('cland.item_view').detail['T-14'] ~= nil end))");
+  const movedStages=stages.map((s,i)=>({...s,items:i===0?s.items.filter(id=>id!=='T-14'):[...s.items,'T-14']}));
+  const changed=fixture.items!.map(it=>it.id==='T-14'?{...it,status:'in progress',updated:'2026-10-14T09:30:00Z'}:it.id==='E-3'?{...it,stages:movedStages,updated:'2026-10-14T09:30:00Z'}:it);
+  await control({set:{items:changed}});
+  await control({emits:changed.filter(it=>it.id==='T-14'||it.id==='E-3').map(item=>({type:'task',id:item.id,item}))});
+  await c.lua("assert(vim.wait(5000,function() local e=require('cland.explorer'); local t=table.concat(e.lines,'\\n'); return t:find('S2 the card',1,true)<t:find('Task planned',1,true) end))");
+  assert.equal(await cursor(c),'T-14');
+  assert.equal(await c.lua("return require('cland.explorer').card.key"),'T-14');
+  await c.lua("assert(vim.wait(5000,function() return require('cland.item_view').detail['T-14'].seen=='2026-10-14T09:30:00Z' end))");
+  const requests=(await control({requests:true})).requests.filter(r=>r.type==='task.view'&&r.item==='T-14').length;
+  const renders=await c.lua<number>("return require('cland.explorer').renders");
+  await control({emit:{type:'task',id:'T-14',item:changed.find(it=>it.id==='T-14')}});
+  await c.lua("local n=...; assert(vim.wait(5000,function() return require('cland.explorer').renders>n end))",renders);
+  assert.equal((await control({requests:true})).requests.filter(r=>r.type==='task.view'&&r.item==='T-14').length,requests,'same updated does not refetch task.view');
+  await c.input('<Space><Space>');
+  await c.waitScreen(s=>s.includes('EXPLORER R-1'),'scope history returns to root');
+  const reparented={...changed.find(it=>it.id==='T-14')!,parent:'E-2',updated:'2026-10-14T09:31:00Z'};
+  // Reveal the original task under E-3, while its future parent E-2 stays folded.
+  await c.input(':Cland explorer R-1<CR>');
+  await select(c,'E-3'); await c.input('l');
+  await c.waitScreen(s=>s.includes('Task planned'),'task visible before reparenting');
+  await select(c,'T-14');
+  await control({emit:{type:'task',id:'T-14',item:reparented}});
+  await at(c,'E-2');
+  await c.lua("assert(vim.wait(5000,function() return require('cland.explorer').card.key=='E-2' end))");
+});
+
+test('a folded burst rebuilds once without writes; visible counts write once; hidden trees do no work', {skip}, async t => {
+  const closed=Array.from({length:20},(_,i)=>({id:`T-${100+i}`,kind:'task',title:'Folded closed task',parent:'E-4',state:'closed',status:'done'}));
+  const {c,control}=await stub(t,{...fixture,items:[...fixture.items!,...closed]});
+  await select(c,'E-2'); await c.input('<CR>h');
+  await c.lua("assert(vim.wait(5000,function() return require('cland.explorer').card.drawn_key=='E-2' and not next(require('cland.item_view').pending) and not next(require('cland.plan').pending) end))");
+  const counts=()=>c.lua<number[]>("local e=require('cland.explorer');return {e.renders,e.writes,e.card.writes}");
+  const before=await counts();
+  await control({emits:closed.map(it=>({type:'task',id:it.id,item:{...it,title:'Changed hidden title',updated:'batch'}}))});
+  await c.lua("local n=...;assert(vim.wait(5000,function() local e=require('cland.explorer');return require('cland.state').item('T-119').updated=='batch' and e.renders>n end))",before[0]);
+  const after=await counts();
+  assert.equal(after[0],before[0]!+1,'one coalesced render per burst');
+  assert.deepEqual(after.slice(1),before.slice(1),'no tree or card write after the state barrier');
+  await control({emit:{type:'task',id:'T-119',item:{...closed[19],status:'review',state:'open',updated:'count'}}});
+  await c.lua("local n=...;assert(vim.wait(5000,function() return require('cland.explorer').renders>n end))",after[0]);
+  assert.equal((await counts())[1],after[1]!+1,'a changed visible count writes exactly once');
+  await c.input('<Space>g');
+  await c.waitScreen(s=>s.includes('General')&&!s.includes('EXPLORER'),'hidden explorer');
+  const hidden=await counts();
+  await control({emit:{type:'crew',config:{idle_from:[]},summary:'changed while hidden'}});
+  await c.lua("assert(vim.wait(5000,function() return require('cland.state').S.crew.summary=='changed while hidden' end)); local done=false;require('cland.state').on_change(function() done=true end);require('cland.state').changed();assert(vim.wait(5000,function() return done end))");
+  assert.deepEqual(await counts(),hidden,'a hidden explorer does not rebuild');
+  await c.lua("require('cland.layout').show_split_view({kind='explorer',id='E-2'})");
+  await c.waitScreen(s=>s.includes('Planned epic task'),'explorer visible in a split');
+  const split=await counts();
+  await control({emit:{type:'task',id:'T-22',item:{...fixture.items!.find(it=>it.id==='T-22'),title:'Changed split task'}}});
+  await c.waitScreen(s=>s.includes('Changed split task'),'live split task');
+  assert.ok((await counts())[0]!>split[0]!);
+});
+
+function benchFixture(): Scenario {
+  const statuses=['backlog','planned','in progress','review','qa','ready','done'];
+  const tasks=Array.from({length:260},(_,i)=>({id:`T-${100+i}`,kind:'task',title:`Benchmark task ${i}`,parent:`E-${2+Math.floor(i/26)}`,rank:i,status:statuses[i%7],state:i%7===6?'closed':'open',updated:'2026-10-14T00:00:00Z'}));
+  return {items:[
+    {id:'R-1',kind:'release',title:'Benchmark release',version:'0.1.2',state:'open'},
+    ...Array.from({length:10},(_,i)=>{
+      const ids=tasks.filter(t=>t.parent===`E-${2+i}`).map(t=>t.id);
+      const stages=[{name:'build',state:'open',items:ids.slice(0,13)},{name:'finish',state:'open',items:ids.slice(13)}];
+      return {id:`E-${2+i}`,kind:'epic',title:`Benchmark epic ${i}`,parent:'R-1',state:'open',rank:i,stages,plan:{stages:stages.map(s=>({name:s.name,qa:{scope:'none',when:'after-stage'},lanes:[s.items]}))}};
+    }),
+    ...tasks,
+    ...Array.from({length:4},(_,i)=>({id:`C-${400+i}`,kind:'category',title:['Bugs','Tech debt','Follow-ups','Ideas'][i],state:'open'})),
+    ...Array.from({length:7},(_,i)=>({id:`T-${410+i}`,kind:'task',title:`Category task ${i}`,parent:`C-${400+i%4}`,state:'open',status:'backlog'})),
+    {id:'M-420',kind:'map',title:'Future work',state:'open'},
+    ...Array.from({length:15},(_,i)=>({id:`T-${430+i}`,kind:'task',title:`Unscheduled ${i}`,status:'backlog',state:'open'})),
+    ...Array.from({length:2},(_,i)=>({id:`R-${450+i}`,kind:'release',title:`Closed release ${i}`,version:`0.0.${i}`,state:'closed',closed:'2025-12-01T00:00:00Z'})),
+  ]};
+}
+
+test('bench reports build and buffer medians for 300 items fully unfolded and restores the human view', {skip}, async t => {
+  const scenario=benchFixture(); assert.equal(scenario.items!.length,300);
+  const {c}=await stub(t,scenario);
+  await c.input('zR');
+  await c.waitScreen(s=>s.includes('Benchmark task 0'),'all epic plans unfolded');
+  await c.lua("assert(vim.wait(5000,function() return vim.tbl_count(require('cland.plan').detail)==10 and not next(require('cland.plan').pending) end))");
+  await select(c,'T-100'); await c.input('<CR>h');
+  await c.lua("assert(vim.wait(5000,function() return require('cland.item_view').detail['T-100'] ~= nil end))");
+  const before=await c.lua("return vim.deepcopy(require('cland.explorer').ui())");
+  const results=await c.lua<Array<{label:string;rows:number;model_ms:number;draw_ms:number}>>("return require('cland.explorer').bench(25,'T-100')");
+  t.diagnostic(`300-item bench (ms): ${JSON.stringify(results)}`);
+  assert.equal(results.length,3);
+  assert.ok(results[1]!.rows>300,'fully unfolded includes every item and the stage labels');
+  assert.ok(results[1]!.model_ms<75,`loose CI build bound: ${results[1]!.model_ms} ms; QA checks 15 ms on dev`);
+  for(const result of results) assert.ok(result.model_ms>0 && result.draw_ms>0);
+  assert.deepEqual(await c.lua("return require('cland.explorer').ui()"),before);
+  assert.equal(await cursor(c),'T-100');
+  assert.equal(await c.lua("return require('cland.explorer').card.key"),'T-100');
+});
+
+test('cold startup shows loading then selects the release without entering the composer', {skip}, async t => {
+  const {c,control}=await stub(t,{...fixture,holdSnapshots:['task.list']});
+  await control({waitSnapshot:'task.list'});
+  await c.waitScreen(s=>s.includes('EXPLORER')&&s.includes('loading the items…'),'startup explorer loading');
+  assert.equal(await c.mode(),'n');
+  await control({releaseSnapshots:['task.list']});
+  await c.waitScreen(s=>s.includes('EXPLORER R-1')&&s.includes('Explorer · R-1'),'startup bars name explorer');
+  await at(c,'R-1');
+  assert.equal(await c.lua("return vim.b.cland_role"),'explorer');
+});
+
+
+test('the harness default opens General while a preset and a restart snapshot keep their centre', {skip}, async t => {
+  const {c,root}=await stub(t,fixture,undefined,'general');
+  assert.equal(await c.lua("return vim.b.cland_role"),'composer');
+  assert.equal(await c.lua("return require('cland.state').S.ui.view.id"),'general');
+  await c.input('<Esc>:Cland preset steady<CR>');
+  await c.waitScreen(s=>s.includes('BOARD'),'steady centre');
+  await c.lua("require('cland.ui').flush();vim.cmd('qa!')").catch(()=>{}); await c.rpc.closed;
+  const {c:preset}=await stub(t,fixture,root);
+  assert.equal(await preset.lua("return require('cland.state').S.ui.view.kind"),'board','preset startup stays unchanged');
+  // Exercise M.start's restart path with the production snapshot format in this isolated process.
+  await preset.lua(`
+    local cland=require('cland');local s=require('cland.state');local snap=s.snapshot()
+    snap.view={kind='inbox'}
+    require('cland.restart').save(snap);cland.client:stop()
+    cland.start({root=s.S.root,transport='stdio',cli={vim.env.CLAND_NODE or 'node',...},restore=true})
+  `,STUB);
+  await preset.waitScreen(s=>s.includes('Inbox · full width'),'snapshot centre restored');
+  assert.equal(await preset.lua("return require('cland.state').S.ui.view.kind"),'inbox');
+  assert.equal(await preset.mode(),'n');
 });

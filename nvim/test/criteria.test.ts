@@ -158,3 +158,30 @@ test('verdict thread shows structured verified and failed criteria, including no
     assert.ok(!(await c.screen()).join('\n').includes('C99'),'unstructured report text is not parsed');
   }
 });
+
+test('the shown explorer card refreshes criteria after a watched save that preserves updated', {skip}, async t => {
+  const root=await tempProject(t);
+  await mkdir(join(root,'.cland/tasks'),{recursive:true});
+  await writeFile(join(root,'.cland/config.toml'),'[tracker]\nlevels = ["epic"]\n');
+  await writeFile(join(root,'.cland/tasks/T-1-epic.md'),`---\nid: T-1\nkind: epic\ntitle: Criteria epic\nstate: open\ncreated: ${AT}\nupdated: ${AT}\n---\n`);
+  const git=(...args:string[])=>execFileSync('git',args,{cwd:root,encoding:'utf8'}).trim();
+  git('init','-q','-b','dev'); git('config','user.name','Test'); git('config','user.email','test@example.com'); git('config','commit.gpgsign','false');
+  git('commit','--allow-empty','-qm','Card criteria build');
+  const head=git('rev-parse','HEAD');
+  const path=join(root,'.cland/tasks/T-2-criteria.md');
+  const initial=source([1,2,3,4].map(i=>criterion(i,i<4,head)).join('\n')).replace('status: in progress','status: in progress\nbranch: dev');
+  await writeFile(path,initial);
+  await startDaemon(t,root);
+  const c=await startClient(t,bin,root,{}, {centre:'explorer'});
+  await c.rpc.request('nvim_ui_try_resize',200,50);
+  await waitInitialSnapshots(c);
+  await c.input(':Cland explorer E-1<CR>');
+  await c.waitScreen(s=>s.includes('Criteria display'),'epic tasks');
+  await c.input('j<CR>');
+  await c.waitScreen(s=>s.includes('3 of 4 verified')&&s.includes('◐ C4 Criterion 4'),'card has unverified fourth criterion');
+  const timestamp=await c.lua("return require('cland.state').item('T-2').updated");
+  await writeFile(path,initial.replace(criterion(4),criterion(4,true,head)));
+  await c.waitScreen(s=>s.includes('4 of 4 verified')&&s.includes('● C4 Criterion 4'),'same-timestamp watched save refreshes the card mark');
+  assert.equal(await c.lua("return require('cland.state').item('T-2').updated"),timestamp,'watched save kept the timestamp');
+  assert.equal(await c.lua("return require('cland.explorer').card.key"),'T-2','only the shown card follows the save');
+});

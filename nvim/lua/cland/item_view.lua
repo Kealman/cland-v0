@@ -116,13 +116,37 @@ end
 
 --- The item changed (a `task` event): its body and comments are fetched again when it is in view.
 function M.invalidate(id)
-  M.stale[id] = true
+  -- Hand saves may preserve updated. The legacy item view still consumes every task event;
+  -- card reads compare the summary content too. Do not weaken a reconnect's unconditional refresh.
+  M.stale[id] = M.stale[id] or 'event'
+end
+
+-- Only fields carried by task summaries can signal a same-timestamp detail change.
+-- Ignore verdict annotations and unrelated verification metadata so duplicate events remain cheap.
+local function content_signal(it, detail)
+  it = it or {}
+  local counts = detail and it.criteriaCounts or it.criteria
+  counts = type(counts) == 'table' and counts or {}
+  local fraction = {}
+  for _, key in ipairs({'total','done','verified','stale','failed'}) do fraction[key] = counts[key] or 0 end
+  local last
+  for _, v in ipairs(type(it.verdicts) == 'table' and it.verdicts or {}) do
+    last = {kind=v.verdict,result=v.result,run=v.run}
+  end
+  local verify = type(it.verify) == 'table' and it.verify or {}
+  return {criteria=fraction,verdict=last,verify={result=verify.result,head=verify.head},
+    status=type(it.status) == 'string' and it.status or nil,
+    claim=type(it.claim) == 'table' and it.claim or nil}
 end
 
 --- Read the cached whole item; refresh missing/stale details asynchronously, keeping the last value.
-function M.get(id)
+--- opts.summary_only skips duplicate events whose timestamp and content signal still match.
+function M.get(id, opts)
+  opts = opts or {}
   local it, d = state.item(id), M.detail[id]
-  if it and (not d or M.stale[id] or d.seen ~= it.updated) then M.fetch(id) end
+  if it and (not d or d.seen ~= it.updated or (M.stale[id]
+    and (M.stale[id] ~= 'event' or not opts.summary_only or d.failed
+      or not vim.deep_equal(content_signal(it),content_signal(d,true))))) then M.fetch(id) end
   return d
 end
 

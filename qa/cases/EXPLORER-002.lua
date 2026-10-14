@@ -23,7 +23,7 @@ for n, rank in ipairs({30,10,50,20,40}) do
 end
 items[#items+1] = {id='T-320',kind='task',title='Resolved debt',parent='C-216',state='closed',status='done',closed='2026-10-12T00:00:00Z'}
 return {
-  title='Categories with top three, more, idle work and hidden done count',hub='stub',fixture={project='qa-explorer-roots'},
+  title='Categories with top three, more, idle work and hidden done count',hub='stub',centre='explorer',fixture={project='qa-explorer-roots'},
   scenario={items=items,tracker={levels={'release','category','epic'},ladder={{'release','category'},{'epic'}}},
     crew={config={idle_from={'C-216'}},summary='idle from C-216'},
     processes={{name='coord',role='coordinator',state='idle',status='running'}}},

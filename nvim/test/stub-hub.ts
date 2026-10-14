@@ -426,7 +426,7 @@ function answer(f: Frame) {
       if (scenario.holdView) return;
       const item = scenario.items?.find((i) => i.id === f.item);
       if (!item) return fail(f.id, `no item ${String(f.item)}`);
-      return ok(f.id, { item: { body: '', comments: [], verdicts: [], ...parseCriteria(String(item.body ?? '')), ...item, criteria: Array.isArray(item.criteria) ? item.criteria : parseCriteria(String(item.body ?? '')).criteria, path: `.cland/tasks/${String(item.file)}` } });
+      return ok(f.id, { item: { body: '', comments: [], verdicts: [], ...parseCriteria(String(item.body ?? '')), ...item, criteria: Array.isArray(item.criteria) ? item.criteria : parseCriteria(String(item.body ?? '')).criteria, criteriaCounts: summary(item).criteria, path: `.cland/tasks/${String(item.file)}` } });
     }
     default:
       return fail(f.id, `the stub hub does not answer ${String(f.type)}`);

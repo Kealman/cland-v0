@@ -347,7 +347,7 @@ M.HELP = {
   '          ␣T topics docked above the inbox · ↵ in a panel opens the row in the centre',
   'Plan      gp epic plan · a approve · d discuss with the Lead · e edit plan',
   'Centre    ␣g General · ␣L Agents log · ␣b board · ␣G graph · ␣N inbox full width · ␣E events · ␣␣ the previous centre view',
-  'Explorer  ␣e · :Cland explorer [id] · j k item rows (counts) · l h fold · ↵ card · s scope · ␣␣ back',
+  'Explorer  startup view · ␣e · :Cland explorer [id] · j k item rows (counts) · l h fold · ↵ card · s scope · ␣␣ back',
   '          za/zo/zc toggle/open/close · zR zM all · D done · A archive',
   '          m General · M item topic (creates if absent) · V selection: m/M General with item context',
   'Compose   ↵ send · S-↵ newline · Esc/q close, keep draft',
@@ -388,7 +388,7 @@ function M.help()
     elseif action.id == 'global:<leader>e' then
       for r, line in ipairs(lines) do
         if line:match('^ Explorer ') then
-          lines[r] = ' Explorer  ' .. action.key .. ' · ' .. action.title .. ' · :Cland explorer [id] · j k item rows (counts) · l h fold · ↵ card · s scope · ␣␣ back'
+          lines[r] = ' Explorer  startup view · ' .. action.key .. ' · ' .. action.title .. ' · :Cland explorer [id] · j k item rows (counts) · l h fold · ↵ card · s scope · ␣␣ back'
         end
       end
     end
@@ -637,7 +637,10 @@ function M.start(opts)
       restore(snap)
     end
   end
-  layout.build({ insert = not (snap and state.S.ui.view.kind ~= 'thread') })
+  if not snap and not state.S.ui.preset then
+    state.S.ui.view = { kind = 'explorer', id = require('cland.explorer').ui().scope }
+  end
+  layout.build({ insert = state.S.ui.view.kind == 'thread' })
   if snap then
     M.client:on('connected', function()
       if not M.reattached then

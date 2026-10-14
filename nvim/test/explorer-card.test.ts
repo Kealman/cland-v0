@@ -32,7 +32,7 @@ test('the explorer card reads parsed body from a real hub and Enter/h preserve t
   const r=await create('release','Working with items');
   const e=await create('epic','Explorer',r);
   const id=await create('task','Show human summary',e,'## Summary\nThe card starts with the human picture.\n\n## Agents\nDo not draw this body.');
-  const c=await startClient(t,bin,root); await c.rpc.request('nvim_ui_try_resize',200,50); await waitInitialSnapshots(c);
+  const c=await startClient(t,bin,root,{}, {centre:'explorer'}); await c.rpc.request('nvim_ui_try_resize',200,50); await waitInitialSnapshots(c);
   await c.input('<Esc><Space>e'); await c.waitScreen(s=>s.includes('Explorer'),'explorer');
   await c.input('zR'); await c.waitScreen(s=>s.split('\n').some(line=>line.trimStart().startsWith('○ '+id+' Show human summary')),'expanded task row'); await select(c,id); await shown(c,id,'human picture.');
   await c.waitScreen(s=>s.includes('CARD')&&s.includes('human picture.'),'card screen');
@@ -57,7 +57,7 @@ const fixture: Scenario={coordinator:'coord',processes:[{name:'coord',role:'coor
 ],topics:[{id:'general',title:'General',status:'open',standing:true},{id:'topic-10',title:'Discuss task',item:'T-10',status:'open'}],messages:{general:[{id:'m-1',ts:new Date().toISOString(),from:'human',fromKind:'human',via:'spoke',to:['human'],topic:'general',kind:'report',text:'Work on T-11 here.'}]}};
 async function stub(t:test.TestContext,scenario=fixture,projectRoot?:string) {
   const root=projectRoot??await tempProject(t), controlPath=root+'/stub.sock';
-  const c=await startClient(t,bin,root,{CLAND_HUB_TRANSPORT:'stdio',CLAND_COMMAND:JSON.stringify([process.execPath,STUB]),CLAND_STUB_SCENARIO_JSON:JSON.stringify(scenario),CLAND_STUB_CONTROL:controlPath});
+  const c=await startClient(t,bin,root,{CLAND_HUB_TRANSPORT:'stdio',CLAND_COMMAND:JSON.stringify([process.execPath,STUB]),CLAND_STUB_SCENARIO_JSON:JSON.stringify(scenario),CLAND_STUB_CONTROL:controlPath},{centre:'explorer'});
   await c.rpc.request('nvim_ui_try_resize',200,50); await waitInitialSnapshots(c);
   const control=(cmd:Record<string,unknown>)=>new Promise<{requests:Array<{type:string;item?:string}>}>((resolve,reject)=> {
     const s=createConnection(controlPath); let data=''; s.setEncoding('utf8'); s.on('error',reject); s.on('data',chunk=>{data+=chunk;if(data.includes('\n')){s.end();resolve(JSON.parse(data));}});s.write(JSON.stringify(cmd)+'\n');
@@ -242,6 +242,7 @@ test('loading summary retains facts and deferred detail answers update the card'
 
 test('gi reveals the thread reference without changing folds, keeps containing scope and gI/palette open v0.1', {skip}, async t=> {
   const {c,control}=await stub(t);
+  await c.input('<Space>g');
   await c.waitScreen(s=>s.includes('Work on T-11 here.'),'thread reference');
   await c.input('<Esc><C-w>kgg/T-11<CR>');
   const folds=await c.lua("return require('cland.explorer').ui().folds");
@@ -324,4 +325,32 @@ test('gi keeps a virtual scope containing a done target even while D hides that 
   await c.input(':Cland view item T-93<CR>gi'); await shown(c,'T-93','Done human picture.');
   assert.equal(await c.lua("return require('cland.state').S.ui.view.id"),':direct:R-1');
   assert.equal(await c.lua("return require('cland.explorer').ui().hide_done"),true);
+});
+
+test('same-timestamp status, claim, verdict and verification signals refresh only the shown card; duplicates do not fetch', {skip}, async t=> {
+  const {c,control}=await stub(t);
+  await c.input(':Cland explorer E-2<CR>');
+  await c.waitScreen(s=>s.includes('Written summary task'),'task rows');
+  await select(c,'T-10'); await c.input('<CR>h'); await shown(c,'T-10','written human picture.');
+  let current={...fixture.items!.find(it=>it.id==='T-10')!};
+  const changes:Array<[string,Record<string,unknown>]>=[
+    ['status',{status:'qa'}],
+    ['claim',{claim:{session:'new-impl',role:'implementer'}}],
+    ['verdict',{verdicts:[{verdict:'review',result:'clear',run:'review-1'}]}],
+    ['verify head',{verify:{id:'suite-1',state:'finished',result:'passed',head:'abcdef012345',finished:'2026-10-14T10:00:00Z'}}],
+    ['verify result',{verify:{id:'suite-1',state:'finished',result:'failed',head:'abcdef012345',finished:'2026-10-14T10:01:00Z'}}],
+  ];
+  const start=(await control({requests:true})).requests.length;
+  for(const [name,change] of changes) {
+    current={...current,...change,body:`## Summary\nFresh after ${name}.`};
+    await control({set:{items:fixture.items!.map(it=>it.id==='T-10'?current:it)}});
+    await control({emit:{type:'task',id:'T-10',item:current}});
+    await shown(c,'T-10',`Fresh after ${name}.`);
+    const views=(await control({requests:true})).requests.filter(r=>r.type==='task.view').length;
+    const renders=await c.lua<number>("return require('cland.explorer').renders");
+    await control({emit:{type:'task',id:'T-10',item:current}});
+    await c.lua("local n=...;assert(vim.wait(5000,function() return require('cland.explorer').renders>n end))",renders);
+    assert.equal((await control({requests:true})).requests.filter(r=>r.type==='task.view').length,views,`${name} duplicate does not refetch`);
+  }
+  assert.deepEqual((await control({requests:true})).requests.slice(start).filter(r=>r.type==='task.view').map(r=>r.item),Array(5).fill('T-10'),'one fetch per changed signal, only for the shown item');
 });

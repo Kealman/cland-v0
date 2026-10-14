@@ -20,7 +20,7 @@ const fixture:Scenario = {items:[
 type Frame = {type:string;topic?:string;text?:string;to?:string[];item?:string;title?:string};
 async function start(t:test.TestContext, scenario=fixture) {
   const root=await tempProject(t); const path=`${root}/stub.sock`;
-  const c=await startClient(t,bin,root,{CLAND_HUB_TRANSPORT:'stdio',CLAND_COMMAND:JSON.stringify([process.execPath,STUB]),CLAND_STUB_SCENARIO_JSON:JSON.stringify(scenario),CLAND_STUB_CONTROL:path});
+  const c=await startClient(t,bin,root,{CLAND_HUB_TRANSPORT:'stdio',CLAND_COMMAND:JSON.stringify([process.execPath,STUB]),CLAND_STUB_SCENARIO_JSON:JSON.stringify(scenario),CLAND_STUB_CONTROL:path},{centre:'explorer'});
   await c.rpc.request('nvim_ui_try_resize',200,50); await waitInitialSnapshots(c);
   await c.input('<Esc><Space>e');
   await c.waitScreen(s=>s.includes('Categories (0)'),'root explorer');
@@ -48,7 +48,7 @@ test('a real Coordinator receives explorer text from the human; M binds the real
   };
   const release=await create('release','Working with items');const epic=await create('epic','The explorer',release);const item=await create('task','Message this',epic);
   const coord=await spawnSpoke({discover:true,cwd:root,name:'coord',role:'coordinator',sessionId:'compose-coord'});t.after(()=>coord.close());
-  const c=await startClient(t,bin,root);await c.rpc.request('nvim_ui_try_resize',200,50);await waitInitialSnapshots(c);
+  const c=await startClient(t,bin,root,{}, {centre:'explorer'});await c.rpc.request('nvim_ui_try_resize',200,50);await waitInitialSnapshots(c);
   await c.input(`<Esc>:Cland explorer ${epic}<CR>`);await c.waitScreen(s=>s.includes('Message this'),'real item');await select(c,item);
   await send(c,'m','Please plan this');
   const message=await coord.waitForEvent(e=>e.params.content.startsWith('Please plan this\n\nfrom the explorer'));

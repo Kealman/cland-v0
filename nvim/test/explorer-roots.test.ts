@@ -24,7 +24,7 @@ test('real hub summaries put a category and its ranked work under Categories', {
   };
   await create('release','Working with items');const category=await create('category','Tech debt');
   for(let n=1;n<=5;n++) await create('task',`Ranked debt ${n}`,category);
-  const c=await startClient(t,bin,root);await c.rpc.request('nvim_ui_try_resize',200,50);await waitInitialSnapshots(c);
+  const c=await startClient(t,bin,root,{}, {centre:'explorer'});await c.rpc.request('nvim_ui_try_resize',200,50);await waitInitialSnapshots(c);
   await c.input('<Esc><Space>e');await c.waitScreen(s=>s.includes('Categories (1) · 5 open'),'real category summary');
   await select(c,':categories');await c.input('l');
   await c.waitScreen(s=>s.includes('Ranked debt 1')&&s.includes('Ranked debt 3')&&s.includes('2 more')&&!s.includes('Ranked debt 4'),'real top three');
@@ -58,7 +58,7 @@ const fixture:Scenario = {
 };
 async function start(t:test.TestContext, scenario=fixture) {
   const root=await tempProject(t); const path=`${root}/stub.sock`;
-  const c=await startClient(t,bin,root,{CLAND_HUB_TRANSPORT:'stdio',CLAND_COMMAND:JSON.stringify([process.execPath,STUB]),CLAND_STUB_SCENARIO_JSON:JSON.stringify(scenario),CLAND_STUB_CONTROL:path});
+  const c=await startClient(t,bin,root,{CLAND_HUB_TRANSPORT:'stdio',CLAND_COMMAND:JSON.stringify([process.execPath,STUB]),CLAND_STUB_SCENARIO_JSON:JSON.stringify(scenario),CLAND_STUB_CONTROL:path},{centre:'explorer'});
   await c.rpc.request('nvim_ui_try_resize',200,50); await waitInitialSnapshots(c);
   await c.input('<Esc><Space>e');
   await c.waitScreen(s=>s.includes('Categories (4)'),'root explorer');

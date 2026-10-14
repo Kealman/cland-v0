@@ -21,7 +21,7 @@ local items = {
   {id='R-400',kind='release',title='Future release',version='0.2.0',state='open'},
 }
 return {
-  title='Release outline with its epics and folded roots',hub='stub',fixture={project='qa-explorer'},
+  title='Release outline with its epics and folded roots',hub='stub',centre='explorer',fixture={project='qa-explorer'},
   scenario={items=items,processes={{name='coord',role='coordinator',state='idle',status='running'}}},
   run=function(qa)
     local api, explorer = vim.api, require('cland.explorer')

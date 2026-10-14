@@ -400,6 +400,13 @@ function M.run()
     qa.root = root
     start_shell(case, root, project, hub)
     settle()
+    if case.centre ~= 'explorer' then
+      qa.keys('<Esc><Space>g')
+      qa.wait_for(function()
+        local v = qa.state().view
+        return v.kind == 'thread' and v.id == 'general' and vim.b.cland_role == 'composer'
+      end,5000,'General composer at case startup')
+    end
     case.run(qa)
   end)
   vim.schedule(resume)
