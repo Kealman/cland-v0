@@ -3,7 +3,7 @@ id: T-346
 kind: task
 title: "Remote safety: the sweep at hub start and every ten minutes, the run timeout, a daily spend cap on a ledger shared by every hub on the host, and the fallback to local with a warn-level event"
 state: open
-status: backlog
+status: planned
 size: L
 labels:
   - v0.1.2
@@ -16,7 +16,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-13T20:53:45.976Z
-updated: 2026-10-13T20:53:48.084Z
+updated: 2026-10-14T01:38:36.959Z
 ---
 
 ## Summary

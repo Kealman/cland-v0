@@ -3,7 +3,7 @@ id: T-362
 kind: task
 title: "Claude Code on an account: every claude command for a session runs under its account's CLAUDE_CONFIG_DIR, and agents --json is polled once per config directory that has live sessions"
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - v0.1.2
@@ -14,10 +14,10 @@ parent: E-272
 blocked_by:
   - T-265
   - T-361
-topic: null
-branch: null
+topic: topic-228
+branch: t/T-362-claude-code-on-an-account-every-claude
 created: 2026-10-13T23:42:53.650Z
-updated: 2026-10-14T01:35:51.317Z
+updated: 2026-10-14T01:36:21.102Z
 ---
 
 ## Summary

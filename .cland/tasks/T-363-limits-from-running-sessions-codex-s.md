@@ -3,7 +3,7 @@ id: T-363
 kind: task
 title: "Limits from running sessions: Codex's rate-limit events and Claude Code's status-line windows, forwarded by the cland mod, are kept per account with their age, and cland account list and an account event show them"
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - v0.1.2
@@ -13,10 +13,10 @@ assignee: null
 parent: E-272
 blocked_by:
   - T-361
-topic: null
-branch: null
+topic: topic-229
+branch: t/T-363-limits-from-running-sessions-codex-s
 created: 2026-10-13T23:42:53.883Z
-updated: 2026-10-14T01:35:51.732Z
+updated: 2026-10-14T01:36:22.654Z
 ---
 
 ## Summary

@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-227
 branch: t/T-354-the-card-in-full-the-progress-the-plan
 created: 2026-10-13T20:53:51.826Z
-updated: 2026-10-14T01:34:11.367Z
+updated: 2026-10-14T01:38:29.050Z
 ---
 
 ## Summary
@@ -102,7 +102,7 @@ E-276: The explorer and the card, tracer bullet 2. Spec: `docs/spec/v0.1.2.md` �
 ## Acceptance criteria
 
 - [x] C1. A task's card shows its criteria with marks and the `N of M verified` header from the summary's counts. The latest verdict shows its round, scope, by and role, and its one-line reason from the comment. The branch and suite block shows `verify`'s result, job, head and time.
-  - done: impl-354 · 2026-10-14T01:33:53.952Z
+  - done: impl-354 · 2026-10-14T01:38:28.590Z
 - [x] C2. An epic's card shows its children's cells and counts in words, the cells per stage, and the plan block with the stage in work, its merged count and the approval. A closed epic's plan reads every stage closed.
   - done: impl-354 · 2026-10-14T01:33:54.702Z
 - [x] C3. The relations show blocked by, blocks and `regression of` with each end's state. `last` names whether it came from the item's `updated` or its topic's latest message. A container's latest verdict and last activity name the item in its subtree.
@@ -129,3 +129,16 @@ E-276: The explorer and the card, tracer bullet 2. Spec: `docs/spec/v0.1.2.md` �
 ### impl-354 · 2026-10-14T01:32:14.857Z
 
 Implemented the complete human card on the summary index, cached task.view and plan.get: progress/marks, stage cells and approval, verdict rounds/scopes/reasons, relations, branch/verify, dates/subtree activity, Decision and zb. Reference lines reveal their items. Narrow explorer replaces physical right-panel windows without changing saved panel preferences. Targeted card tests and typecheck are green so far; finishing empty/live-state coverage before source review. Per Coordinator decision in topic-227, closed-stage time derives from latest child.closed/stage-verdict.at, with missing legacy times shown as —.
+
+### rev-26 · 2026-10-14T01:37:24.331Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261014-354-source-1
+commit: 4db27205610b5493f04781495181b69af0e7f045
+scope: full
+
+Medium — explorer_card.lua:283–285: real hub Verdict.by already includes name [role]; state.label appends a second inferred Reviewer/QA role. Preserve historical formatted provenance and test the real wire shape, not only bare-name fixtures. Medium — explorer.lua:906–913: new keys-only winbar deletes inherited CARD id/kind/glyph/status; retain selected identity with adaptive fitting and regression coverage. Standards: no independent high/medium finding; other block/cache/reference/fold/layout paths checked, closed-stage timestamps match Coordinator decision. A-2160 records full source findings. No suite authorized until corrected-head source clear; Reviewer ran no tests/edits.
+
+Criteria: C1 failed (Verdict.by already includes the recorded role; state.label appends another inferred role, duplicating or misrepresenting provenance.).

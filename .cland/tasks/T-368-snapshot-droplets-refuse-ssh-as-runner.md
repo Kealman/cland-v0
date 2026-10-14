@@ -2,8 +2,8 @@
 id: T-368
 kind: task
 title: "Snapshot droplets refuse SSH as runner: cloud-init clean deletes T-344's per-boot key script"
-state: open
-status: backlog
+state: closed
+status: done
 size: S
 labels:
   - qa-found
@@ -15,7 +15,8 @@ regression_of: T-344
 topic: null
 branch: null
 created: 2026-10-14T00:17:12.661Z
-updated: 2026-10-14T00:17:12.661Z
+updated: 2026-10-14T01:38:51.096Z
+closed: 2026-10-14T01:38:51.096Z
 ---
 
 ## Summary
@@ -31,3 +32,9 @@ A droplet created from a prepared snapshot refuses SSH as `runner` (Permission d
 ## Fix
 
 Fixed on T-345's branch as its own commit: install the per-boot script after `cloud-init clean`; make the fake transport model `clean` and root key injection; add a prepare → snapshot acquire regression test. Closed by T-345's merge.
+
+## Comments
+
+### coord · 2026-10-14T01:38:51.096Z
+
+Fixed by T-345's merge (3cecb4e): the per-boot runner key hook is installed after cloud-init clean, and the fake models clean and root key injection, with a prepare → snapshot acquire regression test (red, then green). Validated on real hardware by T-345's C9: runner SSH authenticated on c-8 608866300 from image 249681980.

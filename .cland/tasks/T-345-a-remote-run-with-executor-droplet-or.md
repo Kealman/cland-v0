@@ -2,8 +2,8 @@
 id: T-345
 kind: task
 title: "A remote run: with executor = droplet or --executor droplet, cland verify delivers a bundle and the hub's suite selection to a droplet, runs detached as an ordinary user, polls status and log by offset, and posts the result with the droplet, its lifetime and its cost"
-state: open
-status: review
+state: closed
+status: done
 size: L
 criterion_seq: 10
 labels:
@@ -18,7 +18,8 @@ blocked_by:
 topic: topic-223
 branch: t/T-345-a-remote-run-with-executor-droplet-or
 created: 2026-10-13T20:53:45.864Z
-updated: 2026-10-14T01:35:34.006Z
+updated: 2026-10-14T01:38:36.016Z
+closed: 2026-10-14T01:38:36.016Z
 ---
 
 ## Summary
@@ -124,34 +125,44 @@ The package runner reads the selection through `selectionFromEnv` and never fetc
 - [x] C1. A fixture task branch with a hub-only diff runs with `executor = "droplet"` against the fakes: the fake machine receives a bundle; its run sees `CLAND_SUITE_SELECTION` equal to the host's selection (`hub-only`), with `FORCE_COLOR=0` and `NO_COLOR=1`; it runs typecheck, then the selected test command, as `runner`. One result is posted with the executor line, the lifetime and the cost. The fake API shows the droplet and the key deleted.
   - done: impl-345 · 2026-10-13T23:49:36.002Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-345-5 · 2026-10-14T01:06:24.389Z · commit f7e696654e88c941273dc3be93024f48a22f774c
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-345-6 · 2026-10-14T01:38:26.083Z · commit f7e696654e88c941273dc3be93024f48a22f774c
 - [x] C2. `--executor local` overrides a droplet default, and `--executor droplet` overrides a local default. An unknown value is refused. `cland task view --json` shows the run's `verify.executor`.
   - done: impl-345 · 2026-10-13T23:49:41.238Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-345-5 · 2026-10-14T01:06:24.389Z · commit f7e696654e88c941273dc3be93024f48a22f774c
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-345-6 · 2026-10-14T01:38:26.084Z · commit f7e696654e88c941273dc3be93024f48a22f774c
 - [x] C3. A host typecheck failure posts a failed result and creates no droplet. A failing remote test posts one failed result with its failures. A remote typecheck failure stops before the tests.
   - done: impl-345 · 2026-10-13T23:49:42.498Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-345-5 · 2026-10-14T01:06:24.389Z · commit f7e696654e88c941273dc3be93024f48a22f774c
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-345-6 · 2026-10-14T01:38:26.084Z · commit f7e696654e88c941273dc3be93024f48a22f774c
 - [x] C4. A long fake run shows up incrementally in the local log. Fake `ssh` failing for N calls mid-run does not end the run, and the final result is complete. A droplet deleted from the fake API mid-run yields one result with `remote machine lost`, and the lease is released.
   - done: impl-345 · 2026-10-13T23:57:27.168Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-345-5 · 2026-10-14T01:06:24.389Z · commit f7e696654e88c941273dc3be93024f48a22f774c
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-345-6 · 2026-10-14T01:38:26.084Z · commit f7e696654e88c941273dc3be93024f48a22f774c
 - [x] C5. `cland verify cancel` mid-run stops the remote group, posts one cancelled result and destroys the droplet.
   - done: impl-345 · 2026-10-13T23:49:44.047Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-345-5 · 2026-10-14T01:06:24.390Z · commit f7e696654e88c941273dc3be93024f48a22f774c
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-345-6 · 2026-10-14T01:38:26.085Z · commit f7e696654e88c941273dc3be93024f48a22f774c
 - [x] C6. With `cland hub stop` and start mid-run, the hub reattaches through the lease and reports exactly once.
   - done: impl-345 · 2026-10-13T23:57:27.914Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-345-5 · 2026-10-14T01:06:24.390Z · commit f7e696654e88c941273dc3be93024f48a22f774c
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-345-6 · 2026-10-14T01:38:26.085Z · commit f7e696654e88c941273dc3be93024f48a22f774c
 - [x] C7. A green droplet result is a cache hit for a later `--executor local` request on the same tree and mode, and names `droplet`.
   - done: impl-345 · 2026-10-13T23:49:45.452Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-345-5 · 2026-10-14T01:06:24.390Z · commit f7e696654e88c941273dc3be93024f48a22f774c
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-345-6 · 2026-10-14T01:38:26.085Z · commit f7e696654e88c941273dc3be93024f48a22f774c
 - [x] C8. The sentinel token appears nowhere: not in the bundle, the env file, `run.sh`, the fake machine's files, the logs, the journal, the result or the artifact.
   - done: impl-345 · 2026-10-13T23:49:46.429Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-345-5 · 2026-10-14T01:06:24.390Z · commit f7e696654e88c941273dc3be93024f48a22f774c
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-345-6 · 2026-10-14T01:38:26.085Z · commit f7e696654e88c941273dc3be93024f48a22f774c
 - [x] C9. Real check, posted on this item: one `cland verify --executor droplet` of this repository at the branch head on c-8, with its result, platform, lifetime and cost, and an empty tag listing afterwards.
   - done: impl-345 · 2026-10-14T01:35:10.661Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-345-6 · 2026-10-14T01:38:26.085Z · commit f7e696654e88c941273dc3be93024f48a22f774c
 - [x] C10. `hub/README.md` describes choosing the executor, delivery, the selection, the result line and what a Linux result proves.
   - done: impl-345 · 2026-10-13T23:49:47.766Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-345-2 · 2026-10-14T00:00:25.926Z · commit 0f85b00dfdb4d6c2c292bde6eb260aa0c0ded3d7
   - verified: rev-23 [reviewer] · run rev-2026-10-14-345-4 · 2026-10-14T00:26:19.966Z · commit f7e696654e88c941273dc3be93024f48a22f774c
   - verified: rev-23 [reviewer] · run rev-2026-10-14-345-5 · 2026-10-14T01:06:24.390Z · commit f7e696654e88c941273dc3be93024f48a22f774c
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-345-6 · 2026-10-14T01:38:26.086Z · commit f7e696654e88c941273dc3be93024f48a22f774c
 
 ## Comments
 
@@ -233,3 +244,20 @@ Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 ve
 ### impl-345 · 2026-10-14T01:35:34.006Z
 
 C9 done at unchanged reviewed f7e69665. Real c-8 run 99128e8e posted once with Linux platform, lifetime 1351004ms and cost $0.09381972; result exit 1 due to existing verifier-routing 5s wait, tracked as T-369. Coordinator explicitly accepts C9 as written and directs no rerun; green full 89660b57/A-2151 remains suite evidence. A-2156 is the sanitized log; A-2158 is the complete preparation/run/cleanup receipt. Fixed snapshot 249681980 deleted; final taggedDroplets=[] and clandImages=[]; total check spend $0.10922936. All machines released, zero token occurrences in 400 scratch .cland files.
+
+### rev-23 · 2026-10-14T01:38:26.086Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-345-6
+commit: f7e696654e88c941273dc3be93024f48a22f774c
+scope: evidence
+
+No outstanding high/medium T-345 finding. A-2161 records the final C9 evidence review: A-2156/A-2158 establish a real exact-head c-8 run, one result with Linux platform/lifetime/cost, confirmed droplet release and snapshot deletion, and empty tag/image listings. C9 is satisfied as written under Coordinator decision f60e8fbb; my earlier progress interpretation requiring green real evidence was too broad. The remote exit 1 (1533/1538 hub machine pass, 1 failure, 4 platform/tool skips; Neovim not reached) remains explicit, with hub/test/verifier-routing.test.ts:199's 5000ms wait tracked separately as T-369 (Bugs, S). It is not green suite evidence. C1–C8/C10 retain source A-2144 and unchanged-head green ordinary full 89660b57/A-2151/A-2152: 1917/1917, both typechecks/all phases, zero failures/cancellations/skips. All C1–C10 checked; reviewer made no edits or test/cloud calls.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified, C9 verified, C10 verified.
+
+### coord · 2026-10-14T01:38:36.016Z
+
+Merged 3cecb4e8242c53de625096b55d866fac5d9aab7d onto dev.
