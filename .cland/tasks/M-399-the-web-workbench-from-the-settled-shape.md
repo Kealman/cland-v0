@@ -2,7 +2,7 @@
 id: M-399
 kind: map
 title: "The web workbench: from the settled shape to spec v0.2, mockups, a prototype and the epics"
-state: open
+state: closed
 labels:
   - wayfinder:map
 assignee: null
@@ -11,7 +11,8 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-14T13:03:48.458Z
-updated: 2026-10-14T15:23:52.568Z
+updated: 2026-10-14T16:01:54.480Z
+closed: 2026-10-14T16:01:54.480Z
 ---
 
 ## Destination
@@ -33,6 +34,7 @@ Charted on 2026-10-14 in the cland-design session from the human's direction of 
 - Threads, approvals and the composer in the web: the final shape (Q-408, .cland/tasks/Q-408-threads-approvals-and-the-composer-in.md): one ask record shown in the inbox and the thread with the same keys, decline never on Escape; folded runs open in place with a hub-built fold line; Enter sends a line, ⌘Enter always, queued messages with Withdraw, drafts survive; notifications for now items only, never while looking; spec §3.4, §3.6.
 - Phone-width mockups: the inbox, the sessions, a thread, answering an ask (Q-406, .cland/tasks/Q-406-phone-width-mockups-the-inbox-the-sessions.md): four boards accepted with proposals P26 to P42 (More in the bottom bar, two-line session rows, the accounts strip, the queue sheet, the touch composer, the ask sheet with Decline on the label row, the disconnected strip); decided: declining is an answer with a reason, answered asks stay folded until the human leaves the inbox, plan approval on the desktop only, TUI-bound approvals marked, sign-in by QR with a 30-day cookie, notification switches in More and Accounts; spec §3.4, §3.6, §3.7.
 - A clickable React prototype of the shell against the live hub, read-only (Q-405, .cland/tasks/Q-405-a-clickable-react-prototype-of-the-shell.md): built on prototype/web-shell with a read-only bridge, accepted by the human; first paint 250 ms, the full tree in two seconds for want of a snapshot, 2.5 ms frame to screen; the measurements shaped the snapshot in spec §3.3.
+- The 0.2.0 cut: what lands, what defers, the epics (Q-409, .cland/tasks/Q-409-the-0-2-0-cut-what-lands-what-defers-the.md): everything in the spec lands in 0.2.0; nine epics published under R-377 in a hub lane and a web lane; the build after v0.1.3 led by cland-impl; terminal, mouse edits, a multi-project home, push with the page closed and Neovim's adoption of the snapshot deferred to 0.2.x.
 
 ## Not yet specified
 
@@ -46,3 +48,9 @@ Charted on 2026-10-14 in the cland-design session from the human's direction of 
 
 - The Neovim workbench's own evolution: it stays the alternative and takes the protocol extension when it needs it; nothing in this map changes its views.
 - Cloud hosting or an account service for cland: the hub serves the web on the human's machine or network only.
+
+## Comments
+
+### human · 2026-10-14T16:01:54.480Z
+
+The way is charted: spec v0.2 complete, nine epics published under R-377 (see Decisions so far)

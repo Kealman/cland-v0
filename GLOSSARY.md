@@ -222,6 +222,22 @@ _Avoid_: dump, initial load, sync
 One pushed change from the hub after the snapshot, numbered in sequence within the epoch so that a client that reconnects can resume from the last number it saw.
 _Avoid_: event (that is what the hub announces; a delta is how a client learns of it), patch, diff
 
+**Rulebook**:
+The project's own rules for how its work is done, kept with the project and fed into every role's clause and brief; rules are added as the work goes, by the human or by the Coordinator when the human states one.
+_Avoid_: memory (a session's private notes), guidelines, AGENTS.md (the static instructions)
+
+**Rule**:
+One entry of the Rulebook: an id, a scope of roles, the date, the reason and a status; active until retired.
+_Avoid_: policy (that is the launch policy of a role), preference, tip
+
+**Heartbeat**:
+A delivery the hub sends a session at a set interval with a digest of what is in flight and what looks stale, so that a Coordinator wakes and checks when no event comes; never a needs-you.
+_Avoid_: cron, poll, ping (that is the connection's keepalive), timer
+
+**Follows**:
+The relation that orders epics within a lane: the next epic may start when the previous one's last ticket merges. Not a dependency: that is blocked by.
+_Avoid_: blocked by, after, depends on
+
 **Executor**:
 Where a verification run executes, behind one interface. The queue, the cache and the report are the same on every executor; a remote machine is held through a [Lease](#lease).
 
