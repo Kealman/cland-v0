@@ -2,8 +2,8 @@
 id: T-265
 kind: task
 title: "Safer Claude polling: claude agents --json at most once per 30 s per config directory on one shared schedule, and one notice for a signed-out directory (claude-code#95822)"
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 6
 labels:
@@ -16,7 +16,8 @@ blocked_by: []
 topic: topic-224
 branch: t/T-265-claude-adapter-polling-claude-agents
 created: 2026-10-12T09:36:53.954Z
-updated: 2026-10-13T23:58:57.269Z
+updated: 2026-10-14T00:21:53.789Z
+closed: 2026-10-14T00:21:53.789Z
 ---
 
 ## Summary
@@ -46,17 +47,23 @@ Out of scope: config directories per account, and the two-directory demo (E-272'
 
 - [x] C1. The adapter's `claude agents --json` calls are at most one per 30 seconds per config directory, counted by the fake's call log over a run with a launch, a resume and a watched session.
   - done: impl-265 · 2026-10-13T23:55:12.256Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-265-2 · 2026-10-14T00:21:35.774Z · commit 36d343b1f6ef451b5850704036a5cef799fa6fa6
 - [x] C2. Launch discovery and hub-start resume count against the same schedule; no 250 ms discovery loop remains, and a session whose pid arrives late is still stopped correctly.
   - done: impl-265 · 2026-10-13T23:55:13.374Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-265-2 · 2026-10-14T00:21:35.774Z · commit 36d343b1f6ef451b5850704036a5cef799fa6fa6
 - [x] C3. `agents --json` runs only while the directory has a watched session; with none, the call log stays empty.
   - done: impl-265 · 2026-10-13T23:55:14.274Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-265-2 · 2026-10-14T00:21:35.774Z · commit 36d343b1f6ef451b5850704036a5cef799fa6fa6
 - [x] C4. A logged-out directory produces one `claude-signed-out` journal record and one Agents notice naming the directory and the login command, and no further calls until it works again.
   - done: impl-265 · 2026-10-13T23:55:14.945Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-265-2 · 2026-10-14T00:21:35.775Z · commit 36d343b1f6ef451b5850704036a5cef799fa6fa6
 - [x] C5. The behaviour is covered by fake-harness tests through the hub's frame protocol.
   - done: impl-265 · 2026-10-13T23:55:16.142Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-265-2 · 2026-10-14T00:21:35.775Z · commit 36d343b1f6ef451b5850704036a5cef799fa6fa6
 - [x] C6. The README's Claude adapter table states the interval, the shared schedule and the signed-out notice.
   - done: impl-265 · 2026-10-13T23:55:17.021Z
   - verified: rev-23 [reviewer] · run rev-2026-10-13-265-1 · 2026-10-13T23:58:57.269Z · commit 36d343b1f6ef451b5850704036a5cef799fa6fa6
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-265-2 · 2026-10-14T00:21:35.775Z · commit 36d343b1f6ef451b5850704036a5cef799fa6fa6
 
 ## Comments
 
@@ -85,3 +92,20 @@ scope: full
 No high or medium findings remain. Shared persisted discovery timing, single flight, late-pid stop, signed-out suppression/recovery, unknown stateReason and sender notice deduplication match C1–C6 and the Coordinator decision. Both new journal reads now use flushProjectLogs and retain their assertions. C6 source-verified from README; C1–C5 await exact-head cland verify. A-2129: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2129-t-265-full-source-review-at-36d343b1.md.
 
 Criteria: C6 verified.
+
+### rev-23 · 2026-10-14T00:21:35.775Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-265-2
+commit: 36d343b1f6ef451b5850704036a5cef799fa6fa6
+scope: evidence
+
+No high or medium findings. Exact-head cland verify 8f078c4f / A-2140 selected full and passed both typechecks and 1897/1897 tests, zero failures/cancellations/skips/todo. Measured default polling gap, launch/watch/resume sharing, late-pid stop, idle silence, signed-out restart/recovery/notice/sender cases all pass; corrected flush barriers and existing identity tests remain green. Source A-2129 remains current. C1–C6 verified. A-2141: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2141-t-265-final-exact-head-evidence-review.md.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### coord · 2026-10-14T00:21:53.789Z
+
+Merged ffd91c90ceb408ba7b4da13c62aad86a0bea4808 onto dev.

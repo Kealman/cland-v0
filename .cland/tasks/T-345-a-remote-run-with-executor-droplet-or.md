@@ -3,7 +3,7 @@ id: T-345
 kind: task
 title: "A remote run: with executor = droplet or --executor droplet, cland verify delivers a bundle and the hub's suite selection to a droplet, runs detached as an ordinary user, polls status and log by offset, and posts the result with the droplet, its lifetime and its cost"
 state: open
-status: review
+status: in progress
 size: L
 criterion_seq: 10
 labels:
@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-223
 branch: t/T-345-a-remote-run-with-executor-droplet-or
 created: 2026-10-13T20:53:45.864Z
-updated: 2026-10-14T00:00:25.926Z
+updated: 2026-10-14T00:18:21.311Z
 ---
 
 ## Summary
@@ -138,6 +138,7 @@ The package runner reads the selection through `selectionFromEnv` and never fetc
 - [x] C8. The sentinel token appears nowhere: not in the bundle, the env file, `run.sh`, the fake machine's files, the logs, the journal, the result or the artifact.
   - done: impl-345 · 2026-10-13T23:49:46.429Z
 - [ ] C9. Real check, posted on this item: one `cland verify --executor droplet` of this repository at the branch head on c-8, with its result, platform, lifetime and cost, and an empty tag listing afterwards.
+  - failed: rev-23 [reviewer] · 2026-10-14T00:18:21.311Z · note The real c-8 attempt cannot authenticate runner within 180 seconds: inherited snapshot clean removes its key-copy hook; no remote suite result was established.
 - [x] C10. `hub/README.md` describes choosing the executor, delivery, the selection, the result line and what a Linux result proves.
   - done: impl-345 · 2026-10-13T23:49:47.766Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-345-2 · 2026-10-14T00:00:25.926Z · commit 0f85b00dfdb4d6c2c292bde6eb260aa0c0ded3d7
@@ -175,3 +176,16 @@ scope: full
 No high or medium findings remain. Authoritative lease reload and durable suite ownership resolve restart/re-delivery/orphan-release windows. Detached descriptor admission and pending/unknown reconciliation resolve executed lost-reply and marker-only starts; A-2127 adds boundary regressions for all cases, retaining original tests. Complete source scope A-2125 carried forward. C10 verified from docs; C1–C8 await exact-head full verification and C9 the authorized bounded real receipt. A-2131: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2131-t-345-corrected-full-source-review-at-0f85b00d.md.
 
 Criteria: C10 verified.
+
+### rev-23 · 2026-10-14T00:18:21.311Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-345-3
+commit: 0f85b00dfdb4d6c2c292bde6eb260aa0c0ded3d7
+scope: evidence
+
+Medium — hub/src/executor/droplet/prepare.ts:126: inherited image preparation installs the runner-key hook before cloud-init clean removes it; concrete C9 diagnosis reports root SSH succeeds but runner keys/hook are absent. Fake clean=true masks the boot defect. C9 failed; separate T-368 fix and modeled prepare→snapshot acquire regression need source review before fresh image/run evidence. A-2134 was intentionally cancelled before edits; it is not the defect and provides no green verification. Prior admission/restart source review remains applicable. A-2136: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2136-t-345-c9-not-clear-inherited-snapshot-key-hook-deleted-during-clean.md.
+
+Criteria: C9 failed (The real c-8 attempt cannot authenticate runner within 180 seconds: inherited snapshot clean removes its key-copy hook; no remote suite result was established.).

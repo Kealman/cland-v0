@@ -3,8 +3,9 @@ id: T-352
 kind: task
 title: "The card beside the tree: the card follows the cursor with the summary, its provenance line and the facts, Enter focuses it, gi opens the explorer on the item, and gI keeps the v0.1 item view"
 state: open
-status: planned
+status: review
 size: L
+criterion_seq: 9
 labels:
   - v0.1.2
   - nvim
@@ -13,10 +14,10 @@ assignee: null
 parent: E-276
 blocked_by:
   - T-351
-topic: null
-branch: null
+topic: topic-226
+branch: t/T-352-the-card-beside-the-tree-the-card
 created: 2026-10-13T20:53:51.618Z
-updated: 2026-10-14T00:06:03.218Z
+updated: 2026-10-14T00:21:16.272Z
 ---
 
 ## Summary
@@ -120,12 +121,26 @@ E-276: The explorer and the card, tracer bullet 1 (the first card) and the `gi` 
 
 ## Acceptance criteria
 
-- [ ] C1. The card follows the cursor: moving onto a task shows its card within the debounce, and moving back onto the same row does not redraw the card. Holding `j` over ten rows sends no `task.view` for the rows passed. The stub hub's frame log shows it.
-- [ ] C2. A task with a `## Summary` shows it with no provenance line. A task without one shows the fallback text and `fallback from ## <heading> · no ## Summary yet`. The summary unit tests pass on the seven cases.
-- [ ] C3. The facts show a task's status, layer, labels, size, parent path, lead, claim and holds with roles, and the ordinal `Nth of M in <container>`. An epic's card shows its derived status with `, derived`, the highest layer of its tasks, and the claims and holds on its tasks.
-- [ ] C4. Enter and `l` on a leaf focus the card, whose winbar lists its keys. `h` and `␣␣` in the card return to the tree with the cursor unchanged.
-- [ ] C5. `gi` on an id in a thread opens the explorer with the card on that item and its ancestors unfolded. The human's folds in `ui.json` do not change. `gI` and the palette's item pick open the v0.1 item view.
-- [ ] C6. The card's width is 42 % of the explorer within 36 to 72 columns. A resize is kept in `ui.json` as `explorer.card_width`, and the card closes when another centre view opens.
+- [x] C1. The card follows the cursor: moving onto a task shows its card within the debounce, and moving back onto the same row does not redraw the card. Holding `j` over ten rows sends no `task.view` for the rows passed. The stub hub's frame log shows it.
+  - done: impl-352 · 2026-10-14T00:21:00.901Z
+- [x] C2. A task with a `## Summary` shows it with no provenance line. A task without one shows the fallback text and `fallback from ## <heading> · no ## Summary yet`. The summary unit tests pass on the seven cases.
+  - done: impl-352 · 2026-10-14T00:21:01.291Z
+- [x] C3. The facts show a task's status, layer, labels, size, parent path, lead, claim and holds with roles, and the ordinal `Nth of M in <container>`. An epic's card shows its derived status with `, derived`, the highest layer of its tasks, and the claims and holds on its tasks.
+  - done: impl-352 · 2026-10-14T00:21:01.671Z
+- [x] C4. Enter and `l` on a leaf focus the card, whose winbar lists its keys. `h` and `␣␣` in the card return to the tree with the cursor unchanged.
+  - done: impl-352 · 2026-10-14T00:21:02.040Z
+- [x] C5. `gi` on an id in a thread opens the explorer with the card on that item and its ancestors unfolded. The human's folds in `ui.json` do not change. `gI` and the palette's item pick open the v0.1 item view.
+  - done: impl-352 · 2026-10-14T00:21:02.528Z
+- [x] C6. The card's width is 42 % of the explorer within 36 to 72 columns. A resize is kept in `ui.json` as `explorer.card_width`, and the card closes when another centre view opens.
+  - done: impl-352 · 2026-10-14T00:21:02.903Z
 - [ ] C7. The swept tests and `qa/cases/GRAPH-001.lua` pass with `gI` or with card assertions. `npm run test:nvim` is green.
-- [ ] C8. `nvim/README.md`, the help lines and the Modules list describe the card, the summary rule, `gi` and `gI`.
-- [ ] C9. The human's picture comes first. The card opens with the summary and the facts, never with the agents' Markdown body. The body is not drawn in this ticket; ticket T-354 adds it folded behind `zb` (spec §3.9, T-244).
+- [x] C8. `nvim/README.md`, the help lines and the Modules list describe the card, the summary rule, `gi` and `gI`.
+  - done: impl-352 · 2026-10-14T00:21:03.289Z
+- [x] C9. The human's picture comes first. The card opens with the summary and the facts, never with the agents' Markdown body. The body is not drawn in this ticket; ticket T-354 adds it folded behind `zb` (spec §3.9, T-244).
+  - done: impl-352 · 2026-10-14T00:21:03.659Z
+
+## Comments
+
+### impl-352 · 2026-10-14T00:13:38.036Z
+
+Summary port and the first card are implemented. Targeted tests pass for real-hub parsed-body loading, seven summary rules, task/container facts, focus/back, debounce frame counts (twenty passed rows fetch only the rested task), cache reuse + updated refresh, loading facts, gi transient reveal, gI/palette full-body view, and manual-width cold restart. Completing the existing test sweep and docs; full suite waits for source review.
