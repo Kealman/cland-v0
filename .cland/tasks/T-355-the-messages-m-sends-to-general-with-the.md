@@ -3,8 +3,9 @@ id: T-355
 kind: task
 title: "The messages: m sends to General with the item context, M creates the item's topic when it has none and sends there, and a visual selection goes to General with one line per item, naming items by their display ids"
 state: open
-status: planned
+status: review
 size: M
+criterion_seq: 8
 labels:
   - v0.1.2
   - nvim
@@ -13,10 +14,10 @@ assignee: null
 parent: E-276
 blocked_by:
   - T-354
-topic: null
-branch: null
+topic: topic-232
+branch: t/T-355-the-messages-m-sends-to-general-with-the
 created: 2026-10-13T20:53:51.934Z
-updated: 2026-10-14T02:11:36.419Z
+updated: 2026-10-14T02:25:36.964Z
 ---
 
 ## Summary
@@ -96,11 +97,25 @@ card line: <the card line under the cursor, trimmed>   (only from the card)
 
 ## Acceptance criteria
 
-- [ ] C1. `m` on a task row opens the composer with the context. `↵` sends one `topic.send` to General with `to = ["coordinator"]`, the text, a blank line, the scope line and the item's line, with the display id.
-- [ ] C2. `m` from the card adds the `card line:` line for the line under the card's cursor.
-- [ ] C3. `M` on an item with a topic sends into that topic. `M` on an open item without one sends `topic.create` with `item`, then `topic.send` into the new topic. The item's card then reads `M in <id>'s topic`.
-- [ ] C4. `M` on a closed item without a topic sends nothing and says why.
-- [ ] C5. `V` over three rows and `m` sends one message to General with `3 items selected` and three item lines. Label rows inside the selection are skipped.
-- [ ] C6. `Esc` keeps the draft, and the next `m` on the same item or selection shows it. A refused send keeps the draft. A 300-row selection is cut under 8192 bytes with `… and K more`.
-- [ ] C7. Both clause sources deliver the explorer line to the Coordinator within the byte guard (`hub/test/roles.test.ts`).
-- [ ] C8. `nvim/README.md`, the help lines and the Coordinator's clause describe the messages.
+- [x] C1. `m` on a task row opens the composer with the context. `↵` sends one `topic.send` to General with `to = ["coordinator"]`, the text, a blank line, the scope line and the item's line, with the display id.
+  - done: impl-355 · 2026-10-14T02:25:23.058Z
+- [x] C2. `m` from the card adds the `card line:` line for the line under the card's cursor.
+  - done: impl-355 · 2026-10-14T02:25:23.514Z
+- [x] C3. `M` on an item with a topic sends into that topic. `M` on an open item without one sends `topic.create` with `item`, then `topic.send` into the new topic. The item's card then reads `M in <id>'s topic`.
+  - done: impl-355 · 2026-10-14T02:25:24.112Z
+- [x] C4. `M` on a closed item without a topic sends nothing and says why.
+  - done: impl-355 · 2026-10-14T02:25:24.582Z
+- [x] C5. `V` over three rows and `m` sends one message to General with `3 items selected` and three item lines. Label rows inside the selection are skipped.
+  - done: impl-355 · 2026-10-14T02:25:25.201Z
+- [x] C6. `Esc` keeps the draft, and the next `m` on the same item or selection shows it. A refused send keeps the draft. A 300-row selection is cut under 8192 bytes with `… and K more`.
+  - done: impl-355 · 2026-10-14T02:25:25.829Z
+- [x] C7. Both clause sources deliver the explorer line to the Coordinator within the byte guard (`hub/test/roles.test.ts`).
+  - done: impl-355 · 2026-10-14T02:25:26.295Z
+- [x] C8. `nvim/README.md`, the help lines and the Coordinator's clause describe the messages.
+  - done: impl-355 · 2026-10-14T02:25:26.812Z
+
+## Comments
+
+### impl-355 · 2026-10-14T02:22:24.865Z
+
+Implemented explorer_compose.lua, registry mappings for row/card/visual messages, bound topic creation in the stub, context/draft handling and 8192-byte truncation, Coordinator clauses and docs. Seven targeted frame/UI tests pass (including real Coordinator delivery); both default/project delivered-clause guards pass. Typechecking and card regressions are being checked before source review. Full verification will follow a clear review at its exact head.

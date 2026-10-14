@@ -3,7 +3,7 @@ id: T-346
 kind: task
 title: "Remote safety: the sweep at hub start and every ten minutes, the run timeout, a daily spend cap on a ledger shared by every hub on the host, and the fallback to local with a warn-level event"
 state: open
-status: in progress
+status: review
 size: L
 criterion_seq: 10
 labels:
@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-230
 branch: t/T-346-remote-safety-the-sweep-at-hub-start-and
 created: 2026-10-13T20:53:45.976Z
-updated: 2026-10-14T02:04:30.917Z
+updated: 2026-10-14T02:18:54.999Z
 ---
 
 ## Summary
@@ -109,8 +109,8 @@ One create attempt per run; nothing retries in a loop. A `--executor droplet` re
 
 ## Acceptance criteria
 
-- [ ] C1. The sweep runs at hub start and on its timer. It reaps a stray tagged droplet, journals `executor-watchdog-fired` from a receipt, re-arms the killed watchdog of a live lease, and retries a `releasing` lease until confirmed. Each pass journals `executor-sweep`.
-  - failed: rev-26 [reviewer] · 2026-10-14T02:04:30.917Z · note Automatic sweep can delete foreign live droplets using the shorter hub lifetime, or concurrent new droplets/keys using ownership snapshots captured before provider listing.
+- [x] C1. The sweep runs at hub start and on its timer. It reaps a stray tagged droplet, journals `executor-watchdog-fired` from a receipt, re-arms the killed watchdog of a live lease, and retries a `releasing` lease until confirmed. Each pass journals `executor-sweep`.
+  - done: impl-346 · 2026-10-14T02:12:08.780Z
 - [x] C2. A remote run past `run_timeout` is ended, reported once with `run timeout <value>`, and its droplet released. A `lifetime` shorter than `run_timeout` plus 10 minutes is refused at config load, naming both.
   - done: impl-346 · 2026-10-14T02:02:51.042Z
 - [x] C3. With `daily_spend_usd` set just above one reservation, a second droplet run on a second fixture project sharing the ledger falls back to local with the cause `daily spend cap $<cap> reached`. Its fake API received no create. After the first run is released, the ledger holds its actual cost, not the reservation.
@@ -126,6 +126,7 @@ One create attempt per run; nothing retries in a loop. A `--executor droplet` re
   - done: impl-346 · 2026-10-14T02:02:57.754Z
 - [x] C9. `hub/README.md` describes the sweep, the run timeout, the cap and its shared ledger, the fallback, the defaults and this project's D27 values, and the hand driver's retirement.
   - done: impl-346 · 2026-10-14T02:02:58.640Z
+  - verified: rev-26 [reviewer] · run rev-20261014-346-source-2 · 2026-10-14T02:12:41.731Z · commit d6b9d6b93622f678fd8b25f351abc34e130ba534
 - [x] C10. SSH keys are named with the project-hash prefix used by the droplet tag (cland-p-<hash>), and the automatic orphan-key reap deletes only keys with this project's hash prefix. A legacy cland-<name>- key is reaped only when no live lease of any hub on the host names it and it is older than lifetime plus 10 minutes. A test runs two hubs with the same project name and shows neither reaps the other's in-flight key (found by impl-346, 2026-10-14; regression of T-343).
   - done: impl-346 · 2026-10-14T02:02:59.439Z
 
@@ -157,3 +158,24 @@ High — hub/src/executor/droplet/droplet.ts:282: Local ownership is captured be
 Standards: no independent high/medium finding. Spec: two high findings. C7 real proof and full verification remain pending; wait for corrected exact-head source clear. Evidence A-2178: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2178-t-346-source-review-not-clear-at-af17a3b8-automatic-sweep-can-reap-live-resource.md.
 
 Criteria: C1 failed (Automatic sweep can delete foreign live droplets using the shorter hub lifetime, or concurrent new droplets/keys using ownership snapshots captured before provider listing.).
+
+### impl-346 · 2026-10-14T02:12:10.870Z
+
+Corrected both A-2178 high findings at pushed d6b9d6b93622f678fd8b25f351abc34e130ba534. Reap reads fresh host leases after provider lists and before each deletion candidate, preserves foreign live leases, and uses known lease deadlines for expiry. Deterministic provider barriers reproduce all three resource deletions on af17a3b8 (red); corrected safety file passes 20/20, then barrier cases re-pass 3/3 after teardown hardening. Both typechecks and shard lint pass. A-2183 records reproduction. C1 marked done again; source re-review requested before C7 or full verify. No live real droplet; snapshot 249682656 remains held only until C7.
+
+### rev-26 · 2026-10-14T02:12:41.731Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261014-346-source-2
+commit: d6b9d6b93622f678fd8b25f351abc34e130ba534
+scope: full
+
+No remaining high/medium source findings. hub/src/executor/droplet/droplet.ts:286 reads fresh host-wide ownership after provider lists for every candidate, protects matching live leases before age deletion and uses known lease deadlines. Deterministic fake barriers cover both admission races; the foreign 110m lease regression covers the shorter sweeping hub. Prior full source A-2178 retained; no other production change. Standards and Spec clear. C9 documentation verified from source; C1–C8/C10 final execution evidence, including C7 real proof and accepted full verification, remain pending. Evidence A-2187: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2187-t-346-corrected-source-clear-at-d6b9d6b9-fresh-host-ownership-protects-live-reso.md.
+
+Criteria: C9 verified.
+
+### impl-346 · 2026-10-14T02:18:54.999Z
+
+C7 real crash run 101894dc-2de0-4877-905e-bfd03a84cec9 created 608880406 (cland-t346-real-e8eb2e45) at 2026-10-14T02:17:21.518Z, deadline 2026-10-14T02:32:21.518Z; s-1vcpu-1gb lon1, $0.00893/hour, reservation $0.0022325. Remote log confirms the suite is active. Stopping the scratch hub now; detached watchdog must release it at 15m. Source reviewed at d6b9d6b93622f678fd8b25f351abc34e130ba534; preflight cland tag listing was empty.

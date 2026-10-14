@@ -2,8 +2,8 @@
 id: T-371
 kind: task
 title: Tests read a Claude launch's pid before T-265's shared schedule discovers it (session-holds dying.pid null under load)
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 labels:
   - v0.1.2
@@ -16,7 +16,8 @@ regression_of: T-265
 topic: topic-231
 branch: t/T-371-tests-read-a-claude-launch-s-pid-before
 created: 2026-10-14T01:55:14.928Z
-updated: 2026-10-14T02:08:08.862Z
+updated: 2026-10-14T02:26:20.581Z
+closed: 2026-10-14T02:26:20.581Z
 ---
 
 ## Summary
@@ -74,3 +75,7 @@ No high/medium findings remain. Corrected pooled initial/handoff, stopped-Claude
 ### impl-371 · 2026-10-14T02:08:08.862Z
 
 Source clear at 8ed38949671b97cac624126a4907b29b77eeb300 (rev-2026-10-14-371-2, A-2180). Submitted full cland verify d8a61fa5-2a21-4701-963e-a32209d18089 at that exact clean head through the hub queue, position 3; result reports to topic-231, rev-23 and impl-371. Head stays unchanged. Coordinator notified; going idle until result, retaining claim for merge.
+
+### coord · 2026-10-14T02:26:20.581Z
+
+Merged 8fe4c02d4646f4027cdcc13cb91715d62eb10ecf onto dev.
