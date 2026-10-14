@@ -3,7 +3,7 @@ id: T-385
 kind: task
 title: "A hung test holds the verify queue forever: no per-test timeout and no stall kill"
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 4
 labels:
@@ -17,7 +17,7 @@ blocked_by: []
 topic: topic-246
 branch: t/T-385-a-hung-test-holds-the-verify-queue
 created: 2026-10-14T12:21:44.443Z
-updated: 2026-10-14T20:28:43.152Z
+updated: 2026-10-14T20:54:14.157Z
 ---
 
 ## Summary
@@ -37,14 +37,17 @@ A full verify can hang forever. T-359's run 6a9dce81 stopped producing output af
   - done: impl-385 · 2026-10-14T12:35:29.096Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-385-7 · 2026-10-14T18:16:29.996Z · commit b40e992784790b9e4a37626dfa3cf7e9836dad06
   - verified: rev-23 [reviewer] · run rev-2026-10-14-385-11 · 2026-10-14T20:15:52.533Z · commit 849d2f36bbeb4b6ebb0b655199b0154b2511986e
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-385-13 · 2026-10-14T20:54:11.711Z · commit 795b46ec48837dab4e069639e813cbde8c09597a
 - [x] C2. The suite worker kills a run whose log has been silent for longer than a configured stall limit (default 10 min). The result reads `stalled: no output for <n> min` and names the last started tests. The process tree, test children and spokes included, is reaped.
   - done: impl-385 · 2026-10-14T13:48:02.595Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-385-7 · 2026-10-14T18:16:29.996Z · commit b40e992784790b9e4a37626dfa3cf7e9836dad06
   - verified: rev-23 [reviewer] · run rev-2026-10-14-385-11 · 2026-10-14T20:15:52.533Z · commit 849d2f36bbeb4b6ebb0b655199b0154b2511986e
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-385-13 · 2026-10-14T20:54:11.711Z · commit 795b46ec48837dab4e069639e813cbde8c09597a
 - [x] C3. A test reproduces a hung test file and shows the timeout failure, and another shows the stall kill and cleanup with no orphan processes left.
   - done: impl-385 · 2026-10-14T12:41:20.416Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-385-7 · 2026-10-14T18:16:29.996Z · commit b40e992784790b9e4a37626dfa3cf7e9836dad06
   - verified: rev-23 [reviewer] · run rev-2026-10-14-385-11 · 2026-10-14T20:15:52.533Z · commit 849d2f36bbeb4b6ebb0b655199b0154b2511986e
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-385-13 · 2026-10-14T20:54:11.711Z · commit 795b46ec48837dab4e069639e813cbde8c09597a
 - [x] C4. The hanging test from run 6a9dce81 is identified from its log and fixed, or filed separately with evidence.
   - done: impl-385 · 2026-10-14T12:32:34.448Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-385-3 · 2026-10-14T13:54:50.143Z · commit 699bf7b51b55479ccaf5c56faf2206b26dc97567
@@ -54,6 +57,7 @@ A full verify can hang forever. T-359's run 6a9dce81 stopped producing output af
   - verified: rev-23 [reviewer] · run rev-2026-10-14-385-10 · 2026-10-14T19:40:40.785Z · commit 849d2f36bbeb4b6ebb0b655199b0154b2511986e
   - verified: rev-23 [reviewer] · run rev-2026-10-14-385-11 · 2026-10-14T20:15:52.534Z · commit 849d2f36bbeb4b6ebb0b655199b0154b2511986e
   - verified: rev-23 [reviewer] · run rev-2026-10-14-385-12 · 2026-10-14T20:28:18.727Z · commit 795b46ec48837dab4e069639e813cbde8c09597a
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-385-13 · 2026-10-14T20:54:11.711Z · commit 795b46ec48837dab4e069639e813cbde8c09597a
 
 ## Comments
 
@@ -286,3 +290,20 @@ Criteria: C4 verified.
 ### impl-385 · 2026-10-14T20:28:43.152Z
 
 After clear delta source review rev-2026-10-14-385-12 (A-2551), submitted exact-head no-mode --executor local verification at 795b46ec48837dab4e069639e813cbde8c09597a: 020d6170-b560-4753-81a5-6ce2f70b5978, queue position 1, rev-23/impl-385 recipients. Head unchanged; awaiting hub result.
+
+### impl-385 · 2026-10-14T20:53:35.280Z
+
+Exact-reviewed-head local verification 020d6170-b560-4753-81a5-6ce2f70b5978 passed at 795b46ec48837dab4e069639e813cbde8c09597a: full hub+Neovim 2071/2071, no failures/skips; A-2556. darwin arm64 Node24.21.0 Neovim0.12.5, 1204.33s. Reviewer notified for final C1–C3 evidence verdict after D29 docs merge resolution. Head unchanged.
+
+### rev-23 · 2026-10-14T20:54:11.711Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-385-13
+commit: 795b46ec48837dab4e069639e813cbde8c09597a
+scope: evidence
+
+Final clear; C1–C4 done marks confirmed at unchanged clean head. No-mode local full 020d6170/A-2556 passes root typecheck and 2071/2071 (37 free, 1647 hub machine, 387 Neovim), zero failures/cancellations/skips/todo. Named timeout, silent test tree/spoke cleanup, successor admission, partial stderr and unverified fast-exit regression all pass. C2 retains recorded Coordinator 13:05:57 exception: verified identities reaped, unknown writer explicitly cleanup incomplete with one warn/journal and admission released; no unknown-reap claim, T-410 retained. C4 original hang filed T-397. Delta source A-2551 retained. Earlier f8e54b25/A-2532 and isolated A-2533 red on T-439 are corrected; affected gi passes. Prior 86649036/A-2545 is earlier-head green; current result supplies gate. No high/medium Standards/Spec findings. A-2557: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2557-t-385-final-gate-at-integrated-d29-docs-head.md.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
