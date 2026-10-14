@@ -180,12 +180,15 @@ test('stage closure follows dev ancestry: later descendants stay closed, rollbac
 
 test('stage QA requests obey the same Lead subtree boundary as ordinary QA requests', async t => {
   const f = await fixture(t, false, 1, true);
+  assert.equal((await f.ui.request({ type: 'subscribe' })).ok, true);
   const foreign = await f.ui.request({ type: 'task.create', title: 'Foreign epic', kind: 'epic' });
   assert.equal(foreign.ok, true, foreign.error);
   const other = (foreign.value as { item: ItemView }).item;
   const launched = await f.ui.request({ type: 'session.launch', name: 'lead-one', role: 'lead', item: f.epic.id, harness: 'claude-code' });
   assert.equal(launched.ok, true, launched.error);
   const sessionId = (launched.value as { process: { sessionId: string } }).process.sessionId;
+  // Wait for the native MCP spoke before connecting the observer.
+  await f.ui.waitFor(f => f.type === 'session.usage' && f.sessionId === sessionId);
   const lead = await spawnSpoke({ discover: true, cwd: f.root, name: 'lead-one', sessionId, assignRole: false }); t.after(() => lead.close());
   for (const suffix of ['', ' stage Stage 1']) {
     const outside = await lead.call<{ ok: boolean; reason?: string }>('send', { to: ['qa-one'], text: `qa request ${other.id}${suffix}\nRead the brief.` });

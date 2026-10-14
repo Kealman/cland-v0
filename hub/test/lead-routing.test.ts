@@ -8,6 +8,7 @@ test('an Implementer reports blocked up its item chain; unclaimed descendants us
   const fake = await fakeClaude(t);
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
+  assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
   t.after(() => coord.close());
   const impl = await spawnSpoke({ cwd: root, discover: true, name: 'impl', role: 'implementer', sessionId: 'impl-id' });
@@ -16,6 +17,8 @@ test('an Implementer reports blocked up its item chain; unclaimed descendants us
   const { item: epic } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Lead epic', kind: 'epic' });
   const launched = await coord.call<{ ok: boolean; process: { sessionId: string; harnessId: string } }>('session.launch', { name: 'lead-1', role: 'lead', item: epic.id, harness: 'claude-code' });
   assert.equal(launched.ok, true);
+  // Wait for the native MCP spoke before connecting the observer.
+  await ui.waitFor(f => f.type === 'session.usage' && f.sessionId === launched.process.sessionId);
   const lead = await spawnSpoke({ cwd: root, discover: true, name: 'lead-1', assignRole: false, sessionId: launched.process.sessionId });
   t.after(() => lead.close());
   await coord.waitForPresence(['coord', 'lead-1', 'impl']);

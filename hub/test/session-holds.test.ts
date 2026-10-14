@@ -20,6 +20,8 @@ test('session frames show review and QA holds as they are taken and released', a
     const launched = await ui.request({ type: 'session.launch', name, role, harness: 'claude-code' }, 30_000);
     assert.equal(launched.ok, true, launched.error);
     const process = (launched.value as { process: HarnessProcessView }).process;
+    // Wait for the native MCP spoke before connecting the observer.
+    await ui.waitFor(f => f.type === 'session.usage' && f.sessionId === process.sessionId);
     const session = await spawnSpoke({ discover: true, cwd: root, name, sessionId: process.sessionId, role });
     onCleanup(t, () => session.close());
     await session.waitForPresence([name]);
@@ -133,6 +135,7 @@ test('session.list orders verifier holds newest first with their durable timesta
   const fake = await fakeClaude(t);
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
+  assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const ids: string[] = [];
   for (const title of ['Older hold', 'Latest hold']) {
     const made = await ui.request({ size: 'M', type: 'task.create', title });
@@ -141,6 +144,8 @@ test('session.list orders verifier holds newest first with their durable timesta
   const launch = await ui.request({ type: 'session.launch', name: 'ordered-reviewer', role: 'reviewer', harness: 'claude-code' }, 30_000);
   assert.equal(launch.ok, true, launch.error);
   const processRow = (launch.value as { process: HarnessProcessView }).process;
+  // Wait for the native MCP spoke before connecting the observer.
+  await ui.waitFor(f => f.type === 'session.usage' && f.sessionId === processRow.sessionId);
   const rev = await spawnSpoke({ discover: true, cwd: root, name: processRow.name, sessionId: processRow.sessionId, role: 'reviewer' });
   onCleanup(t, () => rev.close());
   await rev.waitForPresence([processRow.name]);
@@ -168,6 +173,8 @@ test('delivered verifier requests persist across restart and clear on hold, verd
   const launch = await ui.request({ type: 'session.launch', name: 'pending-reviewer', role: 'reviewer', harness: 'claude-code' }, 30_000);
   assert.equal(launch.ok, true, launch.error);
   const processRow = (launch.value as { process: HarnessProcessView }).process;
+  // Wait for the native MCP spoke before connecting the observer.
+  await ui.waitFor(f => f.type === 'session.usage' && f.sessionId === processRow.sessionId);
   const rev = await spawnSpoke({ discover: true, cwd: root, name: processRow.name, sessionId: processRow.sessionId, role: 'reviewer' });
   onCleanup(t, () => rev.close());
   await rev.waitForPresence(['coord-pending', processRow.name]);
@@ -188,6 +195,7 @@ test('delivered verifier requests persist across restart and clear on hold, verd
   assert.equal((await cland(root, 'hub', 'stop')).code, 0);
   const restarted = await startDaemon(t, root, fake.env);
   ui = await connectUi(t, restarted.discovery);
+  assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   assert.deepEqual((await row()).pending, { item: ids[1], kind: 'qa' });
   await rev.waitForPresence(['coord-pending', processRow.name]);
   assert.equal((await rev.call<{ ok: boolean }>('task.hold', { id: ids[1] })).ok, true);
@@ -206,6 +214,8 @@ test('delivered verifier requests persist across restart and clear on hold, verd
   const death = await ui.request({ type: 'session.launch', name: 'pending-qa', role: 'qa', harness: 'claude-code' }, 30_000);
   assert.equal(death.ok, true, death.error);
   const dying = (death.value as { process: HarnessProcessView }).process;
+  // Wait for the native MCP spoke before connecting the observer.
+  await ui.waitFor(f => f.type === 'session.usage' && f.sessionId === dying.sessionId);
   const next = await spawnSpoke({ discover: true, cwd: root, name: dying.name, sessionId: dying.sessionId, assignRole: false });
   onCleanup(t, () => next.close());
   await next.waitForPresence(['coord-pending', dying.name]);

@@ -53,6 +53,8 @@ test('item windows follow launch items and the latest verifier work even after h
     assert.equal(launch.ok, true, launch.error);
     const p = (launch.value as { process: HarnessProcessView }).process;
     if (role === 'reviewer' || role === 'qa') {
+      // Wait for the native MCP spoke before connecting the observer.
+      await ui.waitFor(f => f.type === 'session.usage' && f.sessionId === p.sessionId);
       const spoke = await spawnSpoke({ discover: true, cwd: root, name, role, sessionId: p.sessionId });
       t.after(() => spoke.close());
       await spoke.waitForPresence([name]);
@@ -120,6 +122,7 @@ test('prune CLI and Coordinator tool delete only old archived records and retain
   const fake = await fakeClaude(t);
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
+  assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
   t.after(() => coord.close());
   await coord.waitForPresence(['coord']);
@@ -135,6 +138,8 @@ test('prune CLI and Coordinator tool delete only old archived records and retain
     assert.equal(launch.ok, true, launch.error);
     if (name === 'old') {
       const p = (launch.value as { process: HarnessProcessView }).process;
+      // Wait for the native MCP spoke before connecting the observer.
+      await ui.waitFor(f => f.type === 'session.usage' && f.sessionId === p.sessionId);
       const holder = await spawnSpoke({ discover: true, cwd: root, name, role: 'implementer', sessionId: p.sessionId });
       t.after(() => holder.close());
       await holder.waitForPresence([name]);

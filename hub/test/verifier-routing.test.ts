@@ -257,6 +257,7 @@ test('QA affinity survives copied and reordered verdict headers, including stage
   const fake = await fakeClaude(t);
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
+  assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   assert.equal((await ui.request({ type: 'crew.set', key: 'qa.policy', value: 'pool' })).ok, true);
   assert.equal((await ui.request({ type: 'crew.set', key: 'qa.size', value: 2 })).ok, true);
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
@@ -265,6 +266,8 @@ test('QA affinity survives copied and reordered verdict headers, including stage
   for (const name of ['qa-1', 'qa-2']) {
     const launched = await coord.call<{ ok: boolean; error?: string; process: HarnessProcessView }>('session.launch', { name, role: 'qa', harness: 'claude-code' });
     assert.equal(launched.ok, true, launched.error);
+    // Wait for the native MCP spoke before connecting the observer.
+    await ui.waitFor(f => f.type === 'session.usage' && f.sessionId === launched.process.sessionId);
     const session = await spawnSpoke({ cwd: root, discover: true, name, assignRole: false, sessionId: launched.process.sessionId });
     t.after(() => session.close());
     verifiers.push(session);

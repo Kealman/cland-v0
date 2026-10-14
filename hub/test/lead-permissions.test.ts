@@ -12,6 +12,7 @@ test('Lead launches and stops only sessions serving its live subtree', async t =
   const fake = await fakeClaude(t);
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
+  assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator' });
   t.after(() => coord.close());
   const create = async (title: string, kind = 'task', parent?: string) => (await coord.call<{ item: { id: string } }>('task.create', { ...(['task'].includes(kind) ? { size: 'M' } : {}), title, kind, parent })).item.id;
@@ -21,6 +22,8 @@ test('Lead launches and stops only sessions serving its live subtree', async t =
   const foreign = await create('Foreign task', 'task', other);
   const launched = await coord.call<{ ok: boolean; process: HarnessProcessView }>('session.launch', { name: 'lead-1', role: 'lead', item: epic, harness: 'claude-code' });
   assert.equal(launched.ok, true);
+  // Wait for the native MCP spoke before connecting the observer.
+  await ui.waitFor(f => f.type === 'session.usage' && f.sessionId === launched.process.sessionId);
   const lead = await spawnSpoke({ cwd: root, discover: true, name: 'lead-1', sessionId: launched.process.sessionId, assignRole: false });
   t.after(() => lead.close());
   const stop = (name: string) => clandWithEnv(root, { CLAND_SESSION_NAME: 'lead-1', CLAND_SESSION_ID: launched.process.sessionId }, 'session', 'stop', name);
@@ -52,6 +55,8 @@ test('Lead launches and stops only sessions serving its live subtree', async t =
   const foreignAgain = await create('Foreign verification', 'task', other);
   const verifier = await lead.call<{ ok: boolean; process: HarnessProcessView }>('session.launch', { name: 'qa-pool', role: 'qa', item: own, harness: 'claude-code' });
   assert.equal(verifier.ok, true);
+  // Wait for the native MCP spoke before connecting the observer.
+  await ui.waitFor(f => f.type === 'session.usage' && f.sessionId === verifier.process.sessionId);
   const qa = await spawnSpoke({ cwd: root, discover: true, name: 'qa-pool', sessionId: verifier.process.sessionId, assignRole: false });
   t.after(() => qa.close());
   await qa.waitForPresence(['qa-pool']);
@@ -102,12 +107,15 @@ test('a verifier spawned while its item leaves the Lead subtree is refused and c
   await writeFile(join(bin, 'claude'), `#!/usr/bin/env node\nimport { spawnSync } from 'node:child_process';\nimport { existsSync, writeFileSync } from 'node:fs';\nimport { setTimeout } from 'node:timers/promises';\nconst args = process.argv.slice(2);\nconst result = spawnSync(${JSON.stringify(realClaude)}, args, { env: process.env, encoding: 'utf8' });\nif (args.includes('--bg') && args.includes('late-verifier')) {\n  writeFileSync(${JSON.stringify(marker)}, 'ready');\n  while (!existsSync(${JSON.stringify(proceed)})) await setTimeout(10);\n}\nprocess.stdout.write(result.stdout ?? '');\nprocess.stderr.write(result.stderr ?? '');\nprocess.exit(result.status ?? 1);\n`, { mode: 0o755 });
   const { discovery } = await startDaemon(t, root, { ...fake.env, PATH: `${bin}:${fake.env.PATH}` });
   const ui = await connectUi(t, discovery);
+  assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator' });
   t.after(() => coord.close());
   const { item: epic } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Own epic', kind: 'epic' });
   const { item: other } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Other epic', kind: 'epic' });
   const { item } = await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Verifier work', parent: epic.id });
   const launched = await coord.call<{ process: HarnessProcessView }>('session.launch', { name: 'lead-1', role: 'lead', item: epic.id, harness: 'claude-code' });
+  // Wait for the native MCP spoke before connecting the observer.
+  await ui.waitFor(f => f.type === 'session.usage' && f.sessionId === launched.process.sessionId);
   const lead = await spawnSpoke({ cwd: root, discover: true, name: 'lead-1', sessionId: launched.process.sessionId, assignRole: false });
   t.after(() => lead.close());
   const launching = lead.call<{ ok: boolean; code: string; reason: string }>('session.launch', { name: 'late-verifier', role: 'reviewer', item: item.id, harness: 'claude-code' });
@@ -163,6 +171,7 @@ test('lead-1 requests verifiers and merges its scheduled item through the ordina
   await writeFile(join(gateBin, 'git'), `#!/bin/sh\nfor arg in \"$@\"; do\n  case \"$arg\" in\n    write-tree|*^) exec \"${process.execPath}\" \"${join(gateBin, 'gate.mjs')}\" \"$@\" ;;\n  esac\ndone\nexec /usr/bin/git \"$@\"\n`, { mode: 0o755 });
   const { discovery } = await startDaemon(t, root, { ...fake.env, PATH: `${gateBin}:${fake.env.PATH}` });
   const ui = await connectUi(t, discovery);
+  assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   // The direct verdict writer and the launched verifier each occupy a Reviewer slot.
   assert.equal((await ui.request({ type: 'crew.set', key: 'reviewer.size', value: 2 })).ok, true);
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator' });
@@ -175,6 +184,8 @@ test('lead-1 requests verifiers and merges its scheduled item through the ordina
   const own = await create('Own task', 'task', epic);
   const foreign = await create('Other task', 'task', other);
   const launched = await coord.call<{ process: HarnessProcessView }>('session.launch', { name: 'lead-1', role: 'lead', item: epic, harness: 'claude-code' });
+  // Wait for the native MCP spoke before connecting the observer.
+  await ui.waitFor(f => f.type === 'session.usage' && f.sessionId === launched.process.sessionId);
   const lead = await spawnSpoke({ cwd: root, discover: true, name: 'lead-1', sessionId: launched.process.sessionId, assignRole: false });
   t.after(() => lead.close());
   const stop = (name: string) => clandWithEnv(root, { CLAND_SESSION_NAME: 'lead-1', CLAND_SESSION_ID: launched.process.sessionId }, 'session', 'stop', name);
@@ -291,6 +302,7 @@ for (const boundary of ['version', 'thread-start']) {
     const codex = await fakeCodex(t);
     const { discovery } = await startDaemon(t, root, { ...claude.env, ...codex.env, PATH: `${codex.env.PATH!.split(':')[0]}:${claude.env.PATH}` });
     const ui = await connectUi(t, discovery);
+    assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
     const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator' });
     t.after(() => coord.close());
     const create = async (title: string, kind = 'task', parent?: string) => (await coord.call<{ item: { id: string } }>('task.create', { ...(['task'].includes(kind) ? { size: 'M' } : {}), title, kind, parent })).item.id;
@@ -298,6 +310,8 @@ for (const boundary of ['version', 'thread-start']) {
     const other = await create('Other epic', 'epic');
     const item = await create('Native work', 'task', epic);
     const launched = await coord.call<{ process: HarnessProcessView }>('session.launch', { name: 'lead-1', role: 'lead', item: epic, harness: 'claude-code' });
+    // Wait for the native MCP spoke before connecting the observer.
+    await ui.waitFor(f => f.type === 'session.usage' && f.sessionId === launched.process.sessionId);
     const lead = await spawnSpoke({ cwd: root, discover: true, name: 'lead-1', sessionId: launched.process.sessionId, assignRole: false });
     t.after(() => lead.close());
     await writeFile(join(codex.home, `hold-${boundary}`), 'hold');

@@ -82,6 +82,7 @@ test('a former receiving Lead cannot forward downward after the task is reparent
   const fake = await fakeClaude(t);
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
+  assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
   const impl = await spawnSpoke({ cwd: root, discover: true, name: 'impl', role: 'implementer', sessionId: 'impl-id' });
   t.after(() => coord.close()); t.after(() => impl.close());
@@ -89,6 +90,8 @@ test('a former receiving Lead cannot forward downward after the task is reparent
   const { item: epic } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Old epic', kind: 'epic' });
   const { item: other } = await coord.call<{ item: { id: string } }>('task.create', { title: 'New epic', kind: 'epic' });
   const launched = await coord.call<{ process: { sessionId: string } }>('session.launch', { name: 'old-lead', role: 'lead', item: epic.id, harness: 'claude-code' });
+  // Wait for the native MCP spoke before connecting the observer.
+  await ui.waitFor(f => f.type === 'session.usage' && f.sessionId === launched.process.sessionId);
   const lead = await spawnSpoke({ cwd: root, discover: true, name: 'old-lead', assignRole: false, sessionId: launched.process.sessionId });
   t.after(() => lead.close());
   await coord.waitForPresence(['coord', 'impl', 'old-lead']);
@@ -212,12 +215,15 @@ test('a Lead answers locally or forwards an unchanged question to the root, whic
   const fake = await fakeClaude(t);
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
+  assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
   const impl = await spawnSpoke({ cwd: root, discover: true, name: 'impl', role: 'implementer', sessionId: 'impl-id' });
   t.after(() => coord.close()); t.after(() => impl.close());
   await coord.waitForPresence(['coord', 'impl']);
   const { item: epic } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Questions', kind: 'epic' });
   const launched = await coord.call<{ process: { sessionId: string } }>('session.launch', { name: 'lead-1', role: 'lead', item: epic.id, harness: 'claude-code' });
+  // Wait for the native MCP spoke before connecting the observer.
+  await ui.waitFor(f => f.type === 'session.usage' && f.sessionId === launched.process.sessionId);
   const lead = await spawnSpoke({ cwd: root, discover: true, name: 'lead-1', assignRole: false, sessionId: launched.process.sessionId });
   t.after(() => lead.close());
   await coord.waitForPresence(['coord', 'impl', 'lead-1']);
@@ -285,6 +291,7 @@ test('a question climbs an epic and release one level per forward, reaching each
   const fake = await fakeClaude(t);
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
+  assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
   const impl = await spawnSpoke({ cwd: root, discover: true, name: 'impl', role: 'implementer', sessionId: 'impl-id' });
   t.after(() => coord.close()); t.after(() => impl.close());
@@ -294,6 +301,8 @@ test('a question climbs an epic and release one level per forward, reaching each
   const leads = [];
   for (const [name, item] of [['release-lead', release.id], ['epic-lead', epic.id]] as const) {
     const launched = await coord.call<{ process: { sessionId: string; harnessId: string } }>('session.launch', { name, role: 'lead', item, harness: 'claude-code' });
+    // Wait for the native MCP spoke before connecting the observer.
+    await ui.waitFor(f => f.type === 'session.usage' && f.sessionId === launched.process.sessionId);
     const spoke = await spawnSpoke({ cwd: root, discover: true, name, assignRole: false, sessionId: launched.process.sessionId });
     t.after(() => spoke.close());
     leads.push({ name, spoke, harnessId: launched.process.harnessId });

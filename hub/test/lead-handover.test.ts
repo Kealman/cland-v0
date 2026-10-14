@@ -20,6 +20,7 @@ async function setup(t: TestContext, crash = false, direct = false) {
   const fake = await fakeClaude(t);
   const daemon = await startDaemon(t, root, { ...fake.env, ...(crash ? { CLAND_TEST_CRASH_AT: 'handover-committed' } : {}) });
   const ui = await connectUi(t, daemon.discovery);
+  assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const spoke = async (name: string, role?: string, sessionId = `id-${name}`): Promise<Session> => {
     const s = await spawnSpoke({ cwd: root, discover: true, name, sessionId, ...(role ? { role } : { assignRole: false }) });
     t.after(() => s.close());
@@ -39,6 +40,8 @@ async function setup(t: TestContext, crash = false, direct = false) {
     }
     const r = await coord.call<Result & { process: { sessionId: string; harnessId: string } }>('session.launch', { name, role: item ? 'lead' : 'implementer', harness: 'claude-code', ...(item ? { item } : {}) });
     assert.equal(r.ok, true, r.error);
+    // A completed native turn makes our observer the newest delivery endpoint.
+    await ui.waitFor(f => f.type === 'session.usage' && f.sessionId === r.process.sessionId);
     const s = await spoke(name, undefined, r.process.sessionId);
     return { s, ...r.process };
   };
