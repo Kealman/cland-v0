@@ -18,6 +18,7 @@
 //   resume   the pid alive and the server answering for the recorded session; else, with `relaunch`, a new server
 //            on the same config and password, and the same session (OpenCode keeps sessions in its own database;
 //            a session it lost is created again under its id).
+import { accountEnvironment, accountPrefix } from '../accounts/registry.ts';
 import { continueWith, wait, untimed } from './continuations.ts';
 import type { Resumed } from '../hub/worktrees.ts';
 import { randomUUID } from 'node:crypto';
@@ -140,7 +141,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
     return { $schema: 'https://opencode.ai/config.json', mcp: { servers: { cland: { type: 'local', command: [this.#host.node, this.#host.spoke], environment } } } };
   }
 
-  async #launch(p: Pick<HarnessProcess, 'name' | 'role' | 'model' | 'cwd' | 'sessionId' | 'harnessSessionId'>, relaunch: boolean, resumed: Resumed = untimed, launchToken?: string, authorize: () => void = () => {}, retainConversation = false): Promise<HarnessProcess> {
+  async #launch(p: Pick<HarnessProcess, 'name' | 'role' | 'model' | 'cwd' | 'sessionId' | 'harnessSessionId' | 'account' | 'accountEnv'>, relaunch: boolean, resumed: Resumed = untimed, launchToken?: string, authorize: () => void = () => {}, retainConversation = false): Promise<HarnessProcess> {
     return continueWith((function* (this: OpenCodeAdapter): Generator<Promise<unknown>, HarnessProcess, unknown> {
       this.#recoveries.assertAvailable(p.name, p.sessionId);
       const files = this.#files(p.name);
@@ -149,7 +150,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
       try {
         const password = yield* wait(prepareFiles(this.#clandDir, files, this.#config(p.name, p.role, p.sessionId, launchToken), !relaunch, transaction, resumed, entry => this.#host.log(entry)));
         yield* wait(transaction.file(files.log, true));
-        const started = yield* wait(startServer({ bin: this.#bin, cwd: p.cwd, env: this.#env, files, password, deadlineMs: this.#spawnDeadlineMs, resumed, authorize, transaction, log: this.#host.log, stopGraceMs: this.#stopGraceMs }));
+        const started = yield* wait(startServer({ bin: this.#bin, cwd: p.cwd, env: accountEnvironment(this.#env, p.accountEnv), files, password, deadlineMs: this.#spawnDeadlineMs, resumed, authorize, transaction, log: this.#host.log, stopGraceMs: this.#stopGraceMs }));
         pid = started.pid;
         const { url } = started;
         const client = new OpenCodeClient(url, password);
@@ -219,7 +220,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
   }
 
   spawn(request: SpawnRequest, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<HarnessProcess> {
-    return this.#launch({ name: request.name, role: request.role, model: request.model, cwd: request.cwd, sessionId: request.sessionId ?? randomUUID(), harnessSessionId: request.resumeConversation ?? null }, false, resumed, request.launchToken, authorize, request.resumeConversation !== undefined);
+    return this.#launch({ account: request.account ?? null, accountEnv: request.accountEnv ?? null, name: request.name, role: request.role, model: request.model, cwd: request.cwd, sessionId: request.sessionId ?? randomUUID(), harnessSessionId: request.resumeConversation ?? null }, false, resumed, request.launchToken, authorize, request.resumeConversation !== undefined);
   }
 
   /** The session was renamed: its files (config, password, log) move with it, so attach and resume find them. */
@@ -237,7 +238,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
     const password = this.#files(p.name).password;
     // in the session's directory: a TUI elsewhere makes the server open an instance there, whose MCP servers start a
     // second spoke for the session, which replaces the one the session's tool calls go through
-    return `OPENCODE_PASSWORD="$(cat ${sq(password)})" ${bin} --server ${bare(p.harnessId ?? '')} --session ${bare(p.harnessSessionId ?? '')} ${sq(p.cwd)}`;
+    return accountPrefix(p.accountEnv) + `OPENCODE_PASSWORD="$(cat ${sq(password)})" ${bin} --server ${bare(p.harnessId ?? '')} --session ${bare(p.harnessSessionId ?? '')} ${sq(p.cwd)}`;
   }
 
   // ---------------------------------------------------------------- inject
@@ -461,7 +462,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
       if (!options.relaunch)
         return { found: false, reason };
       yield* wait(this.stop(p, options.resumed));
-      const process_ = yield* wait(this.#launch({ name: p.name, role: p.role, model: p.model, cwd: p.cwd, sessionId: p.sessionId, harnessSessionId: p.harnessSessionId }, true, resumed));
+      const process_ = yield* wait(this.#launch({ account: p.account ?? null, accountEnv: p.accountEnv ?? null, name: p.name, role: p.role, model: p.model, cwd: p.cwd, sessionId: p.sessionId, harnessSessionId: p.harnessSessionId }, true, resumed));
       return { found: true, process: process_, state: 'unknown' as SessionState };
     }).call(this), options.resumed ?? untimed);
   }

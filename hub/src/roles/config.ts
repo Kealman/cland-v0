@@ -12,6 +12,7 @@ import { APPROVALS, PERMISSIONS, SANDBOX_MODES, SANDBOX_NETWORKS, type Approval,
 
 export type LaunchDefaults = {
   harness: string;
+  account: string | null;
   /** null: the harness's own default. */
   model: string | null;
   /** null: the harness's own default. */
@@ -132,6 +133,7 @@ export function parseRoles(text: string, fallback: RolesConfig | null = null): R
       clause: (optString(t.clause, `${role}.clause`) ?? '').trim(),
       skills: strings(t.skills, `${role}.skills`),
       launch: {
+        account: optString(launch.account, `${role}.launch.account`),
         harness,
         model: optString(launch.model, `${role}.launch.model`),
         effort: optString(launch.effort, `${role}.launch.effort`),

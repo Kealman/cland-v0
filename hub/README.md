@@ -528,6 +528,74 @@ event_limit_window_minutes = 10
 
 A refusal is typed, `{"code":"hygiene","rule":"size"|"rate"|"loop","until"?:"<ISO>"}`: the size cap and the rate limit refuse the `send` itself (the result's `error` and `refusal`; the spoke's tool answer carries both), the loop breaker refuses the outcome for the muted addressee (`outcome` `refused`, `reason`, `refusal` with `until`). When the breaker trips, both sessions get the `mute` notice (its `detail` is the refusal and the `pair`; a spoke shows `kind` and `detail` in the channel event's meta) and Agents shows it. Rate windows, pair counts and mutes persist in the `hygiene` table of `hub.db`, keyed by session id: a restart keeps a mute running. `cland hub unmute <a> <b>`, or the UI's `hygiene.unmute`, lifts a mute early and clears the pair's count.
 
+## Accounts
+
+The user-level registry is `$XDG_CONFIG_HOME/cland/accounts.toml` when
+`XDG_CONFIG_HOME` is absolute, otherwise `~/.config/cland/accounts.toml`.
+It holds account names, harnesses and paths only. Sign in once with each
+harness's own command; cland never reads the files in an account directory.
+
+```toml
+[accounts.codex-b]
+harness = "codex"
+home = "~/.codex-b"                # CODEX_HOME
+
+[accounts.oc-b]
+harness = "opencode"
+data_home = "~/.local/share/oc-b"   # XDG_DATA_HOME
+# Or use db = "/absolute/path/opencode.db" for OPENCODE_DB, never both.
+
+[accounts.claude-b]
+harness = "claude-code"
+config_dir = "~/.claude-b"         # reserved for Claude Code account support
+```
+
+Names contain lowercase letters, digits and hyphens and begin with a letter
+or digit. Each entry has `harness` and at most one path key belonging to it.
+`~` expands to the user's home; every path must then be absolute. An entry
+without a path names the harness default selected by the hub's environment;
+at most one such entry per harness is allowed. Unknown keys, including
+`token` and `api_key`, are refused. A missing registry means no accounts.
+
+Pin a role in `.cland/roles.toml`:
+
+```toml
+[reviewer.launch]
+harness = "codex"
+account = "codex-b"
+```
+
+`account = ""` means none. The role's account applies only to its configured
+harness. `cland session launch rev-x --role reviewer --account codex-b`
+overrides the role's account and chooses the account's harness unless
+`--harness` was given. An explicit conflicting harness is refused.
+With no effective account, launches use the hub's existing environment.
+Both registry and role edits apply to the next launch without a restart.
+
+`cland account list [--json]` reads the registry through the hub and is open
+to every role's shell. JSON returns `{registry, error?, accounts}`; each
+account has `name`, `harness`, `path` (null for a harness default), and
+`variable`. Text prints one line per account with "harness default" for a
+path-less entry. Account listing is a CLI/frame operation, not a spoke tool.
+
+`cland session list --json` shows the row's `account` (null when unpinned).
+The process table saves its name and resolved environment. Relaunches,
+hub-restart resumes and pool handoffs keep that recorded environment even
+after registry or role edits; a pool member on a different account is not
+reused. Codex's app-server and version probe, OpenCode's server, and their
+attach commands carry the account environment. A named OpenCode `data_home`
+clears an inherited `OPENCODE_DB` so it cannot select another database. `session-launched` and
+`session-usage` journal records include the account.
+
+An unknown name refuses the launch and lists known names. A malformed
+registry refuses launches naming an account; unpinned launches still work.
+A missing directory refuses with its path and sign-in command, for example
+`CODEX_HOME=/path codex login` or `XDG_DATA_HOME=/path opencode auth login`.
+For `db`, its parent directory must exist. Claude Code accounts currently
+refuse with "Claude Code accounts are not supported yet"; listing them is
+allowed. Claude account launches, limits and the accounts panel follow in
+the next tickets of the accounts epic.
+
 ## Not here yet
 
 - **The rest of the human side.** Verdict event announcements come from hub-written verdicts; hand edits to an item's file do not announce them.

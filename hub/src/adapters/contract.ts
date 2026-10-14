@@ -26,6 +26,10 @@ export type HarnessProcess = {
   name: string;
   /** The adapter's name (`claude-code`). */
   harness: string;
+  /** Named launch account; null on unpinned and older rows. */
+  account?: string | null;
+  /** Resolved launch overlay, retained across resumes and pool handoffs. */
+  accountEnv?: Record<string, string> | null;
   role: string | null;
   model: string | null;
   cwd: string;
@@ -97,6 +101,8 @@ export type LaunchPolicy = {
 };
 
 export type SpawnRequest = LaunchPolicy & {
+  account?: string | null;
+  accountEnv?: Record<string, string> | null;
   name: string;
   /** Only explicit fresh resume retains a stopped cland identity on a new conversation. */
   sessionId?: string;

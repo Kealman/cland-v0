@@ -503,6 +503,7 @@ export type SuiteSlotResult = { id: string; admitted: boolean; locks: string[]; 
 export type SuiteCancel = { type: 'suite.cancel'; id: string; suite?: string };
 
 export type ClientRequest =
+  | { type: 'account.list'; id: string }
   | { type: 'task.migrate'; id: string; dryRun: true }
   | { type: 'suite.queue'; id: string }
   | { type: 'visibility.set'; id: string; surface: 'topics' | 'sessions' | 'artifacts'; target: string; mode: 'pin' | 'mute' }
@@ -673,6 +674,7 @@ export type SessionUsage = {
 
 /** A row of the hub's process table as clients see it. */
 export type HarnessProcessView = {
+  account?: string | null;
   stateReason?: string;
   /** Warning from an explicit recovery launch; absent from stored rows. */
   warning?: string;
@@ -727,6 +729,7 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
       return (f.fresh === undefined || typeof f.fresh === 'boolean') && ['auto', 'all', 'hub', 'nvim'].includes(String(f.mode)) && typeof f.cwd === 'string' && typeof f.report === 'string' && (f.to === undefined || (Array.isArray(f.to) && f.to.every(v => typeof v === 'string')));
     case 'suite.cancel':
       return f.suite === undefined || (typeof f.suite === 'string' && f.suite.trim().length > 0);
+    case 'account.list':
     case 'suite.queue':
       return true;
     case 'push':

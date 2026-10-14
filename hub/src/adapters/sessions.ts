@@ -28,13 +28,16 @@ import { systemProcesses } from '../system-processes.ts';
 import { LaunchFiles, LaunchRecoveryPending } from './launch-files.ts';
 import type { Tracker } from '../tracker/tracker.ts';
 import type { ProjectConfig } from '../init/config.ts';
+import { namedAccount, readAccounts, selectAccount, type AccountSelection } from '../accounts/registry.ts';
 import { durationMs } from '../duration.ts';
 
 /** A signal posted from inside a session (`cland hook <event>`). */
 export type SignalFrame = { session?: string; sessionId?: string; launch?: string; event: string; at?: number; payload?: Record<string, unknown> };
 
 /** `item`: the Lead’s node, or the item whose task worktree `cwd` is (set by `TaskWorktrees.launch`, `src/hub/worktrees.ts`). */
-export type LaunchRequest = { name: string; role?: string | null; model?: string | null; harness?: string; cwd?: string; effort?: string | null; item?: string | null; brief?: string };
+export type LaunchRequest = { name: string; role?: string | null; model?: string | null; harness?: string; account?: string | null; cwd?: string; effort?: string | null; item?: string | null; brief?: string };
+
+type AccountLaunchRequest = LaunchRequest & { resolvedAccount: AccountSelection };
 
 /** A launch directory refused before the harness is spawned; its admission reservation is rolled back. */
 export class InvalidLaunchCwd extends Error {}
@@ -133,12 +136,13 @@ export class Sessions {
   }
 
   /** Verifiers keep their root process; Implementers restart in the next task worktree. */
-  async #reuse(request: LaunchRequest, role: string | null, resumed: Resumed, authorize: () => void): Promise<HarnessProcessView | null> {
+  async #reuse(request: AccountLaunchRequest, role: string | null, resumed: Resumed, authorize: () => void): Promise<HarnessProcessView | null> {
     const implementer = this.#implementerPool(role);
     if (!request.item || (!implementer && !this.retainedPool(role))) return null;
     const cwd = resolve(this.#root, request.cwd ?? '.');
     const candidate = this.#table.running().find(p => !this.#reusing.has(p.sessionId)
-      && (!implementer || !request.harness || request.harness === p.harness)
+      && request.harness === p.harness
+      && (p.account ?? null) === (request.resolvedAccount.account)
       && this.#reuseEligible(p, role, implementer ? p.cwd : cwd));
     if (!candidate) return null;
     this.#reusing.add(candidate.sessionId);
@@ -162,7 +166,7 @@ export class Sessions {
   }
 
   /** Keep native history independently of the new launch's credential and cleanup ownership. */
-  async #restartPool(candidate: HarnessProcess, request: LaunchRequest, role: string | null, cwd: string, brief: Message | undefined, resumed: Resumed, authorize: () => void): Promise<HarnessProcessView> {
+  async #restartPool(candidate: HarnessProcess, request: AccountLaunchRequest, role: string | null, cwd: string, brief: Message | undefined, resumed: Resumed, authorize: () => void): Promise<HarnessProcessView> {
     const info = await stat(cwd).catch(() => null);
     const { current, resumeConversation } = resumed(() => {
       authorize();
@@ -186,7 +190,7 @@ export class Sessions {
       }));
       const process = await resumed(() => {
         this.#crewAdmissions.delete(current.name);
-        return this.#launchNew({ ...request, name: stopped.name, harness: current.harness, model: request.model ?? current.model }, role, resumed, handoffAuthorized, resumeConversation, brief ? { ...brief, to: [stopped.name] } : undefined);
+        return this.#launchNew({ ...request, name: stopped.name, harness: current.harness, model: request.model ?? current.model, resolvedAccount: { account: current.account ?? null, accountEnv: current.accountEnv ?? null } }, role, resumed, handoffAuthorized, resumeConversation, brief ? { ...brief, to: [stopped.name] } : undefined);
       });
       return resumed(() => {
         if (!brief) this.#core.store.setMeta(`pool-handoff:${process.sessionId}`, request.item!);
@@ -423,6 +427,7 @@ export class Sessions {
     return {
       name: p.name,
       harness: p.harness,
+      account: p.account ?? null,
       role: p.role,
       label: withRole(p.name, p.role),
       model: p.model,
@@ -667,21 +672,38 @@ export class Sessions {
     return { ...(defaults.approval ? { approval: defaults.approval } : {}), ...(sandbox ? { sandbox } : {}), ...(defaults.permissions ? { permissions: defaults.permissions } : {}) };
   }
 
+  async #accountRequest(request: LaunchRequest, role: string | null, resumed: Resumed): Promise<AccountLaunchRequest> {
+    const defaults = resumed(() => role ? this.#core.roles?.get().get(role)?.launch : null);
+    const roleAccount = request.account === undefined && (!request.harness || request.harness === defaults?.harness) ? defaults?.account : null;
+    const registry = request.account || roleAccount ? await readAccounts() : { registry: '', accounts: [] };
+    const explicit = resumed(() => request.account ? namedAccount(registry, request.account) : null);
+    const harness = request.harness ?? explicit?.harness ?? defaults?.harness ?? DEFAULT_HARNESS;
+    const name = request.account !== undefined ? request.account : defaults?.harness === harness ? defaults.account : null;
+    const resolvedAccount = name ? await selectAccount(explicit ?? namedAccount(registry, name), harness) : { account: null, accountEnv: null };
+    return resumed(() => ({ ...request, harness, resolvedAccount }));
+  }
+
   async launch(request: LaunchRequest, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<HarnessProcessView> {
-    const { role, reuse } = resumed(() => {
+    const role = resumed(() => {
       authorize();
       const refusal = nameRefusal(request.name, new Set(['human']));
       if (refusal) throw new Error(refusal);
       const role = request.role ?? this.#core.store.roleOf(request.name);
       if (role !== null && !ROLE_NAMES.includes(role)) throw new Error(`unknown role "${role}" (roles: ${ROLE_NAMES.join(', ')})`);
       if (role === 'lead' && !request.item) throw new Error('a Lead launch needs `item` naming an open configured container');
-      return { role, reuse: this.#reuse(request, role, resumed, authorize) };
+      return role;
     });
-    const reused = await reuse;
-    return resumed(() => reused ?? this.#launchNew(request, role, resumed, authorize));
+    // Keep synchronous admission ahead of fresh I/O for new launches. Pool selection needs
+    // fresh role/account defaults before choosing an idle member.
+    if (!request.item || (!this.#implementerPool(role) && !this.retainedPool(role)))
+      return resumed(() => this.#launchNew(request, role, resumed, authorize));
+    if (this.#core.roles?.fresh) await this.#core.roles.fresh(resumed);
+    const effective = await this.#accountRequest(request, role, resumed);
+    const reused = await resumed(() => this.#reuse(effective, role, resumed, authorize));
+    return resumed(() => reused ?? this.#launchNew(effective, role, resumed, authorize));
   }
 
-  async #launchNew(request: LaunchRequest, role: string | null, resumed: Resumed, authorize: () => void, resumeConversation?: string, resolvedBrief?: Message, retainedId?: string): Promise<HarnessProcessView> {
+  async #launchNew(request: LaunchRequest | AccountLaunchRequest, role: string | null, resumed: Resumed, authorize: () => void, resumeConversation?: string, resolvedBrief?: Message, retainedId?: string): Promise<HarnessProcessView> {
     const effectiveRequest = { ...request, role };
     const existing = this.#table.get(request.name);
     if (retainedId && existing?.sessionId !== retainedId) throw new Error(`session "${request.name}" was replaced; retry the fresh resume`);
@@ -733,6 +755,7 @@ export class Sessions {
       let info;
       try { info = await checking.info; } catch { info = null; }
       const brief = resolvedBrief ?? (request.brief === undefined ? undefined : await this.#resolveBrief(request.name, request.brief, resumed, authorize));
+      const selectedRequest = 'resolvedAccount' in effectiveRequest ? effectiveRequest : await this.#accountRequest(effectiveRequest, role, resumed);
       return await resumed(() => {
         // Re-read the grant and exclusivity after stat, with refusal and rollback in this same timed stretch.
         try {
@@ -745,7 +768,7 @@ export class Sessions {
           if (!info?.isDirectory()) throw new InvalidLaunchCwd(`launch cwd "${cwd}" is not an accessible directory`);
           reservation = role !== null && this.#core.roles ? this.#core.reserveLaunchRole(request.name, role) : null;
           if (process.env.CLAND_TEST_CRASH_AT === 'launch-reserved') process.kill(process.pid, 'SIGKILL');
-          return this.#spawnLaunch(effectiveRequest, cwd, resumed, reservation, () => { admission?.release(); this.#crewAdmissions.delete(request.name); }, launchToken, identity, brief, () => { authorize(); this.#checkCrew(request.name, role); }, resumeConversation, retainedId);
+          return this.#spawnLaunch(selectedRequest, cwd, resumed, reservation, () => { admission?.release(); this.#crewAdmissions.delete(request.name); }, launchToken, identity, brief, () => { authorize(); this.#checkCrew(request.name, role); }, resumeConversation, retainedId);
         } catch (err) { abort(); throw err; }
       });
     } catch (err) {
@@ -784,7 +807,7 @@ export class Sessions {
     });
   }
 
-  async #spawnLaunch(request: LaunchRequest, cwd: string, resumed: Resumed, reservation: { previous: string | null; previousSessionId: string | null } | null, releaseAdmission: () => void, launchToken: string, identity: LaunchOwnership, brief?: Message, authorize: () => void = () => {}, resumeConversation?: string, retainedId?: string): Promise<HarnessProcessView> {
+  async #spawnLaunch(request: AccountLaunchRequest, cwd: string, resumed: Resumed, reservation: { previous: string | null; previousSessionId: string | null } | null, releaseAdmission: () => void, launchToken: string, identity: LaunchOwnership, brief?: Message, authorize: () => void = () => {}, resumeConversation?: string, retainedId?: string): Promise<HarnessProcessView> {
     const role = request.role ?? null;
     const restoreRow = retainedId ? this.#table.get(request.name) : null;
     // the role's launch defaults (roles.toml, read as it is now): the harness, and the model and effort meant for it
@@ -793,6 +816,7 @@ export class Sessions {
     const forHarness = defaults !== null && defaults.harness === harness;
     const model = retainedId ? request.model ?? null : request.model ?? (forHarness ? defaults.model : null);
     const effort = retainedId ? request.effort ?? null : request.effort ?? (forHarness ? defaults.effort : null);
+    const selected = request.resolvedAccount;
     const policy = this.#launchPolicy(role);
     const adapter = this.adapter(harness);
     const clause = role !== null && this.#core.roles ? clauseText(request.name, role, this.#core.roleDefinition(role)) : null;
@@ -803,7 +827,7 @@ export class Sessions {
     let accepted = false;
     try {
       if (brief) this.#core.recordLaunchBrief(brief, launchToken, clause !== null && adapter.clauseAtSpawn === true);
-      owned = await adapter.spawn({ name: request.name, ...(retainedId ? { sessionId: retainedId } : {}), launchToken, role, model, cwd, ...(resumeConversation ? { resumeConversation } : {}), ...(effort ? { effort } : {}), ...(clause !== null ? { clause } : {}), ...(brief && clause !== null ? { brief } : {}), ...(item !== null ? { item } : {}), ...policy }, resumed, authorize);
+      owned = await adapter.spawn({ ...selected, name: request.name, ...(retainedId ? { sessionId: retainedId } : {}), launchToken, role, model, cwd, ...(resumeConversation ? { resumeConversation } : {}), ...(effort ? { effort } : {}), ...(clause !== null ? { clause } : {}), ...(brief && clause !== null ? { brief } : {}), ...(item !== null ? { item } : {}), ...policy }, resumed, authorize);
       resumed(() => {
         if (resumeConversation && owned!.harnessSessionId !== resumeConversation) throw new Error(`harness did not retain conversation ${resumeConversation}`);
         if (retainedId && owned!.sessionId !== retainedId) throw new Error(`fresh resume did not retain cland identity ${retainedId}`);
@@ -815,7 +839,7 @@ export class Sessions {
       });
       // Retain ownership before the PID probe too: a thrown probe still owes cleanup of this process.
       const pidStarted = owned.pidStarted ?? (owned.pid !== null ? await processStarted(owned.pid, undefined, resumed) : null);
-      const p: HarnessProcess = { ...owned, item, pidStarted, launchBrief: request.brief ?? null, effort };
+      const p: HarnessProcess = { ...owned, ...selected, item, pidStarted, launchBrief: request.brief ?? null, effort };
       owned = p;
       return resumed(() => {
         authorize();
@@ -833,7 +857,7 @@ export class Sessions {
         if (reservation) this.#core.launchSettled(request.name);
         this.#lastAt.delete(p.sessionId);
         this.#lastPush.delete(p.sessionId);
-        this.#log({ event: 'session-launched', session: p.name, harness: p.harness, pid: p.pid, harnessId: p.harnessId, sessionId: p.sessionId, harnessSessionId: p.harnessSessionId, model: p.model, effort, role: p.role, cwd: p.cwd, ...(p.item ? { item: p.item } : {}), early: this.#launching.get(p.name)?.length ?? 0 });
+        this.#log({ event: 'session-launched', account: p.account ?? null, session: p.name, harness: p.harness, pid: p.pid, harnessId: p.harnessId, sessionId: p.sessionId, harnessSessionId: p.harnessSessionId, model: p.model, effort, role: p.role, cwd: p.cwd, ...(p.item ? { item: p.item } : {}), early: this.#launching.get(p.name)?.length ?? 0 });
         adapter.watch(p);
         const early = this.#launching.get(request.name) ?? [];
         this.#launching.delete(request.name);
@@ -995,7 +1019,7 @@ export class Sessions {
       const current = this.#process(name);
       if (current.sessionId !== original.sessionId) throw new Error(`session "${name}" was replaced; retry`);
       const role = current.role && this.#core.holderOf(current.role, name) ? null : current.role;
-      return { name, role, harness: current.harness, model: current.model, effort: current.effort ?? null, cwd: current.cwd, item: current.item ?? null, ...(current.launchBrief == null ? {} : { brief: current.launchBrief }) };
+      return { name, role, resolvedAccount: { account: current.account ?? null, accountEnv: current.accountEnv ?? null }, harness: current.harness, model: current.model, effort: current.effort ?? null, cwd: current.cwd, item: current.item ?? null, ...(current.launchBrief == null ? {} : { brief: current.launchBrief }) };
     });
     const process = await resumed(() => this.#launchNew(request, request.role, resumed, authorize, undefined, undefined, original.sessionId));
     return resumed(() => {
@@ -1067,7 +1091,7 @@ export class Sessions {
       const current = row();
       const process: HarnessProcess = { ...found.process, name: current.name, role: current.role, item: current.item ?? null, launchBrief: current.launchBrief ?? null, effort: current.effort ?? null, pidStarted, stoppedAt: null, archivedAt: null, archivedBy: null };
       this.#table.put(process);
-      this.#log({ event: 'session-launched', session: process.name, sessionId: process.sessionId, harness: process.harness, harnessSessionId: process.harnessSessionId, harnessId: process.harnessId, pid: process.pid, model: process.model, effort: process.effort ?? null, role: process.role, cwd: process.cwd, ...(process.item ? { item: process.item } : {}), resumed: true });
+      this.#log({ event: 'session-launched', account: process.account ?? null, session: process.name, sessionId: process.sessionId, harness: process.harness, harnessSessionId: process.harnessSessionId, harnessId: process.harnessId, pid: process.pid, model: process.model, effort: process.effort ?? null, role: process.role, cwd: process.cwd, ...(process.item ? { item: process.item } : {}), resumed: true });
       if (current.archivedAt) this.#log({ event: 'session-unarchived', session: process.name, sessionId: process.sessionId, by: current.archivedBy, reason: 'resume' });
       adapter.watch(process);
       this.#core.publishProcess(this.view(process));

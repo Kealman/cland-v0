@@ -23,7 +23,7 @@ import type { Resumed, TaskWorktrees } from '../hub/worktrees.ts';
 import { ToolForbidden } from '../roles/permissions.ts';
 
 export type SessionRequest =
-  | { type: 'session.launch'; id: string; name: string; role?: string; model?: string; harness?: string; cwd?: string; effort?: string; item?: string; brief?: string }
+  | { type: 'session.launch'; id: string; name: string; role?: string; model?: string; harness?: string; account?: string; cwd?: string; effort?: string; item?: string; brief?: string }
   | { type: 'session.list'; id: string; archived?: boolean }
   | { type: 'session.attach'; id: string; session: string }
   | { type: 'session.archive'; id: string; session: string }
@@ -43,7 +43,7 @@ export function isSessionRequest(f: Record<string, unknown>): f is SessionReques
   if (typeof f.id !== 'string' || typeof f.type !== 'string' || !f.type.startsWith('session.')) return false;
   switch (f.type) {
     case 'session.launch':
-      return typeof f.name === 'string' && optString(f.role) && optString(f.model) && optString(f.harness) && optString(f.cwd) && optString(f.effort) && optString(f.item) && optString(f.brief);
+      return typeof f.name === 'string' && optString(f.role) && optString(f.model) && optString(f.harness) && optString(f.account) && optString(f.cwd) && optString(f.effort) && optString(f.item) && optString(f.brief);
     case 'session.list':
       return f.archived === undefined || typeof f.archived === 'boolean';
     case 'session.prune':
@@ -85,6 +85,7 @@ export async function answerSession(sessions: Sessions | undefined, frame: Sessi
       case 'session.launch': {
         const request = {
           name: frame.name,
+          ...(frame.account !== undefined ? { account: frame.account } : {}),
           ...(frame.role !== undefined ? { role: frame.role } : {}),
           ...(frame.model !== undefined ? { model: frame.model } : {}),
           ...(frame.harness !== undefined ? { harness: frame.harness } : {}),

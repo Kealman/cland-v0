@@ -45,6 +45,8 @@ create table if not exists harness_processes (
   harness text not null,
   role text,
   model text,
+  account text,
+  account_env text,
   cwd text not null,
   pid integer,
   harness_id text,
@@ -107,6 +109,8 @@ const toProcess = (r: Row): HarnessProcess => ({
   cleanupItem: (r.cleanup_item as string | null) ?? null,
   cleanupHeldAt: (r.cleanup_held_at as string | null) ?? null,
   launchBrief: (r.brief as string | null) ?? null,
+  account: (r.account as string | null) ?? null,
+  accountEnv: r.account_env ? JSON.parse(r.account_env as string) as Record<string, string> : null,
   effort: (r.effort as string | null) ?? null,
 });
 
@@ -123,6 +127,7 @@ export class ProcessTable {
     if (!columns.has('harness_session_id')) this.#db.exec('alter table harness_processes add column harness_session_id text');
     if (!columns.has('pid_started')) this.#db.exec('alter table harness_processes add column pid_started text');
     if (!columns.has('brief')) this.#db.exec('alter table harness_processes add column brief text');
+    for (const column of ['account', 'account_env']) if (!columns.has(column)) this.#db.exec(`alter table harness_processes add column ${column} text`);
     if (!columns.has('effort')) this.#db.exec('alter table harness_processes add column effort text');
     // Old stopped rows remain undated: no journal backfill on startup.
     for (const column of ['stopped_at', 'archived_at', 'archived_by']) if (!columns.has(column)) this.#db.exec(`alter table harness_processes add column ${column} text`);
@@ -153,12 +158,12 @@ export class ProcessTable {
   put(p: HarnessProcess): void {
     this.#db
       .prepare(
-        `insert into harness_processes (name, harness, role, model, cwd, pid, harness_id, session_id, harness_session_id, started_at, status, pid_started, item, brief, effort, stopped_at, archived_at, archived_by, cleanup_item, cleanup_held_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `insert into harness_processes (name, harness, role, model, cwd, pid, harness_id, session_id, harness_session_id, started_at, status, pid_started, item, brief, effort, stopped_at, archived_at, archived_by, cleanup_item, cleanup_held_at, account, account_env) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          on conflict (name) do update set harness = excluded.harness, role = excluded.role, model = excluded.model, cwd = excluded.cwd, pid = excluded.pid,
            harness_id = excluded.harness_id, session_id = excluded.session_id, harness_session_id = excluded.harness_session_id, started_at = excluded.started_at, status = excluded.status,
-           pid_started = excluded.pid_started, item = excluded.item, brief = excluded.brief, effort = excluded.effort, stopped_at = excluded.stopped_at, archived_at = excluded.archived_at, archived_by = excluded.archived_by, cleanup_item = excluded.cleanup_item, cleanup_held_at = excluded.cleanup_held_at`,
+           pid_started = excluded.pid_started, item = excluded.item, brief = excluded.brief, effort = excluded.effort, stopped_at = excluded.stopped_at, archived_at = excluded.archived_at, archived_by = excluded.archived_by, cleanup_item = excluded.cleanup_item, cleanup_held_at = excluded.cleanup_held_at, account = excluded.account, account_env = excluded.account_env`,
       )
-      .run(p.name, p.harness, p.role, p.model, p.cwd, p.pid, p.harnessId, p.sessionId, p.harnessSessionId, p.startedAt, p.status, p.pidStarted ?? null, p.item ?? null, p.launchBrief ?? null, p.effort ?? null, p.stoppedAt ?? null, p.archivedAt ?? null, p.archivedBy ?? null, p.cleanupItem ?? null, p.cleanupHeldAt ?? null);
+      .run(p.name, p.harness, p.role, p.model, p.cwd, p.pid, p.harnessId, p.sessionId, p.harnessSessionId, p.startedAt, p.status, p.pidStarted ?? null, p.item ?? null, p.launchBrief ?? null, p.effort ?? null, p.stoppedAt ?? null, p.archivedAt ?? null, p.archivedBy ?? null, p.cleanupItem ?? null, p.cleanupHeldAt ?? null, p.account ?? null, p.accountEnv ? JSON.stringify(p.accountEnv) : null);
     this.#changed(p.name);
   }
 

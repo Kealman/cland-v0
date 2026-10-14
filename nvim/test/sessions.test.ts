@@ -119,7 +119,12 @@ test('Claude Code, Codex and OpenCode sessions launched from the UI show in the 
   const launchedLogs = await ui.request({ type: 'hub.status', flushLogs: true });
   assert.equal(launchedLogs.ok, true, launchedLogs.error);
   const log = await hubLog(root);
-  for (const name of ['coord', 'rev', 'impl']) assert.match(log, new RegExp(`"event":"session-launched","session":"${name}"`));
+  const records = log.split('\n').filter(line => line.startsWith('{')).map(line => JSON.parse(line) as { event: string; session?: string; account?: string | null });
+  for (const name of ['coord', 'rev', 'impl']) {
+    const launched = records.find(record => record.event === 'session-launched' && record.session === name);
+    assert.ok(launched, `launch record for ${name}`);
+    assert.equal(launched.account, null, 'an unpinned launch records no named account');
+  }
 
   // Enter attaches in the centre: each fake's attach client prints its line in the terminal
   const attached: Array<[string, RegExp]> = [

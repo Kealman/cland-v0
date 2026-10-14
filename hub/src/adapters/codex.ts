@@ -35,6 +35,7 @@ import { delimiter, dirname, isAbsolute, join, resolve, sep } from 'node:path';
 import { turnError } from './turn-error.ts';
 import type { Message, SessionState, SessionUsage, TopicRef } from '../protocol.ts';
 import { codexCounts } from './usage.ts';
+import { accountPrefix } from '../accounts/registry.ts';
 import { VERSION } from '../version.ts';
 import { envelope, envelopeIds, InjectUncertain, type AdapterHost, type Capabilities, type HarnessAdapter, type HarnessProcess, type Interpretation, type SubagentLaunch, type LaunchPolicy, type ResumeResult, type SpawnRequest } from './contract.ts';
 import { AppServerClient, RpcError, RpcNoAnswer, type ServerRequest } from './codex/app-server.ts';
@@ -325,7 +326,7 @@ export class CodexAdapter implements HarnessAdapter {
   readonly #steers = new Map<string, Map<string, OwedInput>>();
   readonly #earlyFailures = new Map<string, string[]>();
   #timer: NodeJS.Timeout | null = null;
-  #versionChecked = false;
+  #versionChecked = new Set<string>();
   #tmpRun = join(tmpdir(), 'cland-run');
   #closed = false;
   readonly #stopping = new Set<string>();
@@ -345,17 +346,18 @@ export class CodexAdapter implements HarnessAdapter {
 
   // ---------------------------------------------------------------- the app-server process
 
-  async #checkVersion(cwd: string, resumed: Resumed = untimed): Promise<void> {
+  async #checkVersion(cwd: string, accountEnv: Record<string, string> | null | undefined, resumed: Resumed = untimed): Promise<void> {
     return continueWith((function* (this: CodexAdapter): Generator<Promise<unknown>, void, unknown> {
-      if (this.#versionChecked)
+      const key = JSON.stringify(accountEnv ?? null);
+      if (this.#versionChecked.has(key))
         return;
-      const out = yield* wait(new Promise<string>((resolve, reject) => execFile(this.#bin, ['--version'], { cwd, env: this.#env, encoding: 'utf8', timeout: 15000 }, (err, stdout) => (err ? reject(new Error(`${this.#bin} --version: ${err.message}`)) : resolve(stdout)))));
+      const out = yield* wait(new Promise<string>((resolve, reject) => execFile(this.#bin, ['--version'], { cwd, env: { ...this.#env, ...accountEnv }, encoding: 'utf8', timeout: 15000 }, (err, stdout) => (err ? reject(new Error(`${this.#bin} --version: ${err.message}`)) : resolve(stdout)))));
       const v = /(\d+)\.(\d+)\.(\d+)/.exec(out);
       const [a, b, c] = MIN_CODEX_VERSION;
       const n = v ? [Number(v[1]), Number(v[2]), Number(v[3])] : null;
       if (!n || n[0]! < a || (n[0] === a && (n[1]! < b || (n[1] === b && n[2]! < c))))
         throw new Error(`Codex ${MIN_CODEX_VERSION.join('.')} or newer is needed (the app-server's toolOutput turns); found: ${out.trim() || 'nothing'}`);
-      this.#versionChecked = true;
+      this.#versionChecked.add(key);
     }).call(this), resumed);
   }
 
@@ -369,7 +371,7 @@ export class CodexAdapter implements HarnessAdapter {
   }
 
   /** Start an app-server on the socket; resolves with its pid once it answers there. */
-  async #startServer(p: Pick<HarnessProcess, 'name' | 'role' | 'sessionId' | 'cwd'>, socket: string, overrides: string[], files: LaunchFiles, resumed: Resumed = untimed, launchToken?: string, authorize: () => void = () => {}): Promise<{ pid: number; client: AppServerClient }> {
+  async #startServer(p: Pick<HarnessProcess, 'name' | 'role' | 'sessionId' | 'cwd' | 'accountEnv'>, socket: string, overrides: string[], files: LaunchFiles, resumed: Resumed = untimed, launchToken?: string, authorize: () => void = () => {}): Promise<{ pid: number; client: AppServerClient }> {
     return continueWith((function* (this: CodexAdapter): Generator<Promise<unknown>, {
       pid: number;
       client: AppServerClient;
@@ -391,6 +393,7 @@ export class CodexAdapter implements HarnessAdapter {
         // human, and `node` is the hub's own, whatever else the PATH holds (a Node outside the engines range fails the suite)
         const env = {
           ...this.#env,
+          ...p.accountEnv,
           PATH: [dirname(this.#host.node), this.#env.PATH].filter(Boolean).join(delimiter),
           CLAND_SESSION_ID: p.sessionId,
           CLAND_SESSION_NAME: p.name,
@@ -601,13 +604,13 @@ export class CodexAdapter implements HarnessAdapter {
   async spawn(request: SpawnRequest, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<HarnessProcess> {
     return continueWith((function* (this: CodexAdapter): Generator<Promise<unknown>, HarnessProcess, unknown> {
       this.#recoveries.assertAvailable(request.name);
-      yield* wait(this.#checkVersion(request.cwd, resumed));
+      yield* wait(this.#checkVersion(request.cwd, request.accountEnv, resumed));
       authorize();
       const files = new LaunchFiles(resumed);
       const sessionId = request.sessionId ?? randomUUID();
       this.#tmpRun = yield* wait(tmpRunDir(resumed));
       const socket = this.#socketPath(sessionId);
-      const base = { name: request.name, role: request.role, sessionId, cwd: request.cwd };
+      const base = { account: request.account ?? null, accountEnv: request.accountEnv ?? null, name: request.name, role: request.role, sessionId, cwd: request.cwd };
       let pid: number | undefined;
       let client: AppServerClient | undefined;
       try {
@@ -670,7 +673,7 @@ export class CodexAdapter implements HarnessAdapter {
   attachCommand(p: HarnessProcess): string {
     // never a `-c` or a `--profile`: either one puts the TUI in embedded mode, where it has no external surface
     const bin = this.#bin === 'codex' ? 'codex' : sq(this.#bin);
-    return [bin, 'resume', '--remote', sq(`unix://${p.harnessId ?? this.#socketPath(p.sessionId)}`), '--cd', sq(p.cwd), sq(p.harnessSessionId ?? '')].join(' ');
+    return accountPrefix(p.accountEnv) + [bin, 'resume', '--remote', sq(`unix://${p.harnessId ?? this.#socketPath(p.sessionId)}`), '--cd', sq(p.cwd), sq(p.harnessSessionId ?? '')].join(' ');
   }
 
   // ---------------------------------------------------------------- inject
@@ -1008,6 +1011,7 @@ export class CodexAdapter implements HarnessAdapter {
       let pid: number | undefined;
       let client: AppServerClient | undefined;
       try {
+        yield* wait(this.#checkVersion(p.cwd, p.accountEnv, resumed));
         const policy = yield* wait(this.#threadPolicy(p.cwd, options.policy ?? {}, files, resumed));
         ({ pid, client } = yield* wait(this.#startServer(p, socket, policy.overrides, files, resumed)));
         this.#attach(live, client);

@@ -103,6 +103,7 @@ type ThreadFile = { id: string; cwd: string; model: string; turns: number };
 
 async function main(args: string[]): Promise<number> {
   if (args[0] === '--version' || args[0] === '-V') {
+    appendFileSync(join(HOME, 'version-probes.jsonl'), JSON.stringify({ CODEX_HOME: process.env.CODEX_HOME ?? null }) + '\n');
     if (existsSync(join(HOME, 'hold-version'))) {
       writeFileSync(join(HOME, 'version-running'), 'ready');
       while (!existsSync(join(HOME, 'release-version'))) await sleep(5);
@@ -188,7 +189,7 @@ async function appServer(args: string[]): Promise<number> {
   const socket = listen.slice('unix://'.length);
   const logFile = join(HOME, 'log', `${process.pid}.log`);
   const log = (line: string) => appendFileSync(logFile, `${new Date().toISOString()} ${line}\n`);
-  writeFileSync(join(HOME, 'servers', `${process.pid}.json`), JSON.stringify({ pid: process.pid, socket, argv: args, cwd: process.cwd(), env: Object.fromEntries(Object.entries(process.env).filter(([k]) => k.startsWith('CLAND_'))), path: process.env.PATH ?? '' }));
+  writeFileSync(join(HOME, 'servers', `${process.pid}.json`), JSON.stringify({ pid: process.pid, socket, argv: args, cwd: process.cwd(), env: Object.fromEntries(Object.entries(process.env).filter(([k]) => k.startsWith('CLAND_') || k === 'CODEX_HOME')), path: process.env.PATH ?? '' }));
   log(`app-server ${JSON.stringify(args)}`);
 
   // `-c key=value`: the value is TOML; the overrides cland passes are JSON-compatible

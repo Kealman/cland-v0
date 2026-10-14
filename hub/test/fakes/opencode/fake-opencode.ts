@@ -404,7 +404,7 @@ async function serve(args: string[]): Promise<number> {
   const address = server.address();
   const url = `http://${hostname}:${typeof address === 'object' && address ? address.port : port}`;
   const descendant = process.env.FAKE_OPENCODE_CHILD === '1' ? spawn(process.execPath, ['-e', "process.on('SIGTERM', () => {}); setInterval(() => {}, 1000)"], { stdio: 'ignore' }) : null;
-  writeFileSync(join(SERVERS, `${process.pid}.json`), JSON.stringify({ childPid: descendant?.pid ?? null, pid: process.pid, url, cwd: process.cwd(), config: process.env.OPENCODE_CONFIG ?? null }));
+  writeFileSync(join(SERVERS, `${process.pid}.json`), JSON.stringify({ childPid: descendant?.pid ?? null, pid: process.pid, url, cwd: process.cwd(), env: Object.fromEntries(Object.entries(process.env).filter(([k]) => k === 'XDG_DATA_HOME' || k === 'OPENCODE_DB')), config: process.env.OPENCODE_CONFIG ?? null }));
   process.stdout.write(`server listening on ${url}\n`);
 
   const shutdown = async () => {

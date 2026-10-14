@@ -59,6 +59,7 @@ import { PushError } from '../territory-push.ts';
 import { ReleaseError } from '../release.ts';
 import { MergeError } from '../merge.ts';
 import { TaskWorktrees, type SessionCwd } from './worktrees.ts';
+import { readAccounts } from '../accounts/registry.ts';
 import { RequestGuard, type GuardOptions } from './budget.ts';
 
 /** How a conversation answers: a frame to the peer, or the end of the connection. */
@@ -110,7 +111,7 @@ const HUMAN_SESSION = 'human';
  * What a CLI call made as a session may send beside the permission table's tools: reading the hub's state. Any
  * other frame is the human's alone.
  */
-const SESSION_CLI_FRAMES: ReadonlySet<string> = new Set(['executor.status', 'executor.reap', 'executor.prepare', 'task.migrate', 'crew.show', 'crew.set', 'artifact.list', 'hub.status', 'inbox.list', 'role.list', 'worktree.list', 'suite.start', 'suite.cancel', 'suite.queue']);
+const SESSION_CLI_FRAMES: ReadonlySet<string> = new Set(['account.list', 'executor.status', 'executor.reap', 'executor.prepare', 'task.migrate', 'crew.show', 'crew.set', 'artifact.list', 'hub.status', 'inbox.list', 'role.list', 'worktree.list', 'suite.start', 'suite.cancel', 'suite.queue']);
 
 /** Who a call is checked and audited as: a spoke's session, or the session a CLI call acts as. */
 type Caller = Pick<Connection, 'name' | 'sessionId' | 'role'>;
@@ -1239,6 +1240,9 @@ export class Dispatcher {
         return;
       }
       switch (frame.type) {
+        case 'account.list':
+          later('account.list', readAccounts().then(value => ({ type: 'result', id: frame.id, ok: true, value }), error => Dispatcher.#failure(frame.id, error)));
+          break;
         case 'suite.queue':
           if (!this.#suites) return peer.send(Dispatcher.#failure(frame.id, new Error('no verification scheduler')));
           later('suite.queue', this.#suites.queue().then(value => ({ type: 'result', id: frame.id, ok: true, value }), error => Dispatcher.#failure(frame.id, error)));
