@@ -3,7 +3,32 @@ local api = vim.api
 local state = require('cland.state')
 local items = require('cland.items')
 local present = items.present
-local M = { rows = {}, sel = {}, card = {}, reveal_open = {} }
+local M = { rows = {}, sel = {}, card = {body_open={}}, reveal_open = {} }
+
+function M.setup(client)
+  -- Hub redraws restore the human picture; detail replies and key actions do not fold it.
+  local function fold_text()
+    local open = next(M.card.body_open) ~= nil
+    M.card.body_open = {}
+    if open then state.changed() end
+  end
+  for _, event in ipairs({'connected','visibility','task','topic','message','event','crew','verification.queue',
+    'session.state','session.role','role.vacant','role.filled','inbox','presence','session.process','sessions.pruned','session.cleanup','session.usage'}) do
+    client:on(event,fold_text)
+  end
+end
+
+function M.toggle_body()
+  local key = vim.b.cland_role == 'card' and M.card.key or nil
+  if vim.b.cland_role == 'explorer' then
+    local win = M.tree_win()
+    key = win ~= -1 and M.key_at(api.nvim_win_get_cursor(win)[1]) or nil
+    if key and key ~= M.card.key then M.focus_card(); api.nvim_set_current_win(win) end
+  end
+  if not key or key:sub(1,1)==':' then return end
+  M.card.body_open[key] = not M.card.body_open[key]
+  M.render_card()
+end
 function M.ui()
   local ui = state.S.ui
   ui.explorer = ui.explorer or require('cland.ui').explorer_defaults()
@@ -765,6 +790,11 @@ function M.card_buf()
   for _, key in ipairs({'h','<leader><leader>'}) do
     require('cland.actions').map('n',key,back,{buffer=c.buf,silent=true,nowait=true})
   end
+  require('cland.actions').map('n','zb',M.toggle_body,{buffer=c.buf,silent=true,nowait=true})
+  require('cland.actions').map('n','<CR>',function()
+    local ref = (c.info and c.info[api.nvim_win_get_cursor(0)[1]] or {}).ref
+    if ref then M.reveal(ref) end
+  end,{buffer=c.buf,silent=true,nowait=true})
   c.lines, c.marks = nil, nil
   return c.buf
 end
@@ -785,7 +815,36 @@ function M.fit_card(tree)
 end
 -- Layout owns the resize baseline, so automatic redistribution never becomes a preference.
 function M.sync(win)
-  if state.S.ui.view.kind ~= 'explorer' then return M.close_card() end
+  local layout, c = require('cland.layout'), M.card
+  local ui = state.S.ui
+  if ui.view.kind ~= 'explorer' then
+    M.close_card()
+    if c.over_right then
+      c.over_right = nil
+      if ui.right then layout.open_right(ui.right) end
+      if ui.dock then layout.open_dock() end
+    end
+    return
+  end
+  local _, rw = layout.widths()
+  local total = api.nvim_win_get_width(win) + (valid(c.win) and (api.nvim_win_get_width(c.win)+1) or 0)
+  local suspended = c.over_right and not valid(layout.win.right) and not valid(layout.win.dock)
+  local beside = total - (suspended and (rw+1) or 0)
+  local target = tonumber(M.ui().card_width) or math.max(36,math.min(72,math.floor(beside*0.42)))
+  local over = ui.right ~= nil and beside-target-1<80
+  if over then
+    -- Remove physical windows before closing, so WinClosed cannot change saved panel preferences.
+    c.over_right = true
+    for _, side in ipairs({'right','dock'}) do
+      local panel = layout.win[side]
+      layout.win[side] = nil
+      if valid(panel) then api.nvim_win_close(panel,true) end
+    end
+  elseif c.over_right then
+    c.over_right = nil
+    if ui.right then layout.open_right(ui.right) end
+    if ui.dock then layout.open_dock() end
+  end
   vim.wo[win].cursorline, vim.wo[win].wrap, vim.wo[win].foldenable = true, false, false
   if not valid(M.card.win) then
     local width = tonumber(M.ui().card_width) or math.max(36,math.min(72,math.floor(api.nvim_win_get_width(win)*0.42)))
@@ -795,14 +854,15 @@ function M.sync(win)
     wo.winfixwidth, wo.wrap, wo.cursorline, wo.number, wo.relativenumber = true, false, false, false, false
     wo.signcolumn, wo.foldcolumn, wo.list = 'no', '0', false
   end
-  M.fit_card(win)
+  if over then api.nvim_win_set_width(c.win,math.min(rw,math.max(1,total-31))) else M.fit_card(win) end
   M.render()
 end
 function M.render_card()
   local c = M.card
   if not valid(c.win) then return end
   local b = M.card_buf()
-  local lines, marks = require('cland.explorer_card').compose(c.key,api.nvim_win_get_width(c.win)-1)
+  local lines, marks, info = require('cland.explorer_card').compose(c.key,api.nvim_win_get_width(c.win)-1)
+  c.info = info
   if not vim.deep_equal(lines,c.lines) or not vim.deep_equal(marks,c.marks) then
     vim.bo[b].modifiable = true
     api.nvim_buf_set_lines(b,0,-1,false,lines)
@@ -845,19 +905,26 @@ function M.focus_card()
 end
 function M.card_winbar(win)
   local bars = require('cland.bars')
+  local width = api.nvim_win_get_width(win)
   local it = M.card.key and state.item(M.card.key)
-  local chunks = {{' CARD ',win == api.nvim_get_current_win() and 'ClandHeadFocus' or 'ClandHead'}}
+  local identities = {''}
   if it then
     local ix = M.ix or M.index()
-    local glyph = M.glyph(ix,it)
-    chunks[#chunks+1] = {it.id .. ' · ' .. it.kind .. ' · ' .. glyph .. ' ' .. M.status_of(ix,it),'ClandDimBar'}
+    local glyph, status = M.glyph(ix,it), M.status_of(ix,it)
+    identities = {it.id .. ' · ' .. it.kind .. ' · ' .. glyph .. ' ' .. status,
+      it.id .. ' · ' .. glyph .. ' ' .. status, it.id .. ' ' .. glyph, it.id}
   end
-  local used = 0
-  for _, chunk in ipairs(chunks) do used = used + sw(chunk[1]) end
-  local width = api.nvim_win_get_width(win)
-  local keys = '↵ focus · h back · gt topic · gs session'
-  if used + sw(keys) + 1 > width then keys = '↵ focus · h back · gt · gs' end
-  return bars.stl(chunks) .. '%<%#WinBar#%=' .. bars.stl(bars.fit({{' ' .. keys,'ClandDimBar'}},width-used))
+  local options = {'↵ reveal · h back · zb text · gt topic · gs session · gp plan',
+    '↵ reveal · h back · zb · gt · gs · gp', '↵ h zb gt gs gp'}
+  for _, identity in ipairs(identities) do
+    for _, keys in ipairs(options) do
+      if 6+sw(identity)+1+sw(keys) <= width then
+        return bars.stl({{' CARD ',win == api.nvim_get_current_win() and 'ClandHeadFocus' or 'ClandHead'},
+          {identity,'ClandDimBar'}}) .. '%<%#WinBar#%=' .. bars.stl({{' ' .. keys,'ClandDimBar'}})
+      end
+    end
+  end
+  return bars.stl(bars.fit({{' CARD ','ClandHead'},{identities[#identities] .. ' ' .. options[#options],'ClandDimBar'}},width))
 end
 -- Reveal folds are transient; ui.json records only the human's own folds and filters.
 function M.reveal(id)
@@ -921,7 +988,7 @@ function M.buf()
     zo = function() M.fold('open') end, zc = function() M.fold('close') end,
     zR = function() M.fold_all(true) end, zM = function() M.fold_all(false) end,
     s = M.scope_here,
-    D = M.toggle_done, A = M.toggle_archive,
+    D = M.toggle_done, A = M.toggle_archive, zb = M.toggle_body,
   }
   for key, run in pairs(keys) do
     require('cland.actions').map('n', key, run, {buffer=M.b,silent=true,nowait=true})

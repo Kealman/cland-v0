@@ -78,7 +78,8 @@ function M.context()
     local e = require('cland.explorer')
     return {item = (e.rows[row] or {}).item, here='explorer'}
   elseif role == 'card' then
-    return {item=require('cland.explorer').card.key,here='card'}
+    local card = require('cland.explorer').card
+    return {item=(card.info and card.info[row] or {}).ref or card.key,here='card'}
   elseif role == 'item' or role == 'plan' then
     return { item = vim.b[buf].cland_item, here = 'item' }
   elseif role == 'board' or role == 'graph' then

@@ -18,7 +18,7 @@ async function select(c:Client,key:string) {
   await c.lua("local key=...; local e=require('cland.explorer'); for r,row in ipairs(e.rows) do if row.key==key then vim.api.nvim_win_set_cursor(e.tree_win(),{r,0}); return end end; error('missing row '..key)",key);
 }
 async function shown(c:Client,id:string,text:string) {
-  await c.lua("local id,text=...; assert(vim.wait(5000,function() local e=require('cland.explorer'); return e.card.key==id and e.card.lines and table.concat(e.card.lines,'\\n'):find(text,1,true)~=nil end),'card '..id)",id,text);
+  await c.lua("local id,text=...; local e=require('cland.explorer'); assert(vim.wait(5000,function() return e.card.key==id and e.card.lines and table.concat(e.card.lines,'\\n'):find(text,1,true)~=nil end),'card '..id..' expects '..text..'\\n'..table.concat(e.card.lines or {},'\\n'))",id,text);
 }
 
 test('the explorer card reads parsed body from a real hub and Enter/h preserve the tree cursor', {skip}, async t => {
@@ -39,7 +39,8 @@ test('the explorer card reads parsed body from a real hub and Enter/h preserve t
   assert.ok(!(await card(c)).includes('Do not draw this body'));
   const cursor=await c.lua("return vim.api.nvim_win_get_cursor(require('cland.explorer').tree_win())");
   const winbar=await c.lua<string>("local e=require('cland.explorer'); return vim.api.nvim_eval_statusline(e.card_winbar(e.card.win),{winid=e.card.win,maxwidth=vim.api.nvim_win_get_width(e.card.win),use_winbar=true}).str");
-  assert.ok(winbar.includes('CARD')&&winbar.includes('focus · h back'),'card header preserves focus/back keys');
+  assert.ok(winbar.includes('CARD')&&winbar.includes(id)&&winbar.includes('task')&&winbar.includes('backlog'),'card header preserves item identity');
+  for(const key of ['↵','h','zb','gt','gs','gp']) assert.ok(winbar.includes(key),'card header key '+key);
   await c.input('<CR>'); assert.equal(await c.lua('return vim.b.cland_role'),'card');
   await c.input('jkh'); assert.equal(await c.lua('return vim.b.cland_role'),'explorer');
   assert.deepEqual(await c.lua("return vim.api.nvim_win_get_cursor(require('cland.explorer').tree_win())"),cursor);
@@ -64,6 +65,132 @@ async function stub(t:test.TestContext,scenario=fixture,projectRoot?:string) {
   return {c,root,control};
 }
 
+test('a task card shows progress, verdict reason, relations, suite and the folded agents text in order', {skip}, async t=> {
+  const at=new Date().toISOString();
+  const verdicts=[{verdict:'review',result:'clear',by:'rev-26',run:'r0',at},
+    {verdict:'review',result:'not clear',by:'rev-26 [reviewer]',run:'r1',scope:'delta',at}];
+  const task={...fixture.items!.find(i=>i.id==='T-10'),rank_set:true,branch:'t/card',regression_of:'T-11',blocked_by:['T-11'],created:at,updated:at,
+    verdicts,verify:{id:'job-26',state:'finished',result:'passed',head:'abcdef012345',finished:at,cached:{run:'job-old'}},
+    criteria:[{id:'C1',text:'Show verified evidence.',marks:[{kind:'verified',by:'rev-26',run:'r1',at}]},
+      {id:'C2',text:'Keep failed evidence.',marks:[{kind:'failed',by:'rev-26',note:'Missing scope.',at}]}],
+    comments:[{author:'rev-26',at,verdict:verdicts[1],text:'The scope is missing. A second sentence is omitted.'},
+      {author:'human',at,text:'Resolution: retain the original body. Keep it folded.'}]};
+  const {c}=await stub(t,{...fixture,items:fixture.items!.map(i=>i.id==='T-10'?task:i)});
+  await c.input('<Esc><Space>e'); await c.waitScreen(s=>s.includes('The explorer'),'tree');
+  await c.input('zR'); await select(c,'T-10'); await shown(c,'T-10','written human picture.');
+  const text=await card(c);
+  for(const value of ['1 of 2 verified','1 failed','0 stale','● C1','✗ C2','verified · rev-26 · r2','Missing scope.',
+    'review · not clear','rev-26 [Reviewer]','r2','delta','The scope is missing.','run r1','rank 1','regression of',
+    'T-11','job-26','abcdef0','cached','DECISION','Resolution: retain the original body.',"▸ agents' text · Summary, Work"])
+    assert.ok(text.includes(value),value+'\n'+text);
+  assert.ok(!text.includes('A second sentence'));
+  assert.ok(!text.includes('[reviewer] [Reviewer]'),'native verdict authors carry exactly one role');
+  let pos=-1;
+  for(const name of ['SUMMARY','FACTS','PROGRESS','LATEST VERDICT','RELATIONS','BRANCH AND SUITE','DATES','DECISION',"agents' text"]) {
+    assert.ok(text.indexOf(name)>pos,name+' order'); pos=text.indexOf(name);
+  }
+  assert.ok(!text.includes('Agents only.'));
+});
+
+test('epic cards show stage progress, approval, subtree verdict and latest activity including a closed plan', {skip}, async t=> {
+  const older='2026-01-01T00:00:00Z', newer='2026-01-02T00:00:00Z';
+  const v={verdict:'qa',result:'clear',by:'qa-1',run:'qa-26',scope:'evidence',at:newer};
+  const plan={stages:[{name:'First',lanes:[['T-11']],qa:{scope:'none',when:'after-stage'}},
+    {name:'Card',lanes:[['T-10']],qa:{scope:'full',when:'after-stage'}}]};
+  const stages=[{name:'First',items:['T-11'],state:'closed',closed:older},
+    {name:'Card',items:['T-10'],state:'open',qa:{scope:'full',when:'after-stage'}}];
+  const scenario={...fixture,items:fixture.items!.filter(i=>!String(i.id).match(/^T-[345]\d$/)).map(i=>
+    i.id==='E-2'?{...i,updated:older,plan,stages,approval:{required:true,state:'approved',by:'human',at:older}}:
+    i.id==='T-11'?{...i,state:'closed',status:'done',closed:older,updated:older}:
+    i.id==='T-10'?{...i,updated:older,verdicts:[v],comments:[{author:'qa-1',at:newer,verdict:v,text:'The card passes. More details.'}]}:i),
+    topics:fixture.topics!.map(i=>i.item==='T-10'?{...i,lastMessageAt:newer}:i)};
+  const {c,control}=await stub(t,scenario);
+  await c.input('<Esc><Space>e'); await c.waitScreen(s=>s.includes('The explorer'),'tree');
+  await select(c,'E-2'); await shown(c,'E-2','approved by human');
+  await shown(c,'E-2','The card passes.');
+  let text=await card(c);
+  for(const value of ['1 of 2 done','1 done · 1 review','S1 ■ closed','S2 ■ open','PLAN · STAGE 2 OF 2',
+    '0 of 1 merged','qa full, after the stage','approval human','in its tasks · T-10 Written summary task',
+    'The card passes.','evidence','a message in its topic · T-10']) assert.ok(text.includes(value),value+'\n'+text);
+  assert.ok(!text.includes('More details.'));
+  const views=(await control({requests:true})).requests.filter(r=>r.type==='task.view'&&r.item?.startsWith('T-'));
+  assert.deepEqual(views.map(r=>r.item),['T-10'],'only the subtree verdict owner fetches detail');
+  const closed={...scenario.items.find(i=>i.id==='E-2'),state:'closed',updated:newer,
+    stages:stages.map(i=>({...i,state:'closed',closed:newer}))};
+  await control({set:{items:scenario.items.map(i=>i.id==='E-2'?closed:i)},emit:{type:'task',id:'E-2',item:closed}});
+  await shown(c,'E-2','ALL 2 STAGES CLOSED'); text=await card(c);
+  assert.ok(text.includes('S2 ■ closed')); assert.ok(!text.includes('STAGE 2 OF 2'));
+});
+
+test('a closed stage uses the latest child closing time or stage verdict, and missing legacy times stay unknown', {skip}, async t=> {
+  const plan={stages:[{name:'Evidence',lanes:[['T-10','T-11']],qa:{scope:'full',when:'after-stage'}}]};
+  const stage={name:'Evidence',state:'closed',items:['T-10','T-11'],qa:{scope:'full',when:'after-stage'},verdict:{at:'2026-01-03T00:00:00Z'}};
+  const scenario={...fixture,items:fixture.items!.map(i=>i.id==='E-2'?{...i,plan,stages:[stage]}:
+    i.id==='T-10'||i.id==='T-11'?{...i,state:'closed',status:'done',closed:i.id==='T-10'?'2026-01-01T00:00:00Z':'2026-01-02T00:00:00Z'}:i)};
+  const {c,control}=await stub(t,scenario);
+  await c.input('<Esc><Space>e'); await c.waitScreen(s=>s.includes('The explorer'),'tree');
+  await select(c,'E-2'); await shown(c,'E-2','S1 Evidence · closed · Jan 03');
+  const legacy={...scenario.items.find(i=>i.id==='T-11'),closed:null};
+  await control({set:{items:scenario.items.map(i=>i.id==='T-11'?legacy:i)},emit:{type:'task',id:'T-11',item:legacy}});
+  await shown(c,'E-2','S1 Evidence · closed · —');
+});
+
+test('empty and stale card evidence stays explicit, and live suite states come from task summaries', {skip}, async t=> {
+  const at=new Date().toISOString();
+  const task: Record<string,unknown>={...fixture.items!.find(i=>i.id==='T-10'),criteria:[
+    {id:'C1',text:'An unchecked criterion.',checked:true,marks:[]},
+    {id:'C2',text:'Implemented criterion.',marks:[{kind:'done',by:'impl',at}]},
+    {id:'C3',text:'Old proof.',marks:[{kind:'verified',by:'rev',run:'old',current:false,at}]}]};
+  const scenario={...fixture,items:fixture.items!.map(i=>i.id==='T-10'?task:i.id==='E-2'?{...i,plan:null,stages:[]}:i)};
+  const {c,control}=await stub(t,scenario);
+  await c.input('<Esc><Space>e'); await c.waitScreen(s=>s.includes('The explorer'),'tree');
+  await c.input('zR'); await select(c,'T-10'); await shown(c,'T-10','Old proof.');
+  const text=await card(c);
+  for(const value of ['0 of 3 verified','1 stale','○ C1','◐ C2','◌ C3','none yet','no cland verify run for this task','ordinal 1st']) assert.ok(text.includes(value),value+'\n'+text);
+  assert.ok(!text.includes('DECISION')); assert.ok(!text.includes('rank 1'));
+  for(const [state,result,expected] of [['queued',null,'queued'],['running',null,'running'],['finished','failed','✗ failed'],['finished','cancelled','cancelled']] as const) {
+    const changed={...task,verify:{id:'job-live',state,result,head:'1234567890',finished:null}};
+    await control({set:{items:scenario.items.map(i=>i.id==='T-10'?changed:i)},emit:{type:'task',id:'T-10',item:changed}});
+    await shown(c,'T-10',`suite ${expected} · job-live · 1234567`);
+  }
+  await select(c,'E-2'); await shown(c,'E-2','no plan');
+});
+
+test('zb alone unfolds agents text; hub redraw folds it and Enter on a relation reveals its item', {skip}, async t=> {
+  const task={...fixture.items!.find(i=>i.id==='T-10'),blocked_by:['T-11']};
+  const {c,control}=await stub(t,{...fixture,items:fixture.items!.map(i=>i.id==='T-10'?task:i)});
+  await c.input('<Esc><Space>e'); await c.waitScreen(s=>s.includes('The explorer'),'tree');
+  await c.input('zR'); await select(c,'T-10'); await shown(c,'T-10','written human picture.');
+  await c.input('zb'); await shown(c,'T-10','Agents only.');
+  await c.input('<CR>zb'); await shown(c,'T-10',"▸ agents' text");
+  assert.ok(!(await card(c)).includes('Agents only.'));
+  await c.input('zb'); await shown(c,'T-10','Agents only.');
+  assert.ok(await c.lua("local e=require('cland.explorer'); for _,m in ipairs(e.card.marks) do if m[4]=='ClandHeading' and e.card.lines[m[1]+1]=='## Work' then return true end end; return false"));
+  await control({emit:{type:'topic',topic:{id:'topic-10',title:'Discuss task',item:'T-10',status:'open',lastMessageAt:new Date().toISOString()}}});
+  await shown(c,'T-10',"▸ agents' text");
+  assert.ok(!(await card(c)).includes('Agents only.'));
+  await c.input('gg/blocked by<CR><CR>'); await shown(c,'T-11','fallback human picture.');
+  assert.equal(await c.lua('return vim.b.cland_role'),'explorer');
+  assert.equal(await c.lua("local e=require('cland.explorer');return e.key_at(vim.api.nvim_win_get_cursor(e.tree_win())[1])"),'T-11');
+  assert.deepEqual(await c.lua("return require('cland.actions').audit()"),[]);
+});
+
+test('the narrow explorer card replaces the right panel and restores it for General and a wider screen', {skip}, async t=> {
+  const {c,root}=await stub(t);
+  await c.input('<Esc><Space>e<Space>i'); await c.waitScreen(s=>s.includes('CARD')&&s.includes('ITEMS'),'both side preferences');
+  assert.ok(await c.lua("local l=require('cland.layout');local e=require('cland.explorer');return l.win.right==nil and vim.api.nvim_win_get_width(e.tree_win())>=80 and vim.api.nvim_win_get_width(e.card.win)==50"));
+  await c.lua("require('cland.ui').flush()");
+  assert.equal(JSON.parse(await readFile(root+'/.cland/ui.json','utf8')).panels.right,'sessions');
+  await c.input('<Space>g'); await c.waitScreen(s=>s.includes('General')&&s.includes('SESSIONS'),'General restores right panel');
+  assert.equal(await c.lua("return require('cland.explorer').card.win"),null);
+  await c.input('<Esc><Space>e'); await c.waitScreen(s=>s.includes('CARD'),'explorer returns');
+  await c.rpc.request('nvim_ui_try_resize',280,50);
+  await c.lua("assert(vim.wait(3000,function() local l=require('cland.layout');local e=require('cland.explorer');return l.win.right~=nil and vim.api.nvim_win_get_width(e.tree_win())>=80 end))");
+  await c.rpc.request('nvim_ui_try_resize',200,50);
+  await c.lua("assert(vim.wait(3000,function() return require('cland.layout').win.right==nil end))");
+  assert.equal(await c.lua("return require('cland.state').S.ui.right"),'sessions');
+});
+
 test('card follows rows with written or fallback summaries and task/container facts', {skip}, async t=> {
   const {c}=await stub(t); await c.input('<Esc><Space>e'); await c.waitScreen(s=>s.includes('The explorer'),'tree');
   await c.input('zR'); await select(c,'T-10'); await shown(c,'T-10','written human picture.');
@@ -74,7 +201,7 @@ test('card follows rows with written or fallback summaries and task/container fa
   assert.ok(text.includes('fallback from ## Problem · no ## Summary yet'));
   assert.ok(await c.lua("local e=require('cland.explorer'); for _,m in ipairs(e.card.marks) do if m[4]=='ClandFaint' and e.card.lines[m[1]+1]:find('fallback from',1,true) then return true end end; return false"),'fallback provenance is dimmed'); assert.ok(!text.includes('Found by')); assert.ok(!text.includes('Third omitted'));
   await c.input('l'); assert.equal(await c.lua('return vim.b.cland_role'),'card');
-  assert.match(await c.lua<string>("return require('cland.motions').context().item"),/T-11/);
+  assert.equal(await c.lua<string>("return require('cland.motions').context().item"),'E-2','the parent path carries the parent reference');
   await c.input('<Space><Space>'); assert.equal(await c.lua('return vim.b.cland_role'),'explorer');
   await select(c,'E-2'); await shown(c,'E-2',', derived'); text=await card(c);
   for(const expected of ['in work, derived','now','coord','T-10','impl [Implementer]','rev [Reviewer]']) assert.ok(text.includes(expected),expected+'\n'+text);
@@ -130,9 +257,9 @@ test('gi reveals the thread reference without changing folds, keeps containing s
   assert.equal(await c.lua("return require('cland.state').S.ui.view.id"),'E-2');
   await c.input('<CR>gp'); await c.waitScreen(s=>s.includes('PLAN')&&s.includes('Card'),'card gp uses its item');
   await c.input('<Space><Space>'); await shown(c,'T-10','written human picture.');
-  await c.input('<CR>gt'); await c.waitScreen(s=>s.includes('Discuss task'),'card gt uses its item');
+  await c.input('<CR>/Written summary task<CR>gt'); await c.waitScreen(s=>s.includes('Discuss task'),'card gt uses its item on the title');
   await c.input('<Space><Space>'); await shown(c,'T-10','written human picture.');
-  await c.input('<CR>gs'); await c.waitScreen(s=>s.includes('no session named impl'),'card gs uses its claimant');
+  await c.input('<CR>/Written summary task<CR>gs'); await c.waitScreen(s=>s.includes('no session named impl'),'card gs uses its claimant');
   // Palette item picks retain their established full-body view.
   await c.input('<Space>p'); await c.input('#Written summary task');
   await c.waitScreen(s=>s.includes('Written summary task'),'palette item');

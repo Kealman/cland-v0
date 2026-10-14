@@ -231,7 +231,7 @@ test('the explorer registry, key help and status hint advertise every outline ac
   await c.input('<Esc><Space>e');
   await c.waitScreen(s=>s.includes('l h fold · s scope · ␣␣ back · D done · A archive'),'explorer status hint');
   const actions=await c.lua<Array<{id:string;title:string;key:string}>>("local out={}; for _,a in ipairs(require('cland.actions').all()) do if a.id:match('^explorer:') then out[#out+1]={id=a.id,title=a.title,key=a.key} end end; return out");
-  assert.deepEqual(actions.map(a=>a.id).sort(),['<CR>','j','k','l','h','za','zo','zc','zR','zM','s','D','A'].map(k=>`explorer:${k}`).sort());
+  assert.deepEqual(actions.map(a=>a.id).sort(),['<CR>','j','k','l','h','za','zo','zc','zR','zM','s','D','A','zb'].map(k=>`explorer:${k}`).sort());
   for(const action of actions) { assert.ok(action.title.length>0); assert.ok(action.key.endsWith('in explorer')); }
   assert.deepEqual(await c.lua("return require('cland.actions').audit()"),[]);
   await c.input('<Space>?');

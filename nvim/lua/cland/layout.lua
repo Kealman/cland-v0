@@ -215,7 +215,7 @@ function M.fix()
     pcall(api.nvim_win_set_height, M.win.composer, require('cland.topic_view').COMPOSER_HEIGHT + 1)
   end
   local c = M.win.centre
-  if state.S.ui.view.kind == 'explorer' then require('cland.explorer').fit_card(c) end
+  if valid(c) then require('cland.explorer').sync(c) end
   if valid(c) and vim.bo[api.nvim_win_get_buf(c)].buftype == 'terminal' and vim.fn.winheight(c) < 3 then
     pcall(api.nvim_win_set_height, c, 3)
   end
@@ -364,7 +364,6 @@ function M.apply_view(opts)
     end
   end
   M.fix()
-  require('cland.explorer').sync(w)
   if opts.focus ~= false then
     focus(target)
     if v.kind == 'thread' and target == M.win.composer then

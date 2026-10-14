@@ -92,8 +92,8 @@ group('explorer', {{'j','Next explorer item row'}, {'k','Previous explorer item 
   {'<CR>','Focus explorer card'}, {'l','Unfold explorer node, step to its first child or focus leaf card'}, {'h','Fold explorer node or its parent'},
   {'za','Toggle explorer fold'}, {'zo','Open explorer fold'}, {'zc','Close explorer fold'},
   {'zR','Unfold every explorer node'}, {'zM','Fold every explorer node'}, {'s','Scope explorer to this node'},
-  {'D','Hide or show done explorer items'}, {'A','Show or hide archived explorer roots'}})
-group('card', {{'h','Return to explorer tree'}, {'<leader><leader>','Return to explorer tree'}})
+  {'D','Hide or show done explorer items'}, {'A','Show or hide archived explorer roots'}, {'zb','Unfold or fold agents text'}})
+group('card', {{'<CR>','Reveal referenced item in explorer'}, {'zb','Unfold or fold agents text'}, {'h','Return to explorer tree'}, {'<leader><leader>','Return to explorer tree'}})
 group('plan', {{'a','Approve epic plan'}, {'d','Discuss plan with the Lead'}, {'e','Edit epic plan file'}})
 group('item', {{'e','Edit item file'}, {'L','Agents log for this item'},
   {'ca','Add criterion'}, {'ce','Edit selected criterion'}, {'cd','Remove selected criterion (confirm)'}})
