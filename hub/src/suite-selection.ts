@@ -1,5 +1,7 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { glob, readFile } from 'node:fs/promises';
+import { dirname, posix, relative, resolve } from 'node:path';
 
 export type SuiteMode = 'hub-only' | 'nvim-only' | 'full';
 export type SuiteSelection = { mode: SuiteMode; files: string[]; reason: string };
@@ -33,16 +35,78 @@ export function describeSelection(selection: SuiteSelection, filesBytes = Infini
   return `mode ${selection.mode}; ${selection.reason}; deciding files ${JSON.stringify(shown)}${omitted ? `; ${omitted} more (${selection.files.length} total; full list in log)` : ''}`;
 }
 
-export function chooseSuiteMode(paths: readonly string[]): SuiteMode {
-  if (!paths.length) return 'full';
-  // Positive allowlists: newly added shared infrastructure stays full by default.
-  const hubLocal = (path: string) => /^(?:hub\/src\/(?:tracker|adapters)\/.+\.ts|hub\/src\/cli\/(?!suite\.ts$|socket-client\.ts$).+\.ts|hub\/(?:src|test)\/.+\.test\.ts)$/.test(path);
-  const nvimLocal = (path: string) => /^(?:nvim\/lua\/.+\.lua|nvim\/init\.lua|nvim\/bin\/.+\.(?:ts|lua)|nvim\/test\/.+\.test\.ts)$/.test(path);
-  if (paths.some(path => /^(?:hub\/src\/cli\/(?:crew|roles?)\.ts|hub\/src\/adapters\/contract\.ts|nvim\/lua\/cland\/(?:hub|state)\.lua)$/.test(path))) return 'full';
-  if (paths.some(path => /(?:^|\/)(?:package(?:-lock)?\.json|tsconfig[^/]*\.json)$/.test(path) || path.split('/').some(part => part === '..' || part === '.'))) return 'full';
-  if (paths.every(hubLocal)) return 'hub-only';
-  if (paths.every(nvimLocal)) return 'nvim-only';
-  return 'full';
+// Default for pure callers; package admission replaces it with imports read from source.
+export const NVIM_HUB_IMPORTS = [
+  'hub/test/harness.ts', 'hub/test/process-cleanup.ts', 'hub/src/protocol.ts',
+  'hub/src/tracker/tracker.ts', 'hub/src/tracker/prefixes.ts', 'hub/src/tracker/plan.ts',
+  'hub/src/tracker/kinds.ts', 'hub/src/tracker/criteria.ts', 'hub/src/init/config.ts',
+  'hub/src/hub/store.ts', 'hub/src/hub/visibility.ts', 'hub/src/hub/visibility-preferences.ts',
+];
+
+function chooseSuite(paths: readonly string[], nvimHubImports: readonly string[]): Pick<SuiteSelection, 'mode' | 'reason'> {
+  const full = (reason: string) => ({ mode: 'full' as const, reason });
+  if (!paths.length) return full('empty diff against fetched dev');
+  const invalid = paths.find(path => path.split('/').some(part => part === '.' || part === '..'));
+  if (invalid) return full(`ambiguous path ${invalid}`);
+  for (const path of paths) {
+    if (/^(?:hub\/src\/cli\/(?:crew|roles?)\.ts|hub\/src\/adapters\/contract\.ts|nvim\/lua\/cland\/(?:hub|state)\.lua|hub\/src\/protocol\.ts)$/.test(path)) return full(`shared contract ${path}`);
+    if (/(?:^|\/)(?:package(?:-lock)?\.json|tsconfig[^/]*\.json)$/.test(path)) return full(`package configuration ${path}`);
+    if (['hub/test/run-suite.ts', 'hub/src/suite-selection.ts', 'hub/src/suite-shards.ts'].includes(path)) return full(`suite infrastructure ${path}`);
+    if (nvimHubImports.includes(path)) return full(`nvim test import ${path}`);
+  }
+  const nvim = paths.filter(path => path.startsWith('nvim/')).length;
+  if (nvim && nvim !== paths.length) return full('mixed nvim and non-nvim paths');
+  if (nvim) return { mode: 'nvim-only', reason: 'all paths under nvim/' };
+  return { mode: 'hub-only', reason: 'all paths outside nvim/' };
+}
+
+export function chooseSuiteMode(paths: readonly string[], nvimHubImports: readonly string[] = NVIM_HUB_IMPORTS): SuiteMode {
+  return chooseSuite(paths, nvimHubImports).mode;
+}
+
+// Tokenize comments and strings as units so examples in either cannot become imports.
+// Covers static imports, re-exports and literal dynamic imports. Unresolved
+// template imports fail closed rather than hiding a possible shared dependency.
+export function importSpecifiers(source: string): string[] {
+  const tokens = source.match(/\/\*[\s\S]*?\*\/|\/\/[^\n]*|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|`(?:\\.|[^`\\])*`|[\w$]+|[^\s]/g)?.filter(token => !token.startsWith('//') && !token.startsWith('/*')) ?? [];
+  const specifiers: string[] = [];
+  const literal = (token: string | undefined) => {
+    if (!token || !/^["'`]/.test(token)) return undefined;
+    if (token.startsWith('`') && token.includes('${')) throw new Error('interpolated dynamic import cannot be resolved safely');
+    return token.slice(1, -1).replace(/\\(["'`\\])/g, '$1');
+  };
+  for (let i = 0; i < tokens.length; i++) {
+    const reexport = tokens[i] === 'export' && ['*', '{', 'type'].includes(tokens[i + 1] ?? '');
+    if ((tokens[i] !== 'import' && !reexport) || tokens[i - 1] === '.') continue;
+    let specifier = literal(tokens[i + 1]);
+    if (tokens[i + 1] === '(') specifier = literal(tokens[i + 2]);
+    else if (!specifier && tokens[i + 1] !== '.') {
+      for (let j = i + 1; j < tokens.length && tokens[j] !== ';' && tokens[j] !== 'import'; j++) {
+        if (tokens[j] === 'from') { specifier = literal(tokens[j + 1]); break; }
+      }
+    }
+    if (specifier) specifiers.push(specifier);
+  }
+  return specifiers;
+}
+
+export async function nvimHubImports(cwd: string): Promise<string[]> {
+  const paths = new Set<string>();
+  const visited = new Set<string>();
+  const pending: string[] = [];
+  for await (const test of glob('nvim/test/**/*.test.ts', { cwd })) pending.push(test);
+  while (pending.length) {
+    const test = pending.pop()!;
+    if (visited.has(test)) continue;
+    visited.add(test);
+    for (const specifier of importSpecifiers(await readFile(resolve(cwd, test), 'utf8'))) {
+      if (!specifier.startsWith('.')) continue;
+      const path = relative(cwd, resolve(cwd, dirname(test), specifier)).split('\\').join(posix.sep);
+      if (path.startsWith('hub/')) paths.add(path);
+      else if (path.startsWith('nvim/test/')) pending.push(path);
+    }
+  }
+  return [...paths].sort();
 }
 
 const exec = promisify(execFile);
@@ -61,9 +125,9 @@ export async function selectPackageSuite(cwd: string, requested: SuiteRequest = 
     files = [...new Set(paths.flatMap(output => output.split('\0').filter(Boolean)))].sort();
     if (branch === 'dev') return { mode: 'full', files, reason: 'integrated dev always runs full' };
     if (requested === 'all') return { mode: 'full', files, reason: '--all / all forces full' };
-    const mode = chooseSuiteMode(files);
+    const { mode, reason } = chooseSuite(files, await nvimHubImports(cwd));
     if (requested !== 'auto' && mode !== `${requested}-only`) return { mode: 'full', files, reason: `diff does not qualify for requested ${requested} phase` };
-    return { mode, files, reason: !files.length ? 'empty diff against fetched dev' : mode === 'full' ? 'mixed, shared or ambiguous paths' : 'package-local diff against fetched dev' };
+    return { mode, files, reason };
   } catch (error) {
     return { mode: 'full', files, reason: `fetch/diff unavailable: ${error instanceof Error ? error.message.split('\n')[0] : String(error)}` };
   }

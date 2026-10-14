@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { chooseSuiteMode, selectPackageSuite } from '../src/suite-selection.ts';
+import { chooseSuiteMode, importSpecifiers, nvimHubImports, selectPackageSuite } from '../src/suite-selection.ts';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdtemp, mkdir, readFile, writeFile } from 'node:fs/promises';
@@ -10,26 +10,24 @@ import { fileURLToPath } from 'node:url';
 import { ownDirectory } from './process-cleanup.ts';
 
 test('hub implementation changes select hub plus Neovim smoke', () => {
-  assert.equal(chooseSuiteMode(['hub/src/tracker/tracker.ts', 'hub/test/tracker.test.ts']), 'hub-only');
+  assert.equal(chooseSuiteMode(['hub/src/adapters/codex.ts', 'hub/test/tracker.test.ts']), 'hub-only');
 });
 
 test('Neovim implementation changes select Neovim plus hub smoke', () => {
   assert.equal(chooseSuiteMode(['nvim/lua/cland/thread.lua', 'nvim/test/thread.test.ts']), 'nvim-only');
 });
 
-for (const path of ['hub/src/protocol.ts', 'hub/src/hub/core.ts', 'hub/src/hub/dispatch.ts', 'hub/src/hub/store.ts', 'hub/src/hub/server.ts', 'hub/src/subscriptions.ts', 'hub/src/roles.ts', 'hub/src/crew.ts', 'hub/src/spoke/server.ts', 'hub/test/run-suite.ts', 'hub/test/harness.ts', 'hub/test/process-cleanup.ts', 'hub/src/hub/suites.ts', 'hub/src/suite-selection.ts', 'hub/package.json', 'hub/tsconfig.json', 'nvim/tsconfig.json', 'nvim/test/harness.ts', 'nvim/test/stub-hub.ts', 'nvim/test/rpc.ts']) {
+for (const path of ['hub/src/protocol.ts', 'hub/src/hub/store.ts', 'hub/test/run-suite.ts', 'hub/test/harness.ts', 'hub/test/process-cleanup.ts', 'hub/src/suite-selection.ts', 'hub/src/suite-shards.ts', 'hub/package.json', 'hub/tsconfig.json', 'nvim/tsconfig.json', 'hub/src/cli/role.ts', 'hub/src/cli/roles.ts', 'hub/src/tracker/tracker.ts', 'hub/src/hub/visibility.ts']) {
   test(`${path} is shared infrastructure and forces full`, () => assert.equal(chooseSuiteMode([path]), 'full'));
 }
 
 for (const [name, paths] of [
   ['empty diff', []],
   ['both packages', ['hub/src/tracker/tracker.ts', 'nvim/lua/cland/thread.lua']],
-  ['tracker only', ['.cland/tasks/T-214.md']],
-  ['roles and crew', ['.cland/roles.toml', '.cland/crew.toml']],
+  ['nvim and docs', ['nvim/README.md', 'README.md']],
   ['root tooling', ['package.json', 'package-lock.json', 'tsconfig.json']],
-  ['unknown path', ['scripts/check.sh']],
-  ['unknown hub infrastructure', ['hub/src/new-event.ts']],
   ['path traversal', ['hub/src/tracker/../../protocol.ts']],
+  ['dot segment', ['nvim/./init.lua']],
   ['crew CLI', ['hub/src/cli/crew.ts']],
   ['adapter event contract', ['hub/src/adapters/contract.ts']],
   ['Neovim transport', ['nvim/lua/cland/hub.lua']],
@@ -37,6 +35,37 @@ for (const [name, paths] of [
 ] as const) {
   test(`${name} runs full`, () => assert.equal(chooseSuiteMode(paths), 'full'));
 }
+
+for (const path of ['hub/test/shards.json', 'hub/src/hub/core.ts', 'hub/src/hub/dispatch.ts', 'hub/src/hub/server.ts', 'hub/src/subscriptions.ts', 'hub/src/roles.ts', 'hub/src/crew.ts', 'hub/src/spoke/server.ts', 'hub/src/hub/suites.ts', '.cland/tasks/T-214.md', '.cland/roles.toml', '.cland/crew.toml', 'scripts/check.sh', 'hub/src/new-event.ts', 'docs/agents/tests.md', 'skills/qa/SKILL.md', '.agents/skills/qa/SKILL.md', 'README.md']) {
+  test(`${path} selects hub-only by the non-nvim rule`, () => assert.equal(chooseSuiteMode([path]), 'hub-only'));
+}
+
+for (const path of ['nvim/test/harness.ts', 'nvim/test/stub-hub.ts', 'nvim/test/rpc.ts', 'nvim/README.md', 'nvim/new-file']) {
+  test(`${path} selects nvim-only by the nvim rule`, () => assert.equal(chooseSuiteMode([path]), 'nvim-only'));
+}
+
+test('import parser reads static, type, side-effect and literal dynamic imports, ignoring comments and strings', () => {
+  assert.deepEqual(importSpecifiers(`
+    // import { fake } from '../../hub/comment.ts';
+    /* import '../../hub/block.ts'; */
+    const example = "import '../../hub/string.ts'";
+    import { real } from '../../hub/static.ts';
+    import type { Type } from '../../hub/type.ts';
+    import '../../hub/side-effect.ts';
+    const lazy = await import('../../hub/dynamic.ts');
+    import.meta.url;
+  `), ['../../hub/static.ts', '../../hub/type.ts', '../../hub/side-effect.ts', '../../hub/dynamic.ts']);
+});
+
+test('dependency parser reads literal template imports and helper re-exports', () => {
+  assert.deepEqual(importSpecifiers([
+    'const lazy = import(`../../hub/src/template.ts`);',
+    "export { X } from '../../hub/src/named.ts';",
+    "export * from '../../hub/src/star.ts';",
+    "export type { X } from '../../hub/src/type.ts';",
+  ].join('\n')), ['../../hub/src/template.ts', '../../hub/src/named.ts', '../../hub/src/star.ts', '../../hub/src/type.ts']);
+  assert.throws(() => importSpecifiers('import(`../../hub/src/${name}.ts`)'), /interpolated dynamic import/);
+});
 
 const exec = promisify(execFile);
 async function gitFixture(t: import('node:test').TestContext) {
@@ -71,6 +100,70 @@ test('fetched dev selects committed and working changes, all forces full, and in
   assert.equal((await selectPackageSuite(root)).mode, 'full', 'untracked Neovim code makes the diff mixed');
   await git('checkout', 'dev');
   assert.match((await selectPackageSuite(root)).reason, /integrated dev/);
+});
+
+for (const [form, source] of [
+  ['a static hub import', "import type { New } from '../../../hub/src/new-shared.ts';"],
+  ['a literal template hub import', 'const lazy = import(`../../../hub/src/new-shared.ts`);'],
+] as const) {
+test(`adding ${form} in a nested Neovim test widens selection at admission`, async t => {
+  const { root, git } = await gitFixture(t);
+  await mkdir(join(root, 'nvim/test/nested'), { recursive: true });
+  const testFile = join(root, 'nvim/test/nested/new.test.ts');
+  await writeFile(testFile, '// no shared imports');
+  await git('add', '.'); await git('commit', '-m', 'Neovim baseline'); await git('push', 'origin', 'HEAD:dev');
+  await mkdir(join(root, 'hub/src'), { recursive: true });
+  await writeFile(join(root, 'hub/src/new-shared.ts'), '// change');
+  assert.equal((await selectPackageSuite(root)).mode, 'hub-only');
+  await writeFile(testFile, source);
+  const imports = await nvimHubImports(root);
+  assert.deepEqual(imports, ['hub/src/new-shared.ts']);
+  assert.equal(chooseSuiteMode(['hub/src/new-shared.ts'], imports), 'full');
+  await git('add', 'nvim'); await git('commit', '-m', 'New shared import'); await git('push', 'origin', 'HEAD:dev');
+  const selection = await selectPackageSuite(root);
+  assert.deepEqual(selection.files, ['hub/src/new-shared.ts']);
+  assert.equal(selection.mode, 'full');
+  assert.equal(selection.reason, 'nvim test import hub/src/new-shared.ts');
+});
+
+}
+
+for (const [form, source] of [
+  ['import', "import '../../hub/src/shared.ts';"],
+  ['named re-export', "export { X } from '../../hub/src/shared.ts';"],
+  ['star re-export', "export * from '../../hub/src/shared.ts';"],
+] as const) {
+test(`helper ${form} widens full selection, handles cycles and stops at the hub boundary`, async t => {
+  const { root, git } = await gitFixture(t);
+  await mkdir(join(root, 'nvim/test/nested'), { recursive: true });
+  await mkdir(join(root, 'hub/src'), { recursive: true });
+  await writeFile(join(root, 'nvim/test/nested/new.test.ts'), "import { helper } from '../helper.ts';");
+  await writeFile(join(root, 'nvim/test/helper.ts'), "import './nested/new.test.ts';");
+  await writeFile(join(root, 'hub/src/shared.ts'), "import './internal.ts';");
+  await git('add', '.'); await git('commit', '-m', 'helper baseline'); await git('push', 'origin', 'HEAD:dev');
+  await writeFile(join(root, 'hub/src/shared.ts'), "import './internal.ts'; // changed");
+  assert.equal((await selectPackageSuite(root)).mode, 'hub-only');
+  await writeFile(join(root, 'nvim/test/helper.ts'), "import './nested/new.test.ts'; " + source);
+  await git('add', 'nvim'); await git('commit', '-m', 'helper imports shared hub source'); await git('push', 'origin', 'HEAD:dev');
+  const imports = await nvimHubImports(root);
+  assert.deepEqual(imports, ['hub/src/shared.ts']);
+  assert.equal(chooseSuiteMode(['hub/src/internal.ts'], imports), 'hub-only');
+  const selection = await selectPackageSuite(root);
+  assert.equal(selection.mode, 'full');
+  assert.equal(selection.reason, 'nvim test import hub/src/shared.ts');
+});
+
+}
+
+test('interpolated dynamic imports fail closed to full admission', async t => {
+  const { root, git } = await gitFixture(t);
+  await mkdir(join(root, 'nvim/test'), { recursive: true });
+  await writeFile(join(root, 'nvim/test/new.test.ts'), 'import(`../../hub/src/${name}.ts`);');
+  await git('add', '.'); await git('commit', '-m', 'unresolved shared dependency'); await git('push', 'origin', 'HEAD:dev');
+  await writeFile(join(root, 'README.md'), 'changed');
+  const selection = await selectPackageSuite(root);
+  assert.equal(selection.mode, 'full');
+  assert.match(selection.reason, /interpolated dynamic import cannot be resolved safely/);
 });
 
 test('empty diffs and failed fetches run full with their reason, never using a stale dev ref', async t => {

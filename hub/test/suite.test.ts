@@ -411,7 +411,7 @@ test('auto suite reports the fetched diff decision and transports it to the pack
   await git('add', '.'); await git('commit', '-m', 'hub change');
   await f.launch('auto');
   const reduced = await eventually('auto result', async () => (await f.results())[0]);
-  assert.match(reduced.text, /mode hub-only; package-local diff against fetched dev; deciding files \["hub\/src\/tracker\/tracker.ts"\]/);
+  assert.match(reduced.text, /mode hub-only; all paths outside nvim\/; deciding files \["hub\/src\/tracker\/tracker.ts"\]/);
   const log = await readFile(reduced.artifacts[0]!.path, 'utf8');
   assert.match(log, /"mode":"hub-only","files":\["hub\/src\/tracker\/tracker.ts"\]/);
   await f.launch('--all');
@@ -439,7 +439,7 @@ test(`a broad deciding-file list publishes once below the ${cap}-byte cap and st
   const result = await eventually('bounded report publication', async () => (await f.results())[0]);
   assert.ok(Buffer.byteLength(result.text, 'utf8') <= cap);
   assert.match(result.text, /mode nvim-only/);
-  assert.match(result.text, /package-local diff against fetched dev/);
+  assert.match(result.text, /all paths under nvim\//);
   assert.match(result.text, /full list in log/);
   assert.ok(!result.text.includes('�'));
   assert.match(result.text, /Executor local · \S+ \S+ · Node v[\d.]+ · Neovim none/);

@@ -1919,12 +1919,22 @@ the hub retries without duplicating the result.
 `npm test` and `cland verify --report <topic>` default to diff selection. They fetch
 `origin/dev`, compare the branch from its merge base with fetched dev, and include
 staged, unstaged and untracked files. Renames include both old and new paths.
-The pure `chooseSuiteMode` in `src/suite-selection.ts` uses conservative allowlists:
-hub tracker, adapter and ordinary CLI code or package-local tests select `hub-only`;
-Neovim Lua, launcher code or tests select `nvim-only`. Shared hub/event/protocol,
-roles/crew, test harness, runner, package/lockfile/tsconfig, mixed-package and
-unknown paths run `full`. Tracker-only `.cland/tasks/` changes also run full.
-Neovim's hub transport/event-state modules and the adapter event contract run full.
+The pure `chooseSuiteMode` in `src/suite-selection.ts` uses ordered package rules.
+A diff wholly under `nvim/` selects `nvim-only`; a mix of Neovim and any other
+paths runs full. Everything else selects `hub-only`, including hub code, docs,
+skills, `.agents/` and `.cland/tasks/`.
+Before those package rules, shared paths force full: the crew/role(s) CLI, adapter
+contract, protocol, Neovim hub transport/event state, package/lockfile/tsconfig
+files, suite runner, selection and shards modules. A shard-manifest change alone
+uses the package rules; the shard lint guards hub file assignments. Any hub
+file imported by `nvim/test/**/*.test.ts` or their helpers also forces full.
+Admission follows relative imports within `nvim/test/` from those test entries,
+collecting hub imports without following hub-internal dependencies. It reads
+static, type, side-effect, re-export and literal dynamic imports (quoted or
+backtick) from source; interpolated dynamic imports fail closed to full. New shared
+imports widen selection automatically; pure callers may
+supply the list and otherwise use the current baseline. Dot or parent segments
+are ambiguous and force full. Reasons name the deciding rule and shared file.
 An empty diff or a failed fetch/diff runs full with its reason. Integrated `dev`
 always runs full. `cland verify all` / `cland verify --all` and `npm test -- --all`
 force full. The runner CLI's `--all` overrides explicit test targets as well as the

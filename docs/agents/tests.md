@@ -1,10 +1,12 @@
 # Running tests
 
-Implementers run full suites through the hub, one invocation at a time per session:
+Implementers run verification through the hub, one invocation at a time per session:
 
 ```sh
-cland verify all --report <item-topic> --to <reviewer-name> --to <your-name>
+cland verify --report <item-topic> --to <reviewer-name> --to <your-name>
 ```
+
+D29: task runs use the diff selection with no mode: hub-only, Neovim-only or full. Use `all` only when the selection or the Coordinator asks for a full run. Full suites are the Coordinator's integrated `dev` runs per batch of about three merges, at stage and epic close, and before release.
 
 Before requesting review, fetch and merge `origin/dev` into the task branch, then commit and push the head to review. Request source review first. Only after a clear source verdict, run `cland verify` at the exact reviewed head. A fix or later merge that changes the head needs a new source review before a new run. The Reviewer settles the final verdict when the same-head result arrives; source-only criteria may be verified earlier, while run-dependent criteria stay unverified until then. The CLI prints the run id, worker PID (null while queued) and hub queue position, then exits. Go idle: the hub delivers one result with the exit code, test counts, failures, branch/head and durable log artifact.
 
