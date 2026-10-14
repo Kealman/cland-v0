@@ -3,7 +3,7 @@ id: T-366
 kind: task
 title: "Limited accounts refuse launches: a limit-hit signal from Claude Code, Codex or OpenCode marks the account limited until its reset, a launch on it is refused naming the reset, and cland account clear lifts the mark"
 state: open
-status: planned
+status: review
 size: L
 criterion_seq: 9
 labels:
@@ -15,10 +15,10 @@ parent: E-272
 blocked_by:
   - T-364
   - T-365
-topic: null
-branch: null
+topic: topic-243
+branch: t/T-366-limited-accounts-refuse-launches-a-limit
 created: 2026-10-13T23:42:54.826Z
-updated: 2026-10-14T10:19:40.074Z
+updated: 2026-10-14T10:55:50.408Z
 ---
 
 ## Summary
@@ -106,12 +106,57 @@ Ticket T-364's `poll(account)` is the after-hit trigger, and ticket T-365's bloc
 
 ## Acceptance criteria
 
-- [ ] C1. A fake Codex `usageLimitExceeded` on a codex-a session marks codex-a limited with its window's reset. `cland account list --json` shows the mark, the journal holds `account-limited`, and one warn notice reaches the Agents topic.
-- [ ] C2. The next launch on codex-a, by `--account` and by a role pinned to it, is refused with `code: "account-limited"` naming codex-a and its reset. The fakes' records show no process started on codex-b or any other account, and the running codex-a session keeps running.
-- [ ] C3. A Claude `StopFailure` with `error: "rate_limit"` marks claude-b with the reset of its full window, and an OpenCode `provider.quota` marks oc-b `until cleared`. A Codex `rateLimitExceeded`, an OpenCode `provider.rate-limit` and a Claude `overloaded` mark nothing.
-- [ ] C4. A mark lifts at its reset and survives a hub restart that comes before the reset. `cland account clear codex-a` lifts it at once for the human and the Coordinator and is refused for an Implementer, a Reviewer and a QA session. Both lifts journal `account-limit-lifted` with `by`.
-- [ ] C5. A relaunch and a retained pool handoff onto a limited account are refused the same way, while a hub-restart re-find of a live session on it succeeds.
-- [ ] C6. A hit makes exactly one after-hit poll of its account, and a second hit while the mark holds adds no poll and no notice.
-- [ ] C7. The headless workbench shows codex-a in `ClandRed` with `limited` and its reset, and oc-b with `until cleared`. The highlight goes after `cland account clear`.
-- [ ] C8. `hub/README.md` and `nvim/README.md` describe the signals, the mark, the refusal and its code, what is never done, `cland account clear` and the highlight.
-- [ ] C9. The account-limited refusal carries the account name and the reset time (or until cleared) as structured fields and in its text, for T-367's ask (stand-in, D24, 2026-10-13).
+- [x] C1. A fake Codex `usageLimitExceeded` on a codex-a session marks codex-a limited with its window's reset. `cland account list --json` shows the mark, the journal holds `account-limited`, and one warn notice reaches the Agents topic.
+  - done: impl-366 · 2026-10-14T10:41:16.672Z
+- [x] C2. The next launch on codex-a, by `--account` and by a role pinned to it, is refused with `code: "account-limited"` naming codex-a and its reset. The fakes' records show no process started on codex-b or any other account, and the running codex-a session keeps running.
+  - done: impl-366 · 2026-10-14T10:41:17.481Z
+- [x] C3. A Claude `StopFailure` with `error: "rate_limit"` marks claude-b with the reset of its full window, and an OpenCode `provider.quota` marks oc-b `until cleared`. A Codex `rateLimitExceeded`, an OpenCode `provider.rate-limit` and a Claude `overloaded` mark nothing.
+  - done: impl-366 · 2026-10-14T10:54:13.830Z
+- [x] C4. A mark lifts at its reset and survives a hub restart that comes before the reset. `cland account clear codex-a` lifts it at once for the human and the Coordinator and is refused for an Implementer, a Reviewer and a QA session. Both lifts journal `account-limit-lifted` with `by`.
+  - done: impl-366 · 2026-10-14T10:41:19.353Z
+- [x] C5. A relaunch and a retained pool handoff onto a limited account are refused the same way, while a hub-restart re-find of a live session on it succeeds.
+  - done: impl-366 · 2026-10-14T10:41:20.385Z
+- [x] C6. A hit makes exactly one after-hit poll of its account, and a second hit while the mark holds adds no poll and no notice.
+  - done: impl-366 · 2026-10-14T10:54:15.904Z
+- [x] C7. The headless workbench shows codex-a in `ClandRed` with `limited` and its reset, and oc-b with `until cleared`. The highlight goes after `cland account clear`.
+  - done: impl-366 · 2026-10-14T10:41:23.047Z
+- [x] C8. `hub/README.md` and `nvim/README.md` describe the signals, the mark, the refusal and its code, what is never done, `cland account clear` and the highlight.
+  - done: impl-366 · 2026-10-14T10:41:24.567Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-366-2 · 2026-10-14T10:55:50.408Z · commit 5aad58e50a09212adda305d33ffdeee412155eeb
+- [x] C9. The account-limited refusal carries the account name and the reset time (or until cleared) as structured fields and in its text, for T-367's ask (stand-in, D24, 2026-10-13).
+  - done: impl-366 · 2026-10-14T10:41:25.343Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-366-2 · 2026-10-14T10:55:50.408Z · commit 5aad58e50a09212adda305d33ffdeee412155eeb
+
+## Comments
+
+### impl-366 · 2026-10-14T10:37:21.691Z
+
+Implemented persisted limited marks, machine-readable hard-hit classification for all three harnesses, reset timers and launch checks (including relaunch and retained pools), typed account-limited results, human/Coordinator-only account.clear, and the red workbench line. Seven protocol/fake scenarios and the new headless workbench scenario have passed in targeted runs; checking the existing polling/reading cases before review. Source-only review comes next, then exact-head cland verify. Scope-none QA policy requires no per-item brief.
+
+### rev-23 · 2026-10-14T10:50:03.848Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-366-1
+commit: 00861ebf97406fe55772456542b4f81adef97fa2
+scope: full
+
+Medium — hub/src/accounts/poller.ts:98: ready() false drops the sole after-hit trigger; held duplicate hits cannot restore it, so a recent prior poll can prevent learning the reset.
+Medium — hub/src/accounts/limits.ts:9; hub/src/hub/core.ts:794: an expired cached full-window reset immediately clears a new hard-hit mark through the timer/launch check, allowing launches before the current reset is learned.
+All 26 changed files reviewed; no additional standards finding. Evidence and required frame regressions: A-2330, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2330-t-366-source-review-deferred-polls-and-expired-cached-resets.md. No full run yet; corrected source review is required before verification.
+
+Criteria: C6 failed (After-hit polling is discarded when the existing minimum/backoff is not yet eligible, without scheduling an eligible retry.), C3 failed (A new Claude hit can inherit an expired cached full-window reset and be cleared before its after-hit poll learns the current reset.).
+
+### rev-23 · 2026-10-14T10:55:50.408Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-366-2
+commit: 5aad58e50a09212adda305d33ffdeee412155eeb
+scope: full
+
+Source clear; no remaining high or medium findings. Both A-2330 blockers are corrected: durable deferred after-hit reads retain the existing minimum/backoff and recover after restart; expired cached/signal resets cannot immediately lift a new hard-hit mark. Reviewed all five correction files and the three added frame regressions, carrying forward the original complete source review. C8 documentation and C9 structured/text refusals are established by source. C1–C7 remain unverified until full exact-head evidence. Evidence A-2334: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2334-t-366-corrected-source-clear-at-5aad58e5.md.
+
+Criteria: C8 verified, C9 verified.

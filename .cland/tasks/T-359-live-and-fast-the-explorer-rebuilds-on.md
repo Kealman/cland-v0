@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-242
 branch: t/T-359-live-and-fast-the-explorer-rebuilds-on
 created: 2026-10-13T20:53:52.374Z
-updated: 2026-10-14T10:14:19.940Z
+updated: 2026-10-14T11:04:05.120Z
 ---
 
 ## Summary
@@ -112,6 +112,8 @@ The scope's history entries keep their own cursor keys, so `␣␣` still lands 
   - done: impl-359 · 2026-10-14T09:27:51.785Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-359-1 · 2026-10-14T09:33:13.764Z · commit 66350c2b0f7046e653d9d86e762608494259812f
   - verified: rev-23 [reviewer] · run rev-2026-10-14-359-4 · 2026-10-14T10:14:19.940Z · commit f769586c03293bd64b5c8c7911af09086425dfbd
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-359-6 · 2026-10-14T10:45:54.978Z · commit f769586c03293bd64b5c8c7911af09086425dfbd
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-359-7 · 2026-10-14T11:04:05.120Z · commit 0d6a85a754701b6f28a479ff43c151ccf0644e93
 
 ## Comments
 
@@ -178,5 +180,50 @@ commit: f769586c03293bd64b5c8c7911af09086425dfbd
 scope: full
 
 No high or medium findings. item_view.lua content_signal now implements Coordinator amendment 95f11a9d: current summary criteria counts, last verdict kind/result/run, verify result/head, status and claim are compared with cached full detail; timestamp/reconnect/legacy event freshness remains. Both card reads deduplicate identical signals. New real-hub watched same-timestamp C4 save and exact shown-item signal-fetch tests cover the regression without changing the original failed checks; stub criteriaCounts matches full-frame shape. A-2319/A-2320 source blockers resolved; prior startup/live/cursor/bench review retained. C7 refreshed; C1–C6 await exact-head cland verify nvim, and C6's failed gate still needs successful evidence/done mark. A-2322: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2322-t-359-amended-cache-contract-source-clear-at-f769586c.md.
+
+Criteria: C7 verified.
+
+### rev-23 · 2026-10-14T10:34:36.762Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-359-5
+commit: f769586c03293bd64b5c8c7911af09086425dfbd
+scope: evidence
+
+Medium — hub/test/claude-code-accounts.test.ts:107: a final session.stop answers ok:false in unchanged T-362 directory/restart coverage; the log lacks session/refusal cause. A-2325 full-expanded 33af4fd9 exits 1 before Neovim (1616/1617, zero skips/cancellations), so corrected C1–C6 run evidence remains unavailable. No new T-359 source defect established; A-2322/C7 retained. Bugs · S aside reported. Coordinator babb7ed7 requires five sequential targeted runs per dev/head plus stop-refusal diagnostics and integrated-run control before shared/own classification; no unchanged full rerun. A-2326: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2326-t-359-full-evidence-not-clear-inherited-account-stop-failure.md.
+
+### impl-359 · 2026-10-14T10:44:43.597Z
+
+Verify 33af4fd9 stopped before Neovim at an inherited account-stop assertion. Per Coordinator, five sequential whole-file runs each on dev 46f8370 and task f769586c are captured in A-2328. Original restart/stop test passed 5/5 on both heads; each head had one identical different signed-out polling assertion failure (2 vs 1 at line 131), with no T-359-only failure. No stop refusal recurred, so its cause remains unknown. Production head unchanged; diagnostic worktrees removed. Focused startup/live/bench checks 6/6 pass; unfolded build 7.63 ms. No unchanged full rerun; awaiting integrated control/shared blocker decision.
+
+### rev-23 · 2026-10-14T10:45:54.978Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-359-6
+commit: f769586c03293bd64b5c8c7911af09086425dfbd
+scope: full
+
+Source-only clearance refreshed: unchanged clean f769586c and no new high/medium source findings; A-2322 remains applicable. A-2328 records all ten sequential dev/task file runs, original stop case 10/10 but one identical signed-out count failure per head. Coordinator 698b78b0 assigns shared T-382, regression_of T-362. This is not green full evidence: C1–C6 remain unverified, failed C6 gate pending. C7 refreshed. Wait for T-382 commit, cherry-pick, take new-head delta review, then one full verify; no unchanged rerun. A-2329: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2329-t-359-unchanged-source-clear-awaiting-shared-t-382.md.
+
+Criteria: C7 verified.
+
+### impl-359 · 2026-10-14T11:03:18.114Z
+
+Reviewed shared T-382 commit 53f84e47 cherry-picked cleanly with provenance onto T-359 as 0d6a85a7 and pushed. Three shared files only; no new explorer/startup delta. Single targeted account file passes 5/5, including the signed-out counting window and pending-PID stop regression. Worktree clean. Requested delta source review before one exact-head full verify, as Coordinator 698b78b0 directed.
+
+### rev-23 · 2026-10-14T11:04:05.120Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-359-7
+commit: 0d6a85a754701b6f28a479ff43c151ccf0644e93
+scope: delta
+
+Delta source clear; no high or medium findings. The sole commit is the T-382 cherry-pick: all added/removed lines in its three files match reviewed 53f84e47; differences between complete test/fake blobs are existing base /usage-poller context. Atomic PID/identity publication and exact pre-latch count window retain A-2338's assessment. T-359 explorer/card/startup/cache/bench source remains unchanged from A-2322/A-2329. C7 refreshed at this head; C1–C6 require complete exact-head verification. Evidence A-2339: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2339-t-359-shared-t-382-delta-source-clear-at-0d6a85a7.md.
 
 Criteria: C7 verified.

@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-233
 branch: t/T-347-the-remote-budget-remote-runs-are
 created: 2026-10-13T20:53:46.081Z
-updated: 2026-10-14T09:04:37.797Z
+updated: 2026-10-14T10:55:45.942Z
 ---
 
 ## Summary
@@ -298,3 +298,11 @@ C6 real attempt 1 (Coordinator, driver A-2262 at 205897b4, 2026-10-14):
 - No parallel runs were reached.
 - Filed T-381 (regression_of T-344): the release error is swallowed, and prepare fails on an unconfirmed release.
 - C6 waits for T-381.
+
+### impl-347 · 2026-10-14T10:54:58.441Z
+
+Latest C6 record checked: Coordinator attempt 1 stopped at builder release confirmation and never reached parallel runs; cleanup and empty provider listings recorded, about $0.03 cost, T-381 filed as T-344 regression. C6 remains pending/unmarked. Subscribed to T-381 task events and reported C6 blocker to lead/reviewer for shared-fix disposition. Source head remains 205897b4 with accepted green 1975/1975 evidence; no extra test or cloud action.
+
+### impl-347 · 2026-10-14T10:55:45.942Z
+
+Coordinator f684ccff disposition: keep 205897b4 unchanged until the Coordinator names T-381's merged product-code commit. Then merge origin/dev (do not cherry-pick), including any landed T-382/T-383 shared fixes; request one merge delta review; run one fresh exact-reviewed-head full verification; Coordinator runs C6 with A-2262 at that new head. Claimant then marks C6 done from evidence and rev-23 settles. No source changes before that named merge.
