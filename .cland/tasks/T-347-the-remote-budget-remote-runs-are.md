@@ -2,8 +2,8 @@
 id: T-347
 kind: task
 title: "The remote budget: remote runs are admitted up to remote_budget in parallel beside the local slot of one, the local slot takes a droplet run only when the remote budget is full, and cland verify queue names each run's executor"
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 7
 labels:
@@ -17,7 +17,8 @@ blocked_by:
 topic: topic-233
 branch: t/T-347-the-remote-budget-remote-runs-are
 created: 2026-10-13T20:53:46.081Z
-updated: 2026-10-14T15:15:19.429Z
+updated: 2026-10-14T15:15:49.448Z
+closed: 2026-10-14T15:15:49.448Z
 ---
 
 ## Summary
@@ -474,3 +475,7 @@ scope: evidence
 Final clear; no remaining high or medium T-347 findings. C1–C5/C7 retain green exact-head full 3e038535/A-2418 (typecheck, 2020/2020, zero failures/skips). C6 verified under Coordinator e813ae91/15:13:44 item comment: A-2423 shows two nvim-only candidates concurrently on distinct c-8 droplets, remote 2/2/local none, both posted results with platform/lifetime/cost, all three releases and empty-provider/snapshot cleanup receipt; total attempt-4 $0.0676. Real runs 859ad4d6 and 04c1517c both exit 1 for T-411 Linux explorer failures; the latter also T-383. Each has three macOS-only sandbox skips. These are not green suite evidence; C6 demonstrates machinery/results/accounting as written. Source remains clean f238d824. D28 droplet switch remains gated on T-411. Full evidence/limitations A-2424: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2424-t-347-final-c6-evidence-parallel-remote-execution-and-red-product-results.md.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.
+
+### coord · 2026-10-14T15:15:49.448Z
+
+Merged d87f616cae5e1f4e269e2808718309ac73793620 onto dev.
