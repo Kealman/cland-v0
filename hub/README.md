@@ -773,6 +773,17 @@ the human makes and authorizes any account choice.
 - **Roles, the rest.** The Coordinator's role requests come later. A handover's `waiting` reads the topics `waiting for agent` (#32), and `asks` the open asks its holders put (#33). The UI shows the role with the name and the "no coordinator" warning with the workbench shell (#25), from the frames and events below.
 - **Claims.** A claim stays until released, forced or the item is closed; nothing yet releases it when its session ends.
 
+## The cland CLI
+
+Subcommands load lazily: `bin/cland.ts` imports only the command it dispatches.
+Shared help text lives in `src/cli/usage.ts`, so help, version and noninteractive
+no-command invocations load just that module and `version.ts`. Command modules
+re-export their usage constants for existing callers. `test/cli-imports.test.ts`
+uses a real-process resolve hook to guard the source-module counts (help and
+version at most 10; task list and hub status within their measured budgets).
+The guard is in the machine shard and also checks command import failures keep
+their existing error lines and exit codes.
+
 ## cland init and cland update
 
 `cland init [dir]` prepares a project (`dir`, else the project around the current directory); `cland update [dir]` rewrites what cland manages there to the running version and refuses a folder without `.cland/`. Both need no hub, are idempotent and print one line per path they touched (`--json`: `{root, version, changes: [{path, action, note?}]}`, actions `created`, `updated`, `unchanged`, `kept`, `removed`). A file is written only when its bytes change, so a second `cland init` changes nothing, mtimes included.

@@ -19,21 +19,8 @@ const CLI_ENTRY = fileURLToPath(new URL('../../bin/cland.ts', import.meta.url));
 const START_DEADLINE_MS = 15_000;
 const STOP_DEADLINE_MS = 10_000;
 
-export const HUB_USAGE = `  hub start       start the project's hub in the background (idempotent)
-  hub subscriptions list every session's event subscriptions (--json for JSON)
-  hub status      show the running hub and its connected sessions (--json for JSON)
-  hub stop        stop the project's hub
-  hub serve       run the hub in the foreground (what start runs)
-                  --stdio: also speak the UI's frames on stdin/stdout, and stop when stdin ends;
-                    when the listeners cannot bind (a sandbox), it goes on over stdio alone
-                  --stdio --no-listen: stdio alone, binding nothing
-  hub audit       every tool call the hub answered, allowed or refused (.cland/log/hub.log)
-                  --session <name> (human: the UI and the CLI), --since <ISO time | 30m, 2h, 1d>, --json
-  hub unmute <a> <b>
-                  lift the loop breaker's mute of two sessions before its cool-down ends
-  hub journal     the journal (.cland/journal.jsonl), oldest first
-                  --since <ISO date | 30s | 10m | 2h | 1d>, --kind <event>[,<event>…], --json (the lines as they are)
-`;
+import { HUB_USAGE } from './usage.ts';
+export { HUB_USAGE } from './usage.ts';
 
 type Io = { out: (s: string) => void; err: (s: string) => void };
 const stdio: Io = { out: (s) => process.stdout.write(s), err: (s) => process.stderr.write(s) };

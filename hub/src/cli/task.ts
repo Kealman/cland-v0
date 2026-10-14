@@ -8,33 +8,11 @@ import type { ItemSummary, ItemView } from '../tracker/tracker.ts';
 import { actorOf } from './actor.ts';
 import { askHubFrame } from './socket-client.ts';
 import { planYaml, type EpicPlan } from '../tracker/plan.ts';
-import { IMPORT_USAGE, runImportGithub } from './task-import.ts';
+import { runImportGithub } from './task-import.ts';
 import type { MigrationPlan } from '../tracker/migrate.ts';
 
-export const TASK_USAGE = `  task create <title> [--kind k] [--size XS|S|M|L|XL] [--regression-of <id>] [--version semver] [--body t | --body-file f] [--label l]… [--assignee a]
-                  [--parent <id>] [--blocked-by <id>]… [--topic t] [--branch b]
-  task view <id> (any kind prefix in either case, or a bare number)
-  task migrate [--dry-run] [--sizes <JSON-file>] [--json] (offline prefixes, references, titles, categories and retired labels)
-  task plan migrate (retire qa-required labels, report policy fallbacks)
-  task plan <set|show|approve> <epic-id> [--file plan.yaml] [--reason text]
-  task list [--under <id>] [--state open|closed] [--label l]… [--kind k] [--assignee a] [--verdict review=clear]
-  task comment <id> <text> [--verdict review|qa --result clear|"not clear" --run <id> [--commit <sha>] [--scope full|delta|evidence] [--stage <name>] [--verified C1,C3|all | --failed "C1=note"]…]
-  task edit <id> [--version semver|none] [--title t] [--body t | --body-file f] [--kind k] [--size XS|S|M|L|XL] [--state s] [--status s] [--label l]…
-                  [--add-label l]… [--remove-label l]… [--assignee a|none]
-  task close <id> [--comment t] [--override reason (human shell only)]
-  task link <id> [--regression-of <id>|none] [--parent <id>|none] [--blocked-by <id>]… [--unblock <id>]… [--topic t|none] [--branch b|none]
-  task hold <id> [--release] (Reviewer or QA verification beside the claim)
-  task criterion <id> <done|verify|fail|edit|remove> <C-n> [--run r] [--note t] [--text t]
-  task criterion <id> add <text>
-  task rank <id> <--top | --before <id> | --after <id>>
-  task claim <id> [--release] [--force]
-                  claiming an open task in a project with a territory makes (or reuses) its branch
-                  t/T-<n>-<slug> and its worktree .cland/worktrees/T-<n>
-${IMPORT_USAGE}                  every task command takes --json, and --as <name> [--role r] (default: "human"). In a
-                  launched session's shell ($CLAND_SESSION_ID / $CLAND_SESSION_NAME) the call is always
-                  that session's, checked against its role as its own tools are; --as cannot change it.
-                  The human acting --as a session the hub knows is checked against that session's role
-`;
+import { TASK_USAGE } from './usage.ts';
+export { TASK_USAGE } from './usage.ts';
 
 type Io = { out: (s: string) => void; err: (s: string) => void };
 const stdio: Io = { out: (s) => process.stdout.write(s), err: (s) => process.stderr.write(s) };

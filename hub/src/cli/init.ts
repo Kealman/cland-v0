@@ -8,11 +8,7 @@ import { VERSION } from '../version.ts';
 import { territoryPath, undoTerritory } from '../territory.ts';
 import { provisionAgentsMd } from '../init/instructions.ts';
 
-export const INIT_USAGE = `  init [dir]      prepare the project (dir, else the one around the current directory) for cland: .cland/,
-                  skills, docs/agents/, AGENTS.md's block, hooks and local git territory; idempotent (--json)
-                  --undo restores the territory's remotes/root branch; --force discards territory-only refs
-  update [dir]    rewrite what cland manages in an initialised project to this version; nothing else
-`;
+export { INIT_USAGE } from './usage.ts';
 
 function describe(changes: Change[], root: string, command: string): string {
   const lines = [`cland ${command} ${VERSION} in ${root}`];

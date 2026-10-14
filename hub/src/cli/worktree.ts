@@ -6,11 +6,8 @@ import { hubDiscovery, readDiscovery } from '../project.ts';
 import { askHubFrame } from './socket-client.ts';
 import type { WorktreeEntry } from '../hub/worktrees.ts';
 
-export const WORKTREE_USAGE = `  worktree list   the task worktrees (.cland/worktrees/T-<n>): item, branch, the item's state, the commits
-                  its base lacks and the sessions standing inside (--json for JSON)
-  worktree prune [--yes]   the human's: each closed item's worktree with its unmerged commits, removed with
-                  its branch after a y (--yes: all); refused from a session's shell
-`;
+import { WORKTREE_USAGE } from './usage.ts';
+export { WORKTREE_USAGE } from './usage.ts';
 
 type Removed = { item: string; path: string; branch: string | null };
 

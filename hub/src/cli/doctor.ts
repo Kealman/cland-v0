@@ -10,9 +10,7 @@ import { checkKeys } from '../doctor/keys.ts';
 import { projectRoot } from '../project.ts';
 import { VERSION } from '../version.ts';
 
-export const DOCTOR_USAGE = `  doctor [dir]    check the harnesses, gh, Neovim, the hub and what cland init provisioned; one line per
-                  check with the fix for each problem; exits 1 on a failure (--json for JSON; --fix ends owned orphan servers and deleted-project hubs)
-`;
+export { DOCTOR_USAGE } from './usage.ts';
 
 export async function runDoctor(args: string[], cwd: string = process.cwd(), env: NodeJS.ProcessEnv = process.env): Promise<number> {
   const json = args.includes('--json');

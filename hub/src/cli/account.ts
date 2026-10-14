@@ -2,7 +2,7 @@ import { hubDiscovery, readDiscovery } from '../project.ts';
 import { askHubFrame } from './socket-client.ts';
 import { limitUntil, type AccountList, type AccountView } from '../accounts/limits.ts';
 
-export const ACCOUNT_USAGE = `  account list [--refresh] [--json]   list the user-level account names, harnesses, paths and limit windows\n  account clear <name>              lift an account's limited mark by hand\n`;
+export { ACCOUNT_USAGE } from './usage.ts';
 export async function runAccount(args: string[], cwd = process.cwd()): Promise<number> {
   const clear = args[0] === 'clear' && args.length === 2 && !!args[1];
   if (!clear && (args[0] !== 'list' || args.slice(1).some(a => a !== '--json' && a !== '--refresh'))) throw new Error(`usage: cland account list [--refresh] [--json] | clear <name>`);

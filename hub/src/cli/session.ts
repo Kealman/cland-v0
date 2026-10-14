@@ -5,22 +5,8 @@ import type { HarnessProcessView } from '../protocol.ts';
 import { askHubFrame } from './socket-client.ts';
 import { withRole } from '../names.ts';
 
-export const SESSION_USAGE = `  session launch <name> [--role r] [--model m] [--harness claude-code|opencode|codex] [--account name] [--effort e] [--cwd dir | --item T-<n>] [--brief text|A-<n>]
-                  launch a harness session through the hub; a role's launch defaults
-                  (.cland/roles.toml) fill the harness, model, effort and account not given; --item starts an
-                  Implementer in its task worktree, or a Lead on an open epic/release at the root, with its claim;
-                  --brief delivers text or an artifact's content once after the role clause
-  session list [--archived]    launched sessions and the archived count (--json for JSON); --archived shows only the archive
-  session archive <name>  archive a stopped or exited session
-  session prune --older-than <duration> [--dry-run]  remove old archived session records; keep the journal
-  session attach <name>   print the command that attaches a terminal to the session
-  session stop <name>     stop the session through its harness
-  session resume <name> [--relaunch | --fresh]   re-find the session's process; --relaunch starts a new one on the same
-                  conversation, stopping the old one first when it still runs (keeps its role and valid item claim); --fresh starts a new
-                  conversation with the recorded brief when native resume cannot
-  session retry <name> <message id>    send again a message whose inject got no answer
-                  (its delivery is uncertain: the turn may have started; never retried on its own)
-`;
+import { SESSION_USAGE } from './usage.ts';
+export { SESSION_USAGE } from './usage.ts';
 
 const flag = (args: string[], name: string): string | undefined => {
   const i = args.indexOf(name);

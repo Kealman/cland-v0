@@ -9,9 +9,8 @@ import type { ImportedIssue, ImportOutcome, IssueRef } from '../tracker/import-g
 import { actorOf } from './actor.ts';
 import { askHubFrame } from './socket-client.ts';
 
-export const IMPORT_USAGE = `  task import-github [--repo owner/name] [--all]
-                  GitHub Issues → items, through \`gh\`; open issues (--all: closed too); re-runs update in place
-`;
+import { IMPORT_USAGE } from './usage.ts';
+export { IMPORT_USAGE } from './usage.ts';
 
 type Io = { out: (s: string) => void; err: (s: string) => void };
 

@@ -8,17 +8,8 @@ import { hubDiscovery, readDiscovery } from '../project.ts';
 import type { Artifact } from '../protocol.ts';
 import { askHubFrame } from './socket-client.ts';
 
-export const ARTIFACT_USAGE = `  artifact new --kind prompt|note|page|diagram|file --title <title> --topic <topic>
-                  --path <file|directory> | --content <text> | --content-file <file|-> (stdin with -)
-                  [--folder] [--entry <relative-file>] (create is an alias for new)
-  artifact promote <A-id> <project-relative-path> [--json]
-  artifact open <A-id> [--json] (VISUAL, EDITOR, else nvim; --json resolves without an editor)
-  artifact keep <A-id> [--release] [--json]
-  artifact move <A-id> <folder-A-id> [--name <filename>] [--json]
-  artifact archive <A-id> [--json]
-  artifact list [--topic <topic>] [--json]
-                  persistent files shown in topics; all commands accept --json
-`;
+import { ARTIFACT_USAGE } from './usage.ts';
+export { ARTIFACT_USAGE } from './usage.ts';
 
 export async function runArtifact(args: string[], cwd = process.cwd()): Promise<number> {
   const [verb, ...rest] = args;

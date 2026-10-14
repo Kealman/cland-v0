@@ -12,12 +12,8 @@ import { VERSION } from '../version.ts';
 
 const SYNOPSIS = 'usage: cland --headless --qa <case.lua> [--out <dir>] [--hub stdio|stub] [--timeout <seconds>]';
 
-export const QA_USAGE = `  --headless --qa <case.lua> [--out <dir>] [--hub stdio|stub] [--timeout <seconds>]
-                  run one QA case in a headless workbench on a fixture project; prints one JSON line
-                  (case, result, duration_ms, build, hub, evidence) and exits 0 (PASS), 1 (FAIL) or
-                  2 (INCONCLUSIVE, BLOCKED). --out: the screen and state dumps go there as files,
-                  else they are printed inline. --hub: the hub the case runs against, whatever it names
-`;
+import { QA_USAGE } from './usage.ts';
+export { QA_USAGE } from './usage.ts';
 
 export type QaResult = 'PASS' | 'FAIL' | 'INCONCLUSIVE' | 'BLOCKED';
 const EXIT: Record<QaResult, number> = { PASS: 0, FAIL: 1, INCONCLUSIVE: 2, BLOCKED: 2 };

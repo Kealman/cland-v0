@@ -3,10 +3,7 @@ import { hubDiscovery, readDiscovery } from '../project.ts';
 import { renderCrew, type CrewConfig } from '../crew.ts';
 import { askHubFrame } from './socket-client.ts';
 
-export const CREW_USAGE = `  crew show       effective staffing policy and summary (--json)
-  crew set <role>.<key> <value>  validate and save staffing; leads takes a TOML list
-  crew set idle_from <id|list>  open categories in order; [] means never
-`;
+export { CREW_USAGE } from './usage.ts';
 export async function runCrew(args: string[], cwd = process.cwd()): Promise<number> {
   const json = args.includes('--json');
   const [sub, key, input, ...extra] = args.filter(a => a !== '--json');

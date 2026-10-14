@@ -5,19 +5,9 @@ import { hubDiscovery, readDiscovery } from '../project.ts';
 import type { Inbox, TopicMessage } from '../protocol.ts';
 import { askHubFrame } from './socket-client.ts';
 
-export const INBOX_USAGE = `  inbox [--json] [--archive] four sections: asks and approvals, plan approvals, requests to you, messages to you
-                          newest first, all rows with ids, subjects, senders and waiting ages;
-                          last 'needs you: <n>'
-                          (--json for the hub's Inbox frame)
-                          --archive prints departures from the last seven days, newest first, with when and why
-`;
-export const TOPIC_USAGE = `  topic answer <ask id> <option number>
-                          answer an ask with its option n (1-based): prints
-                          'answered <ask id> in <topic title>: <the answer>'
-    topic answer <ask id> --text "<free answer>"
-                          answer an ask with a free answer; the hub's refusals (an ask not open, an option
-                          out of range, a free answer to an options-only ask) print 'cland: <error>', exit 1
-`;
+export { INBOX_USAGE } from './usage.ts';
+import { TOPIC_USAGE } from './usage.ts';
+export { TOPIC_USAGE } from './usage.ts';
 const NO_HUB = 'cland: no hub runs for this project — run `cland hub start`\n';
 
 const firstLine = (text: string): string => text.split(/\r?\n/, 1)[0] ?? '';

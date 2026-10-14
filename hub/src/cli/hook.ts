@@ -18,10 +18,7 @@ import { PROTOCOL_VERSION, parseFrame, type ClientHello } from '../protocol.ts';
 import { hubDiscovery, readDiscovery } from '../project.ts';
 import { askHubFrame } from './socket-client.ts';
 
-export const HOOK_USAGE = `  hook <event>    from inside a launched session (its hooks, the cland mod): post a signal to the hub
-                  --session <name> --launch <id> --hub-file <path>; the harness's JSON payload on stdin
-                  (worktree-create --worktree <path>: refuses the harness's own worktree, exit 2)
-`;
+export { HOOK_USAGE } from './usage.ts';
 
 /** The payload fields the hub reads; the prompt itself never leaves the session, only the message ids it carries. */
 const KEPT = ['session_id', 'prompt_id', 'hook_event_name', 'tool_name', 'notification_type', 'agent_id', 'agent_type', 'model', 'source', 'reason', 'message', 'usage', 'isAborted', 'ids', 'error', 'error_details', 'rateLimits'] as const;

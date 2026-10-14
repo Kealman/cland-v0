@@ -4,15 +4,8 @@ import { hubDiscovery, readDiscovery } from '../project.ts';
 import type { RoleHolder, RoleList } from '../protocol.ts';
 import { askHubFrame } from './socket-client.ts';
 
-export const ROLE_USAGE = `  role set <session> <role>   assign a role (coordinator, lead, implementer, reviewer, qa, aide) to a session,
-                  live or not yet connected; the session gets the role's clause
-                  --note-file <file>  with a handover note (Markdown: Goals now, Work in flight, Open decisions,
-                                      Waiting on); the Coordinator moves from its holder, who is told to stop
-                  --move              move the Coordinator from its holder without a note
-                  --item T-n         move this Lead node to the receiver (with --move or --note-file)
-  role clear <session>        revoke the session's role
-  role list       the roles, their launch defaults and holders (--json for JSON)
-`;
+import { ROLE_USAGE } from './usage.ts';
+export { ROLE_USAGE } from './usage.ts';
 
 const holderLine = (h: RoleHolder): string => `${h.label}${h.role === null ? ' (no role)' : ''}${h.live ? '' : ' (offline)'}`;
 

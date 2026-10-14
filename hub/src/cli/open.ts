@@ -8,9 +8,8 @@ import { fileURLToPath } from 'node:url';
 import { projectRoot } from '../project.ts';
 import { runHub } from './hub.ts';
 
-export const OPEN_USAGE = `  open [dir]      start the project's hub if none runs, then the workbench in Neovim
-                  (what \`cland\` with no command does on a terminal)
-`;
+import { OPEN_USAGE } from './usage.ts';
+export { OPEN_USAGE } from './usage.ts';
 
 const LAUNCHER = fileURLToPath(new URL('../../../nvim/bin/cland-nvim', import.meta.url));
 

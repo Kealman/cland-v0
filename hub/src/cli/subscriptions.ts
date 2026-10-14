@@ -6,11 +6,7 @@ import type { Subscription } from '../protocol.ts';
 import { actorOf } from './actor.ts';
 import { askHubFrame } from './socket-client.ts';
 
-export const SUBSCRIPTIONS_USAGE = `  subscribe <session|item|topic|role|subtree> <subject> --event <session.state|task|topic|usage|artifact> [--event e]… [--digest turn|now] [--cost USD|--tokens N]
-  unsubscribe <subscription id>
-  subscriptions  list the caller's subscriptions
-                  --as <session> from the human CLI; launched shells use their own identity; --json
-`;
+export { SUBSCRIPTIONS_USAGE } from './usage.ts';
 
 export async function runSubscriptions(command: string, args: string[], cwd = process.cwd()): Promise<number> {
   const { values, positionals } = parseArgs({ args, allowPositionals: true, options: {

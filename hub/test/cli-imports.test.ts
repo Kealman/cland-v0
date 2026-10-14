@@ -76,3 +76,67 @@ test('database-free CLI commands never resolve node:sqlite in their import graph
     assert.equal(result.status, code, `${command}: ${result.stderr}`);
   }
 });
+
+const COUNTER = fileURLToPath(new URL('./fixtures/cli-imports/counter.ts', import.meta.url));
+
+// Run the actual CLI, with caller discovery and Node preloads excluded.
+function countedCommand(root: string, args: string[], failure?: string) {
+  const counts = join(root, 'imports.json');
+  const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('CLAND_') && key !== 'NODE_OPTIONS'));
+  const result = spawnSync(process.execPath, ['--import', COUNTER, CLI, ...args], {
+    cwd: root,
+    env: { ...env, CLAND_TEST_IMPORT_COUNTS: counts, ...(failure ? { CLAND_TEST_IMPORT_FAILURE: failure } : {}) },
+    encoding: 'utf8', timeout: 10_000,
+  });
+  assert.ifError(result.error);
+  const urls: string[] = JSON.parse(readFileSync(counts, 'utf8'));
+  return { result, urls };
+}
+
+test('CLI commands load only their own source closure within the import budgets', (t) => {
+  const root = mkdtempSync(join(realpathSync(tmpdir()), 'cland-cli-counts-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  // Measured with this registerHooks fixture on Node 24, running the real CLI in an
+  // empty temporary project without a hub: task list loads 13 modules; hub status loads 16.
+  // Command budgets add a rounded-up 10% margin.
+  const commands: Array<{ args: string[]; code: number; budget: number; commands: string[] }> = [
+    { args: ['--help'], code: 0, budget: 10, commands: [] },
+    { args: ['--version'], code: 0, budget: 10, commands: [] },
+    { args: [], code: 0, budget: 10, commands: [] },
+    { args: ['task', 'list', '--json'], code: 1, budget: 15, commands: ['task.ts', 'task-import.ts', 'socket-client.ts', 'actor.ts'] },
+    { args: ['hub', 'status'], code: 1, budget: 18, commands: ['hub.ts', 'socket-client.ts', 'actor.ts'] },
+  ];
+  for (const { args, code, budget, commands: allowed } of commands) {
+    const { result, urls } = countedCommand(root, args);
+    assert.equal(result.status, code, result.stderr);
+    t.diagnostic(`cland ${args.join(' ')}: ${urls.length} hub/src modules`);
+    assert.ok(urls.length > 0, 'the counter observed source imports');
+    assert.ok(urls.length <= budget, `loaded ${urls.length} modules (budget ${budget}): ${urls.join(', ')}`);
+    const cliModules = urls.filter(url => url.includes('/src/cli/') && !url.endsWith('/usage.ts'));
+    assert.deepEqual(cliModules.map(url => url.slice(url.lastIndexOf('/') + 1)).sort(), [...allowed].sort());
+  }
+});
+
+test('subcommand import failures retain each dispatch error line and exit code', (t) => {
+  const root = mkdtempSync(join(realpathSync(tmpdir()), 'cland-cli-failures-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const commands: Array<[string, string, number]> = [
+    ['account', 'account', 1], ['executor', 'executor', 1], ['verify', 'suite', 1], ['suite', 'suite', 1],
+    ['open', 'open', 1], ['--headless', 'qa', 2], ['--qa', 'qa', 2], ['init', 'init', 1], ['update', 'init', 1],
+    ['doctor', 'doctor', 2], ['hub', 'hub', 1], ['subscribe', 'subscriptions', 1],
+    ['unsubscribe', 'subscriptions', 1], ['subscriptions', 'subscriptions', 1], ['artifact', 'artifact', 1],
+    ['task', 'task', 1], ['session', 'session', 1], ['push', 'push', 1], ['sync', 'release', 1],
+    ['release', 'release', 1], ['merge', 'merge', 1], ['worktree', 'worktree', 1], ['crew', 'crew', 1],
+    ['role', 'role', 1], ['inbox', 'inbox', 1], ['topic', 'inbox', 1], ['hook', 'hook', 0],
+  ];
+  for (const [command, module, code] of commands) {
+    const { result } = countedCommand(root, [command], `../src/cli/${module}.ts`);
+    assert.equal(result.status, code, `${command}: ${result.stderr}`);
+    assert.equal(result.stdout, '', command);
+    assert.equal(result.stderr, `${command === 'hook' ? 'cland hook' : 'cland'}: test subcommand import failure\n`, command);
+  }
+  // The internal fixture path has no dispatch catch: retain its unhandled-error exit.
+  const { result } = countedCommand(root, ['--qa-fixture'], '../src/cli/qa-fixture.ts');
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /Error: test subcommand import failure/);
+});

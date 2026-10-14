@@ -4,13 +4,8 @@ import { hubDiscovery, readDiscovery } from '../project.ts';
 import { askHubFrame } from './socket-client.ts';
 import type { VerificationQueue } from '../protocol.ts';
 
-export const SUITE_USAGE = `  verify [all|hub|nvim] [--all] [--fresh] [--executor local|droplet] --report <topic|session> [--to <session>] [--json]
-  suite           alias for verify\n                  run typecheck and the package suite detached; post one artifact-backed result
-  verify cancel [<suite id>] [--json]
-                  cancel your active suite (human: any explicit id); post its cancelled result
-  verify queue [--json]
-                  show local holder, remote runs, executor waiters, waits, admission ETA and recent timing metrics
-`;
+import { SUITE_USAGE } from './usage.ts';
+export { SUITE_USAGE } from './usage.ts';
 
 export async function runSuiteCommand(args: string[], cwd = process.cwd()): Promise<number> {
   const { values, positionals } = parseArgs({ args, allowPositionals: true, options: {

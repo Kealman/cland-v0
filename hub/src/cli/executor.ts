@@ -1,10 +1,7 @@
 import { hubDiscovery, readDiscovery } from '../project.ts';
 import { askHubFrame } from './socket-client.ts';
 
-export const EXECUTOR_USAGE = `  executor status [--json]  token presence, live droplet leases and today's cost
-  executor prepare [--report <topic>] [--json]  submit snapshot preparation
-  executor reap [--json]    delete orphaned and expired cland droplets
-`;
+export { EXECUTOR_USAGE } from './usage.ts';
 export async function runExecutor(args: string[], cwd = process.cwd()): Promise<number> {
   const json = args.includes('--json');
   const [sub, ...extra] = args.filter(a => a !== '--json');

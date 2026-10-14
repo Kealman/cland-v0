@@ -3,7 +3,7 @@ import { hubDiscovery, readDiscovery } from '../project.ts';
 import type { PushResult } from '../territory-push.ts';
 import { askHubFrame } from './socket-client.ts';
 
-export const PUSH_USAGE = '  push [--json]         fast-forward territory dev to root dev; Coordinator’s shell or human\n';
+export { PUSH_USAGE } from './usage.ts';
 export async function runPush(args: string[], cwd = process.cwd()): Promise<number> {
   const { values, positionals } = parseArgs({ args, allowPositionals: true, options: { json: { type: 'boolean' } } });
   if (positionals.length) throw new Error('usage: cland push [--json]');
