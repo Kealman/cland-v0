@@ -11,7 +11,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-14T13:03:50.133Z
-updated: 2026-10-14T14:06:50.314Z
+updated: 2026-10-14T14:09:44.875Z
 ---
 
 ## Question
@@ -27,3 +27,7 @@ Reaction on the web canvas (2026-10-14, thread on the Thread board): standing to
 ### human · 2026-10-14T14:06:50.314Z
 
 Reaction on the web canvas (2026-10-14, thread on the Sessions board): every group and block folds and the folded state is remembered per client. Applied to Sessions.dc.html (chevrons on Accounts and every group, Idle shown folded; canvas version 5) and recorded in spec v0.2 §3.2.
+
+### human · 2026-10-14T14:09:44.875Z
+
+Reaction on the web canvas (2026-10-14, thread on the Sessions board, the Accounts caption): over-informing. Removed the explanatory captions (the accounts caption, the group headers' layer notes); rule in spec v0.2 §3.2: headers carry a name and a count, explanations live behind ? and in tooltips.
