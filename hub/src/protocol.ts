@@ -615,16 +615,18 @@ export type SuiteStatus = {
 /** Milliseconds throughout. Null means there is no duration evidence yet. ETA is time until admission. */
 export type VerificationWaiter = {
   kind?: 'run' | 'hand run';
+  executor?: 'local' | 'droplet';
   id: string; session: string; item: string | null; mode: string; worktree: string;
   position: number; queuedAt: string | null; waitMs: number; etaMs: number | null; expectedRunMs: number | null;
 };
 export type VerificationHolder = {
+  executor?: 'local' | 'droplet'; machine?: { name: string; size: string; region: string };
   kind: 'run' | 'hand run'; id: string | null; session: string | null; item: string | null; mode: string | null;
   pid: number | null; worktree: string | null; since: string | null; runMs: number | null; etaMs: number | null;
 };
 export type DurationStats = { count: number; medianMs: number | null; p90Ms: number | null };
 export type VerificationQueue = {
-  version: 1; at: string; holder: VerificationHolder | null; waiters: VerificationWaiter[];
+  version: 1; at: string; holder: VerificationHolder | null; remote?: VerificationHolder[]; remoteBudget?: number; waiters: VerificationWaiter[];
   metrics: { window: number; count: number; wait: DurationStats; run: DurationStats };
 };
 

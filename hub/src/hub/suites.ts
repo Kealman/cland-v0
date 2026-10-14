@@ -20,7 +20,7 @@ import { selectPackageSuite, describeSelection, type SuiteSelection, type SuiteR
 
 export type SuiteActor = { name: string; sessionId: string; shell: true };
 export type SuiteJob = {
-  executor: ExecutorKind; fallback?: string; fallbackLogged?: boolean; remoteAcquireAttempted?: boolean; timedOut?: boolean; platform?: Platform; lease?: Lease; remoteLogStart?: number; nextPoll?: number;
+  executor: ExecutorKind; requestedExecutor?: ExecutorKind; fallback?: string; fallbackLogged?: boolean; remoteAcquireAttempted?: boolean; timedOut?: boolean; platform?: Platform; lease?: Lease; remoteLogStart?: number; nextPoll?: number;
   machine?: { name?: string; size?: string; region?: string; lifetimeMs: number | null; costUsd: number | null };
   id: string; mode: string; cwd: string; topic: string; to: string[]; actor: SuiteActor | null;
   head: string; branch: string; log: string; result: string; gate: string;
@@ -40,7 +40,7 @@ export type SuiteJob = {
 export type VerifyResult = { executor: ExecutorKind; id: string; state: NonNullable<SuiteJob['state']>; result: 'passed' | 'failed' | 'cancelled' | null; head: string; finished: string | null; artifact: string | null; cached?: SuiteJob['cached'] };
 const verifyResult = (job: SuiteJob): VerifyResult => ({ executor: job.executor, id: job.id, state: job.state ?? 'running', result: job.state !== 'finished' ? null : job.cancelled || job.requesterDied ? 'cancelled' : job.outcome ? job.outcome.code === 0 ? 'passed' : 'failed' : null, head: job.head, finished: job.finished ?? job.completedAt ?? null, artifact: job.artifact, ...(job.cached ? { cached: { ...job.cached } } : {}) });
 
-export type SuiteSchedulerOptions = { executor?: ExecutorKind; lifetimeMs?: number; runTimeoutMs?: number; runTimeout?: string; onFallback?: (job: Readonly<SuiteJob>, cause: string) => void; budget?: number; cacheMaxAgeMs?: number; locks?: string[]; requesterDead?: (actor: SuiteActor) => boolean; log?: LogFn; onQueue?: (queue: VerificationQueue) => void; onJob?: (job: Readonly<SuiteJob>) => void };
+export type SuiteSchedulerOptions = { executor?: ExecutorKind; lifetimeMs?: number; runTimeoutMs?: number; runTimeout?: string; onFallback?: (job: Readonly<SuiteJob>, cause: string) => void; budget?: number; remoteBudget?: number; cacheMaxAgeMs?: number; locks?: string[]; requesterDead?: (actor: SuiteActor) => boolean; log?: LogFn; onQueue?: (queue: VerificationQueue) => void; onJob?: (job: Readonly<SuiteJob>) => void };
 type HumanSlot = Omit<SuiteSlot, 'type'> & { queued: string; admittedAt?: string; left?: boolean };
 const HUMAN_GRACE_MS = 10_000;
 const KEY = 'suite-jobs';
@@ -90,6 +90,7 @@ export class Suites {
   #closed = false;
   readonly #launching = new Set<string>();
   readonly #budget: number;
+  readonly #remoteBudget: number;
   readonly #options: SuiteSchedulerOptions;
   readonly #humans = new Map<object, HumanSlot>();
   #lastQueue = '';
@@ -102,6 +103,7 @@ export class Suites {
   constructor(store: Store, root: string, report: (job: Readonly<SuiteJob>, checkpointArtifact: (id: string) => void) => Promise<void>, options: SuiteSchedulerOptions = {}) {
     this.#options = options;
     this.#budget = Math.min(options.budget ?? 1, 1);
+    this.#remoteBudget = options.remoteBudget ?? 4;
     if ((options.budget ?? 1) > 1) options.log?.({ event: 'verification-budget-capped', configured: options.budget, effective: this.#budget, reason: 'resource overlap remains disabled after T-215', reservedFor: 'T-218' });
     this.#store = store; this.#root = root; this.#report = report;
     this.#jobs = JSON.parse(store.meta(KEY) ?? '[]') as SuiteJob[];
@@ -218,7 +220,7 @@ export class Suites {
     authorize();
     // Recheck after I/O: concurrent submissions cannot both reserve a session.
     if (this.#jobs.some(job => this.#active(job) && (job.actor?.sessionId ?? 'human') === identity)) throw new Error('this session already has a suite queued or running');
-    const job: SuiteJob = { ...input, executor, integrated: input.integrated === true && branch === 'dev', queued: new Date().toISOString(), priority: input.priority ?? Number.MAX_SAFE_INTEGER, state: 'queued', locks: this.#options.locks ?? ['/tmp/cland-suite.lock', '/tmp/cland-suite-nvim.lock'], selection, tree, id, head, branch, log: join(dir, 'suite.log'), result: join(dir, 'result.json'), gate: join(dir, 'ready'), pid: null, started: null, outcome: null, artifact: null, reported: false, error: null };
+    const job: SuiteJob = { ...input, executor, requestedExecutor: executor, integrated: input.integrated === true && branch === 'dev', queued: new Date().toISOString(), priority: input.priority ?? Number.MAX_SAFE_INTEGER, state: 'queued', locks: this.#options.locks ?? ['/tmp/cland-suite.lock', '/tmp/cland-suite-nvim.lock'], selection, tree, id, head, branch, log: join(dir, 'suite.log'), result: join(dir, 'result.json'), gate: join(dir, 'ready'), pid: null, started: null, outcome: null, artifact: null, reported: false, error: null };
     // Persist the complete request before acknowledging it. No waiting worker exists.
     await writeFile(job.log, `Suite ${id} · ${input.mode}\n${describeSelection(selection)}\nWorktree ${input.cwd}\nBranch ${branch}\nHead ${head}\nQueued ${job.queued}\n`, { mode: 0o600 });
     if (cached) {
@@ -387,24 +389,47 @@ export class Suites {
     for (const job of this.#jobs) if (job.executor === 'droplet' && job.state === 'launching' && !job.outcome && Date.now() >= (job.nextPoll ?? 0) && !this.#launching.has(job.id)) this.#launchRemote(job);
     await Promise.all(this.#jobs.map(job => this.#inspectJob(job)));
     if (this.#closed) return;
-    const active = this.#jobs.filter(j => !j.reported && (j.state !== 'queued' && !j.outcome || j.outcome && j.outcome.code !== 0 && !j.cleaned)).length;
-    if (active >= this.#budget) return;
-    this.#compatibility = await this.#local.holder();
-    for (const [owner, slot] of this.#humans) {
-      if (slot.left || !slot.admittedAt) continue;
-      if (this.#compatibility?.holder?.token === slot.token) return;
-      if (Date.now() - Date.parse(slot.admittedAt) < HUMAN_GRACE_MS) return;
-      this.leave(owner, 'admission grace expired');
+    // Reserve launching jobs, including their asynchronous acquires, until release
+    // is confirmed. A receipt alone does not free a billable remote resource.
+    const active = this.#jobs.filter(j => j.state !== 'queued' && !j.cleaned && !j.reported);
+    let remoteActive = active.filter(j => j.executor === 'droplet').length;
+    let localActive = active.filter(j => j.executor === 'local').length;
+    // Human reservations expire even when no waiter needs the local slot.
+    if ([...this.#humans.values()].some(slot => !slot.left && slot.admittedAt)) {
+      this.#compatibility = await this.#local.holder();
+      for (const [owner, slot] of this.#humans) {
+        if (slot.left || !slot.admittedAt) continue;
+        if (this.#compatibility?.holder?.token === slot.token || Date.now() - Date.parse(slot.admittedAt) < HUMAN_GRACE_MS) localActive++;
+        else this.leave(owner, 'admission grace expired');
+      }
     }
-    const next = this.#ordered()[0];
-    if (!next || (!('actor' in next) || next.executor === 'local') && await this.#local.occupied() || this.#closed) return;
-    if ('actor' in next) {
-      if (next.state === 'queued' && !next.outcome) { if (next.executor === 'droplet') this.#launchRemote(next); else await this.#launch(next); }
-    } else if (!next.left && !next.admittedAt && [...this.#humans.values()].includes(next)) {
-      next.admittedAt = new Date().toISOString();
-      this.#options.log?.({ event: 'verification-human-admitted', id: next.id, session: 'human', cwd: next.cwd, head: next.head, mode: next.mode, waitMs: elapsed(next.queued, Date.now()), graceMs: HUMAN_GRACE_MS });
+    let localOccupied: boolean | undefined;
+    for (const next of this.#ordered()) {
+      if (this.#closed) return;
+      const job = 'actor' in next ? next : null;
+      if (job && (job.state !== 'queued' || job.outcome)) continue;
+      if (job?.executor === 'droplet' && remoteActive < this.#remoteBudget) {
+        remoteActive++;
+        this.#options.log?.({ event: 'verification-admitted', id: job.id, item: job.item ?? null, session: job.actor?.name ?? 'human', executor: 'droplet', remoteActive, remoteBudget: this.#remoteBudget });
+        this.#launchRemote(job);
+        continue;
+      }
+      if (localActive >= this.#budget) continue;
+      localOccupied ??= await this.#local.occupied();
+      if (localOccupied) continue;
+      if (this.#closed || job && (job.state !== 'queued' || job.outcome)) continue;
+      if (!job && ('actor' in next || next.left || next.admittedAt || ![...this.#humans.values()].includes(next))) continue;
+      localActive++;
+      if (job) {
+        if (job.executor === 'droplet') this.#fallback(job, 'remote budget full');
+        await this.#launch(job);
+      } else if (!('actor' in next) && !next.left && !next.admittedAt && [...this.#humans.values()].includes(next)) {
+        next.admittedAt = new Date().toISOString();
+        this.#options.log?.({ event: 'verification-human-admitted', id: next.id, session: 'human', cwd: next.cwd, head: next.head, mode: next.mode, waitMs: elapsed(next.queued, Date.now()), graceMs: HUMAN_GRACE_MS });
+      }
     }
   }
+
   #inspectJob(job: SuiteJob): Promise<void> {
     const pending = this.#inspecting.get(job.id);
     if (pending) return pending;
@@ -523,34 +548,49 @@ export class Suites {
     const metrics = { window: METRICS_WINDOW, count: recent.length, wait: durations(recent.map(j => j.waitMs)), run: durations(recent.map(j => j.runMs)) };
     // Cache hits are already completed at submission. They count in the metrics but must
     // not bias the estimate for an actual queued execution, which missed the cache.
-    const estimate = (mode: string | null) => durations(recent.filter(j => !j.cached && j.outcome?.code === 0 && j.admittedAt && (mode === null || (j.selection?.mode ?? j.mode) === mode)).map(j => j.runMs)).medianMs;
-    const active = this.#jobs.find(j => j.state !== 'queued' && (j.pid !== null || j.executor === 'droplet' || j.state === 'launching') && this.#active(j));
+    const estimate = (mode: string | null, executor: ExecutorKind) => durations(recent.filter(j => j.executor === executor && !j.cached && j.outcome?.code === 0 && j.admittedAt && (mode === null || (j.selection?.mode ?? j.mode) === mode)).map(j => j.runMs)).medianMs;
+    const occupying = this.#jobs.filter(j => j.state !== 'queued' && !j.cleaned && !j.reported);
+    const active = occupying.find(j => j.executor === 'local');
     const human = [...this.#humans.values()].find(s => !s.left && s.admittedAt && (!shim || shim.holder?.token === s.token));
+    const describe = (job: SuiteJob): VerificationHolder => {
+      const lease = job.executor === 'droplet' ? job.lease as DropletLease | undefined : undefined;
+      const runMs = elapsed(job.admittedAt, now), expected = estimate(job.selection?.mode ?? job.mode, job.executor);
+      return { kind: 'run', executor: job.executor, id: job.id, session: job.actor?.name ?? 'human', item: job.item ?? null, mode: job.selection?.mode ?? job.mode, pid: job.pid, worktree: job.cwd, since: job.admittedAt ?? null, runMs, etaMs: expected === null || runMs === null ? null : Math.max(0, expected - runMs), ...(lease ? { machine: { name: lease.name, size: lease.size, region: lease.region } } : {}) };
+    };
+    const remote = occupying.filter(j => j.executor === 'droplet').map(describe);
     let holder: VerificationHolder | null = null;
     if (shim && (!active || shim.holder?.pid !== active.pid)) {
-      holder = { kind: 'hand run', id: human?.id ?? null, session: human ? 'human' : null, item: null, mode: human?.mode ?? null, pid: shim.holder?.pid ?? null, worktree: shim.holder?.worktree ?? null, since: shim.since, runMs: elapsed(shim.since, now), etaMs: null };
+      holder = { kind: 'hand run', executor: 'local', id: human?.id ?? null, session: human ? 'human' : null, item: null, mode: human?.mode ?? null, pid: shim.holder?.pid ?? null, worktree: shim.holder?.worktree ?? null, since: shim.since, runMs: elapsed(shim.since, now), etaMs: null };
     } else if (human) {
-      holder = { kind: 'hand run', id: human.id, session: 'human', item: null, mode: human.mode, pid: human.pid, worktree: human.cwd, since: human.admittedAt!, runMs: elapsed(human.admittedAt, now), etaMs: null };
-    } else if (active) {
-      holder = { kind: 'run', id: active.id, session: active.actor?.name ?? 'human', item: active.item ?? null, mode: active.selection?.mode ?? active.mode, pid: active.pid, worktree: active.cwd, since: active.admittedAt ?? null, runMs: elapsed(active.admittedAt, now), etaMs: null };
+      holder = { kind: 'hand run', executor: 'local', id: human.id, session: 'human', item: null, mode: human.mode, pid: human.pid, worktree: human.cwd, since: human.admittedAt!, runMs: elapsed(human.admittedAt, now), etaMs: null };
+    } else if (active) holder = describe(active);
+    if (holder?.kind === 'hand run') {
+      const expected = estimate(holder.mode, 'local');
+      holder.etaMs = expected === null || holder.runMs === null || !shim?.holder ? null : Math.max(0, expected - holder.runMs);
     }
-    if (holder) {
-      const expected = estimate(holder.mode);
-      holder.etaMs = expected === null || holder.runMs === null || (holder.kind === 'hand run' && !shim?.holder) ? null : Math.max(0, expected - holder.runMs);
-    }
-    let eta = holder ? holder.etaMs : 0;
+    let localEta = holder ? holder.etaMs : 0;
+    const remoteEtas: Array<number | null> = [...remote.map(r => r.etaMs), ...Array.from({ length: Math.max(0, this.#remoteBudget - remote.length) }, () => 0)];
     const queued = this.#ordered();
     // A racing hand run can own the shim while the admitted worker waits for it.
     if (active && holder?.kind === 'hand run') queued.unshift(active);
-    return { version: 1, at: new Date(now).toISOString(), holder,
+    return { version: 1, at: new Date(now).toISOString(), holder, remote, remoteBudget: this.#remoteBudget,
       waiters: queued.map((j, i) => {
         const job = 'actor' in j ? j : null;
         const mode = job?.selection?.mode ?? j.mode;
-        const expectedRunMs = estimate(mode);
-        const waiter = { kind: job ? 'run' as const : 'hand run' as const, id: j.id, session: job?.actor?.name ?? 'human', item: job?.item ?? null, mode, worktree: j.cwd, position: i + 1, queuedAt: j.queued ?? null, waitMs: elapsed(j.queued, now) ?? 0, etaMs: eta, expectedRunMs };
-        eta = eta === null || expectedRunMs === null ? null : eta + expectedRunMs;
+        const executor = job?.requestedExecutor ?? job?.executor ?? 'local';
+        const effective = job?.executor ?? 'local';
+        const remoteIndex = remoteEtas.reduce<number>((best, eta, index) => best < 0 || eta !== null && (remoteEtas[best] === null || eta < remoteEtas[best]!) ? index : best, -1);
+        const remoteEta = remoteEtas[remoteIndex] ?? null;
+        const useRemote = effective === 'droplet' && (localEta === null || remoteEta !== null && remoteEta <= localEta);
+        const etaMs = useRemote ? remoteEta : localEta;
+        const expectedRunMs = estimate(mode, useRemote ? 'droplet' : 'local');
+        const waiter = { kind: job ? 'run' as const : 'hand run' as const, executor, id: j.id, session: job?.actor?.name ?? 'human', item: job?.item ?? null, mode, worktree: j.cwd, position: i + 1, queuedAt: j.queued ?? null, waitMs: elapsed(j.queued, now) ?? 0, etaMs, expectedRunMs };
+        const nextEta = etaMs === null || expectedRunMs === null ? null : etaMs + expectedRunMs;
+        if (useRemote) remoteEtas[remoteIndex] = nextEta;
+        else localEta = nextEta;
         return waiter;
       }), metrics };
   }
+
   async close(): Promise<void> { this.#closed = true; for (const owner of this.#humans.keys()) this.leave(owner, 'hub closing'); clearInterval(this.#timer); for (const id of this.#hostGates.keys()) this.#stopHostGate(id); await Promise.allSettled(this.#starting); await this.#checking; await Promise.allSettled(this.#launchWork); await this.#reaping; await Promise.allSettled(this.#inspecting.values()); }
 }

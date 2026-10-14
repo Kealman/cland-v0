@@ -38,16 +38,25 @@ The worker survives the caller's shell exiting. The hub keeps its run record acr
 
 Omitting the mode selects phases from the branch diff against freshly fetched `origin/dev`, including working changes. `all` or `--all` forces full. Integrated `dev`, shared or ambiguous changes, empty diffs and fetch failures run full. A package-local diff runs that package plus the cross-package smoke baseline; `hub` and `nvim` reduce only matching qualifying diffs. The duration line and report include the mode, reason and deciding files. See [phase rules and smoke baselines](../../hub/README.md#tests). Each run first executes `npm run typecheck`, then the package test script from the calling worktree. `--report` names the result topic; repeat `--to` to name recipients. With a session name in `--report`, the hub uses the caller's claimed item topic and addresses that session. Reporting uses the caller's stable session identity and current artifact/send permissions; an Implementer needs its own item topic or a topic with a delivered request.
 
-The hub persists the request, exact head, item, diff selection, enqueue time and priority in its database before acknowledging it. Admission gives the Coordinator's integrated dev requests first priority, then human `npm test` waiters in enqueue order, then the item rank captured at submission, then other requests in enqueue order. The local slot admits one run at a time; droplets have a separate `[verification] remote_budget` (default 4, this project's D27 build value 2). When remote slots are full, a droplet request may use a free local slot with the fallback warning; when both are full it waits. A busy local slot does not block available remote slots. The queue and its order survive restart; a known dead requester's queued run becomes one hub cancellation note to its original recipients. A disconnected spoke alone is not evidence of death.
+The hub persists the request, exact head, item, diff selection, enqueue time and priority in its database before acknowledging it. Admission gives the Coordinator's integrated dev requests first priority, then human `npm test` waiters in enqueue order, then the item rank captured at submission, then other requests in enqueue order. The local slot admits one run; `[verification].remote_budget` admits parallel
+droplet runs beside it (a positive integer, 4 by default; this project's D27 build value is 2). The scheduler walks the
+ordered queue past waiters whose slot is busy. Remote acquisition reserves a slot
+through confirmed release and each acquire checks the shared daily spend cap.
+When remote slots are full and the local slot is free, a droplet request falls back
+locally with a warn notice naming `remote budget <n>/<n> full` and a
+`verification-executor-fallback` record with cause `remote budget full`.
+`--executor local` and human hand runs use the local slot behind compatibility leases. The queue and its order survive restart; a known dead requester's queued run becomes one hub cancellation note to its original recipients. A disconnected spoke alone is not evidence of death.
 
-`cland verify queue [--json]` shows the `local:` holder, a `remote <used>/<budget>:`
-line per remote run (session, item, machine name, size, region and ETA), and ordered
-waiters with their executor, elapsed wait and estimated time until admission.
-While a droplet is being acquired its machine is shown as `acquiring`.
-The sessions panel follows hub queue events live.
+`cland verify queue [--json]` prints `local: <holder or none>`, then one
+`remote <active>/<budget>: <session> · <item> · droplet <name> <size> <region> ·
+since <t> · ETA <d>` line per remote run, then ordered waiters with their requested
+executor, elapsed wait and admission ETA. Acquiring machines are labelled
+`acquiring` until their lease is available. JSON keeps `holder` as the local
+holder and adds `remote`, `remoteBudget` and each waiter's `executor`. The sessions panel follows hub queue events live.
 `hub status --json` includes per-run wait/run timings and median/p90 over the last
 20 completions. Cache hits record zero timing; executed-run estimates use recent
-successful durations for the effective mode. Unknown history gives a null ETA.
+successful durations for the effective mode and executor. Remote durations
+include acquire time; remote holders do not delay local waiter estimates. Unknown history gives a null ETA.
 
 A green run may be reused for the identical committed candidate tree and effective
 mode. The candidate excludes only `.cland/tasks`, so tracker-only dev merges hit;

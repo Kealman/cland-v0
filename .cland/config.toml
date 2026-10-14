@@ -7,6 +7,8 @@ name = "v0"
 [verification]
 # Admission budget; the legacy compatibility lease remains an additional limit.
 budget = 1
+# D27: two parallel droplets during this build.
+remote_budget = 2
 lock_path = "/tmp/cland-suite.lock"
 # Reuse green candidate trees for this many minutes; 0 disables caching.
 cache_max_age_minutes = 1440

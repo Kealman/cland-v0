@@ -287,7 +287,7 @@ test('verify queue shows a hand holder, ordered waiters and unknown ETA; survive
     assert.equal(q.metrics.window, 20); assert.equal(q.metrics.run.count, 0);
     const text = await cland(f.root, 'verify', 'queue');
     assert.equal(text.code, 0, text.stderr);
-    assert.match(text.stdout, /holder: hand run/); assert.match(text.stdout, /1\. impl.*wait .*ETA unknown/);
+    assert.match(text.stdout, /local: hand run/); assert.match(text.stdout, /1\. impl.*wait .*ETA unknown/);
     const invalid = await cland(f.root, 'verify', 'queue', '--fresh');
     assert.notEqual(invalid.code, 0);
   };
@@ -1425,7 +1425,7 @@ test('a human package runner waits in the hub order and takes the compatibility 
   assert.equal((await f.queue()).holder?.session, 'human');
   const admitted = await cland(f.root, 'verify', 'queue');
   assert.equal(admitted.code, 0, admitted.stderr);
-  assert.match(admitted.stdout, /^holder: human ·/);
+  assert.match(admitted.stdout, /^local: human ·/);
   await writeFile(join(f.root, 'human-finish'), 'yes');
   assert.equal(await human.done, 0, human.output());
   await eventually('human slot left', async () => (await f.journal()).find(e => e.event === 'verification-human-left'));

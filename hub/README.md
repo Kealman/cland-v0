@@ -1707,14 +1707,28 @@ run's executor and platform. Older jobs without an executor read as `local`.
 **Executors.** `hub/src/executor/executor.ts` defines acquire, deliver, prepare,
 start, status, log, cancel, release and reap. The backend owns its durable lease's
 resource payload; detached starts outlive the hub and status reattaches after
-restart. `local` is the default and the only executor so far. The local backend
+restart. `local` is the default; `droplet` runs on a prepared DigitalOcean snapshot. The local backend
 owns the existing suite worker, compatibility slot and process cleanup; the hub
 shares the queue, cache, timings, verify card and report across executors.
 
 `[verification].budget` defaults to 1. Higher values are retained in config but
 capped at 1 with a `verification-budget-capped` log note. T-215 retains this
 conservative budget: only five hermetic hub files qualify for overlap, too little
-to justify overlapping process-heavy runs. The compatibility broker keeps both legacy locks as a fence, and a hand
+to justify overlapping process-heavy local runs. `[verification].remote_budget`
+is a positive integer, defaulting to 4, beside the local slot of one. The scheduler
+walks the same ordered queue, admitting droplet runs into free remote slots without
+checking the host's compatibility leases. A blocked local waiter does not hold up
+remote waiters behind it. When all remote slots are reserved and the local slot is
+free, a droplet request runs locally with one warn notice
+`verify <id>: remote budget <n>/<n> full; running locally` and a
+`verification-executor-fallback` journal record with cause `remote budget full`.
+`--executor local` always uses the local slot. Launching/acquiring jobs reserve
+remote slots through confirmed release; acquires proceed in parallel and each
+checks the shared daily spend cap. The provider also counts durable preparation
+and unconfirmed cleanup leases before permitting a create. `verification-admitted` records `remoteActive`
+and `remoteBudget` for each remote admission.
+
+The compatibility broker keeps both legacy locks as a fence, and a hand
 `npm test` or pre-V1 holder occupies admission. The worker takes a verified lease
 before typecheck; V1 package runners borrow it through all phases and publish
 recovery metadata in a unique `<lock>.runs/<token>.json` record as well as the
@@ -1785,9 +1799,13 @@ The human runner frames sit beside `suite.start`:
 | `{"type":"suite.slot","id":…, "mode":"full"|"hub-only"|"nvim-only", "cwd":…, "head":…, "pid":…, "token":…}` | `{id, admitted, locks, queue}`. First call registers a human waiter; repeated calls on the same socket poll it. Keep the connection open through the run. An expired reservation returns an error. `token` matches the runner's compatibility owner. |
 | `{"type":"suite.forced","id":…, "mode":…, "cwd":…, "head":…, "pid":…, "token":…}` | `{}` after journalling the bypass; no slot or lease is taken. |
 
-`cland verify queue [--json]` shows the holder (including compatibility **hand run**
-holders, labelled `human` for an admitted human slot), the scheduler's ordered
-waiters, elapsed waits and estimated time until admission. Integrated dev comes
+`cland verify queue [--json]` prints `local: <holder or none>` (including
+compatibility **hand run** holders, labelled `human` for an admitted human slot),
+one `remote <active>/<budget>: <session> · <item> · droplet <name> <size> <region> ·
+since <t> · ETA <d>` line per remote run, then the ordered waiters with their
+requested executor, elapsed wait and admission ETA. A machine is labelled
+`acquiring` until its lease is available. JSON keeps `holder` as the local holder
+and adds `remote`, `remoteBudget` and `waiters[].executor`. Integrated dev comes
 first, then human `npm test` waiters in enqueue order, then ranked items, then
 other runs in enqueue order. Its human-facing form is the sessions panel's
 one-line `verify:` summary (holder, run time, waiting count and next ETA). Enter on the summary
@@ -1800,7 +1818,9 @@ queue read refreshes ownership immediately. Status metadata and recorded timing
 metrics never wait for OS probes. JSON `version: 1` uses
 milliseconds, explicit nulls for unknown estimates, and ordered `waiters` with
 one-based positions. `holder.etaMs` estimates remaining execution;
-`waiters[].etaMs` estimates time until each admission. A cache hit completes
+`waiters[].etaMs` estimates time until each admission. Estimates use recent
+successful executions of the same mode and executor; remote duration includes
+acquire time. Remote holders do not add delay to local waiter estimates. A cache hit completes
 without entering this queue even when a hand run occupies the compatibility slot.
 
 Each run's status includes `admittedAt`, `completedAt`, `waitMs` and `runMs`.

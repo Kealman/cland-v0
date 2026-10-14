@@ -151,6 +151,7 @@
     "hub/test/account-limits.test.ts": "machine",
     "hub/test/accounts.test.ts": "machine",
     "hub/test/claude-code-accounts.test.ts": "machine",
-    "hub/test/executor-safety.test.ts": "machine"
+    "hub/test/executor-safety.test.ts": "machine",
+    "hub/test/suite-remote-budget.test.ts": "machine"
   }
 }

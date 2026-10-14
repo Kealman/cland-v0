@@ -9,7 +9,7 @@ export const SUITE_USAGE = `  verify [all|hub|nvim] [--all] [--fresh] [--executo
   verify cancel [<suite id>] [--json]
                   cancel your active suite (human: any explicit id); post its cancelled result
   verify queue [--json]
-                  show holder, ordered waiters, waits, admission ETA and recent timing metrics
+                  show local holder, remote runs, executor waiters, waits, admission ETA and recent timing metrics
 `;
 
 export async function runSuiteCommand(args: string[], cwd = process.cwd()): Promise<number> {
@@ -24,8 +24,9 @@ export async function runSuiteCommand(args: string[], cwd = process.cwd()): Prom
     if (!d) throw new Error('no hub runs for this project — run `cland hub start`');
     const q = await askHubFrame(d, { type: 'suite.queue' }, 15000) as VerificationQueue;
     const duration = (ms: number | null) => ms === null ? 'unknown' : `${Math.ceil(ms / 1000)}s`;
-    const lines = [`holder: ${q.holder ? `${q.holder.kind === 'hand run' && q.holder.session !== 'human' ? 'hand run' : q.holder.session} · pid ${q.holder.pid ?? 'unknown'} · ${q.holder.worktree ?? 'worktree unknown'} · since ${q.holder.since ?? 'unknown'} · ETA ${duration(q.holder.etaMs)}` : 'none'}`,
-      ...q.waiters.map(w => `${w.position}. ${w.session} · ${w.item ?? w.id} · ${w.mode} · wait ${duration(w.waitMs)} · ETA ${duration(w.etaMs)}`),
+    const lines = [`local: ${q.holder ? `${q.holder.kind === 'hand run' && q.holder.session !== 'human' ? 'hand run' : q.holder.session} · pid ${q.holder.pid ?? 'unknown'} · ${q.holder.worktree ?? 'worktree unknown'} · since ${q.holder.since ?? 'unknown'} · ETA ${duration(q.holder.etaMs)}` : 'none'}`,
+      ...(q.remote ?? []).map(r => `remote ${q.remote?.length ?? 0}/${q.remoteBudget ?? 4}: ${r.session} · ${r.item ?? r.id} · droplet ${r.machine?.name ?? 'acquiring'} ${r.machine?.size ?? 'unknown'} ${r.machine?.region ?? 'unknown'} · since ${r.since ?? 'unknown'} · ETA ${duration(r.etaMs)}`),
+      ...q.waiters.map(w => `${w.position}. ${w.session} · ${w.item ?? w.id} · ${w.executor ?? 'local'} · ${w.mode} · wait ${duration(w.waitMs)} · ETA ${duration(w.etaMs)}`),
       `last ${q.metrics.window} runs (${q.metrics.count} recorded): wait median ${duration(q.metrics.wait.medianMs)} / p90 ${duration(q.metrics.wait.p90Ms)}; run median ${duration(q.metrics.run.medianMs)} / p90 ${duration(q.metrics.run.p90Ms)}`];
     process.stdout.write((values.json ? JSON.stringify(q) : lines.join('\n')) + '\n');
     return 0;
