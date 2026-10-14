@@ -11,7 +11,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-14T13:03:48.458Z
-updated: 2026-10-14T14:25:09.273Z
+updated: 2026-10-14T15:07:12.460Z
 ---
 
 ## Destination
@@ -31,6 +31,7 @@ Charted on 2026-10-14 in the cland-design session from the human's direction of 
 - The web canvas: a Design artifact with the shell, the explorer and card, a thread, the inbox and the sessions (Q-404, .cland/tasks/Q-404-the-web-canvas-a-design-artifact-with.md): five boards on https://claude.ai/artifact/Cqc3KRR8tXG1yd395B6vf6 accepted with proposals P1 to P25 and four canvas reactions (topics groups, folds remembered, no explanatory prose, Board, Graph and Plan as views of Items); spec §3.2, §3.4, §3.6; sources in docs/design/web/.
 - The protocol extension: the WebSocket entry, several human clients, snapshot and deltas, history pages (Q-407, .cland/tasks/Q-407-the-protocol-extension-the-websocket.md): the edge in the hub on ws with a one-time link and a per-port cookie, Host and Origin checks, client hellos only; the cookie's authority minus hub stop and restart, release and artifacts from arbitrary paths; snapshot with epoch and sequence, numbered deltas, resume or a fresh snapshot, history pages; hub-computed fields and read marks per human; approvals relayed where the harness allows, Claude Code's in the TUI; spec §3.3, §3.7, §3.8.
 - Threads, approvals and the composer in the web: the final shape (Q-408, .cland/tasks/Q-408-threads-approvals-and-the-composer-in.md): one ask record shown in the inbox and the thread with the same keys, decline never on Escape; folded runs open in place with a hub-built fold line; Enter sends a line, ⌘Enter always, queued messages with Withdraw, drafts survive; notifications for now items only, never while looking; spec §3.4, §3.6.
+- Phone-width mockups: the inbox, the sessions, a thread, answering an ask (Q-406, .cland/tasks/Q-406-phone-width-mockups-the-inbox-the-sessions.md): four boards accepted with proposals P26 to P42 (More in the bottom bar, two-line session rows, the accounts strip, the queue sheet, the touch composer, the ask sheet with Decline on the label row, the disconnected strip); decided: declining is an answer with a reason, answered asks stay folded until the human leaves the inbox, plan approval on the desktop only, TUI-bound approvals marked, sign-in by QR with a 30-day cookie, notification switches in More and Accounts; spec §3.4, §3.6, §3.7.
 
 ## Not yet specified
 
