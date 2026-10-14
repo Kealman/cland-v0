@@ -3,7 +3,7 @@ id: T-391
 kind: task
 title: "Lazy CLI imports: cland loads only the subcommand it runs, with its usage text in a light module and a module-count guard test"
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 6
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-248
 branch: t/T-391-lazy-cli-imports-cland-loads-only-the
 created: 2026-10-14T12:28:10.700Z
-updated: 2026-10-14T19:57:19.315Z
+updated: 2026-10-14T20:34:31.390Z
 ---
 
 ## Summary
@@ -48,24 +48,30 @@ This is a real-process test with no hub, so it runs in the `machine` shard; add 
 - [x] C1. `cland --help` and `cland --version` load at most 10 `hub/src` modules (139 today), measured by the guard test.
   - done: impl-391 · 2026-10-14T12:36:28.299Z
   - verified: rev-26 [reviewer] · run rev-20261014-391-final-1 · 2026-10-14T17:11:26.994Z · commit 4d459f99be50d60a9aa7f7ddbbaebe81c93efc36
+  - verified: rev-26 [reviewer] · run rev-20261014-391-final-2 · 2026-10-14T20:34:26.495Z · commit 695f89f4d12b3a28e6cba83014d138b812e60805
 - [x] C2. Each subcommand loads only its own closure, and the guard test fails when a static import of another subcommand module is added to `hub/bin/cland.ts`.
   - done: impl-391 · 2026-10-14T12:36:29.113Z
   - verified: rev-26 [reviewer] · run rev-20261014-391-final-1 · 2026-10-14T17:11:26.994Z · commit 4d459f99be50d60a9aa7f7ddbbaebe81c93efc36
+  - verified: rev-26 [reviewer] · run rev-20261014-391-final-2 · 2026-10-14T20:34:26.495Z · commit 695f89f4d12b3a28e6cba83014d138b812e60805
 - [x] C3. Measured on an idle machine: `cland --help` takes at most 50 ms (median of 20, about 90 ms today) and `cland task list --json` against a running hub is at least 30 ms faster (median of 20); before/after numbers are posted on the item.
   - done: impl-391 · 2026-10-14T12:36:29.916Z
   - verified: rev-26 [reviewer] · run rev-20261014-391-final-1 · 2026-10-14T17:11:26.994Z · commit 4d459f99be50d60a9aa7f7ddbbaebe81c93efc36
+  - verified: rev-26 [reviewer] · run rev-20261014-391-final-2 · 2026-10-14T20:34:26.495Z · commit 695f89f4d12b3a28e6cba83014d138b812e60805
 - [x] C4. Every subcommand's help text, exit codes and error lines are unchanged; existing CLI tests pass without changed assertions.
   - done: impl-391 · 2026-10-14T12:36:30.492Z
   - verified: rev-26 [reviewer] · run rev-20261014-391-final-1 · 2026-10-14T17:11:26.994Z · commit 4d459f99be50d60a9aa7f7ddbbaebe81c93efc36
+  - verified: rev-26 [reviewer] · run rev-20261014-391-final-2 · 2026-10-14T20:34:26.495Z · commit 695f89f4d12b3a28e6cba83014d138b812e60805
 - [x] C5. An import failure inside a subcommand reports `cland: <message>` with that subcommand's existing exit code, proven by a test.
   - done: impl-391 · 2026-10-14T12:36:31.003Z
   - verified: rev-26 [reviewer] · run rev-20261014-391-final-1 · 2026-10-14T17:11:26.994Z · commit 4d459f99be50d60a9aa7f7ddbbaebe81c93efc36
+  - verified: rev-26 [reviewer] · run rev-20261014-391-final-2 · 2026-10-14T20:34:26.496Z · commit 695f89f4d12b3a28e6cba83014d138b812e60805
 - [x] C6. `hub/README.md` (the CLI section) notes that subcommands load lazily and that the guard test holds the counts.
   - done: impl-391 · 2026-10-14T12:36:31.764Z
   - verified: rev-26 [reviewer] · run rev-20261014-391-source-1 · 2026-10-14T12:38:12.615Z · commit 4d459f99be50d60a9aa7f7ddbbaebe81c93efc36
   - verified: rev-26 [reviewer] · run rev-20261014-391-final-1 · 2026-10-14T17:11:26.994Z · commit 4d459f99be50d60a9aa7f7ddbbaebe81c93efc36
   - verified: rev-26 [reviewer] · run rev-20261014-391-source-2 · 2026-10-14T18:21:53.688Z · commit 8bf2500e10ae8350b583b1a997674554c95af2cd
   - verified: rev-26 [reviewer] · run rev-20261014-391-source-3 · 2026-10-14T19:57:19.315Z · commit 695f89f4d12b3a28e6cba83014d138b812e60805
+  - verified: rev-26 [reviewer] · run rev-20261014-391-final-2 · 2026-10-14T20:34:26.496Z · commit 695f89f4d12b3a28e6cba83014d138b812e60805
 
 ## Comments
 
@@ -143,3 +149,16 @@ scope: delta
 No high/medium findings. Shared T-439 a2f60f7a changed lines match the local pick exactly. nvim/test/explorer-card.test.ts:247 polls actual view/cursor/card drawn state while yielding for queued input; first navigation waits for composer/thread/reference readiness. All original assertions and five-second bounds preserved. Prior rev-23 T-439 source/final verdicts and A-2543 targeted 15/15 checked. T-391 CLI entry, usage, guards/counter and README unchanged from source-clear 8bf2500e. C6 renewed; C1–C5 final execution settlement awaits accepted new-head no-mode local verify. Earlier e51b85d9/A-2541 remains failed. Evidence A-2544: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2544-t-391-source-clear-at-695f89f4-unchanged-shared-t-439-readiness-fix.md.
 
 Criteria: C6 verified.
+
+### rev-26 · 2026-10-14T20:34:26.496Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261014-391-final-2
+commit: 695f89f4d12b3a28e6cba83014d138b812e60805
+scope: evidence
+
+No high/medium findings. Accepted same-head local auto/full 6e61b4b3/A-2552 passes typechecks and 2042/2042 (37 free,1618 hub machine,387 Neovim), zero fail/cancel/skip/todo. CLI counts/import-failure guards and gi case pass. Source A-2500/A-2544 retained; prior e51b85d9/A-2541's unrelated gi failure remains preserved and is addressed by the reviewed T-439 shared pick. C3 uses A-2353 and Coordinator's paired-load interpretation; absolute idle timing remains epic QA. C1–C6 checked. Evidence A-2554: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2554-t-391-final-clear-at-695f89f4-full-local-verification-and-shared-readiness-fix-c.md.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.

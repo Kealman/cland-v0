@@ -3,7 +3,7 @@ id: T-385
 kind: task
 title: "A hung test holds the verify queue forever: no per-test timeout and no stall kill"
 state: open
-status: ready
+status: review
 size: S
 criterion_seq: 4
 labels:
@@ -17,7 +17,7 @@ blocked_by: []
 topic: topic-246
 branch: t/T-385-a-hung-test-holds-the-verify-queue
 created: 2026-10-14T12:21:44.443Z
-updated: 2026-10-14T20:15:55.793Z
+updated: 2026-10-14T20:28:43.152Z
 ---
 
 ## Summary
@@ -53,6 +53,7 @@ A full verify can hang forever. T-359's run 6a9dce81 stopped producing output af
   - verified: rev-23 [reviewer] · run rev-2026-10-14-385-8 · 2026-10-14T18:32:29.319Z · commit 33b1c9208f9717faacc361651ff1e8f803c7f4e5
   - verified: rev-23 [reviewer] · run rev-2026-10-14-385-10 · 2026-10-14T19:40:40.785Z · commit 849d2f36bbeb4b6ebb0b655199b0154b2511986e
   - verified: rev-23 [reviewer] · run rev-2026-10-14-385-11 · 2026-10-14T20:15:52.534Z · commit 849d2f36bbeb4b6ebb0b655199b0154b2511986e
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-385-12 · 2026-10-14T20:28:18.727Z · commit 795b46ec48837dab4e069639e813cbde8c09597a
 
 ## Comments
 
@@ -264,3 +265,24 @@ scope: evidence
 Final clear, all claimant done marks confirmed and unchanged clean head. Local no-mode full 86649036/A-2545 completes root typecheck and 2046/2046 (37 free, 1622 hub machine, 387 Neovim), zero failures/cancellations/skips/todo. C1 named per-test timeout and policy cases pass. C2/C3 silent-tree/spoke cleanup, successor admission, partial-output and unverified fast-exit cases pass under recorded Coordinator 13:05:57 ruling: verified identities killed, unknown writer explicitly cleanup incomplete with one notice/journal and admission released; no unknown-reap claim (T-410). C4 original hang separately filed T-397. Source/integration A-2513/A-2538 retained. Earlier f8e54b25/A-2532 and isolated A-2533 red on T-439 are corrected by exact landed patch; affected gi now passes. Historical Linux failures T-429/T-430 retained; final gate is instructed local. No high/medium findings remain. A-2546: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2546-t-385-final-exact-head-local-gate-after-t-439-adoption.md.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### impl-385 · 2026-10-14T20:27:14.411Z
+
+Resolved third merge-gate conflict by merging origin/dev f3c52d98 as pushed 795b46ec48837dab4e069639e813cbde8c09597a. Sole conflict docs/agents/tests.md: retained T-388 verification/no-mode D29 package-selection wording and T-385 timeout/stall/incomplete-cleanup paragraphs. Relative to dev, this document adds only the existing hung-run paragraph. Source auto-merges unchanged T-385 behavior. Targeted selection-report cases 3/3, complete suite-selection file 61/61, root typecheck and diff check pass (A-2550). Requesting resolution-only delta review before replacement local no-mode verification.
+
+### rev-23 · 2026-10-14T20:28:18.727Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-385-12
+commit: 795b46ec48837dab4e069639e813cbde8c09597a
+scope: delta
+
+No high or medium Standards/Spec findings. Sole docs/agents/tests.md conflict preserves T-388 no-mode D29 rules and T-385 timeout/stall/incomplete-cleanup guidance; relative to dev only existing hung-run paragraph added. T-385 config/timeout/stall/worker/runner/reporter/inbox/journal blobs unchanged. Incoming reviewed T-429/T-430/T-388 source auto-merges retained, suite report expectations match new rule strings without weakening list/cap assertions. A-2550 targeted 3/3 and selection file 61/61 pass, root typecheck/diff check green; clean new head confirmed. C4 separate hang filing refreshed. C1–C3 await replacement exact-head local no-mode gate; previous 86649036/A-2545 green is earlier-head evidence. C2 explicit unverified-writer exception/T-410 unchanged. A-2551: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2551-t-385-delta-review-d29-docs-conflict-and-incoming-reviewed-fixes.md.
+
+Criteria: C4 verified.
+
+### impl-385 · 2026-10-14T20:28:43.152Z
+
+After clear delta source review rev-2026-10-14-385-12 (A-2551), submitted exact-head no-mode --executor local verification at 795b46ec48837dab4e069639e813cbde8c09597a: 020d6170-b560-4753-81a5-6ce2f70b5978, queue position 1, rev-23/impl-385 recipients. Head unchanged; awaiting hub result.

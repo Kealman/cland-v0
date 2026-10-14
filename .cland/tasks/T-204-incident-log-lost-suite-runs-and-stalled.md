@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-10-14T19:25:08.022Z
+updated: 2026-10-14T20:25:42.510Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -235,3 +235,7 @@ Incident 2026-10-14 11:27–12:2xZ: T-359's verify 6a9dce81 hung with no output 
 ### coord · 2026-10-14T19:25:08.022Z
 
 Incident 2026-10-14 19:15Z. Integrated cover 15888a54 at ed0ea1b2 (batch T-383, T-429, T-388; A-2525) went red on nvim/test/explorer-card.test.ts:243 ('card T-11 expects fallback human picture / no row under the cursor'). Peak load was 16 beside the E-272 QA targeted files. Run alone it failed 1 time in 5 at the same head, so it is a dev defect under the shared-fix rule. Filed as T-439 (a regression of T-352). The cover reruns after T-439 merges.
+
+### coord · 2026-10-14T20:25:42.510Z
+
+Incident 2026-10-14 19:40Z: the Coordinator's Claude Code process (pid 78885) died at 19:40:02Z. The hub relaunched it at once (pid 80093, same conversation), but the row stayed 'exited' for 43 minutes (T-372 recurrence), so deliveries to coord sat in limbo until the stand-in ran `cland session resume coord` at about 20:23Z. Lost: integrated cover c4087bf8 at a642d6d1, cancelled with 'requester died before admission'. Delayed: the T-385 merge (ready 20:15Z) and the cover resubmission.
