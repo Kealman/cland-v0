@@ -36,6 +36,7 @@ import { addUsage } from './usage.ts';
 import { processStarted } from './processes.ts';
 import { endProcess } from '../system-processes.ts';
 import { turnError } from './turn-error.ts';
+import { claudeWindows } from '../accounts/limits.ts';
 import { envelope, type AdapterHost, type Capabilities, type HarnessAdapter, type HarnessProcess, type InjectFrame, type Interpretation, type LaunchPolicy, type Permissions, type ResumeResult, type SpawnRequest } from './contract.ts';
 
 
@@ -128,6 +129,8 @@ export function stateOfAgent(entry: AgentEntry): SessionState {
 export function interpret(event: string, payload: Record<string, unknown>): Interpretation {
   const ids = (text: unknown): string[] => (typeof text === 'string' ? [...text.matchAll(/msg_id="([^"]+)"/g)].map((m) => m[1] as string) : Array.isArray(payload.ids) ? payload.ids.filter((x): x is string => typeof x === 'string') : []);
   switch (event) {
+    case 'mod-measure':
+      return { rateLimits: { windows: claudeWindows(payload.rateLimits) } };
     case 'subagent-start':
       return { subagent: {
         ...(typeof payload.agent_id === 'string' ? { id: payload.agent_id } : {}),

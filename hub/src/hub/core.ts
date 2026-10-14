@@ -1,3 +1,5 @@
+import { AccountLimits, type AccountReading } from '../accounts/limits.ts';
+import { readAccounts } from '../accounts/registry.ts';
 import type { Ladder } from '../tracker/kinds.ts';
 import { parseItemReference } from '../tracker/prefixes.ts';
 import { normalizeId, idNumber } from '../tracker/item.ts';
@@ -239,7 +241,8 @@ export class HubCore {
   readonly #processItems = new Map<string, string | null>();
   readonly #artifactStates = new Map<string, Artifact['status']>();
   readonly #processFacts = new Map<string, Pick<HarnessProcessView, 'status' | 'role' | 'harness' | 'model' | 'account'>>();
-  readonly #usageRecords = new Map<string, { usage: Pick<SessionUsage, 'total' | 'rateLimits'>; final: boolean }>();
+  readonly accountLimits: AccountLimits;
+  readonly #usageRecords = new Map<string, { usage: Pick<SessionUsage, 'total' | 'rateLimits' | 'rateLimitsByLimitId'>; final: boolean }>();
   #publishedPresence = '[]';
   #presenceImmediate: NodeJS.Immediate | null = null;
   #items: TopicItems | null;
@@ -262,6 +265,7 @@ export class HubCore {
     this.#now = options.now ?? (() => new Date());
     this.#log = options.log ?? (() => {});
     this.#store = options.store ?? new Store();
+    this.accountLimits = new AccountLimits({ read: key => this.#store.meta(key), write: (key, value) => this.#store.setMeta(key, value) });
     this.#eventWindowMs = options.eventWindowMs ?? 60_000;
     this.#roles = options.roles ?? null;
     this.crew = options.crew;
@@ -743,6 +747,14 @@ export class HubCore {
     });
   }
 
+  async publishAccountLimits(reading: AccountReading): Promise<void> {
+    if (!this.accountLimits.update(reading)) return;
+    this.#log({ event: 'account-limits', ...reading });
+    const registry = await readAccounts();
+    const account = registry.accounts.find(a => a.name === reading.account) ?? { name: reading.account, harness: reading.harness, path: null, variable: reading.harness === 'codex' ? 'CODEX_HOME' : 'CLAUDE_CONFIG_DIR' };
+    if (!this.#closed) this.#emit({ type: 'account', account: this.accountLimits.view(account) });
+  }
+
   publishUsage(session: string, sessionId: string, usage: SessionUsage): void {
     if (this.#processFacts.get(sessionId)?.status !== 'running') return;
     this.#recordUsage(session, sessionId, usage, false);
@@ -768,8 +780,8 @@ export class HubCore {
   #recordUsage(session: string, sessionId: string, reported: SessionUsage | undefined, final: boolean): void {
     const previous = this.#usageRecords.get(sessionId);
     if (previous?.final) return;
-    const usage = reported ? { ...(reported.total ? { total: reported.total } : {}), ...(reported.rateLimits ? { rateLimits: reported.rateLimits } : {}) } : previous?.usage;
-    if (!usage || (!usage.total && !usage.rateLimits)) return;
+    const usage = reported ? { ...(reported.total ? { total: reported.total } : {}), ...(reported.rateLimits ? { rateLimits: reported.rateLimits } : {}), ...(reported.rateLimitsByLimitId ? { rateLimitsByLimitId: reported.rateLimitsByLimitId } : {}) } : previous?.usage;
+    if (!usage || (!usage.total && !usage.rateLimits && !usage.rateLimitsByLimitId)) return;
     if (!final && isDeepStrictEqual(previous?.usage, usage)) return;
     const snapshot = structuredClone(usage);
     const facts = this.#processFacts.get(sessionId);

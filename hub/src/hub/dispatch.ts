@@ -1242,7 +1242,7 @@ export class Dispatcher {
       }
       switch (frame.type) {
         case 'account.list':
-          later('account.list', readAccounts().then(value => ({ type: 'result', id: frame.id, ok: true, value }), error => Dispatcher.#failure(frame.id, error)));
+          later('account.list', readAccounts().then(registry => ({ type: 'result', id: frame.id, ok: true, value: core.accountLimits.list(registry) }), error => Dispatcher.#failure(frame.id, error)));
           break;
         case 'suite.queue':
           if (!this.#suites) return peer.send(Dispatcher.#failure(frame.id, new Error('no verification scheduler')));

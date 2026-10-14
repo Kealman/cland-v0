@@ -243,6 +243,7 @@ export type HubEvent =
   /** Failed launch supervision changed; no accepted process row is implied. */
   | { type: 'session.cleanup'; sessionId: string; state: 'pending stop' | 'settled' }
   /** Latest usage totals, coalesced per launch; old launches must never update a new row under the same name. */
+  | { type: 'account'; account: import('./accounts/limits.ts').AccountView }
   | { type: 'session.usage'; session: string; sessionId: string; usage: SessionUsage }
   /** A new message in a topic: the human's, an agent's. */
   | { type: 'message'; topic: TopicRef; message: TopicMessage }
@@ -670,6 +671,8 @@ export type SessionUsage = {
   /** Codex's original token report, including its context window. */
   tokens?: Record<string, unknown>;
   rateLimits?: Record<string, unknown>;
+  rateLimitsByLimitId?: Record<string, unknown>;
+  rateLimitsAt?: string;
 };
 
 /** A row of the hub's process table as clients see it. */

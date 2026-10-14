@@ -1,3 +1,4 @@
+import { codexWindows, type AccountReading } from '../accounts/limits.ts';
 import { artifactEntry } from '../hub/artifact-folder.ts';
 // The hub's side of the adapters: launching sessions, the process table, each session's state, and the
 // delivery pipeline's last stage. Transport-free; `./requests.ts` puts frames on it.
@@ -98,6 +99,9 @@ export class Sessions {
   readonly #unhello: () => void;
   /** While the hub vacates a dead session's role: the process table keeps the role a relaunch takes back. */
   #vacating = false;
+  readonly #pendingLimits = new Map<string, AccountReading>();
+  readonly #limitsPublishing = new Set<string>();
+  readonly #limitsPublishedAt = new Map<string, number>();
   readonly #usageTimers = new Map<string, ReturnType<typeof setTimeout>>();
   readonly #unprocess: () => void;
   #closed = false;
@@ -454,15 +458,40 @@ export class Sessions {
   }
 
   #usageChanged(sessionId: string): void {
+    const p = this.#table.bySessionId(sessionId);
+    const usage = p && this.#adapters.get(p.harness)?.usage?.(p);
+    if (p?.harness === 'codex' && usage?.rateLimitsAt) this.#queueLimits(p, codexWindows(usage.rateLimits, usage.rateLimitsByLimitId), usage.rateLimitsAt);
     if (this.#usageTimers.has(sessionId)) return;
     const timer = setTimeout(() => {
       this.#usageTimers.delete(sessionId);
       const p = this.#table.bySessionId(sessionId);
       const usage = p && this.#adapters.get(p.harness)?.usage?.(p);
+      if (p?.harness === 'codex' && usage?.rateLimitsAt) this.#queueLimits(p, codexWindows(usage.rateLimits, usage.rateLimitsByLimitId), usage.rateLimitsAt);
       if (p && usage) this.#core.publishUsage(p.name, sessionId, usage);
+      if (p) {
+        const account = p.account ?? `default:${p.harness}`;
+        const reading = this.#pendingLimits.get(account);
+        if (reading) {
+          if (this.#limitsPublishing.has(account) || Date.now() - (this.#limitsPublishedAt.get(account) ?? 0) < USAGE_EVENT_MS) this.#usageChanged(sessionId);
+          else {
+            this.#pendingLimits.delete(account);
+            this.#limitsPublishing.add(account);
+            void this.#core.publishAccountLimits(reading).finally(() => {
+              this.#limitsPublishing.delete(account);
+              this.#limitsPublishedAt.set(account, Date.now());
+            });
+          }
+        }
+      }
     }, USAGE_EVENT_MS);
     timer.unref();
     this.#usageTimers.set(sessionId, timer);
+  }
+
+  #queueLimits(p: HarnessProcess, windows: AccountReading['windows'], at: string): void {
+    const account = p.account ?? `default:${p.harness}`;
+    const previous = this.#pendingLimits.get(account);
+    if (!previous || Date.parse(previous.at) <= Date.parse(at)) this.#pendingLimits.set(account, { account, harness: p.harness, windows, at, source: { kind: 'session', session: p.name } });
   }
 
   list(archived = false): HarnessProcessView[] {
@@ -1215,13 +1244,17 @@ export class Sessions {
       adapter.noteUsage?.(p, meaning.usage);
       this.#usageChanged(p.sessionId);
     }
+    if (meaning.rateLimits) {
+      this.#queueLimits(p, meaning.rateLimits.windows, meaning.rateLimits.at ?? new Date(frame.at ?? Date.now()).toISOString());
+      this.#usageChanged(p.sessionId);
+    }
     if (meaning.turnError) {
       const error = meaning.turnError;
       if (meaning.failureAudience !== 'senders') this.#turnFailed(p.sessionId, error, []);
       // A failure may beat its input's confirmation. The adapter reconciles them by harness identity.
       if (meaning.failureMessages) void meaning.failureMessages.then((messages) => this.#notifyTurnSenders(p.sessionId, error, messages, meaning.failureDedupe));
     }
-    if (!meaning.state) return { applied: Boolean(meaning.model || meaning.subagent) };
+    if (!meaning.state) return { applied: Boolean(meaning.model || meaning.subagent || meaning.usage || meaning.rateLimits) };
     const applied = this.#signal(p.sessionId, { state: meaning.state, source: frame.event.startsWith('mod-') ? 'mod' : 'hook', at: frame.at ?? Date.now(), ...(meaning.approvalCommand !== undefined ? { approvalCommand: meaning.approvalCommand } : {}) }, true);
     return { applied, state: this.#core.sessionState(p.sessionId) };
   }

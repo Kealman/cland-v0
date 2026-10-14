@@ -310,6 +310,7 @@ async function runSession(id: string): Promise<number> {
           child.on('error', reject);
           child.on('close', (code) => {
             clearTimeout(timer);
+            if (argv[3] === 'mod-measure') log(`mod-measure posted: ${init.stdin}`);
             if (stderr.trim()) log(`process.run ${argv.slice(2, 4).join(' ')}: ${stderr.trim()}`);
             resolve({ exitCode: code ?? 1, stdout, stderr });
           });
@@ -369,11 +370,20 @@ async function runSession(id: string): Promise<number> {
     },
     ui: { log: (line: string) => log(`ui.log ${line}`), status: () => {}, toast: () => {} },
   };
+  let measuredLimits = '[]';
   const dispatch = async (event: string, e: Record<string, unknown>, core: (e: Record<string, unknown>) => unknown) => {
     const chain = modHooks.get(event) ?? [];
     const at = (i: number) => async (input: Record<string, unknown>): Promise<unknown> => (i < chain.length ? (chain[i] as Hook)($, input, at(i + 1)) : core(input));
     try {
-      return await at(0)(e);
+      const result = await at(0)(e);
+      if (event === 'turn.complete') {
+        const rateLimits = readJson<unknown[]>(join(env.CLAUDE_CONFIG_DIR || join(env.HOME ?? '', '.claude'), 'rate-limits.json')) ?? [];
+        const changed = JSON.stringify(rateLimits) !== measuredLimits;
+        measuredLimits = JSON.stringify(rateLimits);
+        await dispatch('session.measure', { context: { used: 900 }, cost: { total: 7 }, rateLimits, changed: changed ? ['rateLimits', 'context', 'cost'] : ['context', 'cost'] }, () => ({}));
+        log('session.measure done');
+      }
+      return result;
     } catch (err) {
       log(`mod hook ${event} failed: ${err instanceof Error ? err.stack : String(err)}`);
       return undefined;

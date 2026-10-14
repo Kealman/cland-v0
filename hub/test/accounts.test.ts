@@ -30,7 +30,7 @@ test('account list reads a scratch registry through the hub and CLI, refreshed w
   await writeFile(registry, '[accounts.next]\nharness = "codex"\n');
   const json = await cland(root, 'account', 'list', '--json');
   assert.equal(json.code, 0, json.stderr);
-  assert.deepEqual(JSON.parse(json.stdout).accounts, [{ name: 'next', harness: 'codex', path: null, variable: 'CODEX_HOME' }]);
+  assert.deepEqual(JSON.parse(json.stdout).accounts, [{ name: 'next', harness: 'codex', path: null, variable: 'CODEX_HOME', windows: [], at: null, source: null }]);
 });
 
 // Harness fixtures live entirely under the scratch project and exercise real launch frames.

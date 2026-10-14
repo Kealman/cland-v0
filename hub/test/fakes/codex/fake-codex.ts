@@ -248,6 +248,8 @@ async function appServer(args: string[]): Promise<number> {
   const conns = new Set<Conn>();
   const threads = new Map<string, Thread>();
   let usedPercent = 6;
+  const rateLimits = () => readJson<Record<string, Record<string, unknown>>>(join(HOME, 'rate-limits.json'))?.[process.env.CODEX_HOME ?? ''] ?? { rateLimits: { limitId: 'codex', primary: { usedPercent, windowDurationMins: 10080, resetsAt: 1791955620 }, secondary: null } };
+
   const pendingApprovals = new Map<string, () => void>();
   let approveAll: (() => void) | null = null;
   const send = (c: Conn, frame: unknown) => {
@@ -377,10 +379,11 @@ async function appServer(args: string[]): Promise<number> {
     const total = { totalTokens: t.tokens, inputTokens: t.tokens / 12 * 10, cachedInputTokens: t.tokens / 12 * 6, outputTokens: t.tokens / 12 * 2, reasoningOutputTokens: t.tokens / 12 };
     for (let report = 0; report < (usageBurst ? 10 : 1); report++)
       toSubscribers(t.id, 'thread/tokenUsage/updated', { threadId: t.id, turnId, tokenUsage: { total, last: usage, modelContextWindow: repeatUsage ? 100000 : 200000 } });
-    if (limitsOnly) {
-      usedPercent = 9;
-      toSubscribers(t.id, 'account/rateLimits/updated', { rateLimits: { limitId: 'codex', primary: { usedPercent, windowDurationMins: 10080, resetsAt: 1791955620 }, secondary: null } });
-    }
+    if (limitsOnly) usedPercent = 9;
+    const limits = rateLimits();
+    // The fixture can script a sparse push independently of the following read.
+    if (limitsOnly || existsSync(join(HOME, 'rate-limits.json'))) toSubscribers(t.id, 'account/rateLimits/updated', limits.update ?? limits);
+
     save(t);
     t.turnId = null;
     // as the real one: idle is sent before turn/completed
@@ -581,7 +584,8 @@ async function appServer(args: string[]): Promise<number> {
         return loseOnce(text) ? { lost: true } : { result: { turnId: t.turnId } };
       }
       case 'account/rateLimits/read':
-        return { result: { rateLimits: { limitId: 'codex', primary: { usedPercent, windowDurationMins: 10080, resetsAt: 1791955620 }, secondary: null } } };
+        while (existsSync(join(HOME, 'hold-rate-limits-read')) && !existsSync(join(HOME, 'release-rate-limits-read'))) await sleep(5);
+        return { result: rateLimits() };
       default:
         return { error: { code: -32601, message: `method not found: ${method}` } };
     }

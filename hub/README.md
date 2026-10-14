@@ -574,9 +574,41 @@ Both registry and role edits apply to the next launch without a restart.
 
 `cland account list [--json]` reads the registry through the hub and is open
 to every role's shell. JSON returns `{registry, error?, accounts}`; each
-account has `name`, `harness`, `path` (null for a harness default), and
-`variable`. Text prints one line per account with "harness default" for a
-path-less entry. Account listing is a CLI/frame operation, not a spoke tool.
+account has `name`, `harness`, `path` (null for a harness default), `variable`,
+`windows`, `at` (the ISO reading time, or null), and `source` (null without a
+reading). Text shows the windows, reset times, age and source session, for
+example `codex-b  codex  /home/user/.codex-b  wk 19% ↻Sun, 04:03 · 2m ago (session rev-x)`.
+A registered account with no reading shows `no reading yet`; OpenCode shows
+`no limit data`, with `windows: []`, `at: null` and `source: null` in JSON.
+Account listing is a CLI/frame operation, not a spoke tool.
+
+Limits come from running sessions at no extra cost: Codex's
+`account/rateLimits/read` and sparse `account/rateLimits/updated` notifications
+(including `rateLimitsByLimitId` buckets), and Claude Code's `session.measure`
+forwarded by the cland mod as `mod-measure` only when `rateLimits` changed.
+The mod forwards `{at, rateLimits: [{kind, percentUsed, resetsAt}]}`, never
+context or cost. Claude's status line has no per-model weekly window.
+OpenCode supplies no limits; cland never reads tokens or calls usage endpoints.
+
+Each window is `{id, label, usedPercent, resetsAt, windowMins?, severity?, scope?}`.
+Resets are ISO times (Codex's epoch seconds are converted); optional duration,
+severity and per-model scope are retained when supplied. Missing windows are
+absent, never invented as 0%. Codex labels 300-minute windows `5h`, 10080-minute
+windows `wk`, and other durations in hours or days; other Codex buckets use
+their limit name. Claude labels `five_hour` as `5h`, `seven_day` as `wk`, and
+retains other kinds. The hub assigns no severity or colours.
+
+The hub stores `{account, harness, windows, at, source}` readings in `hub.db`
+meta under `account-limits`. Keys are account names, or `default:<harness>`
+for unpinned sessions; default entries with readings also appear in the list.
+The newest reading by `at` wins across sessions, and restart retains its
+original timestamp. `source` is `{kind: "session", session}` for these readings;
+`{kind: "poll"}` is reserved for idle polling. Updates share the existing
+one-second usage coalescer, with no extra timer. UI subscribers receive
+`{type: "account", account: <the list view>}` at most once a second per account.
+Equal windows and source refresh age silently. A changed reading also writes
+one `account-limits` journal record with `account`, `harness`, `windows`, `at`
+and `source`, so the build's weekly spend can be read from the journal.
 
 `cland session list --json` shows the row's `account` (null when unpinned).
 The process table saves its name and resolved environment. Relaunches,

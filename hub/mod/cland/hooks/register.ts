@@ -113,6 +113,13 @@ export const register: Register = (on) => {
     return started;
   });
 
+  on('session.measure', async ($, e, next) => {
+    const at = Date.now();
+    const measured = await next(e);
+    if (config && e.changed.includes('rateLimits')) void post($, config, 'mod-measure', { at, rateLimits: e.rateLimits?.map(({ kind, percentUsed, resetsAt }) => ({ kind, percentUsed, resetsAt })) ?? [] });
+    return measured;
+  });
+
   on('turn.complete', async ($, e, next) => {
     const at = Date.now();
     const completed = await next(e);

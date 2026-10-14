@@ -57,7 +57,7 @@ function M.new(opts)
 end
 
 --- Events: `state` (state, detail), `connected` (), `error` (a handler or callback failed: the message), and the pushed frames `message`, `artifact`, `delivery`, `topic`,
---- `session.state`, `session.role`, `presence`, `session.process`, `session.usage`, `inbox`, `task`,
+--- `account`, `session.state`, `session.role`, `presence`, `session.process`, `session.usage`, `inbox`, `task`,
 --- `role.vacant` and `role.filled` (the event frame).
 function Client:on(event, fn)
   self.handlers[event] = self.handlers[event] or {}
@@ -134,6 +134,7 @@ local snapshot_events = {
   ['events.list'] = { event = true },
   ['task.list'] = { task = true },
   ['topic.list'] = { topic = true, message = true },
+  ['account.list'] = { account = true },
   ['session.list'] = { ['session.cleanup'] = true, ['session.process'] = true, ['sessions.pruned'] = true, ['session.state'] = true, ['session.role'] = true, ['session.usage'] = true },
   ['hub.status'] = { ['verification.queue'] = true, crew = true, presence = true, ['session.state'] = true, ['session.role'] = true, ['role.vacant'] = true, ['role.filled'] = true, inbox = true },
   ['artifact.list'] = { artifact = true, message = true },
@@ -384,7 +385,7 @@ function Client:_frame(frame, line)
         self:_call('request ' .. tostring(frame.id), cb, frame.error or 'failed')
       end
     end
-  elseif t == 'event' or t == 'verification.queue' or t == 'visibility' or t == 'crew' or t == 'message' or t == 'artifact' or t == 'delivery' or t == 'topic' or t == 'session.state' or t == 'session.role' or t == 'role.vacant' or t == 'role.filled' or t == 'task' or t == 'ask' or t == 'inbox' or t == 'presence' or t == 'session.process' or t == 'sessions.pruned' or t == 'session.cleanup' or t == 'session.usage' then
+  elseif t == 'account' or t == 'event' or t == 'verification.queue' or t == 'visibility' or t == 'crew' or t == 'message' or t == 'artifact' or t == 'delivery' or t == 'topic' or t == 'session.state' or t == 'session.role' or t == 'role.vacant' or t == 'role.filled' or t == 'task' or t == 'ask' or t == 'inbox' or t == 'presence' or t == 'session.process' or t == 'sessions.pruned' or t == 'session.cleanup' or t == 'session.usage' then
     for journal in pairs(self.snapshots) do
       if relevant(journal.request, frame) then
         local bytes = line and #line or #vim.json.encode(frame)

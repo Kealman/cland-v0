@@ -37,6 +37,7 @@ import type { Message, SessionState, SessionUsage, TopicRef } from '../protocol.
 import { codexCounts } from './usage.ts';
 import { accountPrefix } from '../accounts/registry.ts';
 import { VERSION } from '../version.ts';
+import { mergeLimits } from '../accounts/limits.ts';
 import { envelope, envelopeIds, InjectUncertain, type AdapterHost, type Capabilities, type HarnessAdapter, type HarnessProcess, type Interpretation, type SubagentLaunch, type LaunchPolicy, type ResumeResult, type SpawnRequest } from './contract.ts';
 import { AppServerClient, RpcError, RpcNoAnswer, type ServerRequest } from './codex/app-server.ts';
 import { processAlive } from './processes.ts';
@@ -282,6 +283,8 @@ type Live = {
   turnId: string | null;
   tokens: Record<string, unknown> | null;
   rateLimits: Record<string, unknown> | null;
+  rateLimitsByLimitId?: Record<string, unknown>;
+  rateLimitsAt?: string;
   /** One activity is announced at start and completion; retain receipts only for the active turn. */
   subagentItems?: Set<string>;
   earlySubagents?: SubagentLaunch[];
@@ -505,10 +508,7 @@ export class CodexAdapter implements HarnessAdapter {
           }
           return;
         case 'account/rateLimits/updated':
-          if (params.rateLimits && typeof params.rateLimits === 'object') {
-            live.rateLimits = params.rateLimits as Record<string, unknown>;
-            this.#host.usageChanged?.(live.p.sessionId);
-          }
+          this.#mergeRateLimits(live, params);
           return;
         case 'thread/closed':
           if (mine(params)) this.#host.log({ event: 'harness-thread-closed', harness: this.harness, session: live.p.name, thread: live.p.harnessSessionId });
@@ -555,11 +555,38 @@ export class CodexAdapter implements HarnessAdapter {
     this.#host.signal(live.p.sessionId, { state, source: 'app-server', at: Date.now(), ...(live.approvalCommand !== undefined ? { approvalCommand: live.approvalCommand } : {}) });
   }
 
+  #mergeRateLimits(live: Live, response: { rateLimits?: unknown; rateLimitsByLimitId?: unknown }): void {
+    const limits = response.rateLimits;
+    const buckets = response.rateLimitsByLimitId;
+    if (!limits && !buckets) return;
+    if (limits && typeof limits === 'object' && !Array.isArray(limits)) {
+      const update = limits as Record<string, unknown>;
+      const compatibilityId = typeof live.rateLimits?.limitId === 'string' ? live.rateLimits.limitId : 'codex';
+      const id = typeof update.limitId === 'string' ? update.limitId : compatibilityId;
+      // Notifications identify the bucket in rateLimits.limitId, not in a by-id map.
+      const previous = live.rateLimitsByLimitId?.[id] ?? (id === compatibilityId ? live.rateLimits : null);
+      const merged = mergeLimits(previous as Record<string, unknown> | null, update);
+      if (id === 'codex' || id === compatibilityId) live.rateLimits = merged;
+      live.rateLimitsByLimitId = { ...live.rateLimitsByLimitId, [id]: merged };
+    }
+    if (buckets && typeof buckets === 'object' && !Array.isArray(buckets)) {
+      live.rateLimitsByLimitId = mergeLimits(live.rateLimitsByLimitId, buckets as Record<string, unknown>);
+      const codex = live.rateLimitsByLimitId.codex;
+      if (codex && typeof codex === 'object') live.rateLimits = mergeLimits(live.rateLimits, codex as Record<string, unknown>);
+    }
+    live.rateLimitsAt = new Date().toISOString();
+    this.#host.usageChanged?.(live.p.sessionId);
+  }
+
   async #readRateLimits(live: Live): Promise<void> {
     try {
-      const r = await live.client?.request<{ rateLimits?: Record<string, unknown> }>('account/rateLimits/read', {}, 15_000);
-      if (r?.rateLimits) {
-        live.rateLimits = r.rateLimits;
+      const r = await live.client?.request<{ rateLimits?: Record<string, unknown>; rateLimitsByLimitId?: Record<string, unknown> }>('account/rateLimits/read', {}, 15_000);
+      if (r && ('rateLimits' in r || 'rateLimitsByLimitId' in r)) {
+        // A read is authoritative. Only notifications retain omitted fields.
+        live.rateLimits = r.rateLimits ?? null;
+        if (r.rateLimitsByLimitId) live.rateLimitsByLimitId = r.rateLimitsByLimitId;
+        else delete live.rateLimitsByLimitId;
+        live.rateLimitsAt = new Date().toISOString();
         this.#host.usageChanged?.(live.p.sessionId);
       }
     } catch {
@@ -852,7 +879,7 @@ export class CodexAdapter implements HarnessAdapter {
   usage(p: HarnessProcess): SessionUsage | null {
     const live = this.#live.get(p.sessionId);
     if (!live) return this.#stoppedUsage.get(p.sessionId) ?? null;
-    if (!live.tokens && !live.rateLimits) return null;
+    if (!live.tokens && !live.rateLimits && !live.rateLimitsByLimitId) return null;
     const total = codexCounts(live.tokens?.total);
     const last = codexCounts(live.tokens?.last);
     return {
@@ -861,6 +888,8 @@ export class CodexAdapter implements HarnessAdapter {
       ...(last ? { last } : {}),
       ...(live.tokens ? { tokens: live.tokens } : {}),
       ...(live.rateLimits ? { rateLimits: live.rateLimits } : {}),
+      ...(live.rateLimitsByLimitId ? { rateLimitsByLimitId: live.rateLimitsByLimitId } : {}),
+      ...(live.rateLimitsAt ? { rateLimitsAt: live.rateLimitsAt } : {}),
     };
   }
 
