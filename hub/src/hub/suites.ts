@@ -20,7 +20,7 @@ import { selectPackageSuite, describeSelection, type SuiteSelection, type SuiteR
 
 export type SuiteActor = { name: string; sessionId: string; shell: true };
 export type SuiteJob = {
-  executor: ExecutorKind; platform?: Platform; lease?: Lease; remoteLogStart?: number; nextPoll?: number;
+  executor: ExecutorKind; fallback?: string; fallbackLogged?: boolean; remoteAcquireAttempted?: boolean; timedOut?: boolean; platform?: Platform; lease?: Lease; remoteLogStart?: number; nextPoll?: number;
   machine?: { name?: string; size?: string; region?: string; lifetimeMs: number | null; costUsd: number | null };
   id: string; mode: string; cwd: string; topic: string; to: string[]; actor: SuiteActor | null;
   head: string; branch: string; log: string; result: string; gate: string;
@@ -40,7 +40,7 @@ export type SuiteJob = {
 export type VerifyResult = { executor: ExecutorKind; id: string; state: NonNullable<SuiteJob['state']>; result: 'passed' | 'failed' | 'cancelled' | null; head: string; finished: string | null; artifact: string | null; cached?: SuiteJob['cached'] };
 const verifyResult = (job: SuiteJob): VerifyResult => ({ executor: job.executor, id: job.id, state: job.state ?? 'running', result: job.state !== 'finished' ? null : job.cancelled || job.requesterDied ? 'cancelled' : job.outcome ? job.outcome.code === 0 ? 'passed' : 'failed' : null, head: job.head, finished: job.finished ?? job.completedAt ?? null, artifact: job.artifact, ...(job.cached ? { cached: { ...job.cached } } : {}) });
 
-export type SuiteSchedulerOptions = { executor?: ExecutorKind; lifetimeMs?: number; budget?: number; cacheMaxAgeMs?: number; locks?: string[]; requesterDead?: (actor: SuiteActor) => boolean; log?: LogFn; onQueue?: (queue: VerificationQueue) => void; onJob?: (job: Readonly<SuiteJob>) => void };
+export type SuiteSchedulerOptions = { executor?: ExecutorKind; lifetimeMs?: number; runTimeoutMs?: number; runTimeout?: string; onFallback?: (job: Readonly<SuiteJob>, cause: string) => void; budget?: number; cacheMaxAgeMs?: number; locks?: string[]; requesterDead?: (actor: SuiteActor) => boolean; log?: LogFn; onQueue?: (queue: VerificationQueue) => void; onJob?: (job: Readonly<SuiteJob>) => void };
 type HumanSlot = Omit<SuiteSlot, 'type'> & { queued: string; admittedAt?: string; left?: boolean };
 const HUMAN_GRACE_MS = 10_000;
 const KEY = 'suite-jobs';
@@ -207,7 +207,7 @@ export class Suites {
     const git = async (args: string[]) => exec('git', args, { cwd: input.cwd }).then(r => r.stdout.trim(), () => 'unknown');
     const [head, branch, selection] = await Promise.all([git(['rev-parse', 'HEAD']), git(['branch', '--show-current']), selectPackageSuite(input.cwd, input.mode as SuiteRequest)]);
     const tree = await candidateTree(input.cwd, head);
-    if (executor === 'droplet' && !tree) throw new Error('dirty worktree cannot be bundled for droplet');
+
     // Bind lint to the captured committed build as well as the files a dirty package will execute.
     try {
       if (head !== 'unknown') await lintHubShardTree(input.cwd, head);
@@ -239,6 +239,7 @@ export class Suites {
     if (this.#closed) throw new Error('hub is closing');
     if (this.#jobs.some(j => this.#active(j) && (j.actor?.sessionId ?? 'human') === identity)) throw new Error('this session already has a suite queued or running');
     this.#jobs.push(job); this.#save(job);
+    if (!job.cached && executor === 'droplet' && (!process.env.DIGITALOCEAN_TOKEN || !tree)) this.#fallback(job, !process.env.DIGITALOCEAN_TOKEN ? 'DIGITALOCEAN_TOKEN is required' : 'dirty worktree cannot be bundled for droplet');
     await this.#check();
     return { id, pid: job.pid, topic: job.topic, position: job.state === 'queued' ? this.#ordered().findIndex(j => j.id === id) + 1 : 1, ...(job.cached ? { cached: job.cached } : {}) };
   }
@@ -301,12 +302,15 @@ export class Suites {
         }
         if (job.lease && Date.parse(job.lease.deadline) <= Date.now()) throw new Error('remote machine lifetime expired');
         if (!(job.lease as DropletLease | undefined)?.execution?.delivered) {
-          if (await candidateTree(job.cwd, job.head) !== job.tree) throw new Error('dirty or changed worktree cannot be bundled for droplet');
+          if (!job.lease && (!job.tree || await candidateTree(job.cwd, job.head) !== job.tree)) { this.#fallback(job, 'dirty or changed worktree cannot be bundled for droplet'); return; }
           if (!job.lease) {
             await this.#hostGate(job);
             if (job.cancelled) throw new Error('cancelled');
-            if (await candidateTree(job.cwd, job.head) !== job.tree) throw new Error('candidate changed during host typecheck');
-            job.lease = await this.#droplet.acquire(run, new Date(Date.now() + (this.#options.lifetimeMs ?? 6600000)).toISOString());
+            if (await candidateTree(job.cwd, job.head) !== job.tree) { this.#fallback(job, 'dirty or changed worktree cannot be bundled for droplet'); return; }
+            if (job.remoteAcquireAttempted) { this.#fallback(job, 'previous droplet acquisition was interrupted'); return; }
+            job.remoteAcquireAttempted = true; this.#save(job);
+            try { job.lease = await this.#droplet.acquire(run, new Date(Date.now() + (this.#options.lifetimeMs ?? 6600000)).toISOString()); }
+            catch (error) { if (job.cancelled) throw error; this.#fallback(job, error instanceof Error ? error.message : 'provider unavailable'); return; }
           }
           job.remoteLogStart ??= (await stat(job.log)).size;
           this.#save(job);
@@ -332,6 +336,20 @@ export class Suites {
       // Keep the failure receipt: the inspector only terminates identity-verified processes.
       job.outcome ??= { code: 1, cause: error instanceof Error ? error.message : String(error) }; this.#save(job);
     } finally { this.#launching.delete(job.id); if (job.cancelled) void this.#inspectJob(job); }
+  }
+  #fallback(job: SuiteJob, cause: string): void {
+    job.executor = 'local'; job.fallback = cause; job.state = 'queued';
+    delete job.admittedAt; delete job.lease;
+    this.#save(job);
+    this.#announceFallback(job);
+  }
+  #announceFallback(job: SuiteJob): void {
+    if (!job.fallback) return;
+    this.#options.onFallback?.(job, job.fallback);
+    if (!job.fallbackLogged) {
+      this.#options.log?.({ event: 'verification-executor-fallback', id: job.id, item: job.item ?? null, requested: 'droplet', effective: 'local', cause: job.fallback });
+      job.fallbackLogged = true; this.#save(job);
+    }
   }
   #stopHostGate(id: string): void {
     const child = this.#hostGates.get(id);
@@ -396,6 +414,7 @@ export class Suites {
     return work;
   }
   async #inspect(job: SuiteJob): Promise<void> {
+    this.#announceFallback(job);
     if (job.state === 'queued' && !job.outcome) {
       if (!job.actor || !this.#options.requesterDead?.(job.actor)) return;
       job.requesterDied = true;
@@ -405,16 +424,21 @@ export class Suites {
       const remote = job.executor === 'droplet';
       if (remote && !job.outcome && Date.now() < (job.nextPoll ?? 0)) return;
       if (remote) job.nextPoll = Date.now() + testTiming('CLAND_TEST_DROPLET_RUN_POLL_MS', 10000);
+      const timeoutMs = this.#options.runTimeoutMs ?? 4500000;
+      const startedAt = (job.lease as DropletLease | undefined)?.execution?.startedAt ?? job.admittedAt;
+      if (remote && !job.outcome && job.lease && startedAt && Date.now() - Date.parse(startedAt) > timeoutMs + testTiming('CLAND_TEST_EXECUTOR_TIMEOUT_GRACE_MS', 120000)) {
+        job.timedOut = true; job.outcome = { code: 124, cause: `run timeout ${this.#options.runTimeout ?? '75m'}` }; this.#save(job);
+      }
       const receipt = job.lease ? remote ? await this.#droplet.status(job.lease as DropletLease) : await this.#local.status(job.lease) : null;
       if (remote && job.lease && job.remoteLogStart !== undefined) {
         try { await this.#collectLog(job); }
-        catch (error) { if (receipt?.state !== 'lost' && !job.cancelled) throw error; }
+        catch (error) { if (receipt?.state !== 'lost' && !job.cancelled && !job.timedOut) throw error; }
         if (receipt?.state === 'done' || receipt?.state === 'lost') await writeFile(job.result, JSON.stringify({ code: receipt.code ?? 1, cause: receipt.cause ?? '', finished: receipt.finished ?? new Date().toISOString(), ...(receipt.platform ? { platform: receipt.platform } : {}) }));
       }
       if (receipt?.platform) job.platform = receipt.platform;
       if (receipt?.finished) job.finished = receipt.finished;
-      if (receipt && (receipt.finished || !job.outcome) && (receipt.state === 'done' || receipt.state === 'lost') && !job.cancelled && !job.requesterDied) {
-        job.outcome = { code: receipt.code ?? 1, cause: receipt.cause ?? '' };
+      if (receipt && (receipt.finished || !job.outcome) && (receipt.state === 'done' || receipt.state === 'lost') && !job.cancelled && !job.requesterDied && !job.timedOut) {
+        job.outcome = { code: receipt.code ?? 1, cause: receipt.code === 124 ? `run timeout ${this.#options.runTimeout ?? '75m'}` : receipt.cause ?? '' };
       }
       if (job.cached && !this.#store.message(`suite:${job.id}`) && await candidateTree(job.cwd, job.head) !== job.tree) {
         delete job.cached; job.outcome = { code: 1, cause: 'cached candidate changed; submit verification again' };
@@ -430,7 +454,7 @@ export class Suites {
         if (job.lease) {
           if (remote) {
             const lease = job.lease as DropletLease;
-            if (job.cancelled) {
+            if (job.cancelled || job.timedOut) {
               await this.#droplet.cancel(lease, 'SIGTERM');
               await this.#collectLog(job).catch(() => {});
             }

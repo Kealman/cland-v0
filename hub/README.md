@@ -1307,7 +1307,7 @@ or `"droplet"` in `.cland/config.toml`; restart the hub to apply it.
 `cland verify --executor local|droplet --report <topic>` overrides it for one run.
 Both executors share admission, the tree/mode cache and the artifact-backed result.
 This stage admits one run at a time; droplets do not take the host's compatibility
-leases, even when a hand-run suite holds them. Dirty remote candidates are refused.
+leases, even when a hand-run suite holds them. Dirty remote candidates enter the local queue with a warning.
 
 Before acquiring a droplet, the hub runs `npm run typecheck` at the submitted head
 on the host. A failure posts a failed result without creating a machine. Delivery
@@ -1322,7 +1322,10 @@ The host computes the suite selection while `origin/dev` is available. The uploa
 The package runner reads that selection without fetching. A detached `setsid nohup`
 run as `runner` executes the same commands as the local worker: Linux typecheck,
 then the selected package suite. It uses the machine's own compatibility locks
-and a timeout of the remaining lease lifetime less a 120-second collection margin.
+and `timeout` with the configured `run_timeout`. The hub also cancels a run beyond
+that timeout plus two minutes, collects its log and releases its machine. Both
+paths report `run timeout <value>` once. Config load refuses a `lifetime` shorter
+than `run_timeout` plus ten minutes, naming both values.
 
 Every ten seconds the hub polls status and up to 256 KiB of log bytes by offset.
 SSH failures leave the run unknown and are retried; an API 404, or five minutes
@@ -1377,10 +1380,20 @@ files, have explicit time bounds and strip `DIGITALOCEAN_TOKEN` from children.
 
 `cland executor status [--json]` also reports token presence, live leases, their names,
 ids, sizes, regions, ages and deadlines, whether each watchdog is alive, today's
-released-lease cost in USD, and the number of droplets tagged `cland`.
+spent and reserved USD against the daily cap, the shared ledger path, and the
+number of droplets tagged `cland`.
 `cland executor reap [--json]` deletes this project's tagged droplets with no live
-lease, and any `cland` droplet older than the configured lifetime plus ten minutes.
-It also removes this project's orphaned account SSH keys. Both commands belong
+lease, and unowned `cland` droplets past their lifetime plus ten minutes. Known
+leases use their own recorded deadline: a short-lived scratch hub preserves a
+foreign live run. Provider lists are followed by fresh durable ownership reads,
+so concurrent acquisition cannot make a new resource look orphaned.
+It also removes this project's orphaned account SSH keys. New key names start
+with the droplet project tag, `cland-p-<hash>-`, so equally named projects cannot
+reap each other's in-flight keys. Legacy `cland-<name>-` keys are removed only
+when no live lease registered on this host names them and their known lease
+creation/import time is older than lifetime plus ten minutes. Unknown-age legacy
+keys are preserved: DigitalOcean's [SSH key schema](https://docs.digitalocean.com/reference/api/reference/ssh-keys/) has no creation timestamp. Hubs register their project roots
+in the shared ledger so cleanup can inspect other projects' durable leases. Both commands belong
 to the human and the Coordinator; reap requires the token.
 
 Every droplet carries `cland` and `cland-p-<hash>`, where the hash is twelve hex
@@ -1401,17 +1414,49 @@ releases active leases with no run, and re-arms dead watchdogs for live leases.
 
 Release confirms deletion by listing droplets and keys before marking a lease
 released or removing its key files. An unconfirmed deletion stays `releasing`;
-the hub retries it every fifteen seconds and its watchdog remains armed. A lost
+the sweep retries it and its watchdog remains armed. A lost
 create or SSH key import response retains the lease while the resource may still
 appear. Released
 leases stay on disk for their accounting history. Cost uses the size's hourly
 price, from create to the first accepted delete call, with a sixty-second minimum.
+
+At hub start and every ten minutes, an unref'd timer runs lease reconciliation
+and the orphan sweep. Each pass journals `executor-sweep` with lease, reaped
+droplet, reaped key and failure counts. Provider errors are logged and wait for
+the next pass. Reconciliation consumes new watchdog receipts, re-arms a dead
+watchdog for a live lease's remaining lifetime (`executor-watchdog-rearmed`),
+and retries every `releasing` lease.
+
+Before every create, including a prepare builder, cland reserves the configured
+lifetime times the size's hourly price (at least sixty seconds) in
+`~/.cland/executor/spend.json`. This is cland's first per-user state, shared by
+every hub on the host, including scratch QA and Implementer hubs (D27 follow-up,
+stand-in under D24, 2026-10-13). An exclusive crash-recoverable lock serializes
+reservation and settlement. The test override is `$CLAND_EXECUTOR_STATE/spend.json`.
+Entries name the project, lease, run, size, reservation, actual cost and times;
+they never contain the token. Confirmed release replaces the reservation with
+the estimated actual cost; unconfirmed cleanup retains it across restarts and
+UTC midnight. The cap checks today's spent plus all outstanding reservations
+before creation. This is an estimate from hourly price and lifetime, not an
+invoice; DigitalOcean bills per second with a sixty-second minimum.
+`cland executor status` prints the path and today's spent + reserved / cap.
+
+A missing `DIGITALOCEAN_TOKEN`, refused create (including 4xx/5xx), unavailable
+size in all configured regions, missing prepared snapshot, spent daily cap or
+dirty candidate sends a requested droplet run to the local queue with
+`executor: local`. There is one create attempt per run. Its topic and recipients
+receive `verify <id>: droplet unavailable (<cause>); running locally`, projected
+with warn severity on messages and inbox warning surfaces. The journal records
+`verification-executor-fallback` with id, item, requested, effective and cause.
+An explicit `--executor droplet` has the same fallback.
 
 The defaults in `.cland/config.toml` are:
 
 ```toml
 [verification]
 lifetime = "110m"
+run_timeout = "75m"
+daily_spend_usd = 5
 
 [verification.droplet]
 size = "c-8"
@@ -1419,6 +1464,17 @@ prepare_size = "c-8"
 regions = ["lon1", "nyc1", "sfo2"]
 image = "ubuntu-24-04-x64"
 ```
+
+| Setting | Default | This project's D27 build value |
+| --- | --- | --- |
+| `lifetime` | `110m` | `60m` |
+| `run_timeout` | `75m` | `50m` |
+| `daily_spend_usd` | `$5` | `$3` |
+
+Once T-346 is on `dev`, the hub's enforced config takes over the D25 hand-driver
+limits. Linux proof runs go through `cland verify --executor droplet`;
+T-282's hand driver is retired. Legacy hand-driver droplets carry only `cland`
+and are swept only after the configured lifetime plus ten minutes.
 
 `prepare_size` selects the builder; its disk must be no larger than `size`'s disk
 so the resulting snapshot fits a run. Prepare refuses an oversized builder

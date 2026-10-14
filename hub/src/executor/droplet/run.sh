@@ -25,7 +25,7 @@ node -e 'const os=require("os"),fs=require("fs"); let nvim="none";try{nvim=fs.re
 mv "$run/platform.tmp" "$run/platform" || exit 1
 source "$run/env"
 # A machine has its own locks. No host lease identity crosses the boundary.
-seconds=$((@DEADLINE@ - $(date +%s) - 120))
+seconds=@RUN_TIMEOUT@
 if (( seconds <= 0 )); then exit 124; fi
 timeout --kill-after=10s "${seconds}s" bash >>"$run/suite.log" 2>&1 <<'COMMANDS'
 set -e

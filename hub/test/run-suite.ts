@@ -85,6 +85,7 @@ export async function runSuite(suites: string[][], options: { lockDir?: string; 
         machineWait = Date.now() - phaseStarted;
       }
       const env: NodeJS.ProcessEnv = { ...process.env, TMPDIR: root, TMP: root, TEMP: root, TEST_SUITE_RUN_ID: holder.token, TEST_SUITE_CWD: holder.worktree };
+      delete env.DIGITALOCEAN_TOKEN;
       delete env.NODE_TEST_CONTEXT;
       if (!root) throw new Error('suite phase root is missing');
       const gate = join(root, `start-${index}`);

@@ -145,6 +145,7 @@
     "hub/test/visibility.test.ts": "machine",
     "hub/test/worktree-cli.test.ts": "machine",
     "hub/test/executor-prepare.test.ts": "machine",
-    "hub/test/accounts.test.ts": "machine"
+    "hub/test/accounts.test.ts": "machine",
+    "hub/test/executor-safety.test.ts": "machine"
   }
 }

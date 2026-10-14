@@ -11,8 +11,8 @@ export type DropletLease = Lease & {
   resource: number | null; keyId: number | null; address?: string;
   keyImportStarted?: string; keyImportFinished?: string;
   createStarted?: string; createFinished?: string; deleteStarted?: string; released?: string;
-  lifetimeMs?: number; costUsd?: number;
-  execution?: { head: string; delivered?: boolean; started?: boolean; unreachableSince?: string };
+  lifetimeMs?: number; costUsd?: number; watchdogFired?: string;
+  execution?: { head: string; delivered?: boolean; started?: boolean; startedAt?: string; unreachableSince?: string };
   watchdog?: { pid: number; startedUtc: string };
 };
 export type WatchdogReceipt = { fired: string; deleted: number[]; confirmedAt: string; deleteStarted: string };

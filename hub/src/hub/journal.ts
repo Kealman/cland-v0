@@ -28,6 +28,8 @@ export const JOURNALLED: ReadonlySet<string> = new Set([
   'executor-prepared',
   'executor-prepare-failed',
   'executor-reaped',
+  'executor-sweep',
+  'verification-executor-fallback',
   'executor-watchdog-fired',
   'executor-watchdog-rearmed',
   'executor-lease-released',
@@ -428,7 +430,7 @@ export function eventRow(r: JournalRecord, offset = ''): EventRow | null {
     if (r.lifecycle === 'waiting for approval') return null;
     subject = artifact ? { kind: 'artifact', id: artifact } : announced.item ? { kind: 'item', id: announced.item } : announced.session ? { kind: 'session', id: announced.session } : announced.topic ? { kind: 'topic', id: announced.topic } : undefined;
   } else if (r.event === 'notification') {
-    kind = r.kind === 'verdict' ? 'verdict' : r.kind === 'release' ? 'release' : r.kind === 'plan' ? 'task' : 'session';
+    kind = r.kind === 'executor-fallback' ? 'suite' : r.kind === 'verdict' ? 'verdict' : r.kind === 'release' ? 'release' : r.kind === 'plan' ? 'task' : 'session';
     subject = item ? { kind: 'item', id: item } : session ? { kind: 'session', id: session } : undefined;
   } else if (r.event === 'suite-result' || (r.event === 'verification-timing' && r.outcome)) {
     kind = 'suite'; subject = item ? { kind: 'item', id: item } : session ? { kind: 'session', id: session } : topic ? { kind: 'topic', id: topic } : undefined;
@@ -457,6 +459,7 @@ export function eventRow(r: JournalRecord, offset = ''): EventRow | null {
   if (kind === 'artifact') glyph = 'A';
   else if (kind === 'usage') glyph = '$';
   else if (kind === 'release') glyph = '◈';
+  else if (r.kind === 'executor-fallback') glyph = '⚠';
   else if (kind === 'verdict') glyph = (r.verdict as { result?: string } | undefined)?.result === 'not clear' || r.result === 'not clear' || text.includes('not clear') ? '⚠' : '✓';
   else if (kind === 'suite') { /* the outcome above owns the suite glyph */ }
   else if (kind === 'session' && (r.lifecycle === 'died' || r.kind === 'death' || /died|harness-exited/.test(text))) glyph = '⚠';

@@ -131,7 +131,10 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
   const tipCheckMs = Number(process.env.CLAND_TEST_TIP_CHECK_MS ?? 0);
   const storageStallMs = Number(process.env.CLAND_TEST_TRACKER_STALL_MS ?? 0);
   const stopTimeoutMs = Number(process.env.CLAND_TEST_TRACKER_STOP_MS ?? 0);
-  const config = readProjectConfig(l.config, root, error => log({ event: 'config-unreadable', file: l.config, error, keeping: 'the defaults' }));
+  let config: ReturnType<typeof readProjectConfig>;
+  try {
+    config = readProjectConfig(l.config, root, error => { if (/^verification\.(lifetime|run_timeout|daily_spend_usd)/.test(error)) throw new Error(error); log({ event: 'config-unreadable', file: l.config, error, keeping: 'the defaults' }); });
+  } catch (error) { await closeLogs(); lock.release(); throw error; }
   const tracker = new Tracker({ planHistory: readJournal(journalPath(l.dir), { kinds: ['task-plan-changed', 'task-plan-approved'] }), ...(config ? { levels: config.tracker.levels, qaDefault: config.plan.qaDefault, planApproval: config.plan.approval } : {}), ...(storageStallMs > 0 && Number.isFinite(storageStallMs) ? { storageStallMs } : {}), ...(stopTimeoutMs > 0 && Number.isFinite(stopTimeoutMs) ? { stopTimeoutMs } : {}), root, db: l.db, log, watchResumed: requestGuard.resumer('tracker.watch'), ...(writeGate ? { writeGate } : {}), ...(tipCheckMs > 0 ? { tipCheckMs } : {}), ...(options.scheduleTips ? { scheduleTips: options.scheduleTips } : {}) });
   // the role definitions: written with the defaults when the project has none, then watched
   const roles = new RolesFile(l.roles, log, undefined, requestGuard.resumer('roles.refresh'));
@@ -171,7 +174,7 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
     hub = createHubBase({
       secret,
       journal,
-      verification: { executor: config?.verification.executor ?? 'local', lifetimeMs: config?.verification.lifetimeMs ?? 6600000, cacheMaxAgeMs: config?.verification.cacheMaxAgeMs ?? 86400000, budget: config?.verification.budget ?? 1, locks: [config?.verification.lockPath ?? '/tmp/cland-suite.lock', config?.verification.lockPath && config.verification.lockPath !== '/tmp/cland-suite.lock' ? `${config.verification.lockPath}-nvim` : '/tmp/cland-suite-nvim.lock'] },
+      verification: { executor: config?.verification.executor ?? 'local', lifetimeMs: config?.verification.lifetimeMs ?? 6600000, runTimeoutMs: config?.verification.runTimeoutMs ?? 4500000, runTimeout: config?.verification.runTimeout ?? '75m', cacheMaxAgeMs: config?.verification.cacheMaxAgeMs ?? 86400000, budget: config?.verification.budget ?? 1, locks: [config?.verification.lockPath ?? '/tmp/cland-suite.lock', config?.verification.lockPath && config.verification.lockPath !== '/tmp/cland-suite.lock' ? `${config.verification.lockPath}-nvim` : '/tmp/cland-suite-nvim.lock'] },
       store: new Store(l.db),
       log,
       requestGuard,

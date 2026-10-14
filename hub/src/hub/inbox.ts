@@ -119,6 +119,7 @@ export class InboxBoard {
           this.#notify('plan', event.message.text, typeof event.message.detail?.item === 'string' ? { item: event.message.detail.item } : {});
         }
         if (event.message.fromKind === 'hub') {
+          if (event.message.detail?.event === 'verification-executor-fallback') this.#notify('executor-fallback', event.message.text, typeof event.message.detail.item === 'string' ? { item: event.message.detail.item } : {});
           const result = messageVerdict(event.message);
           if (result) {
             const detail = event.message.detail!;

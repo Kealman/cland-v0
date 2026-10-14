@@ -41,6 +41,8 @@ export async function fakeDigitalOcean(token: string) {
   const deleting = new Map<number, number>();
   const account = { status: 'active' };
   const faults = { create: 0, delayMs: 0, delayPath: '', activeAfter: 2, deletePolls: 0, keyDeletePolls: 0, deleteError: 0, echoToken: false, actionAfter: 2, failAction: '', deleteSnapshot: 0, visibilityPolls: 0, snapshotAfter: 0, snapshotHiddenPolls: 0, catalogueError: 0, loseDeleteSnapshot: 0, failCatalogueAfterDelete: false };
+  let beforeDropletList: (() => Promise<void>) | undefined;
+  let beforeKeyList: (() => Promise<void>) | undefined;
   let beforeCreate: (() => Promise<void>) | undefined;
   let beforeImport: (() => Promise<void>) | undefined;
   let beforeSnapshotDelete: ((id: number) => Promise<void>) | undefined;
@@ -149,6 +151,7 @@ export async function fakeDigitalOcean(token: string) {
     }
     if (method === 'GET' && path === '/actions') return answer(200, { actions: [...actions.values()].map(record => ({ ...record.action, type: record.type })) });
     if (method === 'GET' && path === '/droplets') {
+      await beforeDropletList?.();
       const tag = url.searchParams.get('tag_name');
       for (const [id, left] of deleting) {
         if (left <= 0) { droplets.splice(droplets.findIndex(d => d.id === id), 1); deleting.delete(id); }
@@ -174,6 +177,7 @@ export async function fakeDigitalOcean(token: string) {
     }
     if (path === '/account/keys') {
       if (method === 'POST') { await beforeImport?.(); const ssh_key = { id: nextId++, name: String(body!.name), public_key: String(body!.public_key) }; keys.push(ssh_key); publicKeys.set(ssh_key.id, ssh_key.public_key); return answer(201, { ssh_key }); }
+      await beforeKeyList?.();
       return answer(200, { ssh_keys: keys });
     }
     const keyId = /^\/account\/keys\/(\d+)$/.exec(path);
@@ -190,6 +194,8 @@ export async function fakeDigitalOcean(token: string) {
   if (!address || typeof address === 'string') throw new Error('fake did not bind');
   return { url: `http://127.0.0.1:${address.port}/v2`, account, droplets, keys, sizes, regions, requests, faults, auth, images, stateRoot, machineDirs, imageDirs, machineFaults, seedSnapshot,
     setMachineFaults: async (value: Partial<typeof machineFaults>) => { Object.assign(machineFaults, value); await writeFile(join(stateRoot, 'machine-faults.json'), JSON.stringify(machineFaults)); },
+    beforeDropletList: (check: () => Promise<void>) => { beforeDropletList = check; },
+    beforeKeyList: (check: () => Promise<void>) => { beforeKeyList = check; },
     beforeCreate: (check: () => Promise<void>) => { beforeCreate = check; },
     beforeImport: (check: () => Promise<void>) => { beforeImport = check; },
     beforeSnapshotDelete: (check: (id: number) => Promise<void>) => { beforeSnapshotDelete = check; },

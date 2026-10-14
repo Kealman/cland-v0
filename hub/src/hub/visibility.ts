@@ -55,13 +55,14 @@ export function warningSeverity(surface: Surface, r: Row): 'warn' | undefined {
   if (surface === 'messages') {
     const detail = row(r.detail);
     const eventWarning = r.fromKind === 'hub' && (
-      r.kind === 'session-death'
+      r.detail && row(r.detail)?.event === 'verification-executor-fallback'
+      || r.kind === 'session-death'
       || (r.kind === 'event' && ((detail?.event === 'task' && detail.result === 'not clear') || (detail?.event === 'session.state' && detail.lifecycle === 'died')))
       || (r.kind === 'agent-message' && detail?.result === 'not clear')
     );
     if (messageVerdict(r) === 'not clear' || eventWarning) return 'warn';
   }
-  if (surface === 'inbox' && (r.kind === 'death' || (r.kind === 'verdict' && r.result === 'not clear'))) return 'warn';
+  if (surface === 'inbox' && (r.kind === 'executor-fallback' || r.kind === 'death' || (r.kind === 'verdict' && r.result === 'not clear'))) return 'warn';
 }
 
 // SemVer precedence, including numeric prerelease identifiers and ignoring build metadata.
@@ -152,6 +153,7 @@ export class Visibility {
         // Verdicts remain visible to the human even when addressed to an agent.
         const verdict = messageVerdict(r);
         if (verdict) return verdict === 'clear' ? 'clear' : 'not_clear';
+        if (r.fromKind === 'hub' && row(r.detail)?.event === 'verification-executor-fallback') return 'not_clear';
         // Creation chips share artifact policy; a message with attachments keeps message policy.
         if (row(r.artifact) && !Array.isArray(r.artifacts)) return 'artifact';
         const to = Array.isArray(r.to) ? r.to : [];

@@ -15,7 +15,7 @@ import { isManagedFile, readText, writeIfChanged, type Report } from './files.ts
 
 export type ProjectConfig = {
   name: string;
-  verification: { executor: 'local' | 'droplet'; budget: number; lockPath: string; cacheMaxAgeMs: number; lifetimeMs: number; droplet: { size: string; prepare_size: string; regions: string[]; image: string } };
+  verification: { executor: 'local' | 'droplet'; budget: number; lockPath: string; cacheMaxAgeMs: number; lifetimeMs: number; runTimeoutMs: number; runTimeout: string; dailySpendUsd: number; droplet: { size: string; prepare_size: string; regions: string[]; image: string } };
   sessions: { archiveAfterItemMs: number; archiveAfterStopMs: number };
   visibility: VisibilityOverrides;
   tracker: { levels: Levels };
@@ -29,7 +29,7 @@ const MINUTE = 60_000;
 
 export const defaultConfig = (name: string): ProjectConfig => ({
   name,
-  verification: { executor: 'local', budget: 1, lockPath: '/tmp/cland-suite.lock', cacheMaxAgeMs: 86400000, lifetimeMs: 6600000, droplet: { size: 'c-8', prepare_size: 'c-8', regions: ['lon1', 'nyc1', 'sfo2'], image: 'ubuntu-24-04-x64' } },
+  verification: { executor: 'local', budget: 1, lockPath: '/tmp/cland-suite.lock', cacheMaxAgeMs: 86400000, lifetimeMs: 6600000, runTimeoutMs: 4500000, runTimeout: '75m', dailySpendUsd: 5, droplet: { size: 'c-8', prepare_size: 'c-8', regions: ['lon1', 'nyc1', 'sfo2'], image: 'ubuntu-24-04-x64' } },
   sessions: { archiveAfterItemMs: 3600000, archiveAfterStopMs: 86400000 },
   visibility: {},
   tracker: { levels: [...DEFAULT_LEVELS] },
@@ -57,6 +57,9 @@ lock_path = ${JSON.stringify(c.verification.lockPath)}
 # Reuse green candidate trees for this many minutes; 0 disables caching.
 cache_max_age_minutes = ${minutes(c.verification.cacheMaxAgeMs)}
 lifetime = "${c.verification.lifetimeMs % MINUTE === 0 ? `${minutes(c.verification.lifetimeMs)}m` : `${c.verification.lifetimeMs / 1000}s`}"
+
+run_timeout = ${JSON.stringify(c.verification.runTimeout)}
+daily_spend_usd = ${c.verification.dailySpendUsd}
 
 [verification.droplet]
 size = ${JSON.stringify(c.verification.droplet.size)}
@@ -130,6 +133,18 @@ export function parseConfig(text: string, fallbackName: string): ProjectConfig {
     if (typeof verification.lifetime !== 'string') throw new Error('verification.lifetime must be a duration string');
     try { c.verification.lifetimeMs = durationMs(verification.lifetime); }
     catch { throw new Error('verification.lifetime must be a positive duration (s, m, h or d)'); }
+  }
+  if (verification.run_timeout !== undefined) {
+    if (typeof verification.run_timeout !== 'string') throw new Error('verification.run_timeout must be a duration string');
+    try { c.verification.runTimeoutMs = durationMs(verification.run_timeout); }
+    catch { throw new Error('verification.run_timeout must be a positive duration (s, m, h or d)'); }
+    c.verification.runTimeout = verification.run_timeout;
+  }
+  const margin = Number(process.env.CLAND_TEST_EXECUTOR_MARGIN_MS) || 600000;
+  if (c.verification.lifetimeMs < c.verification.runTimeoutMs + margin) throw new Error(`verification.lifetime ${verification.lifetime ?? '110m'} must be at least run_timeout ${c.verification.runTimeout} plus 10 minutes`);
+  if (verification.daily_spend_usd !== undefined) {
+    if (typeof verification.daily_spend_usd !== 'number' || !Number.isFinite(verification.daily_spend_usd) || verification.daily_spend_usd < 0) throw new Error('verification.daily_spend_usd must be a nonnegative number');
+    c.verification.dailySpendUsd = verification.daily_spend_usd;
   }
   if (verification.droplet !== undefined) {
     const droplet = verification.droplet;

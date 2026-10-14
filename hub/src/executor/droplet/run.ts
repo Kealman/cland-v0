@@ -3,6 +3,8 @@ import { promisify } from 'node:util';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readFile, writeFile } from 'node:fs/promises';
+import { parseConfig, defaultConfig } from '../../init/config.ts';
+import { basename } from 'node:path';
 import { suiteCommands } from '../../hub/suite-worker.ts';
 import type { RunRef, RunStatus } from '../executor.ts';
 import { Machine, machineEnv, shellQuote as quote } from './machine.ts';
@@ -43,15 +45,16 @@ export class DropletRun {
     const commands = suiteCommands(run).map((args, index) => `${index === 1 ? 'rmdir /tmp/cland-suite.lock; trap - EXIT\n' : ''}echo ${quote(`$ npm ${args.join(' ')}`)}\nnpm ${args.map(quote).join(' ')} || exit $?`).join('\n');
     // The typecheck owns the machine compatibility lock; the package runner then
     // takes its own compatibility leases, including cross-package smoke phases.
+    const config = await readFile(join(this.#root, '.cland/config.toml'), 'utf8').then(text => parseConfig(text, basename(this.#root)), error => { if (error.code === 'ENOENT') return defaultConfig(basename(this.#root)); throw error; });
     const script = (await readFile(fileURLToPath(new URL('./run.sh', import.meta.url)), 'utf8'))
       .replace('@RUN_ID@', lease.run).replace('@COMMANDS@', commands)
-      .replace('@DEADLINE@', String(Math.floor(Date.parse(lease.deadline) / 1000)));
+      .replace('@RUN_TIMEOUT@', String(config.verification.runTimeoutMs / 1000));
     await writeFile(join(local, 'run.sh'), script, { mode: 0o600 });
     for (const file of ['tree.bundle', 'env', 'run.sh']) await this.#machine.put(lease, join(local, file), `runs/${lease.run}/${file}`);
     const lock = quote(snapshot.key.lock);
     const pin = quote(snapshot.key.nvim.tag);
     const command = `set -e\ncd "$HOME/cland"\ngit fetch ${dir}/tree.bundle ${quote(run.head)}\ngit checkout --detach ${quote(run.head)}\ngit clean -fdx -e node_modules -e .cache\ntest "$(git rev-parse HEAD)" = ${quote(run.head)}\ntest -z "$(git status --porcelain)"\nif test "$(sha256sum package-lock.json | cut -d ' ' -f 1)" != ${lock}; then echo 'dependencies changed: npm ci'; npm ci; else echo 'dependencies match snapshot'; fi\nif test "$(cat nvim/NVIM_VERSION 2>/dev/null || echo none)" != ${pin}; then echo 'Neovim pin changed: seed'; node nvim/bin/nvim-path.ts; else echo 'Neovim pin matches snapshot'; fi\ntest "$(git rev-parse HEAD)" = ${quote(run.head)}\ntest -z "$(git status --porcelain)"`;
-    const output = await this.#machine.exec(lease, command, { timeoutMs: Math.max(1, Date.parse(lease.deadline) - Date.now() - 120000) });
+    const output = await this.#machine.exec(lease, command, { timeoutMs: Math.max(1, Date.parse(lease.deadline) - Date.now() - testTiming('CLAND_TEST_EXECUTOR_COLLECTION_MARGIN_MS', 120000)) });
     await writeFile(join(local, 'delivery.log'), output);
     await this.#machine.put(lease, join(local, 'delivery.log'), `runs/${lease.run}/delivery.log`);
     lease.execution = { head: run.head, delivered: true };
@@ -66,7 +69,7 @@ export class DropletRun {
     const status = await this.status(lease);
     if (status.state === 'lost') throw new Error(status.cause ?? 'remote machine lost');
     if (status.state === 'running' || status.state === 'done') {
-      lease.execution.started = true;
+      lease.execution.started = true; lease.execution.startedAt ??= new Date().toISOString();
       await writeLease(this.#root, lease);
     }
   }

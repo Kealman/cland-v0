@@ -64,6 +64,7 @@ export class LocalExecutor implements Executor {
       const env = { ...process.env };
       delete env.NODE_TEST_CONTEXT;
       delete env.CLAND_SUITE_LEASE;
+      delete env.DIGITALOCEAN_TOKEN;
       resource.attempted = true;
       this.#checkpoint(lease, resource);
       const child = spawn(process.execPath, [fileURLToPath(new URL('../hub/suite-worker.ts', import.meta.url)), input], { cwd: run.cwd, env, detached: true, stdio: ['ignore', fd.fd, fd.fd] });

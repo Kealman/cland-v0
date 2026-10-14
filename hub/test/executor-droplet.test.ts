@@ -17,7 +17,7 @@ const exec = promisify(execFile);
 
 async function providerEnv(t: TestContext, api: Awaited<ReturnType<typeof fakeDigitalOcean>>, root: string, lifetimePoll = '25') {
   await preparedDropletFixture(root, api);
-  const env = { DIGITALOCEAN_TOKEN: 'sentinel-lifecycle', CLAND_DIGITALOCEAN_API: api.url, CLAND_SSH_BIN: resolve('hub/test/fakes/digitalocean/ssh'), CLAND_SCP_BIN: resolve('hub/test/fakes/digitalocean/scp'), CLAND_TEST_FAKE_MACHINE_ROOT: api.stateRoot, CLAND_TEST_DROPLET_POLL_MS: lifetimePoll, CLAND_TEST_DROPLET_RELEASE_MS: '500', CLAND_TEST_DROPLET_RETRY_MS: '50' };
+  const env = { CLAND_EXECUTOR_STATE: join(root, '.cland/executor-state'), CLAND_TEST_EXECUTOR_MARGIN_MS: '1', DIGITALOCEAN_TOKEN: 'sentinel-lifecycle', CLAND_DIGITALOCEAN_API: api.url, CLAND_SSH_BIN: resolve('hub/test/fakes/digitalocean/ssh'), CLAND_SCP_BIN: resolve('hub/test/fakes/digitalocean/scp'), CLAND_TEST_FAKE_MACHINE_ROOT: api.stateRoot, CLAND_TEST_DROPLET_POLL_MS: lifetimePoll, CLAND_TEST_DROPLET_RELEASE_MS: '500', CLAND_TEST_EXECUTOR_SWEEP_MS: '50' };
   for (const [key, value] of Object.entries(env)) {
     const old = process.env[key]; process.env[key] = value;
     t.after(() => { if (old === undefined) delete process.env[key]; else process.env[key] = old; });
@@ -134,7 +134,7 @@ test('acquire reloads the droplet table, selects the first offered region and na
   assert.ok(first.tags.includes(expected), 'an alias of the project has the canonical project tag');
   api.sizes.push({ slug: 'small', available: true, price_hourly: 0.06, disk: 10, regions: ['nyc1'] });
   api.regions.find(r => r.slug === 'nyc1')!.sizes.push('small');
-  await writeFile(path, '[verification]\nlifetime = "10s"\n[verification.droplet]\nsize = "small"\nregions = ["lon1", "nyc1"]\nimage = "ubuntu-24-04-x64"\n');
+  await writeFile(path, '[verification]\nlifetime = "10s"\nrun_timeout = "1s"\n[verification.droplet]\nsize = "small"\nregions = ["lon1", "nyc1"]\nimage = "ubuntu-24-04-x64"\n');
   const second = await executor.acquire({ id: 'second-config' }, new Date(Date.now() + 300000).toISOString());
   ownProcess(t, second.watchdog!.pid);
   assert.equal(second.size, 'small'); assert.equal(second.region, 'nyc1');
@@ -149,7 +149,7 @@ test('acquire reloads the droplet table, selects the first offered region and na
 test('the detached watchdog survives a stopped hub; restart consumes its receipt and hides released leases', async t => {
   const root = await tempProject(t);
   await mkdir(join(root, '.cland'), { recursive: true });
-  await writeFile(join(root, '.cland/config.toml'), '[verification]\nlifetime = "3s"\n');
+  await writeFile(join(root, '.cland/config.toml'), '[verification]\nlifetime = "3s"\nrun_timeout = "1s"\n');
   const api = await fakeDigitalOcean('sentinel-lifecycle'); t.after(() => api.close());
   const env = await providerEnv(t, api, root);
   const started = await startDaemon(t, root, env);
@@ -315,7 +315,7 @@ test('macOS inhibits idle sleep while the lease lives and drops the inhibitor af
 test('reap deletes project orphans and old cland droplets while preserving other resources', async t => {
   const root = await tempProject(t);
   await mkdir(join(root, '.cland'), { recursive: true });
-  await writeFile(join(root, '.cland/config.toml'), '[project]\nname = "test"\n[verification]\nlifetime = "3s"\n');
+  await writeFile(join(root, '.cland/config.toml'), '[project]\nname = "test"\n[verification]\nlifetime = "3s"\nrun_timeout = "1s"\n');
   const api = await fakeDigitalOcean('sentinel-reap');
   t.after(() => api.close());
   const tag = `cland-p-${createHash('sha256').update(`${root}\0test`).digest('hex').slice(0, 12)}`;
@@ -326,8 +326,8 @@ test('reap deletes project orphans and old cland droplets while preserving other
     { ...base, id: 3, name: 'young-other', tags: ['cland', 'cland-p-other'] },
     { ...base, id: 4, name: 'n8n', tags: ['n8n'] },
   );
-  api.keys.push({ id: 10, name: 'cland-test-stray', public_key: 'public' }, { id: 11, name: 'other', public_key: 'public' });
-  await startDaemon(t, root, { DIGITALOCEAN_TOKEN: 'sentinel-reap', CLAND_DIGITALOCEAN_API: api.url });
+  api.keys.push({ id: 10, name: `${tag}-stray`, public_key: 'public' }, { id: 11, name: 'other', public_key: 'public' });
+  await startDaemon(t, root, { CLAND_TEST_EXECUTOR_MARGIN_MS: '1', DIGITALOCEAN_TOKEN: 'sentinel-reap', CLAND_DIGITALOCEAN_API: api.url });
   const reap = await clandWithEnv(root, {}, 'executor', 'reap', '--json');
   assert.equal(reap.code, 0, reap.stderr);
   assert.deepEqual(api.droplets.map(d => d.id), [3, 4]);

@@ -315,6 +315,7 @@ export async function isolateVerification(root: string): Promise<void> {
 
 /** Start the fixture daemon and register teardown before returning its discovery. */
 export async function startDaemon(t: TestContext, root: string, env: Record<string, string> = {}): Promise<{ result: CliResult; discovery: Discovery }> {
+  env = { DIGITALOCEAN_TOKEN: '', CLAND_EXECUTOR_STATE: join(root, '.cland/executor-state'), ...env };
   const result = await clandWithEnv(root, env, 'hub', 'start');
   let discovery: Discovery | null = null;
   try {

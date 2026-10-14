@@ -1,83 +1,17 @@
 import { DatabaseSync } from 'node:sqlite';
-import test, { type TestContext } from 'node:test';
+import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { chmod, mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
-import { join, resolve } from 'node:path';
-import { cland, clandWithEnv, connectUi, eventually, flushProjectLogs, spawnSpoke, startDaemon, tempProject } from './harness.ts';
-import { ownProcess, onCleanup } from './process-cleanup.ts';
-import { fakeDigitalOcean } from './fakes/digitalocean/fake-api.ts';
-import { prepareKey, keyHash } from '../src/executor/droplet/prepare.ts';
+import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { cland, clandWithEnv, connectUi, eventually, flushProjectLogs, startDaemon } from './harness.ts';
+import { ownProcess } from './process-cleanup.ts';
 import type { HubStatus } from '../src/protocol.ts';
+import { fixture } from './remote-fixture.ts';
 
 const exec = promisify(execFile);
 const token = 'sentinel-remote-suite-token';
-async function fixture(t: TestContext, options: { typecheck?: string | undefined; test?: string | undefined; executor?: 'local' | 'droplet' } = {}) {
-  const root = await tempProject(t, 'remote-run-');
-  const territory = await tempProject(t, 'remote-territory-');
-  const api = await fakeDigitalOcean(token);
-  onCleanup(t, () => api.close());
-  const git = async (...args: string[]) => (await exec('git', args, { cwd: root })).stdout.trim();
-  await git('init', '-q', '-b', 'dev');
-  await git('config', 'user.name', 'Test'); await git('config', 'user.email', 'test@example.com'); await git('config', 'commit.gpgsign', 'false');
-  await mkdir(join(root, 'nvim')); await mkdir(join(root, 'hub/src/tracker'), { recursive: true });
-  await writeFile(join(root, '.gitignore'), '.cland/\nnode_modules/\n');
-  await writeFile(join(root, 'nvim/NVIM_VERSION'), 'v0.12.5\n');
-  await writeFile(join(root, 'nvim/NVIM_SHA256SUMS'), `${'a'.repeat(64)}  nvim-linux-x86_64.tar.gz\n`);
-  const typecheck = options.typecheck ?? 'node -e "process.exit(0)"';
-  const script = options.test ?? `node -e "console.log('SELECTION='+process.env.CLAND_SUITE_SELECTION);console.log('COLORS='+process.env.FORCE_COLOR+','+process.env.NO_COLOR);console.log('# tests 1');console.log('# pass 1')"`;
-  await writeFile(join(root, 'package.json'), JSON.stringify({ private: true, workspaces: ['hub'], scripts: { typecheck, test: script } }));
-  await writeFile(join(root, 'hub/package.json'), JSON.stringify({ name: 'fixture-hub', scripts: { test: script } }));
-  await writeFile(join(root, 'package-lock.json'), '{}\n');
-  await git('add', '.'); await git('commit', '-qm', 'Base');
-  await exec('git', ['init', '--bare', '-q', territory]);
-  await git('remote', 'add', 'origin', territory); await git('push', '-qu', 'origin', 'dev');
-  const key = await prepareKey(root);
-  const image = { id: 900, name: 'suite-snapshot', regions: ['lon1'], size_gigabytes: 1, min_disk_size: 10, created_at: new Date().toISOString() };
-  await api.seedSnapshot(image, key);
-  const imageHome = join(api.imageDirs.get(image.id)!, 'home/runner');
-  await exec('git', ['clone', '-q', '--no-hardlinks', root, join(imageHome, 'cland')]);
-  await exec('git', ['remote', 'remove', 'origin'], { cwd: join(imageHome, 'cland') });
-  await mkdir(join(root, '.cland/run/executor'), { recursive: true });
-  await writeFile(join(root, '.cland/run/executor/snapshot.json'), JSON.stringify({ image: image.id, name: image.name, key, keyHash: keyHash(key), regions: image.regions, sizeGb: 1, minDiskSize: 10, created: image.created_at }));
-  await writeFile(join(root, '.cland/config.toml'), `[verification]\nexecutor = "${options.executor ?? 'droplet'}"\nlock_path = ${JSON.stringify(join(root, '.cland/host.lock'))}\nlifetime = "10m"\n`);
-  // The fake machine executes the real delivered shell on either macOS or Linux.
-  const bin = join(api.stateRoot, 'bin'); await mkdir(bin);
-  await writeFile(join(bin, 'setsid'), '#!/usr/bin/env python3\nimport os,sys\nos.setsid()\nos.execvp(sys.argv[1],sys.argv[1:])\n');
-  await writeFile(join(bin, 'timeout'), '#!/usr/bin/env python3\nimport subprocess,sys\na=sys.argv[1:]\na=a[1:] if a[0].startswith("--kill-after") else a\nseconds=float(a.pop(0).rstrip("s"))\np=subprocess.Popen(a)\ntry: sys.exit(p.wait(timeout=seconds))\nexcept subprocess.TimeoutExpired:\n p.terminate()\n try: p.wait(timeout=1)\n except subprocess.TimeoutExpired: p.kill();p.wait()\n sys.exit(124)\n');
-  await writeFile(join(bin, 'sha256sum'), `#!${process.execPath}\nconst fs=require('fs'),crypto=require('crypto');console.log(crypto.createHash('sha256').update(fs.readFileSync(process.argv[2])).digest('hex')+'  '+process.argv[2]);\n`);
-  await writeFile(join(bin, 'flock'), '#!/usr/bin/env python3\nimport fcntl,sys\ntry: fcntl.flock(int(sys.argv[-1]),fcntl.LOCK_EX|fcntl.LOCK_NB)\nexcept BlockingIOError: sys.exit(1)\n');
-  for (const file of ['setsid', 'timeout', 'sha256sum', 'flock']) await chmod(join(bin, file), 0o700);
-  const env = { DIGITALOCEAN_TOKEN: token, CLAND_DIGITALOCEAN_API: api.url, CLAND_SSH_BIN: resolve('hub/test/fakes/digitalocean/ssh'), CLAND_SCP_BIN: resolve('hub/test/fakes/digitalocean/scp'), CLAND_TEST_FAKE_MACHINE_ROOT: api.stateRoot, PATH: `${bin}:${process.env.PATH}`, CLAND_TEST_DROPLET_POLL_MS: '20', CLAND_TEST_DROPLET_MACHINE_MS: '2000', CLAND_TEST_DROPLET_RUN_POLL_MS: '50', CLAND_TEST_DROPLET_CANCEL_MS: '500', CLAND_TEST_DROPLET_RELEASE_MS: '500', CLAND_TEST_DROPLET_RETRY_MS: '50' };
-  await git('checkout', '-qb', 'task-candidate');
-  await writeFile(join(root, 'hub/src/tracker/change.ts'), 'export const candidate = true;\n'); await git('add', 'hub/src/tracker/change.ts'); await git('commit', '-qm', 'Hub change');
-  const daemon = await startDaemon(t, root, env);
-  const ui = await connectUi(t, daemon.discovery);
-  assert.equal((await ui.request({ type: 'role.set', session: 'impl', role: 'implementer' })).ok, true);
-  const spoke = await spawnSpoke({ discover: true, assignRole: false, cwd: root, name: 'impl', sessionId: 'remote-impl', role: 'implementer' });
-  onCleanup(t, () => spoke.close()); await spoke.waitForPresence(['impl']);
-  const actor = { CLAND_SESSION_NAME: 'impl', CLAND_SESSION_ID: 'remote-impl', CLAND_ROLE: 'implementer' };
-  const item = JSON.parse((await cland(root, 'task', 'create', '--size', 'M', 'Remote fixture', '--assignee', 'impl', '--json')).stdout).item.id as string;
-  const topic = ((await ui.request({ type: 'topic.create', item, title: 'Remote run' })).value as { topic: { id: string } }).topic.id;
-  const launch = async (...args: string[]) => {
-    const submitted = await clandWithEnv(root, actor, 'verify', '--report', topic, '--to', 'impl', '--json', ...args);
-    assert.equal(submitted.code, 0, submitted.stderr);
-    return JSON.parse(submitted.stdout) as { id: string; pid: number | null; cached?: { run: string } };
-  };
-  const messages = async (id: string, client = ui) => ((await client.request({ type: 'topic.history', topic })).value as { messages: { id: string; text: string }[] }).messages.filter(m => m.id === `suite:${id}`);
-  const result = async (id: string, client = ui) => eventually('remote result', async () => (await messages(id, client))[0], 20000);
-  const remote = async (id: string, client = ui) => eventually('remote group started', async () => {
-    const directory = [...api.machineDirs.values()].at(-1);
-    if (!directory) return;
-    const home = join(directory, 'home/runner');
-    const pgid = await readFile(join(home, 'runs', id, 'pgid'), 'utf8').catch(() => '');
-    if (!pgid) { const failure = (await messages(id, client))[0]; if (failure) throw new Error(failure.text); return; }
-    ownProcess(t, Number(pgid));
-    return { home, run: join(home, 'runs', id) };
-  }, 15000);
-  return { root, api, git, key, ui, discovery: daemon.discovery, env, actor, item, topic, launch, messages, result, remote };
-}
 
 test('remote verify delivers host selection, runs as runner, reports accounting, contains the token and caches across executors', async t => {
   const f = await fixture(t);
@@ -119,14 +53,21 @@ test('remote verify delivers host selection, runs as runner, reports accounting,
   assert.ok(!calls.includes(token)); assert.ok(!JSON.stringify(f.api.requests).includes(token));
 });
 
-test('executor overrides bypass host compatibility locks and dirty remote candidates are refused', async t => {
+test('executor overrides bypass host locks and dirty remote candidates fall back to the local queue', async t => {
   const f = await fixture(t, { executor: 'local' });
   await mkdir(join(f.root, '.cland/host.lock'));
   const remote = await f.launch('--executor', 'droplet');
   assert.match((await f.result(remote.id)).text, /Executor droplet/);
   await writeFile(join(f.root, 'hub/src/tracker/change.ts'), 'dirty');
-  const dirty = await clandWithEnv(f.root, f.actor, 'verify', '--executor', 'droplet', '--report', f.topic, '--to', 'impl');
-  assert.equal(dirty.code, 1); assert.match(dirty.stderr, /dirty worktree/);
+  const dirty = await clandWithEnv(f.root, f.actor, 'verify', '--executor', 'droplet', '--report', f.topic, '--to', 'impl', '--json');
+  assert.equal(dirty.code, 0, dirty.stderr);
+  const queued = JSON.parse((await cland(f.root, 'verify', 'queue', '--json')).stdout);
+  assert.ok(queued.waiters.some((run: { id: string }) => run.id === JSON.parse(dirty.stdout).id));
+  const status = (await f.ui.request({ type: 'hub.status' })).value as HubStatus;
+  assert.equal(status.suites!.find(run => run.id === JSON.parse(dirty.stdout).id)!.executor, 'local');
+  const history = ((await f.ui.request({ type: 'topic.history', topic: f.topic })).value as { messages: { text: string; severity?: string }[] }).messages;
+  const notice = history.find(m => m.text.includes('droplet unavailable'));
+  assert.match(notice!.text, /dirty worktree/); assert.equal(notice!.severity, 'warn');
 });
 
 test('a local override executes locally despite a droplet default', async t => {

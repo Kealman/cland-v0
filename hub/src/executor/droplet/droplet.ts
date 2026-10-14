@@ -9,12 +9,13 @@ import { basename } from 'node:path';
 import { realpathSync } from 'node:fs';
 import { defaultConfig, parseConfig } from '../../init/config.ts';
 import { DigitalOceanApi, DigitalOceanError } from './api.ts';
-import { accountRelease, leaseDir, liveLease, readLease, readLeases, writeLease, type DropletLease, type WatchdogReceipt } from './lease.ts';
+import { accountRelease, leaseDir, liveLease, matchesLease, readLease, readLeases, writeLease, type DropletLease, type WatchdogReceipt } from './lease.ts';
 import { armWatchdog, pause, stopWatchdog, testTiming, watchdogAlive } from './watchdog.ts';
 import { deleteLeaseResources } from './cleanup.ts';
 import { readRecoveries, recoverSnapshots } from './snapshot-recovery.ts';
 import { machineEnv } from './machine.ts';
 import { prepareKey, prepareSnapshot, readSnapshot, staleParts, sameKey, waitForMachine, type PrepareKey, type Prepared } from './prepare.ts';
+import { hostLeases, inspectSpend, rememberProject, reserveSpend, settleSpend } from './spend.ts';
 import { DropletRun } from './run.ts';
 import type { Executor, Released, RunRef } from '../executor.ts';
 
@@ -53,6 +54,7 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
   async acquire(run: Pick<RunRef, 'id'>, deadline: string): Promise<DropletLease> {
     const runDeadline = Date.parse(deadline);
     if (!Number.isFinite(runDeadline) || runDeadline <= Date.now()) throw new Error('droplet acquisition deadline reached');
+    if (!process.env.DIGITALOCEAN_TOKEN) throw new Error('DIGITALOCEAN_TOKEN is required');
     const snapshot = await readSnapshot(this.root);
     if (!snapshot) throw new Error('no prepared snapshot; run cland executor prepare');
     const config = await this.#config();
@@ -76,7 +78,7 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
     const created = new Date().toISOString();
     const id = randomUUID();
     const name = `cland-${projectName(config.name)}-${id.replace(/-/g, '').slice(0, 8)}`;
-    const lease: DropletLease = { kind: 'droplet', provider: 'digitalocean', lease: id, run: run.id, name, tags: ['cland', projectTag(this.root, config.name)], size, region, priceHourly: selected.price_hourly, keyName: name, created,
+    const lease: DropletLease = { kind: 'droplet', provider: 'digitalocean', lease: id, run: run.id, name, tags: ['cland', projectTag(this.root, config.name)], size, region, priceHourly: selected.price_hourly, keyName: `${projectTag(this.root, config.name)}-${id.replace(/-/g, '').slice(0, 8)}`, created,
       deadline: new Date(Date.parse(created) + config.verification.lifetimeMs).toISOString(), state: 'creating', resource: null, keyId: null };
     const dir = leaseDir(this.root, lease);
     await mkdir(dir, { recursive: true, mode: 0o700 });
@@ -84,12 +86,13 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
       await exec('ssh-keygen', ['-t', 'ed25519', '-N', '', '-f', join(dir, 'key'), '-C', name], { timeout: 15000, env: machineEnv() });
       await chmod(join(dir, 'key'), 0o600);
       await this.#save(lease);
+      await reserveSpend(this.root, lease, config.verification.dailySpendUsd);
       lease.watchdog = await armWatchdog(dir);
       await this.#save(lease);
       const publicKey = await readFile(join(dir, 'key.pub'), 'utf8');
       lease.keyImportStarted = new Date().toISOString();
       await this.#save(lease);
-      const key = await api.importKey(name, publicKey);
+      const key = await api.importKey(lease.keyName, publicKey);
       lease.keyImportFinished = new Date().toISOString();
       lease.keyId = key.id;
       await this.#save(lease);
@@ -182,7 +185,7 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
     const persisted = await readLease(leaseDir(this.root, lease));
     if (persisted.name !== lease.name || persisted.lease !== lease.lease) throw new Error('droplet lease identity changed; refusing release');
     Object.assign(lease, persisted);
-    if (lease.state === 'released') return { lifetimeMs: lease.lifetimeMs ?? 0, costUsd: lease.costUsd ?? 0 };
+    if (lease.state === 'released') { await settleSpend(lease); return { lifetimeMs: lease.lifetimeMs ?? 0, costUsd: lease.costUsd ?? 0 }; }
     lease.state = 'releasing';
     await this.#save(lease);
     const limit = Date.now() + testTiming('CLAND_TEST_DROPLET_RELEASE_MS', 15000);
@@ -192,6 +195,7 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
         if (result.confirmed) {
           accountRelease(lease, lease.deleteStarted ?? new Date().toISOString());
           await this.#save(lease);
+          await settleSpend(lease);
           await stopWatchdog(lease);
           await rm(join(leaseDir(this.root, lease), 'key'), { force: true });
           await rm(join(leaseDir(this.root, lease), 'key.pub'), { force: true });
@@ -217,35 +221,38 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
       const token = Boolean(process.env.DIGITALOCEAN_TOKEN);
       const all = await readLeases(this.root);
       const leases = await Promise.all(all.filter(l => l.state !== 'released').map(async l => ({ name: l.name, id: l.resource, region: l.region, size: l.size, state: l.state, ageMs: Date.now() - Date.parse(l.created), deadline: l.deadline, watchdogAlive: await watchdogAlive(l) })));
-      const today = new Date().toISOString().slice(0, 10);
-      const todayCostUsd = all.filter(l => l.state === 'released' && l.released?.startsWith(today)).reduce((total, l) => total + (l.costUsd ?? 0), 0);
+      const spend = await inspectSpend((await this.#config()).verification.dailySpendUsd);
+      const todayCostUsd = spend.spent;
       let taggedDroplets: number | null = null;
       let providerError: string | undefined;
       if (token) try { taggedDroplets = (await new DigitalOceanApi().droplets('cland')).length; } catch { providerError = 'provider unavailable'; }
       // A job may replace/restore the record while provider and Git reads yield.
       // Return a coherent snapshot and terminal job state from the same observation.
       if (job !== this.#prepareJob || jobState !== job?.state) continue;
-      const summary = [snapshot ? `snapshot: ${snapshot.name} image=${snapshot.image} ${freshness.length ? `stale: ${freshness.join('|')}` : 'current'} key=${JSON.stringify(snapshot.key)}` : 'snapshot: none', ...(prepare ? [`prepare: ${prepare.state} ${prepare.step} elapsed=${Math.round(prepare.elapsedMs / 1000)}s`] : []), ...snapshotRecovery.map(record => `snapshot recovery: ${record.name} ${record.phase}`), `token: ${token ? 'present' : 'absent (DIGITALOCEAN_TOKEN)'}`, ...(!leases.length ? ['leases: none'] : leases.map(l => `${l.name} id=${l.id ?? 'pending'} ${l.region} ${l.size} ${l.state} age=${Math.round(l.ageMs / 1000)}s deadline=${l.deadline} watchdog=${l.watchdogAlive ? 'alive' : 'dead'}`)), `today: $${todayCostUsd.toFixed(4)}`, `tagged droplets: ${taggedDroplets ?? providerError ?? 'unavailable'}`].join('\n');
-      return { snapshotRecovery, snapshot: snapshot ? { ...snapshot, freshness: freshness.length ? `stale: ${freshness.join('|')}` : 'current' } : null, prepare, token, leases, todayCostUsd, taggedDroplets, ...(providerError ? { providerError } : {}), summary };
+      const summary = [snapshot ? `snapshot: ${snapshot.name} image=${snapshot.image} ${freshness.length ? `stale: ${freshness.join('|')}` : 'current'} key=${JSON.stringify(snapshot.key)}` : 'snapshot: none', ...(prepare ? [`prepare: ${prepare.state} ${prepare.step} elapsed=${Math.round(prepare.elapsedMs / 1000)}s`] : []), ...snapshotRecovery.map(record => `snapshot recovery: ${record.name} ${record.phase}`), `token: ${token ? 'present' : 'absent (DIGITALOCEAN_TOKEN)'}`, ...(!leases.length ? ['leases: none'] : leases.map(l => `${l.name} id=${l.id ?? 'pending'} ${l.region} ${l.size} ${l.state} age=${Math.round(l.ageMs / 1000)}s deadline=${l.deadline} watchdog=${l.watchdogAlive ? 'alive' : 'dead'}`)), `ledger: ${spend.path}`, `today: spent $${spend.spent.toFixed(4)} + reserved $${spend.reserved.toFixed(4)} / cap $${spend.cap}`, `tagged droplets: ${taggedDroplets ?? providerError ?? 'unavailable'}`].join('\n');
+      return { spend, snapshotRecovery, snapshot: snapshot ? { ...snapshot, freshness: freshness.length ? `stale: ${freshness.join('|')}` : 'current' } : null, prepare, token, leases, todayCostUsd, taggedDroplets, ...(providerError ? { providerError } : {}), summary };
     }
   }
 
   /** Restart repair and releasing-only retries. General orphan sweeping belongs to the safety stage. */
   async reconcile(restart = true): Promise<void> {
+    if (process.env.DIGITALOCEAN_TOKEN) await rememberProject(this.root);
     const owned = new Set((JSON.parse(this.store?.meta('suite-jobs') ?? '[]') as Array<{ id: string; reported: boolean; state?: string; outcome: unknown }>).filter(job => !job.reported && !job.outcome && job.state !== 'queued').map(job => job.id));
     for (const lease of await readLeases(this.root)) {
       const dir = leaseDir(this.root, lease);
       let receipt: WatchdogReceipt | undefined;
       try { receipt = JSON.parse(await readFile(join(dir, 'watchdog.json'), 'utf8')) as WatchdogReceipt; }
       catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
-      if (receipt && lease.state !== 'released') {
+      if (receipt && lease.watchdogFired !== receipt.fired) {
         lease.resource ??= receipt.deleted[0] ?? null;
         accountRelease(lease, receipt.deleteStarted);
         lease.released = receipt.confirmedAt;
         await this.#save(lease);
         this.logger({ event: 'executor-watchdog-fired', lease: lease.lease, ...receipt });
+        lease.watchdogFired = receipt.fired; await this.#save(lease);
       }
       if (lease.state === 'released') {
+        await settleSpend(lease);
         await rm(join(dir, 'key'), { force: true }); await rm(join(dir, 'key.pub'), { force: true });
         continue;
       }
@@ -259,19 +266,31 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
     if (this.#prepareJob?.state !== 'running') await recoverSnapshots(this.root, this.store, this.logger);
     this.store?.setMeta('executor-leases', JSON.stringify(await readLeases(this.root)));
   }
+  async sweep(restart = false): Promise<void> {
+    let reapedDroplets = 0, reapedKeys = 0, failures = 0;
+    try { await this.reconcile(restart); } catch { failures++; this.logger({ event: 'executor-reconcile-failed', reason: 'lease recovery deferred' }); }
+    if (process.env.DIGITALOCEAN_TOKEN) try {
+      const result = await this.reap(); reapedDroplets = result.deleted.length; reapedKeys = result.deletedKeys.length;
+    } catch { failures++; this.logger({ event: 'executor-reconcile-failed', reason: 'provider sweep deferred' }); }
+    this.logger({ event: 'executor-sweep', leases: (await readLeases(this.root)).filter(l => l.state !== 'released').length, reapedDroplets, reapedKeys, failures });
+  }
   async reap(authorize: () => void = () => {}) {
     authorize();
     if (!process.env.DIGITALOCEAN_TOKEN) throw new Error('DIGITALOCEAN_TOKEN is required');
     const config = await this.#config();
     const tag = projectTag(this.root, config.name);
-    const leases = await readLeases(this.root);
-    const live = leases.filter(liveLease);
     const api = new DigitalOceanApi();
     const deleted: number[] = [];
     for (const droplet of await api.droplets('cland')) {
       if (!droplet.tags.includes('cland')) continue;
+      // Acquire persists ownership before its provider mutation. Read it after
+      // the provider list (and after any previous deletion awaits), never before.
+      const known = await hostLeases(this.root);
+      const owner = known.find(lease => matchesLease(droplet, lease));
+      if (known.some(lease => matchesLease(droplet, lease) && liveLease(lease))) continue;
       const age = Date.now() - Date.parse(droplet.created_at);
-      const reason = age > config.verification.lifetimeMs + 600000 ? 'past lifetime' : droplet.tags.includes(tag) && !live.some(l => l.resource === droplet.id || l.name === droplet.name) ? 'no live lease' : null;
+      const deadline = owner ? Date.parse(owner.deadline) : Date.parse(droplet.created_at) + config.verification.lifetimeMs;
+      const reason = droplet.tags.includes(tag) ? 'no live lease' : Date.now() > deadline + 600000 ? 'past lifetime' : null;
       if (!reason) continue;
       authorize();
       await api.deleteDroplet(droplet.id);
@@ -285,8 +304,18 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
       deleted.push(droplet.id);
       this.logger({ event: 'executor-reaped', id: droplet.id, name: droplet.name, age, reason });
     }
-    for (const key of await api.keys()) if (key.name.startsWith(`cland-${projectName(config.name)}-`) && !live.some(l => l.keyName === key.name)) { authorize(); await api.deleteKey(key.id); }
-    return { deleted, summary: `reaped: ${deleted.length} droplets` };
+    const deletedKeys: number[] = [];
+    for (const key of await api.keys()) {
+      const known = await hostLeases(this.root);
+      if (known.some(lease => liveLease(lease) && lease.keyName === key.name)) continue;
+      const legacy = key.name.startsWith(`cland-${projectName(config.name)}-`);
+      const oldLease = known.find(lease => lease.keyName === key.name);
+      // DO's key object has no creation time: an unaged legacy key stays untouched.
+      const oldEnough = oldLease && Date.now() - Date.parse(oldLease.keyImportStarted ?? oldLease.created) > config.verification.lifetimeMs + 600000;
+      if (!key.name.startsWith(`${tag}-`) && !(legacy && oldEnough)) continue;
+      authorize(); await api.deleteKey(key.id); deletedKeys.push(key.id);
+    }
+    return { deleted, deletedKeys, summary: `reaped: ${deleted.length} droplets` };
   }
 }
 

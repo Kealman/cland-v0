@@ -3,8 +3,9 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { processStartedAsync } from '../../hub/lock.ts';
 import { DigitalOceanApi } from './api.ts';
+import { settleSpend } from './spend.ts';
 import { deleteLeaseResources } from './cleanup.ts';
-import { durableJson, readLease, type DropletLease, type WatchdogReceipt } from './lease.ts';
+import { accountRelease, durableJson, readLease, type DropletLease, type WatchdogReceipt } from './lease.ts';
 
 export const pause = (ms: number): Promise<void> => new Promise(r => setTimeout(r, ms));
 export const testTiming = (key: string, fallback: number): number => {
@@ -66,6 +67,8 @@ async function watchdog(dir: string): Promise<void> {
         if (result.confirmed) {
           const receipt: WatchdogReceipt = { fired, deleted: [...deleted], confirmedAt: new Date().toISOString(), deleteStarted: deleteStarted ?? new Date().toISOString() };
           await durableJson(join(dir, 'watchdog.json'), receipt);
+          accountRelease(lease, receipt.deleteStarted); lease.released = receipt.confirmedAt;
+          await settleSpend(lease);
           return;
         }
       } catch { /* the lease remains the recovery record; secrets never enter a receipt */ }

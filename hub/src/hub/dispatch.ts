@@ -156,14 +156,14 @@ export class Dispatcher {
     this.#rolesSnapshot = options.core.roles?.get();
     const root = options.control?.status().root;
     this.#droplets = root ? new DropletExecutor(root, options.core.store, this.#log) : null;
-    this.#dropletReady = this.#droplets?.reconcile().catch(() => this.#log({ event: 'executor-reconcile-failed', reason: 'lease recovery deferred' })) ?? Promise.resolve();
-    const retryMs = Number(process.env.CLAND_TEST_DROPLET_RETRY_MS);
+    this.#dropletReady = this.#droplets?.sweep(true).catch(() => this.#log({ event: 'executor-reconcile-failed', reason: 'lease recovery deferred' })) ?? Promise.resolve();
+    const retryMs = Number(process.env.CLAND_TEST_EXECUTOR_SWEEP_MS);
     this.#dropletTimer = this.#droplets ? setInterval(() => {
       if (this.#closed || this.#dropletWork) return;
-      this.#dropletWork = this.#dropletReady.then(() => this.#droplets!.reconcile(false)).catch(() => this.#log({ event: 'executor-reconcile-failed', reason: 'lease recovery deferred' })).finally(() => { this.#dropletWork = null; });
-    }, retryMs > 0 && Number.isFinite(retryMs) ? retryMs : 15000) : null;
+      this.#dropletWork = this.#dropletReady.then(() => this.#droplets!.sweep()).catch(() => this.#log({ event: 'executor-reconcile-failed', reason: 'lease recovery deferred' })).finally(() => { this.#dropletWork = null; });
+    }, retryMs > 0 && Number.isFinite(retryMs) ? retryMs : 600000) : null;
     this.#dropletTimer?.unref();
-    this.#suites = root ? new Suites(options.core.store, root, (job, checkpointArtifact) => this.#reportSuite(job, checkpointArtifact), { ...options.verification, log: this.#log, onQueue: queue => options.core.publishVerification(queue), onJob: job => options.tracker?.verifyChanged(job.item ?? null, job.branch), requesterDead: actor => [...(this.#sessions?.list() ?? []), ...(this.#sessions?.list(true) ?? [])].some(p => p.sessionId === actor.sessionId && p.status !== 'running') }) : null;
+    this.#suites = root ? new Suites(options.core.store, root, (job, checkpointArtifact) => this.#reportSuite(job, checkpointArtifact), { ...options.verification, onFallback: (job, cause) => options.core.noticeTo(job.topic, { id: `executor-fallback:${job.id}`, kind: 'report', to: job.to, text: `verify ${job.id}: droplet unavailable (${cause}); running locally`, detail: { event: 'verification-executor-fallback', id: job.id, item: job.item ?? null, cause } }), log: this.#log, onQueue: queue => options.core.publishVerification(queue), onJob: job => options.tracker?.verifyChanged(job.item ?? null, job.branch), requesterDead: actor => [...(this.#sessions?.list() ?? []), ...(this.#sessions?.list(true) ?? [])].some(p => p.sessionId === actor.sessionId && p.status !== 'running') }) : null;
     options.tracker?.useVerify((item, branch) => this.#suites?.latest(item, branch) ?? null);
     // what a read shows changed: no earlier answer is replayed
     options.core.subscribe(event => {
