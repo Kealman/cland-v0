@@ -2,8 +2,8 @@
 id: T-382
 kind: task
 title: "claude-code-accounts test is flaky on dev: a signed-out directory polled twice, and a final stop refused under load"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 rank: 2369
 criterion_seq: 5
@@ -19,7 +19,8 @@ regression_of: T-362
 topic: topic-244
 branch: t/T-382-claude-code-accounts-test-is-flaky-on
 created: 2026-10-14T10:44:29.457Z
-updated: 2026-10-14T14:25:25.088Z
+updated: 2026-10-14T14:25:50.052Z
+closed: 2026-10-14T14:25:50.052Z
 ---
 
 ## Summary
@@ -152,3 +153,7 @@ scope: evidence
 Final clear; no high or medium findings. C1–C5 verified at unchanged 52f5a39a. Exact-head full 490b6904/A-2412 passes typecheck and 2024/2024 with zero failures/cancellations/skips/todo; source and prior evidence assessment remain applicable. C4 follows the Coordinator’s 14:24:27 task comment/decision da04876f: one amended commit, both 20/20 solo batches A-2398/A-2388, and green full run satisfy pre-merge evidence. Ten four-worker macOS runs remain post-merge confirmation in the first quiet window, posted here; failure reopens the fix. Those runs have not yet occurred. Earlier red 90e5e6e8/A-2383 was resolved by amended C5 source, not unchanged retry. A-2414: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2414-t-382-final-c4-disposition-under-coordinator-amendment.md.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-10-14T14:25:50.052Z
+
+Merged ee3f2393c34504048d8af77cc2419980e409bee7 onto dev.
