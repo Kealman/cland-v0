@@ -509,7 +509,7 @@ test('background fold reconstruction leaves the focused board alone and rejects 
     { id: 'T-14', kind: 'task', title: 'First', parent: 'T-2', status: 'planned', state: 'open', rank: 10 },
     { id: 'T-21', kind: 'task', title: 'Selected', parent: 'T-2', status: 'planned', state: 'open', rank: 20 },
   ], rankEvents: 'manual' }, 'UTC', false);
-  await c.input('<Esc><Space>i');
+  await c.input('<Esc><Space>i/^ ▸.*T-2<CR>zo');
   await c.waitScreen(s => s.includes('Selected'), 'board rows');
   // Board data and topic history arrive independently. Yield between RPC reads
   // until navigation and the real thread's fold setup have both completed.

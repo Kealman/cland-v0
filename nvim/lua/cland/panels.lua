@@ -534,6 +534,8 @@ local function open_row(buf)
   local layout = require('cland.layout')
   if info.categories then
     require('cland.items').show_categories()
+  elseif info.item and info.fold and info.fold:match('^board:') then
+    layout.show({ kind = 'item', id = info.item }, { insert = false })
   elseif info.fold then
     if vim.b[buf].cland_role == 'items' then
       require('cland.vboard').fold('toggle')

@@ -44,6 +44,14 @@ async function start(t: TestContext, scenario = fixture) {
     })
   });
 }
+// Reveal only the outer release groups; backlog, leaves and more retain their defaults.
+async function unfoldGroups(c: Pick<Awaited<ReturnType<typeof start>>, 'lua' | 'input'>) {
+  const keys = await c.lua<string[]>(`local p=require('cland.panels'); local b=p.buf('items'); local out={}; for i=1,vim.api.nvim_buf_line_count(b) do local info=p.row_at(b,i); if info and info.fold and (info.fold:match('^board:[^:]+$') or info.fold:match('^board:direct:[^:]+$')) then out[#out+1]=info.fold end end; return out`);
+  for (const key of keys) {
+    await c.lua(`local key=...; local p=require('cland.panels'); local b=p.buf('items'); local w=vim.fn.bufwinid(b); vim.api.nvim_set_current_win(w); for i=1,vim.api.nvim_buf_line_count(b) do local info=p.row_at(b,i); if info and info.fold==key then vim.api.nvim_win_set_cursor(w,{i,0}); return end end; error('missing fold '..key)`, key);
+    await c.input('zo');
+  }
+}
 const panel = (c: Awaited<ReturnType<typeof start>>) => c.lua<string[]>("return vim.api.nvim_buf_get_lines(require('cland.panels').buf('items'),0,-1,false)");
 const categories: Scenario = {
   tracker: { levels: ['release', 'category', 'epic'], ladder: [['release', 'category'], ['epic']] },
@@ -62,6 +70,106 @@ const categories: Scenario = {
     task(408, 'planned', ''), task(409, 'review', ''),
   ],
 };
+
+test('release board folds ranked epics with task fractions and breakdowns, then direct tasks', { skip }, async t => {
+  const scenario: Scenario = { ...categories, items: categories.items!.concat(
+    { id: 'E-270', kind: 'epic', title: 'Live work', parent: 'R-228', rank: 10, state: 'open', claim: { session: 'lead-270', role: 'lead' } },
+    { id: 'E-271', kind: 'epic', title: 'Completed work', parent: 'R-228', rank: 1, state: 'closed', closed: '2026-10-12T10:00:00Z' },
+    { id: 'E-272', kind: 'epic', title: 'Earlier completion', parent: 'R-228', rank: 10000, state: 'closed', closed: '2026-10-11T10:00:00Z' },
+    task(320, 'in progress', 'E-270'), task(321, 'review', 'E-270'), task(322, 'backlog', 'E-270'), task(323, 'done', 'E-270'),
+    task(324, 'done', 'E-271'), task(325, 'planned', 'R-228'),
+  ) };
+  const c = await start(t, scenario);
+  await c.waitScreen(s => s.includes('Direct tasks (1)'), 'release folds');
+  const lines = await panel(c), text = lines.join('\n');
+  assert.match(text, /▸ ◐ E-270 Live work\s+lead-270.*1\/4.*1 ◐ · 1 rev · 1 backlog/);
+  assert.match(text, /▸ ○ E-269 Prefixes and categories\s+0\/1.*1 planned/);
+  assert.match(text, /▸ ● E-271 Completed work\s+1\/1/);
+  assert.match(text, /▸ Direct tasks \(1\).*0\/1.*1 planned/);
+  assert.ok(text.indexOf('Live work') < text.indexOf('Prefixes and categories', text.indexOf('R-228')));
+  assert.ok(text.indexOf('Completed work') < text.indexOf('Direct tasks (1)'));
+  assert.ok(text.indexOf('Earlier completion') < text.indexOf('Completed work'), 'closed epics use closing order rather than rank');
+  assert.doesNotMatch(text, /Row 32[0-5]|IN PROGRESS/);
+  const groups = await c.lua<string[]>(`local b=require('cland.panels').buf('items'); local out={}; local lines=vim.api.nvim_buf_get_lines(b,0,-1,false); for _,m in ipairs(vim.api.nvim_buf_get_extmarks(b,-1,0,-1,{details=true})) do if lines[m[2]+1]:sub(m[3]+1,m[4].end_col)=='Completed work' then out[#out+1]=m[4].hl_group end end; return out`);
+  assert.deepEqual(groups, ['ClandDone']);
+  await select(c, 'E-270'); await c.input('za');
+  await c.waitScreen(s => s.includes('Row 320') && s.includes('▾ ◐ E-270'), 'epic unfolds');
+  const expanded = (await panel(c)).join('\n');
+  assert.match(expanded, /   IN PROGRESS · 1/);
+  assert.match(expanded, /   REVIEW · 1/);
+  assert.doesNotMatch(expanded, /QA · 0|READY · 0|PLANNED · 0|BACKLOG · 0/);
+  assert.match(expanded, /   ▸ backlog \(1\)/);
+  await c.control({ emit: { type: 'task', id: 'T-320', item: task(320, 'in progress', 'E-270', { title: 'Live event title' }) } });
+  await c.waitScreen(s => s.includes('Live event title'), 'open fold survives event');
+  await select(c, 'E-270'); await c.input('za');
+  await c.waitScreen(s => !s.includes('Live event title'), 'epic folds again');
+  await c.control({ emit: { type: 'task', id: 'T-320', item: task(320, 'in progress', 'E-270') } });
+  await c.waitScreen(s => s.includes('▸ ◐ E-270') && !s.includes('Row 320'), 'closed fold survives event');
+  await c.input('/Direct tasks (<CR>za');
+  await c.waitScreen(s => s.includes('Row 325'), 'direct tasks unfold');
+  assert.doesNotMatch((await panel(c)).join('\n'), /Row 318.*next|Row 325.*next/, 'hidden release next is not replaced');
+  await c.input('p');
+  await c.waitScreen(s => s.includes('Row 320') && !/▸ Direct tasks|▾ Direct tasks/.test(s), 'epic tab retains sections');
+  await c.input('p');
+  await c.waitScreen(s => /T-318.*next/.test(s), 'release next survives epic narrowing');
+  await c.input('p');
+  await c.waitScreen(s => s.includes('Direct tasks (1)'), 'all epics tab');
+  await select(c, 'E-269'); await c.input('K');
+  await c.waitScreen(s => s.includes('epic all · E-269'), 'rank event reorders epics');
+  const ranks = ((await c.control({ requests: true })).requests as Array<Record<string, unknown>>).filter(f => f.type === 'task.rank');
+  assert.equal(ranks[0]?.item, 'E-269'); assert.equal(ranks[0]?.before, 'E-270');
+  assert.match(String(await c.lua('return vim.api.nvim_get_current_line()')), /E-269/);
+  await c.input('zR');
+  await c.waitScreen(s => s.includes('Row 322') && s.includes('Row 323') && s.includes('Row 324'), 'all nested folds open');
+  await c.input('zM');
+  await c.waitScreen(s => !s.includes('Row 32'), 'all groups close');
+  await select(c, 'E-269'); await c.input('<CR>');
+  await c.waitScreen(s => s.includes('E-269 · item'), 'Enter opens the epic item');
+  await select(c, 'E-269');
+  for (const width of [48, 30, 12]) {
+    const budget = await c.lua<{ width: number; widths: number[] }>(`local width=...; local l=require('cland.layout'); vim.api.nvim_win_set_width(l.win.left,width); require('cland.panels').render('items',l.win.left); local b=require('cland.panels').buf('items'); local lines=vim.api.nvim_buf_get_lines(b,0,-1,false); local out={}; for _,line in ipairs(lines) do out[#out+1]=vim.api.nvim_strwidth(line) end; for _,m in ipairs(vim.api.nvim_buf_get_extmarks(b,-1,0,-1,{details=true})) do assert(m[4].end_col<=#lines[m[2]+1]) end; return {width=vim.api.nvim_win_get_width(l.win.left),widths=out}`, width);
+    assert.ok(budget.widths.every(w => w <= budget.width), `release folds fit ${width} columns`);
+  }
+  await c.lua("local l=require('cland.layout'); vim.api.nvim_win_set_width(l.win.left,76); require('cland.panels').render('items',l.win.left)");
+  assert.equal((await panel(c)).filter(line => line.trim()).at(-3)?.trim(), 'categories 2 · 3 open · unscheduled 2');
+  await c.input('/categories 2<CR><CR>');
+  await c.waitScreen(s => s.includes('all ·') && s.includes('categories 2 ·'), 'count line enters all');
+  assert.deepEqual(await c.lua("return require('cland.actions').audit()"), []);
+});
+
+test('a release without epics keeps direct tasks folded and unfolds only their non-empty sections', { skip }, async t => {
+  const c = await start(t, { ...categories, items: categories.items!.filter(it => it.id !== 'E-269' && it.id !== 'T-318').concat(task(330, 'planned', 'R-228')) });
+  await c.waitScreen(s => s.includes('▸ Direct tasks (1)'), 'direct-only release starts folded');
+  assert.doesNotMatch((await panel(c)).join('\n'), /Row 330|PLANNED/);
+  await c.input('/Direct tasks (<CR>zo');
+  await c.waitScreen(s => /T-330.*next/.test(s), 'direct work unfolds with next');
+  const text = (await panel(c)).join('\n');
+  assert.match(text, /   PLANNED · 1/);
+  assert.doesNotMatch(text, /IN PROGRESS|REVIEW|QA ·|READY|backlog \(/);
+  await c.input('zc');
+  await c.waitScreen(s => !s.includes('Row 330'), 'direct work closes');
+});
+
+test('board and all-tree batch folds preserve each other through round trips', { skip }, async t => {
+  const c = await start(t, categories);
+  // Board opens while the all tree retains an explicitly folded release.
+  await c.input('6zM1zR');
+  await c.waitScreen(s => s.includes('Row 318'), 'board opens');
+  await c.input('6');
+  await c.waitScreen(s => s.includes('all ·') && s.includes('▸ ○ R-228'), 'all tree stays folded');
+  // All closes while the board stays open.
+  await c.input('zM1');
+  await c.waitScreen(s => s.includes('board ·') && s.includes('Row 318'), 'all close preserves board');
+  // All opens while the board is deliberately closed.
+  await c.input('zM6zR1');
+  await c.waitScreen(s => s.includes('board ·') && s.includes('▸ ○ E-269') && !s.includes('Row 318'), 'all open preserves board');
+  // Board closes while all retains its open epic and task.
+  await c.input('zM6');
+  await c.waitScreen(s => s.includes('all ·') && s.includes('Row 318'), 'board close preserves all');
+  // Board opens while all retains its explicitly closed release.
+  await c.input('zM1zR6');
+  await c.waitScreen(s => s.includes('all ·') && s.includes('▸ ○ R-228') && !s.includes('Row 318'), 'board open preserves all close');
+});
 
 test('release versions appear once in the scope, all tree, top bar and item header', { skip }, async t => {
   for (const [title, version, heading, kind = 'release', id = 'R-228'] of [
@@ -95,6 +203,7 @@ test('release versions appear once in the scope, all tree, top bar and item head
 
 test('release scope ends with live counts of open categories and their open descendants', { skip }, async t => {
   const c = await start(t, categories);
+  await unfoldGroups(c);
   const screen = await c.waitScreen(s => s.includes('categories 2 · 3 open · unscheduled 2'), 'category count line');
   assert.match(screen, /R-228 0.1.2 Working with items/);
   assert.match(screen, /T-318 E-269 › Row 318/);
@@ -128,6 +237,7 @@ test('release scope ends with live counts of open categories and their open desc
 
 test('release board/work/done exclude categories and loose items; a parent event lowers the loose count', { skip }, async t => {
   const c = await start(t, categories);
+  await unfoldGroups(c);
   for (const [key, label] of [['1', 'board · 1 in work · 0 done'], ['2', 'in work · 1'], ['4', 'DONE · 0']]) {
     await c.input(key!);
     const screen = await c.waitScreen(s => s.includes(label!), 'scoped ' + key);
@@ -235,11 +345,11 @@ test('release board excludes legacy trees and done orphans; all reveals every it
     assert.doesNotMatch(text, /unscheduled \(/);
     assert.match(text, /unscheduled 1/);
     assert.doesNotMatch(text, /T-30 Row 30/, '§3.5: unscheduled planned work is Background until unfolded');
-    for (const id of ['T-19', 'T-20', 'T-140', 'T-1', 'T-31', 'T-32']) assert.doesNotMatch(text, new RegExp(` ${id} `));
+    for (const id of ['T-19', 'T-20', 'T-140', 'T-141', 'T-142', 'T-1', 'T-31', 'T-32']) assert.doesNotMatch(text, new RegExp(` ${id} `));
     await c.lua("require('cland.vboard').fold('all open')");
     await c.waitScreen(s => s.includes('Row 168'), 'scoped folds opened');
     const rows = () => c.lua<string[]>(`local p=require('cland.panels'); local b=p.buf('items'); local out={}; for i=1,vim.api.nvim_buf_line_count(b) do local info=p.row_at(b,i); if info and info.item then out[#out+1]=info.item end end; return out`);
-    assert.deepEqual(await rows(), ['T-130', 'T-167', 'T-107', 'T-168'], 'unfolding also reveals scoped background containers and done work');
+    assert.deepEqual(await rows(), ['T-130', 'T-107', 'T-167', 'T-168'], 'unfolding also reveals scoped background containers and done work');
     const columns = await c.lua(`local out={}; for status,list in pairs(require('cland.board').columns()) do out[status]={}; for _,it in ipairs(list) do out[status][#out[status]+1]=it.id end end; return out`);
     assert.deepEqual(columns, { backlog: [], planned: ['T-167'], 'in progress': [], review: [], qa: [], ready: [], done: ['T-168'] });
     await c.input('6zR');
@@ -295,10 +405,11 @@ test('an open scope under an archived release stays out of unscheduled and appea
 });
 test('the board shows hub sections, rank, glyphs, verdicts and criteria; all reaches unscheduled work', { skip }, async t => {
   const c = await start(t);
+  await unfoldGroups(c);
   await c.waitScreen(s => s.includes('board · 7 in work · 1 done'), 'board summary');
   await c.waitScreen(s => s.includes('1/2'), 'summary criteria drawn');
   const lines = await panel(c); const text = lines.join('\n');
-  for (const [status, count] of [['IN PROGRESS', 1], ['REVIEW', 1], ['QA', 1], ['READY', 1], ['PLANNED', 3]]) assert.match(text, new RegExp(`${status} · ${count}`));
+  for (const [status, count] of [['IN PROGRESS', 1], ['REVIEW', 1], ['QA', 1], ['READY', 1], ['PLANNED', 2]]) assert.match(text, new RegExp(`${status} · ${count}`));
   assert.match(text, /◐ T-10.*✗ review.*1\/2/);
   assert.match(text, /◉ T-11.*for Reviewer.*1\/2/);
   assert.match(text, /◉ T-13.*1\/1/);
@@ -331,6 +442,7 @@ test('done panel rows and board titles use the done colour; summary fractions ne
   const scenario: Scenario = { ...fixture, visibility: { items: { done: 'now' } }, items: fixture.items!.map(it => it.id === 'T-10'
     ? { ...it, criteria: { total: 4, done: 3, verified: 2, stale: 1, failed: 1 } } : it.id === 'T-18' ? { ...it, title: 'Row 18 completed work safely' } : it) };
   const c = await start(t, scenario);
+  await unfoldGroups(c);
   await c.waitScreen(s => /T-10.*2\/4.*1 stale/.test(s), 'summary verified count and stale badge');
   await c.input('4');
   await c.waitScreen(s => s.includes('DONE · 1') && s.includes('Row 18'), 'done filter');
@@ -356,11 +468,12 @@ test('done panel rows and board titles use the done colour; summary fractions ne
 async function select(c: Awaited<ReturnType<typeof start>>, id: string) {
   // Connected precedes the items snapshot and its render. Select only once that row exists.
   await c.waitScreen(screen => screen.split('\n').some(line => line.includes(' ' + id + ' ')), 'rendered item row ' + id);
-  await c.lua(`local id=...; local b=require('cland.panels').buf('items'); local w=vim.fn.bufwinid(b); vim.api.nvim_set_current_win(w); for i, line in ipairs(vim.api.nvim_buf_get_lines(b,0,-1,false)) do if line:find(' '..id..' ',1,true) then vim.api.nvim_win_set_cursor(w,{i,0}); return end end; error('no row '..id)`, id);
+  await c.lua(`local id=...; local b=require('cland.panels').buf('items'); local w=vim.fn.bufwinid(b); vim.api.nvim_set_current_win(w); for i=1,vim.api.nvim_buf_line_count(b) do local info=require('cland.panels').row_at(b,i); if info and info.item==id then vim.api.nvim_win_set_cursor(w,{i,0}); return end end; error('no row '..id)`, id);
 }
 test('T, K and J send rank operations; only task events and final siblings reorder and move next', { skip }, async t => {
   const rankFixture: Scenario = { ...fixture, items: fixture.items!.filter(it => it.id !== 'T-16').concat(task(21, 'planned')), rankEvents: 'manual', holdSnapshots: ['task.rank'] };
   const c = await start(t, rankFixture);
+  await unfoldGroups(c);
   await select(c, 'T-21'); await c.input('T');
   // Input acceptance is earlier than the stub receiving the request. Wait at that seam.
   await c.control({ waitSnapshot: 'task.rank' });
@@ -404,7 +517,8 @@ test('e and E select configured open containers, persist through ui.json and rec
   await fresh.waitScreen(s => s.includes('hub: connected') && s.includes('Row 16'), 'cold restart');
   assert.equal(await fresh.lua("return require('cland.items').scope().id"), 'T-3');
   assert.ok(!(await fresh.screen()).join('\n').includes('Row 10'));
-  await fresh.input('<Esc><C-h>E'); await fresh.waitScreen(s => s.includes('Row 10'), 'previous scope');
+  await fresh.input('<Esc><C-h>E'); await fresh.waitScreen(s => s.includes('▸ ◐ T-2'), 'previous release scope');
+  await unfoldGroups(fresh);
   await fresh.lua("require('cland.state').S.ui.current_release='T-999'; require('cland.state').changed()");
   await fresh.waitScreen(s => s.includes('Current release') && s.includes('Row 10'), 'fallback');
   assert.equal(await fresh.lua("return require('cland.items').scope().id"), 'T-1');
@@ -412,6 +526,7 @@ test('e and E select configured open containers, persist through ui.json and rec
 
 test('summary criteria follow same-timestamp task edits and every row/highlight fits a narrow Unicode panel', { skip }, async t => {
   const c = await start(t);
+  await unfoldGroups(c);
   await c.waitScreen(s => s.includes('1/2'), 'initial criteria');
   const edited = { ...fixture.items!.find(it => it.id === 'T-15'), title: '界'.repeat(100) + ' planned', criteria: { total: 1, done: 1, verified: 1, stale: 0, failed: 0 }, body: '- [x] Outside\n## Acceptance criteria\n```markdown\n- [ ] Example\n```\n### Nested\n- [X] C1. Verified\n  - verified: qa-1 [qa] · run q-1 · 2026-10-10T10:00Z\n## Notes\n- [ ] Not criteria' };
   await c.control({ set: { items: fixture.items!.map(it => it.id === 'T-15' ? edited : it) }, emit: { type: 'task', id: 'T-15', item: edited } });
@@ -434,6 +549,7 @@ test('category tasks leave the release unscheduled fold and root peers never cyc
     { id: 'M-3', kind: 'map', title: 'Map root', state: 'open', parent: null },
   ] };
   const c = await start(t, categoryFixture);
+  await unfoldGroups(c);
   await c.waitScreen(s => s.includes('Scheduled work') && s.includes('unscheduled 2'), 'release board and no-parent count');
   await c.input('/unscheduled 2<CR><CR>');
   await c.waitScreen(s => s.includes('all ·') && s.includes('unscheduled (2)'), 'all rendered');

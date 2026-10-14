@@ -268,6 +268,8 @@ test('a moved item keeps watch marks and its reason until the next plan visit, w
   assert.ok(!(await planText(reconnected, epic.id)).includes('△ changed'), 'saved receipt survives a new workbench');
   await client.input('<Esc>:Cland view board<CR>');
   await client.lua("local l=require('cland.layout'); if not require('cland.state').S.ui.left then l.toggle_left() end; vim.api.nvim_win_set_width(l.win.left,76)");
+  await client.lua("vim.api.nvim_set_current_win(require('cland.layout').win.left)");
+  await client.input(`/^ ▸.*${epic.id}<CR>zo`);
   await client.waitScreen(s => s.includes(`${b.id} S2 ›`), 'stage tag on ordinary board');
 });
 

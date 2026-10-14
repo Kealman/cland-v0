@@ -20,7 +20,7 @@ return {
     qa.wait_for(function() return #qa.state().items==6 end,10000,'items loaded')
     qa.keys('<Esc><Space>i')
     vim.api.nvim_win_set_width(require('cland.layout').win.left,65)
-    qa.keys('<Esc>')
+    qa.keys('<Esc>/^ ▸.*T-2<CR>zo')
     qa.wait_for(function() return qa.screen():find('Current row',1,true) end,5000,'current scope')
     qa.keys('e')
     qa.wait_for(function() return items.scope().id=='T-2' end,5000,'feature scope')

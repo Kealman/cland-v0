@@ -318,7 +318,7 @@ test('items honor hub layers in the board and explicit layer filters, including 
     { id: 'T-4', kind: 'task', title: 'Archived done', parent: 'T-1', status: 'done', state: 'closed' },
     { id: 'T-5', kind: 'task', title: 'Watch planned', parent: 'T-1', status: 'planned', state: 'open' },
   ] });
-  await c.input('<Esc><Space>i<C-h>');
+  await c.input('<Esc><Space>i<C-h>/Direct tasks (<CR>zo');
   let s = await c.waitScreen(s => s.includes('Raised backlog') && s.includes('Watch planned'), 'foreground items');
   assert.ok(!s.includes('Quiet active') && !s.includes('Archived done'), s);
   await c.input('zR');
@@ -349,7 +349,7 @@ test('default board and plan show done items promoted by config and a topic pin'
     { id: 'T-3', kind: 'task', title: 'Raised done', parent: 'T-2', topic: 'general', state: 'closed', status: 'done' },
   ] });
   const panel = () => c.lua<string>("return table.concat(vim.api.nvim_buf_get_lines(require('cland.panels').buf('items'),0,-1,false),'\\n')");
-  await c.input('<Esc><Space>i');
+  await c.input('<Esc><Space>i/^ ▸.*T-2<CR>zo');
   await c.waitScreen(s => s.includes('Raised done'), 'done promoted to Watch through a closed epic');
   assert.ok((await panel()).includes('Raised done'));
   assert.deepEqual(await c.lua("local out={}; for _,it in ipairs(require('cland.board').columns().done) do out[#out+1]=it.id end; return out"), [], 'the centre board keeps its open-parent scope even when done is promoted to Watch');

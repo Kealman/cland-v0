@@ -50,15 +50,26 @@ function M.cycle_parent(step)
   state.changed()
 end
 
-function M.compose()
-  local scope, parent = items.scope(), M.parent_filter()
+local function narrowing(options)
+  if options then return options.parent, options.direct end
+  return M.parent_filter(), false
+end
+
+local function within(it, scope, parent, direct)
+  return scope and it.id ~= scope.id and M.under(it, scope.id)
+    and (not parent or M.under(it, parent)) and (not direct or it.parent == scope.id)
+end
+
+function M.compose(options)
+  local scope = items.scope()
+  local parent, direct = narrowing(options)
   local out = { scope = scope, columns = {}, unscheduled = {}, done = 0, work = 0, leaves = {} }
   for _, s in ipairs(items.COLUMNS) do out.columns[s[1]] = {} end
   for _, it in ipairs(items.ordered()) do
     if scope and it.id == scope.id then
       -- The scope has its own header, never a duplicate background fold.
     elseif scope and M.under(it, scope.id) then
-      if not parent or M.under(it, parent) then
+      if within(it, scope, parent, direct) then
         if it.kind == 'task' and it.status == 'done' then out.done = out.done + 1 end
         if open_parents(it) then
           if it.kind == 'task' and out.columns[it.status] then
@@ -80,8 +91,9 @@ end
 
 -- The vertical panel may promote foreground rows inside its selected scope. The centre
 -- board uses compose() directly and always retains its open-parent boundary.
-local function panel_composition()
-  local out, parent = M.compose(), M.parent_filter()
+local function panel_composition(options)
+  local out = M.compose(options)
+  local parent, direct = narrowing(options)
   if not out.scope then return out end
   local present, columns = {}, {}
   for status, list in pairs(out.columns) do
@@ -89,9 +101,8 @@ local function panel_composition()
     for _, it in ipairs(list) do present[it.id] = true end
   end
   for _, it in ipairs(items.ordered()) do
-    local promoted = it.id ~= out.scope.id and M.under(it, out.scope.id)
-      and (not parent or M.under(it, parent)) and not open_parents(it)
-      and (it.layer == 'now' or it.layer == 'watch')
+    local promoted = within(it, out.scope, parent, direct) and not open_parents(it)
+      and (it.layer == 'now' or it.layer == 'watch' or (options and it.status == 'done'))
     if it.kind == 'task' and columns[it.status] and (present[it.id] or promoted) then
       columns[it.status][#columns[it.status] + 1] = it
       if promoted and items.in_work(it) then out.work = out.work + 1 end
@@ -100,8 +111,11 @@ local function panel_composition()
     end
   end
   out.columns, out.next = columns, nil
-  for _, it in ipairs(columns.planned) do
-    if #items.open_blockers(it) == 0 then out.next = it.id; break end
+  -- The release owns next, even when a tab or unfolded group narrows the rows.
+  for _, it in ipairs(items.ordered()) do
+    if within(it, out.scope) and it.status == 'planned'
+      and (open_parents(it) or it.layer == 'now' or it.layer == 'watch')
+      and #items.open_blockers(it) == 0 then out.next = it.id; break end
   end
   return out
 end
@@ -200,6 +214,120 @@ function M.summary()
   return items.LABEL[f] .. ' · ' .. n
 end
 
+-- Tabs and unfolded release groups share the section renderer.
+local function render_sections(c, b, f, options, prefix, nested)
+  prefix = prefix or ''
+  local parent, direct = narrowing(options)
+  local function section(status)
+    local list = vim.tbl_filter(function(it) return selected(it, f) end, b.columns[status])
+    if nested and #list == 0 then return end
+    c:add({ { ' ' .. status:upper() .. ' · ' .. #list, #list > 0 and 'ClandSection' or 'ClandFaint' } }, nil, { section = status })
+    for _, it in ipairs(list) do row(c, it, status, b.next) end
+  end
+  for _, status in ipairs(M.SECTIONS) do section(status) end
+  if f == 'board' then
+    if not nested then
+      section('backlog')
+      if #vim.tbl_filter(function(it) return selected(it, f) end, b.columns.done) > 0 then section('done') end
+    elseif #vim.tbl_filter(function(it) return selected(it, f) end, b.columns.backlog) > 0 then section('backlog') end
+    local backlog = vim.tbl_filter(function(it) return it.layer == nil or it.layer == 'background' end, b.columns.backlog)
+    if not nested or #backlog > 0 then fold(c, prefix .. 'backlog', 'backlog', backlog, f) end
+    if nested then section('done') end
+    local leaves = {}
+    for _, it in ipairs(b.leaves) do
+      if selected(it, f) then row(c, it, 'leaves') elseif it.layer ~= 'archive' then leaves[#leaves + 1] = it end
+    end
+    if #leaves > 0 then fold(c, prefix .. 'leaves', 'questions and specs', leaves, f) end
+  end
+  if not b.scope then
+    local unscheduled = {}
+    for _, it in ipairs(b.unscheduled) do
+      if f == 'board' and selected(it, f) then row(c, it, 'unscheduled') else unscheduled[#unscheduled + 1] = it end
+    end
+    fold(c, prefix .. 'unscheduled', 'unscheduled', unscheduled, f)
+  end
+  if f == 'board' then
+    local more = {}
+    for _, it in ipairs(items.ordered()) do
+      if within(it, b.scope, parent, direct) and it.layer == 'background'
+        and (it.kind == 'task' or items.is_container(it)) and it.status ~= 'backlog'
+        and (not nested or it.id ~= parent) then more[#more + 1] = it end
+    end
+    if #more > 0 then fold(c, prefix .. 'background', 'more', more, f) end
+  end
+end
+
+local function release_epics(scope)
+  local live, done = {}, {}
+  for _, it in ipairs(items.children(scope.id)) do
+    if items.level_of(it) == items.level_of(scope) + 1 then
+      local list = it.state == 'closed' and done or live
+      list[#list + 1] = it
+    end
+  end
+  table.sort(done, function(a, b)
+    local ac = items.present(a.closed) and a.closed or a.updated or ''
+    local bc = items.present(b.closed) and b.closed or b.updated or ''
+    if ac == bc then return items.compare_rank(a, b) end
+    return ac < bc
+  end)
+  return vim.list_extend(live, done)
+end
+
+local function group_tasks(scope, options)
+  local out = {}
+  for _, it in ipairs(items.ordered()) do
+    if it.kind == 'task' and within(it, scope, options.parent, options.direct) then out[#out + 1] = it end
+  end
+  return out
+end
+
+local function group_row(c, scope, epic, key, options)
+  local tasks, counts, done, active, planned = group_tasks(scope, options), {}, 0, false, false
+  for _, it in ipairs(tasks) do
+    counts[it.status] = (counts[it.status] or 0) + 1
+    if it.status == 'done' then done = done + 1 end
+    if vim.tbl_contains({ 'in progress', 'review', 'qa', 'ready' }, it.status) then active = true end
+    if it.status == 'planned' then planned = true end
+  end
+  local closed = state.S.ui.items_folds[key] ~= false
+  local left = { { ' ' .. (closed and '▸ ' or '▾ '), 'ClandSection' } }
+  if epic then
+    local glyph = epic.state == 'closed' and items.GLYPH.closed
+      or (active and items.GLYPH['in progress'] or (planned and items.GLYPH.planned or items.GLYPH.backlog))
+    left[#left + 1] = { glyph[1], glyph[2] }
+    left[#left + 1] = { ' ' .. epic.id .. ' ', 'ClandDim' }
+    left[#left + 1] = { epic.title or '', epic.state == 'closed' and 'ClandDone' or 'ClandBold' }
+  else left[#left + 1] = { 'Direct tasks (' .. #tasks .. ')', 'ClandSection' } end
+  local right, lead = {}, epic and items.lead_label(epic)
+  if lead then right[#right + 1] = { lead .. ' ', 'ClandTeal' } end
+  right[#right + 1] = { done .. '/' .. #tasks, 'ClandDim' }
+  local parts = {}
+  for _, pair in ipairs({ { 'in progress', '◐' }, { 'review', 'rev' }, { 'qa', 'qa' }, { 'ready', 'ready' }, { 'planned', 'planned' }, { 'backlog', 'backlog' } }) do
+    if (counts[pair[1]] or 0) > 0 then parts[#parts + 1] = counts[pair[1]] .. ' ' .. pair[2] end
+  end
+  if #parts > 0 then right[#right + 1] = { ' · ' .. table.concat(parts, ' · '), 'ClandDim' } end
+  local left_width = 0
+  for _, chunk in ipairs(left) do left_width = left_width + api.nvim_strwidth(chunk[1]) end
+  -- Reserve identity and a readable title before dropping the breakdown from its right.
+  local reserve = epic and api.nvim_strwidth(' ▸ ○ ' .. epic.id .. ' ') + 12 or left_width
+  right = require('cland.bars').fit(right, math.max(0, c.width - math.min(left_width, reserve) - 1))
+  c:add(left, right, { item = epic and epic.id, fold = key })
+  if (epic and M.follow == epic.id) or M.follow_fold == key then
+    c.cursor_to = #c.lines; M.follow, M.follow_fold = nil, nil
+  end
+  if not closed then
+    local indented = { width = c.width - 2, lines = c.lines }
+    function indented:add(l, r, info)
+      local chunks = { { '  ' } }
+      vim.list_extend(chunks, l)
+      c:add(chunks, r, info)
+    end
+    render_sections(indented, panel_composition(options), 'board', options, key .. ':', true)
+    if indented.cursor_to then c.cursor_to = indented.cursor_to end
+  end
+end
+
 function M.render(c)
   local b, f = panel_composition(), items.filter()
   local tabs = { { ' epic ', 'ClandDim' }, { 'all', not M.parent_filter() and 'ClandTabOn' or 'ClandTab' } }
@@ -213,7 +341,14 @@ function M.render(c)
     right[#right + 1] = { done .. '/' .. #kids, 'ClandDim' }
     c:add({ { ' ' .. b.scope.id .. ' ' .. items.display_title(b.scope), 'ClandBold' } }, right, { item = b.scope.id })
   else c:add({ { ' no open container: unscheduled', 'ClandDim' } }) end
-  if f == 'you' then
+  if f == 'board' and b.scope and b.scope.kind == state.S.tracker.levels[1]
+    and #items.ladder() > 1 and not M.parent_filter() then
+    for _, epic in ipairs(release_epics(b.scope)) do
+      group_row(c, b.scope, epic, 'board:' .. epic.id, { parent = epic.id })
+    end
+    local direct = { direct = true }
+    if #group_tasks(b.scope, direct) > 0 then group_row(c, b.scope, nil, 'board:direct:' .. b.scope.id, direct) end
+  elseif f == 'you' then
     local any = false
     for _, it in ipairs(items.ordered()) do if items.needs_you(it) then row(c, it, 'you'); any = true end end
     if not any then c:add({ { ' ✓ nothing needs you', 'ClandGreen' } }) end
@@ -225,39 +360,7 @@ function M.render(c)
         and (not M.parent_filter() or M.under(it, M.parent_filter())) then row(c, it, 'done') end
     end
   else
-    local sections = vim.list_extend({}, M.SECTIONS)
-    if f == 'board' then
-      sections[#sections + 1] = 'backlog'
-      if #vim.tbl_filter(function(it) return selected(it, f) end, b.columns.done) > 0 then sections[#sections + 1] = 'done' end
-    end
-    for _, status in ipairs(sections) do
-      local list = vim.tbl_filter(function(it) return selected(it, f) end, b.columns[status])
-      c:add({ { ' ' .. status:upper() .. ' · ' .. #list, #list > 0 and 'ClandSection' or 'ClandFaint' } }, nil, { section = status })
-      for _, it in ipairs(list) do row(c, it, status, b.next) end
-    end
-    if f == 'board' then
-      fold(c, 'backlog', 'backlog', vim.tbl_filter(function(it) return it.layer == nil or it.layer == 'background' end, b.columns.backlog), f)
-      local leaves = {}
-      for _, it in ipairs(b.leaves) do
-        if selected(it, f) then row(c, it, 'leaves') elseif it.layer ~= 'archive' then leaves[#leaves + 1] = it end
-      end
-      if #leaves > 0 then fold(c, 'leaves', 'questions and specs', leaves, f) end
-    end
-    if not b.scope then
-      local unscheduled = {}
-      for _, it in ipairs(b.unscheduled) do
-        if f == 'board' and selected(it, f) then row(c, it, 'unscheduled') else unscheduled[#unscheduled + 1] = it end
-      end
-      fold(c, 'unscheduled', 'unscheduled', unscheduled, f)
-    end
-    if f == 'board' then
-      local more = {}
-      for _, it in ipairs(items.ordered()) do
-        if b.scope and M.under(it, b.scope.id) and it.id ~= b.scope.id and it.layer == 'background'
-          and (it.kind == 'task' or items.is_container(it)) and it.status ~= 'backlog' and (not M.parent_filter() or M.under(it, M.parent_filter())) then more[#more + 1] = it end
-      end
-      if #more > 0 then fold(c, 'background', 'more', more, f) end
-    end
+    render_sections(c, b, f)
   end
   if f ~= 'you' and f ~= 'done' then items.categories_line(c) end
   return { ' K J rank · T top · ↵ open · za fold', ' gn now · gw watch · gb more · gA archive' }
@@ -269,9 +372,24 @@ end
 
 function M.fold(how)
   if how == 'all open' or how == 'all closed' then
-    for _, key in ipairs({ 'backlog', 'unscheduled', 'leaves', 'background' }) do state.S.ui.items_folds[key] = how == 'all closed' end
-    for _, it in ipairs(items.ordered()) do
-      if items.is_container(it) or #items.children(it.id) > 0 then state.S.ui.items_folds[it.id] = how == 'all closed' end
+    local closed, scope, filter = how == 'all closed', items.scope(), items.filter()
+    if require('cland.plan').panel_id() then
+      state.S.ui.items_folds.background = closed
+    elseif filter == 'board' and scope and scope.kind == state.S.tracker.levels[1]
+      and #items.ladder() > 1 and not M.parent_filter() then
+      local keys = { 'board:direct:' .. scope.id }
+      for _, epic in ipairs(release_epics(scope)) do keys[#keys + 1] = 'board:' .. epic.id end
+      for _, key in ipairs(keys) do
+        state.S.ui.items_folds[key] = closed
+        for _, name in ipairs({ 'backlog', 'leaves', 'background' }) do state.S.ui.items_folds[key .. ':' .. name] = closed end
+      end
+    elseif filter == 'all' then
+      state.S.ui.items_folds.unscheduled = closed
+      for _, it in ipairs(items.ordered()) do
+        if items.is_container(it) or #items.children(it.id) > 0 then state.S.ui.items_folds[it.id] = closed end
+      end
+    else
+      for _, key in ipairs({ 'backlog', 'unscheduled', 'leaves', 'background' }) do state.S.ui.items_folds[key] = closed end
     end
   else
     local info = info_at()

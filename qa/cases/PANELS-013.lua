@@ -1,7 +1,7 @@
 -- id: PANELS-013
 -- title: Vertical status sections, folds and hub rank events share the centre board's order
 -- preconditions: every status, ranked epics, a blocked planned task and a failed verdict on the stub hub
--- expected: section counts, marks, fractions and epic-first order; T changes next through task events
+-- expected: folded epics reveal section counts and marks; T reorders through events while next stays release-wide
 -- since: T-128 (successor to prototype/panels PANELS-001 to PANELS-004)
 -- regression: no
 local body='- [x] Outside\n## Acceptance criteria\n- [x] C1. First\n  - verified: rev-1 [reviewer] · run r-1 · 2026-10-10T10:00Z\n- [ ] Second\n## Notes\n- [x] Outside'
@@ -28,9 +28,10 @@ return {
     qa.keys('<Esc><Space>i')
     local api=vim.api
     api.nvim_win_set_width(require('cland.layout').win.left,70)
+    qa.keys('/^ ▸.*T-3<CR>zo/^ ▸.*T-2<CR>zo')
     qa.wait_for(function() return qa.screen():find('board · 8 in work · 1 done',1,true) and qa.screen():find('1/2',1,true) and qa.screen():find('1/1',1,true) end,5000,'board with criteria')
     local screen=qa.screen()
-    for _,text in ipairs({'IN PROGRESS · 1','REVIEW · 1','QA · 1','READY · 1','PLANNED · 4','▸ backlog (1)','unscheduled 1','✗ review','for Reviewer','1/1'}) do
+    for _,text in ipairs({'IN PROGRESS · 1','REVIEW · 1','QA · 1','READY · 1','PLANNED · 3','▸ backlog (1)','unscheduled 1','✗ review','for Reviewer','1/1'}) do
       qa.expect(screen:find(text,1,true)~=nil,text)
     end
     qa.expect(screen:find('○ T-16',1,true)<screen:find('◌ T-14',1,true),'epic rank before task rank')
@@ -46,7 +47,8 @@ return {
     qa.keys('p') -- Panels
     qa.wait_for(function() return not qa.screen():find('Row 16',1,true) end,5000,'Panels epic tab')
     qa.keys('/T-20<CR>T')
-    qa.wait_for(function() return qa.screen():match('T%-20[^\n]*next') end,5000,'T changes next from rank events')
+    qa.wait_for(function() return require('cland.vboard').compose().columns.planned[1].id=='T-20' end,5000,'T reorders from rank events')
+    qa.expect(not qa.screen():match('T%-20[^\n]*next'),'narrowing keeps the release next on Tracker')
     qa.expect(api.nvim_get_current_line():find('T-20',1,true)~=nil,'cursor follows item')
     qa.expect(#require('cland.actions').audit()==0,'every key registered')
     qa.dump('vertical-board')
