@@ -84,6 +84,7 @@ export const JOURNALLED: ReadonlySet<string> = new Set([
   'orphan-sweep-started',
   'orphan-sweep-completed',
   'turn-failed',
+  'claude-signed-out',
   'harness-redelivered',
   'harness-redelivery-failed',
   'harness-turn-unread',

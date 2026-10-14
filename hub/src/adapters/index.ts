@@ -1,6 +1,6 @@
 // The adapters a project's hub runs with, built in one place so the daemon only plugs them in.
 // Timings come from the environment, for tests: CLAND_ADAPTER_POLL_MS (the polled fallback and the liveness
-// check), CLAND_INJECT_TIMEOUT_MS (how long an inject waits for its confirmation), CLAND_PUSH_TRUST_MS (how
+// check; Claude's CLI interval is CLAND_CLAUDE_AGENTS_MS, default 30 s), CLAND_INJECT_TIMEOUT_MS (how long an inject waits for its confirmation), CLAND_PUSH_TRUST_MS (how
 // long a hook's signal outranks a poll), CLAND_STOP_GRACE_MS (how long a stop waits for the process tree to go,
 // per step). CLAND_CLAUDE_BIN names the `claude` executable, CLAND_OPENCODE_BIN the `opencode` one,
 // CLAND_CODEX_BIN the `codex` one.
@@ -32,12 +32,14 @@ export function projectSessions(options: { core: HubCore; root: string; db: stri
   const sessions = new Sessions({ core: options.core, table, root: options.root, log: options.log, tracker: options.tracker, cleanup: options.cleanup, ...(pushTrustMs ? { pushTrustMs } : {}) });
   const host = sessions.host({ discoveryFile: options.discoveryFile, node: process.execPath, cli: CLI_ENTRY, spoke: SPOKE_ENTRY });
   const pollMs = positive(env.CLAND_ADAPTER_POLL_MS);
+  const claudeAgentsMs = positive(env.CLAND_CLAUDE_AGENTS_MS);
   const injectTimeoutMs = positive(env.CLAND_INJECT_TIMEOUT_MS);
   const stopGraceMs = positive(env.CLAND_STOP_GRACE_MS);
   sessions.register(
     new ClaudeCodeAdapter(host, {
       ...(env.CLAND_CLAUDE_BIN ? { bin: env.CLAND_CLAUDE_BIN } : {}),
       ...(pollMs ? { pollMs } : {}),
+      ...(claudeAgentsMs ? { agentsMs: claudeAgentsMs } : {}),
       ...(injectTimeoutMs ? { injectTimeoutMs } : {}),
       ...(stopGraceMs ? { stopGraceMs } : {}),
       env,

@@ -55,6 +55,8 @@ export type HarnessProcess = {
   /** The process's start time as `ps -o lstart=` printed it when the hub recorded the pid: what proves a live pid is
    *  still this process before any signal (`system-processes.ts` `endProcess`). Null when unknown. */
   pidStarted?: string | null;
+  /** Warning attached to this explicit launch result. */
+  warning?: string;
 };
 
 /** Whether a launched session stops to ask before a command its sandbox refuses (roles.toml's `approval`). */
@@ -138,6 +140,8 @@ export type AdapterHost = {
   /** The spoke's entry, which the harness starts as its MCP server. */
   spoke: string;
   log: (entry: Record<string, unknown>) => void;
+  /** Project-local durable adapter state, in hub.db's meta table. */
+  adapterState?: { read: (key: string) => string | null; write: (key: string, value: string) => void };
   /** A native harness report (state, model or sub-agent start); hook reports use `session.signal`. */
   signal: (sessionId: string, signal: StateSignal) => void;
   /** Adapter-owned usage changed; the hub coalesces snapshots per session. */
@@ -156,7 +160,7 @@ export type AdapterHost = {
 };
 
 /** What one signal from inside the session (a hook, the mod) means: a state, the model, usage, messages it confirms. */
-export type Interpretation = { state?: SessionState; approvalCommand?: string; model?: string; subagent?: SubagentLaunch; usage?: Record<string, unknown>; confirms?: string[]; turnError?: string; failureMessages?: Promise<string[]> };
+export type Interpretation = { state?: SessionState; approvalCommand?: string; model?: string; subagent?: SubagentLaunch; usage?: Record<string, unknown>; confirms?: string[]; turnError?: string; failureAudience?: 'senders'; failureDedupe?: { key: string; episode: string }; failureMessages?: Promise<string[]> };
 
 /** The frame an in-session bridge receives: submit this message as a turn, then confirm it. */
 export type InjectFrame = { type: 'inject'; session: string; message: string; text: string };
@@ -183,9 +187,11 @@ export interface HarnessAdapter {
   /** A confirmation the harness sent through the hub (the mod's `injected`): settles a pending inject. */
   confirm(process: HarnessProcess, messageId: string): void;
   /** What a signal posted from inside the session (`cland hook <event>`, with the harness's payload) means. */
-  interpret(event: string, payload: Record<string, unknown>, process?: HarnessProcess): Interpretation;
+  interpret(event: string, payload: Record<string, unknown>, process?: HarnessProcess, at?: number): Interpretation;
   /** An in-session bridge connected (the Claude Code mod): inject frames go to `send`. Returns its disconnect. */
   bridge?(process: HarnessProcess, send: (frame: InjectFrame) => boolean): () => void;
+  /** Why a watched session's state is unknown, when discovery is suppressed. */
+  stateReason?(process: HarnessProcess): string | null;
   /** Running totals and latest turn/step (only where `capabilities.usage` is not `none`). */
   usage?(process: HarnessProcess): SessionUsage | null;
   noteUsage?(process: HarnessProcess, usage: Record<string, unknown>): void;

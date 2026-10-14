@@ -27,6 +27,8 @@ import { continueWith, wait, untimed } from './continuations.ts';
 import type { Resumed } from '../hub/worktrees.ts';
 import { execFile } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
+import { homedir } from 'node:os';
+import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Message, SessionState, SessionUsage, TopicRef } from '../protocol.ts';
 import { addUsage } from './usage.ts';
@@ -84,12 +86,12 @@ type AgentEntry = { pid?: number; id?: string; sessionId?: string; status?: stri
 export type ClaudeCodeOptions = {
   /** The `claude` executable: `CLAND_CLAUDE_BIN`, else `claude` on the PATH. */
   bin?: string;
-  /** How often `claude agents --json` is polled and the processes' pids checked, ms. */
+  /** How often the processes' pids are checked (no CLI), ms. */
   pollMs?: number;
   /** How long an inject waits for the mod's confirmation before it stays `delivered`, ms. */
   injectTimeoutMs?: number;
-  /** How long a launch waits for the session to show in `claude agents --json`, ms. */
-  spawnDeadlineMs?: number;
+  /** Shared agents interval, ms; default 30 seconds. Short values are for fake harnesses. */
+  agentsMs?: number;
   /** How long a stop waits for the pid to go, after `claude stop` and again after SIGTERM, ms. */
   stopGraceMs?: number;
   /** The environment the harness is started in (cland's own variables are removed). */
@@ -177,7 +179,16 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
   readonly #bin: string;
   readonly #pollMs: number;
   readonly #injectTimeoutMs: number;
-  readonly #spawnDeadlineMs: number;
+  readonly #agentsMs: number;
+  readonly #configDir: string;
+  #lastAgentsAt = 0;
+  #signedOut = false;
+  #signedOutAt = 0;
+  #signedOutId = '';
+  #closed = false;
+  #entries: AgentEntry[] | null = null;
+  #agentsVersion = 0;
+  #agentsFlight: Promise<AgentEntry[] | null> | null = null;
   readonly #stopGraceMs: number;
   readonly #env: NodeJS.ProcessEnv;
   /** Watched processes by session id. */
@@ -198,11 +209,24 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     this.#bin = options.bin ?? process.env.CLAND_CLAUDE_BIN ?? 'claude';
     this.#pollMs = options.pollMs ?? 5000;
     this.#injectTimeoutMs = options.injectTimeoutMs ?? 60_000;
-    this.#spawnDeadlineMs = options.spawnDeadlineMs ?? 20_000;
+    this.#agentsMs = options.agentsMs ?? 30_000;
     this.#stopGraceMs = options.stopGraceMs ?? 5000;
     const env: NodeJS.ProcessEnv = {};
     for (const [k, v] of Object.entries(options.env ?? process.env)) if (!k.startsWith('CLAND_') || k === 'CLAND_CLAUDE_BIN') env[k] = v;
     this.#env = env;
+    this.#configDir = resolve(env.CLAUDE_CONFIG_DIR || join(env.HOME || homedir(), '.claude'));
+    if (env.CLAUDE_CONFIG_DIR) this.#env.CLAUDE_CONFIG_DIR = this.#configDir;
+    const saved = this.#host.adapterState?.read(`claude-poll:${this.#configDir}`);
+    if (saved) {
+      try {
+        const state = JSON.parse(saved);
+        this.#lastAgentsAt = typeof state.lastAt === 'number' ? state.lastAt : 0;
+        this.#signedOut = state.signedOut === true;
+        this.#signedOutId = typeof state.signedOutId === 'string' ? state.signedOutId : '';
+        this.#signedOutAt = typeof state.signedOutAt === 'number' ? state.signedOutAt : 0;
+        this.#entries = Array.isArray(state.entries) ? state.entries : null;
+      } catch { /* Old or invalid state gives the default schedule. */ }
+    }
   }
 
   // ---------------------------------------------------------------- the harness's CLI
@@ -216,18 +240,54 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     });
   }
 
-  async #agents(resumed: Resumed = untimed): Promise<AgentEntry[] | null> {
-    return continueWith((function* (this: ClaudeCodeAdapter): Generator<Promise<unknown>, AgentEntry[] | null, unknown> {
+  #saveSchedule(): void {
+    this.#host.adapterState?.write(`claude-poll:${this.#configDir}`, JSON.stringify({ lastAt: this.#lastAgentsAt, signedOut: this.#signedOut, signedOutAt: this.#signedOutAt, signedOutId: this.#signedOutId, entries: this.#entries }));
+  }
+
+  #markSignedOut(at = Date.now()): void {
+    this.#signedOutAt = Math.max(this.#signedOutAt, at);
+    if (this.#signedOut) { this.#saveSchedule(); return; }
+    this.#signedOut = true;
+    this.#signedOutId = randomUUID();
+    this.#entries = null;
+    this.#saveSchedule();
+    for (const p of this.#watched.values()) this.#host.signal(p.sessionId, { state: 'unknown', source: 'signed-out', at });
+    this.#host.log({ event: 'claude-signed-out', configDir: this.#configDir, login: `CLAUDE_CONFIG_DIR=${sq(this.#configDir)} claude auth login` });
+  }
+
+  #recovered(at = Date.now()): void {
+    if (!this.#signedOut || at < this.#signedOutAt) return;
+    this.#signedOut = false;
+    this.#saveSchedule();
+  }
+
+  #agents(resumed: Resumed = untimed): Promise<AgentEntry[] | null> {
+    if (this.#closed || this.#signedOut || this.#watched.size === 0) return Promise.resolve(null);
+    if (this.#agentsFlight) return this.#agentsFlight;
+    if (Date.now() - this.#lastAgentsAt < this.#agentsMs) return Promise.resolve(this.#entries);
+    this.#lastAgentsAt = Date.now();
+    this.#saveSchedule();
+    this.#agentsFlight = continueWith((function* (this: ClaudeCodeAdapter): Generator<Promise<unknown>, AgentEntry[] | null, unknown> {
       try {
         const r = yield* wait(this.#run(['agents', '--json'], this.#host.root, 15000, resumed));
-        if (r.code !== 0)
-          return null;
-        const parsed: unknown = JSON.parse(r.stdout);
-        return Array.isArray(parsed) ? (parsed as AgentEntry[]) : null;
-      } catch {
-        return null;
+        if (this.#closed || this.#signedOut) return null;
+        const parsed: unknown = r.code === 0 ? JSON.parse(r.stdout) : null;
+        this.#entries = Array.isArray(parsed) ? (parsed as AgentEntry[]) : null;
+        this.#agentsVersion++;
+        this.#saveSchedule();
+        return this.#entries;
+      } catch { this.#entries = null; return null; }
+      finally {
+        this.#agentsFlight = null;
+        if (!this.#closed) {
+          // Count from completion as well as invocation: slow CLI startup cannot shorten
+          // the observable 30-second floor, and a restart retains either timestamp.
+          this.#lastAgentsAt = Date.now();
+          this.#saveSchedule();
+        }
       }
     }).call(this), resumed);
+    return this.#agentsFlight;
   }
 
   /** The entry of this session: by its session id, else its background id. A pid is only a match for an entry
@@ -299,31 +359,27 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
         ...this.#sessionFlags(p.name, p.role, p.sessionId, worktree, launchToken),
       ];
       authorize();
+      const warning = this.#signedOut ? `Claude config directory ${this.#configDir} is latched signed out; this explicit launch is a recovery attempt.` : undefined;
       const r = yield* wait(this.#run(args, p.cwd, undefined, resumed, launchToken));
       const harnessId = ClaudeCodeAdapter.parseBackgroundId(r.stdout);
-      const launched: HarnessProcess = { ...p, pid: null, harnessId, startedAt: new Date().toISOString(), status: 'running' };
+      const launched: HarnessProcess = { ...p, pid: null, harnessId, startedAt: new Date().toISOString(), status: 'running', ...(warning ? { warning } : {}) };
       try {
-        if (r.code !== 0) throw new Error(`claude --bg failed (exit ${r.code}): ${(r.stderr || r.stdout).trim().slice(0, 500)}`);
+        if (r.code !== 0 && /(?:token|oauth|authentication).*(?:expired|expiry)|(?:expired|expiry).*(?:token|oauth|authentication)/i.test(r.stderr + r.stdout)) this.#markSignedOut();
+        if (r.code !== 0) throw new Error(`${warning ? `warning: ${warning}\n` : ''}claude --bg failed (exit ${r.code}): ${(r.stderr || r.stdout).trim().slice(0, 500)}`);
+        this.#recovered();
+        this.watch(launched);
         this.#host.log({ event: 'harness-launched', harness: this.harness, session: p.name, harnessId, resume, out: r.stdout.trim().slice(0, 300) });
         // the session's process: agent view lists it once its supervisor started it
-        let pid: number | null = null;
-        let found: AgentEntry | undefined;
-        const deadline = Date.now() + this.#spawnDeadlineMs;
-        while (Date.now() < deadline) {
-          const entries = yield* wait(this.#agents(resumed));
-          found = entries ? this.#find(entries, { sessionId: p.sessionId, harnessSessionId: p.harnessSessionId, harnessId, pid: null }) : undefined;
-          if (found?.pid !== undefined) {
-            pid = found.pid;
-            launched.pid = pid;
-            launched.harnessSessionId = found.sessionId ?? p.harnessSessionId;
-            launched.pidStarted = yield* wait(processStarted(pid, undefined, resumed));
-            break;
-          }
-          yield* wait(new Promise((resolve) => setTimeout(resolve, Math.min(250, this.#pollMs))));
+        const previous = this.#agentsVersion;
+        const entries = yield* wait(this.#agents(resumed));
+        const found = entries && this.#agentsVersion > previous ? this.#find(entries, launched) : undefined;
+        if (found?.pid !== undefined) {
+          launched.pid = found.pid;
+          launched.harnessSessionId = found.sessionId ?? p.harnessSessionId;
+          launched.pidStarted = yield* wait(processStarted(found.pid, undefined, resumed));
         }
-        if (pid === null)
-          this.#host.log({ event: 'harness-pid-unknown', harness: this.harness, session: p.name, harnessId });
-        return { ...launched, harnessId: harnessId ?? found?.id ?? null };
+        if (launched.pid === null) this.#host.log({ event: 'harness-pid-unknown', harness: this.harness, session: p.name, harnessId });
+        return launched;
       } catch (err) {
         if (launched.harnessId || launched.pid !== null) yield* wait(this.stop(launched, resumed));
         throw err;
@@ -386,8 +442,15 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     pending.resolve();
   }
 
-  interpret(event: string, payload: Record<string, unknown>, p?: HarnessProcess): Interpretation {
+  interpret(event: string, payload: Record<string, unknown>, p?: HarnessProcess, at = Date.now()): Interpretation {
     const meaning = interpret(event, payload);
+    if (p && event === 'turn-end' && payload.hook_event_name === 'StopFailure' && payload.error === 'authentication_failed') {
+      this.#markSignedOut(at);
+      meaning.state = 'unknown';
+      meaning.turnError = `signed out: ${this.#configDir}; see the Agents notice`;
+      meaning.failureAudience = 'senders';
+      meaning.failureDedupe = { key: this.#configDir, episode: this.#signedOutId };
+    } else if (p && (event === 'session-start' || event === 'turn-end') && payload.hook_event_name !== 'StopFailure' && !payload.error) this.#recovered(at);
     const id = typeof payload.prompt_id === 'string' ? payload.prompt_id : null;
     if (!p || !id || (event !== 'turn-start' && !meaning.turnError)) return meaning;
     const prompts = this.#prompts.get(p.sessionId) ?? new Map<string, Prompt>();
@@ -408,6 +471,8 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     }
     return meaning;
   }
+
+  stateReason(): string | null { return this.#signedOut ? 'signed-out' : null; }
 
   noteUsage(p: HarnessProcess, usage: Record<string, unknown>): void {
     this.#usage.set(p.sessionId, addUsage(this.#usage.get(p.sessionId), usage));
@@ -458,6 +523,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
       }
       if (this.#watched.size === 0) return;
       const at = Date.now();
+      if (this.#signedOut || Date.now() - this.#lastAgentsAt < this.#agentsMs) return;
       const entries = await this.#agents();
       if (!entries) return;
       for (const p of [...this.#watched.values()]) {
@@ -515,14 +581,41 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
   async resume(p: HarnessProcess, options: { relaunch?: boolean; policy?: LaunchPolicy; resumed?: Resumed } = {}): Promise<ResumeResult> {
     return continueWith((function* (this: ClaudeCodeAdapter): Generator<Promise<unknown>, ResumeResult, unknown> {
       const resumed = options.resumed ?? untimed;
-      const entries = (yield* wait(this.#agents(resumed))) ?? [];
+      this.watch(p);
+      if (this.#signedOut && !options.relaunch) {
+        if (p.pid !== null && !pidAlive(p.pid)) {
+          this.#unwatch(p.sessionId);
+          return { found: false, reason: 'recorded pid is gone (Claude directory is signed out)' };
+        }
+        return { found: true, process: { ...p, status: 'running' }, state: 'unknown' };
+      }
+      const previous = this.#agentsVersion;
+      let entries = (yield* wait(this.#agents(resumed))) ?? [];
+      // A recent snapshot may predate this launch. Startup discovery waits for the shared
+      // slot rather than treating a suppressed query as evidence that the session exited.
+      const cached = this.#agentsVersion === previous;
+      const candidate = this.#find(entries, p);
+      if (!this.#signedOut && (!candidate || (cached && (!p.pidStarted || p.pid !== candidate.pid))) && Date.now() - this.#lastAgentsAt < this.#agentsMs) {
+        yield* wait(new Promise(resolve => setTimeout(resolve, Math.max(1, this.#agentsMs - (Date.now() - this.#lastAgentsAt)))));
+        entries = (yield* wait(this.#agents(resumed))) ?? [];
+      }
+      // Authentication may fail while a shared query or the next slot is awaited.
+      if (this.#signedOut && !options.relaunch) {
+        if (p.pid !== null && !pidAlive(p.pid)) {
+          this.#unwatch(p.sessionId);
+          return { found: false, reason: 'recorded pid is gone (Claude directory is signed out)' };
+        }
+        return { found: true, process: { ...p, status: 'running' }, state: 'unknown' };
+      }
       const entry = this.#find(entries, p);
       const pid = entry?.pid ?? p.pid;
       // the same session: listed under its own session id (or background id), with a live process
-      if (entry && pid !== null && pid !== undefined && pidAlive(pid)) {
+      const identity = entry && pid !== null && pid !== undefined && p.pid === pid && p.pidStarted ? yield* wait(processStarted(pid, undefined, resumed)) : null;
+      if (entry && pid !== null && pid !== undefined && pidAlive(pid) && (!p.pidStarted || p.pid !== pid || identity === p.pidStarted)) {
         const process: HarnessProcess = { ...p, pid, harnessId: p.harnessId ?? entry.id ?? null, harnessSessionId: entry.sessionId ?? p.harnessSessionId, status: 'running' };
         return { found: true, process, state: stateOfAgent(entry) };
       }
+      this.#unwatch(p.sessionId);
       if (!options.relaunch)
         return { found: false, reason: entry ? 'listed by claude agents, but its process is gone' : 'not listed by claude agents --json' };
       yield* wait(this.stop(p, options.resumed));
@@ -532,6 +625,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
   }
 
   close(): void {
+    this.#closed = true;
     for (const prompts of this.#prompts.values()) for (const prompt of prompts.values()) prompt.resolve?.([]);
     this.#prompts.clear();
     if (this.#timer) clearInterval(this.#timer);

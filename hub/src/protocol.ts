@@ -673,6 +673,9 @@ export type SessionUsage = {
 
 /** A row of the hub's process table as clients see it. */
 export type HarnessProcessView = {
+  stateReason?: string;
+  /** Warning from an explicit recovery launch; absent from stored rows. */
+  warning?: string;
   layer?: Layer;
   name: string;
   harness: string;

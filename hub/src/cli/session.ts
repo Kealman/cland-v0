@@ -58,7 +58,7 @@ export async function runSession(args: string[], cwd: string = process.cwd()): P
         60_000,
       )) as { process: HarnessProcessView; claim?: { session: string } | null; worktree?: { path: string; branch: string } | null; reason?: string };
       const where = item ? `\n    ${item}: ${v.worktree ? `worktree ${v.worktree.path} on ${v.worktree.branch}` : (v.reason ?? 'no worktree')}; claimed by ${v.claim?.session ?? '-'}` : '';
-      out(v, `launched ${line(v.process)}${where}`);
+      out(v, `${v.process.warning ? `warning: ${v.process.warning}\n` : ''}launched ${line(v.process)}${where}`);
       return 0;
     }
     case 'list': {

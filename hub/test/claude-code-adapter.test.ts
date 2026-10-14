@@ -5,9 +5,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { readFile } from 'node:fs/promises';
+import { readFile, writeFile, unlink } from 'node:fs/promises';
 import { join } from 'node:path';
-import { assertFirstLaunchClause, clandWithEnv, clauseAnswered, connectUi, eventually, fakeClaude, killDaemon, sleep, spawnSpoke, startDaemon, tempProject, type FrameClient } from './harness.ts';
+import { assertFirstLaunchClause, clandWithEnv, clauseAnswered, connectUi, eventually, fakeClaude, flushProjectLogs, killDaemon, sleep, spawnSpoke, startDaemon, tempProject, type FrameClient } from './harness.ts';
 
 type Presence = { name: string; sessionId: string; state: string; status: string | null; role: string | null };
 type Harness = { name: string; harness: string; pid: number | null; harnessId: string | null; sessionId: string; harnessSessionId: string | null; status: string; state: string; attach: string | null; model: string | null; usage?: Record<string, unknown> };
@@ -315,4 +315,124 @@ test('a message for a session with no adapter stays delivered; an unknown sessio
   await ui.waitFor((f) => f.type === 'delivery' && f.message === id && f.stage === 'delivered');
   await sleep(500);
   assert.ok(!ui.frames.some((f) => f.type === 'delivery' && f.message === id && f.stage === 'injected'));
+});
+
+
+test('Claude discovery and watch share the default 30-second schedule, and stop works before the next pid arrives', async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeClaude(t);
+  // Leave the agents interval at its production default; speed up only pid liveness.
+  const env = { ...fake.env, CLAND_ADAPTER_POLL_MS: '100', CLAND_CLAUDE_AGENTS_MS: '', CLAUDE_CONFIG_DIR: fake.home };
+  const { discovery } = await startDaemon(t, root, env);
+  const ui = await connectUi(t, discovery);
+  await sleep(300);
+  assert.equal((await fake.calls()).length, 0, 'an idle directory runs no CLI');
+  await launch(ui, 'first');
+  ui.close();
+  assert.equal((await clandWithEnv(root, env, 'hub', 'stop')).code, 0);
+  const restarted = await startDaemon(t, root, env);
+  const ui2 = await connectUi(t, restarted.discovery);
+  await eventually('first re-found from the shared snapshot', async () => (await status(ui2)).harnesses.find(p => p.name === 'first' && p.status === 'running'));
+  const second = await launch(ui2, 'second');
+  assert.equal(second.pid, null, 'the next launch does not bypass the schedule');
+  assert.equal((await ui2.request({ type: 'session.stop', session: 'second' })).ok, true);
+  await sleep(600);
+  const calls = await fake.calls();
+  const polls = calls.filter(c => c.args[0] === 'agents');
+  assert.equal(polls.length, 1, 'launch discovery and watch use one call');
+  assert.equal(polls[0]?.configDir, fake.home);
+  assert.ok(calls.some(c => c.args[0] === 'stop' && c.args[1] === second.harnessId));
+  await eventually('the next scheduled agents call', async () => (await fake.calls()).filter(c => c.args[0] === 'agents').length >= 2 ? true : undefined, 35_000);
+  const scheduled = (await fake.calls()).filter(c => c.args[0] === 'agents');
+  for (let i = 1; i < scheduled.length; i++) assert.ok(scheduled[i]!.at - scheduled[i - 1]!.at >= 30_000, 'every agents call is at least 30 seconds apart');
+  assert.equal((await ui2.request({ type: 'session.stop', session: 'first' })).ok, true);
+  const count = (await fake.calls()).length;
+  await sleep(400);
+  assert.equal((await fake.calls()).length, count, 'no CLI after the last watch ends');
+});
+
+
+test('a signed-out Claude directory is reported once, remains quiet across restart, and recovers only on explicit success', async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeClaude(t, { pollMs: 200, lateBg: true });
+  const env = { ...fake.env, CLAUDE_CONFIG_DIR: fake.home };
+  const { discovery } = await startDaemon(t, root, env);
+  const ui = await connectUi(t, discovery);
+  await ui.request({ type: 'subscribe' });
+  const sender = await spawnSpoke({ cwd: root, discover: true, name: 'sender', role: 'coordinator' });
+  t.after(() => sender.close());
+  await sender.waitForPresence(['sender']);
+  const running = await launch(ui, 'running');
+  await sender.call('send', { to: ['running'], kind: 'progress', text: 'waiting input' });
+  const input = await ui.waitFor(f => f.type === 'message' && (f.message as { from: string; text: string }).from === 'sender' && (f.message as { text: string }).text === 'waiting input');
+  const inputId = (input.message as { id: string }).id;
+  await ui.request({ type: 'session.signal', session: 'running', launch: running.sessionId, event: 'turn-start', payload: { prompt_id: 'auth-turn', ids: [inputId] } });
+  await writeFile(join(fake.home, 'logged-out'), '');
+  const signal = { type: 'session.signal', session: 'running', launch: running.sessionId, event: 'turn-end', payload: { prompt_id: 'auth-turn', hook_event_name: 'StopFailure', error: 'authentication_failed' } };
+  assert.equal((await ui.request(signal)).ok, true);
+  assert.equal((await ui.request(signal)).ok, true);
+  await ui.waitFor(f => f.type === 'message' && (f.message as { kind?: string }).kind === 'claude-signed-out');
+  await sender.waitForEvent(e => e.params.content.includes(`signed out: ${fake.home}; see the Agents notice`));
+  await sleep(100);
+  assert.equal(sender.events.filter(e => e.params.content.includes(`signed out: ${fake.home}; see the Agents notice`)).length, 1, 'one sender delivery per latched directory');
+  const count = (await fake.calls()).length;
+  await sleep(700);
+  assert.equal((await fake.calls()).length, count, 'the latched watch makes no CLI calls');
+  ui.close();
+  assert.equal((await clandWithEnv(root, env, 'hub', 'stop')).code, 0);
+  const restarted = await startDaemon(t, root, env);
+  const ui2 = await connectUi(t, restarted.discovery);
+  await sleep(500);
+  assert.equal((await fake.calls()).length, count, 'latched startup resume makes no CLI calls');
+  await ui2.request({ ...signal, event: 'turn-start', payload: { prompt_id: 'auth-turn', ids: [inputId] } });
+  await ui2.request(signal);
+  await sleep(100);
+  assert.equal(sender.events.filter(e => e.params.content.includes(`signed out: ${fake.home}; see the Agents notice`)).length, 1, 'sender deduplication survives restart');
+  const rows = (await ui2.request({ type: 'session.list' })).value as { processes: Array<{ name: string; status: string; state: string; stateReason?: string }> };
+  assert.ok(rows.processes.some(p => p.name === 'running' && p.status === 'running' && p.state === 'unknown' && p.stateReason === 'signed-out'));
+  for (const name of ['failed-one', 'failed-two']) {
+    const failed = await ui2.request({ type: 'session.launch', harness: 'claude-code', name });
+    assert.equal(failed.ok, false);
+    assert.match(failed.error ?? '', /expired/);
+  }
+  await flushProjectLogs(t, root);
+  const records = (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line));
+  assert.equal(records.filter(r => r.event === 'claude-signed-out').length, 1);
+  const history = (await ui2.request({ type: 'topic.history', topic: 'agents' })).value as { messages: Array<{ kind?: string; text: string }> };
+  const notices = history.messages.filter(m => m.kind === 'claude-signed-out');
+  assert.equal(notices.length, 1);
+  assert.equal(history.messages.filter(m => m.kind === 'turn-failed').length, 0, 'no generic human failure duplicate');
+  assert.ok(notices[0]?.text.includes(fake.home));
+  assert.ok(notices[0]?.text.includes('CLAUDE_CONFIG_DIR='));
+  assert.ok(notices[0]?.text.includes('claude auth login'));
+  await unlink(join(fake.home, 'logged-out'));
+  const recovered = await ui2.request({ type: 'session.launch', harness: 'claude-code', name: 'recovered' });
+  assert.equal(recovered.ok, true, recovered.error);
+  assert.match((recovered.value as { process: { warning: string } }).process.warning, /latched signed out/);
+  const before = (await fake.calls()).filter(c => c.args[0] === 'agents').length;
+  await eventually('polling resumes after the explicit success', async () => (await fake.calls()).filter(c => c.args[0] === 'agents').length > before ? true : undefined);
+  assert.ok(!(await fake.calls()).some(c => ['auth', 'doctor'].includes(c.args[0] ?? '')));
+  const recoveredProcess = (recovered.value as { process: Harness }).process;
+  const again = { ...signal, session: 'recovered', launch: recoveredProcess.sessionId };
+  await ui2.request(again);
+  const latched = (await fake.calls()).filter(c => c.args[0] === 'agents').length;
+  await ui2.request({ ...again, payload: { hook_event_name: 'StopFailure', error: 'server_error' } });
+  await sleep(500);
+  assert.equal((await fake.calls()).filter(c => c.args[0] === 'agents').length, latched, 'another StopFailure never lifts the latch');
+  await ui2.request({ ...again, payload: { hook_event_name: 'Stop' } });
+  await eventually('a pushed success resumes polling', async () => (await fake.calls()).filter(c => c.args[0] === 'agents').length > latched ? true : undefined);
+});
+
+test('an expired --bg launch latches a directory once without any discovery or retry calls', async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeClaude(t);
+  await writeFile(join(fake.home, 'logged-out'), '');
+  const { discovery } = await startDaemon(t, root, { ...fake.env, CLAUDE_CONFIG_DIR: fake.home });
+  const ui = await connectUi(t, discovery);
+  for (const name of ['one', 'two']) assert.equal((await ui.request({ type: 'session.launch', harness: 'claude-code', name })).ok, false);
+  await sleep(600);
+  assert.deepEqual((await fake.calls()).map(c => c.args[0]), ['--bg', '--bg']);
+  await flushProjectLogs(t, root);
+  const journal = await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8');
+  assert.equal(journal.split('\n').filter(line => line.includes('"event":"claude-signed-out"')).length, 1);
 });

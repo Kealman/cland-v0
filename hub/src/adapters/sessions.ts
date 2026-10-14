@@ -371,6 +371,7 @@ export class Sessions {
       root: this.#root,
       durableLaunchRecovery: true,
       log: this.#log,
+      adapterState: { read: key => this.#core.store.meta(key), write: (key, value) => this.#core.store.setMeta(key, value) },
       usageChanged: (sessionId) => this.#usageChanged(sessionId),
       signal: (sessionId, signal) => this.#signal(sessionId, signal, false),
       turnFailed: (sessionId, error, messages) => this.#turnFailed(sessionId, error, messages),
@@ -416,6 +417,7 @@ export class Sessions {
   view(p: HarnessProcess): HarnessProcessView {
     const adapter = this.#adapters.get(p.harness);
     const usage = adapter?.usage?.(p) ?? null;
+    const stateReason = p.status === 'running' ? adapter?.stateReason?.(p) : null;
     const pending = p.status === 'running' ? this.#core.sessionPending(p) : undefined;
     const approvalCommand = p.status === 'running' ? this.#core.sessionApprovalCommand(p.sessionId) : undefined;
     return {
@@ -438,7 +440,8 @@ export class Sessions {
       archivedAt: p.archivedAt ?? null,
       archivedBy: p.archivedBy ?? null,
       status: p.status,
-      state: p.status === 'running' ? this.#core.sessionState(p.sessionId) : 'unknown',
+      ...(stateReason ? { stateReason } : {}),
+      state: p.status === 'running' && !stateReason ? this.#core.sessionState(p.sessionId) : 'unknown',
       ...(approvalCommand !== undefined ? { approvalCommand } : {}),
       attach: p.status === 'running' && adapter ? adapter.attachCommand(p) : null,
       ...(usage ? { usage } : {}),
@@ -848,7 +851,7 @@ export class Sessions {
           first.acceptedId = p.sessionId;
         }
         accepted = true;
-        return view;
+        return { ...view, ...(p.warning ? { warning: p.warning } : {}) };
       });
     } catch (cause) {
       let detail = cause instanceof Error ? cause.message : String(cause);
@@ -1181,7 +1184,7 @@ export class Sessions {
     // the harness's own conversation id, as its hooks carry it (a `/clear` starts a new one)
     const harnessSessionId = typeof payload.session_id === 'string' ? payload.session_id : null;
     if (harnessSessionId && harnessSessionId !== (p.harnessSessionId ?? p.sessionId)) this.#table.update(p.name, { harnessSessionId });
-    const meaning = adapter.interpret(frame.event, payload, p);
+    const meaning = adapter.interpret(frame.event, payload, p, frame.at ?? Date.now());
     for (const id of meaning.confirms ?? []) this.#confirm(p, id);
     this.#recordHarness(p, meaning);
     if (meaning.usage) {
@@ -1190,9 +1193,9 @@ export class Sessions {
     }
     if (meaning.turnError) {
       const error = meaning.turnError;
-      this.#turnFailed(p.sessionId, error, []);
+      if (meaning.failureAudience !== 'senders') this.#turnFailed(p.sessionId, error, []);
       // A failure may beat its input's confirmation. The adapter reconciles them by harness identity.
-      if (meaning.failureMessages) void meaning.failureMessages.then((messages) => this.#notifyTurnSenders(p.sessionId, error, messages));
+      if (meaning.failureMessages) void meaning.failureMessages.then((messages) => this.#notifyTurnSenders(p.sessionId, error, messages, meaning.failureDedupe));
     }
     if (!meaning.state) return { applied: Boolean(meaning.model || meaning.subagent) };
     const applied = this.#signal(p.sessionId, { state: meaning.state, source: frame.event.startsWith('mod-') ? 'mod' : 'hook', at: frame.at ?? Date.now(), ...(meaning.approvalCommand !== undefined ? { approvalCommand: meaning.approvalCommand } : {}) }, true);
@@ -1246,7 +1249,8 @@ export class Sessions {
     this.#notifyTurnSenders(sessionId, error, messages);
   }
 
-  #notifyTurnSenders(sessionId: string, error: string, messages: string[]): void {
+  #notifyTurnSenders(sessionId: string, error: string, messages: string[], dedupe?: { key: string; episode: string }): void {
+    if (this.#closed) return;
     const p = this.#table.bySessionId(sessionId);
     if (!p || p.status !== 'running') return;
     const text = `${this.#core.label(p.name)}: its turn failed: ${error}`;
@@ -1255,7 +1259,22 @@ export class Sessions {
       const message = this.#core.store.message(id);
       if (message?.fromKind === 'agent') senders.add(message.from);
     }
-    for (const sender of senders) this.#core.notify(sender, text);
+    let notified: string[] = [];
+    if (dedupe) {
+      const saved = this.#core.store.meta(`failure-senders:${dedupe.key}`);
+      if (saved) {
+        try {
+          const state = JSON.parse(saved);
+          if (state.episode === dedupe.episode && Array.isArray(state.senders)) notified = state.senders;
+        } catch { /* No valid receipt yet. */ }
+      }
+    }
+    for (const sender of senders) {
+      if (notified.includes(sender)) continue;
+      this.#core.notify(sender, text);
+      notified.push(sender);
+      if (dedupe) this.#core.store.setMeta(`failure-senders:${dedupe.key}`, JSON.stringify({ episode: dedupe.episode, senders: notified }));
+    }
   }
 
   #exited(sessionId: string, detail: string): void {

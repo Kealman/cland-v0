@@ -40,7 +40,7 @@
 import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
@@ -93,6 +93,12 @@ const flag = (args: string[], ...names: string[]) => {
 async function main(args: string[]): Promise<number> {
   const [first] = args;
   if (first === '__session') return runSession(args[1] as string);
+  const configDir = resolve(process.env.CLAUDE_CONFIG_DIR || join(process.env.HOME ?? '', '.claude'));
+  appendFileSync(join(HOME, 'calls.jsonl'), `${JSON.stringify({ at: Date.now(), args, configDir })}\n`);
+  if ((first === 'agents' || args.includes('--bg')) && existsSync(join(HOME, 'logged-out'))) {
+    process.stderr.write('OAuth token has expired. Please run claude auth login.\n');
+    return 1;
+  }
   if (first === '--version' || first === '-v') {
     process.stdout.write(`${process.env.FAKE_CLAUDE_VERSION ?? '2.1.294'} (Claude Code)\n`);
     return 0;

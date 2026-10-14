@@ -531,6 +531,7 @@ export type FakeClaude = {
   /** The environment a daemon is started with: the fake first on the PATH, fast adapter timings. */
   env: Record<string, string>;
   home: string;
+  calls: () => Promise<Array<{ at: number; args: string[]; configDir: string }>>;
   /** The fake's live sessions, as `claude agents --json` lists them. */
   sessions: () => Promise<Array<{ pid: number; id: string; sessionId: string; cwd: string; status: string; waitingFor?: string; name: string | null }>>;
   /** What one fake session logged (hooks that failed, tool calls, the mod's bridge). */
@@ -548,6 +549,7 @@ export async function fakeClaude(
   const env = {
     PATH: `${FAKE_CLAUDE_DIR}:${process.env.PATH ?? ''}`,
     FAKE_CLAUDE_HOME: home,
+    CLAND_CLAUDE_AGENTS_MS: String(timings.pollMs ?? 200),
     FAKE_CLAUDE_TURN_MS: String(timings.turnMs ?? 300),
     CLAND_ADAPTER_POLL_MS: String(timings.pollMs ?? 200),
     CLAND_INJECT_TIMEOUT_MS: String(timings.injectTimeoutMs ?? 5000),
@@ -578,6 +580,7 @@ export async function fakeClaude(
     env,
     home,
     sessions,
+    calls: async () => (await readFile(join(home, 'calls.jsonl'), 'utf8').catch(() => '')).trim().split('\n').filter(Boolean).map(line => JSON.parse(line)),
     log: async (id) => readFile(join(home, 'jobs', `${id}.log`), 'utf8').catch(() => ''),
     job: async (id) => JSON.parse(await readFile(join(home, 'jobs', `${id}.json`), 'utf8')) as { name: string | null; model: string | null; effort: string | null },
   };
