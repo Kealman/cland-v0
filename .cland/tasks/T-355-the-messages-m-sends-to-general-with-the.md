@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-232
 branch: t/T-355-the-messages-m-sends-to-general-with-the
 created: 2026-10-13T20:53:51.934Z
-updated: 2026-10-14T03:16:43.247Z
+updated: 2026-10-14T04:01:08.818Z
 ---
 
 ## Summary
@@ -112,9 +112,8 @@ card line: <the card line under the cursor, trimmed>   (only from the card)
 - [x] C7. Both clause sources deliver the explorer line to the Coordinator within the byte guard (`hub/test/roles.test.ts`).
   - done: impl-355 · 2026-10-14T03:15:52.323Z
 - [x] C8. `nvim/README.md`, the help lines and the Coordinator's clause describe the messages.
-  - done: impl-355 · 2026-10-14T02:25:26.812Z
-  - verified: rev-23 [reviewer] · run rev-2026-10-14-355-1 · 2026-10-14T02:30:51.454Z · commit be077daeefd422d67b93fef9244c3e4055fdca06
-  - verified: rev-23 [reviewer] · run rev-2026-10-14-355-3 · 2026-10-14T03:16:43.246Z · commit 9dd2c1e9b2b3604f2d938c2bd19260d948fb45e6
+  - done: impl-355 · 2026-10-14T04:00:26.228Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-355-5 · 2026-10-14T04:01:08.818Z · commit 812fa578b1e2cea815ebdcbc4614875da0d7324f
 
 ## Comments
 
@@ -164,5 +163,35 @@ commit: 9dd2c1e9b2b3604f2d938c2bd19260d948fb45e6
 scope: full
 
 No high/medium findings remain. Both Coordinator guarded phrases restored verbatim; compensating status/handover cuts retain semantics and four sections/skill/revocation rule. New explorer line and all tests/byte guards unchanged; original complete UI source review retained. Project clause 6978 bytes versus 6987 pre-task; diff check clean. C8 refreshed; C1–C7 await new exact-head ordinary full evidence. Failed A-2203 preserved. A-2206: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2206-t-355-corrected-clause-source-clear-at-9dd2c1e9.md. Source clear, not final readiness.
+
+Criteria: C8 verified.
+
+### rev-23 · 2026-10-14T03:59:15.060Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-355-4
+commit: 9dd2c1e9b2b3604f2d938c2bd19260d948fb45e6
+scope: evidence
+
+Medium — nvim/test/explorer.test.ts:234: expected complete action inventory lacks explorer:m and explorer:M introduced by this feature, so A-2225 fails unchanged deep equality (1954/1955 pass; zero skips/cancellations). Add both to the exact inventory, preserve previous entries/equality/help/hint checks, and assert their message help. Corrected-head source review and ordinary full verification required. A-2226: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2226-t-355-full-evidence-not-clear-explorer-action-inventory.md.
+
+Criteria: C8 failed (The existing exact explorer action inventory lacks newly registered m/M actions; full Neovim help regression fails.).
+
+### impl-355 · 2026-10-14T04:00:41.305Z
+
+Full 0caffd51 at 9dd2c1e9 passed 1954/1955 tests; exact explorer action inventory lacked required m/M (A-2225/A-2226). Preserved and extended all existing assertions, added message help checks, and fixed missing static Keys instructions. Committed/pushed 812fa578. Entire explorer.test.ts: 13 pass; typecheck/diff check pass. A-2227 records the repair; source re-review requested before new exact-head full verification.
+
+### rev-23 · 2026-10-14T04:01:08.818Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-355-5
+commit: 812fa578b1e2cea815ebdcbc4614875da0d7324f
+scope: full
+
+No high/medium findings remain in corrected source. The exact inventory now includes m/M while preserving every previous action and mapping audit. Static Keys instructions match composer destinations, selection context, send/newline and draft-preserving close; status/help checks are stronger. Earlier complete feature/role review remains applicable. C8 source verified; C1–C7 and complete fresh exact-head full evidence pending. A-2228: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2228-t-355-corrected-keys-and-action-inventory-source-clear.md.
 
 Criteria: C8 verified.

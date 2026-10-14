@@ -3,7 +3,7 @@ id: T-347
 kind: task
 title: "The remote budget: remote runs are admitted up to remote_budget in parallel beside the local slot of one, the local slot takes a droplet run only when the remote budget is full, and cland verify queue names each run's executor"
 state: open
-status: review
+status: in progress
 size: M
 criterion_seq: 7
 labels:
@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-233
 branch: t/T-347-the-remote-budget-remote-runs-are
 created: 2026-10-13T20:53:46.081Z
-updated: 2026-10-14T03:28:10.416Z
+updated: 2026-10-14T04:17:43.924Z
 ---
 
 ## Summary
@@ -87,7 +87,7 @@ Prior work: T-215 kept the local budget at one (`verification-budget-capped`). T
 - [x] C2. With `remote_budget = 2` and the local slot free, a third droplet run goes to the local slot. It gets one warn notice with the cause `remote budget full` and a `verification-executor-fallback` record. With the local slot busy too, it waits and is admitted to the first slot that frees.
   - done: impl-347 · 2026-10-14T03:18:54.476Z
 - [x] C3. `cland verify queue` and `--json` show the local holder, both remote runs with droplet name, size and region, and each waiter's requested executor. Every existing queue assertion in `hub/test/suite.test.ts` still passes.
-  - done: impl-347 · 2026-10-14T03:26:50.984Z
+  - done: impl-347 · 2026-10-14T03:49:42.979Z
 - [x] C4. A local waiter held by a hand holder does not block a droplet waiter behind it. A droplet waiter refused for the cap falls back and does not block the queue.
   - done: impl-347 · 2026-10-14T03:18:55.766Z
 - [x] C5. The fake API never sees more than `remote_budget` live droplets from one hub, and every acquire passes the shared spend cap.
@@ -96,6 +96,7 @@ Prior work: T-215 kept the local budget at one (`verification-budget-capped`). T
 - [x] C7. `hub/README.md` and `docs/agents/tests.md` describe `remote_budget`, the slot rule and the queue lines.
   - done: impl-347 · 2026-10-14T03:18:56.994Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-347-2 · 2026-10-14T03:27:35.135Z · commit 130e3fcd2563630041775d18405990ae1150622c
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-347-4 · 2026-10-14T03:50:02.091Z · commit 2bea4c2ebf8bee59fc346344565e1dcc95f47559
 
 ## Comments
 
@@ -140,3 +141,56 @@ Criteria: C7 verified.
 ### impl-347 · 2026-10-14T03:28:10.416Z
 
 Source-clear at exact pushed head 130e3fcd2563630041775d18405990ae1150622c, rev-23 run rev-2026-10-14-347-2 / A-2212. Full verification submitted through cland verify all, run 0e2c5554-600f-412a-ae4b-58d93fa34b03, worker PID null while queued; recipients rev-23 and impl-347 in topic-233. Waiting for hub result; no bypass or source changes. C6 remains held for Coordinator's MicroVM-ended relay and clean-tag preflight.
+
+### impl-347 · 2026-10-14T03:46:34.155Z
+
+Full 0e2c5554/A-2220 failed 1/1617 hub tests at 130e3fcd; existing abandoned-human reservation timed out, Neovim not reached. Reproduced same failure standalone. Fixed lazy-probe regression at pushed 2bea4c2ebf8bee59fc346344565e1dcc95f47559: reconcile admitted humans before queue traversal, so expiry works with no waiters. Existing test unchanged; targeted human expiry/lease/priority 3/3 and remote/local/human coexistence 2/2 pass, typecheck/diff check pass. A-2222 records diagnosis; corrected source review assigned rev-23 before next full verify. C6 remains held until corrected-head full green; Coordinator has relayed MicroVM ended and initial droplets/snapshots must be empty. No real resources created.
+
+### rev-23 · 2026-10-14T03:49:13.855Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-347-3
+commit: 130e3fcd2563630041775d18405990ae1150622c
+scope: evidence
+
+Medium — hub/src/hub/suites.ts:405–419: human grace reconciliation is inside the ordered waiter loop, so an empty queue leaves an abandoned human reservation admitted indefinitely. A-2220 fails the unchanged human-grace assertion at hub/test/suite.test.ts:1488; Neovim was not reached. Evidence: A-2221, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2221-t-347-full-evidence-not-clear-abandoned-human-reservation.md. C6 remains pending. Corrected head will receive a separate source pass.
+
+Criteria: C3 failed (An admitted human reservation never expires with no queued waiter; existing abandoned-human regression fails.).
+
+### rev-23 · 2026-10-14T03:50:02.091Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-347-4
+commit: 2bea4c2ebf8bee59fc346344565e1dcc95f47559
+scope: full
+
+No high/medium source findings remain. Human grace reconciliation now runs before queue traversal, so empty queues expire abandoned reservations while matching human leases/grace still reserve only the local slot. Remote admission remains independent; original tests/deadlines are unchanged. C7 docs refreshed; C1–C5 require fresh exact-head ordinary full evidence and C6 real receipts remain pending. A-2223: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2223-t-347-corrected-human-grace-source-clear-at-2bea4c2.md.
+
+Criteria: C7 verified.
+
+### impl-347 · 2026-10-14T03:50:32.286Z
+
+Corrected source-clear 2bea4c2ebf8bee59fc346344565e1dcc95f47559, rev-23 run rev-2026-10-14-347-4 / A-2223. Fresh ordinary full verification submitted at exact head: 355e5bec-95fe-4ec3-b2ea-5ceca2ef2f4d, recipients rev-23/impl-347, topic-233, PID null while queued. No bypass/source changes. C6 starts only after this corrected-head run is green, with Coordinator's approved A-2208 setup and required initial empty cland droplets/snapshots.
+
+### rev-23 · 2026-10-14T04:13:44.713Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-347-5
+commit: 2bea4c2ebf8bee59fc346344565e1dcc95f47559
+scope: evidence
+
+Medium — hub/test/verifier-routing.test.ts:199: existing queued Reviewer delivery times out at the 5s channel wait after hold release; A-2229 exits 1 (1616/1617 hub, no skips/cancellations; Neovim not reached). This file is unchanged by T-347; cause needs targeted diagnosis. Human-grace/queue tests passed, so no individual queue criterion is failed by this unrelated routing timeout. Complete verification remains not clear: C1–C5 unverified, C7 source mark retained, C6 held. Preserve assignment/exact-once assertions. A-2230: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2230-t-347-corrected-head-full-evidence-not-clear-verifier-delivery.md.
+
+### impl-347 · 2026-10-14T04:15:07.814Z
+
+355e5bec/A-2229 at source-clear 2bea4c2e failed 1/1617 hub tests, verifier-routing.test.ts:199 rev-2 queued-delivery wait; corrected human grace and remote budget cases passed, Neovim not reached. Same test failed standalone 1/1 without mutation/load generator (A-2231). Coordinator's latest disposition 941882d1: impl-369 compares dev 39ff0f4 and this head five times each; T-347 holds unchanged at 2bea4c2e with C6/full rerun held until that comparison determines task regression versus shared T-369 fix. Subscribed to T-369 task events; no source edits or new suite run.
+
+### impl-347 · 2026-10-14T04:17:43.924Z
+
+T-369 direct comparison (impl-369 report a6ebd8f0): dev 39ff0f4c and T-347 2bea4c2e each passed 5/5 standalone in separate detached scratch worktrees, no mutation/load, one targeted file at a time. This does not isolate a T-347 regression; prior standalone red A-2231 remains a shared-race candidate. T-369 continues bounded-load delivery/connection ownership diagnosis. T-347 remains unchanged and C6/full rerun held under Coordinator disposition until the shared-fix outcome.

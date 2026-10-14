@@ -2,8 +2,8 @@
 id: T-348
 kind: task
 title: "Executors in the clauses and skills: the Implementer and QA clauses and the merge and qa skills say how a run picks its executor, what a droplet run costs, and what a Linux result proves"
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 4
 labels:
@@ -17,7 +17,8 @@ blocked_by:
 topic: topic-234
 branch: t/T-348-executors-in-the-clauses-and-skills-the
 created: 2026-10-13T20:53:46.191Z
-updated: 2026-10-14T03:42:38.290Z
+updated: 2026-10-14T04:37:35.334Z
+closed: 2026-10-14T04:37:35.334Z
 ---
 
 ## Summary
@@ -78,12 +79,19 @@ The Coordinator clause gets one sentence: `cland executor status|prepare|reap`, 
 
 - [x] C1. The Implementer and QA clauses each name `cland verify`'s executor, `--executor local`, the result's lifetime and cost, and that sessions never handle droplets themselves. The Coordinator clause names `cland executor status|prepare|reap`. `hub/test/roles.test.ts` passes with the budget unchanged.
   - done: impl-348 · 2026-10-14T03:42:05.620Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-348-2 · 2026-10-14T04:37:11.533Z · commit 40355dfb0187c09dc4d5eba53e3fcf6447959f3f
 - [x] C2. The `merge` and `qa` skills say that a Linux result satisfies the gate, and where the macOS-only cases run. `skills/PATCHES.md` records the patch.
   - done: impl-348 · 2026-10-14T03:42:07.000Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-348-1 · 2026-10-14T03:51:01.524Z · commit 40355dfb0187c09dc4d5eba53e3fcf6447959f3f
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-348-2 · 2026-10-14T04:37:11.533Z · commit 40355dfb0187c09dc4d5eba53e3fcf6447959f3f
 - [x] C3. `docs/agents/tests.md` describes the executor line, `--executor`, the fallback notice, the remote queue lines and the cost of a run.
   - done: impl-348 · 2026-10-14T03:42:08.138Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-348-1 · 2026-10-14T03:51:01.524Z · commit 40355dfb0187c09dc4d5eba53e3fcf6447959f3f
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-348-2 · 2026-10-14T04:37:11.533Z · commit 40355dfb0187c09dc4d5eba53e3fcf6447959f3f
 - [x] C4. `hub/README.md` has one "Remote executors: droplets" section with the config table (defaults and D27's build values), costs, token rules, the hand driver's retirement and what a Linux result proves. The GLOSSARY has Lease, linked from Executor.
   - done: impl-348 · 2026-10-14T03:42:09.556Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-348-1 · 2026-10-14T03:51:01.524Z · commit 40355dfb0187c09dc4d5eba53e3fcf6447959f3f
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-348-2 · 2026-10-14T04:37:11.533Z · commit 40355dfb0187c09dc4d5eba53e3fcf6447959f3f
 
 ## Comments
 
@@ -94,3 +102,33 @@ Implementation plan: compact executor rules next to Implementer review/QA queue 
 ### impl-348 · 2026-10-14T03:42:28.283Z
 
 Source ready at pushed head 40355dfb0187c09dc4d5eba53e3fcf6447959f3f; full source review requested. Implementation/checks artifact A-2219 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2219-t-348-implementation-and-checks-at-40355dfb.md. Typecheck, delivered default/project role snapshots with unchanged byte budget, QA skill and tracker guards passed. Full verify waits for a clear source verdict. Coordinator: relaunch Coordinator, Implementer and QA sessions after merge; the tracked roles.toml was updated alongside defaults.
+
+### rev-23 · 2026-10-14T03:51:01.524Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-348-1
+commit: 40355dfb0187c09dc4d5eba53e3fcf6447959f3f
+scope: full
+
+No high/medium findings across all nine changed files. Role clauses retain existing permissions, guarded review ownership and delivered-byte checks; skills/docs agree on exact-head Linux evidence, local macOS checks, fallback and hub-owned lifecycle. README consolidates defaults/D27, current prices, token rules, retired driver and cleanup/spend contract; glossary Lease is linked. C2–C4 source verified; C1 and complete exact-head ordinary full evidence remain pending. A-2224: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2224-t-348-complete-source-review-clear-at-40355dfb.md. After merge Coordinator owns Coordinator/Implementer/QA relaunch; retain T-355 clauses if landed first.
+
+Criteria: C2 verified, C3 verified, C4 verified.
+
+### rev-23 · 2026-10-14T04:37:11.533Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-348-2
+commit: 40355dfb0187c09dc4d5eba53e3fcf6447959f3f
+scope: evidence
+
+No findings remain. Exact-head full a2e7e5c1/A-2237 exits 0: typecheck plus 37 free, 1572 hub machine and 357 Neovim cases (1966/1966), zero failures/cancellations/skips/todo. Both default/project delivered clauses pass unchanged byte/headroom guards. C1 verified by that result; C2–C4 retain same-head complete source review A-2224. All criteria checked. A-2238: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2238-t-348-final-exact-head-review-clear-1966-tests.md. After merge Coordinator owns affected-session relaunch; preserve T-355 clauses if landed first.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-14T04:37:35.334Z
+
+Merged 09d116581ccfde0aa4a62c695106fd6811315e55 onto dev.
