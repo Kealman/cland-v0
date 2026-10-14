@@ -3,7 +3,7 @@ id: T-392
 kind: task
 title: "Inspection diet: fixture hubs skip the start-up orphan sweep unless the test opts in, teardown signals recorded identities without machine-wide scans, and processStarted calls coalesce"
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - v0.1.2
@@ -16,7 +16,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-14T12:28:11.104Z
-updated: 2026-10-14T12:28:11.637Z
+updated: 2026-10-14T23:53:18.278Z
 ---
 
 ## Summary

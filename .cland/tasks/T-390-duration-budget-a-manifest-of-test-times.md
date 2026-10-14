@@ -3,7 +3,7 @@ id: T-390
 kind: task
 title: "Duration budget: a manifest of test times from the latest green integrated log, a 5 s per test and 60 s per file budget with a reasoned allowlist, and the top regressions in the suite report"
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - v0.1.2
@@ -17,7 +17,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-14T12:28:10.528Z
-updated: 2026-10-14T12:28:11.475Z
+updated: 2026-10-14T23:53:19.458Z
 ---
 
 ## Summary

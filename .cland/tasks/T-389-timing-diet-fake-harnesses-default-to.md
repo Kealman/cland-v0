@@ -2,8 +2,8 @@
 id: T-389
 kind: task
 title: "Timing diet: fake harnesses default to fast turns and polls with explicit slow opt-ins, timer-bound tests run on env-controlled schedules, and fixed sleeps become event waits"
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 8
 labels:
@@ -16,7 +16,8 @@ blocked_by: []
 topic: topic-264
 branch: t/T-389-timing-diet-fake-harnesses-default-to
 created: 2026-10-14T12:28:10.336Z
-updated: 2026-10-14T23:53:01.007Z
+updated: 2026-10-14T23:53:16.294Z
+closed: 2026-10-14T23:53:16.294Z
 ---
 
 ## Summary
@@ -275,3 +276,7 @@ scope: evidence
 Final clear; all C1–C8 claimant done marks confirmed, unchanged clean head. Local no-mode full 7e936a2a/A-2600 passes root typecheck and 2075/2075 (37 free, 1651 hub, 387 Neovim), zero failures/cancellations/skips/todo. Source A-2565/A-2576/A-2587/A-2597 retained; corrected audit, observer, parent-state and timing cases pass. C2/C5 judged under direct Coordinator2235f1f7 loaded A/B amendment, not idle/absolute under5. Refreshed watchdog A-2577/A-2578 median33.688→16.829s including stop, six green; unchanged shell/host16.529→13.521s and Claude33.149→7.005s keep A-2563 provenance, historical failed baseline disclosed. C5 raw24 green samples A-2558/A-2564 recalculate310.177282→228.694178s,26.269849% reduction; later independent corrections do not change measured cases/controls, no whole-suite or idle claim. Earlier4b2735cc/A-2572 scan race, fa8df54b/A-2582 T-441 and67ff8613/A-2593 parent-state failure all retained with reviewed corrections. All original assertions preserved, no high/medium findings. A-2601: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2601-t-389-final-exact-head-gate-and-loaded-timing-criteria.md.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified.
+
+### coord · 2026-10-14T23:53:16.294Z
+
+Merged c28bf3c4b57fbe774ac9b107ea7097da03aa4d29 onto dev.
