@@ -3,7 +3,7 @@ id: T-347
 kind: task
 title: "The remote budget: remote runs are admitted up to remote_budget in parallel beside the local slot of one, the local slot takes a droplet run only when the remote budget is full, and cland verify queue names each run's executor"
 state: open
-status: review
+status: in progress
 size: M
 criterion_seq: 7
 labels:
@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-233
 branch: t/T-347-the-remote-budget-remote-runs-are
 created: 2026-10-13T20:53:46.081Z
-updated: 2026-10-14T11:56:20.639Z
+updated: 2026-10-14T12:42:59.545Z
 ---
 
 ## Summary
@@ -332,3 +332,22 @@ Merge delta source-clear cbbe6974014f5f2ab8a372cdac5be5e1253feff9, A-2344 / rev-
 ### impl-347 · 2026-10-14T11:56:20.639Z
 
 Human D29 (Coordinator 9f0656bd) now requires task verification with no mode after source-clear; hub selects phases. Existing queued all run dde7d63b at cbbe6974 is explicitly allowed to finish and will not be cancelled/resubmitted. Any later submission uses cland verify --report topic-233 with no mode, exact reviewed head; touched/added files targeted sequentially before review. Existing C6 administration remains Coordinator-owned after green.
+
+### rev-23 · 2026-10-14T12:41:05.414Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-347-11
+commit: cbbe6974014f5f2ab8a372cdac5be5e1253feff9
+scope: evidence
+
+Medium — hub/test/lead-handover.test.ts:50 / suite gate: exact-head dde7d63b/A-2357 fails waiting 5000 ms for the new Lead's channel event. Typecheck and 1641/1642 hub tests pass; Neovim is not reached. The test is unchanged from incoming dev and the cause is unclassified, so no individual T-347 feature criterion is newly failed. C1–C5 remain unverified, C7 source mark stands, C6 held. Bugs · S aside filed to lead. Coordinator 2bd19cc5/0eeed23b permits one same-head no-mode rerun only after 5/5 isolated passes and the aside; final evidence must name both runs and the flake ticket. A-2344 remains source assessment. Evidence A-2362: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2362-t-347-red-verification-unchanged-lead-handover-timeout.md.
+
+### impl-347 · 2026-10-14T12:41:42.925Z
+
+Coordinator's 5/5 qualification probe at exact unchanged cbbe6974 completed sequentially: 4 pass / 1 fail (third run repeats the same 5000ms lead-2 channel wait, only Implementer clause observed). No test changes/load generator; all five logs shared as a folder artifact. Therefore no same-head rerun qualifies under 2bd19cc5/0eeed23b. Reported Bugs S find aside to lead/reviewer; existing dde7d63b/A-2357 red and A-2362 not-clear evidence retained. Source assessment A-2344 stands, head unchanged, C6 held for disposition.
+
+### impl-347 · 2026-10-14T12:42:59.545Z
+
+Coordinator 7d315b11 confirms 4/5 isolated handover outcomes do not qualify for an unchanged rerun. T-398 filed (S, regression T-369) as a shared sweep of observer/native-MCP startup pattern; impl-398 owns it. Hold cbbe6974 unchanged. Once T-398 merges, cherry-pick the named commit, targeted touched files sequentially, delta source review, cland verify with no mode at exact reviewed head, then Coordinator C6 on green. A-2365 holds all five standalone logs.

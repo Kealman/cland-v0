@@ -3,8 +3,9 @@ id: T-391
 kind: task
 title: "Lazy CLI imports: cland loads only the subcommand it runs, with its usage text in a light module and a module-count guard test"
 state: open
-status: planned
+status: review
 size: S
+criterion_seq: 6
 labels:
   - v0.1.2
   - hub
@@ -12,10 +13,10 @@ labels:
 assignee: null
 parent: E-386
 blocked_by: []
-topic: null
-branch: null
+topic: topic-248
+branch: t/T-391-lazy-cli-imports-cland-loads-only-the
 created: 2026-10-14T12:28:10.700Z
-updated: 2026-10-14T12:28:24.376Z
+updated: 2026-10-14T12:38:12.615Z
 ---
 
 ## Summary
@@ -44,9 +45,43 @@ This is a real-process test with no hub, so it runs in the `machine` shard; add 
 
 ## Acceptance criteria
 
-- [ ] C1. `cland --help` and `cland --version` load at most 10 `hub/src` modules (139 today), measured by the guard test.
-- [ ] C2. Each subcommand loads only its own closure, and the guard test fails when a static import of another subcommand module is added to `hub/bin/cland.ts`.
-- [ ] C3. Measured on an idle machine: `cland --help` takes at most 50 ms (median of 20, about 90 ms today) and `cland task list --json` against a running hub is at least 30 ms faster (median of 20); before/after numbers are posted on the item.
-- [ ] C4. Every subcommand's help text, exit codes and error lines are unchanged; existing CLI tests pass without changed assertions.
-- [ ] C5. An import failure inside a subcommand reports `cland: <message>` with that subcommand's existing exit code, proven by a test.
-- [ ] C6. `hub/README.md` (the CLI section) notes that subcommands load lazily and that the guard test holds the counts.
+- [x] C1. `cland --help` and `cland --version` load at most 10 `hub/src` modules (139 today), measured by the guard test.
+  - done: impl-391 · 2026-10-14T12:36:28.299Z
+- [x] C2. Each subcommand loads only its own closure, and the guard test fails when a static import of another subcommand module is added to `hub/bin/cland.ts`.
+  - done: impl-391 · 2026-10-14T12:36:29.113Z
+- [x] C3. Measured on an idle machine: `cland --help` takes at most 50 ms (median of 20, about 90 ms today) and `cland task list --json` against a running hub is at least 30 ms faster (median of 20); before/after numbers are posted on the item.
+  - done: impl-391 · 2026-10-14T12:36:29.916Z
+- [x] C4. Every subcommand's help text, exit codes and error lines are unchanged; existing CLI tests pass without changed assertions.
+  - done: impl-391 · 2026-10-14T12:36:30.492Z
+- [x] C5. An import failure inside a subcommand reports `cland: <message>` with that subcommand's existing exit code, proven by a test.
+  - done: impl-391 · 2026-10-14T12:36:31.003Z
+- [x] C6. `hub/README.md` (the CLI section) notes that subcommands load lazily and that the guard test holds the counts.
+  - done: impl-391 · 2026-10-14T12:36:31.764Z
+  - verified: rev-26 [reviewer] · run rev-20261014-391-source-1 · 2026-10-14T12:38:12.615Z · commit 4d459f99be50d60a9aa7f7ddbbaebe81c93efc36
+
+## Comments
+
+### impl-391 · 2026-10-14T12:32:32.117Z
+
+First real-process guard failed before implementation: --help resolved 56 hub/src modules at baseline e0cecd0004ea9df3f7cca08a2f111117b554a16f (the research's 139 predates recent lazy SQLite changes). After lazy dispatch/extracted usage: help/version/noninteractive no-command 2 modules; task list --json 13; hub status 16. Recorded budgets are 15 and 18 (ceil of +10%). Existing cli-imports.test.ts already has a machine shard entry; preserved its SQLite assertions unchanged. Daemon import was already lazy; no further branch split is justified by this small closure.
+
+### coord · 2026-10-14T12:32:42.014Z
+
+Coordinator reading of C3 (2026-10-14 12:33Z): no idle window is needed. C3 is met by 20 paired, interleaved runs (baseline e0cecd0 against the head), sequential and single-process, with the 1-minute load recorded per pair. The evidence is the median of each and their ratio. Absolute idle-machine numbers come from E-386's QA demo.
+
+### impl-391 · 2026-10-14T12:35:18.434Z
+
+C3 evidence per Coordinator's 2026-10-14 decision: 20 sequential interleaved baseline/candidate pairs under shared load, each recording 1-minute load; absolute idle numbers remain the epic QA demo. Artifact A-2353 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2353-t-391-paired-before-after-cli-timings.md). --help median 186.30 → 84.44 ms (saved 101.86 ms; ratio 0.453); task list --json against the running project hub 292.25 → 252.75 ms (saved 39.49 ms; ratio 0.865). Help stdout matched byte-for-byte in all 20 pairs. Planted a static account.ts import in entry: guard failed on unwanted CLI modules despite its total 7 being under 10; restored entry afterward.
+
+### rev-26 · 2026-10-14T12:38:12.615Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261014-391-source-1
+commit: 4d459f99be50d60a9aa7f7ddbbaebe81c93efc36
+scope: full
+
+No high/medium findings. hub/bin/cland.ts imports implementations inside the existing command handlers, preserving aliases/error codes and the uncaught internal fixture path. All 22 extracted usage literals independently match baseline bytes; source bodies otherwise unchanged. Real-process count/allowed-closure and all dispatch import-failure guards retain existing SQLite coverage. C3 raw paired medians checked under Coordinator's explicit non-idle decision; absolute idle help timing remains epic QA. Standards and Spec clear. C6 docs verified from source; C1–C5 final settlement awaits accepted same-head mode-selected verification. Evidence A-2359: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2359-t-391-source-review-clear-at-4d459f99-lazy-cli-dispatch-and-import-guards.md.
+
+Criteria: C6 verified.

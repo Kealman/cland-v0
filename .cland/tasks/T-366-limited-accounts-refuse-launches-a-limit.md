@@ -2,8 +2,8 @@
 id: T-366
 kind: task
 title: "Limited accounts refuse launches: a limit-hit signal from Claude Code, Codex or OpenCode marks the account limited until its reset, a launch on it is refused naming the reset, and cland account clear lifts the mark"
-state: open
-status: review
+state: closed
+status: done
 size: L
 criterion_seq: 9
 labels:
@@ -18,7 +18,8 @@ blocked_by:
 topic: topic-243
 branch: t/T-366-limited-accounts-refuse-launches-a-limit
 created: 2026-10-13T23:42:54.826Z
-updated: 2026-10-14T10:55:50.408Z
+updated: 2026-10-14T13:00:21.245Z
+closed: 2026-10-14T13:00:21.245Z
 ---
 
 ## Summary
@@ -108,24 +109,33 @@ Ticket T-364's `poll(account)` is the after-hit trigger, and ticket T-365's bloc
 
 - [x] C1. A fake Codex `usageLimitExceeded` on a codex-a session marks codex-a limited with its window's reset. `cland account list --json` shows the mark, the journal holds `account-limited`, and one warn notice reaches the Agents topic.
   - done: impl-366 · 2026-10-14T10:41:16.672Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-366-3 · 2026-10-14T12:59:45.598Z · commit 5aad58e50a09212adda305d33ffdeee412155eeb
 - [x] C2. The next launch on codex-a, by `--account` and by a role pinned to it, is refused with `code: "account-limited"` naming codex-a and its reset. The fakes' records show no process started on codex-b or any other account, and the running codex-a session keeps running.
   - done: impl-366 · 2026-10-14T10:41:17.481Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-366-3 · 2026-10-14T12:59:45.598Z · commit 5aad58e50a09212adda305d33ffdeee412155eeb
 - [x] C3. A Claude `StopFailure` with `error: "rate_limit"` marks claude-b with the reset of its full window, and an OpenCode `provider.quota` marks oc-b `until cleared`. A Codex `rateLimitExceeded`, an OpenCode `provider.rate-limit` and a Claude `overloaded` mark nothing.
   - done: impl-366 · 2026-10-14T10:54:13.830Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-366-3 · 2026-10-14T12:59:45.598Z · commit 5aad58e50a09212adda305d33ffdeee412155eeb
 - [x] C4. A mark lifts at its reset and survives a hub restart that comes before the reset. `cland account clear codex-a` lifts it at once for the human and the Coordinator and is refused for an Implementer, a Reviewer and a QA session. Both lifts journal `account-limit-lifted` with `by`.
   - done: impl-366 · 2026-10-14T10:41:19.353Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-366-3 · 2026-10-14T12:59:45.598Z · commit 5aad58e50a09212adda305d33ffdeee412155eeb
 - [x] C5. A relaunch and a retained pool handoff onto a limited account are refused the same way, while a hub-restart re-find of a live session on it succeeds.
   - done: impl-366 · 2026-10-14T10:41:20.385Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-366-3 · 2026-10-14T12:59:45.598Z · commit 5aad58e50a09212adda305d33ffdeee412155eeb
 - [x] C6. A hit makes exactly one after-hit poll of its account, and a second hit while the mark holds adds no poll and no notice.
   - done: impl-366 · 2026-10-14T10:54:15.904Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-366-3 · 2026-10-14T12:59:45.598Z · commit 5aad58e50a09212adda305d33ffdeee412155eeb
 - [x] C7. The headless workbench shows codex-a in `ClandRed` with `limited` and its reset, and oc-b with `until cleared`. The highlight goes after `cland account clear`.
   - done: impl-366 · 2026-10-14T10:41:23.047Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-366-3 · 2026-10-14T12:59:45.599Z · commit 5aad58e50a09212adda305d33ffdeee412155eeb
 - [x] C8. `hub/README.md` and `nvim/README.md` describe the signals, the mark, the refusal and its code, what is never done, `cland account clear` and the highlight.
   - done: impl-366 · 2026-10-14T10:41:24.567Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-366-2 · 2026-10-14T10:55:50.408Z · commit 5aad58e50a09212adda305d33ffdeee412155eeb
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-366-3 · 2026-10-14T12:59:45.599Z · commit 5aad58e50a09212adda305d33ffdeee412155eeb
 - [x] C9. The account-limited refusal carries the account name and the reset time (or until cleared) as structured fields and in its text, for T-367's ask (stand-in, D24, 2026-10-13).
   - done: impl-366 · 2026-10-14T10:41:25.343Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-366-2 · 2026-10-14T10:55:50.408Z · commit 5aad58e50a09212adda305d33ffdeee412155eeb
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-366-3 · 2026-10-14T12:59:45.599Z · commit 5aad58e50a09212adda305d33ffdeee412155eeb
 
 ## Comments
 
@@ -160,3 +170,24 @@ scope: full
 Source clear; no remaining high or medium findings. Both A-2330 blockers are corrected: durable deferred after-hit reads retain the existing minimum/backoff and recover after restart; expired cached/signal resets cannot immediately lift a new hard-hit mark. Reviewed all five correction files and the three added frame regressions, carrying forward the original complete source review. C8 documentation and C9 structured/text refusals are established by source. C1–C7 remain unverified until full exact-head evidence. Evidence A-2334: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2334-t-366-corrected-source-clear-at-5aad58e5.md.
 
 Criteria: C8 verified, C9 verified.
+
+### impl-366 · 2026-10-14T12:58:37.861Z
+
+Exact-reviewed-head full verification 49871ae0-f1eb-435b-9444-a903c4fb0f1b passed at 5aad58e50a09212adda305d33ffdeee412155eeb: 2017/2017 tests, zero failures/skips, local darwin arm64, Node v24.21.0 and Neovim v0.12.5. Durable log A-2375. Requested final Reviewer verdict for C1–C7; C8/C9 were already source-verified. No head change or rerun was needed.
+
+### rev-23 · 2026-10-14T12:59:45.599Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-366-3
+commit: 5aad58e50a09212adda305d33ffdeee412155eeb
+scope: evidence
+
+Final clear; no high or medium findings. Exact-head 49871ae0/A-2375 passes typecheck and all phases, 2017/2017 with zero fail/cancelled/skipped/todo (37 hub-free, 1601 hub-machine, 379 Neovim). Classifiers, one notice/read, typed launch/role/relaunch/pool refusal, no failover/running-session disruption, clear permissions/journals, restart/refind/reset and headless red/clear paths pass. Both A-2330 fixes pass their recent-poll/minimum/backoff/restart and expired-reset/delayed-answer regressions. C1–C9 verified, refreshing source C8/C9 at this unchanged head. Local darwin arm64, Node v24.21.0, Neovim v0.12.5; grandfathered pre-D29 full run. A-2376: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2376-t-366-final-clear-exact-head-account-limit-verification.md.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified, C9 verified.
+
+### coord · 2026-10-14T13:00:21.245Z
+
+Merged 6ae9b8edb7aa791a198bda9deae08f4096c9b15d onto dev.
