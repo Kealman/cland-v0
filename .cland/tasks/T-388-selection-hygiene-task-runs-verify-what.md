@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-247
 branch: t/T-388-selection-hygiene-task-runs-verify-what
 created: 2026-10-14T12:28:09.900Z
-updated: 2026-10-14T18:19:03.973Z
+updated: 2026-10-14T18:50:12.626Z
 ---
 
 ## Summary
@@ -54,19 +54,23 @@ The smoke baselines (`HUB_SMOKE`, `NVIM_SMOKE`) and the integrated-`dev`-is-full
 
 ## Acceptance criteria
 
-- [ ] C1. `chooseSuiteMode` implements the five rules above in order, and `hub/test/suite-selection.test.ts` covers each rule with at least one path list, including a docs-only diff (hub-only), a `.cland/tasks`-only diff (hub-only), an `nvim/lua/cland/hub.lua` diff (full) and a `hub/test/harness.ts` diff (full).
+- [x] C1. `chooseSuiteMode` implements the five rules above in order, and `hub/test/suite-selection.test.ts` covers each rule with at least one path list, including a docs-only diff (hub-only), a `.cland/tasks`-only diff (hub-only), an `nvim/lua/cland/hub.lua` diff (full) and a `hub/test/harness.ts` diff (full).
   - verified: rev-23 [reviewer] · run rev-2026-10-14-388-5 · 2026-10-14T17:33:53.969Z · commit 952d1f7fd803fd9b2b25230b791958c3c7e820d2
   - verified: rev-23 [reviewer] · run rev-2026-10-14-388-6 · 2026-10-14T18:19:03.972Z · commit 952d1f7fd803fd9b2b25230b791958c3c7e820d2
-- [ ] C2. The hub files imported by `nvim/test/**` are computed from the source at selection time, and a test proves that adding a new import of a hub file to an `nvim/test` file makes that hub file select full.
+  - done: impl-388 · 2026-10-14T18:50:00.688Z
+- [x] C2. The hub files imported by `nvim/test/**` are computed from the source at selection time, and a test proves that adding a new import of a hub file to an `nvim/test` file makes that hub file select full.
   - verified: rev-23 [reviewer] · run rev-2026-10-14-388-5 · 2026-10-14T17:33:53.969Z · commit 952d1f7fd803fd9b2b25230b791958c3c7e820d2
   - verified: rev-23 [reviewer] · run rev-2026-10-14-388-6 · 2026-10-14T18:19:03.972Z · commit 952d1f7fd803fd9b2b25230b791958c3c7e820d2
-- [ ] C3. The replay over the 40 merges `83b74c6`..`f174d9c` runs full on at most 25 (37 before), and both tables (before and after) are posted on the item with one line per merge.
+  - done: impl-388 · 2026-10-14T18:50:03.716Z
+- [x] C3. The replay over the 40 merges `83b74c6`..`f174d9c` runs full on at most 25 (37 before), and both tables (before and after) are posted on the item with one line per merge.
   - verified: rev-23 [reviewer] · run rev-2026-10-14-388-2 · 2026-10-14T12:43:13.158Z · commit 5c5a6490d219fcb9fe1b86539bcbe8cb5328d54f
   - verified: rev-23 [reviewer] · run rev-2026-10-14-388-4 · 2026-10-14T16:58:53.646Z · commit 952d1f7fd803fd9b2b25230b791958c3c7e820d2
   - verified: rev-23 [reviewer] · run rev-2026-10-14-388-5 · 2026-10-14T17:33:53.969Z · commit 952d1f7fd803fd9b2b25230b791958c3c7e820d2
   - verified: rev-23 [reviewer] · run rev-2026-10-14-388-6 · 2026-10-14T18:19:03.972Z · commit 952d1f7fd803fd9b2b25230b791958c3c7e820d2
-- [ ] C4. Measured: the phases a `nvim-only` selection runs (hub smoke plus the Neovim phase), run through `node hub/test/run-suite.ts` with that selection in `CLAND_SUITE_SELECTION` on an empty verify queue, finish in under 3 minutes (a full run is about 15); the duration line is posted on the item, and the live check after merge is the epic's demo.
+  - done: impl-388 · 2026-10-14T18:50:07.713Z
+- [x] C4. Measured: the phases a `nvim-only` selection runs (hub smoke plus the Neovim phase), run through `node hub/test/run-suite.ts` with that selection in `CLAND_SUITE_SELECTION` on an empty verify queue, finish in under 3 minutes (a full run is about 15); the duration line is posted on the item, and the live check after merge is the epic's demo.
   - verified: rev-23 [reviewer] · run rev-2026-10-14-388-6 · 2026-10-14T18:19:03.972Z · commit 952d1f7fd803fd9b2b25230b791958c3c7e820d2
+  - done: impl-388 · 2026-10-14T18:50:12.626Z
 - [ ] C5. Every existing `suite-selection.test.ts` assertion that still applies keeps its meaning; each changed expectation is listed in the review request with the rule that changed it.
   - verified: rev-23 [reviewer] · run rev-2026-10-14-388-2 · 2026-10-14T12:43:13.158Z · commit 5c5a6490d219fcb9fe1b86539bcbe8cb5328d54f
   - verified: rev-23 [reviewer] · run rev-2026-10-14-388-4 · 2026-10-14T16:58:53.647Z · commit 952d1f7fd803fd9b2b25230b791958c3c7e820d2

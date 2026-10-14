@@ -3,7 +3,7 @@ id: T-429
 kind: task
 title: "request-guard flood test fails on Linux droplets (the other client waits 3–4x the baseline): blocks droplet verification"
 state: open
-status: review
+status: ready
 size: S
 rank: 2302
 criterion_seq: 3
@@ -17,7 +17,7 @@ blocked_by: []
 topic: topic-255
 branch: t/T-429-request-guard-flood-test-fails-on-linux
 created: 2026-10-14T17:14:43.503Z
-updated: 2026-10-14T18:40:40.284Z
+updated: 2026-10-14T18:50:06.704Z
 ---
 
 ## Summary
@@ -44,9 +44,10 @@ Find why the other client waits longer behind the flood on Linux: scheduling und
   - done: impl-429 · 2026-10-14T17:27:21.234Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-429-1 · 2026-10-14T17:29:21.833Z · commit d3071031c0fc2e646cdff77d3f42e916da5e776a
   - verified: rev-23 [reviewer] · run rev-2026-10-14-429-3 · 2026-10-14T18:40:40.284Z · commit d3071031c0fc2e646cdff77d3f42e916da5e776a
-- [ ] C3. A `cland verify --executor droplet` of the fix branch (diff selection) is green on Linux and runs this file.
+- [x] C3. A `cland verify --executor droplet` of the fix branch (diff selection) is green on Linux and runs this file.
   - verified: rev-23 [reviewer] · run rev-2026-10-14-429-c3 · 2026-10-14T17:58:27.414Z · commit d3071031c0fc2e646cdff77d3f42e916da5e776a
   - verified: rev-23 [reviewer] · run rev-2026-10-14-429-3 · 2026-10-14T18:40:40.284Z · commit d3071031c0fc2e646cdff77d3f42e916da5e776a
+  - done: impl-429 · 2026-10-14T18:50:04.726Z
 
 ## Comments
 
@@ -96,3 +97,7 @@ scope: evidence
 Final clear; C1–C3 verified at unchanged clean d3071031. Authorized local gate 42895a87/A-2519 passes root typecheck and2041/2041 (37 free,1617 hub,387 Neovim),zero failure/cancel/skip/todo; fairness67ms vs494/190ms. C3 under Coordinator ab3ea386: all15 Linux guard cases in56d039e0/A-2481 green,78ms vs228/142ms; overall red remains T-432/T-433 with3platform skips,1495s/$0.1038,not complete Linux success. A-2483 supersedes earlier C3 interpretation; human de65131f sets local merge gate. Source/C1/C2 retained: five macOS passes, bypass red controls, original bounds unchanged. No high/medium T-429 findings. A-2520: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2520-t-429-final-local-gate-and-scoped-linux-fairness-proof.md.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### impl-429 · 2026-10-14T18:50:03.375Z
+
+Restoring C3 done after Coordinator merge-gate notice 36b67357-d3ad-4b7b-8e61-ebac28b83b5a. Per 17:56Z ruling ab3ea386, A-2481 lines 1033-1048 show all 15 request-guard tests green on Linux at d3071031 (other-client wait 78 ms; baseline 228/142 ms). Unrelated Linux suite failures remain T-432/T-433. Same-head local merge-gate run 42895a87 / A-2519 passed typecheck and 2041/2041 tests.
