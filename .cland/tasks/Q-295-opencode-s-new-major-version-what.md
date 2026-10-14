@@ -2,7 +2,7 @@
 id: Q-295
 kind: question
 title: "OpenCode's new major version: what changed, what it adds for cland"
-state: open
+state: closed
 labels:
   - research
   - ready-for-human
@@ -12,7 +12,8 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-12T15:31:51.661Z
-updated: 2026-10-12T16:18:56.108Z
+updated: 2026-10-14T16:43:56.175Z
+closed: 2026-10-14T16:43:56.175Z
 ---
 
 ## Question
@@ -85,3 +86,7 @@ Research done: `docs/research/opencode-v2.md` on branch `research/opencode-v2`, 
 - No model call, so the instruction-entry effect, `codemode: false`, and Zen free models in a fresh database are untested.
 - No TUI was attached to see how host-made forms and permission requests render.
 - When #51213 will be fixed is unknown.
+
+### human · 2026-10-14T16:43:56.175Z
+
+Resolved: the research docs/research/opencode-v2.md decided §3.1 of docs/spec/v0.1.3.md; built by E-424

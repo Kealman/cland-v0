@@ -7,12 +7,12 @@ status: backlog
 labels:
   - ready-for-human
 assignee: null
-parent: R-294
+parent: E-423
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-13T14:23:44.027Z
-updated: 2026-10-13T14:23:44.027Z
+updated: 2026-10-14T16:43:38.996Z
 ---
 
 Observation from the human and the stand-in (2026-10-13 14:30Z), for the v0.1.3 grilling.

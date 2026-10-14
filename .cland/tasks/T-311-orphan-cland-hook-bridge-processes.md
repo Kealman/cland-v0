@@ -1,19 +1,18 @@
 ---
 id: T-311
 kind: task
-title: "Orphan cland hook bridge processes outlive test runs: 64 bound to
-  temporary projects since Oct 8"
+title: "Orphan cland hook bridge processes outlive test runs: 64 bound to temporary projects since Oct 8"
 state: open
 status: backlog
 labels:
   - needs-triage
 assignee: null
-parent: R-294
+parent: E-425
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-13T01:23:15.911Z
-updated: 2026-10-13T01:24:11.895Z
+updated: 2026-10-14T16:43:42.275Z
 ---
 
 ## Summary
