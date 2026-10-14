@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-264
 branch: t/T-389-timing-diet-fake-harnesses-default-to
 created: 2026-10-14T12:28:10.336Z
-updated: 2026-10-14T19:36:22.343Z
+updated: 2026-10-14T20:22:49.566Z
 ---
 
 ## Summary
@@ -62,3 +62,17 @@ The Implementer posts the list of every sleep touched with its class.
 - [ ] C6. No assertion changes its meaning: the review request lists every changed assertion with what it still proves, and no test is skipped or deleted.
 - [ ] C7. Any race exposed by the fast defaults is reported as a Bug with its size, and its test's opt-in names that bug.
 - [ ] C8. `hub/README.md` (the fake harnesses) and the comments at the top of the three fakes describe the fast defaults and how to opt into slow turns.
+
+## Comments
+
+### impl-389 · 2026-10-14T19:47:06.205Z
+
+Wait classification and complete changed-assertion inventory: A-2539, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2539-t-389-wait-classification-and-changed-assertion-inventory.md. Includes every touched sleep and C6 meanings. Measurement follows Coordinator amendment 2235f1f7: serial interleaved A/B pairs with per-run load and verify holder, not idle timings. First Claude pair passed: baseline 80.962 s (load 10.255), candidate 44.355 s (load 12.558), same impl-391 holder; remaining pairs/files still running.
+
+### impl-389 · 2026-10-14T20:17:32.343Z
+
+C5 paired measurement result under the Coordinator amendment: all 24 accepted runs green; sum of four medians 309.828 s → 249.643 s, 19.43% lower, below the 25% target. Raw samples, loads, holders and method: A-2547, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2547-t-389-initial-paired-timing-results-19-43-reduction-c5-decision-pending.md. Asked lead T-389 whether a test-only usage publication interval control is within scope or C5 should reflect realized gain. Fast-turn staging race reported as Bugs/XS and isolated to the two pending-steer variants; explicit 300 ms turn with behavior comment restores both, all assertions unchanged. Red/green evidence: A-2540, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2540-t-389-codex-short-turn-staging-race-red-and-green-evidence.md. C2 executor pair and remaining targeted files continue serially.
+
+### impl-389 · 2026-10-14T20:22:49.566Z
+
+C2 loaded A/B evidence under the Coordinator measurement amendment: default Claude schedule median 33.069 → 6.869 s; watchdog/lifetime 34.476 → 18.131 s; shell+host deadline 15.205 → 16.456 s. Executor A/B start loads 10.966 / 12.087, same impl-391 holder 6e61b4b3-e6bf-4b58-b058-5d368a67abb2. Both sides green; no idle under-5-second claim. Detailed ratios/limits: A-2548, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2548-t-389-c2-timer-pairs-loaded-ratios-and-limits.md. Raw C5 and C2 logs/loads/holders, including excluded pre-opt-in and setup attempts: A-2549, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2549-t-389-raw-a-b-logs-loads-holders-and-timer-pair-evidence.gz. Targeted account-limited, account-limits and account-poller files are green; remaining touched files continue serially. C5 remains below target pending the lead's scope decision.

@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-248
 branch: t/T-391-lazy-cli-imports-cland-loads-only-the
 created: 2026-10-14T12:28:10.700Z
-updated: 2026-10-14T18:21:53.688Z
+updated: 2026-10-14T19:57:19.315Z
 ---
 
 ## Summary
@@ -65,6 +65,7 @@ This is a real-process test with no hub, so it runs in the `machine` shard; add 
   - verified: rev-26 [reviewer] · run rev-20261014-391-source-1 · 2026-10-14T12:38:12.615Z · commit 4d459f99be50d60a9aa7f7ddbbaebe81c93efc36
   - verified: rev-26 [reviewer] · run rev-20261014-391-final-1 · 2026-10-14T17:11:26.994Z · commit 4d459f99be50d60a9aa7f7ddbbaebe81c93efc36
   - verified: rev-26 [reviewer] · run rev-20261014-391-source-2 · 2026-10-14T18:21:53.688Z · commit 8bf2500e10ae8350b583b1a997674554c95af2cd
+  - verified: rev-26 [reviewer] · run rev-20261014-391-source-3 · 2026-10-14T19:57:19.315Z · commit 695f89f4d12b3a28e6cba83014d138b812e60805
 
 ## Comments
 
@@ -116,5 +117,29 @@ commit: 8bf2500e10ae8350b583b1a997674554c95af2cd
 scope: delta
 
 No high/medium findings. Independently compared all 22 extracted usage literals to dev 878d70e7: exact matches. account.ts and suite.ts preserve current dev implementation bodies, including account clear/limit text and remote queue display; differences are usage plumbing only. Entry dispatch, CLI import guards/counter are byte-identical to prior source-clear 4d459f99. Task diff remains 26 files,371+/179-. C6 docs renewed; C1–C5 final execution settlement awaits accepted verification at this new head. A-2499 targeted checks green; prior A-2463 does not establish new-head green. C3 keeps the recorded paired-load interpretation. Evidence A-2500: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2500-t-391-delta-source-clear-at-8bf2500e-current-dev-cli-behavior-and-help-retained.md.
+
+Criteria: C6 verified.
+
+### rev-26 · 2026-10-14T19:55:43.055Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261014-391-evidence-2
+commit: 8bf2500e10ae8350b583b1a997674554c95af2cd
+scope: evidence
+
+Medium — nvim/test/explorer-card.test.ts:243: gi thread-reference case fails with 'card T-11 expects fallback human picture' / 'no row under the cursor'. e51b85d9/A-2541 is failed: 2041/2042 pass, one fail, zero cancel/skip/todo; typecheck and hub/CLI checks green. File is outside T-391 diff; source-clear A-2500 retained and no unrelated criterion failed. Lead reports exact T-439 match and follows Coordinator's shared-fix pick/delta-review instruction; current receipt stays red. Evidence A-2542: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2542-t-391-verification-not-clear-at-8bf2500e-unrelated-explorer-card-assertion.md.
+
+### rev-26 · 2026-10-14T19:57:19.315Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261014-391-source-3
+commit: 695f89f4d12b3a28e6cba83014d138b812e60805
+scope: delta
+
+No high/medium findings. Shared T-439 a2f60f7a changed lines match the local pick exactly. nvim/test/explorer-card.test.ts:247 polls actual view/cursor/card drawn state while yielding for queued input; first navigation waits for composer/thread/reference readiness. All original assertions and five-second bounds preserved. Prior rev-23 T-439 source/final verdicts and A-2543 targeted 15/15 checked. T-391 CLI entry, usage, guards/counter and README unchanged from source-clear 8bf2500e. C6 renewed; C1–C5 final execution settlement awaits accepted new-head no-mode local verify. Earlier e51b85d9/A-2541 remains failed. Evidence A-2544: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2544-t-391-source-clear-at-695f89f4-unchanged-shared-t-439-readiness-fix.md.
 
 Criteria: C6 verified.

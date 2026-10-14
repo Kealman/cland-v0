@@ -3,7 +3,7 @@ id: T-385
 kind: task
 title: "A hung test holds the verify queue forever: no per-test timeout and no stall kill"
 state: open
-status: in progress
+status: ready
 size: S
 criterion_seq: 4
 labels:
@@ -17,7 +17,7 @@ blocked_by: []
 topic: topic-246
 branch: t/T-385-a-hung-test-holds-the-verify-queue
 created: 2026-10-14T12:21:44.443Z
-updated: 2026-10-14T19:36:38.201Z
+updated: 2026-10-14T20:15:55.793Z
 ---
 
 ## Summary
@@ -36,18 +36,23 @@ A full verify can hang forever. T-359's run 6a9dce81 stopped producing output af
 - [x] C1. Every test file runs with a per-test timeout, for example `--test-timeout` set from a duration manifest or a default of 120 s, so a hung test fails with its name instead of blocking.
   - done: impl-385 · 2026-10-14T12:35:29.096Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-385-7 · 2026-10-14T18:16:29.996Z · commit b40e992784790b9e4a37626dfa3cf7e9836dad06
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-385-11 · 2026-10-14T20:15:52.533Z · commit 849d2f36bbeb4b6ebb0b655199b0154b2511986e
 - [x] C2. The suite worker kills a run whose log has been silent for longer than a configured stall limit (default 10 min). The result reads `stalled: no output for <n> min` and names the last started tests. The process tree, test children and spokes included, is reaped.
   - done: impl-385 · 2026-10-14T13:48:02.595Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-385-7 · 2026-10-14T18:16:29.996Z · commit b40e992784790b9e4a37626dfa3cf7e9836dad06
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-385-11 · 2026-10-14T20:15:52.533Z · commit 849d2f36bbeb4b6ebb0b655199b0154b2511986e
 - [x] C3. A test reproduces a hung test file and shows the timeout failure, and another shows the stall kill and cleanup with no orphan processes left.
   - done: impl-385 · 2026-10-14T12:41:20.416Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-385-7 · 2026-10-14T18:16:29.996Z · commit b40e992784790b9e4a37626dfa3cf7e9836dad06
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-385-11 · 2026-10-14T20:15:52.533Z · commit 849d2f36bbeb4b6ebb0b655199b0154b2511986e
 - [x] C4. The hanging test from run 6a9dce81 is identified from its log and fixed, or filed separately with evidence.
   - done: impl-385 · 2026-10-14T12:32:34.448Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-385-3 · 2026-10-14T13:54:50.143Z · commit 699bf7b51b55479ccaf5c56faf2206b26dc97567
   - verified: rev-23 [reviewer] · run rev-2026-10-14-385-5 · 2026-10-14T16:26:06.837Z · commit b40e992784790b9e4a37626dfa3cf7e9836dad06
   - verified: rev-23 [reviewer] · run rev-2026-10-14-385-7 · 2026-10-14T18:16:29.996Z · commit b40e992784790b9e4a37626dfa3cf7e9836dad06
   - verified: rev-23 [reviewer] · run rev-2026-10-14-385-8 · 2026-10-14T18:32:29.319Z · commit 33b1c9208f9717faacc361651ff1e8f803c7f4e5
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-385-10 · 2026-10-14T19:40:40.785Z · commit 849d2f36bbeb4b6ebb0b655199b0154b2511986e
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-385-11 · 2026-10-14T20:15:52.534Z · commit 849d2f36bbeb4b6ebb0b655199b0154b2511986e
 
 ## Comments
 
@@ -221,3 +226,41 @@ commit: 33b1c9208f9717faacc361651ff1e8f803c7f4e5
 scope: evidence
 
 Medium gate finding — nvim/test/explorer-card.test.ts:243 gi/card readiness: local f8e54b25/A-2532 exits 1 with 2045/2046 passing and the exact T-11/no-row symptom. First isolated trial A-2533 also fails; no five-pass retry qualification. Known shared defect T-439, whose fixed source is clear at f648da42 (A-2529), normal gate 958ea746 queued. No T-385 product defect inferred; delta source A-2513/C4 remains applicable. C1–C3 final marks remain pending accepted verification at the eventual reviewed head; this red gate is not readiness. A-2534: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2534-t-385-merged-head-local-gate-blocked-by-t-439-readiness-race.md.
+
+### impl-385 · 2026-10-14T19:39:53.348Z
+
+Applied Coordinator-directed shared fix T-439 a2f60f7a as 849d2f36bbeb4b6ebb0b655199b0154b2511986e on source-clear 33b1c920. Only nvim/test/explorer-card.test.ts changes; T-385 implementation and merged config unchanged. Complete explorer-card targeted file passes 15/15, no skips (A-2537); diff check and clean tree; pushed origin. Requesting cherry-pick-only delta review before replacement no-mode --executor local verification.
+
+### rev-23 · 2026-10-14T19:40:40.785Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-385-10
+commit: 849d2f36bbeb4b6ebb0b655199b0154b2511986e
+scope: delta
+
+No high or medium Standards/Spec findings. One-file delta exactly matches reviewed f648da42 and landed T-439 a2f60f7a; no T-385 implementation/config/test change. Original assertions and five-second bounds retained. A-2537 whole explorer-card file passes 15/15, zero failures/cancellations/skips/todo. Clean tree and pushed tip confirmed. Direct Coordinator cd8a3417 adoption disposition followed. Prior source/integration A-2513 stands; C4 separately-filed hang refreshed. C1–C3 final verification remains pending replacement same-head local no-mode gate. Earlier red f8e54b25/A-2532 and isolated A-2533 remain attributed to corrected T-439. A-2538: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2538-t-385-delta-review-exact-t-439-shared-fix-adoption.md.
+
+Criteria: C4 verified.
+
+### impl-385 · 2026-10-14T19:41:11.781Z
+
+After clear delta review rev-2026-10-14-385-10 (A-2538), submitted replacement no-mode --executor local verification at exact reviewed 849d2f36bbeb4b6ebb0b655199b0154b2511986e: run 86649036-228f-4aa0-a304-c5d1c5ad63c0, queue position 1, rev-23/impl-385 recipients. Head unchanged; waiting for hub result.
+
+### impl-385 · 2026-10-14T20:15:03.688Z
+
+Replacement exact-reviewed-head local verification 86649036-228f-4aa0-a304-c5d1c5ad63c0 passed at 849d2f36bbeb4b6ebb0b655199b0154b2511986e: full hub+Neovim 2046/2046, no failures/skips; A-2545. darwin arm64 Node24.21.0 Neovim0.12.5, 1176.04s. Reviewer notified for final C1–C3 evidence verdict after T-439 shared-fix adoption. Head unchanged.
+
+### rev-23 · 2026-10-14T20:15:52.534Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-385-11
+commit: 849d2f36bbeb4b6ebb0b655199b0154b2511986e
+scope: evidence
+
+Final clear, all claimant done marks confirmed and unchanged clean head. Local no-mode full 86649036/A-2545 completes root typecheck and 2046/2046 (37 free, 1622 hub machine, 387 Neovim), zero failures/cancellations/skips/todo. C1 named per-test timeout and policy cases pass. C2/C3 silent-tree/spoke cleanup, successor admission, partial-output and unverified fast-exit cases pass under recorded Coordinator 13:05:57 ruling: verified identities killed, unknown writer explicitly cleanup incomplete with one notice/journal and admission released; no unknown-reap claim (T-410). C4 original hang separately filed T-397. Source/integration A-2513/A-2538 retained. Earlier f8e54b25/A-2532 and isolated A-2533 red on T-439 are corrected by exact landed patch; affected gi now passes. Historical Linux failures T-429/T-430 retained; final gate is instructed local. No high/medium findings remain. A-2546: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2546-t-385-final-exact-head-local-gate-after-t-439-adoption.md.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
