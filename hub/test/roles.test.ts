@@ -80,6 +80,17 @@ for (const source of ['defaults', 'project'] as const) test(`${source} clause sn
       `${source} ${role}: clause reply is ${replyBytes} bytes; reserve ${CLAUSE_REPLY_HEADROOM_BYTES} below the ${MAX_TEXT_BYTES}-byte send cap`);
     assert.match(clause, /The human's own `npm test` waits in the same queue/, `${source} ${role}`);
     assert.match(clause, /sessions panel's `verify:` line.*`cland verify queue`/, `${source} ${role}`);
+    if (role === 'implementer' || role === 'qa') {
+      assert.match(clause, /`cland verify` uses `\[verification\] executor`/);
+      assert.match(clause, /`--executor local`.*macOS-only.*human's request/);
+      assert.match(clause, /droplet results name platform, lifetime and cost/);
+      assert.match(clause, /hub alone creates, lists and deletes droplets, sessions never do it themselves/);
+      assert.match(clause, /`cland executor` is for the human and Coordinator/);
+    } else if (role === 'coordinator') {
+      assert.match(clause, /`cland executor status\|prepare\|reap`/);
+      assert.match(clause, /re-prepare on release\/lockfile change/);
+      assert.match(clause, /stand-in checks tags hourly/);
+    }
     if (role === 'coordinator' || role === 'lead' || role === 'implementer') {
       assert.match(clause, /Request review first[.;] (?:after a clear source verdict, the Implementer runs|When the verdict on your source is clear, run) `cland verify` at the exact reviewed head/);
       assert.match(clause, /needs a new review before a new run/);

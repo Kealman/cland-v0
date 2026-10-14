@@ -1303,11 +1303,140 @@ node hub/bin/cland.ts --version
 ### Remote executors: droplets
 
 Choose the project default with `[verification] executor = "local"` (the default)
-or `"droplet"` in `.cland/config.toml`; restart the hub to apply it.
+or `"droplet"` in `.cland/config.toml`; restart the hub to apply scheduling changes.
 `cland verify --executor local|droplet --report <topic>` overrides it for one run.
-Both executors share admission, the tree/mode cache and the artifact-backed result.
-This stage admits one run at a time; droplets do not take the host's compatibility
-leases, even when a hand-run suite holds them. Dirty remote candidates enter the local queue with a warning.
+Use `--executor local` on a macOS host for a macOS-only question or when the human
+asks. Both executors share admission order, the tree/mode cache and the
+artifact-backed result. Review source first, then verify the exact reviewed head
+(D25), whichever executor runs it.
+
+#### Configuration and costs
+
+| Key | Default | This project's D27 build value |
+| --- | --- | --- |
+| `[verification] executor` | `local` | `local` during the build; `droplet` after E-271 closes |
+| `budget` | `1` (local cap) | `1` |
+| `remote_budget` | `4` | `2` |
+| `lock_path` | `/tmp/cland-suite.lock` | default |
+| `cache_max_age_minutes` | `1440` | default |
+| `lifetime` | `110m` | `60m` |
+| `run_timeout` | `75m` | `50m` |
+| `daily_spend_usd` | `5` | `3` |
+| `[verification.droplet] size` | `c-8` | default |
+| `prepare_size` | `c-8` | default |
+| `regions` | `["lon1", "nyc1", "sfo2"]` | default |
+| `image` | `ubuntu-24-04-x64` | default |
+
+`lifetime` and `run_timeout` are positive duration strings (`s`, `m`, `h`, `d`);
+the lifetime must cover the timeout plus ten minutes. Droplet settings are read
+again at each acquire; invalid values name their config key. The first available
+configured region offering the size and holding the prepared image wins.
+
+One local run uses the host's compatibility leases. Up to `remote_budget` droplet
+runs proceed beside it, using their own machines' locks. A full remote budget
+may send a request to a free local slot with a warning; with both budgets full,
+it waits. `cland verify queue` shows `local:`, a `remote <used>/<budget>:` line per
+remote run with session, item, machine, size, region and ETA, and waiters naming
+their executor. A machine still being acquired is shown as `acquiring`.
+
+At [DigitalOcean's listed rates](https://www.digitalocean.com/pricing/droplets),
+c-8 costs $0.25/hour and c-16 $0.50/hour. A full suite on c-8 costs about $0.10
+(roughly 24 minutes); c-16 costs twice as much per hour, with its run cost depending
+on duration. Billing is per second with a 60-second or $0.01 minimum, whichever
+is higher. cland's result estimates cost from the size's hourly price and lifetime
+with a 60-second minimum; it is not an invoice. [Droplet snapshot storage](https://docs.digitalocean.com/products/snapshots/details/pricing/)
+costs $0.06 per GB-month, separately from run and builder time.
+
+#### Controls and the prepared snapshot
+
+The hub owns the lifecycle: sessions never create, list or delete droplets by
+hand. `cland executor status|prepare|reap` belongs to the human and Coordinator.
+Under D27, T-282's hand driver retired when T-346 merged; Linux proof runs now
+use `cland verify --executor droplet` under the hub's enforced limits. The stand-in
+keeps the hourly tag check; the hub's sweep and watchdog do the automatic cleanup.
+Legacy hand-driver droplets carry only `cland` and are swept only after the
+configured lifetime plus ten minutes.
+
+The droplet lifecycle uses DigitalOcean's REST API. Set `DIGITALOCEAN_TOKEN` in the
+shell that starts the hub. Each API call reads it at use and sends it only in the
+Authorization header; cland never prints, logs or saves its value, or sends it to a droplet. Calls
+have a 15-second bound and do not retry creates. The lifecycle needs permission
+to read the account, sizes and regions, and to create, read and delete droplets
+and account SSH keys. See the [DigitalOcean API reference](https://docs.digitalocean.com/reference/api/reference/).
+
+`cland executor prepare [--report <topic>] [--json]` submits a hub-owned snapshot
+job and exits. Status shows its step and elapsed time; one hub notice in the
+chosen topic (General by default) reports the key, image, regions, duration,
+builder lifetime and cost. A second prepare while one runs is refused.
+Preparation and the other executor controls belong to the human and Coordinator.
+
+The snapshot contains the packages, the host's exact Node version, pinned Neovim,
+`node_modules`, the ordinary `runner` user, a bare repository mirror and a checkout
+of the base. Its key combines Node, the Neovim tag and Linux digest, the committed
+base's lockfile SHA-256, and `origin/dev` after a fetch from the local territory.
+A matching prepare reports `current`; a new key builds a replacement and deletes
+the previous image only after the new image completes. Failures clean up the
+builder and partial image while keeping the previous snapshot. Status includes
+the image's size in GB.
+
+The record lives in `.cland/run/executor/snapshot.json`, mirrored in `hub.db` under
+`executor-snapshot`. Status lists its key and `current` or `stale: base|lock|node|nvim`
+for the inputs that moved. A moved base increases future delivery bundles;
+changed install inputs need reseeding during a run. Re-prepare after a release or
+a lockfile change; this is a human or Coordinator action, never automatic.
+
+Acquire creates from the image, without user data, only in regions holding it.
+It polls until active with a public IPv4 address under a five-minute bound,
+then waits up to 180 seconds for SSH as `runner` to answer and for the image marker
+to match the recorded key; a mismatch or timeout releases the droplet. Without
+an image it refuses with `no prepared snapshot; run cland executor prepare`.
+The image's per-boot script copies the newly injected root key to `runner`.
+Private SSH/SCP calls use the lease key, ignore host SSH config and known-hosts
+files, have explicit time bounds and strip `DIGITALOCEAN_TOKEN` from children.
+`CLAND_SSH_BIN` and `CLAND_SCP_BIN` select alternative transports for tests.
+
+`prepare_size` selects the builder; its disk must be no larger than `size`'s disk
+so the resulting snapshot fits a run. Prepare refuses an oversized builder
+before creating anything. The builder uses the same lease, tags, watchdog and
+release as a run, installs the exact versions with digest checks, delivers from
+the territory and runs `npm ci` as `runner`. It powers off before snapshotting,
+polls actions under a twenty-minute bound, transfers to configured regions and
+tags the image `cland` and `cland-p-<hash>`, then releases the builder.
+
+Preparation owns its promise through shutdown: stopping the hub cancels machine
+work and drains release and the outcome notice before closing the database.
+Before submitting a snapshot action it saves image-recovery ownership under
+`.cland/run/executor/snapshot-recovery/`. Restart and the lease retry timer retain
+that ownership through late actions, delayed catalogues and refused image
+deletions. Status lists outstanding recovery. An ambiguous old-image deletion
+keeps the completed replacement until provider state decides whether to retain
+it or restore the previous image; a failed catalogue read never counts as
+absence. Recovery matches images to their builder, so a later prepare of the
+same key cannot lose its image to an older failed attempt.
+Once retirement is submitted, old-image presence may be stale or deletion may
+still be running: cland keeps the replacement and retries retirement until the
+old image is absent. Only an unstarted or definitely rejected delete permits
+rollback to the old image.
+
+`cland executor status [--json]` also reports token presence, live leases, their names,
+ids, sizes, regions, ages and deadlines, whether each watchdog is alive, today's
+spent and reserved USD against the daily cap, the shared ledger path, and the
+number of droplets tagged `cland`.
+`cland executor reap [--json]` deletes this project's tagged droplets with no live
+lease, and unowned `cland` droplets past their lifetime plus ten minutes. Known
+leases use their own recorded deadline: a short-lived scratch hub preserves a
+foreign live run. Provider lists are followed by fresh durable ownership reads,
+so concurrent acquisition cannot make a new resource look orphaned.
+It also removes this project's orphaned account SSH keys. New key names start
+with the droplet project tag, `cland-p-<hash>-`, so equally named projects cannot
+reap each other's in-flight keys. Legacy `cland-<name>-` keys are removed only
+when no live lease registered on this host names them and their known lease
+creation/import time is older than lifetime plus ten minutes. Unknown-age legacy
+keys are preserved: DigitalOcean's [SSH key schema](https://docs.digitalocean.com/reference/api/reference/ssh-keys/) has no creation timestamp. Hubs register their project roots
+in the shared ledger so cleanup can inspect other projects' durable leases. Both commands belong
+to the human and the Coordinator; reap requires the token.
+
+#### Run and result
 
 Before acquiring a droplet, the hub runs `npm run typecheck` at the submitted head
 on the host. A failure posts a failed result without creating a machine. Delivery
@@ -1337,64 +1466,23 @@ and posts its result once. An expired lease reports `remote machine lifetime exp
 After collection and confirmed release, the result adds a line such as
 `Executor droplet · c-8 lon1 · cland-project-1a2b3c4d · linux x64 6.8.0 · Node v24.21.0 · Neovim v0.12.5 · lifetime 1398 s · cost $0.0971`.
 The job and `suite-result` record retain the machine name, size, region, lifetime
-and cost. A green Linux result is merge-gate suite evidence for its tree and mode;
-a later local request may reuse it and still names `droplet`. macOS-only cases
-remain visible as `suite skip` records and run in the release's final local suite.
+and cost. A green same-head Linux result is merge-gate suite evidence for its tree
+and mode;
+a later local request may reuse it and still names `droplet`. It establishes the
+selected suites on Linux, with macOS-only cases visible as `suite skip` records.
+Those cases run in the release's final local suite ("Release v0.1.2 from the item").
 
-The droplet lifecycle uses DigitalOcean's REST API. Set `DIGITALOCEAN_TOKEN` in the
-shell that starts the hub. Each API call reads it at use and sends it only in the
-Authorization header; cland never saves its value or sends it to a droplet. Calls
-have a 15-second bound and do not retry creates. The lifecycle needs permission
-to read the account, sizes and regions, and to create, read and delete droplets
-and account SSH keys. See the [DigitalOcean API reference](https://docs.digitalocean.com/reference/api/reference/).
+A missing `DIGITALOCEAN_TOKEN`, refused create (including 4xx/5xx), unavailable
+size in all configured regions, missing prepared snapshot, spent daily cap,
+full remote budget with a free local slot, or
+dirty candidate sends a requested droplet run to the local queue with
+`executor: local`. There is one create attempt per run. Its topic and recipients
+receive `verify <id>: droplet unavailable (<cause>); running locally`, projected
+with warn severity on messages and inbox warning surfaces. The journal records
+`verification-executor-fallback` with id, item, requested, effective and cause.
+An explicit `--executor droplet` has the same fallback.
 
-`cland executor prepare [--report <topic>] [--json]` submits a hub-owned snapshot
-job and exits. Status shows its step and elapsed time; one hub notice in the
-chosen topic (General by default) reports the key, image, regions, duration,
-builder lifetime and cost. A second prepare while one runs is refused.
-Preparation and the other executor controls belong to the human and Coordinator.
-
-The snapshot contains the packages, the host's exact Node version, pinned Neovim,
-`node_modules`, the ordinary `runner` user, a bare repository mirror and a checkout
-of the base. Its key combines Node, the Neovim tag and Linux digest, the committed
-base's lockfile SHA-256, and `origin/dev` after a fetch from the local territory.
-A matching prepare reports `current`; a new key builds a replacement and deletes
-the previous image only after the new image completes. Failures clean up the
-builder and partial image while keeping the previous snapshot. Snapshot storage
-costs about $0.06 per GB-month; status includes the image's size in GB.
-
-The record lives in `.cland/run/executor/snapshot.json`, mirrored in `hub.db` under
-`executor-snapshot`. Status lists its key and `current` or `stale: base|lock|node|nvim`
-for the inputs that moved. A moved base increases future delivery bundles;
-changed install inputs need reseeding during a run. Re-preparing is a human or
-Coordinator choice; cland never prepares automatically.
-
-Acquire creates from the image, without user data, only in regions holding it.
-It waits up to 180 seconds for SSH as `runner` to answer and for the image marker
-to match the recorded key; a mismatch or timeout releases the droplet. Without
-an image it refuses with `no prepared snapshot; run cland executor prepare`.
-The image's per-boot script copies the newly injected root key to `runner`.
-Private SSH/SCP calls use the lease key, ignore host SSH config and known-hosts
-files, have explicit time bounds and strip `DIGITALOCEAN_TOKEN` from children.
-`CLAND_SSH_BIN` and `CLAND_SCP_BIN` select alternative transports for tests.
-
-`cland executor status [--json]` also reports token presence, live leases, their names,
-ids, sizes, regions, ages and deadlines, whether each watchdog is alive, today's
-spent and reserved USD against the daily cap, the shared ledger path, and the
-number of droplets tagged `cland`.
-`cland executor reap [--json]` deletes this project's tagged droplets with no live
-lease, and unowned `cland` droplets past their lifetime plus ten minutes. Known
-leases use their own recorded deadline: a short-lived scratch hub preserves a
-foreign live run. Provider lists are followed by fresh durable ownership reads,
-so concurrent acquisition cannot make a new resource look orphaned.
-It also removes this project's orphaned account SSH keys. New key names start
-with the droplet project tag, `cland-p-<hash>-`, so equally named projects cannot
-reap each other's in-flight keys. Legacy `cland-<name>-` keys are removed only
-when no live lease registered on this host names them and their known lease
-creation/import time is older than lifetime plus ten minutes. Unknown-age legacy
-keys are preserved: DigitalOcean's [SSH key schema](https://docs.digitalocean.com/reference/api/reference/ssh-keys/) has no creation timestamp. Hubs register their project roots
-in the shared ledger so cleanup can inspect other projects' durable leases. Both commands belong
-to the human and the Coordinator; reap requires the token.
+#### Leases, cleanup and spend
 
 Every droplet carries `cland` and `cland-p-<hash>`, where the hash is twelve hex
 digits derived from the project root path and name. Reap leaves droplets without
@@ -1438,72 +1526,8 @@ they never contain the token. Confirmed release replaces the reservation with
 the estimated actual cost; unconfirmed cleanup retains it across restarts and
 UTC midnight. The cap checks today's spent plus all outstanding reservations
 before creation. This is an estimate from hourly price and lifetime, not an
-invoice; DigitalOcean bills per second with a sixty-second minimum.
+invoice; provider billing may differ (see costs above).
 `cland executor status` prints the path and today's spent + reserved / cap.
-
-A missing `DIGITALOCEAN_TOKEN`, refused create (including 4xx/5xx), unavailable
-size in all configured regions, missing prepared snapshot, spent daily cap or
-dirty candidate sends a requested droplet run to the local queue with
-`executor: local`. There is one create attempt per run. Its topic and recipients
-receive `verify <id>: droplet unavailable (<cause>); running locally`, projected
-with warn severity on messages and inbox warning surfaces. The journal records
-`verification-executor-fallback` with id, item, requested, effective and cause.
-An explicit `--executor droplet` has the same fallback.
-
-The defaults in `.cland/config.toml` are:
-
-```toml
-[verification]
-lifetime = "110m"
-run_timeout = "75m"
-daily_spend_usd = 5
-
-[verification.droplet]
-size = "c-8"
-prepare_size = "c-8"
-regions = ["lon1", "nyc1", "sfo2"]
-image = "ubuntu-24-04-x64"
-```
-
-| Setting | Default | This project's D27 build value |
-| --- | --- | --- |
-| `lifetime` | `110m` | `60m` |
-| `run_timeout` | `75m` | `50m` |
-| `daily_spend_usd` | `$5` | `$3` |
-
-Once T-346 is on `dev`, the hub's enforced config takes over the D25 hand-driver
-limits. Linux proof runs go through `cland verify --executor droplet`;
-T-282's hand driver is retired. Legacy hand-driver droplets carry only `cland`
-and are swept only after the configured lifetime plus ten minutes.
-
-`prepare_size` selects the builder; its disk must be no larger than `size`'s disk
-so the resulting snapshot fits a run. Prepare refuses an oversized builder
-before creating anything. The builder uses the same lease, tags, watchdog and
-release as a run, installs the exact versions with digest checks, delivers from
-the territory and runs `npm ci` as `runner`. It powers off before snapshotting,
-polls actions under a twenty-minute bound, transfers to configured regions and
-tags the image `cland` and `cland-p-<hash>`, then releases the builder.
-
-Preparation owns its promise through shutdown: stopping the hub cancels machine
-work and drains release and the outcome notice before closing the database.
-Before submitting a snapshot action it saves image-recovery ownership under
-`.cland/run/executor/snapshot-recovery/`. Restart and the lease retry timer retain
-that ownership through late actions, delayed catalogues and refused image
-deletions. Status lists outstanding recovery. An ambiguous old-image deletion
-keeps the completed replacement until provider state decides whether to retain
-it or restore the previous image; a failed catalogue read never counts as
-absence. Recovery matches images to their builder, so a later prepare of the
-same key cannot lose its image to an older failed attempt.
-Once retirement is submitted, old-image presence may be stale or deletion may
-still be running: cland keeps the replacement and retries retirement until the
-old image is absent. Only an unstarted or definitely rejected delete permits
-rollback to the old image.
-
-Droplet settings are read again at every acquire; invalid values are refused with
-their config key named. The first available configured region offering the size
-wins. Acquire polls until the droplet is active with a public IPv4 address, under
-a five-minute bound, before checking machine readiness. Remote suite delivery
-and execution are the next executor stage.
 
 ### Tests
 

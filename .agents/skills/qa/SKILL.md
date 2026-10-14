@@ -42,6 +42,8 @@ Accept `qa request T-<n>` from the item’s lead (the live claimant in `task.vie
 
 For a full suite required by the brief, submit `cland verify all --report <request-topic> --to <requester-name> --to <your-name>` and wait for its head-bound result before settling the verdict. `cland suite` is the transition alias; see `docs/agents/tests.md` for admission and compatibility.
 
+The brief's full suite may run on the project's droplet executor. A green same-head Linux result satisfies the gate's suite evidence; its macOS-only cases are listed as skips and run in the release's final local run ("Release v0.1.2 from the item"). Name the executor, platform and droplet lifetime/cost in the verdict's evidence (cost is not applicable for local runs). For a check that needs macOS, request `--executor local` on a macOS host and retain any brief cases still needing that platform. The hub owns droplets; sessions never create, list or delete them themselves. `cland executor` controls belong to the human and Coordinator.
+
 1. **Read.** `task.view` the item, then the brief. Work from the item's worktree (`.cland/worktrees/T-<n>`, or the path the request names) and apply the brief's build rule: `git status --short` must be empty and `git rev-parse HEAD` is the build, which you run and then name in the verdict. A request that names a commit is honoured when it equals HEAD; when it differs the run is `BLOCKED` and the verdict names both commits. A brief that names no cases, or a worktree that is dirty or off the branch, is `BLOCKED`: say so in the verdict instead of guessing.
 2. **Choose a run id** of your own, unique for the item: `qa-<date>-<n>`, for example `qa-2026-10-09-1`.
 3. **Run each case in scope**, headless-grid ones with the script, from the worktree:

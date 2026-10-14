@@ -13,6 +13,8 @@ Default subscriptions give each Lead its subtree outside descendant leads and th
 
 Request source review first. Only after a clear source verdict does the Implementer run `cland verify` (the transition alias is `cland suite`) at the exact reviewed head. A fix or merge that changes the head needs a new source review before a new run. An unchanged head may reuse an earlier green run through the tree-hash cache. Require the same-head successful result and the Reviewer’s final verdict before merging; queueing or a source verdict alone is not a pass. The gate still relies on current hub-written review/QA verdicts. See `docs/agents/tests.md`.
 
+A green same-head result from either executor satisfies the gate's suite evidence. A Linux droplet result lists macOS-only cases as skips; those cases run in the release's final local run ("Release v0.1.2 from the item"). Read the executor and platform in the result, and the droplet's lifetime and cost; a Linux pass leaves the final macOS checks to that release run.
+
 Call `merge` when that evidence is present. No check command runs in the gate; review and QA supply the evidence. The hub merges the tree without rewriting the task branch, lands one squash commit, closes the item and its topic, releases the claim and removes its worktree and branch. Removal waits while a session stands inside; stop finished sessions so cleanup can complete.
 
 On refusal:

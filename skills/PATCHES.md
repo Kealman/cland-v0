@@ -41,6 +41,7 @@ Every patch is listed here. `skills-lock.json` keeps the upstream hash, so a re-
 - **Files**: `.agents/skills/merge/SKILL.md` and `.agents/skills/qa/SKILL.md` (project skills).
 - **Change**: align the item lead's verification loop with D25; require source review before a new run after a fix or changed head, preserve tree-hash cache reuse, and require the same-head successful result and final Reviewer verdict for merge. QA case execution still follows its brief.
 - **Why**: T-322 keeps merge and QA guidance consistent with the clauses without changing the gate.
+- **Executors (T-348)**: both skills accept a green same-head Linux droplet result as gate suite evidence, with macOS-only skips covered by the release's final local run. QA may run a brief's full suite on a droplet, records executor/platform/lifetime/cost in verdict evidence, and requests `--executor local` for macOS checks. Droplet lifecycle controls stay with the hub, human and Coordinator; D25's review-first loop is unchanged.
 
 ## Checked and left unpatched
 

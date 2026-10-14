@@ -195,4 +195,8 @@ The list of notifications and events the inbox no longer shows, newest first and
 _Avoid_: log (the Agents topic is the sessions' output), notifications panel
 
 **Executor**:
-Where a verification run executes, behind one interface. The queue, the cache and the report are the same on every executor.
+Where a verification run executes, behind one interface. The queue, the cache and the report are the same on every executor; a remote machine is held through a [Lease](#lease).
+
+<a id="lease"></a>
+**Lease**:
+The hub's durable record of one remote machine, written before its creation and held until its deletion is confirmed.
