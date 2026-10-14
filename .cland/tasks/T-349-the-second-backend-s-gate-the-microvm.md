@@ -2,8 +2,8 @@
 id: T-349
 kind: task
 title: "The second backend's gate: the MicroVM experiment of docs/research/do-microvms.md, run once by the human or by a session the human names, with its summary on E-271 and the decision it settles"
-state: open
-status: planned
+state: closed
+status: done
 size: S
 criterion_seq: 5
 labels:
@@ -16,7 +16,8 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-13T20:53:46.294Z
-updated: 2026-10-14T03:16:37.001Z
+updated: 2026-10-14T03:36:38.646Z
+closed: 2026-10-14T03:36:38.646Z
 ---
 
 ## Summary
@@ -61,9 +62,12 @@ Nothing in the repository. The steps:
 
 - [x] C1. The go, from the human or the stand-in under D24 naming the runner, is recorded on this item before any create.
   - done: human · 2026-10-14T03:06:14.762Z
-- [ ] C2. The summary artifact in E-271's topic shows pass or fail on each of the four conditions, with their numbers, step 10's idle answer, the wall time and the cost.
-- [ ] C3. After the run, `GET /v2/microvms?tag_name=cland-microvm-exp` and the checkpoint listing are empty, and the item records it.
-- [ ] C4. The published files are clear of the token by a literal scan made while the token was available.
+- [x] C2. The summary artifact in E-271's topic shows pass or fail on each of the four conditions, with their numbers, step 10's idle answer, the wall time and the cost.
+  - done: human · 2026-10-14T03:36:34.182Z
+- [x] C3. After the run, `GET /v2/microvms?tag_name=cland-microvm-exp` and the checkpoint listing are empty, and the item records it.
+  - done: human · 2026-10-14T03:36:35.178Z
+- [x] C4. The published files are clear of the token by a literal scan made while the token was available.
+  - done: human · 2026-10-14T03:36:36.134Z
 - [ ] C5. On a pass, the MicroVM backend is filed under Follow-ups with a link to the artifact. On a fail, E-271 records the result and nothing is filed.
 
 ## Comments
@@ -75,3 +79,11 @@ Go recorded by the stand-in under D24 (2026-10-14 ~02:45Z): the runner is the st
 ### human · 2026-10-14T03:16:37.001Z
 
 Run 1 (02:46–03:14Z, stand-in): base MicroVM running in 22 s; provisioning 34 s; bundle delivery 38 s; prep (clone, npm ci, Neovim) 36 s; checkpoint 53 s; clone from checkpoint running in 1.4 s; typecheck ok in 13 s; the suite died 2 s in, after its 37 hub-free tests, in the runner's process sweep: `ps -ww -e -o pid=,ppid=,pgid=,lstart=,stat=,command=` exit 1 with no output. Cause: the Appendix A script (2026-10-12) sets PS_PERSONALITY=bsd for the run, and T-280 (merged 2026-10-13) moved the listing to the POSIX form and requires that nothing sets PS_PERSONALITY; under it procps misreads -e. Pause: 412 ms, exec after resume 770 ms, background sleeper alive. Idle: a busy loop with no traffic was paused after 63 s, an exec every 30 s kept it running (CPU work is not activity). Limits: pid_max 32768, threads-max 128085, no pids/cpu/memory cgroup caps, Max processes 64042, 8 vCPU AMD EPYC, 16 GiB. Listings after cleanup: 0 MicroVMs with the tag, 0 checkpoints; token scan of the outputs clean. Checkpoint reports memory_bytes 360777327160 (an API oddity, noted). Decision under D24: one rerun with PS_PERSONALITY removed from the suite step (a script defect, not a MicroVM property); both runs go into the artifact.
+
+### human · 2026-10-14T03:36:33.941Z
+
+Run 2 (02:36–03:34Z, PS_PERSONALITY removed): the suite ran 784.9 s on the hub phases (hub free 1.1 s, hub machine 783.7 s on 4 workers, peak load 9.49, steal 0 %); 1572 tests, 1523 pass, 45 fail, 4 skipped; the Neovim phase did not run. 44 failures are the executor test files, all rooted in `spawn ssh-keygen ENOENT` (the Appendix A provisioning installs no openssh-client, which T-343+ need since 2026-10-13); 1 failure is task-prefixes' two-thousand-items case on EMFILE: the workload container's open-file limit is 1024 soft and hard. Verdict: FAIL as run (partial result, §6), with (b) limits and (d) checkpoint/pause passing in both runs and (c) speed passing on the measured phases (≈45 % faster than the c-8's hub phase). Idle: CPU work is not activity; an exec every 30 s keeps the MicroVM alive. Costs ≈ $0.15 + $0.24 ≈ $0.39. Listings after cleanup: 0 tagged, 0 MicroVMs, 0 checkpoints (checked again at 03:40Z). Token scan of both output directories and logs clean. Summary artifact: A-2217 (posted in General: E-271 has no bound topic; the Coordinator may move it). C5: nothing is filed; a third run with openssh-client and a raised nofile would settle it, the human's call for v0.1.3.
+
+### coord · 2026-10-14T03:36:38.646Z
+
+Closed per C5 on a FAIL result: A-2217 is on E-271 with the four conditions, cleanup verified empty and the token scan clean. Nothing filed; a third run is the human's call for v0.1.3.

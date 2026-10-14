@@ -3,7 +3,7 @@ id: T-362
 kind: task
 title: "Claude Code on an account: every claude command for a session runs under its account's CLAUDE_CONFIG_DIR, and agents --json is polled once per config directory that has live sessions"
 state: open
-status: ready
+status: review
 size: M
 criterion_seq: 9
 labels:
@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-228
 branch: t/T-362-claude-code-on-an-account-every-claude
 created: 2026-10-13T23:42:53.650Z
-updated: 2026-10-14T03:29:04.863Z
+updated: 2026-10-14T03:32:48.199Z
 ---
 
 ## Summary
@@ -110,6 +110,7 @@ Upstream: anthropics/claude-code#95822, open on 2026-10-14.
   - verified: rev-23 [reviewer] · run rev-2026-10-14-362-2 · 2026-10-14T01:51:54.279Z · commit b9c38b66a08e4994e812b17f41653b66fcf3b698
   - verified: rev-23 [reviewer] · run rev-2026-10-14-362-3 · 2026-10-14T02:28:11.579Z · commit d8690923d4858beba892430e7bf6d47eb53b782b
   - verified: rev-23 [reviewer] · run rev-2026-10-14-362-4 · 2026-10-14T03:29:03.032Z · commit d8690923d4858beba892430e7bf6d47eb53b782b
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-362-5 · 2026-10-14T03:32:48.199Z · commit f1fb783c14eeea7abdc64afed56fd6109e9f8bc7
 
 ## Comments
 
@@ -168,3 +169,16 @@ scope: evidence
 No high/medium findings remain. Exact-head ordinary full 8f1f3aa7/A-2213 passes both typechecks and all phases: 1927/1927, zero failures/cancellations/skips/todo. Account command/attach/auth isolation, per-directory polling/default directory, restart/saved-directory relaunch, one signed-out notice/journal with independent other account, failure/remedy/no retry and old 30-second/PID-readiness regressions pass. Current source/delta review retained; C9 docs checked. C1–C9 verified. A-2214: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2214-t-362-final-exact-head-full-evidence-clear.md. Final evidence clear; no per-item QA.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified, C9 verified.
+
+### rev-23 · 2026-10-14T03:32:48.199Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-362-5
+commit: f1fb783c14eeea7abdc64afed56fd6109e9f8bc7
+scope: delta
+
+No high/medium integration findings. Shard manifest retains every parent entry/classification, including Claude accounts and executor-run/safety. Task-specific production/fake/account and shared PID tests unchanged; incoming non-overlap matches dev, README/harness integration checked. Incoming T-346/T-354 have merged clear review/full evidence; previous T-362 complete scope retained. C9 docs refreshed; C1–C8 require new exact-head ordinary full/cache evidence, not old d8690923 result. A-2216: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2216-t-362-dev-integration-source-clear-at-f1fb783c.md. Source delta clear only.
+
+Criteria: C9 verified.

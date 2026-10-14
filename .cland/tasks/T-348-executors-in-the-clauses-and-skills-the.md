@@ -3,8 +3,9 @@ id: T-348
 kind: task
 title: "Executors in the clauses and skills: the Implementer and QA clauses and the merge and qa skills say how a run picks its executor, what a droplet run costs, and what a Linux result proves"
 state: open
-status: planned
+status: review
 size: S
+criterion_seq: 4
 labels:
   - v0.1.2
   - hub
@@ -13,10 +14,10 @@ assignee: null
 parent: E-271
 blocked_by:
   - T-346
-topic: null
-branch: null
+topic: topic-234
+branch: t/T-348-executors-in-the-clauses-and-skills-the
 created: 2026-10-13T20:53:46.191Z
-updated: 2026-10-14T03:04:06.824Z
+updated: 2026-10-14T03:42:38.290Z
 ---
 
 ## Summary
@@ -75,7 +76,21 @@ The Coordinator clause gets one sentence: `cland executor status|prepare|reap`, 
 
 ## Acceptance criteria
 
-- [ ] C1. The Implementer and QA clauses each name `cland verify`'s executor, `--executor local`, the result's lifetime and cost, and that sessions never handle droplets themselves. The Coordinator clause names `cland executor status|prepare|reap`. `hub/test/roles.test.ts` passes with the budget unchanged.
-- [ ] C2. The `merge` and `qa` skills say that a Linux result satisfies the gate, and where the macOS-only cases run. `skills/PATCHES.md` records the patch.
-- [ ] C3. `docs/agents/tests.md` describes the executor line, `--executor`, the fallback notice, the remote queue lines and the cost of a run.
-- [ ] C4. `hub/README.md` has one "Remote executors: droplets" section with the config table (defaults and D27's build values), costs, token rules, the hand driver's retirement and what a Linux result proves. The GLOSSARY has Lease, linked from Executor.
+- [x] C1. The Implementer and QA clauses each name `cland verify`'s executor, `--executor local`, the result's lifetime and cost, and that sessions never handle droplets themselves. The Coordinator clause names `cland executor status|prepare|reap`. `hub/test/roles.test.ts` passes with the budget unchanged.
+  - done: impl-348 · 2026-10-14T03:42:05.620Z
+- [x] C2. The `merge` and `qa` skills say that a Linux result satisfies the gate, and where the macOS-only cases run. `skills/PATCHES.md` records the patch.
+  - done: impl-348 · 2026-10-14T03:42:07.000Z
+- [x] C3. `docs/agents/tests.md` describes the executor line, `--executor`, the fallback notice, the remote queue lines and the cost of a run.
+  - done: impl-348 · 2026-10-14T03:42:08.138Z
+- [x] C4. `hub/README.md` has one "Remote executors: droplets" section with the config table (defaults and D27's build values), costs, token rules, the hand driver's retirement and what a Linux result proves. The GLOSSARY has Lease, linked from Executor.
+  - done: impl-348 · 2026-10-14T03:42:09.556Z
+
+## Comments
+
+### impl-348 · 2026-10-14T03:34:09.332Z
+
+Implementation plan: compact executor rules next to Implementer review/QA queue guidance and Coordinator controls; retain the roles byte budget and skills guards. Consolidate README config, lifecycle, cost/token rules and Linux evidence; document fallback/remote queue and release-local skips in tests/skills. E-271 comments settle [verification], manual re-prepare and hand-driver retirement at T-346. T-347 owns remote_budget/scheduler changes in parallel; this task documents that final contract.
+
+### impl-348 · 2026-10-14T03:42:28.283Z
+
+Source ready at pushed head 40355dfb0187c09dc4d5eba53e3fcf6447959f3f; full source review requested. Implementation/checks artifact A-2219 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2219-t-348-implementation-and-checks-at-40355dfb.md. Typecheck, delivered default/project role snapshots with unchanged byte budget, QA skill and tracker guards passed. Full verify waits for a clear source verdict. Coordinator: relaunch Coordinator, Implementer and QA sessions after merge; the tracked roles.toml was updated alongside defaults.

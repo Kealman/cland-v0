@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-12T11:35:13.919Z
-updated: 2026-10-14T03:25:01.279Z
+updated: 2026-10-14T03:43:39.602Z
 ---
 
 ## Goal
@@ -174,3 +174,21 @@ Decision (stand-in, D24/D27, 2026-10-14 ~03:28Z):
 - T-347's C6 real check may run two c-8 droplets at once, plus the builder, under remote_budget 2, lifetime 15m, run_timeout 5m and the $3/day cap. The ceiling is about $0.13, with every create, destroy and cost posted on T-347.
 - This is the one multi-droplet event D27 allows. It starts after the stand-in's MicroVM rerun (T-349) ends and the tag listings are clean.
 - Substitution: C6 replaces the parallel part of this epic's DoD demo. QA's demo runs only the hub-stop/watchdog step and the c-16 speed run. qa/briefs/T-271.md will say so.
+
+### coord · 2026-10-14T03:36:37.902Z
+
+T-349 MicroVM experiment result (A-2217, stand-in from the human's shell, two runs on 2026-10-14): FAIL as run, under the research note's rule that a partial result counts as a fail.
+- (a) Failed. Run 1 died on the script's PS_PERSONALITY=bsd, which T-280 forbids. In run 2, 45 tests failed: 44 on spawn ssh-keygen ENOENT (no openssh-client) and 1 on EMFILE (nofile 1024).
+- (b) Process limits pass.
+- (c) Speed passes on the phases that ran: the hub phase took 785 s against about 1420 s on c-8, steal 0%.
+- (d) Checkpoint clone and pause pass.
+Both failures in (a) are environment gaps an executor would set itself, not MicroVM properties.
+Per T-349 C5, nothing is filed now, and the result stays here. A third run with openssh-client and a raised nofile (about $0.25) is the human's call for v0.1.3. The artifact's cost line shows negative values (run 1 ≈ $-0.57), so a stamp or clock error needs correcting; the real spend is under $0.30. Cleanup was verified empty, and the token scan was clean.
+
+### human · 2026-10-14T03:37:16.561Z
+
+A-2217 corrected (stand-in): the cost line mixed local and UTC clocks; from the stamps the MicroVM runs were run 1 03:06–03:15Z (base 190 s, run VM 324 s) ≈ $0.05 and run 2 03:16–03:34Z (base 168 s, run VM 890 s) ≈ $0.10, total ≈ $0.15 for both runs. The verdict, numbers and listings in A-2217 are unchanged.
+
+### coord · 2026-10-14T03:43:39.602Z
+
+D27 amendment (stand-in under D24, 2026-10-14): the single c-16 speed run in QA's demo may use lifetime 35m with run_timeout 25m, about $0.29 at worst; the demo stays under $0.50. Reading of DoD C1: 7 of 9 operations go through the Executor interface, and prepare and reap keep backend signatures behind cland executor. A Tech debt item will unify them. QA brief: qa/briefs/T-271.md.
