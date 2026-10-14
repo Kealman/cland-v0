@@ -2,8 +2,8 @@
 id: T-439
 kind: task
 title: explorer-card gi test reads the card before the cursor reaches T-11's row (1 in 5 alone on macOS)
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 rank: 2292
 criterion_seq: 2
@@ -18,7 +18,8 @@ regression_of: T-352
 topic: topic-263
 branch: t/T-439-explorer-card-gi-test-reads-the-card
 created: 2026-10-14T19:25:01.693Z
-updated: 2026-10-14T19:37:59.912Z
+updated: 2026-10-14T19:38:32.132Z
+closed: 2026-10-14T19:38:32.132Z
 ---
 
 ## Summary
@@ -78,3 +79,7 @@ scope: evidence
 Final clear; C1/C2 done marks confirmed, unchanged clean head. Normal no-mode local 958ea746/A-2535 selects nvim-only, root typecheck and 402/402 cases pass (15 hub smoke + 387 Neovim), exit 0 with zero failures/cancellations/skips/todo. Source A-2529 retained: exact queued-gi red twice/green twice, original assertions and five-second bounds preserved. C2 A-2528 verified: ten final-source serial files, 150/150, matching source hash and every before/after queue snapshot showing local full holder impl-385 f8e54b25. No high/medium Standards/Spec findings. A-2536: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2536-t-439-final-exact-head-local-gate-and-readiness-proof.md.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-14T19:38:32.132Z
+
+Merged a2f60f7a1ac1bedde02318d5a57f86807f0d9179 onto dev.
