@@ -3,7 +3,7 @@ id: T-388
 kind: task
 title: "Selection hygiene: task runs verify what the diff selects, with package rules widened to Neovim-only for nvim/** and hub-only for everything else"
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 7
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-247
 branch: t/T-388-selection-hygiene-task-runs-verify-what
 created: 2026-10-14T12:28:09.900Z
-updated: 2026-10-14T18:50:12.626Z
+updated: 2026-10-14T18:50:26.288Z
 ---
 
 ## Summary
@@ -71,21 +71,24 @@ The smoke baselines (`HUB_SMOKE`, `NVIM_SMOKE`) and the integrated-`dev`-is-full
 - [x] C4. Measured: the phases a `nvim-only` selection runs (hub smoke plus the Neovim phase), run through `node hub/test/run-suite.ts` with that selection in `CLAND_SUITE_SELECTION` on an empty verify queue, finish in under 3 minutes (a full run is about 15); the duration line is posted on the item, and the live check after merge is the epic's demo.
   - verified: rev-23 [reviewer] · run rev-2026-10-14-388-6 · 2026-10-14T18:19:03.972Z · commit 952d1f7fd803fd9b2b25230b791958c3c7e820d2
   - done: impl-388 · 2026-10-14T18:50:12.626Z
-- [ ] C5. Every existing `suite-selection.test.ts` assertion that still applies keeps its meaning; each changed expectation is listed in the review request with the rule that changed it.
+- [x] C5. Every existing `suite-selection.test.ts` assertion that still applies keeps its meaning; each changed expectation is listed in the review request with the rule that changed it.
   - verified: rev-23 [reviewer] · run rev-2026-10-14-388-2 · 2026-10-14T12:43:13.158Z · commit 5c5a6490d219fcb9fe1b86539bcbe8cb5328d54f
   - verified: rev-23 [reviewer] · run rev-2026-10-14-388-4 · 2026-10-14T16:58:53.647Z · commit 952d1f7fd803fd9b2b25230b791958c3c7e820d2
   - verified: rev-23 [reviewer] · run rev-2026-10-14-388-5 · 2026-10-14T17:33:53.969Z · commit 952d1f7fd803fd9b2b25230b791958c3c7e820d2
   - verified: rev-23 [reviewer] · run rev-2026-10-14-388-6 · 2026-10-14T18:19:03.973Z · commit 952d1f7fd803fd9b2b25230b791958c3c7e820d2
-- [ ] C6. `docs/agents/tests.md`, the Implementer clause in `default-roles.ts` and `.cland/roles.toml`, and the `qa` skill no longer prescribe `cland verify all` for task runs, and state D29's split between task runs and integrated `dev` runs.
+  - done: impl-388 · 2026-10-14T18:50:15.914Z
+- [x] C6. `docs/agents/tests.md`, the Implementer clause in `default-roles.ts` and `.cland/roles.toml`, and the `qa` skill no longer prescribe `cland verify all` for task runs, and state D29's split between task runs and integrated `dev` runs.
   - verified: rev-23 [reviewer] · run rev-2026-10-14-388-2 · 2026-10-14T12:43:13.158Z · commit 5c5a6490d219fcb9fe1b86539bcbe8cb5328d54f
   - verified: rev-23 [reviewer] · run rev-2026-10-14-388-4 · 2026-10-14T16:58:53.647Z · commit 952d1f7fd803fd9b2b25230b791958c3c7e820d2
   - verified: rev-23 [reviewer] · run rev-2026-10-14-388-5 · 2026-10-14T17:33:53.969Z · commit 952d1f7fd803fd9b2b25230b791958c3c7e820d2
   - verified: rev-23 [reviewer] · run rev-2026-10-14-388-6 · 2026-10-14T18:19:03.973Z · commit 952d1f7fd803fd9b2b25230b791958c3c7e820d2
-- [ ] C7. `hub/README.md` (Tests) describes the package rules, the full set and the computed import list, and the reason strings name the deciding rule.
+  - done: impl-388 · 2026-10-14T18:50:21.137Z
+- [x] C7. `hub/README.md` (Tests) describes the package rules, the full set and the computed import list, and the reason strings name the deciding rule.
   - verified: rev-23 [reviewer] · run rev-2026-10-14-388-2 · 2026-10-14T12:43:13.158Z · commit 5c5a6490d219fcb9fe1b86539bcbe8cb5328d54f
   - verified: rev-23 [reviewer] · run rev-2026-10-14-388-4 · 2026-10-14T16:58:53.647Z · commit 952d1f7fd803fd9b2b25230b791958c3c7e820d2
   - verified: rev-23 [reviewer] · run rev-2026-10-14-388-5 · 2026-10-14T17:33:53.970Z · commit 952d1f7fd803fd9b2b25230b791958c3c7e820d2
   - verified: rev-23 [reviewer] · run rev-2026-10-14-388-6 · 2026-10-14T18:19:03.973Z · commit 952d1f7fd803fd9b2b25230b791958c3c7e820d2
+  - done: impl-388 · 2026-10-14T18:50:23.905Z
 
 ## Comments
 

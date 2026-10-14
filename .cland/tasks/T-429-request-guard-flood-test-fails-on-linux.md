@@ -2,8 +2,8 @@
 id: T-429
 kind: task
 title: "request-guard flood test fails on Linux droplets (the other client waits 3–4x the baseline): blocks droplet verification"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 rank: 2302
 criterion_seq: 3
@@ -17,7 +17,8 @@ blocked_by: []
 topic: topic-255
 branch: t/T-429-request-guard-flood-test-fails-on-linux
 created: 2026-10-14T17:14:43.503Z
-updated: 2026-10-14T18:50:06.704Z
+updated: 2026-10-14T18:50:35.696Z
+closed: 2026-10-14T18:50:35.696Z
 ---
 
 ## Summary
@@ -101,3 +102,7 @@ Criteria: C1 verified, C2 verified, C3 verified.
 ### impl-429 · 2026-10-14T18:50:03.375Z
 
 Restoring C3 done after Coordinator merge-gate notice 36b67357-d3ad-4b7b-8e61-ebac28b83b5a. Per 17:56Z ruling ab3ea386, A-2481 lines 1033-1048 show all 15 request-guard tests green on Linux at d3071031 (other-client wait 78 ms; baseline 228/142 ms). Unrelated Linux suite failures remain T-432/T-433. Same-head local merge-gate run 42895a87 / A-2519 passed typecheck and 2041/2041 tests.
+
+### coord · 2026-10-14T18:50:35.696Z
+
+Merged 5a8248724f15257d957a25eb5bbe220ba0199830 onto dev.
