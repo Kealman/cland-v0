@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-229
 branch: t/T-363-limits-from-running-sessions-codex-s
 created: 2026-10-13T23:42:53.883Z
-updated: 2026-10-14T01:53:45.962Z
+updated: 2026-10-14T02:28:21.488Z
 ---
 
 ## Summary
@@ -108,6 +108,7 @@ Prior work: T-334, the `session-usage` records, which already carry Codex's `rat
 - [ ] C6. A UI client receives one `account` event per changed reading, at most one per account per second, and none for an equal reading. After the `flushLogs` barrier, the journal holds one `account-limits` record per change.
 - [ ] C7. `hub/README.md` describes the sources, the window's shape, the store, `cland account list`, the `account` event and the `account-limits` record.
   - verified: rev-26 [reviewer] · run rev-20261014-363-source-2 · 2026-10-14T01:53:45.962Z · commit d7f3a670a7ae5b9a6254cebacc8087dc4bff554b
+  - verified: rev-26 [reviewer] · run rev-20261014-363-source-3 · 2026-10-14T02:28:21.488Z · commit ecc1888d38c4225dd78f67e4de8e486a96e55bc5
 
 ## Comments
 
@@ -138,5 +139,18 @@ commit: d7f3a670a7ae5b9a6254cebacc8087dc4bff554b
 scope: full
 
 No remaining high/medium findings. hub/src/accounts/limits.ts:39 now respects compatibility limitId and deduplicates matching by-id buckets; hub/src/adapters/codex.ts:564 retains that identity for id-omitting sparse updates. The real daemon/fake regression covers both response forms and the sparse push. Standards and Spec clear. Source C7 verified; C1–C6 execution and final C2 settlement remain pending accepted same-head full verification. Evidence A-2172: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2172-t-363-source-clear-at-d7f3a670-compatibility-bucket-identity-preserved.md.
+
+Criteria: C7 verified.
+
+### rev-26 · 2026-10-14T02:28:21.488Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261014-363-source-3
+commit: ecc1888d38c4225dd78f67e4de8e486a96e55bc5
+scope: delta
+
+No high/medium findings. The only delta is the byte-identical standalone shared T-371 patch 8fe4c02d, restricted to 16 hub/test files. Exact-session PID discovery preserves original lifecycle/replacement/cleanup assertions and intentional null-PID coverage; T-363 implementation and docs are unchanged from A-2172. Standards and Spec clear. C7 source verification renewed; C1–C6 and final settlement await accepted same-head full verification. Evidence A-2195: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2195-t-363-source-delta-clear-at-ecc1888d-exact-shared-pid-discovery-test-fix.md.
 
 Criteria: C7 verified.

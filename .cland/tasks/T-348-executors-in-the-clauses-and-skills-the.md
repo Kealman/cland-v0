@@ -3,7 +3,7 @@ id: T-348
 kind: task
 title: "Executors in the clauses and skills: the Implementer and QA clauses and the merge and qa skills say how a run picks its executor, what a droplet run costs, and what a Linux result proves"
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - v0.1.2
@@ -16,7 +16,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-13T20:53:46.191Z
-updated: 2026-10-13T20:53:48.498Z
+updated: 2026-10-14T03:04:06.824Z
 ---
 
 ## Summary

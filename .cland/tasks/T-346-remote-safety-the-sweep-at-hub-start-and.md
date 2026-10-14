@@ -2,8 +2,8 @@
 id: T-346
 kind: task
 title: "Remote safety: the sweep at hub start and every ten minutes, the run timeout, a daily spend cap on a ledger shared by every hub on the host, and the fallback to local with a warn-level event"
-state: open
-status: review
+state: closed
+status: done
 size: L
 criterion_seq: 10
 labels:
@@ -17,7 +17,8 @@ blocked_by:
 topic: topic-230
 branch: t/T-346-remote-safety-the-sweep-at-hub-start-and
 created: 2026-10-13T20:53:45.976Z
-updated: 2026-10-14T02:18:54.999Z
+updated: 2026-10-14T03:04:04.572Z
+closed: 2026-10-14T03:04:04.572Z
 ---
 
 ## Summary
@@ -111,24 +112,45 @@ One create attempt per run; nothing retries in a loop. A `--executor droplet` re
 
 - [x] C1. The sweep runs at hub start and on its timer. It reaps a stray tagged droplet, journals `executor-watchdog-fired` from a receipt, re-arms the killed watchdog of a live lease, and retries a `releasing` lease until confirmed. Each pass journals `executor-sweep`.
   - done: impl-346 · 2026-10-14T02:12:08.780Z
+  - verified: rev-26 [reviewer] · run rev-20261014-346-evidence-1 · 2026-10-14T02:58:58.134Z · commit cea8430804545817b4c871c4bcbaefae7652fcb5
+  - verified: rev-26 [reviewer] · run rev-20261014-346-final-1 · 2026-10-14T03:03:47.944Z · commit cea8430804545817b4c871c4bcbaefae7652fcb5
 - [x] C2. A remote run past `run_timeout` is ended, reported once with `run timeout <value>`, and its droplet released. A `lifetime` shorter than `run_timeout` plus 10 minutes is refused at config load, naming both.
   - done: impl-346 · 2026-10-14T02:02:51.042Z
+  - verified: rev-26 [reviewer] · run rev-20261014-346-evidence-1 · 2026-10-14T02:58:58.134Z · commit cea8430804545817b4c871c4bcbaefae7652fcb5
+  - verified: rev-26 [reviewer] · run rev-20261014-346-final-1 · 2026-10-14T03:03:47.944Z · commit cea8430804545817b4c871c4bcbaefae7652fcb5
 - [x] C3. With `daily_spend_usd` set just above one reservation, a second droplet run on a second fixture project sharing the ledger falls back to local with the cause `daily spend cap $<cap> reached`. Its fake API received no create. After the first run is released, the ledger holds its actual cost, not the reservation.
   - done: impl-346 · 2026-10-14T02:02:51.977Z
+  - verified: rev-26 [reviewer] · run rev-20261014-346-evidence-1 · 2026-10-14T02:58:58.134Z · commit cea8430804545817b4c871c4bcbaefae7652fcb5
+  - verified: rev-26 [reviewer] · run rev-20261014-346-final-1 · 2026-10-14T03:03:47.944Z · commit cea8430804545817b4c871c4bcbaefae7652fcb5
 - [x] C4. Without `DIGITALOCEAN_TOKEN`, `cland verify --executor droplet` runs locally. Its topic gets one notice with `severity: 'warn'` naming `DIGITALOCEAN_TOKEN`, and the journal gets `verification-executor-fallback`. A create the fake refuses with 422, a missing snapshot and a dirty worktree each fall back with their own cause, after exactly one create attempt or none.
   - done: impl-346 · 2026-10-14T02:02:54.164Z
+  - verified: rev-26 [reviewer] · run rev-20261014-346-evidence-1 · 2026-10-14T02:58:58.134Z · commit cea8430804545817b4c871c4bcbaefae7652fcb5
+  - verified: rev-26 [reviewer] · run rev-20261014-346-final-1 · 2026-10-14T03:03:47.945Z · commit cea8430804545817b4c871c4bcbaefae7652fcb5
 - [x] C5. The crash path above passes against the fakes: the hub is stopped mid-run, the watchdog deletes the droplet, the next start journals the firing and the sweep, the run is reported once, and status and the tag listing are empty.
   - done: impl-346 · 2026-10-14T02:02:55.141Z
+  - verified: rev-26 [reviewer] · run rev-20261014-346-evidence-1 · 2026-10-14T02:58:58.134Z · commit cea8430804545817b4c871c4bcbaefae7652fcb5
+  - verified: rev-26 [reviewer] · run rev-20261014-346-final-1 · 2026-10-14T03:03:47.945Z · commit cea8430804545817b4c871c4bcbaefae7652fcb5
 - [x] C6. The end-to-end sentinel search finds the token nowhere.
   - done: impl-346 · 2026-10-14T02:02:56.731Z
-- [ ] C7. Real check, posted on this item with create, destroy and cost. In a scratch project with `lifetime = "15m"`, the hub is stopped during a remote run. The watchdog's deletion and the next start's sweep are in that project's journal, and the provider's `cland` tag listing is empty.
+  - verified: rev-26 [reviewer] · run rev-20261014-346-evidence-1 · 2026-10-14T02:58:58.134Z · commit cea8430804545817b4c871c4bcbaefae7652fcb5
+  - verified: rev-26 [reviewer] · run rev-20261014-346-final-1 · 2026-10-14T03:03:47.945Z · commit cea8430804545817b4c871c4bcbaefae7652fcb5
+- [x] C7. Real check, posted on this item with create, destroy and cost. In a scratch project with `lifetime = "15m"`, the hub is stopped during a remote run. The watchdog's deletion and the next start's sweep are in that project's journal, and the provider's `cland` tag listing is empty.
+  - done: impl-346 · 2026-10-14T03:03:11.474Z
+  - verified: rev-26 [reviewer] · run rev-20261014-346-final-1 · 2026-10-14T03:03:47.945Z · commit cea8430804545817b4c871c4bcbaefae7652fcb5
 - [x] C8. `cland executor status` prints the shared ledger's path and today's total against the cap. `hub/README.md` documents the ledger as cland's first per-user state (D27 follow-up, stand-in under D24, 2026-10-13).
   - done: impl-346 · 2026-10-14T02:02:57.754Z
+  - verified: rev-26 [reviewer] · run rev-20261014-346-evidence-1 · 2026-10-14T02:58:58.134Z · commit cea8430804545817b4c871c4bcbaefae7652fcb5
+  - verified: rev-26 [reviewer] · run rev-20261014-346-final-1 · 2026-10-14T03:03:47.945Z · commit cea8430804545817b4c871c4bcbaefae7652fcb5
 - [x] C9. `hub/README.md` describes the sweep, the run timeout, the cap and its shared ledger, the fallback, the defaults and this project's D27 values, and the hand driver's retirement.
   - done: impl-346 · 2026-10-14T02:02:58.640Z
   - verified: rev-26 [reviewer] · run rev-20261014-346-source-2 · 2026-10-14T02:12:41.731Z · commit d6b9d6b93622f678fd8b25f351abc34e130ba534
+  - verified: rev-26 [reviewer] · run rev-20261014-346-source-3 · 2026-10-14T02:28:55.867Z · commit cea8430804545817b4c871c4bcbaefae7652fcb5
+  - verified: rev-26 [reviewer] · run rev-20261014-346-evidence-1 · 2026-10-14T02:58:58.135Z · commit cea8430804545817b4c871c4bcbaefae7652fcb5
+  - verified: rev-26 [reviewer] · run rev-20261014-346-final-1 · 2026-10-14T03:03:47.945Z · commit cea8430804545817b4c871c4bcbaefae7652fcb5
 - [x] C10. SSH keys are named with the project-hash prefix used by the droplet tag (cland-p-<hash>), and the automatic orphan-key reap deletes only keys with this project's hash prefix. A legacy cland-<name>- key is reaped only when no live lease of any hub on the host names it and it is older than lifetime plus 10 minutes. A test runs two hubs with the same project name and shows neither reaps the other's in-flight key (found by impl-346, 2026-10-14; regression of T-343).
   - done: impl-346 · 2026-10-14T02:02:59.439Z
+  - verified: rev-26 [reviewer] · run rev-20261014-346-evidence-1 · 2026-10-14T02:58:58.135Z · commit cea8430804545817b4c871c4bcbaefae7652fcb5
+  - verified: rev-26 [reviewer] · run rev-20261014-346-final-1 · 2026-10-14T03:03:47.945Z · commit cea8430804545817b4c871c4bcbaefae7652fcb5
 
 ## Comments
 
@@ -179,3 +201,50 @@ Criteria: C9 verified.
 ### impl-346 · 2026-10-14T02:18:54.999Z
 
 C7 real crash run 101894dc-2de0-4877-905e-bfd03a84cec9 created 608880406 (cland-t346-real-e8eb2e45) at 2026-10-14T02:17:21.518Z, deadline 2026-10-14T02:32:21.518Z; s-1vcpu-1gb lon1, $0.00893/hour, reservation $0.0022325. Remote log confirms the suite is active. Stopping the scratch hub now; detached watchdog must release it at 15m. Source reviewed at d6b9d6b93622f678fd8b25f351abc34e130ba534; preflight cland tag listing was empty.
+
+### rev-26 · 2026-10-14T02:28:55.867Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261014-346-source-3
+commit: cea8430804545817b4c871c4bcbaefae7652fcb5
+scope: delta
+
+No high/medium findings. Shared T-371 commit 8fe4c02d changed lines match exactly across 16 hub/test files; pre-existing harness environment isolation is retained. Exact-session PID prerequisites preserve original assertions and intentional null-PID coverage. T-346 production/docs unchanged from corrected source A-2187. Standards and Spec clear; C9 source verification renewed. Cancelled fc70a3ad/A-2193 is not full green evidence. C1–C8/C10 execution and C7 real proof remain pending. Evidence A-2196: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2196-t-346-source-delta-clear-at-cea84308-shared-pid-test-fix-and-cancelled-receipt-c.md.
+
+Criteria: C9 verified.
+
+### rev-26 · 2026-10-14T02:58:58.135Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261014-346-evidence-1
+commit: cea8430804545817b4c871c4bcbaefae7652fcb5
+scope: evidence
+
+No high/medium findings in accepted full 85eba2de/A-2199 at the exact source-reviewed head. Typecheck and 1960/1960 pass (37 free + 1572 hub + 351 Neovim), zero fail/cancel/skip/todo. Safety/ownership race, timeout, cap, fallback, fake crash, sentinel and status cases pass. C1–C6/C8–C10 verified. This is partial evidence settlement: C7 real stopped-hub proof remains pending, so no final all-criteria clearance yet. Evidence A-2200: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2200-t-346-full-suite-evidence-checked-at-cea84308-1960-1960-c7-real-proof-pending.md.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C8 verified, C9 verified, C10 verified.
+
+### impl-346 · 2026-10-14T03:03:12.523Z
+
+C7 done; evidence A-2201: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2201-t-346-real-stopped-hub-watchdog-proof-cleanup-and-cost.json. Real run 101894dc-2de0-4877-905e-bfd03a84cec9, droplet 608880406, s-1vcpu-1gb lon1; lifetime=15m/run_timeout=5m/cap=$3. Hub stopped while remote log showed active run at 02:18:55.470Z. Detached watchdog fired 02:32:21.519Z, deleted droplet, confirmed droplet/key absence 02:32:25.459Z; next start journalled exactly one firing and sweep and exactly one run result. Release lifetime 900762ms, estimated run cost $0.00223439018; builder $0.00040876083; total $0.00264315101. Owned snapshot 249682656 deleted; final cland tag listing, owned keys and live leases empty; shared reservations zero. Scanned 23 scratch .cland files plus shared ledger: zero token occurrences. Scratch hub stopped. Driver packaging initially asserted the wrong result cause: real valid config restarts beyond run_timeout+2m and reports once as run timeout 5m; C7 requires machine/watchdog/restart cleanup, not a particular result cause. No source change or second real create was needed. Current head remains reviewed cea84308; full verify 85eba2de/A-2199 passed 1960/1960 with both typechecks. Final C7 evidence settlement requested from rev-26.
+
+### rev-26 · 2026-10-14T03:03:47.945Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261014-346-final-1
+commit: cea8430804545817b4c871c4bcbaefae7652fcb5
+scope: evidence
+
+No remaining high/medium findings. C7 A-2201 records stopped-hub real droplet 608880406, watchdog firing/deletion confirmation at its 15m deadline, restart receipt/sweep, one result, final empty tagged/key/lease lists, zero reservations and owned snapshot cleanup. Posted total cost $0.00264315101 includes builder. The run timeout 5m result is consistent with restart timing and does not contradict C7's lifecycle criterion. Executor production source is unchanged from authorized source-clear proof; current head adds only the reviewed shared tests. Accepted same-head 85eba2de/A-2199 already establishes typechecks and 1960/1960 with zero failures/skips/cancellations. All C1–C10 verified. Standards and Spec clear; QA scope none. Final evidence A-2202: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2202-t-346-final-review-clear-at-cea84308-real-watchdog-proof-and-all-criteria-checke.md.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified, C9 verified, C10 verified.
+
+### coord · 2026-10-14T03:04:04.572Z
+
+Merged d3d7c32f44e4ea4fdfbda764ad1f4e2c3e8cd4c0 onto dev.

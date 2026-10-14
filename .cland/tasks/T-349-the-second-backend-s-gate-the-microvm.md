@@ -3,7 +3,7 @@ id: T-349
 kind: task
 title: "The second backend's gate: the MicroVM experiment of docs/research/do-microvms.md, run once by the human or by a session the human names, with its summary on E-271 and the decision it settles"
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - v0.1.2
@@ -15,7 +15,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-13T20:53:46.294Z
-updated: 2026-10-13T20:53:46.294Z
+updated: 2026-10-14T03:04:07.280Z
 ---
 
 ## Summary

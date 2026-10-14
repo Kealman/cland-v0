@@ -3,7 +3,7 @@ id: T-347
 kind: task
 title: "The remote budget: remote runs are admitted up to remote_budget in parallel beside the local slot of one, the local slot takes a droplet run only when the remote budget is full, and cland verify queue names each run's executor"
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - v0.1.2
@@ -16,7 +16,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-13T20:53:46.081Z
-updated: 2026-10-13T20:53:48.292Z
+updated: 2026-10-14T03:04:05.974Z
 ---
 
 ## Summary

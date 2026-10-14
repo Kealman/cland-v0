@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-232
 branch: t/T-355-the-messages-m-sends-to-general-with-the
 created: 2026-10-13T20:53:51.934Z
-updated: 2026-10-14T02:25:36.964Z
+updated: 2026-10-14T02:30:51.454Z
 ---
 
 ## Summary
@@ -113,9 +113,23 @@ card line: <the card line under the cursor, trimmed>   (only from the card)
   - done: impl-355 · 2026-10-14T02:25:26.295Z
 - [x] C8. `nvim/README.md`, the help lines and the Coordinator's clause describe the messages.
   - done: impl-355 · 2026-10-14T02:25:26.812Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-355-1 · 2026-10-14T02:30:51.454Z · commit be077daeefd422d67b93fef9244c3e4055fdca06
 
 ## Comments
 
 ### impl-355 · 2026-10-14T02:22:24.865Z
 
 Implemented explorer_compose.lua, registry mappings for row/card/visual messages, bound topic creation in the stub, context/draft handling and 8192-byte truncation, Coordinator clauses and docs. Seven targeted frame/UI tests pass (including real Coordinator delivery); both default/project delivered-clause guards pass. Typechecking and card regressions are being checked before source review. Full verification will follow a clear review at its exact head.
+
+### rev-23 · 2026-10-14T02:30:51.454Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-355-1
+commit: be077daeefd422d67b93fef9244c3e4055fdca06
+scope: full
+
+No high/medium findings. Complete source review covers row/card/visual routing and context, draft/failure handling, Unicode byte/title caps, stub bound topics, registry/help/docs and both compensated Coordinator clauses. Shared T-371 delta exactly matches reviewed/full-green patch. C8 source docs/help/clause verified; C1–C7 await ordinary full cland verify at this exact head, including both clause deliveries. Task requires an empty holder before submission; no per-item QA. A-2197: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2197-t-355-full-source-clear-at-be077dae.md. Source clear only; Coordinator relaunch after merge adopts its clause.
+
+Criteria: C8 verified.

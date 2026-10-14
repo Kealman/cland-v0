@@ -10,6 +10,11 @@ budget = 1
 lock_path = "/tmp/cland-suite.lock"
 # Reuse green candidate trees for this many minutes; 0 disables caching.
 cache_max_age_minutes = 1440
+# D27 build values (stand-in under D24, 2026-10-13): the hub enforces these for droplet runs.
+# The documented defaults are 110m, 75m and $5; executor stays "local" until E-271 closes.
+lifetime = "60m"
+run_timeout = "50m"
+daily_spend_usd = 3
 
 [sessions]
 # Archive stopped crew after their item closes, otherwise after their stop. Aides are excluded.

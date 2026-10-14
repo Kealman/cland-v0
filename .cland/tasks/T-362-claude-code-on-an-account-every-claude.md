@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-228
 branch: t/T-362-claude-code-on-an-account-every-claude
 created: 2026-10-13T23:42:53.650Z
-updated: 2026-10-14T01:51:54.279Z
+updated: 2026-10-14T02:28:11.579Z
 ---
 
 ## Summary
@@ -100,6 +100,7 @@ Upstream: anthropics/claude-code#95822, open on 2026-10-14.
 - [x] C9. `hub/README.md` describes the overlay per command, the per-directory polling and its interval, and the removed variables.
   - done: impl-362 · 2026-10-14T01:46:34.696Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-362-2 · 2026-10-14T01:51:54.279Z · commit b9c38b66a08e4994e812b17f41653b66fcf3b698
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-362-3 · 2026-10-14T02:28:11.579Z · commit d8690923d4858beba892430e7bf6d47eb53b782b
 
 ## Comments
 
@@ -130,5 +131,18 @@ commit: b9c38b66a08e4994e812b17f41653b66fcf3b698
 scope: full
 
 No high/medium findings remain. The C7 test now waits for the observed claude-a agents invocation; all b-count/a-growth/state/journal/notice/no-probe assertions remain unchanged. Only test readiness changed; complete account/environment/polling source review A-2167 remains applicable. C9 docs verified; C1–C8 await exact-head ordinary full cland verify evidence. A-2170: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2170-t-362-corrected-full-source-clear-at-b9c38b66.md. This is source clear, not final readiness.
+
+Criteria: C9 verified.
+
+### rev-23 · 2026-10-14T02:28:11.579Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-362-3
+commit: d8690923d4858beba892430e7bf6d47eb53b782b
+scope: delta
+
+No high/medium findings. The 16-file test-only delta exactly equals shared T-371 8fe4c02d and its reviewed 8ed38949 patch (source A-2180/full evidence A-2190). No T-362 production/account test/docs delta; original full source review retained. C9 documentation refreshed; C1–C8 await ordinary full cland verify at this exact head. Old queued cancellation A-2181 supplies no execution evidence. A-2194: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2194-t-362-shared-t-371-delta-source-clear-at-d8690923.md. Source clear only.
 
 Criteria: C9 verified.
