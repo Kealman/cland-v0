@@ -3,7 +3,7 @@ id: T-389
 kind: task
 title: "Timing diet: fake harnesses default to fast turns and polls with explicit slow opt-ins, timer-bound tests run on env-controlled schedules, and fixed sleeps become event waits"
 state: open
-status: review
+status: in progress
 size: M
 criterion_seq: 8
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-264
 branch: t/T-389-timing-diet-fake-harnesses-default-to
 created: 2026-10-14T12:28:10.336Z
-updated: 2026-10-14T21:17:57.957Z
+updated: 2026-10-14T22:15:55.418Z
 ---
 
 ## Summary
@@ -58,25 +58,31 @@ The Implementer posts the list of every sleep touched with its class.
 - [x] C1. `fakeClaude` and `fakeCodex` default to 30 ms turns, 50 ms polls, 100 ms push trust and a 150 ms Codex refuse window, and every test that passes a slower value has a comment naming the race or behaviour it needs.
   - verified: rev-23 [reviewer] · run rev-2026-10-14-389-1 · 2026-10-14T21:17:11.827Z · commit ef57847105ccd2da5851e1dff087075ff2b6ebb1
   - done: impl-389 · 2026-10-14T21:17:31.616Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-389-3 · 2026-10-14T21:54:18.308Z · commit dddf97804f795fe226ef48d91daa26e629ce46da
 - [x] C2. Measured alone on an idle machine, the three timer-bound tests ("prepare, run, fallback, cancel…" 33.0 s, "…default 30-second schedule…" 32.3 s, "the remote shell and the host deadline…" 15.1 s) each take under 5 s; before/after times and the one-minute load are posted on the item.
-  - done: impl-389 · 2026-10-14T21:17:33.051Z
+  - done: impl-389 · 2026-10-14T21:58:41.284Z
 - [x] C3. The 30-second default is still asserted, from the resolved schedule the hub reports with the env unset, and the sharing and early-stop behaviour is asserted at a short override.
   - verified: rev-23 [reviewer] · run rev-2026-10-14-389-1 · 2026-10-14T21:17:11.827Z · commit ef57847105ccd2da5851e1dff087075ff2b6ebb1
   - done: impl-389 · 2026-10-14T21:17:34.270Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-389-3 · 2026-10-14T21:54:18.308Z · commit dddf97804f795fe226ef48d91daa26e629ce46da
 - [x] C4. Every sleep of 0.5 s or more in `hub/test` and `nvim/test` is either an event wait, an interval multiple with its interval named, or kept with a comment, and the classified list is posted on the item.
   - verified: rev-23 [reviewer] · run rev-2026-10-14-389-1 · 2026-10-14T21:17:11.827Z · commit ef57847105ccd2da5851e1dff087075ff2b6ebb1
   - done: impl-389 · 2026-10-14T21:17:35.425Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-389-3 · 2026-10-14T21:54:18.308Z · commit dddf97804f795fe226ef48d91daa26e629ce46da
 - [x] C5. Measured: the whole-file times of `codex-adapter.test.ts`, `claude-code-adapter.test.ts`, `opencode-adapter.test.ts` and `session-usage.test.ts` on an idle machine fall by at least 25% in sum (median of three runs each), with before/after posted.
   - done: impl-389 · 2026-10-14T21:17:36.179Z
 - [x] C6. No assertion changes its meaning: the review request lists every changed assertion with what it still proves, and no test is skipped or deleted.
   - verified: rev-23 [reviewer] · run rev-2026-10-14-389-1 · 2026-10-14T21:17:11.827Z · commit ef57847105ccd2da5851e1dff087075ff2b6ebb1
-  - done: impl-389 · 2026-10-14T21:17:37.370Z
+  - done: impl-389 · 2026-10-14T21:53:04.275Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-389-3 · 2026-10-14T21:54:18.308Z · commit dddf97804f795fe226ef48d91daa26e629ce46da
 - [x] C7. Any race exposed by the fast defaults is reported as a Bug with its size, and its test's opt-in names that bug.
   - verified: rev-23 [reviewer] · run rev-2026-10-14-389-1 · 2026-10-14T21:17:11.827Z · commit ef57847105ccd2da5851e1dff087075ff2b6ebb1
-  - done: impl-389 · 2026-10-14T21:17:38.282Z
+  - done: impl-389 · 2026-10-14T21:53:05.721Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-389-3 · 2026-10-14T21:54:18.308Z · commit dddf97804f795fe226ef48d91daa26e629ce46da
 - [x] C8. `hub/README.md` (the fake harnesses) and the comments at the top of the three fakes describe the fast defaults and how to opt into slow turns.
   - verified: rev-23 [reviewer] · run rev-2026-10-14-389-1 · 2026-10-14T21:17:11.827Z · commit ef57847105ccd2da5851e1dff087075ff2b6ebb1
   - done: impl-389 · 2026-10-14T21:17:39.158Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-389-3 · 2026-10-14T21:54:18.308Z · commit dddf97804f795fe226ef48d91daa26e629ce46da
 
 ## Comments
 
@@ -133,3 +139,50 @@ Criteria: C1 verified, C3 verified, C4 verified, C6 verified, C7 verified, C8 ve
 ### impl-389 · 2026-10-14T21:17:57.957Z
 
 Source review clear rev-2026-10-14-389-1 / A-2565 at ef578471; C1/C3/C4/C6/C7/C8 verified. Recorded C1–C8 claimant done marks as requested, preserving C2 amendment/no-idle limitation. Submitted exact-head local no-mode verification 4b2735cc-9a05-4866-96db-928f1ea94a0d, queue position1, result recipients rev-23 and impl-389. No source changes after verdict. Idle awaiting hub result and Reviewer final C2/C5 marks.
+
+### rev-23 · 2026-10-14T21:43:59.462Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-389-2
+commit: ef57847105ccd2da5851e1dff087075ff2b6ebb1
+scope: evidence
+
+Medium — hub/test/executor-safety.test.ts:299: live recursive sentinel scan races transient executor spend-lock directory removal; A-2572 has ENOENT on spend.json.lock.break.*.owner.tmp after parent enumeration. Local full 4b2735cc exits 1, 1679/1680 hub cases pass, no skips/cancellations; Neovim not reached. No sentinel-found or cleanup-assertion failure inferred. This changed lifecycle case is not eligible for the untouched-test retry rule. Bugs/XS reported; proposed public-daemon quiescence correction needs source review and must retain resource/result/journal/sentinel proofs. Source criteria A-2565 retained; C2/C5 final marks/readiness remain pending complete accepted gate. A-2573: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2573-t-389-verification-blocked-by-live-executor-state-scan-race.md.
+
+### impl-389 · 2026-10-14T21:53:06.841Z
+
+Corrective source ready at dddf97804f795fe226ef48d91daa26e629ce46da (pushed/clean; latest origin/dev merged, including T-385/T-431). Fix3a5b59c0 adds an asserted public stop after live resource/result/journal proofs, before the unchanged complete persisted-state sentinel audit, so periodic spend-ledger sweeps cannot remove a lock-owner directory during readdir. No filesystem error ignored, no file skipped, all original assertions retained;1 new stop-success assertion. Failed official run4b2735cc/A-2572 and Reviewer A-2573 supplied the red. Focused pre/post observations and final-head checks: A-2574, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2574-t-389-corrective-audit-boundary-and-87-green-targeted-cases.md. Full executor-safety20/20 and suite67/67 passed serially; typecheck/diff check green. Raw logs/diff A-2575, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2575-t-389-audit-boundary-fix-raw-validation.gz. Watchdog case observed16.479s in this full run; historical C2 medians retain explicit prior-head provenance (A-2563), no new median/idle claim. C5 executor-independent26.27% result A-2558 unchanged. New-head review requested next; no new verification before source clear.
+
+### rev-23 · 2026-10-14T21:54:18.308Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-389-3
+commit: dddf97804f795fe226ef48d91daa26e629ce46da
+scope: delta
+
+No high/medium Standards/Spec findings. A-2572 live-tree scan finding corrected by asserted public stop after live resource/result/journal and original process-command credential proofs, before unchanged complete persisted-byte/provider-request sentinel audit. Dispatcher clears/awaits sweep work; no files skipped, ENOENT ignored, predicate weakened or deadline changed. Clean dev T-385/T-431 integration preserves timing controls. A-2575 raw whole files pass 20/20 executor and 67/67 suite plus typecheck. Source C1/C3/C4/C6/C7/C8 refreshed; C2/C5 final marks await same-head local gate. C5 measured files unaffected. C2 historical A-2563 executor median predates added timed stop: refresh three loaded A/B pairs for that changed watchdog case before final current-head timing mark, preserving raw loads/holders; unchanged measured cases need no repeat for this correction. A-2576: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2576-t-389-corrective-source-review-quiescent-persisted-byte-audit.md.
+
+Criteria: C1 verified, C3 verified, C4 verified, C6 verified, C7 verified, C8 verified.
+
+### impl-389 · 2026-10-14T21:58:41.699Z
+
+Corrected-source review clear rev-2026-10-14-389-3 / A-2576 at dddf9780. Submitted same-head local no-mode verify fa8df54b-3be7-48e0-8fb2-b94e91933153, queue position1, recipients rev-23/impl-389. Reviewer-requested changed-watchdog refresh complete: all6 serial loaded A/B samples green; per-case median33.688→16.829s,50.04% lower, including final asserted stop. A times33.291583,33.875533,33.688431; B16.829445,17.107907,16.257523. Full timing/load/holder/commit table A-2577, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2577-t-389-corrected-head-watchdog-three-pair-timing-refresh.md. Raw logs/data/scripts A-2578, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2578-t-389-watchdog-refresh-raw-six-samples-loads-and-holders.gz. This supersedes only A-2563's old watchdog median; unchanged cases and C5 did not repeat as requested. C2 claimant note updated, no idle/under5 claim. No source change after verdict; now idle for gate result.
+
+### rev-23 · 2026-10-14T22:15:12.211Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-389-4
+commit: dddf97804f795fe226ef48d91daa26e629ce46da
+scope: evidence
+
+Medium gate finding — hub/test/session-holds.test.ts:160: untouched pending-verifier restart channel timeout matches known T-441 native/observer defect. Local full fa8df54b/A-2582 exits 1, 1687/1688 hub cases pass, zero skips/cancellations; Neovim not reached. Corrected sentinel/lifecycle case passes 16.259 s. A-2577/A-2578 six current-head loaded watchdog samples checked, median 33.688→16.829 s including stop, exact head/load/holder retained; no idle claim. Source A-2576 stands, no T-389 causal defect inferred. T-441 replacement gate 44a4159f remains pending. C2/C5 final marks/readiness await accepted gate; no unconditional unchanged retry, changed head/adoption needs delta review. A-2583: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2583-t-389-corrected-audit-passes-gate-blocked-by-t-441.md.
+
+### impl-389 · 2026-10-14T22:15:55.418Z
+
+Gate fa8df54b/A-2582 failed1/1688 solely on known T-441 session-holds:160 observer-restart race; corrected executor audit passed, no T-389 source regression inferred (Reviewer A-2583). Coordinator decision20be7a7b-eb79-444c-8a61-7929ec807568 (22:15:33Z): wait for T-441 to land; after Coordinator posts its merge commit, cherry-pick only that one shared-fix commit, do not merge all dev; request rev-23 delta review of cherry-pick alone, then rerun local no-mode verification. Remain idle at unchanged clean dddf9780 until announced commit. Subscribed to T-441 task events; claim retained.
