@@ -194,6 +194,26 @@ _Avoid_: description (that is the whole body), abstract, goal (an epic's section
 The list of notifications and events the inbox no longer shows, newest first and capped: where the human looks when something happened, not when something needs them.
 _Avoid_: log (the Agents topic is the sessions' output), notifications panel
 
+**Web workbench**:
+The browser client of the hub: everything the Neovim workbench shows and does, in a page the hub serves on the human's machine or network. One of two clients of one protocol; Neovim is the other.
+_Avoid_: web app, dashboard, portal, the site
+
+**Rail**:
+The web workbench's persistent left column of areas (Inbox, Items, Sessions, Topics, Events, Artifacts, Accounts); it collapses to icons. Board, Graph and Plan are views inside the Items area, not areas.
+_Avoid_: sidebar (that is the Neovim panel), menu, tabs
+
+**Drawer**:
+The web workbench's right-hand pane that shows the card of the selected item or the thread of the selected session, topic or inbox row; closed when nothing is selected or while the main area is split.
+_Avoid_: panel, modal, popup, inspector
+
+**Snapshot**:
+What the hub sends a client at connection: the state of items, sessions, topics, the inbox, the first page of events and the accounts, stamped with an epoch and a sequence number, from which deltas continue.
+_Avoid_: dump, initial load, sync
+
+**Delta**:
+One pushed change from the hub after the snapshot, numbered in sequence within the epoch so that a client that reconnects can resume from the last number it saw.
+_Avoid_: event (that is what the hub announces; a delta is how a client learns of it), patch, diff
+
 **Executor**:
 Where a verification run executes, behind one interface. The queue, the cache and the report are the same on every executor; a remote machine is held through a [Lease](#lease).
 
