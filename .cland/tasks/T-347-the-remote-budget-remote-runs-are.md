@@ -3,7 +3,7 @@ id: T-347
 kind: task
 title: "The remote budget: remote runs are admitted up to remote_budget in parallel beside the local slot of one, the local slot takes a droplet run only when the remote budget is full, and cland verify queue names each run's executor"
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 7
 labels:
@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-233
 branch: t/T-347-the-remote-budget-remote-runs-are
 created: 2026-10-13T20:53:46.081Z
-updated: 2026-10-14T14:15:44.266Z
+updated: 2026-10-14T15:15:19.429Z
 ---
 
 ## Summary
@@ -85,19 +85,31 @@ Prior work: T-215 kept the local budget at one (`verification-budget-capped`). T
 - [x] C1. With `remote_budget = 3`, three sessions submit `cland verify --executor droplet` at once. Three fake droplets run in parallel, and while they run, a fourth session's local run and a human hand run take the local slot in turn.
   - done: impl-347 · 2026-10-14T03:18:53.491Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-347-9 · 2026-10-14T08:55:43.401Z · commit 205897b4aed6ff59590908c2fa53cde755dd5fac
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-347-13 · 2026-10-14T14:42:39.329Z · commit f238d824616860c44cc0166d87c7f59207fe6e27
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-347-14 · 2026-10-14T15:15:14.154Z · commit f238d824616860c44cc0166d87c7f59207fe6e27
 - [x] C2. With `remote_budget = 2` and the local slot free, a third droplet run goes to the local slot. It gets one warn notice with the cause `remote budget full` and a `verification-executor-fallback` record. With the local slot busy too, it waits and is admitted to the first slot that frees.
   - done: impl-347 · 2026-10-14T03:18:54.476Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-347-9 · 2026-10-14T08:55:43.401Z · commit 205897b4aed6ff59590908c2fa53cde755dd5fac
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-347-13 · 2026-10-14T14:42:39.329Z · commit f238d824616860c44cc0166d87c7f59207fe6e27
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-347-14 · 2026-10-14T15:15:14.154Z · commit f238d824616860c44cc0166d87c7f59207fe6e27
 - [x] C3. `cland verify queue` and `--json` show the local holder, both remote runs with droplet name, size and region, and each waiter's requested executor. Every existing queue assertion in `hub/test/suite.test.ts` still passes.
   - done: impl-347 · 2026-10-14T03:49:42.979Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-347-9 · 2026-10-14T08:55:43.401Z · commit 205897b4aed6ff59590908c2fa53cde755dd5fac
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-347-13 · 2026-10-14T14:42:39.329Z · commit f238d824616860c44cc0166d87c7f59207fe6e27
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-347-14 · 2026-10-14T15:15:14.154Z · commit f238d824616860c44cc0166d87c7f59207fe6e27
 - [x] C4. A local waiter held by a hand holder does not block a droplet waiter behind it. A droplet waiter refused for the cap falls back and does not block the queue.
   - done: impl-347 · 2026-10-14T03:18:55.766Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-347-9 · 2026-10-14T08:55:43.401Z · commit 205897b4aed6ff59590908c2fa53cde755dd5fac
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-347-13 · 2026-10-14T14:42:39.329Z · commit f238d824616860c44cc0166d87c7f59207fe6e27
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-347-14 · 2026-10-14T15:15:14.154Z · commit f238d824616860c44cc0166d87c7f59207fe6e27
 - [x] C5. The fake API never sees more than `remote_budget` live droplets from one hub, and every acquire passes the shared spend cap.
   - done: impl-347 · 2026-10-14T03:18:56.287Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-347-9 · 2026-10-14T08:55:43.401Z · commit 205897b4aed6ff59590908c2fa53cde755dd5fac
-- [ ] C6. Real check, posted on this item: two nvim-only branches verify at once on two droplets in a scratch project, with both results, `cland verify queue` captured during the runs, and the costs.
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-347-13 · 2026-10-14T14:42:39.329Z · commit f238d824616860c44cc0166d87c7f59207fe6e27
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-347-14 · 2026-10-14T15:15:14.155Z · commit f238d824616860c44cc0166d87c7f59207fe6e27
+- [x] C6. Real check, posted on this item: two nvim-only branches verify at once on two droplets in a scratch project, with both results, `cland verify queue` captured during the runs, and the costs.
+  - done: impl-347 · 2026-10-14T15:14:28.317Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-347-14 · 2026-10-14T15:15:14.155Z · commit f238d824616860c44cc0166d87c7f59207fe6e27
 - [x] C7. `hub/README.md` and `docs/agents/tests.md` describe `remote_budget`, the slot rule and the queue lines.
   - done: impl-347 · 2026-10-14T03:18:56.994Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-347-2 · 2026-10-14T03:27:35.135Z · commit 130e3fcd2563630041775d18405990ae1150622c
@@ -107,6 +119,8 @@ Prior work: T-215 kept the local budget at one (`verification-budget-capped`). T
   - verified: rev-23 [reviewer] · run rev-2026-10-14-347-9 · 2026-10-14T08:55:43.401Z · commit 205897b4aed6ff59590908c2fa53cde755dd5fac
   - verified: rev-23 [reviewer] · run rev-2026-10-14-347-10 · 2026-10-14T11:19:14.715Z · commit cbbe6974014f5f2ab8a372cdac5be5e1253feff9
   - verified: rev-23 [reviewer] · run rev-2026-10-14-347-12 · 2026-10-14T14:15:01.291Z · commit f238d824616860c44cc0166d87c7f59207fe6e27
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-347-13 · 2026-10-14T14:42:39.329Z · commit f238d824616860c44cc0166d87c7f59207fe6e27
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-347-14 · 2026-10-14T15:15:14.155Z · commit f238d824616860c44cc0166d87c7f59207fe6e27
 
 ## Comments
 
@@ -373,3 +387,90 @@ Criteria: C7 verified.
 ### impl-347 · 2026-10-14T14:15:44.266Z
 
 T-398 delta source-clear f238d824616860c44cc0166d87c7f59207fe6e27, rev-23 run rev-2026-10-14-347-12 / A-2411. D29 no-mode fresh cland verify submitted at exact head: 3e038535-69e8-421c-a8b5-3fa3fecf22e7, PID null while queued, topic-233, recipients rev-23/impl-347. No forced all/hub/nvim mode; hub selects phases. Waiting unchanged. On green, report current head to Coordinator for C6 via A-2345; claimant marks C6 from its evidence then final review.
+
+### impl-347 · 2026-10-14T14:42:11.901Z
+
+Exact-head D29 no-mode verify 3e038535/A-2418 is green at source-cleared f238d824616860c44cc0166d87c7f59207fe6e27: hub-selected full (mixed/shared paths), typecheck and 2020/2020 pass, zero fail/cancel/skip/todo. Coordinator notified to run C6 via A-2345 with this expected head; T-381 release fix and T-398 observer sweep present. Keep head unchanged; claimant marks C6 done from Coordinator evidence then requests final review. No additional test/cloud work by this session.
+
+### rev-23 · 2026-10-14T14:42:39.329Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-347-13
+commit: f238d824616860c44cc0166d87c7f59207fe6e27
+scope: evidence
+
+No high or medium source/suite findings. Exact-head auto full 3e038535/A-2418 passes root typecheck and 2020/2020 (37 free, 1605 hub machine, 378 Neovim), zero failures/cancellations/skips/todo. Reviewed head/worktree clean and unchanged. C1–C5 and C7 refreshed; source/integration assessments remain applicable. Earlier red dde7d63b/A-2357 was fixed by shared T-398, not unchanged retry. C6 remains unverified pending the Coordinator’s two-droplet real check via A-2345, including both results, live queue capture and costs; T-381 prepare-only evidence does not substitute. A-2419: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2419-t-347-green-exact-head-suite-c6-real-check-pending.md.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C7 verified.
+
+### coord · 2026-10-14T14:42:43.668Z
+
+C6 real create: 609045710 (cland-t347-real-a693191f), c-8 lon1, run executor-prepare, created 2026-10-14T14:42:38.086Z, deadline 2026-10-14T14:57:38.086Z; $0.25/hour. Scratch remote_budget=2, lifetime=15m, daily cap=$3. Source reviewed at f238d824616860c44cc0166d87c7f59207fe6e27.
+
+### impl-347 · 2026-10-14T14:43:46.183Z
+
+rev-23 A-2419 / rev-2026-10-14-347-13 accepted exact-head auto full 3e038535 (typecheck, 2020/2020, no skips/failures) and verified C1-C5/C7. Coordinator 60f06dda is running C6 via A-2345 at unchanged f238d824 with empty-provider preflight and symlink targets adjusted to project-root node_modules. Subscribed to topic-233 artifact events for immediate C6 evidence delivery; claimant will inspect receipts/queue/cost/cleanup then mark C6 done and send final evidence to rev-23. No head change.
+
+### coord · 2026-10-14T14:49:58.927Z
+
+C6 builder 609045710 release confirmed 2026-10-14T14:49:56.069Z; lifetime 435377ms, estimated cost $0.030234513888888887. Snapshot 249770447 is owned by this check.
+
+### impl-347 · 2026-10-14T14:51:19.918Z
+
+C6 attempt 2 stopped at the driver selection assertion: both candidates touched nvim/README.md, which current f238d824 rules correctly select as full. Coordinator reports no run droplets created. Builder 609045710 (c-8 lon1) prepared snapshot 249770447, release confirmed 2026-10-14T14:49:56Z; lifetime 435 s; estimated cost $0.0302. Coordinator's cleanup/provider check found 0 cland droplets and 0 snapshots. Corrected driver changes only the candidate append/stage lines to a Lua comment in nvim/lua/cland/ui_lock.lua. Direct production chooseSuiteMode assertions confirm README -> full and ui_lock.lua -> nvim-only; syntax check passes. Source head remains f238d824616860c44cc0166d87c7f59207fe6e27, unchanged.
+
+### coord · 2026-10-14T14:52:05.865Z
+
+C6 real create: 609048344 (cland-t347-real-2310661b), c-8 lon1, run executor-prepare, created 2026-10-14T14:52:03.020Z, deadline 2026-10-14T15:07:03.020Z; $0.25/hour. Scratch remote_budget=2, lifetime=15m, daily cap=$3. Source reviewed at f238d824616860c44cc0166d87c7f59207fe6e27.
+
+### coord · 2026-10-14T14:59:33.512Z
+
+C6 builder 609048344 release confirmed 2026-10-14T14:59:31.823Z; lifetime 446514ms, estimated cost $0.031007916666666666. Snapshot 249770520 is owned by this check.
+
+### coord · 2026-10-14T15:00:16.218Z
+
+C6 real create: 609050235 (cland-t347-real-57de5809), c-8 lon1, run executor-prepare, created 2026-10-14T15:00:13.695Z, deadline 2026-10-14T15:15:13.695Z; $0.25/hour. Scratch remote_budget=2, lifetime=15m, daily cap=$3. Source reviewed at f238d824616860c44cc0166d87c7f59207fe6e27.
+
+### impl-347 · 2026-10-14T15:00:43.014Z
+
+C6 attempt 3 stopped at selection: Coordinator's node_modules symlinks appeared as untracked files, producing deciding files [node_modules, nvim/lua/cland/ui_lock.lua] and full mode. Coordinator reports builder 609048344 (c-8 lon1), 446 s, estimated cost $0.0310; release confirmed 2026-10-14T14:59:31Z and provider empty after cleanup. Attempt 4 is running under Coordinator authority with node_modules added to the scratch .git/info/exclude. Retained corrected driver A-2421 carries exactly that added exclude line relative to A-2420; syntax check passes. Product head stays unchanged at f238d824.
+
+### coord · 2026-10-14T15:07:44.689Z
+
+C6 builder 609050235 release confirmed 2026-10-14T15:07:42.244Z; lifetime 446228ms, estimated cost $0.030988055555555557. Snapshot 249770596 is owned by this check.
+
+### coord · 2026-10-14T15:08:08.079Z
+
+C6 real create: 609053088 (cland-t347-real-01dc9b76), c-8 lon1, run 04c1517c-a144-4b7a-8823-730f3d6d08a2, created 2026-10-14T15:08:05.487Z, deadline 2026-10-14T15:23:05.487Z; $0.25/hour. Scratch remote_budget=2, lifetime=15m, daily cap=$3. Source reviewed at f238d824616860c44cc0166d87c7f59207fe6e27.
+
+### coord · 2026-10-14T15:08:08.105Z
+
+C6 real create: 609053087 (cland-t347-real-3821348b), c-8 lon1, run 859ad4d6-e729-4dd4-9f8a-0f3e01994189, created 2026-10-14T15:08:05.389Z, deadline 2026-10-14T15:23:05.389Z; $0.25/hour. Scratch remote_budget=2, lifetime=15m, daily cap=$3. Source reviewed at f238d824616860c44cc0166d87c7f59207fe6e27.
+
+### coord · 2026-10-14T15:13:44.278Z
+
+Coordinator reading of C6 (2026-10-14 15:14Z). C6 is met by attempt 4 (A-2423):
+- Two nvim-only branches verified at once on two c-8 droplets.
+- cland verify queue showed remote 2/2 during the runs.
+- Both results were posted, each naming executor, platform, lifetime and cost.
+- All three droplets were released; total $0.0676, provider empty afterwards.
+The red results are product test failures on Linux, not T-347's machinery: two explorer-compose tests fail on both droplets (filed as T-411, regression_of T-355), plus the known T-383 flake. Attempts 1–3 cost $0.03 each (builders only).
+
+### impl-347 · 2026-10-14T15:14:30.913Z
+
+Claimant marked C6 done from A-2423 and Coordinator decision e813ae91. Inspected both durable run logs: nvim-only selected from ui_lock.lua; two real c-8 droplets ran concurrently, remote 2/2 queue captured, both results delivered. Both runs exit 1 with T-411's Linux explorer-compose failures, one also T-383; each skips three macOS-only sandbox cases. Evidence records all three releases, owned snapshot deletion, empty provider, total estimated $0.0676. This satisfies C6's run/results/queue/cost criterion under Coordinator disposition; it does not claim green remote tests. Sent final evidence to rev-23. Exact-head local full 3e038535 is green 2020/2020; source head remains clean f238d824. Awaiting final verdict and Coordinator merge; claim retained.
+
+### rev-23 · 2026-10-14T15:15:14.155Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-347-14
+commit: f238d824616860c44cc0166d87c7f59207fe6e27
+scope: evidence
+
+Final clear; no remaining high or medium T-347 findings. C1–C5/C7 retain green exact-head full 3e038535/A-2418 (typecheck, 2020/2020, zero failures/skips). C6 verified under Coordinator e813ae91/15:13:44 item comment: A-2423 shows two nvim-only candidates concurrently on distinct c-8 droplets, remote 2/2/local none, both posted results with platform/lifetime/cost, all three releases and empty-provider/snapshot cleanup receipt; total attempt-4 $0.0676. Real runs 859ad4d6 and 04c1517c both exit 1 for T-411 Linux explorer failures; the latter also T-383. Each has three macOS-only sandbox skips. These are not green suite evidence; C6 demonstrates machinery/results/accounting as written. Source remains clean f238d824. D28 droplet switch remains gated on T-411. Full evidence/limitations A-2424: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2424-t-347-final-c6-evidence-parallel-remote-execution-and-red-product-results.md.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.

@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-242
 branch: t/T-359-live-and-fast-the-explorer-rebuilds-on
 created: 2026-10-13T20:53:52.374Z
-updated: 2026-10-14T14:14:55.774Z
+updated: 2026-10-14T14:30:15.198Z
 ---
 
 ## Summary
@@ -115,6 +115,7 @@ The scope's history entries keep their own cursor keys, so `␣␣` still lands 
   - verified: rev-23 [reviewer] · run rev-2026-10-14-359-6 · 2026-10-14T10:45:54.978Z · commit f769586c03293bd64b5c8c7911af09086425dfbd
   - verified: rev-23 [reviewer] · run rev-2026-10-14-359-7 · 2026-10-14T11:04:05.120Z · commit 0d6a85a754701b6f28a479ff43c151ccf0644e93
   - verified: rev-23 [reviewer] · run rev-2026-10-14-359-9 · 2026-10-14T14:14:55.774Z · commit 9b303edad16e9a931242d7030ea85d6b6f6d4f9d
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-359-10 · 2026-10-14T14:30:15.198Z · commit 8c1c53949cd4e84447639cf7a18f93520c8261b2
 
 ## Comments
 
@@ -256,5 +257,22 @@ commit: 9b303edad16e9a931242d7030ea85d6b6f6d4f9d
 scope: delta
 
 No high or medium delta findings. The sole commit exactly matches merged/reviewed T-398 8af83889/e7adbaf0: eight hub test files, 50 readiness/subscription additions, no production or original assertion/deadline changes. Reviewed patch equality, head, clean worktree and diff check; sequential touched-file logs total 57/57 with zero failures/skips. Earlier product source assessment remains applicable. C7 refreshed; C1–C6 remain pending. Retain the Coordinator’s wait for merged T-382 replacement, then final delta review before no-mode verification. A-2410: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2410-t-359-shared-t-398-delta-source-review.md.
+
+Criteria: C7 verified.
+
+### impl-359 · 2026-10-14T14:29:58.300Z
+
+Merged T-382 replacement applied per Coordinator 5da6a4f5: old pre-merge 0d6a85a7 dropped, unchanged T-398 replayed as 45b2fec3, actual merged T-382 ee3f2393 cherry-picked with provenance as new head 8c1c5394. Prior 9b303eda retained on local safety backup; published task ref updated with an explicit lease. Net source diff from prior review is only task-prefixes role-ack test barrier. Exact-head file 8/8 green; A-2416 records lineage/evidence. Final delta review naming both shared commits requested before mode-free verification.
+
+### rev-23 · 2026-10-14T14:30:15.198Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-359-10
+commit: 8c1c53949cd4e84447639cf7a18f93520c8261b2
+scope: delta
+
+No high or medium delta findings. Both shared landings are integrated with provenance: T-398 8af83889 and T-382 ee3f2393, replacing pre-merge T-382. Net change versus source-clear 9b303eda is only task-prefixes role-clause/unique-msg_id ack readiness; exact landed test blob, assertions unchanged. T-398 patch exact; T-382 added/removed lines exact despite base context. Product/explorer/card/startup unchanged. Clean head/worktree and diff check confirmed; A-2416 exact-head task-prefixes 8/8, applicable A-2409 57/57. C7 refreshed; C1–C6 await complete exact-head no-mode verification. Old cancelled 6a9dce81 is not gate evidence. A-2417: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2417-t-359-final-shared-t-382-t-398-integration-source-review.md.
 
 Criteria: C7 verified.
