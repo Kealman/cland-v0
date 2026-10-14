@@ -11,7 +11,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-14T13:03:50.133Z
-updated: 2026-10-14T14:09:44.875Z
+updated: 2026-10-14T14:12:51.843Z
 ---
 
 ## Question
@@ -31,3 +31,7 @@ Reaction on the web canvas (2026-10-14, thread on the Sessions board): every gro
 ### human · 2026-10-14T14:09:44.875Z
 
 Reaction on the web canvas (2026-10-14, thread on the Sessions board, the Accounts caption): over-informing. Removed the explanatory captions (the accounts caption, the group headers' layer notes); rule in spec v0.2 §3.2: headers carry a name and a count, explanations live behind ? and in tooltips.
+
+### human · 2026-10-14T14:12:51.843Z
+
+Reaction on the web canvas (2026-10-14, thread on the Inbox board's rail): Board, Plan and Graph are views of the items, not areas. Applied on all four desktop boards: the rail is Inbox, Items, Sessions, Topics, Events, Artifacts, Accounts; the Items area header carries a view switcher Tree, Board, Graph, Plan (canvas version 7). Recorded in spec v0.2 §3.2.
