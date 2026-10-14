@@ -2,8 +2,8 @@
 id: T-431
 kind: task
 title: The executor-fallback notice repeats on every scheduler tick for the run's whole life
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -17,7 +17,8 @@ regression_of: T-346
 topic: topic-257
 branch: t/T-431-the-executor-fallback-notice-repeats-on
 created: 2026-10-14T17:24:52.261Z
-updated: 2026-10-14T21:27:53.591Z
+updated: 2026-10-14T21:28:09.795Z
+closed: 2026-10-14T21:28:09.795Z
 ---
 
 ## Summary
@@ -77,3 +78,7 @@ scope: evidence
 Final clear; C1–C3 claimant done marks confirmed, unchanged clean source-reviewed head. Local no-mode full 5c8f0ea4/A-2566 passes root typecheck and 2042/2042 (37 free, 1618 hub machine, 387 Neovim), zero failures/cancellations/skips/todo. Both initially unannounced/already-announced fallback tests pass 20 inspections plus 20 after real SQLite reopen; real-frame one-notice/one-journal assertions retained. Source A-2473 stands: shared durable fallbackLogged guards callback and warn log without admission/text changes or new state/seam. Saved-checkpoint restart covered; no new crash-atomic delivery guarantee claimed. No high/medium Standards/Spec findings. A-2567: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2567-t-431-final-exact-head-fallback-notice-verification.md.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-14T21:28:09.795Z
+
+Merged 53addddec4ecfb44bc4f86cd9fc6eb1e938c58d6 onto dev.
