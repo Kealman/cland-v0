@@ -3,7 +3,7 @@ id: T-362
 kind: task
 title: "Claude Code on an account: every claude command for a session runs under its account's CLAUDE_CONFIG_DIR, and agents --json is polled once per config directory that has live sessions"
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 9
 labels:
@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-228
 branch: t/T-362-claude-code-on-an-account-every-claude
 created: 2026-10-13T23:42:53.650Z
-updated: 2026-10-14T02:28:11.579Z
+updated: 2026-10-14T03:29:04.863Z
 ---
 
 ## Summary
@@ -83,24 +83,33 @@ Upstream: anthropics/claude-code#95822, open on 2026-10-14.
 
 - [x] C1. Sessions launched on claude-a and claude-b: the fake's invocation log shows each session's `--bg`, `agents --json` and `stop` under its own account's `CLAUDE_CONFIG_DIR`, and each job record shows that directory.
   - done: impl-362 · 2026-10-14T01:46:28.722Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-362-4 · 2026-10-14T03:29:03.030Z · commit d8690923d4858beba892430e7bf6d47eb53b782b
 - [x] C2. With sessions live under two directories and a short `CLAND_ADAPTER_POLL_MS`, the log has at most one `agents --json` per directory per interval, launch discovery included. It has none for a registered directory with no session, and none for a directory after its last session stopped.
   - done: impl-362 · 2026-10-14T01:46:29.369Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-362-4 · 2026-10-14T03:29:03.031Z · commit d8690923d4858beba892430e7bf6d47eb53b782b
 - [x] C3. After a hub restart with sessions under two directories, resume makes one `agents --json` per directory and re-finds every session, and a relaunch runs `--bg --resume` under the row's directory.
   - done: impl-362 · 2026-10-14T01:46:30.117Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-362-4 · 2026-10-14T03:29:03.031Z · commit d8690923d4858beba892430e7bf6d47eb53b782b
 - [x] C4. The row's `attach` for a claude-b session is `CLAUDE_CONFIG_DIR=<dir> claude attach <id>`, and running it attaches to that directory's session in the fake. A default session's attach command is unchanged.
   - done: impl-362 · 2026-10-14T01:46:30.968Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-362-4 · 2026-10-14T03:29:03.031Z · commit d8690923d4858beba892430e7bf6d47eb53b782b
 - [x] C5. A session on a named Claude Code account does not receive `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN` or `CLAUDE_CODE_OAUTH_TOKEN` from the hub's environment (the fake records the names it saw), and a default session still does.
   - done: impl-362 · 2026-10-14T01:46:31.745Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-362-4 · 2026-10-14T03:29:03.031Z · commit d8690923d4858beba892430e7bf6d47eb53b782b
 - [x] C6. A hub started with `CLAUDE_CONFIG_DIR` set polls that directory for default sessions and records it on their rows.
   - done: impl-362 · 2026-10-14T01:46:32.373Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-362-4 · 2026-10-14T03:29:03.032Z · commit d8690923d4858beba892430e7bf6d47eb53b782b
 - [x] C7. A logged-out claude-b directory gives one event and one message naming account claude-b and its directory, while claude-a sessions keep working and their poll is unchanged.
   - done: impl-362 · 2026-10-14T01:51:01.020Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-362-4 · 2026-10-14T03:29:03.032Z · commit d8690923d4858beba892430e7bf6d47eb53b782b
 - [x] C8. A failed `--bg` on an account names the account, the directory and the sign-in or trust remedy, and is not retried.
   - done: impl-362 · 2026-10-14T01:46:34.011Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-362-4 · 2026-10-14T03:29:03.032Z · commit d8690923d4858beba892430e7bf6d47eb53b782b
 - [x] C9. `hub/README.md` describes the overlay per command, the per-directory polling and its interval, and the removed variables.
   - done: impl-362 · 2026-10-14T01:46:34.696Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-362-2 · 2026-10-14T01:51:54.279Z · commit b9c38b66a08e4994e812b17f41653b66fcf3b698
   - verified: rev-23 [reviewer] · run rev-2026-10-14-362-3 · 2026-10-14T02:28:11.579Z · commit d8690923d4858beba892430e7bf6d47eb53b782b
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-362-4 · 2026-10-14T03:29:03.032Z · commit d8690923d4858beba892430e7bf6d47eb53b782b
 
 ## Comments
 
@@ -146,3 +155,16 @@ scope: delta
 No high/medium findings. The 16-file test-only delta exactly equals shared T-371 8fe4c02d and its reviewed 8ed38949 patch (source A-2180/full evidence A-2190). No T-362 production/account test/docs delta; original full source review retained. C9 documentation refreshed; C1–C8 await ordinary full cland verify at this exact head. Old queued cancellation A-2181 supplies no execution evidence. A-2194: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2194-t-362-shared-t-371-delta-source-clear-at-d8690923.md. Source clear only.
 
 Criteria: C9 verified.
+
+### rev-23 · 2026-10-14T03:29:03.032Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-362-4
+commit: d8690923d4858beba892430e7bf6d47eb53b782b
+scope: evidence
+
+No high/medium findings remain. Exact-head ordinary full 8f1f3aa7/A-2213 passes both typechecks and all phases: 1927/1927, zero failures/cancellations/skips/todo. Account command/attach/auth isolation, per-directory polling/default directory, restart/saved-directory relaunch, one signed-out notice/journal with independent other account, failure/remedy/no retry and old 30-second/PID-readiness regressions pass. Current source/delta review retained; C9 docs checked. C1–C9 verified. A-2214: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2214-t-362-final-exact-head-full-evidence-clear.md. Final evidence clear; no per-item QA.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified, C9 verified.

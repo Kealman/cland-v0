@@ -5,6 +5,7 @@ title: "The second backend's gate: the MicroVM experiment of docs/research/do-mi
 state: open
 status: planned
 size: S
+criterion_seq: 5
 labels:
   - v0.1.2
   - hub
@@ -15,7 +16,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-13T20:53:46.294Z
-updated: 2026-10-14T03:04:07.280Z
+updated: 2026-10-14T03:16:37.001Z
 ---
 
 ## Summary
@@ -58,8 +59,19 @@ Nothing in the repository. The steps:
 
 ## Acceptance criteria
 
-- [ ] C1. The go, from the human or the stand-in under D24 naming the runner, is recorded on this item before any create.
+- [x] C1. The go, from the human or the stand-in under D24 naming the runner, is recorded on this item before any create.
+  - done: human · 2026-10-14T03:06:14.762Z
 - [ ] C2. The summary artifact in E-271's topic shows pass or fail on each of the four conditions, with their numbers, step 10's idle answer, the wall time and the cost.
 - [ ] C3. After the run, `GET /v2/microvms?tag_name=cland-microvm-exp` and the checkpoint listing are empty, and the item records it.
 - [ ] C4. The published files are clear of the token by a literal scan made while the token was available.
 - [ ] C5. On a pass, the MicroVM backend is filed under Follow-ups with a link to the artifact. On a fail, E-271 records the result and nothing is filed.
+
+## Comments
+
+### human · 2026-10-14T03:06:14.548Z
+
+Go recorded by the stand-in under D24 (2026-10-14 ~02:45Z): the runner is the stand-in cland-impl from the human's shell. Preconditions checked: options call answers with microvm and exec_pty enabled (limits: 50 MicroVMs, 16 GiB, idle max 7200 s); GET /v2/microvms?tag_name=cland-microvm-exp is empty, all MicroVM and checkpoint listings are empty; executor ledger today $0.00, no cland droplets; token present in the shell environment (presence only). Script extracted from research/do-microvms Appendix A (222 lines, parses), run with REF=dev OUT=/tmp/cland-microvm-exp. Speed bound ≈1375 s per D24.
+
+### human · 2026-10-14T03:16:37.001Z
+
+Run 1 (02:46–03:14Z, stand-in): base MicroVM running in 22 s; provisioning 34 s; bundle delivery 38 s; prep (clone, npm ci, Neovim) 36 s; checkpoint 53 s; clone from checkpoint running in 1.4 s; typecheck ok in 13 s; the suite died 2 s in, after its 37 hub-free tests, in the runner's process sweep: `ps -ww -e -o pid=,ppid=,pgid=,lstart=,stat=,command=` exit 1 with no output. Cause: the Appendix A script (2026-10-12) sets PS_PERSONALITY=bsd for the run, and T-280 (merged 2026-10-13) moved the listing to the POSIX form and requires that nothing sets PS_PERSONALITY; under it procps misreads -e. Pause: 412 ms, exec after resume 770 ms, background sleeper alive. Idle: a busy loop with no traffic was paused after 63 s, an exec every 30 s kept it running (CPU work is not activity). Limits: pid_max 32768, threads-max 128085, no pids/cpu/memory cgroup caps, Max processes 64042, 8 vCPU AMD EPYC, 16 GiB. Listings after cleanup: 0 MicroVMs with the tag, 0 checkpoints; token scan of the outputs clean. Checkpoint reports memory_bytes 360777327160 (an API oddity, noted). Decision under D24: one rerun with PS_PERSONALITY removed from the suite step (a script defect, not a MicroVM property); both runs go into the artifact.

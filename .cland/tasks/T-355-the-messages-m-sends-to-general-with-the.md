@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-232
 branch: t/T-355-the-messages-m-sends-to-general-with-the
 created: 2026-10-13T20:53:51.934Z
-updated: 2026-10-14T02:30:51.454Z
+updated: 2026-10-14T03:16:43.247Z
 ---
 
 ## Summary
@@ -110,10 +110,11 @@ card line: <the card line under the cursor, trimmed>   (only from the card)
 - [x] C6. `Esc` keeps the draft, and the next `m` on the same item or selection shows it. A refused send keeps the draft. A 300-row selection is cut under 8192 bytes with `… and K more`.
   - done: impl-355 · 2026-10-14T02:25:25.829Z
 - [x] C7. Both clause sources deliver the explorer line to the Coordinator within the byte guard (`hub/test/roles.test.ts`).
-  - done: impl-355 · 2026-10-14T02:25:26.295Z
+  - done: impl-355 · 2026-10-14T03:15:52.323Z
 - [x] C8. `nvim/README.md`, the help lines and the Coordinator's clause describe the messages.
   - done: impl-355 · 2026-10-14T02:25:26.812Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-355-1 · 2026-10-14T02:30:51.454Z · commit be077daeefd422d67b93fef9244c3e4055fdca06
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-355-3 · 2026-10-14T03:16:43.246Z · commit 9dd2c1e9b2b3604f2d938c2bd19260d948fb45e6
 
 ## Comments
 
@@ -131,5 +132,37 @@ commit: be077daeefd422d67b93fef9244c3e4055fdca06
 scope: full
 
 No high/medium findings. Complete source review covers row/card/visual routing and context, draft/failure handling, Unicode byte/title caps, stub bound topics, registry/help/docs and both compensated Coordinator clauses. Shared T-371 delta exactly matches reviewed/full-green patch. C8 source docs/help/clause verified; C1–C7 await ordinary full cland verify at this exact head, including both clause deliveries. Task requires an empty holder before submission; no per-item QA. A-2197: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2197-t-355-full-source-clear-at-be077dae.md. Source clear only; Coordinator relaunch after merge adopts its clause.
+
+Criteria: C8 verified.
+
+### rev-23 · 2026-10-14T03:13:42.420Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-355-2
+commit: be077daeefd422d67b93fef9244c3e4055fdca06
+scope: evidence
+
+Medium — hub/src/roles/default-roles.ts:54 / .cland/roles.toml:45: changed opening fails handover.test.ts:103's delivered Coordinator clause assertion.
+Medium — hub/src/roles/default-roles.ts:68 / .cland/roles.toml:60: compacted review/QA loop fails review-qa.test.ts:104's existing item-lead guard.
+Exact-head full d55e55b1/A-2203 passes typecheck but exits 1 (1587/1589 hub tests; 2 failures; zero cancellations/skips). Neovim was not reached. C7 failed; preserve the assertions' meaning/strength, the explorer line and byte/headroom checks, obtain new source review and full evidence. UI source review otherwise retained. A-2204: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2204-t-355-full-verification-not-clear-coordinator-clause-guards.md (the review-loop source line is 68).
+
+Criteria: C7 failed (Coordinator clause compaction breaks existing delivered handover and item-lead review/QA guards; full exact-head suite exits 1 before Neovim.).
+
+### impl-355 · 2026-10-14T03:16:07.200Z
+
+Full run d55e55b1 at be077dae failed two existing Coordinator wording guards; Neovim did not run (A-2203). Restored their original phrases with compensating cuts in both clause sources, committed/pushed 9dd2c1e9. Both reproduction tests and both delivered-clause guards now pass; typecheck and diff check pass. A-2205 records the repair; source re-review requested before the next exact-head full run.
+
+### rev-23 · 2026-10-14T03:16:43.247Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-355-3
+commit: 9dd2c1e9b2b3604f2d938c2bd19260d948fb45e6
+scope: full
+
+No high/medium findings remain. Both Coordinator guarded phrases restored verbatim; compensating status/handover cuts retain semantics and four sections/skill/revocation rule. New explorer line and all tests/byte guards unchanged; original complete UI source review retained. Project clause 6978 bytes versus 6987 pre-task; diff check clean. C8 refreshed; C1–C7 await new exact-head ordinary full evidence. Failed A-2203 preserved. A-2206: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2206-t-355-corrected-clause-source-clear-at-9dd2c1e9.md. Source clear, not final readiness.
 
 Criteria: C8 verified.

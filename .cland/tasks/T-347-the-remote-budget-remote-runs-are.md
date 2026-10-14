@@ -3,8 +3,9 @@ id: T-347
 kind: task
 title: "The remote budget: remote runs are admitted up to remote_budget in parallel beside the local slot of one, the local slot takes a droplet run only when the remote budget is full, and cland verify queue names each run's executor"
 state: open
-status: planned
+status: review
 size: M
+criterion_seq: 7
 labels:
   - v0.1.2
   - hub
@@ -13,10 +14,10 @@ assignee: null
 parent: E-271
 blocked_by:
   - T-346
-topic: null
-branch: null
+topic: topic-233
+branch: t/T-347-the-remote-budget-remote-runs-are
 created: 2026-10-13T20:53:46.081Z
-updated: 2026-10-14T03:04:05.974Z
+updated: 2026-10-14T03:28:10.416Z
 ---
 
 ## Summary
@@ -81,10 +82,61 @@ Prior work: T-215 kept the local budget at one (`verification-budget-capped`). T
 
 ## Acceptance criteria
 
-- [ ] C1. With `remote_budget = 3`, three sessions submit `cland verify --executor droplet` at once. Three fake droplets run in parallel, and while they run, a fourth session's local run and a human hand run take the local slot in turn.
-- [ ] C2. With `remote_budget = 2` and the local slot free, a third droplet run goes to the local slot. It gets one warn notice with the cause `remote budget full` and a `verification-executor-fallback` record. With the local slot busy too, it waits and is admitted to the first slot that frees.
-- [ ] C3. `cland verify queue` and `--json` show the local holder, both remote runs with droplet name, size and region, and each waiter's requested executor. Every existing queue assertion in `hub/test/suite.test.ts` still passes.
-- [ ] C4. A local waiter held by a hand holder does not block a droplet waiter behind it. A droplet waiter refused for the cap falls back and does not block the queue.
-- [ ] C5. The fake API never sees more than `remote_budget` live droplets from one hub, and every acquire passes the shared spend cap.
+- [x] C1. With `remote_budget = 3`, three sessions submit `cland verify --executor droplet` at once. Three fake droplets run in parallel, and while they run, a fourth session's local run and a human hand run take the local slot in turn.
+  - done: impl-347 · 2026-10-14T03:18:53.491Z
+- [x] C2. With `remote_budget = 2` and the local slot free, a third droplet run goes to the local slot. It gets one warn notice with the cause `remote budget full` and a `verification-executor-fallback` record. With the local slot busy too, it waits and is admitted to the first slot that frees.
+  - done: impl-347 · 2026-10-14T03:18:54.476Z
+- [x] C3. `cland verify queue` and `--json` show the local holder, both remote runs with droplet name, size and region, and each waiter's requested executor. Every existing queue assertion in `hub/test/suite.test.ts` still passes.
+  - done: impl-347 · 2026-10-14T03:26:50.984Z
+- [x] C4. A local waiter held by a hand holder does not block a droplet waiter behind it. A droplet waiter refused for the cap falls back and does not block the queue.
+  - done: impl-347 · 2026-10-14T03:18:55.766Z
+- [x] C5. The fake API never sees more than `remote_budget` live droplets from one hub, and every acquire passes the shared spend cap.
+  - done: impl-347 · 2026-10-14T03:18:56.287Z
 - [ ] C6. Real check, posted on this item: two nvim-only branches verify at once on two droplets in a scratch project, with both results, `cland verify queue` captured during the runs, and the costs.
-- [ ] C7. `hub/README.md` and `docs/agents/tests.md` describe `remote_budget`, the slot rule and the queue lines.
+- [x] C7. `hub/README.md` and `docs/agents/tests.md` describe `remote_budget`, the slot rule and the queue lines.
+  - done: impl-347 · 2026-10-14T03:18:56.994Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-347-2 · 2026-10-14T03:27:35.135Z · commit 130e3fcd2563630041775d18405990ae1150622c
+
+## Comments
+
+### impl-347 · 2026-10-14T03:06:56.144Z
+
+Implementation uses the ticket's pre-agreed frame/CLI and fake-provider seams. First failing slice: remote_budget config validation plus three file-barrier remote candidates in separate worktrees alongside a local candidate and human reservation. Scheduler currently counts all executors together and only considers the first waiter.
+
+### impl-347 · 2026-10-14T03:19:18.393Z
+
+Pushed 0b00cdaa2b97ede5a19407bec8153e4a254ccfee and requested source review from rev-23. A-2207 records implementation/validation (8/8 remote budget tests, 26/26 existing queue subset, typecheck/shards green); A-2208 records C6 scratch procedure. C1-C5/C7 done; C6 pending source-clear, two real nvim-only droplet runs and costs. No full verification before source review.
+
+### rev-23 · 2026-10-14T03:23:24.878Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-347-1
+commit: 0b00cdaa2b97ede5a19407bec8153e4a254ccfee
+scope: full
+
+Medium — hub/test/suite-remote-budget.test.ts:222: remoteMs > localMs is not guaranteed by including acquire time; a slower later local run can fail correct behavior. Assert the remote admitted→finished interval spans acquisition/start/execution directly, retaining all executor median and waiter/remote ETA checks. Complete fourteen-file source review found no additional high/medium production issue. C3 failed; corrected exact-head source review required before full suite and real C6. A-2210: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2210-t-347-full-source-review-eta-regression-timing-blocker.md. Reviewer ran no tests/cloud operations and made no edits.
+
+Criteria: C3 failed (New ETA test assumes remoteMs > localMs for independently scheduled executions; directly prove the remote interval covers acquisition/start rather than an unsupported relative duration.).
+
+### impl-347 · 2026-10-14T03:27:05.213Z
+
+Corrected A-2210's C3 finding at pushed 130e3fcd2563630041775d18405990ae1150622c. Direct admitted/provider-create/machine-barrier/finished lifecycle assertions replace unsupported remote/local relative timing; whole-second remote receipt precision handled. Retained executor median and all waiter/remote ETA checks. Targeted ETA 1/1, typecheck/diff check pass. A-2211 records correction; source re-review assigned to rev-23. Production unchanged. C6 approved under D24/D27, held for Coordinator's MicroVM-ended relay and clean provider tags; no cloud resources created.
+
+### rev-23 · 2026-10-14T03:27:35.135Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-347-2
+commit: 130e3fcd2563630041775d18405990ae1150622c
+scope: full
+
+No high/medium findings remain. ETA test proves remote timing from its own provider-create/file-barrier/public admitted/finished boundaries, handling whole-second receipt precision, and retains all executor median/local waiter/remote ETA assertions. Production unchanged; original complete source review retained. C7 docs verified; C1–C5 await exact-head ordinary full evidence; C6 awaits real scratch two-droplet receipts, gated by Coordinator's MicroVM-ended relay and clean tag listing. A-2212: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2212-t-347-corrected-source-clear-at-130e3fcd.md. Source clear only.
+
+Criteria: C7 verified.
+
+### impl-347 · 2026-10-14T03:28:10.416Z
+
+Source-clear at exact pushed head 130e3fcd2563630041775d18405990ae1150622c, rev-23 run rev-2026-10-14-347-2 / A-2212. Full verification submitted through cland verify all, run 0e2c5554-600f-412a-ae4b-58d93fa34b03, worker PID null while queued; recipients rev-23 and impl-347 in topic-233. Waiting for hub result; no bypass or source changes. C6 remains held for Coordinator's MicroVM-ended relay and clean-tag preflight.

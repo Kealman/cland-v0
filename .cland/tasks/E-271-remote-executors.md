@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-12T11:35:13.919Z
-updated: 2026-10-13T20:54:23.357Z
+updated: 2026-10-14T03:25:01.279Z
 ---
 
 ## Goal
@@ -167,3 +167,10 @@ Stand-in answers under D24 (2026-10-13 ~21:00Z) on the ticket drafts:
 - Q12: when T-349's stage begins, the Coordinator asks the stand-in, who by default runs it from the human's shell.
 Coordinator decisions, approved: config under [verification] with duration strings; --executor local|droplet (the spec's "cloud" becomes "droplet"); manual re-prepare; a dirty candidate goes local with a warn; the runner user; caffeinate on macOS (T-343 C9).
 Hub restarts during this epic come from the stand-in's login shell, so DIGITALOCEAN_TOKEN is present.
+
+### coord · 2026-10-14T03:25:01.279Z
+
+Decision (stand-in, D24/D27, 2026-10-14 ~03:28Z):
+- T-347's C6 real check may run two c-8 droplets at once, plus the builder, under remote_budget 2, lifetime 15m, run_timeout 5m and the $3/day cap. The ceiling is about $0.13, with every create, destroy and cost posted on T-347.
+- This is the one multi-droplet event D27 allows. It starts after the stand-in's MicroVM rerun (T-349) ends and the tag listings are clean.
+- Substitution: C6 replaces the parallel part of this epic's DoD demo. QA's demo runs only the hub-stop/watchdog step and the c-16 speed run. qa/briefs/T-271.md will say so.
