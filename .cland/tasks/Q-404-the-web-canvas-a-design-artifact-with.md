@@ -11,9 +11,15 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-14T13:03:50.133Z
-updated: 2026-10-14T13:04:01.027Z
+updated: 2026-10-14T14:00:12.481Z
 ---
 
 ## Question
 
 What does the web workbench look like? A new Design artifact on the human's current account (the web canvas) with artboards for the shell (the rail, a main area, the drawer), the explorer with the card, a thread with an ask card and the composer, the inbox with the events line, and the sessions area; at desktop width, in the visual language of docs/design/main-screen/README.md freed from the console grid; proposals marked as stickers. Sources in docs/design/web/ and the session scratchpad so they move between accounts. The human reacts; accepted boards are mirrored into the repository.
+
+## Comments
+
+### human · 2026-10-14T14:00:12.481Z
+
+Reaction on the web canvas (2026-10-14, thread on the Thread board): standing topics (General, Agents) are listed apart from the topics opened under items, so the two are told apart at a glance. Applied to Thread.dc.html (canvas version 4) and recorded in spec v0.2 §3.2.
