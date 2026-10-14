@@ -3,7 +3,7 @@ id: T-359
 kind: task
 title: "Live and fast: the explorer rebuilds on every hub event, redraws only on a visible change with the cursor kept on its item, builds a 300-item tree in under 15 ms, and is the centre view at startup"
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 7
 labels:
@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-242
 branch: t/T-359-live-and-fast-the-explorer-rebuilds-on
 created: 2026-10-13T20:53:52.374Z
-updated: 2026-10-14T14:30:15.198Z
+updated: 2026-10-14T15:22:00.302Z
 ---
 
 ## Summary
@@ -98,16 +98,22 @@ The scope's history entries keep their own cursor keys, so `␣␣` still lands 
 
 - [x] C1. A `task` event that moves the task under the cursor from `planned` to `in progress` (to another stage group) moves its row, and the cursor and the card stay on it.
   - done: impl-359 · 2026-10-14T09:27:46.642Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-359-11 · 2026-10-14T15:21:56.953Z · commit 8c1c53949cd4e84447639cf7a18f93520c8261b2
 - [x] C2. Removing the item under the cursor puts the cursor on the next item of the old order. Removing the last one puts it on the previous one. Reparenting the cursor's item into a folded epic puts it on that epic.
   - done: impl-359 · 2026-10-14T09:27:47.549Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-359-11 · 2026-10-14T15:21:56.953Z · commit 8c1c53949cd4e84447639cf7a18f93520c8261b2
 - [x] C3. A burst of 20 `task` events for items under a folded epic, whose visible counts do not change, causes no buffer write of the tree or the card. A `task` event that changes a visible count causes exactly one.
   - done: impl-359 · 2026-10-14T09:27:48.223Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-359-11 · 2026-10-14T15:21:56.953Z · commit 8c1c53949cd4e84447639cf7a18f93520c8261b2
 - [x] C4. `bench()` over the 300-item fixture with every node unfolded returns medians. The test asserts the bound and prints them, and the Implementer's dev-machine run, attached as an artifact, reads under 15 ms.
   - done: impl-359 · 2026-10-14T09:27:49.218Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-359-11 · 2026-10-14T15:21:56.953Z · commit 8c1c53949cd4e84447639cf7a18f93520c8261b2
 - [x] C5. A workbench started with no restart snapshot and no preset opens on the explorer at the kept scope. A preset or a restart snapshot opens as before.
   - done: impl-359 · 2026-10-14T09:27:51.177Z
-- [ ] C6. `startClient`'s default and the QA runner's default keep General as the start for existing tests and cases. `npm run test:nvim` is green.
-  - failed: rev-23 [reviewer] · 2026-10-14T12:23:05.227Z · note Exact-head run 6a9dce81 was cancelled after a hub-machine hang and held-ps test failure; Neovim did not run, so the required green verification is absent.
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-359-11 · 2026-10-14T15:21:56.953Z · commit 8c1c53949cd4e84447639cf7a18f93520c8261b2
+- [x] C6. `startClient`'s default and the QA runner's default keep General as the start for existing tests and cases. `npm run test:nvim` is green.
+  - done: impl-359 · 2026-10-14T15:20:15.865Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-359-11 · 2026-10-14T15:21:56.953Z · commit 8c1c53949cd4e84447639cf7a18f93520c8261b2
 - [x] C7. `nvim/README.md` describes startup, live updates, the cursor's fallback order and the bench. The help line and the GLOSSARY's Explorer entry agree with the build.
   - done: impl-359 · 2026-10-14T09:27:51.785Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-359-1 · 2026-10-14T09:33:13.764Z · commit 66350c2b0f7046e653d9d86e762608494259812f
@@ -116,6 +122,7 @@ The scope's history entries keep their own cursor keys, so `␣␣` still lands 
   - verified: rev-23 [reviewer] · run rev-2026-10-14-359-7 · 2026-10-14T11:04:05.120Z · commit 0d6a85a754701b6f28a479ff43c151ccf0644e93
   - verified: rev-23 [reviewer] · run rev-2026-10-14-359-9 · 2026-10-14T14:14:55.774Z · commit 9b303edad16e9a931242d7030ea85d6b6f6d4f9d
   - verified: rev-23 [reviewer] · run rev-2026-10-14-359-10 · 2026-10-14T14:30:15.198Z · commit 8c1c53949cd4e84447639cf7a18f93520c8261b2
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-359-11 · 2026-10-14T15:21:56.954Z · commit 8c1c53949cd4e84447639cf7a18f93520c8261b2
 
 ## Comments
 
@@ -276,3 +283,20 @@ scope: delta
 No high or medium delta findings. Both shared landings are integrated with provenance: T-398 8af83889 and T-382 ee3f2393, replacing pre-merge T-382. Net change versus source-clear 9b303eda is only task-prefixes role-clause/unique-msg_id ack readiness; exact landed test blob, assertions unchanged. T-398 patch exact; T-382 added/removed lines exact despite base context. Product/explorer/card/startup unchanged. Clean head/worktree and diff check confirmed; A-2416 exact-head task-prefixes 8/8, applicable A-2409 57/57. C7 refreshed; C1–C6 await complete exact-head no-mode verification. Old cancelled 6a9dce81 is not gate evidence. A-2417: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2417-t-359-final-shared-t-382-t-398-integration-source-review.md.
 
 Criteria: C7 verified.
+
+### impl-359 · 2026-10-14T15:20:50.410Z
+
+Mode-free verify c6802007 at exact reviewed head 8c1c5394 selected full and passed typecheck plus 2001/2001 tests (zero failures/cancellations/skips/todo), including the complete Neovim phase. Log A-2426. Current run's fully unfolded 300-item build median is 10.843292 ms (<15 ms), write 1.583833 ms. Same-timestamp watched-save card, duplicate-event no-fetch, cold startup and General/preset/restart tests all pass. C6 marked done; final evidence verdict requested from rev-23. Source/worktree unchanged.
+
+### rev-23 · 2026-10-14T15:21:56.954Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-359-11
+commit: 8c1c53949cd4e84447639cf7a18f93520c8261b2
+scope: evidence
+
+Final clear; no high or medium findings. A-2426 exact-head auto full c6802007 passes typecheck and 2001/2001 (37 free, 1581 hub machine, 383 Neovim), zero failures/cancellations/skips/todo. Head/worktree clean and unchanged; prior source and merged T-382/T-398 integration assessments remain applicable. Cursor/card identity, removal/reparent fallback, burst write bounds, same-timestamp content/duplicate fetch behavior and startup/General defaults pass. Fully unfolded 300-item benchmark: model 10.843292ms + draw 1.583833ms, below 15ms. C1–C7 verified including re-done C6. Earlier incomplete 6a9dce81/A-2347 is not gate evidence; T-397 records its unresolved cause and T-385 is separate bounded hang handling. A-2429: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2429-t-359-final-exact-head-live-explorer-verification.md.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.
