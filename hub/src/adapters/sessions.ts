@@ -398,11 +398,12 @@ export class Sessions {
       recordPid: (sessionId, pid) => {
         const p = this.#table.bySessionId(sessionId);
         if (p) {
-          this.#table.update(p.name, { pid, pidStarted: null });
           void processStarted(pid).then(started => {
-            if (this.#closed) return;
+            if (this.#closed || started === null) return;
             const current = this.#table.bySessionId(sessionId);
-            if (current?.pid === pid && current.status === 'running') this.#table.update(current.name, { pidStarted: started });
+            // Keep the native stop path until PID and identity can be published together.
+            // A stop or relaunch during the probe must not acquire this earlier launch's PID.
+            if (current?.pid === p.pid && current.startedAt === p.startedAt && current.status === 'running') this.#table.update(current.name, { pid, pidStarted: started });
           });
         }
       },

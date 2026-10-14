@@ -22,6 +22,8 @@
 //       "worktree <name>: <path>" or "worktree <name>: default git worktree".
 //   claude -p /usage --output-format stream-json --verbose   assistant usage_report from CONFIG_DIR/usage-report.json
 //   claude agents --json   the live sessions (pid, id, sessionId, cwd, kind, status, waitingFor)
+//       CONFIG_DIR/agents-hold gates entry until agents-release, with agents-started/finished PID receipts.
+//       CONFIG_DIR/agents-omit hides entries to model a supervisor that has not published its PID yet.
 //   claude attach <id>     prints `fake claude attached to <id>` (each attached client prints it)
 //   claude stop <id>       SIGTERM to the session (SessionEnd, then exit)
 //   claude --version       `2.1.294 (Claude Code)` (FAKE_CLAUDE_VERSION overrides the number), for `cland doctor`
@@ -97,10 +99,15 @@ async function main(args: string[]): Promise<number> {
   const [first] = args;
   if (first === '__session') return runSession(args[1] as string);
   const configDir = CONFIG_DIR;
+  if (first === 'agents' && existsSync(join(CONFIG_DIR, 'agents-hold'))) {
+    writeFileSync(join(CONFIG_DIR, 'agents-started'), String(process.pid));
+    while (!existsSync(join(CONFIG_DIR, 'agents-release'))) await new Promise(r => setTimeout(r, 10));
+  }
   appendFileSync(join(HOME, 'calls.jsonl'), `${JSON.stringify({ at: Date.now(), args, configDir })}\n`);
   appendFileSync(join(HOME, 'invocations.jsonl'), `${JSON.stringify({ at: Date.now(), args, subcommand: first, configDir, CLAUDE_CONFIG_DIR: process.env.CLAUDE_CONFIG_DIR ?? null })}\n`);
   if ((first === 'agents' || args.includes('--bg')) && (existsSync(join(HOME, 'logged-out')) || existsSync(join(CONFIG_DIR, 'logged-out')))) {
     process.stderr.write('OAuth token has expired. Please run claude auth login.\n');
+    if (first === 'agents' && existsSync(join(CONFIG_DIR, 'agents-hold'))) writeFileSync(join(CONFIG_DIR, 'agents-finished'), String(process.pid));
     return 1;
   }
   if (first === '-p' && args[1] === '/usage') {
@@ -133,7 +140,7 @@ async function main(args: string[]): Promise<number> {
     const entries = readdirSync(SESSIONS)
       .filter((f) => f.endsWith('.json'))
       .map((f) => readJson<SessionFile>(join(SESSIONS, f)))
-      .filter((s): s is SessionFile => s !== null && s.configDir === CONFIG_DIR && alive(s.pid));
+      .filter((s): s is SessionFile => s !== null && s.configDir === CONFIG_DIR && alive(s.pid) && !existsSync(join(CONFIG_DIR, 'agents-omit')));
     process.stdout.write(`${JSON.stringify(entries, null, 2)}\n`);
     return 0;
   }

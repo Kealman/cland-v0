@@ -2,12 +2,12 @@
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { HarnessProcessView } from '../src/protocol.ts';
-import { clandWithEnv, connectUi, eventually, FAKE_CLAUDE_DIR, fakeClaude, killDaemon, sleep, startDaemon, tempProject } from './harness.ts';
+import { clandWithEnv, connectUi, eventually, FAKE_CLAUDE_DIR, fakeClaude, killDaemon, NO_PS, sleep, startDaemon, tempProject } from './harness.ts';
 
-async function fixture(t: TestContext) {
+async function fixture(t: TestContext, extraEnv: Record<string, string> = {}) {
   const root = await tempProject(t);
   const fake = await fakeClaude(t, { pollMs: 200 });
   const config = join(root, 'registry');
@@ -15,7 +15,7 @@ async function fixture(t: TestContext) {
   for (const dir of [...Object.values(dirs), join(config, 'cland')]) await mkdir(dir, { recursive: true });
   const registry = join(config, 'cland', 'accounts.toml');
   await writeFile(registry, Object.entries(dirs).filter(([name]) => name !== 'default').map(([name, dir]) => `[accounts.claude-${name}]\nharness = "claude-code"\nconfig_dir = ${JSON.stringify(dir)}\n`).join(''));
-  const env = { ...fake.env, CLAND_CLAUDE_BIN: join(FAKE_CLAUDE_DIR, 'claude'), XDG_CONFIG_HOME: config, CLAUDE_CONFIG_DIR: dirs.default, ANTHROPIC_API_KEY: 'fake-key', ANTHROPIC_AUTH_TOKEN: 'fake-auth', CLAUDE_CODE_OAUTH_TOKEN: 'fake-oauth' };
+  const env = { ...fake.env, CLAND_CLAUDE_BIN: join(FAKE_CLAUDE_DIR, 'claude'), XDG_CONFIG_HOME: config, CLAUDE_CONFIG_DIR: dirs.default, ANTHROPIC_API_KEY: 'fake-key', ANTHROPIC_AUTH_TOKEN: 'fake-auth', CLAUDE_CODE_OAUTH_TOKEN: 'fake-oauth', ...extraEnv };
   const { discovery } = await startDaemon(t, root, env);
   const ui = await connectUi(t, discovery);
   const jobs = async () => Promise.all((await readdir(join(fake.home, 'jobs'))).filter(file => /^[^.]+\.json$/.test(file)).map(async file => JSON.parse(await readFile(join(fake.home, 'jobs', file), 'utf8')) as { id: string; sessionId: string; name: string; configDir: string; authVariables: string[]; resume: boolean }));
@@ -104,7 +104,10 @@ test('discovery, watch and restart share each live directory schedule; saved dir
   const aBefore = (await f.calls()).filter(c => c.args[0] === 'agents' && c.configDir === f.dirs.a).length;
   await eventually('a still polls after the last b session stops', async () => (await f.calls()).filter(c => c.args[0] === 'agents' && c.configDir === f.dirs.a).length > aBefore ? true : undefined);
   assert.equal((await f.calls()).filter(c => c.args[0] === 'agents' && c.configDir === f.dirs.b).length, bStopped);
-  for (const p of [a, anotherA, unpinned]) assert.equal((await ui.request({ type: 'session.stop', session: p.name }, 30000)).ok, true);
+  for (const p of [a, anotherA, unpinned]) {
+    const r = await ui.request({ type: 'session.stop', session: p.name }, 30000);
+    assert.equal(r.ok, true, r.error);
+  }
   const stoppedAt = (await f.calls()).length;
   await sleep(2300);
   assert.equal((await f.calls()).length, stoppedAt, 'no directory is polled after its last session stops');
@@ -118,17 +121,27 @@ test('a signed-out account has one directory notice and event while another acco
     const logs = await Promise.all([a, b].map(p => f.fake.log(p.harnessId!)));
     return logs.every(log => log.includes('hooks SessionStart done') && log.includes('mod bridge bridged')) ? true : undefined;
   });
+  await writeFile(join(f.dirs.b, 'agents-hold'), '');
+  const inFlight = await eventually('a b poll is in flight before authentication fails', async () => {
+    return await readFile(join(f.dirs.b, 'agents-started'), 'utf8').catch(() => undefined);
+  });
   await writeFile(join(f.dirs.b, 'logged-out'), '');
   const signal = { type: 'session.signal', session: b.name, launch: b.sessionId, event: 'turn-end', payload: { hook_event_name: 'StopFailure', error: 'authentication_failed' } };
   for (let i = 0; i < 2; i++) assert.equal((await f.ui.request(signal)).ok, true);
-  await sleep(250);
+  // A CLI child admitted before the latch may only reach its call log afterwards.
+  // Drain that known child rather than guessing at its startup time with a sleep.
+  await writeFile(join(f.dirs.b, 'agents-release'), '');
+  await eventually('the pre-latch child finishes', async () => {
+    return await readFile(join(f.dirs.b, 'agents-finished'), 'utf8').catch(() => undefined);
+  });
   const before = (await f.calls()).filter(c => c.args[0] === 'agents');
   await eventually('claude-a keeps polling while claude-b is signed out', async () => {
     const polls = (await f.calls()).filter(c => c.args[0] === 'agents' && c.configDir === f.dirs.a);
-    return polls.length > before.filter(c => c.configDir === f.dirs.a).length ? true : undefined;
+    return polls.length >= before.filter(c => c.configDir === f.dirs.a).length + 2 ? true : undefined;
   });
   const after = (await f.calls()).filter(c => c.args[0] === 'agents');
   assert.equal(after.filter(c => c.configDir === f.dirs.b).length, before.filter(c => c.configDir === f.dirs.b).length);
+  assert.equal(await readFile(join(f.dirs.b, 'agents-started'), 'utf8'), inFlight, 'no new child starts in the latched directory');
   assert.ok(after.filter(c => c.configDir === f.dirs.a).length > before.filter(c => c.configDir === f.dirs.a).length);
   const rows = ((await f.ui.request({ type: 'session.list' })).value as { processes: HarnessProcessView[] }).processes;
   assert.equal(rows.find(p => p.name === b.name)?.stateReason, 'signed-out');
@@ -156,4 +169,37 @@ test('a failed account launch names its directory and sign-in or trust remedies 
   await sleep(700);
   assert.deepEqual((await f.calls()).filter(c => c.args[0] !== '-p').map(c => c.args[0]), ['--bg']);
   assert.deepEqual(await f.jobs(), []);
+});
+
+test('a late Claude PID can be stopped while its identity probe is pending', { skip: NO_PS }, async t => {
+  const bin = await tempProject(t, 'cland-claude-pid-probe-');
+  const target = join(bin, 'target');
+  const entered = join(bin, 'entered');
+  const release = join(bin, 'release');
+  await writeFile(join(bin, 'ps'), `#!${process.execPath}
+import { spawnSync } from 'node:child_process';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+const args = process.argv.slice(2);
+if (args[0] === '-o' && args[1] === 'lstart=' && existsSync(${JSON.stringify(target)}) && args[3] === readFileSync(${JSON.stringify(target)}, 'utf8')) {
+  writeFileSync(${JSON.stringify(entered)}, '');
+  while (!existsSync(${JSON.stringify(release)})) await new Promise(r => setTimeout(r, 10));
+}
+const r = spawnSync('/bin/ps', args, { encoding: 'utf8' });
+process.stdout.write(r.stdout); process.stderr.write(r.stderr); process.exitCode = r.status ?? 1;
+`, { mode: 0o755 });
+  const f = await fixture(t, { PATH: `${bin}:${process.env.PATH}` });
+  await writeFile(join(f.dirs.a, 'agents-omit'), '');
+  const p = await f.launch('late', 'claude-a');
+  assert.equal(p.pid, null, 'the supervisor has not published the PID at launch');
+  const session = JSON.parse(await readFile(join(f.fake.home, 'sessions', `${p.harnessId}.json`), 'utf8')) as { pid: number };
+  await writeFile(target, String(session.pid));
+  try {
+    await rm(join(f.dirs.a, 'agents-omit'));
+    await eventually('the discovered PID identity probe starts', async () => readFile(entered, 'utf8').then(() => true).catch(() => undefined));
+    const r = await f.ui.request({ type: 'session.stop', session: p.name }, 30000);
+    assert.equal(r.ok, true, r.error);
+    assert.equal((r.value as { process: HarnessProcessView }).process.status, 'stopped');
+  } finally {
+    await writeFile(release, '');
+  }
 });

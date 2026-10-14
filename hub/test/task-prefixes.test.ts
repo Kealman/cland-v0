@@ -4,7 +4,7 @@ import { mkdir, writeFile, readFile, readdir, rm, rename } from 'node:fs/promise
 import { join } from 'node:path';
 import { Tracker } from '../src/tracker/tracker.ts';
 import { DEFAULT_ROLES_TOML } from '../src/roles/default-roles.ts';
-import { cland, connectUi, connectWsUi, eventually, spawnSpoke, startDaemon, startHub, tempProject } from './harness.ts';
+import { cland, connectUi, connectWsUi, eventually, spawnSpoke, startDaemon, startHub, tempProject, type Session } from './harness.ts';
 
 const legacy = (id: string, kind: string, extra = '') => `---\nid: ${id}\nkind: ${kind}\ntitle: Legacy ${kind}\nstate: open\n${extra}---\n`;
 
@@ -150,10 +150,23 @@ test('non-task review requests keep verifier affinity across alternate prefixes'
   assert.equal((await ui.request({ type: 'task.create', title: 'Epic', kind: 'epic' })).ok, true);
   const topicResult = await ui.request({ type: 'topic.create', title: 'Epic work', item: 'T-1' });
   const topic = (topicResult.value as { topic: { id: string } }).topic.id;
+  const readyReviewer = async (spoke: Session, name: string) => {
+    const clause = await spoke.waitForEvent(e => e.params.meta?.kind === 'role' && e.params.meta.role === 'reviewer');
+    const id = clause.params.meta?.msg_id;
+    assert.ok(id);
+    // Presence precedes delivery/ack; an unacknowledged clause makes the reviewer ineligible.
+    await eventually(`${name} acknowledges its role clause`, async () => {
+      await ui.request({ type: 'hub.status', flushLogs: true });
+      const entries = (await readFile(join(root, '.cland', 'log', 'hub.log'), 'utf8')).split('\n').filter(line => line.startsWith('{'))
+        .map(line => JSON.parse(line) as { event: string; id?: string });
+      return entries.some(e => e.event === 'acked' && e.id === id) || undefined;
+    });
+  };
   const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator', sessionId: 'sess-coord' });
   const first = await spawnSpoke({ discover: true, cwd: root, name: 'reviewer-z', role: 'reviewer', sessionId: 'sess-z' });
   t.after(() => Promise.all([coord.close(), first.close()]));
   await coord.waitForPresence(['coord', 'reviewer-z']);
+  await readyReviewer(first, 'reviewer-z');
   const request = async (id: string) => coord.call<{ ok: boolean; outcomes: Array<{ to: string; resolvedTo?: string }> }>('send', { to: ['reviewer'], topic, text: `review request ${id}\nCheck the epic` });
   const initial = await request('T-1');
   assert.equal(initial.ok, true);
@@ -161,6 +174,7 @@ test('non-task review requests keep verifier affinity across alternate prefixes'
   const newer = await spawnSpoke({ discover: true, cwd: root, name: 'reviewer-a', role: 'reviewer', sessionId: 'sess-a' });
   t.after(() => newer.close());
   await coord.waitForPresence(['reviewer-a']);
+  await readyReviewer(newer, 'reviewer-a');
   const repeat = await request('R-1');
   assert.equal(repeat.ok, true, JSON.stringify(repeat));
   assert.ok(repeat.outcomes.some(outcome => outcome.resolvedTo === 'reviewer-z'), JSON.stringify(repeat));
