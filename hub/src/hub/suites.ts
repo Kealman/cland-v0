@@ -346,12 +346,12 @@ export class Suites {
     this.#announceFallback(job);
   }
   #announceFallback(job: SuiteJob): void {
-    if (!job.fallback) return;
+    // The persisted log checkpoint also covers the notice, including old runs
+    // restored after restart. Inspection retries must not repeat either one.
+    if (!job.fallback || job.fallbackLogged) return;
     this.#options.onFallback?.(job, job.fallback);
-    if (!job.fallbackLogged) {
-      this.#options.log?.({ event: 'verification-executor-fallback', id: job.id, item: job.item ?? null, requested: 'droplet', effective: 'local', cause: job.fallback });
-      job.fallbackLogged = true; this.#save(job);
-    }
+    this.#options.log?.({ event: 'verification-executor-fallback', id: job.id, item: job.item ?? null, requested: 'droplet', effective: 'local', cause: job.fallback });
+    job.fallbackLogged = true; this.#save(job);
   }
   #stopHostGate(id: string): void {
     const child = this.#hostGates.get(id);

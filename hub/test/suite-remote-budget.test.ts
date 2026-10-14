@@ -5,12 +5,64 @@ import { promisify } from 'node:util';
 import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fixture } from './remote-fixture.ts';
-import { cland, clandWithEnv, connectUi, eventually, spawnSpoke } from './harness.ts';
+import { cland, clandWithEnv, connectUi, eventually, spawnSpoke, tempProject } from './harness.ts';
+import { Suites, type SuiteJob } from '../src/hub/suites.ts';
+import { Store } from '../src/hub/store.ts';
+import { LocalExecutor } from '../src/executor/local.ts';
 import { onCleanup, ownProcess } from './process-cleanup.ts';
 import { parseConfig, renderConfig } from '../src/init/config.ts';
 import type { VerificationQueue } from '../src/protocol.ts';
 
 const exec = promisify(execFile);
+
+for (const alreadyAnnounced of [false, true]) test(`fallback notice and log occur once across 20 ticks and restart (already announced: ${alreadyAnnounced})`, async t => {
+  const root = await tempProject(t, 'cland-fallback-ticks-');
+  const database = join(root, 'hub.db');
+  const job: SuiteJob = {
+    id: 'fallback-run', executor: 'local', requestedExecutor: 'droplet', fallback: 'remote budget full',
+    ...(alreadyAnnounced ? { fallbackLogged: true } : {}),
+    mode: 'hub-only', cwd: root, topic: 'fallback-topic', to: ['impl'],
+    actor: { name: 'impl', sessionId: 'fallback-caller', shell: true },
+    head: 'candidate', branch: 'candidate', log: join(root, 'run.log'), result: join(root, 'result.json'), gate: join(root, 'gate'),
+    pid: null, started: null, outcome: null, artifact: null, reported: false, error: null,
+    state: 'queued', queued: new Date().toISOString(),
+  };
+  // Keep the fallback queued at the executor boundary; every timer inspection
+  // still exercises the real scheduler without workers or compatibility probes.
+  t.mock.method(LocalExecutor.prototype, 'reap', async () => {});
+  t.mock.method(LocalExecutor.prototype, 'occupied', async () => true);
+  t.mock.method(LocalExecutor.prototype, 'holder', async () => null);
+  t.mock.timers.enable({ apis: ['setInterval'] });
+  const notices: string[] = [], logs: string[] = [];
+  let inspections = 0;
+  let store = new Store(database);
+  store.setMeta('suite-jobs', JSON.stringify([job]));
+  const restore = () => new Suites(store, root, async () => { assert.fail('queued run must not report'); }, {
+    requesterDead: () => { inspections++; return false; },
+    onFallback: job => { notices.push(job.id); },
+    log: entry => { if (entry.event === 'verification-executor-fallback') logs.push(String(entry.id)); },
+  });
+  let suites = restore();
+  t.after(async () => { await suites.close(); store.close(); });
+  const ticks = async () => {
+    for (let tick = 0; tick < 20; tick++) {
+      t.mock.timers.tick(1000);
+      await new Promise<void>(resolve => setImmediate(resolve));
+    }
+  };
+  await ticks();
+  assert.equal(inspections, 20, 'each scheduler tick inspected the fallback run');
+  const expected = alreadyAnnounced ? [] : [job.id];
+  assert.deepEqual(notices, expected);
+  assert.deepEqual(logs, expected);
+  await suites.close(); store.close();
+  store = new Store(database);
+  suites = restore();
+  await ticks();
+  assert.equal(inspections, 40, 'restored scheduler inspected another 20 ticks');
+  assert.deepEqual(notices, expected, 'restart must not repeat the fallback notice');
+  assert.deepEqual(logs, expected, 'restart must not repeat the fallback log');
+});
 // Both kinds of executor stop at a file barrier in their own candidate checkout.
 const barrier = `node -e "const fs=require('fs');fs.mkdirSync('.cland',{recursive:true});fs.writeFileSync('.cland/started','yes');const t=setInterval(()=>{if(fs.existsSync('.cland/finish'))clearInterval(t)},25)"`;
 type Fixture = Awaited<ReturnType<typeof fixture>>;
