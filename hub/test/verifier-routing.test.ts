@@ -141,6 +141,7 @@ test('three live Reviewers receive one request, and a repeat returns to the same
   const fake = await fakeClaude(t);
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
+  assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   assert.equal((await ui.request({ type: 'crew.set', key: 'reviewer.size', value: 3 })).ok, true);
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
   t.after(() => coord.close());
@@ -150,6 +151,9 @@ test('three live Reviewers receive one request, and a repeat returns to the same
   for (const name of ['rev-1', 'rev-2', 'rev-3']) {
     const launched = await coord.call<{ ok: boolean; error?: string; process: HarnessProcessView }>('session.launch', { name, role: 'reviewer', harness: 'claude-code' });
     assert.equal(launched.ok, true, launched.error);
+    // Idle can precede the native MCP hello. Its first completed turn proves that
+    // spoke is connected before our observer joins: deliveries go to the newest.
+    await ui.waitFor(f => f.type === 'session.usage' && f.session === name);
     const rev = await spawnSpoke({ cwd: root, discover: true, name, assignRole: false, sessionId: launched.process.sessionId });
     t.after(() => rev.close());
     reviewers.push(rev);
