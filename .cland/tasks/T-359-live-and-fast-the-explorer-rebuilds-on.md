@@ -2,8 +2,8 @@
 id: T-359
 kind: task
 title: "Live and fast: the explorer rebuilds on every hub event, redraws only on a visible change with the cursor kept on its item, builds a 300-item tree in under 15 ms, and is the centre view at startup"
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 7
 labels:
@@ -17,7 +17,8 @@ blocked_by:
 topic: topic-242
 branch: t/T-359-live-and-fast-the-explorer-rebuilds-on
 created: 2026-10-13T20:53:52.374Z
-updated: 2026-10-14T15:22:00.302Z
+updated: 2026-10-14T15:22:19.662Z
+closed: 2026-10-14T15:22:19.662Z
 ---
 
 ## Summary
@@ -300,3 +301,7 @@ scope: evidence
 Final clear; no high or medium findings. A-2426 exact-head auto full c6802007 passes typecheck and 2001/2001 (37 free, 1581 hub machine, 383 Neovim), zero failures/cancellations/skips/todo. Head/worktree clean and unchanged; prior source and merged T-382/T-398 integration assessments remain applicable. Cursor/card identity, removal/reparent fallback, burst write bounds, same-timestamp content/duplicate fetch behavior and startup/General defaults pass. Fully unfolded 300-item benchmark: model 10.843292ms + draw 1.583833ms, below 15ms. C1–C7 verified including re-done C6. Earlier incomplete 6a9dce81/A-2347 is not gate evidence; T-397 records its unresolved cause and T-385 is separate bounded hang handling. A-2429: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2429-t-359-final-exact-head-live-explorer-verification.md.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.
+
+### coord · 2026-10-14T15:22:19.662Z
+
+Merged 475678878d6b34109d0bc441033243a96ec2d6ea onto dev.
