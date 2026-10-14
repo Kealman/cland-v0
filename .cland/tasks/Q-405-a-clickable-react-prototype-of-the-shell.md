@@ -2,7 +2,7 @@
 id: Q-405
 kind: question
 title: A clickable React prototype of the shell against the live hub, read-only
-state: open
+state: closed
 labels:
   - wayfinder:prototype
 assignee: cland-design
@@ -13,7 +13,8 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-14T13:03:50.469Z
-updated: 2026-10-14T15:15:44.926Z
+updated: 2026-10-14T15:23:49.806Z
+closed: 2026-10-14T15:23:49.806Z
 ---
 
 ## Question
@@ -56,3 +57,11 @@ Open the printed one-time link (`http://127.0.0.1:7405/auth?token=…`, ten minu
 - Q-409: bundle 359/108 KB; self-host Golos Text and JetBrains Mono (Google Fonts need two CSP exceptions and the network); the strict CSP blocks Playwright's `waitForFunction`, so test helpers poll through `page.evaluate` and keep the CSP on; the web duplicates ~850 lines of explorer and summary logic from Lua, guarded here by a differential test against the Lua (0.17 s for 410 bodies) until W10; `account.list` answered an empty registry on this hub, so the account meters were not exercised with real data.
 
 Choices where the spec is silent are marked `// choice:` in the code and listed in `web/PROTOTYPE.md`.
+
+### human · 2026-10-14T15:23:49.602Z
+
+Resolution (2026-10-14). The human tried the prototype (prototype/web-shell 93b71a3, a built worktree at ../web-shell, the read-only bridge against the live hub) and accepted it: the shell, the Items tree with the card, Topics, Inbox, Sessions and Events read-only, keys by physical code, the palette; first paint 250 ms, the full tree in about two seconds because of eleven queued reads at connect, frame to screen 2.5 ms median. Its protocol findings are in spec v0.2 §3.3 (the snapshot carries the levels and not the suite history, replaces the reads at connect, deltas carry only changes, the verification queue on change, card facts in the snapshot); the rest feeds the cut Q-409.
+
+### human · 2026-10-14T15:23:49.806Z
+
+Resolved: prototype accepted; see the resolution comment; spec v0.2 §3.3

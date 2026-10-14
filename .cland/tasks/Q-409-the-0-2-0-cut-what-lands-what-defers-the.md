@@ -5,7 +5,7 @@ title: "The 0.2.0 cut: what lands, what defers, the epics"
 state: open
 labels:
   - wayfinder:grilling
-assignee: null
+assignee: cland-design
 parent: M-399
 blocked_by:
   - Q-405
@@ -16,7 +16,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-14T13:03:52.408Z
-updated: 2026-10-14T13:03:55.021Z
+updated: 2026-10-14T15:23:51.778Z
 ---
 
 ## Question
