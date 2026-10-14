@@ -3,7 +3,7 @@ id: T-359
 kind: task
 title: "Live and fast: the explorer rebuilds on every hub event, redraws only on a visible change with the cursor kept on its item, builds a 300-item tree in under 15 ms, and is the centre view at startup"
 state: open
-status: review
+status: in progress
 size: M
 criterion_seq: 7
 labels:
@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-242
 branch: t/T-359-live-and-fast-the-explorer-rebuilds-on
 created: 2026-10-13T20:53:52.374Z
-updated: 2026-10-14T11:04:05.120Z
+updated: 2026-10-14T12:23:05.227Z
 ---
 
 ## Summary
@@ -107,7 +107,7 @@ The scope's history entries keep their own cursor keys, so `␣␣` still lands 
 - [x] C5. A workbench started with no restart snapshot and no preset opens on the explorer at the kept scope. A preset or a restart snapshot opens as before.
   - done: impl-359 · 2026-10-14T09:27:51.177Z
 - [ ] C6. `startClient`'s default and the QA runner's default keep General as the start for existing tests and cases. `npm run test:nvim` is green.
-  - failed: rev-23 [reviewer] · 2026-10-14T10:04:22.006Z · note Exact-head full-expanded Neovim verification fails criteria.test.ts and ITEMS-002: unchanged-timestamp hand saves do not invalidate detailed criterion marks.
+  - failed: rev-23 [reviewer] · 2026-10-14T12:23:05.227Z · note Exact-head run 6a9dce81 was cancelled after a hub-machine hang and held-ps test failure; Neovim did not run, so the required green verification is absent.
 - [x] C7. `nvim/README.md` describes startup, live updates, the cursor's fallback order and the bench. The help line and the GLOSSARY's Explorer entry agree with the build.
   - done: impl-359 · 2026-10-14T09:27:51.785Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-359-1 · 2026-10-14T09:33:13.764Z · commit 66350c2b0f7046e653d9d86e762608494259812f
@@ -227,3 +227,16 @@ scope: delta
 Delta source clear; no high or medium findings. The sole commit is the T-382 cherry-pick: all added/removed lines in its three files match reviewed 53f84e47; differences between complete test/fake blobs are existing base /usage-poller context. Atomic PID/identity publication and exact pre-latch count window retain A-2338's assessment. T-359 explorer/card/startup/cache/bench source remains unchanged from A-2322/A-2329. C7 refreshed at this head; C1–C6 require complete exact-head verification. Evidence A-2339: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2339-t-359-shared-t-382-delta-source-clear-at-0d6a85a7.md.
 
 Criteria: C7 verified.
+
+### rev-23 · 2026-10-14T12:23:05.227Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-359-8
+commit: 0d6a85a754701b6f28a479ff43c151ccf0644e93
+scope: evidence
+
+Medium — hub/test/suite.test.ts:1083 / verification evidence: A-2347 reports the live held-ps admission test failing, followed by an incomplete/hung hub-machine run; Neovim never started. Only typecheck and 37 free-phase tests completed. Coordinator a16d7167 ordered cancellation after 55 minutes of idle runner/spoke and no resubmission yet. Exit 143 is not green gate evidence. Exact assertion/cause is unclassified; no new T-359 source regression is asserted, and A-2339 remains its source assessment. C6 fails the verification gate. Bugs · S aside reported to lead; no unchanged rerun. A-2348: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2348-t-359-incomplete-verification-held-ps-failure-and-cancelled-hang.md.
+
+Criteria: C6 failed (Exact-head run 6a9dce81 was cancelled after a hub-machine hang and held-ps test failure; Neovim did not run, so the required green verification is absent.).

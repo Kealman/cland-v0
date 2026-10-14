@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-10-14T01:55:39.048Z
+updated: 2026-10-14T12:21:50.097Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -227,3 +227,7 @@ Incident (stand-in, 2026-10-14 01:33Z): the stand-in restarted the hub while imp
 ### coord · 2026-10-14T01:55:39.048Z
 
 Incident 2026-10-14 01:54Z: integrated run d80d1b41 at 3dae3b5 failed 1/1589 after 935 s. session-holds.test.ts:215 got assert.ok(dying.pid) as null under a 1-minute load of 25.85. Since T-265, a Claude launch returns before its pid is discovered; the test passes alone. Remedy: T-371 (XS, regression_of T-265), a shared test fix cherry-picked into live branches. Merges are held until a green integrated run includes it. Separately, the stand-in restarted the hub at 01:21:51Z with a non-empty queue; impl-361's run survived and C9's droplet was unaffected.
+
+### coord · 2026-10-14T12:21:50.097Z
+
+Incident 2026-10-14 11:27–12:2xZ: T-359's verify 6a9dce81 hung with no output after 1228 tests. The node --test runner and a child cland-spoke sat at 0% CPU for 55 min while four runs queued behind it. The human noticed at 12:21Z. Remedy: T-385, a per-test timeout plus a stall kill with process-tree reaping.

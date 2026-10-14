@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-233
 branch: t/T-347-the-remote-budget-remote-runs-are
 created: 2026-10-13T20:53:46.081Z
-updated: 2026-10-14T11:20:41.950Z
+updated: 2026-10-14T11:56:20.639Z
 ---
 
 ## Summary
@@ -328,3 +328,7 @@ Criteria: C7 verified.
 ### impl-347 · 2026-10-14T11:20:41.950Z
 
 Merge delta source-clear cbbe6974014f5f2ab8a372cdac5be5e1253feff9, A-2344 / rev-2026-10-14-347-10. One fresh full verify queued at exact head: dde7d63b-5854-4127-8d13-6fdc2b2367ca, PID null, recipients rev-23/impl-347, topic-233. Waiting for result; known-only T-382/T-383 failures reported before rerun. Coordinator given A-2345 C6 admin driver: A-2262 with observable wait for confirmed builder release after prepare, preserving both remote slots under T-381's pending-cleanup success contract. No source change or cloud call by this session.
+
+### impl-347 · 2026-10-14T11:56:20.639Z
+
+Human D29 (Coordinator 9f0656bd) now requires task verification with no mode after source-clear; hub selects phases. Existing queued all run dde7d63b at cbbe6974 is explicitly allowed to finish and will not be cancelled/resubmitted. Any later submission uses cland verify --report topic-233 with no mode, exact reviewed head; touched/added files targeted sequentially before review. Existing C6 administration remains Coordinator-owned after green.
