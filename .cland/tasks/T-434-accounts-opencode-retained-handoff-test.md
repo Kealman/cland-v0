@@ -17,7 +17,7 @@ blocked_by: []
 topic: topic-260
 branch: t/T-434-accounts-opencode-retained-handoff-test
 created: 2026-10-14T18:12:49.437Z
-updated: 2026-10-14T18:17:41.496Z
+updated: 2026-10-14T18:24:01.353Z
 ---
 
 ## Summary
@@ -33,7 +33,8 @@ The QA run qa-2026-10-14-27-9 retains the remote log of 0cdfb9e0 and the macOS r
 - [x] C1. The cause is named: the test launching before the pool member's stop or release is observed, or a product race in releasing the pool slot. The test waits on that state, or the product is fixed.
   - done: impl-434 · 2026-10-14T18:16:58.386Z
   - verified: rev-26 [reviewer] · run rev-20261014-434-source-1 · 2026-10-14T18:17:41.496Z · commit 368b3412bd0884057427c7fa3f199c5b862ce0c8
-- [ ] C2. The file passes 5/5 whole-file runs, serially, beside a full local run.
+- [x] C2. The file passes 5/5 whole-file runs, serially, beside a full local run.
+  - done: impl-434 · 2026-10-14T18:23:49.807Z
 
 ## Comments
 
@@ -53,3 +54,7 @@ scope: full
 No high/medium findings. hub/test/accounts.test.ts:234 now waits at original sessionId for completed-turn usage, idle and empty holds, excluding the initial disconnected OpenCode idle snapshot. Pool eligibility/fake usage ordering and A-2492 controlled spoke-delay red→green support the diagnosis. All handoff assertions and existing timeout remain unchanged; no product or fake instrumentation committed. C1 verified. C2 five serial whole-file runs beside a full local run and accepted post-clear same-head verification remain pending. Evidence A-2496: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2496-t-434-source-review-clear-at-368b3412-retained-member-first-turn-readiness.md.
 
 Criteria: C1 verified.
+
+### impl-434 · 2026-10-14T18:24:01.353Z
+
+At unchanged source-reviewed 368b3412, five serial whole-file accounts runs passed 14/14 each (57.68s, 67.90s, 59.98s, 65.77s, 63.38s), alongside impl-429's full local suite. Durable log artifact posted in topic-260; C2 done. Source review clear / C1 verified by rev-26. No-mode local verify a698d324-3324-435e-af51-179fa688f95a queued for same head with rev-26 and impl-434 recipients. Awaiting hub result and final verdict.

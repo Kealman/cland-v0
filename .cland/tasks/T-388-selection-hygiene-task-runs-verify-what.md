@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-247
 branch: t/T-388-selection-hygiene-task-runs-verify-what
 created: 2026-10-14T12:28:09.900Z
-updated: 2026-10-14T18:18:09.137Z
+updated: 2026-10-14T18:19:03.973Z
 ---
 
 ## Summary
@@ -56,25 +56,32 @@ The smoke baselines (`HUB_SMOKE`, `NVIM_SMOKE`) and the integrated-`dev`-is-full
 
 - [ ] C1. `chooseSuiteMode` implements the five rules above in order, and `hub/test/suite-selection.test.ts` covers each rule with at least one path list, including a docs-only diff (hub-only), a `.cland/tasks`-only diff (hub-only), an `nvim/lua/cland/hub.lua` diff (full) and a `hub/test/harness.ts` diff (full).
   - verified: rev-23 [reviewer] · run rev-2026-10-14-388-5 · 2026-10-14T17:33:53.969Z · commit 952d1f7fd803fd9b2b25230b791958c3c7e820d2
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-388-6 · 2026-10-14T18:19:03.972Z · commit 952d1f7fd803fd9b2b25230b791958c3c7e820d2
 - [ ] C2. The hub files imported by `nvim/test/**` are computed from the source at selection time, and a test proves that adding a new import of a hub file to an `nvim/test` file makes that hub file select full.
   - verified: rev-23 [reviewer] · run rev-2026-10-14-388-5 · 2026-10-14T17:33:53.969Z · commit 952d1f7fd803fd9b2b25230b791958c3c7e820d2
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-388-6 · 2026-10-14T18:19:03.972Z · commit 952d1f7fd803fd9b2b25230b791958c3c7e820d2
 - [ ] C3. The replay over the 40 merges `83b74c6`..`f174d9c` runs full on at most 25 (37 before), and both tables (before and after) are posted on the item with one line per merge.
   - verified: rev-23 [reviewer] · run rev-2026-10-14-388-2 · 2026-10-14T12:43:13.158Z · commit 5c5a6490d219fcb9fe1b86539bcbe8cb5328d54f
   - verified: rev-23 [reviewer] · run rev-2026-10-14-388-4 · 2026-10-14T16:58:53.646Z · commit 952d1f7fd803fd9b2b25230b791958c3c7e820d2
   - verified: rev-23 [reviewer] · run rev-2026-10-14-388-5 · 2026-10-14T17:33:53.969Z · commit 952d1f7fd803fd9b2b25230b791958c3c7e820d2
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-388-6 · 2026-10-14T18:19:03.972Z · commit 952d1f7fd803fd9b2b25230b791958c3c7e820d2
 - [ ] C4. Measured: the phases a `nvim-only` selection runs (hub smoke plus the Neovim phase), run through `node hub/test/run-suite.ts` with that selection in `CLAND_SUITE_SELECTION` on an empty verify queue, finish in under 3 minutes (a full run is about 15); the duration line is posted on the item, and the live check after merge is the epic's demo.
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-388-6 · 2026-10-14T18:19:03.972Z · commit 952d1f7fd803fd9b2b25230b791958c3c7e820d2
 - [ ] C5. Every existing `suite-selection.test.ts` assertion that still applies keeps its meaning; each changed expectation is listed in the review request with the rule that changed it.
   - verified: rev-23 [reviewer] · run rev-2026-10-14-388-2 · 2026-10-14T12:43:13.158Z · commit 5c5a6490d219fcb9fe1b86539bcbe8cb5328d54f
   - verified: rev-23 [reviewer] · run rev-2026-10-14-388-4 · 2026-10-14T16:58:53.647Z · commit 952d1f7fd803fd9b2b25230b791958c3c7e820d2
   - verified: rev-23 [reviewer] · run rev-2026-10-14-388-5 · 2026-10-14T17:33:53.969Z · commit 952d1f7fd803fd9b2b25230b791958c3c7e820d2
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-388-6 · 2026-10-14T18:19:03.973Z · commit 952d1f7fd803fd9b2b25230b791958c3c7e820d2
 - [ ] C6. `docs/agents/tests.md`, the Implementer clause in `default-roles.ts` and `.cland/roles.toml`, and the `qa` skill no longer prescribe `cland verify all` for task runs, and state D29's split between task runs and integrated `dev` runs.
   - verified: rev-23 [reviewer] · run rev-2026-10-14-388-2 · 2026-10-14T12:43:13.158Z · commit 5c5a6490d219fcb9fe1b86539bcbe8cb5328d54f
   - verified: rev-23 [reviewer] · run rev-2026-10-14-388-4 · 2026-10-14T16:58:53.647Z · commit 952d1f7fd803fd9b2b25230b791958c3c7e820d2
   - verified: rev-23 [reviewer] · run rev-2026-10-14-388-5 · 2026-10-14T17:33:53.969Z · commit 952d1f7fd803fd9b2b25230b791958c3c7e820d2
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-388-6 · 2026-10-14T18:19:03.973Z · commit 952d1f7fd803fd9b2b25230b791958c3c7e820d2
 - [ ] C7. `hub/README.md` (Tests) describes the package rules, the full set and the computed import list, and the reason strings name the deciding rule.
   - verified: rev-23 [reviewer] · run rev-2026-10-14-388-2 · 2026-10-14T12:43:13.158Z · commit 5c5a6490d219fcb9fe1b86539bcbe8cb5328d54f
   - verified: rev-23 [reviewer] · run rev-2026-10-14-388-4 · 2026-10-14T16:58:53.647Z · commit 952d1f7fd803fd9b2b25230b791958c3c7e820d2
   - verified: rev-23 [reviewer] · run rev-2026-10-14-388-5 · 2026-10-14T17:33:53.970Z · commit 952d1f7fd803fd9b2b25230b791958c3c7e820d2
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-388-6 · 2026-10-14T18:19:03.973Z · commit 952d1f7fd803fd9b2b25230b791958c3c7e820d2
 
 ## Comments
 
@@ -166,3 +173,16 @@ Criteria: C1 verified, C2 verified, C3 verified, C5 verified, C6 verified, C7 ve
 ### impl-388 · 2026-10-14T18:18:09.137Z
 
 C4 measurement completed once at unchanged reviewed/green head 952d1f7f, per Coordinator ce993e22's humanQueue admission refinement. Start 18:14:48Z, admitted 18:15:24Z, finish 18:17:16Z; exit 0. Printed suite duration 112.24s (<180s), lock wait 0.01s, peak 1m load 12.07. Admission queue shows this nvim-only measurement as sole local holder, four task waiters behind it, one concurrent remote run. A-2497 contains exact command, timestamps, full log and queue snapshot. No --force and no source changes; asking rev-23 to verify C4.
+
+### rev-23 · 2026-10-14T18:19:03.973Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-388-6
+commit: 952d1f7fd803fd9b2b25230b791958c3c7e820d2
+scope: evidence
+
+Final clear; C1–C7 verified at unchanged clean952d1f7f. C4 A-2497 selected nvim-only measurement passes in112.24s <180s,lock wait0.01s,peak1m load12.07; log/metadata/admission show ordinary locks,no force,sole local holder with task waiters and one remote. Judged under directly-read Coordinator ce993e22 amendment: exclusive humanQueue priority replaces empty-queue prerequisite; duration excludes lock wait. No empty-queue claim. Other criteria retain exact-head full23d2db26/A-2474 typecheck and2063/2063,zero skips/failures; local fallback for remote budget2/2. Source/parser/replay/docs assessment remains applicable, no high/medium findings. A-2498: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2498-t-388-final-c4-measurement-and-exact-head-verdict.md.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.

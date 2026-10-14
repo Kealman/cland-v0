@@ -17,7 +17,7 @@ blocked_by: []
 topic: topic-255
 branch: t/T-429-request-guard-flood-test-fails-on-linux
 created: 2026-10-14T17:14:43.503Z
-updated: 2026-10-14T17:58:27.414Z
+updated: 2026-10-14T18:40:40.284Z
 ---
 
 ## Summary
@@ -39,11 +39,14 @@ Find why the other client waits longer behind the flood on Linux: scheduling und
 - [x] C1. The cause is named with evidence, and the fix is a single commit, cherry-pickable into every open task branch (shared-fix rule).
   - done: impl-429 · 2026-10-14T17:27:17.988Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-429-1 · 2026-10-14T17:29:21.833Z · commit d3071031c0fc2e646cdff77d3f42e916da5e776a
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-429-3 · 2026-10-14T18:40:40.284Z · commit d3071031c0fc2e646cdff77d3f42e916da5e776a
 - [x] C2. On macOS the file passes 5/5 whole-file runs, and the test still fails when the guard is bypassed, so it still detects a starved client.
   - done: impl-429 · 2026-10-14T17:27:21.234Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-429-1 · 2026-10-14T17:29:21.833Z · commit d3071031c0fc2e646cdff77d3f42e916da5e776a
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-429-3 · 2026-10-14T18:40:40.284Z · commit d3071031c0fc2e646cdff77d3f42e916da5e776a
 - [ ] C3. A `cland verify --executor droplet` of the fix branch (diff selection) is green on Linux and runs this file.
   - verified: rev-23 [reviewer] · run rev-2026-10-14-429-c3 · 2026-10-14T17:58:27.414Z · commit d3071031c0fc2e646cdff77d3f42e916da5e776a
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-429-3 · 2026-10-14T18:40:40.284Z · commit d3071031c0fc2e646cdff77d3f42e916da5e776a
 
 ## Comments
 
@@ -80,3 +83,16 @@ scope: evidence
 Medium — hub/test/executor-prepare.test.ts:137: expected422, got0 in unconfirmed builder deletion case. Medium — hub/test/executor-run.test.ts:193: crash-after-acquire recovery fails remote start because git suite ref already exists under zero-old-value update-ref. A-2481 56d039e0 auto full droplet exits1:1649pass/2fail/3macOS-only skips, Neovim not reached; Linux x64 c-8 lon1,1495s/$0.1038. T-429 fairness passes78ms vs228/142ms baseline; cold correlation/write-freshness regression passes. Source/C1/C2 stand, no causal guard defect asserted. C3 fails green overall gate. Bugs S aside each escalated; multiple failures do not authorize unchanged retry. A-2482: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2482-t-429-linux-guard-passes-complete-run-blocked-by-two-executor-failures.md.
 
 Criteria: C3 failed (Exact-head Linux verify 56d039e0 exits 1 for two executor cases, so required green complete verification is absent despite passing request-guard tests.).
+
+### rev-23 · 2026-10-14T18:40:40.284Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-429-3
+commit: d3071031c0fc2e646cdff77d3f42e916da5e776a
+scope: evidence
+
+Final clear; C1–C3 verified at unchanged clean d3071031. Authorized local gate 42895a87/A-2519 passes root typecheck and2041/2041 (37 free,1617 hub,387 Neovim),zero failure/cancel/skip/todo; fairness67ms vs494/190ms. C3 under Coordinator ab3ea386: all15 Linux guard cases in56d039e0/A-2481 green,78ms vs228/142ms; overall red remains T-432/T-433 with3platform skips,1495s/$0.1038,not complete Linux success. A-2483 supersedes earlier C3 interpretation; human de65131f sets local merge gate. Source/C1/C2 retained: five macOS passes, bypass red controls, original bounds unchanged. No high/medium T-429 findings. A-2520: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2520-t-429-final-local-gate-and-scoped-linux-fairness-proof.md.
+
+Criteria: C1 verified, C2 verified, C3 verified.

@@ -3,7 +3,7 @@ id: T-385
 kind: task
 title: "A hung test holds the verify queue forever: no per-test timeout and no stall kill"
 state: open
-status: ready
+status: review
 size: S
 criterion_seq: 4
 labels:
@@ -17,7 +17,7 @@ blocked_by: []
 topic: topic-246
 branch: t/T-385-a-hung-test-holds-the-verify-queue
 created: 2026-10-14T12:21:44.443Z
-updated: 2026-10-14T18:16:31.973Z
+updated: 2026-10-14T18:33:08.344Z
 ---
 
 ## Summary
@@ -47,6 +47,7 @@ A full verify can hang forever. T-359's run 6a9dce81 stopped producing output af
   - verified: rev-23 [reviewer] · run rev-2026-10-14-385-3 · 2026-10-14T13:54:50.143Z · commit 699bf7b51b55479ccaf5c56faf2206b26dc97567
   - verified: rev-23 [reviewer] · run rev-2026-10-14-385-5 · 2026-10-14T16:26:06.837Z · commit b40e992784790b9e4a37626dfa3cf7e9836dad06
   - verified: rev-23 [reviewer] · run rev-2026-10-14-385-7 · 2026-10-14T18:16:29.996Z · commit b40e992784790b9e4a37626dfa3cf7e9836dad06
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-385-8 · 2026-10-14T18:32:29.319Z · commit 33b1c9208f9717faacc361651ff1e8f803c7f4e5
 
 ## Comments
 
@@ -184,3 +185,24 @@ scope: evidence
 Final clear; C1–C4 verified at unchanged clean b40e9927. Authorized same-head local0e68bdde/A-2489 passes typecheck and2019/2019 (37free,1604hub,378Neovim),zero failures/cancellations/skips/todo. Timeout, silent-tree/spoke cleanup, fast-exit warning/successor and partial-output cases pass. C2 remains under Coordinator0e5224c8 exception: verified identities terminated; unknown writer preserved with explicit failed incomplete cleanup and one warning before admission release; T-410 follows exact ownership. C4 remains T-397 filing, original cause unproven. Red Linuxb1603160/A-2465 superseded for gate by human de65131f/Coordinator7df2bdac, blockers T-429/T-430 retained, no Linux green claim. A-2491: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2491-t-385-final-local-gate-bounded-hangs-and-incomplete-cleanup-contract.md.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### impl-385 · 2026-10-14T18:30:24.809Z
+
+Resolved merge gate conflict by merging origin/dev878d70e7 as pushed33b1c9208f9717faacc361651ff1e8f803c7f4e5. Sole conflict in config verification type/default lines: union includes remoteBudget and T-385 testTimeoutMs/stallTimeoutMs; preserves lifetime/run_timeout/daily_spend_usd/executor/remote_budget. Complete suite.test67/67 A-2510; root typecheck A-2511, diff check clean. Incoming suite-remote-budget7/8 A-2506; sole notice-race failure is confirmed shared T-435, per Coordinator b51bf73f proceed to delta review unchanged; isolated pass A-2508. Additional incoming init/roles/account-limited targeted files still running sequentially. Requesting delta review before new exact-head local verification.
+
+### rev-23 · 2026-10-14T18:32:29.319Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-385-8
+commit: 33b1c9208f9717faacc361651ff1e8f803c7f4e5
+scope: delta
+
+No high or medium integration findings. Sole config conflict correctly unions remoteBudget with testTimeoutMs/stallTimeoutMs and all prior verification fields; both parser/renderer paths retained. Other14 task-file edits exactly match original reviewed implementation relative to merged dev. A-2510 suite.test67/67/root typecheck A-2511/diff check pass. Incoming budget A-2506 is7/8 for known T-435 notice race; Coordinator b51bf73f directly confirms proceed unchanged, isolated A-2508 passes; not full gate evidence. C4 refreshed via T-397 filing; C1–C3 require complete new-head no-mode local verify after incoming targeted checks finish. C2 exception/T-410 retained. Old b40e9927 full pass cannot clear new commit. A-2513: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2513-t-385-dev-merge-source-review-timeout-keys-and-remote-budget-preserved.md.
+
+Criteria: C4 verified.
+
+### impl-385 · 2026-10-14T18:33:08.344Z
+
+Delta source review rev-2026-10-14-385-8 clear at merged head 33b1c9208f9717faacc361651ff1e8f803c7f4e5 (A-2513). Remaining incoming targeted files pass 33/33 (init15, roles8, account-limited10; A-2515). Suite67/67 A-2510 and typecheck A-2511 remain green; known incoming T-435 race evidence A-2506/A-2508 left unchanged per Coordinator. Submitted exact-head no-mode --executor local: f8e54b25-eb73-496c-9da5-0833a7725a69, position2, rev-23/impl-385 recipients. Awaiting hub result.

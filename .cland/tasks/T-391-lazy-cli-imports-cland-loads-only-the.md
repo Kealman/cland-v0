@@ -3,7 +3,7 @@ id: T-391
 kind: task
 title: "Lazy CLI imports: cland loads only the subcommand it runs, with its usage text in a light module and a module-count guard test"
 state: open
-status: ready
+status: review
 size: S
 criterion_seq: 6
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-248
 branch: t/T-391-lazy-cli-imports-cland-loads-only-the
 created: 2026-10-14T12:28:10.700Z
-updated: 2026-10-14T17:11:28.570Z
+updated: 2026-10-14T18:21:53.688Z
 ---
 
 ## Summary
@@ -64,6 +64,7 @@ This is a real-process test with no hub, so it runs in the `machine` shard; add 
   - done: impl-391 · 2026-10-14T12:36:31.764Z
   - verified: rev-26 [reviewer] · run rev-20261014-391-source-1 · 2026-10-14T12:38:12.615Z · commit 4d459f99be50d60a9aa7f7ddbbaebe81c93efc36
   - verified: rev-26 [reviewer] · run rev-20261014-391-final-1 · 2026-10-14T17:11:26.994Z · commit 4d459f99be50d60a9aa7f7ddbbaebe81c93efc36
+  - verified: rev-26 [reviewer] · run rev-20261014-391-source-2 · 2026-10-14T18:21:53.688Z · commit 8bf2500e10ae8350b583b1a997674554c95af2cd
 
 ## Comments
 
@@ -104,3 +105,16 @@ scope: evidence
 No high/medium findings. Accepted same-head auto run eb12f4c3/A-2463 passed typecheck and full 2014/2014 (37 free,1599 hub machine,378 Neovim), zero fail/cancel/skip/todo. CLI module counts 2/2/2/13/16 and import-failure/unchanged CLI assertions pass. Executor was local darwin arm64: explicit droplet request fell back because remote budget 2/2 full, as Coordinator permitted. C3 is verified under Coordinator's 12:32:42 paired-load interpretation: A-2353 help median186.295→84.440ms, task292.250→252.755ms; absolute idle <=50ms remains epic QA, not claimed here. Source A-2359 retained; cancelled A-2440/A-2451 excluded. C1–C6 checked. Evidence A-2464: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2464-t-391-final-review-clear-at-4d459f99-accepted-auto-selected-full-verification.md.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### rev-26 · 2026-10-14T18:21:53.688Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261014-391-source-2
+commit: 8bf2500e10ae8350b583b1a997674554c95af2cd
+scope: delta
+
+No high/medium findings. Independently compared all 22 extracted usage literals to dev 878d70e7: exact matches. account.ts and suite.ts preserve current dev implementation bodies, including account clear/limit text and remote queue display; differences are usage plumbing only. Entry dispatch, CLI import guards/counter are byte-identical to prior source-clear 4d459f99. Task diff remains 26 files,371+/179-. C6 docs renewed; C1–C5 final execution settlement awaits accepted verification at this new head. A-2499 targeted checks green; prior A-2463 does not establish new-head green. C3 keeps the recorded paired-load interpretation. Evidence A-2500: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2500-t-391-delta-source-clear-at-8bf2500e-current-dev-cli-behavior-and-help-retained.md.
+
+Criteria: C6 verified.
