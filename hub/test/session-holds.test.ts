@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, connectUi, connectWsUi, eventually, fakeClaude, fakeCodex, spawnSpoke, startDaemon, startHub, tempProject } from './harness.ts';
+import { withDiscoveredPid, cland, connectUi, connectWsUi, eventually, fakeClaude, fakeCodex, spawnSpoke, startDaemon, startHub, tempProject } from './harness.ts';
 import type { HarnessProcessView, Presence } from '../src/protocol.ts';
 import { Tracker } from '../src/tracker/tracker.ts';
 
@@ -212,8 +212,8 @@ test('delivered verifier requests persist across restart and clear on hold, verd
   await coord.call('send', { to: [dying.name], text: `qa request ${ids[0]}` });
   const dyingRow = async () => ((await ui.request({ type: 'session.list' })).value as { processes: HarnessProcessView[] }).processes.find(p => p.name === dying.name)!;
   await eventually('request before death', async () => (await dyingRow()).pending?.item === ids[0] || undefined);
-  assert.ok(dying.pid);
-  process.kill(dying.pid, 'SIGKILL');
+  const discovered = await withDiscoveredPid(ui, dying);
+  process.kill(discovered.pid, 'SIGKILL');
   await eventually('dead session clears pending', async () => (await dyingRow()).status === 'exited' && !(await dyingRow()).pending || undefined);
 });
 

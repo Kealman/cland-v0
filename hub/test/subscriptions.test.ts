@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { cland, clandWithEnv, clauseAnswered, eventually, connectSocket, connectUi, fakeCodex, fakeClaude, killDaemon, spawnSpoke, startDaemon, tempProject, sleep } from './harness.ts';
+import { withDiscoveredPid, cland, clandWithEnv, clauseAnswered, eventually, connectSocket, connectUi, fakeCodex, fakeClaude, killDaemon, spawnSpoke, startDaemon, tempProject, sleep } from './harness.ts';
 import { PROTOCOL_VERSION, type Message } from '../src/protocol.ts';
 import { taskWriteGate } from './tracker-write-gate.ts';
 
@@ -166,7 +166,7 @@ test('resume --relaunch announces each transition into running once for the same
   await coord.call('subscribe', { subject: { session: 'impl' }, events: ['session.state'] });
   const launched = await ui.request({ type: 'session.launch', name: 'impl', harness: 'claude-code' });
   assert.equal(launched.ok, true, launched.error);
-  const first = (launched.value as { process: { pid: number; sessionId: string } }).process;
+  const first = await withDiscoveredPid(ui, (launched.value as { process: { pid: number; sessionId: string } }).process);
   t.after(() => killDaemon(first.pid));
   await ui.request({ type: 'topic.send', topic: 'general', text: '@coord freeze initial launch' });
   assert.equal((await ui.request({ type: 'session.stop', session: 'impl' })).ok, true);
@@ -175,7 +175,7 @@ test('resume --relaunch announces each transition into running once for the same
     await coord.call('subscribe', { subject: { session: 'impl' }, events: ['session.state'] });
     const result = await cland(root, 'session', 'resume', 'impl', '--relaunch', '--json');
     assert.equal(result.code, 0, result.stderr);
-    const process = JSON.parse(result.stdout).process as { pid: number; sessionId: string };
+    const process = await withDiscoveredPid(ui, JSON.parse(result.stdout).process as { pid: number; sessionId: string });
     t.after(() => killDaemon(process.pid));
     assert.equal(process.sessionId, first.sessionId, 'relaunch retains the stable session identity');
     await eventually('launched event after relaunch', async () => {
@@ -201,7 +201,7 @@ test('session state and lifecycle events include death, held until the Coordinat
   assert.equal((await coord.call<{ ok: boolean }>('subscribe', { subject: { session: 'impl' }, events: ['session.state'] })).ok, true);
   const launched = await ui.request({ type: 'session.launch', name: 'impl', role: 'implementer', harness: 'claude-code' });
   assert.equal(launched.ok, true, launched.error);
-  const { process: p } = launched.value as { process: { pid: number; sessionId: string } };
+  const p = await withDiscoveredPid(ui, (launched.value as { process: { pid: number; sessionId: string } }).process);
   t.after(() => killDaemon(p.pid));
   await coord.waitForPresence(['coord', 'impl']);
   const event = (text: string) => ui.waitFor(f => f.type === 'message' && (f.message as Message).kind === 'event' && (f.message as Message).text === `event · session.state · impl ${text}`);
@@ -279,7 +279,7 @@ for (const harness of ['claude-code', 'codex', 'opencode']) {
     await ui.request({ type: 'subscribe' });
     const launched = await ui.request({ type: 'session.launch', name: 'coord', role: 'coordinator', harness }, 30_000);
     assert.equal(launched.ok, true, launched.error);
-    const { process: p } = launched.value as { process: { pid: number; sessionId: string; harnessId: string; harnessSessionId: string } };
+    const p = await withDiscoveredPid(ui, (launched.value as { process: { pid: number; sessionId: string; harnessId: string; harnessSessionId: string } }).process);
     t.after(() => killDaemon(p.pid));
     if (harness !== 'codex') await clauseAnswered(ui, 'coord');
     const idle = () => eventually('coord idle', async () => {

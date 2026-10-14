@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { readFile, writeFile, unlink } from 'node:fs/promises';
 import { join } from 'node:path';
-import { assertFirstLaunchClause, clandWithEnv, clauseAnswered, connectUi, eventually, fakeClaude, flushProjectLogs, killDaemon, sleep, spawnSpoke, startDaemon, tempProject, type FrameClient } from './harness.ts';
+import { withDiscoveredPid, assertFirstLaunchClause, clandWithEnv, clauseAnswered, connectUi, eventually, fakeClaude, flushProjectLogs, killDaemon, sleep, spawnSpoke, startDaemon, tempProject, type FrameClient } from './harness.ts';
 
 type Presence = { name: string; sessionId: string; state: string; status: string | null; role: string | null };
 type Harness = { name: string; harness: string; pid: number | null; harnessId: string | null; sessionId: string; harnessSessionId: string | null; status: string; state: string; attach: string | null; model: string | null; usage?: Record<string, unknown> };
@@ -96,7 +96,8 @@ test('a launched Claude Code session: the spoke connects, a UI message goes queu
   assert.equal(launched.harness, 'claude-code');
   assert.equal(launched.status, 'running');
   assert.match(launched.harnessId ?? '', /^[0-9a-f]{8}$/);
-  assert.equal(typeof launched.pid, 'number');
+  const discovered = await withDiscoveredPid(ui, launched);
+  assert.equal(typeof discovered.pid, 'number');
   assert.equal(launched.attach, `claude attach ${launched.harnessId}`);
   // like the real `--bg`, the fake picks its own session id: the hub records it beside its own
   const [listed] = await fake.sessions();
@@ -201,7 +202,7 @@ test('a crashed Claude Code process: the state turns unknown and the hub logs it
   const launched = await launch(ui, 'impl-1', { role: 'implementer' });
   await presentAs(ui, 'impl-1', 'idle');
 
-  await killDaemon(launched.pid as number);
+  await killDaemon((await withDiscoveredPid(ui, launched)).pid);
   const gone = await eventually('the process gone', async () => (await status(ui)).harnesses.find((x) => x.name === 'impl-1' && x.status === 'exited'));
   assert.equal(gone.state, 'unknown');
   assert.equal(gone.attach, null);
@@ -259,6 +260,7 @@ test('after a hub restart, resume re-finds the running session through the proce
   const ui = await connectUi(t, first.discovery);
   const launched = await launch(ui, 'coord', { role: 'coordinator' });
   await presentAs(ui, 'coord', 'idle');
+  const discovered = await withDiscoveredPid(ui, launched);
   ui.close();
 
   assert.equal((await clandWithEnv(root, fake.env, 'hub', 'stop')).code, 0);
@@ -271,7 +273,7 @@ test('after a hub restart, resume re-finds the running session through the proce
   // re-found: the same pid and session id, still running, its state known again; the spoke is back too
   const resumed = await eventually('resumed', async () => (await status(ui2)).harnesses.find((x) => x.name === 'coord' && x.state === 'idle'));
   assert.equal(resumed.status, 'running');
-  assert.equal(resumed.pid, launched.pid);
+  assert.equal(resumed.pid, discovered.pid);
   assert.equal(resumed.sessionId, launched.sessionId);
   // a late hook of the launch's clause turn can make the row idle before the resume itself is logged
   await eventually('the resume logged', async () => (/"event":"session-resumed","session":"coord"/.test(await hubLog(root, ui2)) ? true : undefined));

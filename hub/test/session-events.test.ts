@@ -1,7 +1,7 @@
 // Subscribed UI frames at the transport boundary: presence, process rows and coalesced usage.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { connectUi, connectWsUi, fakeClaude, spawnSpoke, startDaemon, startHub, tempProject, sleep } from './harness.ts';
+import { withDiscoveredPid, connectUi, connectWsUi, fakeClaude, spawnSpoke, startDaemon, startHub, tempProject, sleep } from './harness.ts';
 import type { HarnessProcessView, Presence, SessionUsage } from '../src/protocol.ts';
 import { ProcessTable } from '../src/adapters/processes.ts';
 import { Sessions } from '../src/adapters/sessions.ts';
@@ -117,8 +117,8 @@ test('process rows publish launch, model, role, rename, exit and stop; usage bur
   const renamed = await spoke.call<{ ok: boolean; error?: string }>('rename', { name: 'renamed-coord' });
   assert.equal(renamed.ok, true, renamed.error);
   await ui.waitFor((f) => f.type === 'session.process' && row(f).sessionId === coord.sessionId && row(f).name === 'renamed-coord');
-  assert.ok(coord.pid);
-  process.kill(coord.pid, 'SIGKILL');
+  const discovered = await withDiscoveredPid(ui, coord);
+  process.kill(discovered.pid, 'SIGKILL');
   const exited = await ui.waitFor((f) => f.type === 'session.process' && row(f).sessionId === coord.sessionId && row(f).status === 'exited');
   assert.equal(row(exited).attach, null);
   assert.equal(row(exited).state, 'unknown');

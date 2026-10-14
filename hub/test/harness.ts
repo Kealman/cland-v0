@@ -19,6 +19,7 @@ import { z } from 'zod';
 import { createHub, type Hub, type HubOptions } from '../src/hub/server.ts';
 import { findDiscovery, readDiscovery as readDiscoveryFile } from '../src/project.ts';
 import { processStarted } from '../src/hub/lock.ts';
+import type { HarnessProcessView } from '../src/protocol.ts';
 import { cleanupOwnedProcesses, ownDirectory, ownProcess, recordedProcess, rememberProcess, rememberResultProcesses } from './process-cleanup.ts';
 
 export const SPOKE_ENTRY = fileURLToPath(new URL('../bin/cland-spoke.ts', import.meta.url));
@@ -597,6 +598,16 @@ export const clauseAnswered = (ui: FrameClient, session: string, timeoutMs = 15_
 export function testWaitMs(fallbackMs = 15_000): number {
   const configured = Number(process.env.CLAND_TEST_WAIT_MS);
   return Number.isFinite(configured) && configured > 0 ? configured : fallbackMs;
+}
+
+/** Claude launches may return before the shared agents schedule discovers their pid. */
+export async function withDiscoveredPid<T extends { sessionId: string }>(ui: FrameClient, launched: T): Promise<T & { pid: number }> {
+  const pid = await eventually(`pid discovered for ${launched.sessionId}`, async () => {
+    const listed = await ui.request({ type: 'session.list' });
+    assert.equal(listed.ok, true, listed.error);
+    return (listed.value as { processes: HarnessProcessView[] }).processes.find(p => p.sessionId === launched.sessionId)?.pid || undefined;
+  }, testWaitMs(45_000));
+  return { ...launched, pid };
 }
 
 /** Poll until `check` returns a value (not undefined), or fail with what was last seen. */

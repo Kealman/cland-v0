@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { connectUi, spawnSpoke, startDaemon, tempProject, fakeClaude, eventually, killDaemon, cland, sleep } from './harness.ts';
+import { withDiscoveredPid, connectUi, spawnSpoke, startDaemon, tempProject, fakeClaude, eventually, killDaemon, cland, sleep } from './harness.ts';
 import { copyPreparedProject } from './prepared-project.ts';
 import type { Message, Subscription } from '../src/protocol.ts';
 
@@ -121,7 +121,7 @@ test('a stopped pooled Reviewer reaches its item lead; a killed lead reaches the
   const { item } = await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Review lifecycle', assignee: 'impl' });
   const implLaunch = await ui.request({ type: 'session.launch', name: 'impl', role: 'implementer', harness: 'claude-code', item: item.id });
   assert.equal(implLaunch.ok, true, implLaunch.error);
-  const implProcess = (implLaunch.value as { process: { pid: number; sessionId: string; harnessId: string } }).process;
+  const implProcess = await withDiscoveredPid(ui, (implLaunch.value as { process: { pid: number; sessionId: string; harnessId: string } }).process);
   t.after(() => killDaemon(implProcess.pid));
   await coord.waitForPresence(['coord', 'impl']);
   const revLaunch = await ui.request({ type: 'session.launch', name: 'rev', role: 'reviewer', harness: 'claude-code' });
@@ -209,7 +209,7 @@ test('a lead death while the hub is down reaches the offline Coordinator once af
   const { item } = await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Recover default', assignee: 'impl' });
   const launched = await ui.request({ type: 'session.launch', name: 'impl', role: 'implementer', harness: 'claude-code', item: item.id });
   assert.equal(launched.ok, true, launched.error);
-  const p = (launched.value as { process: { pid: number } }).process;
+  const p = await withDiscoveredPid(ui, (launched.value as { process: { pid: number; sessionId: string } }).process);
   t.after(() => killDaemon(p.pid));
   await coord.waitForPresence(['coord', 'impl']);
   ui.close();
@@ -264,12 +264,12 @@ for (const pendingReceipt of [false, true]) test(`terminal recovery routes an ol
   await coord.waitForPresence(['coord']);
   const reviewer = await ui.request({ type: 'session.launch', name: 'rev', role: 'reviewer', harness: 'claude-code' });
   assert.equal(reviewer.ok, true, reviewer.error);
-  const r = (reviewer.value as { process: { pid: number } }).process;
+  const r = await withDiscoveredPid(ui, (reviewer.value as { process: { pid: number; sessionId: string } }).process);
   t.after(() => killDaemon(r.pid));
   const { item } = await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Terminal lead order', assignee: 'impl' });
   const implementer = await ui.request({ type: 'session.launch', name: 'impl', role: 'implementer', harness: 'claude-code', item: item.id });
   assert.equal(implementer.ok, true, implementer.error);
-  const p = (implementer.value as { process: { pid: number } }).process;
+  const p = await withDiscoveredPid(ui, (implementer.value as { process: { pid: number; sessionId: string } }).process);
   t.after(() => killDaemon(p.pid));
   await coord.waitForPresence(['coord', 'rev', 'impl']);
   assert.equal((await ui.request({ type: 'task.hold', item: item.id, as: { name: 'rev' } })).ok, true);
@@ -335,7 +335,7 @@ test('unclaimed descendants inherit their nearest claimed ancestor lead', async 
   assert.deepEqual((await impl.call<{ subscriptions: Subscription[] }>('subscriptions')).subscriptions.map(s => s.subject), [{ item: parentId }, { item: childId }, { item: grandchildId }]);
   const launched = await ui.request({ type: 'session.launch', name: 'child-lead', role: 'implementer', harness: 'claude-code', item: childId });
   assert.equal(launched.ok, true, launched.error);
-  const p = (launched.value as { process: { pid: number } }).process;
+  const p = await withDiscoveredPid(ui, (launched.value as { process: { pid: number; sessionId: string } }).process);
   t.after(() => killDaemon(p.pid));
   await coord.waitForPresence(['coord', 'impl', 'child-lead']);
   await coord.call('task.close', { id: grandchildId });

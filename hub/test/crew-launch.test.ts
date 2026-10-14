@@ -5,7 +5,7 @@ import { existsSync } from 'node:fs';
 import { readFile, readdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { cland, connectUi, eventually, fakeClaude, fakeCodex, killDaemon, pidAlive, spawnSpoke, startDaemon, tempProject } from './harness.ts';
+import { withDiscoveredPid, cland, connectUi, eventually, fakeClaude, fakeCodex, killDaemon, pidAlive, spawnSpoke, startDaemon, tempProject } from './harness.ts';
 import { copyPreparedProject } from './prepared-project.ts';
 import type { HarnessProcessView } from '../src/protocol.ts';
 
@@ -126,6 +126,7 @@ test(`an Implementer pool moves to the next task worktree after merge (${harness
   const launched = await ui.request({ type: 'session.launch', name: 'pooled-impl', role: 'implementer', harness, item: first });
   assert.equal(launched.ok, true, launched.error);
   const one = launched.value as Launch;
+  one.process = await withDiscoveredPid(ui, one.process);
   const held = await ui.request({ type: 'session.launch', name: 'too-early', role: 'implementer', harness, item: second });
   assert.equal(held.ok, false, 'a current claim prevents reuse');
   assert.match(held.error!, /pool size 1/);
@@ -168,6 +169,7 @@ test(`an Implementer pool moves to the next task worktree after merge (${harness
   const handoff = await pending;
   assert.equal(handoff.ok, true, handoff.error);
   const two = handoff.value as Launch;
+  two.process = await withDiscoveredPid(ui, two.process);
   assert.equal(two.process.name, one.process.name);
   assert.notEqual(two.process.sessionId, one.process.sessionId, 'new launch owns a fresh cland identity');
   if (keepContext) assert.equal(two.process.harnessSessionId, one.process.harnessSessionId, 'native context survives');

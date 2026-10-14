@@ -4,7 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { cland, connectUi, eventually, fakeClaude, fakeCodex, NO_PS, pidAlive, startDaemon, tempProject } from './harness.ts';
+import { withDiscoveredPid, cland, connectUi, eventually, fakeClaude, fakeCodex, NO_PS, pidAlive, startDaemon, tempProject } from './harness.ts';
 import { copyPreparedProject } from './prepared-project.ts';
 import type { HarnessProcessView, EventsPage } from '../src/protocol.ts';
 
@@ -59,7 +59,8 @@ test(`${harness}: ${stop} ${forced ? 'forced' : 'graceful'} stop emits stopped w
   const item = (created.value as { item: { id: string } }).item.id;
   const launched = await ui.request({ type: 'session.launch', name: 'impl', harness, role: 'implementer', item }, 30_000);
   assert.equal(launched.ok, true, launched.error);
-  const { process: row, worktree } = launched.value as { process: HarnessProcessView; worktree: { path: string } };
+  const { process: launchedRow, worktree } = launched.value as { process: HarnessProcessView; worktree: { path: string } };
+  const row = await withDiscoveredPid(ui, launchedRow);
   await eventually('Implementer idle', async () => {
     const list = await ui.request({ type: 'session.list' });
     return (list.value as { processes: HarnessProcessView[] }).processes.some(p => p.sessionId === row.sessionId && p.state === 'idle') || undefined;

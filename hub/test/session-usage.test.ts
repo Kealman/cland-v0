@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { cland, connectUi, eventually, fakeClaude, fakeCodex, spawnSpoke, startDaemon, tempProject, type FrameClient } from './harness.ts';
+import { withDiscoveredPid, cland, connectUi, eventually, fakeClaude, fakeCodex, spawnSpoke, startDaemon, tempProject, type FrameClient } from './harness.ts';
 import { copyPreparedProject } from './prepared-project.ts';
 import type { HarnessProcessView, SessionUsage } from '../src/protocol.ts';
 
@@ -134,11 +134,11 @@ test('a harness exit and a relaunch stop each leave exactly one final record', a
   await ui.request({ type: 'subscribe' });
   const launched = await ui.request({ type: 'session.launch', name: 'lifecycle', role: 'implementer', harness: 'claude-code' });
   assert.equal(launched.ok, true, launched.error);
-  const p = (launched.value as { process: HarnessProcessView }).process;
+  const p = await withDiscoveredPid(ui, (launched.value as { process: HarnessProcessView }).process);
   await ui.waitFor(f => f.type === 'session.usage' && f.sessionId === p.sessionId && (f.usage as SessionUsage).total?.totalTokens === 19);
   const resumed = await ui.request({ type: 'session.resume', session: p.name, relaunch: true }, 30_000);
   assert.equal(resumed.ok, true, resumed.error);
-  const replacement = (resumed.value as { process: HarnessProcessView }).process;
+  const replacement = await withDiscoveredPid(ui, (resumed.value as { process: HarnessProcessView }).process);
   assert.notEqual(replacement.pid, p.pid);
   let journal = await records(root, ui);
   assert.deepEqual(journal.filter(r => r.final).map(r => [(r.total as { totalTokens: number }).totalTokens, r.role]), [[19, 'implementer']]);

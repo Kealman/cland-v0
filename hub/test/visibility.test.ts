@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { connectUi, eventually, fakeClaude, startDaemon, tempProject } from './harness.ts';
+import { withDiscoveredPid, connectUi, eventually, fakeClaude, startDaemon, tempProject } from './harness.ts';
 import type { Inbox, EventsPage } from '../src/protocol.ts';
 
 test('layout saves and human choices serialize through the shared UI lock', async t => {
@@ -154,7 +154,7 @@ for (const [terminal, role, expected] of [['stopped', 'implementer', 'background
     assert.equal(launched.ok, true, launched.error);
     const processRow = (launched.value as { process: { sessionId: string; pid: number } }).process;
     if (terminal === 'stopped') assert.equal((await ui.request({ type: 'session.stop', session: 'worker' }, 30_000)).ok, true);
-    else process.kill(processRow.pid, 'SIGKILL');
+    else process.kill((await withDiscoveredPid(ui, processRow)).pid, 'SIGKILL');
     const changed = await ui.waitFor(f => f.type === 'session.process' && (f.process as { status: string }).status === terminal);
     assert.equal((changed.process as { layer: string }).layer, expected);
     const state = await ui.waitFor(f => f.type === 'session.state' && f.sessionId === processRow.sessionId && f.state === 'unknown' && f.source === (terminal === 'stopped' ? 'stopped' : 'process'));
@@ -294,7 +294,7 @@ test('hundreds of default verdict, death and idle events leave needsYou zero', a
   const launched = await ui.request({ type: 'session.launch', name: 'impl-1', role: 'implementer', harness: 'claude-code' }, 30_000);
   assert.equal(launched.ok, true, launched.error);
   await ui.waitFor(f => f.type === 'event' && (f.row as { text?: string })?.text?.includes('idle 1 min') === true);
-  process.kill((launched.value as { process: { pid: number } }).process.pid, 'SIGKILL');
+  process.kill((await withDiscoveredPid(ui, (launched.value as { process: { sessionId: string } }).process)).pid, 'SIGKILL');
   const death = await ui.waitFor(f => f.type === 'event' && (f.row as { text?: string })?.text?.includes('impl-1 died') === true);
   assert.equal((death.row as { warning?: boolean }).warning, true);
   const events = (await ui.request({ type: 'events.list' })).value as EventsPage;
@@ -451,7 +451,7 @@ test('D17 verdicts and deaths carry warn severity in events and the event log, n
   assert.equal(launch.ok, true, launch.error);
   const subscribed = await coord.call<{ ok: boolean; error?: string }>('subscribe', { subject: { session: 'worker' }, events: ['session.state'] });
   assert.equal(subscribed.ok, true, subscribed.error);
-  process.kill((launch.value as { process: { pid: number } }).process.pid, 'SIGKILL');
+  process.kill((await withDiscoveredPid(ui, (launch.value as { process: { sessionId: string } }).process)).pid, 'SIGKILL');
   const deathEvent = await ui.waitFor(f => f.type === 'message' && (f.message as WarnMessage).kind === 'event' && (f.message as WarnMessage).detail?.lifecycle === 'died');
   assert.equal((deathEvent.message as WarnMessage).layer, 'watch');
   assert.equal((deathEvent.message as WarnMessage).severity, 'warn');

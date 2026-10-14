@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, connectUi, eventually, fakeClaude, fakeCodex, spawnSpoke, startDaemon, tempProject } from './harness.ts';
+import { withDiscoveredPid, cland, connectUi, eventually, fakeClaude, fakeCodex, spawnSpoke, startDaemon, tempProject } from './harness.ts';
 import type { HarnessProcessView, Message, SendOutcome } from '../src/protocol.ts';
 
 test('Codex relaunch injects an early accepted clause and frees the queued QA request without a nudge', async t => {
@@ -73,7 +73,7 @@ for (const relaunch of [false, true]) {
     t.after(() => coord.close());
     const launch = await ui.request({ type: 'session.launch', name: 'qa-d', role: 'qa', harness: 'claude-code' }, 30_000);
     assert.equal(launch.ok, true, launch.error);
-    let processRow = (launch.value as { process: HarnessProcessView }).process;
+    let processRow = await withDiscoveredPid(ui, (launch.value as { process: HarnessProcessView }).process);
     await ui.waitFor(f => f.type === 'session.usage' && f.session === 'qa-d');
     const idle = () => eventually('QA verifier idle', async () => {
       const { processes } = (await ui.request({ type: 'session.list' })).value as { processes: HarnessProcessView[] };
@@ -87,7 +87,7 @@ for (const relaunch of [false, true]) {
       const mark = ui.frames.length;
       const resumed = await ui.request({ type: 'session.resume', session: 'qa-d', relaunch: true }, 30_000);
       assert.equal(resumed.ok, true, resumed.error);
-      const after = (resumed.value as { process: HarnessProcessView }).process;
+      const after = await withDiscoveredPid(ui, (resumed.value as { process: HarnessProcessView }).process);
       assert.equal(after.sessionId, processRow.sessionId);
       assert.notEqual(after.pid, processRow.pid);
       processRow = after;

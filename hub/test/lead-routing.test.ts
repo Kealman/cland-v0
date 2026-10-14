@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { connectUi, spawnSpoke, startDaemon, tempProject, fakeClaude, eventually } from './harness.ts';
+import { withDiscoveredPid, connectUi, spawnSpoke, startDaemon, tempProject, fakeClaude, eventually } from './harness.ts';
 import type { Message, Subscription } from '../src/protocol.ts';
 
 test('an Implementer reports blocked up its item chain; unclaimed descendants use the nearest Lead', async t => {
@@ -105,8 +105,8 @@ test('long idle and death climb from item to epic to release; stopped Leads leav
     const idle = await ui.waitFor(f => f.type === 'message' && (f.message as Message).text === `event · session.state · ${session} idle 1 min`);
     assert.deepEqual((idle.message as Message).to, [owner]);
   }
-  const processes = (await ui.request({ type: 'session.list' })).value as { processes: Array<{ name: string; pid: number }> };
-  const impl = processes.processes.find(p => p.name === 'impl')!;
+  const processes = (await ui.request({ type: 'session.list' })).value as { processes: Array<{ name: string; sessionId: string; pid: number | null }> };
+  const impl = await withDiscoveredPid(ui, processes.processes.find(p => p.name === 'impl')!);
   process.kill(impl.pid, 'SIGKILL');
   const death = await ui.waitFor(f => f.type === 'message' && (f.message as Message).text === `event · session.state · impl died · ${item.id}`);
   assert.deepEqual((death.message as Message).to, ['lead-1']);

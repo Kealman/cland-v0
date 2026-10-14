@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { connectUi, eventually, fakeClaude, fakeCodex, cland, spawnSpoke, startDaemon } from './harness.ts';
+import { withDiscoveredPid, connectUi, eventually, fakeClaude, fakeCodex, cland, spawnSpoke, startDaemon } from './harness.ts';
 import { preparedProject } from './prepared-project.ts';
 import type { HarnessProcessView } from '../src/protocol.ts';
 
@@ -18,12 +18,13 @@ test('a stopped Claude Implementer resumes its conversation, role and item claim
   assert.equal((await ui.request({ size: 'M', type: 'task.create', title: 'Resume work' })).ok, true);
   const launch = await ui.request({ type: 'session.launch', name: 'impl', role: 'implementer', harness: 'claude-code', model: 'claude-fake-1', item: 'T-1' }, 30_000);
   assert.equal(launch.ok, true, launch.error);
-  const before = (launch.value as { process: HarnessProcessView }).process;
+  const before = await withDiscoveredPid(ui, (launch.value as { process: HarnessProcessView }).process);
   await eventually('first clause reaches fake Claude', async () => (await fake.log(before.harnessId!)).includes('you hold the role Implementer') || undefined);
   assert.equal((await ui.request({ type: 'session.stop', session: 'impl' }, 30_000)).ok, true);
   const r = await ui.request({ type: 'session.resume', session: 'impl', relaunch: true }, 30_000);
   assert.equal(r.ok, true, r.error);
   const after = r.value as Resumed;
+  after.process = await withDiscoveredPid(ui, after.process);
   assert.equal(after.found, true);
   assert.equal(after.role, 'implementer');
   assert.equal(after.claim, 'T-1');

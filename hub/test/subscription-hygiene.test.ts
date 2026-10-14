@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { cland, clandWithEnv, clauseAnswered, eventually, connectUi, connectWsUi, fakeCodex, fakeClaude, killDaemon, spawnSpoke, startDaemon, startHub, tempProject, sleep, TEST_SECRET } from './harness.ts';
+import { withDiscoveredPid, cland, clandWithEnv, clauseAnswered, eventually, connectUi, connectWsUi, fakeCodex, fakeClaude, killDaemon, spawnSpoke, startDaemon, startHub, tempProject, sleep, TEST_SECRET } from './harness.ts';
 import { copyPreparedProject } from './prepared-project.ts';
 import type { Message, Subscription } from '../src/protocol.ts';
 import { Tracker } from '../src/tracker/tracker.ts';
@@ -39,14 +39,15 @@ test('launched, died and launched within sixty seconds preserve every transition
   await coord.call('subscribe', { subject: { role: 'implementer' }, events: ['session.state'] });
   const launched = await ui.request({ type: 'session.launch', name: 'impl', role: 'implementer', harness: 'claude-code' });
   assert.equal(launched.ok, true, launched.error);
-  const p = (launched.value as { process: { pid: number; sessionId: string } }).process;
+  const p = await withDiscoveredPid(ui, (launched.value as { process: { pid: number; sessionId: string } }).process);
   now += 1000;
   process.kill(p.pid, 'SIGKILL');
   await ui.waitFor(f => f.type === 'session.process' && (f.process as { sessionId: string; status: string }).sessionId === p.sessionId && (f.process as { status: string }).status === 'exited');
   now += 1000;
   const relaunched = await ui.request({ type: 'session.resume', session: 'impl', relaunch: true });
   assert.equal(relaunched.ok, true, relaunched.error);
-  onCleanup(t, () => killDaemon((relaunched.value as { process: { pid: number } }).process.pid));
+  const replacement = await withDiscoveredPid(ui, (relaunched.value as { process: { sessionId: string } }).process);
+  onCleanup(t, () => killDaemon(replacement.pid));
   await ui.request({ type: 'topic.send', topic: 'general', text: '@coord consecutive lifecycle' });
   const digest = await coord.waitForEvent(e => e.params.content.includes('consecutive lifecycle'));
   assert.deepEqual(digest.params.content.match(/event · session.state · impl (launched|died)/g), [
@@ -191,7 +192,7 @@ for (const harness of ['claude-code', 'codex', 'opencode']) {
     await ui.request({ type: 'subscribe' });
     const launched = await ui.request({ type: 'session.launch', name: 'coord', role: 'coordinator', harness }, 30_000);
     assert.equal(launched.ok, true, launched.error);
-    const p = (launched.value as { process: { pid: number; sessionId: string; harnessId: string; harnessSessionId: string } }).process;
+    const p = await withDiscoveredPid(ui, (launched.value as { process: { pid: number; sessionId: string; harnessId: string; harnessSessionId: string } }).process);
     onCleanup(t, () => killDaemon(p.pid));
     if (harness !== 'codex') await clauseAnswered(ui, 'coord');
     await eventually('idle before steering', async () => {
@@ -260,7 +261,7 @@ test('usage thresholds name cost or tokens, deduplicate overlapping subjects and
   await coord.waitForPresence(['coord']);
   const launched = await ui.request({ type: 'session.launch', name: 'worker', role: 'implementer', harness: 'claude-code' });
   assert.equal(launched.ok, true, launched.error);
-  const p = (launched.value as { process: { pid: number; sessionId: string } }).process;
+  const p = await withDiscoveredPid(ui, (launched.value as { process: { pid: number; sessionId: string } }).process);
   onCleanup(t, () => killDaemon(p.pid));
   await ui.waitFor(f => f.type === 'session.state' && f.session === 'worker' && f.state === 'idle');
   await ui.waitFor(f => f.type === 'session.usage' && f.session === 'worker');
@@ -382,7 +383,7 @@ test('subtree subjects include sessions working on descendant items and survive 
   await coord.call('subscribe', { subject: { subtree: parent }, events: ['session.state'] });
   const launched = await ui.request({ type: 'session.launch', name: 'worker', role: 'implementer', harness: 'claude-code', item: child }, 30_000);
   assert.equal(launched.ok, true, launched.error);
-  const p = (launched.value as { process: { pid: number; sessionId: string } }).process;
+  const p = await withDiscoveredPid(ui, (launched.value as { process: { pid: number; sessionId: string } }).process);
   onCleanup(t, () => killDaemon(p.pid));
   await coord.waitForPresence(['coord', 'worker']);
   await ui.waitFor(f => f.type === 'session.state' && f.session === 'worker' && f.state === 'idle');

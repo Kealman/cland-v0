@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { assignRole, clandWithEnv, clauseAnswered, connectSocket, connectUi, connectWsUi, eventually, fakeClaude, fakeCodex, killDaemon, sleep, spawnSpoke, startDaemon, startHub, tempProject, TEST_SECRET, type FrameClient } from './harness.ts';
+import { withDiscoveredPid, assignRole, clandWithEnv, clauseAnswered, connectSocket, connectUi, connectWsUi, eventually, fakeClaude, fakeCodex, killDaemon, sleep, spawnSpoke, startDaemon, startHub, tempProject, TEST_SECRET, type FrameClient } from './harness.ts';
 import { PROTOCOL_VERSION, type Message } from '../src/protocol.ts';
 import { WebSocket } from 'ws';
 
@@ -64,7 +64,7 @@ for (const harness of ['claude-code', 'codex', 'opencode']) {
     await ui.request({ type: 'subscribe' });
     const launch = await ui.request({ type: 'session.launch', name: 'coord', role: 'coordinator', harness }, 30_000);
     assert.equal(launch.ok, true, launch.error);
-    const p = (launch.value as { process: Process }).process;
+    const p = await withDiscoveredPid(ui, (launch.value as { process: Process }).process);
     t.after(() => killDaemon(p.pid));
     const inputLog = () => read(harness === 'claude-code' ? join(home, 'jobs', `${p.harnessId}.log`) : harness === 'codex' ? join(home, 'log', `${p.pid}.log`) : join(home, 'prompts', `${p.harnessSessionId}.log`));
     if (harness !== 'codex') await clauseAnswered(ui, 'coord'); // Codex starts with a plain clause input, which the fake does not answer.
