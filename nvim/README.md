@@ -666,6 +666,13 @@ Item motions accept every kind prefix supplied by `hub.status.tracker.prefixes`,
 | `␣␣` | Return to the previous scope with its selected row; from the root, return to the previous centre view. |
 | `D` | Hide / show done items throughout the tree, including done epics. |
 | `A` | Show / hide closed releases under Other releases and closed root items under Unscheduled. |
+| `m` / `M` | Message the Coordinator in General / the item’s topic; both use General for a `V` selection. |
+
+`m` on an item row or card opens a composer to General. `M` sends into the item's topic; when an open item has none, sending creates a topic titled `<id> <title>` (at most 200 characters), bound to that item. A closed item without a topic points to `m`. Both keys on a visual line selection (`V`) send one message to General, skipping labels and virtual rows.
+
+Two floats over the card show the read-only destination/context and the prompt, widened to 64 columns when needed. `↵` sends, `S-↵` adds a newline, and `Esc` or normal-mode `q` closes and keeps the draft for that item or selection. Failed and disconnected sends retain the draft and explain why in the status line. The card's last line shows whether `M` uses or creates its topic.
+
+The Coordinator receives the human's text, a blank line, `from the explorer · scope <breadcrumbs>` (plus `N items selected` for a selection), then one line per item: `id · kind · status · container · rank · title`. Display ids are used throughout, containers use derived status, and a card message adds `card line: <trimmed cursor line>`. Messages go through `topic.send` as the human with `to = ["coordinator"]`. Above 8192 UTF-8 bytes, whole item lines are kept while they fit, followed by `… and K more: <ids>`; remaining ids and oversized text are cut to fit.
 
 The winbar and top context show the scope's breadcrumbs, including the owner of a virtual scope. The winbar ends with `done shown · N · D` or `done hidden · N · D`: done nodes under this scope, folded descendants included. In the root view this counts only the named release. Folds, scope, `D` and `A` persist under `explorer` in version 2 of `.cland/ui.json`; invalid explorer preferences reset to defaults while the other preferences survive. Missing item folds are dropped on the next write. Changes keep the selected row by identity or move to its nearest visible ancestor.
 

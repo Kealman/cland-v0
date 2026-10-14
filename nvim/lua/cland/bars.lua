@@ -248,9 +248,11 @@ function M.status()
   if mode == 't' then
     hint = 'C-h/j/k/l focus · C-\\ leaves · then ␣␣ back'
   elseif role == 'explorer' then
-    hint = '↵ card · l h fold · s scope · ␣␣ back · D done · A archive'
+    hint = '↵ card · l h fold · s scope · ␣␣ back · D done · A archive · m General · M topic'
   elseif role == 'card' then
-    hint = 'h or ␣␣ tree · gi explorer · gI item view · gt topic · gs session · gp plan'
+    hint = 'h or ␣␣ tree · m General · M topic · gi explorer · gI item view · gt topic · gs session · gp plan'
+  elseif role == 'explorer_compose' then
+    hint = '↵ send · S-↵ newline · Esc/q close, keep draft'
   elseif role == 'composer' and mode == 'i' then
     hint = 'Enter sends · S-Enter newline · Esc leaves'
   elseif role == 'inbox' or role == 'inbox_full' then

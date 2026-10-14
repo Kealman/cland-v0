@@ -94,6 +94,12 @@ group('explorer', {{'j','Next explorer item row'}, {'k','Previous explorer item 
   {'zR','Unfold every explorer node'}, {'zM','Fold every explorer node'}, {'s','Scope explorer to this node'},
   {'D','Hide or show done explorer items'}, {'A','Show or hide archived explorer roots'}, {'zb','Unfold or fold agents text'}})
 group('card', {{'<CR>','Reveal referenced item in explorer'}, {'zb','Unfold or fold agents text'}, {'h','Return to explorer tree'}, {'<leader><leader>','Return to explorer tree'}})
+for _, scope in ipairs({'explorer','card'}) do
+  group(scope, {{'m','Message the Coordinator in General'}, {'M',"Message the Coordinator in the item's topic"}}, scope == 'explorer' and {'n','x'} or 'n')
+end
+group('explorer_compose', {{'<CR>','Send explorer message'}, {'<Esc>','Close explorer composer and keep draft'}}, {'i','n'})
+group('explorer_compose', {{'<S-CR>','Newline in explorer message'}}, 'i')
+group('explorer_compose', {{'q','Close explorer composer and keep draft'}})
 group('plan', {{'a','Approve epic plan'}, {'d','Discuss plan with the Lead'}, {'e','Edit epic plan file'}})
 group('item', {{'e','Edit item file'}, {'L','Agents log for this item'},
   {'ca','Add criterion'}, {'ce','Edit selected criterion'}, {'cd','Remove selected criterion (confirm)'}})

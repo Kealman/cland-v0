@@ -334,6 +334,8 @@ M.HELP = {
   'Centre    ␣g General · ␣L Agents log · ␣b board · ␣G graph · ␣N inbox full width · ␣E events · ␣␣ the previous centre view',
   'Explorer  ␣e · :Cland explorer [id] · j k item rows (counts) · l h fold · ↵ card · s scope · ␣␣ back',
   '          za/zo/zc toggle/open/close · zR zM all · D done · A archive',
+  '          m General · M item topic (creates if absent) · V selection: m/M General with item context',
+  'Compose   ↵ send · S-↵ newline · Esc/q close, keep draft',
   'Card      ↵ or l on a leaf focuses · h or ␣␣ returns to the tree · j k move · gt topic · gs session · gp plan',
   'Graph     h/j/k/l nodes · ^/$ ends · ↵ item · gi/gt/gs · p/P parent · d done · o turn · r edges · :Cland graph [T-n]',
   'Agents    ␣L the log: lifecycle events and agent-to-agent messages · r on a message replies to its sender',

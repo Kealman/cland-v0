@@ -229,14 +229,17 @@ test('invalid explorer preferences reset alone and are reported while other ui.j
 test('the explorer registry, key help and status hint advertise every outline action', {skip}, async t => {
   const {c}=await stub(t);
   await c.input('<Esc><Space>e');
-  await c.waitScreen(s=>s.includes('l h fold · s scope · ␣␣ back · D done · A archive'),'explorer status hint');
+  await c.waitScreen(s=>s.includes('l h fold · s scope · ␣␣ back · D done · A archive')&&s.includes('m General · M topic'),'explorer status hint');
   const actions=await c.lua<Array<{id:string;title:string;key:string}>>("local out={}; for _,a in ipairs(require('cland.actions').all()) do if a.id:match('^explorer:') then out[#out+1]={id=a.id,title=a.title,key=a.key} end end; return out");
-  assert.deepEqual(actions.map(a=>a.id).sort(),['<CR>','j','k','l','h','za','zo','zc','zR','zM','s','D','A','zb'].map(k=>`explorer:${k}`).sort());
+  assert.deepEqual(actions.map(a=>a.id).sort(),['<CR>','j','k','l','h','za','zo','zc','zR','zM','s','D','A','zb','m','M'].map(k=>`explorer:${k}`).sort());
   for(const action of actions) { assert.ok(action.title.length>0); assert.ok(action.key.endsWith('in explorer')); }
   assert.deepEqual(await c.lua("return require('cland.actions').audit()"),[]);
   await c.input('<Space>?');
   const screen=await c.waitScreen(s=>s.includes('zR zM all')&&s.includes('za/zo/zc')&&s.includes('D done · A archive'),'explorer keys in help');
   assert.ok(screen.includes('Open explorer'));
+  assert.ok(screen.includes('m General · M item topic (creates if absent)'));
+  assert.ok(screen.includes('V selection: m/M General with item context'));
+  assert.ok(screen.includes('S-↵ newline · Esc/q close, keep draft'));
 });
 async function highlights(c:Client, id:string) {
   return c.lua<string[]>(`local id=...; local e=require('cland.explorer'); local row; for r,info in ipairs(e.rows) do if info.key==id then row=r-1 end end; local groups={}; for _,m in ipairs(vim.api.nvim_buf_get_extmarks(e.b,vim.api.nvim_create_namespace('cland.explorer'),{row,0},{row,-1},{details=true})) do groups[#groups+1]=m[4].hl_group end; return groups`,id);

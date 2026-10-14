@@ -649,7 +649,7 @@ function M.rows_of(ix, scope, width)
     end
   end)
   rows[#rows + 1] = { info = {}, left = {} }
-  rows[#rows + 1] = { info = {}, left = { { ' l h fold · s scope · ␣␣ back · D done · A archive', 'ClandFaint' } } }
+  rows[#rows + 1] = { info = {}, left = { { ' l h fold · s scope · ␣␣ back · D done · A archive · m General · M topic', 'ClandFaint' } } }
   return rows
 end
 
@@ -787,6 +787,9 @@ function M.card_buf()
     local win = M.tree_win()
     if win ~= -1 then api.nvim_set_current_win(win) end
   end
+  for _, key in ipairs({'m','M'}) do
+    require('cland.actions').map('n',key,function() require('cland.explorer_compose').here(key == 'M') end,{buffer=c.buf,silent=true,nowait=true})
+  end
   for _, key in ipairs({'h','<leader><leader>'}) do
     require('cland.actions').map('n',key,back,{buffer=c.buf,silent=true,nowait=true})
   end
@@ -818,6 +821,8 @@ function M.sync(win)
   local layout, c = require('cland.layout'), M.card
   local ui = state.S.ui
   if ui.view.kind ~= 'explorer' then
+    local compose = package.loaded['cland.explorer_compose']
+    if compose then compose.close_composer() end
     M.close_card()
     if c.over_right then
       c.over_right = nil
@@ -988,10 +993,15 @@ function M.buf()
     zo = function() M.fold('open') end, zc = function() M.fold('close') end,
     zR = function() M.fold_all(true) end, zM = function() M.fold_all(false) end,
     s = M.scope_here,
+    m = function() require('cland.explorer_compose').here(false) end,
+    M = function() require('cland.explorer_compose').here(true) end,
     D = M.toggle_done, A = M.toggle_archive, zb = M.toggle_body,
   }
   for key, run in pairs(keys) do
     require('cland.actions').map('n', key, run, {buffer=M.b,silent=true,nowait=true})
+  end
+  for _, key in ipairs({'m','M'}) do
+    require('cland.actions').map('x',key,function() require('cland.explorer_compose').here(key == 'M',true) end,{buffer=M.b,silent=true,nowait=true})
   end
   api.nvim_create_autocmd('CursorMoved', {buffer=M.b, callback=function()
     M.remember()

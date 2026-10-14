@@ -360,6 +360,8 @@ function C.compose(key, width)
       if line == '' then rows[#rows+1] = {} else text(line,line:match('^#') and 'ClandHeading' or 'ClandText') end
     end
   end
+  rows[#rows+1] = {}
+  rows[#rows+1] = {{require('cland.explorer_compose').line(it),'ClandFaint'}}
   return C.paint(rows)
 end
 

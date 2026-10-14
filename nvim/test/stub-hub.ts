@@ -291,8 +291,14 @@ function answer(f: Frame) {
       return acceptSend(f);
     case 'topic.create': {
       if (typeof f.title !== 'string' || !f.title.trim()) return fail(f.id, 'a topic needs a title');
-      const topic = { id: `topic-${(scenario.topics?.length ?? 0) + 1}`, title: f.title.trim(), status: 'open', standing: false, createdAt: now(), updatedAt: now(), item: null, unread: 0, lastMessageAt: null };
+      if (f.title.length > 200) return fail(f.id, 'a topic title is at most 200 characters');
+      const item = f.item === undefined ? undefined : scenario.items?.find(it => it.id === f.item);
+      if (f.item !== undefined && !item) return fail(f.id, `unknown item ${String(f.item)}`);
+      if (item && (item.topic || scenario.topics?.some(topic => topic.item === item.id))) return fail(f.id, `${String(item.id)} already has a topic`);
+      if (item?.state === 'closed') return fail(f.id, `${String(item.id)} is closed: a closed unit of work gets no new topic`);
+      const topic = { id: `topic-${(scenario.topics?.length ?? 0) + 1}`, title: f.title.trim(), status: 'open', standing: false, createdAt: now(), updatedAt: now(), item: item?.id ?? null, unread: 0, lastMessageAt: null };
       scenario.topics?.push(topic);
+      if (item) { item.topic = topic.id; write({ type: 'task', item }); }
       write({ type: 'topic', topic });
       return ok(f.id, { topic });
     }
