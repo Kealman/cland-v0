@@ -3,7 +3,7 @@ id: T-359
 kind: task
 title: "Live and fast: the explorer rebuilds on every hub event, redraws only on a visible change with the cursor kept on its item, builds a 300-item tree in under 15 ms, and is the centre view at startup"
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 7
 labels:
@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-242
 branch: t/T-359-live-and-fast-the-explorer-rebuilds-on
 created: 2026-10-13T20:53:52.374Z
-updated: 2026-10-14T12:23:05.227Z
+updated: 2026-10-14T14:14:55.774Z
 ---
 
 ## Summary
@@ -114,6 +114,7 @@ The scope's history entries keep their own cursor keys, so `␣␣` still lands 
   - verified: rev-23 [reviewer] · run rev-2026-10-14-359-4 · 2026-10-14T10:14:19.940Z · commit f769586c03293bd64b5c8c7911af09086425dfbd
   - verified: rev-23 [reviewer] · run rev-2026-10-14-359-6 · 2026-10-14T10:45:54.978Z · commit f769586c03293bd64b5c8c7911af09086425dfbd
   - verified: rev-23 [reviewer] · run rev-2026-10-14-359-7 · 2026-10-14T11:04:05.120Z · commit 0d6a85a754701b6f28a479ff43c151ccf0644e93
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-359-9 · 2026-10-14T14:14:55.774Z · commit 9b303edad16e9a931242d7030ea85d6b6f6d4f9d
 
 ## Comments
 
@@ -240,3 +241,20 @@ scope: evidence
 Medium — hub/test/suite.test.ts:1083 / verification evidence: A-2347 reports the live held-ps admission test failing, followed by an incomplete/hung hub-machine run; Neovim never started. Only typecheck and 37 free-phase tests completed. Coordinator a16d7167 ordered cancellation after 55 minutes of idle runner/spoke and no resubmission yet. Exit 143 is not green gate evidence. Exact assertion/cause is unclassified; no new T-359 source regression is asserted, and A-2339 remains its source assessment. C6 fails the verification gate. Bugs · S aside reported to lead; no unchanged rerun. A-2348: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2348-t-359-incomplete-verification-held-ps-failure-and-cancelled-hang.md.
 
 Criteria: C6 failed (Exact-head run 6a9dce81 was cancelled after a hub-machine hang and held-ps test failure; Neovim did not run, so the required green verification is absent.).
+
+### impl-359 · 2026-10-14T14:13:48.924Z
+
+Per Coordinator aa203b1e, merged T-398 observer-spoke test fix 8af83889 cherry-picked cleanly with provenance as 9b303eda and pushed. All eight touched hub test files ran once, sequentially: 57/57 pass. Evidence A-2409; worktree clean. Delta review requested. Still holding verification until T-382's merged commit replaces the earlier pre-merge cherry-pick, per 5cfd6b75.
+
+### rev-23 · 2026-10-14T14:14:55.774Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-359-9
+commit: 9b303edad16e9a931242d7030ea85d6b6f6d4f9d
+scope: delta
+
+No high or medium delta findings. The sole commit exactly matches merged/reviewed T-398 8af83889/e7adbaf0: eight hub test files, 50 readiness/subscription additions, no production or original assertion/deadline changes. Reviewed patch equality, head, clean worktree and diff check; sequential touched-file logs total 57/57 with zero failures/skips. Earlier product source assessment remains applicable. C7 refreshed; C1–C6 remain pending. Retain the Coordinator’s wait for merged T-382 replacement, then final delta review before no-mode verification. A-2410: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2410-t-359-shared-t-398-delta-source-review.md.
+
+Criteria: C7 verified.

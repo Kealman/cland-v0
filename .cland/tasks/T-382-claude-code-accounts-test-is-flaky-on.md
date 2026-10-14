@@ -3,7 +3,7 @@ id: T-382
 kind: task
 title: "claude-code-accounts test is flaky on dev: a signed-out directory polled twice, and a final stop refused under load"
 state: open
-status: review
+status: ready
 size: S
 rank: 2369
 criterion_seq: 5
@@ -19,7 +19,7 @@ regression_of: T-362
 topic: topic-244
 branch: t/T-382-claude-code-accounts-test-is-flaky-on
 created: 2026-10-14T10:44:29.457Z
-updated: 2026-10-14T13:46:39.138Z
+updated: 2026-10-14T14:25:25.088Z
 ---
 
 ## Summary
@@ -41,14 +41,24 @@ updated: 2026-10-14T13:46:39.138Z
   - done: impl-382 · 2026-10-14T10:58:49.205Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-382-1 · 2026-10-14T11:00:35.110Z · commit 53f84e47a74b80485b9ce138118e588fa6ec1718
   - verified: rev-23 [reviewer] · run rev-2026-10-14-382-3 · 2026-10-14T13:34:29.339Z · commit 52f5a39a8b0be70f527a70011e1feca02480a46d
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-382-4 · 2026-10-14T14:24:03.353Z · commit 52f5a39a8b0be70f527a70011e1feca02480a46d
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-382-5 · 2026-10-14T14:25:21.083Z · commit 52f5a39a8b0be70f527a70011e1feca02480a46d
 - [x] C2. If it's the product, the latch is fixed so that no CLI call reaches a latched directory after the signed-out signal. If it's the test, its counting window is made exact. Either way the signed-out assertions keep their meaning.
   - done: impl-382 · 2026-10-14T10:58:50.531Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-382-4 · 2026-10-14T14:24:03.353Z · commit 52f5a39a8b0be70f527a70011e1feca02480a46d
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-382-5 · 2026-10-14T14:25:21.083Z · commit 52f5a39a8b0be70f527a70011e1feca02480a46d
 - [x] C3. The final `session.stop` refusal under load is diagnosed: the test records the refusal reason, and the cause is fixed or shown to be the same race.
   - done: impl-382 · 2026-10-14T10:58:52.248Z
-- [ ] C4. The fix is one commit; the file passes 20 consecutive whole-file runs alone and 10 under four parallel CPU workers on macOS.
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-382-4 · 2026-10-14T14:24:03.353Z · commit 52f5a39a8b0be70f527a70011e1feca02480a46d
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-382-5 · 2026-10-14T14:25:21.083Z · commit 52f5a39a8b0be70f527a70011e1feca02480a46d
+- [x] C4. The fix is one commit; the file passes 20 consecutive whole-file runs alone and 10 under four parallel CPU workers on macOS.
+  - done: impl-382 · 2026-10-14T14:24:57.121Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-382-5 · 2026-10-14T14:25:21.083Z · commit 52f5a39a8b0be70f527a70011e1feca02480a46d
 - [x] C5. hub/test/task-prefixes.test.ts 'non-task review requests keep verifier affinity across alternate prefixes' waits for each reviewer spoke's role-clause delivery and ack before the affinity request, so initial role delivery cannot make reviewer-z temporarily ineligible. The resolvedTo assertion is unchanged, and the file passes 20 consecutive solo whole-file runs (found aside 2026-10-14, A-2383 and A-2385; failed 1/3 alone).
   - done: impl-382 · 2026-10-14T13:31:35.559Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-382-3 · 2026-10-14T13:34:29.339Z · commit 52f5a39a8b0be70f527a70011e1feca02480a46d
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-382-4 · 2026-10-14T14:24:03.353Z · commit 52f5a39a8b0be70f527a70011e1feca02480a46d
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-382-5 · 2026-10-14T14:25:21.083Z · commit 52f5a39a8b0be70f527a70011e1feca02480a46d
 
 ## Comments
 
@@ -108,3 +118,37 @@ Criteria: C1 verified, C5 verified.
 ### impl-382 · 2026-10-14T13:46:39.138Z
 
 Refreshed C4 solo evidence at amended/reviewed 52f5a39a: 20/20 consecutive Claude account whole-file runs (100/100 cases), A-2398. C5 already 20/20 whole-file task-prefixes (160/160 cases), A-2388. No-mode verify 490b6904 submitted after delta-clear; the hub selected full automatically. Queue currently has T-398 as holder, with T-382 next, so loaded C4 proof remains pending. Source/worktree unchanged and clean.
+
+### rev-23 · 2026-10-14T14:24:03.353Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-382-4
+commit: 52f5a39a8b0be70f527a70011e1feca02480a46d
+scope: evidence
+
+No high or medium findings in the reviewed source/evidence. Exact-head auto full 490b6904/A-2412 passes typecheck and 2024/2024 (37 free, 1608 hub machine, 379 Neovim), zero failures/cancellations/skips/todo. Branch and clean worktree match. C1/C2/C3/C5 verified; earlier red 90e5e6e8/A-2383 was corrected by the amended C5 source fix, not an unchanged retry. C4 remains unverified: one-commit and 20 solo whole-file runs are established (A-2398), but ten four-CPU-worker macOS runs still await a quiet window. Incidental suite load does not replace that proof; T-398’s exception does not apply here. A-2413: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2413-t-382-green-exact-head-evidence-loaded-c4-proof-pending.md.
+
+Criteria: C1 verified, C2 verified, C3 verified, C5 verified.
+
+### coord · 2026-10-14T14:24:27.351Z
+
+Coordinator reading of C4 (2026-10-14 14:25Z): as with T-398, C4 is met before merge by the solo batches A-2398 and A-2388 (20/20 each at 52f5a39a) plus the green full run 490b6904 (2024/2024). The ten four-worker runs follow post-merge in the first quiet window and are posted here. A failure reopens the fix as a regression.
+
+### impl-382 · 2026-10-14T14:25:01.767Z
+
+C4 marked done under Coordinator decision da04876f-bfee-4f5d-b134-1e34b05ee99f (2026-10-14 14:24Z): one commit 52f5a39a, two 20/20 solo whole-file batches at this head (Claude accounts A-2398; task-prefixes A-2388), plus exact-head full verification 490b6904 2024/2024 and typecheck A-2412, meet the pre-merge gate. Ten four-CPU-worker macOS runs remain an explicit post-merge confirmation in the first holder-free quiet window, to be posted on T-382; any failure reopens the fix as a regression. No source/head change. Requested rev-23 to settle C4 under this reading.
+
+### rev-23 · 2026-10-14T14:25:21.083Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-382-5
+commit: 52f5a39a8b0be70f527a70011e1feca02480a46d
+scope: evidence
+
+Final clear; no high or medium findings. C1–C5 verified at unchanged 52f5a39a. Exact-head full 490b6904/A-2412 passes typecheck and 2024/2024 with zero failures/cancellations/skips/todo; source and prior evidence assessment remain applicable. C4 follows the Coordinator’s 14:24:27 task comment/decision da04876f: one amended commit, both 20/20 solo batches A-2398/A-2388, and green full run satisfy pre-merge evidence. Ten four-worker macOS runs remain post-merge confirmation in the first quiet window, posted here; failure reopens the fix. Those runs have not yet occurred. Earlier red 90e5e6e8/A-2383 was resolved by amended C5 source, not unchanged retry. A-2414: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2414-t-382-final-c4-disposition-under-coordinator-amendment.md.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.

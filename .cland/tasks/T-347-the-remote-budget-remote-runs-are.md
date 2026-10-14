@@ -3,7 +3,7 @@ id: T-347
 kind: task
 title: "The remote budget: remote runs are admitted up to remote_budget in parallel beside the local slot of one, the local slot takes a droplet run only when the remote budget is full, and cland verify queue names each run's executor"
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 7
 labels:
@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-233
 branch: t/T-347-the-remote-budget-remote-runs-are
 created: 2026-10-13T20:53:46.081Z
-updated: 2026-10-14T12:42:59.545Z
+updated: 2026-10-14T14:15:44.266Z
 ---
 
 ## Summary
@@ -106,6 +106,7 @@ Prior work: T-215 kept the local budget at one (`verification-budget-capped`). T
   - verified: rev-23 [reviewer] · run rev-2026-10-14-347-8 · 2026-10-14T08:28:21.323Z · commit 205897b4aed6ff59590908c2fa53cde755dd5fac
   - verified: rev-23 [reviewer] · run rev-2026-10-14-347-9 · 2026-10-14T08:55:43.401Z · commit 205897b4aed6ff59590908c2fa53cde755dd5fac
   - verified: rev-23 [reviewer] · run rev-2026-10-14-347-10 · 2026-10-14T11:19:14.715Z · commit cbbe6974014f5f2ab8a372cdac5be5e1253feff9
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-347-12 · 2026-10-14T14:15:01.291Z · commit f238d824616860c44cc0166d87c7f59207fe6e27
 
 ## Comments
 
@@ -351,3 +352,24 @@ Coordinator's 5/5 qualification probe at exact unchanged cbbe6974 completed sequ
 ### impl-347 · 2026-10-14T12:42:59.545Z
 
 Coordinator 7d315b11 confirms 4/5 isolated handover outcomes do not qualify for an unchanged rerun. T-398 filed (S, regression T-369) as a shared sweep of observer/native-MCP startup pattern; impl-398 owns it. Hold cbbe6974 unchanged. Once T-398 merges, cherry-pick the named commit, targeted touched files sequentially, delta source review, cland verify with no mode at exact reviewed head, then Coordinator C6 on green. A-2365 holds all five standalone logs.
+
+### impl-347 · 2026-10-14T14:13:46.668Z
+
+T-398 shared test-only 8af83889 applied cleanly as pushed f238d824616860c44cc0166d87c7f59207fe6e27; production unchanged from delta-clear cbbe6974. All eight touched files ran once sequentially under D29/load rule: 57/57 pass, zero skips; typecheck/shards/diff check pass. A-2408 contains targeted logs, including full lead-handover 4/4 (formerly intermittent clause timeout). Delta source review requested before exact-head no-mode verification. Coordinator C6 follows green via A-2345; source head stays unchanged meanwhile.
+
+### rev-23 · 2026-10-14T14:15:01.291Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-347-12
+commit: f238d824616860c44cc0166d87c7f59207fe6e27
+scope: delta
+
+No high or medium delta findings. The sole commit exactly matches merged/reviewed T-398 8af83889/e7adbaf0: eight hub test files, 50 readiness/subscription additions, no production or original assertion/deadline changes. Reviewed patch equality, head, clean worktree and diff check; sequential touched-file logs total 57/57 with zero failures/skips. Earlier product source assessment remains applicable. C7 refreshed; C1–C5 await exact-head no-mode verification. C6 remains the Coordinator’s real check after green via A-2345. A-2411: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2411-t-347-shared-t-398-delta-source-review.md.
+
+Criteria: C7 verified.
+
+### impl-347 · 2026-10-14T14:15:44.266Z
+
+T-398 delta source-clear f238d824616860c44cc0166d87c7f59207fe6e27, rev-23 run rev-2026-10-14-347-12 / A-2411. D29 no-mode fresh cland verify submitted at exact head: 3e038535-69e8-421c-a8b5-3fa3fecf22e7, PID null while queued, topic-233, recipients rev-23/impl-347. No forced all/hub/nvim mode; hub selects phases. Waiting unchanged. On green, report current head to Coordinator for C6 via A-2345; claimant marks C6 from its evidence then final review.
