@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createConnection } from 'node:net';
 import { fileURLToPath } from 'node:url';
-import { connectUi, spawnSpoke, startDaemon, tempProject } from '../../hub/test/harness.ts';
+import { connectUi, eventually, spawnSpoke, startDaemon, tempProject } from '../../hub/test/harness.ts';
 import { nvimOrSkip, startClient, type Client } from './harness.ts';
 import { waitInitialSnapshots } from './readiness.ts';
 import type { Scenario } from './stub-hub.ts';
@@ -79,12 +79,17 @@ test('card m includes its cursor line; M creates a bound topic then reuses it', 
   let frames=(await control({requests:true})).requests.filter(f=>f.type==='topic.send');
   assert.ok(frames[0]?.text?.endsWith('\ncard line: '+line));
   await send(c,'M','Discuss here');
+  // The previous send's notice can still be visible after this composer closes.
+  await eventually('bound-topic send reaches the hub', async()=>
+    (await control({requests:true})).requests.filter(f=>f.type==='topic.send').length>=2 || undefined);
   const requests=(await control({requests:true})).requests;
   const create=requests.find(f=>f.type==='topic.create');
   assert.equal(create?.item,'T-355');assert.equal(create?.title,'T-355 Task 355');
   frames=requests.filter(f=>f.type==='topic.send');assert.notEqual(frames[1]?.topic,'general');
   await c.waitScreen(s=>s.includes("M in T-355's topic"),'bound card topic');
   await send(c,'M','Continue');
+  await eventually('reused-topic send reaches the hub', async()=>
+    (await control({requests:true})).requests.filter(f=>f.type==='topic.send').length>=3 || undefined);
   const final=(await control({requests:true})).requests;
   assert.equal(final.filter(f=>f.type==='topic.create').length,1);
   assert.equal(final.filter(f=>f.type==='topic.send')[2]?.topic,frames[1]?.topic);

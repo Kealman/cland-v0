@@ -5,7 +5,7 @@ import { createConnection } from 'node:net';
 import { fileURLToPath } from 'node:url';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { connectUi, startDaemon, tempProject } from '../../hub/test/harness.ts';
+import { connectUi, eventually, startDaemon, tempProject } from '../../hub/test/harness.ts';
 import { centreOf, nvimOrSkip, startClient, type Client } from './harness.ts';
 import { waitInitialSnapshots } from './readiness.ts';
 import type { Scenario } from './stub-hub.ts';
@@ -168,6 +168,9 @@ test('m and M promote category work by message with the category container in th
     await c.input('Please promote this<CR>');
     await c.waitScreen(s=>s.includes('sent to the Coordinator')&&!s.includes('rides with it'),'promotion sent');
   }
+  // The General notice may outlive the next composer; wait for both actual sends.
+  await eventually('both promotion sends reach the hub', async()=>
+    (await control({requests:true})).requests.filter(f=>f.type==='topic.send').length>=2 || undefined);
   const {requests}=await control({requests:true});
   const sends=requests.filter(f=>f.type==='topic.send');
   assert.equal(sends.length,2);assert.equal(sends[0]!.topic,'general');
