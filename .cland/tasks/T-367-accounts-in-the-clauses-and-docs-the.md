@@ -5,6 +5,7 @@ title: "Accounts in the clauses and docs: the Coordinator's clause turns a refus
 state: open
 status: backlog
 size: S
+criterion_seq: 7
 labels:
   - v0.1.2
   - hub
@@ -17,7 +18,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-13T23:42:55.063Z
-updated: 2026-10-13T23:43:01.618Z
+updated: 2026-10-13T23:44:25.055Z
 ---
 
 ## Summary
@@ -94,3 +95,5 @@ Link it from the adapter sections.
 - [ ] C3. A project freshly made by `cland init` has a `roles.toml` whose header documents `account` and whose launch tables carry the commented-out key, and init writes no `accounts.toml`.
 - [ ] C4. `hub/README.md` has one "Accounts and limits" section covering the registry, the environment per adapter, the polling rules, the sources, `cland account list` and `clear`, the signals, the mark, the refusal and the terms, and the adapter sections link to it.
 - [ ] C5. `nvim/README.md` describes the accounts block and the limited highlight in one place, and `GLOSSARY.md` defines Account and Limited account.
+- [ ] C6. hub/README.md has one section listing cland's per-user state: the executor spend ledger (~/.cland/executor/spend.json, T-346) and the accounts registry (~/.config/cland/accounts.toml), with their paths, owners and what each holds (stand-in, D24, 2026-10-13).
+- [ ] C7. The ask the Coordinator's clause makes from an account-limited refusal names the limited account and its reset time, and lists the harness's other accounts with their current used share, so the human picks without opening anything (stand-in, D24, 2026-10-13).

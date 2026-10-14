@@ -3,7 +3,7 @@ id: T-354
 kind: task
 title: "The card in full: the progress, the plan stage, the latest verdict with its round, reason and scope, the relations with regression_of, the branch and the latest cland verify, the dates and last activity, the Decision block, zb, and the card over the right panel when the centre is narrow"
 state: open
-status: backlog
+status: planned
 size: L
 labels:
   - v0.1.2
@@ -17,7 +17,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-13T20:53:51.826Z
-updated: 2026-10-13T20:53:54.259Z
+updated: 2026-10-14T00:06:03.946Z
 ---
 
 ## Summary

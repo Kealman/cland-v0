@@ -5,6 +5,7 @@ title: "Limited accounts refuse launches: a limit-hit signal from Claude Code, C
 state: open
 status: backlog
 size: L
+criterion_seq: 9
 labels:
   - v0.1.2
   - hub
@@ -17,7 +18,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-13T23:42:54.826Z
-updated: 2026-10-13T23:43:01.017Z
+updated: 2026-10-13T23:44:25.889Z
 ---
 
 ## Summary
@@ -113,3 +114,4 @@ Ticket T-364's `poll(account)` is the after-hit trigger, and ticket T-365's bloc
 - [ ] C6. A hit makes exactly one after-hit poll of its account, and a second hit while the mark holds adds no poll and no notice.
 - [ ] C7. The headless workbench shows codex-a in `ClandRed` with `limited` and its reset, and oc-b with `until cleared`. The highlight goes after `cland account clear`.
 - [ ] C8. `hub/README.md` and `nvim/README.md` describe the signals, the mark, the refusal and its code, what is never done, `cland account clear` and the highlight.
+- [ ] C9. The account-limited refusal carries the account name and the reset time (or until cleared) as structured fields and in its text, for T-367's ask (stand-in, D24, 2026-10-13).

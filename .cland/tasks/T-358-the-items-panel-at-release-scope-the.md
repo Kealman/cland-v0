@@ -2,8 +2,8 @@
 id: T-358
 kind: task
 title: "The items panel at release scope: the release's epics as folded rows with done/total and the status breakdown in rank order, an unfolded epic showing its status sections, the epic tab row kept, and Direct tasks (N) after the epics"
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 7
 labels:
@@ -17,7 +17,8 @@ blocked_by:
 topic: topic-219
 branch: t/T-358-the-items-panel-at-release-scope-the
 created: 2026-10-13T20:53:52.261Z
-updated: 2026-10-13T23:09:34.149Z
+updated: 2026-10-14T00:06:01.957Z
+closed: 2026-10-14T00:06:01.957Z
 ---
 
 ## Summary
@@ -81,20 +82,27 @@ E-276: The explorer and the card, tracer bullet 5. Spec: `docs/spec/v0.1.2.md` �
 
 - [x] C1. At release scope under `board`, the panel lists the release's epics as folded rows in rank order with `done/total` and the breakdown, and the closed epic last in the done colour.
   - done: impl-358 · 2026-10-13T21:33:23.674Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-358-5 · 2026-10-13T23:49:19.549Z · commit 85482c368610f529e3e3206861be6af21dceaf31
 - [x] C2. `za` on an epic row shows its status sections indented, without empty sections. `za` again folds it, and the fold survives a hub event.
   - done: impl-358 · 2026-10-13T21:33:24.046Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-358-5 · 2026-10-13T23:49:19.550Z · commit 85482c368610f529e3e3206861be6af21dceaf31
 - [x] C3. `Direct tasks (N)` follows the epics, folded, and unfolds into the direct tasks' sections. A release with no epics shows it folded.
   - done: impl-358 · 2026-10-13T21:29:40.777Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-358-5 · 2026-10-13T23:49:19.550Z · commit 85482c368610f529e3e3206861be6af21dceaf31
 - [x] C4. Selecting an epic tab shows that epic's sections as before. The `work`, `you` and `done` filters are unchanged.
   - done: impl-358 · 2026-10-13T23:07:57.507Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-358-5 · 2026-10-13T23:49:19.550Z · commit 85482c368610f529e3e3206861be6af21dceaf31
 - [x] C5. The categories count line is the last row, and Enter on it still switches to `all`.
   - done: impl-358 · 2026-10-13T21:29:42.551Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-358-5 · 2026-10-13T23:49:19.550Z · commit 85482c368610f529e3e3206861be6af21dceaf31
 - [x] C6. `K` on an epic row sends `task.rank` for the epic, and the rows reorder on the `task` event.
   - done: impl-358 · 2026-10-13T21:29:43.137Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-358-5 · 2026-10-13T23:49:19.550Z · commit 85482c368610f529e3e3206861be6af21dceaf31
 - [x] C7. The swept QA cases pass. `nvim/README.md` describes the release scope's epic rows.
   - done: impl-358 · 2026-10-13T21:29:43.946Z
   - verified: rev-23 [reviewer] · run rev-2026-10-13-358-2 · 2026-10-13T21:34:12.880Z · commit e89e40a0e4b7827e4d7bc3469ae92aabb72f6840
   - verified: rev-23 [reviewer] · run rev-2026-10-13-358-4 · 2026-10-13T23:09:17.318Z · commit 85482c368610f529e3e3206861be6af21dceaf31
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-358-5 · 2026-10-13T23:49:19.550Z · commit 85482c368610f529e3e3206861be6af21dceaf31
 
 ## Comments
 
@@ -171,3 +179,24 @@ Criteria: C7 verified.
 ### impl-358 · 2026-10-13T23:09:34.149Z
 
 Source re-review rev-2026-10-13-358-4 is clear at 85482c368610f529e3e3206861be6af21dceaf31 (A-2118), with C7 refreshed and C1–C6 pending exact-head verification. Submitted fresh cland verify nvim run a3bb9a99-93ba-4a0d-b782-8c45aab7129c, position 2 behind the integrated dev control and T-344, addressed to rev-23/impl-358. Head remains clean and unchanged; going idle for hub result.
+
+### impl-358 · 2026-10-13T23:49:03.149Z
+
+Exact-head verification a3bb9a99-93ba-4a0d-b782-8c45aab7129c passed at reviewed 85482c368610f529e3e3206861be6af21dceaf31: effective full mode, typecheck and 1854/1854 tests green, zero failures/cancellations/skips. Durable log A-2123: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2123-suite-a3bb9a99-93ba-4a0d-b782-8c45aab7129c-nvim-at-85482c3.log. Reviewer received same-head result directly; awaiting final C1–C6 verification. Branch remains clean and unchanged; keeping claim until merge.
+
+### rev-23 · 2026-10-13T23:49:19.550Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-358-5
+commit: 85482c368610f529e3e3206861be6af21dceaf31
+scope: evidence
+
+No high or medium findings. Exact-head cland verify a3bb9a99 / A-2123 widened to full and passed both typechecks and 1854/1854 tests, zero failures/cancellations/skips/todo. All six formerly failing cases pass, including unchanged active-plan folds and preserved layer/stage/scope/background assertions. Source review A-2118 and retained QA/docs evidence remain applicable. C1–C7 verified. A-2124: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2124-t-358-final-exact-head-evidence-review.md.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.
+
+### coord · 2026-10-14T00:06:01.957Z
+
+Merged a20857a3075fdd68f8d1da3951bb58fc33e23444 onto dev.

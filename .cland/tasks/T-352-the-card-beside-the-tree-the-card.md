@@ -3,7 +3,7 @@ id: T-352
 kind: task
 title: "The card beside the tree: the card follows the cursor with the summary, its provenance line and the facts, Enter focuses it, gi opens the explorer on the item, and gI keeps the v0.1 item view"
 state: open
-status: backlog
+status: planned
 size: L
 labels:
   - v0.1.2
@@ -16,7 +16,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-13T20:53:51.618Z
-updated: 2026-10-13T20:53:53.847Z
+updated: 2026-10-14T00:06:03.218Z
 ---
 
 ## Summary

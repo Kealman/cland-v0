@@ -3,8 +3,9 @@ id: T-345
 kind: task
 title: "A remote run: with executor = droplet or --executor droplet, cland verify delivers a bundle and the hub's suite selection to a droplet, runs detached as an ordinary user, polls status and log by offset, and posts the result with the droplet, its lifetime and its cost"
 state: open
-status: in progress
+status: review
 size: L
+criterion_seq: 10
 labels:
   - v0.1.2
   - hub
@@ -17,7 +18,7 @@ blocked_by:
 topic: topic-223
 branch: t/T-345-a-remote-run-with-executor-droplet-or
 created: 2026-10-13T20:53:45.864Z
-updated: 2026-10-13T23:39:12.113Z
+updated: 2026-10-14T00:00:25.926Z
 ---
 
 ## Summary
@@ -120,19 +121,57 @@ The package runner reads the selection through `selectionFromEnv` and never fetc
 
 ## Acceptance criteria
 
-- [ ] C1. A fixture task branch with a hub-only diff runs with `executor = "droplet"` against the fakes: the fake machine receives a bundle; its run sees `CLAND_SUITE_SELECTION` equal to the host's selection (`hub-only`), with `FORCE_COLOR=0` and `NO_COLOR=1`; it runs typecheck, then the selected test command, as `runner`. One result is posted with the executor line, the lifetime and the cost. The fake API shows the droplet and the key deleted.
-- [ ] C2. `--executor local` overrides a droplet default, and `--executor droplet` overrides a local default. An unknown value is refused. `cland task view --json` shows the run's `verify.executor`.
-- [ ] C3. A host typecheck failure posts a failed result and creates no droplet. A failing remote test posts one failed result with its failures. A remote typecheck failure stops before the tests.
-- [ ] C4. A long fake run shows up incrementally in the local log. Fake `ssh` failing for N calls mid-run does not end the run, and the final result is complete. A droplet deleted from the fake API mid-run yields one result with `remote machine lost`, and the lease is released.
-- [ ] C5. `cland verify cancel` mid-run stops the remote group, posts one cancelled result and destroys the droplet.
-- [ ] C6. With `cland hub stop` and start mid-run, the hub reattaches through the lease and reports exactly once.
-- [ ] C7. A green droplet result is a cache hit for a later `--executor local` request on the same tree and mode, and names `droplet`.
-- [ ] C8. The sentinel token appears nowhere: not in the bundle, the env file, `run.sh`, the fake machine's files, the logs, the journal, the result or the artifact.
+- [x] C1. A fixture task branch with a hub-only diff runs with `executor = "droplet"` against the fakes: the fake machine receives a bundle; its run sees `CLAND_SUITE_SELECTION` equal to the host's selection (`hub-only`), with `FORCE_COLOR=0` and `NO_COLOR=1`; it runs typecheck, then the selected test command, as `runner`. One result is posted with the executor line, the lifetime and the cost. The fake API shows the droplet and the key deleted.
+  - done: impl-345 · 2026-10-13T23:49:36.002Z
+- [x] C2. `--executor local` overrides a droplet default, and `--executor droplet` overrides a local default. An unknown value is refused. `cland task view --json` shows the run's `verify.executor`.
+  - done: impl-345 · 2026-10-13T23:49:41.238Z
+- [x] C3. A host typecheck failure posts a failed result and creates no droplet. A failing remote test posts one failed result with its failures. A remote typecheck failure stops before the tests.
+  - done: impl-345 · 2026-10-13T23:49:42.498Z
+- [x] C4. A long fake run shows up incrementally in the local log. Fake `ssh` failing for N calls mid-run does not end the run, and the final result is complete. A droplet deleted from the fake API mid-run yields one result with `remote machine lost`, and the lease is released.
+  - done: impl-345 · 2026-10-13T23:57:27.168Z
+- [x] C5. `cland verify cancel` mid-run stops the remote group, posts one cancelled result and destroys the droplet.
+  - done: impl-345 · 2026-10-13T23:49:44.047Z
+- [x] C6. With `cland hub stop` and start mid-run, the hub reattaches through the lease and reports exactly once.
+  - done: impl-345 · 2026-10-13T23:57:27.914Z
+- [x] C7. A green droplet result is a cache hit for a later `--executor local` request on the same tree and mode, and names `droplet`.
+  - done: impl-345 · 2026-10-13T23:49:45.452Z
+- [x] C8. The sentinel token appears nowhere: not in the bundle, the env file, `run.sh`, the fake machine's files, the logs, the journal, the result or the artifact.
+  - done: impl-345 · 2026-10-13T23:49:46.429Z
 - [ ] C9. Real check, posted on this item: one `cland verify --executor droplet` of this repository at the branch head on c-8, with its result, platform, lifetime and cost, and an empty tag listing afterwards.
-- [ ] C10. `hub/README.md` describes choosing the executor, delivery, the selection, the result line and what a Linux result proves.
+- [x] C10. `hub/README.md` describes choosing the executor, delivery, the selection, the result line and what a Linux result proves.
+  - done: impl-345 · 2026-10-13T23:49:47.766Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-345-2 · 2026-10-14T00:00:25.926Z · commit 0f85b00dfdb4d6c2c292bde6eb260aa0c0ded3d7
 
 ## Comments
 
 ### impl-345 · 2026-10-13T23:39:12.113Z
 
 Implementing executor selection, a host typecheck gate before acquire, incremental bundle delivery, detached runner scripts, byte-offset polling, cancellation/restart and the existing cache/report path. Frame tests will use the prepared-image fixture, fake DigitalOcean API and fake machine.
+
+### rev-23 · 2026-10-13T23:53:35.208Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-345-1
+commit: dedb3246e41dc405a69491a90f38845b632463cf
+scope: full
+
+Medium — hub/src/hub/suites.ts:301–323 (droplet.ts:258): restart trusts the pre-delivery job lease instead of authoritative lease.json, allowing repeated delivery/clean of a started run; active launching suite leases are also mistaken for orphan leases. Reconcile durable ownership at acquisition/delivery/start checkpoint windows.
+Medium — hub/src/executor/droplet/run.ts:63 (suites.ts:331): executed start with lost SSH reply fails/releases a live machine, while a marker-only interrupted start never launches on retry. Cover both admission uncertainty cases and keep one actual group.
+Complete source review found no additional blocker. C4/C6 failed; real C9 and full verification remain pending corrected source clear. A-2125: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2125-t-345-full-source-review-remote-admission-and-restart-blockers.md.
+
+Criteria: C4 failed (A detached start that executes but loses its SSH reply becomes a terminal launch failure and releases the live machine instead of retaining unknown admission.), C6 failed (Launching restart trusts stale scheduler lease execution state and can re-deliver a live checkout; reconciliation can also release a launching suite's owned active lease.).
+
+### rev-23 · 2026-10-14T00:00:25.926Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-345-2
+commit: 0f85b00dfdb4d6c2c292bde6eb260aa0c0ded3d7
+scope: full
+
+No high or medium findings remain. Authoritative lease reload and durable suite ownership resolve restart/re-delivery/orphan-release windows. Detached descriptor admission and pending/unknown reconciliation resolve executed lost-reply and marker-only starts; A-2127 adds boundary regressions for all cases, retaining original tests. Complete source scope A-2125 carried forward. C10 verified from docs; C1–C8 await exact-head full verification and C9 the authorized bounded real receipt. A-2131: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2131-t-345-corrected-full-source-review-at-0f85b00d.md.
+
+Criteria: C10 verified.

@@ -3,8 +3,9 @@ id: T-361
 kind: task
 title: "The accounts registry: ~/.config/cland/accounts.toml names each account's harness and directory, roles.toml and cland session launch --account pin one, the session records it, and Codex and OpenCode run every process in its environment"
 state: open
-status: planned
+status: review
 size: L
+criterion_seq: 9
 labels:
   - v0.1.2
   - hub
@@ -12,10 +13,10 @@ labels:
 assignee: null
 parent: E-272
 blocked_by: []
-topic: null
-branch: null
+topic: topic-225
+branch: t/T-361-the-accounts-registry-config-cland
 created: 2026-10-13T23:42:53.266Z
-updated: 2026-10-13T23:43:18.837Z
+updated: 2026-10-14T00:00:05.971Z
 ---
 
 ## Summary
@@ -108,12 +109,41 @@ data_home = "~/.local/share/oc-b"   # XDG_DATA_HOME; or db = "…" for OPENCODE_
 
 ## Acceptance criteria
 
-- [ ] C1. With a scratch registry holding codex-a and codex-b, `cland session launch rev-x --role reviewer --account codex-b` starts its `codex app-server` with codex-b's `CODEX_HOME` (the fake's `servers/<pid>.json`), and `cland session list --json` shows `account: "codex-b"` on rev-x.
-- [ ] C2. `account = "codex-b"` under `[reviewer.launch]` pins a Reviewer launch with no `--account` to codex-b; `--account codex-a` overrides it; a `--harness opencode` launch of that role takes no Codex account; a role with no `account` runs with `account` null and no account variable set by cland.
-- [ ] C3. An unknown name is refused, listing the known names. A harness mismatch with `--harness` is refused, naming both. A Codex home that does not exist is refused, naming the path and the sign-in command. A malformed registry refuses launches that name an account, while launches with no account go ahead.
-- [ ] C4. The registry refuses an unknown key (naming it) and two path-less entries of one harness, and expands `~`. The file path follows `XDG_CONFIG_HOME` when it is set, and an edited registry applies to the next launch without a hub restart.
-- [ ] C5. OpenCode launches on an account with `data_home`, and on one with `db`, start `opencode serve` with that `XDG_DATA_HOME` or `OPENCODE_DB`, as the fake records. The attach commands of Codex and OpenCode sessions on an account carry the account's variable.
-- [ ] C6. A relaunch, a hub-restart resume and a retained pool handoff keep the row's account and recorded directory, even after the role's `account` in `roles.toml` changed. A pool member on another account than the request's effective one is not reused.
-- [ ] C7. After the `flushLogs` barrier, the `session-launched` and `session-usage` journal records carry `account`.
-- [ ] C8. `cland account list` prints each account's name, harness and path (or "harness default"), and `--json` gives the same. A launch naming a Claude Code account is refused with a message that Claude Code accounts are not supported yet.
-- [ ] C9. `hub/README.md` describes the registry, its path and shape, `account` in `roles.toml`, `--account`, the row's `account` and the refusals.
+- [x] C1. With a scratch registry holding codex-a and codex-b, `cland session launch rev-x --role reviewer --account codex-b` starts its `codex app-server` with codex-b's `CODEX_HOME` (the fake's `servers/<pid>.json`), and `cland session list --json` shows `account: "codex-b"` on rev-x.
+  - done: impl-361 · 2026-10-13T23:57:28.501Z
+- [x] C2. `account = "codex-b"` under `[reviewer.launch]` pins a Reviewer launch with no `--account` to codex-b; `--account codex-a` overrides it; a `--harness opencode` launch of that role takes no Codex account; a role with no `account` runs with `account` null and no account variable set by cland.
+  - done: impl-361 · 2026-10-13T23:57:29.865Z
+- [x] C3. An unknown name is refused, listing the known names. A harness mismatch with `--harness` is refused, naming both. A Codex home that does not exist is refused, naming the path and the sign-in command. A malformed registry refuses launches that name an account, while launches with no account go ahead.
+  - done: impl-361 · 2026-10-13T23:57:32.166Z
+- [x] C4. The registry refuses an unknown key (naming it) and two path-less entries of one harness, and expands `~`. The file path follows `XDG_CONFIG_HOME` when it is set, and an edited registry applies to the next launch without a hub restart.
+  - done: impl-361 · 2026-10-13T23:57:32.681Z
+- [x] C5. OpenCode launches on an account with `data_home`, and on one with `db`, start `opencode serve` with that `XDG_DATA_HOME` or `OPENCODE_DB`, as the fake records. The attach commands of Codex and OpenCode sessions on an account carry the account's variable.
+  - done: impl-361 · 2026-10-13T23:57:33.390Z
+- [x] C6. A relaunch, a hub-restart resume and a retained pool handoff keep the row's account and recorded directory, even after the role's `account` in `roles.toml` changed. A pool member on another account than the request's effective one is not reused.
+  - done: impl-361 · 2026-10-13T23:57:33.907Z
+- [x] C7. After the `flushLogs` barrier, the `session-launched` and `session-usage` journal records carry `account`.
+  - done: impl-361 · 2026-10-13T23:57:34.660Z
+- [x] C8. `cland account list` prints each account's name, harness and path (or "harness default"), and `--json` gives the same. A launch naming a Claude Code account is refused with a message that Claude Code accounts are not supported yet.
+  - done: impl-361 · 2026-10-13T23:57:35.286Z
+- [x] C9. `hub/README.md` describes the registry, its path and shape, `account` in `roles.toml`, `--account`, the row's `account` and the refusals.
+  - done: impl-361 · 2026-10-13T23:57:36.164Z
+  - verified: rev-26 [reviewer] · run rev-20261013-361-source-1 · 2026-10-14T00:00:05.971Z · commit 3a07fa11713538e2fbafbe447a3f91c4385132aa
+
+## Comments
+
+### impl-361 · 2026-10-13T23:44:06.610Z
+
+Implementation started. Seams: real hub frames, spoke and CLI on scratch projects; Codex/OpenCode fake launches for environment, retention and attach behavior. Scratch registries only; no account directory contents read.
+
+### rev-26 · 2026-10-14T00:00:05.971Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261013-361-source-1
+commit: 3a07fa11713538e2fbafbe447a3f91c4385132aa
+scope: full
+
+Full source review clear: no high/medium finding in Standards or Spec. Registry validation/fresh selection, role/request harness precedence, nullable row migration and stored overlays are coherent; native/fresh/restart resume and pool handoff retain recorded account/environment, with pool matching by account+harness. Codex probes/server and OpenCode server/attach receive overlay; data_home clears inherited DB. Journal facts and account.list shell permission paths checked. Existing assertions/bounds preserved; new tests scratch-owned and journal read uses flushLogs. C9 README verified; C1–C8 execution-dependent criteria remain unverified pending accepted same-head full. A-2128 summarizes targeted passes, not independently read raw evidence. A-2130 records both axes; Reviewer ran no tests/edits.
+
+Criteria: C9 verified.
