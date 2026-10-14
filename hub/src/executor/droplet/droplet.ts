@@ -189,9 +189,10 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
     lease.state = 'releasing';
     await this.#save(lease);
     const limit = Date.now() + testTiming('CLAND_TEST_DROPLET_RELEASE_MS', 15000);
-    try {
-      do {
-        const result = await deleteLeaseResources(new DigitalOceanApi(), lease);
+    let cause: { status?: number; id?: string; message: string } | undefined;
+    do {
+      try {
+        const result = await deleteLeaseResources(new DigitalOceanApi(), lease, limit);
         if (result.confirmed) {
           accountRelease(lease, lease.deleteStarted ?? new Date().toISOString());
           await this.#save(lease);
@@ -202,11 +203,18 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
           this.logger({ event: 'executor-lease-released', lease: lease.lease, id: lease.resource, lifetimeMs: lease.lifetimeMs, costUsd: lease.costUsd });
           return { lifetimeMs: lease.lifetimeMs!, costUsd: lease.costUsd! };
         }
-        await pause(testTiming('CLAND_TEST_DROPLET_POLL_MS', 2000));
-      } while (Date.now() < limit);
-    } catch { /* the durable releasing lease is retried by the hub and the watchdog */ }
+      } catch (error) {
+        cause = error instanceof DigitalOceanError ? { status: error.status, id: error.id, message: error.message }
+          : { message: error instanceof Error ? error.message : 'resource cleanup failed' };
+        // Identity refusals and permanent provider errors remain for recovery;
+        // busy actions, throttling, server errors and transport failures can clear.
+        if (!(error instanceof DigitalOceanError) || ![0, 409, 422, 429].includes(error.status) && error.status < 500) break;
+        this.logger({ event: 'executor-release-retry', lease: lease.lease, id: lease.resource, cause });
+      }
+      await pause(Math.min(testTiming('CLAND_TEST_DROPLET_POLL_MS', 2000), Math.max(0, limit - Date.now())));
+    } while (Date.now() < limit);
     await this.#save(lease);
-    this.logger({ event: 'executor-release-unconfirmed', lease: lease.lease, id: lease.resource });
+    this.logger({ event: 'executor-release-unconfirmed', lease: lease.lease, id: lease.resource, cause });
     return { lifetimeMs: null, costUsd: null };
   }
 

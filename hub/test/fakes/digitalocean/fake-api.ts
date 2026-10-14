@@ -40,7 +40,7 @@ export async function fakeDigitalOcean(token: string) {
   const polls = new Map<number, number>();
   const deleting = new Map<number, number>();
   const account = { status: 'active' };
-  const faults = { create: 0, delayMs: 0, delayPath: '', activeAfter: 2, deletePolls: 0, keyDeletePolls: 0, deleteError: 0, echoToken: false, actionAfter: 2, failAction: '', deleteSnapshot: 0, visibilityPolls: 0, snapshotAfter: 0, snapshotHiddenPolls: 0, catalogueError: 0, loseDeleteSnapshot: 0, failCatalogueAfterDelete: false };
+  const faults = { create: 0, delayMs: 0, delayPath: '', activeAfter: 2, deletePolls: 0, keyDeletePolls: 0, keyDeleteFailures: [] as number[], deleteError: 0, deleteFailures: [] as Array<number | 'timeout'>, echoToken: false, actionAfter: 2, failAction: '', deleteSnapshot: 0, visibilityPolls: 0, snapshotAfter: 0, snapshotHiddenPolls: 0, catalogueError: 0, loseDeleteSnapshot: 0, failCatalogueAfterDelete: false };
   let beforeDropletList: (() => Promise<void>) | undefined;
   let beforeKeyList: (() => Promise<void>) | undefined;
   let beforeCreate: (() => Promise<void>) | undefined;
@@ -165,6 +165,12 @@ export async function fakeDigitalOcean(token: string) {
       const droplet = droplets.find(d => d.id === id);
       if (!droplet) return answer(404, { id: 'not_found', message: 'absent' });
       if (method === 'DELETE') {
+        const failure = faults.deleteFailures.shift();
+        if (failure === 'timeout') {
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          return answer(503, { id: 'unavailable', message: 'delete transport delayed' });
+        }
+        if (failure !== undefined) return answer(failure, { id: 'delete_failed', message: faults.echoToken ? token : 'droplet busy or provider unavailable; try later' });
         if (faults.deleteError) return answer(faults.deleteError, { id: 'delete_failed', message: 'try later' });
         if (!deleting.has(id)) deleting.set(id, faults.deletePolls);
         return answer(204);
@@ -182,6 +188,8 @@ export async function fakeDigitalOcean(token: string) {
     }
     const keyId = /^\/account\/keys\/(\d+)$/.exec(path);
     if (keyId && method === 'DELETE') {
+      const failure = faults.keyDeleteFailures.shift();
+      if (failure !== undefined) return answer(failure, { id: 'key_delete_failed', message: faults.echoToken ? token : 'key deletion refused; try later' });
       const i = keys.findIndex(k => k.id === Number(keyId[1]));
       if (i < 0) return answer(404, { id: 'not_found', message: 'absent' });
       if (faults.keyDeletePolls > 0) faults.keyDeletePolls--; else keys.splice(i, 1);

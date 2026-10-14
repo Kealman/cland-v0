@@ -116,6 +116,73 @@ test('prepare is a hub-owned control reserved for the human and Coordinator', as
   }
 });
 
+test('prepare keeps its snapshot when builder deletion is unconfirmed, then the hub confirms release and cost', async t => {
+  const { root, api, ui, env, discovery } = await fixture(t);
+  api.faults.deleteError = 422;
+  assert.equal((await clandWithEnv(root, {}, 'executor', 'prepare', '--json')).code, 0);
+  const result = await eventually('prepare finishes despite pending builder deletion', async () => {
+    const value = (await ui.request({ type: 'executor.status' })).value as { prepare?: { state: string; error?: string; result?: { lifetimeMs: number | null; costUsd: number | null } }; snapshot?: { image: number }; leases: { state: string }[] };
+    return value.prepare && value.prepare.state !== 'running' ? value : undefined;
+  }, 15000);
+  assert.equal(result.prepare!.state, 'done', result.prepare!.error);
+  assert.equal(result.snapshot!.image, api.images[0]!.id);
+  assert.equal(result.prepare!.result!.lifetimeMs, null);
+  assert.equal(result.prepare!.result!.costUsd, null);
+  assert.equal(result.leases[0]!.state, 'releasing');
+  const history = (await ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: { text: string }[] };
+  assert.match(history.messages.find(message => message.text.startsWith('snapshot prepared:'))!.text, /builder lifetime unconfirmedms; cost \$unconfirmed/);
+  await flushProjectLogs(t, root);
+  const records = (await readFile(join(root, '.cland/journal.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line));
+  const unconfirmed = records.find(record => record.event === 'executor-release-unconfirmed');
+  assert.equal(unconfirmed.cause.status, 422);
+  assert.equal(unconfirmed.cause.id, 'delete_failed');
+  assert.match(unconfirmed.cause.message, /try later/);
+  assert.ok(!records.some(record => record.event === 'executor-prepare-failed'));
+  assert.ok(api.requests.filter(request => request.method === 'DELETE' && /^\/v2\/droplets\/\d+$/.test(request.path)).length >= 2);
+  assert.equal((await ui.request({ type: 'hub.stop' })).ok, true);
+  await eventually('hub stops with releasing lease persisted', () => !pidAlive(discovery.pid) ? true : undefined);
+  const restarted = await startDaemon(t, root, env);
+  const next = await connectUi(t, restarted.discovery);
+  const pending = (await next.request({ type: 'executor.status' })).value as { snapshot: { image: number }; leases: { state: string }[] };
+  assert.equal(pending.snapshot.image, result.snapshot!.image);
+  assert.equal(pending.leases[0]!.state, 'releasing');
+  api.faults.deleteError = 0;
+  await eventually('hub retries releasing builder', async () => {
+    const value = (await next.request({ type: 'executor.status' })).value as { leases: unknown[]; spend: { reserved: number; spent: number }; snapshot?: { image: number } };
+    return value.leases.length === 0 && value.spend.reserved === 0 ? value : undefined;
+  });
+  assert.deepEqual(api.droplets, []); assert.deepEqual(api.keys, []);
+  assert.equal(api.images.length, 1);
+  await flushProjectLogs(t, root);
+  const released = (await readFile(join(root, '.cland/journal.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line)).find(record => record.event === 'executor-lease-released');
+  assert.ok(released.lifetimeMs >= 0); assert.ok(released.costUsd > 0);
+});
+
+for (const failure of [409, 422, 503, 'timeout', 'key-503'] as const) {
+  test(`prepare retries a transient ${failure} builder delete within its release window`, async t => {
+    const { root, api, ui } = await fixture(t, { CLAND_TEST_DIGITALOCEAN_TIMEOUT_MS: '1000', CLAND_TEST_DROPLET_RELEASE_MS: '5000' });
+    if (failure === 'key-503') api.faults.keyDeleteFailures = [503];
+    else api.faults.deleteFailures = [failure];
+    api.faults.echoToken = true;
+    assert.equal((await clandWithEnv(root, {}, 'executor', 'prepare', '--json')).code, 0);
+    const result = await eventually('prepare confirms builder release after a transient failure', async () => {
+      const value = (await ui.request({ type: 'executor.status' })).value as { prepare?: { state: string; error?: string; result?: { lifetimeMs: number | null; costUsd: number | null } } };
+      return value.prepare && value.prepare.state !== 'running' ? value.prepare : undefined;
+    }, 15000);
+    assert.equal(result.state, 'done', result.error);
+    assert.notEqual(result.result!.lifetimeMs, null);
+    assert.ok(result.result!.costUsd! > 0);
+    assert.deepEqual(api.droplets, []); assert.deepEqual(api.keys, []);
+    assert.equal(api.images.length, 1);
+    await flushProjectLogs(t, root);
+    const journal = await readFile(join(root, '.cland/journal.jsonl'), 'utf8');
+    assert.ok(!journal.includes('sentinel-prepare'));
+    const retry = journal.trim().split('\n').map(line => JSON.parse(line)).find(record => record.event === 'executor-release-retry');
+    assert.equal(retry.cause.status, failure === 'timeout' ? 0 : failure === 'key-503' ? 503 : failure);
+    assert.equal(retry.cause.id, failure === 'timeout' ? 'transport' : failure === 'key-503' ? 'key_delete_failed' : 'delete_failed');
+  });
+}
+
 test('failed replacement releases its builder, deletes a partial image and keeps the previous snapshot', async t => {
   const { root, api, ui } = await fixture(t);
   assert.equal((await clandWithEnv(root, {}, 'executor', 'prepare', '--json')).code, 0);

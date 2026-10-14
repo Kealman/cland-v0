@@ -156,7 +156,8 @@ export async function prepareSnapshot(options: PrepareOptions): Promise<Prepared
     if (options.maxDiskSize !== undefined && image.min_disk_size > options.maxDiskSize) throw new Error('snapshot minimum disk exceeds run size');
     step('release');
     released = await options.release(builder);
-    if (released.lifetimeMs === null) throw new Error('builder release not confirmed');
+    // A prepared image remains usable while the durable releasing lease is
+    // retried by the hub and watchdog. Its lifetime and cost stay unconfirmed.
     const snapshot: Snapshot = { image: image.id, name: image.name, key, keyHash: keyHash(key), regions: image.regions, sizeGb: image.size_gigabytes, minDiskSize: image.min_disk_size, created: image.created_at };
     await mkdir(join(root, '.cland/run/executor'), { recursive: true, mode: 0o700 });
     recovery.candidate = snapshot; recovery.phase = 'retire'; recovery.retirement = 'unstarted'; await saveRecovery(root, recovery);
