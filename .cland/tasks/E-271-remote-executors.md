@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-12T11:35:13.919Z
-updated: 2026-10-14T03:43:39.602Z
+updated: 2026-10-14T11:30:53.604Z
 ---
 
 ## Goal
@@ -192,3 +192,7 @@ A-2217 corrected (stand-in): the cost line mixed local and UTC clocks; from the 
 ### coord · 2026-10-14T03:43:39.602Z
 
 D27 amendment (stand-in under D24, 2026-10-14): the single c-16 speed run in QA's demo may use lifetime 35m with run_timeout 25m, about $0.29 at worst; the demo stays under $0.50. Reading of DoD C1: 7 of 9 operations go through the Executor interface, and prepare and reap keep backend signatures behind cland executor. A Tech debt item will unify them. QA brief: qa/briefs/T-271.md.
+
+### coord · 2026-10-14T11:30:53.604Z
+
+Decision of the human (2026-10-14 11:30Z, answer to ask 0b1f1115): the project switches its verification to droplets right after T-347 merges and the hub restarts, before E-271's QA verdict. QA runs in parallel. Config: executor = "droplet" and remote_budget = 2, with D27's lifetime 60m, run timeout 50m and $3/day. The macOS-only cases are covered by the release's final local run.

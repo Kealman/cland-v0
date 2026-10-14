@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-233
 branch: t/T-347-the-remote-budget-remote-runs-are
 created: 2026-10-13T20:53:46.081Z
-updated: 2026-10-14T10:55:45.942Z
+updated: 2026-10-14T11:20:41.950Z
 ---
 
 ## Summary
@@ -105,6 +105,7 @@ Prior work: T-215 kept the local budget at one (`verification-budget-capped`). T
   - verified: rev-23 [reviewer] · run rev-2026-10-14-347-6 · 2026-10-14T06:12:32.305Z · commit e116b78e47d61e8799b57e3ad8e86624f0a8f3a6
   - verified: rev-23 [reviewer] · run rev-2026-10-14-347-8 · 2026-10-14T08:28:21.323Z · commit 205897b4aed6ff59590908c2fa53cde755dd5fac
   - verified: rev-23 [reviewer] · run rev-2026-10-14-347-9 · 2026-10-14T08:55:43.401Z · commit 205897b4aed6ff59590908c2fa53cde755dd5fac
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-347-10 · 2026-10-14T11:19:14.715Z · commit cbbe6974014f5f2ab8a372cdac5be5e1253feff9
 
 ## Comments
 
@@ -306,3 +307,24 @@ Latest C6 record checked: Coordinator attempt 1 stopped at builder release confi
 ### impl-347 · 2026-10-14T10:55:45.942Z
 
 Coordinator f684ccff disposition: keep 205897b4 unchanged until the Coordinator names T-381's merged product-code commit. Then merge origin/dev (do not cherry-pick), including any landed T-382/T-383 shared fixes; request one merge delta review; run one fresh exact-reviewed-head full verification; Coordinator runs C6 with A-2262 at that new head. Claimant then marks C6 done from evidence and rev-23 settles. No source changes before that named merge.
+
+### impl-347 · 2026-10-14T11:18:02.122Z
+
+Per Coordinator 2f5af0e5, fetched and merged origin/dev through T-381 83b74c6e as pushed cbbe6974014f5f2ab8a372cdac5be5e1253feff9 (parents 205897b4/4a9da38c). Docs and shard map conflicts resolved preserving feature docs/authority and every test classification; other source merged automatically. Typecheck/shards/diff check pass; sequential targeted remote budget/release reservation 3/3 and prepare retry/pending-builder cases 6/6 green. One delta review requested before fresh full; A-note records integration evidence. T-382/T-383 not landed yet; known-only failures will be reported before rerun. C6 remains Coordinator-owned after green.
+
+### rev-23 · 2026-10-14T11:19:14.715Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-347-10
+commit: cbbe6974014f5f2ab8a372cdac5be5e1253feff9
+scope: delta
+
+Delta source clear; no high or medium findings. Budget scheduler/config/CLI/own tests remain identical to 205897b4. Overlapping product paths preserve T-381 bounded cleanup/retry/pending-builder ownership beside the existing durable-lease capacity guard. Both conflict resolutions are sound: shard classifications are the exact parent union; docs retain executor authority, detailed slot/fallback/queue rules and executor-specific ETA. C7 refreshed. C1–C5 await new-head full verification; C6 remains the Coordinator-owned two-droplet real check. A-2344: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2344-t-347-t-381-integration-delta-clear-at-cbbe6974.md.
+
+Criteria: C7 verified.
+
+### impl-347 · 2026-10-14T11:20:41.950Z
+
+Merge delta source-clear cbbe6974014f5f2ab8a372cdac5be5e1253feff9, A-2344 / rev-2026-10-14-347-10. One fresh full verify queued at exact head: dde7d63b-5854-4127-8d13-6fdc2b2367ca, PID null, recipients rev-23/impl-347, topic-233. Waiting for result; known-only T-382/T-383 failures reported before rerun. Coordinator given A-2345 C6 admin driver: A-2262 with observable wait for confirmed builder release after prepare, preserving both remote slots under T-381's pending-cleanup success contract. No source change or cloud call by this session.
