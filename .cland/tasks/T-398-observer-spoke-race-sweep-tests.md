@@ -2,8 +2,8 @@
 id: T-398
 kind: task
 title: "Observer-spoke race sweep: tests observing a fake-harness session miss deliveries when the native spoke connects later (lead handover 1/5 alone)"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 rank: 2360
 criterion_seq: 4
@@ -19,7 +19,8 @@ regression_of: T-369
 topic: topic-249
 branch: t/T-398-observer-spoke-race-sweep-tests
 created: 2026-10-14T12:41:56.075Z
-updated: 2026-10-14T14:02:58.250Z
+updated: 2026-10-14T14:03:37.334Z
+closed: 2026-10-14T14:03:37.334Z
 ---
 
 ## Summary
@@ -97,3 +98,7 @@ scope: evidence
 No high or medium findings. A-2406 exact-head no-mode verification 82711f33-b329-4e98-bb2e-376293787d5d passes root typecheck and the automatically selected hub-only suite: 1645/1645 (37 free, 1597 machine, 11 Neovim smoke), exit 0, zero failures/cancellations/skips/todo. Reviewed branch and clean worktree still match. Source A-2387 remains applicable; C1 now verified, C2/C3 retained. C4 verified under Coordinator decision 511a4110 and the 13:28:02 task comment: 55 solo invocations/345 passes plus mutation red/green; ten CPU-loaded runs are post-merge quiet-window confirmation, with reopening on failure. This suite does not substitute for that confirmation. Final evidence A-2407: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2407-t-398-final-exact-head-verification-and-c4-disposition.md.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-14T14:03:37.334Z
+
+Merged 8af8388928df354e91c03329f5efd451f0e4ee21 onto dev.
