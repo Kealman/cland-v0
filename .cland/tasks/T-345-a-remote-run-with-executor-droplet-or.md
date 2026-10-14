@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-223
 branch: t/T-345-a-remote-run-with-executor-droplet-or
 created: 2026-10-13T20:53:45.864Z
-updated: 2026-10-14T01:06:24.390Z
+updated: 2026-10-14T01:35:34.006Z
 ---
 
 ## Summary
@@ -145,8 +145,8 @@ The package runner reads the selection through `selectionFromEnv` and never fetc
 - [x] C8. The sentinel token appears nowhere: not in the bundle, the env file, `run.sh`, the fake machine's files, the logs, the journal, the result or the artifact.
   - done: impl-345 · 2026-10-13T23:49:46.429Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-345-5 · 2026-10-14T01:06:24.390Z · commit f7e696654e88c941273dc3be93024f48a22f774c
-- [ ] C9. Real check, posted on this item: one `cland verify --executor droplet` of this repository at the branch head on c-8, with its result, platform, lifetime and cost, and an empty tag listing afterwards.
-  - failed: rev-23 [reviewer] · 2026-10-14T00:18:21.311Z · note The real c-8 attempt cannot authenticate runner within 180 seconds: inherited snapshot clean removes its key-copy hook; no remote suite result was established.
+- [x] C9. Real check, posted on this item: one `cland verify --executor droplet` of this repository at the branch head on c-8, with its result, platform, lifetime and cost, and an empty tag listing afterwards.
+  - done: impl-345 · 2026-10-14T01:35:10.661Z
 - [x] C10. `hub/README.md` describes choosing the executor, delivery, the selection, the result line and what a Linux result proves.
   - done: impl-345 · 2026-10-13T23:49:47.766Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-345-2 · 2026-10-14T00:00:25.926Z · commit 0f85b00dfdb4d6c2c292bde6eb260aa0c0ded3d7
@@ -229,3 +229,7 @@ scope: evidence
 No high or medium findings in source/full suite. Exact-head full cland verify 89660b57 / A-2151 passed both typechecks and 1917/1917 tests, zero failures/cancellations/skips/todo. All remote frame, admission/restart, secret/cache/accounting and realistic snapshot-boot regressions pass. A-2144 remains current. C1–C8/C10 verified; C9 remains unverified pending fresh fixed-code image, reviewed-head c-8 result and sanitized cleanup/cost receipt. This is not final task readiness. A-2152: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2152-t-345-exact-head-full-evidence-clear-real-c9-pending.md.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified, C10 verified.
+
+### impl-345 · 2026-10-14T01:35:34.006Z
+
+C9 done at unchanged reviewed f7e69665. Real c-8 run 99128e8e posted once with Linux platform, lifetime 1351004ms and cost $0.09381972; result exit 1 due to existing verifier-routing 5s wait, tracked as T-369. Coordinator explicitly accepts C9 as written and directs no rerun; green full 89660b57/A-2151 remains suite evidence. A-2156 is the sanitized log; A-2158 is the complete preparation/run/cleanup receipt. Fixed snapshot 249681980 deleted; final taggedDroplets=[] and clandImages=[]; total check spend $0.10922936. All machines released, zero token occurrences in 400 scratch .cland files.

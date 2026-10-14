@@ -2,8 +2,8 @@
 id: T-361
 kind: task
 title: "The accounts registry: ~/.config/cland/accounts.toml names each account's harness and directory, roles.toml and cland session launch --account pin one, the session records it, and Codex and OpenCode run every process in its environment"
-state: open
-status: review
+state: closed
+status: done
 size: L
 criterion_seq: 9
 labels:
@@ -16,7 +16,8 @@ blocked_by: []
 topic: topic-225
 branch: t/T-361-the-accounts-registry-config-cland
 created: 2026-10-13T23:42:53.266Z
-updated: 2026-10-14T00:39:19.007Z
+updated: 2026-10-14T01:35:50.463Z
+closed: 2026-10-14T01:35:50.463Z
 ---
 
 ## Summary
@@ -111,24 +112,33 @@ data_home = "~/.local/share/oc-b"   # XDG_DATA_HOME; or db = "…" for OPENCODE_
 
 - [x] C1. With a scratch registry holding codex-a and codex-b, `cland session launch rev-x --role reviewer --account codex-b` starts its `codex app-server` with codex-b's `CODEX_HOME` (the fake's `servers/<pid>.json`), and `cland session list --json` shows `account: "codex-b"` on rev-x.
   - done: impl-361 · 2026-10-13T23:57:28.501Z
+  - verified: rev-26 [reviewer] · run rev-20261014-361-final-2 · 2026-10-14T01:35:36.994Z · commit 4254d565c6cf9f3b71b04cfeae3071ad75e54063
 - [x] C2. `account = "codex-b"` under `[reviewer.launch]` pins a Reviewer launch with no `--account` to codex-b; `--account codex-a` overrides it; a `--harness opencode` launch of that role takes no Codex account; a role with no `account` runs with `account` null and no account variable set by cland.
   - done: impl-361 · 2026-10-13T23:57:29.865Z
+  - verified: rev-26 [reviewer] · run rev-20261014-361-final-2 · 2026-10-14T01:35:36.995Z · commit 4254d565c6cf9f3b71b04cfeae3071ad75e54063
 - [x] C3. An unknown name is refused, listing the known names. A harness mismatch with `--harness` is refused, naming both. A Codex home that does not exist is refused, naming the path and the sign-in command. A malformed registry refuses launches that name an account, while launches with no account go ahead.
   - done: impl-361 · 2026-10-13T23:57:32.166Z
+  - verified: rev-26 [reviewer] · run rev-20261014-361-final-2 · 2026-10-14T01:35:36.995Z · commit 4254d565c6cf9f3b71b04cfeae3071ad75e54063
 - [x] C4. The registry refuses an unknown key (naming it) and two path-less entries of one harness, and expands `~`. The file path follows `XDG_CONFIG_HOME` when it is set, and an edited registry applies to the next launch without a hub restart.
   - done: impl-361 · 2026-10-13T23:57:32.681Z
+  - verified: rev-26 [reviewer] · run rev-20261014-361-final-2 · 2026-10-14T01:35:36.995Z · commit 4254d565c6cf9f3b71b04cfeae3071ad75e54063
 - [x] C5. OpenCode launches on an account with `data_home`, and on one with `db`, start `opencode serve` with that `XDG_DATA_HOME` or `OPENCODE_DB`, as the fake records. The attach commands of Codex and OpenCode sessions on an account carry the account's variable.
   - done: impl-361 · 2026-10-13T23:57:33.390Z
+  - verified: rev-26 [reviewer] · run rev-20261014-361-final-2 · 2026-10-14T01:35:36.995Z · commit 4254d565c6cf9f3b71b04cfeae3071ad75e54063
 - [x] C6. A relaunch, a hub-restart resume and a retained pool handoff keep the row's account and recorded directory, even after the role's `account` in `roles.toml` changed. A pool member on another account than the request's effective one is not reused.
   - done: impl-361 · 2026-10-13T23:57:33.907Z
+  - verified: rev-26 [reviewer] · run rev-20261014-361-final-2 · 2026-10-14T01:35:36.995Z · commit 4254d565c6cf9f3b71b04cfeae3071ad75e54063
 - [x] C7. After the `flushLogs` barrier, the `session-launched` and `session-usage` journal records carry `account`.
   - done: impl-361 · 2026-10-13T23:57:34.660Z
+  - verified: rev-26 [reviewer] · run rev-20261014-361-final-2 · 2026-10-14T01:35:36.995Z · commit 4254d565c6cf9f3b71b04cfeae3071ad75e54063
 - [x] C8. `cland account list` prints each account's name, harness and path (or "harness default"), and `--json` gives the same. A launch naming a Claude Code account is refused with a message that Claude Code accounts are not supported yet.
   - done: impl-361 · 2026-10-13T23:57:35.286Z
+  - verified: rev-26 [reviewer] · run rev-20261014-361-final-2 · 2026-10-14T01:35:36.995Z · commit 4254d565c6cf9f3b71b04cfeae3071ad75e54063
 - [x] C9. `hub/README.md` describes the registry, its path and shape, `account` in `roles.toml`, `--account`, the row's `account` and the refusals.
   - done: impl-361 · 2026-10-13T23:57:36.164Z
   - verified: rev-26 [reviewer] · run rev-20261013-361-source-1 · 2026-10-14T00:00:05.971Z · commit 3a07fa11713538e2fbafbe447a3f91c4385132aa
   - verified: rev-26 [reviewer] · run rev-20261014-361-source-2 · 2026-10-14T00:39:19.007Z · commit 4254d565c6cf9f3b71b04cfeae3071ad75e54063
+  - verified: rev-26 [reviewer] · run rev-20261014-361-final-2 · 2026-10-14T01:35:36.995Z · commit 4254d565c6cf9f3b71b04cfeae3071ad75e54063
 
 ## Comments
 
@@ -172,3 +182,20 @@ scope: delta
 Delta source review clear: no high/medium finding. sessions.test.ts:122–127 checks parsed event/session fields after flushLogs and adds account:null, preserving all scenario assertions and bounds. All22 original account-file changed-line sets match against respective old/new bases; protocol retains account plus landed stateReason/warning, and stored account selection/resume paths remain. Prior full source A-2130 retained; T-265/T-358 are independently reviewed landed integration. C9 verified; C1–C8 final marks await accepted same-head full. A-2148 reports correction checks; A-2149 records source delta. Preserve failed A-2146; Reviewer ran no tests/edits.
 
 Criteria: C9 verified.
+
+### rev-26 · 2026-10-14T01:35:36.995Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261014-361-final-2
+commit: 4254d565c6cf9f3b71b04cfeae3071ad75e54063
+scope: evidence
+
+Final evidence clear: no high/medium finding remains. Same-head accepted e3c798ac/A-2157 completes typecheck and1914/1914 (37 free,1535 hub machine,342 Neovim), zero fail/cancel/skip/todo, exit0. C1–C8 account selection/refusal/default/refresh/path/environment/retention/pool/journal/listing cases explicitly pass; C9 source docs checked A-2130/A-2149. Previously failing UI launch-log scenario passes with preserved parsed identity/account assertions. A-2159 records final evidence; earlier failed A-2146 retained. Reviewer ran no tests/edits.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified, C9 verified.
+
+### coord · 2026-10-14T01:35:50.463Z
+
+Merged d4f3cd43179c01f158d93b02ea8569a96a9a3056 onto dev.

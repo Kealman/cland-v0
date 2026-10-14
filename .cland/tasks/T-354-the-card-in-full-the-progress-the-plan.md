@@ -3,8 +3,9 @@ id: T-354
 kind: task
 title: "The card in full: the progress, the plan stage, the latest verdict with its round, reason and scope, the relations with regression_of, the branch and the latest cland verify, the dates and last activity, the Decision block, zb, and the card over the right panel when the centre is narrow"
 state: open
-status: planned
+status: review
 size: L
+criterion_seq: 11
 labels:
   - v0.1.2
   - nvim
@@ -14,10 +15,10 @@ parent: E-276
 blocked_by:
   - T-352
   - T-353
-topic: null
-branch: null
+topic: topic-227
+branch: t/T-354-the-card-in-full-the-progress-the-plan
 created: 2026-10-13T20:53:51.826Z
-updated: 2026-10-14T00:06:03.946Z
+updated: 2026-10-14T01:34:11.367Z
 ---
 
 ## Summary
@@ -100,14 +101,31 @@ E-276: The explorer and the card, tracer bullet 2. Spec: `docs/spec/v0.1.2.md` �
 
 ## Acceptance criteria
 
-- [ ] C1. A task's card shows its criteria with marks and the `N of M verified` header from the summary's counts. The latest verdict shows its round, scope, by and role, and its one-line reason from the comment. The branch and suite block shows `verify`'s result, job, head and time.
-- [ ] C2. An epic's card shows its children's cells and counts in words, the cells per stage, and the plan block with the stage in work, its merged count and the approval. A closed epic's plan reads every stage closed.
-- [ ] C3. The relations show blocked by, blocks and `regression of` with each end's state. `last` names whether it came from the item's `updated` or its topic's latest message. A container's latest verdict and last activity name the item in its subtree.
-- [ ] C4. The rank fact shows `rank <n>` only for an item whose summary has `rank_set`. Otherwise only the ordinal.
-- [ ] C5. A body with a `Resolution …` comment shows the Decision block. One without shows none.
-- [ ] C6. The fold line names the body's `##` headings and word count. `zb` unfolds the body in the card and folds it again, from the tree and from the card.
-- [ ] C7. Enter on the blocker's line in the focused card reveals the blocker in the tree with its card.
-- [ ] C8. With both side panels open at 200x50, the card takes the right panel's place, and the right panel returns when `␣g` opens General. `ui.json`'s `panels.right` is unchanged.
-- [ ] C9. Moving over every row of the fixture tree sends `task.view` only for rows the cursor rested on (frame log), and never for a row passed with `j` held.
-- [ ] C10. `nvim/README.md` describes the card's blocks and their sources, `zb`, Enter on a reference and the narrow layout.
-- [ ] C11. The human's picture first and the agents' text folded. The blocks run in this order: summary, facts, progress, plan, verdict, relations, branch and suite, dates, the Decision block, then the agents' text as one fold line. On every first open of an item's card, and after a hub event redraws it, the agents' text is folded. Only `zb` unfolds it, and it never pushes the human's blocks out of view (spec §3.9, T-244).
+- [x] C1. A task's card shows its criteria with marks and the `N of M verified` header from the summary's counts. The latest verdict shows its round, scope, by and role, and its one-line reason from the comment. The branch and suite block shows `verify`'s result, job, head and time.
+  - done: impl-354 · 2026-10-14T01:33:53.952Z
+- [x] C2. An epic's card shows its children's cells and counts in words, the cells per stage, and the plan block with the stage in work, its merged count and the approval. A closed epic's plan reads every stage closed.
+  - done: impl-354 · 2026-10-14T01:33:54.702Z
+- [x] C3. The relations show blocked by, blocks and `regression of` with each end's state. `last` names whether it came from the item's `updated` or its topic's latest message. A container's latest verdict and last activity name the item in its subtree.
+  - done: impl-354 · 2026-10-14T01:33:55.119Z
+- [x] C4. The rank fact shows `rank <n>` only for an item whose summary has `rank_set`. Otherwise only the ordinal.
+  - done: impl-354 · 2026-10-14T01:33:55.839Z
+- [x] C5. A body with a `Resolution …` comment shows the Decision block. One without shows none.
+  - done: impl-354 · 2026-10-14T01:33:56.450Z
+- [x] C6. The fold line names the body's `##` headings and word count. `zb` unfolds the body in the card and folds it again, from the tree and from the card.
+  - done: impl-354 · 2026-10-14T01:33:56.879Z
+- [x] C7. Enter on the blocker's line in the focused card reveals the blocker in the tree with its card.
+  - done: impl-354 · 2026-10-14T01:33:57.256Z
+- [x] C8. With both side panels open at 200x50, the card takes the right panel's place, and the right panel returns when `␣g` opens General. `ui.json`'s `panels.right` is unchanged.
+  - done: impl-354 · 2026-10-14T01:33:57.775Z
+- [x] C9. Moving over every row of the fixture tree sends `task.view` only for rows the cursor rested on (frame log), and never for a row passed with `j` held.
+  - done: impl-354 · 2026-10-14T01:33:58.153Z
+- [x] C10. `nvim/README.md` describes the card's blocks and their sources, `zb`, Enter on a reference and the narrow layout.
+  - done: impl-354 · 2026-10-14T01:33:58.750Z
+- [x] C11. The human's picture first and the agents' text folded. The blocks run in this order: summary, facts, progress, plan, verdict, relations, branch and suite, dates, the Decision block, then the agents' text as one fold line. On every first open of an item's card, and after a hub event redraws it, the agents' text is folded. Only `zb` unfolds it, and it never pushes the human's blocks out of view (spec §3.9, T-244).
+  - done: impl-354 · 2026-10-14T01:33:59.241Z
+
+## Comments
+
+### impl-354 · 2026-10-14T01:32:14.857Z
+
+Implemented the complete human card on the summary index, cached task.view and plan.get: progress/marks, stage cells and approval, verdict rounds/scopes/reasons, relations, branch/verify, dates/subtree activity, Decision and zb. Reference lines reveal their items. Narrow explorer replaces physical right-panel windows without changing saved panel preferences. Targeted card tests and typecheck are green so far; finishing empty/live-state coverage before source review. Per Coordinator decision in topic-227, closed-stage time derives from latest child.closed/stage-verdict.at, with missing legacy times shown as —.
