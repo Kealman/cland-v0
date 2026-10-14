@@ -2,8 +2,8 @@
 id: T-367
 kind: task
 title: "Accounts in the clauses and docs: the Coordinator's clause turns a refused launch into an ask listing the harness's other accounts, cland init's roles.toml describes account, and the READMEs and GLOSSARY describe accounts, limits and the limited mark"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 7
 labels:
@@ -18,7 +18,8 @@ blocked_by:
 topic: topic-250
 branch: t/T-367-accounts-in-the-clauses-and-docs-the
 created: 2026-10-13T23:42:55.063Z
-updated: 2026-10-14T15:38:53.925Z
+updated: 2026-10-14T15:39:16.640Z
+closed: 2026-10-14T15:39:16.640Z
 ---
 
 ## Summary
@@ -179,3 +180,7 @@ scope: evidence
 Final clear; no high or medium findings. Exact-head auto full c67edfef/A-2430 passes root typecheck and 2023/2023 (37 free, 1607 hub machine, 379 Neovim), zero failures/cancellations/skips/todo. Reviewed clean head/worktree unchanged. C1–C3 delivered Coordinator/Lead account clauses and fresh-init behavior now verified; C4–C7 docs/glossary/user-state/ask content retained from source A-2382/A-2402. Restored existing review/QA wording and unchanged reply headroom pass. Earlier red 8616bb37/A-2393 was corrected source mismatch, not unchanged retry. A-2431: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2431-t-367-final-exact-head-account-clauses-and-docs-verification.md.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.
+
+### coord · 2026-10-14T15:39:16.640Z
+
+Merged cfedbbdc5f3d10579d6622cf8abf1d0f8578228d onto dev.
