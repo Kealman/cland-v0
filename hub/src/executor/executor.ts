@@ -10,7 +10,7 @@ export type RunRef = {
 export type Lease = { kind: ExecutorKind; run: string; created: string; deadline: string; resource: unknown };
 export type Platform = { os: string; arch: string; release: string; node: string; nvim: string };
 export type RunStatus = {
-  state: 'pending' | 'running' | 'done' | 'lost' | 'paused';
+  state: 'pending' | 'running' | 'done' | 'lost' | 'paused' | 'unknown';
   code?: number; cause?: string; finished?: string; platform?: Platform;
 };
 export type Released = { lifetimeMs: number | null; costUsd: number | null };
@@ -22,7 +22,7 @@ export interface Executor {
   start(lease: Lease, run: RunRef): Promise<void>;
   status(lease: Lease): Promise<RunStatus>;
   /** Offsets are bytes, including when the text contains multibyte characters. */
-  log(lease: Lease, offset: number): Promise<{ text: string; next: number }>;
+  log(lease: Lease, offset: number): Promise<{ text: string; next: number; bytes?: Uint8Array }>;
   cancel(lease: Lease, signal: string): Promise<void>;
   release(lease: Lease): Promise<Released>;
   reap(olderThanMs?: number): Promise<void>;

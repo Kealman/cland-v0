@@ -35,6 +35,7 @@
     "hub/test/doctor.test.ts": "machine",
     "hub/test/edges.test.ts": "machine",
     "hub/test/executor-droplet.test.ts": "machine",
+    "hub/test/executor-run.test.ts": "machine",
     "hub/test/events-quiet.test.ts": "machine",
     "hub/test/events.test.ts": "machine",
     "hub/test/executor.test.ts": "machine",

@@ -1302,6 +1302,42 @@ node hub/bin/cland.ts --version
 
 ### Remote executors: droplets
 
+Choose the project default with `[verification] executor = "local"` (the default)
+or `"droplet"` in `.cland/config.toml`; restart the hub to apply it.
+`cland verify --executor local|droplet --report <topic>` overrides it for one run.
+Both executors share admission, the tree/mode cache and the artifact-backed result.
+This stage admits one run at a time; droplets do not take the host's compatibility
+leases, even when a hand-run suite holds them. Dirty remote candidates are refused.
+
+Before acquiring a droplet, the hub runs `npm run typecheck` at the submitted head
+on the host. A failure posts a failed result without creating a machine. Delivery
+bundles the head against its merge base with the prepared snapshot's base; without
+a merge base, or when the bundle would be empty, it sends a full bundle. As `runner`,
+the machine fetches that bundle, checks out the exact detached head and cleans the
+checkout while preserving `node_modules` and `.cache`. A changed lockfile runs
+`npm ci`; a changed Neovim pin seeds it again. The log names both decisions.
+
+The host computes the suite selection while `origin/dev` is available. The uploaded
+`env` contains only `CLAND_SUITE_SELECTION` as JSON, `FORCE_COLOR=0` and `NO_COLOR=1`.
+The package runner reads that selection without fetching. A detached `setsid nohup`
+run as `runner` executes the same commands as the local worker: Linux typecheck,
+then the selected package suite. It uses the machine's own compatibility locks
+and a timeout of the remaining lease lifetime less a 120-second collection margin.
+
+Every ten seconds the hub polls status and up to 256 KiB of log bytes by offset.
+SSH failures leave the run unknown and are retried; an API 404, or five minutes
+unreachable while the API reports active, fails it with `remote machine lost`.
+Cancellation signals the remote process group, collects and destroys the machine.
+A restarted hub reattaches to an active run, resumes at the local log's byte offset
+and posts its result once. An expired lease reports `remote machine lifetime expired`.
+
+After collection and confirmed release, the result adds a line such as
+`Executor droplet · c-8 lon1 · cland-project-1a2b3c4d · linux x64 6.8.0 · Node v24.21.0 · Neovim v0.12.5 · lifetime 1398 s · cost $0.0971`.
+The job and `suite-result` record retain the machine name, size, region, lifetime
+and cost. A green Linux result is merge-gate suite evidence for its tree and mode;
+a later local request may reuse it and still names `droplet`. macOS-only cases
+remain visible as `suite skip` records and run in the release's final local suite.
+
 The droplet lifecycle uses DigitalOcean's REST API. Set `DIGITALOCEAN_TOKEN` in the
 shell that starts the hub. Each API call reads it at use and sends it only in the
 Authorization header; cland never saves its value or sends it to a droplet. Calls

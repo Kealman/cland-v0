@@ -1,5 +1,7 @@
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { createServer } from 'node:http';
-import { cp, mkdir, mkdtemp, writeFile, rm } from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, writeFile, rm, readFile, copyFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Action, SnapshotImage, Droplet, Key, Region, Size } from '../../../src/executor/droplet/api.ts';
@@ -7,10 +9,12 @@ import type { Action, SnapshotImage, Droplet, Key, Region, Size } from '../../..
 /** Provider boundary: never retains Authorization in its request log. */
 export async function fakeDigitalOcean(token: string) {
   const stateRoot = await mkdtemp(join(tmpdir(), 'cland-fake-do-'));
+  const run = promisify(execFile);
+  const publicKeys = new Map<number, string>();
   let nextAddress = 10;
   const dropletAddresses = new Map<number, string>();
   const addresses: Record<string, string> = {};
-  const machineFaults = { ssh: false, install: false, marker: false, delayMs: 0, delayCommand: '' };
+  const machineFaults = { ssh: false, sshFailures: 0, startReplyLost: 0, startMarkerOnly: 0, install: false, marker: false, delayMs: 0, delayCommand: '' };
   await writeFile(join(stateRoot, 'addresses.json'), '{}');
   await writeFile(join(stateRoot, 'machine-faults.json'), JSON.stringify(machineFaults));
   const images: SnapshotImage[] = [];
@@ -29,6 +33,8 @@ export async function fakeDigitalOcean(token: string) {
     const directory = join(stateRoot, `image-${image.id}`);
     await mkdir(join(directory, 'home/runner'), { recursive: true });
     await writeFile(join(directory, 'home/runner/.cland-image.json'), JSON.stringify(key));
+    await mkdir(join(directory, 'var/lib/cloud/scripts/per-boot'), { recursive: true });
+    await writeFile(join(directory, 'var/lib/cloud/scripts/per-boot/cland-runner-keys.sh'), '#!/bin/sh\ninstall -d -m 700 /home/runner/.ssh\ninstall -m 600 /root/.ssh/authorized_keys /home/runner/.ssh/authorized_keys\n');
     imageDirs.set(image.id, directory); images.push(image);
   };
   const polls = new Map<number, number>();
@@ -63,6 +69,19 @@ export async function fakeDigitalOcean(token: string) {
       else await mkdir(join(directory, 'home/runner'), { recursive: true });
       await mkdir(join(directory, 'var/lib'), { recursive: true });
       await writeFile(join(directory, 'var/lib/cland-ready'), '');
+      // DO injects each create's new key for root. A snapshot must carry its own
+      // surviving per-boot hook to authorize runner; the provider never does it.
+      const keysForCreate = (body!.ssh_keys as number[]).map(id => publicKeys.get(id) ?? '').join('\n');
+      await mkdir(join(directory, 'root/.ssh'), { recursive: true });
+      await writeFile(join(directory, 'root/.ssh/authorized_keys'), keysForCreate);
+      if (snapshotDir) {
+        const hook = await readFile(join(directory, 'var/lib/cloud/scripts/per-boot/cland-runner-keys.sh'), 'utf8').catch(() => null);
+        if (hook) await run('bash', ['-c', hook.replaceAll('/home/runner', join(directory, 'home/runner')).replaceAll('/root/.ssh', join(directory, 'root/.ssh')).replaceAll('-o runner -g runner', '')], { env: { PATH: process.env.PATH, HOME: join(directory, 'home/runner') } });
+      } else {
+        // Provisioning creates runner and copies the builder's initial key.
+        await mkdir(join(directory, 'home/runner/.ssh'), { recursive: true });
+        await copyFile(join(directory, 'root/.ssh/authorized_keys'), join(directory, 'home/runner/.ssh/authorized_keys'));
+      }
       if (body!.user_data) await writeFile(join(directory, 'user-data.sh'), String(body!.user_data));
       machineDirs.set(droplet.id, directory);
       const address = `203.0.113.${nextAddress++}`;
@@ -154,7 +173,7 @@ export async function fakeDigitalOcean(token: string) {
       return answer(200, { droplet });
     }
     if (path === '/account/keys') {
-      if (method === 'POST') { await beforeImport?.(); const ssh_key = { id: nextId++, name: String(body!.name), public_key: String(body!.public_key) }; keys.push(ssh_key); return answer(201, { ssh_key }); }
+      if (method === 'POST') { await beforeImport?.(); const ssh_key = { id: nextId++, name: String(body!.name), public_key: String(body!.public_key) }; keys.push(ssh_key); publicKeys.set(ssh_key.id, ssh_key.public_key); return answer(201, { ssh_key }); }
       return answer(200, { ssh_keys: keys });
     }
     const keyId = /^\/account\/keys\/(\d+)$/.exec(path);

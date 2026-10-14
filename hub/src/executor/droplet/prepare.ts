@@ -123,7 +123,7 @@ export async function prepareSnapshot(options: PrepareOptions): Promise<Prepared
     const keys = join(dir, 'cland-runner-keys.sh');
     await writeFile(keys, '#!/bin/sh\nset -eu\ninstall -d -m 700 -o runner -g runner /home/runner/.ssh\ninstall -m 600 -o runner -g runner /root/.ssh/authorized_keys /home/runner/.ssh/authorized_keys\n');
     await machine.put(builder, keys, 'cland-runner-keys.sh', { timeoutMs: timeout(), signal: options.signal });
-    await machine.exec(builder, 'set -eu; install -d /var/lib/cloud/scripts/per-boot; install -m 755 /home/runner/cland-runner-keys.sh /var/lib/cloud/scripts/per-boot/cland-runner-keys.sh; rm /home/runner/cland-runner-keys.sh; rm -f /root/.ssh/authorized_keys /home/runner/.ssh/authorized_keys /etc/ssh/ssh_host_*; cloud-init clean --logs', { user: 'root', timeoutMs: timeout(), signal: options.signal });
+    await machine.exec(builder, 'set -eu; cloud-init clean --logs; install -d /var/lib/cloud/scripts/per-boot; install -m 755 /home/runner/cland-runner-keys.sh /var/lib/cloud/scripts/per-boot/cland-runner-keys.sh; rm /home/runner/cland-runner-keys.sh; rm -f /root/.ssh/authorized_keys /home/runner/.ssh/authorized_keys /etc/ssh/ssh_host_*', { user: 'root', timeoutMs: timeout(), signal: options.signal });
     await rm(keys, { force: true });
     const limit = Math.min(Date.parse(builder.deadline), Date.now() + testTiming('CLAND_TEST_DROPLET_ACTION_MS', 1200000));
     step('power off');

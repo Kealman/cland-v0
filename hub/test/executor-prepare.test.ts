@@ -174,6 +174,31 @@ test('prepare refuses an oversized builder before create and reports one job whi
   }, 15000);
 });
 
+test('prepared snapshots preserve the runner key hook across cloud-init clean and inject the new lease key on boot', async t => {
+  const { root, api, env, ui } = await fixture(t);
+  for (const [key, value] of Object.entries(env)) {
+    const old = process.env[key]; process.env[key] = value;
+    t.after(() => { if (old === undefined) delete process.env[key]; else process.env[key] = old; });
+  }
+  assert.equal((await clandWithEnv(root, {}, 'executor', 'prepare', '--json')).code, 0);
+  await eventually('image preparation completes', async () => {
+    const value = (await ui.request({ type: 'executor.status' })).value as { prepare?: { state: string } };
+    return value.prepare?.state === 'done' ? true : undefined;
+  }, 15000);
+  const executor = new DropletExecutor(root);
+  const lease = await executor.acquire({ id: 'new-snapshot-boot' }, new Date(Date.now() + 60000).toISOString());
+  ownProcess(t, lease.watchdog!.pid);
+  const directory = api.machineDirs.get(lease.resource!)!;
+  const rootKeys = await readFile(join(directory, 'root/.ssh/authorized_keys'), 'utf8');
+  const runnerKeys = await readFile(join(directory, 'home/runner/.ssh/authorized_keys'), 'utf8');
+  const newKey = await readFile(join(root, '.cland/run/executor/leases', lease.lease, 'key.pub'), 'utf8');
+  assert.equal(runnerKeys.trim(), rootKeys.trim());
+  assert.equal(runnerKeys.trim(), newKey.trim(), 'the run key replaces the removed builder key');
+  assert.match(await readFile(join(directory, 'var/lib/cloud/scripts/per-boot/cland-runner-keys.sh'), 'utf8'), /authorized_keys/);
+  await executor.release(lease);
+  assert.deepEqual(api.droplets, []); assert.deepEqual(api.keys, []);
+});
+
 test('acquire needs a prepared image, uses its regions without user data and refuses unready or mismatched machines', async t => {
   const { root, api, env, ui } = await fixture(t);
   for (const [key, value] of Object.entries(env)) {

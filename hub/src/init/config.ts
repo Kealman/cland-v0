@@ -15,7 +15,7 @@ import { isManagedFile, readText, writeIfChanged, type Report } from './files.ts
 
 export type ProjectConfig = {
   name: string;
-  verification: { budget: number; lockPath: string; cacheMaxAgeMs: number; lifetimeMs: number; droplet: { size: string; prepare_size: string; regions: string[]; image: string } };
+  verification: { executor: 'local' | 'droplet'; budget: number; lockPath: string; cacheMaxAgeMs: number; lifetimeMs: number; droplet: { size: string; prepare_size: string; regions: string[]; image: string } };
   sessions: { archiveAfterItemMs: number; archiveAfterStopMs: number };
   visibility: VisibilityOverrides;
   tracker: { levels: Levels };
@@ -29,7 +29,7 @@ const MINUTE = 60_000;
 
 export const defaultConfig = (name: string): ProjectConfig => ({
   name,
-  verification: { budget: 1, lockPath: '/tmp/cland-suite.lock', cacheMaxAgeMs: 86400000, lifetimeMs: 6600000, droplet: { size: 'c-8', prepare_size: 'c-8', regions: ['lon1', 'nyc1', 'sfo2'], image: 'ubuntu-24-04-x64' } },
+  verification: { executor: 'local', budget: 1, lockPath: '/tmp/cland-suite.lock', cacheMaxAgeMs: 86400000, lifetimeMs: 6600000, droplet: { size: 'c-8', prepare_size: 'c-8', regions: ['lon1', 'nyc1', 'sfo2'], image: 'ubuntu-24-04-x64' } },
   sessions: { archiveAfterItemMs: 3600000, archiveAfterStopMs: 86400000 },
   visibility: {},
   tracker: { levels: [...DEFAULT_LEVELS] },
@@ -50,6 +50,7 @@ export function renderConfig(c: ProjectConfig): string {
 name = ${JSON.stringify(c.name)}
 
 [verification]
+executor = ${JSON.stringify(c.verification.executor)}
 # Admission budget; the legacy compatibility lease remains an additional limit.
 budget = ${c.verification.budget}
 lock_path = ${JSON.stringify(c.verification.lockPath)}
@@ -121,6 +122,10 @@ export function parseConfig(text: string, fallbackName: string): ProjectConfig {
     }
   }
   const verification = (doc.verification ?? {}) as Record<string, unknown>;
+  if (verification.executor !== undefined) {
+    if (verification.executor !== 'local' && verification.executor !== 'droplet') throw new Error('verification.executor must be local or droplet');
+    c.verification.executor = verification.executor;
+  }
   if (verification.lifetime !== undefined) {
     if (typeof verification.lifetime !== 'string') throw new Error('verification.lifetime must be a duration string');
     try { c.verification.lifetimeMs = durationMs(verification.lifetime); }

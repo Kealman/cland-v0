@@ -15,23 +15,24 @@ import { deleteLeaseResources } from './cleanup.ts';
 import { readRecoveries, recoverSnapshots } from './snapshot-recovery.ts';
 import { machineEnv } from './machine.ts';
 import { prepareKey, prepareSnapshot, readSnapshot, staleParts, sameKey, waitForMachine, type PrepareKey, type Prepared } from './prepare.ts';
+import { DropletRun } from './run.ts';
 import type { Executor, Released, RunRef } from '../executor.ts';
 
 const exec = promisify(execFile);
 type PrepareJob = { state: 'running' | 'done' | 'failed'; started: string; finished?: string; step: string; key?: PrepareKey; result?: Prepared; error?: string };
 
 /** Owns the project's durable droplet lifecycle, independently of suite delivery. */
-export class DropletExecutor implements Pick<Executor, 'acquire' | 'release'> {
+export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | 'start' | 'status' | 'log' | 'cancel' | 'release'> {
   readonly root: string;
   readonly store: Store | undefined;
-  readonly log: LogFn;
+  readonly logger: LogFn;
   #prepareJob: PrepareJob | null = null;
   #prepareWork: Promise<void> | null = null;
   #prepareAbort: AbortController | null = null;
   #closing = false;
   #keyWork: Promise<PrepareKey> | null = null;
   readonly #releases = new Map<string, Promise<Released>>();
-  constructor(root: string, store?: Store, log: LogFn = () => {}) { this.root = realpathSync(root); this.store = store; this.log = log; }
+  constructor(root: string, store?: Store, log: LogFn = () => {}) { this.root = realpathSync(root); this.store = store; this.logger = log; }
 
   async #config() {
     try { return parseConfig(await readFile(join(this.root, '.cland/config.toml'), 'utf8'), basename(this.root)); }
@@ -42,6 +43,12 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'release'> {
     await writeLease(this.root, lease);
     this.store?.setMeta('executor-leases', JSON.stringify(await readLeases(this.root)));
   }
+
+  async deliver(lease: DropletLease, run: RunRef) { return new DropletRun(this.root).deliver(lease, run); }
+  async start(lease: DropletLease, _run: RunRef) { return new DropletRun(this.root).start(lease); }
+  async status(lease: DropletLease) { return new DropletRun(this.root).status(lease); }
+  async log(lease: DropletLease, offset: number) { return new DropletRun(this.root).log(lease, offset); }
+  async cancel(lease: DropletLease, _signal: string) { return new DropletRun(this.root).cancel(lease); }
 
   async acquire(run: Pick<RunRef, 'id'>, deadline: string): Promise<DropletLease> {
     const runDeadline = Date.parse(deadline);
@@ -101,7 +108,7 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'release'> {
         if (current.status === 'active' && address) {
           lease.address = address; lease.state = 'active';
           await this.#save(lease);
-          this.log({ event: 'executor-lease-active', lease: lease.lease, id: lease.resource, run: lease.run });
+          this.logger({ event: 'executor-lease-active', lease: lease.lease, id: lease.resource, run: lease.run });
           return lease;
         }
         await pause(Math.min(testTiming('CLAND_TEST_DROPLET_POLL_MS', 2000), Math.max(0, limit - Date.now())));
@@ -136,7 +143,7 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'release'> {
     }, error => {
       job.state = 'failed'; job.finished = new Date().toISOString(); job.error = error instanceof Error ? error.message : 'snapshot preparation failed';
       const durationMs = Date.now() - Date.parse(job.started);
-      if (job.step === 'key') this.log({ event: 'executor-prepare-failed', key: job.key ?? null, image: null, regions: [], durationMs, lifetimeMs: 0, costUsd: 0, cause: job.error });
+      if (job.step === 'key') this.logger({ event: 'executor-prepare-failed', key: job.key ?? null, image: null, regions: [], durationMs, lifetimeMs: 0, costUsd: 0, cause: job.error });
       report(`snapshot prepare failed: ${job.error}\nkey ${JSON.stringify(job.key ?? null)}; image none; duration ${Math.round(durationMs / 1000)}s`);
     }).finally(() => { this.#prepareWork = null; this.#prepareAbort = null; });
     return { state: 'submitted', summary: 'snapshot preparation submitted; see cland executor status' };
@@ -148,13 +155,13 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'release'> {
     const config = await this.#config();
     const { prepare_size, size, regions, image } = config.verification.droplet;
     const current = await readSnapshot(this.root);
-    if (current && sameKey(current.key, key)) return prepareSnapshot({ root: this.root, project: projectName(config.name), regions, tags: [], key, store: this.store, log: this.log, signal: this.#prepareAbort?.signal, step, builder: async () => { throw new Error('current snapshot needs no builder'); }, release: lease => this.release(lease) });
+    if (current && sameKey(current.key, key)) return prepareSnapshot({ root: this.root, project: projectName(config.name), regions, tags: [], key, store: this.store, log: this.logger, signal: this.#prepareAbort?.signal, step, builder: async () => { throw new Error('current snapshot needs no builder'); }, release: lease => this.release(lease) });
     const sizes = await new DigitalOceanApi().sizes();
     const builder = sizes.find(s => s.slug === prepare_size && s.available);
     const run = sizes.find(s => s.slug === size && s.available);
     if (!builder || !run || !Number.isFinite(builder.disk) || !Number.isFinite(run.disk)) throw new Error('prepare_size and size need available disks');
     if (builder.disk! > run.disk!) throw new Error(`verification.droplet.prepare_size ${prepare_size} disk exceeds run size ${size}`);
-    return prepareSnapshot({ root: this.root, project: projectName(config.name), regions, tags: ['cland', projectTag(this.root, config.name)], key, maxDiskSize: run.disk!, store: this.store, log: this.log, signal: this.#prepareAbort?.signal, step,
+    return prepareSnapshot({ root: this.root, project: projectName(config.name), regions, tags: ['cland', projectTag(this.root, config.name)], key, maxDiskSize: run.disk!, store: this.store, log: this.logger, signal: this.#prepareAbort?.signal, step,
       builder: user_data => this.#acquire({ id: 'executor-prepare' }, new Date(Date.now() + config.verification.lifetimeMs).toISOString(), { size: prepare_size, regions, image, user_data }), release: lease => this.release(lease) });
   }
 
@@ -188,14 +195,14 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'release'> {
           await stopWatchdog(lease);
           await rm(join(leaseDir(this.root, lease), 'key'), { force: true });
           await rm(join(leaseDir(this.root, lease), 'key.pub'), { force: true });
-          this.log({ event: 'executor-lease-released', lease: lease.lease, id: lease.resource, lifetimeMs: lease.lifetimeMs, costUsd: lease.costUsd });
+          this.logger({ event: 'executor-lease-released', lease: lease.lease, id: lease.resource, lifetimeMs: lease.lifetimeMs, costUsd: lease.costUsd });
           return { lifetimeMs: lease.lifetimeMs!, costUsd: lease.costUsd! };
         }
         await pause(testTiming('CLAND_TEST_DROPLET_POLL_MS', 2000));
       } while (Date.now() < limit);
     } catch { /* the durable releasing lease is retried by the hub and the watchdog */ }
     await this.#save(lease);
-    this.log({ event: 'executor-release-unconfirmed', lease: lease.lease, id: lease.resource });
+    this.logger({ event: 'executor-release-unconfirmed', lease: lease.lease, id: lease.resource });
     return { lifetimeMs: null, costUsd: null };
   }
 
@@ -225,6 +232,7 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'release'> {
 
   /** Restart repair and releasing-only retries. General orphan sweeping belongs to the safety stage. */
   async reconcile(restart = true): Promise<void> {
+    const owned = new Set((JSON.parse(this.store?.meta('suite-jobs') ?? '[]') as Array<{ id: string; reported: boolean; state?: string; outcome: unknown }>).filter(job => !job.reported && !job.outcome && job.state !== 'queued').map(job => job.id));
     for (const lease of await readLeases(this.root)) {
       const dir = leaseDir(this.root, lease);
       let receipt: WatchdogReceipt | undefined;
@@ -235,7 +243,7 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'release'> {
         accountRelease(lease, receipt.deleteStarted);
         lease.released = receipt.confirmedAt;
         await this.#save(lease);
-        this.log({ event: 'executor-watchdog-fired', lease: lease.lease, ...receipt });
+        this.logger({ event: 'executor-watchdog-fired', lease: lease.lease, ...receipt });
       }
       if (lease.state === 'released') {
         await rm(join(dir, 'key'), { force: true }); await rm(join(dir, 'key.pub'), { force: true });
@@ -244,11 +252,11 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'release'> {
       if (!process.env.DIGITALOCEAN_TOKEN) continue;
       if (liveLease(lease) && (restart || lease.watchdog) && !await watchdogAlive(lease)) {
         lease.watchdog = await armWatchdog(dir); await this.#save(lease);
-        this.log({ event: 'executor-watchdog-rearmed', lease: lease.lease, pid: lease.watchdog.pid, deadline: lease.deadline });
+        this.logger({ event: 'executor-watchdog-rearmed', lease: lease.lease, pid: lease.watchdog.pid, deadline: lease.deadline });
       }
-      if (lease.state === 'releasing' || Date.parse(lease.deadline) <= Date.now() || restart && (lease.state === 'active' || lease.state === 'creating' && lease.resource === null)) await this.release(lease);
+      if (lease.state === 'releasing' || Date.parse(lease.deadline) <= Date.now() || restart && (lease.state === 'active' && !lease.execution && !owned.has(lease.run) || lease.state === 'creating' && lease.resource === null)) await this.release(lease);
     }
-    if (this.#prepareJob?.state !== 'running') await recoverSnapshots(this.root, this.store, this.log);
+    if (this.#prepareJob?.state !== 'running') await recoverSnapshots(this.root, this.store, this.logger);
     this.store?.setMeta('executor-leases', JSON.stringify(await readLeases(this.root)));
   }
   async reap(authorize: () => void = () => {}) {
@@ -275,7 +283,7 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'release'> {
       } while (stillListed && Date.now() < limit);
       if (stillListed) throw new Error(`droplet ${droplet.id} deletion not yet confirmed; run reap again`);
       deleted.push(droplet.id);
-      this.log({ event: 'executor-reaped', id: droplet.id, name: droplet.name, age, reason });
+      this.logger({ event: 'executor-reaped', id: droplet.id, name: droplet.name, age, reason });
     }
     for (const key of await api.keys()) if (key.name.startsWith(`cland-${projectName(config.name)}-`) && !live.some(l => l.keyName === key.name)) { authorize(); await api.deleteKey(key.id); }
     return { deleted, summary: `reaped: ${deleted.length} droplets` };

@@ -562,7 +562,8 @@ export class Dispatcher {
     const core = this.#options.core;
     const messageId = `suite:${job.id}`;
     const platform = job.platform;
-    const execution = `Executor ${job.executor}${platform ? ` · ${platform.os} ${platform.arch} · Node ${platform.node} · Neovim ${platform.nvim}` : ' · platform unavailable'}`;
+    const machine = job.machine;
+    const execution = `Executor ${job.executor}${machine ? ` · ${machine.size} ${machine.region} · ${machine.name}` : ''}${platform ? ` · ${platform.os} ${platform.arch}${job.executor === 'droplet' ? ` ${platform.release}` : ''} · Node ${platform.node} · Neovim ${platform.nvim}` : ' · platform unavailable'}${machine ? ` · lifetime ${machine.lifetimeMs === null ? 'unknown' : Math.round(machine.lifetimeMs / 1000) + ' s'} · cost $${machine.costUsd === null ? 'unknown' : machine.costUsd.toFixed(4)}` : ''}`;
     if (job.requesterDied) {
       // A dead session's role/claim is vacated. This is a hub lifecycle note, not a tool call as that session.
       const key = `suite-death:${job.id}`;
@@ -572,7 +573,7 @@ export class Dispatcher {
         if (!id) throw new Error('cancelled suite topic is unavailable');
         core.store.setMeta(key, id);
       });
-      this.#log({ event: 'suite-result', id: job.id, item: job.item, session: job.actor?.name, topic: job.topic, branch: job.branch, head: job.head, outcome: job.outcome, counts: 'counts unavailable (requester died)', mode: job.selection?.mode ?? job.mode, executor: job.executor, platform: job.platform ?? null });
+      this.#log({ event: 'suite-result', id: job.id, item: job.item, session: job.actor?.name, topic: job.topic, branch: job.branch, head: job.head, outcome: job.outcome, counts: 'counts unavailable (requester died)', mode: job.selection?.mode ?? job.mode, executor: job.executor, platform: job.platform ?? null, machine: job.machine ?? null });
       return;
     }
     if (core.store.message(messageId)) return; // committed result wins over a crash before receipt update
@@ -609,7 +610,7 @@ export class Dispatcher {
     const result = caller ? core.sendFromSession(caller.name, job.to, text, undefined, job.topic, undefined, caller, [artifact], 'report', messageId, true)
       : core.sendFromHuman(job.topic, text, job.to, undefined, undefined, undefined, [artifact], messageId);
     if (!core.store.message(result.message.id)) throw new Error('suite result had no deliverable recipient');
-    this.#log({ event: 'suite-result', id: job.id, item: job.item, session: job.actor?.name, topic: job.topic, branch: job.branch, head: job.head, outcome, counts: suiteSummary(log), mode: job.selection?.mode ?? job.mode, executor: job.executor, platform: job.platform ?? null });
+    this.#log({ event: 'suite-result', id: job.id, item: job.item, session: job.actor?.name, topic: job.topic, branch: job.branch, head: job.head, outcome, counts: suiteSummary(log), mode: job.selection?.mode ?? job.mode, executor: job.executor, platform: job.platform ?? null, machine: job.machine ?? null });
     this.#log({ event: 'audit', session: caller?.name ?? HUMAN_SESSION, sessionId: caller?.sessionId ?? null, role: caller?.role ?? HUMAN_SESSION, tool: 'send', args: { topic: job.topic, to: job.to, suite: job.id, artifacts: [artifact.id] }, outcome: 'ok', client: 'suite' });
   }
   async #artifact(frame: ArtifactCreate | ArtifactList, callerNow: () => Caller | null, resumed: <T>(work: () => T) => T): Promise<unknown> {
@@ -1433,7 +1434,7 @@ export class Dispatcher {
           const actor = caller ? { name: caller.name, sessionId: caller.sessionId, shell: true as const } : null;
           const authorize = () => { this.#suitePermissions(actor, topic, to); };
           try { authorize(); } catch (error) { return peer.send(Dispatcher.#failure(request.id, error)); }
-          later('suite.start', this.#suites.start({ mode: request.mode, fresh: request.fresh ?? false, cwd: request.cwd, topic, to, actor, item: core.store.topic(topic)?.item ?? null, integrated: caller?.role === 'coordinator' && request.cwd === this.#options.control?.status().root, priority: this.#suiteRank(core.store.topic(topic)?.item ?? null) }, authorize).then(value => ({ type: 'result', id: request.id, ok: true, value }), error => Dispatcher.#failure(request.id, error)));
+          later('suite.start', this.#suites.start({ mode: request.mode, ...(request.executor ? { executor: request.executor } : {}), fresh: request.fresh ?? false, cwd: request.cwd, topic, to, actor, item: core.store.topic(topic)?.item ?? null, integrated: caller?.role === 'coordinator' && request.cwd === this.#options.control?.status().root, priority: this.#suiteRank(core.store.topic(topic)?.item ?? null) }, authorize).then(value => ({ type: 'result', id: request.id, ok: true, value }), error => Dispatcher.#failure(request.id, error)));
           return;
         }
         if (isSubscriptionRequest(frame)) return subscriptionRequest(frame, caller);
