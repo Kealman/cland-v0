@@ -3,7 +3,7 @@ id: T-364
 kind: task
 title: "Idle accounts through the harness: an account with no running session is polled at most every 15 minutes through claude -p /usage or a short-lived codex app-server, never through a provider's endpoint"
 state: open
-status: in progress
+status: review
 size: L
 criterion_seq: 8
 labels:
@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-240
 branch: t/T-364-idle-accounts-through-the-harness-an
 created: 2026-10-13T23:42:54.330Z
-updated: 2026-10-14T07:37:50.231Z
+updated: 2026-10-14T07:56:38.450Z
 ---
 
 ## Summary
@@ -112,12 +112,13 @@ The probes in `docs/research/account-limits/` show the commands: `claude-usage.s
   - done: impl-364 · 2026-10-14T07:32:08.961Z
 - [x] C5. A failed poll (the fake exits 1 with a 429 line, or hangs past the bound and is killed) doubles that account's floor up to 60 minutes and journals `account-poll-failed` with one line. A later success restores the floor. A signed-out answer shows `signedOut` on the account and polls no faster.
   - done: impl-364 · 2026-10-14T07:32:10.162Z
-- [ ] C6. The source scan finds no provider host, no usage path and no read of a credential store in `hub/src`. The runtime recorder sees no non-loopback connection during a poll cycle. No poll runs `agents --json`, `auth status` or `doctor`.
-  - failed: rev-23 [reviewer] · 2026-10-14T07:37:50.231Z · note Generic fixture daemon startup inherits host account registry/directories and real harness defaults, allowing automatic polls of real accounts during tests.
+- [x] C6. The source scan finds no provider host, no usage path and no read of a credential store in `hub/src`. The runtime recorder sees no non-loopback connection during a poll cycle. No poll runs `agents --json`, `auth status` or `doctor`.
+  - done: impl-364 · 2026-10-14T07:49:53.756Z
 - [x] C7. A poll process runs with the account's overlay, without the removed auth variables and without any `CLAND_*` variable, in a scratch directory under `.cland/run/accounts/`.
   - done: impl-364 · 2026-10-14T07:32:12.233Z
 - [x] C8. `hub/README.md` describes the triggers, the floor, the minimum, the backoff, the commands it runs and the commands it never runs.
   - done: impl-364 · 2026-10-14T07:32:13.369Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-364-2 · 2026-10-14T07:56:38.450Z · commit d2ac7a49de76c925aee78acd7748ba9d0c1adb11
 
 ## Comments
 
@@ -137,3 +138,16 @@ scope: full
 Medium — hub/src/hub/daemon.ts:296–298 / hub/test/harness.ts:247–253: new automatic startup polls reach host XDG/HOME registry/default claude/codex from ordinary existing fixture daemons. Selected scratch poll tests do not isolate the full suite. C6 no-real-harness boundary fails: isolate existing fixture startup registry/account dirs/default fake binaries while preserving explicit overrides and fake controller/cleanup identity; no production disable seam/new helper. Complete twenty-file review found no further high/medium issues. Corrected-head source review before full/shared-fix integration required. A-2286: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2286-t-364-complete-source-review-not-clear-fixture-account-isolation.md.
 
 Criteria: C6 failed (Generic fixture daemon startup inherits host account registry/directories and real harness defaults, allowing automatic polls of real accounts during tests.).
+
+### rev-23 · 2026-10-14T07:56:38.450Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-364-2
+commit: d2ac7a49de76c925aee78acd7748ba9d0c1adb11
+scope: full
+
+No high or medium findings remain. hub/test/account-fixture-env.ts:10–28 and harness.ts:6 resolve the inherited real registry/binary boundary using scratch-owned defaults and fake binaries, without a production seam or new harness helper; explicit test overlays and fake controller identity remain intact. account-fixture-isolation.test.ts:29–62 covers all three existing startup paths through account.poll with hostile scratch inheritance. Shared T-375 files match its reviewed head exactly; incoming merge is tracker-only. Complete original source review remains applicable. C8 verified; C1–C7 await exact-head full evidence. Adopt landed T-376 and obtain delta review before the required full run. A-2290: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2290-t-364-corrected-source-review-clear-at-d2ac7a49.md.
+
+Criteria: C8 verified.

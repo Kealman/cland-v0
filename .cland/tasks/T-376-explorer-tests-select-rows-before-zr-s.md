@@ -2,8 +2,8 @@
 id: T-376
 kind: task
 title: Explorer tests select rows before zR's expanded rows land (explorer-card missing row T-10 under load)
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 4
 labels:
@@ -18,7 +18,8 @@ regression_of: T-352
 topic: topic-238
 branch: t/T-376-explorer-tests-select-rows-before-zr-s
 created: 2026-10-14T06:45:48.305Z
-updated: 2026-10-14T07:07:35.462Z
+updated: 2026-10-14T08:24:10.172Z
+closed: 2026-10-14T08:24:10.172Z
 ---
 
 ## Summary
@@ -35,15 +36,19 @@ updated: 2026-10-14T07:07:35.462Z
 - [x] C1. Every `zR`/`zM`/`za` followed by a row selection or a screen assertion in the explorer and card tests waits for the expected rows (for example `waitScreen` on the row) before acting, with no other assertion changed.
   - done: impl-376 · 2026-10-14T06:55:09.482Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-376-2 · 2026-10-14T07:07:32.611Z · commit d1d0ff41ad8b06ed2e0bb5aadce3e2b2317d77ea
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-376-3 · 2026-10-14T07:57:26.890Z · commit d1d0ff41ad8b06ed2e0bb5aadce3e2b2317d77ea
 - [x] C2. The same sweep covers T-350..T-359's other new explorer tests for actions taken before their rows land, applying the same readiness wait.
   - done: impl-376 · 2026-10-14T07:06:22.703Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-376-2 · 2026-10-14T07:07:32.612Z · commit d1d0ff41ad8b06ed2e0bb5aadce3e2b2317d77ea
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-376-3 · 2026-10-14T07:57:26.890Z · commit d1d0ff41ad8b06ed2e0bb5aadce3e2b2317d77ea
 - [x] C3. The fix is one test-only commit, so it can be cherry-picked into every live branch.
   - done: impl-376 · 2026-10-14T06:55:14.333Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-376-2 · 2026-10-14T07:07:32.612Z · commit d1d0ff41ad8b06ed2e0bb5aadce3e2b2317d77ea
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-376-3 · 2026-10-14T07:57:26.890Z · commit d1d0ff41ad8b06ed2e0bb5aadce3e2b2317d77ea
 - [x] C4. The touched Neovim test files pass 20 consecutive targeted runs under four parallel CPU workers on macOS.
   - done: impl-376 · 2026-10-14T07:06:23.104Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-376-2 · 2026-10-14T07:07:32.612Z · commit d1d0ff41ad8b06ed2e0bb5aadce3e2b2317d77ea
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-376-3 · 2026-10-14T07:57:26.890Z · commit d1d0ff41ad8b06ed2e0bb5aadce3e2b2317d77ea
 
 ## Comments
 
@@ -92,3 +97,24 @@ scope: full
 No high/medium findings remain. Complete inventory barriers wait for every actual left-panel item, archived/group/focus/filter boundaries target their next-read state, all original assertions retained. C1–C3 verified; C4 A-2274/A-2277 covers twenty complete-file runs per touched file, final hashes match, 60/60 invocations and 1020/1020 cases under four CPU workers, no skips/retries, workers stopped. Ordinary exact-head full gate remains pending. A-2280: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2280-t-376-amended-readiness-sweep-source-clear.md.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### impl-376 · 2026-10-14T07:56:19.538Z
+
+Same-head full verify a23a2bff-abd7-4dee-88c9-2001fbb0885a passed at d1d0ff41ad8b06ed2e0bb5aadce3e2b2317d77ea: typecheck and all phases green, 1979/1979 tests, zero failures/cancellations/skips. Local darwin arm64, Node v24.21.0, Neovim v0.12.5; 978.10 s suite, peak 1m load 14.07. Log A-2289 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2289-suite-a23a2bff-abd7-4dee-88c9-2001fbb0885a-all-at-d1d0ff4.log. Reviewed head remains clean and unchanged; final review verdict pending.
+
+### rev-23 · 2026-10-14T07:57:26.890Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-376-3
+commit: d1d0ff41ad8b06ed2e0bb5aadce3e2b2317d77ea
+scope: evidence
+
+No high or medium findings. Exact source-reviewed head remains clean and unchanged. A-2289 full cland verify a23a2bff passed typecheck and all phases: 37 free + 1576 hub machine + 366 Neovim = 1979/1979, zero failures/cancellations/skips/todo, exit 0. A-2280 source review and matching-source A-2274/A-2277 twenty-run-per-file stress evidence remain applicable; C1–C4 verified. A-2291: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2291-t-376-final-exact-head-verification-clear.md.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-14T08:24:10.172Z
+
+Merged fc0fabf945f1266e0031138f1176c5667c4ddd8b onto dev.

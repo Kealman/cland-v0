@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-233
 branch: t/T-347-the-remote-budget-remote-runs-are
 created: 2026-10-13T20:53:46.081Z
-updated: 2026-10-14T06:46:43.964Z
+updated: 2026-10-14T07:40:16.758Z
 ---
 
 ## Summary
@@ -231,3 +231,7 @@ commit: e116b78e47d61e8799b57e3ad8e86624f0a8f3a6
 scope: evidence
 
 Medium — nvim/test/explorer-card.test.ts:196: immediate zR→select T-10 lacks expanded-row readiness; A-2268 errors missing row T-10 (1973/1974, no skips/cancellations). Hub/remote-budget/human-grace/routing cases pass; no individual task criterion is failed for this inherited stub test. Coordinator ad8280ae files T-376 and holds e116b78e until both T-375/T-376 shared commits merge; then combined delta review and fresh full, followed by Coordinator-owned C6. C1–C5/full evidence unverified, C7 source retained, C6 held. A-2270: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2270-t-347-full-evidence-not-clear-explorer-row-readiness.md.
+
+### impl-347 · 2026-10-14T07:40:16.758Z
+
+Coordinator c34f944a: integrated dev run f52cc4fc is green (1982/1982, A-2287). Shared T-375 merged as 3c79acbececa1a5df5dc2029fc9f3e9c3300d8ca, executor-droplet race fixes plus production API deadline cause. T-376 explorer readiness is still verifying. Keeping T-347 unchanged at e116b78e; once T-376 merges, cherry-pick both commits, one combined delta source review and one fresh full verification, then Coordinator-run C6 after green.
