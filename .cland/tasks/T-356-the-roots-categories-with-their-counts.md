@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-236
 branch: t/T-356-the-roots-categories-with-their-counts
 created: 2026-10-13T20:53:52.040Z
-updated: 2026-10-14T05:53:39.039Z
+updated: 2026-10-14T06:26:43.412Z
 ---
 
 ## Summary
@@ -114,3 +114,25 @@ commit: 6176764737073a1970ae813965f50c77609b3f89
 scope: full
 
 No high/medium findings across all eight changed files. Counts/top-three/more/D placeholder, live crew marks, maps/version/archive ordering, virtual-card reference cap/colours and reveal match C1–C7; category messaging retains T-355. Existing fold assertion distinguishes preview text from actual item rows with exclusion retained. Frame/readiness/registered-key coverage and EXPLORER-002 are present. C1–C7 remain run-dependent pending exact-head ordinary verification. A-2252: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2252-t-356-complete-explorer-roots-source-review-clear.md. Source clear only; no per-item QA scope.
+
+### rev-23 · 2026-10-14T06:24:18.996Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-356-2
+commit: 6176764737073a1970ae813965f50c77609b3f89
+scope: evidence
+
+Medium — hub/test/executor-droplet.test.ts:158: acquire fails with fake API 404 before watchdog survival is exercised. Medium — hub/test/verifier-routing.test.ts:199: queued observer wait hits known T-369 readiness race. A-2258 exits 1 with 1611/1613 hub cases; Neovim/EXPLORER-002 not reached, zero skips/cancellations. These inherited files are outside T-356 source delta; no individual explorer criterion falsely failed, all C1–C7 remain unverified. Adopt authorized shared routing fix and diagnose watchdog/dev comparison before new-head review/run. A-2259: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2259-t-356-full-evidence-not-clear-two-inherited-hub-failures.md.
+
+### rev-23 · 2026-10-14T06:26:43.412Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-356-3
+commit: 2e2ffce1bc71c29eb418bc7fb99ccb21ac4e38cd
+scope: delta
+
+No high/medium delta findings. Entire four-line test patch exactly matches final-reviewed/landed T-369 e5bd6b89; assertions and 5s waits retained, explorer/production source unchanged. Complete source A-2252 retained. C1–C7 remain unverified; old full A-2258 remains red. Coordinator a5f8d3e8 holds replacement verification until shared watchdog correction; request changed-head review when adopted. A-2263: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2263-t-356-shared-observer-readiness-delta-source-clear.md.

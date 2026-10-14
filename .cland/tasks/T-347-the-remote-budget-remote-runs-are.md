@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-233
 branch: t/T-347-the-remote-budget-remote-runs-are
 created: 2026-10-13T20:53:46.081Z
-updated: 2026-10-14T04:17:43.924Z
+updated: 2026-10-14T06:46:43.964Z
 ---
 
 ## Summary
@@ -97,6 +97,7 @@ Prior work: T-215 kept the local budget at one (`verification-budget-capped`). T
   - done: impl-347 · 2026-10-14T03:18:56.994Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-347-2 · 2026-10-14T03:27:35.135Z · commit 130e3fcd2563630041775d18405990ae1150622c
   - verified: rev-23 [reviewer] · run rev-2026-10-14-347-4 · 2026-10-14T03:50:02.091Z · commit 2bea4c2ebf8bee59fc346344565e1dcc95f47559
+  - verified: rev-23 [reviewer] · run rev-2026-10-14-347-6 · 2026-10-14T06:12:32.305Z · commit e116b78e47d61e8799b57e3ad8e86624f0a8f3a6
 
 ## Comments
 
@@ -194,3 +195,39 @@ Medium — hub/test/verifier-routing.test.ts:199: existing queued Reviewer deliv
 ### impl-347 · 2026-10-14T04:17:43.924Z
 
 T-369 direct comparison (impl-369 report a6ebd8f0): dev 39ff0f4c and T-347 2bea4c2e each passed 5/5 standalone in separate detached scratch worktrees, no mutation/load, one targeted file at a time. This does not isolate a T-347 regression; prior standalone red A-2231 remains a shared-race candidate. T-369 continues bounded-load delivery/connection ownership diagnosis. T-347 remains unchanged and C6/full rerun held under Coordinator disposition until the shared-fix outcome.
+
+### impl-347 · 2026-10-14T06:11:34.689Z
+
+Shared T-369 merged commit e5bd6b89 cherry-picked cleanly as pushed e116b78e47d61e8799b57e3ad8e86624f0a8f3a6 per Coordinator 023985df. Only verifier-routing readiness/subscription delta; all assertions/deadlines unchanged. Targeted failing case now 1/1 green; typecheck/diff check green. Delta source review requested. Full verify held for Coordinator's Agents hub-back notice under 4808b2e1, then fresh exact-reviewed-head verify and C6 after green. No cloud resources created.
+
+### rev-23 · 2026-10-14T06:12:32.305Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-347-6
+commit: e116b78e47d61e8799b57e3ad8e86624f0a8f3a6
+scope: delta
+
+No high/medium delta findings. Only four verifier-routing subscription/native-ready lines changed; patch exactly equals final-reviewed T-369 and landed shared e5bd6b89. All routing/exact-once assertions and 5s waits retained; production/T-347 tests/docs unchanged, corrected complete source A-2223 retained. C7 refreshed; C1–C5 fresh exact-head full evidence and C6 real receipts remain pending. Enqueue only after Coordinator's Agents hub-back notice. A-2257: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2257-t-347-shared-verifier-readiness-delta-clear-at-e116b78e.md.
+
+Criteria: C7 verified.
+
+### impl-347 · 2026-10-14T06:25:17.362Z
+
+After Coordinator hub-back notice 39d6c297, fresh full verify f7a73045-3add-4bb5-a7af-588bc033556c is running at exact source delta-cleared head e116b78e47d61e8799b57e3ad8e86624f0a8f3a6; worker PID 56937, recipients rev-23/impl-347, topic-233. Shared T-369 fix included. Waiting for result; no source changes. New T-348 Implementer clause reserves executor administration/provider listings to the hub/human/Coordinator; routed concrete C6 A-2208/A-2218 admin/listing/snapshot-cleanup steps to lead T-347 for execution direction. No real cloud calls/resources yet.
+
+### impl-347 · 2026-10-14T06:46:33.903Z
+
+Full f7a73045/A-2268 at source delta-cleared e116b78e passed 1973/1974 tests; hub phase and shared verifier fix passed, sole Neovim failure explorer-card.test.ts:194 'missing row T-10' after zR. Exact-head standalone case passes 1/1 (~0.774s), Neovim source/test unchanged by T-347. Coordinator ad8280ae assigns readiness sweep to shared T-376 (regression T-352) and directs holding e116b78e until both T-375 and T-376 merged commits exist. Then cherry-pick both, request one delta review and run one fresh full; Coordinator runs C6 after green. Subscribed to both task event streams; no source changes or rerun.
+
+### rev-23 · 2026-10-14T06:46:43.964Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-14-347-7
+commit: e116b78e47d61e8799b57e3ad8e86624f0a8f3a6
+scope: evidence
+
+Medium — nvim/test/explorer-card.test.ts:196: immediate zR→select T-10 lacks expanded-row readiness; A-2268 errors missing row T-10 (1973/1974, no skips/cancellations). Hub/remote-budget/human-grace/routing cases pass; no individual task criterion is failed for this inherited stub test. Coordinator ad8280ae files T-376 and holds e116b78e until both T-375/T-376 shared commits merge; then combined delta review and fresh full, followed by Coordinator-owned C6. C1–C5/full evidence unverified, C7 source retained, C6 held. A-2270: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2270-t-347-full-evidence-not-clear-explorer-row-readiness.md.

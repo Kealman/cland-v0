@@ -3,7 +3,7 @@ id: T-364
 kind: task
 title: "Idle accounts through the harness: an account with no running session is polled at most every 15 minutes through claude -p /usage or a short-lived codex app-server, never through a provider's endpoint"
 state: open
-status: backlog
+status: planned
 size: L
 labels:
   - v0.1.2
@@ -17,7 +17,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-13T23:42:54.330Z
-updated: 2026-10-13T23:43:00.174Z
+updated: 2026-10-14T07:07:20.748Z
 ---
 
 ## Summary

@@ -3,7 +3,7 @@ id: T-365
 kind: task
 title: "The accounts block: the sessions panel opens with one line per account showing the windows its source sent, with the used share, the reset time and the reading's age, and each session's meta line names its account"
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - v0.1.2
@@ -16,7 +16,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-13T23:42:54.607Z
-updated: 2026-10-13T23:43:00.602Z
+updated: 2026-10-14T07:07:21.628Z
 ---
 
 ## Summary
