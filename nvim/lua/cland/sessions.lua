@@ -14,12 +14,22 @@ function M.setup(client)
   M.resuming = {}
   -- an attach asked for before the hub answered (at start, after a restart) goes out once it connects
   client:on('connected', function()
+    if M.accounts_pending then M.poll_accounts() end
     local waiting = M.waiting
     M.waiting = {}
     for _, fn in ipairs(waiting) do
       fn()
     end
   end)
+end
+
+--- One refresh per sessions-panel opening; a pre-connect opening waits for the client.
+function M.poll_accounts()
+  M.accounts_pending = true
+  if M.client and M.client:connected() then
+    M.accounts_pending = false
+    M.client:request({ type = 'account.poll' }, function() end)
+  end
 end
 
 local function note_buf(name, text)

@@ -6,6 +6,7 @@
 // A hub serving a UI over its stdio may run without the listeners (spec 4.2: sandboxed QA runs, where
 // binding is forbidden). It still takes the lock — the store is one hub's alone — but writes no `hub.json`
 // and plugs in no adapters: nothing could reach it, so it launches nothing.
+import { AccountPoller } from '../accounts/poller.ts';
 import { randomUUID } from 'node:crypto';
 import { mkdirSync } from 'node:fs';
 import { access, unlink, writeFile } from 'node:fs/promises';
@@ -142,6 +143,7 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
   if (config) log({ event: 'config-loaded', path: l.config, hygiene: config.hygiene });
   const crew = new CrewFile(l.crew, log, config => hub?.core.publishCrew(config), tracker, requestGuard.resumer('crew.refresh'));
   let adapters: ProjectSessions | null = null;
+  let accountPoller: AccountPoller | null = null;
   let ws: WebSocketEdge | null = null;
   let edge: SocketEdge | null = null;
   try {
@@ -234,6 +236,7 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
       await edge?.close();
       await ws?.close();
       await sweep;
+      await accountPoller?.close();
       // Both journal and session projections depend on the adapters' open table.
       hub.core.close();
       await hub.dispatcher.close();
@@ -290,7 +293,9 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
   writeDiscovery(l.discovery, discovery);
   log({ event: 'serving', root, port: ws.port, socket: l.socket, pid: process.pid });
   starting = false;
-  void adapters.sessions.resumeAll();
+  accountPoller = new AccountPoller(hub.core, adapters.sessions, root, log);
+  hub.dispatcher.useAccountPoller(accountPoller);
+  void adapters.sessions.resumeAll().then(() => { if (!stopping) accountPoller!.start(); });
   // Socket readiness never awaits cleanup. Reservations cover servers spawned before their row is published.
   sweep = new Promise<void>(resolve => setImmediate(resolve)).then(async () => {
     log({ event: 'orphan-sweep-started' });

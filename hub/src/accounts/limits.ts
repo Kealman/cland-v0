@@ -1,11 +1,11 @@
-// Source-shaped account windows. No provider calls or timers: sessions supply readings.
+// Source-shaped account windows. Sessions and harness polls supply readings; no provider calls here.
 import { isDeepStrictEqual } from 'node:util';
 import type { Account, Accounts } from './registry.ts';
 
 export type LimitWindow = { id: string; label: string; usedPercent: number; resetsAt: string; windowMins?: number; severity?: string; scope?: string };
 export type LimitSource = { kind: 'session'; session: string } | { kind: 'poll' };
-export type AccountReading = { account: string; harness: string; windows: LimitWindow[]; at: string; source: LimitSource };
-export type AccountView = Account & { windows: LimitWindow[]; at: string | null; source: LimitSource | null };
+export type AccountReading = { account: string; harness: string; windows: LimitWindow[]; at: string; source: LimitSource; signedOut?: boolean };
+export type AccountView = Account & { windows: LimitWindow[]; at: string | null; source: LimitSource | null; signedOut?: boolean };
 export type AccountList = Omit<Accounts, 'accounts'> & { accounts: AccountView[] };
 
 const object = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -74,9 +74,9 @@ export class AccountLimits {
   }
   update(reading: AccountReading): boolean {
     const previous = this.#readings.get(reading.account);
-    if (previous && Date.parse(previous.at) > Date.parse(reading.at)) return false;
+    if (previous && (Date.parse(previous.at) > Date.parse(reading.at) || previous.at === reading.at && previous.source.kind === 'session' && reading.source.kind === 'poll')) return false;
     if (isDeepStrictEqual(previous, reading)) return false;
-    const changed = !previous || previous.harness !== reading.harness || !isDeepStrictEqual(previous.windows, reading.windows) || !isDeepStrictEqual(previous.source, reading.source);
+    const changed = !previous || previous.signedOut !== reading.signedOut || previous.harness !== reading.harness || !isDeepStrictEqual(previous.windows, reading.windows) || !isDeepStrictEqual(previous.source, reading.source);
     this.#readings.set(reading.account, structuredClone(reading));
     this.#state.write('account-limits', JSON.stringify([...this.#readings.values()]));
     return changed;
@@ -84,7 +84,7 @@ export class AccountLimits {
   view(account: Account): AccountView {
     const saved = this.#readings.get(account.name);
     const reading = account.harness !== 'opencode' && saved?.harness === account.harness ? saved : undefined;
-    return { ...account, windows: reading?.windows ?? [], at: reading?.at ?? null, source: reading?.source ?? null };
+    return { ...account, windows: reading?.windows ?? [], at: reading?.at ?? null, source: reading?.source ?? null, ...(reading?.signedOut ? { signedOut: true } : {}) };
   }
   list(registry: Accounts): AccountList {
     const accounts = registry.accounts.map(a => this.view(a));

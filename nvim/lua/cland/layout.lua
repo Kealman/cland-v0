@@ -160,6 +160,7 @@ end
 
 function M.open_right(kind)
   local panels = mods()
+  local opening_sessions = kind == 'sessions' and (not valid(M.win.right) or api.nvim_win_get_buf(M.win.right) ~= panels.buf('sessions'))
   local b = panels.buf(kind)
   if valid(M.win.right) then
     api.nvim_win_set_buf(M.win.right, b)
@@ -173,6 +174,7 @@ function M.open_right(kind)
   end
   panel_opts(M.win.right)
   panels.render(kind, M.win.right)
+  if opening_sessions then require('cland.sessions').poll_accounts() end
 end
 
 local function dock_height()

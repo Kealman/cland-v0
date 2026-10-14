@@ -505,6 +505,7 @@ export type SuiteCancel = { type: 'suite.cancel'; id: string; suite?: string };
 
 export type ClientRequest =
   | { type: 'account.list'; id: string }
+  | { type: 'account.poll'; id: string }
   | { type: 'task.migrate'; id: string; dryRun: true }
   | { type: 'suite.queue'; id: string }
   | { type: 'visibility.set'; id: string; surface: 'topics' | 'sessions' | 'artifacts'; target: string; mode: 'pin' | 'mute' }
@@ -732,6 +733,7 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
       return (f.executor === undefined || ['local', 'droplet'].includes(String(f.executor))) && (f.fresh === undefined || typeof f.fresh === 'boolean') && ['auto', 'all', 'hub', 'nvim'].includes(String(f.mode)) && typeof f.cwd === 'string' && typeof f.report === 'string' && (f.to === undefined || (Array.isArray(f.to) && f.to.every(v => typeof v === 'string')));
     case 'suite.cancel':
       return f.suite === undefined || (typeof f.suite === 'string' && f.suite.trim().length > 0);
+    case 'account.poll':
     case 'account.list':
     case 'suite.queue':
       return true;

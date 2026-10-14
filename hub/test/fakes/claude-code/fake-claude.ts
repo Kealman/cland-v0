@@ -20,6 +20,7 @@
 //       `{name}` (awaited, whatever `async` says); the first that exits non-zero refuses it, a zero exit's stdout is
 //       the path; with no hook, the default. It answers "worktree <name>: refused (exit <code>): <stderr>",
 //       "worktree <name>: <path>" or "worktree <name>: default git worktree".
+//   claude -p /usage --output-format stream-json --verbose   assistant usage_report from CONFIG_DIR/usage-report.json
 //   claude agents --json   the live sessions (pid, id, sessionId, cwd, kind, status, waitingFor)
 //   claude attach <id>     prints `fake claude attached to <id>` (each attached client prints it)
 //   claude stop <id>       SIGTERM to the session (SessionEnd, then exit)
@@ -101,6 +102,23 @@ async function main(args: string[]): Promise<number> {
   if ((first === 'agents' || args.includes('--bg')) && (existsSync(join(HOME, 'logged-out')) || existsSync(join(CONFIG_DIR, 'logged-out')))) {
     process.stderr.write('OAuth token has expired. Please run claude auth login.\n');
     return 1;
+  }
+  if (first === '-p' && args[1] === '/usage') {
+    appendFileSync(join(HOME, 'polls.jsonl'), JSON.stringify({ at: Date.now(), pid: process.pid, args, cwd: process.cwd(), env: Object.fromEntries(Object.entries(process.env).filter(([key]) => key.startsWith('CLAND_') || key === 'CLAUDE_CONFIG_DIR' || AUTH_VARIABLES.includes(key))) }) + '\n');
+    if (existsSync(join(CONFIG_DIR, 'usage-hang'))) {
+      process.on('SIGTERM', () => {});
+      const descendant = spawn(process.execPath, ['-e', "process.on('SIGTERM', () => {}); setInterval(() => {}, 1000)"], { stdio: 'ignore' });
+      writeFileSync(join(CONFIG_DIR, 'usage-descendant'), String(descendant.pid));
+      await new Promise<void>(() => { setInterval(() => {}, 1000); });
+    }
+    if (existsSync(join(CONFIG_DIR, 'usage-fail'))) { process.stderr.write('429 rate limited — private output\n'); return 1; }
+    if (existsSync(join(CONFIG_DIR, 'logged-out'))) { process.stderr.write('Not logged in\n'); return 1; }
+    const usage = readFileSync(join(CONFIG_DIR, 'usage-report.json'), 'utf8');
+    if (existsSync(join(CONFIG_DIR, 'usage-hold'))) {
+      while (!existsSync(join(CONFIG_DIR, 'usage-release'))) await new Promise(r => setTimeout(r, 10));
+    }
+    process.stdout.write(JSON.stringify({ type: 'assistant', usage_report: JSON.parse(usage) }) + '\n');
+    return 0;
   }
   if (first === '--version' || first === '-v') {
     process.stdout.write(`${process.env.FAKE_CLAUDE_VERSION ?? '2.1.294'} (Claude Code)\n`);

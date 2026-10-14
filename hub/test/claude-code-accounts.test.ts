@@ -154,6 +154,6 @@ test('a failed account launch names its directory and sign-in or trust remedies 
   assert.equal(r.ok, false);
   for (const text of ['claude-b', f.dirs.b, 'CLAUDE_CONFIG_DIR=', 'claude auth login', 'trust the project', f.root]) assert.ok(r.error?.includes(text), `error names ${text}`);
   await sleep(700);
-  assert.deepEqual((await f.calls()).map(c => c.args[0]), ['--bg']);
+  assert.deepEqual((await f.calls()).filter(c => c.args[0] !== '-p').map(c => c.args[0]), ['--bg']);
   assert.deepEqual(await f.jobs(), []);
 });

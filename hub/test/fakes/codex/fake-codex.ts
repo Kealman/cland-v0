@@ -3,6 +3,7 @@
 //
 //   codex --version                       `codex-cli 0.160.0`
 //   codex login status                    `Logged in using ChatGPT`; FAKE_CODEX_LOGGED_OUT=1: `Not logged in`, exit 1
+//   codex app-server   short-lived JSON-lines stdio usage poll under CODEX_HOME
 //   codex app-server --listen unix://PATH [-c key=value]...
 //       JSON-RPC over a WebSocket on the Unix socket: `initialize`, `thread/start`, `thread/resume` (refused with
 //       "no rollout found" until the thread had a turn, as the real one), `thread/read`, `turn/start` (with `input`
@@ -61,6 +62,7 @@
 // State lives under FAKE_CODEX_HOME: servers/<pid>.json (pid, socket, argv, its CLAND_* environment and PATH), threads/<id>.json (the "rollout"),
 // log/<pid>.log. FAKE_CODEX_TURN_MS is how long each answer "thinks" (default 300). FAKE_CODEX_TERM_DELAY_MS is how long the
 // app-server takes to exit after SIGTERM (default 0), its turn running on meanwhile.
+import { createInterface } from 'node:readline';
 import { randomUUID } from 'node:crypto';
 import { appendFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
@@ -171,7 +173,7 @@ async function resume(args: string[]): Promise<number> {
 
 // ------------------------------------------------------------------ the app-server
 
-type Conn = { ws: WebSocket; initialized: boolean; subscribed: Set<string> };
+type Conn = { ws: Pick<WebSocket, 'send' | 'terminate' | 'readyState'>; initialized: boolean; subscribed: Set<string> };
 type Item = { text: string; tool?: { name: string; namespace?: string } | undefined };
 type TurnItem =
   | { type: 'userMessage'; id: string; content: Array<{ type: 'text'; text: string }> }
@@ -182,8 +184,8 @@ type Thread = ThreadFile & { status: Status; turnId: string | null; queue: Item[
 
 async function appServer(args: string[]): Promise<number> {
   const listen = flag(args, '--listen') ?? '';
-  if (!listen.startsWith('unix://')) {
-    process.stderr.write('fake codex: only --listen unix://PATH is faked\n');
+  if (listen && !listen.startsWith('unix://')) {
+    process.stderr.write('fake codex: only stdio or --listen unix://PATH is faked\n');
     return 1;
   }
   const socket = listen.slice('unix://'.length);
@@ -248,7 +250,7 @@ async function appServer(args: string[]): Promise<number> {
   const conns = new Set<Conn>();
   const threads = new Map<string, Thread>();
   let usedPercent = 6;
-  const rateLimits = () => readJson<Record<string, Record<string, unknown>>>(join(HOME, 'rate-limits.json'))?.[process.env.CODEX_HOME ?? ''] ?? { rateLimits: { limitId: 'codex', primary: { usedPercent, windowDurationMins: 10080, resetsAt: 1791955620 }, secondary: null } };
+  const rateLimits = () => readJson<Record<string, unknown>>(join(process.env.CODEX_HOME ?? HOME, 'rate-limits.json')) ?? readJson<Record<string, Record<string, unknown>>>(join(HOME, 'rate-limits.json'))?.[process.env.CODEX_HOME ?? ''] ?? { rateLimits: { limitId: 'codex', primary: { usedPercent, windowDurationMins: 10080, resetsAt: 1791955620 }, secondary: null } };
 
   const pendingApprovals = new Map<string, () => void>();
   let approveAll: (() => void) | null = null;
@@ -584,6 +586,8 @@ async function appServer(args: string[]): Promise<number> {
         return loseOnce(text) ? { lost: true } : { result: { turnId: t.turnId } };
       }
       case 'account/rateLimits/read':
+        log(`account/rateLimits/read ${JSON.stringify(params)}`);
+        if (existsSync(join(process.env.CODEX_HOME ?? HOME, 'logged-out'))) return { error: { code: -32600, message: 'authentication required' } };
         while (existsSync(join(HOME, 'hold-rate-limits-read')) && !existsSync(join(HOME, 'release-rate-limits-read'))) await sleep(5);
         return { result: rateLimits() };
       default:
@@ -591,6 +595,17 @@ async function appServer(args: string[]): Promise<number> {
     }
   };
 
+  if (!listen) {
+    appendFileSync(join(HOME, 'polls.jsonl'), JSON.stringify({ at: Date.now(), pid: process.pid, args: ['app-server', ...args], cwd: process.cwd(), env: Object.fromEntries(Object.entries(process.env).filter(([key]) => key.startsWith('CLAND_') || key === 'CODEX_HOME')) }) + '\n');
+    const c: Conn = { ws: { readyState: WebSocket.OPEN, send: data => { process.stdout.write(String(data) + '\n'); }, terminate: () => process.exit(0) }, initialized: false, subscribed: new Set() };
+    createInterface({ input: process.stdin }).on('line', line => {
+      const m = JSON.parse(line);
+      if (m.id === undefined) return;
+      void handle(c, m.method, m.params ?? {}).then(answer => process.stdout.write(JSON.stringify({ id: m.id, ...answer }) + '\n'));
+    }).on('close', () => process.exit(0));
+    await new Promise<void>(() => {});
+    return 0;
+  }
   const http = createServer();
   const wss = new WebSocketServer({ server: http, perMessageDeflate: false });
   let refuseUntil = 0;

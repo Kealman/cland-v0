@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, writeFile, readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, clandWithEnv, connectUi, eventually, killDaemon, spawnSpoke, startDaemon, tempProject } from './harness.ts';
+import { cland, clandWithEnv, connectUi, eventually, FAKE_CLAUDE_DIR, FAKE_CODEX_DIR, killDaemon, spawnSpoke, startDaemon, tempProject } from './harness.ts';
 import type { HarnessProcessView } from '../src/protocol.ts';
 import { copyPreparedProject } from './prepared-project.ts';
 
@@ -14,7 +14,7 @@ test('account list reads a scratch registry through the hub and CLI, refreshed w
   await mkdir(join(config, 'cland'), { recursive: true });
   const registry = join(config, 'cland', 'accounts.toml');
   await writeFile(registry, '[accounts.codex-a]\nharness = "codex"\nhome = "~/scratch-codex"\n[accounts.oc-default]\nharness = "opencode"\n');
-  const { discovery } = await startDaemon(t, root, { XDG_CONFIG_HOME: config });
+  const { discovery } = await startDaemon(t, root, { XDG_CONFIG_HOME: config, CODEX_HOME: join(root, 'missing-codex'), CLAND_CODEX_BIN: join(FAKE_CODEX_DIR, 'codex') });
   const ui = await connectUi(t, discovery);
   const listed = await ui.request({ type: 'account.list' });
   assert.equal(listed.ok, true, listed.error);
@@ -46,7 +46,7 @@ async function fixture(t: import('node:test').TestContext, roles = '', prepared 
   if (roles) await writeFile(join(root, '.cland', 'roles.toml'), roles);
   const registry = join(config, 'cland', 'accounts.toml');
   await writeFile(registry, `[accounts.codex-a]\nharness = "codex"\nhome = ${JSON.stringify(join(root, 'codex-a'))}\n[accounts.codex-b]\nharness = "codex"\nhome = ${JSON.stringify(join(root, 'codex-b'))}\n[accounts.oc-data]\nharness = "opencode"\ndata_home = ${JSON.stringify(join(root, 'oc-data'))}\n[accounts.oc-db]\nharness = "opencode"\ndb = ${JSON.stringify(join(root, 'oc-db', 'store.db'))}\n[accounts.claude-b]\nharness = "claude-code"\n`);
-  const env = { CODEX_HOME: join(root, 'codex-a'), XDG_DATA_HOME: join(root, 'oc-data'), XDG_CONFIG_HOME: config, FAKE_CODEX_HOME: codex, FAKE_OPENCODE_HOME: opencode,
+  const env = { CLAUDE_CONFIG_DIR: join(root, 'missing-claude'), CLAND_CLAUDE_BIN: join(FAKE_CLAUDE_DIR, 'claude'), CLAND_CODEX_BIN: join(FAKE_CODEX_DIR, 'codex'), CODEX_HOME: join(root, 'codex-a'), XDG_DATA_HOME: join(root, 'oc-data'), XDG_CONFIG_HOME: config, FAKE_CODEX_HOME: codex, FAKE_OPENCODE_HOME: opencode,
     PATH: `${fileURLToPath(new URL('./fakes/codex', import.meta.url))}:${fileURLToPath(new URL('./fakes/opencode', import.meta.url))}:${process.env.PATH ?? ''}`,
     CLAND_ADAPTER_POLL_MS: '200', CLAND_INJECT_TIMEOUT_MS: '5000', ...extraEnv(root) };
   const { discovery } = await startDaemon(t, root, env);

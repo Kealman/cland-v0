@@ -59,6 +59,7 @@ import { PushError } from '../territory-push.ts';
 import { ReleaseError } from '../release.ts';
 import { MergeError } from '../merge.ts';
 import { TaskWorktrees, type SessionCwd } from './worktrees.ts';
+import type { AccountPoller } from '../accounts/poller.ts';
 import { readAccounts } from '../accounts/registry.ts';
 import { RequestGuard, type GuardOptions } from './budget.ts';
 
@@ -111,7 +112,7 @@ const HUMAN_SESSION = 'human';
  * What a CLI call made as a session may send beside the permission table's tools: reading the hub's state. Any
  * other frame is the human's alone.
  */
-const SESSION_CLI_FRAMES: ReadonlySet<string> = new Set(['account.list', 'executor.status', 'executor.reap', 'executor.prepare', 'task.migrate', 'crew.show', 'crew.set', 'artifact.list', 'hub.status', 'inbox.list', 'role.list', 'worktree.list', 'suite.start', 'suite.cancel', 'suite.queue']);
+const SESSION_CLI_FRAMES: ReadonlySet<string> = new Set(['account.list', 'account.poll', 'executor.status', 'executor.reap', 'executor.prepare', 'task.migrate', 'crew.show', 'crew.set', 'artifact.list', 'hub.status', 'inbox.list', 'role.list', 'worktree.list', 'suite.start', 'suite.cancel', 'suite.queue']);
 
 /** Who a call is checked and audited as: a spoke's session, or the session a CLI call acts as. */
 type Caller = Pick<Connection, 'name' | 'sessionId' | 'role'>;
@@ -127,6 +128,7 @@ export class Dispatcher {
   readonly #log: LogFn;
   /** The adapters' side of the hub (`session.*`); set by the daemon once the hub runs. */
   #sessions: Sessions | undefined;
+  #accountPoller: AccountPoller | undefined;
   /** The task worktrees (T-58): made at a task's claim and by a launch with an item; a hub with a tracker only. */
   readonly #worktrees: TaskWorktrees | null;
   readonly #merges: TaskMerges | null;
@@ -228,6 +230,8 @@ export class Dispatcher {
       }
     });
   }
+
+  useAccountPoller(poller: AccountPoller): void { this.#accountPoller = poller; }
 
   useSessions(sessions: Sessions | undefined): void {
     this.#sessions = sessions;
@@ -1241,6 +1245,9 @@ export class Dispatcher {
         return;
       }
       switch (frame.type) {
+        case 'account.poll':
+          later('account.poll', (this.#accountPoller?.refresh() ?? readAccounts().then(registry => core.accountLimits.list(registry))).then(value => ({ type: 'result', id: frame.id, ok: true, value }), error => Dispatcher.#failure(frame.id, error)));
+          break;
         case 'account.list':
           later('account.list', readAccounts().then(registry => ({ type: 'result', id: frame.id, ok: true, value: core.accountLimits.list(registry) }), error => Dispatcher.#failure(frame.id, error)));
           break;

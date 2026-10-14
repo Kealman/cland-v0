@@ -3,6 +3,7 @@
 //   2. the hub's WebSocket edge — an in-process hub on an ephemeral port
 //   3. the daemon — `cland hub …` run as its own process in a temporary project, and its Unix socket
 // Nothing here reaches into either side's state; everything goes through the seams.
+import './account-fixture-env.ts';
 import { execFile } from 'node:child_process';
 import assert from 'node:assert/strict';
 import { mkdir, mkdtemp, readdir, readFile, realpath, rm, writeFile } from 'node:fs/promises';

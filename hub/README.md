@@ -603,12 +603,48 @@ meta under `account-limits`. Keys are account names, or `default:<harness>`
 for unpinned sessions; default entries with readings also appear in the list.
 The newest reading by `at` wins across sessions, and restart retains its
 original timestamp. `source` is `{kind: "session", session}` for these readings;
-`{kind: "poll"}` is reserved for idle polling. Updates share the existing
+`{kind: "poll"}` identifies an idle harness poll. Updates share the existing
 one-second usage coalescer, with no extra timer. UI subscribers receive
 `{type: "account", account: <the list view>}` at most once a second per account.
 Equal windows and source refresh age silently. A changed reading also writes
 one `account-limits` journal record with `account`, `harness`, `windows`, `at`
 and `source`, so the build's weekly spend can be read from the journal.
+
+Idle accounts (no running session by registry name or `default:<harness>`) are
+polled at hub start and on a timer, at most once every 15 minutes. Last attempt,
+completion time and failure backoff persist in `hub.db` meta under
+`account-polls`, so frequent restarts cannot increase the polling rate.
+Opening the sessions panel sends `account.poll` once per opening;
+`cland account list --refresh` sends the same frame. These explicit refreshes
+and the `poll(account)` limit-hit entry point use a five-minute minimum and
+return the cached reading when it is younger. Limit-hit polling may read a
+running account; other triggers skip it. OpenCode is never polled.
+
+The hub runs `claude -p "/usage" --output-format stream-json --verbose` with
+`CLAUDE_CONFIG_DIR`, or a short-lived `codex app-server` with `CODEX_HOME` over
+stdio. The Codex client sends `initialize`, then `account/rateLimits/read`
+with `excludeResetCreditDetails: true`, and ends the process. Claude's
+`usage_report.rate_limits.limits` supplies `session` (`5h`), `weekly_all`
+(`wk`) and `weekly_scoped` (`wk <group>`, with scope and severity retained).
+A newer session push wins over a delayed poll, including equal timestamps.
+Polls run in disposable scratch directories under `.cland/run/accounts/`,
+with no `CLAND_*` variables or inherited Claude auth variables. They never
+run `agents --json`, `auth status` or `doctor` to read idle limits, never read
+credential stores, and never call a provider endpoint from cland.
+
+Each account has at most one poll in flight, with at most two across the hub.
+A process has a 30-second bound; timeout and shutdown kill its process group.
+Non-zero exits, a 429 or rate-limited answer, timeouts and unparsable readings
+double the normal floor to 30, then 60 minutes (capped). Explicit refreshes
+also respect this backoff. Success restores 15 minutes. Floors are measured
+from completion, with the attempt saved before launch for crash recovery.
+A signed-out answer sets `signedOut: true` on the account view, shows
+`signed out` in the CLI and follows the same backoff; a successful reading
+clears it. `account-polled` journals `{account, harness, ms, ok}` and
+`account-poll-failed` journals `{account, reason}` with a fixed one-line reason,
+never the harness's output. Tests may shorten timings with
+`CLAND_TEST_ACCOUNT_POLL_FLOOR_MS`, `CLAND_TEST_ACCOUNT_POLL_MINIMUM_MS` and
+`CLAND_TEST_ACCOUNT_POLL_BOUND_MS`; these never reach the harness process.
 
 `cland session list --json` shows the row's `account` (null when unpinned).
 The process table saves its name and resolved environment. Relaunches,

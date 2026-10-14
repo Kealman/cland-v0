@@ -7,6 +7,8 @@
 // request that could not be written (not connected, or its write failed) is a plain, retryable Error.
 import { EventEmitter } from 'node:events';
 import WebSocket from 'ws';
+import { createInterface } from 'node:readline';
+import type { Readable, Writable } from 'node:stream';
 
 export class RpcError extends Error {
   readonly code: number;
@@ -31,6 +33,25 @@ export class RpcNoAnswer extends Error {
 /** A request the server sent to its clients (an approval, a question): the adapter never answers one. */
 export type ServerRequest = { id: string | number; method: string; params: Record<string, unknown> };
 
+/** The same RPC client can use a short-lived app-server's JSON-lines stdio. */
+class StdioTransport extends EventEmitter {
+  readyState: number = WebSocket.OPEN;
+  readonly #input: Writable;
+  readonly #lines: ReturnType<typeof createInterface>;
+  constructor(output: Readable, input: Writable) {
+    super();
+    this.#input = input;
+    this.#lines = createInterface({ input: output });
+    this.#lines.on('line', line => this.emit('message', line));
+    this.#lines.on('close', () => { this.readyState = WebSocket.CLOSED; this.emit('close'); });
+    input.on('error', error => this.emit('error', error));
+    output.on('error', error => this.emit('error', error));
+  }
+  send(data: string, callback?: (error?: Error | null) => void): void { this.#input.write(data + '\n', callback); }
+  close(): void { this.#lines.close(); this.#input.end(); }
+  terminate(): void { this.close(); }
+}
+
 type Pending = { resolve: (value: unknown) => void; reject: (error: Error) => void; timer: NodeJS.Timeout };
 
 export type ClientInfo = { name: string; title?: string; version: string };
@@ -39,13 +60,13 @@ export type ClientInfo = { name: string; title?: string; version: string };
  * One connection. Events: `notification` (method, params), `serverRequest` (ServerRequest), `close`.
  */
 export class AppServerClient extends EventEmitter {
-  readonly #socket: WebSocket;
+  readonly #socket: WebSocket | StdioTransport;
   readonly #pending = new Map<number, Pending>();
   readonly #timeoutMs: number;
   #nextId = 0;
   #closed = false;
 
-  private constructor(socket: WebSocket, timeoutMs: number) {
+  private constructor(socket: WebSocket | StdioTransport, timeoutMs: number) {
     super();
     this.#socket = socket;
     this.#timeoutMs = timeoutMs;
@@ -55,7 +76,7 @@ export class AppServerClient extends EventEmitter {
         frame = JSON.parse(String(data));
       } catch {
         this.#fail(new RpcNoAnswer('the app-server sent a frame that is not JSON; a pending request may have been accepted'));
-        socket.close(1002);
+        if (socket instanceof WebSocket) socket.close(1002); else socket.close();
         return;
       }
       this.#receive(frame);
@@ -103,6 +124,15 @@ export class AppServerClient extends EventEmitter {
       client.close();
       throw err;
     }
+  }
+
+  static async connectStdio(output: Readable, input: Writable, options: { client: ClientInfo; timeoutMs?: number }): Promise<AppServerClient> {
+    const client = new AppServerClient(new StdioTransport(output, input), options.timeoutMs ?? 30_000);
+    try {
+      await client.request('initialize', { clientInfo: options.client, capabilities: { experimentalApi: true } });
+      client.#socket.send(JSON.stringify({ method: 'initialized' }));
+      return client;
+    } catch (error) { client.close(); throw error; }
   }
 
   request<T = unknown>(method: string, params: Record<string, unknown>, timeoutMs = this.#timeoutMs): Promise<T> {

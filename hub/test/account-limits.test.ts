@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, connectUi, eventually, fakeClaude, fakeCodex, sleep, startDaemon, tempProject, type FrameClient } from './harness.ts';
+import { cland, connectUi, eventually, FAKE_CLAUDE_DIR, FAKE_CODEX_DIR, fakeClaude, fakeCodex, sleep, startDaemon, tempProject, type FrameClient } from './harness.ts';
 import type { AccountList, AccountView } from '../src/accounts/limits.ts';
 import type { HarnessProcessView } from '../src/protocol.ts';
 
@@ -37,7 +37,7 @@ async function signal(ui: FrameClient, p: HarnessProcessView, at: number, percen
 test('account protocol keeps newest readings, coalesces across sessions, skips equal windows and survives restart', async t => {
   const { root, config } = await setup(t);
   const fake = await fakeClaude(t);
-  const env = { ...fake.env, XDG_CONFIG_HOME: config, CLAUDE_CONFIG_DIR: config };
+  const env = { ...fake.env, XDG_CONFIG_HOME: config, CLAUDE_CONFIG_DIR: config, CODEX_HOME: join(root, 'missing-codex'), CLAND_CODEX_BIN: join(FAKE_CODEX_DIR, 'codex'), CLAND_CLAUDE_BIN: join(FAKE_CLAUDE_DIR, 'claude') };
   const { discovery } = await startDaemon(t, root, env);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
@@ -92,7 +92,7 @@ test('fake Codex pushes account windows and sparse per-model updates while reads
     rateLimitsByLimitId: { codex: { limitId: 'codex', primary: { usedPercent: 4, windowDurationMins: 300, resetsAt: 1792036980 }, secondary: null },
       review: { limitId: 'review', limitName: 'Code review', primary: { usedPercent: 19, windowDurationMins: 10080, resetsAt: 1792123380 }, secondary: null } } };
   await writeFile(path, JSON.stringify({ [home]: reading }));
-  const { discovery } = await startDaemon(t, root, { ...fake.env, XDG_CONFIG_HOME: config });
+  const { discovery } = await startDaemon(t, root, { ...fake.env, XDG_CONFIG_HOME: config, CLAND_CODEX_BIN: join(FAKE_CODEX_DIR, 'codex') });
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const p = await launch(ui, 'rev-x', { harness: 'codex', role: 'reviewer', account: 'codex-b' });
@@ -151,7 +151,7 @@ test('fake Claude mod sends only changed rate limits; context and cost do not es
   const fake = await fakeClaude(t);
   const path = join(config, 'rate-limits.json');
   await writeFile(path, JSON.stringify([five(12), { kind: 'seven_day', percentUsed: 19, resetsAt: '2026-10-18T04:03:00.000Z' }, { kind: 'spend_limit', percentUsed: 80, resetsAt: '2026-11-01T00:00:00.000Z' }]));
-  const { discovery } = await startDaemon(t, root, { ...fake.env, XDG_CONFIG_HOME: config, CLAUDE_CONFIG_DIR: config });
+  const { discovery } = await startDaemon(t, root, { ...fake.env, XDG_CONFIG_HOME: config, CLAUDE_CONFIG_DIR: config, CODEX_HOME: join(root, 'missing-codex'), CLAND_CODEX_BIN: join(FAKE_CODEX_DIR, 'codex'), CLAND_CLAUDE_BIN: join(FAKE_CLAUDE_DIR, 'claude') });
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const p = await launch(ui, 'claude', { role: 'implementer' });
