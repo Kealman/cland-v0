@@ -131,12 +131,19 @@ test('prepare keeps its snapshot when builder deletion is unconfirmed, then the 
   assert.equal(result.leases[0]!.state, 'releasing');
   const history = (await ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: { text: string }[] };
   assert.match(history.messages.find(message => message.text.startsWith('snapshot prepared:'))!.text, /builder lifetime unconfirmedms; cost \$unconfirmed/);
-  await flushProjectLogs(t, root);
-  const records = (await readFile(join(root, '.cland/journal.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line));
-  const unconfirmed = records.find(record => record.event === 'executor-release-unconfirmed');
-  assert.equal(unconfirmed.cause.status, 422);
-  assert.equal(unconfirmed.cause.id, 'delete_failed');
-  assert.match(unconfirmed.cause.message, /try later/);
+  // The final bounded attempt can hit its deadline (status 0) after a 422.
+  // Wait for this builder's provider rejection and unconfirmed release separately.
+  const { records, retry } = await eventually('builder delete retry and unconfirmed release are journalled', async () => {
+    await flushProjectLogs(t, root);
+    const records = (await readFile(join(root, '.cland/journal.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line));
+    const unconfirmed = records.find(record => record.event === 'executor-release-unconfirmed' && record.id === api.droplets[0]!.id);
+    if (!unconfirmed) return undefined;
+    const retry = records.find(record => record.event === 'executor-release-retry' && record.lease === unconfirmed.lease && record.cause?.status === 422);
+    return retry && api.requests.filter(request => request.method === 'DELETE' && /^\/v2\/droplets\/\d+$/.test(request.path)).length >= 2 ? { records, retry } : undefined;
+  });
+  assert.equal(retry.cause.status, 422);
+  assert.equal(retry.cause.id, 'delete_failed');
+  assert.match(retry.cause.message, /try later/);
   assert.ok(!records.some(record => record.event === 'executor-prepare-failed'));
   assert.ok(api.requests.filter(request => request.method === 'DELETE' && /^\/v2\/droplets\/\d+$/.test(request.path)).length >= 2);
   assert.equal((await ui.request({ type: 'hub.stop' })).ok, true);
