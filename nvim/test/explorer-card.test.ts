@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { connectUi, startDaemon, tempProject } from '../../hub/test/harness.ts';
+import { connectUi, eventually, startDaemon, tempProject } from '../../hub/test/harness.ts';
 import { nvimOrSkip, startClient, type Client } from './harness.ts';
 import { waitInitialSnapshots } from './readiness.ts';
 import { createConnection } from 'node:net';
@@ -242,24 +242,46 @@ test('loading summary retains facts and deferred detail answers update the card'
 
 test('gi reveals the thread reference without changing folds, keeps containing scope and gI/palette open v0.1', {skip}, async t=> {
   const {c,control}=await stub(t);
+  // nvim_input only queues keys. Yield between RPC reads so navigation can finish
+  // before waiting on the card, including returns where its old text is cached.
+  const revealed=async(id:string,text:string)=> {
+    await eventually('explorer cursor and rendered card for '+id, async()=>
+      await c.lua<boolean>(`
+        local id,text=...
+        local e=require('cland.explorer')
+        local win=e.tree_win()
+        return require('cland.state').S.ui.view.kind=='explorer'
+          and win~=-1 and vim.api.nvim_win_is_valid(win)
+          and e.key_at(vim.api.nvim_win_get_cursor(win)[1])==id
+          and e.card.key==id and e.card.drawn_key==id
+          and e.card.lines~=nil and table.concat(e.card.lines,'\\n'):find(text,1,true)~=nil
+      `,id,text) || undefined,5000);
+  };
   await c.input('<Space>g');
   await c.waitScreen(s=>s.includes('Work on T-11 here.'),'thread reference');
-  await c.input('<Esc><C-w>kgg/T-11<CR>');
+  await eventually('General composer focused', async()=>
+    await c.lua<boolean>("return vim.b.cland_role=='composer' and vim.api.nvim_get_mode().mode=='i'") || undefined,5000);
+  await c.input('<Esc><C-w>k');
+  await eventually('General thread focused in Normal mode', async()=>
+    await c.lua<boolean>("return vim.b.cland_role=='thread' and vim.api.nvim_get_mode().mode=='n'") || undefined,5000);
+  await c.input('gg/T-11<CR>');
+  await eventually('thread cursor on T-11 reference', async()=>
+    await c.lua<boolean>("return vim.api.nvim_get_mode().mode=='n' and (require('cland.motions').token() or {}).item=='T-11'") || undefined,5000);
   const folds=await c.lua("return require('cland.explorer').ui().folds");
-  await c.input('gi'); await shown(c,'T-11','fallback human picture.');
+  await c.input('gi'); await revealed('T-11','fallback human picture.');
   assert.equal(await c.lua("return require('cland.state').S.ui.view.kind"),'explorer');
   assert.equal(await c.lua("local e=require('cland.explorer'); return e.key_at(vim.api.nvim_win_get_cursor(e.tree_win())[1])"),'T-11');
   assert.deepEqual(await c.lua("return require('cland.explorer').ui().folds"),folds);
   await c.input('gI'); await c.waitScreen(s=>s.includes('T-11 · item')&&s.includes('Found by qa-1'),'v0.1 full item view');
   assert.equal(await c.lua("return require('cland.explorer').card.win"),null);
-  await c.input('<Space><Space>'); await shown(c,'T-11','fallback human picture.');
+  await c.input('<Space><Space>'); await revealed('T-11','fallback human picture.');
   await c.input('s'); await c.waitScreen(s=>s.includes('R-1 0.1.2 Working with items › E-2 The explorer'),'scope');
-  await select(c,'T-10'); await c.input('gi'); await shown(c,'T-10','written human picture.');
+  await select(c,'T-10'); await c.input('gi'); await revealed('T-10','written human picture.');
   assert.equal(await c.lua("return require('cland.state').S.ui.view.id"),'E-2');
   await c.input('<CR>gp'); await c.waitScreen(s=>s.includes('PLAN')&&s.includes('Card'),'card gp uses its item');
-  await c.input('<Space><Space>'); await shown(c,'T-10','written human picture.');
+  await c.input('<Space><Space>'); await revealed('T-10','written human picture.');
   await c.input('<CR>/Written summary task<CR>gt'); await c.waitScreen(s=>s.includes('Discuss task'),'card gt uses its item on the title');
-  await c.input('<Space><Space>'); await shown(c,'T-10','written human picture.');
+  await c.input('<Space><Space>'); await revealed('T-10','written human picture.');
   await c.input('<CR>/Written summary task<CR>gs'); await c.waitScreen(s=>s.includes('no session named impl'),'card gs uses its claimant');
   // Palette item picks retain their established full-body view.
   await c.input('<Space>p'); await c.input('#Written summary task');
