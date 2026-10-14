@@ -2,8 +2,8 @@
 id: T-385
 kind: task
 title: "A hung test holds the verify queue forever: no per-test timeout and no stall kill"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 4
 labels:
@@ -17,7 +17,8 @@ blocked_by: []
 topic: topic-246
 branch: t/T-385-a-hung-test-holds-the-verify-queue
 created: 2026-10-14T12:21:44.443Z
-updated: 2026-10-14T20:54:14.157Z
+updated: 2026-10-14T21:24:48.405Z
+closed: 2026-10-14T21:24:48.405Z
 ---
 
 ## Summary
@@ -307,3 +308,7 @@ scope: evidence
 Final clear; C1–C4 done marks confirmed at unchanged clean head. No-mode local full 020d6170/A-2556 passes root typecheck and 2071/2071 (37 free, 1647 hub machine, 387 Neovim), zero failures/cancellations/skips/todo. Named timeout, silent test tree/spoke cleanup, successor admission, partial stderr and unverified fast-exit regression all pass. C2 retains recorded Coordinator 13:05:57 exception: verified identities reaped, unknown writer explicitly cleanup incomplete with one warn/journal and admission released; no unknown-reap claim, T-410 retained. C4 original hang filed T-397. Delta source A-2551 retained. Earlier f8e54b25/A-2532 and isolated A-2533 red on T-439 are corrected; affected gi passes. Prior 86649036/A-2545 is earlier-head green; current result supplies gate. No high/medium Standards/Spec findings. A-2557: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2557-t-385-final-gate-at-integrated-d29-docs-head.md.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-14T21:24:48.405Z
+
+Merged d86cc5f29bede1b70750901e9d353055c44d95cc onto dev.
