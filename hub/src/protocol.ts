@@ -203,7 +203,7 @@ export type InboxAsk = { layer?: Layer; id: string; topic: TopicRef; question: s
 export type InboxApproval = { layer?: Layer; id: string; session: string; role?: string; label: string; harness: string | null; since: string; attach: string | null; command?: string };
 export type InboxPlan = { layer?: Layer; id: string; subject: string; title: string; stages?: number; lanes?: number; items?: number; since: string };
 export type InboxRequest = { layer?: Layer; id: string; from: string; fromRole?: string; request: RequestKind; subject: string; topic: TopicRef; ts: string; since: string; text: string };
-export type InboxMessage = { layer?: Layer; id: string; from: string; fromRole?: string; subject: string; topic: TopicRef; ts: string; since: string; text: string };
+export type InboxMessage = { layer?: Layer; severity?: 'warn'; id: string; from: string; fromRole?: string; subject: string; topic: TopicRef; ts: string; since: string; text: string };
 export type InboxRowKind = 'ask' | 'approval' | 'plan' | 'request' | 'message';
 export type InboxDeparture = { kind: InboxRowKind; id: string; subject: string; since: string; ts: string; text?: string; reason: 'answered' | 'withdrawn' | 'cancelled' | 'approved' | 'closed' | 'invalidated' | 'replied' | 'declined' | 'read' };
 

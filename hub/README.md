@@ -1718,6 +1718,25 @@ invoice; provider billing may differ (see costs above).
 
 ### Tests
 
+Package suites pass `--test-timeout` to every Node test phase. The default is
+120 seconds per test; `[verification].test_timeout` in `.cland/config.toml`
+sets a positive duration (`s`, `m`, `h` or `d`). A timed-out test fails by name.
+An explicit test-level timeout still overrides Node's default.
+
+The local verification worker also watches stdout and stderr during typecheck
+and tests. `[verification].stall_timeout` defaults to `"10m"`. After that much
+silence it fails with `stalled: no output for <n> min` and the last eight started
+tests, captured by the package reporter before they finish. It terminates the
+verified command tree (including detached test runners and spokes), retaining
+observed child identities if a parent exits before its output pipes close. It sweeps owned
+suite roots, and releases compatibility leases before publishing the result.
+If a detached writer escapes observation and keeps inherited pipes open, the
+failed result says `cleanup incomplete: unverified inherited-pipe writer`,
+including known parent/pipe evidence. The hub posts one warning in Agents and
+the human's inbox and journals it. It preserves unverified processes and releases
+admission so the next run can proceed.
+Droplet runs retain their separate enforced `run_timeout` and machine lifetime.
+
 `hub/test/prepared-project.ts` supplies `preparedProject(t)` (a repository after
 `cland init`, with its territory), `preparedProject(t, 'repository')` (main with
 one Initial commit), and `preparedReleaseProject(t)` (also a private bare GitHub

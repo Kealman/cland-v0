@@ -566,6 +566,16 @@ export class Dispatcher {
 
   async #reportSuite(job: Readonly<SuiteJob>, checkpointArtifact: (id: string) => void): Promise<void> {
     const core = this.#options.core;
+    if (job.outcome?.cause.includes('cleanup incomplete: unverified inherited-pipe writer')) {
+      const id = `suite-cleanup:${job.id}`;
+      if (!core.store.message(id)) {
+        core.store.transaction(() => {
+          const recorded = core.noticeTo(AGENTS.id, { id, kind: 'report', text: core.boundedText(`verify ${job.id}: stalled; cleanup incomplete: unverified inherited-pipe writer\n${job.outcome!.cause}\nBranch ${job.branch} · head ${job.head}\nVerified processes were terminated; the queue is released. An unverified detached writer may remain.`), detail: { event: 'verification-cleanup-incomplete', id: job.id, item: job.item ?? null, topic: job.topic } });
+          if (!recorded) throw new Error('cleanup warning topic is unavailable');
+          this.#log({ event: 'verification-cleanup-incomplete', id: job.id, item: job.item ?? null, topic: job.topic, branch: job.branch, head: job.head, cause: job.outcome!.cause });
+        });
+      }
+    }
     const messageId = `suite:${job.id}`;
     const platform = job.platform;
     const machine = job.machine;

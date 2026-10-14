@@ -1,5 +1,5 @@
 // Detached from both the CLI and the hub. Completion is a durable receipt, not a socket callback.
-import { spawn, execFile } from 'node:child_process';
+import { execFile } from 'node:child_process';
 import { readFile, access, rename, writeFile } from 'node:fs/promises';
 import { setTimeout as pause } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
@@ -12,6 +12,7 @@ import { candidateTree } from '../verification-tree.ts';
 import { processStartedAsync } from './lock.ts';
 import { acquireBroker, sweepLease, type Lease } from '../suite-lock.ts';
 import type { SuiteSelection } from '../suite-selection.ts';
+import { suiteCommand } from '../suite-command.ts';
 
 export function suiteCommands(job: { mode: string; selection?: SuiteSelection }): string[][] {
   return [['run', 'typecheck'], ...(job.selection?.mode === 'full' ? [['test']] : job.mode === 'hub' ? [['test', '--workspace', 'hub']] : job.mode === 'nvim' ? [['run', 'test:nvim']] : [['test']])];
@@ -20,12 +21,11 @@ export function suiteCommands(job: { mode: string; selection?: SuiteSelection })
 export async function suiteWorker(input: string): Promise<void> {
   const job = JSON.parse(await readFile(input, 'utf8')) as { cwd: string; mode: string; gate: string; result: string; selection?: SuiteSelection; locks?: string[]; head?: string; queued?: string; tree?: string | null };
   let signal: NodeJS.Signals | null = null;
-  let active: ReturnType<typeof spawn> | undefined;
   for (const name of ['SIGINT', 'SIGTERM'] as const) process.on(name, () => {
     if (signal) return;
     signal = name;
     // The worker owns this detached group; npm and the package lock runner receive the signal too.
-    try { process.kill(-process.pid, name); } catch { active?.kill(name); }
+    try { process.kill(-process.pid, name); } catch { /* command supervisor also receives this signal */ }
   });
   const admissionDeadline = Date.now() + 15000;
   let admitted = false;
@@ -73,14 +73,9 @@ export async function suiteWorker(input: string): Promise<void> {
       // One durable decision feeds the package runner and the result, even after restart.
       if (job.selection) env.CLAND_SUITE_SELECTION = JSON.stringify(job.selection);
       else delete env.CLAND_SUITE_SELECTION;
-      active = spawn('npm', args, { cwd: job.cwd, env, stdio: ['ignore', 'inherit', 'inherit'] });
-      const outcome = await new Promise<{ code: number | null; signal: NodeJS.Signals | null }>((resolve, reject) => {
-        active!.once('error', reject);
-        active!.once('close', (code, signal) => resolve({ code, signal }));
-      });
-      active = undefined;
-      code = outcome.code ?? 1;
-      if (outcome.signal) cause = `npm terminated by ${outcome.signal}`;
+      const outcome = await suiteCommand(args, job.cwd, env);
+      code = outcome.code;
+      cause = outcome.cause;
       if (code !== 0) break;
     }
     if (admitted && !signal && code === 0) await checkHead();

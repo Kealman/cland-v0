@@ -15,7 +15,7 @@ import { isManagedFile, readText, writeIfChanged, type Report } from './files.ts
 
 export type ProjectConfig = {
   name: string;
-  verification: { executor: 'local' | 'droplet'; budget: number; remoteBudget: number; lockPath: string; cacheMaxAgeMs: number; lifetimeMs: number; runTimeoutMs: number; runTimeout: string; dailySpendUsd: number; droplet: { size: string; prepare_size: string; regions: string[]; image: string } };
+  verification: { executor: 'local' | 'droplet'; budget: number; remoteBudget: number; lockPath: string; cacheMaxAgeMs: number; testTimeoutMs: number; stallTimeoutMs: number; lifetimeMs: number; runTimeoutMs: number; runTimeout: string; dailySpendUsd: number; droplet: { size: string; prepare_size: string; regions: string[]; image: string } };
   sessions: { archiveAfterItemMs: number; archiveAfterStopMs: number };
   visibility: VisibilityOverrides;
   tracker: { levels: Levels };
@@ -29,7 +29,7 @@ const MINUTE = 60_000;
 
 export const defaultConfig = (name: string): ProjectConfig => ({
   name,
-  verification: { executor: 'local', budget: 1, remoteBudget: 4, lockPath: '/tmp/cland-suite.lock', cacheMaxAgeMs: 86400000, lifetimeMs: 6600000, runTimeoutMs: 4500000, runTimeout: '75m', dailySpendUsd: 5, droplet: { size: 'c-8', prepare_size: 'c-8', regions: ['lon1', 'nyc1', 'sfo2'], image: 'ubuntu-24-04-x64' } },
+  verification: { executor: 'local', budget: 1, remoteBudget: 4, lockPath: '/tmp/cland-suite.lock', cacheMaxAgeMs: 86400000, testTimeoutMs: 120000, stallTimeoutMs: 600000, lifetimeMs: 6600000, runTimeoutMs: 4500000, runTimeout: '75m', dailySpendUsd: 5, droplet: { size: 'c-8', prepare_size: 'c-8', regions: ['lon1', 'nyc1', 'sfo2'], image: 'ubuntu-24-04-x64' } },
   sessions: { archiveAfterItemMs: 3600000, archiveAfterStopMs: 86400000 },
   visibility: {},
   tracker: { levels: [...DEFAULT_LEVELS] },
@@ -58,6 +58,9 @@ remote_budget = ${c.verification.remoteBudget}
 lock_path = ${JSON.stringify(c.verification.lockPath)}
 # Reuse green candidate trees for this many minutes; 0 disables caching.
 cache_max_age_minutes = ${minutes(c.verification.cacheMaxAgeMs)}
+# Named tests fail at this deadline; silent commands are stopped with their process tree.
+test_timeout = "${c.verification.testTimeoutMs / 1000}s"
+stall_timeout = "${c.verification.stallTimeoutMs / 1000}s"
 lifetime = "${c.verification.lifetimeMs % MINUTE === 0 ? `${minutes(c.verification.lifetimeMs)}m` : `${c.verification.lifetimeMs / 1000}s`}"
 
 run_timeout = ${JSON.stringify(c.verification.runTimeout)}
@@ -127,6 +130,13 @@ export function parseConfig(text: string, fallbackName: string): ProjectConfig {
     }
   }
   const verification = (doc.verification ?? {}) as Record<string, unknown>;
+  for (const [key, field] of [['test_timeout', 'testTimeoutMs'], ['stall_timeout', 'stallTimeoutMs']] as const) {
+    if (verification[key] === undefined) continue;
+    try {
+      if (typeof verification[key] !== 'string') throw new Error('not a duration');
+      c.verification[field] = durationMs(verification[key]);
+    } catch { throw new Error(`verification.${key} must be a positive duration (s, m, h or d)`); }
+  }
   if (verification.executor !== undefined) {
     if (verification.executor !== 'local' && verification.executor !== 'droplet') throw new Error('verification.executor must be local or droplet');
     c.verification.executor = verification.executor;

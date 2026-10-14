@@ -55,7 +55,7 @@ export function warningSeverity(surface: Surface, r: Row): 'warn' | undefined {
   if (surface === 'messages') {
     const detail = row(r.detail);
     const eventWarning = r.fromKind === 'hub' && (
-      r.detail && row(r.detail)?.event === 'verification-executor-fallback'
+      r.detail && ['verification-executor-fallback', 'verification-cleanup-incomplete'].includes(String(row(r.detail)?.event))
       || r.kind === 'session-death'
       || (r.kind === 'event' && ((detail?.event === 'task' && detail.result === 'not clear') || (detail?.event === 'session.state' && detail.lifecycle === 'died')))
       || (r.kind === 'agent-message' && detail?.result === 'not clear')
@@ -127,6 +127,7 @@ export class Visibility {
     if (surface === 'messages' && cell === 'artifact') return { ...object, layer: this.place('artifacts', row(r.artifact)!).layer };
     const severity = warningSeverity(surface, r);
     let layer = severity && cell !== 'old' ? 'watch' : this.layer(surface, cell);
+    if (surface === 'messages' && row(r.detail)?.event === 'verification-cleanup-incomplete' && cell !== 'old') layer = 'now';
     const preferences: VisibilityPreferences = this.preferences?.get() ?? {};
     const choice = (surface: PreferenceSurface, target: unknown) => {
       const cells = preferences[surface];

@@ -5,6 +5,7 @@ import { relative } from 'node:path';
 export default async function* skipReporter(source: AsyncIterable<TestEvent>): AsyncGenerator<string> {
   const skips: Array<{ file: string; name: string; reason: string }> = [];
   for await (const event of source) {
+    if (event.type === 'test:dequeue') yield `suite start ${JSON.stringify({ file: event.data.file, name: event.data.name })}\n`;
     if (event.type !== 'test:pass' || !event.data.skip) continue;
     skips.push({
       file: event.data.file ? relative(process.env.TEST_SUITE_CWD ?? process.cwd(), event.data.file) : '(unknown file)',

@@ -14,6 +14,7 @@ import { captureProcess, cleanupOwnedProcesses, pause, type ProcessIdentity } fr
 import { processStarted } from '../src/hub/lock.ts';
 import { acquire, acquireBroker, borrowLease, inheritedLease, sweep, type Holder, type Lease } from '../src/suite-lock.ts';
 import { packageShards, type SuiteShard } from '../src/suite-shards.ts';
+import { suiteLimits } from '../src/suite-limits.ts';
 import { describeSelection, selectPackageSuite, selectionFromEnv, type SuiteSelection, type SuiteRequest } from '../src/suite-selection.ts';
 
 type Interruption = { signal: 'SIGINT' | 'SIGTERM' | null };
@@ -104,6 +105,7 @@ process.chdir(cwd);`);
       });
       if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
       const reporters = args.includes('--test') ? [
+        `--test-timeout=${(await suiteLimits(cwd)).testTimeoutMs}`,
         '--test-reporter=spec', '--test-reporter-destination=stdout',
         `--test-reporter=${fileURLToPath(new URL('./skip-reporter.ts', import.meta.url))}`, '--test-reporter-destination=stdout',
       ] : [];

@@ -1,5 +1,16 @@
 # Running tests
 
+Package runners set a 120-second default per-test timeout (`[verification].test_timeout`).
+The local verification worker stops a command after ten minutes without stdout
+or stderr (`[verification].stall_timeout`), reports the last started tests, and
+reaps the verified process tree before releasing its leases. Both settings accept
+positive durations such as `"120s"` and `"10m"`; explicit test-level timeouts
+override Node's default. Droplet runs also have their enforced total `run_timeout`.
+When an inherited-pipe writer cannot be verified, the result explicitly says
+cleanup is incomplete, Agents and the inbox receive one warning, and the queue
+is released. Unknown processes are preserved; exact fast-writer ownership is
+the follow-up T-410.
+
 Implementers run verification through the hub, one invocation at a time per session:
 
 ```sh

@@ -265,10 +265,11 @@ export class InboxBoard {
       }
       if (candidate.read || candidate.replied || p.store.leftInbox('message', m.id)) continue;
       const latestWaiting = candidate.latest && t.status === 'waiting for human' && !asked.has(t.id);
-      const layer = latestWaiting ? p.visibility.place('inbox', t, 'waiting').layer : p.visibility.place('messages', m).layer;
+      const placed = p.visibility.place('messages', m);
+      const layer = latestWaiting ? p.visibility.place('inbox', t, 'waiting').layer : placed.layer;
       if (!(candidate.toHuman || latestWaiting) || layer !== 'now') continue;
       messages.push({ id: m.id, from: m.from, ...(m.fromRole ? { fromRole: m.fromRole } : {}),
-        subject: t.item ?? t.id, topic, ts: m.ts, since: m.ts, text: m.text, layer });
+        subject: t.item ?? t.id, topic, ts: m.ts, since: m.ts, text: m.text, layer, ...(placed.severity ? { severity: placed.severity } : {}) });
     }
     const items = p.items();
     const plans: InboxPlan[] = items.filter(i => i.state === 'open' && i.plan && !i.planError && i.approval?.required && i.approval.state === 'pending')

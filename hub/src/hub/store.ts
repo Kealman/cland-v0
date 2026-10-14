@@ -1299,7 +1299,7 @@ export class Store implements HygieneMemory {
         or (m.notice = 'request' and exists (select 1 from messages h where h.reply_to = m.id and h.seq > m.seq and h.from_kind = 'human'))) as replied
       from messages m join topics t on t.id = m.topic
       left join latest_messages latest on latest.topic = m.topic
-      where m.from_kind = 'agent' and coalesce(m.notice, '') not in ('progress', 'event')
+      where (m.from_kind = 'agent' or (m.from_kind = 'hub' and json_extract(m.notice_detail, '$.event') = 'verification-cleanup-incomplete')) and coalesce(m.notice, '') not in ('progress', 'event')
         and not exists (select 1 from asks a where a.id = m.id)
         and (json_array_length(m.to_json) = 0 or m.seq = latest.seq
           or exists (select 1 from inbox_waits w where w.id = m.id and w.kind in ('message', 'request')))
