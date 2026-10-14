@@ -60,7 +60,7 @@ test('crew clauses describe category filing and the Aide speaking for the human'
   }
 });
 
-for (const source of ['defaults', 'project'] as const) test(`${source} clause snapshots describe review before verification, the human queue and stopped-session lifecycle`, async t => {
+for (const source of ['defaults', 'project'] as const) test(`${source} clause snapshots describe review before verification, account-limited routing, the human queue and stopped-session lifecycle`, async t => {
   const root = await tempProject(t);
   await mkdir(join(root, '.cland'), { recursive: true });
   await writeFile(join(root, '.cland', 'config.toml'), `[verification]\nlock_path = ${JSON.stringify(join(root, 'suite.lock'))}\n`);
@@ -113,11 +113,22 @@ for (const source of ['defaults', 'project'] as const) test(`${source} clause sn
       assert.match(clause, /tree-hash cache hit for an unchanged head is valid run evidence/);
     }
     if (role === 'coordinator') {
+      assert.match(clause, /On an `account-limited` launch refusal, never launch on another account by your own choice/);
+      assert.match(clause, /Read `cland account list` and `ask` the human/);
+      assert.match(clause, /limited account, its reset time .*harness's other accounts with each window's current used share and reset/);
+      assert.match(clause, /this launch on account X, the role pinned to account X in `roles.toml`, or waiting for the reset/);
+      assert.match(clause, /`--account X` for this launch.*`\[<role>\.launch\] account`.*committed on `dev`, then `cland push`.*wait/);
+      assert.match(clause, /Under D24, the stand-in answers this ask/);
+      assert.match(clause, /`cland account clear`.*OpenCode.*human says its limit has passed.*human asks/);
+      assert.match(clause, /Never tell a running session to switch accounts; it stays on its account/);
       assert.match(clause, /cland session resume <name> --relaunch/);
       assert.match(clause, /cland session resume <name> --fresh/);
       assert.match(clause, /cland session archive <name>/);
       assert.match(clause, /cland session prune --older-than 7d/);
       assert.match(clause, /journal is retained/i);
+    } else if (role === 'lead') {
+      assert.match(clause, /On an `account-limited` launch refusal, report the account and reset to `lead T-<n>`.*climbs to the Coordinator/);
+      assert.match(clause, /Never ask the human or name another account yourself/);
     }
   }
   const definitions = parseRoles(await readFile(join(root, '.cland', 'roles.toml'), 'utf8'));

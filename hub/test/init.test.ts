@@ -137,7 +137,19 @@ async function shipped(): Promise<{ names: string[]; files: string[] }> {
 test('cland init on an empty repository: git status shows exactly the committed set, with no machine path in it', async (t) => {
   const root = await tempProject(t, 'cland-init-');
   await gitRepo(root);
-  const changes = await run(root, 'init');
+  const configHome = join(root, 'user-config');
+  const changes = await run(root, 'init', { XDG_CONFIG_HOME: configHome });
+  const roles = await readFile(join(root, '.cland', 'roles.toml'), 'utf8');
+  assert.match(roles, /account = "<name>" from ~\/\.config\/cland\/accounts\.toml: one name, never a list/);
+  assert.match(roles, /"" or absent uses the harness default/);
+  assert.match(roles, /cland init writes no accounts\.toml/);
+  for (const role of ['coordinator', 'lead', 'implementer', 'reviewer', 'qa', 'aide']) {
+    const table = roles.split(`[${role}.launch]\n`)[1]?.split('\n[')[0];
+    assert.ok(table, `${role}: launch defaults are written`);
+    assert.match(table, /^# account = ""$/m, role);
+  }
+  await assert.rejects(lstat(join(configHome, 'cland', 'accounts.toml')), { code: 'ENOENT' });
+  await assert.rejects(lstat(join(root, '.cland', 'accounts.toml')), { code: 'ENOENT' });
   assert.ok((await readFile(join(root, '.cland', '.gitignore'), 'utf8')).split('\n').includes('ui.json'));
   assert.ok((await readFile(join(root, '.cland', '.gitignore'), 'utf8')).split('\n').includes('ui.json.lock*'));
   assert.match(await readFile(join(root, '.cland/config.toml'), 'utf8'), /^\[artifacts\]\nretention_days = 30$/m);

@@ -8,6 +8,14 @@ A terminal IDE for running and coordinating AI coding-agent harnesses. It is a s
 An external agent CLI program that cland runs and integrates, such as Claude Code, Codex, or OpenCode.
 _Avoid_: agent tool, CLI agent, provider
 
+**Account**:
+A harness login a session runs under, named in the user-level registry by its directory (or database path), never by a secret.
+_Avoid_: credential, token, profile
+
+**Limited account**:
+An account marked after a limit-hit signal, refusing new launches until its reset or `cland account clear`.
+_Avoid_: throttled account, signed-out account, exhausted session
+
 **Session**:
 One running interactive instance of a harness, with its own history and working state. A session has a name and at most one role.
 _Avoid_: agent, process, terminal, instance

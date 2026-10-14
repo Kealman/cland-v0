@@ -528,7 +528,20 @@ event_limit_window_minutes = 10
 
 A refusal is typed, `{"code":"hygiene","rule":"size"|"rate"|"loop","until"?:"<ISO>"}`: the size cap and the rate limit refuse the `send` itself (the result's `error` and `refusal`; the spoke's tool answer carries both), the loop breaker refuses the outcome for the muted addressee (`outcome` `refused`, `reason`, `refusal` with `until`). When the breaker trips, both sessions get the `mute` notice (its `detail` is the refusal and the `pair`; a spoke shows `kind` and `detail` in the channel event's meta) and Agents shows it. Rate windows, pair counts and mutes persist in the `hygiene` table of `hub.db`, keyed by session id: a restart keeps a mute running. `cland hub unmute <a> <b>`, or the UI's `hygiene.unmute`, lifts a mute early and clears the pair's count.
 
-## Accounts
+## Per-user state
+
+These files belong to the user and are shared by every project hub on the host,
+including scratch QA and Implementer hubs. They stay outside the project's
+committed `.cland/` state.
+
+| File | Owner and contents |
+| --- | --- |
+| `~/.config/cland/accounts.toml` | The human maintains the harness account names, harnesses and directories or database paths; no secrets. An absolute `XDG_CONFIG_HOME` changes the base directory. `cland init` creates no registry. See [Accounts and limits](#accounts-and-limits). |
+| `~/.cland/executor/spend.json` | The hub maintains the executor spend ledger across projects: project, lease, run, size, cost reservations, settled cost and times; no token. `$CLAND_EXECUTOR_STATE` overrides its directory for tests. See [leases, cleanup and spend](#leases-cleanup-and-spend). |
+
+## Accounts and limits
+
+### Registry and naming an account
 
 The user-level registry is `$XDG_CONFIG_HOME/cland/accounts.toml` when
 `XDG_CONFIG_HOME` is absolute, otherwise `~/.config/cland/accounts.toml`.
@@ -565,12 +578,46 @@ harness = "codex"
 account = "codex-b"
 ```
 
-`account = ""` means none. The role's account applies only to its configured
+`account` is one registry name, never a list. `account = ""` or an absent key
+uses the harness default. The role's account applies only to its configured
 harness. `cland session launch rev-x --role reviewer --account codex-b`
 overrides the role's account and chooses the account's harness unless
 `--harness` was given. An explicit conflicting harness is refused.
 With no effective account, launches use the hub's existing environment.
 Both registry and role edits apply to the next launch without a restart.
+
+### Processes and the saved environment
+
+Every process an adapter starts or queries for a session, its attach command
+and its idle limit polls use the selected account's environment:
+
+| Harness | Registry path and process environment |
+| --- | --- |
+| Claude Code | `config_dir` → `CLAUDE_CONFIG_DIR`, for launch, relaunch (`--bg --resume`), `stop`, `agents --json` and named-account attach. Each directory owns its background supervisor, login, project trust and MCP state. |
+| Codex | `home` → `CODEX_HOME`, for the app-server, version probe and attach. |
+| OpenCode | `data_home` → `XDG_DATA_HOME`, or `db` → `OPENCODE_DB`, for the server and attach. A `data_home` selection removes an inherited `OPENCODE_DB`, which otherwise wins. |
+
+Named Claude accounts remove `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN` and
+`CLAUDE_CODE_OAUTH_TOKEN`; default sessions retain the hub's environment.
+A default Claude launch also saves its effective directory (the hub's
+`CLAUDE_CONFIG_DIR`, else `~/.claude`); default attach remains `claude attach <id>`.
+The process table saves the account name and resolved environment. Relaunches,
+hub-restart resumes and pool handoffs keep it even after registry or role edits;
+a pool member on a different account is not reused. A running session stays
+on its account. `cland session list --json` shows `account` (null when unpinned),
+and the expanded session row places a named account after the model, for example
+`Codex · gpt-6.1-sol · codex-b`. `session-launched` and `session-usage` journal
+records include the account.
+
+An unknown name refuses the launch and lists known names. A malformed registry
+refuses named launches; unpinned launches still work. A missing directory refuses
+with its path and sign-in command (`CODEX_HOME=<dir> codex login`,
+`XDG_DATA_HOME=<dir> opencode auth login`, or `CLAUDE_CONFIG_DIR=<dir> claude auth login`).
+For `db`, its parent directory must exist. Trust a new Claude directory once by
+running `CLAUDE_CONFIG_DIR=<dir> claude` in the project. Failed launches name the
+account, directory and remedy and are never retried automatically.
+
+### Listing accounts and reading limits
 
 `cland account list [--json]` reads the registry through the hub and is open
 to every role's shell. JSON returns `{registry, error?, accounts}`; each
@@ -611,6 +658,8 @@ Equal windows and source refresh age silently. A changed reading also writes
 one `account-limits` journal record with `account`, `harness`, `windows`, `at`
 and `source`, so the build's weekly spend can be read from the journal.
 
+### Limited marks and launch refusals
+
 A hard limit hit marks the account `limited: {since, reason, session, resetsAt}`
 in account views and `account` events. Classification uses machine-readable
 fields only: Claude Code's `StopFailure.error == "rate_limit"`, Codex's
@@ -638,14 +687,37 @@ and `resetsAt` (ISO or null), with text naming the account and local and ISO
 reset time, or `until cleared`, and suggesting `--account`. The hub never
 fails over, rotates accounts, picks another account or moves or stops running
 sessions. Re-finding a live session after a hub restart remains allowed.
-Only the Coordinator turns a refusal into a question for the human.
+Only the Coordinator turns a refusal into an `ask` for the human, after reading
+`cland account list`. It names the limited account and reset (or `until cleared`)
+and lists the harness's other accounts with each window's current used share
+and reset; unavailable data stays `no reading yet` or `no limit data`. The choices
+are this launch on account X (`--account X`), the role pinned to X (edit
+`[<role>.launch] account` in `.cland/roles.toml`, commit on `dev`, then `cland push`),
+or waiting for the reset. Under D24 the stand-in answers this ask. A Lead reports
+the account and reset to `lead T-<n>` in the item topic; it climbs to the Coordinator.
+The Lead neither asks the human nor names a replacement account. The hub asks
+nothing itself, and no session is instructed to switch accounts.
 
 A timer lifts a mark at its reset, also checked at every launch. The human or
-Coordinator may run `cland account clear <name>` to lift it immediately;
-other roles receive an inline `forbidden` refusal for `account.clear`.
+Coordinator may run `cland account clear <name>` to lift it immediately.
+The Coordinator clears an OpenCode account after the human says its limit has
+passed, or clears when the human asks.
+Other roles receive an inline `forbidden` refusal for `account.clear`.
 Clearing is a CLI/frame operation, not an MCP tool. A lift journals
 `account-limit-lifted` with `by: "reset"` or `by: "hand"` and sends an account
 event to remove the workbench's red limited line.
+
+### Polling rules
+
+Claude's session-state fallback runs `claude agents --json` at most once per
+30 seconds per effective config directory, with one call in flight and one
+schedule shared by watch, launch discovery and startup resume. Only directories
+with watched live sessions are queried; idle directories are never queried.
+The last attempt and snapshot persist across restarts. A logged-out directory
+latches once, with one event and one human notice naming the sign-in command;
+no polling or retry storm runs while latched. `claude auth status` and
+`claude doctor` never run on a timer. See the [Claude Code adapter](#the-claude-code-adapter)
+for the latch's recovery conditions.
 
 Idle accounts (no running session by registry name or `default:<harness>`) are
 polled at hub start and on a timer, at most once every 15 minutes. Last attempt,
@@ -685,32 +757,15 @@ never the harness's output. Tests may shorten timings with
 `CLAND_TEST_ACCOUNT_POLL_FLOOR_MS`, `CLAND_TEST_ACCOUNT_POLL_MINIMUM_MS` and
 `CLAND_TEST_ACCOUNT_POLL_BOUND_MS`; these never reach the harness process.
 
-`cland session list --json` shows the row's `account` (null when unpinned).
-The process table saves its name and resolved environment. Relaunches,
-hub-restart resumes and pool handoffs keep that recorded environment even
-after registry or role edits; a pool member on a different account is not
-reused. Codex's app-server and version probe, OpenCode's server, and their
-attach commands carry the account environment. A named OpenCode `data_home`
-clears an inherited `OPENCODE_DB` so it cannot select another database. `session-launched` and
-`session-usage` journal records include the account.
+### Terms and account choice
 
-An unknown name refuses the launch and lists known names. A malformed
-registry refuses launches naming an account; unpinned launches still work.
-A missing directory refuses with its path and sign-in command, for example
-`CODEX_HOME=/path codex login` or `XDG_DATA_HOME=/path opencode auth login`.
-For `db`, its parent directory must exist. Claude Code's `config_dir` selects
-its own background supervisor, login, project trust and MCP state. Its
-launch, relaunch (`--bg --resume`), `stop`, `agents --json` and named-account
-attach command all carry the saved `CLAUDE_CONFIG_DIR`. A default launch also
-saves its effective directory: the hub's `CLAUDE_CONFIG_DIR`, else `~/.claude`.
-Default attach commands remain `claude attach <id>`.
-Named Claude accounts remove `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN` and
-`CLAUDE_CODE_OAUTH_TOKEN` from the environment passed to the harness; default
-sessions retain the hub's environment. A failed account launch names the
-account, directory and remedy: `CLAUDE_CONFIG_DIR=<dir> claude auth login`,
-or `CLAUDE_CONFIG_DIR=<dir> claude` in the project to trust it once. It is
-never retried automatically. Limits and the accounts panel follow in the
-next tickets of the accounts epic.
+The providers' terms prohibit rotating accounts or using multiple accounts to
+get past limits; Anthropic's also prohibit third parties holding Claude.ai tokens.
+The project's [accounts policy (§3.13)](../docs/spec/v0.1.2.md#313-accounts-and-limits)
+sets this boundary. cland reads no token or
+credential store, calls no provider usage endpoint itself, and reads limits
+through the harness. It never rotates, fails over or chooses another account:
+the human makes and authorizes any account choice.
 
 ## Not here yet
 
@@ -1008,6 +1063,8 @@ An unfinalized launch identity is fenced against rename and role changes (assign
 
 ### The Claude Code adapter
 
+See [Accounts and limits](#accounts-and-limits) for the registry, process environment, polling and launch refusals.
+
 | | Surface (Claude Code 2.1.294) |
 | --- | --- |
 | spawn | Uses the saved account’s `CLAUDE_CONFIG_DIR`; named accounts remove `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN` and `CLAUDE_CODE_OAUTH_TOKEN`. `claude --bg --session-id <uuid> --name <name> [--model m] [--effort e] --mcp-config <json> --settings <json> --plugin-dir hub/mod/cland`, in the session's cwd. The MCP config starts `bin/cland-spoke.ts` with `CLAND_HUB_FILE`, `CLAND_SESSION_ID`, `CLAND_SESSION_NAME`, `CLAND_ROLE`, `CLAND_DELIVERY=adapter`. The settings add the hooks below (all `async`; with a task worktree also the synchronous `WorktreeCreate` refusal, Task branches and worktrees) and an `env` the mod reads (`CLAND_SESSION_NAME`, `CLAND_HUB_FILE`, `CLAND_NODE`, `CLAND_CLI`). No secret goes on a command line: everything finds the hub through `hub.json`. `--bg` takes `--session-id` but picks its own id (its prefix is the background id); the hub records it as `harnessSessionId`. The workspace must be trusted once (`claude` in it, accept the prompt), or `--bg` refuses. |
@@ -1029,6 +1086,8 @@ An unfinalized launch identity is fenced against rename and role changes (assign
 Signals or a bridge that arrive while a launch is still running belong to the new process and are kept until its row is written. The real SessionStart hook does arrive before `claude --bg` and the first `agents --json` return.
 
 ### The OpenCode adapter
+
+See [Accounts and limits](#accounts-and-limits) for the registry, process environment, polling and launch refusals.
 
 `src/adapters/opencode.ts`, with `opencode/client.ts` (the HTTP API and the event stream), `opencode/state.ts` (events to states) and `opencode/server.ts` (the session's server and its files). Launched with `"harness": "opencode"`.
 
@@ -1055,6 +1114,8 @@ Without an explicit model, launch polls `GET /api/model` every 200 ms: a cold ca
 `CLAND_OPENCODE_BIN` names the `opencode` executable. The server's environment drops `CLAND_*`, `OPENCODE_CONFIG`, `OPENCODE_CONFIG_CONTENT` and `OPENCODE_PASSWORD` from the hub's own. The user's global OpenCode config still applies, merged with the generated one.
 
 ### The Codex adapter
+
+See [Accounts and limits](#accounts-and-limits) for the registry, process environment, polling and launch refusals.
 
 `src/adapters/codex.ts`, with `codex/app-server.ts` (the JSON-RPC client on the app-server's Unix socket). Launched with `"harness": "codex"`; `CLAND_CODEX_BIN` names the `codex` executable.
 
@@ -1633,9 +1694,8 @@ and retries every `releasing` lease.
 
 Before every create, including a prepare builder, cland reserves the configured
 lifetime times the size's hourly price (at least sixty seconds) in
-`~/.cland/executor/spend.json`. This is cland's first per-user state, shared by
-every hub on the host, including scratch QA and Implementer hubs (D27 follow-up,
-stand-in under D24, 2026-10-13). An exclusive crash-recoverable lock serializes
+the [per-user executor spend ledger](#per-user-state), `~/.cland/executor/spend.json`.
+An exclusive crash-recoverable lock serializes
 reservation and settlement. The test override is `$CLAND_EXECUTOR_STATE/spend.json`.
 Entries name the project, lease, run, size, reservation, actual cost and times;
 they never contain the token. Confirmed release replaces the reservation with
