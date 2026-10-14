@@ -9,11 +9,12 @@ labels:
   - ready-for-agent
 assignee: null
 parent: R-377
-blocked_by: []
+blocked_by:
+  - E-412
 topic: null
 branch: null
 created: 2026-10-14T15:59:14.313Z
-updated: 2026-10-14T15:59:14.313Z
+updated: 2026-10-14T15:59:57.571Z
 ---
 
 ## Summary
@@ -39,14 +40,14 @@ Both clients show the same numbers and agree on what the human has seen, and the
   - **Declining.** Declining an ask is an answer with the value `declined` and a reason: the asker receives it as any answer, the topic stays open and may ask again, and there is no separate "ask me later".
   - **The inbox's leave rule, refined** (v0.1.2 §3.7): the hub reports an answered row with its outcome, and a client keeps it folded until the human leaves the inbox; then it goes to the archive, so rows never move under a finger.
 
-Not in this epic: approvals ({E03}); the web views that show these fields ({E05} to {E08}); Neovim's own explorer and thread switching to the hub's fields and fold lines, which waits until Neovim adopts the extension in 0.2.x.
+Not in this epic: approvals (E-414); the web views that show these fields (E-416 to E-419); Neovim's own explorer and thread switching to the hub's fields and fold lines, which waits until Neovim adopts the extension in 0.2.x.
 
 Choices where the spec is silent:
 
 - **The rules move, guarded.** The summary rule and the roll-ups move from Lua into the hub in TypeScript, with a differential test against `explorer_summary.lua` and the Lua roll-ups on the live tracker's bodies; the Q-405 port's zero differences over 410 bodies is the bar. Neovim keeps its Lua until it adopts the extension in 0.2.x, under the same test.
 - **Incremental.** The roll-ups are recomputed for the changed item's ancestors only, and a delta carries just the items whose fields changed.
 - **Marks.** A mark only moves forward, and the latest from any client wins. Neovim moves its events' last look and its plans' marks from `ui.json` to the hub, reading and setting them through frames, with a one-time import of the values `ui.json` holds; `ui.json` keeps Neovim's interface state (filters, folds, the current release). Pins and mutes stay where they are, since the hub already applies them to every client's layers.
-- **What counts as read** is the client's act, sent as `topic.read` up to a message number: Neovim keeps its rule (a thread in view), and the web's rule is {E06}'s. The hub keeps the highest mark per human.
+- **What counts as read** is the client's act, sent as `topic.read` up to a message number: Neovim keeps its rule (a thread in view), and the web's rule is E-417's. The hub keeps the highest mark per human.
 - **The events filter** is sent with `subscribe` and on each change; a connection without one gets every row, as Neovim does today.
 - **Runs.** A run is consecutive agent-to-agent messages with nothing between them that never folds (an ask, a verdict, an answer, anything to or from the human or an Aide), as v0.1 §3.14 says. The hub gives each run an id, its first message number, and sends its fold line with the history pages and in a delta each time the run grows. The fold line names the first three sessions and a count of the rest, the number of messages, the latest message's kind and first words, and its age.
 - **Declining.** `topic.answer` takes `declined: true` with a non-empty reason; the asker's delivery reads `declined: <reason>`. Neovim shows a declined ask folded with its reason; declining from Neovim is not added in 0.2.0. The role clauses say how a session treats a declined ask: as a decision, never as consent.
@@ -85,7 +86,7 @@ From this epic on Neovim and the browser agree on what the human has seen: the e
 - **ADRs.** 0002 (Tracker files are the source of truth): the computed fields are projections, never written into item files. 0007 (Events reach sessions as deliveries): a declined answer reaches the asker as a delivery.
 - **Risks.** Computing the roll-ups on every tracker change must not cost the event loop: recomputation per subtree, measured on the live tracker. Moving the marks out of `ui.json` must not lose the human's current last look. A declined ask must never read as consent.
 - **Size.** About four sessions on the v0 scale.
-- **Order.** Second in the hub lane: it waits for {E01}. {E03} waits for it, and so does {E06} in the web lane. {E05} reads its fields without an edge, so its first slice is the one to land early.
+- **Order.** Second in the hub lane: it waits for E-412. E-414 waits for it, and so does E-417 in the web lane. E-416 reads its fields without an edge, so its first slice is the one to land early.
 
 ## Links
 

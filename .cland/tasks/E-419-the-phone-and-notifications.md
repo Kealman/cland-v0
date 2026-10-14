@@ -9,11 +9,12 @@ labels:
   - ready-for-agent
 assignee: null
 parent: R-377
-blocked_by: []
+blocked_by:
+  - E-417
 topic: null
 branch: null
 created: 2026-10-14T15:59:25.308Z
-updated: 2026-10-14T15:59:25.308Z
+updated: 2026-10-14T16:00:03.888Z
 ---
 
 ## Summary
@@ -36,7 +37,7 @@ Away from the desk the human sees what needs them and answers it on the phone (a
   - **The disconnected strip** (P41): when the socket drops, a strip says since when and when the next retry runs, with Retry; the last snapshot stays on screen with its time; answers, approvals and Send are disabled and nothing is queued; on reconnect the client resumes from its sequence number.
   - **What stays on the desktop:** a waiting plan shows as a row and notifies, and its approval needs the desktop's Plan view; an approval that stays in a harness's TUI shows marked and notifies, never answerable on the phone; an inline HTML artifact is a chip that opens full screen.
 - **§3.6 and §3.7 Installing and signing in.** A PWA manifest and its icons, so the page installs on a phone; the installed app opens on the inbox (P39) and, installed over HTTPS through the tunnel, its badge carries the needs-you count. `cland web --qr` signs a phone in with the 30-day cookie. On iOS the installed app keeps its cookies apart from Safari, so the link opens in the installed app or the sign-in is repeated there.
-- **§3.6 Notifications on the phone:** the rules of {E06} through a service worker, which needs HTTPS through the human's tunnel; the notification switches and the subscription button, which iOS requires on a tap, live in More.
+- **§3.6 Notifications on the phone:** the rules of E-417 through a service worker, which needs HTTPS through the human's tunnel; the notification switches and the subscription button, which iOS requires on a tap, live in More.
 - **A short guide** to reaching the hub over HTTPS through the human's own tunnel.
 
 Not in this epic: push with the page closed and Web Push subscriptions (0.2.x); planning on the phone; a terminal (0.2.x).
@@ -86,7 +87,7 @@ The phone layouts are tried on the human's phone through their tunnel (spec §4)
 - **Prior art.** On a phone the needs-you list is home and nobody plans; never assume a phone on plain HTTP can notify or install; never queue an answer while disconnected, since another client may answer first (`docs/research/web-prior-art.md` §6 and §7.3).
 - **Risks.** iOS gives notifications and badges only to an installed app and asks for the permission only on a tap, and the installed app keeps its own cookies. The headless shell never grants notifications, so the suite stubs them and QA checks the real path with the full build.
 - **Size.** About five sessions on the v0 scale.
-- **Order.** In the web lane after {E06}; {E09} waits for it. Its session screens reuse the two-line row and the session's page of {E07} without an edge, so the Coordinator orders that slice after them.
+- **Order.** In the web lane after E-417; E-420 waits for it. Its session screens reuse the two-line row and the session's page of E-418 without an edge, so the Coordinator orders that slice after them.
 
 ## Links
 

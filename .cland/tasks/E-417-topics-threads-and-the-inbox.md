@@ -9,11 +9,13 @@ labels:
   - ready-for-agent
 assignee: null
 parent: R-377
-blocked_by: []
+blocked_by:
+  - E-413
+  - E-416
 topic: null
 branch: null
 created: 2026-10-14T15:59:24.765Z
-updated: 2026-10-14T15:59:24.765Z
+updated: 2026-10-14T16:00:01.751Z
 ---
 
 ## Summary
@@ -30,7 +32,7 @@ The human reads every thread, answers every ask and every approval the hub can r
 - **§3.4 and v0.1 §3.14 The thread.** The message block (P12): a header with the sender, the role in its colour, the addressees, the kind, the time and the delivery stage, over a Markdown body; the role colour as a 3 px bar in its own gutter; the human's band; watch-layer messages dimmed; verdicts with their criteria marks; artifact chips; item ids as links that never wrap at the hyphen. History arrives in pages by message number.
 - **§3.4 Folded runs** open in place and keep their anchor line, never in the drawer. The fold line is the hub's, built from facts: who, how many messages, the latest step and the age. Asks, verdicts, answers and anything to or from the human never fold.
 - **§3.4 An ask lives in two places with one state.** The inbox row and the card in the thread show the same record from the hub and answer with the same keys: options 1 to 9 (a click or the key answers at once) and a free answer. Declining is an answer with a reason, on its own key and never on Escape. Once answered, the card folds to one line with the option, who answered and when, in the thread for good and in the inbox until the human leaves it; then it goes to the inbox archive. The first answer from any client wins, and every client sees the outcome.
-- **§3.4 Approvals as cards** (P23): the command in full with Approve once, Always for this command and Deny with a note, answered through the gate of {E03}; an approval that stays in the harness's TUI is marked "answer in Neovim" and has no buttons.
+- **§3.4 Approvals as cards** (P23): the command in full with Approve once, Always for this command and Deny with a note, answered through the gate of E-414; an approval that stays in the harness's TUI is marked "answer in Neovim" and has no buttons.
 - **§3.4 Artifacts inline.** An HTML artifact at 240 px in a sandboxed iframe that never has `allow-scripts` with `allow-same-origin` and never navigates the top, under a header with Open full and Open in a pane (P15); a file or folder artifact is a chip.
 - **§3.4 The composer.** The kind as Message, Decision or Question and the addressee as a chip (the Coordinator by default in an item's topic, `@` naming a session), with `~` attaching an artifact (P16). Enter sends a one-line message, Shift+Enter breaks the line, and ⌘Enter always sends. A message to a busy session is queued and shown in the thread as queued, with a Withdraw that puts the text back into the composer. ⌘K in the composer still opens the palette. The draft is kept per topic in the browser and survives a disconnection and a reload, with Send disabled while disconnected. The addressing rules are Neovim's (v0.1.2 §3.8).
 - **v0.1.2 §3.7 The inbox, in the web.** The now layer in its four sections (asks and approvals, plan approvals, requests, messages), newest first, five a section with a fold that names the oldest wait, every row with its age, each header a name and a count. The selected row unfolds in place with real buttons; `r` replies, `d` declines a request or marks a message read, Enter opens; `A` shows the archive; the events line and the archive line close the list. The drawer follows the selected row with its topic's thread, scrolled to the row's message, and a one-line reply (P17 to P19). A waiting plan opens the Plan view.
@@ -38,7 +40,7 @@ The human reads every thread, answers every ask and every approval the hub can r
 - **§3.6 Notifications while the page is open.** Only for items of the now layer, and never while the human is looking at the page; separate switches for "needs you" and "finished"; a notification names the session, the item and what it waits on, and a click opens the inbox row.
 - **§3.6 What counts as read** is held in the hub per human; the web sends its read marks by the rule below.
 
-Not in this epic: the phone's layouts of all this ({E08}); the session's drawer, which reuses this thread ({E07}); the switches' places beside the profile and in More ({E07}, {E08}); push with the page closed (0.2.x).
+Not in this epic: the phone's layouts of all this (E-419); the session's drawer, which reuses this thread (E-418); the switches' places beside the profile and in More (E-418, E-419); push with the page closed (0.2.x).
 
 Choices where the spec is silent:
 
@@ -47,9 +49,9 @@ Choices where the spec is silent:
 - **Withdraw.** The protocol has no withdraw today. This epic adds one for a queued message not yet injected: the message leaves with the stage `withdrawn` and its text returns to the composer, and once the turn has started Withdraw is gone. Neovim shows a withdrawn message as it shows a dropped one.
 - **The human's kinds.** `topic.send` gains the kind for the human's messages: a Decision and a Question carry their kind in the header, and a Question leaves the topic waiting for its addressee.
 - **"Needs you" and "finished".** "Needs you" fires when a row enters the inbox; "finished" fires when a task of the now layer reaches done, and its click opens the item's card.
-- **The switches and the permission.** The switches are per browser, since the permission belongs to a device and an origin. This epic offers them as palette actions until {E07} places them beside the profile. The permission is asked when the first switch is turned on, which is a user gesture. A row raises at most one notification (its `tag`), and "looking at the page" means visible and focused.
+- **The switches and the permission.** The switches are per browser, since the permission belongs to a device and an origin. This epic offers them as palette actions until E-418 places them beside the profile. The permission is asked when the first switch is turned on, which is a user gesture. A row raises at most one notification (its `tag`), and "looking at the page" means visible and focused.
 - **Long runs.** An open run keeps its anchor line pinned at the top of the thread while it is open.
-- **The approval card** answers through the gate of {E03}; where a harness has no relay, the card is shown marked and without buttons.
+- **The approval card** answers through the gate of E-414; where a harness has no relay, the card is shown marked and without buttons.
 
 ## Tracer-bullet order
 
@@ -57,7 +59,7 @@ Choices where the spec is silent:
 2. **Ask cards in the thread and the inbox.** The ask card with options on 1 to 9, the free answer, decline with a reason on `d`, the folded outcome in both places, and one record across clients. Demo: an ask answered with `2` in one browser context folds in a second context's inbox and thread within a second, and Escape on another ask leaves it open.
 3. **The inbox.** The four sections with their rows, ages and folds, the selected row unfolded, `r`, `d`, Enter, the archive, the drawer with the row's thread, and the answered row kept folded until the human leaves the inbox. Demo: an ask, a plan approval, a request and a message show in their sections with their ages, and the answered ask stays folded until the inbox is left, then shows in the archive.
 4. **The composer.** The kinds, the addressee chip, `~`, the keys, queued messages with Withdraw, drafts per topic, Send disabled while disconnected, and the hub's withdraw and kinds. Demo: a message to a busy fake session shows as queued, Withdraw returns its text to the composer, and a draft survives a reload.
-5. **Approvals and artifacts inline.** The approval card on the records of {E03}, the mark "answer in Neovim", and HTML artifacts at 240 px in a sandboxed iframe with Open full and Open in a pane. Demo: a fake Codex approval approved once from the inbox folds with its outcome in Neovim's inbox, and an HTML artifact's iframe has `sandbox="allow-scripts"` and nothing more.
+5. **Approvals and artifacts inline.** The approval card on the records of E-414, the mark "answer in Neovim", and HTML artifacts at 240 px in a sandboxed iframe with Open full and Open in a pane. Demo: a fake Codex approval approved once from the inbox folds with its outcome in Neovim's inbox, and an HTML artifact's iframe has `sandbox="allow-scripts"` and nothing more.
 6. **Events and notifications.** The events view with its filters, day groups, the 200-row cap and the last-look line; notifications with the page hidden, the two switches, and the click to the row. Demo: with the page hidden, a new ask raises one notification naming the session, the item and the question, and its click opens the inbox row; with "needs you" off, none is raised.
 
 ## Definition of done
@@ -86,7 +88,7 @@ The human steers the rest of the build from the browser once this epic's thread 
 - **Prior art.** Never strand an approval in one thread, never decide on a timer, never let a denial read as consent, never lock navigation with a modal, and show every action as pending, then applied or failed (`docs/research/web-prior-art.md` §7.2 and §7.3).
 - **Risks.** Agents' Markdown is rendered into the page: no raw HTML from a message ever reaches the DOM, and links open outside the page. A flood of notifications is what the switches and the now-layer rule prevent.
 - **Size.** About eight sessions on the v0 scale, the largest web epic.
-- **Order.** Third in the web lane: it waits for {E02} and {E05}, and {E08} waits for it. Its approval cards answer through {E03} without an edge; the hub lane is expected to land {E03} first, and otherwise the Coordinator orders that slice after it.
+- **Order.** Third in the web lane: it waits for E-413 and E-416, and E-419 waits for it. Its approval cards answer through E-414 without an edge; the hub lane is expected to land E-414 first, and otherwise the Coordinator orders that slice after it.
 
 ## Links
 

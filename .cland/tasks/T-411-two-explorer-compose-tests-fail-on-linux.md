@@ -2,8 +2,8 @@
 id: T-411
 kind: task
 title: "Two explorer-compose tests fail on Linux droplets (card m/M topic binding): blocks the switch to droplet verification"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 rank: 2350
 criterion_seq: 3
@@ -19,7 +19,8 @@ regression_of: T-355
 topic: topic-251
 branch: t/T-411-two-explorer-compose-tests-fail-on-linux
 created: 2026-10-14T15:13:32.520Z
-updated: 2026-10-14T15:59:20.351Z
+updated: 2026-10-14T15:59:51.220Z
+closed: 2026-10-14T15:59:51.220Z
 ---
 
 ## Summary
@@ -99,3 +100,7 @@ scope: evidence
 Final pre-merge clear under Coordinator 14d64fb2/15:19:21 task comment; C1–C3 verified, no high or medium T-411 findings. First 0884b0ad/A-2432 was red only for untouched T-383 sessions.test.ts:274. A-2434 records 5/5 serial whole-file passes (25/25) at unchanged head, qualifying one retry. Retry 4fc08029/A-2437 passes typecheck and auto nvim-only 394/394 (15 hub smoke, 379 Neovim), zero failures/cancellations/skips/todo; both changed explorer cases pass with original assertions. Clean head/worktree and single test-only commit unchanged. Deterministic mutation A-2425 plus green normal verify satisfy recorded pre-merge reading. Linux proof remains first nvim-touching droplet run after D28, posted here; affected-case failure reopens T-411. No Linux green run claimed. A-2438: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2438-t-411-final-qualified-retry-evidence-and-deferred-linux-confirmation.md.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-14T15:59:51.220Z
+
+Merged b74e4713277cacb037d276463e91f641aac71d7e onto dev.

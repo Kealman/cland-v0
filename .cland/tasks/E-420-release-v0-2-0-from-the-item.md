@@ -9,11 +9,14 @@ labels:
   - ready-for-agent
 assignee: null
 parent: R-377
-blocked_by: []
+blocked_by:
+  - E-414
+  - E-418
+  - E-419
 topic: null
 branch: null
 created: 2026-10-14T15:59:26.349Z
-updated: 2026-10-14T15:59:26.349Z
+updated: 2026-10-14T16:00:04.202Z
 ---
 
 ## Summary
@@ -28,7 +31,7 @@ v0.2, the web workbench, ships from its release item: `cland release --item R-37
 
 - **The demos** (§4, Definition of done): every other epic of R-377 closed on its QA demo with a clear verdict, the web phase included in headless Chromium.
 - **The integrated pass:** a relayed approval answered from the web's inbox and from a session's drawer; one gate across a desktop context, a phone context and Neovim; the read marks agreeing between Neovim and two browsers; a phone context resuming after a hub restart.
-- **The docs:** the tunnel guide, written with {E08}, checked against the built release; the web workbench's README (`web/README.md`, as `nvim/README.md` is Neovim's); and the web edge's section in `hub/README.md`.
+- **The docs:** the tunnel guide, written with E-419, checked against the built release; the web workbench's README (`web/README.md`, as `nvim/README.md` is Neovim's); and the web edge's section in `hub/README.md`.
 - **The release** (§4): R-377's `## Notes` written from the item and its epics; `cland release --item R-377 --dry-run`, with its notes and version 0.2.0 shown in an ask; `cland release --item R-377`; QA's post-release check that the tag is on GitHub `main`.
 - **The retrospective:** an artifact of the run.
 
@@ -75,7 +78,7 @@ The release runs on what the build shipped: the human follows it from the web's 
 - **ADRs.** 0004 (Agents work on a local git territory): `cland release` is the one path from the territory to GitHub. 0002 (Tracker files are the source of truth): the notes live in R-377's file.
 - **Risks.** A refused release (an open child, a dirty root) is fixed before it is retried, never overridden.
 - **Size.** About three sessions on the v0 scale.
-- **Order.** Last: it waits for {E03}, {E07} and {E08}, the ends of the two lanes.
+- **Order.** Last: it waits for E-414, E-418 and E-419, the ends of the two lanes.
 
 ## Links
 

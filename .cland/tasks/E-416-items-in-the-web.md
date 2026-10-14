@@ -9,11 +9,13 @@ labels:
   - ready-for-agent
 assignee: null
 parent: R-377
-blocked_by: []
+blocked_by:
+  - E-412
+  - E-415
 topic: null
 branch: null
 created: 2026-10-14T15:59:23.825Z
-updated: 2026-10-14T15:59:23.825Z
+updated: 2026-10-14T16:00:00.313Z
 ---
 
 ## Summary
@@ -36,11 +38,11 @@ The human studies and plans the work in the browser as in Neovim's explorer, wit
 - **§3.4 Addressing** as in Neovim (v0.1.2 §3.8): `m` sends to General with the item's context, `M` to the item's topic, created when it has none, and a selection goes to General with one line per item.
 - **§3.5 Editing: parity with Neovim.** The web edits nothing by hand that Neovim does not: the message to the Coordinator, the plan approval and the criteria edits of the item view (v0.1 §3.4). Dragging rank or moving items between epics with the mouse is 0.2.x.
 
-Not in this epic: the hub's fields that the tree and the card read ({E02}); the Topics area and the threads ({E06}); the phone, where the planning views open read-only through More ({E08}).
+Not in this epic: the hub's fields that the tree and the card read (E-413); the Topics area and the threads (E-417); the phone, where the planning views open read-only through More (E-419).
 
 Choices where the spec is silent:
 
-- **The hub's fields.** The tree and the card read the fields of {E02} (the summary, the roll-ups, `blocked`, `next`, the verdict's reason, the Decision block, the stage states). This epic has no edge to {E02}, so the Coordinator orders the slices that need them after the first slice of {E02} lands. A slice that must go first uses the prototype's port (`web/src/explorer.ts`, `web/src/summary.ts`) behind the differential test against the Lua, and the port goes when the fields arrive.
+- **The hub's fields.** The tree and the card read the fields of E-413 (the summary, the roll-ups, `blocked`, `next`, the verdict's reason, the Decision block, the stage states). This epic has no edge to E-413, so the Coordinator orders the slices that need them after the first slice of E-413 lands. A slice that must go first uses the prototype's port (`web/src/explorer.ts`, `web/src/summary.ts`) behind the differential test against the Lua, and the port goes when the fields arrive.
 - **The current release** is the lowest open version unless the release switcher picks another, as in the prototype; the pick is per client.
 - **Selection.** `x` toggles a row into the selection, Shift with `j` or `k` extends it, and Esc clears it; `m` on a selection sends one message to General.
 - **The quick message** is a one-line field on the card, focused by `m`; the switch beside it, or `M`, sends it to the item's topic instead (P8).
@@ -85,7 +87,7 @@ The human studies and plans the rest of the build in the Items area from its fir
 - **Precedence.** The spec's words; then the prototype's tree and card (`web/src/explorer.ts`, `summary.ts` and `items/` on `prototype/web-shell`), ported and never merged; then the Main board. Neovim's explorer, board, graph and plan view (`nvim/lua/cland/explorer*.lua`, `vboard.lua`, `graph_layout.lua`, `plan.lua`) define the behaviour where the web copies it.
 - **Risks.** The graph's layered layout is the largest piece (1,225 lines of Lua), and the differential test keeps the port honest. The rebuild per delta must stay within the 15 ms bar as the tracker grows. The card must never cost a request per cursor move.
 - **Size.** About seven sessions on the v0 scale.
-- **Order.** Second in the web lane: it waits for {E01} and {E04}. {E06} and {E07} wait for it. It reads the fields of {E02} without an edge (see the choices).
+- **Order.** Second in the web lane: it waits for E-412 and E-415. E-417 and E-418 wait for it. It reads the fields of E-413 without an edge (see the choices).
 
 ## Links
 

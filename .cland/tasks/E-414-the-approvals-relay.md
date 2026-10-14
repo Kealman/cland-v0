@@ -9,11 +9,12 @@ labels:
   - ready-for-agent
 assignee: null
 parent: R-377
-blocked_by: []
+blocked_by:
+  - E-413
 topic: null
 branch: null
 created: 2026-10-14T15:59:14.627Z
-updated: 2026-10-14T15:59:14.627Z
+updated: 2026-10-14T15:59:58.183Z
 ---
 
 ## Summary
@@ -32,9 +33,9 @@ The human approves a command where they are, in the inbox of either client, and 
   - **Claude Code.** Its approvals stay in the TUI until its supervisor exposes them: the record says so, and the web marks such rows "answer in Neovim".
   - **The capability.** `approvalRelay` becomes reliable for the Codex and OpenCode adapters and stays `none` for Claude Code.
 - **§3.4 One gate for answers.** An approval has one record in the hub: the session, the harness, the command or the file change in full, the choices the harness offers, since when, and its state. The first answer from any client wins, and every client sees the outcome. An answer given in the harness's own TUI closes the record with that outcome too.
-- **The clients.** The records ride in the snapshot and the deltas of {E01}. The Neovim inbox shows the same records: a relayed approval's row offers its choices on keys and folds with its outcome, and a Claude Code row keeps Enter to attach. The web's approval cards in the inbox, the thread and the session's drawer are {E06}'s and {E07}'s, built on these records.
+- **The clients.** The records ride in the snapshot and the deltas of E-412. The Neovim inbox shows the same records: a relayed approval's row offers its choices on keys and folds with its outcome, and a Claude Code row keeps Enter to attach. The web's approval cards in the inbox, the thread and the session's drawer are E-417's and E-418's, built on these records.
 
-Not in this epic: the web's cards ({E06}, {E07}) and the phone's rows ({E08}); a terminal in the browser for the approvals that stay in Claude Code's TUI (0.2.x); plan approval, which keeps its own path (v0.1 §3.10).
+Not in this epic: the web's cards (E-417, E-418) and the phone's rows (E-419); a terminal in the browser for the approvals that stay in Claude Code's TUI (0.2.x); plan approval, which keeps its own path (v0.1 §3.10).
 
 Choices where the spec is silent:
 
@@ -56,7 +57,7 @@ Choices where the spec is silent:
 
 ## Definition of done
 
-QA runs the demo below on `dev`, playing the human's part through the `cland` CLI, frame clients holding the web's cookie and a headless Neovim workbench (one `nvim --headless` process, keys by `nvim_input`, the screen read with `screenstring()`), and records a clear verdict on this epic with each checkbox verified by its id; the epic then closes. The human does not run this demo (spec §4: no separate human acceptance pass). The web's cards are checked in the demos of {E06} and {E07} and in the integrated pass of {E09}.
+QA runs the demo below on `dev`, playing the human's part through the `cland` CLI, frame clients holding the web's cookie and a headless Neovim workbench (one `nvim --headless` process, keys by `nvim_input`, the screen read with `screenstring()`), and records a clear verdict on this epic with each checkbox verified by its id; the epic then closes. The human does not run this demo (spec §4: no separate human acceptance pass). The web's cards are checked in the demos of E-417 and E-418 and in the integrated pass of E-420.
 
 In a scratch project with the fake harnesses, QA launches a fake Codex session with approvals on, a fake OpenCode session and a fake Claude Code session, each made to ask for approval of a command. A frame client reads three records in the snapshot: the Codex and OpenCode ones with their choices, the Claude Code one marked to answer in Neovim. QA approves the Codex command once and reads that the fake ran it; it denies the OpenCode permission with a note and reads the note in the fake's reply. Two frame clients answer a fourth request at once: one wins, the other is refused naming the winner, and both read the same outcome. QA answers a fifth request through the fake's own TUI path and reads the record closed with that outcome. QA restarts the hub with a request pending and reads its record rebuilt. In the headless Neovim workbench the inbox shows the same records and approves a sixth request on its key. `cland inbox` prints the approvals with their outcomes.
 
@@ -70,7 +71,7 @@ In a scratch project with the fake harnesses, QA launches a fake Codex session w
 
 ## Dogfooding
 
-In this project the crew's Codex roles run with approvals off and the Claude Code roles keep theirs in the TUI, so the relay meets few live approvals. The Coordinator launches one Codex or OpenCode session with approvals on for a real task, and the human answers its approvals from Neovim's inbox, and from the browser once {E06} lands.
+In this project the crew's Codex roles run with approvals off and the Claude Code roles keep theirs in the TUI, so the relay meets few live approvals. The Coordinator launches one Codex or OpenCode session with approvals on for a real task, and the human answers its approvals from Neovim's inbox, and from the browser once E-417 lands.
 
 ## Constraints
 
@@ -79,7 +80,7 @@ In this project the crew's Codex roles run with approvals off and the Claude Cod
 - **Tests.** The relays are proved against the fake app-server and the fake OpenCode server at the frame seam; the real harnesses are the Implementer's and QA's manual checks, never part of `npm test`.
 - **Risks.** The Codex app-server and OpenCode's HTTP API are both labelled experimental: the adapters check the request shapes they rely on and fall back to `approvalRelay: 'none'` with a warn-level event when a shape changes. A denial must never reach the harness as consent.
 - **Size.** About three sessions on the v0 scale.
-- **Order.** Third in the hub lane: it waits for {E02}, and {E09} waits for it. The approval cards of {E06} and {E07} answer through it without an edge; the hub lane is expected to land it before the web lane reaches them, and otherwise the Coordinator orders those slices after it.
+- **Order.** Third in the hub lane: it waits for E-413, and E-420 waits for it. The approval cards of E-417 and E-418 answer through it without an edge; the hub lane is expected to land it before the web lane reaches them, and otherwise the Coordinator orders those slices after it.
 
 ## Links
 

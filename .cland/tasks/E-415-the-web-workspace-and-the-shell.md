@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-14T15:59:18.516Z
-updated: 2026-10-14T15:59:18.516Z
+updated: 2026-10-14T15:59:58.544Z
 ---
 
 ## Summary
@@ -26,7 +26,7 @@ The web lane gets its ground: a workspace that agents write well in, kept on the
 
 ## Contents
 
-- **§3.7 The workspace.** React 19 with Vite and TypeScript strict on the hub's own flags; CSS Modules on the canvas tokens as custom properties; no UI library; an `AGENTS.md` rule and a check against hex colours keep agents on the tokens; Golos Text and JetBrains Mono self-hosted; the wire types imported from the leaf module of {E01}.
+- **§3.7 The workspace.** React 19 with Vite and TypeScript strict on the hub's own flags; CSS Modules on the canvas tokens as custom properties; no UI library; an `AGENTS.md` rule and a check against hex colours keep agents on the tokens; Golos Text and JetBrains Mono self-hosted; the wire types imported from the leaf module of E-412.
 - **§3.7 The web phase of the suite.** Its own machine-locked shard after the hub phase, on `node:test` with `playwright-core` and the headless shell, selected only for `web/**` or protocol changes, with the fixtures from the stack research.
 - **§3.2 The shell**, as the accepted boards draw it (P1 to P11):
   - **The rail** of seven areas (Inbox, Items, Sessions, Topics, Events, Artifacts, Accounts) as words, with counts only where something asks for attention; it collapses to a 60 px column of icons with badges, by its button, below 1280 px and while the main area is split.
@@ -40,18 +40,18 @@ The web lane gets its ground: a workspace that agents write well in, kept on the
   - **No explanatory prose:** headers carry a name and a count, rows carry facts, and what a block means lives behind `?`, in tooltips and in the docs.
   - **Type and colour** (P3 and the visual vocabulary): Golos Text for prose, JetBrains Mono for ids, code and data, sentence-case headings, ids that never wrap at the hyphen, the role colours of `hl.lua`, and secondary text at 4.5:1 or better.
 
-Not in this epic: the areas' contents ({E05} to {E07}); the phone's layouts ({E08}); the hub's edge ({E01}), which serves this bundle once it lands.
+Not in this epic: the areas' contents (E-416 to E-418); the phone's layouts (E-419); the hub's edge (E-412), which serves this bundle once it lands.
 
 Choices where the spec is silent:
 
 - **The monorepo.** The root `package.json` gets `"workspaces": ["hub", "web"]`; `web/package.json` (`@cland/web`, private) has `typecheck` and `build`; the root `typecheck` runs the web's too, with one hoisted TypeScript. `web/tsconfig.json` takes the hub's strict flags plus `jsx: react-jsx`, the DOM libraries, `moduleResolution: bundler` and `types: ["vite/client"]`.
-- **The wire types.** Until the leaf module of {E01} lands, the prototype's copy in `web/src/wire.ts` stands in, marked as temporary, and it goes when the module arrives.
+- **The wire types.** Until the leaf module of E-412 lands, the prototype's copy in `web/src/wire.ts` stands in, marked as temporary, and it goes when the module arrives.
 - **`web/dist`** is built by the root `prepare` script, so `npm install` produces it, and again in the verification pre-step after the typecheck; it is never committed. A `cland doctor` row compares the bundle's build stamp with the sources.
 - **The tokens.** `web/src/tokens.css` is the only file with colour values. The check runs in the web's typecheck script and fails on a hex, `rgb()` or `hsl()` colour in any other file under `web/src`.
 - **The rule for agents.** A `web/` section in the root `AGENTS.md`: CSS Modules and `var(--token)` only, no UI library, no new dependency without the human, no explanatory prose, keys only through the one key map, and one reference component to copy.
 - **Lint.** oxlint with the React hooks rules (two packages, about 0.2 s) runs in the web's typecheck script; ESLint is not used. The plan names it, so the human's approval decides it.
 - **The fonts.** woff2 subsets with Latin and Cyrillic under `web/public/fonts/`, with their OFL licence files; no request leaves the origin.
-- **Until the edge.** The prototype's bridge is ported as `web/dev/bridge.ts`, a development stand-in with its read-only allowlist and its tests that opens the hub's Unix socket as the human's client; the web phase's fixtures use it. When the edge of {E01} serves the bundle, the shell and the fixtures move to the edge and the bridge goes: in this epic if {E01} lands first, otherwise as the first slice of {E05}.
+- **Until the edge.** The prototype's bridge is ported as `web/dev/bridge.ts`, a development stand-in with its read-only allowlist and its tests that opens the hub's Unix socket as the human's client; the web phase's fixtures use it. When the edge of E-412 serves the bundle, the shell and the fixtures move to the edge and the bridge goes: in this epic if E-412 lands first, otherwise as the first slice of E-416.
 - **The development loop** is `vite build --watch` and a reload, with no Vite dev server, so the edge's Origin check never needs a second origin.
 - **The interface state** (folds, the rail, the split, the release switcher's pick) lives in `localStorage` under one versioned key per area, every read and write guarded, and the page works without it. None of it goes to the hub, and `ui.json` stays Neovim's.
 - **The key map.** One table keyed by `KeyboardEvent.code` and modifiers, from which `?` and the palette show the keys. The browser's reserved chords (⌘T, ⌘W, ⌘N, ⌘⇧T) are never bound. Esc closes a sheet, the palette, a field or the drawer and never answers anything.
@@ -66,13 +66,13 @@ Choices where the spec is silent:
 3. **The rail and the top strip.** The seven areas with their counts, the collapse to icons and its memory, the top strip with the release switcher, the Coordinator, the needs-you pill and the tab title, and the areas on keys matched by physical code. Demo: `1` to `7` switch the areas with the Russian layout active, and the collapsed rail survives a reload.
 4. **The split and the drawer.** ⌘\ with Swap, Close and the divider; the drawer with Split and Close, closed when nothing is selected and while split. Demo: ⌘\ splits the main area, Swap swaps the panes, and the drawer stays closed until the split closes and a row is selected.
 5. **The palette and the keys.** ⌘K and Space p with the five prefixes over the snapshot's objects and the actions with their keys, and `?` listing the area's keys. Demo: ⌘K with `@` lists the sessions, `>` lists the actions with their keys, and Esc closes the palette without acting.
-6. **Folds and the move to the edge.** The fold component remembered per client, and the shell served by the edge of {E01} once it is on `dev`. Demo: a folded group stays folded after a reload, and with {E01} on `dev` `cland web` opens the same shell.
+6. **Folds and the move to the edge.** The fold component remembered per client, and the shell served by the edge of E-412 once it is on `dev`. Demo: a folded group stays folded after a reload, and with E-412 on `dev` `cland web` opens the same shell.
 
 ## Definition of done
 
 QA runs the demo below on `dev`, playing the human's part through the `cland` CLI and headless Chromium (Chrome Headless Shell through `playwright-core`, keys sent with their physical codes, the screen read from the DOM), and records a clear verdict on this epic with each checkbox verified by its id; the epic then closes. The human does not run this demo (spec §4: no separate human acceptance pass).
 
-In a scratch project with the fake harnesses, QA runs `npm install` and reads `web/dist` built, then `npm run typecheck` with a hex colour added to a component and reads the failure. QA opens the shell at 1440x900 through `cland web` when the edge of {E01} is on `dev`, otherwise through the development bridge's link. QA reads the rail's seven areas, switches them on `1` to `7` with the Russian layout active, collapses the rail, reloads and finds it collapsed, and narrows the window below 1280 px to see it collapse by itself. ⌘\ splits the main area, Swap and Close work, and the drawer stays closed while split. ⌘K opens the palette with each of the five prefixes, `?` lists the keys, and Esc closes without acting. A folded group stays folded across a reload. No request leaves the origin, and no element carries a sentence of explanation. `cland verify` on a web-only change runs the web phase as its own shard. On the live tracker, `cland task plan show` on this epic reads approved by the human.
+In a scratch project with the fake harnesses, QA runs `npm install` and reads `web/dist` built, then `npm run typecheck` with a hex colour added to a component and reads the failure. QA opens the shell at 1440x900 through `cland web` when the edge of E-412 is on `dev`, otherwise through the development bridge's link. QA reads the rail's seven areas, switches them on `1` to `7` with the Russian layout active, collapses the rail, reloads and finds it collapsed, and narrows the window below 1280 px to see it collapse by itself. ⌘\ splits the main area, Swap and Close work, and the drawer stays closed while split. ⌘K opens the palette with each of the five prefixes, `?` lists the keys, and Esc closes without acting. A folded group stays folded across a reload. No request leaves the origin, and no element carries a sentence of explanation. `cland verify` on a web-only change runs the web phase as its own shard. On the live tracker, `cland task plan show` on this epic reads approved by the human.
 
 - [ ] C1. The `web/` workspace builds into `web/dist` with React 19, Vite and TypeScript strict on the hub's flags, CSS Modules on the tokens, no UI library and the two fonts self-hosted; `npm install` and the verification pre-step build it.
 - [ ] C2. The root `AGENTS.md` carries the rule for `web/`, and the typecheck fails on a colour value outside `web/src/tokens.css`.
@@ -85,7 +85,7 @@ In a scratch project with the fake harnesses, QA runs `npm install` and reads `w
 
 ## Dogfooding
 
-The human opens the shell from its first slice beside Neovim, through the bridge and then `cland web`, and reacts to its feel before {E05} builds the areas on it. The plan of this epic waits for the human's approval, as §4 decided, because its choices (the workspace, the token rule, the lint, the key map, the test phase) set the patterns for every later web epic.
+The human opens the shell from its first slice beside Neovim, through the bridge and then `cland web`, and reacts to its feel before E-416 builds the areas on it. The plan of this epic waits for the human's approval, as §4 decided, because its choices (the workspace, the token rule, the lint, the key map, the test phase) set the patterns for every later web epic.
 
 ## Constraints
 
@@ -95,7 +95,7 @@ The human opens the shell from its first slice beside Neovim, through the bridge
 - **Prior art.** No browser-reserved chords, no letter keys bound to characters, no Esc as a decision key, no irreversible layout switch, and no state of the web's own beyond its interface (`docs/research/web-prior-art.md` §7.1).
 - **Risks.** Both vendors steer their models to Tailwind and shadcn/ui, so the rule and the check matter from the first commit. Focus handling in the palette and the split panes is where hand-written components fail, so keyboard paths get browser tests. Whether a Codex Implementer's sandbox can launch Chromium is untested; if it cannot, its web tests run through `cland verify` only. The fixtures must close their browsers, which lead their own process groups.
 - **Size.** About six sessions on the v0 scale.
-- **Order.** First in the web lane, with no blocker; {E05} waits for it.
+- **Order.** First in the web lane, with no blocker; E-416 waits for it.
 
 ## Links
 

@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-14T15:59:14.015Z
-updated: 2026-10-14T15:59:14.015Z
+updated: 2026-10-14T15:59:56.690Z
 ---
 
 ## Summary
@@ -43,7 +43,7 @@ A browser reaches the hub as the human without ever holding the hub's secret, an
 - **§3.3 and §3.8, the door for a later terminal** (the eight reservations of Q-403): text frames are JSON, and binary frames are reserved for streams; streams sit beside the live model and never enter its sequence numbers, snapshot, catch-up or the journal; sequence numbers count model deltas, not socket frames; each connection has a queue limit past which its model stream resyncs; model frames go first, or terminals get their own socket; the entry is routed by path, the cookie serves any number of sockets, and every upgrade checks its Origin; each frame kind has its own size limit; the hello carries a feature list, and each adapter a `terminal` capability.
 - **Artifact files over HTTP**, the extension's ninth piece in the sizing of §3.3, which inline HTML artifacts (§3.4) and the Artifacts area need: an artifact's files are served from the edge, HTML under a sandbox policy.
 
-Not in this epic: the fields computed in the hub and the read marks ({E02}); approvals ({E03}); the web client itself ({E04} to {E08}); Neovim adopting the snapshot and the deltas (0.2.x); push notifications with the page closed (0.2.x); the terminal itself (0.2.x).
+Not in this epic: the fields computed in the hub and the read marks (E-413); approvals (E-414); the web client itself (E-415 to E-419); Neovim adopting the snapshot and the deltas (0.2.x); push notifications with the page closed (0.2.x); the terminal itself (0.2.x).
 
 Choices where the spec is silent:
 
@@ -92,7 +92,7 @@ In a scratch project holding a copy of the live tracker and the fake harnesses, 
 
 ## Dogfooding
 
-The edge and the snapshot serve the shell first (spec §4). As soon as the first slice lands, the human opens the shell with `cland web` against the live hub: the prototype's own bundle through `[web] dist` until the shell of {E04} is on `dev`, then that shell. The snapshot slice then replaces the shell's reads at connection, and the first full tree on the live tracker is timed against the prototype's two seconds.
+The edge and the snapshot serve the shell first (spec §4). As soon as the first slice lands, the human opens the shell with `cland web` against the live hub: the prototype's own bundle through `[web] dist` until the shell of E-415 is on `dev`, then that shell. The snapshot slice then replaces the shell's reads at connection, and the first full tree on the live tracker is timed against the prototype's two seconds.
 
 ## Constraints
 
@@ -102,7 +102,7 @@ The edge and the snapshot serve the shell first (spec §4). As soon as the first
 - **ADRs.** 0003 (The hub is a per-project daemon): amended for `[web] bind`, while the spokes' edge stays on loopback.
 - **Risks.** One event loop serves every client: serialize each frame once and keep the snapshot's composition within the handler budget. The hub restarted 20 times in the 61 hours Q-400 measured, so most reconnections after a restart take a fresh snapshot. A script injected into the page would act as the human: the strict CSP, the sandboxed artifacts and the refused frames are the defences. On a LAN without a tunnel the cookie travels in clear.
 - **Size.** About nine sessions on the v0 scale.
-- **Order.** First in the hub lane, with no blocker. {E02} waits for it, and so does {E05} in the web lane.
+- **Order.** First in the hub lane, with no blocker. E-413 waits for it, and so does E-416 in the web lane.
 
 ## Links
 

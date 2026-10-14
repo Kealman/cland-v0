@@ -9,11 +9,12 @@ labels:
   - ready-for-agent
 assignee: null
 parent: R-377
-blocked_by: []
+blocked_by:
+  - E-416
 topic: null
 branch: null
 created: 2026-10-14T15:59:25.029Z
-updated: 2026-10-14T15:59:25.029Z
+updated: 2026-10-14T16:00:03.214Z
 ---
 
 ## Summary
@@ -33,12 +34,12 @@ The human watches the crew, the verification queue and the accounts' limits from
   - **The groups** Yours, Waiting, Busy, Idle and Stopped (the latest 20, with the archived count), each folding, its state remembered per client.
   - **Session rows** (P22): the glyph, the name, the role, the harness, the model and the account, the item with a verifier's hold and +N or a requested item dimmed (v0.1.2 §3.4), the state with its age, and the usage. The selected row unfolds in place with what it waits on and Open thread, Capabilities, Stop, Resume and Archive. No Attach in 0.2.0.
   - **The drawer** (P23): the session's recent thread, its pending approval as a card, and a composer to the session.
-- **§3.6 The session's page and the two-line row.** The page holds the session's model, account, usage and capabilities, with Stop, Resume, Archive and Capabilities; Stop and Archive ask for a confirmation. The two-line row of P27 (the glyph, the name and the role with the state and its age; then the harness and the item, a waiting row adding its command) is built here for narrow widths, where the list has no row actions; {E08} places both on the phone.
+- **§3.6 The session's page and the two-line row.** The page holds the session's model, account, usage and capabilities, with Stop, Resume, Archive and Capabilities; Stop and Archive ask for a confirmation. The two-line row of P27 (the glyph, the name and the role with the state and its age; then the harness and the item, a waiting row adding its command) is built here for narrow widths, where the list has no row actions; E-419 places both on the phone.
 - **§3.2 The Accounts area** (v0.1.2 §3.13): the registry (names, harness and directory or database path, never a secret) and, per account, the windows its source sent (5-hour, weekly, per-model weekly) with the used share, the reset time, the reading's age and its source, and the limited mark.
 - **§3.6 Beside the profile:** the notification switches ("needs you", "finished") and this browser's sign-in, in the Accounts area on the desktop.
 - **The Artifacts area** (v0.1 §3.6): the tree with its sections (mine, this topic, kept, by role folded, archived folded), opening notes, pages and files.
 
-Not in this epic: the thread, the composer and the approval card that the drawer reuses ({E06}); the phone's layouts ({E08}); a terminal or Attach (0.2.x); creating artifacts from paths of the machine, which stays in the CLI and Neovim (§3.7).
+Not in this epic: the thread, the composer and the approval card that the drawer reuses (E-417); the phone's layouts (E-419); a terminal or Attach (0.2.x); creating artifacts from paths of the machine, which stays in the CLI and Neovim (§3.7).
 
 Choices where the spec is silent:
 
@@ -48,15 +49,15 @@ Choices where the spec is silent:
 - **The queue view** ages its times from the frame's receipt, since the hub pushes the queue only when it changes.
 - **The Accounts area is read-only.** Opening it asks the hub to poll the idle accounts, as Neovim's sessions panel does; clearing a limited mark stays in the CLI.
 - **The profile** is the human's own block in the Accounts area, not an account: this browser's sign-in (when it was made and when the cookie expires) and the two switches, which move here from the palette.
-- **Narrow widths.** Below 640 px, the phone width of {E08}, the Sessions area draws the two-line rows without row actions and opens the session's page on a tap or Enter.
-- **Artifacts.** Enter opens a note as rendered Markdown in the drawer, a page in a sandboxed iframe at full height, and a file as text when it is text or as a download otherwise, all through the capability URLs of {E01}. `s` attaches the artifact to the composer, `k` keeps it and `d` archives it, as in Neovim. Creating, moving, promoting, deleting and editing in place stay in Neovim and the CLI in 0.2.0.
+- **Narrow widths.** Below 640 px, the phone width of E-419, the Sessions area draws the two-line rows without row actions and opens the session's page on a tap or Enter.
+- **Artifacts.** Enter opens a note as rendered Markdown in the drawer, a page in a sandboxed iframe at full height, and a file as text when it is text or as a download otherwise, all through the capability URLs of E-412. `s` attaches the artifact to the composer, `k` keeps it and `d` archives it, as in Neovim. Creating, moving, promoting, deleting and editing in place stay in Neovim and the CLI in 0.2.0.
 
 ## Tracer-bullet order
 
 1. **The Sessions area.** The groups with their folds and counts, the rows of P22 from the hub's merged sessions, and the selected row unfolded with what it waits on. Demo: with fake sessions in every state, each group shows its count, and Idle folded stays folded after a reload.
 2. **The verify line and the accounts strip.** The summary opening into the queue view, and the strip of cells from the snapshot's accounts. Demo: with a run holding the queue and one waiting, the queue view shows the holder and the waiter with its executor and ETA, and a limited fake account shows red with its reset.
 3. **Acting on a session.** Stop, Resume, Archive and Capabilities on the selected row and on the session's page, Stop and Archive confirmed, the two-line row, and Launch a session and New Aide. Demo: Stop on a busy fake session asks for a confirmation and stops it, Resume brings it back with its name and role, and a new Aide appears under Yours.
-4. **The session's drawer.** The session's recent thread, its pending approval card and a composer to the session, on the thread and the card of {E06}. Demo: selecting a fake Codex session waiting for approval shows its command in the drawer's card, and Approve once there folds the card.
+4. **The session's drawer.** The session's recent thread, its pending approval card and a composer to the session, on the thread and the card of E-417. Demo: selecting a fake Codex session waiting for approval shows its command in the drawer's card, and Approve once there folds the card.
 5. **The Accounts area and the profile.** The registry with every window, reset, age and source, the limited mark, this browser's sign-in and the two switches. Demo: the Accounts area lists the fake registry's three accounts with their windows, and the "finished" switch turned off stays off after a reload.
 6. **The Artifacts area.** The tree, opening a note, a page and a file, and `s`, `k` and `d`. Demo: an HTML page artifact opens in a sandboxed iframe without `allow-same-origin`, and `k` on an agent's artifact moves it to the kept section.
 
@@ -85,7 +86,7 @@ The human watches the crew and the verification queue from the browser: who wait
 - **Precedence.** The spec's words; then the prototype's Sessions area (`web/src/sessions.ts` and `sessions/SessionsArea.tsx` on `prototype/web-shell`); then the boards Sessions (canvas version 9, with the strip of cells) and PhoneSessions. Neovim's sessions panel, launcher, accounts block and artifacts browser (`nvim/lua/cland/sessions.lua`, `launcher.lua`, `accounts.lua`, `artifact_browser.lua`) define the behaviour where the web copies it.
 - **Risks.** A launch from a page acts on the machine, so the form never takes a directory and the cookie's refused actions stay refused. An account without data must never read 0 percent.
 - **Size.** About five sessions on the v0 scale.
-- **Order.** In the web lane after {E05}, in parallel with {E06}; {E09} waits for it. Its drawer slice reuses the thread, the composer and the approval card of {E06} without an edge, so the Coordinator orders that slice after them; its approval card answers through {E03}.
+- **Order.** In the web lane after E-416, in parallel with E-417; E-420 waits for it. Its drawer slice reuses the thread, the composer and the approval card of E-417 without an edge, so the Coordinator orders that slice after them; its approval card answers through E-414.
 
 ## Links
 
