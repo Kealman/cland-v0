@@ -426,11 +426,11 @@ test('the palette: prefixes narrow topics, Tab from items reaches sessions and E
   await c.waitScreen(x => statusLine(x).includes('Agents log') && centreOf(x).includes('T-12 claimed.'), 'Agents log');
 });
 
-test('gi, gt and gs on a reference under the cursor in the thread', { skip }, async (t) => {
+test('gI, gt and gs on a reference under the cursor in the thread', { skip }, async (t) => {
   const c = await startShell(t);
   await c.input('<Esc><C-w>k');
   await c.waitScreen((x) => statusLine(x).includes('NORMAL'), 'normal mode in the thread');
-  await c.input('gg/T-12<CR>gi');
+  await c.input('gg/T-12<CR>gI');
   let s = await c.waitScreen((x) => statusLine(x).includes('T-12 · item'), 'the item view of T-12');
   assert.match(topBar(s), /│ T-12 Hub daemon and spoke hello/);
   assert.match(s, /claim +impl-1 \[Implementer\] · since/);
@@ -449,10 +449,10 @@ test('gi, gt and gs on a reference under the cursor in the thread', { skip }, as
   await c.input('<C-w>k');
   await c.input('gg/Agents<CR>gt');
   await c.waitScreen((x) => statusLine(x).includes('Agents log') && centreOf(x).includes('T-12 claimed.'), 'the Agents topic, as its log (#34)');
-  // gi from a session row in the panel: its claimed item
+  // gI from a session row in the panel: its claimed item
   await c.input('<Space>s<Space>s');
   await c.waitScreen((x) => x.includes('SESSIONS'), 'sessions panel');
-  await c.input('gg/impl-1<CR>gi');
+  await c.input('gg/impl-1<CR>gI');
   await c.waitScreen((x) => statusLine(x).includes('T-12 · item'), 'T-12 from the impl-1 row');
 });
 
@@ -1133,7 +1133,7 @@ test('a topic is created from the panel (n) and with :Cland topic new, closed wi
   assert.deepEqual((await requestsOf(c, 'topic.resolve')).map((f) => f.topic), ['topic-2']);
 });
 
-test('the thread header shows the status, the binding and the warning; a topic event changes it; gi opens the bound item', { skip }, async (t) => {
+test('the thread header shows the status, the binding and the warning; a topic event changes it; gI opens the bound item', { skip }, async (t) => {
   const c = await startShell(t, withTopics);
   await c.input('<Esc>:Cland view thread topic-2<CR>');
   let s = await c.waitScreen((x) => x.includes('Daemon hello · to @coordinator'), 'the thread of topic-2');
@@ -1146,8 +1146,8 @@ test('the thread header shows the status, the binding and the warning; a topic e
   s = await c.waitScreen((x) => /Daemon hello · to @coordinator +0 artifacts · ga {2}T-12 {2}topic open/.test(x), 'the header after the event');
   assert.doesNotMatch(s, /no coordinator {2}topic/);
 
-  // gi from the bound topic: its item; gt from the item: back to its topic
-  await c.input('<Esc>gi');
+  // gI from the bound topic: its item; gt from the item: back to its topic
+  await c.input('<Esc>gI');
   await c.waitScreen((x) => statusLine(x).includes('T-12 · item'), 'the item view of T-12');
   await c.input('gt');
   await c.waitScreen((x) => statusLine(x).includes('Daemon hello · T-12 · topic open'), 'back to the topic');
@@ -1555,7 +1555,7 @@ test('the board: explicit task statuses and badges; ↵ opens a card', { skip },
   await c.waitScreen((x) => statusLine(x).includes('T-10 · item'), 'the item view of T-10');
 });
 
-test('gi, gt and gs between items, topics and sessions, both ways; a topic event binding an item is followed', { skip }, async (t) => {
+test('gI, gt and gs between items, topics and sessions, both ways; a topic event binding an item is followed', { skip }, async (t) => {
   const c = await startShell(t, withItems);
   await c.input('<Esc>:Cland view item T-2<CR>');
   await c.waitScreen((x) => statusLine(x).includes('T-2 · item'), 'T-2');
@@ -1563,13 +1563,13 @@ test('gi, gt and gs between items, topics and sessions, both ways; a topic event
   await c.input('gt');
   await c.waitScreen((x) => statusLine(x).includes('Items panel work · T-2 · topic'), 'gt: the topic bound to T-2');
   // topic → its item
-  await c.input('<Esc><C-w>kgi');
-  await c.waitScreen((x) => statusLine(x).includes('T-2 · item'), 'gi: the bound item');
+  await c.input('<Esc><C-w>kgI');
+  await c.waitScreen((x) => statusLine(x).includes('T-2 · item'), 'gI: the bound item');
   // item → the claiming session; session → its item
   await c.input('gs');
   await c.waitScreen((x) => statusLine(x).includes('impl-2 · session'), 'gs: the claiming session');
-  await c.input('gi');
-  await c.waitScreen((x) => statusLine(x).includes('T-2 · item'), 'gi: the claimed item');
+  await c.input('gI');
+  await c.waitScreen((x) => statusLine(x).includes('T-2 · item'), 'gI: the claimed item');
   // an unbound item: no topic is created
   await c.input(':Cland view item T-13<CR>');
   await c.waitScreen((x) => statusLine(x).includes('T-13 · item'), 'T-13');
@@ -1590,8 +1590,8 @@ test('gi, gt and gs between items, topics and sessions, both ways; a topic event
   await c.waitScreen((x) => statusLine(x).includes('impl-1 · session'), 'gs from the T-12 row');
   await c.input('<Space>b');
   await c.waitScreen((x) => statusLine(x).includes('Board'), 'the board');
-  await c.input('gg/T-12<CR>gi');
-  await c.waitScreen((x) => statusLine(x).includes('T-12 · item'), 'gi from the T-12 card');
+  await c.input('gg/T-12<CR>gI');
+  await c.waitScreen((x) => statusLine(x).includes('T-12 · item'), 'gI from the T-12 card');
   await c.input('<Space>b');
   await c.waitScreen((x) => statusLine(x).includes('Board'), 'the board again');
   await c.input('gg/T-2 <CR>gt');

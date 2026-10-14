@@ -75,7 +75,7 @@ test('Events view opens through the registry, groups days, pages, folds and foll
   assert.deepEqual(await c.lua("return require('cland.actions').audit()"), []);
 });
 
-test('Enter opens each event subject, gi/gt/gs use the row references and the palette opens Events', { skip }, async t => {
+test('Enter opens each event subject, gI/gt/gs use the row references and the palette opens Events', { skip }, async t => {
   const root = await tempProject(t);
   await mkdir(join(root, '.git'), { recursive: true });
   const artifactPath = join(root, 'event-note.md');
@@ -106,13 +106,13 @@ test('Enter opens each event subject, gi/gt/gs use the row references and the pa
   await select('artifact event');
   await c.input('<CR>');
   await c.waitScreen(s => s.includes('# Event artifact content'), 'Enter artifact');
-  for (const [key, text] of [['gi', 'Event item body'], ['gt', 'No messages in General yet'], ['gs', 'stopped']]) {
+  for (const [key, text] of [['gI', 'Event item body'], ['gt', 'No messages in General yet'], ['gs', 'stopped']]) {
     await select('item event');
     await c.input(key!);
     await c.waitScreen(s => s.includes(text!) && !s.includes('events · newest first'), key!);
   }
   await select('artifact event');
-  await c.input('gi');
+  await c.input('gI');
   await c.waitScreen(s => s.includes('event has no item'), 'missing row item');
   await c.input('gt');
   await c.waitScreen(s => s.includes('event has no topic'), 'missing row topic');

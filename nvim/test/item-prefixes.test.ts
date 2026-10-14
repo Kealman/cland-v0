@@ -12,7 +12,7 @@ const skip = 'skip' in nvim ? nvim.skip : false;
 const bin = 'bin' in nvim ? nvim.bin : '';
 const STUB = fileURLToPath(new URL('./stub-hub.ts', import.meta.url));
 
-test('gi on a legacy reference opens the canonical epic and only kind prefixes are item tokens', { skip }, async t => {
+test('gI on a legacy reference opens the canonical epic and only kind prefixes are item tokens', { skip }, async t => {
   const root = await tempProject(t);
   await mkdir(join(root, '.git'), { recursive: true });
   const text = 'References T-107 E-107 R-107 Q-107 M-107 S-107 C-107 A-12';
@@ -26,9 +26,9 @@ test('gi on a legacy reference opens the canonical epic and only kind prefixes a
   await waitInitialSnapshots(c);
   await c.input('<Esc><C-w>kgg/A-12<CR>');
   assert.equal(await c.lua("return require('cland.motions').token()"), null);
-  await c.input('gi');
+  await c.input('gI');
   await c.waitScreen(s => s.includes('bound to no item'), 'artifact reference has no item target');
-  await c.input('gg/T-107<CR>gi');
+  await c.input('gg/T-107<CR>gI');
   await c.waitScreen(s => s.includes('E-107 · item') && s.includes('Canonical epic'), 'canonical epic item view');
   assert.equal(await c.lua("return require('cland.state').S.ui.view.id"), 'E-107');
   await c.input('<Space><Space>');
@@ -43,7 +43,7 @@ test('gi on a legacy reference opens the canonical epic and only kind prefixes a
   assert.ok(!groups.includes('A-12'));
 });
 
-test('old ids in topics, inbox and journal open migrated items through a restarted real hub and gi', { skip }, async t => {
+test('old ids in topics, inbox and journal open migrated items through a restarted real hub and gI', { skip }, async t => {
   const { cland, connectUi, killDaemon, spawnSpoke, startDaemon } = await import('../../hub/test/harness.ts');
   const { writeFile, readFile } = await import('node:fs/promises');
   const root = await tempProject(t);
@@ -88,7 +88,7 @@ test('old ids in topics, inbox and journal open migrated items through a restart
   await ui.request({ type: 'topic.send', topic: 'general', text: 'Legacy reference T-3 still opens' });
   await c.waitScreen(s => s.includes('Legacy reference T-3'), 'legacy reference in real thread');
   await waitInitialSnapshots(c);
-  await c.input('<Esc><C-w>kgg/T-3<CR>gi');
+  await c.input('<Esc><C-w>kgg/T-3<CR>gI');
   await c.waitScreen(s => s.includes('C-3 · item') && s.includes('Tech debt'), 'migrated category from old thread id');
   assert.equal(await c.lua("return require('cland.state').S.ui.view.id"), 'C-3');
 });

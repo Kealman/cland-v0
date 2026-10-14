@@ -231,7 +231,7 @@ test('the explorer registry, key help and status hint advertise every outline ac
   await c.input('<Esc><Space>e');
   await c.waitScreen(s=>s.includes('l h fold · s scope · ␣␣ back · D done · A archive'),'explorer status hint');
   const actions=await c.lua<Array<{id:string;title:string;key:string}>>("local out={}; for _,a in ipairs(require('cland.actions').all()) do if a.id:match('^explorer:') then out[#out+1]={id=a.id,title=a.title,key=a.key} end end; return out");
-  assert.deepEqual(actions.map(a=>a.id).sort(),['j','k','l','h','za','zo','zc','zR','zM','s','D','A'].map(k=>`explorer:${k}`).sort());
+  assert.deepEqual(actions.map(a=>a.id).sort(),['<CR>','j','k','l','h','za','zo','zc','zR','zM','s','D','A'].map(k=>`explorer:${k}`).sort());
   for(const action of actions) { assert.ok(action.title.length>0); assert.ok(action.key.endsWith('in explorer')); }
   assert.deepEqual(await c.lua("return require('cland.actions').audit()"),[]);
   await c.input('<Space>?');
@@ -244,7 +244,7 @@ async function highlights(c:Client, id:string) {
 
 test('release rows, derived glyphs, rank then close order, folded roots and za cursor identity', {skip}, async t => {
   const {c,control}=await stub(t);
-  await c.input('<Esc><Space>e');
+  await c.input('<Esc><Space>s<Space>e');
   await c.waitScreen(s=>s.includes('First epic')&&s.includes('S1')&&s.includes('Categories (1)'), 'release with cached stages');
   const shown=await text(c);
   for(const expected of ['◐ R-1 0.1.2 Working with items','tasks 4/14','◐ E-3 First epic','○ E-2 Second epic','● E-4 Closed epic','Direct tasks (1)','Unscheduled (1)','Other releases (1)','closed 2025-12-01','coord']) assert.ok(shown.includes(expected),expected);
@@ -258,7 +258,7 @@ test('release rows, derived glyphs, rank then close order, folded roots and za c
   for(const expected of ['in work · 4 of 10 merged · review only','S2 the card  planned','not in the plan','✓ done  in the order they closed','rev-11','impl-10','✗ review r2','✓ qa','2/3','merged 2025-12-03','◌ T-21','blocked by T-6']) assert.ok(tasks.includes(expected),expected);
   assert.ok(tasks.indexOf('Legacy done')<tasks.indexOf('Earlier done')&&tasks.indexOf('Earlier done')<tasks.indexOf('Task done')&&tasks.indexOf('Task done')<tasks.indexOf('Later done'));
   const requests=(await control({requests:true})).requests;
-  assert.equal(requests.filter(r=>r.type==='task.view').length,0,'tree never fetches item detail');
+  assert.equal(requests.filter(r=>r.type==='task.view'&&r.item?.startsWith('T-')).length,0,'tree never fetches detail for unselected tasks');
   assert.equal(requests.filter(r=>r.type==='task.plan'&&r.item==='E-3').length,1,'visible epic plan fetched once');
   const before=await c.lua("return require('cland.explorer').writes");
   await c.lua("local done=false; local s=require('cland.state'); s.on_change(function() done=true end); s.changed(); assert(vim.wait(1000,function() return done end))");

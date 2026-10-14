@@ -51,11 +51,11 @@ end
 
 --- The centre window, found again (or made) when it was closed.
 function M.centre()
-  if valid(M.win.centre) then
+  if valid(M.win.centre) and not vim.w[M.win.centre].cland_card then
     return M.win.centre
   end
   for _, w in ipairs(api.nvim_tabpage_list_wins(0)) do
-    if api.nvim_win_get_config(w).relative == '' and not M.is_panel(w) and w ~= M.win.composer then
+    if api.nvim_win_get_config(w).relative == '' and not M.is_panel(w) and w ~= M.win.composer and not vim.w[w].cland_card then
       M.win.centre = w
       return w
     end
@@ -105,6 +105,8 @@ local function dimensions()
   local right = valid(M.win.right) and M.win.right or M.win.dock
   if valid(right) then out.right = api.nvim_win_get_width(right) end
   if valid(M.win.dock) and valid(M.win.right) then out.dock = api.nvim_win_get_height(M.win.dock) end
+  local card = require('cland.explorer').card.win
+  if valid(card) then out.card = api.nvim_win_get_width(card) end
   return out
 end
 
@@ -113,7 +115,10 @@ local function record_resize()
   local now = dimensions()
   local same_screen = screen_columns == vim.o.columns and screen_lines == vim.o.lines
   for key, size in pairs(now) do
-    if same_screen and measured[key] and size ~= measured[key] then state.S.ui.sizes[key] = size end
+    if same_screen and measured[key] and size ~= measured[key] then
+      if key == 'card' then require('cland.explorer').ui().card_width = size
+      else state.S.ui.sizes[key] = size end
+    end
   end
   measured = now
   screen_columns, screen_lines = vim.o.columns, vim.o.lines
@@ -210,6 +215,7 @@ function M.fix()
     pcall(api.nvim_win_set_height, M.win.composer, require('cland.topic_view').COMPOSER_HEIGHT + 1)
   end
   local c = M.win.centre
+  if state.S.ui.view.kind == 'explorer' then require('cland.explorer').fit_card(c) end
   if valid(c) and vim.bo[api.nvim_win_get_buf(c)].buftype == 'terminal' and vim.fn.winheight(c) < 3 then
     pcall(api.nvim_win_set_height, c, 3)
   end
@@ -358,6 +364,7 @@ function M.apply_view(opts)
     end
   end
   M.fix()
+  require('cland.explorer').sync(w)
   if opts.focus ~= false then
     focus(target)
     if v.kind == 'thread' and target == M.win.composer then

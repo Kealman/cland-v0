@@ -278,7 +278,7 @@ test('unclosed fences are isolated, rejected bodies stay plain, and append parse
   assert.deepEqual(await c.lua('return _G.body_parses'), [fresh + '\n', rejected + '\n'], 'failed parses are cached too');
 });
 
-test('verdict results are red/green and the registry gi opens a concealed item reference', { skip }, async t => {
+test('verdict results are red/green and the registry gI opens a concealed item reference', { skip }, async t => {
   const c = await start(t, { items: [{ id: 'T-58', title: 'Markdown target', state: 'open', kind: 'task' }], messages: { general: [
     msg('fail', 'reviewer', 'review not clear T-58\nA criterion failed.'),
     msg('pass', 'qa', 'qa clear T-58'),
@@ -306,8 +306,8 @@ test('verdict results are red/green and the registry gi opens a concealed item r
       if l=='See **T-58**.' then vim.api.nvim_win_set_cursor(w,{r,l:find('T-58',1,true)-1}) end
     end
   `);
-  await c.input('gi');
-  await c.waitScreen(s => s.includes('Markdown target'), 'gi item view');
+  await c.input('gI');
+  await c.waitScreen(s => s.includes('Markdown target'), 'gI item view');
   assert.deepEqual(await c.lua('return require("cland.actions").audit()'), []);
 });
 

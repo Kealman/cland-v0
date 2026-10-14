@@ -331,11 +331,12 @@ M.HELP = {
   '          ␣T topics docked above the inbox · ↵ in a panel opens the row in the centre',
   'Plan      gp epic plan · a approve · d discuss with the Lead · e edit plan',
   'Centre    ␣g General · ␣L Agents log · ␣b board · ␣G graph · ␣N inbox full width · ␣E events · ␣␣ the previous centre view',
-  'Explorer  ␣e · :Cland explorer [id] · j k item rows (counts) · l h fold · s scope · ␣␣ back',
+  'Explorer  ␣e · :Cland explorer [id] · j k item rows (counts) · l h fold · ↵ card · s scope · ␣␣ back',
   '          za/zo/zc toggle/open/close · zR zM all · D done · A archive',
+  'Card      ↵ or l on a leaf focuses · h or ␣␣ returns to the tree · j k move · gt topic · gs session · gp plan',
   'Graph     h/j/k/l nodes · ^/$ ends · ↵ item · gi/gt/gs · p/P parent · d done · o turn · r edges · :Cland graph [T-n]',
   'Agents    ␣L the log: lifecycle events and agent-to-agent messages · r on a message replies to its sender',
-  'Motions   gi its item · gt its topic · gs its session (a reference under the cursor wins)',
+  'Motions   gi explorer on its item · gI v0.1 item view · gt its topic · gs its session (a reference under the cursor wins)',
   'Palette   ␣p actions · items · sessions · artifacts · topics (type to filter; ↵ runs or opens)',
   '          > actions · # items · @ sessions · ~ artifacts · / topics; Tab kind · C-v split · Esc close',
   'Composer  Enter sends · Shift+Enter or Alt+Enter newline · ␣c focuses it · ␣P drafts a prompt · @role or @name pulls others in',
@@ -369,7 +370,7 @@ function M.help()
     elseif action.id == 'global:<leader>e' then
       for r, line in ipairs(lines) do
         if line:match('^ Explorer ') then
-          lines[r] = ' Explorer  ' .. action.key .. ' · ' .. action.title .. ' · :Cland explorer [id] · j k item rows (counts) · l h fold · s scope · ␣␣ back'
+          lines[r] = ' Explorer  ' .. action.key .. ' · ' .. action.title .. ' · :Cland explorer [id] · j k item rows (counts) · l h fold · ↵ card · s scope · ␣␣ back'
         end
       end
     end
@@ -455,6 +456,7 @@ local function keymaps()
   map('gi', function()
     motions.go('item')
   end, 'its item')
+  map('gI', function() motions.go('item_view') end, 'the v0.1 item view')
   map('gt', function()
     motions.go('topic')
   end, 'its topic')

@@ -248,7 +248,9 @@ function M.status()
   if mode == 't' then
     hint = 'C-h/j/k/l focus · C-\\ leaves · then ␣␣ back'
   elseif role == 'explorer' then
-    hint = 'l h fold · s scope · ␣␣ back · D done · A archive'
+    hint = '↵ card · l h fold · s scope · ␣␣ back · D done · A archive'
+  elseif role == 'card' then
+    hint = 'h or ␣␣ tree · gi explorer · gI item view · gt topic · gs session · gp plan'
   elseif role == 'composer' and mode == 'i' then
     hint = 'Enter sends · S-Enter newline · Esc leaves'
   elseif role == 'inbox' or role == 'inbox_full' then
@@ -317,6 +319,7 @@ end
 function M.winbar(win)
   local buf = api.nvim_win_get_buf(win)
   local role = vim.b[buf].cland_role
+  if role == 'card' then return require('cland.explorer').card_winbar(win) end
   if role == 'explorer' then return require('cland.explorer').winbar(win) end
   if role == 'graph' then return require('cland.graph').winbar(win) end
   if role == 'items' then

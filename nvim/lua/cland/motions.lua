@@ -74,6 +74,11 @@ function M.context()
     return { topic = vim.b[buf].cland_topic, here = 'thread' }
   elseif role == 'session' then
     return { session = vim.b[buf].cland_session, here = 'session' }
+  elseif role == 'explorer' then
+    local e = require('cland.explorer')
+    return {item = (e.rows[row] or {}).item, here='explorer'}
+  elseif role == 'card' then
+    return {item=require('cland.explorer').card.key,here='card'}
   elseif role == 'item' or role == 'plan' then
     return { item = vim.b[buf].cland_item, here = 'item' }
   elseif role == 'board' or role == 'graph' then
@@ -95,7 +100,7 @@ function M.context()
 end
 
 function M.subject()
-  if vim.b.cland_role == 'events' then return M.context() end
+  if vim.tbl_contains({'events','explorer','card'},vim.b.cland_role) then return M.context() end
   return M.token() or M.context()
 end
 
@@ -145,23 +150,27 @@ local function what(s)
   return s.item or (s.topic and ('topic ' .. ((state.topic(s.topic) or {}).title or s.topic))) or s.session or 'this'
 end
 
---- `gi`, `gt`, `gs`: kind is 'item', 'topic' or 'session'.
+--- gi reveals the explorer card; gI keeps the item view. gt/gs open the topic/session.
 function M.go(kind, subj)
   subj = subj or M.subject()
   local layout = require('cland.layout')
   local v = state.S.ui.view
+  local target = kind == 'item_view' and 'item' or kind
+  local key = kind == 'item_view' and 'gI' or 'gi'
   if subj.event then
-    local id = subj[kind]
-    if not id then return state.say('event has no ' .. kind) end
-    return layout.show({ kind = kind == 'topic' and 'thread' or kind, id = id }, { insert = false })
+    local id = subj[target]
+    if not id then return state.say('event has no ' .. target) end
+    if kind == 'item' then return require('cland.explorer').reveal(id) end
+    return layout.show({ kind = kind == 'topic' and 'thread' or target, id = id }, { insert = false })
   end
-  if kind == 'item' then
+  if kind == 'item' or kind == 'item_view' then
     local id = M.item_of(subj)
     if not id then
-      return state.say('gi: ' .. what(subj) .. ' is bound to no item')
+      return state.say(key .. ': ' .. what(subj) .. ' is bound to no item')
     end
+    if kind == 'item' then return require('cland.explorer').reveal(id) end
     if v.kind == 'item' and v.id == id and subj.here then
-      return state.say('gi: already on ' .. id)
+      return state.say(key .. ': already on ' .. id)
     end
     layout.show({ kind = 'item', id = id }, { insert = false })
   elseif kind == 'topic' then

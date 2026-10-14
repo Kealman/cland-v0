@@ -363,7 +363,7 @@ test('node motions follow both orientations and the tray; focus colors only inci
   assert.deepEqual(await c.lua("return require('cland.actions').audit()"), []);
 });
 
-test('Enter, gi, gt and gs use the graph node and Space Space restores it for each parent', { skip }, async t => {
+test('Enter, gI, gt and gs use the graph node and Space Space restores it for each parent', { skip }, async t => {
   const c = await start(t, { ...cursorFixture,
     topics: [{ id: 'topic-12', title: 'Node topic', item: 'T-12' }],
     processes: [{ name: 'impl-12', label: 'Worker', role: 'implementer', status: 'running', state: 'idle' }],
@@ -372,7 +372,7 @@ test('Enter, gi, gt and gs use the graph node and Space Space restores it for ea
   });
   await c.input('<Esc><Space>G'); await node(c, 'T-12');
   assert.match(await c.lua<string>("return require('cland.graph').winbar(vim.api.nvim_get_current_win())"), /Unicode 界 title with 100%% complete.*canvas clips/);
-  for (const [keys, kind, id] of [['<CR>', 'item', 'T-12'], ['gi', 'item', 'T-12'], ['gt', 'thread', 'topic-12'], ['gs', 'session', 'impl-12']]) {
+  for (const [keys, kind, id] of [['<CR>', 'item', 'T-12'], ['gI', 'item', 'T-12'], ['gt', 'thread', 'topic-12'], ['gs', 'session', 'impl-12']]) {
     await c.input(keys!);
     await waitRendered<{ kind: string; id: string }>(c, 'return require("cland.state").S.ui.view', v => v.kind === kind && v.id === id, keys + ' dispatch');
     if (kind === 'session') await c.waitScreen(s => s.includes('Worker attached'), 'claiming session attached');

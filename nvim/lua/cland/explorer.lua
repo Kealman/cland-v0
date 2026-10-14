@@ -3,7 +3,7 @@ local api = vim.api
 local state = require('cland.state')
 local items = require('cland.items')
 local present = items.present
-local M = { rows = {}, sel = {} }
+local M = { rows = {}, sel = {}, card = {}, reveal_open = {} }
 function M.ui()
   local ui = state.S.ui
   ui.explorer = ui.explorer or require('cland.ui').explorer_defaults()
@@ -145,16 +145,16 @@ function M.root_release()
 end
 
 function M.categories(ix)
-  return vim.tbl_filter(function(it) return items.is_category(it) and it.state == 'open' end, M.kids(ix, ''))
+  return vim.tbl_filter(function(it) return items.is_category(it) and (it.state == 'open' or M.reveal_open[it.id]) end, M.kids(ix, ''))
 end
 function M.unscheduled(ix)
   return vim.tbl_filter(function(it)
-    return not M.is_release(it) and not items.is_category(it) and (it.state == 'open' or M.ui().archive)
+    return not M.is_release(it) and not items.is_category(it) and (it.state == 'open' or M.ui().archive or M.reveal_open[it.id])
   end, M.kids(ix, ''))
 end
 function M.other_releases(ix, root)
   return vim.tbl_filter(function(it)
-    return M.is_release(it) and (it.state == 'open' or M.ui().archive) and (not root or it.id ~= root.id)
+    return M.is_release(it) and (it.state == 'open' or M.ui().archive or M.reveal_open[it.id]) and (not root or it.id ~= root.id)
   end, M.kids(ix, ''))
 end
 
@@ -193,7 +193,7 @@ function M.children(ix, node)
   local out = {}
   local function add(list, extra)
     for _, it in ipairs(list) do
-      if not (M.ui().hide_done and M.done(it)) then out[#out + 1] = item_node(ix, it, extra) end
+      if not (M.ui().hide_done and M.done(it) and not M.reveal_open[it.id]) then out[#out + 1] = item_node(ix, it, extra) end
     end
   end
   if node.virtual then
@@ -256,7 +256,7 @@ function M.children(ix, node)
       out[#out + 1] = label_row({ { 'not in the plan', 'ClandDim' } })
       add(outside)
     end
-    if #dn > 0 and not M.ui().hide_done then
+    if #dn > 0 and (not M.ui().hide_done or M.reveal_item) then
       local closed = {}
       for n, st in ipairs(stages) do if st.state == 'closed' then closed[#closed + 1] = 'S' .. n .. ' ' .. (st.name or '') .. ' closed' end end
       out[#out + 1] = label_row({ { '✓ ', 'ClandGreen' }, { 'done', 'ClandDone' },
@@ -287,6 +287,7 @@ function M.scope_key() return state.S.ui.view.kind == 'explorer' and state.S.ui.
 
 function M.is_open(node)
   if node.scope_root or node.release_root then return true end
+  if M.reveal_open[node.key] then return true end
   local folded = M.ui().folds[node.key]
   if folded ~= nil then return folded end
   return node.scope_root == true or node.release_root == true
@@ -673,6 +674,7 @@ local function goto_key(key)
   end
 end
 function M.set_open(key, open)
+  M.reveal_open[key] = nil
   M.ui().folds[key] = open
   state.changed()
 end
@@ -690,6 +692,7 @@ function M.move(step)
 end
 function M.right()
   local row, win = info_here()
+  if row and row.target and not row.expandable then return M.focus_card() end
   if not (row and row.expandable) then return end
   if not row.open then return M.set_open(row.key, true) end
   local r = api.nvim_win_get_cursor(win)[1] + 1
@@ -718,6 +721,7 @@ function M.fold(how)
   M.set_open(row.key, how == 'open' or (how == 'toggle' and not row.open))
 end
 function M.fold_all(open)
+  M.reveal_open = {}
   M.walk(M.index(), M.scope_key(), true, function(node)
     if node.expandable and not node.scope_root and not node.release_root then M.ui().folds[node.key] = open end
   end)
@@ -744,6 +748,167 @@ function M.toggle_archive()
   M.ui().archive = not M.ui().archive
   state.changed()
 end
+local card_ns = api.nvim_create_namespace('cland.explorer.card')
+local function valid(win) return win and api.nvim_win_is_valid(win) end
+function M.card_buf()
+  local c = M.card
+  if c.buf and api.nvim_buf_is_valid(c.buf) then return c.buf end
+  c.buf = api.nvim_create_buf(false,true)
+  vim.bo[c.buf].bufhidden, vim.bo[c.buf].modifiable = 'hide', false
+  vim.bo[c.buf].undolevels = -1
+  vim.b[c.buf].cland_role = 'card'
+  api.nvim_buf_set_name(c.buf,'cland://explorer/card')
+  local function back()
+    local win = M.tree_win()
+    if win ~= -1 then api.nvim_set_current_win(win) end
+  end
+  for _, key in ipairs({'h','<leader><leader>'}) do
+    require('cland.actions').map('n',key,back,{buffer=c.buf,silent=true,nowait=true})
+  end
+  c.lines, c.marks = nil, nil
+  return c.buf
+end
+function M.close_card()
+  local c = M.card
+  if c.timer then c.timer:stop(); c.timer_key = nil end
+  local win = c.win
+  c.win, c.key = nil, nil
+  if valid(win) then pcall(api.nvim_win_close,win,true) end
+end
+function M.fit_card(tree)
+  local c = M.card
+  if not (valid(c.win) and valid(tree)) then return end
+  local total = api.nvim_win_get_width(tree) + api.nvim_win_get_width(c.win) + 1
+  local target = tonumber(M.ui().card_width) or math.max(36,math.min(72,math.floor(total*0.42)))
+  target = math.max(1,math.min(target,math.max(1,total-31)))
+  if api.nvim_win_get_width(c.win) ~= target then api.nvim_win_set_width(c.win,target) end
+end
+-- Layout owns the resize baseline, so automatic redistribution never becomes a preference.
+function M.sync(win)
+  if state.S.ui.view.kind ~= 'explorer' then return M.close_card() end
+  vim.wo[win].cursorline, vim.wo[win].wrap, vim.wo[win].foldenable = true, false, false
+  if not valid(M.card.win) then
+    local width = tonumber(M.ui().card_width) or math.max(36,math.min(72,math.floor(api.nvim_win_get_width(win)*0.42)))
+    M.card.win = api.nvim_open_win(M.card_buf(),false,{split='right',win=win,width=width})
+    vim.w[M.card.win].cland_card = true
+    local wo = vim.wo[M.card.win]
+    wo.winfixwidth, wo.wrap, wo.cursorline, wo.number, wo.relativenumber = true, false, false, false, false
+    wo.signcolumn, wo.foldcolumn, wo.list = 'no', '0', false
+  end
+  M.fit_card(win)
+  M.render()
+end
+function M.render_card()
+  local c = M.card
+  if not valid(c.win) then return end
+  local b = M.card_buf()
+  local lines, marks = require('cland.explorer_card').compose(c.key,api.nvim_win_get_width(c.win)-1)
+  if not vim.deep_equal(lines,c.lines) or not vim.deep_equal(marks,c.marks) then
+    vim.bo[b].modifiable = true
+    api.nvim_buf_set_lines(b,0,-1,false,lines)
+    vim.bo[b].modifiable = false
+    api.nvim_buf_clear_namespace(b,card_ns,0,-1)
+    for _, m in ipairs(marks) do api.nvim_buf_set_extmark(b,card_ns,m[1],m[2],{end_col=m[3],hl_group=m[4]}) end
+    if c.drawn_key ~= c.key then api.nvim_win_set_cursor(c.win,{1,0}) end
+    c.lines, c.marks, c.drawn_key = lines, marks, c.key
+    c.writes = (c.writes or 0) + 1
+  end
+end
+M.FOLLOW_MS = 100
+function M.follow(key)
+  local c = M.card
+  if not valid(c.win) then return end
+  if not key or key == c.key then
+    if c.timer then c.timer:stop(); c.timer_key = nil end
+    return
+  end
+  if key == c.timer_key then return end
+  c.timer = c.timer or vim.uv.new_timer()
+  c.timer_key = key
+  c.timer:start(M.FOLLOW_MS,0,vim.schedule_wrap(function()
+    c.timer_key = nil
+    local win = M.tree_win()
+    if not valid(c.win) or win == -1 or key ~= M.key_at(api.nvim_win_get_cursor(win)[1]) then return end
+    c.key = key
+    M.render_card()
+    require('cland.bars').redraw()
+  end))
+end
+function M.focus_card()
+  local row, win = info_here()
+  if not (row and row.key and win) then return end
+  if not valid(M.card.win) then M.sync(win) end
+  if M.card.timer then M.card.timer:stop(); M.card.timer_key = nil end
+  M.card.key = row.key
+  M.render_card()
+  if valid(M.card.win) then api.nvim_set_current_win(M.card.win) end
+end
+function M.card_winbar(win)
+  local bars = require('cland.bars')
+  local it = M.card.key and state.item(M.card.key)
+  local chunks = {{' CARD ',win == api.nvim_get_current_win() and 'ClandHeadFocus' or 'ClandHead'}}
+  if it then
+    local ix = M.ix or M.index()
+    local glyph = M.glyph(ix,it)
+    chunks[#chunks+1] = {it.id .. ' · ' .. it.kind .. ' · ' .. glyph .. ' ' .. M.status_of(ix,it),'ClandDimBar'}
+  end
+  local used = 0
+  for _, chunk in ipairs(chunks) do used = used + sw(chunk[1]) end
+  local width = api.nvim_win_get_width(win)
+  local keys = '↵ focus · h back · gt topic · gs session'
+  if used + sw(keys) + 1 > width then keys = '↵ focus · h back · gt · gs' end
+  return bars.stl(chunks) .. '%<%#WinBar#%=' .. bars.stl(bars.fit({{' ' .. keys,'ClandDimBar'}},width-used))
+end
+-- Reveal folds are transient; ui.json records only the human's own folds and filters.
+function M.reveal(id)
+  local it = state.item(id)
+  if not it then return state.say('gi: unknown item ' .. id,'ClandRedBar') end
+  local ix, ancestors, seen, p = M.index(), {}, {}, it
+  while p and not seen[p.id] do
+    seen[p.id] = true; table.insert(ancestors,1,p)
+    p = present(p.parent) and ix.by[p.parent] or nil
+  end
+  local root = ancestors[1]
+  local scope = state.S.ui.view.kind == 'explorer' and M.scope_key() or M.ui().scope
+  local holds = false
+  if scope then
+    local node = M.node_for(ix,scope)
+    if node and node.it then holds = seen[node.it.id] == true
+    elseif node and root then
+      -- Membership is structural: D/A may hide the target, but do not remove it from its scope.
+      if scope == ':categories' then holds = items.is_category(root)
+      elseif scope == ':unscheduled' then holds = not items.is_category(root) and not M.is_release(root)
+      elseif scope == ':releases' then
+        local release = M.root_release()
+        holds = M.is_release(root) and (not release or root.id ~= release.id)
+      else
+        for _, child in ipairs(node.list or {}) do if seen[child.id] then holds = true end end
+      end
+    end
+  end
+  if not holds then scope = nil end
+  M.reveal_open = {}
+  for _, ancestor in ipairs(ancestors) do M.reveal_open[ancestor.id] = true end
+  if root then
+    if items.is_category(root) then M.reveal_open[':categories'] = true
+    elseif M.is_release(root) then
+      local release = M.root_release()
+      if not release or root.id ~= release.id then M.reveal_open[':releases'] = true end
+      if it.parent == root.id and not M.is_container(ix,it) then M.reveal_open[':direct:' .. root.id] = true end
+    else M.reveal_open[':unscheduled'] = true end
+  end
+  M.reveal_item = it.id
+  M.sel[scope or ''] = it.id
+  M.position_scope = nil
+  require('cland.layout').show({kind='explorer',id=scope},{insert=false})
+  goto_key(it.id)
+  M.remember()
+  if M.card.timer then M.card.timer:stop(); M.card.timer_key = nil end
+  M.card.key = it.id
+  M.render_card()
+  require('cland.bars').redraw()
+end
+
 function M.buf()
   if M.b and api.nvim_buf_is_valid(M.b) then return M.b end
   M.b = api.nvim_create_buf(false, true)
@@ -752,7 +917,7 @@ function M.buf()
   api.nvim_buf_set_name(M.b, 'cland://explorer')
   local keys = {
     j = function() M.move(1) end, k = function() M.move(-1) end,
-    l = M.right, h = M.left, za = M.toggle,
+    l = M.right, h = M.left, za = M.toggle, ['<CR>'] = M.focus_card,
     zo = function() M.fold('open') end, zc = function() M.fold('close') end,
     zR = function() M.fold_all(true) end, zM = function() M.fold_all(false) end,
     s = M.scope_here,
@@ -761,7 +926,11 @@ function M.buf()
   for key, run in pairs(keys) do
     require('cland.actions').map('n', key, run, {buffer=M.b,silent=true,nowait=true})
   end
-  api.nvim_create_autocmd('CursorMoved', {buffer=M.b, callback=M.remember})
+  api.nvim_create_autocmd('CursorMoved', {buffer=M.b, callback=function()
+    M.remember()
+    local win = M.tree_win()
+    if win ~= -1 then M.follow(M.key_at(api.nvim_win_get_cursor(win)[1])) end
+  end})
   M.lines, M.marks = nil, nil
   return M.b
 end
@@ -820,6 +989,10 @@ function M.render()
     api.nvim_win_set_cursor(win, {row,0})
     M.sel[scope or ''] = rows[row].key
     M.position_scope = scope or ''
+  end
+  if win ~= -1 then
+    M.follow(M.key_at(api.nvim_win_get_cursor(win)[1]))
+    M.render_card()
   end
   return b
 end

@@ -39,7 +39,7 @@ group('global', {
   {'<leader>c', 'Focus composer'}, {'<leader>P', 'Draft a prompt'},
   {'<leader>p', 'Open palette'}, {'<leader>l', 'Launch a session'}, {'<leader>A', 'Launch an Aide'},
   {'<leader><leader>', 'Previous centre view'}, {'<leader>r', 'Resolve this topic'},
-  {'<leader>?', 'Keys'}, {'gp', 'Open its epic plan'}, {'gi', 'Go to its item'}, {'gt', 'Go to its topic'}, {'gs', 'Go to its session'},
+  {'<leader>?', 'Keys'}, {'gp', 'Open its epic plan'}, {'gi', 'Open explorer on its item'}, {'gI', 'Open the v0.1 item view'}, {'gt', 'Go to its topic'}, {'gs', 'Go to its session'},
 })
 for _, direction in ipairs({'h', 'j', 'k', 'l'}) do
   add('global', '<C-' .. direction .. '>', 'Focus ' .. ({h='left',j='down',k='up',l='right'})[direction], {'n','i','s','t','x','o','c'})
@@ -89,10 +89,11 @@ group('log', {{'r','Reply to message sender'}, {'<CR>','Open artifact chip'}, {'
 group('composer', {{'<M-CR>','Newline in message'}}, 'i')
 add('composer', 'q', 'Cancel reply')
 group('explorer', {{'j','Next explorer item row'}, {'k','Previous explorer item row'},
-  {'l','Unfold explorer node or step to its first child'}, {'h','Fold explorer node or its parent'},
+  {'<CR>','Focus explorer card'}, {'l','Unfold explorer node, step to its first child or focus leaf card'}, {'h','Fold explorer node or its parent'},
   {'za','Toggle explorer fold'}, {'zo','Open explorer fold'}, {'zc','Close explorer fold'},
   {'zR','Unfold every explorer node'}, {'zM','Fold every explorer node'}, {'s','Scope explorer to this node'},
   {'D','Hide or show done explorer items'}, {'A','Show or hide archived explorer roots'}})
+group('card', {{'h','Return to explorer tree'}, {'<leader><leader>','Return to explorer tree'}})
 group('plan', {{'a','Approve epic plan'}, {'d','Discuss plan with the Lead'}, {'e','Edit epic plan file'}})
 group('item', {{'e','Edit item file'}, {'L','Agents log for this item'},
   {'ca','Add criterion'}, {'ce','Edit selected criterion'}, {'cd','Remove selected criterion (confirm)'}})
