@@ -11,7 +11,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-14T13:03:48.458Z
-updated: 2026-10-14T14:18:48.765Z
+updated: 2026-10-14T14:25:09.273Z
 ---
 
 ## Destination
@@ -29,6 +29,8 @@ Charted on 2026-10-14 in the cland-design session from the human's direction of 
 - A harness terminal in the browser, later: what the harnesses allow and what the protocol must not preclude (Q-403, .cland/tasks/Q-403-a-harness-terminal-in-the-browser-later.md): every harness has an attach command, so a browser terminal is that command in a hub-owned PTY relayed to xterm.js (Claude Code shares one screen among attachments and repaints, Codex starts a TUI client per attach, OpenCode's TUI is a client of its server); node-pty would be the hub's first native dependency; eight protocol reservations recorded in spec §3.3; recommended after 0.2.0, Claude Code first; no adapter relays approvals today, which Q-407 and Q-408 must face. docs/research/web-terminal.md on research/web-terminal (524b88f, head 6265eed).
 - Stack and seams: React with Vite in the workspace, serving from the hub, Playwright against the hub with fake harnesses (Q-402, .cland/tasks/Q-402-stack-and-seams-react-with-vite-in-the.md): React 19 with Vite, TypeScript strict, CSS Modules on the tokens, no UI library; the wire types in a hub-free module; the web edge on ws inside the hub, a one-time token for a per-port cookie; the web phase as its own shard on node:test with playwright-core, measured at 2.6 s fixed plus tenths per test; PWA cheap, phone notifications need HTTPS; side finding: TypeScript 7 typechecks the hub in 1.6 s against 18 to 26 s now. docs/research/web-stack.md on research/web-stack.
 - The web canvas: a Design artifact with the shell, the explorer and card, a thread, the inbox and the sessions (Q-404, .cland/tasks/Q-404-the-web-canvas-a-design-artifact-with.md): five boards on https://claude.ai/artifact/Cqc3KRR8tXG1yd395B6vf6 accepted with proposals P1 to P25 and four canvas reactions (topics groups, folds remembered, no explanatory prose, Board, Graph and Plan as views of Items); spec §3.2, §3.4, §3.6; sources in docs/design/web/.
+- The protocol extension: the WebSocket entry, several human clients, snapshot and deltas, history pages (Q-407, .cland/tasks/Q-407-the-protocol-extension-the-websocket.md): the edge in the hub on ws with a one-time link and a per-port cookie, Host and Origin checks, client hellos only; the cookie's authority minus hub stop and restart, release and artifacts from arbitrary paths; snapshot with epoch and sequence, numbered deltas, resume or a fresh snapshot, history pages; hub-computed fields and read marks per human; approvals relayed where the harness allows, Claude Code's in the TUI; spec §3.3, §3.7, §3.8.
+- Threads, approvals and the composer in the web: the final shape (Q-408, .cland/tasks/Q-408-threads-approvals-and-the-composer-in.md): one ask record shown in the inbox and the thread with the same keys, decline never on Escape; folded runs open in place with a hub-built fold line; Enter sends a line, ⌘Enter always, queued messages with Withdraw, drafts survive; notifications for now items only, never while looking; spec §3.4, §3.6.
 
 ## Not yet specified
 
