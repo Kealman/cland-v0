@@ -11,7 +11,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-14T13:03:50.133Z
-updated: 2026-10-14T14:00:12.481Z
+updated: 2026-10-14T14:06:50.314Z
 ---
 
 ## Question
@@ -23,3 +23,7 @@ What does the web workbench look like? A new Design artifact on the human's curr
 ### human · 2026-10-14T14:00:12.481Z
 
 Reaction on the web canvas (2026-10-14, thread on the Thread board): standing topics (General, Agents) are listed apart from the topics opened under items, so the two are told apart at a glance. Applied to Thread.dc.html (canvas version 4) and recorded in spec v0.2 §3.2.
+
+### human · 2026-10-14T14:06:50.314Z
+
+Reaction on the web canvas (2026-10-14, thread on the Sessions board): every group and block folds and the folded state is remembered per client. Applied to Sessions.dc.html (chevrons on Accounts and every group, Idle shown folded; canvas version 5) and recorded in spec v0.2 §3.2.
