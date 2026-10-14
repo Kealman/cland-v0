@@ -5,14 +5,14 @@ title: "Phone-width mockups: the inbox, the sessions, a thread, answering an ask
 state: open
 labels:
   - wayfinder:prototype
-assignee: null
+assignee: cland-design
 parent: M-399
 blocked_by:
   - Q-404
 topic: null
 branch: null
 created: 2026-10-14T13:03:50.799Z
-updated: 2026-10-14T13:03:53.457Z
+updated: 2026-10-14T14:18:49.698Z
 ---
 
 ## Question

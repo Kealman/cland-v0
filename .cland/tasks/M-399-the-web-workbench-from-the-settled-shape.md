@@ -11,7 +11,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-14T13:03:48.458Z
-updated: 2026-10-14T14:06:13.610Z
+updated: 2026-10-14T14:18:48.765Z
 ---
 
 ## Destination
@@ -28,6 +28,7 @@ Charted on 2026-10-14 in the cland-design session from the human's direction of 
 - Prior art: web interfaces for agent orchestration, threads with approvals, keyboard-first planning (Q-401, .cland/tasks/Q-401-prior-art-web-interfaces-for-agent.md): every multi-agent screen puts needs-you first with what each row waits on and for how long; approvals are fast when collected in one place and answered with keys, slow when answerable only inside a thread; timers that decide for the human cause trouble; reconnection is where products lose approvals, the designs that work are a snapshot plus numbered updates; on phones the needs-you list is home and nobody plans there; copy and avoid lists per §3.2, §3.4, §3.6 and three questions for Q-408 (asks as both inbox row and thread card with one state in the hub, folded runs in place or in the drawer, the composer's send key and queue). Correction: OpenCode v2 kept its web UI behind `opencode pair` (a one-time link, a 30-day cookie). docs/research/web-prior-art.md on research/web-prior-art.
 - A harness terminal in the browser, later: what the harnesses allow and what the protocol must not preclude (Q-403, .cland/tasks/Q-403-a-harness-terminal-in-the-browser-later.md): every harness has an attach command, so a browser terminal is that command in a hub-owned PTY relayed to xterm.js (Claude Code shares one screen among attachments and repaints, Codex starts a TUI client per attach, OpenCode's TUI is a client of its server); node-pty would be the hub's first native dependency; eight protocol reservations recorded in spec §3.3; recommended after 0.2.0, Claude Code first; no adapter relays approvals today, which Q-407 and Q-408 must face. docs/research/web-terminal.md on research/web-terminal (524b88f, head 6265eed).
 - Stack and seams: React with Vite in the workspace, serving from the hub, Playwright against the hub with fake harnesses (Q-402, .cland/tasks/Q-402-stack-and-seams-react-with-vite-in-the.md): React 19 with Vite, TypeScript strict, CSS Modules on the tokens, no UI library; the wire types in a hub-free module; the web edge on ws inside the hub, a one-time token for a per-port cookie; the web phase as its own shard on node:test with playwright-core, measured at 2.6 s fixed plus tenths per test; PWA cheap, phone notifications need HTTPS; side finding: TypeScript 7 typechecks the hub in 1.6 s against 18 to 26 s now. docs/research/web-stack.md on research/web-stack.
+- The web canvas: a Design artifact with the shell, the explorer and card, a thread, the inbox and the sessions (Q-404, .cland/tasks/Q-404-the-web-canvas-a-design-artifact-with.md): five boards on https://claude.ai/artifact/Cqc3KRR8tXG1yd395B6vf6 accepted with proposals P1 to P25 and four canvas reactions (topics groups, folds remembered, no explanatory prose, Board, Graph and Plan as views of Items); spec §3.2, §3.4, §3.6; sources in docs/design/web/.
 
 ## Not yet specified
 

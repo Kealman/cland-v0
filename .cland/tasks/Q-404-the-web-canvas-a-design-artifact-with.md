@@ -2,7 +2,7 @@
 id: Q-404
 kind: question
 title: "The web canvas: a Design artifact with the shell, the explorer and card, a thread, the inbox and the sessions"
-state: open
+state: closed
 labels:
   - wayfinder:prototype
 assignee: cland-design
@@ -11,7 +11,8 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-14T13:03:50.133Z
-updated: 2026-10-14T14:12:51.843Z
+updated: 2026-10-14T14:18:47.216Z
+closed: 2026-10-14T14:18:47.216Z
 ---
 
 ## Question
@@ -35,3 +36,11 @@ Reaction on the web canvas (2026-10-14, thread on the Sessions board, the Accoun
 ### human · 2026-10-14T14:12:51.843Z
 
 Reaction on the web canvas (2026-10-14, thread on the Inbox board's rail): Board, Plan and Graph are views of the items, not areas. Applied on all four desktop boards: the rail is Inbox, Items, Sessions, Topics, Events, Artifacts, Accounts; the Items area header carries a view switcher Tree, Board, Graph, Plan (canvas version 7). Recorded in spec v0.2 §3.2.
+
+### human · 2026-10-14T14:18:46.641Z
+
+Resolution (2026-10-14). The human accepted the five boards on the web canvas (https://claude.ai/artifact/Cqc3KRR8tXG1yd395B6vf6, version 7) with proposals P1 to P25 and four reactions applied on the canvas: standing topics apart from item topics; every group and block folds and the fold is remembered per client; no explanatory prose in the interface; Board, Graph and Plan are views of the Items area, not areas. Recorded in spec v0.2 §3.2, §3.4, §3.6; the sources are mirrored into docs/design/web/.
+
+### human · 2026-10-14T14:18:47.216Z
+
+Resolved: boards accepted; see the resolution comment; spec v0.2 §3.2, §3.4, §3.6

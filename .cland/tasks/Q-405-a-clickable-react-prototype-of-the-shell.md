@@ -5,7 +5,7 @@ title: A clickable React prototype of the shell against the live hub, read-only
 state: open
 labels:
   - wayfinder:prototype
-assignee: null
+assignee: cland-design
 parent: M-399
 blocked_by:
   - Q-400
@@ -13,7 +13,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-14T13:03:50.469Z
-updated: 2026-10-14T13:03:53.072Z
+updated: 2026-10-14T14:18:49.199Z
 ---
 
 ## Question
