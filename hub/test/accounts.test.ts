@@ -98,7 +98,8 @@ test('account refusals name the error; malformed registries leave unpinned launc
   };
   await refused('absent', /unknown account "absent" \(accounts: claude-b, codex-a, codex-b, oc-data, oc-db\)/);
   await refused('codex-a', /codex.*opencode/, 'opencode');
-  await refused('claude-b', /Claude Code accounts are not supported yet/);
+  await writeFile(f.registry, `[accounts.claude-b]\nharness = "claude-code"\nconfig_dir = ${JSON.stringify(join(f.root, 'missing-claude'))}\n`);
+  await refused('claude-b', /missing-claude.*claude auth login/);
   await writeFile(f.registry, `[accounts.missing]\nharness = "codex"\nhome = ${JSON.stringify(join(f.root, 'never-signed-in'))}\n`);
   await refused('missing', /never-signed-in.*codex login/);
   const cases = [

@@ -70,12 +70,11 @@ export function namedAccount(registry: Accounts, name: string): Account {
 /** Freeze the directory selected by the hub's environment, including a named harness default. */
 export async function selectAccount(account: Account, harness: string): Promise<AccountSelection> {
   if (account.harness !== harness) throw new Error(`account "${account.name}" uses ${account.harness}, but launch harness is ${harness}`);
-  if (harness === 'claude-code') throw new Error('Claude Code accounts are not supported yet');
   const variable = account.path === null && harness === 'opencode' && process.env.OPENCODE_DB ? 'OPENCODE_DB' : account.variable;
-  const path = account.path ?? process.env[variable] ?? (harness === 'codex' ? join(homedir(), '.codex') : join(homedir(), '.local', 'share'));
+  const path = account.path ?? process.env[variable] ?? (harness === 'codex' ? join(homedir(), '.codex') : harness === 'claude-code' ? join(homedir(), '.claude') : join(homedir(), '.local', 'share'));
   const directory = variable === 'OPENCODE_DB' ? dirname(path) : path;
   if (!(await stat(directory).catch(() => null))?.isDirectory()) {
-    const login = harness === 'codex' ? 'codex login' : 'opencode auth login';
+    const login = harness === 'codex' ? 'codex login' : harness === 'claude-code' ? 'claude auth login' : 'opencode auth login';
     throw new Error(`account "${account.name}": directory "${directory}" does not exist; sign in with ${variable}=${shellQuote(path)} ${login}`);
   }
   return { account: account.name, accountEnv: { [variable]: path } };

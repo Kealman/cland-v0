@@ -146,6 +146,7 @@
     "hub/test/worktree-cli.test.ts": "machine",
     "hub/test/executor-prepare.test.ts": "machine",
     "hub/test/accounts.test.ts": "machine",
+    "hub/test/claude-code-accounts.test.ts": "machine",
     "hub/test/executor-safety.test.ts": "machine"
   }
 }

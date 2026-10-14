@@ -44,7 +44,7 @@ export function lifecycleNotice(entry: LogEntry, label: (name: string) => string
     case 'task-ready-paused':
       return { kind: 'ready-paused', text: `${String(entry.id)}: ready check paused after ${String(entry.attempts)} failed attempts: ${String(entry.error)}. The next item or branch event retries it.`, detail: { item: entry.id, error: entry.error, attempts: entry.attempts } };
     case 'claude-signed-out':
-      return { kind: 'claude-signed-out', text: `Claude config directory ${String(entry.configDir)} is signed out. Sign in with ${String(entry.login)}. Polling is paused until a pushed success or a successful explicit launch.`, detail: { configDir: entry.configDir } };
+      return { kind: 'claude-signed-out', text: `Claude${entry.account ? ` account ${String(entry.account)}` : ''} config directory ${String(entry.configDir)} is signed out. Sign in with ${String(entry.login)}. Polling is paused until a pushed success or a successful explicit launch.`, detail: { configDir: entry.configDir, account: entry.account ?? null } };
     case 'turn-failed':
       return session ? { kind: 'turn-failed', text: str(entry.text) ?? `${label(session)}: its turn failed: ${str(entry.error) ?? 'unknown error'}`, detail: { session } } : null;
     case 'harness-redelivered':

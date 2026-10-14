@@ -839,7 +839,7 @@ export class Sessions {
       });
       // Retain ownership before the PID probe too: a thrown probe still owes cleanup of this process.
       const pidStarted = owned.pidStarted ?? (owned.pid !== null ? await processStarted(owned.pid, undefined, resumed) : null);
-      const p: HarnessProcess = { ...owned, ...selected, item, pidStarted, launchBrief: request.brief ?? null, effort };
+      const p: HarnessProcess = { ...owned, ...selected, accountEnv: selected.accountEnv ?? owned.accountEnv ?? null, item, pidStarted, launchBrief: request.brief ?? null, effort };
       owned = p;
       return resumed(() => {
         authorize();

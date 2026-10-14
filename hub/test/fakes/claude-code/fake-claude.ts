@@ -50,13 +50,15 @@ const SESSIONS = join(HOME, 'sessions');
 const JOBS = join(HOME, 'jobs');
 mkdirSync(SESSIONS, { recursive: true });
 mkdirSync(JOBS, { recursive: true });
+const CONFIG_DIR = resolve(process.env.CLAUDE_CONFIG_DIR || join(process.env.HOME ?? '', '.claude'));
+const AUTH_VARIABLES = ['ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN', 'CLAUDE_CODE_OAUTH_TOKEN'];
 const SELF = fileURLToPath(import.meta.url);
 
-type Job = { id: string; sessionId: string; name: string | null; model: string | null; effort: string | null; cwd: string; resume: boolean; mcp: McpConfig; settings: Settings; pluginDir: string | null };
+type Job = { configDir: string; authVariables: string[]; id: string; sessionId: string; name: string | null; model: string | null; effort: string | null; cwd: string; resume: boolean; mcp: McpConfig; settings: Settings; pluginDir: string | null };
 type McpConfig = { mcpServers?: Record<string, { command: string; args?: string[]; env?: Record<string, string> }> };
 type HookEntry = { matcher?: string; hooks: Array<{ type: string; command: string; async?: boolean }> };
 type Settings = { hooks?: Record<string, HookEntry[]>; env?: Record<string, string> };
-type SessionFile = { pid: number; id: string; sessionId: string; cwd: string; kind: 'background'; startedAt: number; name: string | null; status: 'idle' | 'busy' | 'waiting'; waitingFor?: string };
+type SessionFile = { configDir: string; pid: number; id: string; sessionId: string; cwd: string; kind: 'background'; startedAt: number; name: string | null; status: 'idle' | 'busy' | 'waiting'; waitingFor?: string };
 
 const alive = (pid: number) => {
   try {
@@ -93,9 +95,10 @@ const flag = (args: string[], ...names: string[]) => {
 async function main(args: string[]): Promise<number> {
   const [first] = args;
   if (first === '__session') return runSession(args[1] as string);
-  const configDir = resolve(process.env.CLAUDE_CONFIG_DIR || join(process.env.HOME ?? '', '.claude'));
+  const configDir = CONFIG_DIR;
   appendFileSync(join(HOME, 'calls.jsonl'), `${JSON.stringify({ at: Date.now(), args, configDir })}\n`);
-  if ((first === 'agents' || args.includes('--bg')) && existsSync(join(HOME, 'logged-out'))) {
+  appendFileSync(join(HOME, 'invocations.jsonl'), `${JSON.stringify({ at: Date.now(), args, subcommand: first, configDir, CLAUDE_CONFIG_DIR: process.env.CLAUDE_CONFIG_DIR ?? null })}\n`);
+  if ((first === 'agents' || args.includes('--bg')) && (existsSync(join(HOME, 'logged-out')) || existsSync(join(CONFIG_DIR, 'logged-out')))) {
     process.stderr.write('OAuth token has expired. Please run claude auth login.\n');
     return 1;
   }
@@ -112,13 +115,13 @@ async function main(args: string[]): Promise<number> {
     const entries = readdirSync(SESSIONS)
       .filter((f) => f.endsWith('.json'))
       .map((f) => readJson<SessionFile>(join(SESSIONS, f)))
-      .filter((s): s is SessionFile => s !== null && alive(s.pid));
+      .filter((s): s is SessionFile => s !== null && s.configDir === CONFIG_DIR && alive(s.pid));
     process.stdout.write(`${JSON.stringify(entries, null, 2)}\n`);
     return 0;
   }
   if (first === 'attach') {
     const s = readJson<SessionFile>(join(SESSIONS, `${args[1]}.json`));
-    if (!s || !alive(s.pid)) {
+    if (!s || s.configDir !== CONFIG_DIR || !alive(s.pid)) {
       process.stderr.write(`no background session ${args[1]}\n`);
       return 1;
     }
@@ -128,7 +131,7 @@ async function main(args: string[]): Promise<number> {
   if (first === 'stop' || first === 'kill') {
     if (process.env.FAKE_CLAUDE_STOP_CRASH === '1') process.kill(process.pid, 'SIGKILL');
     const s = readJson<SessionFile>(join(SESSIONS, `${args[1]}.json`));
-    if (s && alive(s.pid)) process.kill(s.pid, 'SIGTERM');
+    if (s && s.configDir === CONFIG_DIR && alive(s.pid)) process.kill(s.pid, 'SIGTERM');
     process.stdout.write(`stopped ${args[1]}\n`);
     return 0;
   }
@@ -139,9 +142,10 @@ async function main(args: string[]): Promise<number> {
 
 async function startBackground(args: string[]): Promise<number> {
   const resumeOf = flag(args, '--resume', '-r');
-  const previous = resumeOf ? readdirSync(JOBS).filter((f) => f.endsWith('.json')).map((f) => readJson<Job>(join(JOBS, f))).find((j) => j?.sessionId === resumeOf) : undefined;
+  const previous = resumeOf ? readdirSync(JOBS).filter((f) => f.endsWith('.json')).map((f) => readJson<Job>(join(JOBS, f))).find((j) => j?.sessionId === resumeOf && j.configDir === CONFIG_DIR) : undefined;
   const id = previous?.id ?? randomBytes(4).toString('hex');
   const job: Job = {
+    configDir: CONFIG_DIR, authVariables: AUTH_VARIABLES.filter(key => Object.hasOwn(process.env, key)),
     id,
     sessionId: previous?.sessionId ?? `${id}${crypto.randomUUID().slice(8)}`,
     name: flag(args, '--name', '-n') ?? null,
@@ -188,7 +192,7 @@ async function runSession(id: string): Promise<number> {
   const log = (line: string) => appendFileSync(logFile, `${new Date().toISOString()} ${line}\n`);
   const env: Record<string, string> = { ...(process.env as Record<string, string>), ...(job.settings.env ?? {}) };
   const file = join(SESSIONS, `${id}.json`);
-  const state: SessionFile = { pid: process.pid, id, sessionId: job.sessionId, cwd: job.cwd, kind: 'background', startedAt: Date.now(), name: job.name, status: 'idle' };
+  const state: SessionFile = { configDir: job.configDir, pid: process.pid, id, sessionId: job.sessionId, cwd: job.cwd, kind: 'background', startedAt: Date.now(), name: job.name, status: 'idle' };
   const setStatus = (status: SessionFile['status'], waitingFor?: string) => {
     state.status = status;
     if (waitingFor) state.waitingFor = waitingFor;
