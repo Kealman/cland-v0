@@ -193,7 +193,7 @@ test('accounts open above verification, show a fake Codex weekly window and foll
   const c = await startClient(t, bin, root, env);
   await waitInitialSnapshots(c);
   await c.lua("vim.api.nvim_set_current_win(require('cland.layout').win.right); vim.api.nvim_win_set_width(0, 80)");
-  const shown = await c.waitScreen(s => s.includes(`wk 19% ↻${clock(reset.toISOString())}`), 'weekly account reading');
+  const shown = await c.waitScreen(s => s.includes(`wk 19% ↻${clock(reset.toISOString())}`) && s.includes('codex-b') && s.includes('oc-b') && s.includes('unread') && s.includes('verify:'), 'weekly reading and all account rows above verification');
   assert.ok(shown.indexOf('Accounts') < shown.indexOf('verify:'));
   assert.match(shown, /oc-b\s+no limit data/);
   assert.match(shown, /unread\s+no reading yet/);
@@ -266,7 +266,7 @@ test('source windows keep severity, local resets and stale age, wrap at 30 colum
   const c = await startClient(t, bin, root, env);
   await waitInitialSnapshots(c);
   await c.lua("vim.api.nvim_set_current_win(require('cland.layout').win.right); vim.api.nvim_win_set_width(0, 100)");
-  const stale = await c.waitScreen(s => s.includes('31m') && s.includes('Fable 98%'), 'three windows and stale age');
+  const stale = await c.waitScreen(s => s.includes('31m') && s.includes('Fable 98%') && s.includes('claude-a') && s.includes('default:claude-code'), 'both account rows with three windows and stale age');
   assert.match(stale, /claude-a\s+5h 12%/);
   assert.ok(stale.includes(`↻${time(today)}`));
   assert.ok(stale.includes(`↻${local(tomorrow, { weekday: 'short' })} ${time(tomorrow)}`));
@@ -287,7 +287,7 @@ test('source windows keep severity, local resets and stale age, wrap at 30 colum
   assert.equal(meta.length, 1);
   assert.doesNotMatch(meta[0]!, /default:|claude-a/);
   await c.lua("vim.api.nvim_win_set_width(0, 30); require('cland.state').changed()");
-  const narrow = await c.waitScreen(s => s.includes('Fable 98%') && s.includes('31m'), 'wrapped windows');
+  const narrow = await c.waitScreen(s => s.includes('31m') && s.includes('claude-a') && s.includes('default:claude-code') && s.split('Fable 98%').length === 3, 'both account rows with wrapped windows');
   assert.ok(narrow.includes(`↻${date}`));
   const lines = await c.lua<Array<{ text: string; width: number }>>(`local out={}
     for _,line in ipairs(vim.api.nvim_buf_get_lines(require('cland.panels').bufs.sessions,0,-1,false)) do
