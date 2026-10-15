@@ -1592,6 +1592,16 @@ node hub/bin/cland.ts --version
 
 `npm run check` inside `hub/` runs the typecheck and the tests together. `CLAND_TEST_VERBOSE=1` streams every spoke's stderr while the tests run.
 
+`npm run typecheck` uses the native TypeScript 7.0.2 compiler, pinned under the
+`typescript7` npm alias. The root command checks both `hub/tsconfig.json` (bin,
+src and test) and `nvim/tsconfig.json` (bin and test); the hub command checks the
+hub project. Both scripts name the aliased compiler explicitly because both
+compiler packages provide a `tsc` executable. TypeScript 5.9.3 remains installed
+as `typescript` for the compiler API used by `hub/test/executor.test.ts` and
+`hub/test/tracker-container-source.test.ts`; TypeScript 7 does not provide that
+API. Adoption was gated on matching diagnostic codes, files and lines on both
+clean projects and planted strict-option/import errors (T-427).
+
 ### Remote executors: droplets
 
 Choose the project default with `[verification] executor = "local"` (the default)

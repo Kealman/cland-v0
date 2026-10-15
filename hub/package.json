@@ -11,7 +11,7 @@
     "cland": "bin/cland.ts"
   },
   "scripts": {
-    "typecheck": "tsc -p tsconfig.json",
+    "typecheck": "node ../node_modules/typescript7/bin/tsc -p tsconfig.json",
     "test": "node test/run-suite.ts hub",
     "check": "npm run typecheck && npm test"
   },
@@ -25,6 +25,7 @@
     "@types/node": "24.13.3",
     "@types/ws": "8.18.1",
     "typescript": "5.9.3",
+    "typescript7": "npm:typescript@7.0.2",
     "zod": "4.5.4"
   }
 }
