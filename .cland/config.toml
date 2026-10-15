@@ -18,7 +18,7 @@ cache_max_age_minutes = 1440
 executor = "droplet"
 lifetime = "60m"
 run_timeout = "50m"
-daily_spend_usd = 3
+daily_spend_usd = 6
 
 [sessions]
 # Archive stopped crew after their item closes, otherwise after their stop. Aides are excluded.
