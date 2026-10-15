@@ -2,8 +2,8 @@
 id: T-392
 kind: task
 title: "Inspection diet: fixture hubs skip the start-up orphan sweep unless the test opts in, teardown signals recorded identities without machine-wide scans, and processStarted calls coalesce"
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 8
 labels:
@@ -17,7 +17,8 @@ blocked_by:
 topic: topic-266
 branch: t/T-392-inspection-diet-fixture-hubs-skip-the
 created: 2026-10-14T12:28:11.104Z
-updated: 2026-10-15T01:36:43.786Z
+updated: 2026-10-15T02:25:23.061Z
+closed: 2026-10-15T02:25:23.061Z
 ---
 
 ## Summary
@@ -199,3 +200,7 @@ scope: evidence
 Final clear at unchanged cc44e9cb76e8e1a60dc76b8029dc62626aa5af1f. Local no-mode gate 4788f3cb-e265-4a6a-8732-f9c08409872a / A-2634 selected full: root typecheck and all 2083/2083 pass (37 free + 1659 hub machine + 387 Neovim), zero failures/cancellations/skips/todos, exit 0. Corrected ownership/worker-fixture and prior Claude clause-retry cases pass. Retain red human census 0dfb11ee-8575-494c-b465-3e16faa54780 / A-2630, sole clause-retry timeout tracked T-447; 12 isolated whole-file passes A-2629 and Coordinator dc87c515/e89384b7 disposition precede this green gate. C5 verified only under persisted amendment: 23476 partial lower-bound inspections/1038 starts=22.62, historical 29203 comparison without full-savings inference, helper/coverage caveat and scoped reductions A-2631/A-2632; unmet original budgets moved T-448. C6 verified under persisted loaded-measurement amendment: about 63% fewer default inspections and positive paired medians for both files; unfavorable -11.09% pair retained, original idle 15% unmeasured/T-443. Source A-2626 and final detailed evidence A-2635. All eight claimant done marks checked. Standards and Spec: no high or medium findings remain. C1–C8 verified.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified.
+
+### coord · 2026-10-15T02:25:23.061Z
+
+Merged a6178bb8abfbb3d506692adfcd0c8c6c9baf400b onto dev.
