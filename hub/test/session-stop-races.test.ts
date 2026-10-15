@@ -144,7 +144,8 @@ process.exitCode = result.status ?? 1;
     git(worktree.path, 'commit', '-qm', 'Ship');
   }
   const stopped = await ui.request(stop === 'manual' ? { type: 'session.stop', session: 'impl' } : { type: 'merge', item, override: 'Exercise descendant exit during post-merge stop' }, 30_000);
-  const probe = JSON.parse(await readFile(evidence, 'utf8')) as { before: string; after: string; code: number };
+  const probe = await eventually('descendant identity probe written', async () =>
+    JSON.parse(await readFile(evidence, 'utf8')) as { before: string; after: string; code: number });
   assert.ok(probe.before, 'the captured descendant had a real start time');
   assert.equal(probe.after, '', 'the descendant exited before its final identity read');
   assert.equal(probe.code, 1, 'ps reports that the captured descendant is gone');
