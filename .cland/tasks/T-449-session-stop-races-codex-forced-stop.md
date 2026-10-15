@@ -2,8 +2,8 @@
 id: T-449
 kind: task
 title: session-stop-races Codex forced-stop test reads probe.json before it is written (ENOENT under load)
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 1
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-290
 branch: t/T-449-session-stop-races-codex-forced-stop
 created: 2026-10-15T01:25:43.927Z
-updated: 2026-10-15T12:29:34.036Z
+updated: 2026-10-15T12:29:54.384Z
+closed: 2026-10-15T12:29:54.384Z
 ---
 
 ## Summary
@@ -99,3 +100,7 @@ The accepted pair: first Linux c63e3ded/A-2950 has touched session-stop-races 14
 Both overall Linux receipts remain red, each 1716 pass/1 fail/3 platform skips, exit 1. e6264b46 explicitly accepts this different-known-failure pair with green own files as gate evidence. Neovim smoke not reached; hub-only diff, so mixed-diff nvim rule does not apply. No further tests required by this review.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-15T12:29:54.384Z
+
+Merged 6a4eb6992f943f07a5e53b3388ff0cd97e9ed825 onto dev.
