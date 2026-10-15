@@ -3,7 +3,7 @@ id: T-518
 kind: task
 title: An explicit --executor droplet request can reuse a cached local green and never run on Linux
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - ready-for-agent
@@ -11,10 +11,10 @@ assignee: null
 parent: E-425
 blocked_by:
   - T-512
-topic: null
-branch: null
+topic: topic-320
+branch: t/T-518-an-explicit-executor-droplet-request-can
 created: 2026-10-15T18:04:23.485Z
-updated: 2026-10-15T18:04:23.485Z
+updated: 2026-10-15T19:35:44.334Z
 ---
 
 ## Summary

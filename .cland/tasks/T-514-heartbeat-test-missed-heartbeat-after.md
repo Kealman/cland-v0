@@ -3,7 +3,7 @@ id: T-514
 kind: task
 title: "heartbeat test: missed-heartbeat-after-restart case asserts a wall-clock delta of at least 950 ms that load breaks (Mac)"
 state: open
-status: review
+status: ready
 size: XS
 criterion_seq: 2
 labels:
@@ -16,7 +16,7 @@ regression_of: T-454
 topic: topic-318
 branch: t/T-514-heartbeat-test-missed-heartbeat-after
 created: 2026-10-15T16:40:31.606Z
-updated: 2026-10-15T19:34:24.943Z
+updated: 2026-10-15T19:35:55.633Z
 ---
 
 ## Problem
@@ -28,8 +28,10 @@ updated: 2026-10-15T19:34:24.943Z
 - [x] C1. The case proves "fires once, no replay" with an injected or controlled clock and observed heartbeat events, rather than a wall-clock delta, and keeps the at-most-once assertion. The root cause is recorded in the commit.
   - done: impl-514 · 2026-10-15T19:11:17.355Z
   - verified: rev-30 [reviewer] · run rev-20261015-514-source · 2026-10-15T19:13:23.975Z · commit df6693869d0d2a9e76dffd847a15fae594a19a1a
+  - verified: rev-30 [reviewer] · run rev-20261015-514-final · 2026-10-15T19:35:52.495Z · commit df6693869d0d2a9e76dffd847a15fae594a19a1a
 - [x] C2. heartbeat.test.ts passes 5/5 serially, whole file and alone on the Mac, plus once on a droplet in the task's verify. Coordinate with T-506 and T-508, which touch the same file: whichever lands second picks the first.
   - done: impl-514 · 2026-10-15T19:34:23.473Z
+  - verified: rev-30 [reviewer] · run rev-20261015-514-final · 2026-10-15T19:35:52.495Z · commit df6693869d0d2a9e76dffd847a15fae594a19a1a
 
 ## Comments
 
@@ -75,3 +77,23 @@ Source review clear at exact df669386, C1 verified (A-3285). Submitted no-mode/n
 ### impl-514 · 2026-10-15T19:34:24.943Z
 
 C2 complete: actual Linux droplet c78c5594 at exact source-reviewed df669386 is green, A-3303 (c-8 lon1, lifetime 1212s, cost $0.0842): 1834 pass, 0 fail/cancelled, 3 platform skips; hub and Neovim smoke completed. All nine heartbeat cases pass; changed restart case 0.665s (log 1327/4601). Five serial quiet Mac passes are A-3284. Both criteria done; Reviewer final evidence requested through existing review thread. Head/tree unchanged and claim retained.
+
+### rev-30 · 2026-10-15T19:35:52.495Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-514-final
+commit: df6693869d0d2a9e76dffd847a15fae594a19a1a
+scope: evidence
+
+Final evidence review T-514 clear at unchanged source-reviewed df6693869d0d2a9e76dffd847a15fae594a19a1a. No high, medium or low findings.
+
+A-3303/c78c5594-f530-41e6-a407-621545de3e37 is actual Linux c-8, exit0:1834 pass/0 fail/0 cancelled/3 platform skips. Typecheck, hub phases and Neovim smoke complete. Whole heartbeat9/9 passes naturally (A-3303:1325–1333); changed restart proof0.665s (:1327 and timing:4601). Three skips are existing macOS sandbox/inhibition cases, not heartbeat criteria. Branch still resolves exactly to the reviewed head. No hard duration-budget failure.
+
+C1 reverified from prior source review and public frame/history execution: actual persistent Store closes/reopens under controlled now and scheduler ticks; overdue firing count is exactly one, no replay at frozen time/+299ms, and one next ordinary firing at+300ms. Root cause recorded; production unchanged. Mutation evidence A-3284 demonstrates replay4!=2 fails the at-most-once assertion.
+C2 verified: A-3284 contains five quiet serial Mac whole-file passes (45/45), natural exits15.184–16.995s, and A-3303 supplies actual-droplet whole-file9/9 at the same source. T-506/T-508 fixes remain in ancestry. No wall-clock spacing criterion is reinstated.
+
+No new source change or verification needed for this verdict. Current Coordinator cover/restart hold8b300f2e applies to any subsequent submission/merge routing. No Reviewer tests, edits or provider calls.
+
+Criteria: C1 verified, C2 verified.

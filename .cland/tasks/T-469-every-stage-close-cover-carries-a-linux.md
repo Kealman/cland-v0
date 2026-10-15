@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-316
 branch: t/T-469-every-stage-close-cover-carries-a-linux
 created: 2026-10-15T09:13:16.034Z
-updated: 2026-10-15T19:20:23.567Z
+updated: 2026-10-15T19:36:11.366Z
 ---
 
 ## Summary
@@ -36,3 +36,7 @@ The stage gate (`#stageCurrent` and the plan's `after-stage` close) accepts the 
 ### impl-469 · 2026-10-15T19:20:23.567Z
 
 Implementation in progress: same-tree Linux stage and macOS full receipts now feed after-stage closure and QA freshness; plan and run reports name missing platforms/tree. Existing stage-QA fixtures now supply historical completed platform receipts; a fake-provider end-to-end test exercises Mac-only rejection, mismatched trees, both-platform closure, cache separation and next-stage activation. Typecheck passes. Targeted test window is shared with T-512/T-502 merge checks.
+
+### impl-469 · 2026-10-15T19:36:11.366Z
+
+Checkpoint during Coordinator cover-quiet/restart hold: implementation pushed as fb9354d747d247f8f5c3a3583667f912ab4a4bb1 after clean merge of current origin/dev including T-512 and T-519. New fake-provider platform gate 1/1 green (15.52s with measured allowance), stage-QA 12/12 green (43.58s) before that final merge. Resume on restart notice: planned-stage, suite-close, verification-tree; rerun new platform gate on merged T-512 path; final typecheck/shard lint; then source review before cland verify. No review/verify submitted during hold. Design/validation note A-3293.
