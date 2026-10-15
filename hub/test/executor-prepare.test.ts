@@ -160,8 +160,11 @@ test('prepare keeps its snapshot when builder deletion is unconfirmed, then the 
   });
   assert.deepEqual(api.droplets, []); assert.deepEqual(api.keys, []);
   assert.equal(api.images.length, 1);
-  await flushProjectLogs(t, root);
-  const released = (await readFile(join(root, '.cland/journal.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line)).find(record => record.event === 'executor-lease-released');
+  // Zero leases can be observed before the release record is published.
+  const released = await eventually('builder release and cost are journalled', async () => {
+    await flushProjectLogs(t, root);
+    return (await readFile(join(root, '.cland/journal.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line)).find(record => record.event === 'executor-lease-released');
+  });
   assert.ok(released.lifetimeMs >= 0); assert.ok(released.costUsd > 0);
 });
 
