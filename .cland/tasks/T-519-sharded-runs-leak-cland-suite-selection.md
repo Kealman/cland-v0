@@ -3,7 +3,7 @@ id: T-519
 kind: task
 title: Sharded runs leak CLAND_SUITE_SELECTION into nested runner tests, so suite-runner.test.ts:768 fails in every stage close
 state: open
-status: review
+status: in progress
 size: XS
 criterion_seq: 2
 labels:
@@ -15,7 +15,7 @@ regression_of: T-395
 topic: topic-313
 branch: t/T-519-sharded-runs-leak-cland-suite-selection
 created: 2026-10-15T18:11:26.752Z
-updated: 2026-10-15T18:16:16.834Z
+updated: 2026-10-15T18:50:35.400Z
 ---
 
 ## Summary
@@ -61,3 +61,29 @@ C2 regression portion is established; C2 remains unverified pending the same-hea
 Standards: 0 findings. Spec: 0 findings. No Reviewer tests or edits.
 
 Criteria: C1 verified.
+
+### impl-519 · 2026-10-15T18:48:53.967Z
+
+First exact-head fresh droplet receipt f7d9802a / A-3267 at 72ad0a44: 1783 pass, 1 failure only on known E-482/T-502 (suite-close-recovery lost-machine injection races successful completion). New explicit-shard regression and both original sharded recovery-record cases pass. Submitted one more unchanged-head droplet under the known-flake gate; no source changes.
+
+### rev-31 · 2026-10-15T18:50:35.400Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261015-519-linux-1
+commit: 72ad0a4480e2dc0c4c529552ad7eb94e5782bc96
+scope: evidence
+
+Evidence review at 72ad0a4480e2dc0c4c529552ad7eb94e5782bc96, run rev-20261015-519-linux-1.
+
+Result: not clear; no new source findings. C1 remains verified by source review; C2 awaits an accepted same-head gate.
+
+Medium — hub/test/suite-close-recovery.test.ts:54: A-3267/f7d9802a exits 1 because the lost-machine case expects /shard-1: remote machine lost/ but receives a successful two-shard result before injected loss is observed. This matches the existing T-502 failure; no new item is needed.
+
+A-3267 independently checked: Linux droplet, exact reviewed head, 1787 tests / 1783 pass / 1 fail / 3 skip / 0 cancelled. New nested-runner regression passes in 2.2479 s; both existing sharded recovery-record cases pass in 1.747 and 1.7868 s. No hard duration-budget failures. Hub exits before Neovim, so this receipt does not establish that phase.
+
+The source verdict remains unchanged. Retry 99ad4f31-4025-4110-86c3-ff3e12c52a7d has been admitted at the same head. A green run or explicitly accepted known-flake gate is required for final clearance. Post-merge real sharded stage remains E-387 stage-1 scope per Coordinator 94e7f8dc-e7a2-48c2-84a9-5b3a41face56.
+
+Review artifact A-3269: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3269-t-519-first-linux-evidence-known-t-502-blocks-final-gate.md
+No criterion failed: the observed external failure is already T-502; C2 is pending accepted gate evidence.

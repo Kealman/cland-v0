@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-307
 branch: t/T-396-worker-re-measurement-4-5-and-6-workers
 created: 2026-10-14T12:28:19.638Z
-updated: 2026-10-15T18:24:31.736Z
+updated: 2026-10-15T19:05:02.768Z
 ---
 
 ## Summary
@@ -40,19 +40,29 @@ The machine shard runs at four workers on a Mac with four performance and six ef
 
 - [x] C1. `[verification] workers` and `[verification.droplet] workers` set the machine shard's worker count, default 4, proven by a test reading a fixture config.
   - verified: rev-30 [reviewer] · run rev-20261015-396-final · 2026-10-15T18:22:22.668Z · commit 3da23f155e8b0bec3ea65dc46dc4ff2e7fc8b4cd
-  - done: impl-396 · 2026-10-15T18:23:35.944Z
+  - verified: rev-30 [reviewer] · run rev-20261015-396-integration-final · 2026-10-15T18:51:43.086Z · commit f4bf265e3940e288c8ccaa2bf3d50e55c4c09974
+  - done: impl-396 · 2026-10-15T18:52:10.984Z
+  - verified: rev-30 [reviewer] · run rev-20261015-396-coverage-integration-final · 2026-10-15T19:04:59.496Z · commit a2ab5862b071f14b12f5c7ea2aa703c7a8547765
 - [x] C2. Measured (Coordinator amendment 2026-10-15 16:45Z): pre-merge, fixtures prove the --workers/--size overrides are recorded and shown in the result header and that the measurement procedure is written on the item; the real table (workers, executor, wall, hub phase, peak load, failures that pass alone, droplet cost) for local 4/5/6 once each (repeat only within a 10% margin) and c-16 at 4/6/8 is run by the Coordinator after merge at E-387's stage-2 close and posted on the item.
   - verified: rev-30 [reviewer] · run rev-20261015-396-final · 2026-10-15T18:22:22.668Z · commit 3da23f155e8b0bec3ea65dc46dc4ff2e7fc8b4cd
-  - done: impl-396 · 2026-10-15T18:23:41.721Z
+  - verified: rev-30 [reviewer] · run rev-20261015-396-integration-final · 2026-10-15T18:51:43.086Z · commit f4bf265e3940e288c8ccaa2bf3d50e55c4c09974
+  - done: impl-396 · 2026-10-15T18:52:11.721Z
+  - verified: rev-30 [reviewer] · run rev-20261015-396-coverage-integration-final · 2026-10-15T19:04:59.496Z · commit a2ab5862b071f14b12f5c7ea2aa703c7a8547765
 - [x] C3. Measured (Coordinator amendment 2026-10-15 16:45Z): defaults stay 4 at merge; after the stage-2 close measurements, defaults follow the rule above (change only for an error-free count at least 10% faster across runs) in a small follow-up config commit, and the item names the deciding numbers.
   - verified: rev-30 [reviewer] · run rev-20261015-396-final · 2026-10-15T18:22:22.668Z · commit 3da23f155e8b0bec3ea65dc46dc4ff2e7fc8b4cd
-  - done: impl-396 · 2026-10-15T18:23:51.943Z
+  - verified: rev-30 [reviewer] · run rev-20261015-396-integration-final · 2026-10-15T18:51:43.086Z · commit f4bf265e3940e288c8ccaa2bf3d50e55c4c09974
+  - done: impl-396 · 2026-10-15T18:52:12.893Z
+  - verified: rev-30 [reviewer] · run rev-20261015-396-coverage-integration-final · 2026-10-15T19:04:59.497Z · commit a2ab5862b071f14b12f5c7ea2aa703c7a8547765
 - [x] C4. Droplet measurement runs stay within the day's cap ($10 since D33 and ask 35663eef) with the size price reserved, and create, destroy and cost are posted with the cland tag listing empty afterwards; judged at E-387's stage-2 close.
   - verified: rev-30 [reviewer] · run rev-20261015-396-final · 2026-10-15T18:22:22.668Z · commit 3da23f155e8b0bec3ea65dc46dc4ff2e7fc8b4cd
-  - done: impl-396 · 2026-10-15T18:23:56.997Z
+  - verified: rev-30 [reviewer] · run rev-20261015-396-integration-final · 2026-10-15T18:51:43.086Z · commit f4bf265e3940e288c8ccaa2bf3d50e55c4c09974
+  - done: impl-396 · 2026-10-15T18:52:13.879Z
+  - verified: rev-30 [reviewer] · run rev-20261015-396-coverage-integration-final · 2026-10-15T19:04:59.497Z · commit a2ab5862b071f14b12f5c7ea2aa703c7a8547765
 - [x] C5. `hub/README.md` (Tests) documents the worker settings and the measured trade-off.
   - verified: rev-30 [reviewer] · run rev-20261015-396-final · 2026-10-15T18:22:22.668Z · commit 3da23f155e8b0bec3ea65dc46dc4ff2e7fc8b4cd
-  - done: impl-396 · 2026-10-15T18:24:25.403Z
+  - verified: rev-30 [reviewer] · run rev-20261015-396-integration-final · 2026-10-15T18:51:43.086Z · commit f4bf265e3940e288c8ccaa2bf3d50e55c4c09974
+  - done: impl-396 · 2026-10-15T18:52:15.660Z
+  - verified: rev-30 [reviewer] · run rev-20261015-396-coverage-integration-final · 2026-10-15T19:04:59.497Z · commit a2ab5862b071f14b12f5c7ea2aa703c7a8547765
 
 ## Comments
 
@@ -170,5 +180,61 @@ C4 authorized pre-merge fixture/procedure portion verified: selected offered siz
 C5 documentation portion verified: README Tests documents both settings, override precedence, four-worker baseline, existing load trade-off and procedure link; it explicitly defers measured deciding numbers until stage close. The measured trade-off portion is deferred by the recorded 15:39Z Coordinator decision.
 All C1–C5 marks are for the Coordinator-authorized PRE-MERGE scope, not a claim that the deferred real measurements are complete. Committed procedure still shows those rows pending and specifies one head, --fresh, quiet measurement windows, no sharding, comparable repeats, accounting and configuration follow-up. This staged scope follows the Coordinator's explicit fixture gate and 4a4bdff1 direction to verify pre-merge parts.
 A-3184 remains accepted first known-red receipt. A-3213 remains an excluded incomplete timeout; A-3221 corrects its attribution to likely rather than proven T-508. This final green run supplies the outstanding gate without relying on that timeout. Source is unchanged except previously reviewed shared duration picks. No Reviewer tests, edits, merges or provider calls.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### impl-396 · 2026-10-15T18:50:12.744Z
+
+Conflict resolution complete at pushed f4bf265e3940e288c8ccaa2bf3d50e55c4c09974. Merge06ff54e9 brings devfa00e57a under Coordinator d1a7473f waiver; preserves T-496 filtered clean checks, T-459 committed-only demo delivery/acquisition metadata and T-396 workers/size/selected-price reservation. Durations start from origin/dev with only my worker allowance reinserted at sorted key; shared7cdf2dd0 picked asf4bf265e. A-3268 durable folder /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3268-t-396-conflict-resolution-206-targeted-checks-green contains SUMMARY.md, identifier search and all11 raw logs:206/206 passed, zero fail/cancel/skip, including executor-run20, worker4, demo7, suite-close6/recovery5, safety20, droplet13, prepare17, runner50, selection61/report3. Each run checked load<15; first4 labelled loaded, rest quiet. Typecheck/shard-duration lint/whitespace green, clean tree. Per Coordinator: delta review now, no new full verify if these are green; prior full Linux A-3248 remains the base gate evidence. Stage-2 measurements/default tuning remain due.
+
+### rev-30 · 2026-10-15T18:51:43.086Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-396-integration-final
+commit: f4bf265e3940e288c8ccaa2bf3d50e55c4c09974
+scope: delta
+
+Delta final review T-396 clear at f4bf265e3940e288c8ccaa2bf3d50e55c4c09974. Fixed point: prior source/final-reviewed 3da23f155e8b0bec3ea65dc46dc4ff2e7fc8b4cd. Merge 06ff54e985347076c2e412c1284d7ec4d77f26ac brings dev fa00e57a; final shared manifest pick is 7cdf2dd0. No high, medium or low findings.
+
+Standards: reviewed both conflict files against both parents. DropletExecutor acquisition combines optional demo metadata with run.size, selected offered price, existing spend reservation, region/snapshot checks and release ownership. Demo deadline/restart preservation remains inherited. DropletRun retains T-496 HEAD and filtered source-dirty checks before and after immutable committed-head bundling for ordinary runs; committedOnly remains confined to the demo caller. Remote environment retains droplet/worker settings and null selection fallback. No default-count or assertion/bound change. Core worker/config/runner/procedure files remain byte-identical to the previously reviewed head. Whitespace check is clear.
+
+Spec: Coordinator d1a7473f-af95-44e0-ba74-3114af31a6f1 was confirmed in topic history: merge dev to preserve T-496 delivery, T-459 demos and T-396 worker/size policies, run every identifier-matched file and required executor/worker/demo/close files, then delta review; no new full verify if green. Pinned git grep at this commit confirms the runnable matching files are covered; no Neovim match. Helpers/runner and manifest matches are exercised through their owning tests. Parsed manifest comparison with merged dev has zero removed/changed files/tests/allow values, identical metadata, and exactly two added allowances: previously reviewed owned worker fixture and shared measured over-cap clause 7cdf2dd0.
+
+Evidence: A-3268 durable folder SUMMARY.md/PROCEDURE.md and all eleven raw logs inspected. 206 passed, zero failed/cancelled/skipped: executor-run20, verification-workers4, demo7, suite-close6, recovery5, safety20, droplet13, prepare17, runner50, selection61, report3. Logs complete naturally. Recorded per-file start loads are below15; first four labelled loaded beside a non-Coordinator full suite, remaining quiet and serial coordinated windows. Requester reports typecheck and shard/duration lint green. Shared final pick is manifest only, leaving tested candidate source unchanged. Prior A-3248/6a339a80 remains full Linux/Neovim green at 3da23f15: 2175 pass/0 fail/6 platform skips. This final delta uses the explicit waiver, not a claim that the new head ran a fresh full suite.
+
+C1 reverified: worker fixture delivery/config/free=1 and machine overrides remain intact. C2 reverified only in the amended pre-merge scope: recorded overrides/result header fixtures and committed measurement procedure. C3 pre-merge: defaults remain four. C4 pre-merge fixture/procedure: selected-size price reservation and cap/refusal coverage retained. C5 documentation: worker settings, precedence and pending measurement/default decision remain documented. C1–C5 marks follow the Coordinator's staged fixture gate and earlier final verdict A-3249.
+
+Actual local4/5/6 and c-16 4/6/8 performance table, $10-cap create/destroy/cost/empty-tag accounting, measured trade-off and any >=10% failure-free tuning remain Coordinator E-387 stage-2 close obligations. No actual measurement completion is claimed. No Reviewer tests, edits, merges or provider calls.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### impl-396 · 2026-10-15T19:03:56.491Z
+
+Merged origin/dev a98d588b (T-394 coverage selection) and pushed a2ab5862b071f14b12f5c7ea2aa703c7a8547765. Coverage capture/transport, selected-test cache key and selector age config coexist with worker/size policy. All identifier-matching targets plus required files pass: 182/182 across ten serial whole-file runs; typecheck/shard lint/check clean. Evidence A-3277. Delta review requested under Coordinator's 19:52 local integration waiver; no new full verify.
+
+### rev-30 · 2026-10-15T19:04:59.497Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-396-coverage-integration-final
+commit: a2ab5862b071f14b12f5c7ea2aa703c7a8547765
+scope: delta
+
+Delta final review T-396 clear at a2ab5862b071f14b12f5c7ea2aa703c7a8547765. Merge parents are previously final-reviewed f4bf265e3940e288c8ccaa2bf3d50e55c4c09974 and dev a98d588b2ecb503f21ff5fbf95c43dcb655dbf84 (T-394 coverage selection). No high, medium or low findings.
+
+Standards: reviewed the combined merge and relevant source against both parents. Remote env is the union of coverage output/selection and captured droplet executor/workers. Existing filtered immutable-head bundling/demo delivery remains. Suites cache identity now requires the selected tests plus nvimFull identity AND effective workers/requested size. Capture eligibility retains T-394's capable-runner, clean integrated full-dev, noncached gate and head/tree/run provenance. Worker fields and coverageMaxAgeMs coexist in config type/default/parser/rendering. Worker default remains four, free one.
+
+Spec: packageShards retains coverage selection as fourth argument and worker policy as fifth. runPackageSuite passes both at the correct positions. All call sites checked at the pinned head; explicit shard, selected hub, full/smoke Neovim and ordinary phases retain the configured/explicit worker count. Existing acceptance fixture now additionally proves selected hub with smoke uses droplet eight, and explicit six also controls selected hub with full Neovim. Core coverage reducer/selector/bootstrap are byte-identical to the merged dev parent; worker limits/CLI/remote script and measurement procedure remain unchanged from the prior reviewed branch. Selected-size validation/reservation and cache/fallback proofs remain intact. Manifest comparison with merged dev preserves every prior files/tests/allow value and adds only the already reviewed owned worker fixture allowance.
+
+Waiver confirmed in topic history: Coordinator 3f6170e7-a7ab-4786-a90f-2f464a016f1b explicitly requires merging dev, preserving coverage/config beside worker overrides, all identifier-matched tests plus coverage/selection/cache/worker/executor tests, delta review and NO new full verify. This replaces the ordinary fresh-full requirement only for this integration resolution.
+
+Evidence: A-3277 SUMMARY, identifier map, preflights, typecheck/lint logs and all ten qualifying raw logs examined. 182 passed, zero failed/cancelled/skipped: worker4, coverage1, selection83, cache6, executor-run20, close-shards2, runner50, close7, close-recovery5, report4. These are natural whole-file completions. Qualifying serial window follows T-474's slot release; start loads recorded 1.75–3.21, quiet Mac. The earlier verification-workers-overlap.log is explicitly excluded and replaced by the serial 4/4 rerun. Pinned identifier search has no Neovim match. Typecheck and shard lint logs are green; whitespace check is clear. Prior A-3268's 206 integration tests and A-3248's full Linux/Neovim green at 3da23f15 remain supporting evidence under the waiver; no fresh full suite at this merge head is claimed.
+
+C1–C5 reverified in the already authorized PRE-MERGE scope: worker config/precedence and selected-phase delivery, recorded overrides/header/procedure, default four, selected-size price/cap fixtures and accounting procedure, and settings/trade-off documentation. Actual local4/5/6 and c-16 4/6/8 comparisons, $10-cap create/destroy/cost/empty-tag receipts, measured trade-off and any failure-free >=10% tuning remain Coordinator E-387 stage-2 close obligations. No real performance/accounting completion is inferred from fixture checks.
+
+No Reviewer tests, edits, merges or provider calls.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.

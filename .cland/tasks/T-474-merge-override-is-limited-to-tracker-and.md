@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-315
 branch: t/T-474-merge-override-is-limited-to-tracker-and
 created: 2026-10-15T09:13:18.127Z
-updated: 2026-10-15T18:30:06.089Z
+updated: 2026-10-15T18:57:30.353Z
 ---
 
 ## Summary
@@ -35,6 +35,7 @@ Retrospective A-2783, STOP 3: T-289 merged code by human override without review
 - [x] C3. The merge skill and hub/README.md describe the scope.
   - done: impl-474 · 2026-10-15T18:28:08.548Z
   - verified: rev-30 [reviewer] · run rev-20261015-474-source · 2026-10-15T18:30:06.089Z · commit 3239eb5c3515a5bb44bd96eca1dc586403a25b16
+  - verified: rev-30 [reviewer] · run rev-20261015-474-fixture-delta · 2026-10-15T18:57:30.353Z · commit 12dc3458a099d0a46868fe1c1f2e7d798c462058
 
 ## Comments
 
@@ -61,5 +62,52 @@ Spec: scope check runs in squashTask's immutable-candidate callback before commi
 C3 verified: merge skill, hub README and CLI help state the narrowed allowlist, human-shell restriction, named refusal and unchanged conflict/Git safety.
 C1/C2 test review: integration tests cover typed frame and CLI mixed code/config/skill refusal, all paths reported, refs unchanged, root code absent and task open; both rename directions and deletion; allowed docs/GLOSSARY/nested README/QA briefs and tracker/rulebook-only merges; prior permission test now uses a genuinely allowed README. All four new tests are below five seconds. A-3254 is whole-file 12/12, zero failure/cancel/skip. Source runtime criteria C1/C2 remain unverified until accepted exact-head post-source suite evidence.
 Diff whitespace passes; requester reports typecheck green. No per-item QA required. Source clear permits the requested fresh exact-head verification within Coordinator throttle. No Reviewer tests, edits, merges or provider calls.
+
+Criteria: C3 verified.
+
+### rev-30 · 2026-10-15T18:52:49.085Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261015-474-linux-first
+commit: 3239eb5c3515a5bb44bd96eca1dc586403a25b16
+scope: evidence
+
+Evidence review T-474 not clear at source-reviewed 3239eb5c3515a5bb44bd96eca1dc586403a25b16. A-3270/3123e5d2 is actual Linux c-8, exit 1: 1763 pass/33 fail/3 platform skips. Typecheck passes; Neovim smoke is not reached. The new override refusal, rename/deletion and docs/tracker acceptance cases are green (A-3270:1676–1680), but the integrated gate fails deterministically.
+
+Medium — hub/test/crew-launch.test.ts:134–137 and hub/test/release.test.ts:25–31 (also follows.test.ts:81/:165, push.test.ts:134, session-archive.test.ts:15, session-stop-races.test.ts:38/:88 and tracker-native-boundary.test.ts:124): existing lifecycle/merge/release fixtures override branches containing arbitrary shipped.txt/parser.txt/merge.txt/other.txt/protected.txt/done.txt. The new scope restriction correctly refuses them, so the fixtures never reach the behavior they claim to test. A-3270 has 32 explicit merge-override-scope error blocks across these seven files. This is task-caused test compatibility work, not an outside known flake and not an acceptable first receipt under the two-known-failure rule. Preserve the narrow production scope; update incidental fixture paths or establish appropriate reviewed merge evidence. If code-like override is the point of a fixture, assert refusal rather than moving the file.
+
+Medium — hub/test/session-stop-races.test.ts:147: the remaining reported failure times out waiting for a descendant probe before checking the preceding merge response; the preceding shipped.txt override is refused, so the merge-triggered stop never begins. Requester identifies the same fixture cause in topic message 490f129a. It should not be classified as an independent T-485 pidAlive flake on this evidence.
+
+Standards: scoped production behavior remains consistent with the reviewed contract; the suite's fixture assumptions were not fully migrated. Spec: the direct C1/C2 cases pass and C3's documentation verification stands, but no final C1/C2 marks are added while the required integrated gate is red. No criterion is failed speculatively: this verdict records the demonstrated gate/fixture defect.
+
+Confirmed Coordinator f2ede105: only incidental paths may move, code-override fixtures must become refusal tests, and every conversion must be listed with file:line in the next review request. Requester is already making that correction. A changed head requires a fresh source/delta review before another full run; this own-failure receipt is excluded from final gate pairing. No unchanged retry. No Reviewer edits, tests or provider calls.
+Correction to A-3272's file count: the failures span seven test files, not eight.
+
+### impl-474 · 2026-10-15T18:56:34.540Z
+
+Fixed all 33 first-Linux own failures by migrating seven unrelated incidental override fixtures to permitted README.md/GLOSSARY.md paths; product policy unchanged. 12dc3458 pushed. All seven whole-file targeted runs green (103 tests) plus typecheck. A-3273 contains complete converted fixture file:line audit and logs, including the masked descendant-probe cause. Delta source review requested; next verify waits for source clear.
+
+### rev-30 · 2026-10-15T18:57:30.353Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-474-fixture-delta
+commit: 12dc3458a099d0a46868fe1c1f2e7d798c462058
+scope: delta
+
+Delta source review T-474 clear at 12dc3458a099d0a46868fe1c1f2e7d798c462058, fixed point source-reviewed 3239eb5c3515a5bb44bd96eca1dc586403a25b16. No high, medium or low findings.
+
+Standards: the exact diff contains seven fixture files plus shared durations.json. Product code, merge allowlist, immutable candidate checks, CLI/help/skill documentation and dedicated merge-policy tests are byte-identical to the previous source review. Every fixture conversion listed in A-3273 was examined. Only payload paths and corresponding content/hold-regex references change; test names, assertion counts and timing bounds remain. No conditional bypass or fabricated verdict is added.
+
+Spec/fixture audit under Coordinator f2ede105 and e7a8d846: crew-launch:134/:247 remains pool/stop_after lifecycle; follows:93/:170/:171/:204 retains the same disjoint versus overlapping path graph and final concurrent surface validation; push:138 retains unpublished-dev refusal followed by landing; release helper callers and direct worktree cases retain publication/sync/ref/recovery semantics and matching reads; archive:29 still starts its window after real merge; stop-races:69/:142 still trigger real post-merge stop including descendant identity race; native-boundary:130 still proves review refusal, actual landing and same-commit recovery under the native guard. These payload types are incidental. README.md versus GLOSSARY.md preserve necessary distinct paths. No intentional code-override case was moved into the allowlist. Existing policy cases continue to exercise real hub/src, configuration, skill Markdown, deletion and both rename directions as refusals.
+
+Evidence: inspected A-3273 index/audit and all seven complete logs: follows11, crew10, push12, release18, archive9, stop-races14, native-boundary29 = 103 pass, zero fail/cancel/skip. The masked post-merge descendant-probe case now completes green. Typecheck is reported green and diff whitespace check is clear. These targeted logs resolve the demonstrated fixture blocker; they do not replace the required post-source full verification. The artifact transparently records the short independently started T-396 worker-fixture overlap and subsequent coordination.
+
+Manifest: parsed comparison preserves all prior files/tests/allow values and all metadata, adding only five measured shared exceptions already reviewed elsewhere: four T-394 coverage/cache/close/report fixture allowances plus 7cdf2dd0 over-cap clause 5.133s. No own fixture allowance, assertion-bound change, production source import or dev merge occurred. Shared commit title refers to earlier requested allowances already present in the base; the actual five-entry delta was examined directly.
+
+C3 documentation reverified at this head. C1/C2 runtime final marks remain pending an acceptable exact-head post-source suite receipt. A-3270's 33 own fixture failures are excluded from gate pairing; this correction needs a new first receipt, not an unchanged retry. Source clearance permits the next directed full verification within current Coordinator executor/load rules. No Reviewer tests, edits, merges or provider calls.
 
 Criteria: C3 verified.

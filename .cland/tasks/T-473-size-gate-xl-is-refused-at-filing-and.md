@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-314
 branch: t/T-473-size-gate-xl-is-refused-at-filing-and
 created: 2026-10-15T09:13:17.633Z
-updated: 2026-10-15T18:38:40.996Z
+updated: 2026-10-15T19:05:16.848Z
 ---
 
 ## Summary
@@ -64,3 +64,22 @@ Test review covers CLI/MCP XL refusal, preserved existing size, malformed/missin
 C1/C2 remain unverified until accepted exact-head post-source suite evidence. Source clear permits the requested verification at this exact head under current Coordinator scheduling. No per-item QA criteria. No Reviewer tests, edits, merges or provider calls.
 
 Criteria: C3 verified.
+
+### rev-30 · 2026-10-15T19:01:50.251Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261015-473-linux-first
+commit: a969170bcc43009ac72a11ecc65f279a1a91fa7b
+scope: evidence
+
+Evidence review T-473 not clear at source-reviewed a969170bcc43009ac72a11ecc65f279a1a91fa7b. Actual Linux c-8 receipt A-3275/2df3d3fe exits 1: 1790 pass/2 fail/3 platform skips. Host/remote typecheck and hub phases complete; full Neovim is not reached after hub red.
+
+Medium — hub/test/skills-tracker.test.ts:38: the existing skill contract test still demands /XS, S, M, L or XL/ from both changed skills. T-473 intentionally changes their filing vocabulary to XS/S/M/L and requires XL splitting. A-3275:4064–4066 deterministically fails against the updated to-tickets text. Update this test to require the new allowed filing sizes, XL-before-filing split rule, L-to-2–3-M guidance and retained Coordinator reason/--allow-large exception, preserving its existing Summary/regression-link assertions. Do not restore XL filing language just to satisfy the old regex. This is own-task test migration, not a known external flake; the receipt is excluded from final gate pairing and requires correction/source review before another full run.
+
+Known outside failure / Bugs S — hub/test/account-limited.test.ts:265: recent failed-poll backoff case reads one account-polled row while expecting two (A-3275:4047–4061). This matches the T-493 poll-state/journal publication family already classified by the Coordinator in earlier gates. No account-poll source change is requested for T-473. Its presence does not waive the independent task-caused skill test failure.
+
+Standards: the source behavior remains consistent with the reviewed size gate; the associated existing skill assertion was missed in the initial targeted mapping. Spec: the skill text itself correctly states the requested split rule, and all ten task-plan, three task-size, nine role-snapshot and eight role cases complete green (A-3275:5154–5171, :5609–5618, :5627–5629). This is own functional execution evidence, not a final integrated gate. No criterion is failed speculatively and no final C1/C2 marks are added. C3's documentation fact remains established at the reviewed source, subject to normal head freshness.
+
+Return a new source/delta request after the test correction and any Coordinator-posted shared picks. Keep the new head fixed for its post-source verification under current admission rules. A-3275 cannot serve as a first known-only receipt because of the demonstrated own failure. No Reviewer edits, tests or provider calls.

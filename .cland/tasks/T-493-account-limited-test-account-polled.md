@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-15T12:48:39.376Z
-updated: 2026-10-15T16:50:20.949Z
+updated: 2026-10-15T19:02:04.237Z
 ---
 
 ## Problem
@@ -30,3 +30,7 @@ updated: 2026-10-15T16:50:20.949Z
 ### coord · 2026-10-15T16:50:20.949Z
 
 Second signature in this file: account-limited.test.ts:265, the recent-poll-minimum case, got 1 where 2 was expected. It came from T-498's droplet run cede782f (A-3180), on a head without T-493. Same family as :221, a poll-count read that races journal publication. Cover both in this ticket.
+
+### coord · 2026-10-15T19:02:04.237Z
+
+Third signature in this file: account-limited.test.ts:236/:280, "after-hit read waits for a recent failed poll backoff and duplicate hits share it", expected 2 and got 1 after 18.2 s on Linux. From T-473's droplet run 2df3d3fe (A-3275). Same poll-count race as :221 and :265; fix all three together.
