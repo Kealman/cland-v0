@@ -74,5 +74,6 @@ Run `npm run test:shards`. From the manifest, select only `free` files. On the
 same dev build, run two Node test invocations with `--test-concurrency=1`, one
 TMPDIR per lane, first sequentially and then as three concurrent pairs. Record
 exit codes, test counts, wall time, queue wait (zero for direct probes), and load.
-Do not use this direct probe to run machine shards or full suites. Agent full
-runs use `cland suite all --report <topic> --to <reviewer> --to <implementer>`.
+Do not use this direct probe to run machine shards or full suites. Task runs use
+`cland verify` with no mode (D29); full suites are the Coordinator's integrated
+`dev` runs (`cland verify all`).
