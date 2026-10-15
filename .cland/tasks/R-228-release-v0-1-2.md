@@ -3,15 +3,16 @@ id: R-228
 kind: release
 version: 0.1.2
 title: Working with items
-state: open
+state: closed
 labels: []
 assignee: null
 parent: null
 blocked_by: []
-topic: null
+topic: topic-280
 branch: null
 created: 2026-10-11T17:47:48.610Z
-updated: 2026-10-15T08:10:51.415Z
+updated: 2026-10-15T08:18:34.048Z
+closed: 2026-10-15T08:18:34.048Z
 ---
 
 ## Goal
@@ -163,3 +164,7 @@ Published on 2026-10-12 from `docs/spec/v0.1.2.md` §4, children of this release
 ### human · 2026-10-12T08:43:15.306Z
 
 Round 1 of the v0.1.2 grilling (2026-10-12) recorded in the body: goal, scope and lanes, order, the wayfinder for the explorer cluster and the AFK prototype and research, the token, D23 accepted, the crew.
+
+### coord · 2026-10-15T08:18:34.048Z
+
+Released v0.1.2 at e2ac9844e4c4a0736603fd0fec2739ceb522ca4c.

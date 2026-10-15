@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-275
 branch: t/T-454-heartbeat-a-per-role-interval-in-crew
 created: 2026-10-15T07:15:15.368Z
-updated: 2026-10-15T08:15:42.472Z
+updated: 2026-10-15T08:16:17.075Z
 ---
 
 ## Summary
@@ -89,11 +89,14 @@ E-423 "Rules and rhythm" (R-294), tracer bullet 1 of 7; spec `docs/spec/v0.1.3.m
 - [x] C6. The connection keepalive is called keepalive in identifiers and comments, and no hub source uses "heartbeat" for it.
   - done: impl-454 · 2026-10-15T07:49:11.736Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-454-2 · 2026-10-15T07:49:57.099Z · commit b64e068182a0bfb027f5fdc2542a764c17e55b56
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-454-4 · 2026-10-15T08:16:17.074Z · commit 24ca7ce122bc41ec7075fd9cb0e0da354cec6098
 - [x] C7. The Coordinator's clause, in `default-roles.ts` and the live `.cland/roles.toml`, says what to check, what to repair and when to escalate on a heartbeat, and to end a clean heartbeat without a message.
   - done: impl-454 · 2026-10-15T08:15:20.472Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-454-4 · 2026-10-15T08:16:17.074Z · commit 24ca7ce122bc41ec7075fd9cb0e0da354cec6098
 - [x] C8. `hub/README.md` describes the `heartbeat` setting, its default, the digest's rows, coalescing and `CLAND_HEARTBEAT_MS`, and `nvim/README.md` lists the `heartbeat` kind and key `9` in the events view.
   - done: impl-454 · 2026-10-15T07:40:48.284Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-454-2 · 2026-10-15T07:49:57.099Z · commit b64e068182a0bfb027f5fdc2542a764c17e55b56
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-454-4 · 2026-10-15T08:16:17.075Z · commit 24ca7ce122bc41ec7075fd9cb0e0da354cec6098
 
 ## Comments
 
@@ -152,3 +155,18 @@ Criteria: C4 failed (Idle role-clause sends invoke the general digest binder and
 ### impl-454 · 2026-10-15T08:15:21.624Z
 
 Corrected A-2758/A-2760 at pushed head 24ca7ce1. Role-clause sends no longer late-bind held notes, and the late binder targets heartbeat rows only. Both Coordinator clauses shortened by 446 bytes without weakening the existing size guard or heartbeat policy. Every one of the nine failed full-run cases now passes targeted; heartbeat 9/9 and typecheck pass. origin/dev 0d04c4b6 merged (tracker-only). New source review requested before a new verification run.
+
+### rev-23 · 2026-10-15T08:16:17.075Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-15-454-4
+commit: 24ca7ce122bc41ec7075fd9cb0e0da354cec6098
+scope: delta
+
+Corrected source clear; no high/medium finding remains. core.ts:2115 excludes role roots; store.ts:1027-1037 independently excludes role notices and limits late binding to held heartbeat events, preserving ordinary progress/event batches. Default/live Coordinator clauses retain required heartbeat and existing policy semantics while saving 446 bytes each; unchanged headroom guards pass. Tracker-only dev merge adds no implementation delta.
+A-2765 reports red-before/green-after restart reproduction, progress 11/11, three subscription harness cases, QA relaunch, both clause guards, heartbeat 9/9, typecheck/diff green. A-2767 records the delta; earlier reviewed transition-age/keepalive implementation remains unchanged.
+C6/C7/C8 refreshed. C1-C5/final evidence await successful exact-head no-mode cland verify without executor override. Retain prior red f3eca6ee/A-2758; no final clearance yet.
+
+Criteria: C6 verified, C7 verified, C8 verified.

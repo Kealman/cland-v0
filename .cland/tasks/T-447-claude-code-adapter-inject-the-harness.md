@@ -17,7 +17,7 @@ blocked_by: []
 topic: topic-279
 branch: t/T-447-claude-code-adapter-inject-the-harness
 created: 2026-10-15T01:04:10.495Z
-updated: 2026-10-15T08:10:53.291Z
+updated: 2026-10-15T08:16:24.785Z
 ---
 
 ## Summary
@@ -26,8 +26,10 @@ updated: 2026-10-15T08:10:53.291Z
 
 ## Acceptance criteria
 
-- [ ] C1. The cause is named, and the file passes 5/5 beside a local full run with its assertions unchanged.
-- [ ] C2. C2. claude-code-sessions.test.ts:119 (late start/StopFailure, clauseTurnDone) and :251 (initial clause injection) wait on the observed clause-turn and injection state rather than a 15 s wall, and both files pass 5/5 serially beside a local full run.
+- [x] C1. The cause is named, and the file passes 5/5 beside a local full run with its assertions unchanged.
+  - done: impl-447 · 2026-10-15T08:16:22.121Z
+- [x] C2. C2. claude-code-sessions.test.ts:119 (late start/StopFailure, clauseTurnDone) and :251 (initial clause injection) wait on the observed clause-turn and injection state rather than a 15 s wall, and both files pass 5/5 serially beside a local full run.
+  - done: impl-447 · 2026-10-15T08:16:24.785Z
 
 ## Comments
 
