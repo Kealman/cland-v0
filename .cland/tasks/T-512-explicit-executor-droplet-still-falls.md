@@ -3,7 +3,7 @@ id: T-512
 kind: task
 title: Explicit --executor droplet still falls back to the Mac when the remote budget is full
 state: open
-status: review
+status: ready
 size: S
 rank: 3090
 criterion_seq: 3
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-312
 branch: t/T-512-explicit-executor-droplet-still-falls
 created: 2026-10-15T16:25:28.989Z
-updated: 2026-10-15T19:32:44.846Z
+updated: 2026-10-15T19:33:50.720Z
 ---
 
 ## Summary
@@ -24,15 +24,18 @@ updated: 2026-10-15T19:32:44.846Z
 
 ## Acceptance criteria
 
-- [ ] C1. A run submitted with an explicit `--executor droplet` waits in the queue for a remote slot or budget and never falls back to local. The queue shows it as waiting for remote, with its position.
+- [x] C1. A run submitted with an explicit `--executor droplet` waits in the queue for a remote slot or budget and never falls back to local. The queue shows it as waiting for remote, with its position.
   - verified: rev-30 [reviewer] · run rev-20261015-512-final · 2026-10-15T18:39:58.288Z · commit a4ad9640cfdd534d8ed03c1f0955e1a33d0f93d3
   - verified: rev-30 [reviewer] · run rev-20261015-512-integration-final · 2026-10-15T19:32:44.846Z · commit 0222b1eeefaea32fe7a7a8ed586fd7867fd5dc30
-- [ ] C2. It still refuses, rather than waits, when the daily spend cap can't cover its reservation, naming the cap. Runs with no flag keep today's fallback.
+  - done: impl-512 · 2026-10-15T19:33:47.664Z
+- [x] C2. It still refuses, rather than waits, when the daily spend cap can't cover its reservation, naming the cap. Runs with no flag keep today's fallback.
   - verified: rev-30 [reviewer] · run rev-20261015-512-final · 2026-10-15T18:39:58.288Z · commit a4ad9640cfdd534d8ed03c1f0955e1a33d0f93d3
   - verified: rev-30 [reviewer] · run rev-20261015-512-integration-final · 2026-10-15T19:32:44.846Z · commit 0222b1eeefaea32fe7a7a8ed586fd7867fd5dc30
-- [ ] C3. A test fills the remote budget, submits an explicit-droplet run, and sees it wait and then run remotely once a slot frees.
+  - done: impl-512 · 2026-10-15T19:33:49.009Z
+- [x] C3. A test fills the remote budget, submits an explicit-droplet run, and sees it wait and then run remotely once a slot frees.
   - verified: rev-30 [reviewer] · run rev-20261015-512-final · 2026-10-15T18:39:58.288Z · commit a4ad9640cfdd534d8ed03c1f0955e1a33d0f93d3
   - verified: rev-30 [reviewer] · run rev-20261015-512-integration-final · 2026-10-15T19:32:44.846Z · commit 0222b1eeefaea32fe7a7a8ed586fd7867fd5dc30
+  - done: impl-512 · 2026-10-15T19:33:50.009Z
 
 ## Comments
 

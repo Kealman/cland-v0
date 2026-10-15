@@ -2,8 +2,8 @@
 id: T-473
 kind: task
 title: "Size gate: XL is refused at filing, and plan-epic splits L tasks into 2–3 M tasks unless the Coordinator records a reason"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-314
 branch: t/T-473-size-gate-xl-is-refused-at-filing-and
 created: 2026-10-15T09:13:17.633Z
-updated: 2026-10-15T19:33:13.417Z
+updated: 2026-10-15T19:33:45.434Z
+closed: 2026-10-15T19:33:45.434Z
 ---
 
 ## Summary
@@ -125,3 +126,7 @@ C1 verified: common tracker create/edit refuses newly assigned XL with split gui
 Earlier source/delta reasoning and A-3279 targeted37/37 remain supporting evidence. No source changes, new suite runs or edits by Reviewer. No per-item QA requirement.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-15T19:33:45.434Z
+
+Merged 63f2ab1259f7fd8128954aeb9d8ac60353fef88f onto dev.

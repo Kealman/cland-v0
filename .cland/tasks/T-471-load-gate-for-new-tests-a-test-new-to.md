@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-317
 branch: t/T-471-load-gate-for-new-tests-a-test-new-to
 created: 2026-10-15T09:13:16.338Z
-updated: 2026-10-15T19:33:20.766Z
+updated: 2026-10-15T19:33:52.162Z
 ---
 
 ## Summary
