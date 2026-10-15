@@ -2,8 +2,8 @@
 id: T-442
 kind: task
 title: sessions.test.ts hard-limits display test fails when the reset falls after local midnight
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 1
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-286
 branch: t/T-442-sessions-test-ts-hard-limits-display
 created: 2026-10-14T22:00:11.207Z
-updated: 2026-10-15T09:51:56.357Z
+updated: 2026-10-15T09:52:03.531Z
+closed: 2026-10-15T09:52:03.531Z
 ---
 
 ## Summary
@@ -67,3 +68,7 @@ Spec: C1 verified. A-2840:694 shows the modified hard-limits test passing (5.269
 Same-head gate b6ea9f45-ea71-430d-b373-6cfa5b518c94 / A-2840: exit 0; host/remote typecheck green; nvim-only + hub smoke; Linux x64, Node v24.21.0, Neovim v0.12.5. 403 tests: 400 pass, 0 fail/cancelled, 3 documented macOS sandbox-exec skips in nvim/test/qa.test.ts. No C1 checks skipped.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-15T09:52:03.531Z
+
+Merged 30a98a6d050df4f8f6596cb9db8b68e2fb0a0017 onto dev.
