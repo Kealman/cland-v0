@@ -57,6 +57,8 @@ const KEPT = [
   'add_labels',
   'remove_labels',
   'blocked_by',
+  'follows',
+  'unfollow',
   'unblock',
   'branch',
   'verdict',

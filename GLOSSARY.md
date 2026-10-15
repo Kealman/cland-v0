@@ -235,7 +235,7 @@ A delivery the hub sends a session at a set interval with a digest of what is in
 _Avoid_: cron, poll, ping (that is the connection's keepalive), timer
 
 **Follows**:
-The relation that orders epics within a lane: the next epic may start when the previous one's last ticket merges. Not a dependency: that is blocked by.
+The relation that orders epics within a lane: it is met when the predecessor closes, or has task children all closed with its last ticket merged. Until the predecessor’s demo verdict or closure, a merge hold keeps the following epic’s tickets off files changed by the predecessor’s merges; dependencies remain blocked by.
 _Avoid_: blocked by, after, depends on
 
 **Executor**:

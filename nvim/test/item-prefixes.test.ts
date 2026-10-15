@@ -19,7 +19,7 @@ test('gI on a legacy reference opens the canonical epic and only kind prefixes a
   const c = await startClient(t, bin, root, {
     CLAND_HUB_TRANSPORT: 'stdio', CLAND_COMMAND: JSON.stringify([process.execPath, STUB]),
     CLAND_STUB_SCENARIO_JSON: JSON.stringify({ inbox: {}, items: [
-      { id: 'E-107', kind: 'epic', title: 'Canonical epic', state: 'open', file: 'T-107-legacy.md', labels: [], blocked_by: [], parent: null, claim: null, holds: [] },
+      { id: 'E-107', kind: 'epic', title: 'Canonical epic', state: 'open', file: 'T-107-legacy.md', labels: [], blocked_by: [], follows: ['E-108'], parent: null, claim: null, holds: [] },
     ], messages: { general: [{ id: 'm1', from: 'coord', fromKind: 'agent', fromRole: 'coordinator', via: 'spoke', to: ['human'], text, ts: '2026-10-13T00:00:00Z', topic: 'general' }] } }),
   });
   await c.waitScreen(s => s.includes('References T-107') && s.includes('A-12'), 'legacy references in the thread');
@@ -31,6 +31,7 @@ test('gI on a legacy reference opens the canonical epic and only kind prefixes a
   await c.input('gg/T-107<CR>gI');
   await c.waitScreen(s => s.includes('E-107 · item') && s.includes('Canonical epic'), 'canonical epic item view');
   assert.equal(await c.lua("return require('cland.state').S.ui.view.id"), 'E-107');
+  assert.match(await c.lua<string>("return table.concat(vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(require('cland.layout').centre()), 0, -1, false), '\\n')"), /follows.*E-108/);
   await c.input('<Space><Space>');
   await c.waitScreen(s => s.includes('References T-107') && s.includes('A-12'), 'thread before alternate command navigation');
   await c.input(':Cland view item R-107<CR>');

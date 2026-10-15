@@ -43,6 +43,7 @@ function itemOf(raw: FixtureItem, levels: Levels): Item {
       assignee: text(raw.assignee),
       parent: text(raw.parent),
       blocked_by: texts(raw.blocked_by),
+      ...(raw.follows !== undefined ? { follows: texts(raw.follows) } : {}),
       topic: text(raw.topic),
       branch: text(raw.branch),
       created: text(raw.created) ?? FIXTURE_STAMP,

@@ -1461,12 +1461,18 @@ approval arrive in their own slices. No role clause changes in T-183.
 | `cland task comment <id> <text> [--verdict review\|qa --result clear\|"not clear" --run <id> [--commit <sha>] [--scope full\|delta\|evidence]]` | `task.comment` | Appends a comment, or a verdict. |
 | `cland task edit <id> [--version] [--title] [--body] [--kind] [--size] [--state] [--status] [--label]… [--add-label]… [--remove-label]… [--assignee]` | `task.edit` | Changes fields; `none` clears the assignee. |
 | `cland task close <id> [--comment]` | `task.close` | Closes the item. |
-| `cland task link <id> [--regression-of] [--parent] [--blocked-by]… [--unblock]… [--topic] [--branch]` | `task.link` | Sets the links; `none` clears one. |
+| `cland task link <id> [--regression-of] [--parent] [--blocked-by]… [--unblock]… [--follows]… [--unfollow]… [--topic] [--branch]` | `task.link` | Sets the links; `none` clears one. |
 | `cland task hold <id> [--release]` | `task.hold` | Reviewer or QA takes/releases its own verifier hold beside the Implementer claim. |
 | `cland task criterion <id> <op> …` | `task.criterion` | Done, verify, fail, add, edit and remove criteria with role and claim checks. |
 | `cland task rank <id> --top/--before T-n/--after T-n` | `task.rank` | Moves among siblings with minimal rank writes; returns changed and ordered sibling ids. |
 | `cland task claim <id> [--release] [--force]` | `task.claim` | Takes or releases the claim. Claiming an open task in a project with a territory makes or reuses its branch and worktree (Task branches and worktrees). |
 | `cland task import-github [--repo owner/name] [--all]` | — (`task.import` frames) | Imports GitHub Issues as items (below). |
+
+Lane order is a separate `follows` list beside `blocked_by` in epic frontmatter. Set it with `cland task create "Next epic" --kind epic --follows E-1`, or `cland task link E-2 --follows E-1`; remove an edge with `--unfollow E-1`. Repeated flags and the matching `task.create` / `task.link` tool fields take multiple ids. Any recognized prefix or bare number resolves to the canonical epic id; non-epic endpoints and cycles refuse. `task.view`, the card and explorer show follows beside blockers. Only `blocked_by` marks an item blocked.
+
+A follow is met when its predecessor is closed, or has task children all closed with its last ticket merged on dev. Plain `task view` shows `follows E-1: met` or the open tickets (and explains an empty or unmerged predecessor); JSON supplies `followStatus`. Prepare the next epic’s tickets and plan while every ticket of the predecessor’s last stage is in review, then launch its first stage on the last merge, subject to real blockers and plan approval.
+
+While that open predecessor’s follow is met and its demo is pending, the merge gate returns `merge-hold` only for follower tickets touching its merge surfaces. The exported `epicMergeFiles(root, taskIds, ref)` helper in `src/tracker/epic-surfaces.ts` reads `Item:` trailers on dev and includes both sides of renames and deleted paths. The gate names the predecessor, pending demo and overlapping files. Unrelated files merge at once; either recorded hub QA demo verdict (clear or not clear, excluding stage verdicts) or predecessor closure releases the hold. Epic demos still close epics and gate release.
 
 The frames are `{"type":"task.<op>","id":"<request id>","item":"T-1",…}` with fields named as in the frontmatter (`labels`, `blocked_by`, `add_labels`, …); a CLI frame may carry `"as":{"name":…,"role":…}`, a spoke's always acts as its own session. The tools take the item as `id`.
 

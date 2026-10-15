@@ -39,6 +39,8 @@ export type Frontmatter = {
   assignee: string | null;
   parent: string | null;
   blocked_by: string[];
+  /** Epic predecessors in a lane; independent of blocking dependencies. */
+  follows?: string[];
   /** Landed task whose work this task reworks. */
   regression_of?: string;
   topic: string | null;
@@ -204,6 +206,7 @@ export function parseItem(text: string, fileName?: string, levels: LadderInput =
     assignee: str(r.assignee),
     parent: ref(r.parent, kinds),
     blocked_by: list(r.blocked_by).map((b) => referenceId(b, kinds) ?? b),
+    ...(r.follows !== undefined ? { follows: list(r.follows).map(b => referenceId(b, kinds) ?? b) } : {}),
     topic: str(r.topic),
     branch: str(r.branch),
     created: str(r.created) ?? '',
@@ -336,6 +339,7 @@ export function serializeItem(item: Item): string {
     assignee: fm.assignee,
     parent: fm.parent,
     blocked_by: fm.blocked_by,
+    ...(fm.follows !== undefined ? { follows: fm.follows } : {}),
     ...(fm.regression_of !== undefined ? { regression_of: fm.regression_of } : {}),
     topic: fm.topic,
     branch: fm.branch,

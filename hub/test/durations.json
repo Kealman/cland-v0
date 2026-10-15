@@ -2818,6 +2818,26 @@
     "nvim/test/verification-view.test.ts::verify summary opens the ordered queue and ages locally; palette and keys expose the view": 6.183538
   },
   "allow": {
+    "hub/test/follows.test.ts::a not clear hub demo verdict releases the merge hold": {
+      "seconds": 5.297,
+      "reason": "Lands a predecessor through real Git, proves the overlapping follower is held, records a not-clear hub demo verdict, then proves the follower can land."
+    },
+    "hub/test/follows.test.ts::closing the predecessor releases the merge hold and an empty closed epic is met": {
+      "seconds": 5.339,
+      "reason": "Closes an empty epic and exercises predecessor landing, overlap refusal, epic closure and follower landing through real tracker and Git lifecycle boundaries."
+    },
+    "hub/test/suite.test.ts::a fresh attempt cancelled by head change preserves the original green cache evidence": {
+      "seconds": 5.047,
+      "reason": "Runs an original verification worker, cancels a lock-waiting fresh attempt on a new Git head, and proves the original cache evidence is reused without another execution."
+    },
+    "hub/test/follows.test.ts::final surface lookup revalidates a concurrent follows change before publication": {
+      "seconds": 8.1,
+      "reason": "Lands two predecessor tasks with real Git, pauses the final follower surface read in an external Git process, links a new predecessor and proves refusal plus the retry hold."
+    },
+    "hub/test/follows.test.ts::follow becomes met on the last merge and blocks only overlapping follower merges": {
+      "seconds": 5.8,
+      "reason": "Exercises two real Git squash landings plus two overlap refusals and proves dev stays unchanged while the demo is pending."
+    },
     "hub/test/tracker-async.test.ts::a six-second tracker write warns, completes and leaves the hub serving": {
       "seconds": 7.751440333,
       "reason": "T-483 regression holds real tracker I/O for six seconds to cross the production five-second warning threshold and prove the serving hub recovers without exiting."

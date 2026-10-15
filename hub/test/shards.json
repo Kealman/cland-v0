@@ -42,6 +42,7 @@
     "hub/test/events.test.ts": "machine",
     "hub/test/executor.test.ts": "machine",
     "hub/test/epic-close.test.ts": "machine",
+    "hub/test/follows.test.ts": "machine",
     "hub/test/freshness.test.ts": "machine",
     "hub/test/handover-integrity.test.ts": "machine",
     "hub/test/handover.test.ts": "machine",

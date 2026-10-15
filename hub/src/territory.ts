@@ -605,7 +605,7 @@ export async function removeTaskWorktree(root: string, item: string, check: Work
 export async function squashTask(
   root: string,
   branch: string,
-  message: (tip: string, base: string, baseTip: string) => Promise<string>,
+  message: (tip: string, base: string, baseTip: string, files: readonly string[]) => Promise<string>,
   resumed: <T>(work: () => T) => T = (work) => work(),
   prepared: (landing: { commit: string; base: string; tip: string; checkout?: { before: string; after: string } }) => void = () => {},
   authorize: () => void = () => {},
@@ -659,9 +659,9 @@ export async function squashTask(
   // Git's own index/worktree safety checks also catch directory obstructions and staged changes. No ref yet.
   try { await territoryGitAsync(root, ['read-tree', '--dry-run', '-m', '-u', before, tree]); }
   catch (err) { resumed(() => { throw new MergeError('merge-dirty', err instanceof Error ? err.message : String(err)); }); }
-  const text = await message(tip, base, before);
+  const text = await message(tip, base, before, touched.split('\0').filter(Boolean));
   const commit = await territoryGitAsync(root, ['commit-tree', tree, '-p', before], false, text + '\n');
-  const latestText = await message(tip, base, before);
+  const latestText = await message(tip, base, before, touched.split('\0').filter(Boolean));
   resumed(() => { if (latestText !== text) throw new MergeError('merge-changed', 'the item or verdicts changed during preparation; try again'); });
   // These facts are read again after every preparation callback: a checkout or ref may move during its awaits.
   const currentTip = await refAsync(root, `refs/heads/${branch}`);

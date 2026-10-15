@@ -24,7 +24,7 @@ export const TASK_TOOLS = [
     description: "Create an item in the project's tracker (a Markdown file in .cland/tasks/, id with the kind's prefix and a shared number). A task needs a size: XS, S, M, L or XL. Returns the item.",
     inputSchema: {
       type: 'object',
-      properties: { title: str, kind: { ...KIND, description: 'Default task' }, size: SIZE, regression_of: itemId, version: { ...str, description: 'Release semver without the v; optional at creation' }, body: str, labels: strs, assignee: str, parent: itemId, blocked_by: strs, topic: str, branch: str },
+      properties: { title: str, kind: { ...KIND, description: 'Default task' }, size: SIZE, regression_of: itemId, version: { ...str, description: 'Release semver without the v; optional at creation' }, body: str, labels: strs, assignee: str, parent: itemId, blocked_by: strs, follows: { ...strs, description: 'Epic predecessors in a lane' }, topic: str, branch: str },
       required: ['title'],
     },
   },
@@ -59,8 +59,8 @@ export const TASK_TOOLS = [
   },
   {
     name: 'task.link',
-    description: 'Set an item\'s parent, add or remove blockers, set its regression_of, topic or branch (null clears).',
-    inputSchema: { type: 'object', properties: { id: itemId, regression_of: { ...nullableStr, description: 'Landed task reworked; null or none clears' }, parent: nullableStr, blocked_by: { ...strs, description: 'Blockers to add' }, unblock: { ...strs, description: 'Blockers to remove' }, topic: nullableStr, branch: nullableStr }, required: ['id'] },
+    description: 'Set an item\'s parent, add or remove blockers and epic follows, set its regression_of, topic or branch (null clears).',
+    inputSchema: { type: 'object', properties: { id: itemId, regression_of: { ...nullableStr, description: 'Landed task reworked; null or none clears' }, parent: nullableStr, blocked_by: { ...strs, description: 'Blockers to add' }, unblock: { ...strs, description: 'Blockers to remove' }, follows: { ...strs, description: 'Epic predecessors to add' }, unfollow: { ...strs, description: 'Epic predecessors to remove' }, topic: nullableStr, branch: nullableStr }, required: ['id'] },
   },
   {
     name: 'task.rank',

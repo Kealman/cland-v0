@@ -100,7 +100,7 @@ test('epic cards show stage progress, approval, subtree verdict and latest activ
   const stages=[{name:'First',items:['T-11'],state:'closed',closed:older},
     {name:'Card',items:['T-10'],state:'open',qa:{scope:'full',when:'after-stage'}}];
   const scenario={...fixture,items:fixture.items!.filter(i=>!String(i.id).match(/^T-[345]\d$/)).map(i=>
-    i.id==='E-2'?{...i,updated:older,plan,stages,approval:{required:true,state:'approved',by:'human',at:older}}:
+    i.id==='E-2'?{...i,updated:older,follows:['E-1'],plan,stages,approval:{required:true,state:'approved',by:'human',at:older}}:
     i.id==='T-11'?{...i,state:'closed',status:'done',closed:older,updated:older}:
     i.id==='T-10'?{...i,updated:older,verdicts:[v],comments:[{author:'qa-1',at:newer,verdict:v,text:'The card passes. More details.'}]}:i),
     topics:fixture.topics!.map(i=>i.item==='T-10'?{...i,lastMessageAt:newer}:i)};
@@ -109,7 +109,7 @@ test('epic cards show stage progress, approval, subtree verdict and latest activ
   await select(c,'E-2'); await shown(c,'E-2','approved by human');
   await shown(c,'E-2','The card passes.');
   let text=await card(c);
-  for(const value of ['1 of 2 done','1 done · 1 review','S1 ■ closed','S2 ■ open','PLAN · STAGE 2 OF 2',
+  for(const value of ['follows','E-1','1 of 2 done','1 done · 1 review','S1 ■ closed','S2 ■ open','PLAN · STAGE 2 OF 2',
     '0 of 1 merged','qa full, after the stage','approval human','in its tasks · T-10 Written summary task',
     'The card passes.','evidence','a message in its topic · T-10']) assert.ok(text.includes(value),value+'\n'+text);
   assert.ok(!text.includes('More details.'));

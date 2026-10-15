@@ -22,6 +22,7 @@ export type TaskRequest =
       assignee?: string | null;
       parent?: string | null;
       blocked_by?: string[];
+      follows?: string[];
       regression_of?: string;
       topic?: string | null;
       branch?: string | null;
@@ -50,7 +51,7 @@ export type TaskRequest =
       as?: ActorField;
     }
   | { type: 'task.close'; id: string; item: string; comment?: string; override?: string; as?: ActorField }
-  | { type: 'task.link'; id: string; item: string; parent?: string | null; regression_of?: string | null; blocked_by?: string[]; unblock?: string[]; topic?: string | null; branch?: string | null; as?: ActorField }
+  | { type: 'task.link'; id: string; item: string; parent?: string | null; regression_of?: string | null; blocked_by?: string[]; unblock?: string[]; follows?: string[]; unfollow?: string[]; topic?: string | null; branch?: string | null; as?: ActorField }
   | { type: 'task.hold'; id: string; item: string; release?: boolean; as?: ActorField }
   | { type: 'task.rank'; id: string; item: string; top?: boolean; before?: string; after?: string; as?: ActorField }
   | { type: 'task.claim'; id: string; item: string; release?: boolean; force?: boolean; as?: ActorField }
@@ -89,7 +90,7 @@ export async function handleTaskRequest(tracker: Tracker, frame: TaskRequest, ac
   const f = frame as unknown as Record<string, unknown>;
   for (const k of ['title', 'body', 'text', 'comment', 'under', 'override']) optStr(f, k);
   for (const k of ['assignee', 'parent', 'topic', 'branch', 'version']) optNullableStr(f, k);
-  for (const k of ['labels', 'add_labels', 'remove_labels', 'blocked_by', 'unblock']) optList(f, k);
+  for (const k of ['labels', 'add_labels', 'remove_labels', 'blocked_by', 'unblock', 'follows', 'unfollow']) optList(f, k);
   if (f.kind !== undefined && !tracker.kinds.includes(f.kind as Kind)) throw new TrackerError(`unknown kind "${String(f.kind)}" (one of ${tracker.kinds.join(', ')})`);
   if (f.state !== undefined && !STATES.includes(f.state as State)) throw new TrackerError(`unknown state "${String(f.state)}" (open or closed)`);
   switch (frame.type) {

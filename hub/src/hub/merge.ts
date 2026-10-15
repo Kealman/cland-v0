@@ -4,6 +4,7 @@ import type { LogFn } from '../log.ts';
 import { access } from 'node:fs/promises';
 import { join } from 'node:path';
 import { MergeError } from '../merge.ts';
+import { epicMergeFiles } from '../tracker/epic-surfaces.ts';
 import { gateVerdicts, incompleteCriteria } from '../tracker/gate-verdicts.ts';
 import type { Actor, ItemView, Tracker } from '../tracker/tracker.ts';
 import { landedTask, reconcileTaskCheckout, restoreTaskCheckout, squashTask, territoryGitAsync, territoryPath, withTerritoryLockAsync } from '../territory.ts';
@@ -42,6 +43,30 @@ export class TaskMerges {
       if (!view.branch) throw new MergeError('merge-branch', `${view.id} has no branch`);
       return view;
     });
+  }
+
+  async #laneHold(view: ItemView, files: readonly string[], dev: string, resumed: Resumed): Promise<() => void> {
+    const revision = resumed(() => this.tracker.laneRevision(view.id));
+    const holds: Array<{ id: string; files: string[] }> = [];
+    for (const ancestor of view.ancestry.filter(a => this.tracker.isPlanContainer(a.kind))) {
+      const epic = await this.tracker.viewAsync(ancestor.id, resumed);
+      for (const id of epic.follows ?? []) {
+        const predecessor = await this.tracker.viewAsync(id, resumed);
+        const pending = () => predecessor.state === 'open' && this.tracker.followStatus(id).met
+          && !predecessor.verdicts.some(v => v.verdict === 'qa' && v.stage === undefined && v.source === 'hub' && v.writer?.role === 'qa');
+        if (!resumed(pending)) continue;
+        const tasks = resumed(() => this.tracker.list({ under: id, kind: 'task' }).map(t => t.id));
+        const surfaces = await epicMergeFiles(this.tracker.root, tasks, dev);
+        const overlap = resumed(() => files.filter(file => surfaces.includes(file)));
+        if (overlap.length) holds.push({ id, files: [...overlap] });
+      }
+    }
+    // Run beside the final verdict/message check: no added file or Git await can hide changed inputs.
+    return () => {
+      if (revision !== this.tracker.laneRevision(view.id)) throw new MergeError('merge-changed', `${view.id}: lane or gate inputs changed during lookup; try again`);
+      const hold = holds[0];
+      if (hold) throw new MergeError('merge-hold', `${view.id}: ${hold.id} demo pending; overlapping files: ${hold.files.join(', ')}. Wait for its demo verdict or closure.`, hold.files);
+    };
   }
 
   #message(view: ItemView, override?: string): string {
@@ -127,13 +152,16 @@ export class TaskMerges {
           const checked = await this.#view(id, resumed, override === undefined);
           resumed(() => this.#message(checked, override));
           try {
-            const result = await squashTask(this.tracker.root, view.branch!, async (tip, base, baseTip) => {
+            const result = await squashTask(this.tracker.root, view.branch!, async (tip, base, baseTip, files) => {
               await this.tracker.refreshFreshness(resumed);
               const now = await this.#view(id, resumed, override === undefined);
+              const validateLane = await this.#laneHold(now, files, baseTip, resumed);
+              const finalView = await this.#view(id, resumed, override === undefined);
               return resumed(() => {
+                validateLane();
                 authorize();
-                if (now.branch !== view.branch || this.tracker.freshnessTip(now.branch) !== tip || this.tracker.freshnessTip(base) !== baseTip || now.verdictBase !== base) throw new MergeError('merge-changed', `${id}: task branch changed during preparation; try again`);
-                return this.#message(now, override);
+                if (finalView.branch !== view.branch || this.tracker.freshnessTip(finalView.branch) !== tip || this.tracker.freshnessTip(base) !== baseTip || finalView.verdictBase !== base) throw new MergeError('merge-changed', `${id}: task branch changed during preparation; try again`);
+                return this.#message(finalView, override);
               });
             }, resumed, landing => this.tracker.recordMerge(id, { ...landing, branch: view.branch!, ...(override === undefined ? {} : { override }) }), authorize);
             resumed(() => { state.landed = result; });

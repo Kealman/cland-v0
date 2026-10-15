@@ -314,6 +314,7 @@ function C.compose(key, width)
     end
   end
   relations('blocked by',type(it.blocked_by)=='table' and it.blocked_by or {})
+  if type(it.follows)=='table' and #it.follows>0 then relations('follows',it.follows) end
   relations('blocks',items.blocks(it.id))
   if present(it.regression_of) then relations('regression of',{it.regression_of}) end
 

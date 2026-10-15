@@ -38,6 +38,11 @@ create table if not exists tracker_blocked_by (
   blocker text not null,
   primary key (item_id, blocker)
 );
+create table if not exists tracker_follows (
+  item_id text not null references tracker_items (id) on delete cascade,
+  predecessor text not null,
+  primary key (item_id, predecessor)
+);
 create table if not exists tracker_verdicts (
   item_id text not null references tracker_items (id) on delete cascade,
   seq integer not null,
@@ -121,6 +126,7 @@ export type IndexedItem = {
   assignee: string | null;
   parent: string | null;
   blocked_by: string[];
+  follows?: string[];
   topic: string | null;
   branch: string | null;
   created: string;
@@ -156,6 +162,10 @@ export type ListFilter = {
 };
 
 type Row = Record<string, string | number | null>;
+
+// Load lane edges with the item row: hydration must not add a query for every unrelated item.
+const ITEM_COLUMNS = `i.*, (select json_group_array(predecessor) from
+  (select predecessor from tracker_follows where item_id = i.id order by rowid)) as follows_json`;
 
 export class TrackerIndex {
   readonly #db: DatabaseSync;
@@ -248,6 +258,8 @@ export class TrackerIndex {
       for (const l of fm.labels) label.run(fm.id, l);
       const blocker = this.#db.prepare('insert or ignore into tracker_blocked_by (item_id, blocker) values (?, ?)');
       for (const b of fm.blocked_by) blocker.run(fm.id, b);
+      const follow = this.#db.prepare('insert or ignore into tracker_follows (item_id, predecessor) values (?, ?)');
+      for (const predecessor of fm.follows ?? []) follow.run(fm.id, this.#referenceKey(predecessor));
       const last = item.comments.at(-1);
       if (writer && last?.verdict) {
         const v = last.verdict;
@@ -388,20 +400,20 @@ export class TrackerIndex {
       where.push('(select v.result from tracker_verdicts v where v.item_id = i.id and v.verdict = ? order by v.seq desc limit 1) = ?');
       args.push(filter.verdict.verdict, filter.verdict.result);
     }
-    const rows = this.#db.prepare(`select i.* from tracker_items i ${where.length ? `where ${where.join(' and ')}` : ''}`).all(...args) as Row[];
+    const rows = this.#db.prepare(`select ${ITEM_COLUMNS} from tracker_items i ${where.length ? `where ${where.join(' and ')}` : ''}`).all(...args) as Row[];
     return rows.map((r) => this.#hydrate(r)).sort(compareRank);
   }
 
   /** Direct children only; hand-edit warnings need no unrelated labels or blockers. */
   children(id: string): IndexedItem[] {
     id = this.#key(id);
-    const rows = this.#db.prepare('select i.* from tracker_items i where parent = ?').all(id) as Row[];
+    const rows = this.#db.prepare(`select ${ITEM_COLUMNS} from tracker_items i where parent = ?`).all(id) as Row[];
     return rows.map(row => this.#hydrate(row)).sort(compareRank);
   }
 
   get(id: string): IndexedItem | null {
     id = this.#key(id);
-    const r = this.#db.prepare('select * from tracker_items where id = ?').get(id) as Row | undefined;
+    const r = this.#db.prepare(`select ${ITEM_COLUMNS} from tracker_items i where i.id = ?`).get(id) as Row | undefined;
     return r ? this.#hydrate(r) : null;
   }
 
@@ -429,6 +441,8 @@ export class TrackerIndex {
       ...(r.closed !== null ? { closed: r.closed as string } : {}),
       file: r.file as string,
     };
+    const follows = (JSON.parse(r.follows_json as string) as string[]).map(key => this.#canonical(key));
+    if (follows.length) item.follows = follows;
     this.#criteria.set(item, JSON.parse(r.criteria_summary as string) as CriterionSummary[]);
     return item;
   }

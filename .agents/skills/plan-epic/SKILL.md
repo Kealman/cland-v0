@@ -3,6 +3,8 @@ name: plan-epic
 description: Draft or revise a cland epic's ordered stages, parallel lanes and QA policy before launching its work.
 ---
 
+Lane order uses `follows` between epics, separate from `blocked_by`. A follow is met when its predecessor closes, or has task children all closed with its last ticket merged. When every ticket of the predecessor’s last stage is in review, cut the following epic’s tickets with `to-tickets` and write its `plan-epic`; launch the first stage on the last merge once blockers are closed and follows met. The predecessor’s QA demo runs in parallel. Until either demo verdict is recorded or the predecessor closes, the merge gate holds follower tickets whose diff overlaps files changed by that predecessor’s merges on dev; tickets with no overlap can merge.
+
 Run as the Coordinator or the epic's claimed Lead. The plan belongs to the configured second container level (`tracker.levels[1]`, normally epic).
 
 Read `cland task view T-<epic> --json`, `cland task list --under T-<epic> --json` and `cland crew show --json`. View every task to read its criteria and blocking edges. Read `.cland/config.toml` for `[plan] approval` and `qa_default`. Existing plans, merged work and stage QA verdicts constrain a revision.

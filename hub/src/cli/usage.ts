@@ -56,7 +56,7 @@ export const HUB_USAGE = `  hub start       start the project's hub in the backg
 `;
 
 export const TASK_USAGE = `  task create <title> [--kind k] [--size XS|S|M|L|XL] [--regression-of <id>] [--version semver] [--body t | --body-file f] [--label l]… [--assignee a]
-                  [--parent <id>] [--blocked-by <id>]… [--topic t] [--branch b]
+                  [--parent <id>] [--blocked-by <id>]… [--follows <id>]… [--topic t] [--branch b]
   task view <id> (any kind prefix in either case, or a bare number)
   task migrate [--dry-run] [--sizes <JSON-file>] [--json] (offline prefixes, references, titles, categories and retired labels)
   task plan migrate (retire qa-required labels, report policy fallbacks)
@@ -66,7 +66,7 @@ export const TASK_USAGE = `  task create <title> [--kind k] [--size XS|S|M|L|XL]
   task edit <id> [--version semver|none] [--title t] [--body t | --body-file f] [--kind k] [--size XS|S|M|L|XL] [--state s] [--status s] [--label l]…
                   [--add-label l]… [--remove-label l]… [--assignee a|none]
   task close <id> [--comment t] [--override reason (human shell only)]
-  task link <id> [--regression-of <id>|none] [--parent <id>|none] [--blocked-by <id>]… [--unblock <id>]… [--topic t|none] [--branch b|none]
+  task link <id> [--regression-of <id>|none] [--parent <id>|none] [--blocked-by <id>]… [--follows <id>]… [--unblock <id>]… [--unfollow <id>]… [--topic t|none] [--branch b|none]
   task hold <id> [--release] (Reviewer or QA verification beside the claim)
   task criterion <id> <done|verify|fail|edit|remove> <C-n> [--run r] [--note t] [--text t]
   task criterion <id> add <text>

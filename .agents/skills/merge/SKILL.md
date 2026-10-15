@@ -3,6 +3,8 @@ name: merge
 description: Land a reviewed cland task through the hierarchy verdict gate, or handle a gate refusal.
 ---
 
+Lane order uses `follows` between epics, separate from `blocked_by`. A follow is met when its predecessor closes, or has task children all closed with its last ticket merged. When every ticket of the predecessor’s last stage is in review, cut the following epic’s tickets with `to-tickets` and write its `plan-epic`; launch the first stage on the last merge once blockers are closed and follows met. The predecessor’s QA demo runs in parallel. Until either demo verdict is recorded or the predecessor closes, the merge gate holds follower tickets whose diff overlaps files changed by that predecessor’s merges on dev; tickets with no overlap can merge.
+
 Use the hub's `merge` tool with `item: T-<n>`, or `cland merge T-<n>` from the supervising Lead's or Coordinator's shell. Task work reaches the task base (`dev` by default) only through this gate.
 
 The supervising Lead merges scheduled tasks within its claimed subtree; the Coordinator merges unscheduled tasks and tasks outside a Lead's scope. Perform the merge yourself. **Never delegate a merge to a sub-agent:** it inherits the launching session's authority.
@@ -25,6 +27,7 @@ On refusal:
 - `verdict-missing`: preserve the durable record and restore its missing or altered comment; an older clear cannot replace it.
 - Freshness pending: let the async cache settle, then retry once; if still pending, report the refusal.
 - Conflict: send the named files to the Implementer to rebase in its worktree. A changed head needs source review before another verification run; the gate still checks whether the reviewed patch is preserved.
+- `merge-hold`: wait for the named predecessor’s demo verdict or closure, then retry the same head. Keep the `follows` relation and the gate in place.
 - `merge-unpublished`: the root’s `dev` has commits absent from the territory; a Lead reports it to `lead T-<n>` for its own node. The Coordinator commits remaining tracker work, runs `cland push` from its own shell, then retries merge. A refused merge leaves refs and checkout unchanged and names those unpublished commits.
 - Touched root edits or wrong checkout: preserve the root's work and restore the task-base checkout before retrying.
 - `merge-recovery`: neither integration ref landed the prepared commit, but checkout restoration is pending. Preserve the durable receipt, remove the named obstruction, and retry the same item; it restores the checkout before rechecking the gate.

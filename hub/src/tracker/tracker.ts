@@ -104,6 +104,7 @@ export type ItemView = IndexedItem & {
   /** The integration branch used for patch-id comparisons, or null when neither exists. */
   verdictBase: string | null;
   body: string;
+  followStatus?: FollowStatus[];
   /** Last valid plan; a refused hand save is reported separately. */
   plan: EpicPlan | null;
   /** Effective merge policy, from the nearest containing plan or the project default. */
@@ -138,6 +139,8 @@ export type ItemChange = { id: string; item: ItemSummary | null; siblings?: stri
 
 const verdictIdentity = (v: IndexedVerdict): string => JSON.stringify([v.author, v.at, v.verdict, v.result, v.run, v.commit ?? null, v.by, v.stage ?? null, v.stage_hash ?? null, v.scope ?? null]);
 
+export type FollowStatus = { id: string; met: boolean; open: string[]; reason?: string };
+
 export type CreateInput = {
   title: string;
   kind?: Kind;
@@ -148,6 +151,7 @@ export type CreateInput = {
   assignee?: string | null;
   parent?: string | null;
   blocked_by?: string[];
+  follows?: string[];
   regression_of?: string;
   topic?: string | null;
   branch?: string | null;
@@ -171,9 +175,11 @@ export type LinkInput = {
   parent?: string | null;
   /** Blockers to add. */
   blocked_by?: string[];
+  follows?: string[];
   regression_of?: string | null;
   /** Blockers to remove. */
   unblock?: string[];
+  unfollow?: string[];
   topic?: string | null;
   branch?: string | null;
 };
@@ -1278,6 +1284,7 @@ export class Tracker {
     item.fm.id = `${prefixOf(item.fm.kind)}-${idNumber(item.fm.id)}`;
     if (item.fm.parent) item.fm.parent = this.#referenceId(item.fm.parent) ?? item.fm.parent;
     item.fm.blocked_by = item.fm.blocked_by.map(id => this.#referenceId(id) ?? id);
+    if (item.fm.follows) item.fm.follows = item.fm.follows.map(id => this.#referenceId(id) ?? id);
     if (item.fm.regression_of) item.fm.regression_of = this.#referenceId(item.fm.regression_of) ?? item.fm.regression_of;
     return item;
   }
@@ -1332,6 +1339,54 @@ export class Tracker {
     }, resumed, { operation: 'view', item: this.#referenceId(rawId) ?? rawId });
   }
 
+  /** Lane order is met on closure, or once all task children close and the last lands on dev. */
+  followStatus(rawId: string): FollowStatus {
+    const id = this.#referenceId(rawId) ?? rawId;
+    const predecessor = this.#index.get(id);
+    if (!predecessor) return { id, met: false, open: [], reason: 'missing predecessor' };
+    if (predecessor.state === 'closed') return { id, met: true, open: [] };
+    const tasks = this.#index.list({ under: id, kind: 'task' });
+    const open = tasks.filter(t => t.state !== 'closed').map(t => t.id);
+    if (open.length) return { id, met: false, open };
+    const last = tasks.sort((a, b) => (a.closed ?? a.updated).localeCompare(b.closed ?? b.updated) || idNumber(a.id) - idNumber(b.id)).at(-1);
+    const met = !!last && this.#index.mergeReceipt(last.id)?.base === 'dev';
+    return { id, met, open: [], ...(met ? {} : { reason: last ? `last ticket ${last.id} has not merged` : 'no task children' }) };
+  }
+
+  /** In-memory publication guard for lane lookups. File hashes include verdicts and plan policy;
+   * membership/receipts include the task set used for met follows and Git merge surfaces. */
+  laneRevision(rawId: string): string {
+    const id = this.#require(rawId).id;
+    const item = this.#index.get(id)!;
+    const ancestors = this.#ancestorIds(item.parent);
+    const predecessors = ancestors.flatMap(ancestor => {
+      const epic = this.#index.get(ancestor);
+      return epic && this.isPlanContainer(epic.kind) ? epic.follows ?? [] : [];
+    });
+    const tasks = uniq(predecessors).flatMap(predecessor => this.#index.list({ under: predecessor, kind: 'task' }).map(t => t.id));
+    return JSON.stringify([
+      uniq([id, ...ancestors, ...predecessors, ...tasks]).map(key => [key, this.#index.metaOf(key)?.hash]),
+      tasks.map(key => [key, this.#index.mergeReceipt(key)]),
+      this.#index.claimOf(id), this.#index.holdsOf(id),
+    ]);
+  }
+
+  #checkFollows(kind: Kind, self: string | null, follows: readonly string[]): void {
+    if (!follows.length) return;
+    if (!this.isPlanContainer(kind)) throw new TrackerError('follows edges belong only to epics');
+    for (const id of follows) {
+      if (!this.isPlanContainer(this.#index.get(id)?.kind ?? '')) throw new TrackerError(`follows target ${id} must be an epic`);
+      const pending = [id], visited = new Set<string>();
+      while (pending.length) {
+        const next = pending.pop()!;
+        if (self && idNumber(next) === idNumber(self)) throw new TrackerError('follows cycle refused');
+        if (visited.has(next)) continue;
+        visited.add(next);
+        pending.push(...(this.#index.get(next)?.follows ?? []));
+      }
+    }
+  }
+
   #ancestorIds(parent: string | null): string[] {
     const ids: string[] = [];
     while (parent && !ids.includes(parent)) {
@@ -1377,7 +1432,7 @@ export class Tracker {
     const indexed = this.#index.get(id);
     if (!indexed) throw new TrackerError(`no item ${id}`);
     if (source === 'file' && this.isPlanContainer(item.fm.kind)) this.#planCandidates.set(id, { item, source: 'hand' });
-    const { closed: _indexedClosed, size: _indexedSize, regression_of: _indexedRegression, rank_set: _indexedRankSet, ...indexedFields } = indexed;
+    const { closed: _indexedClosed, size: _indexedSize, regression_of: _indexedRegression, follows: _indexedFollows, rank_set: _indexedRankSet, ...indexedFields } = indexed;
     const view: ItemView = {
       ...indexedFields,
       verdictBase: this.#fresh.base(),
@@ -1385,6 +1440,7 @@ export class Tracker {
       parent: item.fm.parent ? this.#referenceId(item.fm.parent) ?? item.fm.parent : null,
       blocked_by: item.fm.blocked_by.map(id => this.#referenceId(id) ?? id),
       ...(item.fm.regression_of !== undefined ? { regression_of: this.#referenceId(item.fm.regression_of) ?? item.fm.regression_of } : {}),
+      ...(item.fm.follows?.length ? { follows: item.fm.follows, followStatus: item.fm.follows.map(id => this.followStatus(id)) } : {}),
       rank: effectiveRank(item.fm),
       ...(item.fm.rank !== undefined ? { rank_set: true as const } : {}),
       file,
@@ -1951,6 +2007,8 @@ export class Tracker {
     const parent = input.parent ? this.#ref(input.parent, null, 'parent') : null;
     this.#checkParent(kind, parent);
     const blocked = [...new Set((input.blocked_by ?? []).map((b) => this.#ref(b, null, 'blocked_by')))];
+    const follows = uniq((input.follows ?? []).map(b => this.#ref(b, null, 'follows')));
+    this.#checkFollows(kind, null, follows);
     const topic = input.topic?.trim() || null;
     this.#checkTopic(null, topic);
     const names = await this.#files.readdir(this.#dir);
@@ -1972,6 +2030,7 @@ export class Tracker {
           assignee: input.assignee ?? null,
           parent,
           blocked_by: blocked,
+          ...(follows.length ? { follows } : {}),
           topic,
           branch: input.branch ?? null,
           created: now,
@@ -2227,6 +2286,8 @@ export class Tracker {
         if (input.body !== undefined) item.body = input.body.trim();
         if (input.kind !== undefined && input.kind !== fm.kind) {
           this.#checkParent(input.kind, fm.parent);
+          this.#checkFollows(input.kind, fm.id, fm.follows ?? []);
+          if (!this.isPlanContainer(input.kind) && this.#index.list().some(i => i.follows?.some(f => idNumber(f) === idNumber(fm.id)))) throw new TrackerError('remove incoming follows edges before changing an epic kind');
           changingKind = { id: fm.id, previous: fm.kind, next: input.kind };
           if (fm.version !== undefined && input.version !== null) {
             const refusal = versionRefusal(input.kind, fm.version, this.ladder);
@@ -2484,12 +2545,19 @@ export class Tracker {
       const parent = input.parent === undefined ? undefined : input.parent === null ? null : this.#ref(input.parent, id, 'parent');
       const add = (input.blocked_by ?? []).map((b) => this.#ref(b, id, 'blocked_by'));
       const remove = (input.unblock ?? []).map((b) => this.#referenceId(b) ?? b);
+      const follow = (input.follows ?? []).map(b => this.#ref(b, id, 'follows'));
+      const unfollow = (input.unfollow ?? []).map(b => this.#referenceId(b) ?? b);
       const topic = input.topic === undefined ? undefined : input.topic?.trim() || null;
       if (topic !== undefined) this.#checkTopic(id, topic);
       const view = await this.#mutate(id, actor, 'link', (item) => {
         const fm = item.fm;
         if (parent !== undefined) { this.#checkParent(fm.kind, parent); fm.parent = parent; }
         fm.blocked_by = uniq([...fm.blocked_by, ...add]).filter((b) => !remove.includes(b));
+        if (input.follows !== undefined || input.unfollow !== undefined) {
+          const follows = uniq([...(fm.follows ?? []), ...follow]).filter(b => !unfollow.includes(b));
+          this.#checkFollows(fm.kind, id, follows);
+          fm.follows = follows;
+        }
         if (topic !== undefined) fm.topic = topic;
         if (input.branch !== undefined) fm.branch = input.branch || null;
         if (input.regression_of !== undefined) {

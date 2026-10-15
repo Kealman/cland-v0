@@ -176,6 +176,8 @@ function M.fields(it, d)
     blockers[#blockers + 1] = b .. ' (' .. (other and other.state or 'unknown') .. ')'
   end
   out[#out + 1] = field('blocked by', #blockers > 0 and table.concat(blockers, ', ') or '—', #items.open_blockers(it) > 0 and 'ClandAmber' or 'ClandDim')
+  local follows = type(it.follows) == 'table' and it.follows or {}
+  if #follows > 0 then out[#out + 1] = field('follows', table.concat(follows, ', ')) end
   local blocks = items.blocks(it.id)
   out[#out + 1] = field('blocks', #blocks > 0 and table.concat(blocks, ', ') or '—', #blocks > 0 and nil or 'ClandDim')
   out[#out + 1] = field('cost', M.cost(it) or '—', 'ClandDim')
