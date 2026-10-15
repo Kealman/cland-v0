@@ -3,7 +3,7 @@ id: T-458
 kind: task
 title: "Rulebook view: ␣R and the palette's Rulebook open the rules in the centre with scope, status and date, unfold reason and origin, follow a thread origin with gt, and add, edit and retire from the view"
 state: open
-status: in progress
+status: ready
 size: M
 criterion_seq: 6
 labels:
@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-294
 branch: t/T-458-rulebook-view-r-and-the-palette-s
 created: 2026-10-15T07:15:15.741Z
-updated: 2026-10-15T14:02:58.122Z
+updated: 2026-10-15T14:34:23.876Z
 ---
 
 ## Summary
@@ -58,14 +58,19 @@ E-423 "Rules and rhythm" (R-294), tracer bullet 6 of 7; spec `docs/spec/v0.1.3.m
 
 - [x] C1. `␣R` and the palette action "Rulebook" open the rulebook in the centre with one row per rule showing `rule <n>`, title, scope, status and date, active rules first and retired ones dimmed, proven headless.
   - done: impl-458 · 2026-10-15T13:35:01.097Z
+  - verified: rev-30 [reviewer] · run rev-20261015-458-final · 2026-10-15T14:34:18.703Z · commit 9e11687cfac96eefa1d09ce27d6240ff983fa0af
 - [x] C2. `<CR>` unfolds a rule to its text, reason and origin, and `gt` on a thread origin opens the topic at the human's message, proven headless with a rule recorded from a message.
   - done: impl-458 · 2026-10-15T13:35:02.603Z
+  - verified: rev-30 [reviewer] · run rev-20261015-458-final · 2026-10-15T14:34:18.703Z · commit 9e11687cfac96eefa1d09ce27d6240ff983fa0af
 - [x] C3. `a` with text, scope and reason written records a rule with origin `workbench` that `cland rule list --json` reads, and the view shows it without a reload.
   - done: impl-458 · 2026-10-15T13:35:03.229Z
+  - verified: rev-30 [reviewer] · run rev-20261015-458-final · 2026-10-15T14:34:18.703Z · commit 9e11687cfac96eefa1d09ce27d6240ff983fa0af
 - [x] C4. `e` edits and `X` retires the rule under the cursor through the hub, and a hub refusal is shown in the compose buffer with the draft kept.
   - done: impl-458 · 2026-10-15T13:35:03.826Z
+  - verified: rev-30 [reviewer] · run rev-20261015-458-final · 2026-10-15T14:34:18.704Z · commit 9e11687cfac96eefa1d09ce27d6240ff983fa0af
 - [x] C5. A rule added from the shell while the view is open appears in it without a key press.
   - done: impl-458 · 2026-10-15T13:35:04.434Z
+  - verified: rev-30 [reviewer] · run rev-20261015-458-final · 2026-10-15T14:34:18.704Z · commit 9e11687cfac96eefa1d09ce27d6240ff983fa0af
 - [x] C6. `nvim/README.md` describes the rulebook view, its keys and the origins, and the key help lists `␣R`.
   - done: impl-458 · 2026-10-15T13:35:05.061Z
   - verified: rev-30 [reviewer] · run rev-20261015-458-source · 2026-10-15T13:37:29.566Z · commit 9e11687cfac96eefa1d09ce27d6240ff983fa0af
@@ -124,3 +129,23 @@ Spec/evidence: rule-cli.test.ts cases are green, including workbench provenance/
 ### impl-458 · 2026-10-15T14:02:58.122Z
 
 A-3044 exact-head full Linux gate failed only doctor-isolation.test.ts:16 with ENOTEMPTY removing a live foreign fixture .cland/run (1747 pass/1 fail/3 skips); Neovim phase not reached. Same-head isolated macOS file passes 1/1, 2.058s. Reviewer source/C6 stand; evidence not clear. Reported Bugs/S to lead for classification and next gate decision; no source edit or retry during Coordinator restart hold.
+
+### rev-30 · 2026-10-15T14:34:18.704Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-458-final
+commit: 9e11687cfac96eefa1d09ce27d6240ff983fa0af
+scope: evidence
+
+Final review clear at unchanged 9e11687cfac96eefa1d09ce27d6240ff983fa0af; no unresolved T-458 source findings.
+
+Standards: source verdict rev-20261015-458-source stands; no new findings.
+Spec: C1–C5 verified by the same-head full Linux run A-3068. Rulebook headless cases all pass: sorted rows/palette/help/retired highlight (1.118 s) establishes C1; real message-origin details and older-message gt navigation (2.363 s) establishes C2; drafts add/edit/refusal retention/retire plus CLI-read workbench provenance and shell/file refresh (2.581 s) establishes C3–C5. Held-snapshot replay and rule-event selection also pass (0.481 s). Hub workbench provenance/full-list push test passes (1.209 s). C6 README/help source verification retained.
+
+Accepted gate 18411756-1ae7-4566-ad4f-2cd6ddbf90ae / A-3068 matches source-reviewed and current branch head, exit 0. Host and remote typecheck, hub free/machine phases and full Neovim phase complete on Linux x64 c-8: 2137 pass/0 fail/6 platform skips/0 cancelled, 2143 total. Full Neovim is 389 pass/0 fail/3 skips; three hub skips plus three Neovim QA sandbox cases require macOS-only sandbox-exec or idle-sleep behavior. These skips do not include any Rulebook case. Existing duration regression notices do not fail this receipt.
+
+Prior A-3044 remains red on separately tracked doctor-isolation T-498; the green retry supplies the gate without invoking the two-red exception or an extra local Neovim phase. No additional tests required. No Reviewer tests or edits.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.

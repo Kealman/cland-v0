@@ -3,7 +3,7 @@ id: T-456
 kind: task
 title: "Rules reach sessions: each role's clause and launch brief carry its active rules, rule.add/edit/retire/list tools write them with a human-message origin, and a changed rule arrives as a rule event at the next turn"
 state: open
-status: in progress
+status: review
 size: L
 criterion_seq: 8
 labels:
@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-295
 branch: t/T-456-rules-reach-sessions-each-role-s-clause
 created: 2026-10-15T07:15:15.550Z
-updated: 2026-10-15T14:32:33.467Z
+updated: 2026-10-15T14:34:13.442Z
 ---
 
 ## Summary
@@ -75,6 +75,7 @@ E-423 "Rules and rhythm" (R-294), tracer bullet 4 of 7; spec `docs/spec/v0.1.3.m
   - done: impl-456 · 2026-10-15T13:36:00.289Z
   - verified: rev-31 [reviewer] · run rev-20261015-456-source-2 · 2026-10-15T13:41:07.371Z · commit a269ce0c80d7c6fc851e6ec4a421e4625117ee2a
   - verified: rev-31 [reviewer] · run rev-20261015-456-source-3 · 2026-10-15T14:15:41.958Z · commit a4a899c64dcb8629e08ce6717fde30270ad8509a
+  - verified: rev-31 [reviewer] · run rev-20261015-456-source-4 · 2026-10-15T14:34:13.441Z · commit ab1037c0ec32355cd82e7236eeda458c2a916dab
 - [x] C2. A rule scoped to `implementer`, added from the shell, reaches a running fake Implementer at its next turn as a `rule` event with its full text, and does not reach the fake Coordinator; an edit and a retirement reach the Implementer the same way.
   - done: impl-456 · 2026-10-15T13:40:28.405Z
 - [x] C3. After a reconnect, the Implementer's re-sent clause carries the current rules, including one added while it was disconnected.
@@ -83,20 +84,24 @@ E-423 "Rules and rhythm" (R-294), tracer bullet 4 of 7; spec `docs/spec/v0.1.3.m
   - done: impl-456 · 2026-10-15T13:36:02.217Z
   - verified: rev-31 [reviewer] · run rev-20261015-456-source-2 · 2026-10-15T13:41:07.371Z · commit a269ce0c80d7c6fc851e6ec4a421e4625117ee2a
   - verified: rev-31 [reviewer] · run rev-20261015-456-source-3 · 2026-10-15T14:15:41.958Z · commit a4a899c64dcb8629e08ce6717fde30270ad8509a
+  - verified: rev-31 [reviewer] · run rev-20261015-456-source-4 · 2026-10-15T14:34:13.442Z · commit ab1037c0ec32355cd82e7236eeda458c2a916dab
 - [x] C5. An Aide's `rule.add` records `session:<name>` as origin, and every role's `rule.list` returns the active rules, filtered by `role` when given.
   - done: impl-456 · 2026-10-15T13:36:02.773Z
   - verified: rev-31 [reviewer] · run rev-20261015-456-source-2 · 2026-10-15T13:41:07.371Z · commit a269ce0c80d7c6fc851e6ec4a421e4625117ee2a
   - verified: rev-31 [reviewer] · run rev-20261015-456-source-3 · 2026-10-15T14:15:41.958Z · commit a4a899c64dcb8629e08ce6717fde30270ad8509a
+  - verified: rev-31 [reviewer] · run rev-20261015-456-source-4 · 2026-10-15T14:34:13.442Z · commit ab1037c0ec32355cd82e7236eeda458c2a916dab
 - [x] C6. A `rule` event never changes the inbox count or shows as a needs-you, never steers a running turn, and shows as a row in the events view, reachable from the palette's kind filter while keys `1`–`9` keep their kinds.
   - done: impl-456 · 2026-10-15T13:36:03.339Z
 - [x] C7. The Coordinator's and the Aide's clauses, in `default-roles.ts` and the live `.cland/roles.toml`, say to record a stated rule with `rule.add` and never only in a memory, and that a memory repeating a rule names its number.
   - done: impl-456 · 2026-10-15T13:36:03.904Z
   - verified: rev-31 [reviewer] · run rev-20261015-456-source-2 · 2026-10-15T13:41:07.371Z · commit a269ce0c80d7c6fc851e6ec4a421e4625117ee2a
   - verified: rev-31 [reviewer] · run rev-20261015-456-source-3 · 2026-10-15T14:15:41.958Z · commit a4a899c64dcb8629e08ce6717fde30270ad8509a
+  - verified: rev-31 [reviewer] · run rev-20261015-456-source-4 · 2026-10-15T14:34:13.442Z · commit ab1037c0ec32355cd82e7236eeda458c2a916dab
 - [x] C8. `hub/README.md` describes rules in clauses and briefs, the `rule.*` tools and the origin rule, and the `rule` event, and `nvim/README.md` lists the `rule` kind in the events view's palette filter.
   - done: impl-456 · 2026-10-15T13:36:04.689Z
   - verified: rev-31 [reviewer] · run rev-20261015-456-source-2 · 2026-10-15T13:41:07.371Z · commit a269ce0c80d7c6fc851e6ec4a421e4625117ee2a
   - verified: rev-31 [reviewer] · run rev-20261015-456-source-3 · 2026-10-15T14:15:41.958Z · commit a4a899c64dcb8629e08ce6717fde30270ad8509a
+  - verified: rev-31 [reviewer] · run rev-20261015-456-source-4 · 2026-10-15T14:34:13.442Z · commit ab1037c0ec32355cd82e7236eeda458c2a916dab
 
 ## Comments
 
@@ -231,3 +236,26 @@ Source review rev-20261015-456-source-3 stands for its five source-established m
 
 Aside to lead: Bugs / XS, regression of T-395 — deterministic stale handover Coordinator-intro assertion after default-clause rewrite. Resolve/classify through the lead and obtain source review at any replacement head before verification. No behavioral criterion failure inferred from this stale phrase alone. No Reviewer tests or edits.
 Standards: 1 medium integration finding. Spec: no new product finding; accepted runtime evidence outstanding.
+
+### rev-31 · 2026-10-15T14:34:13.442Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261015-456-source-4
+commit: ab1037c0ec32355cd82e7236eeda458c2a916dab
+scope: delta
+
+Delta source review clear at ab1037c0ec32355cd82e7236eeda458c2a916dab. No high/medium/low findings.
+
+## Standards
+Only non-tracker delta from source-reviewed a4a899c6 is hub/test/handover.test.ts:103's regex update to the current accepted Coordinator intro. The note, role identity, revocation, claim/state and other behavioral assertions are retained. Stable patch-id 1f90563b28b95bcd2016a837277a50369c871eb6 matches shared dev b8ae050b exactly; diff check passes. Coordinator reports handover 4/4. No production or other test changes.
+
+## Spec
+Prior full source review rev-20261015-456-source-3 carries forward unchanged. Refresh C1,C4,C5,C7,C8 at this exact head: active scoped clause/brief rules and guidance; human-message Coordinator authorization; Aide origins/list filtering and grants; cache clauses; docs.
+C2,C3,C6 stay unverified until the next accepted complete same-head runtime receipt. A-3066 remains red at the older head, though all seven rule-session cases and the other 1770 hub cases passed. Neovim still needs to execute.
+Coordinator decision a1143a4f was read in topic history: adopt the shared fix, delta review, then one verify; a green next verify is the gate. Await the complete default-executor run under that decision.
+
+Standards: 0 findings. Spec: 0 source findings. No Reviewer tests or edits.
+
+Criteria: C1 verified, C4 verified, C5 verified, C7 verified, C8 verified.

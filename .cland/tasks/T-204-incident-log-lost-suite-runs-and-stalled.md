@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-10-15T14:10:25.552Z
+updated: 2026-10-15T14:33:03.483Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -271,3 +271,7 @@ Incident: unattributed hub auto-start after a stand-in restart (second sighting)
 ### human · 2026-10-15T14:10:25.552Z
 
 Incident: orphaned test-fixture hub. pid 76123, 'node .cland/worktrees/T-459/hub/bin/cland.ts hub serve', ppid 1, started 13:33:01Z, cwd /private/var/folders/…/T/remote-run-QRokzy (a remote-run fixture dir; the mkdtemp prefix 'remote-run-' appears in: hub/test/remote-fixture.ts ). Found by coord at ~14:10Z; at 14:12Z no node --test under the T-459 worktree and no client on its socket (only its own listener), 4% CPU for 37 min. Reaped by the stand-in with SIGTERM at 14:12Z (exited on TERM). A second stale dir remote-run-ZYtvuT exists without a process. Likely cause: an impl-459 (T-459 demos on a droplet) targeted test whose parent died or timed out without the fixture's teardown; the fixture should kill its hub on exit/timeout (cf. T-311 orphan hook bridges).
+
+### coord · 2026-10-15T14:33:03.483Z
+
+Escape on 2026-10-15 at 14:32Z: dev was red on handover.test.ts:103 after T-395 merged (076009ab). T-395's conflict resolution reworded the Coordinator clause after its Linux receipts, and the Coordinator waived a full verify because the conflict was 'covered by the stage cover'. Only targeted role and clause files ran, which didn't include handover.test.ts. Shared fix b8ae050b. Lesson: a conflict resolution that changes text other tests assert needs a grep of hub/test for the old wording, or a full verify, before the waiver applies.
