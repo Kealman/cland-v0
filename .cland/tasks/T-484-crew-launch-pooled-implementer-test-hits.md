@@ -2,8 +2,8 @@
 id: T-484
 kind: task
 title: crew-launch pooled Implementer test hits 'pool size 1 reached' before the previous member is idle (Linux)
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 1
 labels:
@@ -16,7 +16,8 @@ blocked_by: []
 topic: topic-287
 branch: t/T-484-crew-launch-pooled-implementer-test-hits
 created: 2026-10-15T09:54:30.252Z
-updated: 2026-10-15T10:26:27.550Z
+updated: 2026-10-15T10:26:56.735Z
+closed: 2026-10-15T10:26:56.735Z
 ---
 
 ## Summary
@@ -76,3 +77,7 @@ Spec: C1 verified. Source establishes release before next launch with identity, 
 Same-head dc5e877a/A-2872 gate exits 0: host/remote typecheck green; hub-only + Neovim smoke; 1732 tests, 1729 pass, 0 fail/cancelled, 3 platform skips. Linux x64 c-8, Node v24.21.0, Neovim v0.12.5. Skips are unrelated macOS sandbox-exec/idle-sleep cases.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-15T10:26:56.735Z
+
+Merged 5728fa6c4ab927235d108a941c9651a091c41138 onto dev.
