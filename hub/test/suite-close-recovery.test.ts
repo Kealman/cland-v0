@@ -49,9 +49,17 @@ for (const action of ['lost', 'restart', 'cancel'] as const) test(`a sharded clo
   } else {
     assert.equal((await ui.request({ type: 'suite.cancel', suite: q.remote![0]!.id! })).ok, true);
   }
-  if (action !== 'cancel') for (const machine of machines) await writeFile(join(machine.home, 'cland/.cland/finish'), 'yes');
+  // A status poll may already have seen the provider's 200 before the loss.
+  // Keep shard 1 at its observed worker gate so that poll cannot collect a pass
+  // before the next poll sees the 404. Release it only after the loss report.
+  const finishing = action === 'lost' ? machines.slice(1) : action === 'restart' ? machines : [];
+  for (const machine of finishing) await writeFile(join(machine.home, 'cland/.cland/finish'), 'yes');
   const result = await f.result(job.id, ui);
   assert.match(result.text, action === 'restart' ? /exit 0/ : action === 'cancel' ? /cancelled/ : /shard-1: remote machine lost/);
+  if (action === 'lost') {
+    await writeFile(join(machines[0]!.home, 'cland/.cland/finish'), 'yes');
+    await eventually('lost shard worker finished before fixture removal', async () => await readFile(join(machines[0]!.run, 'done'), 'utf8').catch(() => '') ? true : undefined);
+  }
   const messages = await f.messages(job.id, ui);
   assert.equal(messages.length, 1);
   assert.equal(f.api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length, 2);
