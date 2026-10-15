@@ -1,4 +1,5 @@
 // Staffing policy only; role clauses, permissions and harness defaults stay in roles.toml.
+import { durationMs } from './duration.ts';
 import { readFile, writeFile, rename, unlink } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { parse, stringify as serialize } from 'smol-toml';
@@ -11,7 +12,7 @@ import type { Resumed } from './hub/budget.ts';
 
 export const CREW_ROLES = ['coordinator', 'lead', 'implementer', 'reviewer', 'qa', 'aide'] as const;
 export type CrewPolicy = 'per-item' | 'per-group' | 'pool' | 'singleton';
-export type CrewRole = { policy: CrewPolicy; size: number | null; keep_context: boolean; stop_after: 'merge' | 'never'; subagents: boolean };
+export type CrewRole = { policy: CrewPolicy; size: number | null; keep_context: boolean; stop_after: 'merge' | 'never'; subagents: boolean; heartbeat?: string; heartbeatDefault?: boolean };
 export type IdleCategory = { id: string; title: string };
 export type CrewConfig = { leads: string[]; idle_from: string[]; idle_categories: IdleCategory[]; idle_ignored: Array<{ id: string; reason: string }>; crew: Record<string, CrewRole> };
 export type CrewSource = { get(): CrewConfig; set(key: string, value: unknown, resumed: Resumed, authorize: () => void): Promise<CrewConfig> };
@@ -19,9 +20,10 @@ export type CrewSource = { get(): CrewConfig; set(key: string, value: unknown, r
 export function defaultCrew(): CrewConfig {
   const crew: Record<string, CrewRole> = {};
   for (const role of CREW_ROLES) crew[role] = { policy: 'per-item', size: null, keep_context: false, stop_after: 'never', subagents: role === 'coordinator' || role === 'lead' };
+  for (const [role, rule] of Object.entries(crew)) { rule.heartbeat = role === 'coordinator' ? '1h' : 'off'; rule.heartbeatDefault = true; }
   crew.coordinator!.policy = 'singleton'; crew.coordinator!.size = 1;
   crew.implementer!.stop_after = 'merge';
-  crew.reviewer = { policy: 'pool', size: 1, keep_context: true, stop_after: 'never', subagents: false };
+  crew.reviewer = { policy: 'pool', size: 1, keep_context: true, stop_after: 'never', subagents: false, heartbeat: 'off', heartbeatDefault: true };
   crew.qa!.policy = 'singleton'; crew.qa!.size = 1;
   return { leads: [], idle_from: [], idle_categories: [], idle_ignored: [], crew };
 }
@@ -79,8 +81,13 @@ export function parseCrew(text: string, levels: LadderInput = DEFAULT_LEVELS): C
   keys(doc.crew, CREW_ROLES, 'crew');
   for (const [role, table] of Object.entries(doc.crew)) {
     if (!isPlainTable(table)) throw new Error(`crew.${role} must be a table`);
-    keys(table, ['policy', 'size', 'keep_context', 'stop_after', 'subagents'], `crew.${role}`);
+    keys(table, ['policy', 'size', 'keep_context', 'stop_after', 'subagents', 'heartbeat'], `crew.${role}`);
     const rule = out.crew[role]!;
+    if (table.heartbeat !== undefined) {
+      try { if (table.heartbeat !== 'off' && (typeof table.heartbeat !== 'string' || durationMs(table.heartbeat) < 60000)) throw new Error(); }
+      catch { throw new Error(`crew.${role}.heartbeat must be a duration of at least 1m (one minute), or off`); }
+      rule.heartbeat = table.heartbeat as string; rule.heartbeatDefault = false;
+    }
     if (table.policy !== undefined) {
       if (typeof table.policy !== 'string' || !['per-item', 'per-group', 'pool', 'singleton'].includes(table.policy)) throw new Error(`crew.${role}.policy must be per-item, per-group, pool or singleton`);
       rule.policy = table.policy as CrewPolicy;
@@ -105,22 +112,24 @@ export function parseCrew(text: string, levels: LadderInput = DEFAULT_LEVELS): C
   }
   return out;
 }
-export function renderCrew(config: CrewConfig): string {
+export function renderCrew(config: CrewConfig, initialize = false): string {
   const lines = ['# Project staffing policy; role definitions and harness defaults live in roles.toml.', `leads = ${JSON.stringify(config.leads)}`, `idle_from = ${JSON.stringify(config.idle_from)}`];
   for (const role of CREW_ROLES) {
     const rule = config.crew[role]!;
     lines.push('', `[crew.${role}]`, `policy = ${JSON.stringify(rule.policy)}`);
     if (rule.size !== null) lines.push(`size = ${rule.size}`);
     lines.push(`keep_context = ${rule.keep_context}`, `stop_after = ${JSON.stringify(rule.stop_after)}`, `subagents = ${rule.subagents}`);
+    const inherited = rule.heartbeatDefault && !(initialize && role === 'coordinator');
+    lines.push(`${inherited ? '# ' : ''}heartbeat = ${JSON.stringify(rule.heartbeat ?? 'off')}${inherited ? ' # (default)' : ''}`);
   }
   return lines.join('\n') + '\n';
 }
-export const DEFAULT_CREW_TOML = renderCrew(defaultCrew());
+export const DEFAULT_CREW_TOML = renderCrew(defaultCrew(), true);
 export function crewSummary(config: CrewConfig): string {
   return [['implementer', 'impl'], ['reviewer', 'rev'], ['qa', 'qa']].map(([role, label]) => {
     const rule = config.crew[role!]!;
     return `${label} ${rule.policy === 'singleton' ? '1' : rule.policy.replace('-', ' ') + (rule.size === null ? '' : ` ${rule.size}`)}`;
-  }).concat(`leads: ${config.leads.join(', ') || 'none'}`, `idle: ${config.idle_categories.map(item => `${item.id} ${item.title}`).join(', ') || 'never'}`, ...config.idle_ignored.map(item => `ignored ${item.id}: ${item.reason}`)).join(' · ');
+  }).concat(`leads: ${config.leads.join(', ') || 'none'}`, `idle: ${config.idle_categories.map(item => `${item.id} ${item.title}`).join(', ') || 'never'}`, ...config.idle_ignored.map(item => `ignored ${item.id}: ${item.reason}`), ...CREW_ROLES.map(role => `${role} heartbeat ${config.crew[role]!.heartbeat ?? 'off'}${config.crew[role]!.heartbeatDefault ? ' (default)' : ''}`)).join(' · ');
 }
 
 /** Poll off the request path. Invalid/missing sources retain the last good snapshot and emit one notice. */

@@ -6,8 +6,8 @@ import type { ItemSummary } from './tracker/tracker.ts';
 
 export const PROTOCOL_VERSION = 2;
 
-/** The spoke's heartbeat interval; the hub closes a socket silent for two of them. */
-export const HEARTBEAT_MS = 30_000;
+/** The spoke's keepalive interval; the hub closes a socket silent for two of them. */
+export const KEEPALIVE_MS = 30_000;
 
 /**
  * The largest frame the hub reads; a bigger one closes the socket before it is parsed. Every frame
@@ -213,7 +213,7 @@ export type NotificationKind = 'account-limited' | 'executor-fallback' | 'plan' 
 export type Inbox = { asks: InboxAsk[]; approvals: InboxApproval[]; plans: InboxPlan[]; requests: InboxRequest[]; messages: InboxMessage[]; waiting: Topic[]; needsYou: number; archiveToday?: number; archive?: InboxDeparture[] };
 
 /** Journal rows, newest first; cursors are opaque continuations over the append-only file. */
-export const EVENT_KINDS = ['session', 'task', 'verdict', 'suite', 'release', 'artifact', 'usage', 'topic'] as const;
+export const EVENT_KINDS = ['session', 'task', 'verdict', 'suite', 'release', 'artifact', 'usage', 'topic', 'heartbeat'] as const;
 export type EventKind = typeof EVENT_KINDS[number];
 export type EventSubject = { kind: 'item' | 'session' | 'topic' | 'artifact'; id: string };
 export type EventsFilter = { kinds?: EventKind[]; warnings?: boolean; subject?: EventSubject; muted?: EventSubject[] };
@@ -222,7 +222,7 @@ export function isEventsFilter(f: unknown): boolean {
   if (f === undefined) return true;
   if (!isObject(f)) return false;
   const subject = (s: unknown) => isObject(s) && ['item', 'session', 'topic', 'artifact'].includes(String(s.kind)) && typeof s.id === 'string' && s.id.length > 0;
-  return (f.kinds === undefined || Array.isArray(f.kinds) && f.kinds.every(k => ['session', 'task', 'verdict', 'suite', 'release', 'artifact', 'usage', 'topic'].includes(k)))
+  return (f.kinds === undefined || Array.isArray(f.kinds) && f.kinds.every(k => EVENT_KINDS.includes(k)))
     && (f.warnings === undefined || typeof f.warnings === 'boolean') && (f.subject === undefined || subject(f.subject))
     && (f.muted === undefined || Array.isArray(f.muted) && f.muted.every(subject));
 }
@@ -353,7 +353,7 @@ export type SpokeRequest =
   | { type: 'ask'; id: string; topic: string; question: string; options: string[]; free?: boolean }
   | { type: 'ask.forward'; id: string; ask: string }
   | { type: 'ask.answer'; id: string; ask: string; text: string }
-  /** The heartbeat. */
+  /** The keepalive. */
   | { type: 'ping'; id: string };
 
 /** The spoke accepted a delivered message (spec 4.2, `delivered`): the hub stops re-sending it. No reply. */

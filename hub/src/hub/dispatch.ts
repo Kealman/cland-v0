@@ -1316,7 +1316,7 @@ export class Dispatcher {
             return;
           }
           if (isAck(frame)) return core.ack(connection, frame.id);
-          // the heartbeat is not a tool call
+          // the keepalive is not a tool call
           if (frame.type !== 'ping') {
             if (replayed(frame)) return;
             audit(frame.id, { session: connection.name, sessionId: connection.sessionId, role: connection.role, tool: String(frame.type), args: summarize(frame) });

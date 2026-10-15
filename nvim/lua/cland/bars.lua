@@ -329,7 +329,7 @@ function M.winbar(win)
   elseif role == 'sessions' then
     local c = state.counts()
     if state.S.crew and state.S.crew.summary then
-      return head(win, 'SESSIONS', { { state.S.crew.summary, 'ClandDimBar' } })
+      return head(win, 'SESSIONS', fit({ { state.S.crew.summary, 'ClandDimBar' } }, api.nvim_win_get_width(win) - 11))
     end
     return head(win, 'SESSIONS', { { c.live .. ' live · ' .. c.waiting .. ' waiting' .. (c.down > 0 and (' · ' .. c.down .. ' down') or ''), 'ClandDimBar' } })
   elseif role == 'topics' then

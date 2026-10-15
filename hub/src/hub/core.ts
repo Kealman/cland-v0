@@ -1,3 +1,6 @@
+import { heartbeatDigest } from './heartbeat.ts';
+import { defaultCrew } from '../crew.ts';
+import { durationMs } from '../duration.ts';
 import type { AccountPoller } from '../accounts/poller.ts';
 import { AccountLimits, AccountLimited, fullWindowReset, limitUntil, type AccountReading } from '../accounts/limits.ts';
 import { readAccounts } from '../accounts/registry.ts';
@@ -132,6 +135,8 @@ type LaunchIdentityBinding = { name: string; sessionId: string; prove: () => voi
 export type HelloResult = { ok: true; name: string; connection: Connection; spoke: SpokeSocket } | { ok: false; code: RefusalCode; message: string };
 
 export type CoreOptions = {
+  heartbeatMs?: number;
+  heartbeatRunTimeoutMs?: number;
   /** Extra reserved names beyond the built-ins. */
   reservedNames?: Iterable<string>;
   /** The hub's memory; `:memory:` when absent. */
@@ -203,6 +208,42 @@ export class HubCore {
     this.#log({ event: 'send', id: message.id, from: message.from, kind: message.kind, to: message.to, topic: message.topic, bytes: Buffer.byteLength(message.text), outcomes: [`${name}:queued`] });
     this.#send(message, name);
   }
+  readonly #heartbeatTimer: NodeJS.Timeout;
+  readonly #heartbeatMs: number | undefined;
+  readonly #heartbeatRunTimeoutMs: number;
+  readonly #idleNotifyMs: number;
+  readonly #heartbeatProcesses = new Map<string, HarnessProcessView>();
+  readonly #heartbeatStarts = new Map<string, number>();
+
+  #heartbeatTick(): void {
+    const now = this.#now().getTime();
+    const crew = this.crew?.get() ?? defaultCrew();
+    const sessions = new Map(this.#store.knownSessions().flatMap(session => {
+      const id = this.#store.sessionIdOf(session.name);
+      return id ? [[id, { name: session.name, role: session.role }] as const] : [];
+    }));
+    for (const [id, process] of this.#heartbeatProcesses) if (!sessions.has(id)) sessions.set(id, process);
+    for (const [id, session] of sessions) {
+      const process = this.#heartbeatProcesses.get(id);
+      if (process && process.status !== 'running') continue;
+      const setting = session.role ? crew.crew[session.role]?.heartbeat : undefined;
+      if (!setting || setting === 'off') continue;
+      const interval = this.#heartbeatMs ?? durationMs(setting);
+      const start = this.#heartbeatStarts.get(id) ?? now;
+      this.#heartbeatStarts.set(id, start);
+      const schedule = this.#store.heartbeatSchedule(id, session.role!, interval, start);
+      if (schedule.next > now) continue;
+      this.#store.transaction(() => {
+        const digest = heartbeatDigest(this.#store, [...this.#itemSnapshots.values()], interval, now, this.#idleNotifyMs, this.#heartbeatRunTimeoutMs, this.#verificationQueue);
+        this.#store.replaceHeartbeat(session.name);
+        const message = this.#recordNotice(AGENTS.id, { kind: 'event', to: [session.name], text: `heartbeat · ${session.name} · ${digest.text}`, detail: { event: 'heartbeat', subject: { session: session.name }, digest: this.sessionState(id) === 'idle' ? 'now' : 'turn', inFlight: digest.inFlight, stale: digest.stale } }, new Set([session.name]));
+        this.#store.firedHeartbeat(schedule, now);
+        if (message) this.#afterCommit(() => this.#publishNotice(message));
+        this.#afterCommit(() => this.#log({ event: 'event-announced', kind: 'heartbeat', subject: { session: session.name }, session: session.name, text: `${session.name} · in flight ${digest.inFlight} · stale ${digest.stale}`, firing: now }));
+      });
+    }
+  }
+
   readonly #live = new Map<string, Connection>();
   readonly #reserved: ReadonlySet<string>;
   readonly #now: () => Date;
@@ -273,6 +314,11 @@ export class HubCore {
     this.#eventWindowMs = options.eventWindowMs ?? 60_000;
     this.#roles = options.roles ?? null;
     this.crew = options.crew;
+    this.#heartbeatMs = options.heartbeatMs;
+    this.#heartbeatRunTimeoutMs = options.heartbeatRunTimeoutMs ?? 4500000;
+    this.#idleNotifyMs = options.idleNotifyMs ?? IDLE_NOTIFY_MS;
+    this.#heartbeatTimer = setInterval(() => this.#heartbeatTick(), Math.min(1000, Math.max(10, (options.heartbeatMs ?? 4000) / 4)));
+    this.#heartbeatTimer.unref();
     this.#items = options.items ?? null;
     this.#store.setItemResolver(id => this.#items?.resolveId?.(id) ?? null);
     this.#sessionHolds = options.sessionHolds ?? (() => []);
@@ -349,6 +395,7 @@ export class HubCore {
   /** Stop deferred publications before the hub closes its store. */
   close(): void {
     this.#closed = true;
+    clearInterval(this.#heartbeatTimer);
     if (this.#presenceImmediate) clearImmediate(this.#presenceImmediate);
     this.#presenceImmediate = null;
     if (this.#journalImmediate) clearImmediate(this.#journalImmediate);
@@ -426,7 +473,8 @@ export class HubCore {
     this.#emit({ type: 'event', row });
   }
 
-  publishVerification(queue: VerificationQueue): void { this.#emit({ type: 'verification.queue', queue }); }
+  #verificationQueue: VerificationQueue | undefined;
+  publishVerification(queue: VerificationQueue): void { this.#verificationQueue = queue; this.#emit({ type: 'verification.queue', queue }); }
 
   #emit(event: HubEvent): void {
     for (const listener of [...this.#listeners]) {
@@ -458,6 +506,9 @@ export class HubCore {
 
   /** Seed ownership facts without publishing or advancing terminal checkpoints. */
   seedProcess(process: HarnessProcessView): void {
+    this.#heartbeatProcesses.set(process.sessionId, process);
+    if (!this.#store.meta(`heartbeat-state:${process.sessionId}`)) this.#store.setMeta(`heartbeat-state:${process.sessionId}`, JSON.stringify({ state: process.state, since: this.#now().getTime() }));
+    if (!this.#heartbeatStarts.has(process.sessionId)) this.#heartbeatStarts.set(process.sessionId, Date.parse(process.startedAt));
     this.#processFacts.set(process.sessionId, { status: process.status, role: process.role, harness: process.harness, model: process.model, account: process.account ?? null });
     this.#processItems.set(process.sessionId, process.item ? this.#items?.resolveId?.(process.item) ?? process.item : null);
   }
@@ -518,6 +569,10 @@ export class HubCore {
     this.#store.pruneSession(process.name, process.sessionId);
     this.#states.delete(process.sessionId);
     this.#approvalCommands.delete(process.sessionId);
+    this.#heartbeatProcesses.delete(process.sessionId);
+    this.#heartbeatStarts.delete(process.sessionId);
+    this.#store.stopHeartbeat(process.sessionId);
+    this.#store.clearMeta(`heartbeat-state:${process.sessionId}`);
     this.#processFacts.delete(process.sessionId);
     this.#processItems.delete(process.sessionId);
     this.#usageRecords.delete(process.sessionId);
@@ -530,6 +585,7 @@ export class HubCore {
   }
 
   publishTask(change: ItemChange): void {
+    if (change.item) this.#store.heartbeatItemSince(change.item.id, change.item.status ?? change.item.state, Date.parse(change.item.updated), this.#now().getTime());
     if (change.item) this.#itemSnapshots.set(`T-${idNumber(change.id)}`, change.item);
     else this.#itemSnapshots.delete(`T-${idNumber(change.id)}`);
     this.#afterCommit(() => this.#drainVerifierRequests());
@@ -1248,6 +1304,10 @@ export class HubCore {
     if (this.#states.get(sessionId) === state && command === previous) return false;
     const changed = this.#states.get(sessionId) !== state;
     this.#states.set(sessionId, state);
+    if (changed) {
+      const saved = this.#store.meta(`heartbeat-state:${sessionId}`);
+      if (!saved || JSON.parse(saved).state !== state) this.#store.setMeta(`heartbeat-state:${sessionId}`, JSON.stringify({ state, since: this.#now().getTime() }));
+    }
     if (command !== undefined) this.#approvalCommands.set(sessionId, command);
     else this.#approvalCommands.delete(sessionId);
     this.#log({ event: 'session-state', session: name, state, source });
@@ -1491,7 +1551,7 @@ export class HubCore {
     this.#publishPresence();
   }
 
-  /** The heartbeat: the session is still here. */
+  /** The keepalive: the session is still here. */
   ping(name: string): void {
     if (!this.#live.has(name)) return;
     this.#store.touchSession(name, this.#now().getTime());
@@ -2050,7 +2110,9 @@ export class HubCore {
   }
 
   #sendTo(c: Connection, message: Message): boolean {
+    if (message.detail?.event === 'heartbeat' && this.sessionState(c.sessionId) !== 'idle') return false;
     if (isHeldDelivery(message)) return false;
+    if (message.kind !== 'role' && this.sessionState(c.sessionId) === 'idle') this.#store.bindHeartbeatForTurn(message.id, c.name);
     const clause = this.#roleNotices.get(message.id);
     return clause ? c.deliverRole(message, clause) : c.deliver(this.#resolveAttachments(this.#store.deliveryMessage(message.id, c.name) ?? message));
   }

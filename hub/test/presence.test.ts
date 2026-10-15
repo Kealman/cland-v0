@@ -103,8 +103,8 @@ test('a heartbeat keeps a long-lived session inside the status window; a session
   let now = Date.parse('2026-10-08T12:00:00Z');
   const hub = await startHub({ queueTtlMs: 60_000, now: () => new Date(now) });
   const alpha = await spawnSpoke({ hub, name: 'alpha', sessionId: 'sess-a' });
-  const heartbeatMs = 50;
-  let beta = await spawnSpoke({ hub, name: 'beta', sessionId: 'sess-b', heartbeatMs }); // pings 20× a second
+  const keepaliveMs = 50;
+  let beta = await spawnSpoke({ hub, name: 'beta', sessionId: 'sess-b', keepaliveMs }); // pings 20× a second
   let quiet = await spawnSpoke({ hub, name: 'quiet', sessionId: 'sess-q' }); // the default 30 s heartbeat: no ping during this test
   try {
     await alpha.waitForPresence(['alpha', 'beta', 'quiet']);
@@ -113,7 +113,7 @@ test('a heartbeat keeps a long-lived session inside the status window; a session
     await beta.call('status', { text: 'still here' });
     await quiet.call('status', { text: 'went quiet' });
     now += 61_000; // both hellos are now older than the window
-    await sleep(20 * heartbeatMs); // Twenty heartbeat opportunities at the advanced clock; quiet never pings.
+    await sleep(20 * keepaliveMs); // Twenty heartbeat opportunities at the advanced clock; quiet never pings.
     await beta.close();
     await quiet.close();
     await waitForAbsence(alpha, 'beta');

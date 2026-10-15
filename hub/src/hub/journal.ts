@@ -21,7 +21,7 @@ export const journalPath = (clandDir: string): string => join(clandDir, JOURNAL_
 
 /**
  * The hub log's events that are domain-level, and so journalled. What is left out is the process's own talk:
- * listeners, sockets, heartbeats, subscriptions, adapter retries, file-watch errors.
+ * listeners, sockets, keepalives, subscriptions, adapter retries, file-watch errors.
  */
 export const JOURNALLED: ReadonlySet<string> = new Set([
   'executor-snapshot-recovered',
@@ -469,7 +469,7 @@ export function eventRow(r: JournalRecord, offset = ''): EventRow | null {
       text ??= `${id} ${r.to ?? r.status ?? 'created'}`;
     } else return null;
   }
-  if (!subject || !text || !['session','task','verdict','suite','release','artifact','usage','topic'].includes(kind)) return null;
+  if (!subject || !text || !['session','task','verdict','suite','release','artifact','usage','topic','heartbeat'].includes(kind)) return null;
   if (kind === 'artifact') glyph = 'A';
   else if (kind === 'usage') glyph = '$';
   else if (kind === 'release') glyph = '◈';
@@ -492,5 +492,5 @@ export function eventRow(r: JournalRecord, offset = ''): EventRow | null {
 
 /** Equality is the announced kind, subject and one-line content; presentation is not part of it. */
 export function eventKey(row: EventRow): string {
-  return createHash('sha256').update(JSON.stringify([row.kind, row.subject, row.text])).digest('hex');
+  return createHash('sha256').update(JSON.stringify([row.kind, row.subject, row.text, ...(row.kind === 'heartbeat' ? [row.id] : [])])).digest('hex');
 }

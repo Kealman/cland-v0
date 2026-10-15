@@ -95,7 +95,7 @@ Space is the leader (`␣`); `␣?` shows the keys in Neovim.
 | `␣N` `␣b` `␣L` | anywhere | The inbox full width, the board, the Agents log in the centre. Again: back. |
 | `␣E` | Normal mode, any view | Events view in the centre; `␣␣` returns. Also **Events view** in the palette. |
 | `e` / `↵` | inbox / its events line | Open the events view. |
-| `1`–`8` / `0` / `w` / `s` / `F` | events view | Pick kind / all kinds / warnings / subject / clear filter; saved in `ui.json`. |
+| `1`–`9` / `0` / `w` / `s` / `F` | events view | Pick kind / all kinds / warnings / subject / clear filter; saved in `ui.json`. |
 | `gM` | events view | Hide an event subject, or restore a selected hidden subject; independent of visibility mutes. |
 | `A` / `za` | events view | Append 200 older journal rows / fold or unfold the selected day. |
 | `↵` / `gI` `gt` `gs` | events view | Open the subject / the row’s item view, topic or session; `gi` reveals its explorer card. Absent references produce a status notice. |
@@ -726,3 +726,9 @@ The explorer rebuilds its model from `layout.render` after hub events, coalesced
 Run `:lua print(vim.inspect(require('cland.explorer').bench(25, 'T-359')))` in the explorer for median timings in milliseconds. `bench(n, card_ids)` accepts one card id or a list, defaulting to the selected card. It reports `model_ms` (model, rows and paint), `draw_ms` (buffer and highlight write), row count and width for the current view, then with every node unfolded, done items shown and `A` on, then for each card. It restores folds, filters and cursor afterward. The 300-item test fixture prints the medians with a loose 75 ms CI bound; the build budget on the dev machine is 15 ms. `node --test --test-name-pattern='bench reports' nvim/test/explorer.test.ts` runs that fixture alone.
 
 Neovim's test harness selects General after the first screen by default; explorer tests pass `{ centre: 'explorer' }` as `startClient`'s fifth argument. Headless QA cases likewise default to General and set `centre = 'explorer'` to exercise production startup.
+
+
+Role heartbeat firings appear in the Events view at the background layer, one row
+per firing with the session and its in-flight and stale counts. `heartbeat` is
+the ninth event kind: press `9` in Events to filter it. The kind palette also lists
+`heartbeat`. Heartbeats never add an inbox row or a needs-you.

@@ -86,9 +86,9 @@ test('a socket that misses two heartbeats is closed and the spoke reconnects wit
   // The windows are wide against a loaded machine: the hub cuts a socket silent for two of its 1 s intervals; beta
   // pings every 250 ms and gives the hub 250 ms per answer (two misses in a row before it leaves on its own), so only
   // a stall of seconds could cut it, while alpha, whose first ping is 10 s away, is cut within 3 s.
-  const hub = await startHub({ heartbeatMs: 1000 });
-  const alpha = await spawnSpoke({ hub, name: 'alpha', sessionId: 'sess-a', heartbeatMs: 10_000 }); // never heartbeats in time
-  const beta = await spawnSpoke({ hub, name: 'beta', sessionId: 'sess-b', heartbeatMs: 250 });
+  const hub = await startHub({ keepaliveMs: 1000 });
+  const alpha = await spawnSpoke({ hub, name: 'alpha', sessionId: 'sess-a', keepaliveMs: 10_000 }); // never heartbeats in time
+  const beta = await spawnSpoke({ hub, name: 'beta', sessionId: 'sess-b', keepaliveMs: 250 });
   try {
     await alpha.waitForPresence(['alpha', 'beta']);
     await beta.waitForPresence(['alpha', 'beta']);
@@ -115,8 +115,8 @@ test('a socket that misses two heartbeats is closed and the spoke reconnects wit
 
 test('a peer whose bytes still arrive is alive: a socket in the middle of one large frame is not cut off; a silent one beside it is', async () => {
   const log: Array<Record<string, unknown>> = [];
-  const heartbeatMs = 100;
-  const hub = await startHub({ heartbeatMs, log: (e) => log.push(e) });
+  const keepaliveMs = 100;
+  const hub = await startHub({ keepaliveMs, log: (e) => log.push(e) });
   /** A session over the raw edge: hello, welcome — then nothing from the client library at all. */
   const connect = (name: string): Promise<WebSocket> =>
     new Promise((resolve, reject) => {
@@ -144,7 +144,7 @@ test('a peer whose bytes still arrive is alive: a socket in the middle of one la
   raw.write(header);
   const trickle = setInterval(() => raw.write(Buffer.from('{"a":1}')), 30);
   try {
-    await sleep(7 * heartbeatMs); // Negative: seven heartbeat sweeps preserve the socket receiving bytes.
+    await sleep(7 * keepaliveMs); // Negative: seven heartbeat sweeps preserve the socket receiving bytes.
     assert.ok(closed.has('silent'), 'the silent socket was cut off after two missed heartbeats');
     assert.ok(!closed.has('uploading'), 'the socket whose bytes kept arriving was not');
     assert.equal(uploading.readyState, WebSocket.OPEN);
@@ -160,7 +160,7 @@ test('a peer whose bytes still arrive is alive: a socket in the middle of one la
     observer.terminate();
     const names = who.value.sessions.map((p) => p.name);
     assert.ok(names.includes('uploading') && !names.includes('silent'), `presence: ${names.join(', ')}`);
-    assert.equal(log.filter((e) => e.event === 'heartbeat-timeout').length, 1, 'exactly one socket timed out — the silent one');
+    assert.equal(log.filter((e) => e.event === 'keepalive-timeout').length, 1, 'exactly one socket timed out — the silent one');
   } finally {
     clearInterval(trickle);
     uploading.terminate();

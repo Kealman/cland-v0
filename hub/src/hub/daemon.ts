@@ -207,6 +207,8 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
       visibilityPreferences: new VisibilityPreferenceFile(join(l.dir, 'ui.json')),
       crew,
       artifactRetentionDays: config?.artifacts.retentionDays ?? 30,
+      ...(Number(process.env.CLAND_HEARTBEAT_MS) > 0 && Number.isFinite(Number(process.env.CLAND_HEARTBEAT_MS)) ? { heartbeatMs: Number(process.env.CLAND_HEARTBEAT_MS) } : {}),
+      heartbeatRunTimeoutMs: Number(process.env.CLAND_TEST_EXECUTOR_RUN_TIMEOUT_MS) > 0 ? Number(process.env.CLAND_TEST_EXECUTOR_RUN_TIMEOUT_MS) : config?.verification.runTimeoutMs ?? 4500000,
       idleNotifyMs: idleNotifyMs(join(l.dir, 'config.toml'), process.env, log),
       // Tests may shorten the event window without changing the sixty-second default.
       ...(Number(process.env.CLAND_TEST_EVENT_WINDOW_MS) > 0 && Number.isFinite(Number(process.env.CLAND_TEST_EVENT_WINDOW_MS)) ? { eventWindowMs: Number(process.env.CLAND_TEST_EVENT_WINDOW_MS) } : {}),

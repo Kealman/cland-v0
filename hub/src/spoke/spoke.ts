@@ -12,7 +12,7 @@
 //                       that role, else the session needs a role the human assigned (`cland role set`)
 //   CLAND_DELIVERY      `adapter`: the session's harness adapter injects what the spoke accepts (#24), so the spoke
 //                       only acks; otherwise the spoke delivers into the session as a Claude Code channel event
-//   CLAND_HUB_RECONNECT_MS, CLAND_HUB_HEARTBEAT_MS, CLAND_HUB_REQUEST_TIMEOUT_MS,
+//   CLAND_HUB_RECONNECT_MS, CLAND_HUB_KEEPALIVE_MS, CLAND_HUB_REQUEST_TIMEOUT_MS,
 //   CLAND_HUB_WELCOME_TIMEOUT_MS   timings, for tests
 import { subscriptionInput } from '../subscriptions.ts';
 import { randomUUID } from 'node:crypto';
@@ -23,7 +23,7 @@ import { CallToolRequestSchema, ListToolsRequestSchema, type Notification } from
 import { INSTRUCTIONS } from './instructions.ts';
 import { Forbidden, HubClient, Refused, REQUEST_TIMEOUT_MS, WELCOME_TIMEOUT_MS } from './hub-client.ts';
 import { TASK_TOOLS, TASK_TOOL_NAMES, taskFrame } from './task-tools.ts';
-import { HEARTBEAT_MS, SEND_KINDS, isSendKind, type HandoverNote, type Message, type SendOutcome, type TopicRef } from '../protocol.ts';
+import { KEEPALIVE_MS, SEND_KINDS, isSendKind, type HandoverNote, type Message, type SendOutcome, type TopicRef } from '../protocol.ts';
 import { envelope } from '../adapters/contract.ts';
 import { findDiscovery, readDiscovery } from '../project.ts';
 import { Journal, journalPath } from '../hub/journal.ts';
@@ -513,7 +513,7 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env): Promise<Sp
     secret,
     ...(endpoint ? { endpoint } : {}),
     reconnectMs: positive(env.CLAND_HUB_RECONNECT_MS, 1000),
-    heartbeatMs: positive(env.CLAND_HUB_HEARTBEAT_MS, HEARTBEAT_MS),
+    keepaliveMs: positive(env.CLAND_HUB_KEEPALIVE_MS, KEEPALIVE_MS),
     requestTimeoutMs: positive(env.CLAND_HUB_REQUEST_TIMEOUT_MS, REQUEST_TIMEOUT_MS),
     welcomeTimeoutMs: positive(env.CLAND_HUB_WELCOME_TIMEOUT_MS, WELCOME_TIMEOUT_MS),
     log,

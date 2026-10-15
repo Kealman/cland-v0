@@ -88,7 +88,7 @@ test('an ordinary topic can be renamed and deleted with its messages; a standing
   assert.equal(core.store.topicMessages('t-1', 10).length, 0, 'its messages went with it');
   assert.throws(() => core.renameTopic('general', 'x'), /General is a standing topic: it cannot be renamed/);
   assert.throws(() => core.deleteTopic('agents'), /Agents is a standing topic: it cannot be deleted/);
-  core.store.close();
+  core.close(); core.store.close();
 });
 
 test("a human message held for a vacant role goes to the session that takes the role, and its stage follows the ack", () => {
@@ -109,7 +109,7 @@ test("a human message held for a vacant role goes to the session that takes the 
   core.ack(r.connection, message.id);
   assert.deepEqual(events, [{ type: 'delivery', topic: 'general', message: message.id, stage: 'delivered' }]);
   assert.equal(core.topicHistory('general').messages[0]?.stage, 'delivered');
-  core.store.close();
+  core.close(); core.store.close();
 });
 
 for (const state of ['delivered', 'uncertain', 'injected'] as const) {
@@ -139,7 +139,7 @@ for (const state of ['delivered', 'uncertain', 'injected'] as const) {
     core.ack(a, r1.id);
     assert.equal(aGot.filter(m => m.id === r1.id).length, 1);
     assert.equal(bGot.filter(m => m.id === r2.id).length, 1);
-    core.store.close();
+    core.close(); core.store.close();
   });
 }
 
@@ -181,7 +181,7 @@ for (const state of ['queued', 'delivered', 'uncertain', 'injected', 'dropped'] 
       const next = core.sendFromSession('sender', ['receiver'], 'next report', undefined, 'notes', undefined, { role: 'implementer' }).message;
       assert.equal(got.find(m => m.id === next.id)?.digest, undefined);
     }
-    core.store.close();
+    core.close(); core.store.close();
   });
 }
 
@@ -202,7 +202,7 @@ test('released progress survives restart and keeps its own original TTL', async 
     core.sendFromSession('sender', ['fresh', 'expired'], 'deleted R', undefined, 'reports', undefined, { role: 'implementer' });
     now = 1950;
     core.deleteTopic('reports');
-    core.store.close();
+    core.close(); core.store.close();
     core = new HubCore({ store: new Store(file), now: () => new Date(now), queueTtlMs: 1000 });
     const fresh = core.sendFromSession('sender', ['fresh'], 'fresh next report', undefined, undefined, undefined, { role: 'implementer' }).message;
     assert.deepEqual(core.store.deliveryMessage(fresh.id, 'fresh')?.digest?.map(m => m.id), [note.id]);
@@ -210,7 +210,7 @@ test('released progress survives restart and keeps its own original TTL', async 
     const expired = core.sendFromSession('sender', ['expired'], 'expired next report', undefined, undefined, undefined, { role: 'implementer' }).message;
     assert.equal(core.store.deliveryMessage(expired.id, 'expired')?.digest, undefined, 'releasing never extends queued_at');
   } finally {
-    core.store.close();
+    core.close(); core.store.close();
     await rm(dir, { recursive: true, force: true });
   }
 });
@@ -285,5 +285,5 @@ test('rename refuses a dropped duplicate and preserves the source pending digest
   assert.deepEqual(source?.digest?.map(m => m.id), [note.id]);
   core.ack(a, r1.id);
   assert.equal(got.filter(m => m.id === r1.id).length, 1);
-  core.store.close();
+  core.close(); core.store.close();
 });

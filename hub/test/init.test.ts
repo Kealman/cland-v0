@@ -33,6 +33,7 @@ test('init writes tracker levels and update preserves a changed or empty ladder'
   const crewPath = join(root, '.cland/crew.toml');
   const crew = await readFile(crewPath, 'utf8');
   assert.match(crew, /leads = \[\]/);
+  assert.match(crew, /\[crew.coordinator\][\s\S]*?^heartbeat = "1h"$/m);
   assert.match(crew, /\[crew.reviewer\][\s\S]*?size = 1[\s\S]*?keep_context = true/);
   const customCrew = crew.replace('size = 1', 'size = 2');
   await writeFile(crewPath, customCrew);

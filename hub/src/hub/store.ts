@@ -18,7 +18,16 @@ export type DeliveryState = 'delivered' | 'queued' | 'dropped' | 'injected' | 'u
 export type KnownSession = { name: string; lastSeen: string; status: string | null; role: string | null };
 export type ReleasedDigest = { trigger: string; session: string; notes: string[]; reheld: string[] };
 
+export type HeartbeatSchedule = { sessionId: string; role: string; interval: number; last: number; next: number };
 const SCHEMA = `
+create table if not exists heartbeats (
+  session_id text primary key, role text not null, interval_ms integer not null,
+  last_at integer not null, next_at integer not null
+);
+create table if not exists heartbeat_item_states (
+  item text primary key, status text not null, since integer not null
+);
+
 create table if not exists inbox_waits (
   kind text not null, id text not null, subject text not null, since text not null,
   primary key (kind, id)
@@ -402,12 +411,52 @@ export class Store implements HygieneMemory {
     });
   }
 
+  heartbeatSchedule(sessionId: string, role: string, interval: number, start: number): HeartbeatSchedule {
+    const row = this.#db.prepare('select * from heartbeats where session_id = ?').get(sessionId) as Row | undefined;
+    const last = row ? row.last_at as number : start;
+    const next = row && row.role === role && row.interval_ms === interval ? row.next_at as number : last + interval;
+    this.#db.prepare(`insert into heartbeats values (?, ?, ?, ?, ?) on conflict(session_id) do update
+      set role=excluded.role, interval_ms=excluded.interval_ms, next_at=excluded.next_at`).run(sessionId, role, interval, last, next);
+    return { sessionId, role, interval, last, next };
+  }
+
+  firedHeartbeat(schedule: HeartbeatSchedule, now: number): void {
+    this.#db.prepare('update heartbeats set last_at = ?, next_at = ? where session_id = ?').run(now, now + schedule.interval, schedule.sessionId);
+  }
+
+  stopHeartbeat(sessionId: string): void { this.#db.prepare('delete from heartbeats where session_id = ?').run(sessionId); }
+
+  heartbeatItemSince(item: string, status: string, initial: number, now: number): number {
+    const row = this.#db.prepare('select * from heartbeat_item_states where item = ?').get(item) as Row | undefined;
+    if (row?.status === status) return row.since as number;
+    // Known transitions use observation time: a hand edit can retain an old frontmatter date.
+    const since = row || !Number.isFinite(initial) ? now : Math.min(initial, now);
+    this.#db.prepare('insert into heartbeat_item_states values (?, ?, ?) on conflict(item) do update set status=excluded.status, since=excluded.since').run(item, status, since);
+    return since;
+  }
+
+  /** Each firing stays in history; only unbound, undelivered heartbeats are replaced. */
+  replaceHeartbeat(session: string): void {
+    this.#db.prepare(`update deliveries set state = 'dropped' where session = ? and state = 'queued'
+      and digest_id is null and message_id in (select id from messages where notice = 'event'
+      and json_extract(notice_detail, '$.event') = 'heartbeat')`).run(session);
+  }
+
+  pendingReview(item: string, since: number): boolean {
+    return this.#db.prepare(`select 1 from messages m join deliveries d on d.message_id = m.id
+      where m.created_at >= ? and d.state in ('queued', 'delivered', 'injected', 'uncertain')
+      and (d.verifier_role = 'reviewer' or d.session in ('@reviewer', '@verifier:reviewer')
+        or d.session in (select name from sessions where role = 'reviewer'))
+      and lower(trim(replace(substr(m.text, 1, instr(m.text || char(10), char(10)) - 1), char(13), ''))) = ? limit 1`)
+      .get(since, `review request ${item}`.toLowerCase()) !== undefined;
+  }
+
   /** Sessions seen since `since` (ms epoch) — the ones `@all` or a glob still reaches; older ones are history. */
   knownSessions(since = 0): KnownSession[] {
     return (this.#db.prepare('select name, last_seen, status, role from sessions where last_seen >= ? order by name').all(since) as Row[]).map(toKnown);
   }
 
-  /** A heartbeat: the session is still here, so `last_seen` means what it says. */
+  /** A keepalive: the session is still here, so `last_seen` means what it says. */
   touchSession(name: string, now: number): void {
     this.#db.prepare('update sessions set last_seen = ? where name = ?').run(now, name);
   }
@@ -911,7 +960,8 @@ export class Store implements HygieneMemory {
     // Progress is never capped. Every underlying row is still acknowledged with the same fixed root.
     const cap = message.kind === 'event' ? 9 : 10;
     const eventNotes = members.filter(note => note.kind === 'event');
-    const visible = new Set(eventNotes.filter(note => note.detail?.final === true).slice(0, cap).map(note => note.id));
+    const visible = new Set(eventNotes.filter(note => note.detail?.event === 'heartbeat').slice(0, cap).map(note => note.id));
+    for (const note of eventNotes.filter(note => note.detail?.final === true)) if (visible.size < cap) visible.add(note.id);
     for (const note of eventNotes) if (visible.size < cap) visible.add(note.id);
     // A first launch input carries its authority before the brief and any held notes.
     const digest = members.filter(note => note.kind !== 'event' || visible.has(note.id)).sort((a, b) => Number(b.kind === 'role') - Number(a.kind === 'role'));
@@ -967,10 +1017,29 @@ export class Store implements HygieneMemory {
     }));
   }
 
+  #heartbeatIdle(session: string): boolean {
+    const id = this.sessionIdOf(session);
+    const state = id ? this.meta(`heartbeat-state:${id}`) : null;
+    return state !== null && JSON.parse(state).state === 'idle';
+  }
+
+  /** A queued root may have been recorded during a turn; bind its heartbeat only at an idle send. */
+  bindHeartbeatForTurn(messageId: string, session: string): void {
+    const row = this.#db.prepare(`select m.seq from messages m join deliveries d on d.message_id = m.id
+      where m.id = ? and d.session = ? and d.state = 'queued' and d.digest_id is null
+      and coalesce(m.notice, '') != 'role'`).get(messageId, session) as Row | undefined;
+    if (!row || !this.#heartbeatIdle(session)) return;
+    this.#db.prepare(`update deliveries set digest_id = ? where session = ? and state = 'queued'
+      and digest_id is null and message_id in (select id from messages where notice = 'event'
+      and json_extract(notice_detail, '$.event') = 'heartbeat'
+      and json_extract(notice_detail, '$.digest') = 'turn' and seq < ?)`).run(messageId, session, row.seq as number);
+  }
+
   #bindProgress(messageId: string, session: string, seq: number): void {
     this.#db.prepare(`update deliveries set digest_id = ?
       where session = ? and state = 'queued' and digest_id is null and message_id in
-      (select id from messages where (notice = 'progress' or (notice = 'event' and coalesce(json_extract(notice_detail, '$.digest'), 'turn') = 'turn')) and seq < ?)`).run(messageId, session, seq);
+      (select id from messages where (notice = 'progress' or (notice = 'event' and coalesce(json_extract(notice_detail, '$.digest'), 'turn') = 'turn')) and seq < ?
+      and (json_extract(notice_detail, '$.event') is not 'heartbeat' or ?))`).run(messageId, session, seq, this.#heartbeatIdle(session) ? 1 : 0);
   }
 
   /**

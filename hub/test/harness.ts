@@ -70,7 +70,7 @@ export type SpokeOptions = {
   sessionId?: string;
   launchToken?: string;
   cwd?: string;
-  heartbeatMs?: number;
+  keepaliveMs?: number;
   /** How long a request waits for the hub's reply (CLAND_HUB_REQUEST_TIMEOUT_MS). */
   requestTimeoutMs?: number;
   /** How long a silent hub has to welcome the spoke (CLAND_HUB_WELCOME_TIMEOUT_MS). */
@@ -101,7 +101,7 @@ export async function spawnSpoke(options: SpokeOptions): Promise<Session> {
     CLAND_SESSION_ID: options.sessionId ?? 'sess-test',
     // reconnect fast in tests
     CLAND_HUB_RECONNECT_MS: '50',
-    CLAND_HUB_HEARTBEAT_MS: String(options.heartbeatMs ?? 30_000),
+    CLAND_HUB_KEEPALIVE_MS: String(options.keepaliveMs ?? 30_000),
   };
   if (options.discover && !options.cwd) throw new Error('a discovering spoke needs the cwd of a project');
   if (!options.unconfigured && !options.discover) {

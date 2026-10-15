@@ -131,7 +131,7 @@ export class OpenCodeClient {
           .filter((l) => l.startsWith('data:'))
           .map((l) => l.slice(5).replace(/^ /, ''))
           .join('\n');
-        if (!data) continue; // a heartbeat comment
+        if (!data) continue; // a keepalive comment
         try {
           const parsed = JSON.parse(data) as ServerEvent;
           if (typeof parsed.type === 'string') onEvent(parsed);

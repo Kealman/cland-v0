@@ -218,7 +218,7 @@ test('compiler guard follows aliases and inference while preserving operational 
 
 test('Lua EventKind declarations match the protocol and cannot hide tracker container operations', () => {
   const rel = 'nvim/lua/cland/event_kinds.lua';
-  const declaration = "return { 'session', 'task', 'verdict', 'suite', 'release', 'artifact', 'usage', 'topic' }";
+  const declaration = "return { 'session', 'task', 'verdict', 'suite', 'release', 'artifact', 'usage', 'topic', 'heartbeat' }";
   assert.deepEqual(luaContainerLiterals(rel, declaration), []);
   for (const source of [
     declaration + "\nif item.kind == 'epic' then open(item) end",

@@ -1472,6 +1472,7 @@ export class Sessions {
     }
     const message = this.#core.store.deliveryMessage(messageId, this.#core.connectionOf(sessionId)?.name ?? p.name);
     if (!message) return;
+    if ((message.detail?.event === 'heartbeat' || message.digest?.some(note => note.detail?.event === 'heartbeat')) && this.#core.sessionState(sessionId) !== 'idle') return;
     const adapter = this.#adapters.get(p.harness);
     if (!adapter) return;
     const flight = { sentAt: Date.now(), again: false };

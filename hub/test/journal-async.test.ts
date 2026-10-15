@@ -16,7 +16,7 @@ test('Core journals released digest membership, message kinds and batch control 
   const journal = new Journal(path);
   t.after(() => journal.close());
   const core = new HubCore({ log: journal.tap(() => {}) });
-  t.after(() => core.store.close());
+  t.after(() => { core.close(); core.store.close(); });
   core.store.ensureTopic('reports', 'Reports', false, new Date().toISOString());
   const receiver = core.hello({ type: 'hello', protocol: 2, sessionId: 'receiver', name: 'receiver', role: 'coordinator', cwd: '/' }, () => true);
   assert.ok(receiver.ok);

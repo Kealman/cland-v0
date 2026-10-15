@@ -160,9 +160,9 @@ test('a spoke acks every deliver and hands a message re-sent under the same id t
   // unread in its socket while the hub's heartbeat sweep drops that socket; resumed, the spoke reads the
   // first copy (its ack goes to a socket the hub has closed), reconnects, and is sent the message again.
   const events: Array<Record<string, unknown>> = [];
-  const hub = await startHub({ heartbeatMs: 100, log: (e) => void events.push(e) });
-  const alpha = await spawnSpoke({ hub, name: 'alpha', sessionId: 'sess-a', heartbeatMs: 40 });
-  const beta = await spawnSpoke({ hub, name: 'beta', sessionId: 'sess-b', heartbeatMs: 40 });
+  const hub = await startHub({ keepaliveMs: 100, log: (e) => void events.push(e) });
+  const alpha = await spawnSpoke({ hub, name: 'alpha', sessionId: 'sess-a', keepaliveMs: 40 });
+  const beta = await spawnSpoke({ hub, name: 'beta', sessionId: 'sess-b', keepaliveMs: 40 });
   let paused = false;
   try {
     await alpha.waitForPresence(['alpha', 'beta']);
@@ -228,14 +228,14 @@ test('a request the hub never answers fails at its deadline instead of hanging t
 test('a spoke whose heartbeats go unanswered closes the connection and reconnects', async (t) => {
   const root = await tempProject(t);
   const { discovery } = await startDaemon(t, root);
-  const spoke = await spawnSpoke({ discover: true, cwd: root, name: 'alpha', sessionId: 'sess-a', heartbeatMs: 100 });
+  const spoke = await spawnSpoke({ discover: true, cwd: root, name: 'alpha', sessionId: 'sess-a', keepaliveMs: 100 });
   t.after(() => spoke.close());
   await spoke.waitForPresence(['alpha']);
   const before = JSON.parse((await cland(root, 'hub', 'status', '--json')).stdout) as { sessions: Array<{ name: string; connectedAt: string }> };
   pause(discovery.pid);
   t.after(() => resume(discovery.pid));
-  await until(async () => spoke.log(), (log) => /missed 2 heartbeat replies/.test(log));
-  assert.match(spoke.log(), /missed 2 heartbeat replies/);
+  await until(async () => spoke.log(), (log) => /missed 2 keepalive replies/.test(log));
+  assert.match(spoke.log(), /missed 2 keepalive replies/);
   resume(discovery.pid);
   // a fresh hello: the hub shows alpha connected again, since a later time
   const after = await until(

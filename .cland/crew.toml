@@ -3,6 +3,7 @@ leads = []
 idle_from = []
 
 [crew.coordinator]
+heartbeat = "1h"
 policy = "singleton"
 size = 1
 keep_context = false

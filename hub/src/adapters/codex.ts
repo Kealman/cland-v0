@@ -857,6 +857,7 @@ export class CodexAdapter implements HarnessAdapter {
     const client = live?.client;
     if (!live || !client || client.closed) throw new Error('the hub is not connected to this session\'s app-server');
     const threadId = p.harnessSessionId as string;
+    if ((message.detail?.event === 'heartbeat' || message.digest?.some(note => note.detail?.event === 'heartbeat')) && (live.turnId || live.state !== 'idle')) throw new Error('heartbeat waits for an idle turn');
     const text = envelope(message, topic);
     const input = [{ type: 'text', text, text_elements: [] }];
     // into the active turn

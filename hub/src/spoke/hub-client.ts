@@ -21,9 +21,9 @@ export type HubClientOptions = {
   requestTimeoutMs?: number;
   /** How long a silent peer has to answer hello before its socket is closed, ms. */
   welcomeTimeoutMs?: number;
-  /** The heartbeat interval while connected, ms; absent means no heartbeat. Each ping must be answered
-   *  within one interval; MISSED_HEARTBEATS unanswered in a row close the socket, and the spoke reconnects. */
-  heartbeatMs?: number;
+  /** The keepalive interval while connected, ms; absent means no keepalive. Each ping must be answered
+   *  within one interval; MISSED_KEEPALIVES unanswered in a row close the socket, and the spoke reconnects. */
+  keepaliveMs?: number;
   log?: (line: string) => void;
 };
 
@@ -49,8 +49,8 @@ export const READINESS_TIMEOUT_MS = 20_000;
 /** Silent-welcome liveness detection matches the readiness allowance; ordinary replies still get 10 s. */
 export const WELCOME_TIMEOUT_MS = READINESS_TIMEOUT_MS;
 
-/** Unanswered heartbeats in a row after which the hub counts as gone and the spoke reconnects. */
-export const MISSED_HEARTBEATS = 2;
+/** Unanswered keepalives in a row after which the hub counts as gone and the spoke reconnects. */
+export const MISSED_KEEPALIVES = 2;
 
 /** A request whose reply did not come within its deadline. */
 export class ReplyTimeout extends Error {}
@@ -104,9 +104,9 @@ export class HubClient extends EventEmitter<{ deliver: [Message, TopicRef | unde
   #timer: NodeJS.Timeout | null = null;
   #lastRefusal: string | null = null;
   #fatal = false;
-  #heartbeat: NodeJS.Timeout | null = null;
-  #missedHeartbeats = 0;
-  /** Armed when the hello goes out, cleared by the hub's answer: the liveness check before heartbeats start. */
+  #keepalive: NodeJS.Timeout | null = null;
+  #missedKeepalives = 0;
+  /** Armed when the hello goes out, cleared by the hub's answer: the liveness check before keepalives start. */
   #welcomeTimer: NodeJS.Timeout | null = null;
   /** The ids of the messages already handed to the session: a re-sent deliver is acked again, never emitted twice. */
   readonly #seen = new Set<string>();
@@ -153,7 +153,7 @@ export class HubClient extends EventEmitter<{ deliver: [Message, TopicRef | unde
     this.#stopped = true;
     this.#failReadiness(new Error('the spoke stopped before the hub welcome'));
     if (this.#timer) clearTimeout(this.#timer);
-    this.#stopHeartbeat();
+    this.#stopKeepalive();
     this.#clearWelcomeTimer();
     this.#ws?.close();
   }
@@ -205,34 +205,34 @@ export class HubClient extends EventEmitter<{ deliver: [Message, TopicRef | unde
   }
 
   /** While connected: a ping each interval, answered within it; too many unanswered and the socket is cut. */
-  #startHeartbeat(ws: WebSocket): void {
-    this.#stopHeartbeat();
-    const every = this.#options.heartbeatMs;
+  #startKeepalive(ws: WebSocket): void {
+    this.#stopKeepalive();
+    const every = this.#options.keepaliveMs;
     if (every === undefined) return;
-    this.#missedHeartbeats = 0;
-    this.#heartbeat = setInterval(() => {
+    this.#missedKeepalives = 0;
+    this.#keepalive = setInterval(() => {
       if (this.#ws !== ws || ws.readyState !== WebSocket.OPEN) return;
       this.request({ type: 'ping' }, every).then(
         () => {
-          this.#missedHeartbeats = 0;
+          this.#missedKeepalives = 0;
         },
         (err: unknown) => {
           if (!(err instanceof ReplyTimeout) || this.#ws !== ws) return;
-          this.#missedHeartbeats += 1;
-          if (this.#missedHeartbeats < MISSED_HEARTBEATS) return;
-          this.#log(`the hub missed ${this.#missedHeartbeats} heartbeat replies — closing the connection and reconnecting`);
-          this.#stopHeartbeat();
+          this.#missedKeepalives += 1;
+          if (this.#missedKeepalives < MISSED_KEEPALIVES) return;
+          this.#log(`the hub missed ${this.#missedKeepalives} keepalive replies — closing the connection and reconnecting`);
+          this.#stopKeepalive();
           // no close handshake with a peer that stopped answering: the close event schedules the reconnect
           ws.terminate();
         },
       );
     }, every);
-    this.#heartbeat.unref();
+    this.#keepalive.unref();
   }
 
-  #stopHeartbeat(): void {
-    if (this.#heartbeat) clearInterval(this.#heartbeat);
-    this.#heartbeat = null;
+  #stopKeepalive(): void {
+    if (this.#keepalive) clearInterval(this.#keepalive);
+    this.#keepalive = null;
   }
 
   /** One sentence for a tool result when the hub cannot be reached. */
@@ -283,7 +283,7 @@ export class HubClient extends EventEmitter<{ deliver: [Message, TopicRef | unde
       const name = this.#requestedName ?? this.#acceptedName;
       if (name !== undefined) hello.name = name;
       ws.send(JSON.stringify(hello));
-      // The heartbeat starts only with the welcome: until then this deadline is the liveness check. A hub
+      // The keepalive starts only with the welcome: until then this deadline is the liveness check. A hub
       // that took the connection and stays silent is left, and the close schedules the reconnect.
       const within = this.#options.welcomeTimeoutMs ?? WELCOME_TIMEOUT_MS;
       this.#welcomeTimer = setTimeout(() => {
@@ -305,7 +305,7 @@ export class HubClient extends EventEmitter<{ deliver: [Message, TopicRef | unde
 
     ws.on('close', (code, reason) => {
       this.#ws = null;
-      this.#stopHeartbeat();
+      this.#stopKeepalive();
       this.#clearWelcomeTimer();
       const why = reason.toString() || `code ${code}`;
       this.#failReadiness(new Error(`the hub connection closed (${why}) before the welcome`));
@@ -359,7 +359,7 @@ export class HubClient extends EventEmitter<{ deliver: [Message, TopicRef | unde
         if (this.#state.kind === 'refused' && this.#state.code === 'unauthorized') this.#lastRefusal = null;
         this.#acceptedName = frame.name;
         this.#setState({ kind: 'connected', name: frame.name, ...(frame.role ? { role: frame.role } : {}) });
-        if (this.#ws) this.#startHeartbeat(this.#ws);
+        if (this.#ws) this.#startKeepalive(this.#ws);
         this.#log(`connected to the hub as ${frame.name}${frame.role ? ` (${frame.role})` : ''} (${frame.presence.length} online)`);
         break;
       case 'role':

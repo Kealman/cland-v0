@@ -255,7 +255,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
     if (!p.harnessSessionId) throw new Error(`no OpenCode session recorded for ${p.name}`);
     const tracker = this.#watched.get(p.sessionId)?.tracker;
     // during a turn the message steers it (at the next step boundary); otherwise it is queued as the next turn
-    const delivery = tracker?.running ? 'steer' : 'queue';
+    const delivery = (message.detail?.event === 'heartbeat' || message.digest?.some(note => note.detail?.event === 'heartbeat')) ? 'queue' : tracker?.running ? 'steer' : 'queue';
     const admitted = await (await this.#client(p)).prompt(p.harnessSessionId, envelope(message, topic), delivery, this.#injectTimeoutMs);
     if (!admitted?.id) throw new Error('the server admitted no inbox item');
     this.#host.log({ event: 'opencode-prompt', session: p.name, id: message.id, inbox: admitted.id, delivery });

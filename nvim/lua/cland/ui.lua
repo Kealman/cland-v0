@@ -75,7 +75,7 @@ local function validate(data)
   data.events = data.events or { filter = vim.empty_dict(), muted = {} }
   local e = data.events
   assert(type(e) == 'table' and type(e.filter) == 'table' and type(e.muted) == 'table', 'invalid events preferences')
-  local kinds = { 'session', 'task', 'verdict', 'suite', 'release', 'artifact', 'usage', 'topic' }
+  local kinds = require('cland.event_kinds')
   local function subject(s)
     return type(s) == 'table' and vim.tbl_contains({ 'item', 'session', 'topic', 'artifact' }, s.kind) and type(s.id) == 'string' and s.id ~= ''
   end

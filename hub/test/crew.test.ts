@@ -209,3 +209,27 @@ test('non-table crew values are refused and cannot replace the last good staffin
     }
   }
 });
+
+
+test('role heartbeats default visibly, validate a one-minute floor and round trip through the CLI', async t => {
+  const root = await tempProject(t);
+  await mkdir(join(root, '.cland'), { recursive: true });
+  await writeFile(join(root, '.cland/crew.toml'), '');
+  const { discovery } = await startDaemon(t, root);
+  const ui = await connectUi(t, discovery);
+  const initial = await ui.request({ type: 'crew.show' });
+  assert.match((initial.value as View).summary, /coordinator heartbeat 1h \(default\)/);
+  assert.match((initial.value as View).summary, /implementer heartbeat off \(default\)/);
+  for (const value of ['59s', 'bad', '0m', 60, true]) {
+    const refused = await ui.request({ type: 'crew.set', key: 'coordinator.heartbeat', value });
+    assert.equal(refused.ok, false);
+    assert.match(String(refused.error), /coordinator.*at least 1m/);
+  }
+  const set = await clandWithEnv(root, {}, 'crew', 'set', 'coordinator.heartbeat', '30m', '--json');
+  assert.equal(set.code, 0, set.stderr);
+  assert.equal((JSON.parse(set.stdout) as View).config.crew.coordinator!.heartbeat, '30m');
+  const show = await clandWithEnv(root, {}, 'crew', 'show');
+  assert.match(show.stdout, /heartbeat = "30m"/);
+  assert.doesNotMatch(show.stdout, /coordinator heartbeat 30m \(default\)/);
+  assert.equal((await ui.request({ type: 'crew.set', key: 'coordinator.heartbeat', value: 'off' })).ok, true);
+});

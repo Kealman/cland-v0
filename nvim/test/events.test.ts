@@ -126,3 +126,20 @@ test('Enter opens each event subject, gI/gt/gs use the row references and the pa
   await c.input('<CR>');
   await c.waitScreen(s => s.includes('events · newest first') && !s.includes('palette ›'), 'palette opens events');
 });
+
+test('key 9 filters heartbeat firings with counts, keeps one row per firing, and leaves needs-you unchanged', { skip }, async t => {
+  const root = await tempProject(t);
+  await mkdir(join(root, '.git'), { recursive: true });
+  const heartbeat: EventRow = { id: 'beat-1', ts: today, kind: 'heartbeat', glyph: '●', subject: { kind: 'session', id: 'coord' }, session: 'coord', text: 'coord · in flight 3 · stale 1' };
+  const c = await startClient(t, bin, root, { CLAND_HUB_TRANSPORT: 'stdio', CLAND_COMMAND: JSON.stringify([process.execPath, STUB]), CLAND_STUB_SCENARIO_JSON: JSON.stringify({ inbox: { needsYou: 0 }, events: [heartbeat, { ...heartbeat, id: 'beat-2' }, rows[0]] }) });
+  await c.waitScreen(s => s.includes('hub: connected'), 'connected');
+  await waitInitialSnapshots(c);
+  await c.input('<Esc> E');
+  await c.waitScreen(s => s.includes('events · newest first') && s.includes('claimed event 0'), 'all events');
+  await c.input('9');
+  await c.waitScreen(s => s.includes('heartbeat') && s.includes('in flight 3') && !s.includes('claimed event 0'), 'heartbeat filter');
+  assert.equal(await c.lua("local n=0; for _,line in ipairs(vim.api.nvim_buf_get_lines(0,0,-1,false)) do if line:find('in flight 3',1,true) then n=n+1 end end; return n"), 2);
+  await c.input(' N');
+  await c.waitScreen(s => s.includes('needs you') && !s.includes('events · newest first'), 'inbox');
+  assert.equal(await c.lua("return require('cland.state').S.needs_you"), 0);
+});

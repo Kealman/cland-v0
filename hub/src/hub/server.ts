@@ -8,7 +8,7 @@ import { HubCore, type CoreOptions } from './core.ts';
 import { Dispatcher, secretMatches, type Control, type DispatcherOptions } from './dispatch.ts';
 import { trackerItems } from './topics.ts';
 import type { Tracker } from '../tracker/tracker.ts';
-import { HEARTBEAT_MS, MAX_FRAME_BYTES } from '../protocol.ts';
+import { KEEPALIVE_MS, MAX_FRAME_BYTES } from '../protocol.ts';
 
 /** What the hub is without any listener: the core, the dispatcher every edge opens conversations on, the prune. */
 export type HubBaseOptions = CoreOptions & {
@@ -35,8 +35,8 @@ export type HubOptions = HubBaseOptions & {
   port: number;
   /** The interface to bind; loopback by default, and cland never binds anything else (ADR 0003). */
   host?: string;
-  /** The spokes' heartbeat interval; a socket silent for two of them is closed (default 30 s). */
-  heartbeatMs?: number;
+  /** The spokes' keepalive interval; a socket silent for two of them is closed (default 30 s). */
+  keepaliveMs?: number;
 };
 
 export type HubBase = {
@@ -139,7 +139,7 @@ export function createHubBase(options: HubBaseOptions): HubBase {
 /** The WebSocket edge for spokes on `host:port`; rejects when it cannot listen, leaving nothing bound. */
 export async function createWebSocketEdge(
   dispatcher: Dispatcher,
-  options: { port: number; host?: string; secret: string; heartbeatMs?: number; log?: HubBaseOptions['log'] },
+  options: { port: number; host?: string; secret: string; keepaliveMs?: number; log?: HubBaseOptions['log'] },
 ): Promise<WebSocketEdge> {
   const log = options.log ?? (() => {});
   const http: HttpServer = createServer((_req, res) => {
@@ -148,7 +148,7 @@ export async function createWebSocketEdge(
   const wss = new WebSocketServer({ noServer: true, maxPayload: MAX_FRAME_BYTES });
   const sockets = new Set<WebSocket>();
   const lastSeen = new Map<WebSocket, number>();
-  const heartbeatMs = options.heartbeatMs ?? HEARTBEAT_MS;
+  const keepaliveMs = options.keepaliveMs ?? KEEPALIVE_MS;
 
   http.on('upgrade', (req: IncomingMessage, socket: Duplex, head: Buffer) => {
     if (!bearerMatches(req.headers.authorization, options.secret)) {
@@ -163,7 +163,7 @@ export async function createWebSocketEdge(
   wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
     sockets.add(ws);
     lastSeen.set(ws, Date.now());
-    // Bytes arriving are a live peer: a large frame arriving slowly must not be cut off by the heartbeat sweep.
+    // Bytes arriving are a live peer: a large frame arriving slowly must not be cut off by the keepalive sweep.
     req.socket.on('data', () => {
       if (lastSeen.has(ws)) lastSeen.set(ws, Date.now());
     });
@@ -196,20 +196,20 @@ export async function createWebSocketEdge(
     http.once('error', reject);
     http.listen(options.port, options.host ?? '127.0.0.1', () => resolve());
   });
-  // Two missed heartbeats: the socket is dead as far as the hub is concerned — close it, which lets a
+  // Two missed keepalives: the socket is dead as far as the hub is concerned — close it, which lets a
   // live spoke reconnect with a fresh hello.
-  const heartbeatTimer = setInterval(() => {
+  const keepaliveTimer = setInterval(() => {
     const now = Date.now();
     for (const [ws, seen] of lastSeen) {
-      if (now - seen > 2 * heartbeatMs) {
-        log({ event: 'heartbeat-timeout', silentMs: now - seen });
+      if (now - seen > 2 * keepaliveMs) {
+        log({ event: 'keepalive-timeout', silentMs: now - seen });
         // a close handshake would wait on the very peer that went silent; terminate closes now
         lastSeen.delete(ws);
         ws.terminate();
       }
     }
-  }, heartbeatMs);
-  heartbeatTimer.unref();
+  }, keepaliveMs);
+  keepaliveTimer.unref();
 
   const address = http.address() as AddressInfo;
   const host = options.host ?? '127.0.0.1';
@@ -219,7 +219,7 @@ export async function createWebSocketEdge(
     url,
     port: address.port,
     close: async () => {
-      clearInterval(heartbeatTimer);
+      clearInterval(keepaliveTimer);
       for (const ws of sockets) ws.terminate();
       wss.close();
       await new Promise<void>((resolve) => http.close(() => resolve()));
