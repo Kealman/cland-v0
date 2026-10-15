@@ -3,7 +3,7 @@ id: T-474
 kind: task
 title: Merge override is limited to tracker and docs changes; a code diff needs review
 state: open
-status: in progress
+status: ready
 size: S
 criterion_seq: 3
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-315
 branch: t/T-474-merge-override-is-limited-to-tracker-and
 created: 2026-10-15T09:13:18.127Z
-updated: 2026-10-15T19:26:10.444Z
+updated: 2026-10-15T20:02:01.359Z
 ---
 
 ## Summary
@@ -30,12 +30,15 @@ Retrospective A-2783, STOP 3: T-289 merged code by human override without review
 
 - [x] C1. An override merge of a branch that changes hub/src is refused, naming the files.
   - done: impl-474 · 2026-10-15T18:27:59.912Z
+  - verified: rev-30 [reviewer] · run rev-20261015-474-final · 2026-10-15T20:01:55.117Z · commit 12dc3458a099d0a46868fe1c1f2e7d798c462058
 - [x] C2. An override merge of a docs-only or tracker-only branch succeeds.
   - done: impl-474 · 2026-10-15T18:28:03.467Z
+  - verified: rev-30 [reviewer] · run rev-20261015-474-final · 2026-10-15T20:01:55.117Z · commit 12dc3458a099d0a46868fe1c1f2e7d798c462058
 - [x] C3. The merge skill and hub/README.md describe the scope.
   - done: impl-474 · 2026-10-15T18:28:08.548Z
   - verified: rev-30 [reviewer] · run rev-20261015-474-source · 2026-10-15T18:30:06.089Z · commit 3239eb5c3515a5bb44bd96eca1dc586403a25b16
   - verified: rev-30 [reviewer] · run rev-20261015-474-fixture-delta · 2026-10-15T18:57:30.353Z · commit 12dc3458a099d0a46868fe1c1f2e7d798c462058
+  - verified: rev-30 [reviewer] · run rev-20261015-474-final · 2026-10-15T20:01:55.117Z · commit 12dc3458a099d0a46868fe1c1f2e7d798c462058
 
 ## Comments
 
@@ -130,3 +133,52 @@ Medium gate blocker / aside Bugs S — hub/test/executor-safety.test.ts:148/:206
 Lead must classify/deduplicate this outside-task failure before it counts as a known-only receipt or authorizes a second attempt. Do not classify it as the earlier startReplyLost PROCESSWRAP leak simply because both use remote fixtures. Keep the reviewed head fixed while awaiting disposition; do not submit an unchanged retry automatically.
 
 C1/C2 direct behavior is supported by own Linux execution, and C3's source fact remains, but final runtime marks wait for accepted gate evidence. No criterion is failed speculatively because the only failure is outside the task diff. A-3270 remains excluded as own failed fixture migration; A-3294 is the first post-correction receipt candidate, not a final clear. No Reviewer tests, edits or provider calls.
+
+### rev-30 · 2026-10-15T20:00:40.374Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261015-474-corrected-linux-second
+commit: 12dc3458a099d0a46868fe1c1f2e7d798c462058
+scope: evidence
+
+Second corrected-head evidence review T-474 not clear at unchanged source-reviewed 12dc3458a099d0a46868fe1c1f2e7d798c462058. A-3313/fb5a0840 actual Linux c-8 exits1:1792 pass/4 fail/3 platform skips, no cancellation. Typecheck/hub complete; Neovim smoke not reached after hub red. Policy/refusal/rename/docs/tracker cases pass (A-3313:1674–1677), and no migrated task fixture fails.
+
+Failure identities differ from first eligible A-3294's same-name-key remote-result timeout. First receipt was classified/accepted under Coordinator ebd9c1f0. Original A-3270 remains excluded. This second receipt needs classification of its remaining outside reds before final pairing.
+
+Medium gate blocker / outside Bugs S — hub/test/executor-prepare.test.ts:198: failed-replacement case completes functional path but projectHub after-cleanup check sees PROCESSWRAP (A-3313:4072–4098, check at hub-resources.ts:30). Do not assume the exact T-523 startReplyLost ownership without lead deduplication.
+
+Medium gate blocker / outside Bugs S — hub/test/executor-safety.test.ts:289 (case:264): all executor leases finish releasing is not observed within15000ms (A-3313:4100–4106). Root cause is not established; it differs from first receipt's same-name-key timeout.
+
+Medium gate blocker / outside Bugs S — hub/test/session-usage.test.ts:88 (case:75): coalesced burst/rate-limit journal contains duplicate [24,9], actual four rows versus expected three (A-3313:4108–4134). It differs from the earlier T-495 initial limits-only row and needs explicit family classification.
+
+Known outside Bugs S — hub/test/account-limited.test.ts:265: count1!=2 in failed-poll-backoff case (A-3313:4055–4070), established T-493 family.
+
+No new T-474 source defect; C1/C2 own behavior remains green and C3 source fact stands. No criterion is failed speculatively. Final runtime marks await lead classification and accepted gate disposition; no third run or outside-task edits requested. Current Coordinator cover/restart hold continues (86210b22 replaces failed cover with d5feb268; no local tests/new verify until restart notice).
+
+No Reviewer tests, edits or provider calls.
+
+### rev-30 · 2026-10-15T20:01:55.117Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-474-final
+commit: 12dc3458a099d0a46868fe1c1f2e7d798c462058
+scope: evidence
+
+Final evidence review T-474 clear at unchanged source/delta-reviewed 12dc3458a099d0a46868fe1c1f2e7d798c462058. No high or medium task finding remains.
+
+Coordinator0f6b0db6-f3a1-4990-93d6-9f5f0bf91537 independently confirmed in topic history: A-3294 + A-3313 are accepted gate receipts; failure identities are disjoint, all classified and all changed cases green in both. Current task branch resolves to the same head.
+
+First corrected receipt A-3294/c7535028: actual Linux c-8, exit1,1795pass/1fail/3 platform skips. Sole red executor-safety:206 same-name-key remote result timeout is T-524, previously accepted under ebd9c1f0.
+Second corrected receipt A-3313/fb5a0840: actual Linux c-8, exit1,1792pass/4fail/3 platform skips. Known reds: account-limited:265 count1!=2 T-493; executor-prepare:198 PROCESSWRAP cleanup T-523; executor-safety:289 lease release >15s T-524; session-usage:88 extra duplicate[24,9], newly filed E-482 regression of T-495 (Coordinator notes a real duplicate write remains possible). These identities do not repeat the first test. Both overall suites remain red; final acceptance uses the explicit recorded pair rule, not an assertion that the unrelated behavior is harmless.
+
+Policy and seven migrated fixture files pass in both receipts, including mixed code/config/skill refusal, rename/deletion checks and docs/tracker acceptance. Typecheck/hub complete; Neovim smoke was not reached after hub red. T-474 has no own Neovim diff and the recorded two-receipt disposition applies. A-3270 is explicitly excluded: its own33 obsolete-fixture failures were fixed and source-reviewed; it is not part of this pair. A-3273's103/103 targeted files remain supporting evidence.
+
+C1 verified: immutable candidate path gate refuses hub/src and every disallowed code/config/skill path, names them, preserves refs/root/task, and retains both rename sides/deletions. C2 verified: allowed documentation, README/GLOSSARY/QA briefs, tracker/rulebook-only branches merge by human override; existing Git/conflict/auth gates remain. C3 reverified: merge skill, README and CLI help describe Coordinator6dbb6897's narrowed allowlist. Product policy is unchanged by the incidental fixture migration.
+
+No new run/head change requested. Current cover/restart hold86210b22 continues for subsequent routing. No Reviewer tests, edits or provider calls.
+
+Criteria: C1 verified, C2 verified, C3 verified.

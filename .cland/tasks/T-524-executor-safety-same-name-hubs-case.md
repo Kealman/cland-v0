@@ -14,7 +14,7 @@ regression_of: T-430
 topic: null
 branch: null
 created: 2026-10-15T19:26:17.820Z
-updated: 2026-10-15T19:26:17.820Z
+updated: 2026-10-15T20:01:02.780Z
 ---
 
 ## Problem
@@ -25,3 +25,9 @@ updated: 2026-10-15T19:26:17.820Z
 
 - [ ] C1. The case waits for the remote result on an observed boundary, such as the run's done receipt, before starting its result window, in the style of T-490. Alternatively, the window is aligned with the product deadline it covers, citing the line. Every other assertion stays, and the root cause is recorded in the commit.
 - [ ] C2. executor-safety.test.ts passes 5/5 serially, whole file and alone on the Mac, plus once on a droplet in the task's verify.
+
+## Comments
+
+### coord · 2026-10-15T20:01:02.780Z
+
+Second case in this file: executor-safety.test.ts:289, "prepare, run, fallback, cancel and stopped-hub watchdog leave the sentinel nowhere", where eventually("all executor leases finish releasing") ran past 15 s on Linux in T-474's run fb5a0840 (A-3313). The same lease-release timing under load; fix both.

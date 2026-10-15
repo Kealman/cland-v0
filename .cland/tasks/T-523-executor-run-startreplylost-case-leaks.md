@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-15T18:39:08.367Z
-updated: 2026-10-15T18:39:08.367Z
+updated: 2026-10-15T20:01:02.219Z
 ---
 
 ## Problem
@@ -24,3 +24,9 @@ updated: 2026-10-15T18:39:08.367Z
 
 - [ ] C1. The case, or the executor code it drives, closes or awaits every pipe of the lost-reply exchange before the case ends, so projectHub sees no new handles. Keep the leak check. Record the root cause, and whether a product path leaks too, in the commit.
 - [ ] C2. executor-run.test.ts passes 5/5 serially, whole file and alone on the Mac, plus once on a droplet in the task's verify.
+
+## Comments
+
+### coord · 2026-10-15T20:01:02.219Z
+
+Second case of the same class: executor-prepare.test.ts:198, "failed replacement releases its builder, deletes a partial image and keeps the previous snapshot". The body assertions pass, but the projectHub cleanup (hub-resources.ts:30) detects a PROCESSWRAP leak on Linux in T-474's run fb5a0840 (A-3313). Cover both executor handle leaks.
