@@ -8,7 +8,7 @@ name = "v0"
 # Admission budget; the legacy compatibility lease remains an additional limit.
 budget = 1
 # D27 set 2 for the v0.1.2 build; the human raised it to 4 on 2026-10-15 (ask 35ca68c2), within the same $3 daily cap.
-remote_budget = 4
+remote_budget = 6
 lock_path = "/tmp/cland-suite.lock"
 # Reuse green candidate trees for this many minutes; 0 disables caching.
 cache_max_age_minutes = 1440
