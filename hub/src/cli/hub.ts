@@ -1,5 +1,6 @@
 // `cland hub start | status | stop | serve`: the project's hub daemon, run from the project's root (or
 // anywhere inside it).
+import { AutostartDeferred, autostartDeferred, markHubStop, type Starter } from '../hub/startup.ts';
 import { spawn } from 'node:child_process';
 import { closeSync, mkdirSync, openSync, readFileSync, rmSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -77,9 +78,13 @@ async function waitForExit(pid: number, ms: number): Promise<boolean> {
   return !pidAlive(pid);
 }
 
-async function start(root: string, io: Io): Promise<number> {
+async function start(root: string, io: Io, starter: Starter, autostart: boolean): Promise<number> {
   const since = new Date();
   const l = layout(root);
+  if (autostart && autostartDeferred(root)) {
+    io.out(`${new AutostartDeferred().message}\n`);
+    return 0;
+  }
   const found = await inspect(l);
   if (found.kind === 'live') {
     io.out(`hub already running for ${root}\n${describe(found.status)}`);
@@ -96,7 +101,7 @@ async function start(root: string, io: Io): Promise<number> {
 
   mkdirSync(l.logDir, { recursive: true });
   const logFd = openSync(l.log, 'a');
-  const child = spawn(process.execPath, [CLI_ENTRY, 'hub', 'serve'], { cwd: root, detached: true, stdio: ['ignore', logFd, logFd], env: process.env });
+  const child = spawn(process.execPath, [CLI_ENTRY, 'hub', 'serve', '--starter', JSON.stringify(starter), ...(autostart ? ['--autostart'] : [])], { cwd: root, detached: true, stdio: ['ignore', logFd, logFd], env: process.env });
   closeSync(logFd);
   child.unref();
   let exited: number | null = null;
@@ -107,7 +112,13 @@ async function start(root: string, io: Io): Promise<number> {
   const deadline = Date.now() + START_DEADLINE_MS;
   while (Date.now() < deadline) {
     const holder = liveHolder(l.lock);
-    if (exited !== null && holder === null) break;
+    if (exited !== null && holder === null) {
+      if (autostart && autostartDeferred(root)) {
+        io.out(`${new AutostartDeferred().message}\n`);
+        return 0;
+      }
+      break;
+    }
     const d = readDiscovery(l.discovery);
     if (d && (d.pid === child.pid || d.pid === holder?.pid)) {
       const status = await probe(d);
@@ -190,6 +201,7 @@ async function stop(l: Layout, rootKnown: boolean, io: Io): Promise<number> {
         io.out(`pid ${d.pid} named by ${l.discovery} is not this project's hub (it does not hold ${l.lock}); left it running and removed the stale ${l.discovery}\n`);
         return 0;
       }
+      markHubStop(root);
       process.kill(d.pid, 'SIGTERM');
       if (!(await waitForExit(d.pid, STOP_DEADLINE_MS))) {
         io.err(`cland: pid ${d.pid} did not exit after SIGTERM; it is left running\n`);
@@ -214,7 +226,7 @@ async function stop(l: Layout, rootKnown: boolean, io: Io): Promise<number> {
   return 0;
 }
 
-async function serve(root: string, stdio: boolean, listen: boolean, io: Io): Promise<number> {
+async function serve(root: string, stdio: boolean, listen: boolean, io: Io, starter: Starter, autostart: boolean): Promise<number> {
   if (!listen && !stdio) {
     io.err('cland: --no-listen needs --stdio: a hub with neither could not be reached\n');
     return 2;
@@ -222,7 +234,14 @@ async function serve(root: string, stdio: boolean, listen: boolean, io: Io): Pro
   // A stdio hub serves its parent even where listening is forbidden; the project's lock is taken either way.
   const { serveProject } = await import('../hub/daemon.ts');
   const { STORAGE_STOP_MS } = await import('../tracker/tracker.ts');
-  const daemon = await serveProject(root, { listen: !listen ? 'never' : stdio ? 'optional' : 'required' });
+  let daemon;
+  try {
+    daemon = await serveProject(root, { listen: !listen ? 'never' : stdio ? 'optional' : 'required', starter, autostart });
+  } catch (err) {
+    if (!(err instanceof AutostartDeferred)) throw err;
+    io.out(`${err.message}\n`);
+    return 0;
+  }
   const log = daemon.log;
   if (stdio) {
     // a UI spawned this hub as its child: stdout carries frames only, and the parent leaving stops the hub
@@ -344,6 +363,17 @@ function journal(root: string, args: string[], io: Io): number {
 export async function runHub(args: string[], cwd: string = process.cwd(), io: Io = stdio): Promise<number> {
   const [sub, ...rest] = args;
   const root = projectRoot(cwd);
+  // Only these three values travel to the detached child; never forward environment metadata.
+  const client = rest.includes('--client') ? rest[rest.indexOf('--client') + 1] : 'cli';
+  let starter: Starter = { client: client === 'nvim' || client === 'other' ? client : 'cli', parentPid: process.ppid, cwd };
+  if (sub === 'serve' && rest.includes('--starter')) {
+    const value = JSON.parse(rest[rest.indexOf('--starter') + 1] ?? '') as Partial<Starter>;
+    if ((value.client !== 'cli' && value.client !== 'nvim' && value.client !== 'other') || typeof value.parentPid !== 'number' || !Number.isSafeInteger(value.parentPid) || value.parentPid <= 0 || typeof value.cwd !== 'string') {
+      io.err('cland: invalid hub starter metadata\n');
+      return 2;
+    }
+    starter = { client: value.client, parentPid: value.parentPid, cwd: value.cwd };
+  }
   // Start/serve own the cwd's project. Discovery records an existing hub's actual root, independent
   // of where the file lives. Older copies need a successful probe before lock checks or cleanup.
   const discovery = hubDiscovery(cwd);
@@ -356,7 +386,7 @@ export async function runHub(args: string[], cwd: string = process.cwd(), io: Io
   const l = { ...layout(target ?? root), discovery };
   switch (sub) {
     case 'start':
-      return start(root, io);
+      return start(root, io, starter, rest.includes('--autostart'));
     case 'subscriptions': {
       const hub = readDiscovery(l.discovery);
       if (!hub) throw new Error('no hub running');
@@ -375,7 +405,7 @@ export async function runHub(args: string[], cwd: string = process.cwd(), io: Io
     case 'journal':
       return journal(root, rest, io);
     case 'serve':
-      return serve(root, rest.includes('--stdio') || (rest.includes('--transport') && rest[rest.indexOf('--transport') + 1] === 'stdio'), !rest.includes('--no-listen'), io);
+      return serve(root, rest.includes('--stdio') || (rest.includes('--transport') && rest[rest.indexOf('--transport') + 1] === 'stdio'), !rest.includes('--no-listen'), io, starter, rest.includes('--autostart'));
     default:
       io.err(`cland: unknown hub command "${sub ?? ''}"\n\nusage: cland hub <command>\n\n${HUB_USAGE}`);
       return 2;

@@ -264,12 +264,13 @@ function Client:_hub_start(why)
   self.autostarted = true
   self.failures = 0
   self:_set_state('starting', why)
-  local cmd = vim.list_extend(vim.deepcopy(self.cli), { 'hub', 'start' })
+  local cmd = vim.list_extend(vim.deepcopy(self.cli), { 'hub', 'start', '--autostart', '--client', 'nvim' })
   local ok = pcall(vim.system, cmd, { cwd = self.root, text = true }, function(out)
     vim.schedule(function()
       if out.code ~= 0 then
         self:_set_state('failed', 'cland hub start failed: ' .. first_line(out.stderr ~= '' and out.stderr or out.stdout))
       end
+      if out.code == 0 then self.autostarted = false end -- a deferred start retries after grace expires
       self:_retry()
     end)
   end)
@@ -280,7 +281,7 @@ function Client:_hub_start(why)
 end
 
 function Client:_spawn()
-  local cmd = vim.list_extend(vim.list_extend(vim.deepcopy(self.cli), { 'hub', 'serve', '--stdio' }), self.serve_args)
+  local cmd = vim.list_extend(vim.list_extend(vim.deepcopy(self.cli), { 'hub', 'serve', '--stdio', '--client', 'nvim' }), self.serve_args)
   local proc
   self:_set_state('connecting', 'starting a hub on stdio')
   local ok, result = pcall(vim.system, cmd, {

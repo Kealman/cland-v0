@@ -6,6 +6,7 @@
 // A hub serving a UI over its stdio may run without the listeners (spec 4.2: sandboxed QA runs, where
 // binding is forbidden). It still takes the lock — the store is one hub's alone — but writes no `hub.json`
 // and plugs in no adapters: nothing could reach it, so it launches nothing.
+import { AutostartDeferred, autostartDeferred, clearHubStop, markHubStop, type Starter } from './startup.ts';
 import { AccountPoller } from '../accounts/poller.ts';
 import { randomUUID } from 'node:crypto';
 import { mkdirSync } from 'node:fs';
@@ -58,7 +59,7 @@ export type Daemon = {
   stop: () => Promise<void>;
 };
 
-export async function serveProject(root: string, options: { log?: LogFn; flushLog?: () => Promise<void>; listen?: ListenMode; scheduleTips?: TipSchedule; journalOpen?: JournalOpen; env?: NodeJS.ProcessEnv } = {}): Promise<Daemon> {
+export async function serveProject(root: string, options: { log?: LogFn; flushLog?: () => Promise<void>; listen?: ListenMode; scheduleTips?: TipSchedule; journalOpen?: JournalOpen; env?: NodeJS.ProcessEnv; starter?: Starter; autostart?: boolean } = {}): Promise<Daemon> {
 
   const env = options.env ?? process.env;
   const listen = options.listen ?? 'required';
@@ -76,6 +77,9 @@ export async function serveProject(root: string, options: { log?: LogFn; flushLo
   }
   let secret: string;
   try {
+    // Recheck inside the lock: an automatic start may have begun before the stop marker existed.
+    if (options.autostart && autostartDeferred(root)) throw new AutostartDeferred();
+    if (!options.autostart) clearHubStop(root);
     secret = ensureSkeleton(l);
   } catch (err) {
     lock.release();
@@ -119,7 +123,7 @@ export async function serveProject(root: string, options: { log?: LogFn; flushLo
     try { await options.flushLog?.(); } catch (err) { failure ??= err; }
     if (failure) throw failure;
   };
-  journal.write({ event: 'hub-started', pid: process.pid, version: VERSION, root });
+  journal.write({ event: 'hub-started', pid: process.pid, version: VERSION, root, starter: options.starter ?? { client: 'other', parentPid: process.ppid, cwd: process.cwd() } });
 
   const startedAt = new Date();
   // the tracker's index lives in the same file, in tables of its own; it is rebuilt from the item files here
@@ -238,7 +242,7 @@ export async function serveProject(root: string, options: { log?: LogFn; flushLo
           uptimeMs: Date.now() - startedAt.getTime(),
           harnesses: adapters?.sessions.list() ?? [],
         }),
-        stop: () => { void stop().catch(err => processLog({ event: 'stop-failed', error: err instanceof Error ? err.message : String(err) })); },
+        stop: () => { markHubStop(root); deliberateStop = true; void stop().catch(err => processLog({ event: 'stop-failed', error: err instanceof Error ? err.message : String(err) })); },
       },
     });
     hub.core.restoreJournalRows(recent);
@@ -260,6 +264,7 @@ export async function serveProject(root: string, options: { log?: LogFn; flushLo
   let resolveStopped!: () => void;
   const stopped = new Promise<void>((resolve) => (resolveStopped = resolve));
   let stopping: Promise<void> | null = null;
+  let deliberateStop = false;
   let sweep: Promise<void> | null = null;
   const stop = (): Promise<void> => {
     stopping ??= (async () => {
@@ -284,8 +289,8 @@ export async function serveProject(root: string, options: { log?: LogFn; flushLo
       log({ event: 'stopped' });
       try { await closeLogs(); }
       finally {
-        lock.release();
-        resolveStopped();
+        try { if (deliberateStop) markHubStop(root); }
+        finally { lock.release(); resolveStopped(); }
       }
     })();
     return stopping;

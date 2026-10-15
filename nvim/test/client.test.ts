@@ -131,6 +131,9 @@ test('with no hub running, the client starts the project hub and connects to it'
   }
   const status = await cland(root, 'hub', 'status');
   assert.equal(status.code, 0, status.stderr);
+  const journal = await cland(root, 'hub', 'journal', '--kind', 'hub-started', '--json');
+  const started = JSON.parse(journal.stdout.trim());
+  assert.deepEqual(started.starter, { client: 'nvim', parentPid: c.process.pid, cwd: root });
 });
 
 test('a stale hub.json (its hub killed, its socket gone) makes the client start a hub after a few failed connects', { skip }, async (t) => {
@@ -156,9 +159,32 @@ test('the client follows its hub through a restart and keeps the thread', { skip
   await c.waitScreen((s) => centreOf(s).includes('No messages in General yet.') && !notice(s), 'General, connected');
   await c.input('before<CR>');
   await c.waitScreen((s) => /^[▎▌] before *$/m.test(centreOf(s)), 'the first message');
+  // Observe the workbench's CLI boundary, retaining the real command and its completion callback.
+  await c.lua(`
+    local system = vim.system
+    vim.system = function(cmd, opts, cb)
+      if cmd[3] == 'hub' and cmd[4] == 'start' then
+        return system(cmd, opts, function(out)
+          vim.schedule(function() vim.g.cland_autostart_result = out.stdout end)
+          cb(out)
+        end)
+      end
+      return system(cmd, opts, cb)
+    end
+  `);
   assert.equal((await cland(root, 'hub', 'stop')).code, 0);
   await c.waitScreen((s) => notice(s), 'a notice that the hub is gone');
-  await startDaemon(t, root);
+  const until = Date.now() + 5000;
+  let automatic = '';
+  while (Date.now() < until) {
+    automatic = await c.lua<string>("return vim.g.cland_autostart_result or ''");
+    if (automatic) break;
+    await new Promise(resolve => setTimeout(resolve, 25));
+  }
+  assert.match(automatic, /autostart deferred/);
+  await assert.rejects(readDiscovery(root), { code: 'ENOENT' });
+  const restarted = await startDaemon(t, root);
+  assert.match(restarted.result.stdout, /hub started for/);
   await c.waitScreen((s) => !notice(s), 'the notice cleared on reconnect', 15_000);
   await c.input('after<CR>');
   const screen = await c.waitScreen((s) => /^[▎▌] after *$/m.test(centreOf(s)), 'the second message');

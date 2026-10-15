@@ -1,14 +1,16 @@
-import { ownProcess } from './process-cleanup.ts';
+import { onCleanup, ownProcess } from './process-cleanup.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { spawn, spawnSync } from 'node:child_process';
+import { execFile, spawn, spawnSync } from 'node:child_process';
 import { mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { promisify } from 'node:util';
+import { pathToFileURL } from 'node:url';
 import WebSocket from 'ws';
 import { PROTOCOL_VERSION } from '../src/protocol.ts';
-import { assignRole, cland, connectSocket, killDaemon, pidAlive, readDiscovery, eventually, sleep, spawnSpoke, startDaemon, tempProject, NO_PS } from './harness.ts';
+import { assignRole, cland, clandWithEnv, CLI_ENTRY, connectSocket, killDaemon, pidAlive, readDiscovery, eventually, sleep, spawnSpoke, startDaemon, tempProject, NO_PS } from './harness.ts';
 
 test('cland hub start creates the .cland skeleton and the discovery file', async (t) => {
   const root = await tempProject(t);
@@ -135,6 +137,123 @@ test('cland hub stop ends the daemon and removes hub.json and the socket', async
   const again = await cland(root, 'hub', 'stop');
   assert.equal(again.code, 0);
   assert.equal(again.stdout, `no hub running for ${root}\n`);
+});
+
+// A real daemon is required: this proves stop/discovery teardown against a competing autostarter.
+test('a deliberate stop defers an attached Neovim autostarter so the CLI restart serves first', async t => {
+  const root = await tempProject(t);
+  const first = await startDaemon(t, root);
+  const client = await connectSocket(first.discovery.socket);
+  t.after(() => client.close());
+  client.send({ type: 'hello', protocol: PROTOCOL_VERSION, secret: first.discovery.secret, client: 'nvim' });
+  assert.equal((await client.next()).type, 'welcome');
+  // The fake workbench reacts at the earliest possible boundary: the socket closing during shutdown.
+  const autostart = client.closed.then(() => cland(root, 'hub', 'start', '--autostart', '--client', 'nvim'));
+  const stopped = await cland(root, 'hub', 'stop');
+  assert.equal(stopped.code, 0, stopped.stderr);
+  const automatic = await autostart;
+  assert.equal(automatic.code, 0, automatic.stderr);
+  assert.match(automatic.stdout, /autostart deferred/);
+  const inFlight = await cland(root, 'hub', 'serve', '--autostart', '--client', 'nvim');
+  assert.equal(inFlight.code, 0, inFlight.stderr);
+  assert.match(inFlight.stdout, /autostart deferred/, 'the daemon also checks grace under its startup lock');
+  await assert.rejects(readDiscovery(root), { code: 'ENOENT' });
+  const restart = await startDaemon(t, root);
+  assert.match(restart.result.stdout, /hub started for/);
+  assert.notEqual(restart.discovery.pid, first.discovery.pid);
+  await assert.rejects(stat(join(root, '.cland', 'run', 'hub-stop.json')), { code: 'ENOENT' }, 'explicit restart clears grace');
+  const journal = await cland(root, 'hub', 'journal', '--kind', 'hub-started', '--json');
+  const starts = journal.stdout.trim().split('\n').map(line => JSON.parse(line));
+  assert.equal(starts.length, 2, 'only the original hub and the explicit CLI restart served');
+  assert.deepEqual(starts[1].starter, { client: 'cli', parentPid: process.pid, cwd: root });
+});
+
+// Hold the old CLI after its PID observation, while a new daemon owns the real startup lock.
+test('a late stop continuation cannot recreate grace after an explicit successor starts', async t => {
+  const root = await tempProject(t);
+  const initial = await startDaemon(t, root);
+  const entered = join(root, 'stop-entered');
+  const release = join(root, 'stop-release');
+  const completed = join(root, 'stop-released');
+  const preload = join(root, 'hold-stop.mjs');
+  await writeFile(preload, `
+    import { existsSync, writeFileSync } from 'node:fs';
+    const kill = process.kill;
+    let held = false;
+    process.kill = function(pid, signal) {
+      try { return kill.call(process, pid, signal); }
+      catch (err) {
+        if (!held && pid === ${initial.discovery.pid} && signal === 0 && err.code === 'ESRCH') {
+          held = true;
+          writeFileSync(${JSON.stringify(entered)}, '');
+          const deadline = Date.now() + 10000;
+          while (!existsSync(${JSON.stringify(release)})) {
+            if (Date.now() >= deadline) throw new Error('stop continuation barrier expired');
+            Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 10);
+          }
+          writeFileSync(${JSON.stringify(completed)}, '');
+        }
+        throw err;
+      }
+    };
+  `);
+  let stopFinished = false;
+  const stopping = clandWithEnv(root, { NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --import=${pathToFileURL(preload).href}` }, 'hub', 'stop').then(result => {
+    stopFinished = true;
+    return result;
+  });
+  onCleanup(t, async () => { await writeFile(release, ''); await stopping; });
+  await eventually('old stop observed the exited PID', () => stat(entered).then(() => true), 5000);
+  assert.equal(pidAlive(initial.discovery.pid), false);
+  const successor = await startDaemon(t, root);
+  assert.match(successor.result.stdout, /hub started for/);
+  assert.equal(stopFinished, false, 'the old stop is still paused after the successor serves');
+  const marker = join(root, '.cland', 'run', 'hub-stop.json');
+  await assert.rejects(stat(marker), { code: 'ENOENT' });
+  await writeFile(release, '');
+  await eventually('old stop completed its barrier', () => stat(completed).then(() => true), 5000);
+  const stopped = await stopping;
+  assert.equal(stopped.code, 0, stopped.stderr);
+  await assert.rejects(stat(marker), { code: 'ENOENT' }, 'the old stop must leave the successor grace-free');
+  await killDaemon(successor.discovery.pid);
+  const recovery = await clandWithEnv(root, { CLAND_TEST_SKIP_ORPHAN_SWEEP: '1' }, 'hub', 'start', '--autostart', '--client', 'nvim');
+  assert.equal(recovery.code, 0, recovery.stderr);
+  assert.match(recovery.stdout, /hub started for/, 'successor crash recovery is immediate');
+  await readDiscovery(root);
+});
+
+// Expiry and crash recovery concern real process/lock identity, so these launches stay out of process.
+test('autostart recovers after grace expires and after a crash, recording only starter provenance', async t => {
+  const root = await tempProject(t);
+  const initial = await startDaemon(t, root);
+  const marker = join(root, '.cland', 'run', 'hub-stop.json');
+  await killDaemon(initial.discovery.pid);
+  await assert.rejects(stat(marker), { code: 'ENOENT' }, 'a crash creates no stop marker');
+  const env = { CLAND_TEST_SKIP_ORPHAN_SWEEP: '1', CLAND_STARTUP_SENTINEL: 'must-not-be-journalled' };
+  const recovered = await clandWithEnv(root, env, 'hub', 'start', '--autostart', '--client', 'other');
+  assert.equal(recovered.code, 0, recovered.stderr);
+  assert.match(recovered.stdout, /hub started for/);
+  const replacement = await readDiscovery(root);
+  assert.notEqual(replacement.pid, initial.discovery.pid);
+  assert.equal((await cland(root, 'hub', 'stop')).code, 0);
+  const grace = JSON.parse(await readFile(marker, 'utf8')) as { expiresAt: number };
+  assert.ok(grace.expiresAt > Date.now(), 'stop leaves a live grace marker');
+  // Model elapsed wall time at the on-disk boundary without spending ten seconds asleep.
+  await writeFile(marker, JSON.stringify({ expiresAt: Date.now() - 1 }));
+  const sub = join(root, 'src');
+  await mkdir(sub);
+  // clandWithEnv provisions a fixture at its cwd for start; invoke the CLI directly to keep this a subdirectory.
+  const automatic = await promisify(execFile)(process.execPath, [CLI_ENTRY, 'hub', 'start', '--autostart', '--client', 'nvim'], {
+    cwd: sub, env: { ...Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('CLAND_'))), ...env }, timeout: 30_000,
+  });
+  assert.match(automatic.stdout, /hub started for/);
+  await readDiscovery(root); // register the detached replacement for fixture teardown
+  const journal = await cland(root, 'hub', 'journal', '--kind', 'hub-started', '--json');
+  const starts = journal.stdout.trim().split('\n').map(line => JSON.parse(line));
+  assert.equal(starts.length, 3);
+  assert.deepEqual(starts[1].starter, { client: 'other', parentPid: process.pid, cwd: root });
+  assert.deepEqual(starts[2].starter, { client: 'nvim', parentPid: process.pid, cwd: sub });
+  assert.doesNotMatch(journal.stdout, /CLAND_STARTUP_SENTINEL|must-not-be-journalled/);
 });
 
 test('a spoke follows its hub through a restart: the discovery file is read again on reconnect', async (t) => {
