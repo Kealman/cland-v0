@@ -9,12 +9,13 @@ labels:
   - ready-for-agent
 assignee: null
 parent: E-482
-blocked_by: []
+blocked_by:
+  - T-508
 regression_of: T-454
 topic: null
 branch: null
 created: 2026-10-15T16:40:31.606Z
-updated: 2026-10-15T16:40:31.606Z
+updated: 2026-10-15T17:38:11.431Z
 ---
 
 ## Problem

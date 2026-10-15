@@ -3,7 +3,7 @@ id: T-503
 kind: task
 title: "merge-recovery test: the task worktree still exists right after a retried merge reports closed (Linux)"
 state: open
-status: review
+status: in progress
 size: XS
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-310
 branch: t/T-503-merge-recovery-test-the-task-worktree
 created: 2026-10-15T15:03:40.855Z
-updated: 2026-10-15T16:57:56.755Z
+updated: 2026-10-15T17:40:13.343Z
 ---
 
 ## Problem
@@ -26,7 +26,8 @@ updated: 2026-10-15T16:57:56.755Z
 - [x] C1. Either the merge retry removes the worktree before it reports success, as a product fix with the reason recorded, or the test waits on an observed removal with the existing eventually helper. Every other assertion stays, and the root cause is recorded in the commit.
   - done: impl-503 · 2026-10-15T16:51:31.346Z
   - verified: rev-31 [reviewer] · run rev-20261015-503-source · 2026-10-15T16:52:15.111Z · commit 6f26ba6ff7dc8934614cb142bffcd10212f37735
-- [ ] C2. merge-recovery.test.ts passes 5/5 serially, whole file and alone on the Mac, plus once on a droplet in the task's verify.
+- [x] C2. merge-recovery.test.ts passes 5/5 serially, whole file and alone on the Mac, plus once on a droplet in the task's verify.
+  - done: impl-503 · 2026-10-15T17:39:48.258Z
 
 ## Comments
 
@@ -61,3 +62,26 @@ Criteria: C1 verified.
 ### impl-503 · 2026-10-15T16:57:56.755Z
 
 Post-fix Mac evidence A-3189: 5/5 serial whole-file runs at reviewed head 6f26ba6f, all 19 tests passed each. All labelled loaded; starting loads 13.56, 12.02, 13.93, 13.59, 12.89, each checked free and no local Coordinator. Typecheck passed. Initial verify fbcd2dbf was cancelled while queued because an untracked evidence log caused local fallback; moved log outside worktree, preserved in A-3189, source unchanged and tree clean. C2 awaits Linux verify.
+
+### rev-31 · 2026-10-15T17:40:13.343Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261015-503-linux-1
+commit: 6f26ba6ff7dc8934614cb142bffcd10212f37735
+scope: evidence
+
+Evidence review not clear at unchanged 6f26ba6ff7dc8934614cb142bffcd10212f37735.
+
+## Standards/evidence
+Medium external budget blocker — hub/test/follows.test.ts:122: new-identity restart/follows case takes 5.362 s >5 s without a reasoned allowance (A-3210:5711).
+Medium external budget blocker — hub/test/heartbeat.test.ts:112: digest-aging case takes 5.039 s >5 s without a reasoned allowance (A-3210:5712).
+Both are outside the task diff. No existing exact classification found; reported Tech debt/XS to lead for budget disposition. No automatic known-flake exception assumed.
+
+## Spec
+Source C1 verification stands; branch tip matches the reviewed head. A-3189 checked: five labelled loaded serial Mac whole-file passes, 19/19 each, 95/95 total, no skips/cancellations/failures; each admission records load below 15 and a free targeted-file slot, with non-Coordinator suite load.
+A-3210 exact-head droplet run 5d2063ce-c242-4846-9677-06770f639070 has 1781 pass / 0 assertion failures / 3 macOS-only skips under four-worker Linux load. Changed case passes in 8.085 s (line 1673); all merge-recovery cases green. Host/remote typecheck pass. No Neovim smoke phase because the budget failures stop the run; suite exit remains 1.
+
+C2 execution evidence is present on both platforms, but verification remains pending an accepted gate disposition for the two external hard-budget failures. C1 retained; no failed task-behavior criterion inferred. Coordinator restart/cover hold forbids new verifies until notice. No Reviewer tests or edits.
+Standards/evidence: two external budget blockers. Spec: no new task implementation finding.
