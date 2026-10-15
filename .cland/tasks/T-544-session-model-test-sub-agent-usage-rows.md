@@ -3,7 +3,7 @@ id: T-544
 kind: task
 title: "session-model test: sub-agent usage rows in task view arrive in hook order, not agent order (Linux)"
 state: open
-status: review
+status: ready
 size: XS
 criterion_seq: 2
 labels:
@@ -15,18 +15,20 @@ regression_of: T-480
 topic: topic-335
 branch: t/T-544-session-model-test-sub-agent-usage-rows
 created: 2026-10-15T22:41:39.095Z
-updated: 2026-10-15T23:19:56.509Z
+updated: 2026-10-15T23:44:10.600Z
 ---
 
 ## Summary
 E-387 stage-close cover 725bd529 at dev 21ae664d (2026-10-15 22:40Z; shard-1 cland-v0-7f8dcbd7, peak load 9.9; log A-3413) failed in `hub/test/session-model.test.ts`, 'launched Claude sub-agents retain their parent role and launch item through real hook commands'. That's T-480's new case, merged at 22:26Z. The journal assertion sorts by agentId. The `task view` usage assertion (`usage.subagents` deepEqual) doesn't, and the two SubagentStart hooks can journal in either order: the run saw unknown-child before known-child.
 
 ## Acceptance criteria
-- [ ] C1. The usage assertion compares the sub-agent rows in a defined order: sorted by agentId in the test, or the hub orders `usage.subagents` deterministically by start time then agentId and the test relies on that. Every row's fields are still asserted.
+- [x] C1. The usage assertion compares the sub-agent rows in a defined order: sorted by agentId in the test, or the hub orders `usage.subagents` deterministically by start time then agentId and the test relies on that. Every row's fields are still asserted.
   - verified: rev-30 [reviewer] · run rev-20261015-544-source · 2026-10-15T22:54:20.569Z · commit 420e0de6deacf9e9628f574542d97717c681368d
   - verified: rev-30 [reviewer] · run rev-20261015-544-final · 2026-10-15T23:19:56.509Z · commit 420e0de6deacf9e9628f574542d97717c681368d
-- [ ] C2. session-model.test.ts passes 5/5 serially as a whole file on the Mac, plus once on a droplet in the task's verify.
+  - done: impl-544 · 2026-10-15T23:44:07.786Z
+- [x] C2. session-model.test.ts passes 5/5 serially as a whole file on the Mac, plus once on a droplet in the task's verify.
   - verified: rev-30 [reviewer] · run rev-20261015-544-final · 2026-10-15T23:19:56.509Z · commit 420e0de6deacf9e9628f574542d97717c681368d
+  - done: impl-544 · 2026-10-15T23:44:09.268Z
 
 ## Comments
 

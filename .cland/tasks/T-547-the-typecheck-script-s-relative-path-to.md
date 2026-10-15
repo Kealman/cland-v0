@@ -16,16 +16,18 @@ regression_of: T-427
 topic: topic-341
 branch: t/T-547-the-typecheck-script-s-relative-path-to
 created: 2026-10-15T23:01:44.244Z
-updated: 2026-10-15T23:31:46.544Z
+updated: 2026-10-15T23:43:55.351Z
 ---
 
 ## Summary
 T-427 (merged 21:28Z) set the hub's and Neovim's typecheck scripts to `node ../node_modules/typescript7/bin/tsc …`, a relative file path. Task worktrees under `.cland/worktrees/T-n` usually have no `node_modules` of their own; Node's package resolution walks up to the root install, but a literal file path doesn't. So `npm run typecheck`, and every verify's host typecheck, fails with MODULE_NOT_FOUND in such worktrees. impl-469 hit it at 23:01Z after merging dev, and impl-499's verify c6147dd0 failed the same way at 22:41Z. Each implementer has worked around it with `npm ci` in their worktree.
 
 ## Acceptance criteria
-- [ ] C1. The typecheck scripts in hub/package.json (and nvim's, if it has the same form) find the TypeScript 7 compiler by package resolution, for example through its bin on the npm-run PATH or `require.resolve('typescript7/package.json')`. So they work in the root, in a worktree with no `node_modules` and in a worktree with its own, and the 5.9 API imports still bind to `typescript`.
+- [x] C1. The typecheck scripts in hub/package.json (and nvim's, if it has the same form) find the TypeScript 7 compiler by package resolution, for example through its bin on the npm-run PATH or `require.resolve('typescript7/package.json')`. So they work in the root, in a worktree with no `node_modules` and in a worktree with its own, and the 5.9 API imports still bind to `typescript`.
   - verified: rev-30 [reviewer] · run rev-20261015-547-source · 2026-10-15T23:31:46.544Z · commit 5d18c219cbfafbacd1f53b6abcf4f6720270c38f
-- [ ] C2. A test runs the typecheck script from a git worktree that has no `node_modules` and sees it exit 0, and T-427's parity receipt still holds.
+  - done: impl-547 · 2026-10-15T23:43:35.977Z
+- [x] C2. A test runs the typecheck script from a git worktree that has no `node_modules` and sees it exit 0, and T-427's parity receipt still holds.
+  - done: impl-547 · 2026-10-15T23:43:55.351Z
 
 ## Comments
 

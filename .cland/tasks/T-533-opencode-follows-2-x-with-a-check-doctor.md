@@ -3,8 +3,9 @@ id: T-533
 kind: task
 title: "OpenCode follows 2.x with a check: doctor messages per version and a release-time range check"
 state: open
-status: in progress
+status: review
 size: M
+criterion_seq: 3
 labels:
   - v0.1.3
   - hub
@@ -14,7 +15,7 @@ blocked_by: []
 topic: topic-337
 branch: t/T-533-opencode-follows-2-x-with-a-check-doctor
 created: 2026-10-15T20:59:18.770Z
-updated: 2026-10-15T22:55:44.552Z
+updated: 2026-10-15T23:43:57.030Z
 ---
 
 ## Summary
@@ -39,9 +40,12 @@ Code: `hub/src/doctor/toolchain.ts`, `hub/src/doctor/ranges.ts`, the research pr
 
 ## Acceptance criteria
 
-- [ ] C1. With fake binaries reporting 1.19.0, a 2.x newer than the range and 3.0.0, and with none, `cland doctor` prints the `--major` upgrade, the newer-than-tested note, the refusal naming the range and the v2 installer.
-- [ ] C2. The check script compares the newest 2.x OpenAPI document's operations and event names with the tested one, runs the fake-provider smoke, and on a pass moves the range's upper bound.
-- [ ] C3. The check is not part of `npm test`, and the `release` skill (both copies) runs it before the dry run.
+- [x] C1. With fake binaries reporting 1.19.0, a 2.x newer than the range and 3.0.0, and with none, `cland doctor` prints the `--major` upgrade, the newer-than-tested note, the refusal naming the range and the v2 installer.
+  - done: impl-533 · 2026-10-15T23:42:58.316Z
+- [x] C2. The check script compares the newest 2.x OpenAPI document's operations and event names with the tested one, runs the fake-provider smoke, and on a pass moves the range's upper bound.
+  - done: impl-533 · 2026-10-15T23:43:32.727Z
+- [x] C3. The check is not part of `npm test`, and the `release` skill (both copies) runs it before the dry run.
+  - done: impl-533 · 2026-10-15T23:43:53.153Z
 
 ## Comments
 
