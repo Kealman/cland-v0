@@ -135,9 +135,14 @@ test(`an Implementer pool moves to the next task worktree after merge (${harness
   git(one.worktree.path, 'add', 'shipped.txt'); git(one.worktree.path, 'commit', '-qm', 'Ship first');
   const merged = await ui.request({ type: 'merge', item: first, override: 'Exercise pooled handoff' }, 30_000);
   assert.equal(merged.ok, true, merged.error);
-  await eventually('pool member idle after merge', async () => {
+  await eventually('pool member finished its first turn and released its claim after merge', async () => {
     const rows = ((await ui.request({ type: 'session.list' })).value as { processes: HarnessProcessView[] }).processes;
-    return rows.find(p => p.name === one.process.name)?.state === 'idle' && (harness !== 'claude-code' || (await fake.log(one.process)).includes('hooks Stop done')) ? true : undefined;
+    const row = rows.find(p => p.sessionId === one.process.sessionId);
+    // OpenCode can report idle before its spoke connects and injects the role clause.
+    // First-turn usage distinguishes that startup snapshot from a reusable member.
+    return row?.state === 'idle' && row.holds?.length === 0
+      && (harness !== 'opencode' || (row.usage?.total?.totalTokens ?? 0) > 0)
+      && (harness !== 'claude-code' || (await fake.log(one.process)).includes('hooks Stop done')) ? true : undefined;
   });
   assert.equal(git(one.worktree.path, 'status', '--porcelain'), '');
   const invalid = await ui.request({ type: 'session.launch', name: 'invalid-brief', role: 'implementer', harness, item: second, brief: 'A-999999' });
