@@ -242,6 +242,8 @@ export type HubEvent =
   | { type: 'sessions.pruned'; sessionIds: string[]; archived: number }
   /** Failed launch supervision changed; no accepted process row is implied. */
   | { type: 'session.cleanup'; sessionId: string; state: 'pending stop' | 'settled' }
+  /** Complete rulebook after a write or valid reload, for connected workbenches. */
+  | { type: 'rules.changed'; rules: readonly import('./rules/rulebook.ts').Rule[] }
   /** Latest usage totals, coalesced per launch; old launches must never update a new row under the same name. */
   | { type: 'account'; account: import('./accounts/limits.ts').AccountView }
   | { type: 'session.usage'; session: string; sessionId: string; usage: SessionUsage }

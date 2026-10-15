@@ -162,6 +162,7 @@ function M.open()
   local info = M.row()
   if not (info and info.event) then return end
   local subject = info.event.subject
+  if subject.kind == 'rule' then return require('cland.rulebook').open(subject.id) end
   if subject.kind == 'artifact' then
     local artifacts = require('cland.artifacts')
     if artifacts.get(subject.id) then return artifacts.open(subject.id) end

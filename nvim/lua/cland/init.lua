@@ -361,6 +361,7 @@ M.HELP = {
   'Topics    ␣t panel: n new · c close · r resolve · ↵ open · ␣r resolve this thread · gi its item',
   'Inbox     ␣n panel, ␣N full width: 1-9 answer an ask · i free · r reply · ↵ open or attach · d decline/read · A archive',
   '          za more · A seven-day archive · e events (or ↵ on the events line)',
+  'Rulebook  ␣R or palette Rulebook · ↵ unfold · gt origin · a add · e edit · X retire · :w save draft · q back',
   'Events    1-8 kinds · 0 all · w warnings · s subject · F clear · gM mute · A older · za day fold',
   '          :Cland topic new <title> | close | resolve',
   'Session   ↵ attaches in Terminal mode · C-h/j/k/l focus · C-\\ leaves (C-\\ C-n too)',
@@ -432,6 +433,7 @@ local function keymaps()
     layout.right_panel('topics')
   end, 'topics panel')
   map('<leader>T', layout.toggle_dock, 'topics docked above the inbox')
+  map('<leader>R', function() require('cland.rulebook').open() end, 'Rulebook')
   map('<leader>E', function() require('cland.layout').show({ kind = 'events' }, { insert = false }) end, 'Events view')
   map('<leader>N', function()
     layout.toggle_view({ kind = 'inbox' })

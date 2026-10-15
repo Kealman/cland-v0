@@ -65,6 +65,7 @@ export type Scenario = {
   rankError?: string;
   /** Capture these snapshot answers now, but deliver them only after `releaseSnapshots` on the control socket. */
   holdSnapshots?: string[];
+  rules?: import('../../hub/src/rules/rulebook.ts').Rule[];
   /** The inbox (#33): `inbox.list` answers it, `topic.answer`, `inbox.decline` and `inbox.read` change it and push an `inbox` event.
    * `needsYou` overrides the stub's row aggregate; null omits the count to model a hub that has not said yet. */
   visibility?: import('../../hub/src/hub/visibility.ts').VisibilityOverrides;
@@ -424,6 +425,8 @@ function answer(f: Frame) {
       if (!item) return fail(f.id, `no item ${String(f.item)}`);
       return ok(f.id, { id: item.id, plan: item.plan ?? null, stages: item.stages, approval: item.approval, history: item.planHistory, ...(item.planError ? { planError: item.planError } : {}) });
     }
+    case 'rule.list':
+      return ok(f.id, { rules: scenario.rules ?? [] });
     case 'task.view': {
       // the whole item: a scenario item may carry `body` and `comments` beside its summary fields
       if (scenario.holdView) return;

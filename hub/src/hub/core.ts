@@ -187,6 +187,7 @@ const ROLE_NOTICE = 'role';
 export class HubCore {
   readonly crew: CrewSource | undefined;
   readonly rules: RulebookFile | undefined;
+  readonly #rulebookUiUnsubscribe: (() => void) | undefined;
   refreshVisibility(): void { this.#emit({ type: 'visibility' }); }
 
   publishCrew(config: CrewConfig): void {
@@ -318,6 +319,7 @@ export class HubCore {
     this.#roles = options.roles ?? null;
     this.crew = options.crew;
     this.rules = options.rules;
+    this.#rulebookUiUnsubscribe = this.rules?.subscribe(rules => this.#emit({ type: 'rules.changed', rules }));
     this.#heartbeatMs = options.heartbeatMs;
     this.#heartbeatRunTimeoutMs = options.heartbeatRunTimeoutMs ?? 4500000;
     this.#idleNotifyMs = options.idleNotifyMs ?? IDLE_NOTIFY_MS;
@@ -399,6 +401,7 @@ export class HubCore {
   /** Stop deferred publications before the hub closes its store. */
   close(): void {
     this.#closed = true;
+    this.#rulebookUiUnsubscribe?.();
     clearInterval(this.#heartbeatTimer);
     if (this.#presenceImmediate) clearImmediate(this.#presenceImmediate);
     this.#presenceImmediate = null;

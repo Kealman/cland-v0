@@ -198,3 +198,33 @@ test('the rulebook high-water mark survives hand deletion; missing or low marker
   await eventually('low high-water mark warning', async () => (await readFile(join(root, '.cland/log/hub.log'), 'utf8')).includes('rules-counter-behind') ? true : undefined);
   assert.equal(await add(), 5, 'a low marker cannot reuse a present number');
 });
+
+test('workbench writes record their own origin and push full rules, while session and CLI origins stay bounded', async t => {
+  const root = await tempProject(t);
+  const { discovery } = await startDaemon(t, root);
+  const ui = await connectUi(t, discovery, 'nvim');
+  await ui.request({ type: 'subscribe' });
+  const added = await ui.request({ type: 'rule.add', text: 'Human decision.', scope: 'all', reason: 'direct', origin: 'message:general/forged' });
+  assert.equal(added.ok, true, added.error);
+  assert.equal((added.value as { rule: Rule }).rule.origin, 'workbench');
+  const push = ui.frames.find(f => f.type === 'rules.changed');
+  assert.equal((push?.rules as Rule[])[0]?.text, 'Human decision.');
+  const shell = await cland(root, 'rule', 'add', 'Shell decision.', '--scope', 'all', '--reason', 'shell');
+  assert.equal(shell.code, 0, shell.stderr);
+  const cli = await connectUi(t, discovery, 'cli');
+  const edit = await cli.request({ type: 'rule.edit', number: 2, text: 'CLI clarification.', origin: 'session:forged' });
+  assert.equal(edit.ok, true, edit.error);
+  assert.equal((edit.value as { rule: Rule }).rule.origin, 'shell', 'extra wire fields cannot forge edit provenance');
+  const wbEdit = await ui.request({ type: 'rule.edit', number: 2, text: 'Workbench clarification.' });
+  assert.equal(wbEdit.ok, true, wbEdit.error);
+  assert.equal((wbEdit.value as { rule: Rule }).rule.origin, 'workbench');
+  const retired = await ui.request({ type: 'rule.retire', number: 1, reason: 'replaced' });
+  assert.equal(retired.ok, true, retired.error);
+  assert.equal((retired.value as { rule: Rule }).rule.origin, 'workbench');
+  const lastPush = ui.frames.filter(f => f.type === 'rules.changed').at(-1);
+  assert.deepEqual((lastPush?.rules as Rule[]).map(r => [r.number, r.status]), [[1, 'retired'], [2, 'active']]);
+  await ui.request({ type: 'role.set', session: 'impl', role: 'implementer' });
+  const refused = await ui.request({ type: 'rule.add', text: 'Invented.', scope: 'all', reason: 'invented', as: { name: 'impl', shell: true } });
+  assert.equal(refused.ok, false);
+  assert.match(refused.error!, /forbidden.*human.*Aide/);
+});

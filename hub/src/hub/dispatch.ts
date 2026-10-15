@@ -1456,13 +1456,14 @@ export class Dispatcher {
               if (caller && (!now || now.sessionId !== caller.sessionId || now.role !== 'aide')) throw new ToolForbidden(now?.role ?? null, request.type, reason);
             };
             const resumed = this.#guard.resumer(request.type, client);
+            const workbench = !caller && (client === 'nvim' || client === 'ui');
             let writing: Promise<import('../rules/rulebook.ts').Rule>;
             if (request.type === 'rule.add') {
-              if (request.origin !== undefined && !/^memory:[^\r\n]+$/.test(request.origin)) throw new Error('--origin may name only memory:<path>');
-              const origin = request.origin ?? (caller ? `session:${caller.name}` : 'shell');
+              if (!workbench && request.origin !== undefined && !/^memory:[^\r\n]+$/.test(request.origin)) throw new Error('--origin may name only memory:<path>');
+              const origin = workbench ? 'workbench' : request.origin ?? (caller ? `session:${caller.name}` : 'shell');
               writing = rules.add({ ...request, origin }, resumed, authorize);
-            } else if (request.type === 'rule.edit') writing = rules.edit(request.number, request, resumed, authorize);
-            else writing = rules.retire(request.number, request.reason, resumed, authorize);
+            } else if (request.type === 'rule.edit') writing = rules.edit(request.number, { ...(request.text !== undefined ? { text: request.text } : {}), ...(request.scope !== undefined ? { scope: request.scope } : {}), ...(request.reason !== undefined ? { reason: request.reason } : {}), ...(workbench ? { origin: 'workbench' } : {}) }, resumed, authorize);
+            else writing = rules.retire(request.number, request.reason, resumed, authorize, workbench ? 'workbench' : undefined);
             return later(request.type, writing.then(rule => resumed(() => {
               this.#guard.changed();
               return { type: 'result' as const, id: request.id, ok: true, value: { rule } };

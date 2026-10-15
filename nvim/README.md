@@ -93,6 +93,7 @@ Space is the leader (`␣`); `␣?` shows the keys in Neovim.
 | `␣n` `␣s` `␣t` | anywhere | Inbox, sessions or topics in the right panel. Pressing the active key hides the panel. |
 | `␣T` | anywhere | Topics docked above the right panel, which shows the inbox (the Watch layout). Again: undock. |
 | `␣N` `␣b` `␣L` | anywhere | The inbox full width, the board, the Agents log in the centre. Again: back. |
+| `␣R` | Normal mode, any view | Rulebook in the centre. Also **Rulebook** in the palette. |
 | `␣E` | Normal mode, any view | Events view in the centre; `␣␣` returns. Also **Events view** in the palette. |
 | `e` / `↵` | inbox / its events line | Open the events view. |
 | `1`–`9` / `0` / `w` / `s` / `F` | events view | Pick kind / all kinds / warnings / subject / clear filter; saved in `ui.json`. |
@@ -732,3 +733,23 @@ Role heartbeat firings appear in the Events view at the background layer, one ro
 per firing with the session and its in-flight and stale counts. `heartbeat` is
 the ninth event kind: press `9` in Events to filter it. The kind palette also lists
 `heartbeat`. Heartbeats never add an inbox row or a needs-you.
+
+## Rulebook (T-458)
+
+`␣R`, the palette action **Rulebook**, and `:Cland view rulebook` open the project's
+rules in the centre. Each row shows `rule <n>`, its title, role scope, status and
+date. Active rules come first in number order, followed by dimmed retired rules.
+Enter folds or unfolds the text, reason and origin. A thread origin shows its
+topic title and message timestamp; `gt` opens that topic at the human's message,
+including an older message beyond the latest history page. Other origins show
+the Aide's name (`session:`), the memory path (`memory:`), `shell` or `workbench`;
+`gt` explains when the origin is not a thread.
+
+`a` opens a draft with `Text:`, `Scope:` and `Reason:` fields. Text can span several
+lines; scope is `all` or comma-separated role names. `e` opens those fields filled
+from the selected rule. `:w` adds or edits through the hub, with origin
+`workbench`, and selects the saved rule. `X` asks for a reason to retire the rule.
+A parse error or hub refusal appears below the draft and in the status line;
+the draft stays editable. `q` goes back and keeps an unsaved draft for the next
+visit. Rule writes from the workbench or shell, and valid hand edits to
+`.cland/RULES.md`, refresh the view without a key press and preserve selection.

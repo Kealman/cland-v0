@@ -35,7 +35,7 @@ group('global', {
   {'<leader>s', 'Toggle sessions panel'}, {'<leader>t', 'Toggle topics panel'},
   {'<leader>T', 'Toggle topics dock'}, {'<leader>N', 'Toggle inbox full width'},
   {'<leader>e', 'Open explorer'}, {'<leader>b', 'Toggle board view'}, {'<leader>G', 'Open experimental graph'}, {'<leader>a', 'Palette: artifacts'},
-  {'<leader>E', 'Events view'}, {'<leader>L', 'Toggle Agents log'}, {'<leader>g', 'Open General'},
+  {'<leader>R', 'Rulebook'}, {'<leader>E', 'Events view'}, {'<leader>L', 'Toggle Agents log'}, {'<leader>g', 'Open General'},
   {'<leader>c', 'Focus composer'}, {'<leader>P', 'Draft a prompt'},
   {'<leader>p', 'Open palette'}, {'<leader>l', 'Launch a session'}, {'<leader>A', 'Launch an Aide'},
   {'<leader><leader>', 'Previous centre view'}, {'<leader>r', 'Resolve this topic'},
@@ -54,6 +54,8 @@ end
 M.register({ id = 'verification.open', title = 'Open verification queue', run = function()
   require('cland.layout').show({ kind = 'verification' }, { insert = false })
 end })
+group('rulebook', {{'<CR>', 'Fold or unfold rule'}, {'gt', 'Open rule origin in thread'}, {'a', 'Add rule'}, {'e', 'Edit rule'}, {'X', 'Retire rule'}, {'q', 'Previous centre view'}})
+group('rule_compose', {{'q', 'Previous centre view'}})
 group('verification', {{'q', 'Previous centre view'}})
 group('sessions', {{'l','Launch a session'}, {'a','Launch an Aide'}, {'<C-v>','Attach session in split'},
   {'d','Archive stopped session'}, {'x','Stop selected session (confirm)'}, {'r','Resume session'}, {'f','Launch session fresh with its brief'}, {'L','Agents log for selected session'},
@@ -180,6 +182,7 @@ local function focus(scope)
   elseif scope == 'sessions' or scope == 'topics' or scope == 'inbox' then layout.right_panel(scope)
   elseif scope == 'board' or scope == 'log' or scope == 'inbox_full' then layout.show({kind=scope == 'inbox_full' and 'inbox' or scope}, {insert=false})
   elseif scope == 'thread' or scope == 'composer' then layout.show({kind='thread', id=require('cland.views').current_topic() or 'general'}, {insert=false})
+  elseif scope == 'rulebook' then require('cland.rulebook').open()
   elseif scope == 'artifacts' then layout.show({kind='artifacts', id=require('cland.views').current_topic() or 'general'}, {insert=false})
   else return nil end
   for _, win in ipairs(api.nvim_tabpage_list_wins(0)) do
@@ -284,6 +287,7 @@ local function command(path, title, run, mapped)
 end
 local function layout() return require('cland.layout') end
 local function views() return require('cland.views') end
+command('view rulebook', 'Rulebook', function() require('cland.rulebook').open() end, 'global:<leader>R')
 command('view events', 'Events view', function() layout().show({kind='events'}, {insert=false}) end, 'global:<leader>E')
 command('help', 'Keys', function() require('cland').help() end, 'global:<leader>?')
 command('refresh', 'Refresh from hub', function() require('cland').refresh() end)

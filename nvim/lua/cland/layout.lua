@@ -298,7 +298,7 @@ local function centre_opts(w, kind)
     wo.winhighlight = 'Normal:ClandTerm,NormalNC:ClandTerm'
   else
     wo.wrap = kind ~= 'graph' and kind ~= 'explorer'
-    if kind == 'explorer' then wo.foldenable = false end
+    if kind == 'explorer' or kind == 'rulebook' or kind == 'rule_compose' then wo.foldenable = false end
     wo.winhighlight = ''
   end
 end
@@ -378,7 +378,7 @@ function M.apply_view(opts)
   end
 end
 
---- Show `view` ({kind = thread|session|item|board|graph|log|inbox, id}) in the centre.
+--- Show `view` ({kind = thread|session|item|board|graph|log|inbox|rulebook|rule_compose, id}) in the centre.
 function M.show(view, opts)
   if view.kind == 'item' or view.kind == 'plan' then
     local item = state.item(view.id)
