@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-276
 branch: t/T-455-rulebook-cland-rules-md-with-numbered
 created: 2026-10-15T07:15:15.459Z
-updated: 2026-10-15T13:13:35.456Z
+updated: 2026-10-15T13:19:23.982Z
 ---
 
 ## Summary
@@ -82,21 +82,27 @@ Run at most one full suite at a time machine-wide; targeted single-file runs are
 - [x] C1. `cland rule add "…" --scope implementer --reason "…"` from the human's shell writes `## 1 <title>` with `Scope`, `Date`, `Status: active`, `Origin: shell` and `Reason` lines and the text to `.cland/RULES.md`, and the next add gets `2`.
   - done: impl-455 · 2026-10-15T07:26:14.401Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-455-12 · 2026-10-15T13:13:33.428Z · commit 17d643130d3d7fc3b06b20908188f209e69ae5bc
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-455-13 · 2026-10-15T13:19:21.953Z · commit fdc7da1a03e09a61f30b72425a232c201b375f02
 - [x] C2. `cland rule edit 1 --scope all` and `cland rule retire 1 --reason "…"` rewrite only that rule, keeping its number and origin; a retired rule stays in the file and its number is never reused.
   - done: impl-455 · 2026-10-15T07:35:38.751Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-455-12 · 2026-10-15T13:13:33.428Z · commit 17d643130d3d7fc3b06b20908188f209e69ae5bc
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-455-13 · 2026-10-15T13:19:21.953Z · commit fdc7da1a03e09a61f30b72425a232c201b375f02
 - [x] C3. `cland rule list --all --json` returns active and retired rules with every field, `cland rule list` returns active ones only, `--role r` filters by scope, and `cland rule show <n>` prints one rule written as `rule <n>`.
   - done: impl-455 · 2026-10-15T07:26:18.826Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-455-12 · 2026-10-15T13:13:33.428Z · commit 17d643130d3d7fc3b06b20908188f209e69ae5bc
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-455-13 · 2026-10-15T13:19:21.953Z · commit fdc7da1a03e09a61f30b72425a232c201b375f02
 - [x] C4. A hand edit of `.cland/RULES.md` is re-read without a hub restart, and a file that does not parse is logged with its line while the last good rulebook stays in force.
   - done: impl-455 · 2026-10-15T07:26:20.085Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-455-12 · 2026-10-15T13:13:33.428Z · commit 17d643130d3d7fc3b06b20908188f209e69ae5bc
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-455-13 · 2026-10-15T13:19:21.953Z · commit fdc7da1a03e09a61f30b72425a232c201b375f02
 - [x] C5. From an Aide's shell `cland rule add --origin memory:<path>` records that origin, and from an Implementer's or a Coordinator's shell `cland rule add` is refused with `forbidden` and a reason.
   - done: impl-455 · 2026-10-15T07:26:21.600Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-455-12 · 2026-10-15T13:13:33.428Z · commit 17d643130d3d7fc3b06b20908188f209e69ae5bc
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-455-13 · 2026-10-15T13:19:21.953Z · commit fdc7da1a03e09a61f30b72425a232c201b375f02
 - [x] C6. `cland init` writes an empty rulebook with its header, and `.cland/.gitignore`'s header names `RULES.md` as committed.
   - done: impl-455 · 2026-10-15T08:00:59.227Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-455-12 · 2026-10-15T13:13:33.428Z · commit 17d643130d3d7fc3b06b20908188f209e69ae5bc
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-455-13 · 2026-10-15T13:19:21.953Z · commit fdc7da1a03e09a61f30b72425a232c201b375f02
 - [x] C7. `hub/README.md` describes the rulebook file, its fields and origins, the `rule <n>` form, the `cland rule` commands and who may write.
   - done: impl-455 · 2026-10-15T07:26:24.793Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-455-2 · 2026-10-15T07:35:24.942Z · commit 856181faa8000c4a4470886fccec61cd107c8979
@@ -105,6 +111,7 @@ Run at most one full suite at a time machine-wide; targeted single-file runs are
   - verified: rev-23 [reviewer] · run rev-2026-10-15-455-8 · 2026-10-15T12:11:45.111Z · commit 91635a792948255a2608cd4690d6a0c4c43b3516
   - verified: rev-23 [reviewer] · run rev-2026-10-15-455-10 · 2026-10-15T12:43:54.062Z · commit 17d643130d3d7fc3b06b20908188f209e69ae5bc
   - verified: rev-23 [reviewer] · run rev-2026-10-15-455-12 · 2026-10-15T13:13:33.428Z · commit 17d643130d3d7fc3b06b20908188f209e69ae5bc
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-455-13 · 2026-10-15T13:19:21.953Z · commit fdc7da1a03e09a61f30b72425a232c201b375f02
 
 ## Comments
 
@@ -330,5 +337,24 @@ C1–C3: human CLI numbering/fields, edit/retire preservation, active/all/role/s
 
 Retain earlier red 8052e04c/A-2746, 1ea1e21d/A-2777 and 9008902b/A-2808 with their own inventory correction and T-461/T-463/T-447 dispositions; adoption does not relabel those gates green. Final reviewed head adds only exact designated shared patches beyond the rulebook source; no extra test allowance was introduced here. No Reviewer tests or edits.
 Review evidence: A-3014.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.
+
+### impl-455 · 2026-10-15T13:18:05.585Z
+
+Resolved Coordinator-reported merge conflicts and pushed fdc7da1a (origin/dev 1e75347d merged). core.ts equals current dev plus only the four rulebook wiring additions, retaining all heartbeat/follows behavior. durations.json verified as exact recursive union with every existing/shared value unchanged. Full root typecheck and shard lint pass; serial targets parser 2/2, CLI 6/6, heartbeat 9/9, follows 10/10 (27/27). Requesting delta review; per 2cef6e7d no new full verify, covered by E-423 stage-1 droplet close cover immediately after merge.
+
+### rev-23 · 2026-10-15T13:19:21.953Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-15-455-13
+commit: fdc7da1a03e09a61f30b72425a232c201b375f02
+scope: delta
+
+No high or medium finding remains. Core conflict resolution is dev plus exactly the four original rulebook wiring additions; heartbeat and lane-flow hooks survive. Independently checked durations.json as exact recursive parent union with every overlapping value unchanged. Rulebook implementation and own tests unchanged from final-clear 17d64313; CLI/daemon/dispatch/protocol/init integration retained. A-3018 logs: parser 2/2, CLI 6/6, heartbeat 9/9, follows 10/10, zero failures/skips/cancellations; typecheck/shards reported green, diff check independently clean. Full Standards/Spec delta audit A-3019.
+
+Direct Coordinator 2cef6e7d explicitly substitutes this targeted integration validation and delta review for another full verify; E-423 stage-1 droplet close cover follows immediately after merge. All C1-C7 refreshed under that specific amendment and prior final A-3014. No new current-head full-run claim: A-2984/A-3004 remain historical red accepted Linux receipts with known dispositions; A-3011 remains parent-head local Neovim 387/387. Integrated complete/Linux-Neovim coverage is still owed at stage close. Ready for Coordinator merge; no additional verify requested. No Reviewer edits or tests.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.

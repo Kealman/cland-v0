@@ -3,7 +3,7 @@ id: T-393
 kind: task
 title: "In-process hub by default: tests run against a hub served in the test process over its real socket, a spawned hub stays only for lifecycle tests, and the top 20 files move first"
 state: open
-status: in progress
+status: review
 size: L
 criterion_seq: 9
 labels:
@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-273
 branch: t/T-393-in-process-hub-by-default-tests-run
 created: 2026-10-14T12:28:19.095Z
-updated: 2026-10-15T13:12:33.704Z
+updated: 2026-10-15T13:18:02.629Z
 ---
 
 ## Summary
@@ -58,14 +58,15 @@ updated: 2026-10-15T13:12:33.704Z
 - [x] C2. Cleanup fails a test whose in-process hub leaves handles, timers, `process` listeners or child processes, proven by a test that leaks one on purpose.
   - done: impl-393 · 2026-10-15T09:19:34.574Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-9 · 2026-10-15T12:52:43.534Z · commit 36ecea1f6f97445efc149b47b8ba2a7e89b7c89b
-- [ ] C3. `serveProject` takes its environment as an option, and two in-process hubs in one file with different adapter timings behave independently, proven by a test.
-  - failed: rev-23 [reviewer] · 2026-10-15T13:12:33.704Z · note Incoming epicMergeFiles lane-hold lookup runs Git with process.env instead of the owning in-process hub's explicit environment.
+- [x] C3. `serveProject` takes its environment as an option, and two in-process hubs in one file with different adapter timings behave independently, proven by a test.
+  - done: impl-393 · 2026-10-15T13:18:02.629Z
 - [x] C4. The lifecycle list is posted per file; every test that still calls `startDaemon` or `cland hub start` in the 20 files is on it, and none of the others is.
   - done: impl-393 · 2026-10-15T08:08:39.537Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-2 · 2026-10-15T09:22:40.699Z · commit 519fc215a8f8b84572f079ba0b5a1b35ed8072fa
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-4 · 2026-10-15T10:16:09.752Z · commit c97f0056f9d161148d003314a888f1bff0d524f0
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-7 · 2026-10-15T11:24:53.220Z · commit 36ecea1f6f97445efc149b47b8ba2a7e89b7c89b
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-9 · 2026-10-15T12:52:43.534Z · commit 36ecea1f6f97445efc149b47b8ba2a7e89b7c89b
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-393-11 · 2026-10-15T13:17:53.106Z · commit bedfcef31450af863322d26576f6df22033edc66
 - [x] C5. Measured (Coordinator amendment 2026-10-15 09:03Z): the 20 files' summed whole-file time falls by at least 20%, judged after merge from E-387's stage-1 close integrated cover on the Mac against the v0.1.2 release cover A-2714 (both quiet integrated runs), per file from the runner's records; pre-merge, the available paired samples are posted without a claim, because local fallbacks invalidated every pair while remote_budget was 2.
   - done: impl-393 · 2026-10-15T09:04:06.375Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-9 · 2026-10-15T12:52:43.534Z · commit 36ecea1f6f97445efc149b47b8ba2a7e89b7c89b
@@ -78,18 +79,21 @@ updated: 2026-10-15T13:12:33.704Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-4 · 2026-10-15T10:16:09.752Z · commit c97f0056f9d161148d003314a888f1bff0d524f0
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-7 · 2026-10-15T11:24:53.220Z · commit 36ecea1f6f97445efc149b47b8ba2a7e89b7c89b
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-9 · 2026-10-15T12:52:43.535Z · commit 36ecea1f6f97445efc149b47b8ba2a7e89b7c89b
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-393-11 · 2026-10-15T13:17:53.106Z · commit bedfcef31450af863322d26576f6df22033edc66
 - [x] C8. No assertion changes its meaning: the review request lists every changed assertion with what it still proves, and no test is deleted.
   - done: impl-393 · 2026-10-15T08:08:41.391Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-2 · 2026-10-15T09:22:40.700Z · commit 519fc215a8f8b84572f079ba0b5a1b35ed8072fa
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-4 · 2026-10-15T10:16:09.753Z · commit c97f0056f9d161148d003314a888f1bff0d524f0
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-7 · 2026-10-15T11:24:53.220Z · commit 36ecea1f6f97445efc149b47b8ba2a7e89b7c89b
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-9 · 2026-10-15T12:52:43.535Z · commit 36ecea1f6f97445efc149b47b8ba2a7e89b7c89b
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-393-11 · 2026-10-15T13:17:53.106Z · commit bedfcef31450af863322d26576f6df22033edc66
 - [x] C9. `hub/README.md` (Tests) and `docs/agents/tests.md` describe `projectHub` as the default, the lifecycle line, and when a new test may use `startDaemon`.
   - done: impl-393 · 2026-10-15T08:08:41.843Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-2 · 2026-10-15T09:22:40.700Z · commit 519fc215a8f8b84572f079ba0b5a1b35ed8072fa
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-4 · 2026-10-15T10:16:09.753Z · commit c97f0056f9d161148d003314a888f1bff0d524f0
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-7 · 2026-10-15T11:24:53.221Z · commit 36ecea1f6f97445efc149b47b8ba2a7e89b7c89b
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-9 · 2026-10-15T12:52:43.535Z · commit 36ecea1f6f97445efc149b47b8ba2a7e89b7c89b
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-393-11 · 2026-10-15T13:17:53.106Z · commit bedfcef31450af863322d26576f6df22033edc66
 
 ## Comments
 
@@ -315,3 +319,20 @@ No full verify at b19dd038 before C3 correction and new source review. Prior fin
 Review evidence: A-3012.
 
 Criteria: C3 failed (Incoming epicMergeFiles lane-hold lookup runs Git with process.env instead of the owning in-process hub's explicit environment.).
+
+### impl-393 · 2026-10-15T13:15:04.093Z
+
+Corrected A-3012/C3 as9eade11e: explicit TaskMerges env through epicMergeFiles and both Git calls; conflicting GIT_DIR/GIT_WORK_TREE regression red→green. Existing lane races now use per-fixture env, no process.env mutation; removing only caller env produces2/2 red, restored file11/11 green; typecheck green. A-3016 has logs/proof. Fetched and merged origin/dev1e75347d (tracker-only), pushedbedfcef3. New delta review requested before fresh verification.
+
+### rev-23 · 2026-10-15T13:17:53.106Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-15-393-11
+commit: bedfcef31450af863322d26576f6df22033edc66
+scope: delta
+
+No high or medium finding remains. C3 correction: hub/src/hub/merge.ts:61 supplies owning #env; hub/src/tracker/epic-surfaces.ts:9,20 forwards it to both history and diff-tree. A-3016 proves conflicting Git provenance red/green and caller-only mutation red/restored whole-file 11/11 green; existing assertions preserved. Standards and Spec clear; full audit in A-3017. Source marks C4,C7,C8,C9 refreshed. C1-C3 require fresh same-head gate; C5/C6 amendments and T-395 110-identity reconciliation remain unchanged. Earlier integrated gate receipts do not carry to this new source. Restore claimant C3 done mark; submit one configured-default no-mode verify at this exact head.
+
+Criteria: C4 verified, C7 verified, C8 verified, C9 verified.
