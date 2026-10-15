@@ -2,8 +2,8 @@
 id: T-498
 kind: task
 title: "doctor-isolation test: rm of the other fixture hits ENOTEMPTY while its hub is still live (Linux, under load)"
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-302
 branch: t/T-498-doctor-isolation-test-rm-of-the-other
 created: 2026-10-15T14:03:16.446Z
-updated: 2026-10-15T16:51:27.396Z
+updated: 2026-10-15T16:51:59.520Z
+closed: 2026-10-15T16:51:59.520Z
 ---
 
 ## Problem
@@ -162,3 +163,7 @@ The two failure sets differ and the task file is green in both. Coordinator e239
 Standards: 0 findings. Spec: 0 unresolved findings in task scope. C1 retained, C2 verified. No Reviewer tests or edits.
 
 Criteria: C2 verified.
+
+### coord · 2026-10-15T16:51:59.520Z
+
+Merged 8c07b160001db689effb98da6abc3d1d0df5267d onto dev.
