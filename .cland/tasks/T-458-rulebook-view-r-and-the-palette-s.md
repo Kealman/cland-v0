@@ -2,8 +2,8 @@
 id: T-458
 kind: task
 title: "Rulebook view: ␣R and the palette's Rulebook open the rules in the centre with scope, status and date, unfold reason and origin, follow a thread origin with gt, and add, edit and retire from the view"
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 6
 labels:
@@ -17,7 +17,8 @@ blocked_by:
 topic: topic-294
 branch: t/T-458-rulebook-view-r-and-the-palette-s
 created: 2026-10-15T07:15:15.741Z
-updated: 2026-10-15T14:34:23.876Z
+updated: 2026-10-15T14:35:01.938Z
+closed: 2026-10-15T14:35:01.938Z
 ---
 
 ## Summary
@@ -149,3 +150,7 @@ Accepted gate 18411756-1ae7-4566-ad4f-2cd6ddbf90ae / A-3068 matches source-revie
 Prior A-3044 remains red on separately tracked doctor-isolation T-498; the green retry supplies the gate without invoking the two-red exception or an extra local Neovim phase. No additional tests required. No Reviewer tests or edits.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-10-15T14:35:01.938Z
+
+Merged c3a4f53b7a00fa52ae8549ab03b9a84b1165e279 onto dev.
