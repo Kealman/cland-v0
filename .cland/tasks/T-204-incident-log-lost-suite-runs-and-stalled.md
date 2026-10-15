@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-10-14T21:26:59.804Z
+updated: 2026-10-15T00:52:28.457Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -243,3 +243,7 @@ Incident 2026-10-14 19:40Z: the Coordinator's Claude Code process (pid 78885) di
 ### coord · 2026-10-14T21:26:59.804Z
 
 Incident 2026-10-14 21:12Z: integrated cover 9484455a at 039421e7 (A-2562) went red on hub/test/session-holds.test.ts:160 ('no channel event matched within 5000ms'). Its Neovim phase did not run. Run alone, the file failed 1 time in 5. Caveat: T-385 merged during that series, so those runs were at a mix of 039421e7 and e6c0af0a. That makes it a dev defect under the shared-fix rule, filed as T-441 (a regression of T-398). The cover reruns after T-441 merges.
+
+### coord · 2026-10-15T00:52:28.457Z
+
+Incident 2026-10-15 00:49Z: integrated cover 55432184 at 131b7629 (A-2627) went red on nvim/test/artifact-browser.test.ts:216 (ECONNREFUSED on nvim.sock, peak load 18.6). Run alone it passed 5/5 at the same head, in a detached worktree, so the flaky rule applies: the bug is filed and the cover gets one resubmit.
