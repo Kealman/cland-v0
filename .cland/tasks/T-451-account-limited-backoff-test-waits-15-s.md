@@ -3,7 +3,7 @@ id: T-451
 kind: task
 title: account-limited backoff test waits 15 s for a reset its own assertion requires at 16 s or later
 state: open
-status: review
+status: ready
 size: XS
 criterion_seq: 2
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-271
 branch: t/T-451-account-limited-backoff-test-waits-15-s
 created: 2026-10-15T04:36:56.217Z
-updated: 2026-10-15T04:57:02.366Z
+updated: 2026-10-15T05:49:39.325Z
 ---
 
 ## Summary
@@ -32,8 +32,10 @@ Give that wait a bound derived from the asserted delay, the backoff plus a margi
 - [x] C1. The case's wait is bounded by the backoff it asserts, or the backoff runs on a test timing knob, and the assertion is unchanged in meaning.
   - done: impl-451 · 2026-10-15T04:56:12.147Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-451-1 · 2026-10-15T04:57:02.366Z · commit a9d9d6dd0616944bc6997f6a8ce9e034e29778d1
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-451-2 · 2026-10-15T05:49:38.165Z · commit a9d9d6dd0616944bc6997f6a8ce9e034e29778d1
 - [x] C2. The file passes 10/10 whole-file runs serially.
   - done: impl-451 · 2026-10-15T04:56:13.299Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-451-2 · 2026-10-15T05:49:38.165Z · commit a9d9d6dd0616944bc6997f6a8ce9e034e29778d1
 
 ## Comments
 
@@ -57,3 +59,16 @@ scope: full
 Source clear. Standards and Spec: no high or medium findings. One test-only +4/-2 change shares unchanged 16000/12000 ms minimum assertion with explicit wait bound +5000 ms. The failed-poll 8000 ms floor doubles to 16000 ms, exceeding the former 15000 ms default; C1 is established without weakening no-early-read, duplicate single-poll, reset, notice, bounded-refresh or restart assertions. A-2687 independently checked: ten serial whole-file logs each 10/10, no failures/cancellations/skips, plus post-dev-merge 10/10. First ten are labelled on pre-refresh d6b17be4 with the same candidate patch; extra validates incoming dev 1e4afd9a, whose underlying test blob is unchanged. C2 supporting evidence retained for final review after exact-head local no-mode gate; no claim of ten exact-final-head runs. A-2688 details review. Original red A-2679/A-2684 retained; no flaky retry substitutes for correction. Submit no-mode --executor local at a9d9d6dd.
 
 Criteria: C1 verified.
+
+### rev-23 · 2026-10-15T05:49:38.165Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-15-451-2
+commit: a9d9d6dd0616944bc6997f6a8ce9e034e29778d1
+scope: evidence
+
+Final clear at unchanged source-reviewed a9d9d6dd. Standards and Spec: no high or medium findings. C1 unchanged 16 s/12 s no-early-read floor and duplicate-hit assertions remain; completion bound includes 5 s margin. C2 audited A-2687 ten serial whole-file runs each 10/10, zero failures/skips/cancellations, plus post-dev-merge 10/10. Ten use the same candidate patch before incoming dev refresh; final-source supplementary run and unchanged underlying test blob establish integration provenance, not ten exact-final-head runs. Exact-head local no-mode 9ffc648c/A-2695 selects hub-only: root typecheck and 1712/1712 pass (37 free hub, 1663 machine hub, 12 Neovim smoke), zero failures/skips/cancellations/todos, exit 0. Both affected cases pass. Full Neovim not selected or claimed. Both done marks and branch/log/tracker head checked. A-2696 details evidence; original T-254 reds A-2679/A-2684 retained as corrected shared defect. C1/C2 verified.
+
+Criteria: C1 verified, C2 verified.
