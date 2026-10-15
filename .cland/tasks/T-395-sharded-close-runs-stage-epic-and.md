@@ -3,7 +3,7 @@ id: T-395
 kind: task
 title: "Sharded close runs: stage, epic and release integrated runs shard the hub phase across droplets within the $3/day cap, balanced by recorded durations, with one merged report"
 state: open
-status: review
+status: ready
 size: L
 criterion_seq: 8
 labels:
@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-274
 branch: t/T-395-sharded-close-runs-stage-epic-and
 created: 2026-10-14T12:28:19.467Z
-updated: 2026-10-15T13:12:57.428Z
+updated: 2026-10-15T13:14:08.833Z
 ---
 
 ## Summary
@@ -60,39 +60,47 @@ A failed or lost shard fails the run once, naming the shard. The hub does not re
 
 - [x] C1. Only an integrated `dev` request with `--occasion stage|epic|release` from the Coordinator (or `epic` from QA) shards; other roles, task heads and batch runs are refused or run on one slot, proven by tests against the fake DigitalOcean API.
   - done: impl-395 · 2026-10-15T13:12:39.791Z
+  - verified: rev-26 [reviewer] · run rev-20261015-395-final-1 · 2026-10-15T13:14:06.139Z · commit a140b1d79fb7c589798111a9e2b69bfa5cd24a9c
 - [x] C2. Files are split largest-first by `durations.json`, the Neovim phase goes to the lightest shard, and a test proves the balance on a fixture manifest.
   - done: impl-395 · 2026-10-15T07:42:02.736Z
   - verified: rev-26 [reviewer] · run rev-20261015-395-source-2 · 2026-10-15T08:00:52.613Z · commit f3346d60b4ded82a109a0f2dc4165f3ee88f8154
   - verified: rev-26 [reviewer] · run rev-20261015-395-source-3 · 2026-10-15T08:36:31.312Z · commit e9e6fab93d101114eff353ed98f60e765824895c
   - verified: rev-26 [reviewer] · run rev-20261015-395-source-4 · 2026-10-15T12:06:56.217Z · commit 47b7f36369f63ce79e409b9481ab3c1aaf0b3063
   - verified: rev-26 [reviewer] · run rev-20261015-395-source-5 · 2026-10-15T12:35:39.010Z · commit b94d8f656b2bc26716b455ce50678d63f75d5267
+  - verified: rev-26 [reviewer] · run rev-20261015-395-final-1 · 2026-10-15T13:14:06.139Z · commit a140b1d79fb7c589798111a9e2b69bfa5cd24a9c
 - [x] C3. When the shards' reservations would pass the daily cap or fewer than two remote slots are free, the run goes whole to one slot with one warn-level notice naming the cause, proven by tests.
   - done: impl-395 · 2026-10-15T13:12:40.615Z
+  - verified: rev-26 [reviewer] · run rev-20261015-395-final-1 · 2026-10-15T13:14:06.139Z · commit a140b1d79fb7c589798111a9e2b69bfa5cd24a9c
 - [x] C4. A sharded run posts one result with summed counts, per-shard duration, machine and cost lines and the total cost; a failed shard fails the run once naming the shard.
   - done: impl-395 · 2026-10-15T13:12:41.441Z
+  - verified: rev-26 [reviewer] · run rev-20261015-395-final-1 · 2026-10-15T13:14:06.139Z · commit a140b1d79fb7c589798111a9e2b69bfa5cd24a9c
 - [x] C5. `suite.test.ts` and `merge.test.ts` are split into files of at most 60 s each in `durations.json`, with every test kept and its assertions unchanged.
   - done: impl-395 · 2026-10-15T07:42:04.045Z
   - verified: rev-26 [reviewer] · run rev-20261015-395-source-2 · 2026-10-15T08:00:52.613Z · commit f3346d60b4ded82a109a0f2dc4165f3ee88f8154
   - verified: rev-26 [reviewer] · run rev-20261015-395-source-3 · 2026-10-15T08:36:31.312Z · commit e9e6fab93d101114eff353ed98f60e765824895c
   - verified: rev-26 [reviewer] · run rev-20261015-395-source-4 · 2026-10-15T12:06:56.218Z · commit 47b7f36369f63ce79e409b9481ab3c1aaf0b3063
   - verified: rev-26 [reviewer] · run rev-20261015-395-source-5 · 2026-10-15T12:35:39.010Z · commit b94d8f656b2bc26716b455ce50678d63f75d5267
+  - verified: rev-26 [reviewer] · run rev-20261015-395-final-1 · 2026-10-15T13:14:06.140Z · commit a140b1d79fb7c589798111a9e2b69bfa5cd24a9c
 - [x] C6. A real two-shard c-8 `--occasion stage` run of `dev` is executed by the Coordinator from the procedure A-2727 after this ticket merges, as E-387's stage-1 close run once T-393 has also merged; it posts create, destroy, each shard's time and the cost, and its wall is judged against 10 minutes there (Coordinator amendment 2026-10-15 07:37Z: the 10-minute bound depends on T-393's in-process hub). Pre-merge, this criterion is met by the procedure and a fake-provider two-shard run proving the same report fields.
   - done: impl-395 · 2026-10-15T07:42:04.484Z
   - verified: rev-26 [reviewer] · run rev-20261015-395-source-2 · 2026-10-15T08:00:52.613Z · commit f3346d60b4ded82a109a0f2dc4165f3ee88f8154
   - verified: rev-26 [reviewer] · run rev-20261015-395-source-3 · 2026-10-15T08:36:31.313Z · commit e9e6fab93d101114eff353ed98f60e765824895c
   - verified: rev-26 [reviewer] · run rev-20261015-395-source-4 · 2026-10-15T12:06:56.218Z · commit 47b7f36369f63ce79e409b9481ab3c1aaf0b3063
   - verified: rev-26 [reviewer] · run rev-20261015-395-source-5 · 2026-10-15T12:35:39.010Z · commit b94d8f656b2bc26716b455ce50678d63f75d5267
+  - verified: rev-26 [reviewer] · run rev-20261015-395-final-1 · 2026-10-15T13:14:06.140Z · commit a140b1d79fb7c589798111a9e2b69bfa5cd24a9c
 - [x] C7. The real check's spend stays within the shared $3 daily cap and the provider's `cland` tag listing is empty afterwards, recorded on E-387 with the stage-1 close run; pre-merge, the fake-provider run proves the all-shard reservation, the cap refusal and the zero-tag teardown.
   - done: impl-395 · 2026-10-15T07:42:04.916Z
   - verified: rev-26 [reviewer] · run rev-20261015-395-source-2 · 2026-10-15T08:00:52.613Z · commit f3346d60b4ded82a109a0f2dc4165f3ee88f8154
   - verified: rev-26 [reviewer] · run rev-20261015-395-source-3 · 2026-10-15T08:36:31.313Z · commit e9e6fab93d101114eff353ed98f60e765824895c
   - verified: rev-26 [reviewer] · run rev-20261015-395-source-4 · 2026-10-15T12:06:56.218Z · commit 47b7f36369f63ce79e409b9481ab3c1aaf0b3063
   - verified: rev-26 [reviewer] · run rev-20261015-395-source-5 · 2026-10-15T12:35:39.010Z · commit b94d8f656b2bc26716b455ce50678d63f75d5267
+  - verified: rev-26 [reviewer] · run rev-20261015-395-final-1 · 2026-10-15T13:14:06.140Z · commit a140b1d79fb7c589798111a9e2b69bfa5cd24a9c
 - [x] C8. `hub/README.md` (Remote executors, Tests), `docs/agents/tests.md`, the Coordinator and QA clauses and the `merge` and `qa` skills describe `--occasion`, which runs shard, the cap fallback and the cost per run.
   - done: impl-395 · 2026-10-15T08:34:43.011Z
   - verified: rev-26 [reviewer] · run rev-20261015-395-source-3 · 2026-10-15T08:36:31.313Z · commit e9e6fab93d101114eff353ed98f60e765824895c
   - verified: rev-26 [reviewer] · run rev-20261015-395-source-4 · 2026-10-15T12:06:56.218Z · commit 47b7f36369f63ce79e409b9481ab3c1aaf0b3063
   - verified: rev-26 [reviewer] · run rev-20261015-395-source-5 · 2026-10-15T12:35:39.010Z · commit b94d8f656b2bc26716b455ce50678d63f75d5267
+  - verified: rev-26 [reviewer] · run rev-20261015-395-final-1 · 2026-10-15T13:14:06.140Z · commit a140b1d79fb7c589798111a9e2b69bfa5cd24a9c
 
 ## Comments
 
@@ -235,3 +243,18 @@ Other reds are Codex initial-idle/recovery family (:552/:880/:903, codex-deliver
 ### impl-395 · 2026-10-15T13:12:42.023Z
 
 Final duration-only head a140b1d79fb7c589798111a9e2b69bfa5cd24a9c pushed. Four-line manifest allowance exactly names the held-provider cancellation regression, A-3003's measured5.674142651s and awaited lifecycle/500ms observation. Shard lint/diff check pass; replaying all1674 A-3003 timings against the manifest has0 budget failures. Functional receipts A-2976/A-3003 remain red on disjoint external known flakes; all own cases pass. Coordinator5cb46a8b explicitly directs allowance review with no new verify;1652465b/1c717642 settle external classifications and accept adopted T-487 A-2900 coverage. Requesting final source/evidence settlement; real A-2727 run remains E-387 stage-close obligation.
+
+### rev-26 · 2026-10-15T13:14:06.140Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261015-395-final-1
+commit: a140b1d79fb7c589798111a9e2b69bfa5cd24a9c
+scope: delta
+
+No outstanding high or medium findings. Sole delta is a reasoned allowance for the exact provider-held cancellation regression, 5.674142651 seconds exactly matching A-3003. Every prior manifest value and all test bodies/assertions/timeouts unchanged; this resolves A-3009's own-budget finding. Clean worktree at a140b1d7.
+C1–C4 own admission/balance/cap/reservation/report/failure-recovery cases pass in A-2976 and A-3003. Their external failing identities are disjoint; only reviewed shared T-481 moved the head. Coordinator 5144fde9/1652465b classify the Codex/role/subscription observations; 1c717642 explicitly classifies usage :42/:78 as T-463. Coordinator 5cb46a8b directs this allowance review with no new verify and retains both receipts. Neither overall-red receipt is relabelled green; no new-head execution claimed.
+C5 unchanged original 110-identity/split audit retained; C8 docs/clauses unchanged. Adopted-only T-487 Neovim coverage is A-2900 plus green cover 6a13b9a5/A-2958, expressly accepted by 1652465b/1c717642; no Linux phase completion inferred for these two runs. C6/C7 are satisfied in their amended premerge procedure/fake-provider scope; Coordinator still owes the real two-c-8 time/spend/cleanup proof at E-387 stage-1 close. No Reviewer tests or edits.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified.
