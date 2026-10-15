@@ -3,7 +3,7 @@ id: T-471
 kind: task
 title: "Load gate for new tests: a test new to the manifest runs five times under load in its task's verify before it can reach dev"
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - v0.1.3
@@ -11,10 +11,10 @@ labels:
 assignee: null
 parent: E-387
 blocked_by: []
-topic: null
-branch: null
+topic: topic-317
+branch: t/T-471-load-gate-for-new-tests-a-test-new-to
 created: 2026-10-15T09:13:16.338Z
-updated: 2026-10-15T19:05:27.758Z
+updated: 2026-10-15T19:07:35.811Z
 ---
 
 ## Summary

@@ -15,7 +15,7 @@ regression_of: T-454
 topic: null
 branch: null
 created: 2026-10-15T16:40:31.606Z
-updated: 2026-10-15T17:38:11.431Z
+updated: 2026-10-15T19:06:42.952Z
 ---
 
 ## Problem
@@ -26,3 +26,9 @@ updated: 2026-10-15T17:38:11.431Z
 
 - [ ] C1. The case proves "fires once, no replay" with an injected or controlled clock and observed heartbeat events, rather than a wall-clock delta, and keeps the at-most-once assertion. The root cause is recorded in the commit.
 - [ ] C2. heartbeat.test.ts passes 5/5 serially, whole file and alone on the Mac, plus once on a droplet in the task's verify. Coordinate with T-506 and T-508, which touch the same file: whichever lands second picks the first.
+
+## Comments
+
+### coord · 2026-10-15T19:06:42.952Z
+
+Second signature of this case: heartbeat.test.ts:87 expected 2 firings and got 3 after a hub restart, on Linux in T-508's run c19b825b (A-3280:4028–4044). Same wall-clock restart race. C1's controlled clock must cover the firing count too.

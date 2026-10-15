@@ -3,7 +3,7 @@ id: T-508
 kind: task
 title: "heartbeat test: run-digest aging case fails once and leaves the test runner hanging (Mac, quiet)"
 state: open
-status: review
+status: ready
 size: XS
 criterion_seq: 2
 labels:
@@ -15,7 +15,7 @@ regression_of: T-454
 topic: topic-311
 branch: t/T-508-heartbeat-test-run-digest-aging-case
 created: 2026-10-15T15:33:39.730Z
-updated: 2026-10-15T18:42:16.681Z
+updated: 2026-10-15T19:07:33.802Z
 ---
 
 ## Problem
@@ -26,8 +26,10 @@ updated: 2026-10-15T18:42:16.681Z
 
 - [x] C1. The case's aging of timed-out and ended runs depends only on a controlled clock and observed state, and the case closes every timer and handle so the runner exits. Every assertion stays, and the root cause is recorded in the commit.
   - done: impl-508 · 2026-10-15T17:56:30.048Z
+  - verified: rev-30 [reviewer] · run rev-20261015-508-final · 2026-10-15T19:07:31.041Z · commit c90f7f3847b47971050c884e7c0d58aa8ee57e79
 - [x] C2. heartbeat.test.ts passes 5/5 serially, whole file and alone on the Mac, each run exiting on its own, plus once on a droplet in the task's verify.
   - done: impl-508 · 2026-10-15T18:38:45.997Z
+  - verified: rev-30 [reviewer] · run rev-20261015-508-final · 2026-10-15T19:07:31.041Z · commit c90f7f3847b47971050c884e7c0d58aa8ee57e79
 
 ## Comments
 
@@ -122,3 +124,32 @@ C1/C2 final marks remain pending the accepted second receipt. Source clear permi
 ### impl-508 · 2026-10-15T18:42:16.681Z
 
 Coordinator fbb61c7f accepted first receipt263c9910/A-3259: external executor PROCESSWRAP leak is now E-482 T-523; clause budget covered by shared7cdf2dd0. Pick conflicted; resolved per Coordinator18:26 rule by taking origin/dev manifest exactly, no task-owned allowances. Resolution c90f7f38 preserves all prior semantic values and heartbeat source; Reviewer delta clear rev-20261015-508-delta/A-3264. Checked remote3/4, clean exact reviewed c90f7f38; submitted second fresh droplet c19b825b-2c28-4e9e-a3dd-fd8c0a6689ad with no mode, --executor droplet --fresh. Awaiting same-head result; no new head changes.
+
+### impl-508 · 2026-10-15T19:06:55.567Z
+
+Second actual Linux receipt c19b825b/A-3280 at exact reviewed c90f7f38: changed digest4.505s with natural file completion; suite red only on untouched missed-heartbeat restart count3!=2 and offline-wrapper SQLITE_BUSY:320. Coordinator6d14b5af explicitly classifies these as T-514/T-499, accepts A-3259+A-3280 as the two different-known-failure receipts, and directs Reviewer final clear citing both and the decision. First receipt's whole heartbeat9/9 plus accepted five Mac passes A-3233 complete task evidence. Historical suites remain red; this is the explicit E-482 two-receipt gate. No source change or third run; head c90f7f38 remains clean. Final evidence settlement requested from Reviewer.
+
+### rev-30 · 2026-10-15T19:07:31.041Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-508-final
+commit: c90f7f3847b47971050c884e7c0d58aa8ee57e79
+scope: evidence
+
+Final evidence review T-508 clear at unchanged delta-source-reviewed c90f7f3847b47971050c884e7c0d58aa8ee57e79. No high or medium task finding remains.
+
+Gate decision independently confirmed: Coordinator 6d14b5af-8ed5-482c-a280-f37f41cd9914 accepts A-3259 + A-3280 as the two Linux receipts with different known failures and the changed digest case green in both. The shared-only manifest delta carries source evidence forward; heartbeat.test.ts has identical blob 6ce424f0a4eab52fffa7f4ae3917ca4fad6757f2 at the first and current reviewed heads. Current task branch resolves exactly to c90f7f38.
+
+First receipt A-3259/263c9910 at f7643725299cdd3176341f583178d476629d0cf8: actual Linux c-8, exit1, 1781 pass/2 reported failures/3 skips. The two reported failures are executor-run parent/startReplyLost PROCESSWRAP, classified T-523; independent over-cap clause 5.133s budget is covered by the reviewed shared 7cdf2dd0 pick. Whole heartbeat is 9/9, changed digest5.807s, natural completion.
+
+Second receipt A-3280/c19b825b at exact c90f7f38: actual Linux c-8, exit1, 1781 pass/2 fail/3 platform skips, no cancellation and no hard duration-budget failure. Changed digest completes green4.505s and naturally releases the file. Heartbeat is 8/9, not wholly green: untouched missed-restart case :109 has3 firings versus2 (A-3280:4028–4044). Coordinator explicitly classifies this as T-514's same wall-clock restart case despite the different original :106 signature. The other red is orphan-servers offline-wrapper :294/:320 second-connection SQLITE_BUSY, errcode5 (A-3280:4046–4055), explicitly classified as T-499's sibling race. These failures differ from the first receipt; neither is attributed to the changed digest. Both overall runs remain red; final acceptance uses the recorded exception, not a claim of a wholly green second file or full suite.
+
+C1 verified against the recorded corrected teardown intent and earlier source review: finally always releases submitted workers, observes completion receipts before separately bounded report delivery, restores role and closes shared owned Coordinator resources before fixture removal. Original aging/concurrency assertions and timing bounds remain. Root cause is recorded in cb1c2c43; no new controlled-clock implementation or optional injected-failure probe is claimed. Teardown completes naturally in both Linux changed-case executions.
+
+C2 verified under Coordinator's Mac/load and two-receipt decisions: A-3233 contains all five complete Mac whole-file logs, 9/9 each (45/45), natural exits with no timeout/cancellation. Three quiet runs and two explicitly authorized loaded runs (1b124f76/63b9252c) were previously accepted; heartbeat source remains identical. First Linux supplies the required whole-file9/9, second supplies current-head changed-case proof plus accepted known external failures. No teardown hang/ENOTEMPTY in these receipts.
+
+Standards and Spec remain clear from source/delta review. A-3280's T-514 and T-499 failures remain separately owned; no related assertion is weakened here. No Reviewer tests, edits, merges or provider calls.
+
+Criteria: C1 verified, C2 verified.

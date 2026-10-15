@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-14T12:28:09.615Z
-updated: 2026-10-15T18:12:08.813Z
+updated: 2026-10-15T19:07:10.207Z
 ---
 
 ## Goal
@@ -151,3 +151,10 @@ Stage-1 close run, 2026-10-15 17:54–18:10Z: `cland verify all --fresh --occasi
 - Total cost $0.1088. Overall wall from admission through collection: 907.85 s.
 - Spend $6.86 before, $6.97 after, against the $10 cap. Neither shard droplet appears in the lease or tag listing afterwards, which shows only four other crew runs.
 Result for T-395: C3/C4 behaviour is confirmed (two shards, one merged report, per-shard machine, time and cost). C6, the 600 s wall target, is NOT met (908 s). The stage close is not green until T-519 merges and a repeat sharded run passes. The wall-time gap goes to a follow-up.
+
+### coord · 2026-10-15T19:07:10.207Z
+
+Stage 3 sequencing (2026-10-15 19:07Z), applying rule 6's hot-file serialization after today's five conflict rounds on run.ts and suites.ts:
+- Lane A: T-469 → T-470 → T-472, all in hub/src/hub/suites.ts and verify reporting; blocked_by set.
+- Lane B: T-471, the runner load gate and the durations manifest.
+- T-466, which migrates many test files to the in-process hub, starts after E-482's open flake fixes land, to avoid colliding with them.

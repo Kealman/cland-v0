@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-314
 branch: t/T-473-size-gate-xl-is-refused-at-filing-and
 created: 2026-10-15T09:13:17.633Z
-updated: 2026-10-15T19:05:16.848Z
+updated: 2026-10-15T19:05:43.562Z
 ---
 
 ## Summary
@@ -38,6 +38,7 @@ Retrospective A-2783, START 1: L tasks had a first-pass yield of 2 of 10 and car
 - [x] C3. The to-tickets and plan-epic skills describe the split rule.
   - done: impl-473 · 2026-10-15T18:31:14.973Z
   - verified: rev-30 [reviewer] · run rev-20261015-473-source · 2026-10-15T18:38:40.996Z · commit a969170bcc43009ac72a11ecc65f279a1a91fa7b
+  - verified: rev-30 [reviewer] · run rev-20261015-473-contract-delta · 2026-10-15T19:05:43.562Z · commit 3930189c1358d1d3cd5b281d5481aa70a51ed35a
 
 ## Comments
 
@@ -83,3 +84,20 @@ Known outside failure / Bugs S — hub/test/account-limited.test.ts:265: recent 
 Standards: the source behavior remains consistent with the reviewed size gate; the associated existing skill assertion was missed in the initial targeted mapping. Spec: the skill text itself correctly states the requested split rule, and all ten task-plan, three task-size, nine role-snapshot and eight role cases complete green (A-3275:5154–5171, :5609–5618, :5627–5629). This is own functional execution evidence, not a final integrated gate. No criterion is failed speculatively and no final C1/C2 marks are added. C3's documentation fact remains established at the reviewed source, subject to normal head freshness.
 
 Return a new source/delta request after the test correction and any Coordinator-posted shared picks. Keep the new head fixed for its post-source verification under current admission rules. A-3275 cannot serve as a first known-only receipt because of the demonstrated own failure. No Reviewer edits, tests or provider calls.
+
+### rev-30 · 2026-10-15T19:05:43.562Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-473-contract-delta
+commit: 3930189c1358d1d3cd5b281d5481aa70a51ed35a
+scope: delta
+
+Delta source review T-473 clear at 3930189c1358d1d3cd5b281d5481aa70a51ed35a, fixed point a969170bcc43009ac72a11ecc65f279a1a91fa7b. No high, medium or low findings.
+Standards: exact two-commit delta is only the shared 7cdf2dd0 manifest allowance plus skills-tracker.test.ts. Product source, role clauses and both skill texts remain byte-identical. Existing test name, Summary, one-to-three-sentences and regression/landed-link assertions remain.
+Spec: obsolete XL filing regex becomes XS/S/M/L; added assertions require L into 2–3 M guidance, --allow-large id=reason and XL split-before-filing. These match both already reviewed skills and resolve the own failure at skills-tracker:38 without weakening the production size gate or restoring obsolete wording. Shared allowance is the exact measured 5.133s over-cap clause exception with A-3259 provenance; no prior manifest values change.
+A-3279 records the Coordinator-required wording scan across hub/test+nvim/test, finding skills-tracker, task-size, task-migrate, roles-snapshot and roles, with no Neovim match. Requester reports all five complete files 37/37 and typecheck green; A-3279 is a summary note rather than attached raw logs. Previous A-3275 independently supplies green task-plan/task-size/role execution at unchanged product source, but remains excluded as gate evidence because of the now-corrected own assertion failure. Diff whitespace is clear.
+C3 reverified: correct split guidance remains unchanged. C1/C2 final runtime marks await a new acceptable exact-head post-source receipt. This source clearance permits the directed --executor droplet --fresh verification subject to Coordinator admission throttle; it is the first qualifying gate attempt after the own correction. No Reviewer tests, edits or provider calls.
+
+Criteria: C3 verified.
