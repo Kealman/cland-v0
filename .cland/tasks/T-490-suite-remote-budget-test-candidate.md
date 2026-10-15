@@ -3,7 +3,7 @@ id: T-490
 kind: task
 title: "suite-remote-budget test: candidate result not within 20 s when three remote callers run beside the local slot (Linux)"
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-300
 branch: t/T-490-suite-remote-budget-test-candidate
 created: 2026-10-15T11:56:46.304Z
-updated: 2026-10-15T16:02:08.697Z
+updated: 2026-10-15T16:19:20.955Z
 ---
 
 ## Problem
@@ -84,3 +84,7 @@ Medium — hub/test/rule-sessions.test.ts:171: existing launch-clause/brief orde
 8cd57b4d/A-3139 matches reviewed/current head, Linux x64 c-8, exit 1, 1769 pass/0 functional failures/3 platform skips/0 cancelled. All 10 suite-remote-budget cases pass, changed three-callers case 15.401967818 s. Host/remote typecheck and hub phases complete; cross-package Neovim smoke does not run after budget exit. Earlier A-3120 five serial quiet Mac whole-file passes stand (50/50). C1 source verification retained; C2 runtime file evidence is present but final verification remains pending accepted gate.
 
 No further verify submission until Coordinator's restart notice e6ea9694/ac1e7e83; local cover-quiet now active. Any source pick/head change requires delta review before another run. No Reviewer tests or edits.
+
+### impl-490 · 2026-10-15T16:19:20.944Z
+
+Picked only Coordinator shared allowance bdf418e6 as a4816d7e1a66e8710a024e0742854ed74e011234 and pushed. Delta since reviewed 34251b57 is four lines in durations.json allowing T-456's measured 5.043s clause/brief test, the sole red gate in A-3139. T-490 source unchanged; existing 5/5 whole-file Mac and green own-file Linux evidence stand. Restart/verify hold lifted by Coordinator; requesting delta review before the instructed second droplet verification.
