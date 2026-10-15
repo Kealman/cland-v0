@@ -1,4 +1,5 @@
 // Project-owned servers without a running session. OS paths establish ownership; argv is only a candidate hint.
+import { bridgeHubFile } from './process-table.ts';
 import { run } from './doctor/report.ts';
 import { existsSync, realpathSync, statSync } from 'node:fs';
 import { mkdir, readdir, readlink, stat } from 'node:fs/promises';
@@ -7,7 +8,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { acquireLockAsync, HubLocked, readLock } from './hub/lock.ts';
 import { endProcess, systemProcesses, type SystemProcess } from './system-processes.ts';
 
-export type Orphan = { process: SystemProcess; kind: 'harness' | 'hub'; root: string; owned: boolean; reason: string };
+export type Orphan = { process: SystemProcess; kind: 'harness' | 'hub' | 'bridge'; root: string; owned: boolean; reason: string };
 type Session = { name: string; pid: number | null; pid_started: string | null; status: string; cwd: string };
 const real = (path: string) => { try { return realpathSync(path); } catch { return resolve(path); } };
 const directoryMissing = (path: string) => {
@@ -25,6 +26,13 @@ function sessions(root: string): Session[] | null {
     if (!db.prepare("select name from sqlite_master where type = 'table' and name = 'harness_processes'").get()) return [];
     return db.prepare('select name, pid, pid_started, status, cwd from harness_processes').all() as Session[];
   } catch { return null; } finally { db.close(); }
+}
+
+/** Only the calling user's bridge may be swept; failure to inspect means preserve. */
+async function ownBridge(row: SystemProcess, deadline?: number): Promise<boolean> {
+  if (process.getuid === undefined) return false;
+  const uid = await run('ps', ['-p', String(row.pid), '-o', 'uid='], process.env, remaining(deadline));
+  return !uid.error && uid.code === 0 && /^\d+$/.test(uid.stdout.trim()) && Number(uid.stdout.trim()) === process.getuid();
 }
 
 /** Verify each running root, then preserve its whole current descendant tree. */
@@ -103,6 +111,12 @@ export async function findOrphans(root: string, includeHubs = false, deadline?: 
   await parallel(rows, async row => {
     remaining(deadline);
     if (row.pid === process.pid || protectedPids.has(row.pid)) return;
+    const bridgeFile = includeHubs ? bridgeHubFile(row.command) : null;
+    if (bridgeFile) {
+      if (hubScopeRoot !== undefined && !within(bridgeFile, hubScopeRoot)) return;
+      if (directoryMissing(bridgeFile) && await ownBridge(row, deadline)) out.push({ process: row, kind: 'bridge', root: resolve(bridgeFile, '../..'), owned: true, reason: 'its hub file no longer exists' });
+      return;
+    }
     const harness = /(?:^|\/)opencode\s+serve\b|(?:^|\/)fake-opencode\.ts\s+serve\b/.test(row.command) ? 'opencode'
       : /(?:^|\/)codex\s+app-server\b|(?:^|\/)fake-codex\.ts\s+app-server\b/.test(row.command) ? 'codex' : null;
     const hub = includeHubs && /^(?:\S*\/)?node\s+.+\/cland\.ts\s+hub\s+serve(?:\s|$)/.test(row.command);
@@ -147,7 +161,7 @@ export class SweepBusy extends Error {
   constructor() { super('sweep busy: another sweep holds this project’s lock'); }
 }
 /** Startup and external doctors share one crash-recoverable, PID/start-time-verified project lock. */
-export async function sweepOrphans(root: string, log: (entry: Record<string, unknown>) => void, kind: 'harness' | 'hub' = 'harness', options: SweepOptions = {}): Promise<Orphan[]> {
+export async function sweepOrphans(root: string, log: (entry: Record<string, unknown>) => void, kind: 'harness' | 'hub' | 'bridge' = 'harness', options: SweepOptions = {}): Promise<Orphan[]> {
   try {
     const deadline = options.deadline ?? Date.now() + 12_000;
     for (const path of [join(root, '.cland'), join(root, '.cland', 'run')]) {
@@ -174,10 +188,10 @@ export async function sweepOrphans(root: string, log: (entry: Record<string, unk
   }
 }
 /** Recheck current running trees and in-flight reservations in the same stretch as each signal. */
-async function sweepUnlocked(root: string, log: (entry: Record<string, unknown>) => void, kind: 'harness' | 'hub' = 'harness', options: SweepOptions = {}): Promise<Orphan[]> {
+async function sweepUnlocked(root: string, log: (entry: Record<string, unknown>) => void, kind: 'harness' | 'hub' | 'bridge' = 'harness', options: SweepOptions = {}): Promise<Orphan[]> {
   const deadline = options.deadline ?? Date.now() + 12_000;
   const ended: Orphan[] = [];
-  const candidates = (await findOrphans(root, kind === 'hub', deadline, options.hubScopeRoot)).filter(p => p.kind === kind);
+  const candidates = (await findOrphans(root, kind !== 'harness', deadline, options.hubScopeRoot)).filter(p => p.kind === kind);
   const rows = await systemProcesses(undefined, deadline);
   const byPid = new Map(rows.map(row => [row.pid, row]));
   const claims = new Map<number, symbol>();
@@ -199,10 +213,16 @@ async function sweepUnlocked(root: string, log: (entry: Record<string, unknown>)
     const current = rows.find(p => p.pid === candidate.process.pid && p.started === candidate.process.started);
     if (!current) return;
     const proof = await ownership(current, table, rows, root, paths.cwd, deadline);
+    if (kind === 'bridge' && (!bridgeHubFile(current.command) || !await ownBridge(current, deadline))) return;
     if (kind === 'harness' && !proof.owned) { log({ event: 'orphan-preserved', pid: current.pid, reason: proof.reason }); return; }
     if (kind === 'hub' && (paths.cwd === null || real(paths.cwd) !== candidate.root || !paths.files.some(path => within(path, join(candidate.root, '.cland'))))) return;
     const canSignal = (rows: SystemProcess[]) => {
       if (options.pending?.()) return false;
+      if (kind === 'bridge') {
+        const current = rows.find(p => p.pid === candidate.process.pid && p.started === candidate.process.started);
+        const file = current && bridgeHubFile(current.command);
+        return Boolean(file && file === bridgeHubFile(candidate.process.command) && directoryMissing(file));
+      }
       if (kind === 'hub') return directoryMissing(candidate.root);
       let table: Session[] | null;
       try { table = sessions(root); } catch { return false; }

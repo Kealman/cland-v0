@@ -86,6 +86,7 @@ async function bridge($: Engine, c: Config): Promise<void> {
           } catch {
             continue;
           }
+          if (frame.type === 'bridge-expired') return;
           if (frame.type === 'inject' && typeof frame.message === 'string' && typeof frame.text === 'string') inject($, c, { message: frame.message, text: frame.text });
         }
       }

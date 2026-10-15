@@ -234,8 +234,18 @@ async function cleanupDiscoveredProcesses(root?: string, seeds: ProcessIdentity[
       if (candidate && !protectedPids.has(row.pid) && !expected.has(row.pid)) report(`preserved pid ${row.pid}: ambiguous ownership; ${row.command}`);
     }
   }
+  // Count this phase's bridge identities in the existing discovery snapshot.
+  // A marker selects a candidate, but never authorizes terminating it.
+  const bridges = report ? rows.filter(row => /(?:^|\/)cland\.ts\s+hook\s+bridge(?:\s|$)/.test(row.command) &&
+    (markers.get(row.pid) === runId || (root && commandNamesRoot(row.command, root)))) : [];
+  const bridgeReceipt = () => {
+    if (!report) return;
+    const remaining = bridges.length ? processes(bridges.map(row => row.pid)).filter(row => bridges.some(before => before.pid === row.pid && before.started === row.started)).length : 0;
+    report(`suite hook bridges: before cleanup ${bridges.length}; after cleanup ${remaining}`);
+    if (remaining) throw new Error(`suite left ${remaining} hook bridge process(es); ambiguous ownership preserved`);
+  };
   // With no captured target there is nothing to revalidate or signal.
-  if (expected.size === 0) return 0;
+  if (expected.size === 0) { bridgeReceipt(); return 0; }
   const current = processes([...expected.keys(), ...anchors.map(anchor => anchor.pid)], [...new Set(rows.filter(row => expected.has(row.pid)).map(row => row.group).filter(group => !protectedGroups.has(group)))]);
   const currentRoots = [...directories].filter(([path, identity]) => directoryStillOwned(path, identity)).map(([path]) => path);
   if (root) currentRoots.push(root);
@@ -273,7 +283,7 @@ async function cleanupDiscoveredProcesses(root?: string, seeds: ProcessIdentity[
   const deadline = Date.now() + 5000;
   while (Date.now() < deadline) {
     const remaining = processes(targets.map(target => target.pid)).filter(row => targets.some(target => target.pid === row.pid && target.started === row.started));
-    if (remaining.length === 0) return targets.length;
+    if (remaining.length === 0) { bridgeReceipt(); return targets.length; }
     await pause(50);
   }
   throw new Error('owned test processes did not exit after SIGKILL');

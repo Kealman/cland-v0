@@ -249,3 +249,13 @@ contention during overlap. Repetition receipts do not refresh duration baselines
 or enter coverage maps. Missing manifests disable this gate too.
 
 See [the runner and process-fixture notes](../../hub/README.md#tests) when adding tests that spawn processes.
+
+Hook bridges retry missing or unreachable hubs for 60 seconds, including a silent
+handshake. Their expiry stops the mod's restart loop too. The real-hub lifecycle
+test intentionally waits through that production grace and has a measured duration
+allowance. Each phase's existing discovery sweep reports bridge counts before and
+after cleanup and fails if a phase candidate survives, preserving ambiguous processes.
+For old orphans use `cland doctor` to inspect and `cland doctor --fix` to sweep only
+the calling user's verified bridges whose explicit hub file is missing. An existing
+hub file, ambiguous argv or unverifiable identity prevents cleanup. Doctor fixtures
+scope both deleted hubs and bridges with `CLAND_TEST_ORPHAN_ROOT`.

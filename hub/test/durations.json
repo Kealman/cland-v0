@@ -3842,6 +3842,15 @@
     "hub/test/rule-sessions.test.ts::role clauses use current scoped active rules, including rules added while disconnected": {
       "seconds": 4.61,
       "reason": "Disconnects and reconnects role spokes against a real hub while rules change, then checks each re-sent clause; 4.61 s on Linux under load (A-3210), allowed ahead of the 5 s line."
+    },
+    "hub/test/hook-bridge.test.ts::a bridge exits after its real hub stops even while its parent and stdout remain alive": {
+      "seconds": 63.2,
+      "reason": "Exercises the production 60-second reconnect grace against a real stopped hub; no shortened test timeout replaces the lifetime contract."
+    },
+    "hub/test/hook-bridge.test.ts": {
+      "file": true,
+      "seconds": 63.2,
+      "reason": "Real bridge lifecycle proof waits through the production 60-second reconnect grace."
     }
   }
 }

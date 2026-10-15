@@ -2471,6 +2471,11 @@ and either cwd containment in the phase root or current ancestry to its recorded
 runner before signalling; revalidation and exit waits target the captured PIDs and groups. Late group
 members must prove current cwd containment or descent from an original identity;
 they are captured during targeted revalidation.
+The same discovery snapshot counts phase-owned `cland hook bridge` candidates.
+Each phase prints `suite hook bridges: before cleanup N; after cleanup N` after
+waiting for the captured identities to exit. A surviving candidate fails the phase;
+ambiguous ownership still prevents a signal. Existing bridges outside the phase
+are excluded by its root and run marker.
 Each cleaned process is visible as `cleanup pid <pid>: <command>` in the runner's
 log; ambiguous candidates are preserved and printed as `preserved pid <pid>:
 ambiguous ownership`. Production inspection and test cleanup share
@@ -2593,6 +2598,20 @@ Promotion reserves its artifact across asynchronous I/O, rechecks permission and
 Production startup sweeps unless `CLAND_TEST_SKIP_ORPHAN_SWEEP=1` is set. The `startDaemon` test fixture sets it by default, logs `orphan-sweep-skipped`, and accepts `{ sweep: true }` as its fourth argument for sweep proofs (an explicit environment value wins). This changes only the startup sweep, not doctor or on-demand cleanup.
 
 After opening its sockets, a new hub sweeps this project’s harness servers whose session is exited, stopped or offline, or whose process-table row is missing. Ownership requires a verified OS cwd under this project or descent from a PID/start-time-verified wrapper with a project cwd. When a process row exists, its recorded PID and start time must match; an unknown start time or reused PID is preserved even when socket or log hints match. A recorded launch, project-specific Codex socket/log or OpenCode `serve.log` identifies candidates but never proves ownership alone. This also covers a Codex socket placed under the temp directory because the project path is too long. Verified running roots and their descendant trees are preserved for resume. Pending launch and resume reservations also protect servers before their process-table rows are published; the sweep rechecks these protections immediately before every signal. A PID/start-time-verified lock under `.cland/run/orphan-sweep.lock` serializes startup and doctor sweeps per project; a contender reports “sweep busy”. Within one sweep, workers atomically claim each process they capture, and ancestor candidates settle before queued descendants are reassessed. Cleanup runs in parallel in the background with a shared 12-second deadline, so it cannot delay socket readiness. Startup points to `cland doctor`, which reports the PIDs ended since the latest hub start from the journal (`orphan-ended`). Ambiguous candidates are reported as `orphan-preserved` and left alive. Sweep diagnostics also reach stderr.
+
+Hook bridges retry an unavailable hub for at most 60 seconds, rereading discovery
+so a restart within that grace can reconnect. Missing discovery, a refused bridge,
+and a socket that never completes the handshake share the same deadline. Successful
+attachment resets the grace; stdout failure and parent changes also stop the bridge.
+Expiry tells the Claude mod to stop restarting that bridge.
+
+`cland doctor` also lists the calling user's hook bridges whose explicit hub file
+is missing. `cland doctor --fix` safely ends these with PID/start-time revalidation
+and a fresh absence check before each signal. Any existing hub file is preserved,
+even if malformed or unreachable. Ambiguous flattened arguments (including paths
+with whitespace), inaccessible files and unknown user identities are preserved.
+This is the supported cleanup for future orphan bridges; manual process killing
+is unnecessary.
 
 `cland doctor [dir]` reports orphan servers, names their recorded session and status, and recommends `cland doctor --fix`. The fix ends verified orphan harness servers while preserving running sessions and unverifiable identities. An unpublished server is preserved while another live hub holds the project lock, because doctor cannot see that hub’s in-flight launch reservations; stop that hub before retrying cleanup. Doctor also reports cland hub daemons whose project directories were deleted, using their OS cwd and open project files to prove ownership, and `--fix` ends those daemons. Doctor tests scope deleted-project discovery to their fixture root with `CLAND_TEST_ORPHAN_ROOT`, so parallel fixtures cannot end each other’s hubs. If the OS cannot supply ownership evidence, inspect the candidate manually. On Linux the sweep reads `/proc`; on macOS it uses bounded asynchronous `lsof` calls. Every session start-time probe and termination probe uses asynchronous `ps`, keeping process inspection off the hub’s synchronous request path. Concurrent start-time reads with the same timeout and timezone share one `ps -p a,b,c` per event-loop turn; callers for an already in-flight PID share that read. Results are removed before callers resume, so a later read still detects PID reuse.
 

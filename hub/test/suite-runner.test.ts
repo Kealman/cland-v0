@@ -896,3 +896,21 @@ test('crash', async () => {
   assert.equal(await readFile(scans, 'utf8'), 'scan\n', 'one process-table discovery per phase');
   assert.equal(await import('node:fs/promises').then(({ stat }) => stat(orphan.root)).catch(() => null), null);
 });
+
+test('the phase receipt counts and reaps a detached hook bridge without another discovery scan', async t => {
+  const dir = await fixture(t);
+  const marker = join(dir, 'bridge.json');
+  const cli = fileURLToPath(new URL('../bin/cland.ts', import.meta.url));
+  const file = join(dir, 'bridge.mjs');
+  await writeFile(file, `import test from 'node:test'; import { spawn } from 'node:child_process'; import { writeFile } from 'node:fs/promises'; import { join } from 'node:path'; import { tmpdir } from 'node:os';
+test('bridge', async () => {
+ const child = spawn(process.execPath, [${JSON.stringify(cli)}, 'hook', 'bridge', '--session', 'impl', '--hub-file', join(tmpdir(), '.cland/hub.json')], { cwd: tmpdir(), detached: true, stdio: 'ignore' });
+ child.unref();
+ await writeFile(${JSON.stringify(marker)}, JSON.stringify({ pid: child.pid }));
+});`);
+  const suite = run(t, dir, file);
+  assert.equal(await suite.done, 0, suite.output());
+  const bridge = JSON.parse(await readFile(marker, 'utf8')) as { pid: number };
+  assert.match(suite.output(), /suite hook bridges: before cleanup 1; after cleanup 0/);
+  assert.throws(() => process.kill(bridge.pid, 0), { code: 'ESRCH' });
+});

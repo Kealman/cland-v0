@@ -107,7 +107,7 @@ async function post(event: string, args: string[]): Promise<number> {
 /**
  * The mod's bridge: one client connection that asks for the session's inject frames and prints each as a JSON
  * line. It reconnects (reading `hub.json` again: a restarted hub has a new socket and secret) until its stdout
- * closes or its parent — the harness — is gone.
+ * closes, its parent — the harness — is gone, or its hub has been unavailable for 60 seconds.
  */
 async function bridge(args: string[]): Promise<number> {
   const session = flag(args, '--session') ?? process.env.CLAND_SESSION_NAME;
@@ -121,20 +121,32 @@ async function bridge(args: string[]): Promise<number> {
   const stop = () => {
     stopped = true;
   };
+  // A hook may first run after its launching parent has already exited. Parent
+  // identity alone then stays at PID 1 forever; bound missing/refused/silent hubs too.
+  let unavailable: ReturnType<typeof setTimeout> | undefined;
+  const retryGrace = () => { unavailable ??= setTimeout(() => {
+    process.stdout.write(`${JSON.stringify({ type: 'bridge-expired' })}\n`);
+    stop();
+  }, 60_000); };
+  const connected = () => { clearTimeout(unavailable); unavailable = undefined; };
+  retryGrace();
   process.stdout.on('error', stop);
   const parentWatch = setInterval(() => {
     if (process.ppid !== parent) stop();
   }, 1000);
   while (!stopped) {
     const { d } = discovery(args);
-    if (d) await bridgeOnce(d, session, launch, () => stopped);
+    if (d) await bridgeOnce(d, session, launch, () => stopped, connected);
+    retryGrace();
     if (!stopped) await new Promise((r) => setTimeout(r, 500));
   }
   clearInterval(parentWatch);
+  clearTimeout(unavailable);
+  process.stdout.off('error', stop);
   return 0;
 }
 
-function bridgeOnce(d: { socket: string; secret: string }, session: string, launch: string | undefined, isStopped: () => boolean): Promise<void> {
+function bridgeOnce(d: { socket: string; secret: string }, session: string, launch: string | undefined, isStopped: () => boolean, connected: () => void): Promise<void> {
   return new Promise((resolve) => {
     let socket: Socket;
     try {
@@ -161,7 +173,10 @@ function bridgeOnce(d: { socket: string; secret: string }, session: string, laun
         if (!frame) continue;
         if (frame.type === 'welcome') socket.write(`${JSON.stringify({ type: 'session.bridge', id: 'bridge', session, ...(launch ? { launch } : {}) })}\n`);
         else if (frame.type === 'result' && frame.id === 'bridge') {
-          if (frame.ok === true) process.stdout.write(`${JSON.stringify({ type: 'bridged', session })}\n`);
+          if (frame.ok === true) {
+            connected();
+            process.stdout.write(`${JSON.stringify({ type: 'bridged', session })}\n`);
+          }
           else {
             process.stderr.write(`cland hook bridge: ${String(frame.error)}\n`);
             socket.destroy();
