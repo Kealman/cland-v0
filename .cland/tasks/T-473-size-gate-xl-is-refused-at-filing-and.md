@@ -3,7 +3,7 @@ id: T-473
 kind: task
 title: "Size gate: XL is refused at filing, and plan-epic splits L tasks into 2–3 M tasks unless the Coordinator records a reason"
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 3
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-314
 branch: t/T-473-size-gate-xl-is-refused-at-filing-and
 created: 2026-10-15T09:13:17.633Z
-updated: 2026-10-15T19:05:43.562Z
+updated: 2026-10-15T19:33:13.417Z
 ---
 
 ## Summary
@@ -33,12 +33,15 @@ Retrospective A-2783, START 1: L tasks had a first-pass yield of 2 of 10 and car
 
 - [x] C1. `task create --size XL` and `task edit --size XL` are refused with the split message.
   - done: impl-473 · 2026-10-15T18:31:06.972Z
+  - verified: rev-30 [reviewer] · run rev-20261015-473-final · 2026-10-15T19:33:10.699Z · commit 3930189c1358d1d3cd5b281d5481aa70a51ed35a
 - [x] C2. `task plan set` with an L task is refused without `--allow-large`, and with it the reason is in the plan history.
   - done: impl-473 · 2026-10-15T18:31:10.715Z
+  - verified: rev-30 [reviewer] · run rev-20261015-473-final · 2026-10-15T19:33:10.699Z · commit 3930189c1358d1d3cd5b281d5481aa70a51ed35a
 - [x] C3. The to-tickets and plan-epic skills describe the split rule.
   - done: impl-473 · 2026-10-15T18:31:14.973Z
   - verified: rev-30 [reviewer] · run rev-20261015-473-source · 2026-10-15T18:38:40.996Z · commit a969170bcc43009ac72a11ecc65f279a1a91fa7b
   - verified: rev-30 [reviewer] · run rev-20261015-473-contract-delta · 2026-10-15T19:05:43.562Z · commit 3930189c1358d1d3cd5b281d5481aa70a51ed35a
+  - verified: rev-30 [reviewer] · run rev-20261015-473-final · 2026-10-15T19:33:10.699Z · commit 3930189c1358d1d3cd5b281d5481aa70a51ed35a
 
 ## Comments
 
@@ -101,3 +104,24 @@ A-3279 records the Coordinator-required wording scan across hub/test+nvim/test, 
 C3 reverified: correct split guidance remains unchanged. C1/C2 final runtime marks await a new acceptable exact-head post-source receipt. This source clearance permits the directed --executor droplet --fresh verification subject to Coordinator admission throttle; it is the first qualifying gate attempt after the own correction. No Reviewer tests, edits or provider calls.
 
 Criteria: C3 verified.
+
+### rev-30 · 2026-10-15T19:33:10.699Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-473-final
+commit: 3930189c1358d1d3cd5b281d5481aa70a51ed35a
+scope: evidence
+
+Final evidence review T-473 clear at unchanged source/delta-reviewed 3930189c1358d1d3cd5b281d5481aa70a51ed35a. No high, medium or low findings remain.
+
+A-3299/81144e89-f585-46be-a4dc-1b87280d6529 is actual Linux c-8, exit0, full mode:2182 passed/0 failed/0 cancelled/6 platform skips. Host/remote typecheck, hub phases and full Neovim complete. Branch resolves exactly to the receipt head. Six skips are existing macOS sandbox/inhibition cases (three hub, three Neovim), not size/plan/skill omissions. Duration-regression notices do not fail this gate; no hard duration-budget failure.
+
+All changed/public acceptance files complete: task-plan10, task-size3, role snapshots9, roles8 and skills-tracker9. The corrected skill contract now passes; A-3275 remains excluded because it contained the own obsolete assertion. This green receipt independently supplies the gate, without known-flake pairing.
+
+C1 verified: common tracker create/edit refuses newly assigned XL with split guidance through CLI and spoke, while legacy persisted XL remains readable; public task-size cases pass. C2 verified: L lane tasks require per-id nonempty Coordinator reason through allow-large, validated canonical IDs, no mutation on refusal; accepted plan history retains exceptions including repeated identical-plan reason. Public task-plan cases pass. C3 reverified: to-tickets and plan-epic require XS/S/M/L filing, L into2–3M unless recorded exception, and XL splitting before filing; Summary/regression guidance remains and skill assertions pass.
+
+Earlier source/delta reasoning and A-3279 targeted37/37 remain supporting evidence. No source changes, new suite runs or edits by Reviewer. No per-item QA requirement.
+
+Criteria: C1 verified, C2 verified, C3 verified.

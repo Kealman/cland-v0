@@ -3,8 +3,9 @@ id: T-471
 kind: task
 title: "Load gate for new tests: a test new to the manifest runs five times under load in its task's verify before it can reach dev"
 state: open
-status: in progress
+status: review
 size: M
+criterion_seq: 3
 labels:
   - v0.1.3
   - hub
@@ -14,7 +15,7 @@ blocked_by: []
 topic: topic-317
 branch: t/T-471-load-gate-for-new-tests-a-test-new-to
 created: 2026-10-15T09:13:16.338Z
-updated: 2026-10-15T19:11:32.561Z
+updated: 2026-10-15T19:33:20.766Z
 ---
 
 ## Summary
@@ -27,9 +28,12 @@ In a task's verify, the runner repeats each test that is new to the manifest fiv
 
 ## Acceptance criteria
 
-- [ ] C1. A planted flaky new test that fails 1 time in 3 fails its task's verify with a `load gate` line, while a stable new test passes all five repetitions.
-- [ ] C2. Known tests are not repeated, and the gate adds no repetitions to integrated dev runs.
-- [ ] C3. The extra wall time is reported on the run, and hub/README.md and docs/agents/tests.md describe the gate.
+- [x] C1. A planted flaky new test that fails 1 time in 3 fails its task's verify with a `load gate` line, while a stable new test passes all five repetitions.
+  - done: impl-471 · 2026-10-15T19:33:16.872Z
+- [x] C2. Known tests are not repeated, and the gate adds no repetitions to integrated dev runs.
+  - done: impl-471 · 2026-10-15T19:33:18.609Z
+- [x] C3. The extra wall time is reported on the run, and hub/README.md and docs/agents/tests.md describe the gate.
+  - done: impl-471 · 2026-10-15T19:33:19.546Z
 
 ## Comments
 
