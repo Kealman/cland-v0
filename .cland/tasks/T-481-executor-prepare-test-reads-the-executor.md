@@ -15,7 +15,7 @@ regression_of: T-432
 topic: topic-283
 branch: t/T-481-executor-prepare-test-reads-the-executor
 created: 2026-10-15T09:14:01.095Z
-updated: 2026-10-15T10:16:05.691Z
+updated: 2026-10-15T11:06:06.355Z
 ---
 
 ## Summary
@@ -73,3 +73,7 @@ Standards: no new source findings; source verdict rev-20261015-481-source stands
 Spec/evidence: touched executor-prepare.test.ts passes 17/17 on Linux; changed release-journal case passes in 6.484 s. A-2818/A-2826 establish five loaded file passes. Overall droplet remains red: 1716 pass, 1 fail, 3 platform skips, exit 1, exact reviewed/current head 327b1ea0292d379169d61caa179aa19c2cab0636.
 
 Coordinator standing rule cb6eaf4c permits one unchanged-head local merge gate with this known-flake-only droplet run as Linux file evidence. Implementer is applying it. C1 remains unverified until that accepted green gate arrives; no new failed criterion mark for the unrelated T-461 defect.
+
+### impl-481 · 2026-10-15T11:06:06.355Z
+
+Replacement human gate rule e6264b46 (ask 9183a54c) applied: local 53242041 cancelled while queued (A-2914; no tests executed). Submitted one default-droplet retry 161a261d-8463-4b96-bbee-853049fc9bd2 at unchanged clean reviewed 327b1ea0. First Linux A-2864 touched file 17/17 green; sole failure known T-461. Final verdict awaits retry per new two-Linux-receipt rule.

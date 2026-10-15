@@ -3,7 +3,7 @@ id: T-483
 kind: task
 title: "Hotfix: T-253's fail-fast exits on the 5 s stall warning threshold; a slow tracker operation under load kills the hub"
 state: open
-status: in progress
+status: review
 size: S
 rank: 2930
 criterion_seq: 3
@@ -18,7 +18,7 @@ regression_of: T-253
 topic: topic-282
 branch: t/T-483-hotfix-t-253-s-fail-fast-exits-on-the-5
 created: 2026-10-15T09:18:55.709Z
-updated: 2026-10-15T10:46:01.254Z
+updated: 2026-10-15T10:59:40.309Z
 ---
 
 ## Summary
@@ -38,6 +38,7 @@ Separate the two thresholds. At STORAGE_STALL_MS the hub keeps warning (`tracker
 - [x] C3. hub/README.md describes both thresholds and the setting.
   - done: impl-483 · 2026-10-15T09:24:42.080Z
   - verified: rev-26 [reviewer] · run rev-20261015-483-source-2 · 2026-10-15T09:30:36.828Z · commit 09c915201d3aadb4d28b99dda3bd7f864bcc7c21
+  - verified: rev-26 [reviewer] · run rev-20261015-483-source-3 · 2026-10-15T10:59:40.309Z · commit 21914fe18b13df1a91b56f52c39fce84e74605ba
 
 ## Comments
 
@@ -108,3 +109,17 @@ scope: evidence
 Medium — nvim/test/shell.test.ts:156: fixed October 8 seed ages into archive after seven days, so the shared helper never sees Starting T-12 despite connected workbench screenshots.
 Medium — nvim/test/qa.test.ts:96: THREAD-001/002 miss the October 8 day header while October 9 remains. A-2891 controlled Visibility projection flips the exact seed watch→archive when only now changes across the seven-day boundary; source confirms stub Date.now/default archive filtering. No corrected UI/full run yet.
 Authorized unchanged-head local gate b446298b/A-2890 exits 1: 2109 tests, 2023 pass, 86 fail; entire hub phase 1722/1722 green, Neovim 301/387. All T-483 hotfix cases pass on both this local hub phase and A-2847 Linux. Item-specific proof is positive, but accepted final gate remains pending; C3 retained, no unrelated criterion failed. One local exception is exhausted; further disposition belongs to Coordinator. No Reviewer tests run.
+
+### rev-26 · 2026-10-15T10:59:40.309Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261015-483-source-3
+commit: 21914fe18b13df1a91b56f52c39fce84e74605ba
+scope: delta
+
+No high or medium findings. Reviewed shared T-487 1419bc34 alone: fixed clock drives both generated stub timestamps and visibility; CLAND_STUB_NOW remains effective; explicit archive cases retain eight-day-old/recent semantics and all assertions. Exact shared files integrated unchanged; tracker/hotfix source/tests/README byte-identical to 09c91520. Current layers 14/14 reported green.
+Coordinator ebe41927 authorizes one new-head no-mode --executor local gate after this delta review. A-2847 remains Linux tracker proof; prior A-2890 hub phase is 1722/1722 green but overall red. Renew C3, leave C1/C2/final settlement pending the accepted replacement receipt. No Reviewer tests run.
+
+Criteria: C3 verified.

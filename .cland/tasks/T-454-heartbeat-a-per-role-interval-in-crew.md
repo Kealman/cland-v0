@@ -3,7 +3,7 @@ id: T-454
 kind: task
 title: "Heartbeat: a per-role interval in crew.toml wakes an idle session with a hub-computed digest of what is in flight and what looks stale, folds into the next turn on a busy one, and is never a needs-you"
 state: open
-status: in progress
+status: review
 size: L
 criterion_seq: 8
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-275
 branch: t/T-454-heartbeat-a-per-role-interval-in-crew
 created: 2026-10-15T07:15:15.368Z
-updated: 2026-10-15T10:54:17.913Z
+updated: 2026-10-15T11:06:09.000Z
 ---
 
 ## Summary
@@ -93,11 +93,13 @@ E-423 "Rules and rhythm" (R-294), tracer bullet 1 of 7; spec `docs/spec/v0.1.3.m
   - verified: rev-23 [reviewer] · run rev-2026-10-15-454-6 · 2026-10-15T08:50:51.662Z · commit bdcddc3c3401dc268eb4eff0b420a8bab9590a62
   - verified: rev-23 [reviewer] · run rev-2026-10-15-454-9 · 2026-10-15T09:57:47.574Z · commit af5c18eeb046f10161d86b19f0baa2712a3fb322
   - verified: rev-23 [reviewer] · run rev-2026-10-15-454-11 · 2026-10-15T10:30:29.408Z · commit 02d29aff362c66568ed41502c79bd93716f6ee47
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-454-13 · 2026-10-15T10:59:48.724Z · commit d13473b071faf2224fc5f2556d003b6ab0a3c799
 - [x] C7. The Coordinator's clause, in `default-roles.ts` and the live `.cland/roles.toml`, says what to check, what to repair and when to escalate on a heartbeat, and to end a clean heartbeat without a message.
   - done: impl-454 · 2026-10-15T08:50:11.220Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-454-6 · 2026-10-15T08:50:51.663Z · commit bdcddc3c3401dc268eb4eff0b420a8bab9590a62
   - verified: rev-23 [reviewer] · run rev-2026-10-15-454-9 · 2026-10-15T09:57:47.575Z · commit af5c18eeb046f10161d86b19f0baa2712a3fb322
   - verified: rev-23 [reviewer] · run rev-2026-10-15-454-11 · 2026-10-15T10:30:29.408Z · commit 02d29aff362c66568ed41502c79bd93716f6ee47
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-454-13 · 2026-10-15T10:59:48.724Z · commit d13473b071faf2224fc5f2556d003b6ab0a3c799
 - [x] C8. `hub/README.md` describes the `heartbeat` setting, its default, the digest's rows, coalescing and `CLAND_HEARTBEAT_MS`, and `nvim/README.md` lists the `heartbeat` kind and key `9` in the events view.
   - done: impl-454 · 2026-10-15T07:40:48.284Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-454-2 · 2026-10-15T07:49:57.099Z · commit b64e068182a0bfb027f5fdc2542a764c17e55b56
@@ -105,6 +107,7 @@ E-423 "Rules and rhythm" (R-294), tracer bullet 1 of 7; spec `docs/spec/v0.1.3.m
   - verified: rev-23 [reviewer] · run rev-2026-10-15-454-6 · 2026-10-15T08:50:51.663Z · commit bdcddc3c3401dc268eb4eff0b420a8bab9590a62
   - verified: rev-23 [reviewer] · run rev-2026-10-15-454-9 · 2026-10-15T09:57:47.575Z · commit af5c18eeb046f10161d86b19f0baa2712a3fb322
   - verified: rev-23 [reviewer] · run rev-2026-10-15-454-11 · 2026-10-15T10:30:29.408Z · commit 02d29aff362c66568ed41502c79bd93716f6ee47
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-454-13 · 2026-10-15T10:59:48.724Z · commit d13473b071faf2224fc5f2556d003b6ab0a3c799
 
 ## Comments
 
@@ -337,3 +340,31 @@ Configured Linux 93b61bfc/A-2898 at 02d29aff362c66568ed41502c79bd93716f6ee47 rem
 
 This is positive own-file Linux evidence for the standing known-flake rule, separate from the red overall gate. Claimant additionally reports Coordinator 2a23d826 requires adopting T-487 before a full Neovim run and is holding for its posted shared fix; that specific direction is not replaced by this evidence review. Any changed head needs a delta source review before another run. C1–C5 remain unverified; C6–C8 source marks remain current. Preserve A-2870's prior Linux red, A-2842 header red and A-2832 outage-lost disposition for final reporting. No Reviewer tests or edits.
 Review evidence: A-2899.
+
+### impl-454 · 2026-10-15T10:59:09.066Z
+
+Per explicit Coordinator e7e06101/27984365, cherry-picked only T-4871419bc34 onto02d29aff, now pushed clean d13473b0. Serial targeted files: layers14/14 A-2902, events3/3 A-2904 (inclheartbeatfilter); no product/assertion/deadline delta. A-2898 remains Linux evidence for own hub files, known T-485 stop/pidAlive sole red. Requesting delta review before the explicitly authorized local fallback gate.
+
+### rev-23 · 2026-10-15T10:59:48.724Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-15-454-13
+commit: d13473b071faf2224fc5f2556d003b6ab0a3c799
+scope: delta
+
+Delta source clear at d13473b071faf2224fc5f2556d003b6ab0a3c799; no high/medium finding remains.
+
+The sole change is the exact landed T-487 1419bc34 patch (stable patch ID f3bd75a675bd8e4e20a6b4f0c58e126891c75ba7): fixture clock constant, stub-generated timestamps/visibility age sharing that clock, and two relative-age layer fixtures using the same reference. CLAND_STUB_NOW remains an override. Old messages remain eight days old relative to the fixture clock; archive/retrieval assertions, deadlines and production behavior are unchanged.
+
+Audited current-head A-2902 layers 14/14 and A-2904 events 3/3, including the heartbeat event case; zero failures/skips/cancellations. This is the actual event evidence, correcting the claimant's earlier speculative artifact reference. No broad dev merge or additional heartbeat source change. Prior source pass A-2883 otherwise applies; C6–C8 refreshed.
+
+Direct Coordinator 27984365 assigns the Implementer :570 stop/exit occurrence to T-485 and explicitly directs T-487 pick → delta review → one local fallback gate at this new head. A-2898 is accepted own-hub Linux evidence, while its overall 93b61bfc result stays red (1726 pass/one T-485 fail/three platform skips, no Neovim). C1–C5 final marks await the authorized same-head local gate including Neovim. Retain prior source-fix reds and outage-lost A-2832/8fd03833 in final reporting. No Reviewer tests or edits.
+Review evidence: A-2909.
+
+Criteria: C6 verified, C7 verified, C8 verified.
+
+### impl-454 · 2026-10-15T11:06:09.000Z
+
+New human gate rule e6264b46 supersedes local fallback. Confirmed56603698 still queued and cancelled it before start (A-2911). Submitted no-mode configured-executor329ceb58 at unchanged reviewed d13473b0; no new edits. Prior Linux A-2898 remains own-hub positive, sole known T-485 red. New head only adopts shared T-487, allowed same-head equivalence. Reviewer/Coordinator notified; waiting receipt.

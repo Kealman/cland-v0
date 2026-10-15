@@ -3,7 +3,7 @@ id: T-335
 kind: task
 title: "Lane flow: epics follow epics, a follow is met on the last merge, and a merge hold keeps the follower off the predecessor's files until its demo"
 state: open
-status: in progress
+status: review
 size: L
 criterion_seq: 7
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-277
 branch: t/T-335-lane-flow-the-next-epic-in-a-lane-starts
 created: 2026-10-13T14:23:44.027Z
-updated: 2026-10-15T10:48:53.279Z
+updated: 2026-10-15T11:00:26.690Z
 ---
 
 ## Summary
@@ -57,12 +57,14 @@ This started as an observation from the human and the stand-in on 2026-10-13 at 
   - verified: rev-26 [reviewer] · run rev-20261015-335-source-4 · 2026-10-15T08:09:52.728Z · commit fd823c6e0262f771cf4ae32bf68ea58794b7f9e2
   - verified: rev-26 [reviewer] · run rev-20261015-335-source-5 · 2026-10-15T08:29:23.109Z · commit 7ea539c76f214ab1b4a8912ec20d70636fd97fd0
   - verified: rev-26 [reviewer] · run rev-20261015-335-source-6 · 2026-10-15T10:00:41.032Z · commit b6ba04e77de9d9635c00946f526e6edacaeb8ab4
+  - verified: rev-26 [reviewer] · run rev-20261015-335-source-7 · 2026-10-15T11:00:26.690Z · commit fcb1de325def92d9f0d18fc998893cf9ee39ca9e
 - [x] C7. `hub/README.md` and GLOSSARY's Follows entry describe the relation, the met rule and the hold.
   - done: impl-335 · 2026-10-15T07:26:40.394Z
   - verified: rev-26 [reviewer] · run rev-20261015-335-source-3 · 2026-10-15T07:40:56.538Z · commit bbe943079f12a43dcc707d527fe718b9a58ddfd6
   - verified: rev-26 [reviewer] · run rev-20261015-335-source-4 · 2026-10-15T08:09:52.728Z · commit fd823c6e0262f771cf4ae32bf68ea58794b7f9e2
   - verified: rev-26 [reviewer] · run rev-20261015-335-source-5 · 2026-10-15T08:29:23.109Z · commit 7ea539c76f214ab1b4a8912ec20d70636fd97fd0
   - verified: rev-26 [reviewer] · run rev-20261015-335-source-6 · 2026-10-15T10:00:41.033Z · commit b6ba04e77de9d9635c00946f526e6edacaeb8ab4
+  - verified: rev-26 [reviewer] · run rev-20261015-335-source-7 · 2026-10-15T11:00:26.690Z · commit fcb1de325def92d9f0d18fc998893cf9ee39ca9e
 
 ## Comments
 
@@ -211,3 +213,17 @@ scope: evidence
 
 Execution incomplete: A-2893/6dd1546e exits 143 after Coordinator-requested cancellation, with only 37/37 free-shard counts complete; machine shard interrupted, Neovim not run. No source or semantic failure inferred and no criterion failed. C1–C5 final marks pending; C6/C7 source marks retained.
 Coordinator 9f7d6175 explicitly preserves the local exception: wait for named T-487 commit, cherry-pick only it, get delta review, then one replacement no-mode --executor local gate. A-2794 Linux hub evidence and E-423 later Linux Neovim obligation remain as b4ec2b7f directs. No Reviewer tests run.
+
+### rev-26 · 2026-10-15T11:00:26.690Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261015-335-source-7
+commit: fcb1de325def92d9f0d18fc998893cf9ee39ca9e
+scope: delta
+
+No high or medium findings. Exact shared T-487 1419bc34 pick only; fixed clock aligns generated timestamps and visibility, retains CLAND_STUB_NOW override, and explicit archive cases keep eight-day/recent boundary assertions. No production clock/timeout change. All three shared files match; T-335 source/tests/publication guards/UI/clauses/docs remain byte-identical to b6ba04e7. Current layers 14/14, explorer-card 15/15, item-prefixes 2/2 and typecheck reported green.
+Renew C6/C7. C1–C5/final settlement await the replacement no-mode --executor local gate preserved by Coordinator 9f7d6175; prior A-2893 cancellation does not consume it. A-2794 Linux hub evidence and b4ec2b7f disposition remain, with Linux Neovim owed at E-423 stage-1 close. No Reviewer tests run.
+
+Criteria: C6 verified, C7 verified.
