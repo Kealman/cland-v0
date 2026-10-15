@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { cland, connectUi, connectWsUi, eventually, fakeClaude, fakeCodex, sleep, spawnSpoke, startDaemon, startHub, tempProject, clauseAnswered, withDiscoveredPid } from './harness.ts';
 import { fixture as remoteFixture } from './remote-fixture.ts';
 import { fixture as suiteFixture } from './suite-fixture.ts';
+import { onCleanup } from './process-cleanup.ts';
 import { Tracker } from '../src/tracker/tracker.ts';
 import { CrewFile } from '../src/crew.ts';
 import { fixedRoles } from '../src/roles/config.ts';
@@ -151,26 +152,45 @@ test('the digest ages review and ready items and open asks, caps both sections, 
 test('the digest includes running and queued runs and ages timeouts and ended runs without results', async t => {
   const f = await suiteFixture(t, 'node -e "const fs=require(\'fs\');const p=setInterval(()=>{if(fs.existsSync(\'finish\'))clearInterval(p)},20)"', undefined, '', { CLAND_HEARTBEAT_MS: '100', CLAND_TEST_EXECUTOR_RUN_TIMEOUT_MS: '100' });
   const coord = await spawnSpoke({ cwd: f.root, discover: true, name: 'coord', sessionId: 'run-digest-coord', role: 'coordinator' });
-  t.after(() => coord.close());
-  const first = await f.launch('auto');
+  // A directory cleanup failure must not skip closing this spoke and keep Node alive.
+  onCleanup(t, () => coord.close());
+  const runs: string[] = [];
   const digest = async (pattern: RegExp) => eventually('run facts in heartbeat', async () => {
     const history = await f.ui.request({ type: 'topic.history', topic: 'agents' });
     return (history.value as { messages: Message[] }).messages.find(m => m.detail?.event === 'heartbeat' && pattern.test(m.text));
   }, 2500);
-  const running = await digest(new RegExp(`run ${first.id} past its timeout · age`));
-  assert.match(running.text, new RegExp(`run ${first.id} running · impl`));
-  const secondResult = await f.ui.request({ type: 'suite.start', mode: 'auto', cwd: f.root, report: f.topic, to: ['impl'] });
-  assert.equal(secondResult.ok, true, secondResult.error);
-  const second = secondResult.value as { id: string };
-  const queued = await digest(new RegExp(`run ${second.id} queued · human`));
-  assert.ok(queued);
-  assert.equal((await f.ui.request({ type: 'role.clear', session: 'impl' })).ok, true);
-  await writeFile(join(f.root, 'finish'), 'done');
-  await digest(new RegExp(`run ${first.id} ended without a posted result · age`));
-  assert.equal((await f.ui.request({ type: 'role.set', session: 'impl', role: 'implementer' })).ok, true);
-  // The second queued worker can start while the first result is withheld.
-  // Settle both runs before the embedded hub's strict resource check.
-  await eventually('both digest runs post their results', async () => (await f.results()).length === 2 || undefined);
+  try {
+    const first = await f.launch('auto');
+    runs.push(first.id);
+    const running = await digest(new RegExp(`run ${first.id} past its timeout · age`));
+    assert.match(running.text, new RegExp(`run ${first.id} running · impl`));
+    const secondResult = await f.ui.request({ type: 'suite.start', mode: 'auto', cwd: f.root, report: f.topic, to: ['impl'] });
+    assert.equal(secondResult.ok, true, secondResult.error);
+    const second = secondResult.value as { id: string };
+    runs.push(second.id);
+    const queued = await digest(new RegExp(`run ${second.id} queued · human`));
+    assert.ok(queued);
+    assert.equal((await f.ui.request({ type: 'role.clear', session: 'impl' })).ok, true);
+    await writeFile(join(f.root, 'finish'), 'done');
+    await digest(new RegExp(`run ${first.id} ended without a posted result · age`));
+  } finally {
+    // The queued worker can start while the first result is withheld. Release
+    // and observe every submitted run even if a digest assertion failed, before
+    // teardown stops the hub and removes the workers' writable fixture root.
+    await writeFile(join(f.root, 'finish'), 'done');
+    for (const id of runs) {
+      await eventually(`digest worker ${id} writes its completion receipt`, () =>
+        readFile(join(f.root, '.cland/run/suites', id, 'result.json'), 'utf8').then(() => true, error => {
+          if (error.code === 'ENOENT') return undefined;
+          throw error;
+        }));
+    }
+    assert.equal((await f.ui.request({ type: 'role.set', session: 'impl', role: 'implementer' })).ok, true);
+    await eventually('both digest runs post their results', async () => {
+      const results = await f.results();
+      return results.length === runs.length && runs.every(id => results.some(result => result.id === `suite:${id}`)) || undefined;
+    });
+  }
 });
 
 
