@@ -2,8 +2,8 @@
 id: T-506
 kind: task
 title: "heartbeat test: a transition observed during the test is aged from the fixture's old updated date (Linux)"
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ regression_of: T-454
 topic: topic-304
 branch: t/T-506-heartbeat-test-a-transition-observed
 created: 2026-10-15T15:16:16.009Z
-updated: 2026-10-15T17:37:08.188Z
+updated: 2026-10-15T17:37:33.248Z
+closed: 2026-10-15T17:37:33.248Z
 ---
 
 ## Problem
@@ -151,3 +152,7 @@ C2 verified under explicit Coordinator case-level exception cea92d23-c837-4136-a
 First Linux A-3198 remains recorded red (T-502 plus digest budget); the approved 051db745-only delta was reviewed before this second run. All criteria are now verified at the current head. Coordinator restart/merge hold 0513084e/bdda2243 remains in force; no immediate merge instruction. No Reviewer tests, edits or provider calls.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-15T17:37:33.248Z
+
+Merged 0f0d4dd298075d83b7797e8cc373dcc47f1ebe15 onto dev.
