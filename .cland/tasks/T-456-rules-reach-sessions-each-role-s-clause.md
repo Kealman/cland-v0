@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-295
 branch: t/T-456-rules-reach-sessions-each-role-s-clause
 created: 2026-10-15T07:15:15.550Z
-updated: 2026-10-15T14:07:43.628Z
+updated: 2026-10-15T14:32:33.467Z
 ---
 
 ## Summary
@@ -74,6 +74,7 @@ E-423 "Rules and rhythm" (R-294), tracer bullet 4 of 7; spec `docs/spec/v0.1.3.m
 - [x] C1. A role's clause ends with "Project rules for your role" listing its in-scope active rules as `rule <n>: <text> (reason: <reason>)` in id order, or the no-rules line, and the launch brief ends with the same list; retired rules appear in neither.
   - done: impl-456 · 2026-10-15T13:36:00.289Z
   - verified: rev-31 [reviewer] · run rev-20261015-456-source-2 · 2026-10-15T13:41:07.371Z · commit a269ce0c80d7c6fc851e6ec4a421e4625117ee2a
+  - verified: rev-31 [reviewer] · run rev-20261015-456-source-3 · 2026-10-15T14:15:41.958Z · commit a4a899c64dcb8629e08ce6717fde30270ad8509a
 - [x] C2. A rule scoped to `implementer`, added from the shell, reaches a running fake Implementer at its next turn as a `rule` event with its full text, and does not reach the fake Coordinator; an edit and a retirement reach the Implementer the same way.
   - done: impl-456 · 2026-10-15T13:40:28.405Z
 - [x] C3. After a reconnect, the Implementer's re-sent clause carries the current rules, including one added while it was disconnected.
@@ -81,17 +82,21 @@ E-423 "Rules and rhythm" (R-294), tracer bullet 4 of 7; spec `docs/spec/v0.1.3.m
 - [x] C4. A Coordinator's `rule.add` naming the human's message records that origin, while one naming an agent's message or no message, and an Implementer's `rule.add`, are refused with `forbidden` and a reason.
   - done: impl-456 · 2026-10-15T13:36:02.217Z
   - verified: rev-31 [reviewer] · run rev-20261015-456-source-2 · 2026-10-15T13:41:07.371Z · commit a269ce0c80d7c6fc851e6ec4a421e4625117ee2a
+  - verified: rev-31 [reviewer] · run rev-20261015-456-source-3 · 2026-10-15T14:15:41.958Z · commit a4a899c64dcb8629e08ce6717fde30270ad8509a
 - [x] C5. An Aide's `rule.add` records `session:<name>` as origin, and every role's `rule.list` returns the active rules, filtered by `role` when given.
   - done: impl-456 · 2026-10-15T13:36:02.773Z
   - verified: rev-31 [reviewer] · run rev-20261015-456-source-2 · 2026-10-15T13:41:07.371Z · commit a269ce0c80d7c6fc851e6ec4a421e4625117ee2a
+  - verified: rev-31 [reviewer] · run rev-20261015-456-source-3 · 2026-10-15T14:15:41.958Z · commit a4a899c64dcb8629e08ce6717fde30270ad8509a
 - [x] C6. A `rule` event never changes the inbox count or shows as a needs-you, never steers a running turn, and shows as a row in the events view, reachable from the palette's kind filter while keys `1`–`9` keep their kinds.
   - done: impl-456 · 2026-10-15T13:36:03.339Z
 - [x] C7. The Coordinator's and the Aide's clauses, in `default-roles.ts` and the live `.cland/roles.toml`, say to record a stated rule with `rule.add` and never only in a memory, and that a memory repeating a rule names its number.
   - done: impl-456 · 2026-10-15T13:36:03.904Z
   - verified: rev-31 [reviewer] · run rev-20261015-456-source-2 · 2026-10-15T13:41:07.371Z · commit a269ce0c80d7c6fc851e6ec4a421e4625117ee2a
+  - verified: rev-31 [reviewer] · run rev-20261015-456-source-3 · 2026-10-15T14:15:41.958Z · commit a4a899c64dcb8629e08ce6717fde30270ad8509a
 - [x] C8. `hub/README.md` describes rules in clauses and briefs, the `rule.*` tools and the origin rule, and the `rule` event, and `nvim/README.md` lists the `rule` kind in the events view's palette filter.
   - done: impl-456 · 2026-10-15T13:36:04.689Z
   - verified: rev-31 [reviewer] · run rev-20261015-456-source-2 · 2026-10-15T13:41:07.371Z · commit a269ce0c80d7c6fc851e6ec4a421e4625117ee2a
+  - verified: rev-31 [reviewer] · run rev-20261015-456-source-3 · 2026-10-15T14:15:41.958Z · commit a4a899c64dcb8629e08ce6717fde30270ad8509a
 
 ## Comments
 
@@ -178,3 +183,51 @@ Gate 9d3032d2-5af5-4902-b92c-43c6007fec57 / A-3050 is exit 1 at reviewed/current
 
 Source-established C1,C4,C5,C7,C8 marks remain; no new failed behavioral criterion is inferred solely from stale test expectations. C2,C3,C6 remain unverified pending a corrected source review and accepted same-head runtime evidence. Restore the integration contracts, request source re-review at the replacement head, then verify after the Coordinator lifts the restart hold. No Reviewer tests or edits.
 Standards/integration: 3 medium groups. Spec/integration: 1 medium group. Separate SQLite failure awaits classification.
+
+### rev-31 · 2026-10-15T14:15:41.958Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261015-456-source-3
+commit: a4a899c64dcb8629e08ce6717fde30270ad8509a
+scope: full
+
+Source review clear at a4a899c64dcb8629e08ce6717fde30270ad8509a. No high/medium/low findings remain in the revised source.
+
+## Standards
+Prior A-3052 integration findings are addressed: DOCUMENTED_TOOLS includes rule.add/edit/list/retire and preserves dev's verify tool; aide.test.ts expected grants match the new rules tools; tracker-container-source.test.ts's valid fixture has all ten kinds and keeps its negative guard cases. durations.json adds the two measured Linux allowances (8.109 s and 5.042 s) with concrete lifecycle reasons and A-3050 provenance; pre-existing baseline values are preserved semantically.
+
+## Spec
+Coordinator decision 8ea909f0-7a82-41a9-9770-c4615dbc59cd was read directly in topic history. It authorizes the guard/design adjustment: full project rules stay in clauses and briefs; base instructions alone retain the 512-byte reserve; cache guidance belongs at the start of the rules section.
+roleClauseSections and projectRulesText implement that separation. roleDefinition retains staffing before the rules section, clauseText retains skills, and #recordClause retains handover notes before appending the complete current rules section. The launch clause and brief use the same scoped current suffix and guidance. Default/live prior instructions, including newly merged T-395 instructions, remain present relative to current dev d6e222be; the four rules tools/grants coexist with that integration.
+roles.test.ts now measures the base only while asserting the rules section and Coordinator/Aide cache guidance exist. New rule-sessions regression constructs a >8192-byte rule-bearing role event, checks its full ending and compares the reconnect event byte-for-byte; it does not truncate content or widen the send cap. A-3063 reports roles 8/8 and rule-sessions 7/7 plus all previously failed tool/grant/guard files green.
+The stopped-session recipient correction remains in place.
+
+C1,C4,C5,C7,C8 source verification is refreshed at this head: ordered active scoped clause/brief lists; human-origin and role authorization; Aide origin and list filters/grants; cache clauses; updated hub/Neovim documentation. C2,C3,C6 remain unverified until the replacement head's accepted runtime receipt, including Linux Neovim rendering/filter interaction.
+
+Review carries the prior full source review forward, checks both corrective commits and their merge against current dev, and judges the revised section design under the explicit Coordinator decision. A-3050 remains a failed earlier-head receipt; A-3063 targeted evidence does not replace fresh verification. Separate orphan-server SQLite failure is tracked as T-499. No Reviewer tests or edits.
+Standards: 0 unresolved findings. Spec: 0 unresolved findings.
+
+Criteria: C1 verified, C4 verified, C5 verified, C7 verified, C8 verified.
+
+### rev-31 · 2026-10-15T14:32:33.467Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261015-456-local-1
+commit: a4a899c64dcb8629e08ce6717fde30270ad8509a
+scope: evidence
+
+Evidence review not clear at unchanged a4a899c64dcb8629e08ce6717fde30270ad8509a.
+
+## Standards
+Medium — hub/test/handover.test.ts:103: the test still requires /You are the Coordinator of this project/, while merged T-395 defaults say 'You are the Coordinator: lead the root of the item tree.' A-3066:3968-3975 shows this deterministic text mismatch, not loss of the role event or handover note. This stale contract blocks the suite; update the assertion to the intended current contract and retain the behavioral handover checks.
+
+## Spec/evidence
+The automatic-fallback run 8c88479a-6f0d-494e-8693-0288715c2bc7 / A-3066 is local darwin arm64, exit 1: 1770 pass / 1 fail / 0 skips / 0 cancellations. It stops in the hub phase, so there is no Neovim result. All seven rule-sessions cases pass, including stopped-session filtering and complete over-cap assignment/reconnect. Previously reported integration tests/budgets are green in this run; no new budget failure.
+Source review rev-20261015-456-source-3 stands for its five source-established marks; C2,C3,C6 remain unverified until an accepted complete exact-head receipt. This red local receipt supplies neither a green gate nor Linux Neovim evidence.
+
+Aside to lead: Bugs / XS, regression of T-395 — deterministic stale handover Coordinator-intro assertion after default-clause rewrite. Resolve/classify through the lead and obtain source review at any replacement head before verification. No behavioral criterion failure inferred from this stale phrase alone. No Reviewer tests or edits.
+Standards: 1 medium integration finding. Spec: no new product finding; accepted runtime evidence outstanding.

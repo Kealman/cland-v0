@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-10-15T12:04:13.634Z
+updated: 2026-10-15T14:10:25.552Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -267,3 +267,7 @@ Incident: unattributed hub auto-start after a stand-in restart (second sighting)
 ### human · 2026-10-15T12:04:13.634Z
 
 Incident: unattributed hub auto-start after a stand-in restart (second sighting). 2026-10-15 12:00:36.148Z human CLI hub.stop (atomic-restart.sh) → 12:00:36.162Z hub-stopped pid 21598 → 12:00:36.645Z hub-started pid 496, 0.5 s later, before the script's own 'cland hub start' at ~12:00:41Z, which printed 'hub already running'. pid 496 is 'node hub/bin/cland.ts hub serve', parent launchd (pid 1), started 14:00:36 local. No audit event names the starter; the next client calls are human CLI hub.status 12:00:39Z and nvim subscribe 12:00:44Z. First sighting: the 09:14–09:18Z outage recovery, when two unattributed hub serve processes (pids 15615, 57876) started without CLAND_TEST_TRACKER_STALL_MS and died on the 5 s stall. This time the environment was correct (token present, knob absent, cap 6 loaded) only because nothing had to be exported. Needed: find which spoke or client auto-starts 'hub serve' when the socket disappears, and make hub-started record its starter (parent, client) so an env-dependent restart cannot be pre-empted silently.
+
+### human · 2026-10-15T14:10:25.552Z
+
+Incident: orphaned test-fixture hub. pid 76123, 'node .cland/worktrees/T-459/hub/bin/cland.ts hub serve', ppid 1, started 13:33:01Z, cwd /private/var/folders/…/T/remote-run-QRokzy (a remote-run fixture dir; the mkdtemp prefix 'remote-run-' appears in: hub/test/remote-fixture.ts ). Found by coord at ~14:10Z; at 14:12Z no node --test under the T-459 worktree and no client on its socket (only its own listener), 4% CPU for 37 min. Reaped by the stand-in with SIGTERM at 14:12Z (exited on TERM). A second stale dir remote-run-ZYtvuT exists without a process. Likely cause: an impl-459 (T-459 demos on a droplet) targeted test whose parent died or timed out without the fixture's teardown; the fixture should kill its hub on exit/timeout (cf. T-311 orphan hook bridges).

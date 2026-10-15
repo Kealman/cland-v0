@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-296
 branch: t/T-459-demos-on-a-droplet-cland-demo-start-exec
 created: 2026-10-15T07:15:15.838Z
-updated: 2026-10-15T14:09:15.330Z
+updated: 2026-10-15T14:15:35.343Z
 ---
 
 ## Summary
@@ -76,6 +76,7 @@ E-423 "Rules and rhythm" (R-294), tracer bullet 7 of 7; spec `docs/spec/v0.1.3.m
 - [x] C7. `hub/README.md` describes the demo lease, its commands, budget sharing and the freshness rule.
   - done: impl-459 · 2026-10-15T13:33:34.141Z
   - verified: rev-30 [reviewer] · run rev-20261015-459-source-2 · 2026-10-15T13:42:55.913Z · commit 05cff0dd5e3a0fd1a8fcef0c44e0668a95c2985b
+  - verified: rev-30 [reviewer] · run rev-20261015-459-delta · 2026-10-15T14:15:35.343Z · commit cad57ccf47b605fcf9df8ef79ac848e37e9f9bb9
 
 ## Comments
 
@@ -130,5 +131,49 @@ Spec: prior C6 blocker resolved. qa-record.sh:34 now accepts E-423/I-42; the ski
 The rest of source review rev-20261015-459-source stands: no additional findings in shared lifecycle, authorization, committed-object delivery, surface-aware freshness admission/close/cache, or remote capture flow. Reviewed delta 57fd1e76..05cff0dd is one commit/four files; no other design changes. git diff --check passes; current branch matches requested head. Both review axes performed directly; role disables delegation.
 
 C7 verified from README source. C1–C6 remain unverified pending accepted same-head post-source cland verify; the C6 done mark at this fixed head supersedes the earlier failed mark. No real droplets or Reviewer tests/edits. Per-item QA policy none/after-stage; real-droplet demo is epic QA.
+
+Criteria: C7 verified.
+
+### rev-30 · 2026-10-15T14:10:00.008Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261015-459-linux-first
+commit: 05cff0dd5e3a0fd1a8fcef0c44e0668a95c2985b
+scope: evidence
+
+Evidence review not clear at unchanged 05cff0dd5e3a0fd1a8fcef0c44e0668a95c2985b.
+
+Medium — hub/test/demo.test.ts:11,41,65,86,114: six new demo test identities exceed the enforced five-second budget on Linux (A-3054:5634–5639): lifecycle/restart 7.120 s, authorization/verdict cleanup 5.884 s, run-timeout watchdog 5.356 s, lifetime watchdog 5.111 s, remote recorder 6.176 s, repeated leases/exit 255 8.519 s. The tests assert successfully, but their missing reasoned allowances are hard gate failures. Add measured lifecycle allowances or reduce work without weakening proofs, then request source review before another verify.
+Medium — hub/test/codex-adapter.test.ts:570: immediately after acknowledged Implementer stop, pidAlive remains true (A-3054:3951–3966). Same T-65 test/acknowledgement-before-exit pattern as known T-485, whose summary names the QA pid assertion at :556. This is outside T-459's diff; no demo product defect inferred.
+
+Standards: new duration-budget failures need resolution under docs/agents/tests.md; source review otherwise stands.
+Spec: demo 7/7 functional cases pass, including canonical epic recorder; source C6 blocker remains resolved. Earlier full/delta source review supports implementation, but C1–C6 stay unverified pending accepted gate. C7 source mark retained. No implementation criterion failed for the unrelated PID observation or timing allowances.
+
+847a427b/A-3054 names the exact reviewed/current branch head, Linux x64 c-8, host/remote typecheck green, exit 1, 1755 pass/1 fail/3 platform skips/0 cancelled. Selected full run stops before Neovim after hub failure. The known-flake exception does not waive own new-test budget failures. No real provider calls, Reviewer tests or edits.
+
+### impl-459 · 2026-10-15T14:14:21.472Z
+
+A-3054 exposed six own demo duration-budget failures; added reasoned per-test Linux allowances (5.111–8.519 s) and source provenance for 05cff0dd/A-3054, without changing proofs. Merged current dev/T-395; conflict resolution retains shard spend reservation methods plus demo acquisition metadata. All seven post-merge demo tests pass; typecheck and shard lint pass. A-3059 details allowances/integration. Coordinator confirms sole assertion failure codex-adapter:570 is existing T-485 and outside this item; no unrelated source changes made. Requesting fresh source review before the next droplet receipt.
+
+### rev-30 · 2026-10-15T14:15:35.343Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-459-delta
+commit: cad57ccf47b605fcf9df8ef79ac848e37e9f9bb9
+scope: delta
+
+Delta source review clear at cad57ccf47b605fcf9df8ef79ac848e37e9f9bb9; no high, medium or low findings.
+
+Standards: six per-test duration allowances match A-3054's measured 5.111–8.519 s values and explain the required provisioning, delivery, watchdog, recorder, restart or repeated teardown lifecycle. Source provenance records A-3054 and tested 05cff0dd. Semantic JSON comparison against merged dev d6e222be confirms these six allow entries are the only non-source manifest changes; no whole-file exemption, budget change, weakened assertion or lost dev entry.
+
+Spec/integration: the T-395 merge retains reserveShards/releaseShardReservations and active shard ownership alongside demo metadata, the earlier-of-run/lifetime demo deadline, and restart retention. spend.ts is byte-identical to dev. Demos and demo.test.ts are byte-identical to previously reviewed 05cff0dd, including canonical epic recorder handling. Dispatcher retains both sharding callbacks and demo reconciliation/control paths; no merge conflict artifacts or changed authorization.
+
+Prior source review rev-20261015-459-source-2 stands. C7 reverified from current README; C1–C6 await accepted new-head gate. A-3059 and requester report post-merge demo 7/7, typecheck and shard lint. git diff --check passes. Both review axes performed directly; no Reviewer tests, file edits or provider calls.
+
+Old A-3054 remains red and cannot be combined as a clean own-test receipt because its own budget errors are now fixed at a changed head. Submit a new default droplet verify after this delta verdict. Coordinator classified the unrelated T-65 PID assertion as T-485.
 
 Criteria: C7 verified.
