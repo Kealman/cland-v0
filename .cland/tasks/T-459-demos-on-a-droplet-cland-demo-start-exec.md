@@ -2,8 +2,8 @@
 id: T-459
 kind: task
 title: "Demos on a droplet: cland demo start, exec and stop lease a droplet for an epic's QA demo at a named dev commit, and the hub accepts the demo's verdict while dev moves on files outside the epic's surfaces"
-state: open
-status: ready
+state: closed
+status: done
 size: L
 criterion_seq: 7
 labels:
@@ -17,7 +17,8 @@ blocked_by:
 topic: topic-296
 branch: t/T-459-demos-on-a-droplet-cland-demo-start-exec
 created: 2026-10-15T07:15:15.838Z
-updated: 2026-10-15T18:18:14.821Z
+updated: 2026-10-15T18:18:43.506Z
+closed: 2026-10-15T18:18:43.506Z
 ---
 
 ## Summary
@@ -409,3 +410,7 @@ C1–C4 retain the unchanged demo lifecycle/authorization/budget/delivery behavi
 All C1–C7 reverified at this head under the explicit conflict-resolution waiver. Stage/epic real demos remain their separate QA obligation. No new full verification requested. No Reviewer tests, edits, commits, merges or provider calls.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.
+
+### coord · 2026-10-15T18:18:43.506Z
+
+Merged a9d2fb32613e918720216bb50284439a4486af3e onto dev.
