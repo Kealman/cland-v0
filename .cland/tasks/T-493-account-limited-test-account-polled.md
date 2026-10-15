@@ -2,8 +2,8 @@
 id: T-493
 kind: task
 title: "account-limited test: account-polled journal count 1 vs 2 after the reset is visible (Linux, under load)"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-330
 branch: t/T-493-account-limited-test-account-polled
 created: 2026-10-15T12:48:39.376Z
-updated: 2026-10-15T23:31:03.735Z
+updated: 2026-10-15T23:31:31.634Z
+closed: 2026-10-15T23:31:31.634Z
 ---
 
 ## Problem
@@ -102,3 +103,7 @@ Branch still resolves to the exact reviewed SHA, with no new source changes. All
 Review artifact A-3457: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3457-t-493-final-clear-five-mac-passes-and-green-linux-at-ec6ed43b.md
 
 Criteria: C2 verified.
+
+### coord · 2026-10-15T23:31:31.634Z
+
+Merged c92628bcdc369fb11fe7fd34b6ba87519c591562 onto dev.
