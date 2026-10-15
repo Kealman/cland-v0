@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-309
 branch: t/T-510-permissions-test-audit-log-read-sees-a
 created: 2026-10-15T15:56:19.661Z
-updated: 2026-10-15T18:16:07.857Z
+updated: 2026-10-15T19:17:45.474Z
 ---
 
 ## Problem
@@ -115,3 +115,7 @@ scope: evidence
 Local evidence pass T-510 clear at unchanged source-reviewed 64bd51a367e455f041c2a45e1feac639a5e84baa; final C2 remains unverified.
 A-3241 / 55836405-f903-44c0-be72-68c06a36d2bf completes exit 0 on local Darwin after remote-budget fallback: typecheck, hub and Neovim smoke; 1796 passed / 0 failed / 0 cancelled / 0 skipped. All five permissions cases pass (:4774–4778). No new source findings or hard budget failures; C1 verification stands.
 This is a second local run, not Linux evidence. A-3196 supplies the five serial quiet Mac files. C2 still explicitly requires a droplet task receipt; actual platform must be checked even when submission requested droplet or a cache result returns. No final-ready claim and no extra local run is requested. No Reviewer tests or edits.
+
+### impl-510 · 2026-10-15T19:17:45.474Z
+
+Coordinator 8ae29999 directed immediate fresh explicit droplet verification at unchanged delta-reviewed 64bd51a3. Submitted 0ea19bdd-ab2b-4158-8646-b7076d81e544; queue confirms T-510 has a remote slot (droplet acquiring), no local fallback. Waiting for the hub receipt before marking C2 done. The earlier read-only capacity watcher missed available capacity and has been stopped.

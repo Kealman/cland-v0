@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-316
 branch: t/T-469-every-stage-close-cover-carries-a-linux
 created: 2026-10-15T09:13:16.034Z
-updated: 2026-10-15T19:07:26.698Z
+updated: 2026-10-15T19:20:23.567Z
 ---
 
 ## Summary
@@ -30,3 +30,9 @@ The stage gate (`#stageCurrent` and the plan's `after-stage` close) accepts the 
 - [ ] C1. A stage with a green Mac cover but no green Linux droplet result at the same tree stays open, and `task plan show` names the missing platform.
 - [ ] C2. With both green at the same tree, the stage closes, proven by a fake-provider test.
 - [ ] C3. hub/README.md and the plan-epic skill describe the two-platform stage gate.
+
+## Comments
+
+### impl-469 · 2026-10-15T19:20:23.567Z
+
+Implementation in progress: same-tree Linux stage and macOS full receipts now feed after-stage closure and QA freshness; plan and run reports name missing platforms/tree. Existing stage-QA fixtures now supply historical completed platform receipts; a fake-provider end-to-end test exercises Mac-only rejection, mismatched trees, both-platform closure, cache separation and next-stage activation. Typecheck passes. Targeted test window is shared with T-512/T-502 merge checks.

@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-14T12:28:09.615Z
-updated: 2026-10-15T19:07:10.207Z
+updated: 2026-10-15T19:23:54.228Z
 ---
 
 ## Goal
@@ -158,3 +158,7 @@ Stage 3 sequencing (2026-10-15 19:07Z), applying rule 6's hot-file serialization
 - Lane A: T-469 → T-470 → T-472, all in hub/src/hub/suites.ts and verify reporting; blocked_by set.
 - Lane B: T-471, the runner load gate and the durations manifest.
 - T-466, which migrates many test files to the in-process hub, starts after E-482's open flake fixes land, to avoid colliding with them.
+
+### coord · 2026-10-15T19:23:54.228Z
+
+Budget sequencing (2026-10-15 19:24Z): today's droplet spend is $7.89 + $1.00 reserved of the $10 cap. The stage-close two-shard run (after the T-519/T-512 restart) goes tonight. The T-396 c-16 worker measurements and the T-394 C5–C7 probes move to after 00:00Z (the new UTC day budget).

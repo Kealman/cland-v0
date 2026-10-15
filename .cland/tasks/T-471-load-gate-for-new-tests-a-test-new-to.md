@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-317
 branch: t/T-471-load-gate-for-new-tests-a-test-new-to
 created: 2026-10-15T09:13:16.338Z
-updated: 2026-10-15T19:07:35.811Z
+updated: 2026-10-15T19:11:32.561Z
 ---
 
 ## Summary
@@ -30,3 +30,9 @@ In a task's verify, the runner repeats each test that is new to the manifest fiv
 - [ ] C1. A planted flaky new test that fails 1 time in 3 fails its task's verify with a `load gate` line, while a stable new test passes all five repetitions.
 - [ ] C2. Known tests are not repeated, and the gate adds no repetitions to integrated dev runs.
 - [ ] C3. The extra wall time is reported on the run, and hub/README.md and docs/agents/tests.md describe the gate.
+
+## Comments
+
+### impl-471 · 2026-10-15T19:11:32.561Z
+
+Runner-boundary implementation in progress: non-dev task selection carries loadGate; fresh exact-name repetitions start while the phase runs. The gate uses refreshed test baselines (allowances do not bypass it), rejects skipped/missed executions, and reports pass counts plus extra wall time. No per-item QA is required by task policy.

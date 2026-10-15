@@ -3,7 +3,7 @@ id: T-474
 kind: task
 title: Merge override is limited to tracker and docs changes; a code diff needs review
 state: open
-status: review
+status: in progress
 size: S
 criterion_seq: 3
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-315
 branch: t/T-474-merge-override-is-limited-to-tracker-and
 created: 2026-10-15T09:13:18.127Z
-updated: 2026-10-15T18:57:30.353Z
+updated: 2026-10-15T19:26:10.444Z
 ---
 
 ## Summary
@@ -111,3 +111,22 @@ Manifest: parsed comparison preserves all prior files/tests/allow values and all
 C3 documentation reverified at this head. C1/C2 runtime final marks remain pending an acceptable exact-head post-source suite receipt. A-3270's 33 own fixture failures are excluded from gate pairing; this correction needs a new first receipt, not an unchanged retry. Source clearance permits the next directed full verification within current Coordinator executor/load rules. No Reviewer tests, edits, merges or provider calls.
 
 Criteria: C3 verified.
+
+### rev-30 · 2026-10-15T19:26:10.444Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261015-474-corrected-linux-first
+commit: 12dc3458a099d0a46868fe1c1f2e7d798c462058
+scope: evidence
+
+T-474 corrected-head evidence review not clear at unchanged source-reviewed 12dc3458a099d0a46868fe1c1f2e7d798c462058. A-3294/c7535028 is actual Linux c-8, exit1:1795 pass/1 fail/3 platform skips, no cancellation. Typecheck and hub phases complete; Neovim smoke is not reached after hub red.
+
+Own corrected fixture and policy files complete without failures. In particular all12 merge-policy cases complete; code/config/skill refusal, both rename sides/deletions and allowed docs/tracker merges are green (A-3294:1744–1747). Migrated crew/follows/push/release/archive/stop-races/native-boundary cases also finish; the previous33 scope-related failures do not recur. No new T-474 source defect is established.
+
+Medium gate blocker / aside Bugs S — hub/test/executor-safety.test.ts:148/:206: same-name hubs preserve each other's in-flight keys and conservatively age legacy keys fails with "remote result: not within 20000 ms" (A-3294:4126–4132). Case wall103.247s, file211.476s, overall peak1m15.75. The duration-regression notices describe this slow failed test; they do not establish a distinct new hard allowance failure. No exact known-item classification is supplied by this receipt. Root cause is not established from timeout alone.
+
+Lead must classify/deduplicate this outside-task failure before it counts as a known-only receipt or authorizes a second attempt. Do not classify it as the earlier startReplyLost PROCESSWRAP leak simply because both use remote fixtures. Keep the reviewed head fixed while awaiting disposition; do not submit an unchanged retry automatically.
+
+C1/C2 direct behavior is supported by own Linux execution, and C3's source fact remains, but final runtime marks wait for accepted gate evidence. No criterion is failed speculatively because the only failure is outside the task diff. A-3270 remains excluded as own failed fixture migration; A-3294 is the first post-correction receipt candidate, not a final clear. No Reviewer tests, edits or provider calls.

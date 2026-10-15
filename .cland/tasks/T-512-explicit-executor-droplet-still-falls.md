@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-312
 branch: t/T-512-explicit-executor-droplet-still-falls
 created: 2026-10-15T16:25:28.989Z
-updated: 2026-10-15T18:39:58.288Z
+updated: 2026-10-15T19:21:11.633Z
 ---
 
 ## Summary
@@ -82,3 +82,7 @@ C2 verified: cap refusal tests at :5211–5212 pass for remote budgets1/2, namin
 All C1–C3 verified at this head. The low durable-only ETA issue was reported and filed separately; cache executor-policy remains its separately assigned follow-up. Neither is represented as fixed here. No new source change or additional run needed. No per-item QA criteria. No Reviewer tests, edits, merges or provider calls.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### impl-512 · 2026-10-15T19:21:11.633Z
+
+Coordinator merge-conflict waiver (66ab3b1b, 19:17Z): merged origin/dev and resolved at 0222b1eeefaea32fe7a7a8ed586fd7867fd5dc30, pushed to origin. Kept T-394 coverage-selected admission and cache identity, T-396 worker/fallback worker fields, per-run size delivery and pricing, and T-459 demo acquire metadata. Explicit-remote checkSpend now receives input.size; existing verification-workers price test additionally proves explicit c-16 refuses at its price before omitted-flag fallback still uses local worker policy. durations.json was rebuilt from origin/dev plus only my four allowance identities at sorted keys. Shared fixes 051db745/d5442c61/7cdf2dd0 are in merge ancestry. Typecheck/shard lint green; quiet Mac verification-workers 4/4 green. Grep matches add suite-close/suite-coverage to the four mandated files; five files remain, run serially after T-502 yields. No new full verify per Coordinator; A-3260 stands for delta review.

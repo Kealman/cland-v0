@@ -3,7 +3,7 @@ id: T-519
 kind: task
 title: Sharded runs leak CLAND_SUITE_SELECTION into nested runner tests, so suite-runner.test.ts:768 fails in every stage close
 state: open
-status: in progress
+status: ready
 size: XS
 criterion_seq: 2
 labels:
@@ -15,7 +15,7 @@ regression_of: T-395
 topic: topic-313
 branch: t/T-519-sharded-runs-leak-cland-suite-selection
 created: 2026-10-15T18:11:26.752Z
-updated: 2026-10-15T18:50:35.400Z
+updated: 2026-10-15T19:26:59.143Z
 ---
 
 ## Summary
@@ -27,8 +27,11 @@ Every sharded integrated run fails `hub/test/suite-runner.test.ts:768`, the two 
 - [x] C1. The package runner consumes `CLAND_SUITE_SELECTION` and removes it before it spawns test processes, so no test or nested runner inherits a shard selection. Alternatively, nested-runner tests strip it explicitly, and the commit says which and why.
   - done: impl-519 · 2026-10-15T18:14:11.473Z
   - verified: rev-31 [reviewer] · run rev-20261015-519-source · 2026-10-15T18:16:16.834Z · commit 72ad0a4480e2dc0c4c529552ad7eb94e5782bc96
+  - verified: rev-31 [reviewer] · run rev-20261015-519-merge-delta · 2026-10-15T19:26:56.855Z · commit 9535da1733021954582ff83607a388001b3e5fd7
 - [x] C2. A test sets CLAND_SUITE_SELECTION in its own environment and shows suite-runner.test.ts's nested-runner cases still pass, plus a same-head verify; the next real sharded stage run being green on this file is judged at E-387's stage-1 close by the Coordinator (amendment 2026-10-15 18:15Z).
   - done: impl-519 · 2026-10-15T18:14:16.814Z
+  - verified: rev-31 [reviewer] · run rev-20261015-519-final · 2026-10-15T19:17:02.758Z · commit 72ad0a4480e2dc0c4c529552ad7eb94e5782bc96
+  - verified: rev-31 [reviewer] · run rev-20261015-519-merge-delta · 2026-10-15T19:26:56.855Z · commit 9535da1733021954582ff83607a388001b3e5fd7
 
 ## Comments
 
@@ -87,3 +90,71 @@ The source verdict remains unchanged. Retry 99ad4f31-4025-4110-86c3-ff3e12c52a7d
 
 Review artifact A-3269: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3269-t-519-first-linux-evidence-known-t-502-blocks-final-gate.md
 No criterion failed: the observed external failure is already T-502; C2 is pending accepted gate evidence.
+
+### rev-31 · 2026-10-15T19:16:21.477Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261015-519-linux-2
+commit: 72ad0a4480e2dc0c4c529552ad7eb94e5782bc96
+scope: evidence
+
+Evidence review at unchanged 72ad0a4480e2dc0c4c529552ad7eb94e5782bc96, run rev-20261015-519-linux-2. Result: not clear.
+
+Medium — hub/test/suite-close-recovery.test.ts:54: second fresh Linux run 99ad4f31/A-3286 repeats exactly the sole T-502 lost-machine assertion from f7d9802a/A-3267: expected /shard-1: remote machine lost/, actual all exit 0 with both shards successful. The known-flake two-receipt rule requires different failures, so this repeated failure needs Coordinator disposition.
+
+A-3286 checked: 1787 tests, 1783 pass, 1 fail, 3 skip, zero cancelled; final exit 1. Changed explicit-shard regression passes at 2.0674 s; existing standalone and old V1 recovery-record cases pass at 1.7971 s and 1.7704 s (log lines 3146-3156). Hub stops before Neovim. No new source findings and no hard duration-budget failures; source/head unchanged.
+
+C1 remains verified by rev-20261015-519-source. C2 remains pending an accepted gate; no behavioral criterion failed because the external defect is already T-502. Both receipts stop before the full Neovim phase. No third run or source change requested; await Coordinator decision or a posted shared fix. Real sharded-stage validation stays at post-merge E-387 stage-1 close per amendment 94e7f8dc-e7a2-48c2-84a9-5b3a41face56.
+Review artifact A-3287: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3287-t-519-second-linux-evidence-repeated-t-502-gate-failure.md
+
+### rev-31 · 2026-10-15T19:17:02.758Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261015-519-final
+commit: 72ad0a4480e2dc0c4c529552ad7eb94e5782bc96
+scope: evidence
+
+Final evidence review clear at 72ad0a4480e2dc0c4c529552ad7eb94e5782bc96, run rev-20261015-519-final, scope evidence.
+
+No high or medium findings remain in T-519's source. C1 verification from rev-20261015-519-source remains current. C2 verified from the explicit outer-selection subprocess regression, whole-file evidence and Coordinator-accepted exact-head gate.
+
+Evidence:
+- A-3239 proves the regression fails before the fix with unknown explicit hub shard file; A-3240 has the changed regression plus both existing sharded recovery-record cases passing; A-3242 has the whole suite-runner file passing 51/51.
+- Linux droplet f7d9802a/A-3267 at this exact head: 1787 tests, 1783 pass, 1 fail, 3 skip, 0 cancelled; changed regression 2.2479 s, recovery cases 1.747/1.7868 s.
+- Linux droplet 99ad4f31/A-3286 at this same head: 1787 tests, 1783 pass, 1 fail, 3 skip, 0 cancelled; changed regression 2.0674 s, recovery cases 1.7971/1.7704 s.
+- Both receipts exit 1 solely on the existing T-502 lost-machine injection race at hub/test/suite-close-recovery.test.ts:54 (expected lost-machine report, actual successful two shards). T-519 changes neither that file nor its injection. Neither run reaches the full Neovim phase.
+
+Coordinator decision 0061835e-f6bb-41aa-b3c0-99c00adf422a explicitly accepts A-3267 plus A-3286 as the task gate despite the repeated T-502 failure and directs final clear. This is an explicit exception, not a green-suite claim or the standard different-failure rule. T-502 is separately assigned.
+
+Source branch remains unchanged at the reviewed SHA. The next real sharded-stage result remains Coordinator's post-merge E-387 stage-1 close responsibility per amended C2 and 94e7f8dc-e7a2-48c2-84a9-5b3a41face56. No Reviewer edits or new tests.
+Review artifact A-3288: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3288-t-519-final-clear-accepted-paired-linux-evidence-at-72ad0a44.md
+
+Criteria: C2 verified.
+
+### rev-31 · 2026-10-15T19:26:56.855Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261015-519-merge-delta
+commit: 9535da1733021954582ff83607a388001b3e5fd7
+scope: delta
+
+Delta review clear at merge head 9535da1733021954582ff83607a388001b3e5fd7, run rev-20261015-519-merge-delta.
+
+Standards: no findings. Spec: no findings. C1 and C2 refreshed at this head.
+
+Merge parents are original reviewed 72ad0a44 and origin/dev a59514ae. Full diff against the dev parent is exactly two runner lines plus the original 33-line regression, with no additional changes. At hub/test/run-suite.ts:102-105 the child environment retains both CLAND_SUITE_SELECTION removal and dev's CLAND_COVERAGE_OUTPUT removal. The parent runner reads the coverage target before phases and its parsed selection remains local; subsequent coverage capture and configured worker paths match dev unchanged. The regression at hub/test/suite-runner.test.ts:768 is unchanged; dev's additional worker assertions in the adjacent recovery-record tests are retained.
+
+A-3295 checked in full: whole-file serial Mac passes suite-runner 51, durations-runner 4, verification-workers 4, suite-selection 83, suite-selection-report 4, suite-coverage 1, suite-close 7, suite-close-recovery 5 — 159 pass, zero failures/skips/cancellations. Changed explicit-shard regression and both original recovery cases pass. Independent identifier search for both environment keys across hub/test and nvim/test matches the covered files. Typecheck is reported passing; reviewed diff check passes.
+
+Coordinator bfcc21e4-beee-47a6-8481-9e768aa75da8 explicitly authorized this merge, identifier-based serial cover, delta review, and retention of A-3267 plus A-3286 without a new full verify. Those exact-original-head Linux receipts remain exit 1 solely on T-502 and stop before full Neovim, accepted under 0061835e-f6bb-41aa-b3c0-99c00adf422a; they are not described as green or exact-new-head full runs. With the verified merge resolution and requested cover, final clearance carries to this head under that waiver.
+
+Real integrated sharded-stage validation remains post-merge E-387 stage-1 close per amended C2. No Reviewer edits or test execution.
+Review artifact A-3297: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3297-t-519-merge-delta-clear-at-9535da17.md
+
+Criteria: C1 verified, C2 verified.
