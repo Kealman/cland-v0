@@ -2,8 +2,8 @@
 id: T-490
 kind: task
 title: "suite-remote-budget test: candidate result not within 20 s when three remote callers run beside the local slot (Linux)"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-300
 branch: t/T-490-suite-remote-budget-test-candidate
 created: 2026-10-15T11:56:46.304Z
-updated: 2026-10-15T16:47:40.412Z
+updated: 2026-10-15T16:49:54.761Z
+closed: 2026-10-15T16:49:54.761Z
 ---
 
 ## Problem
@@ -135,3 +136,7 @@ A-3177/5fea0bb0 at current head: Linux c-8, overall exit 1, 1768 pass/1 fail/3 p
 Host/remote typecheck and hub phases complete; cross-package Neovim smoke does not run after red hub exit. Task owns no nvim files. No additional source issue or new aside inferred; T-499 remains separate. Read-only branch ref matches reviewed SHA. No third run required under this gate; no Reviewer tests or edits.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-15T16:49:54.761Z
+
+Merged 070498208afec2491a38333b0ded19777fde14db onto dev.
