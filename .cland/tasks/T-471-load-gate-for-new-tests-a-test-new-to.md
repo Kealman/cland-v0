@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-317
 branch: t/T-471-load-gate-for-new-tests-a-test-new-to
 created: 2026-10-15T09:13:16.338Z
-updated: 2026-10-15T20:12:26.745Z
+updated: 2026-10-15T20:40:42.797Z
 ---
 
 ## Summary
@@ -28,7 +28,7 @@ In a task's verify, the runner repeats each test that is new to the manifest fiv
 
 ## Acceptance criteria
 
-- [x] C1. A planted flaky new test that fails 1 time in 3 fails its task's verify with a `load gate` line, while a stable new test passes all five repetitions.
+- [x] C1. Pre-merge (Coordinator amendment 2026-10-15 20:40Z): package-runner fixtures entering runPackageSuite through inherited task-selection JSON prove that a planted flaky new test failing 1 time in 3 fails with a load gate line, while a stable new test passes all five repetitions; the live outer gate on a real task verify is judged after merge and hub restart at E-387's stage-3 close by the Coordinator.
   - done: impl-471 · 2026-10-15T19:33:16.872Z
 - [x] C2. Known tests are not repeated, and the gate adds no repetitions to integrated dev runs.
   - done: impl-471 · 2026-10-15T19:33:18.609Z
@@ -83,3 +83,25 @@ Delta source review T-471 clear at 3f6957dc8a1ecfb80e28ec7cbd274efcd9b499b1, par
 C2/C3 source marks reverified: known/integrated exemption and load extra-wall/docs behavior unchanged. C1 final runtime mark awaits post-source task verification. In particular this new allow entry remains absent from manifest.tests and does not bypass the new-test load gate; only baseline refresh makes it known. Source clear permits one exact-head diff-selected --executor droplet --fresh run under current capacity/spend rules. Earlier A-3302 targeted evidence remains applicable, not a final suite receipt.
 
 Criteria: C2 verified, C3 verified.
+
+### rev-30 · 2026-10-15T20:39:52.261Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261015-471-linux-first
+commit: 3f6957dc8a1ecfb80e28ec7cbd274efcd9b499b1
+scope: evidence
+
+Evidence review T-471 not clear at 3f6957dc8a1ecfb80e28ec7cbd274efcd9b499b1.
+
+Medium — hub/test/durations-runner.test.ts:38: the new stable/flaky load-gate fixture takes 5.178082237 seconds on Linux and exceeds its unallowlisted five-second budget, so exact-head verification c96ff9f9 exits 1. Add a measured, reasoned allowance or correct the fixture, then request source review before re-verification. This is an own-change gate failure, not a known outside-flake receipt.
+
+Standards: source/delta clearance A-3305/A-3318 stands for the reviewed head; no new source finding established by this evidence-only pass. The missing measured exception blocks the suite's existing duration contract.
+Spec: A-3328 confirms all nine durations-runner assertions complete green, including stable five repetitions versus planted flaky rejection, known/integrated exemption, skip rejection and process cleanup. Overall 1830 pass, zero functional failures, three platform skips. Typecheck and hub phases completed; Neovim was not reached after the budget failure. No final C1 mark or all-criteria settlement on this red run.
+
+Rollout observation: the outer suite summary lacks the load-gate extra-wall field. The nested public runner fixture exercises the gate; that does not prove the deployed pre-T471 hub supplied loadGate for this outer task verification. Implementer has escalated the package-boundary rollout question to Coordinator in 0b0149ad. Do not claim outer repetitions from this receipt; disposition and any package-boundary change require review with the next committed head.
+
+Evidence: A-3328 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3328-suite-c96ff9f9-591a-4c21-9911-ac92a1a3f962-auto-at-3f6957d.log, functional result line 1048, exact timing 4486, hard budget 5863, exit 1 at 5872. Actual droplet c-8 lon1/Linux, 1367 seconds/$0.0949. No Reviewer tests, edits, merges or provider actions.
+
+Coordinator 02e4d1d lifted the droplet submission hold at 20:38Z, but this failed own-change head is not cleared for an unchanged retry. Pending local allowance and package-boundary regression work noted in 0b38c2a0 must be committed and source-reviewed first. Existing C2/C3 source marks are retained; no criterion failure inferred beyond the concrete suite gate.

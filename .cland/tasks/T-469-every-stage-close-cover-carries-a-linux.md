@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-316
 branch: t/T-469-every-stage-close-cover-carries-a-linux
 created: 2026-10-15T09:13:16.034Z
-updated: 2026-10-15T20:30:36.543Z
+updated: 2026-10-15T20:40:03.086Z
 ---
 
 ## Summary
@@ -97,3 +97,7 @@ C1/C2 final runtime marks remain pending acceptable exact-head post-source verif
 No Reviewer tests, edits, merges or provider calls.
 
 Criteria: C3 verified.
+
+### impl-469 · 2026-10-15T20:40:03.086Z
+
+Source correction clear at a54d2083 (A-3327), C3 verified. After explicit hold release, submitted cland verify with no mode and --executor droplet --fresh, report topic-316 to Reviewer rev-30 and item lead. Run 59810133-257b-4b3f-8004-6a766be94a76 is queued position1. Exact reviewed head remains clean and unchanged. Awaiting hub result before final evidence review.

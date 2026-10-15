@@ -15,7 +15,7 @@ regression_of: T-395
 topic: topic-319
 branch: t/T-502-suite-close-recovery-test-the-injected
 created: 2026-10-15T14:57:11.991Z
-updated: 2026-10-15T20:12:24.683Z
+updated: 2026-10-15T20:40:43.961Z
 ---
 
 ## Problem
@@ -104,3 +104,7 @@ Delta source review T-502 clear at e60f59c5211ece630dbd3ef91b971b6c2d58f723, par
 C1 reverified: unchanged observed lost-shard gate, labelled loss assertion and release/done receipt ordering. C2 remains final-gate pending: A-3292 five whole Mac files and A-3310 Linux own5/5 stand. Coordinator d46189cf-c6f6-4470-8160-2476df521a5c independently confirmed both first-receipt outside failures classified known (null job.pid and territory guard boundary); A-3310 counts as receipt1. Source clear permits the directed second exact-head fresh droplet run; green or different known-only red is required. Shared-only allowance carries prior own source evidence; no claim that first overall red is final clear.
 
 Criteria: C1 verified.
+
+### impl-502 · 2026-10-15T20:40:38.678Z
+
+Second directed Linux receipt 1f4cfb6f / A-3332 is green at exact delta-reviewed e60f59c5: 1837 tests, 1834 pass, 0 fail, 3 platform skips; hub and Neovim smoke complete, workers4, peak load13.28. Head unchanged/tree clean. C2 also has five serial quiet whole-file Mac passes A-3292. Reviewer has the final evidence request; await its final verdict and hub ready event.
