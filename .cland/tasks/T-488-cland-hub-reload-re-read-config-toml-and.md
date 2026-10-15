@@ -3,7 +3,7 @@ id: T-488
 kind: task
 title: "cland hub reload: re-read config.toml and roles.toml without a restart (SIGHUP too)"
 state: open
-status: in progress
+status: review
 size: S
 labels:
   - ready-for-agent
@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-329
 branch: t/T-488-cland-hub-reload-re-read-config-toml-and
 created: 2026-10-15T11:30:17.553Z
-updated: 2026-10-15T22:46:20.248Z
+updated: 2026-10-15T23:41:09.974Z
 ---
 
 ## Problem
@@ -40,3 +40,7 @@ Implemented staged config/roles publication, CLI+SIGHUP reload, rollback journal
 ### impl-488 · 2026-10-15T22:46:20.248Z
 
 Coordinator clarified C3: capture and persist configuration at actual scheduler admission, not submission. Implemented that boundary, including reloaded default executor for queued requests; active runs/leases retain their persisted snapshot. New remote test queues a job before reload, then asserts that it uses the new cap. Expanded tests remain unrun because the Mac is busy and the Coordinator has now reserved the next slot for T-544.
+
+### impl-488 · 2026-10-15T23:41:09.974Z
+
+Source review requested from Reviewer at pushed head 7caccc103e9cf53da9b2d341a79da0a57d21089c after a clean origin/dev merge. Quiet Mac targeted files passed serially: config-reload 3/3, config-reload-remote 1/1, existing roles 8/8. Full typecheck and shard lint passed. Evidence artifact A-3462. Review clear must precede exact-head verification; no suite submitted yet.
