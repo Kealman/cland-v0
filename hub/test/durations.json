@@ -3727,6 +3727,22 @@
     "hub/test/rule-sessions.test.ts::launch clause and brief end with the same ordered active rules": {
       "seconds": 5.043,
       "reason": "Launches role spokes against a real hub with a populated rulebook and compares each launch clause and brief for the same ordered active rules; the real launch round-trips dominate. Measured on Linux droplet run 8cd57b4d (A-3139)."
+    },
+    "hub/test/rule-sessions.test.ts::stopped processes receive no rule deliveries while live sessions still do": {
+      "seconds": 5.25,
+      "reason": "Stops one fake session and keeps another live against a real hub, then proves a rule change reaches only the live one; process stop and the delivery round-trip dominate. Linux c-8 run fb064818 (A-3184)."
+    },
+    "hub/test/heartbeat.test.ts::the digest ages review and ready items and open asks, caps both sections, and includes claimed sessions": {
+      "seconds": 4.96,
+      "reason": "Builds review, ready, ask and claim state through a real hub and waits for a heartbeat digest that ages and caps each section; 4.96 s on Linux under load (A-3101), allowed ahead of the 5 s line."
+    },
+    "hub/test/heartbeat.test.ts::a missed heartbeat survives hub restart and fires once rather than replaying missed intervals": {
+      "seconds": 4.89,
+      "reason": "Restarts a real hub across a missed heartbeat interval and waits for exactly one fire; 4.89 s on Linux under load (A-3109), allowed ahead of the 5 s line. Its flaky timing assertion is T-514."
+    },
+    "hub/test/rule-cli.test.ts::concurrent rule CLI writes serialize numbers without losing rules; invalid input leaves the file intact": {
+      "seconds": 4.73,
+      "reason": "Runs concurrent rule CLI processes against a real hub and checks numbering and file integrity; 4.73 s on Linux under load (A-3109), allowed ahead of the 5 s line."
     }
   }
 }
