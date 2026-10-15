@@ -23,7 +23,8 @@ subagents = false
 
 [crew.reviewer]
 policy = "pool"
-size = 2
+# Raised from 2 by the human on 2026-10-15 (ask 0727b3c8): review was the bottleneck.
+size = 4
 keep_context = true
 stop_after = "never"
 subagents = false
