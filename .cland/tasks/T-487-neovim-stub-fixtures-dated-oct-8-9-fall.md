@@ -2,8 +2,8 @@
 id: T-487
 kind: task
 title: Neovim stub fixtures dated Oct 8–9 fall past the seven-day archive line from 2026-10-15 10:01Z
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-288
 branch: t/T-487-neovim-stub-fixtures-dated-oct-8-9-fall
 created: 2026-10-15T10:45:56.388Z
-updated: 2026-10-15T10:56:57.860Z
+updated: 2026-10-15T10:57:21.061Z
+closed: 2026-10-15T10:57:21.061Z
 ---
 
 ## Problem
@@ -89,3 +90,7 @@ Post-source gate 63b6103f/A-2900: exit 0, host/remote typecheck green, Linux x64
 Coordinator c5e6a11b explicitly accepts exact red/green + local phase + post-source verify for deterministic expiry, exempting 5/5 timing-flake repeats. No Reviewer tests or source changes.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-15T10:57:21.061Z
+
+Merged 1419bc34f95e85c98a23d4642e8aea6ef730502c onto dev.
