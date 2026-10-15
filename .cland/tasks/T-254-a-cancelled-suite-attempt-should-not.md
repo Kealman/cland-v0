@@ -2,8 +2,8 @@
 id: T-254
 kind: task
 title: A cancelled suite attempt should not supersede green cache evidence for its tree
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -16,7 +16,8 @@ blocked_by: []
 topic: topic-269
 branch: t/T-254-a-cancelled-suite-attempt-should-not
 created: 2026-10-12T01:42:45.744Z
-updated: 2026-10-15T06:31:46.442Z
+updated: 2026-10-15T06:31:58.456Z
+closed: 2026-10-15T06:31:58.456Z
 ---
 
 ## Parent
@@ -139,3 +140,7 @@ scope: evidence
 Final clear at unchanged source-reviewed d8167992. Standards and Spec: no high or medium findings. Full local no-mode c110dbe4/A-2711 passes root typecheck and 2087/2087 (37 free hub, 1663 machine hub, 387 Neovim), zero failures/cancellations/skips/todos, exit 0. C1 requester/head-change cancellations reuse original green without extra execution; requester death retains it across restart. C2 green→fresh failure→request executes fresh; C3 README unchanged. All done marks/head checked. Prior same-head red b6f1e5ff/A-2699 retained: clause busy→idle setup (T-447 family) and live executor sentinel scan ENOENT (T-453); cache assertion preceded scan failure. Direct Coordinator 91739ccc explicitly authorized one retry after both files 5/5 whole-file serial: audited A-2701–A-2705 each 12/12 and A-2706–A-2710 each 18/18, zero failures/skips/cancellations. No source change before this single green retry; no broader multi-failure retry rule inferred. Earlier 938db829/A-2679 and isolated A-2684 retained as T-451, corrected by reviewed exact shared pick A-2698. Source bases A-2669/A-2698 current. A-2712 details complete evidence; C1-C3 verified.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-15T06:31:58.456Z
+
+Merged 8b2a3d7a6c8ba71ed74b06cd5754462ab4814f8d onto dev.
