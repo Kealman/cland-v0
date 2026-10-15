@@ -55,6 +55,8 @@
 // recorded but never announced (`item/completed` missed), so only the turn's record shows it; one containing "lose
 // its envelope" is recorded as a `userMessage` holding only the body (a shape the input was not sent in, no
 // envelope id); a thread whose turns hold "fail the readback" refuses `thread/read` with `includeTurns`.
+// FAKE_CODEX_COMPLETE_FIRST_TURN_BEFORE_RESPONSE=1 publishes the first turn's completion before its admission
+// response, as a loaded hub can observe when multiple frames arrive in one receive batch.
 // Launch admission probes: hold-version / hold-thread-start wait for release-version / release-thread-start,
 // publishing version-running / thread-start-running before their response.
 // Recovery probes: hold-thread-resume waits for release-thread-resume, publishing thread-resume-running;
@@ -561,6 +563,10 @@ async function appServer(args: string[]): Promise<number> {
         }
         const acceptedTurn = t.turnId;
         void runTurn(t);
+        if (process.env.FAKE_CODEX_COMPLETE_FIRST_TURN_BEFORE_RESPONSE === '1' && t.turns === 1) {
+          while (t.turnId === acceptedTurn) await sleep(5);
+          return { result: { turn: { id: acceptedTurn, status: 'inProgress', items: [] } } };
+        }
         if (text.includes('fail recovered turn before response')) {
           while (t.turnId === acceptedTurn) await sleep(5);
           log('recovered turn failed before response');

@@ -71,7 +71,8 @@ const presentAs = (ui: FrameClient, name: string, state: string) =>
 
 test('two launches for the Coordinator at once: the role is reserved before the spawn, so the second is refused at once', async (t) => {
   const root = await tempProject(t);
-  const fake = await fakeCodex(t);
+  // Force a completed first turn before launch acceptance, as a loaded hub's receive batch can do.
+  const fake = await fakeCodex(t, { env: { FAKE_CODEX_COMPLETE_FIRST_TURN_BEFORE_RESPONSE: '1' } });
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   const [one, two] = await Promise.all([launchCodex(ui, 'coord-1', { role: 'coordinator' }), launchCodex(ui, 'coord-2', { role: 'coordinator' })]);

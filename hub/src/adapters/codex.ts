@@ -685,17 +685,20 @@ export class CodexAdapter implements HarnessAdapter {
         // the first turn carries the clause: the thread gets its rollout, so attach and resume work
         // the launch's effort (roles.toml) rides on the first turn: `turn/start` takes it for this turn and the next ones
         authorize();
+        const sequence = live.eventSequence;
         const turn = yield* wait(client.request<{
           turn?: {
             id?: string;
           };
         }>('turn/start', { threadId, input: [{ type: 'text', text: firstTurn(request.name, request.clause) + (request.brief ? `\n\n${envelope(request.brief, null)}` : ''), text_elements: [] }], ...(request.effort ? { effort: request.effort } : {}) }));
-        // the turn is accepted: the thread is active, though its `thread/status/changed` may come after this result
-        // (seen with 0.160.0); a launch never reports the idle that preceded the clause turn
-        if (typeof turn.turn?.id === 'string')
-          live.turnId ??= turn.turn.id;
-        if (live.state === 'idle')
-          live.state = 'busy';
+        // The response can precede the active event (0.160.0), or arrive in a receive batch after completion.
+        // Only the pre-turn idle needs a busy fallback; a newer idle must also keep its cleared turn id.
+        if (live.state !== 'idle' || live.eventSequence === sequence) {
+          if (typeof turn.turn?.id === 'string')
+            live.turnId ??= turn.turn.id;
+          if (live.state === 'idle')
+            live.state = 'busy';
+        }
         this.#host.log({ event: 'harness-thread-started', harness: this.harness, session: request.name, thread: threadId, model: p.model });
         files.commit();
         return p;
