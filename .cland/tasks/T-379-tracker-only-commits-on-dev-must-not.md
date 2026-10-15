@@ -11,11 +11,12 @@ labels:
   - ready-for-human
 assignee: null
 parent: E-425
-blocked_by: []
+blocked_by:
+  - T-472
 topic: null
 branch: null
 created: 2026-10-14T08:41:13.625Z
-updated: 2026-10-15T09:13:11.376Z
+updated: 2026-10-15T20:57:38.342Z
 ---
 
 ## What happened

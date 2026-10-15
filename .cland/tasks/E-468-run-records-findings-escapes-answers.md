@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-15T09:13:06.243Z
-updated: 2026-10-15T09:13:06.243Z
+updated: 2026-10-15T20:56:48.819Z
 ---
 
 ## Goal
@@ -35,3 +35,23 @@ QA runs, in a scratch project through the CLI: a review verdict with high, mediu
 - [ ] C2. `found_by` and `answered_as` are stored and shown.
 - [ ] C3. Cover status and cause are recorded for green, red, budget and cancelled integrated runs, and the Coordinator can classify a load flake.
 - [ ] C4. Sub-agent starts record their model, or `unreported`.
+
+## Plan
+
+```yaml
+stages:
+  - name: verdict, regression and ask records
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-478
+        - T-477
+      - - T-480
+  - name: cover records
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-479
+```

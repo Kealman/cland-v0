@@ -9,12 +9,13 @@ labels:
   - ready-for-agent
 assignee: null
 parent: R-294
-blocked_by:
+blocked_by: []
+follows:
   - E-423
 topic: null
 branch: null
 created: 2026-10-14T16:43:08.893Z
-updated: 2026-10-14T16:43:24.300Z
+updated: 2026-10-15T20:59:32.791Z
 ---
 
 ## Summary
@@ -107,3 +108,20 @@ This project's crew stays on Codex and Claude Code (§4), so the epic is used th
 - Code: `hub/src/adapters/opencode.ts`, `hub/src/adapters/opencode/` (`client.ts`, `server.ts`, `state.ts`), `hub/src/adapters/contract.ts`, `hub/src/accounts/registry.ts`, `hub/src/doctor/toolchain.ts`, `hub/src/doctor/ranges.ts`.
 - Skills: `release`.
 - GLOSSARY: Harness, Account, Adapter, Role clause.
+
+## Plan
+
+```yaml
+stages:
+  - name: OpenCode v2 hygiene
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-296
+        - T-532
+        - T-535
+        - T-534
+      - - T-533
+        - T-536
+```

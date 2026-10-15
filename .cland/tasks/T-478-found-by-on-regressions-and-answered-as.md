@@ -3,7 +3,7 @@ id: T-478
 kind: task
 title: found_by on regressions and answered_as on ask answers
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - v0.1.3
@@ -11,10 +11,10 @@ labels:
 assignee: null
 parent: E-468
 blocked_by: []
-topic: null
-branch: null
+topic: topic-327
+branch: t/T-478-found-by-on-regressions-and-answered-as
 created: 2026-10-15T09:13:19.908Z
-updated: 2026-10-15T09:13:19.908Z
+updated: 2026-10-15T20:59:11.731Z
 ---
 
 ## Summary
@@ -32,3 +32,9 @@ Retrospective A-2783, START 2: escapes could not be attributed to where they wer
 - [ ] C1. `task create --regression-of T-n --found-by cover` stores and shows found_by, and a value outside the set is refused.
 - [ ] C2. An ask answered from the human's shell records `answered_as: human`, and one answered by a named stand-in records `stand-in` with its name.
 - [ ] C3. hub/README.md describes both fields.
+
+## Comments
+
+### impl-478 · 2026-10-15T20:59:11.731Z
+
+Implemented found_by across frontmatter, tracker index and task-written journal, task create/edit CLI and MCP schemas; missing regression or out-of-vocabulary values refuse, clearing regression drops attribution. Targeted new task-attribution.test.ts passes 2/2 (Mac quiet, load 2.05; longest test 0.783s). Ask identity decision pending with lead.

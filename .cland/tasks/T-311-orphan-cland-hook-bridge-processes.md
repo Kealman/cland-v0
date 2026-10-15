@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-323
 branch: t/T-311-orphan-cland-hook-bridge-processes
 created: 2026-10-13T01:23:15.911Z
-updated: 2026-10-15T20:53:56.392Z
+updated: 2026-10-15T20:59:10.398Z
 ---
 
 ## Summary
@@ -42,3 +42,7 @@ Evidence from the stand-in, 2026-10-13 ~01:35Z, from the human's shell. 65 'clan
 ### impl-311 · 2026-10-15T20:53:56.392Z
 
 C1 reproduction: node --test hub/test/hook-bridge.test.ts failed after 63.22s: a bridge attached to a real project hub remains alive >62s after hub.stop(), with its parent and stdout alive. Cause is hub/src/cli/hook.ts: missing discovery/rejected sockets retry every 500ms forever; stdout only observes errors on a write, and a child first scheduled after reparenting captures PID 1 as its baseline. The old cland-init-cc test launches two fake Claude sessions (hub/test/init.test.ts) and relied on scratch-fixture cleanup; T-278 now captures and kills registered groups. The bridge itself still lacks the daemon-lifetime bound, independently reproduced here. Implementing the epic's 60-second grace, runner proof and safe doctor sweep.
+
+### impl-311 · 2026-10-15T20:59:10.398Z
+
+Expanded lifecycle proof passed in 63.19s: same PID reconnects after a real hub restart, exits after the next 60-second outage with bridge-expired, and the mod has no replacement bridge after its 1-second restart delay. Doctor CLI regression passed; runner whole-file 52/52 passed with planted bridge receipt before cleanup 1 / after cleanup 0. A-3349 records the diagnosis. The legacy init test path is hub/test/init.test.ts's cland-init-cc fixture; pre-T-278 ownDirectory registered recursive root removal before fakeClaude's after hook, and T-278 replaced that scan-based teardown with captured process-group ownership. No evidence that the bridge intentionally leaves its parent's group.

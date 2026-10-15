@@ -14,7 +14,7 @@ regression_of: T-508
 topic: topic-325
 branch: t/T-530-heartbeat-test-run-digest-case-sees-the
 created: 2026-10-15T20:54:17.308Z
-updated: 2026-10-15T20:55:33.259Z
+updated: 2026-10-15T20:59:39.278Z
 ---
 
 ## Summary
@@ -32,3 +32,9 @@ dev head 66545745.
 ## Acceptance criteria
 - [ ] C1. The case waits for a digest that shows the run running and past its timeout, or otherwise orders the two facts, so a slow worker start no longer fails it. Every other assertion stays.
 - [ ] C2. The file passes 5/5 targeted runs, on Linux (droplet verify) or under Mac load.
+
+## Comments
+
+### impl-530 · 2026-10-15T20:59:39.278Z
+
+Confirmed the reported launching + timed-out snapshot with a temporary 500ms LocalExecutor.start-return delay. The original case failed at :183; the fixed case passed under the same delay (3.14s). Fix waits for running and past-timeout in one digest, retains every assertion and the 2500ms wait bound. Typecheck passed; collecting five serial quiet Mac whole-file runs before review.

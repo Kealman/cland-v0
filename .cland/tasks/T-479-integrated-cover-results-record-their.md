@@ -10,11 +10,12 @@ labels:
   - hub
 assignee: null
 parent: E-468
-blocked_by: []
+blocked_by:
+  - T-472
 topic: null
 branch: null
 created: 2026-10-15T09:13:20.192Z
-updated: 2026-10-15T09:13:20.192Z
+updated: 2026-10-15T20:56:48.331Z
 ---
 
 ## Summary

@@ -3,18 +3,20 @@ id: T-477
 kind: task
 title: Verdict records carry findings with severity, and lows are recorded
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - v0.1.3
   - hub
 assignee: null
 parent: E-468
-blocked_by: []
+blocked_by:
+  - T-529
+  - T-478
 topic: null
 branch: null
 created: 2026-10-15T09:13:19.683Z
-updated: 2026-10-15T09:13:19.683Z
+updated: 2026-10-15T20:56:50.578Z
 ---
 
 ## Summary
