@@ -216,7 +216,11 @@ test('Claude without a full push learns its reset from one after-hit harness pol
   await writeFile(join(f.root, 'claude-b', 'usage-report.json'), JSON.stringify({ rate_limits: { limits: [{ kind: 'session', percent: 100, resets_at: reset }] } }));
   const before = await journal(f.root, f.ui);
   await send(f.ui, p.name, 'hit the usage limit');
-  await eventually('poll supplies reset', async () => (await account(f.ui, 'claude-b')).limited?.resetsAt === reset || undefined);
+  // Reset publication precedes the poll's completion receipt; wait for both within the same budget.
+  await eventually('poll supplies reset', async () => {
+    if ((await account(f.ui, 'claude-b')).limited?.resetsAt !== reset) return undefined;
+    return (await journal(f.root, f.ui)).filter(e => e.event === 'account-polled' && e.account === 'claude-b').length === before.filter(e => e.event === 'account-polled' && e.account === 'claude-b').length + 1 || undefined;
+  });
   const after = await journal(f.root, f.ui);
   assert.equal(after.filter(e => e.event === 'account-polled' && e.account === 'claude-b').length, before.filter(e => e.event === 'account-polled' && e.account === 'claude-b').length + 1);
 });
@@ -260,7 +264,11 @@ for (const failed of [false, true]) test(`after-hit read waits for a recent ${fa
     assert.deepEqual((await account(ui, 'claude-b')).limited, mark, 'restart retains the mark and outstanding read');
   }
   // Allow the asserted minimum/backoff plus time for the harness poll to complete.
-  await eventually('deferred poll supplies reset', async () => (await account(ui, 'claude-b')).limited?.resetsAt === reset || undefined, pollDelayMs + 5000);
+  // The reset alone does not prove that the deferred poll has logged its completion.
+  await eventually('deferred poll supplies reset', async () => {
+    if ((await account(ui, 'claude-b')).limited?.resetsAt !== reset) return undefined;
+    return (await journal(f.root, ui)).filter(e => e.event === 'account-polled' && e.account === 'claude-b').length === before.length + 1 || undefined;
+  }, pollDelayMs + 5000);
   const after = (await journal(f.root, ui)).filter(e => e.event === 'account-polled' && e.account === 'claude-b');
   assert.equal(after.length, before.length + 1);
   assert.ok(Date.parse(String(after.at(-1)!.ts)) - Date.parse(String(before.at(-1)!.ts)) >= pollDelayMs);
