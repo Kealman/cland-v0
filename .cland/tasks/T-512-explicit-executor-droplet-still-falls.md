@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-312
 branch: t/T-512-explicit-executor-droplet-still-falls
 created: 2026-10-15T16:25:28.989Z
-updated: 2026-10-15T18:15:36.049Z
+updated: 2026-10-15T18:38:12.539Z
 ---
 
 ## Summary
@@ -57,3 +57,7 @@ Spec C3/tests: new CLI/frame fixture fills remote budget=1, asserts queue positi
 Evidence: A-3228 remote-budget 13/13 and A-3229 executor-safety 20/20 pass. A-3237 executor-run whole file is retained as 19 pass/1 fail: the changed test mistakenly expected no holder despite its own manually held compatibility lock. Final commit corrects that assertion to hand-run holder/no admitted verification job; A-3238 reruns the changed case 1/1 green, without production changes. No claim of a green final whole executor-run file yet. New/renamed duration exceptions carry measured values and lifecycle reasons. Docs explain explicit wait, omitted fallback, affordability and queue fields; whitespace check passes, requester reports typecheck/shard lint green.
 Low aside, Bugs / XS — hub/src/hub/suites.ts:698: snapshot ETA accounts for occupying suite jobs but not durable-only prepare/cleanup leases. With only such leases blocking capacity, an explicit waiter may show ETA 0 despite correctly remaining queued. Existing estimation seam needs a follow-up (unknown ETA is preferable to a false free slot); it does not defeat remote-only admission.
 C1–C3 remain unverified pending exact-head post-source gate. Source clear permits one cland verify at this head. No per-item QA criteria. No Reviewer tests, edits or provider calls.
+
+### impl-512 · 2026-10-15T18:38:12.539Z
+
+Same-head verification 4174e836-3781-4a4c-85a2-d8a014bbe0c5 is green at a4ad9640cfdd534d8ed03c1f0955e1a33d0f93d3: full mode, 2182/2182 passed, no failures/skips/cancellations; local darwin arm64, Node v24.21.0, Neovim v0.12.5. Durable log A-3260: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3260-suite-4174e836-3781-4a4c-85a2-d8a014bbe0c5-auto-at-a4ad964.log. The run used the Coordinator-authorized local fallback and completed naturally under load. Production source and reviewed head remain unchanged. Awaiting the Reviewer's final same-head verdict; retaining the claim until merge.

@@ -3,7 +3,7 @@ id: T-394
 kind: task
 title: "Coverage selection: task runs select hub tests by a function-level V8 coverage map from integrated dev runs, with full fallback on shared or unknown paths"
 state: open
-status: review
+status: in progress
 size: L
 criterion_seq: 8
 labels:
@@ -19,7 +19,7 @@ blocked_by:
 topic: topic-306
 branch: t/T-394-coverage-selection-task-runs-select-hub
 created: 2026-10-14T12:28:19.272Z
-updated: 2026-10-15T17:59:43.306Z
+updated: 2026-10-15T18:32:58.694Z
 ---
 
 ## Summary
@@ -57,22 +57,30 @@ It falls back to today's rules, naming the reason, for protocol, contract, packa
   - done: impl-394 · 2026-10-15T16:23:12.810Z
   - verified: rev-30 [reviewer] · run rev-20261015-394-source · 2026-10-15T16:54:02.463Z · commit f0394340be84dc60bff576602d0585a7d35b2946
   - verified: rev-30 [reviewer] · run rev-20261015-394-correction · 2026-10-15T17:59:43.305Z · commit 19120c610343956de21a1480f8f69118e41e1c26
+  - verified: rev-30 [reviewer] · run rev-20261015-394-final · 2026-10-15T18:30:50.480Z · commit 19120c610343956de21a1480f8f69118e41e1c26
 - [x] C2. An integrated `dev` full run posts a function-level coverage map artifact naming its head and tree, and spokes, daemons, the CLI and fakes all contribute to it, proven on a fixture project.
   - done: impl-394 · 2026-10-15T17:58:58.408Z
+  - verified: rev-30 [reviewer] · run rev-20261015-394-final · 2026-10-15T18:30:50.480Z · commit 19120c610343956de21a1480f8f69118e41e1c26
 - [x] C3. A task diff touching one function in `hub/src/hub/` selects its changed tests, the covering test files and the smoke baselines, and the report names the deciding functions.
   - done: impl-394 · 2026-10-15T17:58:46.754Z
+  - verified: rev-30 [reviewer] · run rev-20261015-394-final · 2026-10-15T18:30:50.481Z · commit 19120c610343956de21a1480f8f69118e41e1c26
 - [x] C4. Protocol, contract, package, harness, fixture and runner changes, unknown files, stale maps and a missing map fall back to the package rules with their reason, each proven by a test.
   - done: impl-394 · 2026-10-15T16:48:04.300Z
+  - verified: rev-30 [reviewer] · run rev-20261015-394-final · 2026-10-15T18:30:50.481Z · commit 19120c610343956de21a1480f8f69118e41e1c26
 - [x] C5. Replay (Coordinator amendment 2026-10-15 16:44Z): pre-merge, the replay tool runs on fixture histories and reports per-merge selection, misses and selected share, falling back explicitly where a historical map is missing; the real last-40 replay against the C1 bar is judged after merge at E-387's stage-2 close, from the first integrated dev map, and its table is posted on the item.
   - done: impl-394 · 2026-10-15T16:48:05.818Z
+  - verified: rev-30 [reviewer] · run rev-20261015-394-final · 2026-10-15T18:30:50.481Z · commit 19120c610343956de21a1480f8f69118e41e1c26
 - [x] C6. Measured (Coordinator amendment 2026-10-15 16:44Z): pre-merge, a fixture proves a one-function hub/src/hub/ diff selects a subset and reports its duration line; the real under-5-minute default-executor run is judged after merge at E-387's stage-2 close, once a dev coverage map exists, with the duration line posted.
   - done: impl-394 · 2026-10-15T16:48:07.429Z
+  - verified: rev-30 [reviewer] · run rev-20261015-394-final · 2026-10-15T18:30:50.481Z · commit 19120c610343956de21a1480f8f69118e41e1c26
 - [x] C7. Measured (Coordinator amendment 2026-10-15 16:44Z): pre-merge, a fixture proves coverage recording runs and publishes within an integrated run; the at-most-15% wall-time overhead is judged after merge at E-387's stage-2 close against the integrated run before at a nearby head.
   - done: impl-394 · 2026-10-15T16:48:08.924Z
+  - verified: rev-30 [reviewer] · run rev-20261015-394-final · 2026-10-15T18:30:50.482Z · commit 19120c610343956de21a1480f8f69118e41e1c26
 - [x] C8. `hub/README.md` (Tests), `docs/agents/tests.md` and the Implementer clause describe `hub-selected`, the map, its age limit and the fallbacks.
   - done: impl-394 · 2026-10-15T16:48:10.469Z
   - verified: rev-30 [reviewer] · run rev-20261015-394-source · 2026-10-15T16:54:02.463Z · commit f0394340be84dc60bff576602d0585a7d35b2946
   - verified: rev-30 [reviewer] · run rev-20261015-394-correction · 2026-10-15T17:59:43.305Z · commit 19120c610343956de21a1480f8f69118e41e1c26
+  - verified: rev-30 [reviewer] · run rev-20261015-394-final · 2026-10-15T18:30:50.482Z · commit 19120c610343956de21a1480f8f69118e41e1c26
 
 ## Comments
 
@@ -144,3 +152,24 @@ Original capture, publication, selected execution, replay and docs review A-3187
 Source clear permits the requested exact-head no-mode droplet verification following restart release. No new local run required beyond the supplied correction evidence for the shared manifest picks. No Reviewer tests, edits or provider calls.
 
 Criteria: C1 verified, C8 verified.
+
+### rev-30 · 2026-10-15T18:30:50.482Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-394-final
+commit: 19120c610343956de21a1480f8f69118e41e1c26
+scope: evidence
+
+Final pre-merge evidence review T-394 clear at unchanged source-reviewed 19120c610343956de21a1480f8f69118e41e1c26. No high, medium or low findings remain; environment-handoff regression and own fixture budget from A-3204 are corrected.
+A-3255 / 892e186d-e0cc-4eb5-9eae-64b251c22cf2 is exact-head full Linux c-8 green: typecheck, hub and full Neovim complete, 2197 pass / 0 fail / 0 cancelled / 6 platform skips. Five directly affected fixture files contribute 101 completed passing cases: selection83, coverage1, selection-report4, cache6, close7. No hard duration failure.
+C1 reverified from recorded human tolerance/replay answer before implementation; C8 from retained README/tests documentation and both Implementer clauses.
+C2 verified on the specified fixture seam: actual CLI/daemon/spoke/fake capture passes (:5259); integrated dev fixture publication with head/tree and no task capture passes (:5352); remote sharded map collection-before-release and union publication passes (:5252). This task verification is not itself the first production integrated-dev coverage capture.
+C3 verified: changed function plus changed tests and smoke selection, real selected execution and named function report pass (:5404/:5434). Owning-env regression passes (:5428) and original executor integration no longer fails. C4's shared/unknown/stale/missing-map and hunk-mapping fallbacks pass (:5415–5433), preserving full Neovim where the package requires it.
+C5 PRE-MERGE fixture portion verified under amended criterion/Coordinator 7010a2e1: replay fixture reports own/historical misses, selected time share and explicit missing-map fallback (:5435). A-3179's additional conservative real last-40 table lists zero own misses and three wider explorer-card misses accepted/filed as T-516. It is not the required later nearest-production-map replay.
+C6 PRE-MERGE fixture portion verified: :3282 prints a 0.61s one-function selected fixture with deciding function, map and omitted unrelated tests. This is fixture duration, not a real production under-five-minute result.
+C7 PRE-MERGE fixture portion verified: integrated recording/publication and remote union pass with provenance. No <=15% real-run overhead claim is made.
+All C1–C8 marks cover the Coordinator-amended pre-merge scope. At E-387 stage-2 close, Coordinator still owes the first integrated dev map, real last-40 replay against C1's bar, real one-function default-executor duration and <=15% overhead comparison with a nearby preceding integrated run, posted on the item. A-3204 is excluded from gate receipts; final clearance relies on the corrected head's green A-3255 and prior reviewed fixtures A-3179/A-3226. No per-item QA criteria. No Reviewer tests, edits, merges or provider calls.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified.
