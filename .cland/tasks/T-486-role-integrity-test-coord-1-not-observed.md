@@ -3,17 +3,18 @@ id: T-486
 kind: task
 title: "role-integrity test: coord-1 not observed idle within 15 s on a loaded Linux droplet"
 state: open
-status: backlog
+status: review
 size: S
+criterion_seq: 2
 labels:
   - ready-for-agent
 assignee: null
 parent: E-482
 blocked_by: []
-topic: null
-branch: null
+topic: topic-289
+branch: t/T-486-role-integrity-test-coord-1-not-observed
 created: 2026-10-15T10:27:52.273Z
-updated: 2026-10-15T10:28:04.004Z
+updated: 2026-10-15T11:16:34.054Z
 ---
 
 ## Problem
@@ -28,5 +29,45 @@ It looks like the same family as the other idle-observer timeouts under load in 
 
 ## Acceptance criteria
 
-- [ ] C1. The first idle observation of coord-1 in role-integrity.test.ts:84 no longer races launch under load. Every assertion and time bound stays as it is, and the root cause is recorded in the commit.
+- [x] C1. The first idle observation of coord-1 in role-integrity.test.ts:84 no longer races launch under load. Every assertion and time bound stays as it is, and the root cause is recorded in the commit.
+  - done: impl-486 · 2026-10-15T11:14:55.539Z
+  - verified: rev-30 [reviewer] · run rev-20261015-486-source · 2026-10-15T11:16:34.054Z · commit 47c3b8cf05691607e98823ce8d04698133005c94
 - [ ] C2. role-integrity.test.ts passes 5/5 serially, whole file and alone, beside a local full run, plus once on a droplet in the task's verify.
+
+## Comments
+
+### impl-486 · 2026-10-15T11:09:12.230Z
+
+Diagnosis loop: node --test --test-name-pattern='two launches for the Coordinator at once' hub/test/role-integrity.test.ts passed (1.67 s test, 2.00 s file) beside impl-393's non-coord local full gate. Investigating state ordering before acceptance/spoke hello, without changing assertions/deadlines. Waiting for impl-449 to release the serial targeted slot.
+
+### coord · 2026-10-15T11:12:51.826Z
+
+Related signatures from T-447's droplet gate 463ee26b (A-2919), all an initial idle or launch on a Codex session under load:
+- role-integrity.test.ts:131 (relaunch role change, initial coord idle at :138);
+- codex-adapter.test.ts:813 (initial impl-1 idle at :821; also T-467's family);
+- session-usage.test.ts:31 (Codex session.launch times out after 5 s).
+impl-486's current hypothesis is that Codex spawn ordering marks the session busy after turn/start and overwrites a completed first turn's idle. If that root cause is confirmed, check these against it, and fix it in the adapter if that's where it lives.
+
+### impl-486 · 2026-10-15T11:14:35.569Z
+
+Root cause confirmed: after turn/start is accepted, CodexAdapter.spawn unconditionally changed any idle state to busy. Under load, status active, admission response, and completed-turn idle can arrive in one receive batch before the await continuation, so the completed idle was overwritten permanently. A fake first-turn completion-before-response probe reproduces the unchanged exact 15 s coord-1 timeout (A-2921); eventSequence guard preserves newer idle and cleared turn id (green A-2926). Existing role-integrity test now forces that ordering, with every assertion/name/deadline unchanged. Five serial whole-file loaded passes (7/7 each) beside impl-393 local full run 6b2bda6d are in A-2925. Root fix also covers A-2919 role-integrity:131 and codex-adapter:813 initial-idle paths. session-usage:31 is a separate launch response deadline and moved to T-463 by Coordinator.
+
+### rev-30 · 2026-10-15T11:16:34.054Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-486-source
+commit: 47c3b8cf05691607e98823ce8d04698133005c94
+scope: full
+
+Source review clear; no high, medium or low findings.
+
+Standards: no findings against repo guidance or baseline smells; existing eventSequence provides the ordering boundary and comments explain the race.
+Spec: C1 verified. hub/src/adapters/codex.ts:688–704 captures the sequence before turn/start. Pre-turn idle with unchanged sequence still gets busy/turn-id fallback; newer idle is preserved with its cleared turn id; non-idle handling remains. State event/approval/failure/usage handling is otherwise unchanged. Commit records root cause.
+
+Fake completion-before-response probe emits real idle/completion before admission; role-integrity fixture forces it with every original assertion/name/deadline unchanged. A-2921 reproduces exact 15 s coord-1 idle failure, A-2926 is green. A-2925 shows 5/5 serial whole-file passes, 7/7 each beside impl-393 full local run. A-2928 reports Codex adapter 35/35 (corrected count), zero skips/failures. Separate session-usage launch-response timeout is not claimed fixed.
+
+C2 remains unverified pending same-head post-source Linux droplet verification. No Reviewer tests or changes.
+
+Criteria: C1 verified.

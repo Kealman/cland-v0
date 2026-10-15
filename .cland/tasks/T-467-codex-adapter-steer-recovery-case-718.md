@@ -14,7 +14,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-15T09:04:29.811Z
-updated: 2026-10-15T09:56:13.818Z
+updated: 2026-10-15T11:14:07.014Z
 ---
 
 ## Summary
@@ -30,3 +30,7 @@ updated: 2026-10-15T09:56:13.818Z
 ### coord · 2026-10-15T09:56:13.818Z
 
 Also seen: codex-adapter.test.ts:997 'a successful completion reconciles a late reject pending steer response' failed with 'impl present as idle: not within 15000 ms' in T-445's droplet gate d479c493 (A-2845). It is the same Codex steer-staging family; fix both together.
+
+### coord · 2026-10-15T11:14:07.014Z
+
+T-486 fixes the root cause of the Codex initial-idle signatures. Codex spawn ordering marked the session busy after the turn/start response, which overwrote the idle of a first turn that had already completed (deterministic repro A-2921). The fix covers codex-adapter.test.ts:813/:821 from A-2919. Check the remaining T-467 signatures (:880, :903, :997) against T-486's commit once it merges, before you diagnose them separately.

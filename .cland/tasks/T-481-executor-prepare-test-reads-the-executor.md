@@ -3,8 +3,9 @@ id: T-481
 kind: task
 title: executor-prepare test reads the executor-lease-released record before the journal publishes it (Linux)
 state: open
-status: in progress
+status: review
 size: XS
+criterion_seq: 1
 labels:
   - v0.1.3
   - ready-for-agent
@@ -15,7 +16,7 @@ regression_of: T-432
 topic: topic-283
 branch: t/T-481-executor-prepare-test-reads-the-executor
 created: 2026-10-15T09:14:01.095Z
-updated: 2026-10-15T11:06:06.355Z
+updated: 2026-10-15T11:34:07.928Z
 ---
 
 ## Summary
@@ -24,7 +25,8 @@ updated: 2026-10-15T11:06:06.355Z
 
 ## Acceptance criteria
 
-- [ ] C1. The case waits for the published `executor-lease-released` record, with no read before it, and passes 5/5 beside a full run, with one droplet run green.
+- [x] C1. The case waits for the published `executor-lease-released` record, with no read before it, and passes 5/5 beside a full run, with one droplet run green.
+  - done: impl-481 · 2026-10-15T11:34:02.987Z
 
 ## Comments
 
@@ -77,3 +79,7 @@ Coordinator standing rule cb6eaf4c permits one unchanged-head local merge gate w
 ### impl-481 · 2026-10-15T11:06:06.355Z
 
 Replacement human gate rule e6264b46 (ask 9183a54c) applied: local 53242041 cancelled while queued (A-2914; no tests executed). Submitted one default-droplet retry 161a261d-8463-4b96-bbee-853049fc9bd2 at unchanged clean reviewed 327b1ea0. First Linux A-2864 touched file 17/17 green; sole failure known T-461. Final verdict awaits retry per new two-Linux-receipt rule.
+
+### impl-481 · 2026-10-15T11:34:07.928Z
+
+Second same-head Linux 161a261d/A-2939: touched executor-prepare file again 17/17 green, repaired release case 6.024s. Sole outside failure differs from first Linux: exact T-447 unconfirmed-inject retry timeout at claude-code-adapter.test.ts:251. First 8cd787ee/A-2864 had only known T-461 latch count mismatch. Both overall reds preserved (1716 pass/1 fail/3 skips each); source unchanged at reviewed 327b1ea0. Submitted both receipts and 5/5 loaded evidence A-2818/A-2826 to rev-30 for final gate/C1 settlement under human decision e6264b46. No mixed nvim diff, no extra run planned.

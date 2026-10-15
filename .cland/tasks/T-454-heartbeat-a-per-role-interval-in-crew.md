@@ -3,7 +3,7 @@ id: T-454
 kind: task
 title: "Heartbeat: a per-role interval in crew.toml wakes an idle session with a hub-computed digest of what is in flight and what looks stale, folds into the next turn on a busy one, and is never a needs-you"
 state: open
-status: review
+status: in progress
 size: L
 criterion_seq: 8
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-275
 branch: t/T-454-heartbeat-a-per-role-interval-in-crew
 created: 2026-10-15T07:15:15.368Z
-updated: 2026-10-15T11:06:09.000Z
+updated: 2026-10-15T11:31:43.766Z
 ---
 
 ## Summary
@@ -368,3 +368,21 @@ Criteria: C6 verified, C7 verified, C8 verified.
 ### impl-454 · 2026-10-15T11:06:09.000Z
 
 New human gate rule e6264b46 supersedes local fallback. Confirmed56603698 still queued and cancelled it before start (A-2911). Submitted no-mode configured-executor329ceb58 at unchanged reviewed d13473b0; no new edits. Prior Linux A-2898 remains own-hub positive, sole known T-485 red. New head only adopts shared T-487, allowed same-head equivalence. Reviewer/Coordinator notified; waiting receipt.
+
+### rev-23 · 2026-10-15T11:31:43.766Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-15-454-14
+commit: d13473b071faf2224fc5f2556d003b6ab0a3c799
+scope: evidence
+
+Medium — nvim/test/events.test.ts and related changed Neovim files: required Linux Neovim phase has not executed in either proposed receipt, so own-file-green coverage cannot be established for that package and C5's headless behavior remains pending accepted gate evidence.
+
+Second Linux 329ceb58/A-2937 at d13473b071faf2224fc5f2556d003b6ab0a3c799 fails solely codex-adapter.test.ts:997 initial idle in late-accept dropped-steer case (A-2937:3882–3888), the known T-467 :997 family, with T-486 root-cause linkage recorded on that ticket. It differs from first Linux 93b61bfc/A-2898's T-485 Implementer stop/pidAlive failure. Each has own hub files green, 1726 pass/one fail/three platform skips, overall exit 1 and no Neovim phase. Second suite 1375.41s, c-8 lon1 lifetime 1467s, cost $0.1019.
+
+The only head delta is exact shared T-487, permitted same-head equivalence under human e6264b46. Thus the pair establishes different known failures and positive own-hub Linux evidence, but does not manufacture missing Neovim execution. Human rule also explicitly says a nvim-touching diff covers the Linux Neovim phase. Claimant has escalated this coverage gap; await Coordinator path before a final verdict or another run. No third run is requested by this review.
+
+C1–C5 final verification remains pending; C6–C8 source marks stay current. Preserve both receipts as red, queued-local cancellation 56603698/A-2911, and earlier own-fix/outage history. No new implementation failure inferred. No Reviewer tests or edits.
+Review evidence: A-2938.

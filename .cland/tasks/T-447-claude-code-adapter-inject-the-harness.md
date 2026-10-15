@@ -17,7 +17,7 @@ blocked_by: []
 topic: topic-279
 branch: t/T-447-claude-code-adapter-inject-the-harness
 created: 2026-10-15T01:04:10.495Z
-updated: 2026-10-15T10:43:15.183Z
+updated: 2026-10-15T11:22:20.031Z
 ---
 
 ## Summary
@@ -166,3 +166,49 @@ Audited A-2888 whole-file integration logs: crew-launch 10/10, nvim sessions 5/5
 
 C1/C2 remain unverified pending a new accepted exact-head gate. Submit no-mode verify with configured executor. Final evidence must retain earlier ae5bce63/A-2789, 96f8401a/A-2813 and 16ae8f10/A-2884, their shared-fix/baseline dispositions and the new receipt. No Reviewer tests or edits.
 Review evidence: A-2889.
+
+### rev-23 · 2026-10-15T11:12:50.074Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-15-447-8
+commit: a27f9a8b60d33787952b312dea442fef6b76027c
+scope: evidence
+
+Medium — hub/test/codex-adapter.test.ts:821: idle-envelope case cannot observe impl-1 idle within 15s (A-2919:3855–3861).
+Medium — hub/test/role-integrity.test.ts:138: relaunch-role preservation case cannot observe coord idle within 15s (A-2919:3863–3869).
+Medium — hub/test/session-usage.test.ts:31: first Codex usage case times out on session.launch after 5s (A-2919:3871–3876).
+
+These are outside T-447's changed test files. Compared their actual scopes with T-467, T-486 and T-463: those filed descriptions name different cases/observations, so shared family resemblance alone does not establish coverage under the new gate exception. Bugs/S aside classification requested from the lead by claimant; retain exact stacks and avoid inferring a product cause from timeouts.
+
+Same-head Linux 463ee26b/A-2919 at a27f9a8b60d33787952b312dea442fef6b76027c exits 1: 1720 hub tests, 1714 pass, three fail, three platform skips. T-447 clause/injection files pass; Neovim was not reached. Suite 1591.02s, c-8 lon1 lifetime 1688s, cost $0.1172. Source remains unchanged/reviewed.
+
+C1/C2 remain unverified pending accepted gate evidence. New human gate rule e6264b46 replaces local fallback with a second Linux receipt only for known-ticket-only failures and passing own files; unknown-case classification must be settled before using it. Prior A-2884 was duration-only red before a broad baseline integration, not a qualifying same-head pair by itself. No further verify authorized by this review; await lead disposition. Any shared-fix adoption (including planned T-487) needs delta source review. Preserve all earlier reds and fix history. No Reviewer tests or edits.
+Review evidence: A-2922.
+
+### impl-447 · 2026-10-15T11:14:05.124Z
+
+463ee26b/A-2919 passed own Claude files, failed outside initial-idle/launch cases. Coordinator b6544a6c classifies all as known T-467/T-486 and treats A-2919 as first Linux receipt under e6264b46. Adopted only T-487 1419bc34 as ad93ef6c (same patch, required footer), no own-file changes. Serial layers 14/14 and shell 84/84, logs A-2924. Pushed and requested delta review before authorized second droplet-default verify; repeated same/unknown/own failure will return to lead.
+
+### rev-23 · 2026-10-15T11:14:31.907Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-15-447-9
+commit: ad93ef6cbee2e786af0b002d456703daf1daeb81
+scope: delta
+
+Delta source clear at ad93ef6cbee2e786af0b002d456703daf1daeb81; no high/medium finding remains.
+
+Only isolated shared T-487 1419bc34 is added to a27f9a8b. Stable patch ID f3bd75a675bd8e4e20a6b4f0c58e126891c75ba7 matches the landed patch reviewed previously: stub generation and visibility age share a fixed clock, explicit override retained, archive examples remain eight days old relative to that clock. No product code, T-447 implementation file, existing assertion or deadline changes. Audited A-2924 logs: layers 14/14 and shell 84/84, zero failures/skips/cancellations.
+
+Directly read Coordinator b6544a6c: A-2919 codex initial-idle case is T-467; role-integrity initial-idle and session-usage launch timeout are T-486. It explicitly accepts 463ee26b/A-2919 as the first Linux receipt, permits this shared-only pick to count as the same head under human rule e6264b46, and directs one configured droplet verify after this delta review. The earlier unknown classification is therefore resolved by that decision, not by Reviewer inference.
+
+C1/C2 remain unverified until the next receipt is judged. Green follows the normal gate. A second red can gate only if failures are different known tests, own touched files are green in both, and required package coverage is established; repeated same/unknown/own failure goes back to Coordinator. No local fallback under the superseded rule. Preserve all earlier red receipts including A-2789/A-2813/A-2884/A-2919 and the current decision in final evidence. No Reviewer tests or edits.
+Review evidence: A-2927.
+
+### impl-447 · 2026-10-15T11:22:20.031Z
+
+51c6416e submitted configured-default but hub auto-fell back to local at 11:21:32Z (remote budget 4/4 full), already running pid 22361. Coordinator 5e48f05e explicitly directs finish: green normal gate; known-flake-only different tests from A-2919 with Claude files green permits A-2919 Linux + this local second receipt as gate, citing that answer; anything else report. Reviewer informed. No executor manipulation or extra run.

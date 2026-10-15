@@ -3,7 +3,7 @@ id: T-483
 kind: task
 title: "Hotfix: T-253's fail-fast exits on the 5 s stall warning threshold; a slow tracker operation under load kills the hub"
 state: open
-status: review
+status: ready
 size: S
 rank: 2930
 criterion_seq: 3
@@ -18,7 +18,7 @@ regression_of: T-253
 topic: topic-282
 branch: t/T-483-hotfix-t-253-s-fail-fast-exits-on-the-5
 created: 2026-10-15T09:18:55.709Z
-updated: 2026-10-15T10:59:40.309Z
+updated: 2026-10-15T11:34:06.438Z
 ---
 
 ## Summary
@@ -33,12 +33,15 @@ Separate the two thresholds. At STORAGE_STALL_MS the hub keeps warning (`tracker
 
 - [x] C1. An operation held for 6 s and then released logs `tracker-storage-stalled` and completes, and the hub keeps serving, proven by a test.
   - done: impl-483 · 2026-10-15T09:27:57.330Z
+  - verified: rev-26 [reviewer] · run rev-20261015-483-final-1 · 2026-10-15T11:33:58.009Z · commit 21914fe18b13df1a91b56f52c39fce84e74605ba
 - [x] C2. An operation still held at the fatal deadline triggers T-253's fail-fast exactly as before, proven by T-253's tests with the fatal deadline set.
   - done: impl-483 · 2026-10-15T09:27:58.056Z
+  - verified: rev-26 [reviewer] · run rev-20261015-483-final-1 · 2026-10-15T11:33:58.009Z · commit 21914fe18b13df1a91b56f52c39fce84e74605ba
 - [x] C3. hub/README.md describes both thresholds and the setting.
   - done: impl-483 · 2026-10-15T09:24:42.080Z
   - verified: rev-26 [reviewer] · run rev-20261015-483-source-2 · 2026-10-15T09:30:36.828Z · commit 09c915201d3aadb4d28b99dda3bd7f864bcc7c21
   - verified: rev-26 [reviewer] · run rev-20261015-483-source-3 · 2026-10-15T10:59:40.309Z · commit 21914fe18b13df1a91b56f52c39fce84e74605ba
+  - verified: rev-26 [reviewer] · run rev-20261015-483-final-1 · 2026-10-15T11:33:58.009Z · commit 21914fe18b13df1a91b56f52c39fce84e74605ba
 
 ## Comments
 
@@ -123,3 +126,22 @@ No high or medium findings. Reviewed shared T-487 1419bc34 alone: fixed clock dr
 Coordinator ebe41927 authorizes one new-head no-mode --executor local gate after this delta review. A-2847 remains Linux tracker proof; prior A-2890 hub phase is 1722/1722 green but overall red. Renew C3, leave C1/C2/final settlement pending the accepted replacement receipt. No Reviewer tests run.
 
 Criteria: C3 verified.
+
+### impl-483 · 2026-10-15T11:28:11.384Z
+
+Second Linux run 8973214d/A-2934 at delta-reviewed 21914fe1 failed only two different T-447 identities: adapter:251 clause-injected-on-retry timeout, sessions:119/128 initial clause busy/idle timeout. First Linux 7033cc6c/A-2847 failed sessions:251 and Codex:556/:903. Tracker warning/recovery/fatal/cancellation cases pass in both. Sent both receipts to rev-26 for e6264b46 settlement; only head delta is shared T-487 fix. Both Linux package runs stop before Neovim; no Linux Neovim completion inferred. Holding head and further runs.
+
+### rev-26 · 2026-10-15T11:33:58.009Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261015-483-final-1
+commit: 21914fe18b13df1a91b56f52c39fce84e74605ba
+scope: evidence
+
+No outstanding high or medium findings in T-483 scope. C1/C2 pass in both Linux receipts: six-second warning/release/continued serving, independent fatal deadline/config boundary, held/released fail-fast and timer cancellation. C3 README source review retained.
+Final clear uses e6264b46's explicit exception, not a green-full claim: A-2847/7033cc6c (1716 pass, 3 fail, 3 skips) and A-2934/8973214d (1715 pass, 2 fail, 3 skips) have disjoint known T-447/T-485/T-467 failures; own tracker files are green in both. The only intervening head change is reviewed shared T-487.
+Coordinator becaa511 explicitly accepts tracker scope and adopted T-487 evidence: A-2900/63b6103f passed the Neovim phase, with rev-30 final clear rev-20261015-487-final. Neither T-483 Linux receipt reached Neovim; no such coverage inferred. Both receipt pair and scope decision are documented in the final review artifact. No Reviewer tests run.
+
+Criteria: C1 verified, C2 verified, C3 verified.

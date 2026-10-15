@@ -15,7 +15,7 @@ regression_of: T-389
 topic: null
 branch: null
 created: 2026-10-15T08:37:18.553Z
-updated: 2026-10-15T09:16:21.060Z
+updated: 2026-10-15T11:13:42.707Z
 ---
 
 ## Summary
@@ -25,3 +25,9 @@ updated: 2026-10-15T09:16:21.060Z
 ## Acceptance criteria
 
 - [ ] C1. The restart case counts publications against the observed coalescing boundary, keeps its assertion's meaning, and the file passes 5/5 beside a local full run.
+
+## Comments
+
+### coord · 2026-10-15T11:13:42.707Z
+
+Second signature in this file, moved here from T-486, whose adapter fix doesn't bound launch latency. It is session-usage.test.ts:31, 'Codex journals changed totals...': in T-447's droplet gate 463ee26b (A-2919), session.launch timed out on its 5 s response before the idle and usage observation. Diagnose it alongside the restart publication count.

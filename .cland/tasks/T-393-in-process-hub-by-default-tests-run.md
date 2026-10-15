@@ -3,7 +3,7 @@ id: T-393
 kind: task
 title: "In-process hub by default: tests run against a hub served in the test process over its real socket, a spawned hub stays only for lifecycle tests, and the top 20 files move first"
 state: open
-status: in progress
+status: review
 size: L
 criterion_seq: 9
 labels:
@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-273
 branch: t/T-393-in-process-hub-by-default-tests-run
 created: 2026-10-14T12:28:19.095Z
-updated: 2026-10-15T10:41:32.233Z
+updated: 2026-10-15T11:24:53.221Z
 ---
 
 ## Summary
@@ -62,6 +62,7 @@ updated: 2026-10-15T10:41:32.233Z
   - done: impl-393 · 2026-10-15T08:08:39.537Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-2 · 2026-10-15T09:22:40.699Z · commit 519fc215a8f8b84572f079ba0b5a1b35ed8072fa
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-4 · 2026-10-15T10:16:09.752Z · commit c97f0056f9d161148d003314a888f1bff0d524f0
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-393-7 · 2026-10-15T11:24:53.220Z · commit 36ecea1f6f97445efc149b47b8ba2a7e89b7c89b
 - [x] C5. Measured (Coordinator amendment 2026-10-15 09:03Z): the 20 files' summed whole-file time falls by at least 20%, judged after merge from E-387's stage-1 close integrated cover on the Mac against the v0.1.2 release cover A-2714 (both quiet integrated runs), per file from the runner's records; pre-merge, the available paired samples are posted without a claim, because local fallbacks invalidated every pair while remote_budget was 2.
   - done: impl-393 · 2026-10-15T09:04:06.375Z
 - [x] C6. Measured (Coordinator amendment 2026-10-15 09:03Z): the migration's daemon-start delta is posted against the fresh census A-2737 (the 20 files 421 → 145, a projected 772 per run against 1047); the under-600 target moves to T-466, the next files' migration.
@@ -70,14 +71,17 @@ updated: 2026-10-15T10:41:32.233Z
   - done: impl-393 · 2026-10-15T08:08:40.735Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-2 · 2026-10-15T09:22:40.699Z · commit 519fc215a8f8b84572f079ba0b5a1b35ed8072fa
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-4 · 2026-10-15T10:16:09.752Z · commit c97f0056f9d161148d003314a888f1bff0d524f0
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-393-7 · 2026-10-15T11:24:53.220Z · commit 36ecea1f6f97445efc149b47b8ba2a7e89b7c89b
 - [x] C8. No assertion changes its meaning: the review request lists every changed assertion with what it still proves, and no test is deleted.
   - done: impl-393 · 2026-10-15T08:08:41.391Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-2 · 2026-10-15T09:22:40.700Z · commit 519fc215a8f8b84572f079ba0b5a1b35ed8072fa
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-4 · 2026-10-15T10:16:09.753Z · commit c97f0056f9d161148d003314a888f1bff0d524f0
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-393-7 · 2026-10-15T11:24:53.220Z · commit 36ecea1f6f97445efc149b47b8ba2a7e89b7c89b
 - [x] C9. `hub/README.md` (Tests) and `docs/agents/tests.md` describe `projectHub` as the default, the lifecycle line, and when a new test may use `startDaemon`.
   - done: impl-393 · 2026-10-15T08:08:41.843Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-2 · 2026-10-15T09:22:40.700Z · commit 519fc215a8f8b84572f079ba0b5a1b35ed8072fa
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-4 · 2026-10-15T10:16:09.753Z · commit c97f0056f9d161148d003314a888f1bff0d524f0
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-393-7 · 2026-10-15T11:24:53.221Z · commit 36ecea1f6f97445efc149b47b8ba2a7e89b7c89b
 
 ## Comments
 
@@ -192,3 +196,46 @@ Standing Coordinator cb6eaf4c directly authorizes one unchanged-head local merge
 
 Final evidence must cite this red fc85d6ae/A-2886/T-447 and prior red ce86de7b/A-2838/T-461, source-reviewed isolated T-461 adoption, and the authorized local receipt. Preserve C5 post-merge timing obligation, C6 772 lower-bound projection/under-600 T-466, and T-395 second-merger reconciliation. No Reviewer tests or edits.
 Review evidence: A-2887.
+
+### rev-23 · 2026-10-15T11:22:42.498Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-15-393-6
+commit: c97f0056f9d161148d003314a888f1bff0d524f0
+scope: evidence
+
+Medium — nvim/test/shell.test.ts startup screen wait: A-2930 contains 83 occurrences of 'screen never showed the workbench on General within 10000 ms'. Treat this as shared-pattern evidence, not 83 independently diagnosed product bugs.
+Medium — nvim/test/qa.test.ts:94 (THREAD-001/002): QA is INCONCLUSIVE at the 'first local day' wait; captured screen starts Fri 9 Oct while older fixture material is missing. Both signatures are consistent with the stale-date/archive family addressed by T-487, which this head has not adopted; confirm coverage with targeted reproduction before attributing every failure to it.
+
+Local gate 6b2bda6d/A-2930 at c97f0056f9d161148d003314a888f1bff0d524f0 exits 1 after reaching both packages: 2117 tests, 2031 pass, 86 fail, zero skips/cancellations. Hub completed successfully; the gate is blocked by Neovim failures. Full runtime 1892.95s; Neovim 882.26s; local darwin arm64. This local run was already in progress and allowed to finish under human gate change e6264b46; it is not a second Linux receipt.
+
+C1–C3 and final amended C5/C6 remain unverified; C4/C7/C8/C9 source marks remain current. Positive hub evidence does not justify clearing an 86-failure complete gate. No criterion implementation is failed until the untouched Neovim failure source is established. Retain Linux reds ce86de7b/A-2838 (T-461) and fc85d6ae/A-2886 (T-447). Await shared-fix/diagnostic disposition and delta review after any adoption; no automatic unchanged retry or gate pair established. Preserve performance amendments and T-395 reconciliation obligation. No Reviewer tests or edits.
+Review evidence: A-2931.
+
+### impl-393 · 2026-10-15T11:24:19.134Z
+
+Local6b2bda6d/A-2930 passed all1730 hub tests, failed86 Neovim date-family cases. Adopted only Coordinator-posted T-4871419bc34 as36ecea1f; pushed. Targeted shell84, layers14, THREAD001/0022 all pass, full typecheck green (A-2932). Delta review requested before new default-droplet gate under human e6264b46. Source otherwise unchanged fromc97f0056; all prior Linux/local red receipts retained.
+
+### rev-23 · 2026-10-15T11:24:53.221Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-15-393-7
+commit: 36ecea1f6f97445efc149b47b8ba2a7e89b7c89b
+scope: delta
+
+Delta source clear at 36ecea1f6f97445efc149b47b8ba2a7e89b7c89b; no high/medium finding remains.
+
+Only exact shared T-487 1419bc34 is added to c97f0056 (stable patch ID f3bd75a675bd8e4e20a6b4f0c58e126891c75ba7). Stub timestamps and visibility age share the same fixed reference; CLAND_STUB_NOW overrides remain, and archive examples retain recent/eight-day-old relationships and all existing assertions. No production, T-393 hub fixture, lifecycle or documentation changes.
+
+Audited A-2932: layers 14/14, whole shell 84/84, THREAD-001/002 2/2, all zero failures/skips/cancellations, plus full typecheck log. The targeted shell and THREAD cases directly resolve both observed signatures in A-2930; the old local receipt still remains red overall (hub 1730/1730, Neovim 301/387, 86 failures). A fresh complete gate remains necessary.
+
+C4/C7/C8/C9 source marks refreshed; C1–C3 and final amended C5/C6 remain pending. Retain A-2838/T-461, A-2886/T-447, and A-2930/T-487 receipts. C5 is posted data only before merge, with quiet stage-cover 20% judgment owed later; C6 is the 772 lower-bound projection, under-600 assigned T-466. T-395 second-merger 110-identity reconciliation remains required.
+
+Submit configured-default no-mode verify at this exact head under human e6264b46. Actual executor and package coverage must be checked in the result; do not assume a default submission supplies Linux if the hub falls back. No Reviewer tests or edits.
+Review evidence: A-2933.
+
+Criteria: C4 verified, C7 verified, C8 verified, C9 verified.
