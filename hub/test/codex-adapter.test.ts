@@ -269,7 +269,12 @@ test('a launched Codex session: the app-server runs with the spoke, a UI message
   assert.deepEqual(h.usage?.total, { totalTokens: 24, inputTokens: 8, outputTokens: 4, cacheReadTokens: 12, cacheWriteTokens: 0, reasoningTokens: 2 });
   assert.deepEqual(h.usage?.last, { totalTokens: 12, inputTokens: 4, outputTokens: 2, cacheReadTokens: 6, cacheWriteTokens: 0, reasoningTokens: 1 });
   const usageEvent = await ui.waitFor((f) => f.type === 'session.usage' && f.session === 'coord' && (f.usage as { total?: { totalTokens?: number } }).total?.totalTokens === 24);
-  assert.deepEqual(usageEvent.usage, h.usage, 'token and rate-limit notifications publish usage');
+  // A later rate-limit read can refresh the snapshot's timestamp without changing its values.
+  assert.deepEqual(
+    { ...(usageEvent.usage as Record<string, unknown>), rateLimitsAt: undefined },
+    { ...h.usage, rateLimitsAt: undefined },
+    'token and rate-limit notifications publish usage',
+  );
 
   // a command approval: waiting for approval from thread/status/changed, whatever the model says of itself
   const approvalId = await sendGeneral(ui, 'this one needs approval');
