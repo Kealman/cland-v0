@@ -2,8 +2,8 @@
 id: T-433
 kind: task
 title: A restored launching suite fails when its suite ref already exists (update-ref expects it absent)
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -17,7 +17,8 @@ regression_of: T-345
 topic: topic-258
 branch: t/T-433-a-restored-launching-suite-fails-when
 created: 2026-10-14T17:56:11.704Z
-updated: 2026-10-15T02:41:34.754Z
+updated: 2026-10-15T02:41:50.959Z
+closed: 2026-10-15T02:41:50.959Z
 ---
 
 ## Summary
@@ -131,3 +132,7 @@ scope: evidence
 No high/medium findings. Accepted same-head local auto/full c08bddb4/A-2649 passes typecheck and 2042/2042 (37 free,1618 hub machine,387 Neovim), zero fail/cancel/skip/todo. Matching/conflicting ref cases pass; C2 deterministic setup and five 18/18 file runs A-2486 retained because original test source is unchanged. Earlier 54e82e23/A-2608 cleanup flake, five 61/61 isolation files A-2623 and be362f56/A-2639 gi failure remain preserved. Coordinator-directed exact T-439 pick was source-reviewed in A-2642; both formerly failing cases pass now. C1/C2 verified. Evidence A-2650: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2650-t-433-final-clear-at-2c9f932a-restart-refs-and-accepted-full-run-checked.md.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-15T02:41:50.959Z
+
+Merged 1d2d52117beb0b1228dff76063fd0ded34ced312 onto dev.
