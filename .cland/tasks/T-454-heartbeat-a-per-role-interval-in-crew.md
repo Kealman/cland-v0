@@ -3,7 +3,7 @@ id: T-454
 kind: task
 title: "Heartbeat: a per-role interval in crew.toml wakes an idle session with a hub-computed digest of what is in flight and what looks stale, folds into the next turn on a busy one, and is never a needs-you"
 state: open
-status: in progress
+status: review
 size: L
 criterion_seq: 8
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-275
 branch: t/T-454-heartbeat-a-per-role-interval-in-crew
 created: 2026-10-15T07:15:15.368Z
-updated: 2026-10-15T08:08:52.820Z
+updated: 2026-10-15T08:15:42.472Z
 ---
 
 ## Summary
@@ -82,15 +82,15 @@ E-423 "Rules and rhythm" (R-294), tracer bullet 1 of 7; spec `docs/spec/v0.1.3.m
   - done: impl-454 · 2026-10-15T07:40:43.928Z
 - [x] C3. The digest lists in-flight claimed items, runs, open asks and live leases, and as stale (with ages, only after one full interval) a review item with no request or verdict, a ready unmerged item, a session idle past `idle_minutes`, a run past its timeout or with no posted result, and an unanswered ask, each part capped at ten rows with an "and N more" line.
   - done: impl-454 · 2026-10-15T07:49:11.278Z
-- [ ] C4. On an idle fake Coordinator a heartbeat starts a turn; on a busy one, or one waiting for approval, it arrives as one entry of the next turn's digest, a newer heartbeat replaces an undelivered older one, and it never steers a running turn.
-  - failed: rev-23 [reviewer] · 2026-10-15T08:08:52.820Z · note Idle role-clause sends invoke the general digest binder and prematurely inject held progress/events on restart/relaunch.
+- [x] C4. On an idle fake Coordinator a heartbeat starts a turn; on a busy one, or one waiting for approval, it arrives as one entry of the next turn's digest, a newer heartbeat replaces an undelivered older one, and it never steers a running turn.
+  - done: impl-454 · 2026-10-15T08:15:18.498Z
 - [x] C5. A heartbeat never changes the inbox count or shows as a needs-you, and the events view shows one background-layer row per firing with the session and counts, filtered by key `9` as kind `heartbeat`, proven headless.
   - done: impl-454 · 2026-10-15T07:40:46.443Z
 - [x] C6. The connection keepalive is called keepalive in identifiers and comments, and no hub source uses "heartbeat" for it.
   - done: impl-454 · 2026-10-15T07:49:11.736Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-454-2 · 2026-10-15T07:49:57.099Z · commit b64e068182a0bfb027f5fdc2542a764c17e55b56
-- [ ] C7. The Coordinator's clause, in `default-roles.ts` and the live `.cland/roles.toml`, says what to check, what to repair and when to escalate on a heartbeat, and to end a clean heartbeat without a message.
-  - failed: rev-23 [reviewer] · 2026-10-15T08:08:52.820Z · note Default/live Coordinator clause replies exceed the existing 7680-byte headroom guard at 8040/8091 bytes.
+- [x] C7. The Coordinator's clause, in `default-roles.ts` and the live `.cland/roles.toml`, says what to check, what to repair and when to escalate on a heartbeat, and to end a clean heartbeat without a message.
+  - done: impl-454 · 2026-10-15T08:15:20.472Z
 - [x] C8. `hub/README.md` describes the `heartbeat` setting, its default, the digest's rows, coalescing and `CLAND_HEARTBEAT_MS`, and `nvim/README.md` lists the `heartbeat` kind and key `9` in the events view.
   - done: impl-454 · 2026-10-15T07:40:48.284Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-454-2 · 2026-10-15T07:49:57.099Z · commit b64e068182a0bfb027f5fdc2542a764c17e55b56
@@ -148,3 +148,7 @@ Medium — hub/src/roles/default-roles.ts:58 and .cland/roles.toml:46: Coordinat
 Exact-head f3eca6ee/A-2758 is red: 1721/1730 hub tests pass, 9 fail, zero skips; Neovim not reached. Earlier source review missed these integration defects. A-2760 records the trace. No retry at unchanged head; fixes need source re-review.
 
 Criteria: C4 failed (Idle role-clause sends invoke the general digest binder and prematurely inject held progress/events on restart/relaunch.), C7 failed (Default/live Coordinator clause replies exceed the existing 7680-byte headroom guard at 8040/8091 bytes.).
+
+### impl-454 · 2026-10-15T08:15:21.624Z
+
+Corrected A-2758/A-2760 at pushed head 24ca7ce1. Role-clause sends no longer late-bind held notes, and the late binder targets heartbeat rows only. Both Coordinator clauses shortened by 446 bytes without weakening the existing size guard or heartbeat policy. Every one of the nine failed full-run cases now passes targeted; heartbeat 9/9 and typecheck pass. origin/dev 0d04c4b6 merged (tracker-only). New source review requested before a new verification run.

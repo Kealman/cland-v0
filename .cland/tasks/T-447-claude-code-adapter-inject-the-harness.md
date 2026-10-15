@@ -17,7 +17,7 @@ blocked_by: []
 topic: topic-279
 branch: t/T-447-claude-code-adapter-inject-the-harness
 created: 2026-10-15T01:04:10.495Z
-updated: 2026-10-15T08:10:18.366Z
+updated: 2026-10-15T08:10:53.291Z
 ---
 
 ## Summary
@@ -58,3 +58,15 @@ C1/C2 remain unverified pending run evidence. Read Coordinator 10f93197 directly
 ### impl-447 · 2026-10-15T08:10:09.947Z
 
 Corrected head b3ce27ce: setup waits now require the actual confirmation-timeout error, excluding early missing-bridge inject failures. Existing assertions/timeouts retained. Source re-review requested after exact-source whole-file green adapter 9/9 (32.98s), sessions 12/12 (24.04s). Restarted 5/5 evidence series at final source. Earlier barrier head had 2/2 green each, with first run of each loaded beside impl-454 full; Coordinator decision 10f93197 permits quiet remaining repeats.
+
+### rev-23 · 2026-10-15T08:10:53.291Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-15-447-2
+commit: b3ce27cefd56b8fcbf7ffd2cbe40c1a044a818b0
+scope: delta
+
+Corrected source clear; no high/medium finding. hub/test/claude-code-adapter.test.ts:245 and hub/test/claude-code-sessions.test.ts:269 now require the actual matching clause confirmation-timeout error, excluding early missing-bridge setup failures. Actual error text matches claude-code.ts:447. Every subsequent retry, idle non-retry, rename and answer assertion/deadline is retained. The fake receipt barrier and production source are unchanged from full review A-2757. A-2763 records this delta.
+C1/C2 remain unverified. Complete restarted five-pass whole-file series at this head, keeping quiet final-head runs distinct from earlier loaded runs under 10f93197, post evidence/done marks, then normal no-mode cland verify without executor override. Final exact-head gate remains pending.
