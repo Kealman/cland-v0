@@ -372,6 +372,9 @@ test('a signed-out Claude directory is reported once, remains quiet across resta
   t.after(() => sender.close());
   await sender.waitForPresence(['sender']);
   const running = await launch(ui, 'running');
+  await writeFile(join(fake.home, 'agents-hold'), '');
+  const inFlight = await eventually('a poll is in flight before the signed-out latch', () =>
+    readFile(join(fake.home, 'agents-started'), 'utf8').catch(() => undefined));
   await sender.call('send', { to: ['running'], kind: 'progress', text: 'waiting input' });
   const input = await ui.waitFor(f => f.type === 'message' && (f.message as { from: string; text: string }).from === 'sender' && (f.message as { text: string }).text === 'waiting input');
   const inputId = (input.message as { id: string }).id;
@@ -384,15 +387,22 @@ test('a signed-out Claude directory is reported once, remains quiet across resta
   await sender.waitForEvent(e => e.params.content.includes(`signed out: ${fake.home}; see the Agents notice`));
   await sleep(100);
   assert.equal(sender.events.filter(e => e.params.content.includes(`signed out: ${fake.home}; see the Agents notice`)).length, 1, 'one sender delivery per latched directory');
+  // The latch prevents new polls; a child admitted before it can log its call later.
+  // Drain that observed child before counting, including across the hub restart.
+  await writeFile(join(fake.home, 'agents-release'), '');
+  await eventually('the pre-latch child finishes', () =>
+    readFile(join(fake.home, 'agents-finished'), 'utf8').catch(() => undefined));
   const count = (await fake.calls()).length;
   await sleep(4 * Number(fake.env.CLAND_ADAPTER_POLL_MS)); // Negative: a latched watch stays silent for four polls.
   assert.equal((await fake.calls()).length, count, 'the latched watch makes no CLI calls');
+  assert.equal(await readFile(join(fake.home, 'agents-started'), 'utf8'), inFlight, 'the latch admits no new poll child');
   ui.close();
   assert.equal((await clandWithEnv(root, env, 'hub', 'stop')).code, 0);
   const restarted = await startDaemon(t, root, env);
   const ui2 = await connectUi(t, restarted.discovery);
   await sleep(3 * Number(fake.env.CLAND_ADAPTER_POLL_MS)); // Negative: three idle polls cannot lift the signed-out latch.
   assert.equal((await fake.calls()).length, count, 'latched startup resume makes no CLI calls');
+  assert.equal(await readFile(join(fake.home, 'agents-started'), 'utf8'), inFlight, 'restart admits no new poll child');
   await ui2.request({ ...signal, event: 'turn-start', payload: { prompt_id: 'auth-turn', ids: [inputId] } });
   await ui2.request(signal);
   await sleep(100);
