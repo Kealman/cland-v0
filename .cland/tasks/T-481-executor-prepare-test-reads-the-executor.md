@@ -2,8 +2,8 @@
 id: T-481
 kind: task
 title: executor-prepare test reads the executor-lease-released record before the journal publishes it (Linux)
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 1
 labels:
@@ -16,7 +16,8 @@ regression_of: T-432
 topic: topic-283
 branch: t/T-481-executor-prepare-test-reads-the-executor
 created: 2026-10-15T09:14:01.095Z
-updated: 2026-10-15T11:34:49.395Z
+updated: 2026-10-15T11:36:42.899Z
+closed: 2026-10-15T11:36:42.899Z
 ---
 
 ## Summary
@@ -104,3 +105,7 @@ First Linux 8cd787ee/A-2864: executor-prepare 17/17 green, fixed case 6.484 s; s
 Local 53242041/A-2914 cancelled while queued, no tests/evidence. No further tests started. C1 done remains the claimant's mark.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-15T11:36:42.899Z
+
+Merged 8d4d104bb4b94b43b8b09301c292a29f3a73ca11 onto dev.
