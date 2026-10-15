@@ -5,6 +5,7 @@ title: "In-process hub by default: tests run against a hub served in the test pr
 state: open
 status: in progress
 size: L
+criterion_seq: 9
 labels:
   - v0.1.3
   - hub
@@ -14,10 +15,10 @@ parent: E-387
 blocked_by:
   - T-390
   - T-392
-topic: null
+topic: topic-273
 branch: t/T-393-in-process-hub-by-default-tests-run
 created: 2026-10-14T12:28:19.095Z
-updated: 2026-10-15T07:07:08.253Z
+updated: 2026-10-15T07:11:42.338Z
 ---
 
 ## Summary
@@ -55,7 +56,7 @@ updated: 2026-10-15T07:07:08.253Z
 - [ ] C2. Cleanup fails a test whose in-process hub leaves handles, timers, `process` listeners or child processes, proven by a test that leaks one on purpose.
 - [ ] C3. `serveProject` takes its environment as an option, and two in-process hubs in one file with different adapter timings behave independently, proven by a test.
 - [ ] C4. The lifecycle list is posted per file; every test that still calls `startDaemon` or `cland hub start` in the 20 files is on it, and none of the others is.
-- [ ] C5. Measured: the 20 files' summed whole-file time on an idle machine falls by at least 20% (median of three per file), with the per-file table posted.
+- [ ] C5. Measured (Coordinator amendment 2026-10-15 07:12Z): the 20 files' summed whole-file time falls by at least 20%, taken as one serial before/after pair per file with the one-minute load and queue holder recorded, plus three pairs (median) for the five heaviest files; runs are made only while the local slot has no holder, and the per-file table is posted.
 - [ ] C6. Measured: daemon starts per full run fall to under 600 (about 944 in A-2021) from the census or the run log, posted on the item.
 - [ ] C7. Each refusal family and each adapter verb keeps at least one frame test, and the moved validation cases keep their asserted error codes and messages.
 - [ ] C8. No assertion changes its meaning: the review request lists every changed assertion with what it still proves, and no test is deleted.

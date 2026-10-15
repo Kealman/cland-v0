@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-14T16:43:04.090Z
-updated: 2026-10-14T16:46:45.637Z
+updated: 2026-10-15T07:16:04.944Z
 ---
 
 ## Summary
@@ -120,3 +120,45 @@ The build uses each part as soon as it merges. When the heartbeat slice merges a
 - GLOSSARY: Rulebook, Rule, Heartbeat, Follows, Role clause, Event, Subscription, Aide, Lease.
 
 Amendment (2026-10-14, the lead): rules carry a plain number and are written "rule 12" everywhere; no letter prefix, since `R-n` is a release id and any prefix resolves an item.
+
+## Plan
+
+```yaml
+stages:
+  - name: heartbeat, rulebook file and follows
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-454
+      - - T-455
+      - - T-335
+  - name: rules reach sessions, rulebook view and demo lease
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-456
+        - T-457
+      - - T-458
+      - - T-459
+```
+
+## Comments
+
+### coord · 2026-10-15T07:16:04.944Z
+
+Coordinator decisions at ticketing (2026-10-15 07:20Z). Tickets: T-454 heartbeat, T-455 rulebook, T-335 lane flow (rewritten), T-456 rules reach sessions, T-457 seed, T-458 rulebook view, T-459 demo lease. Spec points settled:
+1. Rule headings are `## <n> <title>`, written `rule <n>`, with plain numbers and no R- prefix.
+2. The seed records its origin with `cland rule add --origin memory:<path>`, from the human's or an Aide's shell only.
+3. Origins take the forms `message:<topic>/<msg_id>`, `session:<name>`, `shell`, `workbench` and `memory:<path>`.
+4. Event kinds: `heartbeat` is the 9th and `rule` the 10th, so T-456 also waits on T-454. The numeric filter keys stop at 9.
+5. The connection keepalive (`HEARTBEAT_MS`) is renamed keepalive. The `ping` frame stays.
+6. The test override is `CLAND_HEARTBEAT_MS`, and the one-minute floor applies only to crew.toml.
+7. The heartbeat schedule is keyed by the session's stable identity, so `--relaunch` keeps it.
+8. Rule events reach Aides in scope by name. `EventSubject` gains `rule`.
+9. The seed's origins name the planning memory copy unless the two copies differ.
+10. T-458 adds a `rules.changed` UI push. Workbench writes count as the human's, with origin `workbench`.
+11. The demo lease (T-459) is for QA holding the epic, the Coordinator and the human. The hub creates the droplet.
+12. Clause edits go in both default-roles.ts and .cland/roles.toml.
+The stand-in may revisit any of these under D24.

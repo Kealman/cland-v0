@@ -14,10 +14,10 @@ parent: E-387
 blocked_by:
   - T-390
   - T-347
-topic: null
+topic: topic-274
 branch: t/T-395-sharded-close-runs-stage-epic-and
 created: 2026-10-14T12:28:19.467Z
-updated: 2026-10-15T07:07:14.766Z
+updated: 2026-10-15T07:07:43.833Z
 ---
 
 ## Summary
@@ -65,3 +65,9 @@ A failed or lost shard fails the run once, naming the shard. The hub does not re
 - [ ] C6. Measured, real check: a two-shard c-8 `--occasion stage` run of `dev` takes at most 10 minutes wall (about 15 on one slot), with create, destroy, each shard's time and the cost posted on the item.
 - [ ] C7. The day's spend after the real check stays under $3, and the provider's `cland` tag listing is empty afterwards.
 - [ ] C8. `hub/README.md` (Remote executors, Tests), `docs/agents/tests.md`, the Coordinator and QA clauses and the `merge` and `qa` skills describe `--occasion`, which runs shard, the cap fallback and the cost per run.
+
+## Comments
+
+### impl-395 · 2026-10-15T07:07:43.833Z
+
+Implementation started in task worktree. Test boundaries: existing verify frame/CLI with fake DigitalOcean for admission, fallback and result semantics; explicit fixture manifest for balancing. C6/C7 delegated by role clause to Coordinator real check, steps to follow with reviewed build.
