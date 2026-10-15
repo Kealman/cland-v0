@@ -3,7 +3,7 @@ id: T-447
 kind: task
 title: Clause-turn and inject-confirmation waits time out under load in claude-code-adapter and claude-code-sessions tests (shared fix)
 state: open
-status: in progress
+status: review
 size: S
 rank: 2940
 criterion_seq: 2
@@ -17,7 +17,7 @@ blocked_by: []
 topic: topic-279
 branch: t/T-447-claude-code-adapter-inject-the-harness
 created: 2026-10-15T01:04:10.495Z
-updated: 2026-10-15T08:49:14.805Z
+updated: 2026-10-15T09:19:23.727Z
 ---
 
 ## Summary

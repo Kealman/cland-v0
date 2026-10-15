@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-273
 branch: t/T-393-in-process-hub-by-default-tests-run
 created: 2026-10-14T12:28:19.095Z
-updated: 2026-10-15T09:11:30.741Z
+updated: 2026-10-15T09:19:44.326Z
 ---
 
 ## Summary
@@ -54,10 +54,10 @@ updated: 2026-10-15T09:11:30.741Z
 
 - [x] C1. `projectHub` serves a project in the test process; `cland` subprocesses, spokes and UI clients reach it over its real socket and WebSocket with no change to their code, proven by a tracer test that runs the same frames against `projectHub` and `startDaemon`.
   - done: impl-393 · 2026-10-15T08:08:37.623Z
-- [ ] C2. Cleanup fails a test whose in-process hub leaves handles, timers, `process` listeners or child processes, proven by a test that leaks one on purpose.
-  - failed: rev-23 [reviewer] · 2026-10-15T09:11:30.741Z · note Direct dispatcherUi requests bypass the fixture AsyncLocalStorage resource scope, so request-time leaked resources evade strict cleanup checks.
-- [ ] C3. `serveProject` takes its environment as an option, and two in-process hubs in one file with different adapter timings behave independently, proven by a test.
-  - failed: rev-23 [reviewer] · 2026-10-15T09:11:30.741Z · note DropletRun config reparse and Suites candidateTree Git checks still use host environment rather than the owning hub environment.
+- [x] C2. Cleanup fails a test whose in-process hub leaves handles, timers, `process` listeners or child processes, proven by a test that leaks one on purpose.
+  - done: impl-393 · 2026-10-15T09:19:34.574Z
+- [x] C3. `serveProject` takes its environment as an option, and two in-process hubs in one file with different adapter timings behave independently, proven by a test.
+  - done: impl-393 · 2026-10-15T09:19:44.326Z
 - [x] C4. The lifecycle list is posted per file; every test that still calls `startDaemon` or `cland hub start` in the 20 files is on it, and none of the others is.
   - done: impl-393 · 2026-10-15T08:08:39.537Z
 - [x] C5. Measured (Coordinator amendment 2026-10-15 09:03Z): the 20 files' summed whole-file time falls by at least 20%, judged after merge from E-387's stage-1 close integrated cover on the Mac against the v0.1.2 release cover A-2714 (both quiet integrated runs), per file from the runner's records; pre-merge, the available paired samples are posted without a claim, because local fallbacks invalidated every pair while remote_budget was 2.

@@ -3,18 +3,19 @@ id: T-445
 kind: task
 title: suite.test.ts cleanup-observer test times out under full-suite load (unverified cleanup preserved, 15 s)
 state: open
-status: backlog
+status: planned
 size: S
 labels:
-  - needs-triage
+  - v0.1.3
+  - ready-for-agent
 assignee: null
-parent: C-325
+parent: E-482
 blocked_by: []
 regression_of: T-203
 topic: null
 branch: null
 created: 2026-10-15T00:40:00.743Z
-updated: 2026-10-15T00:40:00.743Z
+updated: 2026-10-15T09:14:51.670Z
 ---
 
 ## Summary

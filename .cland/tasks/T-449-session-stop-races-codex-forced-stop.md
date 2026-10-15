@@ -3,17 +3,18 @@ id: T-449
 kind: task
 title: session-stop-races Codex forced-stop test reads probe.json before it is written (ENOENT under load)
 state: open
-status: backlog
+status: planned
 size: XS
 labels:
-  - needs-triage
+  - v0.1.3
+  - ready-for-agent
 assignee: null
-parent: C-325
+parent: E-482
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-15T01:25:43.927Z
-updated: 2026-10-15T01:25:43.927Z
+updated: 2026-10-15T09:16:14.904Z
 ---
 
 ## Summary

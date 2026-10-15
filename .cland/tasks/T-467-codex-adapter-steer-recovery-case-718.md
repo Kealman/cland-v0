@@ -3,17 +3,18 @@ id: T-467
 kind: task
 title: codex-adapter steer-recovery case (:718) misses the expected turn/steer injection under load
 state: open
-status: backlog
+status: planned
 size: XS
 labels:
-  - needs-triage
+  - v0.1.3
+  - ready-for-agent
 assignee: null
-parent: C-325
+parent: E-482
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-15T09:04:29.811Z
-updated: 2026-10-15T09:04:29.811Z
+updated: 2026-10-15T09:14:39.121Z
 ---
 
 ## Summary

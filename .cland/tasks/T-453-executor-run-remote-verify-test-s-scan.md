@@ -3,17 +3,18 @@ id: T-453
 kind: task
 title: executor-run remote-verify test's scan reads a transient spend.json.lock.break entry (ENOENT)
 state: open
-status: backlog
+status: planned
 size: XS
 labels:
-  - needs-triage
+  - v0.1.3
+  - ready-for-agent
 assignee: null
-parent: C-325
+parent: E-482
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-15T06:07:18.320Z
-updated: 2026-10-15T06:07:18.320Z
+updated: 2026-10-15T09:14:36.695Z
 ---
 
 ## Summary

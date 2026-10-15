@@ -3,17 +3,18 @@ id: T-442
 kind: task
 title: sessions.test.ts hard-limits display test fails when the reset falls after local midnight
 state: open
-status: backlog
+status: planned
 size: XS
 labels:
-  - needs-triage
+  - v0.1.3
+  - ready-for-agent
 assignee: null
-parent: C-325
+parent: E-482
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-14T22:00:11.207Z
-updated: 2026-10-14T22:00:11.207Z
+updated: 2026-10-15T09:16:37.215Z
 ---
 
 ## Summary

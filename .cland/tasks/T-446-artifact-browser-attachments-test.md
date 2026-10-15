@@ -3,17 +3,18 @@ id: T-446
 kind: task
 title: artifact-browser attachments test connects before its Neovim socket is up (ECONNREFUSED under load)
 state: open
-status: backlog
+status: planned
 size: XS
 labels:
-  - needs-triage
+  - v0.1.3
+  - ready-for-agent
 assignee: null
-parent: C-325
+parent: E-482
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-15T00:52:28.303Z
-updated: 2026-10-15T00:52:28.303Z
+updated: 2026-10-15T09:16:26.682Z
 ---
 
 ## Summary

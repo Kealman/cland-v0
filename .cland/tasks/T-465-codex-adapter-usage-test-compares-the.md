@@ -3,17 +3,18 @@ id: T-465
 kind: task
 title: codex-adapter usage test compares the first usage event with a later snapshot whose rateLimitsAt differs
 state: open
-status: backlog
+status: planned
 size: XS
 labels:
-  - needs-triage
+  - v0.1.3
+  - ready-for-agent
 assignee: null
-parent: C-325
+parent: E-482
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-15T08:47:22.013Z
-updated: 2026-10-15T08:47:22.013Z
+updated: 2026-10-15T09:14:37.633Z
 ---
 
 ## Summary
