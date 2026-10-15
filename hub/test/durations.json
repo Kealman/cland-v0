@@ -3551,6 +3551,14 @@
     "hub/test/heartbeat.test.ts::live remote leases appear in the heartbeat beside their verification run": {
       "seconds": 6.508681334,
       "reason": "T-454 observes a live lease through a real hub and the fake DigitalOcean/SSH machine, then waits for the verification run to finish and the lease to be released. The end-to-end executor lifecycle exceeds five seconds."
+    },
+    "hub/test/heartbeat.test.ts::an idle Coordinator wakes for a heartbeat with a digest, without adding a needs-you": {
+      "seconds": 5.32,
+      "reason": "Starts a real hub with a fake Coordinator, waits one full heartbeat interval for the idle session to wake, then checks the digest and that no needs-you was added. The interval wait dominates. Measured on Linux droplet run a3fe0258 (A-3001)."
+    },
+    "hub/test/heartbeat.test.ts::the digest includes running and queued runs and ages timeouts and ended runs without results": {
+      "seconds": 5.553,
+      "reason": "Drives running, queued, timed-out and ended verification runs through a real hub and waits for the heartbeat digests that age each of them. Measured on Linux droplet run a3fe0258 (A-3001)."
     }
   }
 }
