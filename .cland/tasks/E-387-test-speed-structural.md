@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-14T12:28:09.615Z
-updated: 2026-10-15T09:13:28.520Z
+updated: 2026-10-15T15:36:22.537Z
 ---
 
 ## Goal
@@ -137,3 +137,7 @@ Owed at stage-1 close (Coordinator, 2026-10-15 07:37Z): the real two-shard c-8 `
 ### coord · 2026-10-15T09:03:17.377Z
 
 Owed at stage-1 close, besides T-395's real two-droplet run: T-393's C5. The 20 migrated files' summed whole-file time from the stage-1 close integrated cover on the Mac, compared with release cover A-2714 per file, must fall by at least 20%. Its C6 under-600 target moved to T-466.
+
+### coord · 2026-10-15T15:36:22.536Z
+
+Research question 2 is answered (2026-10-15 15:36Z, ask 82732199): the proposal is accepted. The batch is the backstop, the bar is zero misses on the last 40 merges' own tests, and wider misses are listed with their cause. Recorded on T-394.

@@ -3,7 +3,7 @@ id: T-507
 kind: task
 title: "subscriptions test: T-486 now keeps a completed first turn's idle, but the test expects only 'impl launched'"
 state: open
-status: review
+status: ready
 size: XS
 criterion_seq: 2
 labels:
@@ -15,7 +15,7 @@ regression_of: T-486
 topic: topic-305
 branch: t/T-507-subscriptions-test-t-486-now-keeps-a
 created: 2026-10-15T15:16:16.512Z
-updated: 2026-10-15T15:24:40.279Z
+updated: 2026-10-15T16:03:09.367Z
 ---
 
 ## Problem
@@ -27,7 +27,9 @@ updated: 2026-10-15T15:24:40.279Z
 - [x] C1. The case expects the event set that T-486's launch ordering produces. It either accepts 'impl idle' after 'impl launched' when the first turn has completed, or it holds the fake's first turn so that idle can't arrive inside the window. Record which, and why, in the commit.
   - done: impl-507 · 2026-10-15T15:21:51.990Z
   - verified: rev-31 [reviewer] · run rev-20261015-507-source · 2026-10-15T15:24:40.279Z · commit a81a396db4d2fb9661037e6e0bb3940e5bebab8b
-- [ ] C2. subscriptions.test.ts passes 5/5 serially, whole file and alone on the Mac, plus once on a droplet in the task's verify.
+- [x] C2. subscriptions.test.ts passes 5/5 serially, whole file and alone on the Mac, plus once on a droplet in the task's verify.
+  - done: impl-507 · 2026-10-15T16:02:43.150Z
+  - verified: rev-31 [reviewer] · run rev-20261015-507-final · 2026-10-15T16:03:04.370Z · commit a81a396db4d2fb9661037e6e0bb3940e5bebab8b
 
 ## Comments
 
@@ -61,3 +63,30 @@ C2 Mac portion is evidenced; C2 remains unverified pending accepted exact-head p
 Standards: 0 findings. Spec: 0 findings. No Reviewer tests or edits.
 
 Criteria: C1 verified.
+
+### impl-507 · 2026-10-15T16:02:45.600Z
+
+C2 complete: A-3113 records five serial quiet Mac whole-file passes, 15/15 each. Exact reviewed head a81a396db4d2fb9661037e6e0bb3940e5bebab8b passed droplet verify 39ece7b6-0ae3-4f5e-99c5-7e56f574fdf6 (A-3141), Linux x64 c-8, 1784 tests / 1781 pass / 0 fail / 3 skip. subscriptions.test.ts includes all 15 cases; changed terminal-role-update case green in 6.092 s under 4-worker Linux load. Droplet lifetime 1403 s, cost $0.0974. No head changes or local tests during cover-quiet. Awaiting Reviewer's final verdict; Coordinator merge waits through restart hold.
+
+### rev-31 · 2026-10-15T16:03:04.370Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261015-507-final
+commit: a81a396db4d2fb9661037e6e0bb3940e5bebab8b
+scope: evidence
+
+Final review clear at unchanged a81a396db4d2fb9661037e6e0bb3940e5bebab8b. No unresolved source findings.
+
+## Standards
+Source review rev-20261015-507-source stands. No new findings; branch head matches the reviewed and verified commit.
+
+## Spec
+C1 source verification retained: wait for resumed first-turn idle, then require exactly launched followed by idle; metadata-update subscription identity and prior-terminal-replay detection remain intact. Commit records the chosen completed-idle acceptance.
+C2 verified: A-3113 supplies five labelled quiet serial Mac whole-file passes (15/15 each, 75/75 total), and A-3141 supplies all fifteen subscription cases green on Linux under four-worker load. Changed case passes in 6.092 s (A-3141:2769); no subscription case skipped.
+
+Accepted exact-head gate: 39ece7b6-0ae3-4f5e-99c5-7e56f574fdf6 / A-3141, droplet Linux x64 c-8, exit 0, 1781 pass / 0 fail / 3 macOS-only skips / 0 cancelled. Host/remote typecheck and hub plus Neovim smoke complete; smoke 12/12. Skips are two sandbox-exec cases and macOS sleep inhibitor. Existing duration notices do not fail the receipt. No exception needed.
+Standards: 0 findings. Spec: 0 findings; C1 retained, C2 verified. No Reviewer tests or edits.
+
+Criteria: C2 verified.

@@ -3,7 +3,7 @@ id: T-394
 kind: task
 title: "Coverage selection: task runs select hub tests by a function-level V8 coverage map from integrated dev runs, with full fallback on shared or unknown paths"
 state: open
-status: planned
+status: in progress
 size: L
 labels:
   - v0.1.3
@@ -15,10 +15,10 @@ blocked_by:
   - T-388
   - T-390
   - T-393
-topic: null
-branch: null
+topic: topic-306
+branch: t/T-394-coverage-selection-task-runs-select-hub
 created: 2026-10-14T12:28:19.272Z
-updated: 2026-10-15T15:32:05.304Z
+updated: 2026-10-15T15:50:10.684Z
 ---
 
 ## Summary
@@ -60,3 +60,20 @@ It falls back to today's rules, naming the reason, for protocol, contract, packa
 - [ ] C6. Measured: `cland verify` on a branch changing one function in `hub/src/hub/` finishes in under 5 minutes on the default executor (about 15 today), with the duration line posted.
 - [ ] C7. Recording coverage adds at most 15% to an integrated run's wall time, measured against the run before at a nearby head.
 - [ ] C8. `hub/README.md` (Tests), `docs/agents/tests.md` and the Implementer clause describe `hub-selected`, the map, its age limit and the fallbacks.
+
+## Comments
+
+### coord · 2026-10-15T15:36:22.142Z
+
+Human decision on research question 2, 2026-10-15 at 15:36Z (ask 82732199, answer b855ccca): the proposal is accepted as written.
+(1) A regression that a task's selected run misses and the next integrated batch run catches is acceptable; D29 makes the batch the backstop.
+(2) Replay bar: zero misses on the last 40 merges' own changed or added test files, and every miss in a wider replay listed with its cause.
+C1 and C5 use this bar.
+
+### coord · 2026-10-15T15:36:57.654Z
+
+Coordinator decision on evidence sequencing (2026-10-15 15:37Z). C5, C6 and C7 need a real dev coverage map and an integrated run, which only exist after this merges and the hub restarts. So the pre-merge gate is fixtures (capture, publication, hunk mapping, fallbacks, conservative replay) plus C1–C4. C5–C7 are judged at the E-387 stage-2 close: the Coordinator runs the dev coverage capture, the last-40 replay against the recorded bar, the one-function under-5-min probe and the at-most-15% comparison, and posts each result here. A miss is fixed forward inside E-387. This follows the T-393 C5 and T-395 C6/C7 precedent.
+
+### impl-394 · 2026-10-15T15:50:10.683Z
+
+Implementation draft prepared after C1 human decision was recorded. Source typecheck passes; no local tests have run because Coordinator's restart-cover hold is still active. Draft covers per-file V8 attribution and function reduction, integrated local/droplet/sharded transport and artifact publication, ancestor/age/hunk-based hub-selected admission, selected cache identity, coverage replay and docs/clauses. Confirmed public seams have fixture tests drafted, including actual copied CLI/daemon/spoke/fake process entries and a selected run catching a changed return value. Evidence/design artifact A-3135. C5–C7 remain judged at E-387 stage-2 close per Coordinator decision; no measured criterion claimed. Pending restart notice to run fixtures, correct findings and request source review.

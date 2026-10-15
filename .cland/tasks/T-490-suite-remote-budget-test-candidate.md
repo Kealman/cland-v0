@@ -3,7 +3,7 @@ id: T-490
 kind: task
 title: "suite-remote-budget test: candidate result not within 20 s when three remote callers run beside the local slot (Linux)"
 state: open
-status: review
+status: in progress
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-300
 branch: t/T-490-suite-remote-budget-test-candidate
 created: 2026-10-15T11:56:46.304Z
-updated: 2026-10-15T15:31:04.979Z
+updated: 2026-10-15T16:02:08.697Z
 ---
 
 ## Problem
@@ -26,7 +26,8 @@ updated: 2026-10-15T15:31:04.979Z
 - [x] C1. The case waits for the candidate result on an observed state rather than racing three remote callers' completion under load. Every assertion and time bound stays as it is, and the root cause is recorded in the commit.
   - done: impl-490 · 2026-10-15T15:17:25.346Z
   - verified: rev-30 [reviewer] · run rev-20261015-490-source · 2026-10-15T15:31:04.979Z · commit 34251b57aa6c1203b641be6ba0e75c7487d17c44
-- [ ] C2. suite-remote-budget.test.ts passes 5/5 serially, whole file and alone, beside a local full run, plus once on a droplet in the task's verify.
+- [x] C2. suite-remote-budget.test.ts passes 5/5 serially, whole file and alone, beside a local full run, plus once on a droplet in the task's verify.
+  - done: impl-490 · 2026-10-15T16:01:58.747Z
 
 ## Comments
 
@@ -62,3 +63,24 @@ Evidence read: A-3099 diagnosis and A-3120 raw logs. Controlled delayed probe re
 Both review axes performed directly under the Reviewer no-delegation clause. No Reviewer tests or edits. Proceed with one cland verify --executor droplet at this exact reviewed head, reporting in this topic.
 
 Criteria: C1 verified.
+
+### impl-490 · 2026-10-15T16:02:00.018Z
+
+Linux receipt 8cd57b4d at reviewed head 34251b57: all 1772 tests passed/skipped (1769 pass, 0 fail, 3 skip); suite-remote-budget.test.ts all 10 green, changed case 15.402s, under 4-worker Linux load. C2 evidence complete with A-3120 Mac 5/5 and A-3139 Linux. Overall exit 1 solely duration budget rule-sessions.test.ts::launch clause and brief end with the same ordered active rules 5.043s > 5s, outside T-490 diff. No new run submitted under Coordinator's active restart/cover hold. Final gate awaits shared budget handling and Reviewer.
+
+### rev-30 · 2026-10-15T16:02:08.697Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261015-490-linux-first
+commit: 34251b57aa6c1203b641be6ba0e75c7487d17c44
+scope: evidence
+
+Evidence review not clear at unchanged source-reviewed 34251b57aa6c1203b641be6ba0e75c7487d17c44; accepted final gate pending outside-task duration disposition.
+
+Medium — hub/test/rule-sessions.test.ts:171: existing launch-clause/brief ordered-rule case triggers hard new-test duration budget, 5.043 s > 5 s (A-3139:5670). Functional assertion passes (A-3139:2383); this is a hard budget exit, not an ordinary duration regression notice. Tech debt/XS aside to lead: route a measured shared allowance with the rule-session fixture reason/provenance, or classify the gate exception. No task-owned defect inferred and no failed implementation criterion mark.
+
+8cd57b4d/A-3139 matches reviewed/current head, Linux x64 c-8, exit 1, 1769 pass/0 functional failures/3 platform skips/0 cancelled. All 10 suite-remote-budget cases pass, changed three-callers case 15.401967818 s. Host/remote typecheck and hub phases complete; cross-package Neovim smoke does not run after budget exit. Earlier A-3120 five serial quiet Mac whole-file passes stand (50/50). C1 source verification retained; C2 runtime file evidence is present but final verification remains pending accepted gate.
+
+No further verify submission until Coordinator's restart notice e6ea9694/ac1e7e83; local cover-quiet now active. Any source pick/head change requires delta review before another run. No Reviewer tests or edits.

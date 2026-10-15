@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-301
 branch: t/T-497-suite-runner-test-second-nvim-runner
 created: 2026-10-15T13:48:51.140Z
-updated: 2026-10-15T15:23:49.163Z
+updated: 2026-10-15T15:44:13.513Z
 ---
 
 ## Problem
@@ -27,7 +27,9 @@ updated: 2026-10-15T15:23:49.163Z
   - done: impl-497 · 2026-10-15T15:16:07.738Z
   - verified: rev-30 [reviewer] · run rev-20261015-497-source · 2026-10-15T15:17:23.945Z · commit b53da58894f1150cbf54f5df8691cdd27ac032c2
   - verified: rev-30 [reviewer] · run rev-20261015-497-delta · 2026-10-15T15:23:49.163Z · commit 9b10339a8cd82da4d7d92753e927ca30564ad2db
-- [ ] C2. suite-runner.test.ts passes 5/5 serially, whole file and alone on the Mac, plus once on a droplet in the task's verify.
+- [x] C2. suite-runner.test.ts passes 5/5 serially, whole file and alone on the Mac, plus once on a droplet in the task's verify.
+  - done: impl-497 · 2026-10-15T15:43:49.269Z
+  - verified: rev-30 [reviewer] · run rev-20261015-497-linux-first · 2026-10-15T15:44:13.513Z · commit b53da58894f1150cbf54f5df8691cdd27ac032c2
 
 ## Comments
 
@@ -76,3 +78,24 @@ Spec: suite-runner.test.ts is byte-identical to source-reviewed b53da588; net ta
 Reviewed b53da588..9b10339a and net task diff 7df53ebe...9b10339a; git diff --check green. Five Mac passes A-3102 remain supporting evidence for unchanged file. C2 awaits accepted Linux verification. Old immutable run d95c9b7a at b53da588 remains old-head evidence; await it rather than submitting overlapping verification, then request a current-head run after this clear. Both axes reviewed directly; no Reviewer tests or edits.
 
 Criteria: C1 verified.
+
+### impl-497 · 2026-10-15T15:43:49.947Z
+
+C2 implemented evidence complete: five serial Mac whole-file passes (250/250, A-3102) and Linux droplet d95c9b7a at b53da588 green (A-3133), tests 1784; pass 1781; fail 0; skipped 3. Both touched cases green: hub 1.493s, nvim 1.557s. Host + droplet typecheck passed. Executor c-8 lon1 Linux x64, Node v24.21.0, lifetime 1299s, cost $0.0902. Current source-clear head remains 9b10339a; rev-30 confirmed own diff unchanged, and Coordinator ruling f900478e accepts this first receipt after pre-notice dev merge. Holding new verification submissions per Coordinator restart pause.
+
+### rev-30 · 2026-10-15T15:44:13.513Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-497-linux-first
+commit: b53da58894f1150cbf54f5df8691cdd27ac032c2
+scope: evidence
+
+Evidence review clear for immutable reviewed head b53da58894f1150cbf54f5df8691cdd27ac032c2; no high, medium or low findings in this receipt. This is not final clearance of current branch head 9b10339a8cd82da4d7d92753e927ca30564ad2db.
+
+A-3133/d95c9b7a is Linux x64 c-8, exit 0, 1781 pass/0 fail/3 platform skips/0 cancelled. Host and remote typecheck, hub phases and Neovim smoke complete. All 50 suite-runner cases pass; changed hub/nvim serialization cases take 1.493325923 s and 1.557355101 s. No hard duration-budget failure; reported duration regressions are notices. Combined with previously checked A-3102's five whole-file Mac passes (250/250), C2 is verified at b53da588 only.
+
+Current head 9b10339a already has clear delta source/C1 verification (rev-20261015-497-delta, A-3115); own file is byte-identical. Coordinator f900478e explicitly retains this integrated head, accepts this run as its first receipt and calls for the next droplet at 9b10339a as second. Therefore current-head final settlement remains pending that receipt; this old-head C2 mark will be stale against the current branch, intentionally. Submit no new verify during e6ea9694 hold; await restart notice. No Reviewer tests or edits.
+
+Criteria: C2 verified.

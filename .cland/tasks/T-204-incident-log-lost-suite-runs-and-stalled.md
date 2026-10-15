@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-10-15T14:33:03.483Z
+updated: 2026-10-15T15:59:14.949Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -275,3 +275,12 @@ Incident: orphaned test-fixture hub. pid 76123, 'node .cland/worktrees/T-459/hub
 ### coord · 2026-10-15T14:33:03.483Z
 
 Escape on 2026-10-15 at 14:32Z: dev was red on handover.test.ts:103 after T-395 merged (076009ab). T-395's conflict resolution reworded the Coordinator clause after its Linux receipts, and the Coordinator waived a full verify because the conflict was 'covered by the stage cover'. Only targeted role and clause files ran, which didn't include handover.test.ts. Shared fix b8ae050b. Lesson: a conflict resolution that changes text other tests assert needs a grep of hub/test for the old wording, or a full verify, before the waiver applies.
+
+### coord · 2026-10-15T15:59:14.949Z
+
+Incident 2026-10-15, 15:10–15:58Z: local admission was wedged for 48 min (1477 "suite root identity changed; refusing cleanup" refusals). The trigger was the cancel of T-498's local run cff20897: holder pid 48812 and runner group 53758 were dead, and the suite root was recreated by fake harnesses with a new inode. With the human's approval (ask 394f2f13, answer 393dc410), the Coordinator verified both pids dead and both holders matching token 47a13467, then moved four items to a quarantine dir in its job tmp, deleting nothing:
+- /tmp/cland-suite.lock
+- /tmp/cland-suite-nvim.lock and its .owner
+- /tmp/cland-suite.lock.runs/47a13467-4e74-4ca2-b7d5-9c5c02240003.json
+- /tmp/cland-suite-47a13467-4e74-4ca2-b7d5-9c5c02240003-1
+Cover e2a5506a took the local slot at 15:58:54Z. Hub fix: T-511.
