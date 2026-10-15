@@ -2,8 +2,8 @@
 id: T-467
 kind: task
 title: codex-adapter steer-recovery case (:718) misses the expected turn/steer injection under load
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 1
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-297
 branch: t/T-467-codex-adapter-steer-recovery-case-718
 created: 2026-10-15T09:04:29.811Z
-updated: 2026-10-15T15:04:38.117Z
+updated: 2026-10-15T15:04:58.453Z
+closed: 2026-10-15T15:04:58.453Z
 ---
 
 ## Summary
@@ -150,3 +151,7 @@ c1dad316 explicitly accepts these two receipts and clarifies that green-own-file
 Criteria: C1 verified. No Reviewer tests or edits.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-15T15:04:58.453Z
+
+Merged 71050454ce86d86ded69f63195657a6413bbd9d2 onto dev.
