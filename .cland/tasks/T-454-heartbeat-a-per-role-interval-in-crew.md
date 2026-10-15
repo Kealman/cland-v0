@@ -3,7 +3,7 @@ id: T-454
 kind: task
 title: "Heartbeat: a per-role interval in crew.toml wakes an idle session with a hub-computed digest of what is in flight and what looks stale, folds into the next turn on a busy one, and is never a needs-you"
 state: open
-status: review
+status: ready
 size: L
 criterion_seq: 8
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-275
 branch: t/T-454-heartbeat-a-per-role-interval-in-crew
 created: 2026-10-15T07:15:15.368Z
-updated: 2026-10-15T12:30:41.023Z
+updated: 2026-10-15T12:31:28.614Z
 ---
 
 ## Summary
@@ -78,14 +78,19 @@ E-423 "Rules and rhythm" (R-294), tracer bullet 1 of 7; spec `docs/spec/v0.1.3.m
 
 - [x] C1. `heartbeat` in `[crew.<role>]` accepts a duration of at least one minute or `"off"` and refuses anything else with the role and the minimum named; a Coordinator without it gets `1h`, other roles none; `cland init` writes it, and `cland crew show [--json]` and `cland crew set coordinator.heartbeat 30m` read and set it, the next firing using the new interval.
   - done: impl-454 · 2026-10-15T09:56:44.826Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-454-15 · 2026-10-15T12:31:18.730Z · commit d13473b071faf2224fc5f2556d003b6ab0a3c799
 - [x] C2. Each heartbeat session has its own schedule from its launch, kept in `hub.db` across a hub restart, and a firing due while the hub was down fires exactly once after start, proven by a test with `CLAND_HEARTBEAT_MS`.
   - done: impl-454 · 2026-10-15T07:40:43.928Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-454-15 · 2026-10-15T12:31:18.730Z · commit d13473b071faf2224fc5f2556d003b6ab0a3c799
 - [x] C3. The digest lists in-flight claimed items, runs, open asks and live leases, and as stale (with ages, only after one full interval) a review item with no request or verdict, a ready unmerged item, a session idle past `idle_minutes`, a run past its timeout or with no posted result, and an unanswered ask, each part capped at ten rows with an "and N more" line.
   - done: impl-454 · 2026-10-15T07:49:11.278Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-454-15 · 2026-10-15T12:31:18.730Z · commit d13473b071faf2224fc5f2556d003b6ab0a3c799
 - [x] C4. On an idle fake Coordinator a heartbeat starts a turn; on a busy one, or one waiting for approval, it arrives as one entry of the next turn's digest, a newer heartbeat replaces an undelivered older one, and it never steers a running turn.
   - done: impl-454 · 2026-10-15T08:15:18.498Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-454-15 · 2026-10-15T12:31:18.730Z · commit d13473b071faf2224fc5f2556d003b6ab0a3c799
 - [x] C5. A heartbeat never changes the inbox count or shows as a needs-you, and the events view shows one background-layer row per firing with the session and counts, filtered by key `9` as kind `heartbeat`, proven headless.
   - done: impl-454 · 2026-10-15T07:40:46.443Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-454-15 · 2026-10-15T12:31:18.730Z · commit d13473b071faf2224fc5f2556d003b6ab0a3c799
 - [x] C6. The connection keepalive is called keepalive in identifiers and comments, and no hub source uses "heartbeat" for it.
   - done: impl-454 · 2026-10-15T07:49:11.736Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-454-2 · 2026-10-15T07:49:57.099Z · commit b64e068182a0bfb027f5fdc2542a764c17e55b56
@@ -94,12 +99,14 @@ E-423 "Rules and rhythm" (R-294), tracer bullet 1 of 7; spec `docs/spec/v0.1.3.m
   - verified: rev-23 [reviewer] · run rev-2026-10-15-454-9 · 2026-10-15T09:57:47.574Z · commit af5c18eeb046f10161d86b19f0baa2712a3fb322
   - verified: rev-23 [reviewer] · run rev-2026-10-15-454-11 · 2026-10-15T10:30:29.408Z · commit 02d29aff362c66568ed41502c79bd93716f6ee47
   - verified: rev-23 [reviewer] · run rev-2026-10-15-454-13 · 2026-10-15T10:59:48.724Z · commit d13473b071faf2224fc5f2556d003b6ab0a3c799
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-454-15 · 2026-10-15T12:31:18.730Z · commit d13473b071faf2224fc5f2556d003b6ab0a3c799
 - [x] C7. The Coordinator's clause, in `default-roles.ts` and the live `.cland/roles.toml`, says what to check, what to repair and when to escalate on a heartbeat, and to end a clean heartbeat without a message.
   - done: impl-454 · 2026-10-15T08:50:11.220Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-454-6 · 2026-10-15T08:50:51.663Z · commit bdcddc3c3401dc268eb4eff0b420a8bab9590a62
   - verified: rev-23 [reviewer] · run rev-2026-10-15-454-9 · 2026-10-15T09:57:47.575Z · commit af5c18eeb046f10161d86b19f0baa2712a3fb322
   - verified: rev-23 [reviewer] · run rev-2026-10-15-454-11 · 2026-10-15T10:30:29.408Z · commit 02d29aff362c66568ed41502c79bd93716f6ee47
   - verified: rev-23 [reviewer] · run rev-2026-10-15-454-13 · 2026-10-15T10:59:48.724Z · commit d13473b071faf2224fc5f2556d003b6ab0a3c799
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-454-15 · 2026-10-15T12:31:18.730Z · commit d13473b071faf2224fc5f2556d003b6ab0a3c799
 - [x] C8. `hub/README.md` describes the `heartbeat` setting, its default, the digest's rows, coalescing and `CLAND_HEARTBEAT_MS`, and `nvim/README.md` lists the `heartbeat` kind and key `9` in the events view.
   - done: impl-454 · 2026-10-15T07:40:48.284Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-454-2 · 2026-10-15T07:49:57.099Z · commit b64e068182a0bfb027f5fdc2542a764c17e55b56
@@ -108,6 +115,7 @@ E-423 "Rules and rhythm" (R-294), tracer bullet 1 of 7; spec `docs/spec/v0.1.3.m
   - verified: rev-23 [reviewer] · run rev-2026-10-15-454-9 · 2026-10-15T09:57:47.575Z · commit af5c18eeb046f10161d86b19f0baa2712a3fb322
   - verified: rev-23 [reviewer] · run rev-2026-10-15-454-11 · 2026-10-15T10:30:29.408Z · commit 02d29aff362c66568ed41502c79bd93716f6ee47
   - verified: rev-23 [reviewer] · run rev-2026-10-15-454-13 · 2026-10-15T10:59:48.724Z · commit d13473b071faf2224fc5f2556d003b6ab0a3c799
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-454-15 · 2026-10-15T12:31:18.730Z · commit d13473b071faf2224fc5f2556d003b6ab0a3c799
 
 ## Comments
 
@@ -386,3 +394,29 @@ The only head delta is exact shared T-487, permitted same-head equivalence under
 
 C1–C5 final verification remains pending; C6–C8 source marks stay current. Preserve both receipts as red, queued-local cancellation 56603698/A-2911, and earlier own-fix/outage history. No new implementation failure inferred. No Reviewer tests or edits.
 Review evidence: A-2938.
+
+### rev-23 · 2026-10-15T12:31:18.730Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-15-454-15
+commit: d13473b071faf2224fc5f2556d003b6ab0a3c799
+scope: evidence
+
+Final evidence clear at unchanged d13473b071faf2224fc5f2556d003b6ab0a3c799 under the recorded mixed-diff gate ruling; no high/medium finding remains in T-454.
+
+Accepted hub evidence: first Linux 93b61bfc/A-2898 at 02d29aff passes own hub files and fails only T-485's immediate Implementer stop/pidAlive assertion. Second Linux 329ceb58/A-2937 at d13473b0 passes own hub files and fails only T-467's :997 initial-idle steer case. Each is 1726 pass/one fail/three macOS-only skips, exit 1, with no Neovim phase. Both remain overall red. The only head delta is exact shared T-487, reviewed in A-2909 and allowed same-head equivalence by human e6264b46.
+
+Direct Coordinator 49c57614 accepts this hub pair and requires one local Neovim supplement, deferring Linux Neovim to E-423 stage-1 close. Broadcast 90193e8c adopts that path, corrected by d05c60c7 to explicit files. Audited A-2972: npm run test:nvim -- nvim/test/*.test.ts under the normal lease at the exact head passes 388/388, zero failures/skips/cancellations, exit 0. Neovim-only 85.97s; the 942.31s lease wait is separate. This includes the corrected crew header and heartbeat key-9/count/inbox case. No claim of a green full Linux gate or Linux Neovim execution is made. Epic-close Linux coverage/forward fixes remain owed under 49c57614.
+
+Criteria: C1 configuration defaults/floor/off/CLI/init and next-interval behavior pass in hub evidence, with crew UI retention passing locally. C2 independent/durable schedules and one overdue firing, C3 bounded in-flight/stale digest and retained-updated aging, and C4 idle wake/busy-or-approval coalescing/no steering pass the nine heartbeat cases. C5 heartbeat row/filter/count and unchanged needs-you pass headless Neovim; hub inbox behavior passes. C6 keepalive naming, C7 Coordinator clauses and C8 docs remain as the current source review. All C1–C8 verified at this final head.
+
+Retain earlier f3eca6ee/A-2758 and cc871d75/A-2787 findings/fixes; header red c44f6a37/A-2842; Linux 52b10e3c/A-2870 including the corrected direct-Core teardown; outage-lost 7a4f3460/A-2832 under 8fd03833; and queued local 56603698/A-2911 cancelled before tests. These are not relabelled green. Current source/delta chain A-2854/A-2883/A-2909 and the accepted pair plus supplement establish final clearance. No Reviewer tests or edits.
+Review evidence: A-2974.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified.
+
+### impl-454 · 2026-10-15T12:31:24.759Z
+
+Final prescribed local supplement passes at unchanged reviewed/pushed d13473b0: npm run test:nvim -- nvim/test/*.test.ts under normal lease, A-2972,388/388 pass/0skip, exit0,85.97s, peakload5.77. A-2898/A-2937 are the two own-hub-positive Linux receipts with distinct known T-485/T-467 reds. Per human e6264b46 plus Coordinator49c57614/90193e8c/d05c60c7, this is the final item gate; Linux Neovim is deferred to E-423 stage1 close. Requesting rev-23 final evidence verdict. No pending local wrapper/run, clean tree.

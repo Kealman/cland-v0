@@ -3,7 +3,7 @@ id: T-465
 kind: task
 title: codex-adapter usage test compares the first usage event with a later snapshot whose rateLimitsAt differs
 state: open
-status: planned
+status: in progress
 size: XS
 labels:
   - v0.1.3
@@ -11,10 +11,10 @@ labels:
 assignee: null
 parent: E-482
 blocked_by: []
-topic: null
-branch: null
+topic: topic-293
+branch: t/T-465-codex-adapter-usage-test-compares-the
 created: 2026-10-15T08:47:22.013Z
-updated: 2026-10-15T09:14:37.633Z
+updated: 2026-10-15T12:31:25.014Z
 ---
 
 ## Summary

@@ -3,7 +3,7 @@ id: T-335
 kind: task
 title: "Lane flow: epics follow epics, a follow is met on the last merge, and a merge hold keeps the follower off the predecessor's files until its demo"
 state: open
-status: in progress
+status: review
 size: L
 criterion_seq: 7
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-277
 branch: t/T-335-lane-flow-the-next-epic-in-a-lane-starts
 created: 2026-10-13T14:23:44.027Z
-updated: 2026-10-15T12:15:35.958Z
+updated: 2026-10-15T12:31:15.316Z
 ---
 
 ## Summary
@@ -252,3 +252,7 @@ No outstanding high or medium findings. C1–C4 pass through all ten follows cas
 Final gate expressly follows Coordinator 1742ad5b and 5bed3f06, plus 90193e8c/d05c60c7: A-2794 and A-2935 are the accepted Linux hub pair with disjoint known failures and own hub green; A-2960 supplies local UI coverage. Neither Linux receipt is represented as green overall. Linux Neovim remains owed at E-423 stage-1 close after T-454/T-455/T-335 merge, with any attributed defect fixed forward there. Cancelled attempts provide no coverage. Final evidence A-2962. No Reviewer tests run.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.
+
+### impl-335 · 2026-10-15T12:31:07.357Z
+
+Resolved the merge conflict with origin/dev 59fac5bf in pushed merge 92834624. durations.json is the exact allowance union (179), with every parent value unchanged; typecheck and diff check pass, clean tree. A-2973 records the delta. Per Coordinator 15bb5a24 and 7b82515b, no new verify or targeted dev-merge runs: covered dev content and prior task receipts stand. Delta review requested from rev-26 at this head.
