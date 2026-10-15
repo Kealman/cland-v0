@@ -12,8 +12,10 @@ test('doctor --fix under one fixture root preserves another deleted-project hub'
   const other = await tempProject(t, 'cland-other-doctor-');
   const owned = await startDaemon(t, removed, {}, { sweep: true });
   const foreign = await startDaemon(t, other, {}, { sweep: true });
-  await rm(removed, { recursive: true });
-  await rm(other, { recursive: true });
+  // Keep both hubs alive for the sweep assertions; their .cland/run writes can race rm on Linux.
+  // Retry transient removal errors with at most 2.75 s of linear backoff per fixture.
+  await rm(removed, { recursive: true, maxRetries: 10, retryDelay: 50 });
+  await rm(other, { recursive: true, maxRetries: 10, retryDelay: 50 });
   const candidates = await findOrphans(root, true, undefined, scope);
   assert.ok(candidates.some(p => p.process.pid === owned.discovery.pid));
   assert.equal(candidates.some(p => p.process.pid === foreign.discovery.pid), false, 'another fixture must not enter this doctor’s sweep');
