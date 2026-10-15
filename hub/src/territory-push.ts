@@ -11,9 +11,11 @@ export class PushError extends Error {
 }
 export type PushResult = { dev: string; previous: string; followUp?: { step: string; error: string } };
 
-export async function pushDev(root: string, resumed: Resumed, authorize: () => void, run: typeof git = git): Promise<PushResult> {
+export async function pushDev(root: string, resumed: Resumed, authorize: () => void, run: typeof git = git, env: NodeJS.ProcessEnv = process.env): Promise<PushResult> {
+  const execute = run;
+  run = (cwd, args, marked, input) => execute(cwd, args, marked, input, env);
   resumed(authorize);
-  const managed = await hasTerritory(root);
+  const managed = await hasTerritory(root, env);
   resumed(() => { if (!managed) throw new PushError('push-territory', 'the project has no managed territory'); });
   for (const operation of ['release', 'sync']) {
     const pending = await access(join(root, '.cland', `${operation}.tmp`)).then(() => true, err => {

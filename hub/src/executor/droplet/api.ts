@@ -7,8 +7,8 @@ export type CreateDroplet = { name: string; tags: string[]; size: string; region
 export type Action = { id: number; status: 'in-progress' | 'completed' | 'errored'; resource_id?: number; type?: string };
 export type SnapshotImage = { id: number; name: string; regions: string[]; size_gigabytes: number; min_disk_size: number; created_at: string; resource_id?: string };
 
-export const apiTimeoutMs = (): number => {
-  const value = Number(process.env.CLAND_TEST_DIGITALOCEAN_TIMEOUT_MS);
+export const apiTimeoutMs = (env: NodeJS.ProcessEnv = process.env): number => {
+  const value = Number(env.CLAND_TEST_DIGITALOCEAN_TIMEOUT_MS);
   return value > 0 && Number.isFinite(value) ? Math.min(15000, value) : 15000;
 };
 
@@ -20,17 +20,22 @@ export class DigitalOceanError extends Error {
 
 /** Only this call scope holds the token. Transport failures never expose fetch's request. */
 export class DigitalOceanApi {
+  readonly #env: NodeJS.ProcessEnv;
+  constructor(env: NodeJS.ProcessEnv = process.env) { this.#env = env; }
   async #call<T>(method: string, path: string, body?: unknown, deadline?: number): Promise<T> {
-    const token = process.env.DIGITALOCEAN_TOKEN;
+    const token = this.#env.DIGITALOCEAN_TOKEN;
     if (!token) throw new Error('DIGITALOCEAN_TOKEN is required');
-    const base = process.env.CLAND_DIGITALOCEAN_API ?? 'https://api.digitalocean.com/v2';
+    const base = this.#env.CLAND_DIGITALOCEAN_API ?? 'https://api.digitalocean.com/v2';
     const url = new URL(`${base.replace(/\/$/, '')}${path}`);
     const redact = (value: unknown): string => String(value ?? '').split(token).join('[redacted]');
     const remaining = deadline === undefined ? Infinity : deadline - Date.now();
-    const transportTimeout = apiTimeoutMs();
+    const transportTimeout = apiTimeoutMs(this.#env);
     const timeout = Math.ceil(Math.min(transportTimeout, remaining));
     if (timeout <= 0) throw new DigitalOceanError(0, 'deadline', 'request deadline reached');
-    const signal = AbortSignal.timeout(timeout);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(new DOMException('The operation was aborted due to timeout', 'TimeoutError')), timeout);
+    timer.unref();
+    const { signal } = controller;
     try {
       const response = await fetch(url, { method, headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, ...(body === undefined ? {} : { body: JSON.stringify(body) }), signal, redirect: 'error' });
       if (response.status === 204) return undefined as T;
@@ -46,7 +51,7 @@ export class DigitalOceanApi {
       if (error instanceof DigitalOceanError) throw error;
       if (signal.aborted && remaining <= transportTimeout) throw new DigitalOceanError(0, 'deadline', 'request deadline reached');
       throw new DigitalOceanError(0, 'transport', 'request failed or exceeded its time bound');
-    }
+    } finally { clearTimeout(timer); }
   }
   async #list<T>(path: string, field: string, deadline?: number): Promise<T[]> {
     const values: T[] = [];

@@ -5,7 +5,7 @@ import { execFileSync } from 'node:child_process';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { withDiscoveredPid, cland, connectUi, eventually, fakeClaude, fakeCodex, spawnSpoke, startDaemon, tempProject, type FrameClient } from './harness.ts';
+import { projectHub, withDiscoveredPid, cland, connectUi, eventually, fakeClaude, fakeCodex, spawnSpoke, startDaemon, tempProject, type FrameClient } from './harness.ts';
 import { copyPreparedProject } from './prepared-project.ts';
 import type { HarnessProcessView, SessionUsage } from '../src/protocol.ts';
 
@@ -13,8 +13,8 @@ import type { HarnessProcessView, SessionUsage } from '../src/protocol.ts';
 const CODEX_LAUNCH_MS = 30_000;
 
 // Shorten the existing publication window without changing usage/journal behavior.
-function startUsageDaemon(t: TestContext, root: string, env: Record<string, string>, usageEventMs = 100) {
-  return startDaemon(t, root, { ...env, CLAND_TEST_USAGE_EVENT_MS: String(usageEventMs) });
+function startUsageDaemon(t: TestContext, root: string, env: Record<string, string>, usageEventMs = 100, serve: typeof projectHub | typeof startDaemon = projectHub) {
+  return serve(t, root, { ...env, CLAND_TEST_USAGE_EVENT_MS: String(usageEventMs) });
 }
 
 async function records(root: string, ui: FrameClient): Promise<Array<Record<string, unknown>>> {
@@ -177,7 +177,7 @@ test('the first publication after hub restart is recorded again without replayin
   const fake = await fakeCodex(t);
   // Publish tokens first, then release limits across an observed coalescing boundary.
   await writeFile(join(fake.home, 'hold-rate-limits-read'), '');
-  const { discovery } = await startUsageDaemon(t, root, fake.env);
+  const { discovery } = await startUsageDaemon(t, root, fake.env, undefined, startDaemon);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const launched = await ui.request({ type: 'session.launch', name: 'restart', harness: 'codex' }, CODEX_LAUNCH_MS);
@@ -198,7 +198,7 @@ test('the first publication after hub restart is recorded again without replayin
     [initialUsage.total, undefined, false], [initialUsage.total, publishedUsage.rateLimits, false],
   ]);
   assert.equal((await cland(root, 'hub', 'stop')).code, 0);
-  const next = await startUsageDaemon(t, root, fake.env);
+  const next = await startUsageDaemon(t, root, fake.env, undefined, startDaemon);
   const nextUi = await connectUi(t, next.discovery);
   await nextUi.request({ type: 'subscribe' });
   await eventually('first restarted publication journalled', async () => (await records(root, nextUi)).length > before.length || undefined);

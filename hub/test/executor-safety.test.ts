@@ -6,7 +6,7 @@ import { promisify } from 'node:util';
 import { readFile, writeFile, rm, readdir, mkdir } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { fixture } from './remote-fixture.ts';
-import { cland, clandWithEnv, connectUi, eventually, flushProjectLogs, startDaemon, tempProject } from './harness.ts';
+import { projectHub, cland, clandWithEnv, connectUi, eventually, flushProjectLogs, startDaemon, tempProject } from './harness.ts';
 import { projectTag } from '../src/executor/droplet/droplet.ts';
 import { warningSeverity } from '../src/hub/visibility.ts';
 import { parseConfig, renderConfig } from '../src/init/config.ts';
@@ -59,7 +59,7 @@ test('concurrent host processes share one reservation lock and recover a dead ho
 
 test('all remote admission refusals persist a local job, one warn notice and one journal event', async t => {
   for (const cause of ['token', '422', '500', 'snapshot', 'region'] as const) await t.test(cause, async t => {
-    const f = await fixture(t, { env: cause === 'token' ? { DIGITALOCEAN_TOKEN: '' } : {} });
+    const f = await fixture(t, { hub: projectHub, env: cause === 'token' ? { DIGITALOCEAN_TOKEN: '' } : {} });
     if (cause === '422' || cause === '500') { f.api.faults.create = Number(cause); f.api.faults.echoToken = true; }
     if (cause === 'snapshot') await rm(join(f.root, '.cland/run/executor/snapshot.json'));
     if (cause === 'region') f.api.regions.splice(0);
@@ -83,11 +83,11 @@ test('all remote admission refusals persist a local job, one warn notice and one
 
 test('two protocol projects reserve against one cap and confirmed release replaces the reservation', async t => {
   const state = await tempProject(t, 'shared-spend-');
-  const first = await fixture(t, { test: longTest, config: 'lifetime="15m"\nrun_timeout="5m"\ndaily_spend_usd=0.063', env: { CLAND_EXECUTOR_STATE: state } });
+  const first = await fixture(t, { hub: projectHub, test: longTest, config: 'lifetime="15m"\nrun_timeout="5m"\ndaily_spend_usd=0.063', env: { CLAND_EXECUTOR_STATE: state } });
   const run = await first.launch(); const machine = await first.remote(run.id);
   assert.equal((await ledger(state)).entries[0]!.reservation, 0.0625);
   assert.equal((await ledger(state)).entries[0]!.cost, null);
-  const second = await fixture(t, { config: 'lifetime="15m"\nrun_timeout="5m"\ndaily_spend_usd=0.063', env: { CLAND_EXECUTOR_STATE: state } });
+  const second = await fixture(t, { hub: projectHub, config: 'lifetime="15m"\nrun_timeout="5m"\ndaily_spend_usd=0.063', env: { CLAND_EXECUTOR_STATE: state } });
   const refused = await second.launch();
   assert.match((await second.result(refused.id)).text, /Executor local/);
   const history = JSON.stringify((await second.ui.request({ type: 'topic.history', topic: second.topic })).value);
@@ -129,7 +129,7 @@ test('the remote shell and the host deadline both end a timed-out run once and r
 });
 
 test('the periodic sweep reaps strays, re-arms a killed watchdog and retries failed provider cleanup', async t => {
-  const f = await fixture(t, { test: longTest, env: { CLAND_TEST_EXECUTOR_SWEEP_MS: '200' } });
+  const f = await fixture(t, { hub: projectHub, test: longTest, env: { CLAND_TEST_EXECUTOR_SWEEP_MS: '200' } });
   const run = await f.launch(); const machine = await f.remote(run.id);
   const record = await lease(f.root); process.kill(record.value.watchdog!.pid, 'SIGKILL');
   const tag = projectTag(f.root, f.root.split('/').at(-1)!);
@@ -147,8 +147,8 @@ test('the periodic sweep reaps strays, re-arms a killed watchdog and retries fai
 
 test('same-name hubs preserve each other’s in-flight keys and conservatively age legacy keys', async t => {
   const state = await tempProject(t, 'key-host-state-');
-  const first = await fixture(t, { name: 'same', test: longTest, env: { CLAND_EXECUTOR_STATE: state, CLAND_TEST_EXECUTOR_SWEEP_MS: '200' } });
-  const second = await fixture(t, { name: 'same', api: first.api, test: longTest, env: { CLAND_EXECUTOR_STATE: state, CLAND_TEST_EXECUTOR_SWEEP_MS: '200' } });
+  const first = await fixture(t, { hub: projectHub, name: 'same', test: longTest, env: { CLAND_EXECUTOR_STATE: state, CLAND_TEST_EXECUTOR_SWEEP_MS: '200' } });
+  const second = await fixture(t, { hub: projectHub, name: 'same', api: first.api, test: longTest, env: { CLAND_EXECUTOR_STATE: state, CLAND_TEST_EXECUTOR_SWEEP_MS: '200' } });
   let resume!: () => void;
   const blocked = new Promise<void>(resolve => { resume = resolve; });
   let creates = 0;
@@ -204,14 +204,14 @@ test('same-name hubs preserve each other’s in-flight keys and conservatively a
     resume();
     for (const [f, run] of [[first, a], [second, b]] as const) await cland(f.root, 'verify', 'cancel', run.id);
     await first.result(a.id); await second.result(b.id);
-    for (const f of [first, second]) await cland(f.root, 'hub', 'stop');
+    for (const f of [first, second]) await f.stop();
   }
 });
 
 test('a short-lived hub preserves a foreign live lease beyond its own lifetime threshold', async t => {
   const state = await tempProject(t, 'foreign-lifetime-');
-  const short = await fixture(t, { env: { CLAND_EXECUTOR_STATE: state } });
-  const long = await fixture(t, { api: short.api, test: longTest, config: 'lifetime="110m"\nrun_timeout="75m"', env: { CLAND_EXECUTOR_STATE: state } });
+  const short = await fixture(t, { hub: projectHub, env: { CLAND_EXECUTOR_STATE: state } });
+  const long = await fixture(t, { hub: projectHub, api: short.api, test: longTest, config: 'lifetime="110m"\nrun_timeout="75m"', env: { CLAND_EXECUTOR_STATE: state } });
   const run = await long.launch(); const machine = await long.remote(run.id);
   const record = await lease(long.root);
   const droplet = short.api.droplets.find(d => d.id === record.value.resource)!;
@@ -224,7 +224,7 @@ test('a short-lived hub preserves a foreign live lease beyond its own lifetime t
 
 test('provider list awaits cannot turn a concurrently acquired droplet or key into an orphan', async t => {
   for (const kind of ['droplet', 'key'] as const) await t.test(kind, async t => {
-    const f = await fixture(t, { test: longTest, env: { CLAND_TEST_EXECUTOR_SWEEP_MS: '600000' } });
+    const f = await fixture(t, { hub: projectHub, test: longTest, env: { CLAND_TEST_EXECUTOR_SWEEP_MS: '600000' } });
     let entered = false, resume!: () => void, allowCreate!: () => void;
     const blocked = new Promise<void>(resolve => { resume = resolve; });
     const create = new Promise<void>(resolve => { allowCreate = resolve; });
@@ -256,7 +256,7 @@ test('provider list awaits cannot turn a concurrently acquired droplet or key in
     } finally {
       resume(); allowCreate();
       if (run) await cland(f.root, 'verify', 'cancel', run.id);
-      await cland(f.root, 'hub', 'stop');
+      await f.stop();
     }
   });
 });

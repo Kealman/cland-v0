@@ -45,18 +45,18 @@ export function captureProcess(pid: number | undefined): ProcessIdentity | null 
 const directoryProcesses = new Map<string, Set<ProcessIdentity>>();
 const contextProcesses = new WeakMap<TestContext, Set<ProcessIdentity>>();
 type CleanupStep = () => unknown | Promise<unknown>;
-const contextCleanup = new WeakMap<TestContext, { resources: CleanupStep[]; directories: CleanupStep[] }>();
+const contextCleanup = new WeakMap<TestContext, { resources: CleanupStep[]; directories: CleanupStep[]; hubs: CleanupStep[]; checks: CleanupStep[] }>();
 function cleanupSteps(t: TestContext) {
   let steps = contextCleanup.get(t);
   if (!steps) {
-    steps = { resources: [], directories: [] };
+    steps = { resources: [], directories: [], hubs: [], checks: [] };
     contextCleanup.set(t, steps);
     const owned = steps;
     t.after(async () => {
       const errors: unknown[] = [];
       // Native after hooks stop at their first failure. One ownership hook keeps
       // every resource disposal running, and removes directories only afterwards.
-      for (const step of [...owned.resources, ...owned.directories]) {
+      for (const step of [...owned.resources, ...owned.hubs, ...owned.directories, ...owned.checks]) {
         try { await step(); } catch (error) { errors.push(error); }
       }
       if (errors.length === 1) throw errors[0];
@@ -65,12 +65,18 @@ function cleanupSteps(t: TestContext) {
   }
   return steps;
 }
+/** Stop served hubs after their clients, before directory fallback cleanup. */
+export function beforeDirectories(t: TestContext, step: CleanupStep): void { cleanupSteps(t).hubs.push(step); }
+
+/** Check fixture leaks after owned resources and directories have been disposed. */
+export function afterCleanup(t: TestContext, check: CleanupStep): void { cleanupSteps(t).checks.push(check); }
+
 /** Dispose fixture resources in registration order, before any owned directory is removed. */
 export function onCleanup(t: TestContext, step: CleanupStep): void {
   cleanupSteps(t).resources.push(step);
 }
 export function rememberProcess(pid: number | undefined, root?: string): void {
-  if (pid === undefined) return;
+  if (pid === undefined || pid === process.pid) return;
   if (!recorded.has(pid)) {
     const identity = captureProcess(pid);
     if (identity) recorded.set(pid, identity);
@@ -88,7 +94,7 @@ export function rememberResultProcesses(value: unknown, root?: string): void {
   const collect = (entry: unknown, directory?: string) => {
     if (!entry || typeof entry !== 'object') return;
     if ('cwd' in entry && typeof entry.cwd === 'string') directory = entry.cwd;
-    if ('pid' in entry && typeof entry.pid === 'number') observations.push({ pid: entry.pid, root: directory });
+    if ('pid' in entry && typeof entry.pid === 'number' && entry.pid !== process.pid) observations.push({ pid: entry.pid, root: directory });
     for (const child of Object.values(entry)) if (typeof child === 'object') collect(child, directory);
   };
   collect(value, root);

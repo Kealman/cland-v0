@@ -5,6 +5,7 @@ import { readFile, writeFile, rename, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { Tracker, type ItemView } from '../src/tracker/tracker.ts';
 import { parseItem } from '../src/tracker/item.ts';
+import { gitIn } from '../src/tracker/verdict-git.ts';
 import { TaskWorktrees } from '../src/hub/worktrees.ts';
 import { TaskMerges } from '../src/hub/merge.ts';
 import { epicMergeFiles } from '../src/tracker/epic-surfaces.ts';
@@ -15,11 +16,11 @@ const human = { id: 'human', name: 'human', role: null, human: true };
 const git = (root: string, ...args: string[]) => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
 const resumed = <T>(work: () => T): T => work();
 
-async function fixture(t: TestContext) {
+async function fixture(t: TestContext, env: NodeJS.ProcessEnv = process.env) {
   const root = await preparedProject(t);
-  const tracker = new Tracker({ root, db: join(root, '.cland/hub.db') });
-  const worktrees = new TaskWorktrees({ tracker });
-  const merges = new TaskMerges(tracker, worktrees, () => {});
+  const tracker = new Tracker({ root, db: join(root, '.cland/hub.db'), env, git: gitIn(root, env) });
+  const worktrees = new TaskWorktrees({ tracker, env });
+  const merges = new TaskMerges(tracker, worktrees, () => {}, undefined, env);
   t.after(async () => { merges.stop(); await tracker.stop(); });
   const e1 = await tracker.create(human, { title: 'Predecessor', kind: 'epic' });
   const e2 = await tracker.create(human, { title: 'Follower', kind: 'epic', follows: [e1.id] });
@@ -149,8 +150,21 @@ test('epic merge surfaces use trailers and retain rename and deletion paths exac
   assert.deepEqual(await epicMergeFiles(root, []), []);
 });
 
+test('epic merge surfaces use the owning Git environment for both history and changed paths', async t => {
+  const roots = await Promise.all([preparedProject(t, 'repository'), preparedProject(t, 'repository')]);
+  for (const [i, root] of roots.entries()) {
+    git(root, 'branch', '-m', 'dev');
+    await writeFile(join(root, `owner-${i}.txt`), 'owned');
+    git(root, 'add', '.');
+    git(root, 'commit', '-qm', 'Owned surface\n\nItem: T-9');
+  }
+  const environments = roots.map(root => ({ ...process.env, GIT_DIR: git(root, 'rev-parse', '--absolute-git-dir'), GIT_WORK_TREE: root }));
+  assert.deepEqual(await Promise.all(environments.map(env => epicMergeFiles(roots[0]!, ['T-9'], 'dev', env))), [['owner-0.txt'], ['owner-1.txt']]);
+});
+
 for (const change of ['follows', 'verdict'] as const) test(`final surface lookup revalidates a concurrent ${change} change before publication`, async t => {
-  const { root, tracker, e1, e2, ticket, merge, merges } = await fixture(t);
+  const env = { ...process.env };
+  const { root, tracker, e1, e2, ticket, merge, merges } = await fixture(t, env);
   await merge(await ticket(e1.id, 'README.md'));
   const e3 = change === 'follows' ? await tracker.create(human, { title: 'Another predecessor', kind: 'epic' }) : undefined;
   if (e3) await merge(await ticket(e3.id, 'protected.txt'));
@@ -175,8 +189,7 @@ if [ "$1" = log ] && [ "$3" = '--format=%H%x00%(trailers:key=Item,valueonly)%x00
 fi
 exec ${quote(realGit)} "$@"
 `, { mode: 0o755 });
-  const pathBefore = process.env.PATH;
-  process.env.PATH = `${bin}:${pathBefore}`;
+  env.PATH = `${bin}:${env.PATH}`;
   let pending: Promise<unknown> | undefined;
   try {
     pending = merges.merge(next.id, human, resumed);
@@ -192,6 +205,5 @@ exec ${quote(realGit)} "$@"
   } finally {
     await writeFile(release, 'cleanup');
     await pending?.catch(() => {});
-    if (pathBefore === undefined) delete process.env.PATH; else process.env.PATH = pathBefore;
   }
 });

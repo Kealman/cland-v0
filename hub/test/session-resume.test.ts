@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { withDiscoveredPid, connectUi, eventually, fakeClaude, fakeCodex, cland, spawnSpoke, startDaemon } from './harness.ts';
+import { projectHub, withDiscoveredPid, connectUi, eventually, fakeClaude, fakeCodex, cland, spawnSpoke, startDaemon } from './harness.ts';
 import { preparedProject } from './prepared-project.ts';
 import type { HarnessProcessView } from '../src/protocol.ts';
 
@@ -12,7 +12,7 @@ type Resumed = { found: boolean; process: HarnessProcessView; role: string | nul
 test('a stopped Claude Implementer resumes its conversation, role and item claim and receives its clause again', async t => {
   const root = await preparedProject(t);
   const fake = await fakeClaude(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   assert.equal((await ui.request({ size: 'M', type: 'task.create', title: 'Resume work' })).ok, true);
@@ -46,7 +46,7 @@ test('a stopped Claude Implementer resumes its conversation, role and item claim
 for (const artifact of [false, true, null]) test(`a refused Codex resume offers and launches fresh with its recorded ${artifact === null ? 'absent' : artifact ? 'artifact id' : 'text'} brief`, async t => {
   const root = await preparedProject(t);
   const fake = await fakeCodex(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ size: 'M', type: 'task.create', title: 'Fresh work' })).ok, true);
   const text = 'Implement the fresh work from this recorded brief.';
@@ -96,7 +96,7 @@ for (const artifact of [false, true, null]) test(`a refused Codex resume offers 
 for (const fresh of [false, true]) for (const loss of ['claim', 'closed', 'exclusive', 'hold'] as const) test(`${fresh ? 'fresh' : 'native'} resume reports ${loss} work that did not come back`, async t => {
   const root = await preparedProject(t);
   const fake = await fakeClaude(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   const role = loss === 'exclusive' ? 'coordinator' : loss === 'hold' ? 'reviewer' : 'implementer';
   assert.equal((await ui.request({ size: 'M', type: 'task.create', title: 'Retained work' })).ok, true);

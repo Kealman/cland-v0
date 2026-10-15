@@ -52,7 +52,7 @@ test('Per-item plan QA uses the latest clear current QA evidence and includes it
 });
 
 test('task view reports QA satisfaction from the same durable evidence as the merge gate', async (t) => {
-  const { root, ui, rev } = await project(t);
+  const { root, ui, rev } = await project(t, undefined, undefined, undefined, true);
   const work = await task(root);
   await requireQa(root, ui, work.id);
   await review(rev, work.id);

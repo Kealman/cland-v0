@@ -141,12 +141,15 @@ export function lifecycleNotice(entry: LogEntry, label: (name: string) => string
  * The Agents record as a tap on the log closure: `tap(log)` logs every entry and records the lifecycle ones in
  * Agents once a core is attached (the daemon builds the log before the hub, then attaches the hub's core).
  */
-export function agentsRecord(): { tap: (log: LogFn) => LogFn; attach: (core: HubCore) => void } {
+export function agentsRecord(): { tap: (log: LogFn) => LogFn; attach: (core: HubCore | null) => void } {
   let core: HubCore | null = null;
   const startup: Array<{ notice: TopicNotice; log: LogFn }> = [];
   const record = (target: HubCore, notice: TopicNotice, log: LogFn) => {
     // The domain write finishes before the record is written, including startup index transactions.
     queueMicrotask(() => {
+      // Shutdown detaches before the store closes. The journal already holds
+      // this notice's id, so a cancelled projection is replayed on restart.
+      if (core !== target) return;
       if (target.store.message(notice.id as string) !== null) return;
       try { if (notice.kind === 'account-limited') target.noticeTo(AGENTS.id, notice); else target.noticeInTopic(AGENTS.id, notice); }
       catch (err) { log({ event: 'agents-record-failed', kind: notice.kind, error: err instanceof Error ? err.message : String(err) }); }
@@ -155,6 +158,7 @@ export function agentsRecord(): { tap: (log: LogFn) => LogFn; attach: (core: Hub
   return {
     attach: (c) => {
       core = c;
+      if (!c) return;
       for (const { notice, log } of startup.splice(0)) record(c, notice, log);
     },
     tap: (log) => (entry) => {

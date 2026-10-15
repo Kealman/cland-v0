@@ -27,10 +27,11 @@ function section(body: string, name: string): string {
 }
 
 export class Releases {
+  readonly #env: NodeJS.ProcessEnv;
   readonly tracker: Tracker;
   readonly worktrees: TaskWorktrees;
   readonly log: LogFn;
-  constructor(tracker: Tracker, worktrees: TaskWorktrees, log: LogFn) { this.tracker = tracker; this.worktrees = worktrees; this.log = log; }
+  constructor(tracker: Tracker, worktrees: TaskWorktrees, log: LogFn, env: NodeJS.ProcessEnv = process.env) { this.#env = env; this.tracker = tracker; this.worktrees = worktrees; this.log = log; }
 
   push(resumed: Resumed, authorize: () => void): Promise<PushResult> {
     let published: PushResult | undefined;
@@ -47,18 +48,18 @@ export class Releases {
         });
       });
       for (const item of pending) {
-        const localTip = await territoryGitAsync(this.tracker.root, ['rev-parse', '--verify', `refs/heads/${item.receipt.base}`]);
-        const remoteTip = await territoryGitAsync(territoryPath(this.tracker.root), ['rev-parse', '--verify', `refs/heads/${item.receipt.base}`]);
-        await territoryGitAsync(this.tracker.root, ['fetch', '--no-write-fetch-head', '--no-tags', territoryPath(this.tracker.root), remoteTip]);
+        const localTip = await territoryGitAsync(this.tracker.root, ['rev-parse', '--verify', `refs/heads/${item.receipt.base}`], undefined, undefined, this.#env);
+        const remoteTip = await territoryGitAsync(territoryPath(this.tracker.root), ['rev-parse', '--verify', `refs/heads/${item.receipt.base}`], undefined, undefined, this.#env);
+        await territoryGitAsync(this.tracker.root, ['fetch', '--no-write-fetch-head', '--no-tags', territoryPath(this.tracker.root), remoteTip], undefined, undefined, this.#env);
         for (const tip of [localTip, remoteTip]) {
-          const landed = await territoryGitAsync(this.tracker.root, ['merge-base', '--is-ancestor', item.receipt.commit, tip]).then(() => true, err => resumed(() => {
+          const landed = await territoryGitAsync(this.tracker.root, ['merge-base', '--is-ancestor', item.receipt.commit, tip], undefined, undefined, this.#env).then(() => true, err => resumed(() => {
             if (err instanceof TerritoryGitError && err.code === 1) return false;
             throw new PushError('push-state', `cannot verify pending cland merge ${item.id}; preserve its receipt and retry: ${String(err)}`);
           }));
           resumed(() => { if (landed) throw new PushError('push-state', `finish pending cland merge ${item.id} before pushing dev`); });
         }
       }
-      const result = await pushDev(this.tracker.root, resumed, authorize);
+      const result = await pushDev(this.tracker.root, resumed, authorize, undefined, this.#env);
       return resumed(() => {
         published = result;
         try { this.log({ event: 'dev-pushed', ...result }); }
@@ -106,7 +107,7 @@ export class Releases {
         const result = await releaseGit(this.tracker.root, version, dryRun, async id => {
           try { const view = await this.tracker.viewAsync(id, resumed); return resumed(() => view.title); }
           catch { return null; }
-        }, resumed, authorize, releaseItem === undefined ? undefined : { item: releaseItem, notesPrefix: notesPrefix! });
+        }, resumed, authorize, releaseItem === undefined ? undefined : { item: releaseItem, notesPrefix: notesPrefix! }, this.#env);
         if (!dryRun) published = result;
         let step = 'record';
         try {
@@ -164,10 +165,10 @@ export class Releases {
         if (next) pending.push(next);
       }
       for (const item of pending) {
-        const landed = await landedTask(this.tracker.root, item.id, item.receipt, resumed);
+        const landed = await landedTask(this.tracker.root, item.id, item.receipt, resumed, undefined, this.#env);
         resumed(() => { if (landed) throw new ReleaseError('sync-recovery', `finish pending cland merge ${item.id} before sync rewrites its landing`); });
       }
-      const result = await syncGit(this.tracker.root, resumed, authorize);
+      const result = await syncGit(this.tracker.root, resumed, authorize, this.#env);
       try {
         resumed(() => this.log({ event: 'synced', ...result }));
         if (!result.followUp) await clearPublicationReceipt(this.tracker.root, 'sync');

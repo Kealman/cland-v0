@@ -21,17 +21,17 @@ export const snapshotPath = (root: string): string => join(root, '.cland/run/exe
 export const keyHash = (key: PrepareKey): string => hash(JSON.stringify(key)).slice(0, 12);
 export const sameKey = (a: PrepareKey, b: PrepareKey): boolean => a.node === b.node && a.base === b.base && a.lock === b.lock && a.nvim.tag === b.nvim.tag && a.nvim.digest === b.nvim.digest;
 
-export async function prepareKey(root: string): Promise<PrepareKey> {
-  const git = async (...args: string[]) => (await exec('git', args, { cwd: root, env: machineEnv(), timeout: 30000, maxBuffer: 16 * 1024 * 1024 })).stdout;
+export async function prepareKey(root: string, env: NodeJS.ProcessEnv = process.env): Promise<PrepareKey> {
+  const git = async (...args: string[]) => (await exec('git', args, { cwd: root, env: machineEnv(env), timeout: 30000, maxBuffer: 16 * 1024 * 1024 })).stdout;
   await git('fetch', 'origin', 'dev');
   const base = (await git('rev-parse', 'origin/dev')).trim();
-  const node = (await exec(process.execPath, ['--version'], { cwd: root, env: machineEnv(), timeout: 10000 })).stdout.trim();
+  const node = (await exec(process.execPath, ['--version'], { cwd: root, env: machineEnv(env), timeout: 10000 })).stdout.trim();
   const tag = (await readFile(join(root, 'nvim/NVIM_VERSION'), 'utf8')).trim();
   const sums = await readFile(join(root, 'nvim/NVIM_SHA256SUMS'), 'utf8');
   const digest = sums.split('\n').find(line => /\s+nvim-linux-x86_64\.tar\.gz$/.test(line))?.split(/\s+/)[0];
   if (!/^v\d+\.\d+\.\d+$/.test(node) || !/^v\d+\.\d+\.\d+(?:[-.][a-zA-Z0-9.-]+)?$/.test(tag) || !digest || !/^[a-f0-9]{64}$/.test(digest)) throw new Error('invalid Node or Neovim prepare pin');
   // Hash bytes, not decoded text: the lock input identifies the committed base.
-  const lock = hash((await exec('git', ['show', `${base}:package-lock.json`], { cwd: root, env: machineEnv(), timeout: 30000, encoding: 'buffer', maxBuffer: 16 * 1024 * 1024 })).stdout);
+  const lock = hash((await exec('git', ['show', `${base}:package-lock.json`], { cwd: root, env: machineEnv(env), timeout: 30000, encoding: 'buffer', maxBuffer: 16 * 1024 * 1024 })).stdout);
   return { node, nvim: { tag, digest }, lock, base };
 }
 export async function readSnapshot(root: string): Promise<Snapshot | null> {
@@ -46,35 +46,36 @@ export function staleParts(snapshot: Snapshot, current: PrepareKey): string[] {
   return (['base', 'lock', 'node', 'nvim'] as const).filter(part => JSON.stringify(snapshot.key[part]) !== JSON.stringify(current[part]));
 }
 
-export async function waitForMachine(root: string, lease: DropletLease, key?: PrepareKey, boundMs = 180000, signal?: AbortSignal): Promise<void> {
-  const limit = Math.min(Date.parse(lease.deadline), Date.now() + testTiming('CLAND_TEST_DROPLET_MACHINE_MS', boundMs));
-  const machine = new Machine(root);
+export async function waitForMachine(root: string, lease: DropletLease, key?: PrepareKey, boundMs = 180000, signal?: AbortSignal, env: NodeJS.ProcessEnv = process.env): Promise<void> {
+  const limit = Math.min(Date.parse(lease.deadline), Date.now() + testTiming('CLAND_TEST_DROPLET_MACHINE_MS', boundMs, env));
+  const machine = new Machine(root, env);
   for (;;) {
     signal?.throwIfAborted();
     if (Date.now() >= limit) throw new Error('machine readiness deadline reached');
     let marker: string;
     try { marker = await machine.exec(lease, key ? 'true && cat "$HOME/.cland-image.json"' : 'test -f /var/lib/cland-ready && true', { timeoutMs: Math.min(10000, limit - Date.now()), signal }); }
-    catch { await pause(Math.min(testTiming('CLAND_TEST_DROPLET_POLL_MS', 2000), Math.max(0, limit - Date.now()))); continue; }
+    catch { await pause(Math.min(testTiming('CLAND_TEST_DROPLET_POLL_MS', 2000, env), Math.max(0, limit - Date.now()))); continue; }
     if (!key) return;
     try { if (sameKey(JSON.parse(marker) as PrepareKey, key)) return; } catch { /* mismatch refuses */ }
     throw new Error('prepared image marker mismatch');
   }
 }
 
-export async function pollAction(api: DigitalOceanApi, action: Action, limit: number, signal?: AbortSignal): Promise<void> {
+export async function pollAction(api: DigitalOceanApi, action: Action, limit: number, signal?: AbortSignal, env: NodeJS.ProcessEnv = process.env): Promise<void> {
   let current = action;
   for (;;) {
     signal?.throwIfAborted();
     if (current.status === 'completed') return;
     if (current.status === 'errored') throw new Error(`DigitalOcean action ${current.id} failed`);
     if (Date.now() >= limit) throw new Error('snapshot action deadline reached');
-    await pause(Math.min(testTiming('CLAND_TEST_DROPLET_POLL_MS', 2000), Math.max(0, limit - Date.now())));
+    await pause(Math.min(testTiming('CLAND_TEST_DROPLET_POLL_MS', 2000, env), Math.max(0, limit - Date.now())));
     current = await api.action(current.id, limit);
   }
 }
 
 export type Prepared = { state: 'current' | 'prepared'; snapshot: Snapshot; durationMs: number; lifetimeMs: number | null; costUsd: number | null; summary: string };
 type PrepareOptions = {
+  env?: NodeJS.ProcessEnv;
   root: string; project: string; regions: string[]; tags: string[]; key: PrepareKey; maxDiskSize?: number; store?: Store | undefined; log: LogFn; signal?: AbortSignal | undefined;
   builder: (userData: string) => Promise<DropletLease>; release: (lease: DropletLease) => Promise<Released>; step: (step: string) => void;
 };
@@ -82,12 +83,13 @@ type PrepareOptions = {
 /** A replacement is published only after delivery, actions and builder release succeed. */
 export async function prepareSnapshot(options: PrepareOptions): Promise<Prepared> {
   const { root, key, log } = options;
+  const env = options.env ?? process.env;
   let stage = 'key';
   const step = (value: string) => { stage = value; options.step(value); };
   const started = Date.now();
   const old = await readSnapshot(root);
   if (old && sameKey(old.key, key)) return prepared('current', old, started, { lifetimeMs: 0, costUsd: 0 });
-  const api = new DigitalOceanApi();
+  const api = new DigitalOceanApi(env);
   const name = `cland-${options.project}-${keyHash(key)}`;
   const recovery: SnapshotRecovery = { id: randomUUID(), name, started: new Date().toISOString(), phase: 'build', previous: old, requested: false, seen: [] };
   await saveRecovery(root, recovery);
@@ -100,16 +102,16 @@ export async function prepareSnapshot(options: PrepareOptions): Promise<Prepared
     const template = await readFile(fileURLToPath(new URL('./provision.sh', import.meta.url)), 'utf8');
     builder = await options.builder(template.replace('__NODE_VERSION__', key.node).replace('__NVIM_VERSION__', key.nvim.tag).replace('__NVIM_SHA256__', key.nvim.digest));
     recovery.builder = builder.resource!; await saveRecovery(root, recovery);
-    await waitForMachine(root, builder, undefined, 900000, options.signal);
-    const machine = new Machine(root);
+    await waitForMachine(root, builder, undefined, 900000, options.signal, env);
+    const machine = new Machine(root, env);
     const dir = leaseDir(root, builder);
     const timeout = () => Math.max(1, Math.min(1200000, Date.parse(builder!.deadline) - Date.now()));
     step('deliver');
-    const origin = (await exec('git', ['remote', 'get-url', 'origin'], { cwd: root, env: machineEnv(), timeout: 10000 })).stdout.trim();
+    const origin = (await exec('git', ['remote', 'get-url', 'origin'], { cwd: root, env: machineEnv(env), timeout: 10000 })).stdout.trim();
     if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(origin)) throw new Error('prepare requires a local territory');
     const territory = isAbsolute(origin) ? origin : resolve(root, origin);
     const bundle = join(dir, 'base.bundle');
-    await exec('git', [`--git-dir=${territory}`, 'bundle', 'create', bundle, 'refs/heads/dev'], { env: machineEnv(), timeout: 120000, maxBuffer: 1024 * 1024 });
+    await exec('git', [`--git-dir=${territory}`, 'bundle', 'create', bundle, 'refs/heads/dev'], { env: machineEnv(env), timeout: 120000, maxBuffer: 1024 * 1024 });
     await machine.put(builder, bundle, 'base.bundle', { timeoutMs: timeout(), signal: options.signal });
     await machine.exec(builder, `set -eu; git init --bare "$HOME/mirror.git"; git --git-dir="$HOME/mirror.git" fetch "$HOME/base.bundle" '+refs/heads/dev:refs/heads/dev'; git clone --no-hardlinks "$HOME/mirror.git" "$HOME/cland"; git -C "$HOME/cland" remote remove origin; git -C "$HOME/cland" checkout --detach ${shellQuote(key.base)}; rm "$HOME/base.bundle"`, { timeoutMs: timeout(), signal: options.signal });
     await rm(bundle, { force: true });
@@ -125,9 +127,9 @@ export async function prepareSnapshot(options: PrepareOptions): Promise<Prepared
     await machine.put(builder, keys, 'cland-runner-keys.sh', { timeoutMs: timeout(), signal: options.signal });
     await machine.exec(builder, 'set -eu; cloud-init clean --logs; install -d /var/lib/cloud/scripts/per-boot; install -m 755 /home/runner/cland-runner-keys.sh /var/lib/cloud/scripts/per-boot/cland-runner-keys.sh; rm /home/runner/cland-runner-keys.sh; rm -f /root/.ssh/authorized_keys /home/runner/.ssh/authorized_keys /etc/ssh/ssh_host_*', { user: 'root', timeoutMs: timeout(), signal: options.signal });
     await rm(keys, { force: true });
-    const limit = Math.min(Date.parse(builder.deadline), Date.now() + testTiming('CLAND_TEST_DROPLET_ACTION_MS', 1200000));
+    const limit = Math.min(Date.parse(builder.deadline), Date.now() + testTiming('CLAND_TEST_DROPLET_ACTION_MS', 1200000, env));
     step('power off');
-    await pollAction(api, await api.dropletAction(builder.resource!, 'power_off', undefined, limit), limit, options.signal);
+    await pollAction(api, await api.dropletAction(builder.resource!, 'power_off', undefined, limit), limit, options.signal, env);
     step('snapshot');
     recovery.phase = 'snapshot'; recovery.requested = true; await saveRecovery(root, recovery);
     let action: Action;
@@ -137,12 +139,12 @@ export async function prepareSnapshot(options: PrepareOptions): Promise<Prepared
       throw error;
     }
     recovery.action = action.id; await saveRecovery(root, recovery);
-    await pollAction(api, action, limit, options.signal);
+    await pollAction(api, action, limit, options.signal, env);
     recovery.actionState = 'completed'; await saveRecovery(root, recovery);
     image = (await api.snapshots(limit)).find(candidate => candidate.name === name);
     if (!image) throw new Error('completed snapshot image missing');
     step('transfer');
-    for (const region of options.regions) if (!image.regions.includes(region)) await pollAction(api, await api.transferImage(image.id, region, limit), limit, options.signal);
+    for (const region of options.regions) if (!image.regions.includes(region)) await pollAction(api, await api.transferImage(image.id, region, limit), limit, options.signal, env);
     for (const tag of options.tags) await api.tagImage(image.id, tag);
     const imageId = image.id;
     for (;;) {
@@ -151,7 +153,7 @@ export async function prepareSnapshot(options: PrepareOptions): Promise<Prepared
       if (image && options.regions.every(region => image!.regions.includes(region))) break;
       // An action can complete before the snapshot catalogue reflects the copy.
       if (Date.now() >= limit) throw new Error('snapshot regions visibility deadline reached');
-      await pause(Math.min(testTiming('CLAND_TEST_DROPLET_POLL_MS', 2000), Math.max(0, limit - Date.now())));
+      await pause(Math.min(testTiming('CLAND_TEST_DROPLET_POLL_MS', 2000, env), Math.max(0, limit - Date.now())));
     }
     if (options.maxDiskSize !== undefined && image.min_disk_size > options.maxDiskSize) throw new Error('snapshot minimum disk exceeds run size');
     step('release');
@@ -179,7 +181,7 @@ export async function prepareSnapshot(options: PrepareOptions): Promise<Prepared
     }
     committed = true;
     // Retain ownership if accepted retirement has not reached catalogue absence.
-    await recoverSnapshot(root, recovery, options.store);
+    await recoverSnapshot(root, recovery, options.store, env);
     const result = prepared('prepared', snapshot, started, released);
     log({ event: 'executor-prepared', key, image: image.id, regions: snapshot.regions, durationMs: result.durationMs, ...released });
     return result;
@@ -189,7 +191,7 @@ export async function prepareSnapshot(options: PrepareOptions): Promise<Prepared
       // Retiring uncertainty must be resolved before restoring either pointer.
       // Every other failure becomes durable cleanup of this builder's image.
       if (recovery.phase !== 'retire') { recovery.phase = 'cleanup'; await saveRecovery(root, recovery); }
-      try { await recoverSnapshot(root, recovery, options.store); } catch { /* retained for restart/timer retries */ }
+      try { await recoverSnapshot(root, recovery, options.store, env); } catch { /* retained for restart/timer retries */ }
     }
     const cause = `${stage}: ${error instanceof Error ? error.message : 'snapshot preparation failed'}`;
     log({ event: 'executor-prepare-failed', key, image: image?.id ?? null, regions: options.regions, durationMs: Date.now() - started, ...released, cause });

@@ -195,6 +195,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
   readonly #directories = new Map<string, DirectorySchedule>();
   readonly #stopGraceMs: number;
   readonly #env: NodeJS.ProcessEnv;
+  readonly #processEnv: NodeJS.ProcessEnv;
   /** Watched processes by session id. */
   readonly #watched = new Map<string, HarnessProcess>();
   /** The mod's bridge of each session: where inject frames go. */
@@ -209,7 +210,8 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
 
   constructor(host: AdapterHost, options: ClaudeCodeOptions = {}) {
     this.#host = host;
-    this.#bin = options.bin ?? process.env.CLAND_CLAUDE_BIN ?? 'claude';
+    this.#processEnv = options.env ?? process.env;
+    this.#bin = options.bin ?? this.#processEnv.CLAND_CLAUDE_BIN ?? 'claude';
     this.#pollMs = options.pollMs ?? 5000;
     this.#injectTimeoutMs = options.injectTimeoutMs ?? 60_000;
     this.#agentsMs = options.agentsMs ?? 30_000;
@@ -398,7 +400,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
         if (found?.pid !== undefined) {
           launched.pid = found.pid;
           launched.harnessSessionId = found.sessionId ?? p.harnessSessionId;
-          launched.pidStarted = yield* wait(processStarted(found.pid, undefined, resumed));
+          launched.pidStarted = yield* wait(processStarted(found.pid, undefined, resumed, undefined, this.#processEnv));
         }
         if (launched.pid === null) this.#host.log({ event: 'harness-pid-unknown', harness: this.harness, session: p.name, harnessId });
         return launched;
@@ -589,7 +591,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
         await cliStop();
         if (!stopped) throw new Error(`could not stop "${p.name}": \`claude stop\` failed and its pid is unknown; it is still watched`);
       } else {
-        if (!await endProcess(p, (entry) => this.#host.log({ ...entry, harness: this.harness, session: p.name }), this.#stopGraceMs, cliStop, { resumed, authorize, allowReused: p.status === 'exited' })) throw new Error(`could not stop "${p.name}": its process identity cannot be verified; it is still watched`);
+        if (!await endProcess(p, (entry) => this.#host.log({ ...entry, harness: this.harness, session: p.name }), this.#stopGraceMs, cliStop, { env: this.#processEnv, resumed, authorize, allowReused: p.status === 'exited' })) throw new Error(`could not stop "${p.name}": its process identity cannot be verified; it is still watched`);
       }
       ended = true;
     } finally {
@@ -634,7 +636,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
       const entry = this.#find(entries, p);
       const pid = entry?.pid ?? p.pid;
       // the same session: listed under its own session id (or background id), with a live process
-      const identity = entry && pid !== null && pid !== undefined && p.pid === pid && p.pidStarted ? yield* wait(processStarted(pid, undefined, resumed)) : null;
+      const identity = entry && pid !== null && pid !== undefined && p.pid === pid && p.pidStarted ? yield* wait(processStarted(pid, undefined, resumed, undefined, this.#processEnv)) : null;
       if (entry && pid !== null && pid !== undefined && pidAlive(pid) && (!p.pidStarted || p.pid !== pid || identity === p.pidStarted)) {
         const process: HarnessProcess = { ...p, pid, harnessId: p.harnessId ?? entry.id ?? null, harnessSessionId: entry.sessionId ?? p.harnessSessionId, status: 'running' };
         return { found: true, process, state: stateOfAgent(entry) };

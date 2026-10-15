@@ -6,12 +6,12 @@ import { join } from 'node:path';
 import { promisify } from 'node:util';
 
 const exec = promisify(execFile);
-export async function candidateTree(cwd: string, head: string): Promise<string | null> {
+export async function candidateTree(cwd: string, head: string, env: NodeJS.ProcessEnv = process.env): Promise<string | null> {
   const dir = await mkdtemp(join(tmpdir(), 'cland-candidate-'));
   try {
     const git = async (args: string[], index = false) => (await exec('git', args, {
       cwd, timeout: 10_000, maxBuffer: 8 * 1024 * 1024,
-      env: { ...process.env, ...(index ? { GIT_INDEX_FILE: join(dir, 'index') } : {}) },
+      env: { ...env, ...(index ? { GIT_INDEX_FILE: join(dir, 'index') } : {}) },
     })).stdout.trim();
     // A package directory can execute different npm scripts for the same root tree.
     if (await git(['rev-parse', '--show-prefix'])) return null;

@@ -73,6 +73,8 @@ export class Freshness {
   /** Task patch ids by (base, base tip, commit): the tip's is shared by the review and the QA verdict. */
   readonly #patches = new Map<string, Promise<string | null>>();
   #working = false;
+  #workPromise: Promise<void> | null = null;
+  #workImmediate: NodeJS.Immediate | null = null;
   /** The worker is due to start: never from inside a read, where its first git would run in the handler. */
   #workSoon = false;
   /** Branches a read did not hold when they were asked about: the read count then, and whether a later read settled it. */
@@ -85,6 +87,7 @@ export class Freshness {
   #schedule: ReturnType<TipSchedule> | null = null;
   #stopped = false;
   #failed = false;
+  #failureReset: NodeJS.Timeout | null = null;
 
   constructor(options: FreshnessOptions) {
     this.#git = options.git;
@@ -104,14 +107,22 @@ export class Freshness {
     this.#schedule = this.#scheduleTips(() => scheduled ??= this.refresh().finally(() => { scheduled = null; }), this.#intervalMs);
   }
 
-  stop(): void {
+  stop(): Promise<void> {
     this.#stopped = true;
     this.#workSoon = false;
+    if (this.#workImmediate) clearImmediate(this.#workImmediate);
+    this.#workImmediate = null;
+    if (this.#failureReset) clearTimeout(this.#failureReset);
+    this.#failureReset = null;
     this.#schedule?.stop();
     this.#schedule = null;
     this.#wants.clear();
     for (const key of this.#retries.keys()) this.#results.delete(key);
     this.#retries.clear();
+    // Scheduling is stopped synchronously, but owned native Git operations must
+    // settle before the tracker closes its index and the fixture checks handles.
+    const read = this.#reading ? new Promise<void>(resolve => this.#readWaiters.push(resolve)) : Promise.resolve();
+    return Promise.all([read, this.#workPromise]).then(() => {});
   }
 
   /** The integration branch patch ids are compared against, as last read; null when neither exists or not read yet. */
@@ -191,9 +202,10 @@ export class Freshness {
   #startWork(): void {
     if (this.#working || this.#workSoon || this.#stopped) return;
     this.#workSoon = true;
-    setImmediate(() => {
+    this.#workImmediate = setImmediate(() => {
+      this.#workImmediate = null;
       this.#workSoon = false;
-      void this.#work();
+      this.#workPromise = this.#work();
     });
   }
 
@@ -332,10 +344,11 @@ export class Freshness {
 
   /** Git could not answer at all: said once per streak, so a hub under load does not flood its log. */
   #fail(what: string, err: unknown): void {
-    if (this.#failed) return;
+    if (this.#failed || this.#stopped) return;
     this.#failed = true;
     this.#log({ event: 'freshness-failed', what, error: err instanceof Error ? err.message : String(err) });
-    setTimeout(() => (this.#failed = false), 60_000).unref();
+    this.#failureReset = setTimeout(() => { this.#failureReset = null; this.#failed = false; }, 60_000);
+    this.#failureReset.unref();
   }
 }
 

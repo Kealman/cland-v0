@@ -4,7 +4,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { chmod, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
-import { cland, clandWithEnv, connectUi, eventually, spawnSpoke, startDaemon, tempProject } from './harness.ts';
+import { cland, clandWithEnv, connectUi, eventually, spawnSpoke, projectHub, startDaemon, tempProject } from './harness.ts';
 import { ownProcess, onCleanup } from './process-cleanup.ts';
 import { fakeDigitalOcean } from './fakes/digitalocean/fake-api.ts';
 import { prepareKey, keyHash } from '../src/executor/droplet/prepare.ts';
@@ -12,7 +12,7 @@ import type { HubStatus } from '../src/protocol.ts';
 
 const exec = promisify(execFile);
 const token = 'sentinel-remote-suite-token';
-export async function fixture(t: TestContext, options: { typecheck?: string | undefined; test?: string | undefined; executor?: 'local' | 'droplet'; config?: string; env?: Record<string, string>; name?: string; api?: Awaited<ReturnType<typeof fakeDigitalOcean>> } = {}) {
+export async function fixture(t: TestContext, options: { hub?: typeof projectHub | typeof startDaemon; typecheck?: string | undefined; test?: string | undefined; executor?: 'local' | 'droplet'; config?: string; env?: Record<string, string>; name?: string; api?: Awaited<ReturnType<typeof fakeDigitalOcean>> } = {}) {
   const root = await tempProject(t, 'remote-run-');
   const territory = await tempProject(t, 'remote-territory-');
   const api = options.api ?? await fakeDigitalOcean(token);
@@ -51,7 +51,7 @@ export async function fixture(t: TestContext, options: { typecheck?: string | un
   const env = { DIGITALOCEAN_TOKEN: token, CLAND_DIGITALOCEAN_API: api.url, CLAND_SSH_BIN: resolve('hub/test/fakes/digitalocean/ssh'), CLAND_SCP_BIN: resolve('hub/test/fakes/digitalocean/scp'), CLAND_TEST_FAKE_MACHINE_ROOT: api.stateRoot, PATH: `${bin}:${process.env.PATH}`, CLAND_TEST_DROPLET_POLL_MS: '20', CLAND_TEST_DROPLET_MACHINE_MS: '2000', CLAND_TEST_DROPLET_RUN_POLL_MS: '50', CLAND_TEST_DROPLET_CANCEL_MS: '500', CLAND_TEST_DROPLET_RELEASE_MS: '500', CLAND_TEST_EXECUTOR_SWEEP_MS: '200', CLAND_TEST_DROPLET_WATCHDOG_POLL_MS: '50', ...options.env };
   await git('checkout', '-qb', 'task-candidate');
   await writeFile(join(root, 'hub/src/tracker/change.ts'), 'export const candidate = true;\n'); await git('add', 'hub/src/tracker/change.ts'); await git('commit', '-qm', 'Hub change');
-  const daemon = await startDaemon(t, root, env);
+  const daemon = await (options.hub ?? startDaemon)(t, root, env);
   const ui = await connectUi(t, daemon.discovery);
   assert.equal((await ui.request({ type: 'role.set', session: 'impl', role: 'implementer' })).ok, true);
   const spoke = await spawnSpoke({ discover: true, assignRole: false, cwd: root, name: 'impl', sessionId: 'remote-impl', role: 'implementer' });
@@ -77,5 +77,5 @@ export async function fixture(t: TestContext, options: { typecheck?: string | un
     const failure = (await messages(id, client))[0]; if (failure) throw new Error(failure.text);
     return;
   }, 15000);
-  return { root, api, git, key, ui, spoke, discovery: daemon.discovery, env, actor, item, topic, launch, messages, result, remote };
+  return { stop: 'stop' in daemon ? daemon.stop : () => cland(root, 'hub', 'stop'), root, api, git, key, ui, spoke, discovery: daemon.discovery, env, actor, item, topic, launch, messages, result, remote };
 }

@@ -58,7 +58,7 @@ test('merge refuses every unclassified hub test in the merged candidate, then ac
 });
 
 test('an in-flight legacy item reaches ready and merge only after every criterion is done and verified', async (t) => {
-  const { root, ui, rev, discovery } = await project(t);
+  const { root, ui, rev, discovery } = await project(t, undefined, undefined, startDaemon);
   const work = await task(root);
   const impl = await spawnSpoke({ discover: true, cwd: root, name: 'impl', sessionId: 'impl-id', role: 'implementer' });
   onCleanup(t, () => impl.close());
@@ -113,7 +113,7 @@ test('an in-flight legacy item reaches ready and merge only after every criterio
 });
 
 test('criterion verification follows the exact branch head even when the review patch is unchanged', async t => {
-  const { root, ui, rev } = await project(t);
+  const { root, ui, rev } = await project(t, undefined, undefined, undefined, true);
   const work = await task(root);
   ok(await cland(root, 'task', 'criterion', work.id, 'add', 'First condition'));
   ok(await cland(root, 'task', 'criterion', work.id, 'add', 'Second condition'));
@@ -167,7 +167,7 @@ test('criterion verification follows the exact branch head even when the review 
 });
 
 test('adding or failing a criterion revokes ready; done and separate verification restore it', async (t) => {
-  const { root, ui, rev } = await project(t);
+  const { root, ui, rev } = await project(t, undefined, undefined, undefined, true);
   const work = await task(root);
   const read = async () => json<{ item: { status: string } }>(await cland(root, 'task', 'view', work.id, '--json')).item;
   const status = async (expected: string) => eventually(expected, async () => (await read()).status === expected ? true : undefined);
@@ -265,7 +265,7 @@ test('deleting any durable hub verdict refuses with the missing run and commit, 
 });
 
 test('a cached green suite at a new identical tree never revives a stale criterion mark', async t => {
-  const { root, ui, rev } = await project(t, {}, true);
+  const { root, ui, rev } = await project(t, {}, true, undefined, true);
   const work = await task(root);
   ok(await cland(root, 'task', 'criterion', work.id, 'add', 'Full suite passes'));
   ok(await cland(root, 'task', 'criterion', work.id, 'done', 'C1'));

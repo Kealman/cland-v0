@@ -5,7 +5,7 @@ import { existsSync } from 'node:fs';
 import { readFile, readdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { withDiscoveredPid, cland, connectUi, eventually, fakeClaude, fakeCodex, killDaemon, pidAlive, spawnSpoke, startDaemon, tempProject } from './harness.ts';
+import { projectHub, withDiscoveredPid, cland, connectUi, eventually, fakeClaude, fakeCodex, killDaemon, pidAlive, spawnSpoke, startDaemon, tempProject } from './harness.ts';
 import { copyPreparedProject } from './prepared-project.ts';
 import type { HarnessProcessView } from '../src/protocol.ts';
 
@@ -13,7 +13,7 @@ test('retained Reviewer pool reuses an idle member for review, caps busy and pen
   const root = await tempProject(t);
   // Keep reviewers busy while the next pool admission tests the busy cap.
   const fake = await fakeClaude(t, { turnMs: 1000 });
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator' });
   t.after(() => coord.close());
@@ -69,7 +69,7 @@ test('retained Reviewer pool reuses an idle member for review, caps busy and pen
 test('Codex native first turn carries the current crew rule for an Implementer pool', async t => {
   const root = await tempProject(t);
   const fake = await fakeCodex(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'crew.set', key: 'implementer.policy', value: 'pool' })).ok, true);
   assert.equal((await ui.request({ type: 'crew.set', key: 'implementer.keep_context', value: true })).ok, true);
@@ -116,7 +116,7 @@ test(`an Implementer pool moves to the next task worktree after merge (${harness
   const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
   await copyPreparedProject(root);
   const fake = await pooledHarness(t, harness);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   for (const [key, value] of [['implementer.policy', 'pool'], ['implementer.keep_context', keepContext]] as const)
     assert.equal((await ui.request({ type: 'crew.set', key, value })).ok, true);
@@ -210,7 +210,7 @@ test(`an Implementer pool moves to the next task worktree after merge (${harness
 test('singleton and per-item caps survive concurrent launch requests; crew clauses reload on live sessions', async t => {
   const root = await tempProject(t);
   const fake = await fakeClaude(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   const launch = (name: string, role: string) => ui.request({ type: 'session.launch', name, role, harness: 'claude-code' });
   for (const role of ['qa', 'implementer']) {
@@ -234,7 +234,7 @@ test('merge stops per-item implementers before cleanup, while stop_after never a
   const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
   await copyPreparedProject(root);
   const fake = await fakeClaude(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   const list = async () => ((await ui.request({ type: 'session.list' })).value as { processes: HarnessProcessView[] }).processes;
   for (const stopAfter of ['merge', 'never']) {

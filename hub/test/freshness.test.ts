@@ -212,8 +212,11 @@ test('scheduled tip reads cannot starve a foreground refresh when Git is slower 
     settled: () => {},
     tipsMoved: () => {},
   });
-  onCleanup(t, () => fresh.stop());
-  onCleanup(t, () => { for (const done of pending.splice(0)) done(); });
+  onCleanup(t, async () => {
+    const stopped = fresh.stop();
+    for (const done of pending.splice(0)) done();
+    await stopped;
+  });
   fresh.start();
   const background = poll();
   let finished = false;
@@ -231,4 +234,33 @@ test('scheduled tip reads cannot starve a foreground refresh when Git is slower 
   fresh.stop();
   for (const done of pending.splice(0)) done();
   await Promise.all([foreground, ...polls]);
+});
+
+for (const phase of ['read', 'worker']) test(`freshness stop drains an active ${phase} before resolving`, async t => {
+  let release!: () => void;
+  let entered!: () => void;
+  const blocked = new Promise<string | null>(resolve => { release = () => resolve(null); });
+  const started = new Promise<void>(resolve => { entered = resolve; });
+  const fresh = new Freshness({
+    git: async args => {
+      if (phase === 'read' || args[0] === 'rev-parse') { entered(); return blocked; }
+      return `${'a'.repeat(40)} refs/heads/dev`;
+    },
+    settled: () => assert.fail('shutdown must not publish a freshness result'),
+    tipsMoved: () => {},
+  });
+  onCleanup(t, async () => { release(); await fresh.stop(); });
+  const reading = fresh.refresh();
+  if (phase === 'worker') {
+    await reading;
+    assert.equal(fresh.ancestor('T-1', 'b'.repeat(40)), undefined);
+  }
+  await started;
+  let finished = false;
+  const stopped = Promise.resolve(fresh.stop()).then(() => { finished = true; });
+  await setImmediate();
+  assert.equal(finished, false, 'the owned Git operation is still running');
+  release();
+  await Promise.all([reading, stopped]);
+  assert.equal(finished, true);
 });

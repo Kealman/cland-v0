@@ -5,7 +5,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, clandWithEnv, connectUi, eventually, flushProjectLogs, startDaemon } from './harness.ts';
+import { projectHub, cland, clandWithEnv, connectUi, eventually, flushProjectLogs, startDaemon, tempProject } from './harness.ts';
 import { ownProcess } from './process-cleanup.ts';
 import type { HubStatus } from '../src/protocol.ts';
 import { fixture } from './remote-fixture.ts';
@@ -14,10 +14,25 @@ const exec = promisify(execFile);
 const token = 'sentinel-remote-suite-token';
 
 test('remote verify delivers host selection, runs as runner, reports accounting, contains the token and caches across executors', async t => {
-  const f = await fixture(t);
+  const hostMargin = process.env.CLAND_TEST_EXECUTOR_MARGIN_MS;
+  const gitEnv = { GIT_CONFIG_COUNT: process.env.GIT_CONFIG_COUNT, GIT_CONFIG_KEY_0: process.env.GIT_CONFIG_KEY_0, GIT_CONFIG_VALUE_0: process.env.GIT_CONFIG_VALUE_0 };
+  const excludes = join(await tempProject(t), 'git-excludes');
+  await writeFile(excludes, 'env-only-untracked\n');
+  const f = await fixture(t, {
+    hub: projectHub,
+    config: 'lifetime = "3m"\nrun_timeout = "1m"\n',
+    env: { CLAND_TEST_EXECUTOR_MARGIN_MS: '1000', GIT_CONFIG_COUNT: '1', GIT_CONFIG_KEY_0: 'core.excludesFile', GIT_CONFIG_VALUE_0: excludes },
+  });
+  await writeFile(join(f.root, 'env-only-untracked'), 'ignored only by this hub');
+  assert.match(await f.git('status', '--porcelain'), /env-only-untracked/);
+  const index = await readFile(join(f.root, '.git/index'));
   const job = await f.launch(); const remote = await f.remote(job.id);
   const result = await f.result(job.id);
   assert.match(result.text, /auto exit 0/);
+  assert.equal(process.env.CLAND_TEST_EXECUTOR_MARGIN_MS, hostMargin);
+  assert.deepEqual({ GIT_CONFIG_COUNT: process.env.GIT_CONFIG_COUNT, GIT_CONFIG_KEY_0: process.env.GIT_CONFIG_KEY_0, GIT_CONFIG_VALUE_0: process.env.GIT_CONFIG_VALUE_0 }, gitEnv);
+  assert.deepEqual(await readFile(join(f.root, '.git/index')), index, 'candidate provenance uses a private index');
+  assert.match(await readFile(join(f.root, '.cland/run/suites', job.id, 'run.sh'), 'utf8'), /^seconds=60$/m);
   assert.match(result.text, /Executor droplet · c-8 lon1 · cland-.*lifetime \d+ s · cost \$\d+\.\d{4}/);
   assert.equal((await f.messages(job.id)).length, 1);
   assert.deepEqual(f.api.droplets, []); assert.deepEqual(f.api.keys, []);
@@ -57,7 +72,7 @@ test('remote verify delivers host selection, runs as runner, reports accounting,
 });
 
 test('executor overrides bypass host locks and dirty remote candidates fall back to the local queue', async t => {
-  const f = await fixture(t, { executor: 'local' });
+  const f = await fixture(t, { hub: projectHub, executor: 'local' });
   await mkdir(join(f.root, '.cland/host.lock'));
   const remote = await f.launch('--executor', 'droplet');
   assert.match((await f.result(remote.id)).text, /Executor droplet/);
@@ -74,7 +89,7 @@ test('executor overrides bypass host locks and dirty remote candidates fall back
 });
 
 test('a local override executes locally despite a droplet default', async t => {
-  const f = await fixture(t);
+  const f = await fixture(t, { hub: projectHub });
   const job = await f.launch('--executor', 'local', '--fresh');
   if (job.pid) ownProcess(t, job.pid);
   assert.match((await f.result(job.id)).text, /Executor local/);
@@ -83,7 +98,7 @@ test('a local override executes locally despite a droplet default', async t => {
 
 test('host typecheck failure creates no machine; remote typecheck stops tests and failed tests retain failures', async t => {
   for (const kind of ['host', 'remote', 'test'] as const) await t.test(kind, async t => {
-    const f = await fixture(t, { typecheck: kind === 'host' ? 'node -e "process.exit(2)"' : kind === 'remote' ? `node -e "process.exit(process.env.HOME.includes('home/runner')?3:0)"` : undefined,
+    const f = await fixture(t, { hub: projectHub, typecheck: kind === 'host' ? 'node -e "process.exit(2)"' : kind === 'remote' ? `node -e "process.exit(process.env.HOME.includes('home/runner')?3:0)"` : undefined,
       test: kind === 'test' ? `node -e "console.log('not ok 1 - remote failure');process.exit(4)"` : undefined });
     const job = await f.launch();
     const report = await f.result(job.id);
@@ -126,7 +141,7 @@ test('incremental byte logs survive SSH failure and hub restart and report once'
 
 test('provider loss and verify cancel each report once and release the machine and key', async t => {
   for (const kind of ['lost', 'cancel'] as const) await t.test(kind, async t => {
-    const f = await fixture(t, { test: longTest });
+    const f = await fixture(t, { hub: projectHub, test: longTest });
     const job = await f.launch(); const remote = await f.remote(job.id);
     await eventually('remote suite started', async () => (await readFile(join(remote.run, 'suite.log'), 'utf8').catch(() => '')).includes('INCREMENTAL') ? true : undefined);
     if (kind === 'lost') f.api.droplets.splice(0);
@@ -142,7 +157,7 @@ test('provider loss and verify cancel each report once and release the machine a
 
 test('remote start reconciles executed-but-lost replies and marker-only interruptions', async t => {
   for (const fault of ['startReplyLost', 'startMarkerOnly'] as const) await t.test(fault, async t => {
-    const f = await fixture(t, { test: longTest });
+    const f = await fixture(t, { hub: projectHub, test: longTest });
     await f.api.setMachineFaults({ [fault]: 1 });
     const job = await f.launch(); const remote = await f.remote(job.id);
     await eventually('suite remains running', async () => (await readFile(join(remote.run, 'suite.log'), 'utf8').catch(() => '')).includes('\nINCREMENTAL 😀\n') ? true : undefined);

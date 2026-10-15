@@ -313,6 +313,7 @@ export class CodexAdapter implements HarnessAdapter {
   readonly #injectTimeoutMs: number;
   readonly #spawnDeadlineMs: number;
   readonly #env: NodeJS.ProcessEnv;
+  readonly #processEnv: NodeJS.ProcessEnv;
   /** By cland session id. */
   readonly #live = new Map<string, Live>();
   /** Keep terminal totals after the app-server connection is released, until resume or prune. */
@@ -336,8 +337,9 @@ export class CodexAdapter implements HarnessAdapter {
 
   constructor(host: AdapterHost, options: CodexOptions = {}) {
     this.#host = host;
+    this.#processEnv = options.env ?? process.env;
     this.#recoveries = new FailedLaunches(host.log, 1000, host.durableLaunchRecovery);
-    this.#bin = options.bin ?? process.env.CLAND_CODEX_BIN ?? 'codex';
+    this.#bin = options.bin ?? this.#processEnv.CLAND_CODEX_BIN ?? 'codex';
     this.#pollMs = options.pollMs ?? 5000;
     this.#stopGraceMs = options.stopGraceMs ?? 5000;
     this.#injectTimeoutMs = options.injectTimeoutMs ?? 60_000;
@@ -1009,7 +1011,7 @@ export class CodexAdapter implements HarnessAdapter {
     this.#stopping.add(p.sessionId);
     let ended = false;
     try {
-      if (!await endProcess(p, (entry) => this.#host.log({ ...entry, harness: this.harness, session: p.name }), this.#stopGraceMs, undefined, { resumed, authorize, allowReused: p.status === 'exited' })) throw new Error(`could not stop "${p.name}": its process identity cannot be verified; it is still watched`);
+      if (!await endProcess(p, (entry) => this.#host.log({ ...entry, harness: this.harness, session: p.name }), this.#stopGraceMs, undefined, { env: this.#processEnv, resumed, authorize, allowReused: p.status === 'exited' })) throw new Error(`could not stop "${p.name}": its process identity cannot be verified; it is still watched`);
       ended = true;
     } finally {
       resumed(() => {
@@ -1040,7 +1042,7 @@ export class CodexAdapter implements HarnessAdapter {
       const live: Live = this.#live.get(p.sessionId) ?? { p, client: null, connecting: null, state: 'unknown', eventSequence: 0, turnId: null, tokens: null, rateLimits: null };
       live.p = p;
       this.#live.set(p.sessionId, live);
-      if ((yield* wait(processAlive(p, options.resumed))) && (yield* wait(access(socket).then(() => true, () => false)))) {
+      if ((yield* wait(processAlive(p, options.resumed, this.#processEnv))) && (yield* wait(access(socket).then(() => true, () => false)))) {
         let client: AppServerClient | null = null;
         try {
           client = yield* wait(this.#connectTo(socket));
@@ -1057,7 +1059,7 @@ export class CodexAdapter implements HarnessAdapter {
         }
       }
       else if (!options.relaunch) {
-        return { found: false, reason: (yield* wait(processAlive(p, options.resumed))) ? `no socket at ${socket}` : p.pid !== null && pidAlive(p.pid) ? `pid ${p.pid} belongs to another process now` : `pid ${p.pid ?? '?'} is gone` };
+        return { found: false, reason: (yield* wait(processAlive(p, options.resumed, this.#processEnv))) ? `no socket at ${socket}` : p.pid !== null && pidAlive(p.pid) ? `pid ${p.pid} belongs to another process now` : `pid ${p.pid ?? '?'} is gone` };
       }
       yield* wait(this.stop(p, options.resumed));
       this.#live.set(p.sessionId, live);

@@ -75,7 +75,7 @@ test('submission requires caller artifact and send permissions before spawning',
 
 test('hub restart recovers a worker that outlives it, without replaying the result', async t => {
   // Artificial work: the worker must outlive the hub stop/restart to prove recovery without replay.
-  const f = await fixture(t, 'node -e "setTimeout(()=>{console.log(\'ℹ tests 1\\nℹ pass 1\')},1800)"');
+  const f = await fixture(t, 'node -e "setTimeout(()=>{console.log(\'ℹ tests 1\\nℹ pass 1\')},1800)"', undefined, undefined, undefined, undefined, undefined, startDaemon);
   const job = await f.launch();
   assert.equal((await cland(f.root, 'hub', 'stop')).code, 0);
   const { discovery } = await startDaemon(t, f.root);
@@ -114,7 +114,7 @@ test('revoked report permissions hold the result until restored, without a dupli
 });
 
 test('a muted named recipient keeps the single result pending across restart until all recipients can receive it', async t => {
-  const f = await fixture(t, 'node -e "const fs=require(\'fs\');const p=setInterval(()=>{if(fs.existsSync(\'finish\'))clearInterval(p)},50)"', undefined, '[hygiene]\nloop_breaker_max = 2\n');
+  const f = await fixture(t, 'node -e "const fs=require(\'fs\');const p=setInterval(()=>{if(fs.existsSync(\'finish\'))clearInterval(p)},50)"', undefined, '[hygiene]\nloop_breaker_max = 2\n', undefined, undefined, undefined, startDaemon);
   for (let n = 0; n < 3; n++) await f.spoke.call('send', { to: ['rev'], topic: f.topic, text: `seed ${n}` });
   const job = await f.launch();
   await writeFile(join(f.root, 'finish'), 'ready');
@@ -184,7 +184,7 @@ test('a muted suite report follows its moved log after unmute and publishes once
 });
 
 test('failure cleanup preserves a live worker whose recorded start identity is unavailable', async t => {
-  const f = await fixture(t, 'node -e "const fs=require(\'fs\');const p=setInterval(()=>{if(fs.existsSync(\'finish\'))clearInterval(p)},50)"');
+  const f = await fixture(t, 'node -e "const fs=require(\'fs\');const p=setInterval(()=>{if(fs.existsSync(\'finish\'))clearInterval(p)},50)"', undefined, undefined, undefined, undefined, undefined, startDaemon);
   const job = await f.launch();
   assert.equal((await cland(f.root, 'hub', 'stop')).code, 0);
   const db = new DatabaseSync(join(f.root, '.cland', 'hub.db'));
@@ -220,7 +220,7 @@ test('failure cleanup preserves a live worker whose recorded start identity is u
 });
 
 test('restart recognizes a committed result even if its run receipt did not settle', async t => {
-  const f = await fixture(t, 'node -e "process.exit(0)"');
+  const f = await fixture(t, 'node -e "process.exit(0)"', undefined, undefined, undefined, undefined, undefined, startDaemon);
   const job = await f.launch();
   await eventually('initial result', async () => (await f.results())[0]);
   assert.equal((await cland(f.root, 'hub', 'stop')).code, 0);

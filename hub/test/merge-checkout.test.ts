@@ -91,7 +91,7 @@ test('an index lock during post-checkout write-tree restores the staged tree, fi
 });
 
 test('a blocked prelanding restore reports its durable recovery receipt and repairs before a later merge', async (t) => {
-  const { root, ui, rev, discovery } = await indexLockProject(t, 'persistent-lock');
+  const { root, ui, rev, discovery } = await indexLockProject(t, 'persistent-lock', startDaemon);
   const work = await task(root);
   await review(rev, work.id);
   await writeFile(join(root, 'README.md'), 'unrelated staged bytes\n');
@@ -128,7 +128,7 @@ test('a blocked prelanding restore reports its durable recovery receipt and repa
 });
 
 test('a crash before the integration ref moves retains checkout recovery and can merge after restart', async (t) => {
-  const { root, rev, discovery } = await indexLockProject(t, 'crash-before-ref');
+  const { root, rev, discovery } = await indexLockProject(t, 'crash-before-ref', startDaemon);
   const work = await task(root);
   await review(rev, work.id);
   const before = git(root, 'rev-parse', 'dev');

@@ -29,7 +29,7 @@ export function projectSessions(options: { core: HubCore; root: string; db: stri
   const env = options.env ?? process.env;
   const table = new ProcessTable(options.db);
   const pushTrustMs = positive(env.CLAND_PUSH_TRUST_MS);
-  const sessions = new Sessions({ core: options.core, table, root: options.root, log: options.log, tracker: options.tracker, cleanup: options.cleanup, ...(pushTrustMs ? { pushTrustMs } : {}) });
+  const sessions = new Sessions({ env, core: options.core, table, root: options.root, log: options.log, tracker: options.tracker, cleanup: options.cleanup, ...(pushTrustMs ? { pushTrustMs } : {}) });
   const host = sessions.host({ discoveryFile: options.discoveryFile, node: process.execPath, cli: CLI_ENTRY, spoke: SPOKE_ENTRY });
   const pollMs = positive(env.CLAND_ADAPTER_POLL_MS);
   const claudeAgentsMs = positive(env.CLAND_CLAUDE_AGENTS_MS);

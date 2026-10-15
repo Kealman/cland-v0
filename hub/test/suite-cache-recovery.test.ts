@@ -19,7 +19,7 @@ import { cacheRepository, humanRunnerFixture } from './suite-support.ts';
 
 
 test('cache survives hub restart, separates effective modes, and never reuses a failed run', async t => {
-  const f = await fixture(t, `node -e "require('fs').appendFileSync('executions','run\\n');process.exit(require('fs').existsSync('.cland/fail')?1:0)"`);
+  const f = await fixture(t, `node -e "require('fs').appendFileSync('executions','run\\n');process.exit(require('fs').existsSync('.cland/fail')?1:0)"`, undefined, undefined, undefined, undefined, undefined, startDaemon);
   const pkg = JSON.parse(await readFile(join(f.root, 'package.json'), 'utf8'));
   pkg.workspaces = ['hub'];
   await writeFile(join(f.root, 'package.json'), JSON.stringify(pkg));

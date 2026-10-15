@@ -7,12 +7,12 @@ import { join } from 'node:path';
 import { stringify } from 'yaml';
 import type { ItemView } from '../src/tracker/tracker.ts';
 import type { EpicPlan } from '../src/tracker/plan.ts';
-import { cland, clandWithEnv, connectUi, eventually, fakeClaude, spawnSpoke, startDaemon, tempProject } from './harness.ts';
+import { projectHub, cland, clandWithEnv, connectUi, eventually, fakeClaude, spawnSpoke, startDaemon, tempProject } from './harness.ts';
 import { copyPreparedProject } from './prepared-project.ts';
 import { taskWriteGate } from './tracker-write-gate.ts';
 
 const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
-async function fixture(t: test.TestContext, gated = false, count = 3, launchLead = false, ancestryFailure = false) {
+async function fixture(t: test.TestContext, gated = false, count = 3, launchLead = false, ancestryFailure = false, serve: typeof projectHub | typeof startDaemon = projectHub) {
   const root = await tempProject(t);
   await copyPreparedProject(root);
   const gate = gated ? await taskWriteGate(t, root) : undefined;
@@ -23,7 +23,7 @@ async function fixture(t: test.TestContext, gated = false, count = 3, launchLead
     await mkdir(bin);
     await writeFile(join(bin, 'git'), '#!/bin/sh\nif [ "$1" = "merge-base" ] && [ "$2" = "--is-ancestor" ] && [ -f "$CLAND_TEST_ANCESTRY_FAIL" ]; then kill -TERM "$$"; fi\nexec /usr/bin/git "$@"\n', { mode: 0o755 });
   }
-  const { discovery } = await startDaemon(t, root, { ...gate?.env, ...fake?.env,
+  const { discovery } = await serve(t, root, { ...gate?.env, ...fake?.env,
     ...(ancestryFailure ? { PATH: `${bin}:${process.env.PATH}`, CLAND_TEST_ANCESTRY_FAIL: failAncestry } : {}) });
   const ui = await connectUi(t, discovery);
   const rev = await spawnSpoke({ discover: true, cwd: root, name: 'rev', role: 'reviewer', sessionId: 'review-session' });
@@ -55,7 +55,7 @@ async function fixture(t: test.TestContext, gated = false, count = 3, launchLead
 }
 
 test('three review-only merges, one stage QA on dev, not-clear/retry, restart and separate epic demo', async t => {
-  const f = await fixture(t);
+  const f = await fixture(t, undefined, undefined, undefined, undefined, startDaemon);
   await f.land();
   assert.equal((await f.read()).stages?.[0]?.state, 'open');
   const clear = await f.verdict(); assert.equal(clear.ok, true, clear.error);
@@ -223,7 +223,7 @@ test('a transient ancestry failure retries and recovers at the same dev SHA with
 });
 
 test('stage receipt hashes remain compatible with legacy parent ids', async t => {
-  const f = await fixture(t, false, 1);
+  const f = await fixture(t, false, 1, undefined, undefined, startDaemon);
   await f.land();
   const clear = await f.verdict();
   assert.equal(clear.ok, true, clear.error);

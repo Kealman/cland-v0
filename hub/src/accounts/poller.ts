@@ -10,8 +10,8 @@ import type { Sessions } from '../adapters/sessions.ts';
 import type { LogFn } from '../log.ts';
 
 type Schedule = { at: number; failures: number };
-const timing = (key: string, fallback: number): number => {
-  const n = Number(process.env[`CLAND_TEST_ACCOUNT_POLL_${key}_MS`]);
+const timing = (key: string, fallback: number, env: NodeJS.ProcessEnv): number => {
+  const n = Number(env[`CLAND_TEST_ACCOUNT_POLL_${key}_MS`]);
   return Number.isFinite(n) && n > 0 ? n : fallback;
 };
 const object = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -45,6 +45,7 @@ function claudeUsage(output: string): LimitWindow[] {
 
 /** Durable floors, per-account single flight, and two harness processes across the hub. */
 export class AccountPoller {
+  readonly #env: NodeJS.ProcessEnv;
   readonly #core: HubCore;
   readonly #sessions: Sessions;
   readonly #root: string;
@@ -55,13 +56,15 @@ export class AccountPoller {
   readonly #pending = new Map<string, Promise<void>>();
   readonly #queue: Array<() => void> = [];
   readonly #kills = new Set<() => void>();
-  readonly #floor = timing('FLOOR', 15 * 60_000);
-  readonly #minimum = timing('MINIMUM', 5 * 60_000);
-  readonly #bound = timing('BOUND', 30_000);
+  readonly #floor: number;
+  readonly #minimum: number;
+  readonly #bound: number;
   #active = 0;
   #closed = false;
   #timer: NodeJS.Timeout | null = null;
-  constructor(core: HubCore, sessions: Sessions, root: string, log: LogFn) {
+  constructor(core: HubCore, sessions: Sessions, root: string, log: LogFn, env: NodeJS.ProcessEnv = process.env) {
+    this.#env = env;
+    this.#floor = timing('FLOOR', 15 * 60_000, env); this.#minimum = timing('MINIMUM', 5 * 60_000, env); this.#bound = timing('BOUND', 30_000, env);
     this.#core = core; this.#sessions = sessions; this.#root = root; this.#log = log;
     const saved = core.store.meta('account-polls');
     const hits = core.store.meta('account-hit-polls');
@@ -75,7 +78,7 @@ export class AccountPoller {
     this.#timer = setInterval(() => { void this.#all(false).catch(() => {}); }, Math.min(this.#floor, 60_000));
     this.#timer.unref();
   }
-  async refresh(): Promise<AccountList> { await this.#all(true); return this.#core.accountLimits.list(await readAccounts()); }
+  async refresh(): Promise<AccountList> { await this.#all(true); return this.#core.accountLimits.list(await readAccounts(this.#env)); }
   /** One after-hit read waits for the minimum/backoff instead of losing a recent hit. */
   poll(name: string): Promise<void> {
     if (this.#closed) return Promise.resolve();
@@ -104,7 +107,7 @@ export class AccountPoller {
         hit.timer.unref();
         return;
       }
-      void readAccounts().then(registry => {
+      void readAccounts(this.#env).then(registry => {
         if (this.#closed || !this.#core.accountLimits.limited(name)) { hit.finish(); return; }
         // Registry I/O can overlap a manual or timer poll; re-read eligibility before admission.
         if (this.#pending.has(name) || this.#wait(name, true) > 0) { attempt(); return; }
@@ -124,7 +127,7 @@ export class AccountPoller {
   }
   async #all(refresh: boolean): Promise<void> {
     if (this.#closed) return;
-    const registry = await readAccounts();
+    const registry = await readAccounts(this.#env);
     await Promise.all(this.#core.accountLimits.list(registry).accounts.map(a => this.#enqueue(a, refresh, false)));
   }
   #idle(account: Account): boolean {
@@ -187,15 +190,15 @@ export class AccountPoller {
       const live = await this.#sessions.readAccountLimits(account.name);
       if (live !== null) return live;
     }
-    const selection = await selectAccount(account, account.harness);
-    const env = accountEnvironment(process.env, selection.accountEnv);
+    const selection = await selectAccount(account, account.harness, this.#env);
+    const env = accountEnvironment(this.#env, selection.accountEnv);
     for (const key of Object.keys(env)) if (key.startsWith('CLAND_') || ['ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN', 'CLAUDE_CODE_OAUTH_TOKEN'].includes(key)) delete env[key];
     const base = join(this.#root, '.cland', 'run', 'accounts');
     await mkdir(base, { recursive: true });
     const cwd = await mkdtemp(join(base, 'poll-'));
     if (this.#closed) { await rm(cwd, { recursive: true, force: true }); throw new PollFailure('hub stopped'); }
     const claude = account.harness === 'claude-code';
-    const child = spawn(claude ? process.env.CLAND_CLAUDE_BIN ?? 'claude' : process.env.CLAND_CODEX_BIN ?? 'codex', claude ? ['-p', '/usage', '--output-format', 'stream-json', '--verbose'] : ['app-server'], { cwd, env, detached: true, stdio: ['pipe', 'pipe', 'pipe'] });
+    const child = spawn(claude ? this.#env.CLAND_CLAUDE_BIN ?? 'claude' : this.#env.CLAND_CODEX_BIN ?? 'codex', claude ? ['-p', '/usage', '--output-format', 'stream-json', '--verbose'] : ['app-server'], { cwd, env, detached: true, stdio: ['pipe', 'pipe', 'pipe'] });
     let client: AppServerClient | undefined;
     let timer: NodeJS.Timeout | undefined;
     let output = '';

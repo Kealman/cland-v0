@@ -1564,7 +1564,7 @@ Lane order is a separate `follows` list beside `blocked_by` in epic frontmatter.
 
 A follow is met when its predecessor is closed, or has task children all closed with its last ticket merged on dev. Plain `task view` shows `follows E-1: met` or the open tickets (and explains an empty or unmerged predecessor); JSON supplies `followStatus`. Prepare the next epic’s tickets and plan while every ticket of the predecessor’s last stage is in review, then launch its first stage on the last merge, subject to real blockers and plan approval.
 
-While that open predecessor’s follow is met and its demo is pending, the merge gate returns `merge-hold` only for follower tickets touching its merge surfaces. The exported `epicMergeFiles(root, taskIds, ref)` helper in `src/tracker/epic-surfaces.ts` reads `Item:` trailers on dev and includes both sides of renames and deleted paths. The gate names the predecessor, pending demo and overlapping files. Unrelated files merge at once; either recorded hub QA demo verdict (clear or not clear, excluding stage verdicts) or predecessor closure releases the hold. Epic demos still close epics and gate release.
+While that open predecessor’s follow is met and its demo is pending, the merge gate returns `merge-hold` only for follower tickets touching its merge surfaces. The exported `epicMergeFiles(root, taskIds, ref, env?)` helper in `src/tracker/epic-surfaces.ts` reads `Item:` trailers on dev and includes both sides of renames and deleted paths. The gate names the predecessor, pending demo and overlapping files. Unrelated files merge at once; either recorded hub QA demo verdict (clear or not clear, excluding stage verdicts) or predecessor closure releases the hold. Epic demos still close epics and gate release.
 
 The frames are `{"type":"task.<op>","id":"<request id>","item":"T-1",…}` with fields named as in the frontmatter (`labels`, `blocked_by`, `add_labels`, …); a CLI frame may carry `"as":{"name":…,"role":…}`, a spoke's always acts as its own session. The tools take the item as `id`.
 
@@ -1853,6 +1853,25 @@ invoice; provider billing may differ (see costs above).
 `cland executor status` prints the path and today's spent + reserved / cap.
 
 ### Tests
+
+Use `projectHub(t, root, env?)` from `hub/test/harness.ts` for project tests by
+default. Each test serves its own project through `serveProject` in the test
+process, with normal discovery, Unix socket and WebSocket edges. Real CLI
+subprocesses, discovering spokes and fake harnesses keep their production
+protocols. Pass environment overrides to the fixture; never temporarily mutate
+`process.env` for one hub. Teardown stops the served hub, disposes the fixture's
+owned processes, then fails on surviving owned handles, timers or process
+listeners, with `process.getActiveResourcesInfo()` diagnostics.
+
+Keep `startDaemon` only when an assertion concerns the hub process: startup,
+shutdown, signals, crash/restart, lock/discovery/PID identity, orphan sweeping,
+watchdog behavior, or CLI behavior with the hub down or unreachable. Session
+stop, resume and native harness crashes alone do not require a spawned hub.
+New tests using `startDaemon` must name the process lifecycle behavior they
+prove. Do not share one project hub across unrelated tests. Validation duplicates
+may call the existing dispatcher or tracker directly while retaining one real
+frame proof per tool/refusal family; adapter parsing edges use a fake native
+transport while launch/inject/turn/stop/resume retain frame coverage.
 
 Package suites pass `--test-timeout` to every Node test phase. The default is
 120 seconds per test; `[verification].test_timeout` in `.cland/config.toml`

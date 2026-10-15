@@ -13,14 +13,14 @@ import { delimiter, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse as parseToml } from 'smol-toml';
 import { AppServerClient } from '../src/adapters/codex/app-server.ts';
-import { clandWithEnv, sleep, connectUi, eventually, killDaemon, pidAlive, spawnSpoke, startDaemon, tempProject, type FrameClient, NO_PS } from './harness.ts';
+import { projectHub, clandWithEnv, sleep, connectUi, eventually, killDaemon, pidAlive, spawnSpoke, startDaemon, tempProject, type FrameClient, NO_PS } from './harness.ts';
 
 const FAKE_CODEX_DIR = fileURLToPath(new URL('./fakes/codex', import.meta.url));
 
 for (const preassigned of [false, true]) test(`an Implementer begins on its launch brief after the clause in the first Codex turn (${preassigned ? 'preassigned role' : 'explicit role'})`, async (t) => {
   const root = await tempProject(t);
   const fake = await fakeCodex(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const brief = 'Build from this Codex launch brief.';
@@ -49,7 +49,7 @@ for (const preassigned of [false, true]) test(`an Implementer begins on its laun
 test('an early Codex hello does not inject its brief when the native first turn is refused', async t => {
   const root = await tempProject(t);
   const fake = await fakeCodex(t);
-  const { discovery } = await startDaemon(t, root, { ...fake.env, FAKE_CODEX_FAIL_FIRST_TURN: '1' });
+  const { discovery } = await projectHub(t, root, { ...fake.env, FAKE_CODEX_FAIL_FIRST_TURN: '1' });
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const brief = 'Only an accepted native input injects this brief.';
@@ -71,7 +71,7 @@ test('an early Codex hello does not inject its brief when the native first turn 
 test('a failed Codex turn is recorded in Agents and the events view and reported to the sender', async (t) => {
   const root = await tempProject(t);
   const fake = await fakeCodex(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator' });
@@ -94,7 +94,7 @@ for (const accepted of [false, true]) test(`Codex failure before a pending steer
   const root = await tempProject(t);
   // Keep the failure turn busy across presence sampling so the steer is submitted before completion (T-389 finding).
   const fake = await fakeCodex(t, { turnMs: 300 });
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator' });
@@ -199,7 +199,7 @@ const sendGeneral = async (ui: FrameClient, text: string, extra: Record<string, 
 test('a launched Codex session: the app-server runs with the spoke, a UI message goes queued → delivered → injected, the reply comes back, and the state follows thread/status/changed', async (t) => {
   const root = await tempProject(t);
   const fake = await fakeCodex(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
 
@@ -323,7 +323,7 @@ test('a launched Codex session: the app-server runs with the spoke, a UI message
 test('attach is `codex resume --remote` with no -c and no --profile, and the TUI joins the hub-owned thread', async (t) => {
   const root = await tempProject(t);
   const fake = await fakeCodex(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   const launched = await launch(ui, 'impl-1', { role: 'implementer' });
   await presentAs(ui, 'impl-1', 'idle');
@@ -346,7 +346,7 @@ for (const order of ['request-first', 'state-first']) test(`a deferred Codex rec
   const root = await tempProject(t);
   const fake = await fakeCodex(t);
   fake.env.FAKE_CODEX_REFUSE_MS = '0';
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const launched = await launch(ui, 'coord', { role: 'coordinator' });
@@ -370,7 +370,7 @@ for (const order of ['request-first', 'state-first']) test(`a deferred Codex rec
 for (const relaunch of [false, true]) test(`a Codex ${relaunch ? 'relaunch' : 'resume'} idle snapshot clears the completed approval before a new waiting episode`, { skip: NO_PS }, async t => {
   const root = await tempProject(t);
   const fake = await fakeCodex(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const launched = await launch(ui, 'coord', { role: 'coordinator' });
@@ -396,7 +396,7 @@ for (const relaunch of [false, true]) test(`a Codex ${relaunch ? 'relaunch' : 'r
 test('a Codex app-server that dies: the state turns unknown and the hub logs it once', async (t) => {
   const root = await tempProject(t);
   const fake = await fakeCodex(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   // the Coordinator: the fake answers the human, which only the Coordinator may
@@ -483,7 +483,7 @@ test('Codex launches Implementer and QA with full access, Reviewer read-only, an
   await mkdir(gitDir, { recursive: true });
   await writeFile(join(worktree, '.git'), `gitdir: ${gitDir}\n`);
   const fake = await fakeCodex(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   // This profile comparison keeps two QA sessions alive across a role-file edit.
   assert.equal((await ui.request({ type: 'crew.set', key: 'qa.policy', value: 'pool' })).ok, true);
@@ -592,7 +592,7 @@ test('Codex launches Implementer and QA with full access, Reviewer read-only, an
 test('a second spoke of a live Codex session (another thread on its app-server) leaves the session its tools: the hub answers both, and says so once', async (t) => {
   const root = await tempProject(t);
   const fake = await fakeCodex(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const launched = await launch(ui, 'impl-1', { role: 'implementer' });
@@ -627,7 +627,7 @@ test('a second spoke of a live Codex session (another thread on its app-server) 
 test('session resume --relaunch on a live session relaunches it: the app-server is stopped and a new one resumes the thread, with its role and its tools', { skip: NO_PS }, async (t) => {
   const root = await tempProject(t);
   const fake = await fakeCodex(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const launched = await launch(ui, 'impl-1', { role: 'implementer' });
@@ -692,7 +692,7 @@ test('after a hub restart every spoke of a Codex session reconnects, and the ses
 test('session resume --relaunch on a live session that renames itself while it is being stopped relaunches it under its new name', { skip: NO_PS }, async (t) => {
   const root = await tempProject(t);
   const fake = await fakeCodex(t);
-  const { discovery } = await startDaemon(t, root, { ...fake.env, FAKE_CODEX_TERM_DELAY_MS: '1200' });
+  const { discovery } = await projectHub(t, root, { ...fake.env, FAKE_CODEX_TERM_DELAY_MS: '1200' });
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const launched = await launch(ui, 'coord', { role: 'coordinator' });
@@ -723,7 +723,7 @@ test('session resume --relaunch on a live session that renames itself while it i
 test('a steer the app-server accepted and the turn never took up is delivered again as a new turn, and the journal and Agents say so', async (t) => {
   const root = await tempProject(t);
   const fake = await fakeCodex(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const launched = await launch(ui, 'impl-1', { role: 'implementer' });
@@ -769,7 +769,7 @@ test('a steer the app-server accepted and the turn never took up is delivered ag
 test('a delivery to an idle Codex session runs one turn and is never redelivered', async (t) => {
   const root = await tempProject(t);
   const fake = await fakeCodex(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const launched = await launch(ui, 'impl-1', { role: 'implementer' });
@@ -798,7 +798,7 @@ test('a delivery to an idle Codex session runs one turn and is never redelivered
 test('an idle delivery whose item the turn never announced is found in the turn record and not redelivered', async (t) => {
   const root = await tempProject(t);
   const fake = await fakeCodex(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const launched = await launch(ui, 'impl-1', { role: 'implementer' });
@@ -823,7 +823,7 @@ for (const [body, error] of [
   // a tool output owed in a turn that shows only a userMessage is not judged; nor is anything when the read fails
   const root = await tempProject(t);
   const fake = await fakeCodex(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const launched = await launch(ui, 'impl-1', { role: 'implementer' });
@@ -849,7 +849,7 @@ for (const [body, error] of [
 test('a turn whose input items the hub cannot classify is reported once as unread and not redelivered', async (t) => {
   const root = await tempProject(t);
   const fake = await fakeCodex(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const launched = await launch(ui, 'impl-1', { role: 'implementer' });
@@ -882,7 +882,7 @@ test('a turn whose input items the hub cannot classify is reported once as unrea
 for (const mode of ['rejected', 'unanswered']) test(`a successful completion before a late ${mode} steer response never replays a pending admission`, async (t) => {
   const root = await tempProject(t);
   const fake = await fakeCodex(t, { injectTimeoutMs: 1500 });
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const launched = await launch(ui, 'impl', { role: 'implementer' });
@@ -905,7 +905,7 @@ for (const mode of ['rejected', 'unanswered']) test(`a successful completion bef
 test('a recovery accepted and dropped in a newer turn retains its obligation', async (t) => {
   const root = await tempProject(t);
   const fake = await fakeCodex(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const launched = await launch(ui, 'impl', { role: 'implementer' });
@@ -939,7 +939,7 @@ test('a recovery accepted and dropped in a newer turn retains its obligation', a
 test('a recovered turn failing before its admission response notifies the original sender', async (t) => {
   const root = await tempProject(t);
   const fake = await fakeCodex(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const sender = await spawnSpoke({ cwd: root, discover: true, name: 'sender', role: 'reviewer' });
@@ -968,7 +968,7 @@ test('a recovered turn failing before its admission response notifies the origin
 test('a refused recovery request records journal, Agents and events-view failure and tells the sender', async (t) => {
   const root = await tempProject(t);
   const fake = await fakeCodex(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const sender = await spawnSpoke({ cwd: root, discover: true, name: 'sender', role: 'reviewer' });
@@ -999,7 +999,7 @@ test('a refused recovery request records journal, Agents and events-view failure
 for (const mode of ['reject', 'accept', 'accept dropped']) test(`a successful completion reconciles a late ${mode} pending steer response`, async (t) => {
   const root = await tempProject(t);
   const fake = await fakeCodex(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const launched = await launch(ui, 'impl', { role: 'implementer' });
@@ -1027,7 +1027,7 @@ for (const mode of ['reject', 'accept', 'accept dropped']) test(`a successful co
 test('repeated dropped recoveries stop with a visible failure after two attempts', async (t) => {
   const root = await tempProject(t);
   const fake = await fakeCodex(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   await launch(ui, 'impl', { role: 'implementer' });
@@ -1054,7 +1054,7 @@ test('repeated dropped recoveries stop with a visible failure after two attempts
 test('a codex Lead receives its epic claim, role clause and direct node address', async t => {
   const root = await tempProject(t);
   const fake = await fakeCodex(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   const created = await ui.request({ type: 'task.create', title: 'Led epic', kind: 'epic' });
   assert.equal(created.ok, true, created.error);

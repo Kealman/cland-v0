@@ -14,7 +14,7 @@ export type FolderWatch = { close: () => void };
  * start or fails later, `poll()` runs every `POLL_MS` instead and must find the changes itself; the failure is
  * logged once as `event`.
  */
-export function watchFolder(dir: string, handlers: { changed: (name: string | null) => void; poll: () => void }, options: { log: LogFn; event: string; unref?: boolean }): FolderWatch {
+export function watchFolder(dir: string, handlers: { changed: (name: string | null) => void; poll: () => void }, options: { env?: NodeJS.ProcessEnv; log: LogFn; event: string; unref?: boolean }): FolderWatch {
   let watcher: FSWatcher | null = null;
   let timer: NodeJS.Timeout | null = null;
   let closed = false;
@@ -28,7 +28,7 @@ export function watchFolder(dir: string, handlers: { changed: (name: string | nu
   };
   try {
     // a test's stand-in for a sandbox that refuses the watch
-    if (process.env.CLAND_TEST_WATCH_REFUSED === '1') throw new Error('EMFILE: too many open files, watch');
+    if ((options.env ?? process.env).CLAND_TEST_WATCH_REFUSED === '1') throw new Error('EMFILE: too many open files, watch');
     watcher = watch(dir, (_event, name) => handlers.changed(name === null ? null : String(name)));
     watcher.on('error', (err) => fallBack(err.message));
     if (options.unref) watcher.unref();

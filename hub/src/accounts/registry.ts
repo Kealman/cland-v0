@@ -13,11 +13,12 @@ const paths: Record<string, Record<string, string>> = {
   opencode: { data_home: 'XDG_DATA_HOME', db: 'OPENCODE_DB' },
 };
 const record = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v) && !(v instanceof Date);
-const expand = (path: string) => path === '~' ? homedir() : path.startsWith('~/') ? join(homedir(), path.slice(2)) : path;
+const home = (env: NodeJS.ProcessEnv) => env.HOME ?? homedir();
+const expand = (path: string, env: NodeJS.ProcessEnv) => path === '~' ? home(env) : path.startsWith('~/') ? join(home(env), path.slice(2)) : path;
 
-export async function readAccounts(): Promise<Accounts> {
-  const config = process.env.XDG_CONFIG_HOME;
-  const registry = join(config && isAbsolute(config) ? config : join(homedir(), '.config'), 'cland', 'accounts.toml');
+export async function readAccounts(env: NodeJS.ProcessEnv = process.env): Promise<Accounts> {
+  const config = env.XDG_CONFIG_HOME;
+  const registry = join(config && isAbsolute(config) ? config : join(home(env), '.config'), 'cland', 'accounts.toml');
   try {
     let source: string;
     try { source = await readFile(registry, 'utf8'); }
@@ -46,13 +47,13 @@ export async function readAccounts(): Promise<Accounts> {
       let path: string | null = null;
       if (key) {
         if (typeof entry[key] !== 'string') throw new Error(`account "${name}": ${key} must be a string`);
-        path = expand(entry[key]);
+        path = expand(entry[key], env);
         if (!isAbsolute(path)) throw new Error(`account "${name}": ${key} must be absolute after ~ expansion`);
       } else {
         if (defaults.has(entry.harness)) throw new Error(`two path-less accounts for harness "${entry.harness}"`);
         defaults.add(entry.harness);
       }
-      accounts.push({ name, harness: entry.harness, path, variable: key ? allowed[key]! : entry.harness === 'opencode' && process.env.OPENCODE_DB ? 'OPENCODE_DB' : Object.values(allowed)[0]! });
+      accounts.push({ name, harness: entry.harness, path, variable: key ? allowed[key]! : entry.harness === 'opencode' && env.OPENCODE_DB ? 'OPENCODE_DB' : Object.values(allowed)[0]! });
     }
     return { registry, accounts: accounts.sort((a, b) => a.name.localeCompare(b.name)) };
   } catch (error) {
@@ -68,10 +69,10 @@ export function namedAccount(registry: Accounts, name: string): Account {
 }
 
 /** Freeze the directory selected by the hub's environment, including a named harness default. */
-export async function selectAccount(account: Account, harness: string): Promise<AccountSelection> {
+export async function selectAccount(account: Account, harness: string, env: NodeJS.ProcessEnv = process.env): Promise<AccountSelection> {
   if (account.harness !== harness) throw new Error(`account "${account.name}" uses ${account.harness}, but launch harness is ${harness}`);
-  const variable = account.path === null && harness === 'opencode' && process.env.OPENCODE_DB ? 'OPENCODE_DB' : account.variable;
-  const path = account.path ?? process.env[variable] ?? (harness === 'codex' ? join(homedir(), '.codex') : harness === 'claude-code' ? join(homedir(), '.claude') : join(homedir(), '.local', 'share'));
+  const variable = account.path === null && harness === 'opencode' && env.OPENCODE_DB ? 'OPENCODE_DB' : account.variable;
+  const path = account.path ?? env[variable] ?? (harness === 'codex' ? join(home(env), '.codex') : harness === 'claude-code' ? join(home(env), '.claude') : join(home(env), '.local', 'share'));
   const directory = variable === 'OPENCODE_DB' ? dirname(path) : path;
   if (!(await stat(directory).catch(() => null))?.isDirectory()) {
     const login = harness === 'codex' ? 'codex login' : harness === 'claude-code' ? 'claude auth login' : 'opencode auth login';

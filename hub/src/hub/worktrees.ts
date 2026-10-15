@@ -67,6 +67,7 @@ const untimed: Resumed = (write) => write();
 const slugOf = (view: Pick<ItemView, 'id' | 'file'>): string => view.file.replace(/\.md$/, '').replace(new RegExp(`^${view.id}-?`), '');
 
 export class TaskWorktrees {
+  readonly #env: NodeJS.ProcessEnv;
   readonly #tracker: Tracker;
   readonly #log: LogFn;
   readonly #sessions: () => SessionCwd[];
@@ -76,7 +77,8 @@ export class TaskWorktrees {
    *  leaves their worktrees alone, a second launch is refused, and only the launch that reserved an item releases it. */
   readonly #launching = new Map<string, symbol>();
 
-  constructor(options: { tracker: Tracker; log?: LogFn; sessions?: () => SessionCwd[] }) {
+  constructor(options: { env?: NodeJS.ProcessEnv; tracker: Tracker; log?: LogFn; sessions?: () => SessionCwd[] }) {
+    this.#env = options.env ?? process.env;
     this.#tracker = options.tracker;
     this.#log = options.log ?? (() => {});
     this.#sessions = options.sessions ?? (() => []);
@@ -97,13 +99,13 @@ export class TaskWorktrees {
   async #ineligible(view: ItemView): Promise<string | null> {
     if (view.kind !== 'task') return `${view.id} is ${kindWithArticle(view.kind)}: only a task gets a branch and a worktree`;
     if (view.state !== 'open') return `${view.id} is closed: no worktree`;
-    if (!(await hasTerritory(this.root))) return 'the project has no territory (cland init makes one): no branch or worktree';
+    if (!(await hasTerritory(this.root, this.#env))) return 'the project has no territory (cland init makes one): no branch or worktree';
     return null;
   }
 
   /** Make or reuse the worktree of an eligible item; the branch goes into the item, a creation into the journal. */
   async #make(view: ItemView, session: string | null, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<TaskWorktree> {
-    const worktree = await ensureTaskWorktree(this.root, { id: view.id, slug: slugOf(view), branch: view.branch }, resumed, authorize);
+    const worktree = await ensureTaskWorktree(this.root, { id: view.id, slug: slugOf(view), branch: view.branch }, resumed, authorize, this.#env);
     // the item as it is now: it may have changed while Git worked
     const current = await this.#tracker.viewAsync(view.id, resumed);
     resumed(authorize);
@@ -329,9 +331,9 @@ export class TaskWorktrees {
   /** Git's facts first, then queued item reads and the current sessions. */
   async #list(resumed: Resumed): Promise<WorktreeEntry[]> {
     const root = this.root;
-    const base = await taskBase(root).catch(() => null);
+    const base = await taskBase(root, undefined, this.#env).catch(() => null);
     const found: Array<Awaited<ReturnType<typeof listTaskWorktrees>>[number] & { ahead: string[] }> = [];
-    for (const w of await listTaskWorktrees(root)) found.push({ ...w, ahead: w.branch ? await commitsAhead(root, w.branch, base) : [] });
+    for (const w of await listTaskWorktrees(root, this.#env)) found.push({ ...w, ahead: w.branch ? await commitsAhead(root, w.branch, base, this.#env) : [] });
     const observed = await this.#observe(found, resumed);
     return resumed(() => {
       return found.map((w, i): WorktreeEntry => {
@@ -381,7 +383,7 @@ export class TaskWorktrees {
             if (view.state !== 'closed') throw new Error(`${item} reopened: prune keeps its branch`);
             return validate;
           });
-        }, expected, resumed);
+        }, expected, resumed, this.#env);
         return resumed(() => ({ removed: [{ item, ...done }], failed: [] }));
       } catch (err) {
         return resumed(() => ({ removed: [], failed: [{ item, error: err instanceof Error ? err.message : String(err) }] }));
@@ -415,7 +417,7 @@ export class TaskWorktrees {
                 resumed(() => { if (this.#launching.has(item)) throw new Error(`${item}: a session is being launched in its worktree`); });
               };
             });
-          }, expectedBranches.get(item), resumed);
+          }, expectedBranches.get(item), resumed, this.#env);
           resumed(() => {
             this.#log({ event: 'task-worktree-removed', id: item, path: relative(this.root, done.path), branch: done.branch, ahead: entry.ahead.length });
             removed.push({ item, ...done });

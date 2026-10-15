@@ -110,10 +110,10 @@ export async function nvimHubImports(cwd: string): Promise<string[]> {
 }
 
 const exec = promisify(execFile);
-export async function selectPackageSuite(cwd: string, requested: SuiteRequest = 'auto'): Promise<SuiteSelection> {
+export async function selectPackageSuite(cwd: string, requested: SuiteRequest = 'auto', env: NodeJS.ProcessEnv = process.env): Promise<SuiteSelection> {
   let files: string[] = [];
   try {
-    const git = async (...args: string[]) => (await exec('git', args, { cwd, timeout: 10_000, maxBuffer: 8 * 1024 * 1024 })).stdout;
+    const git = async (...args: string[]) => (await exec('git', args, { cwd, env, timeout: 10_000, maxBuffer: 8 * 1024 * 1024 })).stdout;
     // Never select against a stale dev ref, even if an old origin/dev exists.
     await git('fetch', 'origin', '+refs/heads/dev:refs/remotes/origin/dev');
     const branch = (await git('branch', '--show-current')).trim();

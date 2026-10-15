@@ -89,6 +89,7 @@ export function createHubBase(options: HubBaseOptions): HubBase {
   });
   const dispatcher = new Dispatcher({
     core,
+    ...(options.env ? { env: options.env } : {}),
     ...(options.journal ? { journal: options.journal } : {}),
     ...(options.verification ? { verification: options.verification } : {}),
     ...(options.artifactFiles ? { artifactFiles: options.artifactFiles } : {}),
@@ -117,6 +118,7 @@ export function createHubBase(options: HubBaseOptions): HubBase {
   pruneTimer.unref();
   return {
     core,
+    ...(options.env ? { env: options.env } : {}),
     ...(options.journal ? { journal: options.journal } : {}),
     dispatcher,
     prune: () => { const gone = core.prune(); cleanupArtifacts(); return gone; },
@@ -221,8 +223,12 @@ export async function createWebSocketEdge(
     close: async () => {
       clearInterval(keepaliveTimer);
       for (const ws of sockets) ws.terminate();
-      wss.close();
-      await new Promise<void>((resolve) => http.close(() => resolve()));
+      // HTTP close does not await upgraded sockets. Their conversations must
+      // disconnect while the hub's store is still open.
+      await Promise.all([
+        new Promise<void>(resolve => wss.close(() => resolve())),
+        new Promise<void>(resolve => http.close(() => resolve())),
+      ]);
     },
   };
 }

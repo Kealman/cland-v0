@@ -4,7 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { withDiscoveredPid, cland, connectUi, eventually, fakeClaude, fakeCodex, NO_PS, pidAlive, startDaemon, tempProject } from './harness.ts';
+import { projectHub, withDiscoveredPid, cland, connectUi, eventually, fakeClaude, fakeCodex, NO_PS, pidAlive, startDaemon, tempProject } from './harness.ts';
 import { copyPreparedProject } from './prepared-project.ts';
 import type { HarnessProcessView, EventsPage } from '../src/protocol.ts';
 
@@ -46,7 +46,7 @@ test(`${harness}: ${stop} ${forced ? 'forced' : 'graceful'} stop emits stopped w
       CLAND_ADAPTER_POLL_MS: '50',
     },
   };
-  const { discovery } = await startDaemon(t, root, { ...fake.env, ...(forced ? {
+  const { discovery } = await projectHub(t, root, { ...fake.env, ...(forced ? {
     CLAND_STOP_GRACE_MS: '100',
     FAKE_CODEX_TERM_DELAY_MS: '60000',
     FAKE_CLAUDE_IGNORE_TERM: '1',
@@ -124,7 +124,7 @@ process.stdout.write(result.stdout);
 process.stderr.write(result.stderr);
 process.exitCode = result.status ?? 1;
 `, { mode: 0o755 });
-  const { discovery } = await startDaemon(t, root, { ...fake.env, PATH: `${bin}:${fake.env.PATH}` });
+  const { discovery } = await projectHub(t, root, { ...fake.env, PATH: `${bin}:${fake.env.PATH}` });
   const ui = await connectUi(t, discovery);
   const created = await ui.request({ size: 'M', type: 'task.create', title: 'Stop during descendant exit' });
   assert.equal(created.ok, true, created.error);

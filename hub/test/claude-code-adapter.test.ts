@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { readFile, writeFile, unlink } from 'node:fs/promises';
 import { join } from 'node:path';
-import { withDiscoveredPid, assertFirstLaunchClause, clandWithEnv, clauseAnswered, connectUi, eventually, fakeClaude, flushProjectLogs, killDaemon, sleep, spawnSpoke, startDaemon, tempProject, type FrameClient } from './harness.ts';
+import { projectHub, withDiscoveredPid, assertFirstLaunchClause, clandWithEnv, clauseAnswered, connectUi, eventually, fakeClaude, flushProjectLogs, killDaemon, sleep, spawnSpoke, startDaemon, tempProject, type FrameClient } from './harness.ts';
 
 type Presence = { name: string; sessionId: string; state: string; status: string | null; role: string | null };
 type Harness = { name: string; harness: string; pid: number | null; harnessId: string | null; sessionId: string; harnessSessionId: string | null; status: string; state: string; attach: string | null; model: string | null; usage?: Record<string, unknown> };
@@ -18,7 +18,7 @@ test('a Claude Code StopFailure is recorded in Agents and the events view and re
   const root = await tempProject(t);
   // Keep pushed hook states observable and authoritative while staging the turn.
   const fake = await fakeClaude(t, { pollMs: 600_000, turnMs: 1000 });
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator' });
@@ -84,7 +84,7 @@ test('a launched Claude Code session: the spoke connects, a UI message goes queu
   // and `--bg` returns after the session's SessionStart hook already posted (seen with the real harness)
   // a turn long enough that its busy is still news when a hook's process (a node start) reports it
   const fake = await fakeClaude(t, { pollMs: 600_000, lateBg: true, turnMs: 1000 });
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
 
@@ -197,7 +197,7 @@ test('a crashed Claude Code process: the state turns unknown and the hub logs it
   // a confirmation comes from a hook's or the mod's process, which a loaded machine starts seconds late: the deadline is
   // wide, so an unconfirmed inject below means the new process's confirmation was not taken, not that it was slow
   const fake = await fakeClaude(t, { lateBg: true, injectTimeoutMs: 30_000 });
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const launched = await launch(ui, 'impl-1', { role: 'implementer' });
@@ -233,7 +233,7 @@ test('an inject the harness never confirmed stays delivered, is logged, and is r
   const root = await tempProject(t);
   // The retry needs an observed busy→idle transition, not a turn shorter than its hook processes' startup.
   const fake = await fakeClaude(t, { injectTimeoutMs: 1000, dropFirst: true, awaitSignals: true });
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   await launch(ui, 'coord', { role: 'coordinator' });
@@ -295,7 +295,7 @@ test('after a hub restart, resume re-finds the running session through the proce
 test('a message for a session with no adapter stays delivered; an unknown session or harness is refused', async (t) => {
   const root = await tempProject(t);
   const fake = await fakeClaude(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   const unknownHarness = await ui.request({ type: 'session.launch', name: 'x', harness: 'nope' });
   assert.equal(unknownHarness.ok, false);
@@ -448,7 +448,7 @@ test('an expired --bg launch latches a directory once without any discovery or r
   const root = await tempProject(t);
   const fake = await fakeClaude(t);
   await writeFile(join(fake.home, 'logged-out'), '');
-  const { discovery } = await startDaemon(t, root, { ...fake.env, CLAUDE_CONFIG_DIR: fake.home });
+  const { discovery } = await projectHub(t, root, { ...fake.env, CLAUDE_CONFIG_DIR: fake.home });
   const ui = await connectUi(t, discovery);
   for (const name of ['one', 'two']) assert.equal((await ui.request({ type: 'session.launch', harness: 'claude-code', name })).ok, false);
   await sleep(3 * Number(fake.env.CLAND_ADAPTER_POLL_MS)); // Negative: a failed launch never starts discovery.

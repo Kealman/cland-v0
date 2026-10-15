@@ -6,7 +6,7 @@ import { existsSync } from 'node:fs';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { DatabaseSync } from 'node:sqlite';
 import { join } from 'node:path';
-import { cland, flushProjectLogs, clandWithEnv, connectUi, connectWsUi, eventually, fakeClaude, killDaemon, sleep, spawnSpoke, startDaemon, startHub, tempProject, type CliResult } from './harness.ts';
+import { projectHub, dispatcherUi, cland, flushProjectLogs, clandWithEnv, connectUi, connectWsUi, eventually, fakeClaude, killDaemon, sleep, spawnSpoke, startDaemon, startHub, tempProject, type CliResult } from './harness.ts';
 import { preparedProject, copyPreparedProject } from './prepared-project.ts';
 import { Store } from '../src/hub/store.ts';
 import { parseItem, serializeItem } from '../src/tracker/item.ts';
@@ -19,16 +19,17 @@ export const ok = (r: CliResult) => { assert.equal(r.code, 0, r.stderr || r.stdo
 
 export const json = <T>(r: CliResult): T => JSON.parse(ok(r).stdout) as T;
 
-export async function project(t: TestContext, env: Record<string, string> = {}, verification = false) {
+export async function project(t: TestContext, env: Record<string, string> = {}, verification = false, serve: typeof projectHub | typeof startDaemon = projectHub, validation = false) {
   const root = await preparedProject(t, verification ? 'verification' : 'territory', 'cland-merge-');
   if (verification) {
     const config = join(root, '.cland', 'config.toml');
     await writeFile(config, (await readFile(config, 'utf8')).replace(/^lock_path = .*$/m, `lock_path = ${JSON.stringify(join(root, '.cland', 'suite.lock'))}`));
     git(root, 'add', '.cland/config.toml'); git(root, 'commit', '-qm', 'isolated verification locks');
   }
-  const { discovery } = await startDaemon(t, root, env);
+  const served = await serve(t, root, env);
+  const { discovery } = served;
   if (verification) ok(await cland(root, 'push'));
-  const ui = await connectUi(t, discovery);
+  const ui = validation && 'dispatcher' in served ? await dispatcherUi(t, served.dispatcher, root) : await connectUi(t, discovery);
   const rev = await spawnSpoke({ discover: true, cwd: root, name: 'rev', sessionId: 'reviewer-id', role: 'reviewer' });
   onCleanup(t, () => rev.close());
   await rev.waitForPresence(['rev']);
@@ -69,7 +70,7 @@ export async function refused(ui: Awaited<ReturnType<typeof connectUi>>, root: s
   return r;
 }
 
-export async function indexLockProject(t: TestContext, failure: 'transient-lock' | 'persistent-lock' | 'crash-before-ref' = 'transient-lock') {
+export async function indexLockProject(t: TestContext, failure: 'transient-lock' | 'persistent-lock' | 'crash-before-ref' = 'transient-lock', serve: typeof projectHub | typeof startDaemon = projectHub) {
   const bin = await tempProject(t, 'cland-index-lock-bin-');
   const realGit = execFileSync('which', ['git'], { encoding: 'utf8' }).trim();
   await writeFile(join(bin, 'index-lock.mjs'), `#!${process.execPath}\nimport { spawnSync } from 'node:child_process';\nimport { existsSync, writeFileSync, rmSync } from 'node:fs';\nconst args = process.argv.slice(2);\nconst marker = '.cland/checkout-mutated';\nconst failed = '.cland/write-tree-failed';\nif (process.env.CLAND_TEST_KILL_BEFORE_REF === '1' && args[0] === 'update-ref' && args[1] === 'refs/heads/dev') { writeFileSync('.cland/before-ref-crash', 'crashed'); process.kill(process.ppid, 'SIGKILL'); process.exit(1); }\nconst fail = process.env.CLAND_TEST_KILL_BEFORE_REF !== '1' && args[0] === 'write-tree' && existsSync(marker) && !existsSync(failed);\nif (fail) { writeFileSync('.git/index.lock', 'held'); writeFileSync(failed, 'failed'); }\nconst result = spawnSync(${JSON.stringify(realGit)}, args, { stdio: 'inherit' });\nif (args[0] === 'read-tree' && args[1] === '-m' && result.status === 0) writeFileSync(marker, 'changed');\nif (fail && process.env.CLAND_TEST_KEEP_INDEX_LOCK !== '1') rmSync('.git/index.lock');\nprocess.exit(result.status ?? 1);\n`, { mode: 0o755 });
@@ -82,7 +83,7 @@ case "$1" in
 esac
 exec ${quote(realGit)} "$@"
 `, { mode: 0o755 });
-  return project(t, { PATH: `${bin}:${process.env.PATH ?? ''}`, CLAND_TEST_KEEP_INDEX_LOCK: failure === 'persistent-lock' ? '1' : '0', CLAND_TEST_KILL_BEFORE_REF: failure === 'crash-before-ref' ? '1' : '0' });
+  return project(t, { PATH: `${bin}:${process.env.PATH ?? ''}`, CLAND_TEST_KEEP_INDEX_LOCK: failure === 'persistent-lock' ? '1' : '0', CLAND_TEST_KILL_BEFORE_REF: failure === 'crash-before-ref' ? '1' : '0' }, undefined, serve);
 }
 
 export async function observableProject(t: TestContext, run?: (real: Git) => Git, clock?: { now: number }, sink?: (entry: Record<string, unknown>) => void) {

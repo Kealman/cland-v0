@@ -2,16 +2,16 @@
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, clandWithEnv, connectUi, startDaemon, spawnSpoke, tempProject } from './harness.ts';
+import { cland, clandWithEnv, connectUi, projectHub, startDaemon, spawnSpoke, tempProject } from './harness.ts';
 import { onCleanup, ownProcess } from './process-cleanup.ts';
 
 export type ResultMessage = { id: string; from: string; fromRole?: string; text: string; to: string[]; artifacts: Array<{ id: string; path: string; creator: string }> };
-export async function fixture(t: import('node:test').TestContext, testScript: string, typecheck = 'node -e "process.exit(0)"', config = '', daemonEnv: Record<string, string> = {}, budget = 1, cacheAgeMinutes = 1440) {
+export async function fixture(t: import('node:test').TestContext, testScript: string, typecheck = 'node -e "process.exit(0)"', config = '', daemonEnv: Record<string, string> = {}, budget = 1, cacheAgeMinutes = 1440, serve: typeof projectHub | typeof startDaemon = projectHub) {
   const root = await tempProject(t, 'cland-suite-cli-');
   await mkdir(join(root, '.cland'));
   await writeFile(join(root, '.cland', 'config.toml'), `${config}\n[verification]\nbudget = ${budget}\ncache_max_age_minutes = ${cacheAgeMinutes}\nlock_path = ${JSON.stringify(join(root, 'suite.lock'))}\n`);
   await writeFile(join(root, 'package.json'), JSON.stringify({ scripts: { typecheck, test: testScript } }));
-  const { discovery } = await startDaemon(t, root, daemonEnv);
+  const { discovery } = await serve(t, root, daemonEnv);
   const ui = await connectUi(t, discovery, 'cli');
   onCleanup(t, () => ui.close());
   assert.equal((await ui.request({ type: 'role.set', session: 'impl', role: 'implementer' })).ok, true);

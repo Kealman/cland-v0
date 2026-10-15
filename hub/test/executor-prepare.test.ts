@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { clandWithEnv, connectUi, startDaemon, tempProject, spawnSpoke, eventually, flushProjectLogs, pidAlive } from './harness.ts';
+import { projectHub, clandWithEnv, connectUi, startDaemon, tempProject, spawnSpoke, eventually, flushProjectLogs, pidAlive } from './harness.ts';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
@@ -8,11 +8,11 @@ import { join, resolve } from 'node:path';
 import { fakeDigitalOcean } from './fakes/digitalocean/fake-api.ts';
 import type { TestContext } from 'node:test';
 import { DropletExecutor } from '../src/executor/droplet/droplet.ts';
-import { ownProcess } from './process-cleanup.ts';
+import { onCleanup, ownProcess } from './process-cleanup.ts';
 
 const exec = promisify(execFile);
 const git = async (root: string, ...args: string[]) => (await exec('git', args, { cwd: root })).stdout.trim();
-async function fixture(t: TestContext, overrides: Record<string, string> = {}) {
+async function fixture(t: TestContext, overrides: Record<string, string> = {}, serve: typeof projectHub | typeof startDaemon = projectHub) {
   const root = await tempProject(t);
   const territory = await tempProject(t, 'prepare-territory-');
   await git(root, 'init', '-q', '-b', 'dev');
@@ -27,11 +27,13 @@ async function fixture(t: TestContext, overrides: Record<string, string> = {}) {
   await git(root, 'add', '.'); await git(root, 'commit', '-qm', 'Base');
   await git(territory, 'init', '--bare', '-q');
   await git(root, 'remote', 'add', 'origin', territory); await git(root, 'push', '-qu', 'origin', 'dev');
-  const api = await fakeDigitalOcean('sentinel-prepare'); t.after(() => api.close());
+  const api = await fakeDigitalOcean('sentinel-prepare'); onCleanup(t, () => api.close());
   const env = { CLAND_EXECUTOR_STATE: join(root, '.cland/executor-state'), DIGITALOCEAN_TOKEN: 'sentinel-prepare', CLAND_DIGITALOCEAN_API: api.url, CLAND_SSH_BIN: resolve('hub/test/fakes/digitalocean/ssh'), CLAND_SCP_BIN: resolve('hub/test/fakes/digitalocean/scp'), CLAND_TEST_FAKE_MACHINE_ROOT: api.stateRoot, CLAND_TEST_DROPLET_POLL_MS: '20', CLAND_TEST_DROPLET_MACHINE_MS: '2000', CLAND_TEST_DROPLET_RELEASE_MS: '500', CLAND_TEST_EXECUTOR_SWEEP_MS: '50', ...overrides };
-  const { discovery } = await startDaemon(t, root, env);
+  const served = await serve(t, root, env);
+  const { discovery } = served;
   const ui = await connectUi(t, discovery);
-  return { root, api, env, ui, discovery };
+  const stop = () => 'stop' in served ? served.stop() : clandWithEnv(root, env, 'hub', 'stop');
+  return { root, api, env, ui, discovery, stop };
 }
 
 test('prepare builds a reusable snapshot, reports its key and replaces it after the committed lock changes', async t => {
@@ -102,7 +104,7 @@ test('prepare builds a reusable snapshot, reports its key and replaces it after 
 
 test('prepare is a hub-owned control reserved for the human and Coordinator', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root, { DIGITALOCEAN_TOKEN: '' });
+  const { discovery } = await projectHub(t, root, { DIGITALOCEAN_TOKEN: '' });
   const ui = await connectUi(t, discovery);
   for (const role of ['implementer', 'reviewer', 'qa'] as const) {
     const name = `prepare-${role}`;
@@ -117,7 +119,7 @@ test('prepare is a hub-owned control reserved for the human and Coordinator', as
 });
 
 test('prepare keeps its snapshot when builder deletion is unconfirmed, then the hub confirms release and cost', async t => {
-  const { root, api, ui, env, discovery } = await fixture(t);
+  const { root, api, ui, env, discovery } = await fixture(t, undefined, startDaemon);
   api.faults.deleteError = 422;
   assert.equal((await clandWithEnv(root, {}, 'executor', 'prepare', '--json')).code, 0);
   const result = await eventually('prepare finishes despite pending builder deletion', async () => {
@@ -252,17 +254,15 @@ test('prepare refuses an oversized builder before create and reports one job whi
 });
 
 test('prepared snapshots preserve the runner key hook across cloud-init clean and inject the new lease key on boot', async t => {
-  const { root, api, env, ui } = await fixture(t);
-  for (const [key, value] of Object.entries(env)) {
-    const old = process.env[key]; process.env[key] = value;
-    t.after(() => { if (old === undefined) delete process.env[key]; else process.env[key] = old; });
-  }
+  const { root, api, env, ui, stop } = await fixture(t);
   assert.equal((await clandWithEnv(root, {}, 'executor', 'prepare', '--json')).code, 0);
   await eventually('image preparation completes', async () => {
     const value = (await ui.request({ type: 'executor.status' })).value as { prepare?: { state: string } };
     return value.prepare?.state === 'done' ? true : undefined;
   }, 15000);
-  const executor = new DropletExecutor(root);
+  // Native executor assertions need the prepared image, with no concurrent hub sweep.
+  await stop();
+  const executor = new DropletExecutor(root, undefined, undefined, { ...process.env, ...env });
   const lease = await executor.acquire({ id: 'new-snapshot-boot' }, new Date(Date.now() + 60000).toISOString());
   ownProcess(t, lease.watchdog!.pid);
   const directory = api.machineDirs.get(lease.resource!)!;
@@ -277,12 +277,8 @@ test('prepared snapshots preserve the runner key hook across cloud-init clean an
 });
 
 test('acquire needs a prepared image, uses its regions without user data and refuses unready or mismatched machines', async t => {
-  const { root, api, env, ui } = await fixture(t);
-  for (const [key, value] of Object.entries(env)) {
-    const old = process.env[key]; process.env[key] = value;
-    t.after(() => { if (old === undefined) delete process.env[key]; else process.env[key] = old; });
-  }
-  const executor = new DropletExecutor(root);
+  const { root, api, env, ui, stop } = await fixture(t);
+  const executor = new DropletExecutor(root, undefined, undefined, { ...process.env, ...env });
   const deadline = () => new Date(Date.now() + 60000).toISOString();
   await assert.rejects(executor.acquire({ id: 'unprepared' }, deadline()), /no prepared snapshot; run cland executor prepare/);
   assert.equal((await clandWithEnv(root, {}, 'executor', 'prepare', '--json')).code, 0);
@@ -290,6 +286,8 @@ test('acquire needs a prepared image, uses its regions without user data and ref
     const value = (await ui.request({ type: 'executor.status' })).value as { snapshot?: { image: number }; prepare?: { state: string } };
     return value.snapshot && value.prepare?.state === 'done' ? value.snapshot : undefined;
   }, 15000);
+  // The rest exercises the native executor; the hub's periodic sweep has its own tests.
+  await stop();
   // A region preferred by current config but absent from the image cannot be used.
   await writeFile(join(root, '.cland/config.toml'), '[verification.droplet]\nregions = ["fra1", "nyc1"]\n');
   api.sizes[0]!.regions.push('fra1'); api.regions.push({ slug: 'fra1', available: true, sizes: ['c-8'] });
@@ -322,7 +320,7 @@ test('completed transfers wait for snapshot regions to become visible before pub
 });
 
 test('a timed-out snapshot retains cleanup ownership through a late action, delayed catalogue and deletion refusal', async t => {
-  const { root, api, ui, env, discovery } = await fixture(t, { CLAND_TEST_DROPLET_ACTION_MS: '1000' });
+  const { root, api, ui, env, discovery } = await fixture(t, { CLAND_TEST_DROPLET_ACTION_MS: '1000' }, startDaemon);
   // Admission bounds are real hub environment, not a seam inside the executor.
   api.faults.snapshotAfter = 100;
   api.faults.snapshotHiddenPolls = 4;
@@ -353,7 +351,7 @@ test('a timed-out snapshot retains cleanup ownership through a late action, dela
 });
 
 test('hub stop cancels and drains preparation before closing its store and preserves the one outcome', async t => {
-  const { root, api, env, ui, discovery } = await fixture(t);
+  const { root, api, env, ui, discovery } = await fixture(t, undefined, startDaemon);
   await api.setMachineFaults({ delayMs: 5000, delayCommand: 'npm ci' });
   assert.equal((await clandWithEnv(root, {}, 'executor', 'prepare', '--json')).code, 0);
   await eventually('machine is installing when stop arrives', async () => {
@@ -370,7 +368,7 @@ test('hub stop cancels and drains preparation before closing its store and prese
 });
 
 test('lost successful retirement and an unavailable catalogue preserve the replacement through restart', async t => {
-  const { root, api, env, ui, discovery } = await fixture(t);
+  const { root, api, env, ui, discovery } = await fixture(t, undefined, startDaemon);
   assert.equal((await clandWithEnv(root, {}, 'executor', 'prepare', '--json')).code, 0);
   const old = await eventually('initial image ready', async () => {
     const value = (await ui.request({ type: 'executor.status' })).value as { snapshot?: { image: number }; prepare?: { state: string } };

@@ -67,7 +67,7 @@ test('the compatibility lease spans typecheck and tests, so a hand runner waits 
 
 test('a dead queued requester is cancelled with one posted note even after its role is vacated', async t => {
   const fake = await fakeCodex(t);
-  const f = await fixture(t, 'node -e "process.exit(0)"', undefined, '', fake.env);
+  const f = await fixture(t, 'node -e "process.exit(0)"', undefined, '', fake.env, undefined, undefined, startDaemon);
   await cacheRepository(f);
   const green = await f.launch();
   assert.match((await eventually('green before requester death', async () => (await f.results())[0])).text, /exit 0/);
@@ -103,7 +103,7 @@ test('a dead queued requester is cancelled with one posted note even after its r
 });
 
 test('priority admits integrated dev first, then item rank, preserving the queue through restart', async t => {
-  const f = await fixture(t, `node -e "const fs=require('fs');const p=setInterval(()=>{if(fs.existsSync('finish')){fs.unlinkSync('finish');clearInterval(p)}},25)"`);
+  const f = await fixture(t, `node -e "const fs=require('fs');const p=setInterval(()=>{if(fs.existsSync('finish')){fs.unlinkSync('finish');clearInterval(p)}},25)"`, undefined, undefined, undefined, undefined, undefined, startDaemon);
   const git = async (...args: string[]) => promisify(execFile)('git', args, {cwd:f.root});
   await git('init', '--initial-branch=dev');
   await git('config', 'user.name', 'Priority test'); await git('config', 'user.email', 'priority@example.invalid');

@@ -123,7 +123,7 @@ ${Object.entries(c.visibility).flatMap(([surface, kinds]) => Object.entries(kind
 const positive = (v: unknown): number | undefined => (typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : undefined);
 
 /** The file's values over the defaults; a value of the wrong type is ignored. Throws when the TOML does not parse. */
-export function parseConfig(text: string, fallbackName: string): ProjectConfig {
+export function parseConfig(text: string, fallbackName: string, env: NodeJS.ProcessEnv = process.env): ProjectConfig {
   const doc = parse(text) as Record<string, unknown>;
   const c = defaultConfig(fallbackName);
   const sessions = (doc.sessions ?? {}) as Record<string, unknown>;
@@ -156,7 +156,7 @@ export function parseConfig(text: string, fallbackName: string): ProjectConfig {
     catch { throw new Error('verification.run_timeout must be a positive duration (s, m, h or d)'); }
     c.verification.runTimeout = verification.run_timeout;
   }
-  const margin = Number(process.env.CLAND_TEST_EXECUTOR_MARGIN_MS) || 600000;
+  const margin = Number(env.CLAND_TEST_EXECUTOR_MARGIN_MS) || 600000;
   if (c.verification.lifetimeMs < c.verification.runTimeoutMs + margin) throw new Error(`verification.lifetime ${verification.lifetime ?? '110m'} must be at least run_timeout ${c.verification.runTimeout} plus 10 minutes`);
   if (verification.daily_spend_usd !== undefined) {
     if (typeof verification.daily_spend_usd !== 'number' || !Number.isFinite(verification.daily_spend_usd) || verification.daily_spend_usd < 0) throw new Error('verification.daily_spend_usd must be a nonnegative number');
@@ -225,11 +225,11 @@ export function parseConfig(text: string, fallbackName: string): ProjectConfig {
 }
 
 /** What the hub runs with: the file's values, or null (the built-in defaults) when it is missing or unreadable. */
-export function readProjectConfig(path: string, root: string, refused: (error: string) => void = () => {}): ProjectConfig | null {
+export function readProjectConfig(path: string, root: string, refused: (error: string) => void = () => {}, env: NodeJS.ProcessEnv = process.env): ProjectConfig | null {
   const text = readText(path);
   if (text === null) return null;
   try {
-    return parseConfig(text, basename(root));
+    return parseConfig(text, basename(root), env);
   } catch (err) {
     refused(err instanceof Error ? err.message : String(err));
     return null;

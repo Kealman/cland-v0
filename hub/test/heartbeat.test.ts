@@ -165,6 +165,9 @@ test('the digest includes running and queued runs and ages timeouts and ended ru
   await writeFile(join(f.root, 'finish'), 'done');
   await digest(new RegExp(`run ${first.id} ended without a posted result · age`));
   assert.equal((await f.ui.request({ type: 'role.set', session: 'impl', role: 'implementer' })).ok, true);
+  // The second queued worker can start while the first result is withheld.
+  // Settle both runs before the embedded hub's strict resource check.
+  await eventually('both digest runs post their results', async () => (await f.results()).length === 2 || undefined);
 });
 
 

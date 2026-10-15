@@ -221,6 +221,7 @@ export type TrackerFiles = Pick<typeof files, 'open' | 'rename' | 'unlink' | 'li
 };
 
 export class Tracker {
+  readonly #env: NodeJS.ProcessEnv;
   readonly ladder: Ladder;
   /** Legacy clients read the first kind of each level. */
   get levels(): readonly string[] { return this.ladder.flat; }
@@ -292,7 +293,8 @@ export class Tracker {
   #verifyImmediate: NodeJS.Immediate | null = null;
   readonly #shown = new Map<string, string>();
 
-  constructor(options: { onStorageFatal?: (operation: StorageOperation) => void; storageStallMs?: number; storageFatalMs?: number; stopTimeoutMs?: number; planHistory?: ReadonlyArray<Record<string, unknown>>; planApproval?: 'none' | 'human'; qaDefault?: QaPolicy; levels?: Levels; watchResumed?: Resumed; files?: TrackerFiles; root: string; db: string; log?: LogFn; now?: () => Date; writeGate?: () => Promise<void>; git?: Git; tipCheckMs?: number; scheduleTips?: TipSchedule }) {
+  constructor(options: { env?: NodeJS.ProcessEnv; onStorageFatal?: (operation: StorageOperation) => void; storageStallMs?: number; storageFatalMs?: number; stopTimeoutMs?: number; planHistory?: ReadonlyArray<Record<string, unknown>>; planApproval?: 'none' | 'human'; qaDefault?: QaPolicy; levels?: Levels; watchResumed?: Resumed; files?: TrackerFiles; root: string; db: string; log?: LogFn; now?: () => Date; writeGate?: () => Promise<void>; git?: Git; tipCheckMs?: number; scheduleTips?: TipSchedule }) {
+    this.#env = options.env ?? process.env;
     for (const entry of options.planHistory ?? []) {
       if ((entry.event !== 'task-plan-changed' && entry.event !== 'task-plan-approved') || typeof entry.id !== 'string' || typeof entry.ts !== 'string' || typeof entry.by !== 'string') continue;
       const id = typeof entry.planHistoryId === 'string' ? entry.planHistoryId : typeof entry.agentsNotice === 'string' ? entry.agentsNotice : randomUUID();
@@ -337,7 +339,7 @@ export class Tracker {
     this.#git = options.git ?? gitIn(options.root);
     this.#fresh = new Freshness({
       git: this.#git,
-      readBase: async (tips) => await this.#files.stat(territoryPath(this.#root)).then(() => true, () => false) ? await taskBase(this.#root, tips) : tips.has('dev') ? 'dev' : tips.has('main') ? 'main' : null,
+      readBase: async (tips) => await this.#files.stat(territoryPath(this.#root)).then(() => true, () => false) ? await taskBase(this.#root, tips, this.#env) : tips.has('dev') ? 'dev' : tips.has('main') ? 'main' : null,
       log: this.#log,
       ...(options.tipCheckMs !== undefined ? { intervalMs: options.tipCheckMs } : {}),
       ...(options.scheduleTips ? { scheduleTips: options.scheduleTips } : {}),
@@ -676,7 +678,7 @@ export class Tracker {
           }, this.#watchResumed, { operation: 'watch poll', item: null }));
         },
       },
-      { log: this.#log, event: 'task-watch-error' },
+      { env: this.#env, log: this.#log, event: 'task-watch-error' },
     );
     this.#polled = this.#folderStamp();
     this.#fresh.start();
@@ -705,7 +707,7 @@ export class Tracker {
   stop(options: { stalled?: StorageOperation } = {}): Promise<void> {
     if (options.stalled) this.#abandonStorage(options.stalled);
     if (this.#stopping) return this.#stopping;
-    this.#fresh.stop();
+    const freshnessStopped = this.#fresh.stop();
     if (this.#verifyImmediate) clearImmediate(this.#verifyImmediate);
     this.#verifyImmediate = null;
     this.#verifyChanges.clear();
@@ -721,7 +723,7 @@ export class Tracker {
     this.#stopping = (async () => {
       if (!this.#storageAbandoned) {
         let timer: NodeJS.Timeout | undefined;
-        const drained = Promise.allSettled([...this.#background, this.#queue]).then(() => true);
+        const drained = Promise.allSettled([...this.#background, this.#queue, freshnessStopped]).then(() => true);
         const deadline = new Promise<false>(resolve => { timer = setTimeout(() => resolve(false), this.#stopTimeoutMs); });
         const complete = await Promise.race([drained, deadline]);
         clearTimeout(timer);
@@ -1944,7 +1946,7 @@ export class Tracker {
         const prepare = receipt ? async () => {
           await beforeRename?.();
           // A prepared receipt may have rolled back. Only an actual landing makes the task final.
-          const landed = await landedTask(this.root, id, receipt, resumed, { strict: true });
+          const landed = await landedTask(this.root, id, receipt, resumed, { strict: true }, this.#env);
           resumed(() => {
             if (landed) throw new TrackerError(`${id} is already merged: create a follow-up task with cland task create "<title>"${item.fm.parent ? ` --parent ${item.fm.parent}` : ''}; reference ${id} in its body`);
           });

@@ -55,6 +55,7 @@ function launchIdentityRefusal(launch: LaunchOwnership, id: string, currentIds: 
 }
 
 export type SessionsOptions = {
+  env?: NodeJS.ProcessEnv;
   core: HubCore;
   table: ProcessTable;
   root: string;
@@ -73,6 +74,7 @@ const untimed: Resumed = (work) => work();
 export const DEFAULT_HARNESS = 'claude-code';
 
 export class Sessions {
+  readonly #env: NodeJS.ProcessEnv;
   readonly #core: HubCore;
   readonly #table: ProcessTable;
   readonly #root: string;
@@ -261,12 +263,13 @@ export class Sessions {
   lifecyclePending(): boolean { return this.#launching.size > 0 || this.#resuming > 0 || this.#lifecycle.size > 0 || this.#pendingStops.size > 0; }
 
   constructor(options: SessionsOptions) {
+    this.#env = options.env ?? process.env;
     this.#core = options.core;
     this.#table = options.table;
     this.#root = options.root;
     this.#log = options.log ?? (() => {});
     this.#pushTrustMs = options.pushTrustMs ?? 15_000;
-    const usageEventMs = Number(process.env.CLAND_TEST_USAGE_EVENT_MS);
+    const usageEventMs = Number(this.#env.CLAND_TEST_USAGE_EVENT_MS);
     this.#usageEventMs = Number.isFinite(usageEventMs) && usageEventMs > 0 ? usageEventMs : USAGE_EVENT_MS;
     this.#tracker = options.tracker;
     this.#cleanup = options.cleanup ?? { archiveAfterItemMs: 3600000, archiveAfterStopMs: 86400000 };
@@ -401,7 +404,7 @@ export class Sessions {
       recordPid: (sessionId, pid) => {
         const p = this.#table.bySessionId(sessionId);
         if (p) {
-          void processStarted(pid).then(started => {
+          void processStarted(pid, undefined, undefined, undefined, this.#env).then(started => {
             if (this.#closed || started === null) return;
             const current = this.#table.bySessionId(sessionId);
             // Keep the native stop path until PID and identity can be published together.
@@ -687,7 +690,7 @@ export class Sessions {
           resumed(() => { entry.stopIntent = true; this.#table.pendingStop(entry); });
           let gone = false;
           if (recovering) {
-            const rows = await systemProcesses(resumed);
+            const rows = await systemProcesses(resumed, undefined, undefined, undefined, this.#env);
             gone = resumed(() => {
               if (p.pid === null) throw new Error('failed launch process identity is unknown; cleanup remains pending');
               const current = rows.find(row => row.pid === p.pid);
@@ -738,11 +741,11 @@ export class Sessions {
   async #accountRequest(request: LaunchRequest, role: string | null, resumed: Resumed): Promise<AccountLaunchRequest> {
     const defaults = resumed(() => role ? this.#core.roles?.get().get(role)?.launch : null);
     const roleAccount = request.account === undefined && (!request.harness || request.harness === defaults?.harness) ? defaults?.account : null;
-    const registry = request.account || roleAccount ? await readAccounts() : { registry: '', accounts: [] };
+    const registry = request.account || roleAccount ? await readAccounts(this.#env) : { registry: '', accounts: [] };
     const explicit = resumed(() => request.account ? namedAccount(registry, request.account) : null);
     const harness = request.harness ?? explicit?.harness ?? defaults?.harness ?? DEFAULT_HARNESS;
     const name = request.account !== undefined ? request.account : defaults?.harness === harness ? defaults.account : null;
-    const resolvedAccount = name ? await selectAccount(explicit ?? namedAccount(registry, name), harness) : { account: null, accountEnv: null };
+    const resolvedAccount = name ? await selectAccount(explicit ?? namedAccount(registry, name), harness, this.#env) : { account: null, accountEnv: null };
     return resumed(() => ({ ...request, harness, resolvedAccount }));
   }
 
@@ -835,7 +838,7 @@ export class Sessions {
           this.#core.checkAccountLimit(selectedRequest.resolvedAccount.account ?? `default:${selectedRequest.harness}`);
           if (!info?.isDirectory()) throw new InvalidLaunchCwd(`launch cwd "${cwd}" is not an accessible directory`);
           reservation = role !== null && this.#core.roles ? this.#core.reserveLaunchRole(request.name, role) : null;
-          if (process.env.CLAND_TEST_CRASH_AT === 'launch-reserved') process.kill(process.pid, 'SIGKILL');
+          if (this.#env.CLAND_TEST_CRASH_AT === 'launch-reserved') process.kill(process.pid, 'SIGKILL');
           return this.#spawnLaunch(selectedRequest, cwd, resumed, reservation, () => { admission?.release(); this.#crewAdmissions.delete(request.name); }, launchToken, identity, brief, () => { authorize(); this.#checkCrew(request.name, role); }, resumeConversation, retainedId);
         } catch (err) { abort(); throw err; }
       });
@@ -908,7 +911,7 @@ export class Sessions {
         if (proven && brief && clause !== null && adapter.clauseAtSpawn === true) this.#core.completeCarriedBrief(launchToken, owned!.sessionId);
       });
       // Retain ownership before the PID probe too: a thrown probe still owes cleanup of this process.
-      const pidStarted = owned.pidStarted ?? (owned.pid !== null ? await processStarted(owned.pid, undefined, resumed) : null);
+      const pidStarted = owned.pidStarted ?? (owned.pid !== null ? await processStarted(owned.pid, undefined, resumed, undefined, this.#env) : null);
       const p: HarnessProcess = { ...owned, ...selected, accountEnv: selected.accountEnv ?? owned.accountEnv ?? null, item, pidStarted, launchBrief: request.brief ?? null, effort };
       owned = p;
       return resumed(() => {
@@ -1030,7 +1033,7 @@ export class Sessions {
         try {
           const current = this.#table.bySessionId(p.sessionId) ?? p;
           this.#table.update(current.name, { status: 'stopped', cleanupItem: this.#stopItem(current) });
-          if (process.env.CLAND_TEST_CRASH_AT === 'stop-recorded') process.kill(process.pid, 'SIGKILL');
+          if (this.#env.CLAND_TEST_CRASH_AT === 'stop-recorded') process.kill(process.pid, 'SIGKILL');
           this.#core.setSessionState(p.sessionId, current.name, 'unknown', 'stopped');
           this.#log({ event: 'session-stopped', session: current.name, harness: p.harness });
           this.#vacate(current, 'its session was stopped');
@@ -1197,7 +1200,7 @@ export class Sessions {
       const cached = r.process.pid === current.pid ? current.pidStarted : null;
       // Cached identities publish in this same stretch; only an actual OS probe introduces another await.
       if (cached != null || r.process.pid === null) return { answer: publish(r, cached ?? null) };
-      return { identity: processStarted(r.process.pid, undefined, resumed), resumed: r };
+      return { identity: processStarted(r.process.pid, undefined, resumed, undefined, this.#env), resumed: r };
     });
     if ('answer' in settled) return settled.answer!;
     const pidStarted = await settled.identity;

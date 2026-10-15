@@ -54,9 +54,9 @@ export async function lintHubShards(cwd: string): Promise<void> {
 }
 
 /** Inspect the immutable merge result, including dev-only files, without touching any checkout. */
-export async function lintHubShardTree(cwd: string, tree: string): Promise<void> {
+export async function lintHubShardTree(cwd: string, tree: string, env: NodeJS.ProcessEnv = process.env): Promise<void> {
   const exec = promisify(execFile);
-  const git = async (args: string[]) => (await exec('git', args, { cwd, timeout: 30_000, maxBuffer: 16 * 1024 * 1024 })).stdout;
+  const git = async (args: string[]) => (await exec('git', args, { cwd, env, timeout: 30_000, maxBuffer: 16 * 1024 * 1024 })).stdout;
   const paths = (await git(['ls-tree', '-r', '--name-only', '-z', tree, '--', 'hub/src', 'hub/test'])).split('\0').filter(Boolean);
   const source = (path: string) => git(['show', `${tree}:${path}`]);
   if (paths.includes(DURATION_MANIFEST)) {

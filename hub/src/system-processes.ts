@@ -10,6 +10,7 @@ export type { SystemProcess } from './process-table.ts';
 
 const untimed: Resumed = work => work();
 export type ProcessEndOptions = {
+  env?: NodeJS.ProcessEnv;
   resumed?: Resumed;
   /** Recheck the caller's live authority immediately before destructive actions. */
   authorize?: () => void;
@@ -22,12 +23,12 @@ export type ProcessEndOptions = {
   /** A shared deadline bounds a sweep, including each OS probe. */
   deadline?: number;
 };
-function timeout(deadline?: number): number {
+function timeout(deadline?: number, env: NodeJS.ProcessEnv = process.env): number {
   const remaining = deadline === undefined ? 3000 : deadline - Date.now();
   if (remaining <= 0) throw new Error('process inspection deadline reached; remaining processes preserved');
-  return Math.min(probeTimeout(process.env, 3000), remaining);
+  return Math.min(probeTimeout(env, 3000), remaining);
 }
-export async function systemProcesses(resumed: Resumed = untimed, deadline?: number, pids?: number[], descendants = false): Promise<SystemProcess[]> {
+export async function systemProcesses(resumed: Resumed = untimed, deadline?: number, pids?: number[], descendants = false, env: NodeJS.ProcessEnv = process.env): Promise<SystemProcess[]> {
   if (pids && descendants) {
     const discoveryDeadline = Math.min(deadline ?? Infinity, Date.now() + 3000);
     const selected = new Set(pids);
@@ -35,7 +36,7 @@ export async function systemProcesses(resumed: Resumed = untimed, deadline?: num
     while (parents.length) {
       // Select children of captured PIDs, then walk only those newly selected parents.
       // The ps snapshot below must still prove every ancestry edge before capture.
-      const children = await run('pgrep', ['-P', parents.join(',')], process.env, timeout(discoveryDeadline));
+      const children = await run('pgrep', ['-P', parents.join(',')], env, timeout(discoveryDeadline, env));
       if (children.error || children.code !== 0 && children.code !== 1) throw new Error('cannot inspect captured process descendants: pgrep failed or timed out');
       parents = resumed(() => children.stdout.trim().split(/\s+/).filter(Boolean).map(value => {
         if (!/^\d+$/.test(value) || Number(value) <= 1) throw new Error('cannot verify captured process descendants');
@@ -49,7 +50,7 @@ export async function systemProcesses(resumed: Resumed = untimed, deadline?: num
   }
   // Reuse the probe runner: a wrapper's grandchildren must not keep stdout open past the deadline.
   const selected = pids ? [...new Set([process.pid, ...pids])] : undefined;
-  const result = await run('ps', processTableArgs(selected), process.env, timeout(deadline));
+  const result = await run('ps', processTableArgs(selected), env, timeout(deadline, env));
   return resumed(() => {
     if (result.code !== 0 || result.error) throw new Error('cannot inspect the OS process table: ps failed or timed out');
     const rows = parseProcessTable(result.stdout);
@@ -64,9 +65,10 @@ const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
  */
 export async function endProcess(p: { pid: number | null; pidStarted?: string | null }, log: (entry: Record<string, unknown>) => void = () => {}, graceMs = 5000, beforeSignal?: () => Promise<void>, options: ProcessEndOptions = {}): Promise<boolean> {
   const resumed = options.resumed ?? untimed;
+  const env = options.env ?? process.env;
   const observe = (entry: Record<string, unknown>) => { try { log(entry); } catch { /* observers cannot abort recovery */ } };
   if (p.pid === null) return false;
-  const rows = await systemProcesses(resumed, options.deadline);
+  const rows = await systemProcesses(resumed, options.deadline, undefined, undefined, env);
   const owned = new Map<number, SystemProcess>();
   const leader = resumed(() => {
     const leader = rows.find(row => row.pid === p.pid);
@@ -123,7 +125,7 @@ export async function endProcess(p: { pid: number | null; pidStarted?: string | 
       }
     };
     const inspect = async (deadline = options.deadline) => {
-      const current = await systemProcesses(resumed, deadline);
+      const current = await systemProcesses(resumed, deadline, undefined, undefined, env);
       await extend(current, deadline);
       return resumed(() => {
         latest = current;
@@ -139,7 +141,7 @@ export async function endProcess(p: { pid: number | null; pidStarted?: string | 
       if (absent) return resumed(() => { latest = []; frozen.clear(); return []; });
       // Grace polls retain children born while a captured parent lives. After the
       // full-tree freeze/KILL, waiting needs only captured identities.
-      const current = await systemProcesses(resumed, options.deadline, [...owned.keys()], discoverChildren);
+      const current = await systemProcesses(resumed, options.deadline, [...owned.keys()], discoverChildren, env);
       if (discoverChildren) await extend(current, options.deadline);
       return resumed(() => {
         latest = current;
@@ -156,7 +158,7 @@ export async function endProcess(p: { pid: number | null; pidStarted?: string | 
       });
       for (const row of targets) {
         // No other target's probe or await may intervene between this identity check and its signal.
-        const started = await resumed(() => processStartedAsync(row.pid, timeout(deadline), resumed));
+        const started = await resumed(() => processStartedAsync(row.pid, timeout(deadline, env), resumed, undefined, env));
         const permitted = resumed(() => {
           // A preceding signal can end another captured descendant before its probe runs. An empty
           // answer alone is ambiguous; a confirmed absent PID needs no signal and is already finished.

@@ -4,6 +4,24 @@ import { HubCore, AGENTS, AGENTS_JOURNAL_CHECKPOINT } from '../src/hub/core.ts';
 import { Journal } from '../src/hub/journal.ts';
 import { agentsRecord, replayAgentsRecord } from '../src/hub/agents-topic.ts';
 
+test('detaching an Agents recorder preserves queued notices for restart without reading the closed store', async () => {
+  const records: Record<string, unknown>[] = [];
+  const agents = agentsRecord();
+  const core = new HubCore();
+  agents.attach(core);
+  agents.tap(entry => records.push(entry))({ event: 'role-assigned', session: 'late', role: 'implementer' });
+  agents.attach(null);
+  core.close();
+  core.store.close();
+  await new Promise<void>(resolve => setImmediate(resolve));
+  const restarted = new HubCore();
+  try {
+    assert.equal(replayAgentsRecord(restarted, records), 1);
+    assert.match(restarted.topicHistory(AGENTS.id).messages[0]!.text, /late assigned Implementer/);
+    assert.equal(replayAgentsRecord(restarted, records), 0, 'the deferred notice still records exactly once');
+  } finally { restarted.close(); restarted.store.close(); }
+});
+
 test('recovery never resurrects pruned notices when the newest checkpoint append was held at a crash', async t => {
   const old = { ts: '2020-01-01T00:00:00Z', event: 'role-assigned', session: 'old', role: 'implementer', agentsNotice: 'pruned' };
   let completed = `${JSON.stringify(old)}\n`;

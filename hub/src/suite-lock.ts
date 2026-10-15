@@ -11,14 +11,14 @@ const pause = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 export type Holder = { pid: number; started: string | null; startedUtc?: string | null; since: string; token: string; root?: string; worktree?: string; queued?: string; phase?: number; device?: number; inode?: number; runner?: ProcessIdentity; records?: string };
 export type Lease = { publish: () => Promise<void>; release: () => Promise<void> };
 /** Read-only view of the compatibility slot; never reap or take a lease to display it. */
-export async function compatibilityHolder(dirs: string[]): Promise<{ holder: Holder | null; since: string | null } | null> {
+export async function compatibilityHolder(dirs: string[], env: NodeJS.ProcessEnv = process.env): Promise<{ holder: Holder | null; since: string | null } | null> {
   for (const dir of dirs) {
     const info = await stat(dir).catch(() => null);
     const holder = await holderAt(`${dir}.owner`) ?? await holderAt(join(dir, 'holder.json'));
     // Display must stay responsive even when the OS identity probe is stalled.
     // A failed probe preserves a live unknown; admission still performs its own checks.
     if (holder && pidAlive(holder.pid)) {
-      const current = readableStart(holder.startedUtc === undefined ? holder.started : holder.startedUtc) ? await processStartedAsync(holder.pid, 100, undefined, holder.startedUtc === undefined ? undefined : 'UTC') : null;
+      const current = readableStart(holder.startedUtc === undefined ? holder.started : holder.startedUtc) ? await processStartedAsync(holder.pid, 100, undefined, holder.startedUtc === undefined ? undefined : 'UTC', env) : null;
       if (sameProcess(holder, current)) return { holder, since: holder.since };
     }
     if (info && !holder) return { holder: null, since: new Date(info.mtimeMs).toISOString() };
@@ -233,10 +233,10 @@ export async function acquire(dirs: string[], interrupted: () => boolean, holder
 
 
 /** Inspect under the same guards used by hand runners; stale owners are swept before admission. */
-export async function compatibilityOccupied(dirs: string[]): Promise<boolean> {
+export async function compatibilityOccupied(dirs: string[], base: NodeJS.ProcessEnv = process.env): Promise<boolean> {
   const deadline = Date.now() + 5000;
   const recover = async (holder: Holder) => {
-    const env = { ...process.env };
+    const env = { ...base };
     delete env.NODE_TEST_CONTEXT;
     const result = await run(process.execPath, [fileURLToPath(new URL('./suite-recovery.ts', import.meta.url)), JSON.stringify(holder)], env, Math.max(1, deadline - Date.now()));
     if (result.code !== 0 || result.error) throw new Error(`compatibility recovery failed; ownership preserved: ${result.error ?? result.stderr.trim()}`);

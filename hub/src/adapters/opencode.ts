@@ -98,6 +98,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
   readonly #injectTimeoutMs: number;
   readonly #spawnDeadlineMs: number;
   readonly #env: NodeJS.ProcessEnv;
+  readonly #processEnv: NodeJS.ProcessEnv;
   readonly #clandDir: string;
   readonly #watched = new Map<string, Watch>();
   readonly #watching = new Map<string, object>();
@@ -108,8 +109,9 @@ export class OpenCodeAdapter implements HarnessAdapter {
 
   constructor(host: AdapterHost, options: OpenCodeOptions = {}) {
     this.#host = host;
+    this.#processEnv = options.env ?? process.env;
     this.#recoveries = new FailedLaunches(host.log, 1000, host.durableLaunchRecovery);
-    this.#bin = options.bin ?? process.env.CLAND_OPENCODE_BIN ?? 'opencode';
+    this.#bin = options.bin ?? this.#processEnv.CLAND_OPENCODE_BIN ?? 'opencode';
     this.#pollMs = options.pollMs ?? 5000;
     this.#stopGraceMs = options.stopGraceMs ?? 5000;
     this.#injectTimeoutMs = options.injectTimeoutMs ?? 30_000;
@@ -421,7 +423,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
     this.#stopping.add(p.sessionId);
     let ended = false;
     try {
-      if (!await endProcess(p, (entry) => this.#host.log({ ...entry, harness: this.harness, session: p.name }), this.#stopGraceMs, undefined, { resumed, authorize, allowReused: p.status === 'exited' })) throw new Error(`could not stop "${p.name}": its process identity cannot be verified; it is still watched`);
+      if (!await endProcess(p, (entry) => this.#host.log({ ...entry, harness: this.harness, session: p.name }), this.#stopGraceMs, undefined, { env: this.#processEnv, resumed, authorize, allowReused: p.status === 'exited' })) throw new Error(`could not stop "${p.name}": its process identity cannot be verified; it is still watched`);
       ended = true;
     } finally {
       resumed(() => {
@@ -436,7 +438,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
       const resumed = options.resumed ?? untimed;
       this.#recoveries.assertAvailable(p.name, p.sessionId);
       let reason: string;
-      if (!(yield* wait(processAlive(p, options.resumed))))
+      if (!(yield* wait(processAlive(p, options.resumed, this.#processEnv))))
         reason = p.pid !== null && pidAlive(p.pid) ? `the server's pid ${p.pid} belongs to another process now` : `the server's pid ${p.pid ?? '?'} is gone`;
       else if (!p.harnessId || !p.harnessSessionId)
         reason = 'no server url or session recorded';

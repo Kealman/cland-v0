@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { withDiscoveredPid, connectUi, spawnSpoke, startDaemon, tempProject, fakeClaude, eventually, killDaemon, cland, sleep } from './harness.ts';
+import { projectHub, withDiscoveredPid, connectUi, spawnSpoke, startDaemon, tempProject, fakeClaude, eventually, killDaemon, cland, sleep } from './harness.ts';
 import { copyPreparedProject } from './prepared-project.ts';
 import type { Message, Subscription } from '../src/protocol.ts';
 
@@ -49,7 +49,7 @@ test('default item subscriptions follow claims and explicit subscriptions widen 
 
 test('an Aide lead owns its subtree defaults without receiving crew broadcasts', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
   const aide = await spawnSpoke({ cwd: root, discover: true, name: 'aide-1', role: 'aide', sessionId: 'aide-id' });
@@ -81,7 +81,7 @@ test('an Aide lead owns its subtree defaults without receiving crew broadcasts',
 
 test('a coalesced explicit event keeps later default lead provenance after an Aide transition', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
   const lead = await spawnSpoke({ cwd: root, discover: true, name: 'lead-1', role: 'implementer', sessionId: 'lead-id' });
@@ -114,7 +114,7 @@ test('a stopped pooled Reviewer reaches its item lead; a killed lead reaches the
   // Keep pushed states authoritative while the idle notification timer runs.
   const fake = await fakeClaude(t, { pollMs: 50, pushTrustMs: 120_000 });
   const idleNotifyMs = 800;
-  const { discovery } = await startDaemon(t, root, { ...fake.env, CLAND_IDLE_NOTIFY_MS: String(idleNotifyMs) });
+  const { discovery } = await projectHub(t, root, { ...fake.env, CLAND_IDLE_NOTIFY_MS: String(idleNotifyMs) });
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
@@ -183,7 +183,7 @@ test('a stopped pooled Reviewer reaches its item lead; a killed lead reaches the
 
 test('a claim before hello already belongs to its lead and adopts that lead identity once', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
   t.after(() => coord.close());
@@ -243,7 +243,7 @@ test('a lead death while the hub is down reaches the offline Coordinator once af
 
 test('removing a claimed item sends its final default event to the previous lead', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
   const impl = await spawnSpoke({ cwd: root, discover: true, name: 'impl', role: 'implementer', sessionId: 'impl-id' });
@@ -320,7 +320,7 @@ for (const pendingReceipt of [false, true]) test(`terminal recovery routes an ol
 test('unclaimed descendants inherit their nearest claimed ancestor lead', async t => {
   const root = await tempProject(t);
   const fake = await fakeClaude(t, { pollMs: 50 });
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
@@ -357,7 +357,7 @@ test('unclaimed descendants inherit their nearest claimed ancestor lead', async 
 
 test('anonymous hellos cannot give another name the claimant default identity', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
   const rev = await spawnSpoke({ cwd: root, discover: true, name: 'rev', role: 'reviewer', sessionId: 'unknown' });

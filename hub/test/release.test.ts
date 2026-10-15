@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { chmod, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, clandWithEnv, connectUi, connectWsUi, spawnSpoke, startDaemon, startHub, tempProject, type CliResult } from './harness.ts';
+import { dispatcherUi, projectHub, cland, clandWithEnv, connectUi, connectWsUi, spawnSpoke, startDaemon, startHub, tempProject, type CliResult } from './harness.ts';
 import { preparedReleaseProject } from './prepared-project.ts';
 import { Store } from '../src/hub/store.ts';
 import { Tracker } from '../src/tracker/tracker.ts';
@@ -14,10 +14,11 @@ const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd,
 const ok = (r: CliResult) => { assert.equal(r.code, 0, r.stderr || r.stdout); return r; };
 const json = <T>(r: CliResult): T => JSON.parse(ok(r).stdout) as T;
 
-async function project(t: TestContext, env: Record<string, string> = {}) {
+async function project(t: TestContext, env: Record<string, string> = {}, serve: typeof projectHub | typeof startDaemon = projectHub, validation = false) {
   const { root, github } = await preparedReleaseProject(t, 'cland-release-');
-  const { discovery } = await startDaemon(t, root, env);
-  const ui = await connectUi(t, discovery);
+  const served = await serve(t, root, env);
+  const { discovery } = served;
+  const ui = validation && 'dispatcher' in served ? await dispatcherUi(t, served.dispatcher, root) : await connectUi(t, discovery);
   return { root, github, ui, discovery, territory: join(root, '.cland', 'territory.git') };
 }
 
@@ -85,17 +86,23 @@ test('sync imports GitHub main and replays unreleased dev commits, updating the 
 const snapshot = (...repos: string[]) => repos.map(repo => git(repo, 'show-ref')).join('\n---\n');
 
 test('release refusals and dry-run keep every local, territory and GitHub ref, with named GitHub commits', async (t) => {
-  const { root, github, territory } = await project(t);
-  const refuses = async (args: string[], message: RegExp) => {
+  const { root, github, territory, ui } = await project(t, undefined, undefined, true);
+  const refuses = async (args: string[], message: RegExp, direct = false) => {
     const before = snapshot(root, territory, github);
-    const r = await cland(root, 'release', ...args);
-    assert.notEqual(r.code, 0);
-    assert.match(r.stderr, message);
+    if (direct) {
+      const r = await ui.request({ type: 'release', ...(args[0] ? { version: args[0] } : {}) });
+      assert.equal(r.ok, false);
+      assert.match(r.error ?? '', message);
+    } else {
+      const r = await cland(root, 'release', ...args);
+      assert.notEqual(r.code, 0);
+      assert.match(r.stderr, message);
+    }
     assert.equal(snapshot(root, territory, github), before);
   };
   await refuses([], /release-version/);
-  await refuses(['v1'], /release-version/);
-  await refuses(['v01.0.0'], /release-version/);
+  await refuses(['v1'], /release-version/, true);
+  await refuses(['v01.0.0'], /release-version/, true);
   await refuses(['v0.1.0'], /release-empty/);
   await merged(root, 'Ship the parser', 'parser.txt');
   const before = snapshot(root, territory, github);
@@ -108,7 +115,7 @@ test('release refusals and dry-run keep every local, territory and GitHub ref, w
   await refuses(['v0.1.0'], /release-tag/);
   git(root, 'tag', '-d', 'v0.1.0');
   git(github, 'tag', 'v0.1.0', 'main');
-  await refuses(['v0.1.0'], /release-tag/);
+  await refuses(['v0.1.0'], /release-tag/, true);
   git(github, 'tag', '-d', 'v0.1.0');
   git(root, 'remote', 'remove', 'github');
   await refuses(['v0.1.0'], /release-github/);
@@ -155,7 +162,7 @@ test('only the human and the Coordinator shell release; Implementer, Reviewer an
 });
 
 test('sync refuses a dirty root, and a replay conflict names its files while preserving every ref and root file', async (t) => {
-  const { root, github, territory, ui } = await project(t);
+  const { root, github, territory, ui } = await project(t, undefined, undefined, true);
   await merged(root, 'Change the readme', 'README.md');
   await clean(root);
   await collaborator(t, github, 'README.md', 'from github\n');
@@ -177,7 +184,7 @@ test('sync refuses a dirty root, and a replay conflict names its files while pre
 });
 
 test('a release accepted by GitHub but blocked locally reports follow-up and retries the same tag after a hub restart', async (t) => {
-  const { root, github, territory } = await project(t);
+  const { root, github, territory } = await project(t, undefined, startDaemon);
   await merged(root, 'Ship the parser', 'parser.txt');
   const dev = git(root, 'rev-parse', 'dev');
   const main = git(root, 'rev-parse', 'main');
@@ -249,16 +256,16 @@ test('notes read Git trailers, not Item lines in prose, and retain subjects for 
 });
 
 test('release refuses multiple GitHub push destinations because their refs cannot form one atomic push', async (t) => {
-  const { root, github, territory } = await project(t);
+  const { root, github, territory, ui } = await project(t, undefined, undefined, true);
   const second = await tempProject(t, 'cland-second-github-');
   git(root, 'clone', '-q', '--bare', github, second);
   git(root, 'config', '--add', 'remote.github.pushurl', github);
   git(root, 'config', '--add', 'remote.github.pushurl', second);
   git(root, 'commit', '--allow-empty', '-qm', 'Release this commit');
   const before = snapshot(root, territory, github, second);
-  const r = await cland(root, 'release', 'v0.1.0');
-  assert.notEqual(r.code, 0);
-  assert.match(r.stderr, /release-github.*one push destination/s);
+  const r = await ui.request({ type: 'release', version: 'v0.1.0' });
+  assert.equal(r.ok, false);
+  assert.match(r.error ?? '', /release-github.*one push destination/s);
   assert.equal(snapshot(root, territory, github, second), before);
 });
 
@@ -338,7 +345,7 @@ test('sync refuses a landed merge with pending tracker completion, preserving it
 });
 
 test('a release success-record failure retains its same-version recovery receipt', async (t) => {
-  const { root, github } = await project(t);
+  const { root, github } = await project(t, undefined, startDaemon);
   await merged(root, 'Ship the parser', 'parser.txt');
   ok(await cland(root, 'hub', 'stop'));
   const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db') });
@@ -384,7 +391,7 @@ test('a fully rolled-back merge preparation does not prevent sync or a later mer
 });
 
 test('sync success-record failure prevents a later merge until its same-replay retry completes', async (t) => {
-  const { root, github } = await project(t);
+  const { root, github } = await project(t, undefined, startDaemon);
   await merged(root, 'Ship the parser', 'parser.txt');
   const { item } = json<{ item: { id: string } }>(await cland(root, 'task', 'create', '--size', 'M', 'Later work', '--json'));
   const id = item.id;

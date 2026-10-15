@@ -27,8 +27,9 @@ import {writeFile} from 'node:fs/promises';
 import cp from 'node:child_process';
 import {syncBuiltinESMExports} from 'node:module';
 import {fixture} from ${JSON.stringify(new URL('./suite-fixture.ts', import.meta.url).href)};
+import {startDaemon} from ${JSON.stringify(new URL('./harness.ts', import.meta.url).href)};
 test('forced ownership failure', async t => {
-  const f = await fixture(t, 'node -e "process.exit(0)"');
+  const f = await fixture(t, 'node -e "process.exit(0)"', undefined, undefined, undefined, undefined, undefined, startDaemon);
   await writeFile(${JSON.stringify(marker)}, JSON.stringify([f.discovery.pid, f.spoke.pid]));
   const exec = cp.execFileSync;
   // Fail the first ownership probe in teardown, then let later cleanup retry.

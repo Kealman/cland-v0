@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, writeFile, mkdir, stat, rm, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, clandWithEnv, connectUi, eventually, startDaemon, spawnSpoke, tempProject, pidAlive, fakeCodex } from './harness.ts';
+import { projectHub, cland, clandWithEnv, connectUi, eventually, startDaemon, spawnSpoke, tempProject, pidAlive, fakeCodex } from './harness.ts';
 import { fixture, type ResultMessage } from './suite-fixture.ts';
 import { suiteSummary } from '../src/hub/suites.ts';
 import { DatabaseSync } from 'node:sqlite';
@@ -20,7 +20,7 @@ import { cacheRepository, humanRunnerFixture } from './suite-support.ts';
 
 test('scratch daemon defaults to fixture leases when the project has no verification override', async t => {
   const root = await tempProject(t, 'cland-scratch-lease-');
-  const { discovery } = await startDaemon(t, root, { TZ: 'Pacific/Honolulu' });
+  const { discovery } = await projectHub(t, root, { TZ: 'Pacific/Honolulu' });
   const lock = join(root, 'suite.lock');
   await mkdir(lock);
   await writeFile(`${lock}.owner`, JSON.stringify({ pid: process.pid, started: null, token: 'scratch', worktree: root, since: '2026-10-12T00:00:00Z' }));
@@ -80,7 +80,7 @@ for (const legacy of [false, true]) test(`verify queue preserves a live ${legacy
 });
 
 test('verify queue shows a hand holder, ordered waiters and unknown ETA; survives restart', async t => {
-  const f = await fixture(t, 'node -e "process.exit(0)"');
+  const f = await fixture(t, 'node -e "process.exit(0)"', undefined, undefined, undefined, undefined, undefined, startDaemon);
   const lock = join(f.root, 'suite.lock');
   await mkdir(lock);
   await writeFile(join(lock, 'holder.json'), JSON.stringify({ pid: process.pid, started: null, since: new Date().toISOString(), token: 'hand', worktree: '/hand/worktree' }));
@@ -120,7 +120,7 @@ test('verify queue shows a hand holder, ordered waiters and unknown ETA; survive
 });
 
 test('verify records wait/run timings, zero-time cache hits, recent median/p90 and a mode-aware ETA', async t => {
-  const f = await fixture(t, `node -e "const fs=require('fs');fs.appendFileSync('executions','run\\n');const p=setInterval(()=>{if(fs.existsSync('finish'))clearInterval(p)},25)"`, undefined, '[hygiene]\nrate_limit_max = 100\nloop_breaker_max = 100\n');
+  const f = await fixture(t, `node -e "const fs=require('fs');fs.appendFileSync('executions','run\\n');const p=setInterval(()=>{if(fs.existsSync('finish'))clearInterval(p)},25)"`, undefined, '[hygiene]\nrate_limit_max = 100\nloop_breaker_max = 100\n', undefined, undefined, undefined, startDaemon);
   const git = await cacheRepository(f);
   await git('config', 'user.name', 'Metrics test');
   // Fixture signals are outside the candidate tree, so completing a run can seed the cache.

@@ -17,11 +17,15 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { WebSocket } from 'ws';
 import { z } from 'zod';
+import type { Dispatcher } from '../src/hub/dispatch.ts';
+import { serveProject } from '../src/hub/daemon.ts';
+import { Journal } from '../src/hub/journal.ts';
+import { hubResources } from './hub-resources.ts';
 import { createHub, type Hub, type HubOptions } from '../src/hub/server.ts';
 import { findDiscovery, readDiscovery as readDiscoveryFile } from '../src/project.ts';
 import { processStarted } from '../src/hub/lock.ts';
 import type { HarnessProcessView } from '../src/protocol.ts';
-import { cleanupOwnedProcesses, ownDirectory, ownProcess, recordedProcess, rememberProcess, rememberResultProcesses } from './process-cleanup.ts';
+import { beforeDirectories, afterCleanup, onCleanup, cleanupOwnedProcesses, ownDirectory, ownProcess, recordedProcess, rememberProcess, rememberResultProcesses } from './process-cleanup.ts';
 
 export const SPOKE_ENTRY = fileURLToPath(new URL('../bin/cland-spoke.ts', import.meta.url));
 
@@ -285,7 +289,7 @@ export type Discovery = { root?: string; socket: string; port: number; secret: s
 
 export const readDiscovery = async (root: string): Promise<Discovery> => {
   const discovery = JSON.parse(await readFile(join(root, '.cland', 'hub.json'), 'utf8')) as Discovery;
-  rememberProcess(discovery.pid, root);
+  if (discovery.pid !== process.pid) rememberProcess(discovery.pid, root);
   return { ...discovery, root };
 };
 
@@ -312,6 +316,45 @@ export async function isolateVerification(root: string): Promise<void> {
     await mkdir(join(root, '.cland'), { recursive: true });
     await writeFile(configPath, stringifyToml(config));
   }
+}
+
+/** Default project fixture: a fresh hub in this process, reached through production discovery and edges.
+ * No process globals are changed. Process lifecycle assertions must keep startDaemon instead. */
+export async function projectHub(t: TestContext, root: string, extra: Record<string, string> = {}): Promise<{ discovery: Discovery; dispatcher: Pick<Dispatcher, 'open'>; stop: () => Promise<void> }> {
+  assert.ok(!extra.CLAND_TEST_CRASH_AT, 'process crash tests require startDaemon');
+  await isolateVerification(root);
+  const env: NodeJS.ProcessEnv = {};
+  for (const [key, value] of Object.entries(process.env)) if (!key.startsWith('CLAND_')) env[key] = value;
+  Object.assign(env, { DIGITALOCEAN_TOKEN: '', CLAND_EXECUTOR_STATE: join(root, '.cland/executor-state'), CLAND_TEST_SKIP_ORPHAN_SWEEP: '1' }, extra);
+  const resources = hubResources();
+  // The CLI redirects startup stderr into this file. Embedded hubs use the same
+  // asynchronous sink explicitly, including its flush barrier for hub.status.
+  await mkdir(join(root, '.cland/log'), { recursive: true });
+  const processLog = new Journal(join(root, '.cland/log/hub.log'));
+  let daemon;
+  try {
+    daemon = await resources.run(() => serveProject(root, { env, log: entry => processLog.write({ ...entry, event: String(entry.event) }), flushLog: () => processLog.flush() }));
+    await processLog.flush();
+  }
+  catch (error) {
+    try { await daemon?.stop(); } finally {
+      try { await processLog.close(); } finally { resources.cancel(); }
+    }
+    throw error;
+  }
+  assert.ok(daemon.discovery, 'projectHub must bind both real edges');
+  beforeDirectories(t, async () => { try { await daemon.stop(); } finally { await processLog.close(); } });
+  afterCleanup(t, () => resources.check());
+  const dispatcher: Pick<Dispatcher, 'open'> = {
+    open: (peer, transport) => resources.run(() => {
+      const conversation = daemon.hub.dispatcher.open(peer, transport);
+      return {
+        receive: raw => resources.run(() => conversation.receive(raw)),
+        closed: () => resources.run(() => conversation.closed()),
+      };
+    }),
+  };
+  return { discovery: daemon.discovery, dispatcher, stop: () => daemon.stop() };
 }
 
 /** Start a fixture without startup orphan inspection; pass { sweep: true } as the fourth argument to opt in.
@@ -491,6 +534,19 @@ export async function connectUi(t: TestContext, discovery: Pick<Discovery, 'sock
   ui.send({ type: 'hello', protocol: 2, secret: discovery.secret, client });
   const welcome = await ui.waitFor((f) => f.type === 'welcome' || f.type === 'error');
   if (welcome.type !== 'welcome') throw new Error(`the hub refused the UI: ${JSON.stringify(welcome)}`);
+  return ui;
+}
+
+/** Validation duplicates use the existing dispatcher boundary; their family keeps a socket proof. */
+export async function dispatcherUi(t: TestContext, dispatcher: Pick<Dispatcher, 'open'>, root: string): Promise<FrameClient> {
+  let receive = (_line: string) => {};
+  let open = true;
+  const conversation = dispatcher.open({ send: frame => receive(`${JSON.stringify(frame)}\n`), close: () => { open = false; }, isOpen: () => open }, { authenticated: true, edge: 'socket' });
+  const ui = frameClient(line => conversation.receive(line.trimEnd()), fn => { receive = fn; }, () => { if (open) { open = false; conversation.closed(); } }, root);
+  onCleanup(t, () => ui.close());
+  ui.send({ type: 'hello', protocol: 2, client: 'ui' });
+  const welcome = await ui.waitFor(frame => frame.type === 'welcome' || frame.type === 'error');
+  assert.equal(welcome.type, 'welcome');
   return ui;
 }
 

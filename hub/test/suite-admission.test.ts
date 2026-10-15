@@ -19,7 +19,7 @@ import { cacheRepository, humanRunnerFixture } from './suite-support.ts';
 
 
 test('verify card follows branch jobs through finish and cache, updates the UI silently and survives restart', async t => {
-  const f = await fixture(t, 'node -e "process.exit(0)"');
+  const f = await fixture(t, 'node -e "process.exit(0)"', undefined, undefined, undefined, undefined, undefined, startDaemon);
   const git = await cacheRepository(f);
   const head = await git('rev-parse', 'HEAD');
   const made = await f.ui.request({ size: 'M', type: 'task.create', title: 'Branch card', branch: 'candidate' });

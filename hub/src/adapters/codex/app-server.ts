@@ -159,6 +159,7 @@ export class AppServerClient extends EventEmitter {
   }
 
   #receive(frame: unknown): void {
+    if (this.#closed) return;
     if (frame === null || typeof frame !== 'object') return;
     const message = frame as Record<string, unknown>;
     if (typeof message.method === 'string') {

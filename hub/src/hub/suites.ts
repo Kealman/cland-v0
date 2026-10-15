@@ -42,7 +42,7 @@ export type SuiteJob = {
 export type VerifyResult = { executor: ExecutorKind; id: string; state: NonNullable<SuiteJob['state']>; result: 'passed' | 'failed' | 'cancelled' | null; head: string; finished: string | null; artifact: string | null; cached?: SuiteJob['cached'] };
 const verifyResult = (job: SuiteJob): VerifyResult => ({ executor: job.executor, id: job.id, state: job.state ?? 'running', result: job.state !== 'finished' ? null : job.cancelled || job.requesterDied ? 'cancelled' : job.outcome ? job.outcome.code === 0 ? 'passed' : 'failed' : null, head: job.head, finished: job.finished ?? job.completedAt ?? null, artifact: job.artifact, ...(job.cached ? { cached: { ...job.cached } } : {}) });
 
-export type SuiteSchedulerOptions = { executor?: ExecutorKind; lifetimeMs?: number; runTimeoutMs?: number; runTimeout?: string; onFallback?: (job: Readonly<SuiteJob>, cause: string) => void; budget?: number; remoteBudget?: number; shards?: number; onShardingSkipped?: (job: Readonly<SuiteJob>, cause: string) => void; cacheMaxAgeMs?: number; locks?: string[]; requesterDead?: (actor: SuiteActor) => boolean; log?: LogFn; onQueue?: (queue: VerificationQueue) => void; onJob?: (job: Readonly<SuiteJob>) => void };
+export type SuiteSchedulerOptions = { env?: NodeJS.ProcessEnv; executor?: ExecutorKind; lifetimeMs?: number; runTimeoutMs?: number; runTimeout?: string; onFallback?: (job: Readonly<SuiteJob>, cause: string) => void; budget?: number; remoteBudget?: number; shards?: number; onShardingSkipped?: (job: Readonly<SuiteJob>, cause: string) => void; cacheMaxAgeMs?: number; locks?: string[]; requesterDead?: (actor: SuiteActor) => boolean; log?: LogFn; onQueue?: (queue: VerificationQueue) => void; onJob?: (job: Readonly<SuiteJob>) => void };
 type HumanSlot = Omit<SuiteSlot, 'type'> & { queued: string; admittedAt?: string; left?: boolean };
 const HUMAN_GRACE_MS = 10_000;
 const KEY = 'suite-jobs';
@@ -82,6 +82,7 @@ export class SuiteAdmissionError extends Error {
 }
 
 export class Suites {
+  readonly #env: NodeJS.ProcessEnv;
   readonly #store: Store;
   readonly #root: string;
   readonly #report: (job: Readonly<SuiteJob>, checkpointArtifact: (id: string) => void) => Promise<void>;
@@ -110,6 +111,7 @@ export class Suites {
   #compatibility: Awaited<ReturnType<LocalExecutor['holder']>> = null;
   constructor(store: Store, root: string, report: (job: Readonly<SuiteJob>, checkpointArtifact: (id: string) => void) => Promise<void>, options: SuiteSchedulerOptions = {}) {
     this.#options = options;
+    this.#env = options.env ?? process.env;
     this.#budget = Math.min(options.budget ?? 1, 1);
     this.#remoteBudget = options.remoteBudget ?? 4;
     if ((options.budget ?? 1) > 1) options.log?.({ event: 'verification-budget-capped', configured: options.budget, effective: this.#budget, reason: 'resource overlap remains disabled after T-215', reservedFor: 'T-218' });
@@ -122,8 +124,8 @@ export class Suites {
       job.lease = lease; job.pid = worker.pid; job.started = worker.started;
       job.outcome ??= worker.outcome;
       this.#save(job);
-    }, id => { if (this.#jobs.find(job => job.id === id)?.outcome) throw new Error('suite cancelled before worker admission'); });
-    this.#droplet = new DropletExecutor(root, store, options.log);
+    }, id => { if (this.#jobs.find(job => job.id === id)?.outcome) throw new Error('suite cancelled before worker admission'); }, options.env);
+    this.#droplet = new DropletExecutor(root, store, options.log, options.env);
     for (const [index, job] of this.#jobs.entries()) {
       this.#order.set(job.id, index);
       job.executor ??= 'local';
@@ -216,14 +218,14 @@ export class Suites {
     if (this.#jobs.some(job => this.#active(job) && (job.actor?.sessionId ?? 'human') === identity)) throw new Error('this session already has a suite queued or running');
     const id = randomUUID();
     const dir = join(this.#root, '.cland', 'run', 'suites', id);
-    const git = async (args: string[]) => exec('git', args, { cwd: input.cwd }).then(r => r.stdout.trim(), () => 'unknown');
-    const [head, branch, selection] = await Promise.all([git(['rev-parse', 'HEAD']), git(['branch', '--show-current']), selectPackageSuite(input.cwd, input.mode as SuiteRequest)]);
-    const tree = await candidateTree(input.cwd, head);
+    const git = async (args: string[]) => exec('git', args, { cwd: input.cwd, env: this.#options.env }).then(r => r.stdout.trim(), () => 'unknown');
+    const [head, branch, selection] = await Promise.all([git(['rev-parse', 'HEAD']), git(['branch', '--show-current']), selectPackageSuite(input.cwd, input.mode as SuiteRequest, this.#options.env)]);
+    const tree = await candidateTree(input.cwd, head, this.#env);
     if (input.occasion && (!input.integrated || branch !== 'dev' || !tree || selection.fetchedDev !== head || input.mode !== 'all')) throw new Error('occasion requires an integrated dev full request (verify all) with fresh origin/dev fetch proof at its head');
 
     // Bind lint to the captured committed build as well as the files a dirty package will execute.
     try {
-      if (head !== 'unknown') await lintHubShardTree(input.cwd, head);
+      if (head !== 'unknown') await lintHubShardTree(input.cwd, head, this.#env);
       await lintHubShards(input.cwd);
     } catch (error) { throw new SuiteAdmissionError(error); }
     await mkdir(dir, { recursive: true, mode: 0o700 });
@@ -237,7 +239,7 @@ export class Suites {
     if (cached) {
       const artifact = this.#store.resolveArtifact(cached.artifact!)!;
       const originalLog = await readFile(artifact.path, 'utf8').catch(() => null);
-      if (originalLog !== null && await candidateTree(input.cwd, head) === tree) {
+      if (originalLog !== null && await candidateTree(input.cwd, head, this.#env) === tree) {
         job.executor = cached.executor;
         if (cached.platform) job.platform = { ...cached.platform };
         if (cached.machine) job.machine = { ...cached.machine };
@@ -252,7 +254,7 @@ export class Suites {
     if (this.#closed) throw new Error('hub is closing');
     if (this.#jobs.some(j => this.#active(j) && (j.actor?.sessionId ?? 'human') === identity)) throw new Error('this session already has a suite queued or running');
     this.#jobs.push(job); this.#save(job);
-    if (!job.cached && executor === 'droplet' && (!process.env.DIGITALOCEAN_TOKEN || !tree)) this.#fallback(job, !process.env.DIGITALOCEAN_TOKEN ? 'DIGITALOCEAN_TOKEN is required' : 'dirty worktree cannot be bundled for droplet');
+    if (!job.cached && executor === 'droplet' && (!this.#env.DIGITALOCEAN_TOKEN || !tree)) this.#fallback(job, !this.#env.DIGITALOCEAN_TOKEN ? 'DIGITALOCEAN_TOKEN is required' : 'dirty worktree cannot be bundled for droplet');
     await this.#check();
     return { id, pid: job.pid, topic: job.topic, position: job.state === 'queued' ? this.#ordered().findIndex(j => j.id === id) + 1 : 1, ...(job.cached ? { cached: job.cached } : {}) };
   }
@@ -317,11 +319,11 @@ export class Suites {
         }
         if (job.lease && Date.parse(job.lease.deadline) <= Date.now()) throw new Error('remote machine lifetime expired');
         if (!(job.lease as DropletLease | undefined)?.execution?.delivered) {
-          if (!job.lease && (!job.tree || await candidateTree(job.cwd, job.head) !== job.tree)) { this.#fallback(job, 'dirty or changed worktree cannot be bundled for droplet'); return; }
+          if (!job.lease && (!job.tree || await candidateTree(job.cwd, job.head, this.#env) !== job.tree)) { this.#fallback(job, 'dirty or changed worktree cannot be bundled for droplet'); return; }
           if (!job.lease) {
             if (!job.parentRun) await this.#hostGate(job);
             if (job.cancelled) throw new Error('cancelled');
-            if (await candidateTree(job.cwd, job.head) !== job.tree) { this.#fallback(job, 'dirty or changed worktree cannot be bundled for droplet'); return; }
+            if (await candidateTree(job.cwd, job.head, this.#env) !== job.tree) { this.#fallback(job, 'dirty or changed worktree cannot be bundled for droplet'); return; }
             if (job.remoteAcquireAttempted) { this.#fallback(job, 'previous droplet acquisition was interrupted'); return; }
             job.remoteAcquireAttempted = true; this.#save(job);
             try { job.lease = await this.#droplet.acquire(run, new Date(Date.now() + (this.#options.lifetimeMs ?? 6600000)).toISOString()); }
@@ -336,9 +338,9 @@ export class Suites {
         this.#save(job);
         if (job.cancelled) throw new Error('cancelled');
         if (!lease.execution?.started) await this.#droplet.start(lease, run);
-        if (!lease.execution?.started) { job.nextPoll = Date.now() + testTiming('CLAND_TEST_DROPLET_RUN_POLL_MS', 10000); this.#save(job); return; }
+        if (!lease.execution?.started) { job.nextPoll = Date.now() + testTiming('CLAND_TEST_DROPLET_RUN_POLL_MS', 10000, this.#options.env); this.#save(job); return; }
       } else {
-        const head = await exec('git', ['rev-parse', 'HEAD'], { cwd: job.cwd }).then(r => r.stdout.trim(), () => 'unknown');
+        const head = await exec('git', ['rev-parse', 'HEAD'], { cwd: job.cwd, env: this.#options.env }).then(r => r.stdout.trim(), () => 'unknown');
         if (head !== job.head) throw new Error(`cancelled: queued head changed from ${job.head} to ${head}; submit verification again`);
         job.lease = await this.#local.acquire(run, new Date(Date.now() + 15000).toISOString());
         this.#save(job);
@@ -402,7 +404,7 @@ export class Suites {
     }
     // Repeat only an interrupted host gate; provider acquisition is reconciled per child.
     if (!shards.some(shard => shard.remoteAcquireAttempted)) await this.#hostGate(job);
-    if (await candidateTree(job.cwd, job.head) !== job.tree) throw new Error('dirty or changed integrated dev candidate');
+    if (await candidateTree(job.cwd, job.head, this.#env) !== job.tree) throw new Error('dirty or changed integrated dev candidate');
     if (job.cancelled || job.outcome) throw new Error(job.outcome?.cause ?? 'cancelled');
     await Promise.all(shards.filter(shard => !shard.reported && !shard.outcome).map(shard => this.#launch(shard)));
     job.state = 'running'; this.#save(job);
@@ -457,7 +459,7 @@ export class Suites {
   }
   async #hostGate(job: SuiteJob): Promise<void> {
     await appendFile(job.log, '\nHost gate: npm run typecheck\n');
-    const env = machineEnv(); delete env.NODE_TEST_CONTEXT; delete env.CLAND_SUITE_LEASE;
+    const env = machineEnv(this.#options.env); delete env.NODE_TEST_CONTEXT; delete env.CLAND_SUITE_LEASE;
     const fd = await open(job.log, 'a');
     try {
       const child = spawn('npm', ['run', 'typecheck'], { cwd: job.cwd, env, detached: true, stdio: ['ignore', fd.fd, fd.fd] });
@@ -553,10 +555,10 @@ export class Suites {
       if (job.shards && !job.groupMerged && !await this.#collectShards(job)) return;
       const remote = job.executor === 'droplet';
       if (remote && !job.outcome && Date.now() < (job.nextPoll ?? 0)) return;
-      if (remote) job.nextPoll = Date.now() + testTiming('CLAND_TEST_DROPLET_RUN_POLL_MS', 10000);
-      const timeoutMs = testTiming('CLAND_TEST_EXECUTOR_RUN_TIMEOUT_MS', this.#options.runTimeoutMs ?? 4500000);
+      if (remote) job.nextPoll = Date.now() + testTiming('CLAND_TEST_DROPLET_RUN_POLL_MS', 10000, this.#options.env);
+      const timeoutMs = testTiming('CLAND_TEST_EXECUTOR_RUN_TIMEOUT_MS', this.#options.runTimeoutMs ?? 4500000, this.#options.env);
       const startedAt = (job.lease as DropletLease | undefined)?.execution?.startedAt ?? job.admittedAt;
-      if (remote && !job.outcome && job.lease && startedAt && Date.now() - Date.parse(startedAt) > timeoutMs + testTiming('CLAND_TEST_EXECUTOR_TIMEOUT_GRACE_MS', 120000)) {
+      if (remote && !job.outcome && job.lease && startedAt && Date.now() - Date.parse(startedAt) > timeoutMs + testTiming('CLAND_TEST_EXECUTOR_TIMEOUT_GRACE_MS', 120000, this.#options.env)) {
         job.timedOut = true; job.outcome = { code: 124, cause: `run timeout ${this.#options.runTimeout ?? '75m'}` }; this.#save(job);
       }
       const receipt = job.lease ? remote ? await this.#droplet.status(job.lease as DropletLease) : await this.#local.status(job.lease) : null;
@@ -570,7 +572,7 @@ export class Suites {
       if (receipt && (receipt.finished || !job.outcome) && (receipt.state === 'done' || receipt.state === 'lost') && !job.cancelled && !job.requesterDied && !job.timedOut) {
         job.outcome = { code: receipt.code ?? 1, cause: receipt.code === 124 ? `run timeout ${this.#options.runTimeout ?? '75m'}` : receipt.cause ?? '' };
       }
-      if (job.cached && !this.#store.message(`suite:${job.id}`) && await candidateTree(job.cwd, job.head) !== job.tree) {
+      if (job.cached && !this.#store.message(`suite:${job.id}`) && await candidateTree(job.cwd, job.head, this.#env) !== job.tree) {
         delete job.cached; job.outcome = { code: 1, cause: 'cached candidate changed; submit verification again' };
       }
       if (!job.outcome) {

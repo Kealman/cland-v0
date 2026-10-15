@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import { join } from 'node:path';
-import { flushProjectLogs, clandWithEnv, connectUi, fakeCodex, pidAlive, startDaemon, tempProject, eventually, fakeClaude, sleep } from './harness.ts';
+import { projectHub, flushProjectLogs, clandWithEnv, connectUi, fakeCodex, pidAlive, startDaemon, tempProject, eventually, fakeClaude, sleep } from './harness.ts';
 
 import { serveProject } from '../src/hub/daemon.ts';
 import { projectSessions } from '../src/adapters/index.ts';
@@ -23,10 +23,10 @@ async function startupSweep(root: string, pid: number): Promise<void> {
   });
 }
 
-async function leftoverCodex(t: import('node:test').TestContext, status: string) {
+async function leftoverCodex(t: import('node:test').TestContext, status: string, serve: typeof projectHub | typeof startDaemon = projectHub) {
   const root = await tempProject(t);
   const fake = await fakeCodex(t);
-  const first = await startDaemon(t, root, fake.env, { sweep: true });
+  const first = await serve(t, root, fake.env, { sweep: true });
   const ui = await connectUi(t, first.discovery);
   const launched = await ui.request({ type: 'session.launch', name: 'impl', harness: 'codex' }, 30_000);
   assert.equal(launched.ok, true, launched.error);
@@ -40,7 +40,7 @@ async function leftoverCodex(t: import('node:test').TestContext, status: string)
 }
 
 test('an exited server with an unknown recorded start time is reported but never swept', async t => {
-  const { root, env, pid } = await leftoverCodex(t, 'exited');
+  const { root, env, pid } = await leftoverCodex(t, 'exited', startDaemon);
   const db = new DatabaseSync(join(root, '.cland', 'hub.db'));
   db.prepare("update harness_processes set pid_started = null where name = 'impl'").run();
   db.close();
@@ -56,7 +56,7 @@ test('an exited server with an unknown recorded start time is reported but never
 });
 
 test('a reused pid is preserved even when its server has project cwd, socket and log hints', async t => {
-  const { root, env, pid } = await leftoverCodex(t, 'exited');
+  const { root, env, pid } = await leftoverCodex(t, 'exited', startDaemon);
   const db = new DatabaseSync(join(root, '.cland', 'hub.db'));
   db.prepare("update harness_processes set pid_started = 'Thu Jan 1 00:00:00 1970' where name = 'impl'").run();
   db.close();
@@ -74,7 +74,7 @@ test('a reused pid is preserved even when its server has project cwd, socket and
 
 for (const status of ['exited', 'stopped', 'offline']) {
   test(`doctor --fix ends the app-server of a ${status} session and preserves a running session`, async t => {
-    const { root, env, pid } = await leftoverCodex(t, status);
+    const { root, env, pid } = await leftoverCodex(t, status, startDaemon);
     const { discovery } = await startDaemon(t, root, env, { sweep: true });
     // Avoid startup cleanup in this test: restore a leftover after the background sweep settles.
     await eventually('startup sweep ends initial leftover', async () => !pidAlive(pid) ? true : undefined, 15_000);
@@ -98,7 +98,7 @@ for (const status of ['exited', 'stopped', 'offline']) {
 }
 
 test('doctor names an exited session’s leftover app-server; hub start sweeps it and says which PID ended', async t => {
-  const { root, env, pid } = await leftoverCodex(t, 'exited');
+  const { root, env, pid } = await leftoverCodex(t, 'exited', startDaemon);
   assert.equal(pidAlive(pid), true);
   const report = await clandWithEnv(root, env, 'doctor', '--json');
   const checks = (JSON.parse(report.stdout) as { checks: Array<{ name: string; detail: string; fix?: string }> }).checks;
@@ -114,7 +114,7 @@ test('doctor names an exited session’s leftover app-server; hub start sweeps i
 });
 
 test('a foreground hub writes ended and preserved sweep diagnostics to stderr', async t => {
-  const { root, env, pid } = await leftoverCodex(t, 'exited');
+  const { root, env, pid } = await leftoverCodex(t, 'exited', startDaemon);
   const other = await tempProject(t);
   const fake = await fakeOpenCode(t);
   const ambiguous = await leftoverOpenCode(t, root, OPENCODE_FAKE, fake.env, other);
@@ -143,7 +143,7 @@ for (const harness of ['codex', 'opencode', 'claude-code']) {
     const root = await tempProject(t);
     // Keep the fake turn running while stop and relaunch prove server death.
     const fake = harness === 'codex' ? await fakeCodex(t, { turnMs: 10000 }) : harness === 'opencode' ? await fakeOpenCode(t) : await fakeClaude(t);
-    const { discovery } = await startDaemon(t, root, { ...fake.env, CLAND_STOP_GRACE_MS: '200', FAKE_CODEX_TERM_DELAY_MS: '10000', FAKE_OPENCODE_IGNORE_TERM: '1', FAKE_OPENCODE_CHILD: '1', FAKE_CLAUDE_IGNORE_TERM: '1' }, { sweep: true });
+    const { discovery } = await projectHub(t, root, { ...fake.env, CLAND_STOP_GRACE_MS: '200', FAKE_CODEX_TERM_DELAY_MS: '10000', FAKE_OPENCODE_IGNORE_TERM: '1', FAKE_OPENCODE_CHILD: '1', FAKE_CLAUDE_IGNORE_TERM: '1' });
     const ui = await connectUi(t, discovery);
     const launch = await ui.request({ type: 'session.launch', name: 'impl', harness }, 30_000);
     assert.equal(launch.ok, true, launch.error);
@@ -335,7 +335,7 @@ for (const harness of ['codex', 'opencode']) {
   test(`${harness}: an unverifiable live server remains running and supervised after refused stop/relaunch`, async t => {
     const root = await tempProject(t);
     const fake = harness === 'codex' ? await fakeCodex(t) : await fakeOpenCode(t);
-    const { discovery } = await startDaemon(t, root, fake.env, { sweep: true });
+    const { discovery } = await projectHub(t, root, fake.env);
     const ui = await connectUi(t, discovery);
     const launch = await ui.request({ type: 'session.launch', name: 'impl', harness }, 30_000);
     assert.equal(launch.ok, true, launch.error);

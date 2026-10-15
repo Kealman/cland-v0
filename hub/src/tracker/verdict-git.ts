@@ -8,10 +8,10 @@ import { execFile } from 'node:child_process';
  */
 export type Git = (args: string[], input?: string) => Promise<string | null>;
 
-export function gitIn(root: string): Git {
+export function gitIn(root: string, env: NodeJS.ProcessEnv = process.env): Git {
   return (args, input) =>
     new Promise((resolve, reject) => {
-      const child = execFile('git', args, { cwd: root, encoding: 'utf8', timeout: 5000, maxBuffer: 16 * 1024 * 1024 }, (err, stdout) => {
+      const child = execFile('git', args, { cwd: root, env, encoding: 'utf8', timeout: 5000, maxBuffer: 16 * 1024 * 1024 }, (err, stdout) => {
         if (!err) resolve(stdout.trim());
         else if (typeof err.code === 'number' && !err.killed) resolve(null);
         else reject(err);

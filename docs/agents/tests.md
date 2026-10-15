@@ -1,5 +1,24 @@
 # Running tests
 
+Use `projectHub(t, root, env?)` from `hub/test/harness.ts` for project tests by
+default. Each test serves its own project through `serveProject` in the test
+process, with normal discovery, Unix socket and WebSocket edges. Real CLI
+subprocesses, discovering spokes and fake harnesses keep their production
+protocols. Pass environment overrides to the fixture; never temporarily mutate
+`process.env` for one hub. Teardown stops the served hub, disposes the fixture's
+owned processes, then fails on surviving owned handles, timers or process
+listeners, with `process.getActiveResourcesInfo()` diagnostics.
+
+Keep `startDaemon` only when an assertion concerns the hub process: startup,
+shutdown, signals, crash/restart, lock/discovery/PID identity, orphan sweeping,
+watchdog behavior, or CLI behavior with the hub down or unreachable. Session
+stop, resume and native harness crashes alone do not require a spawned hub.
+New tests using `startDaemon` must name the process lifecycle behavior they
+prove. Do not share one project hub across unrelated tests. Validation duplicates
+may call the existing dispatcher or tracker directly while retaining one real
+frame proof per tool/refusal family; adapter parsing edges use a fake native
+transport while launch/inject/turn/stop/resume retain frame coverage.
+
 Package runners set a 120-second default per-test timeout (`[verification].test_timeout`).
 The local verification worker stops a command after ten minutes without stdout
 or stderr (`[verification].stall_timeout`), reports the last started tests, and

@@ -17,7 +17,7 @@ import { git, ok, json, project, task, requireQa, review, refused, indexLockProj
 
 
 test('a close write failure reports merged follow-up failure; retry closes and prunes without a second commit', async (t) => {
-  const { root, ui, rev, discovery } = await project(t);
+  const { root, ui, rev, discovery } = await project(t, undefined, undefined, startDaemon);
   const work = await task(root);
   await review(rev, work.id);
   const topic = await ui.request({ type: 'topic.create', title: 'Retry parser', item: work.id });
@@ -164,7 +164,7 @@ test('release, topic closure and cleanup failures remain merged and retry the re
 
 
 test('restart after local ref movement but before territory push republishes the prepared commit without another squash', async (t) => {
-  const { root, rev, discovery } = await project(t);
+  const { root, rev, discovery } = await project(t, undefined, undefined, startDaemon);
   const work = await task(root);
   await review(rev, work.id);
   const before = git(root, 'rev-parse', 'dev');
@@ -274,7 +274,7 @@ test('deferred cleanup keeps the task branch and worktree if its tip moved after
 });
 
 test('a rejected push with failed rollback remains landed and retry restores the root tree before publication completes', async (t) => {
-  const { root, rev, discovery } = await project(t);
+  const { root, rev, discovery } = await project(t, undefined, undefined, startDaemon);
   const work = await task(root);
   await review(rev, work.id);
   const before = git(root, 'rev-parse', 'dev');

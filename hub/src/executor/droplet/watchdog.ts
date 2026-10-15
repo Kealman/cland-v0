@@ -8,25 +8,25 @@ import { deleteLeaseResources } from './cleanup.ts';
 import { accountRelease, durableJson, readLease, type DropletLease, type WatchdogReceipt } from './lease.ts';
 
 export const pause = (ms: number): Promise<void> => new Promise(r => setTimeout(r, ms));
-export const testTiming = (key: string, fallback: number): number => {
-  const value = Number(process.env[key]);
+export const testTiming = (key: string, fallback: number, env: NodeJS.ProcessEnv = process.env): number => {
+  const value = Number(env[key]);
   return value > 0 && Number.isFinite(value) ? value : fallback;
 };
-export async function watchdogAlive(lease: DropletLease): Promise<boolean> {
+export async function watchdogAlive(lease: DropletLease, env: NodeJS.ProcessEnv = process.env): Promise<boolean> {
   if (!lease.watchdog) return false;
-  return await processStartedAsync(lease.watchdog.pid, undefined, undefined, 'UTC') === lease.watchdog.startedUtc;
+  return await processStartedAsync(lease.watchdog.pid, undefined, undefined, 'UTC', env) === lease.watchdog.startedUtc;
 }
-export async function stopWatchdog(lease: DropletLease): Promise<void> {
-  if (!await watchdogAlive(lease)) return;
+export async function stopWatchdog(lease: DropletLease, env: NodeJS.ProcessEnv = process.env): Promise<void> {
+  if (!await watchdogAlive(lease, env)) return;
   try { process.kill(lease.watchdog!.pid, 'SIGTERM'); }
   catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ESRCH') throw error; }
 }
-export async function armWatchdog(dir: string): Promise<NonNullable<DropletLease['watchdog']>> {
-  const child = spawn(process.execPath, [fileURLToPath(import.meta.url), dir], { detached: true, stdio: 'ignore' });
+export async function armWatchdog(dir: string, env: NodeJS.ProcessEnv = process.env): Promise<NonNullable<DropletLease['watchdog']>> {
+  const child = spawn(process.execPath, [fileURLToPath(import.meta.url), dir], { env, detached: true, stdio: 'ignore' });
   await new Promise<void>((resolve, reject) => { child.once('spawn', resolve); child.once('error', reject); });
   child.unref();
   const pid = child.pid!;
-  const startedUtc = await processStartedAsync(pid, undefined, undefined, 'UTC');
+  const startedUtc = await processStartedAsync(pid, undefined, undefined, 'UTC', env);
   if (!startedUtc) {
     // This child is still ours, so its ChildProcess handle is safe to stop.
     child.kill();

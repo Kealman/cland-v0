@@ -72,3 +72,19 @@ test('a failed identity batch provides no proof and the next read retries', asyn
   assert.equal(await processStartedAsync(-1), null, 'invalid selectors cannot inspect an unintended process set');
   assert.equal(probes, 2);
 });
+
+test('simultaneous identity reads keep each project environment', async t => {
+  const spawn = cp.spawn;
+  Object.assign(cp, { spawn: (command: string, args: readonly string[] = [], options: SpawnOptions = {}) => {
+    if (command !== 'ps') return spawn(command, args, options);
+    const started = options.env?.TZ === 'UTC' ? 'Mon Oct 5 12:00:00 2026' : 'Mon Oct 5 15:00:00 2026';
+    return spawn(process.execPath, ['-e', `console.log('101 ${started}')`], options);
+  } });
+  syncBuiltinESMExports();
+  t.after(() => { cp.spawn = spawn; syncBuiltinESMExports(); });
+  const values = await Promise.all([
+    processStartedAsync(101, undefined, undefined, undefined, { ...process.env, TZ: 'UTC' }),
+    processStartedAsync(101, undefined, undefined, undefined, { ...process.env, TZ: 'Europe/Moscow' }),
+  ]);
+  assert.deepEqual(values, ['Mon Oct 5 12:00:00 2026', 'Mon Oct 5 15:00:00 2026']);
+});

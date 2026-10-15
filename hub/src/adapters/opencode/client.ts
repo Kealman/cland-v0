@@ -34,15 +34,20 @@ export class OpenCodeClient {
   }
 
   async request<T>(method: string, path: string, body?: unknown, timeoutMs = 10_000): Promise<T> {
-    const res = await fetch(`${this.url}${path}`, {
-      method,
-      headers: { authorization: this.#auth, ...(body !== undefined ? { 'content-type': 'application/json' } : {}) },
-      ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
-      signal: AbortSignal.timeout(timeoutMs),
-    });
-    const text = await res.text();
-    if (!res.ok) throw new HttpError(res.status, `${method} ${path}: ${res.status} ${text.slice(0, 300)}`);
-    return (text ? JSON.parse(text) : {}) as T;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(new DOMException('The operation was aborted due to timeout', 'TimeoutError')), timeoutMs);
+    timer.unref();
+    try {
+      const res = await fetch(`${this.url}${path}`, {
+        method,
+        headers: { authorization: this.#auth, ...(body !== undefined ? { 'content-type': 'application/json' } : {}) },
+        ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+        signal: controller.signal,
+      });
+      const text = await res.text();
+      if (!res.ok) throw new HttpError(res.status, `${method} ${path}: ${res.status} ${text.slice(0, 300)}`);
+      return (text ? JSON.parse(text) : {}) as T;
+    } finally { clearTimeout(timer); }
   }
 
   /** `GET /api/session/{id}`: the session, or null when the server does not know it. */

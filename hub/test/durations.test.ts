@@ -115,6 +115,25 @@ test('TODO allowances are refused by working-tree and immutable-tree shard admis
   await lintHubShardTree(cwd, 'HEAD');
 });
 
+test('immutable candidate admission uses the owning Git environment for tree and source reads', async t => {
+  const { lintHubShardTree } = await import('../src/suite-shards.ts');
+  const roots = await Promise.all([0, 1].map(async i => {
+    const cwd = await mkdtemp(join(tmpdir(), 'cland-admission-env-'));
+    ownDirectory(t, cwd);
+    await mkdir(join(cwd, 'hub/test'), { recursive: true });
+    await writeFile(join(cwd, 'hub/test/durations.json'), JSON.stringify({ version: 1, source: { artifacts: [], commit: 'fixture' }, budget: { testSeconds: 5, fileSeconds: 60 }, files: {}, tests: {}, allow: {
+      'hub/test/one.test.ts::slow': { seconds: 6, reason: i === 0 ? 'TODO' : 'Real process teardown.' },
+    } }));
+    await exec('git', ['init', '-q'], { cwd });
+    await exec('git', ['add', '.'], { cwd });
+    await exec('git', ['-c', 'user.name=Test', '-c', 'user.email=test@example.invalid', '-c', 'commit.gpgsign=false', 'commit', '-qm', 'Owned candidate'], { cwd });
+    return cwd;
+  }));
+  const environments = roots.map(cwd => ({ ...process.env, GIT_DIR: join(cwd, '.git'), GIT_WORK_TREE: cwd }));
+  await assert.doesNotReject(lintHubShardTree(roots[0]!, 'HEAD', environments[1]));
+  await assert.rejects(lintHubShardTree(roots[1]!, 'HEAD', environments[0]), /duration.*TODO/);
+});
+
 test('pre-start-reporter logs map literal and template titles from test sources without guessing ambiguous names', async t => {
   const cwd = await mkdtemp(join(tmpdir(), 'cland-durations-'));
   ownDirectory(t, cwd);

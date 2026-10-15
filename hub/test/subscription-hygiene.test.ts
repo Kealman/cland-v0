@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { withDiscoveredPid, cland, clandWithEnv, clauseAnswered, eventually, connectUi, connectWsUi, fakeCodex, fakeClaude, killDaemon, spawnSpoke, startDaemon, startHub, tempProject, sleep, TEST_SECRET } from './harness.ts';
+import { projectHub, withDiscoveredPid, cland, clandWithEnv, clauseAnswered, eventually, connectUi, connectWsUi, fakeCodex, fakeClaude, killDaemon, spawnSpoke, startDaemon, startHub, tempProject, sleep, TEST_SECRET } from './harness.ts';
 import { copyPreparedProject } from './prepared-project.ts';
 import type { Message, Subscription } from '../src/protocol.ts';
 import { Tracker } from '../src/tracker/tracker.ts';
@@ -56,10 +56,10 @@ test('launched, died and launched within sixty seconds preserve every transition
   assert.doesNotMatch(digest.params.content, /×/);
 });
 
-async function setup(t: test.TestContext, config?: string, env: Record<string, string> = {}) {
+async function setup(t: test.TestContext, config?: string, env: Record<string, string> = {}, serve: typeof projectHub | typeof startDaemon = projectHub) {
   const root = await tempProject(t);
   if (config) { await mkdir(join(root, '.cland'), { recursive: true }); await writeFile(join(root, '.cland', 'config.toml'), config); }
-  const { discovery } = await startDaemon(t, root, env);
+  const { discovery } = await serve(t, root, env);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
@@ -70,7 +70,7 @@ async function setup(t: test.TestContext, config?: string, env: Record<string, s
 }
 
 test('coalescing and the event cap freeze per recipient across restart and partial delivery', async t => {
-  const { root, ui, coord, rev } = await setup(t);
+  const { root, ui, coord, rev } = await setup(t, undefined, undefined, startDaemon);
   const made = await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Counts' });
   const item = made.item.id;
   for (const spoke of [coord, rev]) await spoke.call('subscribe', { subject: { item }, events: ['task'] });
@@ -151,7 +151,7 @@ test('topic and artifact events match item subtrees, and a closed topic sends it
 });
 
 test('events have their own durable limit, preserve final events, and consume no message allowance', async t => {
-  const fixture = await setup(t, '[hygiene]\nrate_limit_max = 2\nevent_limit_max = 2\nevent_limit_window_minutes = 10\n');
+  const fixture = await setup(t, '[hygiene]\nrate_limit_max = 2\nevent_limit_max = 2\nevent_limit_window_minutes = 10\n', undefined, startDaemon);
   const { root, coord } = fixture;
   let ui = fixture.ui;
   const item = (await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Limits' })).item.id;
@@ -188,7 +188,7 @@ for (const harness of ['claude-code', 'codex', 'opencode']) {
     const fake = harness === 'claude-code' ? await fakeClaude(t, { pollMs: 10_000, turnMs: 2500 }) : harness === 'codex' ? await fakeCodex(t, { pollMs: 10_000, turnMs: 2500 }) : null;
     const home = fake?.home ?? join(root, '.fake-opencode');
     const env = fake?.env ?? { PATH: `${fileURLToPath(new URL('./fakes/opencode', import.meta.url))}:${process.env.PATH ?? ''}`, FAKE_OPENCODE_HOME: home, FAKE_OPENCODE_TURN_MS: '30', CLAND_ADAPTER_POLL_MS: '10000', CLAND_INJECT_TIMEOUT_MS: '5000' };
-    const { discovery } = await startDaemon(t, root, env);
+    const { discovery } = await projectHub(t, root, env);
     const ui = await connectUi(t, discovery);
     await ui.request({ type: 'subscribe' });
     const launched = await ui.request({ type: 'session.launch', name: 'coord', role: 'coordinator', harness }, 30_000);
@@ -376,7 +376,7 @@ test('subtree subjects include sessions working on descendant items and survive 
   await copyPreparedProject(root);
   // Suppress fallback polls while pushed usage and lifecycle states drive the subscription assertions.
   const fake = await fakeClaude(t, { pollMs: 10_000 });
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });

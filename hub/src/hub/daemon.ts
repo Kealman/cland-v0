@@ -20,6 +20,7 @@ import { ensureSkeleton, layout, removeDiscovery, writeDiscovery, type Discovery
 import { acquireLock, HubLocked } from './lock.ts';
 import { VERSION } from '../version.ts';
 import { AGENTS } from './core.ts';
+import { gitIn } from '../tracker/verdict-git.ts';
 import { Tracker } from '../tracker/tracker.ts';
 import type { TipSchedule } from '../tracker/freshness.ts';
 import type { LogFn } from '../log.ts';
@@ -57,8 +58,9 @@ export type Daemon = {
   stop: () => Promise<void>;
 };
 
-export async function serveProject(root: string, options: { log?: LogFn; listen?: ListenMode; scheduleTips?: TipSchedule; journalOpen?: JournalOpen } = {}): Promise<Daemon> {
+export async function serveProject(root: string, options: { log?: LogFn; flushLog?: () => Promise<void>; listen?: ListenMode; scheduleTips?: TipSchedule; journalOpen?: JournalOpen; env?: NodeJS.ProcessEnv } = {}): Promise<Daemon> {
 
+  const env = options.env ?? process.env;
   const listen = options.listen ?? 'required';
   const l = layout(root);
   mkdirSync(l.dir, { recursive: true });
@@ -114,6 +116,7 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
     let failure: unknown;
     try { await journal.close(); } catch (err) { failure = err; }
     try { await processJournal?.close(); } catch (err) { failure ??= err; }
+    try { await options.flushLog?.(); } catch (err) { failure ??= err; }
     if (failure) throw failure;
   };
   journal.write({ event: 'hub-started', pid: process.pid, version: VERSION, root });
@@ -121,7 +124,7 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
   const startedAt = new Date();
   // the tracker's index lives in the same file, in tables of its own; it is rebuilt from the item files here
   // Tests only: consume a one-shot arm, acknowledge the completed temp write, and await release.
-  const gateDir = process.env.CLAND_TEST_TASK_WRITE_GATE;
+  const gateDir = env.CLAND_TEST_TASK_WRITE_GATE;
   const writeGate = gateDir ? async () => {
     try { await unlink(join(gateDir, 'armed')); }
     catch (err) { if ((err as NodeJS.ErrnoException).code === 'ENOENT') return; throw err; }
@@ -133,17 +136,17 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
     }
   } : undefined;
   // tests only: how often verdict freshness reads the branch tips (the default is TIP_CHECK_MS)
-  const tipCheckMs = Number(process.env.CLAND_TEST_TIP_CHECK_MS ?? 0);
-  const storageStallMs = Number(process.env.CLAND_TEST_TRACKER_STALL_MS ?? 0);
-  const storageFatalMs = Number(process.env.CLAND_TEST_TRACKER_FATAL_MS ?? 0);
-  const stopTimeoutMs = Number(process.env.CLAND_TEST_TRACKER_STOP_MS ?? 0);
+  const tipCheckMs = Number(env.CLAND_TEST_TIP_CHECK_MS ?? 0);
+  const storageStallMs = Number(env.CLAND_TEST_TRACKER_STALL_MS ?? 0);
+  const storageFatalMs = Number(env.CLAND_TEST_TRACKER_FATAL_MS ?? 0);
+  const stopTimeoutMs = Number(env.CLAND_TEST_TRACKER_STOP_MS ?? 0);
   let config: ReturnType<typeof readProjectConfig>;
   try {
-    config = readProjectConfig(l.config, root, error => { if (/^verification\.(lifetime|run_timeout|daily_spend_usd)/.test(error)) throw new Error(error); log({ event: 'config-unreadable', file: l.config, error, keeping: 'the defaults' }); });
+    config = readProjectConfig(l.config, root, error => { if (/^verification\.(lifetime|run_timeout|daily_spend_usd)/.test(error)) throw new Error(error); log({ event: 'config-unreadable', file: l.config, error, keeping: 'the defaults' }); }, env);
   } catch (error) { await closeLogs(); lock.release(); throw error; }
   let failStorage!: () => void;
   const storageFailed = new Promise<void>(resolve => { failStorage = resolve; });
-  const tracker = new Tracker({ onStorageFatal: operation => {
+  const tracker = new Tracker({ env, git: gitIn(root, env), onStorageFatal: operation => {
     if (starting || stopping) return;
     // Freeze admission and native/index continuations before yielding or announcing the failure.
     void tracker.stop({ stalled: operation });
@@ -198,6 +201,7 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
     }
     hub = createHubBase({
       secret,
+      env,
       rules,
       journal,
       verification: { executor: config?.verification.executor ?? 'local', lifetimeMs: config?.verification.lifetimeMs ?? 6600000, runTimeoutMs: config?.verification.runTimeoutMs ?? 4500000, runTimeout: config?.verification.runTimeout ?? '75m', cacheMaxAgeMs: config?.verification.cacheMaxAgeMs ?? 86400000, budget: config?.verification.budget ?? 1, remoteBudget: config?.verification.remoteBudget ?? 4, shards: config?.verification.shards ?? 2, locks: [config?.verification.lockPath ?? '/tmp/cland-suite.lock', config?.verification.lockPath && config.verification.lockPath !== '/tmp/cland-suite.lock' ? `${config.verification.lockPath}-nvim` : '/tmp/cland-suite-nvim.lock'] },
@@ -211,15 +215,15 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
       visibilityPreferences: new VisibilityPreferenceFile(join(l.dir, 'ui.json')),
       crew,
       artifactRetentionDays: config?.artifacts.retentionDays ?? 30,
-      ...(Number(process.env.CLAND_HEARTBEAT_MS) > 0 && Number.isFinite(Number(process.env.CLAND_HEARTBEAT_MS)) ? { heartbeatMs: Number(process.env.CLAND_HEARTBEAT_MS) } : {}),
-      heartbeatRunTimeoutMs: Number(process.env.CLAND_TEST_EXECUTOR_RUN_TIMEOUT_MS) > 0 ? Number(process.env.CLAND_TEST_EXECUTOR_RUN_TIMEOUT_MS) : config?.verification.runTimeoutMs ?? 4500000,
-      idleNotifyMs: idleNotifyMs(join(l.dir, 'config.toml'), process.env, log),
+      ...(Number(env.CLAND_HEARTBEAT_MS) > 0 && Number.isFinite(Number(env.CLAND_HEARTBEAT_MS)) ? { heartbeatMs: Number(env.CLAND_HEARTBEAT_MS) } : {}),
+      heartbeatRunTimeoutMs: Number(env.CLAND_TEST_EXECUTOR_RUN_TIMEOUT_MS) > 0 ? Number(env.CLAND_TEST_EXECUTOR_RUN_TIMEOUT_MS) : config?.verification.runTimeoutMs ?? 4500000,
+      idleNotifyMs: idleNotifyMs(join(l.dir, 'config.toml'), env, log),
       // Tests may shorten the event window without changing the sixty-second default.
-      ...(Number(process.env.CLAND_TEST_EVENT_WINDOW_MS) > 0 && Number.isFinite(Number(process.env.CLAND_TEST_EVENT_WINDOW_MS)) ? { eventWindowMs: Number(process.env.CLAND_TEST_EVENT_WINDOW_MS) } : {}),
+      ...(Number(env.CLAND_TEST_EVENT_WINDOW_MS) > 0 && Number.isFinite(Number(env.CLAND_TEST_EVENT_WINDOW_MS)) ? { eventWindowMs: Number(env.CLAND_TEST_EVENT_WINDOW_MS) } : {}),
       // tests only: how long a queued message and a remembered name last (the default is a day)
-      ...(Number(process.env.CLAND_QUEUE_TTL_MS) > 0 ? { queueTtlMs: Number(process.env.CLAND_QUEUE_TTL_MS) } : {}),
+      ...(Number(env.CLAND_QUEUE_TTL_MS) > 0 ? { queueTtlMs: Number(env.CLAND_QUEUE_TTL_MS) } : {}),
       control: {
-        flushLogs: async () => { await journal.flush(); await processJournal?.flush(); },
+        flushLogs: async () => { await journal.flush(); await processJournal?.flush(); await options.flushLog?.(); },
         // without listeners: port 0 and no socket
         status: () => ({
           pid: process.pid,
@@ -270,6 +274,7 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
       adapters?.close();
       await tracker.stop();
       await crew.stop();
+      agents.attach(null);
       await hub.close();
       await rules.stop();
       await roles.stop();
@@ -296,6 +301,7 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
       ws = null;
       if (listen === 'required') {
         await crew.stop();
+        agents.attach(null);
         await hub.close();
         await tracker.stop();
         await rules.stop();
@@ -314,7 +320,7 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
   }
 
   // the adapters: launched harness sessions, re-found after a restart once the hub is reachable again
-  adapters = projectSessions({ core: hub.core, root, db: l.db, discoveryFile: l.discovery, log, tracker, cleanup: config?.sessions });
+  adapters = projectSessions({ core: hub.core, root, db: l.db, discoveryFile: l.discovery, log, tracker, env, cleanup: config?.sessions });
   hub.dispatcher.useSessions(adapters.sessions);
   adapters.sessions.sweepArchive();
 
@@ -322,12 +328,12 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
   writeDiscovery(l.discovery, discovery);
   log({ event: 'serving', root, port: ws.port, socket: l.socket, pid: process.pid });
   starting = false;
-  accountPoller = new AccountPoller(hub.core, adapters.sessions, root, log);
+  accountPoller = new AccountPoller(hub.core, adapters.sessions, root, log, env);
   hub.dispatcher.useAccountPoller(accountPoller);
   void adapters.sessions.resumeAll().then(() => { if (!stopping) accountPoller!.start(); });
   // Socket readiness never awaits cleanup. Reservations cover servers spawned before their row is published.
   sweep = new Promise<void>(resolve => setImmediate(resolve)).then(async () => {
-    if (process.env.CLAND_TEST_SKIP_ORPHAN_SWEEP === '1') {
+    if (env.CLAND_TEST_SKIP_ORPHAN_SWEEP === '1') {
       log({ event: 'orphan-sweep-skipped', reason: 'test-fixture' });
       return;
     }

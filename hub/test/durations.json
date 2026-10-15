@@ -3299,6 +3299,10 @@
       "seconds": 5.267032,
       "reason": "Delivers ordered progress digests through live harness turns before and after hub restart."
     },
+    "hub/test/project-hub.test.ts::two project hubs keep their adapter timing environments independent": {
+      "seconds": 5.292398208,
+      "reason": "Launches two real fake-Claude harnesses in independently served project hubs and observes three additional fast polls while the slow instance retains its own schedule. Native process startup and independent polling make this a fixture integration proof; the serial targeted run under 28–30 one-minute load took 5.29 seconds."
+    },
     "hub/test/release-item.test.ts::a published item release retries its pinned build after tracker closure fails and refuses a different or missing item": {
       "seconds": 4.942814,
       "reason": "Publishes a fixture release and retries tracker failure using the pinned git build, proving changed/missing release items are refused."

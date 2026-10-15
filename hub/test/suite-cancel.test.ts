@@ -20,7 +20,7 @@ import { cacheRepository, humanRunnerFixture } from './suite-support.ts';
 
 test('suite cancel defaults to the caller’s active run, stops its child and posts one cancelled result', async t => {
   // Artificial hold: this test kills or cancels the worker before the 30-second failure ceiling.
-  const f = await fixture(t, 'node -e "require(\'fs\').writeFileSync(\'child-pid\',String(process.pid));setTimeout(()=>{},30000)"');
+  const f = await fixture(t, 'node -e "require(\'fs\').writeFileSync(\'child-pid\',String(process.pid));setTimeout(()=>{},30000)"', undefined, undefined, undefined, undefined, undefined, startDaemon);
   const job = await f.launch();
   const child = await eventually('package child started', async () => readFile(join(f.root, 'child-pid'), 'utf8').then(Number, () => undefined));
   ownProcess(t, child);
@@ -144,7 +144,7 @@ test('suite cancel cleans a running lock runner’s children and temporary root 
 
 test('cancelled results held by reporting permissions survive restart and publish once', async t => {
   // Artificial hold: this test kills or cancels the worker before the 30-second failure ceiling.
-  const f = await fixture(t, 'node -e "setTimeout(()=>{},30000)"');
+  const f = await fixture(t, 'node -e "setTimeout(()=>{},30000)"', undefined, undefined, undefined, undefined, undefined, startDaemon);
   const job = await f.launch();
   await eventually('worker test started', async () => (await readFile(join(f.root, '.cland', 'run', 'suites', job.id, 'suite.log'), 'utf8')).includes('$ npm test') ? true : undefined);
   assert.equal((await f.ui.request({ type: 'role.clear', session: 'impl' })).ok, true);
@@ -173,7 +173,7 @@ test('cancelled results held by reporting permissions survive restart and publis
 
 test('a worker killed while the hub is down is reported after restart and its package children are cleaned', async t => {
   // Artificial hold: this test kills or cancels the worker before the 30-second failure ceiling.
-  const f = await fixture(t, 'node -e "require(\'fs\').writeFileSync(\'child-pid\',String(process.pid));setTimeout(()=>{},30000)"');
+  const f = await fixture(t, 'node -e "require(\'fs\').writeFileSync(\'child-pid\',String(process.pid));setTimeout(()=>{},30000)"', undefined, undefined, undefined, undefined, undefined, startDaemon);
   const job = await f.launch();
   const child = await eventually('package child identity', async () => readFile(join(f.root, 'child-pid'), 'utf8').then(Number, () => undefined));
   ownProcess(t, child);

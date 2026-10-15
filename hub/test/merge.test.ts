@@ -56,7 +56,7 @@ test('a current hub review lands one squash commit in the root and territory, cl
 });
 
 test('discussion after a completed merge never blocks CLI push or recreates its worktree', async t => {
-  const { root, ui, rev, discovery } = await project(t);
+  const { root, ui, rev, discovery } = await project(t, undefined, undefined, startDaemon);
   const work = await task(root);
   const created = await ui.request({ type: 'topic.create', title: 'Landed task', item: work.id });
   assert.equal(created.ok, true, created.error);

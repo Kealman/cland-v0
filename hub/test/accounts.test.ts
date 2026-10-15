@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, writeFile, readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, clandWithEnv, connectUi, eventually, FAKE_CLAUDE_DIR, FAKE_CODEX_DIR, killDaemon, spawnSpoke, startDaemon, tempProject } from './harness.ts';
+import { projectHub, cland, clandWithEnv, connectUi, eventually, FAKE_CLAUDE_DIR, FAKE_CODEX_DIR, killDaemon, spawnSpoke, startDaemon, tempProject } from './harness.ts';
 import type { HarnessProcessView } from '../src/protocol.ts';
 import { copyPreparedProject } from './prepared-project.ts';
 
@@ -14,7 +14,7 @@ test('account list reads a scratch registry through the hub and CLI, refreshed w
   await mkdir(join(config, 'cland'), { recursive: true });
   const registry = join(config, 'cland', 'accounts.toml');
   await writeFile(registry, '[accounts.codex-a]\nharness = "codex"\nhome = "~/scratch-codex"\n[accounts.oc-default]\nharness = "opencode"\n');
-  const { discovery } = await startDaemon(t, root, { XDG_CONFIG_HOME: config, CODEX_HOME: join(root, 'missing-codex'), CLAND_CODEX_BIN: join(FAKE_CODEX_DIR, 'codex') });
+  const { discovery } = await projectHub(t, root, { XDG_CONFIG_HOME: config, CODEX_HOME: join(root, 'missing-codex'), CLAND_CODEX_BIN: join(FAKE_CODEX_DIR, 'codex') });
   const ui = await connectUi(t, discovery);
   const listed = await ui.request({ type: 'account.list' });
   assert.equal(listed.ok, true, listed.error);
@@ -35,7 +35,7 @@ test('account list reads a scratch registry through the hub and CLI, refreshed w
 
 // Harness fixtures live entirely under the scratch project and exercise real launch frames.
 
-async function fixture(t: import('node:test').TestContext, roles = '', prepared = false, extraEnv: (root: string) => Record<string, string> = () => ({})) {
+async function fixture(t: import('node:test').TestContext, roles = '', prepared = false, extraEnv: (root: string) => Record<string, string> = () => ({}), serve: typeof projectHub | typeof startDaemon = projectHub) {
   const root = await tempProject(t);
   if (prepared) await copyPreparedProject(root);
   const config = join(root, 'config');
@@ -49,7 +49,7 @@ async function fixture(t: import('node:test').TestContext, roles = '', prepared 
   const env = { CLAUDE_CONFIG_DIR: join(root, 'missing-claude'), CLAND_CLAUDE_BIN: join(FAKE_CLAUDE_DIR, 'claude'), CLAND_CODEX_BIN: join(FAKE_CODEX_DIR, 'codex'), CODEX_HOME: join(root, 'codex-a'), XDG_DATA_HOME: join(root, 'oc-data'), XDG_CONFIG_HOME: config, FAKE_CODEX_HOME: codex, FAKE_CODEX_TURN_MS: '30', FAKE_CODEX_REFUSE_MS: '150', FAKE_OPENCODE_HOME: opencode, FAKE_OPENCODE_TURN_MS: '30',
     PATH: `${fileURLToPath(new URL('./fakes/codex', import.meta.url))}:${fileURLToPath(new URL('./fakes/opencode', import.meta.url))}:${process.env.PATH ?? ''}`,
     CLAND_ADAPTER_POLL_MS: '50', CLAND_INJECT_TIMEOUT_MS: '5000', ...extraEnv(root) };
-  const { discovery } = await startDaemon(t, root, env);
+  const { discovery } = await serve(t, root, env);
   const ui = await connectUi(t, discovery);
   const servers = async (harness = 'codex') => {
     const dir = join(harness === 'codex' ? codex : opencode, 'servers');
@@ -146,7 +146,7 @@ for (const harness of ['codex', 'opencode']) test(`${harness} relaunch and hub r
   const account = harness === 'codex' ? 'codex-b' : 'oc-data';
   const variable = harness === 'codex' ? 'CODEX_HOME' : 'XDG_DATA_HOME';
   const savedDir = harness === 'codex' ? 'codex-b' : 'oc-data';
-  const f = await fixture(t, `[reviewer.launch]\nharness = "${harness}"\naccount = "${account}"\n`);
+  const f = await fixture(t, `[reviewer.launch]\nharness = "${harness}"\naccount = "${account}"\n`, undefined, undefined, startDaemon);
   const p = await f.launch('retained', { role: 'reviewer' });
   assert.equal(p.account, account);
   await writeFile(join(f.root, '.cland', 'roles.toml'), '[reviewer.launch]\nharness = "codex"\naccount = "codex-a"\n');
@@ -264,7 +264,7 @@ test('relative XDG_CONFIG_HOME falls back inside a scratch HOME; a missing regis
   const home = join(root, 'user');
   const registry = join(home, '.config', 'cland', 'accounts.toml');
   await mkdir(join(home, '.config', 'cland'), { recursive: true });
-  const { discovery } = await startDaemon(t, root, { HOME: home, XDG_CONFIG_HOME: 'relative' });
+  const { discovery } = await projectHub(t, root, { HOME: home, XDG_CONFIG_HOME: 'relative' });
   const ui = await connectUi(t, discovery);
   assert.deepEqual((await ui.request({ type: 'account.list' })).value, { registry, accounts: [] });
   await writeFile(registry, '[accounts.codex]\nharness = "codex"\nhome = "~/.codex"\n');
@@ -279,7 +279,7 @@ test('an older process table migrates with a null account on its session list ro
   db.exec(`create table harness_processes (name text primary key, harness text not null, role text, model text, cwd text not null, pid integer, harness_id text, session_id text not null, started_at text not null, status text not null);
     insert into harness_processes values ('old', 'codex', null, null, '/old', null, null, 'old-id', '2026-10-13T00:00:00Z', 'stopped');`);
   db.close();
-  const { discovery } = await startDaemon(t, root, { XDG_CONFIG_HOME: join(root, 'config') });
+  const { discovery } = await projectHub(t, root, { XDG_CONFIG_HOME: join(root, 'config') });
   const ui = await connectUi(t, discovery);
   const list = (await ui.request({ type: 'session.list', archived: false })).value as { processes: HarnessProcessView[] };
   // A sufficiently old stopped row may be archived by hygiene; both views preserve the null account.
@@ -288,7 +288,7 @@ test('an older process table migrates with a null account on its session list ro
 });
 
 test('a named harness default freezes the launch directory across a changed hub environment', async t => {
-  const f = await fixture(t);
+  const f = await fixture(t, undefined, undefined, undefined, startDaemon);
   await writeFile(f.registry, '[accounts.default-codex]\nharness = "codex"\n');
   const p = await f.launch('default-account', { account: 'default-codex' });
   assert.equal(p.account, 'default-codex');

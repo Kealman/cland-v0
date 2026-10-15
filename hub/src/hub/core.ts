@@ -137,6 +137,7 @@ type LaunchIdentityBinding = { name: string; sessionId: string; prove: () => voi
 export type HelloResult = { ok: true; name: string; connection: Connection; spoke: SpokeSocket } | { ok: false; code: RefusalCode; message: string };
 
 export type CoreOptions = {
+  env?: NodeJS.ProcessEnv;
   heartbeatMs?: number;
   heartbeatRunTimeoutMs?: number;
   /** Extra reserved names beyond the built-ins. */
@@ -186,6 +187,7 @@ export const COORDINATOR = 'coordinator';
 const ROLE_NOTICE = 'role';
 
 export class HubCore {
+  readonly #env: NodeJS.ProcessEnv;
   readonly crew: CrewSource | undefined;
   readonly rules: RulebookFile | undefined;
   readonly #unsubscribeRules: (() => void) | undefined;
@@ -349,6 +351,7 @@ export class HubCore {
   readonly visibility: Visibility;
 
   constructor(options: CoreOptions = {}) {
+    this.#env = options.env ?? process.env;
     this.#reserved = new Set([HUMAN, ...(options.reservedNames ?? [])]);
     this.#now = options.now ?? (() => new Date());
     this.#log = options.log ?? (() => {});
@@ -857,7 +860,7 @@ export class HubCore {
   }
 
   async #publishAccount(name: string, harness: string): Promise<void> {
-    const registry = await readAccounts();
+    const registry = await readAccounts(this.#env);
     const account = registry.accounts.find(a => a.name === name) ?? { name, harness, path: null, variable: harness === 'codex' ? 'CODEX_HOME' : harness === 'opencode' ? 'XDG_DATA_HOME' : 'CLAUDE_CONFIG_DIR' };
     if (!this.#closed) this.#emit({ type: 'account', account: this.accountLimits.view(account) });
   }

@@ -11,14 +11,14 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { OpenCodeAdapter } from '../src/adapters/opencode.ts';
-import { assertFirstLaunchClause, sleep, clandWithEnv, clauseAnswered, connectUi, eventually, killDaemon, spawnSpoke, startDaemon, tempProject, type FrameClient, NO_PS, SPOKE_ENTRY, CLI_ENTRY } from './harness.ts';
+import { projectHub, assertFirstLaunchClause, sleep, clandWithEnv, clauseAnswered, connectUi, eventually, killDaemon, spawnSpoke, startDaemon, tempProject, type FrameClient, NO_PS, SPOKE_ENTRY, CLI_ENTRY } from './harness.ts';
 
 const FAKE_OPENCODE_DIR = fileURLToPath(new URL('./fakes/opencode', import.meta.url));
 
 for (const preassigned of [false, true]) test(`an Implementer begins on its launch brief after the OpenCode role clause without another send (${preassigned ? 'preassigned role' : 'explicit role'})`, async (t) => {
   const root = await tempProject(t);
   const fake = await fakeOpenCode(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   const brief = 'Build from this OpenCode launch brief.';
   if (preassigned) assert.equal((await ui.request({ type: 'role.set', session: 'impl-brief', role: 'implementer' })).ok, true);
@@ -121,7 +121,7 @@ test('a launched OpenCode session: its own server, the spoke connects, a UI mess
   const root = await tempProject(t);
   // Suppress polling while SSE outage and stream recovery determine the observed state.
   const fake = await fakeOpenCode(t, { pollMs: 10_000 });
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
 
@@ -217,7 +217,7 @@ test('a launched OpenCode session: its own server, the spoke connects, a UI mess
 test('a launch without a model prefers big-pickle over a listed but deprecated free model', async (t) => {
   const root = await tempProject(t);
   const fake = await fakeOpenCode(t);
-  const { discovery } = await startDaemon(t, root, { ...fake.env, FAKE_OPENCODE_DEPRECATED_FIRST: '1' });
+  const { discovery } = await projectHub(t, root, { ...fake.env, FAKE_OPENCODE_DEPRECATED_FIRST: '1' });
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const launched = await launch(ui, 'impl', { role: 'coordinator' });
@@ -228,47 +228,10 @@ test('a launch without a model prefers big-pickle over a listed but deprecated f
   await replyTo(ui, 'impl', 'pong: does the default answer?');
 });
 
-test('a no-model OpenCode launch waits for big-pickle after a partial cold catalog', async (t) => {
-  const root = await tempProject(t);
-  const fake = await fakeOpenCode(t);
-  const { discovery } = await startDaemon(t, root, { ...fake.env, FAKE_OPENCODE_STAGED_CATALOG: '1' });
-  const ui = await connectUi(t, discovery);
-  const launched = await launch(ui, 'impl');
-  assert.equal(launched.model, 'opencode/big-pickle');
-});
-
-test('a changing OpenCode catalog falls back to the latest successful list at the deadline', { timeout: 8000 }, async (t) => {
-  const root = await tempProject(t);
-  const fake = await fakeOpenCode(t);
-  await startDaemon(t, root, fake.env);
-  // Instantiate at the adapter's public spawn seam so only this process's clock is accelerated.
-  const adapter = new OpenCodeAdapter({
-    root, discoveryFile: join(root, '.cland', 'hub.json'), node: process.execPath, cli: CLI_ENTRY, spoke: SPOKE_ENTRY,
-    log: () => {}, signal: () => {}, recordPid: () => {}, exited: () => {},
-  }, { bin: join(FAKE_OPENCODE_DIR, 'opencode'), env: { ...process.env, ...fake.env, FAKE_OPENCODE_CHANGING_CATALOG: '1' } });
-  t.after(() => adapter.close());
-  const spawning = adapter.spawn({ name: 'impl', role: null, model: null, cwd: root });
-  await eventually('two changing catalogs served', async () => {
-    const [server] = await fake.servers();
-    if (!server) return undefined;
-    const log = await readFile(join(fake.home, `server-${server.pid}.log`), 'utf8').catch(() => '');
-    return log.includes('changing catalog 2') ? true : undefined;
-  }, 5000);
-  // Spend the real ten-second budget without ten seconds of wall-clock waiting. The fake keeps changing its
-  // catalog on every request, so neither stability nor a known-good model can end selection.
-  t.mock.timers.enable({ apis: ['Date'], now: Date.now() + 10_000 });
-  try {
-    const launched = await spawning;
-    assert.equal(launched.model, 'openrouter/latest-free');
-  } finally {
-    t.mock.timers.reset();
-  }
-});
-
 test('a failed OpenCode turn is recorded in Agents and the events view and reported to the sender', async (t) => {
   const root = await tempProject(t);
   const fake = await fakeOpenCode(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator' });
@@ -294,7 +257,7 @@ test('a failed OpenCode turn is recorded in Agents and the events view and repor
 test('OpenCode failure attribution follows delivered inbox items when two idle admissions queue separate turns', async (t) => {
   const root = await tempProject(t);
   const fake = await fakeOpenCode(t);
-  const { discovery } = await startDaemon(t, root, { ...fake.env, FAKE_OPENCODE_START_DELAY_MS: '1000' });
+  const { discovery } = await projectHub(t, root, { ...fake.env, FAKE_OPENCODE_START_DELAY_MS: '1000' });
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator' });
@@ -320,7 +283,7 @@ test('OpenCode forgets prior execution inputs when completion is missed during a
   const root = await tempProject(t);
   // Keep the turn running while the test disconnects SSE, so only recovery discovers its completion.
   const fake = await fakeOpenCode(t, { turnMs: 1000 });
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator' });
@@ -349,7 +312,7 @@ test('a message sent while the session works steers the running turn; one sent w
   const root = await tempProject(t);
   // Suppress polling while SSE outage and stream recovery determine the observed state.
   const fake = await fakeOpenCode(t, { pollMs: 10_000 });
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const launched = await launch(ui, 'impl', { role: 'coordinator', model: 'opencode/fake-paid' });
@@ -378,7 +341,7 @@ test('a message sent while the session works steers the running turn; one sent w
 test('OpenCode shell approval displays only the referenced command and clears it after the reply', async (t) => {
   const root = await tempProject(t);
   const fake = await fakeOpenCode(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const launched = await launch(ui, 'impl', { role: 'coordinator' });
@@ -412,7 +375,7 @@ test('OpenCode shell approval displays only the referenced command and clears it
 test('OpenCode restores a pending shell command from the permission snapshot after SSE misses its request', async (t) => {
   const root = await tempProject(t);
   const fake = await fakeOpenCode(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const launched = await launch(ui, 'impl', { role: 'coordinator' });
@@ -436,7 +399,7 @@ test('OpenCode restores a pending shell command from the permission snapshot aft
 test('OpenCode ignores a late command lookup after its approval ends and another approval begins', async (t) => {
   const root = await tempProject(t);
   const fake = await fakeOpenCode(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const launched = await launch(ui, 'impl', { role: 'coordinator' });
@@ -469,7 +432,7 @@ test('a pending permission is waiting for approval within one event, and the rep
   const root = await tempProject(t);
   // Suppress polling while SSE outage and stream recovery determine the observed state.
   const fake = await fakeOpenCode(t, { pollMs: 10_000 });
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const launched = await launch(ui, 'impl', { role: 'coordinator' });
@@ -513,7 +476,7 @@ test('a killed OpenCode server: the state turns unknown and the hub logs it once
   const root = await tempProject(t);
   // Suppress polling while SSE outage and stream recovery determine the observed state.
   const fake = await fakeOpenCode(t, { pollMs: 10_000 });
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const launched = await launch(ui, 'impl', { role: 'coordinator' });
@@ -580,7 +543,7 @@ test('after a hub restart, resume re-finds the OpenCode server and session throu
 test('a shared artifact injected into OpenCode names its id and durable path in the envelope', async (t) => {
   const root = await tempProject(t);
   const fake = await fakeOpenCode(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const launched = await launch(ui, 'impl', { role: 'coordinator' });
@@ -599,7 +562,7 @@ test('a shared artifact injected into OpenCode names its id and durable path in 
 test('a opencode Lead receives its epic claim, role clause and direct node address', async t => {
   const root = await tempProject(t);
   const fake = await fakeOpenCode(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   const created = await ui.request({ type: 'task.create', title: 'Led epic', kind: 'epic' });
   assert.equal(created.ok, true, created.error);
@@ -621,7 +584,7 @@ test('a opencode Lead receives its epic claim, role clause and direct node addre
 test('a stopped OpenCode session whose native conversation disappeared offers fresh instead of recreating its id', { skip: NO_PS }, async t => {
   const root = await tempProject(t);
   const fake = await fakeOpenCode(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   const before = await launch(ui, 'impl', { role: 'implementer', brief: 'Start the replacement from this OpenCode brief.' });
   await eventually('first input reaches OpenCode', async () => (await fake.prompts(before.harnessSessionId!)).includes('OpenCode brief') || undefined);

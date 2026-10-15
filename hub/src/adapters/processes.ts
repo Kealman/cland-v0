@@ -23,18 +23,18 @@ export function pidAlive(pid: number): boolean {
  * row says (`ps -o lstart=`, recorded at spawn, as the hub lock does). A pid reused by another process is not it.
  * A row with no recorded start time cannot be verified: false, so nothing is ever signalled on a guess.
  */
-export async function sameProcess(p: Pick<HarnessProcess, 'pid' | 'pidStarted'>, resumed: Resumed = work => work()): Promise<boolean> {
+export async function sameProcess(p: Pick<HarnessProcess, 'pid' | 'pidStarted'>, resumed: Resumed = work => work(), env: NodeJS.ProcessEnv = process.env): Promise<boolean> {
   if (p.pid === null || !pidAlive(p.pid)) return false;
   if (!p.pidStarted) return false;
-  const started = await processStarted(p.pid, undefined, resumed);
+  const started = await processStarted(p.pid, undefined, resumed, undefined, env);
   return resumed(() => started === p.pidStarted);
 }
 
 /** Whether the row's process still runs: its pid is alive and, when its start time was recorded, started then. */
-export async function processAlive(p: Pick<HarnessProcess, 'pid' | 'pidStarted'>, resumed: Resumed = work => work()): Promise<boolean> {
+export async function processAlive(p: Pick<HarnessProcess, 'pid' | 'pidStarted'>, resumed: Resumed = work => work(), env: NodeJS.ProcessEnv = process.env): Promise<boolean> {
   if (p.pid === null || !pidAlive(p.pid)) return false;
   if (!p.pidStarted) return true;
-  const now = await processStarted(p.pid, undefined, resumed);
+  const now = await processStarted(p.pid, undefined, resumed, undefined, env);
   // `ps` failing for a live pid says nothing either way
   return resumed(() => now === null || now === p.pidStarted);
 }

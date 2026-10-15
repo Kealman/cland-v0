@@ -42,16 +42,18 @@ export function processStarted(pid: number, timezone?: 'UTC'): string | null {
 
 type StartedProbe = { promise: Promise<string | null>; resolve: (started: string | null) => void };
 type StartedBatch = { probes: Map<number, StartedProbe>; pending: Map<number, StartedProbe> };
-const startedBatches = new Map<string, StartedBatch>();
+const startedBatches = new WeakMap<NodeJS.ProcessEnv, Map<string, StartedBatch>>();
 
 /** Compatible callers in one turn share a targeted ps. Keep only in-flight identities. */
-function startedProbe(pid: number, timeoutMs: number, timezone?: 'UTC'): Promise<string | null> {
+function startedProbe(pid: number, timeoutMs: number, timezone?: 'UTC', env: NodeJS.ProcessEnv = process.env): Promise<string | null> {
   if (!Number.isSafeInteger(pid) || pid <= 0) return Promise.resolve(null);
+  let batches = startedBatches.get(env);
+  if (!batches) { batches = new Map(); startedBatches.set(env, batches); }
   const key = `${timezone ?? 'local'}:${timeoutMs}`;
-  let batch = startedBatches.get(key);
+  let batch = batches.get(key);
   if (!batch) {
     batch = { probes: new Map(), pending: new Map() };
-    startedBatches.set(key, batch);
+    batches.set(key, batch);
   }
   const existing = batch.probes.get(pid);
   if (existing) return existing.promise;
@@ -66,7 +68,7 @@ function startedProbe(pid: number, timeoutMs: number, timezone?: 'UTC'): Promise
       void (async () => {
         const identities = new Map<number, string>();
         try {
-          const result = await run('ps', ['-o', 'pid=,lstart=', '-p', [...pending.keys()].join(',')], timezone ? { ...process.env, TZ: timezone, LC_ALL: 'C' } : process.env, timeoutMs);
+          const result = await run('ps', ['-o', 'pid=,lstart=', '-p', [...pending.keys()].join(',')], timezone ? { ...env, TZ: timezone, LC_ALL: 'C' } : env, timeoutMs);
           // ps can return 1 for a missing PID while still printing the live subset.
           if (!result.error && (result.code === 0 || result.code === 1)) {
             for (const line of result.stdout.split('\n')) {
@@ -82,7 +84,7 @@ function startedProbe(pid: number, timeoutMs: number, timezone?: 'UTC'): Promise
             owned.probes.delete(pid);
             probe.resolve(identities.get(pid) ?? null);
           }
-          if (!owned.probes.size) startedBatches.delete(key);
+          if (!owned.probes.size) batches.delete(key);
         }
       })();
     });
@@ -91,8 +93,8 @@ function startedProbe(pid: number, timeoutMs: number, timezone?: 'UTC'): Promise
 }
 
 /** `processStarted` without blocking: batch compatible reads, resume each caller separately. */
-export async function processStartedAsync(pid: number, timeoutMs = PS_TIMEOUT_MS, resumed: Resumed = work => work(), timezone?: 'UTC'): Promise<string | null> {
-  const started = await startedProbe(pid, timeoutMs, timezone);
+export async function processStartedAsync(pid: number, timeoutMs = PS_TIMEOUT_MS, resumed: Resumed = work => work(), timezone?: 'UTC', env: NodeJS.ProcessEnv = process.env): Promise<string | null> {
+  const started = await startedProbe(pid, timeoutMs, timezone, env);
   return resumed(() => started);
 }
 

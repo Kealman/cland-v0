@@ -23,9 +23,10 @@ const remoteDir = (lease: DropletLease): string => {
 export class DropletRun {
   readonly #root: string;
   readonly #machine: Machine;
-  constructor(root: string) { this.#root = root; this.#machine = new Machine(root); }
+  readonly #env: NodeJS.ProcessEnv;
+  constructor(root: string, env: NodeJS.ProcessEnv = process.env) { this.#root = root; this.#env = env; this.#machine = new Machine(root, env); }
   async deliver(lease: DropletLease, run: RunRef): Promise<void> {
-    const git = async (...args: string[]) => (await exec('git', args, { cwd: run.cwd, env: machineEnv(), timeout: 30000, maxBuffer: 16 * 1024 * 1024 })).stdout.trim();
+    const git = async (...args: string[]) => (await exec('git', args, { cwd: run.cwd, env: machineEnv(this.#env), timeout: 30000, maxBuffer: 16 * 1024 * 1024 })).stdout.trim();
     if (await git('rev-parse', 'HEAD') !== run.head || await git('status', '--porcelain')) throw new Error('dirty or changed worktree cannot be bundled for droplet');
     const snapshot = await readSnapshot(this.#root);
     if (!snapshot) throw new Error('prepared snapshot disappeared');
@@ -50,16 +51,16 @@ export class DropletRun {
     const commands = suiteCommands(run).map((args, index) => `${index === 1 ? 'rmdir /tmp/cland-suite.lock; trap - EXIT\n' : ''}echo ${quote(`$ npm ${args.join(' ')}`)}\nnpm ${args.map(quote).join(' ')} || exit $?`).join('\n');
     // The typecheck owns the machine compatibility lock; the package runner then
     // takes its own compatibility leases, including cross-package smoke phases.
-    const config = await readFile(join(this.#root, '.cland/config.toml'), 'utf8').then(text => parseConfig(text, basename(this.#root)), error => { if (error.code === 'ENOENT') return defaultConfig(basename(this.#root)); throw error; });
+    const config = await readFile(join(this.#root, '.cland/config.toml'), 'utf8').then(text => parseConfig(text, basename(this.#root), this.#env), error => { if (error.code === 'ENOENT') return defaultConfig(basename(this.#root)); throw error; });
     const script = (await readFile(fileURLToPath(new URL('./run.sh', import.meta.url)), 'utf8'))
       .replace('@RUN_ID@', lease.run).replace('@COMMANDS@', commands)
-      .replace('@RUN_TIMEOUT@', String(testTiming('CLAND_TEST_EXECUTOR_RUN_TIMEOUT_MS', config.verification.runTimeoutMs) / 1000));
+      .replace('@RUN_TIMEOUT@', String(testTiming('CLAND_TEST_EXECUTOR_RUN_TIMEOUT_MS', config.verification.runTimeoutMs, this.#env) / 1000));
     await writeFile(join(local, 'run.sh'), script, { mode: 0o600 });
     for (const file of ['tree.bundle', 'env', 'run.sh']) await this.#machine.put(lease, join(local, file), `runs/${lease.run}/${file}`);
     const lock = quote(snapshot.key.lock);
     const pin = quote(snapshot.key.nvim.tag);
     const command = `set -e\ncd "$HOME/cland"\ngit fetch ${dir}/tree.bundle ${quote(run.head)}\ngit checkout --detach ${quote(run.head)}\ngit clean -fdx -e node_modules -e .cache\ntest "$(git rev-parse HEAD)" = ${quote(run.head)}\ntest -z "$(git status --porcelain)"\nif test "$(sha256sum package-lock.json | cut -d ' ' -f 1)" != ${lock}; then echo 'dependencies changed: npm ci'; npm ci; else echo 'dependencies match snapshot'; fi\nif test "$(cat nvim/NVIM_VERSION 2>/dev/null || echo none)" != ${pin}; then echo 'Neovim pin changed: seed'; node nvim/bin/nvim-path.ts; else echo 'Neovim pin matches snapshot'; fi\ntest "$(git rev-parse HEAD)" = ${quote(run.head)}\ntest -z "$(git status --porcelain)"`;
-    const output = await this.#machine.exec(lease, command, { timeoutMs: Math.max(1, Date.parse(lease.deadline) - Date.now() - testTiming('CLAND_TEST_EXECUTOR_COLLECTION_MARGIN_MS', 120000)) });
+    const output = await this.#machine.exec(lease, command, { timeoutMs: Math.max(1, Date.parse(lease.deadline) - Date.now() - testTiming('CLAND_TEST_EXECUTOR_COLLECTION_MARGIN_MS', 120000, this.#env)) });
     await writeFile(join(local, 'delivery.log'), output);
     await this.#machine.put(lease, join(local, 'delivery.log'), `runs/${lease.run}/delivery.log`);
     lease.execution = { head: run.head, delivered: true };
@@ -82,7 +83,7 @@ export class DropletRun {
     if (Date.parse(lease.deadline) <= Date.now()) return { state: 'lost', code: 1, cause: 'remote machine lifetime expired' };
     try {
       if (lease.resource === null) return { state: 'lost', code: 1, cause: 'remote machine lost' };
-      await new DigitalOceanApi().droplet(lease.resource);
+      await new DigitalOceanApi(this.#env).droplet(lease.resource);
     } catch (error) { if (error instanceof DigitalOceanError && error.status === 404) return { state: 'lost', code: 1, cause: 'remote machine lost' }; }
     try {
       const program = `const fs=require('fs'),p=process.argv[1];const platform=fs.existsSync(p+'/platform')?JSON.parse(fs.readFileSync(p+'/platform','utf8')):undefined;let status={state:'pending',platform};if(fs.existsSync(p+'/done'))status={state:'done',code:Number(fs.readFileSync(p+'/exit','utf8')),finished:fs.readFileSync(p+'/done','utf8').trim(),platform};else if(fs.existsSync(p+'/pgid')){let alive=true;try{process.kill(-Number(fs.readFileSync(p+'/pgid','utf8')),0)}catch{alive=false}status=alive?{state:'running',platform}:{state:'done',code:1,cause:'remote runner disappeared without a done marker',finished:new Date().toISOString(),platform};}console.log(JSON.stringify(status));`;
@@ -92,11 +93,11 @@ export class DropletRun {
     } catch {
       try {
         if (lease.resource === null) return { state: 'lost', code: 1, cause: 'remote machine lost' };
-        const droplet = await new DigitalOceanApi().droplet(lease.resource);
+        const droplet = await new DigitalOceanApi(this.#env).droplet(lease.resource);
         if (droplet.status === 'active' && lease.execution) {
           lease.execution.unreachableSince ??= new Date().toISOString();
           await writeLease(this.#root, lease);
-          if (Date.now() - Date.parse(lease.execution.unreachableSince) >= testTiming('CLAND_TEST_DROPLET_LOST_MS', 300000)) return { state: 'lost', code: 1, cause: 'remote machine lost' };
+          if (Date.now() - Date.parse(lease.execution.unreachableSince) >= testTiming('CLAND_TEST_DROPLET_LOST_MS', 300000, this.#env)) return { state: 'lost', code: 1, cause: 'remote machine lost' };
         }
       } catch (error) { if (error instanceof DigitalOceanError && error.status === 404) return { state: 'lost', code: 1, cause: 'remote machine lost' }; }
       return { state: 'unknown' };
@@ -112,7 +113,7 @@ export class DropletRun {
     const dir = remoteDir(lease);
     try {
       await this.#machine.exec(lease, `if test -f ${dir}/pgid && ! test -f ${dir}/done; then pgid=$(cat ${dir}/pgid); case "$pgid" in ''|*[!0-9]*) exit 1;; esac; kill -TERM -- -"$pgid" 2>/dev/null || true; fi`, { timeoutMs: 10000 });
-      const limit = Date.now() + testTiming('CLAND_TEST_DROPLET_CANCEL_MS', 10000);
+      const limit = Date.now() + testTiming('CLAND_TEST_DROPLET_CANCEL_MS', 10000, this.#env);
       do { if ((await this.status(lease)).state === 'done') break; await pause(100); } while (Date.now() < limit);
     } catch { /* release destroys the machine even when its group cannot be reached */ }
   }

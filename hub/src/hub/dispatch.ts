@@ -88,6 +88,7 @@ export type Conversation = {
 };
 
 export type DispatcherOptions = {
+  env?: NodeJS.ProcessEnv;
   journal?: import('./journal.ts').Journal;
   verification?: SuiteSchedulerOptions;
   core: HubCore;
@@ -151,22 +152,22 @@ export class Dispatcher {
   constructor(options: DispatcherOptions) {
     this.#options = options;
     this.#log = options.log ?? (() => {});
-    this.#worktrees = options.tracker ? new TaskWorktrees({ tracker: options.tracker, log: this.#log, sessions: () => this.#sessionCwds() }) : null;
-    this.#merges = options.tracker && this.#worktrees ? new TaskMerges(options.tracker, this.#worktrees, this.#log, async (item, resumed) => { await this.#sessions?.stopAfterMerge(item, resumed); }) : null;
-    this.#releases = options.tracker && this.#worktrees ? new Releases(options.tracker, this.#worktrees, this.#log) : null;
+    this.#worktrees = options.tracker ? new TaskWorktrees({ ...(options.env ? { env: options.env } : {}), tracker: options.tracker, log: this.#log, sessions: () => this.#sessionCwds() }) : null;
+    this.#merges = options.tracker && this.#worktrees ? new TaskMerges(options.tracker, this.#worktrees, this.#log, async (item, resumed) => { await this.#sessions?.stopAfterMerge(item, resumed); }, options.env) : null;
+    this.#releases = options.tracker && this.#worktrees ? new Releases(options.tracker, this.#worktrees, this.#log, options.env) : null;
     this.artifacts = new ArtifactLifecycle(options.core.store, options.control?.status().root, a => options.core.artifactChanged(a), options.artifactFiles);
     this.#guard = options.requestGuard ?? new RequestGuard({ ...options.guard, log: this.#log });
     this.#rolesSnapshot = options.core.roles?.get();
     const root = options.control?.status().root;
-    this.#droplets = root ? new DropletExecutor(root, options.core.store, this.#log) : null;
+    this.#droplets = root ? new DropletExecutor(root, options.core.store, this.#log, options.env) : null;
     this.#dropletReady = this.#droplets?.sweep(true).catch(() => this.#log({ event: 'executor-reconcile-failed', reason: 'lease recovery deferred' })) ?? Promise.resolve();
-    const retryMs = Number(process.env.CLAND_TEST_EXECUTOR_SWEEP_MS);
+    const retryMs = Number((options.env ?? process.env).CLAND_TEST_EXECUTOR_SWEEP_MS);
     this.#dropletTimer = this.#droplets ? setInterval(() => {
       if (this.#closed || this.#dropletWork) return;
       this.#dropletWork = this.#dropletReady.then(() => this.#droplets!.sweep()).catch(() => this.#log({ event: 'executor-reconcile-failed', reason: 'lease recovery deferred' })).finally(() => { this.#dropletWork = null; });
     }, retryMs > 0 && Number.isFinite(retryMs) ? retryMs : 600000) : null;
     this.#dropletTimer?.unref();
-    this.#suites = root ? new Suites(options.core.store, root, (job, checkpointArtifact) => this.#reportSuite(job, checkpointArtifact), { ...options.verification, onShardingSkipped: (job, text) => options.core.noticeTo(job.topic, { id: `sharding-skipped:${job.id}`, kind: 'report', to: job.to, text, detail: { event: 'verification-sharding-skipped', id: job.id, item: job.item ?? null } }), onFallback: (job, cause) => options.core.noticeTo(job.topic, { id: `executor-fallback:${job.id}`, kind: 'report', to: job.to, text: cause === 'remote budget full' ? `verify ${job.id}: remote budget ${options.verification?.remoteBudget ?? 4}/${options.verification?.remoteBudget ?? 4} full; running locally` : `verify ${job.id}: droplet unavailable (${cause}); running locally`, detail: { event: 'verification-executor-fallback', id: job.id, item: job.item ?? null, cause } }), log: this.#log, onQueue: queue => options.core.publishVerification(queue), onJob: job => options.tracker?.verifyChanged(job.item ?? null, job.branch), requesterDead: actor => [...(this.#sessions?.list() ?? []), ...(this.#sessions?.list(true) ?? [])].some(p => p.sessionId === actor.sessionId && p.status !== 'running') }) : null;
+    this.#suites = root ? new Suites(options.core.store, root, (job, checkpointArtifact) => this.#reportSuite(job, checkpointArtifact), { ...options.verification, ...(options.env ? { env: options.env } : {}), onShardingSkipped: (job, text) => options.core.noticeTo(job.topic, { id: `sharding-skipped:${job.id}`, kind: 'report', to: job.to, text, detail: { event: 'verification-sharding-skipped', id: job.id, item: job.item ?? null } }), onFallback: (job, cause) => options.core.noticeTo(job.topic, { id: `executor-fallback:${job.id}`, kind: 'report', to: job.to, text: cause === 'remote budget full' ? `verify ${job.id}: remote budget ${options.verification?.remoteBudget ?? 4}/${options.verification?.remoteBudget ?? 4} full; running locally` : `verify ${job.id}: droplet unavailable (${cause}); running locally`, detail: { event: 'verification-executor-fallback', id: job.id, item: job.item ?? null, cause } }), log: this.#log, onQueue: queue => options.core.publishVerification(queue), onJob: job => options.tracker?.verifyChanged(job.item ?? null, job.branch), requesterDead: actor => [...(this.#sessions?.list() ?? []), ...(this.#sessions?.list(true) ?? [])].some(p => p.sessionId === actor.sessionId && p.status !== 'running') }) : null;
     options.tracker?.useVerify((item, branch) => this.#suites?.latest(item, branch) ?? null);
     // what a read shows changed: no earlier answer is replayed
     options.core.subscribe(event => {
@@ -1302,10 +1303,10 @@ export class Dispatcher {
       }
       switch (frame.type) {
         case 'account.poll':
-          later('account.poll', (this.#accountPoller?.refresh() ?? readAccounts().then(registry => core.accountLimits.list(registry))).then(value => ({ type: 'result', id: frame.id, ok: true, value }), error => Dispatcher.#failure(frame.id, error)));
+          later('account.poll', (this.#accountPoller?.refresh() ?? readAccounts(this.#options.env).then(registry => core.accountLimits.list(registry))).then(value => ({ type: 'result', id: frame.id, ok: true, value }), error => Dispatcher.#failure(frame.id, error)));
           break;
         case 'account.list':
-          later('account.list', readAccounts().then(registry => ({ type: 'result', id: frame.id, ok: true, value: core.accountLimits.list(registry) }), error => Dispatcher.#failure(frame.id, error)));
+          later('account.list', readAccounts(this.#options.env).then(registry => ({ type: 'result', id: frame.id, ok: true, value: core.accountLimits.list(registry) }), error => Dispatcher.#failure(frame.id, error)));
           break;
         case 'suite.queue':
           if (!this.#suites) return peer.send(Dispatcher.#failure(frame.id, new Error('no verification scheduler')));
@@ -1466,7 +1467,7 @@ export class Dispatcher {
             const now = this.#asSession(frame);
             if (caller && (!now || now.sessionId !== caller.sessionId || now.role !== 'coordinator')) throw new ToolForbidden(now?.role ?? null, 'account.clear', 'account clearing belongs to the Coordinator or the human');
           };
-          return later(frame.type, readAccounts().then(registry => resumed(() => {
+          return later(frame.type, readAccounts(this.#options.env).then(registry => resumed(() => {
             authorize();
             if (!core.accountLimits.list(registry).accounts.some(a => a.name === frame.account)) throw new Error(`unknown account "${frame.account}"`);
             return { type: 'result', id: frame.id, ok: true, value: { account: frame.account, cleared: core.clearAccountLimit(frame.account, 'hand') } } as HubFrame;
