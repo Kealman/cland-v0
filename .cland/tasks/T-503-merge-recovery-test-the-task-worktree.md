@@ -3,17 +3,17 @@ id: T-503
 kind: task
 title: "merge-recovery test: the task worktree still exists right after a retried merge reports closed (Linux)"
 state: open
-status: backlog
+status: in progress
 size: XS
 labels:
   - ready-for-agent
 assignee: null
 parent: E-482
 blocked_by: []
-topic: null
-branch: null
+topic: topic-310
+branch: t/T-503-merge-recovery-test-the-task-worktree
 created: 2026-10-15T15:03:40.855Z
-updated: 2026-10-15T15:03:40.855Z
+updated: 2026-10-15T16:47:14.538Z
 ---
 
 ## Problem

@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-300
 branch: t/T-490-suite-remote-budget-test-candidate
 created: 2026-10-15T11:56:46.304Z
-updated: 2026-10-15T16:20:36.231Z
+updated: 2026-10-15T16:47:13.953Z
 ---
 
 ## Problem
@@ -108,3 +108,7 @@ Spec/evidence: Only four manifest lines changed. Own suite-remote-budget test is
 Both review axes performed directly under no-delegation role. No Reviewer tests or edits. Coordinator 6c0d565f lifts the restart hold: proceed with one --executor droplet verify at this exact head, reporting in the item topic. Source clearance is not final suite clearance.
 
 Criteria: C1 verified.
+
+### impl-490 · 2026-10-15T16:47:01.036Z
+
+Second Linux receipt 5fea0bb0 at delta-reviewed a4816d7e: own suite-remote-budget.test.ts all 10 green again, changed case 12.792s. Sole failure is orphan-servers.test.ts:346 OpenCode unverifiable-live-server case, 'database is locked' / ERR_SQLITE_ERROR code 5, exactly tracked by open T-499 (task view confirmed). The first Linux receipt A-3139 had zero functional failures, sole rule-sessions budget red corrected by approved shared pick bdf418e6. Second A-3177 is red only on different known T-499; no duration-budget failure remains. Requesting Reviewer's final evidence verdict under E-482 two-receipt rule; no further run/source changes.
