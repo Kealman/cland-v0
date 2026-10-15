@@ -765,6 +765,39 @@ for (const [resource, source] of [
   assert.match(output, /free hub test touches machine resources.*wait\.test\.ts/);
 });
 
+test('an explicit package shard selects its files without leaking into nested package runs', async t => {
+  const dir = await fixture(t);
+  const nested = join(dir, 'nested');
+  const journal = join(dir, 'nested-ran');
+  for (const path of ['hub/test/fixture.test.ts', 'nvim/test/fixture.test.ts']) {
+    await mkdir(join(nested, path, '..'), { recursive: true });
+    await writeFile(join(nested, path), `import test from 'node:test'; import assert from 'node:assert/strict'; import { appendFileSync } from 'node:fs'; test('nested phase', () => {
+      assert.equal(process.env.CLAND_SUITE_SELECTION, undefined);
+      appendFileSync(${JSON.stringify(journal)}, ${JSON.stringify(path + '\n')});
+    });`);
+  }
+  await writeFile(join(nested, 'hub/test/shards.json'), JSON.stringify({ version: 1, tests: { 'hub/test/fixture.test.ts': 'machine' } }));
+  await mkdir(join(dir, 'hub/test'), { recursive: true });
+  await mkdir(join(dir, 'nvim/test'), { recursive: true });
+  await writeFile(join(dir, 'hub/test/selected.test.ts'), `import test from 'node:test'; import assert from 'node:assert/strict'; import { runPackageSuite } from ${JSON.stringify(runner)};
+    test('nested package run', async () => {
+      assert.equal(await runPackageSuite('all', [], ${JSON.stringify({ cwd: nested, lockDirs: { hub: lockPath(nested, 'hub'), nvim: lockPath(nested, 'nvim') } })}), 0);
+      assert.equal(process.env.CLAND_SUITE_SELECTION, undefined);
+    });`);
+  for (const path of ['hub/test/excluded.test.ts', 'nvim/test/excluded.test.ts']) {
+    await writeFile(join(dir, path), "throw new Error('unselected test executed');");
+  }
+  await writeFile(join(dir, 'hub/test/shards.json'), JSON.stringify({ version: 1, tests: { 'hub/test/selected.test.ts': 'machine', 'hub/test/excluded.test.ts': 'machine' } }));
+  const selection = { mode: 'full', files: [], reason: 'outer shard regression', shard: { files: ['hub/test/selected.test.ts'], nvim: false } };
+  const code = `import { runPackageSuite } from ${JSON.stringify(runner)}; process.exitCode = await runPackageSuite('all', [], ${JSON.stringify({ cwd: dir, lockDirs: { hub: lockPath(dir, 'hub'), nvim: lockPath(dir, 'nvim') } })});`;
+  const child = spawn(process.execPath, ['--input-type=module', '-e', code], { env: { ...process.env, NODE_TEST_CONTEXT: '', CLAND_TEST_SKIP_LOCK: '0', CLAND_SUITE_SELECTION: JSON.stringify(selection) } });
+  let output = '';
+  child.stdout.on('data', chunk => { output += String(chunk); });
+  child.stderr.on('data', chunk => { output += String(chunk); });
+  assert.equal(await new Promise(resolve => child.on('close', resolve)), 0, output);
+  assert.equal(await readFile(journal, 'utf8'), 'hub/test/fixture.test.ts\nnvim/test/fixture.test.ts\n');
+});
+
 for (const admission of ['standalone', 'old V1 worker'] as const) test(`sharded package runs keep a recovery record and take the machine lease only for machine phases (${admission})`, async t => {
   // Always exercise the managed runner's private-root naming, even in a targeted run.
   const dir = await mkdtemp(join(await realpath('/tmp'), 'cland-suite-runner-fixture-'));

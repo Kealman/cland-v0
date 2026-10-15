@@ -99,6 +99,8 @@ export async function runSuite(suites: string[][], options: { lockDir?: string; 
         machineWait = Date.now() - phaseStarted;
       }
       const env: NodeJS.ProcessEnv = { ...process.env, TMPDIR: root, TMP: root, TEMP: root, TEST_SUITE_RUN_ID: holder.token, TEST_SUITE_CWD: holder.worktree };
+      // Selection belongs to this runner, not its tests or any nested package run.
+      delete env.CLAND_SUITE_SELECTION;
       // Never propagate a parent's capture into nested fixture package runs.
       delete env.CLAND_COVERAGE_OUTPUT;
       delete env.DIGITALOCEAN_TOKEN;
