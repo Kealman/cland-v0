@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-310
 branch: t/T-503-merge-recovery-test-the-task-worktree
 created: 2026-10-15T15:03:40.855Z
-updated: 2026-10-15T16:47:14.538Z
+updated: 2026-10-15T16:49:07.312Z
 ---
 
 ## Problem
@@ -24,3 +24,9 @@ updated: 2026-10-15T16:47:14.538Z
 
 - [ ] C1. Either the merge retry removes the worktree before it reports success, as a product fix with the reason recorded, or the test waits on an observed removal with the existing eventually helper. Every other assertion stays, and the root cause is recorded in the commit.
 - [ ] C2. merge-recovery.test.ts passes 5/5 serially, whole file and alone on the Mac, plus once on a droplet in the task's verify.
+
+## Comments
+
+### impl-503 · 2026-10-15T16:49:07.312Z
+
+Baseline whole-file Mac run passed 19/19 (72.68 s wall, load 14.70 with another non-coord verify active). Diagnosis: TaskMerges.#cleanup returns 'waiting for sessions' with no followUp and retries asynchronously when a session is inside/launching; merge close success does not guarantee path removal. C1 uses the existing eventually helper before the original removal assertion; all other assertions remain. Five post-fix serial whole-file runs pending.

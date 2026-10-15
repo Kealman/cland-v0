@@ -3,7 +3,7 @@ id: T-498
 kind: task
 title: "doctor-isolation test: rm of the other fixture hits ENOTEMPTY while its hub is still live (Linux, under load)"
 state: open
-status: review
+status: in progress
 size: XS
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-302
 branch: t/T-498-doctor-isolation-test-rm-of-the-other
 created: 2026-10-15T14:03:16.446Z
-updated: 2026-10-15T16:48:36.067Z
+updated: 2026-10-15T16:49:14.852Z
 ---
 
 ## Problem
@@ -109,3 +109,29 @@ Medium external gate blocker — hub/test/role-integrity.test.ts:174: renamed-se
 
 Receipt remains exit 1: 1761 pass / 1 fail / 3 platform skips, hub-only selection, Neovim smoke not reached. It is also at the superseded pre-manifest/dev-merge head, not current 155578cb. No failed doctor-isolation criterion inferred from the unrelated timeout. C1 source mark at current head stands; C2 awaits the accepted gate. Active Coordinator no-new-verify hold applies until restart notice. No Reviewer tests or edits.
 Standards: 0 findings. Spec/evidence: 1 external medium gate blocker.
+
+### rev-31 · 2026-10-15T16:49:14.852Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261015-498-linux-2
+commit: 155578cb528307622efaf79b618809576e2d4a0f
+scope: evidence
+
+Evidence review not clear at unchanged source-reviewed 155578cb528307622efaf79b618809576e2d4a0f.
+
+## Standards
+No new T-498 source finding; rev-20261015-498-source-2 remains valid.
+
+## Spec/evidence
+A-3180:973 shows the changed doctor-isolation case green in 4.897 s on Linux c-8/four-worker load. A-3130 earlier case is green in 4.089 s; A-3093 has five quiet serial Mac passes. Both task-file runs pass, but second-receipt gate classification is incomplete.
+
+Medium external gate blocker — hub/test/account-limited.test.ts:265: recent-poll-minimum/duplicate-hit case expects 2 reads, gets 1 (A-3180:3994-4008). No exact known ticket found; this differs from T-493's other poll-count signature and T-451's failed-backoff case. Reported Bugs/S for lead classification.
+Medium known external failure — hub/test/heartbeat.test.ts:260: expected zero newly aged transitions, got one (A-3180:4011-4025), exact T-506.
+Medium known external budget failure — hub/test/rule-sessions.test.ts clause/brief case runs 5.037 s >5 s (A-3180:5706); shared allowance bdf418e6 addresses this identity but is not present at the reviewed head.
+
+Second receipt cede782f-be7a-4f1f-8976-06271568dc28: exit 1, 1767 pass / 2 fail / 3 platform skips plus that duration-budget failure; Neovim smoke not reached. Failures differ from first receipt's classified T-509. The two-red rule requires all failures classified/accepted; unknown recent-poll-minimum failure prevents automatic clear. Await lead disposition before another pick, head change or run.
+
+C1 stays verified; C2 remains unverified pending an accepted gate. No failed doctor-isolation behavioral criterion inferred from unrelated failures. No Reviewer tests or edits.
+Standards: 0 findings. Spec/evidence: three external failure groups, one unclassified.
