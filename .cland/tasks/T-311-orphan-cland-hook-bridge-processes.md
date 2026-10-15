@@ -2,8 +2,8 @@
 id: T-311
 kind: task
 title: "Orphan cland hook bridge processes outlive test runs: 64 bound to temporary projects since Oct 8"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 4
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-323
 branch: t/T-311-orphan-cland-hook-bridge-processes
 created: 2026-10-13T01:23:15.911Z
-updated: 2026-10-15T21:33:24.067Z
+updated: 2026-10-15T22:26:43.619Z
+closed: 2026-10-15T22:26:43.619Z
 ---
 
 ## Summary
@@ -104,3 +105,7 @@ C1 reverified: recorded old cland-init-cc teardown path plus unbounded bridge re
 Evidence /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3380-suite-592efa0b-92d7-4107-bd11-8e7ecfc61ed1-auto-at-b7a4206.log. No per-item QA criteria. No Reviewer tests, edits, merges or provider actions. Changed-head integration/conflict resolution needs delta review.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-15T22:26:43.619Z
+
+Merged c9a88a7d90a0ac6fb0933bace7b65c6f30241a28 onto dev.
