@@ -46,6 +46,8 @@ test('a close write failure reports merged follow-up failure; retry closes and p
   assert.equal(closed.state, 'closed');
   assert.equal(closed.claim, null);
   assert.equal(closed.comments.filter(c => c.text.includes(`Merged ${first.commit}`)).length, 1);
+  // Closing succeeds before deferred session cleanup necessarily removes the worktree.
+  await eventually('retried merge worktree cleanup', () => !existsSync(work.path) ? true : undefined);
   assert.equal(existsSync(work.path), false);
   const history = await retryUi.request({ type: 'topic.history', topic: (topic.value as { topic: { id: string } }).topic.id });
   assert.equal((history.value as { topic: { status: string } }).topic.status, 'closed');
