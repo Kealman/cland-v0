@@ -3,7 +3,7 @@ id: T-481
 kind: task
 title: executor-prepare test reads the executor-lease-released record before the journal publishes it (Linux)
 state: open
-status: review
+status: ready
 size: XS
 criterion_seq: 1
 labels:
@@ -16,7 +16,7 @@ regression_of: T-432
 topic: topic-283
 branch: t/T-481-executor-prepare-test-reads-the-executor
 created: 2026-10-15T09:14:01.095Z
-updated: 2026-10-15T11:34:07.928Z
+updated: 2026-10-15T11:34:49.395Z
 ---
 
 ## Summary
@@ -26,7 +26,8 @@ updated: 2026-10-15T11:34:07.928Z
 ## Acceptance criteria
 
 - [x] C1. The case waits for the published `executor-lease-released` record, with no read before it, and passes 5/5 beside a full run, with one droplet run green.
-  - done: impl-481 · 2026-10-15T11:34:02.987Z
+  - verified: rev-30 [reviewer] · run rev-20261015-481-final · 2026-10-15T11:34:27.385Z · commit 327b1ea0292d379169d61caa179aa19c2cab0636
+  - done: impl-481 · 2026-10-15T11:34:49.394Z
 
 ## Comments
 
@@ -83,3 +84,23 @@ Replacement human gate rule e6264b46 (ask 9183a54c) applied: local 53242041 canc
 ### impl-481 · 2026-10-15T11:34:07.928Z
 
 Second same-head Linux 161a261d/A-2939: touched executor-prepare file again 17/17 green, repaired release case 6.024s. Sole outside failure differs from first Linux: exact T-447 unconfirmed-inject retry timeout at claude-code-adapter.test.ts:251. First 8cd787ee/A-2864 had only known T-461 latch count mismatch. Both overall reds preserved (1716 pass/1 fail/3 skips each); source unchanged at reviewed 327b1ea0. Submitted both receipts and 5/5 loaded evidence A-2818/A-2826 to rev-30 for final gate/C1 settlement under human decision e6264b46. No mixed nvim diff, no extra run planned.
+
+### rev-30 · 2026-10-15T11:34:27.385Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-481-final
+commit: 327b1ea0292d379169d61caa179aa19c2cab0636
+scope: evidence
+
+Final evidence review clear under replacement human gate rule e6264b46 (ask 9183a54c). No unresolved T-481 source finding. Reviewed/current head remains 327b1ea0292d379169d61caa179aa19c2cab0636.
+
+Standards: source verdict rev-20261015-481-source stands, no findings.
+Spec: C1 verified with the explicit rule's accepted gate disposition. Source waits for the flushed release journal record before field assertions. A-2818/A-2826 provide 5/5 serial loaded file passes, 17/17 each beside impl-454's full local run.
+
+First Linux 8cd787ee/A-2864: executor-prepare 17/17 green, fixed case 6.484 s; sole failure known T-461 signed-out latch at Claude :389 (3 vs 2). Second Linux 161a261d/A-2939: executor-prepare again 17/17, fixed case 6.024 s; sole failure is the different unconfirmed-inject retry case at Claude :251 (`the clause injected on the retry: not within 15000 ms`), confirmed by task.view T-447. Both exact heads match source. Both receipts remain red overall: 1716 pass/1 fail/3 platform skips, exit 1; Linux x64 c-8. The human rule accepts this pair with different known outside failures and green touched files as the gate, rather than claiming either full suite passed. Neovim smoke not reached; no nvim diff, so mixed-diff addition does not apply.
+
+Local 53242041/A-2914 cancelled while queued, no tests/evidence. No further tests started. C1 done remains the claimant's mark.
+
+Criteria: C1 verified.

@@ -2,8 +2,8 @@
 id: T-483
 kind: task
 title: "Hotfix: T-253's fail-fast exits on the 5 s stall warning threshold; a slow tracker operation under load kills the hub"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 rank: 2930
 criterion_seq: 3
@@ -18,7 +18,8 @@ regression_of: T-253
 topic: topic-282
 branch: t/T-483-hotfix-t-253-s-fail-fast-exits-on-the-5
 created: 2026-10-15T09:18:55.709Z
-updated: 2026-10-15T11:34:06.438Z
+updated: 2026-10-15T11:34:39.410Z
+closed: 2026-10-15T11:34:39.410Z
 ---
 
 ## Summary
@@ -145,3 +146,7 @@ Final clear uses e6264b46's explicit exception, not a green-full claim: A-2847/7
 Coordinator becaa511 explicitly accepts tracker scope and adopted T-487 evidence: A-2900/63b6103f passed the Neovim phase, with rev-30 final clear rev-20261015-487-final. Neither T-483 Linux receipt reached Neovim; no such coverage inferred. Both receipt pair and scope decision are documented in the final review artifact. No Reviewer tests run.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-15T11:34:39.410Z
+
+Merged 63a2e0ceb3e00d1ab2590d121d6758f4bf57a457 onto dev.
