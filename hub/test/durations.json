@@ -3723,6 +3723,10 @@
     "hub/test/heartbeat.test.ts::busy and approval-waiting Coordinators coalesce heartbeats into the next turn without steering": {
       "seconds": 5.113,
       "reason": "Holds a busy and then an approval-waiting fake Coordinator across a full heartbeat interval through a real hub, and checks the heartbeat folds into the next turn without a steer. The interval wait dominates. Measured on Linux droplet run 44712045 (A-3109)."
+    },
+    "hub/test/rule-sessions.test.ts::launch clause and brief end with the same ordered active rules": {
+      "seconds": 5.043,
+      "reason": "Launches role spokes against a real hub with a populated rulebook and compares each launch clause and brief for the same ordered active rules; the real launch round-trips dominate. Measured on Linux droplet run 8cd57b4d (A-3139)."
     }
   }
 }
