@@ -18,7 +18,7 @@ export type ProjectConfig = {
   verification: { executor: 'local' | 'droplet'; budget: number; remoteBudget: number; lockPath: string; cacheMaxAgeMs: number; testTimeoutMs: number; stallTimeoutMs: number; lifetimeMs: number; runTimeoutMs: number; runTimeout: string; dailySpendUsd: number; droplet: { size: string; prepare_size: string; regions: string[]; image: string } };
   sessions: { archiveAfterItemMs: number; archiveAfterStopMs: number };
   visibility: VisibilityOverrides;
-  tracker: { levels: Levels };
+  tracker: { levels: Levels; fatalStallMs: number };
   plan: { approval: 'none' | 'human'; qaDefault: QaPolicy };
   artifacts: { retentionDays: number };
   keys: { layouts: string[] };
@@ -32,7 +32,7 @@ export const defaultConfig = (name: string): ProjectConfig => ({
   verification: { executor: 'local', budget: 1, remoteBudget: 4, lockPath: '/tmp/cland-suite.lock', cacheMaxAgeMs: 86400000, testTimeoutMs: 120000, stallTimeoutMs: 600000, lifetimeMs: 6600000, runTimeoutMs: 4500000, runTimeout: '75m', dailySpendUsd: 5, droplet: { size: 'c-8', prepare_size: 'c-8', regions: ['lon1', 'nyc1', 'sfo2'], image: 'ubuntu-24-04-x64' } },
   sessions: { archiveAfterItemMs: 3600000, archiveAfterStopMs: 86400000 },
   visibility: {},
-  tracker: { levels: [...DEFAULT_LEVELS] },
+  tracker: { levels: [...DEFAULT_LEVELS], fatalStallMs: 60000 },
   plan: { approval: 'none', qaDefault: { scope: 'none', when: 'per-item' } },
   artifacts: { retentionDays: 30 },
   keys: { layouts: [] },
@@ -81,6 +81,9 @@ archive_after_stop = "${c.sessions.archiveAfterStopMs / 1000}s"
 # Other root kinds (category by default) have no version or rank. Leaves and map are outside the ladder.
 [tracker]
 levels = ${JSON.stringify(c.tracker.levels)}
+# Warn after 5 seconds; exit only if the same operation is still outstanding at this deadline.
+# Maximum: 2147483s (the platform timer limit).
+fatal_stall = "${c.tracker.fatalStallMs / 1000}s"
 
 [plan]
 approval = "${c.plan.approval}"
@@ -183,6 +186,13 @@ export function parseConfig(text: string, fallbackName: string): ProjectConfig {
   if (typeof project.name === 'string' && project.name.trim()) c.name = project.name;
   const tracker = (doc.tracker ?? {}) as Record<string, unknown>;
   if (tracker.levels !== undefined) c.tracker.levels = configuredLevels(tracker.levels);
+  if (tracker.fatal_stall !== undefined) {
+    try {
+      if (typeof tracker.fatal_stall !== 'string') throw new Error('not a duration');
+      c.tracker.fatalStallMs = durationMs(tracker.fatal_stall);
+    } catch { throw new Error('tracker.fatal_stall must be a positive duration (s, m, h or d)'); }
+    if (c.tracker.fatalStallMs > 2147483647) throw new Error('tracker.fatal_stall must not exceed 2147483s (the platform timer limit)');
+  }
   const plan = (doc.plan ?? {}) as Record<string, unknown>;
   if (plan.approval !== undefined) {
     if (plan.approval !== 'none' && plan.approval !== 'human') throw new Error('plan.approval must be none or human');

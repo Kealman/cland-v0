@@ -11,6 +11,7 @@ import { importIssues, type ImportedIssue } from '../src/tracker/import-github.t
 import { RequestGuard } from '../src/hub/budget.ts';
 import { fixedRoles } from '../src/roles/config.ts';
 import { Tracker } from '../src/tracker/tracker.ts';
+import { renderConfig, parseConfig } from '../src/init/config.ts';
 import { cland, clandWithEnv, connectUi, connectWsUi, eventually, pidAlive, readDiscovery, spawnSpoke, startDaemon, startHub, tempProject } from './harness.ts';
 import { taskWriteGate } from './tracker-write-gate.ts';
 
@@ -569,12 +570,56 @@ test('a failed child scan drains slow reads before admitting the next tracker wr
   assert.equal(tracker.view('T-1').comments[0]?.text, 'after refusal');
 });
 
+test('a six-second tracker write warns, completes and leaves the hub serving', async t => {
+  const root = await tempProject(t);
+  const gate = await taskWriteGate(t, root);
+  const { discovery } = await startDaemon(t, root, gate.env);
+  const ui = await connectUi(t, discovery);
+  assert.equal((await ui.request({ type: 'task.create', title: 'Slow', size: 'S' })).ok, true);
+  await gate.arm();
+  ui.send({ type: 'task.comment', id: 'slow', item: 'T-1', text: 'completed after warning' });
+  await gate.entered();
+  await new Promise(done => setTimeout(done, 6000));
+  assert.equal(pidAlive(discovery.pid), true, 'a warning must not terminate the hub');
+  const status = (await ui.request({ type: 'hub.status', flushLogs: true })).value as { tracker: { storage: { stalled: boolean; active: { operation: string; item: string }; } } };
+  assert.equal(status.tracker.storage.stalled, true);
+  assert.equal(status.tracker.storage.active.operation, 'comment');
+  assert.equal(status.tracker.storage.active.item, 'T-1');
+  const logPath = join(root, '.cland', 'log', 'hub.log');
+  assert.match(await files.readFile(logPath, 'utf8'), /tracker-storage-stalled.*comment.*T-1/);
+  await gate.release();
+  assert.equal((await ui.waitFor(f => f.type === 'result' && f.id === 'slow')).ok, true);
+  const view = await ui.request({ type: 'task.view', item: 'T-1' });
+  assert.equal(view.ok, true);
+  assert.deepEqual((view.value as { item: { comments: { text: string }[] } }).item.comments.map(c => c.text), ['completed after warning']);
+  const recovered = (await ui.request({ type: 'hub.status', flushLogs: true })).value as { tracker: { storage: { stalled: boolean } } };
+  assert.equal(recovered.tracker.storage.stalled, false);
+  assert.doesNotMatch(await files.readFile(logPath, 'utf8'), /tracker-storage-fatal|tracker-storage-abandoned/);
+});
+
+test('tracker fatal_stall defaults to 60 seconds and accepts only positive durations', () => {
+  assert.equal(parseConfig('', 'fixture').tracker.fatalStallMs, 60000);
+  const configured = parseConfig('[tracker]\nfatal_stall = "2m"', 'fixture');
+  assert.equal(configured.tracker.fatalStallMs, 120000);
+  assert.equal(parseConfig(renderConfig(configured), 'fixture').tracker.fatalStallMs, 120000);
+  assert.equal(parseConfig('[tracker]\nfatal_stall = "2147483s"', 'fixture').tracker.fatalStallMs, 2147483000);
+  for (const value of ['2147484s', '30d']) {
+    assert.throws(() => parseConfig(`[tracker]\nfatal_stall = "${value}"`, 'fixture'), /tracker.fatal_stall must not exceed 2147483s/);
+  }
+  for (const value of ['0', '-1', '"0.5s"', '"0s"', '"-1s"', '"no"', 'true']) {
+    assert.throws(() => parseConfig(`[tracker]\nfatal_stall = ${value}`, 'fixture'), /tracker.fatal_stall must be a positive duration/);
+  }
+});
+
 for (const releaseAtStall of [false, true]) {
   test(`a serving storage stall exits non-zero with native write ${releaseAtStall ? 'released' : 'held'}, tells sessions and the workbench, and preserves acknowledged writes`, async t => {
     const root = await tempProject(t);
     const gate = await taskWriteGate(t, root);
+    // Exercise both the project setting and the independent fatal test override.
+    if (releaseAtStall) await files.writeFile(join(root, '.cland', 'config.toml'), '[tracker]\nfatal_stall = "1s"\n');
     const serving = clandWithEnv(root, {
-      ...gate.env, CLAND_TEST_TRACKER_STALL_MS: '500', CLAND_TEST_SKIP_ORPHAN_SWEEP: '1',
+      ...gate.env, CLAND_TEST_TRACKER_STALL_MS: '100',
+      ...(!releaseAtStall ? { CLAND_TEST_TRACKER_FATAL_MS: '500' } : {}), CLAND_TEST_SKIP_ORPHAN_SWEEP: '1',
     }, 'hub', 'serve');
     // Observe the foreground CLI's actual exit status, rather than only a vanished daemon PID.
     const discovery = await eventually('foreground hub is serving', () => readDiscovery(root));
@@ -687,8 +732,10 @@ test('stall detection leaves the queue held and clears health when the operation
   const root = await tempProject(t);
   const entered = deferred(), release = deferred(), stalled = deferred();
   let hold = false;
+  const fatal: unknown[] = [];
   const events: Record<string, unknown>[] = [];
-  const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db'), storageStallMs: 100,
+  const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db'), storageStallMs: 100, storageFatalMs: 300,
+    onStorageFatal: operation => fatal.push(operation),
     log: entry => { events.push(entry); if (entry.event === 'tracker-storage-stalled' && entry.operation === 'comment') stalled.resolve(); },
     files: { ...files, writeFile: async (...args) => {
       await files.writeFile(...args);
@@ -709,6 +756,8 @@ test('stall detection leaves the queue held and clears health when the operation
   assert.equal(tracker.view(item.id).comments.length, 0);
   release.resolve();
   await Promise.all([writing, second]);
+  await new Promise(done => setTimeout(done, 300));
+  assert.deepEqual(fatal, [], 'a finished operation must cancel its fatal deadline');
   assert.deepEqual(tracker.storageStatus(), { stalled: false, active: null, queued: 0, abandoned: [] });
   assert.deepEqual(tracker.view(item.id).comments.map(c => c.text), ['first', 'second']);
   assert.equal(events.filter(e => e.event === 'tracker-storage-stalled' && e.operation === 'comment').length, 1);

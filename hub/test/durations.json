@@ -2818,6 +2818,10 @@
     "nvim/test/verification-view.test.ts::verify summary opens the ordered queue and ages locally; palette and keys expose the view": 6.183538
   },
   "allow": {
+    "hub/test/tracker-async.test.ts::a six-second tracker write warns, completes and leaves the hub serving": {
+      "seconds": 7.751440333,
+      "reason": "T-483 regression holds real tracker I/O for six seconds to cross the production five-second warning threshold and prove the serving hub recovers without exiting."
+    },
     "hub/test/account-limited.test.ts": {
       "file": true,
       "seconds": 87.967211,

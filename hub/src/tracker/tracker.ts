@@ -69,8 +69,10 @@ import { watchFolder, type FolderWatch } from '../watch.ts';
 export const DEBOUNCE_MS = 100;
 /** A hand edit landing this soon after the hub wrote the same item is reported as a conflict. */
 export const CONCURRENT_MS = 2000;
-/** Storage deadline; a serving daemon terminates rather than releasing a stalled queue. */
+/** Warning threshold; the operation keeps its place in the queue and may still finish. */
 export const STORAGE_STALL_MS = 5000;
+/** Fatal deadline; a serving daemon terminates rather than releasing a stalled queue. */
+export const STORAGE_FATAL_MS = 60000;
 /** Maximum storage drain on shutdown, below the CLI's stop fallback. */
 export const STORAGE_STOP_MS = 2000;
 
@@ -81,7 +83,7 @@ export type TrackerStorageStatus = {
   queued: number;
   abandoned: StorageOperation[];
 };
-type StorageWork = StorageOperation & { started: number | null; stalled: boolean; timer?: NodeJS.Timeout; abandon: () => void };
+type StorageWork = StorageOperation & { started: number | null; stalled: boolean; timer?: NodeJS.Timeout; fatalTimer?: NodeJS.Timeout; abandon: () => void };
 
 /**
  * Who asks: a session or a person at the CLI. `id` is the identity a claim is held by — a session's id,
@@ -225,7 +227,8 @@ export class Tracker {
   #queue: Promise<unknown> = Promise.resolve();
   readonly #storageWork = new Set<StorageWork>();
   readonly #storageStallMs: number;
-  readonly #onStorageStall: ((operation: StorageOperation) => void) | undefined;
+  readonly #storageFatalMs: number;
+  readonly #onStorageFatal: ((operation: StorageOperation) => void) | undefined;
   readonly #stopTimeoutMs: number;
   #storageAbandoned = false;
   #storageError = 'tracker storage abandoned during shutdown';
@@ -283,7 +286,7 @@ export class Tracker {
   #verifyImmediate: NodeJS.Immediate | null = null;
   readonly #shown = new Map<string, string>();
 
-  constructor(options: { onStorageStall?: (operation: StorageOperation) => void; storageStallMs?: number; stopTimeoutMs?: number; planHistory?: ReadonlyArray<Record<string, unknown>>; planApproval?: 'none' | 'human'; qaDefault?: QaPolicy; levels?: Levels; watchResumed?: Resumed; files?: TrackerFiles; root: string; db: string; log?: LogFn; now?: () => Date; writeGate?: () => Promise<void>; git?: Git; tipCheckMs?: number; scheduleTips?: TipSchedule }) {
+  constructor(options: { onStorageFatal?: (operation: StorageOperation) => void; storageStallMs?: number; storageFatalMs?: number; stopTimeoutMs?: number; planHistory?: ReadonlyArray<Record<string, unknown>>; planApproval?: 'none' | 'human'; qaDefault?: QaPolicy; levels?: Levels; watchResumed?: Resumed; files?: TrackerFiles; root: string; db: string; log?: LogFn; now?: () => Date; writeGate?: () => Promise<void>; git?: Git; tipCheckMs?: number; scheduleTips?: TipSchedule }) {
     for (const entry of options.planHistory ?? []) {
       if ((entry.event !== 'task-plan-changed' && entry.event !== 'task-plan-approved') || typeof entry.id !== 'string' || typeof entry.ts !== 'string' || typeof entry.by !== 'string') continue;
       const id = typeof entry.planHistoryId === 'string' ? entry.planHistoryId : typeof entry.agentsNotice === 'string' ? entry.agentsNotice : randomUUID();
@@ -302,7 +305,8 @@ export class Tracker {
     this.#qaDefault = options.qaDefault ?? { scope: 'none', when: 'per-item' };
     this.ladder = new Ladder(options.levels);
     this.#storageStallMs = options.storageStallMs ?? STORAGE_STALL_MS;
-    this.#onStorageStall = options.onStorageStall;
+    this.#storageFatalMs = options.storageFatalMs ?? STORAGE_FATAL_MS;
+    this.#onStorageFatal = options.onStorageFatal;
     this.#stopTimeoutMs = options.stopTimeoutMs ?? STORAGE_STOP_MS;
     const storage = options.files ?? files;
     // Once shutdown abandons storage, no continuation can issue another native operation.
@@ -727,7 +731,7 @@ export class Tracker {
     this.#storageAbandoned = true;
     if (stalled) this.#storageError = `tracker storage abandoned after stall: ${stalled.operation} on ${stalled.item ?? 'tracker-wide work'}`;
     this.#abandonedOperations = [...this.#storageWork].map(({ operation, item, startedAt }) => ({ operation, item, startedAt }));
-    for (const work of this.#storageWork) { clearTimeout(work.timer); work.abandon(); }
+    for (const work of this.#storageWork) { clearTimeout(work.timer); clearTimeout(work.fatalTimer); work.abandon(); }
     this.#log({ event: 'tracker-storage-abandoned', timeoutMs: this.#stopTimeoutMs, operations: this.#abandonedOperations });
   }
 
@@ -1698,13 +1702,17 @@ export class Tracker {
       entry.timer = setTimeout(() => {
         entry.stalled = true;
         this.#log({ event: 'tracker-storage-stalled', operation: entry.operation, item: entry.item, startedAt: entry.startedAt, thresholdMs: this.#storageStallMs });
-        this.#onStorageStall?.({ operation: entry.operation, item: entry.item, startedAt: entry.startedAt });
       }, this.#storageStallMs);
       entry.timer.unref();
+      entry.fatalTimer = setTimeout(() => {
+        this.#onStorageFatal?.({ operation: entry.operation, item: entry.item, startedAt: entry.startedAt });
+      }, this.#storageFatalMs);
+      entry.fatalTimer.unref();
       return work(guarded);
     });
     const run = this.#queue.then(admitted, admitted).finally(() => {
       clearTimeout(entry.timer);
+      clearTimeout(entry.fatalTimer);
       this.#storageWork.delete(entry);
     });
     // Never advance the actual queue tail on a detection timer or a caller rejection.

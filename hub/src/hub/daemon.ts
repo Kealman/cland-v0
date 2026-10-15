@@ -134,6 +134,7 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
   // tests only: how often verdict freshness reads the branch tips (the default is TIP_CHECK_MS)
   const tipCheckMs = Number(process.env.CLAND_TEST_TIP_CHECK_MS ?? 0);
   const storageStallMs = Number(process.env.CLAND_TEST_TRACKER_STALL_MS ?? 0);
+  const storageFatalMs = Number(process.env.CLAND_TEST_TRACKER_FATAL_MS ?? 0);
   const stopTimeoutMs = Number(process.env.CLAND_TEST_TRACKER_STOP_MS ?? 0);
   let config: ReturnType<typeof readProjectConfig>;
   try {
@@ -141,7 +142,7 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
   } catch (error) { await closeLogs(); lock.release(); throw error; }
   let failStorage!: () => void;
   const storageFailed = new Promise<void>(resolve => { failStorage = resolve; });
-  const tracker = new Tracker({ onStorageStall: operation => {
+  const tracker = new Tracker({ onStorageFatal: operation => {
     if (starting || stopping) return;
     // Freeze admission and native/index continuations before yielding or announcing the failure.
     void tracker.stop({ stalled: operation });
@@ -155,7 +156,7 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
       // Give the notice's socket writes a turn before closing the edges.
       setImmediate(() => { void stop().catch(error => fatalLog({ event: 'stop-failed', error: String(error) })); });
     }
-  }, planHistory: readJournal(journalPath(l.dir), { kinds: ['task-plan-changed', 'task-plan-approved'] }), ...(config ? { levels: config.tracker.levels, qaDefault: config.plan.qaDefault, planApproval: config.plan.approval } : {}), ...(storageStallMs > 0 && Number.isFinite(storageStallMs) ? { storageStallMs } : {}), ...(stopTimeoutMs > 0 && Number.isFinite(stopTimeoutMs) ? { stopTimeoutMs } : {}), root, db: l.db, log, watchResumed: requestGuard.resumer('tracker.watch'), ...(writeGate ? { writeGate } : {}), ...(tipCheckMs > 0 ? { tipCheckMs } : {}), ...(options.scheduleTips ? { scheduleTips: options.scheduleTips } : {}) });
+  }, planHistory: readJournal(journalPath(l.dir), { kinds: ['task-plan-changed', 'task-plan-approved'] }), ...(config ? { levels: config.tracker.levels, storageFatalMs: config.tracker.fatalStallMs, qaDefault: config.plan.qaDefault, planApproval: config.plan.approval } : {}), ...(storageStallMs > 0 && Number.isFinite(storageStallMs) ? { storageStallMs } : {}), ...(storageFatalMs > 0 && storageFatalMs <= 2147483647 && Number.isFinite(storageFatalMs) ? { storageFatalMs } : {}), ...(stopTimeoutMs > 0 && Number.isFinite(stopTimeoutMs) ? { stopTimeoutMs } : {}), root, db: l.db, log, watchResumed: requestGuard.resumer('tracker.watch'), ...(writeGate ? { writeGate } : {}), ...(tipCheckMs > 0 ? { tipCheckMs } : {}), ...(options.scheduleTips ? { scheduleTips: options.scheduleTips } : {}) });
   // the role definitions: written with the defaults when the project has none, then watched
   const roles = new RolesFile(l.roles, log, undefined, requestGuard.resumer('roles.refresh'));
   // the hygiene thresholds of `.cland/config.toml`; the built-in defaults when it is missing or unreadable
