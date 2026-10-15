@@ -2,11 +2,15 @@
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { readFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { withDiscoveredPid, cland, connectUi, eventually, fakeClaude, fakeCodex, spawnSpoke, startDaemon, tempProject, type FrameClient } from './harness.ts';
 import { copyPreparedProject } from './prepared-project.ts';
 import type { HarnessProcessView, SessionUsage } from '../src/protocol.ts';
+
+// Match the app-server startup deadline (CodexAdapter constructor in src/adapters/codex.ts).
+const CODEX_LAUNCH_MS = 30_000;
 
 // Shorten the existing publication window without changing usage/journal behavior.
 function startUsageDaemon(t: TestContext, root: string, env: Record<string, string>, usageEventMs = 100) {
@@ -34,7 +38,7 @@ test('Codex journals changed totals once, skips equal publications, and stops wi
   const { discovery } = await startUsageDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
-  const launched = await ui.request({ type: 'session.launch', name: 'impl', role: 'implementer', harness: 'codex' });
+  const launched = await ui.request({ type: 'session.launch', name: 'impl', role: 'implementer', harness: 'codex' }, CODEX_LAUNCH_MS);
   assert.equal(launched.ok, true, launched.error);
   const p = (launched.value as { process: HarnessProcessView }).process;
   await ui.waitFor(f => f.type === 'session.usage' && f.sessionId === p.sessionId && (f.usage as SessionUsage).total?.totalTokens === 12);
@@ -68,7 +72,7 @@ test('Codex coalesces a usage burst and journals a rate-limit-only change', asyn
   const { discovery } = await startUsageDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
-  const launched = await ui.request({ type: 'session.launch', name: 'burst', role: 'implementer', harness: 'codex' });
+  const launched = await ui.request({ type: 'session.launch', name: 'burst', role: 'implementer', harness: 'codex' }, CODEX_LAUNCH_MS);
   assert.equal(launched.ok, true, launched.error);
   const p = (launched.value as { process: HarnessProcessView }).process;
   await ui.waitFor(f => f.type === 'session.usage' && f.sessionId === p.sessionId && (f.usage as SessionUsage).total?.totalTokens === 12);
@@ -118,7 +122,7 @@ test('Codex stop captures a token report that has not yet been published', async
   const { discovery } = await startUsageDaemon(t, root, fake.env, 1000);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
-  const launched = await ui.request({ type: 'session.launch', name: 'pending', role: 'implementer', harness: 'codex' });
+  const launched = await ui.request({ type: 'session.launch', name: 'pending', role: 'implementer', harness: 'codex' }, CODEX_LAUNCH_MS);
   assert.equal(launched.ok, true, launched.error);
   const p = (launched.value as { process: HarnessProcessView }).process;
   await ui.waitFor(f => f.type === 'session.usage' && f.sessionId === p.sessionId && (f.usage as SessionUsage).total?.totalTokens === 12);
@@ -165,23 +169,38 @@ test('a harness exit and a relaunch stop each leave exactly one final record', a
 test('the first publication after hub restart is recorded again without replaying history', async t => {
   const root = await tempProject(t);
   const fake = await fakeCodex(t);
+  // Publish tokens first, then release limits across an observed coalescing boundary.
+  await writeFile(join(fake.home, 'hold-rate-limits-read'), '');
   const { discovery } = await startUsageDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
-  const launched = await ui.request({ type: 'session.launch', name: 'restart', harness: 'codex' });
+  const launched = await ui.request({ type: 'session.launch', name: 'restart', harness: 'codex' }, CODEX_LAUNCH_MS);
   assert.equal(launched.ok, true, launched.error);
   const p = (launched.value as { process: HarnessProcessView }).process;
-  await ui.waitFor(f => f.type === 'session.usage' && f.sessionId === p.sessionId);
+  const initial = await ui.waitFor(f => f.type === 'session.usage' && f.sessionId === p.sessionId && (f.usage as SessionUsage).total?.totalTokens === 12);
+  const initialUsage = initial.usage as SessionUsage;
+  assert.equal(initialUsage.rateLimits, undefined);
+  const first = await records(root, ui);
+  assert.equal(first.length, 1);
+  assert.deepEqual(first[0]!.total, initialUsage.total);
+  await writeFile(join(fake.home, 'release-rate-limits-read'), '');
+  const published = await ui.waitFor(f => f.type === 'session.usage' && f.sessionId === p.sessionId && !!(f.usage as SessionUsage).rateLimits);
+  const publishedUsage = published.usage as SessionUsage;
+  assert.deepEqual(publishedUsage.total, initialUsage.total);
   const before = await records(root, ui);
-  assert.equal(before.length, 1);
+  assert.deepEqual(before.map(r => [r.total, r.rateLimits, r.final]), [
+    [initialUsage.total, undefined, false], [initialUsage.total, publishedUsage.rateLimits, false],
+  ]);
   assert.equal((await cland(root, 'hub', 'stop')).code, 0);
   const next = await startUsageDaemon(t, root, fake.env);
   const nextUi = await connectUi(t, next.discovery);
   await nextUi.request({ type: 'subscribe' });
-  await eventually('first restarted publication journalled', async () => (await records(root, nextUi)).length === 2 || undefined);
+  await eventually('first restarted publication journalled', async () => (await records(root, nextUi)).length > before.length || undefined);
   const after = await records(root, nextUi);
-  assert.deepEqual(after.map(r => [r.sessionId, r.rateLimits, r.final]), [
-    [p.sessionId, before[0]!.rateLimits, false], [p.sessionId, before[0]!.rateLimits, false],
+  assert.equal(after.length, before.length + 1);
+  assert.deepEqual(after.slice(0, before.length), before, 'restart preserves the previous journal without replay');
+  assert.deepEqual(after.slice(before.length).map(r => [r.sessionId, r.total, r.rateLimits, r.final]), [
+    [p.sessionId, undefined, publishedUsage.rateLimits, false],
   ]);
   assert.equal((await nextUi.request({ type: 'session.stop', session: p.name }, 30_000)).ok, true);
   assert.equal((await records(root, nextUi)).filter(r => r.final).length, 1);
