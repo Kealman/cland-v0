@@ -3,7 +3,7 @@ id: T-502
 kind: task
 title: "suite-close-recovery test: the injected machine loss can land after shard 1 already passed (Linux)"
 state: open
-status: review
+status: in progress
 size: XS
 criterion_seq: 2
 labels:
@@ -15,7 +15,7 @@ regression_of: T-395
 topic: topic-319
 branch: t/T-502-suite-close-recovery-test-the-injected
 created: 2026-10-15T14:57:11.991Z
-updated: 2026-10-15T19:22:00.568Z
+updated: 2026-10-15T19:51:10.325Z
 ---
 
 ## Problem
@@ -27,7 +27,8 @@ updated: 2026-10-15T19:22:00.568Z
 - [x] C1. The fault is injected at an observed point where shard 1 is still running, using a gate in the fake executor rather than wall-clock timing, so the case always exercises the lost-machine path. Every assertion stays, and the root cause is recorded in the commit.
   - done: impl-502 · 2026-10-15T19:19:37.828Z
   - verified: rev-30 [reviewer] · run rev-20261015-502-source · 2026-10-15T19:22:00.568Z · commit 5932d8a6abdf4ec46f9ce0e93e21bbfe2f8d5d55
-- [ ] C2. suite-close-recovery.test.ts passes 5/5 serially, whole file and alone on the Mac, plus once on a droplet in the task's verify.
+- [x] C2. suite-close-recovery.test.ts passes 5/5 serially, whole file and alone on the Mac, plus once on a droplet in the task's verify.
+  - done: impl-502 · 2026-10-15T19:50:36.592Z
 
 ## Comments
 
@@ -59,3 +60,32 @@ C2 remains unverified: requester reports two whole-file Mac passes at final sour
 Whitespace check is clear; requester reports typecheck green. No Reviewer tests, edits, merges or provider calls.
 
 Criteria: C1 verified.
+
+### impl-502 · 2026-10-15T19:50:41.437Z
+
+C2 implementation evidence is complete at unchanged 5932d8a6: five serial quiet Mac whole-file passes in A-3292 and all five cases green in the actual Linux droplet receipt f23a4f38 / A-3310:2858–2862 (lost case 7.473s). Overall receipt is exit1 because suite-recovery:158 saw job.pid null and territory-lock:42 got guard failure rather than contention. Neither case is known in current E-482 list. Bugs/S reports sent to supervising Lead/Coordinator for classification and gate decision; Reviewer notified. No retry under the restart verification hold.
+
+### rev-30 · 2026-10-15T19:50:55.251Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261015-502-linux-first
+commit: 5932d8a6abdf4ec46f9ce0e93e21bbfe2f8d5d55
+scope: evidence
+
+First Linux evidence review T-502 not clear at unchanged source-reviewed 5932d8a6abdf4ec46f9ce0e93e21bbfe2f8d5d55. A-3310/f23a4f38 is actual Linux c-8, exit1:1820 pass/2 fail/3 platform skips. Typecheck and hub phases finish; Neovim smoke is not reached after unrelated hub failures.
+
+All five suite-close-recovery cases pass (A-3310:2858–2862, timings5336–5340); repaired lost-shard case7.473s exercises the labelled loss then completes cleanup. A-3292 contains all five serial quiet Mac whole-file final-source passes,25/25 cases, natural completions. Its first two final-source runs came from the earlier loop only after the done-receipt edit was present; remaining three used committed identical source. Recorded guards and coordinated gaps are included. This establishes own-file runtime/platform evidence, but overall gate remains red.
+
+Medium gate blocker / aside Bugs S — hub/test/suite-recovery.test.ts:158 (case:134): admitted-worker compatibility FIFO cancellation fixture asserts job.pid is truthy, but submission returned null (A-3310:4110–4125). The intended cancellation/racing-holder proof has not reached its staged worker boundary. Root cause is not established by this receipt.
+
+Medium gate blocker / aside Bugs S — hub/test/territory-lock.test.ts:42 (case:36): expected contention error /another territory operation holds the lock/, received "could not take guard for .../territory.lock" from guarded/acquireLock (A-3310:4128–4151). This is a different lock-admission assertion, outside T-502; no production lock-safety failure is inferred without diagnosis.
+
+Read-only item search finds historical ownership of these tests but no exact current E-482 classification. Requester already escalated both as Bugs/S to lead T-502. Coordinator disposition is required before treating this as known-only and taking a second gate attempt. C1 source fact stands; final C2 verification waits for an admissible overall gate. No own criterion is failed speculatively. Do not submit during current cover/restart hold8b300f2e, and do not edit outside-task sources without lead routing.
+
+No Reviewer tests, edits or provider calls.
+
+### impl-502 · 2026-10-15T19:51:10.325Z
+
+Coordinator gate decision (2026-10-15 19:51Z): both A-3310 failures (suite-recovery job.pid null and territory-lock fixed sleep) are filed in E-482 and count as known. f23a4f38/A-3310 is receipt 1. After the explicit restart notice, submit receipt 2 with --executor droplet --fresh at unchanged reviewed 5932d8a6. Green or red only on different known flakes is the gate. No retry before the hold lifts.
