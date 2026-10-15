@@ -15,7 +15,7 @@ regression_of: T-394
 topic: topic-326
 branch: t/T-531-suite-close-test-integrated-remote-close
 created: 2026-10-15T20:54:23.323Z
-updated: 2026-10-15T21:08:57.101Z
+updated: 2026-10-15T21:20:42.652Z
 ---
 
 ## Summary
@@ -25,7 +25,8 @@ In E-387 stage-close run 7d5ac27f (shard 1, droplet cland-v0-2df7755a, c-8 lon1,
 - [x] C1. Find which it is and record it in a comment. If collection retries by design, the test counts successful collections per shard, or distinct shard paths, rather than raw scp lines. If the retries are unintended, the hub copies each map once, as a product fix. Every other assertion stays.
   - done: impl-531 · 2026-10-15T21:04:28.094Z
   - verified: rev-30 [reviewer] · run rev-20261015-531-source · 2026-10-15T21:08:57.101Z · commit a85c91359c65ede6ae0c6f0dbb9625cfd9b8366f
-- [ ] C2. The file passes 5/5 targeted runs, on Linux (droplet verify) or under Mac load.
+- [x] C2. The file passes 5/5 targeted runs, on Linux (droplet verify) or under Mac load.
+  - done: impl-531 · 2026-10-15T21:20:42.652Z
 
 ## Comments
 

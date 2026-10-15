@@ -3,7 +3,7 @@ id: T-427
 kind: task
 title: "TypeScript 7 for the hub's typecheck: adopt it when its output matches on the whole repository"
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 4
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-324
 branch: t/T-427-typescript-7-for-the-hub-s-typecheck
 created: 2026-10-14T16:43:34.573Z
-updated: 2026-10-15T21:05:25.487Z
+updated: 2026-10-15T21:27:14.323Z
 ---
 
 ## What to build
@@ -34,14 +34,22 @@ A new dev dependency changes the lock file, so the droplet snapshot is prepared 
 
 ## Acceptance criteria
 
-- [ ] C1. A comparison table on this item shows both compilers' diagnostics on the clean tree and on each planted error, for the hub and the Neovim projects.
+- [x] C1. A comparison table on this item shows both compilers' diagnostics on the clean tree and on each planted error, for the hub and the Neovim projects.
   - verified: rev-30 [reviewer] · run rev-20261015-427-source · 2026-10-15T20:56:59.412Z · commit 532b7cf9e1f7b045242d1cb2ddb5794b9724660b
-- [ ] C2. When the diagnostics match, `npm run typecheck` runs TypeScript 7 over the whole repository, with its time before and after recorded on this item; otherwise the differences are recorded, 5.9 stays and a follow-up is filed.
+  - verified: rev-30 [reviewer] · run rev-20261015-427-final · 2026-10-15T21:24:57.552Z · commit 532b7cf9e1f7b045242d1cb2ddb5794b9724660b
+  - done: impl-427 · 2026-10-15T21:27:06.249Z
+- [x] C2. When the diagnostics match, `npm run typecheck` runs TypeScript 7 over the whole repository, with its time before and after recorded on this item; otherwise the differences are recorded, 5.9 stays and a follow-up is filed.
   - verified: rev-30 [reviewer] · run rev-20261015-427-timing · 2026-10-15T21:05:25.487Z · commit 532b7cf9e1f7b045242d1cb2ddb5794b9724660b
-- [ ] C3. The two tests that use the compiler API still pass on TypeScript 5.9.
+  - verified: rev-30 [reviewer] · run rev-20261015-427-final · 2026-10-15T21:24:57.552Z · commit 532b7cf9e1f7b045242d1cb2ddb5794b9724660b
+  - done: impl-427 · 2026-10-15T21:27:07.702Z
+- [x] C3. The two tests that use the compiler API still pass on TypeScript 5.9.
   - verified: rev-30 [reviewer] · run rev-20261015-427-source · 2026-10-15T20:56:59.412Z · commit 532b7cf9e1f7b045242d1cb2ddb5794b9724660b
-- [ ] C4. `hub/README.md` and `docs/agents/tests.md` name the compiler the typecheck uses and why 5.9 remains in the repository.
+  - verified: rev-30 [reviewer] · run rev-20261015-427-final · 2026-10-15T21:24:57.552Z · commit 532b7cf9e1f7b045242d1cb2ddb5794b9724660b
+  - done: impl-427 · 2026-10-15T21:27:09.483Z
+- [x] C4. `hub/README.md` and `docs/agents/tests.md` name the compiler the typecheck uses and why 5.9 remains in the repository.
   - verified: rev-30 [reviewer] · run rev-20261015-427-source · 2026-10-15T20:56:59.412Z · commit 532b7cf9e1f7b045242d1cb2ddb5794b9724660b
+  - verified: rev-30 [reviewer] · run rev-20261015-427-final · 2026-10-15T21:24:57.553Z · commit 532b7cf9e1f7b045242d1cb2ddb5794b9724660b
+  - done: impl-427 · 2026-10-15T21:27:11.652Z
 
 ## Comments
 
@@ -144,3 +152,28 @@ Independent median calculation: TypeScript5.9.3 times5.825657541/5.689471083/6.8
 C1/C3/C4 exact-head source/API evidence stands in A-3347. Running no-mode verify79226bcf fell back locally by authoritative hub notice; preserve its actual execution platform and await its completed result before final clearance. No Reviewer tests, installs, edits, merges or provider actions.
 
 Criteria: C2 verified.
+
+### impl-427 · 2026-10-15T21:23:54.602Z
+
+Same-head verification 79226bcf-1a43-4159-9bf3-b74fb65456bc passed at reviewed head 532b7cf9e1f7b045242d1cb2ddb5794b9724660b: auto selected full because package configuration changed; 2,227/2,227 tests pass, no failure/cancellation/skip. Hub chose local fallback because remote slots were full. Executor darwin arm64, Node v24.21.0, Neovim v0.12.5, workers 4. Log A-3375: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3375-suite-79226bcf-1a43-4159-9bf3-b74fb65456bc-auto-at-532b7cf.log. Source/timing criteria were already verified; final review now has the green same-head receipt. No head change or additional verification submission.
+
+### rev-30 · 2026-10-15T21:24:57.553Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-427-final
+commit: 532b7cf9e1f7b045242d1cb2ddb5794b9724660b
+scope: evidence
+
+Final evidence review T-427 clear at 532b7cf9e1f7b045242d1cb2ddb5794b9724660b. No high, medium or low findings. Exact-head source review A-3347 and timing review A-3360 stand.
+
+A-3375 /79226bcf-1a43-4159-9bf3-b74fb65456bc is actual local Darwin arm64 after hub fallback, not a Linux receipt. Full selection completes typecheck, hub and full Neovim:2227 pass, zero failures/cancellations/skips, exit0. Duration1170.09s, peak one-minute load17.52. The log explicitly shows root npm typecheck using typescript7/bin/tsc for both hub and Neovim projects. There is no hard duration-budget failure; duration-regression notices are informational.
+
+C1 reverified: table on item plus A-3343/A-3344 reproducible full-config clean/planted parity evidence matches file/line/code tuples for all required strict/import probes in both projects. C2 reverified: native root command now succeeds in the full run, and A-3355 alternating timing under Coordinator24f51182/e6774e66 isolation rules establishes the recorded5.826s→0.896s median in that Mac window. C3 reverified: original typescript5.9.3 API dependency remains separate from the alias; both compiler API consumers pass in this full run, corroborating A-3345/A-3346 targeted3/3+4/4. C4 unchanged docs correctly describe compiler choice and retained API version.
+
+The task requires whole-repository parity, timings, API compatibility and docs; it does not require a separate Linux receipt. No Linux installation or timing result is claimed here. Platform-specific native packages are pinned in the reviewed lock, with actual Linux deployment/integrated coverage left to normal downstream gates.
+
+Evidence /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3375-suite-79226bcf-1a43-4159-9bf3-b74fb65456bc-auto-at-532b7cf.log. No per-item QA criteria. No Reviewer tests, installs, edits, merges or provider actions. Changed-head integration/conflict resolution needs delta review.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.

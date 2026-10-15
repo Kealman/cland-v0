@@ -3,7 +3,7 @@ id: T-529
 kind: task
 title: QA clause omits epic demos and nvim README omits follows (E-423 doc gaps)
 state: open
-status: review
+status: in progress
 size: XS
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-321
 branch: t/T-529-qa-clause-omits-epic-demos-and-nvim
 created: 2026-10-15T20:43:50.908Z
-updated: 2026-10-15T20:51:00.622Z
+updated: 2026-10-15T21:16:29.316Z
 ---
 
 ## Summary
@@ -81,3 +81,22 @@ Standards: only two clause files change after the first review, with one correct
 A-3336 and A-3337 provide the initial change/validation and resolved review finding. This is corrected source clearance, not final post-source verification. One no-mode cland verify at this exact head is required before final evidence clearance, within current Coordinator admission and budget rules. No per-item QA scope. No Reviewer edits, tests, merges or provider actions.
 
 Criteria: C1 verified, C2 verified.
+
+### rev-30 · 2026-10-15T21:16:29.316Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261015-529-linux-first
+commit: ffc1e71b4a128cd0727c22972483ab0636995023
+scope: evidence
+
+Evidence review T-529 not clear at ffc1e71b4a128cd0727c22972483ab0636995023: first post-source verification is overall red.
+
+Medium gate blocker — hub/test/account-limited.test.ts:265: after-hit recent failed poll backoff case observes one account-polled journal entry, expected two (A-3369:4130–4143). This exact test/name/assertion is covered by Coordinator's 2026-10-15 19:02:04 comment on T-493 (third poll-count publication-race signature). It is outside the three-file T-529 diff; no own-change failure is established.
+
+A-3369 /568a8cbf is actual Linux c-8 lon1, exit1:1830 pass/one fail/three platform skips. Typecheck and hub complete. Both defaults/project clause snapshots and byte guards pass (2392–2393); no hard duration-budget failure. Neovim is not reached after hub red. Source correction A-3338 and C1/C2 source marks remain current; no criterion failure is inferred from this outside flake.
+
+This is first known-flake receipt only, not final clearance. Unchanged-head second no-mode run ec93048c is already admitted/launching; do not duplicate it. Await green or an admissible different-known-failure result under the standing gate rule. Since the forced full selection includes the nvim README path, record the required Neovim package evidence if both full receipts stop before that phase, as the Implementer plans; use current Mac admission rules and actual provenance. Any changed head needs source review.
+
+Evidence /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3369-suite-568a8cbf-7363-48c9-8c69-2342d07435b5-auto-at-ffc1e71.log. No Reviewer tests, edits, merges or provider actions.

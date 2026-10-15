@@ -3,7 +3,7 @@ id: T-513
 kind: task
 title: Hub start provenance and an autostart grace period after a deliberate stop
 state: open
-status: in progress
+status: ready
 size: S
 criterion_seq: 3
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-322
 branch: t/T-513-hub-start-provenance-and-an-autostart
 created: 2026-10-15T16:26:22.615Z
-updated: 2026-10-15T21:07:48.256Z
+updated: 2026-10-15T21:24:12.086Z
 ---
 
 ## Problem
@@ -25,10 +25,13 @@ On 2026-10-15 a stopped hub was restarted within 0.5 s three times by something 
 
 - [x] C1. hub-started records its starter: client kind (cli, nvim or other), parent pid and cwd. It never records environment values.
   - done: impl-513 · 2026-10-15T21:05:33.518Z
-- [ ] C2. `cland hub stop` leaves a stop-in-progress marker with a short grace period that autostart honours. A deliberate stop-and-restart by the CLI therefore isn't pre-empted, while a crashed hub still autostarts.
-  - failed: rev-30 [reviewer] · 2026-10-15T21:07:48.256Z · note The old stop CLI writes a fresh marker after releasing daemon ownership, so it can overwrite an explicit successor's grace clearing and defer that successor's crash recovery.
+  - verified: rev-30 [reviewer] · run rev-20261015-513-source-correction · 2026-10-15T21:24:05.838Z · commit f554be2d6a728deb9483647d5f82d30dfa3a63f7
+- [x] C2. `cland hub stop` leaves a stop-in-progress marker with a short grace period that autostart honours. A deliberate stop-and-restart by the CLI therefore isn't pre-empted, while a crashed hub still autostarts.
+  - done: impl-513 · 2026-10-15T21:23:10.132Z
+  - verified: rev-30 [reviewer] · run rev-20261015-513-source-correction · 2026-10-15T21:24:05.838Z · commit f554be2d6a728deb9483647d5f82d30dfa3a63f7
 - [x] C3. A test stops the hub with a fake Neovim autostart client attached, and the CLI's own start serves first.
   - done: impl-513 · 2026-10-15T21:05:37.770Z
+  - verified: rev-30 [reviewer] · run rev-20261015-513-source-correction · 2026-10-15T21:24:05.838Z · commit f554be2d6a728deb9483647d5f82d30dfa3a63f7
 
 ## Comments
 
@@ -59,3 +62,27 @@ A-3361 reports daemon17/17, headless client7/7, CLI imports3/3, typecheck and di
 Evidence: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3361-t-513-implementation-and-targeted-verification.md.
 
 Criteria: C2 failed (The old stop CLI writes a fresh marker after releasing daemon ownership, so it can overwrite an explicit successor's grace clearing and defer that successor's crash recovery.).
+
+### rev-30 · 2026-10-15T21:24:05.838Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-513-source-correction
+commit: f554be2d6a728deb9483647d5f82d30dfa3a63f7
+scope: delta
+
+Corrected source review T-513 clear at f554be2d6a728deb9483647d5f82d30dfa3a63f7, delta from reviewed236185c4bfb14905b953b2e7809c6768e16e68b9. No high, medium or low findings. Standards and Spec reviewed directly under the no-delegation role.
+
+C2 failure A-3364 resolved: the stop CLI no longer rewrites hub-stop.json after observing old-daemon exit. Normal accepted-stop grace is created before disconnect and refreshed inside the old daemon's startup lock; authorized signal fallback still marks before signaling. The delayed old CLI therefore cannot re-create the marker after an explicit successor clears it.
+
+The new controlled CLI-boundary regression pauses only the old stop process's first ESRCH observation. It starts an explicit successor on the real project lock, proves the old stop has not completed and the marker is absent, releases the continuation, observes its release receipt, awaits stop completion and asserts the marker remains absent. It then crashes the successor and proves immediate --autostart --client nvim recovery. Preload is private to that CLI test invocation, not a production hook. onCleanup releases and joins the held CLI before fixture deletion. Existing assertions and time bounds remain. A-3374 records red-before1.41s at the exact stale-marker assertion, corrected whole daemon18/18 green30.70s under local verification load, new case2.38s.
+
+C1 verified: unchanged three-field starter projection captures client, initiating parent's PID and original cwd before detach; no environment metadata is recorded. C2 verified from corrected source and daemon boundary proofs, including short stop grace, explicit clear, expired marker and crash recovery. C3 verified: original real attached-fake-Neovim race and actual headless client proof remain; prior unchanged source receipts A-3361 client7/7 and CLI imports3/3 apply. Corrected daemon file reruns the original stop/restart and provenance cases.
+
+Standards: two-file correction, one production deletion plus regression, no dev merge after first review. Typecheck and whitespace check green. No guard or identity check removed.
+
+This is corrected source clearance only. Final overall review still requires exact-head cland verify receipt. Coordinator's current E-387 stage-close verify hold remains in force: wait for its explicit release/admitted notice before submitting. No per-item QA criteria. No Reviewer tests, edits, merges or provider actions.
+Evidence /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3374-t-513-corrected-source-old-stop-cannot-rewrite-successor-grace.md.
+
+Criteria: C1 verified, C2 verified, C3 verified.
