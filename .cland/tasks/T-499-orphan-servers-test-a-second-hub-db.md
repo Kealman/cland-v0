@@ -2,8 +2,8 @@
 id: T-499
 kind: task
 title: "orphan-servers test: a second hub.db connection hits SQLITE_BUSY against the live hub (Linux, under load)"
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-332
 branch: t/T-499-orphan-servers-test-a-second-hub-db
 created: 2026-10-15T14:07:24.615Z
-updated: 2026-10-15T23:29:32.174Z
+updated: 2026-10-15T23:29:47.280Z
+closed: 2026-10-15T23:29:47.280Z
 ---
 
 ## Problem
@@ -166,3 +167,7 @@ Evidence A-3436 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3436-s
 Review artifact A-3454 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3454-t-499-final-clear-at-289b3c17-under-explicit-same-t-544-twice-gate-exception.md.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-15T23:29:47.280Z
+
+Merged 8b5f8dc0f0c5bff29c4e47de0e3961c20620c93b onto dev.
