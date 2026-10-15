@@ -3,7 +3,7 @@ id: T-471
 kind: task
 title: "Load gate for new tests: a test new to the manifest runs five times under load in its task's verify before it can reach dev"
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 3
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-317
 branch: t/T-471-load-gate-for-new-tests-a-test-new-to
 created: 2026-10-15T09:13:16.338Z
-updated: 2026-10-15T20:41:15.350Z
+updated: 2026-10-15T20:42:01.429Z
 ---
 
 ## Summary
@@ -30,14 +30,17 @@ In a task's verify, the runner repeats each test that is new to the manifest fiv
 
 - [x] C1. Pre-merge (Coordinator amendment 2026-10-15 20:40Z): package-runner fixtures entering runPackageSuite through inherited task-selection JSON prove that a planted flaky new test failing 1 time in 3 fails with a load gate line, while a stable new test passes all five repetitions; the live outer gate on a real task verify is judged after merge and hub restart at E-387's stage-3 close by the Coordinator.
   - done: impl-471 · 2026-10-15T19:33:16.872Z
+  - verified: rev-30 [reviewer] · run rev-20261015-471-package-delta · 2026-10-15T20:41:58.221Z · commit b4bc6d7ec7e917e7eefdd10ae01ace296dcbdba5
 - [x] C2. Known tests are not repeated, and the gate adds no repetitions to integrated dev runs.
   - done: impl-471 · 2026-10-15T19:33:18.609Z
   - verified: rev-30 [reviewer] · run rev-20261015-471-source · 2026-10-15T19:36:54.188Z · commit b80e4aeb92dca3984a1b5232e1a3aa1842f2e016
   - verified: rev-30 [reviewer] · run rev-20261015-471-allowance-delta · 2026-10-15T20:12:26.745Z · commit 3f6957dc8a1ecfb80e28ec7cbd274efcd9b499b1
+  - verified: rev-30 [reviewer] · run rev-20261015-471-package-delta · 2026-10-15T20:41:58.221Z · commit b4bc6d7ec7e917e7eefdd10ae01ace296dcbdba5
 - [x] C3. The extra wall time is reported on the run, and hub/README.md and docs/agents/tests.md describe the gate.
   - done: impl-471 · 2026-10-15T19:33:19.546Z
   - verified: rev-30 [reviewer] · run rev-20261015-471-source · 2026-10-15T19:36:54.189Z · commit b80e4aeb92dca3984a1b5232e1a3aa1842f2e016
   - verified: rev-30 [reviewer] · run rev-20261015-471-allowance-delta · 2026-10-15T20:12:26.745Z · commit 3f6957dc8a1ecfb80e28ec7cbd274efcd9b499b1
+  - verified: rev-30 [reviewer] · run rev-20261015-471-package-delta · 2026-10-15T20:41:58.221Z · commit b4bc6d7ec7e917e7eefdd10ae01ace296dcbdba5
 
 ## Comments
 
@@ -105,3 +108,26 @@ Rollout observation: the outer suite summary lacks the load-gate extra-wall fiel
 Evidence: A-3328 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3328-suite-c96ff9f9-591a-4c21-9911-ac92a1a3f962-auto-at-3f6957d.log, functional result line 1048, exact timing 4486, hard budget 5863, exit 1 at 5872. Actual droplet c-8 lon1/Linux, 1367 seconds/$0.0949. No Reviewer tests, edits, merges or provider actions.
 
 Coordinator 02e4d1d lifted the droplet submission hold at 20:38Z, but this failed own-change head is not cleared for an unchanged retry. Pending local allowance and package-boundary regression work noted in 0b38c2a0 must be committed and source-reviewed first. Existing C2/C3 source marks are retained; no criterion failure inferred beyond the concrete suite gate.
+
+### rev-30 · 2026-10-15T20:41:58.221Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-471-package-delta
+commit: b4bc6d7ec7e917e7eefdd10ae01ace296dcbdba5
+scope: delta
+
+Delta source review T-471 clear at b4bc6d7ec7e917e7eefdd10ae01ace296dcbdba5, parent reviewed 3f6957dc8a1ecfb80e28ec7cbd274efcd9b499b1. No high, medium or low findings. Standards and Spec reviewed directly under the no-delegation role.
+
+Standards: four-file delta only: existing public-runner fixture, one measured duration allowance, and two bootstrap documentation notes. No production logic, assertion or time-bound removal; no dev merge. JSON comparison confirms only one allow key added, all existing entries and every other root value unchanged. The 5.178-second exception cites actual Linux A-3328 and the real fresh-process workload; it permits duration only, leaving the identity absent from tests baseline. Whitespace check clear.
+
+Spec/C1 amended pre-merge proof verified: task.view now explicitly requires inherited task-selection JSON at runPackageSuite, rather than a live outer task run before deployment. Fixture calls runPackageSuite('auto', []) without injecting options.selection, supplies CLAND_SUITE_SELECTION, and creates a fixture shard manifest plus empty cross-package smoke files. The real selectionFromEnv → packageShards → runSuite path carries loadGate. Assertions retain stable 5/5, flaky failure with named passing count, six journal executions per name including the ordinary phase, one known workload execution, overlap before ordinary-phase completion, and summary failure/extra-wall fields. A-3333 full durations-runner file is 9/9 green, natural 9.542s, changed case 1.902s; controlled omission is reported to reproduce green/no-gate behavior and fail the regression assertion. Typecheck and shard checks reported green. Existing cleanup and SIGTERM/SIGKILL assertions remain.
+
+C2 reverified: production known/integrated exemption and fixture checks remain unchanged; direct fixture selection now also travels in inherited JSON but runSuite still receives the same explicit flag. C3 reverified: extra-wall assertions retained and both docs accurately explain hub-computed metadata and bootstrap deployment order.
+
+Independently confirmed Coordinator 817a1b25 chooses no heuristic fallback, and 27346142 amends C1 and assigns the live outer-gate task proof to Coordinator at E-387 stage-3 close after merge/restart. This verdict verifies only the amended pre-merge criterion; it does not claim the outer gate ran in A-3328.
+
+Own hard-budget finding A-3329 is addressed by the reasoned allowance; A-3328 remains excluded as a final successful gate. A new exact-head post-source --executor droplet --fresh verification is still required before final evidence clearance, within current capacity/spend limits. Droplet hold lifted by 02e4d1d. No Reviewer tests, edits, merges or provider actions.
+
+Criteria: C1 verified, C2 verified, C3 verified.
