@@ -2,8 +2,8 @@
 id: T-456
 kind: task
 title: "Rules reach sessions: each role's clause and launch brief carry its active rules, rule.add/edit/retire/list tools write them with a human-message origin, and a changed rule arrives as a rule event at the next turn"
-state: open
-status: ready
+state: closed
+status: done
 size: L
 criterion_seq: 8
 labels:
@@ -18,7 +18,8 @@ blocked_by:
 topic: topic-295
 branch: t/T-456-rules-reach-sessions-each-role-s-clause
 created: 2026-10-15T07:15:15.550Z
-updated: 2026-10-15T15:12:04.095Z
+updated: 2026-10-15T15:12:18.721Z
+closed: 2026-10-15T15:12:18.721Z
 ---
 
 ## Summary
@@ -360,3 +361,7 @@ Gate decision 164d64f8-bebe-40b0-a34d-515dd656af0b was read directly in topic hi
 Standards: 0 findings. Spec: 0 findings.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified.
+
+### coord · 2026-10-15T15:12:18.721Z
+
+Merged 6a326eee1b27b8f04ec024c379662eab4fc49645 onto dev.
