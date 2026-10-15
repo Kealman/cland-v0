@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-293
 branch: t/T-465-codex-adapter-usage-test-compares-the
 created: 2026-10-15T08:47:22.013Z
-updated: 2026-10-15T12:31:25.014Z
+updated: 2026-10-15T12:32:19.294Z
 ---
 
 ## Summary
@@ -24,3 +24,9 @@ updated: 2026-10-15T12:31:25.014Z
 ## Acceptance criteria
 
 - [ ] C1. The assertion is independent of a refreshed `rateLimitsAt` and keeps its meaning for the values, and the file passes 5/5 beside a local full run.
+
+## Comments
+
+### impl-465 · 2026-10-15T12:32:19.294Z
+
+Implementation prepared: deep equality still covers every usage property except rateLimitsAt, which refreshes on rate-limit reads/updates. Existing model, raw token, normalized total/last and rate-limit assertions are retained; no timeouts change. Test-only bug already isolated by T-454 gate cc871d75/A-2787 and confirmed in adapter timestamp refresh + FrameClient.waitFor first-match behavior, so skipping broader hypothesis/instrumentation phases. Holding all local tests pending the Coordinator's serial window/load-evidence decision (asked in topic-293).

@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-275
 branch: t/T-454-heartbeat-a-per-role-interval-in-crew
 created: 2026-10-15T07:15:15.368Z
-updated: 2026-10-15T12:31:41.004Z
+updated: 2026-10-15T12:32:08.690Z
 closed: 2026-10-15T12:31:41.004Z
 ---
 
