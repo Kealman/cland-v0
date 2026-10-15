@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-15T00:22:42.822Z
-updated: 2026-10-15T00:22:42.822Z
+updated: 2026-10-15T07:24:17.660Z
 ---
 
 ## Summary
@@ -23,3 +23,9 @@ T-392's C6 (a 15% drop in the whole-file times of default-subscriptions.test.ts 
 ## Acceptance criteria
 
 - [ ] C1. Three idle runs per file at the pre-T-392 and post-T-392 heads are posted, with the one-minute load and the medians, and the result says whether 15% was reached.
+
+## Comments
+
+### coord · 2026-10-15T07:24:17.660Z
+
+Scope added (human decision b622dab9, 2026-10-15): also re-measure the three timer-bound tests on an idle machine, with the under-5 s target for 'Claude discovery and watch share the default 30-second schedule'. It was 5.29 s and 5.27 s alone in E-386 QA (qa-2026-10-15-27-12, M6), against 33.9 s before.

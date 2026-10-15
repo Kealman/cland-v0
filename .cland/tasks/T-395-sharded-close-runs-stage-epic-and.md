@@ -3,8 +3,9 @@ id: T-395
 kind: task
 title: "Sharded close runs: stage, epic and release integrated runs shard the hub phase across droplets within the $3/day cap, balanced by recorded durations, with one merged report"
 state: open
-status: in progress
+status: review
 size: L
+criterion_seq: 8
 labels:
   - v0.1.3
   - hub
@@ -17,7 +18,7 @@ blocked_by:
 topic: topic-274
 branch: t/T-395-sharded-close-runs-stage-epic-and
 created: 2026-10-14T12:28:19.467Z
-updated: 2026-10-15T07:07:43.833Z
+updated: 2026-10-15T07:43:03.919Z
 ---
 
 ## Summary
@@ -57,17 +58,29 @@ A failed or lost shard fails the run once, naming the shard. The hub does not re
 
 ## Acceptance criteria
 
-- [ ] C1. Only an integrated `dev` request with `--occasion stage|epic|release` from the Coordinator (or `epic` from QA) shards; other roles, task heads and batch runs are refused or run on one slot, proven by tests against the fake DigitalOcean API.
-- [ ] C2. Files are split largest-first by `durations.json`, the Neovim phase goes to the lightest shard, and a test proves the balance on a fixture manifest.
-- [ ] C3. When the shards' reservations would pass the daily cap or fewer than two remote slots are free, the run goes whole to one slot with one warn-level notice naming the cause, proven by tests.
-- [ ] C4. A sharded run posts one result with summed counts, per-shard duration, machine and cost lines and the total cost; a failed shard fails the run once naming the shard.
-- [ ] C5. `suite.test.ts` and `merge.test.ts` are split into files of at most 60 s each in `durations.json`, with every test kept and its assertions unchanged.
-- [ ] C6. Measured, real check: a two-shard c-8 `--occasion stage` run of `dev` takes at most 10 minutes wall (about 15 on one slot), with create, destroy, each shard's time and the cost posted on the item.
-- [ ] C7. The day's spend after the real check stays under $3, and the provider's `cland` tag listing is empty afterwards.
-- [ ] C8. `hub/README.md` (Remote executors, Tests), `docs/agents/tests.md`, the Coordinator and QA clauses and the `merge` and `qa` skills describe `--occasion`, which runs shard, the cap fallback and the cost per run.
+- [x] C1. Only an integrated `dev` request with `--occasion stage|epic|release` from the Coordinator (or `epic` from QA) shards; other roles, task heads and batch runs are refused or run on one slot, proven by tests against the fake DigitalOcean API.
+  - done: impl-395 · 2026-10-15T07:42:02.276Z
+- [x] C2. Files are split largest-first by `durations.json`, the Neovim phase goes to the lightest shard, and a test proves the balance on a fixture manifest.
+  - done: impl-395 · 2026-10-15T07:42:02.736Z
+- [x] C3. When the shards' reservations would pass the daily cap or fewer than two remote slots are free, the run goes whole to one slot with one warn-level notice naming the cause, proven by tests.
+  - done: impl-395 · 2026-10-15T07:42:03.171Z
+- [x] C4. A sharded run posts one result with summed counts, per-shard duration, machine and cost lines and the total cost; a failed shard fails the run once naming the shard.
+  - done: impl-395 · 2026-10-15T07:42:03.602Z
+- [x] C5. `suite.test.ts` and `merge.test.ts` are split into files of at most 60 s each in `durations.json`, with every test kept and its assertions unchanged.
+  - done: impl-395 · 2026-10-15T07:42:04.045Z
+- [x] C6. A real two-shard c-8 `--occasion stage` run of `dev` is executed by the Coordinator from the procedure A-2727 after this ticket merges, as E-387's stage-1 close run once T-393 has also merged; it posts create, destroy, each shard's time and the cost, and its wall is judged against 10 minutes there (Coordinator amendment 2026-10-15 07:37Z: the 10-minute bound depends on T-393's in-process hub). Pre-merge, this criterion is met by the procedure and a fake-provider two-shard run proving the same report fields.
+  - done: impl-395 · 2026-10-15T07:42:04.484Z
+- [x] C7. The real check's spend stays within the shared $3 daily cap and the provider's `cland` tag listing is empty afterwards, recorded on E-387 with the stage-1 close run; pre-merge, the fake-provider run proves the all-shard reservation, the cap refusal and the zero-tag teardown.
+  - done: impl-395 · 2026-10-15T07:42:04.916Z
+- [x] C8. `hub/README.md` (Remote executors, Tests), `docs/agents/tests.md`, the Coordinator and QA clauses and the `merge` and `qa` skills describe `--occasion`, which runs shard, the cap fallback and the cost per run.
+  - done: impl-395 · 2026-10-15T07:42:05.701Z
 
 ## Comments
 
 ### impl-395 · 2026-10-15T07:07:43.833Z
 
 Implementation started in task worktree. Test boundaries: existing verify frame/CLI with fake DigitalOcean for admission, fallback and result semantics; explicit fixture manifest for balancing. C6/C7 delegated by role clause to Coordinator real check, steps to follow with reviewed build.
+
+### impl-395 · 2026-10-15T07:42:57.326Z
+
+Implementation pushed at 994131b88b18884a1c29c835e27960683f5478c2 after merging origin/dev 9ec1da30. All 18 touched/new targeted files pass serially (131 Node tests including nested cases); typecheck, shard lint and diff checks pass. Exact split mapping A-2722 preserves 110 top-level identities plus nested test bodies unchanged. Final fake-provider proofs: A-2734 (admission/reservation/cap/MCP/cache/zero-tag teardown), A-2735 (failed/lost shards, actual hub restart, parent cancellation). C1-C8 marked done; amended C6/C7 use these proofs and Coordinator-only procedure A-2727, with the real two-c-8 <=10-minute check owed on E-387 stage-1 close after both T-393 and T-395 merge. Source review requested next; no pre-review full verification run and no real droplets created here.

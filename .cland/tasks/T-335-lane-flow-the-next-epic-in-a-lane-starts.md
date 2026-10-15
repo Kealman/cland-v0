@@ -3,8 +3,9 @@ id: T-335
 kind: task
 title: "Lane flow: epics follow epics, a follow is met on the last merge, and a merge hold keeps the follower off the predecessor's files until its demo"
 state: open
-status: in progress
+status: review
 size: L
+criterion_seq: 7
 labels:
   - v0.1.3
   - hub
@@ -12,10 +13,10 @@ labels:
 assignee: null
 parent: E-423
 blocked_by: []
-topic: null
+topic: topic-277
 branch: t/T-335-lane-flow-the-next-epic-in-a-lane-starts
 created: 2026-10-13T14:23:44.027Z
-updated: 2026-10-15T07:16:44.791Z
+updated: 2026-10-15T07:40:56.538Z
 ---
 
 ## Summary
@@ -40,10 +41,68 @@ This started as an observation from the human and the stand-in on 2026-10-13 at 
 
 ## Acceptance criteria
 
-- [ ] C1. `task create --follows`, `task link --follows/--unfollow` and the `task.link` tool set and remove `follows` in the frontmatter; a cycle and a non-epic edge are refused, proven by tests.
-- [ ] C2. In a scratch project where E2 follows E1, `task view E2` shows `follows E-1: met` once E1's last ticket merges, and the open tickets before that; E2 is not marked blocked in `task list`.
-- [ ] C3. A ticket of E2 whose diff touches a file E1's merges changed is refused at the merge gate with the predecessor, its pending demo and the files named, while a ticket with no overlap merges; both proven by tests.
-- [ ] C4. The hold lifts when E1 receives its clear demo verdict or closes, proven by a test.
-- [ ] C5. The card and the explorer show `follows` beside `blocked_by`.
-- [ ] C6. The Coordinator clause in both places and the `merge`, `to-tickets` and `plan-epic` skills describe follows, the met rule, the hold and preparing the next epic during the last stage's review.
-- [ ] C7. `hub/README.md` and GLOSSARY's Follows entry describe the relation, the met rule and the hold.
+- [x] C1. `task create --follows`, `task link --follows/--unfollow` and the `task.link` tool set and remove `follows` in the frontmatter; a cycle and a non-epic edge are refused, proven by tests.
+  - done: impl-335 · 2026-10-15T07:26:34.248Z
+- [x] C2. In a scratch project where E2 follows E1, `task view E2` shows `follows E-1: met` once E1's last ticket merges, and the open tickets before that; E2 is not marked blocked in `task list`.
+  - done: impl-335 · 2026-10-15T07:26:35.534Z
+- [x] C3. A ticket of E2 whose diff touches a file E1's merges changed is refused at the merge gate with the predecessor, its pending demo and the files named, while a ticket with no overlap merges; both proven by tests.
+  - done: impl-335 · 2026-10-15T07:37:23.936Z
+- [x] C4. The hold lifts when E1 receives its clear demo verdict or closes, proven by a test.
+  - done: impl-335 · 2026-10-15T07:26:38.112Z
+- [x] C5. The card and the explorer show `follows` beside `blocked_by`.
+  - done: impl-335 · 2026-10-15T07:26:39.039Z
+- [x] C6. The Coordinator clause in both places and the `merge`, `to-tickets` and `plan-epic` skills describe follows, the met rule, the hold and preparing the next epic during the last stage's review.
+  - done: impl-335 · 2026-10-15T07:39:48.888Z
+  - verified: rev-26 [reviewer] · run rev-20261015-335-source-3 · 2026-10-15T07:40:56.538Z · commit bbe943079f12a43dcc707d527fe718b9a58ddfd6
+- [x] C7. `hub/README.md` and GLOSSARY's Follows entry describe the relation, the met rule and the hold.
+  - done: impl-335 · 2026-10-15T07:26:40.394Z
+  - verified: rev-26 [reviewer] · run rev-20261015-335-source-3 · 2026-10-15T07:40:56.538Z · commit bbe943079f12a43dcc707d527fe718b9a58ddfd6
+
+## Comments
+
+### impl-335 · 2026-10-15T07:17:12.825Z
+
+Implementation started. Read E-423 choices and spec §3.4; following the epic decision that any recorded demo verdict releases the overlap hold. Building tracker/CLI/tool relation, merge surface helper/gate, UI and clause/skill/docs updates.
+
+### rev-26 · 2026-10-15T07:31:10.015Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261015-335-source-1
+commit: 4913d542707de4844202114a620dc36120cfd1aa
+scope: full
+
+High — .cland/roles.toml:59 / hub/src/roles/default-roles.ts:70: lane paragraph grows raw project Coordinator clause to7690 bytes before wrapping; unchanged roles.test.ts:80 requires complete reply<=7680, and normal wrapping exceeds8192 send cap. Medium — hub/src/hub/merge.ts:50–60,149–156: follows/predecessor snapshots survive async epicMergeFiles without revalidation; an edge added during final lookup can evade the new predecessor's pending-demo hold. Revalidate lane and same-task gate inputs after awaits; add external-Git barrier regression. Either QA result lifting the hold matches E-423's explicit decision. No Reviewer tests run. Evidence A-2724: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2724-t-335-source-not-clear-at-4913d542-clause-size-and-lane-publication-revalidation.md.
+
+Criteria: C6 failed (Coordinator clause exceeds existing reply headroom and wrapped send-size budget; compact both copies without weakening guards.), C3 failed (Lane facts captured before async surface lookup are not revalidated; adding a predecessor during final lookup can bypass its overlap hold.).
+
+### impl-335 · 2026-10-15T07:37:26.709Z
+
+Addressed A-2724: compacted both Coordinator clauses; unchanged default/project snapshot budget checks pass. Added external Git barriers proving the final-lookup added-follows and changed-review races, then fixed publication revalidation with indexed laneRevision plus fresh task gate view. Both regressions failed before the fix and pass after it; full follows file now 10/10 (34.4s). See correction artifact for details; corrected-head re-review follows, no verification run yet.
+
+### rev-26 · 2026-10-15T07:39:15.260Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261015-335-source-2
+commit: cbd9f4527a88e75478122d6ba5b9430a6458406c
+scope: full
+
+Medium — hub/src/roles/default-roles.ts:70 / .cland/roles.toml:59: compact lead-ownership and unclaimed-fallback sentences mismatch unchanged review-qa.test.ts:104–105. Byte headroom itself is corrected (trimmed project clause6968 bytes; snapshots2/2 reported). C3 publication correction inspected: laneRevision validation beside final refreshed task verdict/message check rejects changed indexed lane/gate inputs; external final-Git barriers reproduce both old races and pass after correction with refs unchanged. No new synchronous file I/O. Remaining blocker is C6; surface metadata guards apply to unchanged roles and are unaffected. No Reviewer tests run. Evidence A-2730: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2730-t-335-source-re-review-at-cbd9f452-publication-race-fixed-clause-wording-guards-.md.
+
+Criteria: C6 failed (Compact Coordinator wording no longer matches unchanged review-qa.test.ts:104–105 lead-ownership/fallback assertions; restore canonical phrases within byte budget.).
+
+### rev-26 · 2026-10-15T07:40:56.538Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261015-335-source-3
+commit: bbe943079f12a43dcc707d527fe718b9a58ddfd6
+scope: full
+
+No high/medium findings remain. Coordinator canonical ownership/fallback phrases restored; project default-crew reply7615 bytes fits unchanged7680 limit. Unchanged clause guards reported green A-2731. Corrected gate/tracker/test files unchanged from cbd9f452: indexed lane revision plus fresh final task merge view rejects concurrent follows/verdict edits after Git awaits. Exact surfaces and either-demo-verdict/closure release match E-423. C6/C7 skills/docs/clauses verified from source; C1–C5 final execution settlement awaits accepted same-head no-mode verify with configured executor, no override. Prior targeted lane/UI/workload evidence retained; no Reviewer tests run. Evidence A-2733: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2733-t-335-corrected-source-clear-at-bbe94307-follows-gate-and-clause-guards-preserve.md.
+
+Criteria: C6 verified, C7 verified.

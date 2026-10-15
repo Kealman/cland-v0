@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-273
 branch: t/T-393-in-process-hub-by-default-tests-run
 created: 2026-10-14T12:28:19.095Z
-updated: 2026-10-15T07:11:42.338Z
+updated: 2026-10-15T07:23:59.103Z
 ---
 
 ## Summary
@@ -61,3 +61,9 @@ updated: 2026-10-15T07:11:42.338Z
 - [ ] C7. Each refusal family and each adapter verb keeps at least one frame test, and the moved validation cases keep their asserted error codes and messages.
 - [ ] C8. No assertion changes its meaning: the review request lists every changed assertion with what it still proves, and no test is deleted.
 - [ ] C9. `hub/README.md` (Tests) and `docs/agents/tests.md` describe `projectHub` as the default, the lifecycle line, and when a new test may use `startDaemon`.
+
+## Comments
+
+### impl-393 · 2026-10-15T07:23:59.103Z
+
+Fixture/env implementation and initial migrations are in progress. The projectHub tracer now passes (4 tests): production CLI/socket/spoke parity, independent timings in simultaneous hubs, and a deliberate retained-timer cleanup failure. Audit artifact posted in topic-273. Before measurements are paused while qa-E386-census occupies the local slot; coordinating test windows and the T-395 split mapping with impl-395.

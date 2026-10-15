@@ -3,8 +3,9 @@ id: T-454
 kind: task
 title: "Heartbeat: a per-role interval in crew.toml wakes an idle session with a hub-computed digest of what is in flight and what looks stale, folds into the next turn on a busy one, and is never a needs-you"
 state: open
-status: in progress
+status: review
 size: L
+criterion_seq: 8
 labels:
   - v0.1.3
   - hub
@@ -12,10 +13,10 @@ labels:
 assignee: null
 parent: E-423
 blocked_by: []
-topic: null
+topic: topic-275
 branch: t/T-454-heartbeat-a-per-role-interval-in-crew
 created: 2026-10-15T07:15:15.368Z
-updated: 2026-10-15T07:16:37.696Z
+updated: 2026-10-15T07:40:59.708Z
 ---
 
 ## Summary
@@ -75,11 +76,25 @@ E-423 "Rules and rhythm" (R-294), tracer bullet 1 of 7; spec `docs/spec/v0.1.3.m
 
 ## Acceptance criteria
 
-- [ ] C1. `heartbeat` in `[crew.<role>]` accepts a duration of at least one minute or `"off"` and refuses anything else with the role and the minimum named; a Coordinator without it gets `1h`, other roles none; `cland init` writes it, and `cland crew show [--json]` and `cland crew set coordinator.heartbeat 30m` read and set it, the next firing using the new interval.
-- [ ] C2. Each heartbeat session has its own schedule from its launch, kept in `hub.db` across a hub restart, and a firing due while the hub was down fires exactly once after start, proven by a test with `CLAND_HEARTBEAT_MS`.
-- [ ] C3. The digest lists in-flight claimed items, runs, open asks and live leases, and as stale (with ages, only after one full interval) a review item with no request or verdict, a ready unmerged item, a session idle past `idle_minutes`, a run past its timeout or with no posted result, and an unanswered ask, each part capped at ten rows with an "and N more" line.
-- [ ] C4. On an idle fake Coordinator a heartbeat starts a turn; on a busy one, or one waiting for approval, it arrives as one entry of the next turn's digest, a newer heartbeat replaces an undelivered older one, and it never steers a running turn.
-- [ ] C5. A heartbeat never changes the inbox count or shows as a needs-you, and the events view shows one background-layer row per firing with the session and counts, filtered by key `9` as kind `heartbeat`, proven headless.
-- [ ] C6. The connection keepalive is called keepalive in identifiers and comments, and no hub source uses "heartbeat" for it.
-- [ ] C7. The Coordinator's clause, in `default-roles.ts` and the live `.cland/roles.toml`, says what to check, what to repair and when to escalate on a heartbeat, and to end a clean heartbeat without a message.
-- [ ] C8. `hub/README.md` describes the `heartbeat` setting, its default, the digest's rows, coalescing and `CLAND_HEARTBEAT_MS`, and `nvim/README.md` lists the `heartbeat` kind and key `9` in the events view.
+- [x] C1. `heartbeat` in `[crew.<role>]` accepts a duration of at least one minute or `"off"` and refuses anything else with the role and the minimum named; a Coordinator without it gets `1h`, other roles none; `cland init` writes it, and `cland crew show [--json]` and `cland crew set coordinator.heartbeat 30m` read and set it, the next firing using the new interval.
+  - done: impl-454 · 2026-10-15T07:40:43.241Z
+- [x] C2. Each heartbeat session has its own schedule from its launch, kept in `hub.db` across a hub restart, and a firing due while the hub was down fires exactly once after start, proven by a test with `CLAND_HEARTBEAT_MS`.
+  - done: impl-454 · 2026-10-15T07:40:43.928Z
+- [x] C3. The digest lists in-flight claimed items, runs, open asks and live leases, and as stale (with ages, only after one full interval) a review item with no request or verdict, a ready unmerged item, a session idle past `idle_minutes`, a run past its timeout or with no posted result, and an unanswered ask, each part capped at ten rows with an "and N more" line.
+  - done: impl-454 · 2026-10-15T07:40:44.736Z
+- [x] C4. On an idle fake Coordinator a heartbeat starts a turn; on a busy one, or one waiting for approval, it arrives as one entry of the next turn's digest, a newer heartbeat replaces an undelivered older one, and it never steers a running turn.
+  - done: impl-454 · 2026-10-15T07:40:45.295Z
+- [x] C5. A heartbeat never changes the inbox count or shows as a needs-you, and the events view shows one background-layer row per firing with the session and counts, filtered by key `9` as kind `heartbeat`, proven headless.
+  - done: impl-454 · 2026-10-15T07:40:46.443Z
+- [x] C6. The connection keepalive is called keepalive in identifiers and comments, and no hub source uses "heartbeat" for it.
+  - done: impl-454 · 2026-10-15T07:40:47.232Z
+- [x] C7. The Coordinator's clause, in `default-roles.ts` and the live `.cland/roles.toml`, says what to check, what to repair and when to escalate on a heartbeat, and to end a clean heartbeat without a message.
+  - done: impl-454 · 2026-10-15T07:40:47.671Z
+- [x] C8. `hub/README.md` describes the `heartbeat` setting, its default, the digest's rows, coalescing and `CLAND_HEARTBEAT_MS`, and `nvim/README.md` lists the `heartbeat` kind and key `9` in the events view.
+  - done: impl-454 · 2026-10-15T07:40:48.284Z
+
+## Comments
+
+### impl-454 · 2026-10-15T07:40:48.729Z
+
+Implemented C1-C8 at 73bd78b8 and pushed the task branch to origin after merging origin/dev 9ec1da30. Targeted frame/fake-harness, configuration, keepalive and headless event checks pass; typecheck and shard lint pass. Evidence: A-2732, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2732-t-454-implementation-and-targeted-evidence.md. Requesting source review before the same-head verification run; no per-item QA policy applies.

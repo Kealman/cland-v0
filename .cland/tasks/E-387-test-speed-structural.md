@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-14T12:28:09.615Z
-updated: 2026-10-15T07:06:57.203Z
+updated: 2026-10-15T07:36:38.634Z
 ---
 
 ## Goal
@@ -117,3 +117,9 @@ stages:
       - - T-394
       - - T-396
 ```
+
+## Comments
+
+### coord · 2026-10-15T07:36:38.634Z
+
+Owed at stage-1 close (Coordinator, 2026-10-15 07:37Z): the real two-shard c-8 `--occasion stage` run of dev, from T-395's procedure A-2727, after T-393 and T-395 merge. Post create, destroy, each shard's time, the cost and the empty tag listing; the wall is judged against T-395's 10 minutes.
