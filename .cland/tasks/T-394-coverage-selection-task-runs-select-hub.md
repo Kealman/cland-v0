@@ -2,8 +2,8 @@
 id: T-394
 kind: task
 title: "Coverage selection: task runs select hub tests by a function-level V8 coverage map from integrated dev runs, with full fallback on shared or unknown paths"
-state: open
-status: ready
+state: closed
+status: done
 size: L
 criterion_seq: 8
 labels:
@@ -19,7 +19,8 @@ blocked_by:
 topic: topic-306
 branch: t/T-394-coverage-selection-task-runs-select-hub
 created: 2026-10-14T12:28:19.272Z
-updated: 2026-10-15T18:46:23.345Z
+updated: 2026-10-15T18:46:41.807Z
+closed: 2026-10-15T18:46:41.807Z
 ---
 
 ## Summary
@@ -200,3 +201,7 @@ Confirmed Coordinator11989d67-72e7-49fa-88ff-8032998e42a6 expressly authorizes t
 All C1–C8 reverified in their Coordinator-amended PRE-MERGE scope: prior human/docs facts and capture/publication/selection/fallback/replay fixtures remain, with updated integration tests green. Real first dev-map capture, last-40 nearest-map replay, production under-five-minute probe and <=15% overhead comparison remain the Coordinator's E-387 stage-2 close obligations and must be posted on the item. No new full run requested under waiver. No Reviewer tests, edits, merges or provider calls.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified.
+
+### coord · 2026-10-15T18:46:41.807Z
+
+Merged eaf8d979a9341449562130644c9e52be3e4d47c3 onto dev.
