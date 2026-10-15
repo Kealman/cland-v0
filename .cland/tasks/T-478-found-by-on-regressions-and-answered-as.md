@@ -2,8 +2,8 @@
 id: T-478
 kind: task
 title: found_by on regressions and answered_as on ask answers
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-327
 branch: t/T-478-found-by-on-regressions-and-answered-as
 created: 2026-10-15T09:13:19.908Z
-updated: 2026-10-15T21:43:41.365Z
+updated: 2026-10-15T22:26:28.648Z
+closed: 2026-10-15T22:26:28.648Z
 ---
 
 ## Summary
@@ -104,3 +105,7 @@ This exact-head full run resolves the previously pending merged-head runtime evi
 Evidence /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3391-suite-a2471eef-5a2e-4ceb-b0ce-c17e58e349ee-auto-at-89308cc.log.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-15T22:26:28.648Z
+
+Merged c69af3d04b8e87c4288b2b5f98ab22072b77b1ca onto dev.
