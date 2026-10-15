@@ -5,6 +5,7 @@ import { glob, readFile } from 'node:fs/promises';
 import { join, matchesGlob } from 'node:path';
 import type { SuiteMode } from './suite-selection.ts';
 import { HUB_SMOKE, NVIM_SMOKE } from './suite-selection.ts';
+import { DURATION_MANIFEST, lintDurationManifest, readDurationManifest, type DurationManifest } from './suite-durations.ts';
 
 export type Shard = 'free' | 'machine';
 export type SuiteShard = { name: string; targets: string[]; resource: Shard; workers: number };
@@ -37,6 +38,7 @@ async function classify(paths: string[], manifest: Manifest, source: (path: stri
 }
 
 export async function hubShards(cwd: string, smoke = false): Promise<SuiteShard[]> {
+  await lintDurations(cwd);
   const paths = [];
   for await (const path of glob(PATTERNS, { cwd })) paths.push(path);
   const manifest = await readFile(join(cwd, MANIFEST), 'utf8').then(text => JSON.parse(text) as Manifest, () => ({ version: 1, tests: {} }));
@@ -45,6 +47,7 @@ export async function hubShards(cwd: string, smoke = false): Promise<SuiteShard[
 
 /** Only projects with a manifest opt into hub sharding. Admission also covers dirty test files. */
 export async function lintHubShards(cwd: string): Promise<void> {
+  await lintDurations(cwd);
   try { await readFile(join(cwd, MANIFEST)); }
   catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return; throw error; }
   await hubShards(cwd);
@@ -55,9 +58,20 @@ export async function lintHubShardTree(cwd: string, tree: string): Promise<void>
   const exec = promisify(execFile);
   const git = async (args: string[]) => (await exec('git', args, { cwd, timeout: 30_000, maxBuffer: 16 * 1024 * 1024 })).stdout;
   const paths = (await git(['ls-tree', '-r', '--name-only', '-z', tree, '--', 'hub/src', 'hub/test'])).split('\0').filter(Boolean);
-  if (!paths.includes(MANIFEST)) return;
   const source = (path: string) => git(['show', `${tree}:${path}`]);
+  if (paths.includes(DURATION_MANIFEST)) {
+    try { lintDurationManifest(JSON.parse(await source(DURATION_MANIFEST)) as DurationManifest); }
+    catch (error) { throw new ShardManifestError(error instanceof Error ? error.message : String(error), [DURATION_MANIFEST]); }
+  }
+  if (!paths.includes(MANIFEST)) return;
   await classify(paths.filter(path => PATTERNS.some(pattern => matchesGlob(path, pattern))), JSON.parse(await source(MANIFEST)) as Manifest, source, false);
+}
+
+async function lintDurations(cwd: string): Promise<void> {
+  try {
+    const manifest = await readDurationManifest(cwd);
+    if (manifest) lintDurationManifest(manifest);
+  } catch (error) { throw new ShardManifestError(error instanceof Error ? error.message : String(error), [DURATION_MANIFEST]); }
 }
 
 export async function packageShards(cwd: string, mode: SuiteMode): Promise<SuiteShard[]> {

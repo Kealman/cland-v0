@@ -51,7 +51,7 @@ function chooseSuite(paths: readonly string[], nvimHubImports: readonly string[]
   for (const path of paths) {
     if (/^(?:hub\/src\/cli\/(?:crew|roles?)\.ts|hub\/src\/adapters\/contract\.ts|nvim\/lua\/cland\/(?:hub|state)\.lua|hub\/src\/protocol\.ts)$/.test(path)) return full(`shared contract ${path}`);
     if (/(?:^|\/)(?:package(?:-lock)?\.json|tsconfig[^/]*\.json)$/.test(path)) return full(`package configuration ${path}`);
-    if (['hub/test/run-suite.ts', 'hub/src/suite-selection.ts', 'hub/src/suite-shards.ts'].includes(path)) return full(`suite infrastructure ${path}`);
+    if (['hub/test/run-suite.ts', 'hub/src/suite-selection.ts', 'hub/src/suite-shards.ts', 'hub/src/suite-durations.ts', 'hub/test/duration-reporter.ts'].includes(path)) return full(`suite infrastructure ${path}`);
     if (nvimHubImports.includes(path)) return full(`nvim test import ${path}`);
   }
   const nvim = paths.filter(path => path.startsWith('nvim/')).length;

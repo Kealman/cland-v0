@@ -17,6 +17,7 @@
     "test": "node hub/test/run-suite.ts auto",
     "test:shards": "node hub/test/lint-shards.ts",
     "test:nvim": "node hub/test/run-suite.ts nvim",
-    "benchmark:thread": "CLAND_RENDER_BENCHMARK=1 node --test --test-name-pattern='200 message rewrites' nvim/test/thread.test.ts"
+    "benchmark:thread": "CLAND_RENDER_BENCHMARK=1 node --test --test-name-pattern='200 message rewrites' nvim/test/thread.test.ts",
+    "test:durations": "node hub/test/durations.ts refresh"
   }
 }

@@ -6,7 +6,7 @@ import { hubDiscovery, readDiscovery } from '../src/project.ts';
 import { PROTOCOL_VERSION, parseFrame, type SuiteSlotResult } from '../src/protocol.ts';
 import { existsSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
-import { mkdir, realpath, stat, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, realpath, stat, writeFile } from 'node:fs/promises';
 import { loadavg } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -16,6 +16,7 @@ import { acquire, acquireBroker, borrowLease, inheritedLease, sweep, type Holder
 import { packageShards, type SuiteShard } from '../src/suite-shards.ts';
 import { suiteLimits } from '../src/suite-limits.ts';
 import { describeSelection, selectPackageSuite, selectionFromEnv, type SuiteSelection, type SuiteRequest } from '../src/suite-selection.ts';
+import { checkDurations, durationRegressions, lintDurationManifest, readDurationManifest, type DurationManifest, type DurationRegression, type TestTiming } from '../src/suite-durations.ts';
 
 type Interruption = { signal: 'SIGINT' | 'SIGTERM' | null };
 export async function runSuite(suites: string[][], options: { lockDir?: string; lockDirs?: string[]; cwd?: string; interruption?: Interruption; selection?: SuiteSelection; phaseNames?: string[]; resources?: Array<'free' | 'machine'>; workers?: number[]; force?: boolean; token?: string } = {}): Promise<number> {
@@ -41,7 +42,14 @@ export async function runSuite(suites: string[][], options: { lockDir?: string; 
   let started = invoked;
   let peak = loadavg()[0]!;
   const sample = setInterval(() => { peak = Math.max(peak, loadavg()[0]!); }, 1000);
+  let durationManifest: DurationManifest | null = null;
+  let budgetOverheadMs = 0;
+  const regressions: DurationRegression[] = [];
   try {
+    const budgetStarted = performance.now();
+    durationManifest = await readDurationManifest(options.cwd ?? process.cwd());
+    if (durationManifest) lintDurationManifest(durationManifest);
+    budgetOverheadMs += performance.now() - budgetStarted;
     if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
     if (!options.force && process.env.CLAND_TEST_SKIP_LOCK !== '1') {
       const dirs = options.lockDirs ?? [options.lockDir ?? '/tmp/cland-suite.lock'];
@@ -109,6 +117,8 @@ process.chdir(cwd);`);
         '--test-reporter=spec', '--test-reporter-destination=stdout',
         `--test-reporter=${fileURLToPath(new URL('./skip-reporter.ts', import.meta.url))}`, '--test-reporter-destination=stdout',
       ] : [];
+      const timingsPath = join(root, `durations-${index}.jsonl`);
+      if (durationManifest && args.includes('--test')) reporters.unshift(`--test-reporter=${fileURLToPath(new URL('./duration-reporter.ts', import.meta.url))}`, `--test-reporter-destination=${timingsPath}`);
       active = spawn(process.execPath, ['--import', bootstrap, ...reporters, ...absoluteArgs], { cwd: root, env, detached: true, stdio: 'inherit' });
       // Install exit listeners before publication awaits; the bootstrap cannot start tests yet.
       const done = new Promise<number>((resolve, reject) => { active!.once('error', reject); active!.once('exit', (value, signal) => resolve(value ?? (signal === 'SIGINT' ? 130 : 143))); });
@@ -120,6 +130,22 @@ process.chdir(cwd);`);
       await writeFile(gate, 'ready');
       if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
       const code = await done;
+      let budgetFailed = false;
+      if (durationManifest && args.includes('--test')) {
+        const budgetStarted = performance.now();
+        try {
+          const records = (await readFile(timingsPath, 'utf8')).trim().split('\n').filter(Boolean).map(line => JSON.parse(line) as TestTiming | { overheadMs: number });
+          const tests: TestTiming[] = [];
+          for (const record of records) {
+            if ('overheadMs' in record) budgetOverheadMs += record.overheadMs;
+            else { tests.push(record); process.stdout.write(`suite timing ${JSON.stringify(record)}\n`); }
+          }
+          const checked = checkDurations(tests, durationManifest);
+          regressions.push(...checked.regressions);
+          for (const failure of checked.failures) process.stderr.write(failure + '\n');
+          budgetFailed = checked.failures.length > 0;
+        } finally { budgetOverheadMs += performance.now() - budgetStarted; }
+      }
       await sweep(holder);
       root = undefined;
       active = undefined; activeIdentity = null;
@@ -128,6 +154,7 @@ process.chdir(cwd);`);
       if (options.phaseNames?.[index]) process.stderr.write(`shard duration ${options.phaseNames[index]} ${((Date.now() - phaseStarted) / 1000).toFixed(2)}s; workers ${options.workers?.[index] ?? 4}; resource ${options.resources?.[index] ?? 'machine'}; machine wait ${(machineWait / 1000).toFixed(2)}s\n`);
       if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
       if (code !== 0) return code;
+      if (budgetFailed) return 1;
     }
     return interruption.signal ? (interruption.signal === 'SIGINT' ? 130 : 143) : 0;
   } catch (error) {
@@ -141,6 +168,12 @@ process.chdir(cwd);`);
       for (const lease of leases.reverse()) await lease.release();
     } finally {
       for (const { signal, handler } of handlers) process.off(signal, handler);
+      if (durationManifest) {
+        const budgetStarted = performance.now();
+        for (const line of durationRegressions(regressions)) process.stderr.write(line + '\n');
+        budgetOverheadMs += performance.now() - budgetStarted;
+        process.stderr.write(`suite budget overhead ${budgetOverheadMs.toFixed(2)} ms\n`);
+      }
       process.stderr.write(`suite duration ${((Date.now() - started) / 1000).toFixed(2)}s; lock wait ${((started - invoked) / 1000).toFixed(2)}s; peak 1m load ${peak.toFixed(2)}${options.selection ? `; ${describeSelection(options.selection)}` : ''}\n`);
     }
   }

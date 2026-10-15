@@ -99,4 +99,48 @@ New lease records retain the legacy local `started` field and add `startedUtc`, 
 
 An ownerless manual lock stays held. The wait message names the lock's `rmdir` command; use it only after verifying that no suite using that lock is running. `CLAND_TEST_SKIP_LOCK=1` is for isolated CI jobs.
 
+`hub/test/durations.json` sets a 5-second test budget and a 60-second file budget
+for hub and Neovim. Files sum top-level test-time; nested durations are included
+in their parent. Only a new over-budget test or file fails its run with a named
+`duration budget` diagnostic. A test is known when its exact `file::test` key is
+in `tests` or `allow`; a file is known when its path is in `files` or `allow`.
+A known file never exempts a new test inside it, and a renamed test is new.
+Before requesting review, add an exception in your
+task branch with the observed `seconds` and a reason explaining why the test
+needs that time:
+
+```json
+"hub/test/example.test.ts::real lifecycle": {
+  "seconds": 6.1,
+  "reason": "Starts multiple real workers and proves their confirmed teardown."
+},
+"hub/test/example.test.ts": {
+  "file": true,
+  "seconds": 65.2,
+  "reason": "Aggregates independent end-to-end lifecycle and recovery cases."
+}
+```
+
+These entries go in `allow`; a file exception does not exempt individual tests.
+Empty or `TODO` reasons fail the working-tree and immutable-candidate shard lint
+at verify/merge admission. Missing manifests disable the budget and its reporter.
+Known entries never fail the duration budget. Those over budget always produce a
+`duration regression` notice annotated `over budget`, even when flat or faster.
+Those under budget report when at least 1 second and 50% slower than their
+baseline. Both kinds share a five-line cap, ranked by seconds over baseline.
+The suite result includes these notices, budget failures, and `suite budget overhead <ms> ms` for
+the runner's self-measured loading, bookkeeping, checking and reporting work.
+
+At each stage close the Coordinator runs
+`npm run test:durations -- <latest-green-integrated-log-artifact-path>` on `dev`
+and commits the refreshed manifest. `node hub/test/durations.ts refresh <log>…`
+accepts several logs (newest last), takes per-test medians, sums file test-time,
+preserves reasons and drops tests absent from the newest log. It reads the durable
+`suite timing` records or older top-level spec timings with start/source title
+mapping. Refresh writes a `TODO` allowance only for an over-budget identity absent
+from both its previous baseline and `allow`; replace it before admission.
+Reasoned entries stay, and a known entry that becomes slow only updates its
+baseline seconds.
+Keep artifact ids and the source head in `source` so timings remain traceable.
+
 See [the runner and process-fixture notes](../../hub/README.md#tests) when adding tests that spawn processes.

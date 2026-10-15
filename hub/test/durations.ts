@@ -1,0 +1,119 @@
+// Refresh from integrated logs; never invent timings for tests not executed there.
+import { glob, readFile, writeFile } from 'node:fs/promises';
+import { basename, join, relative } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { DURATION_MANIFEST, fileTimings, readDurationManifest, timingKey, type DurationManifest, type TestTiming } from '../src/suite-durations.ts';
+
+const median = (values: number[]) => {
+  values.sort((a, b) => a - b);
+  const middle = Math.floor(values.length / 2);
+  return values.length % 2 ? values[middle]! : (values[middle - 1]! + values[middle]!) / 2;
+};
+const rounded = (seconds: number) => Number(seconds.toFixed(6));
+const sorted = <T>(entries: Array<[string, T]>): Record<string, T> => Object.fromEntries(entries.sort(([a], [b]) => a.localeCompare(b)));
+
+// Old spec logs have no duration reporter. The start reporter supplies identities;
+// only column-zero result lines count, because children are included in their parent.
+export function logTimings(log: string, legacyFile?: (name: string) => string | undefined): TestTiming[] {
+  const lines = log.replace(/\x1b\[[0-9;]*m/g, '').split('\n');
+  const records = lines.filter(line => line.startsWith('suite timing ')).map(line => JSON.parse(line.slice('suite timing '.length)) as TestTiming);
+  if (records.length) return records;
+  const cwd = /^Worktree (.+)$/m.exec(log)?.[1];
+  const starts = new Map<string, string[]>();
+  for (const line of lines) {
+    if (!line.startsWith('suite start ')) continue;
+    const start = JSON.parse(line.slice('suite start '.length)) as { file: string; name: string };
+    const file = cwd ? relative(cwd, start.file) : start.file;
+    const files = starts.get(start.name) ?? [];
+    files.push(file); starts.set(start.name, files);
+  }
+  for (const line of lines) {
+    const match = /^[✔﹣] (.+) \(([\d.]+)ms\)(?:\s.*)?$/.exec(line);
+    if (!match) continue;
+    const name = match[1]!;
+    const candidates = starts.get(name);
+    if (candidates && new Set(candidates).size > 1) throw new Error(`ambiguous legacy test: ${name}; spec results have no file identity`);
+    const file = starts.get(name)?.shift() ?? legacyFile?.(name);
+    if (!file) throw new Error(`cannot map legacy test to a file: ${name}`);
+    records.push({ file, name, seconds: Number(match[2]) / 1000 });
+  }
+  return records;
+}
+
+async function sourceTitles(cwd: string): Promise<(name: string) => string | undefined> {
+  const ts = await import('typescript');
+  const titles: Array<{ file: string; pattern: RegExp }> = [];
+  const escape = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  for await (const file of glob(['hub/src/**/*.test.ts', 'hub/test/**/*.test.ts', 'nvim/test/**/*.test.ts'], { cwd })) {
+    const source = ts.createSourceFile(file, await readFile(join(cwd, file), 'utf8'), ts.ScriptTarget.Latest, true);
+    const visit = (node: import('typescript').Node) => {
+      if (ts.isCallExpression(node) && /^(?:test|it|describe)(?:\.(?:skip|todo|only))?$/.test(node.expression.getText(source))) {
+        const title = node.arguments[0];
+        if (title && (ts.isStringLiteral(title) || ts.isNoSubstitutionTemplateLiteral(title))) titles.push({ file, pattern: new RegExp(`^${escape(title.text)}$`, 's') });
+        else if (title && ts.isTemplateExpression(title)) titles.push({ file, pattern: new RegExp(`^${escape(title.head.text)}${title.templateSpans.map(span => `.*?${escape(span.literal.text)}`).join('')}$`, 's') });
+      }
+      ts.forEachChild(node, visit);
+    };
+    visit(source);
+  }
+  return name => {
+    const files = [...new Set(titles.filter(title => title.pattern.test(name)).map(title => title.file))];
+    if (files.length > 1) throw new Error(`ambiguous legacy test: ${name}; matches ${files.join(', ')}`);
+    return files[0];
+  };
+}
+
+export async function refreshDurations(cwd: string, logs: string[]): Promise<DurationManifest> {
+  if (!logs.length) throw new Error('usage: node hub/test/durations.ts refresh <green integrated log>…');
+  const previous = await readDurationManifest(cwd);
+  const samples = new Map<string, { test: TestTiming; seconds: number[] }>();
+  const artifacts: string[] = [];
+  let commit = '';
+  let legacyFile: ((name: string) => string | undefined) | undefined;
+  let latestTests = new Set<string>();
+  for (const path of logs) {
+    const log = (await readFile(path, 'utf8')).replace(/\x1b\[[0-9;]*m/g, '');
+    if (!/^Finished: exit 0\s*$/m.test(log)) throw new Error(`not a green integrated log: ${path}`);
+    const artifact = /^A-\d+/.exec(basename(path))?.[0];
+    if (artifact) artifacts.push(artifact);
+    commit = /^Head (\S+)/m.exec(log)?.[1] ?? commit;
+    if (!/^suite (?:timing|start) /m.test(log)) legacyFile ??= await sourceTitles(cwd);
+    const records = logTimings(log, legacyFile);
+    if (!records.length) throw new Error(`no test timings in ${path}`);
+    // Smoke repeats within one run contribute one sample to its median.
+    const run = new Map<string, { test: TestTiming; seconds: number[] }>();
+    for (const test of records) {
+      if (!test.file || typeof test.name !== 'string' || !Number.isFinite(test.seconds) || test.seconds < 0) throw new Error(`invalid test timing in ${path}`);
+      const key = timingKey(test);
+      const sample = run.get(key) ?? { test, seconds: [] };
+      sample.seconds.push(test.seconds); run.set(key, sample);
+    }
+    latestTests = new Set(run.keys());
+    for (const [key, sample] of run) {
+      const collected = samples.get(key) ?? { test: sample.test, seconds: [] };
+      collected.seconds.push(median(sample.seconds)); samples.set(key, collected);
+    }
+  }
+  const tests = [...samples].filter(([key]) => latestTests.has(key)).map(([, sample]) => ({ ...sample.test, seconds: rounded(median(sample.seconds)) }));
+  const files = fileTimings(tests);
+  for (const file of Object.values(files)) file.seconds = rounded(file.seconds);
+  const budget = previous?.budget ?? { testSeconds: 5, fileSeconds: 60 };
+  const allow: DurationManifest['allow'] = {};
+  for (const test of tests) {
+    const key = timingKey(test);
+    if (previous?.allow[key] || (test.seconds > budget.testSeconds && previous?.tests[key] === undefined)) allow[key] = { seconds: test.seconds, reason: previous?.allow[key]?.reason ?? 'TODO' };
+  }
+  for (const [path, file] of Object.entries(files)) {
+    if (previous?.allow[path]?.file || (file.seconds > budget.fileSeconds && previous?.files[path] === undefined)) allow[path] = { file: true, seconds: file.seconds, reason: previous?.allow[path]?.reason ?? 'TODO' };
+  }
+  const manifest: DurationManifest = { version: 1, source: { artifacts: [...new Set(artifacts)], commit }, budget,
+    files: sorted(Object.entries(files)), tests: sorted(tests.map(test => [timingKey(test), test.seconds])), allow: sorted(Object.entries(allow)) };
+  await writeFile(join(cwd, DURATION_MANIFEST), JSON.stringify(manifest, null, 2) + '\n');
+  return manifest;
+}
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  if (process.argv[2] !== 'refresh') throw new Error('usage: node hub/test/durations.ts refresh <green integrated log>…');
+  const manifest = await refreshDurations(process.cwd(), process.argv.slice(3));
+  console.log(`duration manifest: ${Object.keys(manifest.files).length} files, ${Object.keys(manifest.tests).length} tests, ${Object.keys(manifest.allow).length} allowances; replace TODO reasons before admission`);
+}

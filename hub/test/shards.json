@@ -33,6 +33,8 @@
     "hub/test/default-subscriptions.test.ts": "machine",
     "hub/test/doctor-isolation.test.ts": "machine",
     "hub/test/doctor.test.ts": "machine",
+    "hub/test/durations-runner.test.ts": "machine",
+    "hub/test/durations.test.ts": "machine",
     "hub/test/edges.test.ts": "machine",
     "hub/test/executor-droplet.test.ts": "machine",
     "hub/test/executor-run.test.ts": "machine",

@@ -2008,6 +2008,47 @@ pre-V1 exclusion; it does not enable production free-shard overlap yet.
 Logs and suite reports include each shard's wall time, resource, workers and
 machine wait, plus the hub queue wait and total suite/compatibility wait.
 
+`hub/test/durations.json` records each hub and Neovim test's median time and each
+file's summed top-level test-time. A run fails only when a new test exceeds
+5 seconds or a new file exceeds 60 seconds. Tests are known by their exact
+`file::test` key in `tests` or `allow`; files are known by their path in `files`
+or `allow`. A known file never exempts a new test inside it; a renamed test is new.
+Nested test times are already included in their parent. Add a justified exception in your task branch's `allow`
+map: a test key is `path/to/file.test.ts::test name` with `seconds` and `reason`;
+a file key is its path with `file: true`, `seconds` and `reason`. A file exception
+does not exempt its tests. Admission (including verify and merge) refuses empty
+or `TODO` reasons through the shard-manifest lint. Missing duration manifests
+disable this check and the timing reporter, preserving fixture/older runner behavior.
+
+At each stage close the Coordinator refreshes on `dev` from the latest green
+integrated full-run log artifact:
+
+```sh
+npm run test:durations -- /absolute/path/to/A-123-green-integrated.log
+# Multiple logs take the median per test; pass the newest log last.
+node hub/test/durations.ts refresh <older-green-log> <latest-green-log>
+```
+
+Refresh preserves reasons, updates timing fields and removes tests absent from
+the newest log. Only over-budget identities absent from both their previous
+baseline and `allow` get a new `TODO` exception; known slow entries only update
+their baseline seconds. Resolve every `TODO` before
+committing. The `source` records the artifact ids and latest head. The runner's
+file reporter emits one record per top-level test; `suite timing` lines retain
+those records in the durable log after phase cleanup. Older spec logs use their
+top-level result lines and start identities, falling back to source titles when
+start identities are absent; ambiguous source matches refuse refresh.
+
+Known tests and files never fail the duration budget. Over-budget entries always
+report a `duration regression` annotated `over budget`, even when flat or faster.
+Under-budget entries report at least 1 second and 50% slower than the recorded
+baseline (threshold equality counts). Both kinds share the report's five-line
+cap, ranked by seconds over baseline.
+`suite budget overhead <ms> ms` measures manifest loading, the timing
+reporter's bookkeeping/serialization, record reading, checks and reporting using
+`performance.now()`. It excludes executing tests and waiting for their events;
+serial absent/present whole-file comparisons also check the added reporter cost.
+
 All package runs queue once for joint admission to `/tmp/cland-suite.lock` and
 `/tmp/cland-suite-nvim.lock`, and retain both locks through the chosen phases,
 including smoke. Each phase cleans up its processes and temporary root before

@@ -60,8 +60,10 @@ export function suiteSummary(log: string): string {
   const text = log.replace(/\x1b\[[0-9;]*m/g, '');
   const counts = new Map<string, number>();
   for (const match of text.matchAll(/^(?:#|ℹ) (tests|pass|fail|cancelled|skipped|todo) (\d+)\s*$/gm)) counts.set(match[1]!, (counts.get(match[1]!) ?? 0) + Number(match[2]));
-  const failures = text.split('\n').filter(line => /^(?:\s*not ok \d+|✖ )/.test(line)).slice(0, 12).map(line => line.slice(0, 200));
+  const failures = text.split('\n').filter(line => /^(?:\s*not ok \d+|✖ |duration budget: )/.test(line)).slice(0, 12).map(line => line.slice(0, 200));
   const timings = text.split('\n').filter(line => /^(?:verification queue wait |shard duration |suite duration )/.test(line)).slice(-8).map(line => line.slice(0, 300));
+  timings.push(...text.split('\n').filter(line => /^duration regression /.test(line)).slice(0, 5));
+  timings.push(...text.split('\n').filter(line => /^suite budget overhead /.test(line)).slice(-1));
   return `${counts.size ? [...counts].map(([k, v]) => `${k} ${v}`).join('; ') : 'counts unavailable (suite did not finish)'}${timings.length ? `\n${timings.join('\n')}` : ''}${failures.length ? `\nFailures:\n${failures.join('\n')}` : ''}`;
 }
 
