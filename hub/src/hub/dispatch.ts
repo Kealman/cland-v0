@@ -47,7 +47,7 @@ import type { LogFn } from '../log.ts';
 import { HygieneError } from './hygiene.ts';
 import { answerTask, isTaskRequest, sessionActor, type TaskRequest } from '../tracker/requests.ts';
 import { readsAsVerdict, verdictOfText } from '../tracker/item.ts';
-import type { Actor, Tracker } from '../tracker/tracker.ts';
+import type { Actor, ItemView, Tracker } from '../tracker/tracker.ts';
 import { answerSession, isSessionRequest, SPOKE_SESSION_REQUESTS } from '../adapters/requests.ts';
 import type { Sessions } from '../adapters/sessions.ts';
 import { handOver, roleState, settleAllClaims, type HandoverContext } from '../roles/handover.ts';
@@ -848,7 +848,12 @@ export class Dispatcher {
         return sessionActor(caller, UNKNOWN_SESSION);
       } : undefined;
       void answerTask(this.#options.tracker, frame, actor, resumed, currentActor)
-        .then((result) => {
+        .then(async (result) => {
+          if (frame.type === 'task.view' && result.type === 'result' && result.ok && this.#options.journal) {
+            const value = result.value as { item: ItemView };
+            const subagents = await this.#options.journal.subagents(value.item.id);
+            result = resumed(() => ({ ...result, value: { ...value, item: { ...value.item, usage: { subagents } } } }));
+          }
           this.#bindAssignee(frame as unknown as Record<string, unknown>, result);
           return this.#withWorktree(frame, result, resumed);
         })

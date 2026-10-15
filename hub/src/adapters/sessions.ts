@@ -1320,7 +1320,7 @@ export class Sessions {
     }
     if (report.subagent) {
       const agent = report.subagent;
-      this.#log({ event: 'subagent-launched', ...identity, ...(agent.id ? { agentId: agent.id } : {}), ...(agent.type ? { agentType: agent.type } : {}), model: agent.model || 'unknown' });
+      this.#log({ event: 'subagent-launched', ...identity, ...(agent.id ? { agentId: agent.id } : {}), ...(agent.type ? { agentType: agent.type } : {}), model: agent.model || 'unreported' });
     }
   }
 

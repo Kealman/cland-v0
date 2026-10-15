@@ -131,12 +131,15 @@ export function interpret(event: string, payload: Record<string, unknown>): Inte
   switch (event) {
     case 'mod-measure':
       return { rateLimits: { windows: claudeWindows(payload.rateLimits) } };
-    case 'subagent-start':
+    case 'subagent-start': {
+      const input = payload.tool_input && typeof payload.tool_input === 'object' ? payload.tool_input as Record<string, unknown> : undefined;
+      const model = typeof payload.model === 'string' && payload.model ? payload.model : input?.model;
       return { subagent: {
         ...(typeof payload.agent_id === 'string' ? { id: payload.agent_id } : {}),
         ...(typeof payload.agent_type === 'string' ? { type: payload.agent_type } : {}),
-        ...(typeof payload.model === 'string' ? { model: payload.model } : {}),
+        ...(typeof model === 'string' && model ? { model } : {}),
       } };
+    }
     case 'subagent-stop':
       return {};
     case 'session-start':

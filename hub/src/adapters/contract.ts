@@ -128,7 +128,7 @@ export type SpawnRequest = LaunchPolicy & {
   item?: string | null;
 };
 
-/** A native sub-agent start; absent model means unknown, never the parent model. */
+/** A native sub-agent start; absent model means unreported, never the parent model. */
 export type SubagentLaunch = { id?: string; type?: string; model?: string };
 /** A harness report with optional state and launch metadata. State ordering drops older signals. */
 export type StateSignal = { state?: SessionState; source: string; at: number; approvalCommand?: string; model?: string; subagent?: SubagentLaunch };

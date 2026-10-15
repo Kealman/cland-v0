@@ -7,8 +7,9 @@
 // so an event is journalled by being logged, with no second call site. `write` is there for a record that is not
 // a log line (the audit log calls it, or logs `{ event: 'audit', … }`, which the filter journals too).
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync } from 'node:fs';
-import { open } from 'node:fs/promises';
+import { createReadStream, existsSync, readFileSync } from 'node:fs';
+import { open, stat } from 'node:fs/promises';
+import { createInterface } from 'node:readline';
 import { join } from 'node:path';
 import type { EventKind, EventRow, EventsPage } from '../protocol.ts';
 import type { LogEntry, LogFn } from '../log.ts';
@@ -178,6 +179,12 @@ export type JournalFile = {
 };
 export type JournalOpen = (path: string) => Promise<JournalFile>;
 
+/** One recorded child launch, attributed to its parent session and item. */
+export type SubagentRecord = {
+  ts: string; session: string; sessionId: string; harness: string; model: string;
+  agentId?: string; agentType?: string;
+};
+
 export class Journal {
   readonly #path: string;
   readonly #now: () => Date;
@@ -340,6 +347,34 @@ export class Journal {
       } catch { /* damaged records are skipped */ }
     }
     return result(overflow !== undefined);
+  }
+
+  /** Child models for one item's usage, including durable records from earlier hub lifetimes. */
+  async subagents(item: string): Promise<SubagentRecord[]> {
+    await this.flush();
+    const resumed = this.#resumer('task.view');
+    const { size } = await resumed(() => stat(this.#path));
+    if (!size) return [];
+    const input = resumed(() => createReadStream(this.#path, { end: size - 1 }));
+    const lines = createInterface({ input, crlfDelay: Infinity });
+    const rows: SubagentRecord[] = [];
+    try {
+      for await (const line of lines) resumed(() => {
+        let r: JournalRecord;
+        try { r = JSON.parse(line); } catch { return; }
+        if (!r || r.event !== 'subagent-launched' || r.item !== item) return;
+        if (typeof r.ts !== 'string' || typeof r.session !== 'string' || typeof r.sessionId !== 'string' || typeof r.harness !== 'string') return;
+        rows.push({ ts: r.ts, session: r.session, sessionId: r.sessionId, harness: r.harness,
+          model: typeof r.model === 'string' && r.model ? r.model : 'unreported',
+          ...(typeof r.agentId === 'string' ? { agentId: r.agentId } : {}),
+          ...(typeof r.agentType === 'string' ? { agentType: r.agentType } : {}),
+        });
+      });
+    } finally {
+      lines.close();
+      input.destroy();
+    }
+    return rows;
   }
 
   /** Drain records accepted before this call without closing the sink. Later producers may keep appending. */

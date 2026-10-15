@@ -123,6 +123,8 @@ export type ItemView = IndexedItem & {
   criteria: Criterion[];
   criteriaCounts: CriteriaCounts;
   verify?: VerifyResult | null;
+  /** Journal-backed child launch identities, composed by task.view rather than persisted in item files. */
+  usage?: { subagents: import('../hub/journal.ts').SubagentRecord[] };
   criteriaWarnings: CriterionWarning[];
   comments: Comment[];
   verdicts: IndexedVerdict[];

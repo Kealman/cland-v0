@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
-import { cland, connectUi, eventually, fakeClaude, fakeCodex, startDaemon, tempProject, type FrameClient } from './harness.ts';
+import { cland, connectUi, eventually, fakeClaude, fakeCodex, projectHub, startDaemon, tempProject, type FrameClient } from './harness.ts';
 import { copyPreparedProject } from './prepared-project.ts';
 import type { HarnessProcessView } from '../src/protocol.ts';
 
@@ -58,22 +58,23 @@ test('sub-agent hooks journal parent attribution and never change the parent mod
   const root = await tempProject(t);
   // T-389 staging race: native idle polls must not overwrite the synthetic parent turn during journal reads.
   const fake = await fakeClaude(t, { pushTrustMs: 120_000 });
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   const launched = await ui.request({ type: 'session.launch', name: 'parent', harness: 'claude-code', model: 'parent-model' });
   assert.equal(launched.ok, true, launched.error);
   const p = (launched.value as { process: HarnessProcessView }).process;
   await eventually('initial hook settled', async () => (await fake.log(p.harnessId!)).includes('hooks SessionStart done') || undefined);
   await ui.request({ type: 'session.signal', session: p.name, launch: p.sessionId, event: 'turn-start' });
-  for (const [id, model] of [['known', 'child-model'], ['unknown', null]]) {
-    const signal = await ui.request({ type: 'session.signal', session: p.name, launch: p.sessionId, event: 'subagent-start', payload: { agent_id: id, agent_type: 'Explore', ...(model ? { model } : {}) } });
+  for (const [id, model, requested] of [['known', 'child-model', 'requested-model'], ['requested', null, 'requested-model'], ['unknown', null, null]]) {
+    const signal = await ui.request({ type: 'session.signal', session: p.name, launch: p.sessionId, event: 'subagent-start', payload: { agent_id: id, agent_type: 'Explore', ...(model ? { model } : {}), ...(requested ? { tool_input: { model: requested } } : {}) } });
     assert.equal(signal.ok, true, signal.error);
     await ui.request({ type: 'session.signal', session: p.name, launch: p.sessionId, event: 'subagent-stop', payload: { agent_id: id, model: 'stop-model' } });
   }
   const journal = await records(root, ui);
   assert.deepEqual(journal.filter(r => r.event === 'subagent-launched').map(r => [r.session, r.sessionId, r.harness, r.role, r.item, r.agentId, r.agentType, r.model]), [
     ['parent', p.sessionId, 'claude-code', null, null, 'known', 'Explore', 'child-model'],
-    ['parent', p.sessionId, 'claude-code', null, null, 'unknown', 'Explore', 'unknown'],
+    ['parent', p.sessionId, 'claude-code', null, null, 'requested', 'Explore', 'requested-model'],
+    ['parent', p.sessionId, 'claude-code', null, null, 'unknown', 'Explore', 'unreported'],
   ]);
   const listed = (await ui.request({ type: 'session.list' })).value as { processes: HarnessProcessView[] };
   assert.equal(listed.processes[0]?.model, 'parent-model');
@@ -84,7 +85,7 @@ test('launched Claude sub-agents retain their parent role and launch item throug
   const root = await tempProject(t);
   await copyPreparedProject(root);
   const fake = await fakeClaude(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   const created = await ui.request({ size: 'M', type: 'task.create', title: 'Parent attribution' });
   assert.equal(created.ok, true, created.error);
@@ -98,9 +99,26 @@ test('launched Claude sub-agents retain their parent role and launch item throug
   });
   assert.deepEqual(journal.filter(r => r.event === 'subagent-launched').sort((a, b) => String(a.agentId).localeCompare(String(b.agentId))).map(r => [r.session, r.sessionId, r.role, r.item, r.agentId, r.agentType, r.model]), [
     ['impl', p.sessionId, 'implementer', item, 'known-child', 'Explore', 'claude-child-1'],
-    ['impl', p.sessionId, 'implementer', item, 'unknown-child', 'Explore', 'unknown'],
+    ['impl', p.sessionId, 'implementer', item, 'unknown-child', 'Explore', 'unreported'],
   ]);
   assert.deepEqual(journal.filter(r => r.event === 'session-model').map(r => r.model), ['claude-fake-1']);
+  const viewed = await cland(root, 'task', 'view', item, '--json');
+  assert.equal(viewed.code, 0, viewed.stderr);
+  const usage = JSON.parse(viewed.stdout).item.usage;
+  assert.deepEqual(usage?.subagents.map((r: Record<string, unknown>) => [r.session, r.sessionId, r.harness, r.agentId, r.model]), [
+    ['impl', p.sessionId, 'claude-code', 'known-child', 'claude-child-1'],
+    ['impl', p.sessionId, 'claude-code', 'unknown-child', 'unreported'],
+  ]);
+  const human = await cland(root, 'task', 'view', item);
+  assert.equal(human.code, 0, human.stderr);
+  assert.match(human.stdout, /usage:[\s\S]*sub-agent known-child.*claude-child-1/);
+  assert.match(human.stdout, /sub-agent unknown-child.*unreported/);
+  const other = await ui.request({ size: 'XS', type: 'task.create', title: 'Unrelated item' });
+  assert.equal(other.ok, true, other.error);
+  const otherId = (other.value as { item: { id: string } }).item.id;
+  const unrelated = await cland(root, 'task', 'view', otherId, '--json');
+  assert.equal(unrelated.code, 0, unrelated.stderr);
+  assert.deepEqual(JSON.parse(unrelated.stdout).item.usage.subagents, []);
 });
 
 for (const harness of ['codex', 'opencode']) test(`${harness} journals its selected model and reported child models`, async t => {
@@ -128,7 +146,7 @@ for (const harness of ['codex', 'opencode']) test(`${harness} journals its selec
   });
   assert.deepEqual(journal.filter(r => r.event === 'subagent-launched').map(r => [r.session, r.sessionId, r.harness, r.agentId, r.model]), [
     ['parent', p.sessionId, harness, 'known-child', harness === 'codex' ? 'gpt-child-1' : 'opencode/child-1'],
-    ['parent', p.sessionId, harness, 'unknown-child', 'unknown'],
+    ['parent', p.sessionId, harness, 'unknown-child', 'unreported'],
   ]);
   if (harness === 'codex') {
     const legacy = await ui.request({ type: 'topic.send', topic: 'general', to: ['parent'], text: '@parent spawn legacy subagent' });
