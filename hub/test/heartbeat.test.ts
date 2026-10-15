@@ -2,10 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, connectUi, connectWsUi, eventually, fakeClaude, fakeCodex, sleep, spawnSpoke, startDaemon, startHub, tempProject, clauseAnswered, withDiscoveredPid } from './harness.ts';
+import { connectUi, connectWsUi, eventually, fakeClaude, fakeCodex, spawnSpoke, startDaemon, startHub, tempProject, clauseAnswered, withDiscoveredPid } from './harness.ts';
+import { Store } from '../src/hub/store.ts';
 import { fixture as remoteFixture } from './remote-fixture.ts';
 import { fixture as suiteFixture } from './suite-fixture.ts';
-import { onCleanup } from './process-cleanup.ts';
+import { beforeDirectories, onCleanup } from './process-cleanup.ts';
 import { Tracker } from '../src/tracker/tracker.ts';
 import { CrewFile } from '../src/crew.ts';
 import { fixedRoles } from '../src/roles/config.ts';
@@ -86,28 +87,44 @@ test('busy and approval-waiting Coordinators coalesce heartbeats into the next t
 
 test('a missed heartbeat survives hub restart and fires once rather than replaying missed intervals', async t => {
   const root = await tempProject(t);
-  const env = { CLAND_HEARTBEAT_MS: '300' };
-  let { discovery } = await startDaemon(t, root, env);
-  let ui = await connectUi(t, discovery);
-  const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', sessionId: 'stable-coord', role: 'coordinator' });
-  t.after(() => coord.close());
+  const db = join(root, 'heartbeat.db');
+  let clock = Date.now();
+  const now = () => new Date(clock);
+  t.mock.timers.enable({ apis: ['setInterval'] });
+  let hub = await startHub({ store: new Store(db), roles: fixedRoles(), heartbeatMs: 300, now });
+  beforeDirectories(t, () => hub.close());
+  let ui = await connectWsUi(t, hub);
+  await ui.request({ type: 'subscribe' });
+  assert.equal((await ui.request({ type: 'role.set', session: 'coord', role: 'coordinator' })).ok, true);
+  const coord = await spawnSpoke({ hub, name: 'coord', sessionId: 'stable-coord', role: 'coordinator' });
+  onCleanup(t, () => coord.close());
   await coord.waitForPresence(['coord']);
-  await eventually('first firing recorded', async () => {
-    const history = await ui.request({ type: 'topic.history', topic: 'agents' });
-    return (history.value as { messages: Message[] }).messages.some(m => m.detail?.event === 'heartbeat') || undefined;
-  });
+  const history = async () => ((await ui.request({ type: 'topic.history', topic: 'agents' })).value as { messages: Message[] }).messages.filter(m => m.detail?.event === 'heartbeat');
+  t.mock.timers.tick(300); // Observe the session and start its schedule at frozen time.
+  assert.equal((await history()).length, 0);
+  clock += 300;
+  t.mock.timers.tick(300);
+  await ui.waitFor(heartbeat);
+  assert.equal((await history()).length, 1);
   ui.close();
-  assert.equal((await cland(root, 'hub', 'stop')).code, 0);
-  await sleep(950); // Negative: three intervals pass while no hub can fire.
-  ({ discovery } = await startDaemon(t, root, env));
-  ui = await connectUi(t, discovery);
-  const history = await eventually('one overdue firing after restart', async () => {
-    const result = await ui.request({ type: 'topic.history', topic: 'agents' });
-    const notes = (result.value as { messages: Message[] }).messages.filter(m => m.detail?.event === 'heartbeat');
-    return notes.length >= 2 ? notes : undefined;
-  });
-  assert.equal(history.length, 2, 'the missed intervals produce exactly one firing');
-  assert.ok(Date.parse(history[1]!.ts) - Date.parse(history[0]!.ts) >= 950);
+  const port = hub.port;
+  await hub.close();
+  clock += 950; // More than three intervals pass with no hub to fire them.
+  hub = await startHub({ port, store: new Store(db), roles: fixedRoles(), heartbeatMs: 300, now });
+  ui = await connectWsUi(t, hub);
+  await ui.request({ type: 'subscribe' });
+  t.mock.timers.tick(300);
+  await ui.waitFor(heartbeat);
+  assert.equal((await history()).length, 2, 'the missed intervals produce exactly one firing');
+  // Repeated scheduler ticks cannot replay the backlog or fire before a full
+  // interval has passed since the overdue delivery, regardless of I/O load.
+  t.mock.timers.tick(1200);
+  clock += 299;
+  t.mock.timers.tick(300);
+  assert.equal((await history()).length, 2, 'no replay before the next full interval');
+  clock += 1;
+  t.mock.timers.tick(300);
+  assert.equal((await history()).length, 3, 'the next interval produces one ordinary firing');
 });
 
 test('the digest ages review and ready items and open asks, caps both sections, and includes claimed sessions', async t => {
