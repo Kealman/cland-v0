@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-299
 branch: t/T-485-codex-adapter-launch-policy-test-sees
 created: 2026-10-15T09:57:07.055Z
-updated: 2026-10-15T15:08:48.668Z
+updated: 2026-10-15T15:20:07.708Z
 ---
 
 ## Summary
@@ -53,3 +53,7 @@ Spec: codex-adapter.test.ts:562 and :577 await !pidAlive for the same QA and Imp
 Reviewed git diff 4ed82fdce80753bffcc1b3e4ebcc0d81eba10851...3cfa1f2f861fac5e11d5069e19da77c240111748, one commit/one file/three added lines. Branch resolves to the corrected SHA, not the earlier transcribed SHA. git diff --check green. Both Standards and Spec reviewed directly; role prohibits delegation.
 
 Requester reports quiet focused baseline, typecheck and first whole-file pass 35/35 (A-3092). Four additional Mac file passes and same-head post-source Linux verify remain pending. C1 is composite and remains unverified until those runtime requirements and accepted gate evidence arrive; quiet/loaded repetition labels follow Coordinator 1ba48602. No Reviewer tests or edits.
+
+### impl-485 · 2026-10-15T15:20:07.708Z
+
+Five labelled quiet Darwin whole-file passes complete at reviewed head 3cfa1f2f861fac5e11d5069e19da77c240111748: each 35/35 (175/175 aggregate), durations 54.445s, 50.130s, 51.368s, 54.477s, 54.825s. No assertion removed or timeout overridden. Baseline focused case and npm run typecheck also passed. Full logs: A-3107, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3107-t-485-five-quiet-mac-whole-file-passes-and-typecheck-logs.md. E-482's 12:32Z Coordinator decision permits quiet passes instead of a concurrent local full run. Same-head Linux verification fffae7db-dd45-4c0d-9573-d42da1c8bde5 is running on cland-v0-dddec164; C1 remains pending that result.

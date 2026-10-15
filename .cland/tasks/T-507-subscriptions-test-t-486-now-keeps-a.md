@@ -3,18 +3,19 @@ id: T-507
 kind: task
 title: "subscriptions test: T-486 now keeps a completed first turn's idle, but the test expects only 'impl launched'"
 state: open
-status: backlog
+status: in progress
 size: XS
+criterion_seq: 2
 labels:
   - ready-for-agent
 assignee: null
 parent: E-482
 blocked_by: []
 regression_of: T-486
-topic: null
-branch: null
+topic: topic-305
+branch: t/T-507-subscriptions-test-t-486-now-keeps-a
 created: 2026-10-15T15:16:16.512Z
-updated: 2026-10-15T15:16:16.512Z
+updated: 2026-10-15T15:21:51.990Z
 ---
 
 ## Problem
@@ -23,5 +24,12 @@ updated: 2026-10-15T15:16:16.512Z
 
 ## Acceptance criteria
 
-- [ ] C1. The case expects the event set that T-486's launch ordering produces. It either accepts 'impl idle' after 'impl launched' when the first turn has completed, or it holds the fake's first turn so that idle can't arrive inside the window. Record which, and why, in the commit.
+- [x] C1. The case expects the event set that T-486's launch ordering produces. It either accepts 'impl idle' after 'impl launched' when the first turn has completed, or it holds the fake's first turn so that idle can't arrive inside the window. Record which, and why, in the commit.
+  - done: impl-507 · 2026-10-15T15:21:51.990Z
 - [ ] C2. subscriptions.test.ts passes 5/5 serially, whole file and alone on the Mac, plus once on a droplet in the task's verify.
+
+## Comments
+
+### impl-507 · 2026-10-15T15:18:51.946Z
+
+Diagnosis is already evidenced by T-495 droplet d6e75622 (A-3101) on T-486. Using the existing terminal-role-update integration case as the regression seam; skipping a new broad hypothesis hunt because the ticket identifies the stale event expectation and permits either accepting completed-turn idle or gating the fake. Plan: explicitly wait for resumed first-turn idle, then require exactly launched followed by idle, retaining the no-prior-terminal-replay assertion.

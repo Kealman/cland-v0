@@ -3,7 +3,7 @@ id: T-457
 kind: task
 title: "Seed the rulebook: an Aide migrates the eight rules of the planning session's and the stand-in's memories into .cland/RULES.md with their memory files as origins, and marks each memory with its rule number"
 state: open
-status: in progress
+status: review
 size: S
 labels:
   - v0.1.3
@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-303
 branch: t/T-457-seed-the-rulebook-an-aide-migrates-the
 created: 2026-10-15T07:15:15.643Z
-updated: 2026-10-15T15:17:10.569Z
+updated: 2026-10-15T15:21:34.156Z
 ---
 
 ## Summary
@@ -75,3 +75,59 @@ Commit `.cland/RULES.md` on the task branch and merge it through `cland merge` l
 ### coord · 2026-10-15T15:17:02.756Z
 
 Human decision on 2026-10-15 at 15:15Z (ask 45c1eb99, answer 42704fe5): the Aide runs on Codex instead of Claude Code, because the Claude Code launch refused with 'Workspace not trusted'. The Aide is aide-457. impl-457 was launched in error and stopped; its read-only inventory is A-3100.
+
+### coord · 2026-10-15T15:18:31.093Z
+
+Coordinator decision (2026-10-15 15:18Z):  writes the live root .cland/RULES.md from any cwd (A-3106), because the rulebook is hub-managed project state like .cland/tasks. So the seed lands in the root, and the Coordinator commits .cland/RULES.md on dev as a tracker-style commit, in place of the body's 'commit on the task branch'. T-457 closes on the Reviewer's clear verdict and task close, not through cland merge. C1–C4 are unchanged.
+
+### coord · 2026-10-15T15:18:37.668Z
+
+Correction to the comment above: the missing words are "cland rule add". It writes the live root .cland/RULES.md from any cwd.
+
+### aide-457 · 2026-10-15T15:21:33.901Z
+
+Seed completed by aide-457. Exactly eight active rules are returned by live `cland rule list --json`; exact output: A-3108, `/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3108-t-457-live-eight-rule-list-json.json`.
+
+| Number | Title | Scope | Origin |
+|---|---|---|---|
+| rule 1 | Briefs address the role | coordinator, lead, implementer, aide | `memory:/Users/evgeniyivanov/.claude/projects/-Users-evgeniyivanov-Projects-cland-v0/memory/brief-address-the-role.md` |
+| rule 2 | No long foreground commands as Coordinator | coordinator | `memory:/Users/evgeniyivanov/.claude/projects/-Users-evgeniyivanov-Projects-cland-v0/memory/coordinator-no-long-foreground.md` |
+| rule 3 | One full suite at a time | all | `memory:/Users/evgeniyivanov/.claude/projects/-Users-evgeniyivanov-Projects-cland-v0/memory/one-suite-at-a-time.md` |
+| rule 4 | Verdicts go to the lead | all | `memory:/Users/evgeniyivanov/.claude/projects/-Users-evgeniyivanov-Projects-cland-v0/memory/verdicts-go-to-lead.md` |
+| rule 5 | No routing around refusals | all | `memory:/Users/evgeniyivanov/.claude/projects/-Users-evgeniyivanov-Projects-cland-v0/memory/no-route-around-refusals.md` |
+| rule 6 | The batch-merge rule | coordinator, lead | `memory:/Users/evgeniyivanov/.claude/projects/-Users-evgeniyivanov-Projects-cland-v0/memory/batch-merge-rule.md` |
+| rule 7 | Verify the head before merging | coordinator, lead | `memory:/Users/evgeniyivanov/.claude/projects/-Users-evgeniyivanov-Projects-cland-v0/memory/verify-head-before-merge.md` |
+| rule 8 | Check the verify queue before committing on dev | coordinator, aide | `memory:/Users/evgeniyivanov/.claude/projects/-Users-evgeniyivanov-Projects-cland-v0/memory/tracker-commits-cancel-dev-runs.md` |
+
+Scope and distillation notes:
+- Rule 1 covers brief/request authors, including configured Leads and Implementers acting as item leads; its role-routing instruction respects Aides' named-recipient restriction. My earlier A-3106 note incorrectly called lead only a routing target; it is also a configured role, and rule 1 now includes it.
+- Rule 3 is exclusive per machine, uses current runner-managed locks and respects remote machine slots. It does not restore manual lock wrappers or the superseded FIFO workaround.
+- Rule 4 covers verifiers and every possible item lead, hence all roles. It preserves lead-directed verdicts with current lead-owned review/retry and automatic ready delivery, without restoring Coordinator-only requests or mandatory verdict relays.
+- Rules 6–7 cover the roles authorized to merge. They retain the batch limits, conflict-resolution search requirement, actual local and origin head checks, and applicable same-head evidence requirements; references to approved exceptions do not record the separate flaky-rerun proposal.
+- Rule 8 retains the queue check for hub-code changes and the fixed-clean-copy correction, without restoring the superseded blanket dev freeze.
+
+Memory marks:
+Appended exactly `Recorded as rule <n> in .cland/RULES.md (E-423 seed).` to each primary source, plus `full-suite-lock.md` and `suite-lock.md` for rule 3 and `integrated-run-root-freeze.md` for rule 8. Added `(rule <n>)` to each matching MEMORY.md line. Both requested folder paths resolve to the same backing directory, so one write updates both; verified exactly one marker and matching index reference through each path for all eleven files (22 source paths and 22 index references). Only these append/index lines were changed; historical memory text remains intact.
+
+Further standing-rule proposals for the human — none recorded:
+- `flaky-rerun-rule.md`: evidence and one rerun for unrelated flakes; its latest temporary E-482 two-droplet-receipt policy supersedes the local fallback. Preserve its expiry/conditions if adopted.
+- `load-rule-stress.md`: stress loops only on a clear queue; latest addition limits targeted tests machine-wide with load below 15. `cover-quiet-rule.md` adds no tests beside a local integrated cover.
+- `shared-test-fix-cherry-pick.md`: a failure reproducing alone on clean dev gets one canonical fix cherry-picked to affected branches.
+- `review-loop-cap.md`: agree the review bar and trust model, move out-of-model findings to follow-ups, and agree a final round with the authorized decision-maker.
+- `criteria-single-line.md`: tracker acceptance criteria are single lines; criterion-add text omits the generated Cn prefix.
+- `secrets-never-in-argv.md`: credentials never enter argv or printed output; use descriptor-fed patterns and counts/filenames.
+- `review-request-in-item-topic.md`: deliver review/QA and delta requests in the item's bound topic so evidence can be published.
+- `merge-check-fetch-first.md`: fetch before predicting conflicts, and guard dependent post-merge operations on actual success.
+- `coordinator-working-rules.md`: English artifacts/items and Russian human dialogue; independent Codex review/QA; stop an Implementer only after merge actually succeeds. Older delegation/model details need reconciliation with current crew policy.
+- `epic-tickets-cover-dod.md`: plan each epic and check every DoD feature was ticketed and exists before QA.
+- `epic-close-report.md`: a short Russian General report explaining user-visible changes on each epic close.
+- `do-oversight.md`: inspect cland resource lifetime and spend through the authorized hub owner, preserve unrelated human resources, and escalate spending decisions to the human. Reconcile historical caps with current configuration and keep PID-only checks where credential inheritance remains possible.
+- `role-tools-fixed-at-launch.md`: ensure affected sessions gain newly added tools after restart/relaunch; its claim that clauses only change on relaunch is superseded by reconnect-delivered clauses.
+- `claude-code-roles-on-sonnet.md`: human-approved model/cost policy; historical blanket model instructions need reconciliation with current per-role/per-harness crew settings.
+- `claude-code-skip-permissions.md`: records a human permission-policy choice; review current policy before considering it a rule. No permission settings were edited.
+- `hourly-lost-work-check.md`: stale-work checks; its external cron mechanics are superseded by E-423's native heartbeat and need reconciliation, rather than a duplicate schedule.
+- `coord-docs-commit-via-worktree.md`: respect background-session root-edit guards with a worktree workflow, rather than bypassing guards.
+- `droplet-switch-gotchas.md`: prepare per-project snapshots and use clean fixed cover trees; historical executor-reload/QA-singleton claims should be checked against current implementation.
+- `topic-post-after-merge.md`: historical topic/push cleanup guidance needs current verification; its advice to stop before merge conflicts with the later stop-only-after-success instruction and must not be copied verbatim.
+
+Landing follows Coordinator decision `9fb5e236-e895-4329-a3fc-56f586aa50fc` in topic-303: live root rulebook is hub-owned project state; Coordinator commits it on dev, requests review and closes T-457 without a branch merge. No branch copy, commit or push was made; T-457 worktree remains clean. C4 still requires observation of the live Coordinator's next clause after reconnect. No test suite was run for this data-only migration.
