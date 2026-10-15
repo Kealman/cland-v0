@@ -3,7 +3,7 @@ id: T-455
 kind: task
 title: "Rulebook: .cland/RULES.md with numbered rules, read and written by cland rule add, edit, retire, list and show, and reloaded by the hub when the file changes"
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 7
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-276
 branch: t/T-455-rulebook-cland-rules-md-with-numbered
 created: 2026-10-15T07:15:15.459Z
-updated: 2026-10-15T12:43:54.062Z
+updated: 2026-10-15T13:13:35.456Z
 ---
 
 ## Summary
@@ -81,16 +81,22 @@ Run at most one full suite at a time machine-wide; targeted single-file runs are
 
 - [x] C1. `cland rule add "…" --scope implementer --reason "…"` from the human's shell writes `## 1 <title>` with `Scope`, `Date`, `Status: active`, `Origin: shell` and `Reason` lines and the text to `.cland/RULES.md`, and the next add gets `2`.
   - done: impl-455 · 2026-10-15T07:26:14.401Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-455-12 · 2026-10-15T13:13:33.428Z · commit 17d643130d3d7fc3b06b20908188f209e69ae5bc
 - [x] C2. `cland rule edit 1 --scope all` and `cland rule retire 1 --reason "…"` rewrite only that rule, keeping its number and origin; a retired rule stays in the file and its number is never reused.
   - done: impl-455 · 2026-10-15T07:35:38.751Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-455-12 · 2026-10-15T13:13:33.428Z · commit 17d643130d3d7fc3b06b20908188f209e69ae5bc
 - [x] C3. `cland rule list --all --json` returns active and retired rules with every field, `cland rule list` returns active ones only, `--role r` filters by scope, and `cland rule show <n>` prints one rule written as `rule <n>`.
   - done: impl-455 · 2026-10-15T07:26:18.826Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-455-12 · 2026-10-15T13:13:33.428Z · commit 17d643130d3d7fc3b06b20908188f209e69ae5bc
 - [x] C4. A hand edit of `.cland/RULES.md` is re-read without a hub restart, and a file that does not parse is logged with its line while the last good rulebook stays in force.
   - done: impl-455 · 2026-10-15T07:26:20.085Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-455-12 · 2026-10-15T13:13:33.428Z · commit 17d643130d3d7fc3b06b20908188f209e69ae5bc
 - [x] C5. From an Aide's shell `cland rule add --origin memory:<path>` records that origin, and from an Implementer's or a Coordinator's shell `cland rule add` is refused with `forbidden` and a reason.
   - done: impl-455 · 2026-10-15T07:26:21.600Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-455-12 · 2026-10-15T13:13:33.428Z · commit 17d643130d3d7fc3b06b20908188f209e69ae5bc
 - [x] C6. `cland init` writes an empty rulebook with its header, and `.cland/.gitignore`'s header names `RULES.md` as committed.
   - done: impl-455 · 2026-10-15T08:00:59.227Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-455-12 · 2026-10-15T13:13:33.428Z · commit 17d643130d3d7fc3b06b20908188f209e69ae5bc
 - [x] C7. `hub/README.md` describes the rulebook file, its fields and origins, the `rule <n>` form, the `cland rule` commands and who may write.
   - done: impl-455 · 2026-10-15T07:26:24.793Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-455-2 · 2026-10-15T07:35:24.942Z · commit 856181faa8000c4a4470886fccec61cd107c8979
@@ -98,6 +104,7 @@ Run at most one full suite at a time machine-wide; targeted single-file runs are
   - verified: rev-23 [reviewer] · run rev-2026-10-15-455-6 · 2026-10-15T08:38:15.180Z · commit f5ef70453f08b9f2a55289302e37de98b984bb5d
   - verified: rev-23 [reviewer] · run rev-2026-10-15-455-8 · 2026-10-15T12:11:45.111Z · commit 91635a792948255a2608cd4690d6a0c4c43b3516
   - verified: rev-23 [reviewer] · run rev-2026-10-15-455-10 · 2026-10-15T12:43:54.062Z · commit 17d643130d3d7fc3b06b20908188f209e69ae5bc
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-455-12 · 2026-10-15T13:13:33.428Z · commit 17d643130d3d7fc3b06b20908188f209e69ae5bc
 
 ## Comments
 
@@ -281,3 +288,47 @@ Retain A-2984 as red plus older A-2746/A-2777/A-2808/shared-fix history; current
 Review evidence: A-2991.
 
 Criteria: C7 verified.
+
+### rev-23 · 2026-10-15T13:09:28.910Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-15-455-11
+commit: 17d643130d3d7fc3b06b20908188f209e69ae5bc
+scope: evidence
+
+Medium — mixed-diff Neovim coverage: neither proposed Linux receipt reached the Neovim phase. The standing 90193e8c/d05c60c7 supplement is still needed for final gate settlement unless the Coordinator explicitly substitutes existing shared-cover evidence; the shared pick's source-clear/target exemption does not itself state that this package gate is waived.
+
+Second Linux a480e386/A-3004 at unchanged 17d643130d3d7fc3b06b20908188f209e69ae5bc fails only codex-adapter.test.ts:997 initial-idle setup in late-reject steer case, matching the exact known T-467 signature and its T-486 root-cause linkage. It differs from first Linux 6ffb9985/A-2984's T-481 release-record and T-486 session-stop-races:136 failures. Own rulebook/CLI/init/shared hub files pass in both; adopted release-publication case passes in the second.
+
+First: 1723 pass/two fail/three platform skips; second: 1724 pass/one fail/three platform skips. Both exit 1 before Neovim and remain red. The only head delta is exact T-481 shared pick, reviewed in A-2991. Direct Coordinator 15241749 accepts A-2984 as first receipt and permits different-known-only second failures under e6264b46; the hub pair meets that ruling. Second suite 1368.75s, c-8 lon1 lifetime 1452s, $0.1009.
+
+C1–C6 final marks remain pending the missing package coverage; C7 source mark current. Use the existing prescribed one local npm run test:nvim -- nvim/test/*.test.ts at this exact head under normal lease/admission rather than another full verify, with Linux Neovim deferred to E-423 close under the standing mixed-diff rule. Claimant notes T-487 alone is the Neovim source delta and has a green shared cover; retain that evidence, without calling an unrun phase executed. No new source fix or third Linux run requested. Earlier red/fix history remains unchanged. No Reviewer tests or edits.
+Review evidence: A-3007.
+
+### impl-455 · 2026-10-15T13:11:44.718Z
+
+Final coverage supplement at unchanged reviewed 17d64313: explicit `npm run test:nvim -- nvim/test/*.test.ts` exited 0, 387/387 passed, 0 fail/skip/cancel, 80.61 s, normal lease lock wait 0.02 s. Admitted local slot none, load 2.02, no other target. Full log preserved in this topic. This completes 90193e8c/d05c60c7 coverage alongside accepted Linux pair 6ffb9985/A-2984 and a480e386/A-3004 under 15241749/e6264b46. No source/head change or extra verify.
+
+### rev-23 · 2026-10-15T13:13:33.428Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-15-455-12
+commit: 17d643130d3d7fc3b06b20908188f209e69ae5bc
+scope: evidence
+
+Final evidence clear at unchanged 17d643130d3d7fc3b06b20908188f209e69ae5bc under the recorded two-receipt/mixed-diff gate rules; no high/medium T-455 finding remains.
+
+Accepted Linux hub pair: 6ffb9985/A-2984 at 91635a79 fails only T-481 release-publication and T-486 initial-idle cases (1723 pass/two fail/three platform skips); a480e386/A-3004 at 17d64313 fails only the different known T-467 :997 initial-idle steer case, linked to T-486 (1724 pass/one fail/three platform skips). Own rulebook/CLI/init/shared hub files pass in both; adopted T-481 release case passes in the second. Direct Coordinator 15241749 accepts the first receipt and shared-pick-only head equivalence under human e6264b46; source review A-2991 confirms the exact T-481 patch. Both Linux receipts stay overall red and stopped before Neovim.
+
+Mixed-diff supplement under 90193e8c/d05c60c7: audited A-3011 explicit npm run test:nvim -- nvim/test/*.test.ts at the reviewed head, normal lease, local 387/387, zero failures/skips/cancellations, exit 0; 80.61s, lease wait 0.02s. This completes the accepted pre-merge package coverage. Linux Neovim remains epic-close coverage under that ruling; no complete green Linux run is claimed.
+
+C1–C3: human CLI numbering/fields, edit/retire preservation, active/all/role/show outputs pass the real hub/CLI tests. C2 additionally passes concurrent writers, intervening hand edit during native temp write refusing stale publication, and high-water identity preservation after hand deletion. C4 atomic hand reload/invalid-line notice/last-good retention passes. C5 held-shell identity and Aide origin restrictions refuse Implementer/Coordinator writes as specified. C6 init header/committed-file inventory passes. C7 README source mark remains current. Source chain A-2726/A-2786/A-2965/A-2991 establishes unchanged rulebook behavior; all C1–C7 verified at this final head.
+
+Retain earlier red 8052e04c/A-2746, 1ea1e21d/A-2777 and 9008902b/A-2808 with their own inventory correction and T-461/T-463/T-447 dispositions; adoption does not relabel those gates green. Final reviewed head adds only exact designated shared patches beyond the rulebook source; no extra test allowance was introduced here. No Reviewer tests or edits.
+Review evidence: A-3014.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.

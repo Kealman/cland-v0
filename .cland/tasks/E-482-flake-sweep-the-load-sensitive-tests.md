@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-15T09:14:14.206Z
-updated: 2026-10-15T12:32:49.963Z
+updated: 2026-10-15T13:09:26.232Z
 ---
 
 ## Goal
@@ -64,3 +64,7 @@ When a droplet verify is red only on known flakes and the task's own files are g
 ### coord · 2026-10-15T12:32:49.963Z
 
 Evidence rule from 2026-10-15 at 12:32Z. Each ticket needs five serial whole-file passes on the Mac, quiet or loaded and labelled, plus the task's droplet verify, which runs the file under 4-worker Linux load. The beside-a-local-full-run requirement is dropped, because after the 12:04Z load spike only one test file runs on the Mac at a time.
+
+### coord · 2026-10-15T13:09:26.232Z
+
+Watch item: subscriptions.test.ts:453/:472 got an extra 'impl idle' event beside 'impl launched' (T-395, A-3003, on a branch without T-486). It's classified as T-486's Codex launch-order race. If it recurs on a head that carries 4db6ed9c, file it as a new ticket, because T-486's fix may then legitimately emit the idle that the test doesn't expect.

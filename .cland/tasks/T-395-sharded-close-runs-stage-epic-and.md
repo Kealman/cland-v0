@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-274
 branch: t/T-395-sharded-close-runs-stage-epic-and
 created: 2026-10-14T12:28:19.467Z
-updated: 2026-10-15T12:35:39.010Z
+updated: 2026-10-15T13:12:57.428Z
 ---
 
 ## Summary
@@ -59,7 +59,7 @@ A failed or lost shard fails the run once, naming the shard. The hub does not re
 ## Acceptance criteria
 
 - [x] C1. Only an integrated `dev` request with `--occasion stage|epic|release` from the Coordinator (or `epic` from QA) shards; other roles, task heads and batch runs are refused or run on one slot, proven by tests against the fake DigitalOcean API.
-  - done: impl-395 · 2026-10-15T07:59:04.864Z
+  - done: impl-395 · 2026-10-15T13:12:39.791Z
 - [x] C2. Files are split largest-first by `durations.json`, the Neovim phase goes to the lightest shard, and a test proves the balance on a fixture manifest.
   - done: impl-395 · 2026-10-15T07:42:02.736Z
   - verified: rev-26 [reviewer] · run rev-20261015-395-source-2 · 2026-10-15T08:00:52.613Z · commit f3346d60b4ded82a109a0f2dc4165f3ee88f8154
@@ -67,9 +67,9 @@ A failed or lost shard fails the run once, naming the shard. The hub does not re
   - verified: rev-26 [reviewer] · run rev-20261015-395-source-4 · 2026-10-15T12:06:56.217Z · commit 47b7f36369f63ce79e409b9481ab3c1aaf0b3063
   - verified: rev-26 [reviewer] · run rev-20261015-395-source-5 · 2026-10-15T12:35:39.010Z · commit b94d8f656b2bc26716b455ce50678d63f75d5267
 - [x] C3. When the shards' reservations would pass the daily cap or fewer than two remote slots are free, the run goes whole to one slot with one warn-level notice naming the cause, proven by tests.
-  - done: impl-395 · 2026-10-15T07:59:06.045Z
+  - done: impl-395 · 2026-10-15T13:12:40.615Z
 - [x] C4. A sharded run posts one result with summed counts, per-shard duration, machine and cost lines and the total cost; a failed shard fails the run once naming the shard.
-  - done: impl-395 · 2026-10-15T07:59:07.412Z
+  - done: impl-395 · 2026-10-15T13:12:41.441Z
 - [x] C5. `suite.test.ts` and `merge.test.ts` are split into files of at most 60 s each in `durations.json`, with every test kept and its assertions unchanged.
   - done: impl-395 · 2026-10-15T07:42:04.045Z
   - verified: rev-26 [reviewer] · run rev-20261015-395-source-2 · 2026-10-15T08:00:52.613Z · commit f3346d60b4ded82a109a0f2dc4165f3ee88f8154
@@ -218,3 +218,20 @@ No high or medium findings. One-file delta exactly matches shared T-481 8d4d104b
 Coordinator 5144fde9 classifies all A-2976 failures as known T-481/T-486/T-467 and explicitly directs this pick plus one more droplet verify after delta clear. A-2770 is ineligible due to own guard failures; A-2976 is the first eligible known-only receipt and stays red overall. C1/C3/C4/final settlement pending the replacement result. C6/C7 retain amended premerge scope and later E-387 real demonstration. No Reviewer tests run.
 
 Criteria: C2 verified, C5 verified, C6 verified, C7 verified, C8 verified.
+
+### rev-26 · 2026-10-15T13:09:13.301Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261015-395-evidence-3
+commit: b94d8f656b2bc26716b455ce50678d63f75d5267
+scope: evidence
+
+Medium — hub/test/session-usage.test.ts:42/:78: token total mismatch and undefined usage row need exact known-flake classification; T-465's item names a different timestamp assertion. Restart :176 directly matches T-463.
+Medium — hub/test/subscriptions.test.ts:472: unexpected extra impl idle event in terminal-role subscription case has no established known classification yet.
+Other reds are Codex initial-idle/recovery family (:552/:880/:903, codex-delivery :122) and steer :718. A-3003/e54c3004 exits 1: 1734 tests, 1722 pass, 9 fail, 3 platform skips; Neovim not reached. Own sharding/admission/cap/reservation/report guards pass again. All nine failure identities are disjoint from A-2976, and only shared T-481 moved the head, but known-only classification is still required for exception settlement. Asked lead/Coordinator; no new suite requested. No own criterion failed; C2/C5/C6/C7/C8 retained, C1/C3/C4/final gate pending. No Reviewer tests run.
+
+### impl-395 · 2026-10-15T13:12:42.023Z
+
+Final duration-only head a140b1d79fb7c589798111a9e2b69bfa5cd24a9c pushed. Four-line manifest allowance exactly names the held-provider cancellation regression, A-3003's measured5.674142651s and awaited lifecycle/500ms observation. Shard lint/diff check pass; replaying all1674 A-3003 timings against the manifest has0 budget failures. Functional receipts A-2976/A-3003 remain red on disjoint external known flakes; all own cases pass. Coordinator5cb46a8b explicitly directs allowance review with no new verify;1652465b/1c717642 settle external classifications and accept adopted T-487 A-2900 coverage. Requesting final source/evidence settlement; real A-2727 run remains E-387 stage-close obligation.

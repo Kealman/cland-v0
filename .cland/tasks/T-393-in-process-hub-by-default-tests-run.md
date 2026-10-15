@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-273
 branch: t/T-393-in-process-hub-by-default-tests-run
 created: 2026-10-14T12:28:19.095Z
-updated: 2026-10-15T12:56:52.935Z
+updated: 2026-10-15T13:12:33.704Z
 ---
 
 ## Summary
@@ -58,9 +58,8 @@ updated: 2026-10-15T12:56:52.935Z
 - [x] C2. Cleanup fails a test whose in-process hub leaves handles, timers, `process` listeners or child processes, proven by a test that leaks one on purpose.
   - done: impl-393 · 2026-10-15T09:19:34.574Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-9 · 2026-10-15T12:52:43.534Z · commit 36ecea1f6f97445efc149b47b8ba2a7e89b7c89b
-- [x] C3. `serveProject` takes its environment as an option, and two in-process hubs in one file with different adapter timings behave independently, proven by a test.
-  - done: impl-393 · 2026-10-15T09:19:44.326Z
-  - verified: rev-23 [reviewer] · run rev-2026-10-15-393-9 · 2026-10-15T12:52:43.534Z · commit 36ecea1f6f97445efc149b47b8ba2a7e89b7c89b
+- [ ] C3. `serveProject` takes its environment as an option, and two in-process hubs in one file with different adapter timings behave independently, proven by a test.
+  - failed: rev-23 [reviewer] · 2026-10-15T13:12:33.704Z · note Incoming epicMergeFiles lane-hold lookup runs Git with process.env instead of the owning in-process hub's explicit environment.
 - [x] C4. The lifecycle list is posted per file; every test that still calls `startDaemon` or `cland hub start` in the 20 files is on it, and none of the others is.
   - done: impl-393 · 2026-10-15T08:08:39.537Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-2 · 2026-10-15T09:22:40.699Z · commit 519fc215a8f8b84572f079ba0b5a1b35ed8072fa
@@ -292,3 +291,27 @@ Retain pre-adoption red ce86de7b/A-2838 (T-461) and local 6b2bda6d/A-2930 (86 T-
 Review evidence: A-2994.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified, C9 verified.
+
+### impl-393 · 2026-10-15T13:09:21.532Z
+
+Integrated dev e2d9a940 with both sides of six source/test conflicts preserved (b92b6cb0), adopted T-486 and heartbeat allowances with identical patch IDs, and fixed the new heartbeat test's second unawaited suite worker via a terminal-report barrier. Pushed b19dd038 (final dev merge tracker-only). Typecheck green and 147 tests across 10 integration files green; source/audit logs posted in integration evidence. Requesting delta review before a fresh default verify. Prior receipt pair/Neovim run do not settle new integration; C5/C6 retain stage-close amendments.
+
+### rev-23 · 2026-10-15T13:12:33.704Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-15-393-10
+commit: b19dd0381ace053b6bda04131f052c539ad85474
+scope: delta
+
+Medium — hub/src/hub/merge.ts:61 and hub/src/tracker/epic-surfaces.ts:6/9/20: new lane-hold Git lookup omits the owning hub environment. Both territoryGitAsync calls therefore use process.env instead of TaskMerges.#env. A hub with an explicit Git PATH/config/index context can inspect a different merge surface or fail its hold lookup. Thread env through the helper and caller, preserve Git provenance/index isolation, and add a conflicting-environment lane lookup proof. C3 fails for this integration seam.
+
+Other integration review: six conflict resolutions retain explicit env together with T-483's separate warning/fatal callbacks/options and T-454's heartbeat scheduling. New fatal/heartbeat test knobs read the hub env; daemon closes Core before dispatcher/adapters/Tracker/Store, and embedded edge keepalive naming/async close remains intact. Territory's touched-files callbacks preserve explicit env around the new T-335 lane checks, except the helper above. T-486 production state-sequence fix and heartbeat allowance picks have matching upstream stable patch IDs. Final b19dd038 vs tested d8fcf52b changes tracker records only.
+
+The strict projectHub cleanup caught a queued second heartbeat worker. The additive both-results barrier awaits both intended workers before teardown; all prior digest assertions remain. Audited A-3006 red 8/9 and restored strict-cleanup 9/9, plus 147 passing tests across ten targeted files and typecheck evidence; no forced-exit green receipt. Assertion audit retains all identities (2938→3092 calls), both conflict-parent assertions (Agents10/Claude103), and only documented keepalive spelling/reviewed CLI-to-dispatcher refusal forms change. No further high/medium integration finding identified.
+
+No full verify at b19dd038 before C3 correction and new source review. Prior final A-2994/old gate receipts do not settle this production integration; Neovim source also moved, so old A-2993 coverage is not current. C5/C6 remain amended pre-merge data/projection only, with stage-close judgments owed. T-395 second-merger 110-identity reconciliation remains. No Reviewer tests or edits.
+Review evidence: A-3012.
+
+Criteria: C3 failed (Incoming epicMergeFiles lane-hold lookup runs Git with process.env instead of the owning in-process hub's explicit environment.).
