@@ -3,7 +3,7 @@ id: T-296
 kind: task
 title: "OpenCode servers get their own database: the shared database lets OpenCode's background service resume cland's sessions (#51213)"
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - hub
@@ -12,10 +12,10 @@ labels:
 assignee: null
 parent: E-424
 blocked_by: []
-topic: null
-branch: null
+topic: topic-336
+branch: t/T-296-opencode-servers-get-their-own-database
 created: 2026-10-12T16:20:56.477Z
-updated: 2026-10-15T20:59:34.356Z
+updated: 2026-10-15T22:44:43.872Z
 ---
 
 ## Summary

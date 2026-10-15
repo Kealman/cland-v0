@@ -3,7 +3,7 @@ id: T-533
 kind: task
 title: "OpenCode follows 2.x with a check: doctor messages per version and a release-time range check"
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - v0.1.3
@@ -11,10 +11,10 @@ labels:
 assignee: null
 parent: E-424
 blocked_by: []
-topic: null
-branch: null
+topic: topic-337
+branch: t/T-533-opencode-follows-2-x-with-a-check-doctor
 created: 2026-10-15T20:59:18.770Z
-updated: 2026-10-15T20:59:37.609Z
+updated: 2026-10-15T22:44:59.438Z
 ---
 
 ## Summary
