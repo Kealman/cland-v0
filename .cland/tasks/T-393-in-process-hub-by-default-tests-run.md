@@ -2,8 +2,8 @@
 id: T-393
 kind: task
 title: "In-process hub by default: tests run against a hub served in the test process over its real socket, a spawned hub stays only for lifecycle tests, and the top 20 files move first"
-state: open
-status: ready
+state: closed
+status: done
 size: L
 criterion_seq: 9
 labels:
@@ -18,7 +18,8 @@ blocked_by:
 topic: topic-273
 branch: t/T-393-in-process-hub-by-default-tests-run
 created: 2026-10-14T12:28:19.095Z
-updated: 2026-10-15T15:31:46.134Z
+updated: 2026-10-15T15:32:03.749Z
+closed: 2026-10-15T15:32:03.749Z
 ---
 
 ## Summary
@@ -436,3 +437,7 @@ Source A-3090's owning-env/shard/conflict/immutable-lint corrections and retaine
 C5/C6 marks cover ONLY amended pre-merge obligations: posted timing samples, no20% claim; selected starts421→145/historical lower-bound772 projection, not observed current full census/under600. Quiet E-387 stage-close timing against A-2714 and T-466 remain owed. Preserve historical A-3071 green at prior head, earlier A-3038/T-497 red and A-3043 directed five-pass evidence; none replaces this fresh gate. Direct c5da6819 no-waiver requirement satisfied. Full audit A-3123; no Reviewer tests or edits.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified, C9 verified.
+
+### coord · 2026-10-15T15:32:03.749Z
+
+Merged 10fa25e2a7c1ab0e85d18356a35ea1f226e47702 onto dev.

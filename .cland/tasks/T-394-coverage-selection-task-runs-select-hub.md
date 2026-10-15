@@ -3,7 +3,7 @@ id: T-394
 kind: task
 title: "Coverage selection: task runs select hub tests by a function-level V8 coverage map from integrated dev runs, with full fallback on shared or unknown paths"
 state: open
-status: backlog
+status: planned
 size: L
 labels:
   - v0.1.3
@@ -18,7 +18,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-14T12:28:19.272Z
-updated: 2026-10-14T12:28:20.592Z
+updated: 2026-10-15T15:32:05.304Z
 ---
 
 ## Summary

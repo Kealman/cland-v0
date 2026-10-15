@@ -3,7 +3,7 @@ id: T-396
 kind: task
 title: "Worker re-measurement: 4, 5 and 6 workers locally and 6 and 8 on a c-16, after the inspection diet and the in-process hub, and the defaults set from the numbers"
 state: open
-status: backlog
+status: planned
 size: XS
 labels:
   - v0.1.3
@@ -17,7 +17,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-14T12:28:19.638Z
-updated: 2026-10-14T12:28:21.438Z
+updated: 2026-10-15T15:32:05.954Z
 ---
 
 ## Summary
