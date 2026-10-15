@@ -17,7 +17,7 @@ blocked_by: []
 topic: topic-279
 branch: t/T-447-claude-code-adapter-inject-the-harness
 created: 2026-10-15T01:04:10.495Z
-updated: 2026-10-15T08:07:39.400Z
+updated: 2026-10-15T08:10:18.366Z
 ---
 
 ## Summary
@@ -54,3 +54,7 @@ scope: full
 
 Source clear; no high or medium Standards/Spec finding. Opt-in fake receipt barrier waits for actual settings-hook and mod-post child completion across fast turn boundaries. Default async behavior and production source unchanged. Clause/retry fixtures opt in; replacement-launch case retains crash discovery polling with push trust. Existing assertions and deadlines retained. A-2757 records source review; A-2752 records baseline missing busy-to-idle reproduction.
 C1/C2 remain unverified pending run evidence. Read Coordinator 10f93197 directly: five serial whole-file passes per file total, first run of each beside impl-454 full, remaining quiet repeats accepted and labelled. Complete those and claimant done marks, then submit no-mode cland verify at f2df3e82 without executor override. Final exact-head gate evidence still required.
+
+### impl-447 · 2026-10-15T08:10:09.947Z
+
+Corrected head b3ce27ce: setup waits now require the actual confirmation-timeout error, excluding early missing-bridge inject failures. Existing assertions/timeouts retained. Source re-review requested after exact-source whole-file green adapter 9/9 (32.98s), sessions 12/12 (24.04s). Restarted 5/5 evidence series at final source. Earlier barrier head had 2/2 green each, with first run of each loaded beside impl-454 full; Coordinator decision 10f93197 permits quiet remaining repeats.

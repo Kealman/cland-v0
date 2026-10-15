@@ -11,7 +11,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-11T17:47:48.610Z
-updated: 2026-10-15T08:09:43.567Z
+updated: 2026-10-15T08:10:51.415Z
 ---
 
 ## Goal
@@ -76,10 +76,10 @@ Known issues filed during the build:
   - T-444 Human-queue waiters each poll suite.slot about 2.4 times a second
   - T-445 The suite.test.ts cleanup-observer test times out under full-suite load
   - T-446 The artifact-browser attachments test connects before its Neovim socket is up
-  - T-447 The claude-code-adapter "harness never confirmed" retry test failed once in a census run
   - T-449 The session-stop-races Codex forced-stop test reads probe.json before it is written
   - T-450 A hung.test.mjs fixture run leaves its runner and child alive for hours
   - T-453 The executor-run remote-verify scan reads a transient spend.json.lock.break entry
+  - T-461 The claude-code-adapter signed-out watch test sees one extra CLI call under load
 - Tech debt (C-216):
   - T-290 An unknown `permissions` launch value is swallowed, and the launch proceeds
   - T-300 nvim artifacts "prompt drafts are editable full buffers" fails under full-run load
@@ -92,6 +92,8 @@ Known issues filed during the build:
   - T-440 account-limited.test.ts waits on real reset and backoff clocks (about 100 s per file)
   - T-452 Tracker conflict captures pile up (1,661 .conflict files with no pruning)
   - T-460 `cland --help` median is 55.7 ms against T-391's 50 ms idle target
+- Carried into v0.1.3 (R-294) as a shared fix:
+  - T-447 Clause-turn and inject-confirmation waits time out under load in the claude-code-adapter and claude-code-sessions tests
 - Follow-ups (C-326):
   - T-410 Identify fast detached inherited-pipe writers after a stalled run, so the hub can reap them
   - T-443 Idle re-measurement of T-392's inspection diet
