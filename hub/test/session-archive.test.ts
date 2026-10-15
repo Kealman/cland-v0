@@ -26,8 +26,8 @@ test('a real task merge starts the stopped Implementer item window', async t => 
   const launch = await ui.request({ type: 'session.launch', name: 'impl-merge', role: 'implementer', harness: 'claude-code', item: 'T-1' }, 30000);
   assert.equal(launch.ok, true, launch.error);
   const p = (launch.value as { process: HarnessProcessView }).process;
-  await writeFile(join(p.cwd, 'done.txt'), 'implemented\n');
-  execFileSync('git', ['add', 'done.txt'], { cwd: p.cwd });
+  await writeFile(join(p.cwd, 'README.md'), 'implemented\n');
+  execFileSync('git', ['add', 'README.md'], { cwd: p.cwd });
   execFileSync('git', ['commit', '-qm', 'Implement fixture work'], { cwd: p.cwd });
   assert.equal((await ui.request({ type: 'session.stop', session: p.name }, 30000)).ok, true);
   const merged = await cland(root, 'merge', 'T-1', '--override', 'Exercise archive after a real merge', '--json');

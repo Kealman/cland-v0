@@ -66,8 +66,8 @@ test(`${harness}: ${stop} ${forced ? 'forced' : 'graceful'} stop emits stopped w
     return (list.value as { processes: HarnessProcessView[] }).processes.some(p => p.sessionId === row.sessionId && p.state === 'idle') || undefined;
   });
   if (stop === 'post-merge') {
-    await writeFile(join(worktree.path, 'shipped.txt'), 'shipped\n');
-    git(worktree.path, 'add', 'shipped.txt');
+    await writeFile(join(worktree.path, 'README.md'), 'shipped\n');
+    git(worktree.path, 'add', 'README.md');
     git(worktree.path, 'commit', '-qm', 'Ship');
     const merged = await ui.request({ type: 'merge', item, override: 'Exercise post-merge stop classification' }, 30_000);
     assert.equal(merged.ok, true, merged.error);
@@ -139,8 +139,8 @@ process.exitCode = result.status ?? 1;
   });
   if (stop === 'post-merge') {
     const { worktree } = launched.value as { worktree: { path: string } };
-    await writeFile(join(worktree.path, 'shipped.txt'), 'shipped\n');
-    git(worktree.path, 'add', 'shipped.txt');
+    await writeFile(join(worktree.path, 'README.md'), 'shipped\n');
+    git(worktree.path, 'add', 'README.md');
     git(worktree.path, 'commit', '-qm', 'Ship');
   }
   const stopped = await ui.request(stop === 'manual' ? { type: 'session.stop', session: 'impl' } : { type: 'merge', item, override: 'Exercise descendant exit during post-merge stop' }, 30_000);

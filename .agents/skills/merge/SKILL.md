@@ -35,7 +35,7 @@ On refusal:
 - `merge-recovery`: neither integration ref landed the prepared commit, but checkout restoration is pending. Preserve the durable receipt, remove the named obstruction, and retry the same item; it restores the checkout before rechecking the gate.
 - If `merge-recovery` names pending `cland sync`, finish that sync retry before merging; its receipt pins dev until recovery completes.
 
-Only the human's own shell may run `cland merge T-<n> --override "<reason>"`. When that decision is needed, ask the human through the Coordinator's `ask`; the reason goes on the item and into the journal. Override skips verdicts; conflicts and Git safety still apply.
+Only the human's own shell may run `cland merge T-<n> --override "<reason>"`, for changes confined to `.cland/tasks/**`, `.cland/RULES.md`, `docs/**`, `GLOSSARY.md`, files named `README.md` in any directory, and `qa/briefs/**`. The gate checks the immutable merge candidate against its task base, including deletions and both sides of renames. `merge-override-scope` names every other changed path; send that work through review. Configuration files and skill instructions require review even when they are Markdown. When a permitted override decision is needed, ask the human through the Coordinator's `ask`; the reason goes on the item and into the journal. Override skips verdicts and criteria; conflicts and Git safety still apply.
 
 Report the returned commit and cleanup status in the item's topic. If cleanup keeps uncommitted work or a branch moved since merge, preserve its branch and worktree. Use the human's `cland worktree prune` only after the work is safe to remove.
 

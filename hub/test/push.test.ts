@@ -135,8 +135,8 @@ test('merge refuses unpublished root dev before preparation, preserving checkout
   const { root, territory } = await project(t);
   const { item } = JSON.parse(ok(await cland(root, 'task', 'create', '--size', 'M', 'Parser', '--json')).stdout);
   const { worktree } = JSON.parse(ok(await cland(root, 'task', 'claim', item.id, '--json')).stdout);
-  await fs.writeFile(join(worktree.path, 'parser.txt'), 'done\n');
-  git(worktree.path, 'add', 'parser.txt');
+  await fs.writeFile(join(worktree.path, 'GLOSSARY.md'), 'done\n');
+  git(worktree.path, 'add', 'GLOSSARY.md');
   git(worktree.path, 'commit', '-qm', 'Parser');
   git(root, 'add', '.cland/tasks');
   git(root, 'commit', '-qm', 'Record tracker');

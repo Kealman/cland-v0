@@ -647,7 +647,8 @@ export async function squashTask(
   }
   try { await lintHubShardTree(root, tree, env); }
   catch (err) { resumed(() => { throw new MergeError('merge-shards', err instanceof Error ? err.message : String(err), err instanceof ShardManifestError ? err.files : undefined); }); }
-  const touched = await territoryGitAsync(root, ['diff', '--name-only', '-z', before, tree, '--'], undefined, undefined, env);
+  // Include deleted rename sources as well as destinations for path-based merge gates and checkout safety.
+  const touched = await territoryGitAsync(root, ['diff', '--no-renames', '--name-only', '-z', before, tree, '--'], undefined, undefined, env);
   const tracked = await territoryGitAsync(root, ['diff', '--name-only', '-z', 'HEAD', '--'], undefined, undefined, env);
   const untracked = await territoryGitAsync(root, ['ls-files', '--others', '--exclude-standard', '-z'], undefined, undefined, env);
   resumed(() => {

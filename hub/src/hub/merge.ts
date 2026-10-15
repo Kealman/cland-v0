@@ -13,6 +13,13 @@ import { ToolForbidden } from '../roles/permissions.ts';
 
 type MergeResult = { item: string; commit: string; base: string; cleanup: string; followUp?: { step: string; error: string } };
 
+// Human override covers tracker and documentation only; configuration and executable skill instructions need review.
+const MERGE_OVERRIDE_PATHS = {
+  directories: ['.cland/tasks/', 'docs/', 'qa/briefs/'],
+  files: ['.cland/RULES.md', 'GLOSSARY.md'],
+  basenames: ['README.md'],
+};
+
 export class TaskMerges {
   readonly #env: NodeJS.ProcessEnv;
   #stopped = false;
@@ -155,6 +162,13 @@ export class TaskMerges {
           resumed(() => this.#message(checked, override));
           try {
             const result = await squashTask(this.tracker.root, view.branch!, async (tip, base, baseTip, files) => {
+              resumed(() => {
+                if (override === undefined) return;
+                const refused = files.filter(file => !MERGE_OVERRIDE_PATHS.directories.some(dir => file.startsWith(dir))
+                  && !MERGE_OVERRIDE_PATHS.files.includes(file)
+                  && !MERGE_OVERRIDE_PATHS.basenames.some(name => file === name || file.endsWith('/' + name)));
+                if (refused.length) throw new MergeError('merge-override-scope', `override is limited to tracker and documentation changes; review required for: ${refused.join(', ')}`, refused);
+              });
               await this.tracker.refreshFreshness(resumed);
               const now = await this.#view(id, resumed, override === undefined);
               const validateLane = await this.#laneHold(now, files, baseTip, resumed);

@@ -127,7 +127,7 @@ test('merge refusal, landing and recovery cross no synchronous native boundary',
   await ui.request({ type: 'task.claim', item: 'T-1' });
   const view = await tracker.viewAsync('T-1');
   const path = join(root, '.cland', 'worktrees', 'T-1');
-  await fs.promises.writeFile(join(path, 'shipped.txt'), 'shipped\n');
+  await fs.promises.writeFile(join(path, 'README.md'), 'shipped\n');
   await territoryGitAsync(path, ['add', '.']);
   await territoryGitAsync(path, ['commit', '-qm', 'Ship']);
   // Keep completion pending once so retry exercises the receipt path without another squash.

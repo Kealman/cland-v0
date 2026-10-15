@@ -131,8 +131,8 @@ test(`an Implementer pool moves to the next task worktree after merge (${harness
   const held = await ui.request({ type: 'session.launch', name: 'too-early', role: 'implementer', harness, item: second });
   assert.equal(held.ok, false, 'a current claim prevents reuse');
   assert.match(held.error!, /pool size 1/);
-  await writeFile(join(one.worktree.path, 'shipped.txt'), 'first item\n');
-  git(one.worktree.path, 'add', 'shipped.txt'); git(one.worktree.path, 'commit', '-qm', 'Ship first');
+  await writeFile(join(one.worktree.path, 'README.md'), 'first item\n');
+  git(one.worktree.path, 'add', 'README.md'); git(one.worktree.path, 'commit', '-qm', 'Ship first');
   const merged = await ui.request({ type: 'merge', item: first, override: 'Exercise pooled handoff' }, 30_000);
   assert.equal(merged.ok, true, merged.error);
   await eventually('pool member finished its first turn and released its claim after merge', async () => {
@@ -244,7 +244,7 @@ test('merge stops per-item implementers before cleanup, while stop_after never a
     const launched = await ui.request({ type: 'session.launch', name: `impl-${stopAfter}`, role: 'implementer', harness: 'claude-code', item: item.id });
     assert.equal(launched.ok, true, launched.error);
     const { process, worktree } = launched.value as { process: HarnessProcessView; worktree: { path: string; branch: string } };
-    await writeFile(join(worktree.path, `${stopAfter}.txt`), 'shipped\n');
+    await writeFile(join(worktree.path, stopAfter === 'merge' ? 'README.md' : 'GLOSSARY.md'), 'shipped\n');
     git(worktree.path, 'add', '.'); git(worktree.path, 'commit', '-qm', 'Ship');
     const merged = await ui.request({ type: 'merge', item: item.id, override: 'Exercise staffing lifecycle' }, 30_000);
     assert.equal(merged.ok, true, merged.error);

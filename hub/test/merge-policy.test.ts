@@ -88,7 +88,7 @@ test('task view reports QA satisfaction from the same durable evidence as the me
 
 test('the permission table refuses Implementer, Reviewer and QA on spoke and CLI; only the human shell overrides verdicts', async (t) => {
   const { root, ui, rev } = await project(t);
-  const work = await task(root);
+  const work = await task(root, 'Ship the parser', 'README.md');
   const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', sessionId: 'coord-id', role: 'coordinator' });
   onCleanup(t, () => coord.close());
   await coord.waitForPresence(['coord', 'rev']);
@@ -123,6 +123,78 @@ test('the permission table refuses Implementer, Reviewer and QA on spoke and CLI
   assert.ok(skipped.every(event => event.id === work.id && event.override === 'Human checked rescue output'));
   assert.deepEqual(skipped[0]!.criteria, ['C1: Works offline (not done, not verified)']);
 });
+
+test('human override refuses code, configuration and skill Markdown, naming every disallowed path without landing', async t => {
+  const { root, ui } = await project(t);
+  // Init leaves these files untracked and .claude/skills symlinked to .agents/skills.
+  // Give each tested path its own clean base so checkout safety does not mask the scope gate.
+  await rm(join(root, '.claude/skills'));
+  git(root, 'add', '.cland/config.toml', '.cland/crew.toml', '.cland/roles.toml');
+  git(root, 'commit', '-qm', 'Track behavioral configuration');
+  ok(await cland(root, 'push'));
+  const work = await task(root, 'Document the parser', 'README.md');
+  const files = ['.agents/skills/example/SKILL.md', '.cland/config.toml', '.cland/crew.toml', '.cland/roles.toml',
+    '.claude/skills/example/SKILL.md', 'CHANGELOG.md', 'docs-extra/guide.txt', 'hub/src/parser.ts'];
+  for (const file of files) {
+    await mkdir(join(work.path, file, '..'), { recursive: true });
+    await writeFile(join(work.path, file), 'changed\n');
+  }
+  git(work.path, 'add', '.'); git(work.path, 'commit', '-qm', 'Mixed documentation and behavior changes');
+  const before = git(root, 'show-ref');
+  const response = await ui.request({ type: 'merge', item: work.id, override: 'Human checked' }, 30_000);
+  assert.equal(response.ok, false);
+  assert.equal((response as { code?: string }).code, 'merge-override-scope', response.error);
+  assert.deepEqual((response as { files?: string[] }).files, files);
+  const cli = await cland(root, 'merge', work.id, '--override', 'Human checked');
+  assert.equal(cli.code, 1);
+  for (const file of files) assert.ok(cli.stderr.includes(file), cli.stderr);
+  assert.equal(git(root, 'show-ref'), before, 'refusal moves no ref');
+  assert.equal(existsSync(join(root, 'hub/src/parser.ts')), false);
+  assert.equal(json<{ item: { state: string } }>(await cland(root, 'task', 'view', work.id, '--json')).item.state, 'open');
+});
+
+test('human override checks deleted code and both sides of renames into and out of docs', async t => {
+  const { root, ui } = await project(t);
+  await mkdir(join(root, 'hub/src'), { recursive: true });
+  await mkdir(join(root, 'docs'), { recursive: true });
+  for (const file of ['hub/src/deleted.ts', 'hub/src/moved.ts', 'docs/from.txt']) await writeFile(join(root, file), file + '\n');
+  git(root, 'add', 'hub', 'docs'); git(root, 'commit', '-qm', 'Base code and docs');
+  ok(await cland(root, 'push'));
+  const work = await task(root, 'Move parser documentation', 'README.md');
+  git(work.path, 'mv', 'hub/src/moved.ts', 'docs/moved.ts');
+  git(work.path, 'mv', 'docs/from.txt', 'hub/src/renamed.ts');
+  git(work.path, 'rm', 'hub/src/deleted.ts');
+  git(work.path, 'commit', '-qm', 'Delete and rename code');
+  const before = git(root, 'show-ref');
+  const response = await ui.request({ type: 'merge', item: work.id, override: 'Human checked' }, 30_000);
+  assert.equal(response.ok, false);
+  assert.equal((response as { code?: string }).code, 'merge-override-scope', response.error);
+  assert.deepEqual((response as { files?: string[] }).files, ['hub/src/deleted.ts', 'hub/src/moved.ts', 'hub/src/renamed.ts']);
+  assert.equal(git(root, 'show-ref'), before);
+  assert.equal(await readFile(join(root, 'hub/src/moved.ts'), 'utf8'), 'hub/src/moved.ts\n');
+});
+
+for (const [scope, files] of [
+  ['documentation', ['docs/guide.txt', 'GLOSSARY.md', 'hub/README.md', 'qa/briefs/example.txt']],
+  ['tracker', ['.cland/tasks/archive/note.txt', '.cland/RULES.md']],
+] as const) {
+  test(`human override merges ${scope}-only changes without verdicts`, async t => {
+    const { root } = await project(t);
+    git(root, 'add', '.cland/RULES.md'); git(root, 'commit', '-qm', 'Track rulebook');
+    ok(await cland(root, 'push'));
+    const work = await task(root, 'Document the parser', 'README.md');
+    git(work.path, 'restore', '--source=dev', 'README.md');
+    for (const file of files) {
+      await mkdir(join(work.path, file, '..'), { recursive: true });
+      await writeFile(join(work.path, file), file === '.cland/RULES.md' ? '# Project rules\n' : 'documentation\n');
+    }
+    git(work.path, 'add', '.'); git(work.path, 'commit', '-qm', 'Remaining documentation');
+    const merged = json<{ commit: string }>(await cland(root, 'merge', work.id, '--override', 'Human checked documentation', '--json'));
+    assert.equal(git(root, 'rev-parse', 'dev'), merged.commit);
+    for (const file of files) assert.equal(await readFile(join(root, file), 'utf8'), file === '.cland/RULES.md' ? '# Project rules\n' : 'documentation\n');
+    assert.equal(json<{ item: { state: string } }>(await cland(root, 'task', 'view', work.id, '--json')).item.state, 'closed');
+  });
+}
 
 test('patch-equivalent rebases stay reviewed, and later file-only headers cannot replace a hub verdict', async (t) => {
   const { root, ui, rev } = await project(t);

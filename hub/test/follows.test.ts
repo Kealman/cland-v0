@@ -90,7 +90,7 @@ test('follow becomes met on the last merge and blocks only overlapping follower 
   const before = git(root, 'rev-parse', 'dev');
   await assert.rejects(merge(overlap), /merge-hold:.*E-1 demo pending.*README.md/);
   assert.equal(git(root, 'rev-parse', 'dev'), before);
-  const other = await ticket(e2.id, 'other.txt');
+  const other = await ticket(e2.id, 'GLOSSARY.md');
   await merge(other);
   assert.equal(tracker.view(other.id).state, 'closed');
   await assert.rejects(merge(overlap), /merge-hold/);
@@ -167,8 +167,8 @@ for (const change of ['follows', 'verdict'] as const) test(`final surface lookup
   const { root, tracker, e1, e2, ticket, merge, merges } = await fixture(t, env);
   await merge(await ticket(e1.id, 'README.md'));
   const e3 = change === 'follows' ? await tracker.create(human, { title: 'Another predecessor', kind: 'epic' }) : undefined;
-  if (e3) await merge(await ticket(e3.id, 'protected.txt'));
-  const next = await ticket(e2.id, 'protected.txt');
+  if (e3) await merge(await ticket(e3.id, 'GLOSSARY.md'));
+  const next = await ticket(e2.id, 'GLOSSARY.md');
   const reviewer = { id: 'reviewer', name: 'reviewer', role: 'reviewer' };
   await tracker.comment(reviewer, next.id, 'Source clear', { verdict: 'review', result: 'clear', run: 'before-barrier', scope: 'full', commit: git(root, 'rev-parse', next.branch) });
   const before = git(root, 'show-ref');
@@ -201,7 +201,7 @@ exec ${quote(realGit)} "$@"
     await writeFile(release, 'continue');
     await rejected;
     assert.equal(git(root, 'show-ref'), before, 'concurrent gate edits leave all refs unchanged');
-    if (change === 'follows') await assert.rejects(merge(next), /merge-hold:.*E-4 demo pending.*protected.txt/);
+    if (change === 'follows') await assert.rejects(merge(next), /merge-hold:.*E-4 demo pending.*GLOSSARY.md/);
   } finally {
     await writeFile(release, 'cleanup');
     await pending?.catch(() => {});

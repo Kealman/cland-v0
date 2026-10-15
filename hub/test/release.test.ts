@@ -34,8 +34,8 @@ async function merged(root: string, title: string, file: string) {
 
 test('release atomically publishes dev and an annotated tag with item titles, then advances local and territory main', async (t) => {
   const { root, github, territory } = await project(t);
-  await merged(root, 'Ship the parser', 'parser.txt');
-  await merged(root, 'Ship the renderer', 'renderer.txt');
+  await merged(root, 'Ship the parser', 'GLOSSARY.md');
+  await merged(root, 'Ship the renderer', 'README.md');
   git(root, 'commit', '--allow-empty', '-qm', 'Record release metadata');
   const dev = git(root, 'rev-parse', 'dev');
   ok(await cland(root, 'release', 'v0.1.0'));
@@ -65,7 +65,7 @@ async function collaborator(t: TestContext, github: string, file: string, conten
 
 test('sync imports GitHub main and replays unreleased dev commits, updating the root and territory without a GitHub push', async (t) => {
   const { root, github, territory } = await project(t);
-  await merged(root, 'Ship the parser', 'parser.txt');
+  await merged(root, 'Ship the parser', 'GLOSSARY.md');
   await clean(root);
   const oldDev = git(root, 'rev-parse', 'dev');
   const remote = await collaborator(t, github, 'collaborator.txt', 'from github\n');
@@ -78,7 +78,7 @@ test('sync imports GitHub main and replays unreleased dev commits, updating the 
   assert.equal(git(territory, 'rev-parse', 'dev'), git(root, 'rev-parse', 'dev'));
   assert.equal(git(root, 'show', 'dev:collaborator.txt'), 'from github');
   assert.equal(await readFile(join(root, 'collaborator.txt'), 'utf8'), 'from github\n');
-  assert.equal(await readFile(join(root, 'parser.txt'), 'utf8'), 'finished\n');
+  assert.equal(await readFile(join(root, 'GLOSSARY.md'), 'utf8'), 'finished\n');
   assert.match(git(root, 'log', '--format=%B', 'main..dev'), /Item: T-1/);
   assert.equal(git(root, 'status', '--porcelain'), '');
 });
@@ -104,7 +104,7 @@ test('release refusals and dry-run keep every local, territory and GitHub ref, w
   await refuses(['v1'], /release-version/, true);
   await refuses(['v01.0.0'], /release-version/, true);
   await refuses(['v0.1.0'], /release-empty/);
-  await merged(root, 'Ship the parser', 'parser.txt');
+  await merged(root, 'Ship the parser', 'GLOSSARY.md');
   const before = snapshot(root, territory, github);
   const preview = ok(await cland(root, 'release', 'v0.1.0', '--dry-run'));
   assert.match(preview.stdout, /T-1 Ship the parser/);
@@ -129,7 +129,7 @@ test('release refusals and dry-run keep every local, territory and GitHub ref, w
 
 test('a rejected atomic GitHub push retains main and tags and reports the remote hook message', async (t) => {
   const { root, github, territory } = await project(t);
-  await merged(root, 'Ship the parser', 'parser.txt');
+  await merged(root, 'Ship the parser', 'GLOSSARY.md');
   const hook = join(github, 'hooks', 'pre-receive');
   await writeFile(hook, '#!/bin/sh\necho "Release rejected by fixture policy" >&2\nexit 1\n');
   await chmod(hook, 0o755);
@@ -145,7 +145,7 @@ test('a rejected atomic GitHub push retains main and tags and reports the remote
 
 test('only the human and the Coordinator shell release; Implementer, Reviewer and QA shells cannot impersonate them', async (t) => {
   const { root, github, territory } = await project(t);
-  await merged(root, 'Ship the parser', 'parser.txt');
+  await merged(root, 'Ship the parser', 'GLOSSARY.md');
   for (const role of ['implementer', 'reviewer', 'qa', 'coordinator']) {
     const name = `caller-${role}`;
     const sessionId = `${role}-id`;
@@ -185,7 +185,7 @@ test('sync refuses a dirty root, and a replay conflict names its files while pre
 
 test('a release accepted by GitHub but blocked locally reports follow-up and retries the same tag after a hub restart', async (t) => {
   const { root, github, territory } = await project(t, undefined, startDaemon);
-  await merged(root, 'Ship the parser', 'parser.txt');
+  await merged(root, 'Ship the parser', 'GLOSSARY.md');
   const dev = git(root, 'rev-parse', 'dev');
   const main = git(root, 'rev-parse', 'main');
   const lock = join(root, '.git', 'refs', 'heads', 'main.lock');
@@ -210,7 +210,7 @@ test('a release accepted by GitHub but blocked locally reports follow-up and ret
 
 test('release territory failure is recoverable without publishing later dev work', async (t) => {
   const { root, github, territory } = await project(t);
-  await merged(root, 'Ship the parser', 'parser.txt');
+  await merged(root, 'Ship the parser', 'GLOSSARY.md');
   const dev = git(root, 'rev-parse', 'dev');
   const hook = join(territory, 'hooks', 'pre-receive');
   await writeFile(hook, '#!/bin/sh\necho "Territory unavailable" >&2\nexit 1\n');
@@ -226,7 +226,7 @@ test('release territory failure is recoverable without publishing later dev work
 
 test('sync territory failure retries its prepared replay and blocks release until the territory is repaired', async (t) => {
   const { root, github, territory, ui } = await project(t);
-  await merged(root, 'Ship the parser', 'parser.txt');
+  await merged(root, 'Ship the parser', 'GLOSSARY.md');
   await clean(root);
   await collaborator(t, github, 'collaborator.txt', 'from github\n');
   const hook = join(territory, 'hooks', 'pre-receive');
@@ -277,7 +277,7 @@ test('a lost successful GitHub push reply recovers from its receipt even after t
   await writeFile(wrapper, `#!/bin/sh\nif [ "$1" = push ]; then\n  '${realGit.replaceAll("'", "'\\''")}' "$@"\n  code=$?\n  if [ "$code" = 0 ] && [ -f "$CLAND_LOST_PUSH_MARKER" ]; then\n    rm "$CLAND_LOST_PUSH_MARKER"\n    echo "Fixture lost the push reply" >&2\n    exit 1\n  fi\n  exit "$code"\nfi\nexec '${realGit.replaceAll("'", "'\\''")}' "$@"\n`);
   await chmod(wrapper, 0o755);
   const { root, github, territory } = await project(t, { PATH: `${bin}:${process.env.PATH}`, CLAND_LOST_PUSH_MARKER: marker });
-  await merged(root, 'Ship the parser', 'parser.txt');
+  await merged(root, 'Ship the parser', 'GLOSSARY.md');
   const main = git(root, 'rev-parse', 'main');
   const dev = git(root, 'rev-parse', 'dev');
   await writeFile(marker, 'lose reply\n');
@@ -301,8 +301,8 @@ test('post-merge topic discussion permits CLI sync without reviving the task or 
   assert.equal(created.ok, true, created.error);
   const topic = (created.value as { topic: { id: string } }).topic.id;
   const { worktree } = json<{ worktree: { path: string } }>(await cland(root, 'task', 'claim', item.id, '--json'));
-  await writeFile(join(worktree.path, 'parser.txt'), 'finished\n');
-  git(worktree.path, 'add', 'parser.txt');
+  await writeFile(join(worktree.path, 'GLOSSARY.md'), 'finished\n');
+  git(worktree.path, 'add', 'GLOSSARY.md');
   git(worktree.path, 'commit', '-qm', 'Parser');
   ok(await cland(root, 'merge', item.id, '--override', 'test fixture'));
   const posted = await ui.request({ type: 'topic.send', topic, text: 'Later discussion' });
@@ -311,18 +311,18 @@ test('post-merge topic discussion permits CLI sync without reviving the task or 
   const remote = await collaborator(t, github, 'collaborator.txt', 'from github\n');
   ok(await cland(root, 'sync'));
   assert.equal(git(root, 'rev-parse', 'main'), remote);
-  assert.equal(await readFile(join(root, 'parser.txt'), 'utf8'), 'finished\n');
+  assert.equal(await readFile(join(root, 'GLOSSARY.md'), 'utf8'), 'finished\n');
   const view = json<{ item: { state: string } }>(await cland(root, 'task', 'view', item.id, '--json')).item;
   assert.equal(view.state, 'closed');
-  await assert.rejects(readFile(join(worktree.path, 'parser.txt')), { code: 'ENOENT' });
+  await assert.rejects(readFile(join(worktree.path, 'GLOSSARY.md')), { code: 'ENOENT' });
 });
 
 test('sync refuses a landed merge with pending tracker completion, preserving its retry identity', async (t) => {
   const { root, github, territory, discovery } = await project(t);
   const { item } = json<{ item: { id: string; file: string } }>(await cland(root, 'task', 'create', '--size', 'M', 'Ship the parser', '--json'));
   const { worktree } = json<{ worktree: { path: string } }>(await cland(root, 'task', 'claim', item.id, '--json'));
-  await writeFile(join(worktree.path, 'parser.txt'), 'finished\n');
-  git(worktree.path, 'add', 'parser.txt');
+  await writeFile(join(worktree.path, 'GLOSSARY.md'), 'finished\n');
+  git(worktree.path, 'add', 'GLOSSARY.md');
   git(worktree.path, 'commit', '-qm', 'Parser');
   const obstruction = join(root, '.cland', 'tasks', `.${item.file}.${discovery.pid}.tmp`);
   await mkdir(obstruction);
@@ -346,7 +346,7 @@ test('sync refuses a landed merge with pending tracker completion, preserving it
 
 test('a release success-record failure retains its same-version recovery receipt', async (t) => {
   const { root, github } = await project(t, undefined, startDaemon);
-  await merged(root, 'Ship the parser', 'parser.txt');
+  await merged(root, 'Ship the parser', 'GLOSSARY.md');
   ok(await cland(root, 'hub', 'stop'));
   const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db') });
   let fail = true;
@@ -372,8 +372,8 @@ test('a fully rolled-back merge preparation does not prevent sync or a later mer
   const { root, github, territory } = await project(t);
   const { item } = json<{ item: { id: string } }>(await cland(root, 'task', 'create', '--size', 'M', 'Ship the parser', '--json'));
   const { worktree } = json<{ worktree: { path: string } }>(await cland(root, 'task', 'claim', item.id, '--json'));
-  await writeFile(join(worktree.path, 'parser.txt'), 'finished\n');
-  git(worktree.path, 'add', 'parser.txt');
+  await writeFile(join(worktree.path, 'GLOSSARY.md'), 'finished\n');
+  git(worktree.path, 'add', 'GLOSSARY.md');
   git(worktree.path, 'commit', '-qm', 'Parser');
   const before = git(root, 'rev-parse', 'dev');
   const hook = join(territory, 'hooks', 'pre-receive');
@@ -392,12 +392,12 @@ test('a fully rolled-back merge preparation does not prevent sync or a later mer
 
 test('sync success-record failure prevents a later merge until its same-replay retry completes', async (t) => {
   const { root, github } = await project(t, undefined, startDaemon);
-  await merged(root, 'Ship the parser', 'parser.txt');
+  await merged(root, 'Ship the parser', 'GLOSSARY.md');
   const { item } = json<{ item: { id: string } }>(await cland(root, 'task', 'create', '--size', 'M', 'Later work', '--json'));
   const id = item.id;
   const { worktree } = json<{ worktree: { path: string } }>(await cland(root, 'task', 'claim', id, '--json'));
-  await writeFile(join(worktree.path, 'later.txt'), 'later\n');
-  git(worktree.path, 'add', 'later.txt');
+  await writeFile(join(worktree.path, 'README.md'), 'later\n');
+  git(worktree.path, 'add', 'README.md');
   git(worktree.path, 'commit', '-qm', 'Later work');
   await clean(root);
   await collaborator(t, github, 'collaborator.txt', 'from github\n');

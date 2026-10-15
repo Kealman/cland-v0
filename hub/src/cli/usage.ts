@@ -105,7 +105,9 @@ export const WORKTREE_USAGE = `  worktree list   the task worktrees (.cland/work
 `;
 
 export const MERGE_USAGE = `  merge <T-id> [--json]   land one task as a squash commit on its task base (dev); Coordinator or human
-    --override <reason>   the human's shell only: skip verdicts and criteria, record why and unmet criteria; conflicts still refuse
+    --override <reason>   the human's shell only: skip verdicts and criteria for tracker/docs only; record why and unmet criteria
+                          allowed: .cland/tasks/**, .cland/RULES.md, docs/**, GLOSSARY.md, README.md files, qa/briefs/**
+                          other paths require review; conflicts still refuse
 `;
 
 export const PUSH_USAGE = '  push [--json]         fast-forward territory dev to root dev; Coordinator’s shell or human\n';
