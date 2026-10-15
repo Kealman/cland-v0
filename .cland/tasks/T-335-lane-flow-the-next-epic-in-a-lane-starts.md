@@ -3,7 +3,7 @@ id: T-335
 kind: task
 title: "Lane flow: epics follow epics, a follow is met on the last merge, and a merge hold keeps the follower off the predecessor's files until its demo"
 state: open
-status: review
+status: ready
 size: L
 criterion_seq: 7
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-277
 branch: t/T-335-lane-flow-the-next-epic-in-a-lane-starts
 created: 2026-10-13T14:23:44.027Z
-updated: 2026-10-15T11:34:12.854Z
+updated: 2026-10-15T12:08:14.219Z
 ---
 
 ## Summary
@@ -43,14 +43,19 @@ This started as an observation from the human and the stand-in on 2026-10-13 at 
 
 - [x] C1. `task create --follows`, `task link --follows/--unfollow` and the `task.link` tool set and remove `follows` in the frontmatter; a cycle and a non-epic edge are refused, proven by tests.
   - done: impl-335 · 2026-10-15T07:26:34.248Z
+  - verified: rev-26 [reviewer] · run rev-20261015-335-final-1 · 2026-10-15T12:08:01.280Z · commit fcb1de325def92d9f0d18fc998893cf9ee39ca9e
 - [x] C2. In a scratch project where E2 follows E1, `task view E2` shows `follows E-1: met` once E1's last ticket merges, and the open tickets before that; E2 is not marked blocked in `task list`.
   - done: impl-335 · 2026-10-15T07:26:35.534Z
+  - verified: rev-26 [reviewer] · run rev-20261015-335-final-1 · 2026-10-15T12:08:01.281Z · commit fcb1de325def92d9f0d18fc998893cf9ee39ca9e
 - [x] C3. A ticket of E2 whose diff touches a file E1's merges changed is refused at the merge gate with the predecessor, its pending demo and the files named, while a ticket with no overlap merges; both proven by tests.
   - done: impl-335 · 2026-10-15T07:37:23.936Z
+  - verified: rev-26 [reviewer] · run rev-20261015-335-final-1 · 2026-10-15T12:08:01.281Z · commit fcb1de325def92d9f0d18fc998893cf9ee39ca9e
 - [x] C4. The hold lifts when E1 receives its clear demo verdict or closes, proven by a test.
   - done: impl-335 · 2026-10-15T07:26:38.112Z
+  - verified: rev-26 [reviewer] · run rev-20261015-335-final-1 · 2026-10-15T12:08:01.282Z · commit fcb1de325def92d9f0d18fc998893cf9ee39ca9e
 - [x] C5. The card and the explorer show `follows` beside `blocked_by`.
   - done: impl-335 · 2026-10-15T07:26:39.039Z
+  - verified: rev-26 [reviewer] · run rev-20261015-335-final-1 · 2026-10-15T12:08:01.283Z · commit fcb1de325def92d9f0d18fc998893cf9ee39ca9e
 - [x] C6. The Coordinator clause in both places and the `merge`, `to-tickets` and `plan-epic` skills describe follows, the met rule, the hold and preparing the next epic during the last stage's review.
   - done: impl-335 · 2026-10-15T07:39:48.888Z
   - verified: rev-26 [reviewer] · run rev-20261015-335-source-3 · 2026-10-15T07:40:56.538Z · commit bbe943079f12a43dcc707d527fe718b9a58ddfd6
@@ -58,6 +63,7 @@ This started as an observation from the human and the stand-in on 2026-10-13 at 
   - verified: rev-26 [reviewer] · run rev-20261015-335-source-5 · 2026-10-15T08:29:23.109Z · commit 7ea539c76f214ab1b4a8912ec20d70636fd97fd0
   - verified: rev-26 [reviewer] · run rev-20261015-335-source-6 · 2026-10-15T10:00:41.032Z · commit b6ba04e77de9d9635c00946f526e6edacaeb8ab4
   - verified: rev-26 [reviewer] · run rev-20261015-335-source-7 · 2026-10-15T11:00:26.690Z · commit fcb1de325def92d9f0d18fc998893cf9ee39ca9e
+  - verified: rev-26 [reviewer] · run rev-20261015-335-final-1 · 2026-10-15T12:08:01.283Z · commit fcb1de325def92d9f0d18fc998893cf9ee39ca9e
 - [x] C7. `hub/README.md` and GLOSSARY's Follows entry describe the relation, the met rule and the hold.
   - done: impl-335 · 2026-10-15T07:26:40.394Z
   - verified: rev-26 [reviewer] · run rev-20261015-335-source-3 · 2026-10-15T07:40:56.538Z · commit bbe943079f12a43dcc707d527fe718b9a58ddfd6
@@ -65,6 +71,7 @@ This started as an observation from the human and the stand-in on 2026-10-13 at 
   - verified: rev-26 [reviewer] · run rev-20261015-335-source-5 · 2026-10-15T08:29:23.109Z · commit 7ea539c76f214ab1b4a8912ec20d70636fd97fd0
   - verified: rev-26 [reviewer] · run rev-20261015-335-source-6 · 2026-10-15T10:00:41.033Z · commit b6ba04e77de9d9635c00946f526e6edacaeb8ab4
   - verified: rev-26 [reviewer] · run rev-20261015-335-source-7 · 2026-10-15T11:00:26.690Z · commit fcb1de325def92d9f0d18fc998893cf9ee39ca9e
+  - verified: rev-26 [reviewer] · run rev-20261015-335-final-1 · 2026-10-15T12:08:01.283Z · commit fcb1de325def92d9f0d18fc998893cf9ee39ca9e
 
 ## Comments
 
@@ -227,3 +234,21 @@ No high or medium findings. Exact shared T-487 1419bc34 pick only; fixed clock a
 Renew C6/C7. C1–C5/final settlement await the replacement no-mode --executor local gate preserved by Coordinator 9f7d6175; prior A-2893 cancellation does not consume it. A-2794 Linux hub evidence and b4ec2b7f disposition remain, with Linux Neovim owed at E-423 stage-1 close. No Reviewer tests run.
 
 Criteria: C6 verified, C7 verified.
+
+### impl-335 · 2026-10-15T12:06:29.801Z
+
+Authorized local Neovim package phase completed at source-clear fcb1de325def92d9f0d18fc998893cf9ee39ca9e: `npm run test:nvim -- nvim/test/*.test.ts`, normal lease, exit0, 387/387 pass, no failures/skips/cancellations. Durable full log A-2960. Darwin arm64 Node24.21.0, suite219.44s, peakload44.68; collected under load, existing phase allowed to finish after load rule. Final evidence sent to Reviewer: Linux hub A-2794+A-2935 plus local UI A-2960 and Coordinator 5bed3f06/90193e8c/d05c60c7 disposition. Linux Neovim remains E-423 stage-1 close obligation. Clean tree; no further test runs.
+
+### rev-26 · 2026-10-15T12:08:01.284Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261015-335-final-1
+commit: fcb1de325def92d9f0d18fc998893cf9ee39ca9e
+scope: evidence
+
+No outstanding high or medium findings. C1–C4 pass through all ten follows cases in both Linux hub receipts, including exact merge surfaces, demo/closure release and concurrent follows/verdict revalidation. C5 is covered by same-head A-2960: explicit all-36-file local Neovim package run, 387/387 pass, zero fail/cancel/skip, normal lease; loaded green (peak 44.68), not a quiet/performance claim. Branch/worktree head still fcb1de32 and worktree clean. C6/C7 reviewed source remains unchanged.
+Final gate expressly follows Coordinator 1742ad5b and 5bed3f06, plus 90193e8c/d05c60c7: A-2794 and A-2935 are the accepted Linux hub pair with disjoint known failures and own hub green; A-2960 supplies local UI coverage. Neither Linux receipt is represented as green overall. Linux Neovim remains owed at E-423 stage-1 close after T-454/T-455/T-335 merge, with any attributed defect fixed forward there. Cancelled attempts provide no coverage. Final evidence A-2962. No Reviewer tests run.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.

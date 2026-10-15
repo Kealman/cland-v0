@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-10-15T09:35:18.691Z
+updated: 2026-10-15T12:04:13.634Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -259,3 +259,11 @@ Incident 2026-10-15 09:14:40Z: hub outage of about 4.5 min. T-253's fail-fast ex
 ### coord · 2026-10-15T09:35:18.691Z
 
 Lost run from the 09:14Z outage: T-454's verify 7a4f3460 at bdcddc3c (started 09:04:47Z) exited 1 after 10 min without a machine-shard summary (A-2832). It straddled the hub's fatal exit and restart. The Coordinator authorized one fresh run that is not counted as the flaky-rule resubmit.
+
+### human · 2026-10-15T12:03:11.359Z
+
+Incident: unattributed hub auto-start after a stand-in restart (second sighting). 2026-10-15 12:00:36.148Z human CLI hub.stop (atomic-restart.sh) → 12:00:36.162Z hub-stopped pid 21598 → 12:00:36.645Z hub-started pid 496, i.e. 0.5 s later, before the script's own 'cland hub start' at ~12:00:41Z, which printed 'hub already running'. pid 496 is 'node hub/bin/cland.ts hub serve' with parent launchd (pid 1), started 14:00:36 local. No audit event names the starter; the next client calls are human CLI hub.status 12:00:39Z and nvim subscribe 12:00:44Z. First sighting: 09:14–09:18Z outage recovery, when two unattributed hub serve processes (pids 15615, 57876) started without CLAND_TEST_TRACKER_STALL_MS and died on the 5 s stall. This time the environment was correct (token present, knob absent, cap 6 loaded) only because nothing was exported. Needed: find which spoke or client auto-starts 'hub serve' when the socket disappears, and make hub-started record its starter (argv parent, client) so an env-dependent restart cannot be pre-empted silently.
+
+### human · 2026-10-15T12:04:13.634Z
+
+Incident: unattributed hub auto-start after a stand-in restart (second sighting). 2026-10-15 12:00:36.148Z human CLI hub.stop (atomic-restart.sh) → 12:00:36.162Z hub-stopped pid 21598 → 12:00:36.645Z hub-started pid 496, 0.5 s later, before the script's own 'cland hub start' at ~12:00:41Z, which printed 'hub already running'. pid 496 is 'node hub/bin/cland.ts hub serve', parent launchd (pid 1), started 14:00:36 local. No audit event names the starter; the next client calls are human CLI hub.status 12:00:39Z and nvim subscribe 12:00:44Z. First sighting: the 09:14–09:18Z outage recovery, when two unattributed hub serve processes (pids 15615, 57876) started without CLAND_TEST_TRACKER_STALL_MS and died on the 5 s stall. This time the environment was correct (token present, knob absent, cap 6 loaded) only because nothing had to be exported. Needed: find which spoke or client auto-starts 'hub serve' when the socket disappears, and make hub-started record its starter (parent, client) so an env-dependent restart cannot be pre-empted silently.
