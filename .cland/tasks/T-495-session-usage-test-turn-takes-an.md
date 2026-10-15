@@ -2,8 +2,8 @@
 id: T-495
 kind: task
 title: "session-usage test: turn() takes an uncorrelated usage frame (12 vs 24) and the journal read meets a limits-only row (Linux)"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -16,7 +16,8 @@ regression_of: T-389
 topic: topic-298
 branch: t/T-495-session-usage-test-turn-takes-an
 created: 2026-10-15T13:10:49.459Z
-updated: 2026-10-15T15:16:59.440Z
+updated: 2026-10-15T15:17:28.853Z
+closed: 2026-10-15T15:17:28.853Z
 ---
 
 ## Problem
@@ -162,3 +163,7 @@ No failing test name overlaps across the receipts. Task source is unchanged acro
 Criteria: C2 verified, C1 retained. No third run required by eea1467c. No Reviewer tests or edits.
 
 Criteria: C2 verified.
+
+### coord · 2026-10-15T15:17:28.853Z
+
+Merged 43aedf80bcf8579438fea3f9af73014b57227b6e onto dev.

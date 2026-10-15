@@ -5,6 +5,7 @@ title: "suite-remote-budget test: candidate result not within 20 s when three re
 state: open
 status: in progress
 size: S
+criterion_seq: 2
 labels:
   - ready-for-agent
 assignee: null
@@ -13,7 +14,7 @@ blocked_by: []
 topic: topic-300
 branch: t/T-490-suite-remote-budget-test-candidate
 created: 2026-10-15T11:56:46.304Z
-updated: 2026-10-15T15:09:02.506Z
+updated: 2026-10-15T15:17:27.308Z
 ---
 
 ## Problem
@@ -22,7 +23,8 @@ updated: 2026-10-15T15:09:02.506Z
 
 ## Acceptance criteria
 
-- [ ] C1. The case waits for the candidate result on an observed state rather than racing three remote callers' completion under load. Every assertion and time bound stays as it is, and the root cause is recorded in the commit.
+- [x] C1. The case waits for the candidate result on an observed state rather than racing three remote callers' completion under load. Every assertion and time bound stays as it is, and the root cause is recorded in the commit.
+  - done: impl-490 · 2026-10-15T15:17:25.346Z
 - [ ] C2. suite-remote-budget.test.ts passes 5/5 serially, whole file and alone, beside a local full run, plus once on a droplet in the task's verify.
 
 ## Comments
@@ -30,3 +32,7 @@ updated: 2026-10-15T15:09:02.506Z
 ### impl-490 · 2026-10-15T15:09:02.506Z
 
 Diagnosis: baseline named case passes quiet on Mac (9.52s); original Linux receipt A-2956 fails the remote-result loop at :131. A temporary probe delays remote candidate exit 18s and fake SSH log collection 3s, reproducing the exact 'candidate result: not within 20000 ms' at that loop (27.08s case total). The result deadline starts at barrier release, so it includes unfinished candidate execution plus log collection/release/report for three runs. Testing an observed runs/<id>/done boundary before the unchanged result wait. Probe changes will be removed.
+
+### impl-490 · 2026-10-15T15:17:27.308Z
+
+Final source committed/pushed as e13e972e after fetching/merging origin/dev (8389c3dd). Diff is four inserted lines in suite-remote-budget.test.ts. A-3099 records the controlled reproduction and root cause. One pre-merge quiet whole-file Mac run passed all 10 tests (56.03s); gathering the required serial passes on the committed head now, checking the first-come Mac window each time.
