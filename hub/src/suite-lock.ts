@@ -69,7 +69,7 @@ export async function sweep(holder: Holder): Promise<void> {
   };
   // One discovery sweep per completed phase (also used for crashed-holder recovery).
   const anchors = holder.runner ? [holder.runner] : [];
-  await cleanupProcesses(await ownedRoot(), anchors, line => process.stderr.write(`${line}\n`), holder.token, anchors);
+  await cleanupProcesses(await ownedRoot(), anchors, line => process.stderr.write(`${line}\n`), holder.token, anchors, { discover: true });
   const root = await ownedRoot();
   if (root) await rm(root, { recursive: true, force: true });
 }

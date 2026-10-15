@@ -183,7 +183,7 @@ test('a late Claude PID can be stopped while its identity probe is pending', { s
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 const args = process.argv.slice(2);
-if (args[0] === '-o' && args[1] === 'lstart=' && existsSync(${JSON.stringify(target)}) && args[3] === readFileSync(${JSON.stringify(target)}, 'utf8')) {
+if (args[0] === '-o' && args[1] === 'pid=,lstart=' && existsSync(${JSON.stringify(target)}) && args[3].split(',').includes(readFileSync(${JSON.stringify(target)}, 'utf8'))) {
   writeFileSync(${JSON.stringify(entered)}, '');
   while (!existsSync(${JSON.stringify(release)})) await new Promise(r => setTimeout(r, 10));
 }

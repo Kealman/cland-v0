@@ -11,7 +11,7 @@ import { ownProcess } from './process-cleanup.ts';
 test('session stop and doctor share one termination owner and report the tree once', async t => {
   const root = await tempProject(t);
   const fake = await fakeCodex(t, { env: { FAKE_CODEX_TERM_DELAY_MS: '10000', CLAND_STOP_GRACE_MS: '2000' } });
-  const daemon = await startDaemon(t, root, fake.env);
+  const daemon = await startDaemon(t, root, fake.env, { sweep: true });
   const ui = await connectUi(t, daemon.discovery);
   const launched = await ui.request({ type: 'session.launch', name: 'impl', harness: 'codex' }, 30_000);
   assert.equal(launched.ok, true, launched.error);

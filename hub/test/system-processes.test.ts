@@ -78,10 +78,13 @@ cp.spawn = (bin, args) => {
       output = tableOutput ?? [row(process.pid, 1, process.pid), ...rows].filter(p => !selected || selected.includes(p.pid)).map(p =>
         p.pid + ' ' + p.parent + ' ' + p.group + ' ' + p.started + ' ' + p.state + ' ' + p.command).join('\\n');
     } else {
-      const pid = Number(args[args.indexOf('-p') + 1]);
-      const verified = pid === process.pid ? undefined : await onProbe(pid);
-      const started = verified === false ? undefined : pid === process.pid ? start : rows.find(p => p.pid === pid)?.started;
-      output = started ?? '';
+      const identities = [];
+      for (const pid of args[args.indexOf('-p') + 1].split(',').map(Number)) {
+        const verified = pid === process.pid ? undefined : await onProbe(pid);
+        const started = verified === false ? undefined : pid === process.pid ? start : rows.find(p => p.pid === pid)?.started;
+        if (started) identities.push(args.includes('pid=,lstart=') ? pid + ' ' + started : started);
+      }
+      output = identities.join('\\n');
     }
     child.stdout.end(output); child.stderr.end(); child.emit('close', 0);
   });

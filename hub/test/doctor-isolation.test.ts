@@ -10,8 +10,8 @@ test('doctor --fix under one fixture root preserves another deleted-project hub'
   const root = await tempProject(t, 'live-', scope);
   const removed = await tempProject(t, 'removed-', scope);
   const other = await tempProject(t, 'cland-other-doctor-');
-  const owned = await startDaemon(t, removed);
-  const foreign = await startDaemon(t, other);
+  const owned = await startDaemon(t, removed, {}, { sweep: true });
+  const foreign = await startDaemon(t, other, {}, { sweep: true });
   await rm(removed, { recursive: true });
   await rm(other, { recursive: true });
   const candidates = await findOrphans(root, true, undefined, scope);

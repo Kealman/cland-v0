@@ -1324,7 +1324,10 @@ import { existsSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { setTimeout as pause } from 'node:timers/promises';
 const args = process.argv.slice(2);
-if (existsSync(${JSON.stringify(hold)}) && args.at(-1) === String(process.ppid)) {
+// Startup no longer warms the hub's async self probe. Hold only the worker's
+// self probe, so admission can still read the hub's own identity.
+const parent = spawnSync(${JSON.stringify(ps)}, ['-o', 'command=', '-p', String(process.ppid)], { encoding: 'utf8' });
+if (existsSync(${JSON.stringify(hold)}) && args.at(-1) === String(process.ppid) && parent.stdout?.includes('/hub/suite-worker.ts')) {
   writeFileSync(${JSON.stringify(entered)}, String(process.ppid));
   while (!existsSync(${JSON.stringify(release)})) await pause(25);
 }

@@ -129,6 +129,13 @@ test('a stopped pooled Reviewer reaches its item lead; a killed lead reaches the
   const revLaunch = await ui.request({ type: 'session.launch', name: 'rev', role: 'reviewer', harness: 'claude-code' });
   assert.equal(revLaunch.ok, true, revLaunch.error);
   await coord.waitForPresence(['coord', 'impl', 'rev']);
+  // The faster fixture can reach the injected states before the clause's late
+  // Stop/mod signals. Settle that automatic turn before testing cancellation.
+  const reviewer = (revLaunch.value as { process: { harnessId: string } }).process;
+  await eventually('Reviewer clause signals settled', async () => {
+    const log = await fake.log(reviewer.harnessId);
+    return log.includes('hooks Stop done') && log.includes('session.measure done') ? true : undefined;
+  });
   assert.equal((await ui.request({ type: 'task.hold', item: item.id, as: { name: 'rev' } })).ok, true);
   const signal = async (session: string, event: string) => {
     const result = await ui.request({ type: 'session.signal', session, event, payload: event === 'permission' ? { tool_name: 'Bash' } : {}, at: Date.now() });

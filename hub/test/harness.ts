@@ -314,9 +314,10 @@ export async function isolateVerification(root: string): Promise<void> {
   }
 }
 
-/** Start the fixture daemon and register teardown before returning its discovery. */
-export async function startDaemon(t: TestContext, root: string, env: Record<string, string> = {}): Promise<{ result: CliResult; discovery: Discovery }> {
-  env = { DIGITALOCEAN_TOKEN: '', CLAND_EXECUTOR_STATE: join(root, '.cland/executor-state'), ...env };
+/** Start a fixture without startup orphan inspection; pass { sweep: true } as the fourth argument to opt in.
+ * An explicit CLAND_TEST_SKIP_ORPHAN_SWEEP in env takes precedence. Teardown owns the returned PID. */
+export async function startDaemon(t: TestContext, root: string, env: Record<string, string> = {}, options: { sweep?: boolean } = {}): Promise<{ result: CliResult; discovery: Discovery }> {
+  env = { DIGITALOCEAN_TOKEN: '', CLAND_EXECUTOR_STATE: join(root, '.cland/executor-state'), CLAND_TEST_SKIP_ORPHAN_SWEEP: options.sweep ? '0' : '1', ...env };
   const result = await clandWithEnv(root, env, 'hub', 'start');
   let discovery: Discovery | null = null;
   try {

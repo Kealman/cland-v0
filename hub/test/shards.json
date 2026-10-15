@@ -77,6 +77,7 @@
     "hub/test/prepared-project.test.ts": "machine",
     "hub/test/presence.test.ts": "machine",
     "hub/test/process-cleanup.test.ts": "machine",
+    "hub/test/process-started.test.ts": "machine",
     "hub/test/progress.test.ts": "machine",
     "hub/test/prompt-races.test.ts": "machine",
     "hub/test/push.test.ts": "machine",

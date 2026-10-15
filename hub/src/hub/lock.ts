@@ -10,6 +10,7 @@
 import fs from 'node:fs/promises';
 import { withCleanup, withCleanupAsync } from '../cleanup.ts';
 import { randomUUID } from 'node:crypto';
+import { setImmediate } from 'node:timers';
 import { spawnSync } from 'node:child_process';
 import { linkSync, readFileSync, rmSync, writeFileSync, mkdirSync, renameSync, rmdirSync, readdirSync, lstatSync } from 'node:fs';
 import { run } from '../doctor/report.ts';
@@ -39,10 +40,60 @@ export function processStarted(pid: number, timezone?: 'UTC'): string | null {
   return parseStarted(r.stdout);
 }
 
-/** `processStarted` without blocking: `ps` awaited, killed at the same deadline. */
+type StartedProbe = { promise: Promise<string | null>; resolve: (started: string | null) => void };
+type StartedBatch = { probes: Map<number, StartedProbe>; pending: Map<number, StartedProbe> };
+const startedBatches = new Map<string, StartedBatch>();
+
+/** Compatible callers in one turn share a targeted ps. Keep only in-flight identities. */
+function startedProbe(pid: number, timeoutMs: number, timezone?: 'UTC'): Promise<string | null> {
+  if (!Number.isSafeInteger(pid) || pid <= 0) return Promise.resolve(null);
+  const key = `${timezone ?? 'local'}:${timeoutMs}`;
+  let batch = startedBatches.get(key);
+  if (!batch) {
+    batch = { probes: new Map(), pending: new Map() };
+    startedBatches.set(key, batch);
+  }
+  const existing = batch.probes.get(pid);
+  if (existing) return existing.promise;
+  const probe = Promise.withResolvers<string | null>();
+  batch.probes.set(pid, probe);
+  batch.pending.set(pid, probe);
+  if (batch.pending.size === 1) {
+    const owned = batch;
+    setImmediate(() => {
+      const pending = owned.pending;
+      owned.pending = new Map();
+      void (async () => {
+        const identities = new Map<number, string>();
+        try {
+          const result = await run('ps', ['-o', 'pid=,lstart=', '-p', [...pending.keys()].join(',')], timezone ? { ...process.env, TZ: timezone, LC_ALL: 'C' } : process.env, timeoutMs);
+          // ps can return 1 for a missing PID while still printing the live subset.
+          if (!result.error && (result.code === 0 || result.code === 1)) {
+            for (const line of result.stdout.split('\n')) {
+              const match = /^\s*(\d+)\s+(\S+\s+\S+\s+\d+\s+\S+\s+\d+)\s*$/.exec(line);
+              if (match) identities.set(Number(match[1]), parseStarted(match[2]!)!);
+            }
+          }
+        } catch {
+          // Native probe failures provide no identity proof.
+        } finally {
+          // Remove before waking callers, so their next call always reads afresh.
+          for (const [pid, probe] of pending) {
+            owned.probes.delete(pid);
+            probe.resolve(identities.get(pid) ?? null);
+          }
+          if (!owned.probes.size) startedBatches.delete(key);
+        }
+      })();
+    });
+  }
+  return probe.promise;
+}
+
+/** `processStarted` without blocking: batch compatible reads, resume each caller separately. */
 export async function processStartedAsync(pid: number, timeoutMs = PS_TIMEOUT_MS, resumed: Resumed = work => work(), timezone?: 'UTC'): Promise<string | null> {
-  const result = await run('ps', ['-o', 'lstart=', '-p', String(pid)], timezone ? { ...process.env, TZ: timezone, LC_ALL: 'C' } : process.env, timeoutMs);
-  return resumed(() => result.code === 0 && !result.error ? parseStarted(result.stdout) : null);
+  const started = await startedProbe(pid, timeoutMs, timezone);
+  return resumed(() => started);
 }
 
 /** This process's own start time, asked once: it never changes. */

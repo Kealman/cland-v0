@@ -173,7 +173,12 @@ function ownership(rows: ProcessRow[], cwd: Map<number, string>, roots: string[]
  * Environment markers are hints only: macOS flattens other values into marker-looking text.
  * `root` must be verified by the caller; helper-registered roots also retain device/inode proof.
  */
-export async function cleanupProcesses(root?: string, seeds: ProcessIdentity[] = [], report?: (line: string) => void, runId = RUN_ID, anchors: ProcessIdentity[] = self ? [self] : []): Promise<number> {
+export async function cleanupProcesses(root?: string, seeds: ProcessIdentity[] = [], report?: (line: string) => void, runId = RUN_ID, anchors: ProcessIdentity[] = self ? [self] : [], options: { discover?: boolean } = {}): Promise<number> {
+  if (seeds.length && !options.discover) return cleanupRecordedProcesses(seeds, report, anchors, root, runId);
+  return cleanupDiscoveredProcesses(root, seeds, report, runId, anchors);
+}
+
+async function cleanupDiscoveredProcesses(root?: string, seeds: ProcessIdentity[] = [], report?: (line: string) => void, runId = RUN_ID, anchors: ProcessIdentity[] = self ? [self] : []): Promise<number> {
   const rows = processes();
   const markers = report ? runMarkers(rows) : new Map<number, string>();
   // Seed cleanup needs cwd proof only for the seeds and their descendants. Root
@@ -187,10 +192,18 @@ export async function cleanupProcesses(root?: string, seeds: ProcessIdentity[] =
   const roots = [...directories].filter(([path, identity]) => directoryStillOwned(path, identity)).map(([path]) => path);
   if (root) roots.push(root);
   const owned = ownership(rows, cwd, roots, anchors);
-  const protectedPids = new Set<number>();
+  // A registered PID which was replaced cannot regain ownership from its cwd.
+  // Its new descendants belong to that replacement, not the recorded fixture.
+  const protectedPids = new Set(seeds.filter(seed => rows.some(row => row.pid === seed.pid && (row.started !== seed.started || seed.group !== undefined && row.group !== seed.group))).map(seed => seed.pid));
+  for (let changed = true; changed;) {
+    changed = false;
+    for (const row of rows) if (protectedPids.has(row.parent) && !protectedPids.has(row.pid)) { protectedPids.add(row.pid); changed = true; }
+  }
   const protectedGroups = new Set<number>();
   let ancestor = rows.find(row => row.pid === process.pid);
-  while (ancestor && !protectedPids.has(ancestor.pid)) {
+  const ancestors = new Set<number>();
+  while (ancestor && !ancestors.has(ancestor.pid)) {
+    ancestors.add(ancestor.pid);
     protectedPids.add(ancestor.pid); protectedGroups.add(ancestor.group);
     ancestor = rows.find(row => row.pid === ancestor!.parent);
   }
@@ -267,6 +280,10 @@ const selfStarted = self ? Date.parse(self.started) : -Infinity;
 const newerThanSelf = (row: ProcessIdentity) => Date.parse(row.started) >= selfStarted;
 let protectedPids: Set<number> | undefined;
 export async function cleanupOwnedProcesses(seeds: ProcessIdentity[]): Promise<void> {
+  await cleanupRecordedProcesses(seeds);
+}
+
+async function cleanupRecordedProcesses(seeds: ProcessIdentity[], report?: (line: string) => void, anchors: ProcessIdentity[] = [], root?: string, runId = RUN_ID): Promise<number> {
   seeds = seeds.filter(seed => {
     if (settled.has(seed)) return false;
     // An exited leader can leave its captured group alive. Absence settles only
@@ -274,7 +291,7 @@ export async function cleanupOwnedProcesses(seeds: ProcessIdentity[]): Promise<v
     if (alive(seed.pid) || seed.group === seed.pid && seed.pid !== self?.group) return true;
     settled.add(seed); return false;
   });
-  if (!seeds.length) return;
+  if (!seeds.length) return 0;
   if (!protectedPids) {
     protectedPids = new Set([process.pid]);
     for (let pid = self?.parent; pid && !protectedPids.has(pid);) {
@@ -286,11 +303,16 @@ export async function cleanupOwnedProcesses(seeds: ProcessIdentity[]): Promise<v
   }
   const protectedForCleanup = protectedPids;
   const groups = seeds.filter(seed => seed.group === seed.pid && seed.pid !== self?.group && !protectedForCleanup.has(seed.pid) && newerThanSelf(seed)).map(seed => seed.pid);
-  const rows = processes(seeds.filter(seed => alive(seed.pid)).map(seed => seed.pid), groups);
+  const rows = processes([...seeds.filter(seed => alive(seed.pid)).map(seed => seed.pid), ...anchors.map(anchor => anchor.pid)], groups);
+  // A live PID whose original identity cannot be verified needs the full proof.
+  // A gone leader may still have selected survivors: retain the targeted cwd path.
+  if ([...seeds, ...anchors].some(seed => alive(seed.pid) && !rows.some(row => row.pid === seed.pid && row.started === seed.started && (seed.group === undefined || row.group === seed.group)))) {
+    return cleanupDiscoveredProcesses(root, seeds, report, runId, anchors);
+  }
   const expected = new Map<number, ProcessRow>();
   for (const seed of seeds) {
     const row = rows.find(row => row.pid === seed.pid);
-    if (row && !protectedForCleanup.has(row.pid) && newerThanSelf(row) && row.started === seed.started && row.group === seed.group) expected.set(row.pid, row);
+    if (row && !protectedForCleanup.has(row.pid) && newerThanSelf(row) && row.started === seed.started && (seed.group === undefined || row.group === seed.group)) expected.set(row.pid, row);
   }
   for (let changed = true; changed;) {
     changed = false;
@@ -310,7 +332,7 @@ export async function cleanupOwnedProcesses(seeds: ProcessIdentity[]): Promise<v
   }
   if (!expected.size) {
     for (const seed of seeds) settled.add(seed);
-    return;
+    return 0;
   }
   // This targeted snapshot verifies the seeds and ancestry of every current group member.
   const current = inspectedCwd ? processes([...expected.keys()], groups) : rows;
@@ -322,6 +344,7 @@ export async function cleanupOwnedProcesses(seeds: ProcessIdentity[]): Promise<v
     const leader = current.find(member => member.pid === row.group);
     const wholeGroup = groups.includes(row.group) && leader !== undefined && verified(leader) && current.filter(member => member.group === row.group).every(verified);
     if (wholeGroup) signalledGroups.add(row.group);
+    report?.(`cleanup pid ${row.pid}: ${row.command}`);
     try { process.kill(wholeGroup ? -row.group : row.pid, 'SIGKILL'); }
     catch (error) {
       if ((error as NodeJS.ErrnoException).code === 'ESRCH') continue;
@@ -336,6 +359,7 @@ export async function cleanupOwnedProcesses(seeds: ProcessIdentity[]): Promise<v
     await pause(50);
   }
   for (const seed of seeds) settled.add(seed);
+  return targets.length;
 }
 
 const ownedPids = new Map<number, ProcessIdentity>();

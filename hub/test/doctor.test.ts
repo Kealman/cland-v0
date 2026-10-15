@@ -76,7 +76,7 @@ async function initialised(t: TestContext, env: Record<string, string>): Promise
 test('a healthy project on a healthy machine: every check ok, plain text, exit 0; then each failure faked names itself and its fix', async (t) => {
   const tools = await toolchain(t);
   const root = await initialised(t, tools.env);
-  await startDaemon(t, root);
+  await startDaemon(t, root, {}, { sweep: true });
 
   await t.test('every check is ok and the exit code is 0', async () => {
     const { code, report: r } = await report(root, tools.env);
@@ -303,7 +303,7 @@ test('a project with no hub: the hub is a warning (startable), the exit code 0; 
   assert.equal(code, 0);
 
   // a secret others can read
-  const started = await startDaemon(t, root);
+  const started = await startDaemon(t, root, {}, { sweep: true });
   await chmod(join(root, '.cland', 'secret'), 0o644);
   const loose = await report(root, tools.env);
   assert.equal(check(loose.report, 'secret').verdict, 'fail');
@@ -339,7 +339,7 @@ const alive = (pid: number): boolean => {
 test('a probe that never answers is cut at its deadline: the lock probe and a harness both, and their whole process group is killed', async (t) => {
   const tools = await toolchain(t);
   const root = await initialised(t, tools.env);
-  await startDaemon(t, root);
+  await startDaemon(t, root, {}, { sweep: true });
   const dir = await tempProject(t, 'cland-doctor-hang-');
   const pids = join(dir, 'pids');
   await hanging(dir, 'ps', pids);
@@ -362,7 +362,7 @@ test('a probe that never answers is cut at its deadline: the lock probe and a ha
 test('a stale hub.json naming a dead pid while a live hub holds the lock is a failure naming the holder', async (t) => {
   const tools = await toolchain(t);
   const root = await initialised(t, tools.env);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await startDaemon(t, root, {}, { sweep: true });
   const dead = await new Promise<number>((res) => {
     const child = spawn(process.execPath, ['-e', '']);
     child.on('exit', () => res(child.pid ?? 0));

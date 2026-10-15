@@ -8,11 +8,11 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import WebSocket from 'ws';
 import { PROTOCOL_VERSION } from '../src/protocol.ts';
-import { assignRole, cland, connectSocket, killDaemon, pidAlive, readDiscovery, sleep, spawnSpoke, startDaemon, tempProject, NO_PS } from './harness.ts';
+import { assignRole, cland, connectSocket, killDaemon, pidAlive, readDiscovery, eventually, sleep, spawnSpoke, startDaemon, tempProject, NO_PS } from './harness.ts';
 
 test('cland hub start creates the .cland skeleton and the discovery file', async (t) => {
   const root = await tempProject(t);
-  const { result, discovery } = await startDaemon(t, root);
+  const { result, discovery } = await startDaemon(t, root, {}, { sweep: true });
   assert.match(result.stdout, new RegExp(`hub started for ${root}`));
 
   assert.deepEqual(Object.keys(discovery).sort(), ['pid', 'port', 'root', 'secret', 'socket', 'version']);
@@ -39,8 +39,8 @@ test('cland hub start creates the .cland skeleton and the discovery file', async
 
 test('a second cland hub start reports the running daemon instead of starting another', async (t) => {
   const root = await tempProject(t);
-  const first = await startDaemon(t, root);
-  const second = await startDaemon(t, root);
+  const first = await startDaemon(t, root, {}, { sweep: true });
+  const second = await startDaemon(t, root, {}, { sweep: true });
   assert.match(second.result.stdout, new RegExp(`hub already running for ${root}`));
   assert.match(second.result.stdout, new RegExp(`pid +${first.discovery.pid}\\b`));
   assert.equal(second.discovery.pid, first.discovery.pid);
@@ -52,7 +52,7 @@ test('a stale hub.json, whose pid is gone, is replaced by a fresh hub', async (t
   const dead = spawnSync(process.execPath, ['-e', '']).pid;
   await mkdir(join(root, '.cland'), { recursive: true });
   await writeFile(join(root, '.cland', 'hub.json'), JSON.stringify({ socket: join(root, '.cland', 'hub.sock'), port: 1, secret: 'x', pid: dead, version: '0.0.0' }));
-  const { result, discovery } = await startDaemon(t, root);
+  const { result, discovery } = await startDaemon(t, root, {}, { sweep: true });
   assert.match(result.stdout, /replacing a stale .*hub\.json \(pid \d+ is gone\)/);
   assert.match(result.stdout, /hub started for/);
   assert.notEqual(discovery.pid, dead);
@@ -61,7 +61,7 @@ test('a stale hub.json, whose pid is gone, is replaced by a fresh hub', async (t
 
 test('a spoke started in the project with no hub environment connects through the discovery file; status shows it from another process', async (t) => {
   const root = await tempProject(t);
-  await startDaemon(t, root);
+  await startDaemon(t, root, {}, { sweep: true });
   // a session started deeper in the tree walks up to the project's .cland/
   const sub = join(root, 'src', 'deep');
   await mkdir(sub, { recursive: true });
@@ -87,7 +87,7 @@ test('a spoke started in the project with no hub environment connects through th
 
 test('a wrong secret is refused on the WebSocket and on the Unix socket; the right one is welcomed', async (t) => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await startDaemon(t, root, {}, { sweep: true });
 
   const status = await new Promise<number>((resolve, reject) => {
     const ws = new WebSocket(`ws://127.0.0.1:${discovery.port}`, { headers: { authorization: 'Bearer not-the-secret' } });
@@ -118,7 +118,7 @@ test('a wrong secret is refused on the WebSocket and on the Unix socket; the rig
 
 test('cland hub stop ends the daemon and removes hub.json and the socket', async (t) => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await startDaemon(t, root, {}, { sweep: true });
   const stopped = await cland(root, 'hub', 'stop');
   assert.equal(stopped.code, 0, stopped.stderr);
   assert.match(stopped.stdout, new RegExp(`hub stopped for ${root} \\(pid ${discovery.pid}\\)`));
@@ -139,12 +139,12 @@ test('cland hub stop ends the daemon and removes hub.json and the socket', async
 
 test('a spoke follows its hub through a restart: the discovery file is read again on reconnect', async (t) => {
   const root = await tempProject(t);
-  const first = await startDaemon(t, root);
+  const first = await startDaemon(t, root, {}, { sweep: true });
   const spoke = await spawnSpoke({ discover: true, cwd: root, name: 'alpha' });
   t.after(() => spoke.close());
   await spoke.waitForPresence(['alpha']);
   assert.equal((await cland(root, 'hub', 'stop')).code, 0);
-  const second = await startDaemon(t, root);
+  const second = await startDaemon(t, root, {}, { sweep: true });
   assert.notEqual(second.discovery.pid, first.discovery.pid);
   assert.equal(second.discovery.secret, first.discovery.secret, 'the secret is kept across restarts');
   await spoke.waitForPresence(['alpha']);
@@ -156,7 +156,7 @@ test('a project path too long for a Unix socket puts the socket under the temp d
   const base = await tempProject(t);
   const root = join(base, 'a-rather-long-directory-name-'.repeat(3));
   await mkdir(root, { recursive: true });
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await startDaemon(t, root, {}, { sweep: true });
   assert.ok(discovery.socket.startsWith(tmpdir()), discovery.socket);
   assert.ok(Buffer.byteLength(discovery.socket) <= 100);
   assert.match((await cland(root, 'hub', 'status')).stdout, /^hub running for/);
@@ -168,7 +168,7 @@ test('git sees only what is meant to be committed under .cland/ while a hub runs
   const root = await tempProject(t);
   const git = (...args: string[]) => spawnSync('git', args, { cwd: root, encoding: 'utf8' });
   assert.equal(git('init', '-q').status, 0);
-  await startDaemon(t, root);
+  await startDaemon(t, root, {}, { sweep: true });
   await mkdir(join(root, '.cland', 'tasks'), { recursive: true });
   await writeFile(join(root, '.cland', 'tasks', 'T-1.md'), '# a task\n');
   await writeFile(join(root, '.cland', 'roles.toml'), '');
@@ -183,7 +183,7 @@ test('git sees only what is meant to be committed under .cland/ while a hub runs
 
 test('both edges speak one protocol: a spoke hello over the Unix socket; a client hello over the WebSocket is refused (the human side is the socket)', async (t) => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await startDaemon(t, root, {}, { sweep: true });
 
   await assignRole(root, 'sock', 'implementer');
   const spoke = await connectSocket(discovery.socket);
@@ -270,14 +270,14 @@ test('cland hub stop never signals a process that is not the project\'s hub: it 
   }
   // and `start` treats such a hub.json as stale instead of refusing
   await writeFile(join(root, '.cland', 'hub.json'), JSON.stringify(bogus));
-  const { result } = await startDaemon(t, root);
+  const { result } = await startDaemon(t, root, {}, { sweep: true });
   assert.match(result.stdout, /hub started for/);
   assert.ok(pidAlive(pid));
 });
 
 test('a stopping hub leaves alone a socket that is no longer the one it bound, and hub.json goes only at the end', async (t) => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await startDaemon(t, root, {}, { sweep: true });
   // someone else's socket now stands at the path (the old hub's file was replaced under it)
   await rm(discovery.socket);
   const other = createServer((c) => c.destroy());
@@ -302,17 +302,59 @@ test('a stopping hub leaves alone a socket that is no longer the one it bound, a
 test('a stale hub.lock — its hub was killed, or its pid now belongs to another process — does not stop a start', { skip: NO_PS }, async (t) => {
   const root = await tempProject(t);
   const lockFile = join(root, '.cland', 'hub.lock');
-  const first = await startDaemon(t, root);
+  const first = await startDaemon(t, root, {}, { sweep: true });
   await killDaemon(first.discovery.pid);
   assert.equal((JSON.parse(await readFile(lockFile, 'utf8')) as { pid: number }).pid, first.discovery.pid, 'a killed hub leaves its lock');
-  const second = await startDaemon(t, root);
+  const second = await startDaemon(t, root, {}, { sweep: true });
   assert.notEqual(second.discovery.pid, first.discovery.pid);
   assert.equal((await cland(root, 'hub', 'stop')).code, 0);
   await assert.rejects(stat(lockFile), { code: 'ENOENT' }, 'a stopped hub releases its lock');
 
   // a live pid that is not the process which took the lock: the start time tells them apart
   await writeFile(lockFile, JSON.stringify({ pid: process.pid, started: 'Thu Jan  1 00:00:00 1970' }));
-  const third = await startDaemon(t, root);
+  const third = await startDaemon(t, root, {}, { sweep: true });
   assert.match(third.result.stdout, /hub started for/);
   assert.equal((JSON.parse(await readFile(lockFile, 'utf8')) as { pid: number }).pid, third.discovery.pid);
+});
+
+
+test('fixture startup skips orphan inspection by default; opt-in and production startup still sweep', async t => {
+  for (const mode of ['fixture', 'opt-in', 'production', 'override'] as const) {
+    const root = await tempProject(t);
+    const trace = join(root, 'inspection.jsonl');
+    await writeFile(trace, '');
+    const preload = join(root, 'inspection.mjs');
+    await writeFile(preload, `import cp from 'node:child_process';
+import { appendFileSync } from 'node:fs';
+import { syncBuiltinESMExports } from 'node:module';
+const spawn = cp.spawn;
+cp.spawn = function(command, args, options) {
+  if (['ps', 'lsof'].includes(command)) appendFileSync(${JSON.stringify(trace)}, JSON.stringify({ command, args }) + '\\n');
+  return spawn(command, args, options);
+};
+syncBuiltinESMExports();
+`);
+    const env = { NODE_OPTIONS: `--import=${preload}` };
+    const { discovery } = mode === 'production'
+      ? await (async () => {
+        const { clandWithEnv } = await import('./harness.ts');
+        const result = await clandWithEnv(root, env, 'hub', 'start');
+        assert.equal(result.code, 0, result.stderr);
+        const discovery = await readDiscovery(root);
+        ownProcess(t, discovery.pid);
+        return { discovery };
+      })()
+      : await startDaemon(t, root, mode === 'override' ? { ...env, CLAND_TEST_SKIP_ORPHAN_SWEEP: '1' } : env, { sweep: mode !== 'fixture' });
+    const skipped = mode === 'fixture' || mode === 'override';
+    await eventually('startup sweep decision is logged', async () => {
+      const log = await readFile(join(root, '.cland/log/hub.log'), 'utf8');
+      return log.includes(`"event":"orphan-sweep-${skipped ? 'skipped' : 'completed'}"`) ? true : undefined;
+    });
+    const log = await readFile(join(root, '.cland/log/hub.log'), 'utf8');
+    assert.equal(log.includes('"event":"orphan-sweep-started"'), !skipped);
+    const inspections = (await readFile(trace, 'utf8')).trim().split('\n').filter(Boolean).map(line => JSON.parse(line) as { command: string; args: string[] });
+    const scans = inspections.filter(row => row.command === 'lsof' || row.args.includes('-e') || row.args.some(arg => arg.includes('-ax')));
+    assert.equal(scans.length > 0, !skipped, JSON.stringify(inspections));
+    await killDaemon(discovery.pid);
+  }
 });

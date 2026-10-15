@@ -384,3 +384,64 @@ syncBuiltinESMExports();
 await cleanup();
 `), []);
 });
+
+
+test('recorded cleanup verifies seeds and descendants without machine-wide inspection', () => {
+  assert.deepEqual(probe(`
+rows = [
+ { pid: 420050, parent: 1, group: 420050, started: start, command: 'fixture' },
+ { pid: 420051, parent: 420050, group: 420050, started: start, command: 'fixture child' },
+ { pid: 420052, parent: 1, group: 420050, started: start, command: 'unrelated' }
+];
+const seed = captureProcess(420050);
+const exec = cp.execFileSync; const probes = [];
+cp.execFileSync = (command, args) => {
+ if (command === 'lsof' || args.includes('-e') || args.includes('eww')) throw new Error('recorded cleanup inspected the machine');
+ probes.push({ command, args });
+ return exec(command, args);
+};
+syncBuiltinESMExports();
+assert.equal(await cleanupProcesses(undefined, [seed], () => {}, 'owned-run', []), 2);
+assert.equal(probes.filter(probe => probe.command === 'pgrep').length, 1);
+assert.equal(rows.length, 1);
+assert.equal(rows[0].pid, 420052);
+`), [{ pid: 420050, signal: 'SIGKILL' }, { pid: 420051, signal: 'SIGKILL' }]);
+});
+
+test('a recorded seed that fails identity verification falls back to discovery and stays unsignalled', () => {
+  assert.deepEqual(probe(`
+rows = [{ pid: 420053, parent: 1, group: 420053, started: start, command: 'fixture' }];
+const seed = captureProcess(420053);
+rows[0].started = 'Tue Oct 6 12:00:00 2026';
+const exec = cp.execFileSync; let discovered = false;
+cp.execFileSync = (command, args) => { if (command === 'ps' && args.includes('-e')) discovered = true; return exec(command, args); };
+syncBuiltinESMExports();
+assert.equal(await cleanupProcesses(undefined, [seed], () => {}, 'owned-run', []), 0);
+assert.equal(discovered, true);
+`), []);
+});
+
+
+test('fallback discovery preserves a replaced seed and its replacement children even inside the fixture root', () => {
+  assert.deepEqual(probe(`
+rows = [{ pid: 420054, parent: 1, group: 420054, started: start, command: 'fixture' }];
+const seed = captureProcess(420054);
+rows = [
+ { pid: 420054, parent: 1, group: 420054, started: 'Tue Oct 6 12:00:00 2026', command: 'replacement' },
+ { pid: 420055, parent: 420054, group: 420054, started: 'Tue Oct 6 12:00:00 2026', command: 'replacement child' }
+];
+cwd = 'p420054\\nn' + root + '\\np420055\\nn' + root + '\\n';
+assert.equal(await cleanupProcesses(root, [seed], () => {}, 'owned-run', []), 0);
+`), []);
+});
+
+test('fallback protects the invoking worker ancestors even when a stale seed reuses the worker PID', () => {
+  assert.deepEqual(probe(`
+const seed = { pid: process.pid, group: process.pid, started: 'Thu Jan 1 00:00:00 1970' };
+cwd = 'p420061\\nn' + root + '\\n';
+await cleanupProcesses(root, [seed], () => {}, 'owned-run', []);
+`, `rows = [
+ { pid: process.pid, parent: 420061, group: process.pid, started: start, command: 'cleanup worker' },
+ { pid: 420061, parent: 1, group: 420061, started: start, command: 'invoking shell', runId: 'owned-run' }
+];`), []);
+});

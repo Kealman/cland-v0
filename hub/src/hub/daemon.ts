@@ -298,6 +298,10 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
   void adapters.sessions.resumeAll().then(() => { if (!stopping) accountPoller!.start(); });
   // Socket readiness never awaits cleanup. Reservations cover servers spawned before their row is published.
   sweep = new Promise<void>(resolve => setImmediate(resolve)).then(async () => {
+    if (process.env.CLAND_TEST_SKIP_ORPHAN_SWEEP === '1') {
+      log({ event: 'orphan-sweep-skipped', reason: 'test-fixture' });
+      return;
+    }
     log({ event: 'orphan-sweep-started' });
     const ended = await sweepOrphans(root, log, 'harness', { pending: () => stopping !== null || adapters!.sessions.lifecyclePending() });
     log({ event: 'orphan-sweep-completed', ended: ended.map(p => p.process.pid) });

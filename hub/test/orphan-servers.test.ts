@@ -26,7 +26,7 @@ async function startupSweep(root: string, pid: number): Promise<void> {
 async function leftoverCodex(t: import('node:test').TestContext, status: string) {
   const root = await tempProject(t);
   const fake = await fakeCodex(t);
-  const first = await startDaemon(t, root, fake.env);
+  const first = await startDaemon(t, root, fake.env, { sweep: true });
   const ui = await connectUi(t, first.discovery);
   const launched = await ui.request({ type: 'session.launch', name: 'impl', harness: 'codex' }, 30_000);
   assert.equal(launched.ok, true, launched.error);
@@ -50,7 +50,7 @@ test('an exited server with an unknown recorded start time is reported but never
   assert.match(orphan.reason, /session impl.*identity cannot be verified/);
   assert.deepEqual(await sweepOrphans(root, () => {}), []);
   await clandWithEnv(root, env, 'doctor', '--fix', '--json');
-  const restarted = await startDaemon(t, root, env);
+  const restarted = await startDaemon(t, root, env, { sweep: true });
   await startupSweep(root, restarted.discovery.pid);
   assert.equal(pidAlive(pid), true);
 });
@@ -67,7 +67,7 @@ test('a reused pid is preserved even when its server has project cwd, socket and
   assert.deepEqual(await sweepOrphans(root, () => {}), []);
   const fixed = await clandWithEnv(root, env, 'doctor', '--fix', '--json');
   assert.match(fixed.stdout, /PID was reused/);
-  const restarted = await startDaemon(t, root, env);
+  const restarted = await startDaemon(t, root, env, { sweep: true });
   await startupSweep(root, restarted.discovery.pid);
   assert.equal(pidAlive(pid), true);
 });
@@ -75,7 +75,7 @@ test('a reused pid is preserved even when its server has project cwd, socket and
 for (const status of ['exited', 'stopped', 'offline']) {
   test(`doctor --fix ends the app-server of a ${status} session and preserves a running session`, async t => {
     const { root, env, pid } = await leftoverCodex(t, status);
-    const { discovery } = await startDaemon(t, root, env);
+    const { discovery } = await startDaemon(t, root, env, { sweep: true });
     // Avoid startup cleanup in this test: restore a leftover after the background sweep settles.
     await eventually('startup sweep ends initial leftover', async () => !pidAlive(pid) ? true : undefined, 15_000);
     const ui = await connectUi(t, discovery);
@@ -104,7 +104,7 @@ test('doctor names an exited session’s leftover app-server; hub start sweeps i
   const checks = (JSON.parse(report.stdout) as { checks: Array<{ name: string; detail: string; fix?: string }> }).checks;
   assert.ok(checks.some(check => check.name === 'orphan harness' && check.detail.includes(String(pid)) && check.detail.includes('session impl (exited)') && check.fix === 'cland doctor --fix'), report.stdout);
   assert.equal(pidAlive(pid), true, 'doctor is read-only by default');
-  const second = await startDaemon(t, root, env);
+  const second = await startDaemon(t, root, env, { sweep: true });
   await eventually('background sweep ends exited server', async () => !pidAlive(pid) ? true : undefined, 15_000);
   assert.match(second.result.stdout, /orphan cleanup runs in the background/);
   const swept = await clandWithEnv(root, env, 'doctor', '--json');
@@ -143,7 +143,7 @@ for (const harness of ['codex', 'opencode', 'claude-code']) {
     const root = await tempProject(t);
     // Keep the fake turn running while stop and relaunch prove server death.
     const fake = harness === 'codex' ? await fakeCodex(t, { turnMs: 10000 }) : harness === 'opencode' ? await fakeOpenCode(t) : await fakeClaude(t);
-    const { discovery } = await startDaemon(t, root, { ...fake.env, CLAND_STOP_GRACE_MS: '200', FAKE_CODEX_TERM_DELAY_MS: '10000', FAKE_OPENCODE_IGNORE_TERM: '1', FAKE_OPENCODE_CHILD: '1', FAKE_CLAUDE_IGNORE_TERM: '1' });
+    const { discovery } = await startDaemon(t, root, { ...fake.env, CLAND_STOP_GRACE_MS: '200', FAKE_CODEX_TERM_DELAY_MS: '10000', FAKE_OPENCODE_IGNORE_TERM: '1', FAKE_OPENCODE_CHILD: '1', FAKE_CLAUDE_IGNORE_TERM: '1' }, { sweep: true });
     const ui = await connectUi(t, discovery);
     const launch = await ui.request({ type: 'session.launch', name: 'impl', harness }, 30_000);
     assert.equal(launch.ok, true, launch.error);
@@ -185,7 +185,7 @@ test('hub start sweeps an OpenCode server without a process-table row and preser
   const root = await tempProject(t);
   const fake = await fakeOpenCode(t);
   const orphan = await leftoverOpenCode(t, root, OPENCODE_FAKE, fake.env);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await startDaemon(t, root, fake.env, { sweep: true });
   await eventually('background sweep ends untracked server', async () => !pidAlive(orphan) ? true : undefined, 15_000);
   const ui = await connectUi(t, discovery);
   const launch = await ui.request({ type: 'session.launch', name: 'impl', harness: 'opencode' }, 30_000);
@@ -193,7 +193,7 @@ test('hub start sweeps an OpenCode server without a process-table row and preser
   const p = (launch.value as { process: Harness }).process;
   ui.close();
   await clandWithEnv(root, fake.env, 'hub', 'stop');
-  await startDaemon(t, root, fake.env);
+  await startDaemon(t, root, fake.env, { sweep: true });
   assert.equal(pidAlive(p.pid), true, 'a running row is resumed, never swept');
 });
 
@@ -205,7 +205,7 @@ test('real OpenCode serve left behind is swept by hub start', async t => {
   if (!version) { t.skip('OpenCode is absent or cannot run on this machine'); return; }
   const root = await tempProject(t);
   const pid = await leftoverOpenCode(t, root, 'opencode', {});
-  const { result } = await startDaemon(t, root);
+  const { result } = await startDaemon(t, root, {}, { sweep: true });
   await eventually('background sweep ends real OpenCode', async () => !pidAlive(pid) ? true : undefined, 15_000);
   assert.match(result.stdout, /orphan cleanup runs in the background/);
 });
@@ -215,8 +215,8 @@ test('doctor reports a hub whose project was deleted; --fix ends it while preser
   const root = await tempProject(t, 'live-', scope);
   const removed = await tempProject(t, 'removed-', scope);
   const env = { CLAND_TEST_ORPHAN_ROOT: scope };
-  const { discovery } = await startDaemon(t, removed);
-  const live = await startDaemon(t, root);
+  const { discovery } = await startDaemon(t, removed, {}, { sweep: true });
+  const live = await startDaemon(t, root, {}, { sweep: true });
   await rm(removed, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
   await sleep(100);
   const readOnly = await clandWithEnv(root, env, 'doctor', '--json');
@@ -236,7 +236,7 @@ test('a project-specific log without a verified project cwd is reported and pres
   const other = await tempProject(t);
   const fake = await fakeOpenCode(t);
   const pid = await leftoverOpenCode(t, root, OPENCODE_FAKE, fake.env, other);
-  const { result } = await startDaemon(t, root, fake.env);
+  const { result } = await startDaemon(t, root, fake.env, { sweep: true });
   assert.equal(pidAlive(pid), true);
   assert.match(result.stdout, /orphan cleanup runs in the background/);
   await eventually('ambiguity journalled', async () => /orphan-preserved/.test(await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')) ? true : undefined);
@@ -248,7 +248,7 @@ test('a project-specific log without a verified project cwd is reported and pres
 test('a Codex app-server whose row was lost is swept even when a long project path put its socket in the temp dir', async t => {
   const root = await tempProject(t);
   const fake = await fakeCodex(t);
-  const first = await startDaemon(t, root, fake.env);
+  const first = await startDaemon(t, root, fake.env, { sweep: true });
   const ui = await connectUi(t, first.discovery);
   const launched = await ui.request({ type: 'session.launch', name: 'impl', harness: 'codex' }, 30_000);
   assert.equal(launched.ok, true, launched.error);
@@ -257,7 +257,7 @@ test('a Codex app-server whose row was lost is swept even when a long project pa
   await clandWithEnv(root, fake.env, 'hub', 'stop');
   const db = new DatabaseSync(join(root, '.cland', 'hub.db'));
   db.exec('delete from harness_processes'); db.close();
-  await startDaemon(t, root, fake.env);
+  await startDaemon(t, root, fake.env, { sweep: true });
   await eventually('background sweep ends lost-row Codex', async () => !pidAlive(p.pid) ? true : undefined, 15_000);
 });
 
@@ -272,7 +272,7 @@ setInterval(() => {}, 1000);
 `);
   await chmod(wrapper, 0o755);
   const env = { ...fake.env, CLAND_OPENCODE_BIN: wrapper };
-  const first = await startDaemon(t, root, env);
+  const first = await startDaemon(t, root, env, { sweep: true });
   const ui = await connectUi(t, first.discovery);
   const launch = await ui.request({ type: 'session.launch', name: 'impl', harness: 'opencode' }, 30_000);
   assert.equal(launch.ok, true, launch.error);
@@ -282,7 +282,7 @@ setInterval(() => {}, 1000);
   assert.notEqual(p.pid, child.pid);
   ui.close();
   await clandWithEnv(root, env, 'hub', 'stop');
-  const second = await startDaemon(t, root, env);
+  const second = await startDaemon(t, root, env, { sweep: true });
   await startupSweep(root, second.discovery.pid);
   assert.equal(pidAlive(p.pid), true);
   assert.equal(pidAlive(child.pid), true, 'the verified running wrapper protects its server child');
@@ -306,7 +306,7 @@ setInterval(() => {}, 1000);
 `);
   await chmod(wrapper, 0o755);
   const env = { ...fake.env, CLAND_OPENCODE_BIN: wrapper };
-  const first = await startDaemon(t, root, env);
+  const first = await startDaemon(t, root, env, { sweep: true });
   const ui = await connectUi(t, first.discovery);
   const launch = await ui.request({ type: 'session.launch', name: 'impl', harness: 'opencode' }, 30_000);
   assert.equal(launch.ok, true, launch.error);
@@ -335,7 +335,7 @@ for (const harness of ['codex', 'opencode']) {
   test(`${harness}: an unverifiable live server remains running and supervised after refused stop/relaunch`, async t => {
     const root = await tempProject(t);
     const fake = harness === 'codex' ? await fakeCodex(t) : await fakeOpenCode(t);
-    const { discovery } = await startDaemon(t, root, fake.env);
+    const { discovery } = await startDaemon(t, root, fake.env, { sweep: true });
     const ui = await connectUi(t, discovery);
     const launch = await ui.request({ type: 'session.launch', name: 'impl', harness }, 30_000);
     assert.equal(launch.ok, true, launch.error);
@@ -372,7 +372,7 @@ test('hub start opens its socket promptly while sixteen TERM-resistant orphans a
   const env = { ...fake.env, FAKE_OPENCODE_IGNORE_TERM: '1' };
   const pids = await Promise.all(Array.from({ length: 16 }, (_, i) => leftoverOpenCode(t, root, OPENCODE_FAKE, env, root, `orphan-${i}`)));
   const started = performance.now();
-  const { discovery } = await startDaemon(t, root, env);
+  const { discovery } = await startDaemon(t, root, env, { sweep: true });
   assert.ok(performance.now() - started < 5000, 'cleanup cannot hold socket startup behind sixteen grace periods');
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'hub.status' })).ok, true);
