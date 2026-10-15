@@ -3,7 +3,7 @@ id: T-390
 kind: task
 title: "Duration budget: a manifest of test times from the latest green integrated log, a 5 s per test and 60 s per file budget with a reasoned allowlist, and the top regressions in the suite report"
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 7
 labels:
@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-267
 branch: t/T-390-duration-budget-a-manifest-of-test-times
 created: 2026-10-14T12:28:10.528Z
-updated: 2026-10-15T03:42:47.344Z
+updated: 2026-10-15T05:03:09.872Z
 ---
 
 ## Summary
@@ -71,6 +71,7 @@ New tests average 2.74 s against 1.69 s for the suite, and nothing pushes back, 
   - verified: rev-23 [reviewer] · run rev-2026-10-15-390-5 · 2026-10-15T02:38:27.810Z · commit 95570270dc70f7a6e9f6e76b628f8895d93412c5
   - verified: rev-23 [reviewer] · run rev-2026-10-15-390-7 · 2026-10-15T03:01:28.949Z · commit 1e6dd6c30bf82d07c4ea84025d834f5bdf95b0e5
   - verified: rev-23 [reviewer] · run rev-2026-10-15-390-9 · 2026-10-15T03:42:28.752Z · commit b5fd4b806e317dc8b68946ce0b3e08fd5ad6f72f
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-390-10 · 2026-10-15T05:03:07.391Z · commit b5fd4b806e317dc8b68946ce0b3e08fd5ad6f72f
 - [x] C2. A test added on a scratch branch that sleeps 6 s fails that branch's run with a `duration budget` line naming it, and passes once listed in `allow` with a reason; the two run results are posted on the item.
   - done: impl-390 · 2026-10-15T00:09:47.549Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-390-2 · 2026-10-15T00:16:31.548Z · commit 65a80003f93150ca0207085a2f762af1e223eee3
@@ -78,6 +79,7 @@ New tests average 2.74 s against 1.69 s for the suite, and nothing pushes back, 
   - verified: rev-23 [reviewer] · run rev-2026-10-15-390-5 · 2026-10-15T02:38:27.810Z · commit 95570270dc70f7a6e9f6e76b628f8895d93412c5
   - verified: rev-23 [reviewer] · run rev-2026-10-15-390-7 · 2026-10-15T03:01:28.949Z · commit 1e6dd6c30bf82d07c4ea84025d834f5bdf95b0e5
   - verified: rev-23 [reviewer] · run rev-2026-10-15-390-9 · 2026-10-15T03:42:28.752Z · commit b5fd4b806e317dc8b68946ce0b3e08fd5ad6f72f
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-390-10 · 2026-10-15T05:03:07.392Z · commit b5fd4b806e317dc8b68946ce0b3e08fd5ad6f72f
 - [x] C3. A file over 60 s not in `allow` fails the run naming the file, and a `TODO` reason is refused at admission through the shard-manifest path.
   - done: impl-390 · 2026-10-15T00:13:34.088Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-390-2 · 2026-10-15T00:16:31.548Z · commit 65a80003f93150ca0207085a2f762af1e223eee3
@@ -85,8 +87,13 @@ New tests average 2.74 s against 1.69 s for the suite, and nothing pushes back, 
   - verified: rev-23 [reviewer] · run rev-2026-10-15-390-5 · 2026-10-15T02:38:27.810Z · commit 95570270dc70f7a6e9f6e76b628f8895d93412c5
   - verified: rev-23 [reviewer] · run rev-2026-10-15-390-7 · 2026-10-15T03:01:28.949Z · commit 1e6dd6c30bf82d07c4ea84025d834f5bdf95b0e5
   - verified: rev-23 [reviewer] · run rev-2026-10-15-390-9 · 2026-10-15T03:42:28.752Z · commit b5fd4b806e317dc8b68946ce0b3e08fd5ad6f72f
-- [ ] C4. The posted suite result shows up to five `duration regression` lines, and a test that the hub suite runs against fixture logs proves the 1 s and 50% thresholds.
-- [ ] C5. Measured: the check and the second reporter add under 2 s to a full run's wall time, shown by the duration lines of the runs before and after this ticket at nearby heads.
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-390-10 · 2026-10-15T05:03:07.392Z · commit b5fd4b806e317dc8b68946ce0b3e08fd5ad6f72f
+- [x] C4. The posted suite result shows up to five `duration regression` lines, and a test that the hub suite runs against fixture logs proves the 1 s and 50% thresholds.
+  - done: impl-390 · 2026-10-15T05:02:53.315Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-390-10 · 2026-10-15T05:03:07.392Z · commit b5fd4b806e317dc8b68946ce0b3e08fd5ad6f72f
+- [x] C5. Measured: the check and the second reporter add under 2 s to a full run's wall time, shown by the duration lines of the runs before and after this ticket at nearby heads.
+  - done: impl-390 · 2026-10-15T05:02:54.020Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-390-10 · 2026-10-15T05:03:07.392Z · commit b5fd4b806e317dc8b68946ce0b3e08fd5ad6f72f
 - [x] C6. Without the manifest the runner behaves exactly as before, and no existing runner test changes its assertions.
   - done: impl-390 · 2026-10-15T00:09:48.304Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-390-2 · 2026-10-15T00:16:31.548Z · commit 65a80003f93150ca0207085a2f762af1e223eee3
@@ -94,6 +101,7 @@ New tests average 2.74 s against 1.69 s for the suite, and nothing pushes back, 
   - verified: rev-23 [reviewer] · run rev-2026-10-15-390-5 · 2026-10-15T02:38:27.810Z · commit 95570270dc70f7a6e9f6e76b628f8895d93412c5
   - verified: rev-23 [reviewer] · run rev-2026-10-15-390-7 · 2026-10-15T03:01:28.949Z · commit 1e6dd6c30bf82d07c4ea84025d834f5bdf95b0e5
   - verified: rev-23 [reviewer] · run rev-2026-10-15-390-9 · 2026-10-15T03:42:28.752Z · commit b5fd4b806e317dc8b68946ce0b3e08fd5ad6f72f
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-390-10 · 2026-10-15T05:03:07.392Z · commit b5fd4b806e317dc8b68946ce0b3e08fd5ad6f72f
 - [x] C7. `hub/README.md` (Tests) and `docs/agents/tests.md` describe the budget, the allowlist with reasons, the refresh at stage close and `npm run test:durations`.
   - done: impl-390 · 2026-10-15T00:09:48.758Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-390-2 · 2026-10-15T00:16:31.548Z · commit 65a80003f93150ca0207085a2f762af1e223eee3
@@ -101,6 +109,7 @@ New tests average 2.74 s against 1.69 s for the suite, and nothing pushes back, 
   - verified: rev-23 [reviewer] · run rev-2026-10-15-390-5 · 2026-10-15T02:38:27.810Z · commit 95570270dc70f7a6e9f6e76b628f8895d93412c5
   - verified: rev-23 [reviewer] · run rev-2026-10-15-390-7 · 2026-10-15T03:01:28.949Z · commit 1e6dd6c30bf82d07c4ea84025d834f5bdf95b0e5
   - verified: rev-23 [reviewer] · run rev-2026-10-15-390-9 · 2026-10-15T03:42:28.752Z · commit b5fd4b806e317dc8b68946ce0b3e08fd5ad6f72f
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-390-10 · 2026-10-15T05:03:07.392Z · commit b5fd4b806e317dc8b68946ce0b3e08fd5ad6f72f
 
 ## Comments
 
@@ -250,3 +259,20 @@ Criteria: C1 verified, C2 verified, C3 verified, C6 verified, C7 verified.
 ### impl-390 · 2026-10-15T03:42:47.344Z
 
 Reworked source clear at b5fd4b806e317dc8b68946ce0b3e08fd5ad6f72f (rev-2026-10-15-390-9, A-2662); C1/C2/C3/C6/C7 refreshed. Submitted exact-head local no-mode gate daa62ae8-0552-454b-9062-81ab2050fdd9, queue position 1, report topic-267 and recipients rev-23/impl-390. C4/C5 await the result. Earlier red gates and Coordinator's owed first post-restart posted-summary confirmation remain recorded. Holding the reviewed head unchanged while waiting.
+
+### impl-390 · 2026-10-15T05:02:19.203Z
+
+Exact reviewed-head local full gate daa62ae8 at b5fd4b806e317dc8b68946ce0b3e08fd5ad6f72f is green: A-2689, 2101/2101 tests pass including Neovim, exit 0. Log lines 6640–6644 carry five duration regression notices annotated over budget; line 6645 self-measures suite budget overhead 28.44 ms (<2000 ms). Wall 982.59 s, peak 1m load 16.66; no idle timing claim. Tree remains clean at the reviewed head. C4 pre-merge raw-log plus suiteSummary fixture proof and amended C5 evidence are now supplied for Reviewer settlement; Coordinator's first post-restart live posted-summary confirmation remains owed under 23523456. Prior red runs retained.
+
+### rev-23 · 2026-10-15T05:03:07.392Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-15-390-10
+commit: b5fd4b806e317dc8b68946ce0b3e08fd5ad6f72f
+scope: evidence
+
+Final clear at unchanged source-reviewed b5fd4b80. Standards and Spec: no high or medium findings. A-2689/daa62ae8 local no-mode selects full: root typecheck and 2101/2101 tests pass (37 free hub, 1677 machine hub, 387 Neovim), zero failures/cancellations/skips/todos or duration-budget failures, exit 0. C4 under 23523456: raw log has exactly five delta-ranked over-budget regression notices; passing branch fixture proves >=1 s/50%, inclusive equality, five-line selection and suiteSummary preservation. Owed post-merge confirmation remains: Coordinator checks/records the first posted result after next hub restart includes regression and overhead lines; today's live old formatter is not claimed as proof. C5 under 28375528: self-measured overhead 28.44 ms <2000 ms, supported by checked serial A-2647 reporter pairs; no idle/full-wall A/B claim. Current-head C1/C2/C3/C6/C7 source/evidence basis A-2662 retained, including manifest provenance and actual new-identity scratch failures. Prior reds A-2643/a4f2efaa, A-2651/b88fd29f and A-2658/7b543f68 remain recorded; latter T-449/T-447-family failures retained, human semantics revised at a new source-reviewed head before this green gate. All claimant done marks now checked. A-2690 details evidence; C1-C7 verified.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.
