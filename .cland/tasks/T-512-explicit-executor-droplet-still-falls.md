@@ -2,8 +2,8 @@
 id: T-512
 kind: task
 title: Explicit --executor droplet still falls back to the Mac when the remote budget is full
-state: open
-status: ready
+state: closed
+status: done
 size: S
 rank: 3090
 criterion_seq: 3
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-312
 branch: t/T-512-explicit-executor-droplet-still-falls
 created: 2026-10-15T16:25:28.989Z
-updated: 2026-10-15T19:33:50.720Z
+updated: 2026-10-15T19:34:33.757Z
+closed: 2026-10-15T19:34:33.757Z
 ---
 
 ## Summary
@@ -121,3 +122,7 @@ Manifest parsed against merged dev: files/tests unchanged; one obsolete dirty-fa
 C1–C3 reverified: explicit remote intent and queue position wait without fallback, size-aware cap refusal while omitted flag retains fallback, and budget-filled fixture waits then launches remotely. No Reviewer tests, edits, merges or provider calls.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-15T19:34:33.757Z
+
+Merged e44612193af9aef78dd808a5a2ac168b384908b6 onto dev.
