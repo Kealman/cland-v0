@@ -2,8 +2,8 @@
 id: T-461
 kind: task
 title: Signed-out Claude latch test makes one extra CLI call after restart, on two Linux droplet runs (shared fix)
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 1
 labels:
@@ -16,7 +16,8 @@ blocked_by: []
 topic: topic-281
 branch: t/T-461-claude-code-adapter-signed-out-watch
 created: 2026-10-15T08:06:05.572Z
-updated: 2026-10-15T10:12:49.048Z
+updated: 2026-10-15T10:13:05.584Z
+closed: 2026-10-15T10:13:05.584Z
 ---
 
 ## Summary
@@ -134,3 +135,7 @@ Direct Coordinator 7c2d4c4b accepts those two Linux file proofs and orders the u
 Review evidence: A-2861.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-15T10:13:05.584Z
+
+Merged 5366e92f394254e2bd098556f1fa5145b888810f onto dev.
