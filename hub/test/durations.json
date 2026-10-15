@@ -3627,6 +3627,10 @@
       "seconds": 7.69356,
       "reason": "Runs merge/readiness preparation and restart races through real hubs and git trees to prove stale evidence and stop recovery agree."
     },
+    "hub/test/verification-workers.test.ts::requested size reserves its own price before create and fallback restores local configured workers": {
+      "seconds": 6.082,
+      "reason": "Drives a requested-size droplet reservation through a real hub and fake provider, then the cap-fallback path back to local configured workers; two executor round-trips dominate. Mac cover 38b71e4c at peak load 16.6."
+    },
     "hub/test/verification-workers.test.ts::verify persists overrides, delivers remote workers, prices requested size and separates cached measurements": {
       "seconds": 12.034,
       "reason": "T-396: serial real CLI/frame runs cover remote and local worker delivery, c-16 pricing, cache separation and durable settings after hub restart; measured 12.034 s on the Mac at starting load 3.54."
