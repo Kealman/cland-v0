@@ -1,19 +1,21 @@
 ---
 id: T-254
 kind: task
-title: A cancelled suite attempt should not supersede green cache evidence for
-  its tree
+title: A cancelled suite attempt should not supersede green cache evidence for its tree
 state: open
-status: backlog
+status: in progress
+size: S
 labels:
   - hub
+  - v0.1.2
+  - ready-for-agent
 assignee: null
 parent: E-273
 blocked_by: []
-topic: null
-branch: null
+topic: topic-269
+branch: t/T-254-a-cancelled-suite-attempt-should-not
 created: 2026-10-12T01:42:45.744Z
-updated: 2026-10-12T11:35:23.911Z
+updated: 2026-10-15T03:45:21.300Z
 ---
 
 ## Parent
@@ -30,6 +32,12 @@ A cancelled attempt (by its requester, by requester death, or by a head change b
 
 ## Acceptance criteria
 
-- [ ] Green, then cancelled, then a request on the same tree: a cache hit naming the green run; a test proves it.
-- [ ] Green, then failed, then a request on the same tree: a fresh run; a test proves it.
-- [ ] hub/README.md's cache paragraph states the rule.
+- [ ] C1. Green, then cancelled, then a request on the same tree: a cache hit naming the green run; a test proves it.
+- [ ] C2. Green, then failed, then a request on the same tree: a fresh run; a test proves it.
+- [ ] C3. hub/README.md's cache paragraph states the rule.
+
+## Comments
+
+### impl-254 · 2026-10-15T03:45:21.300Z
+
+Read task and E-273. Regression seam is the epic-prescribed real hub/spoke CLI/socket harness in hub/test/suite.test.ts. Existing green→fresh-failure→request coverage proves C2; adding green→queued cancellation→request coverage before the implementation change.

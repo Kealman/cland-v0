@@ -3,7 +3,7 @@ id: T-397
 kind: task
 title: suite.test held-ps admission failure leaves its spoke alive and keeps the file running (cleanup hook ordering)
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - v0.1.2
@@ -13,10 +13,10 @@ labels:
 assignee: null
 parent: R-228
 blocked_by: []
-topic: null
-branch: null
+topic: topic-270
+branch: t/T-397-suite-test-held-ps-admission-failure
 created: 2026-10-14T12:31:34.692Z
-updated: 2026-10-14T12:31:40.043Z
+updated: 2026-10-15T03:45:20.583Z
 ---
 
 ## Summary

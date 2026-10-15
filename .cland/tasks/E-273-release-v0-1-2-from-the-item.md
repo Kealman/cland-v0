@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-12T11:35:14.174Z
-updated: 2026-10-12T11:35:19.765Z
+updated: 2026-10-15T03:46:53.335Z
 ---
 
 ## Goal
@@ -54,11 +54,11 @@ QA runs the demo below on `dev`, playing the human's part through the `cland` CL
 
 In a scratch project, QA reproduces both pieces of tech debt through the CLI: a green run, a cancelled run and a new request on the same tree give a cache hit naming the green run, and a failed run in place of the cancelled one gives a fresh run; a tracker write held past its deadline while the hub serves makes the hub exit non-zero, naming the operation and the item. On `dev`, `cland task list --under T-228 --state open --json` lists only this epic; QA reads T-228's notes and `cland release --item T-228 --dry-run` with version 0.1.2, and the latest full local suite on macOS is green on that tip.
 
-- [ ] A cancelled attempt no longer supersedes green evidence for its tree, a failed attempt still does, and `hub/README.md`'s cache paragraph states the rule (T-254).
-- [ ] A stalled tracker storage operation while serving makes the hub exit non-zero with the operation and the item named, no mutation admitted after the stall commits, and `hub/README.md` describes the restart path (T-253).
-- [ ] Every other epic of T-228 is closed on a clear QA verdict, and no open item other than this epic remains under T-228.
-- [ ] T-228's `## Notes` describe the release by epic, the run's decisions, the deferred checks and the known issues, and `cland release --item T-228 --dry-run` shows them with version 0.1.2.
-- [ ] A full local suite on macOS is green on the `dev` tip of the dry run.
+- [ ] C1. A cancelled attempt no longer supersedes green evidence for its tree, a failed attempt still does, and `hub/README.md`'s cache paragraph states the rule (T-254).
+- [ ] C2. A stalled tracker storage operation while serving makes the hub exit non-zero with the operation and the item named, no mutation admitted after the stall commits, and `hub/README.md` describes the restart path (T-253).
+- [ ] C3. Every other epic of T-228 is closed on a clear QA verdict, and no open item other than this epic remains under T-228.
+- [ ] C4. T-228's `## Notes` describe the release by epic, the run's decisions, the deferred checks and the known issues, and `cland release --item T-228 --dry-run` shows them with version 0.1.2.
+- [ ] C5. A full local suite on macOS is green on the `dev` tip of the dry run.
 
 After the close, the Coordinator shows the dry run in an ask and runs `cland release --item T-228` on the answer; QA checks that tag `v0.1.2` is on GitHub `main` and records its verdict on T-228; the retrospective artifact follows and is linked from T-228.
 
@@ -81,3 +81,16 @@ The release runs on what the build shipped: the notes come from the item and its
 - Branch: `research/model-performance` (`docs/research/model-performance.md`, `extract.py`).
 - Skills: `release`, `retro`, `qa`.
 - GLOSSARY: Release, Verdict.
+
+## Plan
+
+```yaml
+stages:
+  - name: the two pieces of tech debt
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-254
+      - - T-253
+```

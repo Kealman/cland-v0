@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-14T12:28:09.133Z
-updated: 2026-10-14T12:28:22.423Z
+updated: 2026-10-15T03:45:58.530Z
 ---
 
 ## Goal
@@ -64,15 +64,15 @@ QA runs the demo below on `dev`, playing the human's part through the `cland` CL
 
 QA posts a before/after table on this epic. QA also replays `chooseSuiteMode` over the 40 merges from `83b74c6` back to `f174d9c`, runs one Neovim-only branch through `cland verify`, and plants an over-budget test on a scratch branch to read the budget failure.
 
-- [ ] Hub test-time over the tests common to both runs is at least 800 s lower after the epic than before (predicted 980–1,270 s), and the full-run wall is at least 3 minutes shorter (predicted 4–5.5).
-- [ ] The after census counts under 12,000 `ps` + `lsof` + `pgrep` spawns (A-2021: 29,203), at most 13 per daemon start (A-2021: about 31), and the daemon-start count is unchanged within the suite's growth.
-- [ ] Replayed on the 40 merges `83b74c6`..`f174d9c`, the selection runs full on at most 25 (37 today), and a Neovim-only branch's `cland verify` finishes in under 3 minutes (about 15 today).
-- [ ] No doc, clause or skill tells a task session to run `cland verify all`; task runs use `cland verify` with no mode, and full suites are the Coordinator's integrated `dev` runs (D29).
-- [ ] The three timer-bound tests take under 5 s each, fake-harness tests run on the fast defaults, and every slow opt-in names its reason.
-- [ ] `cland --help` loads at most 10 `hub/src` modules (139 today), each subcommand loads only its own closure, and a guard test fails when either grows.
-- [ ] `hub/test/durations.json` exists, an unlisted test over 5 s or file over 60 s fails its run with a `duration budget` line, and the suite report names the top regressions.
-- [ ] Every assertion changed by this epic keeps its meaning: the orphan sweep, teardown ownership and pid-reuse detection stay proven in their own tests, and frame tests still run against a real hub over its socket.
-- [ ] `hub/README.md` (Tests), `docs/agents/tests.md`, the Implementer and QA clauses and the `qa` skill describe the selection rules, the fast defaults and opt-ins, the budget and the manifest refresh.
+- [ ] C1. Hub test-time over the tests common to both runs is at least 800 s lower after the epic than before (predicted 980–1,270 s), and the full-run wall is at least 3 minutes shorter (predicted 4–5.5).
+- [ ] C2. The after census is posted with its `ps` + `lsof` + `pgrep` total and per-daemon-start figure against A-2021 (29,203; about 31 per start), with the daemon-start count unchanged within the suite's growth; the <12,000 and ≤13-per-start targets moved to T-448 (Coordinator amendment 2026-10-15, after T-392's census, A-2630/A-2631).
+- [ ] C3. Replayed on the 40 merges `83b74c6`..`f174d9c`, the selection runs full on at most 25 (37 today), and a Neovim-only branch's `cland verify` finishes in under 3 minutes (about 15 today).
+- [ ] C4. No doc, clause or skill tells a task session to run `cland verify all`; task runs use `cland verify` with no mode, and full suites are the Coordinator's integrated `dev` runs (D29).
+- [ ] C5. The three timer-bound tests take under 5 s each, fake-harness tests run on the fast defaults, and every slow opt-in names its reason.
+- [ ] C6. `cland --help` loads at most 10 `hub/src` modules (139 today), each subcommand loads only its own closure, and a guard test fails when either grows.
+- [ ] C7. `hub/test/durations.json` exists; a test or file new to the manifest over 5 s or 60 s fails its run with a `duration budget` line, a known one that slows down or runs over budget is reported as a `duration regression` line without failing, and the suite report names the top regressions (human decision 225afa4b, 2026-10-15).
+- [ ] C8. Every assertion changed by this epic keeps its meaning: the orphan sweep, teardown ownership and pid-reuse detection stay proven in their own tests, and frame tests still run against a real hub over its socket.
+- [ ] C9. `hub/README.md` (Tests), `docs/agents/tests.md`, the Implementer and QA clauses and the `qa` skill describe the selection rules, the fast defaults and opt-ins, the budget and the manifest refresh.
 
 ## Dogfooding
 
@@ -119,3 +119,13 @@ stages:
       - - T-392
       - - T-390
 ```
+
+## Comments
+
+### coord · 2026-10-15T03:45:58.530Z
+
+Coordinator, 2026-10-15 03:50Z.
+- **The before run** is A-2450: integrated cover 27503044 at be45cda8, macOS local, 2040/2040, the last green integrated run before the epic's first merge (T-388 at 18:50Z on 2026-10-14).
+- **The after run** will be the release cover on the dev tip after T-390, with the crew holding so that the machine is quiet, on the same Mac executor.
+- **Amendments.** C2 is amended to the measured census, with the targets moved to T-448 after T-392's census (A-2630/A-2631). C7 follows the human's decision 225afa4b: only tests and files new to the manifest fail the budget.
+- **Timing claims from the night.** These were taken as loaded A/B pairs, because the queue never idled: T-389 −26.27% over the harness files (A-2558), T-392 −63% inspection spawns in default-subscriptions.
