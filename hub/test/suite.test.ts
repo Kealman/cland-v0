@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { readFile, writeFile, mkdir, stat, rm, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { cland, clandWithEnv, connectUi, eventually, startDaemon, spawnSpoke, tempProject, pidAlive, fakeCodex } from './harness.ts';
+import { fixture, type ResultMessage } from './suite-fixture.ts';
 import { suiteSummary } from '../src/hub/suites.ts';
 import { DatabaseSync } from 'node:sqlite';
 import { ownProcess } from './process-cleanup.ts';
@@ -15,38 +16,48 @@ import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { defaultConfig, parseConfig, renderConfig } from '../src/init/config.ts';
 
-type ResultMessage = { id: string; from: string; fromRole?: string; text: string; to: string[]; artifacts: Array<{ id: string; path: string; creator: string }> };
-async function fixture(t: import('node:test').TestContext, testScript: string, typecheck = 'node -e "process.exit(0)"', config = '', daemonEnv: Record<string, string> = {}, budget = 1, cacheAgeMinutes = 1440) {
-  const root = await tempProject(t, 'cland-suite-cli-');
-  await mkdir(join(root, '.cland'));
-  await writeFile(join(root, '.cland', 'config.toml'), `${config}\n[verification]\nbudget = ${budget}\ncache_max_age_minutes = ${cacheAgeMinutes}\nlock_path = ${JSON.stringify(join(root, 'suite.lock'))}\n`);
-  await writeFile(join(root, 'package.json'), JSON.stringify({ scripts: { typecheck, test: testScript } }));
-  const { discovery } = await startDaemon(t, root, daemonEnv);
-  const ui = await connectUi(t, discovery, 'cli');
-  assert.equal((await ui.request({ type: 'role.set', session: 'impl', role: 'implementer' })).ok, true);
-  assert.equal((await ui.request({ type: 'role.set', session: 'rev', role: 'reviewer' })).ok, true);
-  const spoke = await spawnSpoke({ discover: true, cwd: root, name: 'impl', sessionId: 'suite-caller', role: 'implementer' });
-  t.after(() => spoke.close());
-  await spoke.waitForPresence(['impl']);
-  const env = { CLAND_SESSION_NAME: 'impl', CLAND_SESSION_ID: 'suite-caller', CLAND_ROLE: 'implementer' };
-  const created = JSON.parse((await cland(root, 'task', 'create', '--size', 'M', 'fixture', '--assignee', 'impl', '--json')).stdout) as { item: { id: string } };
-  const topicResult = await ui.request({ type: 'topic.create', title: 'Suite fixture', item: created.item.id });
-  assert.equal(topicResult.ok, true, topicResult.error);
-  const topic = (topicResult.value as { topic: { id: string } }).topic.id;
-  const results = async () => {
-    const history = await ui.request({ type: 'topic.history', topic });
-    assert.equal(history.ok, true, history.error);
-    return (history.value as { messages: ResultMessage[] }).messages.filter(m => m.text.startsWith('suite result '));
+test('suite fixture exits and closes its hub and spoke after an ownership cleanup failure', async t => {
+  const root = await tempProject(t, 'cland-suite-cleanup-regression-');
+  const marker = join(root, 'children.json');
+  const childTest = join(root, 'cleanup.test.mjs');
+  await writeFile(childTest, `import {test} from 'node:test';
+import {writeFile} from 'node:fs/promises';
+import cp from 'node:child_process';
+import {syncBuiltinESMExports} from 'node:module';
+import {fixture} from ${JSON.stringify(new URL('./suite-fixture.ts', import.meta.url).href)};
+test('forced ownership failure', async t => {
+  const f = await fixture(t, 'node -e "process.exit(0)"');
+  await writeFile(${JSON.stringify(marker)}, JSON.stringify([f.discovery.pid, f.spoke.pid]));
+  const exec = cp.execFileSync;
+  // Fail the first ownership probe in teardown, then let later cleanup retry.
+  cp.execFileSync = () => {
+    cp.execFileSync = exec; syncBuiltinESMExports();
+    throw new Error('forced ownership probe failure');
   };
-  const launch = async (mode = 'all', ...options: string[]) => {
-    const r = await clandWithEnv(root, env, 'suite', mode, '--report', topic, '--to', 'rev', '--to', 'impl', '--json', ...options);
-    assert.equal(r.code, 0, r.stderr);
-    const job = JSON.parse(r.stdout) as { id: string; pid: number | null; position: number; cached?: { run: string; head: string; tree: string } };
-    if (job.pid) ownProcess(t, job.pid);
-    return job;
-  };
-  return { root, discovery, ui, env, topic, results, launch, spoke };
-}
+  syncBuiltinESMExports();
+});`);
+  const env = { ...process.env };
+  delete env.NODE_TEST_CONTEXT;
+  const child = spawn(process.execPath, ['--test', childTest], { env, stdio: ['ignore', 'pipe', 'pipe'] });
+  ownProcess(t, child.pid);
+  let output = '';
+  child.stdout.on('data', data => { output += String(data); });
+  child.stderr.on('data', data => { output += String(data); });
+  const done = new Promise<number | null>(resolve => child.once('close', code => resolve(code)));
+  const pids = await eventually('fixture children started', () => readFile(marker, 'utf8').then(text => JSON.parse(text) as number[], () => undefined)).catch(error => { throw new Error(`${error.message}: ${output}`); });
+  for (const pid of pids) ownProcess(t, pid);
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    const code = await Promise.race([done, new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new Error(`fixture file stayed alive after cleanup failure: ${output}`)), 10000);
+    })]);
+    assert.equal(code, 1, output);
+    assert.match(output, /forced ownership probe failure/);
+    for (const pid of pids) assert.equal(pidAlive(pid), false, `fixture child ${pid} survived teardown`);
+  } finally {
+    clearTimeout(timer);
+  }
+});
 
 test('verify fails a named hung test at the configured per-test timeout', async t => {
   const f = await fixture(t, `${process.execPath} package.mjs`);
