@@ -3,7 +3,7 @@ id: T-544
 kind: task
 title: "session-model test: sub-agent usage rows in task view arrive in hook order, not agent order (Linux)"
 state: open
-status: in progress
+status: review
 size: XS
 criterion_seq: 2
 labels:
@@ -15,7 +15,7 @@ regression_of: T-480
 topic: topic-335
 branch: t/T-544-session-model-test-sub-agent-usage-rows
 created: 2026-10-15T22:41:39.095Z
-updated: 2026-10-15T22:56:14.913Z
+updated: 2026-10-15T23:19:56.509Z
 ---
 
 ## Summary
@@ -24,7 +24,9 @@ E-387 stage-close cover 725bd529 at dev 21ae664d (2026-10-15 22:40Z; shard-1 cla
 ## Acceptance criteria
 - [ ] C1. The usage assertion compares the sub-agent rows in a defined order: sorted by agentId in the test, or the hub orders `usage.subagents` deterministically by start time then agentId and the test relies on that. Every row's fields are still asserted.
   - verified: rev-30 [reviewer] · run rev-20261015-544-source · 2026-10-15T22:54:20.569Z · commit 420e0de6deacf9e9628f574542d97717c681368d
+  - verified: rev-30 [reviewer] · run rev-20261015-544-final · 2026-10-15T23:19:56.509Z · commit 420e0de6deacf9e9628f574542d97717c681368d
 - [ ] C2. session-model.test.ts passes 5/5 serially as a whole file on the Mac, plus once on a droplet in the task's verify.
+  - verified: rev-30 [reviewer] · run rev-20261015-544-final · 2026-10-15T23:19:56.509Z · commit 420e0de6deacf9e9628f574542d97717c681368d
 
 ## Comments
 
@@ -81,3 +83,32 @@ Source clearance A-3422 and C1 stand; five Mac whole-file passes A-3420 stand. C
 Log: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3424-suite-71ef9a43-285c-43b7-ae05-e1ff9fd97675-auto-at-420e0de.log. No Reviewer tests, edits or process/provider actions.
 
 Review artifact A-3429 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3429-t-544-cancelled-local-receipt-source-clear-linux-requirement-pending.md.
+
+### impl-544 · 2026-10-15T23:19:38.417Z
+
+Same-head droplet verify 728f6de8-4557-446b-aa95-70104b1314c8 passed at 420e0de6: 1864 tests, 1861 pass, 0 fail, 3 skip. Linux x64 c-8, 4 workers, peak load 10.97, lifetime 1360s, cost $0.0945. A-3441 log confirms all 11 session-model cases passed; the changed real-hook attribution case passed in 5.55s. Alongside five serial Mac passes in A-3420, this supplies C2 evidence. Reviewer receives the same result and will settle the final evidence verdict.
+
+### rev-30 · 2026-10-15T23:19:56.509Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-544-final
+commit: 420e0de6deacf9e9628f574542d97717c681368d
+scope: evidence
+
+Final evidence review T-544 clear at unchanged 420e0de6deacf9e9628f574542d97717c681368d. No high, medium or low findings. Source review A-3422 stands; immutable branch tip and run head match.
+
+C2 verified: A-3420 records five complete serial loaded Mac whole-file passes, 11/11 each, 55 total, zero failures/cancellations/skips. Durations 41.781/40.448/38.604/44.118/40.560s and admission labels were checked in the source pass. The disclosed pre-review fast-forward did not change the test/harness source exercised by those repetitions.
+
+A-3441 / 728f6de8-4557-446b-aa95-70104b1314c8 is the completed actual Linux c-8 lon1 droplet verification, workers 4, hub-only, exit 0: 1861 pass, zero failures/cancellations, three platform skips. Host/remote typecheck, hub and Neovim smoke complete. All 11 session-model cases pass (timings :5222–5232); the changed real-hook usage assertion passes in 5.548s (:5226). Suite 1281.95s, peak load 10.97, lifetime 1360s/$0.0945. No hard duration-budget failure. The cancelled local A-3424 remains excluded and supplies no Linux evidence.
+
+C1 reverified: test-local agentId normalization retains exact two-row/five-field equality, with the journal attribution, parent model, human CLI and unrelated-item assertions unchanged. No product ordering or timing-bound change.
+
+All criteria checked across source and this completed same-head run; no per-item QA criteria. Any changed integration head requires delta review. No Reviewer tests, binary/compiler execution, edits, signals, merges or provider actions.
+
+Evidence A-3441 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3441-suite-728f6de8-4557-446b-aa95-70104b1314c8-auto-at-420e0de.log; A-3420 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3420-t-544-five-serial-mac-whole-file-passes.txt.
+
+Review artifact A-3442 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3442-t-544-final-clear-at-420e0de6-five-mac-files-and-green-linux-verification.md.
+
+Criteria: C1 verified, C2 verified.

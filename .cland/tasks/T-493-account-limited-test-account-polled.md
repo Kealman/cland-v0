@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-330
 branch: t/T-493-account-limited-test-account-polled
 created: 2026-10-15T12:48:39.376Z
-updated: 2026-10-15T22:54:24.848Z
+updated: 2026-10-15T23:17:02.710Z
 ---
 
 ## Problem

@@ -3,7 +3,7 @@ id: T-525
 kind: task
 title: "pid-identity test: staged reused-PID start stamp can equal the real one within the same second (Linux)"
 state: open
-status: in progress
+status: ready
 size: XS
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-333
 branch: t/T-525-pid-identity-test-staged-reused-pid
 created: 2026-10-15T19:39:57.986Z
-updated: 2026-10-15T22:56:57.095Z
+updated: 2026-10-15T23:26:19.283Z
 ---
 
 ## Problem
@@ -26,8 +26,10 @@ updated: 2026-10-15T22:56:57.095Z
 - [x] C1. The test stages a start identity that provably differs (for example, a stamp outside the real process's second) rather than one that can collide. The commit also states whether the product's PID-reuse guard has the same one-second blind spot. If it does, file that separately with its risk.
   - done: impl-525 · 2026-10-15T22:31:25.413Z
   - verified: rev-30 [reviewer] · run rev-20261015-525-source · 2026-10-15T22:32:37.046Z · commit b1dfa5e1c6bcbaee4f4a87ce961556a16dca4d39
+  - verified: rev-30 [reviewer] · run rev-20261015-525-final · 2026-10-15T23:26:08.463Z · commit b1dfa5e1c6bcbaee4f4a87ce961556a16dca4d39
 - [x] C2. pid-identity.test.ts passes 5/5 serially, whole file and alone on the Mac, plus once on a droplet in the task's verify.
   - done: impl-525 · 2026-10-15T22:56:17.180Z
+  - verified: rev-30 [reviewer] · run rev-20261015-525-final · 2026-10-15T23:26:08.463Z · commit b1dfa5e1c6bcbaee4f4a87ce961556a16dca4d39
 
 ## Comments
 
@@ -85,3 +87,32 @@ A-3426 may serve as the first known-only Linux receipt under E-482, not final cl
 Log /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3426-suite-360bd15d-75ab-4a30-adf0-dc6be9bec8ee-auto-at-b1dfa5e.log. No Reviewer tests, edits, merges or provider actions.
 
 Review artifact A-3431 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3431-t-525-first-linux-receipt-pid-file-green-known-t-544-blocks-final-gate.md.
+
+### impl-525 · 2026-10-15T23:25:38.716Z
+
+Second fresh exact-head droplet verify 74cc892a / A-3443 is green at b1dfa5e1c6bcbaee4f4a87ce961556a16dca4d39: 1864 tests, 1861 passed, 0 failed, 3 skipped; hub plus Neovim smoke. Linux c-8 lon1, workers 4, lifetime 1712s, cost $0.1189. C2 is covered by 5/5 quiet Mac whole-file passes A-3406 and green Linux receipt A-3443. Source unchanged since clear A-3408. Final Reviewer evidence verdict pending.
+
+### rev-30 · 2026-10-15T23:26:08.463Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-525-final
+commit: b1dfa5e1c6bcbaee4f4a87ce961556a16dca4d39
+scope: evidence
+
+Final evidence review T-525 clear at b1dfa5e1c6bcbaee4f4a87ce961556a16dca4d39. No high, medium or low findings. Source clearance A-3408 stands; branch and verification head match.
+
+C2 verified. A-3406 contains five complete serial whole-file Mac runs, 3/3 each (15 passes), zero failures/cancellations/skips. Wall times 10.612/9.960/9.990/10.437/10.776s, local:none and no other test file at admission, loads 3.90–4.48, explicitly quiet with remote integrated runs allowed. This evidence remains at the unchanged reviewed source.
+
+A-3443 / 74cc892a-ecb5-4388-9116-778474ecd79d is actual Linux c-8 lon1, workers 4, hub-only, exit 0: 1861 passes, zero failures/cancellations, three platform skips. Host/remote typecheck, hub and Neovim smoke complete. All three pid-identity cases pass; timing records :4988–4990 give Codex 7.580s, changed Claude 4.880s, OpenCode 7.928s. Suite 1622.45s, peak load 12.76, lifetime 1712s/$0.1189. No hard duration-budget failure. The first receipt A-3426's unrelated T-544 row-order failure did not recur, so no known-flake exception is required for final clearance.
+
+C1 reverified against standing source review: explicit historical staged identity plus nonnull observed bystander identity and inequality prevent the fixture's same-second collision. Original identity/liveness, stop refusal and bystander survival checks remain. Commit records the product's separate coarse-time blind spot and unrelated-process signaling risk; Bugs/M T-543 remains that product follow-up, not solved by this test-only correction.
+
+All criteria checked across source and completed same-head evidence. No per-item QA criteria. Changed integration heads require delta review. No Reviewer tests, compiler/binary execution, edits, signals, merges or provider actions.
+
+Evidence A-3443 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3443-suite-74cc892a-ecb5-4388-9116-778474ecd79d-auto-at-b1dfa5e.log; A-3406 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3406-t-525-five-quiet-mac-whole-file-passes-and-pid-guard-finding.md.
+
+Review artifact A-3444 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3444-t-525-final-clear-at-b1dfa5e1-five-mac-files-and-green-linux-pid-proofs.md.
+
+Criteria: C1 verified, C2 verified.

@@ -3,7 +3,7 @@ id: T-499
 kind: task
 title: "orphan-servers test: a second hub.db connection hits SQLITE_BUSY against the live hub (Linux, under load)"
 state: open
-status: in progress
+status: review
 size: XS
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-332
 branch: t/T-499-orphan-servers-test-a-second-hub-db
 created: 2026-10-15T14:07:24.615Z
-updated: 2026-10-15T23:04:53.851Z
+updated: 2026-10-15T23:26:41.787Z
 ---
 
 ## Problem
