@@ -3,7 +3,7 @@ id: T-510
 kind: task
 title: "permissions test: audit log read sees a partial JSONL line while the hub appends (Linux)"
 state: open
-status: review
+status: ready
 size: XS
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-309
 branch: t/T-510-permissions-test-audit-log-read-sees-a
 created: 2026-10-15T15:56:19.661Z
-updated: 2026-10-15T19:17:45.474Z
+updated: 2026-10-15T19:41:01.058Z
 ---
 
 ## Problem
@@ -27,7 +27,10 @@ updated: 2026-10-15T19:17:45.474Z
   - done: impl-510 · 2026-10-15T16:59:49.540Z
   - verified: rev-30 [reviewer] · run rev-20261015-510-source · 2026-10-15T17:00:28.279Z · commit 805972cf6803332a1eaf35dcf83be7918de1f297
   - verified: rev-30 [reviewer] · run rev-20261015-510-delta · 2026-10-15T17:54:38.560Z · commit 64bd51a367e455f041c2a45e1feac639a5e84baa
-- [ ] C2. permissions.test.ts passes 5/5 serially, whole file and alone on the Mac, plus once on a droplet in the task's verify.
+  - verified: rev-30 [reviewer] · run rev-20261015-510-final · 2026-10-15T19:40:55.373Z · commit 64bd51a367e455f041c2a45e1feac639a5e84baa
+- [x] C2. permissions.test.ts passes 5/5 serially, whole file and alone on the Mac, plus once on a droplet in the task's verify.
+  - done: impl-510 · 2026-10-15T19:39:31.392Z
+  - verified: rev-30 [reviewer] · run rev-20261015-510-final · 2026-10-15T19:40:55.373Z · commit 64bd51a367e455f041c2a45e1feac639a5e84baa
 
 ## Comments
 
@@ -119,3 +122,51 @@ This is a second local run, not Linux evidence. A-3196 supplies the five serial 
 ### impl-510 · 2026-10-15T19:17:45.474Z
 
 Coordinator 8ae29999 directed immediate fresh explicit droplet verification at unchanged delta-reviewed 64bd51a3. Submitted 0ea19bdd-ab2b-4158-8646-b7076d81e544; queue confirms T-510 has a remote slot (droplet acquiring), no local fallback. Waiting for the hub receipt before marking C2 done. The earlier read-only capacity watcher missed available capacity and has been stopped.
+
+### rev-30 · 2026-10-15T19:39:27.423Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261015-510-linux-first
+commit: 64bd51a367e455f041c2a45e1feac639a5e84baa
+scope: evidence
+
+Linux evidence review T-510 not clear at unchanged source-reviewed 64bd51a367e455f041c2a45e1feac639a5e84baa. A-3306/0ea19bdd-ab2b-4158-8646-b7076d81e544 is actual Linux c-8, exit1:1780 pass/1 fail/3 platform skips. Typecheck and hub phases complete; Neovim smoke not reached after the unrelated hub failure.
+
+All five permissions cases complete green (A-3306:4817–4821), including the repaired audit reader/table case5.700s. No audit JSON tail failure or new T-510 source issue. This supplies the previously missing actual-droplet whole-file execution evidence for C2; A-3196's five serial quiet Mac files and prior current-head local full green A-3241/55836405 remain applicable. Final gate acceptance is still pending the outside failure disposition.
+
+Medium gate blocker / aside Bugs S — hub/test/pid-identity.test.ts:128 (case starts:102): staged replacement process has the same displayed start identity as the original, so assert.notEqual fails before the intended reused-PID safety proof (A-3306:4024–4035). Both actual/expected strings are Thu Oct15 19:28:27 2026. This demonstrates an invalid fixture staging boundary at second-granularity identity; it does not demonstrate that production signalled a reused PID. No exact known-item classification is established here.
+
+Lead must classify/deduplicate this failure and settle whether the already green current-head Mac receipt plus own-file-green Linux receipt satisfy T-510's gate, or direct another receipt. Do not assume this is T-485 or T-514 based on stop terminology. C1 stands; C2 final mark remains pending acceptable gate disposition, with its platform evidence now supplied. No task criterion is failed speculatively. Coordinator8b300f2e currently forbids new submissions/local tests until restart notice, so no retry is requested during the hold.
+
+No Reviewer tests, edits or provider calls.
+
+### impl-510 · 2026-10-15T19:39:52.858Z
+
+Actual Linux droplet 0ea19bdd at 64bd51a3: permissions.test.ts 5/5 green (A-3306:2088–2092), satisfying the file/platform portion of C2 together with A-3196's five Mac passes. Overall hub gate red on unrelated pid-identity.test.ts:128, staged replacement start stamp equals original to the displayed second (A-3306:4024–4034). Reported external Bugs find to lead with size/file/line and requested classification; Reviewer A-3307 confirms task cases green but final gate not clear pending disposition. Current restart hold 8b300f2e prevents retry. No source fix or head change; claim retained.
+
+### rev-30 · 2026-10-15T19:40:55.373Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-510-final
+commit: 64bd51a367e455f041c2a45e1feac639a5e84baa
+scope: evidence
+
+Final evidence review T-510 clear at unchanged source-reviewed 64bd51a367e455f041c2a45e1feac639a5e84baa. No high or medium task finding remains.
+
+Confirmed Coordinator6f131b5b-b532-467b-817d-2125a4131bd9 in topic history: pid-identity.test.ts:128 same-second staged start-stamp collision is filed in E-482 and counts as known; Mac A-3202 plus actual Linux A-3306 meet this gate. Additionally A-3241 is a direct current-head Mac green, avoiding reliance solely on the earlier shared-manifest parent.
+
+Receipt evidence:
+- A-3202/6f23ac0f at805972cf: local Darwin1796/1796 green, previously reviewed.
+- A-3241/55836405 at exact64bd51a3: local Darwin1796/1796 green, typecheck/hub/Neovim smoke completed, previously accepted A-3244.
+- A-3306/0ea19bdd at exact64bd51a3: actual Linux c-8, exit1,1780pass/1fail/3 platform skips; permissions5/5 green (pass lines2088–2092, timings4817–4821), including repaired audit-table case5.700s. Sole red is the now-classified PID fixture collision (4024–4035), outside T-510. No audit JSON-tail or hard duration failure. This Linux suite remains overall red; final acceptance uses the explicit Coordinator disposition.
+
+C1 reverified from source/delta: test audit reader parses complete newline-delimited records only, discarding the trailing incomplete fragment while retaining strict JSON parsing of complete lines and every permission/privacy assertion. Root cause is recorded. Product audit reader already catches malformed JSON, so no equivalent product crash follow-up is invented. permissions.test.ts blob is identical at805972cf and64bd51a3.
+C2 verified: A-3196 contains five serial quiet Mac whole-file5/5 passes (25cases), with natural exits and recorded free/load preflights. A-3306 provides actual-droplet whole-file5/5 at current reviewed head. Current branch resolves exactly64bd51a3. Only previously reviewed shared manifest allowances followed original source.
+
+No extra run or head change requested. Current Coordinator8b300f2e cover/restart hold remains in force for subsequent submission/merge routing. No Reviewer tests, edits or provider calls.
+
+Criteria: C1 verified, C2 verified.

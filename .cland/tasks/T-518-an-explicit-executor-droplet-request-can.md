@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-320
 branch: t/T-518-an-explicit-executor-droplet-request-can
 created: 2026-10-15T18:04:23.485Z
-updated: 2026-10-15T19:35:44.334Z
+updated: 2026-10-15T19:36:59.328Z
 ---
 
 ## Summary
@@ -25,3 +25,9 @@ The verify cache lookup in hub/src/hub/suites.ts (#cached / #start, around lines
 
 - [ ] C1. An explicit `--executor droplet` request reuses only a cached green that ran on a droplet. A local-only green triggers a fresh remote run, and the result header says why.
 - [ ] C2. Requests with no executor flag keep today's cross-executor reuse. The docs describing reuse (hub/README.md Tests, docs/agents/tests.md) are updated, and a test covers both cases.
+
+## Comments
+
+### impl-518 · 2026-10-15T19:36:59.328Z
+
+Read task, E-425 decisions and release spec §3.5/§4. Regression prepared at the public CLI/real hub seam using the existing fake remote executor: local green → omitted-flag local cache hit → explicit droplet execution with cache-bypass reason → droplet reuse even after a newer local green. Local tests are held while verify queue reports local: coord.

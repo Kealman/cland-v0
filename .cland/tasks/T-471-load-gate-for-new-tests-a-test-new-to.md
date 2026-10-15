@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-317
 branch: t/T-471-load-gate-for-new-tests-a-test-new-to
 created: 2026-10-15T09:13:16.338Z
-updated: 2026-10-15T19:33:52.162Z
+updated: 2026-10-15T19:36:54.189Z
 ---
 
 ## Summary
@@ -32,11 +32,38 @@ In a task's verify, the runner repeats each test that is new to the manifest fiv
   - done: impl-471 · 2026-10-15T19:33:16.872Z
 - [x] C2. Known tests are not repeated, and the gate adds no repetitions to integrated dev runs.
   - done: impl-471 · 2026-10-15T19:33:18.609Z
+  - verified: rev-30 [reviewer] · run rev-20261015-471-source · 2026-10-15T19:36:54.188Z · commit b80e4aeb92dca3984a1b5232e1a3aa1842f2e016
 - [x] C3. The extra wall time is reported on the run, and hub/README.md and docs/agents/tests.md describe the gate.
   - done: impl-471 · 2026-10-15T19:33:19.546Z
+  - verified: rev-30 [reviewer] · run rev-20261015-471-source · 2026-10-15T19:36:54.189Z · commit b80e4aeb92dca3984a1b5232e1a3aa1842f2e016
 
 ## Comments
 
 ### impl-471 · 2026-10-15T19:11:32.561Z
 
 Runner-boundary implementation in progress: non-dev task selection carries loadGate; fresh exact-name repetitions start while the phase runs. The gate uses refreshed test baselines (allowances do not bypass it), rejects skipped/missed executions, and reports pass counts plus extra wall time. No per-item QA is required by task policy.
+
+### rev-30 · 2026-10-15T19:36:54.189Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-471-source
+commit: b80e4aeb92dca3984a1b5232e1a3aa1842f2e016
+scope: full
+
+Source review T-471 clear at b80e4aeb92dca3984a1b5232e1a3aa1842f2e016, fixed point merged dev a384cb74653e5426a0173d4ea23ace71d0d0faf1. No high, medium or low findings. Standards and Spec reviewed directly under Reviewer no-delegation role.
+
+Standards: eight-file change separates load discovery/receipts from duration/coverage reporting and the runner owns orchestration. Streaming JSONL discovery uses an offset and StringDecoder rather than repeatedly rereading the whole stream; identities use the existing file::name duration key. One extra lane launches fresh detached coordinators behind an owned-root bootstrap barrier, captures identity before release and retains active identities through cleanup. Signal handling and final sweeping reap repetition trees before removing the phase root; abrupt-death recovery keeps the coordinator cwd inside that owned root. Normal test workers chdir to the worktree. Existing SIGTERM/SIGKILL acceptance probes cover both paths. Existing locks remain held through phase plus repetitions. No production process cleanup module change is introduced.
+
+Spec/C1 source: task selection carries loadGate into options, including full fallback after failed fetch; integrated dev omits it. New names are identities absent from manifest.tests, so duration allowances do not bypass the gate and baseline refresh makes names known. Reporter discovers top-level names while the phase runs. Each gets five fresh exact escaped-name executions on its file. Pattern matching preserves descendants of a selected parent (confirmed from the installed Node filtering source, read-only). Green process exit alone is insufficient: exactly one matching successful nonskip/nonTODO receipt is required. Fewer than5/5 sets failure and emits the named load-gate failure. The ordinary phase and repetition lane are joined before timing/cleanup; extra tail can extend beyond ordinary-phase completion and is documented accurately.
+
+C2 source verified: refreshed baseline identities are skipped and integrated dev/close-run selection does not enable repeats. The optional flag survives task selection fallbacks. T-519 has already been merged: normal child env consumes CLAND_SUITE_SELECTION, while load-gate orchestration uses the captured options; repetition env also removes selection and V8 capture to avoid nested-run contamination. Missing manifests keep the existing no-budget/no-gate behavior, as documented; helpers are shared infrastructure forcing full selection.
+
+C3 source verified: load gate start/pass-count/failure lines and summed extra tail wall appear in the run log; existing suiteSummary retains the prefixed failure and suite duration tail without a suites.ts change. Both README Tests and docs/agents/tests.md describe new versus known identities, five repetitions, skip/TODO/missed-name rejection, integrated exemption, baseline refresh, missing manifests, and tail-only accounting rather than an unsupported contention estimate. Repetition receipts do not enter duration baselines or coverage maps.
+
+Evidence A-3290/A-3302 inspected. Final source brief contains complete runner9/9 output covering planted one-in-three flake versus stable5/5, regex punctuation, allowance non-exemption, known/integrated no-repeat, skip0/5, summary fields, SIGTERM cleanup and SIGKILL recovery. Journal assertions require six executions per new name including ordinary phase and at least one repetition before ordinary workload ends. Selection85/85 and T-519 nested-selection1/1 are reported green; typecheck/shard lint and whitespace checks green. New names remain below duration budgets; no allowance added. C1 final runtime verification remains pending the post-source suite; this targeted evidence is not a completed task gate.
+
+Source clearance does NOT lift Coordinator8b300f2e's current cover-quiet/submission hold. Submit no local tests or new verify until the restart notice. After that, one exact-head diff-selected cland verify can supply final evidence; a head change requires another source review. No per-item QA criteria. No Reviewer tests, edits, merges or provider calls.
+
+Criteria: C2 verified, C3 verified.
