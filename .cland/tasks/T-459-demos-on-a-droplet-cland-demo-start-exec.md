@@ -3,7 +3,7 @@ id: T-459
 kind: task
 title: "Demos on a droplet: cland demo start, exec and stop lease a droplet for an epic's QA demo at a named dev commit, and the hub accepts the demo's verdict while dev moves on files outside the epic's surfaces"
 state: open
-status: review
+status: in progress
 size: L
 criterion_seq: 7
 labels:
@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-296
 branch: t/T-459-demos-on-a-droplet-cland-demo-start-exec
 created: 2026-10-15T07:15:15.838Z
-updated: 2026-10-15T15:21:27.373Z
+updated: 2026-10-15T15:22:01.176Z
 ---
 
 ## Summary
@@ -220,3 +220,23 @@ Spec/integration: demo manager, executor changes, demo tests, duration allowance
 Reviewed delta cad57ccf..3b8d0bd3 against current merged dev 4095dd11. C7 reverified from current README; C1–C6 remain pending accepted new-head gate. Earlier A-3079 is local red, not Linux evidence; A-3054 is older Linux red with task budget failures. Submit default cland verify at this exact head. Both review axes performed directly; no Reviewer tests, edits or provider calls.
 
 Criteria: C7 verified.
+
+### rev-30 · 2026-10-15T15:22:01.176Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261015-459-linux-current
+commit: 3b8d0bd3f00a7fec5700fa51b104f4beb40e0b1c
+scope: evidence
+
+Evidence review not clear at unchanged 3b8d0bd3f00a7fec5700fa51b104f4beb40e0b1c; gate pending lead disposition.
+
+Medium — hub/test/codex-adapter.test.ts:739: old accepted-steer staging regex fails (A-3109:3998–4063), exact known T-467, now merged elsewhere.
+Medium — hub/test/heartbeat.test.ts:260: newly observed watched transition is counted stale, exact T-506 as classified by Coordinator eea1467c in T-495 (A-3109:4074–4080).
+Medium — hub/test/heartbeat.test.ts, “busy and approval-waiting Coordinators coalesce heartbeats into the next turn without steering”: hard new-test duration budget failure 5.113 s > 5 s (A-3109:5771). Outside T-459's source, needs lead disposition/shared allowance; ordinary duration regression notices do not resolve this hard failure.
+
+Standards: all seven demo tests pass and T-459's measured allowances are effective; no task test-budget failure or new source finding.
+Spec/evidence: prior source/delta reviews stand, C7 verified; C1–C6 runtime behavior is supported by functional tests but remains unverified pending accepted gate. Full selected run stops before Neovim. No implementation criterion failure mark for these outside issues.
+
+44712045/A-3109 matches reviewed/current head, Linux x64 c-8, host/remote typecheck green, exit 1, 1769 pass/2 fail/3 platform skips/0 cancelled, plus the hard heartbeat budget diagnostic. Earlier A-3079 is local red; older A-3054 has task budget errors. No accepted Linux pair established yet. Requester is holding source/runs for lead decision. No Reviewer tests or edits.
