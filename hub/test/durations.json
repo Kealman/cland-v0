@@ -3548,6 +3548,10 @@
       "seconds": 6.183538,
       "reason": "Exercises the Neovim verification view against a real queue and waits for its local age clock while proving navigation and commands."
     },
+    "hub/test/rule-cli.test.ts::rule shell writes use the held identity: only human and Aide write, with restricted origins": {
+      "seconds": 5.358,
+      "reason": "Runs a real hub and separate CLI processes for Aide origins, origin spoofing, and all three write refusals under three caller identities, preserving the full actor authorization matrix. Observed on the c-8 executor in A-2777 at a0ec44ea."
+    },
     "hub/test/heartbeat.test.ts::live remote leases appear in the heartbeat beside their verification run": {
       "seconds": 6.508681334,
       "reason": "T-454 observes a live lease through a real hub and the fake DigitalOcean/SSH machine, then waits for the verification run to finish and the lease to be released. The end-to-end executor lifecycle exceeds five seconds."

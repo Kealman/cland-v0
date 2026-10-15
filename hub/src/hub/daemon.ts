@@ -25,6 +25,7 @@ import type { TipSchedule } from '../tracker/freshness.ts';
 import type { LogFn } from '../log.ts';
 import { projectSessions, type ProjectSessions } from '../adapters/index.ts';
 import { CrewFile, crewSummary } from '../crew.ts';
+import { RulebookFile } from '../rules/file.ts';
 import { RolesFile } from '../roles/config.ts';
 import { readProjectConfig } from '../init/config.ts';
 import { Journal, journalPath, readJournal, eventRow, type JournalOpen, type JournalRecord } from './journal.ts';
@@ -161,6 +162,7 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
   const roles = new RolesFile(l.roles, log, undefined, requestGuard.resumer('roles.refresh'));
   // the hygiene thresholds of `.cland/config.toml`; the built-in defaults when it is missing or unreadable
   if (config) log({ event: 'config-loaded', path: l.config, hygiene: config.hygiene });
+  const rules = new RulebookFile(l.rules, () => roles.get().keys(), log, requestGuard.resumer('rules.refresh'));
   const crew = new CrewFile(l.crew, log, config => hub?.core.publishCrew(config), tracker, requestGuard.resumer('crew.refresh'));
   let adapters: ProjectSessions | null = null;
   let accountPoller: AccountPoller | null = null;
@@ -170,6 +172,7 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
     tracker.start();
     await tracker.rescanAsync();
     await roles.start();
+    await rules.start();
     await crew.start();
     // The live cache must share the journal's recent groups, including ones beyond the
     // first page. Read the tail before creating the core so startup log producers cannot
@@ -195,6 +198,7 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
     }
     hub = createHubBase({
       secret,
+      rules,
       journal,
       verification: { executor: config?.verification.executor ?? 'local', lifetimeMs: config?.verification.lifetimeMs ?? 6600000, runTimeoutMs: config?.verification.runTimeoutMs ?? 4500000, runTimeout: config?.verification.runTimeout ?? '75m', cacheMaxAgeMs: config?.verification.cacheMaxAgeMs ?? 86400000, budget: config?.verification.budget ?? 1, remoteBudget: config?.verification.remoteBudget ?? 4, locks: [config?.verification.lockPath ?? '/tmp/cland-suite.lock', config?.verification.lockPath && config.verification.lockPath !== '/tmp/cland-suite.lock' ? `${config.verification.lockPath}-nvim` : '/tmp/cland-suite-nvim.lock'] },
       store: new Store(l.db),
@@ -236,6 +240,7 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
     hub.core.restoreJournalRows(recent);
   } catch (err) {
     await crew.stop();
+    await rules.stop();
     await roles.stop();
     await tracker.stop();
     try { await closeLogs(); } finally { lock.release(); }
@@ -266,6 +271,7 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
       await tracker.stop();
       await crew.stop();
       await hub.close();
+      await rules.stop();
       await roles.stop();
       // the discovery file and then the lock go last: a successor can only start once this hub is gone
       removeDiscovery(l.discovery, process.pid);
@@ -292,6 +298,7 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
         await crew.stop();
         await hub.close();
         await tracker.stop();
+        await rules.stop();
         await roles.stop();
         try { await closeLogs(); } finally { lock.release(); }
         throw err;

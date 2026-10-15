@@ -503,7 +503,15 @@ export type SuiteSlot = { type: 'suite.slot' | 'suite.forced'; id: string; mode:
 export type SuiteSlotResult = { id: string; admitted: boolean; locks: string[]; queue: VerificationQueue };
 export type SuiteCancel = { type: 'suite.cancel'; id: string; suite?: string };
 
+export type RuleRequest =
+  | { type: 'rule.add'; id: string; text: string; scope: string; reason: string; title?: string; origin?: string }
+  | { type: 'rule.edit'; id: string; number: number; text?: string; scope?: string; reason?: string }
+  | { type: 'rule.retire'; id: string; number: number; reason: string }
+  | { type: 'rule.list'; id: string; all?: boolean; role?: string }
+  | { type: 'rule.show'; id: string; number: number };
+
 export type ClientRequest =
+  | RuleRequest
   | { type: 'account.clear'; id: string; account: string }
   | { type: 'account.list'; id: string }
   | { type: 'account.poll'; id: string }
@@ -759,6 +767,16 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
     case 'prompt.send':
     case 'artifact.promote':
       return true;
+    case 'rule.add':
+      return typeof f.text === 'string' && typeof f.scope === 'string' && typeof f.reason === 'string' && (f.title === undefined || typeof f.title === 'string') && (f.origin === undefined || typeof f.origin === 'string');
+    case 'rule.edit':
+      return Number.isSafeInteger(f.number) && Number(f.number) > 0 && ['text', 'scope', 'reason'].every(key => f[key] === undefined || typeof f[key] === 'string');
+    case 'rule.retire':
+      return Number.isSafeInteger(f.number) && Number(f.number) > 0 && typeof f.reason === 'string';
+    case 'rule.show':
+      return Number.isSafeInteger(f.number) && Number(f.number) > 0;
+    case 'rule.list':
+      return (f.all === undefined || typeof f.all === 'boolean') && (f.role === undefined || typeof f.role === 'string');
     case 'crew.set':
       return typeof f.key === 'string' && f.value !== undefined;
     case 'task.migrate':

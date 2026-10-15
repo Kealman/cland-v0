@@ -9,6 +9,7 @@ import { parseItemReference } from '../tracker/prefixes.ts';
 import { normalizeId, idNumber } from '../tracker/item.ts';
 // The hub's core: presence, names, routing and store-and-forward. Transport-free, so the network
 // edge (`./server.ts`) is one thin layer over it.
+import type { RulebookFile } from '../rules/file.ts';
 import { crewSummary, type CrewConfig, type CrewSource } from '../crew.ts';
 import type { Resumed } from './budget.ts';
 import { randomUUID } from 'node:crypto';
@@ -159,6 +160,7 @@ export type CoreOptions = {
    */
   roles?: RolesSource;
   crew?: CrewSource;
+  rules?: RulebookFile;
   /** The tracker as a topic's binding sees it (`topic.create` with an item); absent, a binding is refused. */
   items?: TopicItems;
   /** Indexed session work, without file I/O; absent on a hub without a tracker. */
@@ -184,6 +186,7 @@ const ROLE_NOTICE = 'role';
 
 export class HubCore {
   readonly crew: CrewSource | undefined;
+  readonly rules: RulebookFile | undefined;
   refreshVisibility(): void { this.#emit({ type: 'visibility' }); }
 
   publishCrew(config: CrewConfig): void {
@@ -314,6 +317,7 @@ export class HubCore {
     this.#eventWindowMs = options.eventWindowMs ?? 60_000;
     this.#roles = options.roles ?? null;
     this.crew = options.crew;
+    this.rules = options.rules;
     this.#heartbeatMs = options.heartbeatMs;
     this.#heartbeatRunTimeoutMs = options.heartbeatRunTimeoutMs ?? 4500000;
     this.#idleNotifyMs = options.idleNotifyMs ?? IDLE_NOTIFY_MS;

@@ -95,6 +95,8 @@
     "hub/test/roles-snapshot.test.ts": "machine",
     "hub/test/roles-timing.test.ts": "machine",
     "hub/test/roles.test.ts": "machine",
+    "hub/test/rulebook.test.ts": "machine",
+    "hub/test/rule-cli.test.ts": "machine",
     "hub/test/routing.test.ts": "machine",
     "hub/test/session-archive.test.ts": "machine",
     "hub/test/session-async-processes.test.ts": "machine",

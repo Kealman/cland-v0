@@ -30,6 +30,9 @@ test('init writes tracker levels and update preserves a changed or empty ladder'
   const root = await tempProject(t);
   await gitRepo(root);
   await run(root, 'init');
+  const rulePath = join(root, '.cland/RULES.md');
+  const customRules = '# Project rules\n\nHuman-owned content.\n';
+  await writeFile(rulePath, customRules);
   const crewPath = join(root, '.cland/crew.toml');
   const crew = await readFile(crewPath, 'utf8');
   assert.match(crew, /leads = \[\]/);
@@ -39,6 +42,7 @@ test('init writes tracker levels and update preserves a changed or empty ladder'
   await writeFile(crewPath, customCrew);
   await run(root, 'init');
   await run(root, 'update');
+  assert.equal(await readFile(rulePath, 'utf8'), customRules);
   assert.equal(await readFile(crewPath, 'utf8'), customCrew, 'init and update preserve project staffing');
   const path = join(root, '.cland/config.toml');
   const initial = await readFile(path, 'utf8');
@@ -141,6 +145,8 @@ test('cland init on an empty repository: git status shows exactly the committed 
   await gitRepo(root);
   const configHome = join(root, 'user-config');
   const changes = await run(root, 'init', { XDG_CONFIG_HOME: configHome });
+  assert.equal(await readFile(join(root, '.cland/RULES.md'), 'utf8'), '# Project rules\n<!-- cland: rule high-water 0 -->\n');
+  assert.match(await readFile(join(root, '.cland/.gitignore'), 'utf8'), /committed.*RULES\.md|RULES\.md.*are/);
   const roles = await readFile(join(root, '.cland', 'roles.toml'), 'utf8');
   assert.match(roles, /account = "<name>" from ~\/\.config\/cland\/accounts\.toml: one name, never a list/);
   assert.match(roles, /"" or absent uses the harness default/);
@@ -167,6 +173,7 @@ test('cland init on an empty repository: git status shows exactly the committed 
     '.cland/config.toml',
     '.cland/crew.toml',
     '.cland/roles.toml',
+    '.cland/RULES.md',
     '.cland/tasks/.gitkeep',
     'AGENTS.md',
     'docs/agents/domain.md',
@@ -385,7 +392,7 @@ test('a hub started in an initialised project has General and Agents, serves the
   const secret = (await readFile(join(root, '.cland', 'secret'), 'utf8')).trim();
   assert.match(secret, /^[0-9a-f]{64}$/);
   const status = await gitStatus(root);
-  assert.ok(status.every((p) => /^(\.agents\/skills\/|\.claude\/(settings\.json|skills)$|\.cland\/(\.gitignore|config\.toml|crew\.toml|roles\.toml|tasks\/\.gitkeep)$|AGENTS\.md$|docs\/agents\/)/.test(p)), status.join('\n'));
+  assert.ok(status.every((p) => /^(\.agents\/skills\/|\.claude\/(settings\.json|skills)$|\.cland\/(\.gitignore|config\.toml|crew\.toml|roles\.toml|RULES\.md|tasks\/\.gitkeep)$|AGENTS\.md$|docs\/agents\/)/.test(p)), status.join('\n'));
   for (const f of status) {
     if ((await lstat(join(root, f))).isSymbolicLink()) continue;
     assert.ok(!(await readFile(join(root, f), 'utf8')).includes(secret), `${f} holds the secret`);

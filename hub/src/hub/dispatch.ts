@@ -113,7 +113,7 @@ const HUMAN_SESSION = 'human';
  * What a CLI call made as a session may send beside the permission table's tools: reading the hub's state. Any
  * other frame is the human's alone.
  */
-const SESSION_CLI_FRAMES: ReadonlySet<string> = new Set(['account.clear', 'account.list', 'account.poll', 'executor.status', 'executor.reap', 'executor.prepare', 'task.migrate', 'crew.show', 'crew.set', 'artifact.list', 'hub.status', 'inbox.list', 'role.list', 'worktree.list', 'suite.start', 'suite.cancel', 'suite.queue']);
+const SESSION_CLI_FRAMES: ReadonlySet<string> = new Set(['account.clear', 'account.list', 'account.poll', 'executor.status', 'executor.reap', 'executor.prepare', 'task.migrate', 'rule.add', 'rule.edit', 'rule.retire', 'rule.list', 'rule.show', 'crew.show', 'crew.set', 'artifact.list', 'hub.status', 'inbox.list', 'role.list', 'worktree.list', 'suite.start', 'suite.cancel', 'suite.queue']);
 
 /** Who a call is checked and audited as: a spoke's session, or the session a CLI call acts as. */
 type Caller = Pick<Connection, 'name' | 'sessionId' | 'role'>;
@@ -1404,6 +1404,40 @@ export class Dispatcher {
             if (!core.accountLimits.list(registry).accounts.some(a => a.name === frame.account)) throw new Error(`unknown account "${frame.account}"`);
             return { type: 'result', id: frame.id, ok: true, value: { account: frame.account, cleared: core.clearAccountLimit(frame.account, 'hand') } } as HubFrame;
           }), error => resumed(() => Dispatcher.#failure(frame.id, error))));
+        }
+        if (isClientRequest(frame) && ['rule.add', 'rule.edit', 'rule.retire', 'rule.list', 'rule.show'].includes(frame.type)) {
+          const request = frame as import('../protocol.ts').RuleRequest;
+          const rules = core.rules;
+          if (!rules) return peer.send(Dispatcher.#failure(request.id, new Error('this hub has no rulebook')));
+          try {
+            if (request.type === 'rule.list') {
+              if (request.role !== undefined && !core.roles?.get().has(request.role)) throw new Error(`unknown role ${request.role}`);
+              return peer.send({ type: 'result', id: request.id, ok: true, value: { rules: rules.get().filter(rule => (request.all || rule.status === 'active') && (request.role === undefined || rule.scope === 'all' || rule.scope.includes(request.role))) } });
+            }
+            if (request.type === 'rule.show') {
+              const rule = rules.get().find(rule => rule.number === request.number);
+              if (!rule) throw new Error(`no rule ${request.number}`);
+              return peer.send({ type: 'result', id: request.id, ok: true, value: { rule } });
+            }
+            const reason = 'rule shell writes belong to the human or an Aide; Coordinators record through rule.add from a human message, and other roles propose a rule to the Coordinator';
+            if (caller && caller.role !== 'aide') return this.#refuse(caller, frame, peer, request.type, reason);
+            const authorize = () => {
+              const now = this.#asSession(frame);
+              if (caller && (!now || now.sessionId !== caller.sessionId || now.role !== 'aide')) throw new ToolForbidden(now?.role ?? null, request.type, reason);
+            };
+            const resumed = this.#guard.resumer(request.type, client);
+            let writing: Promise<import('../rules/rulebook.ts').Rule>;
+            if (request.type === 'rule.add') {
+              if (request.origin !== undefined && !/^memory:[^\r\n]+$/.test(request.origin)) throw new Error('--origin may name only memory:<path>');
+              const origin = request.origin ?? (caller ? `session:${caller.name}` : 'shell');
+              writing = rules.add({ ...request, origin }, resumed, authorize);
+            } else if (request.type === 'rule.edit') writing = rules.edit(request.number, request, resumed, authorize);
+            else writing = rules.retire(request.number, request.reason, resumed, authorize);
+            return later(request.type, writing.then(rule => resumed(() => {
+              this.#guard.changed();
+              return { type: 'result' as const, id: request.id, ok: true, value: { rule } };
+            }), error => resumed(() => Dispatcher.#failure(request.id, error))));
+          } catch (error) { return peer.send(Dispatcher.#failure(request.id, error)); }
         }
         if (isClientRequest(frame) && (frame.type === 'crew.show' || frame.type === 'crew.set')) {
           const crew = core.crew;

@@ -166,3 +166,11 @@ export const SUBSCRIPTIONS_USAGE = `  subscribe <session|item|topic|role|subtree
   subscriptions  list the caller's subscriptions
                   --as <session> from the human CLI; launched shells use their own identity; --json
 `;
+
+export const RULE_USAGE = `  rule add <text> --scope <roles>|all --reason <text> [--title t] [--origin memory:<path>]
+  rule edit <n> [--text t] [--scope s] [--reason r]
+  rule retire <n> --reason <text>
+  rule list [--all] [--role r]
+  rule show <n>   read one rule; every rule command takes --json
+                  writes belong to the human shell or an Aide; other sessions propose to the Coordinator
+`;
