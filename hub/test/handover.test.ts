@@ -100,7 +100,7 @@ test('the Coordinator hands over with a note: B gets clause and note in one even
   assert.equal(clause.params.meta?.from, 'hub');
   assert.equal(clause.params.meta?.handover_from, 'coord');
   assert.match(clause.params.content, /^cland hub: you hold the role Coordinator in this project, shown to others as next \[Coordinator\]/);
-  assert.match(clause.params.content, /You are the Coordinator of this project/);
+  assert.match(clause.params.content, /You are the Coordinator: lead the root of the item tree\./);
   assert.match(clause.params.content, /Handover note from coord:\n\n## Goals now\n\nShip the tracker import \(T-1\)\.\n\n## Work in flight\n\nT-1: the importer is half done; impl-1 writes the tests\.\n\n## Open decisions\n\n.+\n\n## Waiting on\n\nThe human, on the General question about the release date\./);
   assert.match(clause.params.content, /`role\.state`/);
 
