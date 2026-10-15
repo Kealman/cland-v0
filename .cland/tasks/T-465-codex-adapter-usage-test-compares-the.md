@@ -3,7 +3,7 @@ id: T-465
 kind: task
 title: codex-adapter usage test compares the first usage event with a later snapshot whose rateLimitsAt differs
 state: open
-status: review
+status: ready
 size: XS
 criterion_seq: 1
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-293
 branch: t/T-465-codex-adapter-usage-test-compares-the
 created: 2026-10-15T08:47:22.013Z
-updated: 2026-10-15T13:10:24.485Z
+updated: 2026-10-15T13:36:34.070Z
 ---
 
 ## Summary
@@ -26,6 +26,7 @@ updated: 2026-10-15T13:10:24.485Z
 
 - [x] C1. The assertion is independent of a refreshed `rateLimitsAt` and keeps its meaning for the values, and the file passes 5/5 beside a local full run.
   - done: impl-465 · 2026-10-15T12:56:00.654Z
+  - verified: rev-30 [reviewer] · run rev-20261015-465-final · 2026-10-15T13:36:32.772Z · commit 495ab2da8ea76da2a97473ce2794323ed9faf3ab
 
 ## Comments
 
@@ -106,3 +107,27 @@ C1 remains unverified pending accepted new-head Linux gate. Coordinator ea71c380
 ### impl-465 · 2026-10-15T13:10:24.485Z
 
 Coordinator ea71c380 dispositions applied: shared T-486 + heartbeat duration picks with matching stable patch-ids, followed by conflict-free origin/dev merge. Pushed reviewed head495ab2da8ea76da2a97473ce2794323ed9faf3ab. Required quiet post-pick codex-adapter.test.ts run green35/35 in50.104s (A-3008), load1.79, holder null, no other local test file. Delta source review rev-20261015-465-delta clear. Submitted new first-receipt default droplet verify at exact reviewed head; prior five-pass Mac evidence A-2995 stands. T-494 now tracks the suite.cancel flake.
+
+### impl-465 · 2026-10-15T13:36:15.799Z
+
+Same-reviewed-head droplet c0d20215 / A-3028 green at495ab2da8ea76da2a97473ce2794323ed9faf3ab: exit0;1751 passed,0 failed,0 cancelled,3 macOS platform skips; hub-only mode plus Neovim smoke complete, typecheck green. Linux c-8 lon1,4 machine workers,1398.29s suite,peak load12.47,lifetime1492s,cost$0.1036. Prior five serial quiet Mac file passes A-2995 and post-shared-fix35/35 A-3008 remain. Waiting for Reviewer's final same-head verdict; no further changes/tests needed.
+
+### rev-30 · 2026-10-15T13:36:32.772Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-465-final
+commit: 495ab2da8ea76da2a97473ce2794323ed9faf3ab
+scope: evidence
+
+Final review clear at 495ab2da8ea76da2a97473ce2794323ed9faf3ab; no unresolved T-465 source findings.
+
+Standards: source/delta verdicts rev-20261015-465-source and rev-20261015-465-delta stand, no findings.
+Spec: C1 verified. Only rateLimitsAt is normalized; all other usage values retain deep comparison and explicit assertions. Five serial quiet Mac whole-file passes A-2995 (35/35 each) are accepted by Coordinator b4900603/1ba48602; post-integration whole-file A-3008 is also 35/35. Same-head Linux usage regression passes in 4.276 s (A-3028:793).
+
+Gate c0d20215-4c57-488e-bc26-fc473287dce1 / A-3028 is green at the exact source-reviewed/current branch head. Host and remote typecheck, hub suite and Neovim smoke complete; Linux x64 c-8, exit 0, 1751 pass/0 fail/3 platform skips/0 cancelled. Three skips are macOS-only sandbox-exec edge/spawn-census and idle-sleep inhibitor cases. Neovim smoke 12/12. No duration-budget failures; existing duration regression notices do not fail this receipt.
+
+Earlier A-3001 remains recorded red at its old head and is not needed for the accepted gate. C1 verification completes the item review. No Reviewer tests or edits.
+
+Criteria: C1 verified.

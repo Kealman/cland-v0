@@ -3,7 +3,7 @@ id: T-463
 kind: task
 title: session-usage restart publication test counts 2 publications against 1 under load (T-389's 100 ms window)
 state: open
-status: review
+status: ready
 size: XS
 criterion_seq: 1
 labels:
@@ -16,7 +16,7 @@ regression_of: T-389
 topic: topic-292
 branch: t/T-463-session-usage-restart-publication-test
 created: 2026-10-15T08:37:18.553Z
-updated: 2026-10-15T13:10:37.251Z
+updated: 2026-10-15T13:26:44.699Z
 ---
 
 ## Summary
@@ -27,6 +27,7 @@ updated: 2026-10-15T13:10:37.251Z
 
 - [x] C1. The restart case counts publications against the observed coalescing boundary, keeps its assertion's meaning, and the file passes 5/5 beside a local full run.
   - done: impl-463 · 2026-10-15T12:59:12.986Z
+  - verified: rev-31 [reviewer] · run rev-20261015-463-final · 2026-10-15T13:26:42.801Z · commit 2ddc0d8655ed89b796eb7e321e63495ba79d34b2
 
 ## Comments
 
@@ -77,3 +78,28 @@ Name in your review request whether your fix covers each one. If one isn't cover
 ### impl-463 · 2026-10-15T13:10:37.251Z
 
 Coverage clarification requested by Coordinator 93124e8d: inspected A-3003 failure traces. The :42 signature is `12 !== 24` at the first test's latest.total assertion; helper turn() still accepts any following session.usage frame without requested-turn correlation. The :78 TypeError arises in the second test's journal.map reading r.total.totalTokens, demonstrating an initial row without totals. Current 2ddc0d86 changes only restart publication boundaries and Codex launch client deadlines, so neither new signature is covered. Reported uncovered signatures and possible size S / Bugs to lead as directed; no scope expansion or source change. Source-review request supplemented, verify 8645a36a still running.
+
+### rev-31 · 2026-10-15T13:26:42.801Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261015-463-final
+commit: 2ddc0d8655ed89b796eb7e321e63495ba79d34b2
+scope: evidence
+
+Final review clear at unchanged 2ddc0d8655ed89b796eb7e321e63495ba79d34b2. No unresolved high/medium findings in the agreed T-463 scope.
+
+## Standards
+Source verdict rev-20261015-463-source stands; no new findings. No source changes since that review, confirmed against the branch tip.
+
+## Spec
+C1 verified: hub/test/session-usage.test.ts:173-206 counts observed startup publications and proves exactly one restart append, unchanged complete history, no replayed totals and exactly one final. A-2997 contains the exact 2 !== 1 reproduction and five labelled quiet whole-file passes, 8/8 each. Coordinator decisions 1ba48602/7ccb5be2 and E-482's 12:32 evidence rule explicitly replace beside-full-run Mac evidence with five quiet serial passes plus the task droplet gate.
+
+Accepted gate: 8645a36a-623e-41d3-9c98-380a59627584 / A-3022 is green at the exact source-reviewed/current branch head: Linux x64 c-8, host and remote typecheck pass, hub plus Neovim smoke complete, exit 0, 1751 pass / 0 fail / 3 platform skips / 0 cancelled. All eight session-usage cases pass (A-3022:2539-2546; restart 6.226 s). Four machine workers, peak 1m load 11.55; Neovim smoke 12/12. Three platform skips are two sandbox-exec cases and the macOS sleep inhibitor; no usage case skipped. Existing-identity duration notices do not fail this receipt. No flake exception needed.
+
+Coverage limit retained: helper turn() and startup limits-only journal assumptions are not fixed by T-463. Coordinator 1b21300e explicitly split those signatures into T-495, blocked by T-463; task.view confirms that scope. The first two tests passing in this run does not establish a fix for T-495.
+
+Standards: 0 new findings. Spec: 0 unresolved findings in T-463 scope; C1 verified. No Reviewer tests or edits.
+
+Criteria: C1 verified.

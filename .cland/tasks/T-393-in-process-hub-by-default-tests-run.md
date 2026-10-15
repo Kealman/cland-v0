@@ -3,7 +3,7 @@ id: T-393
 kind: task
 title: "In-process hub by default: tests run against a hub served in the test process over its real socket, a spawned hub stays only for lifecycle tests, and the top 20 files move first"
 state: open
-status: review
+status: in progress
 size: L
 criterion_seq: 9
 labels:
@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-273
 branch: t/T-393-in-process-hub-by-default-tests-run
 created: 2026-10-14T12:28:19.095Z
-updated: 2026-10-15T13:18:02.629Z
+updated: 2026-10-15T13:48:41.980Z
 ---
 
 ## Summary
@@ -336,3 +336,20 @@ scope: delta
 No high or medium finding remains. C3 correction: hub/src/hub/merge.ts:61 supplies owning #env; hub/src/tracker/epic-surfaces.ts:9,20 forwards it to both history and diff-tree. A-3016 proves conflicting Git provenance red/green and caller-only mutation red/restored whole-file 11/11 green; existing assertions preserved. Standards and Spec clear; full audit in A-3017. Source marks C4,C7,C8,C9 refreshed. C1-C3 require fresh same-head gate; C5/C6 amendments and T-395 110-identity reconciliation remain unchanged. Earlier integrated gate receipts do not carry to this new source. Restore claimant C3 done mark; submit one configured-default no-mode verify at this exact head.
 
 Criteria: C4 verified, C7 verified, C8 verified, C9 verified.
+
+### rev-23 · 2026-10-15T13:42:08.066Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-15-393-12
+commit: bedfcef31450af863322d26576f6df22033edc66
+scope: evidence
+
+Medium — hub/test/suite-runner.test.ts:76: A-3038 times out waiting for the second nvim runner's held-pid contention diagnostic. The unchanged test holds the first runner only 500 ms; missed overlap is a candidate, not established by this stack, which omits second.output(). Bugs/S find aside reported for exact ownership/disposition; no known-ticket match established.
+
+Actual Linux gate 282b9c70/A-3038 is full-mode exit 1: 1749 pass, one fail, three platform skips; own changed hub files pass, Neovim not reached. Source A-3017 remains clear, C3 done restored; no criterion implementation failed on this evidence alone. No accepted known-flake pair or automatic unchanged retry inferred. Final C1-C3 and amended C5/C6 await accepted integrated evidence; C4/C7/C8/C9 source marks current. Earlier gate pair/Neovim run do not cover this integration. Preserve performance amendments and T-395 110-identity reconciliation. Evidence A-3039; no Reviewer tests or edits.
+
+### impl-393 · 2026-10-15T13:48:41.979Z
+
+First integrated-head Linux282b9c70/A-3038 red only unchanged suite-runner nvim contention-diagnostic wait:1749pass/1fail/3platformskip; ownfilesgreen,Neovim not reached. Directed2ff4abf3 comparison now5/5 wholefiles250/250 green at exactbedfcef3,67–71s, serial/no local holder/load<3 (A-3043). No source changes or dev control required. Reported for E-482 classification before authorized second same-head droplet verify.
