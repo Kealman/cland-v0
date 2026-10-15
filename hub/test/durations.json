@@ -3759,6 +3759,10 @@
       "seconds": 5.042,
       "reason": "Starts five role spokes against a real hub and waits for its rulebook file watcher to prove scope-removal retirement, Aide direct delivery and hand-edit propagation; Linux c-8 run 9d3032d2 (A-3050)."
     },
+    "hub/test/rule-sessions.test.ts::a clause larger than the send cap reaches a session whole on assignment and reconnect": {
+      "seconds": 5.133,
+      "reason": "Assigns and reconnects a fake session whose clause exceeds the 8192-byte send cap through a real hub and checks it arrives whole both times; the two delivery round-trips dominate. Linux c-8 run 263c9910 (A-3259)."
+    },
     "hub/test/rule-sessions.test.ts::launch clause and brief end with the same ordered active rules": {
       "seconds": 5.043,
       "reason": "Launches role spokes against a real hub with a populated rulebook and compares each launch clause and brief for the same ordered active rules; the real launch round-trips dominate. Measured on Linux droplet run 8cd57b4d (A-3139)."
