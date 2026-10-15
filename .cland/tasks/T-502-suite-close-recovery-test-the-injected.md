@@ -2,8 +2,8 @@
 id: T-502
 kind: task
 title: "suite-close-recovery test: the injected machine loss can land after shard 1 already passed (Linux)"
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ regression_of: T-395
 topic: topic-319
 branch: t/T-502-suite-close-recovery-test-the-injected
 created: 2026-10-15T14:57:11.991Z
-updated: 2026-10-15T20:41:07.829Z
+updated: 2026-10-15T20:41:37.117Z
+closed: 2026-10-15T20:41:37.117Z
 ---
 
 ## Problem
@@ -131,3 +132,7 @@ A-3310 remains the first overall-red Linux receipt with own file green; no relia
 Evidence: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3332-suite-1f4cfb6f-8501-4ce7-81cb-6ef17bb6aa5e-auto-at-e60f59c.log. No per-item QA criteria. No Reviewer tests, edits, merges or provider actions. A changed head or conflict resolution requires delta review.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-15T20:41:37.117Z
+
+Merged eff24bf8a38ec9ffa1343c95a0dfedf85c3ee82b onto dev.
