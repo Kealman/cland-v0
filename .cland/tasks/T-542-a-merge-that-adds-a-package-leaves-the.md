@@ -15,7 +15,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-15T21:42:23.476Z
-updated: 2026-10-15T21:42:23.476Z
+updated: 2026-10-15T22:43:24.442Z
 ---
 
 ## Summary
@@ -24,3 +24,9 @@ T-427 merged at 21:28Z (bd2fdba4). It switched the typecheck script to `typescri
 ## Acceptance criteria
 - [ ] C1. When a merge changes `package.json` or `package-lock.json`, the root's dependencies are brought up to date (an incremental install that doesn't remove packages a running hub may load), or the merge report names the install as required.
 - [ ] C2. A host typecheck that fails with MODULE_NOT_FOUND for a dependency named in the lockfile reports "dependencies out of date: run npm install", not just exit 1.
+
+## Comments
+
+### coord · 2026-10-15T22:43:24.442Z
+
+Second form, 22:41Z: task worktrees an implementer filled with its own `npm ci` hold their own node_modules, so a later dependency change on dev doesn't reach them either. impl-499's verify c6147dd0 at 289b3c17 failed with "host typecheck: MODULE_NOT_FOUND …/T-499/node_modules/typescript7". Worktrees without node_modules resolve the root's, which is updated. C1 should cover the worktree case too: the worktree preparation installs from the lockfile at its base, or verify checks the lockfile hash before the host typecheck.

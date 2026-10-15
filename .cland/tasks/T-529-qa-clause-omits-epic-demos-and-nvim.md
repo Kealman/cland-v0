@@ -3,7 +3,7 @@ id: T-529
 kind: task
 title: QA clause omits epic demos and nvim README omits follows (E-423 doc gaps)
 state: open
-status: review
+status: ready
 size: XS
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-321
 branch: t/T-529-qa-clause-omits-epic-demos-and-nvim
 created: 2026-10-15T20:43:50.908Z
-updated: 2026-10-15T21:40:47.840Z
+updated: 2026-10-15T22:43:35.179Z
 ---
 
 ## Summary
@@ -23,12 +23,14 @@ E-423's QA brief (qa/briefs/E-423.md, check R5) found two documentation gaps fro
 
 ## Acceptance criteria
 
-- [ ] C1. The QA clause, changed in both default-roles.ts and roles.toml with the clause byte guard green, names `cland demo start|exec|status|stop` for an epic's Definition of done at a named dev commit, the freshness rule, and the budget fallback to a local run. It points to the qa skill's "Epic demos" section for detail. No existing guard sentence is trimmed.
+- [x] C1. The QA clause, changed in both default-roles.ts and roles.toml with the clause byte guard green, names `cland demo start|exec|status|stop` for an epic's Definition of done at a named dev commit, the freshness rule, and the budget fallback to a local run. It points to the qa skill's "Epic demos" section for detail. No existing guard sentence is trimmed.
   - verified: rev-30 [reviewer] · run rev-20261015-529-source-correction · 2026-10-15T20:51:00.622Z · commit ffc1e71b4a128cd0727c22972483ab0636995023
   - verified: rev-30 [reviewer] · run rev-20261015-529-final · 2026-10-15T21:40:47.840Z · commit ffc1e71b4a128cd0727c22972483ab0636995023
-- [ ] C2. nvim/README.md documents `follows` on the item card and in the item view, matching T-335's UI.
+  - done: impl-529 · 2026-10-15T22:43:28.228Z
+- [x] C2. nvim/README.md documents `follows` on the item card and in the item view, matching T-335's UI.
   - verified: rev-30 [reviewer] · run rev-20261015-529-source-correction · 2026-10-15T20:51:00.622Z · commit ffc1e71b4a128cd0727c22972483ab0636995023
   - verified: rev-30 [reviewer] · run rev-20261015-529-final · 2026-10-15T21:40:47.840Z · commit ffc1e71b4a128cd0727c22972483ab0636995023
+  - done: impl-529 · 2026-10-15T22:43:30.252Z
 
 ## Comments
 
