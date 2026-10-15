@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-14T12:28:09.615Z
-updated: 2026-10-15T20:54:43.974Z
+updated: 2026-10-15T21:55:23.710Z
 ---
 
 ## Goal
@@ -166,3 +166,18 @@ Budget sequencing (2026-10-15 19:24Z): today's droplet spend is $7.89 + $1.00 re
 ### coord · 2026-10-15T20:54:43.974Z
 
 Stage-close run 7d5ac27f at dev 66545745 is red. Shard 2 passed (cland-v0-a9bc7b1c, 851 s, $0.0558). Shard 1 failed (cland-v0-2df7755a, 906 s, $0.0584) on two new load flakes, now filed as T-530 (heartbeat run-digest, launching vs running) and T-531 (suite-close coverage-map scp count 24 vs 2). Wall time was 906 s from admission to collection, against the 600 s target (T-520). The total cost was $0.1142. Logs: A-3340, A-3341, A-3342. I'll rerun the stage close on dev after the T-469 and T-471 merges, so one integrated run covers them too.
+
+### coord · 2026-10-15T21:43:57.469Z
+
+Stage-close rerun, 2026-10-15:
+- 21:40Z, run 02c7cfc7: failed in 9 s with "host typecheck failed; no droplet created". The root lacked `typescript7` after the T-427 merge; filed as T-542. Fixed by `npm install` in the root, with the lockfile unchanged.
+- 21:41:54Z, run 7a9d39f3 at dev 7dbd2e2c: resubmitted, `verify all --fresh --occasion stage --report general`. The dev tip includes T-471 and T-427, not T-469. Shards: cland-v0-3149ccb0 and cland-v0-29d60bb3 (c-8 lon1), both bundled and running tests at 21:43:43Z. Results will follow here.
+
+### coord · 2026-10-15T21:55:23.710Z
+
+Stage-close run 7a9d39f3 at dev 7dbd2e2c (21:41:54–21:55:00Z): red on one known flake.
+- shard-1, cland-v0-3149ccb0 c-8 lon1: 764.78 s, $0.0522. 924 pass, 1 fail: suite-close.test.ts:12 "integrated remote close collects each map before release…", the T-531 coverage-map count. Its test-only fix at a85c9135 is in verify now.
+- shard-2, cland-v0-29d60bb3 c-8 lon1: 770.20 s, $0.0536, green (875 pass, Neovim phase included).
+- Total $0.1058. Wall 785.69 s from admission through collection, down from 906–908 s but still over the 600 s target (T-520).
+- Logs: A-3393 (all), A-3394, A-3395.
+Next: merge T-531 and T-530, then one more stage-close run on dev, which will also cover T-469 if it has landed. The stage closes on that green.

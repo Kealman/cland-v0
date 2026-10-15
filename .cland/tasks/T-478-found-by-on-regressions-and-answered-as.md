@@ -3,7 +3,7 @@ id: T-478
 kind: task
 title: found_by on regressions and answered_as on ask answers
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 3
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-327
 branch: t/T-478-found-by-on-regressions-and-answered-as
 created: 2026-10-15T09:13:19.908Z
-updated: 2026-10-15T21:16:03.961Z
+updated: 2026-10-15T21:43:41.365Z
 ---
 
 ## Summary
@@ -33,11 +33,14 @@ Retrospective A-2783, START 2: escapes could not be attributed to where they wer
 - [x] C1. `task create --regression-of T-n --found-by cover` stores and shows found_by, and a value outside the set is refused.
   - done: impl-478 · 2026-10-15T21:13:02.013Z
   - verified: rev-30 [reviewer] · run rev-20261015-478-source · 2026-10-15T21:15:43.859Z · commit 89308cc3675def9b2afed9d94a015eacfed3e59f
+  - verified: rev-30 [reviewer] · run rev-20261015-478-final · 2026-10-15T21:43:39.110Z · commit 89308cc3675def9b2afed9d94a015eacfed3e59f
 - [x] C2. An ask answered from the human's shell records `answered_as: human`, and one answered by a named stand-in records `stand-in` with its name.
   - done: impl-478 · 2026-10-15T21:13:04.560Z
+  - verified: rev-30 [reviewer] · run rev-20261015-478-final · 2026-10-15T21:43:39.110Z · commit 89308cc3675def9b2afed9d94a015eacfed3e59f
 - [x] C3. hub/README.md describes both fields.
   - done: impl-478 · 2026-10-15T21:13:05.970Z
   - verified: rev-30 [reviewer] · run rev-20261015-478-source · 2026-10-15T21:15:43.859Z · commit 89308cc3675def9b2afed9d94a015eacfed3e59f
+  - verified: rev-30 [reviewer] · run rev-20261015-478-final · 2026-10-15T21:43:39.110Z · commit 89308cc3675def9b2afed9d94a015eacfed3e59f
 
 ## Comments
 
@@ -75,3 +78,29 @@ Criteria: C1 verified, C3 verified.
 ### impl-478 · 2026-10-15T21:16:03.961Z
 
 Source review clear (rev-20261015-478-source) at 89308cc3675def9b2afed9d94a015eacfed3e59f; post-merge typecheck/shard lint green. Submitted exact-head no-mode verify a2471eef-5a2e-4ceb-b0ce-c17e58e349ee, queue position 1, report topic-327 to Reviewer rev-30 and Implementer. Waiting for hub receipt; C2 final runtime mark remains with Reviewer.
+
+### impl-478 · 2026-10-15T21:43:22.750Z
+
+Exact reviewed head 89308cc3675def9b2afed9d94a015eacfed3e59f passed no-mode verification a2471eef-5a2e-4ceb-b0ce-c17e58e349ee: full, local darwin arm64 fallback, 2239/2239 tests, exit 0, including Neovim. Log A-3391 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3391-suite-a2471eef-5a2e-4ceb-b0ce-c17e58e349ee-auto-at-89308cc.log). Reviewer received same-head result; waiting final C2 verdict. No source/head changes.
+
+### rev-30 · 2026-10-15T21:43:39.110Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-478-final
+commit: 89308cc3675def9b2afed9d94a015eacfed3e59f
+scope: evidence
+
+Final evidence review T-478 clear at 89308cc3675def9b2afed9d94a015eacfed3e59f. No high, medium or low findings. Source review A-3370 stands at the unchanged merged head.
+
+A-3391 /a2471eef-5a2e-4ceb-b0ce-c17e58e349ee is actual local Darwin arm64 after hub fallback, not Linux. Full selection exits0:2239 pass, zero failures/cancellations/skips. Typecheck, hub and full Neovim completed. Duration1153.88s, peak one-minute load20.87. No hard duration-budget failure; regression notices are informational.
+
+C2 verified: human-shell origin test passes0.913s at611; named stand-in/known-session refusal/relay/restart test1.732s at612; forged-metadata/human-relay test0.716s at613. These public paths confirm Coordinator c5e97e15's self-declaration model: human-shell --as labels a stand-in, known hub sessions and Aides remain refused, persisted origin survives restart and is copied by relay with relayed_by. Human answers stay human; submitted origin fields do not override the derived value.
+
+C1 reverified: vocabulary/frontmatter round-trip and invalid-orphan attribution test passes at3380; CLI/MCP/index/edit/journal regression-discovery test passes1.061s at3381. Source validation, clearing and kind-conversion behavior remain unchanged. C3 reverified: both field/trust-model documentation remain current.
+
+This exact-head full run resolves the previously pending merged-head runtime evidence; earlier post-merge typecheck/shard lint reports were green as well. The item does not require a separate Linux receipt; no Linux provenance is claimed for this fallback result. No per-item QA criteria. No Reviewer tests, edits, merges or provider actions. Changed-head integration/conflict resolution requires delta review.
+Evidence /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3391-suite-a2471eef-5a2e-4ceb-b0ce-c17e58e349ee-auto-at-89308cc.log.
+
+Criteria: C1 verified, C2 verified, C3 verified.

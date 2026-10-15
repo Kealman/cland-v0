@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-322
 branch: t/T-513-hub-start-provenance-and-an-autostart
 created: 2026-10-15T16:26:22.615Z
-updated: 2026-10-15T21:24:12.086Z
+updated: 2026-10-15T22:09:34.372Z
 ---
 
 ## Problem
@@ -26,12 +26,15 @@ On 2026-10-15 a stopped hub was restarted within 0.5 s three times by something 
 - [x] C1. hub-started records its starter: client kind (cli, nvim or other), parent pid and cwd. It never records environment values.
   - done: impl-513 · 2026-10-15T21:05:33.518Z
   - verified: rev-30 [reviewer] · run rev-20261015-513-source-correction · 2026-10-15T21:24:05.838Z · commit f554be2d6a728deb9483647d5f82d30dfa3a63f7
+  - verified: rev-30 [reviewer] · run rev-20261015-513-final · 2026-10-15T22:09:34.372Z · commit f554be2d6a728deb9483647d5f82d30dfa3a63f7
 - [x] C2. `cland hub stop` leaves a stop-in-progress marker with a short grace period that autostart honours. A deliberate stop-and-restart by the CLI therefore isn't pre-empted, while a crashed hub still autostarts.
   - done: impl-513 · 2026-10-15T21:23:10.132Z
   - verified: rev-30 [reviewer] · run rev-20261015-513-source-correction · 2026-10-15T21:24:05.838Z · commit f554be2d6a728deb9483647d5f82d30dfa3a63f7
+  - verified: rev-30 [reviewer] · run rev-20261015-513-final · 2026-10-15T22:09:34.372Z · commit f554be2d6a728deb9483647d5f82d30dfa3a63f7
 - [x] C3. A test stops the hub with a fake Neovim autostart client attached, and the CLI's own start serves first.
   - done: impl-513 · 2026-10-15T21:05:37.770Z
   - verified: rev-30 [reviewer] · run rev-20261015-513-source-correction · 2026-10-15T21:24:05.838Z · commit f554be2d6a728deb9483647d5f82d30dfa3a63f7
+  - verified: rev-30 [reviewer] · run rev-20261015-513-final · 2026-10-15T22:09:34.372Z · commit f554be2d6a728deb9483647d5f82d30dfa3a63f7
 
 ## Comments
 
@@ -84,5 +87,25 @@ Standards: two-file correction, one production deletion plus regression, no dev 
 
 This is corrected source clearance only. Final overall review still requires exact-head cland verify receipt. Coordinator's current E-387 stage-close verify hold remains in force: wait for its explicit release/admitted notice before submitting. No per-item QA criteria. No Reviewer tests, edits, merges or provider actions.
 Evidence /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3374-t-513-corrected-source-old-stop-cannot-rewrite-successor-grace.md.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### rev-30 · 2026-10-15T22:09:34.372Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-513-final
+commit: f554be2d6a728deb9483647d5f82d30dfa3a63f7
+scope: evidence
+
+Final evidence review T-513 clear at unchanged f554be2d6a728deb9483647d5f82d30dfa3a63f7. No high, medium or low findings. Corrected source verdict A-3376 stands; old-stop/successor marker finding A-3364 remains resolved.
+
+A-3398 /f7fbb37c-2de6-4de5-bb56-8af9405ecc12 is actual Linux c-8 lon1, full mode, exit0:2224 pass, zero failures/cancellations, six platform skips. Typecheck, hub and full Neovim completed. Duration1403.16s, peak one-minute load12.57, lifetime1490s/$0.1035. No hard duration-budget failure.
+
+C1 reverified: expiry/crash/provenance case passes2.937s at898, checking all starter client kinds, parent PID/original cwd and absence of the environment sentinel. C2 reverified: attached-autostarter stop/CLI restart case3.092s at896; controlled late-stop continuation/successor crash-recovery case3.175s at897. These exercise real startup lock/discovery boundaries, grace deferral and explicit marker clearing without the removed post-exit marker rewrite. C3 reverified: attached fake Neovim race passes, and actual headless client autostart/restart cases pass at5955/5957 (1.811s/3.673s), retaining thread behavior and observing deferred autostart before explicit restart.
+
+No source change after corrected source clearance. No supplementary QA scope or additional runtime proof is required by the task criteria. Changed-head integration/conflict resolution requires delta review. No Reviewer tests, edits, merges or provider actions.
+Evidence /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3398-suite-f7fbb37c-2de6-4de5-bb56-8af9405ecc12-auto-at-f554be2.log.
 
 Criteria: C1 verified, C2 verified, C3 verified.

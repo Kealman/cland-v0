@@ -3,7 +3,7 @@ id: T-480
 kind: task
 title: Sub-agent launches record their model
 state: open
-status: review
+status: ready
 size: XS
 criterion_seq: 2
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-328
 branch: t/T-480-sub-agent-launches-record-their-model
 created: 2026-10-15T09:13:20.365Z
-updated: 2026-10-15T21:06:02.705Z
+updated: 2026-10-15T21:42:19.600Z
 ---
 
 ## Summary
@@ -26,6 +26,7 @@ Retrospective A-2783, START 2: all 13 sub-agent launches have the model `unknown
 
 - [x] C1. A fake-harness sub-agent start with a model records it in the journal's subagent record, and `task view` usage lists it.
   - done: impl-480 · 2026-10-15T21:04:37.666Z
+  - verified: rev-31 [reviewer] · run rev-20261015-480-final · 2026-10-15T21:42:15.674Z · commit 4662f7cc819c30c2f19d4a0d0530a640f39a5e03
 - [x] C2. Without a model from the harness, the record says `unreported` rather than `unknown`.
   - done: impl-480 · 2026-10-15T21:04:40.343Z
   - verified: rev-31 [reviewer] · run rev-20261015-480-source · 2026-10-15T21:06:02.705Z · commit 4662f7cc819c30c2f19d4a0d0530a640f39a5e03
@@ -64,3 +65,29 @@ Standards: 0 findings. Spec: 0 findings.
 Review artifact A-3362: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3362-t-480-source-clear-at-4662f7cc.md
 
 Criteria: C2 verified.
+
+### impl-480 · 2026-10-15T21:42:00.282Z
+
+Same-head gate evidence is green: run 8a8ecb38-761d-42f5-a45e-5d313a5df918 at 4662f7cc819c30c2f19d4a0d0530a640f39a5e03, auto-selected full due shared adapter contract. Droplet linux x64: 2227 tests, 2221 pass, 0 fail, 6 skip; hub + Neovim phases complete. Log A-3389. Reviewer received the result directly; final C1 verification/verdict pending. Head unchanged.
+
+### rev-31 · 2026-10-15T21:42:15.674Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261015-480-final
+commit: 4662f7cc819c30c2f19d4a0d0530a640f39a5e03
+scope: evidence
+
+Final evidence review clear at unchanged 4662f7cc819c30c2f19d4a0d0530a640f39a5e03, run rev-20261015-480-final, scope evidence.
+
+No high, medium or low findings. C1 verified; C2 remains current from rev-20261015-480-source.
+
+A-3389 / 8a8ecb38-761d-42f5-a45e-5d313a5df918 independently checked: exact source-reviewed SHA, Linux droplet c-8 lon1, four-worker hub/Neovim machine phases, full selection because the adapter contract changed. 2227 tests / 2221 pass / 0 fail / 6 skip / 0 cancelled; final exit 0. All changed session-model cases pass, including hook precedence/parent-state isolation (4.3496 s), real Claude hook → journal → JSON/human task-view usage and unrelated-item filtering (7.2224 s), Codex models (4.2973 s) and OpenCode models (4.5567 s), log lines 2549-2552. Full Neovim completes with 390 pass, 0 fail, 3 skip; the other three skips are in hub. Known-duration notices do not fail this run.
+
+A-3359 already checked: targeted session-model 11/11 and typecheck green; source review establishes payload.model > same-payload tool_input.model > unreported, with no parent inference or cross-record discovery. C1's journal and CLI task usage behavior is now supported by the exact-head full gate.
+
+Branch remains unchanged. All criteria verified, no per-item QA required. No Reviewer edits or test execution.
+Review artifact A-3390: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3390-t-480-final-clear-at-4662f7cc-green-full-linux-suite.md
+
+Criteria: C1 verified.

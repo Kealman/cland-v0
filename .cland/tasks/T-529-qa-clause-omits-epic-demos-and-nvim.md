@@ -3,7 +3,7 @@ id: T-529
 kind: task
 title: QA clause omits epic demos and nvim README omits follows (E-423 doc gaps)
 state: open
-status: in progress
+status: review
 size: XS
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-321
 branch: t/T-529-qa-clause-omits-epic-demos-and-nvim
 created: 2026-10-15T20:43:50.908Z
-updated: 2026-10-15T21:16:29.316Z
+updated: 2026-10-15T21:40:47.840Z
 ---
 
 ## Summary
@@ -25,8 +25,10 @@ E-423's QA brief (qa/briefs/E-423.md, check R5) found two documentation gaps fro
 
 - [ ] C1. The QA clause, changed in both default-roles.ts and roles.toml with the clause byte guard green, names `cland demo start|exec|status|stop` for an epic's Definition of done at a named dev commit, the freshness rule, and the budget fallback to a local run. It points to the qa skill's "Epic demos" section for detail. No existing guard sentence is trimmed.
   - verified: rev-30 [reviewer] · run rev-20261015-529-source-correction · 2026-10-15T20:51:00.622Z · commit ffc1e71b4a128cd0727c22972483ab0636995023
+  - verified: rev-30 [reviewer] · run rev-20261015-529-final · 2026-10-15T21:40:47.840Z · commit ffc1e71b4a128cd0727c22972483ab0636995023
 - [ ] C2. nvim/README.md documents `follows` on the item card and in the item view, matching T-335's UI.
   - verified: rev-30 [reviewer] · run rev-20261015-529-source-correction · 2026-10-15T20:51:00.622Z · commit ffc1e71b4a128cd0727c22972483ab0636995023
+  - verified: rev-30 [reviewer] · run rev-20261015-529-final · 2026-10-15T21:40:47.840Z · commit ffc1e71b4a128cd0727c22972483ab0636995023
 
 ## Comments
 
@@ -100,3 +102,24 @@ A-3369 /568a8cbf is actual Linux c-8 lon1, exit1:1830 pass/one fail/three platfo
 This is first known-flake receipt only, not final clearance. Unchanged-head second no-mode run ec93048c is already admitted/launching; do not duplicate it. Await green or an admissible different-known-failure result under the standing gate rule. Since the forced full selection includes the nvim README path, record the required Neovim package evidence if both full receipts stop before that phase, as the Implementer plans; use current Mac admission rules and actual provenance. Any changed head needs source review.
 
 Evidence /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3369-suite-568a8cbf-7363-48c9-8c69-2342d07435b5-auto-at-ffc1e71.log. No Reviewer tests, edits, merges or provider actions.
+
+### rev-30 · 2026-10-15T21:40:47.840Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-529-final
+commit: ffc1e71b4a128cd0727c22972483ab0636995023
+scope: evidence
+
+Final evidence review T-529 clear at ffc1e71b4a128cd0727c22972483ab0636995023. No high, medium or low findings. Corrected source clearance A-3338 stands; the Coordinator-request guard finding A-3337 remains resolved.
+
+A-3384 /ec93048c-7d07-4a4d-aa88-c313275ca9b1 is actual Linux c-8 lon1, full mode, exit0:2221 pass, zero failures/cancellations, six platform skips. Typecheck, hub and full Neovim completed (Neovim begins5867, completed duration7094). Duration1402.14s, peak one-minute load11.77, lifetime1483s/$0.1030. No hard duration-budget failure.
+
+C1 reverified: defaults/project role clause snapshot tests including both byte guards pass at2397–2398. Both shipped clauses retain the restored exact Coordinator-request condition and new named-dev lease commands, freshness, local budget/slot fallback and qa skill pointer; prior source comparison established all authorization/criterion/verdict/closure guards remain. C2 reverified: README follows card/item-view descriptions remain equal to the immutable UI relation fields; the mixed-path full verification now also completes Neovim. No supplementary local Neovim run is needed.
+
+A-3369 first receipt remains overall red on the exact known T-493 poll-count signature. That failure does not recur in this complete green exact-head result; no flake exception is needed for final settlement. No source change between receipts.
+
+Evidence /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3384-suite-ec93048c-7d07-4a4d-aa88-c313275ca9b1-auto-at-ffc1e71.log. No per-item QA criteria. No Reviewer tests, edits, merges or provider actions. Changed-head integration/conflict resolution needs delta review.
+
+Criteria: C1 verified, C2 verified.

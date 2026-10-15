@@ -3,7 +3,7 @@ id: T-469
 kind: task
 title: "Every stage-close cover carries a Linux proof: the sharded droplet run plus the Mac run, both required by the stage gate"
 state: open
-status: review
+status: in progress
 size: S
 criterion_seq: 3
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-316
 branch: t/T-469-every-stage-close-cover-carries-a-linux
 created: 2026-10-15T09:13:16.034Z
-updated: 2026-10-15T21:28:47.078Z
+updated: 2026-10-15T22:19:46.740Z
 ---
 
 ## Summary
@@ -152,3 +152,30 @@ Coordinator's stage-close verify hold still applies: wait for explicit stage-clo
 Evidence /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3378-t-469-scoped-receipt-refresh-and-query-comparison-at-6d7ef2e5.md.
 
 Criteria: C3 verified.
+
+### impl-469 · 2026-10-15T21:44:25.123Z
+
+After source delta clear A-3379 and Coordinator explicit stage close admitted notice, submitted exact-head diff-selected Linux verify ab2577f7-9194-4508-bc16-d0b8ca2254c6 at6d7ef2e58241111b07783af70df96504ba6dd203. No mode; --executor droplet --fresh; reports topic-316 to Reviewer rev-30 and item lead impl-469. Queued position1. Head is clean and unchanged; awaiting hub result before evidence verdict.
+
+### rev-30 · 2026-10-15T22:19:46.740Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261015-469-linux-corrected
+commit: 6d7ef2e58241111b07783af70df96504ba6dd203
+scope: evidence
+
+Evidence review T-469 not clear at 6d7ef2e58241111b07783af70df96504ba6dd203.
+
+Medium — hub/test/planned-stage.test.ts:152: "landing stage one advances stage two only after clear stage QA" times out waiting15 seconds for T-4 to become planned after f.cover restores both platform receipts and restarts the hub (A-3400:4151–4157). This is an in-scope stage/receipt integration failure, not an established outside flake. Diagnose and preserve the existing advancement assertion/time bound before retry. In particular inspect receipt binding/dependent notification on startup: useVerify initializes the receipt key, while f.cover restores receipts before startup rather than producing a subsequent receipt change. That ordering is a diagnosis lead, not a proven root cause.
+
+Prior query failures are resolved in this run: fixed-query planned-stage test and zero-hydration task-card case pass (2139/3384). Direct same-tree two-platform/history/report-recovery and both cache-supersession cases pass (3308–3310). These facts do not override the failing existing QA-stage advancement path.
+
+Other failures are outside the task source: account-limited:265 failed-backoff journal count1!=2 matches known T-493 third signature (A-3400:4134–4149). suite-close-recovery:54 expected shard-1 lost but received an all-green result (4159–4186), the original known T-502 injection/release race; this branch's fixture still releases both machines before the loss report. These two classifications cannot make a receipt containing the unresolved in-scope planned-stage failure eligible for a known-only retry gate.
+
+A-3400 /ab2577f7 is actual Linux c-8 lon1, full selection, exit1:1830 pass/three failures/three platform skips. Typecheck and hub completed; full Neovim was not reached. No hard duration-budget failure. Lifetime1425s/$0.0989, peak one-minute load10.60.
+
+C1/C2 final runtime marks remain pending; C3 source mark stands. No criterion failure is inferred merely from a status wait whose exact stage state/root cause still needs diagnosis, but final review is not clear. A-3351 earlier own query-regression red remains historical, not a qualifying first receipt. No unchanged retry or flake exception until this in-scope failure is resolved/classified by concrete evidence. Any source correction needs new source review before verification.
+
+Evidence /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3400-suite-ab2577f7-9194-4508-bc16-d0b8ca2254c6-auto-at-6d7ef2e.log. No Reviewer tests, edits, merges or provider actions.
