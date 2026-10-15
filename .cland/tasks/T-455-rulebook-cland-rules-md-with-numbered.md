@@ -3,7 +3,7 @@ id: T-455
 kind: task
 title: "Rulebook: .cland/RULES.md with numbered rules, read and written by cland rule add, edit, retire, list and show, and reloaded by the hub when the file changes"
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 7
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-276
 branch: t/T-455-rulebook-cland-rules-md-with-numbered
 created: 2026-10-15T07:15:15.459Z
-updated: 2026-10-15T08:31:22.359Z
+updated: 2026-10-15T08:38:15.180Z
 ---
 
 ## Summary
@@ -95,6 +95,7 @@ Run at most one full suite at a time machine-wide; targeted single-file runs are
   - done: impl-455 · 2026-10-15T07:26:24.793Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-455-2 · 2026-10-15T07:35:24.942Z · commit 856181faa8000c4a4470886fccec61cd107c8979
   - verified: rev-23 [reviewer] · run rev-2026-10-15-455-4 · 2026-10-15T08:01:41.809Z · commit a0ec44eaf1bbfc125d1709bf544913dac3bce709
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-455-6 · 2026-10-15T08:38:15.180Z · commit f5ef70453f08b9f2a55289302e37de98b984bb5d
 
 ## Comments
 
@@ -174,3 +175,22 @@ scope: evidence
 Exact-head resubmit 1ea1e21d/A-2777 remains red: 1724 pass, one assertion fail, three platform skips; Neovim not reached. Untouched hub/test/session-usage.test.ts:176 sees two pre-restart usage records versus one. This is a second different unrelated failure after the permitted resubmit; no further automatic retry.
 Own new-test budget failure: hub/test/rule-cli.test.ts:44 held-identity/origin test 5.358s >5s. Preserve assertions and improve setup or add an individually justified allowance before re-review. Existing unmanifested daemon orphan-startup (5.021s) and suite cancellation-cache (5.039s) also fail budget checks and require lead disposition. The corrected inventory and both prior Claude assertions pass.
 A-2780 records this result and retains prior red 8052e04c/A-2746 and specific retry provenance A-2754/8c3f65e0. No new criterion verification; final gate remains not clear.
+
+### impl-455 · 2026-10-15T08:37:12.309Z
+
+A-2777's new shared restart-usage failure passed the Coordinator-required five serial whole-file runs at 9c90591b (40/40 test executions); evidence A-2785. Last case change c28bf3c4 (T-389). Added an individually reasoned 5.358 s allowance for own rule CLI actor matrix; merged release-cover duration baseline 3d300562 and latest dev 045d24fa. Final head f5ef7045 requires corrected-head review before the Coordinator-permitted one verification resubmit.
+
+### rev-23 · 2026-10-15T08:38:15.180Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-15-455-6
+commit: f5ef70453f08b9f2a55289302e37de98b984bb5d
+scope: delta
+
+Source delta clear; no high/medium finding. Incoming Coordinator 3d300562 refreshes manifest from release cover A-2714 and includes both existing-case gaps; branch adds only the measured, individually reasoned 5.358s real CLI authorization-matrix allowance. No runtime/test assertion changes. Incoming dev config raises remote_budget 2→4 under its recorded human decision, daily cap unchanged; remaining incoming material is tracker. Rulebook source and corrected inventory remain A-2726/A-2750.
+Audited A-2785 five whole-file usage logs: 8/8 each, zero failure/skip/cancel at 9c90591b; later merge is config/tracker only. Directly read Coordinator 3fa25240/ca169d70: T-463 tracks usage flake, and one verify at reviewed f5ef7045 is authorized after these passes. A-2786 records the delta/provenance.
+C7 refreshed; C1-C6/final evidence remain pending. Submit no-mode cland verify at this head without executor override. Retain/name earlier reds 8052e04c/A-2746 and 1ea1e21d/A-2777, plus T-461/T-447/T-463 disposition in final evidence.
+
+Criteria: C7 verified.

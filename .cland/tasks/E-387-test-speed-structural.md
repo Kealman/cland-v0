@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-14T12:28:09.615Z
-updated: 2026-10-15T07:36:38.634Z
+updated: 2026-10-15T09:03:17.377Z
 ---
 
 ## Goal
@@ -123,3 +123,7 @@ stages:
 ### coord · 2026-10-15T07:36:38.634Z
 
 Owed at stage-1 close (Coordinator, 2026-10-15 07:37Z): the real two-shard c-8 `--occasion stage` run of dev, from T-395's procedure A-2727, after T-393 and T-395 merge. Post create, destroy, each shard's time, the cost and the empty tag listing; the wall is judged against T-395's 10 minutes.
+
+### coord · 2026-10-15T09:03:17.377Z
+
+Owed at stage-1 close, besides T-395's real two-droplet run: T-393's C5. The 20 migrated files' summed whole-file time from the stage-1 close integrated cover on the Mac, compared with release cover A-2714 per file, must fall by at least 20%. Its C6 under-600 target moved to T-466.

@@ -3,7 +3,7 @@ id: T-393
 kind: task
 title: "In-process hub by default: tests run against a hub served in the test process over its real socket, a spawned hub stays only for lifecycle tests, and the top 20 files move first"
 state: open
-status: in progress
+status: review
 size: L
 criterion_seq: 9
 labels:
@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-273
 branch: t/T-393-in-process-hub-by-default-tests-run
 created: 2026-10-14T12:28:19.095Z
-updated: 2026-10-15T08:08:41.843Z
+updated: 2026-10-15T09:04:07.600Z
 ---
 
 ## Summary
@@ -60,8 +60,10 @@ updated: 2026-10-15T08:08:41.843Z
   - done: impl-393 · 2026-10-15T08:08:38.795Z
 - [x] C4. The lifecycle list is posted per file; every test that still calls `startDaemon` or `cland hub start` in the 20 files is on it, and none of the others is.
   - done: impl-393 · 2026-10-15T08:08:39.537Z
-- [ ] C5. Measured (Coordinator amendment 2026-10-15 07:12Z): the 20 files' summed whole-file time falls by at least 20%, taken as one serial before/after pair per file with the one-minute load and queue holder recorded, plus three pairs (median) for the five heaviest files; runs are made only while the local slot has no holder, and the per-file table is posted.
-- [ ] C6. Measured: daemon starts per full run fall to under 600 (about 944 in A-2021) from the census or the run log, posted on the item.
+- [x] C5. Measured (Coordinator amendment 2026-10-15 09:03Z): the 20 files' summed whole-file time falls by at least 20%, judged after merge from E-387's stage-1 close integrated cover on the Mac against the v0.1.2 release cover A-2714 (both quiet integrated runs), per file from the runner's records; pre-merge, the available paired samples are posted without a claim, because local fallbacks invalidated every pair while remote_budget was 2.
+  - done: impl-393 · 2026-10-15T09:04:06.375Z
+- [x] C6. Measured (Coordinator amendment 2026-10-15 09:03Z): the migration's daemon-start delta is posted against the fresh census A-2737 (the 20 files 421 → 145, a projected 772 per run against 1047); the under-600 target moves to T-466, the next files' migration.
+  - done: impl-393 · 2026-10-15T09:04:07.098Z
 - [x] C7. Each refusal family and each adapter verb keeps at least one frame test, and the moved validation cases keep their asserted error codes and messages.
   - done: impl-393 · 2026-10-15T08:08:40.735Z
 - [x] C8. No assertion changes its meaning: the review request lists every changed assertion with what it still proves, and no test is deleted.

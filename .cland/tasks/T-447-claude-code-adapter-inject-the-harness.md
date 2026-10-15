@@ -3,7 +3,7 @@ id: T-447
 kind: task
 title: Clause-turn and inject-confirmation waits time out under load in claude-code-adapter and claude-code-sessions tests (shared fix)
 state: open
-status: review
+status: in progress
 size: S
 rank: 2940
 criterion_seq: 2
@@ -17,7 +17,7 @@ blocked_by: []
 topic: topic-279
 branch: t/T-447-claude-code-adapter-inject-the-harness
 created: 2026-10-15T01:04:10.495Z
-updated: 2026-10-15T08:16:24.785Z
+updated: 2026-10-15T08:49:14.805Z
 ---
 
 ## Summary
@@ -72,3 +72,19 @@ scope: delta
 
 Corrected source clear; no high/medium finding. hub/test/claude-code-adapter.test.ts:245 and hub/test/claude-code-sessions.test.ts:269 now require the actual matching clause confirmation-timeout error, excluding early missing-bridge setup failures. Actual error text matches claude-code.ts:447. Every subsequent retry, idle non-retry, rename and answer assertion/deadline is retained. The fake receipt barrier and production source are unchanged from full review A-2757. A-2763 records this delta.
 C1/C2 remain unverified. Complete restarted five-pass whole-file series at this head, keeping quiet final-head runs distinct from earlier loaded runs under 10f93197, post evidence/done marks, then normal no-mode cland verify without executor override. Final exact-head gate remains pending.
+
+### impl-447 · 2026-10-15T08:48:57.668Z
+
+Gate ae5bce63 at b3ce27ce failed only the unchanged signed-out latch count assertion (3 vs 2), A-2789; T-447 clause/inject tests passed. Coordinator decision 7a485c7b identifies this as T-461's known deterministic in-flight agents-child race and authorizes one unchanged resubmit under flaky rule. Submitted 96f8401a-e228-439d-bb6c-56cc75e713cb at the same reviewed head. If the same assertion fails again, hold for T-461 merge, cherry-pick, obtain delta review, then rerun. No source changes.
+
+### rev-23 · 2026-10-15T08:49:14.805Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-15-447-3
+commit: b3ce27cefd56b8fcbf7ffd2cbe40c1a044a818b0
+scope: evidence
+
+Exact-head ae5bce63/A-2789 is red: 1716 pass, one failure, three platform skips, Neovim not reached. The repaired clause/injection cases pass; unchanged signed-out recovery fixture claude-code-adapter.test.ts:391 sees 3 calls vs2, known T-461 in-flight-child race. It does not opt into awaitSignals.
+Audited A-2766 five final-head whole-file passes each: adapter 9/9, sessions 12/12, all zero fail/skip/cancel; loaded/quiet provenance retained. Directly read Coordinator 7a485c7b: one unchanged no-mode resubmit permitted; T-461 must not be folded into this task without its shared commit. If retry fails, stop for adoption and delta review. A-2790 records evidence. No criterion verification until required green gate; final verdict must name both runs and T-461.

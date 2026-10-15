@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-274
 branch: t/T-395-sharded-close-runs-stage-epic-and
 created: 2026-10-14T12:28:19.467Z
-updated: 2026-10-15T08:35:00.010Z
+updated: 2026-10-15T08:36:31.313Z
 ---
 
 ## Summary
@@ -63,6 +63,7 @@ A failed or lost shard fails the run once, naming the shard. The hub does not re
 - [x] C2. Files are split largest-first by `durations.json`, the Neovim phase goes to the lightest shard, and a test proves the balance on a fixture manifest.
   - done: impl-395 · 2026-10-15T07:42:02.736Z
   - verified: rev-26 [reviewer] · run rev-20261015-395-source-2 · 2026-10-15T08:00:52.613Z · commit f3346d60b4ded82a109a0f2dc4165f3ee88f8154
+  - verified: rev-26 [reviewer] · run rev-20261015-395-source-3 · 2026-10-15T08:36:31.312Z · commit e9e6fab93d101114eff353ed98f60e765824895c
 - [x] C3. When the shards' reservations would pass the daily cap or fewer than two remote slots are free, the run goes whole to one slot with one warn-level notice naming the cause, proven by tests.
   - done: impl-395 · 2026-10-15T07:59:06.045Z
 - [x] C4. A sharded run posts one result with summed counts, per-shard duration, machine and cost lines and the total cost; a failed shard fails the run once naming the shard.
@@ -70,14 +71,18 @@ A failed or lost shard fails the run once, naming the shard. The hub does not re
 - [x] C5. `suite.test.ts` and `merge.test.ts` are split into files of at most 60 s each in `durations.json`, with every test kept and its assertions unchanged.
   - done: impl-395 · 2026-10-15T07:42:04.045Z
   - verified: rev-26 [reviewer] · run rev-20261015-395-source-2 · 2026-10-15T08:00:52.613Z · commit f3346d60b4ded82a109a0f2dc4165f3ee88f8154
+  - verified: rev-26 [reviewer] · run rev-20261015-395-source-3 · 2026-10-15T08:36:31.312Z · commit e9e6fab93d101114eff353ed98f60e765824895c
 - [x] C6. A real two-shard c-8 `--occasion stage` run of `dev` is executed by the Coordinator from the procedure A-2727 after this ticket merges, as E-387's stage-1 close run once T-393 has also merged; it posts create, destroy, each shard's time and the cost, and its wall is judged against 10 minutes there (Coordinator amendment 2026-10-15 07:37Z: the 10-minute bound depends on T-393's in-process hub). Pre-merge, this criterion is met by the procedure and a fake-provider two-shard run proving the same report fields.
   - done: impl-395 · 2026-10-15T07:42:04.484Z
   - verified: rev-26 [reviewer] · run rev-20261015-395-source-2 · 2026-10-15T08:00:52.613Z · commit f3346d60b4ded82a109a0f2dc4165f3ee88f8154
+  - verified: rev-26 [reviewer] · run rev-20261015-395-source-3 · 2026-10-15T08:36:31.313Z · commit e9e6fab93d101114eff353ed98f60e765824895c
 - [x] C7. The real check's spend stays within the shared $3 daily cap and the provider's `cland` tag listing is empty afterwards, recorded on E-387 with the stage-1 close run; pre-merge, the fake-provider run proves the all-shard reservation, the cap refusal and the zero-tag teardown.
   - done: impl-395 · 2026-10-15T07:42:04.916Z
   - verified: rev-26 [reviewer] · run rev-20261015-395-source-2 · 2026-10-15T08:00:52.613Z · commit f3346d60b4ded82a109a0f2dc4165f3ee88f8154
+  - verified: rev-26 [reviewer] · run rev-20261015-395-source-3 · 2026-10-15T08:36:31.313Z · commit e9e6fab93d101114eff353ed98f60e765824895c
 - [x] C8. `hub/README.md` (Remote executors, Tests), `docs/agents/tests.md`, the Coordinator and QA clauses and the `merge` and `qa` skills describe `--occasion`, which runs shard, the cap fallback and the cost per run.
   - done: impl-395 · 2026-10-15T08:34:43.011Z
+  - verified: rev-26 [reviewer] · run rev-20261015-395-source-3 · 2026-10-15T08:36:31.313Z · commit e9e6fab93d101114eff353ed98f60e765824895c
 
 ## Comments
 
@@ -143,3 +148,17 @@ Criteria: C8 failed (Compacted Coordinator decision-routing sentence breaks unch
 ### impl-395 · 2026-10-15T08:34:47.118Z
 
 Corrected head e9e6fab93d101114eff353ed98f60e765824895c pushed after merging origin/dev 3d300562, with the duration refresh reconciled through all110 mapped identities. A-2782:44 serial targeted tests pass, plus typecheck/shard lint. Six attributable A-2770 guards fixed without weakening canonical wording or tool checks; operational enum declaration has a narrow compiler exception with positive/negative Kind fixtures. Cache recovery re-split preserves byte-identical statements, final110-identity audit A-2776; Linux file totals42.84s/25.63s. Requesting source re-review. T-447's separate injection-timeout fix will be integrated from Coordinator's named merge commit before verification.
+
+### rev-26 · 2026-10-15T08:36:31.313Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261015-395-source-3
+commit: e9e6fab93d101114eff353ed98f60e765824895c
+scope: full
+
+No high or medium source findings remain. protocol.ts shares explicit operational VERIFY_OCCASIONS across CLI/frame/MCP/admission. Compiler exception is confined to the direct named enum initializer; nine positive/negative fixtures retain tracker Kind protection. Shared documented tools explicitly add verify, and both Coordinator copies restore canonical decision wording. A-2782 reports all six attributable guards corrected, 44 serial targeted tests, typecheck and shard/duration lint green.
+Independent AST audit preserves all 102 original top-level statements; A-2776 maps 110 unique identities. Current dev refresh preserves all 110 mapped test baselines and 23 allowances. Cache statements split unchanged; Linux-derived cache file totals 42.835343s/25.629157s, all split manifest files <60s. Renew C2,C5,C6,C7,C8 source marks; C1/C3/C4/final settlement await accepted exact-head verification. C6/C7 retain amended premerge scope and later Coordinator E-387 real two-c-8 proof. Any planned T-447 pick needs new exact-head delta review before verification. No Reviewer tests run.
+
+Criteria: C2 verified, C5 verified, C6 verified, C7 verified, C8 verified.

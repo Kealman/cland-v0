@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-275
 branch: t/T-454-heartbeat-a-per-role-interval-in-crew
 created: 2026-10-15T07:15:15.368Z
-updated: 2026-10-15T08:16:17.075Z
+updated: 2026-10-15T09:01:53.406Z
 ---
 
 ## Summary
@@ -90,13 +90,15 @@ E-423 "Rules and rhythm" (R-294), tracer bullet 1 of 7; spec `docs/spec/v0.1.3.m
   - done: impl-454 · 2026-10-15T07:49:11.736Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-454-2 · 2026-10-15T07:49:57.099Z · commit b64e068182a0bfb027f5fdc2542a764c17e55b56
   - verified: rev-23 [reviewer] · run rev-2026-10-15-454-4 · 2026-10-15T08:16:17.074Z · commit 24ca7ce122bc41ec7075fd9cb0e0da354cec6098
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-454-6 · 2026-10-15T08:50:51.662Z · commit bdcddc3c3401dc268eb4eff0b420a8bab9590a62
 - [x] C7. The Coordinator's clause, in `default-roles.ts` and the live `.cland/roles.toml`, says what to check, what to repair and when to escalate on a heartbeat, and to end a clean heartbeat without a message.
-  - done: impl-454 · 2026-10-15T08:15:20.472Z
-  - verified: rev-23 [reviewer] · run rev-2026-10-15-454-4 · 2026-10-15T08:16:17.074Z · commit 24ca7ce122bc41ec7075fd9cb0e0da354cec6098
+  - done: impl-454 · 2026-10-15T08:50:11.220Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-454-6 · 2026-10-15T08:50:51.663Z · commit bdcddc3c3401dc268eb4eff0b420a8bab9590a62
 - [x] C8. `hub/README.md` describes the `heartbeat` setting, its default, the digest's rows, coalescing and `CLAND_HEARTBEAT_MS`, and `nvim/README.md` lists the `heartbeat` kind and key `9` in the events view.
   - done: impl-454 · 2026-10-15T07:40:48.284Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-454-2 · 2026-10-15T07:49:57.099Z · commit b64e068182a0bfb027f5fdc2542a764c17e55b56
   - verified: rev-23 [reviewer] · run rev-2026-10-15-454-4 · 2026-10-15T08:16:17.075Z · commit 24ca7ce122bc41ec7075fd9cb0e0da354cec6098
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-454-6 · 2026-10-15T08:50:51.663Z · commit bdcddc3c3401dc268eb4eff0b420a8bab9590a62
 
 ## Comments
 
@@ -170,3 +172,37 @@ A-2765 reports red-before/green-after restart reproduction, progress 11/11, thre
 C6/C7/C8 refreshed. C1-C5/final evidence await successful exact-head no-mode cland verify without executor override. Retain prior red f3eca6ee/A-2758; no final clearance yet.
 
 Criteria: C6 verified, C7 verified, C8 verified.
+
+### rev-23 · 2026-10-15T08:47:18.855Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-15-454-5
+commit: 24ca7ce122bc41ec7075fd9cb0e0da354cec6098
+scope: evidence
+
+Medium — hub/src/roles/default-roles.ts:71 and live Coordinator clause: shortened 'first kind of first level' wording fails roles-snapshot.test.ts:32 and roles.test.ts:50, which pin 'first kind of the first level'. Also preserve the ready-event contract pinned at roles.test.ts:54 while retaining unchanged byte headroom. Prior source delta missed these companion contract assertions.
+A-2787 / cc871d75 is red: 1727/1730 hub tests pass, no skips, Neovim not reached. All earlier held-digest and clause-size failures pass. Other failure: untouched codex-adapter.test.ts:272 usage equality differs only rateLimitsAt timestamps; Bugs/S outside race candidate requiring lead disposition.
+A-2788 records the evidence. No unchanged-head retry; corrected clause source needs re-review and both full role files checked. No new criterion verification.
+
+Criteria: C7 failed (Shortened default/live clauses fail existing first-kind wording contracts; the ready-event wording contract also needs preservation.).
+
+### rev-23 · 2026-10-15T08:50:51.663Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-15-454-6
+commit: bdcddc3c3401dc268eb4eff0b420a8bab9590a62
+scope: delta
+
+Corrected source clear. Default/live clauses restore pinned first-kind and ready-status-event wording with original semantics and unchanged byte guard. Claimant reports full roles-snapshot 9/9 and roles 8/8. Heartbeat/delivery logic remains A-2767; no further implementation delta. Incoming dev duration baseline is 3d300562/A-2714, retaining only the previously reviewed heartbeat remote-lifecycle allowance; config remote_budget 2→4 is inherited recorded policy, cap unchanged; other changes tracker.
+A-2792 records delta. Directly read f87d70f4: T-465 owns outside Codex usage race; five whole Codex files serially/alone at this corrected head must all pass before the single no-mode verify. Any isolated failure means wait for shared fix. Source clearance does not waive that condition.
+C6/C7/C8 refreshed; C1-C5/final evidence pending. Retain prior reds f3eca6ee/A-2758 and cc871d75/A-2787. No executor override.
+
+Criteria: C6 verified, C7 verified, C8 verified.
+
+### impl-454 · 2026-10-15T09:01:53.406Z
+
+At reviewed/pushed bdcddc3c, completed Coordinator-required five serial whole codex-adapter.test.ts runs: 35/35 each (175/175 total), no skips. A-2802 summarizes durable logs A-2793/A-2796/A-2797/A-2799/A-2801. T-465 timestamp race did not reproduce; no outside-scope change. Source review A-2792 is clear; submitting the single authorized no-mode verification resubmit at this unchanged clean head.

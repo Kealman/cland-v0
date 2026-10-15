@@ -3,7 +3,7 @@ id: T-335
 kind: task
 title: "Lane flow: epics follow epics, a follow is met on the last merge, and a merge hold keeps the follower off the predecessor's files until its demo"
 state: open
-status: review
+status: in progress
 size: L
 criterion_seq: 7
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-277
 branch: t/T-335-lane-flow-the-next-epic-in-a-lane-starts
 created: 2026-10-13T14:23:44.027Z
-updated: 2026-10-15T08:29:23.109Z
+updated: 2026-10-15T09:04:25.840Z
 ---
 
 ## Summary
@@ -165,3 +165,21 @@ scope: delta
 No high or medium findings. Manifest-only delta adds measured 5.297s/5.339s allowances for the two real-Git lifecycle cases, with reasons matching overlap refusal, demo/closure and follower landing. Default enforcement, runner and assertions are unchanged. Functional source, UI, follows tests, clauses, skills and docs are byte-identical to fd823c6e; origin/dev integration adds tracker records. Renew C6/C7 source marks. C1–C5 and final verdict await accepted exact-head verification; A-2772 remains a failed duration-gate receipt despite all hub assertions passing. No Reviewer tests run.
 
 Criteria: C6 verified, C7 verified.
+
+### rev-26 · 2026-10-15T08:55:42.729Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261015-335-evidence-3
+commit: 7ea539c76f214ab1b4a8912ec20d70636fd97fd0
+scope: evidence
+
+Medium — hub/test/claude-code-sessions.test.ts:251/271: two cases time out at the initial 15s clause-injection wait (known T-447 fixture family).
+Medium — hub/test/codex-adapter.test.ts:734: expected turn/steer record for the taken-up message is absent; attribution remains open.
+Medium — hub/test/daemon.test.ts: fixture-startup sweep case crosses the enforced undeclared duration gate at 5.010s.
+Exact-head full receipt c0b5ddc2/A-2794 exits 1: 1730 tests, 1724 pass, 3 fail, 3 existing platform skips; Neovim not reached. Droplet c-8 lon1/Linux, lifetime 1425s, cost $0.0989, wall 1332.72s, peak load 13.77. Follows assertions, query budget and corrected allowances no longer fail, but C1–C5 final marks remain pending; C6/C7 source marks retained. No criterion-specific semantic failure is inferred. Named shared fixes or manifest corrections require new source review before another run.
+
+### impl-335 · 2026-10-15T09:04:25.840Z
+
+A-2794 follow-up per Coordinator: merged refreshed dev manifest at a8a8ac33 (daemon startup case now known; own allowances retained). Ran whole codex-adapter.test.ts five times serially at that head: 5/5 green, 35/35 each (112.676s, 99.662s, 89.725s, 80.788s, 63.293s). Durable logs A-2798, A-2800, A-2803, A-2805, A-2807. No adapter or test edits. Holding full verification for Coordinator's named T-447 shared commit, then combined delta source review before the single resubmit.
