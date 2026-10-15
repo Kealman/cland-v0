@@ -2,7 +2,6 @@
 // driven over msgpack-RPC with `nvim_input` and read back with `screenstring()`, against a real hub.
 import { isolateVerification } from '../../hub/test/harness.ts';
 import { spawn, type ChildProcess } from 'node:child_process';
-import { existsSync } from 'node:fs';
 import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -88,12 +87,20 @@ export async function startClient(t: TestContext, bin: string, root: string, env
   child.stderr?.on('data', (c: string) => (stderr += c));
   let restartAddr: ((addr: string) => void) | null = null;
   const deadline = Date.now() + 10_000;
-  while (!existsSync(sock)) {
-    if (Date.now() > deadline || child.exitCode !== null) throw new Error(`nvim did not listen on ${sock}:\n${stderr}`);
-    await sleep(25);
+  let initialRpc: Rpc;
+  for (;;) {
+    try {
+      // The socket name can exist between bind() and listen(); wait for an accepted connection.
+      initialRpc = await connectRpc(sock);
+      break;
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException).code;
+      if (code !== 'ENOENT' && code !== 'ECONNREFUSED') throw err;
+      if (Date.now() > deadline || child.exitCode !== null) throw new Error(`nvim did not listen on ${sock}:\n${stderr}`, { cause: err });
+      await sleep(25);
+    }
   }
-  const attach = async (path: string): Promise<Rpc> => {
-    const rpc = await connectRpc(path);
+  const attach = async (rpc: Rpc): Promise<Rpc> => {
     t.after(() => rpc.close());
     rpc.onNotification((method, params) => {
       if (method !== 'redraw') return;
@@ -110,7 +117,7 @@ export async function startClient(t: TestContext, bin: string, root: string, env
     return rpc;
   };
   const client: Client = {
-    rpc: await attach(sock),
+    rpc: await attach(initialRpc),
     screen: async () => client.rpc.request<string[]>('nvim_exec_lua', SCREEN_LUA, []),
     process: child,
     stderr: () => stderr,
@@ -131,7 +138,7 @@ export async function startClient(t: TestContext, bin: string, root: string, env
         const until = Date.now() + 10_000;
         for (;;) {
           try {
-            client.rpc = await attach(addr);
+            client.rpc = await attach(await connectRpc(addr));
             return addr;
           } catch (err) {
             if (Date.now() > until) throw err;
