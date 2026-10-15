@@ -3,7 +3,7 @@ id: T-395
 kind: task
 title: "Sharded close runs: stage, epic and release integrated runs shard the hub phase across droplets within the $3/day cap, balanced by recorded durations, with one merged report"
 state: open
-status: ready
+status: in progress
 size: L
 criterion_seq: 8
 labels:
@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-274
 branch: t/T-395-sharded-close-runs-stage-epic-and
 created: 2026-10-14T12:28:19.467Z
-updated: 2026-10-15T13:14:08.833Z
+updated: 2026-10-15T13:20:22.016Z
 ---
 
 ## Summary

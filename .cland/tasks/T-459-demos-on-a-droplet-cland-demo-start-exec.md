@@ -3,7 +3,7 @@ id: T-459
 kind: task
 title: "Demos on a droplet: cland demo start, exec and stop lease a droplet for an epic's QA demo at a named dev commit, and the hub accepts the demo's verdict while dev moves on files outside the epic's surfaces"
 state: open
-status: planned
+status: in progress
 size: L
 labels:
   - v0.1.3
@@ -13,10 +13,10 @@ assignee: null
 parent: E-423
 blocked_by:
   - T-335
-topic: null
-branch: null
+topic: topic-296
+branch: t/T-459-demos-on-a-droplet-cland-demo-start-exec
 created: 2026-10-15T07:15:15.838Z
-updated: 2026-10-15T13:19:35.403Z
+updated: 2026-10-15T13:20:56.747Z
 ---
 
 ## Summary
@@ -67,3 +67,9 @@ E-423 "Rules and rhythm" (R-294), tracer bullet 7 of 7; spec `docs/spec/v0.1.3.m
 - [ ] C5. The hub accepts an epic verdict at a commit behind the `dev` tip when the later commits touch no file the epic's merges changed, and refuses it naming the commit and files when one does.
 - [ ] C6. The `qa` skill runs epic cases through `cland demo exec`, runs macOS cases locally at the same commit, applies the freshness rule after the cases, and names executor, commit, lifetime and cost in the evidence.
 - [ ] C7. `hub/README.md` describes the demo lease, its commands, budget sharing and the freshness rule.
+
+## Comments
+
+### impl-459 · 2026-10-15T13:20:56.747Z
+
+Read task, E-423 choices, release spec §3.4 and safety constraints. Implementing demo leases on existing DropletExecutor lifecycle/watchdog/budget, plus epic QA freshness and recorder/docs. Tests will use fake DO/SSH only; proposed public frame and verdict seams sent to lead.

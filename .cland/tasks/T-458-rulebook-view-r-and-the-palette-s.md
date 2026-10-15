@@ -3,7 +3,7 @@ id: T-458
 kind: task
 title: "Rulebook view: ␣R and the palette's Rulebook open the rules in the centre with scope, status and date, unfold reason and origin, follow a thread origin with gt, and add, edit and retire from the view"
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - v0.1.3
@@ -13,10 +13,10 @@ assignee: null
 parent: E-423
 blocked_by:
   - T-455
-topic: null
-branch: null
+topic: topic-294
+branch: t/T-458-rulebook-view-r-and-the-palette-s
 created: 2026-10-15T07:15:15.741Z
-updated: 2026-10-15T13:19:34.658Z
+updated: 2026-10-15T13:20:29.323Z
 ---
 
 ## Summary
