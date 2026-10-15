@@ -2,8 +2,8 @@
 id: T-519
 kind: task
 title: Sharded runs leak CLAND_SUITE_SELECTION into nested runner tests, so suite-runner.test.ts:768 fails in every stage close
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ regression_of: T-395
 topic: topic-313
 branch: t/T-519-sharded-runs-leak-cland-suite-selection
 created: 2026-10-15T18:11:26.752Z
-updated: 2026-10-15T19:26:59.143Z
+updated: 2026-10-15T19:27:35.402Z
+closed: 2026-10-15T19:27:35.402Z
 ---
 
 ## Summary
@@ -158,3 +159,7 @@ Real integrated sharded-stage validation remains post-merge E-387 stage-1 close 
 Review artifact A-3297: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3297-t-519-merge-delta-clear-at-9535da17.md
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-15T19:27:35.402Z
+
+Merged 3f39865d0121dafc864b9e5a44ee62b5e223d1fb onto dev.
