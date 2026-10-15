@@ -2,8 +2,8 @@
 id: T-453
 kind: task
 title: executor-run remote-verify test's scan reads a transient spend.json.lock.break entry (ENOENT)
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 1
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-291
 branch: t/T-453-executor-run-remote-verify-test-s-scan
 created: 2026-10-15T06:07:18.320Z
-updated: 2026-10-15T12:30:32.150Z
+updated: 2026-10-15T12:30:46.561Z
+closed: 2026-10-15T12:30:46.561Z
 ---
 
 ## Summary
@@ -109,3 +110,7 @@ Spec: C1 verified. Quiesced scan preserves every original token assertion. A-296
 Accepted same-head gate 7453981f/A-2966: exit 0, typecheck green, hub-only + Neovim smoke, 1734/1734, zero skips/failures/cancellations, local darwin arm64 after automatic droplet lock-deadline fallback. Direct Coordinator 8ff12347 accepts this plus scoped Linux evidence from A-2954's nine green executor-run top-level cases. A-2954 remains cancelled overall, not a completed gate; its outside failures and cancellation preserved in prior A-2955. No further droplet needed under that decision. No Reviewer tests/edits.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-15T12:30:46.561Z
+
+Merged 69863ad169c9b26d25a1c14d85941f219967fe8e onto dev.
