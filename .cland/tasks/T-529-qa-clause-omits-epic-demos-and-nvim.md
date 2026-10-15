@@ -2,8 +2,8 @@
 id: T-529
 kind: task
 title: QA clause omits epic demos and nvim README omits follows (E-423 doc gaps)
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-321
 branch: t/T-529-qa-clause-omits-epic-demos-and-nvim
 created: 2026-10-15T20:43:50.908Z
-updated: 2026-10-15T22:43:35.179Z
+updated: 2026-10-15T22:43:45.516Z
+closed: 2026-10-15T22:43:45.516Z
 ---
 
 ## Summary
@@ -125,3 +126,7 @@ A-3369 first receipt remains overall red on the exact known T-493 poll-count sig
 Evidence /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3384-suite-ec93048c-7d07-4a4d-aa88-c313275ca9b1-auto-at-ffc1e71.log. No per-item QA criteria. No Reviewer tests, edits, merges or provider actions. Changed-head integration/conflict resolution needs delta review.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-15T22:43:45.516Z
+
+Merged dfa5cfc3a69d2ba511ce0901f743d2b97d9dca8d onto dev.
