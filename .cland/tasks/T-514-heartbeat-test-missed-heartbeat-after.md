@@ -16,7 +16,7 @@ regression_of: T-454
 topic: topic-318
 branch: t/T-514-heartbeat-test-missed-heartbeat-after
 created: 2026-10-15T16:40:31.606Z
-updated: 2026-10-15T19:13:47.013Z
+updated: 2026-10-15T19:34:24.943Z
 ---
 
 ## Problem
@@ -28,7 +28,8 @@ updated: 2026-10-15T19:13:47.013Z
 - [x] C1. The case proves "fires once, no replay" with an injected or controlled clock and observed heartbeat events, rather than a wall-clock delta, and keeps the at-most-once assertion. The root cause is recorded in the commit.
   - done: impl-514 · 2026-10-15T19:11:17.355Z
   - verified: rev-30 [reviewer] · run rev-20261015-514-source · 2026-10-15T19:13:23.975Z · commit df6693869d0d2a9e76dffd847a15fae594a19a1a
-- [ ] C2. heartbeat.test.ts passes 5/5 serially, whole file and alone on the Mac, plus once on a droplet in the task's verify. Coordinate with T-506 and T-508, which touch the same file: whichever lands second picks the first.
+- [x] C2. heartbeat.test.ts passes 5/5 serially, whole file and alone on the Mac, plus once on a droplet in the task's verify. Coordinate with T-506 and T-508, which touch the same file: whichever lands second picks the first.
+  - done: impl-514 · 2026-10-15T19:34:23.473Z
 
 ## Comments
 
@@ -70,3 +71,7 @@ Criteria: C1 verified.
 ### impl-514 · 2026-10-15T19:13:47.013Z
 
 Source review clear at exact df669386, C1 verified (A-3285). Submitted no-mode/no-executor task verify c78c5594-f530-41e6-a407-621545de3e37 with report topic-318 to Reviewer and impl-514. Clean tree, unchanged reviewed head. C2 awaits actual droplet/platform receipt and final evidence review; retaining claim until merge.
+
+### impl-514 · 2026-10-15T19:34:24.943Z
+
+C2 complete: actual Linux droplet c78c5594 at exact source-reviewed df669386 is green, A-3303 (c-8 lon1, lifetime 1212s, cost $0.0842): 1834 pass, 0 fail/cancelled, 3 platform skips; hub and Neovim smoke completed. All nine heartbeat cases pass; changed restart case 0.665s (log 1327/4601). Five serial quiet Mac passes are A-3284. Both criteria done; Reviewer final evidence requested through existing review thread. Head/tree unchanged and claim retained.
