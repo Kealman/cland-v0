@@ -3,7 +3,7 @@ id: T-254
 kind: task
 title: A cancelled suite attempt should not supersede green cache evidence for its tree
 state: open
-status: in progress
+status: ready
 size: S
 criterion_seq: 3
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-269
 branch: t/T-254-a-cancelled-suite-attempt-should-not
 created: 2026-10-12T01:42:45.744Z
-updated: 2026-10-15T04:36:42.494Z
+updated: 2026-10-15T06:31:46.442Z
 ---
 
 ## Parent
@@ -35,11 +35,15 @@ A cancelled attempt (by its requester, by requester death, or by a head change b
 
 - [x] C1. Green, then cancelled, then a request on the same tree: a cache hit naming the green run; a test proves it.
   - done: impl-254 · 2026-10-15T03:54:04.313Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-254-5 · 2026-10-15T06:31:45.202Z · commit d8167992c3ce6e1e16d4d12c1dc91564433218b3
 - [x] C2. Green, then failed, then a request on the same tree: a fresh run; a test proves it.
   - done: impl-254 · 2026-10-15T03:54:05.398Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-254-5 · 2026-10-15T06:31:45.202Z · commit d8167992c3ce6e1e16d4d12c1dc91564433218b3
 - [x] C3. hub/README.md's cache paragraph states the rule.
   - done: impl-254 · 2026-10-15T03:54:06.442Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-254-1 · 2026-10-15T03:55:12.886Z · commit 871876cc7f691d0a4f9bde479a8178f6c29fc39b
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-254-3 · 2026-10-15T05:52:24.965Z · commit d8167992c3ce6e1e16d4d12c1dc91564433218b3
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-254-5 · 2026-10-15T06:31:45.202Z · commit d8167992c3ce6e1e16d4d12c1dc91564433218b3
 
 ## Comments
 
@@ -82,3 +86,56 @@ Gate 938db829/A-2679 not clear: typecheck passes; 1699/1700 hub tests pass, exit
 ### impl-254 · 2026-10-15T04:36:42.494Z
 
 Coordinator-directed serial isolated account-limited.test.ts runs at unchanged 871876cc: runs 1–3 passed 10/10 (A-2681, A-2682, A-2683); run 4 failed 9/10 with same 15000ms deferred reset timeout at account-limited.test.ts:261 (A-2684). Stopped before run 5 and no verify retry, per decision that any isolated failure becomes a shared fix. Reported durable log to Coordinator and rev-23; awaiting named shared correction.
+
+### impl-254 · 2026-10-15T05:51:58.185Z
+
+Coordinator-directed shared correction fe4efed8 (T-451) cherry-picked exactly as d8167992c3ce6e1e16d4d12c1dc91564433218b3 and pushed. Only hub/test/account-limited.test.ts changes relative to reviewed 871876cc. Whole-file targeted run passed 10/10 (83.3s), including recent failed-poll backoff (16.79s). Evidence A-2697: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2697-t-254-targeted-account-limited-after-shared-t-451-pick-10-pass-at-d8167992.log. Tree clean; requesting delta source review of the pick before new local no-mode verification.
+
+### rev-23 · 2026-10-15T05:52:24.965Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-15-254-3
+commit: d8167992c3ce6e1e16d4d12c1dc91564433218b3
+scope: delta
+
+Delta source clear at d8167992. Standards and Spec: no high or medium findings. Independently compared full patches: exact landed T-451 fe4efed8, only account-limited.test.ts +4/-2, no original T-254 changes. Wait uses the unchanged 16 s/12 s assertion delay plus 5 s completion margin, preserving no-early-read/duplicate/reset/notice/refresh/restart assertions. A-2697 complete file checked: 10/10, no failures/cancellations/skips/todos, 83.332 s. C3 README refreshed from unchanged source; C1/C2 remain pending new exact-head complete gate. A-2698 details review. Earlier 938db829/A-2679 and isolated A-2684 stay red on diagnosed T-451; shared fix adoption replaces the nonqualifying flaky retry path. Submit local no-mode verification at this head.
+
+Criteria: C3 verified.
+
+### impl-254 · 2026-10-15T06:06:56.081Z
+
+Local no-mode verification b6f1e5ff at delta-reviewed d8167992 failed 2/1698. Claude late-hook test times out in clauseTurnDone waiting for clause busy→idle (claude-code-sessions.test.ts:44,128); executor-run.test.ts scan:45 fails ENOENT on transient spend.json.lock.break. Corrected account backoff test passes. Evidence A-2699. Reported both S Bugs aside and asked lead for known shared fix commits or isolation direction. Source unchanged; no retry/patch started.
+
+### rev-23 · 2026-10-15T06:07:26.288Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-15-254-4
+commit: d8167992c3ce6e1e16d4d12c1dc91564433218b3
+scope: evidence
+
+Gate b6f1e5ff/A-2699 not clear: typecheck passes, 1696/1698 hub tests pass, exit 1, zero skips/cancellations, Neovim not reached. Untouched failures: claude-code-sessions.test.ts:44/128 clause busy→idle setup timeout (T-447 family); executor-run.test.ts:45-51 live sentinel audit ENOENT on spend.json.lock.break. The latter occurs after cross-executor cached.run assertion line 38 passes, so no own cache defect inferred. T-389 fixed the audit class in executor-safety.test.ts, a different file; shared disposition requested for this exact occurrence. Own cache regression cases and T-451 account cases pass. Two failures do not qualify for unchanged single-flake retry. Hold for lead diagnosis/shared correction, new source review if head changes. C1/C2/final green remain pending; C3 source mark/A-2698 remain applicable. Earlier 938db829/A-2679 and A-2684 retained as corrected T-451. A-2700 details both stacks/finds aside; no own criterion failure inferred.
+
+### impl-254 · 2026-10-15T06:15:51.616Z
+
+Coordinator decision 91739ccc isolation complete at unchanged d8167992: claude-code-sessions.test.ts 5/5 whole-file passes, 12/12 each (A-2701–A-2705); executor-run.test.ts 5/5 whole-file passes, 18/18 each (A-2706, A-2707, A-2708, A-2709, A-2710). All ten runs serial; no source changes. Submitting one authorized same-head local no-mode verify retry; retain prior red b6f1e5ff/A-2699 alongside the new result.
+
+### impl-254 · 2026-10-15T06:31:10.354Z
+
+Authorized unchanged-head retry c110dbe4 at d8167992 passed 2087/2087 tests, local darwin arm64, auto-selected full including Neovim, 893.6s. Log A-2711. Prior red b6f1e5ff/A-2699 and ten serial whole-file isolation passes A-2701–A-2710 retained as required by Coordinator decision 91739ccc. Source unchanged and tree clean; final Reviewer evidence verdict pending.
+
+### rev-23 · 2026-10-15T06:31:45.202Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-15-254-5
+commit: d8167992c3ce6e1e16d4d12c1dc91564433218b3
+scope: evidence
+
+Final clear at unchanged source-reviewed d8167992. Standards and Spec: no high or medium findings. Full local no-mode c110dbe4/A-2711 passes root typecheck and 2087/2087 (37 free hub, 1663 machine hub, 387 Neovim), zero failures/cancellations/skips/todos, exit 0. C1 requester/head-change cancellations reuse original green without extra execution; requester death retains it across restart. C2 green→fresh failure→request executes fresh; C3 README unchanged. All done marks/head checked. Prior same-head red b6f1e5ff/A-2699 retained: clause busy→idle setup (T-447 family) and live executor sentinel scan ENOENT (T-453); cache assertion preceded scan failure. Direct Coordinator 91739ccc explicitly authorized one retry after both files 5/5 whole-file serial: audited A-2701–A-2705 each 12/12 and A-2706–A-2710 each 18/18, zero failures/skips/cancellations. No source change before this single green retry; no broader multi-failure retry rule inferred. Earlier 938db829/A-2679 and isolated A-2684 retained as T-451, corrected by reviewed exact shared pick A-2698. Source bases A-2669/A-2698 current. A-2712 details complete evidence; C1-C3 verified.
+
+Criteria: C1 verified, C2 verified, C3 verified.

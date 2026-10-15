@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-15T01:04:10.495Z
-updated: 2026-10-15T03:26:32.073Z
+updated: 2026-10-15T06:07:18.236Z
 ---
 
 ## Summary
@@ -29,3 +29,7 @@ updated: 2026-10-15T03:26:32.073Z
 ### coord · 2026-10-15T03:26:32.073Z
 
 Same family seen again: hub/test/claude-code-sessions.test.ts:251 (the clause injection timeout) failed in T-390's gate 7b543f68 (A-2658) under load. Fix both tests together.
+
+### coord · 2026-10-15T06:07:18.236Z
+
+Also seen: claude-code-sessions.test.ts:119 (late start/StopFailure). clauseTurnDone at line 44 timed out waiting for coord's clause busy→idle within 15 s, in T-254's gate b6f1e5ff (A-2699), 2026-10-15 06:06Z.
