@@ -1,9 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { integrated } from './close-run-fixture.ts';
-import { clandWithEnv } from './harness.ts';
+import { cland, clandWithEnv } from './harness.ts';
+
+const exec = promisify(execFile);
 
 test('occasion refuses implementers and task heads; an integrated Coordinator close uses two droplets and one merged result', async t => {
   const f = await integrated(t, 'daily_spend_usd=3');
@@ -17,6 +21,13 @@ test('occasion refuses implementers and task heads; an integrated Coordinator cl
   assert.equal(task.code, 1);
   assert.match(task.stderr, /integrated dev/);
   await f.git('checkout', 'dev');
+  const view = JSON.parse((await cland(f.root, 'task', 'view', f.item, '--json')).stdout);
+  const tracker = view.item.path as string;
+  await f.git('add', '-f', tracker);
+  await f.git('commit', '-qm', 'Committed tracker');
+  await f.git('push', 'origin', 'dev');
+  const head = await f.git('rev-parse', 'HEAD');
+  const committed = await readFile(join(f.root, tracker), 'utf8');
   let reservationChecked = false;
   f.api.beforeCreate(async () => {
     if (reservationChecked) return;
@@ -24,6 +35,8 @@ test('occasion refuses implementers and task heads; an integrated Coordinator cl
     const ledger = JSON.parse(await readFile(join(f.root, '.cland/executor-state/spend.json'), 'utf8')) as { entries: { reservation: number; cost: number | null }[] };
     assert.equal(ledger.entries.filter(e => e.cost === null).length, 2, 'all shards reserved before either provider create');
     assert.equal(ledger.entries.filter(e => e.cost === null).reduce((sum, e) => sum + e.reservation, 0), 0.125);
+    // The hub can write its tracker after submission and host typecheck, before delivery.
+    await writeFile(join(f.root, tracker), 'uncommitted tracker state\n');
   });
   const submitted = await request('--occasion', 'stage');
   assert.equal(submitted.code, 0, submitted.stderr);
@@ -37,6 +50,14 @@ test('occasion refuses implementers and task heads; an integrated Coordinator cl
   assert.match(result.text, /total cost \$/);
   assert.match(result.text, /suite duration [\d.]+s; overall wall from admission through collection/);
   assert.equal(f.api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length, 2);
+  assert.equal(f.api.machineDirs.size, 2);
+  for (const directory of f.api.machineDirs.values()) {
+    const cwd = join(directory, 'home/runner/cland');
+    assert.equal((await exec('git', ['rev-parse', 'HEAD'], { cwd })).stdout.trim(), head);
+    assert.equal(await readFile(join(cwd, tracker), 'utf8'), committed);
+    assert.equal((await exec('git', ['status', '--porcelain'], { cwd })).stdout, '');
+  }
+  assert.equal(await readFile(join(f.root, tracker), 'utf8'), 'uncommitted tracker state\n');
   assert.deepEqual(f.api.droplets, []);
   assert.equal((await f.messages(job.id)).length, 1);
   const artifacts = (await f.ui.request({ type: 'artifact.list', topic: f.topic })).value as { artifacts: { title: string; path: string }[] };

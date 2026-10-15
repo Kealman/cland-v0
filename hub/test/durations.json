@@ -3075,6 +3075,14 @@
       "seconds": 80.307641,
       "reason": "File budget: Runs nested verification workers through fake provider/SSH processes, logs, cancellation and restart to prove durable executor recovery."
     },
+    "hub/test/executor-run.test.ts::remote delivery bundles committed tracker state despite later tracker writes": {
+      "seconds": 8.666448,
+      "reason": "Runs the complete fake-provider delivery and remote suite lifecycle, then checks the remote checkout contains only committed tracker bytes despite staged host writes."
+    },
+    "hub/test/executor-run.test.ts::remote delivery refuses and names source changes after submission": {
+      "seconds": 4.712677,
+      "reason": "Acquires a real fixture lease through fake provider/SSH processes, injects a staged source edit after host typecheck, and waits for refusal and confirmed provider cleanup."
+    },
     "hub/test/executor-run.test.ts::a restored launching suite reuses only an existing ref at the same head": {
       "seconds": 12.317983,
       "reason": "T-433 expands the prior allowed crash-after-acquire case into same-head and different-head restoration scenarios. Each uses an artificial 4000 ms bundling fault, hub death/restart and real fixture-provider cleanup to prove ref reuse/refusal. Its green gate A-2649 at 2c9f932 records 13.621351 s."

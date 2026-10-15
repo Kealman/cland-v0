@@ -13,6 +13,37 @@ import { fixture } from './remote-fixture.ts';
 const exec = promisify(execFile);
 const token = 'sentinel-remote-suite-token';
 
+for (const dirty of ['tracker', 'source'] as const) test(`remote delivery ${dirty === 'tracker' ? 'bundles committed tracker state despite later tracker writes' : 'refuses and names source changes after submission'}`, async t => {
+  const f = await fixture(t, { hub: projectHub });
+  const view = JSON.parse((await cland(f.root, 'task', 'view', f.item, '--json')).stdout);
+  const tracker = view.item.path as string;
+  await f.git('add', '-f', tracker);
+  await f.git('commit', '-qm', 'Committed tracker');
+  const committed = await readFile(join(f.root, tracker), 'utf8');
+  const head = await f.git('rev-parse', 'HEAD');
+  const path = dirty === 'tracker' ? tracker : 'hub/src/tracker/change.ts';
+  f.api.beforeCreate(async () => {
+    await writeFile(join(f.root, path), 'uncommitted state\n');
+    await f.git('add', '-f', path);
+  });
+  const job = await f.launch('--fresh');
+  const result = await f.result(job.id);
+  if (dirty === 'source') {
+    assert.match(result.text, /dirty.*worktree cannot be bundled for droplet.*hub\/src\/tracker\/change\.ts/);
+    assert.doesNotMatch(await readFile(join(f.root, '.cland/run/suites', job.id, 'suite.log'), 'utf8'), /\$ npm test/);
+  } else {
+    assert.match(result.text, /exit 0/);
+    for (const directory of f.api.machineDirs.values()) {
+      const cwd = join(directory, 'home/runner/cland');
+      assert.equal((await exec('git', ['rev-parse', 'HEAD'], { cwd })).stdout.trim(), head);
+      assert.equal(await readFile(join(cwd, tracker), 'utf8'), committed);
+      assert.equal((await exec('git', ['status', '--porcelain'], { cwd })).stdout, '');
+    }
+    assert.equal(await readFile(join(f.root, tracker), 'utf8'), 'uncommitted state\n');
+  }
+  assert.deepEqual(f.api.droplets, []);
+});
+
 test('remote verify delivers host selection, runs as runner, reports accounting, contains the token and caches across executors', async t => {
   const hostMargin = process.env.CLAND_TEST_EXECUTOR_MARGIN_MS;
   const gitEnv = { GIT_CONFIG_COUNT: process.env.GIT_CONFIG_COUNT, GIT_CONFIG_KEY_0: process.env.GIT_CONFIG_KEY_0, GIT_CONFIG_VALUE_0: process.env.GIT_CONFIG_VALUE_0 };

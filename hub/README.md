@@ -1770,6 +1770,11 @@ the machine fetches that bundle, checks out the exact detached head and cleans t
 checkout while preserving `node_modules` and `.cache`. A changed lockfile runs
 `npm ci`; a changed Neovim pin seeds it again. The log names both decisions.
 
+Delivery ignores uncommitted changes under `.cland/tasks`, including tracker writes
+between submission and bundling. Every bundle contains the committed head's tracker
+state; this applies to each shard of an occasion run too. Other dirty files still
+refuse delivery, with their paths in the error, and a changed head still refuses.
+
 The host computes the suite selection while `origin/dev` is available. The uploaded
 `env` contains only `CLAND_SUITE_SELECTION` as JSON, `FORCE_COLOR=0` and `NO_COLOR=1`.
 The package runner reads that selection without fetching. A detached `setsid nohup`

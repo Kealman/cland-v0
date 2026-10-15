@@ -27,7 +27,13 @@ export class DropletRun {
   constructor(root: string, env: NodeJS.ProcessEnv = process.env) { this.#root = root; this.#env = env; this.#machine = new Machine(root, env); }
   async deliver(lease: DropletLease, run: RunRef): Promise<void> {
     const git = async (...args: string[]) => (await exec('git', args, { cwd: run.cwd, env: machineEnv(this.#env), timeout: 30000, maxBuffer: 16 * 1024 * 1024 })).stdout.trim();
-    if (await git('rev-parse', 'HEAD') !== run.head || await git('status', '--porcelain')) throw new Error('dirty or changed worktree cannot be bundled for droplet');
+    const checkWorktree = async () => {
+      if (await git('rev-parse', 'HEAD') !== run.head) throw new Error('dirty or changed worktree cannot be bundled for droplet: HEAD changed');
+      // Tracker writes may race delivery; the bundle below always uses the committed head.
+      const dirty = await git('status', '--porcelain=v1', '--untracked-files=all', '--', '.', ':(exclude).cland/tasks');
+      if (dirty) throw new Error(`dirty or changed worktree cannot be bundled for droplet: ${dirty.split('\n').join('; ')}`);
+    };
+    await checkWorktree();
     const snapshot = await readSnapshot(this.#root);
     if (!snapshot) throw new Error('prepared snapshot disappeared');
     const base = await git('merge-base', run.head, snapshot.key.base).catch(() => '');
@@ -43,7 +49,7 @@ export class DropletRun {
     }
     try { await git('bundle', 'create', bundle, ref, ...(base && base !== run.head ? [`^${base}`] : [])); }
     finally { await git('update-ref', '-d', ref, run.head); }
-    if (await git('rev-parse', 'HEAD') !== run.head || await git('status', '--porcelain')) throw new Error('dirty or changed worktree cannot be bundled for droplet');
+    await checkWorktree();
     const dir = remoteDir(lease);
     await this.#machine.exec(lease, `mkdir -p ${dir}`, { timeoutMs: 10000 });
     const env = `export CLAND_SUITE_SELECTION=${quote(JSON.stringify(run.selection))}\nexport FORCE_COLOR=0\nexport NO_COLOR=1\n`;
