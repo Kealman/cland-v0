@@ -41,9 +41,26 @@ test('a two-stage plan is written by CLI, shown by MCP and view JSON, changed an
   const planFile = join(root, 'plan.yaml');
   await writeFile(planFile, stringify(plan));
   assert.equal((await ui.request({ type: 'task.comment', item: epic.id, text: 'Keep this comment.' })).ok, true);
-  const cli = await cland(root, 'task', 'plan', 'set', epic.id, '--file', planFile, '--json');
+  for (const item of [a, b]) assert.equal((await ui.request({ type: 'task.edit', item: item.id, size: 'L' })).ok, true);
+  const before = await readFile(join(root, epic.path), 'utf8');
+  for (const allow_large of [null, [], 'reason', { [a.id]: 42 }, { [a.id]: ' ' }, { [c.id]: 'Not large' }, { 'T-999': 'Missing' }, { [a.id]: 'First', [a.id.replace('T-', 'E-')]: 'Alias' }]) {
+    const refused = await ui.request({ type: 'task.plan', item: epic.id, op: 'set', yaml: stringify(plan), allow_large });
+    assert.equal(refused.ok, false);
+    assert.match(refused.error ?? '', /allow_large|allow-large/);
+    assert.equal(await readFile(join(root, epic.path), 'utf8'), before);
+  }
+  for (const allowances of [[], ['--allow-large', `${a.id}=One atomic schema migration`], ['--allow-large', `${a.id}=`]]) {
+    const refused = await cland(root, 'task', 'plan', 'set', epic.id, '--file', planFile, ...allowances);
+    assert.notEqual(refused.code, 0);
+    assert.match(refused.stderr, /split.*2–3 M|non-empty reason/);
+    assert.equal(await readFile(join(root, epic.path), 'utf8'), before);
+  }
+  const cli = await cland(root, 'task', 'plan', 'set', epic.id, '--file', planFile,
+    '--allow-large', `${a.id.replace('T-', 'E-')}=One atomic schema migration`, '--allow-large', `${b.id}=One CLI compatibility switch`, '--json');
   assert.equal(cli.code, 0, cli.stderr);
   assert.deepEqual(JSON.parse(cli.stdout).plan, plan);
+  assert.match(JSON.parse(cli.stdout).history.at(-1).reason, new RegExp(`${a.id}: One atomic schema migration`));
+  assert.match(JSON.parse(cli.stdout).history.at(-1).reason, new RegExp(`${b.id}: One CLI compatibility switch`));
   const stored = await readFile(join(root, epic.path), 'utf8');
   assert.match(stored, /## Plan\n\n```yaml\nstages:/);
   assert.match(stored, /Keep this prose\./);
@@ -63,7 +80,7 @@ test('a two-stage plan is written by CLI, shown by MCP and view JSON, changed an
   const children = await Promise.all([a, b, c].map(item => readFile(join(root, item.path), 'utf8')));
   const changed = structuredClone(plan);
   changed.stages[0]!.lanes = [[a.id], [b.id]];
-  const update = await coord.call<Result>('task.plan', { id: epic.id, op: 'set', yaml: stringify(changed), reason: 'Split work for parallel lanes' });
+  const update = await coord.call<Result>('task.plan', { id: epic.id, op: 'set', yaml: stringify(changed), reason: 'Split work for parallel lanes', allow_large: { [a.id]: 'One atomic schema migration', [b.id]: 'One CLI compatibility switch' } });
   assert.equal(update.ok, true, update.error);
   assert.deepEqual(update.plan, changed);
   assert.equal((await readFile(join(root, epic.path), 'utf8')).match(/^## Plan$/gm)?.length, 1);
@@ -79,24 +96,35 @@ test('a two-stage plan is written by CLI, shown by MCP and view JSON, changed an
     assert.deepEqual(changes[1].previous, plan);
     assert.deepEqual(changes[1].plan, changed);
     assert.equal(changes[1].by, 'coord');
-    assert.equal(changes[1].reason, 'Split work for parallel lanes');
+    assert.match(changes[1].reason, /^Split work for parallel lanes\n/);
+    assert.match(changes[1].reason, new RegExp(`${b.id}: One CLI compatibility switch`));
   });
   await eventually('plan notice exposes the accepted comparison and reason', async () => {
     const result = await ui.request({ type: 'topic.history', topic: 'agents', item: epic.id });
     const messages = (result.value as { messages: Array<{ detail?: { previous?: EpicPlan; plan?: EpicPlan; reason?: string } }> }).messages;
-    const notice = messages.find(m => m.detail?.reason === 'Split work for parallel lanes');
+    const notice = messages.find(m => m.detail?.reason?.startsWith('Split work for parallel lanes'));
     if (!notice) return undefined;
     assert.deepEqual(notice.detail?.previous, plan);
     assert.deepEqual(notice.detail?.plan, changed);
     return true;
   });
 const beforeRestart = await coord.call<{ history: Array<{ id: string; reason?: string }> }>('task.plan', { id: epic.id, op: 'show' });
-  assert.equal(beforeRestart.history.at(-1)?.reason, 'Split work for parallel lanes');
+  assert.match(beforeRestart.history.at(-1)?.reason ?? '', /^Split work for parallel lanes\n/);
   assert.equal((await cland(root, 'hub', 'stop')).code, 0);
   await startDaemon(t, root);
   const restored = await cland(root, 'task', 'plan', 'show', epic.id, '--json');
   assert.equal(restored.code, 0, restored.stderr);
   assert.deepEqual(JSON.parse(restored.stdout).history, beforeRestart.history);
+  // An existing plan still needs an auditable exception even if its YAML is unchanged.
+  await writeFile(planFile, stringify(changed));
+  const unchanged = await cland(root, 'task', 'plan', 'set', epic.id, '--file', planFile,
+    '--allow-large', `${a.id}=Retain the atomic schema migration`, '--allow-large', `${b.id}=Retain the CLI switch`, '--json');
+  assert.equal(unchanged.code, 0, unchanged.stderr);
+  const history = JSON.parse(unchanged.stdout).history;
+  assert.equal(history.length, beforeRestart.history.length + 1);
+  assert.deepEqual(history.at(-1).previous, changed);
+  assert.deepEqual(history.at(-1).plan, changed);
+  assert.match(history.at(-1).reason, /Retain the atomic schema migration/);
 });
 
 test('a refused epic close does not accept or journal the proposed plan', async t => {

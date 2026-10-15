@@ -18,7 +18,7 @@ test('default and project clauses pin category filing and idle work without addi
     const filing = defaults.get(role)!.clause.split('\n').find(line => line.startsWith('- File category work:') || line.startsWith('- Report a bug found aside'));
     assert.ok(filing, role);
     if (role === 'coordinator' || role === 'aide') {
-      assert.match(filing, /Tasks need `--size XS\|S\|M\|L\|XL`, a `## Summary` of 1–3 sentences and `--regression-of T-n` for rework of landed tasks/);
+      assert.match(filing, /Tasks need `--size XS\|S\|M\|L`, a `## Summary` of 1–3 sentences and `--regression-of T-n` for rework of landed tasks/);
     } else assert.match(filing, /naming its size \(XS, S, M, L or XL\) and category/);
     assert.ok(project.get(role)!.clause.split('\n').includes(filing), `${role}: project clause has the same filing rule`);
     if (!['coordinator', 'aide'].includes(role)) {

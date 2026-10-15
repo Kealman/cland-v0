@@ -1037,17 +1037,20 @@ export class Tracker {
     const recovered = this.#planErrors.delete(id);
     if (recovered) this.#index.rememberPlanCandidate(id, state.plan);
     const previous = this.#index.plan(id);
-    if (JSON.stringify(previous) === JSON.stringify(state.plan)) {
+    const changed = JSON.stringify(previous) !== JSON.stringify(state.plan);
+    if (!changed && !reason) {
       // A read can observe a refused save before the watcher indexes it. Restoring
       // the same accepted bytes clears only the detail error, so views need an event.
       if (recovered) this.#announce(id, false);
       return state;
     }
-    this.#index.rememberPlan(id, state.plan);
-    this.#schedulePlanned(id);
-    // A changed epic policy invalidates prepared readiness writes for its tasks too.
-    for (const child of this.#index.list({ under: id })) {
-      if (child.kind === 'task' && this.#ancestorIds(child.parent).includes(id)) this.#changed(child.id);
+    if (changed) {
+      this.#index.rememberPlan(id, state.plan);
+      this.#schedulePlanned(id);
+      // A changed epic policy invalidates prepared readiness writes for its tasks too.
+      for (const child of this.#index.list({ under: id })) {
+        if (child.kind === 'task' && this.#ancestorIds(child.parent).includes(id)) this.#changed(child.id);
+      }
     }
     const record: PlanHistoryEntry = { id: randomUUID(), ts: this.#now().toISOString(), event: 'changed', by: writer?.name ?? (source === 'hand' ? 'hand' : 'hub'), previous, plan: state.plan, ...(reason ? { reason } : {}) };
     this.#rememberPlanEvent(id, record);
@@ -1065,17 +1068,30 @@ export class Tracker {
   }
 
   /** Plans use the same admitted read/modify/publication cycle as other item writes. */
-  setPlan(actor: Actor, rawId: string, yaml: string, resumed: Resumed = untimed, authorize: () => void = () => {}, reason?: string): Promise<ItemView> {
+  setPlan(actor: Actor, rawId: string, yaml: string, resumed: Resumed = untimed, authorize: () => void = () => {}, reason?: string, allowLarge: Record<string, string> = {}): Promise<ItemView> {
     return this.#serial(resumed => {
       checkText(yaml, 'plan YAML');
       if (reason !== undefined) checkText(reason, 'plan change reason');
       let plan: EpicPlan;
       try { plan = parsePlan(yaml, [...this.kinds, 'category']); }
       catch (err) { throw new TrackerError(err instanceof Error ? err.message : String(err)); }
+      const large = plan.stages.flatMap(stage => stage.lanes.flat()).map(id => this.#referenceId(id) ?? id).filter(id => this.#index.get(id)?.size === 'L');
+      const allowed = new Map<string, string>();
+      for (const [raw, text] of Object.entries(allowLarge)) {
+        const id = this.#referenceId(raw) ?? raw;
+        if (!large.includes(id)) throw new TrackerError(`${raw}: --allow-large must name an L task in this plan`);
+        if (allowed.has(id)) throw new TrackerError(`${raw}: duplicate --allow-large for ${id}`);
+        if (!text.trim()) throw new TrackerError(`${id}: --allow-large needs a non-empty reason`);
+        checkText(text, 'large task reason');
+        allowed.set(id, text.trim());
+      }
+      const missing = large.filter(id => !allowed.has(id));
+      if (missing.length) throw new TrackerError(`${missing.join(', ')}: split L tasks into 2–3 M tasks, or record a reason for each with --allow-large <id>=<reason>`);
+      const recordedReason = [reason, ...Array.from(allowed, ([id, text]) => `Allow large ${id}: ${text}`)].filter(Boolean).join('\n');
       return this.#mutate(rawId, actor, 'plan set', item => {
         if (!this.isPlanContainer(item.fm.kind)) throw new TrackerError('a plan belongs only to an epic');
         item.body = withPlan(item.body, plan);
-      }, resumed, undefined, authorize, undefined, undefined, false, reason);
+      }, resumed, undefined, authorize, undefined, undefined, false, recordedReason);
     }, resumed, { operation: 'plan set', item: this.#referenceId(rawId) ?? rawId });
   }
 
@@ -2031,6 +2047,7 @@ export class Tracker {
     if (input.size !== undefined) {
       const refusal = sizeRefusal(kind, input.size);
       if (refusal) throw new TrackerError(refusal);
+      if (input.size === 'XL') throw new TrackerError('XL tasks must be split into smaller tasks before filing');
     }
     const regression = input.regression_of === undefined ? undefined : this.#regression(kind, input.regression_of, null);
     checkText(input.body ?? '', 'body');
@@ -2344,6 +2361,7 @@ export class Tracker {
         if (input.size !== undefined) {
           const refusal = sizeRefusal(fm.kind, input.size);
           if (refusal) throw new TrackerError(refusal);
+          if (input.size === 'XL') throw new TrackerError('XL tasks must be split into smaller tasks before filing');
           fm.size = input.size;
         }
         // Kind conversion drops task-only metadata, as it already does workflow status.

@@ -27,7 +27,7 @@ const OPTIONS = {
   migrate: { ...COMMON, sizes: { type: 'string' }, 'dry-run': { type: 'boolean' } },
   create: { ...COMMON, kind: { type: 'string' }, size: { type: 'string' }, 'regression-of': { type: 'string' }, version: { type: 'string' }, body: { type: 'string' }, 'body-file': { type: 'string' }, label: { type: 'string', multiple: true }, assignee: { type: 'string' }, parent: { type: 'string' }, 'blocked-by': { type: 'string', multiple: true }, follows: { type: 'string', multiple: true }, topic: { type: 'string' }, branch: { type: 'string' } },
   view: { ...COMMON },
-  plan: { ...COMMON, file: { type: 'string' }, reason: { type: 'string' } },
+  plan: { ...COMMON, file: { type: 'string' }, reason: { type: 'string' }, 'allow-large': { type: 'string', multiple: true } },
   list: { ...COMMON, under: { type: 'string' }, state: { type: 'string' }, label: { type: 'string', multiple: true }, kind: { type: 'string' }, assignee: { type: 'string' }, verdict: { type: 'string' } },
   comment: { ...COMMON, verdict: { type: 'string' }, result: { type: 'string' }, run: { type: 'string' }, commit: { type: 'string' }, scope: { type: 'string' }, stage: { type: 'string' }, verified: { type: 'string' }, failed: { type: 'string', multiple: true }, 'body-file': { type: 'string' } },
   edit: { ...COMMON, size: { type: 'string' }, version: { type: 'string' }, title: { type: 'string' }, body: { type: 'string' }, 'body-file': { type: 'string' }, kind: { type: 'string' }, state: { type: 'string' }, status: { type: 'string' }, label: { type: 'string', multiple: true }, 'add-label': { type: 'string', multiple: true }, 'remove-label': { type: 'string', multiple: true }, assignee: { type: 'string' } },
@@ -95,7 +95,16 @@ function frameOf(sub: Sub, positionals: string[], v: Values): { type: string } &
       if (op === 'set' && typeof v.file !== 'string') throw new UsageError('task plan set needs --file plan.yaml (or --file - for stdin)');
       if (op !== 'set' && v.reason !== undefined) throw new UsageError(`task plan ${op} takes no --reason`);
       if (op !== 'set' && v.file !== undefined) throw new UsageError(`task plan ${op} takes no --file`);
-      return { type: 'task.plan', item, op, ...(op === 'set' ? { yaml: readFileSync(v.file === '-' ? 0 : String(v.file), 'utf8'), ...(v.reason !== undefined ? { reason: v.reason } : {}) } : {}) };
+      if (op !== 'set' && v['allow-large'] !== undefined) throw new UsageError(`task plan ${op} takes no --allow-large`);
+      const allowLarge: Record<string, string> = Object.create(null);
+      for (const entry of v['allow-large'] as string[] ?? []) {
+        const split = entry.indexOf('=');
+        if (split < 1 || !entry.slice(split + 1).trim()) throw new UsageError('--allow-large needs <id>=<non-empty reason> (repeat for each L task)');
+        const id = entry.slice(0, split);
+        if (Object.hasOwn(allowLarge, id)) throw new UsageError(`duplicate --allow-large for ${id}`);
+        allowLarge[id] = entry.slice(split + 1);
+      }
+      return { type: 'task.plan', item, op, ...(op === 'set' ? { yaml: readFileSync(v.file === '-' ? 0 : String(v.file), 'utf8'), ...(v.reason !== undefined ? { reason: v.reason } : {}), ...(v['allow-large'] !== undefined ? { allow_large: allowLarge } : {}) } : {}) };
     }
     case 'view':
       return { type: 'task.view', item: needId() };

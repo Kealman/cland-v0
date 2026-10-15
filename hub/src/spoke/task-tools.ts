@@ -14,14 +14,14 @@ const STATE = { type: 'string', enum: ['open', 'closed'] } as const;
 
 export const TASK_TOOLS = [
   { name: 'task.plan', description: 'Set, show or approve an epic plan (only the human or an Aide approves), or migrate retired qa-required labels. Migrate reports tasks falling back to qa_default. Set validates YAML before replacing ## Plan; invalid hand saves keep the last accepted plan and return planError. Setting defaults to Coordinator and human.',
-    inputSchema: { type: 'object', properties: { id: itemId, op: { type: 'string', enum: ['set', 'show', 'migrate', 'approve'] }, yaml: { ...str, description: 'The plan YAML text; required for set' }, reason: { ...str, description: 'Why the plan changed; optional for set' } }, required: ['op'] } },
+    inputSchema: { type: 'object', properties: { id: itemId, op: { type: 'string', enum: ['set', 'show', 'migrate', 'approve'] }, yaml: { ...str, description: 'The plan YAML text; required for set' }, reason: { ...str, description: 'Why the plan changed; optional for set' }, allow_large: { type: 'object', additionalProperties: str, description: 'For set: a non-empty reason per L task id, recorded in plan history; prefer splitting into 2–3 M tasks' } }, required: ['op'] } },
   { name: 'task.criterion', description: 'Mark a criterion done (claimant Implementer, Coordinator, Aide or human), verify or fail with a note (Reviewer or QA), or add, edit or remove criteria (Coordinator, Aide or human). Verify requires a run id.',
     inputSchema: { type: 'object', properties: { id: itemId, op: { type: 'string', enum: ['done', 'verify', 'fail', 'add', 'edit', 'remove'] }, criterion: { ...str, description: 'Stable criterion id, C1, C2, …; omitted for add' }, text: str, note: str, run: str }, required: ['id', 'op'] } },
   { name: 'task.hold', description: 'Take a Reviewer or QA verifier hold beside the Implementer claim, setting review or qa, or release your hold. Verdicts and session stop release it.',
     inputSchema: { type: 'object', properties: { id: itemId, release: { type: 'boolean' } }, required: ['id'] } },
   {
     name: 'task.create',
-    description: "Create an item in the project's tracker (a Markdown file in .cland/tasks/, id with the kind's prefix and a shared number). A task needs a size: XS, S, M, L or XL. Returns the item.",
+    description: "Create an item in the project's tracker (a Markdown file in .cland/tasks/, id with the kind's prefix and a shared number). A task needs a size: XS, S, M or L; XL tasks must be split before filing. Returns the item.",
     inputSchema: {
       type: 'object',
       properties: { title: str, kind: { ...KIND, description: 'Default task' }, size: SIZE, regression_of: itemId, version: { ...str, description: 'Release semver without the v; optional at creation' }, body: str, labels: strs, assignee: str, parent: itemId, blocked_by: strs, follows: { ...strs, description: 'Epic predecessors in a lane' }, topic: str, branch: str },

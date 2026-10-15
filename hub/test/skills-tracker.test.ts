@@ -35,7 +35,10 @@ test('tracker and vendored skills defer category filing to the Categories contra
 test('ticket and plan skills require size, Summary and landed rework links', async () => {
   for (const skill of ['to-tickets', 'plan-epic']) {
     const text = await readFile(new URL(`../../.agents/skills/${skill}/SKILL.md`, import.meta.url), 'utf8');
-    assert.match(text, /XS, S, M, L or XL/);
+    assert.match(text, /XS, S, M or L/);
+    assert.match(text, /Split (?:each )?L tasks? into 2–3 M/);
+    assert.match(text, /--allow-large <id>=<reason>/);
+    assert.match(text, /XL tasks must be split before filing/);
     assert.match(text, /## Summary/);
     assert.match(text, /one to three sentences/);
     assert.match(text, /--regression-of/);

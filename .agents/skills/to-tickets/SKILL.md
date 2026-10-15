@@ -69,13 +69,15 @@ Work the **frontier**: any ticket whose blockers are all done. For a purely line
 
 Do NOT close or modify any parent issue.
 
-Each ticket carries a size class (XS, S, M, L or XL) and a `## Summary` of one to three sentences; for rework of landed tasks, set `--regression-of` through the tracker doc. Assign the size when filing, using `--size` on cland.
+Split L tasks into 2–3 M slices; keep an L task only when the Coordinator records a reason through `plan-epic` and its `--allow-large <id>=<reason>` exception. XL tasks must be split before filing.
+
+Each ticket carries a size class (XS, S, M or L) and a `## Summary` of one to three sentences; for rework of landed tasks, set `--regression-of` through the tracker doc. Assign the size when filing, using `--size` on cland.
 
 <local-ticket-template>
 
 # <NN>: <Ticket title>
 
-**Size:** XS, S, M, L or XL
+**Size:** XS, S, M or L
 
 ## Summary
 

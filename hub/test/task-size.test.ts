@@ -13,7 +13,7 @@ test('CLI tasks require a size while other kinds refuse it', async t => {
   for (const args of [[], ['--kind', 'task']]) {
     const result = await cland(root, 'task', 'create', 'Missing size', ...args);
     assert.equal(result.code, 1);
-    assert.match(result.stderr, /a task needs a size: XS, S, M, L or XL/);
+    assert.match(result.stderr, /a task needs a size: XS, S, M or L/);
   }
   const nonTask = await cland(root, 'task', 'create', 'Container', '--kind', 'epic', '--size', 'S');
   assert.equal(nonTask.code, 1);
@@ -21,6 +21,14 @@ test('CLI tasks require a size while other kinds refuse it', async t => {
   const created = await cland(root, 'task', 'create', 'Sized task', '--size', 'S', '--json');
   assert.equal(created.code, 0, created.stderr);
   assert.equal(JSON.parse(created.stdout).item.size, 'S');
+  const id = JSON.parse(created.stdout).item.id;
+  for (const args of [['create', 'Too large'], ['edit', id]]) {
+    const refused = await cland(root, 'task', ...args, '--size', 'XL');
+    assert.equal(refused.code, 1);
+    assert.match(refused.stderr, /XL tasks must be split/);
+  }
+  const unchanged = await cland(root, 'task', 'view', id, '--json');
+  assert.equal(JSON.parse(unchanged.stdout).item.size, 'S');
 });
 
 test('item size and regression fields round-trip and legacy files stay readable', () => {
@@ -62,18 +70,23 @@ test('real spoke and CLI validate regression targets and publish indexed task fi
   for (const name of ['task.create', 'task.edit']) assert.deepEqual(tools.tools.find(tool => tool.name === name)!.inputSchema.properties!.size, { type: 'string', enum: ['XS', 'S', 'M', 'L', 'XL'], description: 'Ex-ante task size; tasks only' });
   const refused = await spoke.call<{ ok: boolean; error: string }>('task.create', { title: 'Needs size' });
   assert.equal(refused.ok, false);
-  assert.match(refused.error, /a task needs a size: XS, S, M, L or XL/);
+  assert.match(refused.error, /a task needs a size: XS, S, M or L/);
   const created = await cland(root, 'task', 'create', 'Rework', '--size', 'S', '--regression-of', 'E-321', '--json');
   assert.equal(created.code, 0, created.stderr);
   const item = JSON.parse(created.stdout).item;
   assert.equal(item.regression_of, 'T-321');
   const from = ui.frames.length;
-  const edited = await spoke.call<{ item: ItemView }>('task.edit', { id: item.id, size: 'XL' });
-  assert.equal(edited.item.size, 'XL');
-  const event = await ui.waitFor(f => ui.frames.indexOf(f) >= from && f.type === 'task' && (f.item as ItemView)?.id === item.id && (f.item as ItemView).size === 'XL');
+  for (const [tool, args] of [['task.create', { title: 'Too large', size: 'XL' }], ['task.edit', { id: item.id, size: 'XL' }]] as const) {
+    const bad = await spoke.call<{ ok: boolean; error: string }>(tool, args);
+    assert.equal(bad.ok, false);
+    assert.match(bad.error, /XL tasks must be split/);
+  }
+  const edited = await spoke.call<{ item: ItemView }>('task.edit', { id: item.id, size: 'L' });
+  assert.equal(edited.item.size, 'L');
+  const event = await ui.waitFor(f => ui.frames.indexOf(f) >= from && f.type === 'task' && (f.item as ItemView)?.id === item.id && (f.item as ItemView).size === 'L');
   assert.equal((event.item as ItemView).regression_of, 'T-321');
   const listed = await spoke.call<{ items: ItemView[] }>('task.list');
-  assert.deepEqual(listed.items.filter(i => i.id === item.id).map(i => [i.size, i.regression_of]), [['XL', 'T-321']]);
+  assert.deepEqual(listed.items.filter(i => i.id === item.id).map(i => [i.size, i.regression_of]), [['L', 'T-321']]);
   for (const id of ['321', 'E-321', 't-321']) {
     const linked = await spoke.call<{ item: ItemView }>('task.link', { id: item.id, regression_of: id });
     assert.equal(linked.item.regression_of, 'T-321');
@@ -85,7 +98,7 @@ test('real spoke and CLI validate regression targets and publish indexed task fi
     await spoke.call('task.link', { id: item.id, regression_of: '321' });
   }
   const human = await cland(root, 'task', 'view', item.id);
-  assert.match(human.stdout, /size +XL/);
+  assert.match(human.stdout, /size +L/);
   assert.match(human.stdout, /regression_of +T-321/);
   const open = await spoke.call<{ item: ItemView }>('task.create', { title: 'Open', size: 'M' });
   const container = await spoke.call<{ item: ItemView }>('task.create', { title: 'Epic', kind: 'epic' });

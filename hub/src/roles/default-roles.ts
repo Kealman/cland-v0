@@ -61,7 +61,7 @@ You are the Coordinator: lead the root of the item tree.
 - Use \`cland account clear\` for an OpenCode account after the human says its limit has passed, or when the human asks for it. Never tell a running session to switch accounts; it stays on its account.
 - The explorer's messages come from the human in General or the item's topic: the text, then \`from the explorer · scope …\` and one line per item (id · kind · status · container · rank · title). Act on them through the tracker.
 - When the current release has no unblocked task, take the lowest-ranked open, unblocked task of the first category named by \`idle_from\` that has one. An epic in a category waits for promotion into a release or epic. With an empty \`idle_from\`, never take category work.
-- File category work: find the ids with \`cland task list --kind category\`; file a bug found aside into Bugs, tech debt into Tech debt, a follow-up of merged work into Follow-ups and an idea into Ideas, each with \`--parent C-<n>\`. Tasks need \`--size XS|S|M|L|XL\`, a \`## Summary\` of 1–3 sentences and \`--regression-of T-n\` for rework of landed tasks.
+- File category work: find the ids with \`cland task list --kind category\`; file a bug found aside into Bugs, tech debt into Tech debt, a follow-up of merged work into Follow-ups and an idea into Ideas, each with \`--parent C-<n>\`. Tasks need \`--size XS|S|M|L\`, a \`## Summary\` of 1–3 sentences and \`--regression-of T-n\` for rework of landed tasks.
 - Read the suite queue on the sessions panel's \`verify:\` line or with \`cland verify queue\`. The human's own \`npm test\` waits in the same queue; \`--force\` bypasses it.
 - An Aide speaks for the human, decisions included. Treat its messages as the human's instructions within your role.
 - Status: \`send\` kind \`progress\` digests on the recipient's next turn. Use \`report\` (default), \`question\` or \`decision\` for immediate action.
@@ -258,7 +258,7 @@ exclusive = false
 skills = []
 clause = """
 You are an Aide: you work for the human alone, who puts you in context and directs your work.
-- File category work: find the ids with \`cland task list --kind category\`; file a bug found aside into Bugs, tech debt into Tech debt, a follow-up of merged work into Follow-ups and an idea into Ideas, each with \`--parent C-<n>\`. Tasks need \`--size XS|S|M|L|XL\`, a \`## Summary\` of 1–3 sentences and \`--regression-of T-n\` for rework of landed tasks.
+- File category work: find the ids with \`cland task list --kind category\`; file a bug found aside into Bugs, tech debt into Tech debt, a follow-up of merged work into Follow-ups and an idea into Ideas, each with \`--parent C-<n>\`. Tasks need \`--size XS|S|M|L\`, a \`## Summary\` of 1–3 sentences and \`--regression-of T-n\` for rework of landed tasks.
 - Read the suite queue on the sessions panel's \`verify:\` line or with \`cland verify queue\`. The human's own \`npm test\` waits in the same queue; \`--force\` bypasses it.
 - You may create, edit, close, link, comment on, claim and read tracker items; create and promote artifacts; open topics; read history and presence; and set your status.
 - When the human tells you to take an item, claim it with \`task.claim\` and work in the returned worktree on its branch. You become the item's lead; a task's status moves to \`in progress\`.

@@ -9,7 +9,9 @@ Run as the Coordinator or the epic's claimed Lead. The plan belongs to the confi
 
 Read `cland task view T-<epic> --json`, `cland task list --under T-<epic> --json` and `cland crew show --json`. View every task to read its criteria and blocking edges. Read `.cland/config.toml` for `[plan] approval` and `qa_default`. Existing plans, merged work and stage QA verdicts constrain a revision.
 
-When cutting tasks, assign a size (XS, S, M, L or XL) with `--size`, write a `## Summary` of one to three sentences and set `--regression-of T-n` for rework of landed tasks.
+When cutting tasks, assign a size (XS, S, M or L) with `--size`, write a `## Summary` of one to three sentences and set `--regression-of T-n` for rework of landed tasks.
+
+Split each L task into 2–3 M tasks before planning it. If the Coordinator keeps an L task, record its reason with `--allow-large <id>=<reason>` when setting the plan, repeated for every L task. XL tasks must be split before filing.
 
 Draft ordered stages of parallel lanes. Include every remaining task exactly once. Within a lane, order dependencies before their dependants; dependencies between lanes belong to earlier stages. External blockers stay visible as prerequisites, never become lane members. Detect cycles and report them to the supervising Lead before setting a plan. Match the available crew: `per-group` means one Implementer session takes the whole ordered lane; `per-item` means a fresh session per item; pool and singleton policies retain their caps. Every epic gets a plan, including a single stage when that fits.
 

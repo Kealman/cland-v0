@@ -73,7 +73,7 @@ for (const source of ['defaults', 'project'] as const) test(`${source} clause sn
     const spoke = await spawnSpoke({ discover: true, cwd: root, name, sessionId: 'queue-' + role, role });
     t.after(() => spoke.close());
     const clause = (await spoke.waitForEvent(isClause)).params.content;
-    if (role === 'coordinator' || role === 'aide') assert.match(clause, /Tasks need `--size XS\|S\|M\|L\|XL`, a `## Summary` of 1–3 sentences and `--regression-of T-n`/);
+    if (role === 'coordinator' || role === 'aide') assert.match(clause, /Tasks need `--size XS\|S\|M\|L`, a `## Summary` of 1–3 sentences and `--regression-of T-n`/);
     else assert.match(clause, /naming its size \(XS, S, M, L or XL\) and category/);
     if (role === 'coordinator') assert.match(clause, /The explorer's messages come from the human in General or the item's topic: the text, then `from the explorer · scope …` and one line per item \(id · kind · status · container · rank · title\)\. Act on them through the tracker\./);
     // Coordinator decision 8ea909f0: rulebook data and its cache guidance grow independently of the base clause.
