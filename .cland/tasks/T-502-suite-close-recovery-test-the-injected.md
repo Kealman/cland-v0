@@ -3,7 +3,7 @@ id: T-502
 kind: task
 title: "suite-close-recovery test: the injected machine loss can land after shard 1 already passed (Linux)"
 state: open
-status: review
+status: ready
 size: XS
 criterion_seq: 2
 labels:
@@ -15,7 +15,7 @@ regression_of: T-395
 topic: topic-319
 branch: t/T-502-suite-close-recovery-test-the-injected
 created: 2026-10-15T14:57:11.991Z
-updated: 2026-10-15T20:40:43.961Z
+updated: 2026-10-15T20:41:07.829Z
 ---
 
 ## Problem
@@ -28,8 +28,10 @@ updated: 2026-10-15T20:40:43.961Z
   - done: impl-502 · 2026-10-15T19:19:37.828Z
   - verified: rev-30 [reviewer] · run rev-20261015-502-source · 2026-10-15T19:22:00.568Z · commit 5932d8a6abdf4ec46f9ce0e93e21bbfe2f8d5d55
   - verified: rev-30 [reviewer] · run rev-20261015-502-allowance-delta · 2026-10-15T20:12:24.683Z · commit e60f59c5211ece630dbd3ef91b971b6c2d58f723
+  - verified: rev-30 [reviewer] · run rev-20261015-502-final · 2026-10-15T20:41:05.442Z · commit e60f59c5211ece630dbd3ef91b971b6c2d58f723
 - [x] C2. suite-close-recovery.test.ts passes 5/5 serially, whole file and alone on the Mac, plus once on a droplet in the task's verify.
   - done: impl-502 · 2026-10-15T19:50:36.592Z
+  - verified: rev-30 [reviewer] · run rev-20261015-502-final · 2026-10-15T20:41:05.442Z · commit e60f59c5211ece630dbd3ef91b971b6c2d58f723
 
 ## Comments
 
@@ -108,3 +110,24 @@ Criteria: C1 verified.
 ### impl-502 · 2026-10-15T20:40:38.678Z
 
 Second directed Linux receipt 1f4cfb6f / A-3332 is green at exact delta-reviewed e60f59c5: 1837 tests, 1834 pass, 0 fail, 3 platform skips; hub and Neovim smoke complete, workers4, peak load13.28. Head unchanged/tree clean. C2 also has five serial quiet whole-file Mac passes A-3292. Reviewer has the final evidence request; await its final verdict and hub ready event.
+
+### rev-30 · 2026-10-15T20:41:05.442Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-502-final
+commit: e60f59c5211ece630dbd3ef91b971b6c2d58f723
+scope: evidence
+
+Final evidence review T-502 clear at e60f59c5211ece630dbd3ef91b971b6c2d58f723. No high, medium or low findings. Standards and Spec source review and shared-only allowance delta remain applicable at this exact head.
+
+C1 reverified from source: observed fake-executor barrier holds shard 1 running through injected loss and labelled loss assertion; shard 2 is released separately, then shard 1 completion is observed before fixture deletion. All original assertions and bounds remain; root cause is recorded. No task-source change since 5932d8a6.
+
+C2 verified: A-3292 contains five serial quiet Mac whole-file passes of the identical task source, 25/25 cases, natural completion and admission/load checks. A-3332 is exact-head actual Linux droplet receipt 1f4cfb6f-8501-4ce7-81cb-6ef17bb6aa5e: exit 0, 1834 pass, zero failures/cancellations, three platform skips. All five suite-close-recovery cases pass; changed lost-machine case 8.748195742 seconds (log 2860, timing 5292). Typecheck, hub and Neovim smoke completed. Duration-regression notices do not fail the run; no hard budget failure. Duration 1541.96 seconds, peak one-minute load 13.28, lifetime 1646 seconds/$0.1143.
+
+A-3310 remains the first overall-red Linux receipt with own file green; no reliance on its outside failures is needed for this final green exact-head result. The only intervening change was source-reviewed shared fe233d71 allowance; Mac source evidence carries unchanged.
+
+Evidence: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3332-suite-1f4cfb6f-8501-4ce7-81cb-6ef17bb6aa5e-auto-at-e60f59c.log. No per-item QA criteria. No Reviewer tests, edits, merges or provider actions. A changed head or conflict resolution requires delta review.
+
+Criteria: C1 verified, C2 verified.

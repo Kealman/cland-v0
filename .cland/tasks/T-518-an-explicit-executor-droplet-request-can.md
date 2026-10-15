@@ -2,8 +2,8 @@
 id: T-518
 kind: task
 title: An explicit --executor droplet request can reuse a cached local green and never run on Linux
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-320
 branch: t/T-518-an-explicit-executor-droplet-request-can
 created: 2026-10-15T18:04:23.485Z
-updated: 2026-10-15T20:40:34.708Z
+updated: 2026-10-15T20:41:01.264Z
+closed: 2026-10-15T20:41:01.264Z
 ---
 
 ## Summary
@@ -88,3 +89,7 @@ C2 reverified: same regression establishes omitted-executor cross-executor reuse
 Evidence path: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3330-suite-d0bf4b2f-f8b9-478d-b8ba-357f86f04099-auto-at-d10584f.log. No per-item QA criteria. No Reviewer tests, edits, merges or provider actions. This final clearance covers only this immutable head; any conflict resolution or changed head needs delta review.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-15T20:41:01.264Z
+
+Merged 032aae3f0a01ac3979a079716d0dfb87b8ab4e58 onto dev.
