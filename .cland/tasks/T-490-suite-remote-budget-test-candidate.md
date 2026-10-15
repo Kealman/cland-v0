@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-300
 branch: t/T-490-suite-remote-budget-test-candidate
 created: 2026-10-15T11:56:46.304Z
-updated: 2026-10-15T16:19:20.955Z
+updated: 2026-10-15T16:20:36.231Z
 ---
 
 ## Problem
@@ -26,6 +26,7 @@ updated: 2026-10-15T16:19:20.955Z
 - [x] C1. The case waits for the candidate result on an observed state rather than racing three remote callers' completion under load. Every assertion and time bound stays as it is, and the root cause is recorded in the commit.
   - done: impl-490 · 2026-10-15T15:17:25.346Z
   - verified: rev-30 [reviewer] · run rev-20261015-490-source · 2026-10-15T15:31:04.979Z · commit 34251b57aa6c1203b641be6ba0e75c7487d17c44
+  - verified: rev-30 [reviewer] · run rev-20261015-490-delta · 2026-10-15T16:20:36.231Z · commit a4816d7e1a66e8710a024e0742854ed74e011234
 - [x] C2. suite-remote-budget.test.ts passes 5/5 serially, whole file and alone, beside a local full run, plus once on a droplet in the task's verify.
   - done: impl-490 · 2026-10-15T16:01:58.747Z
 
@@ -88,3 +89,22 @@ No further verify submission until Coordinator's restart notice e6ea9694/ac1e7e8
 ### impl-490 · 2026-10-15T16:19:20.944Z
 
 Picked only Coordinator shared allowance bdf418e6 as a4816d7e1a66e8710a024e0742854ed74e011234 and pushed. Delta since reviewed 34251b57 is four lines in durations.json allowing T-456's measured 5.043s clause/brief test, the sole red gate in A-3139. T-490 source unchanged; existing 5/5 whole-file Mac and green own-file Linux evidence stand. Restart/verify hold lifted by Coordinator; requesting delta review before the instructed second droplet verification.
+
+### rev-30 · 2026-10-15T16:20:36.231Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-490-delta
+commit: a4816d7e1a66e8710a024e0742854ed74e011234
+scope: delta
+
+Delta source review clear at a4816d7e1a66e8710a024e0742854ed74e011234, compared with 34251b57aa6c1203b641be6ba0e75c7487d17c44. No high, medium or low findings.
+
+Standards: parsed semantic comparison confirms all prior manifest fields and allowances preserved. New rule-sessions clause/brief allowance is correctly under allow, 5.043 seconds with real-launch rationale and A-3139 provenance, exactly shared bdf418e6. No production change or budget-wide bypass. Diff whitespace check passes.
+
+Spec/evidence: Only four manifest lines changed. Own suite-remote-budget test is byte-identical to source-clear 34251b57; observed completion receipts, concurrency/human handoff and every assertion/bound remain. C1 reverified. A-3120's five quiet files (50/50) and A-3139 Linux own-file 10/10 remain evidence; A-3139 is still overall red solely on this now-allowed test. Coordinator 91a6b74d accepts A-3139 as first receipt and directs one second droplet after this delta clear. C2 awaits accepted final gate.
+
+Both review axes performed directly under no-delegation role. No Reviewer tests or edits. Coordinator 6c0d565f lifts the restart hold: proceed with one --executor droplet verify at this exact head, reporting in the item topic. Source clearance is not final suite clearance.
+
+Criteria: C1 verified.

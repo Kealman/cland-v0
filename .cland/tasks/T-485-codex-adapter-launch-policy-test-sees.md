@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-299
 branch: t/T-485-codex-adapter-launch-policy-test-sees
 created: 2026-10-15T09:57:07.055Z
-updated: 2026-10-15T16:18:56.122Z
+updated: 2026-10-15T16:20:30.732Z
 ---
 
 ## Summary
@@ -80,3 +80,20 @@ Medium — hub/test/session-usage.test.ts:52: Codex journal includes an initial 
 fffae7db/A-3126 matches source-reviewed head; Linux x64 c-8, exit 1, 1761 pass/1 fail/3 platform skips, no cancelled tests. All 35 Codex adapter tests pass, including changed launch-policy test at 8.786591386 s. Source verdict stands. A-3107 raw logs confirm five quiet serial Mac whole-file passes, 35/35 each (175/175), zero fail/cancel/skip, plus typecheck. Composite C1 remains unverified until accepted final gate.
 
 Requested intermediate head 69bd884442ceb407707fcd2dda3b7c3b07fa34fa contains only the shared heartbeat duration allowance; inspection and parsed comparison confirm proper allow nesting and preservation of every prior manifest field. No source finding. Per implementer's latest message 607f6f1a, formal delta clearance is deferred to the final combined head after the planned T-495 pick and restart notice, avoiding an intermediate source verdict that would immediately need replacement. Coordinator e6ea9694 prohibits new verifies until restart. No Reviewer tests/edits.
+
+### rev-30 · 2026-10-15T16:20:30.732Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-485-delta
+commit: 3ddafc22cb004a98eb8e5b58bf1033f95f0a738e
+scope: delta
+
+Delta source review clear at 3ddafc22cb004a98eb8e5b58bf1033f95f0a738e, compared with 3cfa1f2f861fac5e11d5069e19da77c240111748. No high, medium or low findings.
+
+Standards: parsed semantic comparison confirms all prior manifest fields and allowances preserved. New rule-sessions clause/brief allowance is correctly under allow, 5.043 seconds with real-launch rationale and A-3139 provenance, exactly shared bdf418e6. Shared heartbeat allowance is also correctly nested, 5.113 seconds with A-3109 provenance; no unrelated rule-sessions entries were imported. No production change or budget-wide bypass. Diff whitespace check passes.
+
+Spec/evidence: Exact T-495 usage test file matches accepted 43aedf80 byte-for-byte. Correlation remains session-id/frame-boundary plus fixture totals/context/limits; raw final-record checks remain. A-3146 confirms picked usage file 8/8 quiet on Mac. Codex adapter task file is byte-identical to original source clear; five Mac file passes A-3107 (175/175) and first Linux own-file 35/35 A-3126 stand. Coordinator b1fe4457 accepts A-3126 as first receipt across authorized shared picks. Composite C1 awaits accepted second Linux gate.
+
+Both review axes performed directly under no-delegation role. No Reviewer tests or edits. Coordinator 6c0d565f lifts the restart hold: proceed with one --executor droplet verify at this exact head, reporting in the item topic. Source clearance is not final suite clearance.

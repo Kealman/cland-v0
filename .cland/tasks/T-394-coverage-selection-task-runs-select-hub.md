@@ -5,6 +5,7 @@ title: "Coverage selection: task runs select hub tests by a function-level V8 co
 state: open
 status: in progress
 size: L
+criterion_seq: 8
 labels:
   - v0.1.3
   - hub
@@ -18,7 +19,7 @@ blocked_by:
 topic: topic-306
 branch: t/T-394-coverage-selection-task-runs-select-hub
 created: 2026-10-14T12:28:19.272Z
-updated: 2026-10-15T15:50:10.684Z
+updated: 2026-10-15T16:23:12.810Z
 ---
 
 ## Summary
@@ -52,7 +53,8 @@ It falls back to today's rules, naming the reason, for protocol, contract, packa
 
 ## Acceptance criteria
 
-- [ ] C1. The human's answer to the miss-tolerance and replay-bar question is recorded on this item before the first commit.
+- [x] C1. The human's answer to the miss-tolerance and replay-bar question is recorded on this item before the first commit.
+  - done: impl-394 · 2026-10-15T16:23:12.810Z
 - [ ] C2. An integrated `dev` full run posts a function-level coverage map artifact naming its head and tree, and spokes, daemons, the CLI and fakes all contribute to it, proven on a fixture project.
 - [ ] C3. A task diff touching one function in `hub/src/hub/` selects its changed tests, the covering test files and the smoke baselines, and the report names the deciding functions.
 - [ ] C4. Protocol, contract, package, harness, fixture and runner changes, unknown files, stale maps and a missing map fall back to the package rules with their reason, each proven by a test.

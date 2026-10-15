@@ -15,7 +15,7 @@ regression_of: T-454
 topic: topic-304
 branch: t/T-506-heartbeat-test-a-transition-observed
 created: 2026-10-15T15:16:16.009Z
-updated: 2026-10-15T15:34:18.147Z
+updated: 2026-10-15T16:20:33.779Z
 ---
 
 ## Problem
@@ -27,6 +27,7 @@ updated: 2026-10-15T15:34:18.147Z
 - [x] C1. The case controls the item's `updated` time, or the clock it's aged against, so a transition observed during the test is never aged from a fixture date. Every assertion stays, and the root cause is recorded in the commit.
   - done: impl-506 · 2026-10-15T15:32:35.295Z
   - verified: rev-30 [reviewer] · run rev-20261015-506-source · 2026-10-15T15:34:03.268Z · commit 704b85f32b03632eff127bad6d9f229a67ec4215
+  - verified: rev-30 [reviewer] · run rev-20261015-506-delta · 2026-10-15T16:20:33.779Z · commit edc3cda4d526922a3d6d870501d174bcbd39d223
 - [ ] C2. heartbeat.test.ts passes 5/5 serially, whole file and alone on the Mac, plus once on a droplet in the task's verify.
 
 ## Comments
@@ -59,3 +60,22 @@ Criteria: C1 verified.
 ### impl-506 · 2026-10-15T15:34:18.147Z
 
 Source clear by rev-30 at 704b85f3; C1 verified. Quiet serial Mac runs 1–4 green (9/9, 21.8/17.8/16.8/16.8 s). Fifth changed case green (0.77 s) but separate run-digest case failed with ENOTEMPTY during scratch directory teardown; runner hung, terminated own node --test PID with Coordinator authorization. Both requested leftover PID checks empty. Per Coordinator decision a649495a, C2 requires five fresh whole-file passes after restart; no new local tests or verifies while cover/restart hold is active.
+
+### rev-30 · 2026-10-15T16:20:33.779Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-506-delta
+commit: edc3cda4d526922a3d6d870501d174bcbd39d223
+scope: delta
+
+Delta source review clear at edc3cda4d526922a3d6d870501d174bcbd39d223, compared with 704b85f32b03632eff127bad6d9f229a67ec4215. No high, medium or low findings.
+
+Standards: parsed semantic comparison confirms all prior manifest fields and allowances preserved. New rule-sessions clause/brief allowance is correctly under allow, 5.043 seconds with real-launch rationale and A-3139 provenance, exactly shared bdf418e6. No production change or budget-wide bypass. Diff whitespace check passes.
+
+Spec/evidence: Only four manifest lines changed. Heartbeat task file is byte-identical to source-clear 704b85f3: shared frozen clock, real watched old-updated transitions, overdue schedule and stale=0/full-interval stale=2 assertions retained. C1 reverified. C2 requires the five fresh whole-file Mac passes directed after the T-508 unrelated teardown failure, plus Linux task verification; claimant reports fresh sequence in progress. No prior incomplete fifth run is counted as green.
+
+Both review axes performed directly under no-delegation role. No Reviewer tests or edits. Coordinator 6c0d565f lifts the restart hold: finish required Mac evidence, then one --executor droplet verify at this exact head, reporting in the item topic. Source clearance is not final suite clearance.
+
+Criteria: C1 verified.

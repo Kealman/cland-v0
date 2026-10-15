@@ -2,8 +2,8 @@
 id: T-457
 kind: task
 title: "Seed the rulebook: an Aide migrates the eight rules of the planning session's and the stand-in's memories into .cland/RULES.md with their memory files as origins, and marks each memory with its rule number"
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 4
 labels:
@@ -14,9 +14,10 @@ parent: E-423
 blocked_by:
   - T-456
 topic: topic-303
-branch: t/T-457-seed-the-rulebook-an-aide-migrates-the
+branch: dev
 created: 2026-10-15T07:15:15.643Z
-updated: 2026-10-15T16:18:26.753Z
+updated: 2026-10-15T16:27:22.178Z
+closed: 2026-10-15T16:27:22.178Z
 ---
 
 ## Summary
@@ -68,14 +69,18 @@ Commit `.cland/RULES.md` on the task branch and merge it through `cland merge` l
 
 - [ ] C1. `cland rule list --json` on the live project shows exactly eight active rules, matching the eight of §3.2, each with a scope, a reason and an `Origin: memory:<path>` naming an existing memory file.
   - verified: rev-30 [reviewer] · run rev-20261015-457-final · 2026-10-15T16:18:26.752Z · commit 349edf37ba5ce0b4ab76aaaf2320702aadcae37e
+  - verified: rev-30 [reviewer] · run rev-20261015-457-final-pinned · 2026-10-15T16:25:32.598Z · commit 1868193c2a551a873f0db763c86682738021f311
 - [ ] C2. Each migrated memory file, and its `MEMORY.md` line, names the rule number it became, in every memory folder that holds it.
   - verified: rev-30 [reviewer] · run rev-20261015-457-source · 2026-10-15T15:27:18.659Z · commit a9f013a2ed5ae48e239868d10c0b625b2cccc2b5
   - verified: rev-30 [reviewer] · run rev-20261015-457-final · 2026-10-15T16:18:26.753Z · commit 349edf37ba5ce0b4ab76aaaf2320702aadcae37e
+  - verified: rev-30 [reviewer] · run rev-20261015-457-final-pinned · 2026-10-15T16:25:32.598Z · commit 1868193c2a551a873f0db763c86682738021f311
 - [ ] C3. The item carries a comment with the table of the eight rules and a separate list of other rule-like memories proposed for the human, none of which is in the rulebook.
   - verified: rev-30 [reviewer] · run rev-20261015-457-source · 2026-10-15T15:27:18.659Z · commit a9f013a2ed5ae48e239868d10c0b625b2cccc2b5
   - verified: rev-30 [reviewer] · run rev-20261015-457-final · 2026-10-15T16:18:26.753Z · commit 349edf37ba5ce0b4ab76aaaf2320702aadcae37e
+  - verified: rev-30 [reviewer] · run rev-20261015-457-final-pinned · 2026-10-15T16:25:32.599Z · commit 1868193c2a551a873f0db763c86682738021f311
 - [ ] C4. After the merge, the live Coordinator's next clause (after a reconnect) lists the seeded rules in its scope as `rule <n>: …`.
   - verified: rev-30 [reviewer] · run rev-20261015-457-final · 2026-10-15T16:18:26.753Z · commit 349edf37ba5ce0b4ab76aaaf2320702aadcae37e
+  - verified: rev-30 [reviewer] · run rev-20261015-457-final-pinned · 2026-10-15T16:25:32.599Z · commit 1868193c2a551a873f0db763c86682738021f311
 
 ## Comments
 
@@ -177,3 +182,22 @@ C4: A-3144 records Coordinator's post-restart reconnect clause (hub event 9fd833
 No task branch merge or per-item suite is required for this data-only, hub-owned seed under the recorded Coordinator exception. C4 is now observed; earlier pending-state limitations are resolved by A-3118/A-3144. No Reviewer edits or tests. Coordinator requested immediate task close after this current-dev verdict to avoid marks becoming stale on later dev commits.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### rev-30 · 2026-10-15T16:25:32.599Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-457-final-pinned
+commit: 1868193c2a551a873f0db763c86682738021f311
+scope: evidence
+
+Final review clear; C1–C4 reverified together at pinned current dev/origin/dev 1868193c2a551a873f0db763c86682738021f311 under Coordinator 7e988834. No high, medium or low findings. Read-only check confirms dev still equals pinned SHA and RULES.md is byte-identical to reviewed seed a9f013a2.
+
+A-3145 final review and all supporting evidence carry forward unchanged: C1 A-3118 independent live eight-rule JSON with valid scopes/reasons/existing origins; C2 A-3117 plus rechecked eleven source/index references through both memory paths; C3 item table and separate unrecorded proposals; C4 A-3144 post-restart Coordinator reconnect clause rules 1–8. Reviewer's own reconnect clause independently contains scoped rules 3/4/5. Earlier stale marks were caused by dev movement during settlement; this pass uses Coordinator's explicit no-commit closure window. No edits or tests. Coordinator closes this live-state item immediately after current marks.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-15T16:27:22.178Z
+
+Closed under the live-state decision: the rulebook seed is on dev (RULES.md, eight rules), with the final review clear at the pinned 1868193c and C1–C4 verified (A-3118, A-3117, A-3144, A-3145). The branch metadata was pointed at dev because the task never had a branch diff.

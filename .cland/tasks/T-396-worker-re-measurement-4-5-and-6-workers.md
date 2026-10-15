@@ -3,7 +3,7 @@ id: T-396
 kind: task
 title: "Worker re-measurement: 4, 5 and 6 workers locally and 6 and 8 on a c-16, after the inspection diet and the in-process hub, and the defaults set from the numbers"
 state: open
-status: in progress
+status: review
 size: XS
 labels:
   - v0.1.3
@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-307
 branch: t/T-396-worker-re-measurement-4-5-and-6-workers
 created: 2026-10-14T12:28:19.638Z
-updated: 2026-10-15T15:42:32.399Z
+updated: 2026-10-15T16:24:23.916Z
 ---
 
 ## Summary
@@ -56,3 +56,7 @@ Coordinator decision (2026-10-15 15:39Z): the per-run --workers and --size overr
 ### impl-396 · 2026-10-15T15:42:32.399Z
 
 Implementation and fixture tests drafted; typecheck and diff whitespace checks pass. A-3132 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3132-t-396-stage-2-worker-measurement-procedure.md) is the recorded stage-2 measurement procedure. Targeted verification-workers.test.ts and changed suite-runner.test.ts remain unrun under Coordinator cover-quiet/restart hold. After release: run targeted files serially, record any duration exceptions, fetch/merge origin/dev, commit/push and request source review. Measurements/default tuning stay post-merge per Coordinator decision.
+
+### impl-396 · 2026-10-15T16:24:11.558Z
+
+Pre-review validation: verification-workers.test.ts 4/4 (A-3157), suite-runner.test.ts 50/50 (A-3158), shard/duration lint and typecheck pass. The new integration case measured 12.034 s, with a justified duration allowance. Includes shared fix bdf418e6 as af67516a, and merges fresh origin/dev at review head 6343761b812125bfd55dcee830cbe2389440c1c6. Procedure committed at docs/research/T-396-worker-measurements.md and shared as A-3159 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3159-t-396-stage-2-measurement-procedure-role-routing.md). Config and per-run overrides remain four by default; the Coordinator's 15:39Z decision moves measured C2–C4/default selection and measured C5 trade-off to stage-2 close after merge/restart.

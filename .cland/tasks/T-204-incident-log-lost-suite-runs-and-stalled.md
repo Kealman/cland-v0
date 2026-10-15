@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-10-15T16:18:34.423Z
+updated: 2026-10-15T16:24:37.060Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -288,3 +288,7 @@ Cover e2a5506a took the local slot at 15:58:54Z. Hub fix: T-511.
 ### human · 2026-10-15T16:18:34.423Z
 
 Incident: unattributed hub auto-start, third sighting. 2026-10-15 16:16:40.474Z human CLI hub.stop (atomic-restart.sh) → 16:16:40.492Z hub-stopped pid 95740 → 16:16:41.003Z hub-started pid 75433 (0.5 s later; 'node hub/bin/cland.ts hub serve', parent launchd, started 18:16:40 local), before the script's own 'cland hub start' at ~16:16:46Z, which printed 'pid 75433 holds hub.json but does not answer … run cland hub stop first'. No audit row between stop and start names a client. Env happened to be right (token present, knob absent, cap 10). Pattern now 3/3 restarts today except 14:08Z (clean). Needed: hub-started should record its launcher (parent command, client, cwd), and whichever spoke auto-starts on a missing socket should be identified and made to honour a stop-in-progress marker.
+
+### human · 2026-10-15T16:24:37.060Z
+
+Cause found for the pre-empted hub starts (sightings 12:00Z, 16:16Z, and the 09:14Z outage pair): the human's Neovim workbench. nvim/lua/cland/hub.lua autostart (default true, :37/:45) runs 'cland hub start' after failed socket connects (:222–224, :263–267); hub start spawns 'hub serve' detached with env: process.env (hub/src/cli/hub.ts:99), so the hub's parent becomes launchd and its environment is the workbench Neovim's, not the restarting shell's. Two nvim processes (pids 80080, 80450) are attached. Consequences: an env-dependent restart from a shell can be pre-empted within 0.5 s; the 09:14Z outage pair lacked CLAND_TEST_TRACKER_STALL_MS for exactly this reason. Remedies: (1) hub-started records its launcher (client kind, pid, cwd, argv); (2) 'cland hub stop' leaves a stop-in-progress marker that autostart honours for N seconds, or the workbench autostart waits a grace period after a journaled hub-stopped; (3) interim rule for the stand-in: after any restart verify the env on the pid that actually serves, and when a value must change, set it in the workbench's environment too (or pause the workbench's client first).
