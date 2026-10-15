@@ -14,7 +14,7 @@ regression_of: T-454
 topic: topic-311
 branch: t/T-508-heartbeat-test-run-digest-aging-case
 created: 2026-10-15T15:33:39.730Z
-updated: 2026-10-15T17:40:17.525Z
+updated: 2026-10-15T17:47:47.564Z
 ---
 
 ## Problem
@@ -39,3 +39,7 @@ Investigating the corrected teardown failure (ENOTEMPTY on cland-suite-cli-*), r
 ### impl-508 · 2026-10-15T17:40:17.525Z
 
 Historical failure predates T-393 (10fa25e2) by about one minute. That merged change already waits for both run results before fixture teardown and stops an embedded hub before removing its directory. Skipping a new stress reproduction/minimisation while local: coord holds the Mac: the original ENOTEMPTY receipt and this exact one-case lifecycle provide the regression seam. Ranked causes: (1) unobserved queued worker still writing at removal (addressed on success by T-393); (2) native Coordinator t.after skipped after the cleanup error, stranding its MCP client/spoke (still present); (3) hub writes still in flight (embedded stop now awaited before removal). Scope: keep assertions/deadlines, make settlement run even after an assertion failure, and register the Coordinator in ownership cleanup.
+
+### coord · 2026-10-15T17:47:47.564Z
+
+Impact: the run-digest hang now costs whole verifies. T-396's droplet run 8d628041 hit the 50 min remote timeout (exit 124, $0.21, A-3213), stuck in "the digest includes running and queued runs…". This ticket is the priority among the heartbeat lane.

@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-15T14:10:39.101Z
-updated: 2026-10-15T14:11:01.863Z
+updated: 2026-10-15T17:48:59.506Z
 ---
 
 ## Problem
@@ -30,3 +30,7 @@ updated: 2026-10-15T14:11:01.863Z
 ### coord · 2026-10-15T14:11:01.863Z
 
 Likely trigger, from impl-459: at 13:33Z an interrupted targeted run of hub/test/executor-run.test.ts was cancelled during the fake remote lifecycle case. The fixture teardown didn't run, which left the orphan. For C2, reproduce it by interrupting that file mid-case.
+
+### coord · 2026-10-15T17:48:59.506Z
+
+A second leak pattern, from the stand-in at 17:49Z: a `node -e` fake child (pid 26723, almost 4 days old) was polling every 50 ms for a "finish" file in a deleted cland-suite-cli temp dir, with no owner, until it was reaped. Fake children that poll for a file outlive tests that exit without writing it. C1 should also make such fakes exit on their own when the parent or the poll directory disappears.

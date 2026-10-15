@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-307
 branch: t/T-396-worker-re-measurement-4-5-and-6-workers
 created: 2026-10-14T12:28:19.638Z
-updated: 2026-10-15T16:54:59.142Z
+updated: 2026-10-15T17:53:54.785Z
 ---
 
 ## Summary
@@ -108,3 +108,18 @@ First Linux receipt fb064818/A-3184 covers source-reviewed 6343761b812125bfd55dc
 Delta head 8c1637f67895a364816f3f92d136d406a00cc2c6 has exactly parent 6343761b and changes only hub/test/durations.json: four measured entries inside allow, each with a concrete process/round-trip reason and evidence reference. The addition matches shared 051db745's patch. No production/test-source changes, default-count changes or full dev merge. Parsed JSON and diff examined read-only; no Reviewer tests.
 Standards: no findings. Spec: no findings in the delta. Source clear for one second droplet verify under Coordinator 635d1511; no extra local pass required for the shared test-only pick.
 Current criteria amendment read: C2 pre-merge override/header fixtures plus written procedure; C3 keeps four at merge; selected-size reservation fixture supports the pre-merge C4 portion. The real local/c-16 table, cap/create/destroy/tag receipts, measured default decision and measured C5 trade-off remain at E-387 stage-2 close under recorded decisions. No actual worker-performance numbers claimed. Final criterion verification waits for accepted second receipt.
+
+### rev-30 · 2026-10-15T17:47:54.498Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261015-396-linux-second
+commit: 8c1637f67895a364816f3f92d136d406a00cc2c6
+scope: evidence
+
+T-396 second receipt not clear at unchanged source-reviewed 8c1637f67895a364816f3f92d136d406a00cc2c6.
+A-3213 / 8d628041-45a3-4db3-862f-fe66cb00e4e5 exits 124 after the 50-minute run timeout, Linux c-8. The printed 38/38 count is only completed partial output, not a completed hub suite or gate. Hub machine consumed 2978.41s; full Neovim was not reached.
+Medium gate blocker — hub/test/run-suite.ts (machine phase, A-3213:2628/:3103–3112): the suite does not finish before the outer deadline. No printed assertion failure or specific hung-test diagnosis establishes that this is a known external flake. Completed timing records end in freshness.test.ts; subsequent test-start records include heartbeat, changed runner and all four verification-workers cases but do not provide completed pass/timing receipts for those changed cases. A start record does not verify a criterion. Do not count this as a second changed-case-green receipt or presume T-508 solely from nearby started heartbeat cases.
+No new source defect is established by this truncated/timeout evidence; implementation criteria are not failed speculatively. Existing source/delta facts and first A-3184's changed-case passes remain. C1–C5 remain unverified pending an acceptable gate; actual measurements remain stage-2 work under recorded decisions.
+Lead disposition needed for the timeout. Aside Bugs / S: unidentified machine-phase hang/insufficient timeout-localization evidence in this run; classify against existing runner/heartbeat hangs before retrying. Requester has already escalated and will wait. Coordinator 0513084e/bdda2243's restart/submission hold remains. No Reviewer tests, edits, cancellation or provider calls.

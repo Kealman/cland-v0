@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-10-15T16:24:37.060Z
+updated: 2026-10-15T17:48:45.467Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -292,3 +292,7 @@ Incident: unattributed hub auto-start, third sighting. 2026-10-15 16:16:40.474Z 
 ### human · 2026-10-15T16:24:37.060Z
 
 Cause found for the pre-empted hub starts (sightings 12:00Z, 16:16Z, and the 09:14Z outage pair): the human's Neovim workbench. nvim/lua/cland/hub.lua autostart (default true, :37/:45) runs 'cland hub start' after failed socket connects (:222–224, :263–267); hub start spawns 'hub serve' detached with env: process.env (hub/src/cli/hub.ts:99), so the hub's parent becomes launchd and its environment is the workbench Neovim's, not the restarting shell's. Two nvim processes (pids 80080, 80450) are attached. Consequences: an env-dependent restart from a shell can be pre-empted within 0.5 s; the 09:14Z outage pair lacked CLAND_TEST_TRACKER_STALL_MS for exactly this reason. Remedies: (1) hub-started records its launcher (client kind, pid, cwd, argv); (2) 'cland hub stop' leaves a stop-in-progress marker that autostart honours for N seconds, or the workbench autostart waits a grace period after a journaled hub-stopped; (3) interim rule for the stand-in: after any restart verify the env on the pid that actually serves, and when a value must change, set it in the workbench's environment too (or pause the workbench's client first).
+
+### human · 2026-10-15T17:48:45.467Z
+
+Orphan sweep at 17:50Z (coord's heads-up on remote-run-* pids 3254, 3301, 3612 seen by impl-396 at 17:47Z): all three had already exited by 17:49Z, so they were live remote-fixture tests of a current targeted run, not leaks. Full ppid-1 node sweep found: pid 8349 (9 s old, cwd the current suite root's remote-run-iMp1JI, live, left alone); pid 26723, 3 d 23 h old, 'node -e' polling for a 'finish' file every 50 ms in a deleted cwd under T/cland-suite-cli-3kyl09, no sockets, no owner: a CLI-suite fake child leaked on 2026-10-11, reaped with SIGTERM (exited); pid 40921, 7 d old, the Codex plugin app-server broker of a Claude Code agent worktree (.claude/plugins/cache/openai-codex), not a cland test process, left alone; pid 75433 the project hub. Pattern for T-500/T-311: fake children that poll for a file keep running when the test exits without writing it.
