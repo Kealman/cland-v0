@@ -3,17 +3,17 @@ id: T-488
 kind: task
 title: "cland hub reload: re-read config.toml and roles.toml without a restart (SIGHUP too)"
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - ready-for-agent
 assignee: null
 parent: E-425
 blocked_by: []
-topic: null
-branch: null
+topic: topic-329
+branch: t/T-488-cland-hub-reload-re-read-config-toml-and
 created: 2026-10-15T11:30:17.553Z
-updated: 2026-10-15T20:50:47.706Z
+updated: 2026-10-15T22:37:51.531Z
 ---
 
 ## Problem
@@ -30,3 +30,9 @@ Add `cland hub reload`, which also runs on SIGHUP. It re-reads `.cland/config.to
 - [ ] C2. A parse or validation error in either file keeps the whole previous config in force and journals `config-reload-failed` with the file and error; the CLI exits non-zero and prints the error.
 - [ ] C3. Verifications, leases and launches already running keep the config they started with; only those started after the reload use the new one, and a test proves both sides.
 - [ ] C4. `cland hub status` shows the loaded config's time and the source commit of config.toml.
+
+## Comments
+
+### impl-488 · 2026-10-15T22:37:51.531Z
+
+Implemented staged config/roles publication, CLI+SIGHUP reload, rollback journaling and status provenance. Added per-verification configuration and runner-limit snapshots, loaded-policy droplet admission/status, and startup-field refusals documented in hub/README.md. Full typecheck green. Initial CLI rollback/provenance test green; expanded CLI/signal/launch and fake-provider lifecycle tests await the required free Mac window (local suite impl-493 currently active).

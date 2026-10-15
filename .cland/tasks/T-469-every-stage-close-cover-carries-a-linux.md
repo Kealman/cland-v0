@@ -3,7 +3,7 @@ id: T-469
 kind: task
 title: "Every stage-close cover carries a Linux proof: the sharded droplet run plus the Mac run, both required by the stage gate"
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 3
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-316
 branch: t/T-469-every-stage-close-cover-carries-a-linux
 created: 2026-10-15T09:13:16.034Z
-updated: 2026-10-15T22:19:46.740Z
+updated: 2026-10-15T22:29:47.740Z
 ---
 
 ## Summary
@@ -36,6 +36,7 @@ The stage gate (`#stageCurrent` and the plan's `after-stage` close) accepts the 
   - done: impl-469 · 2026-10-15T20:20:15.204Z
   - verified: rev-30 [reviewer] · run rev-20261015-469-source-correction · 2026-10-15T20:30:36.543Z · commit a54d2083b7b3bf2bc80712bf0ac9162e29a45b08
   - verified: rev-30 [reviewer] · run rev-20261015-469-refresh-delta · 2026-10-15T21:28:47.078Z · commit 6d7ef2e58241111b07783af70df96504ba6dd203
+  - verified: rev-30 [reviewer] · run rev-20261015-469-startup-delta · 2026-10-15T22:28:52.919Z · commit c09435d4e4a337e6aec09058cd392b004df5bcd0
 
 ## Comments
 
@@ -179,3 +180,35 @@ A-3400 /ab2577f7 is actual Linux c-8 lon1, full selection, exit1:1830 pass/three
 C1/C2 final runtime marks remain pending; C3 source mark stands. No criterion failure is inferred merely from a status wait whose exact stage state/root cause still needs diagnosis, but final review is not clear. A-3351 earlier own query-regression red remains historical, not a qualifying first receipt. No unchanged retry or flake exception until this in-scope failure is resolved/classified by concrete evidence. Any source correction needs new source review before verification.
 
 Evidence /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3400-suite-ab2577f7-9194-4508-bc16-d0b8ca2254c6-auto-at-6d7ef2e.log. No Reviewer tests, edits, merges or provider actions.
+
+### impl-469 · 2026-10-15T22:27:50.762Z
+
+A-3401 restored-cover advancement failure fixed and pushed at c09435d4e4a337e6aec09058cd392b004df5bcd0. Initial receipt binding now shares the scoped change notification path. New one-landing public lifecycle regression reproduced exact15s next-stage timeout before fix, green3.20s after; original bound/assertions retained. Whole files planned-stage11, task-card6, stage-QA12, stage-cover3 all green (32 cases); completion46 queries/0 lists, landing9508/close7216. Typecheck/shards/duration lint/diff check pass. A-3402 carries evidence; requesting source delta review before another exact-head Linux verify. No dev merge or unchanged retry.
+
+### rev-30 · 2026-10-15T22:28:52.919Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-469-startup-delta
+commit: c09435d4e4a337e6aec09058cd392b004df5bcd0
+scope: delta
+
+Delta source review T-469 clear at c09435d4e4a337e6aec09058cd392b004df5bcd0, parent source-reviewed6d7ef2e58241111b07783af70df96504ba6dd203. No high, medium or low findings. Standards and Spec reviewed directly under the no-delegation role.
+
+A-3401 restored-receipt startup finding resolved: useVerify now calls the same #stageCoversChanged helper as later integrated receipt changes. The helper compares the eligible receipt set against the remembered key, updates it, then announces/schedules only registered stage-cover-dependent containers. Existing receipts becoming available after Tracker's initial tree/ancestry work can therefore wake waiting plans. An unchanged set remains silent. The scoped behavior from A-3379 remains: no global full list, #tipsMoved/#hydrate/Worktrees change or ordinary task-completion refresh.
+
+Regression source inspected: existing two normal stage-landing variants remain; a third performs one real landing and QA, stops the daemon, seeds persisted receipts through Store while stopped, starts the real Tracker and observes its expected tree/planned read before Dispatcher binding. Before binding it proves both platforms missing and next task backlog. The real hub/Dispatcher/socket UI then must satisfy the unchanged15-second next-stage planned assertion, closed-stage check and preservation of the already-in-progress task. One landing removes the later ancestry callback that masked the missed notification. No private tracker mutation or own-module mock substitutes for the lifecycle boundary.
+
+A-3402 records red-before exact "T-4 becomes planned: not within15000ms" at18.039s; green-after focused3.201s, whole-file new case2.115s. Complete targeted files32/32 pass: planned-stage11, task-card6, stage-QA12, stage-cover3. Original query budgets remain: landing9508/three affected-stage checks; closes7216/20; no unrelated refused-plan reads; task completion46 queries/zero full lists/zero item reads. Platform pairing/history/report recovery and both cache-supersession regressions stay green. Prior A-3400 is own-failure evidence, excluded from a known-only final gate.
+
+Standards: three-file delta only; one helper consolidates initial/later invalidation rather than adding another notification mechanism. One measured new-case allowance3.200989s has concrete Git/process lifecycle rationale; existing assertions, bounds, baselines and allowances unchanged. No dev merge. Typecheck, shard/duration lint and whitespace check green.
+
+C3 reverified: README/plan-epic two-platform gate documentation unchanged. C1/C2 source remain clear; final runtime marks await an acceptable exact-head post-source verification. One exact-head diff-selected Linux run may follow source clearance subject to current Coordinator holds/admission/budget rules. No per-item QA criteria. No Reviewer tests, edits, merges or provider actions.
+Evidence /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3402-t-469-restored-receipt-startup-fix-at-c09435d4.md.
+
+Criteria: C3 verified.
+
+### impl-469 · 2026-10-15T22:29:47.740Z
+
+Source startup delta clear at c09435d4 (A-3403). Submitted exact-head Linux diff-selected verification 8cbb46a4-ee0e-4f83-9b43-81b7bcccbb06 with no mode, --executor droplet --fresh; queued position1, report topic-316 to Reviewer rev-30 and item lead impl-469. Clean unchanged head. Awaiting hub result; A-3400 is excluded own-failure history.

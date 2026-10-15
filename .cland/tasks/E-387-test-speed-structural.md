@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-14T12:28:09.615Z
-updated: 2026-10-15T21:55:23.710Z
+updated: 2026-10-15T22:42:26.366Z
 ---
 
 ## Goal
@@ -181,3 +181,12 @@ Stage-close run 7a9d39f3 at dev 7dbd2e2c (21:41:54–21:55:00Z): red on one know
 - Total $0.1058. Wall 785.69 s from admission through collection, down from 906–908 s but still over the 600 s target (T-520).
 - Logs: A-3393 (all), A-3394, A-3395.
 Next: merge T-531 and T-530, then one more stage-close run on dev, which will also cover T-469 if it has landed. The stage closes on that green.
+
+### coord · 2026-10-15T22:42:26.366Z
+
+Stage-close cover 725bd529 at dev 21ae664d (22:27:19–22:40:51Z) is red on one test, the new T-480 ordering case in session-model.test.ts. The usage.subagents rows arrive in hook order; filed as T-544 (XS, regression of T-480) and launched.
+- shard-1, cland-v0-7f8dcbd7 c-8 lon1: 762.02 s, $0.0512, 1 fail.
+- shard-2, cland-v0-319cd8dc c-8 lon1: 811.93 s, $0.0544, green.
+- Total $0.1056. Wall 811.96 s.
+- Log: A-3413.
+The T-531 suite-close failure is gone. This cover covers T-471, T-427, T-531, T-530, T-480, T-478, T-311 and T-513. Next: T-544 merges, then one more stage-close cover. The hub restart is armed on a green cover.
