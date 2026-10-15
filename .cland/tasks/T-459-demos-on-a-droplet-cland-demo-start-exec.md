@@ -3,7 +3,7 @@ id: T-459
 kind: task
 title: "Demos on a droplet: cland demo start, exec and stop lease a droplet for an epic's QA demo at a named dev commit, and the hub accepts the demo's verdict while dev moves on files outside the epic's surfaces"
 state: open
-status: backlog
+status: planned
 size: L
 labels:
   - v0.1.3
@@ -16,7 +16,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-15T07:15:15.838Z
-updated: 2026-10-15T07:15:16.275Z
+updated: 2026-10-15T13:19:35.403Z
 ---
 
 ## Summary

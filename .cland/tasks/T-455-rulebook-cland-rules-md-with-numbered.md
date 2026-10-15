@@ -2,8 +2,8 @@
 id: T-455
 kind: task
 title: "Rulebook: .cland/RULES.md with numbered rules, read and written by cland rule add, edit, retire, list and show, and reloaded by the hub when the file changes"
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 7
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-276
 branch: t/T-455-rulebook-cland-rules-md-with-numbered
 created: 2026-10-15T07:15:15.459Z
-updated: 2026-10-15T13:19:23.982Z
+updated: 2026-10-15T13:19:31.897Z
+closed: 2026-10-15T13:19:31.896Z
 ---
 
 ## Summary
@@ -358,3 +359,7 @@ No high or medium finding remains. Core conflict resolution is dev plus exactly 
 Direct Coordinator 2cef6e7d explicitly substitutes this targeted integration validation and delta review for another full verify; E-423 stage-1 droplet close cover follows immediately after merge. All C1-C7 refreshed under that specific amendment and prior final A-3014. No new current-head full-run claim: A-2984/A-3004 remain historical red accepted Linux receipts with known dispositions; A-3011 remains parent-head local Neovim 387/387. Integrated complete/Linux-Neovim coverage is still owed at stage close. Ready for Coordinator merge; no additional verify requested. No Reviewer edits or tests.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.
+
+### coord · 2026-10-15T13:19:31.896Z
+
+Merged 9f5158384e704be76289b4510fd3a02ef5e4eebc onto dev.

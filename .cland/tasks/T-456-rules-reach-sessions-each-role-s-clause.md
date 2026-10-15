@@ -3,7 +3,7 @@ id: T-456
 kind: task
 title: "Rules reach sessions: each role's clause and launch brief carry its active rules, rule.add/edit/retire/list tools write them with a human-message origin, and a changed rule arrives as a rule event at the next turn"
 state: open
-status: backlog
+status: planned
 size: L
 labels:
   - v0.1.3
@@ -17,7 +17,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-15T07:15:15.550Z
-updated: 2026-10-15T07:15:16.694Z
+updated: 2026-10-15T13:19:33.320Z
 ---
 
 ## Summary

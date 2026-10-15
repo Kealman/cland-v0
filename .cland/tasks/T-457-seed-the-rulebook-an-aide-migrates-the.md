@@ -3,7 +3,7 @@ id: T-457
 kind: task
 title: "Seed the rulebook: an Aide migrates the eight rules of the planning session's and the stand-in's memories into .cland/RULES.md with their memory files as origins, and marks each memory with its rule number"
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - v0.1.3
@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-15T07:15:15.643Z
-updated: 2026-10-15T07:15:16.864Z
+updated: 2026-10-15T13:19:33.919Z
 ---
 
 ## Summary
