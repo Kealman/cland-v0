@@ -15,7 +15,7 @@ regression_of: T-454
 topic: topic-304
 branch: t/T-506-heartbeat-test-a-transition-observed
 created: 2026-10-15T15:16:16.009Z
-updated: 2026-10-15T16:28:56.293Z
+updated: 2026-10-15T17:11:46.839Z
 ---
 
 ## Problem
@@ -28,7 +28,9 @@ updated: 2026-10-15T16:28:56.293Z
   - done: impl-506 · 2026-10-15T15:32:35.295Z
   - verified: rev-30 [reviewer] · run rev-20261015-506-source · 2026-10-15T15:34:03.268Z · commit 704b85f32b03632eff127bad6d9f229a67ec4215
   - verified: rev-30 [reviewer] · run rev-20261015-506-delta · 2026-10-15T16:20:33.779Z · commit edc3cda4d526922a3d6d870501d174bcbd39d223
-- [ ] C2. heartbeat.test.ts passes 5/5 serially, whole file and alone on the Mac, plus once on a droplet in the task's verify.
+  - verified: rev-30 [reviewer] · run rev-20261015-506-delta-2 · 2026-10-15T17:11:46.839Z · commit 4f82f20892c5d2841f38e71336d6c8b1adc5d9f7
+- [x] C2. heartbeat.test.ts passes 5/5 serially, whole file and alone on the Mac, plus once on a droplet in the task's verify.
+  - done: impl-506 · 2026-10-15T17:11:13.438Z
 
 ## Comments
 
@@ -100,3 +102,29 @@ A-3161 contains five fresh serial whole-file attempts, with the changed watched-
 Coordinator cea92d23 explicitly counts attempts when the whole file ran and the changed case passed, excluding a red solely on T-508 from T-506's case-level Mac requirement. This acceptance is specific to that decision and preserves the failed/cancelled receipt. No blanket whole-file green claim or criterion final verification.
 
 Task.view shows droplet 35762d52-1939-4342-a68b-00f2db49ded6 already queued at the unchanged reviewed head. Existing source clearance stands; no additional run needed beside that submission. Wait for its receipt. No Reviewer tests or edits.
+
+### rev-30 · 2026-10-15T17:11:42.556Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261015-506-linux-first
+commit: edc3cda4d526922a3d6d870501d174bcbd39d223
+scope: evidence
+
+First Linux evidence T-506 at edc3cda4d526922a3d6d870501d174bcbd39d223 is not final clear. A-3198 / 35762d52 has 1768 pass, one functional failure, three platform skips, plus one hard duration budget. Changed watched-transition case passes at :1304/:4505 in 1.404s; all heartbeat assertions pass. suite-close-recovery.test.ts:54 expects /shard-1: remote machine lost/ but receives a successful two-shard exit-0 report (:3995–4020), exact known T-502 verified in task.view. heartbeat digest duration 5.006s (:5701) is covered by Coordinator-posted shared 051db745. Neovim smoke was not reached. No new implementation findings or failed T-506 criterion. A-3161's prior Coordinator case-level Mac acceptance remains; second acceptable receipt still required under E-482.
+
+### rev-30 · 2026-10-15T17:11:46.839Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-506-delta-2
+commit: 4f82f20892c5d2841f38e71336d6c8b1adc5d9f7
+scope: delta
+
+Delta source clear T-506 at 4f82f20892c5d2841f38e71336d6c8b1adc5d9f7, parent edc3cda4d526922a3d6d870501d174bcbd39d223.
+Standards: no findings. Spec: no findings. Exact diff is only the four measured allow entries from shared 051db745 in hub/test/durations.json, with lifecycle/round-trip reasons and receipt references; JSON parses and entries are inside allow. Heartbeat test source, clock control, assertions and time bounds are unchanged. No full dev merge. C1 source requirement reverified at this head.
+A-3198's changed case passes Linux; its unrelated lost-shard assertion is exact T-502 and digest duration has the approved shared allowance. This is first known-red evidence, not final gate. Five-case Mac evidence remains accepted under cea92d23, including the explicitly retained T-508 red/cancelled attempt. C2 stays unverified pending the second acceptable task receipt. Source clearance permits that next exact-head verification; no extra local test-only-pick run is needed under standing shared-fix policy. No Reviewer tests or edits.
+
+Criteria: C1 verified.

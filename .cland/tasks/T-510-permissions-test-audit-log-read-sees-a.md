@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-309
 branch: t/T-510-permissions-test-audit-log-read-sees-a
 created: 2026-10-15T15:56:19.661Z
-updated: 2026-10-15T17:00:00.746Z
+updated: 2026-10-15T17:00:28.279Z
 ---
 
 ## Problem
@@ -25,6 +25,7 @@ updated: 2026-10-15T17:00:00.746Z
 
 - [x] C1. The audit reader in the test ignores, or waits past, a trailing partial line, or reads only after an observed flush boundary. Every assertion stays, and the root cause is recorded in the commit. If the product's own audit reader has the same exposure, say so in the commit and file it.
   - done: impl-510 · 2026-10-15T16:59:49.540Z
+  - verified: rev-30 [reviewer] · run rev-20261015-510-source · 2026-10-15T17:00:28.279Z · commit 805972cf6803332a1eaf35dcf83be7918de1f297
 - [ ] C2. permissions.test.ts passes 5/5 serially, whole file and alone on the Mac, plus once on a droplet in the task's verify.
 
 ## Comments
@@ -36,3 +37,21 @@ Read task, E-482 Coordinator decisions, and release spec. Plan: reproduce audit 
 ### impl-510 · 2026-10-15T16:59:50.167Z
 
 Implemented and pushed 805972cf6803332a1eaf35dcf83be7918de1f297 on t/T-510-permissions-test-audit-log-read-sees-a after fetching/merging origin/dev. Diff against dev is only permissions.test.ts (7 additions/2 deletions). Product readAudit catches partial JSON already: no product crash follow-up. Deterministic actual-helper red/green: partial tail, partial-only, empty, complete, malformed complete (still throws). A-3196 records five quiet serial Mac whole-file passes, 25/25 tests, 5.01–5.55 s per file; preflight free/no Coordinator local run and load1 6.00–8.06 before each. C2 droplet evidence pending source review. Shared manifest 051db745 included. No QA brief required (qaPolicy scope none, no qaCriteria).
+
+### rev-30 · 2026-10-15T17:00:28.279Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-510-source
+commit: 805972cf6803332a1eaf35dcf83be7918de1f297
+scope: full
+
+Source review T-510 at 805972cf6803332a1eaf35dcf83be7918de1f297, fixed point 051db74546a22710acbf85c2bd32a765d2e5b71a.
+Standards: no high/medium/low findings. Review performed directly under the no-delegation role. One test helper changes; no production code or test identities added.
+Spec: no high/medium/low findings. audits() reads the snapshot once and truncates after its final newline. No newline yields an empty complete-record prefix; complete matching audit lines still pass through strict JSON.parse, so malformed completed records still fail. Existing before/after flushes, per-call count and identity checks, permissions/errors/privacy/CLI assertions and all time bounds are byte-unchanged outside this helper. This treats the record boundary separately from the live hub's acknowledgement without weakening the final assertions.
+C1 verified. The commit records the post-flush concurrent-append root cause and production-reader assessment. readAudit in hub/src/hub/audit.ts:104 already catches malformed/partial JSON, so this crash is confined to the strict test helper and no product fix is required for this symptom.
+A-3193 records deterministic actual-helper reproduction and boundary checks. A-3196 contains five serial whole permissions files: each 5/5, exit 0, zero failure/cancellation/skip, 25 total passing cases, approximately 5.01–5.55s per file. All admissions are labelled quiet/alone, load1 6.00–8.06, busy=False and coord=False. These establish C2's Mac portion; its required exact-head droplet receipt remains pending. No Reviewer tests or edits.
+Source clear permits the requested exact-head verification, with droplet evidence still required by C2. No final gate claim.
+
+Criteria: C1 verified.
