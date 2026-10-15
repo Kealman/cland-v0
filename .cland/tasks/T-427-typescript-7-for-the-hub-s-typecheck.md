@@ -2,8 +2,8 @@
 id: T-427
 kind: task
 title: "TypeScript 7 for the hub's typecheck: adopt it when its output matches on the whole repository"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 4
 labels:
@@ -16,7 +16,8 @@ blocked_by: []
 topic: topic-324
 branch: t/T-427-typescript-7-for-the-hub-s-typecheck
 created: 2026-10-14T16:43:34.573Z
-updated: 2026-10-15T21:27:14.323Z
+updated: 2026-10-15T21:27:51.337Z
+closed: 2026-10-15T21:27:51.337Z
 ---
 
 ## What to build
@@ -177,3 +178,7 @@ The task requires whole-repository parity, timings, API compatibility and docs; 
 Evidence /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3375-suite-79226bcf-1a43-4159-9bf3-b74fb65456bc-auto-at-532b7cf.log. No per-item QA criteria. No Reviewer tests, installs, edits, merges or provider actions. Changed-head integration/conflict resolution needs delta review.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-15T21:27:51.337Z
+
+Merged bd2fdba441da7926256c50049044a65474ca5592 onto dev.

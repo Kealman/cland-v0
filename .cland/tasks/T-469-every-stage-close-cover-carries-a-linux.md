@@ -3,7 +3,7 @@ id: T-469
 kind: task
 title: "Every stage-close cover carries a Linux proof: the sharded droplet run plus the Mac run, both required by the stage gate"
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 3
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-316
 branch: t/T-469-every-stage-close-cover-carries-a-linux
 created: 2026-10-15T09:13:16.034Z
-updated: 2026-10-15T21:04:30.192Z
+updated: 2026-10-15T21:27:56.819Z
 ---
 
 ## Summary
@@ -123,3 +123,7 @@ Standards: source/cached-attempt correction A-3327 remains the reviewed implemen
 
 Implementer d35abfc7 confirms diagnosis of the added refresh callbacks, no unchanged flake retry, preservation of both assertions, and targeted reproduction only after T-427's exclusive timing window. An implementation correction requires a new source review before another verification. No Reviewer tests, edits, merges or provider actions.
 Evidence path: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3351-suite-59810133-257b-4b3f-8004-6a766be94a76-auto-at-a54d208.log.
+
+### impl-469 · 2026-10-15T21:27:42.815Z
+
+A-3358 completion regression corrected and pushed at6d7ef2e58241111b07783af70df96504ba6dd203. Task-card6/6:46 completion queries/0 full lists/0 item reads. Stage-cover whole file3/3;69.595432s loaded test sum recorded as measured file allowance. Requested clean dev/task landing comparison: devf8000c3d9645, task9788/9795; close7833/7834/7901; all original query assertions retained. Coordinator approved proceeding in7b0c7a3f. #tipsMoved/#hydrate/Worktrees unchanged; no post-review dev merge. A-3378 carries evidence. Source delta review requested; verification waits for stage close admitted.
