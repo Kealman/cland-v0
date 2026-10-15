@@ -3,7 +3,7 @@ id: T-485
 kind: task
 title: codex-adapter launch-policy test sees the QA process alive right after an acknowledged session.stop (Linux)
 state: open
-status: backlog
+status: planned
 size: XS
 labels:
   - v0.1.3
@@ -15,7 +15,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-15T09:57:07.055Z
-updated: 2026-10-15T09:57:07.055Z
+updated: 2026-10-15T09:57:35.587Z
 ---
 
 ## Summary

@@ -3,7 +3,7 @@ id: T-335
 kind: task
 title: "Lane flow: epics follow epics, a follow is met on the last merge, and a merge hold keeps the follower off the predecessor's files until its demo"
 state: open
-status: in progress
+status: review
 size: L
 criterion_seq: 7
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-277
 branch: t/T-335-lane-flow-the-next-epic-in-a-lane-starts
 created: 2026-10-13T14:23:44.027Z
-updated: 2026-10-15T09:04:25.840Z
+updated: 2026-10-15T10:00:41.033Z
 ---
 
 ## Summary
@@ -56,11 +56,13 @@ This started as an observation from the human and the stand-in on 2026-10-13 at 
   - verified: rev-26 [reviewer] · run rev-20261015-335-source-3 · 2026-10-15T07:40:56.538Z · commit bbe943079f12a43dcc707d527fe718b9a58ddfd6
   - verified: rev-26 [reviewer] · run rev-20261015-335-source-4 · 2026-10-15T08:09:52.728Z · commit fd823c6e0262f771cf4ae32bf68ea58794b7f9e2
   - verified: rev-26 [reviewer] · run rev-20261015-335-source-5 · 2026-10-15T08:29:23.109Z · commit 7ea539c76f214ab1b4a8912ec20d70636fd97fd0
+  - verified: rev-26 [reviewer] · run rev-20261015-335-source-6 · 2026-10-15T10:00:41.032Z · commit b6ba04e77de9d9635c00946f526e6edacaeb8ab4
 - [x] C7. `hub/README.md` and GLOSSARY's Follows entry describe the relation, the met rule and the hold.
   - done: impl-335 · 2026-10-15T07:26:40.394Z
   - verified: rev-26 [reviewer] · run rev-20261015-335-source-3 · 2026-10-15T07:40:56.538Z · commit bbe943079f12a43dcc707d527fe718b9a58ddfd6
   - verified: rev-26 [reviewer] · run rev-20261015-335-source-4 · 2026-10-15T08:09:52.728Z · commit fd823c6e0262f771cf4ae32bf68ea58794b7f9e2
   - verified: rev-26 [reviewer] · run rev-20261015-335-source-5 · 2026-10-15T08:29:23.109Z · commit 7ea539c76f214ab1b4a8912ec20d70636fd97fd0
+  - verified: rev-26 [reviewer] · run rev-20261015-335-source-6 · 2026-10-15T10:00:41.033Z · commit b6ba04e77de9d9635c00946f526e6edacaeb8ab4
 
 ## Comments
 
@@ -183,3 +185,17 @@ Exact-head full receipt c0b5ddc2/A-2794 exits 1: 1730 tests, 1724 pass, 3 fail, 
 ### impl-335 · 2026-10-15T09:04:25.840Z
 
 A-2794 follow-up per Coordinator: merged refreshed dev manifest at a8a8ac33 (daemon startup case now known; own allowances retained). Ran whole codex-adapter.test.ts five times serially at that head: 5/5 green, 35/35 each (112.676s, 99.662s, 89.725s, 80.788s, 63.293s). Durable logs A-2798, A-2800, A-2803, A-2805, A-2807. No adapter or test edits. Holding full verification for Coordinator's named T-447 shared commit, then combined delta source review before the single resubmit.
+
+### rev-26 · 2026-10-15T10:00:41.033Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261015-335-source-6
+commit: b6ba04e77de9d9635c00946f526e6edacaeb8ab4
+scope: delta
+
+No high or medium findings. Own follows source/tests, publication guards, UI, clauses, skills/docs are byte-identical to 7ea539c7. Reviewed standalone shared T-442 30a98a6d UTC clock boundary assertions and T-446 5c492862 accepted-RPC readiness wait; existing behavior assertions/timeouts remain, integrated files exactly match dev. Manifest retains all five own/inherited allowances. Current-head UI 15/15+2/2 and typecheck reported green.
+Coordinator b4ec2b7f explicitly permits A-2794's passing Linux hub evidence plus one same-head no-mode --executor local gate for macOS Neovim; Linux Neovim is owed at E-423 stage-1 close. A-2794 remains red overall and never ran Neovim. Renew C6/C7; C1–C5/final settlement await the authorized local receipt. No Reviewer tests run.
+
+Criteria: C6 verified, C7 verified.

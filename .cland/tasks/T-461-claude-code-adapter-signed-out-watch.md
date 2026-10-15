@@ -3,7 +3,7 @@ id: T-461
 kind: task
 title: Signed-out Claude latch test makes one extra CLI call after restart, on two Linux droplet runs (shared fix)
 state: open
-status: in progress
+status: ready
 size: S
 criterion_seq: 1
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-281
 branch: t/T-461-claude-code-adapter-signed-out-watch
 created: 2026-10-15T08:06:05.572Z
-updated: 2026-10-15T09:55:23.238Z
+updated: 2026-10-15T10:12:49.048Z
 ---
 
 ## Summary
@@ -27,6 +27,7 @@ updated: 2026-10-15T09:55:23.238Z
 
 - [x] C1. The count is taken against the observed latch, not wall time, and the file passes 5/5 beside a local full run.
   - done: impl-461 · 2026-10-15T08:30:46.903Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-461-3 · 2026-10-15T10:12:46.580Z · commit be2a70c2147b6377e1cade08f031ebcb9455b6a4
 
 ## Comments
 
@@ -109,3 +110,27 @@ Authorized unchanged-head Linux retry a506e23a/A-2843 remains red: 1720 tests, 1
 
 Directly read Coordinator decision 7c2d4c4b-5410-402d-81f2-1feb41258aec accepts both Linux adapter/latch proofs and requires one unchanged-head local merge gate, avoiding another Linux retry. That local run 99409d4b is now running at be2a70c2147b6377e1cade08f031ebcb9455b6a4. C1 remains unverified until its accepted result. Source clearance remains unchanged; this evidence verdict does not authorize further resubmissions. No Reviewer tests or changes.
 Review evidence: A-2846.
+
+### impl-461 · 2026-10-15T10:12:18.050Z
+
+Coordinator-directed unchanged-head local merge gate 99409d4b/A-2860 passed: 1732/1732, zero failures/skips/cancellations, including Neovim smoke. Head remains clean be2a70c2147b6377e1cade08f031ebcb9455b6a4. Linux file proof remains adapter 9/9 and latch green in both droplet runs: 2bef23b0/A-2810 (overall red solely T-481) and a506e23a/A-2843 (overall red solely T-484 crew pool race). Coordinator disposition 7c2d4c4b and standing gate rule cb6eaf4c authorize this local merge gate with those Linux proofs. All receipts preserved; awaiting rev-23 final settlement, no more tests or source changes needed.
+
+### rev-23 · 2026-10-15T10:12:46.580Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-15-461-3
+commit: be2a70c2147b6377e1cade08f031ebcb9455b6a4
+scope: evidence
+
+Final evidence clear at unchanged be2a70c2147b6377e1cade08f031ebcb9455b6a4; no high/medium finding remains in T-461.
+
+C1: source review rev-20261015-461-source-1 and continuity review rev-2026-10-15-461-1 establish that the count follows the observed pre-latch child completion, while exact count/PID checks, restart quietness and explicit-success recovery remain. A-2779 records deterministic 3 != 2 red→green; A-2778/raw local repetitions and the earlier source review record 5/5 whole files (9/9 each). One starts quiet and overlaps the next full run; do not claim five fully loaded files. Direct Coordinator 6aaaa257 permits that labelled quiet remainder.
+
+Linux file evidence is positive in both overall-red receipts: 2bef23b0/A-2810 adapter 9/9, latch 8.844s, sole outside failure T-481; authorized retry a506e23a/A-2843 adapter 9/9, latch 8.694s, sole outside failure crew-launch:145 now T-484 in E-482. Both overall results remain red with three platform skips each. A-2820's five serial executor-prepare files pass 85/85 and supported the one retry; it did not make either Linux gate green.
+
+Direct Coordinator 7c2d4c4b accepts those two Linux file proofs and orders the unchanged-head local merge gate. That gate 99409d4b/A-2860 passes typecheck, all hub shards and Neovim smoke: 1732/1732, zero failures/skips/cancellations, exit 0. It selected hub-only, not full Neovim. Local darwin arm64, Node v24.21.0, Neovim v0.12.5; 1037.62s. Branch remains exactly reviewed. C1 verified under those recorded evidence rulings. No Reviewer tests or source changes.
+Review evidence: A-2861.
+
+Criteria: C1 verified.

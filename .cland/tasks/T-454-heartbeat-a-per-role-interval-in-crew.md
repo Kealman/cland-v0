@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-275
 branch: t/T-454-heartbeat-a-per-role-interval-in-crew
 created: 2026-10-15T07:15:15.368Z
-updated: 2026-10-15T09:57:03.605Z
+updated: 2026-10-15T09:57:47.575Z
 ---
 
 ## Summary
@@ -91,14 +91,17 @@ E-423 "Rules and rhythm" (R-294), tracer bullet 1 of 7; spec `docs/spec/v0.1.3.m
   - verified: rev-23 [reviewer] · run rev-2026-10-15-454-2 · 2026-10-15T07:49:57.099Z · commit b64e068182a0bfb027f5fdc2542a764c17e55b56
   - verified: rev-23 [reviewer] · run rev-2026-10-15-454-4 · 2026-10-15T08:16:17.074Z · commit 24ca7ce122bc41ec7075fd9cb0e0da354cec6098
   - verified: rev-23 [reviewer] · run rev-2026-10-15-454-6 · 2026-10-15T08:50:51.662Z · commit bdcddc3c3401dc268eb4eff0b420a8bab9590a62
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-454-9 · 2026-10-15T09:57:47.574Z · commit af5c18eeb046f10161d86b19f0baa2712a3fb322
 - [x] C7. The Coordinator's clause, in `default-roles.ts` and the live `.cland/roles.toml`, says what to check, what to repair and when to escalate on a heartbeat, and to end a clean heartbeat without a message.
   - done: impl-454 · 2026-10-15T08:50:11.220Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-454-6 · 2026-10-15T08:50:51.663Z · commit bdcddc3c3401dc268eb4eff0b420a8bab9590a62
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-454-9 · 2026-10-15T09:57:47.575Z · commit af5c18eeb046f10161d86b19f0baa2712a3fb322
 - [x] C8. `hub/README.md` describes the `heartbeat` setting, its default, the digest's rows, coalescing and `CLAND_HEARTBEAT_MS`, and `nvim/README.md` lists the `heartbeat` kind and key `9` in the events view.
   - done: impl-454 · 2026-10-15T07:40:48.284Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-454-2 · 2026-10-15T07:49:57.099Z · commit b64e068182a0bfb027f5fdc2542a764c17e55b56
   - verified: rev-23 [reviewer] · run rev-2026-10-15-454-4 · 2026-10-15T08:16:17.075Z · commit 24ca7ce122bc41ec7075fd9cb0e0da354cec6098
   - verified: rev-23 [reviewer] · run rev-2026-10-15-454-6 · 2026-10-15T08:50:51.663Z · commit bdcddc3c3401dc268eb4eff0b420a8bab9590a62
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-454-9 · 2026-10-15T09:57:47.575Z · commit af5c18eeb046f10161d86b19f0baa2712a3fb322
 
 ## Comments
 
@@ -248,3 +251,25 @@ Criteria: C1 failed (Expanded per-role heartbeat summary clips existing staffing
 ### impl-454 · 2026-10-15T09:56:48.377Z
 
 Corrected own-scope C1 header clipping from A-2842/A-2844 at pushed af5c18ee, after merging origin/dev 83157157. Full summary retains every role heartbeat/provenance; staffing/leads/idle are ordered first and the Neovim header uses existing display-width fit. Existing tests untouched: nvim crew1/1, hub crew8/8 at merged head. A-2852 summarizes A-2848 red and A-2850/A-2851 green evidence. Requesting source re-review before verification.
+
+### rev-23 · 2026-10-15T09:57:47.575Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-15-454-9
+commit: af5c18eeb046f10161d86b19f0baa2712a3fb322
+scope: delta
+
+Corrected source clear at af5c18eeb046f10161d86b19f0baa2712a3fb322; no high/medium finding remains.
+
+Standards: bars.lua:332 reuses the existing display-cell fit helper, including its ellipsis budget and non-positive-width handling. The eleven reserved cells cover the SESSIONS label/padding and trailing space. No new formatting abstraction or test-only production seam.
+
+Spec: crew.ts:132 puts staffing/leads/idle before per-role heartbeat details while preserving all values/default markers in the full CLI/wire summary. Only the sessions winbar presentation is bounded. No crew assertion or timing limit changed. Audited A-2850 (Neovim crew 1/1) and A-2851 (hub crew 8/8), each zero failures/skips/cancellations. This addresses A-2844's C1 finding; final C1 verification still awaits the gate.
+
+Incoming dev 83157157 merges without conflicts: T-446 waits for an accepted Neovim RPC connection rather than socket pathname presence, retrying only ENOENT/ECONNREFUSED within the existing deadline; T-442 pins UI clock/UTC on both sides of midnight, retaining limited/clear/event/highlight checks and restoring real clock for freshness. The live reviewer-pool policy and tracker records add no heartbeat scheduling/delivery delta. C6 naming, C7 Coordinator clauses and C8 docs are unchanged from the prior source pass; refreshed at this head.
+
+C1–C5 remain run-dependent. Submit one no-mode verify at this exact head using the configured executor; preserve prior red c44f6a37/A-2842 and outage-lost 7a4f3460/A-2832 with Coordinator 8fd03833. Standing Coordinator rule cb6eaf4c governs a local merge gate only if a droplet run is red solely on its named known flakes and own touched files pass. No Reviewer tests or edits.
+Review evidence: A-2854.
+
+Criteria: C6 verified, C7 verified, C8 verified.
