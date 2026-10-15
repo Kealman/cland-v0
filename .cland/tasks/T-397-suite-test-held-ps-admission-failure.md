@@ -3,8 +3,9 @@ id: T-397
 kind: task
 title: suite.test held-ps admission failure leaves its spoke alive and keeps the file running (cleanup hook ordering)
 state: open
-status: in progress
+status: review
 size: S
+criterion_seq: 3
 labels:
   - v0.1.2
   - hub
@@ -16,7 +17,7 @@ blocked_by: []
 topic: topic-270
 branch: t/T-397-suite-test-held-ps-admission-failure
 created: 2026-10-14T12:31:34.692Z
-updated: 2026-10-15T03:45:20.583Z
+updated: 2026-10-15T03:57:03.344Z
 ---
 
 ## Summary
@@ -32,6 +33,29 @@ The live held-ps admission case in `hub/test/suite.test.ts` (originally line 108
 
 ## Acceptance criteria
 
-- [ ] C1. The failing case's cause is reproduced (a forced ownership-hook failure or the original held-ps race), and the fixture closes every spoke and hub it opened even when an earlier cleanup hook throws.
-- [ ] C2. A regression forces an ownership-hook failure and proves the file exits with no child processes left.
-- [ ] C3. The held-ps case's own failure, the assertion that failed after 2017 ms, is diagnosed and fixed or shown to be the same cleanup race.
+- [x] C1. The failing case's cause is reproduced (a forced ownership-hook failure or the original held-ps race), and the fixture closes every spoke and hub it opened even when an earlier cleanup hook throws.
+  - done: impl-397 · 2026-10-15T03:56:08.512Z
+- [x] C2. A regression forces an ownership-hook failure and proves the file exits with no child processes left.
+  - done: impl-397 · 2026-10-15T03:56:09.967Z
+- [x] C3. The held-ps case's original failure after 2017 ms is recorded as undiagnosable from the retained evidence (A-2347/A-2348 keep no stack; Coordinator amendment 2026-10-15 03:49Z); the original live and stale held-ps cases pass 5/5 serially at the head, and the ownership-failure cleanup they share is proven red before and green after with real fixture subprocesses.
+  - done: impl-397 · 2026-10-15T03:56:11.260Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-397-1 · 2026-10-15T03:57:03.344Z · commit f7ce94496bd79f27744fb0fe930efe05ee51329c
+
+## Comments
+
+### impl-397 · 2026-10-15T03:48:29.238Z
+
+Reproduced C1/C2 with a real suite-fixture subprocess: forcing the first ownership ps probe to throw makes the test fail but leaves the file running beyond 10 seconds (red). Registering fixture UI and spoke disposal with existing onCleanup preserves the error while exiting normally and proving hub/spoke PIDs dead (green, 1.27 s). Both original live/stale held-ps tests pass; original 2017 ms assertion has not reproduced and A-2347 has no retained stack. Coordinator confirmed no alternate raw log and directed proving the observed hook ordering without inferring an assertion from duration. Typecheck passed; full touched-file targeted run underway.
+
+### rev-23 · 2026-10-15T03:57:03.344Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-15-397-1
+commit: f7ce94496bd79f27744fb0fe930efe05ee51329c
+scope: full
+
+Source clear at f7ce94496bd79f27744fb0fe930efe05ee51329c. Standards and Spec: no high or medium findings. Independently compared fixture extraction: only UI/spoke cleanup registration changes; original held-ps assertions and deadlines remain intact. Existing onCleanup continues disposal after ownership errors and preserves errors. The real subprocess regression injects one ownership-probe failure, restores builtin probing, requires exit 1 with original error and both hub/spoke PIDs absent; fallback ownership protects the test's own failure path. A-2664 preserves deterministic red/green and states the lost historical assertion cannot be diagnosed. Under Coordinator 9cd5fa26's C3 amendment, checked A-2670 exact-head five serial live/stale pairs, all 2/2 with no skips/failures; C3 verified. A-2668 whole file 68/68 checked. C1/C2 remain pending complete exact-head no-mode local gate. A-2671 details review. No production changes or per-item QA requirement; no claim that the reproduced cleanup error identifies the historical 2017 ms assertion.
+
+Criteria: C3 verified.

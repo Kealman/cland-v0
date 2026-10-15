@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-262
 branch: t/T-437-the-claude-signed-out-latch-does-not
 created: 2026-10-14T19:14:23.326Z
-updated: 2026-10-14T19:29:51.763Z
+updated: 2026-10-15T04:00:54.487Z
 ---
 
 ## Summary
@@ -36,6 +36,7 @@ While `logged-out` exists, the fake's turn loop fails each turn the way a signed
 - [x] C1. With `logged-out` present, a fake Claude session's turn produces an auth failure and no successful turn-end hook.
   - done: impl-437 · 2026-10-14T19:22:47.359Z
   - verified: rev-23 [reviewer] · run rev-2026-10-14-437-1 · 2026-10-14T19:29:51.763Z · commit f098268b9300384ff6cb3831709bf361a50e9a96
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-437-3 · 2026-10-15T04:00:54.487Z · commit 7aa9053d2910f0ce82cb047a9a537e0082461fa3
 - [x] C2. A frame test restarts the hub with a latched per-account directory and a running session on it. It sees 0 `agents --json` calls for that directory over at least three 30 s periods, and the session keeps `reason=signed-out`.
   - done: impl-437 · 2026-10-14T19:22:48.419Z
 
@@ -59,5 +60,33 @@ commit: f098268b9300384ff6cb3831709bf361a50e9a96
 scope: full
 
 No high or medium Standards/Spec findings. Fake global/per-account logged-out checks emit StopFailure authentication_failed and an error completion before commands/replies, with no successful Stop; production unchanged. C1 source and focused red/green verified. Frame regression observes initial/reconnect hooks before checking the three real 30 s periods, retained signed-out reason, notice deduplication and genuine pushed recovery. Targeted A-2526 supports the implementation; C2 remains unverified pending complete exact-head no-mode local verification. A-2527: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2527-t-437-source-review-signed-out-fake-turns-and-restart-latch.md.
+
+Criteria: C1 verified.
+
+### rev-23 · 2026-10-15T04:00:15.600Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-15-437-2
+commit: f098268b9300384ff6cb3831709bf361a50e9a96
+scope: evidence
+
+Gate cfca4ef1/A-2672 not clear: typecheck passes; full selected suite 2064/2065, exit 1, no skips/cancellations. Sole failure explorer-card.test.ts:243 gi thread-reference case reports card T-11/no row under cursor, exactly known T-439 readiness defect (earlier A-2532/A-2533, reviewed correction A-2536 landed a2f60f7a). Git confirms a2f60f7a is not an ancestor of this unchanged T-437 head. Own signed-out latch tests pass, but complete green evidence is absent; C2 remains unverified and C1 source basis A-2527 remains. A-2673 records exact result/shared-fix path. Lead notified for adoption disposition; changed integrated head needs source review before a new local no-mode gate. No unchanged flaky retry prescribed and no own criterion failure inferred.
+
+### impl-437 · 2026-10-15T04:00:29.504Z
+
+A-2672 exact-head verification: 2064/2065 pass, sole failure the known T-439 explorer-card gi readiness error. Followed Coordinator's conditional instruction by cherry-picking a2f60f7a alone as 7aa9053d, pushed. Original fake/latch code unchanged. Touched explorer-card file passes 15/15 serially outside cover-quiet. Requested delta source review before rerunning the local no-mode gate.
+
+### rev-23 · 2026-10-15T04:00:54.487Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-15-437-3
+commit: 7aa9053d2910f0ce82cb047a9a537e0082461fa3
+scope: delta
+
+Delta source clear. Standards and Spec: no high or medium findings. Independently compared complete patches: exact landed T-439 a2f60f7a, only explorer-card.test.ts, 29 insertions/7 deletions. Readiness waits establish focused mode, thread reference cursor and matching drawn card while retaining navigation, content, fold, scope and palette assertions. Original T-437 fake/latch code unchanged; C1 refreshed from A-2527. Targeted 15/15 reported by claimant. A-2674 details review. Earlier cfca4ef1/A-2672 remains red on that known T-439 defect; shared correction adopted, not an unchanged flaky retry. C2/final clearance requires new exact-head local no-mode gate. Submit at 7aa9053d.
 
 Criteria: C1 verified.

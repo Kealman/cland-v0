@@ -3,6 +3,7 @@ id: E-386
 kind: epic
 title: "Test speed: quick wins"
 state: open
+criterion_seq: 9
 labels:
   - epic
   - v0.1.2
@@ -13,7 +14,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-14T12:28:09.133Z
-updated: 2026-10-15T03:45:58.530Z
+updated: 2026-10-15T04:01:21.564Z
 ---
 
 ## Goal
@@ -66,9 +67,9 @@ QA posts a before/after table on this epic. QA also replays `chooseSuiteMode` ov
 
 - [ ] C1. Hub test-time over the tests common to both runs is at least 800 s lower after the epic than before (predicted 980–1,270 s), and the full-run wall is at least 3 minutes shorter (predicted 4–5.5).
 - [ ] C2. The after census is posted with its `ps` + `lsof` + `pgrep` total and per-daemon-start figure against A-2021 (29,203; about 31 per start), with the daemon-start count unchanged within the suite's growth; the <12,000 and ≤13-per-start targets moved to T-448 (Coordinator amendment 2026-10-15, after T-392's census, A-2630/A-2631).
-- [ ] C3. Replayed on the 40 merges `83b74c6`..`f174d9c`, the selection runs full on at most 25 (37 today), and a Neovim-only branch's `cland verify` finishes in under 3 minutes (about 15 today).
+- [ ] C3. Replayed on the 40 merges `83b74c6`..`f174d9c`, the selection runs full on at most 28 (37 before), with each remaining full row naming its deciding file (the bound T-388's C3 accepted, Coordinator 2026-10-14 12:33Z), and a Neovim-only branch's `cland verify` finishes in under 3 minutes, queue wait excluded (about 15 before).
 - [ ] C4. No doc, clause or skill tells a task session to run `cland verify all`; task runs use `cland verify` with no mode, and full suites are the Coordinator's integrated `dev` runs (D29).
-- [ ] C5. The three timer-bound tests take under 5 s each, fake-harness tests run on the fast defaults, and every slow opt-in names its reason.
+- [ ] C5. The three timer-bound tests are measured alone at the after head with the one-minute load against A-2450 (36.66, 21.26 and 33.90 s): the default 30-second schedule test runs under 5 s, and the other two fall where the timer was their cost (T-389 A-2548: setup and process costs dominate the executor cases, Coordinator amendment 2026-10-15); fake-harness tests run on the fast defaults, and every slow opt-in names its reason.
 - [ ] C6. `cland --help` loads at most 10 `hub/src` modules (139 today), each subcommand loads only its own closure, and a guard test fails when either grows.
 - [ ] C7. `hub/test/durations.json` exists; a test or file new to the manifest over 5 s or 60 s fails its run with a `duration budget` line, a known one that slows down or runs over budget is reported as a `duration regression` line without failing, and the suite report names the top regressions (human decision 225afa4b, 2026-10-15).
 - [ ] C8. Every assertion changed by this epic keeps its meaning: the orphan sweep, teardown ownership and pid-reuse detection stay proven in their own tests, and frame tests still run against a real hub over its socket.
