@@ -3,7 +3,7 @@ id: T-457
 kind: task
 title: "Seed the rulebook: an Aide migrates the eight rules of the planning session's and the stand-in's memories into .cland/RULES.md with their memory files as origins, and marks each memory with its rule number"
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - v0.1.3
@@ -12,10 +12,10 @@ assignee: null
 parent: E-423
 blocked_by:
   - T-456
-topic: null
-branch: null
+topic: topic-303
+branch: t/T-457-seed-the-rulebook-an-aide-migrates-the
 created: 2026-10-15T07:15:15.643Z
-updated: 2026-10-15T13:19:33.919Z
+updated: 2026-10-15T15:17:10.569Z
 ---
 
 ## Summary
@@ -69,3 +69,9 @@ Commit `.cland/RULES.md` on the task branch and merge it through `cland merge` l
 - [ ] C2. Each migrated memory file, and its `MEMORY.md` line, names the rule number it became, in every memory folder that holds it.
 - [ ] C3. The item carries a comment with the table of the eight rules and a separate list of other rule-like memories proposed for the human, none of which is in the rulebook.
 - [ ] C4. After the merge, the live Coordinator's next clause (after a reconnect) lists the seeded rules in its scope as `rule <n>: …`.
+
+## Comments
+
+### coord · 2026-10-15T15:17:02.756Z
+
+Human decision on 2026-10-15 at 15:15Z (ask 45c1eb99, answer 42704fe5): the Aide runs on Codex instead of Claude Code, because the Claude Code launch refused with 'Workspace not trusted'. The Aide is aide-457. impl-457 was launched in error and stopped; its read-only inventory is A-3100.

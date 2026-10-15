@@ -3,7 +3,7 @@ id: T-495
 kind: task
 title: "session-usage test: turn() takes an uncorrelated usage frame (12 vs 24) and the journal read meets a limits-only row (Linux)"
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 2
 labels:
@@ -16,7 +16,7 @@ regression_of: T-389
 topic: topic-298
 branch: t/T-495-session-usage-test-turn-takes-an
 created: 2026-10-15T13:10:49.459Z
-updated: 2026-10-15T14:45:37.955Z
+updated: 2026-10-15T15:16:59.440Z
 ---
 
 ## Problem
@@ -35,6 +35,7 @@ These are rework of T-389's tests.
   - verified: rev-30 [reviewer] · run rev-20261015-495-delta · 2026-10-15T14:45:37.955Z · commit 0046b17afa32cb2d5450e079ab05e2374c93739b
 - [x] C2. session-usage.test.ts passes 5/5 serially, whole file and alone on the Mac, plus once on a droplet in the task's verify.
   - done: impl-495 · 2026-10-15T14:44:06.842Z
+  - verified: rev-30 [reviewer] · run rev-20261015-495-final · 2026-10-15T15:16:58.006Z · commit 0046b17afa32cb2d5450e079ab05e2374c93739b
 
 ## Comments
 
@@ -111,3 +112,53 @@ Direct Coordinator decision 837a1fb3-e6fa-493f-a4f6-8a6d4eb39fa8 classifies the 
 Reviewed merge delta 25ad9ab6..0046b17a and net task diff 4095dd11...0046b17a; git diff --check green. Both review axes performed directly; no Reviewer tests or edits. Proceed with default droplet verify at this exact head.
 
 Criteria: C1 verified.
+
+### impl-495 · 2026-10-15T15:15:53.897Z
+
+Second droplet receipt A-3101 (d6e75622) at source-reviewed 0046b17a again has all 8 session-usage cases green. Suite exit 1 has four distinct failures, none shared with first receipt A-3076: heartbeat:260 old-updated-date 1 vs 0; session-events process-row case 5000ms frame timeout; session-model live-resume model case 5000ms frame timeout; subscriptions:472 additional impl idle despite T-486 ancestry. Reported each aside to lead (Bugs/S) for classification before Reviewer applies the E-482 two-distinct-receipt gate. No third run or source change; holding reviewed head.
+
+### rev-30 · 2026-10-15T15:16:02.025Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261015-495-linux-second
+commit: 0046b17afa32cb2d5450e079ab05e2374c93739b
+scope: evidence
+
+Evidence review not clear at unchanged 0046b17afa32cb2d5450e079ab05e2374c93739b, pending lead classification of four new outside-task failures.
+
+Medium — hub/test/heartbeat.test.ts:260: newly observed review/ready state is already counted stale despite old updated-date protection (A-3101:3979–3994).
+Medium — hub/test/session-events.test.ts:84: process-row lifecycle/usage case receives no matching frame within 5000ms (A-3101:3996–4001); the log does not identify which wait from its predicate stack, so no narrower failure cause is inferred.
+Medium — hub/test/session-model.test.ts:146: live-resume model journaling case receives no matching frame within 5000ms (A-3101:4003–4008).
+Medium — hub/test/subscriptions.test.ts:472: terminal-role metadata/next-launch case records an additional idle event instead of only the expected launch event (A-3101:4010–4029).
+No exact existing ticket matches found. Reported each as Bugs/S to lead for classification. No T-495 source defect inferred.
+
+Standards: source/delta verdict stands, C1 verified; no task assertion changes or hard duration-budget failures.
+Spec/evidence: all eight session-usage cases pass again, including repaired totals 11.919 s and burst/limits 10.983 s. Five serial quiet Mac file passes A-3061 remain valid. C2 runtime portions are supported but verification remains pending accepted gate. These four failing test names differ from all six in first receipt A-3076; however the standing exception requires every failure to be known, which has not yet been established for this receipt.
+
+d6e75622/A-3101 matches reviewed/current branch head, Linux x64 c-8, host/remote typecheck green, exit 1, 1758 pass/4 fail/3 platform skips/0 cancelled; Neovim smoke not reached. First A-3076 is accepted as known-only by direct 837a1fb3, not by silently treating it as green. Await classification before final pair assessment; no third run directed here. No Reviewer tests or edits.
+
+### rev-30 · 2026-10-15T15:16:58.006Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-495-final
+commit: 0046b17afa32cb2d5450e079ab05e2374c93739b
+scope: evidence
+
+Final review clear at 0046b17afa32cb2d5450e079ab05e2374c93739b under explicit Coordinator decisions 837a1fb3-e6fa-493f-a4f6-8a6d4eb39fa8 and eea1467c-ee69-49b6-a0d1-5661840a21a7.
+
+Standards: source/delta verdicts stand, no unresolved task findings.
+Spec: C1 source verification retained. C2 verified: A-3061 establishes five serial quiet whole-file Mac passes (8/8 each); both Linux receipts pass all eight session-usage cases. Current-head totals case 11.919 s and burst/limits case 10.983 s are green; existing test durations produce no hard budget failures.
+
+Accepted pair:
+- af207517/A-3076 at reviewed 25ad9ab6d1368a52638457c875bf6afd7306d116 remains overall red: 1755 pass/6 fail/3 platform skips. Its exact outside failures are T-467, shared handover regex, T-499, T-494 family and two T-501 merge CLI timeouts. 837a1fb3 accepts this as first known-only receipt.
+- d6e75622/A-3101 at delta-reviewed/current 0046b17afa32cb2d5450e079ab05e2374c93739b remains overall red: 1758 pass/4 fail/3 platform skips. eea1467c files/classifies all four as T-506 heartbeat, T-505 session-events/model frame waits, and T-507 terminal-subscription recurrence, and explicitly accepts this pair for final clear.
+
+No failing test name overlaps across the receipts. Task source is unchanged across the reviewed integration; each Linux c-8 run passes typecheck and the usage file. The rule/explicit decisions accept the pair; neither suite is represented as green or its unrelated failures as fixed. Neovim smoke was not reached; the task net diff is hub-only.
+
+Criteria: C2 verified, C1 retained. No third run required by eea1467c. No Reviewer tests or edits.
+
+Criteria: C2 verified.
