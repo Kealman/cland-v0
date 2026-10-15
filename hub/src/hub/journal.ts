@@ -114,6 +114,7 @@ export const JOURNALLED: ReadonlySet<string> = new Set([
   // the tracker
   'task-written',
   'tracker-storage-stalled',
+  'tracker-storage-fatal',
   'tracker-storage-abandoned',
   'task-plan-changed',
   'task-plan-approved',
@@ -440,6 +441,8 @@ export function eventRow(r: JournalRecord, offset = ''): EventRow | null {
   } else if (r.event === 'notification') {
     kind = r.kind === 'executor-fallback' ? 'suite' : r.kind === 'verdict' ? 'verdict' : r.kind === 'release' ? 'release' : r.kind === 'plan' ? 'task' : 'session';
     subject = item ? { kind: 'item', id: item } : session ? { kind: 'session', id: session } : undefined;
+  } else if (r.event === 'tracker-storage-fatal') {
+    kind = 'task'; subject = item ? { kind: 'item', id: item } : { kind: 'topic', id: 'agents' }; glyph = '⚠';
   } else if (r.event === 'verification-cleanup-incomplete') {
     kind = 'suite'; subject = item ? { kind: 'item', id: item } : topic ? { kind: 'topic', id: topic } : undefined;
     text = `verify ${r.id}: ${r.cause}`; glyph = '⚠';

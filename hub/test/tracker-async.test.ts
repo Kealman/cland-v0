@@ -11,7 +11,7 @@ import { importIssues, type ImportedIssue } from '../src/tracker/import-github.t
 import { RequestGuard } from '../src/hub/budget.ts';
 import { fixedRoles } from '../src/roles/config.ts';
 import { Tracker } from '../src/tracker/tracker.ts';
-import { cland, connectUi, connectWsUi, eventually, pidAlive, startDaemon, startHub, tempProject } from './harness.ts';
+import { cland, clandWithEnv, connectUi, connectWsUi, eventually, pidAlive, readDiscovery, spawnSpoke, startDaemon, startHub, tempProject } from './harness.ts';
 import { taskWriteGate } from './tracker-write-gate.ts';
 
 const human = { id: 'human', name: 'human', role: null };
@@ -569,38 +569,83 @@ test('a failed child scan drains slow reads before admitting the next tracker wr
   assert.equal(tracker.view('T-1').comments[0]?.text, 'after refusal');
 });
 
-test('a held tracker write reports a stall in hub status and bounded hub stop reports abandonment', async t => {
+for (const releaseAtStall of [false, true]) {
+  test(`a serving storage stall exits non-zero with native write ${releaseAtStall ? 'released' : 'held'}, tells sessions and the workbench, and preserves acknowledged writes`, async t => {
+    const root = await tempProject(t);
+    const gate = await taskWriteGate(t, root);
+    const serving = clandWithEnv(root, {
+      ...gate.env, CLAND_TEST_TRACKER_STALL_MS: '500', CLAND_TEST_SKIP_ORPHAN_SWEEP: '1',
+    }, 'hub', 'serve');
+    // Observe the foreground CLI's actual exit status, rather than only a vanished daemon PID.
+    const discovery = await eventually('foreground hub is serving', () => readDiscovery(root));
+    onCleanup(t, async () => { if (pidAlive(discovery.pid)) await cland(root, 'hub', 'stop'); await serving; });
+    assert.equal((await cland(root, 'task', 'create', '--size', 'M', 'Stalled')).code, 0);
+    assert.equal((await cland(root, 'task', 'create', '--size', 'M', 'Other')).code, 0);
+    assert.equal((await cland(root, 'task', 'comment', 'T-1', 'committed before stall')).code, 0);
+    const spoke = await spawnSpoke({ discover: true, cwd: root, name: 'observer' });
+    onCleanup(t, () => spoke.close());
+    await spoke.waitForPresence(['observer']);
+    const ui = await connectUi(t, discovery);
+    await ui.request({ type: 'subscribe' });
+    await gate.arm();
+    ui.send({ type: 'task.comment', id: 'held', item: 'T-1', text: 'held comment' });
+    await gate.entered();
+    ui.send({ type: 'task.comment', id: 'queued', item: 'T-2', text: 'queued before stall' });
+    const queuedRefusal = ui.waitFor(f => f.type === 'result' && f.id === 'queued');
+    const heldRefusal = ui.waitFor(f => f.type === 'result' && f.id === 'held');
+    const started = performance.now();
+    const notice = await ui.waitFor(f => f.type === 'message' && /tracker storage stalled/.test(JSON.stringify(f)), 3000);
+    assert.match(JSON.stringify(notice), /comment.*T-1/);
+    const warning = await ui.waitFor(f => f.type === 'event' && /tracker storage stalled/.test(JSON.stringify(f)));
+    assert.equal((warning.row as { warning: boolean }).warning, true);
+    await spoke.waitForEvent(e => /tracker storage stalled.*comment.*T-1/.test(JSON.stringify(e)), 3000);
+    // Race a released native write and new admission against the fatal shutdown.
+    ui.send({ type: 'task.comment', id: 'late', item: 'T-2', text: 'after stall' });
+    if (releaseAtStall) await gate.release();
+    for (const refusal of await Promise.all([heldRefusal, queuedRefusal])) {
+      assert.equal(refusal.ok, false);
+      assert.match(String(refusal.error), /stall.*comment.*T-1/);
+    }
+    const result = await serving;
+    assert.ok(performance.now() - started < 4000, 'the storage deadline must terminate the hub promptly');
+    assert.equal(result.code, 1, result.stderr);
+    assert.match(result.stderr, /tracker storage stalled.*comment.*T-1/);
+    const log = await files.readFile(join(root, '.cland', 'log', 'hub.log'), 'utf8');
+    assert.match(log, /tracker-storage-abandoned/);
+    assert.match(log, /tracker-storage-fatal/);
+    await startDaemon(t, root);
+    const restartedUi = await connectUi(t, await readDiscovery(root));
+    const events = await restartedUi.request({ type: 'events.list', filter: { warnings: true } });
+    assert.match(JSON.stringify(events.value), /tracker storage stalled.*comment.*T-1/);
+    const first = await cland(root, 'task', 'view', 'T-1', '--json');
+    assert.equal(first.code, 0, first.stderr);
+    assert.deepEqual(JSON.parse(first.stdout).item.comments.map((c: { text: string }) => c.text), ['committed before stall']);
+    const second = await cland(root, 'task', 'view', 'T-2', '--json');
+    assert.equal(second.code, 0, second.stderr);
+    assert.deepEqual(JSON.parse(second.stdout).item.comments, []);
+  });
+}
+
+test('bounded hub stop reports abandonment of a held tracker write', async t => {
   const root = await tempProject(t);
   const gate = await taskWriteGate(t, root);
   const { discovery } = await startDaemon(t, root, {
-    ...gate.env, CLAND_TEST_TRACKER_STALL_MS: '30', CLAND_TEST_TRACKER_STOP_MS: '30',
+    ...gate.env, CLAND_TEST_TRACKER_STALL_MS: '60000', CLAND_TEST_TRACKER_STOP_MS: '30',
   });
   assert.equal((await cland(root, 'task', 'create', '--size', 'M', 'Stalled')).code, 0);
   const path = join(root, '.cland', 'tasks', 'T-1-stalled.md');
   const before = await files.readFile(path, 'utf8');
   const ui = await connectUi(t, discovery);
+  await ui.request({ type: 'subscribe' });
   await gate.arm();
   ui.send({ type: 'task.comment', id: 'held', item: 'T-1', text: 'held comment' });
   await gate.entered();
-  const logPath = join(root, '.cland', 'log', 'hub.log');
-  const log = () => files.readFile(logPath, 'utf8').then(text => text.split('\n').filter(line => line.startsWith('{')).map(line => JSON.parse(line)));
-  const stalled = await eventually('held write emits tracker-storage-stalled', async () =>
-    (await log()).find(entry => entry.event === 'tracker-storage-stalled' && entry.operation === 'comment'), 2000);
-  assert.equal(stalled.operation, 'comment');
-  assert.equal(stalled.item, 'T-1');
-  const status = await cland(root, 'hub', 'status', '--json');
-  assert.equal(status.code, 0);
-  const health = JSON.parse(status.stdout).tracker.storage;
-  assert.equal(health.stalled, true);
-  assert.equal(health.active.operation, 'comment');
-  assert.equal(health.active.item, 'T-1');
-  assert.match((await cland(root, 'hub', 'status')).stdout, /tracker storage: stalled.*comment.*T-1/);
   const start = performance.now();
   assert.equal((await cland(root, 'hub', 'stop')).code, 0);
   assert.ok(performance.now() - start < 4000, 'stop must not wait for the held write or CLI kill fallback');
   assert.equal(pidAlive(discovery.pid), false);
-  const abandoned = (await log()).find(entry => entry.event === 'tracker-storage-abandoned');
-  assert.ok(abandoned.operations.some((op: { operation: string; item: string | null }) => op.operation === 'comment' && op.item === 'T-1'));
+  const log = await files.readFile(join(root, '.cland', 'log', 'hub.log'), 'utf8');
+  assert.match(log, /tracker-storage-abandoned/);
   assert.equal(await files.readFile(path, 'utf8'), before, 'a held temporary write was never published');
 });
 
@@ -635,7 +680,7 @@ test('tracker stop abandons a held write and queued view, and a released write c
   assert.deepEqual(tracker.storageStatus().abandoned.map(op => [op.operation, op.item]), [['comment', 'T-1'], ['view', 'T-1']]);
   assert.equal(events.filter(e => e.event === 'tracker-storage-abandoned').length, 1);
   assert.equal(await files.readFile(join(root, item.path), 'utf8'), before);
-  await assert.rejects(tracker.comment(human, item.id, 'later'), /tracker is stopping/);
+  await assert.rejects(tracker.comment(human, item.id, 'later'), /tracker storage abandoned/);
 });
 
 test('stall detection leaves the queue held and clears health when the operation finishes', async t => {

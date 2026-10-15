@@ -19,6 +19,7 @@ import { createSocketEdge, type SocketEdge } from './socket.ts';
 import { ensureSkeleton, layout, removeDiscovery, writeDiscovery, type Discovery, type Layout } from '../project.ts';
 import { acquireLock, HubLocked } from './lock.ts';
 import { VERSION } from '../version.ts';
+import { AGENTS } from './core.ts';
 import { Tracker } from '../tracker/tracker.ts';
 import type { TipSchedule } from '../tracker/freshness.ts';
 import type { LogFn } from '../log.ts';
@@ -48,6 +49,8 @@ export type Daemon = {
   log: LogFn;
   /** Resolves once the daemon has stopped (by `stop`, or by a client's `hub.stop`). */
   stopped: Promise<void>;
+  /** Fatal serving-time storage failure: the CLI must bound cleanup and exit non-zero. */
+  storageFailed: Promise<void>;
   /** The CLI must exit rather than await an abandoned native storage operation. */
   readonly storageAbandoned: boolean;
   stop: () => Promise<void>;
@@ -136,7 +139,23 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
   try {
     config = readProjectConfig(l.config, root, error => { if (/^verification\.(lifetime|run_timeout|daily_spend_usd)/.test(error)) throw new Error(error); log({ event: 'config-unreadable', file: l.config, error, keeping: 'the defaults' }); });
   } catch (error) { await closeLogs(); lock.release(); throw error; }
-  const tracker = new Tracker({ planHistory: readJournal(journalPath(l.dir), { kinds: ['task-plan-changed', 'task-plan-approved'] }), ...(config ? { levels: config.tracker.levels, qaDefault: config.plan.qaDefault, planApproval: config.plan.approval } : {}), ...(storageStallMs > 0 && Number.isFinite(storageStallMs) ? { storageStallMs } : {}), ...(stopTimeoutMs > 0 && Number.isFinite(stopTimeoutMs) ? { stopTimeoutMs } : {}), root, db: l.db, log, watchResumed: requestGuard.resumer('tracker.watch'), ...(writeGate ? { writeGate } : {}), ...(tipCheckMs > 0 ? { tipCheckMs } : {}), ...(options.scheduleTips ? { scheduleTips: options.scheduleTips } : {}) });
+  let failStorage!: () => void;
+  const storageFailed = new Promise<void>(resolve => { failStorage = resolve; });
+  const tracker = new Tracker({ onStorageStall: operation => {
+    if (starting || stopping) return;
+    // Freeze admission and native/index continuations before yielding or announcing the failure.
+    void tracker.stop({ stalled: operation });
+    failStorage();
+    const text = `tracker storage stalled: ${operation.operation} on ${operation.item ?? 'tracker-wide work'}; abandoning storage and exiting with code 1. Restart with \`cland hub start\` and inspect the item files before retrying outstanding writes.`;
+    log({ event: 'tracker-storage-fatal', ...operation, text });
+    fatalLog({ event: 'tracker-storage-fatal', ...operation, text });
+    try {
+      hub.core.noticeTo(AGENTS.id, { kind: 'tracker-storage-fatal', text, to: ['all'], detail: operation });
+    } finally {
+      // Give the notice's socket writes a turn before closing the edges.
+      setImmediate(() => { void stop().catch(error => fatalLog({ event: 'stop-failed', error: String(error) })); });
+    }
+  }, planHistory: readJournal(journalPath(l.dir), { kinds: ['task-plan-changed', 'task-plan-approved'] }), ...(config ? { levels: config.tracker.levels, qaDefault: config.plan.qaDefault, planApproval: config.plan.approval } : {}), ...(storageStallMs > 0 && Number.isFinite(storageStallMs) ? { storageStallMs } : {}), ...(stopTimeoutMs > 0 && Number.isFinite(stopTimeoutMs) ? { stopTimeoutMs } : {}), root, db: l.db, log, watchResumed: requestGuard.resumer('tracker.watch'), ...(writeGate ? { writeGate } : {}), ...(tipCheckMs > 0 ? { tipCheckMs } : {}), ...(options.scheduleTips ? { scheduleTips: options.scheduleTips } : {}) });
   // the role definitions: written with the defaults when the project has none, then watched
   const roles = new RolesFile(l.roles, log, undefined, requestGuard.resumer('roles.refresh'));
   // the hygiene thresholds of `.cland/config.toml`; the built-in defaults when it is missing or unreadable
@@ -281,7 +300,7 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
   if (ws === null || edge === null) {
     log({ event: 'serving', root, pid: process.pid, listeners: false });
     starting = false;
-    return { layout: l, discovery: null, hub, log, stopped, stop, get storageAbandoned() { return tracker.storageStatus().abandoned.length > 0; } };
+    return { layout: l, discovery: null, hub, log, stopped, storageFailed, stop, get storageAbandoned() { return tracker.storageStatus().abandoned.length > 0; } };
   }
 
   // the adapters: launched harness sessions, re-found after a restart once the hub is reachable again
@@ -306,5 +325,5 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
     const ended = await sweepOrphans(root, log, 'harness', { pending: () => stopping !== null || adapters!.sessions.lifecyclePending() });
     log({ event: 'orphan-sweep-completed', ended: ended.map(p => p.process.pid) });
   }).catch(err => log({ event: 'orphan-sweep-failed', reason: err instanceof Error ? err.message : 'OS process inspection failed; unverified candidates were preserved' }));
-  return { layout: l, discovery, hub, log, stopped, stop, get storageAbandoned() { return tracker.storageStatus().abandoned.length > 0; } };
+  return { layout: l, discovery, hub, log, stopped, storageFailed, stop, get storageAbandoned() { return tracker.storageStatus().abandoned.length > 0; } };
 }

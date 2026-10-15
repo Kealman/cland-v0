@@ -221,6 +221,7 @@ async function serve(root: string, stdio: boolean, listen: boolean, io: Io): Pro
   }
   // A stdio hub serves its parent even where listening is forbidden; the project's lock is taken either way.
   const { serveProject } = await import('../hub/daemon.ts');
+  const { STORAGE_STOP_MS } = await import('../tracker/tracker.ts');
   const daemon = await serveProject(root, { listen: !listen ? 'never' : stdio ? 'optional' : 'required' });
   const log = daemon.log;
   if (stdio) {
@@ -237,9 +238,17 @@ async function serve(root: string, stdio: boolean, listen: boolean, io: Io): Pro
   process.on('SIGHUP', () => log({ event: 'signal', signal: 'SIGHUP', ignored: true }));
   const where = daemon.discovery ? `127.0.0.1:${daemon.discovery.port} and ${daemon.discovery.socket}${stdio ? ' and stdio' : ''}` : 'stdio only, no listeners';
   (stdio ? process.stderr : process.stdout).write(`hub serving ${root} on ${where} (pid ${process.pid})\n`);
-  await daemon.stopped;
+  let fatalTimer: NodeJS.Timeout | undefined;
+  let cleanupExpired = false;
+  try {
+    await Promise.race([daemon.stopped, daemon.storageFailed.then(() => new Promise<void>(resolve => {
+      // Shutdown dependencies (including log I/O) must not keep a failed writer alive.
+      fatalTimer = setTimeout(() => { cleanupExpired = true; resolve(); }, STORAGE_STOP_MS);
+    }))]);
+  } finally { clearTimeout(fatalTimer); }
+  if (cleanupExpired) io.err('cland: tracker storage failure: shutdown deadline expired; exiting with code 1 before cleanup completed\n');
   // A native operation can retain the event loop after bounded storage abandonment.
-  // All shutdown logs are flushed before stopped resolves; do not leave a dying writer alive.
+  // Normal cleanup flushes shutdown logs; the fatal deadline also bounds stalled cleanup.
   if (daemon.storageAbandoned) process.exit(1);
   return 0;
 }
