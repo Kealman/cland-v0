@@ -3,7 +3,7 @@ id: T-454
 kind: task
 title: "Heartbeat: a per-role interval in crew.toml wakes an idle session with a hub-computed digest of what is in flight and what looks stale, folds into the next turn on a busy one, and is never a needs-you"
 state: open
-status: in progress
+status: review
 size: L
 criterion_seq: 8
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-275
 branch: t/T-454-heartbeat-a-per-role-interval-in-crew
 created: 2026-10-15T07:15:15.368Z
-updated: 2026-10-15T11:31:43.766Z
+updated: 2026-10-15T12:30:41.023Z
 ---
 
 ## Summary

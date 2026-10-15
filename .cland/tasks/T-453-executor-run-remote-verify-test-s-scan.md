@@ -3,8 +3,9 @@ id: T-453
 kind: task
 title: executor-run remote-verify test's scan reads a transient spend.json.lock.break entry (ENOENT)
 state: open
-status: review
+status: ready
 size: XS
+criterion_seq: 1
 labels:
   - v0.1.3
   - ready-for-agent
@@ -14,7 +15,7 @@ blocked_by: []
 topic: topic-291
 branch: t/T-453-executor-run-remote-verify-test-s-scan
 created: 2026-10-15T06:07:18.320Z
-updated: 2026-10-15T12:29:48.308Z
+updated: 2026-10-15T12:30:32.150Z
 ---
 
 ## Summary
@@ -23,7 +24,9 @@ updated: 2026-10-15T12:29:48.308Z
 
 ## Acceptance criteria
 
-- [ ] C1. The scan tolerates, or excludes by quiescing, the ledger's transient lock entries, and the file passes 5/5 beside a local full run.
+- [x] C1. The scan tolerates, or excludes by quiescing, the ledger's transient lock entries, and the file passes 5/5 beside a local full run.
+  - verified: rev-30 [reviewer] · run rev-20261015-453-final · 2026-10-15T12:30:11.983Z · commit aa9ecfac203c6152e6b1fb1ca43e49ce0be7ae73
+  - done: impl-453 · 2026-10-15T12:30:30.221Z
 
 ## Comments
 
@@ -88,3 +91,21 @@ Direct Coordinator dafb7b70 accepts two loaded + three labelled quiet standalone
 ### impl-453 · 2026-10-15T12:29:38.493Z
 
 Final evidence A-2969: all 5 serial executor-run.test.ts repetitions passed 18/18, zero failures/skips/cancellations. 1–2 loaded (86.238s, 92.233s), 3–5 quiet at start (144.491s, 123.683s, 62.039s); run 4 overlapped the later local gate. Run 5 admitted with load 3.62 and no other targeted test, queue local empty. Source aa9ecfac unchanged, clean tree. A-2966 same-head gate 1734/1734 green; per Coordinator 8ff12347, paired with A-2954 Linux executor-run file evidence. Requested final C1 settlement from rev-30.
+
+### rev-30 · 2026-10-15T12:30:11.983Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-453-final
+commit: aa9ecfac203c6152e6b1fb1ca43e49ce0be7ae73
+scope: evidence
+
+Final review clear; no high, medium or low findings. Current branch/source/gate head remains aa9ecfac203c6152e6b1fb1ca43e49ce0be7ae73.
+
+Standards: source review rev-20261015-453-source stands, no findings.
+Spec: C1 verified. Quiesced scan preserves every original token assertion. A-2969 raw logs establish 5/5 serial whole-file passes, each 18/18 with zero failures/skips/cancellations. Exactly two loaded beside impl-447 full run and three labelled quiet at start (fourth later overlapped local gate), accepted by direct Coordinator dafb7b70. Fifth passes 62.039 s; no claim all five were loaded.
+
+Accepted same-head gate 7453981f/A-2966: exit 0, typecheck green, hub-only + Neovim smoke, 1734/1734, zero skips/failures/cancellations, local darwin arm64 after automatic droplet lock-deadline fallback. Direct Coordinator 8ff12347 accepts this plus scoped Linux evidence from A-2954's nine green executor-run top-level cases. A-2954 remains cancelled overall, not a completed gate; its outside failures and cancellation preserved in prior A-2955. No further droplet needed under that decision. No Reviewer tests/edits.
+
+Criteria: C1 verified.

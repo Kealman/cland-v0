@@ -3,7 +3,7 @@ id: T-463
 kind: task
 title: session-usage restart publication test counts 2 publications against 1 under load (T-389's 100 ms window)
 state: open
-status: planned
+status: in progress
 size: XS
 labels:
   - v0.1.3
@@ -12,10 +12,10 @@ assignee: null
 parent: E-482
 blocked_by: []
 regression_of: T-389
-topic: null
-branch: null
+topic: topic-292
+branch: t/T-463-session-usage-restart-publication-test
 created: 2026-10-15T08:37:18.553Z
-updated: 2026-10-15T11:13:42.707Z
+updated: 2026-10-15T12:30:42.447Z
 ---
 
 ## Summary
