@@ -3,7 +3,7 @@ id: T-488
 kind: task
 title: "cland hub reload: re-read config.toml and roles.toml without a restart (SIGHUP too)"
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-15T11:30:17.553Z
-updated: 2026-10-15T11:30:17.553Z
+updated: 2026-10-15T20:50:47.706Z
 ---
 
 ## Problem

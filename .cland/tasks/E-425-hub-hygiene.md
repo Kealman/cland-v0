@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-14T16:43:13.486Z
-updated: 2026-10-14T16:43:25.626Z
+updated: 2026-10-15T20:50:46.443Z
 ---
 
 ## Summary
@@ -91,3 +91,26 @@ Once the identity slice merges and the hub restarts, the Coordinator's tracker a
 - Code: `hub/src/verification-tree.ts` (`candidateTree`), `hub/src/hub/suites.ts`, `hub/src/hub/suite-worker.ts`, `hub/src/cli/hook.ts` (the bridge), `hub/src/cli/doctor.ts`, `hub/src/orphans.ts`, `hub/test/run-suite.ts`, `hub/tsconfig.json`, `nvim/tsconfig.json`.
 - ADR: `docs/adr/0003-hub-is-a-per-project-daemon-from-the-bcas-core.md`.
 - GLOSSARY: Executor, Hub, Spoke.
+
+## Plan
+
+```yaml
+stages:
+  - name: hub lifecycle and process hygiene
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-513
+        - T-488
+        - T-476
+      - - T-311
+      - - T-427
+  - name: verify queue hygiene
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-379
+        - T-475
+```

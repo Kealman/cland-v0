@@ -11,7 +11,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-12T15:31:51.406Z
-updated: 2026-10-15T09:31:01.294Z
+updated: 2026-10-15T20:49:34.737Z
 ---
 
 ## Goal
@@ -82,3 +82,7 @@ The v0.1.2 retrospective's conclusions are filed for v0.1.3 (Coordinator, 2026-1
 ### coord · 2026-10-15T09:31:01.294Z
 
 Decision (human, ask 0727b3c8, 2026-10-15 09:30Z): the reviewer pool goes from 2 to 4, with the same model (Codex gpt-6.1-sol, no rotation). It is in crew.toml (443bd0aa), read live; rev-30 and rev-31 were launched at once.
+
+### human · 2026-10-15T20:49:34.737Z
+
+Decision record (recorded by the stand-in cland-impl from the human's own words): the release that follows v0.1.2 is v0.1.3 and the one after it is v0.2. Sources: 2026-10-15 ~08:20Z, human: «как закончите с 0.1.2, берите 0.1.3» (D30); 2026-10-15 ~20:35Z, human, before sleep: «если вдруг за ночь закончите 0.1.3 то переходите к 0.2» (D40). The version number 0.1.3 is therefore the human's explicit choice for this release; the release ask may be answered by the stand-in per D24 once the DoD is met. Scope stays as in docs/spec/v0.1.3.md.

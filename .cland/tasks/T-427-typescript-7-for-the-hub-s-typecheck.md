@@ -3,7 +3,7 @@ id: T-427
 kind: task
 title: "TypeScript 7 for the hub's typecheck: adopt it when its output matches on the whole repository"
 state: open
-status: backlog
+status: review
 size: S
 labels:
   - v0.1.3
@@ -12,10 +12,10 @@ labels:
 assignee: null
 parent: E-425
 blocked_by: []
-topic: null
-branch: null
+topic: topic-324
+branch: t/T-427-typescript-7-for-the-hub-s-typecheck
 created: 2026-10-14T16:43:34.573Z
-updated: 2026-10-14T16:43:34.573Z
+updated: 2026-10-15T20:55:45.017Z
 ---
 
 ## What to build
@@ -37,3 +37,44 @@ A new dev dependency changes the lock file, so the droplet snapshot is prepared 
 - [ ] C2. When the diagnostics match, `npm run typecheck` runs TypeScript 7 over the whole repository, with its time before and after recorded on this item; otherwise the differences are recorded, 5.9 stays and a follow-up is filed.
 - [ ] C3. The two tests that use the compiler API still pass on TypeScript 5.9.
 - [ ] C4. `hub/README.md` and `docs/agents/tests.md` name the compiler the typecheck uses and why 5.9 remains in the repository.
+
+## Comments
+
+### impl-427 · 2026-10-15T20:52:48.124Z
+
+Baseline: TypeScript 5.9.3 and stable native TypeScript 7.0.2 both exit 0 with no diagnostics on hub/tsconfig.json and nvim/tsconfig.json. Installed 7.0.2 as pinned npm alias typescript7 beside unchanged typescript 5.9.3. Scratch-copy comparison is running with strict/option probes and a full-project allowImportingTsExtensions=false control; timing awaits an empty verify queue per T-204.
+
+### impl-427 · 2026-10-15T20:53:46.532Z
+
+C1 comparison receipt: A-3344 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3344-t-427-complete-compiler-diagnostic-receipt.json); reproduction script A-3343 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3343-t-427-reproducible-compiler-comparison-script.mjs). Full configs run in a git-archive scratch copy at 338f3b25, with the installed compiler dependencies symlinked; no repository source/config was altered to obtain parity. Compare sorted diagnostic (file, line, code) tuples, ignoring wording/order/column. 5.9 exits 2 on diagnostics; native 7 exits 1; both exit 0 clean.
+
+In the table, H = hub/test/typecheck-parity.ts, N = nvim/test/typecheck-parity.ts. Each row was independently observed at the same file/line in both compiler outputs; the planted file combines the probes in one full-project compile.
+
+| Project / probe | TypeScript 5.9.3 | TypeScript 7.0.2 |
+| --- | --- | --- |
+| hub clean: bin/src/test | none | none |
+| Neovim clean: bin/test | none | none |
+| hub strict implicit any | H:2 TS7006 | H:2 TS7006 |
+| Neovim strict implicit any | N:2 TS7006 | N:2 TS7006 |
+| hub strict null | H:3 TS2322 | H:3 TS2322 |
+| Neovim strict null | N:3 TS2322 | N:3 TS2322 |
+| hub exactOptionalPropertyTypes | H:4 TS2375 | H:4 TS2375 |
+| Neovim exactOptionalPropertyTypes | N:4 TS2375 | N:4 TS2375 |
+| hub noUncheckedIndexedAccess | H:5 TS2322 | H:5 TS2322 |
+| Neovim noUncheckedIndexedAccess | N:5 TS2322 | N:5 TS2322 |
+| hub noImplicitOverride | H:7 TS4114 | H:7 TS4114 |
+| Neovim noImplicitOverride | N:7 TS4114 | N:7 TS4114 |
+| hub erasableSyntaxOnly | H:8 TS1294 | H:8 TS1294 |
+| Neovim erasableSyntaxOnly | N:8 TS1294 | N:8 TS1294 |
+| hub verbatimModuleSyntax | H:1 TS1484 | H:1 TS1484 |
+| Neovim verbatimModuleSyntax | N:1 TS1484 | N:1 TS1484 |
+| hub .ts import allowed | no TS5097 | no TS5097 |
+| Neovim .ts import allowed | no TS5097 | no TS5097 |
+| hub allowImportingTsExtensions=false | H:1 TS5097; 1,282 total diagnostics, every tuple matches | H:1 TS5097; same 1,282 tuples |
+| Neovim allowImportingTsExtensions=false | N:1 TS5097; 485 total diagnostics, every tuple matches | N:1 TS5097; same 485 tuples |
+
+Decision: adopt pinned stable 7.0.2 via the typescript7 npm alias. Both package scripts invoke its bin/tsc explicitly to avoid the 5.9/7 executable-name collision. Root npm run typecheck passes after the switch. The original typescript@5.9.3 import/API dependency remains unchanged. Docs updated for C4. C2 timing still awaits the required empty verify queue; C3 API test files await the Mac test window.
+
+### impl-427 · 2026-10-15T20:55:33.192Z
+
+C3 targeted whole-file runs under the Mac test-window rules passed with the unchanged typescript@5.9.3 import: hub/test/executor.test.ts 3/3 (A-3345) and hub/test/tracker-container-source.test.ts 4/4 (attached receipt). Load was below 15 and the local suite slot/test window was free before each file. Native root npm run typecheck also passes. Source committed at 532b7cf9e1f7b045242d1cb2ddb5794b9724660b; git fetch origin && git merge origin/dev reports already up to date. No test source changes.

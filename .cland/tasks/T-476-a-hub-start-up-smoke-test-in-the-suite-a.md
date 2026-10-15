@@ -3,7 +3,7 @@ id: T-476
 kind: task
 title: "A hub start-up smoke test in the suite: a built tree starts, serves a request and stops within a bound"
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - v0.1.3
@@ -14,7 +14,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-15T09:13:19.071Z
-updated: 2026-10-15T09:13:19.071Z
+updated: 2026-10-15T20:50:48.324Z
 ---
 
 ## Summary

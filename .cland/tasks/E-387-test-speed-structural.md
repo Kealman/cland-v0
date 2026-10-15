@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-14T12:28:09.615Z
-updated: 2026-10-15T19:23:54.228Z
+updated: 2026-10-15T20:54:43.974Z
 ---
 
 ## Goal
@@ -162,3 +162,7 @@ Stage 3 sequencing (2026-10-15 19:07Z), applying rule 6's hot-file serialization
 ### coord · 2026-10-15T19:23:54.228Z
 
 Budget sequencing (2026-10-15 19:24Z): today's droplet spend is $7.89 + $1.00 reserved of the $10 cap. The stage-close two-shard run (after the T-519/T-512 restart) goes tonight. The T-396 c-16 worker measurements and the T-394 C5–C7 probes move to after 00:00Z (the new UTC day budget).
+
+### coord · 2026-10-15T20:54:43.974Z
+
+Stage-close run 7d5ac27f at dev 66545745 is red. Shard 2 passed (cland-v0-a9bc7b1c, 851 s, $0.0558). Shard 1 failed (cland-v0-2df7755a, 906 s, $0.0584) on two new load flakes, now filed as T-530 (heartbeat run-digest, launching vs running) and T-531 (suite-close coverage-map scp count 24 vs 2). Wall time was 906 s from admission to collection, against the 600 s target (T-520). The total cost was $0.1142. Logs: A-3340, A-3341, A-3342. I'll rerun the stage close on dev after the T-469 and T-471 merges, so one integrated run covers them too.
