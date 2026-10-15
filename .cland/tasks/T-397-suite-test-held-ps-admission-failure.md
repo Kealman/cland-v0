@@ -2,8 +2,8 @@
 id: T-397
 kind: task
 title: suite.test held-ps admission failure leaves its spoke alive and keeps the file running (cleanup hook ordering)
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -17,7 +17,8 @@ blocked_by: []
 topic: topic-270
 branch: t/T-397-suite-test-held-ps-admission-failure
 created: 2026-10-14T12:31:34.692Z
-updated: 2026-10-15T05:17:53.108Z
+updated: 2026-10-15T05:18:11.461Z
+closed: 2026-10-15T05:18:11.461Z
 ---
 
 ## Summary
@@ -75,3 +76,7 @@ scope: evidence
 Final clear at unchanged source-reviewed f7ce9449. Standards and Spec: no high or medium findings. Local no-mode full gate d44d4c22/A-2691 passes root typecheck and 2086/2086 (37 free hub, 1662 machine hub, 387 Neovim), zero failures/cancellations/skips/todos, exit 0. Real fixture ownership-failure subprocess regression passes: preserves forced error, exits 1 within bound and proves recorded hub/spoke PIDs gone; C1/C2 established with retained A-2664 red/green. Both original live/stale held-ps cases pass again; C3 amended evidence A-2670 five serial pairs remains valid. Historical 2017 ms assertion and original spoke attribution remain undiagnosed because retained logs lack the stack; forced cleanup reproduction is not claimed to identify them. Source A-2671 unchanged, all done marks checked, exact head confirmed. A-2692 details evidence; C1-C3 verified.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-15T05:18:11.461Z
+
+Merged 678784c4dad0122a6b4ee106fdd368066e6c1b4d onto dev.
