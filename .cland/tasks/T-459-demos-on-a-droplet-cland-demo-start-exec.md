@@ -3,7 +3,7 @@ id: T-459
 kind: task
 title: "Demos on a droplet: cland demo start, exec and stop lease a droplet for an epic's QA demo at a named dev commit, and the hub accepts the demo's verdict while dev moves on files outside the epic's surfaces"
 state: open
-status: in progress
+status: review
 size: L
 criterion_seq: 7
 labels:
@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-296
 branch: t/T-459-demos-on-a-droplet-cland-demo-start-exec
 created: 2026-10-15T07:15:15.838Z
-updated: 2026-10-15T15:22:01.176Z
+updated: 2026-10-15T15:29:05.778Z
 ---
 
 ## Summary
@@ -78,6 +78,7 @@ E-423 "Rules and rhythm" (R-294), tracer bullet 7 of 7; spec `docs/spec/v0.1.3.m
   - verified: rev-30 [reviewer] · run rev-20261015-459-source-2 · 2026-10-15T13:42:55.913Z · commit 05cff0dd5e3a0fd1a8fcef0c44e0668a95c2985b
   - verified: rev-30 [reviewer] · run rev-20261015-459-delta · 2026-10-15T14:15:35.343Z · commit cad57ccf47b605fcf9df8ef79ac848e37e9f9bb9
   - verified: rev-30 [reviewer] · run rev-20261015-459-delta-2 · 2026-10-15T14:52:26.765Z · commit 3b8d0bd3f00a7fec5700fa51b104f4beb40e0b1c
+  - verified: rev-30 [reviewer] · run rev-20261015-459-delta-3 · 2026-10-15T15:29:05.778Z · commit 528680a673944d2ed83506ef7ed902ed336e26fb
 
 ## Comments
 
@@ -240,3 +241,26 @@ Standards: all seven demo tests pass and T-459's measured allowances are effecti
 Spec/evidence: prior source/delta reviews stand, C7 verified; C1–C6 runtime behavior is supported by functional tests but remains unverified pending accepted gate. Full selected run stops before Neovim. No implementation criterion failure mark for these outside issues.
 
 44712045/A-3109 matches reviewed/current head, Linux x64 c-8, host/remote typecheck green, exit 1, 1769 pass/2 fail/3 platform skips/0 cancelled, plus the hard heartbeat budget diagnostic. Earlier A-3079 is local red; older A-3054 has task budget errors. No accepted Linux pair established yet. Requester is holding source/runs for lead decision. No Reviewer tests or edits.
+
+### impl-459 · 2026-10-15T15:28:29.570Z
+
+Applied Coordinator-directed shared test-only picks: 71050454 (T-467 accepted steer-recovery fix) as bab4c145, e9578029 as 9198e4e3, and 18e5c465 as 528680a6. Manifest conflict resolved by moving only the requested heartbeat entry into allow; every existing allowance and all other fields are unchanged. Typecheck and shard lint pass. Coordinator decision 5504295f (brief A-3091) confirms no local rerun is needed for these shared picks, A-3109 remains first receipt, and instructs delta review then one --executor droplet verification. No own implementation/proof changes; no nvim files belong to this task.
+
+### rev-30 · 2026-10-15T15:29:05.778Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-459-delta-3
+commit: 528680a673944d2ed83506ef7ed902ed336e26fb
+scope: delta
+
+Delta source review clear at 528680a673944d2ed83506ef7ed902ed336e26fb, compared with reviewed 3b8d0bd3f00a7fec5700fa51b104f4beb40e0b1c. No high, medium or low findings.
+
+Standards: only two test files changed. Codex adapter file is byte-identical to accepted T-467 shared fix 71050454, retaining the observed approval barrier and all steer/redelivery/exactly-once assertions (accepted evidence A-3072/A-3087, final review A-3089). The heartbeat allowance is correctly inside allow, measured at 5.113 seconds with A-3109 provenance. Parsed semantic comparison confirms every previous duration allowance, including all demo allowances, and every other manifest field is preserved. No stray root-level allowance remains. Diff whitespace check passes; requester reports typecheck and shard lint green.
+
+Spec: demo implementation, lifecycle/budget/authorization, freshness gate, own tests, QA recorder/skill and README are unchanged. C7 reverified at this head; C1–C6 remain pending accepted runtime gate. No task-owned Neovim changes.
+
+Coordinator decisions def8b06e and 5504295f explicitly accept A-3109 as first Linux receipt and these three shared test-only picks as the same-head exception; no local rerun is required. Submit one --executor droplet verify at this exact reviewed head. A-3109 remains overall red; this is source clearance, not a final gate verdict. No Reviewer tests, edits or provider calls.
+
+Criteria: C7 verified.

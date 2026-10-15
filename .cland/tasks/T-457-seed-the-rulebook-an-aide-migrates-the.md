@@ -5,6 +5,7 @@ title: "Seed the rulebook: an Aide migrates the eight rules of the planning sess
 state: open
 status: review
 size: S
+criterion_seq: 4
 labels:
   - v0.1.3
   - docs
@@ -15,7 +16,7 @@ blocked_by:
 topic: topic-303
 branch: t/T-457-seed-the-rulebook-an-aide-migrates-the
 created: 2026-10-15T07:15:15.643Z
-updated: 2026-10-15T15:21:34.156Z
+updated: 2026-10-15T15:27:54.744Z
 ---
 
 ## Summary
@@ -67,7 +68,9 @@ Commit `.cland/RULES.md` on the task branch and merge it through `cland merge` l
 
 - [ ] C1. `cland rule list --json` on the live project shows exactly eight active rules, matching the eight of §3.2, each with a scope, a reason and an `Origin: memory:<path>` naming an existing memory file.
 - [ ] C2. Each migrated memory file, and its `MEMORY.md` line, names the rule number it became, in every memory folder that holds it.
+  - verified: rev-30 [reviewer] · run rev-20261015-457-source · 2026-10-15T15:27:18.659Z · commit a9f013a2ed5ae48e239868d10c0b625b2cccc2b5
 - [ ] C3. The item carries a comment with the table of the eight rules and a separate list of other rule-like memories proposed for the human, none of which is in the rulebook.
+  - verified: rev-30 [reviewer] · run rev-20261015-457-source · 2026-10-15T15:27:18.659Z · commit a9f013a2ed5ae48e239868d10c0b625b2cccc2b5
 - [ ] C4. After the merge, the live Coordinator's next clause (after a reconnect) lists the seeded rules in its scope as `rule <n>: …`.
 
 ## Comments
@@ -131,3 +134,22 @@ Further standing-rule proposals for the human — none recorded:
 - `topic-post-after-merge.md`: historical topic/push cleanup guidance needs current verification; its advice to stop before merge conflicts with the later stop-only-after-success instruction and must not be copied verbatim.
 
 Landing follows Coordinator decision `9fb5e236-e895-4329-a3fc-56f586aa50fc` in topic-303: live root rulebook is hub-owned project state; Coordinator commits it on dev, requests review and closes T-457 without a branch merge. No branch copy, commit or push was made; T-457 worktree remains clean. C4 still requires observation of the live Coordinator's next clause after reconnect. No test suite was run for this data-only migration.
+
+### rev-30 · 2026-10-15T15:27:18.659Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-457-source
+commit: a9f013a2ed5ae48e239868d10c0b625b2cccc2b5
+scope: full
+
+Source review clear for T-457 at seed commit a9f013a2ed5ae48e239868d10c0b625b2cccc2b5 (live-state landing authorized by Coordinator decision 9fb5e236).
+
+Standards: no high or medium findings. The eight numbered entries use the documented scope/date/status/origin/reason format and present-tense paragraphs. Superseded manual-lock, Coordinator-only review routing and blanket dev-freeze details are distilled consistently with current project instructions.
+
+Spec: exactly eight active entries match docs/spec/v0.1.3.md §3.2. A-3108 JSON matches the live .cland/RULES.md and committed seed field-for-field; all eight memory origins exist. Every primary/supporting migrated memory (11 files) has exactly one correct rule marker and exactly one matching MEMORY.md reference through each requested path. The paths resolve to the same backing directory. The item comment contains the eight-rule table and a separate unrecorded proposal list; no proposed ninth rule was recorded.
+
+Verified C2,C3. C1 data is consistent with captured live output A-3108, but the requested independent CLI rerun could not complete: node hub/bin/cland.ts rule list --json returned connect EPERM .../.cland/hub.sock in this read-only sandbox, and this session exposes no rule.list tool. Leave C1 unmarked pending independent live-query evidence/Coordinator settlement. C4 remains unverified, not failed, pending the next hub restart and Coordinator reconnect observation as requested. No test suite was run or needed for this data-only source pass.
+
+Criteria: C2 verified, C3 verified.

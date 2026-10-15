@@ -3,7 +3,7 @@ id: T-393
 kind: task
 title: "In-process hub by default: tests run against a hub served in the test process over its real socket, a spawned hub stays only for lifecycle tests, and the top 20 files move first"
 state: open
-status: review
+status: ready
 size: L
 criterion_seq: 9
 labels:
@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-273
 branch: t/T-393-in-process-hub-by-default-tests-run
 created: 2026-10-14T12:28:19.095Z
-updated: 2026-10-15T15:04:46.596Z
+updated: 2026-10-15T15:31:46.134Z
 ---
 
 ## Summary
@@ -56,13 +56,16 @@ updated: 2026-10-15T15:04:46.596Z
   - done: impl-393 · 2026-10-15T08:08:37.623Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-9 · 2026-10-15T12:52:43.534Z · commit 36ecea1f6f97445efc149b47b8ba2a7e89b7c89b
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-13 · 2026-10-15T14:36:18.792Z · commit bedfcef31450af863322d26576f6df22033edc66
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-393-15 · 2026-10-15T15:31:43.759Z · commit af02768f30705dbdedb41b63862921de74926d3f
 - [x] C2. Cleanup fails a test whose in-process hub leaves handles, timers, `process` listeners or child processes, proven by a test that leaks one on purpose.
   - done: impl-393 · 2026-10-15T09:19:34.574Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-9 · 2026-10-15T12:52:43.534Z · commit 36ecea1f6f97445efc149b47b8ba2a7e89b7c89b
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-13 · 2026-10-15T14:36:18.792Z · commit bedfcef31450af863322d26576f6df22033edc66
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-393-15 · 2026-10-15T15:31:43.759Z · commit af02768f30705dbdedb41b63862921de74926d3f
 - [x] C3. `serveProject` takes its environment as an option, and two in-process hubs in one file with different adapter timings behave independently, proven by a test.
   - done: impl-393 · 2026-10-15T13:18:02.629Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-13 · 2026-10-15T14:36:18.793Z · commit bedfcef31450af863322d26576f6df22033edc66
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-393-15 · 2026-10-15T15:31:43.759Z · commit af02768f30705dbdedb41b63862921de74926d3f
 - [x] C4. The lifecycle list is posted per file; every test that still calls `startDaemon` or `cland hub start` in the 20 files is on it, and none of the others is.
   - done: impl-393 · 2026-10-15T08:08:39.537Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-2 · 2026-10-15T09:22:40.699Z · commit 519fc215a8f8b84572f079ba0b5a1b35ed8072fa
@@ -72,14 +75,17 @@ updated: 2026-10-15T15:04:46.596Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-11 · 2026-10-15T13:17:53.106Z · commit bedfcef31450af863322d26576f6df22033edc66
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-13 · 2026-10-15T14:36:18.793Z · commit bedfcef31450af863322d26576f6df22033edc66
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-14 · 2026-10-15T15:04:46.596Z · commit af02768f30705dbdedb41b63862921de74926d3f
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-393-15 · 2026-10-15T15:31:43.759Z · commit af02768f30705dbdedb41b63862921de74926d3f
 - [x] C5. Measured (Coordinator amendment 2026-10-15 09:03Z): the 20 files' summed whole-file time falls by at least 20%, judged after merge from E-387's stage-1 close integrated cover on the Mac against the v0.1.2 release cover A-2714 (both quiet integrated runs), per file from the runner's records; pre-merge, the available paired samples are posted without a claim, because local fallbacks invalidated every pair while remote_budget was 2.
   - done: impl-393 · 2026-10-15T09:04:06.375Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-9 · 2026-10-15T12:52:43.534Z · commit 36ecea1f6f97445efc149b47b8ba2a7e89b7c89b
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-13 · 2026-10-15T14:36:18.793Z · commit bedfcef31450af863322d26576f6df22033edc66
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-393-15 · 2026-10-15T15:31:43.759Z · commit af02768f30705dbdedb41b63862921de74926d3f
 - [x] C6. Measured (Coordinator amendment 2026-10-15 09:03Z): the migration's daemon-start delta is posted against the fresh census A-2737 (the 20 files 421 → 145, a projected 772 per run against 1047); the under-600 target moves to T-466, the next files' migration.
   - done: impl-393 · 2026-10-15T09:04:07.098Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-9 · 2026-10-15T12:52:43.535Z · commit 36ecea1f6f97445efc149b47b8ba2a7e89b7c89b
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-13 · 2026-10-15T14:36:18.794Z · commit bedfcef31450af863322d26576f6df22033edc66
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-393-15 · 2026-10-15T15:31:43.759Z · commit af02768f30705dbdedb41b63862921de74926d3f
 - [x] C7. Each refusal family and each adapter verb keeps at least one frame test, and the moved validation cases keep their asserted error codes and messages.
   - done: impl-393 · 2026-10-15T08:08:40.735Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-2 · 2026-10-15T09:22:40.699Z · commit 519fc215a8f8b84572f079ba0b5a1b35ed8072fa
@@ -89,6 +95,7 @@ updated: 2026-10-15T15:04:46.596Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-11 · 2026-10-15T13:17:53.106Z · commit bedfcef31450af863322d26576f6df22033edc66
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-13 · 2026-10-15T14:36:18.794Z · commit bedfcef31450af863322d26576f6df22033edc66
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-14 · 2026-10-15T15:04:46.596Z · commit af02768f30705dbdedb41b63862921de74926d3f
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-393-15 · 2026-10-15T15:31:43.760Z · commit af02768f30705dbdedb41b63862921de74926d3f
 - [x] C8. No assertion changes its meaning: the review request lists every changed assertion with what it still proves, and no test is deleted.
   - done: impl-393 · 2026-10-15T08:08:41.391Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-2 · 2026-10-15T09:22:40.700Z · commit 519fc215a8f8b84572f079ba0b5a1b35ed8072fa
@@ -98,6 +105,7 @@ updated: 2026-10-15T15:04:46.596Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-11 · 2026-10-15T13:17:53.106Z · commit bedfcef31450af863322d26576f6df22033edc66
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-13 · 2026-10-15T14:36:18.795Z · commit bedfcef31450af863322d26576f6df22033edc66
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-14 · 2026-10-15T15:04:46.596Z · commit af02768f30705dbdedb41b63862921de74926d3f
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-393-15 · 2026-10-15T15:31:43.760Z · commit af02768f30705dbdedb41b63862921de74926d3f
 - [x] C9. `hub/README.md` (Tests) and `docs/agents/tests.md` describe `projectHub` as the default, the lifecycle line, and when a new test may use `startDaemon`.
   - done: impl-393 · 2026-10-15T08:08:41.843Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-2 · 2026-10-15T09:22:40.700Z · commit 519fc215a8f8b84572f079ba0b5a1b35ed8072fa
@@ -107,6 +115,7 @@ updated: 2026-10-15T15:04:46.596Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-11 · 2026-10-15T13:17:53.106Z · commit bedfcef31450af863322d26576f6df22033edc66
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-13 · 2026-10-15T14:36:18.795Z · commit bedfcef31450af863322d26576f6df22033edc66
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-14 · 2026-10-15T15:04:46.596Z · commit af02768f30705dbdedb41b63862921de74926d3f
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-393-15 · 2026-10-15T15:31:43.760Z · commit af02768f30705dbdedb41b63862921de74926d3f
 
 ## Comments
 
@@ -410,3 +419,20 @@ A-3085: 37 distinct targeted files 327/327, zero fail/skip/cancel; final-head ad
 C4/C7/C8/C9 refreshed; C1-C3 and amended final C5/C6 pending new full gate. Direct c5da6819 requires one fresh configured-default no-mode verify, no waiver; old A-3071 is historical after this source integration. C5 quiet stage-close timing judgment and C6 historical 772 projection/under600 T-466 remain as amended, with no new performance claim. No Reviewer tests or edits.
 
 Criteria: C4 verified, C7 verified, C8 verified, C9 verified.
+
+### rev-23 · 2026-10-15T15:31:43.760Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-15-393-15
+commit: af02768f30705dbdedb41b63862921de74926d3f
+scope: evidence
+
+Final integrated evidence clear at unchanged clean af02768f30705dbdedb41b63862921de74926d3f. Fresh full Linux 4b91d0e4/A-3121 exits 0: 2169 tests, 2163 pass, zero failures/cancellations, six macOS-prerequisite skips. Host/runner typechecks and full Neovim complete (389 pass/three platform skips). c-8 lon1, suite1428.17s, Neovim139.35s, lifetime1515s/$0.1052. No gate waiver or local supplement needed.
+
+Source A-3090's owning-env/shard/conflict/immutable-lint corrections and retained lifecycle/frame/assertion proofs now have complete same-head Linux coverage. Required T-395 second-merger reconciliation is satisfied: 110 mapped identities execute once at designated paths; 102 original statements/loops and nine support bodies byte-identical, with no identity deletion. All C1-C9 refreshed.
+
+C5/C6 marks cover ONLY amended pre-merge obligations: posted timing samples, no20% claim; selected starts421→145/historical lower-bound772 projection, not observed current full census/under600. Quiet E-387 stage-close timing against A-2714 and T-466 remain owed. Preserve historical A-3071 green at prior head, earlier A-3038/T-497 red and A-3043 directed five-pass evidence; none replaces this fresh gate. Direct c5da6819 no-waiver requirement satisfied. Full audit A-3123; no Reviewer tests or edits.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified, C9 verified.
