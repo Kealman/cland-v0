@@ -467,7 +467,10 @@ test('a terminal session role update preserves a subscription created for its ne
   assert.deepEqual((await coord.call<{ subscriptions: Subscription[] }>('subscriptions')).subscriptions.filter((s: Subscription) => !s.default), [subscribed.subscription], 'a metadata update is not another terminal occurrence');
   assert.equal((await ui.request({ type: 'session.resume', session: 'impl', relaunch: true })).ok, true);
   await ui.waitFor(f => f.type === 'message' && (f.message as Message).text === 'event · session.state · impl launched');
+  // The resumed first turn may already be complete when launch returns. Observe
+  // its idle event before checking that no prior terminal fact was replayed.
+  await ui.waitFor(f => f.type === 'message' && (f.message as Message).text === 'event · session.state · impl idle');
   const history = await ui.request({ type: 'topic.history', topic: 'agents' });
   const events = (history.value as { messages: Message[] }).messages.filter(m => m.kind === 'event');
-  assert.deepEqual(events.map(m => m.text), ['event · session.state · impl launched'], 'the prior terminal fact must not replay into a new subscription');
+  assert.deepEqual(events.map(m => m.text), ['event · session.state · impl launched', 'event · session.state · impl idle'], 'the prior terminal fact must not replay into a new subscription');
 });
