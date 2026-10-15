@@ -2,8 +2,8 @@
 id: T-446
 kind: task
 title: artifact-browser attachments test connects before its Neovim socket is up (ECONNREFUSED under load)
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 1
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-285
 branch: t/T-446-artifact-browser-attachments-test
 created: 2026-10-15T00:52:28.303Z
-updated: 2026-10-15T09:36:44.044Z
+updated: 2026-10-15T09:37:00.096Z
+closed: 2026-10-15T09:37:00.096Z
 ---
 
 ## Summary
@@ -79,3 +80,7 @@ Spec: C1 verified from accepted-socket startup source and A-2819's forced-gap re
 Gate 498bdf8a-326b-4c5f-8372-bf14e4fb5aaf / A-2834: exit 0, typecheck green, nvim-only + hub smoke, 403 passed, 0 failed/cancelled/skipped, local darwin arm64 at exact 18edb7b127e553c808af8473e14594965fd4f594. Remote budget 4/4 caused local fallback. Per confirmed Coordinator decision d5f9fb7f, this is the accepted task gate; no resubmit. Linux per-file droplet proof remains assigned to E-482 epic QA.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-15T09:37:00.096Z
+
+Merged 5c4928626aaa9922802117c0ab5a4ff1a3bfefab onto dev.
