@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-295
 branch: t/T-456-rules-reach-sessions-each-role-s-clause
 created: 2026-10-15T07:15:15.550Z
-updated: 2026-10-15T15:01:39.740Z
+updated: 2026-10-15T15:12:04.095Z
 ---
 
 ## Summary
@@ -77,39 +77,47 @@ E-423 "Rules and rhythm" (R-294), tracer bullet 4 of 7; spec `docs/spec/v0.1.3.m
   - verified: rev-31 [reviewer] · run rev-20261015-456-source-3 · 2026-10-15T14:15:41.958Z · commit a4a899c64dcb8629e08ce6717fde30270ad8509a
   - verified: rev-31 [reviewer] · run rev-20261015-456-source-4 · 2026-10-15T14:34:13.441Z · commit ab1037c0ec32355cd82e7236eeda458c2a916dab
   - verified: rev-31 [reviewer] · run rev-20261015-456-final · 2026-10-15T15:01:37.522Z · commit ab1037c0ec32355cd82e7236eeda458c2a916dab
+  - verified: rev-31 [reviewer] · run rev-20261015-456-merge-delta · 2026-10-15T15:12:01.790Z · commit b9836a1d88f766c3bca67c547af5164e2463d954
 - [x] C2. A rule scoped to `implementer`, added from the shell, reaches a running fake Implementer at its next turn as a `rule` event with its full text, and does not reach the fake Coordinator; an edit and a retirement reach the Implementer the same way.
   - done: impl-456 · 2026-10-15T13:40:28.405Z
   - verified: rev-31 [reviewer] · run rev-20261015-456-final · 2026-10-15T15:01:37.522Z · commit ab1037c0ec32355cd82e7236eeda458c2a916dab
+  - verified: rev-31 [reviewer] · run rev-20261015-456-merge-delta · 2026-10-15T15:12:01.790Z · commit b9836a1d88f766c3bca67c547af5164e2463d954
 - [x] C3. After a reconnect, the Implementer's re-sent clause carries the current rules, including one added while it was disconnected.
   - done: impl-456 · 2026-10-15T13:36:01.653Z
   - verified: rev-31 [reviewer] · run rev-20261015-456-final · 2026-10-15T15:01:37.522Z · commit ab1037c0ec32355cd82e7236eeda458c2a916dab
+  - verified: rev-31 [reviewer] · run rev-20261015-456-merge-delta · 2026-10-15T15:12:01.790Z · commit b9836a1d88f766c3bca67c547af5164e2463d954
 - [x] C4. A Coordinator's `rule.add` naming the human's message records that origin, while one naming an agent's message or no message, and an Implementer's `rule.add`, are refused with `forbidden` and a reason.
   - done: impl-456 · 2026-10-15T13:36:02.217Z
   - verified: rev-31 [reviewer] · run rev-20261015-456-source-2 · 2026-10-15T13:41:07.371Z · commit a269ce0c80d7c6fc851e6ec4a421e4625117ee2a
   - verified: rev-31 [reviewer] · run rev-20261015-456-source-3 · 2026-10-15T14:15:41.958Z · commit a4a899c64dcb8629e08ce6717fde30270ad8509a
   - verified: rev-31 [reviewer] · run rev-20261015-456-source-4 · 2026-10-15T14:34:13.442Z · commit ab1037c0ec32355cd82e7236eeda458c2a916dab
   - verified: rev-31 [reviewer] · run rev-20261015-456-final · 2026-10-15T15:01:37.522Z · commit ab1037c0ec32355cd82e7236eeda458c2a916dab
+  - verified: rev-31 [reviewer] · run rev-20261015-456-merge-delta · 2026-10-15T15:12:01.790Z · commit b9836a1d88f766c3bca67c547af5164e2463d954
 - [x] C5. An Aide's `rule.add` records `session:<name>` as origin, and every role's `rule.list` returns the active rules, filtered by `role` when given.
   - done: impl-456 · 2026-10-15T13:36:02.773Z
   - verified: rev-31 [reviewer] · run rev-20261015-456-source-2 · 2026-10-15T13:41:07.371Z · commit a269ce0c80d7c6fc851e6ec4a421e4625117ee2a
   - verified: rev-31 [reviewer] · run rev-20261015-456-source-3 · 2026-10-15T14:15:41.958Z · commit a4a899c64dcb8629e08ce6717fde30270ad8509a
   - verified: rev-31 [reviewer] · run rev-20261015-456-source-4 · 2026-10-15T14:34:13.442Z · commit ab1037c0ec32355cd82e7236eeda458c2a916dab
   - verified: rev-31 [reviewer] · run rev-20261015-456-final · 2026-10-15T15:01:37.522Z · commit ab1037c0ec32355cd82e7236eeda458c2a916dab
+  - verified: rev-31 [reviewer] · run rev-20261015-456-merge-delta · 2026-10-15T15:12:01.790Z · commit b9836a1d88f766c3bca67c547af5164e2463d954
 - [x] C6. A `rule` event never changes the inbox count or shows as a needs-you, never steers a running turn, and shows as a row in the events view, reachable from the palette's kind filter while keys `1`–`9` keep their kinds.
   - done: impl-456 · 2026-10-15T13:36:03.339Z
   - verified: rev-31 [reviewer] · run rev-20261015-456-final · 2026-10-15T15:01:37.522Z · commit ab1037c0ec32355cd82e7236eeda458c2a916dab
+  - verified: rev-31 [reviewer] · run rev-20261015-456-merge-delta · 2026-10-15T15:12:01.791Z · commit b9836a1d88f766c3bca67c547af5164e2463d954
 - [x] C7. The Coordinator's and the Aide's clauses, in `default-roles.ts` and the live `.cland/roles.toml`, say to record a stated rule with `rule.add` and never only in a memory, and that a memory repeating a rule names its number.
   - done: impl-456 · 2026-10-15T13:36:03.904Z
   - verified: rev-31 [reviewer] · run rev-20261015-456-source-2 · 2026-10-15T13:41:07.371Z · commit a269ce0c80d7c6fc851e6ec4a421e4625117ee2a
   - verified: rev-31 [reviewer] · run rev-20261015-456-source-3 · 2026-10-15T14:15:41.958Z · commit a4a899c64dcb8629e08ce6717fde30270ad8509a
   - verified: rev-31 [reviewer] · run rev-20261015-456-source-4 · 2026-10-15T14:34:13.442Z · commit ab1037c0ec32355cd82e7236eeda458c2a916dab
   - verified: rev-31 [reviewer] · run rev-20261015-456-final · 2026-10-15T15:01:37.522Z · commit ab1037c0ec32355cd82e7236eeda458c2a916dab
+  - verified: rev-31 [reviewer] · run rev-20261015-456-merge-delta · 2026-10-15T15:12:01.791Z · commit b9836a1d88f766c3bca67c547af5164e2463d954
 - [x] C8. `hub/README.md` describes rules in clauses and briefs, the `rule.*` tools and the origin rule, and the `rule` event, and `nvim/README.md` lists the `rule` kind in the events view's palette filter.
   - done: impl-456 · 2026-10-15T13:36:04.689Z
   - verified: rev-31 [reviewer] · run rev-20261015-456-source-2 · 2026-10-15T13:41:07.371Z · commit a269ce0c80d7c6fc851e6ec4a421e4625117ee2a
   - verified: rev-31 [reviewer] · run rev-20261015-456-source-3 · 2026-10-15T14:15:41.958Z · commit a4a899c64dcb8629e08ce6717fde30270ad8509a
   - verified: rev-31 [reviewer] · run rev-20261015-456-source-4 · 2026-10-15T14:34:13.442Z · commit ab1037c0ec32355cd82e7236eeda458c2a916dab
   - verified: rev-31 [reviewer] · run rev-20261015-456-final · 2026-10-15T15:01:37.523Z · commit ab1037c0ec32355cd82e7236eeda458c2a916dab
+  - verified: rev-31 [reviewer] · run rev-20261015-456-merge-delta · 2026-10-15T15:12:01.791Z · commit b9836a1d88f766c3bca67c547af5164e2463d954
 
 ## Comments
 
@@ -321,5 +329,34 @@ Accepted evidence:
 Coordinator decisions 1af2b08a-a204-46c7-9672-fbd93503fad4 and correction f90d7f15-6bc0-442a-874c-4020deba330f were read directly: they accept this Mac/Linux pair despite the reds, plus this local Neovim run. Both suite receipts remain historically red; final clear uses that explicit exception, not a claim of a green full run. Linux Neovim coverage is deferred to integrated close coverage under the standing mixed-diff rule.
 
 Standards: 0 unresolved findings. Spec: 0 unresolved findings in task scope. No Reviewer tests or edits.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified.
+
+### rev-31 · 2026-10-15T15:12:01.791Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261015-456-merge-delta
+commit: b9836a1d88f766c3bca67c547af5164e2463d954
+scope: delta
+
+Delta review clear at b9836a1d88f766c3bca67c547af5164e2463d954. No high, medium or low findings.
+
+## Standards
+Resolved merge 9e67c086 preserves the existing module boundaries; no new standards/smell findings. Diff check passes. The last refresh changes only tracker files and the shared T-467 Codex test fix; rule writer file is byte-identical to the prior reviewed/shared writer.
+
+## Spec
+hub/src/hub/core.ts:191,361-362,443-445 retains both subscriptions and both unsubscribe calls: rule changes still produce scoped next-turn session events and also publish T-458's rules.changed UI frame.
+hub/src/hub/dispatch.ts:1496-1506 preserves workbench origins for add/edit/retire, rejects non-string/non-memory shell origins, preserves existing shell edit origins, and retains separate Coordinator/Aide tool authorization with human-message/session origins.
+hub/test/rule-sessions.test.ts:106 adds a rules.changed UI assertion to the existing scoped next-turn delivery case, proving both merge paths execute for the same change. Clause rendering, complete over-cap rules, scope-removal retirement, stopped-session filtering, inbox behavior and event palette keys remain unchanged.
+The common RulebookFile writer is unchanged, avoiding divergent write/origin semantics between the two tasks.
+
+A-3097 checked: the recorded identifier/text search found 16 matching executable test files; all ran plus hub rulebook/rule-sessions and Neovim events (19 files total). Each log shows zero failures/skips/cancellations; totals are 218/218. Includes rules CLI 7/7, rule-sessions 7/7, rulebook 2/2, Neovim rulebook 4/4, Neovim events 4/4, plus all other matching files. Targeted checks ran after conflict resolution; final refresh adds only the shared test fix and tracker updates. Typecheck/diff-check evidence reported in the artifact; no Reviewer tests or edits.
+
+All C1–C8 refreshed at this head using the prior full source/final review plus this delta and targeted evidence: scoped clause/brief/reconnect rules; scoped add/edit/retire turn delivery; origin/refusal/read permissions; no-needs-you/no-steer/event view filters; cache clauses; docs.
+
+Gate decision 164d64f8-bebe-40b0-a34d-515dd656af0b was read directly in topic history: resolve T-458, run all identifier/text-matching tests plus rulebook/rule-session/Neovim-rulebook files, then delta review; no new full verify, with stage-2 close coverage after T-459. This verdict applies that explicit decision. Prior accepted A-3066/A-3082 pair, A-3084 Neovim and rev-20261015-456-final remain provenance, not a fresh green full run at this head.
+Standards: 0 findings. Spec: 0 findings.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified.

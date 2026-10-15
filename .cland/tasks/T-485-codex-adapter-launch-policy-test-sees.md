@@ -3,7 +3,7 @@ id: T-485
 kind: task
 title: codex-adapter launch-policy test sees the QA process alive right after an acknowledged session.stop (Linux)
 state: open
-status: planned
+status: review
 size: XS
 labels:
   - v0.1.3
@@ -12,10 +12,10 @@ labels:
 assignee: null
 parent: E-482
 blocked_by: []
-topic: null
-branch: null
+topic: topic-299
+branch: t/T-485-codex-adapter-launch-policy-test-sees
 created: 2026-10-15T09:57:07.055Z
-updated: 2026-10-15T10:54:43.753Z
+updated: 2026-10-15T15:08:48.668Z
 ---
 
 ## Summary
@@ -31,3 +31,25 @@ updated: 2026-10-15T10:54:43.753Z
 ### coord · 2026-10-15T10:54:43.753Z
 
 Second variant, from T-454's droplet gate 93b61bfc (A-2898, confirmed by rev-23 in A-2899): codex-adapter.test.ts:570, where pidAlive(impl.launched.pid) === false fails right after an acknowledged stop. It is the Implementer assertion, not only the QA example at :556. Both are in scope.
+
+### impl-485 · 2026-10-15T15:06:22.525Z
+
+Baseline focused T-65 launch-policy test passed on quiet Darwin (3.23s). Confirmed stop contract: CodexAdapter.stop awaits endProcess, which considers the captured process gone once it is absent from parseProcessTable; that parser explicitly omits Z-state zombies. Test pidAlive uses kill(pid, 0), which can remain true until reaping. Keeping both final false assertions and awaiting bounded PID absence first. Existing Linux receipts in the task identify the flake; no product timing change or new timeout override is needed.
+
+### rev-30 · 2026-10-15T15:08:48.668Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-485-source
+commit: 3cfa1f2f861fac5e11d5069e19da77c240111748
+scope: full
+
+Source review clear at corrected full head 3cfa1f2f861fac5e11d5069e19da77c240111748; no high, medium or low findings.
+
+Standards: no findings against repo bounded-positive-wait guidance or code-review baseline. The two waits reuse eventually without timeout overrides, fixed sleeps, renamed tests or assertion removal.
+Spec: codex-adapter.test.ts:562 and :577 await !pidAlive for the same QA and Implementer PIDs already asserted immediately afterward. Both acknowledged-stop/status assertions and final false liveness assertions remain, along with relaunch/profile proofs. Source contract inspection confirms CodexAdapter.stop awaits endProcess; parseProcessTable excludes zombie rows, while the harness pidAlive uses process.kill(pid,0). Thus stop confirmation and PID reaping are distinct observations; waiting for the latter addresses both scoped variants without changing product timing.
+
+Reviewed git diff 4ed82fdce80753bffcc1b3e4ebcc0d81eba10851...3cfa1f2f861fac5e11d5069e19da77c240111748, one commit/one file/three added lines. Branch resolves to the corrected SHA, not the earlier transcribed SHA. git diff --check green. Both Standards and Spec reviewed directly; role prohibits delegation.
+
+Requester reports quiet focused baseline, typecheck and first whole-file pass 35/35 (A-3092). Four additional Mac file passes and same-head post-source Linux verify remain pending. C1 is composite and remains unverified until those runtime requirements and accepted gate evidence arrive; quiet/loaded repetition labels follow Coordinator 1ba48602. No Reviewer tests or edits.
