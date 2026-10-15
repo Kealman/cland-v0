@@ -2,8 +2,8 @@
 id: T-463
 kind: task
 title: session-usage restart publication test counts 2 publications against 1 under load (T-389's 100 ms window)
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 1
 labels:
@@ -16,7 +16,8 @@ regression_of: T-389
 topic: topic-292
 branch: t/T-463-session-usage-restart-publication-test
 created: 2026-10-15T08:37:18.553Z
-updated: 2026-10-15T13:26:44.699Z
+updated: 2026-10-15T14:02:18.817Z
+closed: 2026-10-15T14:02:18.817Z
 ---
 
 ## Summary
@@ -103,3 +104,7 @@ Coverage limit retained: helper turn() and startup limits-only journal assumptio
 Standards: 0 new findings. Spec: 0 unresolved findings in T-463 scope; C1 verified. No Reviewer tests or edits.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-15T14:02:18.817Z
+
+Merged 681bcb864d47800730807d863475a0c4b41b7127 onto dev.
