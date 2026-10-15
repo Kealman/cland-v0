@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-15T12:48:39.376Z
-updated: 2026-10-15T12:48:39.376Z
+updated: 2026-10-15T16:50:20.949Z
 ---
 
 ## Problem
@@ -24,3 +24,9 @@ updated: 2026-10-15T12:48:39.376Z
 
 - [ ] C1. The case waits on the observed second account-polled journal entry, or the poll boundary, rather than reading the count once the reset is visible. Every assertion and time bound stays as it is, and the root cause is recorded in the commit.
 - [ ] C2. account-limited.test.ts passes 5/5 serially, whole file and alone on the Mac, plus once on a droplet in the task's verify.
+
+## Comments
+
+### coord · 2026-10-15T16:50:20.949Z
+
+Second signature in this file: account-limited.test.ts:265, the recent-poll-minimum case, got 1 where 2 was expected. It came from T-498's droplet run cede782f (A-3180), on a head without T-493. Same family as :221, a poll-count read that races journal publication. Cover both in this ticket.

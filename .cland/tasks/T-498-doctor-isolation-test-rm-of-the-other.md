@@ -3,7 +3,7 @@ id: T-498
 kind: task
 title: "doctor-isolation test: rm of the other fixture hits ENOTEMPTY while its hub is still live (Linux, under load)"
 state: open
-status: in progress
+status: ready
 size: XS
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-302
 branch: t/T-498-doctor-isolation-test-rm-of-the-other
 created: 2026-10-15T14:03:16.446Z
-updated: 2026-10-15T16:49:14.852Z
+updated: 2026-10-15T16:51:27.396Z
 ---
 
 ## Problem
@@ -29,6 +29,7 @@ updated: 2026-10-15T16:49:14.852Z
   - verified: rev-31 [reviewer] · run rev-20261015-498-source-2 · 2026-10-15T15:23:44.163Z · commit 155578cb528307622efaf79b618809576e2d4a0f
 - [x] C2. doctor-isolation.test.ts passes 5/5 serially, whole file and alone on the Mac, plus once on a droplet in the task's verify.
   - done: impl-498 · 2026-10-15T15:38:48.384Z
+  - verified: rev-31 [reviewer] · run rev-20261015-498-final · 2026-10-15T16:51:18.754Z · commit 155578cb528307622efaf79b618809576e2d4a0f
 
 ## Comments
 
@@ -135,3 +136,29 @@ Second receipt cede782f-be7a-4f1f-8976-06271568dc28: exit 1, 1767 pass / 2 fail 
 
 C1 stays verified; C2 remains unverified pending an accepted gate. No failed doctor-isolation behavioral criterion inferred from unrelated failures. No Reviewer tests or edits.
 Standards: 0 findings. Spec/evidence: three external failure groups, one unclassified.
+
+### rev-31 · 2026-10-15T16:51:18.754Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261015-498-final
+commit: 155578cb528307622efaf79b618809576e2d4a0f
+scope: evidence
+
+Final review clear at unchanged 155578cb528307622efaf79b618809576e2d4a0f under Coordinator decision e2396ef4-f248-43a6-9837-1ee3eef222d2, read directly in topic history. No unresolved T-498 source findings.
+
+## Standards
+Current delta source verdict rev-20261015-498-source-2 stands. The task test remains byte-identical to the original source review; no assertions or live-hub ownership proof were removed.
+
+## Spec
+C1 retained: bounded recursive-removal retries tolerate live .cland/run writers while keeping both hubs alive, with root cause recorded in the commit.
+C2 verified: A-3093 contains five quiet serial Mac whole-file passes, 1/1 each, no skips/failures. Two droplet receipts independently pass doctor-isolation under four-worker Linux load:
+- 65bb9a73 / A-3130 at earlier reviewed 9534d5c9: changed case 4.089 s, 1761 pass / 1 fail / 3 macOS-only skips overall. Sole external red is classified T-509 (renamed-session revocation/refusal).
+- cede782f / A-3180 at exact current reviewed 155578cb: changed case 4.897 s, 1767 pass / 2 fail / 3 macOS-only skips overall, plus external rule-sessions duration failure. Account-limited:265 is now classified T-493, heartbeat:260 is T-506, clause/brief duration is covered by shared bdf418e6.
+
+The two failure sets differ and the task file is green in both. Coordinator e2396ef4 explicitly declares this pair the gate, accepts the classifications and directs no further pick/head change. This also settles the earlier-head first receipt across the already reviewed merge. Both suites remain historically red; this final clear uses that named acceptance, not a claim of a green full suite. Neovim smoke was not reached; T-498 has no Neovim changes.
+
+Standards: 0 findings. Spec: 0 unresolved findings in task scope. C1 retained, C2 verified. No Reviewer tests or edits.
+
+Criteria: C2 verified.
