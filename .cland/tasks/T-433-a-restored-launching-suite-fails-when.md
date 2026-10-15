@@ -3,7 +3,7 @@ id: T-433
 kind: task
 title: A restored launching suite fails when its suite ref already exists (update-ref expects it absent)
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 2
 labels:
@@ -17,7 +17,7 @@ regression_of: T-345
 topic: topic-258
 branch: t/T-433-a-restored-launching-suite-fails-when
 created: 2026-10-14T17:56:11.704Z
-updated: 2026-10-15T02:10:43.996Z
+updated: 2026-10-15T02:41:34.754Z
 ---
 
 ## Summary
@@ -36,8 +36,10 @@ Make the suite ref's creation idempotent across a restart: accept an existing re
   - done: impl-433 · 2026-10-14T18:11:49.880Z
   - verified: rev-26 [reviewer] · run rev-20261014-433-source-1 · 2026-10-14T18:12:50.812Z · commit b874faa11e64b60f8f2b1d7846b987c145c4d2ca
   - verified: rev-26 [reviewer] · run rev-20261015-433-source-2 · 2026-10-15T02:10:23.017Z · commit 2c9f932ad185fa423b14685eff47582aac36bf3c
+  - verified: rev-26 [reviewer] · run rev-20261015-433-final-1 · 2026-10-15T02:41:33.454Z · commit 2c9f932ad185fa423b14685eff47582aac36bf3c
 - [x] C2. The test sets up the existing-ref case deterministically and passes 5/5 whole-file runs.
   - done: impl-433 · 2026-10-14T18:11:50.850Z
+  - verified: rev-26 [reviewer] · run rev-20261015-433-final-1 · 2026-10-15T02:41:33.454Z · commit 2c9f932ad185fa423b14685eff47582aac36bf3c
 
 ## Comments
 
@@ -112,3 +114,20 @@ Criteria: C1 verified.
 ### impl-433 · 2026-10-15T02:10:43.996Z
 
 Delta source clear from rev-26 at 2c9f932ad185fa423b14685eff47582aac36bf3c (rev-20261015-433-source-2/A-2642); C1 renewed. Submitted required no-mode local verification c08bddb4-e200-4390-82de-7d74ff327646 at clean unchanged head, position 1, reporting to rev-26 and impl-433. Both prior red runs and cleanup isolation logs retained. Awaiting hub result.
+
+### impl-433 · 2026-10-15T02:41:17.514Z
+
+Post-delta-review no-mode local verification c08bddb4-e200-4390-82de-7d74ff327646 passed at unchanged clean 2c9f932ad185fa423b14685eff47582aac36bf3c: 2042/2042 tests, zero failures/cancelled/skips/todo. Durable log A-2649. Both earlier red receipts (54e82e23/A-2608 and be362f56/A-2639), five-file cleanup isolation A-2623, original executor-run 5/5 A-2486, and exact T-439 pick targeted 15/15 A-2641 remain preserved. Awaiting Reviewer's final execution/C2 settlement; retaining claim until merge.
+
+### rev-26 · 2026-10-15T02:41:33.454Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261015-433-final-1
+commit: 2c9f932ad185fa423b14685eff47582aac36bf3c
+scope: evidence
+
+No high/medium findings. Accepted same-head local auto/full c08bddb4/A-2649 passes typecheck and 2042/2042 (37 free,1618 hub machine,387 Neovim), zero fail/cancel/skip/todo. Matching/conflicting ref cases pass; C2 deterministic setup and five 18/18 file runs A-2486 retained because original test source is unchanged. Earlier 54e82e23/A-2608 cleanup flake, five 61/61 isolation files A-2623 and be362f56/A-2639 gi failure remain preserved. Coordinator-directed exact T-439 pick was source-reviewed in A-2642; both formerly failing cases pass now. C1/C2 verified. Evidence A-2650: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2650-t-433-final-clear-at-2c9f932a-restart-refs-and-accepted-full-run-checked.md.
+
+Criteria: C1 verified, C2 verified.
