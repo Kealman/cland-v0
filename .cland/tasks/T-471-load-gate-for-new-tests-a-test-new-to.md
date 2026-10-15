@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-317
 branch: t/T-471-load-gate-for-new-tests-a-test-new-to
 created: 2026-10-15T09:13:16.338Z
-updated: 2026-10-15T19:36:54.189Z
+updated: 2026-10-15T20:12:26.745Z
 ---
 
 ## Summary
@@ -33,9 +33,11 @@ In a task's verify, the runner repeats each test that is new to the manifest fiv
 - [x] C2. Known tests are not repeated, and the gate adds no repetitions to integrated dev runs.
   - done: impl-471 · 2026-10-15T19:33:18.609Z
   - verified: rev-30 [reviewer] · run rev-20261015-471-source · 2026-10-15T19:36:54.188Z · commit b80e4aeb92dca3984a1b5232e1a3aa1842f2e016
+  - verified: rev-30 [reviewer] · run rev-20261015-471-allowance-delta · 2026-10-15T20:12:26.745Z · commit 3f6957dc8a1ecfb80e28ec7cbd274efcd9b499b1
 - [x] C3. The extra wall time is reported on the run, and hub/README.md and docs/agents/tests.md describe the gate.
   - done: impl-471 · 2026-10-15T19:33:19.546Z
   - verified: rev-30 [reviewer] · run rev-20261015-471-source · 2026-10-15T19:36:54.189Z · commit b80e4aeb92dca3984a1b5232e1a3aa1842f2e016
+  - verified: rev-30 [reviewer] · run rev-20261015-471-allowance-delta · 2026-10-15T20:12:26.745Z · commit 3f6957dc8a1ecfb80e28ec7cbd274efcd9b499b1
 
 ## Comments
 
@@ -65,5 +67,19 @@ C3 source verified: load gate start/pass-count/failure lines and summed extra ta
 Evidence A-3290/A-3302 inspected. Final source brief contains complete runner9/9 output covering planted one-in-three flake versus stable5/5, regex punctuation, allowance non-exemption, known/integrated no-repeat, skip0/5, summary fields, SIGTERM cleanup and SIGKILL recovery. Journal assertions require six executions per new name including ordinary phase and at least one repetition before ordinary workload ends. Selection85/85 and T-519 nested-selection1/1 are reported green; typecheck/shard lint and whitespace checks green. New names remain below duration budgets; no allowance added. C1 final runtime verification remains pending the post-source suite; this targeted evidence is not a completed task gate.
 
 Source clearance does NOT lift Coordinator8b300f2e's current cover-quiet/submission hold. Submit no local tests or new verify until the restart notice. After that, one exact-head diff-selected cland verify can supply final evidence; a head change requires another source review. No per-item QA criteria. No Reviewer tests, edits, merges or provider calls.
+
+Criteria: C2 verified, C3 verified.
+
+### rev-30 · 2026-10-15T20:12:26.745Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-471-allowance-delta
+commit: 3f6957dc8a1ecfb80e28ec7cbd274efcd9b499b1
+scope: delta
+
+Delta source review T-471 clear at 3f6957dc8a1ecfb80e28ec7cbd274efcd9b499b1, parent source-reviewed b80e4aeb92dca3984a1b5232e1a3aa1842f2e016. No high, medium or low findings. Standards and Spec: Only hub/test/durations.json changes: one allow entry for verification-workers.test.ts::requested size reserves its own price before create and fallback restores local configured workers, measured6.082s in cover38b71e4c at peak16.6, with concrete executor-round-trip reason and provenance. Exact delta matches Coordinator-posted fe233d71; no existing files/tests/allow value changes, no production/task-test/assertion-bound change or dev merge. No extra local rerun is required for this shared-only pick. Whitespace check is clear. Coordinator6adcdb0a lifts the hold, directs this pick and --executor droplet --fresh where Linux is needed; restarted hub now waits for remote capacity. No Reviewer tests, edits or provider calls.
+C2/C3 source marks reverified: known/integrated exemption and load extra-wall/docs behavior unchanged. C1 final runtime mark awaits post-source task verification. In particular this new allow entry remains absent from manifest.tests and does not bypass the new-test load gate; only baseline refresh makes it known. Source clear permits one exact-head diff-selected --executor droplet --fresh run under current capacity/spend rules. Earlier A-3302 targeted evidence remains applicable, not a final suite receipt.
 
 Criteria: C2 verified, C3 verified.
