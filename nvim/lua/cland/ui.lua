@@ -77,7 +77,7 @@ local function validate(data)
   assert(type(e) == 'table' and type(e.filter) == 'table' and type(e.muted) == 'table', 'invalid events preferences')
   local kinds = require('cland.event_kinds')
   local function subject(s)
-    return type(s) == 'table' and vim.tbl_contains({ 'item', 'session', 'topic', 'artifact' }, s.kind) and type(s.id) == 'string' and s.id ~= ''
+    return type(s) == 'table' and vim.tbl_contains({ 'item', 'session', 'topic', 'artifact', 'rule' }, s.kind) and type(s.id) == 'string' and s.id ~= ''
   end
   assert(e.filter.warnings == nil or type(e.filter.warnings) == 'boolean', 'invalid events warnings')
   assert(e.filter.kinds == nil or type(e.filter.kinds) == 'table', 'invalid events kinds')

@@ -149,6 +149,7 @@ export class Visibility {
   #kind(surface: Surface, r: Row, activeItems?: Set<unknown>): string {
     switch (surface) {
       case 'messages': {
+        if (r.fromKind === 'hub' && r.kind === 'event' && row(r.detail)?.event === 'rule') return 'agent';
         const ts = Date.parse(String(r.ts));
         if (Number.isFinite(ts) && this.#now().getTime() - ts > 7 * 86_400_000) return 'old';
         if (r.ask || r.answerTo) return 'ask';

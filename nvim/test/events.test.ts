@@ -143,3 +143,27 @@ test('key 9 filters heartbeat firings with counts, keeps one row per firing, and
   await c.waitScreen(s => s.includes('needs you') && !s.includes('events · newest first'), 'inbox');
   assert.equal(await c.lua("return require('cland.state').S.needs_you"), 0);
 });
+
+test('the palette filters rule events while numeric event keys remain 1 through 9', { skip }, async t => {
+  const root = await tempProject(t);
+  await mkdir(join(root, '.git'), { recursive: true });
+  const rule: EventRow = { id: 'rule-1', ts: today, kind: 'rule', glyph: '●', subject: { kind: 'rule', id: '12' }, text: 'rule 12: Run serially. (scope: all; reason: contention)' };
+  const c = await startClient(t, bin, root, { CLAND_HUB_TRANSPORT: 'stdio', CLAND_COMMAND: JSON.stringify([process.execPath, STUB]), CLAND_STUB_SCENARIO_JSON: JSON.stringify({ inbox: { needsYou: 0 }, events: [rule, rows[0]] }) });
+  await c.waitScreen(s => s.includes('hub: connected'), 'connected');
+  await waitInitialSnapshots(c);
+  await c.input('<Esc> E');
+  await c.waitScreen(s => s.includes('rule 12: Run serially.') && s.includes('claimed event 0'), 'all kinds');
+  assert.equal(await c.lua("return vim.tbl_contains(vim.tbl_map(function(m) return m.lhs end, vim.api.nvim_buf_get_keymap(0, 'n')), '10')"), false);
+  const numeric = await c.lua("local a=require('cland.actions'); local out={}; for i=1,9 do for _,v in ipairs(a.all()) do if v.id=='events:'..i then out[i]=v.title end end end; return out");
+  assert.deepEqual(numeric, ['session', 'task', 'verdict', 'suite', 'release', 'artifact', 'usage', 'topic', 'heartbeat'].map(kind => `Filter ${kind} events`));
+  await c.input(' p');
+  await c.waitScreen(s => s.includes('palette ›'), 'palette');
+  await c.input('Filter rule events');
+  await c.waitScreen(s => s.includes('Filter rule events'), 'rule filter action');
+  await c.input('<CR>');
+  await c.waitScreen(s => s.includes('kind: rule') && s.includes('rule 12: Run serially.') && !s.includes('claimed event 0'), 'rule kind filtered');
+  assert.equal(await c.lua("return require('cland.state').S.needs_you"), 0);
+  await c.lua("require('cland.events').filter({subject={kind='rule',id='12'}})");
+  await c.waitScreen(s => s.includes('subject: rule 12'), 'rule subject filter');
+  assert.deepEqual(await c.lua(`local ui=require('cland.ui'); ui.flush(); ui.load(${JSON.stringify(root)}); return require('cland.state').S.ui.events.filter.subject`), {kind:'rule',id:'12'});
+});

@@ -27,6 +27,7 @@ import { criterionRefusal } from '../tracker/criteria.ts';
 
 /** Every tool the table knows: today's spoke frames and the ones still to come. */
 export const KNOWN_TOOLS: readonly string[] = [
+  'rule.add', 'rule.edit', 'rule.retire', 'rule.list',
   'subscribe',
   'unsubscribe',
   'subscriptions',
@@ -81,12 +82,13 @@ export const SCOPES: Readonly<Record<string, readonly string[]>> = {
   'topic.create': ['own'],
 };
 
-const READS = ['subscribe', 'unsubscribe', 'subscriptions', 'who', 'history', 'status', 'task.view', 'task.list'];
+const READS = ['subscribe', 'unsubscribe', 'subscriptions', 'who', 'history', 'status', 'task.view', 'task.list', 'rule.list'];
 
 /** The table as the spec seeds it; `roles.toml` writes the same lists. */
 export const DEFAULT_PERMISSIONS: Readonly<Record<string, readonly string[]>> = {
-  aide: [ 'task.plan', 'task.create', 'task.edit', 'task.close', 'task.link', 'task.comment', 'task.claim', 'task.criterion', 'task.view', 'task.list', 'artifact.create', 'artifact.keep', 'artifact.move', 'artifact.archive', 'artifact.promote', 'send', 'topic.create', 'history', 'who', 'status'],
+  aide: [ 'rule.add', 'rule.edit', 'rule.retire', 'rule.list', 'task.plan', 'task.create', 'task.edit', 'task.close', 'task.link', 'task.comment', 'task.claim', 'task.criterion', 'task.view', 'task.list', 'artifact.create', 'artifact.keep', 'artifact.move', 'artifact.archive', 'artifact.promote', 'send', 'topic.create', 'history', 'who', 'status'],
   coordinator: [
+    'rule.add', 'rule.edit', 'rule.retire',
     'send',
     'ask',
     'ask.forward',

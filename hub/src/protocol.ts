@@ -213,15 +213,15 @@ export type NotificationKind = 'account-limited' | 'executor-fallback' | 'plan' 
 export type Inbox = { asks: InboxAsk[]; approvals: InboxApproval[]; plans: InboxPlan[]; requests: InboxRequest[]; messages: InboxMessage[]; waiting: Topic[]; needsYou: number; archiveToday?: number; archive?: InboxDeparture[] };
 
 /** Journal rows, newest first; cursors are opaque continuations over the append-only file. */
-export const EVENT_KINDS = ['session', 'task', 'verdict', 'suite', 'release', 'artifact', 'usage', 'topic', 'heartbeat'] as const;
+export const EVENT_KINDS = ['session', 'task', 'verdict', 'suite', 'release', 'artifact', 'usage', 'topic', 'heartbeat', 'rule'] as const;
 export type EventKind = typeof EVENT_KINDS[number];
-export type EventSubject = { kind: 'item' | 'session' | 'topic' | 'artifact'; id: string };
+export type EventSubject = { kind: 'item' | 'session' | 'topic' | 'artifact' | 'rule'; id: string };
 export type EventsFilter = { kinds?: EventKind[]; warnings?: boolean; subject?: EventSubject; muted?: EventSubject[] };
-export type EventRow = { count?: number; bookkeeping?: boolean; warning?: boolean; replaces?: string; firstTs?: string; id: string; ts: string; kind: EventKind; subject: EventSubject; text: string; glyph: string; item?: string; session?: string; topic?: string; artifact?: string };
+export type EventRow = { count?: number; bookkeeping?: boolean; warning?: boolean; replaces?: string; firstTs?: string; id: string; ts: string; kind: EventKind; subject: EventSubject; text: string; glyph: string; item?: string; session?: string; topic?: string; artifact?: string; rule?: string };
 export function isEventsFilter(f: unknown): boolean {
   if (f === undefined) return true;
   if (!isObject(f)) return false;
-  const subject = (s: unknown) => isObject(s) && ['item', 'session', 'topic', 'artifact'].includes(String(s.kind)) && typeof s.id === 'string' && s.id.length > 0;
+  const subject = (s: unknown) => isObject(s) && ['item', 'session', 'topic', 'artifact', 'rule'].includes(String(s.kind)) && typeof s.id === 'string' && s.id.length > 0;
   return (f.kinds === undefined || Array.isArray(f.kinds) && f.kinds.every(k => EVENT_KINDS.includes(k)))
     && (f.warnings === undefined || typeof f.warnings === 'boolean') && (f.subject === undefined || subject(f.subject))
     && (f.muted === undefined || Array.isArray(f.muted) && f.muted.every(subject));
@@ -328,6 +328,7 @@ export type ReleaseRequest = { type: 'release'; id: string; version?: string; it
 export type MergeRequest = { type: 'merge'; id: string; item: string; override?: string };
 
 export type SpokeRequest =
+  | RuleRequest
   | SuiteStart
   | SubscriptionRequest
   | MergeRequest
@@ -417,6 +418,12 @@ export function isSpokeRequest(f: Record<string, unknown>): f is SpokeRequest {
   if (f.type === 'suite.start') return isClientRequest(f);
   if (typeof f.id !== 'string') return false;
   switch (f.type) {
+    case 'rule.add':
+    case 'rule.edit':
+    case 'rule.retire':
+    case 'rule.list':
+    case 'rule.show':
+      return isClientRequest(f);
     case 'event.subscribe':
     case 'event.unsubscribe':
     case 'event.subscriptions':
@@ -514,9 +521,9 @@ export type SuiteSlotResult = { id: string; admitted: boolean; locks: string[]; 
 export type SuiteCancel = { type: 'suite.cancel'; id: string; suite?: string };
 
 export type RuleRequest =
-  | { type: 'rule.add'; id: string; text: string; scope: string; reason: string; title?: string; origin?: string }
-  | { type: 'rule.edit'; id: string; number: number; text?: string; scope?: string; reason?: string }
-  | { type: 'rule.retire'; id: string; number: number; reason: string }
+  | { type: 'rule.add'; id: string; text: string; scope: string; reason: string; title?: string; origin?: string | { topic: string; msg_id: string } }
+  | { type: 'rule.edit'; id: string; origin?: string | { topic: string; msg_id: string }; number: number; text?: string; scope?: string; reason?: string }
+  | { type: 'rule.retire'; id: string; origin?: string | { topic: string; msg_id: string }; number: number; reason: string }
   | { type: 'rule.list'; id: string; all?: boolean; role?: string }
   | { type: 'rule.show'; id: string; number: number };
 
@@ -781,7 +788,7 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
     case 'artifact.promote':
       return true;
     case 'rule.add':
-      return typeof f.text === 'string' && typeof f.scope === 'string' && typeof f.reason === 'string' && (f.title === undefined || typeof f.title === 'string') && (f.origin === undefined || typeof f.origin === 'string');
+      return typeof f.text === 'string' && typeof f.scope === 'string' && typeof f.reason === 'string' && (f.title === undefined || typeof f.title === 'string');
     case 'rule.edit':
       return Number.isSafeInteger(f.number) && Number(f.number) > 0 && ['text', 'scope', 'reason'].every(key => f[key] === undefined || typeof f[key] === 'string');
     case 'rule.retire':

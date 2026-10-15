@@ -197,7 +197,7 @@ function M.buffer()
   map('<CR>', M.open)
   map('A', function() M.load(true) end)
   map('za', M.fold)
-  for i, kind in ipairs(KINDS) do map(tostring(i), function() M.filter({ kinds = { kind } }) end) end
+  for i, kind in ipairs(KINDS) do if i > 9 then break end; map(tostring(i), function() M.filter({ kinds = { kind } }) end) end
   map('0', function() M.filter({ kinds = vim.NIL }) end)
   map('w', function() M.filter({ warnings = not prefs().filter.warnings }) end)
   map('s', M.subject)

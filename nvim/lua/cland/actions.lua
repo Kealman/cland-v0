@@ -76,7 +76,20 @@ group('items', {{'f','Next items filter'}, {'F','Previous items filter'},
 group('items', {{'gn','Now-layer items'}, {'gw','Watch-layer items'}, {'gb','Background-layer items'}, {'gA','Archived items'}})
 group('topics', {{'za','Toggle background topics'}, {'A','Show or hide archived topics'}})
 group('events', {{'<CR>', 'Open event subject'}, {'A', 'Page 200 older events'}, {'za', 'Fold or unfold event day'}, {'0', 'Show all event kinds'}, {'w', 'Toggle warning events'}, {'s', 'Filter events by subject'}, {'F', 'Clear events filter'}, {'gM', 'Mute or restore event subject'}})
-for i, kind in ipairs(require('cland.event_kinds')) do add('events', tostring(i), 'Filter ' .. kind .. ' events') end
+for i, kind in ipairs(require('cland.event_kinds')) do
+  if i > 9 then break end
+  add('events', tostring(i), 'Filter ' .. kind .. ' events')
+end
+-- All kinds remain in the palette after the numeric keys run out.
+for i, kind in ipairs(require('cland.event_kinds')) do
+  if i > 9 then
+    local selected = kind
+    M.register({id='events:kind:' .. kind, title='Filter ' .. kind .. ' events', run=function()
+      require('cland.layout').show({kind='events'}, {insert=false})
+      require('cland.events').filter({kinds={selected}})
+    end})
+  end
+end
 group('inbox', {{'za', 'Fold or unfold inbox section'}, {'e', 'Events view'}, {'r','Reply to selected inbox row'}, {'d','Decline request or mark message read'}, {'A','Show or hide seven-day inbox archive'}})
 for _, scope in ipairs({'inbox','inbox_full','thread'}) do
   for n=1,9 do add(scope, tostring(n), 'Answer selected ask with option ' .. n) end

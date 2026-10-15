@@ -78,6 +78,8 @@ async function fixture(t: TestContext, root: string, options: { deferHello?: boo
   return { ui, open, close, hub: { url: hub.url }, spawns: () => spawns, stops: () => stops, launched: () => ({ peer: launchedPeer!, frames: launchFrames, nativeInput, launchToken }) };
 }
 
+const withRules = (brief: string) => `${brief}\n\nProject rules for your role\nNo project rules apply to your role.`;
+
 test('a launch brief follows welcome and clause, uses ordinary stages, and is not recreated on reconnect or restart', async t => {
   const root = await tempProject(t);
   const first = await fixture(t, root);
@@ -89,7 +91,7 @@ test('a launch brief follows welcome and clause, uses ordinary stages, and is no
   assert.deepEqual(frames.map(frame => frame.type), ['welcome', 'deliver']);
   const input = frames[1]!.message as { text: string; digest: Array<{ id: string; text: string }> };
   assert.match(input.digest[0]!.text, /you hold the role Implementer/);
-  assert.equal(input.text, brief);
+  assert.equal(input.text, withRules(brief));
   const id = frames[1]!.id;
   const queued = await first.ui.waitFor(frame => frame.type === 'message' && (frame.message as { id: string }).id === id);
   assert.equal((queued.message as { stage: string }).stage, 'queued');
@@ -117,7 +119,7 @@ test('a launch brief follows welcome and clause, uses ordinary stages, and is no
     assert.equal((next.message as { text: string }).text, text, 'the next ordinary input is the new message, never the brief');
     reconnected.send({ type: 'ack', id: next.id });
     const history = (await f.ui.request({ type: 'topic.history', topic: 'agents' })).value as { messages: Array<{ id: string; text: string; stage?: string }> };
-    assert.deepEqual(history.messages.filter(message => message.text === brief).map(message => [message.id, message.stage]), [[id, 'injected']]);
+    assert.deepEqual(history.messages.filter(message => message.text === withRules(brief)).map(message => [message.id, message.stage]), [[id, 'injected']]);
     reconnected.close();
   };
   await verifyNoReplay(first, 'After reconnect');
@@ -138,7 +140,7 @@ test('a launch brief survives a hub restart before its first hello and is delive
 
   const second = await fixture(t, root, { deferHello: true });
   const history = (await second.ui.request({ type: 'topic.history', topic: 'agents' })).value as { messages: Array<{ id: string; text: string; stage?: string }> };
-  const recorded = history.messages.filter(message => message.text === brief);
+  const recorded = history.messages.filter(message => message.text === withRules(brief));
   assert.equal(recorded.length, 1, 'the requested brief is durable before the first hello');
   assert.equal(recorded[0]!.stage, 'queued');
   const peer = await second.open(first.launched().launchToken);
@@ -148,7 +150,7 @@ test('a launch brief survives a hub restart before its first hello and is delive
   assert.equal(frame.id, recorded[0]!.id);
   const input = frame.message as { text: string; digest: Array<{ text: string }> };
   assert.match(input.digest[0]!.text, /you hold the role Implementer/);
-  assert.equal(input.text, brief);
+  assert.equal(input.text, withRules(brief));
   peer.send({ type: 'ack', id: frame.id });
   await eventually('recovered brief injected', async () => {
     const history = (await second.ui.request({ type: 'topic.history', topic: 'agents' })).value as { messages: Array<{ id: string; stage?: string }> };
@@ -182,7 +184,7 @@ test('an unacknowledged brief retries after the current clause without the super
   assert.equal(retry.type, 'deliver');
   assert.equal(retry.id, original.frames[1]!.id, 'retries the same message, never a recreated launch brief');
   const input = retry.message as { text: string; digest?: Array<{ text: string }> };
-  assert.equal(input.text, brief);
+  assert.equal(input.text, withRules(brief));
   assert.ok(!input.digest?.some(note => note.text.includes('you hold the role Implementer')));
 });
 
@@ -211,7 +213,7 @@ test('a queued launch brief survives a session becoming an Aide and follows its 
   assert.equal(retry.type, 'deliver');
   assert.equal(retry.id, original.frames[1]!.id);
   const input = retry.message as { text: string; digest?: Array<{ text: string }> };
-  assert.equal(input.text, brief);
+  assert.equal(input.text, withRules(brief));
   assert.ok(!input.digest?.some(note => note.text.includes('you hold the role Implementer')));
 });
 
@@ -222,13 +224,13 @@ test('a brief accepted in the native first turn before hello stays injected afte
   const result = await first.ui.request({ type: 'session.launch', name: 'impl', role: 'implementer', harness: 'fake', brief });
   assert.equal(result.ok, true, result.error);
   assert.match(first.launched().nativeInput, /you hold the role Implementer/);
-  assert.ok(first.launched().nativeInput.endsWith(brief));
+  assert.ok(first.launched().nativeInput.endsWith(withRules(brief)));
   first.ui.close();
   await first.close();
 
   const second = await fixture(t, root, { deferHello: true, carried: true });
   const history = (await second.ui.request({ type: 'topic.history', topic: 'agents' })).value as { messages: Array<{ id: string; text: string; stage?: string }> };
-  const recorded = history.messages.filter(message => message.text === brief);
+  const recorded = history.messages.filter(message => message.text === withRules(brief));
   assert.equal(recorded.length, 1);
   assert.equal(recorded[0]!.stage, 'injected', 'the accepted first input is durably settled before hello');
   const peer = await second.open(first.launched().launchToken);
@@ -256,11 +258,11 @@ test('a refused launch drops its brief and releases held notes to the next succe
   assert.equal(refused.ok, false);
   assert.match(refused.error!, /fixture refused/);
   const history = (await f.ui.request({ type: 'topic.history', topic: 'agents' })).value as { messages: Array<{ text: string; stage?: string }> };
-  assert.equal(history.messages.find(message => message.text === 'Refused first brief.')?.stage, 'dropped');
+  assert.equal(history.messages.find(message => message.text === withRules('Refused first brief.'))?.stage, 'dropped');
   const next = await f.ui.request({ type: 'session.launch', name: 'impl', role: 'implementer', harness: 'fake', brief: 'Successful second brief.' });
   assert.equal(next.ok, true, next.error);
   const input = f.launched().frames[1]!.message as { text: string; digest: Array<{ text: string }> };
-  assert.equal(input.text, 'Successful second brief.');
+  assert.equal(input.text, withRules('Successful second brief.'));
   assert.ok(input.digest.some(note => note.text === 'Keep this held progress note.'), 'cancellation must not strand notes in a dropped batch');
 });
 
@@ -275,10 +277,10 @@ test('a launch refused by brief publication cannot feed its brief to a successfu
   assert.equal(current.ok, true, current.error);
   const input = f.launched().frames[1]!.message as { text: string; digest: Array<{ text: string }> };
   assert.match(input.digest[0]!.text, /you hold the role Implementer/);
-  assert.equal(input.text, 'Current launch brief.');
-  assert.ok(!input.digest.some(note => note.text === 'Refused publication brief.'));
+  assert.equal(input.text, withRules('Current launch brief.'));
+  assert.ok(!input.digest.some(note => note.text === withRules('Refused publication brief.')));
   const history = (await f.ui.request({ type: 'topic.history', topic: 'agents' })).value as { messages: Array<{ text: string; stage?: string }> };
-  assert.equal(history.messages.find(message => message.text === 'Refused publication brief.')?.stage, 'dropped');
+  assert.equal(history.messages.find(message => message.text === withRules('Refused publication brief.'))?.stage, 'dropped');
 });
 
 test('a brief cancellation error cannot skip the owned-process stop after a watch refusal', async t => {
@@ -293,7 +295,7 @@ test('a brief cancellation error cannot skip the owned-process stop after a watc
   assert.deepEqual(listed.processes, []);
   assert.equal(listed.pendingStops.length, 1, 'the failed settlement remains covered by its guarded cleanup receipt');
   const history = (await f.ui.request({ type: 'topic.history', topic: 'agents' })).value as { messages: Array<{ text: string; stage?: string }> };
-  assert.equal(history.messages.find(message => message.text === 'Cancel with the failed launch.')?.stage, 'dropped');
+  assert.equal(history.messages.find(message => message.text === withRules('Cancel with the failed launch.'))?.stage, 'dropped');
   await eventually('brief cleanup receipt retried and settled', async () => {
     const listed = (await f.ui.request({ type: 'session.list' })).value as { pendingStops: unknown[] };
     return listed.pendingStops.length === 0 || undefined;

@@ -76,7 +76,15 @@ for (const source of ['defaults', 'project'] as const) test(`${source} clause sn
     if (role === 'coordinator' || role === 'aide') assert.match(clause, /Tasks need `--size XS\|S\|M\|L\|XL`, a `## Summary` of 1–3 sentences and `--regression-of T-n`/);
     else assert.match(clause, /naming its size \(XS, S, M, L or XL\) and category/);
     if (role === 'coordinator') assert.match(clause, /The explorer's messages come from the human in General or the item's topic: the text, then `from the explorer · scope …` and one line per item \(id · kind · status · container · rank · title\)\. Act on them through the tracker\./);
-    const replyBytes = Buffer.byteLength(`pong: ${clause}`, 'utf8');
+    // Coordinator decision 8ea909f0: rulebook data and its cache guidance grow independently of the base clause.
+    const [baseClause, rulesSection] = clause.split('\n\nProject rules for your role\n');
+    assert.ok(rulesSection, `${source} ${role}: project rules section is present`);
+    if (role === 'coordinator' || role === 'aide') {
+      assert.match(rulesSection, /rule.add.*never only in a harness memory/);
+      assert.match(rulesSection, /memory that repeats a rule names its number/);
+      assert.doesNotMatch(baseClause!, /Record a rule the human states/);
+    }
+    const replyBytes = Buffer.byteLength(`pong: ${baseClause}`, 'utf8');
     assert.ok(replyBytes <= MAX_TEXT_BYTES - CLAUSE_REPLY_HEADROOM_BYTES,
       `${source} ${role}: clause reply is ${replyBytes} bytes; reserve ${CLAUSE_REPLY_HEADROOM_BYTES} below the ${MAX_TEXT_BYTES}-byte send cap`);
     assert.match(clause, /The human's own `npm test` waits in the same queue/, `${source} ${role}`);

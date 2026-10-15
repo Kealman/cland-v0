@@ -1023,15 +1023,15 @@ export class Store implements HygieneMemory {
     return state !== null && JSON.parse(state).state === 'idle';
   }
 
-  /** A queued root may have been recorded during a turn; bind its heartbeat only at an idle send. */
-  bindHeartbeatForTurn(messageId: string, session: string): void {
+  /** A queued root may have been recorded during a turn; bind its idle-only events at the next idle send. */
+  bindTurnEvents(messageId: string, session: string): void {
     const row = this.#db.prepare(`select m.seq from messages m join deliveries d on d.message_id = m.id
       where m.id = ? and d.session = ? and d.state = 'queued' and d.digest_id is null
       and coalesce(m.notice, '') != 'role'`).get(messageId, session) as Row | undefined;
     if (!row || !this.#heartbeatIdle(session)) return;
     this.#db.prepare(`update deliveries set digest_id = ? where session = ? and state = 'queued'
       and digest_id is null and message_id in (select id from messages where notice = 'event'
-      and json_extract(notice_detail, '$.event') = 'heartbeat'
+      and json_extract(notice_detail, '$.event') in ('heartbeat', 'rule')
       and json_extract(notice_detail, '$.digest') = 'turn' and seq < ?)`).run(messageId, session, row.seq as number);
   }
 
@@ -1039,7 +1039,7 @@ export class Store implements HygieneMemory {
     this.#db.prepare(`update deliveries set digest_id = ?
       where session = ? and state = 'queued' and digest_id is null and message_id in
       (select id from messages where (notice = 'progress' or (notice = 'event' and coalesce(json_extract(notice_detail, '$.digest'), 'turn') = 'turn')) and seq < ?
-      and (json_extract(notice_detail, '$.event') is not 'heartbeat' or ?))`).run(messageId, session, seq, this.#heartbeatIdle(session) ? 1 : 0);
+      and (json_extract(notice_detail, '$.event') not in ('heartbeat', 'rule') or json_extract(notice_detail, '$.event') is null or ?))`).run(messageId, session, seq, this.#heartbeatIdle(session) ? 1 : 0);
   }
 
   /**

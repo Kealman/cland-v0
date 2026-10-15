@@ -455,7 +455,7 @@ test('roles.toml is the table: an edited permission list is in force on the next
   // the human gives the Reviewer the human's ear and closing, and takes `who` away
   const file = join(root, '.cland', 'roles.toml');
   const text = await readFile(file, 'utf8');
-  const reviewerList = 'tools = ["send:agents", "task.hold", "task.comment:verdict", "task.criterion:verify", "artifact.create", "artifact.keep", "artifact.move", "artifact.archive", "subscribe", "unsubscribe", "subscriptions", "who", "history", "status", "task.view", "task.list", "task.plan:show"]';
+  const reviewerList = 'tools = ["send:agents", "task.hold", "task.comment:verdict", "task.criterion:verify", "artifact.create", "artifact.keep", "artifact.move", "artifact.archive", "subscribe", "unsubscribe", "subscriptions", "who", "history", "status", "task.view", "task.list", "rule.list", "task.plan:show"]';
   assert.ok(text.includes(reviewerList));
   const edited = text.replace(reviewerList, 'tools = ["send:agents", "send:human", "task.comment:verdict", "task.close", "history", "status"]');
   await writeFile(file, edited);

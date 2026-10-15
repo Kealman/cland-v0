@@ -37,7 +37,7 @@ for (const preassigned of [false, true]) test(`an Implementer begins on its laun
   assert.equal(log.split('\n').filter(line => line.includes('turn/start input')).length, 1);
   assert.equal(log.split('\n').filter(line => line.includes('turn/start toolOutput')).length, 0, 'no second brief injection');
   const history = (await ui.request({ type: 'topic.history', topic: 'agents' })).value as { messages: Array<{ id: string; text: string; stage?: string }> };
-  const recorded = history.messages.find(m => m.text === brief);
+  const recorded = history.messages.find(m => m.text === `${brief}\n\nProject rules for your role\nNo project rules apply to your role.`);
   assert.equal(recorded?.stage, 'injected');
   await eventually('carried brief stages journalled', async () => {
     assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
@@ -57,7 +57,7 @@ test('an early Codex hello does not inject its brief when the native first turn 
   assert.equal(refused.ok, false);
   assert.match(refused.error!, /model refused the first turn/);
   const history = (await ui.request({ type: 'topic.history', topic: 'agents' })).value as { messages: Array<{ id: string; text: string; stage?: string }> };
-  const recorded = history.messages.find(message => message.text === brief);
+  const recorded = history.messages.find(message => message.text === `${brief}\n\nProject rules for your role\nNo project rules apply to your role.`);
   assert.equal(recorded?.stage, 'dropped');
   assert.ok(!ui.frames.some(frame => frame.type === 'delivery' && frame.message === recorded!.id && frame.stage === 'injected'));
   await eventually('refused brief journalled as dropped', async () => {

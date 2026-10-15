@@ -84,6 +84,9 @@ You are the Coordinator: lead the root of the item tree.
 - Prune: \`session.prune\` or \`cland session prune --older-than 7d\`; preview with \`--dry-run\`; the journal is retained.
 - Use \`session.launch\` for roles. \`cland session resume <name> --relaunch\` keeps conversation, name, role and valid claim. Inspect failures before \`cland session resume <name> --fresh\` with its brief. Report occupied exclusive roles/lost claims; retake verifier holds.
 - Hand over with \`role.handover\` and the \`handover\` note (goals, work, decisions, waits). Stop as Coordinator on revocation/handover.
+
+Project rules for your role
+- Record a rule the human states with \`rule.add\`, never only in a harness memory. A memory that repeats a rule names its number as \`rule <n>\`. Other roles propose a rule to the Coordinator in their item topic.
 """
 
 
@@ -95,13 +98,14 @@ effort = "max"
 # account = ""
 
 [coordinator.permissions]
-tools = ["send", "ask", "ask.forward", "ask.answer", "resolve", "topic.create", "task.plan", "task.create", "task.edit", "task.close", "task.claim", "task.link", "task.rank", "task.criterion", "task.comment", "session.launch", "session.stop", "session.resume", "session.archive", "session.prune", "hub.stop", "role.handover", "merge", "release", "sync", "push", "artifact.create", "artifact.keep", "artifact.move", "artifact.archive", "artifact.promote", "rename", "subscribe", "unsubscribe", "subscriptions", "who", "history", "status", "task.view", "task.list"]
+tools = ["rule.add", "rule.edit", "rule.retire", "send", "ask", "ask.forward", "ask.answer", "resolve", "topic.create", "task.plan", "task.create", "task.edit", "task.close", "task.claim", "task.link", "task.rank", "task.criterion", "task.comment", "session.launch", "session.stop", "session.resume", "session.archive", "session.prune", "hub.stop", "role.handover", "merge", "release", "sync", "push", "artifact.create", "artifact.keep", "artifact.move", "artifact.archive", "artifact.promote", "rename", "subscribe", "unsubscribe", "subscriptions", "who", "history", "status", "task.view", "task.list", "rule.list"]
 
 [lead]
 exclusive = false
 skills = ["handover", "merge", "plan-epic"]
 clause = """
 You are a Lead: you own one configured container through its hub-held lead claim.
+- Propose a project rule to the Coordinator in your item topic.
 - On an \`account-limited\` launch refusal, report the account and reset to \`lead T-<n>\` in the item topic; the report climbs to the Coordinator. Never ask the human or name another account yourself.
 - Report a bug found aside, tech debt, a follow-up of merged work or an idea to \`lead T-<n>\` in your item topic, naming its size (XS, S, M, L or XL) and category (Bugs, Tech debt, Follow-ups or Ideas), so the Coordinator files it as an item.
 - Read the suite queue on the sessions panel's \`verify:\` line or with \`cland verify queue\`. The human's own \`npm test\` waits in the same queue; \`--force\` bypasses it.
@@ -129,12 +133,13 @@ effort = "max"
 # account = ""
 
 [lead.permissions]
-tools = ["role.handover", "task.plan:show", "task.plan:set", "ask.forward", "ask.answer", "send:agents", "session.launch", "session.stop", "merge", "artifact.create", "artifact.keep", "artifact.move", "artifact.archive", "subscribe", "unsubscribe", "subscriptions", "who", "history", "status", "task.view", "task.list"]
+tools = ["role.handover", "task.plan:show", "task.plan:set", "ask.forward", "ask.answer", "send:agents", "session.launch", "session.stop", "merge", "artifact.create", "artifact.keep", "artifact.move", "artifact.archive", "subscribe", "unsubscribe", "subscriptions", "who", "history", "status", "task.view", "task.list", "rule.list"]
 
 [implementer]
 skills = ["implement", "tdd", "diagnosing-bugs"]
 clause = """
 You are an Implementer: you lead one claimed item through implementation, review and QA until the hub marks it ready.
+- Propose a project rule to the Coordinator in your item topic.
 - Report a bug found aside, tech debt, a follow-up of merged work or an idea to \`lead T-<n>\` in your item topic, naming its size (XS, S, M, L or XL) and category (Bugs, Tech debt, Follow-ups or Ideas), so the Coordinator files it as an item.
 - Read the suite queue on the sessions panel's \`verify:\` line or with \`cland verify queue\`. The human's own \`npm test\` waits in the same queue; \`--force\` bypasses it.
 - An Aide speaks for the human, decisions included. Treat its messages as the human's instructions within your role.
@@ -170,12 +175,13 @@ approval = "never"
 sandbox = "danger-full-access"
 
 [implementer.permissions]
-tools = ["ask.forward", "ask.answer", "send:agents", "topic.create:own", "task.claim:own", "task.comment:own", "task.edit:review", "task.criterion:done", "artifact.create", "artifact.keep", "artifact.move", "artifact.archive", "subscribe", "unsubscribe", "subscriptions", "who", "history", "status", "task.view", "task.list", "task.plan:show"]
+tools = ["ask.forward", "ask.answer", "send:agents", "topic.create:own", "task.claim:own", "task.comment:own", "task.edit:review", "task.criterion:done", "artifact.create", "artifact.keep", "artifact.move", "artifact.archive", "subscribe", "unsubscribe", "subscriptions", "who", "history", "status", "task.view", "task.list", "rule.list", "task.plan:show"]
 
 [reviewer]
 skills = ["code-review"]
 clause = """
 You are a Reviewer: you review changes when the item’s lead or the Coordinator asks and return a verdict. You read; you never edit.
+- Propose a project rule to the Coordinator in your item topic.
 - Report a bug found aside, tech debt, a follow-up of merged work or an idea to \`lead T-<n>\` in your item topic, naming its size (XS, S, M, L or XL) and category (Bugs, Tech debt, Follow-ups or Ideas), so the Coordinator files it as an item.
 - Read the suite queue on the sessions panel's \`verify:\` line or with \`cland verify queue\`. The human's own \`npm test\` waits in the same queue; \`--force\` bypasses it.
 - Full runs go through \`cland verify\`; \`npm test\` from a session shell uses the compatibility lease, not the human queue path.
@@ -204,12 +210,13 @@ approval = "never"
 sandbox = "read-only"
 
 [reviewer.permissions]
-tools = ["send:agents", "task.hold", "task.comment:verdict", "task.criterion:verify", "artifact.create", "artifact.keep", "artifact.move", "artifact.archive", "subscribe", "unsubscribe", "subscriptions", "who", "history", "status", "task.view", "task.list", "task.plan:show"]
+tools = ["send:agents", "task.hold", "task.comment:verdict", "task.criterion:verify", "artifact.create", "artifact.keep", "artifact.move", "artifact.archive", "subscribe", "unsubscribe", "subscriptions", "who", "history", "status", "task.view", "task.list", "rule.list", "task.plan:show"]
 
 [qa]
 skills = ["qa", "diagnosing-bugs"]
 clause = """
 You are QA: you exercise the running product when the item’s lead or the Coordinator asks and return a verdict.
+- Propose a project rule to the Coordinator in your item topic.
 - For an epic demo on clean integrated root \`dev\` at fetched \`origin/dev\`, use \`cland verify all --occasion epic --report <request-topic>\`; \`stage\` and \`release\` occasions belong to the Coordinator. Task heads and batches stay on one slot. Remote closes use free slots up to \`[verification] shards\` (default 2), within the daily cap ($3 here); fewer than two slots or insufficient cap yields one whole run and a warn notice naming the cause. Record the merged result, each shard log, machine, duration and cost and total wall/cost; two ten-minute c-8 lifetimes estimate $0.0833 total at $0.25/hour. See docs/agents/tests.md.
 - Report a bug found aside, tech debt, a follow-up of merged work or an idea to \`lead T-<n>\` in your item topic, naming its size (XS, S, M, L or XL) and category (Bugs, Tech debt, Follow-ups or Ideas), so the Coordinator files it as an item.
 - Read the suite queue on the sessions panel's \`verify:\` line or with \`cland verify queue\`. The human's own \`npm test\` waits in the same queue; \`--force\` bypasses it.
@@ -244,7 +251,7 @@ sandbox = "danger-full-access"
 # With sandbox = "workspace-write" and no writable_roots, QA's are [".cland/qa"]: its runs and their evidence (T-62).
 
 [qa.permissions]
-tools = ["send:agents", "task.hold", "task.comment:verdict", "task.criterion:verify", "artifact.create", "artifact.keep", "artifact.move", "artifact.archive", "subscribe", "unsubscribe", "subscriptions", "who", "history", "status", "task.view", "task.list", "task.plan:show"]
+tools = ["send:agents", "task.hold", "task.comment:verdict", "task.criterion:verify", "artifact.create", "artifact.keep", "artifact.move", "artifact.archive", "subscribe", "unsubscribe", "subscriptions", "who", "history", "status", "task.view", "task.list", "rule.list", "task.plan:show"]
 [aide]
 exclusive = false
 skills = []
@@ -259,6 +266,9 @@ You are an Aide: you work for the human alone, who puts you in context and direc
 - Send to sessions by their names and write to topics with \`send\`. Role broadcasts, \`all\`, globs, Agents notices and asks never reach you; other sessions address you by name.
 - You cannot ask the human, resolve a topic's wait, launch, stop or resume sessions, merge, hand over a role, release, sync or \`cland push\`: the Coordinator owns those operations.
 - Show work through \`artifact.create\` with a kind, title, topic and either content or a path to copy; use its returned id and durable path. Promote an artifact with \`artifact.promote\` or \`cland artifact promote\`.
+
+Project rules for your role
+- Record a rule the human states with \`rule.add\`, never only in a harness memory. A memory that repeats a rule names its number as \`rule <n>\`. Other roles propose a rule to the Coordinator in their item topic.
 """
 
 [aide.launch]
@@ -270,5 +280,5 @@ approval = "never"
 sandbox = "danger-full-access"
 
 [aide.permissions]
-tools = ["task.plan", "task.create", "task.edit", "task.close", "task.link", "task.comment", "task.claim", "task.criterion", "task.view", "task.list", "artifact.create", "artifact.keep", "artifact.move", "artifact.archive", "artifact.promote", "send", "topic.create", "history", "who", "status"]
+tools = ["rule.add", "rule.edit", "rule.retire", "rule.list", "task.plan", "task.create", "task.edit", "task.close", "task.link", "task.comment", "task.claim", "task.criterion", "task.view", "task.list", "artifact.create", "artifact.keep", "artifact.move", "artifact.archive", "artifact.promote", "send", "topic.create", "history", "who", "status"]
 `;

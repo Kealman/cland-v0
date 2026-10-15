@@ -22,6 +22,9 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { CallToolRequestSchema, ListToolsRequestSchema, type Notification } from '@modelcontextprotocol/sdk/types.js';
 import { INSTRUCTIONS } from './instructions.ts';
 import { Forbidden, HubClient, Refused, REQUEST_TIMEOUT_MS, WELCOME_TIMEOUT_MS } from './hub-client.ts';
+import { RULE_TOOLS, RULE_TOOL_NAMES } from './rule-tools.ts';
+import type { RuleRequest } from '../protocol.ts';
+import type { DistributiveOmit } from './hub-client.ts';
 import { TASK_TOOLS, TASK_TOOL_NAMES, taskFrame } from './task-tools.ts';
 import { VERIFY_OCCASIONS, KEEPALIVE_MS, SEND_KINDS, isSendKind, type HandoverNote, type Message, type SendOutcome, type TopicRef } from '../protocol.ts';
 import { envelope } from '../adapters/contract.ts';
@@ -312,7 +315,7 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env): Promise<Sp
     ? 'cland hub connection skipped: no CLAND_SESSION_NAME, mapped session role or hub launch credential — start the session through cland, or set CLAND_SESSION_NAME to a name assigned with `cland role set`'
     : null;
 
-  server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: [...TOOLS, ...TASK_TOOLS] }));
+  server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: [...TOOLS, ...TASK_TOOLS, ...RULE_TOOLS] }));
   server.setRequestHandler(CallToolRequestSchema, async (req) => {
     const args = (req.params.arguments ?? {}) as Record<string, unknown>;
     if (!hub) return text({ ok: false, error: skipped ?? notConfigured }, true);
@@ -467,6 +470,10 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env): Promise<Sp
           return text({ ok: true, ...value });
         }
         default:
+          if (RULE_TOOL_NAMES.has(req.params.name)) {
+            const value = await hub.request({ ...args, type: req.params.name } as DistributiveOmit<RuleRequest, 'id'>);
+            return text({ ok: true, ...value as Record<string, unknown> });
+          }
           if (TASK_TOOL_NAMES.has(req.params.name)) {
             const value = (await hub.request(taskFrame(req.params.name, args))) as Record<string, unknown>;
             return text({ ok: true, ...value });

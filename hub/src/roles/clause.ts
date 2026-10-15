@@ -3,7 +3,17 @@
 // structured fields.
 import { ROLE_LABELS, withRole } from '../names.ts';
 import type { RoleDefinition } from './config.ts';
+import type { Rule } from '../rules/rulebook.ts';
 import type { CrewConfig } from '../crew.ts';
+
+export const PROJECT_RULES_HEADING = 'Project rules for your role';
+
+/** roles.toml may end its clause with guidance for the data-bearing rules section. */
+export function roleClauseSections(clause: string): { base: string; guidance: string } {
+  const marker = `\n\n${PROJECT_RULES_HEADING}\n`;
+  const at = clause.indexOf(marker);
+  return at < 0 ? { base: clause, guidance: '' } : { base: clause.slice(0, at), guidance: clause.slice(at + marker.length).trim() };
+}
 
 export function staffingClause(role: string, crew: CrewConfig): string {
   const rule = crew.crew[role];
@@ -23,7 +33,7 @@ export function staffingClause(role: string, crew: CrewConfig): string {
 export function clauseText(name: string, role: string, definition: RoleDefinition | undefined): string {
   const label = ROLE_LABELS[role] ?? role;
   const lines = [`cland hub: you hold the role ${label} in this project, shown to others as ${withRole(name, role)}. This is your role clause; it stays in force until the hub tells you your role changed.`, ''];
-  lines.push(definition?.clause || `(roles.toml gives the ${label} no clause.)`);
+  lines.push(roleClauseSections(definition?.clause ?? '').base || `(roles.toml gives the ${label} no clause.)`);
   if (definition?.skills.length) lines.push('', `Skills for this role: ${definition.skills.join(', ')}.`);
   return lines.join('\n');
 }
@@ -31,4 +41,11 @@ export function clauseText(name: string, role: string, definition: RoleDefinitio
 export function revokedText(name: string, previous: string | null, reason: string): string {
   const label = previous ? (ROLE_LABELS[previous] ?? previous) : 'your role';
   return `cland hub: ${name} no longer holds the role ${label} (${reason}). Stop acting as ${label}: take no new work in it and send nothing on its behalf. Wait until the human assigns you a role again.`;
+}
+
+/** The same current rule list closes both the role clause and the launch brief. */
+export function projectRulesText(role: string, rules: readonly Rule[], definition?: RoleDefinition): string {
+  const active = rules.filter(rule => rule.status === 'active' && (rule.scope === 'all' || rule.scope.includes(role))).sort((a, b) => a.number - b.number);
+  const { guidance } = roleClauseSections(definition?.clause ?? '');
+  return [PROJECT_RULES_HEADING, ...(guidance ? [guidance] : []), ...(active.length ? active.map(rule => `rule ${rule.number}: ${rule.text} (reason: ${rule.reason})`) : ['No project rules apply to your role.'])].join('\n');
 }

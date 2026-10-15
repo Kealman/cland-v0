@@ -9,6 +9,7 @@ import { parseItemReference } from '../tracker/prefixes.ts';
 import { normalizeId, idNumber } from '../tracker/item.ts';
 // The hub's core: presence, names, routing and store-and-forward. Transport-free, so the network
 // edge (`./server.ts`) is one thin layer over it.
+import type { Rule } from '../rules/rulebook.ts';
 import type { RulebookFile } from '../rules/file.ts';
 import { crewSummary, type CrewConfig, type CrewSource } from '../crew.ts';
 import type { Resumed } from './budget.ts';
@@ -48,7 +49,7 @@ import {
 } from '../protocol.ts';
 import { generatedName, nameRefusal, ROLE_LABELS, ROLE_NAMES, withRole, isNodeLeadRole } from '../names.ts';
 import type { RolesSource } from '../roles/config.ts';
-import { clauseText, revokedText, staffingClause } from '../roles/clause.ts';
+import { clauseText, projectRulesText, PROJECT_RULES_HEADING, roleClauseSections, revokedText, staffingClause } from '../roles/clause.ts';
 import { isRoleRecord, noteText, renderNote, type PendingClaims, type RoleRecord } from '../roles/note.ts';
 import { resolveTag } from '../address.ts';
 import { decide, DEFAULT_PERMISSIONS } from '../roles/permissions.ts';
@@ -187,6 +188,7 @@ const ROLE_NOTICE = 'role';
 export class HubCore {
   readonly crew: CrewSource | undefined;
   readonly rules: RulebookFile | undefined;
+  readonly #unsubscribeRules: (() => void) | undefined;
   readonly #rulebookUiUnsubscribe: (() => void) | undefined;
   refreshVisibility(): void { this.#emit({ type: 'visibility' }); }
 
@@ -198,10 +200,47 @@ export class HubCore {
     }
   }
 
+  #rulesChanged(rules: readonly Rule[], previous: readonly Rule[]): void {
+    const inScope = (rule: Rule | undefined, role: string | null) => !!rule && role !== null && (rule.scope === 'all' || rule.scope.includes(role));
+    const sessions = new Map([...this.#live.values()].filter(c => {
+      const process = this.#heartbeatProcesses.get(c.sessionId);
+      return !process || process.status === 'running';
+    }).map(c => [c.name, c.role]));
+    for (const process of this.#heartbeatProcesses.values()) {
+      if (process.status === 'running') sessions.set(process.name, this.#store.roleOf(process.name));
+    }
+    for (const number of new Set([...previous, ...rules].map(rule => rule.number))) {
+      const old = previous.find(rule => rule.number === number);
+      const current = rules.find(rule => rule.number === number);
+      if (JSON.stringify(old) === JSON.stringify(current)) continue;
+      const rule = current ?? old!;
+      const scope = rule.scope === 'all' ? 'all' : rule.scope.join(', ');
+      const retired = `rule ${number} retired (scope: ${scope}; reason: ${rule.reason}${current ? '' : '; removed from rulebook'})`;
+      const active = `rule ${number}: ${rule.text} (scope: ${scope}; reason: ${rule.reason})`;
+      const text = current?.status === 'active' ? active : retired;
+      this.#store.transaction(() => {
+        const groups = new Map<string, string[]>();
+        for (const [name, role] of sessions) {
+          if (!inScope(current, role) && !inScope(old, role)) continue;
+          const body = current?.status === 'active' && inScope(current, role) ? active : retired;
+          groups.set(body, [...(groups.get(body) ?? []), name]);
+        }
+        for (const [body, to] of groups) {
+          const message = this.#recordNotice(AGENTS.id, { kind: 'event', to, text: body, detail: { event: 'rule', subject: { rule: String(number) }, digest: 'turn', rule: number, scope: rule.scope, reason: rule.reason, retired: body === retired } }, new Set(to));
+          if (message) this.#afterCommit(() => this.#publishNotice(message));
+        }
+        // One row per change, independent of how many sessions receive it.
+        this.#afterCommit(() => this.#log({ event: 'event-announced', kind: 'rule', subject: { rule: String(number) }, text }));
+      });
+    }
+  }
+
   roleDefinition(role: string) {
     const definition = this.#roles?.get().get(role);
     if (!definition || !this.crew) return definition;
-    return { ...definition, clause: `${definition.clause}\n\n${staffingClause(role, this.crew.get())}` };
+    const { base, guidance } = roleClauseSections(definition.clause);
+    const section = guidance ? `\n\n${PROJECT_RULES_HEADING}\n${guidance}` : '';
+    return { ...definition, clause: `${base}\n\n${staffingClause(role, this.crew.get())}${section}` };
   }
 
   deliverReuseBrief(message: Message): void {
@@ -319,6 +358,7 @@ export class HubCore {
     this.#roles = options.roles ?? null;
     this.crew = options.crew;
     this.rules = options.rules;
+    this.#unsubscribeRules = this.rules?.subscribe((rules, previous) => this.#rulesChanged(rules, previous));
     this.#rulebookUiUnsubscribe = this.rules?.subscribe(rules => this.#emit({ type: 'rules.changed', rules }));
     this.#heartbeatMs = options.heartbeatMs;
     this.#heartbeatRunTimeoutMs = options.heartbeatRunTimeoutMs ?? 4500000;
@@ -403,6 +443,7 @@ export class HubCore {
     this.#closed = true;
     this.#rulebookUiUnsubscribe?.();
     clearInterval(this.#heartbeatTimer);
+    this.#unsubscribeRules?.();
     if (this.#presenceImmediate) clearImmediate(this.#presenceImmediate);
     this.#presenceImmediate = null;
     if (this.#journalImmediate) clearImmediate(this.#journalImmediate);
@@ -2042,7 +2083,7 @@ export class HubCore {
   #recordClause(c: Connection, reason: string, previous?: string | null, injected = false, extra: Pick<RoleClause, 'reason' | 'to'> = {}): string | null {
     if (!this.#roles) return null;
     const definition = c.role !== null ? this.roleDefinition(c.role) : undefined;
-    const clause: RoleClause = c.role !== null ? { role: c.role, clause: definition?.clause ?? '', skills: definition?.skills ?? [] } : { role: null, clause: '', skills: [] };
+    const clause: RoleClause = c.role !== null ? { role: c.role, clause: roleClauseSections(definition?.clause ?? '').base, skills: definition?.skills ?? [] } : { role: null, clause: '', skills: [] };
     Object.assign(clause, extra);
     let text = c.role !== null ? clauseText(c.name, c.role, definition) : revokedText(c.name, previous ?? null, reason);
     // the role came with a note for this holder (#31): it rides with the clause, at the handover and on every reconnect
@@ -2055,6 +2096,11 @@ export class HubCore {
     }
     // kept on a new role after a handover (then: implementer): which role went where
     if (c.role !== null && extra.reason === 'handover' && previous) text = `cland hub: you handed the role ${ROLE_LABELS[previous] ?? previous} over to ${extra.to ?? 'another session'}: stop acting as ${ROLE_LABELS[previous] ?? previous}.\n\n${text}`;
+    if (c.role !== null) {
+      const rules = projectRulesText(c.role, this.rules?.get() ?? [], definition);
+      text += `\n\n${rules}`;
+      clause.clause += `\n\n${rules}`;
+    }
     const superseded = this.#store.dropNotices(c.name, ROLE_NOTICE);
     const message: Message = { id: randomUUID(), from: 'hub', fromKind: 'hub', via: 'hub', to: [c.name], text, ts: this.#now().toISOString() };
     this.#record(message, [{ session: c.name, state: injected ? 'injected' : 'queued' }], this.#now().getTime(), ROLE_NOTICE);
@@ -2119,7 +2165,7 @@ export class HubCore {
   #sendTo(c: Connection, message: Message): boolean {
     if (message.detail?.event === 'heartbeat' && this.sessionState(c.sessionId) !== 'idle') return false;
     if (isHeldDelivery(message)) return false;
-    if (message.kind !== 'role' && this.sessionState(c.sessionId) === 'idle') this.#store.bindHeartbeatForTurn(message.id, c.name);
+    if (message.kind !== 'role' && this.sessionState(c.sessionId) === 'idle') this.#store.bindTurnEvents(message.id, c.name);
     const clause = this.#roleNotices.get(message.id);
     return clause ? c.deliverRole(message, clause) : c.deliver(this.#resolveAttachments(this.#store.deliveryMessage(message.id, c.name) ?? message));
   }

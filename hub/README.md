@@ -513,6 +513,31 @@ the malformed file until it is repaired. The protocol frames are `rule.add`,
 `rule.edit`, `rule.retire`, `rule.list` and `rule.show`; writes return `{ rule }`
 and listing returns `{ rules }` with every field.
 
+Every role clause ends with **Project rules for your role**: active rules in scope,
+in number order, as `rule <n>: <text> (reason: <reason>)`, or
+`No project rules apply to your role.` The launch brief ends with the same list.
+Retired rules are omitted. A reconnect rebuilds the clause from the current rulebook. The Coordinator and Aide keep their cache guidance at the start of the rules section in `roles.toml`; the hub places that section after staffing, skills and handover notes. The fixed clause-headroom check covers only the base instructions: project rules can grow, and role-event delivery carries the complete section even beyond the send tool's 8192-byte cap.
+
+The spoke exposes `rule.add`, `rule.edit`, `rule.retire` and `rule.list`.
+Write arguments match the CLI (`number` for edit/retire), plus `origin`.
+A Coordinator must supply `{ topic, msg_id }` naming the existing human message
+that stated the change; missing, agent-written or wrong-topic origins return
+`forbidden` with a reason. The stored origin is `message:<topic>/<msg_id>`.
+An Aide's tool writes always record `session:<name>`. Other roles are refused
+and propose rules to the Coordinator in their item topic. Every role can call
+`rule.list` with optional `all` and `role`. Each tool edit or retirement records
+its own authorized origin; ordinary shell edits preserve the existing origin.
+A Coordinator or Aide records a stated rule with `rule.add`, never only in harness
+memory; a memory repeating the rule names its number.
+
+Each added, edited or retired rule (including a valid hand edit or merge) produces
+one `rule` event row and a direct delivery to each running session in scope,
+including Aides. No subscription is needed. The full rule text, scope and reason,
+or retirement and reason, wait with `digest: turn` until the next turn; they never
+steer a running turn or add a needs-you. Removing a role from the scope sends that
+role the retirement form. Numeric event filters remain `1`–`9`; all ten kinds,
+including `rule`, have palette filters.
+
 ## The Agents record, the journal and hygiene
 
 **Agents** (spec 4.5, decision #7) is the project's record of what agents do with each other. Every message a session sends to other sessions lands there; one that names another topic is written there and referenced in Agents by an `agent-message` notice (below), its text not repeated. So does every lifecycle event, as a hub notice: a message `from` `hub`, `fromKind` `hub`, addressing nobody, with a `kind` and its facts in `detail`.
@@ -1073,11 +1098,11 @@ The Unix socket speaks the hub's frames as JSON lines, through the same dispatch
 
 `events.list` reads `.cland/journal.jsonl` backwards in 32 KiB blocks, retaining the selected page, coalescing-window metadata and the partial record at a block boundary. It reads far enough to finish the selected equal-event groups; sparse filters and dense bursts can require more blocks. `limit` is a positive integer, defaults to 200 and is capped at 200. Pass the returned `before` unchanged for the next page; new appends cannot repeat or skip rows behind that cursor. Cursors are opaque: when interleaved equal-event groups cross a page boundary, the continuation carries the byte position and group exclusions. `more` says whether another usable row remains. Invalid cursors are refused; malformed records are skipped. The frame waits for accepted journal appends before reading.
 
-An `EventRow` is `{id, ts, kind, subject: {kind, id}, glyph, text, item?, session?, topic?, artifact?, bookkeeping?, warning?, count?, firstTs?, replaces?}`. The nine event kinds are session, task, verdict, suite, release, artifact, usage, topic and heartbeat; a subject is an item, session, topic or artifact. Navigation references are present where known. A subscribed UI receives each new row as `{"type":"event","row":EventRow}` through the existing log tap, with the same newest-event id and classification as the page. A coalesced live row carries `replaces` naming the prior row id; clients replace that row rather than prepending a duplicate. Announced events are journaled once with their text and subject even without session subscribers. Suite result records include their branch, item, outcome and counts; notification journal records retain their subject and verdict result.
+An `EventRow` is `{id, ts, kind, subject: {kind, id}, glyph, text, item?, session?, topic?, artifact?, bookkeeping?, warning?, count?, firstTs?, replaces?}`. The ten event kinds are session, task, verdict, suite, release, artifact, usage, topic, heartbeat and rule; a subject is an item, session, topic, artifact or rule (its number as a string). Navigation references are present where known. A subscribed UI receives each new row as `{"type":"event","row":EventRow}` through the existing log tap, with the same newest-event id and classification as the page. A coalesced live row carries `replaces` naming the prior row id; clients replace that row rather than prepending a duplicate. Announced events are journaled once with their text and subject even without session subscribers. Suite result records include their branch, item, outcome and counts; notification journal records retain their subject and verdict result.
 
 Bookkeeping launches, resumes, stops, claims, status moves, criterion marks and topic closes carry `bookkeeping: true`. Not-clear verdicts, deaths, configured promotions to now and failed suites on `dev` carry `warning: true` and `glyph: "⚠"`; a failed task-branch suite is ordinary. Heartbeat firings retain separate rows. Other equal kind/subject/text events whose consecutive occurrences are within 60 seconds coalesce, even when other events interleave. `count` is their multiplicity and `firstTs` the oldest occurrence; the row's timestamp and id are the newest occurrence. Coalescing crosses page boundaries without repeats. Startup restores recent coalesced groups from the journal tail before announcements begin, including groups beyond the first page, so a first equal event after restart replaces the restored row. Optional restoration failures are logged; the journal retains its error and the normal stop path still rejects while releasing the project lock. Pending inbox approval notices and waiting-topic events are omitted; asks, requests and messages are not translated into event rows. Follow-up events such as plan approval can appear.
 
-`filter` accepts `kinds` (any of the nine kinds), `warnings: true`, `subject: {kind, id}` and `muted: [{kind, id}]`. A subject is an item (with descendants), session, topic or artifact; navigation references also match subject filters. The cap applies to matching, coalesced rows. These mutes affect only the response; they do not write the hub's visibility preferences. The workbench owns `events.filter`, `events.muted` and `events.last_look` in `.cland/ui.json` under the existing shared lock. The inbox events line uses an unfiltered newest-page count, independently of needsYou and the selected filter.
+`filter` accepts `kinds` (any of the ten kinds), `warnings: true`, `subject: {kind, id}` and `muted: [{kind, id}]`. A subject is an item (with descendants), session, topic, artifact or rule; navigation references also match subject filters. The cap applies to matching, coalesced rows. These mutes affect only the response; they do not write the hub's visibility preferences. The workbench owns `events.filter`, `events.muted` and `events.last_look` in `.cland/ui.json` under the existing shared lock. The inbox events line uses an unfiltered newest-page count, independently of needsYou and the selected filter.
 
 Usable historical launch, stop, death, handover, claim, merge, topic, release and notification records are translated too. Older periods may lack suite and artifact rows: there is no backfill from `hub.db`. Usage events currently require a subscription threshold crossing; no default threshold is added, so that kind may be empty.
 

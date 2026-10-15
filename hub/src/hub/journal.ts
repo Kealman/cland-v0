@@ -438,7 +438,7 @@ export function eventRow(r: JournalRecord, offset = ''): EventRow | null {
     if (!announced) return null;
     kind = r.kind === 'session.state' ? 'session' : r.kind === 'task' && r.verdict ? 'verdict' : r.kind as EventKind;
     if (r.lifecycle === 'waiting for approval') return null;
-    subject = artifact ? { kind: 'artifact', id: artifact } : announced.item ? { kind: 'item', id: announced.item } : announced.session ? { kind: 'session', id: announced.session } : announced.topic ? { kind: 'topic', id: announced.topic } : undefined;
+    subject = announced.rule ? { kind: 'rule', id: announced.rule } : artifact ? { kind: 'artifact', id: artifact } : announced.item ? { kind: 'item', id: announced.item } : announced.session ? { kind: 'session', id: announced.session } : announced.topic ? { kind: 'topic', id: announced.topic } : undefined;
   } else if (r.event === 'notification') {
     kind = r.kind === 'executor-fallback' ? 'suite' : r.kind === 'verdict' ? 'verdict' : r.kind === 'release' ? 'release' : r.kind === 'plan' ? 'task' : 'session';
     subject = item ? { kind: 'item', id: item } : session ? { kind: 'session', id: session } : undefined;
@@ -470,7 +470,7 @@ export function eventRow(r: JournalRecord, offset = ''): EventRow | null {
       text ??= `${id} ${r.to ?? r.status ?? 'created'}`;
     } else return null;
   }
-  if (!subject || !text || !['session','task','verdict','suite','release','artifact','usage','topic','heartbeat'].includes(kind)) return null;
+  if (!subject || !text || !['session','task','verdict','suite','release','artifact','usage','topic','heartbeat','rule'].includes(kind)) return null;
   if (kind === 'artifact') glyph = 'A';
   else if (kind === 'usage') glyph = '$';
   else if (kind === 'release') glyph = '◈';
@@ -493,5 +493,5 @@ export function eventRow(r: JournalRecord, offset = ''): EventRow | null {
 
 /** Equality is the announced kind, subject and one-line content; presentation is not part of it. */
 export function eventKey(row: EventRow): string {
-  return createHash('sha256').update(JSON.stringify([row.kind, row.subject, row.text, ...(row.kind === 'heartbeat' ? [row.id] : [])])).digest('hex');
+  return createHash('sha256').update(JSON.stringify([row.kind, row.subject, row.text, ...(['heartbeat', 'rule'].includes(row.kind) ? [row.id] : [])])).digest('hex');
 }

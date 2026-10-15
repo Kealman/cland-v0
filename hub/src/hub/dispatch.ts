@@ -312,6 +312,10 @@ export class Dispatcher {
       return false;
     }
     const core = this.#options.core;
+    if (['rule.add', 'rule.edit', 'rule.retire'].includes(String(frame.type)) && !['coordinator', 'aide'].includes(connection.role ?? '')) {
+      this.#refuse(connection, frame, peer, String(frame.type), 'rule writes belong to the human, Coordinator or Aide; propose the rule to the Coordinator in your item topic', '', answer);
+      return false;
+    }
     const roles = core.roles;
     if (!roles) return true;
     const call = this.#toolCall(connection, frame);
@@ -1014,6 +1018,39 @@ export class Dispatcher {
       }
       try {
         switch (frame.type) {
+          case 'rule.add':
+          case 'rule.edit':
+          case 'rule.retire':
+          case 'rule.list': {
+            const rules = core.rules;
+            if (!rules) throw new Error('this hub has no rulebook');
+            if (frame.type === 'rule.list') {
+              if (frame.role !== undefined && !core.roles?.get().has(frame.role)) throw new Error(`unknown role ${frame.role}`);
+              return peer.send({ type: 'result', id: frame.id, ok: true, value: { rules: rules.get().filter(rule => (frame.all || rule.status === 'active') && (frame.role === undefined || rule.scope === 'all' || rule.scope.includes(frame.role))) } });
+            }
+            const caller = connection!;
+            const originOf = () => {
+              if (!core.isCurrent(caller)) throw new ToolForbidden(caller.role, frame.type, 'rule writer disconnected; retry from the current session');
+              this.#requirePermission(caller, frame, peer);
+              if (caller.role === 'aide') return `session:${caller.name}`;
+              const origin = frame.origin;
+              const message = origin && typeof origin === 'object' && typeof origin.msg_id === 'string' ? core.store.message(origin.msg_id) : null;
+              if (caller.role !== 'coordinator' || !message || message.fromKind !== 'human' || typeof origin !== 'object' || message.topic !== origin.topic)
+                throw new ToolForbidden(caller.role, frame.type, 'origin must name an existing human message by topic and msg_id');
+              return `message:${origin.topic}/${origin.msg_id}`;
+            };
+            const origin = originOf();
+            const authorize = () => { if (originOf() !== origin) throw new ToolForbidden(caller.role, frame.type, 'rule writer changed; retry'); };
+            const resumed = this.#guard.resumer(frame.type, caller.name);
+            const writing = frame.type === 'rule.add' ? rules.add({ ...frame, origin }, resumed, authorize)
+              : frame.type === 'rule.edit' ? rules.edit(frame.number, { ...frame, origin }, resumed, authorize)
+              : rules.retire(frame.number, frame.reason, resumed, authorize, origin);
+            return later(frame.type, writing.then(rule => resumed(() => {
+              this.#guard.changed();
+              return { type: 'result' as const, id: frame.id, ok: true, value: { rule } };
+            }), error => resumed(() => Dispatcher.#failure(frame.id, error))));
+          }
+          case 'rule.show': throw new Error('use rule.list to read rules');
           case 'merge':
             return merge(frame, connection);
           case 'artifact.promote':
@@ -1383,7 +1420,7 @@ export class Dispatcher {
         const caller = plumbing ? null : this.#asSession(frame);
         if (caller !== null) {
           audit(frame.id, { session: caller.name, sessionId: caller.sessionId, role: caller.role, tool: String(frame.type), args: summarize(frame), client });
-          if (this.#toolCall(caller, frame) !== null) {
+          if (this.#toolCall(caller, frame) !== null && frame.type !== 'rule.list') {
             if (!this.#permitted(caller, frame, peer)) return;
           } else if (!SESSION_CLI_FRAMES.has(String(frame.type))) {
             return this.#refuse(caller, frame, peer, String(frame.type), `only the human may do this; this call is ${withRole(caller.name, caller.role)}'s, by $CLAND_SESSION_ID`);
@@ -1459,8 +1496,8 @@ export class Dispatcher {
             const workbench = !caller && (client === 'nvim' || client === 'ui');
             let writing: Promise<import('../rules/rulebook.ts').Rule>;
             if (request.type === 'rule.add') {
-              if (!workbench && request.origin !== undefined && !/^memory:[^\r\n]+$/.test(request.origin)) throw new Error('--origin may name only memory:<path>');
-              const origin = workbench ? 'workbench' : request.origin ?? (caller ? `session:${caller.name}` : 'shell');
+              if (!workbench && request.origin !== undefined && (typeof request.origin !== 'string' || !/^memory:[^\r\n]+$/.test(request.origin))) throw new Error('--origin may name only memory:<path>');
+              const origin = workbench ? 'workbench' : typeof request.origin === 'string' ? request.origin : (caller ? `session:${caller.name}` : 'shell');
               writing = rules.add({ ...request, origin }, resumed, authorize);
             } else if (request.type === 'rule.edit') writing = rules.edit(request.number, { ...(request.text !== undefined ? { text: request.text } : {}), ...(request.scope !== undefined ? { scope: request.scope } : {}), ...(request.reason !== undefined ? { reason: request.reason } : {}), ...(workbench ? { origin: 'workbench' } : {}) }, resumed, authorize);
             else writing = rules.retire(request.number, request.reason, resumed, authorize, workbench ? 'workbench' : undefined);
