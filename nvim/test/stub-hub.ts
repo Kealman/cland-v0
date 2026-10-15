@@ -31,6 +31,7 @@ import { countCriteria, parseCriteria, summarizeCriteria, type Criterion } from 
 import { VisibilityPreferenceFile } from '../../hub/src/hub/visibility-preferences.ts';
 import { Visibility } from '../../hub/src/hub/visibility.ts';
 import { defaultConfig, readProjectConfig } from '../../hub/src/init/config.ts';
+import { STUB_NOW } from './fixtures/clock.ts';
 
 export type Scenario = {
   events?: import('../../hub/src/protocol.ts').EventRow[];
@@ -77,7 +78,9 @@ const controlPath = process.env.CLAND_STUB_CONTROL;
 // a QA case's scenario comes inline: a read-only run has nowhere to write the file
 const scenarioJson = process.env.CLAND_STUB_SCENARIO_JSON;
 const scenario: Scenario = scenarioFile ? (JSON.parse(readFileSync(scenarioFile, 'utf8')) as Scenario) : scenarioJson ? (JSON.parse(scenarioJson) as Scenario) : {};
-const now = () => new Date().toISOString();
+// Generated timestamps and age projection must use the same fixture clock.
+const clock = () => new Date(process.env.CLAND_STUB_NOW ?? STUB_NOW);
+const now = () => clock().toISOString();
 scenario.topics ??= [
   { id: 'general', title: 'General', status: 'open', standing: true, createdAt: now(), updatedAt: now() },
   { id: 'agents', title: 'Agents', status: 'open', standing: true, createdAt: now(), updatedAt: now() },
@@ -125,7 +128,7 @@ const visibility = () => new Visibility({
   process: id => scenario.processes?.find(p => p.sessionId === id),
   items: () => scenario.items ?? [], ladder: new Ladder(scenario.tracker?.ladder ?? scenario.tracker?.levels ?? readProjectConfig(join(process.cwd(), '.cland/config.toml'), process.cwd())?.tracker.levels),
   // Age scenarios can pin the hub clock independently of message timestamps.
-  now: () => new Date(process.env.CLAND_STUB_NOW ?? Date.now()),
+  now: clock,
 });
 // Legacy fixtures carry full criteria beside their bodies. Put native counts on
 // summary frames while retaining full criteria for task.view; explicit counts win.

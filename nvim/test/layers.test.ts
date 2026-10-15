@@ -11,6 +11,7 @@ import { nvimOrSkip, startClient } from './harness.ts';
 import { waitInitialSnapshots } from './readiness.ts';
 import type { Scenario } from './stub-hub.ts';
 import type { EventRow } from '../../hub/src/protocol.ts';
+import { STUB_NOW } from './fixtures/clock.ts';
 
 const nvim = await nvimOrSkip();
 const skip = 'skip' in nvim ? nvim.skip : false;
@@ -175,8 +176,8 @@ test('session folds use hub layers even for live background and explicitly reque
 });
 
 test('thread hides seven-day archive until A and keeps recent replies outside archived asks', { skip }, async t => {
-  const ts = new Date().toISOString();
-  const old = new Date(Date.now() - 8 * 86_400_000).toISOString();
+  const ts = STUB_NOW;
+  const old = new Date(Date.parse(STUB_NOW) - 8 * 86_400_000).toISOString();
   const c = await start(t, { messages: { general: [
     { id: 'old', topic: 'general', from: 'human', fromKind: 'human', to: [], text: 'Old private notes', ts: old },
     { id: 'ask', topic: 'general', from: 'coord', fromKind: 'agent', fromRole: 'coordinator', to: [], text: 'Old question', ts: old, ask: { question: 'Old question', state: 'answered', options: [] } },
@@ -194,8 +195,8 @@ test('thread hides seven-day archive until A and keeps recent replies outside ar
 });
 
 test('A retrieves old messages beyond the latest 200 and hides them again', { skip }, async t => {
-  const old = new Date(Date.now() - 8 * 86_400_000).toISOString();
-  const recent = new Date().toISOString();
+  const old = new Date(Date.parse(STUB_NOW) - 8 * 86_400_000).toISOString();
+  const recent = STUB_NOW;
   const messages = Array.from({ length: 205 }, (_, i) => ({ id: `m-${i}`, topic: 'general', from: 'human', fromKind: 'human', to: [], text: `History ${i}`, ts: i < 5 ? old : recent }));
   const c = await start(t, { messages: { general: messages } });
   await c.waitScreen(s => s.includes('History 204'), 'latest page');
