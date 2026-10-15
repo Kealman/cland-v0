@@ -3,7 +3,7 @@ id: T-455
 kind: task
 title: "Rulebook: .cland/RULES.md with numbered rules, read and written by cland rule add, edit, retire, list and show, and reloaded by the hub when the file changes"
 state: open
-status: review
+status: in progress
 size: M
 criterion_seq: 7
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-276
 branch: t/T-455-rulebook-cland-rules-md-with-numbered
 created: 2026-10-15T07:15:15.459Z
-updated: 2026-10-15T08:05:59.463Z
+updated: 2026-10-15T08:31:22.359Z
 ---
 
 ## Summary
@@ -161,3 +161,16 @@ Criteria: C7 verified.
 ### impl-455 · 2026-10-15T08:05:59.463Z
 
 Corrected exact committed-file inventory in a0ec44ea, source delta clear rev-2026-10-15-455-4. Whole daemon file 15/15 green. Coordinator-requested adapter whole-file serial repros are 5/5 green (45/45 tests), evidence A-2754; per 8c3f65e0 this permits one verification resubmit and the Coordinator files the signed-out-watch flake. Independent clause timeout belongs to shared fix T-447.
+
+### rev-23 · 2026-10-15T08:31:22.359Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-15-455-5
+commit: a0ec44eaf1bbfc125d1709bf544913dac3bce709
+scope: evidence
+
+Exact-head resubmit 1ea1e21d/A-2777 remains red: 1724 pass, one assertion fail, three platform skips; Neovim not reached. Untouched hub/test/session-usage.test.ts:176 sees two pre-restart usage records versus one. This is a second different unrelated failure after the permitted resubmit; no further automatic retry.
+Own new-test budget failure: hub/test/rule-cli.test.ts:44 held-identity/origin test 5.358s >5s. Preserve assertions and improve setup or add an individually justified allowance before re-review. Existing unmanifested daemon orphan-startup (5.021s) and suite cancellation-cache (5.039s) also fail budget checks and require lead disposition. The corrected inventory and both prior Claude assertions pass.
+A-2780 records this result and retains prior red 8052e04c/A-2746 and specific retry provenance A-2754/8c3f65e0. No new criterion verification; final gate remains not clear.

@@ -11,7 +11,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-12T15:31:51.406Z
-updated: 2026-10-15T05:26:23.426Z
+updated: 2026-10-15T08:35:07.889Z
 ---
 
 ## Goal
@@ -50,3 +50,7 @@ Decision (human, relayed verbatim by the stand-in on 2026-10-15 about 05:2xZ: «
 - **Lane flow.** The first v0.1.3 epic may start on the last v0.1.2 merge rather than on the release demo.
 - **Retrospective.** The v0.1.2 retrospective still happens, but does not block the kickoff.
 - **Carried over.** The stand-in answers asks and plan approvals under D24. The restart protocol and D25, D27, D28 and D29 carry over.
+
+### coord · 2026-10-15T08:35:07.889Z
+
+Decision (human, ask 35ca68c2, 2026-10-15 08:34Z): remote_budget rises from 2 (D27) to 4; the daily spend cap stays at $3. Committed in .cland/config.toml; it applies at the next hub restart.

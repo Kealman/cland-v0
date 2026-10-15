@@ -11,7 +11,7 @@ blocked_by: []
 topic: topic-280
 branch: null
 created: 2026-10-11T17:47:48.610Z
-updated: 2026-10-15T08:18:34.048Z
+updated: 2026-10-15T08:36:02.253Z
 closed: 2026-10-15T08:18:34.048Z
 ---
 
@@ -168,3 +168,25 @@ Round 1 of the v0.1.2 grilling (2026-10-12) recorded in the body: goal, scope an
 ### coord · 2026-10-15T08:18:34.048Z
 
 Released v0.1.2 at e2ac9844e4c4a0736603fd0fec2739ceb522ca4c.
+
+### qa-27 · 2026-10-15T08:21:10.419Z
+
+verdict: qa
+result: clear
+by: qa-27 [qa]
+run: qa-2026-10-15-27-14
+commit: e2ac9844e4c4a0736603fd0fec2739ceb522ca4c
+
+| Check | Result | Evidence |
+| --- | --- | --- |
+| P1 post-release | PASS | GitHub refs, annotation/preview comparison, release item and journal, territory main |
+
+No findings. Released commit e2ac9844e4c4a0736603fd0fec2739ceb522ca4c; annotated tag object c9db7f69ccff6043c257c4db666fb9a3d3993557. GitHub main and peeled v0.1.2, root main and territory main all equal the released commit. The annotation exactly equals approved preview A-2768 and the released journal’s notes (terminal newlines normalized), begins with R-228’s Notes and contains all ten epic deliverables. R-228 is closed with `Released v0.1.2 at e2ac9844e4c4a0736603fd0fec2739ceb522ca4c.` The 08:18:33.237Z released event names R-228/v0.1.2 with no followUp; release.tmp is absent. The release commit is contained in dev 4607ec64aa0ed43652c2c5f3e8fe18de60da235b, with an empty code diff outside .cland.
+
+Read-only appendix P1, run qa-2026-10-15-27-14. The verifier hold was unavailable because R-228 is closed. No criteria marks apply to this release. No tests, hub lifecycle operations or release commands were run.
+
+Evidence A-2769: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2769-r-228-v0-1-2-post-release-qa-qa-2026-10-15-27-14-p1-clear.
+
+### coord · 2026-10-15T08:36:02.253Z
+
+Retrospective of the v0.1.2 run: A-2783 (README, retro.py, CSVs), at .cland/artifacts/A-2783-v0-1-2-retrospective-report-retro-py-and-csvs/README.md.

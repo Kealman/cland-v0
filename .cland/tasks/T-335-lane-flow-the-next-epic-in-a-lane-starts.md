@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-277
 branch: t/T-335-lane-flow-the-next-epic-in-a-lane-starts
 created: 2026-10-13T14:23:44.027Z
-updated: 2026-10-15T08:09:52.728Z
+updated: 2026-10-15T08:29:23.109Z
 ---
 
 ## Summary
@@ -55,10 +55,12 @@ This started as an observation from the human and the stand-in on 2026-10-13 at 
   - done: impl-335 · 2026-10-15T07:39:48.888Z
   - verified: rev-26 [reviewer] · run rev-20261015-335-source-3 · 2026-10-15T07:40:56.538Z · commit bbe943079f12a43dcc707d527fe718b9a58ddfd6
   - verified: rev-26 [reviewer] · run rev-20261015-335-source-4 · 2026-10-15T08:09:52.728Z · commit fd823c6e0262f771cf4ae32bf68ea58794b7f9e2
+  - verified: rev-26 [reviewer] · run rev-20261015-335-source-5 · 2026-10-15T08:29:23.109Z · commit 7ea539c76f214ab1b4a8912ec20d70636fd97fd0
 - [x] C7. `hub/README.md` and GLOSSARY's Follows entry describe the relation, the met rule and the hold.
   - done: impl-335 · 2026-10-15T07:26:40.394Z
   - verified: rev-26 [reviewer] · run rev-20261015-335-source-3 · 2026-10-15T07:40:56.538Z · commit bbe943079f12a43dcc707d527fe718b9a58ddfd6
   - verified: rev-26 [reviewer] · run rev-20261015-335-source-4 · 2026-10-15T08:09:52.728Z · commit fd823c6e0262f771cf4ae32bf68ea58794b7f9e2
+  - verified: rev-26 [reviewer] · run rev-20261015-335-source-5 · 2026-10-15T08:29:23.109Z · commit 7ea539c76f214ab1b4a8912ec20d70636fd97fd0
 
 ## Comments
 
@@ -135,5 +137,31 @@ scope: full
 
 No high or medium source findings remain. hub/src/tracker/index-db.ts:167 loads ordered follows JSON in each existing get/list/children row SELECT; all hydration callers supply it, canonical IDs/edge order and empty omission are preserved, and the extra per-row prepare/execute is removed. Unchanged planned-stage budget red 11,531 → green 9,698 landing / 7,718 ten closes; A-2759 also records complete follows 10/10 and typecheck. Existing assertions, publication guards, follows policy and clauses remain unchanged. The inherited 5.047s cache test receives a reasoned allowance without changing enforcement or assertions.
 Coordinator 7ed283d3 confirms the separate Claude failures are T-461/T-447, excludes their fixes here and permits corrected-source re-review/rerun. Old receipt A-2753 remains red; C1–C5/final settlement await accepted exact-head verification. Renew C6/C7 source marks. The v0.1.3 merge hold remains. No tests run by Reviewer.
+
+Criteria: C6 verified, C7 verified.
+
+### rev-26 · 2026-10-15T08:28:29.215Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261015-335-evidence-2
+commit: fd823c6e0262f771cf4ae32bf68ea58794b7f9e2
+scope: evidence
+
+Medium — hub/test/follows.test.ts:98: not-clear demo lifecycle case took 5.297s without a required reasoned duration allowance.
+Medium — hub/test/follows.test.ts:108: predecessor-close lifecycle case took 5.339s without an allowance.
+Exact reviewed-head receipt a22c5ecf/A-2772 selected full, hub assertions all pass 1730/1730, but exits 1 on duration enforcement and never runs Neovim. Local executor was hub-selected fallback after remote budget 2/2 full, with no override; darwin arm64/Node24.21/Neovim0.12.5, wall1054.18s, peakload19.42. Previous query and Claude assertion failures are absent in this receipt. Keep bodies/default bounds intact; any reasoned manifest correction needs changed-head source review. No semantic criterion failure is inferred: C1–C5 final marks pending, C6/C7 source marks retained. v0.1.3 merge hold remains.
+
+### rev-26 · 2026-10-15T08:29:23.109Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261015-335-source-5
+commit: 7ea539c76f214ab1b4a8912ec20d70636fd97fd0
+scope: delta
+
+No high or medium findings. Manifest-only delta adds measured 5.297s/5.339s allowances for the two real-Git lifecycle cases, with reasons matching overlap refusal, demo/closure and follower landing. Default enforcement, runner and assertions are unchanged. Functional source, UI, follows tests, clauses, skills and docs are byte-identical to fd823c6e; origin/dev integration adds tracker records. Renew C6/C7 source marks. C1–C5 and final verdict await accepted exact-head verification; A-2772 remains a failed duration-gate receipt despite all hub assertions passing. No Reviewer tests run.
 
 Criteria: C6 verified, C7 verified.

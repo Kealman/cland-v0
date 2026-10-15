@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-274
 branch: t/T-395-sharded-close-runs-stage-epic-and
 created: 2026-10-14T12:28:19.467Z
-updated: 2026-10-15T08:00:52.614Z
+updated: 2026-10-15T08:35:00.010Z
 ---
 
 ## Summary
@@ -77,8 +77,7 @@ A failed or lost shard fails the run once, naming the shard. The hub does not re
   - done: impl-395 · 2026-10-15T07:42:04.916Z
   - verified: rev-26 [reviewer] · run rev-20261015-395-source-2 · 2026-10-15T08:00:52.613Z · commit f3346d60b4ded82a109a0f2dc4165f3ee88f8154
 - [x] C8. `hub/README.md` (Remote executors, Tests), `docs/agents/tests.md`, the Coordinator and QA clauses and the `merge` and `qa` skills describe `--occasion`, which runs shard, the cap fallback and the cost per run.
-  - done: impl-395 · 2026-10-15T07:59:08.631Z
-  - verified: rev-26 [reviewer] · run rev-20261015-395-source-2 · 2026-10-15T08:00:52.614Z · commit f3346d60b4ded82a109a0f2dc4165f3ee88f8154
+  - done: impl-395 · 2026-10-15T08:34:43.011Z
 
 ## Comments
 
@@ -123,3 +122,24 @@ No high or medium source findings remain. hub/src/hub/suites.ts:362 guards the e
 Source-established criteria C2,C5,C6,C7,C8 are verified; C1,C3,C4 execution settlement and final verdict await accepted same-head verification. C6/C7 use the explicit premerge amendment: procedure A-2727 and fake report/reservation/cap/zero-tag proof; real two-c-8 <=10-minute assessment remains the Coordinator's E-387 stage-1 close obligation after T-393/T-395 merge. No tests run by Reviewer.
 
 Criteria: C2 verified, C5 verified, C6 verified, C7 verified, C8 verified.
+
+### rev-26 · 2026-10-15T08:25:48.293Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261015-395-evidence-1
+commit: f3346d60b4ded82a109a0f2dc4165f3ee88f8154
+scope: evidence
+
+Medium — hub/test/tracker-container-source.test.ts:129: six new epic occasion literals conflict with the categorical architecture guard. Distinguish the required operational enum narrowly while preserving tracker Kind rejection; do not cast/widen to evade the guard.
+Medium — hub/test/resilience.test.ts:42/104, hub/test/spoke-identity.test.ts:18, hub/test/surface.test.ts:16: four exact inventories omit the new required verify tool (38 vs 37 / array mismatch); preserve behavior assertions and explicitly add the tool.
+Medium — hub/src/roles/default-roles.ts:69 / .cland/roles.toml:57: compact wording breaks unchanged surface.test.ts:75 canonical Coordinator decision-routing sentence. Previous source pass missed this assertion; C8 failed.
+Medium — hub/test/claude-code-sessions.test.ts:251: retry-injection case times out waiting for clause injection; separate attribution pending.
+A-2770 exact-head full receipt 14e7a2bc exits 1: 1733 tests, 1723 pass, 7 fail, 3 platform skips; Neovim not reached. Reported c-8 lifetime 1326s, cost $0.0921, peak load 14.45. C1/C3/C4 remain unverified; C2/C5/C6/C7 source marks retained under the explicit premerge scope. Corrected-head source review is required before another verification.
+
+Criteria: C8 failed (Compacted Coordinator decision-routing sentence breaks unchanged surface.test.ts:75 canonical wording guard; restore both copies within reply headroom.).
+
+### impl-395 · 2026-10-15T08:34:47.118Z
+
+Corrected head e9e6fab93d101114eff353ed98f60e765824895c pushed after merging origin/dev 3d300562, with the duration refresh reconciled through all110 mapped identities. A-2782:44 serial targeted tests pass, plus typecheck/shard lint. Six attributable A-2770 guards fixed without weakening canonical wording or tool checks; operational enum declaration has a narrow compiler exception with positive/negative Kind fixtures. Cache recovery re-split preserves byte-identical statements, final110-identity audit A-2776; Linux file totals42.84s/25.63s. Requesting source re-review. T-447's separate injection-timeout fix will be integrated from Coordinator's named merge commit before verification.
