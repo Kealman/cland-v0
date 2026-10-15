@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-273
 branch: t/T-393-in-process-hub-by-default-tests-run
 created: 2026-10-14T12:28:19.095Z
-updated: 2026-10-15T07:23:59.103Z
+updated: 2026-10-15T08:08:41.843Z
 ---
 
 ## Summary
@@ -52,18 +52,29 @@ updated: 2026-10-15T07:23:59.103Z
 
 ## Acceptance criteria
 
-- [ ] C1. `projectHub` serves a project in the test process; `cland` subprocesses, spokes and UI clients reach it over its real socket and WebSocket with no change to their code, proven by a tracer test that runs the same frames against `projectHub` and `startDaemon`.
-- [ ] C2. Cleanup fails a test whose in-process hub leaves handles, timers, `process` listeners or child processes, proven by a test that leaks one on purpose.
-- [ ] C3. `serveProject` takes its environment as an option, and two in-process hubs in one file with different adapter timings behave independently, proven by a test.
-- [ ] C4. The lifecycle list is posted per file; every test that still calls `startDaemon` or `cland hub start` in the 20 files is on it, and none of the others is.
+- [x] C1. `projectHub` serves a project in the test process; `cland` subprocesses, spokes and UI clients reach it over its real socket and WebSocket with no change to their code, proven by a tracer test that runs the same frames against `projectHub` and `startDaemon`.
+  - done: impl-393 · 2026-10-15T08:08:37.623Z
+- [x] C2. Cleanup fails a test whose in-process hub leaves handles, timers, `process` listeners or child processes, proven by a test that leaks one on purpose.
+  - done: impl-393 · 2026-10-15T08:08:38.321Z
+- [x] C3. `serveProject` takes its environment as an option, and two in-process hubs in one file with different adapter timings behave independently, proven by a test.
+  - done: impl-393 · 2026-10-15T08:08:38.795Z
+- [x] C4. The lifecycle list is posted per file; every test that still calls `startDaemon` or `cland hub start` in the 20 files is on it, and none of the others is.
+  - done: impl-393 · 2026-10-15T08:08:39.537Z
 - [ ] C5. Measured (Coordinator amendment 2026-10-15 07:12Z): the 20 files' summed whole-file time falls by at least 20%, taken as one serial before/after pair per file with the one-minute load and queue holder recorded, plus three pairs (median) for the five heaviest files; runs are made only while the local slot has no holder, and the per-file table is posted.
 - [ ] C6. Measured: daemon starts per full run fall to under 600 (about 944 in A-2021) from the census or the run log, posted on the item.
-- [ ] C7. Each refusal family and each adapter verb keeps at least one frame test, and the moved validation cases keep their asserted error codes and messages.
-- [ ] C8. No assertion changes its meaning: the review request lists every changed assertion with what it still proves, and no test is deleted.
-- [ ] C9. `hub/README.md` (Tests) and `docs/agents/tests.md` describe `projectHub` as the default, the lifecycle line, and when a new test may use `startDaemon`.
+- [x] C7. Each refusal family and each adapter verb keeps at least one frame test, and the moved validation cases keep their asserted error codes and messages.
+  - done: impl-393 · 2026-10-15T08:08:40.735Z
+- [x] C8. No assertion changes its meaning: the review request lists every changed assertion with what it still proves, and no test is deleted.
+  - done: impl-393 · 2026-10-15T08:08:41.391Z
+- [x] C9. `hub/README.md` (Tests) and `docs/agents/tests.md` describe `projectHub` as the default, the lifecycle line, and when a new test may use `startDaemon`.
+  - done: impl-393 · 2026-10-15T08:08:41.843Z
 
 ## Comments
 
 ### impl-393 · 2026-10-15T07:23:59.103Z
 
 Fixture/env implementation and initial migrations are in progress. The projectHub tracer now passes (4 tests): production CLI/socket/spoke parity, independent timings in simultaneous hubs, and a deliberate retained-timer cleanup failure. Audit artifact posted in topic-273. Before measurements are paused while qa-E386-census occupies the local slot; coordinating test windows and the T-395 split mapping with impl-395.
+
+### impl-393 · 2026-10-15T08:08:20.559Z
+
+Implementation committed through dc08042a and merged latest origin/dev. Audit A-2751 names environment/log parameters, global-effect isolation, cleanup ownership, native Undici clock exclusion and every changed assertion meaning; lifecycle A-2745; assertion identities A-2744 (no removed tests). New fixture/freshness regressions, OpenCode units, process-started, accounts, crew launch and session-stop-races pass targeted. Measurement restarted at 08:08Z with empty local slot; recorder rejects holder-overlapped samples. Fresh census cross-tab A-2756 proves selected20 have420 of1047 starts, so even deleting all selected starts leaves627; exact retained total and 21st-plus candidates will follow for Coordinator C6 decision.

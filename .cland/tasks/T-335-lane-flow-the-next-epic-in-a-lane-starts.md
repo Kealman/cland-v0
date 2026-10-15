@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-277
 branch: t/T-335-lane-flow-the-next-epic-in-a-lane-starts
 created: 2026-10-13T14:23:44.027Z
-updated: 2026-10-15T07:40:56.538Z
+updated: 2026-10-15T08:09:00.967Z
 ---
 
 ## Summary
@@ -106,3 +106,18 @@ scope: full
 No high/medium findings remain. Coordinator canonical ownership/fallback phrases restored; project default-crew reply7615 bytes fits unchanged7680 limit. Unchanged clause guards reported green A-2731. Corrected gate/tracker/test files unchanged from cbd9f452: indexed lane revision plus fresh final task merge view rejects concurrent follows/verdict edits after Git awaits. Exact surfaces and either-demo-verdict/closure release match E-423. C6/C7 skills/docs/clauses verified from source; C1–C5 final execution settlement awaits accepted same-head no-mode verify with configured executor, no override. Prior targeted lane/UI/workload evidence retained; no Reviewer tests run. Evidence A-2733: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2733-t-335-corrected-source-clear-at-bbe94307-follows-gate-and-clause-guards-preserve.md.
 
 Criteria: C6 verified, C7 verified.
+
+### rev-26 · 2026-10-15T08:06:42.865Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261015-335-evidence-1
+commit: bbe943079f12a43dcc707d527fe718b9a58ddfd6
+scope: evidence
+
+Medium — hub/test/planned-stage.test.ts:249: stage landing used 11,442 queries against the unchanged <10,000 budget; lead reproduced 11,531 locally. Per-row follows hydration at hub/src/tracker/index-db.ts:440 is under controlled diagnosis.
+Medium — hub/test/claude-code-adapter.test.ts:395: latched signed-out restart observed three CLI calls rather than two.
+Medium — hub/test/claude-code-sessions.test.ts:44: signal-order test timed out waiting for the clause busy→idle turn before exercising signal ordering.
+Medium — hub/test/suite.test.ts: the head-change cache preservation case took 5.047s and failed the enforced undeclared-duration gate.
+Accepted receipt 391d9b46/A-2753 matches reviewed bbe94307 but exits 1: 1730 tests, 1724 pass, 3 fail, 3 platform skips; Neovim not reached. Executor c-8 lon1/Linux, lifetime 1409s, cost $0.0978, peak load 13.64. C1–C5 remain unverified; C6/C7 source marks retained. No failed criterion is assigned without demonstrated criterion-specific failure. Diagnostic attribution and any changed-head source re-review are pending; this is not a green full receipt.

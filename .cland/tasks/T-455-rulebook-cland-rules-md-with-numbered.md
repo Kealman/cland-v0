@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-276
 branch: t/T-455-rulebook-cland-rules-md-with-numbered
 created: 2026-10-15T07:15:15.459Z
-updated: 2026-10-15T07:35:38.751Z
+updated: 2026-10-15T08:05:59.463Z
 ---
 
 ## Summary
@@ -90,10 +90,11 @@ Run at most one full suite at a time machine-wide; targeted single-file runs are
 - [x] C5. From an Aide's shell `cland rule add --origin memory:<path>` records that origin, and from an Implementer's or a Coordinator's shell `cland rule add` is refused with `forbidden` and a reason.
   - done: impl-455 · 2026-10-15T07:26:21.600Z
 - [x] C6. `cland init` writes an empty rulebook with its header, and `.cland/.gitignore`'s header names `RULES.md` as committed.
-  - done: impl-455 · 2026-10-15T07:26:23.087Z
+  - done: impl-455 · 2026-10-15T08:00:59.227Z
 - [x] C7. `hub/README.md` describes the rulebook file, its fields and origins, the `rule <n>` form, the `cland rule` commands and who may write.
   - done: impl-455 · 2026-10-15T07:26:24.793Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-455-2 · 2026-10-15T07:35:24.942Z · commit 856181faa8000c4a4470886fccec61cd107c8979
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-455-4 · 2026-10-15T08:01:41.809Z · commit a0ec44eaf1bbfc125d1709bf544913dac3bce709
 
 ## Comments
 
@@ -130,3 +131,33 @@ scope: full
 Corrected source clear. Standards and Spec: no high or medium findings remain. C2 stale overwrite fixed by source re-read/equality refusal plus authorization before rename; deterministic public CLI native-write-window regression proves exact intervening sibling preservation, temp cleanup and successful retry. Coordinator 095198b5 numbering decision implemented with file-held high-water state, max(mark, highest present)+1, explicit missing-marker fallback, low-mark warning and higher-mark merge guidance. Tests cover highest retired-entry deletion, missing/low markers; untouched raw spans remain preserved. Init/header/docs agree. Original held-actor origins/refusals, CLI, serialized writes and last-good behavior reviewed in A-2723 remain unchanged. A-2725 reports CLI 6/6, parser 2/2, init 16/16 and typecheck/shards/diff green. A-2726 details full corrected review. C7 verified; C1-C6 remain run-dependent pending exact-head no-mode cland verify, no executor flag under current hub policy. Restore claimant C2 done mark after correction; no per-item QA required.
 
 Criteria: C7 verified.
+
+### rev-23 · 2026-10-15T07:59:31.477Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-15-455-3
+commit: 856181faa8000c4a4470886fccec61cd107c8979
+scope: evidence
+
+Medium — hub/test/daemon.test.ts:181: the committed .cland inventory omits intended RULES.md, making an existing test fail after this change. Update that exact list, preserving all runtime exclusions; this companion assertion was missed in source review.
+A-2746 / 8052e04c is red at the exact source-reviewed head: 1722 passed, 3 failures, 3 platform skips, Neovim not reached. Other failures are hub/test/claude-code-adapter.test.ts:389 (signed-out watch 3 CLI calls vs 2) and hub/test/claude-code-sessions.test.ts:251 (clause injection timeout); these need shared-defect disposition. A-2748 records evidence. No new criterion verification; corrected source requires re-review before another run.
+
+### rev-23 · 2026-10-15T08:01:41.809Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-15-455-4
+commit: a0ec44eaf1bbfc125d1709bf544913dac3bce709
+scope: delta
+
+Corrected source clear; no high/medium finding. hub/test/daemon.test.ts:181 adds intended committed RULES.md to the exact sorted inventory, preserving all volatile probes and assertions. Incoming dev is tracker-only; rulebook source and docs remain A-2726's reviewed implementation. Claimant reports daemon file 15/15. A-2750 records this delta.
+C7 refreshed; C1-C6 await successful exact-head verification. Prior red 8052e04c/A-2746 remains retained. Read Coordinator 8c3f65e0 directly: five serial isolated whole claude-code-adapter file passes are required before its permitted one resubmit; a failure becomes shared-fix work. T-447 owns clause-injection line 251 and can arrive later. No verification permission beyond that disposition; release merge hold remains.
+
+Criteria: C7 verified.
+
+### impl-455 · 2026-10-15T08:05:59.463Z
+
+Corrected exact committed-file inventory in a0ec44ea, source delta clear rev-2026-10-15-455-4. Whole daemon file 15/15 green. Coordinator-requested adapter whole-file serial repros are 5/5 green (45/45 tests), evidence A-2754; per 8c3f65e0 this permits one verification resubmit and the Coordinator files the signed-out-watch flake. Independent clause timeout belongs to shared fix T-447.

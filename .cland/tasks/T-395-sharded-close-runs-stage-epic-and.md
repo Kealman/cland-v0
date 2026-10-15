@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-274
 branch: t/T-395-sharded-close-runs-stage-epic-and
 created: 2026-10-14T12:28:19.467Z
-updated: 2026-10-15T07:43:03.919Z
+updated: 2026-10-15T08:00:52.614Z
 ---
 
 ## Summary
@@ -59,21 +59,26 @@ A failed or lost shard fails the run once, naming the shard. The hub does not re
 ## Acceptance criteria
 
 - [x] C1. Only an integrated `dev` request with `--occasion stage|epic|release` from the Coordinator (or `epic` from QA) shards; other roles, task heads and batch runs are refused or run on one slot, proven by tests against the fake DigitalOcean API.
-  - done: impl-395 · 2026-10-15T07:42:02.276Z
+  - done: impl-395 · 2026-10-15T07:59:04.864Z
 - [x] C2. Files are split largest-first by `durations.json`, the Neovim phase goes to the lightest shard, and a test proves the balance on a fixture manifest.
   - done: impl-395 · 2026-10-15T07:42:02.736Z
+  - verified: rev-26 [reviewer] · run rev-20261015-395-source-2 · 2026-10-15T08:00:52.613Z · commit f3346d60b4ded82a109a0f2dc4165f3ee88f8154
 - [x] C3. When the shards' reservations would pass the daily cap or fewer than two remote slots are free, the run goes whole to one slot with one warn-level notice naming the cause, proven by tests.
-  - done: impl-395 · 2026-10-15T07:42:03.171Z
+  - done: impl-395 · 2026-10-15T07:59:06.045Z
 - [x] C4. A sharded run posts one result with summed counts, per-shard duration, machine and cost lines and the total cost; a failed shard fails the run once naming the shard.
-  - done: impl-395 · 2026-10-15T07:42:03.602Z
+  - done: impl-395 · 2026-10-15T07:59:07.412Z
 - [x] C5. `suite.test.ts` and `merge.test.ts` are split into files of at most 60 s each in `durations.json`, with every test kept and its assertions unchanged.
   - done: impl-395 · 2026-10-15T07:42:04.045Z
+  - verified: rev-26 [reviewer] · run rev-20261015-395-source-2 · 2026-10-15T08:00:52.613Z · commit f3346d60b4ded82a109a0f2dc4165f3ee88f8154
 - [x] C6. A real two-shard c-8 `--occasion stage` run of `dev` is executed by the Coordinator from the procedure A-2727 after this ticket merges, as E-387's stage-1 close run once T-393 has also merged; it posts create, destroy, each shard's time and the cost, and its wall is judged against 10 minutes there (Coordinator amendment 2026-10-15 07:37Z: the 10-minute bound depends on T-393's in-process hub). Pre-merge, this criterion is met by the procedure and a fake-provider two-shard run proving the same report fields.
   - done: impl-395 · 2026-10-15T07:42:04.484Z
+  - verified: rev-26 [reviewer] · run rev-20261015-395-source-2 · 2026-10-15T08:00:52.613Z · commit f3346d60b4ded82a109a0f2dc4165f3ee88f8154
 - [x] C7. The real check's spend stays within the shared $3 daily cap and the provider's `cland` tag listing is empty afterwards, recorded on E-387 with the stage-1 close run; pre-merge, the fake-provider run proves the all-shard reservation, the cap refusal and the zero-tag teardown.
   - done: impl-395 · 2026-10-15T07:42:04.916Z
+  - verified: rev-26 [reviewer] · run rev-20261015-395-source-2 · 2026-10-15T08:00:52.613Z · commit f3346d60b4ded82a109a0f2dc4165f3ee88f8154
 - [x] C8. `hub/README.md` (Remote executors, Tests), `docs/agents/tests.md`, the Coordinator and QA clauses and the `merge` and `qa` skills describe `--occasion`, which runs shard, the cap fallback and the cost per run.
-  - done: impl-395 · 2026-10-15T07:42:05.701Z
+  - done: impl-395 · 2026-10-15T07:59:08.631Z
+  - verified: rev-26 [reviewer] · run rev-20261015-395-source-2 · 2026-10-15T08:00:52.614Z · commit f3346d60b4ded82a109a0f2dc4165f3ee88f8154
 
 ## Comments
 
@@ -84,3 +89,37 @@ Implementation started in task worktree. Test boundaries: existing verify frame/
 ### impl-395 · 2026-10-15T07:42:57.326Z
 
 Implementation pushed at 994131b88b18884a1c29c835e27960683f5478c2 after merging origin/dev 9ec1da30. All 18 touched/new targeted files pass serially (131 Node tests including nested cases); typecheck, shard lint and diff checks pass. Exact split mapping A-2722 preserves 110 top-level identities plus nested test bodies unchanged. Final fake-provider proofs: A-2734 (admission/reservation/cap/MCP/cache/zero-tag teardown), A-2735 (failed/lost shards, actual hub restart, parent cancellation). C1-C8 marked done; amended C6/C7 use these proofs and Coordinator-only procedure A-2727, with the real two-c-8 <=10-minute check owed on E-387 stage-1 close after both T-393 and T-395 merge. Source review requested next; no pre-review full verification run and no real droplets created here.
+
+### rev-26 · 2026-10-15T07:50:33.737Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261015-395-source-1
+commit: 994131b88b18884a1c29c835e27960683f5478c2
+scope: full
+
+Medium — hub/src/hub/suites.ts:374: cancellation can finish/report the queued group while reserveShards awaits provider sizes; late placeholders then survive completion and consume the daily budget (C3/C4).
+Medium — hub/src/hub/suites.ts:221: origin/dev equality accepts stale tracking data after selectPackageSuite catches a failed fetch; fresh integrated-dev proof is not established (C1).
+Medium — hub/src/roles/default-roles.ts:58 and .cland/roles.toml:46: the project Coordinator clause is 7,764 bytes before wrapping, beyond the unchanged 7,680-byte complete-reply headroom limit (C8).
+Evidence and separate Standards/Spec assessment: A-2743, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2743-t-395-source-not-clear-at-994131b8-reservation-cancellation-fresh-fetch-and-clau.md. All original 102 top-level statements (110 expanded cases) and extracted helpers are byte-preserved; split-file manifest times are <60s. Fake admission/recovery logs pass 5/5 and 4/4. C6/C7 use the amended premerge scope; real two-c-8 <=10m proof remains E-387 stage-1-close work, not completed evidence. No tests run by Reviewer.
+
+Criteria: C1 failed (Occasion admission accepts failed fetch proof when stale origin/dev still equals local dev.), C3 failed (Cancellation during provider sizes can complete before group spend reservation, leaving late placeholders permanently reserved.), C4 failed (Parent cancellation can report before its in-flight group reservation is settled.), C8 failed (Added Coordinator clause exceeds the unchanged 7680-byte complete-reply headroom bound.).
+
+### impl-395 · 2026-10-15T07:59:09.540Z
+
+Replacement source pushed at f3346d60b4ded82a109a0f2dc4165f3ee88f8154 after merging origin/dev 74cddcdd. A-2747 records red→green actual frame/provider reservation cancellation and Git/MCP stale-fetch regressions, plus 80 passing tests in the four affected full files run serially. Both new tests <5s; close/recovery files <60s. Entire planning window now defers collection/reporting until reservation settles; admission requires successful fresh-fetch dev proof. Both Coordinator clauses fit unchanged complete-reply bound (7578/7629 <=7680); role assertions/tests untouched. Typecheck, shard lint and diff check pass. Requesting replacement source review; no verification run before that verdict.
+
+### rev-26 · 2026-10-15T08:00:52.614Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261015-395-source-2
+commit: f3346d60b4ded82a109a0f2dc4165f3ee88f8154
+scope: full
+
+No high or medium source findings remain. hub/src/hub/suites.ts:362 guards the entire planning await window against premature cancelled reporting; hub/src/hub/suites.ts:222 requires explicit successful fetched-dev provenance. Real frame/provider and Git/MCP red→green regressions cover both previous failures. hub/src/roles/default-roles.ts:58 and .cland/roles.toml:46 now fit the unchanged complete-reply headroom tests while preserving canonical review/QA, human requests and exact-head/cache wording. A-2747 records 80/80 tests across four complete affected files, typecheck and shard lint. Original split tests/helpers remain unchanged.
+Source-established criteria C2,C5,C6,C7,C8 are verified; C1,C3,C4 execution settlement and final verdict await accepted same-head verification. C6/C7 use the explicit premerge amendment: procedure A-2727 and fake report/reservation/cap/zero-tag proof; real two-c-8 <=10-minute assessment remains the Coordinator's E-387 stage-1 close obligation after T-393/T-395 merge. No tests run by Reviewer.
+
+Criteria: C2 verified, C5 verified, C6 verified, C7 verified, C8 verified.

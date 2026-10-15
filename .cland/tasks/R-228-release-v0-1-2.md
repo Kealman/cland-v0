@@ -11,7 +11,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-11T17:47:48.610Z
-updated: 2026-10-15T07:45:53.912Z
+updated: 2026-10-15T08:09:43.567Z
 ---
 
 ## Goal
@@ -39,6 +39,7 @@ What the human can now do, by epic:
 
 Decisions of the run:
 
+- **D23 accepted (v0.1.2 §4).** The tracker-stall detection and the bounded stop from v0.1.1 stay as shipped. The serving-time fail-fast exit is T-253, ordinary tech debt, and it ships in this release.
 - **D24 (2026-10-12).** The stand-in cland-impl answers every ask on the human's behalf, including the explorer plan approval.
 - **D25 (2026-10-13).** Review first: `cland verify` runs only after a clear review, at the exact reviewed head. Droplets serve as a second Linux slot, with the `cland` tag, at most 30 minutes of life (45 for c-8 acceptance runs), one at a time and at most $2 a day.
 - **D26** is reserved for T-282's narrowing fallback; no use of it is recorded.
@@ -55,7 +56,7 @@ Deferred checks:
 
 - **T-443:** re-measure T-392's inspection diet on an idle machine. Its 15% whole-file target could not be measured during the build, because the queue never emptied.
 - **T-448:** inspection diet, part 2: the full-run census target of under 12,000 inspection spawns moved here from E-386 C2.
-- **T-390 C4:** after the next hub restart, the Coordinator confirms that the first suite result the hub posts shows the `duration regression` and `suite budget overhead` lines. The hub at the gate ran the code from before T-390.
+- **T-390 C4 (done):** the first suite result the hub posted after the 07:05Z restart carried the `duration regression` and `suite budget overhead` lines (E-386 QA, A-2718).
 - **Droplet verification for tasks:** the project default is `droplet` (D28). Task gates ran locally from de65131f until the Linux fixes T-411, T-429, T-430, T-432, T-433, T-434 and T-435 merged. Tasks return to droplets with the hub restart on the release cover. A green full Linux run at the release tip is not part of this release's definition of done.
 - **MicroVM backend:** T-349 failed as run on environment gaps: no openssh-client and a nofile limit of 1024. The speed and limits checks passed (hub phase 785 s). A third run, about $0.25, is the human's call for v0.1.3.
 

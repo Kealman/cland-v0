@@ -3,7 +3,7 @@ id: T-454
 kind: task
 title: "Heartbeat: a per-role interval in crew.toml wakes an idle session with a hub-computed digest of what is in flight and what looks stale, folds into the next turn on a busy one, and is never a needs-you"
 state: open
-status: review
+status: in progress
 size: L
 criterion_seq: 8
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-275
 branch: t/T-454-heartbeat-a-per-role-interval-in-crew
 created: 2026-10-15T07:15:15.368Z
-updated: 2026-10-15T07:40:59.708Z
+updated: 2026-10-15T08:08:52.820Z
 ---
 
 ## Summary
@@ -81,20 +81,70 @@ E-423 "Rules and rhythm" (R-294), tracer bullet 1 of 7; spec `docs/spec/v0.1.3.m
 - [x] C2. Each heartbeat session has its own schedule from its launch, kept in `hub.db` across a hub restart, and a firing due while the hub was down fires exactly once after start, proven by a test with `CLAND_HEARTBEAT_MS`.
   - done: impl-454 · 2026-10-15T07:40:43.928Z
 - [x] C3. The digest lists in-flight claimed items, runs, open asks and live leases, and as stale (with ages, only after one full interval) a review item with no request or verdict, a ready unmerged item, a session idle past `idle_minutes`, a run past its timeout or with no posted result, and an unanswered ask, each part capped at ten rows with an "and N more" line.
-  - done: impl-454 · 2026-10-15T07:40:44.736Z
-- [x] C4. On an idle fake Coordinator a heartbeat starts a turn; on a busy one, or one waiting for approval, it arrives as one entry of the next turn's digest, a newer heartbeat replaces an undelivered older one, and it never steers a running turn.
-  - done: impl-454 · 2026-10-15T07:40:45.295Z
+  - done: impl-454 · 2026-10-15T07:49:11.278Z
+- [ ] C4. On an idle fake Coordinator a heartbeat starts a turn; on a busy one, or one waiting for approval, it arrives as one entry of the next turn's digest, a newer heartbeat replaces an undelivered older one, and it never steers a running turn.
+  - failed: rev-23 [reviewer] · 2026-10-15T08:08:52.820Z · note Idle role-clause sends invoke the general digest binder and prematurely inject held progress/events on restart/relaunch.
 - [x] C5. A heartbeat never changes the inbox count or shows as a needs-you, and the events view shows one background-layer row per firing with the session and counts, filtered by key `9` as kind `heartbeat`, proven headless.
   - done: impl-454 · 2026-10-15T07:40:46.443Z
 - [x] C6. The connection keepalive is called keepalive in identifiers and comments, and no hub source uses "heartbeat" for it.
-  - done: impl-454 · 2026-10-15T07:40:47.232Z
-- [x] C7. The Coordinator's clause, in `default-roles.ts` and the live `.cland/roles.toml`, says what to check, what to repair and when to escalate on a heartbeat, and to end a clean heartbeat without a message.
-  - done: impl-454 · 2026-10-15T07:40:47.671Z
+  - done: impl-454 · 2026-10-15T07:49:11.736Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-454-2 · 2026-10-15T07:49:57.099Z · commit b64e068182a0bfb027f5fdc2542a764c17e55b56
+- [ ] C7. The Coordinator's clause, in `default-roles.ts` and the live `.cland/roles.toml`, says what to check, what to repair and when to escalate on a heartbeat, and to end a clean heartbeat without a message.
+  - failed: rev-23 [reviewer] · 2026-10-15T08:08:52.820Z · note Default/live Coordinator clause replies exceed the existing 7680-byte headroom guard at 8040/8091 bytes.
 - [x] C8. `hub/README.md` describes the `heartbeat` setting, its default, the digest's rows, coalescing and `CLAND_HEARTBEAT_MS`, and `nvim/README.md` lists the `heartbeat` kind and key `9` in the events view.
   - done: impl-454 · 2026-10-15T07:40:48.284Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-454-2 · 2026-10-15T07:49:57.099Z · commit b64e068182a0bfb027f5fdc2542a764c17e55b56
 
 ## Comments
 
 ### impl-454 · 2026-10-15T07:40:48.729Z
 
 Implemented C1-C8 at 73bd78b8 and pushed the task branch to origin after merging origin/dev 9ec1da30. Targeted frame/fake-harness, configuration, keepalive and headless event checks pass; typecheck and shard lint pass. Evidence: A-2732, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2732-t-454-implementation-and-targeted-evidence.md. Requesting source review before the same-head verification run; no per-item QA policy applies.
+
+### rev-23 · 2026-10-15T07:46:16.889Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-15-454-1
+commit: 73bd78b87ddb68ca3c295cad0ffbfef71afe64f5
+scope: full
+
+Medium — hub/src/hub/store.ts:432: a known status transition is seeded from item.updated, so watched edits retaining updated can immediately become stale in their new review/ready state. Start an observed transition at now and cover retained-updated hand saves.
+Low — hub/src/spoke/hub-client.ts:208/233: connection keepalive still has #startHeartbeat/#stopHeartbeat identifiers and callers, contrary to C6.
+Full source review A-2739; no other blocking finding. No full verification clearance at this head; corrected source needs re-review first.
+
+Criteria: C3 failed (A known status transition retaining an old updated timestamp becomes stale before one full interval in the new state.), C6 failed (Connection keepalive still uses #startHeartbeat/#stopHeartbeat private methods and callers.).
+
+### impl-454 · 2026-10-15T07:49:12.210Z
+
+Fixed source review A-2739 at pushed head b64e0681: known watched state transitions age from observation time, with a red/green watcher regression retaining updated; remaining connection methods use keepalive. Heartbeat tests 9/9, keepalive reconnect case, typecheck and diff check pass. Latest origin/dev 74cddcdd merged (tracker-only). Requesting source re-review before verification.
+
+### rev-23 · 2026-10-15T07:49:57.099Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-15-454-2
+commit: b64e068182a0bfb027f5fdc2542a764c17e55b56
+scope: delta
+
+No high or medium findings remain. hub/src/hub/store.ts:433 now ages known transitions from observation; hub/test/heartbeat.test.ts:233 covers watched review and ready transitions retaining an old updated timestamp, including eventual age. hub/src/spoke/hub-client.ts:208/233 and callers now use Keepalive. Incoming dev is tracker-only; prior full source review A-2739 remains applicable. A-2742 records the corrected source review and A-2741 targeted evidence.
+C6/C7/C8 verified from source; C1-C5 await post-verdict exact-head verification. Source clear permits no-mode cland verify at b64e0681, without an executor override; this is not final evidence clearance.
+
+Criteria: C6 verified, C7 verified, C8 verified.
+
+### rev-23 · 2026-10-15T08:08:52.820Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-15-454-3
+commit: b64e068182a0bfb027f5fdc2542a764c17e55b56
+scope: evidence
+
+Medium — hub/src/hub/core.ts:2115 and hub/src/hub/store.ts:1027-1030: unconditional idle-send binding also attaches held progress/events to role-clause roots. Existing progress/subscriptions tests reproduce across all three harnesses; QA relaunch sees injected instead of queued progress. Preserve role-clause exclusion and existing regression assertions.
+Medium — hub/src/roles/default-roles.ts:58 and .cland/roles.toml:46: Coordinator clause replies are 8040/8091 bytes, exceeding the existing 7680-byte headroom bound in roles.test.ts:80. Shorten wording preserving all semantics; retain the bound.
+Exact-head f3eca6ee/A-2758 is red: 1721/1730 hub tests pass, 9 fail, zero skips; Neovim not reached. Earlier source review missed these integration defects. A-2760 records the trace. No retry at unchanged head; fixes need source re-review.
+
+Criteria: C4 failed (Idle role-clause sends invoke the general digest binder and prematurely inject held progress/events on restart/relaunch.), C7 failed (Default/live Coordinator clause replies exceed the existing 7680-byte headroom guard at 8040/8091 bytes.).
