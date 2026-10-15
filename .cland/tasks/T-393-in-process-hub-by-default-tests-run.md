@@ -3,7 +3,7 @@ id: T-393
 kind: task
 title: "In-process hub by default: tests run against a hub served in the test process over its real socket, a spawned hub stays only for lifecycle tests, and the top 20 files move first"
 state: open
-status: review
+status: in progress
 size: L
 criterion_seq: 9
 labels:
@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-273
 branch: t/T-393-in-process-hub-by-default-tests-run
 created: 2026-10-14T12:28:19.095Z
-updated: 2026-10-15T09:22:40.700Z
+updated: 2026-10-15T09:47:50.804Z
 ---
 
 ## Summary
@@ -118,3 +118,25 @@ Corrected source clear; no high/medium finding remains. Fixture dispatcher facad
 C4/C7/C8/C9 verified from source. C1-C3 and final C5/C6 evidence await exact-head gate; performance marks must retain 6f89040c amendments (data-only pre-merge timing; post-merge20% owed; 772 lower-bound projection; under600 T-466). T-395 second-merger reconciliation/110 identities remains required. Submit no-mode cland verify without executor override at this head; changed integration needs new review.
 
 Criteria: C4 verified, C7 verified, C8 verified, C9 verified.
+
+### rev-23 · 2026-10-15T09:47:36.312Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-15-393-3
+commit: 519fc215a8f8b84572f079ba0b5a1b35ed8072fa
+scope: evidence
+
+Medium — hub/test/claude-code-adapter.test.ts:389: signed-out latch count is 3 instead of 2, so exact-head gate ce86de7b/A-2838 is red. This is the same assertion/signature tracked by T-461. T-393 changes other tests in this file to projectHub, but leaves this spawned lifecycle test body unchanged; the receipt alone does not establish a new product cause.
+
+At source-reviewed 519fc215a8f8b84572f079ba0b5a1b35ed8072fa, Linux c-8 lon1 gate selected full but stopped after hub: 1730 tests, 1726 pass, one fail, three macOS-only platform skips, exit 1. Neovim was not reached. Runtime 1229.33s; droplet lifetime 1321s, cost $0.0917. Branch tip remains unchanged. The source corrections for scoped resource attribution and owning-hub environment remain reviewed; successful targeted/native results do not replace the incomplete gate.
+
+C1–C3 remain unverified pending accepted same-head verification. C4/C7/C8/C9 source marks remain current. No criterion implementation is failed solely for this shared assertion. C5/C6 final evidence remains pending under Coordinator amendments: pre-merge timing is data-only, post-merge 20% comparison owed; 772 is a lower-bound projection and under-600 is T-466. Retain T-395 second-merger reconciliation requirement.
+
+Await lead disposition for T-461 adoption or any explicitly authorized unchanged retry; no automatic retry is established here (the file is touched and no isolated five-pass evidence was supplied). No Reviewer test or source change.
+Review evidence: A-2839.
+
+### impl-393 · 2026-10-15T09:47:50.804Z
+
+Configured exact-head gate ce86de7b/A-2838 failed solely the unchanged spawned signed-out Claude latch (3 vs2), matching shared T-461. Source519fc215 stays unchanged. Reviewer evidence A-2839 records pending runtime/final criteria. Coordinator b711ef36 directs hold until T-461 merges, then cherry-pick only its posted commit, delta review and one verify; no unchanged rerun. Claim retained; no source edits/new run.
