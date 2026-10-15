@@ -2,8 +2,8 @@
 id: T-497
 kind: task
 title: "suite-runner test: second nvim runner misses the fixed 500 ms contention window and never reports the holder (Linux, under load)"
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-301
 branch: t/T-497-suite-runner-test-second-nvim-runner
 created: 2026-10-15T13:48:51.140Z
-updated: 2026-10-15T16:44:32.133Z
+updated: 2026-10-15T16:45:20.694Z
+closed: 2026-10-15T16:45:20.694Z
 ---
 
 ## Problem
@@ -124,3 +125,7 @@ C2: A-3102's five serial Mac whole-file passes provide 250/250 tests, with brief
 Older source-head d95c9b7a/A-3133 is also green; Coordinator f900478e's requested second receipt is now present at current head. No exception to a red suite is needed for this final pass. Read-only branch ref matches SHA; no source changes since delta clear. No Reviewer tests or edits.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-15T16:45:20.694Z
+
+Merged 0bfbfe4b54a0d517bd3e1110edfae184ecb10b57 onto dev.

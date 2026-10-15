@@ -3,7 +3,7 @@ id: T-485
 kind: task
 title: codex-adapter launch-policy test sees the QA process alive right after an acknowledged session.stop (Linux)
 state: open
-status: review
+status: ready
 size: XS
 criterion_seq: 1
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-299
 branch: t/T-485-codex-adapter-launch-policy-test-sees
 created: 2026-10-15T09:57:07.055Z
-updated: 2026-10-15T16:43:44.631Z
+updated: 2026-10-15T16:45:36.580Z
 ---
 
 ## Summary
@@ -28,6 +28,7 @@ updated: 2026-10-15T16:43:44.631Z
 - [x] C1. The test waits for the observed process exit after the acknowledged stop, keeps its assertion, and the file passes 5/5 beside a local full run and once on a droplet.
   - done: impl-485 · 2026-10-15T15:33:47.917Z
   - verified: rev-30 [reviewer] · run rev-20261015-485-final · 2026-10-15T16:41:23.018Z · commit 3ddafc22cb004a98eb8e5b58bf1033f95f0a738e
+  - verified: rev-30 [reviewer] · run rev-20261015-485-delta-final · 2026-10-15T16:45:31.611Z · commit eaa487746211c18e0b3bd089f35b406d30b3c4d1
 
 ## Comments
 
@@ -134,5 +135,26 @@ Accepted gate: A-3126/fffae7db Linux at source-reviewed 3cfa1f2f, 1761 pass/1 fa
 Coordinator b1fe4457 accepts the first failure as known T-495 limits-only journal row, fixed by the exact shared pick. Coordinator 56b9a908 explicitly permits the local fallback as second because first receipt provides changed-file Linux coverage; 2b7ce6ba-83b8-457a-a8e1-e3886e5ceb04 classifies second heartbeat.test.ts:106 timestamp assertion as T-514 and explicitly accepts this Linux+Mac pair. Distinct known failures remain separate; neither suite is called green. Mixed-executor acceptance is specific to these named decisions. No third run or source change needed.
 
 Read-only branch ref confirms exact reviewed SHA. No Reviewer tests or edits.
+
+Criteria: C1 verified.
+
+### rev-30 · 2026-10-15T16:45:31.611Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-485-delta-final
+commit: eaa487746211c18e0b3bd089f35b406d30b3c4d1
+scope: delta
+
+Delta/final review clear at eaa487746211c18e0b3bd089f35b406d30b3c4d1 after authorized dev integration; C1 reverified. No high, medium or low findings.
+
+Standards: resolved durations.json is byte-identical to merged origin/dev 92efc521, confirmed by direct Git-object byte comparison. Net task diff is exactly the original three Codex test insertions and passes whitespace check; no manifest value or assertion change was introduced by conflict resolution. Coordinator 00be0d5a explicitly waives the duplicate durations.test.ts run based on byte equality and green integrated cover e2a5506a.
+
+Spec/integration: same-PID reaping waits, original stopped-state/false-liveness assertions and subsequent relaunch/profile checks are intact. The entire test file is not byte-identical to old head: inherited T-393 converts fixture startup to projectHub, and T-456 adjusts unrelated brief text assertions. In the scoped launch-policy case, the sole inherited difference is startDaemon -> projectHub; normalizing that one fixture call leaves the case byte-identical. These are merged-dev changes covered by its integrated validation; the task's own patch against dev is unchanged. No task-local source redesign or lost integration side.
+
+Evidence carries under explicit Coordinator 4cf571b6-b9b4-409e-a006-17aa9ce74f87: after this manifest-only conflict resolution, delta review only, no new verify, existing accepted pair stands. Prior final A-3171 supplies C1 source/repetition proof: five quiet Mac files A-3107 (175/175), Linux A-3126 own Codex 35/35 and Mac A-3169 Codex 35/35/usage 8/8. Both suites remain overall red on distinct known T-495/T-514, explicitly accepted by 56b9a908 and 2b7ce6ba. This pass reattributes the same scoped evidence at the integrated head under the named exception; it does not claim a new-head suite was run.
+
+Branch ref read-only check matches requested SHA. No Reviewer tests, edits or new verify required. Coordinator merges on ready.
 
 Criteria: C1 verified.
