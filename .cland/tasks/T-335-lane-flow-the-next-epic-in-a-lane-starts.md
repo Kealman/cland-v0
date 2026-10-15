@@ -2,8 +2,8 @@
 id: T-335
 kind: task
 title: "Lane flow: epics follow epics, a follow is met on the last merge, and a merge hold keeps the follower off the predecessor's files until its demo"
-state: open
-status: ready
+state: closed
+status: done
 size: L
 criterion_seq: 7
 labels:
@@ -16,7 +16,8 @@ blocked_by: []
 topic: topic-277
 branch: t/T-335-lane-flow-the-next-epic-in-a-lane-starts
 created: 2026-10-13T14:23:44.027Z
-updated: 2026-10-15T12:41:06.485Z
+updated: 2026-10-15T12:41:18.902Z
+closed: 2026-10-15T12:41:18.902Z
 ---
 
 ## Summary
@@ -303,3 +304,7 @@ A-2986 at this head passes 80/80 across all 12 required serial whole files, incl
 Final C1–C7 renewal cites Coordinator 3a1218e8: no new full verify; E-423 stage-1 close after T-455 covers integration. Retain accepted A-2794/A-2935/A-2960 and previous final A-2978; no new full execution inferred. Linux UI remains at stage-close with forward fixes as directed. No Reviewer tests or edits.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.
+
+### coord · 2026-10-15T12:41:18.902Z
+
+Merged 3271892bd56e0908671c670caba929b260d8fc79 onto dev.
