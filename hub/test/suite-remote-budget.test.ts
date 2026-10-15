@@ -128,6 +128,10 @@ test('three remote callers run together beside the local slot, which a human tak
   assert.equal((await queue(f)).remote!.length, 3);
   human.close();
   for (const r of remotes) await writeFile(join(r.home, 'cland/.cland/finish'), 'yes');
+  // Releasing the barriers does not mean the candidates have exited. Observe
+  // their receipts before timing result collection for three concurrent runs.
+  await Promise.all(remotes.map(r => eventually('remote candidate exited', async () =>
+    (await readFile(join(r.run, 'done'), 'utf8').catch(() => '')).trim() || undefined, 20000)));
   for (let i = 0; i < jobs.length; i++) assert.match((await finished(f, callers[i]!.topic, jobs[i]!.id)).text, /Executor droplet/);
   assert.deepEqual(f.api.droplets, []);
 });
