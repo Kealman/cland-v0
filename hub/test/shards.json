@@ -180,6 +180,7 @@
     "hub/test/close-shards.test.ts": "machine",
     "hub/test/suite-close.test.ts": "machine",
     "hub/test/suite-close-recovery.test.ts": "machine",
-    "hub/test/suite-cache-recovery.test.ts": "machine"
+    "hub/test/suite-cache-recovery.test.ts": "machine",
+    "hub/test/demo.test.ts": "machine"
   }
 }

@@ -527,7 +527,13 @@ export type RuleRequest =
   | { type: 'rule.list'; id: string; all?: boolean; role?: string }
   | { type: 'rule.show'; id: string; number: number };
 
+export type DemoRequest =
+  | { type: 'demo.start'; id: string; epic: string; commit?: string }
+  | { type: 'demo.exec'; id: string; epic: string; command: string[] }
+  | { type: 'demo.stop' | 'demo.status'; id: string; epic: string; commit?: string };
+
 export type ClientRequest =
+  | DemoRequest
   | RuleRequest
   | { type: 'account.clear'; id: string; account: string }
   | { type: 'account.list'; id: string }
@@ -755,6 +761,13 @@ export function isClientHello(f: Record<string, unknown>): f is ClientHello {
 export function isClientRequest(f: Record<string, unknown>): f is ClientRequest {
   if (typeof f.id !== 'string') return false;
   switch (f.type) {
+    case 'demo.start':
+      return typeof f.epic === 'string' && (f.commit === undefined || typeof f.commit === 'string');
+    case 'demo.exec':
+      return typeof f.epic === 'string' && Array.isArray(f.command) && f.command.length > 0 && f.command.every(c => typeof c === 'string' && !c.includes('\0'));
+    case 'demo.stop':
+    case 'demo.status':
+      return typeof f.epic === 'string' && (f.commit === undefined || typeof f.commit === 'string');
     case 'visibility.set':
       return typeof f.surface === 'string' && ['topics', 'sessions', 'artifacts'].includes(f.surface) && typeof f.target === 'string' && f.target.length > 0 && (f.mode === 'pin' || f.mode === 'mute');
     case 'suite.slot':

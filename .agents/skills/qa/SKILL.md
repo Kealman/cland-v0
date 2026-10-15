@@ -26,6 +26,24 @@ QA takes a hold on the epic and reads its plan, stage progress and brief. Use a 
 
 Write one `task.comment` on the epic with `verdict: qa`, `stage: "<exact stage name>"`, `commit: "<full tested dev SHA>"`, `run` and `result`. The CLI form adds `--stage "<exact stage name>"` to the normal verdict command. Clear only when every check in the stage brief passed. Stage verdicts carry no `verified` or `failed` epic criterion marks; the epic's Definition of done remains a separate run. Report `qa clear T-<epic> stage <name>` or `qa not clear T-<epic> stage <name>` in the request topic to its Lead. The hub refuses a stale dev build or unfinished stage; retry only the verdict when the evidence/build still qualify, otherwise request a fresh run.
 
+## Epic demos on a named dev commit
+
+For an epic's Definition of done (separate from after-stage QA), take its QA hold and resolve the requested full dev SHA. Start the demo with `cland demo start <epic> --commit <sha> --json`. Keep the returned lease id, commit and deadline. The hub delivers that committed tree with the suite's dependencies and Neovim, under the shared remote budget and daily cap. Only QA holding the epic, the Coordinator and the human may use demo controls; sessions leave provider operations to the hub.
+
+Run each headless case with the recorder from the local checkout. Use the requested epic's canonical id for both arguments (`E-423` in this example):
+
+```sh
+QA_DEMO_EPIC=E-423 CLAND="$PWD/hub/bin/cland.ts" sh .agents/skills/qa/qa-record.sh run E-423 <run> <CASE-ID>
+```
+
+The recorder invokes `cland demo exec <epic> -- …`, runs the case in the delivered tree as the ordinary user, copies its captures into the local evidence directory and records executor, commit, elapsed lifetime and estimated cost. Run each CLI/manual case through `cland demo exec <epic> -- <command…>`, save its output locally, then record it with `QA_DEMO_EPIC=<epic> … qa-record.sh note …`. Commands are argument vectors; use `sh -c '<script>'` when a case needs a shell. The remote PATH includes the delivered `hub/bin` for `cland --headless --qa`.
+
+Cases requiring macOS run locally in a clean detached worktree at that same full SHA, with `QA_DEMO_EPIC` unset. The case table names `droplet` or `local macOS` for every case. If start refuses for lack of a remote slot or spend budget, run locally at the requested SHA and report the reason; the lane's merge hold remains in force until the demo verdict. Other start failures are blockers to report to the lead.
+
+After the cases, run `cland demo status <epic> --commit <tested-sha> --json` and read `freshness`. An unrelated dev move is allowed: `current: true` means the tested commit is on dev and every later commit avoids the files changed by the epic's task merges (`Item:` trailers). `current: false` names the conflicting commits/files, or a build no longer on dev: retain evidence and request a fresh run. This same check works without a remote lease after a local fallback. The hub rechecks this rule when recording the verdict and closing the epic.
+
+Collect all captures, then `cland demo stop <epic> --json` before recording the verdict, so the evidence can name the confirmed lifetime and cost. Include executor, full commit, lease/deadline, lifetime and cost in the verdict text; local cases have no droplet cost. A verdict or the earlier of run timeout and machine lifetime also destroys the droplet automatically. If destruction is pending, report it to the lead and use the status once confirmed. Write the epic verdict with the tested commit and verified criterion ids, and close through the normal epic gate. A verdict refusal after evidence was recorded retries only the verdict when the build still qualifies.
+
 ## If you are the item lead
 
 After committing and pushing the work to `origin`, send kind `report` to `qa` in the item topic, with first line `qa request T-<n>`, the Coordinator’s committed `qa/briefs/T-<n>.md` and the branch/head. Request QA when a brief was supplied; without one request review only, unless `task.view`’s `qaPolicy` has a non-none scope and `when: per-item`, or `qaCriteria` names criteria still needing QA marks; in either case report the missing brief to the Coordinator. Items with after-stage QA merge on review and receive their stage QA pass on `dev`. Fix not-clear findings and request a new source review before any new `cland verify` run at the new head. Keep the claim until merge. The hub’s `ready` event supplies the supervising Lead’s or Coordinator’s handover; a clear QA verdict needs no relay.
@@ -54,7 +72,7 @@ The brief's full suite may run on the project's droplet executor. A green same-h
    CLAND="$PWD/hub/bin/cland.ts" sh .agents/skills/qa/qa-record.sh run T-<n> <run> <CASE-ID>
    ```
 
-   `CLAND` is the path of the cland executable (in this repository `hub/bin/cland.ts`, which is executable); in a project that has `cland` on its PATH leave it out. Ids are checked: the item is exactly `T-<digits>`, run and case ids are one path component of letters, digits, `.`, `_`, `-` starting with a letter or digit. The script runs `qa/cases/<CASE-ID>.lua`, keeps the grid and state dumps in `.cland/qa/T-<n>/<run>/`, prints the `runs.jsonl` line and appends it to `.cland/qa/runs.jsonl` of the project (not the worktree's copy). Exit 0 is PASS, 1 FAIL, 2 INCONCLUSIVE or BLOCKED.
+   `CLAND` is the path of the cland executable (in this repository `hub/bin/cland.ts`, which is executable); in a project that has `cland` on its PATH leave it out. Ids are checked: the item has one uppercase kind prefix and digits (`T-12`, `E-423`, or a configured planning kind such as `I-42`), run and case ids are one path component of letters, digits, `.`, `_`, `-` starting with a letter or digit. The script runs `qa/cases/<CASE-ID>.lua`, keeps the grid and state dumps in `.cland/qa/<item>/<run>/`, prints the `runs.jsonl` line and appends it to `.cland/qa/runs.jsonl` of the project (not the worktree's copy). Exit 0 is PASS, 1 FAIL, 2 INCONCLUSIVE or BLOCKED.
 4. **Run each manual check and each case on another surface** the way the brief says, and record it with what you ran and saw:
 
    ```sh

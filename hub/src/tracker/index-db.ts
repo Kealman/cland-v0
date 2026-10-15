@@ -277,8 +277,8 @@ export class TrackerIndex {
     return this.#db.prepare("select id from tracker_items where kind = 'task' and (n = ? or branch = ?)").all(item ? idNumber(item) : null, branch).map(row => this.#canonical(String(row.id)));
   }
 
-  criteriaCounts(item: IndexedItem, tip: string | null): CriteriaCounts {
-    return countCriteria(this.#criteria.get(item) ?? [], tip);
+  criteriaCounts(item: IndexedItem, tip: string | null, isCurrent?: (commit: string | null) => boolean | undefined): CriteriaCounts {
+    return countCriteria(this.#criteria.get(item) ?? [], tip, isCurrent);
   }
 
   criterionIds(id: string): string[] {

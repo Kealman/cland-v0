@@ -6,6 +6,7 @@
 // one `git for-each-ref` on a timer and soon after every tracker change; a tip that moved changes the key, so nothing
 // has to be invalidated by hand: answers for tips no branch has any more are dropped. Missing answers are computed
 // one at a time, asynchronously, and the items waiting for them are announced (`settled`) once they are known.
+import { epicDemoFreshness } from './epic-surfaces.ts';
 import type { IndexedVerdict } from './index-db.ts';
 import type { VerdictKind } from './item.ts';
 import type { LogFn } from '../log.ts';
@@ -16,7 +17,7 @@ export const TIP_CHECK_MS = 2000;
 /** How soon after a tracker change the tips are read again, ms (changes in a burst share one read). */
 const POKE_MS = 50;
 
-type Want = { commit: string; tip: string; base: string | null; ancestry: boolean; ids: Set<string> };
+type Want = { commit: string; tip: string; base: string | null; ancestry: boolean; demoTasks?: string[]; ids: Set<string> };
 
 /** Owns when tip reads run, including the first read; tests can drive and await them by hand. */
 export type TipSchedule = (read: () => Promise<void>, intervalMs: number) => { poke: () => void; stop: () => void };
@@ -167,7 +168,11 @@ export class Freshness {
     return this.#current(id, branch, commit, true);
   }
 
-  #current(id: string, branch: string | null, commit: string | undefined, ancestry = false): boolean | undefined {
+  demo(id: string, commit: string | undefined, tasks: string[]): boolean | undefined {
+    return this.#current(id, 'dev', commit, false, tasks);
+  }
+
+  #current(id: string, branch: string | null, commit: string | undefined, ancestry = false, demoTasks?: string[]): boolean | undefined {
     if (!commit || !branch || !/^[0-9a-f]{4,64}$/i.test(commit)) return false;
     const tips = this.#tips;
     if (!tips) return undefined;
@@ -183,15 +188,15 @@ export class Freshness {
       return missing.absent ? false : undefined;
     }
     if (commit === tip) return true;
-    const base = ancestry ? null : this.#base;
-    const key = keyOf(commit, tip, base, base ? (tips.get(base) ?? null) : null) + (ancestry ? ' ancestor' : '');
+    const base = ancestry || demoTasks ? null : this.#base;
+    const key = keyOf(commit, tip, base, base ? (tips.get(base) ?? null) : null) + (ancestry ? ' ancestor' : demoTasks ? ` demo ${demoTasks.join(',')}` : '');
     const known = this.#results.get(key);
     if (known !== undefined) {
       if (id) this.#retries.get(key)?.want.ids.add(id);
       return known;
     }
     if (id) {
-      const want = this.#wants.get(key) ?? { commit, tip, base, ancestry, ids: new Set<string>() };
+      const want = this.#wants.get(key) ?? { commit, tip, base, ancestry, ...(demoTasks ? { demoTasks } : {}), ids: new Set<string>() };
       want.ids.add(id);
       this.#wants.set(key, want);
       this.#startWork();
@@ -266,7 +271,7 @@ export class Freshness {
     const baseKey = `${base ?? ''} ${base ? (tips.get(base) ?? '') : ''}`;
     const alive = (key: string) => {
       const [, tip, b, bt, mode] = key.split(' ');
-      return live.has(tip!) && (mode === 'ancestor' || `${b} ${bt}` === baseKey);
+      return live.has(tip!) && (mode === 'ancestor' || mode === 'demo' || `${b} ${bt}` === baseKey);
     };
     for (const key of [...this.#results.keys()]) if (!alive(key)) this.#results.delete(key);
     for (const key of [...this.#wants.keys()]) if (!alive(key)) this.#wants.delete(key);
@@ -310,7 +315,7 @@ export class Freshness {
         this.#wants.delete(key);
         if (this.#stopped) continue;
         this.#results.set(key, value);
-        if (failed && want.ancestry) this.#retries.set(key, { want, after: performance.now() + this.#intervalMs });
+        if (failed && (want.ancestry || want.demoTasks)) this.#retries.set(key, { want, after: performance.now() + this.#intervalMs });
         this.#settled([...want.ids]);
       }
     } finally {
@@ -323,6 +328,7 @@ export class Freshness {
     const resolved = await resolveCommit(this.#git, want.commit);
     if (!resolved) return false;
     if (resolved === want.tip) return true;
+    if (want.demoTasks) return (await epicDemoFreshness(this.#git, want.demoTasks, resolved, want.tip)).current;
     if (want.ancestry) return await this.#git(['merge-base', '--is-ancestor', resolved, want.tip]) !== null;
     if (!want.base) return false;
     const reviewed = await this.#patch(want.base, resolved);

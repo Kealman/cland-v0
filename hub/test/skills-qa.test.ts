@@ -112,7 +112,7 @@ test('a brief of two cases: runs.jsonl gets one full line per case, a BLOCKED ca
 
   const lines = (await readFile(join(root, '.cland', 'qa', 'runs.jsonl'), 'utf8')).trim().split('\n').map((l) => JSON.parse(l) as RunLine);
   assert.equal(lines.length, 3);
-  for (const line of lines) assert.deepEqual(Object.keys(line), ['ts', 'item', 'run', 'case', 'build', 'surface', 'method', 'result', 'exit_code', 'evidence', 'session']);
+  for (const line of lines) assert.deepEqual(Object.keys(line), ['ts', 'item', 'run', 'case', 'build', 'surface', 'method', 'result', 'exit_code', 'executor', 'lifetime_ms', 'cost_usd', 'evidence', 'session']);
   const [pass, blocked, note] = lines as [RunLine, RunLine, RunLine];
   assert.match(pass.ts, /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/);
   assert.deepEqual([pass.item, pass.run, pass.case, pass.surface, pass.result, pass.exit_code, pass.session], ['T-1', run, 'SHELL-001', 'headless-grid', 'PASS', 0, 'qa-1']);
@@ -200,7 +200,7 @@ test('ids that could leave the evidence tree or name nothing are refused before 
   await mkdir(join(root, '.cland'), { recursive: true });
   const hubFile = join(root, '.cland', 'hub.json');
   const bad: Array<[string, string, string]> = [
-    ['T-1/../../x', 'r1', 'C-1'], ['T-', 'r1', 'C-1'], ['T-1a', 'r1', 'C-1'], ['T-../x', 'r1', 'C-1'], ['x', 'r1', 'C-1'], ['T-1 ', 'r1', 'C-1'],
+    ['E-1/../../x', 'r1', 'C-1'], ['I-42a', 'r1', 'C-1'], ['E-', 'r1', 'C-1'], ['T-1/../../x', 'r1', 'C-1'], ['T-', 'r1', 'C-1'], ['T-1a', 'r1', 'C-1'], ['T-../x', 'r1', 'C-1'], ['x', 'r1', 'C-1'], ['T-1 ', 'r1', 'C-1'],
     ['T-1', '', 'C-1'], ['T-1', '.', 'C-1'], ['T-1', '..', 'C-1'], ['T-1', '.hidden', 'C-1'], ['T-1', '-r', 'C-1'], ['T-1', 'a/b', 'C-1'], ['T-1', '../x', 'C-1'], ['T-1', 'a b', 'C-1'], ['T-1', 'r*', 'C-1'],
     ['T-1', 'r1', ''], ['T-1', 'r1', '.'], ['T-1', 'r1', '..'], ['T-1', 'r1', '.x'], ['T-1', 'r1', 'a/b'], ['T-1', 'r1', '../../x'],
   ];
@@ -213,8 +213,10 @@ test('ids that could leave the evidence tree or name nothing are refused before 
   }
   assert.deepEqual(await readdir(join(root, '.cland')), [], 'nothing was created');
   // the accepted shapes
-  for (const [run, id] of [['qa-2026-10-09-1', 'SHELL-001'], ['r.1_a', 'M1'], ['1', '2']]) {
-    assert.equal(record(hubFile, {}, 'note', 'T-12', run as string, id as string, 'hub-api', 'cmd', 'PASS').code, 0, `${run} ${id}`);
+  for (const [item, run, id] of [['T-12', 'qa-2026-10-09-1', 'SHELL-001'], ['E-423', 'r.1_a', 'M1'], ['I-42', '1', '2']]) {
+    const result = record(hubFile, {}, 'note', item as string, run as string, id as string, 'hub-api', 'cmd', 'PASS');
+    assert.equal(result.code, 0, `${item} ${run} ${id}: ${result.stderr}`);
+    assert.equal(JSON.parse(result.stdout).item, item);
   }
 });
 

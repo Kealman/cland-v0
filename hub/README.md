@@ -1857,6 +1857,17 @@ before creation. This is an estimate from hourly price and lifetime, not an
 invoice; provider billing may differ (see costs above).
 `cland executor status` prints the path and today's spent + reserved / cap.
 
+#### Epic demo leases
+
+`cland demo start <epic> [--commit <sha>] [--json]` asks the hub for a demo droplet at a named commit on `dev` (the tip by default). It returns the lease id, full commit, deadline, lifetime and cost. Delivery uses the verification snapshot, installs changed dependencies and prepares the candidate's Neovim pin. The root checkout may keep moving or have tracker edits: only committed Git objects are delivered.
+
+`cland demo exec <epic> -- <command…>` runs as the ordinary `runner` user in the delivered tree, with `hub/bin` on PATH. It returns stdout, stderr and the command's exit code; `cland --headless --qa qa/cases/<case>.lua` works there too. Each argument is preserved; use `sh -c '<script>'` for a shell pipeline. `cland demo status <epic> [--commit <tested-sha>] --json` reports lease state/accounting and, with a commit, its current freshness even after a local fallback. `cland demo stop <epic>` releases the lease and reports confirmed accounting.
+
+Demo leases share `remote_budget` and the daily spend cap with verification and snapshot preparation. No slot or budget means a nonzero refusal naming the reason, without creating a droplet; QA runs locally at the same commit while the lane merge hold stays active. Callers are QA holding that epic, the Coordinator or the human. The hub owns provider calls, stores no DigitalOcean token, and uses the existing tagged lease, spend ledger, watchdog and reaper. Stop, the epic's QA verdict, or the earlier of `run_timeout` and `lifetime` ends the lease. Restart retains the lease; create, confirmed destroy and cost are comments on the epic.
+
+An epic QA verdict names the tested dev commit. A later dev tip is acceptable when the commit is still on dev and every intervening commit avoids the epic's surfaces: files changed by its task merges, found through their `Item:` trailers. An intervening edit (even reverted), deletion or rename touching a surface makes the verdict stale; the refusal names the commit and files. The same rule governs verdict admission, cached freshness and epic close. Stage QA retains its existing exact dev build rule. The QA recorder copies remote captures locally before stopping and records the executor, commit, lifetime and cost; macOS-only cases run locally at the same commit.
+
+
 ### Tests
 
 Use `projectHub(t, root, env?)` from `hub/test/harness.ts` for project tests by

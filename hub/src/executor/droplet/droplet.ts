@@ -79,19 +79,19 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
   }
   async releaseShardReservations(runs: string[]): Promise<void> { await releaseShardSpend(this.root, runs, this.#env); }
 
-  async acquire(run: Pick<RunRef, 'id'>, deadline: string): Promise<DropletLease> {
+  async acquire(run: Pick<RunRef, 'id'>, deadline: string, demo?: DropletLease['demo']): Promise<DropletLease> {
     const runDeadline = Date.parse(deadline);
     if (!Number.isFinite(runDeadline) || runDeadline <= Date.now()) throw new Error('droplet acquisition deadline reached');
     if (!this.#env.DIGITALOCEAN_TOKEN) throw new Error('DIGITALOCEAN_TOKEN is required');
     const snapshot = await readSnapshot(this.root);
     if (!snapshot) throw new Error('no prepared snapshot; run cland executor prepare');
     const config = await this.#config();
-    const lease = await this.#acquire(run, deadline, { size: config.verification.droplet.size, regions: config.verification.droplet.regions.filter(region => snapshot.regions.includes(region)), image: snapshot.image, minDiskSize: snapshot.minDiskSize });
+    const lease = await this.#acquire(run, deadline, { size: config.verification.droplet.size, regions: config.verification.droplet.regions.filter(region => snapshot.regions.includes(region)), image: snapshot.image, minDiskSize: snapshot.minDiskSize, ...(demo ? { demo } : {}) });
     try { await waitForMachine(this.root, lease, snapshot.key, undefined, undefined, this.#env); return lease; }
     catch (error) { await this.release(lease); throw error; }
   }
 
-  async #acquire(run: Pick<RunRef, 'id'>, deadline: string, input: { size: string; regions: string[]; image: string | number; minDiskSize?: number; user_data?: string }): Promise<DropletLease> {
+  async #acquire(run: Pick<RunRef, 'id'>, deadline: string, input: { size: string; regions: string[]; image: string | number; minDiskSize?: number; user_data?: string; demo?: DropletLease['demo'] }): Promise<DropletLease> {
     const runDeadline = Date.parse(deadline);
     const config = await this.#config();
     const api = new DigitalOceanApi(this.#env);
@@ -107,7 +107,7 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
     const id = randomUUID();
     const name = `cland-${projectName(config.name)}-${id.replace(/-/g, '').slice(0, 8)}`;
     const lease: DropletLease = { kind: 'droplet', provider: 'digitalocean', lease: id, run: run.id, name, tags: ['cland', projectTag(this.root, config.name)], size, region, priceHourly: selected.price_hourly, keyName: `${projectTag(this.root, config.name)}-${id.replace(/-/g, '').slice(0, 8)}`, created,
-      deadline: new Date(Date.parse(created) + testTiming('CLAND_TEST_EXECUTOR_LIFETIME_MS', config.verification.lifetimeMs, this.#env)).toISOString(), state: 'creating', resource: null, keyId: null };
+      ...(input.demo ? { demo: input.demo } : {}), deadline: new Date(Math.min(input.demo ? runDeadline : Infinity, Date.parse(created) + testTiming('CLAND_TEST_EXECUTOR_LIFETIME_MS', config.verification.lifetimeMs, this.#env))).toISOString(), state: 'creating', resource: null, keyId: null };
     const dir = leaseDir(this.root, lease);
     await mkdir(dir, { recursive: true, mode: 0o700 });
     try {
@@ -299,7 +299,7 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
         lease.watchdog = await armWatchdog(dir, this.#env); await this.#save(lease);
         this.logger({ event: 'executor-watchdog-rearmed', lease: lease.lease, pid: lease.watchdog.pid, deadline: lease.deadline });
       }
-      if (lease.state === 'releasing' || Date.parse(lease.deadline) <= Date.now() || restart && (lease.state === 'active' && !lease.execution && !owned.has(lease.run) || lease.state === 'creating' && lease.resource === null)) await this.release(lease);
+      if (lease.state === 'releasing' || Date.parse(lease.deadline) <= Date.now() || restart && (lease.state === 'active' && !lease.execution && !lease.demo && !owned.has(lease.run) || lease.state === 'creating' && lease.resource === null)) await this.release(lease);
     }
     if (this.#prepareJob?.state !== 'running') await recoverSnapshots(this.root, this.store, this.logger, this.#env);
     this.store?.setMeta('executor-leases', JSON.stringify(await readLeases(this.root)));

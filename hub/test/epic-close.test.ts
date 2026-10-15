@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, flushProjectLogs, connectUi, spawnSpoke, startDaemon, tempProject } from './harness.ts';
+import { cland, flushProjectLogs, connectUi, eventually, spawnSpoke, startDaemon, tempProject } from './harness.ts';
 import type { ItemView } from '../src/tracker/tracker.ts';
 import { taskWriteGate } from './tracker-write-gate.ts';
 
@@ -36,6 +36,18 @@ async function project(t: TestContext, gated = false, levels = ['release', 'epic
     return r.item;
   };
   return { root, ui, qa, item, verdict, gate };
+}
+
+async function landSurface(root: string, ui: Awaited<ReturnType<typeof connectUi>>, epic: string) {
+  const made = await ui.request({ type: 'task.create', size: 'S', title: 'Landed demo surface', parent: epic });
+  const child = (made.value as { item: ItemView }).item;
+  await writeFile(join(root, 'demo.txt'), 'landed surface\n');
+  git(root, 'add', 'demo.txt'); git(root, 'commit', '-qm', `Land demo surface\n\nItem: ${child.id}`);
+  await ui.request({ type: 'task.close', item: child.id });
+}
+async function changeSurface(root: string, title: string) {
+  await writeFile(join(root, 'demo.txt'), `${title}\n`);
+  git(root, 'add', 'demo.txt'); git(root, 'commit', '-qm', title);
 }
 
 test('QA verifies a container definition of done by id; fail clears marks without inventing task status', async t => {
@@ -83,21 +95,22 @@ test('epic close names missing QA and criteria, and succeeds with all verified i
   assert.equal((JSON.parse(closed.stdout) as { item: ItemView }).item.state, 'closed');
 });
 
-test('epic QA must be clear, written by QA through the hub, on the exact dev tip', async t => {
+test('epic QA must be clear, written by QA through the hub, and fresh on its surfaces', async t => {
   const { root, ui, item, verdict } = await project(t);
   const refuse = async (pattern: RegExp) => {
     const r = await ui.request({ type: 'task.close', item: item.id });
     assert.equal(r.ok, false);
     assert.match(r.error ?? '', pattern);
   };
+  await landSurface(root, ui, item.id);
   const sha = git(root, 'rev-parse', 'dev');
   assert.equal((await ui.request({ type: 'task.comment', item: item.id, text: 'Human QA', verdict: { verdict: 'qa', result: 'clear', run: 'human-1', commit: sha } })).ok, true);
   await refuse(/writer did not hold qa/);
   await verdict('qa-1', 'not clear');
   await refuse(/qa is not clear/);
   await verdict('qa-2', 'clear', 'all');
-  git(root, 'commit', '--allow-empty', '-qm', 'Different dev build');
-  await refuse(/qa is stale/);
+  await changeSurface(root, 'Different dev build');
+  await refuse(/qa-stale/);
   await verdict('qa-3', 'clear', 'all');
   assert.equal((await ui.request({ type: 'task.close', item: item.id })).ok, true);
 });
@@ -147,16 +160,17 @@ test('task.edit cannot close an epic around the QA gate', async t => {
 
 test('epic close rechecks dev after the temporary write before publication', async t => {
   const { root, ui, item, verdict, gate } = await project(t, true);
+  await landSurface(root, ui, item.id);
   await verdict('qa-1', 'clear', 'all');
   const before = await readFile(join(root, item.path), 'utf8');
   await gate!.arm();
   const close = ui.request({ type: 'task.close', item: item.id });
   await gate!.entered();
-  git(root, 'commit', '--allow-empty', '-qm', 'Demo build changed');
+  await changeSurface(root, 'Demo build changed');
   await gate!.release();
   const refused = await close;
   assert.equal(refused.ok, false);
-  assert.match(refused.error ?? '', /qa is stale/);
+  assert.match(refused.error ?? '', /qa-stale/);
   assert.equal(await readFile(join(root, item.path), 'utf8'), before);
 });
 
@@ -198,6 +212,7 @@ test('renamed planning containers retain QA close/edit gates, dev verdict attrib
     assert.equal(refused.ok, false, type);
     assert.match(refused.error ?? '', /qa-missing/);
   }
+  await landSurface(root, ui, item.id);
   const current = await verdict('qa-renamed-1', 'clear', 'all');
   assert.equal(current.comments.at(-1)?.verdict?.commit, git(root, 'rev-parse', 'dev'));
   const list = await cland(root, 'task', 'list', '--json');
@@ -206,7 +221,7 @@ test('renamed planning containers retain QA close/edit gates, dev verdict attrib
   assert.equal((event.item as ItemView).kind, 'initiative');
   const view = await ui.request({ type: 'task.view', item: item.id });
   assert.equal((view.value as { item: ItemView }).item.verdicts.at(-1)?.current, true);
-  git(root, 'commit', '--allow-empty', '-qm', 'Renamed planning build changed');
+  await changeSurface(root, 'Renamed planning build changed');
   for (const type of ['task.close', 'task.edit']) {
     const refused = await ui.request({ type, item: item.id, ...(type === 'task.edit' ? { state: 'closed' } : {}) });
     assert.equal(refused.ok, false, type);
@@ -278,4 +293,52 @@ test('status-driven conversion of a planning container cannot bypass QA or open-
     assert.equal(changed.ok, true, changed.error);
     assert.deepEqual([(changed.value as { item: ItemView }).item.kind, (changed.value as { item: ItemView }).item.state, (changed.value as { item: ItemView }).item.status], ['task', 'closed', 'done']);
   }
+});
+
+test('epic QA at a named ancestor survives unrelated dev moves and refuses surface edits', async t => {
+  const { root, ui, qa, item, verdict } = await project(t);
+  const made = await ui.request({ type: 'task.create', size: 'S', title: 'Epic surface', parent: item.id });
+  const child = (made.value as { item: ItemView }).item;
+  await writeFile(join(root, 'surface.txt'), 'landed\n');
+  git(root, 'add', 'surface.txt'); git(root, 'commit', '-qm', `Land surface\n\nItem: ${child.id}`);
+  await ui.request({ type: 'task.close', item: child.id });
+  const build = git(root, 'rev-parse', 'dev');
+  await writeFile(join(root, 'other.txt'), 'unrelated\n');
+  git(root, 'add', 'other.txt'); git(root, 'commit', '-qm', 'Unrelated dev work');
+  await verdict('ancestor-demo', 'clear', 'all', build);
+  await eventually('ancestor verdict and criteria become current in cached views', async () => {
+    const shown = await ui.request({ type: 'task.view', item: item.id });
+    const view = (shown.value as { item: ItemView }).item;
+    return view.verdicts.at(-1)?.current === true && view.criteriaCounts.verified === 2 ? true : undefined;
+  });
+  await eventually('the list settles freshness after dev tip refresh', async () => {
+    const listing = JSON.parse((await cland(root, 'task', 'list', '--json')).stdout);
+    const listed = listing.items.find((row: { id: string }) => row.id === item.id);
+    return listed.criteria.verified === 2 && listed.verdicts.at(-1)?.current === true ? true : undefined;
+  });
+  const closed = await ui.request({ type: 'task.close', item: item.id });
+  assert.equal(closed.ok, true, closed.error);
+  await writeFile(join(root, 'surface.txt'), 'changed again\n');
+  git(root, 'add', 'surface.txt'); git(root, 'commit', '-qm', 'Overlap after demo');
+  const overlap = git(root, 'rev-parse', 'dev');
+  const refused = await qa.call<{ ok: boolean; error?: string }>('task.comment', { id: item.id, verdict: 'qa', result: 'clear', run: 'stale-demo', commit: build, verified: 'all' });
+  assert.equal(refused.ok, false);
+  assert.match(refused.error ?? '', new RegExp(`${overlap}.*surface.txt`));
+});
+
+test('epic demo freshness retains intervening rename/revert conflicts and rejects commits off dev', async t => {
+  const { root, ui, qa, item } = await project(t);
+  await landSurface(root, ui, item.id);
+  const build = git(root, 'rev-parse', 'dev');
+  git(root, 'mv', 'demo.txt', 'renamed.txt'); git(root, 'commit', '-qm', 'Rename surface');
+  const renamed = git(root, 'rev-parse', 'dev');
+  git(root, 'revert', '--no-edit', renamed);
+  const recorded = await qa.call<{ ok: boolean; error?: string }>('task.comment', { id: item.id, verdict: 'qa', result: 'clear', run: 'rename-demo', commit: build });
+  assert.equal(recorded.ok, false); assert.match(recorded.error ?? '', new RegExp(`${renamed}.*demo.txt`));
+  git(root, 'checkout', '-qb', 'off-dev', build);
+  await writeFile(join(root, 'off-dev.txt'), 'side branch\n');
+  git(root, 'add', 'off-dev.txt'); git(root, 'commit', '-qm', 'Unlanded demo build');
+  const side = git(root, 'rev-parse', 'HEAD'); git(root, 'checkout', '-q', 'dev');
+  const offDev = await qa.call<{ ok: boolean; error?: string }>('task.comment', { id: item.id, verdict: 'qa', result: 'clear', run: 'off-dev-demo', commit: side });
+  assert.equal(offDev.ok, false); assert.match(offDev.error ?? '', /not on dev/);
 });

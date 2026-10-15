@@ -1,3 +1,4 @@
+import { epicDemoFreshness, type DemoFreshness } from './epic-surfaces.ts';
 // The tracker: item files in `.cland/tasks/` are the source of truth, the hub writes them and keeps the
 // index (spec 4.6, ADR 0002).
 //
@@ -567,7 +568,7 @@ export class Tracker {
   #announce(id: string, ifMoved: boolean, siblings?: string[], silent = false): void {
     const indexed = this.#index.get(id);
     id = indexed?.id ?? id;
-    const item: ItemSummary | null = indexed ? { ...indexed, ...this.#verifyOf(indexed), ...this.#inboxPlan(id), criteria: this.#index.criteriaCounts(indexed, this.#criteriaTip(indexed)), claim: this.#index.claimOf(id), holds: this.#index.holdsOf(id), verdicts: this.#annotateVerdicts(id, indexed.kind, indexed.branch, this.#index.verdicts(id).get(id) ?? []), verdictBase: this.#fresh.base() } : null;
+    const item: ItemSummary | null = indexed ? { ...indexed, ...this.#verifyOf(indexed), ...this.#inboxPlan(id), criteria: this.#summaryCriteria(indexed), claim: this.#index.claimOf(id), holds: this.#index.holdsOf(id), verdicts: this.#annotateVerdicts(id, indexed.kind, indexed.branch, this.#index.verdicts(id).get(id) ?? []), verdictBase: this.#fresh.base() } : null;
     if (silent && JSON.stringify(this.#announced.get(`T-${idNumber(id)}`)?.verify) === JSON.stringify(item?.verify)) return;
     const shown = item ? JSON.stringify([item.criteria, item.verdictBase, this.#fresh.tip(isPlanningContainer(item.kind, this.ladder) ? 'dev' : item.branch), item.verdicts.map((v) => v.current ?? null)]) : '';
     if (ifMoved && (this.#shown.get(`T-${idNumber(id)}`) === shown || (item && pending(item.verdicts)))) return;
@@ -1481,6 +1482,11 @@ export class Tracker {
   #criteriaOf(item: Item): { criteria: Criterion[]; criteriaCounts: CriteriaCounts; criteriaWarnings: CriterionWarning[] } {
     const parsed = parseCriteria(item.body, this.ladder.containers.includes(item.fm.kind));
     const tip = this.#criteriaTip(item.fm);
+    if (this.isPlanContainer(item.fm.kind)) {
+      const tasks = this.#demoTasks(item.fm.id);
+      const criteria = parsed.criteria.map(c => ({ ...c, marks: c.marks.map(m => m.kind === 'verified' ? withCurrent(m, this.#fresh.demo(item.fm.id, m.commit, tasks)) : m) }));
+      return { ...parsed, criteria, criteriaCounts: countCriteria(summarizeCriteria(parsed.criteria), tip, commit => commit ? this.#fresh.demo(item.fm.id, commit, tasks) : false) };
+    }
     return { ...parsed, criteria: annotateCriteria(parsed.criteria, tip), criteriaCounts: countCriteria(summarizeCriteria(parsed.criteria), tip) };
   }
 
@@ -1520,13 +1526,22 @@ export class Tracker {
     return { ...view, claim: view.claim ? { ...view.claim, sessionId: this.#identityOf(view.claim.sessionId) } : null, verdicts: [...view.verdicts.filter(v => v.source === 'file'), ...annotated] };
   }
 
-  /** An epic verdict covers the exact integration build, including empty commits; task patch equivalence does not apply. */
+  #demoTasks(id: string): string[] { return this.#index.list({ under: id, kind: 'task' }).map(t => t.id).sort(); }
+
+  async demoFreshness(id: string, commit: string, tip?: string): Promise<DemoFreshness> {
+    const epic = this.#require(id).id;
+    const head = tip ?? await this.#resolve('refs/heads/dev', 'the epic demo tip');
+    if (!head) throw new TrackerError('epic demo needs dev');
+    const fresh = await epicDemoFreshness(this.#git, this.#demoTasks(epic), commit, head);
+    if (!tip && head !== await this.#resolve('refs/heads/dev', 'the epic demo tip after checking')) throw new TrackerError('dev changed while checking demo freshness; retry');
+    return fresh;
+  }
+
+  /** Epic demos remain current across dev commits outside their landed surfaces. */
   #annotateVerdicts(id: string, kind: Kind, branch: string | null, verdicts: IndexedVerdict[]): IndexedVerdict[] {
     if (!isPlanningContainer(kind, this.ladder)) return this.#fresh.annotate(id, branch, verdicts);
-    const tip = this.#fresh.tip('dev');
-    return verdicts.map((v, i) => verdicts.slice(i + 1).some(w => w.verdict === v.verdict && w.stage === v.stage && w.source === 'hub') ? v : {
-      ...v, current: v.stage === undefined ? !!tip && v.commit === tip : this.#stageCurrent(id, v),
-    });
+    return verdicts.map((v, i) => verdicts.slice(i + 1).some(w => w.verdict === v.verdict && w.stage === v.stage && w.source === 'hub') ? v :
+      withCurrent(v, v.stage === undefined ? this.#fresh.demo(id, v.commit, this.#demoTasks(id)) : this.#stageCurrent(id, v)));
   }
 
   /** A stage stays closed across later dev builds, but its own plan and landing evidence must stay unchanged. */
@@ -1621,10 +1636,18 @@ export class Tracker {
     const tip = verifyBuild ? await this.#resolve('refs/heads/dev', 'the epic demo build on dev') : null;
     const { file } = resumed(() => this.#require(id));
     const text = await this.#files.readFile(join(this.#dir, file), 'utf8');
+    const qa = this.#index.mergeVerdicts(id, this.#parseItem(text, file, this.ladder).comments.flatMap(c => c.verdict ? [{ key: commentKey(c), verdict: { ...c.verdict, author: c.author, at: c.at } }] : [])).verdicts.filter(v => v.verdict === 'qa' && v.stage === undefined).at(-1);
+    let accepted = tip;
+    if (verifyBuild && tip && qa?.commit) {
+      const fresh = await this.demoFreshness(id, qa.commit, tip);
+      if (!fresh.current) throw new TrackerError(`qa-stale: ${fresh.reason}`, 'qa-stale');
+      accepted = qa.commit;
+    }
+    if (verifyBuild && tip !== await this.#resolve('refs/heads/dev', 'the epic demo tip before closing')) throw new TrackerError('dev changed while checking demo freshness; retry');
     return resumed(() => {
       const live = this.#parseItem(text, file, this.ladder);
       if (serializeItem(live) !== source) throw new TrackerError(`${id}: epic evidence changed while closing; retry`);
-      return { tip, view: this.#viewOf(id, file, live) };
+      return { tip: accepted, view: this.#viewOf(id, file, live) };
     });
   }
 
@@ -1666,18 +1689,23 @@ export class Tracker {
     }, resumed, { operation: 'finish merge', item: this.#referenceId(rawId) ?? rawId });
   }
 
+  #summaryCriteria(item: IndexedItem): CriteriaCounts {
+    const tip = this.#criteriaTip(item);
+    return this.#index.criteriaCounts(item, tip, this.isPlanContainer(item.kind) ? commit => commit ? this.#fresh.demo(item.id, commit, this.#demoTasks(item.id)) : false : undefined);
+  }
+
   list(filter: ListFilter = {}): ItemSummary[] {
     if (filter.under !== undefined) filter = { ...filter, under: this.#require(filter.under).id };
     const claims = this.#index.claims();
     const verdicts = this.#index.verdicts();
     const base = this.#fresh.base();
-    return this.#index.list(filter).map((i) => ({ ...i, ...this.#verifyOf(i), ...this.#inboxPlan(i.id), criteria: this.#index.criteriaCounts(i, this.#criteriaTip(i)), claim: claims.get(i.id) ?? null, holds: this.#index.holdsOf(i.id), verdictBase: base, verdicts: this.#annotateVerdicts(i.id, i.kind, i.branch, verdicts.get(i.id) ?? []) }));
+    return this.#index.list(filter).map((i) => ({ ...i, ...this.#verifyOf(i), ...this.#inboxPlan(i.id), criteria: this.#summaryCriteria(i), claim: claims.get(i.id) ?? null, holds: this.#index.holdsOf(i.id), verdictBase: base, verdicts: this.#annotateVerdicts(i.id, i.kind, i.branch, verdicts.get(i.id) ?? []) }));
   }
 
   summary(raw: string): ItemSummary | null {
     const id = this.resolveId(raw);
     const item = id ? this.#index.get(id) : null;
-    return item ? { ...item, ...this.#verifyOf(item), ...this.#inboxPlan(item.id), criteria: this.#index.criteriaCounts(item, this.#criteriaTip(item)), claim: this.#index.claimOf(item.id),
+    return item ? { ...item, ...this.#verifyOf(item), ...this.#inboxPlan(item.id), criteria: this.#summaryCriteria(item), claim: this.#index.claimOf(item.id),
       holds: this.#index.holdsOf(item.id), verdictBase: this.#fresh.base(),
       verdicts: this.#annotateVerdicts(item.id, item.kind, item.branch, this.#index.verdicts(item.id).get(item.id) ?? []) } : null;
   }
@@ -2131,13 +2159,19 @@ export class Tracker {
       checkMarks(writer);
       if (v) v.by = formatVerdictBy(writer.name, writer.role);
       if (tip?.sha) this.#fresh.noteTip(tip.branch, tip.sha);
+      const epicDemo = v?.verdict === 'qa' && this.isPlanContainer(this.#index.get(this.#require(rawId).id)!.kind);
+      const checkDemo = async () => {
+        if (!epicDemo || !v?.commit) return;
+        const fresh = await this.demoFreshness(rawId, v.commit);
+        if (!fresh.current) throw new TrackerError(`qa-stale: ${fresh.reason}`, 'qa-stale');
+      };
       return this.#writeComment(writer, rawId, body, v, tip, resumed, () => {
         checkMarks(writer);
         if (!currentActor) return;
         const now = currentActor();
         this.#ensureSession(now);
         if (now.id !== writer.id || now.name !== writer.name || now.role !== writer.role || now.human !== writer.human) throw new TrackerError('comment writer changed while the item was being written; nothing was written, retry');
-      }, verdict);
+      }, verdict, checkDemo);
     };
     if (v && verdict?.commit !== undefined) {
       return this.#resolve(verdict.commit, `the verdict's commit ${verdict.commit}`).then(commit => resumed(() => {
@@ -2983,3 +3017,8 @@ function checkText(text: string, what: string): void {
 
 /** Only the import callback can use these unqueued operations while it owns the global tail. */
 export type TrackerImportBatch = Pick<Tracker, 'filesAsync' | 'reserveIdAsync' | 'writeItem'>;
+
+function withCurrent<T extends { current?: boolean }>(value: T, current: boolean | undefined): Omit<T, 'current'> & { current?: boolean } {
+  const { current: _previous, ...rest } = value;
+  return { ...rest, ...(current === undefined ? {} : { current }) };
+}

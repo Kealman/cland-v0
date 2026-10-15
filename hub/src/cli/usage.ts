@@ -175,3 +175,9 @@ export const RULE_USAGE = `  rule add <text> --scope <roles>|all --reason <text>
   rule show <n>   read one rule; every rule command takes --json
                   writes belong to the human shell or an Aide; other sessions propose to the Coordinator
 `;
+
+export const DEMO_USAGE = `  demo start <epic> [--commit <sha>] [--json]  lease a demo droplet
+  demo exec <epic> -- <command…>              run in the delivered tree
+  demo stop <epic> [--json]                  release the demo droplet
+  demo status <epic> [--json]                show commit, lifetime and cost
+`;

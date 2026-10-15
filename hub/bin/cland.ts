@@ -5,6 +5,7 @@ import {
   OPEN_USAGE,
   SUITE_USAGE,
   EXECUTOR_USAGE,
+  DEMO_USAGE,
   QA_USAGE,
   INIT_USAGE,
   DOCTOR_USAGE,
@@ -32,7 +33,7 @@ usage: cland [<command>]
 
 With no command on a terminal, cland opens the workbench (cland open).
 
-${ACCOUNT_USAGE}${OPEN_USAGE}${SUITE_USAGE}${EXECUTOR_USAGE}${QA_USAGE}${INIT_USAGE}${DOCTOR_USAGE}${HUB_USAGE}${TASK_USAGE}${SESSION_USAGE}${WORKTREE_USAGE}${MERGE_USAGE}${PUSH_USAGE}${RELEASE_USAGE}${ROLE_USAGE}${CREW_USAGE}${RULE_USAGE}${INBOX_USAGE}${TOPIC_USAGE}${HOOK_USAGE}${ARTIFACT_USAGE}${SUBSCRIPTIONS_USAGE}  --version, -v   print the version
+${ACCOUNT_USAGE}${OPEN_USAGE}${SUITE_USAGE}${EXECUTOR_USAGE}${DEMO_USAGE}${QA_USAGE}${INIT_USAGE}${DOCTOR_USAGE}${HUB_USAGE}${TASK_USAGE}${SESSION_USAGE}${WORKTREE_USAGE}${MERGE_USAGE}${PUSH_USAGE}${RELEASE_USAGE}${ROLE_USAGE}${CREW_USAGE}${RULE_USAGE}${INBOX_USAGE}${TOPIC_USAGE}${HOOK_USAGE}${ARTIFACT_USAGE}${SUBSCRIPTIONS_USAGE}  --version, -v   print the version
   --help, -h      print this help
 `;
 
@@ -47,6 +48,12 @@ switch (command) {
       process.exitCode = await runAccount(rest);
     }
     catch (err) { process.stderr.write(`cland: ${err instanceof Error ? err.message : String(err)}\n`); process.exitCode = 1; }
+    break;
+  case 'demo':
+    try {
+      const { runDemo } = await import('../src/cli/demo.ts');
+      process.exitCode = await runDemo(rest);
+    } catch (err) { process.stderr.write(`cland: ${err instanceof Error ? err.message : String(err)}\n`); process.exitCode = 1; }
     break;
   case 'executor':
     try {

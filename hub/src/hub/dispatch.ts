@@ -1,5 +1,6 @@
 import { AccountLimited } from '../accounts/limits.ts';
 import { prefixOf } from '../tracker/prefixes.ts';
+import { Demos } from './demos.ts';
 import { DropletExecutor } from '../executor/droplet/droplet.ts';
 // The hub's frame dispatcher: one conversation per connection, transport-agnostic. A transport hands it
 // raw frames and a peer to answer through (send a frame, close); the WebSocket edge, the Unix socket edge
@@ -114,7 +115,7 @@ const HUMAN_SESSION = 'human';
  * What a CLI call made as a session may send beside the permission table's tools: reading the hub's state. Any
  * other frame is the human's alone.
  */
-const SESSION_CLI_FRAMES: ReadonlySet<string> = new Set(['account.clear', 'account.list', 'account.poll', 'executor.status', 'executor.reap', 'executor.prepare', 'task.migrate', 'rule.add', 'rule.edit', 'rule.retire', 'rule.list', 'rule.show', 'crew.show', 'crew.set', 'artifact.list', 'hub.status', 'inbox.list', 'role.list', 'worktree.list', 'suite.start', 'suite.cancel', 'suite.queue']);
+const SESSION_CLI_FRAMES: ReadonlySet<string> = new Set(['demo.start', 'demo.exec', 'demo.stop', 'demo.status', 'account.clear', 'account.list', 'account.poll', 'executor.status', 'executor.reap', 'executor.prepare', 'task.migrate', 'rule.add', 'rule.edit', 'rule.retire', 'rule.list', 'rule.show', 'crew.show', 'crew.set', 'artifact.list', 'hub.status', 'inbox.list', 'role.list', 'worktree.list', 'suite.start', 'suite.cancel', 'suite.queue']);
 
 /** Who a call is checked and audited as: a spoke's session, or the session a CLI call acts as. */
 type Caller = Pick<Connection, 'name' | 'sessionId' | 'role'>;
@@ -145,6 +146,7 @@ export class Dispatcher {
   readonly artifacts: ArtifactLifecycle;
   readonly #suites: Suites | null;
   readonly #droplets: DropletExecutor | null;
+  readonly #demos: Demos | null;
   readonly #dropletReady: Promise<void>;
   readonly #dropletTimer: ReturnType<typeof setInterval> | null;
   #dropletWork: Promise<void> | null = null;
@@ -160,11 +162,12 @@ export class Dispatcher {
     this.#rolesSnapshot = options.core.roles?.get();
     const root = options.control?.status().root;
     this.#droplets = root ? new DropletExecutor(root, options.core.store, this.#log, options.env) : null;
-    this.#dropletReady = this.#droplets?.sweep(true).catch(() => this.#log({ event: 'executor-reconcile-failed', reason: 'lease recovery deferred' })) ?? Promise.resolve();
+    this.#demos = root && options.tracker && this.#droplets ? new Demos(root, options.tracker, this.#droplets, options.env) : null;
+    this.#dropletReady = this.#droplets?.sweep(true).then(() => this.#demos?.reconcile()).catch(() => this.#log({ event: 'executor-reconcile-failed', reason: 'lease recovery deferred' })) ?? Promise.resolve();
     const retryMs = Number((options.env ?? process.env).CLAND_TEST_EXECUTOR_SWEEP_MS);
     this.#dropletTimer = this.#droplets ? setInterval(() => {
       if (this.#closed || this.#dropletWork) return;
-      this.#dropletWork = this.#dropletReady.then(() => this.#droplets!.sweep()).catch(() => this.#log({ event: 'executor-reconcile-failed', reason: 'lease recovery deferred' })).finally(() => { this.#dropletWork = null; });
+      this.#dropletWork = this.#dropletReady.then(() => this.#droplets!.sweep()).then(() => this.#demos?.reconcile()).catch(() => this.#log({ event: 'executor-reconcile-failed', reason: 'lease recovery deferred' })).finally(() => { this.#dropletWork = null; });
     }, retryMs > 0 && Number.isFinite(retryMs) ? retryMs : 600000) : null;
     this.#dropletTimer?.unref();
     this.#suites = root ? new Suites(options.core.store, root, (job, checkpointArtifact) => this.#reportSuite(job, checkpointArtifact), { ...options.verification, ...(options.env ? { env: options.env } : {}), onShardingSkipped: (job, text) => options.core.noticeTo(job.topic, { id: `sharding-skipped:${job.id}`, kind: 'report', to: job.to, text, detail: { event: 'verification-sharding-skipped', id: job.id, item: job.item ?? null } }), onFallback: (job, cause) => options.core.noticeTo(job.topic, { id: `executor-fallback:${job.id}`, kind: 'report', to: job.to, text: cause === 'remote budget full' ? `verify ${job.id}: remote budget ${options.verification?.remoteBudget ?? 4}/${options.verification?.remoteBudget ?? 4} full; running locally` : `verify ${job.id}: droplet unavailable (${cause}); running locally`, detail: { event: 'verification-executor-fallback', id: job.id, item: job.item ?? null, cause } }), log: this.#log, onQueue: queue => options.core.publishVerification(queue), onJob: job => options.tracker?.verifyChanged(job.item ?? null, job.branch), requesterDead: actor => [...(this.#sessions?.list() ?? []), ...(this.#sessions?.list(true) ?? [])].some(p => p.sessionId === actor.sessionId && p.status !== 'running') }) : null;
@@ -185,6 +188,11 @@ export class Dispatcher {
       options.core.refreshPresence();
       this.#refreshSessionWork();
     });
+    const reconcileDemos = () => {
+      if (!this.#closed) void this.#dropletReady.then(() => this.#demos?.reconcile()).catch(() => this.#log({ event: 'demo-reconcile-failed' }));
+    };
+    options.tracker?.onVerdict((_id, _author, verdict) => { if (verdict.verdict === 'qa' && verdict.stage === undefined) reconcileDemos(); });
+    options.tracker?.onClosed(reconcileDemos);
     // A crash after the tracker commit but before alias cleanup must not reserve the old name forever.
     if (options.tracker) for (const { name, id } of options.core.store.sessionAliases()) {
       if (!options.tracker.hasProvisionalSession(name)) options.core.store.settleSessionAlias(name, id);
@@ -212,6 +220,7 @@ export class Dispatcher {
     if (this.#dropletTimer) clearInterval(this.#dropletTimer);
     await this.#dropletReady;
     await this.#dropletWork;
+    await this.#demos?.close();
     await this.#droplets?.close();
     if (this.#workImmediate) clearImmediate(this.#workImmediate);
     this.#workImmediate = null;
@@ -1440,6 +1449,25 @@ export class Dispatcher {
           const reason = 'item migration belongs to the Coordinator or the human';
           if (caller && caller.role !== 'coordinator') return this.#refuse(caller, frame, peer, frame.type, reason);
           return peer.send(Dispatcher.#failure(frame.id, new Error('the hub is running; stop the hub and run cland task migrate from the project root shell')));
+        }
+        if (isClientRequest(frame) && ['demo.start', 'demo.exec', 'demo.stop', 'demo.status'].includes(frame.type)) {
+          const request = frame as import('../protocol.ts').DemoRequest;
+          if (!this.#demos) return peer.send(Dispatcher.#failure(request.id, new Error('this hub has no demo executor')));
+          const authorize = () => {
+            const now = this.#asSession(frame);
+            if (!caller) return;
+            const epic = this.#options.tracker!.view(request.epic);
+            const allowed = now?.sessionId === caller.sessionId && (now.role === 'coordinator' || now.role === 'qa' && epic.holds.some(h => h.role === 'qa' && h.sessionId === now.sessionId));
+            if (!allowed) throw new ToolForbidden(now?.role ?? null, request.type, 'demo controls belong to QA holding the epic, the Coordinator or the human');
+          };
+          try { authorize(); } catch (error) { return peer.send(Dispatcher.#failure(request.id, error)); }
+          return later(request.type, this.#dropletReady.then(async (): Promise<unknown> => {
+            authorize();
+            if (request.type === 'demo.start') return this.#demos!.start(request.epic, request.commit, authorize);
+            if (request.type === 'demo.exec') return this.#demos!.exec(request.epic, request.command, authorize);
+            if (request.type === 'demo.stop') return this.#demos!.stop(request.epic, authorize);
+            return this.#demos!.status(request.epic, request.commit);
+          }).then(value => ({ type: 'result' as const, id: request.id, ok: true, value }), error => Dispatcher.#failure(request.id, error)));
         }
         if (isClientRequest(frame) && (frame.type === 'executor.status' || frame.type === 'executor.reap' || frame.type === 'executor.prepare')) {
           if (caller && caller.role !== 'coordinator') return this.#refuse(caller, frame, peer, frame.type, 'executor controls belong to the Coordinator or the human');

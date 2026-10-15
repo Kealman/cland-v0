@@ -25,7 +25,7 @@ export class DropletRun {
   readonly #machine: Machine;
   readonly #env: NodeJS.ProcessEnv;
   constructor(root: string, env: NodeJS.ProcessEnv = process.env) { this.#root = root; this.#env = env; this.#machine = new Machine(root, env); }
-  async deliver(lease: DropletLease, run: RunRef): Promise<void> {
+  async deliver(lease: DropletLease, run: RunRef, committedOnly = false): Promise<void> {
     const git = async (...args: string[]) => (await exec('git', args, { cwd: run.cwd, env: machineEnv(this.#env), timeout: 30000, maxBuffer: 16 * 1024 * 1024 })).stdout.trim();
     const checkWorktree = async () => {
       if (await git('rev-parse', 'HEAD') !== run.head) throw new Error('dirty or changed worktree cannot be bundled for droplet: HEAD changed');
@@ -33,7 +33,7 @@ export class DropletRun {
       const dirty = await git('status', '--porcelain=v1', '--untracked-files=all', '--', '.', ':(exclude).cland/tasks');
       if (dirty) throw new Error(`dirty or changed worktree cannot be bundled for droplet: ${dirty.split('\n').join('; ')}`);
     };
-    await checkWorktree();
+    if (!committedOnly) await checkWorktree();
     const snapshot = await readSnapshot(this.#root);
     if (!snapshot) throw new Error('prepared snapshot disappeared');
     const base = await git('merge-base', run.head, snapshot.key.base).catch(() => '');
@@ -49,10 +49,10 @@ export class DropletRun {
     }
     try { await git('bundle', 'create', bundle, ref, ...(base && base !== run.head ? [`^${base}`] : [])); }
     finally { await git('update-ref', '-d', ref, run.head); }
-    await checkWorktree();
+    if (!committedOnly) await checkWorktree();
     const dir = remoteDir(lease);
     await this.#machine.exec(lease, `mkdir -p ${dir}`, { timeoutMs: 10000 });
-    const env = `export CLAND_SUITE_SELECTION=${quote(JSON.stringify(run.selection))}\nexport FORCE_COLOR=0\nexport NO_COLOR=1\n`;
+    const env = `export CLAND_SUITE_SELECTION=${quote(JSON.stringify(run.selection ?? null))}\nexport FORCE_COLOR=0\nexport NO_COLOR=1\n`;
     await writeFile(join(local, 'env'), env, { mode: 0o600 });
     const commands = suiteCommands(run).map((args, index) => `${index === 1 ? 'rmdir /tmp/cland-suite.lock; trap - EXIT\n' : ''}echo ${quote(`$ npm ${args.join(' ')}`)}\nnpm ${args.map(quote).join(' ')} || exit $?`).join('\n');
     // The typecheck owns the machine compatibility lock; the package runner then

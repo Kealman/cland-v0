@@ -135,11 +135,11 @@ export function summarizeCriteria(criteria: readonly Criterion[]): CriterionSumm
   return criteria.map(c => ({ done: c.marks.some(m => m.kind === 'done'), failed: c.marks.some(m => m.kind === 'failed'),
     verified: c.marks.flatMap(m => m.kind === 'verified' ? [m.commit ?? null] : []) }));
 }
-export function countCriteria(criteria: readonly CriterionSummary[], tip: string | null): CriteriaCounts {
+export function countCriteria(criteria: readonly CriterionSummary[], tip: string | null, isCurrent: (commit: string | null) => boolean | undefined = commit => !!tip && commit === tip): CriteriaCounts {
   const counts: CriteriaCounts = { total: criteria.length, done: 0, verified: 0, stale: 0, failed: 0 };
   for (const c of criteria) {
     if (c.failed) counts.failed++;
-    else if (tip && c.verified.includes(tip)) counts.verified++;
+    else if (c.verified.some(commit => isCurrent(commit) === true)) counts.verified++;
     else if (c.verified.length) counts.stale++;
     else if (c.done) counts.done++;
   }

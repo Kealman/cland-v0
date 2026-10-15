@@ -1,19 +1,19 @@
 #!/bin/sh
 # qa-record.sh: run one QA case, or record one manual check, as one line of .cland/qa/runs.jsonl.
 #
-#   sh qa-record.sh run  <T-n> <run> <case-id>
-#       headless-grid: runs qa/cases/<case-id>.lua with `cland --headless --qa`, evidence in .cland/qa/<T-n>/<run>/
-#   sh qa-record.sh note <T-n> <run> <case-id> <surface> <method> <PASS|FAIL|INCONCLUSIVE|BLOCKED> [evidence-file...]
+#   sh qa-record.sh run  <item> <run> <case-id>
+#       headless-grid: runs qa/cases/<case-id>.lua with `cland --headless --qa`, evidence in .cland/qa/<item>/<run>/
+#   sh qa-record.sh note <item> <run> <case-id> <surface> <method> <PASS|FAIL|INCONCLUSIVE|BLOCKED> [evidence-file...]
 #       any other surface or a manual check: records what you ran and saw
-#   sh qa-record.sh recover <T-n> <run> <temp-dir> <lines-file>
+#   sh qa-record.sh recover <item> <run> <temp-dir> <lines-file>
 #       the Coordinator's, for a rescue run: copies the captures its lines name from <temp-dir> into
-#       .cland/qa/<T-n>/<run>/ and appends each line with its evidence paths rewritten there, but only a line whose
+#       .cland/qa/<item>/<run>/ and appends each line with its evidence paths rewritten there, but only a line whose
 #       captures were all copied and verified; a line that cannot be recovered is reported, never appended
 #
 # Run it from the item's worktree. The line goes to stdout and is appended to <project>/.cland/qa/runs.jsonl;
 # where that file cannot be written (a rescue run), the line is still on stdout and the last line says so.
 # QA_SESSION names who ran it in the line (default $CLAND_SESSION_NAME, else rescue): a rescue run sets it to rescue-<job id>.
-# Evidence goes to .cland/qa/<T-n>/<run>/, or, where that cannot be written, to $TMPDIR/cland-qa-evidence/<T-n>/<run>/.
+# Evidence goes to .cland/qa/<item>/<run>/, or, where that cannot be written, to $TMPDIR/cland-qa-evidence/<item>/<run>/.
 #
 # Partial failure (the script appends nothing twice and never edits a line): a case that ran but whose line could
 # not be appended still prints it, with "NOT recorded" on the last stderr line: append it by hand, do not rerun.
@@ -22,16 +22,16 @@
 # is appended; the outcome and the captures' directory are on stderr); recover: 71 the evidence directory cannot be made
 # (nothing appended), 73 some lines were not recovered (the rest were; stderr names each loss). recover never deletes a source.
 # CLAND is the path of the cland executable (default: cland).
-# An item is exactly T-<digits>; run and case ids are one safe path component: letters, digits, . _ - and not starting with . or -.
+# An item has one uppercase kind prefix and digits (T-12, E-423, or a configured planning kind); run and case ids are one safe path component: letters, digits, . _ - and not starting with . or -.
 set -u
 
 die() { echo "qa-record: $*" >&2; exit 64; }
 command -v jq >/dev/null 2>&1 || die "jq is needed"
 
 mode=${1:-}; item=${2:-}; run=${3:-}; case_id=${4:-}
-[ -n "$case_id" ] || die "usage: qa-record.sh run <T-n> <run> <case-id> | note <T-n> <run> <case-id> <surface> <method> <result> [evidence...] | recover <T-n> <run> <temp-dir> <lines-file>"
+[ -n "$case_id" ] || die "usage: qa-record.sh run <item> <run> <case-id> | note <item> <run> <case-id> <surface> <method> <result> [evidence...] | recover <item> <run> <temp-dir> <lines-file>"
 # the ids become path components of the evidence tree: nothing that could leave it
-case $item in T-[0-9]*) case ${item#T-} in *[!0-9]*) die "the item is exactly T-<digits>, not $item";; esac;; *) die "the item is exactly T-<digits>, not $item";; esac
+case $item in [A-Z]-[0-9]*) case ${item#*-} in *[!0-9]*) die "the item is a kind prefix and digits, not $item";; esac;; *) die "the item is a kind prefix and digits, not $item";; esac
 safe_id() { case $2 in ''|[!A-Za-z0-9]*|*[!A-Za-z0-9._-]*) die "$1 must be one safe path component (letters, digits, . _ -, starting with a letter or digit), not '$2'";; esac; }
 safe_id run "$run"
 [ "$mode" = recover ] || safe_id case "$case_id"
@@ -46,9 +46,19 @@ fi
 cland_dir=$(cd "$cland_dir" 2>/dev/null && pwd -P) || die "no .cland directory at $cland_dir"
 root=$(dirname "$cland_dir")
 evidence_dir=$cland_dir/qa/$item/$run
-build=$(git rev-parse --short HEAD 2>/dev/null || echo unknown)
+build=$(git rev-parse HEAD 2>/dev/null || echo unknown)
 session=${QA_SESSION:-${CLAND_SESSION_NAME:-rescue}}
 ts=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+executor=local
+lifetime=null
+cost=null
+if [ -n "${QA_DEMO_EPIC:-}" ]; then
+  demo=$("${CLAND:-cland}" demo status "$QA_DEMO_EPIC" --json) || die "cannot read demo lease"
+  build=$(printf '%s\n' "$demo" | jq -er '.commit') || die "demo has no commit"
+  executor=droplet
+  lifetime=$(printf '%s\n' "$demo" | jq -c '.lifetimeMs')
+  cost=$(printf '%s\n' "$demo" | jq -c '.costUsd')
+fi
 
 if [ "$mode" = recover ]; then
   temp_dir=$case_id; lines_file=${5:-}
@@ -109,7 +119,11 @@ case $mode in
       mkdir -p "$evidence_dir" 2>/dev/null && [ -w "$evidence_dir" ] || evidence_dir=""
     fi
     # the case's own flags and the directory are separate arguments, so a path with spaces or globs stays one
-    if [ -n "$evidence_dir" ]; then
+    if [ -n "${QA_DEMO_EPIC:-}" ]; then
+      [ -n "$evidence_dir" ] || die "demo captures need a writable local evidence directory"
+      printed=$(node "$(dirname "$0")/qa-demo-record.ts" "${CLAND:-cland}" "$QA_DEMO_EPIC" "$case_id" "$evidence_dir"); code=$?
+      method="cland demo exec $QA_DEMO_EPIC -- cland --headless --qa qa/cases/$case_id.lua"
+    elif [ -n "$evidence_dir" ]; then
       printed=$("${CLAND:-cland}" --headless --qa "qa/cases/$case_id.lua" --out "$evidence_dir"); code=$?
     else
       printed=$("${CLAND:-cland}" --headless --qa "qa/cases/$case_id.lua"); code=$?
@@ -133,9 +147,10 @@ esac
 
 line=$(jq -cn --arg ts "$ts" --arg item "$item" --arg run "$run" --arg case "$case_id" --arg build "$build" \
   --arg surface "$surface" --arg method "$method" --arg result "$result" --argjson code "$code" \
+  --arg executor "$executor" --argjson lifetime "$lifetime" --argjson cost "$cost" \
   --argjson evidence "${evidence:-null}" --arg root "$root/" --arg session "$session" \
   '{ts: $ts, item: $item, run: $run, case: $case, build: $build, surface: $surface, method: $method, result: $result,
-    exit_code: $code, evidence: ($evidence | map(ltrimstr($root))), session: $session}' 2>/dev/null)
+    exit_code: $code, executor: $executor, lifetime_ms: $lifetime, cost_usd: $cost, evidence: ($evidence | map(ltrimstr($root))), session: $session}' 2>/dev/null)
 # never append what is not one JSON object: keep the outcome and the captures, say where, and stop
 if [ -z "$line" ] || ! printf '%s\n' "$line" | jq -e 'type == "object"' >/dev/null 2>&1; then
   echo "qa-record: could not serialize the runs.jsonl line, nothing appended. Outcome: $item $run $case_id $result (exit $code); captures: ${evidence_dir:-none}" >&2

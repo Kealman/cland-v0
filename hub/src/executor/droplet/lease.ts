@@ -12,6 +12,7 @@ export type DropletLease = Lease & {
   keyImportStarted?: string; keyImportFinished?: string;
   createStarted?: string; createFinished?: string; deleteStarted?: string; released?: string;
   lifetimeMs?: number; costUsd?: number; watchdogFired?: string;
+  demo?: { epic: string; commit: string; ready?: boolean };
   execution?: { head: string; delivered?: boolean; started?: boolean; startedAt?: string; unreachableSince?: string };
   watchdog?: { pid: number; startedUtc: string };
 };
