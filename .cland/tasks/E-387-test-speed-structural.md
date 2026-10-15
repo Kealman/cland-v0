@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-14T12:28:09.615Z
-updated: 2026-10-15T09:03:17.377Z
+updated: 2026-10-15T09:13:28.520Z
 ---
 
 ## Goal
@@ -116,6 +116,16 @@ stages:
     lanes:
       - - T-394
       - - T-396
+  - name: retrospective gates and in-process part 2
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-469
+      - - T-470
+      - - T-471
+      - - T-472
+        - T-466
 ```
 
 ## Comments

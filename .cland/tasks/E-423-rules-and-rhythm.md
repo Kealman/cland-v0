@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-14T16:43:04.090Z
-updated: 2026-10-15T07:16:04.944Z
+updated: 2026-10-15T09:13:29.838Z
 ---
 
 ## Summary
@@ -142,6 +142,13 @@ stages:
         - T-457
       - - T-458
       - - T-459
+  - name: size gate and override scope
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-473
+      - - T-474
 ```
 
 ## Comments

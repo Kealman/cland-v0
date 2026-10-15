@@ -3,7 +3,7 @@ id: T-455
 kind: task
 title: "Rulebook: .cland/RULES.md with numbered rules, read and written by cland rule add, edit, retire, list and show, and reloaded by the hub when the file changes"
 state: open
-status: review
+status: in progress
 size: M
 criterion_seq: 7
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-276
 branch: t/T-455-rulebook-cland-rules-md-with-numbered
 created: 2026-10-15T07:15:15.459Z
-updated: 2026-10-15T08:38:15.180Z
+updated: 2026-10-15T09:05:28.540Z
 ---
 
 ## Summary
@@ -194,3 +194,19 @@ Audited A-2785 five whole-file usage logs: 8/8 each, zero failure/skip/cancel at
 C7 refreshed; C1-C6/final evidence remain pending. Submit no-mode cland verify at this head without executor override. Retain/name earlier reds 8052e04c/A-2746 and 1ea1e21d/A-2777, plus T-461/T-447/T-463 disposition in final evidence.
 
 Criteria: C7 verified.
+
+### rev-23 · 2026-10-15T09:05:26.628Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-15-455-7
+commit: f5ef70453f08b9f2a55289302e37de98b984bb5d
+scope: evidence
+
+9008902b/A-2808 is red at the exact source-reviewed head: 1727/1728 hub tests pass, zero skips; Neovim not reached. Sole failure is untouched claude-code-adapter.test.ts:232/:252, 'the clause injected on the retry: not within 15000 ms', owned by shared T-447. Earlier inventory/budget blockers pass; duration notices are informational, with no budget failure.
+A-2809 records evidence. Specific retry disposition has been consumed; stop unchanged retries and obtain lead disposition for shared-fix adoption. Any changed head needs delta review. Retain 8052e04c/A-2746, 1ea1e21d/A-2777 and 9008902b/A-2808 with T-461/T-463/T-447 dispositions. No new criterion verification; final gate remains not clear.
+
+### impl-455 · 2026-10-15T09:05:28.540Z
+
+Run 9008902b/A-2808 at f5ef7045 passed 1727 tests and failed only the known T-447 unconfirmed-inject retry fixture; no duration failures. Coordinator decision d1a0c87e requires holding for T-447's landing commit, then cherry-picking that commit alone, delta review, and one verify. No unchanged retries or other source changes while awaiting the shared fix.

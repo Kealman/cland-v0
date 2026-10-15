@@ -3,7 +3,7 @@ id: T-393
 kind: task
 title: "In-process hub by default: tests run against a hub served in the test process over its real socket, a spawned hub stays only for lifecycle tests, and the top 20 files move first"
 state: open
-status: review
+status: in progress
 size: L
 criterion_seq: 9
 labels:
@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-273
 branch: t/T-393-in-process-hub-by-default-tests-run
 created: 2026-10-14T12:28:19.095Z
-updated: 2026-10-15T09:04:07.600Z
+updated: 2026-10-15T09:11:30.741Z
 ---
 
 ## Summary
@@ -54,10 +54,10 @@ updated: 2026-10-15T09:04:07.600Z
 
 - [x] C1. `projectHub` serves a project in the test process; `cland` subprocesses, spokes and UI clients reach it over its real socket and WebSocket with no change to their code, proven by a tracer test that runs the same frames against `projectHub` and `startDaemon`.
   - done: impl-393 · 2026-10-15T08:08:37.623Z
-- [x] C2. Cleanup fails a test whose in-process hub leaves handles, timers, `process` listeners or child processes, proven by a test that leaks one on purpose.
-  - done: impl-393 · 2026-10-15T08:08:38.321Z
-- [x] C3. `serveProject` takes its environment as an option, and two in-process hubs in one file with different adapter timings behave independently, proven by a test.
-  - done: impl-393 · 2026-10-15T08:08:38.795Z
+- [ ] C2. Cleanup fails a test whose in-process hub leaves handles, timers, `process` listeners or child processes, proven by a test that leaks one on purpose.
+  - failed: rev-23 [reviewer] · 2026-10-15T09:11:30.741Z · note Direct dispatcherUi requests bypass the fixture AsyncLocalStorage resource scope, so request-time leaked resources evade strict cleanup checks.
+- [ ] C3. `serveProject` takes its environment as an option, and two in-process hubs in one file with different adapter timings behave independently, proven by a test.
+  - failed: rev-23 [reviewer] · 2026-10-15T09:11:30.741Z · note DropletRun config reparse and Suites candidateTree Git checks still use host environment rather than the owning hub environment.
 - [x] C4. The lifecycle list is posted per file; every test that still calls `startDaemon` or `cland hub start` in the 20 files is on it, and none of the others is.
   - done: impl-393 · 2026-10-15T08:08:39.537Z
 - [x] C5. Measured (Coordinator amendment 2026-10-15 09:03Z): the 20 files' summed whole-file time falls by at least 20%, judged after merge from E-387's stage-1 close integrated cover on the Mac against the v0.1.2 release cover A-2714 (both quiet integrated runs), per file from the runner's records; pre-merge, the available paired samples are posted without a claim, because local fallbacks invalidated every pair while remote_budget was 2.
@@ -80,3 +80,19 @@ Fixture/env implementation and initial migrations are in progress. The projectHu
 ### impl-393 · 2026-10-15T08:08:20.559Z
 
 Implementation committed through dc08042a and merged latest origin/dev. Audit A-2751 names environment/log parameters, global-effect isolation, cleanup ownership, native Undici clock exclusion and every changed assertion meaning; lifecycle A-2745; assertion identities A-2744 (no removed tests). New fixture/freshness regressions, OpenCode units, process-started, accounts, crew launch and session-stop-races pass targeted. Measurement restarted at 08:08Z with empty local slot; recorder rejects holder-overlapped samples. Fresh census cross-tab A-2756 proves selected20 have420 of1047 starts, so even deleting all selected starts leaves627; exact retained total and 21st-plus candidates will follow for Coordinator C6 decision.
+
+### rev-23 · 2026-10-15T09:11:30.741Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-15-393-1
+commit: 337aaa40e0ede1581df745ef1e8dbc875e734c5f
+scope: full
+
+Medium — hub/test/harness.ts:336/348/535-536 and hub/test/hub-resources.ts:16: only startup is wrapped in resource scope; returned direct dispatcher requests execute outside it, leaving their timers/children unattributed. Carry scope through direct calls and add request-time deliberate leak proof.
+Medium — hub/src/executor/droplet/run.ts:54: parseConfig omits this.#env, so explicit short margin accepted by hub/acquire is lost at delivery.
+Medium — hub/src/hub/suites.ts:215/233/312/316/473 and verification-tree.ts:14: candidateTree Git still uses process.env, unlike the owning hub's other Git operations. Thread env while preserving private index override and prove independent Git environments.
+A-2811 details full Standards/Spec review. No further lifecycle/assertion blocker found; C5/C6 judged under directly read 6f89040c amendments (data-only pre-merge timing; 772 lower-bound projection, under600 T-466). T-464 isolation approved in 72d72fa1; T-395 reconciliation remains required. No full run at this head; fixes need new source review.
+
+Criteria: C2 failed (Direct dispatcherUi requests bypass the fixture AsyncLocalStorage resource scope, so request-time leaked resources evade strict cleanup checks.), C3 failed (DropletRun config reparse and Suites candidateTree Git checks still use host environment rather than the owning hub environment.).

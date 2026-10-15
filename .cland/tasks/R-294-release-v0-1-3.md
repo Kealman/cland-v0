@@ -11,7 +11,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-12T15:31:51.406Z
-updated: 2026-10-15T08:35:07.889Z
+updated: 2026-10-15T09:13:39.195Z
 ---
 
 ## Goal
@@ -54,3 +54,27 @@ Decision (human, relayed verbatim by the stand-in on 2026-10-15 about 05:2xZ: «
 ### coord · 2026-10-15T08:35:07.889Z
 
 Decision (human, ask 35ca68c2, 2026-10-15 08:34Z): remote_budget rises from 2 (D27) to 4; the daily spend cap stays at $3. Committed in .cland/config.toml; it applies at the next hub restart.
+
+### coord · 2026-10-15T09:12:01.758Z
+
+Decision (human, relayed by the stand-in on 2026-10-15 after reading the v0.1.2 retrospective A-2783): no model rotation yet. «мы пока набираем baseline на тех моделях в которых я уверен, сравнивать уже потом отдельно будем». The crew keeps one model per role (Implementer and Reviewer on Codex gpt-6.1-sol, QA on gpt-6-astra, Coordinator on claude-opus-5-5). Model comparison is a separate later exercise. The retrospective's Start/Stop/Continue conclusions are filed as v0.1.3 tickets (see the Coordinator's follow-up comment).
+
+### coord · 2026-10-15T09:13:39.195Z
+
+The v0.1.2 retrospective's conclusions are filed for v0.1.3 (Coordinator, 2026-10-15 09:12Z).
+- **START:**
+  - 1 is T-473: XL refused, L split at plan time.
+  - 2 is the new epic E-468 'Run records': T-477 severity with lows, T-478 found_by and answered_as, T-479 cover status and cause, T-480 sub-agent model.
+  - 3 is T-469: a Linux proof on every stage-close cover.
+  - 4 is T-470: queue-wait p50/p90 against a 20-minute target.
+  - 5 is T-471: a load gate for new tests.
+- **STOP:**
+  - 1 is T-475: cover-quiet enforced by the harness.
+  - 2 is T-379, which already exists; the retrospective's case is added as a comment.
+  - 3 is T-474: override for tracker and docs only.
+  - 4 is T-472: shared-defect detection.
+  - 5 is T-477: lows recorded.
+  - 6 is T-476: a hub start-up smoke test.
+- **CONTINUE:** D24, D25, D27, D29, lane flow, droplets under the budget and cap, restarts only on a green cover with an empty queue, T-204, and retro.py. These are standing practice and enter the rulebook through E-423's seed (T-457).
+- **Plans:** T-469..T-472 and T-466 are E-387's stage 3. T-473 and T-474 are E-423's stage 3. T-475 and T-476 join E-425 (Hub hygiene). E-468 gets its plan when E-423's first stage closes.
+- **Model rotation:** deferred by the human's decision above.

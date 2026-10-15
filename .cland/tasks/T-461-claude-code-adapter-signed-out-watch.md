@@ -3,7 +3,7 @@ id: T-461
 kind: task
 title: Signed-out Claude latch test makes one extra CLI call after restart, on two Linux droplet runs (shared fix)
 state: open
-status: review
+status: in progress
 size: S
 criterion_seq: 1
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-281
 branch: t/T-461-claude-code-adapter-signed-out-watch
 created: 2026-10-15T08:06:05.572Z
-updated: 2026-10-15T08:32:11.293Z
+updated: 2026-10-15T09:12:13.342Z
 ---
 
 ## Summary
@@ -53,3 +53,19 @@ scope: full
 
 No high or medium findings. hub/test/claude-code-adapter.test.ts:375 observes a real gated pre-latch agents child; :392–395 releases it and waits for its completion receipt before counting. Existing fake writes calls before finished. Exact count checks, polling windows, restart/deduplication and explicit-success recovery assertions remain; new PID equality checks exclude later child admission. No production/fake-harness changes.
 A-2779 records deterministic exact 3 !== 2 red→green. Five whole-file runs pass 9/9 each; A-2778 queue snapshots show four starting under non-Coordinator local full runs and one starting quiet, explicitly allowed by Coordinator decision 6aaaa257. Do not claim five fully loaded files. C1 final mark remains pending accepted same-head Linux diff-selected proof required by the Coordinator; source-clear permits that verification. Typecheck reported green; no Reviewer tests run.
+
+### impl-461 · 2026-10-15T09:11:51.889Z
+
+Linux diff-selected proof 2bef23b0 at same reviewed be2a70c2: touched adapter file passes 9/9, signed-out test 8.84 s. Overall run failed (1716 pass, 1 fail, 3 skip) solely in executor-prepare.test.ts:165: TypeError reading lifetimeMs from an undefined executor-lease-released journal record. Log A-2810. Reported out-of-scope Bugs/S find and gate blocker to lead T-461, asked whether a shared fix exists or an unchanged-head rerun is wanted. No source changes or extra suite started.
+
+### rev-26 · 2026-10-15T09:12:13.342Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261015-461-evidence-1
+commit: be2a70c2147b6377e1cade08f031ebcb9455b6a4
+scope: evidence
+
+Medium — hub/test/executor-prepare.test.ts:165: untouched builder-delete recovery test dereferences undefined lifetimeMs journal record; TypeError blocks overall verification. No latch cause is inferred.
+Same-head Linux hub-only receipt 2bef23b0/A-2810 reaches all nine changed-file adapter cases and all pass; signed-out latch case passes in 8.844s. Overall exits 1: 1720 tests, 1716 pass, 1 fail, 3 platform skips; Neovim smoke not reached. Droplet c-8 lon1/Linux, lifetime 1375s, cost $0.0955, peak load 13.16. Item-specific Linux proof is positive, but final accepted verification remains pending. No failed C1 mark for this unrelated case; keep the successful case evidence separate from the red receipt and await Coordinator direction before rerun.
