@@ -179,7 +179,8 @@ test('the digest includes running and queued runs and ages timeouts and ended ru
   try {
     const first = await f.launch('auto');
     runs.push(first.id);
-    const running = await digest(new RegExp(`run ${first.id} past its timeout · age`));
+    // Timeout age can elapse during launch; wait for both facts in one digest.
+    const running = await digest(new RegExp(`run ${first.id} running · impl[\\s\\S]*run ${first.id} past its timeout · age`));
     assert.match(running.text, new RegExp(`run ${first.id} running · impl`));
     const secondResult = await f.ui.request({ type: 'suite.start', mode: 'auto', cwd: f.root, report: f.topic, to: ['impl'] });
     assert.equal(secondResult.ok, true, secondResult.error);
