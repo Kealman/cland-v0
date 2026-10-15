@@ -110,9 +110,12 @@ test('Claude Code: a stop whose `claude stop` fails never SIGTERMs a pid that an
   const original = pidRow(root, 'cc');
   const other = await bystander(t);
   reusePid(root, 'cc', other);
+  // Stage an old identity explicitly: waiting for Date.now() to cross a second does
+  // not prove that ps's whole-second start stamps differ (T-525).
+  const staleStarted = 'Sat Jan 1 00:00:00 2000';
   // `claude stop` cannot find the session either
   const db = new DatabaseSync(join(root, '.cland', 'hub.db'));
-  db.prepare("update harness_processes set harness_id = 'gone0000' where name = 'cc'").run();
+  db.prepare("update harness_processes set harness_id = 'gone0000', pid_started = ? where name = 'cc'").run(staleStarted);
   db.close();
   const staged = pidRow(root, 'cc');
   const originalAlive = pidAlive(original.pid);
@@ -121,10 +124,12 @@ test('Claude Code: a stop whose `claude stop` fails never SIGTERMs a pid that an
   const otherStarted = processStarted(other);
   assert.equal(staged.status, 'running', `the refusal case requires a running row: ${JSON.stringify(staged)}`);
   assert.equal(originalAlive, true, 'the original fake must remain alive before the refusal');
-  assert.notEqual(staged.pid_started, null, 'the original start identity must be recorded');
-  assert.equal(originalStarted, staged.pid_started, 'the staged start identity still belongs to the original fake');
+  assert.notEqual(original.pid_started, null, 'the original start identity must be recorded');
+  assert.equal(originalStarted, original.pid_started, 'the original start identity still belongs to the original fake');
+  assert.equal(staged.pid_started, staleStarted, 'the staged row records the old process identity');
   assert.equal(staged.pid, other, 'the staged PID names the bystander');
   assert.equal(otherAlive, true, 'the staged bystander is alive before stop');
+  assert.notEqual(otherStarted, null, 'the bystander start identity must be observable');
   assert.notEqual(otherStarted, staged.pid_started, 'the staged PID has a different start identity');
   const stopped = await ui.request({ type: 'session.stop', session: 'cc' }, 15_000);
   assert.equal(stopped.ok, false);
