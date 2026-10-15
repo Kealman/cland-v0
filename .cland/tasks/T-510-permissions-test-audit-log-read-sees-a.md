@@ -2,8 +2,8 @@
 id: T-510
 kind: task
 title: "permissions test: audit log read sees a partial JSONL line while the hub appends (Linux)"
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-309
 branch: t/T-510-permissions-test-audit-log-read-sees-a
 created: 2026-10-15T15:56:19.661Z
-updated: 2026-10-15T19:41:01.058Z
+updated: 2026-10-15T19:41:38.863Z
+closed: 2026-10-15T19:41:38.863Z
 ---
 
 ## Problem
@@ -170,3 +171,7 @@ C2 verified: A-3196 contains five serial quiet Mac whole-file5/5 passes (25cases
 No extra run or head change requested. Current Coordinator8b300f2e cover/restart hold remains in force for subsequent submission/merge routing. No Reviewer tests, edits or provider calls.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-15T19:41:38.863Z
+
+Merged 006bfa8d8fe8c36be4db5e22f7e2f63df2723809 onto dev.
