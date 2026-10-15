@@ -2069,9 +2069,15 @@ again before and after execution; head changes still fail verification.
 
 `--fresh` bypasses reuse. `[verification].cache_max_age_minutes` defaults to 1440
 (one day); 0 disables caching. Age starts at the original successful completion,
-not at subsequent hits. Only successful completed, reported runs with an available
+not at subsequent hits. An explicit `--executor droplet` reuses only a green that
+ran on a droplet. If only a local green qualifies, it starts a fresh remote run
+and names that cache bypass in the result header and log. With no executor flag,
+reuse stays cross-executor, including when the configured default is droplet;
+`--executor local` also keeps cross-executor reuse. Hits retain the original
+executor and platform. Only successful completed, reported runs with an available
 log artifact qualify; old pre-cache jobs, failures and cancelled runs do not. A
-new failed or pending fresh attempt supersedes older green evidence for its key.
+new failed or pending fresh attempt supersedes older green evidence for its key
+(restricted to droplet attempts for an explicit droplet request).
 Cancelled attempts (by the requester, requester death, or a head change before
 admission) do not supersede older green evidence. Test failures, worker crashes
 and timeouts still do.

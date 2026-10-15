@@ -3094,6 +3094,10 @@
       "seconds": 7.92957,
       "reason": "Runs a real verification worker through fake provider/SSH processes beside a host compatibility lock, then proves dirty explicit-remote submission refuses without admitting a local job."
     },
+    "hub/test/executor-run.test.ts::explicit droplet reuses only droplet greens while omitted executor keeps cross-executor reuse": {
+      "seconds": 9.207278417,
+      "reason": "T-518 exercises three real verification executions (two local and one through fake provider/SSH), plus four public CLI cache-hit submissions, proving explicit-droplet filtering and omitted-flag cross-executor reuse."
+    },
     "hub/test/executor-run.test.ts::host typecheck failure creates no machine; remote typecheck stops tests and failed tests retain failures": {
       "seconds": 13.587666,
       "reason": "Runs nested verification workers through fake provider/SSH processes, logs, cancellation and restart to prove durable executor recovery."

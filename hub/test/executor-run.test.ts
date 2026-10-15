@@ -102,6 +102,40 @@ test('remote verify delivers host selection, runs as runner, reports accounting,
   assert.ok(!calls.includes(token)); assert.ok(!JSON.stringify(f.api.requests).includes(token));
 });
 
+test('explicit droplet reuses only droplet greens while omitted executor keeps cross-executor reuse', async t => {
+  const f = await fixture(t, { hub: projectHub });
+  const local = await f.launch('--executor', 'local');
+  if (local.pid) ownProcess(t, local.pid);
+  assert.match((await f.result(local.id)).text, /exit 0[\s\S]*Executor local/);
+
+  const defaultHit = await f.launch();
+  assert.equal(defaultHit.cached?.run, local.id, 'a droplet default may reuse a local green');
+  assert.match((await f.result(defaultHit.id)).text, /Executor local/);
+
+  const remote = await f.launch('--executor', 'droplet');
+  assert.equal(remote.cached, undefined, 'explicit droplet must execute when only a local green exists');
+  await f.remote(remote.id);
+  const result = await f.result(remote.id);
+  assert.match(result.text, /exit 0[\s\S]*Executor droplet/);
+  assert.match(result.text, /Cache bypassed: explicit --executor droplet requires a droplet green; cached green ran locally/);
+  assert.match(await readFile(join(f.root, '.cland/run/suites', remote.id, 'suite.log'), 'utf8'), /Cache bypassed: explicit --executor droplet/);
+
+  const remoteHit = await f.launch('--executor', 'droplet');
+  assert.equal(remoteHit.cached?.run, remote.id);
+  assert.match((await f.result(remoteHit.id)).text, /Executor droplet/);
+
+  const newerLocal = await f.launch('--executor', 'local', '--fresh');
+  if (newerLocal.pid) ownProcess(t, newerLocal.pid);
+  assert.match((await f.result(newerLocal.id)).text, /exit 0[\s\S]*Executor local/);
+  const olderRemoteHit = await f.launch('--executor', 'droplet');
+  assert.equal(olderRemoteHit.cached?.run, remote.id, 'a newer local green must not hide eligible droplet evidence');
+  assert.match((await f.result(olderRemoteHit.id)).text, /Executor droplet/);
+  const newerDefaultHit = await f.launch();
+  assert.equal(newerDefaultHit.cached?.run, newerLocal.id);
+  assert.match((await f.result(newerDefaultHit.id)).text, /Executor local/);
+  assert.equal(f.api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length, 1);
+});
+
 test('executor overrides bypass host locks and dirty explicit remote candidates refuse', async t => {
   const f = await fixture(t, { hub: projectHub, executor: 'local' });
   await mkdir(join(f.root, '.cland/host.lock'));

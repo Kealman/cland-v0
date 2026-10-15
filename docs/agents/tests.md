@@ -145,6 +145,11 @@ mode. The candidate excludes only `.cland/tasks`, so tracker-only dev merges hit
 other paths and dirty working changes do not. `--fresh` forces execution, and
 `[verification].cache_max_age_minutes` defaults to 1440 (0 disables reuse). Hits
 name the requested head, original run/head and tree hash and post once as usual.
+An explicit `--executor droplet` reuses only a green that ran on a droplet. A
+local-only green triggers a fresh remote run, with the reason in the result
+header and log. Omitting the executor flag preserves cross-executor reuse even
+with a droplet default; `--executor local` also keeps cross-executor reuse.
+Cache hits retain their original executor and platform.
 The Reviewer still verifies criteria at the requested exact head using that
 result; a cached result never revives an old criterion mark automatically.
 

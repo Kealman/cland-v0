@@ -34,6 +34,7 @@ export type SuiteJob = {
   cancelled?: boolean;
   tree?: string | null; finished?: string;
   cached?: { run: string; head: string; tree: string };
+  cacheBypass?: string;
   admittedAt?: string; completedAt?: string; waitMs?: number | null; runMs?: number | null;
   timingEstimated?: boolean;
   selection?: SuiteSelection;
@@ -240,7 +241,9 @@ export class Suites {
       await lintHubShards(input.cwd);
     } catch (error) { throw new SuiteAdmissionError(error); }
     await mkdir(dir, { recursive: true, mode: 0o700 });
-    const cached = !input.fresh && tree ? this.#cached(tree, selection, workers, input.size) : undefined;
+    const cached = !input.fresh && tree ? this.#cached(tree, selection, workers, input.size, input.executor === 'droplet' ? 'droplet' : undefined) : undefined;
+    const cacheBypass = !input.fresh && tree && input.executor === 'droplet' && !cached && this.#cached(tree, selection, workers, input.size)?.executor === 'local'
+      ? 'explicit --executor droplet requires a droplet green; cached green ran locally' : undefined;
 
     // Older candidate runners and fixture packages remain usable. Coverage is
     // recorded only by a capable runner on a clean integrated full dev run.
@@ -250,8 +253,10 @@ export class Suites {
     if (this.#jobs.some(job => this.#active(job) && (job.actor?.sessionId ?? 'human') === identity)) throw new Error('this session already has a suite queued or running');
     const fallbackWorkers = input.workers ?? (await suiteLimits(input.cwd, 'local', this.#env)).workers;
     const job: SuiteJob = { ...input, workers, fallbackWorkers, executor, requestedExecutor: executor, requireRemote: input.executor === 'droplet', integrated: input.integrated === true && branch === 'dev', queued: new Date().toISOString(), priority: input.priority ?? Number.MAX_SAFE_INTEGER, state: 'queued', locks: this.#options.locks ?? ['/tmp/cland-suite.lock', '/tmp/cland-suite-nvim.lock'], selection, tree, id, head, branch, log: join(dir, 'suite.log'), result: join(dir, 'result.json'), gate: join(dir, 'ready'), pid: null, started: null, outcome: null, artifact: null, reported: false, error: null };
+    if (cacheBypass) job.cacheBypass = cacheBypass;
     // Persist the complete request before acknowledging it. No waiting worker exists.
     await writeFile(job.log, `Suite ${id} · ${input.mode}\n${describeSelection(selection)}\nWorktree ${input.cwd}\nBranch ${branch}\nHead ${head}\nWorkers ${workers}${input.size ? ` · size ${input.size}` : ''}\nQueued ${job.queued}\n`, { mode: 0o600 });
+    if (cacheBypass) await appendFile(job.log, `Cache bypassed: ${cacheBypass}\n`);
     if (cached) {
       const artifact = this.#store.resolveArtifact(cached.artifact!)!;
       const originalLog = await readFile(artifact.path, 'utf8').catch(() => null);
@@ -313,10 +318,10 @@ export class Suites {
       return Number(integrated(b)) - Number(integrated(a)) || Number('actor' in a) - Number('actor' in b) || rank(a) - rank(b) || a.queued!.localeCompare(b.queued!);
     });
   }
-  #cached(tree: string, selection: SuiteSelection, workers: number, size?: string): SuiteJob | undefined {
+  #cached(tree: string, selection: SuiteSelection, workers: number, size?: string, requiredExecutor?: ExecutorKind): SuiteJob | undefined {
     // Cancellations say nothing about the tree; failed or pending attempts still supersede green evidence.
     // Pre-admission head changes carry their cancellation in the outcome rather than a flag.
-    const job = this.#jobs.findLast(j => !j.cached && !j.cancelled && !j.requesterDied && !j.outcome?.cause.startsWith('cancelled: queued head changed') && j.tree === tree && j.selection?.mode === selection.mode && (selection.mode !== 'hub-selected' || JSON.stringify([j.selection.tests, j.selection.nvimFull]) === JSON.stringify([selection.tests, selection.nvimFull])) && (j.workers ?? 4) === workers && j.size === size);
+    const job = this.#jobs.findLast(j => (!requiredExecutor || j.executor === requiredExecutor) && !j.cached && !j.cancelled && !j.requesterDied && !j.outcome?.cause.startsWith('cancelled: queued head changed') && j.tree === tree && j.selection?.mode === selection.mode && (selection.mode !== 'hub-selected' || JSON.stringify([j.selection.tests, j.selection.nvimFull]) === JSON.stringify([selection.tests, selection.nvimFull])) && (j.workers ?? 4) === workers && j.size === size);
     if (!job || job.outcome?.code !== 0 || !job.reported || !job.finished || !job.artifact) return undefined;
     const age = Date.now() - Date.parse(job.finished);
     const artifact = this.#store.resolveArtifact(job.artifact);
