@@ -2,8 +2,8 @@
 id: T-514
 kind: task
 title: "heartbeat test: missed-heartbeat-after-restart case asserts a wall-clock delta of at least 950 ms that load breaks (Mac)"
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -16,7 +16,8 @@ regression_of: T-454
 topic: topic-318
 branch: t/T-514-heartbeat-test-missed-heartbeat-after
 created: 2026-10-15T16:40:31.606Z
-updated: 2026-10-15T19:35:55.633Z
+updated: 2026-10-15T19:36:26.827Z
+closed: 2026-10-15T19:36:26.827Z
 ---
 
 ## Problem
@@ -97,3 +98,7 @@ C2 verified: A-3284 contains five quiet serial Mac whole-file passes (45/45), na
 No new source change or verification needed for this verdict. Current Coordinator cover/restart hold8b300f2e applies to any subsequent submission/merge routing. No Reviewer tests, edits or provider calls.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-15T19:36:26.827Z
+
+Merged 105bc31dc1ac9876f89d4911c86b9efc6b12cf53 onto dev.
