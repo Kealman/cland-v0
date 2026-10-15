@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-307
 branch: t/T-396-worker-re-measurement-4-5-and-6-workers
 created: 2026-10-14T12:28:19.638Z
-updated: 2026-10-15T16:24:23.916Z
+updated: 2026-10-15T16:27:55.729Z
 ---
 
 ## Summary
@@ -60,3 +60,24 @@ Implementation and fixture tests drafted; typecheck and diff whitespace checks p
 ### impl-396 · 2026-10-15T16:24:11.558Z
 
 Pre-review validation: verification-workers.test.ts 4/4 (A-3157), suite-runner.test.ts 50/50 (A-3158), shard/duration lint and typecheck pass. The new integration case measured 12.034 s, with a justified duration allowance. Includes shared fix bdf418e6 as af67516a, and merges fresh origin/dev at review head 6343761b812125bfd55dcee830cbe2389440c1c6. Procedure committed at docs/research/T-396-worker-measurements.md and shared as A-3159 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3159-t-396-stage-2-measurement-procedure-role-routing.md). Config and per-run overrides remain four by default; the Coordinator's 15:39Z decision moves measured C2–C4/default selection and measured C5 trade-off to stage-2 close after merge/restart.
+
+### rev-30 · 2026-10-15T16:27:55.729Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-396-source
+commit: 6343761b812125bfd55dcee830cbe2389440c1c6
+scope: full
+
+Source review clear at 6343761b812125bfd55dcee830cbe2389440c1c6, fixed point 1868193c2a551a873f0db763c86682738021f311. No high, medium or low findings. Standards and Spec reviewed directly under Reviewer no-delegation clause.
+
+Standards: worker validation is present in config, CLI, protocol and suite admission; counts are finite positive safe integers. Machine counts propagate to package hub/Neovim phases, including explicit targets, smoke and selected close shards; free stays one. Worker settings are durable in SuiteJob/RunRef, local job JSON and narrowly uploaded remote env. Provider size uses existing acquire/release and spend ownership paths; actual selected price and snapshot fit/region checks remain intact. No provider action by Reviewer. New machine fixture is classified and its 12.034-second exception has a measured reason. Whitespace check passes; requester reports typecheck and shard/duration lint green.
+
+Spec/config: verification.workers defaults to four; droplet.workers inherits or overrides it. Hand/package local execution does not accidentally use the configured default remote executor. Explicit --workers wins and survives local fallback; absent explicit override, fallback restores captured local workers. --size requires droplet, validates offered size/region before admission, persists in status/result and feeds both ordinary acquire and close-shard spend reservation. Local/remote runners receive captured effective workers. Cache lookup compares effective workers and requested size; --fresh procedure prevents timed measurements from using cached evidence. No changed default tuning.
+
+Spec/fixtures: A-3157 has four passing config/frame/integration cases, zero fail/cancel/skip. They cover real fixture config/rendering, free=1, hub/Neovim overrides and smoke/close plans, CLI and typed-frame refusals, c-16 result/status/price/cost, no-create cap refusal, local fallback policy, cache separation and restart persistence. Picked provider runs use the fake API/machine. A-3158 confirms all 50 package-runner regressions pass, including config and inherited override counts with original lock cleanup proofs. Same-head post-source verification is still required before final runtime settlement; C1 remains unmarked until that accepted gate.
+
+Stage decision: Coordinator b34465c8 authorizes per-run --workers and --size, with selected-size price reservation; 51195fb4 and recorded 15:39Z item comment make fixture behavior the pre-merge gate and defer measured C2–C4/default tuning plus measured portion of C5 to E-387 stage-2 close after merge/restart. Procedure and README settings portion are reviewed; C5 is composite and remains unverified, as do C2–C4. No fabricated measurement evidence. fb7b8dd1 explicitly changes the run plan to serial c-16 4/6/8 and initial Mac 4/5/6, repeat close contenders within 10%, retain local four absent failure-free >=10% improvement. Committed docs/research/T-396-worker-measurements.md matches this plan, names one clean head, --fresh, no occasion/sharding, quiet windows, accounting and default follow-up ownership.
+
+Source clearance authorizes one no-mode cland verify at this exact head, reporting in topic-307. Actual measurements wait for Coordinator stage windows and the new hub code, not this pre-merge run. No Reviewer tests, edits or provider calls.

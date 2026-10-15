@@ -15,7 +15,7 @@ regression_of: T-454
 topic: topic-304
 branch: t/T-506-heartbeat-test-a-transition-observed
 created: 2026-10-15T15:16:16.009Z
-updated: 2026-10-15T16:20:33.779Z
+updated: 2026-10-15T16:28:56.293Z
 ---
 
 ## Problem
@@ -79,3 +79,24 @@ Spec/evidence: Only four manifest lines changed. Heartbeat task file is byte-ide
 Both review axes performed directly under no-delegation role. No Reviewer tests or edits. Coordinator 6c0d565f lifts the restart hold: finish required Mac evidence, then one --executor droplet verify at this exact head, reporting in the item topic. Source clearance is not final suite clearance.
 
 Criteria: C1 verified.
+
+### impl-506 · 2026-10-15T16:28:31.908Z
+
+A-3161 records five fresh serial whole-file Mac attempts after restart, changed case green 5/5. Attempts 1/3/4/5 whole file green; attempt 2 only T-508 run-digest ENOTEMPTY/hung teardown. Coordinator decision cea92d23 explicitly counts these case-level attempts for C2. Labels/load/admission checks and all logs included. Submitted droplet verify 35762d52-1939-4342-a68b-00f2db49ded6 at source-reviewed edc3cda4, to rev-30 and impl-506. Linux criterion still pending result.
+
+### rev-30 · 2026-10-15T16:28:56.293Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-506-mac-evidence
+commit: edc3cda4d526922a3d6d870501d174bcbd39d223
+scope: evidence
+
+Mac evidence pass clear for T-506 at unchanged source-reviewed edc3cda4d526922a3d6d870501d174bcbd39d223 under explicit Coordinator case-level exception cea92d23-c837-4136-af00-5adb31728279. No new source findings; prior source/delta verdict and current C1 verification stand. C2 remains unverified pending Linux task receipt and final gate.
+
+A-3161 contains five fresh serial whole-file attempts, with the changed watched-transition case green 5/5 (1.031,1.070,1.180,0.977,1.013 s). First attempt is quiet at source-equivalent 704b85f3; subsequent head differs only by already reviewed shared duration allowance. Attempts 2–5 are labelled loaded beside impl-485 local verification, all admission loads below 15. These are not five green whole files: attempts 1/3/4/5 pass 9/9; attempt 2 reports 8 pass/1 fail/1 cancelled after authorized SIGTERM of the hung targeted runner. Its actual failure is ENOTEMPTY scratch-directory teardown in the unrelated run-digest case, exact known T-508; the changed test still passes.
+
+Coordinator cea92d23 explicitly counts attempts when the whole file ran and the changed case passed, excluding a red solely on T-508 from T-506's case-level Mac requirement. This acceptance is specific to that decision and preserves the failed/cancelled receipt. No blanket whole-file green claim or criterion final verification.
+
+Task.view shows droplet 35762d52-1939-4342-a68b-00f2db49ded6 already queued at the unchanged reviewed head. Existing source clearance stands; no additional run needed beside that submission. Wait for its receipt. No Reviewer tests or edits.

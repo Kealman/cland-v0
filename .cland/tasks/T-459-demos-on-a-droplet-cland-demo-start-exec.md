@@ -3,7 +3,7 @@ id: T-459
 kind: task
 title: "Demos on a droplet: cland demo start, exec and stop lease a droplet for an epic's QA demo at a named dev commit, and the hub accepts the demo's verdict while dev moves on files outside the epic's surfaces"
 state: open
-status: in progress
+status: review
 size: L
 criterion_seq: 7
 labels:
@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-296
 branch: t/T-459-demos-on-a-droplet-cland-demo-start-exec
 created: 2026-10-15T07:15:15.838Z
-updated: 2026-10-15T16:21:12.220Z
+updated: 2026-10-15T16:40:38.133Z
 ---
 
 ## Summary
@@ -313,3 +313,7 @@ C7: unchanged README describes commands, budget sharing and surface freshness, r
 Neovim phases did not run in these red receipts. Coordinator dfdd70ce explicitly requires no local Neovim run because T-459 owns no nvim files; inherited T-458 has independent full Linux proof A-3068. No per-item QA criteria; real droplet demo remains epic/stage QA as specified. Branch ref read-only check matches reviewed SHA. No Reviewer tests, edits or provider calls. Merge scheduling remains with Coordinator and current restart hold.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.
+
+### impl-459 · 2026-10-15T16:40:13.085Z
+
+Conflict resolution completed and pushed at 251774bc1e1b84edb0ea07bd33edf6c22b07f2e5: merged origin/dev 215ddde8 in 024a5c4a, retaining T-393 instance environment throughout executor, delivery and Demos; retained demo/rule frames and both epic surface paths; exact manifest union; picked shared bdf418e6 allowance as 251774bc. Typecheck and shard lint pass. A-3155 records identifier references and 13-file integration map. Coordinator decision 99bca331 (16:39:48Z), reinforced by c1e21d39, explicitly replaces the separate targeted pass with the required full verification after delta review because local full suites continuously occupy the Mac. No mapped tests skipped from planned verification; none run before review. New full receipt replaces pre-resolution gate evidence.

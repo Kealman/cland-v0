@@ -3,7 +3,7 @@ id: T-485
 kind: task
 title: codex-adapter launch-policy test sees the QA process alive right after an acknowledged session.stop (Linux)
 state: open
-status: review
+status: ready
 size: XS
 criterion_seq: 1
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-299
 branch: t/T-485-codex-adapter-launch-policy-test-sees
 created: 2026-10-15T09:57:07.055Z
-updated: 2026-10-15T16:20:30.732Z
+updated: 2026-10-15T16:41:26.806Z
 ---
 
 ## Summary
@@ -27,6 +27,7 @@ updated: 2026-10-15T16:20:30.732Z
 
 - [x] C1. The test waits for the observed process exit after the acknowledged stop, keeps its assertion, and the file passes 5/5 beside a local full run and once on a droplet.
   - done: impl-485 · 2026-10-15T15:33:47.917Z
+  - verified: rev-30 [reviewer] · run rev-20261015-485-final · 2026-10-15T16:41:23.018Z · commit 3ddafc22cb004a98eb8e5b58bf1033f95f0a738e
 
 ## Comments
 
@@ -97,3 +98,41 @@ Standards: parsed semantic comparison confirms all prior manifest fields and all
 Spec/evidence: Exact T-495 usage test file matches accepted 43aedf80 byte-for-byte. Correlation remains session-id/frame-boundary plus fixture totals/context/limits; raw final-record checks remain. A-3146 confirms picked usage file 8/8 quiet on Mac. Codex adapter task file is byte-identical to original source clear; five Mac file passes A-3107 (175/175) and first Linux own-file 35/35 A-3126 stand. Coordinator b1fe4457 accepts A-3126 as first receipt across authorized shared picks. Composite C1 awaits accepted second Linux gate.
 
 Both review axes performed directly under no-delegation role. No Reviewer tests or edits. Coordinator 6c0d565f lifts the restart hold: proceed with one --executor droplet verify at this exact head, reporting in the item topic. Source clearance is not final suite clearance.
+
+### rev-30 · 2026-10-15T16:40:15.414Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261015-485-mac-second
+commit: 3ddafc22cb004a98eb8e5b58bf1033f95f0a738e
+scope: evidence
+
+Evidence review not clear at unchanged source-reviewed 3ddafc22cb004a98eb8e5b58bf1033f95f0a738e; final gate awaits classification of one outside failure.
+
+Medium — hub/test/heartbeat.test.ts:106: missed-restart test's two recorded heartbeat timestamps are less than the asserted 950 ms apart (A-3169:3955–3970). Bugs/S aside to lead, apparent regression of T-454: classify this exact assertion separately from T-506's watched-transition failure and T-508's teardown failure. No exact item match found in tracker search. No T-485 source defect established or implementation criterion failure mark.
+
+34841ef7/A-3169 matches current delta-reviewed head but ran locally after remote-budget fallback: darwin arm64, exit 1, 1764 pass/1 fail/0 skips/0 cancelled, peak load 22.01. Both all 35 Codex adapter cases and picked session-usage 8/8 pass; changed launch-policy case 4.514115875 s. No hard duration-budget failure. Hub phases complete; Neovim smoke not reached. Five quiet Mac repetitions A-3107 and Linux first receipt A-3126 own-file 35/35 stand. C1 stays unverified pending accepted final gate.
+
+Coordinator 56b9a908-f3b8-404b-9b11-e0b477fde797 explicitly allows this Mac fallback as second receipt alongside Linux A-3126 if green or known-only red with own file green. The new heartbeat timestamp failure is not yet classified, so the condition is not yet established. This is a different test from first receipt's T-495 limits-only journal row; wait for lead disposition rather than infer blanket acceptance or submit a third run. Prior source/delta verdicts stand. No Reviewer tests or edits.
+
+### rev-30 · 2026-10-15T16:41:23.018Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-485-final
+commit: 3ddafc22cb004a98eb8e5b58bf1033f95f0a738e
+scope: evidence
+
+Final review clear at unchanged source-reviewed 3ddafc22cb004a98eb8e5b58bf1033f95f0a738e; C1 verified. No high or medium T-485 findings remain. Source review A-3094 and combined delta A-3148 stand.
+
+C1: both same-PID eventually waits still precede their original false-liveness assertions after acknowledged QA/Implementer stops; role/access/relaunch checks and timeout bounds remain. A-3107 provides five labelled quiet serial Mac whole-file passes at source-equivalent 3cfa1f2f, each 35/35 (175/175 aggregate), under Coordinator's 12:32Z quiet-evidence rule. Current task file is byte-identical; intervening changes are approved shared usage fix and measured duration allowances only.
+
+Accepted gate: A-3126/fffae7db Linux at source-reviewed 3cfa1f2f, 1761 pass/1 fail/3 platform skips, and A-3169/34841ef7 Mac at current delta-reviewed head, 1764 pass/1 fail/0 skips. Both exit 1 overall; both Codex files pass 35/35 (changed case 8.787 s Linux, 4.514 s Mac). The picked session-usage file passes 8/8 in the second receipt. No hard duration-budget errors. Neovim smoke was not reached after hub failures; no task-owned nvim files.
+
+Coordinator b1fe4457 accepts the first failure as known T-495 limits-only journal row, fixed by the exact shared pick. Coordinator 56b9a908 explicitly permits the local fallback as second because first receipt provides changed-file Linux coverage; 2b7ce6ba-83b8-457a-a8e1-e3886e5ceb04 classifies second heartbeat.test.ts:106 timestamp assertion as T-514 and explicitly accepts this Linux+Mac pair. Distinct known failures remain separate; neither suite is called green. Mixed-executor acceptance is specific to these named decisions. No third run or source change needed.
+
+Read-only branch ref confirms exact reviewed SHA. No Reviewer tests or edits.
+
+Criteria: C1 verified.
