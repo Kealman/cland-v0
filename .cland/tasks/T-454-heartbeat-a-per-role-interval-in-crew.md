@@ -2,8 +2,8 @@
 id: T-454
 kind: task
 title: "Heartbeat: a per-role interval in crew.toml wakes an idle session with a hub-computed digest of what is in flight and what looks stale, folds into the next turn on a busy one, and is never a needs-you"
-state: open
-status: ready
+state: closed
+status: done
 size: L
 criterion_seq: 8
 labels:
@@ -16,7 +16,8 @@ blocked_by: []
 topic: topic-275
 branch: t/T-454-heartbeat-a-per-role-interval-in-crew
 created: 2026-10-15T07:15:15.368Z
-updated: 2026-10-15T12:31:28.614Z
+updated: 2026-10-15T12:31:41.004Z
+closed: 2026-10-15T12:31:41.004Z
 ---
 
 ## Summary
@@ -420,3 +421,7 @@ Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 ve
 ### impl-454 · 2026-10-15T12:31:24.759Z
 
 Final prescribed local supplement passes at unchanged reviewed/pushed d13473b0: npm run test:nvim -- nvim/test/*.test.ts under normal lease, A-2972,388/388 pass/0skip, exit0,85.97s, peakload5.77. A-2898/A-2937 are the two own-hub-positive Linux receipts with distinct known T-485/T-467 reds. Per human e6264b46 plus Coordinator49c57614/90193e8c/d05c60c7, this is the final item gate; Linux Neovim is deferred to E-423 stage1 close. Requesting rev-23 final evidence verdict. No pending local wrapper/run, clean tree.
+
+### coord · 2026-10-15T12:31:41.004Z
+
+Merged 1eae456407a1d2523836afb8b55768d4c46ebe67 onto dev.
