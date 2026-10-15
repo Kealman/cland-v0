@@ -96,7 +96,7 @@ function hook(root: string, event: string, o: { session: string; launch?: string
 test('signal order is the order the harness fired them: a Stop whose hook process started slowly does not outrank the next turn start', async (t) => {
   const root = await tempProject(t);
   // Suppress fallback polls so delayed hook ordering alone controls the staged state.
-  const fake = await fakeClaude(t, { pollMs: 10_000 });
+  const fake = await fakeClaude(t, { pollMs: 10_000, awaitSignals: true });
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
@@ -119,7 +119,7 @@ test('signal order is the order the harness fired them: a Stop whose hook proces
 test('late Claude start and StopFailure hooks keep failure notes with their own turn sender', async (t) => {
   const root = await tempProject(t);
   // Suppress fallback polls so delayed hook ordering alone controls the staged state.
-  const fake = await fakeClaude(t, { pollMs: 600_000 });
+  const fake = await fakeClaude(t, { pollMs: 600_000, awaitSignals: true });
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
@@ -176,7 +176,8 @@ test('late Claude start and StopFailure hooks keep failure notes with their own 
 
 test('a signal from an earlier launch under the same name changes nothing of the process that replaced it', async (t) => {
   const root = await tempProject(t);
-  const fake = await fakeClaude(t);
+  // Trust pushed states while keeping process discovery/exit polling active for the crash below.
+  const fake = await fakeClaude(t, { pushTrustMs: 600_000, awaitSignals: true });
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   // the Coordinator: the fake answers its clause to the human, which only the Coordinator may (#30)
@@ -236,7 +237,7 @@ test("a message the spoke accepted during the launch is injected once the launch
 
 test('an idle that comes while an inject waits for its confirmation retries it once that inject gave up', async (t) => {
   const root = await tempProject(t);
-  const fake = await fakeClaude(t, { injectTimeoutMs: 3000, dropFirst: true });
+  const fake = await fakeClaude(t, { injectTimeoutMs: 3000, dropFirst: true, awaitSignals: true });
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
@@ -254,7 +255,7 @@ test('an idle that comes while an inject waits for its confirmation retries it o
 
 test('a session renamed while a message waits for its inject still gets it, and its confirmation counts', async (t) => {
   const root = await tempProject(t);
-  const fake = await fakeClaude(t, { injectTimeoutMs: 1000, dropFirst: true });
+  const fake = await fakeClaude(t, { injectTimeoutMs: 1000, dropFirst: true, awaitSignals: true });
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
@@ -263,7 +264,8 @@ test('a session renamed while a message waits for its inject still gets it, and 
 
   // the first prompt, the role clause, is dropped inside the harness: delivered, never injected
   const clause = await clauseId(root, 'coord');
-  await eventually('the clause inject given up', async () => ((await hubLog(root)).includes(`"event":"inject-unconfirmed","session":"coord","id":"${clause}"`) ? true : undefined));
+  // Ignore an early missing-bridge failure: the deliberately dropped submission must actually time out.
+  await eventually('the dropped clause inject timed out', async () => ((await hubLog(root)).includes(`"event":"inject-unconfirmed","session":"coord","id":"${clause}","error":"the mod did not confirm the turn within `) ? true : undefined));
   const rename = await sendGeneral(ui, 'rename to pool-1'); // the session renames itself in this turn
   await injected(ui, rename);
   await presentAs(ui, 'pool-1', 'idle');

@@ -231,7 +231,8 @@ test('a crashed Claude Code process: the state turns unknown and the hub logs it
 
 test('an inject the harness never confirmed stays delivered, is logged, and is retried at the next idle', async (t) => {
   const root = await tempProject(t);
-  const fake = await fakeClaude(t, { injectTimeoutMs: 1000, dropFirst: true });
+  // The retry needs an observed busy→idle transition, not a turn shorter than its hook processes' startup.
+  const fake = await fakeClaude(t, { injectTimeoutMs: 1000, dropFirst: true, awaitSignals: true });
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
@@ -240,7 +241,8 @@ test('an inject the harness never confirmed stays delivered, is logged, and is r
 
   // the first turn a launched session gets is its role clause, a hub notice with no topic: the fake drops it
   const clause = await eventually('the clause recorded', async () => /"event":"role-clause","session":"coord"[^\n]*"id":"([^"]+)"/.exec(await hubLog(root, ui))?.[1]);
-  await eventually('the unconfirmed inject logged', async () => ((await hubLog(root, ui)).includes(`"event":"inject-unconfirmed","session":"coord","id":"${clause}"`) ? true : undefined));
+  // An earlier attempt may have failed before the bridge connected; only this timeout proves the drop.
+  await eventually('the dropped inject timed out', async () => ((await hubLog(root, ui)).includes(`"event":"inject-unconfirmed","session":"coord","id":"${clause}","error":"the mod did not confirm the turn within `) ? true : undefined));
   const injected = async () => (await hubLog(root, ui)).includes(`"event":"injected","id":"${clause}"`);
   await sleep(5 * Number(fake.env.CLAND_ADAPTER_POLL_MS)); // Negative: five idle polls must not retry.
   assert.equal(await injected(), false, 'not confirmed: still delivered');

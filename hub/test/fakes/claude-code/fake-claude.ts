@@ -38,6 +38,8 @@
 // FAKE_CLAUDE_STOP_CRASH=1 makes `claude stop` die by a signal without stopping anything.
 // FAKE_CLAUDE_IGNORE_TERM=1 makes the session ignore SIGTERM (only SIGKILL ends it).
 // FAKE_CLAUDE_DROP_FIRST=1 drops the first prompt the mod submits (as a harness hook would), so it is never confirmed.
+// FAKE_CLAUDE_AWAIT_SIGNALS=1 drains hook/mod posts at each turn boundary. Tests that require a pushed
+// busy then idle use this receipt barrier: a fast turn cannot stale-drop its own delayed busy signal.
 // A logged-out marker under FAKE_CLAUDE_HOME or the session's config directory fails turns with authentication_failed.
 // State lives under FAKE_CLAUDE_HOME (sessions/<id>.json, jobs/<id>.json, jobs/<id>.log). FAKE_CLAUDE_TURN_MS is
 // how long a turn "thinks" (default 300).
@@ -249,6 +251,9 @@ async function runSession(id: string): Promise<number> {
 
   // the settings hooks: a shell command, the payload on stdin; `async` ones run in the background
   let promptId: string | undefined;
+  const awaitSignals = env.FAKE_CLAUDE_AWAIT_SIGNALS === '1';
+  const posts = new Set<Promise<unknown>>();
+  const drainPosts = async () => { while (posts.size) await Promise.all([...posts]); };
   const runHooks = async (event: string, payload: Record<string, unknown>) => {
     const background: Array<Promise<void>> = [];
     for (const entry of hooksOf(event)) {
@@ -272,7 +277,8 @@ async function runSession(id: string): Promise<number> {
       }
     }
     // when the event's background hooks have all exited (each `cland hook` waits for the hub's answer)
-    void Promise.all(background).then(() => log(`hooks ${event} done`));
+    const done = Promise.all(background).then(() => log(`hooks ${event} done`));
+    if (awaitSignals) await done;
   };
 
   // WorktreeCreate replaces Claude Code's own `git worktree add`: its stdout is the path, a non-zero exit refuses
@@ -328,8 +334,8 @@ async function runSession(id: string): Promise<number> {
     settings: { read: async () => job.settings },
     clock: { now: async () => Date.now(), sleep: (ms: number) => new Promise<void>((r) => setTimeout(r, ms)) },
     process: {
-      run: (argv: string[], init: { stdin?: string; timeoutMs?: number } = {}) =>
-        new Promise((resolve, reject) => {
+      run: (argv: string[], init: { stdin?: string; timeoutMs?: number } = {}) => {
+        const posted = new Promise((resolve, reject) => {
           const child = spawn(argv[0] as string, argv.slice(1), { cwd: job.cwd, env, stdio: ['pipe', 'pipe', 'pipe'] });
           let stdout = '';
           let stderr = '';
@@ -344,7 +350,13 @@ async function runSession(id: string): Promise<number> {
             resolve({ exitCode: code ?? 1, stdout, stderr });
           });
           child.stdin.end(init.stdin ?? '');
-        }),
+        });
+        if (awaitSignals) {
+          posts.add(posted);
+          void posted.then(() => posts.delete(posted), () => posts.delete(posted));
+        }
+        return posted;
+      },
       spawn: ({ argv }: { argv: string[] }) => {
         const child = spawn(argv[0] as string, argv.slice(1), { cwd: job.cwd, env, stdio: ['ignore', 'pipe', 'pipe'] });
         children.add(child);
@@ -451,6 +463,7 @@ async function runSession(id: string): Promise<number> {
   setInterval(() => {}, 1 << 30);
   const turnMs = Number(env.FAKE_CLAUDE_TURN_MS ?? 300);
   for (;;) {
+    if (awaitSignals) await drainPosts();
     const next = queue.shift();
     if (!next) {
       await new Promise<void>((r) => (wake = r));
@@ -464,6 +477,7 @@ async function runSession(id: string): Promise<number> {
     setStatus('busy');
     await runHooks('UserPromptSubmit', { prompt: next.text });
     await dispatch('turn.start', { text: next.text, turnId }, () => ({ turnId }));
+    if (awaitSignals) await drainPosts();
     next.started();
     await new Promise((r) => setTimeout(r, turnMs));
     if (existsSync(join(HOME, 'logged-out')) || existsSync(join(job.configDir, 'logged-out'))) {

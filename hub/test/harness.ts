@@ -546,7 +546,7 @@ export type FakeClaude = {
 
 export async function fakeClaude(
   t: TestContext,
-  timings: { pollMs?: number; injectTimeoutMs?: number; pushTrustMs?: number; turnMs?: number; stopGraceMs?: number; dropFirst?: boolean; lateBg?: boolean | 'bridged'; stopCrash?: boolean; ignoreTerm?: boolean } = {},
+  timings: { pollMs?: number; injectTimeoutMs?: number; pushTrustMs?: number; turnMs?: number; awaitSignals?: boolean; stopGraceMs?: number; dropFirst?: boolean; lateBg?: boolean | 'bridged'; stopCrash?: boolean; ignoreTerm?: boolean } = {},
 ): Promise<FakeClaude> {
   const home = await realpath(await mkdtemp(join(tmpdir(), 'fake-claude-')));
   const cleanupHome = ownDirectory(undefined, home);
@@ -558,6 +558,7 @@ export async function fakeClaude(
     CLAND_ADAPTER_POLL_MS: String(timings.pollMs ?? 50),
     CLAND_INJECT_TIMEOUT_MS: String(timings.injectTimeoutMs ?? 5000),
     CLAND_PUSH_TRUST_MS: String(timings.pushTrustMs ?? 100),
+    ...(timings.awaitSignals ? { FAKE_CLAUDE_AWAIT_SIGNALS: '1' } : {}),
     ...(timings.dropFirst ? { FAKE_CLAUDE_DROP_FIRST: '1' } : {}),
     ...(timings.lateBg ? { FAKE_CLAUDE_LATE_BG: timings.lateBg === 'bridged' ? 'bridged' : '1' } : {}),
     ...(timings.stopCrash ? { FAKE_CLAUDE_STOP_CRASH: '1' } : {}),
