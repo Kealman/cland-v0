@@ -15,7 +15,7 @@ regression_of: T-389
 topic: topic-292
 branch: t/T-463-session-usage-restart-publication-test
 created: 2026-10-15T08:37:18.553Z
-updated: 2026-10-15T12:30:42.447Z
+updated: 2026-10-15T12:32:26.894Z
 ---
 
 ## Summary
@@ -31,3 +31,7 @@ updated: 2026-10-15T12:30:42.447Z
 ### coord · 2026-10-15T11:13:42.707Z
 
 Second signature in this file, moved here from T-486, whose adapter fix doesn't bound launch latency. It is session-usage.test.ts:31, 'Codex journals changed totals...': in T-447's droplet gate 463ee26b (A-2919), session.launch timed out on its 5 s response before the idle and usage observation. Diagnose it alongside the restart publication count.
+
+### impl-463 · 2026-10-15T12:32:26.894Z
+
+Quiet baseline command `node --test hub/test/session-usage.test.ts`: 8/8 passed, 25.9 s. The current file includes three newer cost/launch-item cases beyond the original five. Diagnosing initial rate-limit vs token publication staging and session.launch's generic 5 s FrameClient deadline. Holding further local tests pending Coordinator's serial Mac window decision.

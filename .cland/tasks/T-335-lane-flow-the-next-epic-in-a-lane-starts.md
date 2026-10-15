@@ -3,7 +3,7 @@ id: T-335
 kind: task
 title: "Lane flow: epics follow epics, a follow is met on the last merge, and a merge hold keeps the follower off the predecessor's files until its demo"
 state: open
-status: review
+status: ready
 size: L
 criterion_seq: 7
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-277
 branch: t/T-335-lane-flow-the-next-epic-in-a-lane-starts
 created: 2026-10-13T14:23:44.027Z
-updated: 2026-10-15T12:31:15.316Z
+updated: 2026-10-15T12:33:18.654Z
 ---
 
 ## Summary
@@ -44,18 +44,23 @@ This started as an observation from the human and the stand-in on 2026-10-13 at 
 - [x] C1. `task create --follows`, `task link --follows/--unfollow` and the `task.link` tool set and remove `follows` in the frontmatter; a cycle and a non-epic edge are refused, proven by tests.
   - done: impl-335 · 2026-10-15T07:26:34.248Z
   - verified: rev-26 [reviewer] · run rev-20261015-335-final-1 · 2026-10-15T12:08:01.280Z · commit fcb1de325def92d9f0d18fc998893cf9ee39ca9e
+  - verified: rev-26 [reviewer] · run rev-20261015-335-final-2 · 2026-10-15T12:33:12.799Z · commit 92834624c9803ea67cae7415ae8548a306da24ac
 - [x] C2. In a scratch project where E2 follows E1, `task view E2` shows `follows E-1: met` once E1's last ticket merges, and the open tickets before that; E2 is not marked blocked in `task list`.
   - done: impl-335 · 2026-10-15T07:26:35.534Z
   - verified: rev-26 [reviewer] · run rev-20261015-335-final-1 · 2026-10-15T12:08:01.281Z · commit fcb1de325def92d9f0d18fc998893cf9ee39ca9e
+  - verified: rev-26 [reviewer] · run rev-20261015-335-final-2 · 2026-10-15T12:33:12.800Z · commit 92834624c9803ea67cae7415ae8548a306da24ac
 - [x] C3. A ticket of E2 whose diff touches a file E1's merges changed is refused at the merge gate with the predecessor, its pending demo and the files named, while a ticket with no overlap merges; both proven by tests.
   - done: impl-335 · 2026-10-15T07:37:23.936Z
   - verified: rev-26 [reviewer] · run rev-20261015-335-final-1 · 2026-10-15T12:08:01.281Z · commit fcb1de325def92d9f0d18fc998893cf9ee39ca9e
+  - verified: rev-26 [reviewer] · run rev-20261015-335-final-2 · 2026-10-15T12:33:12.800Z · commit 92834624c9803ea67cae7415ae8548a306da24ac
 - [x] C4. The hold lifts when E1 receives its clear demo verdict or closes, proven by a test.
   - done: impl-335 · 2026-10-15T07:26:38.112Z
   - verified: rev-26 [reviewer] · run rev-20261015-335-final-1 · 2026-10-15T12:08:01.282Z · commit fcb1de325def92d9f0d18fc998893cf9ee39ca9e
+  - verified: rev-26 [reviewer] · run rev-20261015-335-final-2 · 2026-10-15T12:33:12.800Z · commit 92834624c9803ea67cae7415ae8548a306da24ac
 - [x] C5. The card and the explorer show `follows` beside `blocked_by`.
   - done: impl-335 · 2026-10-15T07:26:39.039Z
   - verified: rev-26 [reviewer] · run rev-20261015-335-final-1 · 2026-10-15T12:08:01.283Z · commit fcb1de325def92d9f0d18fc998893cf9ee39ca9e
+  - verified: rev-26 [reviewer] · run rev-20261015-335-final-2 · 2026-10-15T12:33:12.800Z · commit 92834624c9803ea67cae7415ae8548a306da24ac
 - [x] C6. The Coordinator clause in both places and the `merge`, `to-tickets` and `plan-epic` skills describe follows, the met rule, the hold and preparing the next epic during the last stage's review.
   - done: impl-335 · 2026-10-15T07:39:48.888Z
   - verified: rev-26 [reviewer] · run rev-20261015-335-source-3 · 2026-10-15T07:40:56.538Z · commit bbe943079f12a43dcc707d527fe718b9a58ddfd6
@@ -64,6 +69,7 @@ This started as an observation from the human and the stand-in on 2026-10-13 at 
   - verified: rev-26 [reviewer] · run rev-20261015-335-source-6 · 2026-10-15T10:00:41.032Z · commit b6ba04e77de9d9635c00946f526e6edacaeb8ab4
   - verified: rev-26 [reviewer] · run rev-20261015-335-source-7 · 2026-10-15T11:00:26.690Z · commit fcb1de325def92d9f0d18fc998893cf9ee39ca9e
   - verified: rev-26 [reviewer] · run rev-20261015-335-final-1 · 2026-10-15T12:08:01.283Z · commit fcb1de325def92d9f0d18fc998893cf9ee39ca9e
+  - verified: rev-26 [reviewer] · run rev-20261015-335-final-2 · 2026-10-15T12:33:12.800Z · commit 92834624c9803ea67cae7415ae8548a306da24ac
 - [x] C7. `hub/README.md` and GLOSSARY's Follows entry describe the relation, the met rule and the hold.
   - done: impl-335 · 2026-10-15T07:26:40.394Z
   - verified: rev-26 [reviewer] · run rev-20261015-335-source-3 · 2026-10-15T07:40:56.538Z · commit bbe943079f12a43dcc707d527fe718b9a58ddfd6
@@ -72,6 +78,7 @@ This started as an observation from the human and the stand-in on 2026-10-13 at 
   - verified: rev-26 [reviewer] · run rev-20261015-335-source-6 · 2026-10-15T10:00:41.033Z · commit b6ba04e77de9d9635c00946f526e6edacaeb8ab4
   - verified: rev-26 [reviewer] · run rev-20261015-335-source-7 · 2026-10-15T11:00:26.690Z · commit fcb1de325def92d9f0d18fc998893cf9ee39ca9e
   - verified: rev-26 [reviewer] · run rev-20261015-335-final-1 · 2026-10-15T12:08:01.283Z · commit fcb1de325def92d9f0d18fc998893cf9ee39ca9e
+  - verified: rev-26 [reviewer] · run rev-20261015-335-final-2 · 2026-10-15T12:33:12.800Z · commit 92834624c9803ea67cae7415ae8548a306da24ac
 
 ## Comments
 
@@ -256,3 +263,17 @@ Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 ve
 ### impl-335 · 2026-10-15T12:31:07.357Z
 
 Resolved the merge conflict with origin/dev 59fac5bf in pushed merge 92834624. durations.json is the exact allowance union (179), with every parent value unchanged; typecheck and diff check pass, clean tree. A-2973 records the delta. Per Coordinator 15bb5a24 and 7b82515b, no new verify or targeted dev-merge runs: covered dev content and prior task receipts stand. Delta review requested from rev-26 at this head.
+
+### rev-26 · 2026-10-15T12:33:12.800Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261015-335-final-2
+commit: 92834624c9803ea67cae7415ae8548a306da24ac
+scope: delta
+
+No high or medium findings. Sole manual conflict is an exact durations.json union: 178 task-parent and 174 dev-parent allowances become 179, every parent value preserved; remaining manifest sections equal dev. Own task patch, including tracker and README additions, is unchanged; landed T-487 files equal dev. Worktree clean at 92834624. A-2973 typecheck/diff check green.
+Final C1–C7 renewal uses Coordinator 15bb5a24 (no new verify; covered dev content and task receipts stand) and 7b82515b (targeted merge tests waived; duration union only). Retain A-2794 + A-2935 accepted Linux hub pair, A-2960 387/387 local Neovim, A-2958 green dev cover 6a13b9a5/shared receipts, and prior A-2962. No new-head execution claim. Linux UI remains E-423 stage-1 close coverage with forward fixes as directed. No Reviewer tests or edits.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.

@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-15T09:14:14.206Z
-updated: 2026-10-15T11:05:29.087Z
+updated: 2026-10-15T12:32:49.963Z
 ---
 
 ## Goal
@@ -60,3 +60,7 @@ stages:
 Gate rule while E-482 is open, a human decision on 2026-10-15 at 11:04Z (ask 9183a54c, answer fb9f8d2a). It replaces the local fallback.
 
 When a droplet verify is red only on known flakes and the task's own files are green, the next step is one more droplet verify at the same head. A head that moved only by shared-fix picks counts as the same. If that run is red only on known flakes, on a different failing test, the two Linux receipts plus the Reviewer's final clear are the merge gate. The same test red twice gets reported. The local slot is reserved for the Coordinator's integrated runs.
+
+### coord · 2026-10-15T12:32:49.963Z
+
+Evidence rule from 2026-10-15 at 12:32Z. Each ticket needs five serial whole-file passes on the Mac, quiet or loaded and labelled, plus the task's droplet verify, which runs the file under 4-worker Linux load. The beside-a-local-full-run requirement is dropped, because after the 12:04Z load spike only one test file runs on the Mac at a time.
