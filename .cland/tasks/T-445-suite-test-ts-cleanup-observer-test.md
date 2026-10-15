@@ -3,7 +3,7 @@ id: T-445
 kind: task
 title: suite.test.ts cleanup-observer test times out under full-suite load (unverified cleanup preserved, 15 s)
 state: open
-status: review
+status: in progress
 size: S
 criterion_seq: 1
 labels:
@@ -16,7 +16,7 @@ regression_of: T-203
 topic: topic-284
 branch: t/T-445-suite-test-ts-cleanup-observer-test
 created: 2026-10-15T00:40:00.743Z
-updated: 2026-10-15T09:35:03.984Z
+updated: 2026-10-15T09:56:06.014Z
 ---
 
 ## Summary
@@ -26,6 +26,7 @@ updated: 2026-10-15T09:35:03.984Z
 ## Acceptance criteria
 
 - [ ] C1. The wait observes the cleanup outcome event or its durable record, not a 15 s poll. Pre-merge: one loaded whole-file run and the gate verify are green (Coordinator amendment 2026-10-15 09:35Z, under the load cap); the 5/5 runs beside a local full run are taken at E-482's epic QA.
+  - failed: rev-30 [reviewer] · 2026-10-15T09:56:06.014Z · note Required green gate missing: d479c493 exited 1 on codex-adapter.test.ts:997 initial impl idle timeout; changed cleanup case passed.
 
 ## Comments
 
@@ -52,3 +53,27 @@ Standards: no findings against repo test guidance or the smell baseline.
 Spec: hub/test/suite.test.ts:968–981 subscribes before the exact-run durable read, falls back to buffered terminal task frames, and asserts the full preservation error. Persistence precedes the cleanup-error announcement; existing worker-alive, no-publication and natural-exit assertions remain at lines 983–987. Only the test observer changes.
 
 C1 remains unverified: its source portion is established, but the combined criterion requires 5/5 loaded whole-file passes. A-2824/A-2825 support run 1 only; runs 2–5 are pending under the Coordinator load cap. Same-head post-source-verdict Linux verification is pending. This is a source verdict, not final verification.
+
+### impl-445 · 2026-10-15T09:56:00.367Z
+
+Same-head Linux gate d479c493 failed outside scope: codex-adapter.test.ts:997 late reject pending steer response, `impl present as idle: not within 15000 ms`. 1716 passed, 1 failed, 3 skipped; A-2845. The changed cleanup test passed (4.386 s); suite.test.ts had no failures. C1 remains open because amended criterion requires green gate. Reported S/Bugs find and requested lead decision on one same-head resubmit vs waiting for Codex fixture fix. No source changes since clear review.
+
+### rev-30 · 2026-10-15T09:56:06.014Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261015-445-gate-failed
+commit: 5aad3438deae43ed63e6deb909d971c80d797660
+scope: evidence
+
+Final evidence review not clear.
+
+Medium — hub/test/codex-adapter.test.ts:997: same-head Linux gate d479c493 / A-2845 fails waiting for initial impl idle (`impl present as idle: not within 15000 ms`) in the late reject pending steer response case, before its scenario begins. A failed gate cannot satisfy amended C1's green-gate requirement.
+
+Standards: no new source findings; observer source verdict rev-20261015-445-source stands as the source assessment.
+Spec/evidence: changed cleanup-preservation test passed in 4.386 s (A-2845:3287), and A-2824/A-2825 establish the required loaded whole-file pass. The failure is in unchanged Codex adapter test source; no cleanup-observer defect established.
+
+Gate exact head 5aad3438deae43ed63e6deb909d971c80d797660 matches source review and current branch. Linux droplet: 1720 tests, 1716 pass, 1 fail, 3 skip, 0 cancelled; exit 1. C1 failed for missing green gate evidence; 5/5 stress remains E-482 epic QA per amendment.
+
+Criteria: C1 failed (Required green gate missing: d479c493 exited 1 on codex-adapter.test.ts:997 initial impl idle timeout; changed cleanup case passed.).

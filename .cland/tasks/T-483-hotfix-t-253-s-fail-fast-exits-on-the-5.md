@@ -3,7 +3,7 @@ id: T-483
 kind: task
 title: "Hotfix: T-253's fail-fast exits on the 5 s stall warning threshold; a slow tracker operation under load kills the hub"
 state: open
-status: review
+status: in progress
 size: S
 rank: 2930
 criterion_seq: 3
@@ -18,7 +18,7 @@ regression_of: T-253
 topic: topic-282
 branch: t/T-483-hotfix-t-253-s-fail-fast-exits-on-the-5
 created: 2026-10-15T09:18:55.709Z
-updated: 2026-10-15T09:30:36.828Z
+updated: 2026-10-15T09:56:41.749Z
 ---
 
 ## Summary
@@ -73,3 +73,21 @@ No high or medium findings remain. hub/src/init/config.ts:194 rejects fatal dura
 Production timer ownership/cancellation and T-253 fatal fencing remain sound. A-2823 records boundary red→green and complete 39/39 tracker-async tests, including six-second serving recovery and configured/override fatal paths. C3 source verified; C1/C2/final settlement await accepted exact-head verification. No Reviewer tests run.
 
 Criteria: C3 verified.
+
+### rev-26 · 2026-10-15T09:56:38.865Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261015-483-evidence-1
+commit: 09c915201d3aadb4d28b99dda3bd7f864bcc7c21
+scope: evidence
+
+Medium — hub/test/claude-code-sessions.test.ts:251: initial clause-injection wait times out (known T-447 family).
+Medium — hub/test/codex-adapter.test.ts:556: acknowledged stopped QA process still satisfies pidAlive; cause/identity attribution unresolved.
+Medium — hub/test/codex-adapter.test.ts:903: initial idle wait times out before recovery exercise.
+Exact-head full receipt 7033cc6c/A-2847 exits 1: 1722 tests, 1716 pass, 3 fail, 3 platform skips; Neovim not reached. Hotfix Linux cases pass: six-second serving recovery, fatal configuration boundary, held/released fatal shutdown and timer cancellation. Droplet c-8 lifetime 1468s, cost $0.1020, peak load 12.27. C1/C2 proof is positive but final accepted execution remains pending; C3 source mark retained. No unrelated criterion failed. No tests run by Reviewer.
+
+### impl-483 · 2026-10-15T09:56:41.749Z
+
+Exact-head Linux full gate 7033cc6c/A-2847 at 09c91520 failed outside this diff: claude-code-sessions :251 clause-injected timeout (T-447), codex-adapter :556 original QA PID remains alive after acknowledged session.stop, and codex-adapter :903 initial idle timeout. 1716 passed/3 failed/3 platform skips; Neovim not reached. All tracker warning/recovery/fatal/cancellation tests passed. Reported Bugs/S and requested lead disposition before adopting shared fixes or retrying; no further verification submitted.

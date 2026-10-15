@@ -14,7 +14,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-15T09:04:29.811Z
-updated: 2026-10-15T09:14:39.121Z
+updated: 2026-10-15T09:56:13.818Z
 ---
 
 ## Summary
@@ -24,3 +24,9 @@ updated: 2026-10-15T09:14:39.121Z
 ## Acceptance criteria
 
 - [ ] C1. The case stages its steer against an observed state, not a fast turn's timing, keeps its assertions, and the file passes 5/5 beside a local full run.
+
+## Comments
+
+### coord · 2026-10-15T09:56:13.818Z
+
+Also seen: codex-adapter.test.ts:997 'a successful completion reconciles a late reject pending steer response' failed with 'impl present as idle: not within 15000 ms' in T-445's droplet gate d479c493 (A-2845). It is the same Codex steer-staging family; fix both together.

@@ -3,7 +3,7 @@ id: T-461
 kind: task
 title: Signed-out Claude latch test makes one extra CLI call after restart, on two Linux droplet runs (shared fix)
 state: open
-status: review
+status: in progress
 size: S
 criterion_seq: 1
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-281
 branch: t/T-461-claude-code-adapter-signed-out-watch
 created: 2026-10-15T08:06:05.572Z
-updated: 2026-10-15T09:31:04.112Z
+updated: 2026-10-15T09:55:23.238Z
 ---
 
 ## Summary
@@ -89,3 +89,23 @@ Audited A-2820: five sequential standalone whole executor-prepare.test.ts invoca
 
 This renews source/retry clearance only. Original Linux 2bef23b0/A-2810 remains red overall (1716 pass, one T-481 failure, three platform skips); the changed adapter file passed 9/9 there. C1 remains unverified until accepted same-head Linux verification. Do not treat this note as final gate clearance. No Reviewer tests run.
 Evidence: A-2828.
+
+### impl-461 · 2026-10-15T09:54:18.428Z
+
+Single authorized retry a506e23a/A-2843 at unchanged be2a70c2 confirms adapter 9/9 and signed-out latch 8.694s; previous executor-prepare/T-481 case passes 6.381s. Overall red: 1716 pass, 1 fail, 3 skips. Sole failure is untouched crew-launch.test.ts:145, OpenCode keep_context=true pool moves to next worktree: expected unknown/unavailable brief but got pool size 1 reached. Reported Bugs/S find and gate blocker to lead, preserving first red 2bef23b0/A-2810 and five standalone executor passes A-2820. No source changes or third suite run; waiting for lead decision and reviewer final settlement.
+
+### rev-23 · 2026-10-15T09:55:23.238Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-15-461-2
+commit: be2a70c2147b6377e1cade08f031ebcb9455b6a4
+scope: evidence
+
+Medium — hub/test/crew-launch.test.ts:145: retained OpenCode pool test receives pool-size reached instead of the expected unknown/unavailable brief refusal. A-2843:3854–3868 records the sole assertion failure; it is outside T-461's one-file patch and Coordinator 7c2d4c4b tracks it in E-482's flake sweep.
+
+Authorized unchanged-head Linux retry a506e23a/A-2843 remains red: 1720 tests, 1716 pass, one fail, three platform skips, exit 1; Neovim smoke not reached. The adapter file again passes 9/9 and the latch case passes 8.694s. Previous T-481 builder-release case passes 6.381s. Preserve first red 2bef23b0/A-2810, its positive adapter/latch evidence, and five serial executor-prepare passes A-2820.
+
+Directly read Coordinator decision 7c2d4c4b-5410-402d-81f2-1feb41258aec accepts both Linux adapter/latch proofs and requires one unchanged-head local merge gate, avoiding another Linux retry. That local run 99409d4b is now running at be2a70c2147b6377e1cade08f031ebcb9455b6a4. C1 remains unverified until its accepted result. Source clearance remains unchanged; this evidence verdict does not authorize further resubmissions. No Reviewer tests or changes.
+Review evidence: A-2846.

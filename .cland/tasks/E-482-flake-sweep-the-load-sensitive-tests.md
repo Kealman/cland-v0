@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-15T09:14:14.206Z
-updated: 2026-10-15T09:14:33.805Z
+updated: 2026-10-15T09:57:23.353Z
 ---
 
 ## Goal
@@ -26,7 +26,7 @@ T-442 (sessions midnight reset), T-445 (suite cleanup observer), T-446 (artifact
 
 ## Definition of done
 
-QA runs each fixed file 5 times serially beside a local full run and once on a droplet, and records the results per ticket. The verdict closes the epic.
+Each ticket's Implementer produces its own evidence before merge. It runs the fixed file 5 times serially beside any non-coord local full run, labelled loaded or quiet, and its post-review `cland verify` is the droplet run. At the epic's close, QA re-checks every fixed file once beside a full run and once on a droplet, and its verdict closes the epic. (Coordinator clarification, 2026-10-15 09:57Z.)
 
 - [ ] C1. Every child's file passes 5/5 beside a local full run and once on a Linux droplet.
 - [ ] C2. No child weakens an assertion or widens a time bound without a recorded reason.
@@ -44,9 +44,11 @@ stages:
         - T-453
         - T-465
         - T-467
+        - T-485
       - - T-445
         - T-449
         - T-463
       - - T-446
         - T-442
+      - - T-484
 ```

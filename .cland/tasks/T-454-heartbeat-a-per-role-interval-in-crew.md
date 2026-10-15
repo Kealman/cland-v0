@@ -3,7 +3,7 @@ id: T-454
 kind: task
 title: "Heartbeat: a per-role interval in crew.toml wakes an idle session with a hub-computed digest of what is in flight and what looks stale, folds into the next turn on a busy one, and is never a needs-you"
 state: open
-status: in progress
+status: review
 size: L
 criterion_seq: 8
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-275
 branch: t/T-454-heartbeat-a-per-role-interval-in-crew
 created: 2026-10-15T07:15:15.368Z
-updated: 2026-10-15T09:35:49.663Z
+updated: 2026-10-15T09:57:03.605Z
 ---
 
 ## Summary
@@ -77,7 +77,7 @@ E-423 "Rules and rhythm" (R-294), tracer bullet 1 of 7; spec `docs/spec/v0.1.3.m
 ## Acceptance criteria
 
 - [x] C1. `heartbeat` in `[crew.<role>]` accepts a duration of at least one minute or `"off"` and refuses anything else with the role and the minimum named; a Coordinator without it gets `1h`, other roles none; `cland init` writes it, and `cland crew show [--json]` and `cland crew set coordinator.heartbeat 30m` read and set it, the next firing using the new interval.
-  - done: impl-454 · 2026-10-15T07:40:43.241Z
+  - done: impl-454 · 2026-10-15T09:56:44.826Z
 - [x] C2. Each heartbeat session has its own schedule from its launch, kept in `hub.db` across a hub restart, and a firing due while the hub was down fires exactly once after start, proven by a test with `CLAND_HEARTBEAT_MS`.
   - done: impl-454 · 2026-10-15T07:40:43.928Z
 - [x] C3. The digest lists in-flight claimed items, runs, open asks and live leases, and as stale (with ages, only after one full interval) a review item with no request or verdict, a ready unmerged item, a session idle past `idle_minutes`, a run past its timeout or with no posted result, and an unanswered ask, each part capped at ten rows with an "and N more" line.
@@ -226,3 +226,25 @@ Review evidence: A-2833.
 ### impl-454 · 2026-10-15T09:35:49.663Z
 
 Coordinator decision 8fd03833-e84f-4a0c-b4ce-dbd9bc3d3873 classifies 7a4f3460/A-2832 as lost across the hub outage, not the flaky-rule single resubmit; outage logged on T-204. Submitted the explicitly authorized fresh no-mode verify c44f6a37-6c21-441e-87b5-c79cd13df469 at unchanged reviewed bdcddc3c. Working tree clean, prior five whole Codex greens A-2802 and source clearance A-2792 retained. Reviewer notified to cite both runs and this disposition. No additional test/source change.
+
+### rev-23 · 2026-10-15T09:54:50.891Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-15-454-8
+commit: bdcddc3c3401dc268eb4eff0b420a8bab9590a62
+scope: evidence
+
+Medium — hub/src/crew.ts:132: appending every role's heartbeat expands the crew summary beyond the sessions header's display width. At nvim/test/crew.test.ts:20, the initial rev pool 1 is no longer visible; A-2842:6322–6325 shows the clipped suffix instead. This is an own-scope crew-summary integration regression. Preserve the staffing/leads/idle assertions and complete CLI/wire values while correcting the header presentation.
+
+Replacement same-head c44f6a37/A-2842 reached both packages: 2118 tests, 2117 pass, one failure, zero skips/cancellations, exit 1 at bdcddc3c3401dc268eb4eff0b420a8bab9590a62. Earlier 7a4f3460/A-2832 is retained as a lost run under Coordinator 8fd03833 (hub-outage disposition), not the flaky rule's single resubmit. No unchanged retry applies to this identified integration defect.
+
+C1 fails for crew-summary/header compatibility; C2–C5 remain unverified pending corrected-source review and a fresh exact-head gate. C6–C8 source marks remain current at this head. Keep all existing nvim/test/crew.test.ts assertions, including invalid-file refusal/last-good refresh and hand-edit behavior. Source fix requires new review before verification. No Reviewer tests or edits.
+Review evidence: A-2844.
+
+Criteria: C1 failed (Expanded per-role heartbeat summary clips existing staffing/leads information from the sessions header; the unchanged crew integration test cannot see rev pool 1.).
+
+### impl-454 · 2026-10-15T09:56:48.377Z
+
+Corrected own-scope C1 header clipping from A-2842/A-2844 at pushed af5c18ee, after merging origin/dev 83157157. Full summary retains every role heartbeat/provenance; staffing/leads/idle are ordered first and the Neovim header uses existing display-width fit. Existing tests untouched: nvim crew1/1, hub crew8/8 at merged head. A-2852 summarizes A-2848 red and A-2850/A-2851 green evidence. Requesting source re-review before verification.
