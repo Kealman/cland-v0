@@ -2,8 +2,8 @@
 id: T-474
 kind: task
 title: Merge override is limited to tracker and docs changes; a code diff needs review
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-315
 branch: t/T-474-merge-override-is-limited-to-tracker-and
 created: 2026-10-15T09:13:18.127Z
-updated: 2026-10-15T20:02:01.359Z
+updated: 2026-10-15T20:11:15.877Z
+closed: 2026-10-15T20:11:15.877Z
 ---
 
 ## Summary
@@ -182,3 +183,7 @@ C1 verified: immutable candidate path gate refuses hub/src and every disallowed 
 No new run/head change requested. Current cover/restart hold86210b22 continues for subsequent routing. No Reviewer tests, edits or provider calls.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-15T20:11:15.877Z
+
+Merged 275959cf8318b588f8912d392edc4fb10484dc40 onto dev.
