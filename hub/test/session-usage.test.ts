@@ -24,11 +24,17 @@ async function records(root: string, ui: FrameClient): Promise<Array<Record<stri
   return read.stdout.trim().split('\n').filter(Boolean).map(line => JSON.parse(line));
 }
 
-async function turn(ui: FrameClient, p: HarnessProcessView, text: string): Promise<SessionUsage> {
+// Initial account limits can publish independently, before the first token report.
+async function recordsWithTotals(root: string, ui: FrameClient): Promise<Array<Record<string, unknown>>> {
+  return (await records(root, ui)).filter(r => r.total !== undefined);
+}
+
+// A frame arriving after send can still describe the previous turn. Match the fixture response too.
+async function turn(ui: FrameClient, p: HarnessProcessView, text: string, matches: (usage: SessionUsage) => boolean): Promise<SessionUsage> {
   const after = ui.frames.length;
   const sent = await ui.request({ type: 'topic.send', topic: 'general', to: [p.name], text: `@${p.name} ${text}` });
   assert.equal(sent.ok, true, sent.error);
-  const frame = await ui.waitFor(f => ui.frames.indexOf(f) >= after && f.type === 'session.usage' && f.sessionId === p.sessionId);
+  const frame = await ui.waitFor(f => ui.frames.indexOf(f) >= after && f.type === 'session.usage' && f.sessionId === p.sessionId && matches(f.usage as SessionUsage));
   return frame.usage as SessionUsage;
 }
 
@@ -42,20 +48,20 @@ test('Codex journals changed totals once, skips equal publications, and stops wi
   assert.equal(launched.ok, true, launched.error);
   const p = (launched.value as { process: HarnessProcessView }).process;
   await ui.waitFor(f => f.type === 'session.usage' && f.sessionId === p.sessionId && (f.usage as SessionUsage).total?.totalTokens === 12);
-  const latest = await turn(ui, p, 'Another turn');
+  const latest = await turn(ui, p, 'Another turn', usage => usage.total?.totalTokens === 24);
   assert.equal(latest.total?.totalTokens, 24);
-  const equal = await turn(ui, p, 'repeat usage');
+  const equal = await turn(ui, p, 'repeat usage', usage => usage.tokens?.modelContextWindow === 100000);
   assert.deepEqual(equal.total, latest.total);
   assert.deepEqual(equal.rateLimits, latest.rateLimits);
   assert.notDeepEqual(equal.tokens, latest.tokens, 'raw report changes do not create journal rows');
-  let journal = await records(root, ui);
+  let journal = await recordsWithTotals(root, ui);
   assert.deepEqual(journal.map(r => [r.total, r.final]), [
     [{ totalTokens: 12, inputTokens: 4, outputTokens: 2, reasoningTokens: 1, cacheReadTokens: 6, cacheWriteTokens: 0 }, false],
     [{ totalTokens: 24, inputTokens: 8, outputTokens: 4, reasoningTokens: 2, cacheReadTokens: 12, cacheWriteTokens: 0 }, false],
   ]);
   const stopped = await ui.request({ type: 'session.stop', session: p.name }, 30_000);
   assert.equal(stopped.ok, true, stopped.error);
-  journal = await records(root, ui);
+  journal = await recordsWithTotals(root, ui);
   assert.equal(journal.length, 3);
   const final = journal[2]!;
   assert.deepEqual([final.session, final.sessionId, final.role, final.item, final.harness, final.model, final.final],
@@ -63,7 +69,7 @@ test('Codex journals changed totals once, skips equal publications, and stops wi
   assert.deepEqual(final.total, latest.total);
   assert.deepEqual(final.rateLimits, latest.rateLimits);
   assert.equal((await ui.request({ type: 'session.stop', session: p.name }, 30_000)).ok, true);
-  assert.equal((await records(root, ui)).length, 3, 'an already stopped session has no second final');
+  assert.equal((await recordsWithTotals(root, ui)).length, 3, 'an already stopped session has no second final');
 });
 
 test('Codex coalesces a usage burst and journals a rate-limit-only change', async t => {
@@ -76,9 +82,9 @@ test('Codex coalesces a usage burst and journals a rate-limit-only change', asyn
   assert.equal(launched.ok, true, launched.error);
   const p = (launched.value as { process: HarnessProcessView }).process;
   await ui.waitFor(f => f.type === 'session.usage' && f.sessionId === p.sessionId && (f.usage as SessionUsage).total?.totalTokens === 12);
-  assert.equal((await turn(ui, p, 'usage burst')).total?.totalTokens, 24);
-  const limits = await turn(ui, p, 'rate limits only');
-  const journal = await records(root, ui);
+  assert.equal((await turn(ui, p, 'usage burst', usage => usage.total?.totalTokens === 24)).total?.totalTokens, 24);
+  const limits = await turn(ui, p, 'rate limits only', usage => (usage.rateLimits?.primary as { usedPercent?: number } | undefined)?.usedPercent === 9);
+  const journal = await recordsWithTotals(root, ui);
   assert.deepEqual(journal.map(r => [(r.total as { totalTokens: number }).totalTokens, (r.rateLimits as { primary: { usedPercent: number } }).primary.usedPercent]),
     [[12, 6], [24, 6], [24, 9]]);
   assert.equal((await ui.request({ type: 'session.stop', session: p.name }, 30_000)).ok, true);
@@ -155,7 +161,7 @@ test('a harness exit and a relaunch stop each leave exactly one final record', a
   assert.deepEqual(journal.filter(r => r.final).map(r => [(r.total as { totalTokens: number }).totalTokens, r.role]), [[19, 'implementer']]);
   // The resumed role-clause turn must publish before turn() waits for the requested turn (T-389 usage staging race).
   await ui.waitFor(f => f.type === 'session.usage' && f.sessionId === p.sessionId && (f.usage as SessionUsage).total?.totalTokens === 38);
-  const latest = await turn(ui, replacement, 'Another turn after relaunch');
+  const latest = await turn(ui, replacement, 'Another turn after relaunch', usage => usage.total?.totalTokens === 57);
   process.kill(replacement.pid!, 'SIGTERM');
   await ui.waitFor(f => f.type === 'session.process' && (f.process as HarnessProcessView).sessionId === p.sessionId && (f.process as HarnessProcessView).status === 'exited', 15_000);
   journal = await records(root, ui);
@@ -229,7 +235,7 @@ for (const harness of ['claude-code', 'opencode']) test(`${harness} journals tot
     assert.equal(launched.ok, true, launched.error);
     const p = (launched.value as { process: HarnessProcessView }).process;
     await ui.waitFor(f => f.type === 'session.usage' && f.sessionId === p.sessionId && (f.usage as SessionUsage).total?.totalTokens === 19);
-    const latest = await turn(ui, p, 'Another turn');
+    const latest = await turn(ui, p, 'Another turn', usage => usage.total?.totalTokens === 38);
     assert.deepEqual(latest.total, { totalTokens: 38, inputTokens: 20, outputTokens: 4, reasoningTokens: harness === 'opencode' ? 2 : 0,
       cacheReadTokens: 8, cacheWriteTokens: 6, ...(harness === 'opencode' ? { cost: 0.5 } : {}) });
     // Changing a verifier's hold does not transfer usage from its launch item.
