@@ -38,6 +38,7 @@
 // FAKE_CLAUDE_STOP_CRASH=1 makes `claude stop` die by a signal without stopping anything.
 // FAKE_CLAUDE_IGNORE_TERM=1 makes the session ignore SIGTERM (only SIGKILL ends it).
 // FAKE_CLAUDE_DROP_FIRST=1 drops the first prompt the mod submits (as a harness hook would), so it is never confirmed.
+// A logged-out marker under FAKE_CLAUDE_HOME or the session's config directory fails turns with authentication_failed.
 // State lives under FAKE_CLAUDE_HOME (sessions/<id>.json, jobs/<id>.json, jobs/<id>.log). FAKE_CLAUDE_TURN_MS is
 // how long a turn "thinks" (default 300).
 // Test fixtures set 30 ms turns (adapter polls 50 ms; Claude push trust 100 ms).
@@ -465,6 +466,12 @@ async function runSession(id: string): Promise<number> {
     await dispatch('turn.start', { text: next.text, turnId }, () => ({ turnId }));
     next.started();
     await new Promise((r) => setTimeout(r, turnMs));
+    if (existsSync(join(HOME, 'logged-out')) || existsSync(join(job.configDir, 'logged-out'))) {
+      setStatus('idle');
+      await runHooks('StopFailure', { error: 'authentication_failed', error_details: 'OAuth token has expired. Please run claude auth login.' });
+      await dispatch('turn.complete', { turnId, isAborted: false, reason: 'error' }, () => ({}));
+      continue;
+    }
     const channels = [...next.text.matchAll(/<channel ([^>]*)>\n([\s\S]*?)\n<\/channel>/g)];
     const command = channels.find((channel) => {
       if (/\bkind="(?:event|progress)"/.test(channel[1] ?? '')) return false;

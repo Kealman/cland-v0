@@ -5,7 +5,7 @@ import { execFile } from 'node:child_process';
 import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { HarnessProcessView } from '../src/protocol.ts';
-import { clandWithEnv, connectUi, eventually, FAKE_CLAUDE_DIR, fakeClaude, killDaemon, NO_PS, sleep, startDaemon, tempProject } from './harness.ts';
+import { clandWithEnv, clauseAnswered, connectUi, eventually, FAKE_CLAUDE_DIR, fakeClaude, killDaemon, NO_PS, sleep, startDaemon, tempProject } from './harness.ts';
 
 async function fixture(t: TestContext, extraEnv: Record<string, string> = {}) {
   const root = await tempProject(t);
@@ -161,6 +161,66 @@ test('a signed-out account has one directory notice and event while another acco
   assert.ok(notices[0]!.text.includes('claude-b'));
   assert.ok(notices[0]!.text.includes(f.dirs.b));
   assert.ok(!(await f.calls()).some(c => ['auth', 'doctor'].includes(c.args[0]!)));
+});
+
+test('logged-out turns fail authentication and a per-account latch survives the restart reconnect turn for three 30 s periods', async t => {
+  const f = await fixture(t, { CLAND_CLAUDE_AGENTS_MS: '30000' });
+  assert.equal((await f.ui.request({ type: 'subscribe' })).ok, true);
+  const launched = await f.ui.request({ type: 'session.launch', name: 'signed-out', harness: 'claude-code', account: 'claude-b', role: 'coordinator' }, 30000);
+  assert.equal(launched.ok, true, launched.error);
+  const b = (launched.value as { process: HarnessProcessView }).process;
+  await clauseAnswered(f.ui, b.name);
+  await eventually('the initial successful turn hooks have posted', async () => {
+    const log = await f.fake.log(b.harnessId!);
+    return log.includes('hooks Stop done') && log.includes('session.measure done') ? true : undefined;
+  });
+  const initialLog = await f.fake.log(b.harnessId!);
+  await writeFile(join(f.dirs.b, 'logged-out'), '');
+  assert.equal((await f.ui.request({ type: 'topic.send', topic: 'general', to: [b.name], text: 'try a signed-out turn' })).ok, true);
+  const failedLog = await eventually('the logged-out delivery finishes its hook', async () => {
+    const log = (await f.fake.log(b.harnessId!)).slice(initialLog.length);
+    return /hooks (Stop|StopFailure) done/.test(log) && log.includes('session.measure done') ? log : undefined;
+  });
+  assert.match(failedLog, /hooks StopFailure done/, 'a logged-out turn reports authentication failure');
+  assert.doesNotMatch(failedLog, /hooks Stop done|pong:/, 'no successful Stop or answer while signed out');
+  const row = async (ui: typeof f.ui) => {
+    const r = await ui.request({ type: 'session.list' });
+    assert.equal(r.ok, true, r.error);
+    return (r.value as { processes: HarnessProcessView[] }).processes.find(p => p.name === b.name)!;
+  };
+  assert.equal((await row(f.ui)).stateReason, 'signed-out', 'the real auth failure latches the directory');
+  const before = (await f.calls()).filter(c => c.args[0] === 'agents' && c.configDir === f.dirs.b).length;
+  const beforeRestartLog = await f.fake.log(b.harnessId!);
+  f.ui.close();
+  assert.equal((await clandWithEnv(f.root, f.env, 'hub', 'stop')).code, 0);
+  const { discovery } = await startDaemon(t, f.root, f.env);
+  const ui = await connectUi(t, discovery);
+  const restartedAt = Date.now();
+  await eventually('the reconnect role delivery also fails authentication', async () => {
+    const log = (await f.fake.log(b.harnessId!)).slice(beforeRestartLog.length);
+    return log.includes('submitted:') && log.includes('cland hub: you hold the role') && log.includes('hooks StopFailure done') && log.includes('session.measure done') ? true : undefined;
+  });
+  assert.doesNotMatch((await f.fake.log(b.harnessId!)).slice(beforeRestartLog.length), /hooks Stop done|pong:/);
+  for (let period = 1; period <= 3; period++) {
+    await sleep(Math.max(0, restartedAt + period * 30000 - Date.now()));
+    assert.equal((await f.calls()).filter(c => c.args[0] === 'agents' && c.configDir === f.dirs.b).length, before, `no signed-out agents call through period ${period}`);
+    const current = await row(ui);
+    assert.equal(current.status, 'running');
+    assert.equal(current.stateReason, 'signed-out');
+  }
+  assert.ok(Date.now() - restartedAt >= 90000);
+  assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
+  const journal = (await readFile(join(f.root, '.cland', 'journal.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line));
+  assert.equal(journal.filter(e => e.event === 'claude-signed-out' && e.configDir === f.dirs.b).length, 1);
+  const history = (await ui.request({ type: 'topic.history', topic: 'agents' })).value as { messages: Array<{ kind?: string }> };
+  assert.equal(history.messages.filter(m => m.kind === 'claude-signed-out').length, 1);
+  await rm(join(f.dirs.b, 'logged-out'));
+  const beforeRecoveryLog = await f.fake.log(b.harnessId!);
+  assert.equal((await ui.request({ type: 'topic.send', topic: 'general', to: [b.name], text: 'signed in again' })).ok, true);
+  await eventually('a genuinely successful turn lifts the latch', async () => {
+    const log = (await f.fake.log(b.harnessId!)).slice(beforeRecoveryLog.length);
+    return log.includes('hooks Stop done') && (await row(ui)).stateReason === undefined ? true : undefined;
+  });
 });
 
 test('a failed account launch names its directory and sign-in or trust remedies and makes no retry', async t => {
