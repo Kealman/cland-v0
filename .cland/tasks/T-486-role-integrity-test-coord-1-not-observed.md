@@ -2,8 +2,8 @@
 id: T-486
 kind: task
 title: "role-integrity test: coord-1 not observed idle within 15 s on a loaded Linux droplet"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-289
 branch: t/T-486-role-integrity-test-coord-1-not-observed
 created: 2026-10-15T10:27:52.273Z
-updated: 2026-10-15T12:59:21.098Z
+updated: 2026-10-15T12:59:31.682Z
+closed: 2026-10-15T12:59:31.682Z
 ---
 
 ## Problem
@@ -129,3 +130,7 @@ Earlier red f45f0ae5/A-2956 remains recorded red; its outside T-490 timeout was 
 Criteria: C1 retained, C2 verified. No Reviewer tests or edits.
 
 Criteria: C2 verified.
+
+### coord · 2026-10-15T12:59:31.682Z
+
+Merged 4db6ed9cd1c5ea0475a1e7b3c4ffb15efe2deef5 onto dev.
