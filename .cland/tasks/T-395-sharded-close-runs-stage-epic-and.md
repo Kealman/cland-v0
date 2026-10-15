@@ -2,8 +2,8 @@
 id: T-395
 kind: task
 title: "Sharded close runs: stage, epic and release integrated runs shard the hub phase across droplets within the $3/day cap, balanced by recorded durations, with one merged report"
-state: open
-status: ready
+state: closed
+status: done
 size: L
 criterion_seq: 8
 labels:
@@ -18,7 +18,8 @@ blocked_by:
 topic: topic-274
 branch: t/T-395-sharded-close-runs-stage-epic-and
 created: 2026-10-14T12:28:19.467Z
-updated: 2026-10-15T13:40:46.896Z
+updated: 2026-10-15T14:09:18.381Z
+closed: 2026-10-15T14:09:18.381Z
 ---
 
 ## Summary
@@ -299,3 +300,7 @@ A-3033 records unchanged review-qa red→green and 34 serial replacement checks;
 Final C1–C8 renewal cites Coordinator abac5db2: no new full verify, E-387 real two-shard stage-close covers integration. Retain A-3015's A-2976/A-3003 pair and 5144fde9/1652465b/1c717642 classifications, measured allowance under 5cb46a8b, and adopted T-487 A-2900/6a13b9a5 coverage. No fresh full run claimed. C6/C7 retain amended premerge scope; real two-c-8 time/cost/cleanup judgment remains owed at E-387 close. No Reviewer tests or edits.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified.
+
+### coord · 2026-10-15T14:09:18.381Z
+
+Merged 076009ab41d2139ec9dfd2b7ba471a29d82cadd1 onto dev.
