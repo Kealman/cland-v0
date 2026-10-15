@@ -231,9 +231,12 @@ for (const harness of ['codex', 'opencode']) test(`${harness} retained Implement
   const second = await create();
   const p = await f.launch('pool-impl', { role: 'implementer', item: first });
   assert.equal((await f.ui.request({ type: 'merge', item: first, override: 'Exercise account retention at the pool boundary' }, 30000)).ok, true);
-  await eventually('implementer idle after merge', async () => {
+  await eventually('implementer first turn completed and claim released after merge', async () => {
     const rows = ((await f.ui.request({ type: 'session.list' })).value as { processes: HarnessProcessView[] }).processes;
-    return rows.find(row => row.name === p.name)?.state === 'idle' || undefined;
+    const row = rows.find(row => row.sessionId === p.sessionId);
+    // OpenCode's initial idle snapshot can precede its spoke hello and role-clause injection.
+    // Usage proves that first turn ran; idle with no holds then permits the pool handoff.
+    return row?.state === 'idle' && (row.usage?.total?.totalTokens ?? 0) > 0 && row.holds?.length === 0 || undefined;
   });
   await writeFile(join(f.root, '.cland', 'roles.toml'), '[implementer.launch]\nharness = "codex"\naccount = "codex-a"\n');
   await writeFile(f.registry, `[accounts.${account}]\nharness = "${harness}"\n${harness === 'codex' ? 'home' : 'data_home'} = ${JSON.stringify(join(f.root, 'codex-a'))}\n`);
