@@ -2,8 +2,8 @@
 id: T-480
 kind: task
 title: Sub-agent launches record their model
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-328
 branch: t/T-480-sub-agent-launches-record-their-model
 created: 2026-10-15T09:13:20.365Z
-updated: 2026-10-15T21:42:19.600Z
+updated: 2026-10-15T22:26:18.898Z
+closed: 2026-10-15T22:26:18.898Z
 ---
 
 ## Summary
@@ -91,3 +92,7 @@ Branch remains unchanged. All criteria verified, no per-item QA required. No Rev
 Review artifact A-3390: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3390-t-480-final-clear-at-4662f7cc-green-full-linux-suite.md
 
 Criteria: C1 verified.
+
+### coord · 2026-10-15T22:26:18.898Z
+
+Merged b9e5e0c1a68fb61cf5eef0146682e5bc5e97d85f onto dev.
