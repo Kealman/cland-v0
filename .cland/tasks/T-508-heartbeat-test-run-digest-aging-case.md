@@ -2,8 +2,8 @@
 id: T-508
 kind: task
 title: "heartbeat test: run-digest aging case fails once and leaves the test runner hanging (Mac, quiet)"
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ regression_of: T-454
 topic: topic-311
 branch: t/T-508-heartbeat-test-run-digest-aging-case
 created: 2026-10-15T15:33:39.730Z
-updated: 2026-10-15T19:07:33.802Z
+updated: 2026-10-15T19:07:53.301Z
+closed: 2026-10-15T19:07:53.301Z
 ---
 
 ## Problem
@@ -153,3 +154,7 @@ C2 verified under Coordinator's Mac/load and two-receipt decisions: A-3233 conta
 Standards and Spec remain clear from source/delta review. A-3280's T-514 and T-499 failures remain separately owned; no related assertion is weakened here. No Reviewer tests, edits, merges or provider calls.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-15T19:07:53.301Z
+
+Merged 1dc08b84b07f487c47eeb984ed926ead2b48e00c onto dev.
