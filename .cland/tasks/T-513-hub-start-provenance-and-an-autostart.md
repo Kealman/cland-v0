@@ -2,8 +2,8 @@
 id: T-513
 kind: task
 title: Hub start provenance and an autostart grace period after a deliberate stop
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-322
 branch: t/T-513-hub-start-provenance-and-an-autostart
 created: 2026-10-15T16:26:22.615Z
-updated: 2026-10-15T22:09:34.372Z
+updated: 2026-10-15T22:26:52.835Z
+closed: 2026-10-15T22:26:52.835Z
 ---
 
 ## Problem
@@ -109,3 +110,7 @@ No source change after corrected source clearance. No supplementary QA scope or 
 Evidence /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3398-suite-f7fbb37c-2de6-4de5-bb56-8af9405ecc12-auto-at-f554be2.log.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-15T22:26:52.835Z
+
+Merged 0ab41b75bebc1f4b3c65785dbb56b195104296d9 onto dev.
