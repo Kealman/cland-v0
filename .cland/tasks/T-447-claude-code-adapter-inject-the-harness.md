@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-15T01:04:10.495Z
-updated: 2026-10-15T01:04:10.495Z
+updated: 2026-10-15T03:26:32.073Z
 ---
 
 ## Summary
@@ -23,3 +23,9 @@ updated: 2026-10-15T01:04:10.495Z
 ## Acceptance criteria
 
 - [ ] C1. The cause is named, and the file passes 5/5 beside a local full run with its assertions unchanged.
+
+## Comments
+
+### coord · 2026-10-15T03:26:32.073Z
+
+Same family seen again: hub/test/claude-code-sessions.test.ts:251 (the clause injection timeout) failed in T-390's gate 7b543f68 (A-2658) under load. Fix both tests together.

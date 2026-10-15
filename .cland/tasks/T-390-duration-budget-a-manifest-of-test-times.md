@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-267
 branch: t/T-390-duration-budget-a-manifest-of-test-times
 created: 2026-10-14T12:28:10.528Z
-updated: 2026-10-15T02:38:47.555Z
+updated: 2026-10-15T03:42:47.344Z
 ---
 
 ## Summary
@@ -69,16 +69,22 @@ New tests average 2.74 s against 1.69 s for the suite, and nothing pushes back, 
   - done: impl-390 · 2026-10-15T01:54:19.332Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-390-3 · 2026-10-15T01:56:02.908Z · commit 00cdffd265c7ef518bcc802bd3ff339ccfa6e19f
   - verified: rev-23 [reviewer] · run rev-2026-10-15-390-5 · 2026-10-15T02:38:27.810Z · commit 95570270dc70f7a6e9f6e76b628f8895d93412c5
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-390-7 · 2026-10-15T03:01:28.949Z · commit 1e6dd6c30bf82d07c4ea84025d834f5bdf95b0e5
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-390-9 · 2026-10-15T03:42:28.752Z · commit b5fd4b806e317dc8b68946ce0b3e08fd5ad6f72f
 - [x] C2. A test added on a scratch branch that sleeps 6 s fails that branch's run with a `duration budget` line naming it, and passes once listed in `allow` with a reason; the two run results are posted on the item.
   - done: impl-390 · 2026-10-15T00:09:47.549Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-390-2 · 2026-10-15T00:16:31.548Z · commit 65a80003f93150ca0207085a2f762af1e223eee3
   - verified: rev-23 [reviewer] · run rev-2026-10-15-390-3 · 2026-10-15T01:56:02.908Z · commit 00cdffd265c7ef518bcc802bd3ff339ccfa6e19f
   - verified: rev-23 [reviewer] · run rev-2026-10-15-390-5 · 2026-10-15T02:38:27.810Z · commit 95570270dc70f7a6e9f6e76b628f8895d93412c5
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-390-7 · 2026-10-15T03:01:28.949Z · commit 1e6dd6c30bf82d07c4ea84025d834f5bdf95b0e5
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-390-9 · 2026-10-15T03:42:28.752Z · commit b5fd4b806e317dc8b68946ce0b3e08fd5ad6f72f
 - [x] C3. A file over 60 s not in `allow` fails the run naming the file, and a `TODO` reason is refused at admission through the shard-manifest path.
   - done: impl-390 · 2026-10-15T00:13:34.088Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-390-2 · 2026-10-15T00:16:31.548Z · commit 65a80003f93150ca0207085a2f762af1e223eee3
   - verified: rev-23 [reviewer] · run rev-2026-10-15-390-3 · 2026-10-15T01:56:02.909Z · commit 00cdffd265c7ef518bcc802bd3ff339ccfa6e19f
   - verified: rev-23 [reviewer] · run rev-2026-10-15-390-5 · 2026-10-15T02:38:27.810Z · commit 95570270dc70f7a6e9f6e76b628f8895d93412c5
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-390-7 · 2026-10-15T03:01:28.949Z · commit 1e6dd6c30bf82d07c4ea84025d834f5bdf95b0e5
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-390-9 · 2026-10-15T03:42:28.752Z · commit b5fd4b806e317dc8b68946ce0b3e08fd5ad6f72f
 - [ ] C4. The posted suite result shows up to five `duration regression` lines, and a test that the hub suite runs against fixture logs proves the 1 s and 50% thresholds.
 - [ ] C5. Measured: the check and the second reporter add under 2 s to a full run's wall time, shown by the duration lines of the runs before and after this ticket at nearby heads.
 - [x] C6. Without the manifest the runner behaves exactly as before, and no existing runner test changes its assertions.
@@ -86,11 +92,15 @@ New tests average 2.74 s against 1.69 s for the suite, and nothing pushes back, 
   - verified: rev-23 [reviewer] · run rev-2026-10-15-390-2 · 2026-10-15T00:16:31.548Z · commit 65a80003f93150ca0207085a2f762af1e223eee3
   - verified: rev-23 [reviewer] · run rev-2026-10-15-390-3 · 2026-10-15T01:56:02.909Z · commit 00cdffd265c7ef518bcc802bd3ff339ccfa6e19f
   - verified: rev-23 [reviewer] · run rev-2026-10-15-390-5 · 2026-10-15T02:38:27.810Z · commit 95570270dc70f7a6e9f6e76b628f8895d93412c5
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-390-7 · 2026-10-15T03:01:28.949Z · commit 1e6dd6c30bf82d07c4ea84025d834f5bdf95b0e5
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-390-9 · 2026-10-15T03:42:28.752Z · commit b5fd4b806e317dc8b68946ce0b3e08fd5ad6f72f
 - [x] C7. `hub/README.md` (Tests) and `docs/agents/tests.md` describe the budget, the allowlist with reasons, the refresh at stage close and `npm run test:durations`.
   - done: impl-390 · 2026-10-15T00:09:48.758Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-390-2 · 2026-10-15T00:16:31.548Z · commit 65a80003f93150ca0207085a2f762af1e223eee3
   - verified: rev-23 [reviewer] · run rev-2026-10-15-390-3 · 2026-10-15T01:56:02.909Z · commit 00cdffd265c7ef518bcc802bd3ff339ccfa6e19f
   - verified: rev-23 [reviewer] · run rev-2026-10-15-390-5 · 2026-10-15T02:38:27.810Z · commit 95570270dc70f7a6e9f6e76b628f8895d93412c5
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-390-7 · 2026-10-15T03:01:28.949Z · commit 1e6dd6c30bf82d07c4ea84025d834f5bdf95b0e5
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-390-9 · 2026-10-15T03:42:28.752Z · commit b5fd4b806e317dc8b68946ce0b3e08fd5ad6f72f
 
 ## Comments
 
@@ -180,3 +190,63 @@ Criteria: C1 verified, C2 verified, C3 verified, C6 verified, C7 verified.
 ### impl-390 · 2026-10-15T02:38:47.555Z
 
 Corrected source clear at 95570270 (rev-2026-10-15-390-5, A-2648). Submitted exact-head local no-mode gate b88fd29f-2c71-4782-8022-f71aa3803ae2, queue position 1, report topic-267, recipients rev-23 and impl-390. C1/C2/C3/C6/C7 refreshed; C4/C5 await a complete green result. The earlier red own-budget gate A-2643 remains in the evidence, and C4's post-restart posted-summary confirmation remains owed by the Coordinator under 23523456.
+
+### rev-23 · 2026-10-15T02:56:20.544Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-15-390-6
+commit: 95570270dc70f7a6e9f6e76b628f8895d93412c5
+scope: evidence
+
+Gate b88fd29f/A-2651 not clear: root typecheck and 1707/1707 executed tests pass, but exit 1 on four further >5 s unlisted budgets: default-subscriptions stopped Reviewer/Lead routing 5.421 s; launch-recovery failed relaunch 5.066 s; merge with launched session and deferred cleanup 5.058 s; visibility hundreds of default events 5.086 s. Neovim not reached. These are own-budget refusals, not a qualifying unrelated flaky retry. Inspect fixture work for justified individual exceptions, preserve green baselines/assertions, and source-review the corrected head before another gate. Reporter warning is absent. Raw partial log has stage-qa regression 3.291→6.786 s and overhead 20.54 ms; C4/C5/final green remain pending. Coordinator 23523456's pre-merge log+fixture proof and owed post-restart posted-summary confirmation remain in force. A-2652 records the complete evidence limits; earlier red a4f2efaa/A-2643 retained. No new high or medium source defect established; unchanged implementation basis A-2648.
+
+### rev-23 · 2026-10-15T03:01:28.949Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-15-390-7
+commit: 1e6dd6c30bf82d07c4ea84025d834f5bdf95b0e5
+scope: delta
+
+Source clear at 1e6dd6c30bf82d07c4ea84025d834f5bdf95b0e5. Standards and Spec: no high or medium findings. Four A-2651 lifecycle exceptions individually justified; no baseline, budget, assertion or deadline weakening. Non-allow manifest data is parse-equivalent to reviewed 95570270; 191/191 files and 184 reasoned allowances. Clean incoming T-433 integration accepts only same-head existing suite refs, refuses different heads explicitly and retains CAS cleanup, while preserving the prior T-389 runtime override. Its renamed two-fault restoration test is covered by green A-2649 at 2c9f932 (13.621351 s), supporting replacement of the obsolete exception key without rewriting the green baseline. Own runner/reporter/generator/tests/docs otherwise unchanged. Detailed review A-2653. C1,C2,C3,C6,C7 refreshed. New exact-head local no-mode gate required; C4/C5 remain pending, prior budget-red gates A-2643/A-2651 retained. Coordinator 23523456's pre-merge C4 log+fixture reading and owed first post-restart posted-summary confirmation still apply; C5 gate overhead <2000 ms remains required.
+
+Criteria: C1 verified, C2 verified, C3 verified, C6 verified, C7 verified.
+
+### rev-23 · 2026-10-15T03:26:18.373Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-15-390-8
+commit: 1e6dd6c30bf82d07c4ea84025d834f5bdf95b0e5
+scope: evidence
+
+Gate 7b543f68/A-2658 not clear: typecheck passes, 1707/1709 hub tests pass, exit 1, Neovim not reached. Assertions: claude-code-sessions.test.ts:251 initial clause injection timeout in idle-during-confirmation case (related to T-447 family but different file/test; Bugs/S classification requested); session-stop-races.test.ts:147 probe.json ENOENT exactly matches open T-449. Also three own-budget refusals: merge failed rollback/publication 5.136 s, release territory replay repair 5.090 s, worktree-cli copied discovery 5.620 s. No unchanged-head multi-failure retry applies. Lead disposition/shared fixes and individual budget review precede a new source-reviewed head. A-2659 records evidence and ticket comparison. Reporter warning absent; two regression lines and 22.05 ms overhead are partial failed-run indicators, not C4/C5/final clearance. Preserve green baselines and earlier reds A-2643/A-2651. Coordinator 23523456's owed post-restart posted-summary confirmation remains. No new high/medium implementation defect established without diagnosis; unchanged source basis A-2653.
+
+### coord · 2026-10-15T03:27:21.199Z
+
+Decision (human, ask 225afa4b, 2026-10-15 03:27Z): the duration budget fails a run only for a test or file that is new to the manifest, absent from both `files` and `allow`, over 5 s or 60 s. A known test or file that runs over budget, or slows down, produces a `duration regression` line in the report and does not fail the run. Reason: under load, existing ~3 s tests reach 5.1–5.6 s, which would turn every gate red. C2 and C3 stand as written, since they use new tests and files. The allowances added only for load spikes on known tests are dropped.
+
+### impl-390 · 2026-10-15T03:37:41.124Z
+
+Revised head b5fd4b806e317dc8b68946ce0b3e08fd5ad6f72f implements human 225afa4b and Coordinator 057012bc/1c078a47: only new exact identities fail budgets, known over-budget entries always report, below-budget slowdowns require >=1s and >=50%, shared five-line delta-ranked cap. Refresh adds TODO only for genuinely new identities; dropped 12 known-entry load-spike allowances and retained 172 reasoned generation/new-identity entries. New public runner/refresh/unit coverage includes new test inside known file. A-2660 records 19/19 serial supplemental tests at b1ac0fa2 with load/holder, separately labelled from unchanged integrated A-2636. Manifest 191 files/2028 timings; stale renamed own-test records removed; zero TODOs. Typecheck, lint and diff checks pass; fetched/merged origin/dev before review (already up to date). No gate before new source verdict. Prior failed gates and Coordinator's post-restart C4 confirmation remain recorded.
+
+### rev-23 · 2026-10-15T03:42:28.752Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-15-390-9
+commit: b5fd4b806e317dc8b68946ce0b3e08fd5ad6f72f
+scope: full
+
+Revised-design source clear. Standards and Spec: no high or medium findings under human 225afa4b and Coordinator 057012bc/1c078a47. Exact test/file identity governs new-only failures; known over-budget entries always report, under-budget slowdowns retain >=1 s and >=50%, and both share five delta-ranked lines. Refresh adds TODO only for new identities, including a new test inside a known file. Twelve known-entry load allowances removed; genuine reasons retained. Independently checked 191/191 files, 2028 timings, 172 non-TODO reasons; all 19 A-2660 supplemental records match, integrated A-2636 values outside those labelled files unchanged. Public runner, refresh and combined-cap coverage checked; C2/C3 real new-identity scratch evidence remains valid under the human amendment. C1/C2/C3/C6/C7 refreshed. A-2662 details the full review. C4/C5 require a new exact-head local no-mode gate, including <2000 ms budget overhead; A-2647 serial supporting pairs remain applicable. Under 23523456, C4 pre-merge uses raw gate lines plus suiteSummary fixture proof; Coordinator owes first posted-result confirmation after the next hub restart. Prior reds A-2643/A-2651/A-2658 retained; last assertion failures are T-449/T-447 family. Source clearance permits the new-head gate and does not claim final green.
+
+Criteria: C1 verified, C2 verified, C3 verified, C6 verified, C7 verified.
+
+### impl-390 · 2026-10-15T03:42:47.344Z
+
+Reworked source clear at b5fd4b806e317dc8b68946ce0b3e08fd5ad6f72f (rev-2026-10-15-390-9, A-2662); C1/C2/C3/C6/C7 refreshed. Submitted exact-head local no-mode gate daa62ae8-0552-454b-9062-81ab2050fdd9, queue position 1, report topic-267 and recipients rev-23/impl-390. C4/C5 await the result. Earlier red gates and Coordinator's owed first post-restart posted-summary confirmation remain recorded. Holding the reviewed head unchanged while waiting.
