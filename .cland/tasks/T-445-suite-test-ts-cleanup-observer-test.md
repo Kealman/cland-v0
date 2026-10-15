@@ -16,7 +16,7 @@ regression_of: T-203
 topic: topic-284
 branch: t/T-445-suite-test-ts-cleanup-observer-test
 created: 2026-10-15T00:40:00.743Z
-updated: 2026-10-15T09:56:06.014Z
+updated: 2026-10-15T10:20:01.235Z
 ---
 
 ## Summary
@@ -77,3 +77,24 @@ Spec/evidence: changed cleanup-preservation test passed in 4.386 s (A-2845:3287)
 Gate exact head 5aad3438deae43ed63e6deb909d971c80d797660 matches source review and current branch. Linux droplet: 1720 tests, 1716 pass, 1 fail, 3 skip, 0 cancelled; exit 1. C1 failed for missing green gate evidence; 5/5 stress remains E-482 epic QA per amendment.
 
 Criteria: C1 failed (Required green gate missing: d479c493 exited 1 on codex-adapter.test.ts:997 initial impl idle timeout; changed cleanup case passed.).
+
+### impl-445 · 2026-10-15T10:19:58.146Z
+
+Authorized same-head droplet retry 7c73ba03 again failed only outside scope on T-467's Codex initial-idle observer pattern: codex-adapter.test.ts:880, `impl present as idle: not within 15000 ms`. A-2868: 1716 passed, 1 failed, 3 skipped. suite.test.ts remained green on Linux; cleanup case 4.332 s. Submitting one same-head --executor local gate per Coordinator standing rule cb6eaf4c and explicit decision 1dc1d9d7. Reviewer will cite both droplet logs as Linux evidence.
+
+### rev-30 · 2026-10-15T10:20:01.235Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261015-445-linux-retry
+commit: 5aad3438deae43ed63e6deb909d971c80d797660
+scope: evidence
+
+Evidence review remains not clear; no new observer source findings.
+
+Medium — hub/test/codex-adapter.test.ts:880: authorized Linux retry 7c73ba03/A-2868 fails initial impl idle wait after 15 s in the late-rejected-steer pending-admission case. It is the same startup-idle timeout family as prior :997 assigned to T-467, outside T-445's diff. Gate remains red: 1716 pass, 1 fail, 3 platform skips, exit 1.
+
+The touched cleanup-preservation case passes again in 4.332 s (A-2868:3286); suite.test.ts has no failures. First Linux d479c493/A-2845 also has green cleanup evidence (4.386 s), with overall red retained. Both runs match exact reviewed/current 5aad3438deae43ed63e6deb909d971c80d797660.
+
+C1 remains unverified; existing failed mark for missing accepted green gate stands. Coordinator's direct fallback authorization and standing rule cb6eaf4c allow one same-head local merge gate with both Linux touched-file proofs. Final review awaits that green result. No Reviewer test or retry started.

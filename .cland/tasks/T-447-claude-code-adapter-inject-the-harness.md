@@ -3,7 +3,7 @@ id: T-447
 kind: task
 title: Clause-turn and inject-confirmation waits time out under load in claude-code-adapter and claude-code-sessions tests (shared fix)
 state: open
-status: in progress
+status: review
 size: S
 rank: 2940
 criterion_seq: 2
@@ -17,7 +17,7 @@ blocked_by: []
 topic: topic-279
 branch: t/T-447-claude-code-adapter-inject-the-harness
 created: 2026-10-15T01:04:10.495Z
-updated: 2026-10-15T09:20:16.690Z
+updated: 2026-10-15T10:15:20.787Z
 ---
 
 ## Summary
@@ -104,3 +104,25 @@ A-2814 records evidence. Stop unchanged retries under 7a485c7b; wait for shared 
 ### impl-447 · 2026-10-15T09:20:16.690Z
 
 Second gate 96f8401a/A-2813 is red: known T-461 latch startup count 3 vs 2, plus unchanged executor-run sentinel scan ENOENT on vanished spend.json.lock (reported S Bugs/T-453 family to lead). Old duration manifest budget gap resolved by origin/dev 3d300562. Stopped unchanged retries per Coordinator 7a485c7b. T-461 remains unmerged; subscribed to its task events. Awaiting shared-fix landing/adoption, then delta source review before rerun.
+
+### impl-447 · 2026-10-15T10:14:46.821Z
+
+Adopted only merged T-461 commit 5366e92f as c226eb69 (adds required co-author footer, identical patch), per Coordinator 35da79b7. No broad dev merge. Affected adapter file passes 9/9 (41.504s), raw log A-2862. Pushed and requested rev-23 delta source review before verification. Existing T-447 evidence A-2766 and red receipts A-2789/A-2813 retained.
+
+### rev-23 · 2026-10-15T10:15:20.787Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-15-447-5
+commit: c226eb69bfee70c7114e0c8a781e3300a5c9283f
+scope: delta
+
+Delta source clear at c226eb69bfee70c7114e0c8a781e3300a5c9283f; no high/medium finding remains.
+
+Compared against b3ce27ce: exactly one ten-line addition in hub/test/claude-code-adapter.test.ts, with stable patch ID 13d6111eba70efbbfbaaec25cd09c1c9e4f18042 matching merged T-461 5366e92f. Hunk line offsets differ because T-447 has its own fixture edits; patch content is identical. No broad dev merge, production change, allowance or removed assertion. T-447's observed clause/injection fixtures remain unchanged from source pass rev-2026-10-15-447-2/A-2763.
+
+The shared addition gates/observes the pre-latch agents child, drains its completion receipt before counting, and adds unchanged-PID checks before and after restart. Exact count, quiet-window, sender/deduplication and recovery checks remain. A-2862 whole adapter file passes 9/9, no failures/skips/cancellations (41.504s); clause/inject coverage is retained. Prior A-2766 repetitions remain earlier-head supporting evidence, not a new-head gate.
+
+Direct Coordinator 9514b93f requests this isolated pick after landing and confirms the prior sentinel ENOENT is T-453. Retain both prior red gates ae5bce63/A-2789 and 96f8401a/A-2813, T-461 and T-453, plus the older cancellation-cache duration-manifest gap noted in the previous verdict. No unrelated source or manifest correction is folded into this delta. C1/C2 remain unverified until accepted exact-head verification. Submit no-mode cland verify using the configured executor; standing Coordinator cb6eaf4c applies only when its known-flake and own-files-green conditions hold. No Reviewer tests or edits.
+Review evidence: A-2865.

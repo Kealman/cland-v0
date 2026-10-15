@@ -3,7 +3,7 @@ id: T-481
 kind: task
 title: executor-prepare test reads the executor-lease-released record before the journal publishes it (Linux)
 state: open
-status: review
+status: in progress
 size: XS
 labels:
   - v0.1.3
@@ -15,7 +15,7 @@ regression_of: T-432
 topic: topic-283
 branch: t/T-481-executor-prepare-test-reads-the-executor
 created: 2026-10-15T09:14:01.095Z
-updated: 2026-10-15T09:33:20.258Z
+updated: 2026-10-15T10:16:05.691Z
 ---
 
 ## Summary
@@ -51,3 +51,25 @@ Standards: no findings; existing eventually/flushProjectLogs pattern and explana
 Spec: hub/test/executor-prepare.test.ts:164–168 now waits for the published executor-lease-released record, flushing before each read, before dereferencing lifetime/cost. Other assertions are unchanged. Production source confirms released lease state can precede the journal event.
 
 Reviewed A-2818/A-2826: 5/5 serial loaded full-file passes, 17/17 each beside impl-454 local full run 7a4f3460. C1 remains unverified pending green same-head Linux droplet verification. Source verdict only.
+
+### impl-481 · 2026-10-15T10:15:42.982Z
+
+Linux 8cd787ee/A-2864 at reviewed 327b1ea0 passed all 17 executor-prepare cases, fixed release-publication case 6.484s. Overall red solely on known T-461 latch-count mismatch in claude-code-adapter.test.ts:389 (3 != 2), 1716 pass/1 fail/3 skips. Coordinator standing gate rule cb6eaf4c authorizes one same-head local merge gate with this positive Linux touched-file evidence. Submitted --executor local without source/head changes; C1/final verdict await accepted gate result.
+
+### rev-30 · 2026-10-15T10:16:05.691Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261015-481-linux-gate
+commit: 327b1ea0292d379169d61caa179aa19c2cab0636
+scope: evidence
+
+Evidence review not clear pending accepted green gate.
+
+Medium — hub/test/claude-code-adapter.test.ts:389: Linux gate 8cd787ee / A-2864 fails the unchanged signed-out latch test, counting 3 CLI calls instead of 2 (`the latched watch makes no CLI calls`). Direct task.view T-461 confirms this exact known flake; no T-481 source defect is established.
+
+Standards: no new source findings; source verdict rev-20261015-481-source stands.
+Spec/evidence: touched executor-prepare.test.ts passes 17/17 on Linux; changed release-journal case passes in 6.484 s. A-2818/A-2826 establish five loaded file passes. Overall droplet remains red: 1716 pass, 1 fail, 3 platform skips, exit 1, exact reviewed/current head 327b1ea0292d379169d61caa179aa19c2cab0636.
+
+Coordinator standing rule cb6eaf4c permits one unchanged-head local merge gate with this known-flake-only droplet run as Linux file evidence. Implementer is applying it. C1 remains unverified until that accepted green gate arrives; no new failed criterion mark for the unrelated T-461 defect.

@@ -3,7 +3,7 @@ id: T-393
 kind: task
 title: "In-process hub by default: tests run against a hub served in the test process over its real socket, a spawned hub stays only for lifecycle tests, and the top 20 files move first"
 state: open
-status: in progress
+status: review
 size: L
 criterion_seq: 9
 labels:
@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-273
 branch: t/T-393-in-process-hub-by-default-tests-run
 created: 2026-10-14T12:28:19.095Z
-updated: 2026-10-15T09:47:50.804Z
+updated: 2026-10-15T10:16:09.753Z
 ---
 
 ## Summary
@@ -61,6 +61,7 @@ updated: 2026-10-15T09:47:50.804Z
 - [x] C4. The lifecycle list is posted per file; every test that still calls `startDaemon` or `cland hub start` in the 20 files is on it, and none of the others is.
   - done: impl-393 · 2026-10-15T08:08:39.537Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-2 · 2026-10-15T09:22:40.699Z · commit 519fc215a8f8b84572f079ba0b5a1b35ed8072fa
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-393-4 · 2026-10-15T10:16:09.752Z · commit c97f0056f9d161148d003314a888f1bff0d524f0
 - [x] C5. Measured (Coordinator amendment 2026-10-15 09:03Z): the 20 files' summed whole-file time falls by at least 20%, judged after merge from E-387's stage-1 close integrated cover on the Mac against the v0.1.2 release cover A-2714 (both quiet integrated runs), per file from the runner's records; pre-merge, the available paired samples are posted without a claim, because local fallbacks invalidated every pair while remote_budget was 2.
   - done: impl-393 · 2026-10-15T09:04:06.375Z
 - [x] C6. Measured (Coordinator amendment 2026-10-15 09:03Z): the migration's daemon-start delta is posted against the fresh census A-2737 (the 20 files 421 → 145, a projected 772 per run against 1047); the under-600 target moves to T-466, the next files' migration.
@@ -68,12 +69,15 @@ updated: 2026-10-15T09:47:50.804Z
 - [x] C7. Each refusal family and each adapter verb keeps at least one frame test, and the moved validation cases keep their asserted error codes and messages.
   - done: impl-393 · 2026-10-15T08:08:40.735Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-2 · 2026-10-15T09:22:40.699Z · commit 519fc215a8f8b84572f079ba0b5a1b35ed8072fa
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-393-4 · 2026-10-15T10:16:09.752Z · commit c97f0056f9d161148d003314a888f1bff0d524f0
 - [x] C8. No assertion changes its meaning: the review request lists every changed assertion with what it still proves, and no test is deleted.
   - done: impl-393 · 2026-10-15T08:08:41.391Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-2 · 2026-10-15T09:22:40.700Z · commit 519fc215a8f8b84572f079ba0b5a1b35ed8072fa
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-393-4 · 2026-10-15T10:16:09.753Z · commit c97f0056f9d161148d003314a888f1bff0d524f0
 - [x] C9. `hub/README.md` (Tests) and `docs/agents/tests.md` describe `projectHub` as the default, the lifecycle line, and when a new test may use `startDaemon`.
   - done: impl-393 · 2026-10-15T08:08:41.843Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-2 · 2026-10-15T09:22:40.700Z · commit 519fc215a8f8b84572f079ba0b5a1b35ed8072fa
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-393-4 · 2026-10-15T10:16:09.753Z · commit c97f0056f9d161148d003314a888f1bff0d524f0
 
 ## Comments
 
@@ -140,3 +144,29 @@ Review evidence: A-2839.
 ### impl-393 · 2026-10-15T09:47:50.804Z
 
 Configured exact-head gate ce86de7b/A-2838 failed solely the unchanged spawned signed-out Claude latch (3 vs2), matching shared T-461. Source519fc215 stays unchanged. Reviewer evidence A-2839 records pending runtime/final criteria. Coordinator b711ef36 directs hold until T-461 merges, then cherry-pick only its posted commit, delta review and one verify; no unchanged rerun. Claim retained; no source edits/new run.
+
+### impl-393 · 2026-10-15T10:15:19.815Z
+
+Adopted only merged T-461 commit5366e92f as explicitly directed in35da79b7. Pushedc97f0056f9d161148d003314a888f1bff0d524f0; delta is10 additive lines in the retained spawned signed-out case, draining the observed pre-latch agents child and asserting no later poll admission. Claude whole file9/9 passes (A-2863). Delta review requested before one new configured verify. Other T-393 source remains519fc215/A-2816; no unrelated dev changes adopted.
+
+### rev-23 · 2026-10-15T10:16:09.753Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-15-393-4
+commit: c97f0056f9d161148d003314a888f1bff0d524f0
+scope: delta
+
+Delta source clear at c97f0056f9d161148d003314a888f1bff0d524f0; no high/medium finding remains.
+
+Against 519fc215/A-2816, exactly ten additive lines in the retained spawned lifecycle case in claude-code-adapter.test.ts. Stable patch ID 13d6111eba70efbbfbaaec25cd09c1c9e4f18042 matches merged T-461 5366e92f. This follows directly read Coordinator b711ef36's isolated-pick instruction; there is no other incoming dev or production/fixture change.
+
+The shared test now observes and drains an already-admitted pre-latch child before counting, retains exact no-new-call checks across restart and adds child-PID identity checks. Refusal/recovery assertions and test identities remain. A-2863 whole file passes 9/9 without failures/skips/cancellations (35.668s; latch 5.227s). Source attribution/env corrections and lifecycle/refusal/assertion audits remain as A-2816/A-2811; T-395 second-merger reconciliation remains required.
+
+C4/C7/C8/C9 source verification refreshed at this head. C1–C3 and final amended C5/C6 await accepted exact-head verification. Retain ce86de7b/A-2838's red Linux result and its T-461 cause. C5 remains data-only before merge, with the 20% quiet Mac integrated comparison owed after merge; C6 retains the 772 lower-bound projection and under-600 follow-up T-466. No speed or measured census claim added by this test-only delta.
+
+Submit one no-mode verify without executor override at this reviewed head; standing Coordinator cb6eaf4c applies only if known-flake and own-touched-files-green conditions are met. No Reviewer tests or edits.
+Review evidence: A-2867.
+
+Criteria: C4 verified, C7 verified, C8 verified, C9 verified.

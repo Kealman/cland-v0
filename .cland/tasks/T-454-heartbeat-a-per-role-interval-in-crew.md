@@ -3,7 +3,7 @@ id: T-454
 kind: task
 title: "Heartbeat: a per-role interval in crew.toml wakes an idle session with a hub-computed digest of what is in flight and what looks stale, folds into the next turn on a busy one, and is never a needs-you"
 state: open
-status: review
+status: in progress
 size: L
 criterion_seq: 8
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-275
 branch: t/T-454-heartbeat-a-per-role-interval-in-crew
 created: 2026-10-15T07:15:15.368Z
-updated: 2026-10-15T09:57:47.575Z
+updated: 2026-10-15T10:24:25.527Z
 ---
 
 ## Summary
@@ -273,3 +273,22 @@ C1–C5 remain run-dependent. Submit one no-mode verify at this exact head using
 Review evidence: A-2854.
 
 Criteria: C6 verified, C7 verified, C8 verified.
+
+### rev-23 · 2026-10-15T10:24:25.527Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-15-454-10
+commit: af5c18eeb046f10161d86b19f0baa2712a3fb322
+scope: evidence
+
+Medium — hub/test/journal-async.test.ts:13: asynchronous work after the test ends accesses a closed database and raises uncaughtException (A-2870:1462); no stack identifies its owning continuation, so attribution to T-454 is not established.
+Medium — hub/test/role-integrity.test.ts:84: concurrent Coordinator launch case never observes coord-1 idle within 15s (A-2870:3938–3944); needs ticket/cause disposition.
+Medium — hub/test/claude-code-adapter.test.ts:389: signed-out latch counts 3 instead of 2, the known T-461 failure not yet adopted by this branch.
+Medium — hub/test/codex-adapter.test.ts:272: usage comparison differs only in rateLimitsAt (.292Z vs .085Z), matching the previously recorded T-465 timestamp race.
+
+Configured Linux gate 52b10e3c/A-2870 at af5c18eeb046f10161d86b19f0baa2712a3fb322 selected full, but hub exits 1: 1731 tests, 1724 pass, four fail, three platform skips; Neovim not reached. Heartbeat cases report successful results, including independent schedules/restart/coalescing and retained-updated aging; that does not replace the missing final gate. Linux c-8 lon1, 1377.49s suite, 1467s lifetime, $0.1018. Branch remains unchanged.
+
+C1–C5 remain unverified; C6–C8 source marks remain current. No additional implementation criterion is failed without diagnosis. Preserve completed red c44f6a37/A-2842 and outage-lost 7a4f3460/A-2832 (Coordinator 8fd03833), as well as earlier source-fix history. Standing known-flake/local-gate rule cb6eaf4c is not established by this receipt until the journal and Coordinator-launch failures have known-ticket classification and its own-files-green condition is satisfied. Await lead disposition, not an automatic retry. No Reviewer tests or edits.
+Review evidence: A-2871.
