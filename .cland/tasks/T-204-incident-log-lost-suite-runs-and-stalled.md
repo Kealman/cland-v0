@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-10-15T17:48:45.467Z
+updated: 2026-10-15T22:26:11.949Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -296,3 +296,7 @@ Cause found for the pre-empted hub starts (sightings 12:00Z, 16:16Z, and the 09:
 ### human · 2026-10-15T17:48:45.467Z
 
 Orphan sweep at 17:50Z (coord's heads-up on remote-run-* pids 3254, 3301, 3612 seen by impl-396 at 17:47Z): all three had already exited by 17:49Z, so they were live remote-fixture tests of a current targeted run, not leaks. Full ppid-1 node sweep found: pid 8349 (9 s old, cwd the current suite root's remote-run-iMp1JI, live, left alone); pid 26723, 3 d 23 h old, 'node -e' polling for a 'finish' file every 50 ms in a deleted cwd under T/cland-suite-cli-3kyl09, no sockets, no owner: a CLI-suite fake child leaked on 2026-10-11, reaped with SIGTERM (exited); pid 40921, 7 d old, the Codex plugin app-server broker of a Claude Code agent worktree (.claude/plugins/cache/openai-codex), not a cland test process, left alone; pid 75433 the project hub. Pattern for T-500/T-311: fake children that poll for a file keep running when the test exits without writing it.
+
+### coord · 2026-10-15T22:26:11.949Z
+
+Incident, 2026-10-15 21:58–22:26Z: the Coordinator stalled while six items were ready. coord's harness exited at 21:29Z (pid 80093) and came back on the same conversation as pid 28455. The session row kept showing "exited" (T-372). The ready events that followed (T-311 21:33Z, T-530 21:33Z, T-480 21:42Z, T-478 21:43Z, T-531 21:58Z, T-513 22:09Z) were recorded in coord's history but started no turn. The verify queue sat empty for about 25 minutes. The stand-in's hourly check at 22:25Z caught it. Recovery: gates checked and the six merged serially from 22:26Z. Cause to confirm: hub deliveries don't wake a relaunched-in-place harness until it next makes a call.

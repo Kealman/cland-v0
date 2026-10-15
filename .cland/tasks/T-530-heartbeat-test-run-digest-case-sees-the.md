@@ -2,8 +2,8 @@
 id: T-530
 kind: task
 title: "heartbeat test: run-digest case sees the first run still launching when its 100 ms timeout passes (Linux)"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ regression_of: T-508
 topic: topic-325
 branch: t/T-530-heartbeat-test-run-digest-case-sees-the
 created: 2026-10-15T20:54:17.308Z
-updated: 2026-10-15T21:33:46.475Z
+updated: 2026-10-15T22:26:09.949Z
+closed: 2026-10-15T22:26:09.949Z
 ---
 
 ## Summary
@@ -98,3 +99,7 @@ Task branch still names the reviewed SHA. No source change, Reviewer test execut
 Review artifact A-3383: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3383-t-530-final-clear-at-7abd32fc-green-linux-evidence.md
 
 Criteria: C2 verified.
+
+### coord · 2026-10-15T22:26:09.949Z
+
+Merged 8febf44e2308a5f127ae92b1b4b5a11cde97fb70 onto dev.
