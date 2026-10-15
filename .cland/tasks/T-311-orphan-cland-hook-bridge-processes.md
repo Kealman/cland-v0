@@ -3,7 +3,7 @@ id: T-311
 kind: task
 title: "Orphan cland hook bridge processes outlive test runs: 64 bound to temporary projects since Oct 8"
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 4
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-323
 branch: t/T-311-orphan-cland-hook-bridge-processes
 created: 2026-10-13T01:23:15.911Z
-updated: 2026-10-15T21:03:28.278Z
+updated: 2026-10-15T21:33:24.067Z
 ---
 
 ## Summary
@@ -32,13 +32,18 @@ Test runs leave `cland hook bridge` processes behind. On 2026-10-13 at 01:25Z th
 - [x] C1. The cause is named: the test(s) or path that leave a bridge behind after teardown.
   - done: impl-311 · 2026-10-15T21:01:20.718Z
   - verified: rev-30 [reviewer] · run rev-20261015-311-source · 2026-10-15T21:03:28.278Z · commit b7a4206441f635cf426a26ca92f906a0181df7f6
+  - verified: rev-30 [reviewer] · run rev-20261015-311-final · 2026-10-15T21:33:13.433Z · commit b7a4206441f635cf426a26ca92f906a0181df7f6
 - [x] C2. A bridge whose hub is gone exits within a bounded time, proved by a test on a real hub that is stopped under it.
   - done: impl-311 · 2026-10-15T21:01:21.777Z
   - verified: rev-30 [reviewer] · run rev-20261015-311-source · 2026-10-15T21:03:28.278Z · commit b7a4206441f635cf426a26ca92f906a0181df7f6
-- [ ] C3. A full suite run leaves no new `hook bridge` process behind, checked by a before/after process count in the runner or a test.
+  - verified: rev-30 [reviewer] · run rev-20261015-311-final · 2026-10-15T21:33:13.434Z · commit b7a4206441f635cf426a26ca92f906a0181df7f6
+- [x] C3. A full suite run leaves no new `hook bridge` process behind, checked by a before/after process count in the runner or a test.
+  - done: impl-311 · 2026-10-15T21:32:53.076Z
+  - verified: rev-30 [reviewer] · run rev-20261015-311-final · 2026-10-15T21:33:13.434Z · commit b7a4206441f635cf426a26ca92f906a0181df7f6
 - [x] C4. Existing orphans are cleared by a documented, safe means (doctor or the runner), never by the Coordinator killing processes by hand.
   - done: impl-311 · 2026-10-15T21:01:22.976Z
   - verified: rev-30 [reviewer] · run rev-20261015-311-source · 2026-10-15T21:03:28.278Z · commit b7a4206441f635cf426a26ca92f906a0181df7f6
+  - verified: rev-30 [reviewer] · run rev-20261015-311-final · 2026-10-15T21:33:13.434Z · commit b7a4206441f635cf426a26ca92f906a0181df7f6
 
 ## Comments
 
@@ -78,3 +83,24 @@ Standards: 13-file scope includes lifecycle, mod terminal protocol, narrow docto
 Evidence A-3349 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3349-t-311-diagnosis-and-verification-plan.md and targeted whole-file results in request/task comments. Source clear permits one exact-head no-mode cland verify under current Coordinator capacity/budget rules. Final C3 and suite verdict await that run; no per-item QA criteria. No Reviewer tests, edits, merges or provider actions.
 
 Criteria: C1 verified, C2 verified, C4 verified.
+
+### rev-30 · 2026-10-15T21:33:13.434Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-311-final
+commit: b7a4206441f635cf426a26ca92f906a0181df7f6
+scope: evidence
+
+Final evidence review T-311 clear at unchanged b7a4206441f635cf426a26ca92f906a0181df7f6. No high, medium or low findings. Source review A-3356 stands.
+
+A-3380 /592efa0b-92d7-4107-bd11-8e7ecfc61ed1 is actual Linux c-8 lon1, full mode, exit0:2224 pass, zero failures/cancellations, six platform skips. Typecheck, hub free/machine and full Neovim complete. Duration1554.52s, peak one-minute load13.88, lifetime1654s/$0.1149. No hard duration-budget failure.
+
+C3 verified from the full-run phase receipts: hub free before0/after0 at line165; hub machine before0/after0 at5878; Neovim before0/after0 at7107. There are no phase-owned surviving hook bridges. The planted detached-bridge test at3235 also passes, asserting a before1/after0 receipt and exact child PID gone. This is the requested runner/test evidence; no unrelated machine-wide cleanup or manual Coordinator killing is inferred or performed.
+
+C1 reverified: recorded old cland-init-cc teardown path plus unbounded bridge retry defect and PID1-parent/stdout limits remain documented in the item/commit/A-3349. C2 reverified: real stopped-hub/short-restart/terminal-no-respawn lifecycle passes on Linux in64.510s at1381, with the production60-second grace intact. C4 reverified under the task's clarified future-orphan scope: doctor lists/ends only verified own-user bridges with missing explicit discovery files, preserving existing/malformed and ambiguous paths; Linux regression passes3.619s at1335. Source ownership/revalidation constraints and documented supported command remain unchanged.
+
+Evidence /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3380-suite-592efa0b-92d7-4107-bd11-8e7ecfc61ed1-auto-at-b7a4206.log. No per-item QA criteria. No Reviewer tests, edits, merges or provider actions. Changed-head integration/conflict resolution needs delta review.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.

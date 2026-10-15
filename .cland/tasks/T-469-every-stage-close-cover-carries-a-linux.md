@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-316
 branch: t/T-469-every-stage-close-cover-carries-a-linux
 created: 2026-10-15T09:13:16.034Z
-updated: 2026-10-15T21:27:56.819Z
+updated: 2026-10-15T21:28:47.078Z
 ---
 
 ## Summary
@@ -35,6 +35,7 @@ The stage gate (`#stageCurrent` and the plan's `after-stage` close) accepts the 
 - [x] C3. hub/README.md and the plan-epic skill describe the two-platform stage gate.
   - done: impl-469 · 2026-10-15T20:20:15.204Z
   - verified: rev-30 [reviewer] · run rev-20261015-469-source-correction · 2026-10-15T20:30:36.543Z · commit a54d2083b7b3bf2bc80712bf0ac9162e29a45b08
+  - verified: rev-30 [reviewer] · run rev-20261015-469-refresh-delta · 2026-10-15T21:28:47.078Z · commit 6d7ef2e58241111b07783af70df96504ba6dd203
 
 ## Comments
 
@@ -127,3 +128,27 @@ Evidence path: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3351-su
 ### impl-469 · 2026-10-15T21:27:42.815Z
 
 A-3358 completion regression corrected and pushed at6d7ef2e58241111b07783af70df96504ba6dd203. Task-card6/6:46 completion queries/0 full lists/0 item reads. Stage-cover whole file3/3;69.595432s loaded test sum recorded as measured file allowance. Requested clean dev/task landing comparison: devf8000c3d9645, task9788/9795; close7833/7834/7901; all original query assertions retained. Coordinator approved proceeding in7b0c7a3f. #tipsMoved/#hydrate/Worktrees unchanged; no post-review dev merge. A-3378 carries evidence. Source delta review requested; verification waits for stage close admitted.
+
+### rev-30 · 2026-10-15T21:28:47.078Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-469-refresh-delta
+commit: 6d7ef2e58241111b07783af70df96504ba6dd203
+scope: delta
+
+Delta source review T-469 clear at 6d7ef2e58241111b07783af70df96504ba6dd203, parent reviewed a54d2083b7b3bf2bc80712bf0ac9162e29a45b08. No high, medium or low findings. Standards and Spec reviewed directly under the no-delegation role.
+
+A-3358 regressions addressed: verifyChanged no longer invokes #tipsMoved/full index.list/all-plan scheduling for every integrated job update. Containers register when #stageCover reads evidence; only a changed eligible stage-cover receipt set refreshes those dependents, coalesced with existing task verification publication. Ordinary task completion, running/failed/ineligible saves leave the receipt key unchanged and do not hydrate the tracker. Removed items and accepted plan changes clear dependency registration; subsequent reads rebuild it. Receipt/report recovery still changes the key and can advance waiting stages. Existing #tipsMoved/#hydrate/Worktrees and the prior newest-attempt-before-success cache correction remain unchanged.
+
+Evidence A-3378: task-card whole6/6, completion46 queries/zero full lists/zero item-file reads under unchanged <=80/zero assertions. The original planned-stage landing/ten-close assertions, affected-epic tracing and unrelated-plan isolation remain intact; no test-source edits or temporary tracing in this delta. Independently confirmed Coordinator7b0c7a3f accepts the requested clean-dev comparison: dev9645 landing/7833 close queries; corrected repeat1 9788/7834; repeat2 9795/7901, each3 landing checks/20 close checks and no unrelated refused-plan reads. Landing task increment143–150 with only7 repeat variance stays below10000. Earlier close range409 is disclosed, occurs on dev too and is well below budget. This evidence addresses the observed regressions; it does not claim broad tracker performance redesign.
+
+Complete stage-cover whole3/3 rerun70.216576s, including27.532567s platform/history/QA/report-recovery case and both failed/unreported cache-supersession histories22.727413/19.335452s. Earlier interrupted attempt is explicitly excluded. A single file allowance69.595432 summed test-seconds cites actual permitted loaded-Mac measurement and lifecycle reason; existing tests/allowances/baselines unchanged. No broad freshness change or dev merge. Typecheck, shard/duration lint and whitespace check green.
+
+C3 reverified: unchanged README/plan-epic two-platform gate documentation remains valid. C1/C2 source implementation remains clear; final runtime criterion marks and overall evidence verdict await acceptable exact-head post-source full verification. A-3351 remains overall red and is not a qualifying final gate receipt. No per-item QA criteria.
+
+Coordinator's stage-close verify hold still applies: wait for explicit stage-close-admitted/release notice before submission; source clearance does not lift it. No Reviewer tests, edits, merges or provider actions.
+Evidence /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3378-t-469-scoped-receipt-refresh-and-query-comparison-at-6d7ef2e5.md.
+
+Criteria: C3 verified.
