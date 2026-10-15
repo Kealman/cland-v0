@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-307
 branch: t/T-396-worker-re-measurement-4-5-and-6-workers
 created: 2026-10-14T12:28:19.638Z
-updated: 2026-10-15T16:44:19.522Z
+updated: 2026-10-15T16:54:59.142Z
 ---
 
 ## Summary
@@ -82,3 +82,29 @@ Spec/fixtures: A-3157 has four passing config/frame/integration cases, zero fail
 Stage decision: Coordinator b34465c8 authorizes per-run --workers and --size, with selected-size price reservation; 51195fb4 and recorded 15:39Z item comment make fixture behavior the pre-merge gate and defer measured C2–C4/default tuning plus measured portion of C5 to E-387 stage-2 close after merge/restart. Procedure and README settings portion are reviewed; C5 is composite and remains unverified, as do C2–C4. No fabricated measurement evidence. fb7b8dd1 explicitly changes the run plan to serial c-16 4/6/8 and initial Mac 4/5/6, repeat close contenders within 10%, retain local four absent failure-free >=10% improvement. Committed docs/research/T-396-worker-measurements.md matches this plan, names one clean head, --fresh, no occasion/sharding, quiet windows, accounting and default follow-up ownership.
 
 Source clearance authorizes one no-mode cland verify at this exact head, reporting in topic-307. Actual measurements wait for Coordinator stage windows and the new hub code, not this pre-merge run. No Reviewer tests, edits or provider calls.
+
+### rev-30 · 2026-10-15T16:54:51.646Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261015-396-linux-first
+commit: 6343761b812125bfd55dcee830cbe2389440c1c6
+scope: evidence
+
+No new source findings. A-3184/fb064818 is overall red solely on rule-sessions.test.ts's 5.25-second duration budget; 1785 pass/0 functional failures/3 skips. Changed worker/runner cases pass, but Neovim not reached. Coordinator 635d1511 accepts this as the first known-failure receipt and authorizes shared 051db745, delta review and one further droplet receipt. Final gate remains pending; no implementation criterion failed from this unrelated budget.
+
+### rev-30 · 2026-10-15T16:54:59.142Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-396-delta
+commit: 8c1637f67895a364816f3f92d136d406a00cc2c6
+scope: delta
+
+T-396 evidence and delta review.
+First Linux receipt fb064818/A-3184 covers source-reviewed 6343761b812125bfd55dcee830cbe2389440c1c6: 1785 pass, zero functional failures, three skips; all worker and changed runner cases green. The only hard failure is rule-sessions.test.ts duration 5.25s; Neovim was not reached. Coordinator 635d1511 classifies it and accepts this as first receipt. This receipt alone is not final clearance.
+Delta head 8c1637f67895a364816f3f92d136d406a00cc2c6 has exactly parent 6343761b and changes only hub/test/durations.json: four measured entries inside allow, each with a concrete process/round-trip reason and evidence reference. The addition matches shared 051db745's patch. No production/test-source changes, default-count changes or full dev merge. Parsed JSON and diff examined read-only; no Reviewer tests.
+Standards: no findings. Spec: no findings in the delta. Source clear for one second droplet verify under Coordinator 635d1511; no extra local pass required for the shared test-only pick.
+Current criteria amendment read: C2 pre-merge override/header fixtures plus written procedure; C3 keeps four at merge; selected-size reservation fixture supports the pre-merge C4 portion. The real local/c-16 table, cap/create/destroy/tag receipts, measured default decision and measured C5 trade-off remain at E-387 stage-2 close under recorded decisions. No actual worker-performance numbers claimed. Final criterion verification waits for accepted second receipt.

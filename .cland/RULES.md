@@ -1,5 +1,5 @@
 # Project rules
-<!-- cland: rule high-water 8 -->
+<!-- cland: rule high-water 12 -->
 
 ## 1 Briefs address the role
 Scope: coordinator, lead, implementer, aide
@@ -72,4 +72,40 @@ Origin: memory:/Users/evgeniyivanov/.claude/projects/-Users-evgeniyivanov-Projec
 Reason: Moving or dirtying the tree used by an integrated cover cancels valuable batch evidence and costs the crew a lengthy rerun; a fixed clean copy isolates planning changes while hub-code changes still need coverage.
 
 Check cland verify queue before a dev commit that changes hub code, and coordinate that commit with the Coordinator when integrated coverage is queued or running. Keep planning changes committed promptly through their authorized owner. Tracker, spec and glossary commits need no waiting when the cover runs from a separate clean copy at a fixed dev commit. Run integrated covers from a clean detached worktree and, before a hub restart, confirm that the hub code at the dev tip still matches the cover’s commit.
+
+## 9 P1. Wait for the exact thing the test asserts
+Scope: implementer, reviewer
+Date: 2026-10-15
+Status: active
+Origin: session:aide-rules
+Reason: load exposes the gap between the two boundaries, so fixed sleeps and immediate cross-boundary assertions flake.
+
+A process-lifecycle test waits with a bounded condition for the exact observation it asserts, such as a PID being gone after an acknowledged stop, and keeps the final assertion. A lifecycle acknowledgement may mark a different boundary, for example "not running" as against the OS having reaped the PID.
+
+## 10 P2. Observe completion before timing the report
+Scope: implementer, reviewer
+Date: 2026-10-15
+Status: active
+Origin: session:aide-rules
+Reason: permission to finish isn't observed completion. One deadline over both produced a false timeout (A-3099, A-3120).
+
+A test that releases a worker barrier observes the worker's completion receipt before it starts a bounded wait for the worker's downstream report, unless it is measuring end-to-end latency. It bounds the completion and report assertions separately, and keeps the concurrency assertions before the release.
+
+## 11 P3. Keep a reviewed head stable
+Scope: implementer, reviewer, coordinator
+Date: 2026-10-15
+Status: active
+Origin: session:aide-rules
+Reason: a generic merge-dev-before-review habit discarded valid Linux receipts today.
+
+After the first source review, the task head takes only shared fixes the Coordinator posts. It is not merged with dev unless the Coordinator asks or `cland merge` reports a conflict. Any change to the head needs a fresh source review before verification.
+
+## 12 P4. Stop fixture writers before deleting their directories
+Scope: implementer, reviewer
+Date: 2026-10-15
+Status: active
+Origin: session:aide-rules
+Reason: Linux reports ENOTEMPTY when a live hub writes .cland/run during a recursive rm (T-498, T-508).
+
+A test that deletes a fixture directory first stops every writer in it and observes that they're gone. If the assertion itself needs a live process with a deleted root, the test keeps that assertion and uses bounded removal retries, recording the bound and the reason.
 

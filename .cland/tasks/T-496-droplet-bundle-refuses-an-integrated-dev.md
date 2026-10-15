@@ -3,7 +3,7 @@ id: T-496
 kind: task
 title: Droplet bundle refuses an integrated dev run when the hub's own tracker writes leave .cland/tasks dirty
 state: open
-status: review
+status: ready
 size: S
 rank: 3100
 criterion_seq: 3
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-308
 branch: t/T-496-droplet-bundle-refuses-an-integrated-dev
 created: 2026-10-15T13:23:12.263Z
-updated: 2026-10-15T16:32:40.060Z
+updated: 2026-10-15T16:58:52.709Z
 ---
 
 ## Problem
@@ -27,10 +27,13 @@ An integrated droplet run of `dev` refuses with "dirty or changed worktree canno
 - [x] C1. A droplet bundle of the root takes the committed HEAD tree and ignores uncommitted changes under `.cland/tasks`, the same way that run identity treats tracker-only changes. Uncommitted changes anywhere else still refuse, naming the files.
   - done: impl-496 · 2026-10-15T16:31:21.153Z
   - verified: rev-30 [reviewer] · run rev-20261015-496-source · 2026-10-15T16:32:40.060Z · commit ef1a4a0d08920a3483989807ed65a6c8d51c7f91
+  - verified: rev-30 [reviewer] · run rev-20261015-496-final · 2026-10-15T16:58:48.093Z · commit ef1a4a0d08920a3483989807ed65a6c8d51c7f91
 - [x] C2. A test dirties `.cland/tasks` in a fake root between submit and bundle, and the run still bundles HEAD. A dirty source file still refuses.
   - done: impl-496 · 2026-10-15T16:31:23.270Z
+  - verified: rev-30 [reviewer] · run rev-20261015-496-final · 2026-10-15T16:58:48.093Z · commit ef1a4a0d08920a3483989807ed65a6c8d51c7f91
 - [x] C3. An integrated occasion run (verify all --occasion stage) from the root bundles committed HEAD for every shard while .cland/tasks is dirty, and a test proves it end to end against the fake droplet executor.
   - done: impl-496 · 2026-10-15T16:31:24.492Z
+  - verified: rev-30 [reviewer] · run rev-20261015-496-final · 2026-10-15T16:58:48.093Z · commit ef1a4a0d08920a3483989807ed65a6c8d51c7f91
 
 ## Comments
 
@@ -72,3 +75,26 @@ Evidence read: A-3162 reproduces both prior failures on old source. A-3166 whole
 Proceed with one no-mode cland verify at this exact reviewed head, reporting in topic-308. No Reviewer tests, edits or provider calls.
 
 Criteria: C1 verified.
+
+### impl-496 · 2026-10-15T16:58:26.468Z
+
+Same-head verification 10033869 passed at ef1a4a0d08920a3483989807ed65a6c8d51c7f91: 1798/1798, no failures, including touched executor-run and suite-close regressions. Executor local darwin arm64 after hub remote-capacity fallback; log A-3192. Source unchanged; Reviewer receives this run directly to settle C2/C3 and final verdict.
+
+### rev-30 · 2026-10-15T16:58:48.093Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-496-final
+commit: ef1a4a0d08920a3483989807ed65a6c8d51c7f91
+scope: evidence
+
+Final evidence review T-496 at unchanged ef1a4a0d08920a3483989807ed65a6c8d51c7f91.
+Standards: no new findings; source verdict rev-20261015-496-source remains current.
+Spec: no high, medium or low findings. A-3192 / 10033869-7b57-486a-8ed3-93830f6db284 names that exact head and completes with exit 0: typecheck, hub free/machine and Neovim smoke, 1798 passed / 0 failed / 0 cancelled / 0 skipped. Executor is local Darwin after capacity fallback, not a Linux receipt. T-496 has no Linux-only criterion; its remote bundle/occasion behavior is exercised end to end against the fake droplet executor as specified.
+C1: source-established committed-head bundle and narrow tracker-only dirty exception remain unchanged; other dirty paths are named and refused.
+C2: remote delivery bundles committed tracker state despite later tracker writes passes at A-3192:4429 (7.584s); source-change named refusal passes at :4430 (4.149s). Source review established that the tracker edit is staged between submit and bundle, remote bytes are committed bytes, host dirt remains, and source dirt prevents remote test execution.
+C3: integrated Coordinator two-droplet occasion passes at A-3192:5176 (9.817s), retaining both shards' exact-head/committed tracker bytes and clean remote trees while root tracker remains dirty. All six suite-close cases pass; all eleven executor-run top-level cases pass (nested cases included in the suite count).
+The source gate plus this exact-head green run establish all three criteria. Duration regression notices are informational; no hard duration budget failure. No Reviewer tests, edits or provider calls.
+
+Criteria: C1 verified, C2 verified, C3 verified.

@@ -19,7 +19,7 @@ blocked_by:
 topic: topic-306
 branch: t/T-394-coverage-selection-task-runs-select-hub
 created: 2026-10-14T12:28:19.272Z
-updated: 2026-10-15T16:48:33.639Z
+updated: 2026-10-15T16:54:02.463Z
 ---
 
 ## Summary
@@ -55,6 +55,7 @@ It falls back to today's rules, naming the reason, for protocol, contract, packa
 
 - [x] C1. The human's answer to the miss-tolerance and replay-bar question is recorded on this item before the first commit.
   - done: impl-394 · 2026-10-15T16:23:12.810Z
+  - verified: rev-30 [reviewer] · run rev-20261015-394-source · 2026-10-15T16:54:02.463Z · commit f0394340be84dc60bff576602d0585a7d35b2946
 - [x] C2. An integrated `dev` full run posts a function-level coverage map artifact naming its head and tree, and spokes, daemons, the CLI and fakes all contribute to it, proven on a fixture project.
   - done: impl-394 · 2026-10-15T16:48:01.117Z
 - [x] C3. A task diff touching one function in `hub/src/hub/` selects its changed tests, the covering test files and the smoke baselines, and the report names the deciding functions.
@@ -69,6 +70,7 @@ It falls back to today's rules, naming the reason, for protocol, contract, packa
   - done: impl-394 · 2026-10-15T16:48:08.924Z
 - [x] C8. `hub/README.md` (Tests), `docs/agents/tests.md` and the Implementer clause describe `hub-selected`, the map, its age limit and the fallbacks.
   - done: impl-394 · 2026-10-15T16:48:10.469Z
+  - verified: rev-30 [reviewer] · run rev-20261015-394-source · 2026-10-15T16:54:02.463Z · commit f0394340be84dc60bff576602d0585a7d35b2946
 
 ## Comments
 
@@ -86,3 +88,22 @@ Coordinator decision on evidence sequencing (2026-10-15 15:37Z). C5, C6 and C7 n
 ### impl-394 · 2026-10-15T15:50:10.683Z
 
 Implementation draft prepared after C1 human decision was recorded. Source typecheck passes; no local tests have run because Coordinator's restart-cover hold is still active. Draft covers per-file V8 attribution and function reduction, integrated local/droplet/sharded transport and artifact publication, ancestor/age/hunk-based hub-selected admission, selected cache identity, coverage replay and docs/clauses. Confirmed public seams have fixture tests drafted, including actual copied CLI/daemon/spoke/fake process entries and a selected run catching a changed return value. Evidence/design artifact A-3135. C5–C7 remain judged at E-387 stage-2 close per Coordinator decision; no measured criterion claimed. Pending restart notice to run fixtures, correct findings and request source review.
+
+### rev-30 · 2026-10-15T16:54:02.463Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-394-source
+commit: f0394340be84dc60bff576602d0585a7d35b2946
+scope: full
+
+Source review T-394 at f0394340be84dc60bff576602d0585a7d35b2946; fixed point 02dcd993ad8b36fea4f3fa8005beb451a206eb42.
+Standards: no high/medium/low findings. Reviewed directly under the Reviewer no-delegation clause. Capture/selection responsibilities are in suite-coverage.ts; existing executor, artifact, queue and package-shard paths carry the feature. No Reviewer tests, edits or provider calls.
+Spec: no high/medium/low findings. Per-file bootstrap attribution retains descendant NODE_V8_COVERAGE, including explicit spoke environments. The reducer excludes module import ranges, retains untested function ranges, and attributes CLI/daemon/spoke/fake receipts. Only clean integrated full dev runs enable recording; local/remote/sharded output is checked against head/tree and published durably before pointer installation. Task runs cannot refresh the map.
+Selection checks ancestor, age, source/function coverage, intervening hunk mapping and missing tests; shared infrastructure and unsupported/top-level/unknown changes fall back with reasons. Changed tests and hub/Neovim smoke remain; a hub import requiring full Neovim preserves that phase. Selected test list and Neovim phase participate in cache identity.
+Replay fixtures and conservative last-40 evidence A-3179 were read. Zero own-test misses; three wider explorer-card misses are explicitly listed, classified T-516 and accepted by Coordinator dab69ebf. Missing historical maps fall back explicitly, retrospective maps are labelled, shares use duration-manifest estimates rather than invented historical wall time. Source fixture coverage includes capture/publication, actual selected execution, hunk mapping, fallback and cache changes.
+Criteria: C1 verified from recorded human answer 15:36:22Z before first implementation commit 382c9c92 at 16:23Z. C8 verified in hub/README.md, docs/agents/tests.md and both live/default Implementer clauses. C2–C7 remain unverified pending exact-head post-source suite evidence. Coordinator 7010a2e1 amends C5–C7 to pre-merge fixture obligations; real last-40 map replay, under-five-minute measurement and <=15% overhead remain required at E-387 stage-2 close. A-3179's 100 targeted cases and 1.53s selected fixture do not establish those production measurements.
+Source clear permits the requested exact-head no-mode verification. No final gate claim.
+
+Criteria: C1 verified, C8 verified.

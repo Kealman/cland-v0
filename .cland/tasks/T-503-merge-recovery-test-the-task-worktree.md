@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-310
 branch: t/T-503-merge-recovery-test-the-task-worktree
 created: 2026-10-15T15:03:40.855Z
-updated: 2026-10-15T16:52:15.111Z
+updated: 2026-10-15T16:57:56.755Z
 ---
 
 ## Problem
@@ -57,3 +57,7 @@ C2 remains unverified: the five serial post-fix whole-file Mac runs and exact-he
 Standards: 0 findings. Spec: 0 findings. No Reviewer tests or edits.
 
 Criteria: C1 verified.
+
+### impl-503 · 2026-10-15T16:57:56.755Z
+
+Post-fix Mac evidence A-3189: 5/5 serial whole-file runs at reviewed head 6f26ba6f, all 19 tests passed each. All labelled loaded; starting loads 13.56, 12.02, 13.93, 13.59, 12.89, each checked free and no local Coordinator. Typecheck passed. Initial verify fbcd2dbf was cancelled while queued because an untracked evidence log caused local fallback; moved log outside worktree, preserved in A-3189, source unchanged and tree clean. C2 awaits Linux verify.
