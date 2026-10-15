@@ -247,14 +247,21 @@ test('an unconfirmed acquire cleanup keeps its durable remote budget reservation
   f.api.faults.deleteError = 503;
   await f.api.setMachineFaults({ ssh: true });
   const a = await first.launch();
-  await eventually('failed acquire falls back behind host holder', async () => (await queue(f)).waiters.some(w => w.id === a.id) ? true : undefined, 20000);
+  // Queue membership also includes requests that have not attempted acquisition.
+  // Wait for the actual fallback notice before testing the durable reservation.
+  await eventually('failed acquire falls back behind host holder', async () => {
+    const history = (await f.ui.request({ type: 'topic.history', topic: first.topic })).value as { messages: { id: string }[] };
+    return history.messages.some(m => m.id === `executor-fallback:${a.id}`) ? true : undefined;
+  }, 20000);
   assert.equal(f.api.droplets.length, 1);
   const b = await next.launch();
-  await eventually('second acquire refused behind durable lease', async () => (await queue(f)).waiters.some(w => w.id === b.id) ? true : undefined, 20000);
+  const notice = await eventually('second acquire refused behind durable lease', async () => {
+    const history = (await f.ui.request({ type: 'topic.history', topic: next.topic })).value as { messages: { id: string; text: string }[] };
+    return history.messages.find(m => m.id === `executor-fallback:${b.id}`);
+  }, 20000);
   assert.equal(f.api.droplets.length, 1);
   assert.equal(f.api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length, 1);
-  const history = (await f.ui.request({ type: 'topic.history', topic: next.topic })).value as { messages: { text: string }[] };
-  assert.ok(history.messages.some(m => m.text.includes('remote budget 1/1 full')));
+  assert.equal(notice.text, `verify ${b.id}: remote budget 1/1 full; running locally`);
   f.api.faults.deleteError = 0;
   await eventually('sweep confirms failed acquire cleanup', async () => f.api.droplets.length === 0 ? true : undefined, 20000);
   for (const j of [a, b]) assert.equal((await f.ui.request({ type: 'suite.cancel', suite: j.id })).ok, true);
