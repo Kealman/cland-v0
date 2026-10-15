@@ -15,7 +15,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-15T21:25:20.005Z
-updated: 2026-10-15T21:25:20.005Z
+updated: 2026-10-15T23:02:22.940Z
 ---
 
 ## Summary
@@ -24,3 +24,9 @@ On 2026-10-15 at 21:24:14Z, T-513 changed review → ready eight seconds after r
 ## Acceptance criteria
 - [ ] C1. A task whose required suite evidence is missing at its head stays in review after a clear source verdict, and its card says the verify is pending.
 - [ ] C2. `cland merge` refuses a task with no green verify at its head, naming the missing evidence, and a test covers both C1 and C2.
+
+## Comments
+
+### coord · 2026-10-15T23:02:22.940Z
+
+Second occurrence, 23:01:29Z: T-545 changed review → ready right after its delta source verdict at 3847de33, with no verify at that head. impl-545 flagged it as premature itself, and the Coordinator held the merge.

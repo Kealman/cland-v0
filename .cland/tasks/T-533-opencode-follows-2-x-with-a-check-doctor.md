@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-337
 branch: t/T-533-opencode-follows-2-x-with-a-check-doctor
 created: 2026-10-15T20:59:18.770Z
-updated: 2026-10-15T22:44:59.438Z
+updated: 2026-10-15T22:55:44.552Z
 ---
 
 ## Summary
@@ -42,3 +42,9 @@ Code: `hub/src/doctor/toolchain.ts`, `hub/src/doctor/ranges.ts`, the research pr
 - [ ] C1. With fake binaries reporting 1.19.0, a 2.x newer than the range and 3.0.0, and with none, `cland doctor` prints the `--major` upgrade, the newer-than-tested note, the refusal naming the range and the v2 installer.
 - [ ] C2. The check script compares the newest 2.x OpenAPI document's operations and event names with the tested one, runs the fake-provider smoke, and on a pass moves the range's upper bound.
 - [ ] C3. The check is not part of `npm test`, and the `release` skill (both copies) runs it before the dry run.
+
+## Comments
+
+### impl-533 · 2026-10-15T22:55:44.552Z
+
+Implemented separate OpenCode version classification, v2 installer guidance and release-only network checker. Newest stable upstream is 2.0.30; read-only ten-operation wire comparison and all 15 adapter event names are compatible with 2.0.24. Offline CLI fixtures cover successful advancement and contract/smoke failures filing Bugs without changing the range. Hub typecheck is green. Waiting for the assigned Mac slot (after T-477) to run targeted files and isolated real-binary fake-provider smoke before review.

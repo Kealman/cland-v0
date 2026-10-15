@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-332
 branch: t/T-499-orphan-servers-test-a-second-hub-db
 created: 2026-10-15T14:07:24.615Z
-updated: 2026-10-15T22:41:53.849Z
+updated: 2026-10-15T23:04:53.851Z
 ---
 
 ## Problem
@@ -26,7 +26,8 @@ updated: 2026-10-15T22:41:53.849Z
 - [x] C1. The case seeds its row either before the hub opens the database, or through the hub's own write path or a busy_timeout connection, so it can't race the hub's writer. Every assertion stays, and the root cause is recorded in the commit.
   - done: impl-499 · 2026-10-15T22:38:57.057Z
   - verified: rev-30 [reviewer] · run rev-20261015-499-source · 2026-10-15T22:40:43.310Z · commit 289b3c176f553e595b75a9f532236af39d3a7098
-- [ ] C2. orphan-servers.test.ts passes 5/5 serially, whole file and alone on the Mac, plus once on a droplet in the task's verify.
+- [x] C2. orphan-servers.test.ts passes 5/5 serially, whole file and alone on the Mac, plus once on a droplet in the task's verify.
+  - done: impl-499 · 2026-10-15T23:04:35.930Z
 
 ## Comments
 
@@ -89,3 +90,26 @@ Current read-only filesystem inspection finds typescript7/package.json present a
 Log A-3416: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3416-suite-c6147dd0-f9d7-41f8-bdee-6b382b424444-auto-at-289b3c1.log.
 
 Evidence artifact A-3417 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3417-t-499-host-gate-blocked-compiler-alias-unavailable-before-droplet-creation.md.
+
+### rev-30 · 2026-10-15T23:04:53.850Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261015-499-linux-first
+commit: 289b3c176f553e595b75a9f532236af39d3a7098
+scope: evidence
+
+First actual Linux evidence review T-499 not clear at unchanged source-reviewed 289b3c176f553e595b75a9f532236af39d3a7098. A-3436 / 0b2d86e5-b1e0-4f4c-9bc4-9e5000ae5551 is Linux c-8 lon1, workers 4, exit 1: 1848 passes, one failure, three platform skips, zero cancellations. Hub completes; Neovim smoke not reached. Suite 1212.62s, peak load 11.58, lifetime 1298s/$0.0901. No hard duration-budget failure.
+
+Medium gate blocker — hub/test/session-model.test.ts:108: usage rows unknown-child/known-child arrive in reverse order, exact known T-544 signature independently matched to its current item/source review. It lies outside T-499's unchanged test-only diff. No task-source failure or failed criterion is inferred from that outside failure.
+
+orphan-servers.test.ts has 24 complete green timing/pass receipts. The two reported write races pass: offline wrapper 4.480s, OpenCode unverifiable live server 2.479s; Codex identity restoration/refusal case 1.776s also green. Together with A-3411's five serial whole-file Mac passes, this establishes the requested C2 file evidence; final criterion verification remains pending an acceptable overall gate.
+
+Source clearance A-3412 and C1 stand. The earlier A-3416 host MODULE_NOT_FOUND run created no droplet and is excluded; A-3436 is the first qualifying known-only Linux receipt. Coordinator 2bbcd363 explicitly permitted this already-running droplet and left T-499 as reviewed, while routing the separate real-OpenCode fixture isolation to T-545. No further unisolated Mac run is needed or proposed.
+
+Implementer reports one unchanged-head retry under the standing E-482 rule; await its result, with no duplicate submission. A green run or permissible different-known-failure pair is needed for final clearance. No Reviewer tests, edits, compiler/binary execution, signals, merges or provider actions.
+
+Log A-3436: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3436-suite-0b2d86e5-b1e0-4f4c-9bc4-9e5000ae5551-auto-at-289b3c1.log.
+
+Review artifact A-3437 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3437-t-499-first-linux-receipt-all-orphan-cases-green-known-t-544-gate-failure.md.

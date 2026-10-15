@@ -3,7 +3,7 @@ id: T-469
 kind: task
 title: "Every stage-close cover carries a Linux proof: the sharded droplet run plus the Mac run, both required by the stage gate"
 state: open
-status: review
+status: in progress
 size: S
 criterion_seq: 3
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-316
 branch: t/T-469-every-stage-close-cover-carries-a-linux
 created: 2026-10-15T09:13:16.034Z
-updated: 2026-10-15T22:29:47.740Z
+updated: 2026-10-15T23:01:32.572Z
 ---
 
 ## Summary
@@ -30,13 +30,16 @@ The stage gate (`#stageCurrent` and the plan's `after-stage` close) accepts the 
 
 - [x] C1. A stage with a green Mac cover but no green Linux droplet result at the same tree stays open, and `task plan show` names the missing platform.
   - done: impl-469 · 2026-10-15T20:20:12.775Z
+  - verified: rev-30 [reviewer] · run rev-20261015-469-final · 2026-10-15T22:57:32.640Z · commit c09435d4e4a337e6aec09058cd392b004df5bcd0
 - [x] C2. With both green at the same tree, the stage closes, proven by a fake-provider test.
   - done: impl-469 · 2026-10-15T20:20:13.848Z
+  - verified: rev-30 [reviewer] · run rev-20261015-469-final · 2026-10-15T22:57:32.640Z · commit c09435d4e4a337e6aec09058cd392b004df5bcd0
 - [x] C3. hub/README.md and the plan-epic skill describe the two-platform stage gate.
   - done: impl-469 · 2026-10-15T20:20:15.204Z
   - verified: rev-30 [reviewer] · run rev-20261015-469-source-correction · 2026-10-15T20:30:36.543Z · commit a54d2083b7b3bf2bc80712bf0ac9162e29a45b08
   - verified: rev-30 [reviewer] · run rev-20261015-469-refresh-delta · 2026-10-15T21:28:47.078Z · commit 6d7ef2e58241111b07783af70df96504ba6dd203
   - verified: rev-30 [reviewer] · run rev-20261015-469-startup-delta · 2026-10-15T22:28:52.919Z · commit c09435d4e4a337e6aec09058cd392b004df5bcd0
+  - verified: rev-30 [reviewer] · run rev-20261015-469-final · 2026-10-15T22:57:32.640Z · commit c09435d4e4a337e6aec09058cd392b004df5bcd0
 
 ## Comments
 
@@ -212,3 +215,34 @@ Criteria: C3 verified.
 ### impl-469 · 2026-10-15T22:29:47.740Z
 
 Source startup delta clear at c09435d4 (A-3403). Submitted exact-head Linux diff-selected verification 8cbb46a4-ee0e-4f83-9b43-81b7bcccbb06 with no mode, --executor droplet --fresh; queued position1, report topic-316 to Reviewer rev-30 and item lead impl-469. Clean unchanged head. Awaiting hub result; A-3400 is excluded own-failure history.
+
+### impl-469 · 2026-10-15T22:56:36.070Z
+
+Exact reviewed-head Linux verification 8cbb46a4 / A-3427 is green at c09435d4e4a337e6aec09058cd392b004df5bcd0: full mode, 2230 tests, 2224 pass, zero fail, six platform skips, hub and Neovim completed. c-8 lon1 lifetime1568s cost$0.1089. Original restart and new late-binding case green; query budgets landing9717/close8380 and completion47/zero full lists/zero item reads. No known-flake exception needed. Tree clean/unchanged. Awaiting Reviewer final evidence verdict and hub-ready/merge; claim retained.
+
+### rev-30 · 2026-10-15T22:57:32.640Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-469-final
+commit: c09435d4e4a337e6aec09058cd392b004df5bcd0
+scope: evidence
+
+Final evidence review T-469 clear at c09435d4e4a337e6aec09058cd392b004df5bcd0. No high, medium or low findings. Standards and Spec were reviewed directly under the no-delegation role; source clearance A-3403 remains current and the branch tip matches.
+
+A-3427 / 8cbb46a4-ee0e-4f83-9b43-81b7bcccbb06 is actual Linux c-8 lon1, workers 4, full mode, exit 0: 2224 passes, zero failures/cancellations, six platform skips. Host/remote typecheck, hub and full Neovim phases completed. Suite 1467.46s, peak one-minute load 14.94, lifetime 1568s/$0.1089. No hard duration-budget failure. No known-flake exception is needed; earlier A-3351 and A-3400 own-failure receipts remain excluded.
+
+C1 verified: the fake-provider stage-cover proof passes at A-3427:3310 (18.429s). Its real uploaded shell/receipt flow simulates platform identities explicitly, proving a local Mac-only cover leaves the stage open, next task backlog, and task plan show names missing Linux and tree (suite-stage-cover.test.ts:64–74). Green results on differing trees still leave it open; a Mac cache cannot supply Linux proof and vice versa. An undelivered completed result does not count. This is the specified fixture proof, not a claim that this one outer run executed on two real platforms.
+
+C2 verified: the same test proves same-tree Mac+sharded Linux receipts close the stage and advance the next task, reuse preserves original executor provenance, QA remains additionally required for scoped stages, and rollback/restoration respects historical tested ancestry (:78–113). Both failed and unreported newer-attempt cache-supersession regressions pass (16.641s/14.684s). The corrected startup test also passes at :2141 (4.187s): persisted receipts bound only after initial tree/plan observations wake the waiting QA stage without a later landing callback. Existing normal landing, stage QA/publication/ancestry and historical receipt tests pass.
+
+Original performance protections remain green, without relaxing bounds: landing 9717 tracker queries/3 stage checks; ten closes 8380/20; task completion 47 queries/zero full lists/zero item-file reads (log :2144–2145/:3378). This addresses both previously found runtime regressions while retaining scoped stage-cover invalidation.
+
+C3 reverified against immutable docs: hub/README.md:1610 onward and plan-epic/SKILL.md:44 describe both green integrated full-suite platforms at the same verification tree, additional scoped QA, named missing platform/tree, separate Coordinator submissions and executor-preserving cache reuse. No source or head change since the startup delta review; no per-item QA criteria.
+
+Evidence A-3427 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3427-suite-8cbb46a4-ee0e-4f83-9b43-81b7bcccbb06-auto-at-c09435d.log; source A-3403 and correction/reproduction A-3402 stand. No Reviewer tests, edits, compiler execution, merges or provider actions. Any integration/conflict head change requires delta review before relying on this verdict.
+
+Review artifact A-3432 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3432-t-469-final-clear-at-c09435d4-full-linux-green-and-restored-cover-stage-proof.md.
+
+Criteria: C1 verified, C2 verified, C3 verified.

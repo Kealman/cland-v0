@@ -11,11 +11,12 @@ labels:
   - ready-for-agent
 assignee: null
 parent: E-424
-blocked_by: []
+blocked_by:
+  - T-546
 topic: topic-336
 branch: t/T-296-opencode-servers-get-their-own-database
 created: 2026-10-12T16:20:56.477Z
-updated: 2026-10-15T22:44:43.872Z
+updated: 2026-10-15T23:00:29.063Z
 ---
 
 ## Summary
@@ -47,3 +48,17 @@ Code: `hub/src/adapters/opencode.ts`, `hub/src/adapters/opencode/server.ts`, `hu
 - [ ] C3. The launch record names the database, and resume and relaunch reuse it.
 - [ ] C4. `cland doctor` names the database and its standalone login line, warns when an account points at the default database, and says whether the free default model needs a login.
 - [ ] C5. hub/README.md (OpenCode) describes the database and the login.
+
+## Comments
+
+### impl-296 · 2026-10-15T22:46:32.653Z
+
+Implementation seams follow E-424's prescribed hub frames/fake harness and real-binary fake-provider proof. Added first regression for unassigned database selection, journal launch record and retention after hub restart/relaunch. Local test window currently reserved for T-544; no tests started. Authentication probe will use a fresh scratch database and standalone server with no project code.
+
+### impl-296 · 2026-10-15T22:57:44.823Z
+
+C4 free-model question settled with the Coordinator: OpenCode 2.0.24; standalone server cwd and API session directory /var/folders/np/77bqv0b975563h22_twt3tsw0000gn/T/t296-free-cHduKP/project, initially empty and outside the repository. HOME, config/data/state/cache/tmp and explicit fresh OPENCODE_DB were scratch siblings, with no inherited provider variables. GET /api/credential returned 0; opencode/big-pickle replied HELLO to the trivial prompt with no login. Every permission was ask; no pending tool approval appeared or remained at completion. Child stopped before scratch deletion. Probe script is durable artifact A-3430; initial deny-policy confound is A-3423. Doctor will say no login needed for the free default; paid providers need the standalone login into cland's database. Verify waits for T-546 shared platform-skip fix.
+
+### coord · 2026-10-15T23:00:29.063Z
+
+Coordinator note for merge (from impl-296, 23:00Z): a live OpenCode session launched before T-296 stays on the default database when it is only reattached. A legacy relaunch moves to cland's database, which refuses a missing old conversation. Before retiring rule 13 at merge: list live OpenCode sessions (`cland who`, session list), then stop or fresh-launch any launched before the merge. There are none in the crew as of 2026-10-15 23:00Z.

@@ -3,7 +3,7 @@ id: T-525
 kind: task
 title: "pid-identity test: staged reused-PID start stamp can equal the real one within the same second (Linux)"
 state: open
-status: review
+status: in progress
 size: XS
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-333
 branch: t/T-525-pid-identity-test-staged-reused-pid
 created: 2026-10-15T19:39:57.986Z
-updated: 2026-10-15T22:32:37.046Z
+updated: 2026-10-15T22:56:57.095Z
 ---
 
 ## Problem
@@ -26,7 +26,8 @@ updated: 2026-10-15T22:32:37.046Z
 - [x] C1. The test stages a start identity that provably differs (for example, a stamp outside the real process's second) rather than one that can collide. The commit also states whether the product's PID-reuse guard has the same one-second blind spot. If it does, file that separately with its risk.
   - done: impl-525 · 2026-10-15T22:31:25.413Z
   - verified: rev-30 [reviewer] · run rev-20261015-525-source · 2026-10-15T22:32:37.046Z · commit b1dfa5e1c6bcbaee4f4a87ce961556a16dca4d39
-- [ ] C2. pid-identity.test.ts passes 5/5 serially, whole file and alone on the Mac, plus once on a droplet in the task's verify.
+- [x] C2. pid-identity.test.ts passes 5/5 serially, whole file and alone on the Mac, plus once on a droplet in the task's verify.
+  - done: impl-525 · 2026-10-15T22:56:17.180Z
 
 ## Comments
 
@@ -59,3 +60,28 @@ C2 remains UNVERIFIED until the required actual droplet file pass in the task's 
 Evidence /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3406-t-525-five-quiet-mac-whole-file-passes-and-pid-guard-finding.md.
 
 Criteria: C1 verified.
+
+### impl-525 · 2026-10-15T22:56:36.381Z
+
+First droplet verify 360bd15d / A-3426 at b1dfa5e1 completed: PID-identity 3/3 green, changed Claude case 4.489s. Overall 1852 tests, 1848 pass, 1 fail, 3 skip; sole red session-model.test.ts:108 reversed subagent usage order is known E-482 T-544. c-8 lon1 Linux, workers 4, lifetime 1355s, cost $0.0941. C2 evidence complete. Required second fresh same-head run submitted: 74cc892a-ecb5-4388-9116-778474ecd79d. No code/head changes; final review evidence verdict pending retry.
+
+### rev-30 · 2026-10-15T22:56:57.095Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261015-525-linux-first
+commit: b1dfa5e1c6bcbaee4f4a87ce961556a16dca4d39
+scope: evidence
+
+T-525 first Linux evidence review not clear at unchanged b1dfa5e1c6bcbaee4f4a87ce961556a16dca4d39. A-3426 / 360bd15d-75ab-4a30-adf0-dc6be9bec8ee is actual Linux c-8 lon1, workers 4, exit 1: 1848 pass, 1 fail, 3 platform skips, no cancellations. Hub completed; Neovim smoke was not reached. Duration 1257.17s, peak load 13.11, lifetime 1355s/$0.0941.
+
+Medium gate blocker — hub/test/session-model.test.ts:108: exact two usage rows arrive unknown-child before known-child, failing the order-dependent deepEqual. Independently matched open T-544's current item and source-reviewed normalization A-3422. This is outside T-525's unchanged diff. No unknown failure or hard duration-budget failure is printed.
+
+Own pid-identity file is green 3/3, with complete timings at A-3426:5028–5030: Codex 6.474s, changed Claude 4.489s, OpenCode 4.906s. Together with A-3406's five quiet serial Mac whole-file passes, the run-dependent file evidence for C2 is established, but final criterion verification waits for an acceptable overall gate. Source C1 A-3408 remains clear; T-543 remains the separately filed product identity risk. No criterion is failed on an outside test.
+
+A-3426 may serve as the first known-only Linux receipt under E-482, not final clearance by itself. task.view already records unchanged-head retry 74cc892a-ecb5-4388-9116-778474ecd79d launching. Await that result; no additional submission or task-source change is indicated. Do not count any earlier own-failure run as gate evidence.
+
+Log /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3426-suite-360bd15d-75ab-4a30-adf0-dc6be9bec8ee-auto-at-b1dfa5e.log. No Reviewer tests, edits, merges or provider actions.
+
+Review artifact A-3431 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3431-t-525-first-linux-receipt-pid-file-green-known-t-544-blocks-final-gate.md.

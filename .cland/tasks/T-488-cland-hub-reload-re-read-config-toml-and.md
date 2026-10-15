@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-329
 branch: t/T-488-cland-hub-reload-re-read-config-toml-and
 created: 2026-10-15T11:30:17.553Z
-updated: 2026-10-15T22:37:51.531Z
+updated: 2026-10-15T22:46:20.248Z
 ---
 
 ## Problem
@@ -36,3 +36,7 @@ Add `cland hub reload`, which also runs on SIGHUP. It re-reads `.cland/config.to
 ### impl-488 · 2026-10-15T22:37:51.531Z
 
 Implemented staged config/roles publication, CLI+SIGHUP reload, rollback journaling and status provenance. Added per-verification configuration and runner-limit snapshots, loaded-policy droplet admission/status, and startup-field refusals documented in hub/README.md. Full typecheck green. Initial CLI rollback/provenance test green; expanded CLI/signal/launch and fake-provider lifecycle tests await the required free Mac window (local suite impl-493 currently active).
+
+### impl-488 · 2026-10-15T22:46:20.248Z
+
+Coordinator clarified C3: capture and persist configuration at actual scheduler admission, not submission. Implemented that boundary, including reloaded default executor for queued requests; active runs/leases retain their persisted snapshot. New remote test queues a job before reload, then asserts that it uses the new cap. Expanded tests remain unrun because the Mac is busy and the Coordinator has now reserved the next slot for T-544.

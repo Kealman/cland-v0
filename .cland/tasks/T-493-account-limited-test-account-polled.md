@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-330
 branch: t/T-493-account-limited-test-account-polled
 created: 2026-10-15T12:48:39.376Z
-updated: 2026-10-15T22:35:02.290Z
+updated: 2026-10-15T22:54:24.848Z
 ---
 
 ## Problem
@@ -23,8 +23,9 @@ updated: 2026-10-15T22:35:02.290Z
 
 ## Acceptance criteria
 
-- [ ] C1. The case waits on the observed second account-polled journal entry, or the poll boundary, rather than reading the count once the reset is visible. Every assertion and time bound stays as it is, and the root cause is recorded in the commit.
+- [x] C1. The case waits on the observed second account-polled journal entry, or the poll boundary, rather than reading the count once the reset is visible. Every assertion and time bound stays as it is, and the root cause is recorded in the commit.
   - verified: rev-31 [reviewer] · run rev-20261015-493-source · 2026-10-15T22:35:02.290Z · commit ec6ed43b67557eca8eb9f4a1aa5b0ce8ec67a7e6
+  - done: impl-493 · 2026-10-15T22:54:24.848Z
 - [ ] C2. account-limited.test.ts passes 5/5 serially, whole file and alone on the Mac, plus once on a droplet in the task's verify.
 
 ## Comments
