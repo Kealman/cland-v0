@@ -14,7 +14,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-15T12:07:01.208Z
-updated: 2026-10-15T12:08:07.203Z
+updated: 2026-10-15T12:11:23.782Z
 ---
 
 ## Summary
@@ -33,3 +33,7 @@ The hub's DigitalOcean credential reaches every session the hub launches, and ev
 ### coord · 2026-10-15T12:08:07.203Z
 
 Human decision on 2026-10-15 at 12:07Z (ask aa197b46, answer a7ae0d42): no rotation. T-492 goes through the normal queue. The crew's PID-only process-check rule stays in force until this merges.
+
+### coord · 2026-10-15T12:11:23.782Z
+
+Second exposure, local only, logged for the complete record. The stand-in cland-impl ran a disk check, grep -rlF with the value as an argument. From about 12:09Z to 12:12Z on 2026-10-15 the value was in that grep process's argv, visible to any local process that listed full command lines; the crew's PID-only rule was already in force. Result of the check: no file under .cland or ~/.cland holds the value. From now on checks pass the value by file descriptor, never in argv. The decision stands (D35): no rotation.

@@ -3,7 +3,7 @@ id: T-455
 kind: task
 title: "Rulebook: .cland/RULES.md with numbered rules, read and written by cland rule add, edit, retire, list and show, and reloaded by the hub when the file changes"
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 7
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-276
 branch: t/T-455-rulebook-cland-rules-md-with-numbered
 created: 2026-10-15T07:15:15.459Z
-updated: 2026-10-15T09:05:28.540Z
+updated: 2026-10-15T12:11:45.111Z
 ---
 
 ## Summary
@@ -96,6 +96,7 @@ Run at most one full suite at a time machine-wide; targeted single-file runs are
   - verified: rev-23 [reviewer] · run rev-2026-10-15-455-2 · 2026-10-15T07:35:24.942Z · commit 856181faa8000c4a4470886fccec61cd107c8979
   - verified: rev-23 [reviewer] · run rev-2026-10-15-455-4 · 2026-10-15T08:01:41.809Z · commit a0ec44eaf1bbfc125d1709bf544913dac3bce709
   - verified: rev-23 [reviewer] · run rev-2026-10-15-455-6 · 2026-10-15T08:38:15.180Z · commit f5ef70453f08b9f2a55289302e37de98b984bb5d
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-455-8 · 2026-10-15T12:11:45.111Z · commit 91635a792948255a2608cd4690d6a0c4c43b3516
 
 ## Comments
 
@@ -210,3 +211,29 @@ A-2809 records evidence. Specific retry disposition has been consumed; stop unch
 ### impl-455 · 2026-10-15T09:05:28.540Z
 
 Run 9008902b/A-2808 at f5ef7045 passed 1727 tests and failed only the known T-447 unconfirmed-inject retry fixture; no duration failures. Coordinator decision d1a0c87e requires holding for T-447's landing commit, then cherry-picking that commit alone, delta review, and one verify. No unchanged retries or other source changes while awaiting the shared fix.
+
+### impl-455 · 2026-10-15T12:10:52.680Z
+
+Adopted designated shared patches T-461 5366e92f, T-447 9322850b and T-487 1419bc34 as clean cherry-picks e61bd3dc/634b0766/91635a79. At final 91635a79, full typecheck + shard lint + diff check pass; adapter 9/9, sessions 12/12 pass as loaded evidence, and layers 14/14 pass after load-rule admission (14.22, no other target). No rulebook behavior/assertion changes. Requesting delta review before next no-mode droplet-default gate.
+
+### rev-23 · 2026-10-15T12:11:45.111Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-15-455-8
+commit: 91635a792948255a2608cd4690d6a0c4c43b3516
+scope: delta
+
+Delta source clear at 91635a792948255a2608cd4690d6a0c4c43b3516; no high/medium finding remains.
+
+Compared with source-clear f5ef7045: only seven test/harness/fixture files change. Each picked commit's stable patch ID matches its landed source: T-461 5366e92f/e61bd3dc (13d6111e...), T-447 9322850b/634b0766 (0c645cad...), T-487 1419bc34/91635a79 (f3bd75a6...). No rulebook product source, rulebook/init assertion, duration manifest or README delta. The additional T-487 pick is separate from the landed T-447 patch; it is not a duplicate change.
+
+Reviewed shared behavior remains: observed pre-latch child completion plus no-new-PID checks; opt-in hook/mod receipt draining and specific confirmation-timeout staging; fixed stub timestamp/age reference with archive relationships preserved. Original assertions and deadlines remain. Source reviews/final evidence of those landed fixes apply; A-2964 reports current-head full adapter 9/9, sessions 12/12, layers 14/14, root typecheck, shard lint and diff check green. No Reviewer tests run.
+
+C7 unchanged documentation verified at this head. C1–C6 await accepted exact-head verification. Original rulebook source review A-2726/A-2786 remains applicable, including stale-write refusal/high-water identity preservation. Retain prior 8052e04c/A-2746, 1ea1e21d/A-2777 and 9008902b/A-2808 reds with T-461/T-463/T-447 dispositions; none is reclassified green by adoption.
+
+Submit no-mode verify using configured droplet default at this reviewed head after the lifted restart hold. Check actual executor/package coverage; human e6264b46 and mixed-diff additions govern any exception, not an assumed local fallback. No edits or further integration are required by this review.
+Review evidence: A-2965.
+
+Criteria: C7 verified.

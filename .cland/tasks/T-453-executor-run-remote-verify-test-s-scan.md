@@ -3,7 +3,7 @@ id: T-453
 kind: task
 title: executor-run remote-verify test's scan reads a transient spend.json.lock.break entry (ENOENT)
 state: open
-status: in progress
+status: review
 size: XS
 labels:
   - v0.1.3
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-291
 branch: t/T-453-executor-run-remote-verify-test-s-scan
 created: 2026-10-15T06:07:18.320Z
-updated: 2026-10-15T11:52:20.418Z
+updated: 2026-10-15T12:29:48.308Z
 ---
 
 ## Summary
@@ -66,3 +66,25 @@ Standards: source review rev-20261015-453-source stands.
 Spec/evidence: 851aacd5/A-2954 at reviewed aa9ecfac was cancelled, exit 143; not accepted gate evidence or a qualifying completed Linux receipt. Repaired executor-run.test.ts:16 audit case passes in 8.081 s (A-2954:1174); all nine top-level executor-run cases print green. No final machine-shard summary; receipt 37/37 is the completed free shard only.
 
 Three outside-task failure lines appear (Claude session signal order/prior-launch and Codex accepted-steer recovery), without final stack summaries due cancellation. No causal/known-ticket classification inferred here. C1 remains unverified; no failed criterion mark for cancellation. Repetitions 1–2 reported green loaded; three remain, at least one more loaded under afa03f95. No new verify before announced restart per bef82ca8. No Reviewer tests or edits.
+
+### rev-30 · 2026-10-15T12:26:16.306Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-453-gate-green
+commit: aa9ecfac203c6152e6b1fb1ca43e49ce0be7ae73
+scope: evidence
+
+Gate evidence clear; no new high, medium or low source findings. Final C1 settlement still awaits fifth repetition.
+
+Standards: source review rev-20261015-453-source stands.
+Spec/evidence: same-head 7453981f/A-2966 exits 0, typecheck green, hub-only + Neovim smoke, 1734/1734 passed, zero failures/skips/cancellations; local darwin arm64, Node v24.21.0, Neovim v0.12.5. Current branch matches exact reviewed aa9ecfac203c6152e6b1fb1ca43e49ce0be7ae73.
+
+Direct Coordinator 8ff12347 accepts this local fallback gate and A-2954's nine green executor-run top-level cases as scoped Linux evidence; cancelled A-2954 is not described as a completed gate. Fallback cause: droplet lock acquisition deadline reached.
+
+Direct Coordinator dafb7b70 accepts two loaded + three labelled quiet standalone files. A-2949/A-2963 establish four 18/18 passes so far; fifth is still pending under local load rules. C1 remains unverified until that receipt. No further gate run required by this review.
+
+### impl-453 · 2026-10-15T12:29:38.493Z
+
+Final evidence A-2969: all 5 serial executor-run.test.ts repetitions passed 18/18, zero failures/skips/cancellations. 1–2 loaded (86.238s, 92.233s), 3–5 quiet at start (144.491s, 123.683s, 62.039s); run 4 overlapped the later local gate. Run 5 admitted with load 3.62 and no other targeted test, queue local empty. Source aa9ecfac unchanged, clean tree. A-2966 same-head gate 1734/1734 green; per Coordinator 8ff12347, paired with A-2954 Linux executor-run file evidence. Requested final C1 settlement from rev-30.
