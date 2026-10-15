@@ -2,9 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, connectUi, eventually, fakeClaude, fakeCodex, sleep, spawnSpoke, startDaemon, tempProject, clauseAnswered, withDiscoveredPid } from './harness.ts';
+import { cland, connectUi, connectWsUi, eventually, fakeClaude, fakeCodex, sleep, spawnSpoke, startDaemon, startHub, tempProject, clauseAnswered, withDiscoveredPid } from './harness.ts';
 import { fixture as remoteFixture } from './remote-fixture.ts';
 import { fixture as suiteFixture } from './suite-fixture.ts';
+import { Tracker } from '../src/tracker/tracker.ts';
+import { CrewFile } from '../src/crew.ts';
+import { fixedRoles } from '../src/roles/config.ts';
 import type { Message } from '../src/protocol.ts';
 
 const heartbeat = (frame: Record<string, unknown>) => frame.type === 'message' && (frame.message as Message).detail?.event === 'heartbeat';
@@ -235,13 +238,24 @@ test('roles have independent heartbeat schedules, renaming retains identity, and
 
 test('watched review and ready transitions wait a full interval even when a hand edit retains an old updated date', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root, { CLAND_HEARTBEAT_MS: '200' });
-  const ui = await connectUi(t, discovery);
+  let clock: number | undefined;
+  const now = () => new Date(clock ?? Date.now());
+  const tracker = new Tracker({ root, db: join(root, '.cland/hub.db'), now });
+  tracker.start();
+  t.after(() => tracker.stop());
+  const crew = new CrewFile(join(root, '.cland/crew.toml'), () => {}, () => {}, tracker);
+  await crew.start();
+  t.after(() => crew.stop());
+  const hub = await startHub({ tracker, crew, roles: fixedRoles(), heartbeatMs: 200, now });
+  t.after(() => hub.close());
+  const ui = await connectWsUi(t, hub);
   await ui.request({ type: 'subscribe' });
-  const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', sessionId: 'retained-updated-coord', role: 'coordinator' });
+  await ui.request({ type: 'role.set', session: 'coord', role: 'coordinator' });
+  const coord = await spawnSpoke({ hub, name: 'coord', sessionId: 'retained-updated-coord', role: 'coordinator' });
   t.after(() => coord.close());
   await coord.waitForPresence(['coord']);
   await ui.waitFor(heartbeat);
+  clock = Date.now(); // Freeze age while real watcher I/O observes both transitions.
   await ui.request({ type: 'crew.set', key: 'coordinator.heartbeat', value: 'off' });
   const items: Array<{ id: string; file: string; status: string }> = [];
   for (const status of ['review', 'ready']) {
@@ -249,7 +263,7 @@ test('watched review and ready transitions wait a full interval even when a hand
     assert.equal(created.ok, true, created.error);
     items.push({ ...(created.value as { item: { id: string; file: string } }).item, status });
   }
-  await sleep(250); // The paused schedule is overdue before either watched transition.
+  clock += 250; // The paused schedule is overdue before either watched transition.
   for (const item of items) {
     const path = join(root, '.cland/tasks', item.file);
     const source = await readFile(path, 'utf8');
@@ -261,5 +275,6 @@ test('watched review and ready transitions wait a full interval even when a hand
   await ui.request({ type: 'crew.set', key: 'coordinator.heartbeat', value: '1m' });
   const first = await eventually('overdue firing after the watched transitions', () => ui.frames.slice(cursor).find(heartbeat));
   assert.equal((first.message as Message).detail?.stale, 0, 'an old updated date does not age a newly observed state');
+  clock += 200;
   await eventually('both watched states age through a full interval', () => ui.frames.slice(cursor).find(f => heartbeat(f) && (f.message as Message).detail?.stale === 2));
 });
