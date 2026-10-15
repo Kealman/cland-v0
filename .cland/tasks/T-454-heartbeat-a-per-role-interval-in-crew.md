@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-275
 branch: t/T-454-heartbeat-a-per-role-interval-in-crew
 created: 2026-10-15T07:15:15.368Z
-updated: 2026-10-15T10:24:25.527Z
+updated: 2026-10-15T10:54:17.913Z
 ---
 
 ## Summary
@@ -92,16 +92,19 @@ E-423 "Rules and rhythm" (R-294), tracer bullet 1 of 7; spec `docs/spec/v0.1.3.m
   - verified: rev-23 [reviewer] · run rev-2026-10-15-454-4 · 2026-10-15T08:16:17.074Z · commit 24ca7ce122bc41ec7075fd9cb0e0da354cec6098
   - verified: rev-23 [reviewer] · run rev-2026-10-15-454-6 · 2026-10-15T08:50:51.662Z · commit bdcddc3c3401dc268eb4eff0b420a8bab9590a62
   - verified: rev-23 [reviewer] · run rev-2026-10-15-454-9 · 2026-10-15T09:57:47.574Z · commit af5c18eeb046f10161d86b19f0baa2712a3fb322
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-454-11 · 2026-10-15T10:30:29.408Z · commit 02d29aff362c66568ed41502c79bd93716f6ee47
 - [x] C7. The Coordinator's clause, in `default-roles.ts` and the live `.cland/roles.toml`, says what to check, what to repair and when to escalate on a heartbeat, and to end a clean heartbeat without a message.
   - done: impl-454 · 2026-10-15T08:50:11.220Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-454-6 · 2026-10-15T08:50:51.663Z · commit bdcddc3c3401dc268eb4eff0b420a8bab9590a62
   - verified: rev-23 [reviewer] · run rev-2026-10-15-454-9 · 2026-10-15T09:57:47.575Z · commit af5c18eeb046f10161d86b19f0baa2712a3fb322
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-454-11 · 2026-10-15T10:30:29.408Z · commit 02d29aff362c66568ed41502c79bd93716f6ee47
 - [x] C8. `hub/README.md` describes the `heartbeat` setting, its default, the digest's rows, coalescing and `CLAND_HEARTBEAT_MS`, and `nvim/README.md` lists the `heartbeat` kind and key `9` in the events view.
   - done: impl-454 · 2026-10-15T07:40:48.284Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-454-2 · 2026-10-15T07:49:57.099Z · commit b64e068182a0bfb027f5fdc2542a764c17e55b56
   - verified: rev-23 [reviewer] · run rev-2026-10-15-454-4 · 2026-10-15T08:16:17.075Z · commit 24ca7ce122bc41ec7075fd9cb0e0da354cec6098
   - verified: rev-23 [reviewer] · run rev-2026-10-15-454-6 · 2026-10-15T08:50:51.663Z · commit bdcddc3c3401dc268eb4eff0b420a8bab9590a62
   - verified: rev-23 [reviewer] · run rev-2026-10-15-454-9 · 2026-10-15T09:57:47.575Z · commit af5c18eeb046f10161d86b19f0baa2712a3fb322
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-454-11 · 2026-10-15T10:30:29.408Z · commit 02d29aff362c66568ed41502c79bd93716f6ee47
 
 ## Comments
 
@@ -292,3 +295,45 @@ Configured Linux gate 52b10e3c/A-2870 at af5c18eeb046f10161d86b19f0baa2712a3fb32
 
 C1–C5 remain unverified; C6–C8 source marks remain current. No additional implementation criterion is failed without diagnosis. Preserve completed red c44f6a37/A-2842 and outage-lost 7a4f3460/A-2832 (Coordinator 8fd03833), as well as earlier source-fix history. Standing known-flake/local-gate rule cb6eaf4c is not established by this receipt until the journal and Coordinator-launch failures have known-ticket classification and its own-files-green condition is satisfied. Await lead disposition, not an automatic retry. No Reviewer tests or edits.
 Review evidence: A-2871.
+
+### impl-454 · 2026-10-15T10:29:41.258Z
+
+Own-scope journal lifecycle regression proven red at A-2874, heartbeat-callback-disabled diagnostic14/14 A-2875, then original callback restored and proper Core-before-store cleanup green. Audited direct Core fixtures incl source-adjacent store tests. Pushed02d29aff after merging origin/dev82f53182 (incl T-4615366e92f/T-4845728fa6c). At merged head journal14/14 A-2879, checkpoint3/3 A-2880, store17/17 A-2881, diff/tree clean. Full unchanged role-integrity7/7 A-2878; Coordinator b7f84927 files unreproduced Linux timeout as T-486 and supplies conditional local gate rule. A-2882 summarizes controlled diagnosis and delta. Requesting source re-review before configured-executor verification.
+
+### rev-23 · 2026-10-15T10:30:29.408Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-15-454-11
+commit: 02d29aff362c66568ed41502c79bd93716f6ee47
+scope: delta
+
+Delta source clear at 02d29aff362c66568ed41502c79bd93716f6ee47; no high/medium finding remains.
+
+Standards/spec: direct Core fixtures now call core.close before store.close, including journal after hook, checkpoint after hooks and store restart/finally paths. All original assertions remain. Audited all new HubCore sites: the production server already closes Core before Store; direct test sites are covered, and the compile-cache script leaves its store open until process exit. The production heartbeat callback/core.ts is unchanged from af5c18ee.
+
+Controlled evidence: A-2874 reproduces the exact post-test closed-database error; temporarily disabling only the heartbeat callback makes journal 14/14 (A-2875). Final code restores the callback and changes teardown: journal 14/14 (A-2879), checkpoint 3/3 (A-2880), store 17/17 (A-2881), zero failures/skips/cancellations. This establishes and corrects the journal lifecycle gap without suppressing heartbeat production behavior.
+
+Incoming dev 82f53182 adds reviewed shared T-461 observed pre-latch completion/PID checks and T-484's observable idle + released claim + first-turn usage barrier. Existing refusal/handoff assertions remain; no timing allowance or assertion reduction. Tracker records add no runtime changes. Direct Coordinator b7f84927 assigns the separate role-integrity timeout to T-486 after the source audit and passing unchanged 7/7 file A-2878, and requests this integration followed by one configured Linux verify.
+
+C6–C8 unchanged source criteria refreshed. C1–C5 remain unverified pending accepted exact-head gate. Preserve Linux red 52b10e3c/A-2870 with all four failures, earlier header red c44f6a37/A-2842 and outage-lost 7a4f3460/A-2832. If the new droplet gate is red solely on known tickets (including T-486) and own files pass, Coordinator cb6eaf4c/b7f84927 permits the local fallback gate; do not preempt that evidence condition. No Reviewer tests or edits.
+Review evidence: A-2883.
+
+Criteria: C6 verified, C7 verified, C8 verified.
+
+### rev-23 · 2026-10-15T10:54:17.913Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-15-454-12
+commit: 02d29aff362c66568ed41502c79bd93716f6ee47
+scope: evidence
+
+Medium — hub/test/codex-adapter.test.ts:570: after acknowledged Implementer stop, immediate pidAlive is still true (A-2898:3882–3898). This is the same stop-before-observed-exit pattern as known T-485's QA example in the same launch-policy test; flag this Implementer occurrence for that owner's sweep as well. The test file is unchanged by T-454.
+
+Configured Linux 93b61bfc/A-2898 at 02d29aff362c66568ed41502c79bd93716f6ee47 remains red: 1730 hub tests, 1726 pass, one fail, three platform skips. Full selection stopped before Neovim. Own hub tests, including corrected journal/teardown and heartbeat cases, pass; prior T-461, T-465 and role-integrity cases also pass in this receipt. Suite 1251.33s; c-8 lon1 lifetime 1339s, cost $0.0930. Branch remains reviewed and unchanged.
+
+This is positive own-file Linux evidence for the standing known-flake rule, separate from the red overall gate. Claimant additionally reports Coordinator 2a23d826 requires adopting T-487 before a full Neovim run and is holding for its posted shared fix; that specific direction is not replaced by this evidence review. Any changed head needs a delta source review before another run. C1–C5 remain unverified; C6–C8 source marks remain current. Preserve A-2870's prior Linux red, A-2842 header red and A-2832 outage-lost disposition for final reporting. No Reviewer tests or edits.
+Review evidence: A-2899.

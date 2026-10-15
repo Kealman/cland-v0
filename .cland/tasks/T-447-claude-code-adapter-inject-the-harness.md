@@ -17,7 +17,7 @@ blocked_by: []
 topic: topic-279
 branch: t/T-447-claude-code-adapter-inject-the-harness
 created: 2026-10-15T01:04:10.495Z
-updated: 2026-10-15T10:15:20.787Z
+updated: 2026-10-15T10:43:15.183Z
 ---
 
 ## Summary
@@ -126,3 +126,43 @@ The shared addition gates/observes the pre-latch agents child, drains its comple
 
 Direct Coordinator 9514b93f requests this isolated pick after landing and confirms the prior sentinel ENOENT is T-453. Retain both prior red gates ae5bce63/A-2789 and 96f8401a/A-2813, T-461 and T-453, plus the older cancellation-cache duration-manifest gap noted in the previous verdict. No unrelated source or manifest correction is folded into this delta. C1/C2 remain unverified until accepted exact-head verification. Submit no-mode cland verify using the configured executor; standing Coordinator cb6eaf4c applies only when its known-flake and own-files-green conditions hold. No Reviewer tests or edits.
 Review evidence: A-2865.
+
+### rev-23 · 2026-10-15T10:40:29.693Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-15-447-6
+commit: c226eb69bfee70c7114e0c8a781e3300a5c9283f
+scope: evidence
+
+Medium — hub/test/durations.json (missing existing daemon test identity): A-2884:5478 rejects daemon.test.ts::fixture startup skips orphan inspection by default; opt-in and production startup still sweep at 5.218s > 5s, despite the assertion passing. This is the sole exit-1 reason. The identity is absent in this branch's manifest but exists in dev baseline 3d300562 at line 1134 (1.879848s); no broad allowance is justified by this loaded observation.
+
+Exact-head Linux gate 16ae8f10/A-2884 at c226eb69bfee70c7114e0c8a781e3300a5c9283f selected full, but budget refusal stopped it before Neovim: 1720 hub tests, 1717 pass, zero assertion failures, three platform skips. All repaired clause/injection cases and adopted signed-out latch pass; positive Linux file evidence is retained. Suite 1319.85s, c-8 lon1 lifetime 1403s, cost $0.0974. Branch remains unchanged.
+
+C1/C2 remain unverified until an accepted complete gate; no implementation criterion failed for this stale-manifest budget refusal. Preserve ae5bce63/A-2789 and 96f8401a/A-2813 with T-461/T-453 history. Await lead disposition for baseline integration or a specifically authorized gate path. Standing known-flake rule cb6eaf4c does not by itself classify this duration-manifest gap as one of its ticketed flakes. Any changed head requires delta review before another run. No Reviewer tests or edits.
+Review evidence: A-2885.
+
+### impl-447 · 2026-10-15T10:42:41.514Z
+
+16ae8f10/A-2884 passed all 1717 executed assertions but exited red only on existing daemon-test duration identity missing from old manifest. Applied Coordinator 64709ab6 standing instruction: conflict-free merge origin/dev 82f53182 as a27f9a8b, adopting 3d300562 baseline (no new allowance), already-merged test fixes, config/tracker. All four T-447 implementation files byte-identical to c226eb69. Targeted merge checks pass serially: crew-launch 10/10, nvim sessions 5/5, artifact-browser 11/11. Evidence A-2888. Head pushed, delta source review requested before new verify.
+
+### rev-23 · 2026-10-15T10:43:15.183Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-15-447-7
+commit: a27f9a8b60d33787952b312dea442fef6b76027c
+scope: delta
+
+Delta source clear at a27f9a8b60d33787952b312dea442fef6b76027c; no high/medium finding remains.
+
+Conflict-free dev 82f53182 merge leaves all four T-447 implementation files byte-identical to source-cleared c226eb69. The entire duration manifest blob exactly equals committed release-cover baseline 3d300562, rather than a newly enlarged allowance. It restores the existing daemon startup identity missing from A-2884's branch (baseline 1.879848s), correctly treating later slowdowns as known-test regression notices under the established budget semantics.
+
+Incoming T-442 pins both sides of midnight while retaining event/clear/highlight assertions; T-446 waits for accepted RPC within the existing deadline; T-484 requires stable idle/released claim/first-turn usage before reusing the pool member, retaining refusal/handoff assertions. Previously reviewed human config changes raise remote admission and reviewer pool from 2 to 4; daily spend cap unchanged. No conflicts or new product feature changes.
+
+Audited A-2888 whole-file integration logs: crew-launch 10/10, nvim sessions 5/5, artifact-browser 11/11, each zero failures/skips/cancellations. Source A-2763/A-2865 otherwise applies. Earlier-head A-2884 supplies positive Linux clause/injection evidence (1717 assertion passes) but remains red overall due budget and did not reach Neovim.
+
+C1/C2 remain unverified pending a new accepted exact-head gate. Submit no-mode verify with configured executor. Final evidence must retain earlier ae5bce63/A-2789, 96f8401a/A-2813 and 16ae8f10/A-2884, their shared-fix/baseline dispositions and the new receipt. No Reviewer tests or edits.
+Review evidence: A-2889.

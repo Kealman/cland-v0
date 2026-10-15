@@ -3,7 +3,7 @@ id: T-393
 kind: task
 title: "In-process hub by default: tests run against a hub served in the test process over its real socket, a spawned hub stays only for lifecycle tests, and the top 20 files move first"
 state: open
-status: review
+status: in progress
 size: L
 criterion_seq: 9
 labels:
@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-273
 branch: t/T-393-in-process-hub-by-default-tests-run
 created: 2026-10-14T12:28:19.095Z
-updated: 2026-10-15T10:16:09.753Z
+updated: 2026-10-15T10:41:32.233Z
 ---
 
 ## Summary
@@ -170,3 +170,25 @@ Submit one no-mode verify without executor override at this reviewed head; stand
 Review evidence: A-2867.
 
 Criteria: C4 verified, C7 verified, C8 verified, C9 verified.
+
+### impl-393 · 2026-10-15T10:41:28.056Z
+
+Second Linux gatefc85d6ae/A-2886 at source-clearc97f0056 failed solely unchanged claude-code-sessions.test.ts:251 initial clause injection wait, exact T-447 C2. All T-393 touched tests passed (1726 pass/1 fail/3 platform skips); Neovim not reached. Applying Coordinator standing rulecb6eaf4c because failed test file is untouched: submitted one same-head local gate6b2bda6d-e643-4580-826a-4c55a046e272, queue position2. No source edits/head change. Retain both Linux red receipts with T-461 adoption history; Reviewer receives the local result.
+
+### rev-23 · 2026-10-15T10:41:32.233Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-15-393-5
+commit: c97f0056f9d161148d003314a888f1bff0d524f0
+scope: evidence
+
+Medium — hub/test/claude-code-sessions.test.ts:251: clause injection is not observed within 15s (A-2886:3880–3886), exactly the known T-447 C2 fixture. This file is unchanged between T-393's base 045d24fa and c97f0056; T-393's touched test files pass in the same Linux run. The adopted T-461 case also passes.
+
+Configured Linux gate fc85d6ae/A-2886 selected full but stopped before Neovim: 1730 hub tests, 1726 pass, one fail, three platform skips, exit 1 at unchanged source-clear c97f0056f9d161148d003314a888f1bff0d524f0. Suite 1155.79s, c-8 lon1 lifetime 1242s, cost $0.0862. Positive touched-file Linux proof is distinct from the overall red result.
+
+Standing Coordinator cb6eaf4c directly authorizes one unchanged-head local merge gate when the only droplet failures are named known flakes and touched files pass. This receipt meets that condition via T-447; no source change or renewed source review is needed to submit that one local gate. C1–C3 and final amended C5/C6 remain unverified until its accepted result; C4/C7/C8/C9 source marks remain current.
+
+Final evidence must cite this red fc85d6ae/A-2886/T-447 and prior red ce86de7b/A-2838/T-461, source-reviewed isolated T-461 adoption, and the authorized local receipt. Preserve C5 post-merge timing obligation, C6 772 lower-bound projection/under-600 T-466, and T-395 second-merger reconciliation. No Reviewer tests or edits.
+Review evidence: A-2887.

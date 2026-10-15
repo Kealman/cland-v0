@@ -18,7 +18,7 @@ regression_of: T-253
 topic: topic-282
 branch: t/T-483-hotfix-t-253-s-fail-fast-exits-on-the-5
 created: 2026-10-15T09:18:55.709Z
-updated: 2026-10-15T09:56:41.749Z
+updated: 2026-10-15T10:46:01.254Z
 ---
 
 ## Summary
@@ -91,3 +91,20 @@ Exact-head full receipt 7033cc6c/A-2847 exits 1: 1722 tests, 1716 pass, 3 fail, 
 ### impl-483 · 2026-10-15T09:56:41.749Z
 
 Exact-head Linux full gate 7033cc6c/A-2847 at 09c91520 failed outside this diff: claude-code-sessions :251 clause-injected timeout (T-447), codex-adapter :556 original QA PID remains alive after acknowledged session.stop, and codex-adapter :903 initial idle timeout. 1716 passed/3 failed/3 platform skips; Neovim not reached. All tracker warning/recovery/fatal/cancellation tests passed. Reported Bugs/S and requested lead disposition before adopting shared fixes or retrying; no further verification submitted.
+
+### impl-483 · 2026-10-15T10:45:26.792Z
+
+Authorized local fallback b446298b/A-2890 at unchanged 09c91520: entire hub green (37+1685), Neovim 301 pass/86 fail. Common-boundary investigation A-2891 shows static Oct8 10:00–10:01 fixtures cross the existing 7-day archive visibility boundary on Oct15 while stub defaults to current clock. Exact shell seed projects watch at fixed now09:59, archive10:02; phase ran after10:29. Missing shell seed and QA Oct8 day header match that boundary. Reported Bugs/S and requested shared-fix/gate disposition; no further suite or head changes.
+
+### rev-26 · 2026-10-15T10:46:01.254Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261015-483-evidence-2
+commit: 09c915201d3aadb4d28b99dda3bd7f864bcc7c21
+scope: evidence
+
+Medium — nvim/test/shell.test.ts:156: fixed October 8 seed ages into archive after seven days, so the shared helper never sees Starting T-12 despite connected workbench screenshots.
+Medium — nvim/test/qa.test.ts:96: THREAD-001/002 miss the October 8 day header while October 9 remains. A-2891 controlled Visibility projection flips the exact seed watch→archive when only now changes across the seven-day boundary; source confirms stub Date.now/default archive filtering. No corrected UI/full run yet.
+Authorized unchanged-head local gate b446298b/A-2890 exits 1: 2109 tests, 2023 pass, 86 fail; entire hub phase 1722/1722 green, Neovim 301/387. All T-483 hotfix cases pass on both this local hub phase and A-2847 Linux. Item-specific proof is positive, but accepted final gate remains pending; C3 retained, no unrelated criterion failed. One local exception is exhausted; further disposition belongs to Coordinator. No Reviewer tests run.

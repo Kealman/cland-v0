@@ -3,7 +3,7 @@ id: T-335
 kind: task
 title: "Lane flow: epics follow epics, a follow is met on the last merge, and a merge hold keeps the follower off the predecessor's files until its demo"
 state: open
-status: review
+status: in progress
 size: L
 criterion_seq: 7
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-277
 branch: t/T-335-lane-flow-the-next-epic-in-a-lane-starts
 created: 2026-10-13T14:23:44.027Z
-updated: 2026-10-15T10:00:41.033Z
+updated: 2026-10-15T10:48:53.279Z
 ---
 
 ## Summary
@@ -199,3 +199,15 @@ No high or medium findings. Own follows source/tests, publication guards, UI, cl
 Coordinator b4ec2b7f explicitly permits A-2794's passing Linux hub evidence plus one same-head no-mode --executor local gate for macOS Neovim; Linux Neovim is owed at E-423 stage-1 close. A-2794 remains red overall and never ran Neovim. Renew C6/C7; C1–C5/final settlement await the authorized local receipt. No Reviewer tests run.
 
 Criteria: C6 verified, C7 verified.
+
+### rev-26 · 2026-10-15T10:48:53.279Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261015-335-evidence-4
+commit: b6ba04e77de9d9635c00946f526e6edacaeb8ab4
+scope: evidence
+
+Execution incomplete: A-2893/6dd1546e exits 143 after Coordinator-requested cancellation, with only 37/37 free-shard counts complete; machine shard interrupted, Neovim not run. No source or semantic failure inferred and no criterion failed. C1–C5 final marks pending; C6/C7 source marks retained.
+Coordinator 9f7d6175 explicitly preserves the local exception: wait for named T-487 commit, cherry-pick only it, get delta review, then one replacement no-mode --executor local gate. A-2794 Linux hub evidence and E-423 later Linux Neovim obligation remain as b4ec2b7f directs. No Reviewer tests run.
