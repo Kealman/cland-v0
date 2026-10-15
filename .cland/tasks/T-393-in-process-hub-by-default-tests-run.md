@@ -3,7 +3,7 @@ id: T-393
 kind: task
 title: "In-process hub by default: tests run against a hub served in the test process over its real socket, a spawned hub stays only for lifecycle tests, and the top 20 files move first"
 state: open
-status: in progress
+status: ready
 size: L
 criterion_seq: 9
 labels:
@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-273
 branch: t/T-393-in-process-hub-by-default-tests-run
 created: 2026-10-14T12:28:19.095Z
-updated: 2026-10-15T11:51:11.324Z
+updated: 2026-10-15T12:52:45.772Z
 ---
 
 ## Summary
@@ -54,34 +54,43 @@ updated: 2026-10-15T11:51:11.324Z
 
 - [x] C1. `projectHub` serves a project in the test process; `cland` subprocesses, spokes and UI clients reach it over its real socket and WebSocket with no change to their code, proven by a tracer test that runs the same frames against `projectHub` and `startDaemon`.
   - done: impl-393 · 2026-10-15T08:08:37.623Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-393-9 · 2026-10-15T12:52:43.534Z · commit 36ecea1f6f97445efc149b47b8ba2a7e89b7c89b
 - [x] C2. Cleanup fails a test whose in-process hub leaves handles, timers, `process` listeners or child processes, proven by a test that leaks one on purpose.
   - done: impl-393 · 2026-10-15T09:19:34.574Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-393-9 · 2026-10-15T12:52:43.534Z · commit 36ecea1f6f97445efc149b47b8ba2a7e89b7c89b
 - [x] C3. `serveProject` takes its environment as an option, and two in-process hubs in one file with different adapter timings behave independently, proven by a test.
   - done: impl-393 · 2026-10-15T09:19:44.326Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-393-9 · 2026-10-15T12:52:43.534Z · commit 36ecea1f6f97445efc149b47b8ba2a7e89b7c89b
 - [x] C4. The lifecycle list is posted per file; every test that still calls `startDaemon` or `cland hub start` in the 20 files is on it, and none of the others is.
   - done: impl-393 · 2026-10-15T08:08:39.537Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-2 · 2026-10-15T09:22:40.699Z · commit 519fc215a8f8b84572f079ba0b5a1b35ed8072fa
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-4 · 2026-10-15T10:16:09.752Z · commit c97f0056f9d161148d003314a888f1bff0d524f0
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-7 · 2026-10-15T11:24:53.220Z · commit 36ecea1f6f97445efc149b47b8ba2a7e89b7c89b
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-393-9 · 2026-10-15T12:52:43.534Z · commit 36ecea1f6f97445efc149b47b8ba2a7e89b7c89b
 - [x] C5. Measured (Coordinator amendment 2026-10-15 09:03Z): the 20 files' summed whole-file time falls by at least 20%, judged after merge from E-387's stage-1 close integrated cover on the Mac against the v0.1.2 release cover A-2714 (both quiet integrated runs), per file from the runner's records; pre-merge, the available paired samples are posted without a claim, because local fallbacks invalidated every pair while remote_budget was 2.
   - done: impl-393 · 2026-10-15T09:04:06.375Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-393-9 · 2026-10-15T12:52:43.534Z · commit 36ecea1f6f97445efc149b47b8ba2a7e89b7c89b
 - [x] C6. Measured (Coordinator amendment 2026-10-15 09:03Z): the migration's daemon-start delta is posted against the fresh census A-2737 (the 20 files 421 → 145, a projected 772 per run against 1047); the under-600 target moves to T-466, the next files' migration.
   - done: impl-393 · 2026-10-15T09:04:07.098Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-393-9 · 2026-10-15T12:52:43.535Z · commit 36ecea1f6f97445efc149b47b8ba2a7e89b7c89b
 - [x] C7. Each refusal family and each adapter verb keeps at least one frame test, and the moved validation cases keep their asserted error codes and messages.
   - done: impl-393 · 2026-10-15T08:08:40.735Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-2 · 2026-10-15T09:22:40.699Z · commit 519fc215a8f8b84572f079ba0b5a1b35ed8072fa
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-4 · 2026-10-15T10:16:09.752Z · commit c97f0056f9d161148d003314a888f1bff0d524f0
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-7 · 2026-10-15T11:24:53.220Z · commit 36ecea1f6f97445efc149b47b8ba2a7e89b7c89b
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-393-9 · 2026-10-15T12:52:43.535Z · commit 36ecea1f6f97445efc149b47b8ba2a7e89b7c89b
 - [x] C8. No assertion changes its meaning: the review request lists every changed assertion with what it still proves, and no test is deleted.
   - done: impl-393 · 2026-10-15T08:08:41.391Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-2 · 2026-10-15T09:22:40.700Z · commit 519fc215a8f8b84572f079ba0b5a1b35ed8072fa
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-4 · 2026-10-15T10:16:09.753Z · commit c97f0056f9d161148d003314a888f1bff0d524f0
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-7 · 2026-10-15T11:24:53.220Z · commit 36ecea1f6f97445efc149b47b8ba2a7e89b7c89b
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-393-9 · 2026-10-15T12:52:43.535Z · commit 36ecea1f6f97445efc149b47b8ba2a7e89b7c89b
 - [x] C9. `hub/README.md` (Tests) and `docs/agents/tests.md` describe `projectHub` as the default, the lifecycle line, and when a new test may use `startDaemon`.
   - done: impl-393 · 2026-10-15T08:08:41.843Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-2 · 2026-10-15T09:22:40.700Z · commit 519fc215a8f8b84572f079ba0b5a1b35ed8072fa
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-4 · 2026-10-15T10:16:09.753Z · commit c97f0056f9d161148d003314a888f1bff0d524f0
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-7 · 2026-10-15T11:24:53.221Z · commit 36ecea1f6f97445efc149b47b8ba2a7e89b7c89b
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-393-9 · 2026-10-15T12:52:43.535Z · commit 36ecea1f6f97445efc149b47b8ba2a7e89b7c89b
 
 ## Comments
 
@@ -255,3 +264,31 @@ Configured Linux f322ed1f/A-2951 at 36ecea1f6f97445efc149b47b8ba2a7e89b7c89b sel
 
 C1–C3 and final amended C5/C6 remain unverified; C4/C7/C8/C9 source marks stay current. Preserve ce86de7b/A-2838, fc85d6ae/A-2886 and local 6b2bda6d/A-2930 with their already recorded shared-fix rulings. New human pair rule e6264b46 requires known-ticket failures and own-file coverage, not an unclassified assertion. Coordinator bef82ca8 also prohibits new verify submissions during queue drain until hub restart; cover-quiet local-test restrictions still apply. Await lead diagnosis/disposition before further gate work. No Reviewer tests or edits.
 Review evidence: A-2953.
+
+### impl-393 · 2026-10-15T12:51:14.222Z
+
+Final evidence at unchanged source-clear36ecea1f: Coordinator029dbfc2 files the account-polled race as T-493 and explicitly accepts Linux A-2886(T-447) plus A-2951(T-493) as different known flakes, touched files green. Directed comparison A-2992 is five task whole files50/50 + current-dev2e8285a0 control10/10; partial interrupted attempt excluded. Exact-head explicit local Neovim-only npm run test:nvim -- nvim/test/*.test.ts exits0,387/387, no skips/cancellations,71.89s under normal lease (A-2993). Mac window handed to impl-465. No source/head change or new verify. Final evidence review requested citing029dbfc2 and C5/C6 stage1-close amendments; no premerge20% or under600 claim.
+
+### rev-23 · 2026-10-15T12:52:43.535Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-15-393-9
+commit: 36ecea1f6f97445efc149b47b8ba2a7e89b7c89b
+scope: evidence
+
+Final pre-merge evidence clear at unchanged 36ecea1f6f97445efc149b47b8ba2a7e89b7c89b under the recorded gate/performance amendments; no high/medium T-393 finding remains.
+
+Accepted hub pair: Linux fc85d6ae/A-2886 at c97f0056 fails only untouched T-447 clause wait; Linux f322ed1f/A-2951 at 36ecea1f fails only untouched account-polled count, now T-493. Each reports 1726 pass/one fail/three platform skips and exits 1 before Neovim. Own changed hub tests pass. The only head delta is exact shared T-487, reviewed in A-2933. Direct Coordinator 029dbfc2 classifies T-493 and explicitly accepts these different-known-failure receipts under e6264b46; neither receipt is relabelled green.
+
+Audited directed comparison A-2992: five complete task account-limited files 50/50 plus current-dev control 10/10, same test blob, one labelled loaded/four quiet task runs; interrupted attempt excluded. These passes do not prove the journal race cause; they support the Coordinator's classification. Required exact-head local Neovim supplement A-2993 uses explicit nvim/test/*.test.ts targets under the normal lease: 387/387, zero failures/skips/cancellations, 71.89s, lease wait 0.02s, peak load 4.46. 029dbfc2 and mixed-diff 90193e8c/d05c60c7 accept this supplement; Linux Neovim is stage-close coverage, not claimed executed here.
+
+C1–C3: real socket/WS/CLI equivalence, deliberate startup/request leak rejection, explicit per-hub environment isolation and correction proofs are established by A-2815/A-2816 and the passing own hub tests. Scope facade covers direct Dispatcher open/receive/closed; delivery config and candidate-tree Git use owning env with private index preserved. C4 lifecycle list, C7 retained frame/refusal families, C8 no deleted identities/unchanged assertion meanings and C9 docs remain as reviewed A-2804/A-2806/A-2816/A-2933. Final gate evidence now closes their runtime dependency.
+
+C5/C6 are verified ONLY for their amended pre-merge evidence obligations: A-2806 posts the available timing samples with invalid overlaps labelled, without a speed claim; A-2804/A-2737 documents selected20 starts 421→145 and lower-bound projection 1047−421+145+1=772. This is not an observed full-run census, under-600 achievement or a 20% speed result. Direct 029dbfc2 and earlier 6f89040c leave their post-merge judgment at E-387 stage-1 close against A-2714; under-600 is T-466. Those stage obligations remain owed despite this pre-merge verification mark.
+
+Retain pre-adoption red ce86de7b/A-2838 (T-461) and local 6b2bda6d/A-2930 (86 T-487 date-family failures), plus the initial source findings and red/green corrections. T-395 second-merger reconciliation must still audit all 110 mapped identities and receive delta review; no integration performance claim is made now. All C1–C9 marked under these explicit pre-merge interpretations. No Reviewer tests or edits.
+Review evidence: A-2994.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified, C9 verified.

@@ -3,7 +3,7 @@ id: T-455
 kind: task
 title: "Rulebook: .cland/RULES.md with numbered rules, read and written by cland rule add, edit, retire, list and show, and reloaded by the hub when the file changes"
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 7
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-276
 branch: t/T-455-rulebook-cland-rules-md-with-numbered
 created: 2026-10-15T07:15:15.459Z
-updated: 2026-10-15T12:37:24.409Z
+updated: 2026-10-15T12:43:54.062Z
 ---
 
 ## Summary
@@ -97,6 +97,7 @@ Run at most one full suite at a time machine-wide; targeted single-file runs are
   - verified: rev-23 [reviewer] · run rev-2026-10-15-455-4 · 2026-10-15T08:01:41.809Z · commit a0ec44eaf1bbfc125d1709bf544913dac3bce709
   - verified: rev-23 [reviewer] · run rev-2026-10-15-455-6 · 2026-10-15T08:38:15.180Z · commit f5ef70453f08b9f2a55289302e37de98b984bb5d
   - verified: rev-23 [reviewer] · run rev-2026-10-15-455-8 · 2026-10-15T12:11:45.111Z · commit 91635a792948255a2608cd4690d6a0c4c43b3516
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-455-10 · 2026-10-15T12:43:54.062Z · commit 17d643130d3d7fc3b06b20908188f209e69ae5bc
 
 ## Comments
 
@@ -254,3 +255,29 @@ Configured Linux 6ffb9985/A-2984 at unchanged source-clear 91635a792948255a2608c
 
 C1–C6 remain unverified; C7 current source mark retained. Prior 8052e04c/A-2746, 1ea1e21d/A-2777 and 9008902b/A-2808/shared-fix dispositions remain recorded. Human e6264b46 needs known-ticket-only classification and own-file coverage before a qualifying second receipt; no final or retry inference from same-file similarity. Mixed-diff Neovim phase also remains missing. Await lead adoption/classification direction; changed head requires delta review. No Reviewer tests or edits.
 Review evidence: A-2985.
+
+### impl-455 · 2026-10-15T12:43:17.051Z
+
+Coordinator 15241749 classifies A-2984's initial idle timeout as known T-486 and accepts 6ffb9985/A-2984 as first qualifying Linux receipt. Adopted T-481 8d4d104b alone as 17d64313; stable patch-id a4580737f1bfaca10a2b414ac94663db85322857 matches upstream. Per 7dcd124f/2f468079, cite green cover 6a13b9a5 at e1b6a16a (2109/0) instead of duplicate local target. Requesting delta review, then one further droplet gate per the two-receipt rule.
+
+### rev-23 · 2026-10-15T12:43:54.062Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-15-455-10
+commit: 17d643130d3d7fc3b06b20908188f209e69ae5bc
+scope: delta
+
+Delta source clear at 17d643130d3d7fc3b06b20908188f209e69ae5bc; no high/medium finding remains.
+
+Only hub/test/executor-prepare.test.ts changes: the existing flush/read now retries until the executor-lease-released record is actually published after lease removal. Lifetime/cost/snapshot/empty-provider assertions remain unchanged, with the existing eventually deadline. Stable patch ID a4580737f1bfaca10a2b414ac94663db85322857 exactly matches landed T-481 8d4d104b; no rulebook source/assertion or production changes.
+
+Direct Coordinator 7dcd124f and standing 2f468079 accept green cover 6a13b9a5 at dev e1b6a16a (2109/0, includes T-481) plus unchanged patch ID instead of another local targeted run. Direct 15241749 classifies session-stop-races:136 as T-486 initial-idle root-cause family and explicitly accepts 6ffb9985/A-2984 as first Linux receipt: only T-481/T-486 reds with own files green.
+
+C7 unchanged docs refreshed. C1–C6 await the authorized next configured-default droplet verification. Shared-only pick counts as same head under e6264b46/15241749. Green follows the normal path; a different-known-only second red with passing own files can form the gate under the specific rule, with package coverage handled by the recorded mixed-diff supplement if needed. Repeated/unknown/own failure returns to Coordinator. Check actual executor and do not assume default means Linux after a hub fallback.
+
+Retain A-2984 as red plus older A-2746/A-2777/A-2808/shared-fix history; current source A-2965 otherwise applies. No Reviewer tests or edits.
+Review evidence: A-2991.
+
+Criteria: C7 verified.
