@@ -3,7 +3,7 @@ id: T-498
 kind: task
 title: "doctor-isolation test: rm of the other fixture hits ENOTEMPTY while its hub is still live (Linux, under load)"
 state: open
-status: in progress
+status: review
 size: XS
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-302
 branch: t/T-498-doctor-isolation-test-rm-of-the-other
 created: 2026-10-15T14:03:16.446Z
-updated: 2026-10-15T15:39:12.034Z
+updated: 2026-10-15T16:48:36.067Z
 ---
 
 ## Problem
