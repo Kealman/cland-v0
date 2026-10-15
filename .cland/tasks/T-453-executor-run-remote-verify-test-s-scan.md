@@ -3,7 +3,7 @@ id: T-453
 kind: task
 title: executor-run remote-verify test's scan reads a transient spend.json.lock.break entry (ENOENT)
 state: open
-status: planned
+status: in progress
 size: XS
 labels:
   - v0.1.3
@@ -11,10 +11,10 @@ labels:
 assignee: null
 parent: E-482
 blocked_by: []
-topic: null
-branch: null
+topic: topic-291
+branch: t/T-453-executor-run-remote-verify-test-s-scan
 created: 2026-10-15T06:07:18.320Z
-updated: 2026-10-15T09:14:36.695Z
+updated: 2026-10-15T11:52:20.418Z
 ---
 
 ## Summary
@@ -24,3 +24,45 @@ updated: 2026-10-15T09:14:36.695Z
 ## Acceptance criteria
 
 - [ ] C1. The scan tolerates, or excludes by quiescing, the ledger's transient lock entries, and the file passes 5/5 beside a local full run.
+
+## Comments
+
+### impl-453 · 2026-10-15T11:38:56.922Z
+
+Applying the proven T-389 audit boundary: finish live/cache/invalid-executor checks and flush logs, then assert successful fixture hub shutdown before recursively scanning persisted bytes. No token assertions, timing bounds or scan entries are weakened. The existing A-2699 ENOENT receipt and T-389 repair establish this test-only failure pattern; skipping a new race-injection regression that would duplicate the audit implementation. Existing whole-file repetitions exercise the repaired boundary.
+
+### rev-30 · 2026-10-15T11:41:42.102Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-453-source
+commit: aa9ecfac203c6152e6b1fb1ca43e49ce0be7ae73
+scope: full
+
+Source review clear; no high, medium or low findings.
+
+Standards: no findings; follows the existing T-389 executor-safety persisted-audit boundary.
+Spec: hub/test/executor-run.test.ts:44–46 asserts fixture hub shutdown after all live checks and log flush, before scanning persisted bytes. CLI stop waits for process exit, removing the active ledger sweep writer. Original complete local/remote directory scan and all token/call/API assertions remain unchanged; no skipped entries/errors, production changes or widened bounds.
+
+A-2945 records typecheck and loaded whole-file run 1 green (18/18). C1 remains unverified pending five repetition receipts and accepted same-head post-source gate. Direct Coordinator afa03f95 allows at least three loaded of five, with quiet remainder labelled, and no new local tests during cover quiet window. No Reviewer tests or changes.
+
+### impl-453 · 2026-10-15T11:43:03.331Z
+
+Head aa9ecfac pushed, source review clear rev-20261015-453-source. Targeted whole-file loaded repetitions 1–2 each passed 18/18, wall times 86.238s/92.233s beside impl-447's full run 51c6416e. npm run typecheck passed. Configured verify 851aacd5 submitted. Remaining repetitions held because local coord full cover 6a13b9a5 now owns slot; will resume afterward per Coordinator afa03f95, at least one further loaded pass required.
+
+### rev-30 · 2026-10-15T11:52:20.418Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261015-453-cancelled
+commit: aa9ecfac203c6152e6b1fb1ca43e49ce0be7ae73
+scope: evidence
+
+Evidence review not clear: verification incomplete, no new T-453 source finding.
+
+Standards: source review rev-20261015-453-source stands.
+Spec/evidence: 851aacd5/A-2954 at reviewed aa9ecfac was cancelled, exit 143; not accepted gate evidence or a qualifying completed Linux receipt. Repaired executor-run.test.ts:16 audit case passes in 8.081 s (A-2954:1174); all nine top-level executor-run cases print green. No final machine-shard summary; receipt 37/37 is the completed free shard only.
+
+Three outside-task failure lines appear (Claude session signal order/prior-launch and Codex accepted-steer recovery), without final stack summaries due cancellation. No causal/known-ticket classification inferred here. C1 remains unverified; no failed criterion mark for cancellation. Repetitions 1–2 reported green loaded; three remain, at least one more loaded under afa03f95. No new verify before announced restart per bef82ca8. No Reviewer tests or edits.

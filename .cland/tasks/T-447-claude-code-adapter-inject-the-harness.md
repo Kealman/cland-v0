@@ -3,7 +3,7 @@ id: T-447
 kind: task
 title: Clause-turn and inject-confirmation waits time out under load in claude-code-adapter and claude-code-sessions tests (shared fix)
 state: open
-status: review
+status: ready
 size: S
 rank: 2940
 criterion_seq: 2
@@ -17,7 +17,7 @@ blocked_by: []
 topic: topic-279
 branch: t/T-447-claude-code-adapter-inject-the-harness
 created: 2026-10-15T01:04:10.495Z
-updated: 2026-10-15T11:22:20.031Z
+updated: 2026-10-15T11:42:21.860Z
 ---
 
 ## Summary
@@ -28,8 +28,10 @@ updated: 2026-10-15T11:22:20.031Z
 
 - [x] C1. The cause is named, and the file passes 5/5 beside a local full run with its assertions unchanged.
   - done: impl-447 · 2026-10-15T08:16:22.121Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-447-10 · 2026-10-15T11:42:19.108Z · commit ad93ef6cbee2e786af0b002d456703daf1daeb81
 - [x] C2. C2. claude-code-sessions.test.ts:119 (late start/StopFailure, clauseTurnDone) and :251 (initial clause injection) wait on the observed clause-turn and injection state rather than a 15 s wall, and both files pass 5/5 serially beside a local full run.
   - done: impl-447 · 2026-10-15T08:16:24.785Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-447-10 · 2026-10-15T11:42:19.108Z · commit ad93ef6cbee2e786af0b002d456703daf1daeb81
 
 ## Comments
 
@@ -212,3 +214,29 @@ Review evidence: A-2927.
 ### impl-447 · 2026-10-15T11:22:20.031Z
 
 51c6416e submitted configured-default but hub auto-fell back to local at 11:21:32Z (remote budget 4/4 full), already running pid 22361. Coordinator 5e48f05e explicitly directs finish: green normal gate; known-flake-only different tests from A-2919 with Claude files green permits A-2919 Linux + this local second receipt as gate, citing that answer; anything else report. Reviewer informed. No executor manipulation or extra run.
+
+### impl-447 · 2026-10-15T11:41:44.906Z
+
+Accepted exact-head full gate 51c6416e/A-2946 is green at reviewed ad93ef6c: 2107/2107 pass, zero fail/skip/cancel, includes full Neovim phase (108.82s). Actual executor local darwin arm64 after automatic remote-budget fallback; Coordinator 5e48f05e explicitly accepts green as normal gate. Positive Linux own-file evidence retained in A-2884 and A-2919; earlier red receipts remain recorded. No further tests/source changes; awaiting Reviewer final verdict, retaining claim through merge. Cover-quiet now applies.
+
+### rev-23 · 2026-10-15T11:42:19.108Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-15-447-10
+commit: ad93ef6cbee2e786af0b002d456703daf1daeb81
+scope: evidence
+
+Final evidence clear at unchanged ad93ef6cbee2e786af0b002d456703daf1daeb81; no high/medium finding remains in T-447.
+
+C1/C2: source reviews A-2763/A-2865/A-2889/A-2927 establish the opt-in fake receipt barrier: hook/mod posts finish before fast-turn advancement, replacement-launch state stays observable, and pre-assert waits require the deliberate confirmation-timeout state. Existing assertions and timeout bounds remain; production/default fake behavior is unchanged. Cause/red→green is recorded in A-2752/A-2766. Audited A-2766's serial five adapter files (9/9 each) and five sessions files (12/12 each), zero skips/failures. Loaded/quiet provenance is explicit; Coordinator 10f93197 accepted the labelled quiet remainder, so do not claim every repetition was fully loaded. Subsequent head changes preserve these implementation files apart from reviewed shared T-461 test additions.
+
+Accepted exact-head gate 51c6416e/A-2946 is genuinely local darwin arm64 after hub auto-fallback, not Linux. Direct Coordinator 5e48f05e explicitly allows it to finish and says green is the normal gate. It passes typecheck and full hub + Neovim: 2107/2107, zero failures/skips/cancellations, exit 0; Neovim 387/387. Branch tip matches reviewed head. This is accepted under that specific ruling, not a claim of two green Linux runs.
+
+Preserve Linux history: ae5bce63/A-2789 failed T-461; 96f8401a/A-2813 failed T-461/T-453 plus old manifest budget; 16ae8f10/A-2884 had all 1717 assertions pass but red stale duration budget; 463ee26b/A-2919 failed only Coordinator-classified T-467/T-486 outside cases while own Claude files passed. Direct b6544a6c classified those cases; later reviewed dev baseline/shared fixes and exact T-487 pick address the required integration/date scenarios. All prior overall-red receipts remain red; positive own-file Linux evidence is retained separately.
+
+C1/C2 verified (all) at this final head under the recorded evidence rulings. No Reviewer tests, edits or performance claims.
+Review evidence: A-2948.
+
+Criteria: C1 verified, C2 verified.

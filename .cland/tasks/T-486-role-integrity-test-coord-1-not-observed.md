@@ -3,7 +3,7 @@ id: T-486
 kind: task
 title: "role-integrity test: coord-1 not observed idle within 15 s on a loaded Linux droplet"
 state: open
-status: review
+status: in progress
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-289
 branch: t/T-486-role-integrity-test-coord-1-not-observed
 created: 2026-10-15T10:27:52.273Z
-updated: 2026-10-15T11:16:34.054Z
+updated: 2026-10-15T11:56:55.949Z
 ---
 
 ## Problem
@@ -32,7 +32,8 @@ It looks like the same family as the other idle-observer timeouts under load in 
 - [x] C1. The first idle observation of coord-1 in role-integrity.test.ts:84 no longer races launch under load. Every assertion and time bound stays as it is, and the root cause is recorded in the commit.
   - done: impl-486 · 2026-10-15T11:14:55.539Z
   - verified: rev-30 [reviewer] · run rev-20261015-486-source · 2026-10-15T11:16:34.054Z · commit 47c3b8cf05691607e98823ce8d04698133005c94
-- [ ] C2. role-integrity.test.ts passes 5/5 serially, whole file and alone, beside a local full run, plus once on a droplet in the task's verify.
+- [x] C2. role-integrity.test.ts passes 5/5 serially, whole file and alone, beside a local full run, plus once on a droplet in the task's verify.
+  - done: impl-486 · 2026-10-15T11:56:20.939Z
 
 ## Comments
 
@@ -71,3 +72,21 @@ Fake completion-before-response probe emits real idle/completion before admissio
 C2 remains unverified pending same-head post-source Linux droplet verification. No Reviewer tests or changes.
 
 Criteria: C1 verified.
+
+### rev-30 · 2026-10-15T11:56:55.949Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261015-486-linux-first
+commit: 47c3b8cf05691607e98823ce8d04698133005c94
+scope: evidence
+
+Evidence review not clear pending gate disposition.
+
+Medium — hub/test/suite-remote-budget.test.ts:131: sole Linux failure `candidate result: not within 20000 ms` while awaiting completed remote fixture jobs in the three-callers/human-slot case (A-2956:3854–3859). This is outside the diff. Tracker search found no exact known-ticket match; T-435 names a different budget-notice assertion. Treat as unclassified under e6264b46 until lead disposition; no Codex product cause inferred.
+
+Standards: source review rev-20261015-486-source stands; no new source findings, C1 source mark retained.
+Spec/evidence: role-integrity 7/7 Linux green, forced coordinator regression 2.706 s; Codex adapter 35/35 green. A-2925 supplies five serial loaded role-integrity passes, 7/7 each. C2 remains unverified pending accepted gate; no failed implementation criterion mark for this unrelated timeout.
+
+f45f0ae5/A-2956 matches reviewed/current 47c3b8cf05691607e98823ce8d04698133005c94: exit 1, 1716 pass/1 fail/3 platform skips, Linux x64 c-8, typecheck green, Neovim smoke not reached. Reported Bugs/S to lead; new verifies held until restart per bef82ca8, and unknown-case classification is required before automatic known-flake retry. No Reviewer tests or edits.

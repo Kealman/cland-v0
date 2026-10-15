@@ -3,7 +3,7 @@ id: T-449
 kind: task
 title: session-stop-races Codex forced-stop test reads probe.json before it is written (ENOENT under load)
 state: open
-status: review
+status: in progress
 size: XS
 criterion_seq: 1
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-290
 branch: t/T-449-session-stop-races-codex-forced-stop
 created: 2026-10-15T01:25:43.927Z
-updated: 2026-10-15T11:13:01.950Z
+updated: 2026-10-15T11:51:03.708Z
 ---
 
 ## Summary
@@ -52,3 +52,25 @@ Standards: no findings against repo test guidance or baseline smells; uses exist
 Spec: hub/test/session-stop-races.test.ts:147–148 now waits for readable/parseable probe JSON before use, handling absence or an in-progress write. Every assertion at :149–157 stays outside the retry, including real identity, descendant exit, ps code, stop/follow-up success, parent death, stopped state and signal-skipped evidence. Fake probe and lifecycle staging unchanged; both manual/post-merge variants covered.
 
 A-2920 establishes 5/5 serial loaded file passes, each 14/14 with zero failures/skips/cancellations, with impl-393 local full-run holder receipts before each file. C1 left unverified during source pass; final review awaits same-head post-source cland verify. No Reviewer tests or edits.
+
+### impl-449 · 2026-10-15T11:50:09.373Z
+
+First post-review Linux receipt A-2950, run c63e3ded at 5913f0fa: host/remote typecheck passed; 1716 pass, 1 fail, 3 skip. All 14 session-stop-races cases passed. Only failure is known T-465 at codex-adapter.test.ts:272, rateLimitsAt .402Z vs .217Z; all other compared values equal. Next step under E-482 gate rule is same-head droplet retry. Waiting for announced post-cover restart/budget restoration rather than accepting a local fallback.
+
+### rev-30 · 2026-10-15T11:51:03.708Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261015-449-linux-first
+commit: 5913f0fa6f02760dc60ff2c5e7226a827b1398bb
+scope: evidence
+
+Evidence review not clear pending accepted gate.
+
+Medium — hub/test/codex-adapter.test.ts:272: A-2950 compares usage event and later snapshot; only rateLimitsAt differs (.402Z vs .217Z), failing `token and rate-limit notifications publish usage`. Direct T-465 description confirms the exact known race. This is outside T-449's changed file; no T-449 source defect established.
+
+Standards: source review rev-20261015-449-source stands; no new findings.
+Spec/evidence: session-stop-races.test.ts passes all 14 Linux cases, repaired manual/post-merge cases 3.630 s and 4.776 s. A-2920 supplies 5/5 loaded whole-file passes. C1 remains unverified pending accepted gate; no failed criterion mark for the unrelated T-465 defect.
+
+Same-head c63e3ded/A-2950 exits 1: 1716 pass, 1 fail, 3 platform skips, 1720 total. Linux x64 c-8, Node v24.21.0, Neovim v0.12.5; typecheck green. Neovim smoke not reached. e6264b46 permits one same-head default-droplet retry; new submission is held until announced restart per Coordinator bef82ca8. No Reviewer tests or edits.

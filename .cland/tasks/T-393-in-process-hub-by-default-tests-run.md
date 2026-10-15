@@ -3,7 +3,7 @@ id: T-393
 kind: task
 title: "In-process hub by default: tests run against a hub served in the test process over its real socket, a spawned hub stays only for lifecycle tests, and the top 20 files move first"
 state: open
-status: review
+status: in progress
 size: L
 criterion_seq: 9
 labels:
@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-273
 branch: t/T-393-in-process-hub-by-default-tests-run
 created: 2026-10-14T12:28:19.095Z
-updated: 2026-10-15T11:24:53.221Z
+updated: 2026-10-15T11:51:11.324Z
 ---
 
 ## Summary
@@ -239,3 +239,19 @@ Submit configured-default no-mode verify at this exact head under human e6264b46
 Review evidence: A-2933.
 
 Criteria: C4 verified, C7 verified, C8 verified, C9 verified.
+
+### rev-23 · 2026-10-15T11:51:11.324Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-15-393-8
+commit: 36ecea1f6f97445efc149b47b8ba2a7e89b7c89b
+scope: evidence
+
+Medium — hub/test/account-limited.test.ts:221: after reset becomes visible, account-polled journal count is 1 rather than expected previous-count + 1 = 2 (A-2951:3880–3895). The assertion body/file is unchanged from T-393 base. This is a new exact signature relative to the reviewed T-451 backoff-delay case; do not infer known-ticket coverage or product cause from the shared file name. Bugs/S find aside for lead classification.
+
+Configured Linux f322ed1f/A-2951 at 36ecea1f6f97445efc149b47b8ba2a7e89b7c89b selected full but stopped before Neovim: 1730 hub tests, 1726 pass, one fail, three platform skips, exit 1. Own changed hub tests pass; targeted T-487 evidence remains positive but is not a completed Neovim phase. Suite 1230.01s, c-8 lon1 lifetime 1325s, cost $0.0920. Branch remains exact reviewed head.
+
+C1–C3 and final amended C5/C6 remain unverified; C4/C7/C8/C9 source marks stay current. Preserve ce86de7b/A-2838, fc85d6ae/A-2886 and local 6b2bda6d/A-2930 with their already recorded shared-fix rulings. New human pair rule e6264b46 requires known-ticket failures and own-file coverage, not an unclassified assertion. Coordinator bef82ca8 also prohibits new verify submissions during queue drain until hub restart; cover-quiet local-test restrictions still apply. Await lead diagnosis/disposition before further gate work. No Reviewer tests or edits.
+Review evidence: A-2953.
