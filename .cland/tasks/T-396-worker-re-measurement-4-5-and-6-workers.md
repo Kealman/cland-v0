@@ -3,7 +3,7 @@ id: T-396
 kind: task
 title: "Worker re-measurement: 4, 5 and 6 workers locally and 6 and 8 on a c-16, after the inspection diet and the in-process hub, and the defaults set from the numbers"
 state: open
-status: review
+status: ready
 size: XS
 criterion_seq: 5
 labels:
@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-307
 branch: t/T-396-worker-re-measurement-4-5-and-6-workers
 created: 2026-10-14T12:28:19.638Z
-updated: 2026-10-15T17:54:34.415Z
+updated: 2026-10-15T18:24:31.736Z
 ---
 
 ## Summary
@@ -38,11 +38,21 @@ The machine shard runs at four workers on a Mac with four performance and six ef
 
 ## Acceptance criteria
 
-- [ ] C1. `[verification] workers` and `[verification.droplet] workers` set the machine shard's worker count, default 4, proven by a test reading a fixture config.
-- [ ] C2. Measured (Coordinator amendment 2026-10-15 16:45Z): pre-merge, fixtures prove the --workers/--size overrides are recorded and shown in the result header and that the measurement procedure is written on the item; the real table (workers, executor, wall, hub phase, peak load, failures that pass alone, droplet cost) for local 4/5/6 once each (repeat only within a 10% margin) and c-16 at 4/6/8 is run by the Coordinator after merge at E-387's stage-2 close and posted on the item.
-- [ ] C3. Measured (Coordinator amendment 2026-10-15 16:45Z): defaults stay 4 at merge; after the stage-2 close measurements, defaults follow the rule above (change only for an error-free count at least 10% faster across runs) in a small follow-up config commit, and the item names the deciding numbers.
-- [ ] C4. Droplet measurement runs stay within the day's cap ($10 since D33 and ask 35663eef) with the size price reserved, and create, destroy and cost are posted with the cland tag listing empty afterwards; judged at E-387's stage-2 close.
-- [ ] C5. `hub/README.md` (Tests) documents the worker settings and the measured trade-off.
+- [x] C1. `[verification] workers` and `[verification.droplet] workers` set the machine shard's worker count, default 4, proven by a test reading a fixture config.
+  - verified: rev-30 [reviewer] · run rev-20261015-396-final · 2026-10-15T18:22:22.668Z · commit 3da23f155e8b0bec3ea65dc46dc4ff2e7fc8b4cd
+  - done: impl-396 · 2026-10-15T18:23:35.944Z
+- [x] C2. Measured (Coordinator amendment 2026-10-15 16:45Z): pre-merge, fixtures prove the --workers/--size overrides are recorded and shown in the result header and that the measurement procedure is written on the item; the real table (workers, executor, wall, hub phase, peak load, failures that pass alone, droplet cost) for local 4/5/6 once each (repeat only within a 10% margin) and c-16 at 4/6/8 is run by the Coordinator after merge at E-387's stage-2 close and posted on the item.
+  - verified: rev-30 [reviewer] · run rev-20261015-396-final · 2026-10-15T18:22:22.668Z · commit 3da23f155e8b0bec3ea65dc46dc4ff2e7fc8b4cd
+  - done: impl-396 · 2026-10-15T18:23:41.721Z
+- [x] C3. Measured (Coordinator amendment 2026-10-15 16:45Z): defaults stay 4 at merge; after the stage-2 close measurements, defaults follow the rule above (change only for an error-free count at least 10% faster across runs) in a small follow-up config commit, and the item names the deciding numbers.
+  - verified: rev-30 [reviewer] · run rev-20261015-396-final · 2026-10-15T18:22:22.668Z · commit 3da23f155e8b0bec3ea65dc46dc4ff2e7fc8b4cd
+  - done: impl-396 · 2026-10-15T18:23:51.943Z
+- [x] C4. Droplet measurement runs stay within the day's cap ($10 since D33 and ask 35663eef) with the size price reserved, and create, destroy and cost are posted with the cland tag listing empty afterwards; judged at E-387's stage-2 close.
+  - verified: rev-30 [reviewer] · run rev-20261015-396-final · 2026-10-15T18:22:22.668Z · commit 3da23f155e8b0bec3ea65dc46dc4ff2e7fc8b4cd
+  - done: impl-396 · 2026-10-15T18:23:56.997Z
+- [x] C5. `hub/README.md` (Tests) documents the worker settings and the measured trade-off.
+  - verified: rev-30 [reviewer] · run rev-20261015-396-final · 2026-10-15T18:22:22.668Z · commit 3da23f155e8b0bec3ea65dc46dc4ff2e7fc8b4cd
+  - done: impl-396 · 2026-10-15T18:24:25.403Z
 
 ## Comments
 
@@ -137,3 +147,28 @@ Delta source review clear T-396 at 3da23f155e8b0bec3ea65dc46dc4ff2e7fc8b4cd, par
 Standards: no findings. Spec: no findings. Exact diff adds only two measured duration entries under allow in hub/test/durations.json, matching Coordinator-posted d5442c61: follows restart 5.362s and role-clause reconnect 4.61s, each with lifecycle reason and A-3210 provenance. JSON parses; existing allowances/values are unchanged. No task-source changes, assertion/bound changes or dev merge. Task file blob is unchanged from the prior reviewed head.
 A-3184 remains accepted first receipt. A-3213 is a timeout with no completed changed-case evidence and cannot count as another receipt. Coordinator c755c15c classifies that hang as T-508 and permits one next verify after the shared pick; T-508 is not yet merged. If the same hang recurs, stop resubmitting and wait for its fix. C1–C5 and actual stage-2 measurements remain pending the accepted gate.
 Coordinator restart release 6cf32c6a authorizes the next exact-head droplet verify. This is source clearance, not final gate. Shared test-only picks need no additional local pass. No Reviewer tests, edits or provider calls.
+
+### impl-396 · 2026-10-15T18:21:27.182Z
+
+Accepted same-head green Linux receipt: 6a339a80/A-3248 at reviewed 3da23f155e8b0bec3ea65dc46dc4ff2e7fc8b4cd. Full typecheck/hub/Neovim run exit 0: 2181 tests, 2175 pass, 0 fail, 6 platform skips. Real droplet c-8 lon1, Linux x64, Node24.21.0/Neovim0.12.5, lifetime1526s, cost$0.1059; package wall1424.67s, peak load11.59. All four new worker-policy cases and both changed runner cases completed green. Working tree clean; task source is unchanged since initial source review, with only Coordinator-shared duration picks. Request final same-head settlement against amended pre-merge criteria. Actual c-16/local worker measurements/default tuning remain the Coordinator's stage-2 close obligation, with committed procedure/A-3159.
+
+### rev-30 · 2026-10-15T18:22:22.668Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-396-final
+commit: 3da23f155e8b0bec3ea65dc46dc4ff2e7fc8b4cd
+scope: evidence
+
+Final pre-merge evidence review T-396 clear at unchanged source-reviewed 3da23f155e8b0bec3ea65dc46dc4ff2e7fc8b4cd. No high, medium or low findings remain.
+A-3248 / 6a339a80-2ecb-41f3-8fec-02935f758697 completes exit 0 on Linux c-8: typecheck, hub free/machine and full Neovim; 2175 pass / 0 fail / 0 cancelled / 6 platform skips. All four worker-policy fixtures complete (:5694–5697), including configuration, persistence/header/cache/remote delivery, selected-size price reservation and fallback. Changed runner cases also complete. Six skips are the three hub macOS-specific sandbox/inhibition cases and three Neovim sandbox-exec cases, not worker-policy omissions. No hard budget failure.
+C1 verified: fixture config controls hub and Neovim machine counts; free stays one; default four and local/droplet/explicit override precedence proven.
+C2 pre-merge portion verified under Coordinator 15:39Z item decision and 4a4bdff1 amendment: overrides are recorded durably, delivered, shown in status/result header, and a written measurement procedure is committed and posted (A-3159). The real local4/5/6 and c-16 4/6/8 comparison table is NOT supplied by this ordinary c-8 verification and remains the Coordinator's E-387 stage-2 close work.
+C3 pre-merge portion verified: defaults remain four; this run reports four machine workers and one free worker. No performance tuning has been inferred. Later defaults require the documented failure-free >=10% improvement rule and follow-up config commit.
+C4 authorized pre-merge fixture/procedure portion verified: selected offered size price is reserved, cap and unoffered-size refusals are exercised with the fake provider, and procedure requires daily-cap accounting, create/destroy/cost and final empty tag listing. The actual measurement receipts under the $10 day cap remain due at stage-2 close, as the amended criterion states; no real c-16 measurement or empty provider-list proof is invented here.
+C5 documentation portion verified: README Tests documents both settings, override precedence, four-worker baseline, existing load trade-off and procedure link; it explicitly defers measured deciding numbers until stage close. The measured trade-off portion is deferred by the recorded 15:39Z Coordinator decision.
+All C1–C5 marks are for the Coordinator-authorized PRE-MERGE scope, not a claim that the deferred real measurements are complete. Committed procedure still shows those rows pending and specifies one head, --fresh, quiet measurement windows, no sharding, comparable repeats, accounting and configuration follow-up. This staged scope follows the Coordinator's explicit fixture gate and 4a4bdff1 direction to verify pre-merge parts.
+A-3184 remains accepted first known-red receipt. A-3213 remains an excluded incomplete timeout; A-3221 corrects its attribution to likely rather than proven T-508. This final green run supplies the outstanding gate without relying on that timeout. Source is unchanged except previously reviewed shared duration picks. No Reviewer tests, edits, merges or provider calls.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.

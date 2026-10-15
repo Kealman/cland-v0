@@ -3,7 +3,7 @@ id: T-503
 kind: task
 title: "merge-recovery test: the task worktree still exists right after a retried merge reports closed (Linux)"
 state: open
-status: review
+status: ready
 size: XS
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-310
 branch: t/T-503-merge-recovery-test-the-task-worktree
 created: 2026-10-15T15:03:40.855Z
-updated: 2026-10-15T17:54:20.075Z
+updated: 2026-10-15T18:27:35.738Z
 ---
 
 ## Problem
@@ -27,8 +27,11 @@ updated: 2026-10-15T17:54:20.075Z
   - done: impl-503 · 2026-10-15T16:51:31.346Z
   - verified: rev-31 [reviewer] · run rev-20261015-503-source · 2026-10-15T16:52:15.111Z · commit 6f26ba6ff7dc8934614cb142bffcd10212f37735
   - verified: rev-31 [reviewer] · run rev-20261015-503-source-2 · 2026-10-15T17:54:20.075Z · commit 4257b32b897147f86c873e5be9630e96a6050427
+  - verified: rev-31 [reviewer] · run rev-20261015-503-merge-delta · 2026-10-15T18:27:30.330Z · commit d571add68597df32190df53042c18c6e98b0d9c6
 - [x] C2. merge-recovery.test.ts passes 5/5 serially, whole file and alone on the Mac, plus once on a droplet in the task's verify.
   - done: impl-503 · 2026-10-15T17:39:48.258Z
+  - verified: rev-31 [reviewer] · run rev-20261015-503-final · 2026-10-15T18:24:27.899Z · commit 4257b32b897147f86c873e5be9630e96a6050427
+  - verified: rev-31 [reviewer] · run rev-20261015-503-merge-delta · 2026-10-15T18:27:30.331Z · commit d571add68597df32190df53042c18c6e98b0d9c6
 
 ## Comments
 
@@ -108,3 +111,54 @@ Coordinator ade96b14-0680-4659-bfab-53027b7da113 was read in topic history: A-32
 Standards: 0 findings. Spec: 0 findings. No Reviewer tests or edits.
 
 Criteria: C1 verified.
+
+### impl-503 · 2026-10-15T18:23:46.324Z
+
+Final same-head droplet verification 2f87c295 at reviewed 4257b32b is green: exit0, 1796 tests (1793 pass,3 skip,0 fail), four-worker Linux plus Neovim smoke. A-3250 is the durable log; lifetime1683s cost$0.1169. C2 evidence combines unchanged task test Mac5/5 A-3189 and Linux receipts A-3210 plus green A-3250 after exact shared manifest picks. No source or head changes after delta review.
+
+### rev-31 · 2026-10-15T18:24:27.899Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261015-503-final
+commit: 4257b32b897147f86c873e5be9630e96a6050427
+scope: evidence
+
+Final review clear at unchanged 4257b32b897147f86c873e5be9630e96a6050427. No unresolved findings.
+
+## Standards
+Source/delta review rev-20261015-503-source-2 stands. Only exact approved duration-manifest picks separate this head from the original reviewed test patch; all task assertions remain unchanged.
+
+## Spec
+C1 source mark retained: bounded observation of worktree removal respects deferred cleanup and retains the original false assertion plus all merge recovery checks.
+C2 verified: A-3189 contains five labelled loaded serial Mac whole-file passes, 19/19 each (95/95 total), with admission guards. A-3250 supplies the complete merge-recovery file green on Linux c-8 under four-worker load; changed retry case passes in 8.076 s (line 1676), with no task case skipped.
+
+Current exact-head gate 2f87c295-8718-4c1f-8164-bb400767ab02 / A-3250 is exit 0: 1793 pass / 0 fail / 3 platform skips / 0 cancelled; host/remote typecheck and hub plus Neovim smoke complete, smoke 12/12. The skips are macOS-only sandbox-exec and sleep-inhibitor cases. Existing duration notices do not fail this receipt.
+A-3210 remains historical first-receipt evidence; the final gate now has an ordinary green exact-head result and needs no two-red exception. Coordinator ade96b14's required follow-up run is satisfied. No Reviewer tests or edits.
+Standards: 0 findings. Spec: 0 findings; C1 retained, C2 verified.
+
+Criteria: C2 verified.
+
+### rev-31 · 2026-10-15T18:27:30.331Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261015-503-merge-delta
+commit: d571add68597df32190df53042c18c6e98b0d9c6
+scope: delta
+
+Merge delta review clear at d571add68597df32190df53042c18c6e98b0d9c6. No high, medium or low findings.
+
+## Standards
+Only merge conflict was durations.json. Resolved manifest is byte-identical to fetched origin/dev fa00e57a; there are no branch-only allowance entries to add. JSON parses with exactly version/source/budget/files/tests/allow root keys and 214 entries inside allow. No allowance escaped to the root. Diff check passes.
+
+## Spec
+The complete task diff against dev is still the original two-line observed-removal wait; merge-recovery.test.ts is byte-identical to final-reviewed 4257b32b. C1's cleanup observation, original removal assertion and all other assertions remain unchanged.
+C2 evidence carries forward from A-3189 (five loaded serial Mac whole-file passes, 19/19 each) and green A-3250 at prior reviewed 4257b32b (Linux 1793 pass / 0 fail / 3 platform skips, hub plus Neovim smoke).
+
+Coordinator a5e5d54b-b154-493e-8453-ad972bd97f43 was read directly: merge dev, resolve manifest as exact dev-plus-own union, validate JSON placement, then delta review with no test run needed for that resolution. This verdict refreshes C1/C2 at the new head under that explicit decision; A-3250 remains prior-head evidence, not a new run at d571add6. No Reviewer tests or edits.
+Standards: 0 findings. Spec: 0 findings; all criteria refreshed.
+
+Criteria: C1 verified, C2 verified.
