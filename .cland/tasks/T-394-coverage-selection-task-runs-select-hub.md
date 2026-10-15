@@ -3,7 +3,7 @@ id: T-394
 kind: task
 title: "Coverage selection: task runs select hub tests by a function-level V8 coverage map from integrated dev runs, with full fallback on shared or unknown paths"
 state: open
-status: review
+status: in progress
 size: L
 criterion_seq: 8
 labels:
@@ -19,7 +19,7 @@ blocked_by:
 topic: topic-306
 branch: t/T-394-coverage-selection-task-runs-select-hub
 created: 2026-10-14T12:28:19.272Z
-updated: 2026-10-15T16:54:02.463Z
+updated: 2026-10-15T17:19:05.031Z
 ---
 
 ## Summary
@@ -58,8 +58,8 @@ It falls back to today's rules, naming the reason, for protocol, contract, packa
   - verified: rev-30 [reviewer] · run rev-20261015-394-source · 2026-10-15T16:54:02.463Z · commit f0394340be84dc60bff576602d0585a7d35b2946
 - [x] C2. An integrated `dev` full run posts a function-level coverage map artifact naming its head and tree, and spokes, daemons, the CLI and fakes all contribute to it, proven on a fixture project.
   - done: impl-394 · 2026-10-15T16:48:01.117Z
-- [x] C3. A task diff touching one function in `hub/src/hub/` selects its changed tests, the covering test files and the smoke baselines, and the report names the deciding functions.
-  - done: impl-394 · 2026-10-15T16:48:02.714Z
+- [ ] C3. A task diff touching one function in `hub/src/hub/` selects its changed tests, the covering test files and the smoke baselines, and the report names the deciding functions.
+  - failed: rev-30 [reviewer] · 2026-10-15T17:19:05.031Z · note selectPackageSuite omits its supplied env at parseConfig, so valid instance config silently widens to full; executor-run mode regression in A-3204.
 - [x] C4. Protocol, contract, package, harness, fixture and runner changes, unknown files, stale maps and a missing map fall back to the package rules with their reason, each proven by a test.
   - done: impl-394 · 2026-10-15T16:48:04.300Z
 - [x] C5. Replay (Coordinator amendment 2026-10-15 16:44Z): pre-merge, the replay tool runs on fixture histories and reports per-merge selection, misses and selected share, falling back explicitly where a historical map is missing; the real last-40 replay against the C1 bar is judged after merge at E-387's stage-2 close, from the first integrated dev map, and its table is posted on the item.
@@ -107,3 +107,20 @@ Criteria: C1 verified from recorded human answer 15:36:22Z before first implemen
 Source clear permits the requested exact-head no-mode verification. No final gate claim.
 
 Criteria: C1 verified, C8 verified.
+
+### rev-30 · 2026-10-15T17:19:05.031Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261015-394-linux-first
+commit: f0394340be84dc60bff576602d0585a7d35b2946
+scope: evidence
+
+T-394 post-source evidence review not clear at f0394340be84dc60bff576602d0585a7d35b2946. A-3204 / 8970a57f: Linux c-8, exit 1, 1804 pass / 2 functional failures / 3 skips, plus two hard duration-budget failures; Neovim not reached.
+Standards — medium: hub/src/suite-selection.ts:139 omits the supplied owning env when calling parseConfig. selectPackageSuite(cwd, requested, env) uses that env for Git but parseConfig defaults back to process.env. An instance config valid under CLAND_TEST_EXECUTOR_MARGIN_MS is rejected and silently widened to full; A-3204:4077–4118 shows executor-run.test.ts:40 expected hub-only but gets full with lifetime-validation error. Preserve the existing instance-env seam, and cover this call through selectPackageSuite. C3 fails for this selection regression.
+Spec/runtime — medium: hub/test/durations.json (allow entries for hub/test/suite-coverage.test.ts:14): the new real CLI/daemon/spoke/fake coverage fixture passes functionally but takes 6.611s and is absent from allow (A-3204:5867), so the task's own added fixture makes full verification fail. Record its measured lifecycle allowance using the existing policy, preserving assertions and bounds.
+Aside for lead, Bugs / S: hub/test/suite-close.test.ts:82 sees one active lease (watchdogAlive=true) after successful two-shard result, settled ledger and empty provider listing; expected [] (A-3204:4122–4149). No exact existing signature found. This assertion is untouched; root cause not established. Please classify/file separately, rather than treating it as an accepted known flake without evidence.
+Known shared budget: rule-sessions stopped-process/live-delivery case takes 5.592s; Coordinator-posted 051db745 is the approved shared allowance to take at the next head change. Source clear previously missed the config env handoff; this runtime result supersedes it. C1/C8 prior source facts stand; C2–C7 not finally verified. Requester agrees to fix own env regression, add selector coverage and measured allowance, then request fresh source review. No unchanged retry. Coordinator bdda2243's restart/submission hold remains in force. No Reviewer tests, edits or provider calls.
+
+Criteria: C3 failed (selectPackageSuite omits its supplied env at parseConfig, so valid instance config silently widens to full; executor-run mode regression in A-3204.).

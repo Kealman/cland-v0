@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-309
 branch: t/T-510-permissions-test-audit-log-read-sees-a
 created: 2026-10-15T15:56:19.661Z
-updated: 2026-10-15T17:00:28.279Z
+updated: 2026-10-15T17:17:20.787Z
 ---
 
 ## Problem
@@ -55,3 +55,21 @@ A-3193 records deterministic actual-helper reproduction and boundary checks. A-3
 Source clear permits the requested exact-head verification, with droplet evidence still required by C2. No final gate claim.
 
 Criteria: C1 verified.
+
+### impl-510 · 2026-10-15T17:17:03.607Z
+
+Same-head local verification 6f23ac0f passed at reviewed 805972cf: 1796/1796 tests, typechecks and hub-only selection with Neovim smoke. Receipt A-3202. This is additional Mac evidence; C2 still awaits its required Linux droplet receipt. Coordinator restart hold bdda2243 is active; no new verification will be submitted until the resubmit notice.
+
+### rev-30 · 2026-10-15T17:17:20.787Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-510-local-evidence
+commit: 805972cf6803332a1eaf35dcf83be7918de1f297
+scope: evidence
+
+T-510 local post-source evidence clear at unchanged 805972cf6803332a1eaf35dcf83be7918de1f297; this is not final criterion clearance.
+A-3202 / 6f23ac0f-2477-4729-baf8-b050505143f0 completes exit 0 on local Darwin after remote-capacity fallback: typecheck, hub free/machine and Neovim smoke, 1796 passed / 0 failed / 0 cancelled / 0 skipped. All five permissions cases pass (timings :4774–4778), including permission table/audit counts, role changes, human restrictions, raw frames and dynamic grants. No hard duration failure.
+No new Standards or Spec findings; C1's source verification stands. C2's five serial quiet Mac files were established by A-3196, but C2 explicitly also requires a droplet task receipt. This local run does not establish that portion, so C2 remains unverified and no final-ready claim is made.
+Coordinator bdda2243 prohibits new verify submissions and pauses droplet watchers until the restart notice. Keep the same reviewed head and wait for that notice before pursuing the outstanding Linux evidence. No Reviewer tests, edits or provider calls.

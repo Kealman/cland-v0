@@ -3,7 +3,7 @@ id: T-506
 kind: task
 title: "heartbeat test: a transition observed during the test is aged from the fixture's old updated date (Linux)"
 state: open
-status: review
+status: ready
 size: XS
 criterion_seq: 2
 labels:
@@ -15,7 +15,7 @@ regression_of: T-454
 topic: topic-304
 branch: t/T-506-heartbeat-test-a-transition-observed
 created: 2026-10-15T15:16:16.009Z
-updated: 2026-10-15T17:11:46.839Z
+updated: 2026-10-15T17:37:08.188Z
 ---
 
 ## Problem
@@ -29,8 +29,10 @@ updated: 2026-10-15T17:11:46.839Z
   - verified: rev-30 [reviewer] · run rev-20261015-506-source · 2026-10-15T15:34:03.268Z · commit 704b85f32b03632eff127bad6d9f229a67ec4215
   - verified: rev-30 [reviewer] · run rev-20261015-506-delta · 2026-10-15T16:20:33.779Z · commit edc3cda4d526922a3d6d870501d174bcbd39d223
   - verified: rev-30 [reviewer] · run rev-20261015-506-delta-2 · 2026-10-15T17:11:46.839Z · commit 4f82f20892c5d2841f38e71336d6c8b1adc5d9f7
+  - verified: rev-30 [reviewer] · run rev-20261015-506-final · 2026-10-15T17:37:05.370Z · commit 4f82f20892c5d2841f38e71336d6c8b1adc5d9f7
 - [x] C2. heartbeat.test.ts passes 5/5 serially, whole file and alone on the Mac, plus once on a droplet in the task's verify.
   - done: impl-506 · 2026-10-15T17:11:13.438Z
+  - verified: rev-30 [reviewer] · run rev-20261015-506-final · 2026-10-15T17:37:05.370Z · commit 4f82f20892c5d2841f38e71336d6c8b1adc5d9f7
 
 ## Comments
 
@@ -128,3 +130,24 @@ Standards: no findings. Spec: no findings. Exact diff is only the four measured 
 A-3198's changed case passes Linux; its unrelated lost-shard assertion is exact T-502 and digest duration has the approved shared allowance. This is first known-red evidence, not final gate. Five-case Mac evidence remains accepted under cea92d23, including the explicitly retained T-508 red/cancelled attempt. C2 stays unverified pending the second acceptable task receipt. Source clearance permits that next exact-head verification; no extra local test-only-pick run is needed under standing shared-fix policy. No Reviewer tests or edits.
 
 Criteria: C1 verified.
+
+### impl-506 · 2026-10-15T17:36:47.528Z
+
+Second Linux droplet verify e9c53d6c at exact source-reviewed 4f82f208 is green: 1781 pass, 0 fail, 3 skipped, includes Neovim smoke. A-3208 is the durable receipt. C2 done evidence is complete: five fresh Mac whole-file attempts accepted case-level (A-3161/A-3164), plus Linux changed-case passes in A-3198 and green suite A-3208. Awaiting Reviewer final gate; claim retained through merge.
+
+### rev-30 · 2026-10-15T17:37:05.370Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-506-final
+commit: 4f82f20892c5d2841f38e71336d6c8b1adc5d9f7
+scope: evidence
+
+Final evidence review T-506 clear at unchanged 4f82f20892c5d2841f38e71336d6c8b1adc5d9f7. No high, medium or low findings remain; source/delta verdicts stand.
+A-3208 / e9c53d6c-c6df-4b19-b6ff-7c9dd340c012 is exact-head Linux c-8 green, exit 0: typecheck, hub free/machine and Neovim smoke complete; 1781 pass / 0 fail / 0 cancelled / 3 platform skips. All nine heartbeat cases pass (:4466–4474); changed old-updated-date transition passes in 1.117s (:4474). No hard duration budget failure.
+C1 reverified from prior source/delta: the controlled clock is shared by observed transitions and heartbeat aging; old fixture dates cannot mature newly observed transitions. Original stale=0/stale=2 assertions, old-date checks and bounds remain. Only approved shared duration allowances changed after the original heartbeat source.
+C2 verified under explicit Coordinator case-level exception cea92d23-c837-4136-af00-5adb31728279, already recorded in A-3164. A-3161 contains five fresh serial whole-file Mac attempts with changed case 5/5. Four whole files pass 9/9; attempt 2 retains its unrelated T-508 ENOTEMPTY teardown failure and authorized termination/cancelled result. Later attempts were labelled loaded, not alone/quiet; no false claim of five green whole files is made. The Coordinator explicitly accepted that evidence for this criterion. A-3208 supplies the required droplet whole-file pass and final green gate.
+First Linux A-3198 remains recorded red (T-502 plus digest budget); the approved 051db745-only delta was reviewed before this second run. All criteria are now verified at the current head. Coordinator restart/merge hold 0513084e/bdda2243 remains in force; no immediate merge instruction. No Reviewer tests, edits or provider calls.
+
+Criteria: C1 verified, C2 verified.

@@ -3,7 +3,7 @@ id: T-459
 kind: task
 title: "Demos on a droplet: cland demo start, exec and stop lease a droplet for an epic's QA demo at a named dev commit, and the hub accepts the demo's verdict while dev moves on files outside the epic's surfaces"
 state: open
-status: review
+status: ready
 size: L
 criterion_seq: 7
 labels:
@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-296
 branch: t/T-459-demos-on-a-droplet-cland-demo-start-exec
 created: 2026-10-15T07:15:15.838Z
-updated: 2026-10-15T17:12:30.230Z
+updated: 2026-10-15T17:35:27.041Z
 ---
 
 ## Summary
@@ -64,21 +64,27 @@ E-423 "Rules and rhythm" (R-294), tracer bullet 7 of 7; spec `docs/spec/v0.1.3.m
 - [x] C1. `cland demo start <epic>` against the fake DigitalOcean API acquires a droplet within `remote_budget` and the daily cap, delivers the `dev` tip (or `--commit`), prepares it with Neovim, and reports the lease, commit and lifetime.
   - done: impl-459 · 2026-10-15T13:33:29.136Z
   - verified: rev-30 [reviewer] · run rev-20261015-459-final · 2026-10-15T15:59:24.451Z · commit 528680a673944d2ed83506ef7ed902ed336e26fb
+  - verified: rev-30 [reviewer] · run rev-20261015-459-integrated-final · 2026-10-15T17:35:18.834Z · commit 251774bc1e1b84edb0ea07bd33edf6c22b07f2e5
 - [x] C2. `cland demo exec <epic> -- <cmd>` returns the command's output and exit code from the delivered tree as the ordinary user, and a `cland --headless --qa` case runs there the same way.
   - done: impl-459 · 2026-10-15T13:33:30.300Z
   - verified: rev-30 [reviewer] · run rev-20261015-459-final · 2026-10-15T15:59:24.451Z · commit 528680a673944d2ed83506ef7ed902ed336e26fb
+  - verified: rev-30 [reviewer] · run rev-20261015-459-integrated-final · 2026-10-15T17:35:18.834Z · commit 251774bc1e1b84edb0ea07bd33edf6c22b07f2e5
 - [x] C3. `cland demo stop`, the epic's verdict and the lease lifetime each release the droplet, and the create, destroy and cost are posted on the epic.
   - done: impl-459 · 2026-10-15T13:33:31.300Z
   - verified: rev-30 [reviewer] · run rev-20261015-459-final · 2026-10-15T15:59:24.451Z · commit 528680a673944d2ed83506ef7ed902ed336e26fb
+  - verified: rev-30 [reviewer] · run rev-20261015-459-integrated-final · 2026-10-15T17:35:18.834Z · commit 251774bc1e1b84edb0ea07bd33edf6c22b07f2e5
 - [x] C4. With no slot or budget left, `demo start` refuses with the reason and starts nothing, and a session other than QA, the Coordinator or the human is refused with `forbidden`.
   - done: impl-459 · 2026-10-15T13:33:31.967Z
   - verified: rev-30 [reviewer] · run rev-20261015-459-final · 2026-10-15T15:59:24.451Z · commit 528680a673944d2ed83506ef7ed902ed336e26fb
+  - verified: rev-30 [reviewer] · run rev-20261015-459-integrated-final · 2026-10-15T17:35:18.834Z · commit 251774bc1e1b84edb0ea07bd33edf6c22b07f2e5
 - [x] C5. The hub accepts an epic verdict at a commit behind the `dev` tip when the later commits touch no file the epic's merges changed, and refuses it naming the commit and files when one does.
   - done: impl-459 · 2026-10-15T13:33:32.697Z
   - verified: rev-30 [reviewer] · run rev-20261015-459-final · 2026-10-15T15:59:24.451Z · commit 528680a673944d2ed83506ef7ed902ed336e26fb
+  - verified: rev-30 [reviewer] · run rev-20261015-459-integrated-final · 2026-10-15T17:35:18.834Z · commit 251774bc1e1b84edb0ea07bd33edf6c22b07f2e5
 - [x] C6. The `qa` skill runs epic cases through `cland demo exec`, runs macOS cases locally at the same commit, applies the freshness rule after the cases, and names executor, commit, lifetime and cost in the evidence.
   - done: impl-459 · 2026-10-15T13:42:15.127Z
   - verified: rev-30 [reviewer] · run rev-20261015-459-final · 2026-10-15T15:59:24.451Z · commit 528680a673944d2ed83506ef7ed902ed336e26fb
+  - verified: rev-30 [reviewer] · run rev-20261015-459-integrated-final · 2026-10-15T17:35:18.834Z · commit 251774bc1e1b84edb0ea07bd33edf6c22b07f2e5
 - [x] C7. `hub/README.md` describes the demo lease, its commands, budget sharing and the freshness rule.
   - done: impl-459 · 2026-10-15T13:33:34.141Z
   - verified: rev-30 [reviewer] · run rev-20261015-459-source-2 · 2026-10-15T13:42:55.913Z · commit 05cff0dd5e3a0fd1a8fcef0c44e0668a95c2985b
@@ -87,6 +93,7 @@ E-423 "Rules and rhythm" (R-294), tracer bullet 7 of 7; spec `docs/spec/v0.1.3.m
   - verified: rev-30 [reviewer] · run rev-20261015-459-delta-3 · 2026-10-15T15:29:05.778Z · commit 528680a673944d2ed83506ef7ed902ed336e26fb
   - verified: rev-30 [reviewer] · run rev-20261015-459-final · 2026-10-15T15:59:24.451Z · commit 528680a673944d2ed83506ef7ed902ed336e26fb
   - verified: rev-30 [reviewer] · run rev-20261015-459-delta-4 · 2026-10-15T16:43:14.388Z · commit 251774bc1e1b84edb0ea07bd33edf6c22b07f2e5
+  - verified: rev-30 [reviewer] · run rev-20261015-459-integrated-final · 2026-10-15T17:35:18.835Z · commit 251774bc1e1b84edb0ea07bd33edf6c22b07f2e5
 
 ## Comments
 
@@ -339,3 +346,36 @@ Manifest: parsed comparison finds no lost keys or changed shared values across f
 Validation routing: A-3155 records changed-identifier search and 13-file integration map. Coordinator 49fc5811 requires a new full suite after these merge-gate/lease resolutions; 99bca331 explicitly replaces the duplicate targeted pass with that full verification under Mac contention. No claim that mapped tests have already run at this head. Submit one --executor droplet full verification at this exact reviewed SHA, reporting in topic-296. If admission falls back locally, follow 99bca331 and let it finish; its result must be assessed before any final verdict. No Reviewer tests, edits or provider calls. Both source review axes performed directly under no-delegation role.
 
 Criteria: C7 verified.
+
+### rev-30 · 2026-10-15T17:13:26.087Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261015-459-linux-integrated-first
+commit: 251774bc1e1b84edb0ea07bd33edf6c22b07f2e5
+scope: evidence
+
+Evidence review T-459 at unchanged source-reviewed 251774bc1e1b84edb0ea07bd33edf6c22b07f2e5 is not final clear.
+No new Standards or task-source Spec findings. A-3200 / 8553230e is the first required post-conflict-resolution full receipt: Linux c-8, exit 1, 1789 pass / 1 fail / 3 platform skips / 0 cancellations. Typecheck and all mapped hub files complete; demo 7/7 (timings :4408–4414), epic-close 14/14 (:4443–4456) and skills-qa 16/16 (:5132–5147) pass. No hard duration budget failure. Neovim was not reached.
+Medium gate blocker — hub/test/account-limited.test.ts:265: failed-poll-backoff variant observes reset, then journal count is 1 rather than expected 2 (A-3200:4044–4057); this is the poll-state/journal-publication family in T-493, not T-451's old insufficient eventual-wait timeout. T-493 task.view explicitly covers that same :265 assertion's minimum variant. Both variants share the immediate journal read and assertion at :264–265; requester classifies this as T-493. No new duplicate item requested.
+Coordinator 49fc5811 explicitly requires a green full run or two receipts with different known external flakes after this integration resolution; 99bca331 substitutes that full run for separate targeted mapped files. This is only the first receipt, so C1–C6 remain unverified. C7 source verification stands. Old pre-resolution receipts cannot complete this new gate. The unchanged source clearance A-3173 stands for the requested same-head second full verify under that rule. No Reviewer tests, edits or provider calls.
+
+### rev-30 · 2026-10-15T17:35:18.835Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-459-integrated-final
+commit: 251774bc1e1b84edb0ea07bd33edf6c22b07f2e5
+scope: evidence
+
+Final evidence review T-459 clear at unchanged 251774bc1e1b84edb0ea07bd33edf6c22b07f2e5. Prior integration source/delta verdict A-3173 remains current; no high, medium or low findings remain.
+A-3206 / 5ea5373a-6161-4b64-afd3-a0fcfcb6add8 is the exact-head full post-resolution green run: local Darwin after capacity fallback, typecheck, hub free/machine and full Neovim phase complete; 2186 passed / 0 failed / 0 cancelled / 0 skipped. Duration regression notices do not fail the gate. Coordinator 99bca331 expressly directed using the required full verify for all A-3155 mapped files and letting a local fallback finish. A-3200 supplies Linux own/mapped-hub green evidence at this same integrated head; its sole T-493 assertion failure remains recorded and was accepted as first receipt by Coordinator b548fd91. The final green run is not represented as Linux.
+C1–C4: all seven demo cases pass in both post-resolution receipts. A-3206:4362–4368 covers named dev/explicit commit delivery, ordinary-user command output and exit preservation, prepared Neovim/headless recorder, restart/stop/verdict cleanup, independent timeout and lifetime watchdog destruction, shared slot and cap refusals, authorization and accounting. These exercise the fake provider, not paid real-provider demos.
+C5: all fourteen epic-close cases pass; A-3206:4409–4410 covers named-ancestor freshness, unrelated dev movement, changed surfaces, intervening rename/revert conflicts and commits off dev. Integration source review checked both surface-helper paths and instance-env threading.
+C6: all sixteen skills-QA cases and the actual demo recorder case pass. Previously reviewed QA skill/recorder retains remote epic execution, local macOS cases pinned to the same commit, post-case freshness and executor/commit/lifetime/cost evidence. The full Neovim phase also supplies the mapped plan/sessions tests omitted from first red Linux receipt.
+C7: README commands, shared lease budget and freshness documentation were source-verified and remain unchanged.
+All seven criteria verified at this exact head. Stage/epic real demos remain their own QA obligation; this item has no per-item QA criteria. Coordinator bdda2243 holds hub-code merges until restart notice, so this review does not direct an immediate merge during that hold. No Reviewer tests, edits or provider calls.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.
