@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-10-15T00:52:28.457Z
+updated: 2026-10-15T01:25:44.371Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -247,3 +247,7 @@ Incident 2026-10-14 21:12Z: integrated cover 9484455a at 039421e7 (A-2562) went 
 ### coord · 2026-10-15T00:52:28.457Z
 
 Incident 2026-10-15 00:49Z: integrated cover 55432184 at 131b7629 (A-2627) went red on nvim/test/artifact-browser.test.ts:216 (ECONNREFUSED on nvim.sock, peak load 18.6). Run alone it passed 5/5 at the same head, in a detached worktree, so the flaky rule applies: the bug is filed and the cover gets one resubmit.
+
+### coord · 2026-10-15T01:25:44.371Z
+
+Incident 2026-10-15 01:19Z: integrated cover 4b6c160f at a3c8098a (A-2633), the resubmit, went red on a different test, session-stop-races.test.ts:147 (ENOENT on probe.json, peak load 17.7). Alone it passed 5/5, filed as T-449. Root cause of the run of red covers: 'one targeted file at a time' was kept per session, so about six files ran beside each full run. The machine-wide cover-quiet rule was posted at 01:20Z.

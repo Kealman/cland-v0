@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-266
 branch: t/T-392-inspection-diet-fixture-hubs-skip-the
 created: 2026-10-14T12:28:11.104Z
-updated: 2026-10-15T00:45:10.670Z
+updated: 2026-10-15T01:07:21.197Z
 ---
 
 ## Summary
@@ -71,7 +71,8 @@ Each spawned fixture hub drags about 31 process-inspection spawns with it: the d
   - verified: rev-23 [reviewer] · run rev-2026-10-15-392-1 · 2026-10-15T00:09:13.677Z · commit 2d04d64915051ca3d82d5655d1dd4f370190bc92
   - verified: rev-23 [reviewer] · run rev-2026-10-15-392-2 · 2026-10-15T00:18:12.073Z · commit d6c913c280f26ec437a8da8fd8d77fc5cdf12d3d
   - verified: rev-23 [reviewer] · run rev-2026-10-15-392-5 · 2026-10-15T00:43:53.047Z · commit cc44e9cb76e8e1a60dc76b8029dc62626aa5af1f
-- [ ] C5. Measured: a census compare at nearby heads shows `ps` + `lsof` + `pgrep` under 12,000 per run (29,203 in A-2021) and at most 13 per daemon start, posted on the item with the census caveat for `executor-*` files.
+- [x] C5. Measured (Coordinator amendment 2026-10-15 01:06Z): the full-run census of the candidate is posted on the item with its ps, lsof and pgrep totals (labelled as a lower bound if shards were skipped), the per-daemon-start figure, the comparison with A-2021 (29,203), the top inspection helpers and the executor-* caveat, together with the heavy-file and single-fixture reductions; the <12,000 per run and ≤13 per start targets move to T-448 (doctor/report and process-cleanup inspection diet).
+  - done: impl-392 · 2026-10-15T01:07:05.596Z
 - [x] C6. Measured (Coordinator amendment 2026-10-15 00:22Z: the verify queue never idled during the build): inspection spawns per default-subscriptions.test.ts run fall by at least 50% at nearby heads, and the paired-median (A/B x3, serial, load and holder recorded) whole-file times of default-subscriptions.test.ts and session-resume.test.ts show no regression beyond noise; the idle 15% target is re-measured in T-443.
   - done: impl-392 · 2026-10-15T00:28:39.622Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-392-3 · 2026-10-15T00:29:36.504Z · commit d6c913c280f26ec437a8da8fd8d77fc5cdf12d3d
@@ -165,3 +166,11 @@ Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C6 verified, C7 ve
 ### impl-392 · 2026-10-15T00:45:10.670Z
 
 Source correction cc44e9cb is pushed after fetch/merge origin/dev (current) and source-cleared in rev-2026-10-15-392-5. A-2625 preserves synthetic stale-worker-seed red (incorrect parent group SIGKILL) and corrected full cleanup file 27/27, plus worker-only native ps fixture red/green without changing cancellation assertions, and final phase-leak proof. Independent visited ancestry fixes C3. A-2626 retains A-2619 as labelled nearby-head C6 evidence. Replacement candidate census at this head is in the authorized exclusive human queue; the obsolete census waiters were cancelled before admission, so neither is used as a full-run sample.
+
+### impl-392 · 2026-10-15T01:06:09.388Z
+
+Failed same-head census A-2630: exit1 on claude-code-adapter.test.ts:251 clause retry timeout, package stopped before later shards. All 12 serial baseline/candidate whole-file isolations passed, with/without preload (A-2629). Coordinator dc87c515 authorized exactly one candidate-only retry at unchanged cc44e9cb; queued behind integrated dev. Separately C5 is not done: incomplete sample already records23476 inspections/1038 daemon starts=22.62, missing both raw full-run budgets. Raw counts/helpers and queue snapshots retained. Lead scope decision requested; no partial or failed sample claimed as full acceptance.
+
+### impl-392 · 2026-10-15T01:07:05.361Z
+
+C5 measured under Coordinator 01:06Z amendment (A-2631): candidate cc44e9cb partial LOWER BOUND ps18507+lsof3032+pgrep1937=23476, 1038 recorded daemon starts=>22.62/start. Historical full A-2021=29203; partial is5727 below it, but skipped Neovim shards mean no complete full-suite percentage reduction is inferred. Dominant PS helpers doctor/report7655, process-cleanup6769, sync processStarted3459 (all-inspection totals10942/8283/3459). executor-* replace NODE_OPTIONS so descendants remain uncounted. A-2630 holds raw failed attempt and queue snapshots. A-2628 complete green serial heavy-file/fixture comparisons: suite3748→2507 (78 starts each), merge1116→449 (43 each), fixture28→13 (1 each). Old <12000 and <=13 targets are not achieved, moved to T-448. Authorized retry cancelled normally before admission, exit143, per Coordinator e89384b7. A-2629 preserves twelve green baseline/candidate adapter isolation files; full attempt flake filed T-447. Proceeding to local no-mode gate at unchanged reviewed cc44e9cb.
