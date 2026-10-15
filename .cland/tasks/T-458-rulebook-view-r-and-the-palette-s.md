@@ -3,7 +3,7 @@ id: T-458
 kind: task
 title: "Rulebook view: ␣R and the palette's Rulebook open the rules in the centre with scope, status and date, unfold reason and origin, follow a thread origin with gt, and add, edit and retire from the view"
 state: open
-status: review
+status: in progress
 size: M
 criterion_seq: 6
 labels:
@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-294
 branch: t/T-458-rulebook-view-r-and-the-palette-s
 created: 2026-10-15T07:15:15.741Z
-updated: 2026-10-15T14:01:53.717Z
+updated: 2026-10-15T14:02:29.592Z
 ---
 
 ## Summary
@@ -102,3 +102,21 @@ Scope: git diff 53292737320dd085686dcd1cd8cf64a89c03facb...9e11687cfac96eefa1d09
 A-3027 reports typecheck, Rulebook 4/4, rule CLI 7/7, Events 3/3, palette 18/18 and shard lint; test sources substantiate those checks, but C1–C5 remain unverified until accepted same-head post-source verification. This hub+Neovim diff requires full relevant Linux phases. No Reviewer tests or edits; qaPolicy none/after-stage, no per-item QA brief.
 
 Criteria: C6 verified.
+
+### rev-30 · 2026-10-15T14:02:29.592Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261015-458-linux-first
+commit: 9e11687cfac96eefa1d09ce27d6240ff983fa0af
+scope: evidence
+
+Evidence review not clear at unchanged 9e11687cfac96eefa1d09ce27d6240ff983fa0af; accepted gate and Neovim evidence pending.
+
+Medium — hub/test/doctor-isolation.test.ts:16: A-3044:3934–3936 fails ENOTEMPTY removing the live foreign fixture's .cland/run. Source removes that root recursively while its daemon remains alive. This lies outside T-458's diff; no exact known T-4xx ticket match found. Classify with the lead before treating it as a known-flake receipt; no T-458 source cause established.
+
+Standards: source verdict rev-20261015-458-source stands, no new findings.
+Spec/evidence: rule-cli.test.ts cases are green, including workbench provenance/full-list push (1.648 s, A-3044:2366). C6 source verification retained. C1–C5 remain unverified: the full selected run stopped after hub machine failure and never reached Neovim. A-3027's targeted UI evidence remains supporting evidence, not a replacement full gate.
+
+903d684f/A-3044 matches reviewed/current branch head: host and remote typecheck green; Linux x64 c-8, exit 1, 1747 pass/1 fail/3 macOS platform skips/0 cancelled. No implementation criterion failed for this outside error. This is a hub+Neovim diff; a two-red exception, if eventually applicable, also requires the standing explicit Neovim phase evidence when neither Linux receipt reaches it. No Reviewer tests or edits.

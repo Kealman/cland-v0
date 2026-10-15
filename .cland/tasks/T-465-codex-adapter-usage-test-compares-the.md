@@ -2,8 +2,8 @@
 id: T-465
 kind: task
 title: codex-adapter usage test compares the first usage event with a later snapshot whose rateLimitsAt differs
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 1
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-293
 branch: t/T-465-codex-adapter-usage-test-compares-the
 created: 2026-10-15T08:47:22.013Z
-updated: 2026-10-15T13:36:34.070Z
+updated: 2026-10-15T14:02:26.217Z
+closed: 2026-10-15T14:02:26.217Z
 ---
 
 ## Summary
@@ -131,3 +132,7 @@ Gate c0d20215-4c57-488e-bc26-fc473287dce1 / A-3028 is green at the exact source-
 Earlier A-3001 remains recorded red at its old head and is not needed for the accepted gate. C1 verification completes the item review. No Reviewer tests or edits.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-15T14:02:26.217Z
+
+Merged 2e53f8b788be16c7ef8397c2d254c9e272bd5384 onto dev.
