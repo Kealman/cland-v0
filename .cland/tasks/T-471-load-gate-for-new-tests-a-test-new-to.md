@@ -2,8 +2,8 @@
 id: T-471
 kind: task
 title: "Load gate for new tests: a test new to the manifest runs five times under load in its task's verify before it can reach dev"
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 3
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-317
 branch: t/T-471-load-gate-for-new-tests-a-test-new-to
 created: 2026-10-15T09:13:16.338Z
-updated: 2026-10-15T21:12:04.183Z
+updated: 2026-10-15T21:12:33.039Z
+closed: 2026-10-15T21:12:33.039Z
 ---
 
 ## Summary
@@ -31,16 +32,19 @@ In a task's verify, the runner repeats each test that is new to the manifest fiv
 - [x] C1. Pre-merge (Coordinator amendment 2026-10-15 20:40Z): package-runner fixtures entering runPackageSuite through inherited task-selection JSON prove that a planted flaky new test failing 1 time in 3 fails with a load gate line, while a stable new test passes all five repetitions; the live outer gate on a real task verify is judged after merge and hub restart at E-387's stage-3 close by the Coordinator.
   - done: impl-471 · 2026-10-15T19:33:16.872Z
   - verified: rev-30 [reviewer] · run rev-20261015-471-package-delta · 2026-10-15T20:41:58.221Z · commit b4bc6d7ec7e917e7eefdd10ae01ace296dcbdba5
+  - verified: rev-30 [reviewer] · run rev-20261015-471-final · 2026-10-15T21:12:14.096Z · commit b4bc6d7ec7e917e7eefdd10ae01ace296dcbdba5
 - [x] C2. Known tests are not repeated, and the gate adds no repetitions to integrated dev runs.
   - done: impl-471 · 2026-10-15T19:33:18.609Z
   - verified: rev-30 [reviewer] · run rev-20261015-471-source · 2026-10-15T19:36:54.188Z · commit b80e4aeb92dca3984a1b5232e1a3aa1842f2e016
   - verified: rev-30 [reviewer] · run rev-20261015-471-allowance-delta · 2026-10-15T20:12:26.745Z · commit 3f6957dc8a1ecfb80e28ec7cbd274efcd9b499b1
   - verified: rev-30 [reviewer] · run rev-20261015-471-package-delta · 2026-10-15T20:41:58.221Z · commit b4bc6d7ec7e917e7eefdd10ae01ace296dcbdba5
+  - verified: rev-30 [reviewer] · run rev-20261015-471-final · 2026-10-15T21:12:14.097Z · commit b4bc6d7ec7e917e7eefdd10ae01ace296dcbdba5
 - [x] C3. The extra wall time is reported on the run, and hub/README.md and docs/agents/tests.md describe the gate.
   - done: impl-471 · 2026-10-15T19:33:19.546Z
   - verified: rev-30 [reviewer] · run rev-20261015-471-source · 2026-10-15T19:36:54.189Z · commit b80e4aeb92dca3984a1b5232e1a3aa1842f2e016
   - verified: rev-30 [reviewer] · run rev-20261015-471-allowance-delta · 2026-10-15T20:12:26.745Z · commit 3f6957dc8a1ecfb80e28ec7cbd274efcd9b499b1
   - verified: rev-30 [reviewer] · run rev-20261015-471-package-delta · 2026-10-15T20:41:58.221Z · commit b4bc6d7ec7e917e7eefdd10ae01ace296dcbdba5
+  - verified: rev-30 [reviewer] · run rev-20261015-471-final · 2026-10-15T21:12:14.097Z · commit b4bc6d7ec7e917e7eefdd10ae01ace296dcbdba5
 
 ## Comments
 
@@ -135,3 +139,30 @@ Criteria: C1 verified, C2 verified, C3 verified.
 ### impl-471 · 2026-10-15T21:12:04.183Z
 
 Fresh exact-head Linux verify f0268040-e5b8-4298-969d-8a647d9bd814 at b4bc6d7ec7e917e7eefdd10ae01ace296dcbdba5 is green: 2220 pass, zero failed, six skipped; hub and Neovim phases complete. Durable log A-3367. c-8 lon1 lifetime1727s, cost$0.1199. Final Reviewer evidence verdict pending; live outer task-gate bootstrap proof remains Coordinator-owned at E-387 stage-3 close after merge/restart per decision27346142.
+
+### rev-30 · 2026-10-15T21:12:14.097Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-471-final
+commit: b4bc6d7ec7e917e7eefdd10ae01ace296dcbdba5
+scope: evidence
+
+Final pre-merge evidence review T-471 clear at b4bc6d7ec7e917e7eefdd10ae01ace296dcbdba5. No high, medium or low findings. Exact-head source/delta evidence A-3305/A-3318/A-3335 stands.
+
+A-3367 /f0268040-e5b8-4298-969d-8a647d9bd814 is actual Linux c-8 lon1, full mode, exit0: 2220 pass, zero failures/cancellations, six platform skips. Typecheck, hub and full Neovim phases completed. Duration1632.40s, peak one-minute load18.00, lifetime1727s/$0.1199. No hard duration-budget failure; regression notices are informational.
+
+C1 amended pre-merge proof reverified: package-runner inherited-selection fixture passes in5.776925451s (A-3367:1043, timing4486). Source asserts stable5/5, named flaky rejection, six executions including ordinary phase, overlap and summary behavior. C2 known/integrated exemption fixture passes1.999396014s (1044/4487), with source selector exclusions unchanged. Skip rejection also passes3.225353308s. C3 extra-wall summary assertions and both docs remain verified. All nine durations-runner cases complete green, including SIGTERM/SIGKILL cleanup and existing duration contracts.
+
+Prior A-3328 own budget-red is not used as a successful gate. The reasoned measured exception is source-reviewed and the corrected-head complete Linux run now passes.
+
+Scope limitation is explicit: Coordinator817a1b25/27346142 amended C1 and owns the live outer task-gate check after merge and hub restart at E-387 stage-3 close. This candidate's package-runner proof is sufficient for the amended pre-merge criterion; no claim that the pre-upgrade running hub supplied an outer loadGate flag in this receipt. Do not close that stage proof based on this verdict alone.
+
+Evidence path /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3367-suite-f0268040-e5b8-4298-969d-8a647d9bd814-auto-at-b4bc6d7.log. No per-item QA criteria. No Reviewer tests, edits, merges or provider actions. Any changed head/conflict resolution requires delta review.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-15T21:12:33.039Z
+
+Merged a1fa4c13cd39aa93a6d5a94a7f5246be5df6a89d onto dev.
