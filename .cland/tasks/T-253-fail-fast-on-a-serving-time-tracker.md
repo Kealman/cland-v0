@@ -2,8 +2,8 @@
 id: T-253
 kind: task
 title: Fail fast on a serving-time tracker storage stall (T-103 follow-up)
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -16,7 +16,8 @@ blocked_by: []
 topic: topic-268
 branch: t/T-253-fail-fast-on-a-serving-time-tracker
 created: 2026-10-12T01:35:46.890Z
-updated: 2026-10-15T04:45:54.246Z
+updated: 2026-10-15T04:46:07.404Z
+closed: 2026-10-15T04:46:07.404Z
 ---
 
 ## Parent
@@ -104,3 +105,7 @@ scope: evidence
 Final clear at unchanged source-reviewed 506796dd. Standards and Spec: no high or medium findings remain. A-2685/47bc08d3 local no-mode selects full: root typecheck and all 2087 tests pass (37 free hub, 1663 machine hub, 387 Neovim), zero failures/cancellations/skips/todos, exit 0. Both real foreground held/released stall regressions pass, establishing C1 actual non-zero exit/diagnostic and C2 frozen continuations, explicit active/queued refusals, absent later commits and acknowledged-write durability across restart. Ordinary bounded stop and both previously failed CLI import guards pass. C3 README/restart proof unchanged. All claimant done marks checked; branch/log/tracker head agree. Earlier e7cba09b/A-2675 remains red on the corrected own eager-import regression, followed by source review A-2678 and this new-head green gate; no flaky retry used. A-2686 details evidence and accepted uncertain already-issued native publication limit. C1-C3 verified.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-15T04:46:07.404Z
+
+Merged a30df82ca108f3f5a5aebafdcebbaeec7b441d46 onto dev.
