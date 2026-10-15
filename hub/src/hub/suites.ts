@@ -5,6 +5,7 @@ import { appendFile, mkdir, readFile, writeFile, stat, open } from 'node:fs/prom
 import { join } from 'node:path';
 import { lintHubShards, lintHubShardTree, ShardManifestError, hubShards, balanceCloseShards } from '../suite-shards.ts';
 import { readDurationManifest } from '../suite-durations.ts';
+import { suiteLimits } from '../suite-limits.ts';
 import { candidateTree } from '../verification-tree.ts';
 import { promisify } from 'node:util';
 import type { VerifyOccasion, SuiteStatus, VerificationQueue, VerificationHolder, DurationStats, SuiteSlot, SuiteSlotResult } from '../protocol.ts';
@@ -23,6 +24,7 @@ import { parseCoverageMap, type CoverageMap } from '../suite-coverage.ts';
 export type SuiteActor = { name: string; sessionId: string; shell: true };
 export type SuiteJob = {
   occasion?: VerifyOccasion; shards?: SuiteJob[]; parentRun?: string; shardName?: string; shardingSkipped?: string; shardingSkipLogged?: boolean; groupMerged?: boolean;
+  workers?: number; fallbackWorkers?: number; size?: string;
   executor: ExecutorKind; requestedExecutor?: ExecutorKind; fallback?: string; fallbackLogged?: boolean; remoteAcquireAttempted?: boolean; timedOut?: boolean; platform?: Platform; lease?: Lease; remoteLogStart?: number; nextPoll?: number;
   machine?: { name?: string; size?: string; region?: string; lifetimeMs: number | null; costUsd: number | null };
   id: string; mode: string; cwd: string; topic: string; to: string[]; actor: SuiteActor | null;
@@ -49,7 +51,7 @@ const HUMAN_GRACE_MS = 10_000;
 const KEY = 'suite-jobs';
 const exec = promisify(execFile);
 const METRICS_WINDOW = 20;
-const runRef = (job: SuiteJob): RunRef => ({ id: job.id, cwd: job.cwd, head: job.head, mode: job.mode, log: job.log, result: job.result, gate: job.gate, ...(job.tree !== undefined ? { tree: job.tree } : {}), ...(job.selection ? { selection: job.selection } : {}), ...(job.queued ? { queued: job.queued } : {}), ...(job.locks ? { locks: job.locks } : {}) });
+const runRef = (job: SuiteJob): RunRef => ({ id: job.id, cwd: job.cwd, head: job.head, mode: job.mode, log: job.log, result: job.result, gate: job.gate, ...(job.workers !== undefined ? { workers: job.workers } : {}), ...(job.size ? { size: job.size } : {}), ...(job.tree !== undefined ? { tree: job.tree } : {}), ...(job.selection ? { selection: job.selection } : {}), ...(job.queued ? { queued: job.queued } : {}), ...(job.locks ? { locks: job.locks } : {}) });
 function elapsed(since: string | undefined | null, now: number): number | null {
   const start = Date.parse(since ?? '');
   return Number.isFinite(start) ? Math.max(0, now - start) : null;
@@ -205,16 +207,24 @@ export class Suites {
     void this.#inspectJob(job);
     return { id: job.id, topic: job.topic, cancelled: true };
   }
-  start(input: Pick<SuiteJob, 'mode' | 'cwd' | 'topic' | 'to' | 'actor'> & { priority?: number; item?: string | null; integrated?: boolean; fresh?: boolean; executor?: ExecutorKind; occasion?: VerifyOccasion }, authorize: () => void): Promise<{ id: string; pid: number | null; topic: string; position: number; cached?: SuiteJob['cached'] }> {
+  start(input: Pick<SuiteJob, 'mode' | 'cwd' | 'topic' | 'to' | 'actor'> & { priority?: number; item?: string | null; integrated?: boolean; fresh?: boolean; executor?: ExecutorKind; workers?: number; size?: string; occasion?: VerifyOccasion }, authorize: () => void): Promise<{ id: string; pid: number | null; topic: string; position: number; cached?: SuiteJob['cached'] }> {
     if (this.#closed) return Promise.reject(new Error('hub is closing'));
     const work = this.#start(input, authorize);
     this.#starting.add(work);
     void work.finally(() => this.#starting.delete(work)).catch(() => {});
     return work;
   }
-  async #start(input: Pick<SuiteJob, 'mode' | 'cwd' | 'topic' | 'to' | 'actor'> & { priority?: number; item?: string | null; integrated?: boolean; fresh?: boolean; executor?: ExecutorKind; occasion?: VerifyOccasion }, authorize: () => void): Promise<{ id: string; pid: number | null; topic: string; position: number; cached?: SuiteJob['cached'] }> {
+  async #start(input: Pick<SuiteJob, 'mode' | 'cwd' | 'topic' | 'to' | 'actor'> & { priority?: number; item?: string | null; integrated?: boolean; fresh?: boolean; executor?: ExecutorKind; workers?: number; size?: string; occasion?: VerifyOccasion }, authorize: () => void): Promise<{ id: string; pid: number | null; topic: string; position: number; cached?: SuiteJob['cached'] }> {
     const executor = input.executor ?? this.#options.executor ?? 'local';
     if (executor !== 'local' && executor !== 'droplet') throw new Error('executor must be local or droplet');
+    if (input.workers !== undefined && (!Number.isSafeInteger(input.workers) || input.workers < 1)) throw new Error('workers must be a positive integer');
+    if (input.size !== undefined) {
+      if (executor !== 'droplet') throw new Error('size requires the droplet executor');
+      if (!/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(input.size)) throw new Error('size must be a nonempty slug');
+      authorize();
+      await this.#droplet.validateSize(input.size);
+    }
+    const workers = input.workers ?? (await suiteLimits(input.cwd, executor, this.#env)).workers;
     const identity = input.actor?.sessionId ?? 'human';
     if (this.#jobs.some(job => this.#active(job) && (job.actor?.sessionId ?? 'human') === identity)) throw new Error('this session already has a suite queued or running');
     const id = randomUUID();
@@ -230,16 +240,18 @@ export class Suites {
       await lintHubShards(input.cwd);
     } catch (error) { throw new SuiteAdmissionError(error); }
     await mkdir(dir, { recursive: true, mode: 0o700 });
-    const cached = !input.fresh && tree ? this.#cached(tree, selection) : undefined;
+    const cached = !input.fresh && tree ? this.#cached(tree, selection, workers, input.size) : undefined;
+
     // Older candidate runners and fixture packages remain usable. Coverage is
     // recorded only by a capable runner on a clean integrated full dev run.
     if (input.integrated && branch === 'dev' && tree && selection.mode === 'full' && !cached && (await readFile(join(input.cwd, 'hub/test/run-suite.ts'), 'utf8').catch(() => '')).includes('reduceCoverage')) selection.recordCoverage = { head, tree, run: id };
     authorize();
     // Recheck after I/O: concurrent submissions cannot both reserve a session.
     if (this.#jobs.some(job => this.#active(job) && (job.actor?.sessionId ?? 'human') === identity)) throw new Error('this session already has a suite queued or running');
-    const job: SuiteJob = { ...input, executor, requestedExecutor: executor, integrated: input.integrated === true && branch === 'dev', queued: new Date().toISOString(), priority: input.priority ?? Number.MAX_SAFE_INTEGER, state: 'queued', locks: this.#options.locks ?? ['/tmp/cland-suite.lock', '/tmp/cland-suite-nvim.lock'], selection, tree, id, head, branch, log: join(dir, 'suite.log'), result: join(dir, 'result.json'), gate: join(dir, 'ready'), pid: null, started: null, outcome: null, artifact: null, reported: false, error: null };
+    const fallbackWorkers = input.workers ?? (await suiteLimits(input.cwd, 'local', this.#env)).workers;
+    const job: SuiteJob = { ...input, workers, fallbackWorkers, executor, requestedExecutor: executor, integrated: input.integrated === true && branch === 'dev', queued: new Date().toISOString(), priority: input.priority ?? Number.MAX_SAFE_INTEGER, state: 'queued', locks: this.#options.locks ?? ['/tmp/cland-suite.lock', '/tmp/cland-suite-nvim.lock'], selection, tree, id, head, branch, log: join(dir, 'suite.log'), result: join(dir, 'result.json'), gate: join(dir, 'ready'), pid: null, started: null, outcome: null, artifact: null, reported: false, error: null };
     // Persist the complete request before acknowledging it. No waiting worker exists.
-    await writeFile(job.log, `Suite ${id} · ${input.mode}\n${describeSelection(selection)}\nWorktree ${input.cwd}\nBranch ${branch}\nHead ${head}\nQueued ${job.queued}\n`, { mode: 0o600 });
+    await writeFile(job.log, `Suite ${id} · ${input.mode}\n${describeSelection(selection)}\nWorktree ${input.cwd}\nBranch ${branch}\nHead ${head}\nWorkers ${workers}${input.size ? ` · size ${input.size}` : ''}\nQueued ${job.queued}\n`, { mode: 0o600 });
     if (cached) {
       const artifact = this.#store.resolveArtifact(cached.artifact!)!;
       const originalLog = await readFile(artifact.path, 'utf8').catch(() => null);
@@ -297,10 +309,10 @@ export class Suites {
       return Number(integrated(b)) - Number(integrated(a)) || Number('actor' in a) - Number('actor' in b) || rank(a) - rank(b) || a.queued!.localeCompare(b.queued!);
     });
   }
-  #cached(tree: string, selection: SuiteSelection): SuiteJob | undefined {
+  #cached(tree: string, selection: SuiteSelection, workers: number, size?: string): SuiteJob | undefined {
     // Cancellations say nothing about the tree; failed or pending attempts still supersede green evidence.
     // Pre-admission head changes carry their cancellation in the outcome rather than a flag.
-    const job = this.#jobs.findLast(j => !j.cached && !j.cancelled && !j.requesterDied && !j.outcome?.cause.startsWith('cancelled: queued head changed') && j.tree === tree && j.selection?.mode === selection.mode && (selection.mode !== 'hub-selected' || JSON.stringify([j.selection.tests, j.selection.nvimFull]) === JSON.stringify([selection.tests, selection.nvimFull])));
+    const job = this.#jobs.findLast(j => !j.cached && !j.cancelled && !j.requesterDied && !j.outcome?.cause.startsWith('cancelled: queued head changed') && j.tree === tree && j.selection?.mode === selection.mode && (selection.mode !== 'hub-selected' || JSON.stringify([j.selection.tests, j.selection.nvimFull]) === JSON.stringify([selection.tests, selection.nvimFull])) && (j.workers ?? 4) === workers && j.size === size);
     if (!job || job.outcome?.code !== 0 || !job.reported || !job.finished || !job.artifact) return undefined;
     const age = Date.now() - Date.parse(job.finished);
     const artifact = this.#store.resolveArtifact(job.artifact);
@@ -382,7 +394,7 @@ export class Suites {
             log: join(dir, 'suite.log'), result: join(dir, 'result.json'), gate: join(dir, 'ready') };
         });
         this.#save(job);
-        try { await this.#droplet.reserveShards(job.shards!.map(shard => shard.id)); }
+        try { await this.#droplet.reserveShards(job.shards!.map(shard => shard.id), job.size); }
         catch (error) { cause = error instanceof Error ? error.message : String(error); }
       }
       if (cause) {
@@ -462,7 +474,7 @@ export class Suites {
   }
   #fallback(job: SuiteJob, cause: string): void {
     if (job.parentRun) throw new Error(cause);
-    job.executor = 'local'; job.fallback = cause; job.state = 'queued';
+    job.executor = 'local'; job.workers = job.fallbackWorkers ?? job.workers ?? 4; job.fallback = cause; job.state = 'queued';
     delete job.admittedAt; delete job.lease;
     this.#save(job);
     this.#announceFallback(job);
@@ -662,6 +674,7 @@ export class Suites {
   status(): SuiteStatus[] {
     return this.#jobs.map(job => ({
       ...(job.occasion ? { occasion: job.occasion } : {}),
+      ...(job.workers === undefined ? {} : { workers: job.workers }), ...(job.size ? { size: job.size } : {}),
       executor: job.executor, ...(job.platform ? { platform: job.platform } : {}),
       id: job.id, pid: job.pid, topic: job.topic, reported: job.reported, outcome: job.outcome, error: job.error,
       state: job.state ?? 'running', queued: job.queued ?? null, priority: job.priority ?? null,

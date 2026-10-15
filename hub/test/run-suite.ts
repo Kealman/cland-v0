@@ -287,7 +287,10 @@ export async function runPackageSuite(mode: string, extra: string[] = [], option
   // Explicit test targets retain the single-phase fixture/targeted-run interface.
   let selection: SuiteSelection = extra.length ? { mode: mode === 'hub' ? 'hub-only' : mode === 'nvim' ? 'nvim-only' : 'full', files: extra, reason: 'explicit test targets' } : selectionFromEnv() ?? await selectPackageSuite(cwd, mode as SuiteRequest);
   if (!extra.length && mode === 'all' && selection.mode !== 'full') selection = { ...selection, mode: 'full', reason: `--all / all forces full (${selection.reason})` };
-  const phases: SuiteShard[] = extra.length ? (mode === 'all' || mode === 'auto' ? ['hub', 'Neovim'] : [mode]).map(name => ({ name, targets: extra, resource: 'machine', workers: 4 })) : await packageShards(cwd, selection.mode, selection.shard, selection);
+  const executor = process.env.CLAND_SUITE_EXECUTOR === 'droplet' ? 'droplet' : 'local';
+  const workers = process.env.CLAND_SUITE_WORKERS === undefined ? (await suiteLimits(cwd, executor)).workers : Number(process.env.CLAND_SUITE_WORKERS);
+  if (!Number.isSafeInteger(workers) || workers < 1) throw new Error('workers must be a positive integer');
+  const phases: SuiteShard[] = extra.length ? (mode === 'all' || mode === 'auto' ? ['hub', 'Neovim'] : [mode]).map(name => ({ name, targets: extra, resource: 'machine', workers })) : await packageShards(cwd, selection.mode, selection.shard, selection, { executor, workers });
   const suites = phases.map(phase => ['--test', `--test-concurrency=${phase.workers}`, ...phase.targets]);
   // Reserve both locks jointly before a full run starts. Taking Neovim later
   // while holding machine would deadlock a live legacy Neovim-first waiter.
@@ -307,7 +310,7 @@ export async function runPackageSuite(mode: string, extra: string[] = [], option
       queue = await humanQueue(cwd, selection, token, force, () => interruption.signal !== null);
       if (queue?.locks && !options.lockDirs) lockDirs = queue.locks;
     }
-    const code = await runSuite(suites, { cwd, lockDirs, interruption, selection, force, token, phaseNames: phases.map(phase => phase.name), ...(!extra.length ? { resources: phases.map(phase => phase.resource), workers: phases.map(phase => phase.workers) } : {}) });
+    const code = await runSuite(suites, { cwd, lockDirs, interruption, selection, force, token, phaseNames: phases.map(phase => phase.name), workers: phases.map(phase => phase.workers), ...(!extra.length ? { resources: phases.map(phase => phase.resource) } : {}) });
     return interruption.signal ? (interruption.signal === 'SIGINT' ? 130 : 143) : code;
   } catch (error) {
     if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;

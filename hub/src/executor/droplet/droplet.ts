@@ -70,24 +70,34 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
   async cancel(lease: DropletLease, _signal: string) { return new DropletRun(this.root, this.#env).cancel(lease); }
   async collectCoverage(lease: DropletLease, path: string) { return new DropletRun(this.root, this.#env).collectCoverage(lease, path); }
 
-  async reserveShards(runs: string[]): Promise<void> {
+  /** Refuse an unsupported per-run size before the request enters the queue. */
+  async validateSize(size: string): Promise<void> {
+    const config = await this.#config();
+    const api = new DigitalOceanApi(this.#env);
+    const selected = (await api.sizes()).find(s => s.slug === size && s.available);
+    if (!selected || !Number.isFinite(selected.price_hourly) || selected.price_hourly < 0) throw new Error(`droplet size ${size} is unavailable or has no valid price`);
+    const regions = await api.regions();
+    if (!config.verification.droplet.regions.some(region => selected.regions.includes(region) && regions.some(r => r.slug === region && r.available && r.sizes.includes(size)))) throw new Error(`droplet size ${size} unavailable in configured regions`);
+  }
+
+  async reserveShards(runs: string[], overrideSize?: string): Promise<void> {
     if (!await readSnapshot(this.root)) throw new Error('no prepared snapshot; run cland executor prepare');
     const config = await this.#config();
-    const size = config.verification.droplet.size;
+    const size = overrideSize ?? config.verification.droplet.size;
     const selected = (await new DigitalOceanApi(this.#env).sizes()).find(s => s.slug === size && s.available);
     if (!selected || !Number.isFinite(selected.price_hourly) || selected.price_hourly < 0) throw new Error(`droplet size ${size} is unavailable or has no valid price`);
     await reserveShardSpend(this.root, runs, size, selected.price_hourly, testTiming('CLAND_TEST_EXECUTOR_LIFETIME_MS', config.verification.lifetimeMs, this.#env), config.verification.dailySpendUsd, this.#env);
   }
   async releaseShardReservations(runs: string[]): Promise<void> { await releaseShardSpend(this.root, runs, this.#env); }
 
-  async acquire(run: Pick<RunRef, 'id'>, deadline: string, demo?: DropletLease['demo']): Promise<DropletLease> {
+  async acquire(run: Pick<RunRef, 'id' | 'size'>, deadline: string, demo?: DropletLease['demo']): Promise<DropletLease> {
     const runDeadline = Date.parse(deadline);
     if (!Number.isFinite(runDeadline) || runDeadline <= Date.now()) throw new Error('droplet acquisition deadline reached');
     if (!this.#env.DIGITALOCEAN_TOKEN) throw new Error('DIGITALOCEAN_TOKEN is required');
     const snapshot = await readSnapshot(this.root);
     if (!snapshot) throw new Error('no prepared snapshot; run cland executor prepare');
     const config = await this.#config();
-    const lease = await this.#acquire(run, deadline, { size: config.verification.droplet.size, regions: config.verification.droplet.regions.filter(region => snapshot.regions.includes(region)), image: snapshot.image, minDiskSize: snapshot.minDiskSize, ...(demo ? { demo } : {}) });
+    const lease = await this.#acquire(run, deadline, { size: run.size ?? config.verification.droplet.size, regions: config.verification.droplet.regions.filter(region => snapshot.regions.includes(region)), image: snapshot.image, minDiskSize: snapshot.minDiskSize, ...(demo ? { demo } : {}) });
     try { await waitForMachine(this.root, lease, snapshot.key, undefined, undefined, this.#env); return lease; }
     catch (error) { await this.release(lease); throw error; }
   }

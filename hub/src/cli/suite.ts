@@ -9,13 +9,16 @@ export { SUITE_USAGE } from './usage.ts';
 
 export async function runSuiteCommand(args: string[], cwd = process.cwd()): Promise<number> {
   const { values, positionals } = parseArgs({ args, allowPositionals: true, options: {
-    occasion: { type: 'string' }, executor: { type: 'string' }, report: { type: 'string' }, to: { type: 'string', multiple: true }, all: { type: 'boolean' }, fresh: { type: 'boolean' }, json: { type: 'boolean' }, help: { type: 'boolean', short: 'h' },
+    workers: { type: 'string' }, size: { type: 'string' }, occasion: { type: 'string' }, executor: { type: 'string' }, report: { type: 'string' }, to: { type: 'string', multiple: true }, all: { type: 'boolean' }, fresh: { type: 'boolean' }, json: { type: 'boolean' }, help: { type: 'boolean', short: 'h' },
   } });
+  const workers = values.workers === undefined ? undefined : Number(values.workers);
+  if (workers !== undefined && (!/^[1-9][0-9]*$/.test(values.workers!) || !Number.isSafeInteger(workers))) throw new Error('--workers must be a positive integer');
+  if (values.size !== undefined && !/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(values.size)) throw new Error('--size must be a nonempty slug');
   if (values.executor !== undefined && values.executor !== 'local' && values.executor !== 'droplet') throw new Error('--executor must be local or droplet');
   if (values.occasion !== undefined && !isVerifyOccasion(values.occasion)) throw new Error('--occasion must be stage, epic or release');
   if (values.help) { process.stdout.write(SUITE_USAGE); return 0; }
   if (positionals[0] === 'queue') {
-    if (positionals.length !== 1 || values.report !== undefined || values.to !== undefined || values.all !== undefined || values.fresh !== undefined || values.executor !== undefined || values.occasion !== undefined) throw new Error(SUITE_USAGE.trim());
+    if (positionals.length !== 1 || values.report !== undefined || values.to !== undefined || values.all !== undefined || values.fresh !== undefined || values.executor !== undefined || values.occasion !== undefined || values.workers !== undefined || values.size !== undefined) throw new Error(SUITE_USAGE.trim());
     const d = readDiscovery(hubDiscovery(cwd));
     if (!d) throw new Error('no hub runs for this project — run `cland hub start`');
     const q = await askHubFrame(d, { type: 'suite.queue' }, 15000) as VerificationQueue;
@@ -28,7 +31,7 @@ export async function runSuiteCommand(args: string[], cwd = process.cwd()): Prom
     return 0;
   }
   if (positionals[0] === 'cancel') {
-    if (positionals.length > 2 || values.report !== undefined || values.to !== undefined || values.all !== undefined || values.fresh !== undefined || values.executor !== undefined || values.occasion !== undefined) throw new Error(SUITE_USAGE.trim());
+    if (positionals.length > 2 || values.report !== undefined || values.to !== undefined || values.all !== undefined || values.fresh !== undefined || values.executor !== undefined || values.occasion !== undefined || values.workers !== undefined || values.size !== undefined) throw new Error(SUITE_USAGE.trim());
     const d = readDiscovery(hubDiscovery(cwd));
     if (!d) throw new Error('no hub runs for this project — run `cland hub start`');
     const result = await askHubFrame(d, { type: 'suite.cancel', ...(positionals[1] ? { suite: positionals[1] } : {}) }, 15000) as { id: string; topic: string; cancelled: true };
@@ -40,7 +43,7 @@ export async function runSuiteCommand(args: string[], cwd = process.cwd()): Prom
   const mode = values.all ? 'all' : requested;
   const d = readDiscovery(hubDiscovery(cwd));
   if (!d) throw new Error('no hub runs for this project — run `cland hub start`');
-  const result = await askHubFrame(d, { type: 'suite.start', mode, cwd, ...(values.occasion ? { occasion: values.occasion } : {}), fresh: values.fresh ?? false, ...(values.executor ? { executor: values.executor } : {}), report: values.report, ...(values.to ? { to: values.to } : {}) }, 15000) as { id: string; pid: number | null; topic: string; position: number; cached?: { run: string; head: string; tree: string } };
+  const result = await askHubFrame(d, { type: 'suite.start', mode, cwd, ...(workers !== undefined ? { workers } : {}), ...(values.size ? { size: values.size } : {}), ...(values.occasion ? { occasion: values.occasion } : {}), fresh: values.fresh ?? false, ...(values.executor ? { executor: values.executor } : {}), report: values.report, ...(values.to ? { to: values.to } : {}) }, 15000) as { id: string; pid: number | null; topic: string; position: number; cached?: { run: string; head: string; tree: string } };
   process.stdout.write((values.json ? JSON.stringify(result) : `suite ${result.id}${result.cached ? ` cached from ${result.cached.run} at ${result.cached.head} tree ${result.cached.tree};` : ' submitted;'} worker pid ${result.pid}; project queue position ${result.position}; result in ${result.topic}`) + '\n');
   return 0;
 }

@@ -15,7 +15,7 @@ import { isManagedFile, readText, writeIfChanged, type Report } from './files.ts
 
 export type ProjectConfig = {
   name: string;
-  verification: { executor: 'local' | 'droplet'; budget: number; remoteBudget: number; shards: number; lockPath: string; cacheMaxAgeMs: number; coverageMaxAgeMs: number; testTimeoutMs: number; stallTimeoutMs: number; lifetimeMs: number; runTimeoutMs: number; runTimeout: string; dailySpendUsd: number; droplet: { size: string; prepare_size: string; regions: string[]; image: string } };
+  verification: { executor: 'local' | 'droplet'; workers: number; budget: number; remoteBudget: number; shards: number; lockPath: string; cacheMaxAgeMs: number; coverageMaxAgeMs: number; testTimeoutMs: number; stallTimeoutMs: number; lifetimeMs: number; runTimeoutMs: number; runTimeout: string; dailySpendUsd: number; droplet: { workers?: number; size: string; prepare_size: string; regions: string[]; image: string } };
   sessions: { archiveAfterItemMs: number; archiveAfterStopMs: number };
   visibility: VisibilityOverrides;
   tracker: { levels: Levels; fatalStallMs: number };
@@ -29,7 +29,7 @@ const MINUTE = 60_000;
 
 export const defaultConfig = (name: string): ProjectConfig => ({
   name,
-  verification: { executor: 'local', budget: 1, remoteBudget: 4, shards: 2, lockPath: '/tmp/cland-suite.lock', cacheMaxAgeMs: 86400000, coverageMaxAgeMs: 172800000, testTimeoutMs: 120000, stallTimeoutMs: 600000, lifetimeMs: 6600000, runTimeoutMs: 4500000, runTimeout: '75m', dailySpendUsd: 5, droplet: { size: 'c-8', prepare_size: 'c-8', regions: ['lon1', 'nyc1', 'sfo2'], image: 'ubuntu-24-04-x64' } },
+  verification: { executor: 'local', workers: 4, budget: 1, remoteBudget: 4, shards: 2, lockPath: '/tmp/cland-suite.lock', cacheMaxAgeMs: 86400000, coverageMaxAgeMs: 172800000, testTimeoutMs: 120000, stallTimeoutMs: 600000, lifetimeMs: 6600000, runTimeoutMs: 4500000, runTimeout: '75m', dailySpendUsd: 5, droplet: { size: 'c-8', prepare_size: 'c-8', regions: ['lon1', 'nyc1', 'sfo2'], image: 'ubuntu-24-04-x64' } },
   sessions: { archiveAfterItemMs: 3600000, archiveAfterStopMs: 86400000 },
   visibility: {},
   tracker: { levels: [...DEFAULT_LEVELS], fatalStallMs: 60000 },
@@ -51,6 +51,8 @@ name = ${JSON.stringify(c.name)}
 
 [verification]
 executor = ${JSON.stringify(c.verification.executor)}
+# Concurrent machine test files; the free shard always uses one worker.
+workers = ${c.verification.workers}
 # Local admission stays capped at one, behind the compatibility leases.
 budget = ${c.verification.budget}
 # Parallel droplet runs beside the local slot.
@@ -70,6 +72,7 @@ run_timeout = ${JSON.stringify(c.verification.runTimeout)}
 daily_spend_usd = ${c.verification.dailySpendUsd}
 
 [verification.droplet]
+${c.verification.droplet.workers === undefined ? "# workers inherits verification.workers" : `workers = ${c.verification.droplet.workers}`}
 size = ${JSON.stringify(c.verification.droplet.size)}
 prepare_size = ${JSON.stringify(c.verification.droplet.prepare_size)}
 regions = ${JSON.stringify(c.verification.droplet.regions)}
@@ -122,6 +125,11 @@ ${Object.entries(c.visibility).flatMap(([surface, kinds]) => Object.entries(kind
 `;
 }
 
+const workerCount = (value: unknown, field: string): number => {
+  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value <= 0) throw new Error(`${field} must be a positive integer`);
+  return value;
+};
+
 const positive = (v: unknown): number | undefined => (typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : undefined);
 
 /** The file's values over the defaults; a value of the wrong type is ignored. Throws when the TOML does not parse. */
@@ -143,6 +151,7 @@ export function parseConfig(text: string, fallbackName: string, env: NodeJS.Proc
       c.verification[field] = durationMs(verification[key]);
     } catch { throw new Error(`verification.${key} must be a positive duration (s, m, h or d)`); }
   }
+  if (verification.workers !== undefined) c.verification.workers = workerCount(verification.workers, 'verification.workers');
   if (verification.executor !== undefined) {
     if (verification.executor !== 'local' && verification.executor !== 'droplet') throw new Error('verification.executor must be local or droplet');
     c.verification.executor = verification.executor;
@@ -168,6 +177,7 @@ export function parseConfig(text: string, fallbackName: string, env: NodeJS.Proc
     const droplet = verification.droplet;
     if (!droplet || typeof droplet !== 'object' || Array.isArray(droplet) || droplet instanceof Date) throw new Error('verification.droplet must be a table');
     const values = droplet as Record<string, unknown>;
+    if (values.workers !== undefined) c.verification.droplet.workers = workerCount(values.workers, 'verification.droplet.workers');
     for (const key of ['size', 'image', 'prepare_size'] as const) if (values[key] !== undefined) {
       if (typeof values[key] !== 'string' || !/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(values[key])) throw new Error(`verification.droplet.${key} must be a nonempty slug`);
       c.verification.droplet[key] = values[key];

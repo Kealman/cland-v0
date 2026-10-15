@@ -771,6 +771,9 @@ for (const admission of ['standalone', 'old V1 worker'] as const) test(`sharded 
   ownDirectory(t, dir);
   const locks = { hub: lockPath(dir, 'hub'), nvim: lockPath(dir, 'nvim') };
   const journal = join(dir, 'shards-ran');
+  await mkdir(join(dir, '.cland'));
+  await writeFile(join(dir, '.cland/config.toml'), '[verification]\nworkers=5\n');
+  const workers = admission === 'standalone' ? 5 : 6;
   for (const [path, machine] of [['hub/test/free.test.ts', false], ['hub/test/machine.test.ts', true], ['nvim/test/fixture.test.ts', true]] as const) {
     await mkdir(join(dir, path, '..'), { recursive: true });
     await writeFile(join(dir, path), `import test from 'node:test'; import assert from 'node:assert/strict'; import { existsSync, readdirSync, readFileSync, appendFileSync } from 'node:fs'; test('resource lease', () => {
@@ -795,13 +798,14 @@ for (const admission of ['standalone', 'old V1 worker'] as const) test(`sharded 
     // Imports cannot be nested in try: use a dynamic import for the package runner.
     code = code.replace(`import { runPackageSuite } from ${JSON.stringify(runner)};`, `const { runPackageSuite } = await import(${JSON.stringify(runner)});`);
   }
-  const child = spawn(process.execPath, ['--input-type=module', '-e', code], { env: { ...process.env, NODE_TEST_CONTEXT: '', CLAND_TEST_SKIP_LOCK: '0' } });
+  const child = spawn(process.execPath, ['--input-type=module', '-e', code], { env: { ...process.env, NODE_TEST_CONTEXT: '', CLAND_TEST_SKIP_LOCK: '0', CLAND_SUITE_EXECUTOR: 'local', CLAND_SUITE_WORKERS: admission === 'standalone' ? undefined : '6' } });
   let output = '';
   child.stdout.on('data', chunk => { output += String(chunk); }); child.stderr.on('data', chunk => { output += String(chunk); });
   assert.equal(await new Promise(resolve => child.on('close', resolve)), 0, output);
   assert.equal(await readFile(journal, 'utf8'), 'hub/test/free.test.ts\nhub/test/machine.test.ts\nnvim/test/fixture.test.ts\n');
   assert.match(output, /shard duration hub free [\d.]+s; workers 1; resource free/);
-  assert.match(output, /shard duration hub machine [\d.]+s; workers 4; resource machine/);
+  assert.match(output, new RegExp(`shard duration hub machine [\\d.]+s; workers ${workers}; resource machine`));
+  assert.match(output, new RegExp(`shard duration Neovim [\\d.]+s; workers ${workers}; resource machine`));
   assert.deepEqual(await readdir(locks.hub + '.runs'), []);
   assert.equal(await import('node:fs/promises').then(fs => fs.stat(locks.hub + '.machine')).catch(() => null), null);
 });

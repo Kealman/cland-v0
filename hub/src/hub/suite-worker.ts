@@ -19,7 +19,7 @@ export function suiteCommands(job: { mode: string; selection?: SuiteSelection })
 }
 
 export async function suiteWorker(input: string): Promise<void> {
-  const job = JSON.parse(await readFile(input, 'utf8')) as { cwd: string; mode: string; gate: string; result: string; selection?: SuiteSelection; locks?: string[]; head?: string; queued?: string; tree?: string | null };
+  const job = JSON.parse(await readFile(input, 'utf8')) as { cwd: string; mode: string; gate: string; result: string; selection?: SuiteSelection; locks?: string[]; workers?: number; head?: string; queued?: string; tree?: string | null };
   let signal: NodeJS.Signals | null = null;
   for (const name of ['SIGINT', 'SIGTERM'] as const) process.on(name, () => {
     if (signal) return;
@@ -66,6 +66,9 @@ export async function suiteWorker(input: string): Promise<void> {
       if (signal) break;
       process.stdout.write(`\n$ npm ${args.join(' ')}\n`);
       const env: NodeJS.ProcessEnv = { ...process.env, FORCE_COLOR: '0', NO_COLOR: '1' };
+      env.CLAND_SUITE_EXECUTOR = 'local';
+      if (job.workers !== undefined) env.CLAND_SUITE_WORKERS = String(job.workers);
+      else delete env.CLAND_SUITE_WORKERS;
       delete env.NODE_TEST_CONTEXT;
       delete env.CLAND_TEST_SKIP_LOCK;
       delete env.CLAND_SUITE_LEASE;

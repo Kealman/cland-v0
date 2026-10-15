@@ -179,6 +179,7 @@
     "hub/test/merge-policy.test.ts": "machine",
     "hub/test/merge-recovery.test.ts": "machine",
     "hub/test/close-shards.test.ts": "machine",
+    "hub/test/verification-workers.test.ts": "machine",
     "hub/test/suite-close.test.ts": "machine",
     "hub/test/suite-close-recovery.test.ts": "machine",
     "hub/test/suite-cache-recovery.test.ts": "machine",

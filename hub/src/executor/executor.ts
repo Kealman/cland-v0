@@ -4,7 +4,7 @@ export type ExecutorKind = 'local' | 'droplet';
 export type RunRef = {
   id: string; cwd: string; head: string; tree?: string | null; mode: string;
   selection?: SuiteSelection; log: string; result: string; gate: string;
-  queued?: string; locks?: string[];
+  queued?: string; locks?: string[]; workers?: number; size?: string;
 };
 /** Persisted with the run. Only the backend interprets resource. */
 export type Lease = { kind: ExecutorKind; run: string; created: string; deadline: string; resource: unknown };

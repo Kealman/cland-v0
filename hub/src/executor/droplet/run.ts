@@ -52,7 +52,7 @@ export class DropletRun {
     if (!committedOnly) await checkWorktree();
     const dir = remoteDir(lease);
     await this.#machine.exec(lease, `mkdir -p ${dir}`, { timeoutMs: 10000 });
-    const env = `export CLAND_SUITE_SELECTION=${quote(JSON.stringify(run.selection ?? null))}\nexport FORCE_COLOR=0\nexport NO_COLOR=1\n${run.selection?.recordCoverage ? `export CLAND_COVERAGE_OUTPUT=${dir}/coverage-map.json\n` : ''}`;
+    const env = `export CLAND_SUITE_EXECUTOR=droplet\n${run.workers === undefined ? '' : `export CLAND_SUITE_WORKERS=${run.workers}\n`}export CLAND_SUITE_SELECTION=${quote(JSON.stringify(run.selection ?? null))}\nexport FORCE_COLOR=0\nexport NO_COLOR=1\n${run.selection?.recordCoverage ? `export CLAND_COVERAGE_OUTPUT=${dir}/coverage-map.json\n` : ''}`;
     await writeFile(join(local, 'env'), env, { mode: 0o600 });
     const commands = suiteCommands(run).map((args, index) => `${index === 1 ? 'rmdir /tmp/cland-suite.lock; trap - EXIT\n' : ''}echo ${quote(`$ npm ${args.join(' ')}`)}\nnpm ${args.map(quote).join(' ')} || exit $?`).join('\n');
     // The typecheck owns the machine compatibility lock; the package runner then

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Uploaded with only the host's suite selection and two colour variables.
+# Uploaded with only the host's suite selection, worker policy and colour variables.
 set -u
 run="$HOME/runs/@RUN_ID@"
 # The open descriptor retains admission through shell/child lifetime. A marker

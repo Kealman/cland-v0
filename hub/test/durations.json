@@ -3615,6 +3615,10 @@
       "seconds": 7.69356,
       "reason": "Runs merge/readiness preparation and restart races through real hubs and git trees to prove stale evidence and stop recovery agree."
     },
+    "hub/test/verification-workers.test.ts::verify persists overrides, delivers remote workers, prices requested size and separates cached measurements": {
+      "seconds": 12.034,
+      "reason": "T-396: serial real CLI/frame runs cover remote and local worker delivery, c-16 pricing, cache separation and durable settings after hub restart; measured 12.034 s on the Mac at starting load 3.54."
+    },
     "hub/test/verifier-routing.test.ts::QA affinity survives copied and reordered verdict headers, including stage requests": {
       "seconds": 4.936075,
       "reason": "Launches multiple live verifier fixtures and routes QA/review requests across holds, relaunch and copied verdict histories."

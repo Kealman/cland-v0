@@ -2211,8 +2211,30 @@ helpers, using wall-clock waits, naming the legacy lock paths or Neovim also fai
 Keep new process fixtures in `machine`; private project directories alone do not
 remove their load and real-time dependencies.
 
-The hub free shard runs on one worker. The hub machine shard and Neovim run on
-four workers. Smoke targets use the same classification. Only machine phases
+The hub free shard runs on one worker. `[verification] workers` sets the hub
+machine shard and Neovim concurrency (default 4). `[verification.droplet] workers`
+overrides it on droplets and otherwise inherits it. Both accept positive integers;
+`cland update` preserves them. Hand runs use the local setting even when the
+project's default verification executor is a droplet.
+
+`cland verify --workers N` overrides the count for one run. `--size c-16` overrides
+the droplet size for one run and requires the droplet executor. The hub validates
+that the provider offers the size in a configured region, then reserves its actual
+hourly price against the daily spend cap before creating it. Overrides survive
+queueing/restart and appear in the result header. Cache reuse requires matching
+worker counts and size overrides; use `--fresh` for every timed measurement.
+A droplet fallback uses the local configured workers unless `--workers` was given.
+
+T-396 retains four workers pending the stage-2 measurements. Earlier Mac runs at
+four workers approached load 14–15, where readiness failures began; higher counts
+need measured evidence after the inspection diet and in-process hub changes.
+Compare c-16 at 4/6/8, then the quiet Mac at 4/5/6. Keep four locally unless a
+failure-free leader improves wall time by at least 10%; repeat close contenders.
+The [measurement procedure](../docs/research/T-396-worker-measurements.md) records
+the table, decision rule and required accounting receipts. The Coordinator posts
+the actual trade-off at stage-2 close before changing defaults.
+
+Smoke targets use the same classification. Only machine phases
 acquire `<lock>.machine`; the legacy lock pair stays held as the compatibility
 fence for the complete invocation, including typecheck. Production invocations
 remain serialized by budget one and this fence. This preserves hand-run and

@@ -9,7 +9,7 @@ export const OPEN_USAGE = `  open [dir]      start the project's hub if none run
                   (what \`cland\` with no command does on a terminal)
 `;
 
-export const SUITE_USAGE = `  verify [all|hub|nvim] [--all] [--fresh] [--executor local|droplet] [--occasion stage|epic|release] --report <topic|session> [--to <session>] [--json]
+export const SUITE_USAGE = `  verify [all|hub|nvim] [--all] [--fresh] [--executor local|droplet] [--workers N] [--size <slug>] [--occasion stage|epic|release] --report <topic|session> [--to <session>] [--json]
                   occasion: integrated dev closes only (Coordinator; QA epic); batch runs stay on one slot
   suite           alias for verify\n                  run typecheck and the package suite detached; post one artifact-backed result
   verify cancel [<suite id>] [--json]

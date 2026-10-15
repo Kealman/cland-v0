@@ -594,7 +594,7 @@ export class Dispatcher {
     const messageId = `suite:${job.id}`;
     const platform = job.platform;
     const machine = job.machine;
-    const execution = `Executor ${job.executor}${job.occasion ? ` · occasion ${job.occasion}` : ''}${job.shards ? ` · ${job.shards.length} shards` : ''}${machine ? ` · ${machine.size} ${machine.region} · ${machine.name}` : ''}${platform ? ` · ${platform.os} ${platform.arch}${job.executor === 'droplet' ? ` ${platform.release}` : ''} · Node ${platform.node} · Neovim ${platform.nvim}` : ' · platform unavailable'}${machine ? ` · lifetime ${machine.lifetimeMs === null ? 'unknown' : Math.round(machine.lifetimeMs / 1000) + ' s'} · cost $${machine.costUsd === null ? 'unknown' : machine.costUsd.toFixed(4)}` : ''}`;
+    const execution = `Executor ${job.executor}${job.occasion ? ` · occasion ${job.occasion}` : ''}${job.shards ? ` · ${job.shards.length} shards` : ''}${machine ? ` · ${machine.size} ${machine.region} · ${machine.name}` : ''}${platform ? ` · ${platform.os} ${platform.arch}${job.executor === 'droplet' ? ` ${platform.release}` : ''} · Node ${platform.node} · Neovim ${platform.nvim}` : ' · platform unavailable'}${machine ? ` · lifetime ${machine.lifetimeMs === null ? 'unknown' : Math.round(machine.lifetimeMs / 1000) + ' s'} · cost $${machine.costUsd === null ? 'unknown' : machine.costUsd.toFixed(4)}` : ''}${job.workers === undefined ? '' : ` · workers ${job.workers}`}${job.size ? ` · requested size ${job.size}` : ''}`;
     if (job.requesterDied) {
       // A dead session's role/claim is vacated. This is a hub lifecycle note, not a tool call as that session.
       const key = `suite-death:${job.id}`;
@@ -1388,7 +1388,7 @@ export class Dispatcher {
         }
       };
       try { authorize(); } catch (error) { return peer.send(Dispatcher.#failure(request.id, error)); }
-      later('suite.start', this.#suites.start({ mode: request.mode, ...(request.occasion ? { occasion: request.occasion } : {}), ...(request.executor ? { executor: request.executor } : {}), fresh: request.fresh ?? false, cwd: request.cwd, topic, to, actor, item: core.store.topic(topic)?.item ?? null, integrated: (caller?.role === 'coordinator' || caller?.role === 'qa' && request.occasion === VERIFY_OCCASIONS.epic) && request.cwd === this.#options.control?.status().root, priority: this.#suiteRank(core.store.topic(topic)?.item ?? null) }, authorize).then(value => ({ type: 'result', id: request.id, ok: true, value }), error => Dispatcher.#failure(request.id, error)));
+      later('suite.start', this.#suites.start({ mode: request.mode, ...(request.workers !== undefined ? { workers: request.workers } : {}), ...(request.size ? { size: request.size } : {}), ...(request.occasion ? { occasion: request.occasion } : {}), ...(request.executor ? { executor: request.executor } : {}), fresh: request.fresh ?? false, cwd: request.cwd, topic, to, actor, item: core.store.topic(topic)?.item ?? null, integrated: (caller?.role === 'coordinator' || caller?.role === 'qa' && request.occasion === VERIFY_OCCASIONS.epic) && request.cwd === this.#options.control?.status().root, priority: this.#suiteRank(core.store.topic(topic)?.item ?? null) }, authorize).then(value => ({ type: 'result', id: request.id, ok: true, value }), error => Dispatcher.#failure(request.id, error)));
     };
 
     /** A read repeated too fast reuses its last answer without another audit. */

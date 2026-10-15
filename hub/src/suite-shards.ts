@@ -3,6 +3,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { glob, readFile } from 'node:fs/promises';
 import { join, matchesGlob } from 'node:path';
+import { suiteLimits } from './suite-limits.ts';
 import type { SuiteMode, SuiteSelection } from './suite-selection.ts';
 import { HUB_SMOKE, NVIM_SMOKE } from './suite-selection.ts';
 import { DURATION_MANIFEST, lintDurationManifest, readDurationManifest, type DurationManifest } from './suite-durations.ts';
@@ -21,7 +22,7 @@ export class ShardManifestError extends Error {
   constructor(message: string, files: string[] = []) { super(message); this.files = files; }
 }
 
-async function classify(paths: string[], manifest: Manifest, source: (path: string) => Promise<string>, smoke: boolean): Promise<SuiteShard[]> {
+async function classify(paths: string[], manifest: Manifest, source: (path: string) => Promise<string>, smoke: boolean, workers = 4): Promise<SuiteShard[]> {
   paths.sort();
   if (manifest.version !== 1 || !manifest.tests || typeof manifest.tests !== 'object' || Array.isArray(manifest.tests)) throw new ShardManifestError('invalid hub shard manifest');
   const tests = manifest.tests;
@@ -34,15 +35,15 @@ async function classify(paths: string[], manifest: Manifest, source: (path: stri
     if (!smoke || HUB_SMOKE.includes(path)) groups[shard].push(path);
   }
   for (const path of Object.keys(tests)) if (!paths.includes(path)) throw new ShardManifestError(`hub shard manifest names missing test: ${path}`, [path]);
-  return (['free', 'machine'] as const).filter(resource => groups[resource].length).map(resource => ({ name: `hub ${resource}${smoke ? ' smoke' : ''}`, resource, workers: resource === 'free' ? 1 : 4, targets: groups[resource] }));
+  return (['free', 'machine'] as const).filter(resource => groups[resource].length).map(resource => ({ name: `hub ${resource}${smoke ? ' smoke' : ''}`, resource, workers: resource === 'free' ? 1 : workers, targets: groups[resource] }));
 }
 
-export async function hubShards(cwd: string, smoke = false): Promise<SuiteShard[]> {
+export async function hubShards(cwd: string, smoke = false, workers?: number): Promise<SuiteShard[]> {
   await lintDurations(cwd);
   const paths = [];
   for await (const path of glob(PATTERNS, { cwd })) paths.push(path);
   const manifest = await readFile(join(cwd, MANIFEST), 'utf8').then(text => JSON.parse(text) as Manifest, () => ({ version: 1, tests: {} }));
-  return classify(paths, manifest, path => readFile(join(cwd, path), 'utf8'), smoke);
+  return classify(paths, manifest, path => readFile(join(cwd, path), 'utf8'), smoke, workers ?? (await suiteLimits(cwd)).workers);
 }
 
 /** Only projects with a manifest opt into hub sharding. Admission also covers dirty test files. */
@@ -74,23 +75,25 @@ async function lintDurations(cwd: string): Promise<void> {
   } catch (error) { throw new ShardManifestError(error instanceof Error ? error.message : String(error), [DURATION_MANIFEST]); }
 }
 
-export async function packageShards(cwd: string, mode: SuiteMode, selection?: { files: string[]; nvim: boolean }, coverage?: SuiteSelection): Promise<SuiteShard[]> {
+export async function packageShards(cwd: string, mode: SuiteMode, selection?: { files: string[]; nvim: boolean }, coverage?: SuiteSelection, options: { executor?: 'local' | 'droplet'; workers?: number } = {}): Promise<SuiteShard[]> {
+  const workers = options.workers ?? (await suiteLimits(cwd, options.executor)).workers;
+  if (!Number.isSafeInteger(workers) || workers < 1) throw new Error('workers must be a positive integer');
   if (selection) {
-    const shards = await hubShards(cwd);
+    const shards = await hubShards(cwd, false, workers);
     const known = new Set(shards.flatMap(shard => shard.targets));
     for (const file of selection.files) if (!known.has(file)) throw new ShardManifestError(`unknown explicit hub shard file: ${file}`, [file]);
     return [...shards.map(shard => ({ ...shard, targets: shard.targets.filter(file => selection.files.includes(file)) })).filter(shard => shard.targets.length),
-      ...(selection.nvim ? [{ name: 'Neovim', targets: ['nvim/test/**/*.test.ts'], resource: 'machine' as const, workers: 4 }] : [])];
+      ...(selection.nvim ? [{ name: 'Neovim', targets: ['nvim/test/**/*.test.ts'], resource: 'machine' as const, workers }] : [])];
   }
   if (mode === 'hub-selected') {
-    const shards = await hubShards(cwd);
+    const shards = await hubShards(cwd, false, workers);
     const known = new Set(shards.flatMap(shard => shard.targets));
     if (!coverage?.tests?.length) throw new ShardManifestError('selected hub tests missing');
     for (const test of coverage.tests) if (!known.has(test)) throw new ShardManifestError(`unknown selected hub test: ${test}`, [test]);
     return [...shards.map(shard => ({ ...shard, name: `${shard.name} selected`, targets: shard.targets.filter(file => coverage.tests!.includes(file)) })).filter(shard => shard.targets.length),
-      { name: coverage.nvimFull ? 'Neovim' : 'Neovim smoke', targets: coverage.nvimFull ? ['nvim/test/**/*.test.ts'] : NVIM_SMOKE, resource: 'machine', workers: 4 }];
+      { name: coverage.nvimFull ? 'Neovim' : 'Neovim smoke', targets: coverage.nvimFull ? ['nvim/test/**/*.test.ts'] : NVIM_SMOKE, resource: 'machine', workers }];
   }
-  return [...await hubShards(cwd, mode === 'nvim-only'), { name: mode === 'hub-only' ? 'Neovim smoke' : 'Neovim', targets: mode === 'hub-only' ? NVIM_SMOKE : ['nvim/test/**/*.test.ts'], resource: 'machine', workers: 4 }];
+  return [...await hubShards(cwd, mode === 'nvim-only', workers), { name: mode === 'hub-only' ? 'Neovim smoke' : 'Neovim', targets: mode === 'hub-only' ? NVIM_SMOKE : ['nvim/test/**/*.test.ts'], resource: 'machine', workers }];
 }
 
 /** Longest-processing-time placement; ties are stable so a plan is reproducible. */

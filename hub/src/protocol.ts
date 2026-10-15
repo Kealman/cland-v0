@@ -515,7 +515,7 @@ export type VerifyOccasion = typeof VERIFY_OCCASIONS[keyof typeof VERIFY_OCCASIO
 export function isVerifyOccasion(value: unknown): value is VerifyOccasion {
   return Object.values(VERIFY_OCCASIONS).some(occasion => occasion === value);
 }
-export type SuiteStart = { type: 'suite.start'; occasion?: VerifyOccasion; id: string; mode: 'auto' | 'all' | 'hub' | 'nvim'; cwd: string; report: string; to?: string[]; fresh?: boolean; executor?: import('./executor/executor.ts').ExecutorKind };
+export type SuiteStart = { type: 'suite.start'; workers?: number; size?: string; occasion?: VerifyOccasion; id: string; mode: 'auto' | 'all' | 'hub' | 'nvim'; cwd: string; report: string; to?: string[]; fresh?: boolean; executor?: import('./executor/executor.ts').ExecutorKind };
 export type SuiteSlot = { type: 'suite.slot' | 'suite.forced'; id: string; mode: string; cwd: string; head: string; pid: number; token: string };
 export type SuiteSlotResult = { id: string; admitted: boolean; locks: string[]; queue: VerificationQueue };
 export type SuiteCancel = { type: 'suite.cancel'; id: string; suite?: string };
@@ -631,6 +631,7 @@ export type RoleList = {
 
 /** Admission and completion facts; extra fields are absent on pre-V1 hubs. */
 export type SuiteStatus = {
+  workers?: number; size?: string;
   occasion?: VerifyOccasion;
   executor: import('./executor/executor.ts').ExecutorKind;
   platform?: import('./executor/executor.ts').Platform;
@@ -774,7 +775,7 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
     case 'suite.forced':
       return ['full', 'hub-only', 'hub-selected', 'nvim-only'].includes(String(f.mode)) && typeof f.cwd === 'string' && typeof f.head === 'string' && Number.isSafeInteger(f.pid) && Number(f.pid) > 0 && typeof f.token === 'string' && f.token.length > 0;
     case 'suite.start':
-      return (f.occasion === undefined || isVerifyOccasion(f.occasion)) && (f.executor === undefined || ['local', 'droplet'].includes(String(f.executor))) && (f.fresh === undefined || typeof f.fresh === 'boolean') && ['auto', 'all', 'hub', 'nvim'].includes(String(f.mode)) && typeof f.cwd === 'string' && typeof f.report === 'string' && (f.to === undefined || (Array.isArray(f.to) && f.to.every(v => typeof v === 'string')));
+      return (f.workers === undefined || typeof f.workers === 'number' && Number.isSafeInteger(f.workers) && f.workers > 0) && (f.size === undefined || typeof f.size === 'string' && /^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(f.size)) && (f.occasion === undefined || isVerifyOccasion(f.occasion)) && (f.executor === undefined || ['local', 'droplet'].includes(String(f.executor))) && (f.fresh === undefined || typeof f.fresh === 'boolean') && ['auto', 'all', 'hub', 'nvim'].includes(String(f.mode)) && typeof f.cwd === 'string' && typeof f.report === 'string' && (f.to === undefined || (Array.isArray(f.to) && f.to.every(v => typeof v === 'string')));
     case 'suite.cancel':
       return f.suite === undefined || (typeof f.suite === 'string' && f.suite.trim().length > 0);
     case 'account.clear':
