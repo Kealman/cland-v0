@@ -312,9 +312,12 @@ test('hard limits show red account names and reset or until-cleared text; cleari
   await writeFile(join(config, 'cland', 'accounts.toml'), `[accounts.codex-a]\nharness = "codex"\nhome = ${JSON.stringify(home)}\n[accounts.oc-b]\nharness = "opencode"\ndata_home = ${JSON.stringify(join(root, 'oc-b'))}\n`);
   const fake = await fakeCodex(t);
   const ocHome = await fakeHome(t, 'fake-oc-limited-');
-  const reset = new Date(Date.now() + 120_000).toISOString();
+  // Keep the hub's reset in the future; pin the UI clock on either side of UTC midnight.
+  const resetDate = new Date();
+  resetDate.setUTCHours(24, 1, 0, 0);
+  const reset = resetDate.toISOString();
   await writeFile(join(home, 'rate-limits.json'), JSON.stringify({ rateLimits: { primary: { usedPercent: 0, windowDurationMins: 10080, resetsAt: Date.parse(reset) / 1000 }, secondary: null } }));
-  const env = { ...fake.env, XDG_CONFIG_HOME: config, FAKE_OPENCODE_HOME: ocHome, FAKE_OPENCODE_TURN_MS: '30', PATH: `${FAKE_CODEX_DIR}:${FAKE_OPENCODE_DIR}:${process.env.PATH ?? ''}` };
+  const env = { ...fake.env, TZ: 'UTC', XDG_CONFIG_HOME: config, FAKE_OPENCODE_HOME: ocHome, FAKE_OPENCODE_TURN_MS: '30', PATH: `${FAKE_CODEX_DIR}:${FAKE_OPENCODE_DIR}:${process.env.PATH ?? ''}` };
   const { discovery } = await startDaemon(t, root, env);
   const ui = await connectUi(t, discovery);
   for (const [name, account, role] of [['codex', 'codex-a', 'reviewer'], ['oc', 'oc-b', 'qa']]) {
@@ -328,12 +331,21 @@ test('hard limits show red account names and reset or until-cleared text; cleari
   // A mark and its removal must reach the panel through events alone.
   await c.lua(`local c=require('cland').client; local request=c.request
     c.request=function(self,frame,...) assert(frame.type~='account.list','unexpected account re-read'); return request(self,frame,...) end`);
+  const setNow = async (seconds: number) => c.lua(`local time=os.time
+    os.time=function(date) if date then return time(date) end return ${seconds} end
+    require('cland.state').changed()`);
+  await setNow(resetDate.getTime() / 1000 - 30); // 00:00:30, on the reset's day.
   for (const name of ['codex', 'oc']) assert.equal((await ui.request({ type: 'topic.send', topic: 'general', to: [name], text: `@${name} hit the usage limit` })).ok, true);
-  const screen = await c.waitScreen(s => s.includes(`codex-a  ✗ limited · ↻${clock(reset)}`) && s.includes('oc-b  ✗ limited · until cleared'), 'limited account lines');
+  const screen = await c.waitScreen(s => s.includes('codex-a  ✗ limited · ↻00:01') && s.includes('oc-b  ✗ limited · until cleared'), 'limited account lines');
   assert.match(screen, /limited/);
+  await setNow(resetDate.getTime() / 1000 - 120); // 23:59, before the reset's day.
+  const weekday = new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', weekday: 'short' }).format(resetDate);
+  await c.waitScreen(s => s.includes(`codex-a  ✗ limited · ↻${weekday} 00:01`) && s.includes('oc-b  ✗ limited · until cleared'), 'next-day limited account reset');
   const red = await highlights(c);
   for (const name of ['codex-a', 'oc-b']) assert.ok(red.some(m => m.text.includes(name) && m.group === 'ClandRed'));
   assert.ok(red.some(m => m.text.includes('until cleared') && m.group === 'ClandRed'));
+  // Freshness after clearing uses the real account-reading time, not the simulated midnight.
+  await setNow(Math.floor(Date.now() / 1000));
   for (const account of ['codex-a', 'oc-b']) assert.equal((await ui.request({ type: 'account.clear', account })).ok, true);
   await c.waitScreen(s => !s.includes('✗ limited') && s.includes('oc-b  no limit data'), 'cleared account event');
   const cleared = await highlights(c);
