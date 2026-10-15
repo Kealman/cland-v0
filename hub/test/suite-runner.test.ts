@@ -65,9 +65,10 @@ for (const mode of ['hub', 'nvim'] as const) {
   test(`two ${mode} suite invocations serialize and report the holder`, async (t) => {
     const dir = await fixture(t);
     const journal = join(dir, 'journal');
+    const release = join(dir, 'release');
     const file = join(dir, 'pass.mjs');
-    // Artificial work: hold admission 500 ms so concurrent runners must serialize.
-    await writeFile(file, `import assert from 'node:assert/strict'; import { appendFile, readFile } from 'node:fs/promises'; import test from 'node:test'; test('fixture', async () => { const owner = JSON.parse(await readFile(${JSON.stringify(`${lockPath(dir, mode)}.owner`)}, 'utf8')); assert.equal(owner.runner.pid, process.ppid); assert.equal(typeof owner.runner.started, 'string'); await appendFile(${JSON.stringify(journal)}, 'start\\n'); await new Promise(r => setTimeout(r, 500)); await appendFile(${JSON.stringify(journal)}, 'end\\n'); });`);
+    // Hold admission until the second runner reports this holder, even if startup is slow.
+    await writeFile(file, `import assert from 'node:assert/strict'; import { access, appendFile, readFile } from 'node:fs/promises'; import test from 'node:test'; test('fixture', async () => { const owner = JSON.parse(await readFile(${JSON.stringify(`${lockPath(dir, mode)}.owner`)}, 'utf8')); assert.equal(owner.runner.pid, process.ppid); assert.equal(typeof owner.runner.started, 'string'); await appendFile(${JSON.stringify(journal)}, 'start\\n'); while (!await access(${JSON.stringify(release)}).then(() => true, () => false)) await new Promise(r => setTimeout(r, 25)); await appendFile(${JSON.stringify(journal)}, 'end\\n'); });`);
     const first = run(t, dir, file, mode);
     await until(async () => (await readFile(journal, 'utf8').catch(() => '')).includes('start')).catch(error => { throw new Error(String(error) + '\n' + first.output()); });
     // The same directory also excludes the old manual mkdir convention in the reverse direction.
@@ -75,6 +76,7 @@ for (const mode of ['hub', 'nvim'] as const) {
     const second = run(t, dir, file, mode);
     await until(() => second.output().includes('waiting for the suite lock held by pid'));
     assert.match(second.output(), new RegExp(`held by pid ${first.child.pid} since`));
+    await writeFile(release, 'ready');
     assert.equal(await first.done, 0, first.output());
     assert.equal(await second.done, 0, second.output());
     assert.equal(await readFile(journal, 'utf8'), 'start\nend\nstart\nend\n');
