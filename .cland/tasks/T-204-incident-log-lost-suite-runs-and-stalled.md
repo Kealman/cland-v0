@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-10-15T15:59:14.949Z
+updated: 2026-10-15T16:18:34.423Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -284,3 +284,7 @@ Incident 2026-10-15, 15:10–15:58Z: local admission was wedged for 48 min (1477
 - /tmp/cland-suite.lock.runs/47a13467-4e74-4ca2-b7d5-9c5c02240003.json
 - /tmp/cland-suite-47a13467-4e74-4ca2-b7d5-9c5c02240003-1
 Cover e2a5506a took the local slot at 15:58:54Z. Hub fix: T-511.
+
+### human · 2026-10-15T16:18:34.423Z
+
+Incident: unattributed hub auto-start, third sighting. 2026-10-15 16:16:40.474Z human CLI hub.stop (atomic-restart.sh) → 16:16:40.492Z hub-stopped pid 95740 → 16:16:41.003Z hub-started pid 75433 (0.5 s later; 'node hub/bin/cland.ts hub serve', parent launchd, started 18:16:40 local), before the script's own 'cland hub start' at ~16:16:46Z, which printed 'pid 75433 holds hub.json but does not answer … run cland hub stop first'. No audit row between stop and start names a client. Env happened to be right (token present, knob absent, cap 10). Pattern now 3/3 restarts today except 14:08Z (clean). Needed: hub-started should record its launcher (parent command, client, cwd), and whichever spoke auto-starts on a missing socket should be identified and made to honour a stop-in-progress marker.

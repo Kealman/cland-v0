@@ -3,7 +3,7 @@ id: T-485
 kind: task
 title: codex-adapter launch-policy test sees the QA process alive right after an acknowledged session.stop (Linux)
 state: open
-status: in progress
+status: review
 size: XS
 criterion_seq: 1
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-299
 branch: t/T-485-codex-adapter-launch-policy-test-sees
 created: 2026-10-15T09:57:07.055Z
-updated: 2026-10-15T15:35:10.914Z
+updated: 2026-10-15T16:18:31.221Z
 ---
 
 ## Summary

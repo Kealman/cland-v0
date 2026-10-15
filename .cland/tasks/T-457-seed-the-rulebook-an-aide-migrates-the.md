@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-303
 branch: t/T-457-seed-the-rulebook-an-aide-migrates-the
 created: 2026-10-15T07:15:15.643Z
-updated: 2026-10-15T16:17:42.043Z
+updated: 2026-10-15T16:18:26.753Z
 ---
 
 ## Summary
@@ -67,11 +67,15 @@ Commit `.cland/RULES.md` on the task branch and merge it through `cland merge` l
 ## Acceptance criteria
 
 - [ ] C1. `cland rule list --json` on the live project shows exactly eight active rules, matching the eight of §3.2, each with a scope, a reason and an `Origin: memory:<path>` naming an existing memory file.
+  - verified: rev-30 [reviewer] · run rev-20261015-457-final · 2026-10-15T16:18:26.752Z · commit 349edf37ba5ce0b4ab76aaaf2320702aadcae37e
 - [ ] C2. Each migrated memory file, and its `MEMORY.md` line, names the rule number it became, in every memory folder that holds it.
   - verified: rev-30 [reviewer] · run rev-20261015-457-source · 2026-10-15T15:27:18.659Z · commit a9f013a2ed5ae48e239868d10c0b625b2cccc2b5
+  - verified: rev-30 [reviewer] · run rev-20261015-457-final · 2026-10-15T16:18:26.753Z · commit 349edf37ba5ce0b4ab76aaaf2320702aadcae37e
 - [ ] C3. The item carries a comment with the table of the eight rules and a separate list of other rule-like memories proposed for the human, none of which is in the rulebook.
   - verified: rev-30 [reviewer] · run rev-20261015-457-source · 2026-10-15T15:27:18.659Z · commit a9f013a2ed5ae48e239868d10c0b625b2cccc2b5
+  - verified: rev-30 [reviewer] · run rev-20261015-457-final · 2026-10-15T16:18:26.753Z · commit 349edf37ba5ce0b4ab76aaaf2320702aadcae37e
 - [ ] C4. After the merge, the live Coordinator's next clause (after a reconnect) lists the seeded rules in its scope as `rule <n>: …`.
+  - verified: rev-30 [reviewer] · run rev-20261015-457-final · 2026-10-15T16:18:26.753Z · commit 349edf37ba5ce0b4ab76aaaf2320702aadcae37e
 
 ## Comments
 
@@ -153,3 +157,23 @@ Spec: exactly eight active entries match docs/spec/v0.1.3.md §3.2. A-3108 JSON 
 Verified C2,C3. C1 data is consistent with captured live output A-3108, but the requested independent CLI rerun could not complete: node hub/bin/cland.ts rule list --json returned connect EPERM .../.cland/hub.sock in this read-only sandbox, and this session exposes no rule.list tool. Leave C1 unmarked pending independent live-query evidence/Coordinator settlement. C4 remains unverified, not failed, pending the next hub restart and Coordinator reconnect observation as requested. No test suite was run or needed for this data-only source pass.
 
 Criteria: C2 verified, C3 verified.
+
+### rev-30 · 2026-10-15T16:18:26.753Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-457-final
+commit: 349edf37ba5ce0b4ab76aaaf2320702aadcae37e
+scope: evidence
+
+Final review clear for T-457 at current dev 349edf37ba5ce0b4ab76aaaf2320702aadcae37e; no high, medium or low findings. All C1–C4 verified together under Coordinator's live-state landing/closure decisions 9fb5e236 and 5b0dec2b.
+
+C1: A-3118 is Coordinator's independent live `cland rule list --json` capture, supplied in place of Reviewer's sandbox-blocked socket query. It matches A-3108 as parsed JSON, contains exactly eight active rules numbered 1–8 matching spec §3.2, each with scope, reason and existing memory origin. Reviewed current root rulebook is byte-identical to both current dev and committed seed a9f013a2; no extra proposed rules recorded.
+C2: A-3117 records direct source/index checks; rechecked now: all eleven primary/supporting memory files each contain one correct Recorded-as-rule marker and one matching MEMORY.md reference through both requested paths (22 source/index path pairs). Both paths resolve to one backing directory.
+C3: current task.view retains the Aide's eight-row number/title/scope/origin table, distillation notes and separate unrecorded standing-rule proposal list. All eight rule texts/scopes/reasons remain source-reviewed and unchanged.
+C4: A-3144 records Coordinator's post-restart reconnect clause (hub event 9fd83315 at 16:16:46Z, restart 16:16:40Z) listing rules 1–8 in order as rule <n>: text (reason: reason). All eight are in Coordinator scope. Reviewer's own reconnect clause 53f0e59d at 16:16:44Z independently shows its scoped rules 3/4/5, consistent with delivery being live.
+
+No task branch merge or per-item suite is required for this data-only, hub-owned seed under the recorded Coordinator exception. C4 is now observed; earlier pending-state limitations are resolved by A-3118/A-3144. No Reviewer edits or tests. Coordinator requested immediate task close after this current-dev verdict to avoid marks becoming stale on later dev commits.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
