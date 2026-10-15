@@ -1853,6 +1853,9 @@ again before and after execution; head changes still fail verification.
 not at subsequent hits. Only successful completed, reported runs with an available
 log artifact qualify; old pre-cache jobs, failures and cancelled runs do not. A
 new failed or pending fresh attempt supersedes older green evidence for its key.
+Cancelled attempts (by the requester, requester death, or a head change before
+admission) do not supersede older green evidence. Test failures, worker crashes
+and timeouts still do.
 The cache survives restart and may reuse evidence from another worktree in this
 project. Requests from a repository subdirectory bypass caching, since their npm
 scripts can differ from those at the worktree root. A hit creates its own durable request and posts once to the usual topic

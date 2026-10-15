@@ -545,7 +545,7 @@ test('verify records wait/run timings, zero-time cache hits, recent median/p90 a
   });
   await rm(lock, {recursive:true});
   const replacement = await f.launch('all', '--fresh');
-  await eventually('new green after fresh cancellation superseded the cache', async () => ((await ui.request({type:'hub.status'})).value as HubStatus).suites!.find(j => j.id === replacement.id && j.reported));
+  await eventually('new green after fresh cancellation', async () => ((await ui.request({type:'hub.status'})).value as HubStatus).suites!.find(j => j.id === replacement.id && j.reported));
   await mkdir(lock);
   for (let n = 0; n < 20; n++) {
     const hit = await f.launch();
@@ -1055,11 +1055,9 @@ test('the compatibility lease spans typecheck and tests, so a hand runner waits 
 test('a dead queued requester is cancelled with one posted note even after its role is vacated', async t => {
   const fake = await fakeCodex(t);
   const f = await fixture(t, 'node -e "process.exit(0)"', undefined, '', fake.env);
-  const git = async (...args: string[]) => promisify(execFile)('git', args, { cwd: f.root });
-  await git('init', '--initial-branch=dev');
-  await git('config', 'user.name', 'Verification test'); await git('config', 'user.email', 'verify@example.invalid');
-  await writeFile(join(f.root, '.gitignore'), '.cland/\nsuite.lock*\n');
-  await git('add', '.'); await git('commit', '-m', 'fixture');
+  await cacheRepository(f);
+  const green = await f.launch();
+  assert.match((await eventually('green before requester death', async () => (await f.results())[0])).text, /exit 0/);
   const created = JSON.parse((await cland(f.root, 'task', 'create', '--size', 'M', 'doomed verification', '--assignee', 'doomed', '--json')).stdout) as {item:{id:string}};
   const topicResult = await f.ui.request({type:'topic.create', title:'Doomed run', item:created.item.id});
   const topic = (topicResult.value as {topic:{id:string}}).topic.id;
@@ -1067,7 +1065,7 @@ test('a dead queued requester is cancelled with one posted note even after its r
   assert.equal(launched.ok, true, launched.error);
   const actor = (launched.value as {process:{pid:number; sessionId:string}}).process;
   await mkdir(join(f.root, 'suite.lock'));
-  const submission = await clandWithEnv(f.root, {CLAND_SESSION_NAME:'doomed', CLAND_SESSION_ID:actor.sessionId, CLAND_ROLE:'implementer'}, 'verify', '--report', topic, '--to', 'rev', '--json');
+  const submission = await clandWithEnv(f.root, {CLAND_SESSION_NAME:'doomed', CLAND_SESSION_ID:actor.sessionId, CLAND_ROLE:'implementer'}, 'verify', 'all', '--fresh', '--report', topic, '--to', 'rev', '--json');
   assert.equal(submission.code, 0, submission.stderr);
   assert.equal(JSON.parse(submission.stdout).pid, null);
   process.kill(actor.pid, 'SIGKILL');
@@ -1083,6 +1081,12 @@ test('a dead queued requester is cancelled with one posted note even after its r
   const next = await startDaemon(t, f.root, fake.env);
   const ui = await connectUi(t, next.discovery);
   assert.equal((await history(ui)).length, 1);
+  const hit = await f.launch();
+  assert.equal(hit.cached?.run, green.id, 'requester death preserves green evidence across restart');
+  await eventually('green reused after requester death', async () => {
+    const result = await ui.request({type:'topic.history', topic:f.topic});
+    return (result.value as {messages:ResultMessage[]}).messages.find(m => m.id === `suite:${hit.id}`);
+  });
 });
 
 test('priority admits integrated dev first, then item rank, preserving the queue through restart', async t => {
@@ -1421,6 +1425,31 @@ test('verify reuses a green candidate tree after a tracker-only commit and repor
   assert.equal(changed.cached, undefined);
   await eventually('changed tree ran', async () => (await f.results())[3]);
   assert.equal(await readFile(join(f.root, 'executions'), 'utf8'), 'run\nrun\n');
+});
+
+for (const cancellation of ['requester', 'head change'] as const) test(`a fresh attempt cancelled by ${cancellation} preserves the original green cache evidence`, async t => {
+  const f = await fixture(t, `node -e "require('fs').appendFileSync('executions','run\\n')"`);
+  const git = await cacheRepository(f);
+  const original = await f.launch();
+  assert.match((await eventually('original green', async () => (await f.results())[0])).text, /exit 0/);
+  await mkdir(join(f.root, 'suite.lock'));
+  const fresh = await f.launch('all', '--fresh');
+  assert.equal(fresh.pid, null);
+  assert.equal(fresh.cached, undefined);
+  if (cancellation === 'requester') {
+    const cancelled = await clandWithEnv(f.root, f.env, 'verify', 'cancel', fresh.id);
+    assert.equal(cancelled.code, 0, cancelled.stderr);
+  } else {
+    await git('commit', '--allow-empty', '-m', 'same tree at a new head');
+    await rm(join(f.root, 'suite.lock'), { recursive: true });
+  }
+  assert.match((await eventually('fresh cancellation', async () => (await f.results())[1])).text, /cancelled/);
+  const hit = await f.launch();
+  assert.equal(hit.cached?.run, original.id);
+  assert.equal(hit.pid, null);
+  const result = await eventually('original green reused', async () => (await f.results())[2]);
+  assert.ok(result.text.includes(`Original run ${original.id}`), result.text);
+  assert.equal(await readFile(join(f.root, 'executions'), 'utf8'), 'run\n');
 });
 
 test('verify --fresh runs despite a green cache and cache hits do not extend expiry', async t => {

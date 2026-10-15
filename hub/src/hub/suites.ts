@@ -283,8 +283,9 @@ export class Suites {
     });
   }
   #cached(tree: string, mode: SuiteSelection['mode']): SuiteJob | undefined {
-    // A failed or pending fresh attempt supersedes earlier green evidence for this key.
-    const job = this.#jobs.findLast(j => !j.cached && j.tree === tree && j.selection?.mode === mode);
+    // Cancellations say nothing about the tree; failed or pending attempts still supersede green evidence.
+    // Pre-admission head changes carry their cancellation in the outcome rather than a flag.
+    const job = this.#jobs.findLast(j => !j.cached && !j.cancelled && !j.requesterDied && !j.outcome?.cause.startsWith('cancelled: queued head changed') && j.tree === tree && j.selection?.mode === mode);
     if (!job || job.outcome?.code !== 0 || !job.reported || !job.finished || !job.artifact) return undefined;
     const age = Date.now() - Date.parse(job.finished);
     const artifact = this.#store.resolveArtifact(job.artifact);
