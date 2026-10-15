@@ -3,7 +3,7 @@ id: T-490
 kind: task
 title: "suite-remote-budget test: candidate result not within 20 s when three remote callers run beside the local slot (Linux)"
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-300
 branch: t/T-490-suite-remote-budget-test-candidate
 created: 2026-10-15T11:56:46.304Z
-updated: 2026-10-15T16:47:13.953Z
+updated: 2026-10-15T16:47:40.412Z
 ---
 
 ## Problem
@@ -27,8 +27,10 @@ updated: 2026-10-15T16:47:13.953Z
   - done: impl-490 · 2026-10-15T15:17:25.346Z
   - verified: rev-30 [reviewer] · run rev-20261015-490-source · 2026-10-15T15:31:04.979Z · commit 34251b57aa6c1203b641be6ba0e75c7487d17c44
   - verified: rev-30 [reviewer] · run rev-20261015-490-delta · 2026-10-15T16:20:36.231Z · commit a4816d7e1a66e8710a024e0742854ed74e011234
+  - verified: rev-30 [reviewer] · run rev-20261015-490-final · 2026-10-15T16:47:29.340Z · commit a4816d7e1a66e8710a024e0742854ed74e011234
 - [x] C2. suite-remote-budget.test.ts passes 5/5 serially, whole file and alone, beside a local full run, plus once on a droplet in the task's verify.
   - done: impl-490 · 2026-10-15T16:01:58.747Z
+  - verified: rev-30 [reviewer] · run rev-20261015-490-final · 2026-10-15T16:47:29.340Z · commit a4816d7e1a66e8710a024e0742854ed74e011234
 
 ## Comments
 
@@ -112,3 +114,24 @@ Criteria: C1 verified.
 ### impl-490 · 2026-10-15T16:47:01.036Z
 
 Second Linux receipt 5fea0bb0 at delta-reviewed a4816d7e: own suite-remote-budget.test.ts all 10 green again, changed case 12.792s. Sole failure is orphan-servers.test.ts:346 OpenCode unverifiable-live-server case, 'database is locked' / ERR_SQLITE_ERROR code 5, exactly tracked by open T-499 (task view confirmed). The first Linux receipt A-3139 had zero functional failures, sole rule-sessions budget red corrected by approved shared pick bdf418e6. Second A-3177 is red only on different known T-499; no duration-budget failure remains. Requesting Reviewer's final evidence verdict under E-482 two-receipt rule; no further run/source changes.
+
+### rev-30 · 2026-10-15T16:47:29.340Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-490-final
+commit: a4816d7e1a66e8710a024e0742854ed74e011234
+scope: evidence
+
+Final review clear at unchanged delta-reviewed a4816d7e1a66e8710a024e0742854ed74e011234 under E-482 two-receipt/shared-fix rule; C1–C2 verified. No high or medium T-490 findings remain. Source A-3122 and delta A-3150 stand.
+
+C1: observed per-run completion receipts still precede the unchanged result-publication waits; original concurrency, local/human handoff, exact report and provider cleanup assertions/bounds remain. Root cause is in source commit; controlled red/green probe removed. Own file unchanged between reviewed heads.
+C2: A-3120 provides five serial quiet Mac whole-file passes, 10/10 each (50/50), under the recorded E-482 12:32Z quiet-evidence exception. Both Linux receipts pass all 10 own-file cases: first fixed case 15.402 s, second 12.791546717 s.
+
+A-3139/8cd57b4d at source-reviewed 34251b57: Linux c-8, overall exit 1, 1769 pass/0 functional failures/3 platform skips/0 cancelled; sole hard red is rule-sessions clause/brief 5.043-second budget. Coordinator 91a6b74d explicitly accepts it as first receipt and directs the canonical allowance; exact shared bdf418e6 pick is the only head change, reviewed in A-3150.
+A-3177/5fea0bb0 at current head: Linux c-8, overall exit 1, 1768 pass/1 fail/3 platform skips/0 cancelled. Sole red orphan-servers.test.ts:346 is database is locked / ERR_SQLITE_ERROR errcode 5 in the OpenCode unverifiable-live-server fixture. Direct task.view T-499 confirms this exact known test/line/second-connection SQLite_BUSY signature. No hard budget failure remains. This differs from first receipt's rule-session budget; own tests green in both, satisfying the approved two-receipt path. Neither suite is called green.
+
+Host/remote typecheck and hub phases complete; cross-package Neovim smoke does not run after red hub exit. Task owns no nvim files. No additional source issue or new aside inferred; T-499 remains separate. Read-only branch ref matches reviewed SHA. No third run required under this gate; no Reviewer tests or edits.
+
+Criteria: C1 verified, C2 verified.

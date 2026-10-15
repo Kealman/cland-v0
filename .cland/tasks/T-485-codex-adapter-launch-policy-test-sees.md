@@ -2,8 +2,8 @@
 id: T-485
 kind: task
 title: codex-adapter launch-policy test sees the QA process alive right after an acknowledged session.stop (Linux)
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 1
 labels:
@@ -16,7 +16,8 @@ blocked_by: []
 topic: topic-299
 branch: t/T-485-codex-adapter-launch-policy-test-sees
 created: 2026-10-15T09:57:07.055Z
-updated: 2026-10-15T16:45:36.580Z
+updated: 2026-10-15T16:47:23.120Z
+closed: 2026-10-15T16:47:23.120Z
 ---
 
 ## Summary
@@ -158,3 +159,7 @@ Evidence carries under explicit Coordinator 4cf571b6-b9b4-409e-a006-17aa9ce74f87
 Branch ref read-only check matches requested SHA. No Reviewer tests, edits or new verify required. Coordinator merges on ready.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-15T16:47:23.120Z
+
+Merged 234f56009709358b654f4e0b905dd0a9f3214737 onto dev.
