@@ -558,6 +558,8 @@ test('Codex launches Implementer and QA with full access, Reviewer read-only, an
   const stoppedQa = await ui.request({ type: 'session.stop', session: 'qa-1' }, 15_000);
   assert.equal(stoppedQa.ok, true, stoppedQa.error);
   assert.equal((stoppedQa.value as { process: Harness }).process.status, 'stopped');
+  // Stop excludes zombies from its process table; wait for PID reaping before the OS liveness assertion.
+  await eventually('qa-1 app-server PID is gone', () => !pidAlive(qa.launched.pid as number) ? true : undefined);
   assert.equal(pidAlive(qa.launched.pid as number), false);
   await eventually('qa-1 is seen gone', async () => ((await status(ui)).harnesses.find((h) => h.name === 'qa-1')?.state === 'unknown' ? true : undefined));
   const relaunched = await ui.request({ type: 'session.resume', session: 'qa-1', relaunch: true }, 30_000);
@@ -572,6 +574,7 @@ test('Codex launches Implementer and QA with full access, Reviewer read-only, an
   const stoppedImpl = await ui.request({ type: 'session.stop', session: 'impl-1' }, 15_000);
   assert.equal(stoppedImpl.ok, true, stoppedImpl.error);
   assert.equal((stoppedImpl.value as { process: Harness }).process.status, 'stopped');
+  await eventually('impl-1 app-server PID is gone', () => !pidAlive(impl.launched.pid as number) ? true : undefined);
   assert.equal(pidAlive(impl.launched.pid as number), false);
   await eventually('impl-1 is seen gone', async () => ((await status(ui)).harnesses.find((h) => h.name === 'impl-1')?.state === 'unknown' ? true : undefined));
   const implAgain = await ui.request({ type: 'session.resume', session: 'impl-1', relaunch: true }, 30_000);
