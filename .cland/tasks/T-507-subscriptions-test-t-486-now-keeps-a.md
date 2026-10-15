@@ -3,7 +3,7 @@ id: T-507
 kind: task
 title: "subscriptions test: T-486 now keeps a completed first turn's idle, but the test expects only 'impl launched'"
 state: open
-status: in progress
+status: review
 size: XS
 criterion_seq: 2
 labels:
@@ -15,7 +15,7 @@ regression_of: T-486
 topic: topic-305
 branch: t/T-507-subscriptions-test-t-486-now-keeps-a
 created: 2026-10-15T15:16:16.512Z
-updated: 2026-10-15T15:21:51.990Z
+updated: 2026-10-15T15:24:40.279Z
 ---
 
 ## Problem
@@ -26,6 +26,7 @@ updated: 2026-10-15T15:21:51.990Z
 
 - [x] C1. The case expects the event set that T-486's launch ordering produces. It either accepts 'impl idle' after 'impl launched' when the first turn has completed, or it holds the fake's first turn so that idle can't arrive inside the window. Record which, and why, in the commit.
   - done: impl-507 · 2026-10-15T15:21:51.990Z
+  - verified: rev-31 [reviewer] · run rev-20261015-507-source · 2026-10-15T15:24:40.279Z · commit a81a396db4d2fb9661037e6e0bb3940e5bebab8b
 - [ ] C2. subscriptions.test.ts passes 5/5 serially, whole file and alone on the Mac, plus once on a droplet in the task's verify.
 
 ## Comments
@@ -33,3 +34,30 @@ updated: 2026-10-15T15:21:51.990Z
 ### impl-507 · 2026-10-15T15:18:51.946Z
 
 Diagnosis is already evidenced by T-495 droplet d6e75622 (A-3101) on T-486. Using the existing terminal-role-update integration case as the regression seam; skipping a new broad hypothesis hunt because the ticket identifies the stale event expectation and permits either accepting completed-turn idle or gating the fake. Plan: explicitly wait for resumed first-turn idle, then require exactly launched followed by idle, retaining the no-prior-terminal-replay assertion.
+
+### impl-507 · 2026-10-15T15:23:59.607Z
+
+Implemented C1 at 88358be5; review head a81a396db4d2fb9661037e6e0bb3940e5bebab8b pushed to origin. Waits for resumed idle, then requires exactly launched followed by idle; no terminal replay permitted. A-3110 captures deterministic old-assertion failure. Five serial quiet Mac whole-file passes (15/15 each) and typecheck exit 0 are in A-3113, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3113-t-507-five-serial-quiet-mac-whole-file-passes.log. C2 awaits the post-source-review droplet verify. Shared fixes e9578029 and 18e5c465 picked as 2a44b257 and a27f36d8; dev merged before the new no-default-dev-merge instruction. No QA required by item policy.
+
+### rev-31 · 2026-10-15T15:24:40.279Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261015-507-source
+commit: a81a396db4d2fb9661037e6e0bb3940e5bebab8b
+scope: full
+
+Source review clear at a81a396db4d2fb9661037e6e0bb3940e5bebab8b. No high, medium or low findings.
+
+## Standards
+No documented-standard or baseline-smell findings. The only task diff is the terminal-session role-update case. The wait observes a concrete event and uses the existing wait deadline; no sleeps, assertion removal or production change. Diff check passes.
+
+## Spec
+C1 verified at hub/test/subscriptions.test.ts:469-475: after relaunch, explicitly wait for launched and first-turn idle, then require the exact ordered pair. The subscription is created only after stop, so those event notices cannot be satisfied by initial pre-subscription messages. The original metadata-update subscription-equality assertion remains, and any replayed terminal notice still adds an unexpected event and fails exact history equality. Commit 88358be5 explicitly chooses completed-turn idle acceptance over holding the fake and explains why.
+A-3110 checked: adding the idle wait while retaining the old expected list deterministically fails on the single legitimate extra idle notice. A-3113 checked: five quiet serial whole-file passes, 15/15 each, 75/75 total, no failures/skips/cancellations; changed case 1.987-3.001 s. Artifact records typecheck exit 0 and unchanged test content across the final dev merge/shared manifest fixes.
+
+C2 Mac portion is evidenced; C2 remains unverified pending accepted exact-head post-source droplet verification.
+Standards: 0 findings. Spec: 0 findings. No Reviewer tests or edits.
+
+Criteria: C1 verified.

@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-15T09:14:14.206Z
-updated: 2026-10-15T15:03:54.833Z
+updated: 2026-10-15T15:24:42.537Z
 ---
 
 ## Goal
@@ -72,3 +72,7 @@ Watch item: subscriptions.test.ts:453/:472 got an extra 'impl idle' event beside
 ### coord · 2026-10-15T15:03:54.833Z
 
 Gate clarification (2026-10-15 15:04Z): the 'own files green' condition of the two-receipt rule applies to the test cases a task's diff changes. A red on another case in the same file counts as known if a ticket covers that case and the diff doesn't touch it (T-467: codex-adapter:561 is T-485's).
+
+### coord · 2026-10-15T15:24:42.537Z
+
+Same-head clarification (2026-10-15 15:24Z): a head that moved by a full origin/dev merge counts like shared picks for the two-receipt rule, provided the Reviewer confirms the task diff against dev is unchanged. This covers merges made before the 15:23Z "pick only" notice (T-497, T-498, T-507). From now on, pick only, and merge dev on conflict or on request.

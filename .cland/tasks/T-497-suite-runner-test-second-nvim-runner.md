@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-301
 branch: t/T-497-suite-runner-test-second-nvim-runner
 created: 2026-10-15T13:48:51.140Z
-updated: 2026-10-15T15:17:23.945Z
+updated: 2026-10-15T15:23:49.163Z
 ---
 
 ## Problem
@@ -26,6 +26,7 @@ updated: 2026-10-15T15:17:23.945Z
 - [x] C1. The case keeps the first runner holding until the second has observably started waiting, using a gate or file signal rather than a fixed 500 ms. Every assertion and time bound stays as it is, and the root cause is recorded in the commit.
   - done: impl-497 · 2026-10-15T15:16:07.738Z
   - verified: rev-30 [reviewer] · run rev-20261015-497-source · 2026-10-15T15:17:23.945Z · commit b53da58894f1150cbf54f5df8691cdd27ac032c2
+  - verified: rev-30 [reviewer] · run rev-20261015-497-delta · 2026-10-15T15:23:49.163Z · commit 9b10339a8cd82da4d7d92753e927ca30564ad2db
 - [ ] C2. suite-runner.test.ts passes 5/5 serially, whole file and alone on the Mac, plus once on a droplet in the task's verify.
 
 ## Comments
@@ -55,5 +56,23 @@ Spec: C1 verified. suite-runner.test.ts:66–79 holds the first fixture until th
 A-3102 records deterministic 750ms delayed-start old-red/new-green, probe removed; five serial whole-file Mac logs each show 50/50, no failures/skips/cancellations (250/250). Labels distinguish brief first-run overlap with automatic fallback from four quiet runs, permitted by E-482 1ba48602. Identical task file used before final dev integration; exact-head typecheck is pending the post-source verifier.
 
 Reviewed git diff 8389c3dd45f92848dd43290f33f29fe1a9feed5a...b53da58894f1150cbf54f5df8691cdd27ac032c2, one commit/one file (4+/2-); git diff --check green. C2 remains unverified pending accepted same-head Linux gate. Both Standards and Spec reviewed directly; role prohibits delegation. No Reviewer tests or edits.
+
+Criteria: C1 verified.
+
+### rev-30 · 2026-10-15T15:23:49.163Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-497-delta
+commit: 9b10339a8cd82da4d7d92753e927ca30564ad2db
+scope: delta
+
+Delta source review clear at 9b10339a8cd82da4d7d92753e927ca30564ad2db; no high, medium or low findings.
+
+Standards: shared heartbeat duration commits are integrated with the correction: parsed manifest has the measured 5.113s allowance under allow, reason and A-3109 provenance, and no stray root key. No test assertion or budget-wide override added.
+Spec: suite-runner.test.ts is byte-identical to source-reviewed b53da588; net task diff against merged dev 7df53ebe remains only the six-line holder fixture change. C1 reverified: release follows observed waiter/exact holder PID and preserves every assertion/time bound. Inherited T-495 is already final-reviewed with accepted Linux evidence; rulebook/tracker updates add no task-local seam change.
+
+Reviewed b53da588..9b10339a and net task diff 7df53ebe...9b10339a; git diff --check green. Five Mac passes A-3102 remain supporting evidence for unchanged file. C2 awaits accepted Linux verification. Old immutable run d95c9b7a at b53da588 remains old-head evidence; await it rather than submitting overlapping verification, then request a current-head run after this clear. Both axes reviewed directly; no Reviewer tests or edits.
 
 Criteria: C1 verified.

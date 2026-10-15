@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-302
 branch: t/T-498-doctor-isolation-test-rm-of-the-other
 created: 2026-10-15T14:03:16.446Z
-updated: 2026-10-15T15:08:56.777Z
+updated: 2026-10-15T15:23:44.163Z
 ---
 
 ## Problem
@@ -26,6 +26,7 @@ updated: 2026-10-15T15:08:56.777Z
 - [x] C1. The test stops the other fixture's hub and observes it gone before removing its directory. Alternatively, the removal tolerates and retries the live-writer race within a bounded wait. Every assertion stays, and the root cause is recorded in the commit.
   - done: impl-498 · 2026-10-15T15:08:08.811Z
   - verified: rev-31 [reviewer] · run rev-20261015-498-source · 2026-10-15T15:08:56.777Z · commit 9534d5c9b70bdbf57255009cce0d5f2976074058
+  - verified: rev-31 [reviewer] · run rev-20261015-498-source-2 · 2026-10-15T15:23:44.163Z · commit 155578cb528307622efaf79b618809576e2d4a0f
 - [ ] C2. doctor-isolation.test.ts passes 5/5 serially, whole file and alone on the Mac, plus once on a droplet in the task's verify.
 
 ## Comments
@@ -57,6 +58,28 @@ C1 verified: hub/test/doctor-isolation.test.ts:17-18 uses recursive removal with
 The commit records the Linux .cland/run live-writer ENOTEMPTY cause; A-3044:3934-3936 supplies the exact historical failure at the foreign fixture.
 
 A-3093 checked: five labelled quiet serial whole-file Mac passes at this exact head, one test each, 0 failures/skips/cancellations, 1.963-2.875 s per file. That satisfies the Mac portion of C2; C2 remains unverified until the required exact-head post-source droplet verify.
+Standards: 0 findings. Spec: 0 findings. No Reviewer tests or edits.
+
+Criteria: C1 verified.
+
+### rev-31 · 2026-10-15T15:23:44.163Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261015-498-source-2
+commit: 155578cb528307622efaf79b618809576e2d4a0f
+scope: delta
+
+Delta source review clear at 155578cb528307622efaf79b618809576e2d4a0f. No high, medium or low findings.
+
+## Standards
+Current origin/dev 7df53ebe is merged. The complete task diff remains only hub/test/doctor-isolation.test.ts (four additions/two replacements); no test-body change relative to source-reviewed 9534d5c9. Resolved durations.json matches origin/dev exactly, so the manifest conflict introduces no task-local allowance or baseline changes. Diff check passes.
+
+## Spec
+C1 refreshed: both recursive removals retain maxRetries 10/retryDelay 50, both hubs remain alive, all scoped-sweep and PID-survival assertions remain unchanged, and the original commit records the live-writer ENOTEMPTY root cause. Prior full review rev-20261015-498-source carries forward.
+A-3093's five quiet Mac whole-file passes remain applicable to the byte-identical task test. C2 remains unverified pending accepted droplet evidence at the required reviewed head. Running 65bb9a73 is explicitly an earlier-head run at 9534d5c9, not automatically a green exact-head receipt for 155578cb.
+
 Standards: 0 findings. Spec: 0 findings. No Reviewer tests or edits.
 
 Criteria: C1 verified.
