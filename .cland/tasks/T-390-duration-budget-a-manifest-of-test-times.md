@@ -2,8 +2,8 @@
 id: T-390
 kind: task
 title: "Duration budget: a manifest of test times from the latest green integrated log, a 5 s per test and 60 s per file budget with a reasoned allowlist, and the top regressions in the suite report"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 7
 labels:
@@ -18,7 +18,8 @@ blocked_by:
 topic: topic-267
 branch: t/T-390-duration-budget-a-manifest-of-test-times
 created: 2026-10-14T12:28:10.528Z
-updated: 2026-10-15T05:03:09.872Z
+updated: 2026-10-15T05:03:32.249Z
+closed: 2026-10-15T05:03:32.249Z
 ---
 
 ## Summary
@@ -276,3 +277,7 @@ scope: evidence
 Final clear at unchanged source-reviewed b5fd4b80. Standards and Spec: no high or medium findings. A-2689/daa62ae8 local no-mode selects full: root typecheck and 2101/2101 tests pass (37 free hub, 1677 machine hub, 387 Neovim), zero failures/cancellations/skips/todos or duration-budget failures, exit 0. C4 under 23523456: raw log has exactly five delta-ranked over-budget regression notices; passing branch fixture proves >=1 s/50%, inclusive equality, five-line selection and suiteSummary preservation. Owed post-merge confirmation remains: Coordinator checks/records the first posted result after next hub restart includes regression and overhead lines; today's live old formatter is not claimed as proof. C5 under 28375528: self-measured overhead 28.44 ms <2000 ms, supported by checked serial A-2647 reporter pairs; no idle/full-wall A/B claim. Current-head C1/C2/C3/C6/C7 source/evidence basis A-2662 retained, including manifest provenance and actual new-identity scratch failures. Prior reds A-2643/a4f2efaa, A-2651/b88fd29f and A-2658/7b543f68 remain recorded; latter T-449/T-447-family failures retained, human semantics revised at a new source-reviewed head before this green gate. All claimant done marks now checked. A-2690 details evidence; C1-C7 verified.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.
+
+### coord · 2026-10-15T05:03:32.249Z
+
+Merged 9eb60e82e4b9e4dd550b42217dbeb3b7725622c1 onto dev.
