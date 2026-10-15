@@ -3,7 +3,7 @@ id: T-497
 kind: task
 title: "suite-runner test: second nvim runner misses the fixed 500 ms contention window and never reports the holder (Linux, under load)"
 state: open
-status: review
+status: ready
 size: XS
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-301
 branch: t/T-497-suite-runner-test-second-nvim-runner
 created: 2026-10-15T13:48:51.140Z
-updated: 2026-10-15T15:44:13.513Z
+updated: 2026-10-15T16:44:32.133Z
 ---
 
 ## Problem
@@ -27,9 +27,11 @@ updated: 2026-10-15T15:44:13.513Z
   - done: impl-497 · 2026-10-15T15:16:07.738Z
   - verified: rev-30 [reviewer] · run rev-20261015-497-source · 2026-10-15T15:17:23.945Z · commit b53da58894f1150cbf54f5df8691cdd27ac032c2
   - verified: rev-30 [reviewer] · run rev-20261015-497-delta · 2026-10-15T15:23:49.163Z · commit 9b10339a8cd82da4d7d92753e927ca30564ad2db
+  - verified: rev-30 [reviewer] · run rev-20261015-497-final · 2026-10-15T16:44:27.454Z · commit 9b10339a8cd82da4d7d92753e927ca30564ad2db
 - [x] C2. suite-runner.test.ts passes 5/5 serially, whole file and alone on the Mac, plus once on a droplet in the task's verify.
   - done: impl-497 · 2026-10-15T15:43:49.269Z
   - verified: rev-30 [reviewer] · run rev-20261015-497-linux-first · 2026-10-15T15:44:13.513Z · commit b53da58894f1150cbf54f5df8691cdd27ac032c2
+  - verified: rev-30 [reviewer] · run rev-20261015-497-final · 2026-10-15T16:44:27.455Z · commit 9b10339a8cd82da4d7d92753e927ca30564ad2db
 
 ## Comments
 
@@ -99,3 +101,26 @@ A-3133/d95c9b7a is Linux x64 c-8, exit 0, 1781 pass/0 fail/3 platform skips/0 ca
 Current head 9b10339a already has clear delta source/C1 verification (rev-20261015-497-delta, A-3115); own file is byte-identical. Coordinator f900478e explicitly retains this integrated head, accepts this run as its first receipt and calls for the next droplet at 9b10339a as second. Therefore current-head final settlement remains pending that receipt; this old-head C2 mark will be stale against the current branch, intentionally. Submit no new verify during e6ea9694 hold; await restart notice. No Reviewer tests or edits.
 
 Criteria: C2 verified.
+
+### impl-497 · 2026-10-15T16:42:05.304Z
+
+Exact-current-head second Linux receipt b2b552b1 is green at source-clear 9b10339a8cd82da4d7d92753e927ca30564ad2db: 1784 tests, 1781 pass, 0 fail, 3 skipped (A-3172). Droplet c-8 lon1, Linux x64, Node v24.21.0, lifetime 1416s, cost $0.0983. No source/head changes after review. First receipt A-3133 was also fully green; five serial Mac whole-file passes A-3102 remain supporting evidence. Awaiting Reviewer's final same-head evidence verdict.
+
+### rev-30 · 2026-10-15T16:44:27.455Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-497-final
+commit: 9b10339a8cd82da4d7d92753e927ca30564ad2db
+scope: evidence
+
+Final review clear at unchanged delta-reviewed 9b10339a8cd82da4d7d92753e927ca30564ad2db; no high, medium or low findings. C1 and C2 verified at this exact head.
+
+C1: source/delta reviews A-3105/A-3115 stand. The first runner's release file is written only after the second observably waits and its exact-holder PID assertion succeeds. Original exit/serialization assertions and wait bounds remain. Commit records the fixed-window root cause; the controlled delayed-start probe was removed.
+
+C2: A-3102's five serial Mac whole-file passes provide 250/250 tests, with brief first-run fallback overlap and four quiet runs labelled as previously accepted. Exact-current-head b2b552b1/A-3172 is Linux x64 c-8, exit 0, 1781 pass/0 fail/3 platform skips/0 cancelled; host/remote typecheck, hub and Neovim smoke all complete. All 50 suite-runner cases pass; changed hub/nvim holder cases 1.615512311 s/1.576779069 s. No hard duration-budget failure; regression lines are notices.
+
+Older source-head d95c9b7a/A-3133 is also green; Coordinator f900478e's requested second receipt is now present at current head. No exception to a red suite is needed for this final pass. Read-only branch ref matches SHA; no source changes since delta clear. No Reviewer tests or edits.
+
+Criteria: C1 verified, C2 verified.

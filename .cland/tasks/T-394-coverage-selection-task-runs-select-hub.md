@@ -19,7 +19,7 @@ blocked_by:
 topic: topic-306
 branch: t/T-394-coverage-selection-task-runs-select-hub
 created: 2026-10-14T12:28:19.272Z
-updated: 2026-10-15T16:23:12.810Z
+updated: 2026-10-15T16:43:49.994Z
 ---
 
 ## Summary
@@ -58,9 +58,9 @@ It falls back to today's rules, naming the reason, for protocol, contract, packa
 - [ ] C2. An integrated `dev` full run posts a function-level coverage map artifact naming its head and tree, and spokes, daemons, the CLI and fakes all contribute to it, proven on a fixture project.
 - [ ] C3. A task diff touching one function in `hub/src/hub/` selects its changed tests, the covering test files and the smoke baselines, and the report names the deciding functions.
 - [ ] C4. Protocol, contract, package, harness, fixture and runner changes, unknown files, stale maps and a missing map fall back to the package rules with their reason, each proven by a test.
-- [ ] C5. The replay over the last 40 merges meets the bar recorded in C1 and reports the selected share of hub test-time per merge; the table is posted on the item.
-- [ ] C6. Measured: `cland verify` on a branch changing one function in `hub/src/hub/` finishes in under 5 minutes on the default executor (about 15 today), with the duration line posted.
-- [ ] C7. Recording coverage adds at most 15% to an integrated run's wall time, measured against the run before at a nearby head.
+- [ ] C5. Replay (Coordinator amendment 2026-10-15 16:44Z): pre-merge, the replay tool runs on fixture histories and reports per-merge selection, misses and selected share, falling back explicitly where a historical map is missing; the real last-40 replay against the C1 bar is judged after merge at E-387's stage-2 close, from the first integrated dev map, and its table is posted on the item.
+- [ ] C6. Measured (Coordinator amendment 2026-10-15 16:44Z): pre-merge, a fixture proves a one-function hub/src/hub/ diff selects a subset and reports its duration line; the real under-5-minute default-executor run is judged after merge at E-387's stage-2 close, once a dev coverage map exists, with the duration line posted.
+- [ ] C7. Measured (Coordinator amendment 2026-10-15 16:44Z): pre-merge, a fixture proves coverage recording runs and publishes within an integrated run; the at-most-15% wall-time overhead is judged after merge at E-387's stage-2 close against the integrated run before at a nearby head.
 - [ ] C8. `hub/README.md` (Tests), `docs/agents/tests.md` and the Implementer clause describe `hub-selected`, the map, its age limit and the fallbacks.
 
 ## Comments

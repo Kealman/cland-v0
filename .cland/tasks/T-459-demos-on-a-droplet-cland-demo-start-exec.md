@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-296
 branch: t/T-459-demos-on-a-droplet-cland-demo-start-exec
 created: 2026-10-15T07:15:15.838Z
-updated: 2026-10-15T16:40:38.133Z
+updated: 2026-10-15T16:43:14.388Z
 ---
 
 ## Summary
@@ -86,6 +86,7 @@ E-423 "Rules and rhythm" (R-294), tracer bullet 7 of 7; spec `docs/spec/v0.1.3.m
   - verified: rev-30 [reviewer] · run rev-20261015-459-delta-2 · 2026-10-15T14:52:26.765Z · commit 3b8d0bd3f00a7fec5700fa51b104f4beb40e0b1c
   - verified: rev-30 [reviewer] · run rev-20261015-459-delta-3 · 2026-10-15T15:29:05.778Z · commit 528680a673944d2ed83506ef7ed902ed336e26fb
   - verified: rev-30 [reviewer] · run rev-20261015-459-final · 2026-10-15T15:59:24.451Z · commit 528680a673944d2ed83506ef7ed902ed336e26fb
+  - verified: rev-30 [reviewer] · run rev-20261015-459-delta-4 · 2026-10-15T16:43:14.388Z · commit 251774bc1e1b84edb0ea07bd33edf6c22b07f2e5
 
 ## Comments
 
@@ -317,3 +318,24 @@ Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 ve
 ### impl-459 · 2026-10-15T16:40:13.085Z
 
 Conflict resolution completed and pushed at 251774bc1e1b84edb0ea07bd33edf6c22b07f2e5: merged origin/dev 215ddde8 in 024a5c4a, retaining T-393 instance environment throughout executor, delivery and Demos; retained demo/rule frames and both epic surface paths; exact manifest union; picked shared bdf418e6 allowance as 251774bc. Typecheck and shard lint pass. A-3155 records identifier references and 13-file integration map. Coordinator decision 99bca331 (16:39:48Z), reinforced by c1e21d39, explicitly replaces the separate targeted pass with the required full verification after delta review because local full suites continuously occupy the Mac. No mapped tests skipped from planned verification; none run before review. New full receipt replaces pre-resolution gate evidence.
+
+### rev-30 · 2026-10-15T16:43:14.388Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-459-delta-4
+commit: 251774bc1e1b84edb0ea07bd33edf6c22b07f2e5
+scope: delta
+
+Delta source review clear at 251774bc1e1b84edb0ea07bd33edf6c22b07f2e5, compared with reviewed 528680a673944d2ed83506ef7ed902ed336e26fb and merged dev 215ddde8; combined merge 024a5c4a inspected. No high, medium or low findings in task/integration scope.
+
+Standards/integration: conflicting DropletExecutor paths preserve demo metadata, min(run deadline,machine lifetime), demo-aware restart recovery and T-393's instance env through provider API, preparation/readiness, spend, watchdog, release and sweep. DropletRun retains committed-only demo delivery, submitted-head bundle/ref guards, instance Machine/Git env and timing knobs. Dispatcher constructs Demos with the same env as executor/scheduler and retains both rule and demo dispatch/authorization/lifecycle paths. Demos explicitly threads that env through config parsing, dev/ancestor Git, delivery, deadline timing and ordinary-user command transport; machineEnv still strips the provider token. No new global process.env mutation.
+
+Spec/freshness: epicMergeFiles' public lane helper preserves T-393 env forwarding through territoryGitAsync, while shared mergeFiles/epicDemoFreshness retain Item-trailer surface discovery, intervening-commit/rename/revert checks and dev ancestry semantics. Tracker freshness/read/close protections and recorder/QA skill, demo tests, epic-close tests and skills-QA tests remain unchanged from previous review except inherited independently reviewed integration. C7 reverified from retained README demo commands, shared budget and freshness documentation. C1–C6 deliberately remain pending new full verification at this merged head; old accepted receipts do not supply final gate evidence after conflict resolution.
+
+Manifest: parsed comparison finds no lost keys or changed shared values across files/tests/allow from either merge parent. All unique allowances survive, demo allowances and provenance measurements survive, and the additional exact bdf418e6 rule-sessions 5.043-second allowance is nested under allow. No broad budget override. Net task diff against merged dev passes whitespace check; requester reports typecheck and shard lint green.
+
+Validation routing: A-3155 records changed-identifier search and 13-file integration map. Coordinator 49fc5811 requires a new full suite after these merge-gate/lease resolutions; 99bca331 explicitly replaces the duplicate targeted pass with that full verification under Mac contention. No claim that mapped tests have already run at this head. Submit one --executor droplet full verification at this exact reviewed SHA, reporting in topic-296. If admission falls back locally, follow 99bca331 and let it finish; its result must be assessed before any final verdict. No Reviewer tests, edits or provider calls. Both source review axes performed directly under no-delegation role.
+
+Criteria: C7 verified.

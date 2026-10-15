@@ -5,6 +5,7 @@ title: "Worker re-measurement: 4, 5 and 6 workers locally and 6 and 8 on a c-16,
 state: open
 status: review
 size: XS
+criterion_seq: 5
 labels:
   - v0.1.3
   - hub
@@ -17,7 +18,7 @@ blocked_by:
 topic: topic-307
 branch: t/T-396-worker-re-measurement-4-5-and-6-workers
 created: 2026-10-14T12:28:19.638Z
-updated: 2026-10-15T16:27:55.729Z
+updated: 2026-10-15T16:44:19.522Z
 ---
 
 ## Summary
@@ -38,9 +39,9 @@ The machine shard runs at four workers on a Mac with four performance and six ef
 ## Acceptance criteria
 
 - [ ] C1. `[verification] workers` and `[verification.droplet] workers` set the machine shard's worker count, default 4, proven by a test reading a fixture config.
-- [ ] C2. The measurement table (workers, executor, wall, hub phase, peak load, failures that pass alone, cost for droplets) for 4/5/6 local and 6/8 c-16, two runs each locally, is posted on the item.
-- [ ] C3. The chosen defaults follow the rule above, and the item names the numbers that decided them.
-- [ ] C4. Droplet runs stay within the day's $3 cap, with create, destroy and cost posted and the `cland` tag listing empty afterwards.
+- [ ] C2. Measured (Coordinator amendment 2026-10-15 16:45Z): pre-merge, fixtures prove the --workers/--size overrides are recorded and shown in the result header and that the measurement procedure is written on the item; the real table (workers, executor, wall, hub phase, peak load, failures that pass alone, droplet cost) for local 4/5/6 once each (repeat only within a 10% margin) and c-16 at 4/6/8 is run by the Coordinator after merge at E-387's stage-2 close and posted on the item.
+- [ ] C3. Measured (Coordinator amendment 2026-10-15 16:45Z): defaults stay 4 at merge; after the stage-2 close measurements, defaults follow the rule above (change only for an error-free count at least 10% faster across runs) in a small follow-up config commit, and the item names the deciding numbers.
+- [ ] C4. Droplet measurement runs stay within the day's cap ($10 since D33 and ask 35663eef) with the size price reserved, and create, destroy and cost are posted with the cland tag listing empty afterwards; judged at E-387's stage-2 close.
 - [ ] C5. `hub/README.md` (Tests) documents the worker settings and the measured trade-off.
 
 ## Comments
