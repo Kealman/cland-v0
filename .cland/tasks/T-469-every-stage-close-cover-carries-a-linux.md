@@ -3,7 +3,7 @@ id: T-469
 kind: task
 title: "Every stage-close cover carries a Linux proof: the sharded droplet run plus the Mac run, both required by the stage gate"
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 3
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-316
 branch: t/T-469-every-stage-close-cover-carries-a-linux
 created: 2026-10-15T09:13:16.034Z
-updated: 2026-10-15T23:01:32.572Z
+updated: 2026-10-15T23:26:46.549Z
 ---
 
 ## Summary
@@ -246,3 +246,7 @@ Evidence A-3427 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3427-s
 Review artifact A-3432 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3432-t-469-final-clear-at-c09435d4-full-linux-green-and-restored-cover-stage-proof.md.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### impl-469 · 2026-10-15T23:26:46.549Z
+
+Coordinator-directed conflict merge pushed at fbd2d2c6206c09c70da8ef6c22ee92859bbabbf2, parents c09435d4 and dev75017065. suites.ts combines explicit-droplet cache restriction/bypass with stage executor/occasion provenance and latest-attempt supersession. All233 duration allowances from both parents preserved exactly and sorted; root/duplicates audited. A-3439 source/grep audit and A-3445 full targeted log. All16 whole files green:119 tests, no failures/skips; two load guards deferred starts. Normal npm typecheck passed after Coordinator-instructed npm ci --ignore-scripts for T-547; shard/manifest lint and diff check pass, clean tree. Mac slot released to T-547. Requesting delta review naming both resolutions before the required new droplet verify; prior c09435d4 green is historical only.

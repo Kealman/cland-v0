@@ -2,8 +2,8 @@
 id: T-525
 kind: task
 title: "pid-identity test: staged reused-PID start stamp can equal the real one within the same second (Linux)"
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-333
 branch: t/T-525-pid-identity-test-staged-reused-pid
 created: 2026-10-15T19:39:57.986Z
-updated: 2026-10-15T23:26:19.283Z
+updated: 2026-10-15T23:27:00.752Z
+closed: 2026-10-15T23:27:00.752Z
 ---
 
 ## Problem
@@ -116,3 +117,7 @@ Evidence A-3443 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3443-s
 Review artifact A-3444 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3444-t-525-final-clear-at-b1dfa5e1-five-mac-files-and-green-linux-pid-proofs.md.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-15T23:27:00.752Z
+
+Merged 19056d8bfe040c0637a961becda6a07b60877ef4 onto dev.
