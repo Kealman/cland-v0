@@ -965,10 +965,21 @@ test('failure cleanup preserves a live worker whose recorded start identity is u
   } finally { db.close(); }
   const next = await startDaemon(t, f.root);
   const ui = await connectUi(t, next.discovery);
-  await eventually('unverified cleanup preserved', async () => {
-    const status = await ui.request({ type: 'hub.status' });
-    return (status.value as { suites: Array<{ error: string | null }> }).suites[0]?.error?.includes('process preserved') ? true : undefined;
-  });
+  assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
+  const restored = new DatabaseSync(join(f.root, '.cland', 'hub.db'), { readOnly: true });
+  try {
+    const cleanupError = () => {
+      const value = restored.prepare("select value from meta where key = 'suite-jobs'").get() as { value: string };
+      return (JSON.parse(value.value) as Array<{ id: string; error: string | null }>).find(record => record.id === job.id)?.error;
+    };
+    // Subscribe before reading: cleanup may finish before connection, between the
+    // read and the wait, or later. Buffered task events cover the latter two cases.
+    if (!cleanupError()?.includes('process preserved')) {
+      await ui.waitFor(frame => frame.type === 'task' && (frame.item as ItemSummary | null)?.verify?.id === job.id
+        && (frame.item as ItemSummary).verify?.state === 'finished', 15000);
+    }
+    assert.match(cleanupError() ?? '', /suite cleanup waiting for a verified worker identity; process preserved/);
+  } finally { restored.close(); }
   assert.equal(pidAlive(job.pid!), true);
   const initial = await ui.request({ type: 'topic.history', topic: f.topic });
   assert.equal((initial.value as { messages: ResultMessage[] }).messages.filter(m => m.id === `suite:${job.id}`).length, 0);
