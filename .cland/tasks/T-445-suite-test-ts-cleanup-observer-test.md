@@ -2,8 +2,8 @@
 id: T-445
 kind: task
 title: suite.test.ts cleanup-observer test times out under full-suite load (unverified cleanup preserved, 15 s)
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 1
 labels:
@@ -16,7 +16,8 @@ regression_of: T-203
 topic: topic-284
 branch: t/T-445-suite-test-ts-cleanup-observer-test
 created: 2026-10-15T00:40:00.743Z
-updated: 2026-10-15T11:06:44.082Z
+updated: 2026-10-15T11:07:04.970Z
+closed: 2026-10-15T11:07:04.970Z
 ---
 
 ## Summary
@@ -119,3 +120,7 @@ The explicit human rule accepts these two Linux receipts as the merge gate: d479
 Superseded queued local 625b840e/A-2915 cancelled without tests; no local evidence used. Implementer asked to restore C1 done after prior failed gate mark. Review artifact A-2918.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-15T11:07:04.970Z
+
+Merged 0ab904f2a7d6b7d2f2a1f64bc4dc0fc77442ec70 onto dev.
