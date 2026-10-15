@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-303
 branch: t/T-457-seed-the-rulebook-an-aide-migrates-the
 created: 2026-10-15T07:15:15.643Z
-updated: 2026-10-15T15:27:54.744Z
+updated: 2026-10-15T16:17:42.043Z
 ---
 
 ## Summary

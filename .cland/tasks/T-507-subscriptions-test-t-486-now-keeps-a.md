@@ -2,8 +2,8 @@
 id: T-507
 kind: task
 title: "subscriptions test: T-486 now keeps a completed first turn's idle, but the test expects only 'impl launched'"
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ regression_of: T-486
 topic: topic-305
 branch: t/T-507-subscriptions-test-t-486-now-keeps-a
 created: 2026-10-15T15:16:16.512Z
-updated: 2026-10-15T16:03:09.367Z
+updated: 2026-10-15T16:18:06.429Z
+closed: 2026-10-15T16:18:06.429Z
 ---
 
 ## Problem
@@ -90,3 +91,7 @@ Accepted exact-head gate: 39ece7b6-0ae3-4f5e-99c5-7e56f574fdf6 / A-3141, droplet
 Standards: 0 findings. Spec: 0 findings; C1 retained, C2 verified. No Reviewer tests or edits.
 
 Criteria: C2 verified.
+
+### coord · 2026-10-15T16:18:06.429Z
+
+Merged e376da65d9a2e4a9ba844d0034684ea30b02b178 onto dev.
