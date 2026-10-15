@@ -2,8 +2,8 @@
 id: T-434
 kind: task
 title: "accounts OpenCode retained-handoff test fails on Linux: pool size 1 reached at the next launch"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -17,7 +17,8 @@ blocked_by: []
 topic: topic-260
 branch: t/T-434-accounts-opencode-retained-handoff-test
 created: 2026-10-14T18:12:49.437Z
-updated: 2026-10-15T00:31:09.239Z
+updated: 2026-10-15T00:50:35.886Z
+closed: 2026-10-15T00:50:35.886Z
 ---
 
 ## Summary
@@ -77,3 +78,7 @@ scope: evidence
 No high/medium findings. Accepted same-head local auto a698d324/A-2621 selects hub-only: typecheck and 1665/1665 pass (37 free,1616 hub machine,12 Neovim smoke), zero fail/cancel/skip/todo. Both retained handoff cases pass. C2 A-2502 independently checked: five serial files,14/14 each,18:18:01–18:23:16Z, bounded by queue captures of the same full local holder impl-429/PID24110. C1 source A-2496/controlled red→green A-2492 retained. C1/C2 verified. Evidence A-2622: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2622-t-434-final-clear-at-368b3412-retained-handoff-and-serial-overlap-proof-verified.md.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-15T00:50:35.886Z
+
+Merged 41ca00620ae52976bed352e346364e63efdfd05f onto dev.
