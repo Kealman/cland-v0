@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-267
 branch: t/T-390-duration-budget-a-manifest-of-test-times
 created: 2026-10-14T12:28:10.528Z
-updated: 2026-10-15T05:03:32.249Z
+updated: 2026-10-15T05:03:55.802Z
 closed: 2026-10-15T05:03:32.249Z
 ---
 
@@ -281,3 +281,7 @@ Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 ve
 ### coord · 2026-10-15T05:03:32.249Z
 
 Merged 9eb60e82e4b9e4dd550b42217dbeb3b7725622c1 onto dev.
+
+### coord · 2026-10-15T05:03:55.802Z
+
+Merged as 9eb60e82. A post-merge confirmation is owed for C4: after the next hub restart, the first suite result the hub posts must show the `duration regression` and `suite budget overhead` lines. The live hub ran pre-T-390 suiteSummary code at the gate. The Coordinator checks it after the release-cover restart.
