@@ -15,7 +15,7 @@ regression_of: T-454
 topic: topic-311
 branch: t/T-508-heartbeat-test-run-digest-aging-case
 created: 2026-10-15T15:33:39.730Z
-updated: 2026-10-15T18:11:01.772Z
+updated: 2026-10-15T18:42:16.681Z
 ---
 
 ## Problem
@@ -26,7 +26,8 @@ updated: 2026-10-15T18:11:01.772Z
 
 - [x] C1. The case's aging of timed-out and ended runs depends only on a controlled clock and observed state, and the case closes every timer and handle so the runner exits. Every assertion stays, and the root cause is recorded in the commit.
   - done: impl-508 · 2026-10-15T17:56:30.048Z
-- [ ] C2. heartbeat.test.ts passes 5/5 serially, whole file and alone on the Mac, each run exiting on its own, plus once on a droplet in the task's verify.
+- [x] C2. heartbeat.test.ts passes 5/5 serially, whole file and alone on the Mac, each run exiting on its own, plus once on a droplet in the task's verify.
+  - done: impl-508 · 2026-10-15T18:38:45.997Z
 
 ## Comments
 
@@ -83,3 +84,41 @@ T-508 Mac evidence pass clear at unchanged source-reviewed f7643725299cdd3176341
 A-3233 contains five serial whole heartbeat files, each 9/9, 45 passing cases total, zero failures/skips/cancellations, with natural exits and no forced stops. Runs 1–3 are quiet at source-identical 176e4df7, already checked against f7643725; runs 4–5 are at exact reviewed head and labelled loaded beside non-Coordinator T-510 verification. Coordinator 1b124f76-537f-4af4-8664-f4e4a9673679 explicitly permits those labelled loaded passes under load<15 with no local:coord and no other targeted file. Admission loads for loaded runs are 13.31 and 11.64.
 Changed digest case completes in 3.095/3.111/3.120/3.202/4.197s; whole files exit naturally in 19.899–28.607s. This establishes the Mac portion under the explicit routing decision; no false five-quiet/alone claim.
 C1/C2 final verification remains pending the exact-head droplet result. task.view shows 263c9910-b5b7-43bb-940f-61e17a02ef5a launching at this head. Check actual executor/platform before claiming Linux because fallback/cache evidence may be local. No additional source review or duplicate run needed while that request is pending. No Reviewer tests or edits.
+
+### impl-508 · 2026-10-15T18:38:46.943Z
+
+C2 file-level evidence complete: A-3233 five serial whole-file Mac passes (3 quiet +2 loaded; 9/9 natural exits each) plus actual Linux c-8 droplet verify263c9910/A-3259 at reviewed f7643725. Linux heartbeat file all9 green, changed digest5.8069s (log1317/4544), file exits without hang. Overall run remains red: executor-run:190 startReplyLost PROCESSWRAP leak-check failure and rule-sessions over-cap clause duration5.133s>5. Neither is touched by T-508; exact E-482 classification not yet established, reported to supervising Lead. Gate remains pending classification and accepted evidence; no source change or retry submitted.
+
+### rev-30 · 2026-10-15T18:39:20.720Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261015-508-linux-first
+commit: f7643725299cdd3176341f583178d476629d0cf8
+scope: evidence
+
+T-508 first Linux evidence not clear at unchanged source-reviewed f7643725299cdd3176341f583178d476629d0cf8. A-3259 / 263c9910 is actual Linux c-8, exit 1: 1781 pass / 2 reported failures / 3 platform skips; no cancellation. The two reported failures are the executor-run parent and its startReplyLost nested case.
+All nine heartbeat cases complete green, including changed digest case 5.807s (:4544), with no heartbeat teardown failure or hang. A-3233's accepted five Mac files remain valid. This establishes own-file execution evidence but not the final gate.
+Medium gate blocker / aside Bugs S — hub/test/executor-run.test.ts:190, startReplyLost: projectHub strict cleanup observes PROCESSWRAP after expected resource closure (A-3259:4028–4055). The parent remote-start reconciliation case fails with it. No exact known-item classification is established in the request; do not call it a known flake or automatically retry under the two-receipt rule yet. Root cause is not established by this receipt.
+Medium gate blocker / aside Tech debt XS — hub/test/durations.json, missing allowance for hub/test/rule-sessions.test.ts::a clause larger than the send cap reaches a session whole on assignment and reconnect: 5.133s exceeds the hard 5s budget (A-3259:5749). This is a different identity from d5442c61's existing rule-session exception. Lead classification/shared allowance needed.
+No new T-508 source defect established; C1/C2 final verification remains pending acceptable gate disposition. Requester already reported both asides to lead and is holding unchanged head, with no duplicate run. No Reviewer tests, edits or provider calls.
+
+### rev-30 · 2026-10-15T18:41:47.227Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-508-delta
+commit: c90f7f3847b47971050c884e7c0d58aa8ee57e79
+scope: delta
+
+Delta source review T-508 clear at c90f7f3847b47971050c884e7c0d58aa8ee57e79, parent f7643725299cdd3176341f583178d476629d0cf8. No high, medium or low findings.
+Standards: only hub/test/durations.json changes. Heartbeat test blob is byte-identical. Parsed comparison finds zero removed or changed files/tests/allow entries. The seven new allowances are six already integrated/previously reviewed demo lifecycle exceptions plus Coordinator-posted 7cdf2dd0's over-cap clause exception at 5.133s with A-3259 provenance. Source measurement provenance retains the integrated demo receipt; Unicode escaping/reformatting changes no parsed values.
+Spec: resolution follows the requested exact-dev-manifest approach for a task with no owned duration entries. Commit pins dev 7cdf2dd0c71a050153b43f05be791bd88f2f0240; resolved manifest is byte-identical to fetched origin/dev at review. No dev merge, production behavior, heartbeat assertion or timing-bound change. No extra local run is needed for this shared-only manifest delta.
+Confirmed Coordinator 7d765303 and fbb61c7f in topic history: A-3259/263c9910 counts as first Linux receipt; its PROCESSWRAP startReplyLost failure is now T-523, and 7cdf2dd0 covers the independent clause budget. Heartbeat was 9/9, changed digest5.807s and naturally completed. A-3233's five Mac files remain accepted, including the two explicitly authorized loaded runs.
+C1/C2 final marks remain pending the accepted second receipt. Source clear permits exactly the directed --executor droplet --fresh verify once remote is <=3/4, under current Coordinator throttle; no duplicate/local test run requested. No Reviewer tests, edits or provider calls.
+
+### impl-508 · 2026-10-15T18:42:16.681Z
+
+Coordinator fbb61c7f accepted first receipt263c9910/A-3259: external executor PROCESSWRAP leak is now E-482 T-523; clause budget covered by shared7cdf2dd0. Pick conflicted; resolved per Coordinator18:26 rule by taking origin/dev manifest exactly, no task-owned allowances. Resolution c90f7f38 preserves all prior semantic values and heartbeat source; Reviewer delta clear rev-20261015-508-delta/A-3264. Checked remote3/4, clean exact reviewed c90f7f38; submitted second fresh droplet c19b825b-2c28-4e9e-a3dd-fd8c0a6689ad with no mode, --executor droplet --fresh. Awaiting same-head result; no new head changes.

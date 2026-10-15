@@ -6,6 +6,7 @@ state: open
 status: review
 size: S
 rank: 3090
+criterion_seq: 3
 labels:
   - ready-for-agent
 assignee: null
@@ -14,7 +15,7 @@ blocked_by: []
 topic: topic-312
 branch: t/T-512-explicit-executor-droplet-still-falls
 created: 2026-10-15T16:25:28.989Z
-updated: 2026-10-15T18:38:12.539Z
+updated: 2026-10-15T18:39:58.288Z
 ---
 
 ## Summary
@@ -24,8 +25,11 @@ updated: 2026-10-15T18:38:12.539Z
 ## Acceptance criteria
 
 - [ ] C1. A run submitted with an explicit `--executor droplet` waits in the queue for a remote slot or budget and never falls back to local. The queue shows it as waiting for remote, with its position.
+  - verified: rev-30 [reviewer] · run rev-20261015-512-final · 2026-10-15T18:39:58.288Z · commit a4ad9640cfdd534d8ed03c1f0955e1a33d0f93d3
 - [ ] C2. It still refuses, rather than waits, when the daily spend cap can't cover its reservation, naming the cap. Runs with no flag keep today's fallback.
+  - verified: rev-30 [reviewer] · run rev-20261015-512-final · 2026-10-15T18:39:58.288Z · commit a4ad9640cfdd534d8ed03c1f0955e1a33d0f93d3
 - [ ] C3. A test fills the remote budget, submits an explicit-droplet run, and sees it wait and then run remotely once a slot frees.
+  - verified: rev-30 [reviewer] · run rev-20261015-512-final · 2026-10-15T18:39:58.288Z · commit a4ad9640cfdd534d8ed03c1f0955e1a33d0f93d3
 
 ## Comments
 
@@ -61,3 +65,20 @@ C1–C3 remain unverified pending exact-head post-source gate. Source clear perm
 ### impl-512 · 2026-10-15T18:38:12.539Z
 
 Same-head verification 4174e836-3781-4a4c-85a2-d8a014bbe0c5 is green at a4ad9640cfdd534d8ed03c1f0955e1a33d0f93d3: full mode, 2182/2182 passed, no failures/skips/cancellations; local darwin arm64, Node v24.21.0, Neovim v0.12.5. Durable log A-3260: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3260-suite-4174e836-3781-4a4c-85a2-d8a014bbe0c5-auto-at-a4ad964.log. The run used the Coordinator-authorized local fallback and completed naturally under load. Production source and reviewed head remain unchanged. Awaiting the Reviewer's final same-head verdict; retaining the claim until merge.
+
+### rev-30 · 2026-10-15T18:39:58.288Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-512-final
+commit: a4ad9640cfdd534d8ed03c1f0955e1a33d0f93d3
+scope: evidence
+
+Final evidence review T-512 clear at unchanged a4ad9640cfdd534d8ed03c1f0955e1a33d0f93d3. No high or medium findings remain; source review A-3243 stands.
+A-3260 / 4174e836-3781-4a4c-85a2-d8a014bbe0c5 completes exit 0, exact-head full verification on local Darwin after the requested no-executor/default admission path: typecheck, hub free/machine and full Neovim, 2182 passed / 0 failed / 0 cancelled / 0 skipped. It is not a Linux execution. The task has no Linux-only acceptance criterion; remote behavior is proven through actual CLI/frame fake-provider integration tests within this run.
+C1/C3 verified: explicit remote-capacity fixture passes at :5210 (16.198s), covering queue position/remote label, no local takeover, later independent local admission, separate remote completion/report observation and waiting request's eventual remote execution. Source review establishes persisted intent, durable-capacity gating and hard prohibition on explicit fallback.
+C2 verified: cap refusal tests at :5211–5212 pass for remote budgets1/2, naming the cap and leaving no local job or remote waiter. Atomic acquire reservation and existing omitted-flag fallback compatibility also pass. Corrected dirty explicit refusal case passes at :4438 (7.860s); the final whole executor-run file is now covered by the full green run, superseding its prior targeted 19/20 receipt. No hard duration failure.
+All C1–C3 verified at this head. The low durable-only ETA issue was reported and filed separately; cache executor-policy remains its separately assigned follow-up. Neither is represented as fixed here. No new source change or additional run needed. No per-item QA criteria. No Reviewer tests, edits, merges or provider calls.
+
+Criteria: C1 verified, C2 verified, C3 verified.
