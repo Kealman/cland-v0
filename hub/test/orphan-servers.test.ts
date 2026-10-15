@@ -15,6 +15,14 @@ import { fileURLToPath } from 'node:url';
 import { ownDirectory, ownProcess } from './process-cleanup.ts';
 
 type Harness = { pid: number; name: string };
+function fixtureDatabase(root: string): DatabaseSync {
+  const db = new DatabaseSync(join(root, '.cland', 'hub.db'));
+  // A live hub can hold the writer lock. SQLite's default zero timeout made
+  // these fixture mutations fail with SQLITE_BUSY under Linux load.
+  db.exec('pragma busy_timeout = 5000');
+  return db;
+}
+
 async function startupSweep(root: string, pid: number): Promise<void> {
   await eventually('this daemon completed its startup sweep', async () => {
     const rows = (await readFile(join(root, '.cland/log/hub.log'), 'utf8')).split('\n').filter(line => line.startsWith('{')).map(line => JSON.parse(line));
@@ -33,7 +41,7 @@ async function leftoverCodex(t: import('node:test').TestContext, status: string,
   const p = (launched.value as { process: Harness }).process;
   ui.close();
   assert.equal((await clandWithEnv(root, fake.env, 'hub', 'stop')).code, 0);
-  const db = new DatabaseSync(join(root, '.cland', 'hub.db'));
+  const db = fixtureDatabase(root);
   db.prepare("update harness_processes set status = ? where name = 'impl'").run(status);
   db.close();
   return { root, env: fake.env, pid: p.pid };
@@ -41,7 +49,7 @@ async function leftoverCodex(t: import('node:test').TestContext, status: string,
 
 test('an exited server with an unknown recorded start time is reported but never swept', async t => {
   const { root, env, pid } = await leftoverCodex(t, 'exited', startDaemon);
-  const db = new DatabaseSync(join(root, '.cland', 'hub.db'));
+  const db = fixtureDatabase(root);
   db.prepare("update harness_processes set pid_started = null where name = 'impl'").run();
   db.close();
   const orphan = (await findOrphans(root)).find(p => p.process.pid === pid);
@@ -57,7 +65,7 @@ test('an exited server with an unknown recorded start time is reported but never
 
 test('a reused pid is preserved even when its server has project cwd, socket and log hints', async t => {
   const { root, env, pid } = await leftoverCodex(t, 'exited', startDaemon);
-  const db = new DatabaseSync(join(root, '.cland', 'hub.db'));
+  const db = fixtureDatabase(root);
   db.prepare("update harness_processes set pid_started = 'Thu Jan 1 00:00:00 1970' where name = 'impl'").run();
   db.close();
   const orphan = (await findOrphans(root)).find(p => p.process.pid === pid);
@@ -87,7 +95,7 @@ for (const status of ['exited', 'stopped', 'offline']) {
     const orphanPid = (orphan.value as { process: Harness }).process.pid;
     ui.close();
     await clandWithEnv(root, env, 'hub', 'stop');
-    const db = new DatabaseSync(join(root, '.cland', 'hub.db'));
+    const db = fixtureDatabase(root);
     db.prepare("update harness_processes set status = ? where name = 'leftover'").run(status);
     db.close();
     const fixed = await clandWithEnv(root, env, 'doctor', '--fix', '--json');
@@ -255,7 +263,7 @@ test('a Codex app-server whose row was lost is swept even when a long project pa
   const p = (launched.value as { process: Harness }).process;
   ui.close();
   await clandWithEnv(root, fake.env, 'hub', 'stop');
-  const db = new DatabaseSync(join(root, '.cland', 'hub.db'));
+  const db = fixtureDatabase(root);
   db.exec('delete from harness_processes'); db.close();
   await startDaemon(t, root, fake.env, { sweep: true });
   await eventually('background sweep ends lost-row Codex', async () => !pidAlive(p.pid) ? true : undefined, 15_000);
@@ -316,7 +324,7 @@ setInterval(() => {}, 1000);
   const extra = JSON.parse(await readFile(extraFile, 'utf8')) as { pid: number };
   ownProcess(t, extra.pid);
   ui.close();
-  const db = new DatabaseSync(join(root, '.cland', 'hub.db'));
+  const db = fixtureDatabase(root);
   db.prepare("update harness_processes set status = 'offline' where name = 'impl'").run();
   db.close();
   const candidates = await findOrphans(root);
@@ -340,7 +348,7 @@ for (const harness of ['codex', 'opencode']) {
     const launch = await ui.request({ type: 'session.launch', name: 'impl', harness }, 30_000);
     assert.equal(launch.ok, true, launch.error);
     const p = (launch.value as { process: Harness }).process;
-    const db = new DatabaseSync(join(root, '.cland', 'hub.db'));
+    const db = fixtureDatabase(root);
     t.after(() => db.close());
     const before = db.prepare("select pid_started from harness_processes where name = 'impl'").get() as { pid_started: string };
     db.prepare("update harness_processes set pid_started = null where name = 'impl'").run();
