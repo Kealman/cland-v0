@@ -1,3 +1,4 @@
+import type { AnswerAttribution } from '../protocol.ts';
 import { heartbeatDigest } from './heartbeat.ts';
 import { defaultCrew } from '../crew.ts';
 import { durationMs } from '../duration.ts';
@@ -404,8 +405,8 @@ export class HubCore {
       mayAsk: (role) => decide(role, role === null ? undefined : (this.#roles?.get().get(role)?.permissions.tools ?? DEFAULT_PERMISSIONS[role]), { tool: 'ask' }),
       identity: id => this.sessionIdentity(id),
       nextLead: (from, topic, forwarding) => this.#questionLead(from, topic, forwarding),
-      sendFromSession: (from, topic, to, text, replyTo, kind, answerTo) => this.sendFromSession(from, [to], text, replyTo, topic, undefined, undefined, undefined, kind, undefined, false, answerTo),
-      sendFromHuman: (topic, text, to, answerTo) => this.sendFromHuman(topic, text, to, undefined, answerTo),
+      sendFromSession: (from, topic, to, text, replyTo, kind, answerTo, attribution) => this.sendFromSession(from, [to], text, replyTo, topic, undefined, undefined, undefined, kind, undefined, false, answerTo, undefined, undefined, attribution),
+      sendFromHuman: (topic, text, to, answerTo, attribution) => this.sendFromHuman(topic, text, to, undefined, answerTo, undefined, undefined, undefined, attribution),
       // an ask withdrawn or cancelled: a notice in its topic to the asker, through the one notice path
       noteTo: (topic, session, text) => {
         if (this.noticeInTopic(topic, { kind: 'ask-closed', text, to: [session] }) === null) throw new Error(`no topic "${topic}"`);
@@ -2498,6 +2499,7 @@ export class HubCore {
         const existing = item === null ? null : this.#store.topicOfItem(item);
         if (existing && existing.id !== topic.id) throw new TopicRefusal(`${item} already has a topic: "${existing.title}" (${existing.id}); one topic per unit of work: write there`);
       },
+      answers: topic => this.#store.askAnswers(topic),
       bound: (item, topicId) => {
         this.#store.setItemTopic(item, topicId);
         this.#log({ event: 'topic-bound', item, topic: topicId });
@@ -2581,7 +2583,7 @@ export class HubCore {
    * shows the warning (`no coordinator`) meanwhile. Always recorded: the human's words show in the topic whoever
    * they reach. The topic then waits for an agent, and the human has read it.
    */
-  sendFromHuman(topicId: string, text: string, to?: string[], replyTo?: string, answerTo?: string, artifact?: Artifact, artifacts?: Artifact[], messageId?: string): { message: TopicMessage; outcomes: SendOutcome[] } {
+  sendFromHuman(topicId: string, text: string, to?: string[], replyTo?: string, answerTo?: string, artifact?: Artifact, artifacts?: Artifact[], messageId?: string, attribution?: AnswerAttribution): { message: TopicMessage; outcomes: SendOutcome[] } {
     const topic = this.#topicOrThrow(topicId);
     if (topic.id === AGENTS.id) {
       // Agents is the record of what agents send each other (spec 4.5): the human reads it, and writes there only
@@ -2631,7 +2633,7 @@ export class HubCore {
       ts: this.#now().toISOString(),
       ...(replyTo !== undefined ? { replyTo } : {}),
       topic: topic.id,
-      ...(answerTo !== undefined ? { answerTo } : {}),
+      ...(answerTo !== undefined ? { answerTo, ...attribution } : {}),
       ...(artifact ? { artifact } : {}),
       ...messageArtifacts(artifacts),
     };
@@ -2655,7 +2657,7 @@ export class HubCore {
       outcomes.push(offline.length ? { to: tag, outcome: 'queued', reason: `${offline.join(', ')} offline — queued` } : { to: tag, outcome: 'delivered' });
     }
     for (const role of placeholders) outcomes.push({ to: role, outcome: 'queued', reason: `no session holding the role "${role}" is connected — queued until one takes it` });
-    this.#log({ event: 'human-send', id: message.id, topic: topic.id, to: message.to, bytes: Buffer.byteLength(text, 'utf8'), ...(replyTo !== undefined ? { replyTo } : {}), ...(answerTo !== undefined ? { answerTo } : {}), outcomes: outcomes.map((o) => `${o.to}:${o.outcome}`) });
+    this.#log({ event: 'human-send', id: message.id, topic: topic.id, to: message.to, bytes: Buffer.byteLength(text, 'utf8'), ...(replyTo !== undefined ? { replyTo } : {}), ...(answerTo !== undefined ? { answerTo, ...attribution } : {}), outcomes: outcomes.map((o) => `${o.to}:${o.outcome}`) });
     const stage = this.#store.stage(message.id);
     return { message: { ...message, topic: topic.id, ...(stage ? { stage } : {}) }, outcomes };
   }
@@ -2665,7 +2667,7 @@ export class HubCore {
    * message goes into the topic for the human. The topic defaults to General for a message to the human
    * and to Agents for one between sessions (spec 4.5).
    */
-  sendFromSession(from: string, to: string[], text: string, replyTo?: string, topicId?: string, artifact?: Artifact, actor?: { role: string | null }, artifacts?: Artifact[], kind: unknown = 'report', messageId?: string, requireAllRecipients = false, answerTo?: string, request?: unknown, subject?: unknown): { message: Message; outcomes: SendOutcome[]; topic: TopicRef } {
+  sendFromSession(from: string, to: string[], text: string, replyTo?: string, topicId?: string, artifact?: Artifact, actor?: { role: string | null }, artifacts?: Artifact[], kind: unknown = 'report', messageId?: string, requireAllRecipients = false, answerTo?: string, request?: unknown, subject?: unknown, attribution?: AnswerAttribution): { message: Message; outcomes: SendOutcome[]; topic: TopicRef } {
     if (!isSendKind(kind)) throw new Error('send kind must be progress, report, question, decision or request');
     if (kind !== 'request' && (request !== undefined || subject !== undefined)) throw new Error('request and subject require kind: request; remove them from this send');
     if (kind === 'request') {
@@ -2756,7 +2758,7 @@ export class HubCore {
       ts: this.#now().toISOString(),
       ...(sender.role !== null ? { fromRole: sender.role } : {}),
       ...(replyTo !== undefined ? { replyTo } : {}),
-      ...(answerTo !== undefined ? { answerTo } : {}),
+      ...(answerTo !== undefined ? { answerTo, ...attribution } : {}),
       topic: topic.id,
       ...(artifact ? { artifact } : {}),
       ...messageArtifacts(artifacts, a => (actor?.role ?? this.#store.roleOf(from)) === 'aide' || !this.#store.humanArtifact(a)),

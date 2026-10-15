@@ -175,6 +175,11 @@ An **ask** is a question the Coordinator puts to the human inside a topic (spec 
 
 `AskCard` is `{"question","options":[…],"free","state":"open|answered|withdrawn|cancelled","answer"?:"<message id>","option"?:n}`.
 
+Answer origin is stored on the ask card and answer message as `answered_as: human` or `answered_as: stand-in` with `answered_by: <name>`. `cland topic answer <ask> 2 --as cland-impl` (or `--text "..." --as cland-impl`) declares a named stand-in; without `--as` the human shell records `human`. The trust model is self-declaration in the human's shell, which already has human authority: the label is not an authenticated hub session or a new role. Names use the session-name grammar. Every known hub session, Aides included, remains refused by `topic.answer`; a session's own shell identity takes precedence over `--as` and cannot be relabelled as human. The UI/frame equivalent supplies `as: {name: "cland-impl"}`. Supplied `answered_as` fields are not trusted.
+
+`ask.answer` relays preserve the forwarded answer's `answered_as` and `answered_by`, with `relayed_by` naming the lead returning the decision. Agent decisions without a forwarded human answer have no human/stand-in attribution. The origin survives hub restarts, appears in `topic.history`, spoke/channel answer metadata and `ask-answered` journal entries. `task view` shows answer origins from the bound topic (`item.answers` in JSON, containing `ask`, `answer` and attribution); these are hub state, separate from item frontmatter. Legacy asks without recorded origin stay unattributed.
+
+
 Sessions use `send` kind `request` with no `to`, a `request` of `review`, `qa` or `handover`, and a `subject` naming an item, artifact or session when they ask the human for that action. Any role may send a request; routine information uses `report`. These instructions live in the default role clauses and the project's `.cland/roles.toml`, which cland never rewrites. Running role sessions adopt changed clauses on their next launch; relaunch them after updating project clauses.
 
 The **inbox** (v0.1.2 §3.7, `InboxNow.dc.html`) carries four now sections, newest first within each: asks and command approvals, plan approvals, requests, then messages. Every row has its waiting start (`since`, also `ts` on asks/messages/requests); the approval carries `command` when the harness reported one.
@@ -212,8 +217,8 @@ Each departure passes through the existing log tap as `{"event":"inbox-departure
 | --- | --- |
 | `cland inbox [--json]` | Four now-layer sections, in order: asks and approvals, plan approvals, requests to you, messages to you. Nonempty headers carry counts; rows are newest first, uncapped, with id, subject/topic, first line, sender and waiting age. Plans show their title and stage/lane/item counts. The final line is `needs you: <n>`. `--json` prints the unchanged hub frame. |
 | `cland inbox --archive [--json]` | One line per departure in the last seven days: time, kind/id, subject, first line and reason, newest first. `--json` prints the full archive frame. |
-| `cland topic answer <ask id> <option number>` | Answers an ask with its option n (1-based): prints `answered <ask id> in <topic title>: <the answer>`. |
-| `cland topic answer <ask id> --text "<free answer>"` | Answers an ask with a free answer (refused when the ask takes options only). The hub's refusals (an ask that is not open, an option out of range, a free answer to an options-only ask) print `cland: <error>` with exit code 1. |
+| `cland topic answer <ask id> <option number> [--as <name>]` | Answers an ask with its option n (1-based): prints `answered <ask id> in <topic title>: <the answer>`. |
+| `cland topic answer <ask id> --text "<free answer>" [--as <name>]` | Answers an ask with a free answer (refused when the ask takes options only). The hub's refusals (an ask that is not open, an option out of range, a free answer to an options-only ask) print `cland: <error>` with exit code 1. |
 
 Inbox asks include optional `fromRole`; command approvals include optional `role` and `command`. Pending plan rows include `title`, `stages` (number of stages), `lanes` (total lanes across stages), and `items` (total planned item entries). Requests and messages carry their sender's `fromRole` and `topic` reference (id, title and optional bound item), plus `since`, the persisted beginning of the wait. Clients use `since` for waiting ages and retain unknown metadata from older hubs as unknown. The Neovim client caps each section at five rows with an explicit fold; the CLI prints every row. `waiting` remains as topic metadata for older clients. Notifications are journal records in the [events view](#events-view), outside the inbox. Legacy `inbox.dismiss` and `inbox.dismiss_all` requests are refused with a pointer to `events.list`.
 
@@ -1548,7 +1553,7 @@ approval arrive in their own slices. No role clause changes in T-183.
 
 | Command | Tool | What it does |
 | --- | --- | --- |
-| `cland task create <title> [--kind] [--size] [--regression-of] [--version] [--body \| --body-file] [--label]… [--assignee] [--parent] [--blocked-by]… [--topic] [--branch]` | `task.create` | Writes a new item file. |
+| `cland task create <title> [--kind] [--size] [--regression-of] [--found-by] [--version] [--body \| --body-file] [--label]… [--assignee] [--parent] [--blocked-by]… [--topic] [--branch]` | `task.create` | Writes a new item file. |
 | `cland task view <id>` | `task.view` | Frontmatter, file path, ancestry, body, plan (and planError on an invalid hand save), criteria and their warnings, comments, verdicts and the claim. |
 | `cland task plan <set\|show> <epic-id> [--file plan.yaml]` | `task.plan` | Validates and writes, or shows, the epic plan (Epic plans above). |
 | `cland task list [--under T-n] [--state] [--label]… [--kind] [--assignee] [--verdict review=clear]` | `task.list` | Queries the index. Each item carries its claim and its verdicts in file order (the latest last). |
@@ -2817,3 +2822,5 @@ Tests set `CLAND_HEARTBEAT_MS` in the **hub's** environment to shorten the inter
 The one-minute floor applies to `crew.toml`, not this override. Connection liveness
 uses a separate keepalive (`KEEPALIVE_MS`, `CLAND_HUB_KEEPALIVE_MS`); its wire frame
 remains `ping`.
+
+Optional regression `found_by` records where the escape was caught: `review`, `cover`, `droplet`, `qa` or `human`. For example, `cland task create "Escaped regression" --size S --regression-of T-321 --found-by cover` stores `found_by: cover`; `cland task edit T-n --found-by qa` changes it and `--found-by none` clears it (MCP `task.create`/`task.edit`: `found_by`, null clears on edit). Values outside that vocabulary or attribution without `regression_of` refuse. Clearing `regression_of` or converting away from a task removes `found_by`. Frontmatter, the rebuilt index, task views/lists/events and the `task-written` journal record carry the field. Legacy regression items without attribution remain readable.

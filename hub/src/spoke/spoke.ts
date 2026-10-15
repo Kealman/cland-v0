@@ -245,6 +245,9 @@ export function metaOf(message: Message, topic?: TopicRef): Record<string, strin
   if (message.kind !== undefined) meta.kind = message.kind;
   if (message.detail !== undefined) meta.detail = JSON.stringify(message.detail);
   if (message.answerTo !== undefined) meta.answer_to = message.answerTo;
+  if (message.answered_as !== undefined) meta.answered_as = message.answered_as;
+  if (message.answered_by !== undefined) meta.answered_by = message.answered_by;
+  if (message.relayed_by !== undefined) meta.relayed_by = message.relayed_by;
   if (message.ask?.to !== undefined) meta.ask_to = message.ask.to;
   if (message.ask?.forwarded !== undefined) meta.ask_forwarded = message.ask.forwarded;
   if (topic) {

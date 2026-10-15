@@ -13,6 +13,16 @@ export const STATUSES = ['backlog', 'planned', 'in progress', 'review', 'qa', 'r
 export type Status = (typeof STATUSES)[number];
 export const SIZES = ['XS', 'S', 'M', 'L', 'XL'] as const;
 export type Size = (typeof SIZES)[number];
+export const FOUND_BY = ['review', 'cover', 'droplet', 'qa', 'human'] as const;
+export type FoundBy = (typeof FOUND_BY)[number];
+
+/** Discovery attribution is meaningful only for a regression. */
+export function foundByRefusal(kind: Kind, regression: string | undefined, value: unknown): string | null {
+  if (!(FOUND_BY as readonly unknown[]).includes(value)) return `found_by must be one of ${FOUND_BY.join(', ')}`;
+  if (kind !== 'task' || regression === undefined) return 'found_by requires a task with regression_of';
+  return null;
+}
+
 export const VERDICT_KINDS = ['review', 'qa'] as const;
 export type VerdictKind = (typeof VERDICT_KINDS)[number];
 export const RESULTS = ['clear', 'not clear'] as const;
@@ -43,6 +53,7 @@ export type Frontmatter = {
   follows?: string[];
   /** Landed task whose work this task reworks. */
   regression_of?: string;
+  found_by?: FoundBy;
   topic: string | null;
   branch: string | null;
   created: string;
@@ -237,6 +248,11 @@ export function parseItem(text: string, fileName?: string, levels: LadderInput =
     if (!target) throw new ItemParseError('regression_of must be an item reference');
     fm.regression_of = target;
   }
+  if (r.found_by !== undefined) {
+    const refusal = foundByRefusal(kind, fm.regression_of, r.found_by);
+    if (refusal) throw new ItemParseError(refusal);
+    fm.found_by = r.found_by as FoundBy;
+  }
   if (r.rank !== undefined && r.rank !== null) {
     if (!rankable(kind, levels)) throw new ItemParseError('rank belongs only to tasks and containers below the top level');
     if (!Number.isSafeInteger(r.rank)) throw new ItemParseError('rank must be a safe integer');
@@ -341,6 +357,7 @@ export function serializeItem(item: Item): string {
     blocked_by: fm.blocked_by,
     ...(fm.follows !== undefined ? { follows: fm.follows } : {}),
     ...(fm.regression_of !== undefined ? { regression_of: fm.regression_of } : {}),
+    ...(fm.found_by !== undefined ? { found_by: fm.found_by } : {}),
     topic: fm.topic,
     branch: fm.branch,
     created: fm.created,

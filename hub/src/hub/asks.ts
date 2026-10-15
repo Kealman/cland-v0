@@ -6,8 +6,9 @@
 // The answer is a human message carrying `answer_to` (the ask's id), addressed to the session that asked, and
 // delivered like any human message. The core (`./core.ts`) owns the topics and the routing; it hands this module
 // what it needs through the port below, so its private state stays its own.
+import { nameRefusal } from '../names.ts';
 import { randomUUID } from 'node:crypto';
-import type { AskCard, HubEvent, Message, SendOutcome, Topic, TopicMessage } from '../protocol.ts';
+import type { AnswerAttribution, AskCard, HubEvent, Message, SendOutcome, Topic, TopicMessage } from '../protocol.ts';
 import type { LogFn } from '../log.ts';
 import { cardOf, type AskRow, type Store } from './store.ts';
 import { TopicRefusal, type TopicMove } from './topics.ts';
@@ -39,9 +40,9 @@ export type AskPort = {
   mayAsk: (role: string | null) => Decision;
   identity: (id: string) => string;
   nextLead: (from: string, topic: Topic, forwarding?: boolean) => string | null;
-  sendFromSession: (from: string, topic: string, to: string, text: string, replyTo: string, kind: 'question' | 'decision', answerTo?: string) => { message: Message; outcomes: SendOutcome[] };
+  sendFromSession: (from: string, topic: string, to: string, text: string, replyTo: string, kind: 'question' | 'decision', answerTo?: string, attribution?: AnswerAttribution) => { message: Message; outcomes: SendOutcome[] };
   /** The human writes into a topic: the answer goes this way. */
-  sendFromHuman: (topic: string, text: string, to: string[], answerTo: string) => { message: TopicMessage; outcomes: SendOutcome[] };
+  sendFromHuman: (topic: string, text: string, to: string[], answerTo: string, attribution: AnswerAttribution) => { message: TopicMessage; outcomes: SendOutcome[] };
   /** A hub note in a topic to one session: recorded, delivered now or queued. */
   noteTo: (topic: string, session: string, text: string) => void;
 };
@@ -75,7 +76,12 @@ export class Asks {
   /** Called with the recorded answer inside its message transaction, before any delivery. */
   recordAnswer(message: Message): void {
     if (!message.answerTo) return;
-    this.#port.store.closeAsk(message.answerTo, 'answered', message.ts, { id: message.id });
+    const attribution: AnswerAttribution | undefined = message.answered_as ? {
+      answered_as: message.answered_as,
+      ...(message.answered_by ? { answered_by: message.answered_by } : {}),
+      ...(message.relayed_by ? { relayed_by: message.relayed_by } : {}),
+    } : undefined;
+    this.#port.store.closeAsk(message.answerTo, 'answered', message.ts, { id: message.id, ...(attribution ? { attribution } : {}) });
   }
 
   #incoming(from: string, id: string, tool: string): AskRow {
@@ -118,9 +124,11 @@ export class Asks {
     // Close only after delivery admission succeeds, so a muted pair leaves the ask pending.
     const senderId = a.fromSessionId ?? p.store.senderSessionId(a.id);
     const sender = senderId ? p.store.nameOfSession(p.identity(senderId)) : null;
-    const sent = p.sendFromSession(from, a.topic, sender ?? a.from, body, a.id, 'decision', a.id);
+    const upstream = a.forwarded ? p.store.ask(a.forwarded) : null;
+    const attribution: AnswerAttribution | undefined = upstream?.answered_as ? { answered_as: upstream.answered_as, ...(upstream.answered_by ? { answered_by: upstream.answered_by } : {}), relayed_by: from } : undefined;
+    const sent = p.sendFromSession(from, a.topic, sender ?? a.from, body, a.id, 'decision', a.id, attribution);
     if (!p.store.message(sent.message.id)) throw new TopicRefusal('the answer was not delivered; the ask stays open');
-    p.log({ event: 'ask-answered', id: a.id, topic: a.topic, answer: sent.message.id, from });
+    p.log({ event: 'ask-answered', id: a.id, topic: a.topic, answer: sent.message.id, from, ...attribution });
     this.#changed(a.id);
     p.move(p.topic(a.topic), 'reply', `ask answered by ${from}`);
     p.publishTopics();
@@ -192,7 +200,7 @@ export class Asks {
    * carrying `answer_to`, addressed to the session that asked; the ask is answered. With no other ask open the topic
    * no longer waits for the human: the human spoke last, so it waits for the agent.
    */
-  answer(id: string, option?: number, text?: string): { message: TopicMessage; outcomes: SendOutcome[] } {
+  answer(id: string, option?: number, text?: string, standIn?: string): { message: TopicMessage; outcomes: SendOutcome[] } {
     const p = this.#port;
     const a = p.store.ask(id);
     if (!a) throw new TopicRefusal(`no ask "${id}"`);
@@ -209,21 +217,26 @@ export class Asks {
       if (!body) throw new TopicRefusal('an answer needs an option or a text');
       if (!a.free && a.options.length) throw new TopicRefusal(`this ask takes one of its options (1-${a.options.length}), not a free answer`);
     }
+    if (standIn !== undefined) {
+      const refusal = nameRefusal(standIn);
+      if (refusal) throw new TopicRefusal(refusal);
+    }
+    const attribution: AnswerAttribution = standIn === undefined ? { answered_as: 'human' } : { answered_as: 'stand-in', answered_by: standIn };
     // closed first: the topic's status after the answer reads the asks still open
-    p.store.closeAsk(a.id, 'answered', p.now().toISOString(), { id: '', ...(option !== undefined ? { option } : {}) });
+    p.store.closeAsk(a.id, 'answered', p.now().toISOString(), { id: '', attribution, ...(option !== undefined ? { option } : {}) });
     let sent: { message: TopicMessage; outcomes: SendOutcome[] };
     try {
       // to the session that asked, unless it has since handed the role it asked as over (#31): then to the role,
       // whose current holder inherited the question (`role.state` lists it)
       const askedAs = p.store.message(a.id)?.fromRole;
       const to = askedAs !== undefined && p.store.roleOf(a.from) !== askedAs ? askedAs : a.from;
-      sent = p.sendFromHuman(a.topic, body, [to], a.id);
+      sent = p.sendFromHuman(a.topic, body, [to], a.id, attribution);
     } catch (err) {
       p.store.reopenAsk(a.id);
       throw err;
     }
     p.store.setAskAnswer(a.id, sent.message.id);
-    p.log({ event: 'ask-answered', id: a.id, topic: a.topic, answer: sent.message.id, option: option ?? null });
+    p.log({ event: 'ask-answered', id: a.id, topic: a.topic, answer: sent.message.id, option: option ?? null, ...attribution });
     this.#changed(a.id);
     return sent;
   }

@@ -1,6 +1,7 @@
 // `cland inbox` and `cland topic answer`: the human answers asks and reads the inbox from a terminal — no workbench
 // needed (the open point of #33). Both go over the hub's existing UI frames (`inbox.list`, `topic.answer`, "Asks and
 // the inbox"), like `cland role`: readDiscovery, askHubFrame, `--json`.
+import { actorOf } from './actor.ts';
 import { hubDiscovery, readDiscovery } from '../project.ts';
 import type { Inbox, TopicMessage } from '../protocol.ts';
 import { askHubFrame } from './socket-client.ts';
@@ -75,6 +76,14 @@ async function runTopicAnswer(args: string[], cwd: string): Promise<number> {
   }
   const [ask, ...rest] = args;
   if (!ask) throw new Error('usage: cland topic answer <ask id> <option number> | --text "<free answer>"');
+  const asAt = rest.indexOf('--as');
+  let label: string | undefined;
+  if (asAt >= 0) {
+    label = rest[asAt + 1];
+    if (!label?.trim() || label.startsWith('--') || rest.indexOf('--as', asAt + 1) >= 0) throw new Error('usage: cland topic answer <ask id> <option number> | --text "<free answer>" [--as <stand-in name>]');
+    rest.splice(asAt, 2);
+  }
+  const as = actorOf({ as: label }, process.env, { err: s => process.stderr.write(s) });
   let option: number | undefined;
   let text: string | undefined;
   const at = rest.indexOf('--text');
@@ -95,7 +104,7 @@ async function runTopicAnswer(args: string[], cwd: string): Promise<number> {
   // and the hub's refusal tells the human when it is not.
   const inbox = (await askHubFrame(d, { type: 'inbox.list' })) as Inbox;
   const title = inbox.asks.find((a) => a.id === ask)?.topic.title;
-  const v = (await askHubFrame(d, { type: 'topic.answer', ask, ...(option !== undefined ? { option } : { text }) })) as { message: TopicMessage };
+  const v = (await askHubFrame(d, { type: 'topic.answer', ask, ...(as ? { as } : {}), ...(option !== undefined ? { option } : { text }) })) as { message: TopicMessage };
   process.stdout.write(`answered ${ask} in ${title ?? v.message.topic}: ${v.message.text}\n`);
   return 0;
 }

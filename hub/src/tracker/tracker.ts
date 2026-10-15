@@ -13,7 +13,7 @@ import type { VerifyResult } from '../hub/suites.ts';
 import { planMigration, type MigrationPlan, type ClosingTimes, type SizeAssignments } from './migrate.ts';
 import { PlanError, parsePlan, planInBody, planOverride, planOverrideKey, withPlan, type QaPolicy, type EpicPlan } from './plan.ts';
 import { compareRank, effectiveRank, rankChanges } from './rank.ts';
-import type { MarkedCriterion } from '../protocol.ts';
+import type { AskAnswer, MarkedCriterion } from '../protocol.ts';
 import { countCriteria, summarizeCriteria, type CriteriaCounts, annotateCriteria, criterionRefusal, criteriaSource, parseCriteria, type Criterion, type CriterionWarning } from './criteria.ts';
 import { parseItemReference, prefixOf } from './prefixes.ts';
 import { DEFAULT_LEVELS, kindsFor, kindWithArticle, isPlanningContainer, Ladder, type Levels } from './kinds.ts';
@@ -42,6 +42,8 @@ import {
   STATES,
   statusRefusal,
   sizeRefusal,
+  foundByRefusal,
+  type FoundBy,
   rankable,
   VERDICT_KINDS,
   versionRefusal,
@@ -106,6 +108,8 @@ export type ItemView = IndexedItem & {
   verdictBase: string | null;
   body: string;
   followStatus?: FollowStatus[];
+  /** Answer origins from the bound topic; live hub state, never frontmatter. */
+  answers?: AskAnswer[];
   /** Last valid plan; a refused hand save is reported separately. */
   plan: EpicPlan | null;
   /** Effective merge policy, from the nearest containing plan or the project default. */
@@ -156,11 +160,13 @@ export type CreateInput = {
   blocked_by?: string[];
   follows?: string[];
   regression_of?: string;
+  found_by?: FoundBy;
   topic?: string | null;
   branch?: string | null;
 };
 
 export type EditInput = {
+  found_by?: FoundBy | null;
   status?: Status;
   version?: string | null;
   title?: string;
@@ -204,6 +210,7 @@ export class TrackerError extends Error {
  * `item` and the item's `topic` one fact. `task.link` and `task.create` with a topic go through it.
  */
 export type TopicBinding = {
+  answers?: (topic: string) => AskAnswer[];
   /** Throws why `topic` cannot be bound to `item` (null: an item about to be created). */
   check: (item: string | null, topic: string) => void;
   /** The item's file now names `topic` (null: none): the hub records the binding. */
@@ -1453,7 +1460,7 @@ export class Tracker {
     const indexed = this.#index.get(id);
     if (!indexed) throw new TrackerError(`no item ${id}`);
     if (source === 'file' && this.isPlanContainer(item.fm.kind)) this.#planCandidates.set(id, { item, source: 'hand' });
-    const { closed: _indexedClosed, size: _indexedSize, regression_of: _indexedRegression, follows: _indexedFollows, rank_set: _indexedRankSet, ...indexedFields } = indexed;
+    const { closed: _indexedClosed, size: _indexedSize, regression_of: _indexedRegression, found_by: _indexedFoundBy, follows: _indexedFollows, rank_set: _indexedRankSet, ...indexedFields } = indexed;
     const view: ItemView = {
       ...indexedFields,
       verdictBase: this.#fresh.base(),
@@ -1461,6 +1468,7 @@ export class Tracker {
       parent: item.fm.parent ? this.#referenceId(item.fm.parent) ?? item.fm.parent : null,
       blocked_by: item.fm.blocked_by.map(id => this.#referenceId(id) ?? id),
       ...(item.fm.regression_of !== undefined ? { regression_of: this.#referenceId(item.fm.regression_of) ?? item.fm.regression_of } : {}),
+      ...(item.fm.found_by !== undefined ? { found_by: item.fm.found_by } : {}),
       ...(item.fm.follows?.length ? { follows: item.fm.follows, followStatus: item.fm.follows.map(id => this.followStatus(id)) } : {}),
       rank: effectiveRank(item.fm),
       ...(item.fm.rank !== undefined ? { rank_set: true as const } : {}),
@@ -1469,6 +1477,7 @@ export class Tracker {
       ...(this.#duplicates.has(idNumber(id)) ? { warnings: [`duplicate item number ${idNumber(id)}: ${this.#duplicates.get(idNumber(id))!.join(', ')}`] } : {}),
       ancestry: this.#ancestry(item),
       body: item.body,
+      ...(item.fm.topic && this.#topicBinding?.answers ? { answers: this.#topicBinding.answers(item.fm.topic) } : {}),
       // A read may see a valid hand save before its watcher turn. Retain and journal that exact plan
       // before showing it, so a following invalid save cannot restore an older version.
       // Gate previews are unpublished proposals, so they must not retain or journal a plan.
@@ -2011,7 +2020,7 @@ export class Tracker {
     return resumed(async () => {
       try {
         if ('error' in result) throw result.error;
-        this.#log({ event: 'task-written', id, file, op, by: actor.name });
+        this.#log({ event: 'task-written', id, file, op, by: actor.name, regression_of: result.written.fm.regression_of, found_by: result.written.fm.found_by });
         return this.#viewOf(result.written.fm.id, this.#index.metaOf(result.written.fm.id)!.file, result.written);
       } finally { await fd.close(); }
     });
@@ -2052,6 +2061,10 @@ export class Tracker {
       if (input.size === 'XL') throw new TrackerError('XL tasks must be split into smaller tasks before filing');
     }
     const regression = input.regression_of === undefined ? undefined : this.#regression(kind, input.regression_of, null);
+    if (input.found_by !== undefined) {
+      const refusal = foundByRefusal(kind, regression, input.found_by);
+      if (refusal) throw new TrackerError(refusal);
+    }
     checkText(input.body ?? '', 'body');
     const parent = input.parent ? this.#ref(input.parent, null, 'parent') : null;
     this.#checkParent(kind, parent);
@@ -2075,6 +2088,7 @@ export class Tracker {
           state: 'open',
           ...(input.size !== undefined ? { size: input.size } : {}),
           ...(regression !== undefined ? { regression_of: regression } : {}),
+          ...(input.found_by !== undefined ? { found_by: input.found_by } : {}),
           labels: uniq(input.labels ?? []),
           assignee: input.assignee ?? null,
           parent,
@@ -2090,7 +2104,7 @@ export class Tracker {
       };
       const written = await this.#write(name, item, resumed, undefined, undefined, () => { authorize(); this.#checkTopic(id, topic); }, undefined, undefined, actor);
       return resumed(() => {
-        this.#log({ event: 'task-written', id, file: name, op: 'create', by: actor.name });
+        this.#log({ event: 'task-written', id, file: name, op: 'create', by: actor.name, regression_of: written.fm.regression_of, found_by: written.fm.found_by });
         if (topic !== null) this.#topicBinding?.bound(id, topic);
         return this.#viewOf(id, name, written);
       });
@@ -2367,7 +2381,15 @@ export class Tracker {
           fm.size = input.size;
         }
         // Kind conversion drops task-only metadata, as it already does workflow status.
-        if (fm.kind !== 'task') { delete fm.size; delete fm.regression_of; }
+        if (input.found_by !== undefined) {
+          if (input.found_by === null) delete fm.found_by;
+          else {
+            const refusal = foundByRefusal(fm.kind, fm.regression_of, input.found_by);
+            if (refusal) throw new TrackerError(refusal);
+            fm.found_by = input.found_by;
+          }
+        }
+        if (fm.kind !== 'task') { delete fm.size; delete fm.regression_of; delete fm.found_by; }
         if (!rankable(fm.kind, this.ladder)) delete fm.rank;
         if (fm.kind !== 'task') delete fm.status;
         else this.#normalizeStatus(item);
@@ -2618,7 +2640,7 @@ export class Tracker {
         if (input.branch !== undefined) fm.branch = input.branch || null;
         if (input.regression_of !== undefined) {
           if (fm.kind !== 'task') throw new TrackerError(`regression_of belongs only to a task, not ${fm.kind}`);
-          if (input.regression_of === null || input.regression_of === 'none') delete fm.regression_of;
+          if (input.regression_of === null || input.regression_of === 'none') { delete fm.regression_of; delete fm.found_by; }
           else fm.regression_of = this.#regression(fm.kind, input.regression_of, id);
         }
       }, resumed, undefined, () => { authorize(); this.#checkTopic(id, topic ?? null); });

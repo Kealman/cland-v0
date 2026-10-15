@@ -1,6 +1,6 @@
 // The tracker's requests: the same frames from a spoke (WebSocket, the `task.*` tools) and from the CLI
 // (Unix socket). Field names follow the item's frontmatter (`blocked_by`), so a frame reads like the file.
-import { parseVerdictFilter, STATES, type Kind, type State, type Status, type Size } from './item.ts';
+import { parseVerdictFilter, STATES, type Kind, type State, type Status, type Size, type FoundBy } from './item.ts';
 import type { HubFrame } from '../protocol.ts';
 import { nameRefusal, ROLE_NAMES } from '../names.ts';
 import type { Connection } from '../hub/core.ts';
@@ -24,6 +24,7 @@ export type TaskRequest =
       blocked_by?: string[];
       follows?: string[];
       regression_of?: string;
+      found_by?: FoundBy;
       topic?: string | null;
       branch?: string | null;
       as?: ActorField;
@@ -35,6 +36,7 @@ export type TaskRequest =
   | { type: 'task.comment'; id: string; item: string; text: string; verdict?: VerdictInput; as?: ActorField }
   | {
       type: 'task.edit';
+      found_by?: FoundBy | null;
       status?: Status;
       version?: string | null;
       id: string;

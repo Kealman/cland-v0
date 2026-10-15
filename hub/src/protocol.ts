@@ -97,6 +97,10 @@ export type AgentsHistoryFilter = { item?: string; session?: string };
 
 export type MarkedCriterion = { id: string; mark: 'verified' | 'failed'; note?: string };
 
+/** Answer origin; a human-shell stand-in self-identifies, and relays preserve that origin. */
+export type AnswerAttribution = { answered_as: 'human' | 'stand-in'; answered_by?: string; relayed_by?: string };
+export type AskAnswer = AnswerAttribution & { ask: string; answer: string };
+
 export type Message = {
   layer?: Layer;
   /** Informational warning, independent of actionability. */
@@ -130,7 +134,7 @@ export type Message = {
   criteria?: MarkedCriterion[];
   artifact?: Artifact;
   artifacts?: Artifact[];
-};
+} & Partial<AnswerAttribution>;
 
 /** Why hygiene refused a send (spec 4.2): the size cap, the session's rate limit, or the pair's loop breaker
  *  (with the mute's end). Carried by a refused outcome, a refused request's result, and the mute notice. */
@@ -194,7 +198,7 @@ export type AskCard = {
   answer?: string;
   /** The option the human chose (1-based), absent for a free answer. */
   option?: number;
-};
+} & Partial<AnswerAttribution>;
 
 /** An open ask as the inbox lists it. */
 export type InboxAsk = { layer?: Layer; id: string; topic: TopicRef; question: string; options: string[]; free: boolean; from: string; fromRole?: string; label: string; ts: string; since: string };
@@ -597,7 +601,7 @@ export type ClientRequest =
   | { type: 'hygiene.unmute'; id: string; a: string; b: string }
 
   /** The human answers an ask with an option (1-based) or a free text: `{ message: TopicMessage, outcomes }`. */
-  | { type: 'topic.answer'; id: string; ask: string; option?: number; text?: string }
+  | { type: 'topic.answer'; id: string; ask: string; option?: number; text?: string; as?: { name: string; sessionId?: string; shell?: boolean } }
   /** The inbox: `Inbox`. */
   | { type: 'inbox.list'; id: string; archive?: boolean }
   /** Human-only row actions, returning Inbox. */
@@ -841,7 +845,7 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
     case 'worktree.prune':
       return (f.items === undefined || (Array.isArray(f.items) && f.items.every((i) => typeof i === 'string'))) && (f.dryRun === undefined || typeof f.dryRun === 'boolean');
     case 'topic.answer':
-      return typeof f.ask === 'string' && (f.option === undefined || typeof f.option === 'number') && (f.text === undefined || typeof f.text === 'string');
+      return typeof f.ask === 'string' && (f.option === undefined || typeof f.option === 'number') && (f.text === undefined || typeof f.text === 'string') && (f.as === undefined || isObject(f.as) && typeof f.as.name === 'string' && (f.as.sessionId === undefined || typeof f.as.sessionId === 'string') && (f.as.shell === undefined || typeof f.as.shell === 'boolean'));
     case 'role.set':
       return typeof f.session === 'string' && typeof f.role === 'string' && (f.note === undefined || typeof f.note === 'string' || isObject(f.note)) && (f.move === undefined || typeof f.move === 'boolean') && (f.item === undefined || typeof f.item === 'string');
     case 'role.state':

@@ -125,7 +125,7 @@ test('answering with option 2 posts the option as a message with answer_to, deli
   await ui.waitFor((f) => f.type === 'topic' && (f.topic as Topic).id === 'general' && (f.topic as Topic).status === 'waiting for agent' && ui.frames.indexOf(f) >= mark);
   const card = (await ui.waitFor((f) => f.type === 'ask' && f.ask === asked.ask && ui.frames.indexOf(f) >= mark)) as { topic: string; card: Card };
   assert.equal(card.topic, 'general');
-  assert.deepEqual(card.card, { question: 'Which port?', options: ['a fixed one', 'a free one, picked at start'], free: true, state: 'answered', answer: answered.message.id, option: 2 });
+  assert.deepEqual(card.card, { question: 'Which port?', options: ['a fixed one', 'a free one, picked at start'], free: true, state: 'answered', answer: answered.message.id, option: 2, answered_as: 'human' });
   await inboxEvent(ui, (i) => i.asks.length === 0 && i.needsYou === 0, mark);
   const messages = await history(ui, 'general');
   assert.deepEqual(messages.find((m) => m.id === asked.ask)?.ask, card.card);

@@ -56,7 +56,7 @@ export const HUB_USAGE = `  hub start       start the project's hub in the backg
                   --since <ISO date | 30s | 10m | 2h | 1d>, --kind <event>[,<event>…], --json (the lines as they are)
 `;
 
-export const TASK_USAGE = `  task create <title> [--kind k] [--size XS|S|M|L] [--regression-of <id>] [--version semver] [--body t | --body-file f] [--label l]… [--assignee a]
+export const TASK_USAGE = `  task create <title> [--kind k] [--size XS|S|M|L] [--regression-of <id>] [--found-by review|cover|droplet|qa|human] [--version semver] [--body t | --body-file f] [--label l]… [--assignee a]
                   [--parent <id>] [--blocked-by <id>]… [--follows <id>]… [--topic t] [--branch b]
   task view <id> (any kind prefix in either case, or a bare number)
   task migrate [--dry-run] [--sizes <JSON-file>] [--json] (offline prefixes, references, titles, categories and retired labels)
@@ -64,7 +64,7 @@ export const TASK_USAGE = `  task create <title> [--kind k] [--size XS|S|M|L] [-
   task plan <set|show|approve> <epic-id> [--file plan.yaml] [--reason text] [--allow-large <id>=<reason>]…
   task list [--under <id>] [--state open|closed] [--label l]… [--kind k] [--assignee a] [--verdict review=clear]
   task comment <id> <text> [--verdict review|qa --result clear|"not clear" --run <id> [--commit <sha>] [--scope full|delta|evidence] [--stage <name>] [--verified C1,C3|all | --failed "C1=note"]…]
-  task edit <id> [--version semver|none] [--title t] [--body t | --body-file f] [--kind k] [--size XS|S|M|L] [--state s] [--status s] [--label l]…
+  task edit <id> [--found-by review|cover|droplet|qa|human|none] [--version semver|none] [--title t] [--body t | --body-file f] [--kind k] [--size XS|S|M|L] [--state s] [--status s] [--label l]…
                   [--add-label l]… [--remove-label l]… [--assignee a|none]
   task close <id> [--comment t] [--override reason (human shell only)]
   task link <id> [--regression-of <id>|none] [--parent <id>|none] [--blocked-by <id>]… [--follows <id>]… [--unblock <id>]… [--unfollow <id>]… [--topic t|none] [--branch b|none]
@@ -139,10 +139,10 @@ export const INBOX_USAGE = `  inbox [--json] [--archive] four sections: asks and
                           --archive prints departures from the last seven days, newest first, with when and why
 `;
 
-export const TOPIC_USAGE = `  topic answer <ask id> <option number>
+export const TOPIC_USAGE = `  topic answer <ask id> <option number> [--as <stand-in name>]
                           answer an ask with its option n (1-based): prints
                           'answered <ask id> in <topic title>: <the answer>'
-    topic answer <ask id> --text "<free answer>"
+    topic answer <ask id> --text "<free answer>" [--as <stand-in name>]
                           answer an ask with a free answer; the hub's refusals (an ask not open, an option
                           out of range, a free answer to an options-only ask) print 'cland: <error>', exit 1
 `;

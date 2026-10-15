@@ -1,6 +1,6 @@
 // The spoke's `task.*` tools: the tracker's requests as MCP tools. Arguments name the item `id`; the frame
 // carries it as `item` (a frame's `id` is the request's). The hub validates; the spoke only reshapes.
-import { STATUSES, SIZES } from '../tracker/item.ts';
+import { STATUSES, SIZES, FOUND_BY } from '../tracker/item.ts';
 import type { TaskRequest } from '../tracker/requests.ts';
 import type { DistributiveOmit } from './hub-client.ts';
 
@@ -24,18 +24,18 @@ export const TASK_TOOLS = [
     description: "Create an item in the project's tracker (a Markdown file in .cland/tasks/, id with the kind's prefix and a shared number). A task needs a size: XS, S, M or L; XL tasks must be split before filing. Returns the item.",
     inputSchema: {
       type: 'object',
-      properties: { title: str, kind: { ...KIND, description: 'Default task' }, size: SIZE, regression_of: itemId, version: { ...str, description: 'Release semver without the v; optional at creation' }, body: str, labels: strs, assignee: str, parent: itemId, blocked_by: strs, follows: { ...strs, description: 'Epic predecessors in a lane' }, topic: str, branch: str },
+      properties: { title: str, kind: { ...KIND, description: 'Default task' }, size: SIZE, regression_of: itemId, found_by: { type: 'string', enum: FOUND_BY }, version: { ...str, description: 'Release semver without the v; optional at creation' }, body: str, labels: strs, assignee: str, parent: itemId, blocked_by: strs, follows: { ...strs, description: 'Epic predecessors in a lane' }, topic: str, branch: str },
       required: ['title'],
     },
   },
   {
     name: 'task.view',
-    description: 'One item: fields (including closed, size and regression_of), file path, ancestry, body, comments, verdicts, claim, full criteria with criteriaCounts, and the task latest verify result.',
+    description: 'One item: fields (including closed, size, regression_of and found_by), file path, ancestry, body, comments, verdicts, claim, bound-topic answer origins, full criteria with criteriaCounts, and the task latest verify result.',
     inputSchema: { type: 'object', properties: { id: itemId }, required: ['id'] },
   },
   {
     name: 'task.list',
-    description: 'List items from the index, including closed, size, regression_of, criteria counts and the task latest verify result. `under` selects descendants of an item (excluding itself). Filters combine; `label` items must all be present; `verdict` is `review=clear`, `qa=not clear`, … (the latest verdict of that kind).',
+    description: 'List items from the index, including closed, size, regression_of, found_by, criteria counts and the task latest verify result. `under` selects descendants of an item (excluding itself). Filters combine; `label` items must all be present; `verdict` is `review=clear`, `qa=not clear`, … (the latest verdict of that kind).',
     inputSchema: { type: 'object', properties: { under: itemId, state: STATE, label: strs, kind: KIND, assignee: str, verdict: str } },
   },
   {
@@ -50,7 +50,7 @@ export const TASK_TOOLS = [
   {
     name: 'task.edit',
     description: "Change an item's title, body, kind, version, state, status, size, labels (replace, add, remove) or assignee (null clears).",
-    inputSchema: { type: 'object', properties: { id: itemId, title: str, body: str, kind: KIND, size: SIZE, version: nullableStr, state: STATE, status: { type: 'string', enum: STATUSES, description: 'Coordinator: any status. Implementer: review on its claimed item only.' }, labels: strs, add_labels: strs, remove_labels: strs, assignee: nullableStr }, required: ['id'] },
+    inputSchema: { type: 'object', properties: { id: itemId, title: str, body: str, kind: KIND, size: SIZE, found_by: { type: ['string', 'null'], enum: [...FOUND_BY, null], description: 'Where a regression was caught; requires regression_of; null clears' }, version: nullableStr, state: STATE, status: { type: 'string', enum: STATUSES, description: 'Coordinator: any status. Implementer: review on its claimed item only.' }, labels: strs, add_labels: strs, remove_labels: strs, assignee: nullableStr }, required: ['id'] },
   },
   {
     name: 'task.close',

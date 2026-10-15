@@ -6,7 +6,7 @@ const itemKey = (id: string): string => Number.isSafeInteger(idNumber(id)) ? `T-
 import { DatabaseSync } from 'node:sqlite';
 import { existsSync } from 'node:fs';
 import { isHeldDelivery } from '../protocol.ts';
-import type { Subscription, OwnedSubscription, SubscriptionSubject, Artifact, AgentsHistoryFilter, AskCard, AskState, DeliveryStage, Message, Topic, TopicMessage, TopicStatus } from '../protocol.ts';
+import type { Subscription, OwnedSubscription, SubscriptionSubject, Artifact, AgentsHistoryFilter, AnswerAttribution, AskAnswer, AskCard, AskState, DeliveryStage, Message, Topic, TopicMessage, TopicStatus } from '../protocol.ts';
 import type { HygieneMemory, HygieneRow } from './hygiene.ts';
 import type { InboxDeparture, InboxRowKind } from '../protocol.ts';
 export type InboxWait = { kind: InboxRowKind; id: string; subject: string; since: string; text?: string };
@@ -155,6 +155,8 @@ const ADDED_COLUMNS: ReadonlyArray<{ table: string; column: string; type: string
   /** The actionable asker follows role handover; the original message sender remains historical. */
   { table: 'asks', column: 'from_session_id', type: 'text' },
   { table: 'asks', column: 'forwarded_id', type: 'text' },
+  { table: 'asks', column: 'answer_attribution', type: 'text' },
+  { table: 'messages', column: 'answer_attribution', type: 'text' },
   { table: 'sessions', column: 'status', type: 'text' },
   { table: 'sessions', column: 'role', type: 'text' },
   { table: 'sessions', column: 'session_id', type: 'text' },
@@ -241,11 +243,14 @@ const toMessage = (row: Row): Message => ({
   ...(row.topic !== null && row.topic !== undefined ? { topic: row.topic as string } : {}),
   ...(typeof row.notice === 'string' ? { kind: row.notice } : {}),
   ...(typeof row.notice_detail === 'string' ? { detail: JSON.parse(row.notice_detail) as Record<string, unknown> } : {}),
+  ...attributionOf(row),
   ...(row.answer_to !== null && row.answer_to !== undefined ? { answerTo: row.answer_to as string } : {}),
 });
 
 /** An ask's row in the `asks` table (#33). */
 export type AskRow = AskCard & { id: string; topic: string; from: string; ts: string; toSessionId?: string; fromSessionId?: string };
+
+const attributionOf = (row: Row): Partial<AnswerAttribution> => typeof row.answer_attribution === 'string' ? JSON.parse(row.answer_attribution) as AnswerAttribution : {};
 
 const toAsk = (row: Row): AskRow => ({
   id: row.id as string,
@@ -256,6 +261,7 @@ const toAsk = (row: Row): AskRow => ({
   options: JSON.parse(row.options_json as string) as string[],
   free: row.free === 1,
   state: row.state as AskState,
+  ...attributionOf(row),
   ...(typeof row.to_name === 'string' ? { to: row.to_name as string } : {}),
   ...(typeof row.to_session_id === 'string' ? { toSessionId: row.to_session_id as string } : {}),
   ...(typeof row.from_session_id === 'string' ? { fromSessionId: row.from_session_id as string } : {}),
@@ -270,6 +276,9 @@ export const cardOf = (a: AskRow): AskCard => ({
   options: a.options,
   free: a.free,
   state: a.state,
+  ...(a.answered_as !== undefined ? { answered_as: a.answered_as } : {}),
+  ...(a.answered_by !== undefined ? { answered_by: a.answered_by } : {}),
+  ...(a.relayed_by !== undefined ? { relayed_by: a.relayed_by } : {}),
   ...(a.to !== undefined ? { to: a.to } : {}),
   ...(a.forwarded !== undefined ? { forwarded: a.forwarded } : {}),
   ...(a.answer !== undefined ? { answer: a.answer } : {}),
@@ -712,6 +721,7 @@ export class Store implements HygieneMemory {
           message.answerTo ?? null,
           seq,
         );
+      if (message.answered_as !== undefined) this.#db.prepare('update messages set answer_attribution = ? where id = ?').run(JSON.stringify({ answered_as: message.answered_as, answered_by: message.answered_by, relayed_by: message.relayed_by }), message.id);
       if (message.criteria !== undefined) this.#db.prepare('update messages set criteria = ? where id = ?').run(JSON.stringify(message.criteria), message.id);
       if (message.request !== undefined) this.#db.prepare('update messages set request_kind = ?, request_subject = ? where id = ?').run(message.request, message.subject ?? null, message.id);
       if (message.artifact) this.#db.prepare('update messages set artifact = ? where id = ?').run(JSON.stringify(message.artifact), message.id);
@@ -1459,13 +1469,19 @@ export class Store implements HygieneMemory {
   }
 
   /** An open ask leaves `open` (answered, withdrawn, cancelled); false when it was no longer open. */
-  closeAsk(id: string, state: Exclude<AskState, 'open'>, at: string, answer?: { id: string; option?: number }): boolean {
-    return this.#db.prepare("update asks set state = ?, closed_at = ?, answer_id = ?, option = ? where id = ? and state = 'open'").run(state, at, answer?.id ?? null, answer?.option ?? null, id).changes > 0;
+  closeAsk(id: string, state: Exclude<AskState, 'open'>, at: string, answer?: { id: string; option?: number; attribution?: AnswerAttribution }): boolean {
+    return this.#db.prepare("update asks set state = ?, closed_at = ?, answer_id = ?, option = ?, answer_attribution = ? where id = ? and state = 'open'").run(state, at, answer?.id ?? null, answer?.option ?? null, answer?.attribution ? JSON.stringify(answer.attribution) : null, id).changes > 0;
   }
 
   /** An answer that could not be sent: the ask is open again. */
   reopenAsk(id: string): void {
-    this.#db.prepare("update asks set state = 'open', closed_at = null, answer_id = null, option = null where id = ?").run(id);
+    this.#db.prepare("update asks set state = 'open', closed_at = null, answer_id = null, option = null, answer_attribution = null where id = ?").run(id);
+  }
+
+  /** Recorded answer origins for an item's topic, independent of history pagination. */
+  askAnswers(topic: string): AskAnswer[] {
+    const rows = this.#db.prepare("select * from asks where topic = ? and state = 'answered' and answer_attribution is not null order by ts, rowid").all(topic) as Row[];
+    return rows.map(row => ({ ask: row.id as string, answer: row.answer_id as string, ...JSON.parse(row.answer_attribution as string) as AnswerAttribution }));
   }
 
   /** The answer's message id, once it is recorded. */
