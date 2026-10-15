@@ -30,7 +30,11 @@ test('integrated remote close collects each map before release and publishes the
   assert.deepEqual(map.files['hub/src/covered.ts'].functions[0].tests, map.testFiles);
   assert.deepEqual(f.api.droplets, []); assert.deepEqual(f.api.keys, []);
   const calls = await readFile(join(f.api.stateRoot, 'machine-calls.jsonl'), 'utf8');
-  assert.equal(calls.split('\n').filter(line => line.includes('coverage-map.json') && line.includes('scp')).length, 2);
+  // Coverage runs put coverage-map.json.raw in the logged environment, so match
+  // the operation and remote source argument rather than whole JSON lines.
+  const transfers: { mode: string; args: string[] }[] = calls.trim().split('\n').map(line => JSON.parse(line));
+  const downloads = transfers.filter(call => call.mode === 'scp' && /^runner@[^:]+:runs\/[^/]+\/coverage-map\.json$/.test(call.args.at(-2)!));
+  assert.equal(downloads.length, 2);
 });
 
 test('occasion refuses implementers and task heads; an integrated Coordinator close uses two droplets and one merged result', async t => {
