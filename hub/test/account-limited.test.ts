@@ -234,6 +234,7 @@ test('a hard hit before the native first-turn response is retained through launc
 
 
 for (const failed of [false, true]) test(`after-hit read waits for a recent ${failed ? 'failed poll backoff' : 'poll minimum'} and duplicate hits share it`, async t => {
+  const pollDelayMs = failed ? 16000 : 12000;
   const f = await fixture(t, { CLAND_TEST_ACCOUNT_POLL_MINIMUM_MS: failed ? '6000' : '12000', CLAND_TEST_ACCOUNT_POLL_FLOOR_MS: failed ? '8000' : '60000' }, failed);
   const p = await launch(f.ui, 'waiting-claude', 'claude-b', { role: 'implementer' });
   await idle(f.ui, p.name);
@@ -258,10 +259,11 @@ for (const failed of [false, true]) test(`after-hit read waits for a recent ${fa
     ui = await connectUi(t, next.discovery);
     assert.deepEqual((await account(ui, 'claude-b')).limited, mark, 'restart retains the mark and outstanding read');
   }
-  await eventually('deferred poll supplies reset', async () => (await account(ui, 'claude-b')).limited?.resetsAt === reset || undefined);
+  // Allow the asserted minimum/backoff plus time for the harness poll to complete.
+  await eventually('deferred poll supplies reset', async () => (await account(ui, 'claude-b')).limited?.resetsAt === reset || undefined, pollDelayMs + 5000);
   const after = (await journal(f.root, ui)).filter(e => e.event === 'account-polled' && e.account === 'claude-b');
   assert.equal(after.length, before.length + 1);
-  assert.ok(Date.parse(String(after.at(-1)!.ts)) - Date.parse(String(before.at(-1)!.ts)) >= (failed ? 16000 : 12000));
+  assert.ok(Date.parse(String(after.at(-1)!.ts)) - Date.parse(String(before.at(-1)!.ts)) >= pollDelayMs);
   assert.equal((await journal(f.root, ui)).filter(e => e.event === 'account-limited' && e.account === 'claude-b').length, 1);
 });
 
