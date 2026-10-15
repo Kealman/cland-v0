@@ -3,7 +3,7 @@ id: T-456
 kind: task
 title: "Rules reach sessions: each role's clause and launch brief carry its active rules, rule.add/edit/retire/list tools write them with a human-message origin, and a changed rule arrives as a rule event at the next turn"
 state: open
-status: review
+status: in progress
 size: L
 criterion_seq: 8
 labels:
@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-295
 branch: t/T-456-rules-reach-sessions-each-role-s-clause
 created: 2026-10-15T07:15:15.550Z
-updated: 2026-10-15T13:41:07.371Z
+updated: 2026-10-15T14:07:43.628Z
 ---
 
 ## Summary
@@ -152,3 +152,29 @@ Review covers the full original diff plus the replacement correction. No Reviewe
 Standards: 0 findings. Spec: 0 unresolved findings; C1,C4,C5,C7,C8 verified.
 
 Criteria: C1 verified, C4 verified, C5 verified, C7 verified, C8 verified.
+
+### rev-31 · 2026-10-15T14:07:43.628Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261015-456-linux-1
+commit: a269ce0c80d7c6fc851e6ec4a421e4625117ee2a
+scope: evidence
+
+Evidence review not clear at unchanged a269ce0c80d7c6fc851e6ec4a421e4625117ee2a.
+
+## Standards
+Medium — hub/test/harness.ts:29 and hub/test/aide.test.ts:10: the documented tool inventory and exact Aide grants omit the four new rule tools; five deterministic assertions fail across aide, resilience, spoke-identity and surface tests (A-3050:3945-3996,4010-4090,4122-4248).
+Medium — hub/test/tracker-container-source.test.ts:221: the expected valid Lua declaration still has nine EventKinds; the protocol-aware guard rejects that fixture now that rule is tenth (A-3050:4250-4273).
+Medium — hub/test/rule-sessions.test.ts:79,135: new cases take 8.109 s and 5.042 s under Linux load and lack reasoned durations.json allowances required by docs/agents/tests.md; both are explicit duration budget failures (A-3050:5937-5938).
+
+## Spec/integration
+Medium — hub/src/roles/default-roles.ts:58 and .cland/roles.toml:46: added clause text takes the empty-rulebook Coordinator reply to 7926 bytes, exceeding the established MAX_TEXT_BYTES - 512 headroom guard (7680 bytes), so both roles snapshots fail at roles.test.ts:80 (A-3050:4092-4120). Restore headroom while keeping the requested rules/memory instructions and the size guard.
+
+Unrelated failure, reported Bugs/S to lead for classification: hub/test/orphan-servers.test.ts:346 OpenCode unverifiable-server case hits 'database is locked' (A-3050:3998-4007). T-430's init case is a different signature; no exact known-ticket classification found.
+
+Gate 9d3032d2-5af5-4902-b92c-43c6007fec57 / A-3050 is exit 1 at reviewed/current head: Linux c-8, 1744 pass / 9 fail / 3 platform skips, plus the two duration-budget failures. All six rule-sessions functional cases pass (A-3050:2369-2377). Host/remote typecheck pass, but Neovim phase is not reached. This is not eligible for a known-flake exception because deterministic changed-surface contracts and own-file duration budgets fail.
+
+Source-established C1,C4,C5,C7,C8 marks remain; no new failed behavioral criterion is inferred solely from stale test expectations. C2,C3,C6 remain unverified pending a corrected source review and accepted same-head runtime evidence. Restore the integration contracts, request source re-review at the replacement head, then verify after the Coordinator lifts the restart hold. No Reviewer tests or edits.
+Standards/integration: 3 medium groups. Spec/integration: 1 medium group. Separate SQLite failure awaits classification.

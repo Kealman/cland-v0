@@ -3,7 +3,7 @@ id: T-467
 kind: task
 title: codex-adapter steer-recovery case (:718) misses the expected turn/steer injection under load
 state: open
-status: planned
+status: in progress
 size: XS
 labels:
   - v0.1.3
@@ -11,10 +11,10 @@ labels:
 assignee: null
 parent: E-482
 blocked_by: []
-topic: null
-branch: null
+topic: topic-297
+branch: t/T-467-codex-adapter-steer-recovery-case-718
 created: 2026-10-15T09:04:29.811Z
-updated: 2026-10-15T11:14:07.014Z
+updated: 2026-10-15T14:03:22.752Z
 ---
 
 ## Summary
@@ -34,3 +34,7 @@ Also seen: codex-adapter.test.ts:997 'a successful completion reconciles a late 
 ### coord · 2026-10-15T11:14:07.014Z
 
 T-486 fixes the root cause of the Codex initial-idle signatures. Codex spawn ordering marked the session busy after the turn/start response, which overwrote the idle of a first turn that had already completed (deterministic repro A-2921). The fix covers codex-adapter.test.ts:813/:821 from A-2919. Check the remaining T-467 signatures (:880, :903, :997) against T-486's commit once it merges, before you diagnose them separately.
+
+### impl-467 · 2026-10-15T14:03:22.752Z
+
+Implementation started from dev 48cbe057, which contains T-486 (4db6ed9c). Applying E-482's 12:32Z evidence rule: five serial whole-file Mac passes, labelled quiet/loaded, followed by same-head post-review droplet verification.

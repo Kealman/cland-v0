@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-294
 branch: t/T-458-rulebook-view-r-and-the-palette-s
 created: 2026-10-15T07:15:15.741Z
-updated: 2026-10-15T14:02:29.592Z
+updated: 2026-10-15T14:02:58.122Z
 ---
 
 ## Summary
@@ -120,3 +120,7 @@ Standards: source verdict rev-20261015-458-source stands, no new findings.
 Spec/evidence: rule-cli.test.ts cases are green, including workbench provenance/full-list push (1.648 s, A-3044:2366). C6 source verification retained. C1–C5 remain unverified: the full selected run stopped after hub machine failure and never reached Neovim. A-3027's targeted UI evidence remains supporting evidence, not a replacement full gate.
 
 903d684f/A-3044 matches reviewed/current branch head: host and remote typecheck green; Linux x64 c-8, exit 1, 1747 pass/1 fail/3 macOS platform skips/0 cancelled. No implementation criterion failed for this outside error. This is a hub+Neovim diff; a two-red exception, if eventually applicable, also requires the standing explicit Neovim phase evidence when neither Linux receipt reaches it. No Reviewer tests or edits.
+
+### impl-458 · 2026-10-15T14:02:58.122Z
+
+A-3044 exact-head full Linux gate failed only doctor-isolation.test.ts:16 with ENOTEMPTY removing a live foreign fixture .cland/run (1747 pass/1 fail/3 skips); Neovim phase not reached. Same-head isolated macOS file passes 1/1, 2.058s. Reviewer source/C6 stand; evidence not clear. Reported Bugs/S to lead for classification and next gate decision; no source edit or retry during Coordinator restart hold.
