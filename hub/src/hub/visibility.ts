@@ -55,7 +55,7 @@ export function warningSeverity(surface: Surface, r: Row): 'warn' | undefined {
   if (surface === 'messages') {
     const detail = row(r.detail);
     const eventWarning = r.fromKind === 'hub' && (
-      r.detail && ['verification-executor-fallback', 'verification-cleanup-incomplete'].includes(String(row(r.detail)?.event))
+      r.detail && ['verification-executor-fallback', 'verification-sharding-skipped', 'verification-cleanup-incomplete'].includes(String(row(r.detail)?.event))
       || r.kind === 'session-death'
       || (r.kind === 'event' && ((detail?.event === 'task' && detail.result === 'not clear') || (detail?.event === 'session.state' && detail.lifecycle === 'died')))
       || (r.kind === 'agent-message' && detail?.result === 'not clear')

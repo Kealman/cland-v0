@@ -1575,6 +1575,37 @@ asks. Both executors share admission order, the tree/mode cache and the
 artifact-backed result. Review source first, then verify the exact reviewed head
 (D25), whichever executor runs it.
 
+#### Close runs
+
+`cland verify all --occasion stage|epic|release --report <topic>` shards remote
+integrated `dev` closes. The Coordinator may name any occasion; QA may name `epic`
+for an epic demo. The project-root checkout must be clean, on `dev`, at freshly
+fetched `origin/dev`. Other roles and task heads are refused. The MCP `verify`
+tool takes the same `occasion` field. Batch and task runs stay on one slot;
+`--executor local` keeps a close run local.
+
+At admission, free remote slots up to `[verification] shards` (default 2) set the
+shard count. Hub files are placed largest-first on the lightest shard using
+`hub/test/durations.json` `files[*].seconds`; unknown files use the manifest
+median. Neovim goes to the shard with the least hub time, on that same droplet.
+`CLAND_SUITE_SELECTION` carries each explicit file list into the package runner,
+which retains free/machine classification inside that shard.
+
+The hub atomically reserves the whole group's estimated lifetime cost against
+the shared daily ledger ($3 here) before creating machines. When the cap cannot
+cover every shard, or fewer than two remote slots are free, it runs whole on one
+slot with one warn notice: `sharding skipped: daily spend cap $3 would be exceeded`
+or `sharding skipped: fewer than 2 remote slots free`. A provider failure after
+sharded admission fails the run; shards are not silently retried or run locally.
+
+One merged result sums counts, labels failed/lost shards, lists each machine,
+size, duration and cost, total cost, and wall from admission to final collection.
+The merged log and one log per shard are durable artifacts. Leases and child
+receipts survive hub restart, and confirmed deletion precedes slot release.
+An identical green tree/mode cache entry serves a later occasion request.
+Two c-8 machines with ten-minute lifetimes estimate $0.0833 total at $0.25/hour;
+provisioning and cleanup add to billed lifetime. Read measured costs in each run.
+
 #### Configuration and costs
 
 | Key | Default | This project's D27 build value |
@@ -1582,6 +1613,7 @@ artifact-backed result. Review source first, then verify the exact reviewed head
 | `[verification] executor` | `local` | `local` during the build; `droplet` after E-271 closes |
 | `budget` | `1` (local cap) | `1` |
 | `remote_budget` | `4` | `2` |
+| `shards` | `2` (positive integer) | default |
 | `lock_path` | `/tmp/cland-suite.lock` | default |
 | `cache_max_age_minutes` | `1440` | default |
 | `lifetime` | `110m` | `60m` |
@@ -1870,6 +1902,13 @@ the Node on its PATH in the candidate worktree and the candidate's
 `nvim/NVIM_VERSION` pin (`none` when absent). Cards name the executor, status and
 journal records carry the executor/platform, and cache hits keep the original
 run's executor and platform. Older jobs without an executor read as `local`.
+
+**Close-run sharding.** Only integrated `dev` requests with `--occasion
+stage|epic|release` shard remotely; ordinary batch runs stay on one slot. The
+Coordinator sets the occasion; QA may use `epic` for its demo. File balancing,
+Neovim placement, the daily-cap whole-run fallback and per-run costs are described
+under [Remote executors: Close runs](#close-runs). The result and queue show the
+occasion and the remote shard machines.
 
 **Executors.** `hub/src/executor/executor.ts` defines acquire, deliver, prepare,
 start, status, log, cancel, release and reap. The backend owns its durable lease's

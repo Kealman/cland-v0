@@ -30,6 +30,7 @@ export const JOURNALLED: ReadonlySet<string> = new Set([
   'executor-reaped',
   'executor-sweep',
   'verification-executor-fallback',
+  'verification-sharding-skipped',
   'verification-cleanup-incomplete',
   'executor-watchdog-fired',
   'executor-watchdog-rearmed',

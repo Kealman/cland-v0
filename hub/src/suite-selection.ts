@@ -4,7 +4,7 @@ import { glob, readFile } from 'node:fs/promises';
 import { dirname, posix, relative, resolve } from 'node:path';
 
 export type SuiteMode = 'hub-only' | 'nvim-only' | 'full';
-export type SuiteSelection = { mode: SuiteMode; files: string[]; reason: string };
+export type SuiteSelection = { mode: SuiteMode; files: string[]; reason: string; fetchedDev?: string; shard?: { files: string[]; nvim: boolean } };
 export type SuiteRequest = 'auto' | 'all' | 'hub' | 'nvim';
 
 // Cross-package baselines, kept together so widening smoke coverage is one edit.
@@ -123,7 +123,7 @@ export async function selectPackageSuite(cwd: string, requested: SuiteRequest = 
       git('ls-files', '--others', '--exclude-standard', '-z'),
     ]);
     files = [...new Set(paths.flatMap(output => output.split('\0').filter(Boolean)))].sort();
-    if (branch === 'dev') return { mode: 'full', files, reason: 'integrated dev always runs full' };
+    if (branch === 'dev') return { mode: 'full', files, reason: 'integrated dev always runs full', fetchedDev: (await git('rev-parse', 'origin/dev')).trim() };
     if (requested === 'all') return { mode: 'full', files, reason: '--all / all forces full' };
     const { mode, reason } = chooseSuite(files, await nvimHubImports(cwd));
     if (requested !== 'auto' && mode !== `${requested}-only`) return { mode: 'full', files, reason: `diff does not qualify for requested ${requested} phase` };
@@ -138,5 +138,9 @@ export function selectionFromEnv(): SuiteSelection | undefined {
   if (!text) return undefined;
   const value: unknown = JSON.parse(text);
   if (!value || typeof value !== 'object' || !('mode' in value) || !['full', 'hub-only', 'nvim-only'].includes(String(value.mode)) || !('files' in value) || !Array.isArray(value.files) || !value.files.every(path => typeof path === 'string') || !('reason' in value) || typeof value.reason !== 'string') throw new Error('invalid suite selection');
+  if ('shard' in value) {
+    const shard = value.shard;
+    if (!shard || typeof shard !== 'object' || !('files' in shard) || !Array.isArray(shard.files) || !shard.files.every(file => typeof file === 'string') || !('nvim' in shard) || typeof shard.nvim !== 'boolean') throw new Error('invalid suite shard selection');
+  }
   return value as SuiteSelection;
 }

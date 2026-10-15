@@ -4,7 +4,47 @@
     "artifacts": [
       "A-2714"
     ],
-    "commit": "fda3a637aae12e5c113308962bd9399c258f3a99"
+    "commit": "fda3a637aae12e5c113308962bd9399c258f3a99",
+    "measurements": [
+      {
+        "kind": "split",
+        "artifacts": [
+          "A-2776"
+        ],
+        "commit": "013a5c13",
+        "files": [
+          "hub/test/merge-checkout.test.ts",
+          "hub/test/merge-gate.test.ts",
+          "hub/test/merge-policy.test.ts",
+          "hub/test/merge-recovery.test.ts",
+          "hub/test/merge.test.ts",
+          "hub/test/suite-admission.test.ts",
+          "hub/test/suite-cache-recovery.test.ts",
+          "hub/test/suite-cache.test.ts",
+          "hub/test/suite-cancel.test.ts",
+          "hub/test/suite-human.test.ts",
+          "hub/test/suite-queue.test.ts",
+          "hub/test/suite-recovery.test.ts",
+          "hub/test/suite-scheduling.test.ts",
+          "hub/test/suite-selection-report.test.ts",
+          "hub/test/suite-timeouts.test.ts",
+          "hub/test/suite.test.ts"
+        ],
+        "reason": "T-395 maps all 110 original suite/merge test identities in the refreshed A-2714 baseline to unchanged statements in themed files. File totals sum their refreshed test baselines; cache files use the separately recorded Linux timings below."
+      },
+      {
+        "kind": "split",
+        "artifacts": [
+          "A-2770"
+        ],
+        "commit": "f3346d60b4ded82a109a0f2dc4165f3ee88f8154",
+        "files": [
+          "hub/test/suite-cache.test.ts",
+          "hub/test/suite-cache-recovery.test.ts"
+        ],
+        "reason": "T-395 further splits cache tests by unchanged top-level statements after the first Linux run measured the combined file at 68.465s. File totals are sums of that run’s per-test timings, grouped into the new files; no assertion or test identity changed."
+      }
+    ]
   },
   "budget": {
     "testSeconds": 5,
@@ -287,10 +327,6 @@
       "seconds": 0.107742,
       "tests": 6
     },
-    "hub/test/merge.test.ts": {
-      "seconds": 161.524388,
-      "tests": 40
-    },
     "hub/test/migrate-plan.test.ts": {
       "seconds": 0.003659,
       "tests": 7
@@ -502,10 +538,6 @@
     "hub/test/suite-selection.test.ts": {
       "seconds": 9.901956,
       "tests": 61
-    },
-    "hub/test/suite.test.ts": {
-      "seconds": 265.000659,
-      "tests": 70
     },
     "hub/test/surface.test.ts": {
       "seconds": 0.512089,
@@ -774,14 +806,78 @@
     "nvim/test/verification-view.test.ts": {
       "seconds": 6.183538,
       "tests": 1
+    },
+    "hub/test/merge-checkout.test.ts": {
+      "seconds": 24.905476,
+      "tests": 6
+    },
+    "hub/test/merge-gate.test.ts": {
+      "seconds": 37.955064,
+      "tests": 8
+    },
+    "hub/test/merge-policy.test.ts": {
+      "seconds": 23.590013,
+      "tests": 8
+    },
+    "hub/test/merge-recovery.test.ts": {
+      "seconds": 42.40304,
+      "tests": 11
+    },
+    "hub/test/merge.test.ts": {
+      "seconds": 32.670795,
+      "tests": 7
+    },
+    "hub/test/suite-admission.test.ts": {
+      "seconds": 12.888527,
+      "tests": 6
+    },
+    "hub/test/suite-cache-recovery.test.ts": {
+      "seconds": 25.629157,
+      "tests": 3
+    },
+    "hub/test/suite-cache.test.ts": {
+      "seconds": 42.835343,
+      "tests": 5
+    },
+    "hub/test/suite-cancel.test.ts": {
+      "seconds": 15.827556,
+      "tests": 6
+    },
+    "hub/test/suite-human.test.ts": {
+      "seconds": 28.140479,
+      "tests": 9
+    },
+    "hub/test/suite-queue.test.ts": {
+      "seconds": 30.943249,
+      "tests": 5
+    },
+    "hub/test/suite-recovery.test.ts": {
+      "seconds": 19.806431,
+      "tests": 6
+    },
+    "hub/test/suite-scheduling.test.ts": {
+      "seconds": 34.332862,
+      "tests": 9
+    },
+    "hub/test/suite-selection-report.test.ts": {
+      "seconds": 10.548063,
+      "tests": 3
+    },
+    "hub/test/suite-timeouts.test.ts": {
+      "seconds": 39.198969,
+      "tests": 7
+    },
+    "hub/test/suite.test.ts": {
+      "seconds": 30.070009,
+      "tests": 11
     }
   },
   "tests": {
     "hub/src/address.test.ts::globs match over the name charset only": 0.000137,
     "hub/src/address.test.ts::parseTags finds tags anywhere, once each, as tokens rather than mentions, and drops a sentence-final dot": 0.000696,
     "hub/src/address.test.ts::resolveTag classifies against the connected, the known-offline and the roles": 0.000158,
-    "hub/src/hub/hygiene.test.ts::a human touching a session resets the pair counts but does not lift a running mute": 0.000096,
-    "hub/src/hub/hygiene.test.ts::a person lifts a running mute with unmute, order-independent, and the count resets with it": 0.000083,
+    "hub/src/hub/hygiene.test.ts::a human touching a session resets the pair counts but does not lift a running mute": 9.6e-05,
+    "hub/src/hub/hygiene.test.ts::a person lifts a running mute with unmute, order-independent, and the count resets with it": 8.3e-05,
     "hub/src/hub/hygiene.test.ts::mutes and counters live in the store: a hub reopened on the same file keeps them": 0.013349,
     "hub/src/hub/hygiene.test.ts::the loop breaker mutes a pair past the threshold for the mute time, whichever direction talks": 0.000146,
     "hub/src/hub/hygiene.test.ts::the rate limit counts a session's sends in a sliding window and names when it frees": 0.001163,
@@ -1337,8 +1433,8 @@
     "hub/test/journal-async.test.ts::a partial write failure is reported once, rejects close, and a restart repairs the tail before later records": 0.003333,
     "hub/test/journal-async.test.ts::a synchronous close initiation error and its failure report share one resumed scope": 0.000265,
     "hub/test/journal-async.test.ts::a synchronous open initiation error and its failure report share one resumed scope": 0.000206,
-    "hub/test/journal-async.test.ts::a synchronous read initiation error and its failure report share one resumed scope": 0.000085,
-    "hub/test/journal-async.test.ts::a synchronous short-write initiation error and its failure report share one resumed scope": 0.000097,
+    "hub/test/journal-async.test.ts::a synchronous read initiation error and its failure report share one resumed scope": 8.5e-05,
+    "hub/test/journal-async.test.ts::a synchronous short-write initiation error and its failure report share one resumed scope": 9.7e-05,
     "hub/test/journal-async.test.ts::a synchronous stat initiation error and its failure report share one resumed scope": 0.000103,
     "hub/test/journal-async.test.ts::a synchronous write initiation error and its failure report share one resumed scope": 0.0001,
     "hub/test/journal-async.test.ts::concurrent producers preserve call order and timestamps through short async appends and close": 0.03953,
@@ -1390,46 +1486,46 @@
     "hub/test/lifecycle-serialization.test.ts::launch waits behind an existing identity and rechecks a successful resume before replacing its row": 0.007444,
     "hub/test/lifecycle-serialization.test.ts::renaming a session does not create a second lifecycle slot": 0.007422,
     "hub/test/lifecycle-serialization.test.ts::stop publication and lifecycle slot release share one resumed scope": 0.006536,
-    "hub/test/merge.test.ts::a blocked prelanding restore reports its durable recovery receipt and repairs before a later merge": 5.345874,
-    "hub/test/merge.test.ts::a cached green suite at a new identical tree never revives a stale criterion mark": 8.905148,
-    "hub/test/merge.test.ts::a close write failure reports merged follow-up failure; retry closes and prunes without a second commit": 3.699533,
-    "hub/test/merge.test.ts::a crash before the integration ref moves retains checkout recovery and can merge after restart": 4.069766,
+    "hub/test/merge-checkout.test.ts::a blocked prelanding restore reports its durable recovery receipt and repairs before a later merge": 5.345874,
+    "hub/test/merge-gate.test.ts::a cached green suite at a new identical tree never revives a stale criterion mark": 8.905148,
+    "hub/test/merge-recovery.test.ts::a close write failure reports merged follow-up failure; retry closes and prunes without a second commit": 3.699533,
+    "hub/test/merge-checkout.test.ts::a crash before the integration ref moves retains checkout recovery and can merge after restart": 4.069766,
     "hub/test/merge.test.ts::a current hub review lands one squash commit in the root and territory, closes the item and topic, and removes its worktree and branch": 6.670177,
-    "hub/test/merge.test.ts::a failed external log sink still returns the landed commit and retries only follow-ups": 1.895725,
-    "hub/test/merge.test.ts::a failed integration ref update restores the root index and worktree and preserves unrelated staged changes": 3.505804,
-    "hub/test/merge.test.ts::a named human CLI actor cannot impersonate a Reviewer with --role; override still checks conflicts": 2.519481,
-    "hub/test/merge.test.ts::a published receipt remains landed when local rollback succeeds, and retry repairs the root ref and tree": 3.38329,
-    "hub/test/merge.test.ts::a rejected push with failed rollback remains landed and retry restores the root tree before publication completes": 4.526409,
-    "hub/test/merge.test.ts::a root switched during real merge-tree preparation is refused without changing the checkout or refs": 2.572291,
-    "hub/test/merge.test.ts::a task moving during a batched freshness read is rejected at the merge decision; the next operation sees its fresh review": 1.890314,
-    "hub/test/merge.test.ts::a verdict whose session changes role while Git resolves uses the role and permissions at its write": 1.059464,
-    "hub/test/merge.test.ts::adding or failing a criterion revokes ready; done and separate verification restore it": 4.643042,
-    "hub/test/merge.test.ts::an in-flight legacy item reaches ready and merge only after every criterion is done and verified": 5.36005,
-    "hub/test/merge.test.ts::an index lock during post-checkout write-tree restores the staged tree, file bytes and status before refusing": 5.260387,
+    "hub/test/merge-recovery.test.ts::a failed external log sink still returns the landed commit and retries only follow-ups": 1.895725,
+    "hub/test/merge-checkout.test.ts::a failed integration ref update restores the root index and worktree and preserves unrelated staged changes": 3.505804,
+    "hub/test/merge-policy.test.ts::a named human CLI actor cannot impersonate a Reviewer with --role; override still checks conflicts": 2.519481,
+    "hub/test/merge-recovery.test.ts::a published receipt remains landed when local rollback succeeds, and retry repairs the root ref and tree": 3.38329,
+    "hub/test/merge-recovery.test.ts::a rejected push with failed rollback remains landed and retry restores the root tree before publication completes": 4.526409,
+    "hub/test/merge-checkout.test.ts::a root switched during real merge-tree preparation is refused without changing the checkout or refs": 2.572291,
+    "hub/test/merge-gate.test.ts::a task moving during a batched freshness read is rejected at the merge decision; the next operation sees its fresh review": 1.890314,
+    "hub/test/merge-recovery.test.ts::a verdict whose session changes role while Git resolves uses the role and permissions at its write": 1.059464,
+    "hub/test/merge-gate.test.ts::adding or failing a criterion revokes ready; done and separate verification restore it": 4.643042,
+    "hub/test/merge-gate.test.ts::an in-flight legacy item reaches ready and merge only after every criterion is done and verified": 5.36005,
+    "hub/test/merge-checkout.test.ts::an index lock during post-checkout write-tree restores the staged tree, file bytes and status before refusing": 5.260387,
     "hub/test/merge.test.ts::CLI merge removes a closed landed task stale worktree when dev contains its changed branch": 4.85127,
     "hub/test/merge.test.ts::CLI reopen of a landed task refuses with a follow-up path, then push succeeds without an orphan worktree": 4.649532,
     "hub/test/merge.test.ts::CLI reopen preserves a landed task when Git cannot inspect its receipt": 3.293636,
-    "hub/test/merge.test.ts::conflicts name the files, touched local edits refuse, and unrelated edits survive a merge": 4.151354,
-    "hub/test/merge.test.ts::criterion verification follows the exact branch head even when the review patch is unchanged": 6.829869,
-    "hub/test/merge.test.ts::deferred cleanup keeps the task branch and worktree if its tip moved after landing": 4.118395,
-    "hub/test/merge.test.ts::deferred cleanup preserves a worktree switched onto an unrelated branch and can finish once restored": 4.807906,
-    "hub/test/merge.test.ts::deleting any durable hub verdict refuses with the missing run and commit, without reviving an older clear": 1.970251,
+    "hub/test/merge-checkout.test.ts::conflicts name the files, touched local edits refuse, and unrelated edits survive a merge": 4.151354,
+    "hub/test/merge-gate.test.ts::criterion verification follows the exact branch head even when the review patch is unchanged": 6.829869,
+    "hub/test/merge-recovery.test.ts::deferred cleanup keeps the task branch and worktree if its tip moved after landing": 4.118395,
+    "hub/test/merge-recovery.test.ts::deferred cleanup preserves a worktree switched onto an unrelated branch and can finish once restored": 4.807906,
+    "hub/test/merge-gate.test.ts::deleting any durable hub verdict refuses with the missing run and commit, without reviving an older clear": 1.970251,
     "hub/test/merge.test.ts::discussion after a completed merge never blocks CLI push or recreates its worktree": 5.048232,
-    "hub/test/merge.test.ts::foreground merge freshness fan-out after Git is measured as a resumed 400 ms stretch": 1.470878,
-    "hub/test/merge.test.ts::freshness uses configured main after an unchanged task is rebased while dev lags": 2.524597,
+    "hub/test/merge-recovery.test.ts::foreground merge freshness fan-out after Git is measured as a resumed 400 ms stretch": 1.470878,
+    "hub/test/merge-policy.test.ts::freshness uses configured main after an unchanged task is rebased while dev lags": 2.524597,
     "hub/test/merge.test.ts::merge closes the item while a launched session is inside, then removes the worktree and branch after it stops": 4.217202,
-    "hub/test/merge.test.ts::merge measures a synchronous close subscriber after awaited Git as one resumed stretch": 1.488252,
-    "hub/test/merge.test.ts::merge refuses every unclassified hub test in the merged candidate, then accepts explicit classifications": 4.183645,
-    "hub/test/merge.test.ts::patch-equivalent rebases stay reviewed, and later file-only headers cannot replace a hub verdict": 3.376707,
-    "hub/test/merge.test.ts::Per-item plan QA uses the latest clear current QA evidence and includes its session and run; role moves preserve verdict provenance": 4.082023,
-    "hub/test/merge.test.ts::release, topic closure and cleanup failures remain merged and retry the remaining steps": 6.964113,
-    "hub/test/merge.test.ts::restart after local ref movement but before territory push republishes the prepared commit without another squash": 4.378715,
-    "hub/test/merge.test.ts::retrying a completed merge preserves staged deletion and reversion of its touched files": 6.098612,
+    "hub/test/merge-policy.test.ts::merge measures a synchronous close subscriber after awaited Git as one resumed stretch": 1.488252,
+    "hub/test/merge-gate.test.ts::merge refuses every unclassified hub test in the merged candidate, then accepts explicit classifications": 4.183645,
+    "hub/test/merge-policy.test.ts::patch-equivalent rebases stay reviewed, and later file-only headers cannot replace a hub verdict": 3.376707,
+    "hub/test/merge-policy.test.ts::Per-item plan QA uses the latest clear current QA evidence and includes its session and run; role moves preserve verdict provenance": 4.082023,
+    "hub/test/merge-recovery.test.ts::release, topic closure and cleanup failures remain merged and retry the remaining steps": 6.964113,
+    "hub/test/merge-recovery.test.ts::restart after local ref movement but before territory push republishes the prepared commit without another squash": 4.378715,
+    "hub/test/merge-recovery.test.ts::retrying a completed merge preserves staged deletion and reversion of its touched files": 6.098612,
     "hub/test/merge.test.ts::simultaneous Coordinator spoke merges serialize and the second commit includes the first task": 3.940746,
-    "hub/test/merge.test.ts::task view reports QA satisfaction from the same durable evidence as the merge gate": 4.15213,
-    "hub/test/merge.test.ts::the configured task base is the merge target and a root on a different branch refuses before landing": 2.422011,
-    "hub/test/merge.test.ts::the gate refuses in order: item/branch, missing or file-only review, wrong writer role, claimant, not clear, stale, and missing QA": 4.172745,
-    "hub/test/merge.test.ts::the permission table refuses Implementer, Reviewer and QA on spoke and CLI; only the human shell overrides verdicts": 3.024812,
+    "hub/test/merge-policy.test.ts::task view reports QA satisfaction from the same durable evidence as the merge gate": 4.15213,
+    "hub/test/merge-policy.test.ts::the configured task base is the merge target and a root on a different branch refuses before landing": 2.422011,
+    "hub/test/merge-gate.test.ts::the gate refuses in order: item/branch, missing or file-only review, wrong writer role, claimant, not clear, stale, and missing QA": 4.172745,
+    "hub/test/merge-policy.test.ts::the permission table refuses Implementer, Reviewer and QA on spoke and CLI; only the human shell overrides verdicts": 3.024812,
     "hub/test/migrate-plan.test.ts::ambiguous file numbers and a stale allocator are refused": 0.000237,
     "hub/test/migrate-plan.test.ts::closing-time candidates follow receipt, latest journal, then commit and skip already closed times": 0.00034,
     "hub/test/migrate-plan.test.ts::migrated trees give empty plans and partial trees give only remaining steps": 0.000382,
@@ -1973,19 +2069,19 @@
     "hub/test/suite-runner.test.ts::tickets register before guard polling so an earlier contended waiter cannot be overtaken": 2.776055,
     "hub/test/suite-runner.test.ts::two hub suite invocations serialize and report the holder": 1.910536,
     "hub/test/suite-runner.test.ts::two nvim suite invocations serialize and report the holder": 1.811461,
-    "hub/test/suite-selection.test.ts::.agents/skills/qa/SKILL.md selects hub-only by the non-nvim rule": 0.000034,
-    "hub/test/suite-selection.test.ts::.cland/crew.toml selects hub-only by the non-nvim rule": 0.000021,
-    "hub/test/suite-selection.test.ts::.cland/roles.toml selects hub-only by the non-nvim rule": 0.000023,
-    "hub/test/suite-selection.test.ts::.cland/tasks/T-214.md selects hub-only by the non-nvim rule": 0.000025,
-    "hub/test/suite-selection.test.ts::adapter event contract runs full": 0.000024,
+    "hub/test/suite-selection.test.ts::.agents/skills/qa/SKILL.md selects hub-only by the non-nvim rule": 3.4e-05,
+    "hub/test/suite-selection.test.ts::.cland/crew.toml selects hub-only by the non-nvim rule": 2.1e-05,
+    "hub/test/suite-selection.test.ts::.cland/roles.toml selects hub-only by the non-nvim rule": 2.3e-05,
+    "hub/test/suite-selection.test.ts::.cland/tasks/T-214.md selects hub-only by the non-nvim rule": 2.5e-05,
+    "hub/test/suite-selection.test.ts::adapter event contract runs full": 2.4e-05,
     "hub/test/suite-selection.test.ts::adding a literal template hub import in a nested Neovim test widens selection at admission": 0.611992,
     "hub/test/suite-selection.test.ts::adding a static hub import in a nested Neovim test widens selection at admission": 0.587965,
-    "hub/test/suite-selection.test.ts::both packages runs full": 0.000028,
-    "hub/test/suite-selection.test.ts::crew CLI runs full": 0.000028,
+    "hub/test/suite-selection.test.ts::both packages runs full": 2.8e-05,
+    "hub/test/suite-selection.test.ts::crew CLI runs full": 2.8e-05,
     "hub/test/suite-selection.test.ts::dependency parser reads literal template imports and helper re-exports": 0.000238,
-    "hub/test/suite-selection.test.ts::docs/agents/tests.md selects hub-only by the non-nvim rule": 0.000038,
-    "hub/test/suite-selection.test.ts::dot segment runs full": 0.000029,
-    "hub/test/suite-selection.test.ts::empty diff runs full": 0.000035,
+    "hub/test/suite-selection.test.ts::docs/agents/tests.md selects hub-only by the non-nvim rule": 3.8e-05,
+    "hub/test/suite-selection.test.ts::dot segment runs full": 2.9e-05,
+    "hub/test/suite-selection.test.ts::empty diff runs full": 3.5e-05,
     "hub/test/suite-selection.test.ts::empty diffs and failed fetches run full with their reason, never using a stale dev ref": 0.377264,
     "hub/test/suite-selection.test.ts::fetched dev selects committed and working changes, all forces full, and integrated dev stays full": 0.905729,
     "hub/test/suite-selection.test.ts::helper import widens full selection, handles cycles and stops at the hub boundary": 0.667007,
@@ -1994,116 +2090,116 @@
     "hub/test/suite-selection.test.ts::hub implementation changes select hub plus Neovim smoke": 0.001032,
     "hub/test/suite-selection.test.ts::hub-only admission retains both locks through smoke, omits the other package's remaining tests, and all widens the run": 2.610224,
     "hub/test/suite-selection.test.ts::hub/package.json is shared infrastructure and forces full": 0.000109,
-    "hub/test/suite-selection.test.ts::hub/src/cli/role.ts is shared infrastructure and forces full": 0.000034,
-    "hub/test/suite-selection.test.ts::hub/src/cli/roles.ts is shared infrastructure and forces full": 0.000031,
-    "hub/test/suite-selection.test.ts::hub/src/crew.ts selects hub-only by the non-nvim rule": 0.000023,
-    "hub/test/suite-selection.test.ts::hub/src/hub/core.ts selects hub-only by the non-nvim rule": 0.000046,
-    "hub/test/suite-selection.test.ts::hub/src/hub/dispatch.ts selects hub-only by the non-nvim rule": 0.000039,
-    "hub/test/suite-selection.test.ts::hub/src/hub/server.ts selects hub-only by the non-nvim rule": 0.00003,
-    "hub/test/suite-selection.test.ts::hub/src/hub/store.ts is shared infrastructure and forces full": 0.000056,
-    "hub/test/suite-selection.test.ts::hub/src/hub/suites.ts selects hub-only by the non-nvim rule": 0.000024,
-    "hub/test/suite-selection.test.ts::hub/src/hub/visibility.ts is shared infrastructure and forces full": 0.000027,
-    "hub/test/suite-selection.test.ts::hub/src/new-event.ts selects hub-only by the non-nvim rule": 0.00004,
-    "hub/test/suite-selection.test.ts::hub/src/protocol.ts is shared infrastructure and forces full": 0.000069,
-    "hub/test/suite-selection.test.ts::hub/src/roles.ts selects hub-only by the non-nvim rule": 0.000029,
-    "hub/test/suite-selection.test.ts::hub/src/spoke/server.ts selects hub-only by the non-nvim rule": 0.000023,
-    "hub/test/suite-selection.test.ts::hub/src/subscriptions.ts selects hub-only by the non-nvim rule": 0.000025,
-    "hub/test/suite-selection.test.ts::hub/src/suite-selection.ts is shared infrastructure and forces full": 0.000054,
-    "hub/test/suite-selection.test.ts::hub/src/suite-shards.ts is shared infrastructure and forces full": 0.00007,
-    "hub/test/suite-selection.test.ts::hub/src/tracker/tracker.ts is shared infrastructure and forces full": 0.000028,
-    "hub/test/suite-selection.test.ts::hub/test/harness.ts is shared infrastructure and forces full": 0.00006,
-    "hub/test/suite-selection.test.ts::hub/test/process-cleanup.ts is shared infrastructure and forces full": 0.000056,
-    "hub/test/suite-selection.test.ts::hub/test/run-suite.ts is shared infrastructure and forces full": 0.000065,
-    "hub/test/suite-selection.test.ts::hub/test/shards.json selects hub-only by the non-nvim rule": 0.000038,
-    "hub/test/suite-selection.test.ts::hub/tsconfig.json is shared infrastructure and forces full": 0.00006,
+    "hub/test/suite-selection.test.ts::hub/src/cli/role.ts is shared infrastructure and forces full": 3.4e-05,
+    "hub/test/suite-selection.test.ts::hub/src/cli/roles.ts is shared infrastructure and forces full": 3.1e-05,
+    "hub/test/suite-selection.test.ts::hub/src/crew.ts selects hub-only by the non-nvim rule": 2.3e-05,
+    "hub/test/suite-selection.test.ts::hub/src/hub/core.ts selects hub-only by the non-nvim rule": 4.6e-05,
+    "hub/test/suite-selection.test.ts::hub/src/hub/dispatch.ts selects hub-only by the non-nvim rule": 3.9e-05,
+    "hub/test/suite-selection.test.ts::hub/src/hub/server.ts selects hub-only by the non-nvim rule": 3e-05,
+    "hub/test/suite-selection.test.ts::hub/src/hub/store.ts is shared infrastructure and forces full": 5.6e-05,
+    "hub/test/suite-selection.test.ts::hub/src/hub/suites.ts selects hub-only by the non-nvim rule": 2.4e-05,
+    "hub/test/suite-selection.test.ts::hub/src/hub/visibility.ts is shared infrastructure and forces full": 2.7e-05,
+    "hub/test/suite-selection.test.ts::hub/src/new-event.ts selects hub-only by the non-nvim rule": 4e-05,
+    "hub/test/suite-selection.test.ts::hub/src/protocol.ts is shared infrastructure and forces full": 6.9e-05,
+    "hub/test/suite-selection.test.ts::hub/src/roles.ts selects hub-only by the non-nvim rule": 2.9e-05,
+    "hub/test/suite-selection.test.ts::hub/src/spoke/server.ts selects hub-only by the non-nvim rule": 2.3e-05,
+    "hub/test/suite-selection.test.ts::hub/src/subscriptions.ts selects hub-only by the non-nvim rule": 2.5e-05,
+    "hub/test/suite-selection.test.ts::hub/src/suite-selection.ts is shared infrastructure and forces full": 5.4e-05,
+    "hub/test/suite-selection.test.ts::hub/src/suite-shards.ts is shared infrastructure and forces full": 7e-05,
+    "hub/test/suite-selection.test.ts::hub/src/tracker/tracker.ts is shared infrastructure and forces full": 2.8e-05,
+    "hub/test/suite-selection.test.ts::hub/test/harness.ts is shared infrastructure and forces full": 6e-05,
+    "hub/test/suite-selection.test.ts::hub/test/process-cleanup.ts is shared infrastructure and forces full": 5.6e-05,
+    "hub/test/suite-selection.test.ts::hub/test/run-suite.ts is shared infrastructure and forces full": 6.5e-05,
+    "hub/test/suite-selection.test.ts::hub/test/shards.json selects hub-only by the non-nvim rule": 3.8e-05,
+    "hub/test/suite-selection.test.ts::hub/tsconfig.json is shared infrastructure and forces full": 6e-05,
     "hub/test/suite-selection.test.ts::import parser reads static, type, side-effect and literal dynamic imports, ignoring comments and strings": 0.000636,
     "hub/test/suite-selection.test.ts::interpolated dynamic imports fail closed to full admission": 0.399349,
-    "hub/test/suite-selection.test.ts::Neovim event state runs full": 0.00003,
-    "hub/test/suite-selection.test.ts::Neovim implementation changes select Neovim plus hub smoke": 0.000088,
-    "hub/test/suite-selection.test.ts::Neovim transport runs full": 0.000023,
-    "hub/test/suite-selection.test.ts::nvim and docs runs full": 0.00003,
+    "hub/test/suite-selection.test.ts::Neovim event state runs full": 3e-05,
+    "hub/test/suite-selection.test.ts::Neovim implementation changes select Neovim plus hub smoke": 8.8e-05,
+    "hub/test/suite-selection.test.ts::Neovim transport runs full": 2.3e-05,
+    "hub/test/suite-selection.test.ts::nvim and docs runs full": 3e-05,
     "hub/test/suite-selection.test.ts::nvim-only admission retains both locks through smoke, omits the other package's remaining tests, and all widens the run": 2.362537,
-    "hub/test/suite-selection.test.ts::nvim/new-file selects nvim-only by the nvim rule": 0.00002,
-    "hub/test/suite-selection.test.ts::nvim/README.md selects nvim-only by the nvim rule": 0.00002,
-    "hub/test/suite-selection.test.ts::nvim/test/harness.ts selects nvim-only by the nvim rule": 0.000042,
-    "hub/test/suite-selection.test.ts::nvim/test/rpc.ts selects nvim-only by the nvim rule": 0.000022,
-    "hub/test/suite-selection.test.ts::nvim/test/stub-hub.ts selects nvim-only by the nvim rule": 0.000032,
-    "hub/test/suite-selection.test.ts::nvim/tsconfig.json is shared infrastructure and forces full": 0.000044,
-    "hub/test/suite-selection.test.ts::path traversal runs full": 0.000034,
-    "hub/test/suite-selection.test.ts::README.md selects hub-only by the non-nvim rule": 0.000029,
-    "hub/test/suite-selection.test.ts::root tooling runs full": 0.000028,
-    "hub/test/suite-selection.test.ts::scripts/check.sh selects hub-only by the non-nvim rule": 0.000067,
-    "hub/test/suite-selection.test.ts::skills/qa/SKILL.md selects hub-only by the non-nvim rule": 0.000026,
-    "hub/test/suite.test.ts::a bounded cached report retains both heads, original run and candidate tree": 2.77449,
-    "hub/test/suite.test.ts::a broad deciding-file list publishes once below the 384-byte cap and stays complete in the log": 2.470696,
-    "hub/test/suite.test.ts::a broad deciding-file list publishes once below the 768-byte cap and stays complete in the log": 2.530842,
-    "hub/test/suite.test.ts::a dead queued requester is cancelled with one posted note even after its role is vacated": 6.514804,
-    "hub/test/suite.test.ts::a forced human package runner starts beside a holder and journals the exact bypass": 2.409976,
-    "hub/test/suite.test.ts::a fresh attempt cancelled by head change preserves the original green cache evidence": 4.75577,
-    "hub/test/suite.test.ts::a fresh attempt cancelled by requester preserves the original green cache evidence": 3.047917,
-    "hub/test/suite.test.ts::a hand-run package holding the old lock occupies admission until it exits": 2.375237,
-    "hub/test/suite.test.ts::a human package runner waits in the hub order and takes the compatibility slot after admission": 2.860536,
-    "hub/test/suite.test.ts::a human slot reserves admission briefly and releases a client that never takes its lease": 11.382546,
+    "hub/test/suite-selection.test.ts::nvim/new-file selects nvim-only by the nvim rule": 2e-05,
+    "hub/test/suite-selection.test.ts::nvim/README.md selects nvim-only by the nvim rule": 2e-05,
+    "hub/test/suite-selection.test.ts::nvim/test/harness.ts selects nvim-only by the nvim rule": 4.2e-05,
+    "hub/test/suite-selection.test.ts::nvim/test/rpc.ts selects nvim-only by the nvim rule": 2.2e-05,
+    "hub/test/suite-selection.test.ts::nvim/test/stub-hub.ts selects nvim-only by the nvim rule": 3.2e-05,
+    "hub/test/suite-selection.test.ts::nvim/tsconfig.json is shared infrastructure and forces full": 4.4e-05,
+    "hub/test/suite-selection.test.ts::path traversal runs full": 3.4e-05,
+    "hub/test/suite-selection.test.ts::README.md selects hub-only by the non-nvim rule": 2.9e-05,
+    "hub/test/suite-selection.test.ts::root tooling runs full": 2.8e-05,
+    "hub/test/suite-selection.test.ts::scripts/check.sh selects hub-only by the non-nvim rule": 6.7e-05,
+    "hub/test/suite-selection.test.ts::skills/qa/SKILL.md selects hub-only by the non-nvim rule": 2.6e-05,
+    "hub/test/suite-cache-recovery.test.ts::a bounded cached report retains both heads, original run and candidate tree": 2.77449,
+    "hub/test/suite-selection-report.test.ts::a broad deciding-file list publishes once below the 384-byte cap and stays complete in the log": 2.470696,
+    "hub/test/suite-selection-report.test.ts::a broad deciding-file list publishes once below the 768-byte cap and stays complete in the log": 2.530842,
+    "hub/test/suite-scheduling.test.ts::a dead queued requester is cancelled with one posted note even after its role is vacated": 6.514804,
+    "hub/test/suite-human.test.ts::a forced human package runner starts beside a holder and journals the exact bypass": 2.409976,
+    "hub/test/suite-cache.test.ts::a fresh attempt cancelled by head change preserves the original green cache evidence": 4.75577,
+    "hub/test/suite-cache.test.ts::a fresh attempt cancelled by requester preserves the original green cache evidence": 3.047917,
+    "hub/test/suite-scheduling.test.ts::a hand-run package holding the old lock occupies admission until it exits": 2.375237,
+    "hub/test/suite-human.test.ts::a human package runner waits in the hub order and takes the compatibility slot after admission": 2.860536,
+    "hub/test/suite-human.test.ts::a human slot reserves admission briefly and releases a client that never takes its lease": 11.382546,
     "hub/test/suite.test.ts::a muted named recipient keeps the single result pending across restart until all recipients can receive it": 4.06579,
     "hub/test/suite.test.ts::a muted suite report follows its moved log after unmute and publishes once": 3.494132,
-    "hub/test/suite.test.ts::a package subdirectory cannot borrow root-tree cache evidence for different npm scripts": 3.4877,
-    "hub/test/suite.test.ts::a queued request cannot pass for a different head after its worktree advances": 2.416023,
-    "hub/test/suite.test.ts::a worker killed while the hub is down is reported after restart and its package children are cleaned": 3.525952,
-    "hub/test/suite.test.ts::a worker lease retains phase place and publishes recovery metadata for both package phases": 2.816534,
-    "hub/test/suite.test.ts::admission recovers a borrowed planned root after the worker dies during package mkdir": 3.419102,
-    "hub/test/suite.test.ts::admission stays responsive and bounds a held ps probe for a live compatibility holder": 4.726184,
-    "hub/test/suite.test.ts::admission stays responsive and bounds a held ps probe for a stale compatibility holder": 7.607583,
-    "hub/test/suite.test.ts::an interrupted human waiter leaves the hub queue on SIGINT": 0.954366,
-    "hub/test/suite.test.ts::an interrupted human waiter leaves the hub queue on SIGTERM": 0.999052,
-    "hub/test/suite.test.ts::auto suite reports the fetched diff decision and transports it to the package; --all forces full": 5.546525,
-    "hub/test/suite.test.ts::cache survives hub restart, separates effective modes, and never reuses a failed run": 7.566298,
-    "hub/test/suite.test.ts::cancel removes an admitted worker’s compatibility FIFO ticket without releasing a racing hand holder": 1.675005,
-    "hub/test/suite.test.ts::cancelled results held by reporting permissions survive restart and publish once": 3.625703,
-    "hub/test/suite.test.ts::dirty candidates bypass green cache and cannot seed a later clean result": 5.84862,
+    "hub/test/suite-cache-recovery.test.ts::a package subdirectory cannot borrow root-tree cache evidence for different npm scripts": 3.4877,
+    "hub/test/suite-scheduling.test.ts::a queued request cannot pass for a different head after its worktree advances": 2.416023,
+    "hub/test/suite-cancel.test.ts::a worker killed while the hub is down is reported after restart and its package children are cleaned": 3.525952,
+    "hub/test/suite-scheduling.test.ts::a worker lease retains phase place and publishes recovery metadata for both package phases": 2.816534,
+    "hub/test/suite-recovery.test.ts::admission recovers a borrowed planned root after the worker dies during package mkdir": 3.419102,
+    "hub/test/suite-recovery.test.ts::admission stays responsive and bounds a held ps probe for a live compatibility holder": 4.726184,
+    "hub/test/suite-recovery.test.ts::admission stays responsive and bounds a held ps probe for a stale compatibility holder": 7.607583,
+    "hub/test/suite-human.test.ts::an interrupted human waiter leaves the hub queue on SIGINT": 0.954366,
+    "hub/test/suite-human.test.ts::an interrupted human waiter leaves the hub queue on SIGTERM": 0.999052,
+    "hub/test/suite-selection-report.test.ts::auto suite reports the fetched diff decision and transports it to the package; --all forces full": 5.546525,
+    "hub/test/suite-cache-recovery.test.ts::cache survives hub restart, separates effective modes, and never reuses a failed run": 7.566298,
+    "hub/test/suite-recovery.test.ts::cancel removes an admitted worker’s compatibility FIFO ticket without releasing a racing hand holder": 1.675005,
+    "hub/test/suite-cancel.test.ts::cancelled results held by reporting permissions survive restart and publish once": 3.625703,
+    "hub/test/suite-cache.test.ts::dirty candidates bypass green cache and cannot seed a later clean result": 5.84862,
     "hub/test/suite.test.ts::failure cleanup preserves a live worker whose recorded start identity is unavailable": 2.699907,
-    "hub/test/suite.test.ts::frames admit integrated dev, then a human slot, then ranked item work": 3.415635,
+    "hub/test/suite-human.test.ts::frames admit integrated dev, then a human slot, then ranked item work": 3.415635,
     "hub/test/suite.test.ts::hub restart recovers a worker that outlives it, without replaying the result": 4.411671,
-    "hub/test/suite.test.ts::human slots retain enqueue order ahead of ranked item requests": 2.356463,
-    "hub/test/suite.test.ts::pre-V1 package runners acquire their own compatibility locks without a self-deadlock": 2.418566,
-    "hub/test/suite.test.ts::priority admits integrated dev first, then item rank, preserving the queue through restart": 8.208027,
+    "hub/test/suite-human.test.ts::human slots retain enqueue order ahead of ranked item requests": 2.356463,
+    "hub/test/suite-scheduling.test.ts::pre-V1 package runners acquire their own compatibility locks without a self-deadlock": 2.418566,
+    "hub/test/suite-scheduling.test.ts::priority admits integrated dev first, then item rank, preserving the queue through restart": 8.208027,
     "hub/test/suite.test.ts::restart recognizes a committed result even if its run receipt did not settle": 4.036306,
     "hub/test/suite.test.ts::revoked report permissions hold the result until restored, without a duplicate": 3.513827,
-    "hub/test/suite.test.ts::scratch daemon defaults to fixture leases when the project has no verification override": 0.404387,
-    "hub/test/suite.test.ts::session-shell and inherited-worker package runners never request a human slot": 2.370922,
+    "hub/test/suite-queue.test.ts::scratch daemon defaults to fixture leases when the project has no verification override": 0.404387,
+    "hub/test/suite-human.test.ts::session-shell and inherited-worker package runners never request a human slot": 2.370922,
     "hub/test/suite.test.ts::submission requires caller artifact and send permissions before spawning": 1.031838,
-    "hub/test/suite.test.ts::suite cancel cleans a running lock runner’s children and temporary root before publishing": 2.572721,
-    "hub/test/suite.test.ts::suite cancel defaults to the caller’s active run, stops its child and posts one cancelled result": 2.505268,
-    "hub/test/suite.test.ts::suite cancel refuses another session’s run while the human can cancel it by id": 2.078797,
+    "hub/test/suite-cancel.test.ts::suite cancel cleans a running lock runner’s children and temporary root before publishing": 2.572721,
+    "hub/test/suite-cancel.test.ts::suite cancel defaults to the caller’s active run, stops its child and posts one cancelled result": 2.505268,
+    "hub/test/suite-cancel.test.ts::suite cancel refuses another session’s run while the human can cancel it by id": 2.078797,
     "hub/test/suite.test.ts::suite CLI exits before its worker, posts one artifact-backed result as caller, and rejects duplicate active runs": 3.536013,
-    "hub/test/suite.test.ts::suite fixture exits and closes its hub and spoke after an ownership cleanup failure": 1.186375,
-    "hub/test/suite.test.ts::suite report includes locked shard duration, free duration and queue waits": 0.000213,
+    "hub/test/suite-timeouts.test.ts::suite fixture exits and closes its hub and spoke after an ownership cleanup failure": 1.186375,
+    "hub/test/suite-recovery.test.ts::suite report includes locked shard duration, free duration and queue waits": 0.000213,
     "hub/test/suite.test.ts::suite summary adds both phases and bounds failure excerpts": 0.000556,
     "hub/test/suite.test.ts::suite worker SIGKILL produces one crash result with its log": 1.726342,
-    "hub/test/suite.test.ts::the compatibility lease spans typecheck and tests, so a hand runner waits for both": 2.600057,
+    "hub/test/suite-scheduling.test.ts::the compatibility lease spans typecheck and tests, so a hand runner waits for both": 2.600057,
     "hub/test/suite.test.ts::typecheck failure stops before tests and reports the failure": 1.553627,
-    "hub/test/suite.test.ts::verification timeout policy defaults, validates durations and survives config updates": 0.001439,
-    "hub/test/suite.test.ts::verify --fresh runs despite a green cache and cache hits do not extend expiry": 11.41201,
-    "hub/test/suite.test.ts::verify cancel removes a pid-null queued job while an unrelated submission is held, preserving the holder’s lock": 1.519115,
-    "hub/test/suite.test.ts::verify card exposes cancelled by item, with queued results left null": 1.065419,
-    "hub/test/suite.test.ts::verify card exposes failed by item, with queued results left null": 2.568296,
-    "hub/test/suite.test.ts::verify card follows branch jobs through finish and cache, updates the UI silently and survives restart": 4.152066,
-    "hub/test/suite.test.ts::verify classifies the submitted head without a queue slot when HEAD is captured after change": 1.326452,
-    "hub/test/suite.test.ts::verify classifies the submitted head without a queue slot when HEAD is captured before change": 1.307205,
-    "hub/test/suite.test.ts::verify fails a named hung test at the configured per-test timeout": 3.622734,
-    "hub/test/suite.test.ts::verify keeps a slow command alive while partial stderr output continues": 7.562199,
-    "hub/test/suite.test.ts::verify kills a silent test tree and spoke, names the last started test and frees admission": 7.505762,
-    "hub/test/suite.test.ts::verify queue preserves a live legacy package holder across observer timezones": 3.494336,
-    "hub/test/suite.test.ts::verify queue preserves a live UTC package holder across observer timezones": 4.460368,
-    "hub/test/suite.test.ts::verify queue shows a hand holder, ordered waiters and unknown ETA; survives restart": 3.286908,
-    "hub/test/suite.test.ts::verify queues a second requester without a waiting worker (configured budget 1)": 3.458783,
-    "hub/test/suite.test.ts::verify queues a second requester without a waiting worker (configured budget 2)": 3.524831,
-    "hub/test/suite.test.ts::verify reaps a captured detached pipe holder after npm exits and preserves an unrelated process": 9.460384,
-    "hub/test/suite.test.ts::verify records wait/run timings, zero-time cache hits, recent median/p90 and a mode-aware ETA": 19.29725,
-    "hub/test/suite.test.ts::verify refuses every unclassified hub test before reserving a queue slot, then admits classifications": 2.469089,
-    "hub/test/suite.test.ts::verify reports unverified fast-exit pipe cleanup once, preserves unrelated processes and admits its successor": 9.860076,
-    "hub/test/suite.test.ts::verify reuses a green candidate tree after a tracker-only commit and reports original provenance": 4.351709,
-    "hub/test/suite.test.ts::without an answering hub plain human runs retain the lease and --force runs unlocked": 1.390983,
-    "hub/test/suite.test.ts::worker cleanup removes a borrowed root when its package runner dies during mkdir": 2.378344,
+    "hub/test/suite-timeouts.test.ts::verification timeout policy defaults, validates durations and survives config updates": 0.001439,
+    "hub/test/suite-cache.test.ts::verify --fresh runs despite a green cache and cache hits do not extend expiry": 11.41201,
+    "hub/test/suite-cancel.test.ts::verify cancel removes a pid-null queued job while an unrelated submission is held, preserving the holder’s lock": 1.519115,
+    "hub/test/suite-admission.test.ts::verify card exposes cancelled by item, with queued results left null": 1.065419,
+    "hub/test/suite-admission.test.ts::verify card exposes failed by item, with queued results left null": 2.568296,
+    "hub/test/suite-admission.test.ts::verify card follows branch jobs through finish and cache, updates the UI silently and survives restart": 4.152066,
+    "hub/test/suite-admission.test.ts::verify classifies the submitted head without a queue slot when HEAD is captured after change": 1.326452,
+    "hub/test/suite-admission.test.ts::verify classifies the submitted head without a queue slot when HEAD is captured before change": 1.307205,
+    "hub/test/suite-timeouts.test.ts::verify fails a named hung test at the configured per-test timeout": 3.622734,
+    "hub/test/suite-timeouts.test.ts::verify keeps a slow command alive while partial stderr output continues": 7.562199,
+    "hub/test/suite-timeouts.test.ts::verify kills a silent test tree and spoke, names the last started test and frees admission": 7.505762,
+    "hub/test/suite-queue.test.ts::verify queue preserves a live legacy package holder across observer timezones": 3.494336,
+    "hub/test/suite-queue.test.ts::verify queue preserves a live UTC package holder across observer timezones": 4.460368,
+    "hub/test/suite-queue.test.ts::verify queue shows a hand holder, ordered waiters and unknown ETA; survives restart": 3.286908,
+    "hub/test/suite-scheduling.test.ts::verify queues a second requester without a waiting worker (configured budget 1)": 3.458783,
+    "hub/test/suite-scheduling.test.ts::verify queues a second requester without a waiting worker (configured budget 2)": 3.524831,
+    "hub/test/suite-timeouts.test.ts::verify reaps a captured detached pipe holder after npm exits and preserves an unrelated process": 9.460384,
+    "hub/test/suite-queue.test.ts::verify records wait/run timings, zero-time cache hits, recent median/p90 and a mode-aware ETA": 19.29725,
+    "hub/test/suite-admission.test.ts::verify refuses every unclassified hub test before reserving a queue slot, then admits classifications": 2.469089,
+    "hub/test/suite-timeouts.test.ts::verify reports unverified fast-exit pipe cleanup once, preserves unrelated processes and admits its successor": 9.860076,
+    "hub/test/suite-cache.test.ts::verify reuses a green candidate tree after a tracker-only commit and reports original provenance": 4.351709,
+    "hub/test/suite-human.test.ts::without an answering hub plain human runs retain the lease and --force runs unlocked": 1.390983,
+    "hub/test/suite-recovery.test.ts::worker cleanup removes a borrowed root when its package runner dies during mkdir": 2.378344,
     "hub/test/surface.test.ts::role clauses keep decision questions with the Coordinator and allow explicit human action requests": 0.001117,
     "hub/test/surface.test.ts::the spoke declares the channel capability, the documented tools and its instructions": 0.159621,
     "hub/test/surface.test.ts::who() lists every connected session with its session id, role, status and connect time": 0.351351,
@@ -2818,30 +2914,6 @@
     "nvim/test/verification-view.test.ts::verify summary opens the ordered queue and ages locally; palette and keys expose the view": 6.183538
   },
   "allow": {
-    "hub/test/follows.test.ts::a not clear hub demo verdict releases the merge hold": {
-      "seconds": 5.297,
-      "reason": "Lands a predecessor through real Git, proves the overlapping follower is held, records a not-clear hub demo verdict, then proves the follower can land."
-    },
-    "hub/test/follows.test.ts::closing the predecessor releases the merge hold and an empty closed epic is met": {
-      "seconds": 5.339,
-      "reason": "Closes an empty epic and exercises predecessor landing, overlap refusal, epic closure and follower landing through real tracker and Git lifecycle boundaries."
-    },
-    "hub/test/suite.test.ts::a fresh attempt cancelled by head change preserves the original green cache evidence": {
-      "seconds": 5.047,
-      "reason": "Runs an original verification worker, cancels a lock-waiting fresh attempt on a new Git head, and proves the original cache evidence is reused without another execution."
-    },
-    "hub/test/follows.test.ts::final surface lookup revalidates a concurrent follows change before publication": {
-      "seconds": 8.1,
-      "reason": "Lands two predecessor tasks with real Git, pauses the final follower surface read in an external Git process, links a new predecessor and proves refusal plus the retry hold."
-    },
-    "hub/test/follows.test.ts::follow becomes met on the last merge and blocks only overlapping follower merges": {
-      "seconds": 5.8,
-      "reason": "Exercises two real Git squash landings plus two overlap refusals and proves dev stays unchanged while the demo is pending."
-    },
-    "hub/test/tracker-async.test.ts::a six-second tracker write warns, completes and leaves the hub serving": {
-      "seconds": 7.751440333,
-      "reason": "T-483 regression holds real tracker I/O for six seconds to cross the production five-second warning threshold and prove the serving hub recovers without exiting."
-    },
     "hub/test/account-limited.test.ts": {
       "file": true,
       "seconds": 87.967211,
@@ -3129,11 +3201,11 @@
       "seconds": 161.524388,
       "reason": "File budget: Aggregates real git repositories, nested verification and recovery faults to prove the merge gate preserves refs, checkout state and tracker completion."
     },
-    "hub/test/merge.test.ts::a blocked prelanding restore reports its durable recovery receipt and repairs before a later merge": {
+    "hub/test/merge-checkout.test.ts::a blocked prelanding restore reports its durable recovery receipt and repairs before a later merge": {
       "seconds": 5.345874,
       "reason": "Aggregates real git repositories, nested verification and recovery faults to prove the merge gate preserves refs, checkout state and tracker completion."
     },
-    "hub/test/merge.test.ts::a cached green suite at a new identical tree never revives a stale criterion mark": {
+    "hub/test/merge-gate.test.ts::a cached green suite at a new identical tree never revives a stale criterion mark": {
       "seconds": 8.905148,
       "reason": "Aggregates real git repositories, nested verification and recovery faults to prove the merge gate preserves refs, checkout state and tracker completion."
     },
@@ -3141,19 +3213,19 @@
       "seconds": 6.670177,
       "reason": "Aggregates real git repositories, nested verification and recovery faults to prove the merge gate preserves refs, checkout state and tracker completion."
     },
-    "hub/test/merge.test.ts::an in-flight legacy item reaches ready and merge only after every criterion is done and verified": {
+    "hub/test/merge-gate.test.ts::an in-flight legacy item reaches ready and merge only after every criterion is done and verified": {
       "seconds": 5.36005,
       "reason": "Aggregates real git repositories, nested verification and recovery faults to prove the merge gate preserves refs, checkout state and tracker completion."
     },
-    "hub/test/merge.test.ts::an index lock during post-checkout write-tree restores the staged tree, file bytes and status before refusing": {
+    "hub/test/merge-checkout.test.ts::an index lock during post-checkout write-tree restores the staged tree, file bytes and status before refusing": {
       "seconds": 5.260387,
       "reason": "Aggregates real git repositories, nested verification and recovery faults to prove the merge gate preserves refs, checkout state and tracker completion."
     },
-    "hub/test/merge.test.ts::criterion verification follows the exact branch head even when the review patch is unchanged": {
+    "hub/test/merge-gate.test.ts::criterion verification follows the exact branch head even when the review patch is unchanged": {
       "seconds": 6.829869,
       "reason": "Aggregates real git repositories, nested verification and recovery faults to prove the merge gate preserves refs, checkout state and tracker completion."
     },
-    "hub/test/merge.test.ts::deferred cleanup preserves a worktree switched onto an unrelated branch and can finish once restored": {
+    "hub/test/merge-recovery.test.ts::deferred cleanup preserves a worktree switched onto an unrelated branch and can finish once restored": {
       "seconds": 4.807906,
       "reason": "Runs a real merge and deferred worktree cleanup, switches to an unrelated branch, then retries cleanup after restoration to prove unrelated work survives."
     },
@@ -3161,11 +3233,11 @@
       "seconds": 5.048232,
       "reason": "Completes a real git merge, adds post-merge discussion and invokes CLI publication to prove discussion cannot revive the removed worktree or block push."
     },
-    "hub/test/merge.test.ts::release, topic closure and cleanup failures remain merged and retry the remaining steps": {
+    "hub/test/merge-recovery.test.ts::release, topic closure and cleanup failures remain merged and retry the remaining steps": {
       "seconds": 6.964113,
       "reason": "Aggregates real git repositories, nested verification and recovery faults to prove the merge gate preserves refs, checkout state and tracker completion."
     },
-    "hub/test/merge.test.ts::retrying a completed merge preserves staged deletion and reversion of its touched files": {
+    "hub/test/merge-recovery.test.ts::retrying a completed merge preserves staged deletion and reversion of its touched files": {
       "seconds": 6.098612,
       "reason": "Aggregates real git repositories, nested verification and recovery faults to prove the merge gate preserves refs, checkout state and tracker completion."
     },
@@ -3424,55 +3496,55 @@
       "seconds": 265.000659,
       "reason": "File budget: Aggregates nested verification workers, queues, cache expiry, silence watchdogs and crash recovery against real git/process boundaries."
     },
-    "hub/test/suite.test.ts::a human slot reserves admission briefly and releases a client that never takes its lease": {
+    "hub/test/suite-human.test.ts::a human slot reserves admission briefly and releases a client that never takes its lease": {
       "seconds": 11.382546,
       "reason": "Aggregates nested verification workers, queues, cache expiry, silence watchdogs and crash recovery against real git/process boundaries."
     },
-    "hub/test/suite.test.ts::admission stays responsive and bounds a held ps probe for a stale compatibility holder": {
+    "hub/test/suite-recovery.test.ts::admission stays responsive and bounds a held ps probe for a stale compatibility holder": {
       "seconds": 7.607583,
       "reason": "Aggregates nested verification workers, queues, cache expiry, silence watchdogs and crash recovery against real git/process boundaries."
     },
-    "hub/test/suite.test.ts::auto suite reports the fetched diff decision and transports it to the package; --all forces full": {
+    "hub/test/suite-selection-report.test.ts::auto suite reports the fetched diff decision and transports it to the package; --all forces full": {
       "seconds": 5.546525,
       "reason": "Aggregates nested verification workers, queues, cache expiry, silence watchdogs and crash recovery against real git/process boundaries."
     },
-    "hub/test/suite.test.ts::cache survives hub restart, separates effective modes, and never reuses a failed run": {
+    "hub/test/suite-cache-recovery.test.ts::cache survives hub restart, separates effective modes, and never reuses a failed run": {
       "seconds": 7.566298,
       "reason": "Aggregates nested verification workers, queues, cache expiry, silence watchdogs and crash recovery against real git/process boundaries."
     },
-    "hub/test/suite.test.ts::dirty candidates bypass green cache and cannot seed a later clean result": {
+    "hub/test/suite-cache.test.ts::dirty candidates bypass green cache and cannot seed a later clean result": {
       "seconds": 5.84862,
       "reason": "Aggregates nested verification workers, queues, cache expiry, silence watchdogs and crash recovery against real git/process boundaries."
     },
-    "hub/test/suite.test.ts::priority admits integrated dev first, then item rank, preserving the queue through restart": {
+    "hub/test/suite-scheduling.test.ts::priority admits integrated dev first, then item rank, preserving the queue through restart": {
       "seconds": 8.208027,
       "reason": "Aggregates nested verification workers, queues, cache expiry, silence watchdogs and crash recovery against real git/process boundaries."
     },
-    "hub/test/suite.test.ts::verify --fresh runs despite a green cache and cache hits do not extend expiry": {
+    "hub/test/suite-cache.test.ts::verify --fresh runs despite a green cache and cache hits do not extend expiry": {
       "seconds": 11.41201,
       "reason": "Aggregates nested verification workers, queues, cache expiry, silence watchdogs and crash recovery against real git/process boundaries."
     },
-    "hub/test/suite.test.ts::verify card follows branch jobs through finish and cache, updates the UI silently and survives restart": {
+    "hub/test/suite-admission.test.ts::verify card follows branch jobs through finish and cache, updates the UI silently and survives restart": {
       "seconds": 4.152066,
       "reason": "Aggregates nested verification workers, queues, cache expiry, silence watchdogs and crash recovery against real git/process boundaries."
     },
-    "hub/test/suite.test.ts::verify keeps a slow command alive while partial stderr output continues": {
+    "hub/test/suite-timeouts.test.ts::verify keeps a slow command alive while partial stderr output continues": {
       "seconds": 7.562199,
       "reason": "Aggregates nested verification workers, queues, cache expiry, silence watchdogs and crash recovery against real git/process boundaries."
     },
-    "hub/test/suite.test.ts::verify kills a silent test tree and spoke, names the last started test and frees admission": {
+    "hub/test/suite-timeouts.test.ts::verify kills a silent test tree and spoke, names the last started test and frees admission": {
       "seconds": 7.505762,
       "reason": "Aggregates nested verification workers, queues, cache expiry, silence watchdogs and crash recovery against real git/process boundaries."
     },
-    "hub/test/suite.test.ts::verify reaps a captured detached pipe holder after npm exits and preserves an unrelated process": {
+    "hub/test/suite-timeouts.test.ts::verify reaps a captured detached pipe holder after npm exits and preserves an unrelated process": {
       "seconds": 9.460384,
       "reason": "Aggregates nested verification workers, queues, cache expiry, silence watchdogs and crash recovery against real git/process boundaries."
     },
-    "hub/test/suite.test.ts::verify records wait/run timings, zero-time cache hits, recent median/p90 and a mode-aware ETA": {
+    "hub/test/suite-queue.test.ts::verify records wait/run timings, zero-time cache hits, recent median/p90 and a mode-aware ETA": {
       "seconds": 19.29725,
       "reason": "Aggregates nested verification workers, queues, cache expiry, silence watchdogs and crash recovery against real git/process boundaries."
     },
-    "hub/test/suite.test.ts::verify reports unverified fast-exit pipe cleanup once, preserves unrelated processes and admits its successor": {
+    "hub/test/suite-timeouts.test.ts::verify reports unverified fast-exit pipe cleanup once, preserves unrelated processes and admits its successor": {
       "seconds": 9.860076,
       "reason": "Aggregates nested verification workers, queues, cache expiry, silence watchdogs and crash recovery against real git/process boundaries."
     },
@@ -3548,9 +3620,77 @@
       "seconds": 6.183538,
       "reason": "Exercises the Neovim verification view against a real queue and waits for its local age clock while proving navigation and commands."
     },
-    "hub/test/rule-cli.test.ts::rule shell writes use the held identity: only human and Aide write, with restricted origins": {
-      "seconds": 5.358,
-      "reason": "Runs a real hub and separate CLI processes for Aide origins, origin spoofing, and all three write refusals under three caller identities, preserving the full actor authorization matrix. Observed on the c-8 executor in A-2777 at a0ec44ea."
+    "hub/test/suite-close.test.ts::occasion refuses implementers and task heads; an integrated Coordinator close uses two droplets and one merged result": {
+      "seconds": 6.072,
+      "reason": "Exercises real hub/CLI admission and concurrent fake-provider droplet lifecycles through confirmed deletion and one artifact-backed report."
+    },
+    "hub/test/suite-close.test.ts::close run falls back whole with one warning when limited by cap": {
+      "seconds": 6.408,
+      "reason": "Runs real hub and CLI/MCP requests through fake-provider provisioning, detached package execution, artifact collection and confirmed cleanup; the batch/cache case verifies two requests."
+    },
+    "hub/test/suite-close.test.ts::close run falls back whole with one warning when limited by slots": {
+      "seconds": 6.381,
+      "reason": "Runs real hub and CLI/MCP requests through fake-provider provisioning, detached package execution, artifact collection and confirmed cleanup; the batch/cache case verifies two requests."
+    },
+    "hub/test/suite-close.test.ts::ordinary integrated batch uses one slot and its green tree serves a later release occasion cache hit": {
+      "seconds": 7.073,
+      "reason": "Runs real hub and CLI/MCP requests through fake-provider provisioning, detached package execution, artifact collection and confirmed cleanup; the batch/cache case verifies two requests."
+    },
+    "hub/test/suite-close.test.ts::QA can request epic through MCP but stage, release, task heads and non-full occasions are refused": {
+      "seconds": 5.19,
+      "reason": "Runs real hub and CLI/MCP requests through fake-provider provisioning, detached package execution, artifact collection and confirmed cleanup; the batch/cache case verifies two requests."
+    },
+    "hub/test/suite-close-recovery.test.ts::a failed shard fails one merged result with its label and no automatic rerun": {
+      "seconds": 7.877,
+      "reason": "Exercises two real detached fake-provider machine runners and real hub collection/cleanup across failure, loss, restart or cancellation."
+    },
+    "hub/test/suite-close-recovery.test.ts::a sharded close handles lost with one result and confirmed cleanup": {
+      "seconds": 9.035,
+      "reason": "Exercises two real detached fake-provider machine runners and real hub collection/cleanup across failure, loss, restart or cancellation."
+    },
+    "hub/test/suite-close-recovery.test.ts::a sharded close handles restart with one result and confirmed cleanup": {
+      "seconds": 8.298,
+      "reason": "Exercises two real detached fake-provider machine runners and real hub collection/cleanup across failure, loss, restart or cancellation."
+    },
+    "hub/test/suite-close-recovery.test.ts::a sharded close handles cancel with one result and confirmed cleanup": {
+      "seconds": 8.367,
+      "reason": "Exercises two real detached fake-provider machine runners and real hub collection/cleanup across failure, loss, restart or cancellation."
+    },
+    "hub/test/suite-cache.test.ts::a fresh attempt cancelled by requester preserves the original green cache evidence": {
+      "seconds": 5.459,
+      "reason": "Pre-existing cache regression test moved unchanged from suite.test.ts; starts, cancels and reports a fresh attempt before reusing the original green evidence."
+    },
+    "hub/test/suite-cache.test.ts::a fresh attempt cancelled by head change preserves the original green cache evidence": {
+      "seconds": 6.401,
+      "reason": "Pre-existing cache regression test moved unchanged from suite.test.ts; starts, cancels and reports a fresh attempt before reusing the original green evidence."
+    },
+    "hub/test/suite-close-recovery.test.ts::cancelling while provider sizes are held joins reservation before reporting and leaves zero reserved spend": {
+      "seconds": 5.674142651,
+      "reason": "Runs a real Git fixture and hub/CLI cancellation while the provider sizes response is held, waits 500 ms to prove no premature report, then waits for all-shard spend reservation settlement, zero reserved spend and one cancelled result. Measured on Linux droplet run e54c3004 (A-3003)."
+    },
+    "hub/test/follows.test.ts::a not clear hub demo verdict releases the merge hold": {
+      "seconds": 5.297,
+      "reason": "Lands a predecessor through real Git, proves the overlapping follower is held, records a not-clear hub demo verdict, then proves the follower can land."
+    },
+    "hub/test/follows.test.ts::closing the predecessor releases the merge hold and an empty closed epic is met": {
+      "seconds": 5.339,
+      "reason": "Closes an empty epic and exercises predecessor landing, overlap refusal, epic closure and follower landing through real tracker and Git lifecycle boundaries."
+    },
+    "hub/test/suite.test.ts::a fresh attempt cancelled by head change preserves the original green cache evidence": {
+      "seconds": 5.047,
+      "reason": "Runs an original verification worker, cancels a lock-waiting fresh attempt on a new Git head, and proves the original cache evidence is reused without another execution."
+    },
+    "hub/test/follows.test.ts::final surface lookup revalidates a concurrent follows change before publication": {
+      "seconds": 8.1,
+      "reason": "Lands two predecessor tasks with real Git, pauses the final follower surface read in an external Git process, links a new predecessor and proves refusal plus the retry hold."
+    },
+    "hub/test/follows.test.ts::follow becomes met on the last merge and blocks only overlapping follower merges": {
+      "seconds": 5.8,
+      "reason": "Exercises two real Git squash landings plus two overlap refusals and proves dev stays unchanged while the demo is pending."
+    },
+    "hub/test/tracker-async.test.ts::a six-second tracker write warns, completes and leaves the hub serving": {
+      "seconds": 7.751440333,
+      "reason": "T-483 regression holds real tracker I/O for six seconds to cross the production five-second warning threshold and prove the serving hub recovers without exiting."
     },
     "hub/test/heartbeat.test.ts::live remote leases appear in the heartbeat beside their verification run": {
       "seconds": 6.508681334,
@@ -3563,6 +3703,10 @@
     "hub/test/heartbeat.test.ts::the digest includes running and queued runs and ages timeouts and ended runs without results": {
       "seconds": 5.553,
       "reason": "Drives running, queued, timed-out and ended verification runs through a real hub and waits for the heartbeat digests that age each of them. Measured on Linux droplet run a3fe0258 (A-3001)."
+    },
+    "hub/test/rule-cli.test.ts::rule shell writes use the held identity: only human and Aide write, with restricted origins": {
+      "seconds": 5.358,
+      "reason": "Runs a real hub and separate CLI processes for Aide origins, origin spoofing, and all three write refusals under three caller identities, preserving the full actor authorization matrix. Observed on the c-8 executor in A-2777 at a0ec44ea."
     }
   }
 }

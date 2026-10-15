@@ -1,0 +1,96 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { writeFile, readFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { integrated } from './close-run-fixture.ts';
+import { clandWithEnv, connectUi, eventually, killDaemon, startDaemon } from './harness.ts';
+import type { VerificationQueue } from '../src/protocol.ts';
+
+const barrier = `node -e "const fs=require('fs');fs.mkdirSync('.cland',{recursive:true});fs.writeFileSync('.cland/started','yes');const timer=setInterval(()=>{if(fs.existsSync('.cland/finish')){clearInterval(timer);console.log('# tests 1');console.log('# pass 1')}},25)"`;
+
+test('a failed shard fails one merged result with its label and no automatic rerun', async t => {
+  const script = `node -e "const s=JSON.parse(process.env.CLAND_SUITE_SELECTION);const fail=s.shard.files.includes('hub/test/two.test.ts');console.log('# tests 1');console.log(fail?'# fail 1':'# pass 1');if(fail)console.log('not ok 1 - shard example');process.exit(fail?1:0)"`;
+  const f = await integrated(t, '', 2, script);
+  assert.equal((await f.ui.request({ type: 'role.set', session: 'impl', role: 'coordinator' })).ok, true);
+  const submitted = await clandWithEnv(f.root, f.actor, 'verify', 'all', '--fresh', '--occasion', 'stage', '--report', f.topic, '--json');
+  assert.equal(submitted.code, 0, submitted.stderr);
+  const job = JSON.parse(submitted.stdout);
+  const result = await f.result(job.id);
+  assert.match(result.text, /exit 1; shard-2: exit 1/);
+  assert.match(result.text, /tests 2; pass 1; fail 1|tests 2; fail 1; pass 1/);
+  assert.match(result.text, /not ok 1 - shard example \[shard-2\]/);
+  assert.equal((await f.messages(job.id)).length, 1);
+  assert.equal(f.api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length, 2);
+  assert.deepEqual(f.api.droplets, []);
+});
+
+for (const action of ['lost', 'restart', 'cancel'] as const) test(`a sharded close handles ${action} with one result and confirmed cleanup`, async t => {
+  const f = await integrated(t, '', 2, barrier);
+  assert.equal((await f.ui.request({ type: 'role.set', session: 'impl', role: 'coordinator' })).ok, true);
+  const submitted = await clandWithEnv(f.root, f.actor, 'verify', 'all', '--fresh', '--occasion', 'stage', '--report', f.topic, '--json');
+  assert.equal(submitted.code, 0, submitted.stderr);
+  const job = JSON.parse(submitted.stdout);
+  const machines: Awaited<ReturnType<typeof f.remote>>[] = [];
+  for (const n of [1, 2]) machines.push(await f.remote(`${job.id}-shard-${n}`));
+  for (const machine of machines) await eventually('shard reached package barrier', async () => await readFile(join(machine.home, 'cland/.cland/started'), 'utf8').catch(() => '') === 'yes' ? true : undefined);
+  const q = (await f.ui.request({ type: 'suite.queue' })).value as VerificationQueue;
+  assert.equal(q.holder, null);
+  assert.deepEqual(q.remote!.map(r => [r.shard, r.occasion]).sort(), [['shard-1', 'stage'], ['shard-2', 'stage']]);
+  let ui = f.ui;
+  if (action === 'lost') {
+    // The fake provider reports 404 for exactly the first machine.
+    const lost = f.api.droplets.findIndex(d => f.api.machineDirs.get(d.id) === machines[0]!.home.slice(0, -'/home/runner'.length));
+    assert.notEqual(lost, -1);
+    f.api.droplets.splice(lost, 1);
+  } else if (action === 'restart') {
+    await killDaemon(f.discovery.pid);
+    const restarted = await startDaemon(t, f.root, f.env);
+    ui = await connectUi(t, restarted.discovery);
+  } else {
+    assert.equal((await ui.request({ type: 'suite.cancel', suite: q.remote![0]!.id! })).ok, true);
+  }
+  if (action !== 'cancel') for (const machine of machines) await writeFile(join(machine.home, 'cland/.cland/finish'), 'yes');
+  const result = await f.result(job.id, ui);
+  assert.match(result.text, action === 'restart' ? /exit 0/ : action === 'cancel' ? /cancelled/ : /shard-1: remote machine lost/);
+  const messages = await f.messages(job.id, ui);
+  assert.equal(messages.length, 1);
+  assert.equal(f.api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length, 2);
+  await eventually('all sharded remote slots released', async () => {
+    const q = (await ui.request({ type: 'suite.queue' })).value as VerificationQueue;
+    return q.remote!.length === 0 ? true : undefined;
+  });
+  assert.deepEqual(f.api.droplets, []);
+});
+
+test('cancelling while provider sizes are held joins reservation before reporting and leaves zero reserved spend', async t => {
+  const f = await integrated(t, 'daily_spend_usd=3');
+  assert.equal((await f.ui.request({ type: 'role.set', session: 'impl', role: 'coordinator' })).ok, true);
+  const entered = Promise.withResolvers<void>(), release = Promise.withResolvers<void>();
+  t.after(() => release.resolve());
+  f.api.beforeSizes(async () => { entered.resolve(); await release.promise; });
+  const submission = clandWithEnv(f.root, f.actor, 'verify', 'all', '--fresh', '--occasion', 'stage', '--report', f.topic, '--json');
+  await entered.promise;
+  const q = (await f.ui.request({ type: 'suite.queue' })).value as VerificationQueue;
+  const id = q.waiters[0]!.id;
+  assert.equal((await f.ui.request({ type: 'suite.cancel', suite: id })).ok, true);
+  // Keep the provider barrier closed while observing the absence of a result;
+  // this deadline checks deferral, rather than staging the reservation race.
+  const reported = f.result(id);
+  let observationTimer: ReturnType<typeof setTimeout> | undefined;
+  const premature = await Promise.race([
+    reported.then(() => true),
+    new Promise<boolean>(resolve => { observationTimer = setTimeout(() => resolve(false), 500); }),
+  ]);
+  clearTimeout(observationTimer);
+  release.resolve();
+  assert.equal((await submission).code, 0);
+  const result = await reported;
+  assert.match(result.text, /cancelled/);
+  const executor = (await f.ui.request({ type: 'executor.status' })).value as { taggedDroplets: number; spend: { reserved: number; spent: number } };
+  assert.equal(premature, false, 'no result until reservation completion is joined');
+  assert.equal(executor.spend.reserved, 0, 'late reservation placeholders must be released before the result');
+  assert.equal(executor.spend.spent, 0);
+  assert.equal(executor.taggedDroplets, 0);
+  assert.equal(f.api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length, 0);
+  assert.equal((await f.messages(id)).length, 1);
+});

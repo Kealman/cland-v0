@@ -326,6 +326,7 @@ export type ReleaseRequest = { type: 'release'; id: string; version?: string; it
 export type MergeRequest = { type: 'merge'; id: string; item: string; override?: string };
 
 export type SpokeRequest =
+  | SuiteStart
   | SubscriptionRequest
   | MergeRequest
   | ArtifactCreate
@@ -411,6 +412,7 @@ export function isAck(f: Record<string, unknown>): f is Ack {
 }
 
 export function isSpokeRequest(f: Record<string, unknown>): f is SpokeRequest {
+  if (f.type === 'suite.start') return isClientRequest(f);
   if (typeof f.id !== 'string') return false;
   switch (f.type) {
     case 'event.subscribe':
@@ -498,7 +500,13 @@ export type ClientHello = {
   client: string;
 };
 
-export type SuiteStart = { type: 'suite.start'; id: string; mode: 'auto' | 'all' | 'hub' | 'nvim'; cwd: string; report: string; to?: string[]; fresh?: boolean; executor?: import('./executor/executor.ts').ExecutorKind };
+// Operational verification occasions are independent of configured tracker container kinds.
+export const VERIFY_OCCASIONS = { stage: 'stage', epic: 'epic', release: 'release' } as const;
+export type VerifyOccasion = typeof VERIFY_OCCASIONS[keyof typeof VERIFY_OCCASIONS];
+export function isVerifyOccasion(value: unknown): value is VerifyOccasion {
+  return Object.values(VERIFY_OCCASIONS).some(occasion => occasion === value);
+}
+export type SuiteStart = { type: 'suite.start'; occasion?: VerifyOccasion; id: string; mode: 'auto' | 'all' | 'hub' | 'nvim'; cwd: string; report: string; to?: string[]; fresh?: boolean; executor?: import('./executor/executor.ts').ExecutorKind };
 export type SuiteSlot = { type: 'suite.slot' | 'suite.forced'; id: string; mode: string; cwd: string; head: string; pid: number; token: string };
 export type SuiteSlotResult = { id: string; admitted: boolean; locks: string[]; queue: VerificationQueue };
 export type SuiteCancel = { type: 'suite.cancel'; id: string; suite?: string };
@@ -608,6 +616,7 @@ export type RoleList = {
 
 /** Admission and completion facts; extra fields are absent on pre-V1 hubs. */
 export type SuiteStatus = {
+  occasion?: VerifyOccasion;
   executor: import('./executor/executor.ts').ExecutorKind;
   platform?: import('./executor/executor.ts').Platform;
   id: string; pid: number | null; topic: string; reported: boolean;
@@ -622,12 +631,14 @@ export type SuiteStatus = {
 
 /** Milliseconds throughout. Null means there is no duration evidence yet. ETA is time until admission. */
 export type VerificationWaiter = {
+  occasion?: VerifyOccasion;
   kind?: 'run' | 'hand run';
   executor?: 'local' | 'droplet';
   id: string; session: string; item: string | null; mode: string; worktree: string;
   position: number; queuedAt: string | null; waitMs: number; etaMs: number | null; expectedRunMs: number | null;
 };
 export type VerificationHolder = {
+  occasion?: VerifyOccasion; shard?: string;
   executor?: 'local' | 'droplet'; machine?: { name: string; size: string; region: string };
   kind: 'run' | 'hand run'; id: string | null; session: string | null; item: string | null; mode: string | null;
   pid: number | null; worktree: string | null; since: string | null; runMs: number | null; etaMs: number | null;
@@ -741,7 +752,7 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
     case 'suite.forced':
       return ['full', 'hub-only', 'nvim-only'].includes(String(f.mode)) && typeof f.cwd === 'string' && typeof f.head === 'string' && Number.isSafeInteger(f.pid) && Number(f.pid) > 0 && typeof f.token === 'string' && f.token.length > 0;
     case 'suite.start':
-      return (f.executor === undefined || ['local', 'droplet'].includes(String(f.executor))) && (f.fresh === undefined || typeof f.fresh === 'boolean') && ['auto', 'all', 'hub', 'nvim'].includes(String(f.mode)) && typeof f.cwd === 'string' && typeof f.report === 'string' && (f.to === undefined || (Array.isArray(f.to) && f.to.every(v => typeof v === 'string')));
+      return (f.occasion === undefined || isVerifyOccasion(f.occasion)) && (f.executor === undefined || ['local', 'droplet'].includes(String(f.executor))) && (f.fresh === undefined || typeof f.fresh === 'boolean') && ['auto', 'all', 'hub', 'nvim'].includes(String(f.mode)) && typeof f.cwd === 'string' && typeof f.report === 'string' && (f.to === undefined || (Array.isArray(f.to) && f.to.every(v => typeof v === 'string')));
     case 'suite.cancel':
       return f.suite === undefined || (typeof f.suite === 'string' && f.suite.trim().length > 0);
     case 'account.clear':

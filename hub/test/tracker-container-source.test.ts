@@ -5,7 +5,8 @@
 // EventKind module may contain only its protocol-validated value list. Operational release
 // vocabulary has no Kind type and remains allowed. Mutable variable/object widening to string/string[], any,
 // unknown and cast erasure lose literal or Kind types; those residuals remain review matters.
-// Epic has no operational meaning and its literals are always forbidden outside the exemptions.
+// Epic literals are forbidden outside the defaults and the fixed verification-occasion declaration.
+// Operational occasion values remain forbidden in tracker Kind operations.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, readdir } from 'node:fs/promises';
@@ -46,11 +47,25 @@ function containerLiterals(rel: string, source: ts.SourceFile, checker: ts.TypeC
     }
     return false;
   };
+  const operationalOccasion = (node: ts.Node): boolean => {
+    // One fixed wire enum may use epic independently of tracker configuration.
+    // Only its direct constant initializer is exempt; Kind uses of the value still fail below.
+    if (rel !== 'hub/src/protocol.ts' || !ts.isStringLiteral(node) || node.text !== 'epic') return false;
+    const contextual = checker.getContextualType(node);
+    if (contextual && hasKind(contextual)) return false;
+    const property = node.parent;
+    if (!ts.isPropertyAssignment(property) || property.initializer !== node || property.name.getText(source) !== 'epic') return false;
+    const object = property.parent, assertion = object.parent;
+    if (!ts.isObjectLiteralExpression(object) || !ts.isAsExpression(assertion) || assertion.type.getText(source) !== 'const') return false;
+    const declaration = assertion.parent;
+    return ts.isVariableDeclaration(declaration) && declaration.name.getText(source) === 'VERIFY_OCCASIONS'
+      && ts.isVariableDeclarationList(declaration.parent) && Boolean(declaration.parent.flags & ts.NodeFlags.Const);
+  };
   const flagged = new Set<ts.Node>();
   const flag = (node: ts.Node): void => {
     // The prefix migration deliberately seeds and converts this one fixed kind.
     if (rel === 'hub/src/tracker/migrate.ts' && literal(node) && node.text === 'category') return;
-    if (defaults(node) || flagged.has(node)) return;
+    if (defaults(node) || operationalOccasion(node) || flagged.has(node)) return;
     flagged.add(node);
     failures.push(`${rel}:${source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1}`);
   };
@@ -214,6 +229,35 @@ test('compiler guard follows aliases and inference while preserving operational 
   allowed.forEach((text, index) => assert.deepEqual(checked[index + rejected.length], [], text));
   assert.deepEqual(checked.at(-2), [], 'only DEFAULT_LEVELS is exempt');
   assert.ok(checked.at(-1)!.length > 0, 'helpers in the defaults file stay protected');
+});
+
+test('only the operational verification enum declaration is exempt; tracker Kind uses stay protected', () => {
+  const declaration = "export const VERIFY_OCCASIONS = { stage: 'stage', epic: 'epic', release: 'release' } as const;";
+  const cases = [
+    { rel: 'hub/src/protocol.ts', text: declaration, allowed: true },
+    { rel: 'hub/src/protocol.ts', text: declaration + ' Object.values(VERIFY_OCCASIONS).some(value => value === input);', allowed: true },
+    { rel: 'hub/src/hub/dispatch.ts', text: declaration, allowed: false },
+    { rel: 'hub/src/protocol.ts', text: declaration.replace('VERIFY_OCCASIONS', 'OTHER_VALUES'), allowed: false },
+    { rel: 'hub/src/protocol.ts', text: "'epic';", allowed: false },
+    { rel: 'hub/src/protocol.ts', text: declaration + ' kind === VERIFY_OCCASIONS.epic;', allowed: false },
+    { rel: 'hub/src/protocol.ts', text: declaration + ' [VERIFY_OCCASIONS.epic].includes(kind);', allowed: false },
+    { rel: 'hub/src/protocol.ts', text: declaration + " const payload: { kind: Kind } = { kind: 'epic' };", allowed: false },
+    { rel: 'hub/src/protocol.ts', text: declaration.replace('VERIFY_OCCASIONS =', 'VERIFY_OCCASIONS: {stage: string; epic: Kind; release: string} ='), allowed: false },
+  ];
+  const texts = new Map(cases.map((sample, index) => [join(root, `hub/src/__occasion_case_${index}.ts`),
+    `import type { Kind } from './tracker/item.ts'; declare const kind: Kind; declare const input: unknown; ${sample.text}`]));
+  const host = ts.createCompilerHost(options), original = host.getSourceFile.bind(host);
+  host.getSourceFile = (path, languageVersion, onError, shouldCreateNewSourceFile) => {
+    const text = texts.get(path);
+    return text === undefined ? original(path, languageVersion, onError, shouldCreateNewSourceFile)
+      : ts.createSourceFile(path, text, languageVersion, true);
+  };
+  const program = ts.createProgram([...texts.keys()], options, host), checker = program.getTypeChecker();
+  [...texts.keys()].forEach((path, index) => {
+    const sample = cases[index]!, source = program.getSourceFile(path)!;
+    const failures = containerLiterals(sample.rel, source, checker);
+    assert.equal(failures.length === 0, sample.allowed, sample.text);
+  });
 });
 
 test('Lua EventKind declarations match the protocol and cannot hide tracker container operations', () => {

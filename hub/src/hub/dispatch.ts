@@ -27,7 +27,7 @@ import { crewSummary, parseIdleFrom, resolveCrewIdle } from '../crew.ts';
 import type { RolesConfig } from '../roles/config.ts';
 import { ROLE_NAMES, withRole } from '../names.ts';
 import {
-  PROTOCOL_VERSION,
+  PROTOCOL_VERSION, VERIFY_OCCASIONS,
   UPDATE_HINT,
   isAck,
   isClientHello,
@@ -166,7 +166,7 @@ export class Dispatcher {
       this.#dropletWork = this.#dropletReady.then(() => this.#droplets!.sweep()).catch(() => this.#log({ event: 'executor-reconcile-failed', reason: 'lease recovery deferred' })).finally(() => { this.#dropletWork = null; });
     }, retryMs > 0 && Number.isFinite(retryMs) ? retryMs : 600000) : null;
     this.#dropletTimer?.unref();
-    this.#suites = root ? new Suites(options.core.store, root, (job, checkpointArtifact) => this.#reportSuite(job, checkpointArtifact), { ...options.verification, onFallback: (job, cause) => options.core.noticeTo(job.topic, { id: `executor-fallback:${job.id}`, kind: 'report', to: job.to, text: cause === 'remote budget full' ? `verify ${job.id}: remote budget ${options.verification?.remoteBudget ?? 4}/${options.verification?.remoteBudget ?? 4} full; running locally` : `verify ${job.id}: droplet unavailable (${cause}); running locally`, detail: { event: 'verification-executor-fallback', id: job.id, item: job.item ?? null, cause } }), log: this.#log, onQueue: queue => options.core.publishVerification(queue), onJob: job => options.tracker?.verifyChanged(job.item ?? null, job.branch), requesterDead: actor => [...(this.#sessions?.list() ?? []), ...(this.#sessions?.list(true) ?? [])].some(p => p.sessionId === actor.sessionId && p.status !== 'running') }) : null;
+    this.#suites = root ? new Suites(options.core.store, root, (job, checkpointArtifact) => this.#reportSuite(job, checkpointArtifact), { ...options.verification, onShardingSkipped: (job, text) => options.core.noticeTo(job.topic, { id: `sharding-skipped:${job.id}`, kind: 'report', to: job.to, text, detail: { event: 'verification-sharding-skipped', id: job.id, item: job.item ?? null } }), onFallback: (job, cause) => options.core.noticeTo(job.topic, { id: `executor-fallback:${job.id}`, kind: 'report', to: job.to, text: cause === 'remote budget full' ? `verify ${job.id}: remote budget ${options.verification?.remoteBudget ?? 4}/${options.verification?.remoteBudget ?? 4} full; running locally` : `verify ${job.id}: droplet unavailable (${cause}); running locally`, detail: { event: 'verification-executor-fallback', id: job.id, item: job.item ?? null, cause } }), log: this.#log, onQueue: queue => options.core.publishVerification(queue), onJob: job => options.tracker?.verifyChanged(job.item ?? null, job.branch), requesterDead: actor => [...(this.#sessions?.list() ?? []), ...(this.#sessions?.list(true) ?? [])].some(p => p.sessionId === actor.sessionId && p.status !== 'running') }) : null;
     options.tracker?.useVerify((item, branch) => this.#suites?.latest(item, branch) ?? null);
     // what a read shows changed: no earlier answer is replayed
     options.core.subscribe(event => {
@@ -579,7 +579,7 @@ export class Dispatcher {
     const messageId = `suite:${job.id}`;
     const platform = job.platform;
     const machine = job.machine;
-    const execution = `Executor ${job.executor}${machine ? ` · ${machine.size} ${machine.region} · ${machine.name}` : ''}${platform ? ` · ${platform.os} ${platform.arch}${job.executor === 'droplet' ? ` ${platform.release}` : ''} · Node ${platform.node} · Neovim ${platform.nvim}` : ' · platform unavailable'}${machine ? ` · lifetime ${machine.lifetimeMs === null ? 'unknown' : Math.round(machine.lifetimeMs / 1000) + ' s'} · cost $${machine.costUsd === null ? 'unknown' : machine.costUsd.toFixed(4)}` : ''}`;
+    const execution = `Executor ${job.executor}${job.occasion ? ` · occasion ${job.occasion}` : ''}${job.shards ? ` · ${job.shards.length} shards` : ''}${machine ? ` · ${machine.size} ${machine.region} · ${machine.name}` : ''}${platform ? ` · ${platform.os} ${platform.arch}${job.executor === 'droplet' ? ` ${platform.release}` : ''} · Node ${platform.node} · Neovim ${platform.nvim}` : ' · platform unavailable'}${machine ? ` · lifetime ${machine.lifetimeMs === null ? 'unknown' : Math.round(machine.lifetimeMs / 1000) + ' s'} · cost $${machine.costUsd === null ? 'unknown' : machine.costUsd.toFixed(4)}` : ''}`;
     if (job.requesterDied) {
       // A dead session's role/claim is vacated. This is a hub lifecycle note, not a tool call as that session.
       const key = `suite-death:${job.id}`;
@@ -606,6 +606,13 @@ export class Dispatcher {
       this.#artifactQueue = operation.catch(() => {});
       const result = await operation as { id: string };
       artifactId = result.id; checkpointArtifact(artifactId);
+    }
+    // Child logs are separate durable artifacts; title lookup makes crash retries idempotent.
+    for (const shard of job.shards ?? []) {
+      const title = `Suite ${job.id} · ${shard.shardName} at ${job.head.slice(0, 7)}`;
+      if (!core.store.artifacts(job.topic).some(a => a.title === title)) {
+        await this.#artifact({ type: 'artifact.create', id: shard.id, kind: 'file', title, topic: job.topic, path: shard.log }, callerNow, work => work());
+      }
     }
     const artifact = core.store.resolveArtifact(artifactId);
     if (!artifact || artifact.fileDeleted || artifact.status === 'archived') throw new Error('suite log artifact unavailable');
@@ -1295,7 +1302,29 @@ export class Dispatcher {
       }
     };
 
-    /** A read repeated too fast: its last answer goes out again (unaudited: `too-fast` is logged once); true when it did. */
+    // CLI and MCP verification share identity, occasion and reporting admission.
+    const startSuite = (frame: Record<string, unknown>, callerNow: () => Caller | null): void => {
+      if (!this.#suites) return peer.send(Dispatcher.#failure(String(frame.id), new Error('this hub serves no project for suites')));
+      if (!isClientRequest(frame) || frame.type !== 'suite.start') return peer.send(Dispatcher.#failure(String(frame.id), new Error('invalid verify request')));
+      const request = frame, caller = callerNow();
+      if (!isAbsolute(request.cwd)) return peer.send(Dispatcher.#failure(request.id, new Error('suite cwd must be absolute')));
+      const topic = core.store.topic(request.report)?.id ?? (caller ? this.#options.tracker?.list().find(i => i.claim?.sessionId === caller.sessionId)?.topic : GENERAL.id);
+      if (!topic) return peer.send(Dispatcher.#failure(request.id, new Error('a session report needs your claimed item topic; use --report <topic>')));
+      const to = core.store.topic(request.report) ? request.to ?? [] : request.to ?? [request.report];
+      const actor = caller ? { name: caller.name, sessionId: caller.sessionId, shell: true as const } : null;
+      const authorize = () => {
+        if (actor && callerNow()?.sessionId !== actor.sessionId) throw new Error('suite caller identity is unavailable');
+        this.#suitePermissions(actor, topic, to);
+        if (request.occasion) {
+          const role = callerNow()?.role;
+          if (role !== 'coordinator' && !(role === 'qa' && request.occasion === VERIFY_OCCASIONS.epic)) throw new Error('occasion requires the Coordinator, or QA with occasion epic');
+        }
+      };
+      try { authorize(); } catch (error) { return peer.send(Dispatcher.#failure(request.id, error)); }
+      later('suite.start', this.#suites.start({ mode: request.mode, ...(request.occasion ? { occasion: request.occasion } : {}), ...(request.executor ? { executor: request.executor } : {}), fresh: request.fresh ?? false, cwd: request.cwd, topic, to, actor, item: core.store.topic(topic)?.item ?? null, integrated: (caller?.role === 'coordinator' || caller?.role === 'qa' && request.occasion === VERIFY_OCCASIONS.epic) && request.cwd === this.#options.control?.status().root, priority: this.#suiteRank(core.store.topic(topic)?.item ?? null) }, authorize).then(value => ({ type: 'result', id: request.id, ok: true, value }), error => Dispatcher.#failure(request.id, error)));
+    };
+
+    /** A read repeated too fast reuses its last answer without another audit. */
     const replayed = (frame: Record<string, unknown>): boolean => {
       // A refresh can revoke a read grant without a core event. Never replay an answer from older roles.
       const snapshot = core.roles?.get();
@@ -1324,6 +1353,7 @@ export class Dispatcher {
             if (bad !== null) return peer.send({ type: 'result', id: String(frame.id), ok: false, error: bad });
             if (!this.#permitted(connection, frame, peer)) return;
           }
+          if (frame.type === 'suite.start') return startSuite(frame, () => connection && core.isCurrent(connection) ? connection : null);
           // a spoke always acts as its own session
           if (isTaskRequest(frame)) {
             return task(frame, sessionActor(connection, UNKNOWN_SESSION), () => connection && core.isCurrent(connection) ? connection : null);
@@ -1490,19 +1520,7 @@ export class Dispatcher {
           later('suite.cancel', this.#suites.cancel(request.suite, actor, authorize).then(value => ({ type: 'result', id: request.id, ok: true, value }), error => Dispatcher.#failure(request.id, error)));
           return;
         }
-        if (frame.type === 'suite.start' && isClientRequest(frame)) {
-          if (!this.#suites) return peer.send(Dispatcher.#failure(frame.id, new Error('this hub serves no project for suites')));
-          const request = frame as import('../protocol.ts').SuiteStart;
-          if (!isAbsolute(request.cwd)) return peer.send(Dispatcher.#failure(frame.id, new Error('suite cwd must be absolute')));
-          const topic = core.store.topic(request.report)?.id ?? (caller ? this.#options.tracker?.list().find(i => i.claim?.sessionId === caller.sessionId)?.topic : GENERAL.id);
-          if (!topic) return peer.send(Dispatcher.#failure(frame.id, new Error('a session report needs your claimed item topic; use --report <topic>')));
-          const to = core.store.topic(request.report) ? request.to ?? [] : request.to ?? [request.report];
-          const actor = caller ? { name: caller.name, sessionId: caller.sessionId, shell: true as const } : null;
-          const authorize = () => { this.#suitePermissions(actor, topic, to); };
-          try { authorize(); } catch (error) { return peer.send(Dispatcher.#failure(request.id, error)); }
-          later('suite.start', this.#suites.start({ mode: request.mode, ...(request.executor ? { executor: request.executor } : {}), fresh: request.fresh ?? false, cwd: request.cwd, topic, to, actor, item: core.store.topic(topic)?.item ?? null, integrated: caller?.role === 'coordinator' && request.cwd === this.#options.control?.status().root, priority: this.#suiteRank(core.store.topic(topic)?.item ?? null) }, authorize).then(value => ({ type: 'result', id: request.id, ok: true, value }), error => Dispatcher.#failure(request.id, error)));
-          return;
-        }
+        if (frame.type === 'suite.start') return startSuite(frame, () => this.#asSession(frame));
         if (isSubscriptionRequest(frame)) return subscriptionRequest(frame, caller);
         if (isSessionRequest(frame)) return session(frame);
         if (frame.type === 'artifact.keep' || frame.type === 'artifact.archive' || frame.type === 'artifact.move') return artifactChange(frame as ArtifactKeep | ArtifactArchive | ArtifactMove, () => this.#asSession(frame));

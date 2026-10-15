@@ -16,7 +16,7 @@ import { deleteLeaseResources } from './cleanup.ts';
 import { readRecoveries, recoverSnapshots } from './snapshot-recovery.ts';
 import { machineEnv } from './machine.ts';
 import { prepareKey, prepareSnapshot, readSnapshot, staleParts, sameKey, waitForMachine, type PrepareKey, type Prepared } from './prepare.ts';
-import { hostLeases, inspectSpend, rememberProject, reserveSpend, settleSpend } from './spend.ts';
+import { hostLeases, inspectSpend, rememberProject, reserveSpend, settleSpend, reserveShardSpend, releaseShardSpend } from './spend.ts';
 import { DropletRun } from './run.ts';
 import type { Executor, Released, RunRef } from '../executor.ts';
 
@@ -67,6 +67,16 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
   async status(lease: DropletLease) { return new DropletRun(this.root).status(lease); }
   async log(lease: DropletLease, offset: number) { return new DropletRun(this.root).log(lease, offset); }
   async cancel(lease: DropletLease, _signal: string) { return new DropletRun(this.root).cancel(lease); }
+
+  async reserveShards(runs: string[]): Promise<void> {
+    if (!await readSnapshot(this.root)) throw new Error('no prepared snapshot; run cland executor prepare');
+    const config = await this.#config();
+    const size = config.verification.droplet.size;
+    const selected = (await new DigitalOceanApi().sizes()).find(s => s.slug === size && s.available);
+    if (!selected || !Number.isFinite(selected.price_hourly) || selected.price_hourly < 0) throw new Error(`droplet size ${size} is unavailable or has no valid price`);
+    await reserveShardSpend(this.root, runs, size, selected.price_hourly, testTiming('CLAND_TEST_EXECUTOR_LIFETIME_MS', config.verification.lifetimeMs), config.verification.dailySpendUsd);
+  }
+  async releaseShardReservations(runs: string[]): Promise<void> { await releaseShardSpend(this.root, runs); }
 
   async acquire(run: Pick<RunRef, 'id'>, deadline: string): Promise<DropletLease> {
     const runDeadline = Date.parse(deadline);
@@ -262,7 +272,9 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
   /** Restart repair and releasing-only retries. General orphan sweeping belongs to the safety stage. */
   async reconcile(restart = true): Promise<void> {
     if (process.env.DIGITALOCEAN_TOKEN) await rememberProject(this.root);
-    const owned = new Set((JSON.parse(this.store?.meta('suite-jobs') ?? '[]') as Array<{ id: string; reported: boolean; state?: string; outcome: unknown }>).filter(job => !job.reported && !job.outcome && job.state !== 'queued').map(job => job.id));
+    type OwnedJob = { id: string; reported: boolean; state?: string; outcome: unknown; shards?: OwnedJob[] };
+    const jobs = JSON.parse(this.store?.meta('suite-jobs') ?? '[]') as OwnedJob[];
+    const owned = new Set(jobs.filter(job => !job.reported && !job.outcome && job.state !== 'queued').flatMap(job => [job.id, ...(job.shards ?? []).filter(shard => !shard.reported && !shard.outcome).map(shard => shard.id)]));
     for (const lease of await readLeases(this.root)) {
       const dir = leaseDir(this.root, lease);
       let receipt: WatchdogReceipt | undefined;

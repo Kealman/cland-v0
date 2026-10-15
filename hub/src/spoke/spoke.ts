@@ -23,7 +23,7 @@ import { CallToolRequestSchema, ListToolsRequestSchema, type Notification } from
 import { INSTRUCTIONS } from './instructions.ts';
 import { Forbidden, HubClient, Refused, REQUEST_TIMEOUT_MS, WELCOME_TIMEOUT_MS } from './hub-client.ts';
 import { TASK_TOOLS, TASK_TOOL_NAMES, taskFrame } from './task-tools.ts';
-import { KEEPALIVE_MS, SEND_KINDS, isSendKind, type HandoverNote, type Message, type SendOutcome, type TopicRef } from '../protocol.ts';
+import { VERIFY_OCCASIONS, KEEPALIVE_MS, SEND_KINDS, isSendKind, type HandoverNote, type Message, type SendOutcome, type TopicRef } from '../protocol.ts';
 import { envelope } from '../adapters/contract.ts';
 import { findDiscovery, readDiscovery } from '../project.ts';
 import { Journal, journalPath } from '../hub/journal.ts';
@@ -32,6 +32,7 @@ import { hasRoleMappedSession } from '../hub/store.ts';
 const VERSION = '0.1.0';
 
 const TOOLS = [
+  { name: 'verify', description: 'Submit verification and return immediately; the hub posts one result. Occasion shards integrated dev full close runs: Coordinator stage/epic/release, QA epic. Omit occasion for batch/task runs.', inputSchema: { type: 'object', properties: { mode: { type: 'string', enum: ['auto', 'all', 'hub', 'nvim'] }, cwd: { type: 'string' }, report: { type: 'string' }, to: { type: 'array', items: { type: 'string' } }, fresh: { type: 'boolean' }, executor: { type: 'string', enum: ['local', 'droplet'] }, occasion: { type: 'string', enum: Object.values(VERIFY_OCCASIONS) } }, required: ['cwd', 'report'] } },
   { name: 'merge', description: 'Land an open task on its base as one squash commit after clear, current hub verdicts. Coordinator or a supervising Lead within its scheduled subtree; never delegate a merge to a sub-agent.', inputSchema: { type: 'object', properties: { item: { type: 'string' } }, required: ['item'] } },
   {
     name: 'artifact.create',
@@ -329,6 +330,10 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env): Promise<Sp
         }
         case 'subscriptions': {
           const value = await hub.request({ type: 'event.subscriptions' }) as Record<string, unknown>;
+          return text({ ok: true, ...value });
+        }
+        case 'verify': {
+          const value = await hub.request({ ...args, type: 'suite.start', mode: args.mode ?? 'auto' } as Omit<import('../protocol.ts').SuiteStart, 'id'>, 15_000) as Record<string, unknown>;
           return text({ ok: true, ...value });
         }
         case 'merge': {

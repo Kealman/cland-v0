@@ -3,10 +3,11 @@ import { execFile, spawn, type ChildProcess } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { appendFile, mkdir, readFile, writeFile, stat, open } from 'node:fs/promises';
 import { join } from 'node:path';
-import { lintHubShards, lintHubShardTree, ShardManifestError } from '../suite-shards.ts';
+import { lintHubShards, lintHubShardTree, ShardManifestError, hubShards, balanceCloseShards } from '../suite-shards.ts';
+import { readDurationManifest } from '../suite-durations.ts';
 import { candidateTree } from '../verification-tree.ts';
 import { promisify } from 'node:util';
-import type { SuiteStatus, VerificationQueue, VerificationHolder, DurationStats, SuiteSlot, SuiteSlotResult } from '../protocol.ts';
+import type { VerifyOccasion, SuiteStatus, VerificationQueue, VerificationHolder, DurationStats, SuiteSlot, SuiteSlotResult } from '../protocol.ts';
 import type { LogFn } from '../log.ts';
 import type { Store } from './store.ts';
 import { LocalExecutor } from '../executor/local.ts';
@@ -20,6 +21,7 @@ import { selectPackageSuite, describeSelection, type SuiteSelection, type SuiteR
 
 export type SuiteActor = { name: string; sessionId: string; shell: true };
 export type SuiteJob = {
+  occasion?: VerifyOccasion; shards?: SuiteJob[]; parentRun?: string; shardName?: string; shardingSkipped?: string; shardingSkipLogged?: boolean; groupMerged?: boolean;
   executor: ExecutorKind; requestedExecutor?: ExecutorKind; fallback?: string; fallbackLogged?: boolean; remoteAcquireAttempted?: boolean; timedOut?: boolean; platform?: Platform; lease?: Lease; remoteLogStart?: number; nextPoll?: number;
   machine?: { name?: string; size?: string; region?: string; lifetimeMs: number | null; costUsd: number | null };
   id: string; mode: string; cwd: string; topic: string; to: string[]; actor: SuiteActor | null;
@@ -40,7 +42,7 @@ export type SuiteJob = {
 export type VerifyResult = { executor: ExecutorKind; id: string; state: NonNullable<SuiteJob['state']>; result: 'passed' | 'failed' | 'cancelled' | null; head: string; finished: string | null; artifact: string | null; cached?: SuiteJob['cached'] };
 const verifyResult = (job: SuiteJob): VerifyResult => ({ executor: job.executor, id: job.id, state: job.state ?? 'running', result: job.state !== 'finished' ? null : job.cancelled || job.requesterDied ? 'cancelled' : job.outcome ? job.outcome.code === 0 ? 'passed' : 'failed' : null, head: job.head, finished: job.finished ?? job.completedAt ?? null, artifact: job.artifact, ...(job.cached ? { cached: { ...job.cached } } : {}) });
 
-export type SuiteSchedulerOptions = { executor?: ExecutorKind; lifetimeMs?: number; runTimeoutMs?: number; runTimeout?: string; onFallback?: (job: Readonly<SuiteJob>, cause: string) => void; budget?: number; remoteBudget?: number; cacheMaxAgeMs?: number; locks?: string[]; requesterDead?: (actor: SuiteActor) => boolean; log?: LogFn; onQueue?: (queue: VerificationQueue) => void; onJob?: (job: Readonly<SuiteJob>) => void };
+export type SuiteSchedulerOptions = { executor?: ExecutorKind; lifetimeMs?: number; runTimeoutMs?: number; runTimeout?: string; onFallback?: (job: Readonly<SuiteJob>, cause: string) => void; budget?: number; remoteBudget?: number; shards?: number; onShardingSkipped?: (job: Readonly<SuiteJob>, cause: string) => void; cacheMaxAgeMs?: number; locks?: string[]; requesterDead?: (actor: SuiteActor) => boolean; log?: LogFn; onQueue?: (queue: VerificationQueue) => void; onJob?: (job: Readonly<SuiteJob>) => void };
 type HumanSlot = Omit<SuiteSlot, 'type'> & { queued: string; admittedAt?: string; left?: boolean };
 const HUMAN_GRACE_MS = 10_000;
 const KEY = 'suite-jobs';
@@ -60,8 +62,11 @@ export function suiteSummary(log: string): string {
   const text = log.replace(/\x1b\[[0-9;]*m/g, '');
   const counts = new Map<string, number>();
   for (const match of text.matchAll(/^(?:#|ℹ) (tests|pass|fail|cancelled|skipped|todo) (\d+)\s*$/gm)) counts.set(match[1]!, (counts.get(match[1]!) ?? 0) + Number(match[2]));
-  const failures = text.split('\n').filter(line => /^(?:\s*not ok \d+|✖ |duration budget: )/.test(line)).slice(0, 12).map(line => line.slice(0, 200));
-  const timings = text.split('\n').filter(line => /^(?:verification queue wait |shard duration |suite duration )/.test(line)).slice(-8).map(line => line.slice(0, 300));
+  const failures = text.split('\n').filter(line => /^(?:\s*not ok \d+|✖ |duration budget: |shard failure )/.test(line)).slice(0, 12).map(line => line.slice(0, 200));
+  const merged = text.includes('\n--- close shards ---\n');
+  const timings = merged
+    ? text.split('\n--- close shards ---\n')[1]!.split('\n').filter(line => /^(?:shard duration shard-\d+ |total cost |occasion |suite duration .*overall wall)/.test(line)).map(line => line.slice(0, 300))
+    : text.split('\n').filter(line => /^(?:verification queue wait |shard duration |suite duration )/.test(line)).slice(-8).map(line => line.slice(0, 300));
   timings.push(...text.split('\n').filter(line => /^duration regression /.test(line)).slice(0, 5));
   timings.push(...text.split('\n').filter(line => /^suite budget overhead /.test(line)).slice(-1));
   return `${counts.size ? [...counts].map(([k, v]) => `${k} ${v}`).join('; ') : 'counts unavailable (suite did not finish)'}${timings.length ? `\n${timings.join('\n')}` : ''}${failures.length ? `\nFailures:\n${failures.join('\n')}` : ''}`;
@@ -91,6 +96,7 @@ export class Suites {
   readonly #starting = new Set<Promise<unknown>>();
   #closed = false;
   readonly #launching = new Set<string>();
+  readonly #planning = new Set<string>();
   readonly #budget: number;
   readonly #remoteBudget: number;
   readonly #options: SuiteSchedulerOptions;
@@ -144,7 +150,7 @@ export class Suites {
   }
   #save = (job?: SuiteJob) => {
     this.#store.setMeta(KEY, JSON.stringify(this.#jobs));
-    if (job) this.#remember(job, true);
+    if (job && !job.parentRun) this.#remember(job, true);
   };
   #remember(job: SuiteJob, announce: boolean): void {
     if (!this.#order.has(job.id)) this.#order.set(job.id, this.#order.size);
@@ -177,7 +183,7 @@ export class Suites {
   async cancel(id: string | undefined, actor: SuiteActor | null, authorize: () => void): Promise<{ id: string; topic: string; cancelled: true }> {
     if (this.#closed) throw new Error('hub is closing');
     authorize();
-    const job = id ? this.#jobs.find(job => job.id === id)
+    const job = id ? this.#jobs.find(job => job.id === id || job.shards?.some(shard => shard.id === id))
       : this.#jobs.findLast(job => this.#active(job) && (job.actor?.sessionId ?? null) === (actor?.sessionId ?? null));
     if (!job) throw new Error(id ? `no suite named ${id}` : 'this session has no suite queued or running');
     if (actor && job.actor?.sessionId !== actor.sessionId) throw new Error('cannot cancel another session’s suite; only the human may cancel any run');
@@ -190,18 +196,20 @@ export class Suites {
       // Persist before signalling: restart, late receipts and reporting retries retain this outcome.
       job.cancelled = true; job.outcome = { code: 143, cause: 'cancelled' }; this.#save(job);
       this.#stopHostGate(job.id);
+      for (const shard of job.shards ?? []) { shard.cancelled = true; shard.outcome ??= job.outcome; this.#stopHostGate(shard.id); }
+      this.#save(job);
     }
     void this.#inspectJob(job);
     return { id: job.id, topic: job.topic, cancelled: true };
   }
-  start(input: Pick<SuiteJob, 'mode' | 'cwd' | 'topic' | 'to' | 'actor'> & { priority?: number; item?: string | null; integrated?: boolean; fresh?: boolean; executor?: ExecutorKind }, authorize: () => void): Promise<{ id: string; pid: number | null; topic: string; position: number; cached?: SuiteJob['cached'] }> {
+  start(input: Pick<SuiteJob, 'mode' | 'cwd' | 'topic' | 'to' | 'actor'> & { priority?: number; item?: string | null; integrated?: boolean; fresh?: boolean; executor?: ExecutorKind; occasion?: VerifyOccasion }, authorize: () => void): Promise<{ id: string; pid: number | null; topic: string; position: number; cached?: SuiteJob['cached'] }> {
     if (this.#closed) return Promise.reject(new Error('hub is closing'));
     const work = this.#start(input, authorize);
     this.#starting.add(work);
     void work.finally(() => this.#starting.delete(work)).catch(() => {});
     return work;
   }
-  async #start(input: Pick<SuiteJob, 'mode' | 'cwd' | 'topic' | 'to' | 'actor'> & { priority?: number; item?: string | null; integrated?: boolean; fresh?: boolean; executor?: ExecutorKind }, authorize: () => void): Promise<{ id: string; pid: number | null; topic: string; position: number; cached?: SuiteJob['cached'] }> {
+  async #start(input: Pick<SuiteJob, 'mode' | 'cwd' | 'topic' | 'to' | 'actor'> & { priority?: number; item?: string | null; integrated?: boolean; fresh?: boolean; executor?: ExecutorKind; occasion?: VerifyOccasion }, authorize: () => void): Promise<{ id: string; pid: number | null; topic: string; position: number; cached?: SuiteJob['cached'] }> {
     const executor = input.executor ?? this.#options.executor ?? 'local';
     if (executor !== 'local' && executor !== 'droplet') throw new Error('executor must be local or droplet');
     const identity = input.actor?.sessionId ?? 'human';
@@ -211,6 +219,7 @@ export class Suites {
     const git = async (args: string[]) => exec('git', args, { cwd: input.cwd }).then(r => r.stdout.trim(), () => 'unknown');
     const [head, branch, selection] = await Promise.all([git(['rev-parse', 'HEAD']), git(['branch', '--show-current']), selectPackageSuite(input.cwd, input.mode as SuiteRequest)]);
     const tree = await candidateTree(input.cwd, head);
+    if (input.occasion && (!input.integrated || branch !== 'dev' || !tree || selection.fetchedDev !== head || input.mode !== 'all')) throw new Error('occasion requires an integrated dev full request (verify all) with fresh origin/dev fetch proof at its head');
 
     // Bind lint to the captured committed build as well as the files a dirty package will execute.
     try {
@@ -297,6 +306,7 @@ export class Suites {
   async #launch(job: SuiteJob): Promise<void> {
     job.state = 'launching'; job.admittedAt ??= new Date().toISOString(); this.#launching.add(job.id); this.#save(job);
     try {
+      if (job.shards) { await this.#launchShards(job); return; }
       const run = runRef(job);
       if (job.executor === 'droplet') {
         // lease.json owns delivery/admission facts; hub.db may predate the SSH reply.
@@ -309,7 +319,7 @@ export class Suites {
         if (!(job.lease as DropletLease | undefined)?.execution?.delivered) {
           if (!job.lease && (!job.tree || await candidateTree(job.cwd, job.head) !== job.tree)) { this.#fallback(job, 'dirty or changed worktree cannot be bundled for droplet'); return; }
           if (!job.lease) {
-            await this.#hostGate(job);
+            if (!job.parentRun) await this.#hostGate(job);
             if (job.cancelled) throw new Error('cancelled');
             if (await candidateTree(job.cwd, job.head) !== job.tree) { this.#fallback(job, 'dirty or changed worktree cannot be bundled for droplet'); return; }
             if (job.remoteAcquireAttempted) { this.#fallback(job, 'previous droplet acquisition was interrupted'); return; }
@@ -338,11 +348,96 @@ export class Suites {
       }
       job.state = 'running'; this.#save(job);
     } catch (error) {
+      // Failed acquisition can leave an unconfirmed provider resource. Retain its
+      // durable lease so group completion waits for confirmed release as well.
+      if (job.parentRun && !job.lease) {
+        const lease = (await readLeases(this.#root)).find(lease => lease.run === job.id);
+        if (lease) job.lease = lease;
+      }
       // Keep the failure receipt: the inspector only terminates identity-verified processes.
       job.outcome ??= { code: 1, cause: error instanceof Error ? error.message : String(error) }; this.#save(job);
     } finally { this.#launching.delete(job.id); if (job.cancelled) void this.#inspectJob(job); }
   }
+  async #planShards(job: SuiteJob, free: number): Promise<void> {
+    // Cancellation may mark an outcome now, but cannot collect/report before reservation settles.
+    this.#planning.add(job.id);
+    try {
+      const durable = (await readLeases(this.#root)).filter(lease => lease.state !== 'released').length;
+      const count = Math.min(free, this.#remoteBudget - durable, this.#options.shards ?? 2);
+      let cause: string | undefined;
+      if (count < 2) cause = free < 2 || this.#remoteBudget - durable < 2 ? 'fewer than 2 remote slots free' : `configured shard limit ${this.#options.shards ?? 2}`;
+      else {
+        const plans = balanceCloseShards((await hubShards(job.cwd)).flatMap(shard => shard.targets), (await readDurationManifest(job.cwd))?.files ?? {}, count);
+        job.shards ??= plans.map((plan, i) => {
+          const id = `${job.id}-shard-${i + 1}`, dir = join(this.#root, '.cland/run/suites', id);
+          const { shards: _shards, ...parent } = job;
+          return { ...parent, id, parentRun: job.id, shardName: `shard-${i + 1}`, state: 'launching',
+            selection: { mode: 'full', files: plan.files, reason: `close run shard ${i + 1}/${count}`, shard: { files: plan.files, nvim: plan.nvim } },
+            log: join(dir, 'suite.log'), result: join(dir, 'result.json'), gate: join(dir, 'ready') };
+        });
+        this.#save(job);
+        try { await this.#droplet.reserveShards(job.shards!.map(shard => shard.id)); }
+        catch (error) { cause = error instanceof Error ? error.message : String(error); }
+      }
+      if (cause) {
+        if (job.shards) await this.#droplet.releaseShardReservations(job.shards.map(shard => shard.id));
+        delete job.shards;
+        job.shardingSkipped = cause; this.#save(job);
+        this.#announceShardingSkip(job);
+      }
+    } finally { this.#planning.delete(job.id); }
+  }
+  #announceShardingSkip(job: SuiteJob): void {
+    if (!job.shardingSkipped || job.shardingSkipLogged) return;
+    this.#options.onShardingSkipped?.(job, `sharding skipped: ${job.shardingSkipped}`);
+    this.#options.log?.({ event: 'verification-sharding-skipped', id: job.id, cause: job.shardingSkipped });
+    job.shardingSkipLogged = true; this.#save(job);
+  }
+  async #launchShards(job: SuiteJob): Promise<void> {
+    const shards = job.shards!;
+    for (const shard of shards) {
+      shard.admittedAt ??= job.admittedAt!;
+      await mkdir(join(this.#root, '.cland/run/suites', shard.id), { recursive: true, mode: 0o700 });
+      await writeFile(shard.log, '', { flag: 'a', mode: 0o600 });
+    }
+    // Repeat only an interrupted host gate; provider acquisition is reconciled per child.
+    if (!shards.some(shard => shard.remoteAcquireAttempted)) await this.#hostGate(job);
+    if (await candidateTree(job.cwd, job.head) !== job.tree) throw new Error('dirty or changed integrated dev candidate');
+    if (job.cancelled || job.outcome) throw new Error(job.outcome?.cause ?? 'cancelled');
+    await Promise.all(shards.filter(shard => !shard.reported && !shard.outcome).map(shard => this.#launch(shard)));
+    job.state = 'running'; this.#save(job);
+  }
+  async #collectShards(job: SuiteJob): Promise<boolean> {
+    const shards = job.shards!;
+    if (job.outcome) for (const shard of shards) {
+      // Cancellation can follow a crash between reservation and child launch.
+      await mkdir(join(this.#root, '.cland/run/suites', shard.id), { recursive: true, mode: 0o700 });
+      await writeFile(shard.log, '', { flag: 'a', mode: 0o600 });
+      shard.cancelled = true; shard.outcome ??= job.outcome;
+      this.#stopHostGate(shard.id);
+    }
+    for (const shard of shards) if (shard.state === 'launching' && !shard.outcome && !this.#launching.has(shard.id) && Date.now() >= (shard.nextPoll ?? 0)) this.#launchRemote(shard);
+    await Promise.all(shards.map(shard => this.#inspectJob(shard)));
+    if (shards.some(shard => !shard.reported)) return false;
+    await this.#droplet.releaseShardReservations(shards.map(shard => shard.id));
+    const failures = shards.filter(shard => shard.outcome?.code !== 0);
+    job.outcome ??= { code: failures.length ? 1 : 0, cause: failures.map(shard => `${shard.shardName}: ${shard.outcome?.cause || `exit ${shard.outcome?.code}`}`).join('; ') };
+    const platform = shards.find(shard => shard.platform)?.platform;
+    if (platform) job.platform = platform;
+    job.finished = new Date().toISOString();
+    const logs = await Promise.all(shards.map(async shard => {
+      const log = await readFile(shard.log, 'utf8').catch(() => '');
+      // Keep counts machine-readable and label every failure in the merged log.
+      return `--- ${shard.shardName} ---\n${log.replace(/^(\s*(?:not ok \d+|✖ |duration budget: ).*)$/gm, `$1 [${shard.shardName}]`)}`;
+    }));
+    const lines = shards.map(shard => `shard duration ${shard.shardName} · ${shard.machine?.name ?? 'unavailable'} · ${shard.machine?.size ?? 'unknown'} ${shard.machine?.region ?? ''} · ${((shard.runMs ?? 0) / 1000).toFixed(2)}s · cost $${(shard.machine?.costUsd ?? 0).toFixed(4)}`);
+    const prefix = (await readFile(job.log, 'utf8')).split('\n--- close shards ---\n')[0];
+    await writeFile(job.log, `${prefix}\n--- close shards ---\noccasion ${job.occasion}\n${logs.join('\n')}\n${failures.map(shard => `shard failure ${shard.shardName}: ${shard.outcome?.cause || `exit ${shard.outcome?.code}`}`).join('\n')}\n${lines.join('\n')}\ntotal cost $${shards.reduce((sum, shard) => sum + (shard.machine?.costUsd ?? 0), 0).toFixed(4)}\nsuite duration ${((Date.now() - Date.parse(job.admittedAt!)) / 1000).toFixed(2)}s; overall wall from admission through collection\n`);
+    job.groupMerged = true; job.cleaned = true; this.#save(job);
+    return true;
+  }
   #fallback(job: SuiteJob, cause: string): void {
+    if (job.parentRun) throw new Error(cause);
     job.executor = 'local'; job.fallback = cause; job.state = 'queued';
     delete job.admittedAt; delete job.lease;
     this.#save(job);
@@ -395,7 +490,7 @@ export class Suites {
     // Reserve launching jobs, including their asynchronous acquires, until release
     // is confirmed. A receipt alone does not free a billable remote resource.
     const active = this.#jobs.filter(j => j.state !== 'queued' && !j.cleaned && !j.reported);
-    let remoteActive = active.filter(j => j.executor === 'droplet').length;
+    let remoteActive = active.filter(j => j.executor === 'droplet').reduce((sum, j) => sum + (j.shards?.filter(shard => !shard.cleaned).length ?? 1), 0);
     let localActive = active.filter(j => j.executor === 'local').length;
     // Human reservations expire even when no waiter needs the local slot.
     if ([...this.#humans.values()].some(slot => !slot.left && slot.admittedAt)) {
@@ -411,8 +506,10 @@ export class Suites {
       if (this.#closed) return;
       const job = 'actor' in next ? next : null;
       if (job && (job.state !== 'queued' || job.outcome)) continue;
+      if (job?.executor === 'droplet' && remoteActive < this.#remoteBudget && job.occasion && !job.shardingSkipped) await this.#planShards(job, this.#remoteBudget - remoteActive);
+      if (job && (job.state !== 'queued' || job.outcome)) continue;
       if (job?.executor === 'droplet' && remoteActive < this.#remoteBudget) {
-        remoteActive++;
+        remoteActive += job.shards?.length ?? 1;
         this.#options.log?.({ event: 'verification-admitted', id: job.id, item: job.item ?? null, session: job.actor?.name ?? 'human', executor: 'droplet', remoteActive, remoteBudget: this.#remoteBudget });
         this.#launchRemote(job);
         continue;
@@ -424,7 +521,10 @@ export class Suites {
       if (!job && ('actor' in next || next.left || next.admittedAt || ![...this.#humans.values()].includes(next))) continue;
       localActive++;
       if (job) {
-        if (job.executor === 'droplet') this.#fallback(job, 'remote budget full');
+        if (job.executor === 'droplet') {
+          if (job.occasion && !job.shardingSkipped) await this.#planShards(job, 0);
+          this.#fallback(job, 'remote budget full');
+        }
         await this.#launch(job);
       } else if (!('actor' in next) && !next.left && !next.admittedAt && [...this.#humans.values()].includes(next)) {
         next.admittedAt = new Date().toISOString();
@@ -436,19 +536,21 @@ export class Suites {
   #inspectJob(job: SuiteJob): Promise<void> {
     const pending = this.#inspecting.get(job.id);
     if (pending) return pending;
-    if (this.#closed || job.reported || this.#launching.has(job.id)) return Promise.resolve();
+    if (this.#closed || job.reported || this.#launching.has(job.id) || this.#planning.has(job.id)) return Promise.resolve();
     const work = this.#inspect(job).catch(() => { /* saved errors are retried on the next tick */ }).finally(() => { this.#inspecting.delete(job.id); });
     this.#inspecting.set(job.id, work);
     return work;
   }
   async #inspect(job: SuiteJob): Promise<void> {
     this.#announceFallback(job);
+    this.#announceShardingSkip(job);
     if (job.state === 'queued' && !job.outcome) {
       if (!job.actor || !this.#options.requesterDead?.(job.actor)) return;
       job.requesterDied = true;
       job.outcome = { code: 130, cause: 'cancelled: requester died before admission' };
     }
     try {
+      if (job.shards && !job.groupMerged && !await this.#collectShards(job)) return;
       const remote = job.executor === 'droplet';
       if (remote && !job.outcome && Date.now() < (job.nextPoll ?? 0)) return;
       if (remote) job.nextPoll = Date.now() + testTiming('CLAND_TEST_DROPLET_RUN_POLL_MS', 10000);
@@ -499,6 +601,7 @@ export class Suites {
       }
       this.#recordTiming(job, !job.cached && job.outcome.code === 0 && receipt?.finished ? receipt.finished : new Date().toISOString());
       this.#save(job);
+      if (job.parentRun) { job.reported = true; job.error = null; this.#save(job); return; }
       await this.#report(job, id => {
         if (job.artifact !== null && job.artifact !== id) throw new Error('suite artifact checkpoint already settled');
         job.artifact = id; this.#save(job);
@@ -528,6 +631,7 @@ export class Suites {
   }
   status(): SuiteStatus[] {
     return this.#jobs.map(job => ({
+      ...(job.occasion ? { occasion: job.occasion } : {}),
       executor: job.executor, ...(job.platform ? { platform: job.platform } : {}),
       id: job.id, pid: job.pid, topic: job.topic, reported: job.reported, outcome: job.outcome, error: job.error,
       state: job.state ?? 'running', queued: job.queued ?? null, priority: job.priority ?? null,
@@ -558,9 +662,9 @@ export class Suites {
     const describe = (job: SuiteJob): VerificationHolder => {
       const lease = job.executor === 'droplet' ? job.lease as DropletLease | undefined : undefined;
       const runMs = elapsed(job.admittedAt, now), expected = estimate(job.selection?.mode ?? job.mode, job.executor);
-      return { kind: 'run', executor: job.executor, id: job.id, session: job.actor?.name ?? 'human', item: job.item ?? null, mode: job.selection?.mode ?? job.mode, pid: job.pid, worktree: job.cwd, since: job.admittedAt ?? null, runMs, etaMs: expected === null || runMs === null ? null : Math.max(0, expected - runMs), ...(lease ? { machine: { name: lease.name, size: lease.size, region: lease.region } } : {}) };
+      return { ...(job.occasion ? { occasion: job.occasion } : {}), ...(job.shardName ? { shard: job.shardName } : {}), kind: 'run', executor: job.executor, id: job.id, session: job.actor?.name ?? 'human', item: job.item ?? null, mode: job.selection?.mode ?? job.mode, pid: job.pid, worktree: job.cwd, since: job.admittedAt ?? null, runMs, etaMs: expected === null || runMs === null ? null : Math.max(0, expected - runMs), ...(lease ? { machine: { name: lease.name, size: lease.size, region: lease.region } } : {}) };
     };
-    const remote = occupying.filter(j => j.executor === 'droplet').map(describe);
+    const remote = occupying.filter(j => j.executor === 'droplet').flatMap(job => job.shards ? job.shards.filter(shard => !shard.cleaned).map(describe) : [describe(job)]);
     let holder: VerificationHolder | null = null;
     if (shim && (!active || shim.holder?.pid !== active.pid)) {
       holder = { kind: 'hand run', executor: 'local', id: human?.id ?? null, session: human ? 'human' : null, item: null, mode: human?.mode ?? null, pid: shim.holder?.pid ?? null, worktree: shim.holder?.worktree ?? null, since: shim.since, runMs: elapsed(shim.since, now), etaMs: null };
@@ -587,7 +691,7 @@ export class Suites {
         const useRemote = effective === 'droplet' && (localEta === null || remoteEta !== null && remoteEta <= localEta);
         const etaMs = useRemote ? remoteEta : localEta;
         const expectedRunMs = estimate(mode, useRemote ? 'droplet' : 'local');
-        const waiter = { kind: job ? 'run' as const : 'hand run' as const, executor, id: j.id, session: job?.actor?.name ?? 'human', item: job?.item ?? null, mode, worktree: j.cwd, position: i + 1, queuedAt: j.queued ?? null, waitMs: elapsed(j.queued, now) ?? 0, etaMs, expectedRunMs };
+        const waiter = { ...(job?.occasion ? { occasion: job.occasion } : {}), kind: job ? 'run' as const : 'hand run' as const, executor, id: j.id, session: job?.actor?.name ?? 'human', item: job?.item ?? null, mode, worktree: j.cwd, position: i + 1, queuedAt: j.queued ?? null, waitMs: elapsed(j.queued, now) ?? 0, etaMs, expectedRunMs };
         const nextEta = etaMs === null || expectedRunMs === null ? null : etaMs + expectedRunMs;
         if (useRemote) remoteEtas[remoteIndex] = nextEta;
         else localEta = nextEta;

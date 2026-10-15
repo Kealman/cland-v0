@@ -44,6 +44,7 @@ export async function fakeDigitalOcean(token: string) {
   let beforeDropletList: (() => Promise<void>) | undefined;
   let beforeKeyList: (() => Promise<void>) | undefined;
   let beforeCreate: (() => Promise<void>) | undefined;
+  let beforeSizes: (() => Promise<void>) | undefined;
   let beforeImport: (() => Promise<void>) | undefined;
   let beforeSnapshotDelete: ((id: number) => Promise<void>) | undefined;
   let nextId = 100;
@@ -59,7 +60,7 @@ export async function fakeDigitalOcean(token: string) {
     if (faults.delayMs && (!faults.delayPath || path === faults.delayPath && method === 'POST')) await new Promise(r => setTimeout(r, faults.delayMs));
     const answer = (status: number, value?: unknown) => { res.writeHead(status, { 'Content-Type': 'application/json' }); res.end(value === undefined ? '' : JSON.stringify(value)); };
     if (method === 'GET' && path === '/account') return answer(200, { account });
-    if (method === 'GET' && path === '/sizes') return answer(200, { sizes });
+    if (method === 'GET' && path === '/sizes') { await beforeSizes?.(); return answer(200, { sizes }); }
     if (method === 'GET' && path === '/regions') return answer(200, { regions });
     if (method === 'POST' && path === '/droplets') {
       try { await beforeCreate?.(); } catch { return answer(500, { id: 'lease-missing', message: 'lease not armed before create' }); }
@@ -205,6 +206,7 @@ export async function fakeDigitalOcean(token: string) {
     setMachineFaults: async (value: Partial<typeof machineFaults>) => { Object.assign(machineFaults, value); await writeFile(join(stateRoot, 'machine-faults.json'), JSON.stringify(machineFaults)); },
     beforeDropletList: (check: () => Promise<void>) => { beforeDropletList = check; },
     beforeKeyList: (check: () => Promise<void>) => { beforeKeyList = check; },
+    beforeSizes: (check: () => Promise<void>) => { beforeSizes = check; },
     beforeCreate: (check: () => Promise<void>) => { beforeCreate = check; },
     beforeImport: (check: () => Promise<void>) => { beforeImport = check; },
     beforeSnapshotDelete: (check: (id: number) => Promise<void>) => { beforeSnapshotDelete = check; },

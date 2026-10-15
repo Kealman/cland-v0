@@ -74,6 +74,29 @@ async function lintDurations(cwd: string): Promise<void> {
   } catch (error) { throw new ShardManifestError(error instanceof Error ? error.message : String(error), [DURATION_MANIFEST]); }
 }
 
-export async function packageShards(cwd: string, mode: SuiteMode): Promise<SuiteShard[]> {
+export async function packageShards(cwd: string, mode: SuiteMode, selection?: { files: string[]; nvim: boolean }): Promise<SuiteShard[]> {
+  if (selection) {
+    const shards = await hubShards(cwd);
+    const known = new Set(shards.flatMap(shard => shard.targets));
+    for (const file of selection.files) if (!known.has(file)) throw new ShardManifestError(`unknown explicit hub shard file: ${file}`, [file]);
+    return [...shards.map(shard => ({ ...shard, targets: shard.targets.filter(file => selection.files.includes(file)) })).filter(shard => shard.targets.length),
+      ...(selection.nvim ? [{ name: 'Neovim', targets: ['nvim/test/**/*.test.ts'], resource: 'machine' as const, workers: 4 }] : [])];
+  }
   return [...await hubShards(cwd, mode === 'nvim-only'), { name: mode === 'hub-only' ? 'Neovim smoke' : 'Neovim', targets: mode === 'hub-only' ? NVIM_SMOKE : ['nvim/test/**/*.test.ts'], resource: 'machine', workers: 4 }];
+}
+
+/** Longest-processing-time placement; ties are stable so a plan is reproducible. */
+export function balanceCloseShards(files: string[], durations: DurationManifest['files'], count: number): Array<{ files: string[]; hubSeconds: number; nvim: boolean; seconds: number }> {
+  if (!Number.isSafeInteger(count) || count < 1) throw new Error('shard count must be a positive integer');
+  const known = Object.values(durations).map(file => file.seconds).sort((a, b) => a - b);
+  const median = known.length ? known.length % 2 ? known[Math.floor(known.length / 2)]! : (known[known.length / 2 - 1]! + known[known.length / 2]!) / 2 : 1;
+  const weight = (file: string) => durations[file]?.seconds ?? median;
+  const shards = Array.from({ length: count }, () => ({ files: [] as string[], hubSeconds: 0, nvim: false, seconds: 0 }));
+  const lightest = () => shards.reduce((best, shard) => shard.hubSeconds < best.hubSeconds ? shard : best);
+  for (const file of [...files].sort((a, b) => weight(b) - weight(a) || a.localeCompare(b))) {
+    const shard = lightest(); shard.files.push(file); shard.hubSeconds += weight(file); shard.seconds = shard.hubSeconds;
+  }
+  const nvim = lightest(); nvim.nvim = true;
+  nvim.seconds += Object.entries(durations).filter(([file]) => file.startsWith('nvim/')).reduce((sum, [, value]) => sum + value.seconds, 0);
+  return shards;
 }

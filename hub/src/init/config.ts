@@ -15,7 +15,7 @@ import { isManagedFile, readText, writeIfChanged, type Report } from './files.ts
 
 export type ProjectConfig = {
   name: string;
-  verification: { executor: 'local' | 'droplet'; budget: number; remoteBudget: number; lockPath: string; cacheMaxAgeMs: number; testTimeoutMs: number; stallTimeoutMs: number; lifetimeMs: number; runTimeoutMs: number; runTimeout: string; dailySpendUsd: number; droplet: { size: string; prepare_size: string; regions: string[]; image: string } };
+  verification: { executor: 'local' | 'droplet'; budget: number; remoteBudget: number; shards: number; lockPath: string; cacheMaxAgeMs: number; testTimeoutMs: number; stallTimeoutMs: number; lifetimeMs: number; runTimeoutMs: number; runTimeout: string; dailySpendUsd: number; droplet: { size: string; prepare_size: string; regions: string[]; image: string } };
   sessions: { archiveAfterItemMs: number; archiveAfterStopMs: number };
   visibility: VisibilityOverrides;
   tracker: { levels: Levels; fatalStallMs: number };
@@ -29,7 +29,7 @@ const MINUTE = 60_000;
 
 export const defaultConfig = (name: string): ProjectConfig => ({
   name,
-  verification: { executor: 'local', budget: 1, remoteBudget: 4, lockPath: '/tmp/cland-suite.lock', cacheMaxAgeMs: 86400000, testTimeoutMs: 120000, stallTimeoutMs: 600000, lifetimeMs: 6600000, runTimeoutMs: 4500000, runTimeout: '75m', dailySpendUsd: 5, droplet: { size: 'c-8', prepare_size: 'c-8', regions: ['lon1', 'nyc1', 'sfo2'], image: 'ubuntu-24-04-x64' } },
+  verification: { executor: 'local', budget: 1, remoteBudget: 4, shards: 2, lockPath: '/tmp/cland-suite.lock', cacheMaxAgeMs: 86400000, testTimeoutMs: 120000, stallTimeoutMs: 600000, lifetimeMs: 6600000, runTimeoutMs: 4500000, runTimeout: '75m', dailySpendUsd: 5, droplet: { size: 'c-8', prepare_size: 'c-8', regions: ['lon1', 'nyc1', 'sfo2'], image: 'ubuntu-24-04-x64' } },
   sessions: { archiveAfterItemMs: 3600000, archiveAfterStopMs: 86400000 },
   visibility: {},
   tracker: { levels: [...DEFAULT_LEVELS], fatalStallMs: 60000 },
@@ -55,6 +55,7 @@ executor = ${JSON.stringify(c.verification.executor)}
 budget = ${c.verification.budget}
 # Parallel droplet runs beside the local slot.
 remote_budget = ${c.verification.remoteBudget}
+shards = ${c.verification.shards}
 lock_path = ${JSON.stringify(c.verification.lockPath)}
 # Reuse green candidate trees for this many minutes; 0 disables caching.
 cache_max_age_minutes = ${minutes(c.verification.cacheMaxAgeMs)}
@@ -173,6 +174,10 @@ export function parseConfig(text: string, fallbackName: string): ProjectConfig {
       if (!Array.isArray(values.regions) || !values.regions.length || !values.regions.every(v => typeof v === 'string' && /^[a-z0-9]+$/.test(v))) throw new Error('verification.droplet.regions must be a nonempty list of region slugs');
       c.verification.droplet.regions = values.regions;
     }
+  }
+  if (verification.shards !== undefined) {
+    if (typeof verification.shards !== 'number' || !Number.isSafeInteger(verification.shards) || verification.shards <= 0) throw new Error('verification.shards must be a positive integer');
+    c.verification.shards = verification.shards;
   }
   if (verification.remote_budget !== undefined) {
     if (typeof verification.remote_budget !== 'number' || !Number.isSafeInteger(verification.remote_budget) || verification.remote_budget <= 0) throw new Error('verification.remote_budget must be a positive integer');

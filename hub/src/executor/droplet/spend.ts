@@ -39,8 +39,10 @@ export async function reserveSpend(project: string, lease: DropletLease, cap: nu
   await locked(ledger => {
     if (ledger.entries.some(e => e.lease === lease.lease)) return;
     const reservation = Math.max(60000, Date.parse(lease.deadline) - Date.parse(lease.created)) / 3600000 * lease.priceHourly;
+    const group = ledger.entries.find(e => e.project === project && e.run === lease.run && e.lease === `reserved:${lease.run}` && e.cost === null);
     const { spent, reserved } = totals(ledger);
-    if (spent + reserved + reservation > cap) throw new Error(`daily spend cap $${cap} reached`);
+    if (spent + reserved - (group?.reservation ?? 0) + reservation > cap) throw new Error(`daily spend cap $${cap} reached`);
+    if (group) ledger.entries.splice(ledger.entries.indexOf(group), 1);
     ledger.entries.push({ project, lease: lease.lease, run: lease.run, size: lease.size, reservation, cost: null, created: lease.created, deadline: lease.deadline });
   });
 }
@@ -64,4 +66,23 @@ export async function hostLeases(project: string): Promise<DropletLease[]> {
   const projects = [...new Set([project, ...(ledger.projects ?? []), ...ledger.entries.map(e => e.project)])].filter(isAbsolute);
   // An unreadable project is not proof that its keys are orphaned. Fail the sweep safely.
   return (await Promise.all(projects.map(root => readLeases(root)))).flat();
+}
+
+/** Atomic group admission: no provider resources exist when this can refuse. */
+export async function reserveShardSpend(project: string, runs: string[], size: string, priceHourly: number, lifetimeMs: number, cap: number): Promise<void> {
+  await locked(ledger => {
+    const missing = runs.filter(run => !ledger.entries.some(e => e.project === project && e.run === run));
+    const reservation = Math.max(60000, lifetimeMs) / 3600000 * priceHourly;
+    const { spent, reserved } = totals(ledger);
+    if (spent + reserved + missing.length * reservation > cap) throw new Error(`daily spend cap $${cap} would be exceeded`);
+    const created = new Date().toISOString(), deadline = new Date(Date.now() + lifetimeMs).toISOString();
+    for (const run of missing) ledger.entries.push({ project, lease: `reserved:${run}`, run, size, reservation, cost: null, created, deadline });
+  });
+}
+export async function releaseShardSpend(project: string, runs: string[]): Promise<void> {
+  await locked(ledger => {
+    for (const e of ledger.entries) if (e.project === project && runs.includes(e.run) && e.lease === `reserved:${e.run}` && e.cost === null) {
+      e.cost = 0; e.released = new Date().toISOString();
+    }
+  });
 }

@@ -77,5 +77,5 @@ export async function fixture(t: TestContext, options: { typecheck?: string | un
     const failure = (await messages(id, client))[0]; if (failure) throw new Error(failure.text);
     return;
   }, 15000);
-  return { root, api, git, key, ui, discovery: daemon.discovery, env, actor, item, topic, launch, messages, result, remote };
+  return { root, api, git, key, ui, spoke, discovery: daemon.discovery, env, actor, item, topic, launch, messages, result, remote };
 }
