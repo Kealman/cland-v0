@@ -179,21 +179,36 @@ test('restart reloads the lease after admission and never redelivers or cleans t
   assert.equal((await f.messages(job.id, ui)).length, 1);
 });
 
-test('a crash after acquire preserves the launching suite lease before delivery', async t => {
-  const f = await fixture(t, { test: longTest });
-  await f.api.setMachineFaults({ delayMs: 4000, delayCommand: 'mkdir -p' });
-  const job = await f.launch();
-  await eventually('acquired lease reached delivery', async () => {
-    const calls = await readFile(join(f.api.stateRoot, 'machine-calls.jsonl'), 'utf8').catch(() => '');
-    return calls.includes('mkdir -p') ? true : undefined;
+test('a restored launching suite reuses only an existing ref at the same head', async t => {
+  for (const kind of ['same head', 'different head'] as const) await t.test(kind, async t => {
+    const f = await fixture(t, { test: longTest });
+    await f.api.setMachineFaults({ delayMs: 4000, delayCommand: 'mkdir -p' });
+    const job = await f.launch();
+    await eventually('acquired lease reached delivery', async () => {
+      const calls = await readFile(join(f.api.stateRoot, 'machine-calls.jsonl'), 'utf8').catch(() => '');
+      return calls.includes('mkdir -p') ? true : undefined;
+    });
+    process.kill(f.discovery.pid, 'SIGKILL');
+    // A crash during bundling can leave this ref behind before delivery starts.
+    const ref = `refs/cland/suites/${job.id}`;
+    const head = await f.git('rev-parse', 'HEAD');
+    const existing = kind === 'same head' ? head : await f.git('rev-parse', 'HEAD^');
+    await f.git('update-ref', ref, existing);
+    await f.api.setMachineFaults({ delayMs: 0 });
+    const restart = await startDaemon(t, f.root, f.env); const ui = await connectUi(t, restart.discovery);
+    if (kind === 'same head') {
+      const remote = await f.remote(job.id, ui);
+      await writeFile(join(remote.home, 'finish'), 'done');
+      assert.match((await f.result(job.id, ui)).text, /auto exit 0/);
+      assert.equal(await f.git('for-each-ref', '--format=%(refname)', ref), '');
+    } else {
+      const result = await f.result(job.id, ui);
+      assert.match(result.text, /auto exit 1/);
+      assert.ok(result.text.includes(`suite ref ${ref} points at ${existing}; expected ${head}`), result.text);
+      assert.equal(await f.git('rev-parse', ref), existing);
+    }
+    assert.equal(f.api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length, 1);
+    assert.equal((await f.messages(job.id, ui)).length, 1);
+    assert.deepEqual(f.api.droplets, []); assert.deepEqual(f.api.keys, []);
   });
-  process.kill(f.discovery.pid, 'SIGKILL');
-  await f.api.setMachineFaults({ delayMs: 0 });
-  const restart = await startDaemon(t, f.root, f.env); const ui = await connectUi(t, restart.discovery);
-  const remote = await f.remote(job.id, ui);
-  await writeFile(join(remote.home, 'finish'), 'done');
-  assert.match((await f.result(job.id, ui)).text, /auto exit 0/);
-  assert.equal(f.api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length, 1);
-  assert.equal((await f.messages(job.id, ui)).length, 1);
-  assert.deepEqual(f.api.droplets, []); assert.deepEqual(f.api.keys, []);
 });

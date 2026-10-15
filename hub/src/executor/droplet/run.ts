@@ -34,7 +34,12 @@ export class DropletRun {
     const bundle = join(local, 'tree.bundle');
     // A candidate equal to the snapshot base has no incremental objects: send a full bundle.
     const ref = `refs/cland/suites/${run.id}`;
-    await git('update-ref', ref, run.head, '0'.repeat(40));
+    try { await git('update-ref', ref, run.head, '0'.repeat(40)); }
+    catch (error) {
+      // A crash while bundling can leave the same run's ref behind.
+      const existing = await git('show-ref', '--verify', '--hash', ref).catch(() => { throw error; });
+      if (existing !== run.head) throw new Error(`suite ref ${ref} points at ${existing}; expected ${run.head}`);
+    }
     try { await git('bundle', 'create', bundle, ref, ...(base && base !== run.head ? [`^${base}`] : [])); }
     finally { await git('update-ref', '-d', ref, run.head); }
     if (await git('rev-parse', 'HEAD') !== run.head || await git('status', '--porcelain')) throw new Error('dirty or changed worktree cannot be bundled for droplet');
