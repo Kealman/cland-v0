@@ -2,8 +2,8 @@
 id: T-451
 kind: task
 title: account-limited backoff test waits 15 s for a reset its own assertion requires at 16 s or later
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -16,7 +16,8 @@ blocked_by: []
 topic: topic-271
 branch: t/T-451-account-limited-backoff-test-waits-15-s
 created: 2026-10-15T04:36:56.217Z
-updated: 2026-10-15T05:49:39.325Z
+updated: 2026-10-15T05:49:54.332Z
+closed: 2026-10-15T05:49:54.332Z
 ---
 
 ## Summary
@@ -72,3 +73,7 @@ scope: evidence
 Final clear at unchanged source-reviewed a9d9d6dd. Standards and Spec: no high or medium findings. C1 unchanged 16 s/12 s no-early-read floor and duplicate-hit assertions remain; completion bound includes 5 s margin. C2 audited A-2687 ten serial whole-file runs each 10/10, zero failures/skips/cancellations, plus post-dev-merge 10/10. Ten use the same candidate patch before incoming dev refresh; final-source supplementary run and unchanged underlying test blob establish integration provenance, not ten exact-final-head runs. Exact-head local no-mode 9ffc648c/A-2695 selects hub-only: root typecheck and 1712/1712 pass (37 free hub, 1663 machine hub, 12 Neovim smoke), zero failures/skips/cancellations/todos, exit 0. Both affected cases pass. Full Neovim not selected or claimed. Both done marks and branch/log/tracker head checked. A-2696 details evidence; original T-254 reds A-2679/A-2684 retained as corrected shared defect. C1/C2 verified.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-15T05:49:54.332Z
+
+Merged fe4efed83f13f5a9b4fb47e420fe39153624ceff onto dev.
