@@ -3525,6 +3525,10 @@
     "nvim/test/verification-view.test.ts::verify summary opens the ordered queue and ages locally; palette and keys expose the view": {
       "seconds": 6.200828,
       "reason": "Exercises the Neovim verification view against a real queue and waits for its local age clock while proving navigation and commands."
+    },
+    "hub/test/claude-code-accounts.test.ts::logged-out turns fail authentication and a per-account latch survives the restart reconnect turn for three 30 s periods": {
+      "seconds": 92.983,
+      "reason": "Proves the signed-out latch holds across a hub restart for three real 30-second Claude discovery periods (T-437 C2); the period is the production schedule under test, so the wait cannot be shortened without weakening the proof."
     }
   }
 }
