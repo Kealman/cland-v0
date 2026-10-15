@@ -102,21 +102,19 @@ test('remote verify delivers host selection, runs as runner, reports accounting,
   assert.ok(!calls.includes(token)); assert.ok(!JSON.stringify(f.api.requests).includes(token));
 });
 
-test('executor overrides bypass host locks and dirty remote candidates fall back to the local queue', async t => {
+test('executor overrides bypass host locks and dirty explicit remote candidates refuse', async t => {
   const f = await fixture(t, { hub: projectHub, executor: 'local' });
   await mkdir(join(f.root, '.cland/host.lock'));
   const remote = await f.launch('--executor', 'droplet');
   assert.match((await f.result(remote.id)).text, /Executor droplet/);
   await writeFile(join(f.root, 'hub/src/tracker/change.ts'), 'dirty');
   const dirty = await clandWithEnv(f.root, f.actor, 'verify', '--executor', 'droplet', '--report', f.topic, '--to', 'impl', '--json');
-  assert.equal(dirty.code, 0, dirty.stderr);
+  assert.equal(dirty.code, 1);
+  assert.match(dirty.stderr, /dirty worktree cannot be bundled for droplet/);
   const queued = JSON.parse((await cland(f.root, 'verify', 'queue', '--json')).stdout);
-  assert.ok(queued.waiters.some((run: { id: string }) => run.id === JSON.parse(dirty.stdout).id));
-  const status = (await f.ui.request({ type: 'hub.status' })).value as HubStatus;
-  assert.equal(status.suites!.find(run => run.id === JSON.parse(dirty.stdout).id)!.executor, 'local');
-  const history = ((await f.ui.request({ type: 'topic.history', topic: f.topic })).value as { messages: { text: string; severity?: string }[] }).messages;
-  const notice = history.find(m => m.text.includes('droplet unavailable'));
-  assert.match(notice!.text, /dirty worktree/); assert.equal(notice!.severity, 'warn');
+  assert.deepEqual(queued.waiters, []);
+  assert.equal(queued.holder?.kind, 'hand run', 'the fixture compatibility lock remains held');
+  assert.equal(queued.holder.id, null, 'no local verification job was admitted');
 });
 
 test('a local override executes locally despite a droplet default', async t => {

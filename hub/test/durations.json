@@ -3090,9 +3090,9 @@
       "seconds": 12.317983,
       "reason": "T-433 expands the prior allowed crash-after-acquire case into same-head and different-head restoration scenarios. Each uses an artificial 4000 ms bundling fault, hub death/restart and real fixture-provider cleanup to prove ref reuse/refusal. Its green gate A-2649 at 2c9f932 records 13.621351 s."
     },
-    "hub/test/executor-run.test.ts::executor overrides bypass host locks and dirty remote candidates fall back to the local queue": {
-      "seconds": 5.698137,
-      "reason": "Runs nested verification workers through fake provider/SSH processes, logs, cancellation and restart to prove durable executor recovery."
+    "hub/test/executor-run.test.ts::executor overrides bypass host locks and dirty explicit remote candidates refuse": {
+      "seconds": 7.92957,
+      "reason": "Runs a real verification worker through fake provider/SSH processes beside a host compatibility lock, then proves dirty explicit-remote submission refuses without admitting a local job."
     },
     "hub/test/executor-run.test.ts::host typecheck failure creates no machine; remote typecheck stops tests and failed tests retain failures": {
       "seconds": 13.587666,
@@ -3492,6 +3492,18 @@
     "hub/test/suite-remote-budget.test.ts::an unconfirmed acquire cleanup keeps its durable remote budget reservation": {
       "seconds": 5.664711,
       "reason": "Runs several nested fixture verification workers and fake remote acquisitions to prove shared spend reservations, slot arbitration and ETA accounting."
+    },
+    "hub/test/suite-remote-budget.test.ts::explicit droplet refuses an uncovered reservation with remote budget 1": {
+      "seconds": 9.261002,
+      "reason": "Holds a real fake-remote worker reservation while proving CLI cap refusal even with a full remote budget, then observes its receipt and confirmed cleanup."
+    },
+    "hub/test/suite-remote-budget.test.ts::explicit droplet refuses an uncovered reservation with remote budget 2": {
+      "seconds": 8.590127,
+      "reason": "Holds a real fake-remote worker reservation while proving CLI cap refusal despite a spare remote slot, then observes its receipt and confirmed cleanup."
+    },
+    "hub/test/suite-remote-budget.test.ts::explicit droplet waits for remote capacity while later local requests proceed": {
+      "seconds": 21.255043,
+      "reason": "Runs two real candidate workers on fake remote machines and one local worker to prove remote-only admission, queue position and independent local progress."
     },
     "hub/test/suite-remote-budget.test.ts::local ETA uses local history while remote ETA includes its own acquisition time": {
       "seconds": 13.542671,

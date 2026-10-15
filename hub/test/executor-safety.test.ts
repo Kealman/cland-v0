@@ -63,7 +63,7 @@ test('all remote admission refusals persist a local job, one warn notice and one
     if (cause === '422' || cause === '500') { f.api.faults.create = Number(cause); f.api.faults.echoToken = true; }
     if (cause === 'snapshot') await rm(join(f.root, '.cland/run/executor/snapshot.json'));
     if (cause === 'region') f.api.regions.splice(0);
-    const run = await f.launch('--executor', 'droplet');
+    const run = await f.launch();
     assert.match((await f.result(run.id)).text, /Executor local/);
     const status = (await f.ui.request({ type: 'hub.status', flushLogs: true })).value as HubStatus;
     assert.equal(status.suites!.find(s => s.id === run.id)!.executor, 'local');

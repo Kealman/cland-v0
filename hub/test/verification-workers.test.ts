@@ -100,6 +100,11 @@ test('requested size reserves its own price before create and fallback restores 
   const f = await fixture(t, { hub: projectHub, test: script, config: 'workers=5\nlifetime="15m"\nrun_timeout="5m"\ndaily_spend_usd=0.10\n[verification.droplet]\nworkers=8\n' });
   f.api.sizes.push({ slug: 'c-16', available: true, price_hourly: 0.50, disk: 100, regions: ['lon1'] });
   f.api.regions.find(region => region.slug === 'lon1')!.sizes.push('c-16');
+  const explicit = await clandWithEnv(f.root, f.actor, 'verify', '--executor', 'droplet', '--size', 'c-16', '--report', f.topic, '--to', 'impl', '--json');
+  assert.equal(explicit.code, 1, 'explicit droplet admission must price the requested c-16 rather than the configured c-8');
+  assert.match(explicit.stderr, /daily spend cap \$0\.1 reached/);
+  const queue = (await f.ui.request({ type: 'suite.queue' })).value as { waiters: unknown[]; remote: unknown[] };
+  assert.deepEqual(queue.waiters, []); assert.deepEqual(queue.remote, []);
   const job = await f.launch('--size', 'c-16');
   const result = await f.result(job.id);
   assert.match(result.text, /Executor local/);

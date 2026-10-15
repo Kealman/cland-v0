@@ -1658,10 +1658,14 @@ configured region offering the size and holding the prepared image wins.
 
 One local run uses the host's compatibility leases. Up to `remote_budget` droplet
 runs proceed beside it, using their own machines' locks. A full remote budget
-may send a request to a free local slot with a warning; with both budgets full,
+may send a default droplet request to a free local slot with a warning; with both budgets full,
 it waits. `cland verify queue` shows `local:`, a `remote <used>/<budget>:` line per
 remote run with session, item, machine, size, region and ETA, and waiters naming
-their executor. A machine still being acquired is shown as `acquiring`.
+their executor. Explicit `--executor droplet` requests stay queued for remote
+capacity (including durable leases pending cleanup), labelled `waiting for remote`
+with their position; later local requests can pass them. Their admission ETA
+uses remote capacity only. JSON waiters include `waitingFor: "remote"`. A machine
+still being acquired is shown as `acquiring`.
 
 At [DigitalOcean's listed rates](https://www.digitalocean.com/pricing/droplets),
 c-8 costs $0.25/hour and c-16 $0.50/hour. A full suite on c-8 costs about $0.10
@@ -1809,7 +1813,13 @@ dirty candidate sends a requested droplet run to the local queue with
 receive `verify <id>: droplet unavailable (<cause>); running locally`, projected
 with warn severity on messages and inbox warning surfaces. The journal records
 `verification-executor-fallback` with id, item, requested, effective and cause.
-An explicit `--executor droplet` has the same fallback.
+The fallback applies when the executor flag is omitted. An explicit
+`--executor droplet` never falls back: it waits for remote capacity and refuses
+submission when the daily spend cap cannot cover its lifetime reservation, naming
+the cap. Other remote failures refuse submission or fail the run without
+running locally. Acquisition
+still reserves spend atomically; a cap reached after submission fails that run
+instead of moving it to the local queue.
 
 #### Leases, cleanup and spend
 

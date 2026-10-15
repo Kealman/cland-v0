@@ -647,6 +647,7 @@ export type SuiteStatus = {
 
 /** Milliseconds throughout. Null means there is no duration evidence yet. ETA is time until admission. */
 export type VerificationWaiter = {
+  waitingFor?: 'remote';
   occasion?: VerifyOccasion;
   kind?: 'run' | 'hand run';
   executor?: 'local' | 'droplet';

@@ -23,6 +23,10 @@ import type { Executor, Released, RunRef } from '../executor.ts';
 const exec = promisify(execFile);
 type PrepareJob = { state: 'running' | 'done' | 'failed'; started: string; finished?: string; step: string; key?: PrepareKey; result?: Prepared; error?: string };
 
+export class RemoteBudgetFull extends Error {
+  constructor() { super('remote budget full'); }
+}
+
 /** Owns the project's durable droplet lifecycle, independently of suite delivery. */
 export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | 'start' | 'status' | 'log' | 'cancel' | 'release'> {
   readonly root: string;
@@ -51,7 +55,7 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
       try { lock = await acquireLockAsync(path, undefined, deadline, 'UTC'); }
       catch (error) { if (!(error instanceof HubLocked) || Date.now() >= deadline) throw error; await pause(25); continue; }
       try {
-        if ((await readLeases(this.root)).filter(l => l.state !== 'released').length >= budget) throw new Error('remote budget full');
+        if ((await readLeases(this.root)).filter(l => l.state !== 'released').length >= budget) throw new RemoteBudgetFull();
         await this.#save(lease);
         return;
       } finally { await lock.release(); }
@@ -89,6 +93,19 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
     await reserveShardSpend(this.root, runs, size, selected.price_hourly, testTiming('CLAND_TEST_EXECUTOR_LIFETIME_MS', config.verification.lifetimeMs, this.#env), config.verification.dailySpendUsd, this.#env);
   }
   async releaseShardReservations(runs: string[]): Promise<void> { await releaseShardSpend(this.root, runs, this.#env); }
+
+  /** Submission check only; acquire still reserves atomically against other hubs. */
+  async checkSpend(overrideSize?: string): Promise<void> {
+    if (!this.#env.DIGITALOCEAN_TOKEN) throw new Error('DIGITALOCEAN_TOKEN is required');
+    const config = await this.#config();
+    const size = overrideSize ?? config.verification.droplet.size;
+    const selected = (await new DigitalOceanApi(this.#env).sizes()).find(s => s.slug === size && s.available);
+    if (!selected || !Number.isFinite(selected.price_hourly) || selected.price_hourly < 0) throw new Error(`droplet size ${size} is unavailable or has no valid price`);
+    const lifetime = testTiming('CLAND_TEST_EXECUTOR_LIFETIME_MS', config.verification.lifetimeMs, this.#env);
+    const reservation = Math.max(60000, lifetime) / 3600000 * selected.price_hourly;
+    const { spent, reserved, cap } = await inspectSpend(config.verification.dailySpendUsd, this.#env);
+    if (spent + reserved + reservation > cap) throw new Error(`daily spend cap $${cap} reached`);
+  }
 
   async acquire(run: Pick<RunRef, 'id' | 'size'>, deadline: string, demo?: DropletLease['demo']): Promise<DropletLease> {
     const runDeadline = Date.parse(deadline);

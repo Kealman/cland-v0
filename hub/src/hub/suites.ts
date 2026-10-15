@@ -12,7 +12,7 @@ import type { VerifyOccasion, SuiteStatus, VerificationQueue, VerificationHolder
 import type { LogFn } from '../log.ts';
 import type { Store } from './store.ts';
 import { LocalExecutor } from '../executor/local.ts';
-import { DropletExecutor } from '../executor/droplet/droplet.ts';
+import { DropletExecutor, RemoteBudgetFull } from '../executor/droplet/droplet.ts';
 import { readLeases, readLease, leaseDir, type DropletLease } from '../executor/droplet/lease.ts';
 import { machineEnv } from '../executor/droplet/machine.ts';
 import { testTiming } from '../executor/droplet/watchdog.ts';
@@ -25,7 +25,7 @@ export type SuiteActor = { name: string; sessionId: string; shell: true };
 export type SuiteJob = {
   occasion?: VerifyOccasion; shards?: SuiteJob[]; parentRun?: string; shardName?: string; shardingSkipped?: string; shardingSkipLogged?: boolean; groupMerged?: boolean;
   workers?: number; fallbackWorkers?: number; size?: string;
-  executor: ExecutorKind; requestedExecutor?: ExecutorKind; fallback?: string; fallbackLogged?: boolean; remoteAcquireAttempted?: boolean; timedOut?: boolean; platform?: Platform; lease?: Lease; remoteLogStart?: number; nextPoll?: number;
+  executor: ExecutorKind; requestedExecutor?: ExecutorKind; requireRemote?: boolean; fallback?: string; fallbackLogged?: boolean; remoteAcquireAttempted?: boolean; timedOut?: boolean; platform?: Platform; lease?: Lease; remoteLogStart?: number; nextPoll?: number;
   machine?: { name?: string; size?: string; region?: string; lifetimeMs: number | null; costUsd: number | null };
   id: string; mode: string; cwd: string; topic: string; to: string[]; actor: SuiteActor | null;
   head: string; branch: string; log: string; result: string; gate: string;
@@ -249,7 +249,7 @@ export class Suites {
     // Recheck after I/O: concurrent submissions cannot both reserve a session.
     if (this.#jobs.some(job => this.#active(job) && (job.actor?.sessionId ?? 'human') === identity)) throw new Error('this session already has a suite queued or running');
     const fallbackWorkers = input.workers ?? (await suiteLimits(input.cwd, 'local', this.#env)).workers;
-    const job: SuiteJob = { ...input, workers, fallbackWorkers, executor, requestedExecutor: executor, integrated: input.integrated === true && branch === 'dev', queued: new Date().toISOString(), priority: input.priority ?? Number.MAX_SAFE_INTEGER, state: 'queued', locks: this.#options.locks ?? ['/tmp/cland-suite.lock', '/tmp/cland-suite-nvim.lock'], selection, tree, id, head, branch, log: join(dir, 'suite.log'), result: join(dir, 'result.json'), gate: join(dir, 'ready'), pid: null, started: null, outcome: null, artifact: null, reported: false, error: null };
+    const job: SuiteJob = { ...input, workers, fallbackWorkers, executor, requestedExecutor: executor, requireRemote: input.executor === 'droplet', integrated: input.integrated === true && branch === 'dev', queued: new Date().toISOString(), priority: input.priority ?? Number.MAX_SAFE_INTEGER, state: 'queued', locks: this.#options.locks ?? ['/tmp/cland-suite.lock', '/tmp/cland-suite-nvim.lock'], selection, tree, id, head, branch, log: join(dir, 'suite.log'), result: join(dir, 'result.json'), gate: join(dir, 'ready'), pid: null, started: null, outcome: null, artifact: null, reported: false, error: null };
     // Persist the complete request before acknowledging it. No waiting worker exists.
     await writeFile(job.log, `Suite ${id} · ${input.mode}\n${describeSelection(selection)}\nWorktree ${input.cwd}\nBranch ${branch}\nHead ${head}\nWorkers ${workers}${input.size ? ` · size ${input.size}` : ''}\nQueued ${job.queued}\n`, { mode: 0o600 });
     if (cached) {
@@ -264,6 +264,10 @@ export class Suites {
         job.outcome = { code: 0, cause: 'cached' }; job.state = 'finished';
         await writeFile(job.log, `Cached candidate ${tree}\nOriginal run ${cached.id} · head ${cached.head}\nRequested head ${head}\n\n${originalLog}`, { mode: 0o600 });
       }
+    }
+    if (!job.cached && job.requireRemote) {
+      if (!tree) throw new Error('dirty worktree cannot be bundled for droplet');
+      await this.#droplet.checkSpend(input.size);
     }
     if (head !== 'unknown' && await git(['rev-parse', 'HEAD']) !== head) throw new Error('head changed during submission; submit verification again');
     authorize();
@@ -343,7 +347,16 @@ export class Suites {
             if (job.remoteAcquireAttempted) { this.#fallback(job, 'previous droplet acquisition was interrupted'); return; }
             job.remoteAcquireAttempted = true; this.#save(job);
             try { job.lease = await this.#droplet.acquire(run, new Date(Date.now() + (this.#options.lifetimeMs ?? 6600000)).toISOString()); }
-            catch (error) { if (job.cancelled) throw error; this.#fallback(job, error instanceof Error ? error.message : 'provider unavailable'); return; }
+            catch (error) {
+              if (job.cancelled) throw error;
+              if (job.requireRemote && !job.parentRun && error instanceof RemoteBudgetFull) {
+                job.state = 'queued';
+                delete job.admittedAt; delete job.remoteAcquireAttempted;
+                this.#save(job);
+                return;
+              }
+              this.#fallback(job, error instanceof Error ? error.message : 'provider unavailable'); return;
+            }
           }
           job.remoteLogStart ??= (await stat(job.log)).size;
           this.#save(job);
@@ -368,7 +381,7 @@ export class Suites {
     } catch (error) {
       // Failed acquisition can leave an unconfirmed provider resource. Retain its
       // durable lease so group completion waits for confirmed release as well.
-      if (job.parentRun && !job.lease) {
+      if ((job.parentRun || job.requireRemote) && !job.lease) {
         const lease = (await readLeases(this.#root)).find(lease => lease.run === job.id);
         if (lease) job.lease = lease;
       }
@@ -473,7 +486,7 @@ export class Suites {
     return true;
   }
   #fallback(job: SuiteJob, cause: string): void {
-    if (job.parentRun) throw new Error(cause);
+    if (job.parentRun || job.requireRemote) throw new Error(cause);
     job.executor = 'local'; job.workers = job.fallbackWorkers ?? job.workers ?? 4; job.fallback = cause; job.state = 'queued';
     delete job.admittedAt; delete job.lease;
     this.#save(job);
@@ -542,6 +555,9 @@ export class Suites {
       if (this.#closed) return;
       const job = 'actor' in next ? next : null;
       if (job && (job.state !== 'queued' || job.outcome)) continue;
+      // Preparation and unconfirmed cleanup can occupy durable slots without a
+      // running suite. Explicit remote requests wait for those releases too.
+      if (job?.requireRemote && (await readLeases(this.#root)).filter(lease => lease.state !== 'released').length >= this.#remoteBudget) continue;
       if (job?.executor === 'droplet' && remoteActive < this.#remoteBudget && job.occasion && !job.shardingSkipped) await this.#planShards(job, this.#remoteBudget - remoteActive);
       if (job && (job.state !== 'queued' || job.outcome)) continue;
       if (job?.executor === 'droplet' && remoteActive < this.#remoteBudget) {
@@ -550,6 +566,7 @@ export class Suites {
         this.#launchRemote(job);
         continue;
       }
+      if (job?.requireRemote) continue;
       if (localActive >= this.#budget) continue;
       localOccupied ??= await this.#local.occupied();
       if (localOccupied) continue;
@@ -731,10 +748,10 @@ export class Suites {
         const effective = job?.executor ?? 'local';
         const remoteIndex = remoteEtas.reduce<number>((best, eta, index) => best < 0 || eta !== null && (remoteEtas[best] === null || eta < remoteEtas[best]!) ? index : best, -1);
         const remoteEta = remoteEtas[remoteIndex] ?? null;
-        const useRemote = effective === 'droplet' && (localEta === null || remoteEta !== null && remoteEta <= localEta);
+        const useRemote = effective === 'droplet' && (job?.requireRemote || localEta === null || remoteEta !== null && remoteEta <= localEta);
         const etaMs = useRemote ? remoteEta : localEta;
         const expectedRunMs = estimate(mode, useRemote ? 'droplet' : 'local');
-        const waiter = { ...(job?.occasion ? { occasion: job.occasion } : {}), kind: job ? 'run' as const : 'hand run' as const, executor, id: j.id, session: job?.actor?.name ?? 'human', item: job?.item ?? null, mode, worktree: j.cwd, position: i + 1, queuedAt: j.queued ?? null, waitMs: elapsed(j.queued, now) ?? 0, etaMs, expectedRunMs };
+        const waiter = { ...(job?.requireRemote ? { waitingFor: 'remote' as const } : {}), ...(job?.occasion ? { occasion: job.occasion } : {}), kind: job ? 'run' as const : 'hand run' as const, executor, id: j.id, session: job?.actor?.name ?? 'human', item: job?.item ?? null, mode, worktree: j.cwd, position: i + 1, queuedAt: j.queued ?? null, waitMs: elapsed(j.queued, now) ?? 0, etaMs, expectedRunMs };
         const nextEta = etaMs === null || expectedRunMs === null ? null : etaMs + expectedRunMs;
         if (useRemote) remoteEtas[remoteIndex] = nextEta;
         else localEta = nextEta;

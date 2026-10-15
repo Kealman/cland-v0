@@ -5,7 +5,7 @@ import { promisify } from 'node:util';
 import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fixture } from './remote-fixture.ts';
-import { cland, clandWithEnv, connectUi, eventually, spawnSpoke, tempProject } from './harness.ts';
+import { cland, clandWithEnv, connectUi, eventually, projectHub, spawnSpoke, tempProject } from './harness.ts';
 import { Suites, type SuiteJob } from '../src/hub/suites.ts';
 import { Store } from '../src/hub/store.ts';
 import { LocalExecutor } from '../src/executor/local.ts';
@@ -75,14 +75,15 @@ async function caller(t: TestContext, f: Fixture, name: string) {
   const item = JSON.parse((await cland(f.root, 'task', 'create', '--size', 'M', name, '--assignee', name, '--json')).stdout).item.id as string;
   const topic = ((await f.ui.request({ type: 'topic.create', item, title: name })).value as { topic: { id: string } }).topic.id;
   const actor = { CLAND_SESSION_NAME: name, CLAND_SESSION_ID: `budget-${name}` };
-  const launch = async (executor: 'local' | 'droplet' = 'droplet') => {
-    const r = await clandWithEnv(cwd, { ...actor, CLAND_HUB_FILE: join(f.root, '.cland/hub.json') }, 'verify', '--fresh', '--executor', executor, '--report', topic, '--to', name, '--json');
+  const submit = (executor?: 'local' | 'droplet') => clandWithEnv(cwd, { ...actor, CLAND_HUB_FILE: join(f.root, '.cland/hub.json') }, 'verify', '--fresh', ...(executor ? ['--executor', executor] : []), '--report', topic, '--to', name, '--json');
+  const launch = async (executor?: 'local' | 'droplet') => {
+    const r = await submit(executor);
     assert.equal(r.code, 0, r.stderr);
     const job = JSON.parse(r.stdout) as { id: string; pid: number | null };
     if (job.pid) ownProcess(t, job.pid);
     return job;
   };
-  return { cwd, topic, launch };
+  return { cwd, topic, launch, submit };
 }
 const queue = async (f: Fixture) => (await f.ui.request({ type: 'suite.queue' })).value as VerificationQueue;
 async function started(cwd: string) {
@@ -94,6 +95,53 @@ async function finished(f: Fixture, topic: string, id: string) {
     return history.messages.find(m => m.id === `suite:${id}`);
   }, 20000);
 }
+
+test('explicit droplet waits for remote capacity while later local requests proceed', async t => {
+  const f = await fixture(t, { hub: projectHub, test: barrier, config: 'remote_budget=1\nlifetime="15m"\nrun_timeout="5m"' });
+  const first = await caller(t, f, 'first');
+  const waiting = await caller(t, f, 'waiting');
+  const local = await caller(t, f, 'local');
+  const a = await first.launch('droplet');
+  const machine = await f.remote(a.id); await started(join(machine.home, 'cland'));
+  const b = await waiting.launch('droplet');
+  const q = await queue(f);
+  assert.equal(q.holder, null, 'explicit droplet must leave the free local slot alone');
+  assert.deepEqual(q.waiters.map(w => [w.id, w.executor, w.position]), [[b.id, 'droplet', 1]]);
+  const text = (await cland(f.root, 'verify', 'queue')).stdout;
+  assert.match(text, /1\. waiting .* · droplet .*waiting for remote/);
+  const c = await local.launch('local'); await started(local.cwd);
+  assert.equal((await queue(f)).holder?.id, c.id);
+  assert.equal(f.api.droplets.length, 1, 'waiting request must not create over budget');
+  await writeFile(join(machine.home, 'cland/.cland/finish'), 'yes');
+  await eventually('first remote candidate exited', async () => (await readFile(join(machine.run, 'done'), 'utf8').catch(() => '')).trim() || undefined, 20000);
+  await finished(f, first.topic, a.id);
+  const next = await f.remote(b.id); await started(join(next.home, 'cland'));
+  assert.equal((await queue(f)).holder?.id, c.id, 'remote waiter runs beside the occupied local slot');
+  await writeFile(join(next.home, 'cland/.cland/finish'), 'yes');
+  await eventually('waiting remote candidate exited', async () => (await readFile(join(next.run, 'done'), 'utf8').catch(() => '')).trim() || undefined, 20000);
+  assert.match((await finished(f, waiting.topic, b.id)).text, /Executor droplet/);
+  await writeFile(join(local.cwd, '.cland/finish'), 'yes');
+  await finished(f, local.topic, c.id);
+  assert.deepEqual(f.api.droplets, []);
+});
+
+for (const budget of [1, 2]) test(`explicit droplet refuses an uncovered reservation with remote budget ${budget}`, async t => {
+  const f = await fixture(t, { hub: projectHub, test: barrier, config: `remote_budget=${budget}\nlifetime="15m"\nrun_timeout="5m"\ndaily_spend_usd=0.1` });
+  const first = await caller(t, f, 'first');
+  const next = await caller(t, f, 'next');
+  const a = await first.launch('droplet');
+  const machine = await f.remote(a.id); await started(join(machine.home, 'cland'));
+  const refused = await next.submit('droplet');
+  assert.notEqual(refused.code, 0, 'unaffordable explicit request must refuse at submission');
+  assert.match(refused.stderr, /daily spend cap \$0\.1/);
+  const q = await queue(f);
+  assert.equal(q.holder, null);
+  assert.deepEqual(q.waiters, [], 'cap refusal must not leave a remote waiter');
+  assert.equal(f.api.droplets.length, 1);
+  await writeFile(join(machine.home, 'cland/.cland/finish'), 'yes');
+  await eventually('funded remote candidate exited', async () => (await readFile(join(machine.run, 'done'), 'utf8').catch(() => '')).trim() || undefined, 20000);
+  await finished(f, first.topic, a.id);
+});
 
 test('remote_budget defaults to four, validates positive integers and survives rendering', () => {
   assert.equal(parseConfig('', 'test').verification.remoteBudget, 4);

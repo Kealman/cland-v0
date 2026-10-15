@@ -103,7 +103,12 @@ When droplets are unavailable (missing token, refused create, no prepared snapsh
 unavailable size, daily cap or dirty candidate), the hub posts a warning:
 `verify <id>: droplet unavailable (<cause>); running locally`. The requested run
 still happens, through the local queue; wait for its result rather than resubmitting
-or handling a droplet yourself. This also applies to `--executor droplet`.
+or handling a droplet yourself. This fallback applies when the executor flag is omitted.
+An explicit `--executor droplet` never falls back: it waits for remote capacity,
+refuses submission if the daily spend cap cannot cover its reservation (naming
+the cap), and reports other remote acquisition failures without running locally.
+Acquisition rechecks and reserves spend atomically, so a cap reached after
+submission fails that run rather than moving it to the local queue.
 Only the hub creates, lists and deletes droplets; `cland executor status|prepare|reap`
 belongs to the human and Coordinator.
 
@@ -115,15 +120,19 @@ The hub persists the request, exact head, item, diff selection, enqueue time and
 droplet runs beside it (a positive integer, 4 by default; this project's D27 build value is 2). The scheduler walks the
 ordered queue past waiters whose slot is busy. Remote acquisition reserves a slot
 through confirmed release and each acquire checks the shared daily spend cap.
-When remote slots are full and the local slot is free, a droplet request falls back
+When remote slots are full and the local slot is free, a default droplet request falls back
 locally with a warn notice naming `remote budget <n>/<n> full` and a
 `verification-executor-fallback` record with cause `remote budget full`.
+An explicit droplet request remains a remote waiter, including when preparation
+or unconfirmed cleanup holds the remote budget; later local requests can proceed.
 `--executor local` and human hand runs use the local slot behind compatibility leases. The queue and its order survive restart; a known dead requester's queued run becomes one hub cancellation note to its original recipients. A disconnected spoke alone is not evidence of death.
 
 `cland verify queue [--json]` prints `local: <holder or none>`, then one
 `remote <active>/<budget>: <session> · <item> · droplet <name> <size> <region> ·
 since <t> · ETA <d>` line per remote run, then ordered waiters with their requested
-executor, elapsed wait and admission ETA. Acquiring machines are labelled
+executor, elapsed wait and admission ETA. Explicit remote waiters are labelled
+`waiting for remote` with their queue position; their ETA uses remote capacity only.
+JSON identifies them with `waitingFor: "remote"`. Acquiring machines are labelled
 `acquiring` until their lease is available. JSON keeps `holder` as the local
 holder and adds `remote`, `remoteBudget` and each waiter's `executor`. The sessions panel follows hub queue events live.
 `hub status --json` includes per-run wait/run timings and median/p90 over the last
