@@ -3,7 +3,7 @@ id: T-393
 kind: task
 title: "In-process hub by default: tests run against a hub served in the test process over its real socket, a spawned hub stays only for lifecycle tests, and the top 20 files move first"
 state: open
-status: backlog
+status: in progress
 size: L
 labels:
   - v0.1.3
@@ -15,9 +15,9 @@ blocked_by:
   - T-390
   - T-392
 topic: null
-branch: null
+branch: t/T-393-in-process-hub-by-default-tests-run
 created: 2026-10-14T12:28:19.095Z
-updated: 2026-10-14T12:28:20.102Z
+updated: 2026-10-15T07:07:08.253Z
 ---
 
 ## Summary

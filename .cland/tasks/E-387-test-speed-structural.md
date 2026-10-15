@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-14T12:28:09.615Z
-updated: 2026-10-14T12:28:09.615Z
+updated: 2026-10-15T07:06:57.203Z
 ---
 
 ## Goal
@@ -97,3 +97,23 @@ On an empty verify queue, QA runs one ordinary integrated full run on `dev` on o
 - Prior epic: "Test speed: quick wins" (R-228). E-271 (Remote executors), T-347 (the remote budget).
 - Code: `hub/src/hub/daemon.ts` (`serveProject`), `hub/test/harness.ts` (`startHub`, `startDaemon`, `spawnSpoke`), `hub/src/suite-selection.ts`, `hub/src/suite-shards.ts`, `hub/test/run-suite.ts`, `hub/src/hub/suites.ts`, `hub/src/executor/`.
 - ADRs: `docs/adr/0003-hub-is-a-per-project-daemon-from-the-bcas-core.md`, `docs/adr/0002-tracker-files-are-the-source-of-truth.md`.
+
+## Plan
+
+```yaml
+stages:
+  - name: the in-process hub and sharded close runs
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-393
+      - - T-395
+  - name: coverage selection and the workers
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-394
+      - - T-396
+```
