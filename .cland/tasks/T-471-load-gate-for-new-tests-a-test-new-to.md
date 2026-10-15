@@ -3,7 +3,7 @@ id: T-471
 kind: task
 title: "Load gate for new tests: a test new to the manifest runs five times under load in its task's verify before it can reach dev"
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - v0.1.3
@@ -14,7 +14,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-15T09:13:16.338Z
-updated: 2026-10-15T09:13:16.338Z
+updated: 2026-10-15T19:05:27.758Z
 ---
 
 ## Summary

@@ -3,7 +3,7 @@ id: T-469
 kind: task
 title: "Every stage-close cover carries a Linux proof: the sharded droplet run plus the Mac run, both required by the stage gate"
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - v0.1.3
@@ -14,7 +14,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-15T09:13:16.034Z
-updated: 2026-10-15T09:13:16.034Z
+updated: 2026-10-15T19:05:25.918Z
 ---
 
 ## Summary

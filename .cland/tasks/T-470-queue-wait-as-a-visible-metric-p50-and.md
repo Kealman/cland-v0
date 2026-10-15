@@ -3,7 +3,7 @@ id: T-470
 kind: task
 title: "Queue wait as a visible metric: p50 and p90 in verify queue and hub status, with a v0.1.3 target of p90 under 20 minutes"
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - v0.1.3
@@ -14,7 +14,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-15T09:13:16.188Z
-updated: 2026-10-15T09:13:16.188Z
+updated: 2026-10-15T19:05:26.624Z
 ---
 
 ## Summary

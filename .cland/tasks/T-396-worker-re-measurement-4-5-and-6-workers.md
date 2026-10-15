@@ -2,8 +2,8 @@
 id: T-396
 kind: task
 title: "Worker re-measurement: 4, 5 and 6 workers locally and 6 and 8 on a c-16, after the inspection diet and the in-process hub, and the defaults set from the numbers"
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 5
 labels:
@@ -18,7 +18,8 @@ blocked_by:
 topic: topic-307
 branch: t/T-396-worker-re-measurement-4-5-and-6-workers
 created: 2026-10-14T12:28:19.638Z
-updated: 2026-10-15T19:05:02.768Z
+updated: 2026-10-15T19:05:24.247Z
+closed: 2026-10-15T19:05:24.247Z
 ---
 
 ## Summary
@@ -41,28 +42,28 @@ The machine shard runs at four workers on a Mac with four performance and six ef
 - [x] C1. `[verification] workers` and `[verification.droplet] workers` set the machine shard's worker count, default 4, proven by a test reading a fixture config.
   - verified: rev-30 [reviewer] · run rev-20261015-396-final · 2026-10-15T18:22:22.668Z · commit 3da23f155e8b0bec3ea65dc46dc4ff2e7fc8b4cd
   - verified: rev-30 [reviewer] · run rev-20261015-396-integration-final · 2026-10-15T18:51:43.086Z · commit f4bf265e3940e288c8ccaa2bf3d50e55c4c09974
-  - done: impl-396 · 2026-10-15T18:52:10.984Z
   - verified: rev-30 [reviewer] · run rev-20261015-396-coverage-integration-final · 2026-10-15T19:04:59.496Z · commit a2ab5862b071f14b12f5c7ea2aa703c7a8547765
+  - done: impl-396 · 2026-10-15T19:05:18.105Z
 - [x] C2. Measured (Coordinator amendment 2026-10-15 16:45Z): pre-merge, fixtures prove the --workers/--size overrides are recorded and shown in the result header and that the measurement procedure is written on the item; the real table (workers, executor, wall, hub phase, peak load, failures that pass alone, droplet cost) for local 4/5/6 once each (repeat only within a 10% margin) and c-16 at 4/6/8 is run by the Coordinator after merge at E-387's stage-2 close and posted on the item.
   - verified: rev-30 [reviewer] · run rev-20261015-396-final · 2026-10-15T18:22:22.668Z · commit 3da23f155e8b0bec3ea65dc46dc4ff2e7fc8b4cd
   - verified: rev-30 [reviewer] · run rev-20261015-396-integration-final · 2026-10-15T18:51:43.086Z · commit f4bf265e3940e288c8ccaa2bf3d50e55c4c09974
-  - done: impl-396 · 2026-10-15T18:52:11.721Z
   - verified: rev-30 [reviewer] · run rev-20261015-396-coverage-integration-final · 2026-10-15T19:04:59.496Z · commit a2ab5862b071f14b12f5c7ea2aa703c7a8547765
+  - done: impl-396 · 2026-10-15T19:05:19.354Z
 - [x] C3. Measured (Coordinator amendment 2026-10-15 16:45Z): defaults stay 4 at merge; after the stage-2 close measurements, defaults follow the rule above (change only for an error-free count at least 10% faster across runs) in a small follow-up config commit, and the item names the deciding numbers.
   - verified: rev-30 [reviewer] · run rev-20261015-396-final · 2026-10-15T18:22:22.668Z · commit 3da23f155e8b0bec3ea65dc46dc4ff2e7fc8b4cd
   - verified: rev-30 [reviewer] · run rev-20261015-396-integration-final · 2026-10-15T18:51:43.086Z · commit f4bf265e3940e288c8ccaa2bf3d50e55c4c09974
-  - done: impl-396 · 2026-10-15T18:52:12.893Z
   - verified: rev-30 [reviewer] · run rev-20261015-396-coverage-integration-final · 2026-10-15T19:04:59.497Z · commit a2ab5862b071f14b12f5c7ea2aa703c7a8547765
+  - done: impl-396 · 2026-10-15T19:05:20.363Z
 - [x] C4. Droplet measurement runs stay within the day's cap ($10 since D33 and ask 35663eef) with the size price reserved, and create, destroy and cost are posted with the cland tag listing empty afterwards; judged at E-387's stage-2 close.
   - verified: rev-30 [reviewer] · run rev-20261015-396-final · 2026-10-15T18:22:22.668Z · commit 3da23f155e8b0bec3ea65dc46dc4ff2e7fc8b4cd
   - verified: rev-30 [reviewer] · run rev-20261015-396-integration-final · 2026-10-15T18:51:43.086Z · commit f4bf265e3940e288c8ccaa2bf3d50e55c4c09974
-  - done: impl-396 · 2026-10-15T18:52:13.879Z
   - verified: rev-30 [reviewer] · run rev-20261015-396-coverage-integration-final · 2026-10-15T19:04:59.497Z · commit a2ab5862b071f14b12f5c7ea2aa703c7a8547765
+  - done: impl-396 · 2026-10-15T19:05:21.356Z
 - [x] C5. `hub/README.md` (Tests) documents the worker settings and the measured trade-off.
   - verified: rev-30 [reviewer] · run rev-20261015-396-final · 2026-10-15T18:22:22.668Z · commit 3da23f155e8b0bec3ea65dc46dc4ff2e7fc8b4cd
   - verified: rev-30 [reviewer] · run rev-20261015-396-integration-final · 2026-10-15T18:51:43.086Z · commit f4bf265e3940e288c8ccaa2bf3d50e55c4c09974
-  - done: impl-396 · 2026-10-15T18:52:15.660Z
   - verified: rev-30 [reviewer] · run rev-20261015-396-coverage-integration-final · 2026-10-15T19:04:59.497Z · commit a2ab5862b071f14b12f5c7ea2aa703c7a8547765
+  - done: impl-396 · 2026-10-15T19:05:22.349Z
 
 ## Comments
 
@@ -238,3 +239,7 @@ C1–C5 reverified in the already authorized PRE-MERGE scope: worker config/prec
 No Reviewer tests, edits, merges or provider calls.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-10-15T19:05:24.247Z
+
+Merged 884406ddd11c84ed5ac748775d816af2a2e9ad93 onto dev.
