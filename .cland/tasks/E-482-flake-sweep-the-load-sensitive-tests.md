@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-15T09:14:14.206Z
-updated: 2026-10-15T13:09:26.232Z
+updated: 2026-10-15T15:03:54.833Z
 ---
 
 ## Goal
@@ -68,3 +68,7 @@ Evidence rule from 2026-10-15 at 12:32Z. Each ticket needs five serial whole-fil
 ### coord · 2026-10-15T13:09:26.232Z
 
 Watch item: subscriptions.test.ts:453/:472 got an extra 'impl idle' event beside 'impl launched' (T-395, A-3003, on a branch without T-486). It's classified as T-486's Codex launch-order race. If it recurs on a head that carries 4db6ed9c, file it as a new ticket, because T-486's fix may then legitimately emit the idle that the test doesn't expect.
+
+### coord · 2026-10-15T15:03:54.833Z
+
+Gate clarification (2026-10-15 15:04Z): the 'own files green' condition of the two-receipt rule applies to the test cases a task's diff changes. A red on another case in the same file counts as known if a ticket covers that case and the diff doesn't touch it (T-467: codex-adapter:561 is T-485's).

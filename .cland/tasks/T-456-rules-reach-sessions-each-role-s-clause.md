@@ -3,7 +3,7 @@ id: T-456
 kind: task
 title: "Rules reach sessions: each role's clause and launch brief carry its active rules, rule.add/edit/retire/list tools write them with a human-message origin, and a changed rule arrives as a rule event at the next turn"
 state: open
-status: review
+status: ready
 size: L
 criterion_seq: 8
 labels:
@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-295
 branch: t/T-456-rules-reach-sessions-each-role-s-clause
 created: 2026-10-15T07:15:15.550Z
-updated: 2026-10-15T14:34:13.442Z
+updated: 2026-10-15T15:01:39.740Z
 ---
 
 ## Summary
@@ -76,32 +76,40 @@ E-423 "Rules and rhythm" (R-294), tracer bullet 4 of 7; spec `docs/spec/v0.1.3.m
   - verified: rev-31 [reviewer] · run rev-20261015-456-source-2 · 2026-10-15T13:41:07.371Z · commit a269ce0c80d7c6fc851e6ec4a421e4625117ee2a
   - verified: rev-31 [reviewer] · run rev-20261015-456-source-3 · 2026-10-15T14:15:41.958Z · commit a4a899c64dcb8629e08ce6717fde30270ad8509a
   - verified: rev-31 [reviewer] · run rev-20261015-456-source-4 · 2026-10-15T14:34:13.441Z · commit ab1037c0ec32355cd82e7236eeda458c2a916dab
+  - verified: rev-31 [reviewer] · run rev-20261015-456-final · 2026-10-15T15:01:37.522Z · commit ab1037c0ec32355cd82e7236eeda458c2a916dab
 - [x] C2. A rule scoped to `implementer`, added from the shell, reaches a running fake Implementer at its next turn as a `rule` event with its full text, and does not reach the fake Coordinator; an edit and a retirement reach the Implementer the same way.
   - done: impl-456 · 2026-10-15T13:40:28.405Z
+  - verified: rev-31 [reviewer] · run rev-20261015-456-final · 2026-10-15T15:01:37.522Z · commit ab1037c0ec32355cd82e7236eeda458c2a916dab
 - [x] C3. After a reconnect, the Implementer's re-sent clause carries the current rules, including one added while it was disconnected.
   - done: impl-456 · 2026-10-15T13:36:01.653Z
+  - verified: rev-31 [reviewer] · run rev-20261015-456-final · 2026-10-15T15:01:37.522Z · commit ab1037c0ec32355cd82e7236eeda458c2a916dab
 - [x] C4. A Coordinator's `rule.add` naming the human's message records that origin, while one naming an agent's message or no message, and an Implementer's `rule.add`, are refused with `forbidden` and a reason.
   - done: impl-456 · 2026-10-15T13:36:02.217Z
   - verified: rev-31 [reviewer] · run rev-20261015-456-source-2 · 2026-10-15T13:41:07.371Z · commit a269ce0c80d7c6fc851e6ec4a421e4625117ee2a
   - verified: rev-31 [reviewer] · run rev-20261015-456-source-3 · 2026-10-15T14:15:41.958Z · commit a4a899c64dcb8629e08ce6717fde30270ad8509a
   - verified: rev-31 [reviewer] · run rev-20261015-456-source-4 · 2026-10-15T14:34:13.442Z · commit ab1037c0ec32355cd82e7236eeda458c2a916dab
+  - verified: rev-31 [reviewer] · run rev-20261015-456-final · 2026-10-15T15:01:37.522Z · commit ab1037c0ec32355cd82e7236eeda458c2a916dab
 - [x] C5. An Aide's `rule.add` records `session:<name>` as origin, and every role's `rule.list` returns the active rules, filtered by `role` when given.
   - done: impl-456 · 2026-10-15T13:36:02.773Z
   - verified: rev-31 [reviewer] · run rev-20261015-456-source-2 · 2026-10-15T13:41:07.371Z · commit a269ce0c80d7c6fc851e6ec4a421e4625117ee2a
   - verified: rev-31 [reviewer] · run rev-20261015-456-source-3 · 2026-10-15T14:15:41.958Z · commit a4a899c64dcb8629e08ce6717fde30270ad8509a
   - verified: rev-31 [reviewer] · run rev-20261015-456-source-4 · 2026-10-15T14:34:13.442Z · commit ab1037c0ec32355cd82e7236eeda458c2a916dab
+  - verified: rev-31 [reviewer] · run rev-20261015-456-final · 2026-10-15T15:01:37.522Z · commit ab1037c0ec32355cd82e7236eeda458c2a916dab
 - [x] C6. A `rule` event never changes the inbox count or shows as a needs-you, never steers a running turn, and shows as a row in the events view, reachable from the palette's kind filter while keys `1`–`9` keep their kinds.
   - done: impl-456 · 2026-10-15T13:36:03.339Z
+  - verified: rev-31 [reviewer] · run rev-20261015-456-final · 2026-10-15T15:01:37.522Z · commit ab1037c0ec32355cd82e7236eeda458c2a916dab
 - [x] C7. The Coordinator's and the Aide's clauses, in `default-roles.ts` and the live `.cland/roles.toml`, say to record a stated rule with `rule.add` and never only in a memory, and that a memory repeating a rule names its number.
   - done: impl-456 · 2026-10-15T13:36:03.904Z
   - verified: rev-31 [reviewer] · run rev-20261015-456-source-2 · 2026-10-15T13:41:07.371Z · commit a269ce0c80d7c6fc851e6ec4a421e4625117ee2a
   - verified: rev-31 [reviewer] · run rev-20261015-456-source-3 · 2026-10-15T14:15:41.958Z · commit a4a899c64dcb8629e08ce6717fde30270ad8509a
   - verified: rev-31 [reviewer] · run rev-20261015-456-source-4 · 2026-10-15T14:34:13.442Z · commit ab1037c0ec32355cd82e7236eeda458c2a916dab
+  - verified: rev-31 [reviewer] · run rev-20261015-456-final · 2026-10-15T15:01:37.522Z · commit ab1037c0ec32355cd82e7236eeda458c2a916dab
 - [x] C8. `hub/README.md` describes rules in clauses and briefs, the `rule.*` tools and the origin rule, and the `rule` event, and `nvim/README.md` lists the `rule` kind in the events view's palette filter.
   - done: impl-456 · 2026-10-15T13:36:04.689Z
   - verified: rev-31 [reviewer] · run rev-20261015-456-source-2 · 2026-10-15T13:41:07.371Z · commit a269ce0c80d7c6fc851e6ec4a421e4625117ee2a
   - verified: rev-31 [reviewer] · run rev-20261015-456-source-3 · 2026-10-15T14:15:41.958Z · commit a4a899c64dcb8629e08ce6717fde30270ad8509a
   - verified: rev-31 [reviewer] · run rev-20261015-456-source-4 · 2026-10-15T14:34:13.442Z · commit ab1037c0ec32355cd82e7236eeda458c2a916dab
+  - verified: rev-31 [reviewer] · run rev-20261015-456-final · 2026-10-15T15:01:37.523Z · commit ab1037c0ec32355cd82e7236eeda458c2a916dab
 
 ## Comments
 
@@ -259,3 +267,59 @@ Coordinator decision a1143a4f was read in topic history: adopt the shared fix, d
 Standards: 0 findings. Spec: 0 source findings. No Reviewer tests or edits.
 
 Criteria: C1 verified, C4 verified, C5 verified, C7 verified, C8 verified.
+
+### rev-31 · 2026-10-15T14:57:04.783Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261015-456-linux-2
+commit: ab1037c0ec32355cd82e7236eeda458c2a916dab
+scope: evidence
+
+Evidence review not clear at unchanged ab1037c0ec32355cd82e7236eeda458c2a916dab.
+
+## Standards
+No new T-456 source finding; source review rev-20261015-456-source-4 remains valid.
+
+## Spec/evidence
+Medium gate blocker — hub/test/suite-close-recovery.test.ts:54: lost-machine fixture expects 'shard-1: remote machine lost' but receives a successful two-shard exit-0 report (A-3082:3992-4018). This is outside T-456's diff and originates from merged T-395. The fixture removes the fake provider machine, then releases both package barriers; a polling/order race is possible but not established by this receipt. No exact known-ticket match found. Reported Bugs/S, regression of T-395, for lead classification rather than assuming a known-flake retry.
+
+Linux gate ae7c7a40-0d49-4fd3-886b-3d63a2512ef1 / A-3082: exit 1, 1767 pass / 1 fail / 3 platform skips / 0 cancellations; full selection stops in hub, so no Neovim evidence. All seven rule-sessions cases pass, including scoped shell changes, no-steer behavior, reconnect rules, stop filtering and over-cap events. No new duration budget failure. Current branch tip matches the reviewed head.
+
+Five source criterion marks retained; C2,C3,C6 remain unverified pending accepted complete runtime evidence. Coordinator a1143a4f named a green next verify as the gate; this receipt is red. No failed implementation criterion inferred from the unrelated fixture alone. No Reviewer tests or edits.
+Standards: 0 findings. Spec/evidence: 1 medium gate blocker outside task scope.
+
+### rev-31 · 2026-10-15T15:01:37.523Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261015-456-final
+commit: ab1037c0ec32355cd82e7236eeda458c2a916dab
+scope: evidence
+
+Final review clear at unchanged ab1037c0ec32355cd82e7236eeda458c2a916dab under the Coordinator's explicitly accepted paired-receipt gate. No unresolved source findings in T-456.
+
+## Standards
+Current source review rev-20261015-456-source-4 stands. Earlier terminal-recipient, tool/grant/guard-fixture and duration-allowance findings are corrected. Shared handover regex patch matches b8ae050b exactly; no head change after its delta review.
+
+## Spec
+C1: common ordered active scoped rules/guidance suffix in clause and brief, empty-scope line and retired exclusion checked in source and rule-sessions.
+C2: shell add/edit/retire reaches the fake Codex Implementer at subsequent turns and stays outside the fake Claude Coordinator's scope; tests pass on both platforms.
+C3: current rules appear on reconnect, including disconnected edits; over-8192-byte assignment/reconnect remains complete; both cases pass.
+C4/C5: human-message Coordinator authorization, refusals, Aide session origin and role-filtered reads pass alongside source authorization/grant review.
+C6: hub no-steer/no-needs-you and per-change rows pass; local Neovim confirms rule palette filter, persistent rule subject, and unchanged numeric kinds 1–9.
+C7/C8: current default/live cache clauses and hub/Neovim docs checked in source.
+All C1–C8 verified across source and the accepted evidence.
+
+Accepted evidence:
+- A-3066 / 8c88479a-6f0d-494e-8693-0288715c2bc7: local darwin arm64 at a4a899c6, 1770 pass / 1 fail. Sole red handover.test.ts:103 is the shared dev defect corrected by b8ae050b; only that non-tracker patch separates this head from final ab1037c0. All seven rule-session cases pass.
+- A-3082 / ae7c7a40-0d49-4fd3-886b-3d63a2512ef1: Linux c-8 at exact reviewed/current ab1037c0, 1767 pass / 1 fail / 3 macOS-only skips. Sole red suite-close-recovery lost-shard assertion is classified T-502; all T-456 cases and the seven rule-session cases pass. Neither hub receipt reached Neovim.
+- A-3084: authorized npm run test:nvim -- nvim/test/*.test.ts at unchanged ab1037c0, exit 0, 389 pass / 0 fail / 0 cancelled / 0 skipped; 75.24 s, peak load 6.56. The rule palette/numeric filter case passes (line 110); existing duration notices are non-failing.
+
+Coordinator decisions 1af2b08a-a204-46c7-9672-fbd93503fad4 and correction f90d7f15-6bc0-442a-874c-4020deba330f were read directly: they accept this Mac/Linux pair despite the reds, plus this local Neovim run. Both suite receipts remain historically red; final clear uses that explicit exception, not a claim of a green full run. Linux Neovim coverage is deferred to integrated close coverage under the standing mixed-diff rule.
+
+Standards: 0 unresolved findings. Spec: 0 unresolved findings in task scope. No Reviewer tests or edits.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified.

@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-296
 branch: t/T-459-demos-on-a-droplet-cland-demo-start-exec
 created: 2026-10-15T07:15:15.838Z
-updated: 2026-10-15T14:15:35.343Z
+updated: 2026-10-15T14:52:26.765Z
 ---
 
 ## Summary
@@ -77,6 +77,7 @@ E-423 "Rules and rhythm" (R-294), tracer bullet 7 of 7; spec `docs/spec/v0.1.3.m
   - done: impl-459 · 2026-10-15T13:33:34.141Z
   - verified: rev-30 [reviewer] · run rev-20261015-459-source-2 · 2026-10-15T13:42:55.913Z · commit 05cff0dd5e3a0fd1a8fcef0c44e0668a95c2985b
   - verified: rev-30 [reviewer] · run rev-20261015-459-delta · 2026-10-15T14:15:35.343Z · commit cad57ccf47b605fcf9df8ef79ac848e37e9f9bb9
+  - verified: rev-30 [reviewer] · run rev-20261015-459-delta-2 · 2026-10-15T14:52:26.765Z · commit 3b8d0bd3f00a7fec5700fa51b104f4beb40e0b1c
 
 ## Comments
 
@@ -175,5 +176,47 @@ Spec/integration: the T-395 merge retains reserveShards/releaseShardReservations
 Prior source review rev-20261015-459-source-2 stands. C7 reverified from current README; C1–C6 await accepted new-head gate. A-3059 and requester report post-merge demo 7/7, typecheck and shard lint. git diff --check passes. Both review axes performed directly; no Reviewer tests, file edits or provider calls.
 
 Old A-3054 remains red and cannot be combined as a clean own-test receipt because its own budget errors are now fixed at a changed head. Submit a new default droplet verify after this delta verdict. Coordinator classified the unrelated T-65 PID assertion as T-485.
+
+Criteria: C7 verified.
+
+### rev-30 · 2026-10-15T14:50:32.373Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261015-459-local-fallback
+commit: cad57ccf47b605fcf9df8ef79ac848e37e9f9bb9
+scope: evidence
+
+Evidence review not clear at cad57ccf47b605fcf9df8ef79ac848e37e9f9bb9; accepted gate pending.
+
+Medium — hub/test/handover.test.ts:103: old Coordinator-clause regex fails (A-3079:3972–4035), exact shared fix b8ae050b.
+Medium — hub/test/orphan-servers.test.ts:346: second SQLite connection fails “database is locked” (A-3079:4047–4050), exact known T-499.
+Both are outside T-459's diff; no new task source defect established.
+
+Standards: six duration allowances resolve the previous hard budget failures. All seven demo tests pass, and no duration-budget diagnostic appears in A-3079.
+Spec: prior delta/source verdict stands. C7 verified; C1–C6 remain unverified pending accepted gate and full selected phases. Functional demo/recorder evidence supports the implementation, but this run stops before Neovim.
+
+e58e41d8/A-3079 matches reviewed/current head, but hub default admission fell back locally due remote 4/4 capacity. It is darwin arm64, exit 1, 1771 pass/2 fail/0 skips/0 cancelled; host typecheck passes. It is neither a green gate nor a Linux receipt for the two-Linux rule. Prior A-3054 is Linux at an older head with own budget failures and also cannot supply an accepted pair. New source changes need delta clearance before further verify. No Reviewer tests or edits.
+
+### impl-459 · 2026-10-15T14:51:52.685Z
+
+A-3079 ran locally due hub fallback: demo 7/7 and own duration budgets pass, but shared handover regex and exact T-499 SQLite lock failed before Neovim. Merged current dev including b8ae050b (and T-458), without conflicts, producing 3b8d0bd3. Targeted handover.test.ts now passes 4/4; typecheck and shard lint pass; own diff whitespace clean. No T-499 or unrelated source edit. Requesting delta review before new Linux gate evidence.
+
+### rev-30 · 2026-10-15T14:52:26.765Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-459-delta-2
+commit: 3b8d0bd3f00a7fec5700fa51b104f4beb40e0b1c
+scope: delta
+
+Delta source review clear at 3b8d0bd3f00a7fec5700fa51b104f4beb40e0b1c; no high, medium or low findings.
+
+Standards: inherited handover test uses exact shared b8ae050b regex and preserves all surrounding assertions. Requester reports handover 4/4, typecheck and shard lint; git diff --check passes.
+Spec/integration: demo manager, executor changes, demo tests, duration allowances and QA recorder/skill are unchanged from reviewed cad57ccf. Dispatcher/protocol merge adds T-458's independently reviewed workbench origin rules and rules.changed event without altering demo request authorization/lifecycle. Inherited T-458 has full Linux proof A-3068. No source finding introduced by the integration.
+
+Reviewed delta cad57ccf..3b8d0bd3 against current merged dev 4095dd11. C7 reverified from current README; C1–C6 remain pending accepted new-head gate. Earlier A-3079 is local red, not Linux evidence; A-3054 is older Linux red with task budget failures. Submit default cland verify at this exact head. Both review axes performed directly; no Reviewer tests, edits or provider calls.
 
 Criteria: C7 verified.

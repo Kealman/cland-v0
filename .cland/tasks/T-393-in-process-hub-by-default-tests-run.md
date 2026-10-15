@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-273
 branch: t/T-393-in-process-hub-by-default-tests-run
 created: 2026-10-14T12:28:19.095Z
-updated: 2026-10-15T14:35:10.505Z
+updated: 2026-10-15T15:04:46.596Z
 ---
 
 ## Summary
@@ -55,11 +55,14 @@ updated: 2026-10-15T14:35:10.505Z
 - [x] C1. `projectHub` serves a project in the test process; `cland` subprocesses, spokes and UI clients reach it over its real socket and WebSocket with no change to their code, proven by a tracer test that runs the same frames against `projectHub` and `startDaemon`.
   - done: impl-393 · 2026-10-15T08:08:37.623Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-9 · 2026-10-15T12:52:43.534Z · commit 36ecea1f6f97445efc149b47b8ba2a7e89b7c89b
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-393-13 · 2026-10-15T14:36:18.792Z · commit bedfcef31450af863322d26576f6df22033edc66
 - [x] C2. Cleanup fails a test whose in-process hub leaves handles, timers, `process` listeners or child processes, proven by a test that leaks one on purpose.
   - done: impl-393 · 2026-10-15T09:19:34.574Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-9 · 2026-10-15T12:52:43.534Z · commit 36ecea1f6f97445efc149b47b8ba2a7e89b7c89b
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-393-13 · 2026-10-15T14:36:18.792Z · commit bedfcef31450af863322d26576f6df22033edc66
 - [x] C3. `serveProject` takes its environment as an option, and two in-process hubs in one file with different adapter timings behave independently, proven by a test.
   - done: impl-393 · 2026-10-15T13:18:02.629Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-393-13 · 2026-10-15T14:36:18.793Z · commit bedfcef31450af863322d26576f6df22033edc66
 - [x] C4. The lifecycle list is posted per file; every test that still calls `startDaemon` or `cland hub start` in the 20 files is on it, and none of the others is.
   - done: impl-393 · 2026-10-15T08:08:39.537Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-2 · 2026-10-15T09:22:40.699Z · commit 519fc215a8f8b84572f079ba0b5a1b35ed8072fa
@@ -67,12 +70,16 @@ updated: 2026-10-15T14:35:10.505Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-7 · 2026-10-15T11:24:53.220Z · commit 36ecea1f6f97445efc149b47b8ba2a7e89b7c89b
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-9 · 2026-10-15T12:52:43.534Z · commit 36ecea1f6f97445efc149b47b8ba2a7e89b7c89b
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-11 · 2026-10-15T13:17:53.106Z · commit bedfcef31450af863322d26576f6df22033edc66
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-393-13 · 2026-10-15T14:36:18.793Z · commit bedfcef31450af863322d26576f6df22033edc66
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-393-14 · 2026-10-15T15:04:46.596Z · commit af02768f30705dbdedb41b63862921de74926d3f
 - [x] C5. Measured (Coordinator amendment 2026-10-15 09:03Z): the 20 files' summed whole-file time falls by at least 20%, judged after merge from E-387's stage-1 close integrated cover on the Mac against the v0.1.2 release cover A-2714 (both quiet integrated runs), per file from the runner's records; pre-merge, the available paired samples are posted without a claim, because local fallbacks invalidated every pair while remote_budget was 2.
   - done: impl-393 · 2026-10-15T09:04:06.375Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-9 · 2026-10-15T12:52:43.534Z · commit 36ecea1f6f97445efc149b47b8ba2a7e89b7c89b
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-393-13 · 2026-10-15T14:36:18.793Z · commit bedfcef31450af863322d26576f6df22033edc66
 - [x] C6. Measured (Coordinator amendment 2026-10-15 09:03Z): the migration's daemon-start delta is posted against the fresh census A-2737 (the 20 files 421 → 145, a projected 772 per run against 1047); the under-600 target moves to T-466, the next files' migration.
   - done: impl-393 · 2026-10-15T09:04:07.098Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-9 · 2026-10-15T12:52:43.535Z · commit 36ecea1f6f97445efc149b47b8ba2a7e89b7c89b
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-393-13 · 2026-10-15T14:36:18.794Z · commit bedfcef31450af863322d26576f6df22033edc66
 - [x] C7. Each refusal family and each adapter verb keeps at least one frame test, and the moved validation cases keep their asserted error codes and messages.
   - done: impl-393 · 2026-10-15T08:08:40.735Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-2 · 2026-10-15T09:22:40.699Z · commit 519fc215a8f8b84572f079ba0b5a1b35ed8072fa
@@ -80,6 +87,8 @@ updated: 2026-10-15T14:35:10.505Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-7 · 2026-10-15T11:24:53.220Z · commit 36ecea1f6f97445efc149b47b8ba2a7e89b7c89b
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-9 · 2026-10-15T12:52:43.535Z · commit 36ecea1f6f97445efc149b47b8ba2a7e89b7c89b
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-11 · 2026-10-15T13:17:53.106Z · commit bedfcef31450af863322d26576f6df22033edc66
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-393-13 · 2026-10-15T14:36:18.794Z · commit bedfcef31450af863322d26576f6df22033edc66
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-393-14 · 2026-10-15T15:04:46.596Z · commit af02768f30705dbdedb41b63862921de74926d3f
 - [x] C8. No assertion changes its meaning: the review request lists every changed assertion with what it still proves, and no test is deleted.
   - done: impl-393 · 2026-10-15T08:08:41.391Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-2 · 2026-10-15T09:22:40.700Z · commit 519fc215a8f8b84572f079ba0b5a1b35ed8072fa
@@ -87,6 +96,8 @@ updated: 2026-10-15T14:35:10.505Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-7 · 2026-10-15T11:24:53.220Z · commit 36ecea1f6f97445efc149b47b8ba2a7e89b7c89b
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-9 · 2026-10-15T12:52:43.535Z · commit 36ecea1f6f97445efc149b47b8ba2a7e89b7c89b
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-11 · 2026-10-15T13:17:53.106Z · commit bedfcef31450af863322d26576f6df22033edc66
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-393-13 · 2026-10-15T14:36:18.795Z · commit bedfcef31450af863322d26576f6df22033edc66
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-393-14 · 2026-10-15T15:04:46.596Z · commit af02768f30705dbdedb41b63862921de74926d3f
 - [x] C9. `hub/README.md` (Tests) and `docs/agents/tests.md` describe `projectHub` as the default, the lifecycle line, and when a new test may use `startDaemon`.
   - done: impl-393 · 2026-10-15T08:08:41.843Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-2 · 2026-10-15T09:22:40.700Z · commit 519fc215a8f8b84572f079ba0b5a1b35ed8072fa
@@ -94,6 +105,8 @@ updated: 2026-10-15T14:35:10.505Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-7 · 2026-10-15T11:24:53.221Z · commit 36ecea1f6f97445efc149b47b8ba2a7e89b7c89b
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-9 · 2026-10-15T12:52:43.535Z · commit 36ecea1f6f97445efc149b47b8ba2a7e89b7c89b
   - verified: rev-23 [reviewer] · run rev-2026-10-15-393-11 · 2026-10-15T13:17:53.106Z · commit bedfcef31450af863322d26576f6df22033edc66
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-393-13 · 2026-10-15T14:36:18.795Z · commit bedfcef31450af863322d26576f6df22033edc66
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-393-14 · 2026-10-15T15:04:46.596Z · commit af02768f30705dbdedb41b63862921de74926d3f
 
 ## Comments
 
@@ -353,3 +366,47 @@ Actual Linux gate 282b9c70/A-3038 is full-mode exit 1: 1749 pass, one fail, thre
 ### impl-393 · 2026-10-15T13:48:41.979Z
 
 First integrated-head Linux282b9c70/A-3038 red only unchanged suite-runner nvim contention-diagnostic wait:1749pass/1fail/3platformskip; ownfilesgreen,Neovim not reached. Directed2ff4abf3 comparison now5/5 wholefiles250/250 green at exactbedfcef3,67–71s, serial/no local holder/load<3 (A-3043). No source changes or dev control required. Reported for E-482 classification before authorized second same-head droplet verify.
+
+### impl-393 · 2026-10-15T14:35:34.543Z
+
+Authorized second same-head default-droplet verifyb509c39e/A-3071 is green at exact source-clearbedfcef3:2141tests,2135pass,0fail/0cancel/6platformskips; both hub1753 and Neovim388 reached. Linuxx64 c-8lon1 lifetime1505s/$0.1045; suite1419.74s. No source changes. A-3038/T-497 first red and directed5/5 Mac passesA-3043 remain historical; no receipt-pair exception or local nvim supplement needed for this actual full green. Awaiting Reviewer final settlement. C5/C6 post-merge measurement obligations and T-395 second-merger reconciliation remain.
+
+### rev-23 · 2026-10-15T14:36:18.795Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-15-393-13
+commit: bedfcef31450af863322d26576f6df22033edc66
+scope: evidence
+
+Final evidence clear at unchanged bedfcef31450af863322d26576f6df22033edc66. A-3071 full Linux b509c39e exits 0: 2141 tests, 2135 pass, zero failures/cancellations, six platform skips (hub three macOS prerequisites; Neovim three sandbox-exec cases). Host/runner typechecks and Neovim phase complete. No local supplement or red-pair substitution needed. c-8 lon1, suite 1419.74s, Neovim 137.47s, lifetime 1505s/$0.1045.
+
+Preserve red 282b9c70/A-3038 (suite-runner:76 contention diagnostic), T-497/E-482 classification, and directed five whole-file passes A-3043 (250/250). Direct 2ff4abf3/24927706 authorized this unchanged retry after restart; A-3038 remains red. Source A-3017 plus A-3006/A-3012 integration/correction audits remain applicable: real frame parity, deliberate resource-leak rejection, owning env including lane Git, lifecycle list, retained refusal/adapter assertions and docs. All C1-C9 refreshed.
+
+C5/C6 verified only for amended pre-merge evidence: no 20% timing claim; 421→145 selected starts and 772 lower-bound projection, not observed full census/under-600. Quiet stage-close timing judgment against A-2714 and T-466 target remain owed. T-395 is now merged; required second-merger reconciliation of 110 mapped identities and any changed-head integration delta review remain before landing. This verdict covers only this exact head. Full audit A-3073; no Reviewer tests or edits.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified, C9 verified.
+
+### impl-393 · 2026-10-15T15:01:27.525Z
+
+Reconciled latest origin/dev4095dd11/T-395 as6b03e834 and candidate-Git-env correctionaf02768f; pushed. A-3085 proves110/110 unique mapped identities and102/102 original statements byte-identical, migration applied to split files. Semantic grep matches all covered;37 distinct targeted files327/327 green plus final-head suite-admission repeat6/6, typecheck green. Source conflict unions preserve sharding/occasion and explicit env, incoming rulebook and shared fixes. Immutable lint env regression red→green at existing API. Requested changed-head delta review; oldbedfcef3/A-3071 full green is historical, new no-waiver full default verify after source clear per c5da6819.
+
+### rev-23 · 2026-10-15T15:04:46.596Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-15-393-14
+commit: af02768f30705dbdedb41b63862921de74926d3f
+scope: delta
+
+No high or medium finding remains. T-395 shard/occasion/restart/notice logic and per-instance env coexist through Suites, Dispatcher, daemon and DropletExecutor. New shard provider/timing/spend/candidate paths use owning env. Existing lintHubShardTree now forwards env for tree/source Git reads through both production callers; conflicting-repository red/green and whole durations 13/13 are audited.
+
+Independently verified 102/102 original test statements/loops occur byte-identically exactly once across split files; all nine moved support function bodies match. A-2776's 110 mapped identities each execute exactly once in the expected split-file logs. Required second-merger reconciliation is complete at this head. C8's ten changed assertion forms retain documented meaning; lifecycle/frame/refusal coverage and docs retained.
+
+A-3085: 37 distinct targeted files 327/327, zero fail/skip/cancel; final-head admission repeat 6/6 separately; all 27 semantic test-file matches covered; full typecheck green. Five early files predate only the lint env correction, with final admission refreshed. Loaded/suspended-launcher provenance does not establish timing performance. Full audit A-3090.
+
+C4/C7/C8/C9 refreshed; C1-C3 and amended final C5/C6 pending new full gate. Direct c5da6819 requires one fresh configured-default no-mode verify, no waiver; old A-3071 is historical after this source integration. C5 quiet stage-close timing judgment and C6 historical 772 projection/under600 T-466 remain as amended, with no new performance claim. No Reviewer tests or edits.
+
+Criteria: C4 verified, C7 verified, C8 verified, C9 verified.
