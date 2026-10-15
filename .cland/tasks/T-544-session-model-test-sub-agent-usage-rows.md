@@ -2,8 +2,8 @@
 id: T-544
 kind: task
 title: "session-model test: sub-agent usage rows in task view arrive in hook order, not agent order (Linux)"
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ regression_of: T-480
 topic: topic-335
 branch: t/T-544-session-model-test-sub-agent-usage-rows
 created: 2026-10-15T22:41:39.095Z
-updated: 2026-10-15T23:44:10.600Z
+updated: 2026-10-15T23:45:54.082Z
+closed: 2026-10-15T23:45:54.082Z
 ---
 
 ## Summary
@@ -114,3 +115,7 @@ Evidence A-3441 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3441-s
 Review artifact A-3442 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3442-t-544-final-clear-at-420e0de6-five-mac-files-and-green-linux-verification.md.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-15T23:45:54.082Z
+
+Merged 08f09c7c49f9dcaf5912d1701af5a99c9492b405 onto dev.

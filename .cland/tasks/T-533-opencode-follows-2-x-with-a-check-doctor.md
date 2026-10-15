@@ -3,7 +3,7 @@ id: T-533
 kind: task
 title: "OpenCode follows 2.x with a check: doctor messages per version and a release-time range check"
 state: open
-status: review
+status: in progress
 size: M
 criterion_seq: 3
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-337
 branch: t/T-533-opencode-follows-2-x-with-a-check-doctor
 created: 2026-10-15T20:59:18.770Z
-updated: 2026-10-15T23:43:57.030Z
+updated: 2026-10-15T23:46:04.587Z
 ---
 
 ## Summary
@@ -42,8 +42,8 @@ Code: `hub/src/doctor/toolchain.ts`, `hub/src/doctor/ranges.ts`, the research pr
 
 - [x] C1. With fake binaries reporting 1.19.0, a 2.x newer than the range and 3.0.0, and with none, `cland doctor` prints the `--major` upgrade, the newer-than-tested note, the refusal naming the range and the v2 installer.
   - done: impl-533 · 2026-10-15T23:42:58.316Z
-- [x] C2. The check script compares the newest 2.x OpenAPI document's operations and event names with the tested one, runs the fake-provider smoke, and on a pass moves the range's upper bound.
-  - done: impl-533 · 2026-10-15T23:43:32.727Z
+- [ ] C2. The check script compares the newest 2.x OpenAPI document's operations and event names with the tested one, runs the fake-provider smoke, and on a pass moves the range's upper bound.
+  - failed: rev-31 [reviewer] · 2026-10-15T23:46:04.586Z · note Response required guarantees are ignored, allowing removal of required data to compare compatible and advance the tested bound despite adapter reliance on data.
 - [x] C3. The check is not part of `npm test`, and the `release` skill (both copies) runs it before the dry run.
   - done: impl-533 · 2026-10-15T23:43:53.153Z
 
@@ -52,3 +52,33 @@ Code: `hub/src/doctor/toolchain.ts`, `hub/src/doctor/ranges.ts`, the research pr
 ### impl-533 · 2026-10-15T22:55:44.552Z
 
 Implemented separate OpenCode version classification, v2 installer guidance and release-only network checker. Newest stable upstream is 2.0.30; read-only ten-operation wire comparison and all 15 adapter event names are compatible with 2.0.24. Offline CLI fixtures cover successful advancement and contract/smoke failures filing Bugs without changing the range. Hub typecheck is green. Waiting for the assigned Mac slot (after T-477) to run targeted files and isolated real-binary fake-provider smoke before review.
+
+### rev-31 · 2026-10-15T23:46:04.587Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261015-533-source-1
+commit: dc4e01286263046681bb5d7f62d53901bde97d00
+scope: full
+
+Source review not clear at dc4e01286263046681bb5d7f62d53901bde97d00, run rev-20261015-533-source-1, scope full. Fixed point c30b2666, the merged dev head named by the request. Task hold/view initially timed out but later readback confirms the hold, live impl-533 claim and C1–C3 criteria.
+
+## Standards
+Medium — hub/test/opencode-check.test.ts:1: the new test file has no entry in this head's hub/test/shards.json. docs/agents/tests.md requires every hub test to be classified, with verify and merge admission refusing unclassified files. The targeted node invocation bypasses that gate. Add a conservative machine classification (this file spawns processes/listens on sockets), then check shard lint before requesting the replacement-head review.
+No additional smell-baseline findings. Rule 13 isolation is preserved by the smoke's scratch HOME/XDG/config/OPENCODE_DB and standalone server; no real OpenCode binary was run by this review.
+
+## Spec
+Medium — hub/src/doctor/opencode-contract.ts:51: every response required list is ignored. Removing required data from a success response therefore compares compatible even though OpenCodeClient.createSession, models and prompt unconditionally return/dereference response.data. A server may now legally omit it, breaking the adapter while the checker silently widens the tested range. This is wire-contract information, unlike documentation/reference renames. The originating research's wirediff retains required lists.
+
+Read-only comparator counterexample executed against the requested worktree module: build the ten operation responses as {type: object, properties: {data: {type: object, properties: {id: {type: string}}, required: [id]}}, required: [data]}; clone and replace each outer required list with []; compareOpenCodeContract returns []. No files were changed and no suite/server/network check ran. Preserve old required-response guarantees (additions may remain acceptable), and add a regression proving their removal rejects the candidate and leaves the range unchanged.
+
+C2 failed because this comparison can approve a breaking response guarantee loss. A happy-path fake-provider turn can still emit data and pass even when the new schema permits its absence, so smoke does not replace the contract check.
+
+Other reviewed paths: C1 doctor handling covers old/new/missing majors with appropriate messages and skips incompatible-major auth. The checker selects stable 2.x registry versions, fetches both source-tag contracts/events, verifies binary SHA-512, runs the exact-version isolated smoke, writes the upper bound only after smoke cleanup, and files failures through cland task into Bugs. C3's opt-in command is separate from package tests; the repository release skill/symlink and init's canonical-skill copying retain the preflight guide before dry run.
+
+A-3465 supporting evidence checked: offline checker 6/6, doctor 21/21, reported exact-version real 2.0.30 fake-provider smoke and opt-in check pass, typecheck green. These do not resolve the two source findings; no verification may run until corrected-head source review. No per-item QA criteria.
+Standards: 1 medium. Spec: 1 medium.
+Review artifact A-3468: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3468-t-533-source-not-clear-response-guarantees-and-shard-classification.md
+
+Criteria: C2 failed (Response required guarantees are ignored, allowing removal of required data to compare compatible and advance the tested bound despite adapter reliance on data.).

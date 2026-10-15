@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-329
 branch: t/T-488-cland-hub-reload-re-read-config-toml-and
 created: 2026-10-15T11:30:17.553Z
-updated: 2026-10-15T23:45:40.291Z
+updated: 2026-10-15T23:46:10.917Z
 ---
 
 ## Problem
@@ -33,7 +33,8 @@ Add `cland hub reload`, which also runs on SIGHUP. It re-reads `.cland/config.to
   - done: impl-488 · 2026-10-15T23:45:16.991Z
 - [x] C3. Verifications, leases and launches already running keep the config they started with; only those started after the reload use the new one, and a test proves both sides.
   - done: impl-488 · 2026-10-15T23:45:40.291Z
-- [ ] C4. `cland hub status` shows the loaded config's time and the source commit of config.toml.
+- [x] C4. `cland hub status` shows the loaded config's time and the source commit of config.toml.
+  - done: impl-488 · 2026-10-15T23:46:10.917Z
 
 ## Comments
 
