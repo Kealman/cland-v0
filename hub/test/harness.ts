@@ -106,6 +106,7 @@ export async function spawnSpoke(options: SpokeOptions): Promise<Session> {
     // reconnect fast in tests
     CLAND_HUB_RECONNECT_MS: '50',
     CLAND_HUB_KEEPALIVE_MS: String(options.keepaliveMs ?? 30_000),
+    ...(process.env.NODE_V8_COVERAGE ? { NODE_V8_COVERAGE: process.env.NODE_V8_COVERAGE } : {}),
   };
   if (options.discover && !options.cwd) throw new Error('a discovering spoke needs the cwd of a project');
   if (!options.unconfigured && !options.discover) {

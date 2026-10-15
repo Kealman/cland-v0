@@ -18,8 +18,9 @@ import { randomUUID } from 'node:crypto';
 import type { SubscriptionRequest } from '../protocol.ts';
 import { Suites, SuiteAdmissionError, suiteSummary, type SuiteJob, type SuiteSchedulerOptions } from './suites.ts';
 import { describeSelection } from '../suite-selection.ts';
-import { isAbsolute } from 'node:path';
-import { readFile, stat } from 'node:fs/promises';
+import { isAbsolute, join } from 'node:path';
+import { readFile, stat, mkdir, writeFile, rename } from 'node:fs/promises';
+import { coveragePointers, parseCoverageMap } from '../suite-coverage.ts';
 import { timingSafeEqual } from 'node:crypto';
 import { AGENTS, COORDINATOR, GENERAL, UNKNOWN_SESSION, type Connection, type HubCore, type SpokeSocket } from './core.ts';
 import { summarize, type AuditOutcome, type AuditRecord } from './audit.ts';
@@ -627,6 +628,25 @@ export class Dispatcher {
       if (!core.store.artifacts(job.topic).some(a => a.title === title)) {
         await this.#artifact({ type: 'artifact.create', id: shard.id, kind: 'file', title, topic: job.topic, path: shard.log }, callerNow, work => work());
       }
+    }
+    if (job.integrated && job.selection?.recordCoverage && job.outcome?.code === 0 && !job.cached) {
+      const title = `Coverage map ${job.id} at ${job.head}`;
+      let coverage = core.store.artifacts(job.topic).find(a => a.title === title);
+      if (!coverage) {
+        const create = () => this.#artifact({ type: 'artifact.create', id: `coverage:${job.id}`, kind: 'file', title, topic: job.topic, path: join(this.#options.control!.status().root!, '.cland/run/suites', job.id, 'coverage-map.json') }, callerNow, work => work());
+        const operation = this.#artifactQueue.then(create);
+        this.#artifactQueue = operation.catch(() => {});
+        const result = await operation as { id: string };
+        coverage = core.store.resolveArtifact(result.id) ?? undefined;
+      }
+      if (!coverage || coverage.fileDeleted || coverage.status === 'archived') throw new Error('coverage artifact unavailable');
+      const map = parseCoverageMap(await readFile(coverage.path, 'utf8'));
+      if (map.head !== job.head || map.tree !== job.tree) throw new Error('coverage artifact provenance mismatch');
+      const dir = coveragePointers(this.#options.control!.status().root!);
+      await mkdir(dir, { recursive: true, mode: 0o700 });
+      const path = join(dir, `${job.id}.json`);
+      await writeFile(`${path}.tmp`, JSON.stringify({ artifact: coverage.id, path: coverage.path }), { mode: 0o600 });
+      await rename(`${path}.tmp`, path);
     }
     const artifact = core.store.resolveArtifact(artifactId);
     if (!artifact || artifact.fileDeleted || artifact.status === 'archived') throw new Error('suite log artifact unavailable');

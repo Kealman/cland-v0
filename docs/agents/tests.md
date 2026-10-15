@@ -38,6 +38,41 @@ cland verify --report <item-topic> --to <reviewer-name> --to <your-name>
 
 D29: task runs use the diff selection with no mode: hub-only, Neovim-only or full. Use `all` only when the selection or the Coordinator asks for a full run. Full suites are the Coordinator's integrated `dev` runs per batch of about three merges, at stage and epic close, and before release.
 
+Task runs may report `hub-selected`: changed hub tests, tests covering the changed
+functions, and `HUB_SMOKE`/`NVIM_SMOKE`. A hub source imported by Neovim keeps the
+full Neovim phase. The report names the deciding functions and coverage artifact.
+Clean integrated `dev` full runs record per-test-file V8 coverage, including the
+CLI, lifecycle daemons, spokes and fake harness descendants, and publish a
+function-range map with their head and canonical candidate tree. Close-run shard
+maps merge into one artifact. Task runs never refresh the map.
+
+Admission reads the newest artifact whose head is an ancestor of the task's merge
+base. `[verification].coverage_max_age` is a positive duration, default `"2d"`.
+Missing, invalid, stale or unrelated maps keep the package rules and name the
+reason. Protocol/contract, package, harness, fixture, runner and executor changes,
+unsupported paths, unknown source/functions, untested functions, top-level edits,
+missing covering tests and hunks changed since the map also keep those rules.
+Unchanged lines are translated from the merge base back to the map across the
+intervening diff. Integrated full runs remain the regression backstop; a selected
+run can miss a regression which the next batch detects.
+
+Coverage artifacts remain the source of truth; `.cland/run/coverage-maps/` holds
+rebuildable pointers shared by linked task worktrees. Cache reuse for
+`hub-selected` also requires the same selected tests and Neovim phase.
+`node hub/test/selection-replay.ts <first-parent-range> --coverage` prints the last
+40 task landings, missing-map fallbacks, deciding functions and each selected share
+of hub test-time. `--nearest` explicitly labels retrospective maps that may postdate
+the merge; live admission always requires an ancestor and enforces age. Supply
+`--failures <json>` to include historical failed test paths keyed by full/short
+merge SHA. The replay also reads retained suite logs by item and names their count; old logs
+without source identities remain unavailable rather than guessed.
+`--count N` changes the replay window (default 40); an incomplete window exits 2.
+Exit 1 reports own or historical misses for inspection; the agreed own-test bar
+and historical miss causes are reported separately.
+Shares use the current duration manifest, rather than claiming historical wall
+times. The replay bar is zero misses on those merges' own changed/added tests;
+every wider miss must be listed with its cause.
+
 Close runs on integrated `dev` use `cland verify all --occasion stage|epic|release --report <topic>`. The Coordinator sets any occasion; QA may set `epic` for the epic demo. The hub requires the clean project-root `dev` head to match freshly fetched `origin/dev` and refuses other roles or task heads. The MCP `verify` request accepts the same `occasion` field. Ordinary batch and task runs use one slot. A local executor still uses one local slot.
 
 A remote close run uses the free remote slots up to `[verification] shards` (default 2), balances hub files largest-first by `hub/test/durations.json` (unknown files use its median), and places Neovim on the lightest hub shard. Each droplet preserves the free/machine resource classes. Before creating any droplet, the hub atomically reserves every shard's lifetime cost in the shared spend ledger against the project's daily cap ($3 here). Fewer than two free slots or an insufficient cap gives one whole run on one slot and one warn notice, `sharding skipped: fewer than 2 remote slots free` or `sharding skipped: daily spend cap $3 would be exceeded`. Other executor unavailability follows the normal local fallback.

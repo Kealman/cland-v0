@@ -120,6 +120,7 @@
     "hub/test/subscription-hygiene.test.ts": "machine",
     "hub/test/subscriptions.test.ts": "machine",
     "hub/test/suite-runner.test.ts": "machine",
+    "hub/test/suite-coverage.test.ts": "machine",
     "hub/test/suite-selection.test.ts": "machine",
     "hub/test/surface.test.ts": "machine",
     "hub/test/system-processes.test.ts": "machine",

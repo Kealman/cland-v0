@@ -2,9 +2,11 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { glob, readFile } from 'node:fs/promises';
 import { dirname, posix, relative, resolve } from 'node:path';
+import { coverageSelection, type CoverageRecording } from './suite-coverage.ts';
+import { defaultConfig, parseConfig } from './init/config.ts';
 
-export type SuiteMode = 'hub-only' | 'nvim-only' | 'full';
-export type SuiteSelection = { mode: SuiteMode; files: string[]; reason: string; fetchedDev?: string; shard?: { files: string[]; nvim: boolean } };
+export type SuiteMode = 'hub-only' | 'hub-selected' | 'nvim-only' | 'full';
+export type SuiteSelection = { mode: SuiteMode; files: string[]; reason: string; fetchedDev?: string; tests?: string[]; functions?: string[]; coverage?: { artifact: string; path: string; head: string }; nvimFull?: boolean; recordCoverage?: CoverageRecording; shard?: { files: string[]; nvim: boolean } };
 export type SuiteRequest = 'auto' | 'all' | 'hub' | 'nvim';
 
 // Cross-package baselines, kept together so widening smoke coverage is one edit.
@@ -16,23 +18,26 @@ const NVIM_TARGETS = ['nvim/test/**/*.test.ts'];
 export function suitePhases(mode: SuiteMode): Array<{ name: string; targets: string[] }> {
   return [
     { name: mode === 'nvim-only' ? 'hub smoke' : 'hub', targets: mode === 'nvim-only' ? HUB_SMOKE : HUB_TARGETS },
-    { name: mode === 'hub-only' ? 'Neovim smoke' : 'Neovim', targets: mode === 'hub-only' ? NVIM_SMOKE : NVIM_TARGETS },
+    { name: mode === 'hub-only' || mode === 'hub-selected' ? 'Neovim smoke' : 'Neovim', targets: mode === 'hub-only' || mode === 'hub-selected' ? NVIM_SMOKE : NVIM_TARGETS },
   ];
 }
 
 export function describeSelection(selection: SuiteSelection, filesBytes = Infinity): string {
-  let shown = selection.files;
-  if (Number.isFinite(filesBytes)) {
-    shown = [];
-    let bytes = 2; // JSON array brackets
-    for (const path of selection.files) {
-      const next = Buffer.byteLength(JSON.stringify(path), 'utf8') + (shown.length ? 1 : 0);
-      if (bytes + next > filesBytes) break;
-      shown.push(path); bytes += next;
+  const list = (items: string[]) => {
+    let shown = items;
+    if (Number.isFinite(filesBytes)) {
+      shown = [];
+      let bytes = 2; // JSON array brackets
+      for (const item of items) {
+        const next = Buffer.byteLength(JSON.stringify(item), 'utf8') + (shown.length ? 1 : 0);
+        if (bytes + next > filesBytes) break;
+        shown.push(item); bytes += next;
+      }
     }
-  }
-  const omitted = selection.files.length - shown.length;
-  return `mode ${selection.mode}; ${selection.reason}; deciding files ${JSON.stringify(shown)}${omitted ? `; ${omitted} more (${selection.files.length} total; full list in log)` : ''}`;
+    const omitted = items.length - shown.length;
+    return `${JSON.stringify(shown)}${omitted ? `; ${omitted} more (${items.length} total; full list in log)` : ''}`;
+  };
+  return `mode ${selection.mode}; ${selection.reason}; deciding files ${list(selection.files)}${selection.functions ? `; deciding functions ${list(selection.functions)}` : ''}${selection.coverage ? `; coverage ${selection.coverage.artifact} at ${selection.coverage.head}` : ''}`;
 }
 
 // Default for pure callers; package admission replaces it with imports read from source.
@@ -127,6 +132,15 @@ export async function selectPackageSuite(cwd: string, requested: SuiteRequest = 
     if (requested === 'all') return { mode: 'full', files, reason: '--all / all forces full' };
     const { mode, reason } = chooseSuite(files, await nvimHubImports(cwd));
     if (requested !== 'auto' && mode !== `${requested}-only`) return { mode: 'full', files, reason: `diff does not qualify for requested ${requested} phase` };
+    // Shared contracts keep their package fallback. A hub source imported by
+    // Neovim may narrow only the hub side; its Neovim phase remains full.
+    if (mode === 'hub-only' || mode === 'full' && reason.startsWith('nvim test import hub/src/')) {
+      const text = await readFile(resolve(cwd, '.cland/config.toml'), 'utf8').catch(error => { if (error.code === 'ENOENT') return null; throw error; });
+      const config = text === null ? defaultConfig('suite') : parseConfig(text, 'suite', env);
+      const selected = await coverageSelection(cwd, files, (await git('merge-base', 'origin/dev', 'HEAD')).trim(), git, config.verification.coverageMaxAgeMs);
+      if ('fallback' in selected) return { mode, files, reason: `${reason}; ${selected.fallback}` };
+      return { mode: 'hub-selected', files, reason: 'function coverage selects hub tests', tests: [...new Set([...selected.tests, ...HUB_SMOKE])].sort(), functions: selected.functions, coverage: selected.map, nvimFull: mode === 'full' };
+    }
     return { mode, files, reason };
   } catch (error) {
     return { mode: 'full', files, reason: `fetch/diff unavailable: ${error instanceof Error ? error.message.split('\n')[0] : String(error)}` };
@@ -137,7 +151,8 @@ export function selectionFromEnv(): SuiteSelection | undefined {
   const text = process.env.CLAND_SUITE_SELECTION;
   if (!text) return undefined;
   const value: unknown = JSON.parse(text);
-  if (!value || typeof value !== 'object' || !('mode' in value) || !['full', 'hub-only', 'nvim-only'].includes(String(value.mode)) || !('files' in value) || !Array.isArray(value.files) || !value.files.every(path => typeof path === 'string') || !('reason' in value) || typeof value.reason !== 'string') throw new Error('invalid suite selection');
+  if (!value || typeof value !== 'object' || !('mode' in value) || !['full', 'hub-only', 'hub-selected', 'nvim-only'].includes(String(value.mode)) || !('files' in value) || !Array.isArray(value.files) || !value.files.every(path => typeof path === 'string') || !('reason' in value) || typeof value.reason !== 'string') throw new Error('invalid suite selection');
+  if (value.mode === 'hub-selected' && (!('tests' in value) || !Array.isArray(value.tests) || !value.tests.length || !value.tests.every(file => typeof file === 'string' && /^hub\/(?:src|test)\/.+\.test\.ts$/.test(file) && !file.split('/').some(part => part === '..' || part === '.')))) throw new Error('invalid selected hub tests');
   if ('shard' in value) {
     const shard = value.shard;
     if (!shard || typeof shard !== 'object' || !('files' in shard) || !Array.isArray(shard.files) || !shard.files.every(file => typeof file === 'string') || !('nvim' in shard) || typeof shard.nvim !== 'boolean') throw new Error('invalid suite shard selection');

@@ -18,6 +18,7 @@ import { testTiming } from '../executor/droplet/watchdog.ts';
 import type { ExecutorKind, Lease, Platform, RunRef } from '../executor/executor.ts';
 import { idNumber } from '../tracker/item.ts';
 import { selectPackageSuite, describeSelection, type SuiteSelection, type SuiteRequest } from '../suite-selection.ts';
+import { parseCoverageMap, type CoverageMap } from '../suite-coverage.ts';
 
 export type SuiteActor = { name: string; sessionId: string; shell: true };
 export type SuiteJob = {
@@ -229,7 +230,10 @@ export class Suites {
       await lintHubShards(input.cwd);
     } catch (error) { throw new SuiteAdmissionError(error); }
     await mkdir(dir, { recursive: true, mode: 0o700 });
-    const cached = !input.fresh && tree ? this.#cached(tree, selection.mode) : undefined;
+    const cached = !input.fresh && tree ? this.#cached(tree, selection) : undefined;
+    // Older candidate runners and fixture packages remain usable. Coverage is
+    // recorded only by a capable runner on a clean integrated full dev run.
+    if (input.integrated && branch === 'dev' && tree && selection.mode === 'full' && !cached && (await readFile(join(input.cwd, 'hub/test/run-suite.ts'), 'utf8').catch(() => '')).includes('reduceCoverage')) selection.recordCoverage = { head, tree, run: id };
     authorize();
     // Recheck after I/O: concurrent submissions cannot both reserve a session.
     if (this.#jobs.some(job => this.#active(job) && (job.actor?.sessionId ?? 'human') === identity)) throw new Error('this session already has a suite queued or running');
@@ -293,10 +297,10 @@ export class Suites {
       return Number(integrated(b)) - Number(integrated(a)) || Number('actor' in a) - Number('actor' in b) || rank(a) - rank(b) || a.queued!.localeCompare(b.queued!);
     });
   }
-  #cached(tree: string, mode: SuiteSelection['mode']): SuiteJob | undefined {
+  #cached(tree: string, selection: SuiteSelection): SuiteJob | undefined {
     // Cancellations say nothing about the tree; failed or pending attempts still supersede green evidence.
     // Pre-admission head changes carry their cancellation in the outcome rather than a flag.
-    const job = this.#jobs.findLast(j => !j.cached && !j.cancelled && !j.requesterDied && !j.outcome?.cause.startsWith('cancelled: queued head changed') && j.tree === tree && j.selection?.mode === mode);
+    const job = this.#jobs.findLast(j => !j.cached && !j.cancelled && !j.requesterDied && !j.outcome?.cause.startsWith('cancelled: queued head changed') && j.tree === tree && j.selection?.mode === selection.mode && (selection.mode !== 'hub-selected' || JSON.stringify([j.selection.tests, j.selection.nvimFull]) === JSON.stringify([selection.tests, selection.nvimFull])));
     if (!job || job.outcome?.code !== 0 || !job.reported || !job.finished || !job.artifact) return undefined;
     const age = Date.now() - Date.parse(job.finished);
     const artifact = this.#store.resolveArtifact(job.artifact);
@@ -374,7 +378,7 @@ export class Suites {
           const id = `${job.id}-shard-${i + 1}`, dir = join(this.#root, '.cland/run/suites', id);
           const { shards: _shards, ...parent } = job;
           return { ...parent, id, parentRun: job.id, shardName: `shard-${i + 1}`, state: 'launching',
-            selection: { mode: 'full', files: plan.files, reason: `close run shard ${i + 1}/${count}`, shard: { files: plan.files, nvim: plan.nvim } },
+            selection: { mode: 'full', files: plan.files, reason: `close run shard ${i + 1}/${count}`, shard: { files: plan.files, nvim: plan.nvim }, ...(job.selection?.recordCoverage ? { recordCoverage: job.selection.recordCoverage } : {}) },
             log: join(dir, 'suite.log'), result: join(dir, 'result.json'), gate: join(dir, 'ready') };
         });
         this.#save(job);
@@ -427,6 +431,24 @@ export class Suites {
     const platform = shards.find(shard => shard.platform)?.platform;
     if (platform) job.platform = platform;
     job.finished = new Date().toISOString();
+    if (!failures.length && job.selection?.recordCoverage) {
+      const maps = await Promise.all(shards.map(shard => readFile(join(this.#root, '.cland/run/suites', shard.id, 'coverage-map.json'), 'utf8').then(parseCoverageMap)));
+      const merged: CoverageMap = { version: 1, head: job.head, tree: job.tree!, created: new Date().toISOString(), testFiles: [], files: {} };
+      for (const map of maps) {
+        if (map.head !== merged.head || map.tree !== merged.tree) throw new Error('shard coverage provenance mismatch');
+        merged.testFiles.push(...map.testFiles);
+        for (const [file, entry] of Object.entries(map.files)) {
+          const target = merged.files[file] ??= { functions: [] };
+          for (const fn of entry.functions) {
+            const prior = target.functions.find(f => f.start === fn.start && f.end === fn.end);
+            if (prior) prior.tests = [...new Set([...prior.tests, ...fn.tests])].sort();
+            else target.functions.push(fn);
+          }
+        }
+      }
+      merged.testFiles.sort();
+      await writeFile(join(this.#root, '.cland/run/suites', job.id, 'coverage-map.json'), JSON.stringify(merged), { mode: 0o600 });
+    }
     const logs = await Promise.all(shards.map(async shard => {
       const log = await readFile(shard.log, 'utf8').catch(() => '');
       // Keep counts machine-readable and label every failure in the merged log.
@@ -589,6 +611,12 @@ export class Suites {
             if (job.cancelled || job.timedOut) {
               await this.#droplet.cancel(lease, 'SIGTERM');
               await this.#collectLog(job).catch(() => {});
+            }
+            if (job.selection?.recordCoverage && job.outcome.code === 0) {
+              const path = join(this.#root, '.cland/run/suites', job.id, 'coverage-map.json');
+              if (!await stat(path).then(() => true, () => false)) await this.#droplet.collectCoverage(lease, path);
+              const map = parseCoverageMap(await readFile(path, 'utf8'));
+              if (map.head !== job.head || map.tree !== job.tree) throw new Error('coverage map provenance mismatch');
             }
             const released = await this.#droplet.release(lease);
             job.machine = { name: lease.name, size: lease.size, region: lease.region, ...released };

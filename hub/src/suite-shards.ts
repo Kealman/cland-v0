@@ -3,7 +3,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { glob, readFile } from 'node:fs/promises';
 import { join, matchesGlob } from 'node:path';
-import type { SuiteMode } from './suite-selection.ts';
+import type { SuiteMode, SuiteSelection } from './suite-selection.ts';
 import { HUB_SMOKE, NVIM_SMOKE } from './suite-selection.ts';
 import { DURATION_MANIFEST, lintDurationManifest, readDurationManifest, type DurationManifest } from './suite-durations.ts';
 
@@ -74,13 +74,21 @@ async function lintDurations(cwd: string): Promise<void> {
   } catch (error) { throw new ShardManifestError(error instanceof Error ? error.message : String(error), [DURATION_MANIFEST]); }
 }
 
-export async function packageShards(cwd: string, mode: SuiteMode, selection?: { files: string[]; nvim: boolean }): Promise<SuiteShard[]> {
+export async function packageShards(cwd: string, mode: SuiteMode, selection?: { files: string[]; nvim: boolean }, coverage?: SuiteSelection): Promise<SuiteShard[]> {
   if (selection) {
     const shards = await hubShards(cwd);
     const known = new Set(shards.flatMap(shard => shard.targets));
     for (const file of selection.files) if (!known.has(file)) throw new ShardManifestError(`unknown explicit hub shard file: ${file}`, [file]);
     return [...shards.map(shard => ({ ...shard, targets: shard.targets.filter(file => selection.files.includes(file)) })).filter(shard => shard.targets.length),
       ...(selection.nvim ? [{ name: 'Neovim', targets: ['nvim/test/**/*.test.ts'], resource: 'machine' as const, workers: 4 }] : [])];
+  }
+  if (mode === 'hub-selected') {
+    const shards = await hubShards(cwd);
+    const known = new Set(shards.flatMap(shard => shard.targets));
+    if (!coverage?.tests?.length) throw new ShardManifestError('selected hub tests missing');
+    for (const test of coverage.tests) if (!known.has(test)) throw new ShardManifestError(`unknown selected hub test: ${test}`, [test]);
+    return [...shards.map(shard => ({ ...shard, name: `${shard.name} selected`, targets: shard.targets.filter(file => coverage.tests!.includes(file)) })).filter(shard => shard.targets.length),
+      { name: coverage.nvimFull ? 'Neovim' : 'Neovim smoke', targets: coverage.nvimFull ? ['nvim/test/**/*.test.ts'] : NVIM_SMOKE, resource: 'machine', workers: 4 }];
   }
   return [...await hubShards(cwd, mode === 'nvim-only'), { name: mode === 'hub-only' ? 'Neovim smoke' : 'Neovim', targets: mode === 'hub-only' ? NVIM_SMOKE : ['nvim/test/**/*.test.ts'], resource: 'machine', workers: 4 }];
 }

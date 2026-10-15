@@ -17,6 +17,36 @@ import { fileURLToPath } from 'node:url';
 import { defaultConfig, parseConfig, renderConfig } from '../src/init/config.ts';
 import { cacheRepository, humanRunnerFixture } from './suite-support.ts';
 
+test('selected-run cache reuse requires the same covering test files', async t => {
+  const f = await fixture(t, `node -e "require('fs').appendFileSync('executions','run\\n')"`);
+  const git = await cacheRepository(f);
+  await mkdir(join(f.root, 'hub/src/hub'), { recursive: true });
+  await mkdir(join(f.root, 'hub/test'), { recursive: true });
+  const source = 'export function covered() {\n  return 1;\n}\n';
+  await writeFile(join(f.root, 'hub/src/hub/covered.ts'), source);
+  for (const file of ['first', 'second', 'tracer', 'daemon']) await writeFile(join(f.root, `hub/test/${file}.test.ts`), '// fixture\n');
+  await git('add', '.'); await git('commit', '-m', 'covered baseline'); await git('push', 'origin', 'HEAD:dev');
+  const head = await git('rev-parse', 'HEAD');
+  const map = { version: 1, head, tree: await git('rev-parse', 'HEAD^{tree}'), created: new Date().toISOString(), testFiles: ['hub/test/first.test.ts', 'hub/test/second.test.ts'], files: { 'hub/src/hub/covered.ts': { functions: [{ name: 'covered', start: 7, end: source.length - 1, startLine: 1, endLine: 3, tests: ['hub/test/first.test.ts'] }] } } };
+  await mkdir(join(f.root, '.cland/run/coverage-maps'), { recursive: true });
+  const path = join(f.root, '.cland/run/coverage-map.json');
+  await writeFile(path, JSON.stringify(map));
+  await writeFile(join(f.root, '.cland/run/coverage-maps/fixture.json'), JSON.stringify({ artifact: 'A-fixture', path }));
+  await writeFile(join(f.root, 'hub/src/hub/covered.ts'), source.replace('return 1', 'return 2'));
+  await git('add', '.'); await git('commit', '-m', 'one function');
+  const first = await f.launch('auto');
+  assert.match((await eventually('selected green', async () => (await f.results())[0])).text, /mode hub-selected/);
+  const same = await f.launch('auto');
+  assert.equal(same.cached?.run, first.id);
+  await eventually('selected cache receipt', async () => (await f.results())[1]);
+  map.files['hub/src/hub/covered.ts'].functions[0]!.tests = ['hub/test/second.test.ts'];
+  await writeFile(path, JSON.stringify(map));
+  const other = await f.launch('auto');
+  assert.equal(other.cached, undefined);
+  await eventually('new covering selection executed', async () => (await f.results())[2]);
+  assert.equal(await readFile(join(f.root, 'executions'), 'utf8'), 'run\nrun\n');
+});
+
 
 test('verify reuses a green candidate tree after a tracker-only commit and reports original provenance', async t => {
   const f = await fixture(t, `node -e "require('fs').appendFileSync('executions','run\\n')"`);

@@ -3460,6 +3460,18 @@
       "seconds": 4.513594,
       "reason": "Delivers merged event/progress digests through real harness turns before and after restart."
     },
+    "hub/test/suite-cache.test.ts::selected-run cache reuse requires the same covering test files": {
+      "seconds": 7.234982042,
+      "reason": "Runs and reports three real fixture verifications to prove an identical selection reuses green evidence and a changed coverage selection executes again."
+    },
+    "hub/test/suite-close.test.ts::integrated remote close collects each map before release and publishes their function union": {
+      "seconds": 8.614839958,
+      "reason": "Runs two fixture droplets through delivery, collection and confirmed release, then checks one artifact merges both function-to-test maps."
+    },
+    "hub/test/suite-coverage.test.ts::package capture attributes real CLI, daemon, spoke and fake processes to their test file": {
+      "seconds": 6.610551867,
+      "reason": "Runs a copied real CLI, daemon, spoke and fake process with V8 recording, then reduces their receipts into the owning test-file map; startup and coverage serialization dominate. Measured 6.611 s on Linux c-8 at peak 1-minute load 12.59, run 8970a57f (A-3204)."
+    },
     "hub/test/suite-remote-budget.test.ts": {
       "file": true,
       "seconds": 69.845827,
@@ -3501,6 +3513,10 @@
     "hub/test/suite-runner.test.ts::takeover reaps a child paused before its identity is published": {
       "seconds": 10.927423,
       "reason": "Exercises actual process/lease crash recovery and serialized runner admission; ownership tests include the one-second stale grace and TERM escalation."
+    },
+    "hub/test/suite-selection-report.test.ts::integrated dev verify publishes a portable function map once; task verify never captures": {
+      "seconds": 9.403346375,
+      "reason": "Runs two real fixture verifications through the queue and package runner, publishes an integrated V8 map, and proves the selected task run catches a regression without recapturing."
     },
     "hub/test/suite.test.ts": {
       "file": true,

@@ -5,7 +5,7 @@ import { setTimeout as pause } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { randomUUID } from 'node:crypto';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { platform as osPlatform, arch, release } from 'node:os';
 import type { Platform } from '../executor/executor.ts';
 import { candidateTree } from '../verification-tree.ts';
@@ -73,6 +73,8 @@ export async function suiteWorker(input: string): Promise<void> {
       // One durable decision feeds the package runner and the result, even after restart.
       if (job.selection) env.CLAND_SUITE_SELECTION = JSON.stringify(job.selection);
       else delete env.CLAND_SUITE_SELECTION;
+      if (job.selection?.recordCoverage && index > 0) env.CLAND_COVERAGE_OUTPUT = join(dirname(job.result), 'coverage-map.json');
+      else delete env.CLAND_COVERAGE_OUTPUT;
       const outcome = await suiteCommand(args, job.cwd, env);
       code = outcome.code;
       cause = outcome.cause;

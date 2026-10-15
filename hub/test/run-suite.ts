@@ -6,7 +6,7 @@ import { hubDiscovery, readDiscovery } from '../src/project.ts';
 import { PROTOCOL_VERSION, parseFrame, type SuiteSlotResult } from '../src/protocol.ts';
 import { existsSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
-import { mkdir, readFile, realpath, stat, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, realpath, stat, writeFile, rm } from 'node:fs/promises';
 import { loadavg } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -17,6 +17,7 @@ import { packageShards, type SuiteShard } from '../src/suite-shards.ts';
 import { suiteLimits } from '../src/suite-limits.ts';
 import { describeSelection, selectPackageSuite, selectionFromEnv, type SuiteSelection, type SuiteRequest } from '../src/suite-selection.ts';
 import { checkDurations, durationRegressions, lintDurationManifest, readDurationManifest, type DurationManifest, type DurationRegression, type TestTiming } from '../src/suite-durations.ts';
+import { reduceCoverage } from '../src/suite-coverage.ts';
 
 type Interruption = { signal: 'SIGINT' | 'SIGTERM' | null };
 export async function runSuite(suites: string[][], options: { lockDir?: string; lockDirs?: string[]; cwd?: string; interruption?: Interruption; selection?: SuiteSelection; phaseNames?: string[]; resources?: Array<'free' | 'machine'>; workers?: number[]; force?: boolean; token?: string } = {}): Promise<number> {
@@ -45,6 +46,10 @@ export async function runSuite(suites: string[][], options: { lockDir?: string; 
   let durationManifest: DurationManifest | null = null;
   let budgetOverheadMs = 0;
   const regressions: DurationRegression[] = [];
+  const recording = options.selection?.recordCoverage;
+  const output = process.env.CLAND_COVERAGE_OUTPUT;
+  const coverageFiles = new Set<string>();
+  const coverageRaw = recording && output ? `${output}.raw` : undefined;
   try {
     const budgetStarted = performance.now();
     durationManifest = await readDurationManifest(options.cwd ?? process.cwd());
@@ -94,6 +99,8 @@ export async function runSuite(suites: string[][], options: { lockDir?: string; 
         machineWait = Date.now() - phaseStarted;
       }
       const env: NodeJS.ProcessEnv = { ...process.env, TMPDIR: root, TMP: root, TEMP: root, TEST_SUITE_RUN_ID: holder.token, TEST_SUITE_CWD: holder.worktree };
+      // Never propagate a parent's capture into nested fixture package runs.
+      delete env.CLAND_COVERAGE_OUTPUT;
       delete env.DIGITALOCEAN_TOKEN;
       delete env.NODE_TEST_CONTEXT;
       if (!root) throw new Error('suite phase root is missing');
@@ -105,6 +112,12 @@ while (!await access(${JSON.stringify(gate)}).then(() => true, () => false)) awa
 process.chdir(cwd);`);
       if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
       const cwd = resolve(options.cwd ?? process.cwd());
+      const capture = coverageRaw && args.includes('--test') && args.some(arg => arg.startsWith('hub/'));
+      if (capture) {
+        await mkdir(coverageRaw, { recursive: true });
+        env.NODE_V8_COVERAGE = coverageRaw;
+        for (const arg of args) if (/^hub\/(?:src|test)\/.+\.test\.ts$/.test(arg)) coverageFiles.add(arg);
+      }
       // Node resolves test targets before imports; keep them absolute while spawning in the owned root.
       const absoluteArgs = args.map((arg, index) => {
         if (arg.startsWith('-') || ['--test-name-pattern', '--test-skip-pattern'].includes(args[index - 1] ?? '')) return arg;
@@ -119,7 +132,7 @@ process.chdir(cwd);`);
       ] : [];
       const timingsPath = join(root, `durations-${index}.jsonl`);
       if (durationManifest && args.includes('--test')) reporters.unshift(`--test-reporter=${fileURLToPath(new URL('./duration-reporter.ts', import.meta.url))}`, `--test-reporter-destination=${timingsPath}`);
-      active = spawn(process.execPath, ['--import', bootstrap, ...reporters, ...absoluteArgs], { cwd: root, env, detached: true, stdio: 'inherit' });
+      active = spawn(process.execPath, ['--import', bootstrap, ...(capture ? ['--import', fileURLToPath(new URL('./coverage-bootstrap.mjs', import.meta.url))] : []), ...reporters, ...absoluteArgs], { cwd: root, env, detached: true, stdio: 'inherit' });
       // Install exit listeners before publication awaits; the bootstrap cannot start tests yet.
       const done = new Promise<number>((resolve, reject) => { active!.once('error', reject); active!.once('exit', (value, signal) => resolve(value ?? (signal === 'SIGINT' ? 130 : 143))); });
       activeIdentity = captureProcess(active.pid);
@@ -155,6 +168,12 @@ process.chdir(cwd);`);
       if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
       if (code !== 0) return code;
       if (budgetFailed) return 1;
+    }
+    if (recording && output && coverageRaw && !interruption.signal) {
+      const map = await reduceCoverage(resolve(options.cwd ?? process.cwd()), coverageRaw, recording, [...coverageFiles]);
+      await writeFile(output, JSON.stringify(map), { mode: 0o600 });
+      process.stdout.write(`suite coverage map ${output}; head ${map.head}; tree ${map.tree}; ${map.testFiles.length} test files; ${Object.keys(map.files).length} source files\n`);
+      await rm(coverageRaw, { recursive: true, force: true });
     }
     return interruption.signal ? (interruption.signal === 'SIGINT' ? 130 : 143) : 0;
   } catch (error) {
@@ -268,7 +287,7 @@ export async function runPackageSuite(mode: string, extra: string[] = [], option
   // Explicit test targets retain the single-phase fixture/targeted-run interface.
   let selection: SuiteSelection = extra.length ? { mode: mode === 'hub' ? 'hub-only' : mode === 'nvim' ? 'nvim-only' : 'full', files: extra, reason: 'explicit test targets' } : selectionFromEnv() ?? await selectPackageSuite(cwd, mode as SuiteRequest);
   if (!extra.length && mode === 'all' && selection.mode !== 'full') selection = { ...selection, mode: 'full', reason: `--all / all forces full (${selection.reason})` };
-  const phases: SuiteShard[] = extra.length ? (mode === 'all' || mode === 'auto' ? ['hub', 'Neovim'] : [mode]).map(name => ({ name, targets: extra, resource: 'machine', workers: 4 })) : await packageShards(cwd, selection.mode, selection.shard);
+  const phases: SuiteShard[] = extra.length ? (mode === 'all' || mode === 'auto' ? ['hub', 'Neovim'] : [mode]).map(name => ({ name, targets: extra, resource: 'machine', workers: 4 })) : await packageShards(cwd, selection.mode, selection.shard, selection);
   const suites = phases.map(phase => ['--test', `--test-concurrency=${phase.workers}`, ...phase.targets]);
   // Reserve both locks jointly before a full run starts. Taking Neovim later
   // while holding machine would deadlock a live legacy Neovim-first waiter.

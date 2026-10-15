@@ -9,6 +9,30 @@ import { cland, clandWithEnv } from './harness.ts';
 
 const exec = promisify(execFile);
 
+test('integrated remote close collects each map before release and publishes their function union', async t => {
+  // The package runner's actual V8 reduction is proved by suite-coverage.test;
+  // this fixture isolates remote transfer, shard union and artifact publication.
+  const program = `const fs=require('fs'),s=JSON.parse(process.env.CLAND_SUITE_SELECTION),r=s.recordCoverage,tests=s.shard.files;fs.writeFileSync(process.env.CLAND_COVERAGE_OUTPUT,JSON.stringify({version:1,head:r.head,tree:r.tree,created:new Date().toISOString(),testFiles:tests,files:{'hub/src/covered.ts':{functions:[{name:'covered',start:1,end:20,startLine:1,endLine:1,tests}]}}}));`;
+  const f = await integrated(t, 'daily_spend_usd=3', 2, `node -e ${JSON.stringify(program)}`);
+  await writeFile(join(f.root, 'hub/test/run-suite.ts'), '// reduceCoverage-capable fixture\n');
+  await f.git('add', '.'); await f.git('commit', '-m', 'coverage transport capability'); await f.git('push', 'origin', 'dev');
+  assert.equal((await f.ui.request({ type: 'role.set', session: 'impl', role: 'coordinator' })).ok, true);
+  const launched = await clandWithEnv(f.root, f.actor, 'verify', 'all', '--fresh', '--occasion', 'stage', '--report', f.topic, '--to', 'impl', '--json');
+  assert.equal(launched.code, 0, launched.stderr);
+  const result = await f.result(JSON.parse(launched.stdout).id);
+  assert.match(result.text, /exit 0/);
+  const artifacts = (await f.ui.request({ type: 'artifact.list', topic: f.topic })).value as { artifacts: { title: string; path: string }[] };
+  const maps = artifacts.artifacts.filter(artifact => artifact.title.startsWith('Coverage map '));
+  assert.equal(maps.length, 1);
+  const map = JSON.parse(await readFile(maps[0]!.path, 'utf8'));
+  assert.equal(map.head, await f.git('rev-parse', 'HEAD'));
+  assert.deepEqual(map.testFiles, ['hub/test/one.test.ts', 'hub/test/two.test.ts']);
+  assert.deepEqual(map.files['hub/src/covered.ts'].functions[0].tests, map.testFiles);
+  assert.deepEqual(f.api.droplets, []); assert.deepEqual(f.api.keys, []);
+  const calls = await readFile(join(f.api.stateRoot, 'machine-calls.jsonl'), 'utf8');
+  assert.equal(calls.split('\n').filter(line => line.includes('coverage-map.json') && line.includes('scp')).length, 2);
+});
+
 test('occasion refuses implementers and task heads; an integrated Coordinator close uses two droplets and one merged result', async t => {
   const f = await integrated(t, 'daily_spend_usd=3');
   const request = (...args: string[]) => clandWithEnv(f.root, f.actor, 'verify', 'all', '--fresh', '--report', f.topic, '--to', 'impl', '--json', ...args);

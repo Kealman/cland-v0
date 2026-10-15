@@ -16,6 +16,7 @@ import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { defaultConfig, parseConfig, renderConfig } from '../src/init/config.ts';
 import { cacheRepository, humanRunnerFixture } from './suite-support.ts';
+import { onCleanup } from './process-cleanup.ts';
 
 
 test('auto suite reports the fetched diff decision and transports it to the package; --all forces full', async t => {
@@ -34,7 +35,7 @@ test('auto suite reports the fetched diff decision and transports it to the pack
   await git('add', '.'); await git('commit', '-m', 'hub change');
   await f.launch('auto');
   const reduced = await eventually('auto result', async () => (await f.results())[0]);
-  assert.match(reduced.text, /mode hub-only; all paths outside nvim\/; deciding files \["hub\/src\/tracker\/tracker.ts"\]/);
+  assert.match(reduced.text, /mode hub-only; all paths outside nvim\/; coverage map missing; deciding files \["hub\/src\/tracker\/tracker.ts"\]/);
   const log = await readFile(reduced.artifacts[0]!.path, 'utf8');
   assert.match(log, /"mode":"hub-only","files":\["hub\/src\/tracker\/tracker.ts"\]/);
   await f.launch('--all');
@@ -75,3 +76,53 @@ test(`a broad deciding-file list publishes once below the ${cap}-byte cap and st
   assert.equal((await f.results()).length, 1);
 });
 }
+
+test('integrated dev verify publishes a portable function map once; task verify never captures', async t => {
+  const runner = fileURLToPath(new URL('./run-suite.ts', import.meta.url));
+  const f = await fixture(t, 'node hub/test/run-suite.ts');
+  const git = await cacheRepository(f);
+  await git('checkout', 'dev');
+  await mkdir(join(f.root, 'hub/test'), { recursive: true });
+  await mkdir(join(f.root, 'hub/src/hub'), { recursive: true });
+  await mkdir(join(f.root, 'nvim/test'), { recursive: true });
+  await writeFile(join(f.root, 'hub/test/run-suite.ts'), `// inheritedLease and reduceCoverage supplied by the imported package runner\nimport { runPackageSuite } from ${JSON.stringify(runner)}; process.exitCode = await runPackageSuite('auto', [], { cwd: process.cwd() });`);
+  await writeFile(join(f.root, 'hub/src/hub/covered.ts'), 'export function called() { return 42; }\nexport function never() { return 0; }\n');
+  await writeFile(join(f.root, 'hub/test/covered.test.ts'), "import test from 'node:test'; import assert from 'node:assert/strict'; import { called } from '../src/hub/covered.ts'; test('fixture calls function', () => assert.equal(called(), 42));\n");
+  for (const file of ['hub/test/tracer.test.ts', 'hub/test/daemon.test.ts', 'nvim/test/client.test.ts', 'nvim/test/sessions.test.ts']) await writeFile(join(f.root, file), "import test from 'node:test'; test('smoke', () => {});\n");
+  await writeFile(join(f.root, 'hub/test/shards.json'), JSON.stringify({ version: 1, tests: Object.fromEntries(['covered', 'tracer', 'daemon'].map(file => [`hub/test/${file}.test.ts`, 'machine'])) }));
+  await git('add', '.'); await git('commit', '-m', 'coverage fixture'); await git('push', 'origin', 'dev');
+  const head = await git('rev-parse', 'HEAD');
+  const coord = await spawnSpoke({ discover: true, cwd: f.root, name: 'coord', sessionId: 'coverage-coord', role: 'coordinator' });
+  onCleanup(t, () => coord.close());
+  const launched = await clandWithEnv(f.root, { CLAND_SESSION_NAME: 'coord', CLAND_SESSION_ID: 'coverage-coord' }, 'verify', 'all', '--fresh', '--report', f.topic, '--to', 'rev', '--json');
+  assert.equal(launched.code, 0, launched.stderr);
+  const submitted = JSON.parse(launched.stdout) as { id: string; pid: number | null };
+  if (submitted.pid) ownProcess(t, submitted.pid);
+  const result = await eventually('integrated coverage result', async () => (await f.results())[0], 15000).catch(async error => {
+    const status = (await f.ui.request({ type: 'hub.status' })).value as HubStatus;
+    const log = await readFile(join(f.root, '.cland/run/suites', submitted.id, 'suite.log'), 'utf8');
+    throw new Error(`${error.message}\n${JSON.stringify(status.suites)}\n${log}`);
+  });
+  assert.match(result.text, /exit 0/);
+  const artifacts = (await f.ui.request({ type: 'artifact.list', topic: f.topic })).value as { artifacts: Artifact[] };
+  const maps = artifacts.artifacts.filter(a => a.title.startsWith('Coverage map '));
+  assert.equal(maps.length, 1);
+  const map = JSON.parse(await readFile(maps[0]!.path, 'utf8'));
+  assert.equal(map.head, head);
+  assert.equal(map.tree, ((await f.ui.request({ type: 'hub.status' })).value as HubStatus).suites!.find(job => job.id === JSON.parse(launched.stdout).id)!.tree);
+  assert.deepEqual(map.testFiles, ['hub/test/covered.test.ts', 'hub/test/daemon.test.ts', 'hub/test/tracer.test.ts']);
+  const functions = map.files['hub/src/hub/covered.ts'].functions;
+  assert.deepEqual(functions.find((fn: { name: string }) => fn.name === 'called').tests, ['hub/test/covered.test.ts']);
+  assert.deepEqual(functions.find((fn: { name: string }) => fn.name === 'never').tests, []);
+  await git('checkout', '-b', 'task-coverage');
+  await writeFile(join(f.root, 'hub/src/hub/covered.ts'), 'export function called() { return 43; }\nexport function never() { return 0; }\n');
+  await git('add', '.'); await git('commit', '-m', 'one function');
+  const task = await f.launch('auto');
+  const taskResult = await eventually('selected task result', async () => (await f.results()).find(message => message.text.startsWith(`suite result ${task.id}`)), 15000);
+  assert.match(taskResult.text, /mode hub-selected/);
+  assert.match(taskResult.text, /deciding functions.*called/);
+  // The selected run catches this deliberately changed return value.
+  assert.match(taskResult.text, /exit 1/);
+  const after = (await f.ui.request({ type: 'artifact.list', topic: f.topic })).value as { artifacts: Artifact[] };
+  assert.equal(after.artifacts.filter(a => a.title.startsWith('Coverage map ')).length, 1);
+});

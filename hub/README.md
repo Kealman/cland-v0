@@ -1965,6 +1965,41 @@ the Node on its PATH in the candidate worktree and the candidate's
 journal records carry the executor/platform, and cache hits keep the original
 run's executor and platform. Older jobs without an executor read as `local`.
 
+Task runs may report `hub-selected`: changed hub tests, tests covering the changed
+functions, and `HUB_SMOKE`/`NVIM_SMOKE`. A hub source imported by Neovim keeps the
+full Neovim phase. The report names the deciding functions and coverage artifact.
+Clean integrated `dev` full runs record per-test-file V8 coverage, including the
+CLI, lifecycle daemons, spokes and fake harness descendants, and publish a
+function-range map with their head and canonical candidate tree. Close-run shard
+maps merge into one artifact. Task runs never refresh the map.
+
+Admission reads the newest artifact whose head is an ancestor of the task's merge
+base. `[verification].coverage_max_age` is a positive duration, default `"2d"`.
+Missing, invalid, stale or unrelated maps keep the package rules and name the
+reason. Protocol/contract, package, harness, fixture, runner and executor changes,
+unsupported paths, unknown source/functions, untested functions, top-level edits,
+missing covering tests and hunks changed since the map also keep those rules.
+Unchanged lines are translated from the merge base back to the map across the
+intervening diff. Integrated full runs remain the regression backstop; a selected
+run can miss a regression which the next batch detects.
+
+Coverage artifacts remain the source of truth; `.cland/run/coverage-maps/` holds
+rebuildable pointers shared by linked task worktrees. Cache reuse for
+`hub-selected` also requires the same selected tests and Neovim phase.
+`node hub/test/selection-replay.ts <first-parent-range> --coverage` prints the last
+40 task landings, missing-map fallbacks, deciding functions and each selected share
+of hub test-time. `--nearest` explicitly labels retrospective maps that may postdate
+the merge; live admission always requires an ancestor and enforces age. Supply
+`--failures <json>` to include historical failed test paths keyed by full/short
+merge SHA. The replay also reads retained suite logs by item and names their count; old logs
+without source identities remain unavailable rather than guessed.
+`--count N` changes the replay window (default 40); an incomplete window exits 2.
+Exit 1 reports own or historical misses for inspection; the agreed own-test bar
+and historical miss causes are reported separately.
+Shares use the current duration manifest, rather than claiming historical wall
+times. The replay bar is zero misses on those merges' own changed/added tests;
+every wider miss must be listed with its cause.
+
 **Close-run sharding.** Only integrated `dev` requests with `--occasion
 stage|epic|release` shard remotely; ordinary batch runs stay on one slot. The
 Coordinator sets the occasion; QA may use `epic` for its demo. File balancing,
@@ -2014,7 +2049,7 @@ semantics stay unchanged. Logs and ordinary results use T-203's artifact checkpo
 and message id to prevent replay.
 
 Green results are cached by the Git tree of the submitted head **excluding
-`.cland/tasks`**, plus the selected effective mode (`full`, `hub-only`, or
+`.cland/tasks`**, plus the selected effective mode (`full`, `hub-only`, `hub-selected`, or
 `nvim-only`). A private Git index constructs this canonical tree without changing
 the worktree's staged contents. Tracker-only dev merges and rebases that reproduce this tree
 reuse the original run; every other committed path, including `.cland/config.toml`,

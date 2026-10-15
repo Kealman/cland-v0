@@ -68,6 +68,7 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
   async status(lease: DropletLease) { return new DropletRun(this.root, this.#env).status(lease); }
   async log(lease: DropletLease, offset: number) { return new DropletRun(this.root, this.#env).log(lease, offset); }
   async cancel(lease: DropletLease, _signal: string) { return new DropletRun(this.root, this.#env).cancel(lease); }
+  async collectCoverage(lease: DropletLease, path: string) { return new DropletRun(this.root, this.#env).collectCoverage(lease, path); }
 
   async reserveShards(runs: string[]): Promise<void> {
     if (!await readSnapshot(this.root)) throw new Error('no prepared snapshot; run cland executor prepare');

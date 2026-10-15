@@ -2,7 +2,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile, writeFile, rename } from 'node:fs/promises';
 import { parseConfig, defaultConfig } from '../../init/config.ts';
 import { basename } from 'node:path';
 import { suiteCommands } from '../../hub/suite-worker.ts';
@@ -52,7 +52,7 @@ export class DropletRun {
     if (!committedOnly) await checkWorktree();
     const dir = remoteDir(lease);
     await this.#machine.exec(lease, `mkdir -p ${dir}`, { timeoutMs: 10000 });
-    const env = `export CLAND_SUITE_SELECTION=${quote(JSON.stringify(run.selection ?? null))}\nexport FORCE_COLOR=0\nexport NO_COLOR=1\n`;
+    const env = `export CLAND_SUITE_SELECTION=${quote(JSON.stringify(run.selection ?? null))}\nexport FORCE_COLOR=0\nexport NO_COLOR=1\n${run.selection?.recordCoverage ? `export CLAND_COVERAGE_OUTPUT=${dir}/coverage-map.json\n` : ''}`;
     await writeFile(join(local, 'env'), env, { mode: 0o600 });
     const commands = suiteCommands(run).map((args, index) => `${index === 1 ? 'rmdir /tmp/cland-suite.lock; trap - EXIT\n' : ''}echo ${quote(`$ npm ${args.join(' ')}`)}\nnpm ${args.map(quote).join(' ')} || exit $?`).join('\n');
     // The typecheck owns the machine compatibility lock; the package runner then
@@ -122,5 +122,10 @@ export class DropletRun {
       const limit = Date.now() + testTiming('CLAND_TEST_DROPLET_CANCEL_MS', 10000, this.#env);
       do { if ((await this.status(lease)).state === 'done') break; await pause(100); } while (Date.now() < limit);
     } catch { /* release destroys the machine even when its group cannot be reached */ }
+  }
+  async collectCoverage(lease: DropletLease, path: string): Promise<void> {
+    // An interrupted copy cannot become a durable, apparently complete map.
+    await this.#machine.get(lease, `runs/${lease.run}/coverage-map.json`, `${path}.tmp`);
+    await rename(`${path}.tmp`, path);
   }
 }
