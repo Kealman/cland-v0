@@ -2,8 +2,8 @@
 id: T-435
 kind: task
 title: suite-remote-budget test misses 'remote budget 1/1 full' on Linux after an unconfirmed acquire cleanup
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -16,7 +16,8 @@ blocked_by: []
 topic: topic-261
 branch: t/T-435-suite-remote-budget-test-misses-remote
 created: 2026-10-14T18:23:17.170Z
-updated: 2026-10-15T03:43:09.246Z
+updated: 2026-10-15T03:43:25.556Z
+closed: 2026-10-15T03:43:25.556Z
 ---
 
 ## Summary
@@ -105,3 +106,7 @@ scope: evidence
 Final clear at unchanged source-reviewed c7ebbb4c. Standards and Spec: no high or medium findings. C1 red/green and durable run-specific fallback readiness remain established by A-2512/A-2657. Independently checked C2's five serial whole-file logs A-2509/A-2514/A-2516/A-2517/A-2518: each 8/8 passes, zero failures/cancellations/skips; chronology, recorded queue snapshots and full holder 42895a87/A-2519 establish concurrent full local load. Own budget-test blob unchanged since those runs; only exact reviewed T-432 shared patch was added. Same-head no-mode local gate bbf92e94/A-2661 passes typecheck and hub-only selected phases: 37 free hub +1616 machine hub +12 Neovim smoke =1665/1665, zero failures/cancellations/skips/todos, exit 0. Full Neovim was not selected or claimed. Earlier b14a97d5/A-2654 remains red on known T-432 assumption, resolved through Coordinator-directed f020d2c9 adoption and source review, not a flaky retry. Both claimant done marks checked. A-2663 details evidence and limits; C1/C2 verified at this head.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-15T03:43:25.556Z
+
+Merged 3d8900c9990f938589dbb691fe6a8f2e6285e799 onto dev.
