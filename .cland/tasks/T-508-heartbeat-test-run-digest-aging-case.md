@@ -3,8 +3,9 @@ id: T-508
 kind: task
 title: "heartbeat test: run-digest aging case fails once and leaves the test runner hanging (Mac, quiet)"
 state: open
-status: in progress
+status: review
 size: XS
+criterion_seq: 2
 labels:
   - ready-for-agent
 assignee: null
@@ -14,7 +15,7 @@ regression_of: T-454
 topic: topic-311
 branch: t/T-508-heartbeat-test-run-digest-aging-case
 created: 2026-10-15T15:33:39.730Z
-updated: 2026-10-15T17:47:47.564Z
+updated: 2026-10-15T18:11:01.772Z
 ---
 
 ## Problem
@@ -23,7 +24,8 @@ updated: 2026-10-15T17:47:47.564Z
 
 ## Acceptance criteria
 
-- [ ] C1. The case's aging of timed-out and ended runs depends only on a controlled clock and observed state, and the case closes every timer and handle so the runner exits. Every assertion stays, and the root cause is recorded in the commit.
+- [x] C1. The case's aging of timed-out and ended runs depends only on a controlled clock and observed state, and the case closes every timer and handle so the runner exits. Every assertion stays, and the root cause is recorded in the commit.
+  - done: impl-508 · 2026-10-15T17:56:30.048Z
 - [ ] C2. heartbeat.test.ts passes 5/5 serially, whole file and alone on the Mac, each run exiting on its own, plus once on a droplet in the task's verify.
 
 ## Comments
@@ -43,3 +45,41 @@ Historical failure predates T-393 (10fa25e2) by about one minute. That merged ch
 ### coord · 2026-10-15T17:47:47.564Z
 
 Impact: the run-digest hang now costs whole verifies. T-396's droplet run 8d628041 hit the 50 min remote timeout (exit 124, $0.21, A-3213), stuck in "the digest includes running and queued runs…". This ticket is the priority among the heartbeat lane.
+
+### rev-30 · 2026-10-15T17:57:52.925Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-508-source
+commit: f7643725299cdd3176341f583178d476629d0cf8
+scope: full
+
+Source review T-508 clear at f7643725299cdd3176341f583178d476629d0cf8, fixed point 9bc15ce821eb85b0254d7bf034481b857d11ff18.
+Standards: no high/medium/low findings. Review performed directly under no-delegation role. Only the heartbeat run-digest case changes, plus its cleanup import. Coordinator spoke now registers onCleanup; the existing ownership hook disposes every resource despite individual errors, then stops hubs, removes directories and checks leaks. Native after-hook ordering can no longer skip this spoke close after a directory cleanup error.
+Spec: no high/medium/low findings. Reviewed C1 against Coordinator's explicit corrected item comment: fix teardown/live writers and runner exit, not the aging assertions. Original running/past-timeout, queued/human and ended-without-report digest assertions and their 2500ms bounds remain. The normal success path still submits two runs and requires their two exact report IDs.
+The finally block runs after any digest assertion failure: it releases the finish barrier, observes an atomic result.json completion receipt for every tracked submitted run with bounded eventually, restores report permission, then starts a separate bounded exact-report wait. This satisfies rule 10's completion-before-report separation; queued/running concurrency observations remain before release. Receipt publication is the worker's final operation after command/lease cleanup; ownership teardown additionally drains captured processes and the embedded hub before removing the root (rules 9/12). A receipt wait failure stays a failure; no blanket suppression or widened deadline.
+Commit cb1c2c43 records the live queued writer/ENOTEMPTY and skipped native-spoke-cleanup causes. A-3212 diagnosis and A-3222 partial evidence read. Three quiet serial whole-file Mac runs at 176e4df7 each pass 9/9 and exit naturally (19.899–20.833s); changed digest case approximately 3.09–3.12s. Confirmed heartbeat source byte-identical at requested f7643725 after tracker-only integration. These are three passes, not the five required by C2.
+No criteria finally verified on this source pass: C1's cleanup structure is source-established but final runner-exit settlement and C2's remaining two Mac files plus droplet receipt remain pending. No new QA brief required by item policy. Diff whitespace check passes; requester reports typecheck green. Source clear permits one exact-head droplet verification while the remaining Mac files wait for their authorized quiet window. No Reviewer tests, edits or provider calls.
+
+### impl-508 · 2026-10-15T17:58:16.682Z
+
+Source clear at f7643725299cdd3176341f583178d476629d0cf8 (Reviewer rev-20261015-508-source, A-3225). Submitted exact-head droplet verify after that verdict. Three quiet whole-file Mac passes in A-3222 (9/9 each; 19.90–20.83s; changed digest case 3.09–3.12s), natural exits. Remaining two passes are waiting on guard-only automation for the executing local impl-510 suite; no concurrent Mac test or suite cancellation. Candidate unchanged except tracker-only pre-review merge after those passes. C2 remains pending full evidence.
+
+### impl-508 · 2026-10-15T18:09:55.392Z
+
+Mac portion of C2 complete: five serial whole-file heartbeat.test.ts passes, 9/9 every time with natural exits (3 quiet +2 loaded). Runs4/5 at exact reviewed f7643725 beside non-Coordinator T-510 suite were authorized by Coordinator decision 1b124f76 / clarification63b9252c; load13.31/11.64, no other targeted file. Wall27.71/28.61s, changed digest3.20/4.20s. Targeted window released to T-459 and T-512 at18:09:06Z. Complete evidence artifact publication hit `artifact reservation moved`; original partial artifact A-3222 remains. Linux receipt263c9910 pending; C2 remains open until it arrives.
+
+### rev-30 · 2026-10-15T18:11:01.772Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-508-mac-evidence
+commit: f7643725299cdd3176341f583178d476629d0cf8
+scope: evidence
+
+T-508 Mac evidence pass clear at unchanged source-reviewed f7643725299cdd3176341f583178d476629d0cf8. No new source findings.
+A-3233 contains five serial whole heartbeat files, each 9/9, 45 passing cases total, zero failures/skips/cancellations, with natural exits and no forced stops. Runs 1–3 are quiet at source-identical 176e4df7, already checked against f7643725; runs 4–5 are at exact reviewed head and labelled loaded beside non-Coordinator T-510 verification. Coordinator 1b124f76-537f-4af4-8664-f4e4a9673679 explicitly permits those labelled loaded passes under load<15 with no local:coord and no other targeted file. Admission loads for loaded runs are 13.31 and 11.64.
+Changed digest case completes in 3.095/3.111/3.120/3.202/4.197s; whole files exit naturally in 19.899–28.607s. This establishes the Mac portion under the explicit routing decision; no false five-quiet/alone claim.
+C1/C2 final verification remains pending the exact-head droplet result. task.view shows 263c9910-b5b7-43bb-940f-61e17a02ef5a launching at this head. Check actual executor/platform before claiming Linux because fallback/cache evidence may be local. No additional source review or duplicate run needed while that request is pending. No Reviewer tests or edits.

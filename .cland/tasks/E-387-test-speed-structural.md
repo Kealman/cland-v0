@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-14T12:28:09.615Z
-updated: 2026-10-15T15:36:22.537Z
+updated: 2026-10-15T18:12:08.813Z
 ---
 
 ## Goal
@@ -141,3 +141,13 @@ Owed at stage-1 close, besides T-395's real two-droplet run: T-393's C5. The 20 
 ### coord · 2026-10-15T15:36:22.536Z
 
 Research question 2 is answered (2026-10-15 15:36Z, ask 82732199): the proposal is accepted. The batch is the backstop, the bar is zero misses on the last 40 merges' own tests, and wider misses are listed with their cause. Recorded on T-394.
+
+### coord · 2026-10-15T18:12:08.813Z
+
+Stage-1 close run, 2026-10-15 17:54–18:10Z: `cland verify all --fresh --occasion stage` from the root at dev 9bc15ce8. The hub runs T-496, so bundling worked.
+- Run: 1bebcda2. Logs: parent A-3230, shard-1 A-3231, shard-2 A-3232. Executor status before A-3216, during A-3223, after A-3236.
+- shard-1: cland-v0-2ba27234, c-8 lon1, 892.95 s, $0.0620, green (894 pass).
+- shard-2: cland-v0-b5d7d2f2, c-8 lon1, 687.73 s, $0.0467, exit 1, two failures, both T-519 (CLAND_SUITE_SELECTION leaks into suite-runner.test.ts nested runners).
+- Total cost $0.1088. Overall wall from admission through collection: 907.85 s.
+- Spend $6.86 before, $6.97 after, against the $10 cap. Neither shard droplet appears in the lease or tag listing afterwards, which shows only four other crew runs.
+Result for T-395: C3/C4 behaviour is confirmed (two shards, one merged report, per-shard machine, time and cost). C6, the 600 s wall target, is NOT met (908 s). The stage close is not green until T-519 merges and a repeat sharded run passes. The wall-time gap goes to a follow-up.

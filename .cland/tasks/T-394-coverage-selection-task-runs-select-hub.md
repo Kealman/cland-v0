@@ -3,7 +3,7 @@ id: T-394
 kind: task
 title: "Coverage selection: task runs select hub tests by a function-level V8 coverage map from integrated dev runs, with full fallback on shared or unknown paths"
 state: open
-status: in progress
+status: review
 size: L
 criterion_seq: 8
 labels:
@@ -19,7 +19,7 @@ blocked_by:
 topic: topic-306
 branch: t/T-394-coverage-selection-task-runs-select-hub
 created: 2026-10-14T12:28:19.272Z
-updated: 2026-10-15T17:19:05.031Z
+updated: 2026-10-15T17:59:43.306Z
 ---
 
 ## Summary
@@ -56,10 +56,11 @@ It falls back to today's rules, naming the reason, for protocol, contract, packa
 - [x] C1. The human's answer to the miss-tolerance and replay-bar question is recorded on this item before the first commit.
   - done: impl-394 · 2026-10-15T16:23:12.810Z
   - verified: rev-30 [reviewer] · run rev-20261015-394-source · 2026-10-15T16:54:02.463Z · commit f0394340be84dc60bff576602d0585a7d35b2946
+  - verified: rev-30 [reviewer] · run rev-20261015-394-correction · 2026-10-15T17:59:43.305Z · commit 19120c610343956de21a1480f8f69118e41e1c26
 - [x] C2. An integrated `dev` full run posts a function-level coverage map artifact naming its head and tree, and spokes, daemons, the CLI and fakes all contribute to it, proven on a fixture project.
-  - done: impl-394 · 2026-10-15T16:48:01.117Z
-- [ ] C3. A task diff touching one function in `hub/src/hub/` selects its changed tests, the covering test files and the smoke baselines, and the report names the deciding functions.
-  - failed: rev-30 [reviewer] · 2026-10-15T17:19:05.031Z · note selectPackageSuite omits its supplied env at parseConfig, so valid instance config silently widens to full; executor-run mode regression in A-3204.
+  - done: impl-394 · 2026-10-15T17:58:58.408Z
+- [x] C3. A task diff touching one function in `hub/src/hub/` selects its changed tests, the covering test files and the smoke baselines, and the report names the deciding functions.
+  - done: impl-394 · 2026-10-15T17:58:46.754Z
 - [x] C4. Protocol, contract, package, harness, fixture and runner changes, unknown files, stale maps and a missing map fall back to the package rules with their reason, each proven by a test.
   - done: impl-394 · 2026-10-15T16:48:04.300Z
 - [x] C5. Replay (Coordinator amendment 2026-10-15 16:44Z): pre-merge, the replay tool runs on fixture histories and reports per-merge selection, misses and selected share, falling back explicitly where a historical map is missing; the real last-40 replay against the C1 bar is judged after merge at E-387's stage-2 close, from the first integrated dev map, and its table is posted on the item.
@@ -71,6 +72,7 @@ It falls back to today's rules, naming the reason, for protocol, contract, packa
 - [x] C8. `hub/README.md` (Tests), `docs/agents/tests.md` and the Implementer clause describe `hub-selected`, the map, its age limit and the fallbacks.
   - done: impl-394 · 2026-10-15T16:48:10.469Z
   - verified: rev-30 [reviewer] · run rev-20261015-394-source · 2026-10-15T16:54:02.463Z · commit f0394340be84dc60bff576602d0585a7d35b2946
+  - verified: rev-30 [reviewer] · run rev-20261015-394-correction · 2026-10-15T17:59:43.305Z · commit 19120c610343956de21a1480f8f69118e41e1c26
 
 ## Comments
 
@@ -124,3 +126,21 @@ Aside for lead, Bugs / S: hub/test/suite-close.test.ts:82 sees one active lease 
 Known shared budget: rule-sessions stopped-process/live-delivery case takes 5.592s; Coordinator-posted 051db745 is the approved shared allowance to take at the next head change. Source clear previously missed the config env handoff; this runtime result supersedes it. C1/C8 prior source facts stand; C2–C7 not finally verified. Requester agrees to fix own env regression, add selector coverage and measured allowance, then request fresh source review. No unchanged retry. Coordinator bdda2243's restart/submission hold remains in force. No Reviewer tests, edits or provider calls.
 
 Criteria: C3 failed (selectPackageSuite omits its supplied env at parseConfig, so valid instance config silently widens to full; executor-run mode regression in A-3204.).
+
+### rev-30 · 2026-10-15T17:59:43.306Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-394-correction
+commit: 19120c610343956de21a1480f8f69118e41e1c26
+scope: delta
+
+Delta source review T-394 clear at 19120c610343956de21a1480f8f69118e41e1c26, compared with previously reviewed f0394340be84dc60bff576602d0585a7d35b2946.
+Standards: no high/medium/low findings. Owning env is now passed through parseConfig at suite-selection.ts:139; no host-global mutation. New selectPackageSuite regression uses a valid short-lifetime fixture with an owning-env margin override, expects hub-selected and asserts the host margin unchanged. This exercises the public selection seam that failed in A-3204.
+Spec: no high/medium/low findings remain in the correction. A-3226 records exact lifetime-error reproduction before the fix, 83/83 whole selection tests after it, and the original remote-verify caller passing all original mode/delivery/accounting assertions. The source handoff and those targeted checks address the C3 finding; final runtime criterion verification still awaits the new exact-head gate.
+Manifest-only changes are the exact posted 051db745/d5442c61 allowances plus the new capture fixture's actual 6.610551867s measurement from A-3204 with concrete CLI/daemon/spoke/fake startup and serialization reason. Parsed allow remains a root dictionary; no prior entries or values change in the delta. No dev merge after first source review; commit chain contains the approved shared picks and own correction only. No assertion or time-bound changes.
+Original capture, publication, selected execution, replay and docs review A-3187 otherwise stands. C1/C8 reverified at this head; C2–C7 remain pending accepted post-correction verification, with the real C5–C7 measurements still at E-387 stage-2 close under amended criteria. A-3204 contains the task's own regression and cannot count as a gate receipt. Its untouched suite-close lease observation is filed T-517 per requester/Coordinator routing; no duplicate aside needed.
+Source clear permits the requested exact-head no-mode droplet verification following restart release. No new local run required beyond the supplied correction evidence for the shared manifest picks. No Reviewer tests, edits or provider calls.
+
+Criteria: C1 verified, C8 verified.

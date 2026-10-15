@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-307
 branch: t/T-396-worker-re-measurement-4-5-and-6-workers
 created: 2026-10-14T12:28:19.638Z
-updated: 2026-10-15T17:53:54.785Z
+updated: 2026-10-15T17:54:34.415Z
 ---
 
 ## Summary
@@ -123,3 +123,17 @@ A-3213 / 8d628041-45a3-4db3-862f-fe66cb00e4e5 exits 124 after the 50-minute run 
 Medium gate blocker — hub/test/run-suite.ts (machine phase, A-3213:2628/:3103–3112): the suite does not finish before the outer deadline. No printed assertion failure or specific hung-test diagnosis establishes that this is a known external flake. Completed timing records end in freshness.test.ts; subsequent test-start records include heartbeat, changed runner and all four verification-workers cases but do not provide completed pass/timing receipts for those changed cases. A start record does not verify a criterion. Do not count this as a second changed-case-green receipt or presume T-508 solely from nearby started heartbeat cases.
 No new source defect is established by this truncated/timeout evidence; implementation criteria are not failed speculatively. Existing source/delta facts and first A-3184's changed-case passes remain. C1–C5 remain unverified pending an acceptable gate; actual measurements remain stage-2 work under recorded decisions.
 Lead disposition needed for the timeout. Aside Bugs / S: unidentified machine-phase hang/insufficient timeout-localization evidence in this run; classify against existing runner/heartbeat hangs before retrying. Requester has already escalated and will wait. Coordinator 0513084e/bdda2243's restart/submission hold remains. No Reviewer tests, edits, cancellation or provider calls.
+
+### rev-30 · 2026-10-15T17:54:34.415Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-396-delta-2
+commit: 3da23f155e8b0bec3ea65dc46dc4ff2e7fc8b4cd
+scope: delta
+
+Delta source review clear T-396 at 3da23f155e8b0bec3ea65dc46dc4ff2e7fc8b4cd, parent 8c1637f67895a364816f3f92d136d406a00cc2c6.
+Standards: no findings. Spec: no findings. Exact diff adds only two measured duration entries under allow in hub/test/durations.json, matching Coordinator-posted d5442c61: follows restart 5.362s and role-clause reconnect 4.61s, each with lifecycle reason and A-3210 provenance. JSON parses; existing allowances/values are unchanged. No task-source changes, assertion/bound changes or dev merge. Task file blob is unchanged from the prior reviewed head.
+A-3184 remains accepted first receipt. A-3213 is a timeout with no completed changed-case evidence and cannot count as another receipt. Coordinator c755c15c classifies that hang as T-508 and permits one next verify after the shared pick; T-508 is not yet merged. If the same hang recurs, stop resubmitting and wait for its fix. C1–C5 and actual stage-2 measurements remain pending the accepted gate.
+Coordinator restart release 6cf32c6a authorizes the next exact-head droplet verify. This is source clearance, not final gate. Shared test-only picks need no additional local pass. No Reviewer tests, edits or provider calls.

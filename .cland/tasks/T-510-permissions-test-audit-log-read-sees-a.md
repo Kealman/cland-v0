@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-309
 branch: t/T-510-permissions-test-audit-log-read-sees-a
 created: 2026-10-15T15:56:19.661Z
-updated: 2026-10-15T17:53:58.335Z
+updated: 2026-10-15T18:16:07.857Z
 ---
 
 ## Problem
@@ -26,6 +26,7 @@ updated: 2026-10-15T17:53:58.335Z
 - [x] C1. The audit reader in the test ignores, or waits past, a trailing partial line, or reads only after an observed flush boundary. Every assertion stays, and the root cause is recorded in the commit. If the product's own audit reader has the same exposure, say so in the commit and file it.
   - done: impl-510 · 2026-10-15T16:59:49.540Z
   - verified: rev-30 [reviewer] · run rev-20261015-510-source · 2026-10-15T17:00:28.279Z · commit 805972cf6803332a1eaf35dcf83be7918de1f297
+  - verified: rev-30 [reviewer] · run rev-20261015-510-delta · 2026-10-15T17:54:38.560Z · commit 64bd51a367e455f041c2a45e1feac639a5e84baa
 - [ ] C2. permissions.test.ts passes 5/5 serially, whole file and alone on the Mac, plus once on a droplet in the task's verify.
 
 ## Comments
@@ -77,3 +78,40 @@ Coordinator bdda2243 prohibits new verify submissions and pauses droplet watcher
 ### impl-510 · 2026-10-15T17:53:58.335Z
 
 Restart hold lifted by Coordinator 6cf32c6a. Picked requested test-only duration manifest d5442c61 as 64bd51a367e455f041c2a45e1feac639a5e84baa and pushed; 051db745 was already included before original review. permissions.test.ts unchanged from reviewed 805972cf. Delta source review requested before explicit droplet verify. Prior Mac evidence: five serial passes A-3196; green local 1796/1796 A-3202, accepted by Reviewer A-3203. No local test rerun needed for shared manifest-only pick per Coordinator instructions.
+
+### rev-30 · 2026-10-15T17:54:38.560Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-510-delta
+commit: 64bd51a367e455f041c2a45e1feac639a5e84baa
+scope: delta
+
+Delta source review clear T-510 at 64bd51a367e455f041c2a45e1feac639a5e84baa, parent 805972cf6803332a1eaf35dcf83be7918de1f297.
+Standards: no findings. Spec: no findings. Exact diff adds only two measured duration entries under allow in hub/test/durations.json, matching Coordinator-posted d5442c61: follows restart 5.362s and role-clause reconnect 4.61s, each with lifecycle reason and A-3210 provenance. JSON parses; existing allowances/values are unchanged. No task-source changes, assertion/bound changes or dev merge. Task file blob is unchanged from the prior reviewed head.
+C1 reverified: complete audit records still parse strictly, partial tail is excluded, all assertions/bounds and commit diagnosis are unchanged. A-3196's five quiet Mac passes and A-3202's local green suite remain evidence for unchanged test source. C2 explicitly requires a droplet receipt and stays unverified.
+Coordinator restart release 6cf32c6a authorizes the next exact-head droplet verify. This is source clearance, not final gate. Shared test-only picks need no additional local pass. No Reviewer tests, edits or provider calls.
+
+Criteria: C1 verified.
+
+### impl-510 · 2026-10-15T17:55:31.784Z
+
+Delta source clear at 64bd51a3 (A-3219). Explicit droplet verify 55836405 submitted after queue showed remote 3/4 with no waiters, but admission raced another caller and hub fell back locally at remote 4/4. Run left executing per Coordinator's no-cancel instruction. Asked lead how to obtain a remote slot for C2 without repeated local fallback runs. Head unchanged, no new source changes.
+
+### impl-510 · 2026-10-15T18:14:26.263Z
+
+Second same-head Mac fallback 55836405 is green at delta-reviewed 64bd51a3: 1796/1796, A-3241. C2 Linux receipt remains outstanding. Per Coordinator 42918b81, next fresh explicit droplet attempt is allowed only when remote occupancy is ≤2/4; one more fallback means waiting for T-512. First queue check after result is 4/4; no verification submitted. Per Coordinator 4a85ed21, next attempt will set fresh to avoid executor-agnostic cache reuse.
+
+### rev-30 · 2026-10-15T18:16:07.857Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-510-local-evidence-2
+commit: 64bd51a367e455f041c2a45e1feac639a5e84baa
+scope: evidence
+
+Local evidence pass T-510 clear at unchanged source-reviewed 64bd51a367e455f041c2a45e1feac639a5e84baa; final C2 remains unverified.
+A-3241 / 55836405-f903-44c0-be72-68c06a36d2bf completes exit 0 on local Darwin after remote-budget fallback: typecheck, hub and Neovim smoke; 1796 passed / 0 failed / 0 cancelled / 0 skipped. All five permissions cases pass (:4774–4778). No new source findings or hard budget failures; C1 verification stands.
+This is a second local run, not Linux evidence. A-3196 supplies the five serial quiet Mac files. C2 still explicitly requires a droplet task receipt; actual platform must be checked even when submission requested droplet or a cache result returns. No final-ready claim and no extra local run is requested. No Reviewer tests or edits.

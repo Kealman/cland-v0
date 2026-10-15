@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-296
 branch: t/T-459-demos-on-a-droplet-cland-demo-start-exec
 created: 2026-10-15T07:15:15.838Z
-updated: 2026-10-15T17:35:27.041Z
+updated: 2026-10-15T18:18:14.821Z
 ---
 
 ## Summary
@@ -65,26 +65,32 @@ E-423 "Rules and rhythm" (R-294), tracer bullet 7 of 7; spec `docs/spec/v0.1.3.m
   - done: impl-459 · 2026-10-15T13:33:29.136Z
   - verified: rev-30 [reviewer] · run rev-20261015-459-final · 2026-10-15T15:59:24.451Z · commit 528680a673944d2ed83506ef7ed902ed336e26fb
   - verified: rev-30 [reviewer] · run rev-20261015-459-integrated-final · 2026-10-15T17:35:18.834Z · commit 251774bc1e1b84edb0ea07bd33edf6c22b07f2e5
+  - verified: rev-30 [reviewer] · run rev-20261015-459-delivery-final · 2026-10-15T18:18:07.757Z · commit 0bdff76caa0d674057aaf720c293573f9c0f67a6
 - [x] C2. `cland demo exec <epic> -- <cmd>` returns the command's output and exit code from the delivered tree as the ordinary user, and a `cland --headless --qa` case runs there the same way.
   - done: impl-459 · 2026-10-15T13:33:30.300Z
   - verified: rev-30 [reviewer] · run rev-20261015-459-final · 2026-10-15T15:59:24.451Z · commit 528680a673944d2ed83506ef7ed902ed336e26fb
   - verified: rev-30 [reviewer] · run rev-20261015-459-integrated-final · 2026-10-15T17:35:18.834Z · commit 251774bc1e1b84edb0ea07bd33edf6c22b07f2e5
+  - verified: rev-30 [reviewer] · run rev-20261015-459-delivery-final · 2026-10-15T18:18:07.758Z · commit 0bdff76caa0d674057aaf720c293573f9c0f67a6
 - [x] C3. `cland demo stop`, the epic's verdict and the lease lifetime each release the droplet, and the create, destroy and cost are posted on the epic.
   - done: impl-459 · 2026-10-15T13:33:31.300Z
   - verified: rev-30 [reviewer] · run rev-20261015-459-final · 2026-10-15T15:59:24.451Z · commit 528680a673944d2ed83506ef7ed902ed336e26fb
   - verified: rev-30 [reviewer] · run rev-20261015-459-integrated-final · 2026-10-15T17:35:18.834Z · commit 251774bc1e1b84edb0ea07bd33edf6c22b07f2e5
+  - verified: rev-30 [reviewer] · run rev-20261015-459-delivery-final · 2026-10-15T18:18:07.758Z · commit 0bdff76caa0d674057aaf720c293573f9c0f67a6
 - [x] C4. With no slot or budget left, `demo start` refuses with the reason and starts nothing, and a session other than QA, the Coordinator or the human is refused with `forbidden`.
   - done: impl-459 · 2026-10-15T13:33:31.967Z
   - verified: rev-30 [reviewer] · run rev-20261015-459-final · 2026-10-15T15:59:24.451Z · commit 528680a673944d2ed83506ef7ed902ed336e26fb
   - verified: rev-30 [reviewer] · run rev-20261015-459-integrated-final · 2026-10-15T17:35:18.834Z · commit 251774bc1e1b84edb0ea07bd33edf6c22b07f2e5
+  - verified: rev-30 [reviewer] · run rev-20261015-459-delivery-final · 2026-10-15T18:18:07.758Z · commit 0bdff76caa0d674057aaf720c293573f9c0f67a6
 - [x] C5. The hub accepts an epic verdict at a commit behind the `dev` tip when the later commits touch no file the epic's merges changed, and refuses it naming the commit and files when one does.
   - done: impl-459 · 2026-10-15T13:33:32.697Z
   - verified: rev-30 [reviewer] · run rev-20261015-459-final · 2026-10-15T15:59:24.451Z · commit 528680a673944d2ed83506ef7ed902ed336e26fb
   - verified: rev-30 [reviewer] · run rev-20261015-459-integrated-final · 2026-10-15T17:35:18.834Z · commit 251774bc1e1b84edb0ea07bd33edf6c22b07f2e5
+  - verified: rev-30 [reviewer] · run rev-20261015-459-delivery-final · 2026-10-15T18:18:07.759Z · commit 0bdff76caa0d674057aaf720c293573f9c0f67a6
 - [x] C6. The `qa` skill runs epic cases through `cland demo exec`, runs macOS cases locally at the same commit, applies the freshness rule after the cases, and names executor, commit, lifetime and cost in the evidence.
   - done: impl-459 · 2026-10-15T13:42:15.127Z
   - verified: rev-30 [reviewer] · run rev-20261015-459-final · 2026-10-15T15:59:24.451Z · commit 528680a673944d2ed83506ef7ed902ed336e26fb
   - verified: rev-30 [reviewer] · run rev-20261015-459-integrated-final · 2026-10-15T17:35:18.834Z · commit 251774bc1e1b84edb0ea07bd33edf6c22b07f2e5
+  - verified: rev-30 [reviewer] · run rev-20261015-459-delivery-final · 2026-10-15T18:18:07.759Z · commit 0bdff76caa0d674057aaf720c293573f9c0f67a6
 - [x] C7. `hub/README.md` describes the demo lease, its commands, budget sharing and the freshness rule.
   - done: impl-459 · 2026-10-15T13:33:34.141Z
   - verified: rev-30 [reviewer] · run rev-20261015-459-source-2 · 2026-10-15T13:42:55.913Z · commit 05cff0dd5e3a0fd1a8fcef0c44e0668a95c2985b
@@ -94,6 +100,7 @@ E-423 "Rules and rhythm" (R-294), tracer bullet 7 of 7; spec `docs/spec/v0.1.3.m
   - verified: rev-30 [reviewer] · run rev-20261015-459-final · 2026-10-15T15:59:24.451Z · commit 528680a673944d2ed83506ef7ed902ed336e26fb
   - verified: rev-30 [reviewer] · run rev-20261015-459-delta-4 · 2026-10-15T16:43:14.388Z · commit 251774bc1e1b84edb0ea07bd33edf6c22b07f2e5
   - verified: rev-30 [reviewer] · run rev-20261015-459-integrated-final · 2026-10-15T17:35:18.835Z · commit 251774bc1e1b84edb0ea07bd33edf6c22b07f2e5
+  - verified: rev-30 [reviewer] · run rev-20261015-459-delivery-final · 2026-10-15T18:18:07.759Z · commit 0bdff76caa0d674057aaf720c293573f9c0f67a6
 
 ## Comments
 
@@ -377,5 +384,28 @@ C5: all fourteen epic-close cases pass; A-3206:4409–4410 covers named-ancestor
 C6: all sixteen skills-QA cases and the actual demo recorder case pass. Previously reviewed QA skill/recorder retains remote epic execution, local macOS cases pinned to the same commit, post-case freshness and executor/commit/lifetime/cost evidence. The full Neovim phase also supplies the mapped plan/sessions tests omitted from first red Linux receipt.
 C7: README commands, shared lease budget and freshness documentation were source-verified and remain unchanged.
 All seven criteria verified at this exact head. Stage/epic real demos remain their own QA obligation; this item has no per-item QA criteria. Coordinator bdda2243 holds hub-code merges until restart notice, so this review does not direct an immediate merge during that hold. No Reviewer tests, edits or provider calls.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.
+
+### impl-459 · 2026-10-15T18:17:00.563Z
+
+T-496 conflict resolution pushed at 0bdff76caa0d674057aaf720c293573f9c0f67a6, merge of origin/dev d5442c61. run.ts keeps filtered checkWorktree with HEAD/path refusal details and excludes only .cland/tasks, with both calls guarded by committedOnly for named demo delivery; per-instance env retained. Durations exact union: files205/tests2039/allow214, no differing overlap values, both shared picks051db745/d5442c61 included. A-3220 maps identifiers; broad deliver word hits outside executor.test are message frames/prose, no Neovim reference to changed delivery. Serial targeted66/66: executor-run20, suite-close6, demo7, executor3, epic-close14, skills-qa16. Logs A-3224/A-3234/A-3246. Quiet/loaded guards recorded; no cancelled test run or real droplet. Typecheck/shard lint/whitespace green. Coordinator f33aa7c8 explicitly retains A-3200+A-3206 with no new full verify if targeted+delta green. Requesting delta review then ready.
+
+### rev-30 · 2026-10-15T18:18:07.760Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-459-delivery-final
+commit: 0bdff76caa0d674057aaf720c293573f9c0f67a6
+scope: delta
+
+Delta/final review T-459 clear at 0bdff76caa0d674057aaf720c293573f9c0f67a6, merge parents reviewed 251774bc1e1b84edb0ea07bd33edf6c22b07f2e5 and dev d5442c61cbc7de7ef6b4f1b08dbc8d13524fe800. No high, medium or low findings.
+Standards: inspected combined run.ts conflict and delta. T-496's checkWorktree retains exact HEAD comparison, porcelain-v1/all-untracked source checks, narrow .cland/tasks exclusion and named HEAD/path refusals. Both pre/post-bundle checks remain guarded by committedOnly, preserving named committed-object demo delivery. Bundle creation/reuse remains pinned to run.head, remote detached checkout remains exact, and per-instance Git/Machine env is unchanged. Ordinary suite delivery still gets both filtered checks; demo delivery does not copy uncommitted host bytes.
+Manifest parsed across both parents and result: files205/tests2039/allow214 are exact key unions; zero conflicting overlap values and all parent values preserved. Version/budget unchanged; source measurement provenance including demo Linux receipts remains. Unicode escaping in serialization is semantically unchanged. Shared 051db745/d5442c61 included.
+Spec/evidence: A-3220 maps changed identifiers to tests; no Neovim reference to the delivery implementation. A-3224 executor-run20/20 and A-3234 suite-close6/6 cover dirty-tracker committed delivery, dirty-source refusal, ordinary acquisition/delivery/cleanup and occasion shards. A-3246 demo7/7, executor3/3, epic-close14/14 and skills-QA16/16 complete 66/66 serial mapped cases with natural exits, zero failures/cancellations. Quiet/loaded labels and load<15 admission guards recorded; no real-provider calls. These are targeted checks, not a new full run.
+Confirmed Coordinator f33aa7c8-4498-4d62-841e-ae809aacf698 in topic history explicitly authorizes this resolution and says no new full verify if mapped tests and delta review are green; A-3200+A-3206 stand. A-3200 remains Linux own-file green with the recorded T-493 external failure. A-3206 remains prior-head full Mac2186/2186 including full Neovim. Neither is mislabeled as a full run at this new head.
+C1–C4 retain the unchanged demo lifecycle/authorization/budget/delivery behavior, checked by all demo cases after resolution. C5 freshness source and fourteen epic-close cases retain named-ancestor/surface-conflict checks. C6 recorder/skill source and sixteen skills-QA cases remain unchanged and pass. C7 README demo/budget/freshness documentation remains. Demo, freshness/skills tests and Demos/DropletExecutor/Dispatcher source blobs are unchanged from the last reviewed task head; only the delivery helper conflict and inherited dev changes integrate.
+All C1–C7 reverified at this head under the explicit conflict-resolution waiver. Stage/epic real demos remain their separate QA obligation. No new full verification requested. No Reviewer tests, edits, commits, merges or provider calls.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.

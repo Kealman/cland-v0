@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-310
 branch: t/T-503-merge-recovery-test-the-task-worktree
 created: 2026-10-15T15:03:40.855Z
-updated: 2026-10-15T17:53:52.204Z
+updated: 2026-10-15T17:54:20.075Z
 ---
 
 ## Problem
@@ -26,6 +26,7 @@ updated: 2026-10-15T17:53:52.204Z
 - [x] C1. Either the merge retry removes the worktree before it reports success, as a product fix with the reason recorded, or the test waits on an observed removal with the existing eventually helper. Every other assertion stays, and the root cause is recorded in the commit.
   - done: impl-503 · 2026-10-15T16:51:31.346Z
   - verified: rev-31 [reviewer] · run rev-20261015-503-source · 2026-10-15T16:52:15.111Z · commit 6f26ba6ff7dc8934614cb142bffcd10212f37735
+  - verified: rev-31 [reviewer] · run rev-20261015-503-source-2 · 2026-10-15T17:54:20.075Z · commit 4257b32b897147f86c873e5be9630e96a6050427
 - [x] C2. merge-recovery.test.ts passes 5/5 serially, whole file and alone on the Mac, plus once on a droplet in the task's verify.
   - done: impl-503 · 2026-10-15T17:39:48.258Z
 
@@ -85,3 +86,25 @@ A-3210 exact-head droplet run 5d2063ce-c242-4846-9677-06770f639070 has 1781 pass
 
 C2 execution evidence is present on both platforms, but verification remains pending an accepted gate disposition for the two external hard-budget failures. C1 retained; no failed task-behavior criterion inferred. Coordinator restart/cover hold forbids new verifies until notice. No Reviewer tests or edits.
 Standards/evidence: two external budget blockers. Spec: no new task implementation finding.
+
+### rev-31 · 2026-10-15T17:54:20.075Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261015-503-source-2
+commit: 4257b32b897147f86c873e5be9630e96a6050427
+scope: delta
+
+Delta source review clear at 4257b32b897147f86c873e5be9630e96a6050427. No high, medium or low findings.
+
+## Standards
+Only delta since source-reviewed 6f26ba6f is durations.json: two exact Coordinator-posted manifest picks. Stable patch-ids match 051db745 -> 2599cc56 (521a96cd8f79c2be07fa317e8a9c185bc5c3f07a) and d5442c61 -> 4257b32b (fce75678b8a160576267db5e88c7608d65c407d5). Entries carry concrete lifecycle reasons and measured provenance; includes the heartbeat/follows identities that failed A-3210. No production, task-test or assertion changes; diff check passes.
+
+## Spec
+C1 refreshed: observed worktree-removal wait and all original assertions remain byte-identical to the first source review. A-3189 five loaded Mac whole-file passes remain applicable. A-3210's Linux task-file pass remains first-receipt evidence.
+
+Coordinator ade96b14-0680-4659-bfab-53027b7da113 was read in topic history: A-3210 is accepted as first receipt, adopt these manifest picks, source delta review, then one droplet verify; green or known-flake-only red supplies the gate together with A-3210. C2 remains unverified pending that next accepted receipt. No new local re-run required for exact shared test-only picks under standing rule.
+Standards: 0 findings. Spec: 0 findings. No Reviewer tests or edits.
+
+Criteria: C1 verified.
