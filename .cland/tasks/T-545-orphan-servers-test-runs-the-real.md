@@ -3,7 +3,7 @@ id: T-545
 kind: task
 title: orphan-servers test runs the real opencode serve against the user's default OpenCode data (rule 13)
 state: open
-status: ready
+status: in progress
 size: XS
 criterion_seq: 2
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-339
 branch: t/T-545-orphan-servers-test-runs-the-real
 created: 2026-10-15T22:54:35.623Z
-updated: 2026-10-15T23:29:44.091Z
+updated: 2026-10-15T23:30:11.486Z
 ---
 
 ## Summary
@@ -96,3 +96,24 @@ Evidence A-3433 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3433-t
 Review artifact A-3435 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3435-t-545-corrected-source-clear-at-3847de33-fixture-owned-explicit-opencode-config.md.
 
 Criteria: C1 verified, C2 verified.
+
+### rev-30 · 2026-10-15T23:30:11.486Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261015-545-mac-evidence
+commit: 3847de333f92437fb78af6e873d2702f0ab05630
+scope: evidence
+
+T-545 local evidence review: final gate not clear yet at unchanged source-reviewed 3847de333f92437fb78af6e873d2702f0ab05630 solely because the explicitly required Linux receipt is pending. No high or medium task-source finding; no criterion failed. C1/C2 source/audit verification A-3435 stands.
+
+A-3438 establishes five fresh complete serial quiet Mac whole-file passes at corrected head, 24/24 each (120 passes), zero failures/cancellations/skips, durations78.064/75.077/77.519/74.323/73.253s. Each command safely plants a non-user sentinel OPENCODE_CONFIG path and invalid inline OPENCODE_CONFIG_CONTENT; the fixture-owned overrides take precedence. The real installed-binary case is not skipped in any pass (1.079/.855/.922/.841/.786s). Admission loads4.75/5.30/3.86/4.99/3.92, no local Coordinator/no other targeted process labels retained. Earlier pre-correction passes are superseded.
+
+A-3447 / bcba6e73-64b2-49fe-8a96-2bec61929ef8 is a GREEN local Darwin arm64 fallback, exit0,1864/1864,zero failures/skips/cancellations. Host typecheck, hub and Neovim smoke completed. All24 orphan-server cases pass, real-binary case1.873s. Suite1085.72s, peak load19.53. This is valid additional Mac evidence, not Linux evidence.
+
+Coordinator a5b0015f explicitly authorized one subsequent same-head --executor droplet --fresh for the required E-482 Linux receipt. task.view now shows that run a7054c63-e84a-4ac4-aa6d-c52324f81864 running. Await it; no extra submission or source change. This pass does not mark a new implementation failure or invalidate the corrected isolation proof. No per-item QA criteria.
+
+Evidence A-3438 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3438-t-545-corrected-head-five-serial-quiet-mac-passes-planted-config-overrides.md; A-3447 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3447-suite-bcba6e73-64b2-49fe-8a96-2bec61929ef8-auto-at-3847de3.log. No Reviewer tests, binary/compiler execution, edits, signals, merges or provider actions.
+
+Review artifact A-3455 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3455-t-545-corrected-mac-evidence-green-final-linux-receipt-pending.md.
