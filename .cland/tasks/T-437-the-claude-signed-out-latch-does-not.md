@@ -2,8 +2,8 @@
 id: T-437
 kind: task
 title: The fake Claude harness completes turns while signed out, so a restart's reconnect turn lifts the latch in tests
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -16,7 +16,8 @@ blocked_by: []
 topic: topic-262
 branch: t/T-437-the-claude-signed-out-latch-does-not
 created: 2026-10-14T19:14:23.326Z
-updated: 2026-10-15T05:35:15.832Z
+updated: 2026-10-15T05:35:29.538Z
+closed: 2026-10-15T05:35:29.538Z
 ---
 
 ## Summary
@@ -105,3 +106,7 @@ scope: evidence
 Final clear at unchanged source-reviewed 7aa9053d. Standards and Spec: no high or medium findings. Full local no-mode 9f985532/A-2693 passes root typecheck and 2065/2065 (37 free hub, 1641 machine hub, 387 Neovim), zero failures/cancellations/skips/todos, exit 0. Real-frame latch regression passes in 95.307 s: logged-out initial/reconnect turns emit auth StopFailure with no successful Stop, running session retains signed-out across three actual 30 s periods with no per-directory agents calls; elapsed >=90 s, deduplicated journal/Agents notice and explicit successful recovery are asserted. C1/C2 established; both done marks checked. Earlier cfca4ef1/A-2672 remains red on known T-439 gi readiness, resolved by exact adopted a2f60f7a patch source-reviewed in A-2674 before this new-head green gate. No unchanged flaky retry used. A-2694 details final evidence; original fake/latch production scope remains unchanged.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-15T05:35:29.538Z
+
+Merged 2fa14d49cf65e2178491049bdadecf9c8807e9b7 onto dev.
