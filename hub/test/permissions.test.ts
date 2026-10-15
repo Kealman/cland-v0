@@ -17,11 +17,16 @@ import { parseRoles } from '../src/roles/config.ts';
 type Audit = { ts: string; event: 'audit'; session: string; sessionId: string | null; role: string | null; tool: string; args: Record<string, unknown>; outcome: string; permission?: string; reason?: string; error?: string; client?: string };
 type ToolResult = { ok: boolean; error?: string; code?: string; permission?: string; role?: string | null; reason?: string };
 
-const audits = async (root: string): Promise<Audit[]> =>
-  (await readFile(join(root, '.cland', 'log', 'hub.log'), 'utf8'))
+const audits = async (root: string): Promise<Audit[]> => {
+  const text = await readFile(join(root, '.cland', 'log', 'hub.log'), 'utf8');
+  // A flush drains earlier entries; the live hub can append again during this read.
+  // Only newline-terminated records are complete. Keep parsing those strictly.
+  return text
+    .slice(0, text.lastIndexOf('\n') + 1)
     .split('\n')
     .filter((l) => l.includes('"event":"audit"'))
     .map((l) => JSON.parse(l) as Audit);
+};
 
 async function flushLogs(ui: FrameClient): Promise<void> {
   const result = await ui.request({ type: 'hub.status', flushLogs: true });
