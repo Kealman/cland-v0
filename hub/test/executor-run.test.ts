@@ -41,6 +41,9 @@ test('remote verify delivers host selection, runs as runner, reports accounting,
   const refused = await f.ui.request({ type: 'suite.start', mode: 'auto', cwd: f.root, report: f.topic, executor: 'other' });
   assert.equal(refused.ok, false);
   await flushProjectLogs(t, f.root);
+  // Live checks are complete. Stop ledger sweeps before auditing persisted bytes,
+  // so transient lock entries cannot disappear between readdir and readFile.
+  assert.equal((await cland(f.root, 'hub', 'stop')).code, 0);
   const scan = async (dir: string): Promise<void> => {
     for (const entry of await readdir(dir, { withFileTypes: true })) {
       const path = join(dir, entry.name);
