@@ -105,7 +105,7 @@ test('launched Claude sub-agents retain their parent role and launch item throug
   const viewed = await cland(root, 'task', 'view', item, '--json');
   assert.equal(viewed.code, 0, viewed.stderr);
   const usage = JSON.parse(viewed.stdout).item.usage;
-  assert.deepEqual(usage?.subagents.map((r: Record<string, unknown>) => [r.session, r.sessionId, r.harness, r.agentId, r.model]), [
+  assert.deepEqual(usage?.subagents.sort((a: Record<string, unknown>, b: Record<string, unknown>) => String(a.agentId).localeCompare(String(b.agentId))).map((r: Record<string, unknown>) => [r.session, r.sessionId, r.harness, r.agentId, r.model]), [
     ['impl', p.sessionId, 'claude-code', 'known-child', 'claude-child-1'],
     ['impl', p.sessionId, 'claude-code', 'unknown-child', 'unreported'],
   ]);
