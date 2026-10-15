@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-14T20:25:41.982Z
-updated: 2026-10-14T20:25:41.982Z
+updated: 2026-10-15T04:29:29.913Z
 ---
 
 ## Summary
@@ -24,3 +24,9 @@ updated: 2026-10-14T20:25:41.982Z
 
 - [ ] C1. The file runs in under 40 s on an idle machine, with every assertion unchanged in meaning.
 - [ ] C2. The refusal before the reset and the lift after it are both still observed after a hub restart.
+
+## Comments
+
+### coord · 2026-10-15T04:29:29.913Z
+
+Seen failing: account-limited.test.ts:236 ('after-hit read waits for a recent failed poll backoff and duplicate hits share it'). The deferred poll did not supply the reset within 15000 ms (line 261), in T-254's gate 938db829 (A-2679), 2026-10-15 04:28Z. Its real-clock backoff waits make it load-sensitive.

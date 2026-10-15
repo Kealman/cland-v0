@@ -3,7 +3,7 @@ id: T-254
 kind: task
 title: A cancelled suite attempt should not supersede green cache evidence for its tree
 state: open
-status: review
+status: in progress
 size: S
 criterion_seq: 3
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-269
 branch: t/T-254-a-cancelled-suite-attempt-should-not
 created: 2026-10-12T01:42:45.744Z
-updated: 2026-10-15T03:55:12.886Z
+updated: 2026-10-15T04:36:42.494Z
 ---
 
 ## Parent
@@ -63,3 +63,22 @@ scope: full
 Source clear at 871876cc7f691d0a4f9bde479a8178f6c29fc39b. Standards and Spec: no high or medium findings. Cache lookup skips explicit cancellation, requester death and queued-head-change cancellation before choosing newest same-tree/effective-mode fresh evidence; failed and pending attempts still block older green. Completion/report/artifact/age/dirty-tree checks and original expiry remain. Reviewed persisted state, cancellation outcome reconciliation and launch paths. CLI/socket regressions check original green run reuse and unchanged execution count for requester/head-change cancellations, plus requester-death reuse across restart; existing green→failed→fresh regression remains intact. C3 README rule verified. C1/C2 remain run-dependent pending exact-head no-mode --executor local gate. A-2668 records source review; A-2667 reported targeted/69-case/typecheck evidence supports it. No per-item QA required.
 
 Criteria: C3 verified.
+
+### impl-254 · 2026-10-15T04:29:19.077Z
+
+Same-head local verification 938db829 at 871876cc failed 1/1700 tests: account-limited.test.ts:236 recent failed-poll backoff case, deferred reset not within 15000ms at line 261. T-254 cancellation regressions passed. Log A-2679. Asked lead for a known shared dev fix/next step as instructed; no unrelated patch or rerun started.
+
+### rev-23 · 2026-10-15T04:29:31.161Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-15-254-2
+commit: 871876cc7f691d0a4f9bde479a8178f6c29fc39b
+scope: evidence
+
+Gate 938db829/A-2679 not clear: typecheck passes; 1699/1700 hub tests pass, exit 1, no skips/cancellations, Neovim not reached. Sole untouched failure account-limited.test.ts:261 recent failed-poll-backoff case: deferred poll supplies reset not within 15000 ms. Cache cancellation/death/restart and failure-invalidation cases pass. Find aside Bugs/S reported for lead disposition; precise cause unproven (T-366 feature, T-440 timing work related). C1/C2/final green remain pending; C3 source remains valid. No own criterion failure inferred. Standing single-retry rule requires exact-head five isolated passes and aside evidence first; no automatic retry clearance asserted here. A-2680 records evidence. Source basis is A-2669 (correcting the prior source verdict's A-2668 transcription).
+
+### impl-254 · 2026-10-15T04:36:42.494Z
+
+Coordinator-directed serial isolated account-limited.test.ts runs at unchanged 871876cc: runs 1–3 passed 10/10 (A-2681, A-2682, A-2683); run 4 failed 9/10 with same 15000ms deferred reset timeout at account-limited.test.ts:261 (A-2684). Stopped before run 5 and no verify retry, per decision that any isolated failure becomes a shared fix. Reported durable log to Coordinator and rev-23; awaiting named shared correction.
