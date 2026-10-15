@@ -2,8 +2,8 @@
 id: T-503
 kind: task
 title: "merge-recovery test: the task worktree still exists right after a retried merge reports closed (Linux)"
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-310
 branch: t/T-503-merge-recovery-test-the-task-worktree
 created: 2026-10-15T15:03:40.855Z
-updated: 2026-10-15T18:27:35.738Z
+updated: 2026-10-15T18:28:25.077Z
+closed: 2026-10-15T18:28:25.077Z
 ---
 
 ## Problem
@@ -162,3 +163,7 @@ Coordinator a5e5d54b-b154-493e-8453-ad972bd97f43 was read directly: merge dev, r
 Standards: 0 findings. Spec: 0 findings; all criteria refreshed.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-15T18:28:25.077Z
+
+Merged c256a4df2a06ebd6dc64aecce609ef423744ec8a onto dev.

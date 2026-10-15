@@ -3,8 +3,9 @@ id: T-474
 kind: task
 title: Merge override is limited to tracker and docs changes; a code diff needs review
 state: open
-status: in progress
+status: review
 size: S
+criterion_seq: 3
 labels:
   - v0.1.3
   - hub
@@ -14,7 +15,7 @@ blocked_by: []
 topic: topic-315
 branch: t/T-474-merge-override-is-limited-to-tracker-and
 created: 2026-10-15T09:13:18.127Z
-updated: 2026-10-15T18:21:43.603Z
+updated: 2026-10-15T18:28:45.031Z
 ---
 
 ## Summary
@@ -27,9 +28,12 @@ Retrospective A-2783, STOP 3: T-289 merged code by human override without review
 
 ## Acceptance criteria
 
-- [ ] C1. An override merge of a branch that changes hub/src is refused, naming the files.
-- [ ] C2. An override merge of a docs-only or tracker-only branch succeeds.
-- [ ] C3. The merge skill and hub/README.md describe the scope.
+- [x] C1. An override merge of a branch that changes hub/src is refused, naming the files.
+  - done: impl-474 · 2026-10-15T18:27:59.912Z
+- [x] C2. An override merge of a docs-only or tracker-only branch succeeds.
+  - done: impl-474 · 2026-10-15T18:28:03.467Z
+- [x] C3. The merge skill and hub/README.md describe the scope.
+  - done: impl-474 · 2026-10-15T18:28:08.548Z
 
 ## Comments
 
