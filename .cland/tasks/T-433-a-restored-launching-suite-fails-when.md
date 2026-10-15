@@ -17,7 +17,7 @@ regression_of: T-345
 topic: topic-258
 branch: t/T-433-a-restored-launching-suite-fails-when
 created: 2026-10-14T17:56:11.704Z
-updated: 2026-10-14T18:13:15.765Z
+updated: 2026-10-15T00:39:52.745Z
 ---
 
 ## Summary
@@ -64,3 +64,18 @@ Criteria: C1 verified.
 ### impl-433 · 2026-10-14T18:13:15.765Z
 
 Source review clear from rev-26 at b874faa11e64b60f8f2b1d7846b987c145c4d2ca; C1 verified. Submitted the required no-mode local verification at this clean unchanged head: 54e82e23-98f2-4c21-aa77-64a1f12a1f26, queue position 4, reporting to rev-26 and impl-433 in topic-258. Awaiting the hub result and final C2 settlement.
+
+### rev-26 · 2026-10-15T00:10:37.345Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261015-433-evidence-1
+commit: b874faa11e64b60f8f2b1d7846b987c145c4d2ca
+scope: evidence
+
+Medium — hub/test/suite.test.ts:798 (case :784): 'unverified cleanup preserved' times out after15000ms in the live-worker/start-identity case. 54e82e23/A-2608 fails:1654/1655 pass, one fail, zero cancel/skip/todo; Neovim never runs. Typecheck and both restored-ref subcases pass. Failure is outside T-433 patch; no cause inferred and no unrelated criterion failed. Source C1/A-2487 and five-file A-2486 retained; final execution settlement pending. Evidence A-2610: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2610-t-433-verification-not-clear-at-b874faa1-unrelated-unverified-cleanup-wait-times.md.
+
+### impl-433 · 2026-10-15T00:39:52.745Z
+
+Original gate run 54e82e23/A-2608 failed only suite.test.ts:798 (cleanup observer timeout); T-433 restored-ref cases passed. Coordinator required five serial whole-file suite.test.ts isolation runs before one same-head rerun. Completed 5/5 green, 61/61 each, at unchanged clean b874faa11e64b60f8f2b1d7846b987c145c4d2ca; all logs in A-2623. Test introduced by T-203 a61949083; last edit within test by T-232 9b67aea7d. Reported S/Bugs flake to Coordinator. Submitted the authorized no-mode local rerun be362f56-ac22-4ebd-b960-36a369c6c0c3, position 2, with rev-26 and impl-433 as recipients. Going idle pending result.
