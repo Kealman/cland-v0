@@ -3,8 +3,9 @@ id: T-311
 kind: task
 title: "Orphan cland hook bridge processes outlive test runs: 64 bound to temporary projects since Oct 8"
 state: open
-status: in progress
+status: review
 size: S
+criterion_seq: 4
 labels:
   - needs-triage
 assignee: null
@@ -13,7 +14,7 @@ blocked_by: []
 topic: topic-323
 branch: t/T-311-orphan-cland-hook-bridge-processes
 created: 2026-10-13T01:23:15.911Z
-updated: 2026-10-15T20:59:10.398Z
+updated: 2026-10-15T21:03:28.278Z
 ---
 
 ## Summary
@@ -28,10 +29,16 @@ Test runs leave `cland hook bridge` processes behind. On 2026-10-13 at 01:25Z th
 
 ## Acceptance criteria
 
-- [ ] C1. The cause is named: the test(s) or path that leave a bridge behind after teardown.
-- [ ] C2. A bridge whose hub is gone exits within a bounded time, proved by a test on a real hub that is stopped under it.
+- [x] C1. The cause is named: the test(s) or path that leave a bridge behind after teardown.
+  - done: impl-311 · 2026-10-15T21:01:20.718Z
+  - verified: rev-30 [reviewer] · run rev-20261015-311-source · 2026-10-15T21:03:28.278Z · commit b7a4206441f635cf426a26ca92f906a0181df7f6
+- [x] C2. A bridge whose hub is gone exits within a bounded time, proved by a test on a real hub that is stopped under it.
+  - done: impl-311 · 2026-10-15T21:01:21.777Z
+  - verified: rev-30 [reviewer] · run rev-20261015-311-source · 2026-10-15T21:03:28.278Z · commit b7a4206441f635cf426a26ca92f906a0181df7f6
 - [ ] C3. A full suite run leaves no new `hook bridge` process behind, checked by a before/after process count in the runner or a test.
-- [ ] C4. Existing orphans are cleared by a documented, safe means (doctor or the runner), never by the Coordinator killing processes by hand.
+- [x] C4. Existing orphans are cleared by a documented, safe means (doctor or the runner), never by the Coordinator killing processes by hand.
+  - done: impl-311 · 2026-10-15T21:01:22.976Z
+  - verified: rev-30 [reviewer] · run rev-20261015-311-source · 2026-10-15T21:03:28.278Z · commit b7a4206441f635cf426a26ca92f906a0181df7f6
 
 ## Comments
 
@@ -46,3 +53,28 @@ C1 reproduction: node --test hub/test/hook-bridge.test.ts failed after 63.22s: a
 ### impl-311 · 2026-10-15T20:59:10.398Z
 
 Expanded lifecycle proof passed in 63.19s: same PID reconnects after a real hub restart, exits after the next 60-second outage with bridge-expired, and the mod has no replacement bridge after its 1-second restart delay. Doctor CLI regression passed; runner whole-file 52/52 passed with planted bridge receipt before cleanup 1 / after cleanup 0. A-3349 records the diagnosis. The legacy init test path is hub/test/init.test.ts's cland-init-cc fixture; pre-T-278 ownDirectory registered recursive root removal before fakeClaude's after hook, and T-278 replaced that scan-based teardown with captured process-group ownership. No evidence that the bridge intentionally leaves its parent's group.
+
+### rev-30 · 2026-10-15T21:03:28.278Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-311-source
+commit: b7a4206441f635cf426a26ca92f906a0181df7f6
+scope: full
+
+Source review T-311 clear at b7a4206441f635cf426a26ca92f906a0181df7f6. No high, medium or low findings. Standards and Spec reviewed directly under the no-delegation role.
+
+C1 verified: A-3349 and task comments name hub/test/init.test.ts's cland-init-cc fake-Claude launch/old fixture teardown path and the independent bridge defect. Discovery/refused sockets retried every 500ms indefinitely; parent comparison cannot detect a parent already gone before startup (PID1 captured), and stdout detects closure only on a write. T-278 owns current test process groups, but does not substitute for a bridge's own unavailable-hub bound. Commit records the cause and correction; pre-fix real-hub stop reproduction remained live past the 62-second observation.
+
+C2 source/targeted evidence verified: cli/hook.ts starts one 60-second grace, covering missing discovery, refusal and silent initial handshake. Only successful session.bridge attachment clears it. A later disconnect starts another grace; retries reread discovery. Expiry emits bridge-expired and latches stop; bridgeOnce's existing bounded polling destroys the socket, and intervals/timer/listener are released. Mod consumes expiry as terminal instead of restarting forever. Existing parent/stdout stop conditions remain. New real-hub test attaches, stops/restarts hub, proves same direct bridge reconnects, stops again, observes expiry and exact child exit, then observes the still-live fake harness past the restart delay with no replacement bridge. Fake Claude imports the actual mod register, so this checks the mod integration. Whole file reported green at 63.04s (expanded run also recorded at 63.19s), not a shortened production timeout.
+
+C4 verified under Coordinator's task comment (historical orphans already cleared; criterion now asks safe future means): doctor lists and fixes only own-user bridges with strict explicit --hub-file argv and a genuinely missing file. Existing/malformed/inaccessible files, ambiguous whitespace/quoted argv and unknown UID preserve the process. PID/start is captured and repeatedly revalidated by endProcess; bridge argv/file absence is rechecked before signals. Current project sweep lock and bounded termination machinery remain; no Coordinator manual kill is needed. New whole CLI file reported1/1 green, checking read-only listing, ending only the missing-file child, preserving malformed existing file and ambiguous path. Documentation describes constraints and fixture-scoped orphan roots.
+
+C3 implementation checked, runtime criterion UNVERIFIED: process cleanup reuses its existing phase discovery snapshot to identify marker/root-matching hook bridges and records exact PID/start survivors via targeted probes. Existing ownership/cwd/ancestry requirements still authorize signals; a surviving ambiguous candidate fails rather than being killed. Receipt is emitted even when there are no captured targets. Targeted suite-runner52/52 includes a detached bridge with before1/after0 and exact PID gone; process-cleanup27/27 reported green. This is not the requested full-suite zero-new-leftovers result; inspect each phase's bridge receipt in the post-source full verification.
+
+Standards: 13-file scope includes lifecycle, mod terminal protocol, narrow doctor candidate parsing, runner observability, fixtures, shard admission and docs. No broad signal authority or new discovery scan is introduced in phase cleanup. New test/file duration allowance63.2s records the intentional production-grace wait; no baseline refresh. Typecheck and shard lint reported green; whitespace check clear. Existing bridge lifecycles outside phase root/marker are excluded from runner cleanup.
+
+Evidence A-3349 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3349-t-311-diagnosis-and-verification-plan.md and targeted whole-file results in request/task comments. Source clear permits one exact-head no-mode cland verify under current Coordinator capacity/budget rules. Final C3 and suite verdict await that run; no per-item QA criteria. No Reviewer tests, edits, merges or provider actions.
+
+Criteria: C1 verified, C2 verified, C4 verified.

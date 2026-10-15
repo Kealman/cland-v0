@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-327
 branch: t/T-478-found-by-on-regressions-and-answered-as
 created: 2026-10-15T09:13:19.908Z
-updated: 2026-10-15T20:59:11.731Z
+updated: 2026-10-15T21:10:09.138Z
 ---
 
 ## Summary
@@ -38,3 +38,7 @@ Retrospective A-2783, START 2: escapes could not be attributed to where they wer
 ### impl-478 · 2026-10-15T20:59:11.731Z
 
 Implemented found_by across frontmatter, tracker index and task-written journal, task create/edit CLI and MCP schemas; missing regression or out-of-vocabulary values refuse, clearing regression drops attribution. Targeted new task-attribution.test.ts passes 2/2 (Mac quiet, load 2.05; longest test 0.783s). Ask identity decision pending with lead.
+
+### impl-478 · 2026-10-15T21:10:09.138Z
+
+Implementation committed as ea0f03f8. Followed Coordinator answer c5e97e15: human-shell --as <name> is a self-declared stand-in label; all known session shells, including Aides, remain refused. Origin persists on ask cards/messages and relays, in task view item.answers, journal and answer delivery metadata. Final ask-attribution.test.ts 3/3 passes (longest 1.683s); typecheck and shard lint pass. task-attribution and existing asks full-file reruns waiting for current Mac load limit (<10), then first source review.

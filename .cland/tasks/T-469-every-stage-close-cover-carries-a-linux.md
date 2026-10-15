@@ -3,7 +3,7 @@ id: T-469
 kind: task
 title: "Every stage-close cover carries a Linux proof: the sharded droplet run plus the Mac run, both required by the stage gate"
 state: open
-status: review
+status: in progress
 size: S
 criterion_seq: 3
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-316
 branch: t/T-469-every-stage-close-cover-carries-a-linux
 created: 2026-10-15T09:13:16.034Z
-updated: 2026-10-15T20:40:03.086Z
+updated: 2026-10-15T21:04:30.192Z
 ---
 
 ## Summary
@@ -101,3 +101,25 @@ Criteria: C3 verified.
 ### impl-469 · 2026-10-15T20:40:03.086Z
 
 Source correction clear at a54d2083 (A-3327), C3 verified. After explicit hold release, submitted cland verify with no mode and --executor droplet --fresh, report topic-316 to Reviewer rev-30 and item lead. Run 59810133-257b-4b3f-8004-6a766be94a76 is queued position1. Exact reviewed head remains clean and unchanged. Awaiting hub result before final evidence review.
+
+### rev-30 · 2026-10-15T21:04:30.192Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261015-469-linux-first
+commit: a54d2083b7b3bf2bc80712bf0ac9162e29a45b08
+scope: evidence
+
+Evidence review T-469 not clear at a54d2083b7b3bf2bc80712bf0ac9162e29a45b08.
+
+Medium — hub/src/tracker/tracker.ts:1803 and hub/test/task-card.test.ts:113: integrated verification callbacks enumerate this.#index.list() and refresh plans globally. Linux receipt A-3351 observes one full tracker hydration where completion must perform zero, failing the bounded/coalesced completion contract. Restrict refresh to indexed affected stage containers rather than restoring full-list work on every integrated run update; preserve the existing zero-full-list assertion.
+
+Medium — hub/test/planned-stage.test.ts:260: stage landing uses 10456 tracker queries with 64 unrelated items and eight unrelated plans, exceeding the existing <10000 budget. This is the task's modified stage path, not an admitted known outside flake. Diagnose stage-cover/planned refresh work and keep the query assertion; the new proof gate must preserve unrelated-plan isolation. Exact root cause of this count remains under Implementer diagnosis, so no unsupported attribution of every excess query to a specific callback.
+
+A-3351 /59810133 is actual Linux c-8 lon1, exit1, 1831 pass/two failures/three platform skips. Typecheck and hub phases completed; Neovim was not reached. Query failure details at lines4132–4144; full-list assertion at4147–4162. Duration-regression notices are separate and do not explain these functional assertions.
+
+Standards: source/cached-attempt correction A-3327 remains the reviewed implementation, but these runtime regressions block final clearance. Spec: C1/C2 platform-proof runtime marks remain pending a successful post-correction gate; C3 source documentation mark remains current. No failure is inferred for the platform criteria from the unrelated general query budgets themselves; the concrete performance regressions still make this review not clear.
+
+Implementer d35abfc7 confirms diagnosis of the added refresh callbacks, no unchanged flake retry, preservation of both assertions, and targeted reproduction only after T-427's exclusive timing window. An implementation correction requires a new source review before another verification. No Reviewer tests, edits, merges or provider actions.
+Evidence path: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3351-suite-59810133-257b-4b3f-8004-6a766be94a76-auto-at-a54d208.log.

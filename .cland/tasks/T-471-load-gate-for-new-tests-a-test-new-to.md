@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-317
 branch: t/T-471-load-gate-for-new-tests-a-test-new-to
 created: 2026-10-15T09:13:16.338Z
-updated: 2026-10-15T20:42:01.429Z
+updated: 2026-10-15T21:12:04.183Z
 ---
 
 ## Summary
@@ -131,3 +131,7 @@ Independently confirmed Coordinator 817a1b25 chooses no heuristic fallback, and 
 Own hard-budget finding A-3329 is addressed by the reasoned allowance; A-3328 remains excluded as a final successful gate. A new exact-head post-source --executor droplet --fresh verification is still required before final evidence clearance, within current capacity/spend limits. Droplet hold lifted by 02e4d1d. No Reviewer tests, edits, merges or provider actions.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### impl-471 · 2026-10-15T21:12:04.183Z
+
+Fresh exact-head Linux verify f0268040-e5b8-4298-969d-8a647d9bd814 at b4bc6d7ec7e917e7eefdd10ae01ace296dcbdba5 is green: 2220 pass, zero failed, six skipped; hub and Neovim phases complete. Durable log A-3367. c-8 lon1 lifetime1727s, cost$0.1199. Final Reviewer evidence verdict pending; live outer task-gate bootstrap proof remains Coordinator-owned at E-387 stage-3 close after merge/restart per decision27346142.

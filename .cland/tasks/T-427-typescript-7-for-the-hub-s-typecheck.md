@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-324
 branch: t/T-427-typescript-7-for-the-hub-s-typecheck
 created: 2026-10-14T16:43:34.573Z
-updated: 2026-10-15T20:56:59.413Z
+updated: 2026-10-15T21:05:25.487Z
 ---
 
 ## What to build
@@ -37,6 +37,7 @@ A new dev dependency changes the lock file, so the droplet snapshot is prepared 
 - [ ] C1. A comparison table on this item shows both compilers' diagnostics on the clean tree and on each planted error, for the hub and the Neovim projects.
   - verified: rev-30 [reviewer] · run rev-20261015-427-source · 2026-10-15T20:56:59.412Z · commit 532b7cf9e1f7b045242d1cb2ddb5794b9724660b
 - [ ] C2. When the diagnostics match, `npm run typecheck` runs TypeScript 7 over the whole repository, with its time before and after recorded on this item; otherwise the differences are recorded, 5.9 stays and a follow-up is filed.
+  - verified: rev-30 [reviewer] · run rev-20261015-427-timing · 2026-10-15T21:05:25.487Z · commit 532b7cf9e1f7b045242d1cb2ddb5794b9724660b
 - [ ] C3. The two tests that use the compiler API still pass on TypeScript 5.9.
   - verified: rev-30 [reviewer] · run rev-20261015-427-source · 2026-10-15T20:56:59.412Z · commit 532b7cf9e1f7b045242d1cb2ddb5794b9724660b
 - [ ] C4. `hub/README.md` and `docs/agents/tests.md` name the compiler the typecheck uses and why 5.9 remains in the repository.
@@ -105,3 +106,41 @@ C4 verified: hub README and docs/agents/tests.md correctly name 7.0.2, explicit 
 C2 deliberately unverified: scripts implement the conditional compiler switch after matching diagnostics, and current root typecheck is reported green, but before/after timing still awaits the item's fully empty verify queue requirement. Source clearance does not waive that measurement condition. Arrange it with lead T-427/Coordinator, record both compiler times and admission evidence on the item, then submit one exact-head no-mode/no-executor cland verify as requested. Timing alone need not change source/head. Final evidence clearance remains pending timing and acceptable same-head suite receipt. No per-item QA criteria. No Reviewer tests, installs, edits, merges or provider actions.
 
 Criteria: C1 verified, C3 verified, C4 verified.
+
+### impl-427 · 2026-10-15T21:03:47.510Z
+
+C2 before/after timing completed at unchanged reviewed head 532b7cf9e1f7b045242d1cb2ddb5794b9724660b under Coordinator decision 24f51182 (remote holders do not consume the Mac window) and the granted exclusive Mac window. Script A-3354 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3354-t-427-alternating-compiler-timing-script.mjs); full receipt A-3355 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3355-t-427-six-compiler-timings-with-queue-and-load-receipts.json).
+
+Method: git-archive of the reviewed HEAD in a scratch directory, same node_modules and source/configs, alternate original root/hub npm typecheck scripts (5.9.3) and reviewed scripts (7.0.2). Each root command checks both full projects. macOS arm64, Node v24.21.0. Before every repetition, local:none, 1-minute load under 15, no targeted tests. Queue monitored during each repetition; no local holder appeared. All six exit 0. Times include npm overhead and queue monitoring. Original tsc resolves to retained 5.9.3, native scripts explicitly name typescript7/bin/tsc.
+
+| Repetition | Compiler | Root typecheck seconds | Queue start/end | 1-minute load start/end |
+| --- | --- | --- | --- | --- |
+| 1 | 5.9.3 | 5.826 | local: none / local: none | 3.305 / 3.280 |
+| 2 | 7.0.2 | 0.872 | local: none / local: none | 3.280 / 3.338 |
+| 3 | 5.9.3 | 5.689 | local: none / local: none | 3.338 / 3.551 |
+| 4 | 7.0.2 | 0.896 | local: none / local: none | 3.551 / 3.551 |
+| 5 | 5.9.3 | 6.868 | local: none / local: none | 3.551 / 3.586 |
+| 6 | 7.0.2 | 0.984 | local: none / local: none | 3.586 / 3.539 |
+
+Median before 5.826 s; after 0.896 s; about 6.50x faster, saving 4.929 s (84.6%) per root typecheck in this window. No source/head change for evidence. Exclusive window released in Agents with 'T-427 timing done'. Submitting same-head no-mode/no-executor cland verify after source-clear review.
+
+### rev-30 · 2026-10-15T21:05:25.487Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-427-timing
+commit: 532b7cf9e1f7b045242d1cb2ddb5794b9724660b
+scope: evidence
+
+Timing evidence T-427 clear at unchanged source-reviewed 532b7cf9e1f7b045242d1cb2ddb5794b9724660b. C2 verified; final overall suite review remains pending running verification 79226bcf.
+
+Coordinator 24f51182 explicitly interprets T-204 as Mac load isolation: remote holders do not block timing; local:none, one-minute load below15 and no other targeted file are required, with three alternating repetitions each and restart if local:coord appears. Coordinator e6774e66 grants the exclusive window. These decisions are independently confirmed in topic history.
+
+A-3354 timing script and complete A-3355 receipts inspected. Head, versions, platform Darwin arm64/Node24.21.0, before/after queue/load and mid-run local-holder observations are recorded. All six repetitions exit0, no interruption, no local holder or waiters at the boundaries; remote holders are explicitly allowed by the ruling. Local load3.28–3.59. Script alternates old root npm typecheck scripts with current explicit native alias scripts in an archived same-head scratch copy. The retained npm tsc link resolves to typescript/bin/tsc (5.9.3), so the before label does not accidentally invoke the alias.
+
+Independent median calculation: TypeScript5.9.3 times5.825657541/5.689471083/6.868390959 seconds, median5.825657541; native7.0.2 times0.871537958/0.896489459/0.983567959, median0.896489459, approximately6.50x on this Mac/window. Both root commands check hub and Neovim projects. This is the observed window measurement, not a guaranteed speedup on every host. Before/after table is recorded on the item.
+
+C1/C3/C4 exact-head source/API evidence stands in A-3347. Running no-mode verify79226bcf fell back locally by authoritative hub notice; preserve its actual execution platform and await its completed result before final clearance. No Reviewer tests, installs, edits, merges or provider actions.
+
+Criteria: C2 verified.
