@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-316
 branch: t/T-469-every-stage-close-cover-carries-a-linux
 created: 2026-10-15T09:13:16.034Z
-updated: 2026-10-15T23:26:46.549Z
+updated: 2026-10-15T23:28:54.203Z
 ---
 
 ## Summary
@@ -40,6 +40,7 @@ The stage gate (`#stageCurrent` and the plan's `after-stage` close) accepts the 
   - verified: rev-30 [reviewer] · run rev-20261015-469-refresh-delta · 2026-10-15T21:28:47.078Z · commit 6d7ef2e58241111b07783af70df96504ba6dd203
   - verified: rev-30 [reviewer] · run rev-20261015-469-startup-delta · 2026-10-15T22:28:52.919Z · commit c09435d4e4a337e6aec09058cd392b004df5bcd0
   - verified: rev-30 [reviewer] · run rev-20261015-469-final · 2026-10-15T22:57:32.640Z · commit c09435d4e4a337e6aec09058cd392b004df5bcd0
+  - verified: rev-30 [reviewer] · run rev-20261015-469-merge-delta · 2026-10-15T23:28:54.203Z · commit fbd2d2c6206c09c70da8ef6c22ee92859bbabbf2
 
 ## Comments
 
@@ -250,3 +251,31 @@ Criteria: C1 verified, C2 verified, C3 verified.
 ### impl-469 · 2026-10-15T23:26:46.549Z
 
 Coordinator-directed conflict merge pushed at fbd2d2c6206c09c70da8ef6c22ee92859bbabbf2, parents c09435d4 and dev75017065. suites.ts combines explicit-droplet cache restriction/bypass with stage executor/occasion provenance and latest-attempt supersession. All233 duration allowances from both parents preserved exactly and sorted; root/duplicates audited. A-3439 source/grep audit and A-3445 full targeted log. All16 whole files green:119 tests, no failures/skips; two load guards deferred starts. Normal npm typecheck passed after Coordinator-instructed npm ci --ignore-scripts for T-547; shard/manifest lint and diff check pass, clean tree. Mac slot released to T-547. Requesting delta review naming both resolutions before the required new droplet verify; prior c09435d4 green is historical only.
+
+### rev-30 · 2026-10-15T23:28:54.203Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-469-merge-delta
+commit: fbd2d2c6206c09c70da8ef6c22ee92859bbabbf2
+scope: delta
+
+Delta source review T-469 clear at merge fbd2d2c6206c09c70da8ef6c22ee92859bbabbf2, parents source/final-reviewed c09435d4e4a337e6aec09058cd392b004df5bcd0 and dev 75017065fcd76fe166628c7c7f1e3cba56840c99. Standards and Spec reviewed directly under the no-delegation role. No high, medium or low findings.
+
+Conflict source checked against both parents:
+- suites.ts:266–269 selects the effective executor for stage requests, and requires droplet cache provenance for ordinary explicit droplet requests. Ordinary omitted/local executor behavior remains inherited from dev. cacheBypass durable field and exact report/log explanation are retained (:279/:282).
+- #cached(:344–355) filters the attempt population by required executor plus Linux stage occasion before selecting the newest attempt. Failed/pending/unreported compatible attempts still supersede older green evidence; success/report/artifact/platform eligibility is checked after findLast. Stage cache reuse checks eligible stageCovers for the selected original run and the requested platform. Existing same-tree platform pairing and history do not become a cross-platform cache label.
+- Existing stageCovers/report recovery and the corrected Tracker useVerify→#stageCoversChanged startup notification remain. Scoped dependent-container scheduling, cache regressions and original query budgets are not removed by dev integration.
+
+Independent immutable JSON audit rejects duplicate keys and confirms durations.json contains the exact sorted union: task parent 229 allowances, dev parent 228, union/result 233. All common allowance values agree; every result value matches its parents. Root keys are exactly version/source/budget/files/tests/allow; all non-allow fields are identical in both parents and result. No root-level misplaced allowance, dropped baseline or changed budget.
+
+A-3445 contains 16 complete serial whole-file passes at this head, 119 tests, zero failures/skips/cancellations: executor-run21; suite-cache6; suite-stage-cover3; planned-stage11; suite-close7; suite-close-recovery5; suite-selection-report4; suite-cache-recovery3; suite-recovery6; suite-admission6; suite-scheduling9; suite-queue5; suite-human9; suite-cancel6; suite-timeouts7; suite.test11. Explicit remote bypass, stage platform/history, both newer-attempt supersession cases and late-bound startup pass. Planned-stage query diagnostics remain landing9795/3 stage checks and ten closes7903/20; no assertions or bounds relaxed. Two admissions at load17.74/15.27 started no tests and deferred; successful admissions recorded load<15, targeted0, no Coordinator. Static checks/typecheck reported green after locked dependency install; no package-script edit. Reviewer diff whitespace check clear.
+
+C3 verified at this head: README:1632 onward and plan-epic:44 retain same-tree Mac+Linux full integrated stage requirements, scoped QA, missing-platform/tree reporting and separate submissions. C1/C2 remain source-clear but runtime re-verification awaits the required fresh actual droplet task verify at THIS merge head. Prior A-3427 is historical, not this merge's gate; targeted conflict cover does not replace the new run. No waiver. One exact-head no-mode fresh droplet verification may follow under current Coordinator admission rules.
+
+Evidence A-3439 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3439-t-469-conflict-resolution-audit-at-fbd2d2c6.md; A-3445 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3445-t-469-conflict-cover-log-16-files-and-119-green-tests-at-fbd2d2c6.log. No per-item QA criteria. No Reviewer tests, compiler/binary execution, edits, signals, merges or provider actions.
+
+Review artifact A-3453 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3453-t-469-merge-delta-source-clear-at-fbd2d2c6-stage-and-explicit-droplet-cache-cont.md.
+
+Criteria: C3 verified.

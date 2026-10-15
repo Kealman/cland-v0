@@ -3,7 +3,7 @@ id: T-499
 kind: task
 title: "orphan-servers test: a second hub.db connection hits SQLITE_BUSY against the live hub (Linux, under load)"
 state: open
-status: review
+status: ready
 size: XS
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-332
 branch: t/T-499-orphan-servers-test-a-second-hub-db
 created: 2026-10-15T14:07:24.615Z
-updated: 2026-10-15T23:26:41.787Z
+updated: 2026-10-15T23:29:32.174Z
 ---
 
 ## Problem
@@ -26,8 +26,10 @@ updated: 2026-10-15T23:26:41.787Z
 - [x] C1. The case seeds its row either before the hub opens the database, or through the hub's own write path or a busy_timeout connection, so it can't race the hub's writer. Every assertion stays, and the root cause is recorded in the commit.
   - done: impl-499 · 2026-10-15T22:38:57.057Z
   - verified: rev-30 [reviewer] · run rev-20261015-499-source · 2026-10-15T22:40:43.310Z · commit 289b3c176f553e595b75a9f532236af39d3a7098
+  - verified: rev-30 [reviewer] · run rev-20261015-499-final · 2026-10-15T23:29:29.660Z · commit 289b3c176f553e595b75a9f532236af39d3a7098
 - [x] C2. orphan-servers.test.ts passes 5/5 serially, whole file and alone on the Mac, plus once on a droplet in the task's verify.
   - done: impl-499 · 2026-10-15T23:04:35.930Z
+  - verified: rev-30 [reviewer] · run rev-20261015-499-final · 2026-10-15T23:29:29.660Z · commit 289b3c176f553e595b75a9f532236af39d3a7098
 
 ## Comments
 
@@ -113,3 +115,54 @@ Implementer reports one unchanged-head retry under the standing E-482 rule; awai
 Log A-3436: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3436-suite-0b2d86e5-b1e0-4f4c-9bc4-9e5000ae5551-auto-at-289b3c1.log.
 
 Review artifact A-3437 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3437-t-499-first-linux-receipt-all-orphan-cases-green-known-t-544-gate-failure.md.
+
+### rev-30 · 2026-10-15T23:27:26.535Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261015-499-linux-repeat
+commit: 289b3c176f553e595b75a9f532236af39d3a7098
+scope: evidence
+
+T-499 second Linux evidence review not clear at unchanged 289b3c176f553e595b75a9f532236af39d3a7098. A-3446 / a049a286-cba6-4db4-96a3-024cc1f11ef4 is actual Linux c-8 lon1, workers 4, exit 1: 1848 passes, one failure, three skips, zero cancellations; hub complete, Neovim smoke not reached. Duration 1214.48s, peak load 12.57, lifetime 1296s/$0.0900. No hard duration-budget failure.
+
+Medium gate blocker — hub/test/session-model.test.ts:108 repeats the identical known T-544 reversed usage-row failure from A-3436. Therefore these two receipts do not meet the standing two-DIFFERENT-known-failures exception. All 24 orphan-server cases pass again, including offline wrapper 4.841s, Codex unverifiable server 2.149s, OpenCode 2.265s; C1 source and Mac evidence stand. No failed T-499 criterion is inferred from the outside failure, and final C2 verification remains pending an acceptable overall gate.
+
+Implementer already escalated the same-test-twice blocker to lead T-499 and is holding source/no third run. Await Coordinator shared-fix direction; an authorized pick/head change needs delta source review before further verification. A-3416 remains excluded as host-only provisioning failure. T-545 owns separate real-binary isolation; do not add an unisolated local run.
+
+Evidence /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3446-suite-a049a286-cba6-4db4-96a3-024cc1f11ef4-auto-at-289b3c1.log and A-3436. No Reviewer tests, edits, binary/compiler execution, signals, merges or provider actions.
+
+Review artifact A-3448 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3448-t-499-gate-remains-not-clear-same-t-544-failure-in-both-linux-receipts.md.
+
+### coord · 2026-10-15T23:27:47.441Z
+
+Gate exception (Coordinator, 23:27Z): both Linux receipts at 289b3c17, 0b2d86e5 (A-3436) and a049a286 (A-3446), are red only on session-model.test.ts:108, the T-544 sub-agent usage ordering flake. That's T-480's new case, whose test-only fix T-544 is in flight. The task's own file, orphan-servers.test.ts, is 24/24 green in both runs and 5/5 on the Mac. Accepted under the same-test-twice precedent (T-459/T-506, T-519/T-502). No third run.
+
+### rev-30 · 2026-10-15T23:29:29.660Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-499-final
+commit: 289b3c176f553e595b75a9f532236af39d3a7098
+scope: evidence
+
+Final evidence review T-499 clear at unchanged 289b3c176f553e595b75a9f532236af39d3a7098 under the explicit Coordinator exception 01e31db5-9a66-45a5-834c-084272655a82, also recorded in the item's 23:27:47Z comment. No high or medium task-source finding remains. This does NOT claim either overall Linux suite was green.
+
+C2 verified. A-3411 contains five complete serial whole-file Mac passes, alone, each 24/24 (120 passes), zero failures/cancellations/skips, durations 74.237/72.459/72.174/95.170/96.922s and labelled admission/load checks. Both actual Linux droplet receipts at the reviewed head have all 24 orphan-server cases green:
+- 0b2d86e5 / A-3436: c-8 lon1, workers4, suite 1212.62s, peak load11.58; offline wrapper4.480s, OpenCode unverifiable-server2.479s, Codex1.776s.
+- a049a286 / A-3446: c-8 lon1, workers4, suite1214.48s, peak load12.57; corresponding cases4.841/2.265/2.149s.
+Each overall run remains exit1 with1848 pass/1 fail/3 platform skips, hub complete and Neovim smoke not reached. Sole failure in both is the exact unrelated T-544 reversed sub-agent usage rows at session-model.test.ts:108. No hard duration-budget failure or task-file failure.
+
+The ordinary different-known-failures rule did not qualify this pair, as recorded in A-3448. The NEW Coordinator decision explicitly accepts this same-test-twice pair, citing today's T-459/T-506 and T-519/T-502 precedent, requires no third run and leaves the head unchanged. Final clearance follows that specific decision; it is not a general waiver of repeated failures. Host-only A-3416 remains excluded entirely.
+
+C1 reverified: all seven fixture mutation connections use the5-second busy timeout before SQL; all95 assertion lines, identities, live-hub scenarios and deadlines remain. Commit records the independent-writer root cause. Source A-3412 stands, branch tip matches. Separate real-OpenCode fixture isolation remains T-545; Coordinator2bbcd363 specifically permitted these droplets with no user's OpenCode data. No additional unisolated Mac validation was needed.
+
+No per-item QA criteria. Changed integration heads require delta review. No Reviewer tests, binary/compiler execution, edits, signals, merges or provider actions.
+
+Evidence A-3436 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3436-suite-0b2d86e5-b1e0-4f4c-9bc4-9e5000ae5551-auto-at-289b3c1.log; A-3446 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3446-suite-a049a286-cba6-4db4-96a3-024cc1f11ef4-auto-at-289b3c1.log; A-3411 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3411-t-499-five-serial-whole-file-mac-passes-alone/README.md.
+
+Review artifact A-3454 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3454-t-499-final-clear-at-289b3c17-under-explicit-same-t-544-twice-gate-exception.md.
+
+Criteria: C1 verified, C2 verified.
