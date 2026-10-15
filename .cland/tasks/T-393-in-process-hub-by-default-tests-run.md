@@ -3,7 +3,7 @@ id: T-393
 kind: task
 title: "In-process hub by default: tests run against a hub served in the test process over its real socket, a spawned hub stays only for lifecycle tests, and the top 20 files move first"
 state: open
-status: in progress
+status: review
 size: L
 criterion_seq: 9
 labels:
@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-273
 branch: t/T-393-in-process-hub-by-default-tests-run
 created: 2026-10-14T12:28:19.095Z
-updated: 2026-10-15T09:19:44.326Z
+updated: 2026-10-15T09:22:40.700Z
 ---
 
 ## Summary
@@ -60,16 +60,20 @@ updated: 2026-10-15T09:19:44.326Z
   - done: impl-393 · 2026-10-15T09:19:44.326Z
 - [x] C4. The lifecycle list is posted per file; every test that still calls `startDaemon` or `cland hub start` in the 20 files is on it, and none of the others is.
   - done: impl-393 · 2026-10-15T08:08:39.537Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-393-2 · 2026-10-15T09:22:40.699Z · commit 519fc215a8f8b84572f079ba0b5a1b35ed8072fa
 - [x] C5. Measured (Coordinator amendment 2026-10-15 09:03Z): the 20 files' summed whole-file time falls by at least 20%, judged after merge from E-387's stage-1 close integrated cover on the Mac against the v0.1.2 release cover A-2714 (both quiet integrated runs), per file from the runner's records; pre-merge, the available paired samples are posted without a claim, because local fallbacks invalidated every pair while remote_budget was 2.
   - done: impl-393 · 2026-10-15T09:04:06.375Z
 - [x] C6. Measured (Coordinator amendment 2026-10-15 09:03Z): the migration's daemon-start delta is posted against the fresh census A-2737 (the 20 files 421 → 145, a projected 772 per run against 1047); the under-600 target moves to T-466, the next files' migration.
   - done: impl-393 · 2026-10-15T09:04:07.098Z
 - [x] C7. Each refusal family and each adapter verb keeps at least one frame test, and the moved validation cases keep their asserted error codes and messages.
   - done: impl-393 · 2026-10-15T08:08:40.735Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-393-2 · 2026-10-15T09:22:40.699Z · commit 519fc215a8f8b84572f079ba0b5a1b35ed8072fa
 - [x] C8. No assertion changes its meaning: the review request lists every changed assertion with what it still proves, and no test is deleted.
   - done: impl-393 · 2026-10-15T08:08:41.391Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-393-2 · 2026-10-15T09:22:40.700Z · commit 519fc215a8f8b84572f079ba0b5a1b35ed8072fa
 - [x] C9. `hub/README.md` (Tests) and `docs/agents/tests.md` describe `projectHub` as the default, the lifecycle line, and when a new test may use `startDaemon`.
   - done: impl-393 · 2026-10-15T08:08:41.843Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-393-2 · 2026-10-15T09:22:40.700Z · commit 519fc215a8f8b84572f079ba0b5a1b35ed8072fa
 
 ## Comments
 
@@ -96,3 +100,21 @@ Medium — hub/src/hub/suites.ts:215/233/312/316/473 and verification-tree.ts:14
 A-2811 details full Standards/Spec review. No further lifecycle/assertion blocker found; C5/C6 judged under directly read 6f89040c amendments (data-only pre-merge timing; 772 lower-bound projection, under600 T-466). T-464 isolation approved in 72d72fa1; T-395 reconciliation remains required. No full run at this head; fixes need new source review.
 
 Criteria: C2 failed (Direct dispatcherUi requests bypass the fixture AsyncLocalStorage resource scope, so request-time leaked resources evade strict cleanup checks.), C3 failed (DropletRun config reparse and Suites candidateTree Git checks still use host environment rather than the owning hub environment.).
+
+### impl-393 · 2026-10-15T09:21:22.191Z
+
+A-2815 records corrections to all three A-2811 findings with red/green repros. Fix22001d4b plus latest origin/dev tracker-only merges is pushed as519fc215a8f8b84572f079ba0b5a1b35ed8072fa. C2 scopes direct dispatcher open/receive/closed; C3 threads env into delivery parsing and all candidateTree Git checks while preserving private index. Targeted executor-run18, project-hub5, provenance1, merge50, release18 pass, plus typecheck/shard lint. Assertion audit2397→2431, no removed identities; correction is additive. No full verification before renewed source review. C5/C6 rulings and T-395110-identity reconciliation remain as A-2806.
+
+### rev-23 · 2026-10-15T09:22:40.700Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-15-393-2
+commit: 519fc215a8f8b84572f079ba0b5a1b35ed8072fa
+scope: delta
+
+Corrected source clear; no high/medium finding remains. Fixture dispatcher facade scopes open/receive/closed; added direct-request retained timer now fails cleanup as required. DropletRun config reparse uses owning env; all five candidateTree calls do too, preserving private index override. Strengthened real remote fixture and native conflicting-env/index test preserve prior assertions while proving margin, generated timeout, no fallback/cache reuse, unchanged host env/index. A-2815 records all three red/green proofs and project5/executor18/native1/merge50/release18 targeted passes, typecheck/shards green. Incoming merges are tracker only. A-2816 records this delta; A-2811's full review otherwise applies.
+C4/C7/C8/C9 verified from source. C1-C3 and final C5/C6 evidence await exact-head gate; performance marks must retain 6f89040c amendments (data-only pre-merge timing; post-merge20% owed; 772 lower-bound projection; under600 T-466). T-395 second-merger reconciliation/110 identities remains required. Submit no-mode cland verify without executor override at this head; changed integration needs new review.
+
+Criteria: C4 verified, C7 verified, C8 verified, C9 verified.

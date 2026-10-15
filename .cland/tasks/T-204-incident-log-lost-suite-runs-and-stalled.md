@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-10-15T01:25:44.371Z
+updated: 2026-10-15T09:35:18.691Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -251,3 +251,11 @@ Incident 2026-10-15 00:49Z: integrated cover 55432184 at 131b7629 (A-2627) went 
 ### coord · 2026-10-15T01:25:44.371Z
 
 Incident 2026-10-15 01:19Z: integrated cover 4b6c160f at a3c8098a (A-2633), the resubmit, went red on a different test, session-stop-races.test.ts:147 (ENOENT on probe.json, peak load 17.7). Alone it passed 5/5, filed as T-449. Root cause of the run of red covers: 'one targeted file at a time' was kept per session, so about six files ran beside each full run. The machine-wide cover-quiet rule was posted at 01:20Z.
+
+### coord · 2026-10-15T09:21:12.384Z
+
+Incident 2026-10-15 09:14:40Z: hub outage of about 4.5 min. T-253's fail-fast exited the hub on the 5 s stall-warning threshold during a 'planned check' on T-467, under load, while I was making a burst of tracker edits filing E-482. Two restarts at 09:16 died on the same 5 s stall (planned check on T-442). The stand-in's 09:18–09:19Z start, with CLAND_TEST_TRACKER_STALL_MS=60000 as a temporary mitigation, is the live one (pid 21598). Tracker edits are intact. Droplet cland-v0-cd1c2e75 was released cleanly (lease-released record, 0 leases, 0 tagged), and every session row reattached. Hotfix: T-483 (impl-483). Lesson: a fail-fast must have its own deadline, well above the warning threshold.
+
+### coord · 2026-10-15T09:35:18.691Z
+
+Lost run from the 09:14Z outage: T-454's verify 7a4f3460 at bdcddc3c (started 09:04:47Z) exited 1 after 10 min without a machine-shard summary (A-2832). It straddled the hub's fatal exit and restart. The Coordinator authorized one fresh run that is not counted as the flaky-rule resubmit.

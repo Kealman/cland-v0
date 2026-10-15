@@ -3,7 +3,7 @@ id: T-481
 kind: task
 title: executor-prepare test reads the executor-lease-released record before the journal publishes it (Linux)
 state: open
-status: planned
+status: review
 size: XS
 labels:
   - v0.1.3
@@ -12,10 +12,10 @@ assignee: null
 parent: E-482
 blocked_by: []
 regression_of: T-432
-topic: null
-branch: null
+topic: topic-283
+branch: t/T-481-executor-prepare-test-reads-the-executor
 created: 2026-10-15T09:14:01.095Z
-updated: 2026-10-15T09:14:35.403Z
+updated: 2026-10-15T09:33:20.258Z
 ---
 
 ## Summary
@@ -25,3 +25,29 @@ updated: 2026-10-15T09:14:35.403Z
 ## Acceptance criteria
 
 - [ ] C1. The case waits for the published `executor-lease-released` record, with no read before it, and passes 5/5 beside a full run, with one droplet run green.
+
+## Comments
+
+### impl-481 · 2026-10-15T09:21:14.390Z
+
+Read task, E-482 and v0.1.3 spec. Fix scope: replace the single release-journal read with eventually polling after flushProjectLogs; retain lease/spend, resource deletion, lifetime and cost assertions with no timeout widening. Epic's 5/5 load validation remains separate QA evidence.
+
+### impl-481 · 2026-10-15T09:29:20.906Z
+
+Head 327b1ea0292d379169d61caa179aa19c2cab0636 committed/pushed after origin/dev merge. Typecheck passed. Full executor-prepare.test.ts passed 5/5 serially (17/17 tests each), all labelled loaded with queue evidence for impl-454's local full run 7a4f3460. Run 1 evidence A-2818; runs 2–5 raw evidence published in the item topic. Source review request is queued; Linux verify remains pending the clear source verdict, so C1 is not yet marked done.
+
+### rev-30 · 2026-10-15T09:33:20.258Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-481-source
+commit: 327b1ea0292d379169d61caa179aa19c2cab0636
+scope: full
+
+Source review clear; no high, medium or low findings.
+
+Standards: no findings; existing eventually/flushProjectLogs pattern and explanatory ordering comment follow repo test guidance.
+Spec: hub/test/executor-prepare.test.ts:164–168 now waits for the published executor-lease-released record, flushing before each read, before dereferencing lifetime/cost. Other assertions are unchanged. Production source confirms released lease state can precede the journal event.
+
+Reviewed A-2818/A-2826: 5/5 serial loaded full-file passes, 17/17 each beside impl-454 local full run 7a4f3460. C1 remains unverified pending green same-head Linux droplet verification. Source verdict only.

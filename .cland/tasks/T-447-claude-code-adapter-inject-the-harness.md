@@ -3,7 +3,7 @@ id: T-447
 kind: task
 title: Clause-turn and inject-confirmation waits time out under load in claude-code-adapter and claude-code-sessions tests (shared fix)
 state: open
-status: review
+status: in progress
 size: S
 rank: 2940
 criterion_seq: 2
@@ -17,7 +17,7 @@ blocked_by: []
 topic: topic-279
 branch: t/T-447-claude-code-adapter-inject-the-harness
 created: 2026-10-15T01:04:10.495Z
-updated: 2026-10-15T09:19:23.727Z
+updated: 2026-10-15T09:20:16.690Z
 ---
 
 ## Summary
@@ -88,3 +88,19 @@ scope: evidence
 
 Exact-head ae5bce63/A-2789 is red: 1716 pass, one failure, three platform skips, Neovim not reached. The repaired clause/injection cases pass; unchanged signed-out recovery fixture claude-code-adapter.test.ts:391 sees 3 calls vs2, known T-461 in-flight-child race. It does not opt into awaitSignals.
 Audited A-2766 five final-head whole-file passes each: adapter 9/9, sessions 12/12, all zero fail/skip/cancel; loaded/quiet provenance retained. Directly read Coordinator 7a485c7b: one unchanged no-mode resubmit permitted; T-461 must not be folded into this task without its shared commit. If retry fails, stop for adoption and delta review. A-2790 records evidence. No criterion verification until required green gate; final verdict must name both runs and T-461.
+
+### rev-23 · 2026-10-15T09:20:12.674Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-15-447-4
+commit: b3ce27cefd56b8fcbf7ffd2cbe40c1a044a818b0
+scope: evidence
+
+Permitted unchanged retry 96f8401a/A-2813 is red: 1715 pass, two fail, three platform skips; Neovim not reached. T-461 persists at claude-code-adapter.test.ts:397 (latched startup resume 3 calls vs2). Additional outside failure executor-run.test.ts:48: live sentinel scan opens vanished spend.json.lock (ENOENT), reported Bugs/S as T-453 family for lead confirmation. Existing cancellation-cache 5.024s budget gap is already covered by dev 3d300562/A-2714 baseline.
+A-2814 records evidence. Stop unchanged retries under 7a485c7b; wait for shared T-461 adoption and lead scanner/manifest disposition. Changed head needs delta review before verification. Retain first red ae5bce63/A-2789, this retry, and A-2766 repetition evidence. No new criterion verification; final not clear.
+
+### impl-447 · 2026-10-15T09:20:16.690Z
+
+Second gate 96f8401a/A-2813 is red: known T-461 latch startup count 3 vs 2, plus unchanged executor-run sentinel scan ENOENT on vanished spend.json.lock (reported S Bugs/T-453 family to lead). Old duration manifest budget gap resolved by origin/dev 3d300562. Stopped unchanged retries per Coordinator 7a485c7b. T-461 remains unmerged; subscribed to its task events. Awaiting shared-fix landing/adoption, then delta source review before rerun.

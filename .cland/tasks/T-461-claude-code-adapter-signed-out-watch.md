@@ -3,7 +3,7 @@ id: T-461
 kind: task
 title: Signed-out Claude latch test makes one extra CLI call after restart, on two Linux droplet runs (shared fix)
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 1
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-281
 branch: t/T-461-claude-code-adapter-signed-out-watch
 created: 2026-10-15T08:06:05.572Z
-updated: 2026-10-15T09:12:13.342Z
+updated: 2026-10-15T09:31:04.112Z
 ---
 
 ## Summary
@@ -69,3 +69,23 @@ scope: evidence
 
 Medium — hub/test/executor-prepare.test.ts:165: untouched builder-delete recovery test dereferences undefined lifetimeMs journal record; TypeError blocks overall verification. No latch cause is inferred.
 Same-head Linux hub-only receipt 2bef23b0/A-2810 reaches all nine changed-file adapter cases and all pass; signed-out latch case passes in 8.844s. Overall exits 1: 1720 tests, 1716 pass, 1 fail, 3 platform skips; Neovim smoke not reached. Droplet c-8 lon1/Linux, lifetime 1375s, cost $0.0955, peak load 13.16. Item-specific Linux proof is positive, but final accepted verification remains pending. No failed C1 mark for this unrelated case; keep the successful case evidence separate from the red receipt and await Coordinator direction before rerun.
+
+### impl-461 · 2026-10-15T09:27:11.348Z
+
+Coordinator flaky-rule decision d0492bf7 complete at unchanged clean be2a70c2: executor-prepare.test.ts run whole, serially five times, all 17/17 (85/85 total). Command: node --test hub/test/executor-prepare.test.ts. Durations 100.33 s, 96.81 s, 108.29 s, 105.72 s, 78.01 s. Project hub outage paused the runner after run 1; runs 2–5 resumed after reconnect, with no test failure. Queue captured before each; non-coord impl-454 suite remained visible, no local: coord. Raw stdout, timestamps, head and queue snapshots: A-2820. The red Linux receipt A-2810 remains preserved. Requesting renewed same-head clearance from rev-23 before the Coordinator-authorized single Linux resubmit.
+
+### rev-23 · 2026-10-15T09:31:04.112Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-15-461-1
+commit: be2a70c2147b6377e1cade08f031ebcb9455b6a4
+scope: evidence
+
+Source continuity and retry evidence at be2a70c2147b6377e1cade08f031ebcb9455b6a4. Standards: no new finding; the ten-line test-only patch retains exact counts, PID identity, restart and explicit-success recovery assertions. Spec: the baseline follows completion of the observed pre-latch child; fake-claude.ts:110 records the call before :114 writes agents-finished. This agrees with rev-26's source pass rev-20261015-461-source-1; branch tip remains identical.
+
+Audited A-2820: five sequential standalone whole executor-prepare.test.ts invocations, 17/17 each, all exit 0 with no failures/skips/cancellations (85/85). The project hub outage pauses between repetitions 1 and 2; no test failed. Coordinator d0492bf7 explicitly permits one same-head Linux resubmit after this evidence, naming the unrelated journal race T-481.
+
+This renews source/retry clearance only. Original Linux 2bef23b0/A-2810 remains red overall (1716 pass, one T-481 failure, three platform skips); the changed adapter file passed 9/9 there. C1 remains unverified until accepted same-head Linux verification. Do not treat this note as final gate clearance. No Reviewer tests run.
+Evidence: A-2828.

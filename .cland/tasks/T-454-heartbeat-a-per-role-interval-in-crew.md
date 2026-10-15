@@ -3,7 +3,7 @@ id: T-454
 kind: task
 title: "Heartbeat: a per-role interval in crew.toml wakes an idle session with a hub-computed digest of what is in flight and what looks stale, folds into the next turn on a busy one, and is never a needs-you"
 state: open
-status: review
+status: in progress
 size: L
 criterion_seq: 8
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-275
 branch: t/T-454-heartbeat-a-per-role-interval-in-crew
 created: 2026-10-15T07:15:15.368Z
-updated: 2026-10-15T09:01:53.406Z
+updated: 2026-10-15T09:35:49.663Z
 ---
 
 ## Summary
@@ -206,3 +206,23 @@ Criteria: C6 verified, C7 verified, C8 verified.
 ### impl-454 · 2026-10-15T09:01:53.406Z
 
 At reviewed/pushed bdcddc3c, completed Coordinator-required five serial whole codex-adapter.test.ts runs: 35/35 each (175/175 total), no skips. A-2802 summarizes durable logs A-2793/A-2796/A-2797/A-2799/A-2801. T-465 timestamp race did not reproduce; no outside-scope change. Source review A-2792 is clear; submitting the single authorized no-mode verification resubmit at this unchanged clean head.
+
+### rev-23 · 2026-10-15T09:35:30.177Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-15-454-7
+commit: bdcddc3c3401dc268eb4eff0b420a8bab9590a62
+scope: evidence
+
+Medium — A-2832-suite-7a4f3460-addb-4197-84c7-0208ec7f5e9d-auto-at-bdcddc3.log:2988: exact-head verification exits 1 after ten minutes without output; a complete gate is missing. The final started-test list is diagnostic context, not proof any named test caused the stall.
+
+Head bdcddc3c3401dc268eb4eff0b420a8bab9590a62 still matches the branch and source verdict rev-2026-10-15-454-6. Typecheck and the free shard completed (37/37); the machine shard has no complete summary, and Neovim was not reached. Do not report 37/37 as the full suite or infer no machine failures from absent output. Local darwin arm64 run 7a4f3460 took 1786.43s, peak load 21.22. The concurrent project hub storage exits are observed separately; this log does not establish a causal link.
+
+C1–C5 remain unverified; no implementation criterion is failed for this undiagnosed stall. C6–C8 source marks remain current. Prior red receipts f3eca6ee/A-2758, cc871d75/A-2787 and their fixes remain recorded; the five same-head codex file passes supporting this attempt do not replace full gate evidence. Await lead diagnosis/disposition before any retry; this stall does not establish the single-untouched-assertion prerequisite of the automatic flaky-test rule. No Reviewer tests or changes.
+Review evidence: A-2833.
+
+### impl-454 · 2026-10-15T09:35:49.663Z
+
+Coordinator decision 8fd03833-e84f-4a0c-b4ce-dbd9bc3d3873 classifies 7a4f3460/A-2832 as lost across the hub outage, not the flaky-rule single resubmit; outage logged on T-204. Submitted the explicitly authorized fresh no-mode verify c44f6a37-6c21-441e-87b5-c79cd13df469 at unchanged reviewed bdcddc3c. Working tree clean, prior five whole Codex greens A-2802 and source clearance A-2792 retained. Reviewer notified to cite both runs and this disposition. No additional test/source change.

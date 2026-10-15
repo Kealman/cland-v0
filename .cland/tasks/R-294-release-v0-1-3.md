@@ -11,7 +11,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-12T15:31:51.406Z
-updated: 2026-10-15T09:13:39.195Z
+updated: 2026-10-15T09:31:01.294Z
 ---
 
 ## Goal
@@ -78,3 +78,7 @@ The v0.1.2 retrospective's conclusions are filed for v0.1.3 (Coordinator, 2026-1
 - **CONTINUE:** D24, D25, D27, D29, lane flow, droplets under the budget and cap, restarts only on a green cover with an empty queue, T-204, and retro.py. These are standing practice and enter the rulebook through E-423's seed (T-457).
 - **Plans:** T-469..T-472 and T-466 are E-387's stage 3. T-473 and T-474 are E-423's stage 3. T-475 and T-476 join E-425 (Hub hygiene). E-468 gets its plan when E-423's first stage closes.
 - **Model rotation:** deferred by the human's decision above.
+
+### coord · 2026-10-15T09:31:01.294Z
+
+Decision (human, ask 0727b3c8, 2026-10-15 09:30Z): the reviewer pool goes from 2 to 4, with the same model (Codex gpt-6.1-sol, no rotation). It is in crew.toml (443bd0aa), read live; rev-30 and rev-31 were launched at once.
