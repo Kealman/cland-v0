@@ -3835,6 +3835,10 @@
       "seconds": 5.362,
       "reason": "Lands a predecessor through real Git, restarts a real hub and checks the plain task view reports the follow as met; the merge and restart dominate. Linux c-8 run 5d2063ce (A-3210)."
     },
+    "hub/test/durations-runner.test.ts::task load gate catches a one-in-three flake and repeats a stable new name five times alongside the phase": {
+      "seconds": 5.178,
+      "reason": "Runs the real package runner and ten fresh name-filtered Node processes alongside a held phase, proving stable 5/5 repetitions and deterministic flaky rejection. Linux c-8 task verify c96ff9f9 (A-3328), peak 1m load 12.19."
+    },
     "hub/test/rule-sessions.test.ts::role clauses use current scoped active rules, including rules added while disconnected": {
       "seconds": 4.61,
       "reason": "Disconnects and reconnects role spokes against a real hub while rules change, then checks each re-sent clause; 4.61 s on Linux under load (A-3210), allowed ahead of the 5 s line."

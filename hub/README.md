@@ -2299,6 +2299,30 @@ reporter's bookkeeping/serialization, record reading, checks and reporting using
 `performance.now()`. It excludes executing tests and waiting for their events;
 serial absent/present whole-file comparisons also check the added reporter cost.
 
+Task-branch verification also applies a **load gate** to each top-level test
+whose exact `file::test` identity is absent from the manifest's `tests` baseline.
+The phase reporter discovers names while the ordinary phase is running. One
+extra lane repeats each new name five times in fresh Node processes, using an
+escaped, anchored `--test-name-pattern` on its file alongside the phase's normal
+work. A reasoned duration allowance does not make a test known to the load gate;
+the Coordinator's stage-close manifest refresh does.
+
+Every repetition needs a green process exit and exactly one passing receipt for
+the named test. Skips, TODOs and missed names do not count. The log names each
+test with `load gate: <file>::<test> <passes>/5 passed`; anything below 5/5 fails
+the run and appears in its failure summary. The `suite duration` line reports
+`load gate extra wall <seconds>s`, the time spent finishing repetitions after
+the ordinary phase exits, summed across phases. This measures the tail added by
+the gate, rather than the unmeasurable contention cost during overlap. Known
+tests and integrated `dev` runs (including sharded close runs) get no repetitions.
+The running hub computes the task flag carried in the suite selection; both the
+hub and candidate runner must support it. A pre-upgrade hub supplies no flag and
+does not request the gate. Exercise the gate through package-runner fixtures
+during bootstrap, then prove the live task path after the hub is updated.
+Without a duration manifest the gate is disabled, like the duration budget.
+Repetitions share the phase's owned temporary root and cleanup, and their
+receipts do not enter duration baselines or coverage maps.
+
 All package runs queue once for joint admission to `/tmp/cland-suite.lock` and
 `/tmp/cland-suite-nvim.lock`, and retain both locks through the chosen phases,
 including smoke. Each phase cleans up its processes and temporary root before

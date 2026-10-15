@@ -217,4 +217,25 @@ Reasoned entries stay, and a known entry that becomes slow only updates its
 baseline seconds.
 Keep artifact ids and the source head in `source` so timings remain traceable.
 
+Task-branch verifies have a **load gate** for each top-level `file::test` identity
+missing from the duration manifest's `tests` baseline. As the phase discovers
+new names, one extra lane repeats them five times in fresh Node processes with
+an escaped, exact `--test-name-pattern` on the file, alongside the ordinary
+phase. Known names and integrated `dev` runs, including sharded close runs,
+receive no repetitions. An `allow` entry permits duration; only the stage-close
+baseline refresh makes a test known to this gate.
+The live hub sets the task flag in the selection JSON. Updating a candidate
+runner alone does not enable it when the running hub predates this feature;
+bootstrap uses package-runner fixtures, followed by a live task proof after the
+hub update.
+
+Each repetition must exit green and produce exactly one passing receipt for the
+named test. Skipped, TODO and pattern-missed tests cannot satisfy it. The log
+reports `load gate: <file>::<test> <passes>/5 passed`; fewer than five passes
+fails verification and appears in the failure summary. The run's `suite duration`
+line includes `load gate extra wall <seconds>s`: the sum of the tails spent
+finishing repetitions after their ordinary phase exits. It does not estimate
+contention during overlap. Repetition receipts do not refresh duration baselines
+or enter coverage maps. Missing manifests disable this gate too.
+
 See [the runner and process-fixture notes](../../hub/README.md#tests) when adding tests that spawn processes.

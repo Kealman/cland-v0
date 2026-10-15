@@ -17,7 +17,7 @@ test('Neovim implementation changes select Neovim plus hub smoke', () => {
   assert.equal(chooseSuiteMode(['nvim/lua/cland/thread.lua', 'nvim/test/thread.test.ts']), 'nvim-only');
 });
 
-for (const path of ['hub/src/protocol.ts', 'hub/src/hub/store.ts', 'hub/test/run-suite.ts', 'hub/test/harness.ts', 'hub/test/process-cleanup.ts', 'hub/src/suite-selection.ts', 'hub/src/suite-shards.ts', 'hub/package.json', 'hub/tsconfig.json', 'nvim/tsconfig.json', 'hub/src/cli/role.ts', 'hub/src/cli/roles.ts', 'hub/src/tracker/tracker.ts', 'hub/src/hub/visibility.ts']) {
+for (const path of ['hub/src/protocol.ts', 'hub/src/hub/store.ts', 'hub/test/run-suite.ts', 'hub/test/load-gate.ts', 'hub/test/load-gate-reporter.ts', 'hub/test/harness.ts', 'hub/test/process-cleanup.ts', 'hub/src/suite-selection.ts', 'hub/src/suite-shards.ts', 'hub/package.json', 'hub/tsconfig.json', 'nvim/tsconfig.json', 'hub/src/cli/role.ts', 'hub/src/cli/roles.ts', 'hub/src/tracker/tracker.ts', 'hub/src/hub/visibility.ts']) {
   test(`${path} is shared infrastructure and forces full`, () => assert.equal(chooseSuiteMode([path]), 'full'));
 }
 
@@ -129,13 +129,18 @@ test('fetched dev selects committed and working changes, all forces full, and in
   await git('add', '.'); await git('commit', '-m', 'hub local');
   const selected = await selectPackageSuite(root);
   assert.equal(selected.mode, 'hub-only');
+  assert.equal(selected.loadGate, true);
   assert.deepEqual(selected.files, ['hub/src/tracker/tracker.ts']);
-  assert.equal((await selectPackageSuite(root, 'all')).mode, 'full');
+  const fullTask = await selectPackageSuite(root, 'all');
+  assert.equal(fullTask.mode, 'full');
+  assert.equal(fullTask.loadGate, true);
   await mkdir(join(root, 'nvim', 'lua'), { recursive: true });
   await writeFile(join(root, 'nvim', 'lua', 'thread.lua'), '-- dirty');
   assert.equal((await selectPackageSuite(root)).mode, 'full', 'untracked Neovim code makes the diff mixed');
   await git('checkout', 'dev');
-  assert.match((await selectPackageSuite(root)).reason, /integrated dev/);
+  const integrated = await selectPackageSuite(root);
+  assert.match(integrated.reason, /integrated dev/);
+  assert.equal(integrated.loadGate, undefined);
 });
 
 for (const [form, source] of [
@@ -209,6 +214,7 @@ test('empty diffs and failed fetches run full with their reason, never using a s
   const selected = await selectPackageSuite(root);
   assert.equal(selected.mode, 'full');
   assert.match(selected.reason, /fetch\/diff unavailable/);
+  assert.equal(selected.loadGate, true, 'failed fetch does not bypass the task load gate');
 });
 
 for (const mode of ['hub-only', 'nvim-only'] as const) {

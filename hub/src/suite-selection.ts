@@ -6,7 +6,7 @@ import { coverageSelection, type CoverageRecording } from './suite-coverage.ts';
 import { defaultConfig, parseConfig } from './init/config.ts';
 
 export type SuiteMode = 'hub-only' | 'hub-selected' | 'nvim-only' | 'full';
-export type SuiteSelection = { mode: SuiteMode; files: string[]; reason: string; fetchedDev?: string; tests?: string[]; functions?: string[]; coverage?: { artifact: string; path: string; head: string }; nvimFull?: boolean; recordCoverage?: CoverageRecording; shard?: { files: string[]; nvim: boolean } };
+export type SuiteSelection = { mode: SuiteMode; files: string[]; reason: string; loadGate?: boolean; fetchedDev?: string; tests?: string[]; functions?: string[]; coverage?: { artifact: string; path: string; head: string }; nvimFull?: boolean; recordCoverage?: CoverageRecording; shard?: { files: string[]; nvim: boolean } };
 export type SuiteRequest = 'auto' | 'all' | 'hub' | 'nvim';
 
 // Cross-package baselines, kept together so widening smoke coverage is one edit.
@@ -56,7 +56,7 @@ function chooseSuite(paths: readonly string[], nvimHubImports: readonly string[]
   for (const path of paths) {
     if (/^(?:hub\/src\/cli\/(?:crew|roles?)\.ts|hub\/src\/adapters\/contract\.ts|nvim\/lua\/cland\/(?:hub|state)\.lua|hub\/src\/protocol\.ts)$/.test(path)) return full(`shared contract ${path}`);
     if (/(?:^|\/)(?:package(?:-lock)?\.json|tsconfig[^/]*\.json)$/.test(path)) return full(`package configuration ${path}`);
-    if (['hub/test/run-suite.ts', 'hub/src/suite-selection.ts', 'hub/src/suite-shards.ts', 'hub/src/suite-durations.ts', 'hub/test/duration-reporter.ts'].includes(path)) return full(`suite infrastructure ${path}`);
+    if (['hub/test/run-suite.ts', 'hub/test/load-gate.ts', 'hub/test/load-gate-reporter.ts', 'hub/src/suite-selection.ts', 'hub/src/suite-shards.ts', 'hub/src/suite-durations.ts', 'hub/test/duration-reporter.ts'].includes(path)) return full(`suite infrastructure ${path}`);
     if (nvimHubImports.includes(path)) return full(`nvim test import ${path}`);
   }
   const nvim = paths.filter(path => path.startsWith('nvim/')).length;
@@ -116,35 +116,42 @@ export async function nvimHubImports(cwd: string): Promise<string[]> {
 
 const exec = promisify(execFile);
 export async function selectPackageSuite(cwd: string, requested: SuiteRequest = 'auto', env: NodeJS.ProcessEnv = process.env): Promise<SuiteSelection> {
-  let files: string[] = [];
-  try {
-    const git = async (...args: string[]) => (await exec('git', args, { cwd, env, timeout: 10_000, maxBuffer: 8 * 1024 * 1024 })).stdout;
-    // Never select against a stale dev ref, even if an old origin/dev exists.
-    await git('fetch', 'origin', '+refs/heads/dev:refs/remotes/origin/dev');
-    const branch = (await git('branch', '--show-current')).trim();
-    const paths = await Promise.all([
-      git('diff', '--name-only', '-z', '--no-renames', 'origin/dev...HEAD'),
-      git('diff', '--name-only', '-z', '--no-renames', 'HEAD'),
-      git('ls-files', '--others', '--exclude-standard', '-z'),
-    ]);
-    files = [...new Set(paths.flatMap(output => output.split('\0').filter(Boolean)))].sort();
-    if (branch === 'dev') return { mode: 'full', files, reason: 'integrated dev always runs full', fetchedDev: (await git('rev-parse', 'origin/dev')).trim() };
-    if (requested === 'all') return { mode: 'full', files, reason: '--all / all forces full' };
-    const { mode, reason } = chooseSuite(files, await nvimHubImports(cwd));
-    if (requested !== 'auto' && mode !== `${requested}-only`) return { mode: 'full', files, reason: `diff does not qualify for requested ${requested} phase` };
-    // Shared contracts keep their package fallback. A hub source imported by
-    // Neovim may narrow only the hub side; its Neovim phase remains full.
-    if (mode === 'hub-only' || mode === 'full' && reason.startsWith('nvim test import hub/src/')) {
-      const text = await readFile(resolve(cwd, '.cland/config.toml'), 'utf8').catch(error => { if (error.code === 'ENOENT') return null; throw error; });
-      const config = text === null ? defaultConfig('suite') : parseConfig(text, 'suite', env);
-      const selected = await coverageSelection(cwd, files, (await git('merge-base', 'origin/dev', 'HEAD')).trim(), git, config.verification.coverageMaxAgeMs);
-      if ('fallback' in selected) return { mode, files, reason: `${reason}; ${selected.fallback}` };
-      return { mode: 'hub-selected', files, reason: 'function coverage selects hub tests', tests: [...new Set([...selected.tests, ...HUB_SMOKE])].sort(), functions: selected.functions, coverage: selected.map, nvimFull: mode === 'full' };
+  let task = false;
+  const select = async (): Promise<SuiteSelection> => {
+    let files: string[] = [];
+    try {
+      const git = async (...args: string[]) => (await exec('git', args, { cwd, env, timeout: 10_000, maxBuffer: 8 * 1024 * 1024 })).stdout;
+      const branch = (await git('branch', '--show-current')).trim();
+      task = branch.startsWith('t/');
+      // Never select against a stale dev ref, even if an old origin/dev exists.
+      await git('fetch', 'origin', '+refs/heads/dev:refs/remotes/origin/dev');
+      const paths = await Promise.all([
+        git('diff', '--name-only', '-z', '--no-renames', 'origin/dev...HEAD'),
+        git('diff', '--name-only', '-z', '--no-renames', 'HEAD'),
+        git('ls-files', '--others', '--exclude-standard', '-z'),
+      ]);
+      files = [...new Set(paths.flatMap(output => output.split('\0').filter(Boolean)))].sort();
+      if (branch === 'dev') return { mode: 'full', files, reason: 'integrated dev always runs full', fetchedDev: (await git('rev-parse', 'origin/dev')).trim() };
+      if (requested === 'all') return { mode: 'full', files, reason: '--all / all forces full' };
+      const { mode, reason } = chooseSuite(files, await nvimHubImports(cwd));
+      if (requested !== 'auto' && mode !== `${requested}-only`) return { mode: 'full', files, reason: `diff does not qualify for requested ${requested} phase` };
+      // Shared contracts keep their package fallback. A hub source imported by
+      // Neovim may narrow only the hub side; its Neovim phase remains full.
+      if (mode === 'hub-only' || mode === 'full' && reason.startsWith('nvim test import hub/src/')) {
+        const text = await readFile(resolve(cwd, '.cland/config.toml'), 'utf8').catch(error => { if (error.code === 'ENOENT') return null; throw error; });
+        const config = text === null ? defaultConfig('suite') : parseConfig(text, 'suite', env);
+        const selected = await coverageSelection(cwd, files, (await git('merge-base', 'origin/dev', 'HEAD')).trim(), git, config.verification.coverageMaxAgeMs);
+        if ('fallback' in selected) return { mode, files, reason: `${reason}; ${selected.fallback}` };
+        return { mode: 'hub-selected', files, reason: 'function coverage selects hub tests', tests: [...new Set([...selected.tests, ...HUB_SMOKE])].sort(), functions: selected.functions, coverage: selected.map, nvimFull: mode === 'full' };
+      }
+      return { mode, files, reason };
+    } catch (error) {
+      return { mode: 'full', files, reason: `fetch/diff unavailable: ${error instanceof Error ? error.message.split('\n')[0] : String(error)}` };
     }
-    return { mode, files, reason };
-  } catch (error) {
-    return { mode: 'full', files, reason: `fetch/diff unavailable: ${error instanceof Error ? error.message.split('\n')[0] : String(error)}` };
-  }
+  };
+  const selection = await select();
+  if (task) selection.loadGate = true;
+  return selection;
 }
 
 export function selectionFromEnv(): SuiteSelection | undefined {

@@ -2,16 +2,16 @@
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test, { type TestContext } from 'node:test';
-import { ownDirectory } from './process-cleanup.ts';
+import { ownDirectory, ownProcess, pause } from './process-cleanup.ts';
 
 const exec = promisify(execFile);
 const runner = fileURLToPath(new URL('./run-suite.ts', import.meta.url));
-async function fixture(t: TestContext) {
+async function fixture(t: TestContext, packageRun = false) {
   const cwd = await mkdtemp(join(tmpdir(), 'cland-duration-runner-'));
   ownDirectory(t, cwd);
   await mkdir(join(cwd, 'hub/test'), { recursive: true });
@@ -19,16 +19,116 @@ async function fixture(t: TestContext) {
   await writeFile(file, `import test from 'node:test';
 test('parent', async t => { await t.test('child', () => new Promise(r => setTimeout(r, 100))); });
 test('skipped', {skip: 'fixture platform'}, () => {});`);
-  const run = async () => {
-    const code = `import {runSuite} from ${JSON.stringify(runner)}; process.exitCode = await runSuite([['--test', ${JSON.stringify(file)}]], ${JSON.stringify({ cwd, lockDir: join(cwd, 'lock') })});`;
-    return await exec(process.execPath, ['--input-type=module', '-e', code], { cwd, env: { ...process.env, NODE_TEST_CONTEXT: '', CLAND_TEST_SKIP_LOCK: '0' } }).then(
+  if (packageRun) {
+    await writeFile(join(cwd, 'hub/test/shards.json'), JSON.stringify({ version: 1, tests: { 'hub/test/fixture.test.ts': 'machine' } }));
+    await mkdir(join(cwd, 'nvim/test'), { recursive: true });
+    for (const name of ['client', 'sessions']) await writeFile(join(cwd, `nvim/test/${name}.test.ts`), '// empty cross-package smoke fixture\n');
+  }
+  const start = (loadGate = false) => {
+    const selection = { mode: 'hub-only', files: ['hub/test/fixture.test.ts'], reason: 'fixture task selection from hub', loadGate };
+    const code = packageRun
+      ? `import {runPackageSuite} from ${JSON.stringify(runner)}; process.exitCode = await runPackageSuite('auto', [], ${JSON.stringify({ cwd, lockDirs: { hub: join(cwd, 'lock'), nvim: join(cwd, 'nvim-lock') } })});`
+      : `import {runSuite} from ${JSON.stringify(runner)}; process.exitCode = await runSuite([['--test', ${JSON.stringify(file)}]], ${JSON.stringify({ cwd, lockDir: join(cwd, 'lock'), selection })});`;
+    const execution = exec(process.execPath, ['--input-type=module', '-e', code], { cwd, env: { ...process.env, NODE_TEST_CONTEXT: '', CLAND_TEST_SKIP_LOCK: '0', CLAND_SUITE_SELECTION: JSON.stringify(selection) } });
+    ownProcess(t, execution.child.pid);
+    const result = execution.then(
       r => ({ code: 0, output: r.stdout + r.stderr }),
       (e: { code: number; stdout: string; stderr: string }) => ({ code: e.code, output: e.stdout + e.stderr }),
     );
+    return { child: execution.child, result };
   };
+  const run = (loadGate = false) => start(loadGate).result;
   const manifest = { version: 1, source: { artifacts: [], commit: 'fixture' }, budget: { testSeconds: 0.05, fileSeconds: 60 }, files: {}, tests: {}, allow: {} };
   const path = join(cwd, 'hub/test/durations.json');
-  return { run, manifest, path };
+  return { run, start, manifest, path, cwd, file };
+}
+
+test('task load gate catches a one-in-three flake and repeats a stable new name five times alongside the phase', async t => {
+  const { run, manifest, path, cwd, file } = await fixture(t, true);
+  const journal = join(cwd, 'journal');
+  await writeFile(file, `import test from 'node:test'; import assert from 'node:assert/strict'; import { appendFileSync, readFileSync, writeFileSync } from 'node:fs';
+const journal = ${JSON.stringify(journal)};
+test('stable [new].*', () => appendFileSync(journal, 'stable\\n'));
+test('flaky', () => { const count = Number(readFileSync(journal, 'utf8').split('flaky').length); appendFileSync(journal, 'flaky\\n'); assert.notEqual(count % 3, 0); });
+test('known load', async () => { writeFileSync(journal + '.running', 'yes'); const deadline = Date.now() + 3000; while (readFileSync(journal, 'utf8').split('stable').length < 3 && Date.now() < deadline) await new Promise(r => setTimeout(r, 20)); appendFileSync(journal, 'load done\\n'); });`);
+  // An allowance grants duration, not admission past the new-test load gate.
+  await writeFile(path, JSON.stringify({ ...manifest, budget: { testSeconds: 5, fileSeconds: 60 }, tests: { 'hub/test/fixture.test.ts::known load': 3 }, allow: { 'hub/test/fixture.test.ts::stable [new].*': { seconds: 0.01, reason: 'Fixture allowance is not a refreshed baseline.' } } }));
+  const result = await run(true);
+  assert.equal(result.code, 1, result.output);
+  assert.match(result.output, /load gate: hub\/test\/fixture.test.ts::stable \[new\]\.\* 5\/5 passed/);
+  assert.match(result.output, /✖ load gate: hub\/test\/fixture.test.ts::flaky [0-4]\/5 passed/);
+  assert.match(result.output, /suite duration .*load gate extra wall [\d.]+s/);
+  const { suiteSummary } = await import('../src/hub/suites.ts');
+  const summary = suiteSummary(result.output);
+  assert.match(summary, /load gate: hub\/test\/fixture.test.ts::flaky [0-4]\/5 passed/);
+  assert.match(summary, /load gate extra wall [\d.]+s/);
+  const entries = (await readFile(journal, 'utf8')).trim().split('\n');
+  assert.equal(entries.filter(line => line === 'stable').length, 6);
+  assert.equal(entries.filter(line => line === 'flaky').length, 6);
+  assert.equal(entries.filter(line => line === 'load done').length, 1);
+  assert.ok(entries.indexOf('load done') > entries.indexOf('stable', entries.indexOf('stable') + 1), 'a repetition ran before the ordinary phase finished');
+});
+
+test('task load gate leaves known tests alone and integrated runs add no repetitions', async t => {
+  const { run, manifest, path, cwd, file } = await fixture(t);
+  const journal = join(cwd, 'journal');
+  await writeFile(file, `import test from 'node:test'; import { appendFileSync } from 'node:fs'; test('known', () => appendFileSync(${JSON.stringify(journal)}, 'ran\\n'));`);
+  await writeFile(path, JSON.stringify({ ...manifest, tests: { 'hub/test/fixture.test.ts::known': 0.01 } }));
+  const task = await run(true);
+  assert.equal(task.code, 0, task.output);
+  assert.doesNotMatch(task.output, /load gate start:/);
+  await writeFile(path, JSON.stringify(manifest));
+  const integrated = await run();
+  assert.equal(integrated.code, 0, integrated.output);
+  assert.doesNotMatch(integrated.output, /load gate/);
+  assert.equal(await readFile(journal, 'utf8'), 'ran\nran\n');
+});
+
+test('a skipped new test cannot satisfy the load gate with a green process exit', async t => {
+  const { run, manifest, path, file } = await fixture(t);
+  await writeFile(file, `import test from 'node:test'; test('not executed', {skip: 'fixture platform'}, () => {});`);
+  await writeFile(path, JSON.stringify(manifest));
+  const result = await run(true);
+  assert.equal(result.code, 1, result.output);
+  assert.match(result.output, /✖ load gate: hub\/test\/fixture.test.ts::not executed 0\/5 passed/);
+});
+
+for (const signal of ['SIGTERM', 'SIGKILL'] as const) {
+  test(`${signal} during a load repetition reaps it before removing the phase root`, { timeout: 10_000 }, async t => {
+    const { run, start, manifest, path, cwd, file } = await fixture(t);
+    const marker = join(cwd, 'repeat.json');
+    await writeFile(file, `import test from 'node:test'; import { existsSync, writeFileSync } from 'node:fs';
+test('held repetition', async () => { if (!existsSync(${JSON.stringify(marker + '.first')})) { writeFileSync(${JSON.stringify(marker + '.first')}, 'yes'); return; }
+writeFileSync(${JSON.stringify(marker)}, JSON.stringify({pid: process.pid, root: process.env.TMPDIR})); await new Promise(r => setTimeout(r, 60000)); });`);
+    await writeFile(path, JSON.stringify(manifest));
+    const suite = start(true);
+    const until = async (condition: () => Promise<boolean> | boolean) => {
+      const deadline = Date.now() + 4000;
+      while (!await condition() && Date.now() < deadline) await pause(20);
+      assert.ok(await condition(), 'bounded lifecycle observation');
+    };
+    await until(async () => !!await readFile(marker, 'utf8').catch(() => ''));
+    const repeated = JSON.parse(await readFile(marker, 'utf8')) as { pid: number; root: string };
+    ownProcess(t, repeated.pid);
+    const exited = new Promise<void>(resolve => suite.child.once('exit', () => resolve()));
+    suite.child.kill(signal);
+    await exited;
+    if (signal === 'SIGTERM') {
+      const stopped = await suite.result;
+      assert.equal(stopped.code, 143, stopped.output);
+    }
+    else {
+      await writeFile(file, `import test from 'node:test'; test('successor', () => {});`);
+      const successor = await run();
+      assert.equal(successor.code, 0, successor.output);
+      assert.match(successor.output, /taking over stale suite lock/);
+    }
+    await suite.result;
+    const gone = () => { try { process.kill(repeated.pid, 0); return false; } catch (error) { return (error as NodeJS.ErrnoException).code === 'ESRCH'; } };
+    await until(gone);
+    assert.ok(gone(), 'the exact repeat worker is gone');
+    assert.equal(await stat(repeated.root).catch(error => { if (error.code === 'ENOENT') return null; throw error; }), null);
+  });
 }
 
 test('runner emits top-level timings, fails test budgets, accepts reasons and disables without a manifest', async t => {

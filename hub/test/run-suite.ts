@@ -18,6 +18,7 @@ import { suiteLimits } from '../src/suite-limits.ts';
 import { describeSelection, selectPackageSuite, selectionFromEnv, type SuiteSelection, type SuiteRequest } from '../src/suite-selection.ts';
 import { checkDurations, durationRegressions, lintDurationManifest, readDurationManifest, type DurationManifest, type DurationRegression, type TestTiming } from '../src/suite-durations.ts';
 import { reduceCoverage } from '../src/suite-coverage.ts';
+import { loadGateReporter, runLoadGate } from './load-gate.ts';
 
 type Interruption = { signal: 'SIGINT' | 'SIGTERM' | null };
 export async function runSuite(suites: string[][], options: { lockDir?: string; lockDirs?: string[]; cwd?: string; interruption?: Interruption; selection?: SuiteSelection; phaseNames?: string[]; resources?: Array<'free' | 'machine'>; workers?: number[]; force?: boolean; token?: string } = {}): Promise<number> {
@@ -25,10 +26,12 @@ export async function runSuite(suites: string[][], options: { lockDir?: string; 
   let active: ReturnType<typeof spawn> | undefined;
   let runId = options.token ?? randomBytes(10).toString('base64url');
   let activeIdentity: ProcessIdentity | null = null;
+  const loadRunners = new Set<ProcessIdentity>();
   const handlers = (['SIGINT', 'SIGTERM'] as const).map((signal) => {
     const handler = () => {
       interruption.signal ??= signal;
       if (activeIdentity) void cleanupOwnedProcesses([activeIdentity]).catch(error => process.stderr.write(String(error) + '\n'));
+      if (loadRunners.size) void cleanupOwnedProcesses([...loadRunners]).catch(error => process.stderr.write(String(error) + '\n'));
     };
     process.on(signal, handler);
     return { signal, handler };
@@ -45,6 +48,7 @@ export async function runSuite(suites: string[][], options: { lockDir?: string; 
   const sample = setInterval(() => { peak = Math.max(peak, loadavg()[0]!); }, 1000);
   let durationManifest: DurationManifest | null = null;
   let budgetOverheadMs = 0;
+  let loadExtraWallMs = 0;
   const regressions: DurationRegression[] = [];
   const recording = options.selection?.recordCoverage;
   const output = process.env.CLAND_COVERAGE_OUTPUT;
@@ -134,6 +138,9 @@ process.chdir(cwd);`);
       ] : [];
       const timingsPath = join(root, `durations-${index}.jsonl`);
       if (durationManifest && args.includes('--test')) reporters.unshift(`--test-reporter=${fileURLToPath(new URL('./duration-reporter.ts', import.meta.url))}`, `--test-reporter-destination=${timingsPath}`);
+      const loadDiscovery = join(root, `load-discovery-${index}.jsonl`);
+      const loadGate = options.selection?.loadGate === true && durationManifest && args.includes('--test');
+      if (loadGate) reporters.push(`--test-reporter=${loadGateReporter}`, `--test-reporter-destination=${loadDiscovery}`);
       active = spawn(process.execPath, ['--import', bootstrap, ...(capture ? ['--import', fileURLToPath(new URL('./coverage-bootstrap.mjs', import.meta.url))] : []), ...reporters, ...absoluteArgs], { cwd: root, env, detached: true, stdio: 'inherit' });
       // Install exit listeners before publication awaits; the bootstrap cannot start tests yet.
       const done = new Promise<number>((resolve, reject) => { active!.once('error', reject); active!.once('exit', (value, signal) => resolve(value ?? (signal === 'SIGINT' ? 130 : 143))); });
@@ -144,7 +151,17 @@ process.chdir(cwd);`);
       if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
       await writeFile(gate, 'ready');
       if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
-      const code = await done;
+      const repeats = loadGate ? runLoadGate({
+        discovery: loadDiscovery, root, cwd, env, manifest: durationManifest!,
+        timeoutMs: (await suiteLimits(cwd)).testTimeoutMs, phase: done,
+        interrupted: () => interruption.signal !== null, active: loadRunners,
+      }) : Promise.resolve({ failed: false, extraWallMs: 0 });
+      const [phaseOutcome, gateOutcome] = await Promise.allSettled([done, repeats]);
+      if (phaseOutcome.status === 'rejected') throw phaseOutcome.reason;
+      if (gateOutcome.status === 'rejected') throw gateOutcome.reason;
+      const code = phaseOutcome.value;
+      const loadResult = gateOutcome.value;
+      loadExtraWallMs += loadResult.extraWallMs;
       let budgetFailed = false;
       if (durationManifest && args.includes('--test')) {
         const budgetStarted = performance.now();
@@ -170,6 +187,7 @@ process.chdir(cwd);`);
       if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
       if (code !== 0) return code;
       if (budgetFailed) return 1;
+      if (loadResult.failed) return 1;
     }
     if (recording && output && coverageRaw && !interruption.signal) {
       const map = await reduceCoverage(resolve(options.cwd ?? process.cwd()), coverageRaw, recording, [...coverageFiles]);
@@ -184,6 +202,7 @@ process.chdir(cwd);`);
   } finally {
     clearInterval(sample);
     try {
+      if (loadRunners.size) await cleanupOwnedProcesses([...loadRunners]);
       if (root) await sweep(holder);
       for (const lease of machine.reverse()) await lease.release();
       for (const lease of leases.reverse()) await lease.release();
@@ -195,7 +214,7 @@ process.chdir(cwd);`);
         budgetOverheadMs += performance.now() - budgetStarted;
         process.stderr.write(`suite budget overhead ${budgetOverheadMs.toFixed(2)} ms\n`);
       }
-      process.stderr.write(`suite duration ${((Date.now() - started) / 1000).toFixed(2)}s; lock wait ${((started - invoked) / 1000).toFixed(2)}s; peak 1m load ${peak.toFixed(2)}${options.selection ? `; ${describeSelection(options.selection)}` : ''}\n`);
+      process.stderr.write(`suite duration ${((Date.now() - started) / 1000).toFixed(2)}s; lock wait ${((started - invoked) / 1000).toFixed(2)}s; peak 1m load ${peak.toFixed(2)}${options.selection?.loadGate ? `; load gate extra wall ${(loadExtraWallMs / 1000).toFixed(2)}s` : ''}${options.selection ? `; ${describeSelection(options.selection)}` : ''}\n`);
     }
   }
 }
