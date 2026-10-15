@@ -3,7 +3,7 @@ id: T-392
 kind: task
 title: "Inspection diet: fixture hubs skip the start-up orphan sweep unless the test opts in, teardown signals recorded identities without machine-wide scans, and processStarted calls coalesce"
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 8
 labels:
@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-266
 branch: t/T-392-inspection-diet-fixture-hubs-skip-the
 created: 2026-10-14T12:28:11.104Z
-updated: 2026-10-15T01:07:21.197Z
+updated: 2026-10-15T01:36:43.786Z
 ---
 
 ## Summary
@@ -58,35 +58,43 @@ Each spawned fixture hub drags about 31 process-inspection spawns with it: the d
   - verified: rev-23 [reviewer] · run rev-2026-10-15-392-1 · 2026-10-15T00:09:13.677Z · commit 2d04d64915051ca3d82d5655d1dd4f370190bc92
   - verified: rev-23 [reviewer] · run rev-2026-10-15-392-2 · 2026-10-15T00:18:12.072Z · commit d6c913c280f26ec437a8da8fd8d77fc5cdf12d3d
   - verified: rev-23 [reviewer] · run rev-2026-10-15-392-5 · 2026-10-15T00:43:53.047Z · commit cc44e9cb76e8e1a60dc76b8029dc62626aa5af1f
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-392-6 · 2026-10-15T01:36:41.532Z · commit cc44e9cb76e8e1a60dc76b8029dc62626aa5af1f
 - [x] C2. Every test that asserts sweep behaviour opts in, the list is posted on the item, and those tests pass with their assertions unchanged.
   - done: impl-392 · 2026-10-15T00:05:01.597Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-392-1 · 2026-10-15T00:09:13.677Z · commit 2d04d64915051ca3d82d5655d1dd4f370190bc92
   - verified: rev-23 [reviewer] · run rev-2026-10-15-392-2 · 2026-10-15T00:18:12.072Z · commit d6c913c280f26ec437a8da8fd8d77fc5cdf12d3d
   - verified: rev-23 [reviewer] · run rev-2026-10-15-392-5 · 2026-10-15T00:43:53.047Z · commit cc44e9cb76e8e1a60dc76b8029dc62626aa5af1f
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-392-6 · 2026-10-15T01:36:41.532Z · commit cc44e9cb76e8e1a60dc76b8029dc62626aa5af1f
 - [x] C3. Teardown with recorded seeds runs no machine-wide `ps eww -ax` or `lsof -d cwd`, signals only start-time-verified identities, and falls back to the full proof when a seed does not verify, proven by tests in `termination-ownership.test.ts` or a new file.
   - done: impl-392 · 2026-10-15T00:42:49.017Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-392-5 · 2026-10-15T00:43:53.047Z · commit cc44e9cb76e8e1a60dc76b8029dc62626aa5af1f
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-392-6 · 2026-10-15T01:36:41.532Z · commit cc44e9cb76e8e1a60dc76b8029dc62626aa5af1f
 - [x] C4. Concurrent `processStartedAsync` calls coalesce into one `ps` per tick, no result is reused after its call resolves, and `pid-identity.test.ts` passes unchanged.
   - done: impl-392 · 2026-10-15T00:05:04.107Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-392-1 · 2026-10-15T00:09:13.677Z · commit 2d04d64915051ca3d82d5655d1dd4f370190bc92
   - verified: rev-23 [reviewer] · run rev-2026-10-15-392-2 · 2026-10-15T00:18:12.073Z · commit d6c913c280f26ec437a8da8fd8d77fc5cdf12d3d
   - verified: rev-23 [reviewer] · run rev-2026-10-15-392-5 · 2026-10-15T00:43:53.047Z · commit cc44e9cb76e8e1a60dc76b8029dc62626aa5af1f
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-392-6 · 2026-10-15T01:36:41.532Z · commit cc44e9cb76e8e1a60dc76b8029dc62626aa5af1f
 - [x] C5. Measured (Coordinator amendment 2026-10-15 01:06Z): the full-run census of the candidate is posted on the item with its ps, lsof and pgrep totals (labelled as a lower bound if shards were skipped), the per-daemon-start figure, the comparison with A-2021 (29,203), the top inspection helpers and the executor-* caveat, together with the heavy-file and single-fixture reductions; the <12,000 per run and ≤13 per start targets move to T-448 (doctor/report and process-cleanup inspection diet).
   - done: impl-392 · 2026-10-15T01:07:05.596Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-392-6 · 2026-10-15T01:36:41.532Z · commit cc44e9cb76e8e1a60dc76b8029dc62626aa5af1f
 - [x] C6. Measured (Coordinator amendment 2026-10-15 00:22Z: the verify queue never idled during the build): inspection spawns per default-subscriptions.test.ts run fall by at least 50% at nearby heads, and the paired-median (A/B x3, serial, load and holder recorded) whole-file times of default-subscriptions.test.ts and session-resume.test.ts show no regression beyond noise; the idle 15% target is re-measured in T-443.
   - done: impl-392 · 2026-10-15T00:28:39.622Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-392-3 · 2026-10-15T00:29:36.504Z · commit d6c913c280f26ec437a8da8fd8d77fc5cdf12d3d
   - verified: rev-23 [reviewer] · run rev-2026-10-15-392-5 · 2026-10-15T00:43:53.047Z · commit cc44e9cb76e8e1a60dc76b8029dc62626aa5af1f
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-392-6 · 2026-10-15T01:36:41.532Z · commit cc44e9cb76e8e1a60dc76b8029dc62626aa5af1f
 - [x] C7. The runner's phase sweep and the dedicated orphan tests still detect a process leaked by a test, proven by an existing or new test that leaks one on purpose.
   - done: impl-392 · 2026-10-15T00:05:05.044Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-392-1 · 2026-10-15T00:09:13.677Z · commit 2d04d64915051ca3d82d5655d1dd4f370190bc92
   - verified: rev-23 [reviewer] · run rev-2026-10-15-392-2 · 2026-10-15T00:18:12.073Z · commit d6c913c280f26ec437a8da8fd8d77fc5cdf12d3d
   - verified: rev-23 [reviewer] · run rev-2026-10-15-392-5 · 2026-10-15T00:43:53.048Z · commit cc44e9cb76e8e1a60dc76b8029dc62626aa5af1f
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-392-6 · 2026-10-15T01:36:41.532Z · commit cc44e9cb76e8e1a60dc76b8029dc62626aa5af1f
 - [x] C8. `hub/README.md` (Tests and the orphan sweep) describes the fixture default, the opt-in and the teardown path.
   - done: impl-392 · 2026-10-15T00:05:06.309Z
   - verified: rev-23 [reviewer] · run rev-2026-10-15-392-1 · 2026-10-15T00:09:13.677Z · commit 2d04d64915051ca3d82d5655d1dd4f370190bc92
   - verified: rev-23 [reviewer] · run rev-2026-10-15-392-2 · 2026-10-15T00:18:12.073Z · commit d6c913c280f26ec437a8da8fd8d77fc5cdf12d3d
   - verified: rev-23 [reviewer] · run rev-2026-10-15-392-5 · 2026-10-15T00:43:53.048Z · commit cc44e9cb76e8e1a60dc76b8029dc62626aa5af1f
+  - verified: rev-23 [reviewer] · run rev-2026-10-15-392-6 · 2026-10-15T01:36:41.533Z · commit cc44e9cb76e8e1a60dc76b8029dc62626aa5af1f
 
 ## Comments
 
@@ -174,3 +182,20 @@ Failed same-head census A-2630: exit1 on claude-code-adapter.test.ts:251 clause 
 ### impl-392 · 2026-10-15T01:07:05.361Z
 
 C5 measured under Coordinator 01:06Z amendment (A-2631): candidate cc44e9cb partial LOWER BOUND ps18507+lsof3032+pgrep1937=23476, 1038 recorded daemon starts=>22.62/start. Historical full A-2021=29203; partial is5727 below it, but skipped Neovim shards mean no complete full-suite percentage reduction is inferred. Dominant PS helpers doctor/report7655, process-cleanup6769, sync processStarted3459 (all-inspection totals10942/8283/3459). executor-* replace NODE_OPTIONS so descendants remain uncounted. A-2630 holds raw failed attempt and queue snapshots. A-2628 complete green serial heavy-file/fixture comparisons: suite3748→2507 (78 starts each), merge1116→449 (43 each), fixture28→13 (1 each). Old <12000 and <=13 targets are not achieved, moved to T-448. Authorized retry cancelled normally before admission, exit143, per Coordinator e89384b7. A-2629 preserves twelve green baseline/candidate adapter isolation files; full attempt flake filed T-447. Proceeding to local no-mode gate at unchanged reviewed cc44e9cb.
+
+### impl-392 · 2026-10-15T01:36:06.278Z
+
+Exact reviewed-head gate4788f3cb green at cc44e9cb76e8e1a60dc76b8029dc62626aa5af1f: local darwin arm64, no-mode selection full, all2083 tests pass (0 failures/skips), suite957.17s, queue765.24s, peak1m load19.14. Durable log A-2634. Source remains clean and unchanged. Awaiting Reviewer final verdict; Coordinator gate owns merge. The failed earlier census A-2630 remains labelled lower-bound evidence and T-447 flake provenance, not replaced or hidden by this green gate.
+
+### rev-23 · 2026-10-15T01:36:41.533Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-15-392-6
+commit: cc44e9cb76e8e1a60dc76b8029dc62626aa5af1f
+scope: evidence
+
+Final clear at unchanged cc44e9cb76e8e1a60dc76b8029dc62626aa5af1f. Local no-mode gate 4788f3cb-e265-4a6a-8732-f9c08409872a / A-2634 selected full: root typecheck and all 2083/2083 pass (37 free + 1659 hub machine + 387 Neovim), zero failures/cancellations/skips/todos, exit 0. Corrected ownership/worker-fixture and prior Claude clause-retry cases pass. Retain red human census 0dfb11ee-8575-494c-b465-3e16faa54780 / A-2630, sole clause-retry timeout tracked T-447; 12 isolated whole-file passes A-2629 and Coordinator dc87c515/e89384b7 disposition precede this green gate. C5 verified only under persisted amendment: 23476 partial lower-bound inspections/1038 starts=22.62, historical 29203 comparison without full-savings inference, helper/coverage caveat and scoped reductions A-2631/A-2632; unmet original budgets moved T-448. C6 verified under persisted loaded-measurement amendment: about 63% fewer default inspections and positive paired medians for both files; unfavorable -11.09% pair retained, original idle 15% unmeasured/T-443. Source A-2626 and final detailed evidence A-2635. All eight claimant done marks checked. Standards and Spec: no high or medium findings remain. C1–C8 verified.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified.
