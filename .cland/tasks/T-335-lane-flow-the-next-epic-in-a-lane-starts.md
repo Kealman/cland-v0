@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-277
 branch: t/T-335-lane-flow-the-next-epic-in-a-lane-starts
 created: 2026-10-13T14:23:44.027Z
-updated: 2026-10-15T12:33:18.654Z
+updated: 2026-10-15T12:41:06.485Z
 ---
 
 ## Summary
@@ -45,22 +45,27 @@ This started as an observation from the human and the stand-in on 2026-10-13 at 
   - done: impl-335 · 2026-10-15T07:26:34.248Z
   - verified: rev-26 [reviewer] · run rev-20261015-335-final-1 · 2026-10-15T12:08:01.280Z · commit fcb1de325def92d9f0d18fc998893cf9ee39ca9e
   - verified: rev-26 [reviewer] · run rev-20261015-335-final-2 · 2026-10-15T12:33:12.799Z · commit 92834624c9803ea67cae7415ae8548a306da24ac
+  - verified: rev-26 [reviewer] · run rev-20261015-335-final-3 · 2026-10-15T12:41:04.489Z · commit 86e9bf948e12ae2b7f2ecd6853914c9cda5c6cb4
 - [x] C2. In a scratch project where E2 follows E1, `task view E2` shows `follows E-1: met` once E1's last ticket merges, and the open tickets before that; E2 is not marked blocked in `task list`.
   - done: impl-335 · 2026-10-15T07:26:35.534Z
   - verified: rev-26 [reviewer] · run rev-20261015-335-final-1 · 2026-10-15T12:08:01.281Z · commit fcb1de325def92d9f0d18fc998893cf9ee39ca9e
   - verified: rev-26 [reviewer] · run rev-20261015-335-final-2 · 2026-10-15T12:33:12.800Z · commit 92834624c9803ea67cae7415ae8548a306da24ac
+  - verified: rev-26 [reviewer] · run rev-20261015-335-final-3 · 2026-10-15T12:41:04.489Z · commit 86e9bf948e12ae2b7f2ecd6853914c9cda5c6cb4
 - [x] C3. A ticket of E2 whose diff touches a file E1's merges changed is refused at the merge gate with the predecessor, its pending demo and the files named, while a ticket with no overlap merges; both proven by tests.
   - done: impl-335 · 2026-10-15T07:37:23.936Z
   - verified: rev-26 [reviewer] · run rev-20261015-335-final-1 · 2026-10-15T12:08:01.281Z · commit fcb1de325def92d9f0d18fc998893cf9ee39ca9e
   - verified: rev-26 [reviewer] · run rev-20261015-335-final-2 · 2026-10-15T12:33:12.800Z · commit 92834624c9803ea67cae7415ae8548a306da24ac
+  - verified: rev-26 [reviewer] · run rev-20261015-335-final-3 · 2026-10-15T12:41:04.489Z · commit 86e9bf948e12ae2b7f2ecd6853914c9cda5c6cb4
 - [x] C4. The hold lifts when E1 receives its clear demo verdict or closes, proven by a test.
   - done: impl-335 · 2026-10-15T07:26:38.112Z
   - verified: rev-26 [reviewer] · run rev-20261015-335-final-1 · 2026-10-15T12:08:01.282Z · commit fcb1de325def92d9f0d18fc998893cf9ee39ca9e
   - verified: rev-26 [reviewer] · run rev-20261015-335-final-2 · 2026-10-15T12:33:12.800Z · commit 92834624c9803ea67cae7415ae8548a306da24ac
+  - verified: rev-26 [reviewer] · run rev-20261015-335-final-3 · 2026-10-15T12:41:04.489Z · commit 86e9bf948e12ae2b7f2ecd6853914c9cda5c6cb4
 - [x] C5. The card and the explorer show `follows` beside `blocked_by`.
   - done: impl-335 · 2026-10-15T07:26:39.039Z
   - verified: rev-26 [reviewer] · run rev-20261015-335-final-1 · 2026-10-15T12:08:01.283Z · commit fcb1de325def92d9f0d18fc998893cf9ee39ca9e
   - verified: rev-26 [reviewer] · run rev-20261015-335-final-2 · 2026-10-15T12:33:12.800Z · commit 92834624c9803ea67cae7415ae8548a306da24ac
+  - verified: rev-26 [reviewer] · run rev-20261015-335-final-3 · 2026-10-15T12:41:04.489Z · commit 86e9bf948e12ae2b7f2ecd6853914c9cda5c6cb4
 - [x] C6. The Coordinator clause in both places and the `merge`, `to-tickets` and `plan-epic` skills describe follows, the met rule, the hold and preparing the next epic during the last stage's review.
   - done: impl-335 · 2026-10-15T07:39:48.888Z
   - verified: rev-26 [reviewer] · run rev-20261015-335-source-3 · 2026-10-15T07:40:56.538Z · commit bbe943079f12a43dcc707d527fe718b9a58ddfd6
@@ -70,6 +75,7 @@ This started as an observation from the human and the stand-in on 2026-10-13 at 
   - verified: rev-26 [reviewer] · run rev-20261015-335-source-7 · 2026-10-15T11:00:26.690Z · commit fcb1de325def92d9f0d18fc998893cf9ee39ca9e
   - verified: rev-26 [reviewer] · run rev-20261015-335-final-1 · 2026-10-15T12:08:01.283Z · commit fcb1de325def92d9f0d18fc998893cf9ee39ca9e
   - verified: rev-26 [reviewer] · run rev-20261015-335-final-2 · 2026-10-15T12:33:12.800Z · commit 92834624c9803ea67cae7415ae8548a306da24ac
+  - verified: rev-26 [reviewer] · run rev-20261015-335-final-3 · 2026-10-15T12:41:04.489Z · commit 86e9bf948e12ae2b7f2ecd6853914c9cda5c6cb4
 - [x] C7. `hub/README.md` and GLOSSARY's Follows entry describe the relation, the met rule and the hold.
   - done: impl-335 · 2026-10-15T07:26:40.394Z
   - verified: rev-26 [reviewer] · run rev-20261015-335-source-3 · 2026-10-15T07:40:56.538Z · commit bbe943079f12a43dcc707d527fe718b9a58ddfd6
@@ -79,6 +85,7 @@ This started as an observation from the human and the stand-in on 2026-10-13 at 
   - verified: rev-26 [reviewer] · run rev-20261015-335-source-7 · 2026-10-15T11:00:26.690Z · commit fcb1de325def92d9f0d18fc998893cf9ee39ca9e
   - verified: rev-26 [reviewer] · run rev-20261015-335-final-1 · 2026-10-15T12:08:01.283Z · commit fcb1de325def92d9f0d18fc998893cf9ee39ca9e
   - verified: rev-26 [reviewer] · run rev-20261015-335-final-2 · 2026-10-15T12:33:12.800Z · commit 92834624c9803ea67cae7415ae8548a306da24ac
+  - verified: rev-26 [reviewer] · run rev-20261015-335-final-3 · 2026-10-15T12:41:04.490Z · commit 86e9bf948e12ae2b7f2ecd6853914c9cda5c6cb4
 
 ## Comments
 
@@ -275,5 +282,24 @@ scope: delta
 
 No high or medium findings. Sole manual conflict is an exact durations.json union: 178 task-parent and 174 dev-parent allowances become 179, every parent value preserved; remaining manifest sections equal dev. Own task patch, including tracker and README additions, is unchanged; landed T-487 files equal dev. Worktree clean at 92834624. A-2973 typecheck/diff check green.
 Final C1–C7 renewal uses Coordinator 15bb5a24 (no new verify; covered dev content and task receipts stand) and 7b82515b (targeted merge tests waived; duration union only). Retain A-2794 + A-2935 accepted Linux hub pair, A-2960 387/387 local Neovim, A-2958 green dev cover 6a13b9a5/shared receipts, and prior A-2962. No new-head execution claim. Linux UI remains E-423 stage-1 close coverage with forward fixes as directed. No Reviewer tests or edits.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.
+
+### impl-335 · 2026-10-15T12:39:47.258Z
+
+Merged dev 8ce8de1a/T-454 heartbeat and resolved both role-file conflicts, pushed final head 86e9bf94. Heartbeat and lane clauses survive; full staffing-appended reply headroom restored (7650/7680 bytes). Required 12 whole files ran serially at load 1.96–3.72: 80 tests pass, zero fails. Typecheck/diff check green; tree clean. A-2986 log/A-2987 delta; re-review requested from rev-26. Per Coordinator 3a1218e8 no full verify; integration cover comes at E-423 stage-1 close after T-455.
+
+### rev-26 · 2026-10-15T12:41:04.490Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261015-335-final-3
+commit: 86e9bf948e12ae2b7f2ecd6853914c9cda5c6cb4
+scope: delta
+
+No high or medium findings. Both Coordinator sources preserve the exact heartbeat instruction plus follows/start/overlap-hold guidance, canonical account/decision/review/request ownership, staffing and release/lifecycle rules. Own lane production/tests/UI are unchanged; incoming heartbeat code/settings equal dev. Prior duration union retained, incoming heartbeat allowance added unchanged. Compaction retains unchanged clause/headroom guards; A-2987 records corrected 7650/7680 full reply after an intermediate real overflow.
+A-2986 at this head passes 80/80 across all 12 required serial whole files, including roles/clause families, ten follows cases, heartbeat, crew/store and Neovim events; starts load 1.96–3.72. Final typecheck/diff check green, clean worktree at 86e9bf94.
+Final C1–C7 renewal cites Coordinator 3a1218e8: no new full verify; E-423 stage-1 close after T-455 covers integration. Retain accepted A-2794/A-2935/A-2960 and previous final A-2978; no new full execution inferred. Linux UI remains at stage-close with forward fixes as directed. No Reviewer tests or edits.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.

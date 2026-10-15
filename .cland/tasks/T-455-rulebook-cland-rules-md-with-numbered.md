@@ -3,7 +3,7 @@ id: T-455
 kind: task
 title: "Rulebook: .cland/RULES.md with numbered rules, read and written by cland rule add, edit, retire, list and show, and reloaded by the hub when the file changes"
 state: open
-status: review
+status: in progress
 size: M
 criterion_seq: 7
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-276
 branch: t/T-455-rulebook-cland-rules-md-with-numbered
 created: 2026-10-15T07:15:15.459Z
-updated: 2026-10-15T12:11:45.111Z
+updated: 2026-10-15T12:37:24.409Z
 ---
 
 ## Summary
@@ -237,3 +237,20 @@ Submit no-mode verify using configured droplet default at this reviewed head aft
 Review evidence: A-2965.
 
 Criteria: C7 verified.
+
+### rev-23 · 2026-10-15T12:37:24.409Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-15-455-9
+commit: 91635a792948255a2608cd4690d6a0c4c43b3516
+scope: evidence
+
+Medium — hub/test/executor-prepare.test.ts:165: missing executor-lease-released record is dereferenced for lifetimeMs, matching known T-481 (A-2984:3879–3884).
+Medium — hub/test/session-stop-races.test.ts:136: post-merge forced-stop case cannot observe Implementer idle within 15s (A-2984:3886–3892). This is not T-449's filed probe.json readiness assertion; it may belong to the Codex initial-idle/launch family, but exact ownership requires lead classification. Bugs/S find aside, no inferred product cause.
+
+Configured Linux 6ffb9985/A-2984 at unchanged source-clear 91635a792948255a2608cd4690d6a0c4c43b3516 selected full, but hub exits 1 before Neovim: 1728 tests, 1723 pass, two fail, three platform skips. Own rulebook/CLI/init/shared Claude hub tests pass; their positive evidence is separate from the overall red gate. Suite 1371.27s, c-8 lon1 lifetime 1462s, cost $0.1015. Branch still matches review.
+
+C1–C6 remain unverified; C7 current source mark retained. Prior 8052e04c/A-2746, 1ea1e21d/A-2777 and 9008902b/A-2808/shared-fix dispositions remain recorded. Human e6264b46 needs known-ticket-only classification and own-file coverage before a qualifying second receipt; no final or retry inference from same-file similarity. Mixed-diff Neovim phase also remains missing. Await lead adoption/classification direction; changed head requires delta review. No Reviewer tests or edits.
+Review evidence: A-2985.

@@ -3,7 +3,7 @@ id: T-486
 kind: task
 title: "role-integrity test: coord-1 not observed idle within 15 s on a loaded Linux droplet"
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-289
 branch: t/T-486-role-integrity-test-coord-1-not-observed
 created: 2026-10-15T10:27:52.273Z
-updated: 2026-10-15T11:56:55.949Z
+updated: 2026-10-15T12:38:09.036Z
 ---
 
 ## Problem
@@ -90,3 +90,15 @@ Standards: source review rev-20261015-486-source stands; no new source findings,
 Spec/evidence: role-integrity 7/7 Linux green, forced coordinator regression 2.706 s; Codex adapter 35/35 green. A-2925 supplies five serial loaded role-integrity passes, 7/7 each. C2 remains unverified pending accepted gate; no failed implementation criterion mark for this unrelated timeout.
 
 f45f0ae5/A-2956 matches reviewed/current 47c3b8cf05691607e98823ce8d04698133005c94: exit 1, 1716 pass/1 fail/3 platform skips, Linux x64 c-8, typecheck green, Neovim smoke not reached. Reported Bugs/S to lead; new verifies held until restart per bef82ca8, and unknown-case classification is required before automatic known-flake retry. No Reviewer tests or edits.
+
+### impl-486 · 2026-10-15T12:34:35.870Z
+
+Per Coordinator a45bcc08: suite-remote-budget.test.ts ran whole/alone 5× serially at unchanged 47c3b8cf, all 10/10 green (A-2981). Runs 1–2 overlapped local work before the new Mac load rule (run 1 began quiet); runs 3–5 labelled quiet and admitted at load 3.30/5.45/4.40 with no other targeted PID. Source remains clean and unchanged. This satisfies the stated condition for counting first Linux A-2956's sole suite-remote-budget candidate-result timeout as known T-490. Restart announced 983f34f6; submitting second same-head droplet receipt under E-482 rule. Local slot handed to impl-335 per priority update, then impl-393.
+
+### coord · 2026-10-15T12:38:09.036Z
+
+More signatures of the same root cause, a Codex session's initial idle under load:
+- codex-adapter.test.ts:399 (T-395, A-2976);
+- role-integrity.test.ts:116 rev-1 (T-395, A-2976);
+- session-stop-races.test.ts:136 Implementer idle (T-455, A-2984).
+When T-486 merges, its commit goes to every branch that runs Codex tests.
