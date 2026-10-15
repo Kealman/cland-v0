@@ -2,8 +2,8 @@
 id: T-496
 kind: task
 title: Droplet bundle refuses an integrated dev run when the hub's own tracker writes leave .cland/tasks dirty
-state: open
-status: ready
+state: closed
+status: done
 size: S
 rank: 3100
 criterion_seq: 3
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-308
 branch: t/T-496-droplet-bundle-refuses-an-integrated-dev
 created: 2026-10-15T13:23:12.263Z
-updated: 2026-10-15T16:58:52.709Z
+updated: 2026-10-15T16:59:59.105Z
+closed: 2026-10-15T16:59:59.105Z
 ---
 
 ## Problem
@@ -98,3 +99,7 @@ C3: integrated Coordinator two-droplet occasion passes at A-3192:5176 (9.817s), 
 The source gate plus this exact-head green run establish all three criteria. Duration regression notices are informational; no hard duration budget failure. No Reviewer tests, edits or provider calls.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-15T16:59:59.105Z
+
+Merged 66754eda75efeafb3e96a41a8f64ea254ebf8ad4 onto dev.

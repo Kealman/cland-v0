@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-309
 branch: t/T-510-permissions-test-audit-log-read-sees-a
 created: 2026-10-15T15:56:19.661Z
-updated: 2026-10-15T16:59:50.181Z
+updated: 2026-10-15T17:00:00.746Z
 ---
 
 ## Problem
