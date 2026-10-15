@@ -5,6 +5,7 @@ title: codex-adapter usage test compares the first usage event with a later snap
 state: open
 status: review
 size: XS
+criterion_seq: 1
 labels:
   - v0.1.3
   - ready-for-agent
@@ -14,7 +15,7 @@ blocked_by: []
 topic: topic-293
 branch: t/T-465-codex-adapter-usage-test-compares-the
 created: 2026-10-15T08:47:22.013Z
-updated: 2026-10-15T12:34:00.124Z
+updated: 2026-10-15T12:56:00.654Z
 ---
 
 ## Summary
@@ -23,7 +24,8 @@ updated: 2026-10-15T12:34:00.124Z
 
 ## Acceptance criteria
 
-- [ ] C1. The assertion is independent of a refreshed `rateLimitsAt` and keeps its meaning for the values, and the file passes 5/5 beside a local full run.
+- [x] C1. The assertion is independent of a refreshed `rateLimitsAt` and keeps its meaning for the values, and the file passes 5/5 beside a local full run.
+  - done: impl-465 · 2026-10-15T12:56:00.654Z
 
 ## Comments
 
@@ -53,3 +55,7 @@ Spec: hub/test/codex-adapter.test.ts:272–278 normalizes only rateLimitsAt on b
 Reviewed git diff 2581000178f89873857b04d9f31e425ee03df0da...6612ac3c791864e8e0ac442a9b585975c4cd631a, one commit, only hub/test/codex-adapter.test.ts. Both Standards and Spec axes reviewed directly; role prohibits sub-agents.
 
 C1 remains unverified because its five whole-file passes and same-head gate are pending. Coordinator b4900603 explicitly allows source review before the Mac slot; 1ba48602 accepts five labelled quiet or loaded serial Mac passes plus task droplet verification. Source part is satisfied; no run evidence claimed. No Reviewer tests or edits.
+
+### impl-465 · 2026-10-15T12:55:56.365Z
+
+Five serial quiet Mac whole-file runs green at reviewed 6612ac3c, 35/35 each = 175/175; times 50.195, 50.277, 50.392, 50.099, 50.092 seconds. Admission loads 2.72, 2.42, 2.74, 2.99, 2.95; local holder null and no executing local test file before each run. Coordinator 1ba48602/b4900603 supersedes original full-run overlap requirement. Logs: A-2995 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2995-t-465-five-serial-quiet-mac-passes-175-175.txt. Window handed to impl-463. Source review rev-20261015-465-source is clear; same-head default droplet verify a3fe0258-03eb-484f-9495-825820eb4dc7 pending.

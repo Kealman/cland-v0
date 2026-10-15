@@ -3,7 +3,7 @@ id: T-486
 kind: task
 title: "role-integrity test: coord-1 not observed idle within 15 s on a loaded Linux droplet"
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-289
 branch: t/T-486-role-integrity-test-coord-1-not-observed
 created: 2026-10-15T10:27:52.273Z
-updated: 2026-10-15T12:38:09.036Z
+updated: 2026-10-15T12:59:21.098Z
 ---
 
 ## Problem
@@ -34,6 +34,7 @@ It looks like the same family as the other idle-observer timeouts under load in 
   - verified: rev-30 [reviewer] · run rev-20261015-486-source · 2026-10-15T11:16:34.054Z · commit 47c3b8cf05691607e98823ce8d04698133005c94
 - [x] C2. role-integrity.test.ts passes 5/5 serially, whole file and alone, beside a local full run, plus once on a droplet in the task's verify.
   - done: impl-486 · 2026-10-15T11:56:20.939Z
+  - verified: rev-30 [reviewer] · run rev-20261015-486-final · 2026-10-15T12:59:19.294Z · commit 47c3b8cf05691607e98823ce8d04698133005c94
 
 ## Comments
 
@@ -102,3 +103,29 @@ More signatures of the same root cause, a Codex session's initial idle under loa
 - role-integrity.test.ts:116 rev-1 (T-395, A-2976);
 - session-stop-races.test.ts:136 Implementer idle (T-455, A-2984).
 When T-486 merges, its commit goes to every branch that runs Codex tests.
+
+### impl-486 · 2026-10-15T12:59:00.047Z
+
+Second same-head default Linux verify 9330be77 is fully green at reviewed/current 47c3b8cf05691607e98823ce8d04698133005c94: 1732 tests, 1729 passed, 0 failed, 3 platform skips; hub and Neovim smoke completed, typecheck green. Durable receipt A-2996. First unrelated T-490 failure classification is supported by five whole-file 10/10 passes in A-2981. Source unchanged; requesting final evidence verdict.
+
+### rev-30 · 2026-10-15T12:59:19.294Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-486-final
+commit: 47c3b8cf05691607e98823ce8d04698133005c94
+scope: evidence
+
+Final review clear at unchanged 47c3b8cf05691607e98823ce8d04698133005c94; no unresolved source findings.
+
+Standards: source verdict rev-20261015-486-source stands, no findings.
+Spec: C1 source verification stands: eventSequence guard preserves newer completed-turn idle and cleared turn id while retaining pre-turn fallback; original assertions and deadlines unchanged. C2 verified: A-2925 establishes five serial loaded role-integrity whole-file passes (7/7 each) beside impl-393 local full run 6b2bda6d, and same-head Linux A-2996 passes all seven cases, forced Coordinator regression 2.475 s (timing line 4753). Codex adapter file also passes.
+
+Accepted gate: 9330be77-82fa-4428-b318-3fc8c01269b0 / A-2996 is green at the exact source-reviewed and current branch head. Host and remote typecheck pass; Linux x64 c-8 hub plus Neovim smoke completes, exit 0, 1729 pass / 0 fail / 3 platform skips / 0 cancelled. Three skips: macOS sandbox-exec cases in edges and spawn-census, plus macOS idle-sleep inhibitor in executor-droplet. Neovim smoke 12/12 green. Duration regression notices concern existing test identities and do not fail this receipt.
+
+Earlier red f45f0ae5/A-2956 remains recorded red; its outside T-490 timeout was classified under Coordinator a45bcc08 after five 10/10 remote-budget file passes A-2981. Final gate now rests on the green retry, without needing the two-red-receipt exception.
+
+Criteria: C1 retained, C2 verified. No Reviewer tests or edits.
+
+Criteria: C2 verified.
