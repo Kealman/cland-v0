@@ -2,8 +2,8 @@
 id: T-531
 kind: task
 title: "suite-close test: integrated remote close counts 24 coverage-map scp calls, not 2 (Linux)"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ regression_of: T-394
 topic: topic-326
 branch: t/T-531-suite-close-test-integrated-remote-close
 created: 2026-10-15T20:54:23.323Z
-updated: 2026-10-15T21:58:42.954Z
+updated: 2026-10-15T22:26:00.987Z
+closed: 2026-10-15T22:26:00.987Z
 ---
 
 ## Summary
@@ -87,3 +88,7 @@ C1 reverified: diagnosis A-3357 and tracker comment distinguish28 whole-line met
 Evidence /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3396-suite-d551ecd5-5d6f-4bf4-bc3a-333a26aa9a7d-auto-at-a85c913.log and /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3373-t-531-five-serial-loaded-mac-whole-file-passes-with-v8-coverage.log. No per-item QA criteria. No Reviewer tests, edits, merges or provider actions. Changed-head integration/conflict resolution needs delta review.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-15T22:26:00.987Z
+
+Merged d67544c60b6d5e091a435a36bacc8faaca73c697 onto dev.
