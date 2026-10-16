@@ -2,8 +2,8 @@
 id: T-679
 kind: task
 title: "hub/test/tiers.json replaces shards.json: every hub and Neovim test file declares T1, T2, T3 or T4, sorted by path"
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 6
 labels:
@@ -16,7 +16,8 @@ blocked_by: []
 topic: topic-408
 branch: t/T-679-hub-test-tiers-json-replaces-shards-json
 created: 2026-10-16T19:59:27.652Z
-updated: 2026-10-16T21:51:33.451Z
+updated: 2026-10-16T21:51:48.050Z
+closed: 2026-10-16T21:51:48.050Z
 ---
 
 ## Summary
@@ -174,3 +175,7 @@ Final delta clear, no findings. No new droplet task run or per-item QA required 
 Review artifact A-4221.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### coord · 2026-10-16T21:51:48.050Z
+
+Merged 42307709f6a3cddac36f83e81028d2d9a7ff4647 onto dev.
