@@ -170,13 +170,19 @@ for (const fresh of [null, false, true]) test(`${fresh === null ? 'live resume' 
   const launched = await ui.request({ type: 'session.launch', name: 'impl', harness: 'claude-code', role: 'implementer' });
   assert.equal(launched.ok, true, launched.error);
   const p = (launched.value as { process: HarnessProcessView }).process;
+  // Launch admission precedes the role-clause turn; bound completion separately from publication.
+  await eventually('initial turn completed before resume', async () => (await fake.log(p.harnessId!)).includes('session.measure done') || undefined);
   await ui.waitFor(f => f.type === 'session.usage' && f.sessionId === p.sessionId);
   if (fresh !== null) assert.equal((await ui.request({ type: 'session.stop', session: 'impl' }, 30_000)).ok, true);
   const mark = ui.frames.length;
   const resumed = await ui.request({ type: 'session.resume', session: 'impl', ...(fresh === null ? {} : fresh ? { fresh: true } : { relaunch: true }) }, 30_000);
   assert.equal(resumed.ok, true, resumed.error);
   assert.equal((resumed.value as { found: boolean }).found, true);
-  if (fresh) await ui.waitFor(f => f.type === 'session.usage' && ui.frames.indexOf(f) >= mark);
+  if (fresh) {
+    const next = (resumed.value as { process: HarnessProcessView }).process;
+    await eventually('fresh turn completed before usage publication', async () => (await fake.log(next.harnessId!)).includes('session.measure done') || undefined);
+    await ui.waitFor(f => f.type === 'session.usage' && ui.frames.indexOf(f) >= mark);
+  }
   const journal = await records(root, ui);
   assert.deepEqual(journal.filter(r => r.event === 'session-launched').map(r => r.model), [null, 'claude-fake-1']);
   assert.deepEqual(journal.filter(r => r.event === 'session-model').map(r => r.model), ['claude-fake-1']);

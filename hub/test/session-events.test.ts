@@ -1,7 +1,7 @@
 // Subscribed UI frames at the transport boundary: presence, process rows and coalesced usage.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { withDiscoveredPid, connectUi, connectWsUi, fakeClaude, spawnSpoke, startDaemon, startHub, tempProject, sleep } from './harness.ts';
+import { withDiscoveredPid, eventually, connectUi, connectWsUi, fakeClaude, spawnSpoke, startDaemon, startHub, tempProject, sleep } from './harness.ts';
 import type { HarnessProcessView, Presence, SessionUsage } from '../src/protocol.ts';
 import { ProcessTable } from '../src/adapters/processes.ts';
 import { Sessions } from '../src/adapters/sessions.ts';
@@ -95,6 +95,8 @@ test('process rows publish launch, model, role, rename, exit and stop; usage bur
     const p = (launched.value as { process: HarnessProcessView }).process;
     processes.push(p);
     await ui.waitFor((f) => f.type === 'session.process' && row(f).sessionId === p.sessionId && row(f).status === 'running');
+    // Launch admission precedes the role-clause turn; give its hooks their own completion bound.
+    await eventually(`${name} initial turn completed`, async () => (await fake.log(p.harnessId!)).includes('session.measure done') || undefined);
     const usage = await ui.waitFor((f) => f.type === 'session.usage' && f.sessionId === p.sessionId);
     baseline.set(p.sessionId, (usage.usage as SessionUsage).total?.outputTokens ?? 0);
   }
