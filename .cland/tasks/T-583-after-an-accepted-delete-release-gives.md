@@ -19,7 +19,7 @@ regression_of: T-572
 topic: topic-365
 branch: t/T-583-after-an-accepted-delete-release-gives
 created: 2026-10-16T07:35:44.274Z
-updated: 2026-10-16T08:19:08.029Z
+updated: 2026-10-16T10:14:50.887Z
 closed: 2026-10-16T08:19:08.029Z
 ---
 
@@ -242,3 +242,7 @@ Criteria: C1 verified, C2 verified, C3 verified.
 ### coord · 2026-10-16T08:19:08.029Z
 
 Merged b3cf4d4575d52437bf804213c602eb2dfcbbe7dd onto dev.
+
+### human · 2026-10-16T10:14:50.887Z
+
+Operator check by cland-impl (late, 10:12Z): droplet 609612979 (cland-v0-69940187, demo lease 69940187, delete started by qa-27's demo stop at 07:33:37Z) returns 404 at DigitalOcean; nothing destroyed by hand. Same teardown window as T-572's three cases; the fix (b3cf4d45) is live in the hub since the 10:13Z restart (pid 29477).
