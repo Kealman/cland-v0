@@ -2,7 +2,7 @@
 id: E-387
 kind: epic
 title: "Test speed: structural"
-state: open
+state: closed
 criterion_seq: 5
 labels:
   - epic
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-368
 branch: null
 created: 2026-10-14T12:28:09.615Z
-updated: 2026-10-16T10:52:03.961Z
+updated: 2026-10-16T11:35:24.867Z
+closed: 2026-10-16T11:35:24.867Z
 ---
 
 ## Goal
@@ -68,11 +69,15 @@ QA runs the demo below on `dev`, playing the human's part through the `cland` CL
 On an empty verify queue, QA runs one ordinary integrated full run on `dev` on one slot and reads its hub test-time and wall against the quick-wins epic's after run. QA then runs a sharded `--occasion epic` run on `dev` and reads the merged report, each shard's time and cost, and the day's spend under the cap. On a scratch branch QA changes one function in `hub/src/hub/` and one in `hub/src/tracker/`, and reads each selection and its run time. QA reads the coverage replay table on the coverage ticket, and checks that the epic's QA brief names any miss.
 
 - [ ] C1. In the top 20 files by test-time, non-lifecycle tests run against an in-process hub and a spawned hub process remains only in lifecycle tests; the rest is filed as a follow-up with its list; and the daemon starts per full run fall from about 944 to a measured 743 (census A-3775); under 600 moved to v0.1.4, E-578 (T-575), by the human's decision of 2026-10-16 (ask 396ec11a).
+  - verified: qa-27 [qa] · run qa-2026-10-16-27-23 · 2026-10-16T11:35:05.698Z · commit 62a434cd9f180274e08596a1fd12c8a5f01b23c2
 - [ ] C2. A stage, epic or release integrated run shards across droplets within the $3/day cap and posts one merged report; a batch run, a task run and QA's task-head run never shard; a short cap gives one slot with a warn notice.
+  - verified: qa-27 [qa] · run qa-2026-10-16-27-23 · 2026-10-16T11:35:05.698Z · commit 62a434cd9f180274e08596a1fd12c8a5f01b23c2
 - [ ] C3. Each sharded close run reports every shard's time and cost in its merged report. The 10-minute wall-time target moved to v0.1.4, E-578 (T-520), by the human's decision of 2026-10-16 (ask 396ec11a).
+  - verified: qa-27 [qa] · run qa-2026-10-16-27-23 · 2026-10-16T11:35:05.698Z · commit 62a434cd9f180274e08596a1fd12c8a5f01b23c2
 - [ ] C4. Every moved test keeps its assertions' meaning, and frame proofs still go over a real socket and WebSocket to a real hub.
+  - verified: qa-27 [qa] · run qa-2026-10-16-27-23 · 2026-10-16T11:35:05.698Z · commit 62a434cd9f180274e08596a1fd12c8a5f01b23c2
 - [ ] C5. `hub/README.md` (Tests), `docs/agents/tests.md`, the Coordinator, Implementer and QA clauses and the `merge` and `qa` skills describe the in-process default, the lifecycle line, coverage selection, `--occasion` and the shard cost.
-  - failed: qa-27 [qa] · 2026-10-16T10:52:03.961Z · note R1: both Implementer clauses omit the projectHub in-process default and startDaemon lifecycle-only boundary.
+  - verified: qa-27 [qa] · run qa-2026-10-16-27-23 · 2026-10-16T11:35:05.698Z · commit 62a434cd9f180274e08596a1fd12c8a5f01b23c2
 
 ## Constraints
 
@@ -266,3 +271,64 @@ Verdict note A-3879: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3
 Freshness rechecked immediately before verdict: current=true. Coordinator names the documentation fix T-588.
 
 Criteria: C5 failed (R1: both Implementer clauses omit the projectHub in-process default and startDaemon lifecycle-only boundary.).
+
+### qa-27 · 2026-10-16T11:35:05.698Z
+
+verdict: qa
+result: clear
+by: qa-27 [qa]
+run: qa-2026-10-16-27-23
+commit: 62a434cd9f180274e08596a1fd12c8a5f01b23c2
+
+| Check | Result | Basis | Evidence |
+|---|---|---|---|
+| P0 | PASS | Fresh run: Exactly the two authorized paths outside exclusions; partial rerun permitted. | `P0-all-paths.txt`, `P0-paths.txt` |
+| G0 | PASS | Fresh run: Clean detached requested S, committed brief, Node v24.21.0. | `G0.txt` |
+| G1 | PASS | Fresh run: 12 children closed and landing commits ancestors of S, including T-588; C1–C5 read. Three stages open, currently missing Linux/macOS cover at the new tree; recorded as expected stage evidence state. | `G1-epic.json`, `G1-children.json`, `G1-plan.json`, `G1-ancestry.txt` |
+| G2 | PASS | Fresh run: QA hold taken. | `G1-epic.json` |
+| R1 | PASS | Fresh run: All required cells of the 50-cell matrix filled; both Implementer clauses now name projectHub and lifecycle-only startDaemon. Live Coordinator clause equals S. | `R1-matrix.md`, `R1-cells.json`, `R1-key-lines.txt`, `R1-live-diff.txt` |
+| T8 | PASS | Fresh run: suite-queue 5/5 and suite-wait-metrics 5/5; zero fail/skip/retry. Both live commands expose matching queueWait; pid 73959, started 10:53:01.144Z. | `T8-files.txt`, `T8-a.log`, `T8-b.log`, `T8-a-queue.json`, `T8-b-queue.json`, `T8-final-queue.json`, `T8-status.json`, `T8-readback.txt` |
+| F1 | PASS | Fresh run: freshness.current=true; no lease. | `F1-status.json`, `F1-dev.txt` |
+| E1 | PASS, carried | Run qa-2026-10-16-27-21 at f6045f838f55902c0224473512e82c1ff0121e72; not rerun | A-3878/runs.jsonl line 4; project runs.jsonl line 1041 |
+| E2 | PASS, carried | Run qa-2026-10-16-27-21 at f6045f838f55902c0224473512e82c1ff0121e72; not rerun | A-3878/runs.jsonl line 5; project runs.jsonl line 1042 |
+| E3 | PASS, carried | Run qa-2026-10-16-27-21 at f6045f838f55902c0224473512e82c1ff0121e72; not rerun | A-3878/runs.jsonl line 6; project runs.jsonl line 1043 |
+| E4 | PASS, carried | Run qa-2026-10-16-27-21 at f6045f838f55902c0224473512e82c1ff0121e72; not rerun | A-3878/runs.jsonl line 7; project runs.jsonl line 1044 |
+| E5 | PASS, carried | Run qa-2026-10-16-27-21 at f6045f838f55902c0224473512e82c1ff0121e72; not rerun | A-3878/runs.jsonl line 8; project runs.jsonl line 1045 |
+| E6 | PASS, carried | Run qa-2026-10-16-27-21 at f6045f838f55902c0224473512e82c1ff0121e72; not rerun | A-3878/runs.jsonl line 9; project runs.jsonl line 1046 |
+| E7 | PASS, carried | Run qa-2026-10-16-27-21 at f6045f838f55902c0224473512e82c1ff0121e72; not rerun | A-3878/runs.jsonl line 10; project runs.jsonl line 1047 |
+| T1 | PASS, carried | Run qa-2026-10-16-27-21 at f6045f838f55902c0224473512e82c1ff0121e72; not rerun | A-3878/runs.jsonl line 11; project runs.jsonl line 1048 |
+| T2 | PASS, carried | Run qa-2026-10-16-27-21 at f6045f838f55902c0224473512e82c1ff0121e72; not rerun | A-3878/runs.jsonl line 12; project runs.jsonl line 1049 |
+| T3 | PASS, carried | Run qa-2026-10-16-27-21 at f6045f838f55902c0224473512e82c1ff0121e72; not rerun | A-3878/runs.jsonl line 13; project runs.jsonl line 1050 |
+| T4 | PASS, carried | Run qa-2026-10-16-27-21 at f6045f838f55902c0224473512e82c1ff0121e72; not rerun | A-3878/runs.jsonl line 14; project runs.jsonl line 1051 |
+| T5 | PASS, carried | Run qa-2026-10-16-27-21 at f6045f838f55902c0224473512e82c1ff0121e72; not rerun | A-3878/runs.jsonl line 15; project runs.jsonl line 1052 |
+| T7 | PASS, carried | Run qa-2026-10-16-27-21 at f6045f838f55902c0224473512e82c1ff0121e72; not rerun | A-3878/runs.jsonl line 16; project runs.jsonl line 1053 |
+| T6 | PASS, carried | Run qa-2026-10-16-27-21 at f6045f838f55902c0224473512e82c1ff0121e72; not rerun | A-3878/runs.jsonl line 17; project runs.jsonl line 1054 |
+
+Findings, ranked by severity:
+
+- High/medium: none unresolved in this pass. Run 21 R1/C5 is fixed by T-588; run 21 T8 runtime skew is resolved on the restarted hub. Original FAIL/INCONCLUSIVE evidence remains in A-3878/A-3879.
+- Low, carried E4/R1 documentation wording: the DoD, docs, clauses and skills retain $3 cap references although the live configured cap is $14. The brief explicitly treats this as non-blocking. R1-key-lines.txt includes the clauses/skills; run 21 R1-cap-wording.txt retains the full inventory.
+
+Clear at `62a434cd9f180274e08596a1fd12c8a5f01b23c2`, run `qa-2026-10-16-27-23`. Seven fresh checks (P0,G0,G1,G2,R1,T8,F1) and fourteen authorized carried checks (E1–E7,T1–T7) all pass. Fresh execution is local macOS: 10 tests in two serial files, no failures/skips/cancellations/retries. No full suite, verification submission, demo lease or provider call. New droplet cost: not applicable.
+
+**Verified: C1,C2,C3,C4,C5.** C1=E1–E3; C2=E4,E5,T1,T2; C3=E4,E6; C4=E2,T3; C5=R1. T8 has no separate criterion but remains required and passed.
+
+Carry authorization: Coordinator request 6116c542-5991-44d3-aed8-ca22470718cb, topic-368, 11:31:55Z, before START. P0 compares f6045f83 to S excluding .cland/, qa/, docs/spec/: exactly hub/src/roles/default-roles.ts (T-588 line, merge 32b4c62f) and hub/test/durations.json (60517392 manifest refresh from A-3877). The exact list is retained. The old R1 and T8 outcomes are not carried. `carried-runs-21.jsonl` preserves original lines/builds; `carry-provenance.json` gives both original file line numbers. New recorder rows explicitly say carried, not newly executed. Recorder surface hub-api is used; all new checks are local macOS.
+
+Carried evidence and limits:
+
+- E1: A-3775 clean reviewed head 88a3630e8d0a8dc012d43935e04befa23cbd1120, macOS census exit 0: 742 canonical starts, 743 with copied coverage fixture. Under-600 and speed targets moved to E-578.
+- E2/E3: run 21 inventoried all twelve new startDaemon calls and their lifecycle assertions, read A-2744/A-2751 assertion audits and A-2745 lifecycle inventory, and verified T-466 closed plus T-575 follow-up under E-578.
+- E4/E6: A-3413 run 725bd529 at 21ae664d: cland-v0-7f8dcbd7 c-8 lon1 762.02 s/$0.0512; cland-v0-319cd8dc c-8 lon1 811.93 s/$0.0544; total $0.1056, overall wall 811.96 s, shard-1 failure named once. Report completeness is judged, not the deferred wall target or historical failure.
+- Separate historical cap receipt: run 1bebcda2, A-3230/A-3231/A-3232, $6.86→$6.97 under its then-$10 cap and own droplets absent afterward. These figures are not attributed to A-3413.
+- E5: A-3493 one-slot fallback, with admission/source/docs and T1/T2 proof. E7: run 21 recorded open stages and cited green Linux A-3877 (d132b59b at f6045f83; 2333 passing), with no macOS stage receipt claimed. G1 freshly records current stage state; no new platform receipt is claimed.
+
+T8 observed queueWait values are retained in T8-metrics-summary.json. Both windows (24h and last 50 runs), both executors, p50/p90 and targetP90Ms=1200000 are present. A measured p90 above the target is a reported measurement; T8 requires exposing the target and metrics, not meeting a latency bound.
+
+Durable carried evidence: [A-3878](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3878-e-387-run-21-at-f6045f83-qa-evidence-r1-fails-and-t8-live-readback-inconclusive/README.md), original recorder lines [runs.jsonl](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3878-e-387-run-21-at-f6045f83-qa-evidence-r1-fails-and-t8-live-readback-inconclusive/runs.jsonl); prior verdict A-3879. Freshness F1 is current; the detached worktree is clean.
+
+Fresh evidence: A-3891, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3891-e-387-qa-run-23-at-62a434cd-partial-rerun-and-carried-evidence.
+
+Verdict note A-3892: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3892-e-387-qa-run-23-clear-c1-c5-after-t-588-and-live-metrics-rerun.md
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
