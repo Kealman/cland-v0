@@ -3,7 +3,7 @@ id: T-557
 kind: task
 title: The new-test load gate adds up to 22 minutes to a task verify
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 2
 labels:
@@ -17,7 +17,7 @@ regression_of: T-471
 topic: topic-354
 branch: t/T-557-the-new-test-load-gate-adds-up-to-22
 created: 2026-10-16T01:08:32.102Z
-updated: 2026-10-16T04:37:39.396Z
+updated: 2026-10-16T05:25:07.163Z
 ---
 
 ## Summary
@@ -28,8 +28,10 @@ T-471's load gate repeats every test new to the manifest five times "alongside p
   - done: impl-557 · 2026-10-16T04:03:39.920Z
   - verified: rev-30 [reviewer] · run rev-20261016-557-source · 2026-10-16T04:08:04.069Z · commit f6d98a20dbf3029f933eb04f88998e056042a3dd
   - verified: rev-30 [reviewer] · run rev-20261016-557-correction · 2026-10-16T04:37:39.396Z · commit f39bc97477a56b8358260b3265f202e93d6ab0f2
+  - verified: rev-30 [reviewer] · run rev-20261016-557-final · 2026-10-16T05:25:06.443Z · commit f39bc97477a56b8358260b3265f202e93d6ab0f2
 - [x] C2. Measured on a branch adding about 8 new tests of about 20 s each: the gate's extra wall is under 5 minutes, recorded on the item, and T-471's C1–C3 still hold.
   - done: impl-557 · 2026-10-16T04:05:15.632Z
+  - verified: rev-30 [reviewer] · run rev-20261016-557-final · 2026-10-16T05:25:06.443Z · commit f39bc97477a56b8358260b3265f202e93d6ab0f2
 
 ## Comments
 
@@ -122,3 +124,37 @@ C1 source verified/refreshed. Accepted A-3678 Mac eight-by20s measurement (extra
 Artifact A-3712 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3712-t-557-correction-delta-clear-deterministic-repetition-overlap-and-shared-budgets.md
 
 Criteria: C1 verified.
+
+### impl-557 · 2026-10-16T05:24:41.066Z
+
+Fresh exact-head droplet fe1e46b8-57b6-4c25-aff5-ff502a4f8a6c is green at f39bc97477a56b8358260b3265f202e93d6ab0f2 (A-3736): exit0,2278 pass,0fail/cancelled,7platform skips; full hub and Neovim complete. Owned eight-identity bound regression5/5 in outer gate (raw1072) and ordinary15.136s (1093); configured single-lane fixture5/5 (1052). Default load-gate workers2 visible in each phase. Total1624.02s, peak1m load15.85, extra gate tail0.07s. Actual Linux c-8 lon1, Nodev24.21.0, Neovimv0.12.5, ordinary workers4; receipt currently names lifetime/cost unknown. No hard budget or load-gate failure lines. A-3678 accepted controlled C2 measurement remains eight×20s,243.21s extra, peak2.67. Head/working tree unchanged and clean; final Reviewer evidence verdict pending; no additional run or dev merge.
+
+### rev-30 · 2026-10-16T05:25:06.443Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-557-final
+commit: f39bc97477a56b8358260b3265f202e93d6ab0f2
+scope: evidence
+
+# T-557 final evidence clear at f39bc974
+
+Headf39bc97477a56b8358260b3265f202e93d6ab0f2; branch t/T-557-the-new-test-load-gate-adds-up-to-22. Source chain A-3681 and correction/shared-pick A-3712. Current origin ref and fresh A-3736 receipt match exactly. C1/C2 read from current task view; no new source changes.
+
+## Standards
+No high, medium or low findings (0). Prior owned4/5 proof failure is superseded by new corrected-head5/5; no claim that its missing original assertion was recovered. Current receipt is actual execution, not a cancellation, cache label or waived red. Known-entry duration-regression notices are not hard budget failures; final exit0.
+
+## Spec
+C1/C2 both verified at this exact head.
+C1 source retains configurable positive load_gate_workers default2, visible count, parallel lanes across identities with five sequential fresh processes each, continuous discovery/final drain, strict receipt/skip acceptance and owned cleanup before root deletion. Current full Linux log exposes workers2 in each phase (43/176/6145). Corrected eight-identity package-boundary fixture passes ordinarily15.136s and outer fresh load5/5 (1072/1093); configured single-lane case also5/5 (1052). Both two-lane TERM/KILL worker/root cleanup cases pass (1104–1105), config validation/render roundtrip passes4263. Full runner file includes the unchanged deterministic flake rejection, stable5-repetition, known/integrated exemption and T-546 skip/TODO/mixed receipt assertions already source-audited. T-471 C1–C3 behavior remains covered rather than dropped for speed.
+C2 controlled eight-by20s evidence A-3678 remains accepted for unchanged production scheduler: real package fixture retained all40 fresh repetitions, identity sequentiality and lane bound; extra243.21s<300, total403.78s, peak1m2.67 on reported Mac. Correction changed the fixture scheduling assertion/barrier, not production gate logic. This controlled workload measurement is not a universal maximum for an arbitrary number of new identities.
+
+A-3736 /fe1e46b8-57b6-4c25-aff5-ff502a4f8a6c: actual Linux x64 6.8.0-142-generic,c-8lon1 cland-v0-ae0a2cc0,Nodev24.21.0,Neovimv0.12.5,fourworkers. Full mode2285tests/2278pass/0fail/cancel/7platform skips. Hub free38/38, hub machine1850pass/4skip, full Neovim390pass/3skip. All required phases and typechecks complete; final exit0 at7381. Overall1624.02s,peak1m15.85,load extra tail0.07s. The actual full-suite peak is disclosed separately from the controlled C2 probe; default-two tradeoff remains configurable. Lifetime/cost are unknown in receipt; no invented accounting values.
+No known-flake or missing-phase exception is needed. Earlier A-3704 stays historical red. No per-item QA; further head movement needs delta review. No additional verification requested.
+
+Final evidence verdict clear, all criteria refreshed. No Reviewer test/compiler/binary execution, edits, signals, provider actions, commits, merges or subagents. Totals Standards0,Spec0 findings.
+
+Artifact A-3737 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3737-t-557-final-clear-corrected-load-proof-5-5-and-full-linux-neovim-green.md
+
+Criteria: C1 verified, C2 verified.

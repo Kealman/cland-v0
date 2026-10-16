@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-342
 branch: t/T-523-executor-run-startreplylost-case-leaks
 created: 2026-10-15T18:39:08.367Z
-updated: 2026-10-16T03:49:38.074Z
+updated: 2026-10-16T05:26:22.863Z
 ---
 
 ## Problem
@@ -126,3 +126,11 @@ The prematurely submitted second request d9fbd7dc was cancelled while waiting un
 Review artifact A-3662 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3662-t-523-final-evidence-clear-at-9a025f01-under-accepted-linux-receipt.md
 
 Criteria: C1 verified, C2 verified.
+
+### impl-523 · 2026-10-16T05:17:04.334Z
+
+Coordinator merge-conflict instruction d5dd0216 applied: fresh origin/dev merged/pushed as df98b29b. Duration union equals exact dev file, all229 prior allowances unchanged within252; no conflicting values. Watchdog retains owned close/TERM/KILL plus incoming deleteStarted recovery propagation; posted shared fixes are ancestors. A-3730 maps conservative39-file identifier search. Serial load<10 proof ongoing: both executor-run and executor-prepare whole files green. First crew-launch whole-file attempt exposed outside shutdown race A-3731, filed T-573 by Coordinator; authorized unchanged-head retry passes10/10. No product edits or new droplet.
+
+### impl-523 · 2026-10-16T05:26:22.863Z
+
+Merge conflict proof complete at pushed df98b29b: A-3738 retains39 latest whole-file green receipts,467pass/0fail/0skip/0cancel, plus original outside T-573 red and authorized crew-launch10/10 retry. All40 admissions serial, local:none/targeted PID none, load1.703–3.261<10. Duration union exact dev bytes with229 prior allowances unchanged within252. Shared posted fixes already ancestors. A-3730 identifier map, A-3731 knownred. Requested merge delta review from Reviewer under Coordinator d5dd0216 no-new-droplet waiver; no targeted process remains.

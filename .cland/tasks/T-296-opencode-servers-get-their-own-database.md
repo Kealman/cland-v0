@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-336
 branch: t/T-296-opencode-servers-get-their-own-database
 created: 2026-10-12T16:20:56.477Z
-updated: 2026-10-16T04:39:26.763Z
+updated: 2026-10-16T05:26:08.831Z
 ---
 
 ## Summary
@@ -246,3 +246,29 @@ Totals: Standards0,Spec0 findings. No Reviewer test/compiler/binary execution, e
 Artifact A-3716 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3716-t-296-correction-clear-narrow-passive-guard-and-measured-restart-allowances.md
 
 Criteria: C2 verified, C3 verified, C4 verified, C5 verified.
+
+### rev-30 · 2026-10-16T05:23:43.953Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261016-296-linux-corrected
+commit: 991d1c86a7e599c0104d50d23bb8a56122bc9447
+scope: evidence
+
+# T-296 corrected-head Linux evidence not clear at 991d1c86
+
+A-3733 /033386f2-d7f1-426f-9a12-3fb82a8b80d1 names exact source-cleared991d1c86a7e599c0104d50d23bb8a56122bc9447. Actual Linux c-8 lon1, four workers, peak1m13.67, suite1458.50s. Exit1:1887pass/1ordinaryfail/5platform skips. No hard duration-budget or load-gate failures remain. Hub phases complete; Neovim smoke not reached.
+
+## Standards
+Medium runtime blocker — hub/test/task-prefixes.test.ts:200: after planned legacy epic removal and invalid-plan replacement, the expected null plan is still the old build/T-2 stage object (raw4350–4377). This is an outside-task file/path, not a demonstrated regression caused by database isolation. The test waits for the replacement task.view request to become ok at199, then asserts the plan at200; whether the defect is stale projection invalidation or an insufficient observation boundary remains unproved. No task with this exact signature was found in a targeted task-file phrase search. Treat as Bugs/S for lead classification, not an automatic new duplicate ticket.
+No new owned source findings: narrow account-poller guard passes (438). Both new restart cases pass5.759/5.796s (451–452) and5/5 (280/330); doctor isolated DB/login warning passes3.701s and5/5 (994/1106). Earlier M1/M2 guard/budget corrections are effective.
+
+## Spec
+Real P3 cleanly skips absent opencode on this image, with five reasoned prerequisite skips; prior accepted non-skipped Mac P3 evidence remains. Source C2–C5 stand at991d1c86. C1 final gate remains pending, with no false criterion failure inferred from the unrelated planned-epic assertion.
+Primary Coordinatoreefc3ad2 requires the new droplet receipt to reach Neovim green and lists specific known reds. This unknown signature is not in that disposition, and Neovim was not reached. Do not treat the receipt as final clear or automatically invoke a two-known-failure gate. Earlier A-3703 contains owned blockers and is historical, not a substitute green phase.
+Impl fb922068/A-3734 already escalates exact signature and missing phase to lead T-296, with no retry/head mutation. Await classification and explicit next gate direction; no new run requested by Reviewer. If source changes, obtain delta review before verification. Rule13 remains Coordinator's merge/rollout action.
+
+Evidence verdict not clear; no new or failed criterion marks. Counts: high0,medium1 outside runtime blocker,low0; owned Standards0/Spec0 new source findings. Provider lifetime/cost are reported unknown in the receipt rather than invented. No Reviewer execution, edits, provider operations or subagents.
+
+Artifact A-3735 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3735-t-296-corrected-linux-not-clear-outside-legacy-plan-assertion-and-missing-neovim.md
