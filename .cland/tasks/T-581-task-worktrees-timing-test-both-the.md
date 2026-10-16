@@ -2,8 +2,8 @@
 id: T-581
 kind: task
 title: 'task-worktrees timing test: "both the initial snapshot and the post-I/O snapshot must run" fails under droplet load'
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -16,7 +16,8 @@ blocked_by: []
 topic: topic-386
 branch: t/T-581-task-worktrees-timing-test-both-the
 created: 2026-10-16T07:01:00.231Z
-updated: 2026-10-16T16:11:58.077Z
+updated: 2026-10-16T16:12:35.865Z
+closed: 2026-10-16T16:12:35.865Z
 ---
 
 ## Summary
@@ -111,3 +112,7 @@ C1 remains source verified; C2 now execution verified. Claimant's delivered repo
 Artifact: A-3980 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3980-t-581-final-clear-90-mac-passes-and-exact-head-linux-green.md
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-16T16:12:35.865Z
+
+Merged 053dcf6985f868c3889734cce1493900b807e5da onto dev.
