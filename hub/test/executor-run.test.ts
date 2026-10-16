@@ -5,10 +5,11 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { projectHub, cland, clandWithEnv, connectUi, eventually, flushProjectLogs, startDaemon, tempProject } from './harness.ts';
+import { projectHub, cland, clandWithEnv, connectUi, eventually, flushProjectLogs, startDaemon, tempProject, pidAlive } from './harness.ts';
 import { ownProcess } from './process-cleanup.ts';
 import type { HubStatus } from '../src/protocol.ts';
 import { fixture } from './remote-fixture.ts';
+import { readLeases } from '../src/executor/droplet/lease.ts';
 
 const exec = promisify(execFile);
 const token = 'sentinel-remote-suite-token';
@@ -220,13 +221,23 @@ test('provider loss and verify cancel each report once and release the machine a
 
 test('remote start reconciles executed-but-lost replies and marker-only interruptions', async t => {
   for (const fault of ['startReplyLost', 'startMarkerOnly'] as const) await t.test(fault, async t => {
-    const f = await fixture(t, { hub: projectHub, test: longTest });
+    const f = await fixture(t, { hub: projectHub, test: longTest, env: { CLAND_TEST_DROPLET_WATCHDOG_STOP_MS: '500' } });
     await f.api.setMachineFaults({ [fault]: 1 });
     const job = await f.launch(); const remote = await f.remote(job.id);
     await eventually('suite remains running', async () => (await readFile(join(remote.run, 'suite.log'), 'utf8').catch(() => '')).includes('\nINCREMENTAL 😀\n') ? true : undefined);
     assert.equal((await f.messages(job.id)).length, 0);
+    const lease = (await readLeases(f.root)).find(lease => lease.run === job.id)!;
+    const watchdog = lease.watchdog!.pid;
+    ownProcess(t, watchdog);
+    // A stopped watchdog cannot acknowledge SIGTERM. Release must bound its wait,
+    // escalate, and reap the child before publishing the suite result.
+    if (fault === 'startReplyLost') {
+      process.kill(watchdog, 'SIGSTOP');
+      await eventually('watchdog is stopped', async () => (await exec('ps', ['-o', 'stat=', '-p', String(watchdog)])).stdout.trim().startsWith('T') ? true : undefined);
+    }
     await writeFile(join(remote.home, 'finish'), 'done');
     assert.match((await f.result(job.id)).text, /auto exit 0/);
+    assert.equal(pidAlive(watchdog), false, 'the released watchdog has exited before the result');
     const log = await readFile(join(f.root, '.cland/run/suites', job.id, 'suite.log'), 'utf8');
     assert.equal(log.split('\n').filter(line => line === 'INCREMENTAL 😀').length, 1);
     assert.deepEqual(f.api.droplets, []); assert.deepEqual(f.api.keys, []);

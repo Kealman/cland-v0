@@ -9,6 +9,7 @@ import { fakeDigitalOcean } from './fakes/digitalocean/fake-api.ts';
 import type { TestContext } from 'node:test';
 import { DropletExecutor } from '../src/executor/droplet/droplet.ts';
 import { onCleanup, ownProcess } from './process-cleanup.ts';
+import { readLeases } from '../src/executor/droplet/lease.ts';
 
 const exec = promisify(execFile);
 const git = async (root: string, ...args: string[]) => (await exec('git', args, { cwd: root })).stdout.trim();
@@ -220,6 +221,9 @@ test('failed replacement releases its builder, deletes a partial image and keeps
     assert.equal(api.images.length, 1, `${failure}: ${failed.prepare!.error}`); assert.equal(api.images[0]!.id, first.image);
     assert.deepEqual(api.droplets, []); assert.deepEqual(api.keys, []);
     assert.match(failed.prepare!.error, /failed|deadline|time bound/);
+    for (const lease of await readLeases(root)) {
+      assert.equal(pidAlive(lease.watchdog!.pid), false, `${failure}: released builder watchdog has exited`);
+    }
   }
   await flushProjectLogs(t, root);
   const journal = await readFile(join(root, '.cland/journal.jsonl'), 'utf8');

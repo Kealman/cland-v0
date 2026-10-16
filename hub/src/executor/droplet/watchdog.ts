@@ -1,7 +1,8 @@
-import { spawn } from 'node:child_process';
+import { spawn, type ChildProcess } from 'node:child_process';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { processStartedAsync } from '../../hub/lock.ts';
+import { pidAlive } from '../../project.ts';
 import { DigitalOceanApi } from './api.ts';
 import { settleSpend } from './spend.ts';
 import { deleteLeaseResources } from './cleanup.ts';
@@ -12,26 +13,69 @@ export const testTiming = (key: string, fallback: number, env: NodeJS.ProcessEnv
   const value = Number(env[key]);
   return value > 0 && Number.isFinite(value) ? value : fallback;
 };
+type WatchdogChild = { child: ChildProcess; startedUtc: string; closed: Promise<void> };
+const children = new Map<number, WatchdogChild>();
+
+async function closedWithin(closed: Promise<void>, ms: number): Promise<boolean> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([closed.then(() => true), new Promise<false>(resolve => { timer = setTimeout(() => resolve(false), ms); })]);
+  } finally { clearTimeout(timer); }
+}
+
+async function stoppedWithin(watchdog: NonNullable<DropletLease['watchdog']>, owned: WatchdogChild | undefined, ms: number, env: NodeJS.ProcessEnv): Promise<boolean> {
+  if (owned) return closedWithin(owned.closed, ms);
+  // After a hub restart there is no ChildProcess receipt. Observe the persisted
+  // identity disappearing; an unavailable ps probe alone is not proof of exit.
+  const deadline = Date.now() + ms;
+  while (Date.now() < deadline) {
+    if (!pidAlive(watchdog.pid)) return true;
+    const started = await processStartedAsync(watchdog.pid, Math.max(1, Math.min(1000, deadline - Date.now())), undefined, 'UTC', env);
+    if (started !== null && started !== watchdog.startedUtc) return true;
+    await pause(Math.min(25, Math.max(0, deadline - Date.now())));
+  }
+  return false;
+}
 export async function watchdogAlive(lease: DropletLease, env: NodeJS.ProcessEnv = process.env): Promise<boolean> {
   if (!lease.watchdog) return false;
   return await processStartedAsync(lease.watchdog.pid, undefined, undefined, 'UTC', env) === lease.watchdog.startedUtc;
 }
 export async function stopWatchdog(lease: DropletLease, env: NodeJS.ProcessEnv = process.env): Promise<void> {
-  if (!await watchdogAlive(lease, env)) return;
-  try { process.kill(lease.watchdog!.pid, 'SIGTERM'); }
-  catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ESRCH') throw error; }
+  if (!lease.watchdog) return;
+  const watchdog = lease.watchdog;
+  const candidate = children.get(watchdog.pid);
+  const owned = candidate?.startedUtc === watchdog.startedUtc ? candidate : undefined;
+  if (!owned && !await watchdogAlive(lease, env)) return;
+  const signal = async (signal: NodeJS.Signals) => {
+    if (owned) { owned.child.kill(signal); return; }
+    // Revalidate before each signal, including escalation: the old PID may have
+    // been reaped and reused while we waited for its exit.
+    if (!await watchdogAlive(lease, env)) return;
+    try { process.kill(watchdog.pid, signal); }
+    catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ESRCH') throw error; }
+  };
+  const grace = testTiming('CLAND_TEST_DROPLET_WATCHDOG_STOP_MS', 5000, env);
+  await signal('SIGTERM');
+  if (await stoppedWithin(watchdog, owned, grace, env)) return;
+  await signal('SIGKILL');
+  if (!await stoppedWithin(watchdog, owned, grace, env)) throw new Error('droplet watchdog did not stop within its time bound');
 }
 export async function armWatchdog(dir: string, env: NodeJS.ProcessEnv = process.env): Promise<NonNullable<DropletLease['watchdog']>> {
   const child = spawn(process.execPath, [fileURLToPath(import.meta.url), dir], { env, detached: true, stdio: 'ignore' });
+  const closed = new Promise<void>(resolve => child.once('close', () => resolve()));
   await new Promise<void>((resolve, reject) => { child.once('spawn', resolve); child.once('error', reject); });
   child.unref();
   const pid = child.pid!;
   const startedUtc = await processStartedAsync(pid, undefined, undefined, 'UTC', env);
   if (!startedUtc) {
     // This child is still ours, so its ChildProcess handle is safe to stop.
-    child.kill();
+    child.kill('SIGKILL');
+    await closedWithin(closed, testTiming('CLAND_TEST_DROPLET_WATCHDOG_STOP_MS', 5000, env));
     throw new Error('could not verify the droplet watchdog process identity');
   }
+  const owned = { child, startedUtc, closed };
+  children.set(pid, owned);
+  void closed.then(() => { if (children.get(pid) === owned) children.delete(pid); });
   return { pid, startedUtc };
 }
 
