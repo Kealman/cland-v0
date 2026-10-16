@@ -36,7 +36,10 @@ test('suite CLI exits before its worker, posts one artifact-backed result as cal
   assert.match(result.text, /Executor local · \S+ \S+ · Node v[\d.]+ · Neovim none/);
   const artifact = result.artifacts[0]!;
   assert.equal(artifact.creator, 'impl');
-  assert.match(await readFile(artifact.path, 'utf8'), /\$ npm run typecheck/);
+  // T3: completion after the caller exits proves the detached worker ran one check.
+  const log = await readFile(artifact.path, 'utf8');
+  assert.equal(log.match(/\$ npm run typecheck/g)?.length, 1);
+  assert.match(result.text, /typecheck: local/);
   assert.match(await readFile(artifact.path, 'utf8'), /\$ npm test/);
   assert.equal((await f.results()).length, 1);
 });

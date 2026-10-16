@@ -55,7 +55,26 @@ export class DropletRun {
     await this.#machine.exec(lease, `mkdir -p ${dir}`, { timeoutMs: 10000 });
     const env = `${run.limits ? `export CLAND_SUITE_LIMITS=${quote(JSON.stringify(run.limits))}\nexport CLAND_SUITE_LIMITS_CWD="$(pwd -P)"\n` : ''}export CLAND_SUITE_EXECUTOR=droplet\n${run.workers === undefined ? '' : `export CLAND_SUITE_WORKERS=${run.workers}\n`}export CLAND_SUITE_SELECTION=${quote(JSON.stringify(run.selection ?? null))}\nexport FORCE_COLOR=0\nexport NO_COLOR=1\n${run.selection?.recordCoverage ? `export CLAND_COVERAGE_OUTPUT=${dir}/coverage-map.json\n` : ''}`;
     await writeFile(join(local, 'env'), env, { mode: 0o600 });
-    const commands = suiteCommands(run).map((args, index) => `${index === 1 ? 'rmdir /tmp/cland-suite.lock; trap - EXIT\n' : ''}echo ${quote(`$ npm ${args.join(' ')}`)}\nnpm ${args.map(quote).join(' ')} || exit $?`).join('\n');
+    const commands = suiteCommands(run).map((args, index) => {
+      const command = `echo ${quote(`$ npm ${args.join(' ')}`)}\nnpm ${args.map(quote).join(' ')} || exit $?`;
+      if (index !== 0) return `${index === 1 ? 'rmdir /tmp/cland-suite.lock; trap - EXIT\n' : ''}${command}`;
+      const gate = run.hostGate;
+      const fallback = `echo 'typecheck: droplet'\n${command}`;
+      if (!gate?.tree || gate.code !== 0 || JSON.stringify(gate.command) !== JSON.stringify(args)) return fallback;
+      // Match candidateTree's exclusions using a private index, without trusting the
+      // submitted hash or changing the checkout's index. An unreadable tree checks again.
+      const tree = `checked_tree=$(
+status=$(git status --porcelain=v1 --untracked-files=all -- ${candidatePathspec.map(quote).join(' ')}) || exit 1
+test -z "$status" || exit 1
+index_dir=$(mktemp -d) || exit 1
+trap 'rm -rf "$index_dir"' EXIT
+export GIT_INDEX_FILE="$index_dir/index"
+git read-tree HEAD || exit 1
+git rm --quiet -r --cached --ignore-unmatch -- '.cland/tasks' '.cland/RULES.md' || exit 1
+git write-tree
+)`;
+      return `if ${tree} && test "$checked_tree" = ${quote(gate.tree)}; then\necho ${quote(`typecheck: host gate at ${gate.tree} (not repeated)`)}\nelse\n${fallback}\nfi`;
+    }).join('\n');
     // The typecheck owns the machine compatibility lock; the package runner then
     // takes its own compatibility leases, including cross-package smoke phases.
     const config = run.config ?? await readFile(join(this.#root, '.cland/config.toml'), 'utf8').then(text => parseConfig(text, basename(this.#root), this.#env), error => { if (error.code === 'ENOENT') return defaultConfig(basename(this.#root)); throw error; });

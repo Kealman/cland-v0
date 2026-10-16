@@ -18,7 +18,7 @@ import { DropletExecutor, RemoteBudgetFull } from '../executor/droplet/droplet.t
 import { readLeases, readLease, leaseDir, type DropletLease } from '../executor/droplet/lease.ts';
 import { machineEnv } from '../executor/droplet/machine.ts';
 import { testTiming } from '../executor/droplet/watchdog.ts';
-import type { ExecutorKind, Lease, Platform, RunRef } from '../executor/executor.ts';
+import type { ExecutorKind, HostGate, Lease, Platform, RunRef } from '../executor/executor.ts';
 import { idNumber } from '../tracker/item.ts';
 import { selectPackageSuite, describeSelection, type SuiteSelection, type SuiteRequest } from '../suite-selection.ts';
 import { parseCoverageMap, type CoverageMap } from '../suite-coverage.ts';
@@ -28,6 +28,7 @@ import { quarantineResults, quarantineSummary, suiteTestFailures } from '../suit
 
 export type SuiteActor = { name: string; sessionId: string; shell: true };
 export type SuiteJob = {
+  hostGate?: HostGate;
   cover?: import('../protocol.ts').CoverRecord;
   limits?: import('../suite-limits.ts').SuiteLimits;
   config?: ProjectConfig;
@@ -65,7 +66,7 @@ const HUMAN_GRACE_MS = 10_000;
 const KEY = 'suite-jobs';
 const exec = promisify(execFile);
 const METRICS_WINDOW = 20;
-const runRef = (job: SuiteJob): RunRef => ({ ...(job.limits ? { limits: job.limits } : {}), ...(job.config ? { config: job.config } : {}), id: job.id, cwd: job.cwd, head: job.head, ...(job.integrated ? { integrated: true } : {}), mode: job.mode, log: job.log, result: job.result, gate: job.gate, ...(job.workers !== undefined ? { workers: job.workers } : {}), ...(job.size ? { size: job.size } : {}), ...(job.tree !== undefined ? { tree: job.tree } : {}), ...(job.selection ? { selection: job.selection } : {}), ...(job.queued ? { queued: job.queued } : {}), ...(job.locks ? { locks: job.locks } : {}) });
+const runRef = (job: SuiteJob): RunRef => ({ ...(job.hostGate ? { hostGate: job.hostGate } : {}), ...(job.limits ? { limits: job.limits } : {}), ...(job.config ? { config: job.config } : {}), id: job.id, cwd: job.cwd, head: job.head, ...(job.integrated ? { integrated: true } : {}), mode: job.mode, log: job.log, result: job.result, gate: job.gate, ...(job.workers !== undefined ? { workers: job.workers } : {}), ...(job.size ? { size: job.size } : {}), ...(job.tree !== undefined ? { tree: job.tree } : {}), ...(job.selection ? { selection: job.selection } : {}), ...(job.queued ? { queued: job.queued } : {}), ...(job.locks ? { locks: job.locks } : {}) });
 function elapsed(since: string | undefined | null, now: number): number | null {
   const start = Date.parse(since ?? '');
   return Number.isFinite(start) ? Math.max(0, now - start) : null;
@@ -88,6 +89,7 @@ export function suiteSummary(log: string, quarantineStatus?: string[]): string {
     : text.split('\n').filter(line => /^(?:verification queue wait |shard duration |suite duration )/.test(line)).slice(-8).map(line => line.slice(0, 300));
   timings.push(...text.split('\n').filter(line => /^duration regression /.test(line)).slice(0, 5));
   timings.push(...text.split('\n').filter(line => /^suite budget overhead /.test(line)).slice(-1));
+  timings.push(...text.split('\n').filter(line => /^typecheck: /.test(line)));
   timings.push(...text.split('\n').filter(line => /^load gate workers /.test(line)));
   timings.push(...text.split('\n').filter(line => /^load gate: .* skipped, not load-gated;/.test(line)));
   timings.push(...text.split('\n').filter(line => /^quarantine load gate: /.test(line)));
@@ -442,6 +444,7 @@ export class Suites {
           if (!job.lease && (!job.tree || await candidateTree(job.cwd, job.integrated ? undefined : job.head, this.#env) !== job.tree)) { this.#fallback(job, 'dirty or changed worktree cannot be bundled for droplet'); return; }
           if (!job.lease) {
             if (!job.parentRun) await this.#hostGate(job);
+            if (job.hostGate) run.hostGate = job.hostGate;
             if (job.cancelled) throw new Error('cancelled');
             if (await candidateTree(job.cwd, job.integrated ? undefined : job.head, this.#env) !== job.tree) { this.#fallback(job, 'dirty or changed worktree cannot be bundled for droplet'); return; }
             if (job.remoteAcquireAttempted) { this.#fallback(job, 'previous droplet acquisition was interrupted'); return; }
@@ -535,6 +538,8 @@ export class Suites {
     if (!shards.some(shard => shard.remoteAcquireAttempted)) await this.#hostGate(job);
     if (await candidateTree(job.cwd, job.integrated ? undefined : job.head, this.#env) !== job.tree) throw new Error('dirty or changed integrated dev candidate');
     if (job.cancelled || job.outcome) throw new Error(job.outcome?.cause ?? 'cancelled');
+    if (job.hostGate) for (const shard of shards) shard.hostGate = job.hostGate;
+    this.#save(job);
     await Promise.all(shards.filter(shard => !shard.reported && !shard.outcome).map(shard => this.#launch(shard)));
     job.state = 'running'; this.#save(job);
   }
@@ -605,13 +610,17 @@ export class Suites {
     if (child?.pid && child.exitCode === null && child.signalCode === null) try { process.kill(-child.pid, 'SIGTERM'); } catch {}
   }
   async #hostGate(job: SuiteJob): Promise<void> {
+    const tree = await candidateTree(job.cwd, job.integrated ? undefined : job.head, this.#env);
+    const command = ['run', 'typecheck'];
     await appendFile(job.log, '\nHost gate: npm run typecheck\n');
     const env = machineEnv(this.#options.env); delete env.NODE_TEST_CONTEXT; delete env.CLAND_SUITE_LEASE;
     const fd = await open(job.log, 'a');
     try {
-      const child = spawn('npm', ['run', 'typecheck'], { cwd: job.cwd, env, detached: true, stdio: ['ignore', fd.fd, fd.fd] });
+      const child = spawn('npm', command, { cwd: job.cwd, env, detached: true, stdio: ['ignore', fd.fd, fd.fd] });
       this.#hostGates.set(job.id, child);
       const code = await new Promise<number>((resolve, reject) => { child.once('error', reject); child.once('close', code => resolve(code ?? 1)); });
+      job.hostGate = { tree, command, code };
+      this.#save(job);
       if (code !== 0) throw new Error(`host typecheck failed (exit ${code}); no droplet created`);
     } finally { this.#hostGates.delete(job.id); await fd.close(); }
   }

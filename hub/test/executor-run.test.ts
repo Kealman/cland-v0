@@ -10,6 +10,7 @@ import { ownProcess } from './process-cleanup.ts';
 import type { HubStatus } from '../src/protocol.ts';
 import { fixture } from './remote-fixture.ts';
 import { readLeases } from '../src/executor/droplet/lease.ts';
+import { candidateTree } from '../src/verification-tree.ts';
 
 const exec = promisify(execFile);
 const token = 'sentinel-remote-suite-token';
@@ -74,7 +75,13 @@ test('remote verify delivers host selection, runs as runner, reports accounting,
   const selection = JSON.parse(log.match(/^SELECTION=(.*)$/m)![1]!);
   const status = (await f.ui.request({ type: 'hub.status', flushLogs: true })).value as HubStatus;
   assert.deepEqual(selection, status.suites!.find(s => s.id === job.id)!.selection);
-  assert.ok(log.indexOf('$ npm run typecheck') < log.indexOf('$ npm test'));
+  // T3: the real delivered worker must reuse the host receipt across the machine boundary.
+  const tree = await candidateTree(f.root, undefined, f.env);
+  assert.ok(tree);
+  assert.ok(log.includes(`typecheck: host gate at ${tree} (not repeated)`));
+  assert.ok(result.text.includes(`typecheck: host gate at ${tree} (not repeated)`));
+  assert.doesNotMatch(log, /\$ npm run typecheck/);
+  assert.ok(log.indexOf('Host gate: npm run typecheck') < log.indexOf('$ npm test'));
   assert.equal(await f.git('rev-parse', 'HEAD'), (await exec('git', ['rev-parse', 'HEAD'], { cwd: join(remote.home, 'cland') })).stdout.trim());
   assert.equal((await exec('git', ['remote'], { cwd: join(remote.home, 'cland') })).stdout, '');
   const calls = await readFile(join(f.api.stateRoot, 'machine-calls.jsonl'), 'utf8');
@@ -162,15 +169,26 @@ test('a local override executes locally despite a droplet default', async t => {
 
 test('host typecheck failure creates no machine; remote typecheck stops tests and failed tests retain failures', async t => {
   for (const kind of ['host', 'remote', 'test'] as const) await t.test(kind, async t => {
-    const f = await fixture(t, { hub: projectHub, typecheck: kind === 'host' ? 'node -e "process.exit(2)"' : kind === 'remote' ? `node -e "process.exit(process.env.HOME.includes('home/runner')?3:0)"` : undefined,
+    // The suite host itself can be Linux runner; its home must not identify the fake remote.
+    const hostEnv = kind === 'remote' ? { HOME: join(await tempProject(t), 'home/runner') } : {};
+    if (hostEnv.HOME) await mkdir(hostEnv.HOME, { recursive: true });
+    // Fake SSH omits the host's explicit fake-machine configuration marker.
+    const f = await fixture(t, { hub: projectHub, env: hostEnv, typecheck: kind === 'host' ? 'node -e "process.exit(2)"' : kind === 'remote' ? `node -e "process.exit(process.env.CLAND_TEST_FAKE_MACHINE_ROOT?0:3)"` : undefined,
       test: kind === 'test' ? `node -e "console.log('not ok 1 - remote failure');process.exit(4)"` : undefined });
+    // T3: plant a changed committed checkout before the real remote worker starts.
+    if (kind === 'remote') await f.api.setMachineFaults({ checkoutDifference: true });
     const job = await f.launch();
     const report = await f.result(job.id);
     if (kind === 'host') { assert.match(report.text, /host typecheck failed/); assert.equal(f.api.machineDirs.size, 0); }
     else {
       assert.match(report.text, new RegExp(`exit ${kind === 'remote' ? 3 : 4}`));
       const log = await readFile(join(f.root, '.cland/run/suites', job.id, 'suite.log'), 'utf8');
-      if (kind === 'remote') assert.doesNotMatch(log, /\$ npm test/);
+      if (kind === 'remote') {
+        assert.doesNotMatch(log, /\$ npm test/);
+        assert.match(log, /typecheck: droplet/);
+        assert.match(log, /\$ npm run typecheck/);
+        assert.doesNotMatch(log, /not repeated/);
+      }
       else assert.match(report.text, /remote failure/);
     }
     assert.deepEqual(f.api.droplets, []); assert.deepEqual(f.api.keys, []);

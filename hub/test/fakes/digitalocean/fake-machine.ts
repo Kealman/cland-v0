@@ -8,7 +8,7 @@ const run = promisify(execFile);
 const [mode, ...args] = process.argv.slice(2);
 const state = process.env.CLAND_TEST_FAKE_MACHINE_ROOT!;
 const mapping = JSON.parse(await readFile(join(state, 'addresses.json'), 'utf8')) as Record<string, string>;
-const faults = JSON.parse(await readFile(join(state, 'machine-faults.json'), 'utf8')) as { ssh?: boolean; sshFailures?: number; startReplyLost?: number; startMarkerOnly?: number; install?: boolean; marker?: boolean; delayMs?: number; delayCommand?: string };
+const faults = JSON.parse(await readFile(join(state, 'machine-faults.json'), 'utf8')) as { ssh?: boolean; sshFailures?: number; startReplyLost?: number; startMarkerOnly?: number; checkoutDifference?: boolean; install?: boolean; marker?: boolean; delayMs?: number; delayCommand?: string };
 await appendFile(join(state, 'machine-calls.jsonl'), `${JSON.stringify({ mode, args, faults, env: process.env })}\n`);
 // Options in the driver's fixed vector always occur in pairs.
 let index = 0;
@@ -38,6 +38,11 @@ if (mode === 'scp') {
   if (faults.sshFailures) { faults.sshFailures--; await writeFile(join(state, 'machine-faults.json'), JSON.stringify(faults)); process.exit(255); }
   let command = paths[1]!;
   const starting = command.includes('setsid nohup bash');
+  if (starting && faults.checkoutDifference) {
+    await writeFile(join(home, 'cland/checkout-difference'), 'planted source difference\n');
+    await run('git', ['add', 'checkout-difference'], { cwd: join(home, 'cland'), env });
+    await run('git', ['-c', 'user.name=Test', '-c', 'user.email=test@example.com', '-c', 'commit.gpgsign=false', 'commit', '-qm', 'Planted checkout difference'], { cwd: join(home, 'cland'), env });
+  }
   if (starting && faults.startMarkerOnly) {
     faults.startMarkerOnly--; await writeFile(join(state, 'machine-faults.json'), JSON.stringify(faults));
     const runId = /runs\/([a-zA-Z0-9-]+)/.exec(command)![1]!;

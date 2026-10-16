@@ -64,6 +64,7 @@ export async function suiteWorker(input: string): Promise<void> {
     for (const [index, args] of (admitted ? commands : []).entries()) {
       if (index === 1 && !borrowable) for (const lease of leases.splice(0).reverse()) await lease.release();
       if (signal) break;
+      if (index === 0) process.stdout.write('typecheck: local\n');
       process.stdout.write(`\n$ npm ${args.join(' ')}\n`);
       const env: NodeJS.ProcessEnv = { ...process.env, FORCE_COLOR: '0', NO_COLOR: '1' };
       env.CLAND_SUITE_EXECUTOR = 'local';
