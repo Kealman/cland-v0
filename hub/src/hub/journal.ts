@@ -8,7 +8,7 @@
 // a log line (the audit log calls it, or logs `{ event: 'audit', … }`, which the filter journals too).
 import { createHash } from 'node:crypto';
 import { createReadStream, existsSync, readFileSync } from 'node:fs';
-import { open, stat } from 'node:fs/promises';
+import { open } from 'node:fs/promises';
 import { createInterface } from 'node:readline';
 import { join } from 'node:path';
 import type { EventKind, EventRow, EventsPage } from '../protocol.ts';
@@ -194,6 +194,7 @@ export class Journal {
   #tail: Promise<void>;
   #error: Error | null = null;
   #closing: Promise<void> | null = null;
+  readonly #subagents = new Map<string, SubagentRecord[]>();
 
   constructor(path: string, now: () => Date = () => new Date(), options: { open?: JournalOpen; log?: LogFn; guard?: RequestGuard } = {}) {
     this.#path = path;
@@ -215,6 +216,9 @@ export class Journal {
         await reading.pending;
         await resumed(() => reading.last[0] !== 0x0a ? this.#writeAll(Buffer.from('\n'), resumed) : undefined);
       }
+      // Restore once before queued producers append. Item reads must never scan
+      // the accumulated journal again, or a crew's read burst pins the hub.
+      if (size) await this.#restoreSubagents(size, resumed);
     })().catch(err => resumed(() => { if (err !== this.#error) this.#failed(err); }));
   }
 
@@ -252,8 +256,13 @@ export class Journal {
   write(record: { event: string } & Record<string, unknown>): void {
     if (this.#closing || this.#error) return;
     const bytes = Buffer.from(`${JSON.stringify({ ts: this.#now().toISOString(), ...record })}\n`);
+    const child = record.event === 'subagent-launched' ? JSON.parse(bytes.toString()) as JournalRecord : null;
     const resumed = this.#resumer('journal.append');
-    this.#tail = this.#tail.then(() => resumed(() => this.#error ? undefined : this.#writeAll(bytes, resumed)))
+    this.#tail = this.#tail.then(async () => {
+      if (this.#error) return;
+      await resumed(() => this.#writeAll(bytes, resumed));
+      if (child) resumed(() => this.#rememberSubagent(child));
+    })
       .catch(err => resumed(() => { if (err !== this.#error) this.#failed(err); }));
   }
 
@@ -349,32 +358,37 @@ export class Journal {
     return result(overflow !== undefined);
   }
 
-  /** Child models for one item's usage, including durable records from earlier hub lifetimes. */
-  async subagents(item: string): Promise<SubagentRecord[]> {
-    await this.flush();
-    const resumed = this.#resumer('task.view');
-    const { size } = await resumed(() => stat(this.#path));
-    if (!size) return [];
+  #rememberSubagent(r: JournalRecord): void {
+    if (!r || r.event !== 'subagent-launched' || typeof r.item !== 'string') return;
+    if (typeof r.ts !== 'string' || typeof r.session !== 'string' || typeof r.sessionId !== 'string' || typeof r.harness !== 'string') return;
+    const rows = this.#subagents.get(r.item) ?? [];
+    rows.push({ ts: r.ts, session: r.session, sessionId: r.sessionId, harness: r.harness,
+      model: typeof r.model === 'string' && r.model ? r.model : 'unreported',
+      ...(typeof r.agentId === 'string' ? { agentId: r.agentId } : {}),
+      ...(typeof r.agentType === 'string' ? { agentType: r.agentType } : {}),
+    });
+    this.#subagents.set(r.item, rows);
+  }
+
+  async #restoreSubagents(size: number, resumed: Resumed): Promise<void> {
     const input = resumed(() => createReadStream(this.#path, { end: size - 1 }));
     const lines = createInterface({ input, crlfDelay: Infinity });
-    const rows: SubagentRecord[] = [];
     try {
       for await (const line of lines) resumed(() => {
         let r: JournalRecord;
         try { r = JSON.parse(line); } catch { return; }
-        if (!r || r.event !== 'subagent-launched' || r.item !== item) return;
-        if (typeof r.ts !== 'string' || typeof r.session !== 'string' || typeof r.sessionId !== 'string' || typeof r.harness !== 'string') return;
-        rows.push({ ts: r.ts, session: r.session, sessionId: r.sessionId, harness: r.harness,
-          model: typeof r.model === 'string' && r.model ? r.model : 'unreported',
-          ...(typeof r.agentId === 'string' ? { agentId: r.agentId } : {}),
-          ...(typeof r.agentType === 'string' ? { agentType: r.agentType } : {}),
-        });
+        this.#rememberSubagent(r);
       });
     } finally {
       lines.close();
       input.destroy();
     }
-    return rows;
+  }
+
+  /** Child models restored once at startup, then indexed after each successful append. */
+  async subagents(item: string): Promise<SubagentRecord[]> {
+    await this.flush();
+    return (this.#subagents.get(item) ?? []).map(row => ({ ...row }));
   }
 
   /** Drain records accepted before this call without closing the sink. Later producers may keep appending. */
