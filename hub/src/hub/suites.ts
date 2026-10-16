@@ -21,6 +21,7 @@ import type { ExecutorKind, Lease, Platform, RunRef } from '../executor/executor
 import { idNumber } from '../tracker/item.ts';
 import { selectPackageSuite, describeSelection, type SuiteSelection, type SuiteRequest } from '../suite-selection.ts';
 import { parseCoverageMap, type CoverageMap } from '../suite-coverage.ts';
+import { VerificationWait } from './verification-wait.ts';
 import { classifyCover, deriveCover, recentCovers } from './suite-cover.ts';
 
 export type SuiteActor = { name: string; sessionId: string; shell: true };
@@ -56,7 +57,7 @@ export type StagePlatform = 'Linux droplet' | 'macOS';
 export type StageCover = { id: string; head: string; tree: string; platform: StagePlatform };
 const verifyResult = (job: SuiteJob): VerifyResult => ({ executor: job.executor, id: job.id, state: job.state ?? 'running', result: job.state !== 'finished' ? null : job.cancelled || job.requesterDied ? 'cancelled' : job.outcome ? job.outcome.code === 0 ? 'passed' : 'failed' : null, head: job.head, finished: job.finished ?? job.completedAt ?? null, artifact: job.artifact, ...(job.cached ? { cached: { ...job.cached } } : {}) });
 
-export type SuiteSchedulerOptions = { projectConfig?: () => ProjectConfig; env?: NodeJS.ProcessEnv; executor?: ExecutorKind; lifetimeMs?: number; runTimeoutMs?: number; runTimeout?: string; onFallback?: (job: Readonly<SuiteJob>, cause: string) => void; budget?: number; remoteBudget?: number; shards?: number; onShardingSkipped?: (job: Readonly<SuiteJob>, cause: string) => void; cacheMaxAgeMs?: number; locks?: string[]; requesterDead?: (actor: SuiteActor) => boolean; log?: LogFn; onQueue?: (queue: VerificationQueue) => void; onJob?: (job: Readonly<SuiteJob>) => void };
+export type SuiteSchedulerOptions = { projectConfig?: () => ProjectConfig; env?: NodeJS.ProcessEnv; executor?: ExecutorKind; lifetimeMs?: number; runTimeoutMs?: number; runTimeout?: string; onFallback?: (job: Readonly<SuiteJob>, cause: string) => void; budget?: number; remoteBudget?: number; shards?: number; onShardingSkipped?: (job: Readonly<SuiteJob>, cause: string) => void; cacheMaxAgeMs?: number; waitP90TargetMs?: number; locks?: string[]; requesterDead?: (actor: SuiteActor) => boolean; log?: LogFn; onQueue?: (queue: VerificationQueue) => void; onJob?: (job: Readonly<SuiteJob>) => void };
 type HumanSlot = Omit<SuiteSlot, 'type'> & { queued: string; admittedAt?: string; left?: boolean };
 const HUMAN_GRACE_MS = 10_000;
 const KEY = 'suite-jobs';
@@ -103,6 +104,7 @@ export class Suites {
   readonly #root: string;
   readonly #report: (job: Readonly<SuiteJob>, checkpointArtifact: (id: string) => void) => Promise<void>;
   readonly #jobs: SuiteJob[];
+  readonly #waitMetrics: VerificationWait;
   readonly #latestItems = new Map<number, SuiteJob>();
   readonly #latestBranches = new Map<string, SuiteJob>();
   readonly #order = new Map<string, number>();
@@ -133,6 +135,7 @@ export class Suites {
     if ((options.budget ?? 1) > 1) options.log?.({ event: 'verification-budget-capped', configured: options.budget, effective: this.#budget, reason: 'resource overlap remains disabled after T-215', reservedFor: 'T-218' });
     this.#store = store; this.#root = root; this.#report = report;
     this.#jobs = JSON.parse(store.meta(KEY) ?? '[]') as SuiteJob[];
+    this.#waitMetrics = new VerificationWait(store, this.#jobs, options.projectConfig?.().verification.waitP90TargetMs ?? options.waitP90TargetMs, options.log);
     this.#local = new LocalExecutor(this.#locks(), (lease, worker) => {
       if (this.#closed) return;
       const job = this.#jobs.find(job => job.id === lease.run);
@@ -164,12 +167,13 @@ export class Suites {
     for (const job of this.#jobs) this.#remember(job, false);
     this.#save();
     this.#reaping = this.#local.reap().catch(error => { this.#options.log?.({ event: 'verification-reap-blocked', error: String(error) }); });
-    this.#timer = setInterval(() => { void this.#check(); }, 1000);
+    this.#timer = setInterval(() => { this.#waitMetrics.record(); void this.#check(); }, 1000);
     this.#timer.unref();
   }
   configure(config: ProjectConfig): void {
     this.#options = { ...this.#options, ...config.verification };
     this.#remoteBudget = config.verification.remoteBudget;
+    this.#waitMetrics.configure(config.verification.waitP90TargetMs);
     for (const job of this.#jobs) if (job.state === 'queued' && !job.config && job.followsConfig) { job.executor = config.verification.executor; job.requestedExecutor = job.executor; }
     this.#save();
   }
@@ -825,7 +829,7 @@ export class Suites {
     const shim = this.#compatibility;
     const now = Date.now();
     const recent = this.#jobs.filter(j => j.completedAt).sort((a, b) => b.completedAt!.localeCompare(a.completedAt!)).slice(0, METRICS_WINDOW);
-    const metrics = { window: METRICS_WINDOW, count: recent.length, wait: durations(recent.map(j => j.waitMs)), run: durations(recent.map(j => j.runMs)) };
+    const metrics = { queueWait: this.#waitMetrics.snapshot(now), window: METRICS_WINDOW, count: recent.length, wait: durations(recent.map(j => j.waitMs)), run: durations(recent.map(j => j.runMs)) };
     // Cache hits are already completed at submission. They count in the metrics but must
     // not bias the estimate for an actual queued execution, which missed the cache.
     const estimate = (mode: string | null, executor: ExecutorKind) => durations(recent.filter(j => j.executor === executor && !j.cached && j.outcome?.code === 0 && j.admittedAt && (mode === null || (j.selection?.mode ?? j.mode) === mode)).map(j => j.runMs)).medianMs;

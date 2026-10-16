@@ -36,6 +36,16 @@ export async function runSuiteCommand(args: string[], cwd = process.cwd()): Prom
       ...(q.remote ?? []).map(r => `remote ${q.remote?.length ?? 0}/${q.remoteBudget ?? 4}: ${r.session} · ${r.item ?? r.id} · droplet ${r.machine?.name ?? 'acquiring'} ${r.machine?.size ?? 'unknown'} ${r.machine?.region ?? 'unknown'}${r.occasion ? ` · occasion ${r.occasion}` : ''}${r.shard ? ` · ${r.shard}` : ''} · since ${r.since ?? 'unknown'} · ETA ${duration(r.etaMs)}`),
       ...q.waiters.map(w => `${w.position}. ${w.session} · ${w.item ?? w.id} · ${w.executor ?? 'local'} · ${w.mode}${w.occasion ? ` · occasion ${w.occasion}` : ''}${w.waitingFor === 'remote' ? ' · waiting for remote' : ''} · wait ${duration(w.waitMs)} · ETA ${duration(w.etaMs)}`),
       `last ${q.metrics.window} runs (${q.metrics.count} recorded): wait median ${duration(q.metrics.wait.medianMs)} / p90 ${duration(q.metrics.wait.p90Ms)}; run median ${duration(q.metrics.run.medianMs)} / p90 ${duration(q.metrics.run.p90Ms)}`];
+    const wait = q.metrics.queueWait;
+    if (wait) {
+      lines.push(`queue wait target: p90 < ${duration(wait.targetP90Ms)}`);
+      for (const [label, executors] of [['24h', wait.last24Hours], ['last 50', wait.last50Runs]] as const) {
+        for (const executor of ['local', 'droplet'] as const) {
+          const stats = executors[executor];
+          lines.push(`${label} ${executor}: p50 ${duration(stats.p50Ms)} / p90 ${duration(stats.p90Ms)} · ${stats.count} samples · ${stats.cacheHits} cache hits`);
+        }
+      }
+    }
     process.stdout.write((values.json ? JSON.stringify(q) : lines.join('\n')) + '\n');
     return 0;
   }

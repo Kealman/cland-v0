@@ -215,5 +215,8 @@ test('verify records wait/run timings, zero-time cache hits, recent median/p90 a
   }
   const bounded = (await ui.request({ type: 'suite.queue' })).value as VerificationQueue;
   assert.equal(bounded.waiters.length, 0, 'hits complete even while the compatibility lock is held');
-  assert.deepEqual(bounded.metrics, { window: 20, count: 20, wait: { count: 20, medianMs: 0, p90Ms: 0 }, run: { count: 20, medianMs: 0, p90Ms: 0 } });
+  const { queueWait, ...legacyMetrics } = bounded.metrics;
+  assert.deepEqual(legacyMetrics, { window: 20, count: 20, wait: { count: 20, medianMs: 0, p90Ms: 0 }, run: { count: 20, medianMs: 0, p90Ms: 0 } });
+  assert.equal(queueWait?.last50Runs.local.count, 2, 'only executed requests contribute wait samples');
+  assert.equal(queueWait?.last50Runs.local.cacheHits, 21);
 });

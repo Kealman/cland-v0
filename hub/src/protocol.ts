@@ -674,9 +674,15 @@ export type VerificationHolder = {
   pid: number | null; worktree: string | null; since: string | null; runMs: number | null; etaMs: number | null;
 };
 export type DurationStats = { count: number; medianMs: number | null; p90Ms: number | null };
+export type QueueWaitStats = { count: number; cacheHits: number; p50Ms: number | null; p90Ms: number | null };
+export type QueueWaitMetrics = {
+  targetP90Ms: number;
+  last24Hours: Record<'local' | 'droplet', QueueWaitStats>;
+  last50Runs: Record<'local' | 'droplet', QueueWaitStats>;
+};
 export type VerificationQueue = {
   version: 1; at: string; holder: VerificationHolder | null; remote?: VerificationHolder[]; remoteBudget?: number; waiters: VerificationWaiter[];
-  metrics: { window: number; count: number; wait: DurationStats; run: DurationStats };
+  metrics: { window: number; count: number; wait: DurationStats; run: DurationStats; queueWait?: QueueWaitMetrics };
 };
 
 export type HubStatus = {

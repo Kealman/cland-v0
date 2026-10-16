@@ -2252,6 +2252,36 @@ once per measured request. Existing T-232 receipt/start records seed estimates a
 second resolution and are labelled `timingEstimated` in status (`estimated` in the
 journal); unavailable timestamps remain null.
 
+`cland verify queue` also shows queue wait p50 and p90 for the last 24 hours
+and the last 50 completed requests **per effective executor** (`local` and
+`droplet`). Both its JSON and `hub status --json` expose the same values at
+`verification.metrics.queueWait` (the queue command omits the `verification`
+wrapper). `targetP90Ms` is the configured target in milliseconds;
+`last24Hours` and `last50Runs` each contain `local` and `droplet` values with
+`count`, `cacheHits`, `p50Ms` and `p90Ms`. Empty samples have null percentiles.
+P50 is the median (the average of the middle pair for an even sample); p90 is
+nearest-rank. The last-50 window includes cache requests in its limit, but
+cache hits are counted separately and excluded from both percentiles because
+they never enter the queue. Requests cancelled before admission, unknown or
+invalid timings, and internal shard jobs do not contribute wait samples.
+
+Wait is durable `queued` to `admittedAt`, including failed executed runs. A
+fallback is counted under the executor that actually ran it. Windows use the
+durable `finished` time when available, otherwise `completedAt`, so restoring
+a receipt after a restart does not move the run into a newer window or add
+recovery delay to its wait. This metric does not use `runMs` or the recovery
+clock to infer admission.
+
+`[verification] wait_p90_target = "20m"` sets the target (a positive integer
+followed by `s`, `m`, `h` or `d`); it is informational and does not change
+admission. Metrics use the loaded config snapshot: `cland hub reload` publishes
+a changed target; an invalid reload retains the last good value. The hub records
+the same target and window values in a
+`verification-wait` journal entry on the first scheduler tick of each UTC
+hour. The last recorded hour survives restart, preventing duplicate records;
+after downtime only the current window is recorded, without inventing past
+hourly samples.
+
 Integrated dev runs completed from the cover-record rollout onwards persist
 `cover: {status, cause, tests}` in their hub run record, expose it as
 `hub status --json`'s `suites[].cover`, and include it in the journal's

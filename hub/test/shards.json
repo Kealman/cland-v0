@@ -179,6 +179,7 @@
     "hub/test/suite-timeouts.test.ts": "machine",
     "hub/test/suite-admission.test.ts": "machine",
     "hub/test/suite-queue.test.ts": "machine",
+    "hub/test/suite-wait-metrics.test.ts": "machine",
     "hub/test/suite-selection-report.test.ts": "machine",
     "hub/test/suite.test.ts": "machine",
     "hub/test/suite-cancel.test.ts": "machine",
