@@ -1,4 +1,5 @@
 // Runner CLI seam: separate Node processes, real process table, no internal mocks.
+import { serializeTierManifest } from '../src/suite-shards.ts';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { mkdir, mkdtemp, readFile, readdir, realpath, rm, utimes, writeFile } from 'node:fs/promises';
@@ -746,7 +747,7 @@ test('package admission rejects a new unclassified hub test before executing it'
   child.stderr.on('data', chunk => { output += String(chunk); });
   const codeResult = await new Promise(resolve => child.on('close', resolve));
   assert.equal(codeResult, 1);
-  assert.match(output, /unclassified hub test.*unclassified\.test\.ts/);
+  assert.match(output, /unclassified .*test.*unclassified\.test\.ts/);
   assert.doesNotMatch(output, /test executed/);
 });
 
@@ -757,14 +758,14 @@ for (const [resource, source] of [
 ]) test(`package shard lint refuses a free test with ${resource}`, async t => {
   const dir = await fixture(t);
   await mkdir(join(dir, 'hub', 'test'), { recursive: true });
-  await writeFile(join(dir, 'hub', 'test', 'shards.json'), JSON.stringify({ version: 1, tests: { 'hub/test/wait.test.ts': 'free' } }));
+  await writeFile(join(dir, 'hub', 'test', 'tiers.json'), serializeTierManifest({ version: 1, tests: { 'hub/test/wait.test.ts': 'T1' } }));
   await writeFile(join(dir, 'hub', 'test', 'wait.test.ts'), source!);
   const code = `import { runPackageSuite } from ${JSON.stringify(runner)}; await runPackageSuite('all', [], ${JSON.stringify({ cwd: dir })});`;
   const child = spawn(process.execPath, ['--input-type=module', '-e', code], { env: { ...process.env, NODE_TEST_CONTEXT: '' } });
   let output = '';
   child.stderr.on('data', chunk => { output += String(chunk); });
   assert.equal(await new Promise(resolve => child.on('close', resolve)), 1);
-  assert.match(output, /free hub test touches machine resources.*wait\.test\.ts/);
+  assert.match(output, /T1 test touches machine resources.*wait\.test\.ts/);
 });
 
 test('an explicit package shard selects its files without leaking into nested package runs', async t => {
@@ -778,7 +779,7 @@ test('an explicit package shard selects its files without leaking into nested pa
       appendFileSync(${JSON.stringify(journal)}, ${JSON.stringify(path + '\n')});
     });`);
   }
-  await writeFile(join(nested, 'hub/test/shards.json'), JSON.stringify({ version: 1, tests: { 'hub/test/fixture.test.ts': 'machine' } }));
+  await writeFile(join(nested, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: { 'hub/test/fixture.test.ts': 'T3', 'nvim/test/fixture.test.ts': 'T3' } }));
   await mkdir(join(dir, 'hub/test'), { recursive: true });
   await mkdir(join(dir, 'nvim/test'), { recursive: true });
   await writeFile(join(dir, 'hub/test/selected.test.ts'), `import test from 'node:test'; import assert from 'node:assert/strict'; import { runPackageSuite } from ${JSON.stringify(runner)};
@@ -789,7 +790,7 @@ test('an explicit package shard selects its files without leaking into nested pa
   for (const path of ['hub/test/excluded.test.ts', 'nvim/test/excluded.test.ts']) {
     await writeFile(join(dir, path), "throw new Error('unselected test executed');");
   }
-  await writeFile(join(dir, 'hub/test/shards.json'), JSON.stringify({ version: 1, tests: { 'hub/test/selected.test.ts': 'machine', 'hub/test/excluded.test.ts': 'machine' } }));
+  await writeFile(join(dir, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: { 'hub/test/selected.test.ts': 'T3', 'hub/test/excluded.test.ts': 'T3', 'nvim/test/excluded.test.ts': 'T3' } }));
   const selection = { mode: 'full', files: [], reason: 'outer shard regression', shard: { files: ['hub/test/selected.test.ts'], nvim: false } };
   const code = `import { runPackageSuite } from ${JSON.stringify(runner)}; process.exitCode = await runPackageSuite('all', [], ${JSON.stringify({ cwd: dir, lockDirs: { hub: lockPath(dir, 'hub'), nvim: lockPath(dir, 'nvim') } })});`;
   const child = spawn(process.execPath, ['--input-type=module', '-e', code], { env: { ...process.env, NODE_TEST_CONTEXT: '', CLAND_TEST_SKIP_LOCK: '0', CLAND_SUITE_SELECTION: JSON.stringify(selection) } });
@@ -821,7 +822,7 @@ for (const admission of ['standalone', 'old V1 worker'] as const) test(`sharded 
       appendFileSync(${JSON.stringify(journal)}, ${JSON.stringify(path + '\n')});
     });`);
   }
-  await writeFile(join(dir, 'hub/test/shards.json'), JSON.stringify({ version: 1, tests: { 'hub/test/free.test.ts': 'free', 'hub/test/machine.test.ts': 'machine' } }));
+  await writeFile(join(dir, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: { 'hub/test/free.test.ts': 'T1', 'hub/test/machine.test.ts': 'T3', 'nvim/test/fixture.test.ts': 'T3' } }));
   let code = `import { runPackageSuite } from ${JSON.stringify(runner)}; process.exitCode = await runPackageSuite('all', [], ${JSON.stringify({ cwd: dir, lockDirs: locks })});`;
   if (admission === 'old V1 worker') {
     const lockModule = fileURLToPath(new URL('../src/suite-lock.ts', import.meta.url));

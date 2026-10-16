@@ -2407,13 +2407,31 @@ in `src/suite-selection.ts`:
 Per-item targeted hub tests are a possible follow-up; the fixed baseline applies
 to every Neovim-only run today.
 
-`hub/test/shards.json` explicitly classifies every hub test file as `free` or
-`machine`. `npm run test:shards` checks the manifest; normal package runs perform
-the same lint before admission. Missing/unknown entries and entries for absent
-files fail. A free file importing process/port/timer APIs or process-fixture
-helpers, using wall-clock waits, naming the legacy lock paths or Neovim also fails.
-Keep new process fixtures in `machine`; private project directories alone do not
-remove their load and real-time dependencies.
+`hub/test/tiers.json` declares every hub and Neovim test file in a `version: 1`,
+path-sorted `tests` map. Add each new file at its sorted path in the same commit.
+The tiers are T1 unit (hermetic), T2 component (in-process hub with socket edges),
+T3 integration (real process scenarios/contracts) and T4 soak (load/long/platform
+checks); see [Test levels](../docs/agents/tests.md#test-levels-d53). Values are
+`"T1"`, `"T2"`, `"T3"`, `"T4"`, or a T3 object with exactly one nonempty label:
+`{ "tier": "T3", "contract": "codex" }` or
+`{ "tier": "T3", "scenario": "release" }`. Fixture/tool writers use
+`serializeTierManifest` from `src/suite-shards.ts` to keep the map sorted.
+
+`npm run test:tiers` checks the manifest (`test:shards` is an alias for one release).
+Package runs perform the same lint. Unclassified files, absent files, invalid
+entries and an unsorted map fail, with the first out-of-order path named. T1
+retains the hermetic check: process/port/timer APIs, process-fixture helpers,
+wall-clock waits, legacy lock paths or Neovim in its source fail. Verify admission
+refuses with `verify-tiers` before queueing; merge admission checks the immutable
+merged candidate and refuses with `merge-tiers` before changing refs. The old
+`verify-shards`/`merge-shards` wire codes remain accepted aliases.
+
+This migration keeps run phases and file sets unchanged: T1 maps to `hub free`,
+T2–T4 to `hub machine`, and Neovim keeps its package phase. T4 runs wherever T3
+does until its occasions land; close-run balancing continues to place every hub
+file independently. A pre-migration tree carrying only `hub/test/shards.json`
+remains admissible: `free` maps to T1 and `machine` to T3, without requiring
+Neovim entries or sorted keys. If both manifests exist, `tiers.json` takes priority.
 
 The hub free shard runs on one worker. `[verification] workers` sets the hub
 machine shard and Neovim concurrency (default 4). `[verification.droplet] workers`

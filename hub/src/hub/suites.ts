@@ -96,10 +96,10 @@ export function suiteSummary(log: string, quarantineStatus?: string[]): string {
 }
 
 export class SuiteAdmissionError extends Error {
-  readonly code = 'verify-shards';
+  readonly code = 'verify-tiers';
   readonly files: string[];
   constructor(error: unknown) {
-    super(`verify-shards: ${error instanceof Error ? error.message : String(error)}`);
+    super(`verify-tiers: ${error instanceof Error ? error.message : String(error)}`);
     this.files = error instanceof ShardManifestError ? error.files : [];
   }
 }

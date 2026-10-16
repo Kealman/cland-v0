@@ -1,4 +1,4 @@
-// Positive manifest: adding a test requires an explicit resource decision.
+// Positive manifest: adding a test requires an explicit tier decision.
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { glob, readFile } from 'node:fs/promises';
@@ -15,51 +15,93 @@ export type SuiteShard = { name: string; targets: string[]; resource: Shard; wor
 // SQL .exec() and promise gates are hermetic; process launches and wall-clock waits are not.
 const MACHINE = /node:(?:child_process|net|http|https|dgram|timers)|(?:from\s*|import\s*\()['"][^'"]*(?:harness|process-cleanup)[^'"]*['"]|\b(?:setTimeout|setInterval|sleep|pause|delay)\s*\(|\.listen\s*\(|\/tmp\/cland-suite(?:-nvim)?\.lock\b|\bnvim\b/;
 
-const PATTERNS = ['hub/src/**/*.test.ts', 'hub/test/**/*.test.ts'];
-const MANIFEST = 'hub/test/shards.json';
+const HUB_PATTERNS = ['hub/src/**/*.test.ts', 'hub/test/**/*.test.ts'];
+const PATTERNS = [...HUB_PATTERNS, 'nvim/test/**/*.test.ts'];
+export const TIER_MANIFEST = 'hub/test/tiers.json';
+const LEGACY_MANIFEST = 'hub/test/shards.json';
+export type Tier = 'T1' | 'T2' | 'T3' | 'T4';
+export type TierEntry = Tier | { tier: 'T3'; contract: string } | { tier: 'T3'; scenario: string };
+export type TierManifest = { version: 1; tests: Record<string, TierEntry> };
+
+/** All manifest writers use path order, independent of insertion order or locale. */
+export function serializeTierManifest(manifest: TierManifest): string {
+  return JSON.stringify({ ...manifest, tests: Object.fromEntries(Object.keys(manifest.tests).sort().map(path => [path, manifest.tests[path]])) }, null, 2) + '\n';
+}
 type Manifest = { version?: number; tests?: Record<string, unknown> };
 export class ShardManifestError extends Error {
   readonly files: string[];
   constructor(message: string, files: string[] = []) { super(message); this.files = files; }
 }
 
-async function classify(paths: string[], manifest: Manifest, source: (path: string) => Promise<string>, smoke: boolean, workers = 4): Promise<SuiteShard[]> {
+function tierOf(entry: unknown): Tier | undefined {
+  if (entry === 'T1' || entry === 'T2' || entry === 'T3' || entry === 'T4') return entry;
+  if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return;
+  const value = entry as Record<string, unknown>;
+  const keys = Object.keys(value);
+  const label = keys.includes('contract') ? 'contract' : 'scenario';
+  if (value.tier === 'T3' && keys.length === 2 && keys.includes('tier') && typeof value[label] === 'string' && value[label].trim()) return 'T3';
+}
+
+function parseManifest(text: string, path: string): Manifest {
+  try { return JSON.parse(text) as Manifest; }
+  catch { throw new ShardManifestError(`invalid test manifest JSON: ${path}`, [path]); }
+}
+
+async function classify(paths: string[], manifest: Manifest, source: (path: string) => Promise<string>, smoke: boolean, workers = 4, legacy = false): Promise<SuiteShard[]> {
   paths.sort();
-  if (manifest.version !== 1 || !manifest.tests || typeof manifest.tests !== 'object' || Array.isArray(manifest.tests)) throw new ShardManifestError('invalid hub shard manifest');
+  const manifestPath = legacy ? LEGACY_MANIFEST : TIER_MANIFEST;
+  if (!manifest || manifest.version !== 1 || !manifest.tests || typeof manifest.tests !== 'object' || Array.isArray(manifest.tests)) throw new ShardManifestError(`invalid test manifest: ${manifestPath}`, [manifestPath]);
   const tests = manifest.tests;
-  const unclassified = paths.filter(path => tests[path] !== 'free' && tests[path] !== 'machine');
-  if (unclassified.length) throw new ShardManifestError(`unclassified hub tests: ${unclassified.join(', ')}; add explicit classifications to ${MANIFEST} (machine is the conservative choice):\n${unclassified.map(path => `    ${JSON.stringify(path)}: "machine",`).join('\n')}`, unclassified);
+  const keys = Object.keys(tests);
+  // Old branches never promised sorted resource maps; preserve their admission contract.
+  if (!legacy) for (let i = 1; i < keys.length; i++) if (keys[i]! < keys[i - 1]!) throw new ShardManifestError(`test tier map is not sorted by path: ${keys[i]} (before ${keys[i - 1]})`, [keys[i]!]);
+  const unclassified = paths.filter(path => !Object.hasOwn(tests, path));
+  if (unclassified.length) throw new ShardManifestError(`unclassified ${legacy ? 'hub tests' : 'tests'}: ${unclassified.join(', ')}; add explicit classifications to ${manifestPath} (${legacy ? 'machine' : 'T3'} is the conservative choice):\n${unclassified.map(path => `    ${JSON.stringify(path)}: "${legacy ? 'machine' : 'T3'}",`).join('\n')}`, unclassified);
+  const tiers = new Map<string, Tier>();
+  for (const path of keys) {
+    if (!paths.includes(path)) throw new ShardManifestError(`test manifest names missing test: ${path}`, [path]);
+    const tier = legacy ? tests[path] === 'free' ? 'T1' : tests[path] === 'machine' ? 'T3' : undefined : tierOf(tests[path]);
+    if (!tier) throw new ShardManifestError(`invalid ${legacy ? 'resource' : 'tier or tier object'} for test: ${path}`, [path]);
+    tiers.set(path, tier);
+  }
   const groups: Record<Shard, string[]> = { free: [], machine: [] };
   for (const path of paths) {
-    const shard = tests[path] === 'free' ? 'free' : 'machine';
-    if (shard === 'free' && MACHINE.test(await source(path))) throw new ShardManifestError(`free hub test touches machine resources: ${path}; classify it as machine`, [path]);
-    if (!smoke || HUB_SMOKE.includes(path)) groups[shard].push(path);
+    const resource = tiers.get(path) === 'T1' ? 'free' : 'machine';
+    if (resource === 'free' && MACHINE.test(await source(path))) throw new ShardManifestError(`${legacy ? 'free hub' : 'T1'} test touches machine resources: ${path}; classify it as ${legacy ? 'machine' : 'T3'}`, [path]);
+    // Neovim is validated in the same manifest, but retains its existing package phase.
+    if (path.startsWith('hub/') && (!smoke || HUB_SMOKE.includes(path))) groups[resource].push(path);
   }
-  for (const path of Object.keys(tests)) if (!paths.includes(path)) throw new ShardManifestError(`hub shard manifest names missing test: ${path}`, [path]);
   return (['free', 'machine'] as const).filter(resource => groups[resource].length).map(resource => ({ name: `hub ${resource}${smoke ? ' smoke' : ''}`, resource, workers: resource === 'free' ? 1 : workers, targets: groups[resource] }));
+}
+
+async function readManifest(cwd: string): Promise<{ manifest: Manifest; legacy: boolean } | undefined> {
+  for (const [path, legacy] of [[TIER_MANIFEST, false], [LEGACY_MANIFEST, true]] as const) {
+    let text: string;
+    try { text = await readFile(join(cwd, path), 'utf8'); }
+    catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') continue; throw error; }
+    return { manifest: parseManifest(text, path), legacy };
+  }
 }
 
 export async function hubShards(cwd: string, smoke = false, workers?: number): Promise<SuiteShard[]> {
   await lintDurations(cwd);
+  const entry = await readManifest(cwd);
   const paths = [];
-  for await (const path of glob(PATTERNS, { cwd })) paths.push(path);
-  const manifest = await readFile(join(cwd, MANIFEST), 'utf8').then(text => JSON.parse(text) as Manifest, () => ({ version: 1, tests: {} }));
-  return classify(paths, manifest, path => readFile(join(cwd, path), 'utf8'), smoke, workers ?? (await suiteLimits(cwd)).workers);
+  for await (const path of glob(entry && !entry.legacy ? PATTERNS : HUB_PATTERNS, { cwd })) paths.push(path);
+  return classify(paths, entry ? entry.manifest : { version: 1, tests: {} }, path => readFile(join(cwd, path), 'utf8'), smoke, workers ?? (await suiteLimits(cwd)).workers, entry?.legacy);
 }
 
-/** Only projects with a manifest opt into hub sharding. Admission also covers dirty test files. */
+/** Only projects with a manifest opt in. Admission also covers dirty test files. */
 export async function lintHubShards(cwd: string): Promise<void> {
   await lintDurations(cwd);
-  try { await readFile(join(cwd, MANIFEST)); }
-  catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return; throw error; }
-  await hubShards(cwd);
+  if (await readManifest(cwd)) await hubShards(cwd);
 }
 
 /** Inspect the immutable merge result, including dev-only files, without touching any checkout. */
 export async function lintHubShardTree(cwd: string, tree: string, env: NodeJS.ProcessEnv = process.env): Promise<void> {
   const exec = promisify(execFile);
   const git = async (args: string[]) => (await exec('git', args, { cwd, env, timeout: 30_000, maxBuffer: 16 * 1024 * 1024 })).stdout;
-  const paths = (await git(['ls-tree', '-r', '--name-only', '-z', tree, '--', 'hub/src', 'hub/test'])).split('\0').filter(Boolean);
+  const paths = (await git(['ls-tree', '-r', '--name-only', '-z', tree, '--', 'hub/src', 'hub/test', 'nvim/test'])).split('\0').filter(Boolean);
   const source = (path: string) => git(['show', `${tree}:${path}`]);
   if (paths.includes(DURATION_MANIFEST)) {
     try { lintDurationManifest(JSON.parse(await source(DURATION_MANIFEST)) as DurationManifest); }
@@ -69,8 +111,10 @@ export async function lintHubShardTree(cwd: string, tree: string, env: NodeJS.Pr
     try { lintQuarantineManifest(JSON.parse(await source(QUARANTINE_MANIFEST))); }
     catch (error) { throw new ShardManifestError(error instanceof Error ? error.message : String(error), [QUARANTINE_MANIFEST]); }
   }
-  if (!paths.includes(MANIFEST)) return;
-  await classify(paths.filter(path => PATTERNS.some(pattern => matchesGlob(path, pattern))), JSON.parse(await source(MANIFEST)) as Manifest, source, false);
+  const manifestPath = paths.includes(TIER_MANIFEST) ? TIER_MANIFEST : paths.includes(LEGACY_MANIFEST) ? LEGACY_MANIFEST : undefined;
+  if (!manifestPath) return;
+  const legacy = manifestPath === LEGACY_MANIFEST;
+  await classify(paths.filter(path => (legacy ? HUB_PATTERNS : PATTERNS).some(pattern => matchesGlob(path, pattern))), parseManifest(await source(manifestPath), manifestPath), source, false, 4, legacy);
 }
 
 async function lintDurations(cwd: string): Promise<void> {

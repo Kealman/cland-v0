@@ -1,4 +1,5 @@
 // Real Node reporter and runner boundary, with fixture-local admission leases.
+import { serializeTierManifest } from '../src/suite-shards.ts';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -20,7 +21,7 @@ async function fixture(t: TestContext, packageRun = false) {
 test('parent', async t => { await t.test('child', () => new Promise(r => setTimeout(r, 100))); });
 test('skipped', {skip: 'fixture platform'}, () => {});`);
   if (packageRun) {
-    await writeFile(join(cwd, 'hub/test/shards.json'), JSON.stringify({ version: 1, tests: { 'hub/test/fixture.test.ts': 'machine' } }));
+    await writeFile(join(cwd, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: { 'hub/test/fixture.test.ts': 'T3', 'nvim/test/client.test.ts': 'T3', 'nvim/test/sessions.test.ts': 'T3' } }));
     await mkdir(join(cwd, 'nvim/test'), { recursive: true });
     for (const name of ['client', 'sessions']) await writeFile(join(cwd, `nvim/test/${name}.test.ts`), '// empty cross-package smoke fixture\n');
   }

@@ -1,3 +1,4 @@
+import { serializeTierManifest } from '../src/suite-shards.ts';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fixture } from './remote-fixture.ts';
@@ -9,7 +10,7 @@ export async function integrated(t: Parameters<typeof fixture>[0], config = '', 
   await f.git('checkout', 'dev');
   await mkdir(join(f.root, 'hub/test'), { recursive: true });
   for (const file of ['one', 'two']) await writeFile(join(f.root, `hub/test/${file}.test.ts`), "import test from 'node:test'; test('fixture', () => {});\n");
-  await writeFile(join(f.root, 'hub/test/shards.json'), JSON.stringify({ version: 1, tests: { 'hub/test/one.test.ts': 'free', 'hub/test/two.test.ts': 'free' } }));
+  await writeFile(join(f.root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: { 'hub/test/one.test.ts': 'T1', 'hub/test/two.test.ts': 'T1' } }));
   await writeFile(join(f.root, 'hub/test/durations.json'), JSON.stringify({ version: 1, source: { artifacts: [], commit: 'fixture' }, budget: { testSeconds: 5, fileSeconds: 60 }, files: { 'hub/test/one.test.ts': { seconds: 8, tests: 1 }, 'hub/test/two.test.ts': { seconds: 6, tests: 1 }, 'nvim/test/editor.test.ts': { seconds: 2, tests: 1 } }, tests: {}, allow: {} }));
   await f.git('add', '.'); await f.git('commit', '-qm', 'Integrated files');
   if (options.territory) {

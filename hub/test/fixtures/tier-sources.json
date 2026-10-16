@@ -1,0 +1,10 @@
+{
+  "process": "import { spawn } from 'node:child_process';",
+  "port": "import { createServer } from 'node:net';",
+  "timer": "setTimeout(() => {}, 1);",
+  "harness": "import { projectHub } from './harness.ts';",
+  "interval": "setInterval(() => {}, 1);",
+  "wait": "sleep(1);",
+  "lock": "'/tmp/cland-suite.lock';",
+  "editor": "nvim;"
+}

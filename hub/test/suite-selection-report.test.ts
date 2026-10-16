@@ -1,4 +1,5 @@
 // Public CLI/socket tests use tiny package fixtures, never the live project's full-suite queue.
+import { serializeTierManifest } from '../src/suite-shards.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, writeFile, mkdir, stat, rm, readdir } from 'node:fs/promises';
@@ -89,7 +90,7 @@ test('integrated dev verify publishes a portable function map once; task verify 
   await writeFile(join(f.root, 'hub/src/hub/covered.ts'), 'export function called() { return 42; }\nexport function never() { return 0; }\n');
   await writeFile(join(f.root, 'hub/test/covered.test.ts'), "import test from 'node:test'; import assert from 'node:assert/strict'; import { called } from '../src/hub/covered.ts'; test('fixture calls function', () => assert.equal(called(), 42));\n");
   for (const file of ['hub/test/tracer.test.ts', 'hub/test/daemon.test.ts', 'hub/test/startup-smoke.test.ts', 'nvim/test/client.test.ts', 'nvim/test/sessions.test.ts']) await writeFile(join(f.root, file), "import test from 'node:test'; test('smoke', () => {});\n");
-  await writeFile(join(f.root, 'hub/test/shards.json'), JSON.stringify({ version: 1, tests: Object.fromEntries(['covered', 'tracer', 'daemon', 'startup-smoke'].map(file => [`hub/test/${file}.test.ts`, 'machine'])) }));
+  await writeFile(join(f.root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: Object.fromEntries([...['covered', 'tracer', 'daemon', 'startup-smoke'].map(file => `hub/test/${file}.test.ts`), 'nvim/test/client.test.ts', 'nvim/test/sessions.test.ts'].map(file => [file, 'T3'])) }));
   await git('add', '.'); await git('commit', '-m', 'coverage fixture'); await git('push', 'origin', 'dev');
   const head = await git('rev-parse', 'HEAD');
   const coord = await spawnSpoke({ discover: true, cwd: f.root, name: 'coord', sessionId: 'coverage-coord', role: 'coordinator' });

@@ -1,9 +1,6 @@
 {
   "version": 1,
   "tests": {
-    "hub/test/cover-quiet.test.ts": "machine",
-    "hub/test/config-set.test.ts": "machine",
-    "hub/test/roles-editor.test.ts": "machine",
     "hub/test/quarantine.test.ts": "free",
     "hub/test/quarantine-runner.test.ts": "machine",
     "hub/test/suite-candidate-remote.test.ts": "machine",
@@ -38,7 +35,6 @@
     "hub/test/cli-identity.test.ts": "machine",
     "hub/test/cli-imports.test.ts": "machine",
     "hub/test/cli.test.ts": "machine",
-    "hub/test/clock.test.ts": "machine",
     "hub/test/codex-adapter.test.ts": "machine",
     "hub/test/codex-delivery.test.ts": "machine",
     "hub/test/crew-launch.test.ts": "machine",
@@ -101,7 +97,6 @@
     "hub/test/presence.test.ts": "machine",
     "hub/test/process-cleanup.test.ts": "machine",
     "hub/test/project-hub.test.ts": "machine",
-    "hub/test/project-clock.test.ts": "machine",
     "hub/test/process-started.test.ts": "machine",
     "hub/test/progress.test.ts": "machine",
     "hub/test/prompt-races.test.ts": "machine",

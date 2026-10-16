@@ -1,3 +1,4 @@
+import { serializeTierManifest } from '../src/suite-shards.ts';
 import { onCleanup } from './process-cleanup.ts';
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -22,7 +23,7 @@ test('merge refuses every unclassified hub test in the merged candidate, then ac
   // This task predates the manifest. Only dev has it, so checking the task tree misses the gap.
   await mkdir(join(root, 'hub/test'), { recursive: true });
   await writeFile(join(root, 'hub/test/base.test.ts'), '// hermetic base test\n');
-  await writeFile(join(root, 'hub/test/shards.json'), JSON.stringify({ version: 1, tests: { 'hub/test/base.test.ts': 'free' } }));
+  await writeFile(join(root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: { 'hub/test/base.test.ts': 'T1' } }));
   git(root, 'add', 'hub'); git(root, 'commit', '-qm', 'Introduce shards on dev');
   ok(await cland(root, 'push'));
   await mkdir(join(work.path, 'hub/test'), { recursive: true });
@@ -31,24 +32,38 @@ test('merge refuses every unclassified hub test in the merged candidate, then ac
   await writeFile(join(work.path, 'hub/src/new.test.ts'), '// another new test\n');
   git(work.path, 'add', 'hub'); git(work.path, 'commit', '-qm', 'Add tests without classifications');
   await review(rev, work.id);
-  const refusal = await refused(ui, root, work.id, 'merge-shards', ['hub/src/new.test.ts', 'hub/test/new.test.ts']);
-  assert.match(refusal.error!, /unclassified hub tests/);
-  assert.ok(refusal.error!.includes('"hub/src/new.test.ts": "machine",'));
-  assert.ok(refusal.error!.includes('"hub/test/new.test.ts": "machine",'));
-  assert.match(refusal.error!, /hub\/test\/shards.json/);
+  const refusal = await refused(ui, root, work.id, 'merge-tiers', ['hub/src/new.test.ts', 'hub/test/new.test.ts']);
+  assert.match(refusal.error!, /unclassified tests/);
+  assert.ok(refusal.error!.includes('"hub/src/new.test.ts": "T3",'));
+  assert.ok(refusal.error!.includes('"hub/test/new.test.ts": "T3",'));
+  assert.match(refusal.error!, /hub\/test\/tiers.json/);
   assert.equal(existsSync(join(root, 'hub/test/new.test.ts')), false, 'refusal leaves root checkout alone');
   const view = json<{ item: { state: string } }>(await cland(root, 'task', 'view', work.id, '--json'));
   assert.equal(view.item.state, 'open');
   git(work.path, 'fetch', 'origin'); git(work.path, 'merge', '--no-edit', 'origin/dev');
-  await writeFile(join(work.path, 'hub/test/shards.json'), JSON.stringify({ version: 1, tests: {
-    'hub/test/base.test.ts': 'free', 'hub/src/new.test.ts': 'free', 'hub/test/new.test.ts': 'free',
+  // Manifest admission table: every fault is refused against the immutable merge result.
+  for (const [tests, message, files] of [
+    [{ 'hub/src/new.test.ts': 'T3', 'hub/test/base.test.ts': 'T1', 'hub/test/new.test.ts': 'T3', 'hub/test/zz.test.ts': 'T3' }, /missing test/, ['hub/test/zz.test.ts']],
+    [{ 'hub/src/new.test.ts': 'T0', 'hub/test/base.test.ts': 'T1', 'hub/test/new.test.ts': 'T3' }, /invalid tier/, ['hub/src/new.test.ts']],
+    [{ 'hub/src/new.test.ts': { tier: 'T3', contract: '' }, 'hub/test/base.test.ts': 'T1', 'hub/test/new.test.ts': 'T3' }, /invalid tier/, ['hub/src/new.test.ts']],
+    [{ 'hub/test/base.test.ts': 'T1', 'hub/src/new.test.ts': 'T3', 'hub/test/new.test.ts': 'T3' }, /not sorted by path/, ['hub/src/new.test.ts']],
+  ] as const) {
+    await writeFile(join(work.path, 'hub/test/tiers.json'), JSON.stringify({ version: 1, tests }));
+    git(work.path, 'commit', '-qam', 'Plant invalid tier map');
+    await review(rev, work.id, 'clear', `tier-fault-${files[0]}-${message.source}`);
+    const refusal = await refused(ui, root, work.id, 'merge-tiers', [...files]);
+    assert.match(refusal.error!, message);
+    assert.equal(existsSync(join(root, 'hub/test/new.test.ts')), false);
+  }
+  await writeFile(join(work.path, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: {
+    'hub/test/base.test.ts': 'T1', 'hub/src/new.test.ts': 'T1', 'hub/test/new.test.ts': 'T1',
   } }));
   git(work.path, 'commit', '-qam', 'Incorrect free classification');
   await review(rev, work.id, 'clear', 'incorrect-free');
-  const resource = await refused(ui, root, work.id, 'merge-shards', ['hub/test/new.test.ts']);
-  assert.match(resource.error!, /free hub test touches machine resources/);
-  await writeFile(join(work.path, 'hub/test/shards.json'), JSON.stringify({ version: 1, tests: {
-    'hub/test/base.test.ts': 'free', 'hub/src/new.test.ts': 'machine', 'hub/test/new.test.ts': 'machine',
+  const resource = await refused(ui, root, work.id, 'merge-tiers', ['hub/test/new.test.ts']);
+  assert.match(resource.error!, /T1 test touches machine resources/);
+  await writeFile(join(work.path, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: {
+    'hub/test/base.test.ts': 'T1', 'hub/src/new.test.ts': 'T3', 'hub/test/new.test.ts': 'T3',
   } }));
   git(work.path, 'commit', '-qam', 'Classify new tests');
   await review(rev, work.id, 'clear', 'classified');

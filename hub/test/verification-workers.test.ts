@@ -1,3 +1,4 @@
+import { serializeTierManifest } from '../src/suite-shards.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
@@ -19,7 +20,7 @@ test('candidate worker config controls hub and Neovim machine shards while free 
   await mkdir(join(root, 'hub/test'), { recursive: true });
   await mkdir(join(root, '.cland'));
   for (const file of ['free', 'machine']) await writeFile(join(root, `hub/test/${file}.test.ts`), '');
-  await writeFile(join(root, 'hub/test/shards.json'), JSON.stringify({ version: 1, tests: { 'hub/test/free.test.ts': 'free', 'hub/test/machine.test.ts': 'machine' } }));
+  await writeFile(join(root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: { 'hub/test/free.test.ts': 'T1', 'hub/test/machine.test.ts': 'T3' } }));
   const counts = async (executor: 'local' | 'droplet', workers?: number) => (await packageShards(root, 'full', undefined, undefined, { executor, ...(workers === undefined ? {} : { workers }) })).map(shard => shard.workers);
   assert.deepEqual(await counts('local'), [1, 4, 4]);
   assert.deepEqual(await counts('droplet'), [1, 4, 4]);

@@ -1,3 +1,4 @@
+import { serializeTierManifest } from '../src/suite-shards.ts';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { chooseSuiteMode, importSpecifiers, nvimHubImports, selectPackageSuite } from '../src/suite-selection.ts';
@@ -36,7 +37,7 @@ for (const [name, paths] of [
   test(`${name} runs full`, () => assert.equal(chooseSuiteMode(paths), 'full'));
 }
 
-for (const path of ['hub/test/shards.json', 'hub/src/hub/core.ts', 'hub/src/hub/dispatch.ts', 'hub/src/hub/server.ts', 'hub/src/subscriptions.ts', 'hub/src/roles.ts', 'hub/src/crew.ts', 'hub/src/spoke/server.ts', 'hub/src/hub/suites.ts', '.cland/tasks/T-214.md', '.cland/roles.toml', '.cland/crew.toml', 'scripts/check.sh', 'hub/src/new-event.ts', 'docs/agents/tests.md', 'skills/qa/SKILL.md', '.agents/skills/qa/SKILL.md', 'README.md']) {
+for (const path of ['hub/test/tiers.json', 'hub/test/shards.json', 'hub/src/hub/core.ts', 'hub/src/hub/dispatch.ts', 'hub/src/hub/server.ts', 'hub/src/subscriptions.ts', 'hub/src/roles.ts', 'hub/src/crew.ts', 'hub/src/spoke/server.ts', 'hub/src/hub/suites.ts', '.cland/tasks/T-214.md', '.cland/roles.toml', '.cland/crew.toml', 'scripts/check.sh', 'hub/src/new-event.ts', 'docs/agents/tests.md', 'skills/qa/SKILL.md', '.agents/skills/qa/SKILL.md', 'README.md']) {
   test(`${path} selects hub-only by the non-nvim rule`, () => assert.equal(chooseSuiteMode([path]), 'hub-only'));
 }
 
@@ -231,7 +232,7 @@ test(`${mode} admission retains both locks through smoke, omits the other packag
       appendFileSync(${JSON.stringify(journal)}, JSON.stringify({ file: ${JSON.stringify(path)}, token: owner.token }) + '\\n');
     });`);
   }
-  await writeFile(join(root, 'hub/test/shards.json'), JSON.stringify({ version: 1, tests: Object.fromEntries(files.filter(path => path.startsWith('hub/')).map(path => [path, 'machine'])) }));
+  await writeFile(join(root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: Object.fromEntries(files.map(path => [path, 'T3'])) }));
   await writeFile(join(root, '.gitignore'), 'journal.jsonl\n*.lock*\n');
   await git('checkout', 'dev'); await git('add', '.'); await git('commit', '-m', 'fixture tests'); await git('push', 'origin', 'dev');
   await git('checkout', 't/T-214'); await git('merge', 'dev');
@@ -391,7 +392,7 @@ test('hub-selected executes covering tests and both smoke baselines, omitting un
   const nvim = ['client', 'sessions', 'other'].map(name => `nvim/test/${name}.test.ts`);
   await mkdir(join(root, 'nvim/test'), { recursive: true });
   for (const file of [...hub, ...nvim]) await writeFile(join(root, file), `import test from 'node:test'; import { appendFileSync } from 'node:fs'; test('execution marker', () => appendFileSync(${JSON.stringify(journal)}, ${JSON.stringify(file + '\n')}));\n`);
-  await writeFile(join(root, 'hub/test/shards.json'), JSON.stringify({ version: 1, tests: Object.fromEntries(hub.map(file => [file, 'machine'])) }));
+  await writeFile(join(root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: Object.fromEntries([...hub, ...nvim].map(file => [file, 'T3'])) }));
   await git('add', '.'); await git('commit', '-m', 'executable baselines'); await git('push', 'origin', 'HEAD:dev');
   await writeFile(join(root, 'hub/src/hub/example.ts'), source.replace('return 2', 'return 3'));
   const selection = await selectPackageSuite(root);

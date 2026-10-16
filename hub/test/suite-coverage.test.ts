@@ -1,3 +1,4 @@
+import { serializeTierManifest } from '../src/suite-shards.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { cp, mkdir, readFile, symlink, writeFile } from 'node:fs/promises';
@@ -79,7 +80,7 @@ test('daemon lifecycle and descendant attribution', async t => {
 });`);
   const smoke = ['hub/test/tracer.test.ts', 'hub/test/daemon.test.ts', 'nvim/test/client.test.ts', 'nvim/test/sessions.test.ts'];
   for (const path of smoke) await writeFile(join(root, path), "import test from 'node:test'; test('fixture smoke', () => {});\n");
-  await writeFile(join(root, 'hub/test/shards.json'), JSON.stringify({ version: 1, tests: Object.fromEntries([file, ...smoke.filter(path => path.startsWith('hub/'))].map(file => [file, 'machine'])) }));
+  await writeFile(join(root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: Object.fromEntries([file, ...smoke].map(file => [file, 'T3'])) }));
   const output = join(root, '.cland/run/coverage-map.json');
   const selection = { mode: 'full', files: [], reason: 'integrated fixture capture', recordCoverage: { head: 'a'.repeat(40), tree: 'b'.repeat(40), run: 'fixture' } };
   const runner = fileURLToPath(new URL('./run-suite.ts', import.meta.url));

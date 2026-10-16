@@ -1,4 +1,5 @@
 // Public CLI/socket tests use tiny package fixtures, never the live project's full-suite queue.
+import { packageShards, serializeTierManifest } from '../src/suite-shards.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, writeFile, mkdir, stat, rm, readdir } from 'node:fs/promises';
@@ -89,32 +90,50 @@ test('verify refuses every unclassified hub test before reserving a queue slot, 
   await mkdir(join(f.root, 'hub/src'), { recursive: true });
   await writeFile(join(f.root, 'hub/test/new.test.ts'), 'setTimeout(() => {}, 1);\n');
   await writeFile(join(f.root, 'hub/src/new.test.ts'), '// another test\n');
-  await writeFile(join(f.root, 'hub/test/shards.json'), JSON.stringify({ version: 1, tests: {} }));
+  await writeFile(join(f.root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: {} }));
   // A hand holder makes an incorrectly admitted request remain observable in the queue.
   await mkdir(join(f.root, 'suite.lock'));
   const before = await f.ui.request({ type: 'hub.status' });
   const failed = await f.ui.request({ type: 'suite.start', mode: 'all', cwd: f.root, report: f.topic, to: ['rev', 'impl'] });
   assert.equal(failed.ok, false, JSON.stringify(failed));
-  assert.equal((failed as { code?: string }).code, 'verify-shards');
+  assert.equal((failed as { code?: string }).code, 'verify-tiers');
   assert.deepEqual((failed as { files?: string[] }).files, ['hub/src/new.test.ts', 'hub/test/new.test.ts']);
-  assert.ok(failed.error!.includes('"hub/src/new.test.ts": "machine",'));
-  assert.ok(failed.error!.includes('"hub/test/new.test.ts": "machine",'));
+  assert.ok(failed.error!.includes('"hub/src/new.test.ts": "T3",'));
+  assert.ok(failed.error!.includes('"hub/test/new.test.ts": "T3",'));
   const status = await f.ui.request({ type: 'hub.status' });
   assert.deepEqual((status.value as HubStatus).suites, (before.value as HubStatus).suites, 'refusal creates no durable suite');
   const queue = await f.ui.request({ type: 'suite.queue' });
   assert.deepEqual((queue.value as VerificationQueue).waiters, []);
   const cli = await clandWithEnv(f.root, f.env, 'verify', 'all', '--report', f.topic, '--to', 'rev', '--json');
   assert.notEqual(cli.code, 0);
-  assert.match(cli.stderr, /verify-shards.*unclassified hub tests/s);
+  assert.match(cli.stderr, /verify-tiers.*unclassified tests/s);
   assert.equal((await f.results()).length, 0, 'refusal publishes no suite result');
-  await writeFile(join(f.root, 'hub/test/shards.json'), JSON.stringify({ version: 1, tests: {
-    'hub/src/new.test.ts': 'free', 'hub/test/new.test.ts': 'free',
+  // Admission table: reuse the same request fixture for the refusal family.
+  const manifest = join(f.root, 'hub/test/tiers.json');
+  for (const [tests, message, files] of [
+    [{ 'hub/src/new.test.ts': 'T3', 'hub/test/new.test.ts': 'T3', 'hub/test/zz.test.ts': 'T3' }, /missing test/, ['hub/test/zz.test.ts']],
+    [{ 'hub/src/new.test.ts': 'T0', 'hub/test/new.test.ts': 'T3' }, /invalid tier/, ['hub/src/new.test.ts']],
+    [{ 'hub/src/new.test.ts': { tier: 'T3', scenario: '' }, 'hub/test/new.test.ts': 'T3' }, /invalid tier/, ['hub/src/new.test.ts']],
+    [{ 'hub/test/new.test.ts': 'T3', 'hub/src/new.test.ts': 'T3' }, /not sorted by path/, ['hub/src/new.test.ts']],
+  ] as const) {
+    // Deliberately bypass the sorted writer to plant malformed input.
+    await writeFile(manifest, JSON.stringify({ version: 1, tests }));
+    const refusal = await f.ui.request({ type: 'suite.start', mode: 'all', cwd: f.root, report: f.topic, to: ['rev', 'impl'] });
+    assert.equal(refusal.ok, false);
+    assert.equal((refusal as { code?: string }).code, 'verify-tiers');
+    assert.match(refusal.error!, message);
+    assert.deepEqual((refusal as { files?: string[] }).files, [...files]);
+    assert.deepEqual(((await f.ui.request({ type: 'hub.status' })).value as HubStatus).suites, (before.value as HubStatus).suites);
+    assert.deepEqual(((await f.ui.request({ type: 'suite.queue' })).value as VerificationQueue).waiters, []);
+  }
+  await writeFile(join(f.root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: {
+    'hub/src/new.test.ts': 'T1', 'hub/test/new.test.ts': 'T1',
   } }));
   const resource = await f.ui.request({ type: 'suite.start', mode: 'all', cwd: f.root, report: f.topic, to: ['rev', 'impl'] });
   assert.equal(resource.ok, false);
-  assert.match(resource.error!, /free hub test touches machine resources/);
-  await writeFile(join(f.root, 'hub/test/shards.json'), JSON.stringify({ version: 1, tests: {
-    'hub/src/new.test.ts': 'machine', 'hub/test/new.test.ts': 'machine',
+  assert.match(resource.error!, /T1 test touches machine resources/);
+  await writeFile(join(f.root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: {
+    'hub/src/new.test.ts': 'T3', 'hub/test/new.test.ts': 'T3',
   } }));
   const job = await f.launch();
   assert.equal(job.pid, null);
@@ -122,6 +141,23 @@ test('verify refuses every unclassified hub test before reserving a queue slot, 
   await rm(join(f.root, 'suite.lock'), { recursive: true });
   const result = await eventually('classified suite passed', async () => (await f.results())[0]);
   assert.match(result.text, /all exit 0/);
+  // Transition C4: an immutable pre-migration head, including an unsorted legacy map.
+  // Neovim was not classified in that format and must remain admissible.
+  await rm(manifest);
+  await mkdir(join(f.root, 'nvim/test'), { recursive: true });
+  await writeFile(join(f.root, 'nvim/test/legacy.test.ts'), '');
+  await writeFile(join(f.root, 'hub/test/shards.json'), JSON.stringify({ version: 1, tests: {
+    'hub/test/new.test.ts': 'machine', 'hub/src/new.test.ts': 'free',
+  } }));
+  await cacheRepository(f);
+  assert.deepEqual(await packageShards(f.root, 'full', undefined, undefined, { workers: 3 }), [
+    { name: 'hub free', resource: 'free', workers: 1, targets: ['hub/src/new.test.ts'] },
+    { name: 'hub machine', resource: 'machine', workers: 3, targets: ['hub/test/new.test.ts'] },
+    { name: 'Neovim', resource: 'machine', workers: 3, targets: ['nvim/test/**/*.test.ts'] },
+  ]);
+  const legacy = await f.launch();
+  const legacyResult = await eventually('legacy-only candidate result', async () => (await f.results()).find(message => message.id === `suite:${legacy.id}`));
+  assert.match(legacyResult.text, /exit 0/);
 });
 
 for (const capture of ['before change', 'after change'] as const) test(`verify classifies the submitted head without a queue slot when HEAD is captured ${capture}`, async t => {
@@ -146,7 +182,7 @@ if (args.join(' ') === 'rev-parse HEAD' && existsSync('hold-head')) {
   await git('config', 'user.name', 'Shard head test'); await git('config', 'user.email', 'shards@example.invalid');
   await writeFile(join(f.root, '.gitignore'), '.cland/\nsuite.lock*\nhold-head\nhead-held\nrelease-head\n');
   await mkdir(join(f.root, 'hub/test'), { recursive: true });
-  await writeFile(join(f.root, 'hub/test/shards.json'), JSON.stringify({ version: 1, tests: {} }));
+  await writeFile(join(f.root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: {} }));
   await git('add', '.'); await git('commit', '-m', 'Classified baseline');
   await mkdir(join(f.root, 'suite.lock'));
   await writeFile(join(f.root, 'hold-head'), 'hold');
@@ -155,11 +191,11 @@ if (args.join(' ') === 'rev-parse HEAD' && existsSync('hold-head')) {
   await writeFile(join(f.root, 'hub/test/advanced.test.ts'), '// unclassified new head\n');
   await git('add', 'hub'); await git('commit', '-m', 'Advance to unclassified head');
   // The worktree is now classified, so immutable-head lint / the final HEAD fence must decide.
-  await writeFile(join(f.root, 'hub/test/shards.json'), JSON.stringify({ version: 1, tests: { 'hub/test/advanced.test.ts': 'free' } }));
+  await writeFile(join(f.root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: { 'hub/test/advanced.test.ts': 'T1' } }));
   await writeFile(join(f.root, 'release-head'), 'release');
   const failed = await pending;
   assert.equal(failed.ok, false, JSON.stringify(failed));
-  assert.match(failed.error!, capture === 'before change' ? /head changed during submission/ : /verify-shards.*advanced\.test\.ts/s);
+  assert.match(failed.error!, capture === 'before change' ? /head changed during submission/ : /verify-tiers.*advanced\.test\.ts/s);
   const status = await f.ui.request({ type: 'hub.status' });
   assert.deepEqual((status.value as HubStatus).suites, [], 'head change cannot reserve a suite');
   const queue = await f.ui.request({ type: 'suite.queue' });

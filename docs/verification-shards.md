@@ -70,7 +70,7 @@ T-218 programme.
 
 ## Reproduce
 
-Run `npm run test:shards`. From the manifest, select only `free` files. On the
+Run `npm run test:tiers`. From `hub/test/tiers.json`, select only T1 files (the `free` resource phase). On the
 same dev build, run two Node test invocations with `--test-concurrency=1`, one
 TMPDIR per lane, first sequentially and then as three concurrent pairs. Record
 exit codes, test counts, wall time, queue wait (zero for direct probes), and load.

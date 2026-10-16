@@ -1,3 +1,4 @@
+import { serializeTierManifest } from '../src/suite-shards.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { balanceCloseShards } from '../src/suite-shards.ts';
@@ -42,7 +43,7 @@ test('explicit shard files retain resource classes and include Neovim only on it
   t.after(() => rm(root, { recursive: true, force: true }));
   await mkdir(join(root, 'hub/test'), { recursive: true });
   for (const file of ['free', 'machine', 'other']) await writeFile(join(root, `hub/test/${file}.test.ts`), '');
-  await writeFile(join(root, 'hub/test/shards.json'), JSON.stringify({ version: 1, tests: { 'hub/test/free.test.ts': 'free', 'hub/test/machine.test.ts': 'machine', 'hub/test/other.test.ts': 'machine' } }));
+  await writeFile(join(root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: { 'hub/test/free.test.ts': 'T1', 'hub/test/machine.test.ts': 'T3', 'hub/test/other.test.ts': 'T3' } }));
   const files = ['hub/test/free.test.ts', 'hub/test/machine.test.ts'];
   assert.deepEqual(await packageShards(root, 'full', { files, nvim: false }), [
     { name: 'hub free', targets: ['hub/test/free.test.ts'], resource: 'free', workers: 1 },
