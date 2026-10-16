@@ -3,7 +3,7 @@ id: T-633
 kind: task
 title: cland config set writes one value of config.toml and refuses what the hub cannot read
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 7
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-390
 branch: t/T-633-cland-config-set-writes-one-value-of
 created: 2026-10-16T16:04:12.209Z
-updated: 2026-10-16T17:38:14.666Z
+updated: 2026-10-16T17:38:47.841Z
 ---
 
 ## Summary

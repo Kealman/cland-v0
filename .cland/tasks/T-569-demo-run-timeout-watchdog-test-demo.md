@@ -18,7 +18,7 @@ blocked_by: []
 topic: topic-402
 branch: t/T-569-demo-run-timeout-watchdog-test-demo
 created: 2026-10-16T04:18:06.312Z
-updated: 2026-10-16T17:31:38.466Z
+updated: 2026-10-16T17:38:24.723Z
 ---
 
 ## Summary
@@ -78,3 +78,7 @@ Standards 0 findings; Spec 0 findings.
 Review artifact A-4072.
 
 Criteria: C1 verified.
+
+### impl-569 · 2026-10-16T17:38:24.723Z
+
+C2 Mac evidence: A-4080 contains 5/5 serial whole-file `node --test hub/test/demo.test.ts` passes at reviewed/pushed head 8c565a38ffbe73a353ea4bd95986fd6b723facdf (40/40 tests total). Admission load values were 14.76, 14.26, 12.41, 11.78 and 14.48; runs waited rather than starting at >=15. Whole-file durations: 43.42s, 48.52s, 48.91s, 57.65s, 53.91s. Final npm run typecheck and git diff --check passed; worktree clean. Source clear rev-20261016-569-source / A-4072. Exact-head droplet verify 43274e37-8da8-4b15-97f6-1643f5feaee6 is pending; C2 remains incomplete until its Linux receipt.

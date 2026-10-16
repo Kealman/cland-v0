@@ -3,7 +3,7 @@ id: T-608
 kind: task
 title: Rule titles are cut at 80 characters silently and rule.edit cannot change a title
 state: open
-status: review
+status: ready
 size: XS
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-392
 branch: t/T-608-rule-titles-are-cut-at-80-characters
 created: 2026-10-16T12:50:58.048Z
-updated: 2026-10-16T17:38:15.387Z
+updated: 2026-10-16T17:38:46.919Z
 ---
 
 ## Summary
@@ -30,8 +30,10 @@ Either the title limit is announced in the tool's description and the add result
 - [x] C1. rule.add and cland rule add keep the whole title, or refuse a title over the documented limit with the limit named, never truncating silently, proved by a test.
   - done: impl-608 · 2026-10-16T16:10:47.296Z
   - verified: rev-30 [reviewer] · run rev-20261016-608-source · 2026-10-16T16:12:52.193Z · commit 1b2effa5a473e57081ad2eacdddce8f44380223c
-- [ ] C2. rule.edit and cland rule edit can change a rule's title, and the change reaches running sessions as a rule event, proved by a test.
-  - failed: rev-30 [reviewer] · 2026-10-16T16:59:01.577Z · note Final task gate red on three external failures; own title-edit evidence green, Neovim not reached. Classification and gate direction pending; A-4042.
+  - verified: rev-30 [reviewer] · run rev-20261016-608-final · 2026-10-16T17:38:44.238Z · commit 1b2effa5a473e57081ad2eacdddce8f44380223c
+- [x] C2. rule.edit and cland rule edit can change a rule's title, and the change reaches running sessions as a rule event, proved by a test.
+  - done: impl-608 · 2026-10-16T17:38:18.303Z
+  - verified: rev-30 [reviewer] · run rev-20261016-608-final · 2026-10-16T17:38:44.238Z · commit 1b2effa5a473e57081ad2eacdddce8f44380223c
 
 ## Comments
 
@@ -108,3 +110,31 @@ These test files are outside this change; no historical causality or known-defec
 Artifact A-4042.
 
 Criteria: C2 failed (Final task gate red on three external failures; own title-edit evidence green, Neovim not reached. Classification and gate direction pending; A-4042.).
+
+### impl-608 · 2026-10-16T17:38:22.582Z
+
+Coordinator-authorized unchanged-head explicit-droplet retry e741fa23 / A-4079 is green at 1b2effa5: full Linux c-8, exit 0, 2334 passed, 0 failed, 8 platform skips; hub and Neovim phases completed. C2 claimant done restored and final evidence review requested. Reviewed source/head remain unchanged. Receipt lifetime/cost unknown.
+
+### rev-30 · 2026-10-16T17:38:44.239Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-608-final
+commit: 1b2effa5a473e57081ad2eacdddce8f44380223c
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-608 final evidence clear at unchanged source-reviewed 1b2effa5a473e57081ad2eacdddce8f44380223c. Source A-3982 remains applicable; no findings.
+
+Independently inspected A-4079, Coordinator-authorized retry e741fa23-2e93-4833-b097-e1f88705c271. Header names the exact head. Host/remote typechecks and both full hub and full Neovim phases complete: hub free 38/38; hub machine 1906 pass, zero fail, five prerequisite skips; Neovim 390 pass, zero fail, three macOS sandbox skips. Aggregate 2342 tests, 2334 pass, zero fail, eight skips, Finished exit 0. No hard budget/load-gate failure.
+
+C1/C2: all eight rule-sessions cases pass. The new real tool/CLI long-title and title-only-edit regression passes ordinarily in 2.086 s and 5/5 fresh repetitions (A-4079:2601). It retains complete titles, validates malformed writes atomically, checks unchanged rule text/reason and scope, and requires title-change notices for running sessions. The extended fake Implementer next-turn proof passes in 8.368 s with its title line, no-steer, scope/retirement and event-row assertions retained. This supplies C2's running-session delivery execution proof alongside source C1.
+
+The earlier local receipt A-4041 remains an honestly recorded failed run; this successful same-head droplet receipt resolves its outstanding final gate and reaches the previously missing Neovim phase. Claimant reports C2 done restored in request 6b9911d7; no head change or dev merge.
+
+Linux x64 c-8 lon1, Node 24.21.0, Neovim 0.12.5, four workers; suite 1408.65 s, peak load 15.31. Droplet lifetime/cost are unknown in the receipt, not inferred. Eight skips concern platform/binary prerequisites, not owned title cases. Both criteria verified; no per-item QA requirement.
+Review artifact A-4082.
+
+Criteria: C1 verified, C2 verified.
