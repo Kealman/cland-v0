@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-337
 branch: t/T-533-opencode-follows-2-x-with-a-check-doctor
 created: 2026-10-15T20:59:18.770Z
-updated: 2026-10-16T00:01:51.713Z
+updated: 2026-10-16T01:04:34.619Z
 ---
 
 ## Summary

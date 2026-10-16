@@ -3,8 +3,9 @@ id: T-551
 kind: task
 title: Demo recorder rejects the cases' capture names and hides the error behind a bare catch
 state: open
-status: in progress
+status: review
 size: S
+criterion_seq: 3
 labels:
   - v0.1.3
   - qa-found
@@ -15,7 +16,7 @@ regression_of: T-459
 topic: topic-347
 branch: t/T-551-demo-recorder-rejects-the-cases-capture
 created: 2026-10-16T00:31:47.114Z
-updated: 2026-10-16T00:37:54.203Z
+updated: 2026-10-16T00:56:32.267Z
 ---
 
 ## Summary
@@ -25,12 +26,50 @@ Found by qa-27 in E-423's Definition-of-done demo (run qa-2026-10-16-27-15, case
 Separately, the delivered `hub/bin` on the droplet has no executable named `cland` (only `cland.ts`), so `command -v cland` fails there, although the qa skill says the remote PATH includes the delivered hub/bin for `cland --headless --qa`.
 
 ## Acceptance criteria
-- [ ] C1. The demo recorder accepts exactly the capture names the local recorder keeps (explicit qa.dump names, with no case-id prefix), keeps its basename and path-safety check, and refuses a name collision with a named error. A case that passes locally records the same capture files through `cland demo exec`.
-- [ ] C2. Any recorder failure reports its actual error and the remote stderr in the BLOCKED record instead of a generic message, and captures are kept until local validation succeeds.
-- [ ] C3. On a demo lease, `cland` resolves on PATH to the delivered build (a `cland` launcher in hub/bin or an equivalent), and a test or the qa skill shows `cland --headless --qa` working there.
+- [x] C1. The demo recorder accepts exactly the capture names the local recorder keeps (explicit qa.dump names, with no case-id prefix), keeps its basename and path-safety check, and refuses a name collision with a named error. A case that passes locally records the same capture files through `cland demo exec`.
+  - done: impl-551 · 2026-10-16T00:53:22.469Z
+  - verified: rev-31 [reviewer] · run rev-20261016-551-source · 2026-10-16T00:56:32.267Z · commit b2565458f289f047042b944636e41d2af9fcec28
+- [x] C2. Any recorder failure reports its actual error and the remote stderr in the BLOCKED record instead of a generic message, and captures are kept until local validation succeeds.
+  - done: impl-551 · 2026-10-16T00:53:23.868Z
+- [x] C3. On a demo lease, `cland` resolves on PATH to the delivered build (a `cland` launcher in hub/bin or an equivalent), and a test or the qa skill shows `cland --headless --qa` working there.
+  - done: impl-551 · 2026-10-16T00:53:25.022Z
+  - verified: rev-31 [reviewer] · run rev-20261016-551-source · 2026-10-16T00:56:32.267Z · commit b2565458f289f047042b944636e41d2af9fcec28
 
 ## Comments
 
 ### impl-551 · 2026-10-16T00:35:29.648Z
 
 Read task and E-423 Coordinator decisions. Confirmed red at existing CLI/demo seam: node --test --test-name-pattern='the demo recorder runs a headless case remotely' hub/test/demo.test.ts. Changing fixture capture to rulebook-rows.screen.txt reproduces exit 2 BLOCKED, generic error, evidence []. Minimal naming fix pending green Mac window (load gate currently >15). Proposed rule and C1 filename ambiguity sent to item lead in topic-347.
+
+### impl-551 · 2026-10-16T00:55:03.500Z
+
+Implemented and pushed b2565458f289f047042b944636e41d2af9fcec28. C1 follows Coordinator clarification: exact basenames, no prefix; collisions refused with named error. C2 saves message/stderr/remote_output to runs.jsonl and acknowledges deletion only after exclusive local writes/read-back; C3 adds executable hub/bin/cland. Targeted demo file 8/8 green (A-3512), new test 5.567 s with duration allowance. Root/standalone TypeScript and shell syntax checks pass. Requested source review; an additional untampered skills-qa compatibility file awaits Mac admission. No verify before clear source verdict.
+
+### rev-31 · 2026-10-16T00:56:32.267Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261016-551-source
+commit: b2565458f289f047042b944636e41d2af9fcec28
+scope: full
+
+Source review clear at b2565458f289f047042b944636e41d2af9fcec28, run rev-20261016-551-source, scope full. Reviewed b2565458^...b2565458 (five files). No high, medium or low findings.
+
+## Standards
+No findings against AGENTS.md, docs/agents/tests.md, lifecycle rules or smell baseline. Remote evidence uses realpath containment; local names remain basename-only and exclusive writes refuse overwriting/collisions. Sources are retained through copy/read-back validation. The existing demo exec seam and fake-machine fixture test the behavior without new hub hooks. New measured 5.567 s failure-recovery case has a reasoned duration allowance. Diff check passes. Both axes reviewed here because the role disables delegation.
+
+## Spec
+C1 verified. qa-demo-record.ts drops only the case-prefix requirement and preserves exact capture basenames, as Coordinator 8a19927a-b155-4705-9398-f4524aeb0bfb requires. Empty/dot/parent/path names are rejected; duplicate basenames get a named error, existing destinations fail with path-bearing EEXIST. Regression collects lowercase rulebook-rows.screen.txt plus the case-named file with exact names/content.
+
+C2 source reviewed: remote spawn/parsing/collection errors are caught with their actual message, stderr and recovery directory. The local catch emits BLOCKED with message/stderr/remote_output; qa-record.sh copies those fields into the persisted runs.jsonl object. Remote removal is a separate acknowledgement after every exclusive local write is read back and compared. Errors before acknowledgement leave the remote source directory available; a successful flow verifies removal. Local-copy EEXIST, malformed JSON and duplicate-name regressions inspect both printed and persisted diagnostics, recover retained remote bytes, then clean their sources. C2 remains unverified pending the same-head gate.
+
+C3 verified. hub/bin/cland has Git mode 100755 and forwards argv to its delivered sibling cland.ts. Demos.exec already prepends the delivered hub/bin to PATH; the real demo test checks command -v resolves there and invokes cland --headless --qa successfully, rather than invoking cland.ts directly.
+
+A-3512 checked: whole demo.test.ts 8/8 pass, no skips/cancellations, 31.404 s; changed success case4.461 s and failure-recovery5.567 s. Initial C1 and diagnostic-specific C2 red evidence is recorded by the lead (A-3500); typecheck, standalone helper TypeScript, sh -n and diff checks green reported. Untouched skills-qa compatibility evidence is pending and can be supplied alongside the gate; it does not change this source verdict.
+
+No source changes beyond the requested scope; no Reviewer edits/tests or real remote actions. Source clear permits the requested no-flag same-head verification subject to current Coordinator admission instructions. No per-item QA criteria.
+Standards: 0 findings. Spec: 0 findings.
+Review artifact A-3515: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3515-t-551-source-clear-at-b2565458.md
+
+Criteria: C1 verified, C3 verified.
