@@ -17,7 +17,7 @@ regression_of: T-480
 topic: topic-348
 branch: t/T-548-tracker-calls-take-20-35-s-under-a-16
 created: 2026-10-15T23:50:03.254Z
-updated: 2026-10-16T00:54:08.263Z
+updated: 2026-10-16T01:12:34.795Z
 ---
 
 ## Summary
@@ -99,3 +99,7 @@ Standards: 0 findings. Spec: 0 findings.
 Review artifact A-3514: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3514-t-548-source-clear-at-e15930b2-indexed-subagent-reads.md
 
 Criteria: C1 verified.
+
+### impl-548 · 2026-10-16T01:12:34.795Z
+
+Scope qualification A-3537: the CPU profiles prove repeated task.view journal scans and their removal, but do not measure ProjectSessions archive sweeps, accumulated offline-recipient fan-out or workbench journal.events polling. The Coordinator's 01:11Z evidence of residual CPU despite suppressed task.view was reported separately as M/Bugs for filing; no hotspot attribution claimed from this narrower fixture. Reviewed source remains unchanged at e15930b2. Verify8efd2c7a has started via hub-authorized local fallback because remote budget6/6 is full.

@@ -3,7 +3,7 @@ id: T-547
 kind: task
 title: The typecheck script's relative path to typescript7 fails in task worktrees without their own node_modules
 state: open
-status: review
+status: ready
 size: XS
 criterion_seq: 2
 labels:
@@ -16,7 +16,7 @@ regression_of: T-427
 topic: topic-341
 branch: t/T-547-the-typecheck-script-s-relative-path-to
 created: 2026-10-15T23:01:44.244Z
-updated: 2026-10-15T23:57:35.386Z
+updated: 2026-10-16T01:09:28.210Z
 ---
 
 ## Summary
@@ -27,8 +27,10 @@ T-427 (merged 21:28Z) set the hub's and Neovim's typecheck scripts to `node ../n
   - verified: rev-30 [reviewer] · run rev-20261015-547-source · 2026-10-15T23:31:46.544Z · commit 5d18c219cbfafbacd1f53b6abcf4f6720270c38f
   - done: impl-547 · 2026-10-15T23:43:35.977Z
   - verified: rev-30 [reviewer] · run rev-20261015-547-shared-544-delta · 2026-10-15T23:57:35.386Z · commit 6381a9d92358e093521c35174c16b113e7ef2304
+  - verified: rev-30 [reviewer] · run rev-20261016-547-final · 2026-10-16T01:09:18.659Z · commit 6381a9d92358e093521c35174c16b113e7ef2304
 - [x] C2. A test runs the typecheck script from a git worktree that has no `node_modules` and sees it exit 0, and T-427's parity receipt still holds.
   - done: impl-547 · 2026-10-15T23:43:55.351Z
+  - verified: rev-30 [reviewer] · run rev-20261016-547-final · 2026-10-16T01:09:18.660Z · commit 6381a9d92358e093521c35174c16b113e7ef2304
 
 ## Comments
 
@@ -95,3 +97,30 @@ Only C1 is reverified by this source delta. This is not the final task evidence 
 Review artifact A-3478 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3478-t-547-shared-t-544-delta-source-clear-at-6381a9d9.md.
 
 Criteria: C1 verified.
+
+### rev-30 · 2026-10-16T01:09:18.660Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-547-final
+commit: 6381a9d92358e093521c35174c16b113e7ef2304
+scope: evidence
+
+Final evidence review T-547 clear at unchanged source/delta-reviewed 6381a9d92358e093521c35174c16b113e7ef2304. Standards: no source findings. Spec: C1/C2 established. Final gate uses E-482's recorded human two-Linux-receipt rule, not an assertion that either receipt is fully green.
+
+A-3475 / 3727fae7 at5d18c219 is actual Linux c-8 lon1, workers4:1849 pass/1fail/3 platform skips, exit1. Own actual-worktree regression and typecheck pass; sole outside red is exact T-544 session-model usage-row ordering. A-3529 / 9e1bc164 at6381a9d9 is actual Linux c-8 lon1,workers4:1850 pass/zero ordinary failures/3 skips, exit1 solely on load gate0/5 for suite-runner's timestamp-named older-version-holder case. Own worktree regression passes11.267s at log4141/6166 and its five Linux load-gate repetitions pass5/5 at4447. Typecheck passes. Suite2587.53s,extra load-gate wall1275.93s,peak12.26,lifetime2672s/$0.1856.
+
+T-556 is independently confirmed in the tracker file as Bugs/S, regression of T-471 under E-482. Source inspection corroborates exact signature: suite-runner.test.ts:342–343 embeds new Date().toISOString() in its name, while load-gate.ts:58/66 uses an escaped exact test-name pattern and:84 requires that same name from a new process. The zero-repeat-match defect is outside T-547's diff. This is a classified known gate failure, not an ordinary assertion failure and not a duplicate ticket. First receipt's T-544 case now passes. Different known failure sets satisfy the standing rule.
+
+Independently confirmed current branch tip equals reviewed SHA. Entire first-to-second-head diff is the exact Coordinator-posted T-544 assertion sort08f09c7c, source-cleared A-3478; no compiler, fixture or other head change. E-482 explicitly counts shared-fix-only movement as same head. No same-test-twice exception or third run is invoked.
+
+C1 reverified from A-3458/A-3478 source: shared import.meta.resolve launcher locates pinned typescript7 in root, dependency-free linked worktree and local dependency layouts; TypeScript5.9 API imports stay separate. C2 verified from A-3450 five Mac whole-file passes, both actual Linux own-case passes, second Linux5/5 loaded proof, and A-3451 complete compiler parity receipt: clean full hub/Neovim projects both exit0; planted strict and .ts-import diagnostics match as previously reviewed. Shared sort changes none of this source. This is not a compiler-speed claim.
+
+Both outer receipts stopped before Neovim due their outside hub/gate reds; neither supplies a Neovim runtime phase. No nvim source diff is involved in T-547, and its required cross-project compiler coverage is independently established by the actual root typecheck/worktree regression and parity receipt. Final acceptance follows the E-482 two-known-outside-failure gate; no full-suite green claim or fabricated phase receipt. Earlier source proof and exact parity are retained. No per-item QA.
+
+Evidence: A-3475 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3475-suite-3727fae7-073b-4b11-8878-69dface94227-auto-at-5d18c21.log; A-3529 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3529-suite-9e1bc164-0a74-4a24-9616-e28f488bb324-auto-at-6381a9d.log. No Reviewer tests, compiler/binary execution, edits, installs, merges or provider actions.
+
+Review artifact A-3532 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3532-t-547-final-gate-clear-at-6381a9d9-two-known-outside-failure-linux-receipts.md.
+
+Criteria: C1 verified, C2 verified.

@@ -3,7 +3,7 @@ id: T-477
 kind: task
 title: Verdict records carry findings with severity, and lows are recorded
 state: open
-status: review
+status: in progress
 size: M
 criterion_seq: 3
 labels:
@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-338
 branch: t/T-477-verdict-records-carry-findings-with
 created: 2026-10-15T09:13:19.683Z
-updated: 2026-10-16T00:01:58.464Z
+updated: 2026-10-16T01:10:34.882Z
 ---
 
 ## Summary
@@ -106,3 +106,25 @@ C1 and C3 verified at corrected head. C2's source defect is fixed, but final cri
 Review artifact A-3490 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3490-t-477-corrected-source-clear-at-e2ec7b2c-atomic-blocking-finding-refusal.md.
 
 Criteria: C1 verified, C3 verified.
+
+### rev-30 · 2026-10-16T01:10:34.882Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261016-477-linux-first
+commit: e2ec7b2c9002b35d31b33b0551444edd0bc8b527
+scope: evidence
+
+First Linux evidence review T-477 not clear at unchanged source-reviewed e2ec7b2c9002b35d31b33b0551444edd0bc8b527. A-3533 / e3fddbaf-a2ff-4d8f-98b2-7ecc21a359ce is actual Linux c-8 lon1, workers4, full mode, exit1:1851 pass/1 ordinary fail/3 platform skips, zero cancellations. Suite2659.68s,load-gate extra1311.47s,peak11.67,lifetime2776s/$0.1928. Hub and load-gate work completed; full Neovim phase was not reached.
+
+Task evidence is green: verdict-findings3/3 at4204–4206 (codec22.9ms, CLI/MCP2.171s, malformed/restart/provenance1.730s); all three new cases pass each load gate5/5 at4490/4492/4494. Source correction A-3490 still stands; no new task-source defect or criterion failure is inferred.
+
+Outside failures:
+- Known T-544: session-model.test.ts:108 exact reversed unknown-child/known-child usage rows, raw log4295–4330.
+- Known T-556: suite-runner.test.ts dynamic timestamp test identity, load gate0/5 at4424. Tracker file and source confirmed in the T-547 review chain.
+- Unclassified gate blocker, Bugs/S: suite-close.test.ts, 'integrated remote close collects each map before release and publishes their function union', load gate4/5 at4402. The durable log prints no failed-repetition assertion or detailed receipt, so this cannot yet be assigned to a known underlying issue merely from the test name. Implementation did not touch that test or its fixture path. Request lead classification/deduplication before a qualifying second-receipt plan.
+
+This is the first current-head Linux receipt, not a green full verify. C1/C3 source marks stand and C2 final gate remains pending. Do not retry or move head merely to seek green without lead direction; a Coordinator-posted shared pick needs delta source review. No per-item QA. No Reviewer tests, compiler/binary execution, edits, installs, signals, merges or provider actions.
+
+Review artifact A-3535 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3535-t-477-first-linux-gate-not-clear-findings-green-outside-load-failure-unclassifie.md.

@@ -3,7 +3,7 @@ id: T-469
 kind: task
 title: "Every stage-close cover carries a Linux proof: the sharded droplet run plus the Mac run, both required by the stage gate"
 state: open
-status: review
+status: in progress
 size: S
 criterion_seq: 3
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-316
 branch: t/T-469-every-stage-close-cover-carries-a-linux
 created: 2026-10-15T09:13:16.034Z
-updated: 2026-10-15T23:57:50.682Z
+updated: 2026-10-16T01:13:29.907Z
 ---
 
 ## Summary
@@ -330,3 +330,24 @@ Only C3 is reverified by this source delta. This is not the final task evidence 
 Review artifact A-3480 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3480-t-469-shared-t-544-delta-source-clear-at-5d9fe603.md.
 
 Criteria: C3 verified.
+
+### rev-30 · 2026-10-16T01:13:29.907Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261016-469-linux-second
+commit: 5d9fe60315d42f951a571575a3dee93e04ec04e1
+scope: evidence
+
+Post-shared-fix evidence review T-469 not clear at unchanged source/delta-reviewed 5d9fe60315d42f951a571575a3dee93e04ec04e1. A-3536 / c7b31aef-8976-4808-bf0e-f864286ca7d9 is actual Linux c-8 lon1,workers4,full mode,exit1:1852 pass/1 ordinary fail/3 platform skips,zero cancellations. Suite2883.59s,extra load-gate wall1492.13s,peak17.15,lifetime2995s/$0.2080. Full Neovim phase was not reached.
+
+Medium runtime gate blocker — hub/test/planned-stage.test.ts:285: landing consumed11071 tracker queries, exceeding the unchanged '<10000' assertion with64 unrelated items and8 plans (raw log4298). This performance assertion was already a T-469 regression surface in the earlier review chain. Current failure therefore needs diagnosis or explicit lead classification; it is not assumed to be a known outside flake merely because other own stage cases pass. Do not increase the query budget or start an unchanged retry as a substitute for that diagnosis. The test ends at the first landing assertion, so its later ten-close budget is not established by this receipt. Independent task-completion diagnostic remains46 queries/zero full lists/zero item-file reads.
+
+Other gate reds: known T-556 dynamic timestamp suite-runner identity0/5; suite-close map-union4/5 with no printed failing repetition detail, matching the unclassified outside signature in T-477 A-3533. That shared outside signature needs lead classification/deduplication (Bugs/S), not a guessed underlying cause.
+
+Positive evidence retained: own same-tree platform pairing/history stage case and both failed/unreported newest-attempt supersession cases pass, each additionally load5/5 (log4460/4462/4464). Restored-cover startup case load5/5 also passes. The exact shared T-544 sort now passes. A-3480 source delta and C3 documentation verification stand. No new source edits or unsafe provider action inferred from the receipt.
+
+C1/C2 final evidence marks remain pending acceptable current-head gate evidence and required mapped phase completion. No criterion failure is assigned solely from the query test because the explicit criteria concern platform pairing, stage closure and docs; the performance regression is still a review blocker. E-482's two-known-outside-failure shortcut cannot be applied while the query regression and map-union classification are unresolved. A-3471 remains prior first post-conflict red; older A-3427 green is historical. Lead must direct correction/shared pick or other gate treatment; changed source requires delta review before verify. No per-item QA. No task.view scan, Reviewer tests, binaries/compiler execution, edits, installs, signals, merges or provider actions.
+
+Review artifact A-3538 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3538-t-469-linux-evidence-not-clear-landing-exceeds-unchanged-query-budget.md.

@@ -3,7 +3,7 @@ id: T-533
 kind: task
 title: "OpenCode follows 2.x with a check: doctor messages per version and a release-time range check"
 state: open
-status: review
+status: in progress
 size: M
 criterion_seq: 3
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-337
 branch: t/T-533-opencode-follows-2-x-with-a-check-doctor
 created: 2026-10-15T20:59:18.770Z
-updated: 2026-10-16T01:04:34.619Z
+updated: 2026-10-16T01:08:01.006Z
 ---
 
 ## Summary
@@ -40,9 +40,8 @@ Code: `hub/src/doctor/toolchain.ts`, `hub/src/doctor/ranges.ts`, the research pr
 
 ## Acceptance criteria
 
-- [x] C1. With fake binaries reporting 1.19.0, a 2.x newer than the range and 3.0.0, and with none, `cland doctor` prints the `--major` upgrade, the newer-than-tested note, the refusal naming the range and the v2 installer.
-  - done: impl-533 · 2026-10-15T23:42:58.316Z
-  - verified: rev-31 [reviewer] · run rev-20261016-533-source-2 · 2026-10-16T00:01:51.713Z · commit 77659eb0b7c8cae127883f3bdb6d100b2f378dd1
+- [ ] C1. With fake binaries reporting 1.19.0, a 2.x newer than the range and 3.0.0, and with none, `cland doctor` prints the `--major` upgrade, the newer-than-tested note, the refusal naming the range and the v2 installer.
+  - failed: rev-31 [reviewer] · 2026-10-16T01:08:01.006Z · note New doctor installer guidance breaks the mandatory provider-boundary source guard because its exact passive-literal exceptions were not updated.
 - [x] C2. The check script compares the newest 2.x OpenAPI document's operations and event names with the tested one, runs the fake-provider smoke, and on a pass moves the range's upper bound.
   - done: impl-533 · 2026-10-16T00:00:29.593Z
 - [x] C3. The check is not part of `npm test`, and the `release` skill (both copies) runs it before the dry run.
@@ -113,3 +112,18 @@ Standards: 0 findings. Spec: 0 findings.
 Review artifact A-3491: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3491-t-533-corrected-source-clear-at-77659eb0.md
 
 Criteria: C1 verified, C3 verified.
+
+### rev-31 · 2026-10-16T01:08:01.006Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261016-533-evidence-1
+commit: 77659eb0b7c8cae127883f3bdb6d100b2f378dd1
+scope: evidence
+
+Medium — hub/test/account-poller.test.ts:255 and hub/src/doctor/toolchain.ts:72,94: old exact passive-URL exception does not cover the new installer guidance; mandatory source guard fails at account-poller.test.ts:265. Update only the exact passive literals, preserving the boundary guard. Corrected-head source review is required before another verify.
+
+Same-head A-3523 / bbfee74e exited 1: 1859/1862 cases passing, hub stopped before Neovim. Checker cases and their load repetitions pass, but external suite-timeouts/territory-lock failures, dynamic-title load gate 0/5 and duration budgets also prevent a final clear gate. C1 failed; C2 remains pending; C3 source evidence unchanged. Full evidence and categorized asides: A-3531, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3531-t-533-evidence-not-clear-exact-passive-url-guard.md.
+
+Criteria: C1 failed (New doctor installer guidance breaks the mandatory provider-boundary source guard because its exact passive-literal exceptions were not updated.).

@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-14T16:43:13.486Z
-updated: 2026-10-16T00:35:13.541Z
+updated: 2026-10-16T01:14:22.399Z
 ---
 
 ## Summary
@@ -107,6 +107,7 @@ stages:
       - - T-311
       - - T-427
       - - T-548
+      - - T-559
   - name: verify queue hygiene
     qa:
       scope: none
