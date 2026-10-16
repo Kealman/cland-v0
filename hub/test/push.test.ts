@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, flushProjectLogs, clandWithEnv, connectUi, connectWsUi, spawnSpoke, startDaemon, startHub, tempProject, type CliResult } from './harness.ts';
+import { cland, flushProjectLogs, clandWithEnv, connectUi, connectWsUi, spawnSpoke, projectHub, startHub, tempProject, type CliResult } from './harness.ts';
 import { copyPreparedProject } from './prepared-project.ts';
 import { pushDev, type PushResult } from '../src/territory-push.ts';
 import { withTerritoryLockAsync } from '../src/territory.ts';
@@ -22,7 +22,7 @@ async function repository(t: TestContext) {
 }
 async function project(t: TestContext) {
   const repo = await repository(t);
-  const { discovery } = await startDaemon(t, repo.root);
+  const { discovery } = await projectHub(t, repo.root);
   const ui = await connectUi(t, discovery);
   return { ...repo, ui };
 }
@@ -314,7 +314,7 @@ if [ "$1" = rev-parse ] && [ "$PWD" = ${quote(territory)} ] && [ -f ${quote(mark
 fi
 exec ${quote(realGit)} "$@"
 `, { mode: 0o755 });
-  await startDaemon(t, root, { PATH: `${bin}:${process.env.PATH}` });
+  await projectHub(t, root, { PATH: `${bin}:${process.env.PATH}` });
   const result = await cland(root, 'push');
   assert.equal(result.code, 2, result.stderr);
   assert.match(result.stderr, /push-outcome-unknown/);

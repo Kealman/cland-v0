@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, connectUi, startDaemon, tempProject, type CliResult } from './harness.ts';
+import { cland, connectUi, projectHub, startDaemon, tempProject, type CliResult } from './harness.ts';
 import { preparedReleaseProject } from './prepared-project.ts';
 import type { ReleaseResult } from '../src/release.ts';
 
@@ -11,9 +11,9 @@ const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd,
 const ok = (r: CliResult) => { assert.equal(r.code, 0, r.stderr || r.stdout); return r; };
 const json = <T>(r: CliResult): T => JSON.parse(ok(r).stdout) as T;
 
-async function project(t: TestContext) {
+async function project(t: TestContext, serve: typeof projectHub | typeof startDaemon = projectHub) {
   const { root, github } = await preparedReleaseProject(t, 'cland-release-item-');
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await serve(t, root);
   const ui = await connectUi(t, discovery);
   const territory = join(root, '.cland', 'territory.git');
   return { root, github, territory, ui };
@@ -135,7 +135,7 @@ test('an item release publishes its notes and annotated tag, closes with a tag c
 });
 
 test('a published item release retries its pinned build after tracker closure fails and refuses a different or missing item', async t => {
-  const { root, github, territory } = await project(t);
+  const { root, github, territory } = await project(t, startDaemon);
   const item = await create(root, 'Current release', '--kind', 'release', '--version', '0.1.0');
   const other = await create(root, 'Different release', '--kind', 'release', '--version', '0.1.0');
   git(root, 'add', '.');

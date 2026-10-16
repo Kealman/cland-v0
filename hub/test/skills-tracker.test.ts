@@ -1,7 +1,7 @@
 // The skills on the own tracker (#37): the `docs/agents/issue-tracker.md` template cland projects get
 // (`skills/templates/docs/agents/`) prescribes `cland task` command sequences for what the skills do. These
 // tests run those sequences — `/to-tickets`, `/wayfinder`, `/triage` — as their own processes against a real
-// hub daemon in a temporary project, the frontier query with the very jq program the template prints, and
+// hub in a temporary project, the frontier query with the very jq program the template prints, and
 // assert on the item files and `task list --json`. No LLM runs; the template's text is the contract.
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -10,7 +10,7 @@ import { readdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse as parseYaml } from 'yaml';
-import { startDaemon, tempProject, type CliResult } from './harness.ts';
+import { projectHub, tempProject, type CliResult } from './harness.ts';
 
 const CLI_ENTRY = fileURLToPath(new URL('../bin/cland.ts', import.meta.url));
 const TEMPLATE = fileURLToPath(new URL('../../skills/templates/docs/agents/issue-tracker.md', import.meta.url));
@@ -103,7 +103,7 @@ async function itemFile(root: string, id: string): Promise<{ fm: Record<string, 
 
 async function project(t: TestContext): Promise<string> {
   const root = await tempProject(t, 'cland-skills-');
-  await startDaemon(t, root);
+  await projectHub(t, root);
   return root;
 }
 

@@ -6,7 +6,7 @@ import { realpathSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import { join } from 'node:path';
-import { cland, killDaemon, readDiscovery, spawnSpoke, startDaemon, tempProject } from '../../hub/test/harness.ts';
+import { cland, killDaemon, readDiscovery, projectHub, spawnSpoke, startDaemon, tempProject } from '../../hub/test/harness.ts';
 import { NVIM_DIR } from '../bin/nvim-path.ts';
 import { centreOf, clock, nvimOrSkip, startClient } from './harness.ts';
 
@@ -22,7 +22,7 @@ const notice = (s: string): boolean => /^   ▲ /m.test(centreOf(s));
 
 test('a message typed in the composer shows queued, reaches a coordinator with the topic, and turns delivered; the reply shows with sender and time', { skip }, async (t) => {
   const root = await tempProject(t);
-  await startDaemon(t, root);
+  await projectHub(t, root);
   const c = await startClient(t, bin, root);
   await c.waitScreen((s) => centreOf(s).includes('No messages in General yet.') && !notice(s), 'the empty General thread, connected');
 
@@ -52,7 +52,7 @@ test('a message typed in the composer shows queued, reaches a coordinator with t
 
 test('Shift+Enter inserts a newline in the composer; Enter sends both lines as one message', { skip }, async (t) => {
   const root = await tempProject(t);
-  await startDaemon(t, root);
+  await projectHub(t, root);
   const c = await startClient(t, bin, root);
   await c.waitScreen((s) => centreOf(s).includes('No messages in General yet.') && !notice(s), 'the empty General thread, connected');
   await c.input('first line<S-CR>second line');
@@ -93,7 +93,7 @@ test('the client spawns `cland hub serve --stdio` as its child when asked, and s
 
 test('nothing loads from the user configuration: every sourced script is the bundled runtime or nvim/', { skip }, async (t) => {
   const root = await tempProject(t);
-  await startDaemon(t, root);
+  await projectHub(t, root);
   const c = await startClient(t, bin, root);
   await c.waitScreen((s) => s.includes('General'), 'the client');
   const out = await c.rpc.request<{ output: string }>('nvim_exec2', 'scriptnames', { output: true });

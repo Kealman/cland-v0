@@ -1,4 +1,4 @@
-// Plan-driven statuses through the real daemon, CLI and spoke boundaries.
+// Plan-driven statuses through real hub, CLI and spoke boundaries.
 import test from 'node:test';
 import { execFileSync } from 'node:child_process';
 import { copyPreparedProject } from './prepared-project.ts';
@@ -14,9 +14,9 @@ import { Tracker, type ItemView } from '../src/tracker/tracker.ts';
 import { Store } from '../src/hub/store.ts';
 import { createSocketEdge } from '../src/hub/socket.ts';
 import type { EpicPlan } from '../src/tracker/plan.ts';
-import { cland, connectUi, connectWsUi, eventually, spawnSpoke, startDaemon, startHub, tempProject, TEST_SECRET } from './harness.ts';
+import { cland, connectUi, connectWsUi, eventually, projectHub, spawnSpoke, startDaemon, startHub, tempProject, TEST_SECRET } from './harness.ts';
 
-async function fixture(t: test.TestContext, approval = false, territory = false, gated = false) {
+async function fixture(t: test.TestContext, approval = false, territory = false, gated = false, serve: typeof projectHub | typeof startDaemon = projectHub) {
   const root = await tempProject(t);
   if (territory) await copyPreparedProject(root);
   if (approval) {
@@ -24,7 +24,7 @@ async function fixture(t: test.TestContext, approval = false, territory = false,
     await writeFile(join(root, '.cland/config.toml'), '[plan]\napproval = "human"\n');
   }
   const gate = gated ? await taskWriteGate(t, root) : undefined;
-  const { discovery } = await startDaemon(t, root, gate?.env);
+  const { discovery } = await serve(t, root, gate?.env);
   let ui = await connectUi(t, discovery);
   const create = async (title: string, kind = 'task', parent?: string) => {
     const r = await ui.request({ ...(['task'].includes(kind) ? { size: 'M' } : {}), type: 'task.create', title, kind, parent });
@@ -77,7 +77,7 @@ async function fixture(t: test.TestContext, approval = false, territory = false,
 }
 
 test('CLI plan sets only current backlog tasks, preserves hand statuses, and remembers moves across restart', async t => {
-  const f = await fixture(t);
+  const f = await fixture(t, false, false, false, startDaemon);
   assert.equal((await f.read(f.a.id)).status, 'backlog', 'an epic without a plan moves nothing');
   assert.equal((await f.ui.request({ type: 'task.link', item: f.b.id, blocked_by: [f.a.id] })).ok, true);
   assert.equal((await f.ui.request({ type: 'task.edit', item: f.c.id, status: 'in progress' })).ok, true);
@@ -142,7 +142,7 @@ test('closed epic stages read closed without task writes; reopening restores der
 });
 
 for (const [qa, settleBeforeHub] of [[false, false], [true, false], [true, true]] as const) test(`landing stage one advances stage two${qa ? ' only after clear stage QA' : ''}${settleBeforeHub ? ' with platform receipts bound after startup checks' : ''}`, async t => {
-  const f = await fixture(t, false, true);
+  const f = await fixture(t, false, true, false, qa ? startDaemon : projectHub);
   if (qa) f.plan.stages[0]!.qa = { scope: 'affected', when: 'after-stage' };
   if (settleBeforeHub) f.plan.stages[0]!.lanes = [[f.a.id]];
   const active = await f.create('Already in progress', 'task', f.epic.id);
@@ -180,7 +180,7 @@ for (const [qa, settleBeforeHub] of [[false, false], [true, false], [true, true]
 });
 
 test('valid hand plans and offline plan changes move only newly joined current-stage tasks', async t => {
-  const f = await fixture(t);
+  const f = await fixture(t, false, false, false, startDaemon);
   const path = join(f.root, f.epic.path);
   const source = await readFile(path, 'utf8');
   // Write a valid plan as an editor would, before any CLI plan set.
@@ -372,7 +372,7 @@ test('a late in-place save after the publication hash read retains its status an
 test('an indexed refused candidate recovers when its containing feature is reparented', async t => {
   const root = await tempProject(t); await mkdir(join(root, '.cland'), { recursive: true });
   await writeFile(join(root, '.cland/config.toml'), '[tracker]\nlevels = ["release", "epic", "feature"]\n');
-  const { discovery } = await startDaemon(t, root), ui = await connectUi(t, discovery);
+  const { discovery } = await projectHub(t, root), ui = await connectUi(t, discovery);
   const create = async (title: string, kind: string, parent?: string) => {
     const r = await ui.request({ ...(['task'].includes(kind) ? { size: 'M' } : {}), type: 'task.create', title, kind, parent }); assert.equal(r.ok, true, r.error);
     return (r.value as { item: ItemView }).item;

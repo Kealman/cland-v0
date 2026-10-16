@@ -3,14 +3,14 @@ import assert from 'node:assert/strict';
 import { writeFile, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { integrated } from './close-run-fixture.ts';
-import { clandWithEnv, connectUi, eventually, killDaemon, startDaemon } from './harness.ts';
+import { clandWithEnv, connectUi, eventually, killDaemon, projectHub, startDaemon } from './harness.ts';
 import type { VerificationQueue } from '../src/protocol.ts';
 
 const barrier = `node -e "const fs=require('fs');fs.mkdirSync('.cland',{recursive:true});fs.writeFileSync('.cland/started','yes');const timer=setInterval(()=>{if(fs.existsSync('.cland/finish')){clearInterval(timer);console.log('# tests 1');console.log('# pass 1')}},25)"`;
 
 test('a failed shard fails one merged result with its label and no automatic rerun', async t => {
   const script = `node -e "const s=JSON.parse(process.env.CLAND_SUITE_SELECTION);const fail=s.shard.files.includes('hub/test/two.test.ts');console.log('# tests 1');console.log(fail?'# fail 1':'# pass 1');if(fail)console.log('not ok 1 - shard example');process.exit(fail?1:0)"`;
-  const f = await integrated(t, '', 2, script);
+  const f = await integrated(t, '', 2, script, { hub: projectHub });
   assert.equal((await f.ui.request({ type: 'role.set', session: 'impl', role: 'coordinator' })).ok, true);
   const submitted = await clandWithEnv(f.root, f.actor, 'verify', 'all', '--fresh', '--occasion', 'stage', '--report', f.topic, '--json');
   assert.equal(submitted.code, 0, submitted.stderr);
@@ -25,7 +25,7 @@ test('a failed shard fails one merged result with its label and no automatic rer
 });
 
 for (const action of ['lost', 'restart', 'cancel'] as const) test(`a sharded close handles ${action} with one result and confirmed cleanup`, async t => {
-  const f = await integrated(t, '', 2, barrier);
+  const f = await integrated(t, '', 2, barrier, { hub: action === 'restart' ? startDaemon : projectHub });
   assert.equal((await f.ui.request({ type: 'role.set', session: 'impl', role: 'coordinator' })).ok, true);
   const submitted = await clandWithEnv(f.root, f.actor, 'verify', 'all', '--fresh', '--occasion', 'stage', '--report', f.topic, '--json');
   assert.equal(submitted.code, 0, submitted.stderr);
@@ -71,7 +71,7 @@ for (const action of ['lost', 'restart', 'cancel'] as const) test(`a sharded clo
 });
 
 test('cancelling while provider sizes are held joins reservation before reporting and leaves zero reserved spend', async t => {
-  const f = await integrated(t, 'daily_spend_usd=3');
+  const f = await integrated(t, 'daily_spend_usd=3', 2, undefined, { hub: projectHub });
   assert.equal((await f.ui.request({ type: 'role.set', session: 'impl', role: 'coordinator' })).ok, true);
   const entered = Promise.withResolvers<void>(), release = Promise.withResolvers<void>();
   t.after(() => release.resolve());

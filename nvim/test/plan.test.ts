@@ -5,7 +5,7 @@ import { mkdir, readFile, writeFile, unlink } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { stringify } from 'yaml';
-import { connectUi, startDaemon, tempProject } from '../../hub/test/harness.ts';
+import { connectUi, projectHub, tempProject } from '../../hub/test/harness.ts';
 import type { ItemView } from '../../hub/src/tracker/tracker.ts';
 import type { EpicPlan } from '../../hub/src/tracker/plan.ts';
 import { nvimOrSkip, startClient, type Client } from './harness.ts';
@@ -17,7 +17,7 @@ async function setup(t: test.TestContext) {
   const root = await tempProject(t);
   await mkdir(join(root, '.cland'), { recursive: true });
   await writeFile(join(root, '.cland/config.toml'), '[plan]\napproval = "human"\n');
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const create = async (title: string, kind: string, parent?: string) => {
     const result = await ui.request({ ...(['task'].includes(kind) ? { size: 'M' } : {}), type: 'task.create', title, kind, parent, body: '## Acceptance criteria\n- [ ] C1. Works' });

@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, connectUi, eventually, spawnSpoke, startDaemon, tempProject } from '../../hub/test/harness.ts';
+import { cland, connectUi, eventually, projectHub, spawnSpoke, startDaemon, tempProject } from '../../hub/test/harness.ts';
 import { nvimOrSkip, startClient } from './harness.ts';
 import { waitInitialSnapshots } from './readiness.ts';
 
@@ -65,7 +65,7 @@ test('keeping an agent artifact updates the thread and palette across unkeep and
 
 test('Coordinator artifacts in Agents open from the log and its topic list', { skip }, async (t) => {
   const root = await tempProject(t);
-  await startDaemon(t, root);
+  await projectHub(t, root);
   const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
   t.after(() => coord.close());
   await coord.waitForPresence(['coord']);
@@ -90,7 +90,7 @@ test('Coordinator artifacts in Agents open from the log and its topic list', { s
 
 test('artifact chip opens editable Mermaid source and the browser renderer, topic list and picker open artifacts', { skip }, async (t) => {
   const root = await tempProject(t);
-  await startDaemon(t, root);
+  await projectHub(t, root);
   const create = await cland(root, 'artifact', 'create', '--kind', 'diagram', '--title', 'Merge flow', '--content', 'graph TD\n A-->B', '--topic', 'general', '--json');
   assert.equal(create.code, 0, create.stderr);
   const a = JSON.parse(create.stdout).artifact;
@@ -133,7 +133,7 @@ test('artifact chip opens editable Mermaid source and the browser renderer, topi
 
 test('prompt drafts are editable full buffers, survive hub events, reopen, and send saved text', { skip }, async (t) => {
   const root = await tempProject(t);
-  await startDaemon(t, root);
+  await projectHub(t, root);
   const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
   t.after(() => coord.close());
   await coord.waitForPresence(['coord']);
@@ -168,7 +168,7 @@ test('prompt drafts are editable full buffers, survive hub events, reopen, and s
 
 test('p in a topic artifact list promotes it and updates the list and picker marks', { skip }, async (t) => {
   const root = await tempProject(t);
-  await startDaemon(t, root);
+  await projectHub(t, root);
   const create = await cland(root, 'artifact', 'create', '--kind', 'note', '--title', 'Keep', '--content', '# Keep', '--topic', 'general', '--json');
   const a = JSON.parse(create.stdout).artifact;
   const c = await startClient(t, bin, root);
@@ -220,7 +220,7 @@ test('topic lists follow archive events and lists and pickers mark retained entr
 
 test('folder chips open their entry and old moved-file chips open inside the folder', { skip }, async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const folder = ((await ui.request({ type: 'artifact.create', kind: 'note', title: 'Folder', topic: 'general', folder: true, content: '# Folder entry' })).value as { artifact: { id: string; path: string } }).artifact;
   const source = ((await ui.request({ type: 'artifact.create', kind: 'note', title: 'Source', topic: 'general', content: '# Moved note' })).value as { artifact: { id: string } }).artifact;
@@ -241,7 +241,7 @@ test('folder chips open their entry and old moved-file chips open inside the fol
 
 test('moving an already-open prompt rebinds its editable buffer before the next save', { skip }, async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const make = async (folder = false) => ((await ui.request({ type: 'artifact.create', kind: 'prompt', title: 'Draft', topic: 'general', status: 'draft', content: 'Draft bytes', folder })).value as { artifact: { id: string; path: string } }).artifact;
   const source = await make(), folder = await make(true);
@@ -262,7 +262,7 @@ test('moving an already-open prompt rebinds its editable buffer before the next 
 
 test('a draft moved while disconnected resolves and rebinds on reconnect before saving', { skip }, async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const make = async (folder = false) => ((await ui.request({ type: 'artifact.create', kind: 'prompt', title: 'Draft', topic: 'general', status: 'draft', content: 'Draft bytes', folder })).value as { artifact: { id: string; path: string } }).artifact;
   const source = await make(), folder = await make(true);

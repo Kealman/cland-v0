@@ -3,13 +3,13 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, clandWithEnv, spawnSpoke, startDaemon, tempProject } from './harness.ts';
+import { cland, clandWithEnv, spawnSpoke, projectHub, tempProject } from './harness.ts';
 import type { Artifact } from '../src/protocol.ts';
 import { gitIn } from '../src/tracker/verdict-git.ts';
 
 test('the shell creates a folder artifact from a directory or a new entry file', async t => {
   const root = await tempProject(t);
-  await startDaemon(t, root);
+  await projectHub(t, root);
   await mkdir(join(root, 'notes'));
   await writeFile(join(root, 'notes', 'first.md'), '# First');
   await writeFile(join(root, 'notes', 'entry.md'), '# Entry');
@@ -33,7 +33,7 @@ test('the shell promotes a complete folder into docs without staging, committing
   await git(['config', 'user.name', 'Test']); await git(['config', 'user.email', 'test@example.com']);
   await writeFile(join(root, 'base'), 'base'); await git(['add', 'base']); await git(['commit', '-qm', 'base']);
   const head = await git(['rev-parse', 'HEAD']), index = await git(['ls-files', '--stage']);
-  await startDaemon(t, root);
+  await projectHub(t, root);
   const result = await cland(root, 'artifact', 'new', '--kind', 'note', '--title', 'v0.2 notes', '--topic', 'general', '--folder', '--content', '# v0.2', '--json');
   assert.equal(result.code, 0, result.stderr);
   const a: Artifact = JSON.parse(result.stdout).artifact;
@@ -52,7 +52,7 @@ test('the shell promotes a complete folder into docs without staging, committing
 
 test('open resolves a folder entry and edits its saved bytes with the chosen editor', async t => {
   const root = await tempProject(t);
-  await startDaemon(t, root);
+  await projectHub(t, root);
   const result = await cland(root, 'artifact', 'new', '--kind', 'note', '--title', 'Notes', '--topic', 'general', '--folder', '--entry', 'notes.md', '--content', 'before', '--json');
   assert.equal(result.code, 0, result.stderr);
   const a: Artifact = JSON.parse(result.stdout).artifact;
@@ -72,7 +72,7 @@ test('open resolves a folder entry and edits its saved bytes with the chosen edi
 
 test('the shell keeps, releases, moves and archives artifacts through the hub', async t => {
   const root = await tempProject(t);
-  await startDaemon(t, root);
+  await projectHub(t, root);
   const make = async (title: string, ...options: string[]): Promise<Artifact> => {
     const result = await cland(root, 'artifact', 'new', '--kind', 'note', '--title', title, '--topic', 'general', '--json', ...options);
     assert.equal(result.code, 0, result.stderr);
@@ -99,7 +99,7 @@ test('the shell keeps, releases, moves and archives artifacts through the hub', 
 
 test('an agent can resolve human notes but cannot open them for editing, including an absorbed file', async t => {
   const root = await tempProject(t);
-  await startDaemon(t, root);
+  await projectHub(t, root);
   const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator', sessionId: 'coord-cli' });
   t.after(() => coord.close()); await coord.waitForPresence(['coord']);
   const folderResult = await cland(root, 'artifact', 'new', '--kind', 'note', '--title', 'Human folder', '--topic', 'general', '--folder', '--content', 'human bytes', '--json');

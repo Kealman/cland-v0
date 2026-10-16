@@ -5,7 +5,7 @@ import { promisify } from 'node:util';
 import { rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { integrated } from './close-run-fixture.ts';
-import { cland, eventually, spawnSpoke, tempProject } from './harness.ts';
+import { cland, eventually, projectHub, spawnSpoke, tempProject } from './harness.ts';
 import type { ItemView } from '../src/tracker/tracker.ts';
 
 const exec = promisify(execFile);
@@ -21,7 +21,7 @@ test('after-stage gates require Mac and sharded Linux at one tree, retain histor
   const settings = await tempProject(t);
   const preload = join(settings, 'platform.cjs');
   await writeFile(preload, `if(process.argv.some(a=>a.endsWith('suite-worker.ts'))){require('node:os').platform=()=> 'darwin';require('node:module').syncBuiltinESMExports()}\n`);
-  const f = await integrated(t, '[hygiene]\nloop_breaker_max=2\n', 2, undefined, { territory: true, env: { NODE_OPTIONS: `--require=${preload}` } });
+  const f = await integrated(t, '[hygiene]\nloop_breaker_max=2\n', 2, undefined, { hub: projectHub, territory: true, env: { NODE_OPTIONS: `--require=${preload}` } });
   await linuxMachines(f);
   const create = async (kind: string, title: string, parent?: string) => {
     const response = await f.ui.request({ type: 'task.create', kind, title, parent, ...(kind === 'task' ? { size: 'S' } : {}) });
@@ -117,7 +117,7 @@ for (const state of ['failed', 'unreported'] as const) test(`a fresh ${state} st
   const settings = await tempProject(t);
   const failure = join(settings, 'fail-package');
   const program = `process.exit(require('fs').existsSync(${JSON.stringify(failure)}) ? 1 : 0)`;
-  const f = await integrated(t, state === 'unreported' ? '[hygiene]\nloop_breaker_max=3\n' : '', 2, `node -e ${JSON.stringify(program)}`);
+  const f = await integrated(t, state === 'unreported' ? '[hygiene]\nloop_breaker_max=3\n' : '', 2, `node -e ${JSON.stringify(program)}`, { hub: projectHub });
   await linuxMachines(f);
   assert.equal((await f.ui.request({ type: 'role.set', session: 'impl', role: 'coordinator' })).ok, true);
   const recipient = await spawnSpoke({ discover: true, cwd: f.root, name: 'cache-rev', role: 'reviewer' });

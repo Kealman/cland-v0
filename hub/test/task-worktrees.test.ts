@@ -8,7 +8,7 @@ import { execFileSync, spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { CLI_ENTRY, cland, clandWithEnv, connectUi, connectWsUi, startHub, eventually, fakeClaude, spawnSpoke, startDaemon, tempProject, type CliResult, type FrameClient } from './harness.ts';
+import { CLI_ENTRY, cland, clandWithEnv, connectUi, connectWsUi, startHub, eventually, fakeClaude, spawnSpoke, projectHub, tempProject, type CliResult, type FrameClient } from './harness.ts';
 import { preparedProject } from './prepared-project.ts';
 import type { HarnessProcessView } from '../src/protocol.ts';
 import type { Sessions } from '../src/adapters/sessions.ts';
@@ -48,7 +48,7 @@ test('the first claim of an open task makes t/T-<n>-<slug> at dev and its worktr
   git(root, 'commit', '--allow-empty', '-qm', 'On dev');
   const devTip = git(root, 'rev-parse', 'dev');
   assert.notEqual(devTip, git(root, 'rev-parse', 'main'));
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   ok(await cland(root, 'task', 'create', '--size', 'M', 'Fix the parser', '--kind', 'task'));
 
@@ -86,7 +86,7 @@ test('the first claim of an open task makes t/T-<n>-<slug> at dev and its worktr
 test('configured container worktree refusals choose an article from the kind', async t => {
   const root = await project(t);
   await writeFile(join(root, '.cland/config.toml'), '[tracker]\nlevels = ["initiative", "feature"]\n');
-  await startDaemon(t, root);
+  await projectHub(t, root);
   for (const [kind, article, id] of [['initiative', 'an', 'I-1'], ['feature', 'a', 'F-2']]) {
     ok(await cland(root, 'task', 'create', ...((kind!) === 'task' ? ['--size', 'M'] : []), `Planning ${kind}`, '--kind', kind!));
     const result = json<Claimed>(await cland(root, 'task', 'claim', id!, '--json'));
@@ -98,7 +98,7 @@ test('configured container worktree refusals choose an article from the kind', a
 
 test('a release, epic, spec, question or map, a closed task, or a project without a territory gets no worktree; the claim works and says why', async (t) => {
   const root = await project(t);
-  await startDaemon(t, root);
+  await projectHub(t, root);
   for (const kind of ['epic', 'spec', 'question', 'map']) ok(await cland(root, 'task', 'create', ...((kind) === 'task' ? ['--size', 'M'] : []), `A ${kind}`, '--kind', kind));
   ok(await cland(root, 'task', 'create', '--size', 'M', 'Done already', '--kind', 'task'));
   ok(await cland(root, 'task', 'close', 'T-5'));
@@ -123,7 +123,7 @@ test('a release, epic, spec, question or map, a closed task, or a project withou
   assert.equal(git(root, 'branch', '--list', 't/*'), '');
 
   const bare = await project(t, { territory: false });
-  await startDaemon(t, bare);
+  await projectHub(t, bare);
   ok(await cland(bare, 'task', 'create', '--size', 'M', 'No territory', '--kind', 'task'));
   const r = json<Claimed>(await cland(bare, 'task', 'claim', 'T-1', '--json'));
   assert.equal(r.claim?.session, 'human');
@@ -135,7 +135,7 @@ test("the territory's cland.taskBase decides the base branch over dev (cland's o
   const root = await project(t);
   git(root, 'commit', '--allow-empty', '-qm', 'On dev');
   git(join(root, '.cland', 'territory.git'), 'config', 'cland.taskBase', 'main');
-  await startDaemon(t, root);
+  await projectHub(t, root);
   ok(await cland(root, 'task', 'create', '--size', 'M', 'From main', '--kind', 'task'));
   const r = json<Claimed>(await cland(root, 'task', 'claim', 'T-1', '--json'));
   assert.equal(r.worktree?.base, 'main');
@@ -150,7 +150,7 @@ test("the territory's cland.taskBase decides the base branch over dev (cland's o
 test('cland session launch --item starts the Implementer in the worktree with the claim taken over from the Coordinator; its Claude Code refuses a worktree of its own', async (t) => {
   const root = await project(t);
   const fake = await fakeClaude(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
@@ -212,7 +212,7 @@ test('cland session launch --item starts the Implementer in the worktree with th
 test('the spoke\'s session.launch with item launches in the worktree; item with cwd or another session\'s claim is refused', async (t) => {
   const root = await project(t);
   const fake = await fakeClaude(t);
-  await startDaemon(t, root, fake.env);
+  await projectHub(t, root, fake.env);
   const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
   onCleanup(t, () => coord.close());
   await coord.waitForPresence(['coord']);
@@ -253,7 +253,7 @@ test('the spoke\'s session.launch with item launches in the worktree; item with 
 
 test("cland worktree prune shows a closed item's unmerged commits and removes its worktree and branch only after y; a session's shell is refused", async (t) => {
   const root = await project(t);
-  await startDaemon(t, root);
+  await projectHub(t, root);
   for (const title of ['Merged work', 'Kept work', 'Still open']) ok(await cland(root, 'task', 'create', '--size', 'M', title, '--kind', 'task'));
   for (const id of ['T-1', 'T-2', 'T-3']) ok(await cland(root, 'task', 'claim', id));
   const wt = (id: string) => join(root, '.cland', 'worktrees', id);

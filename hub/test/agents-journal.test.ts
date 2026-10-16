@@ -1,4 +1,4 @@
-// The Agents topic as the record, the journal and hygiene (spec 4.2 and 4.5, #34): a real hub daemon in a temporary
+// The Agents topic as the record, the journal and hygiene (spec 4.2 and 4.5, #34): a real hub in a temporary
 // project, scripted spokes over MCP, a UI client speaking the frames, `cland` as its own process, restarts through
 // `cland hub stop` and `start`. Nothing inside the hub is reached into.
 import { test, type TestContext } from 'node:test';
@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { cland, flushProjectLogs, clandWithEnv, clauseAnswered, connectUi, eventually, fakeClaude, sleep, spawnSpoke, startDaemon, startHub, tempProject, type FrameClient, type Session } from './harness.ts';
+import { cland, flushProjectLogs, clandWithEnv, clauseAnswered, connectUi, eventually, fakeClaude, sleep, projectHub, spawnSpoke, startDaemon, startHub, tempProject, type FrameClient, type Session } from './harness.ts';
 
 type Message = { id: string; topic: string; from: string; fromKind: string; fromRole?: string; to: string[]; text: string; ts: string; replyTo?: string; kind?: string; detail?: Record<string, unknown> };
 type Refusal = { code: string; rule: string; until?: string };
@@ -64,7 +64,7 @@ async function restart(t: TestContext, root: string): Promise<FrameClient> {
 
 test('agent-to-agent messages are recorded in Agents with sender, role and time, General shows nothing of them, and a reply in Agents addresses the sender', async (t) => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const alpha = await spoke(t, root, 'alpha', 'implementer');
   const beta = await spoke(t, root, 'beta', 'reviewer');
   await alpha.waitForPresence(['alpha', 'beta']);
@@ -122,7 +122,7 @@ test('agent-to-agent messages are recorded in Agents with sender, role and time,
 test('lifecycle events land in Agents as notices with kinds — role assignment and revocation, a claim and its release, a session start and stop — and no tool-level noise does', async (t) => {
   const root = await tempProject(t);
   const fake = await fakeClaude(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   await ok(ui, { type: 'subscribe' });
   const alpha = await spoke(t, root, 'alpha', 'implementer');
@@ -286,7 +286,7 @@ test('hygiene refusals are typed: the size cap and the rate limit refuse the sen
 
 test('an agent-to-agent message in another topic is referenced in Agents (sender, addressees, topic, message id), its text not repeated', async (t) => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const alpha = await spoke(t, root, 'alpha', 'implementer');
   const beta = await spoke(t, root, 'beta', 'reviewer');
   await alpha.waitForPresence(['alpha', 'beta']);
@@ -364,7 +364,7 @@ test('a journal whose last line was cut off mid-write gets a newline before the 
   const root = await tempProject(t);
   await mkdir(join(root, '.cland'), { recursive: true });
   await writeFile(join(root, '.cland', 'journal.jsonl'), '{"ts":"2026-10-01T00:00:00.000Z","event":"hub-started"}\n{"ts":"2026-10-01T00:00:01.000Z","event":"se');
-  await startDaemon(t, root);
+  await projectHub(t, root);
   await flushProjectLogs(t, root);
   const text = await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8');
   const lines = text.split('\n').filter(Boolean);

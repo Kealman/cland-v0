@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import test from 'node:test';
-import { cland, connectUi, eventually, fakeClaude, fakeCodex, projectHub, spawnSpoke, startDaemon, tempProject } from './harness.ts';
+import { cland, connectUi, eventually, fakeClaude, fakeCodex, projectHub, spawnSpoke, tempProject } from './harness.ts';
 import type { Message } from '../src/protocol.ts';
 import type { Rule } from '../src/rules/rulebook.ts';
 
@@ -67,7 +67,7 @@ test('rule tools and CLI preserve long titles and announce title-only edits to r
 
 test('role clauses use current scoped active rules, including rules added while disconnected', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const add = (text: string, scope: string) => cland(root, 'rule', 'add', text, '--scope', scope, '--reason', 'shared policy');
@@ -89,7 +89,7 @@ test('role clauses use current scoped active rules, including rules added while 
 
 test('rule tools record human-message and Aide origins, refuse invented origins, and allow every role to read', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'rules-coord' });
   const aide = await spawnSpoke({ cwd: root, discover: true, name: 'helper', role: 'aide', sessionId: 'rules-aide' });
@@ -154,7 +154,7 @@ test('shell rule changes reach fake Implementer turns, never steer, and show one
   const root = await tempProject(t);
   const claude = await fakeClaude(t);
   const codex = await fakeCodex(t, { turnMs: 200 });
-  const { discovery } = await startDaemon(t, root, { ...claude.env, ...codex.env });
+  const { discovery } = await projectHub(t, root, { ...claude.env, ...codex.env });
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   await ui.request({ type: 'crew.set', key: 'coordinator.heartbeat', value: 'off' });
@@ -213,7 +213,7 @@ test('shell rule changes reach fake Implementer turns, never steer, and show one
 
 test('scope edits retire rules for removed roles, directly include Aides, and hand edits use the same change path', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const spokes = [];
@@ -249,7 +249,7 @@ test('scope edits retire rules for removed roles, directly include Aides, and ha
 test('launch clause and brief end with the same ordered active rules', async t => {
   const root = await tempProject(t);
   const fake = await fakeCodex(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   for (const [text, scope] of [['First.', 'all'], ['Retired.', 'all'], ['Third.', 'implementer'], ['Other role.', 'coordinator']]) {
     assert.equal((await cland(root, 'rule', 'add', text!, '--scope', scope!, '--reason', 'launch policy')).code, 0);
   }
@@ -270,7 +270,7 @@ test('launch clause and brief end with the same ordered active rules', async t =
 test('stopped processes receive no rule deliveries while live sessions still do', async t => {
   const root = await tempProject(t);
   const fake = await fakeCodex(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const live = await spawnSpoke({ cwd: root, discover: true, name: 'live', role: 'implementer', sessionId: 'live-rules' });
@@ -292,7 +292,7 @@ test('stopped processes receive no rule deliveries while live sessions still do'
 
 test('a clause larger than the send cap reaches a session whole on assignment and reconnect', async t => {
   const root = await tempProject(t);
-  await startDaemon(t, root);
+  await projectHub(t, root);
   const text = `Preserve the complete rule. ${'Complete instructions. '.repeat(450)}END OF RULE`;
   const added = await cland(root, 'rule', 'add', text, '--scope', 'implementer', '--reason', 'complete event delivery');
   assert.equal(added.code, 0, added.stderr);

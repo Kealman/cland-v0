@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, connectUi, eventually, FAKE_CLAUDE_DIR, FAKE_CODEX_DIR, fakeClaude, fakeCodex, startDaemon, tempProject } from './harness.ts';
+import { cland, connectUi, eventually, FAKE_CLAUDE_DIR, FAKE_CODEX_DIR, fakeClaude, fakeCodex, projectHub, startDaemon, tempProject } from './harness.ts';
 import type { AccountList } from '../src/accounts/limits.ts';
 
 const usage = { rate_limits: { limits: [
@@ -33,7 +33,7 @@ const listed = async (ui: Awaited<ReturnType<typeof connectUi>>) => {
 
 test('startup polls idle Claude and Codex through their harness and refresh keeps a younger reading', async t => {
   const f = await setup(t);
-  const { discovery } = await startDaemon(t, f.root, f.env);
+  const { discovery } = await projectHub(t, f.root, f.env);
   const ui = await connectUi(t, discovery);
   const accounts = await eventually('both idle readings', async () => {
     const a = await listed(ui);
@@ -100,7 +100,7 @@ test('manual refresh respects the minimum, timer respects the floor, and queued 
   const f = await setup(t);
   await writeFile(join(f.claude, 'usage-hold'), '1');
   const floorMs = 600, minimumMs = 200;
-  const { discovery } = await startDaemon(t, f.root, { ...f.env, CLAND_TEST_ACCOUNT_POLL_FLOOR_MS: String(floorMs), CLAND_TEST_ACCOUNT_POLL_MINIMUM_MS: String(minimumMs) });
+  const { discovery } = await projectHub(t, f.root, { ...f.env, CLAND_TEST_ACCOUNT_POLL_FLOOR_MS: String(floorMs), CLAND_TEST_ACCOUNT_POLL_MINIMUM_MS: String(minimumMs) });
   const ui = await connectUi(t, discovery);
   await eventually('held poll started', async () => (await ccPolls(f)).length === 1 || undefined);
   const requests = Array.from({ length: 4 }, () => ui.request({ type: 'account.poll' }, 15000));
@@ -166,7 +166,7 @@ test('failed polls back off across restart, timeouts kill the process group, sig
 test('a newer session push wins over a delayed idle poll', async t => {
   const f = await setup(t);
   await writeFile(join(f.claude, 'usage-hold'), '1');
-  const { discovery } = await startDaemon(t, f.root, f.env);
+  const { discovery } = await projectHub(t, f.root, f.env);
   const ui = await connectUi(t, discovery);
   await eventually('poll started', async () => (await ccPolls(f)).length === 1 || undefined);
   const launch = await ui.request({ type: 'session.launch', name: 'push', harness: 'claude-code', account: 'cc' }, 30000);
@@ -192,7 +192,7 @@ test('only two account polls run across the hub, with scratch cwd and sanitized 
   const initial = await readFile(registry, 'utf8');
   await writeFile(registry, initial + `[accounts.cd]\nharness = "claude-code"\nconfig_dir = ${JSON.stringify(extra)}\n`);
   for (const dir of [f.claude, extra]) await writeFile(join(dir, 'usage-hold'), '1');
-  const { discovery } = await startDaemon(t, f.root, { ...f.env, ANTHROPIC_API_KEY: 'test-key', ANTHROPIC_AUTH_TOKEN: 'test-token', CLAUDE_CODE_OAUTH_TOKEN: 'test-oauth', CLAND_TEST_SENTINEL: 'private' });
+  const { discovery } = await projectHub(t, f.root, { ...f.env, ANTHROPIC_API_KEY: 'test-key', ANTHROPIC_AUTH_TOKEN: 'test-token', CLAUDE_CODE_OAUTH_TOKEN: 'test-oauth', CLAND_TEST_SENTINEL: 'private' });
   const ui = await connectUi(t, discovery);
   await eventually('two Claude polls held', async () => (await ccPolls(f)).length === 2 || undefined);
   assert.equal((await rows(join(f.cx.home, 'polls.jsonl'))).length, 0, 'third poll waits');
@@ -217,7 +217,7 @@ test('Claude signed out and malformed answers are bounded failures and refresh c
   const f = await setup(t);
   await writeFile(join(f.claude, 'logged-out'), '1');
   await writeFile(join(f.codex, 'rate-limits.json'), '{"rateLimits": {"primary": {"usedPercent": "invalid"}}}');
-  const { discovery } = await startDaemon(t, f.root, f.env);
+  const { discovery } = await projectHub(t, f.root, f.env);
   const ui = await connectUi(t, discovery);
   await eventually('both failed polls settled', async () => (await pollJournal(f.root, ui)).filter(r => r.event === 'account-polled').length === 2 || undefined);
   assert.equal((await listed(ui)).find(a => a.name === 'cc')?.signedOut, true);
@@ -274,7 +274,7 @@ test('hub source has no provider endpoint or credential-store access', async () 
 
 test('manual frame and CLI refresh poll after five-minute minimum even before the normal floor', async t => {
   const f = await setup(t);
-  const { discovery } = await startDaemon(t, f.root, { ...f.env, CLAND_TEST_ACCOUNT_POLL_MINIMUM_MS: '400' });
+  const { discovery } = await projectHub(t, f.root, { ...f.env, CLAND_TEST_ACCOUNT_POLL_MINIMUM_MS: '400' });
   const ui = await connectUi(t, discovery);
   await eventually('startup cycle settled', async () => (await pollJournal(f.root, ui)).filter(r => r.event === 'account-polled').length === 2 || undefined);
   await writeFile(join(f.claude, 'usage-report.json'), JSON.stringify({ rate_limits: { limits: [{ ...usage.rate_limits.limits[0], percent: 51 }] } }));

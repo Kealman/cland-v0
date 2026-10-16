@@ -5,9 +5,9 @@ import { execFile } from 'node:child_process';
 import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { HarnessProcessView } from '../src/protocol.ts';
-import { clandWithEnv, clauseAnswered, connectUi, eventually, FAKE_CLAUDE_DIR, fakeClaude, killDaemon, NO_PS, sleep, startDaemon, tempProject } from './harness.ts';
+import { clandWithEnv, clauseAnswered, connectUi, eventually, FAKE_CLAUDE_DIR, fakeClaude, killDaemon, NO_PS, sleep, projectHub, startDaemon, tempProject } from './harness.ts';
 
-async function fixture(t: TestContext, extraEnv: Record<string, string> = {}) {
+async function fixture(t: TestContext, extraEnv: Record<string, string> = {}, serve: typeof projectHub | typeof startDaemon = projectHub) {
   const root = await tempProject(t);
   const fake = await fakeClaude(t);
   const config = join(root, 'registry');
@@ -16,7 +16,7 @@ async function fixture(t: TestContext, extraEnv: Record<string, string> = {}) {
   const registry = join(config, 'cland', 'accounts.toml');
   await writeFile(registry, Object.entries(dirs).filter(([name]) => name !== 'default').map(([name, dir]) => `[accounts.claude-${name}]\nharness = "claude-code"\nconfig_dir = ${JSON.stringify(dir)}\n`).join(''));
   const env: Record<string, string> = { ...fake.env, CLAND_CLAUDE_BIN: join(FAKE_CLAUDE_DIR, 'claude'), XDG_CONFIG_HOME: config, CLAUDE_CONFIG_DIR: dirs.default, ANTHROPIC_API_KEY: 'fake-key', ANTHROPIC_AUTH_TOKEN: 'fake-auth', CLAUDE_CODE_OAUTH_TOKEN: 'fake-oauth', ...extraEnv };
-  const { discovery } = await startDaemon(t, root, env);
+  const { discovery } = await serve(t, root, env);
   const ui = await connectUi(t, discovery);
   const jobs = async () => Promise.all((await readdir(join(fake.home, 'jobs'))).filter(file => /^[^.]+\.json$/.test(file)).map(async file => JSON.parse(await readFile(join(fake.home, 'jobs', file), 'utf8')) as { id: string; sessionId: string; name: string; configDir: string; authVariables: string[]; resume: boolean }));
   t.after(async () => { for (const file of await readdir(join(fake.home, 'sessions')).catch(() => [])) { const s = JSON.parse(await readFile(join(fake.home, 'sessions', file), 'utf8')); await killDaemon(s.pid); } });
@@ -54,7 +54,7 @@ test('Claude account commands and attach use their own directory and named accou
 });
 
 test('discovery, watch and restart share each live directory schedule; saved directories survive registry and hub environment edits', async t => {
-  const f = await fixture(t);
+  const f = await fixture(t, {}, startDaemon);
   const a = await f.launch('a', 'claude-a');
   const anotherA = await f.launch('another-a', 'claude-a');
   const b = await f.launch('b', 'claude-b');
@@ -164,7 +164,7 @@ test('a signed-out account has one directory notice and event while another acco
 });
 
 test('logged-out turns fail authentication and a per-account latch survives the restart reconnect turn for three 30 s periods', async t => {
-  const f = await fixture(t, { CLAND_CLAUDE_AGENTS_MS: '30000' });
+  const f = await fixture(t, { CLAND_CLAUDE_AGENTS_MS: '30000' }, startDaemon);
   assert.equal((await f.ui.request({ type: 'subscribe' })).ok, true);
   const launched = await f.ui.request({ type: 'session.launch', name: 'signed-out', harness: 'claude-code', account: 'claude-b', role: 'coordinator' }, 30000);
   assert.equal(launched.ok, true, launched.error);

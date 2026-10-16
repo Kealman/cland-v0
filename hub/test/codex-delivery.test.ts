@@ -6,7 +6,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { clandWithEnv, connectUi, eventually, fakeCodex, sleep, startDaemon, tempProject, type FrameClient } from './harness.ts';
+import { clandWithEnv, connectUi, eventually, fakeCodex, sleep, projectHub, tempProject, type FrameClient } from './harness.ts';
 
 type Harness = { name: string; pid: number | null; state: string };
 type Event = { text: string; session?: string };
@@ -40,7 +40,7 @@ const pongs = (ui: FrameClient, text: string) => ui.frames.filter((f) => f.type 
 test('an inject whose answer never came is uncertain: never replayed at the next idle, noted in the events view, sent again only by session.retry', async (t) => {
   const root = await tempProject(t);
   const fake = await fakeCodex(t, { injectTimeoutMs: 1500 });
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const coord = await launch(ui, 'coord', { role: 'coordinator' });
@@ -78,7 +78,7 @@ test('a lost connection to an idle app-server: what failed to inject meanwhile i
   const root = await tempProject(t);
   // Keep reconnection refused while the test submits a message to the disconnected idle server.
   const fake = await fakeCodex(t, { env: { FAKE_CODEX_REFUSE_MS: '2500' } });
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const coord = await launch(ui, 'coord', { role: 'coordinator' });
@@ -96,7 +96,7 @@ test('a lost connection to an idle app-server: what failed to inject meanwhile i
 test("the launch's effort reaches the app-server with the first turn", async (t) => {
   const root = await tempProject(t);
   const fake = await fakeCodex(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   // Reviewer's launch defaults: codex, effort high
   const rev = await launch(ui, 'rev-1', { role: 'reviewer' });
@@ -115,7 +115,7 @@ for (const [what, text] of [
     const root = await tempProject(t);
     // Keep a brief outage after acceptance so the uncertain-inject path precedes reconnection.
     const fake = await fakeCodex(t, { env: { FAKE_CODEX_REFUSE_MS: '300' } });
-    const { discovery } = await startDaemon(t, root, fake.env);
+    const { discovery } = await projectHub(t, root, fake.env);
     const ui = await connectUi(t, discovery);
     assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
     const coord = await launch(ui, 'coord', { role: 'coordinator' });
@@ -137,7 +137,7 @@ for (const [what, text] of [
 test('a shared artifact injected into Codex names its id and durable path in the envelope', async (t) => {
   const root = await tempProject(t);
   const fake = await fakeCodex(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const coord = await launch(ui, 'coord', { role: 'coordinator' });

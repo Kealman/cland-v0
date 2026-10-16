@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { ProcessTable } from '../src/adapters/processes.ts';
 import type { HarnessProcessView } from '../src/protocol.ts';
-import { cland, connectUi, fakeClaude, fakeCodex, spawnSpoke, startDaemon, tempProject, eventually } from './harness.ts';
+import { cland, connectUi, fakeClaude, fakeCodex, spawnSpoke, projectHub, tempProject, eventually } from './harness.ts';
 import { preparedProject } from './prepared-project.ts';
 
 type List = { processes: HarnessProcessView[]; archived: number };
@@ -18,7 +18,7 @@ test('a real task merge starts the stopped Implementer item window', async t => 
   execFileSync('git', ['add', '.cland/config.toml'], { cwd: root });
   execFileSync('git', ['commit', '-qm', 'Configure cleanup fixture'], { cwd: root });
   const fake = await fakeClaude(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   const pushed = await cland(root, 'push');
   assert.equal(pushed.code, 0, pushed.stderr);
@@ -44,7 +44,7 @@ test('item windows follow launch items and the latest verifier work even after h
   const root = await preparedProject(t);
   await writeFile(join(root, '.cland', 'config.toml'), '[sessions]\narchive_after_item = "2s"\narchive_after_stop = "1d"\n');
   const fake = await fakeClaude(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   for (const title of ['Implementer item', 'Earlier held item', 'Latest held item', 'Reopened item']) assert.equal((await ui.request({ size: 'M', type: 'task.create', title })).ok, true);
@@ -94,7 +94,7 @@ test('configured stop window archives crew at startup and on the timer, never Ai
   }
   table.close();
   const fake = await fakeClaude(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   const initial = (await ui.request({ type: 'session.list' })).value as List;
   assert.equal(initial.archived, 1, 'startup archives due rows');
@@ -120,7 +120,7 @@ test('configured stop window archives crew at startup and on the timer, never Ai
 test('prune CLI and Coordinator tool delete only old archived records and retain the journal', async t => {
   const root = await tempProject(t);
   const fake = await fakeClaude(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
@@ -185,7 +185,7 @@ test('prune compares stop age even for recently archived rows, keeps young and u
     table.put({ name, stoppedAt, archivedAt, archivedBy: archivedAt ? 'hand' : null, harness: 'claude-code', role: 'aide', model: null, cwd: root, pid: null, harnessId: null, sessionId: name + '-id', harnessSessionId: null, startedAt: old, status: 'stopped' });
   }
   table.close();
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   for (const olderThan of ['0s', '-1d', '7days', '1.5h', '999999999999999999d']) {
     assert.equal((await ui.request({ type: 'session.prune', olderThan })).ok, false, olderThan);
@@ -203,7 +203,7 @@ test('prune compares stop age even for recently archived rows, keeps young and u
 test('archive refuses live and unlaunched rows, hides stopped rows, retains their journal, and resume restores them', async t => {
   const root = await tempProject(t);
   const fake = await fakeClaude(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
@@ -301,7 +301,7 @@ for (const by of ['hand', 'rule'] as const) test(`fresh resume clears a durable 
   table.put({ name: 'old', harness: 'codex', role: 'aide', model: 'gpt-fake-1', cwd: root, pid: null, harnessId: null, sessionId: 'old-id', harnessSessionId: null, startedAt: '2026-01-01T00:00:00Z', status: 'exited', stoppedAt: '2026-01-02T00:00:00Z', archivedAt: '2026-01-03T00:00:00Z', archivedBy: by, launchBrief: 'Continue this archived work.' });
   table.close();
   const fake = await fakeCodex(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   const before = (await ui.request({ type: 'session.list', archived: true })).value as List;
   assert.equal(before.processes[0]!.archivedBy, by, 'restart retains the archive metadata');

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { connectUi, connectWsUi, eventually, fakeClaude, fakeCodex, spawnSpoke, startDaemon, startHub, tempProject, clauseAnswered, withDiscoveredPid } from './harness.ts';
+import { connectUi, connectWsUi, eventually, fakeClaude, fakeCodex, spawnSpoke, projectHub, startHub, tempProject, clauseAnswered, withDiscoveredPid } from './harness.ts';
 import { Store } from '../src/hub/store.ts';
 import { fixture as remoteFixture } from './remote-fixture.ts';
 import { fixture as suiteFixture } from './suite-fixture.ts';
@@ -17,7 +17,7 @@ const heartbeat = (frame: Record<string, unknown>) => frame.type === 'message' &
 test('an idle Coordinator wakes for a heartbeat with a digest, without adding a needs-you', async t => {
   const root = await tempProject(t);
   const fake = await fakeClaude(t);
-  const { discovery } = await startDaemon(t, root, { ...fake.env, CLAND_HEARTBEAT_MS: '300', CLAND_IDLE_NOTIFY_MS: '60' });
+  const { discovery } = await projectHub(t, root, { ...fake.env, CLAND_HEARTBEAT_MS: '300', CLAND_IDLE_NOTIFY_MS: '60' });
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const launched = await ui.request({ type: 'session.launch', name: 'coord', role: 'coordinator', harness: 'claude-code' });
@@ -40,7 +40,7 @@ test('an idle Coordinator wakes for a heartbeat with a digest, without adding a 
 test('busy and approval-waiting Coordinators coalesce heartbeats into the next turn without steering', async t => {
   const root = await tempProject(t);
   const fake = await fakeCodex(t, { turnMs: 200 });
-  const { discovery } = await startDaemon(t, root, { ...fake.env, CLAND_HEARTBEAT_MS: '100' });
+  const { discovery } = await projectHub(t, root, { ...fake.env, CLAND_HEARTBEAT_MS: '100' });
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   await ui.request({ type: 'crew.set', key: 'coordinator.heartbeat', value: 'off' });
@@ -129,7 +129,7 @@ test('a missed heartbeat survives hub restart and fires once rather than replayi
 
 test('the digest ages review and ready items and open asks, caps both sections, and includes claimed sessions', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root, { CLAND_HEARTBEAT_MS: '200' });
+  const { discovery } = await projectHub(t, root, { CLAND_HEARTBEAT_MS: '200' });
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', sessionId: 'digest-coord', role: 'coordinator' });
@@ -210,7 +210,7 @@ test('the digest includes running and queued runs and ages timeouts and ended ru
 
 test('open asks show their age while a queued review request suppresses the missing-review row', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root, { CLAND_HEARTBEAT_MS: '150' });
+  const { discovery } = await projectHub(t, root, { CLAND_HEARTBEAT_MS: '150' });
   const ui = await connectUi(t, discovery);
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', sessionId: 'ask-digest-coord', role: 'coordinator' });
   t.after(() => coord.close());
@@ -243,7 +243,7 @@ test('live remote leases appear in the heartbeat beside their verification run',
 
 test('roles have independent heartbeat schedules, renaming retains identity, and revocation stops firing', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root, { CLAND_HEARTBEAT_MS: '150' });
+  const { discovery } = await projectHub(t, root, { CLAND_HEARTBEAT_MS: '150' });
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'crew.set', key: 'qa.heartbeat', value: '1m' });
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', sessionId: 'rename-stable', role: 'coordinator' });

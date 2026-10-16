@@ -10,7 +10,7 @@ import { promisify } from 'node:util';
 import { pathToFileURL } from 'node:url';
 import WebSocket from 'ws';
 import { PROTOCOL_VERSION } from '../src/protocol.ts';
-import { assignRole, cland, clandWithEnv, CLI_ENTRY, connectSocket, killDaemon, pidAlive, readDiscovery, eventually, sleep, spawnSpoke, startDaemon, tempProject, NO_PS } from './harness.ts';
+import { assignRole, cland, clandWithEnv, CLI_ENTRY, connectSocket, killDaemon, pidAlive, projectHub, readDiscovery, eventually, sleep, spawnSpoke, startDaemon, tempProject, NO_PS } from './harness.ts';
 
 test('cland hub start creates the .cland skeleton and the discovery file', async (t) => {
   const root = await tempProject(t);
@@ -63,7 +63,7 @@ test('a stale hub.json, whose pid is gone, is replaced by a fresh hub', async (t
 
 test('a spoke started in the project with no hub environment connects through the discovery file; status shows it from another process', async (t) => {
   const root = await tempProject(t);
-  await startDaemon(t, root, {}, { sweep: true });
+  await projectHub(t, root);
   // a session started deeper in the tree walks up to the project's .cland/
   const sub = join(root, 'src', 'deep');
   await mkdir(sub, { recursive: true });
@@ -89,7 +89,7 @@ test('a spoke started in the project with no hub environment connects through th
 
 test('a wrong secret is refused on the WebSocket and on the Unix socket; the right one is welcomed', async (t) => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root, {}, { sweep: true });
+  const { discovery } = await projectHub(t, root);
 
   const status = await new Promise<number>((resolve, reject) => {
     const ws = new WebSocket(`ws://127.0.0.1:${discovery.port}`, { headers: { authorization: 'Bearer not-the-secret' } });
@@ -287,7 +287,7 @@ test('git sees only what is meant to be committed under .cland/ while a hub runs
   const root = await tempProject(t);
   const git = (...args: string[]) => spawnSync('git', args, { cwd: root, encoding: 'utf8' });
   assert.equal(git('init', '-q').status, 0);
-  await startDaemon(t, root, {}, { sweep: true });
+  await projectHub(t, root);
   await mkdir(join(root, '.cland', 'tasks'), { recursive: true });
   await writeFile(join(root, '.cland', 'tasks', 'T-1.md'), '# a task\n');
   await writeFile(join(root, '.cland', 'roles.toml'), '');
@@ -302,7 +302,7 @@ test('git sees only what is meant to be committed under .cland/ while a hub runs
 
 test('both edges speak one protocol: a spoke hello over the Unix socket; a client hello over the WebSocket is refused (the human side is the socket)', async (t) => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root, {}, { sweep: true });
+  const { discovery } = await projectHub(t, root);
 
   await assignRole(root, 'sock', 'implementer');
   const spoke = await connectSocket(discovery.socket);

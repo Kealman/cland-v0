@@ -4,14 +4,14 @@ import { syncBuiltinESMExports } from 'node:module';
 import { readFile, rename, writeFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import test from 'node:test';
-import { cland, clandWithEnv, connectUi, eventually, isolateVerification, startDaemon, tempProject } from './harness.ts';
+import { cland, clandWithEnv, connectUi, eventually, isolateVerification, projectHub, tempProject } from './harness.ts';
 import { serveProject } from '../src/hub/daemon.ts';
 import { onCleanup } from './process-cleanup.ts';
 import type { Rule } from '../src/rules/rulebook.ts';
 
 test('human rule CLI adds numbered rules, edits and retires without changing another entry', async t => {
   const root = await tempProject(t);
-  await startDaemon(t, root);
+  await projectHub(t, root);
   const run = async (...args: string[]) => {
     const result = await cland(root, 'rule', ...args, '--json');
     assert.equal(result.code, 0, result.stderr);
@@ -44,7 +44,7 @@ test('human rule CLI adds numbered rules, edits and retires without changing ano
 
 test('rule shell writes use the held identity: only human and Aide write, with restricted origins', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   for (const [name, role] of [['assistant', 'aide'], ['impl', 'implementer'], ['coord', 'coordinator']] as const) {
     assert.equal((await ui.request({ type: 'role.set', session: name, role })).ok, true);
@@ -84,7 +84,7 @@ test('rule shell writes use the held identity: only human and Aide write, with r
 
 test('rulebook reloads atomic hand edits, logs invalid source with its line, and keeps the last good rules', async t => {
   const root = await tempProject(t);
-  await startDaemon(t, root);
+  await projectHub(t, root);
   const path = join(root, '.cland/RULES.md');
   const added = await cland(root, 'rule', 'add', 'Initial.', '--scope', 'all', '--reason', 'initial');
   assert.equal(added.code, 0, added.stderr);
@@ -121,7 +121,7 @@ test('rulebook reloads atomic hand edits, logs invalid source with its line, and
 
 test('concurrent rule CLI writes serialize numbers without losing rules; invalid input leaves the file intact', async t => {
   const root = await tempProject(t);
-  await startDaemon(t, root);
+  await projectHub(t, root);
   const results = await Promise.all(['First', 'Second', 'Third'].map(text => cland(root, 'rule', 'add', text, '--scope', 'all', '--reason', text, '--json')));
   for (const result of results) assert.equal(result.code, 0, result.stderr);
   assert.deepEqual(results.map(r => JSON.parse(r.stdout).rule.number).sort(), [1, 2, 3]);
@@ -179,7 +179,7 @@ test('a hand edit of another rule during the native temporary write survives a r
 
 test('the rulebook high-water mark survives hand deletion; missing or low markers use the highest present number', async t => {
   const root = await tempProject(t);
-  await startDaemon(t, root);
+  await projectHub(t, root);
   const add = async () => {
     const result = await cland(root, 'rule', 'add', 'Numbered.', '--scope', 'all', '--reason', 'numbering', '--json');
     assert.equal(result.code, 0, result.stderr);
@@ -205,7 +205,7 @@ test('the rulebook high-water mark survives hand deletion; missing or low marker
 
 test('workbench writes record their own origin and push full rules, while session and CLI origins stay bounded', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery, 'nvim');
   await ui.request({ type: 'subscribe' });
   const added = await ui.request({ type: 'rule.add', text: 'Human decision.', scope: 'all', reason: 'direct', origin: 'message:general/forged' });

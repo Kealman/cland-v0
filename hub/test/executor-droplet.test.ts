@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { clandWithEnv, connectUi, startDaemon, tempProject, eventually, spawnSpoke, pidAlive } from './harness.ts';
+import { clandWithEnv, connectUi, projectHub, startDaemon, tempProject, eventually, spawnSpoke, pidAlive } from './harness.ts';
 import { fakeDigitalOcean } from './fakes/digitalocean/fake-api.ts';
 import { chmod, mkdir, readFile, writeFile, readdir, stat, symlink } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
@@ -29,7 +29,7 @@ async function providerEnv(t: TestContext, api: Awaited<ReturnType<typeof fakeDi
 
 test('executor status names a missing token; reap refuses without it; CLI controls respect roles', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root, { DIGITALOCEAN_TOKEN: '' });
+  const { discovery } = await projectHub(t, root, { DIGITALOCEAN_TOKEN: '' });
   const ui = await connectUi(t, discovery);
   const status = await clandWithEnv(root, {}, 'executor', 'status');
   assert.equal(status.code, 0, status.stderr);

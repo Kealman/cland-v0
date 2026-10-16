@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, readFile, writeFile, unlink } from 'node:fs/promises';
 import { join } from 'node:path';
-import { clandWithEnv, connectUi, eventually, spawnSpoke, startDaemon, tempProject } from './harness.ts';
+import { clandWithEnv, connectUi, eventually, spawnSpoke, projectHub, tempProject } from './harness.ts';
 import { parseCrew, renderCrew, type CrewConfig } from '../src/crew.ts';
 
 type View = { config: CrewConfig; summary: string };
@@ -21,7 +21,7 @@ test('idle categories are set through the CLI and delivered in order to the Coor
   const root = await tempProject(t);
   await mkdir(join(root, '.cland/tasks'), { recursive: true });
   await writeFile(join(root, '.cland/tasks/C-216-tech-debt.md'), '---\nid: C-216\nkind: category\ntitle: Tech debt\nstate: open\n---\n\nDebt.\n');
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', sessionId: 'coord-id', role: 'coordinator' });
   t.after(() => coord.close());
@@ -49,7 +49,7 @@ test('idle categories are set through the CLI and delivered in order to the Coor
 
 test('invalid idle categories are refused on set and ignored individually on hand reload', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const create = async (title: string, kind: string) => {
     const result = await ui.request({ ...(['task'].includes(kind) ? { size: 'M' } : {}), type: 'task.create', title, kind, body: '' });
@@ -98,7 +98,7 @@ test('idle validation selects the configured C root beside the release, excludin
   const root = await tempProject(t);
   await mkdir(join(root, '.cland'), { recursive: true });
   await writeFile(join(root, '.cland/config.toml'), '[tracker]\nlevels = [["release", "docs", "category"], "epic"]\n');
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const create = async (kind: string) => {
     const result = await ui.request({ ...(['task'].includes(kind) ? { size: 'M' } : {}), type: 'task.create', title: kind, kind, body: '' });
@@ -117,7 +117,7 @@ test('idle validation selects the configured C root beside the release, excludin
 
 test('crew CLI and protocol validate changes, reload hand edits, and retain the last good policy with a notice', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const path = join(root, '.cland/crew.toml');
@@ -174,7 +174,7 @@ test('crew CLI and protocol validate changes, reload hand edits, and retain the 
 
 test('crew set observes the session role boundary from CLI', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   for (const [name, role, allowed] of [['coord', 'coordinator', true], ['aide-one', 'aide', true], ['impl', 'implementer', false], ['rev', 'reviewer', false], ['qa-one', 'qa', false]] as const) {
@@ -189,7 +189,7 @@ test('crew set observes the session role boundary from CLI', async t => {
 
 test('non-table crew values are refused and cannot replace the last good staffing', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   assert.equal((await ui.request({ type: 'crew.set', key: 'reviewer.size', value: 3 })).ok, true);
@@ -215,7 +215,7 @@ test('role heartbeats default visibly, validate a one-minute floor and round tri
   const root = await tempProject(t);
   await mkdir(join(root, '.cland'), { recursive: true });
   await writeFile(join(root, '.cland/crew.toml'), '');
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const initial = await ui.request({ type: 'crew.show' });
   assert.match((initial.value as View).summary, /coordinator heartbeat 1h \(default\)/);

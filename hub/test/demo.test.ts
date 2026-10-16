@@ -39,7 +39,7 @@ test('demo frames deliver a named dev commit, preserve command results and stop 
 });
 
 test('demo authorization, shared slot refusals and verdict cleanup use the same tagged lease', async t => {
-  const { root, ui, api } = await fixture(t, { config: 'remote_budget = 1\n' });
+  const { root, ui, api } = await fixture(t, { hub: projectHub, config: 'remote_budget = 1\n' });
   const create = async (title: string) => ((await ui.request({ type: 'task.create', title, kind: 'epic' })).value as { item: { id: string } }).item.id;
   const epic = await create('First demo'), other = await create('Other demo');
   const before = api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length;
@@ -78,7 +78,7 @@ for (const bound of ['run timeout', 'machine lifetime']) test(`demo ${bound} des
 });
 
 test('demo daily cap refuses before creating any droplet', async t => {
-  const f = await fixture(t, { config: 'daily_spend_usd = 0.001\n' });
+  const f = await fixture(t, { hub: projectHub, config: 'daily_spend_usd = 0.001\n' });
   const epic = ((await f.ui.request({ type: 'task.create', title: 'Capped demo', kind: 'epic' })).value as { item: { id: string } }).item.id;
   const started = await f.ui.request({ type: 'demo.start', epic });
   assert.equal(started.ok, false); assert.match(started.error ?? '', /cap|spend|budget/);
@@ -161,7 +161,7 @@ test('demo recorder failures persist diagnostics and keep remote captures for re
 });
 
 test('successive demo leases select the newest lease and preserve exit 255 at an explicit commit', async t => {
-  const f = await fixture(t);
+  const f = await fixture(t, { hub: projectHub });
   const epic = ((await f.ui.request({ type: 'task.create', title: 'Repeated demo', kind: 'epic' })).value as { item: { id: string } }).item.id;
   const commit = await f.git('rev-parse', 'dev');
   for (let i = 0; i < 2; i++) {

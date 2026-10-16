@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { clandWithEnv, connectUi, eventually, fakeClaude, spawnSpoke, startDaemon, tempProject } from './harness.ts';
+import { clandWithEnv, connectUi, eventually, fakeClaude, spawnSpoke, projectHub, tempProject } from './harness.ts';
 import type { HarnessProcessView } from '../src/protocol.ts';
 
 for (const preassigned of [false, true]) test(`a Coordinator launches an Implementer with a launch brief exactly once after its role clause, without inherited launch environment (${preassigned ? 'preassigned role' : 'explicit role'})`, async (t) => {
@@ -11,7 +11,7 @@ for (const preassigned of [false, true]) test(`a Coordinator launches an Impleme
   // The native background child loses ambient CLAND_*; identity must survive in MCP config.
   // Exercise a hello before --bg returns as well as the ordinary launch ordering.
   const fake = await fakeClaude(t, { lateBg: preassigned });
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
   t.after(() => coord.close());
   await coord.waitForPresence(['coord']);
@@ -58,7 +58,7 @@ for (const preassigned of [false, true]) test(`a Coordinator launches an Impleme
 test('launch resolves an artifact brief at launch and refuses an unknown artifact before starting a harness', async t => {
   const root = await tempProject(t);
   const fake = await fakeClaude(t);
-  await startDaemon(t, root, fake.env);
+  await projectHub(t, root, fake.env);
   const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
   t.after(() => coord.close());
   await coord.waitForPresence(['coord']);
@@ -88,7 +88,7 @@ test('launch resolves an artifact brief at launch and refuses an unknown artifac
 test('cland session launch forwards text and artifact briefs', async t => {
   const root = await tempProject(t);
   const fake = await fakeClaude(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   const content = 'Start on the CLI artifact brief.';
   const made = await ui.request({ type: 'artifact.create', kind: 'note', title: 'CLI brief', topic: 'general', content });
@@ -107,7 +107,7 @@ test('a Coordinator spoke launches a session in the requested absolute cwd', asy
   const cwd = join(root, '.cland', 'worktrees', 'T-45');
   await mkdir(cwd, { recursive: true });
   const fake = await fakeClaude(t);
-  await startDaemon(t, root, fake.env);
+  await projectHub(t, root, fake.env);
   const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
   t.after(() => coord.close());
   await coord.waitForPresence(['coord']);
@@ -131,7 +131,7 @@ test('a Coordinator spoke gets a typed refusal for a missing directory or a file
   const root = await tempProject(t);
   await writeFile(join(root, 'file'), 'not a directory');
   const fake = await fakeClaude(t);
-  await startDaemon(t, root, fake.env);
+  await projectHub(t, root, fake.env);
   const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
   t.after(() => coord.close());
   await coord.waitForPresence(['coord']);
@@ -162,7 +162,7 @@ test('a Coordinator spoke resolves relative launch cwd against the project root'
   await mkdir(cwd, { recursive: true });
   await mkdir(coordinatorCwd);
   const fake = await fakeClaude(t);
-  await startDaemon(t, root, fake.env);
+  await projectHub(t, root, fake.env);
   const coord = await spawnSpoke({ discover: true, cwd: coordinatorCwd, name: 'coord', role: 'coordinator' });
   t.after(() => coord.close());
   await coord.waitForPresence(['coord']);
@@ -179,7 +179,7 @@ test('a Coordinator spoke resolves relative launch cwd against the project root'
 test('folder entries and absorbed-file ids deliver launch briefs to a fake harness', async t => {
   const root = await tempProject(t);
   const fake = await fakeClaude(t);
-  await startDaemon(t, root, fake.env);
+  await projectHub(t, root, fake.env);
   const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
   t.after(() => coord.close()); await coord.waitForPresence(['coord']);
   const folder = (await coord.call<{ artifact: { id: string } }>('artifact.create', { kind: 'prompt', title: 'Folder brief', topic: 'general', folder: true, content: 'Read the folder entry.' })).artifact;

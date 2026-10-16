@@ -4,13 +4,13 @@ import assert from 'node:assert/strict';
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { cland, clandWithEnv, connectUi, eventually, fakeClaude, fakeCodex, killDaemon, spawnSpoke, startDaemon, tempProject, type FrameClient } from './harness.ts';
+import { cland, clandWithEnv, connectUi, eventually, fakeClaude, fakeCodex, killDaemon, projectHub, spawnSpoke, startDaemon, tempProject, type FrameClient } from './harness.ts';
 import type { AccountList, AccountView } from '../src/accounts/limits.ts';
 import type { HarnessProcessView } from '../src/protocol.ts';
 
 type Result = { ok: boolean; value?: unknown; error?: string; code?: string; account?: string; resetsAt?: string | null; permission?: string; role?: string };
 
-async function fixture(t: TestContext, extraEnv: Record<string, string> = {}, failed = false) {
+async function fixture(t: TestContext, extraEnv: Record<string, string> = {}, failed = false, serve: typeof projectHub | typeof startDaemon = projectHub) {
   const root = await tempProject(t);
   const config = join(root, 'config');
   const claude = await fakeClaude(t);
@@ -24,7 +24,7 @@ async function fixture(t: TestContext, extraEnv: Record<string, string> = {}, fa
   await writeFile(join(root, '.cland', 'crew.toml'), '[crew.reviewer]\npolicy = "pool"\nsize = 4\nkeep_context = true\n');
   const env = { ...claude.env, ...codex.env, XDG_CONFIG_HOME: config, FAKE_OPENCODE_HOME: oc, FAKE_OPENCODE_TURN_MS: '30', CLAND_TEST_ACCOUNT_POLL_MINIMUM_MS: '1',
     PATH: ['claude-code', 'codex', 'opencode'].map(h => fileURLToPath(new URL(`./fakes/${h}`, import.meta.url))).join(':') + ':' + (process.env.PATH ?? ''), ...extraEnv };
-  const daemon = await startDaemon(t, root, env);
+  const daemon = await serve(t, root, env);
   const ui = await connectUi(t, daemon.discovery);
   await ui.request({ type: 'subscribe' });
   await eventually('startup Claude poll settled', async () => (await journal(root, ui)).some(e => e.event === 'account-polled' && e.account === 'claude-b') || undefined);
@@ -155,7 +155,7 @@ test('Claude hard StopFailure and OpenCode quota mark; overloaded and the two re
 });
 
 test('mark survives restart; live re-find succeeds, reset lifts the mark, and the next launch succeeds', async t => {
-  const f = await fixture(t);
+  const f = await fixture(t, {}, false, startDaemon);
   const reset = new Date(Date.now() + 30_000).toISOString();
   await writeFile(join(f.root, 'codex-a', 'rate-limits.json'), JSON.stringify(limits(reset)));
   const p = await launch(f.ui, 'persisted', 'codex-a');
@@ -239,7 +239,7 @@ test('a hard hit before the native first-turn response is retained through launc
 
 for (const failed of [false, true]) test(`after-hit read waits for a recent ${failed ? 'failed poll backoff' : 'poll minimum'} and duplicate hits share it`, async t => {
   const pollDelayMs = failed ? 16000 : 12000;
-  const f = await fixture(t, { CLAND_TEST_ACCOUNT_POLL_MINIMUM_MS: failed ? '6000' : '12000', CLAND_TEST_ACCOUNT_POLL_FLOOR_MS: failed ? '8000' : '60000' }, failed);
+  const f = await fixture(t, { CLAND_TEST_ACCOUNT_POLL_MINIMUM_MS: failed ? '6000' : '12000', CLAND_TEST_ACCOUNT_POLL_FLOOR_MS: failed ? '8000' : '60000' }, failed, failed ? projectHub : startDaemon);
   const p = await launch(f.ui, 'waiting-claude', 'claude-b', { role: 'implementer' });
   await idle(f.ui, p.name);
   let ui = f.ui;

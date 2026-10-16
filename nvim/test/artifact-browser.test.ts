@@ -4,7 +4,7 @@ import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { createConnection } from 'node:net';
 import { fileURLToPath } from 'node:url';
-import { connectUi, eventually, spawnSpoke, startDaemon, tempProject } from '../../hub/test/harness.ts';
+import { connectUi, eventually, spawnSpoke, projectHub, tempProject } from '../../hub/test/harness.ts';
 import { nvimOrSkip, startClient, type Client } from './harness.ts';
 import { waitInitialSnapshots } from './readiness.ts';
 
@@ -22,7 +22,7 @@ async function input(c: Client, prompt: string, value: string) {
 
 test('Artifacts browser creates v0.2 notes, saves two folder files in place and attaches the folder with s', { skip }, async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const c = await startClient(t, bin, root);
   await c.waitScreen(s => s.includes('hub: connected'), 'connected');
@@ -67,7 +67,7 @@ test('Artifacts browser creates v0.2 notes, saves two folder files in place and 
 
 test('browser folds background and archive, keeps live selection, moves a file into a folder and promotes that folder', { skip }, async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const topic = ((await ui.request({type:'topic.create',title:'Browser notes'})).value as {topic:{id:string}}).topic.id;
   const make = async (title: string, folder = false) => ((await ui.request({ type: 'artifact.create', kind: 'note', title, topic, folder, content: '# ' + title })).value as { artifact: { id: string; path: string } }).artifact;
@@ -127,7 +127,7 @@ test('browser folds background and archive, keeps live selection, moves a file i
 
 test('s preserves composer text, deduplicates attachments and restores them after a refused send', { skip }, async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const a = ((await ui.request({ type: 'artifact.create', kind: 'note', title: 'Retry notes', topic: 'general', content: '# Notes' })).value as { artifact: { id: string } }).artifact;
   const c = await startClient(t, bin, root);
@@ -171,7 +171,7 @@ test('hub artifact layer overrides make reports in other topics visible without 
   const root = await tempProject(t);
   await mkdir(join(root, '.cland'), { recursive: true });
   await writeFile(join(root, '.cland/config.toml'), '[visibility.artifacts]\nagent = "now"\n');
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const topic = ((await ui.request({type:'topic.create',title:'Other topic'})).value as {topic:{id:string}}).topic.id;
   const impl = await spawnSpoke({ discover: true, cwd: root, name: 'impl', role: 'implementer' });
@@ -189,7 +189,7 @@ test('hub artifact layer overrides make reports in other topics visible without 
 
 test('zR unfolds the background subgroup of a role that also contains a kept artifact', { skip }, async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const topic = ((await ui.request({type:'topic.create',title:'Other reports'})).value as {topic:{id:string}}).topic.id;
   const impl = await spawnSpoke({ discover: true, cwd: root, name: 'impl', role: 'implementer' });
@@ -215,7 +215,7 @@ test('zR unfolds the background subgroup of a role that also contains a kept art
 
 test('pending message attachments survive both a refused and an accepted ask answer', { skip }, async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
   t.after(() => coord.close());
@@ -261,7 +261,7 @@ test('pending message attachments survive both a refused and an accepted ask ans
 
 test('s rejects foreign-topic and archived selections, and stale attachments can be cleared before retrying', { skip }, async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const other = ((await ui.request({type:'topic.create',title:'Elsewhere'})).value as {topic:{id:string}}).topic.id;
   const make = async (title: string, topic: string) => ((await ui.request({type:'artifact.create',kind:'note',title,topic,content:'# Notes'})).value as {artifact:{id:string}}).artifact;
@@ -360,7 +360,7 @@ test('a refused ordinary send restores artifacts when an ask was armed while its
 
 test('artifact pin and mute keys share hub layers with the thread, palette and browser', { skip }, async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const impl = await spawnSpoke({ discover: true, cwd: root, name: 'impl', role: 'implementer' });
   t.after(() => impl.close());
@@ -408,7 +408,7 @@ test('artifact pin and mute keys share hub layers with the thread, palette and b
 
 test('x asks before deleting; cancel keeps bytes and confirm updates the browser and topic chips', { skip }, async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const a = ((await ui.request({type:'artifact.create',kind:'note',title:'Disposable notes',topic:'general',content:'# Keep until confirmed'})).value as {artifact:{id:string;path:string}}).artifact;
   await ui.request({type:'topic.send',topic:'general',text:'Notes attached',artifacts:[a.id]});
@@ -448,7 +448,7 @@ test('x asks before deleting; cancel keeps bytes and confirm updates the browser
 
 test('deletion updates an already-open attachment-only chip when creation is outside retained history', { skip }, async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const a = ((await ui.request({type:'artifact.create',kind:'note',title:'Older notes',topic:'general',content:'old'})).value as {artifact:{id:string}}).artifact;
   for (let i = 0; i < 200; i++) await ui.request({type:'topic.send',topic:'general',text:'History padding ' + i});

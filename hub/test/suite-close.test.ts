@@ -5,7 +5,7 @@ import { promisify } from 'node:util';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { integrated } from './close-run-fixture.ts';
-import { cland, clandWithEnv, eventually } from './harness.ts';
+import { cland, clandWithEnv, eventually, projectHub } from './harness.ts';
 
 const exec = promisify(execFile);
 
@@ -13,7 +13,7 @@ test('integrated remote close collects each map before release and publishes the
   // The package runner's actual V8 reduction is proved by suite-coverage.test;
   // this fixture isolates remote transfer, shard union and artifact publication.
   const program = `const fs=require('fs'),s=JSON.parse(process.env.CLAND_SUITE_SELECTION),r=s.recordCoverage,tests=s.shard.files;fs.writeFileSync(process.env.CLAND_COVERAGE_OUTPUT,JSON.stringify({version:1,head:r.head,tree:r.tree,created:new Date().toISOString(),testFiles:tests,files:{'hub/src/covered.ts':{functions:[{name:'covered',start:1,end:20,startLine:1,endLine:1,tests}]}}}));`;
-  const f = await integrated(t, 'daily_spend_usd=3', 2, `node -e ${JSON.stringify(program)}`);
+  const f = await integrated(t, 'daily_spend_usd=3', 2, `node -e ${JSON.stringify(program)}`, { hub: projectHub });
   await writeFile(join(f.root, 'hub/test/run-suite.ts'), '// reduceCoverage-capable fixture\n');
   await f.git('add', '.'); await f.git('commit', '-m', 'coverage transport capability'); await f.git('push', 'origin', 'dev');
   assert.equal((await f.ui.request({ type: 'role.set', session: 'impl', role: 'coordinator' })).ok, true);
@@ -42,7 +42,7 @@ test('integrated remote close collects each map before release and publishes the
 });
 
 test('occasion refuses implementers and task heads; an integrated Coordinator close uses two droplets and one merged result', async t => {
-  const f = await integrated(t, 'daily_spend_usd=3');
+  const f = await integrated(t, 'daily_spend_usd=3', 2, undefined, { hub: projectHub });
   const request = (...args: string[]) => clandWithEnv(f.root, f.actor, 'verify', 'all', '--fresh', '--report', f.topic, '--to', 'impl', '--json', ...args);
   const denied = await request('--occasion', 'stage');
   assert.equal(denied.code, 1);
@@ -115,7 +115,7 @@ test('occasion refuses implementers and task heads; an integrated Coordinator cl
 });
 
 for (const cause of ['cap', 'slots'] as const) test(`close run falls back whole with one warning when limited by ${cause}`, async t => {
-  const f = await integrated(t, cause === 'cap' ? 'daily_spend_usd=0.1' : '', cause === 'slots' ? 1 : 2);
+  const f = await integrated(t, cause === 'cap' ? 'daily_spend_usd=0.1' : '', cause === 'slots' ? 1 : 2, undefined, { hub: projectHub });
   assert.equal((await f.ui.request({ type: 'role.set', session: 'impl', role: 'coordinator' })).ok, true);
   const submitted = await clandWithEnv(f.root, f.actor, 'verify', 'all', '--fresh', '--occasion', 'stage', '--report', f.topic, '--json');
   assert.equal(submitted.code, 0, submitted.stderr);
@@ -129,7 +129,7 @@ for (const cause of ['cap', 'slots'] as const) test(`close run falls back whole 
 });
 
 test('ordinary integrated batch uses one slot and its green tree serves a later release occasion cache hit', async t => {
-  const f = await integrated(t);
+  const f = await integrated(t, '', 2, undefined, { hub: projectHub });
   assert.equal((await f.ui.request({ type: 'role.set', session: 'impl', role: 'coordinator' })).ok, true);
   const batch = await f.spoke.call<{ ok: boolean; id: string }>('verify', { mode: 'all', cwd: f.root, report: f.topic, fresh: true });
   assert.equal(batch.ok, true);
@@ -145,7 +145,7 @@ test('ordinary integrated batch uses one slot and its green tree serves a later 
 });
 
 test('QA can request epic through MCP but stage, release, task heads and non-full occasions are refused', async t => {
-  const f = await integrated(t);
+  const f = await integrated(t, '', 2, undefined, { hub: projectHub });
   assert.equal((await f.ui.request({ type: 'role.set', session: 'impl', role: 'qa' })).ok, true);
   const verify = (args: Record<string, unknown>) => f.spoke.call<{ ok: boolean; id: string; error?: string }>('verify', { mode: 'all', cwd: f.root, report: f.topic, to: ['impl'], fresh: true, ...args });
   for (const occasion of ['stage', 'release']) {
@@ -166,7 +166,7 @@ test('QA can request epic through MCP but stage, release, task heads and non-ful
 });
 
 test('occasion refuses stale origin/dev proof when the required fresh fetch fails', async t => {
-  const f = await integrated(t);
+  const f = await integrated(t, '', 2, undefined, { hub: projectHub });
   assert.equal((await f.ui.request({ type: 'role.set', session: 'impl', role: 'coordinator' })).ok, true);
   assert.equal(await f.git('rev-parse', 'HEAD'), await f.git('rev-parse', 'origin/dev'), 'the stale local tracking ref matches HEAD');
   await f.git('remote', 'set-url', 'origin', join(f.root, 'unavailable-origin.git'));
