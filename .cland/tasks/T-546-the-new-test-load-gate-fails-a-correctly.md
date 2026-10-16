@@ -3,7 +3,7 @@ id: T-546
 kind: task
 title: The new-test load gate fails a correctly platform-skipped new test
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 2
 labels:
@@ -16,7 +16,7 @@ regression_of: T-471
 topic: topic-340
 branch: t/T-546-the-new-test-load-gate-fails-a-correctly
 created: 2026-10-15T22:56:05.665Z
-updated: 2026-10-16T03:22:42.483Z
+updated: 2026-10-16T03:52:52.246Z
 ---
 
 ## Summary
@@ -30,6 +30,7 @@ Found by impl-296 on T-296 (2026-10-15 22:55Z). T-471's load gate (`hub/test/loa
   - verified: rev-31 [reviewer] · run rev-20261016-546-delta-2 · 2026-10-16T03:22:42.483Z · commit 2911f236d7b3b6324b5e5e4958d62fd435c147ce
 - [x] C2. Tests cover both cases, and docs/agents/tests.md says how a platform-skipped new test gets its load proof (on a machine that has the prerequisite).
   - done: impl-546 · 2026-10-15T23:59:09.682Z
+  - verified: rev-31 [reviewer] · run rev-20261016-546-final · 2026-10-16T03:52:51.850Z · commit 2911f236d7b3b6324b5e5e4958d62fd435c147ce
 
 ## Comments
 
@@ -92,3 +93,32 @@ A-3634 priorhead Linux1855pass/0fail/3skip,sixownnewcases each5/5,soleknownT-556
 ArtifactA-3639: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3639-t-546-shared-stable-name-delta-source-clear-at-2911f236.md.
 
 Criteria: C1 verified.
+
+### rev-31 · 2026-10-16T03:51:51.893Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261016-546-evidence-1
+commit: 2911f236d7b3b6324b5e5e4958d62fd435c147ce
+scope: evidence
+
+Evidence not clear yet. Linuxd4f190d0/A-3667:1854pass/1fail/3skip,exit1. Onlyred role-integrity.test.ts:174 relaunched spoke refused notwithin15000ms(A-3667:4203-4207), exact knownT-509(Bugs/XS), outside taskdiff. Allsixownnewcases pass ordinary+5/5load, no new duration-budget failure, T-556fixed. No task criterion failed/source defect inferred; C1current,C2pending.
+Fullmode neverreachedNeovim. Coordinator35141dde required Neovimgreen and namedT-555/T-565/T-566only;T-509needs explicit disposition plus missingphase. MacA-3481 andpriorLinuxA-3634 remain support, not finalfullgate. Obtain lead/Coordinator plan before another run orpick. No Reviewer edits/tests.
+ArtifactA-3668: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3668-t-546-linux-evidence-pending-t-509-and-missing-neovim.md.
+
+### rev-31 · 2026-10-16T03:52:51.850Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261016-546-final
+commit: 2911f236d7b3b6324b5e5e4958d62fd435c147ce
+scope: evidence
+
+Finalclear underexplicitCoordinatorc1e78ce5-c203-4420-85b6-034f3716fe15 batchrule6. C2verified:unchangedtests cover static/runtime reasonedskip acceptance plus blank/TODO/mixedpass/fail rejection;docs require fivepassingloadproof on prerequisitecapablemachine,not skippedproof. A-3481Macfivefiles75/75,all sixnewcases each5/5 on bothLinuxreceipts. C1source/delta atcurrent2911f236 remainsverified.
+A-3634 at50d7aa4c:1855pass/0fail/3skip,onlyT-5560/5. A-3667 at2911f236:1854pass/1fail/3skip,onlyexactT-509relaunchrefusaltimeout. Headsdifferonlybysourcereviewedshared576404e8;taskimplementation/tests/docs unchanged. No harddurationbudgetfailure. Nooutstandinghigh/mediumfindings.
+Decisionc1e78ce5 supersedesearlierNeovimgreenrequirement:no thirdrun,Neovim fromnextintegrateddevcover beforeanyrestartonT-546code,loadgateredfixforwardwithinhour;Coordinatorrecordsbatchcoverageatmerge. Bothper-itemrunsstoppedbeforeNeovim,neitheroverallgreen;thisexplicitexceptionisfinalgatebasis. No peritemQA or Reviewer edits/tests.
+ArtifactA-3671: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3671-t-546-final-clear-under-batch-neovim-deferral.md.
+
+Criteria: C2 verified.

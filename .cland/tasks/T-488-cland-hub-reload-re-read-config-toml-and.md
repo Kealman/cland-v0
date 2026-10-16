@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-329
 branch: t/T-488-cland-hub-reload-re-read-config-toml-and
 created: 2026-10-15T11:30:17.553Z
-updated: 2026-10-16T03:50:37.097Z
+updated: 2026-10-16T03:51:12.026Z
 ---
 
 ## Problem
@@ -31,11 +31,13 @@ Add `cland hub reload`, which also runs on SIGHUP. It re-reads `.cland/config.to
   - done: impl-488 · 2026-10-16T02:48:53.488Z
   - verified: rev-31 [reviewer] · run rev-20261016-488-source-3 · 2026-10-16T02:49:54.457Z · commit 37c3f4efa2f781b9a76b848cac9b5e209440f8bf
   - verified: rev-31 [reviewer] · run rev-20261016-488-delta-4 · 2026-10-16T03:10:19.209Z · commit 72faa365f61064eec819cf9cea9a48f6f71d6715
+  - verified: rev-31 [reviewer] · run rev-20261016-488-delta-5 · 2026-10-16T03:51:12.026Z · commit bfc146576230846994be376ebbe073d2188acb92
 - [x] C2. A parse or validation error in either file keeps the whole previous config in force and journals `config-reload-failed` with the file and error; the CLI exits non-zero and prints the error.
   - done: impl-488 · 2026-10-15T23:45:16.991Z
   - verified: rev-31 [reviewer] · run rev-20261016-488-source-2 · 2026-10-16T00:01:17.145Z · commit 7b8c92b36c082509ca88ced2ad5efec47b6bac51
   - verified: rev-31 [reviewer] · run rev-20261016-488-source-3 · 2026-10-16T02:49:54.457Z · commit 37c3f4efa2f781b9a76b848cac9b5e209440f8bf
   - verified: rev-31 [reviewer] · run rev-20261016-488-delta-4 · 2026-10-16T03:10:19.209Z · commit 72faa365f61064eec819cf9cea9a48f6f71d6715
+  - verified: rev-31 [reviewer] · run rev-20261016-488-delta-5 · 2026-10-16T03:51:12.026Z · commit bfc146576230846994be376ebbe073d2188acb92
 - [x] C3. Verifications, leases and launches already running keep the config they started with; only those started after the reload use the new one, and a test proves both sides.
   - done: impl-488 · 2026-10-15T23:45:40.291Z
 - [x] C4. `cland hub status` shows the loaded config's time and the source commit of config.toml.
@@ -43,6 +45,7 @@ Add `cland hub reload`, which also runs on SIGHUP. It re-reads `.cland/config.to
   - verified: rev-31 [reviewer] · run rev-20261016-488-source-2 · 2026-10-16T00:01:17.145Z · commit 7b8c92b36c082509ca88ced2ad5efec47b6bac51
   - verified: rev-31 [reviewer] · run rev-20261016-488-source-3 · 2026-10-16T02:49:54.457Z · commit 37c3f4efa2f781b9a76b848cac9b5e209440f8bf
   - verified: rev-31 [reviewer] · run rev-20261016-488-delta-4 · 2026-10-16T03:10:19.209Z · commit 72faa365f61064eec819cf9cea9a48f6f71d6715
+  - verified: rev-31 [reviewer] · run rev-20261016-488-delta-5 · 2026-10-16T03:51:12.026Z · commit bfc146576230846994be376ebbe073d2188acb92
 
 ## Comments
 
@@ -181,3 +184,18 @@ scope: evidence
 Evidence not clear. Medium—hub/test/durations.json:3090 lacks measured allowance for new config-reload.test.ts:75 role-refresh identity,6.631s>5s(A-3651:6013). Add exact reasoned measured allowance or reduce runtime while preserving assertions/bounds. Allfiveowncases pass ordinarily+5/5; no task behavior defect inferred, C3 finalgate stays pending.
 Linux59571add/A-3651:1852pass/2fail/3skip,exit1,Neovim not reached. OutsideBugs/S—demo.test.ts:69 start fails demo deadline reached during delivery; not named in prior453f7fb8 exceptions, needs leadclassification. OutsideBugs/S—session-model.test.ts:108 reversed identical childrows is exactknownT-544/postedsort08f09c7c. SourceC1/C2/C4 remain current; no criterion failed by this evidence pass. Any allowance/sharedpick head needs delta before verification; Neovimgreen still required. No Reviewer edits/tests.
 A-3654: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3654-t-488-linux-gate-not-clear-own-duration-budget-and-outside-failures.md (role-refresh declaration is line75; artifact approximate line80 should read75).
+
+### rev-31 · 2026-10-16T03:51:12.026Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261016-488-delta-5
+commit: bfc146576230846994be376ebbe073d2188acb92
+scope: delta
+
+Delta source clear.72faa365..bfc14657 only exact shared08f09c7c child-order sort and measured6.631s ownrole-refresh allowance. Sort preserves duplicates/count/identities/models and allfive mappedfields. Allowance matchesA-3651 measurement with specific real-work reason; no runtimebound/assertion change. JSON/diffcheckclear. Standards/Spec:no findings;A-3654 budgetfinding resolved. C1/C2/C4 reverified unchangedsource;C3pending.
+A-3661 inspected:branch5x7/7+detacheddev516cac6d5x7/7,70pass/0fail/skip,quietserialguards/load<10,unchanged2500msdeadline. Coordinator d84aa98e independently accepts comparison and directs one freshdroplet afterdelta. RepeatLinuxdemo:69 deadline-during-delivery isT-488's tofix withLinuxprobe. Receipt must reachNeovimgreen; only namedT-555/T-565/T-566/T-567/T-568 exceptions. No Reviewer edits/tests.
+ArtifactA-3666: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3666-t-488-allowance-and-child-order-delta-clear-at-bfc14657.md.
+
+Criteria: C1 verified, C2 verified, C4 verified.

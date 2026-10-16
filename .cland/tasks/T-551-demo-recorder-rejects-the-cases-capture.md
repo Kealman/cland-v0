@@ -3,7 +3,7 @@ id: T-551
 kind: task
 title: Demo recorder rejects the cases' capture names and hides the error behind a bare catch
 state: open
-status: in progress
+status: ready
 size: S
 criterion_seq: 3
 labels:
@@ -16,7 +16,7 @@ regression_of: T-459
 topic: topic-347
 branch: t/T-551-demo-recorder-rejects-the-cases-capture
 created: 2026-10-16T00:31:47.114Z
-updated: 2026-10-16T02:58:08.173Z
+updated: 2026-10-16T03:52:16.159Z
 ---
 
 ## Summary
@@ -33,6 +33,7 @@ Separately, the delivered `hub/bin` on the droplet has no executable named `clan
   - verified: rev-31 [reviewer] · run rev-20261016-551-delta-2 · 2026-10-16T02:29:58.808Z · commit 1eed1f408777792f46bb2ab2f1303da452ea53e2
 - [x] C2. Any recorder failure reports its actual error and the remote stderr in the BLOCKED record instead of a generic message, and captures are kept until local validation succeeds.
   - done: impl-551 · 2026-10-16T00:53:23.868Z
+  - verified: rev-31 [reviewer] · run rev-20261016-551-final · 2026-10-16T03:52:15.821Z · commit 1eed1f408777792f46bb2ab2f1303da452ea53e2
 - [x] C3. On a demo lease, `cland` resolves on PATH to the delivered build (a `cland` launcher in hub/bin or an equivalent), and a test or the qa skill shows `cland --headless --qa` working there.
   - done: impl-551 · 2026-10-16T00:53:25.022Z
   - verified: rev-31 [reviewer] · run rev-20261016-551-source · 2026-10-16T00:56:32.267Z · commit b2565458f289f047042b944636e41d2af9fcec28
@@ -130,3 +131,22 @@ scope: evidence
 
 Historical original-run evidence not clear: Linuxa53c3d9c/A-3625 atb2565458 timed out124/50m,1848pass/1fail/4skip. Ordinary failure executor-safety.test.ts:289: all executor leases finish releasing not within15000ms. This matches knownT-524's second-case signature; it is not evidence of a credential/sentinel leak. Own recorder success/failure cases pass ordinarily and both5/5 repetitions. Remaining watchdog/unrelated stale-manifest/T-556 load gates are also red. Coordinator6d6d0c6a excluded this timed-out receipt and ordered replacement.
 No new task source defect or criterion failure established; C2 remains pending current-head gate. Newer1eed1f40 source/delta clear and C1/C3 marks are unchanged; this verdict only evaluates the old run. ArtifactA-3628: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3628-t-551-original-linux-receipt-not-clear-at-b2565458.md. No Reviewer edits/tests.
+
+### impl-551 · 2026-10-16T03:51:52.608Z
+
+Same-head Linux droplet verification92a19ba1 is GREEN at source-cleared1eed1f40 (A-3669):1865 tests,1861 pass,0 fail,4 skip; includes Neovim smoke. c-8 lon1/Linux x64/Node24.21.0/Neovim0.12.5, lifetime1724s, cost$0.1197. Existing local evidence: demo8/8 A-3512, QA recorder compatibility16/16 A-3578. No further head changes; Reviewer has same-head result for C2/final verdict. Old timeout A-3625 is excluded.
+
+### rev-31 · 2026-10-16T03:52:15.821Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261016-551-final
+commit: 1eed1f408777792f46bb2ab2f1303da452ea53e2
+scope: evidence
+
+Final clear atunchanged1eed1f40. SameheadLinux92a19ba1/A-3669 exit0:1861pass/0fail/4platformskip, hubfree38/38,machine1811pass+4skip,Neovimsmoke12/12.4workers,c-8lon1,Node24.21.0,Neovim0.12.5,suite1642.62s. No loadgate/harddurationfailure; knownregressionnotices informational.
+C2 verified: recorder success8.059s andfailurediagnostic/recovery11.206s pass; newfailurecase5/5load. Source preservesactualerror/stderr/remote_output inBLOCKED+runs.jsonl; capturedeletion follows exclusivecopy/readbackvalidation, failurekeepsremoteevidence. A-3512Macdemo8/8,A-3578skills-qa16/16support. C1/C3current source/deltaA-3594 remain; all3criteria nowverified,nohigh/mediumfindings. OldA-3625timeout isnotgate. No peritemQA or Reviewer edits/tests.
+ArtifactA-3670: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3670-t-551-final-clear-at-1eed1f40-green-linux-gate.md.
+
+Criteria: C2 verified.
