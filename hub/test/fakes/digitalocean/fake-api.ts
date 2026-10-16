@@ -40,7 +40,7 @@ export async function fakeDigitalOcean(token: string) {
   const polls = new Map<number, number>();
   const deleting = new Map<number, number>();
   const account = { status: 'active' };
-  const faults = { create: 0, delayMs: 0, delayPath: '', activeAfter: 2, deletePolls: 0, keyDeletePolls: 0, keyDeleteFailures: [] as number[], deleteError: 0, deleteFailures: [] as Array<number | 'timeout'>, echoToken: false, actionAfter: 2, failAction: '', deleteSnapshot: 0, visibilityPolls: 0, snapshotAfter: 0, snapshotHiddenPolls: 0, catalogueError: 0, loseDeleteSnapshot: 0, failCatalogueAfterDelete: false };
+  const faults = { create: 0, delayMs: 0, delayPath: '', activeAfter: 2, deletePolls: 0, archiveOnDelete: false, keyDeletePolls: 0, keyDeleteFailures: [] as number[], deleteError: 0, deleteFailures: [] as Array<number | 'timeout'>, echoToken: false, actionAfter: 2, failAction: '', deleteSnapshot: 0, visibilityPolls: 0, snapshotAfter: 0, snapshotHiddenPolls: 0, catalogueError: 0, loseDeleteSnapshot: 0, failCatalogueAfterDelete: false };
   let beforeDropletList: (() => Promise<void>) | undefined;
   let beforeKeyList: (() => Promise<void>) | undefined;
   let beforeCreate: (() => Promise<void>) | undefined;
@@ -175,11 +175,12 @@ export async function fakeDigitalOcean(token: string) {
         if (failure !== undefined) return answer(failure, { id: 'delete_failed', message: faults.echoToken ? token : 'droplet busy or provider unavailable; try later' });
         if (faults.deleteError) return answer(faults.deleteError, { id: 'delete_failed', message: 'try later' });
         if (!deleting.has(id)) deleting.set(id, faults.deletePolls);
+        if (faults.archiveOnDelete) { droplet.status = 'archive'; droplet.tags = []; }
         return answer(204);
       }
       const n = (polls.get(id) ?? 0) + 1;
       polls.set(id, n);
-      if (n >= faults.activeAfter) droplet.status = 'active';
+      if (n >= faults.activeAfter && droplet.status !== 'archive') droplet.status = 'active';
       if (n > faults.activeAfter) droplet.networks.v4 = [{ type: 'public', ip_address: dropletAddresses.get(id)! }];
       return answer(200, { droplet });
     }

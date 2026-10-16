@@ -19,7 +19,8 @@ export class Demos {
   readonly tracker: Tracker;
   readonly executor: DropletExecutor;
   readonly #env: NodeJS.ProcessEnv;
-  constructor(root: string, tracker: Tracker, executor: DropletExecutor, env: NodeJS.ProcessEnv = process.env) { this.root = root; this.tracker = tracker; this.executor = executor; this.#env = env; }
+  readonly #alert: (lease: DropletLease, text: string) => void;
+  constructor(root: string, tracker: Tracker, executor: DropletExecutor, env: NodeJS.ProcessEnv = process.env, alert: (lease: DropletLease, text: string) => void = () => {}) { this.root = root; this.tracker = tracker; this.executor = executor; this.#env = env; this.#alert = alert; }
   #serial<T>(work: () => Promise<T>): Promise<T> {
     const next = this.#queue.then(work); this.#queue = next.catch(() => {}); return next;
   }
@@ -30,10 +31,10 @@ export class Demos {
   }
   async #leases(epic: string) { return (await readLeases(this.root)).filter(l => l.demo?.epic === epic).sort((a, b) => a.created.localeCompare(b.created) || a.lease.localeCompare(b.lease)); }
   #value(lease: DropletLease) {
-    return { executor: 'droplet', epic: lease.demo!.epic, lease: lease.lease, commit: lease.demo!.commit, state: lease.state,
+    return { executor: 'droplet', epic: lease.demo!.epic, lease: lease.lease, commit: lease.demo!.commit, state: lease.state, ...(lease.attention ? { attention: lease.attention } : {}),
       created: lease.created, deadline: lease.deadline, maxLifetimeMs: Date.parse(lease.deadline) - Date.parse(lease.created), lifetimeMs: lease.lifetimeMs ?? Math.max(0, Date.now() - Date.parse(lease.created)),
       costUsd: lease.costUsd ?? Math.max(60000, Date.now() - Date.parse(lease.created)) / 3600000 * lease.priceHourly,
-      summary: `demo ${lease.demo!.epic}: ${lease.lease} commit ${lease.demo!.commit} ${lease.state}; deadline ${lease.deadline}; lifetime ${Math.round((lease.lifetimeMs ?? Date.now() - Date.parse(lease.created)) / 1000)} s; cost $${(lease.costUsd ?? Math.max(60000, Date.now() - Date.parse(lease.created)) / 3600000 * lease.priceHourly).toFixed(4)}` };
+      summary: `demo ${lease.demo!.epic}: ${lease.lease} commit ${lease.demo!.commit} ${lease.state}; deadline ${lease.deadline}; lifetime ${Math.round((lease.lifetimeMs ?? Date.now() - Date.parse(lease.created)) / 1000)} s; cost $${(lease.costUsd ?? Math.max(60000, Date.now() - Date.parse(lease.created)) / 3600000 * lease.priceHourly).toFixed(4)}${lease.attention ? `; operator attention: identity mismatch (${lease.attention.fields.join(', ')}), provider status ${lease.attention.observed.status}` : ''}` };
   }
   async #comment(lease: DropletLease, text: string) {
     if (!this.tracker.view(lease.demo!.epic).comments.some(c => c.author === 'hub' && c.text === text)) await this.tracker.comment(hub, lease.demo!.epic, text);
@@ -41,6 +42,11 @@ export class Demos {
   async #report(lease: DropletLease) {
     if (lease.resource !== null) await this.#comment(lease, `demo ${lease.lease} created: droplet ${lease.name}, commit ${lease.demo!.commit}, deadline ${lease.deadline}.`);
     if (lease.state === 'released') await this.#comment(lease, `demo ${lease.lease} destroyed: lifetime ${lease.lifetimeMs ?? 0} ms; cost $${(lease.costUsd ?? 0).toFixed(4)}.`);
+    if (lease.attention) {
+      const text = `demo ${lease.demo!.epic} lease ${lease.lease} droplet ${lease.resource}: operator attention required; identity mismatch; deletion refused. ${JSON.stringify(lease.attention)}`;
+      await this.#comment(lease, text);
+      this.#alert(lease, text);
+    }
   }
   start(raw: string, commit?: string, authorize = () => {}) {
     return this.#serial(async () => {

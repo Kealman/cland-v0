@@ -12,7 +12,7 @@ import { defaultConfig, parseConfig } from '../../init/config.ts';
 import { DigitalOceanApi, DigitalOceanError } from './api.ts';
 import { accountRelease, leaseDir, liveLease, matchesLease, readLease, readLeases, writeLease, type DropletLease, type WatchdogReceipt } from './lease.ts';
 import { armWatchdog, pause, stopWatchdog, testTiming, watchdogAlive } from './watchdog.ts';
-import { deleteLeaseResources } from './cleanup.ts';
+import { deleteLeaseResources, DropletIdentityMismatch } from './cleanup.ts';
 import { readRecoveries, recoverSnapshots } from './snapshot-recovery.ts';
 import { machineEnv } from './machine.ts';
 import { prepareKey, prepareSnapshot, readSnapshot, staleParts, sameKey, waitForMachine, type PrepareKey, type Prepared } from './prepare.ts';
@@ -263,6 +263,7 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
     do {
       try {
         const result = await deleteLeaseResources(new DigitalOceanApi(this.#env), lease, limit);
+        delete lease.attention;
         if (result.confirmed) {
           accountRelease(lease, lease.deleteStarted ?? new Date().toISOString());
           await this.#save(lease);
@@ -274,6 +275,7 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
           return { lifetimeMs: lease.lifetimeMs!, costUsd: lease.costUsd! };
         }
       } catch (error) {
+        if (error instanceof DropletIdentityMismatch) lease.attention = error.attention;
         cause = error instanceof DigitalOceanError ? { status: error.status, id: error.id, message: error.message }
           : { message: error instanceof Error ? error.message : 'resource cleanup failed' };
         // Identity refusals and permanent provider errors remain for recovery;
@@ -284,7 +286,7 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
       await pause(Math.min(testTiming('CLAND_TEST_DROPLET_POLL_MS', 2000, this.#env), Math.max(0, limit - Date.now())));
     } while (Date.now() < limit);
     await this.#save(lease);
-    this.logger({ event: 'executor-release-unconfirmed', lease: lease.lease, id: lease.resource, cause });
+    this.logger({ event: 'executor-release-unconfirmed', lease: lease.lease, id: lease.resource, cause, ...(lease.attention ? { attention: lease.attention } : {}) });
     return { lifetimeMs: null, costUsd: null };
   }
 
@@ -298,7 +300,7 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
       const snapshotRecovery = await readRecoveries(this.root);
       const token = Boolean(this.#env.DIGITALOCEAN_TOKEN);
       const all = await readLeases(this.root);
-      const leases = await Promise.all(all.filter(l => l.state !== 'released').map(async l => ({ name: l.name, id: l.resource, region: l.region, size: l.size, state: l.state, ageMs: Date.now() - Date.parse(l.created), deadline: l.deadline, watchdogAlive: await watchdogAlive(l, this.#env) })));
+      const leases = await Promise.all(all.filter(l => l.state !== 'released').map(async l => ({ name: l.name, id: l.resource, region: l.region, size: l.size, state: l.state, ...(l.attention ? { attention: l.attention } : {}), ageMs: Date.now() - Date.parse(l.created), deadline: l.deadline, watchdogAlive: await watchdogAlive(l, this.#env) })));
       const spend = await inspectSpend((await this.#config()).verification.dailySpendUsd, this.#env);
       const todayCostUsd = spend.spent;
       let taggedDroplets: number | null = null;
@@ -307,7 +309,7 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
       // A job may replace/restore the record while provider and Git reads yield.
       // Return a coherent snapshot and terminal job state from the same observation.
       if (job !== this.#prepareJob || jobState !== job?.state) continue;
-      const summary = [snapshot ? `snapshot: ${snapshot.name} image=${snapshot.image} ${freshness.length ? `stale: ${freshness.join('|')}` : 'current'} key=${JSON.stringify(snapshot.key)}` : 'snapshot: none', ...(prepare ? [`prepare: ${prepare.state} ${prepare.step} elapsed=${Math.round(prepare.elapsedMs / 1000)}s`] : []), ...snapshotRecovery.map(record => `snapshot recovery: ${record.name} ${record.phase}`), `token: ${token ? 'present' : 'absent (DIGITALOCEAN_TOKEN)'}`, ...(!leases.length ? ['leases: none'] : leases.map(l => `${l.name} id=${l.id ?? 'pending'} ${l.region} ${l.size} ${l.state} age=${Math.round(l.ageMs / 1000)}s deadline=${l.deadline} watchdog=${l.watchdogAlive ? 'alive' : 'dead'}`)), `ledger: ${spend.path}`, `today: spent $${spend.spent.toFixed(4)} + reserved $${spend.reserved.toFixed(4)} / cap $${spend.cap}`, `tagged droplets: ${taggedDroplets ?? providerError ?? 'unavailable'}`].join('\n');
+      const summary = [snapshot ? `snapshot: ${snapshot.name} image=${snapshot.image} ${freshness.length ? `stale: ${freshness.join('|')}` : 'current'} key=${JSON.stringify(snapshot.key)}` : 'snapshot: none', ...(prepare ? [`prepare: ${prepare.state} ${prepare.step} elapsed=${Math.round(prepare.elapsedMs / 1000)}s`] : []), ...snapshotRecovery.map(record => `snapshot recovery: ${record.name} ${record.phase}`), `token: ${token ? 'present' : 'absent (DIGITALOCEAN_TOKEN)'}`, ...(!leases.length ? ['leases: none'] : leases.map(l => `${l.name} id=${l.id ?? 'pending'} ${l.region} ${l.size} ${l.state} age=${Math.round(l.ageMs / 1000)}s deadline=${l.deadline} watchdog=${l.watchdogAlive ? 'alive' : 'dead'}${l.attention ? `; operator attention: identity mismatch (${l.attention.fields.join(', ')}), provider status ${l.attention.observed.status}` : ''}`)), `ledger: ${spend.path}`, `today: spent $${spend.spent.toFixed(4)} + reserved $${spend.reserved.toFixed(4)} / cap $${spend.cap}`, `tagged droplets: ${taggedDroplets ?? providerError ?? 'unavailable'}`].join('\n');
       return { spend, snapshotRecovery, snapshot: snapshot ? { ...snapshot, freshness: freshness.length ? `stale: ${freshness.join('|')}` : 'current' } : null, prepare, token, leases, todayCostUsd, taggedDroplets, ...(providerError ? { providerError } : {}), summary };
     }
   }
@@ -376,6 +378,9 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
       // Acquire persists ownership before its provider mutation. Read it after
       // the provider list (and after any previous deletion awaits), never before.
       const known = await hostLeases(this.root, this.#env);
+      // A renamed/retagged known resource is an identity refusal, not an
+      // orphan. Keep it for operator attention even after its deadline.
+      if (known.some(lease => lease.state !== 'released' && lease.resource === droplet.id && !matchesLease(droplet, lease))) continue;
       const owner = known.find(lease => matchesLease(droplet, lease));
       if (known.some(lease => matchesLease(droplet, lease) && liveLease(lease))) continue;
       const age = Date.now() - Date.parse(droplet.created_at);

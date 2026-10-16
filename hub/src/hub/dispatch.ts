@@ -163,7 +163,12 @@ export class Dispatcher {
     this.#rolesSnapshot = options.core.roles?.get();
     const root = options.control?.status().root;
     this.#droplets = root ? new DropletExecutor(root, options.core.store, this.#log, options.env) : null;
-    this.#demos = root && options.tracker && this.#droplets ? new Demos(root, options.tracker, this.#droplets, options.env) : null;
+    this.#demos = root && options.tracker && this.#droplets ? new Demos(root, options.tracker, this.#droplets, options.env, (lease, text) => {
+      const id = `demo-attention:${lease.lease}`;
+      if (options.core.store.message(id)) return;
+      const item = options.tracker!.view(lease.demo!.epic);
+      options.core.noticeTo(item.topic ?? AGENTS.id, { id, kind: 'report', to: ['coordinator'], text: options.core.boundedText(text), detail: { event: 'executor-release-unconfirmed', lease: lease.lease, item: item.id } });
+    }) : null;
     this.#dropletReady = this.#droplets?.sweep(true).then(() => this.#demos?.reconcile()).catch(() => this.#log({ event: 'executor-reconcile-failed', reason: 'lease recovery deferred' })) ?? Promise.resolve();
     const retryMs = Number((options.env ?? process.env).CLAND_TEST_EXECUTOR_SWEEP_MS);
     this.#dropletTimer = this.#droplets ? setInterval(() => {

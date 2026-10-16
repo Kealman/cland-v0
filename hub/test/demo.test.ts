@@ -64,6 +64,8 @@ test('demo authorization, shared slot refusals and verdict cleanup use the same 
 
 for (const bound of ['run timeout', 'machine lifetime']) test(`demo ${bound} destroys the machine through the watchdog even with the hub gone`, async t => {
   const f = await fixture(t, { env: { [bound === 'run timeout' ? 'CLAND_TEST_EXECUTOR_RUN_TIMEOUT_MS' : 'CLAND_TEST_EXECUTOR_LIFETIME_MS']: '2500', CLAND_TEST_EXECUTOR_COLLECTION_MARGIN_MS: '1', CLAND_TEST_DROPLET_WATCHDOG_POLL_MS: '20' } });
+  f.api.faults.archiveOnDelete = true; f.api.faults.deletePolls = 2;
+  f.api.faults.keyDeleteFailures.push(403);
   const epic = ((await f.ui.request({ type: 'task.create', title: 'Timed demo', kind: 'epic' })).value as { item: { id: string } }).item.id;
   const started = await f.ui.request({ type: 'demo.start', epic });
   assert.equal(started.ok, true, started.error);

@@ -4,6 +4,12 @@ import { dirname, join } from 'node:path';
 import type { Droplet } from './api.ts';
 import type { Lease } from '../executor.ts';
 
+export type ReleaseAttention = {
+  fields: Array<'name' | 'tags'>;
+  expected: { name: string; tags: string[] };
+  observed: { name: string; tags: string[]; status: string };
+};
+
 export type DropletLease = Lease & {
   kind: 'droplet'; provider: 'digitalocean'; lease: string; name: string;
   tags: string[]; size: string; region: string; priceHourly: number; keyName: string;
@@ -12,6 +18,7 @@ export type DropletLease = Lease & {
   keyImportStarted?: string; keyImportFinished?: string;
   createStarted?: string; createFinished?: string; deleteStarted?: string; released?: string;
   lifetimeMs?: number; costUsd?: number; watchdogFired?: string;
+  attention?: ReleaseAttention;
   demo?: { epic: string; commit: string; ready?: boolean };
   execution?: { head: string; delivered?: boolean; started?: boolean; startedAt?: string; unreachableSince?: string };
   watchdog?: { pid: number; startedUtc: string };
@@ -55,6 +62,7 @@ export async function readLeases(root: string): Promise<DropletLease[]> {
 export const matchesLease = (droplet: Droplet, lease: DropletLease): boolean => droplet.name === lease.name && lease.tags.every(tag => droplet.tags.includes(tag));
 export const liveLease = (lease: DropletLease): boolean => lease.state !== 'released' && Date.parse(lease.deadline) > Date.now();
 export function accountRelease(lease: DropletLease, deletedAt: string): void {
+  delete lease.attention;
   lease.deleteStarted ??= deletedAt;
   const billable = lease.createStarted && lease.resource !== null;
   lease.lifetimeMs = billable ? Math.max(0, Date.parse(lease.deleteStarted) - Date.parse(lease.createStarted!)) : 0;

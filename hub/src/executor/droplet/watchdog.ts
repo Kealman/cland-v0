@@ -59,6 +59,7 @@ async function watchdog(dir: string): Promise<void> {
       const lease = await readLease(dir);
       lease.resource ??= discoveredResource;
       lease.keyId ??= discoveredKey;
+      if (deleteStarted) lease.deleteStarted ??= deleteStarted;
       if (lease.state === 'released') return;
       try {
         const result = await deleteLeaseResources(api, lease);
@@ -72,7 +73,7 @@ async function watchdog(dir: string): Promise<void> {
           return;
         }
       } catch { /* the lease remains the recovery record; secrets never enter a receipt */ }
-      finally { discoveredResource ??= lease.resource; discoveredKey ??= lease.keyId; }
+      finally { deleteStarted ??= lease.deleteStarted; discoveredResource ??= lease.resource; discoveredKey ??= lease.keyId; }
       await pause(interval);
     }
   } finally { inhibitor?.kill(); }
