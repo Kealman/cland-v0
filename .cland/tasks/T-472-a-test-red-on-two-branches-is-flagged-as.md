@@ -3,7 +3,7 @@ id: T-472
 kind: task
 title: A test red on two branches is flagged as a shared dev defect, so it is not chased per branch
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - v0.1.3
@@ -12,10 +12,10 @@ assignee: null
 parent: E-387
 blocked_by:
   - T-470
-topic: null
-branch: null
+topic: topic-356
+branch: t/T-472-a-test-red-on-two-branches-is-flagged-as
 created: 2026-10-15T09:13:16.499Z
-updated: 2026-10-15T19:07:10.114Z
+updated: 2026-10-16T04:25:51.394Z
 ---
 
 ## Summary

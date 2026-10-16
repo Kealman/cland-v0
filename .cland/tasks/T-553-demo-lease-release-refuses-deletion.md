@@ -3,7 +3,7 @@ id: T-553
 kind: task
 title: "Demo lease release refuses deletion: droplet identity differs from its lease"
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 3
 labels:
@@ -17,7 +17,7 @@ regression_of: T-459
 topic: topic-349
 branch: t/T-553-demo-lease-release-refuses-deletion
 created: 2026-10-16T00:37:02.839Z
-updated: 2026-10-16T04:21:33.591Z
+updated: 2026-10-16T04:25:16.755Z
 ---
 
 ## Summary
@@ -29,14 +29,17 @@ Found by qa-27 in E-423's Definition-of-done demo (run qa-2026-10-16-27-15, D18,
   - verified: rev-31 [reviewer] · run rev-20261016-553-source · 2026-10-16T01:09:57.096Z · commit f631b72207b32cdf7ca7056c21fc6c95f63f7835
   - verified: rev-31 [reviewer] · run rev-20261016-553-delta-1 · 2026-10-16T01:20:29.054Z · commit ae82e2636cc90c01d028173893ce48805b18096c
   - verified: rev-31 [reviewer] · run rev-20261016-553-delta-2 · 2026-10-16T02:30:35.826Z · commit 270e35c3cd2cc3d5ea9e4b2fbdd75f151bd0a427
+  - verified: rev-31 [reviewer] · run rev-20261016-553-merge-delta · 2026-10-16T04:25:16.081Z · commit 2deee89e7adca8aadc297c71f9538e91d597eac1
 - [x] C2. A demo lease's release deletes its own droplet, and a demo stop ends with the lease released and no tagged droplet left. A genuine identity mismatch still refuses deletion, but marks the lease for operator attention and alerts, rather than staying `releasing` silently.
   - done: impl-553 · 2026-10-16T01:06:26.457Z
   - verified: rev-31 [reviewer] · run rev-20261016-553-final · 2026-10-16T04:06:10.412Z · commit 270e35c3cd2cc3d5ea9e4b2fbdd75f151bd0a427
+  - verified: rev-31 [reviewer] · run rev-20261016-553-merge-delta · 2026-10-16T04:25:16.081Z · commit 2deee89e7adca8aadc297c71f9538e91d597eac1
 - [x] C3. A test covers demo start, then stop, then release against the fake provider, including the mismatch case.
   - done: impl-553 · 2026-10-16T01:06:27.845Z
   - verified: rev-31 [reviewer] · run rev-20261016-553-source · 2026-10-16T01:09:57.096Z · commit f631b72207b32cdf7ca7056c21fc6c95f63f7835
   - verified: rev-31 [reviewer] · run rev-20261016-553-delta-1 · 2026-10-16T01:20:29.054Z · commit ae82e2636cc90c01d028173893ce48805b18096c
   - verified: rev-31 [reviewer] · run rev-20261016-553-delta-2 · 2026-10-16T02:30:35.826Z · commit 270e35c3cd2cc3d5ea9e4b2fbdd75f151bd0a427
+  - verified: rev-31 [reviewer] · run rev-20261016-553-merge-delta · 2026-10-16T04:25:16.081Z · commit 2deee89e7adca8aadc297c71f9538e91d597eac1
 
 ## Comments
 
@@ -113,3 +116,16 @@ C2verified:acceptedDELETEretry3.423s,archivetagstripabsence2.853s,genuineidentit
 ArtifactA-3680: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3680-t-553-final-clear-at-270e35c3-linux-release-gate.md.
 
 Criteria: C2 verified.
+
+### rev-31 · 2026-10-16T04:25:16.081Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261016-553-merge-delta
+commit: 2deee89e7adca8aadc297c71f9538e91d597eac1
+scope: delta
+
+Merge delta clear against prior final 270e35c3 and dev eee17d18. Standards: no findings. Spec: no findings. Integrated per-lease release/reconcile serialization preserves identity guards, durable attention, orphan protection and once-per-lease Coordinator alert; dispatch verdict/rule changes preserve demo alert. Core cleanup/lease/watchdog/demo-release test blobs unchanged; recorder integration retains watchdog injections. Manifest equals dev exactly. A-3694/A-3695 independently total 25 whole files / 320 passes / zero failures, skips or cancellations; quiet/authorized loaded admissions disclosed. Coordinator 4c573805 explicitly accepts this merged-head targeted cover with prior green Linux A-3679 and requires no new droplet suite. C1/C2/C3 reverified; C1 retains accepted historical-field limitation 0d69dd33. No Reviewer edits/tests. Analysis A-3701: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3701-t-553-merge-delta-clear-at-2deee89e.md.
+
+Criteria: C1 verified, C2 verified, C3 verified.
