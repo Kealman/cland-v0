@@ -2,7 +2,7 @@
 id: Q-384
 kind: question
 title: "Test speed: where the suite's time goes and how to cut verification wait several times over"
-state: open
+state: closed
 labels:
   - research
 assignee: null
@@ -11,7 +11,8 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-14T11:55:39.093Z
-updated: 2026-10-14T12:20:17.949Z
+updated: 2026-10-16T10:53:48.773Z
+closed: 2026-10-16T10:53:48.773Z
 ---
 
 ## Summary
@@ -50,3 +51,7 @@ Research done: docs/research/test-speed.md on research/test-speed (55d4c5a8), ar
 Human decisions (2026-10-14):
 - Scope (12:15Z): quick wins #1–#5 go now as an epic in v0.1.2; #6–#9 as an epic in v0.1.3.
 - Design (12:20Z): (a) an in-process hub by default, with a real hub process only for lifecycle tests; the shared hub per file is rejected. (b) Droplet sharding of full runs only for stage, epic and release runs, within $3/day.
+
+### coord · 2026-10-16T10:53:48.773Z
+
+Answered: the research is docs/research/test-speed.md (A-2346), and the human decided the programme on 2026-10-14. E-386 delivered the quick wins in v0.1.2 and E-387 the structural infrastructure in v0.1.3. The remaining targets (the -15% test time, verify under 5 min with the replay, worker defaults, daemon starts under 600, sharded wall time) moved to v0.1.4 under E-578 (ask 6a7185b6 / 3ab87e56; ask 396ec11a / 4c507896). Closed before v0.1.3's dry run, as E-426 C1 requires.

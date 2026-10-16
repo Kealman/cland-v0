@@ -3,6 +3,7 @@ id: E-387
 kind: epic
 title: "Test speed: structural"
 state: open
+criterion_seq: 5
 labels:
   - epic
   - v0.1.3
@@ -13,7 +14,7 @@ blocked_by: []
 topic: topic-368
 branch: null
 created: 2026-10-14T12:28:09.615Z
-updated: 2026-10-16T10:44:20.433Z
+updated: 2026-10-16T10:52:03.961Z
 ---
 
 ## Goal
@@ -71,6 +72,7 @@ On an empty verify queue, QA runs one ordinary integrated full run on `dev` on o
 - [ ] C3. Each sharded close run reports every shard's time and cost in its merged report. The 10-minute wall-time target moved to v0.1.4, E-578 (T-520), by the human's decision of 2026-10-16 (ask 396ec11a).
 - [ ] C4. Every moved test keeps its assertions' meaning, and frame proofs still go over a real socket and WebSocket to a real hub.
 - [ ] C5. `hub/README.md` (Tests), `docs/agents/tests.md`, the Coordinator, Implementer and QA clauses and the `merge` and `qa` skills describe the in-process default, the lifecycle line, coverage selection, `--occasion` and the shard cost.
+  - failed: qa-27 [qa] · 2026-10-16T10:52:03.961Z · note R1: both Implementer clauses omit the projectHub in-process default and startDaemon lifecycle-only boundary.
 
 ## Constraints
 
@@ -199,3 +201,68 @@ Integrated cover c0c04df1 at dev a06020a3 (23:47–00:17:47Z) is GREEN.
 - Log A-3493; coverage map A-3494.
 - Covers 15 merges since dev 7dbd2e2c: T-471, T-427, T-531, T-530, T-480, T-478, T-311, T-513, T-529, T-525, T-499, T-493, T-544, plus remote_budget 6 and rule 13.
 It was the restart cover; the hub restarted at about 00:19Z. Stage 3 of this epic is still open: T-469 (in delta review after its conflict merge and the T-544 pick), then T-470, T-472 and T-466. The sharded wall measurement (T-395 C6, T-520) still comes from a two-shard run.
+
+### qa-27 · 2026-10-16T10:52:03.961Z
+
+verdict: qa
+result: not clear
+by: qa-27 [qa]
+run: qa-2026-10-16-27-21
+commit: f6045f838f55902c0224473512e82c1ff0121e72
+
+| Check | Executor | Result | Evidence |
+| --- | --- | --- | --- |
+| G0 | local macOS | PASS | [G0.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3878-e-387-run-21-at-f6045f83-qa-evidence-r1-fails-and-t8-live-readback-inconclusive/G0.txt) |
+| G1 | local macOS | PASS | [G1-epic.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3878-e-387-run-21-at-f6045f83-qa-evidence-r1-fails-and-t8-live-readback-inconclusive/G1-epic.json), [G1-children.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3878-e-387-run-21-at-f6045f83-qa-evidence-r1-fails-and-t8-live-readback-inconclusive/G1-children.json), [G1-plan.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3878-e-387-run-21-at-f6045f83-qa-evidence-r1-fails-and-t8-live-readback-inconclusive/G1-plan.json) (full list in runs.jsonl) |
+| G2 | local macOS | PASS | [G1-epic.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3878-e-387-run-21-at-f6045f83-qa-evidence-r1-fails-and-t8-live-readback-inconclusive/G1-epic.json) |
+| E1 | local macOS | PASS | [E1-census.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3878-e-387-run-21-at-f6045f83-qa-evidence-r1-fails-and-t8-live-readback-inconclusive/E1-census.txt) |
+| E2 | local macOS | PASS | [E2-judgment.md](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3878-e-387-run-21-at-f6045f83-qa-evidence-r1-fails-and-t8-live-readback-inconclusive/E2-judgment.md), [E2-call-context.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3878-e-387-run-21-at-f6045f83-qa-evidence-r1-fails-and-t8-live-readback-inconclusive/E2-call-context.txt), [E2-planned-stage-context.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3878-e-387-run-21-at-f6045f83-qa-evidence-r1-fails-and-t8-live-readback-inconclusive/E2-planned-stage-context.txt) (full list in runs.jsonl) |
+| E3 | local macOS | PASS | [E2-E3-marks.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3878-e-387-run-21-at-f6045f83-qa-evidence-r1-fails-and-t8-live-readback-inconclusive/E2-E3-marks.txt), [E3-T466.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3878-e-387-run-21-at-f6045f83-qa-evidence-r1-fails-and-t8-live-readback-inconclusive/E3-T466.json), [E3-T575.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3878-e-387-run-21-at-f6045f83-qa-evidence-r1-fails-and-t8-live-readback-inconclusive/E3-T575.json) |
+| E4 | local macOS | PASS | [E4-shards.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3878-e-387-run-21-at-f6045f83-qa-evidence-r1-fails-and-t8-live-readback-inconclusive/E4-shards.txt) |
+| E5 | local macOS | PASS | [E5-fallback.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3878-e-387-run-21-at-f6045f83-qa-evidence-r1-fails-and-t8-live-readback-inconclusive/E5-fallback.txt) |
+| E6 | local macOS | PASS | [E4-shards.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3878-e-387-run-21-at-f6045f83-qa-evidence-r1-fails-and-t8-live-readback-inconclusive/E4-shards.txt) |
+| E7 | local macOS | PASS | [E7-cover.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3878-e-387-run-21-at-f6045f83-qa-evidence-r1-fails-and-t8-live-readback-inconclusive/E7-cover.txt), [G1-plan.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3878-e-387-run-21-at-f6045f83-qa-evidence-r1-fails-and-t8-live-readback-inconclusive/G1-plan.json) |
+| T1 | local macOS | PASS | [T1.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3878-e-387-run-21-at-f6045f83-qa-evidence-r1-fails-and-t8-live-readback-inconclusive/T1.log), [T1-queue.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3878-e-387-run-21-at-f6045f83-qa-evidence-r1-fails-and-t8-live-readback-inconclusive/T1-queue.json), [T1-start.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3878-e-387-run-21-at-f6045f83-qa-evidence-r1-fails-and-t8-live-readback-inconclusive/T1-start.txt) |
+| T2 | local macOS | PASS | [T2.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3878-e-387-run-21-at-f6045f83-qa-evidence-r1-fails-and-t8-live-readback-inconclusive/T2.log), [T2-queue.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3878-e-387-run-21-at-f6045f83-qa-evidence-r1-fails-and-t8-live-readback-inconclusive/T2-queue.json), [T2-start.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3878-e-387-run-21-at-f6045f83-qa-evidence-r1-fails-and-t8-live-readback-inconclusive/T2-start.txt) |
+| T3 | local macOS | PASS | [T3.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3878-e-387-run-21-at-f6045f83-qa-evidence-r1-fails-and-t8-live-readback-inconclusive/T3.log), [T3-queue.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3878-e-387-run-21-at-f6045f83-qa-evidence-r1-fails-and-t8-live-readback-inconclusive/T3-queue.json), [T3-start.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3878-e-387-run-21-at-f6045f83-qa-evidence-r1-fails-and-t8-live-readback-inconclusive/T3-start.txt) |
+| T4 | local macOS | PASS | [T4.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3878-e-387-run-21-at-f6045f83-qa-evidence-r1-fails-and-t8-live-readback-inconclusive/T4.log), [T4-queue.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3878-e-387-run-21-at-f6045f83-qa-evidence-r1-fails-and-t8-live-readback-inconclusive/T4-queue.json), [T4-start.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3878-e-387-run-21-at-f6045f83-qa-evidence-r1-fails-and-t8-live-readback-inconclusive/T4-start.txt) |
+| T5 | local macOS | PASS | [T5.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3878-e-387-run-21-at-f6045f83-qa-evidence-r1-fails-and-t8-live-readback-inconclusive/T5.log), [T5-queue.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3878-e-387-run-21-at-f6045f83-qa-evidence-r1-fails-and-t8-live-readback-inconclusive/T5-queue.json), [T5-start.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3878-e-387-run-21-at-f6045f83-qa-evidence-r1-fails-and-t8-live-readback-inconclusive/T5-start.txt) |
+| T7 | local macOS | PASS | [T7.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3878-e-387-run-21-at-f6045f83-qa-evidence-r1-fails-and-t8-live-readback-inconclusive/T7.log), [T7-queue.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3878-e-387-run-21-at-f6045f83-qa-evidence-r1-fails-and-t8-live-readback-inconclusive/T7-queue.json), [T7-start.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3878-e-387-run-21-at-f6045f83-qa-evidence-r1-fails-and-t8-live-readback-inconclusive/T7-start.txt) |
+| T6 | local macOS | PASS | [T6-a.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3878-e-387-run-21-at-f6045f83-qa-evidence-r1-fails-and-t8-live-readback-inconclusive/T6-a.log), [T6-b.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3878-e-387-run-21-at-f6045f83-qa-evidence-r1-fails-and-t8-live-readback-inconclusive/T6-b.log), [T6-a-queue.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3878-e-387-run-21-at-f6045f83-qa-evidence-r1-fails-and-t8-live-readback-inconclusive/T6-a-queue.json) (full list in runs.jsonl) |
+| R1 | local macOS | FAIL | [R1-matrix.md](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3878-e-387-run-21-at-f6045f83-qa-evidence-r1-fails-and-t8-live-readback-inconclusive/R1-matrix.md), [R1-cells.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3878-e-387-run-21-at-f6045f83-qa-evidence-r1-fails-and-t8-live-readback-inconclusive/R1-cells.json), [R1-default-implementer.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3878-e-387-run-21-at-f6045f83-qa-evidence-r1-fails-and-t8-live-readback-inconclusive/R1-default-implementer.txt) (full list in runs.jsonl) |
+| F1 | local macOS | PASS | [F1-status.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3878-e-387-run-21-at-f6045f83-qa-evidence-r1-fails-and-t8-live-readback-inconclusive/F1-status.json), [F1-dev.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3878-e-387-run-21-at-f6045f83-qa-evidence-r1-fails-and-t8-live-readback-inconclusive/F1-dev.txt), [F1-worktree.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3878-e-387-run-21-at-f6045f83-qa-evidence-r1-fails-and-t8-live-readback-inconclusive/F1-worktree.txt) |
+| T8 | local macOS | INCONCLUSIVE | [T8-a.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3878-e-387-run-21-at-f6045f83-qa-evidence-r1-fails-and-t8-live-readback-inconclusive/T8-a.log), [T8-b.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3878-e-387-run-21-at-f6045f83-qa-evidence-r1-fails-and-t8-live-readback-inconclusive/T8-b.log), [T8-a-queue.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3878-e-387-run-21-at-f6045f83-qa-evidence-r1-fails-and-t8-live-readback-inconclusive/T8-a-queue.json) (full list in runs.jsonl) |
+
+Findings, ranked:
+
+- High: none.
+- Medium — R1 / C5: `docs.py` extracts the Implementer clauses at S and matches the five documentation topics. Both `hub/src/roles/default-roles.ts [implementer]` and `.cland/roles.toml [implementer]` omit `projectHub`/the in-process default and the `startDaemon` lifecycle-only boundary (four required cells). Coverage selection is present at lines 152 and 104 respectively. Exact clauses and the 50-cell matrix are retained. C5 fails.
+- Low — E4/R1: seven cap references still say $3 in the DoD/docs/clauses/skills while `.cland/config.toml:21` sets $14. `R1-cap-wording.txt` gives exact source lines; the epic DoD also says $3/day. As the brief directs, this does not fail C2 or add another criterion failure.
+
+T8 live readback disposition: INCONCLUSIVE for the live readback at the requested build. Both targeted files passed (10 tests), including a real CLI-frame proof of metrics.queueWait, but the live verify queue and hub status expose only legacy window:20 metrics. The live hub started at 10:13:46.880Z; T-470 landed at 10:14:24Z (71b4bd33868fc3fd22b82f3289cadd27493677ee), 38 seconds later. This is runtime version skew, not demonstrated failure of the requested S. No restart or extra run was attempted. T8 has no DoD criterion mark. Exact readbacks and timestamps retained; Coordinator notified.
+
+Result: not clear. R1 fails; no product code was changed. C1–C4 checks pass and are established in this text; only C5 is submitted in `failed`, with no `verified` argument on a not-clear verdict.
+
+Run qa-2026-10-16-27-21; full tested SHA f6045f838f55902c0224473512e82c1ff0121e72. Clean detached worktree on macOS; Node v24.21.0. All 100 targeted tests across ten files passed, zero skips/failures/cancellations/retries. Each file ran alone after its saved queue check; no Coordinator local holder. No full suite, lease, provider call or verification submission. Cost for this local QA run: not applicable.
+
+Evidence reads:
+
+- E1: A-3775 at reviewed clean head 88a3630e8d0a8dc012d43935e04befa23cbd1120, completed darwin exit 0; 742 canonical-helper starts, 743 including the copied coverage fixture. This is the recorded task workload (including load-gate repeats), not a controlled paired integrated-run comparison. Under-600 and speed targets are deferred to E-578.
+- E2: all twelve added startDaemon calls have lifecycle proofs, each listed with file, test and context. Existing assertion-meaning audits A-2744/A-2751 and lifecycle inventory A-2745 retained; T-393 marks checked. E3: T-466 C1/C2 verified; open T-575 is under E-578 and names A-3775 plus remaining-ranking.json.
+- E4/E6: A-3413, run 725bd529 at 21ae664d, one merged log: cland-v0-7f8dcbd7 c-8 lon1 762.02 s / $0.0512; cland-v0-319cd8dc c-8 lon1 811.93 s / $0.0544; total $0.1056; overall wall 811.96 s. Shard-1 failure is identified once. Report completeness is judged; the wall and known historical red test are not new failures.
+- Separate historical cap evidence as the brief requests: run 1bebcda2, A-3230/A-3231/A-3232, spend $6.86→$6.97 under its historical $10 cap, own droplets absent afterwards. Those spend figures are not attributed to A-3413; see E4-provenance-note.txt.
+- E5: A-3493 run c0c04df1 is the documented one-slot stage fallback with occupied slots; source/docs and T1/T2 establish the admission rules.
+- E7: all three plan stages are open, with null cover tree and Linux droplet/macOS listed missing. Per Coordinator amendment, cite A-3877: Linux d132b59b at S, exit 0, 2333 passing including Neovim. No macOS stage receipt is claimed.
+
+Criteria mapping: C1=D1 (E1–E3), C2=D2 (E4,E5,T1,T2), C3=D3 (E4,E6), C4=D4 (E2,T3), C5=D5 (R1). T4–T8 serve no DoD criterion but remain in scope.
+
+Amendments: Coordinator 26911a4c assigned stable C1–C5 during the run; all five texts were compared and are unchanged. Coordinator request allowed E7 to cite A-3877 without waiting for plan-stage closure. Both request deliveries were treated as one request. The historical spend and current cap remain distinct.
+
+Final freshness: `demo status E-387 --commit S --json` reports current=true without a lease. Worktree remains clean; see F1-status.json and F1-worktree.txt.
+
+Full evidence A-3878: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3878-e-387-run-21-at-f6045f83-qa-evidence-r1-fails-and-t8-live-readback-inconclusive.
+
+Verdict note A-3879: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3879-e-387-qa-run-21-not-clear-c5-documentation-gap-t8-runtime-skew.md
+Freshness rechecked immediately before verdict: current=true. Coordinator names the documentation fix T-588.
+
+Criteria: C5 failed (R1: both Implementer clauses omit the projectHub in-process default and startDaemon lifecycle-only boundary.).
