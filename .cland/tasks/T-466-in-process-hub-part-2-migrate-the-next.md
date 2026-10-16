@@ -2,8 +2,8 @@
 id: T-466
 kind: task
 title: "In-process hub, part 2: migrate the next files to bring daemon starts per full run under 600"
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 2
 labels:
@@ -16,7 +16,8 @@ blocked_by: []
 topic: topic-359
 branch: t/T-466-in-process-hub-part-2-migrate-the-next
 created: 2026-10-15T09:03:10.279Z
-updated: 2026-10-16T06:14:25.778Z
+updated: 2026-10-16T06:14:46.753Z
+closed: 2026-10-16T06:14:46.752Z
 ---
 
 ## Summary
@@ -127,3 +128,7 @@ Final review clear; refresh **C1/C2** at the unchanged head. No new run is requi
 Artifact A-3778 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3778-t-466-final-clear-amended-census-criterion-and-exact-head-linux-gate-verified.md
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-16T06:14:46.752Z
+
+Merged 6c6531df6f56795e8e17b4cbf9098e1ce670d399 onto dev.
