@@ -1,6 +1,6 @@
 // The inbox (§3.7): asks/command approvals, pending plans, requests and messages.
 // Each row records when its wait began; departures persist in hub.db and reach the journal
-// through the log tap. Publications are coalesced, but waits settle on every observed change.
+// through the log tap. Publications are coalesced over 250 ms; explicit reads always settle current waits.
 import { messageVerdict, type Visibility } from './visibility.ts';
 import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -67,7 +67,7 @@ export class InboxBoard {
   /** One timer per idle session, by session id. */
   readonly #idle = new Map<string, NodeJS.Timeout>();
   readonly #deaths = new Set<string>();
-  #scheduled = false;
+  #scheduled: NodeJS.Timeout | null = null;
   #published: string | null = null;
   #closed = false;
 
@@ -88,6 +88,8 @@ export class InboxBoard {
 
   close(): void {
     this.#closed = true;
+    if (this.#scheduled) clearTimeout(this.#scheduled);
+    this.#scheduled = null;
     for (const t of this.#idle.values()) clearTimeout(t);
     this.#idle.clear();
   }
@@ -144,7 +146,7 @@ export class InboxBoard {
       default:
         break;
     }
-    // the sections are recomputed once per tick by #changed (coalesced); a synchronous list() here ran the full
+    // The sections are recomputed once per publication window by #changed; a synchronous list() here ran the full
     // inbox query on every hub event, which stalled startup for minutes on a project with 200 remembered processes
     this.#changed();
   }
@@ -361,12 +363,11 @@ export class InboxBoard {
     return this.list();
   }
 
-  /** Publish the inbox once this turn's changes are in, and only when it differs from what subscribers last got. */
+  /** A fixed window bounds rebuilds even when steady traffic arrives on separate event-loop turns. */
   #changed(): void {
     if (this.#scheduled || this.#closed) return;
-    this.#scheduled = true;
-    setImmediate(() => {
-      this.#scheduled = false;
+    this.#scheduled = setTimeout(() => {
+      this.#scheduled = null;
       if (this.#closed) return;
       try {
         const inbox = this.list();
@@ -377,6 +378,7 @@ export class InboxBoard {
       } catch (err) {
         this.#port.log({ event: 'inbox-failed', error: err instanceof Error ? err.message : String(err) });
       }
-    });
+    }, 250);
+    this.#scheduled.unref();
   }
 }

@@ -3427,6 +3427,10 @@
       "seconds": 36.646238,
       "reason": "Creates thousands of retained items/messages and hundreds of stops to prove bounded inbox batching through the live dispatch seam."
     },
+    "hub/test/inbox-workload.test.ts::durable wait capture retains the original timestamp and archives a request resolved within its publication window": {
+      "seconds": 16.2393,
+      "reason": "Checks original wait timestamps and single durable departures across coalesced publication on a real scratch project hub; measured 16.24 s including project setup and teardown on the Mac."
+    },
     "hub/test/init.test.ts::a manifest that is not cland's, malformed, or names a path outside its skill is reported, and update deletes nothing": {
       "seconds": 5.836243,
       "reason": "Invokes init/update over multiple filesystem configurations to prove preserved user edits and safe refusal of foreign manifests."

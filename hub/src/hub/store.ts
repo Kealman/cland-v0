@@ -207,6 +207,16 @@ create index if not exists messages_topic on messages (topic, created_at);
 create unique index if not exists topics_item on topics (item) where item is not null;
 create index if not exists messages_seq on messages (topic, seq);
 create index if not exists messages_reply_to on messages (reply_to, seq);
+create index if not exists messages_topic_time on messages (topic, ts);
+create index if not exists messages_human_seq on messages (topic, seq) where from_kind = 'human';
+create index if not exists messages_unread on messages (topic, seq, id) where from_kind != 'human';
+create index if not exists messages_inbox_latest on messages (topic, seq)
+  where from_kind = 'agent' and coalesce(notice, '') not in ('progress', 'event', 'request');
+create index if not exists messages_inbox_human on messages (topic, seq)
+  where (from_kind = 'agent' or (from_kind = 'hub' and json_extract(notice_detail, '$.event') = 'verification-cleanup-incomplete'))
+    and coalesce(notice, '') not in ('progress', 'event', 'request') and json_array_length(to_json) = 0;
+create index if not exists messages_inbox_requests on messages (id) where notice = 'request';
+create index if not exists deliveries_topic_waits on deliveries (state, verifier_item, message_id, session, verifier_role);
 create index if not exists deliveries_digest on deliveries (session, digest_id);
 create index if not exists deliveries_verifier_queue on deliveries (verifier_item) where verifier_item is not null and state = 'queued';
 `;
@@ -306,16 +316,20 @@ const toTopic = (row: Row): Topic => {
 
 /** A topic with what is derived from its messages: the human's unread count (messages from others past the
  *  last read), the latest message's time, and the roles a message in it still waits for (`@role` deliveries). */
-const TOPIC_SELECT = `
+const TOPIC_SELECT = `with pending_roles as materialized (
+  select m.topic,
+    group_concat(distinct case when d.session like '@%' and d.verifier_item is null then substr(d.session, 2) end) as vacant_roles,
+    group_concat(distinct case when d.verifier_item is not null then d.verifier_role end) as verifier_roles
+  from deliveries d join messages m on m.id = d.message_id
+  where d.state = 'queued' and (d.session like '@%' or d.verifier_item is not null)
+  group by m.topic
+)
 select t.*, t.rowid as rid,
   (select count(*) from messages m where m.topic = t.id and m.seq > t.read_seq and m.from_kind != 'human'
     and not exists (select 1 from message_reads r where r.id = m.id)) as unread,
   (select max(m.ts) from messages m where m.topic = t.id) as last_message_at,
-  (select group_concat(distinct substr(d.session, 2)) from deliveries d join messages m on m.id = d.message_id
-     where m.topic = t.id and d.session like '@%' and d.verifier_item is null and d.state = 'queued') as vacant_roles,
-  (select group_concat(distinct d.verifier_role) from deliveries d join messages m on m.id = d.message_id
-     where m.topic = t.id and d.verifier_item is not null and d.state = 'queued') as verifier_roles
-from topics t`;
+  p.vacant_roles, p.verifier_roles
+from topics t left join pending_roles p on p.topic = t.id`;
 
 /** A message's stage from its deliveries' states: queued while any waits; dropped only when all were; injected
  *  once every delivery that was not dropped was injected. */
@@ -1366,17 +1380,32 @@ export class Store implements HygieneMemory {
 
   /** Candidate messages and their durable read/reply facts. Sequence order handles equal timestamps. */
   inboxMessages(): Array<{ message: TopicMessage; read: boolean; replied: boolean; toHuman: boolean; latest: boolean }> {
-    const rows = this.#db.prepare(`with latest_messages as (
-      select m.topic, max(m.seq) as seq from messages m
-      where m.from_kind = 'agent' and coalesce(m.notice, '') not in ('progress', 'event', 'request')
+    const rows = this.#db.prepare(`with latest_messages as materialized (
+      select t.id as topic, (select m.seq from messages m where m.topic = t.id
+        and m.from_kind = 'agent' and coalesce(m.notice, '') not in ('progress', 'event', 'request')
         and not exists (select 1 from asks a where a.id = m.id)
-      group by m.topic
+        order by m.seq desc limit 1) as seq from topics t
+    ), candidates as materialized (
+      -- Only unread human-addressed rows after the last same-topic human reply can become messages.
+      select m.id from topics t cross join messages m on m.topic = t.id
+        and m.seq > max(t.read_seq, coalesce((select max(h.seq) from messages h where h.topic = t.id and h.from_kind = 'human'), 0))
+      where (m.from_kind = 'agent' or (m.from_kind = 'hub' and json_extract(m.notice_detail, '$.event') = 'verification-cleanup-incomplete'))
+        and coalesce(m.notice, '') not in ('progress', 'event', 'request') and json_array_length(m.to_json) = 0
+      union
+      select m.id from latest_messages l cross join messages m on m.topic = l.topic and m.seq = l.seq
+      union
+      -- Requests ignore read watermarks. Even a request replied to before publication must depart once.
+      select r.id from messages r where r.notice = 'request'
+        and not exists (select 1 from inbox_departures d where d.kind = 'request' and d.id = r.id)
+      union
+      -- Keep settled waits until list() has recorded their durable departure.
+      select w.id from inbox_waits w where w.kind in ('message', 'request')
     ) select m.*, (m.seq <= t.read_seq or exists (select 1 from message_reads r where r.id = m.id)) as was_read,
       json_array_length(m.to_json) = 0 as to_human,
       m.seq = latest.seq as latest,
       (exists (select 1 from messages h where h.topic = m.topic and h.seq > m.seq and h.from_kind = 'human')
         or (m.notice = 'request' and exists (select 1 from messages h where h.reply_to = m.id and h.seq > m.seq and h.from_kind = 'human'))) as replied
-      from messages m join topics t on t.id = m.topic
+      from candidates c cross join messages m on m.id = c.id join topics t on t.id = m.topic
       left join latest_messages latest on latest.topic = m.topic
       where (m.from_kind = 'agent' or (m.from_kind = 'hub' and json_extract(m.notice_detail, '$.event') = 'verification-cleanup-incomplete')) and coalesce(m.notice, '') not in ('progress', 'event')
         and not exists (select 1 from asks a where a.id = m.id)

@@ -470,16 +470,21 @@ export class HubCore {
     const canonical = (id: string) => this.#items?.resolveId?.(id) ?? id;
     if (filter.subject?.kind === 'item') filter = { ...filter, subject: { ...filter.subject, id: canonical(filter.subject.id) } };
     if (filter.muted) filter = { ...filter, muted: filter.muted.map(subject => subject.kind === 'item' ? { ...subject, id: canonical(subject.id) } : subject) };
-    const inbox = this.inbox.list();
-    const waitingTopics = new Set([...inbox.waiting.map(t => t.id), ...inbox.asks.map(a => a.topic.id), ...inbox.messages.map(m => m.topic.id), ...inbox.requests.map(r => r.topic.id)]);
+    // Most journal rows cannot duplicate an inbox wait. Do not rebuild the inbox for usage/state/task traffic.
+    // Capture it lazily once for a batch that actually needs wait suppression.
+    let snapshot: ReturnType<InboxBoard['list']> | undefined;
+    const inbox = () => snapshot ??= this.inbox.list();
+    let waitingTopics: Set<string> | undefined;
     const items = new Map([...this.#itemSnapshots.values()].map(i => [i.id, i]));
-    const pendingPlans = new Set(inbox.plans.map(p => p.id));
     const descendants = filter.subject?.kind === 'item' ? new Set([...this.#itemSnapshots.values()].filter(i => i.id === filter.subject!.id || this.#items?.ancestry?.(i.id)?.includes(filter.subject!.id)).map(i => i.id)) : null;
     descendants?.add(filter.subject!.id);
     return (row, record) => {
       if (row.item || row.subject.kind === 'item') row = { ...row, ...(row.item ? { item: canonical(row.item) } : {}), ...(row.subject.kind === 'item' ? { subject: { ...row.subject, id: canonical(row.subject.id) } } : {}) };
-      if (row.kind === 'topic' && /waiting for human/.test(row.text) && waitingTopics.has(row.subject.id)) return null;
-      if (record.event === 'notification' && record.kind === 'plan' && pendingPlans.has(row.subject.id)) return null;
+      if (row.kind === 'topic' && /waiting for human/.test(row.text)) {
+        waitingTopics ??= new Set([...inbox().waiting.map(t => t.id), ...inbox().asks.map(a => a.topic.id), ...inbox().messages.map(m => m.topic.id), ...inbox().requests.map(r => r.topic.id)]);
+        if (waitingTopics.has(row.subject.id)) return null;
+      }
+      if (record.event === 'notification' && record.kind === 'plan' && inbox().plans.some(p => p.id === row.subject.id)) return null;
       const cell = record.event === 'notification' ? String(record.kind === 'verdict' ? record.result === 'not clear' ? 'not_clear' : 'clear' : record.kind)
         : row.kind === 'verdict' ? row.warning ? 'not_clear' : 'clear' : row.kind === 'release' ? 'release' : row.kind === 'session' && row.warning ? 'death' : undefined;
       const promoted = cell && this.visibility.raisedToNow('inbox', record, cell)

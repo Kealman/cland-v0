@@ -216,11 +216,22 @@ test('startup with 256 remembered processes and thousands of messages, then two 
   for (let i = 0; i < 256; i++) processes.put({ name: `remembered-${i}`, harness: 'codex', role: null, model: null, cwd: root, pid: null, harnessId: null, sessionId: `old-${i}`, harnessSessionId: null, startedAt: ts, status: 'stopped' });
   processes.close();
 
-  let queries = 0;
+  let queries = 0, candidateRows = 0, inboxSql = '', topicSql = '';
   const prepare = DatabaseSync.prototype.prepare;
   t.mock.method(DatabaseSync.prototype, 'prepare', function(this: DatabaseSync, ...args: Parameters<typeof prepare>) {
-    if (args[0].includes('with latest_messages as')) queries++;
-    return prepare.apply(this, args);
+    const sql = args[0], statement = prepare.apply(this, args);
+    if (sql.includes('order by standing desc')) topicSql = sql;
+    if (sql.startsWith('with latest_messages as')) {
+      queries++;
+      inboxSql = sql;
+      const all = statement.all;
+      t.mock.method(statement, 'all', function(this: typeof statement, ...bindings: Parameters<typeof all>) {
+        const rows = all.apply(this, bindings);
+        candidateRows = rows.length;
+        return rows;
+      });
+    }
+    return statement;
   });
   const daemon = await serveProject(root, { log: () => {} });
   const clients: Array<() => void> = [];
@@ -228,8 +239,8 @@ test('startup with 256 remembered processes and thousands of messages, then two 
   const atServing = queries;
   t.diagnostic(`startup inbox queries at serving: ${atServing}`);
   assert.ok(atServing <= 3, `startup recomputed the inbox ${atServing} times for 256 remembered processes`);
-  await tick();
-  assert.ok(queries <= 3, `startup and its first tick used ${queries} inbox queries`);
+  await eventually('initial inbox publication', () => queries > 0 || undefined);
+  assert.ok(queries <= 3, `startup and its first publication used ${queries} inbox queries`);
   assert.ok(queries > 0, 'the native tracer saw an actual inbox query');
   assert.ok(daemon.discovery);
   const ui = await connectUi(t, daemon.discovery);
@@ -237,6 +248,16 @@ test('startup with 256 remembered processes and thousands of messages, then two 
   const snapshot = await ui.request({ type: 'inbox.list' });
   assert.equal(snapshot.ok, true, snapshot.error);
   assert.equal((snapshot.value as Inbox).needsYou, 0, 'same-topic answers and cross-topic explicit replies leave no waiting rows');
+  assert.ok(candidateRows <= 3, `a settled snapshot materialized ${candidateRows} retained candidates instead of current topic ends`);
+  const planner = new DatabaseSync(db, { readOnly: true });
+  try {
+    for (const [name, sql] of [['inbox', inboxSql], ['topics', topicSql]]) {
+      assert.ok(sql, `${name} was observed at the protocol boundary`);
+      const plan = prepare.call(planner, `explain query plan ${sql}`).all() as Array<{ detail: string }>;
+      t.diagnostic(`${name} query plan: ${JSON.stringify(plan.map(row => row.detail))}`);
+      assert.ok(!plan.some(row => /^SCAN [mh](?: |$)/.test(row.detail)), `${name} scans retained message history`);
+    }
+  } finally { planner.close(); }
   const client = pipe(daemon);
   clients.push(() => client.close());
   client.send({ type: 'hello', protocol: 2, client: 'ui' });
@@ -249,13 +270,19 @@ test('startup with 256 remembered processes and thousands of messages, then two 
     assert.equal(replies.length, 100, 'all 100 event-producing writes completed in this input chunk');
     assert.ok(replies.every(f => f.ok === true));
     assert.equal(queries, before, 'no full inbox query runs synchronously per event');
-    await tick();
-    assert.equal(queries - before, 1, 'a burst recomputes once on the next tick');
+    const started = performance.now();
+    for (let turn = 0; turn < 20; turn++) {
+      client.send({ type: 'topic.read', id: `turn-${batch}-${turn}`, topic: 'history', upTo: `answer-${turn}` });
+      await tick();
+    }
+    const allowance = Math.ceil((performance.now() - started) / 250) + 1;
+    assert.ok(queries - before <= allowance, `cross-turn burst used ${queries - before} inbox rebuilds (budget ${allowance})`);
+    await eventually('coalesced inbox rebuild', () => queries > before || undefined);
   }
 });
 
 
-test('durable wait capture is deferred one tick, retains the original timestamp, and archives a request resolved within that tick', async t => {
+test('durable wait capture retains the original timestamp and archives a request resolved within its publication window', async t => {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'cland-inbox-time-'))), records: Array<Record<string, unknown>> = [];
   const cleanup = ownDirectory(undefined, root);
   let stop = async () => {};
@@ -279,11 +306,10 @@ test('durable wait capture is deferred one tick, retains the original timestamp,
   const message = inspector.topicMessages('general', 10).find(m => m.text === 'Wait across a tick');
   assert.ok(message);
   assert.ok(!inspector.inboxWaits().some(w => w.id === message.id), 'the send is committed before its inbox wait is recorded');
-  await tick();
-  assert.equal(inspector.inboxWaits().find(w => w.id === message.id)?.since, message.ts, 'next-tick persistence preserves the actual wait start, rather than recording the recompute time');
+  await eventually('persistent request captured', () => inspector.inboxWaits().some(w => w.id === message.id) || undefined);
+  assert.equal(inspector.inboxWaits().find(w => w.id === message.id)?.since, message.ts, 'coalesced persistence preserves the actual wait start, rather than recording the recompute time');
   human.send({ type: 'topic.send', id: 'reply-persistent', topic: 'general', replyTo: message.id, text: 'Reviewed' });
-  await tick();
-  assert.ok(inspector.inboxDepartures('1970-01-01T00:00:00.000Z').some(d => d.id === message.id && d.reason === 'replied'));
+  await eventually('persistent request departure', () => inspector.inboxDepartures('1970-01-01T00:00:00.000Z').some(d => d.id === message.id && d.reason === 'replied') || undefined);
 
   send('transient', 'Resolved in the same tick');
   assert.equal(aide.frames.find(f => f.id === 'transient')?.ok, true);
@@ -291,7 +317,7 @@ test('durable wait capture is deferred one tick, retains the original timestamp,
   assert.ok(transient);
   human.send({ type: 'topic.send', id: 'reply-transient', topic: 'general', replyTo: transient.id, text: 'Reviewed immediately' });
   assert.equal(human.frames.find(f => f.id === 'reply-transient')?.ok, true);
-  await tick();
+  await eventually('transient request departure', () => inspector.inboxDepartures('1970-01-01T00:00:00.000Z').some(d => d.id === transient.id) || undefined);
   assert.ok(!inspector.inboxWaits().some(w => w.id === transient.id));
   assert.equal(inspector.inboxDepartures('1970-01-01T00:00:00.000Z').filter(d => d.id === transient.id && d.reason === 'replied').length, 1, 'a same-tick reply has one durable departure');
   assert.equal(records.filter(r => r.event === 'inbox-departure' && r.id === transient.id && r.reason === 'replied').length, 1);
