@@ -3,7 +3,7 @@ id: T-476
 kind: task
 title: "A hub start-up smoke test in the suite: a built tree starts, serves a request and stops within a bound"
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 3
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-364
 branch: t/T-476-a-hub-start-up-smoke-test-in-the-suite-a
 created: 2026-10-15T09:13:19.071Z
-updated: 2026-10-16T08:18:51.895Z
+updated: 2026-10-16T08:19:55.794Z
 ---
 
 ## Summary
@@ -31,14 +31,17 @@ A test in hub/test starts `cland hub start` in a fresh project, waits at most 10
 - [x] C1. The smoke test passes on dev and fails within its bound on a planted start-up hang, naming the last log event.
   - done: impl-476 · 2026-10-16T07:35:09.038Z
   - verified: rev-30 [reviewer] · run rev-20261016-476-final · 2026-10-16T08:17:05.652Z · commit 4dd3a151b224107827b7a868e8183e0d640aca03
+  - verified: rev-30 [reviewer] · run rev-20261016-476-merge-final · 2026-10-16T08:19:54.878Z · commit 1d3d66ca3a606b75a2691567bb3f04a2cf57bbf7
 - [x] C2. It runs in every hub phase selection, including hub-only task runs.
   - done: impl-476 · 2026-10-16T07:24:33.344Z
   - verified: rev-30 [reviewer] · run rev-20261016-476-correction · 2026-10-16T07:37:07.313Z · commit 4dd3a151b224107827b7a868e8183e0d640aca03
   - verified: rev-30 [reviewer] · run rev-20261016-476-final · 2026-10-16T08:17:05.652Z · commit 4dd3a151b224107827b7a868e8183e0d640aca03
+  - verified: rev-30 [reviewer] · run rev-20261016-476-merge-final · 2026-10-16T08:19:54.878Z · commit 1d3d66ca3a606b75a2691567bb3f04a2cf57bbf7
 - [x] C3. hub/README.md lists it under Tests.
   - done: impl-476 · 2026-10-16T07:24:33.711Z
   - verified: rev-30 [reviewer] · run rev-20261016-476-correction · 2026-10-16T07:37:07.313Z · commit 4dd3a151b224107827b7a868e8183e0d640aca03
   - verified: rev-30 [reviewer] · run rev-20261016-476-final · 2026-10-16T08:17:05.652Z · commit 4dd3a151b224107827b7a868e8183e0d640aca03
+  - verified: rev-30 [reviewer] · run rev-20261016-476-merge-final · 2026-10-16T08:19:54.878Z · commit 1d3d66ca3a606b75a2691567bb3f04a2cf57bbf7
 
 ## Comments
 
@@ -168,5 +171,40 @@ Mode full stops after hub; **Neovim was not run and is not claimed green**. Same
 Suite2007.73s,peak16.11,load-gate extra23.27s,lifetime/costunknown. No hard budget failure is rewritten as a green run. Final evidence **clear under explicit gate disposition**, C1/C2/C3 refreshed; no per-item QA. Current E-468 freeze/order remains Coordinator-owned. Findings: Standards0; Spec0.
 
 Artifact A-3861 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3861-t-476-final-clear-owned-smoke-15-15-integrated-neovim-required-before-restart.md
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### rev-30 · 2026-10-16T08:19:54.878Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-476-merge-final
+commit: 1d3d66ca3a606b75a2691567bb3f04a2cf57bbf7
+scope: delta
+
+# T-476 merge-only delta final clear
+
+Reviewed pushed `1d3d66ca3a606b75a2691567bb3f04a2cf57bbf7`, branch `t/T-476-a-hub-start-up-smoke-test-in-the-suite-a`; local/origin refs agree. Parents: prior final4dd3a151b224107827b7a868e8183e0d640aca03 and dev4ffbe84faef3d6d88a3cf8cc574de8e09dbb1360. Hold/current claimant and C1–C3 checked once. Prior correction/source A-3831 and final A-3861 apply.
+
+**Primary Coordinator ffe4a43c-32ec-4209-aa4a-a304c295b220**, independently read in topic history, explicitly requires fresh conflict merge, exact duration union, parse/shard checks, pushed delta review and **no new run**. README auto-merges.
+
+## Standards
+
+Zero high/medium/low findings. Startup implementation, suite-selection source and both modified selection test files are byte-identical to prior final head. Against dev, README retains the entire startup seam/bound/cleanup/selection explanation and shards retains startup-smoke machine classification. Incoming source/tracker/docs changes are inherited, not new task-local resolutions.
+
+Independently parsed both committed parent manifests and result: old263 allowances, dev270, result272; no differing common value; result exactly equals both-parent allow union. Other root schema/source/budget/files/tests values equal dev. Both task hang allowances preserved unchanged, all incoming allowances preserved. JSON textual reordering does not change data. Whitespace check clean.
+
+**A-3865** durable merge evidence note records the programmatic three-way check, JSON parse, shard lint6free/196machine, clean diff/tree. It is a note with check outputs, not a separately attached full test-run log; no new runtime proof is claimed. Reviewer reads/parses only, never runs tests/compiler/processes.
+
+## Spec / carried evidence
+
+Refresh **all C1–C3** at1d3d66ca. Prior actual Linux **A-3851 /9955455a** at4dd3a151 proves all three owned smoke cases ordinarily and15/15 fresh repetitions, with PID-gone-before-directory-removal diagnostic and retained bounded CLI/status/last-event assertions. A-3861 independently audits all three outside functional reds and six budget failures, and primary **fc3c84c5** explicitly accepts that hub-phase gate. These are historical accepted receipts, carried across this authorized merge by ffe4a43c; no new exit0 or Linux execution at the merge head is invented.
+
+Neovim was not run in A-3851. The primary disposition still requires the **next integrated dev cover's Neovim phase before any hub restart on T-476 code**. This final delta neither removes nor satisfies that condition. Coordinator retains merge/demo ordering, including T-583 then T-470 then T-476; no independent restart authorization.
+
+Final merge delta **clear**, C1/C2/C3 refreshed. No further task run under the explicit no-new-run decision; no per-item QA. Findings: Standards0; Spec0.
+
+Artifact A-3866 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3866-t-476-merge-delta-final-clear-unchanged-smoke-and-exact-allowance-union.md
 
 Criteria: C1 verified, C2 verified, C3 verified.
