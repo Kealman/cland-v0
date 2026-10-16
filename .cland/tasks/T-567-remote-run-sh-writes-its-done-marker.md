@@ -2,8 +2,8 @@
 id: T-567
 kind: task
 title: Remote run.sh writes its done marker before the timestamp, so a poll can read code 0 with an empty finished time and the run never enters the cache
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -17,7 +17,8 @@ blocked_by: []
 topic: topic-355
 branch: t/T-567-remote-run-sh-writes-its-done-marker
 created: 2026-10-16T03:27:02.619Z
-updated: 2026-10-16T04:44:31.072Z
+updated: 2026-10-16T04:55:10.655Z
+closed: 2026-10-16T04:55:10.655Z
 ---
 
 ## Summary
@@ -129,3 +130,7 @@ Final delta review clear; C1/C2 refreshed. No additional verification required u
 Artifact A-3720 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3720-t-567-final-clear-manifest-only-correction-and-explicitly-accepted-linux-receipt.md
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-16T04:55:10.655Z
+
+Merged deead2782cd8c1c685ed4a99274c5cb762e4af97 onto dev.
