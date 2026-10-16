@@ -63,7 +63,7 @@ const HUMAN_GRACE_MS = 10_000;
 const KEY = 'suite-jobs';
 const exec = promisify(execFile);
 const METRICS_WINDOW = 20;
-const runRef = (job: SuiteJob): RunRef => ({ ...(job.limits ? { limits: job.limits } : {}), ...(job.config ? { config: job.config } : {}), id: job.id, cwd: job.cwd, head: job.head, mode: job.mode, log: job.log, result: job.result, gate: job.gate, ...(job.workers !== undefined ? { workers: job.workers } : {}), ...(job.size ? { size: job.size } : {}), ...(job.tree !== undefined ? { tree: job.tree } : {}), ...(job.selection ? { selection: job.selection } : {}), ...(job.queued ? { queued: job.queued } : {}), ...(job.locks ? { locks: job.locks } : {}) });
+const runRef = (job: SuiteJob): RunRef => ({ ...(job.limits ? { limits: job.limits } : {}), ...(job.config ? { config: job.config } : {}), id: job.id, cwd: job.cwd, head: job.head, ...(job.integrated ? { integrated: true } : {}), mode: job.mode, log: job.log, result: job.result, gate: job.gate, ...(job.workers !== undefined ? { workers: job.workers } : {}), ...(job.size ? { size: job.size } : {}), ...(job.tree !== undefined ? { tree: job.tree } : {}), ...(job.selection ? { selection: job.selection } : {}), ...(job.queued ? { queued: job.queued } : {}), ...(job.locks ? { locks: job.locks } : {}) });
 function elapsed(since: string | undefined | null, now: number): number | null {
   const start = Date.parse(since ?? '');
   return Number.isFinite(start) ? Math.max(0, now - start) : null;
@@ -419,11 +419,11 @@ export class Suites {
         }
         if (job.lease && Date.parse(job.lease.deadline) <= Date.now()) throw new Error('remote machine lifetime expired');
         if (!(job.lease as DropletLease | undefined)?.execution?.delivered) {
-          if (!job.lease && (!job.tree || await candidateTree(job.cwd, job.head, this.#env) !== job.tree)) { this.#fallback(job, 'dirty or changed worktree cannot be bundled for droplet'); return; }
+          if (!job.lease && (!job.tree || await candidateTree(job.cwd, job.integrated ? undefined : job.head, this.#env) !== job.tree)) { this.#fallback(job, 'dirty or changed worktree cannot be bundled for droplet'); return; }
           if (!job.lease) {
             if (!job.parentRun) await this.#hostGate(job);
             if (job.cancelled) throw new Error('cancelled');
-            if (await candidateTree(job.cwd, job.head, this.#env) !== job.tree) { this.#fallback(job, 'dirty or changed worktree cannot be bundled for droplet'); return; }
+            if (await candidateTree(job.cwd, job.integrated ? undefined : job.head, this.#env) !== job.tree) { this.#fallback(job, 'dirty or changed worktree cannot be bundled for droplet'); return; }
             if (job.remoteAcquireAttempted) { this.#fallback(job, 'previous droplet acquisition was interrupted'); return; }
             job.remoteAcquireAttempted = true; this.#save(job);
             try { job.lease = await this.#droplet.acquire(run, new Date(Date.now() + (job.config?.verification.lifetimeMs ?? this.#options.lifetimeMs ?? 6600000)).toISOString(), undefined, job.config); }
@@ -450,7 +450,7 @@ export class Suites {
         if (!lease.execution?.started) { job.nextPoll = Date.now() + testTiming('CLAND_TEST_DROPLET_RUN_POLL_MS', 10000, this.#options.env); this.#save(job); return; }
       } else {
         const head = await exec('git', ['rev-parse', 'HEAD'], { cwd: job.cwd, env: this.#options.env }).then(r => r.stdout.trim(), () => 'unknown');
-        if (head !== job.head) throw new Error(`cancelled: queued head changed from ${job.head} to ${head}; submit verification again`);
+        if (head !== job.head && !(job.integrated && job.tree && await candidateTree(job.cwd, undefined, this.#env) === job.tree)) throw new Error(`cancelled: queued head changed from ${job.head} to ${head}; submit verification again`);
         job.lease = await this.#local.acquire(run, new Date(Date.now() + 15000).toISOString());
         this.#save(job);
         await this.#local.prepare(job.tree ?? job.head);
@@ -513,7 +513,7 @@ export class Suites {
     }
     // Repeat only an interrupted host gate; provider acquisition is reconciled per child.
     if (!shards.some(shard => shard.remoteAcquireAttempted)) await this.#hostGate(job);
-    if (await candidateTree(job.cwd, job.head, this.#env) !== job.tree) throw new Error('dirty or changed integrated dev candidate');
+    if (await candidateTree(job.cwd, job.integrated ? undefined : job.head, this.#env) !== job.tree) throw new Error('dirty or changed integrated dev candidate');
     if (job.cancelled || job.outcome) throw new Error(job.outcome?.cause ?? 'cancelled');
     await Promise.all(shards.filter(shard => !shard.reported && !shard.outcome).map(shard => this.#launch(shard)));
     job.state = 'running'; this.#save(job);
@@ -729,7 +729,7 @@ export class Suites {
       if (receipt && (receipt.finished || !job.outcome) && (receipt.state === 'done' || receipt.state === 'lost') && !job.cancelled && !job.requesterDied && !job.timedOut) {
         job.outcome = { code: receipt.code ?? 1, cause: receipt.code === 124 ? `run timeout ${job.config?.verification.runTimeout ?? this.#options.runTimeout ?? '75m'}` : receipt.cause ?? '' };
       }
-      if (job.cached && !this.#store.message(`suite:${job.id}`) && await candidateTree(job.cwd, job.head, this.#env) !== job.tree) {
+      if (job.cached && !this.#store.message(`suite:${job.id}`) && await candidateTree(job.cwd, job.integrated ? undefined : job.head, this.#env) !== job.tree) {
         delete job.cached; job.outcome = { code: 1, cause: 'cached candidate changed; submit verification again' };
       }
       if (!job.outcome) {

@@ -106,7 +106,9 @@ for (const action of ['head', 'explicit'] as const) test(`cancelled integrated c
   const run = await f.launch();
   assert.equal(run.pid, null, 'the compatibility holder keeps the candidate queued');
   if (action === 'head') {
-    await git('commit', '--allow-empty', '-m', 'head moved');
+    await writeFile(join(f.root, 'source'), 'changed candidate\n');
+    await git('add', 'source');
+    await git('commit', '-m', 'candidate changed');
     await rm(lock, { recursive: true });
   } else {
     const cancelled = await clandWithEnv(f.root, f.env, 'verify', 'cancel', run.id, '--json');

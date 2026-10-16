@@ -2,10 +2,86 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { candidateTree, committedTree } from '../src/verification-tree.ts';
-import { tempProject } from './harness.ts';
+import { eventually, tempProject } from './harness.ts';
+
+for (const change of ['tracker', 'rulebook', 'source', 'dirty source', 'strict head'] as const) {
+  test(`candidate hashing observes an overlapping ${change} change`, async t => {
+    const root = await tempProject(t);
+    const bin = await tempProject(t);
+    const realGit = (await promisify(execFile)('which', ['git'])).stdout.trim();
+    const git = async (...args: string[]) => (await promisify(execFile)(realGit, args, { cwd: root })).stdout.trim();
+    await git('init', '-q');
+    await git('config', 'user.name', 'Test');
+    await git('config', 'user.email', 'test@example.com');
+    await git('config', 'commit.gpgsign', 'false');
+    await mkdir(join(root, '.cland/tasks'), { recursive: true });
+    await writeFile(join(root, 'source'), 'committed\n');
+    await git('add', '.'); await git('commit', '-qm', 'Base');
+    const head = await git('rev-parse', 'HEAD');
+    const tree = await committedTree(root, head);
+    const held = join(bin, 'held'), release = join(bin, 'release');
+    await writeFile(join(bin, 'git'), `#!${process.execPath}
+import { existsSync, writeFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { setTimeout as pause } from 'node:timers/promises';
+const args = process.argv.slice(2);
+if (args[0] === 'read-tree' && !existsSync(${JSON.stringify(held)})) {
+  writeFileSync(${JSON.stringify(held)}, '');
+  const deadline = Date.now() + 5000;
+  while (!existsSync(${JSON.stringify(release)}) && Date.now() < deadline) await pause(10);
+  if (!existsSync(${JSON.stringify(release)})) process.exit(97);
+}
+process.exitCode = spawnSync(${JSON.stringify(realGit)}, args, { stdio: 'inherit' }).status ?? 1;
+`, { mode: 0o700 });
+    const pending = candidateTree(root, change === 'strict head' ? head : undefined, { ...process.env, PATH: `${bin}:${process.env.PATH ?? ''}` });
+    let result: string | null = null;
+    try {
+      await eventually('immutable hash captured its head', () => stat(held).then(() => true, () => undefined));
+      const path = change === 'tracker' || change === 'strict head' ? '.cland/tasks/note.md' : change === 'rulebook' ? '.cland/RULES.md' : 'source';
+      await writeFile(join(root, path), 'overlapping change\n');
+      if (change !== 'dirty source') {
+        await git('add', path); await git('commit', '-qm', 'Overlap');
+        assert.notEqual(await git('rev-parse', 'HEAD'), head);
+      }
+    } finally { await writeFile(release, ''); result = await pending; }
+    assert.equal(result, change === 'tracker' || change === 'rulebook' ? tree : null);
+  });
+}
+
+test('candidate inputs exclude only tracker items and the rulebook for committed and dirty trees', async t => {
+  const root = await tempProject(t);
+  const git = async (...args: string[]) => (await promisify(execFile)('git', args, { cwd: root })).stdout.trim();
+  const commit = async () => {
+    await git('add', '.');
+    await git('-c', 'user.name=Test', '-c', 'user.email=test@example.com', '-c', 'commit.gpgsign=false', 'commit', '-qm', 'Candidate');
+    return git('rev-parse', 'HEAD');
+  };
+  await git('init', '-q');
+  await mkdir(join(root, '.cland/tasks'), { recursive: true });
+  await mkdir(join(root, 'docs'));
+  await writeFile(join(root, 'source'), 'source\n');
+  const head = await commit();
+  const tree = await candidateTree(root, head);
+  assert.ok(tree);
+  for (const path of ['.cland/tasks/note.md', '.cland/RULES.md']) await writeFile(join(root, path), 'administrative\n');
+  assert.equal(await candidateTree(root, head), tree, 'untracked administrative writes do not dirty the candidate');
+  await git('add', '.');
+  assert.equal(await candidateTree(root, head), tree, 'staged administrative writes do not dirty the candidate');
+  const advanced = await commit();
+  assert.equal(await committedTree(root, advanced), tree);
+  assert.equal(await candidateTree(root, undefined), tree);
+  assert.equal(await candidateTree(root, head), null, 'explicit submitted heads stay strict');
+  for (const path of ['docs/guide.md', '.cland/config.toml', '.cland/RULES.md.extra', 'source']) {
+    const before = await candidateTree(root, undefined);
+    await writeFile(join(root, path), 'changed suite input\n');
+    assert.equal(await candidateTree(root, undefined), null, path);
+    const changed = await commit();
+    assert.notEqual(await committedTree(root, changed), before, path);
+  }
+});
 
 test('candidate provenance keeps Git environments separate and never rewrites their index', async t => {
   const root = await tempProject(t);

@@ -12,6 +12,7 @@ import { DigitalOceanApi, DigitalOceanError } from './api.ts';
 import { readSnapshot } from './prepare.ts';
 import { writeLease, type DropletLease } from './lease.ts';
 import { pause, testTiming } from './watchdog.ts';
+import { candidatePathspec, candidateTree } from '../../verification-tree.ts';
 
 const exec = promisify(execFile);
 const remoteDir = (lease: DropletLease): string => {
@@ -28,9 +29,9 @@ export class DropletRun {
   async deliver(lease: DropletLease, run: RunRef, committedOnly = false): Promise<void> {
     const git = async (...args: string[]) => (await exec('git', args, { cwd: run.cwd, env: machineEnv(this.#env), timeout: 30000, maxBuffer: 16 * 1024 * 1024 })).stdout.trim();
     const checkWorktree = async () => {
-      if (await git('rev-parse', 'HEAD') !== run.head) throw new Error('dirty or changed worktree cannot be bundled for droplet: HEAD changed');
-      // Tracker writes may race delivery; the bundle below always uses the committed head.
-      const dirty = await git('status', '--porcelain=v1', '--untracked-files=all', '--', '.', ':(exclude).cland/tasks');
+      // Administrative writes may race delivery; bundle the submitted committed head.
+      if (await git('rev-parse', 'HEAD') !== run.head && !(run.integrated && run.tree && await candidateTree(run.cwd, undefined, machineEnv(this.#env)) === run.tree)) throw new Error('dirty or changed worktree cannot be bundled for droplet: HEAD changed');
+      const dirty = await git('status', '--porcelain=v1', '--untracked-files=all', '--', ...candidatePathspec);
       if (dirty) throw new Error(`dirty or changed worktree cannot be bundled for droplet: ${dirty.split('\n').join('; ')}`);
     };
     if (!committedOnly) await checkWorktree();

@@ -4,7 +4,7 @@ export type ExecutorKind = 'local' | 'droplet';
 export type RunRef = {
   limits?: import('../suite-limits.ts').SuiteLimits;
   config?: import('../init/config.ts').ProjectConfig;
-  id: string; cwd: string; head: string; tree?: string | null; mode: string;
+  id: string; cwd: string; head: string; tree?: string | null; mode: string; integrated?: boolean;
   selection?: SuiteSelection; log: string; result: string; gate: string;
   queued?: string; locks?: string[]; workers?: number; size?: string;
 };

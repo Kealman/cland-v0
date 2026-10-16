@@ -1,6 +1,8 @@
 {
   "version": 1,
   "tests": {
+    "hub/test/suite-candidate-remote.test.ts": "machine",
+    "hub/test/suite-candidate.test.ts": "machine",
     "hub/test/suite-cover.test.ts": "machine",
     "hub/test/shared-defects-report.test.ts": "machine",
     "hub/test/shared-defects.test.ts": "machine",

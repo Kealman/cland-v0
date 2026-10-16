@@ -4370,6 +4370,30 @@
     "nvim/test/verification-view.test.ts::verify summary opens the ordered queue and ages locally; palette and keys expose the view": {
       "seconds": 6.30693,
       "reason": "Exercises the Neovim verification view against a real queue and waits for its local age clock while proving navigation and commands."
+    },
+    "hub/test/suite-candidate.test.ts::integrated running run covers a new head after committing .cland/tasks/note.md": {
+      "seconds": 5.713784751,
+      "reason": "Runs a real fixture hub, CLI and local worker; waits for package entry, commits tracker state during execution, observes worker completion and verifies advanced-head cache reuse. Linux c-8 run e30632fd (A-4013) measured 5.714s and all five load-gate repetitions passed."
+    },
+    "hub/test/suite-candidate.test.ts::integrated running run covers a new head after committing .cland/RULES.md": {
+      "seconds": 6.789143906,
+      "reason": "Runs a real fixture hub, CLI and local worker; waits for package entry, commits rulebook state during execution, observes worker completion and verifies advanced-head cache reuse. Linux c-8 run e30632fd (A-4013) measured 6.789s and all five load-gate repetitions passed."
+    },
+    "hub/test/suite-candidate.test.ts::integrated running run rejects a source commit after package completion": {
+      "seconds": 5.021503454,
+      "reason": "Runs a real fixture hub, CLI and local worker; commits source after observed package entry, waits separately for completion and the downstream cancellation report, and retains the cancel-head assertion. Linux c-8 run e30632fd (A-4013) measured 5.022s and all five load-gate repetitions passed."
+    },
+    "hub/test/suite-candidate.test.ts::integrated queued run covers a new head after committing .cland/tasks/note.md": {
+      "seconds": 7.459756291,
+      "reason": "Runs a fixture hub and real CLI/local worker through locked queue admission, a tracker commit, package completion and a second verification request proving cache reuse at the new head. Measured on macOS for T-379."
+    },
+    "hub/test/suite-candidate.test.ts::integrated queued run covers a new head after committing .cland/RULES.md": {
+      "seconds": 6.172859708,
+      "reason": "Runs a fixture hub and real CLI/local worker through locked queue admission, a rulebook commit, package completion and a second verification request proving cache reuse at the new head. Measured on macOS for T-379."
+    },
+    "hub/test/suite-candidate-remote.test.ts::integrated remote delivery keeps the submitted bundle across tracker and rulebook commits": {
+      "seconds": 8.023862041,
+      "reason": "Runs an integrated fixture through host typecheck, fake provider acquisition, real bundle/SSH delivery and shell execution, then confirms release and advanced-head cache reuse. The administrative commit occurs during acquisition; measured on macOS for T-379."
     }
   }
 }

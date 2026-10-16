@@ -19,7 +19,7 @@ export function suiteCommands(job: { mode: string; selection?: SuiteSelection })
 }
 
 export async function suiteWorker(input: string): Promise<void> {
-  const job = JSON.parse(await readFile(input, 'utf8')) as { limits?: import('../suite-limits.ts').SuiteLimits; cwd: string; mode: string; gate: string; result: string; selection?: SuiteSelection; locks?: string[]; workers?: number; head?: string; queued?: string; tree?: string | null };
+  const job = JSON.parse(await readFile(input, 'utf8')) as { limits?: import('../suite-limits.ts').SuiteLimits; cwd: string; mode: string; gate: string; result: string; selection?: SuiteSelection; locks?: string[]; workers?: number; head?: string; queued?: string; tree?: string | null; integrated?: boolean };
   let signal: NodeJS.Signals | null = null;
   for (const name of ['SIGINT', 'SIGTERM'] as const) process.on(name, () => {
     if (signal) return;
@@ -47,8 +47,8 @@ export async function suiteWorker(input: string): Promise<void> {
     if (admitted && !signal) leases.push(...await acquireBroker(dirs, () => signal !== null, holder));
     const checkHead = async () => {
       const head = await promisify(execFile)('git', ['rev-parse', 'HEAD'], { cwd: job.cwd }).then(r => r.stdout.trim(), () => 'unknown');
-      if (job.head && head !== job.head) throw new Error(`cancelled: submitted head ${job.head} changed to ${head}; submit verification again`);
-      if (job.tree && await candidateTree(job.cwd, head) !== job.tree) throw new Error('cancelled: candidate tree changed or worktree became dirty; submit verification again');
+      if (job.head && head !== job.head && !(job.integrated && job.tree)) throw new Error(`cancelled: submitted head ${job.head} changed to ${head}; submit verification again`);
+      if (job.tree && await candidateTree(job.cwd, job.integrated ? undefined : head) !== job.tree) throw new Error('cancelled: candidate tree changed or worktree became dirty; submit verification again');
     };
     await checkHead();
     // Pre-V1 branches do not know how to borrow a worker lease. Protect their typecheck,

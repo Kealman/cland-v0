@@ -1872,10 +1872,12 @@ the machine fetches that bundle, checks out the exact detached head and cleans t
 checkout while preserving `node_modules` and `.cache`. A changed lockfile runs
 `npm ci`; a changed Neovim pin seeds it again. The log names both decisions.
 
-Delivery ignores uncommitted changes under `.cland/tasks`, including tracker writes
+Delivery ignores uncommitted changes under `.cland/tasks` and to `.cland/RULES.md`, including tracker writes
 between submission and bundling. Every bundle contains the committed head's tracker
 state; this applies to each shard of an occasion run too. Other dirty files still
-refuse delivery, with their paths in the error, and a changed head still refuses.
+refuse delivery, with their paths in the error. Integrated dev runs permit a changed
+head only when the canonical candidate tree is unchanged; delivery still bundles
+the submitted head. Task runs require their exact submitted head.
 
 The host computes the suite selection while `origin/dev` is available. The uploaded
 `env` contains only `CLAND_SUITE_SELECTION` as JSON, `FORCE_COLOR=0` and `NO_COLOR=1`.
@@ -2153,19 +2155,21 @@ runs in a bounded subprocess; failure retains ownership and logs
 `verification-admission-blocked` for retry.
 `verification.lock_path` defaults to `/tmp/cland-suite.lock`; isolated fixtures
 may select another absolute path (the Neovim lock then uses its `-nvim` suffix).
-Keep the default on a shared machine. Exact submitted heads remain in results;
-a head changed before admission or during the run fails verification. Merge gate
+Keep the default on a shared machine. Exact submitted heads remain in results.
+Integrated dev runs survive tracker-only and rulebook-only commits before admission
+or during execution when the canonical candidate tree stays unchanged; their result
+covers the new head. Task runs still require the submitted head. Merge gate
 semantics stay unchanged. Logs and ordinary results use T-203's artifact checkpoint
 and message id to prevent replay.
 
 Green results are cached by the Git tree of the submitted head **excluding
-`.cland/tasks`**, plus the selected effective mode (`full`, `hub-only`, `hub-selected`, or
+`.cland/tasks` and `.cland/RULES.md`**, plus the selected effective mode (`full`, `hub-only`, `hub-selected`, or
 `nvim-only`). A private Git index constructs this canonical tree without changing
-the worktree's staged contents. Tracker-only dev merges and rebases that reproduce this tree
+the worktree's staged contents. Tracker-only or rulebook-only dev commits and rebases that reproduce this tree
 reuse the original run; every other committed path, including `.cland/config.toml`,
 still participates. Dirty tracked/staged files or nonignored untracked files outside
-the tracker bypass caching and cannot seed it. Clean cache candidates are checked
-again before and after execution; head changes still fail verification.
+the tracker and rulebook bypass caching and cannot seed it. Clean cache candidates are checked
+again before and after execution; changes to suite inputs still fail verification.
 
 `--fresh` bypasses reuse. `[verification].cache_max_age_minutes` defaults to 1440
 (one day); 0 disables caching. Age starts at the original successful completion,
