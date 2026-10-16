@@ -38,6 +38,7 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
   #closing = false;
   #keyWork: Promise<PrepareKey> | null = null;
   readonly #releases = new Map<string, Promise<Released>>();
+  readonly #leaseChanges = new Map<string, Promise<unknown>>();
   readonly #env: NodeJS.ProcessEnv;
   constructor(root: string, store?: Store, log: LogFn = () => {}, env: NodeJS.ProcessEnv = process.env) { this.root = realpathSync(root); this.store = store; this.logger = log; this.#env = env; }
 
@@ -65,6 +66,16 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
   async #save(lease: DropletLease): Promise<void> {
     await writeLease(this.root, lease);
     this.store?.setMeta('executor-leases', JSON.stringify(await readLeases(this.root)));
+  }
+
+  // Revalidation and the following write must be indivisible with respect to
+  // release. Liveness probes and watchdog startup deliberately stay outside.
+  async #changeLease<T>(lease: DropletLease, change: () => Promise<T>): Promise<T> {
+    const previous = this.#leaseChanges.get(lease.lease) ?? Promise.resolve();
+    const work = previous.catch(() => {}).then(change);
+    this.#leaseChanges.set(lease.lease, work);
+    try { return await work; }
+    finally { if (this.#leaseChanges.get(lease.lease) === work) this.#leaseChanges.delete(lease.lease); }
   }
 
   async deliver(lease: DropletLease, run: RunRef) { return new DropletRun(this.root, this.#env).deliver(lease, run); }
@@ -238,12 +249,15 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
   }
 
   async #release(lease: DropletLease): Promise<Released> {
-    const persisted = await readLease(leaseDir(this.root, lease));
-    if (persisted.name !== lease.name || persisted.lease !== lease.lease) throw new Error('droplet lease identity changed; refusing release');
-    Object.assign(lease, persisted);
+    await this.#changeLease(lease, async () => {
+      const persisted = await readLease(leaseDir(this.root, lease));
+      if (persisted.name !== lease.name || persisted.lease !== lease.lease) throw new Error('droplet lease identity changed; refusing release');
+      Object.assign(lease, persisted);
+      if (lease.state === 'released') return;
+      lease.state = 'releasing';
+      await this.#save(lease);
+    });
     if (lease.state === 'released') { await settleSpend(lease, this.#env); return { lifetimeMs: lease.lifetimeMs ?? 0, costUsd: lease.costUsd ?? 0 }; }
-    lease.state = 'releasing';
-    await this.#save(lease);
     const limit = Date.now() + testTiming('CLAND_TEST_DROPLET_RELEASE_MS', 15000, this.#env);
     let cause: { status?: number; id?: string; message: string } | undefined;
     do {
@@ -323,9 +337,19 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
         continue;
       }
       if (!this.#env.DIGITALOCEAN_TOKEN) continue;
-      if (liveLease(lease) && (restart || lease.watchdog) && !await watchdogAlive(lease, this.#env)) {
-        lease.watchdog = await armWatchdog(dir, this.#env); await this.#save(lease);
-        this.logger({ event: 'executor-watchdog-rearmed', lease: lease.lease, pid: lease.watchdog.pid, deadline: lease.deadline });
+      if (lease.state !== 'releasing' && liveLease(lease) && (restart || lease.watchdog) && !await watchdogAlive(lease, this.#env)) {
+        const watchdog = await armWatchdog(dir, this.#env);
+        const rearmed = await this.#changeLease(lease, async () => {
+          const current = await readLease(dir);
+          const sameWatchdog = current.watchdog?.pid === lease.watchdog?.pid && current.watchdog?.startedUtc === lease.watchdog?.startedUtc;
+          Object.assign(lease, current);
+          if (lease.state === 'released' || lease.state === 'releasing' || !sameWatchdog) return false;
+          lease.watchdog = watchdog;
+          await this.#save(lease);
+          return true;
+        });
+        if (rearmed) this.logger({ event: 'executor-watchdog-rearmed', lease: lease.lease, pid: watchdog.pid, deadline: lease.deadline });
+        else await stopWatchdog({ ...lease, watchdog }, this.#env);
       }
       if (lease.state === 'releasing' || Date.parse(lease.deadline) <= Date.now() || restart && (lease.state === 'active' && !lease.execution && !lease.demo && !owned.has(lease.run) || lease.state === 'creating' && lease.resource === null)) await this.release(lease);
     }

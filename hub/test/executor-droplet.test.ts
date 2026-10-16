@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { clandWithEnv, connectUi, startDaemon, tempProject, eventually, spawnSpoke, pidAlive } from './harness.ts';
 import { fakeDigitalOcean } from './fakes/digitalocean/fake-api.ts';
-import { mkdir, readFile, writeFile, readdir, stat, symlink } from 'node:fs/promises';
+import { chmod, mkdir, readFile, writeFile, readdir, stat, symlink } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { preparedDropletFixture } from './droplet-fixture.ts';
 import { createHash } from 'node:crypto';
@@ -10,7 +10,7 @@ import { flushProjectLogs } from './harness.ts';
 import { DropletExecutor } from '../src/executor/droplet/droplet.ts';
 import { writeLease } from '../src/executor/droplet/lease.ts';
 import { DigitalOceanApi, DigitalOceanError } from '../src/executor/droplet/api.ts';
-import { ownProcess } from './process-cleanup.ts';
+import { onCleanup, ownProcess } from './process-cleanup.ts';
 import type { TestContext } from 'node:test';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -329,6 +329,62 @@ test('restart re-arms a live creating lease with a dead watchdog', async t => {
   await flushProjectLogs(t, root);
   assert.match(await readFile(join(root, '.cland/journal.jsonl'), 'utf8'), /executor-watchdog-rearmed/);
   await executor.release(rearmed);
+});
+
+test('a watchdog rearm held across release cannot resurrect the released lease', async t => {
+  const root = await tempProject(t);
+  const api = await fakeDigitalOcean('sentinel-rearm');
+  let finish = async () => {};
+  onCleanup(t, async () => { try { await finish(); } finally { await api.close(); } });
+  await preparedDropletFixture(root, api);
+  const bin = join(root, '.cland/probe');
+  await mkdir(bin);
+  const entered = join(bin, 'entered'), resume = join(bin, 'resume');
+  // Hold the replacement's real ps reply after sampling its identity. If its
+  // first lease read happens after release, it may legitimately exit meanwhile.
+  // The old watchdog's liveness probe and release keep their real OS boundary.
+  // Bound the barrier below the production probe's 3s timeout, and fail if it
+  // expires so an unheld release cannot accidentally satisfy the regression.
+  await writeFile(join(bin, 'ps'), `#!${process.execPath}
+const fs = require('node:fs'), cp = require('node:child_process');
+const args = process.argv.slice(2), pid = args.at(-1);
+const result = cp.spawnSync('/bin/ps', args, { encoding: 'utf8' });
+if (fs.existsSync(${JSON.stringify(join(bin, 'old'))}) && pid !== fs.readFileSync(${JSON.stringify(join(bin, 'old'))}, 'utf8') && !fs.existsSync(${JSON.stringify(resume)})) {
+  fs.writeFileSync(${JSON.stringify(entered)}, pid);
+  const deadline = Date.now() + 2500;
+  while (!fs.existsSync(${JSON.stringify(resume)}) && Date.now() < deadline) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 10);
+  if (!fs.existsSync(${JSON.stringify(resume)})) { fs.writeFileSync(${JSON.stringify(join(bin, 'expired'))}, ''); process.exit(1); }
+}
+process.stdout.write(result.stdout || ''); process.exit(result.status ?? 1);
+`);
+  await chmod(join(bin, 'ps'), 0o700);
+  const env = { ...process.env, DIGITALOCEAN_TOKEN: 'sentinel-rearm', CLAND_EXECUTOR_STATE: join(root, '.cland/executor-state'), CLAND_DIGITALOCEAN_API: api.url, CLAND_SSH_BIN: resolve('hub/test/fakes/digitalocean/ssh'), CLAND_SCP_BIN: resolve('hub/test/fakes/digitalocean/scp'), CLAND_TEST_FAKE_MACHINE_ROOT: api.stateRoot, CLAND_TEST_DROPLET_POLL_MS: '20', CLAND_TEST_DROPLET_WATCHDOG_POLL_MS: '60000', PATH: `${bin}:${process.env.PATH}` };
+  const executor = new DropletExecutor(root, undefined, undefined, env);
+  const lease = await executor.acquire({ id: 'rearm-release' }, new Date(Date.now() + 300000).toISOString());
+  finish = async () => { await executor.release(lease); };
+  ownProcess(t, lease.watchdog!.pid);
+  await writeFile(join(bin, 'old'), String(lease.watchdog!.pid));
+  process.kill(lease.watchdog!.pid, 'SIGTERM');
+  await eventually('original watchdog exited', () => !pidAlive(lease.watchdog!.pid) ? true : undefined);
+  assert.equal(pidAlive(lease.watchdog!.pid), false);
+  const reconciliation = executor.reconcile(false);
+  finish = async () => { await writeFile(resume, ''); try { await reconciliation; } finally { await executor.release(lease); } };
+  const replacement = await eventually('replacement identity probe entered', async () => {
+    const pid = Number(await readFile(entered, 'utf8').catch(() => ''));
+    return pid > 0 ? pid : undefined;
+  });
+  ownProcess(t, replacement);
+  assert.equal(pidAlive(replacement), true);
+  const released = await executor.release(lease);
+  assert.notEqual(released.costUsd, null);
+  assert.deepEqual(api.droplets, []);
+  assert.deepEqual(api.keys, []);
+  assert.equal(await stat(join(bin, 'expired')).then(() => true, () => false), false, 'release completed while replacement startup was still held');
+  await writeFile(resume, '');
+  await reconciliation;
+  assert.deepEqual((await executor.inspect()).leases, []);
+  await eventually('unused replacement watchdog exited', () => !pidAlive(replacement) ? true : undefined);
+  assert.equal(pidAlive(replacement), false);
 });
 
 test('macOS inhibits idle sleep while the lease lives and drops the inhibitor after release', { skip: process.platform !== 'darwin' }, async t => {
