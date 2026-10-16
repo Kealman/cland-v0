@@ -3,7 +3,7 @@ id: T-558
 kind: task
 title: "suite-close test: the map-union case fails one of five load-gate repetitions after T-531"
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,7 @@ regression_of: T-531
 topic: topic-382
 branch: t/T-558-suite-close-test-the-map-union-case
 created: 2026-10-16T01:13:33.534Z
-updated: 2026-10-16T16:03:07.805Z
+updated: 2026-10-16T16:08:42.936Z
 ---
 
 ## Summary
@@ -25,7 +25,10 @@ In T-477's droplet verify e3fddbaf at e2ec7b2c (2026-10-16 ~01:08Z; logs A-3533,
 - [x] C1. Reproduce the failing repetition under load, record which assertion fails and why, and fix it, keeping every assertion.
   - done: impl-558 · 2026-10-16T15:59:03.603Z
   - verified: rev-30 [reviewer] · run rev-20261016-558-source · 2026-10-16T16:03:07.804Z · commit 3976f2cd97d2590e8ced2719f2f17558e07473e1
-- [ ] C2. suite-close.test.ts passes 10/10 serially as a whole file on the Mac, and the task's droplet verify passes (the map-union case is a known manifest entry since 2149fe33, so the load gate no longer repeats it; amended by the Coordinator 2026-10-16).
+  - verified: rev-30 [reviewer] · run rev-20261016-558-final · 2026-10-16T16:08:40.906Z · commit 3976f2cd97d2590e8ced2719f2f17558e07473e1
+- [x] C2. suite-close.test.ts passes 10/10 serially as a whole file on the Mac, and the task's droplet verify passes (the map-union case is a known manifest entry since 2149fe33, so the load gate no longer repeats it; amended by the Coordinator 2026-10-16).
+  - done: impl-558 · 2026-10-16T16:08:24.227Z
+  - verified: rev-30 [reviewer] · run rev-20261016-558-final · 2026-10-16T16:08:40.907Z · commit 3976f2cd97d2590e8ced2719f2f17558e07473e1
 
 ## Comments
 
@@ -79,3 +82,39 @@ Reviewer only reads/parses source/evidence, no tests/compiler/process/provider c
 Artifact A-3957 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3957-t-558-source-clear-bounded-provider-cleanup-wait-and-10-pass-mac-proof.md
 
 Criteria: C1 verified.
+
+### impl-558 · 2026-10-16T16:08:26.296Z
+
+C2 implementation evidence complete: normal no-mode droplet verify 0f76e971-a712-4f95-a6b8-d92842ea1c5e passed at exact source-reviewed head 3976f2cd97d2590e8ced2719f2f17558e07473e1. Mode hub-selected, 41 tests/41 pass, zero failures/cancellations/skips; A-3967 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3967-suite-0f76e971-a712-4f95-a6b8-d92842ea1c5e-auto-at-3976f2c.log). Linux x64 droplet c-8 lon1, lifetime 130 s, cost $0.0090. Mac whole-file 10/10 and typecheck exit 0 remain A-3952. No head changes since source review. Reviewer received the run directly; awaiting final same-head verdict.
+
+### rev-30 · 2026-10-16T16:08:40.907Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-558-final
+commit: 3976f2cd97d2590e8ced2719f2f17558e07473e1
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-558 final evidence review
+
+Commit 3976f2cd97d2590e8ced2719f2f17558e07473e1, unchanged from source-clear rev-20261016-558-source / A-3957. Local and origin branch tips agree.
+
+## Standards
+No findings. No source delta; bounded provider cleanup observation and all original assertions remain covered by source review.
+
+## Spec
+C2 is established under its Coordinator-amended wording. Independently parsed A-3952: ten serial whole-file Mac invocations, seven tests each, 70 passing executions and no failures, cancellations or skips. Same-head typecheck exit 0 is recorded there.
+
+Post-source-review droplet run 0f76e971-a712-4f95-a6b8-d92842ea1c5e / A-3967 names this exact commit and finishes exit 0. The selected hub phase passes 29/29, including all seven suite-close cases; the map-union case passes in 6.462 seconds. Neovim smoke passes 12/12. Total 41/41, no failures, cancellations or skips. Host and remote typechecks complete. Receipt records Linux x64, c-8 lon1, four workers, peak load 2.69, suite wall 61.92 seconds, droplet lifetime 130 seconds and cost $0.0090.
+
+The known map-union manifest entry requires no forced five-repetition load gate under amended C2. Existing-entry duration regression notices are diagnostic; no hard budget or load-gate failure occurs.
+
+C1 remains verified with its explicit evidence limit: Coordinator a0c580dd accepted the controlled 3-second key-list latency red→green; historical gate assertion/cause is not established by its incomplete receipt. No new historical causality claim.
+
+Final clear, C1 and C2 verified. C2 claimant done mark was absent in this final task read; claimant should record it. Standards 0 findings; Spec 0 findings. No exception or additional task run required.
+Artifact: A-3968 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3968-t-558-final-clear-ten-mac-passes-and-same-head-green-droplet.md
+
+Criteria: C1 verified, C2 verified.

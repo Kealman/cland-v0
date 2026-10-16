@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-390
 branch: t/T-633-cland-config-set-writes-one-value-of
 created: 2026-10-16T16:04:12.209Z
-updated: 2026-10-16T16:05:23.499Z
+updated: 2026-10-16T16:08:45.060Z
 ---
 
 ## Summary
@@ -38,3 +38,9 @@ updated: 2026-10-16T16:05:23.499Z
 - [ ] C5. The output says whether the value applies at once or at the next hub start, matching what `cland hub reload` applies.
 - [ ] C6. The human, the Coordinator and an Aide may run it from their shells, while an Implementer, a Reviewer, QA and a Lead are refused (frame-protocol test).
 - [ ] C7. A config.toml without the managed mark is left byte-identical and the refusal says it is the project's own.
+
+## Comments
+
+### impl-633 · 2026-10-16T16:08:45.060Z
+
+Implemented the CLI → config.set frame → hub settings write path. Writable keys derive from renderConfig (including optional droplet worker and visibility parser vocabulary); strict parser mode rejects legacy silently ignored values during writes. Startup-only keys report restart; reloadable writes attempt reload and report now only on success, otherwise saved/not-applied with the refusal. Initial CLI test is green; adding remaining acceptance/race/role coverage before review.

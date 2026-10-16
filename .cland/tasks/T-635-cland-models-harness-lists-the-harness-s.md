@@ -3,7 +3,7 @@ id: T-635
 kind: task
 title: cland models <harness> lists the harness's model ids from a cached probe
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - v0.1.4
@@ -11,10 +11,10 @@ labels:
 assignee: null
 parent: E-611
 blocked_by: []
-topic: null
-branch: null
+topic: topic-391
+branch: t/T-635-cland-models-harness-lists-the-harness-s
 created: 2026-10-16T16:04:12.499Z
-updated: 2026-10-16T16:04:29.103Z
+updated: 2026-10-16T16:08:07.830Z
 ---
 
 ## Summary
@@ -40,3 +40,9 @@ updated: 2026-10-16T16:04:29.103Z
 - [ ] C4. `cland models claude-code` prints Claude Code's list with its source named, as decided for Claude Code.
 - [ ] C5. A failing probe answers the cached list with its age, or with no cache fails with the probe's error, and a harness not installed fails with doctor's not-installed line.
 - [ ] C6. `--account <name>` probes in that account's environment and keeps its cache apart from the default's, and `--json` prints the documented shape.
+
+## Comments
+
+### impl-635 · 2026-10-16T16:08:07.830Z
+
+Implementation started. Scope: hub models.list frame and durable 24-hour per-harness/account cache, CLI rendering, native short-lived probes, and isolated fake-driven tests for C1–C6.

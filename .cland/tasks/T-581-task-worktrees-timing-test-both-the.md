@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-386
 branch: t/T-581-task-worktrees-timing-test-both-the
 created: 2026-10-16T07:01:00.231Z
-updated: 2026-10-16T16:06:18.671Z
+updated: 2026-10-16T16:07:14.504Z
 ---
 
 ## Summary
@@ -25,6 +25,7 @@ In T-470's droplet run 0b939cc1 at 311933f1 (A-3815, lines 4490–4495), hub/tes
 ## Acceptance criteria
 - [x] C1. Find why one of the two snapshots doesn't run under load (a timer or ordering assumption), fix the test or the timing seam, and record the cause on this item.
   - done: impl-581 · 2026-10-16T16:02:57.201Z
+  - verified: rev-30 [reviewer] · run rev-20261016-581-source · 2026-10-16T16:07:14.504Z · commit a14eced08b961307d2721ee4714e60c8b6ee3af7
 - [ ] C2. task-worktrees.test.ts passes 10/10 serially as a whole file on the Mac and once on a droplet.
 
 ## Comments
@@ -40,3 +41,36 @@ Reproduced the reported 3 !== 2 deterministically by delaying Tracker.viewAsync 
 ### impl-581 · 2026-10-16T16:06:10.089Z
 
 Head a14eced08b961307d2721ee4714e60c8b6ee3af7 pushed to origin. npm run typecheck at that committed head: exit 0. Mac whole-file node --test hub/test/task-worktrees.test.ts passed 10/10 serial invocations, each 9/9 tests (90 passing tests, zero failed/skipped). Run 1: 21763.722125 ms; runs 2–10 retained as artifact. No new or renamed tests, no duration allowance needed. C1 cause/red-green proof: A-3959. C2 awaits once-on-droplet verification after source review. qaPolicy is none/after-stage; no per-item QA requested.
+
+### rev-30 · 2026-10-16T16:07:14.504Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-581-source
+commit: a14eced08b961307d2721ee4714e60c8b6ee3af7
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-581 source review
+
+Commit a14eced08b961307d2721ee4714e60c8b6ee3af7; fixed point e335c91349288ea6a0762003d6fce99a77241050. Local and origin task tips agree. Single test-only change in hub/test/task-worktrees.test.ts (22 insertions, 3 deletions). Both review axes performed in-session because this role disables delegation.
+
+## Standards
+No findings. The test uses the existing RequestGuard injection seam and delegates to the bound real measure method. The synchronous scope flag is restored in finally and preserves an enclosing scope. No new timer, production seam, allowance, test identity or process lifecycle behavior is introduced. Existing cleanup remains intact; diff whitespace check passes.
+
+## Spec
+C1 established. The original shared sessions.list stub counted unrelated consumers while worktree.list awaited item/path I/O. Dispatcher.useSessions wires that same method into InboxBoard; InboxBoard's coalesced publication calls list after 250 ms. The item's recorded 3-versus-2 failure and A-3959's controlled delay/stack reproduction are consistent with these call paths. The issue is an extra unrelated read, rather than a missing worktree snapshot.
+
+The revised counter and one-shot synthetic 400 ms charge apply only inside this client's synchronous resumed worktree.list measurements. RequestGuard.measure executes the callback synchronously; its scope ends before awaiting downstream I/O. TaskWorktrees.#observe still obtains sessions in both its initial and final resumed callbacks. The test wraps tracker.viewAsync and calls real inbox.list after its await, deterministically inserting the unrelated read between those callbacks. A-3959 reports that removing the scope filter makes this regression red, while restoring it passes.
+
+All original assertions remain: successful response and T-1 listing; exactly two snapshots; exactly one slow-request with resumed/list-ui identity; elapsed measurement at least 400 ms. The original session.launch timing test shares the explicitly injected guard without losing its clock/log configuration.
+
+## Evidence and criteria
+A-3959 records diagnosis, controlled red→green, and committed-head typecheck exit 0. Independently parsed A-3964: runs 2–10 each contain 9 tests, 9 pass, zero failure/cancellation/skip (81 total passes). Run 1's 9/9 and 21763.722125 ms are reported in the item comment, rather than a raw receipt in those artifacts. Claimant reports ten serial whole-file Mac invocations; C2 remains unverified until that complete sequence and the pending same-head droplet whole-file result are established in final evidence review.
+
+Source clear, C1 verified; C2 pending. Standards 0 findings; Spec 0 findings. No Reviewer tests, edits or compiler execution.
+Artifact: A-3965 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3965-t-581-source-clear-isolate-worktree-snapshots-from-inbox-reads.md
+
+Criteria: C1 verified.

@@ -3,7 +3,7 @@ id: T-608
 kind: task
 title: Rule titles are cut at 80 characters silently and rule.edit cannot change a title
 state: open
-status: planned
+status: in progress
 size: XS
 criterion_seq: 2
 labels:
@@ -11,10 +11,10 @@ labels:
 assignee: null
 parent: E-611
 blocked_by: []
-topic: null
-branch: null
+topic: topic-392
+branch: t/T-608-rule-titles-are-cut-at-80-characters
 created: 2026-10-16T12:50:58.048Z
-updated: 2026-10-16T16:04:29.401Z
+updated: 2026-10-16T16:08:05.372Z
 ---
 
 ## Summary
@@ -29,3 +29,9 @@ Either the title limit is announced in the tool's description and the add result
 
 - [ ] C1. rule.add and cland rule add keep the whole title, or refuse a title over the documented limit with the limit named, never truncating silently, proved by a test.
 - [ ] C2. rule.edit and cland rule edit can change a rule's title, and the change reaches running sessions as a rule event, proved by a test.
+
+## Comments
+
+### impl-608 · 2026-10-16T16:08:05.372Z
+
+Implementation plan: preserve the full first-line default title (explicit titles already preserve length); add optional title to rule.edit and cland rule edit, retaining validation and existing rule-event delivery. Regression coverage for long titles and title-only edits through MCP and CLI.
