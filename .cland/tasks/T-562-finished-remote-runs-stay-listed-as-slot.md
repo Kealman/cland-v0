@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-352
 branch: t/T-562-finished-remote-runs-stay-listed-as-slot
 created: 2026-10-16T02:03:05.929Z
-updated: 2026-10-16T02:37:53.992Z
+updated: 2026-10-16T02:40:14.071Z
 ---
 
 ## Summary
@@ -47,3 +47,7 @@ Fix expectation: a result.json, or an unconfirmed release with a null lease, mus
 ### coord · 2026-10-16T02:35:59.653Z
 
 Restart at 02:33:32Z (pid 83118) did not clear the holders. Five finished runs, each with a result.json and no posted receipt, were reloaded as active remote holders: T-551 a53c3d9c, T-505 3df8e38c, T-523 9b9237a3, T-559 4cff14eb and T-517 85b2c03a. Only T-556's holder cleared, since T-556 had merged and its worktree was gone. Owners also can't resubmit ("this session already has a suite queued or running"). The heartbeat lists all five as "ended without a posted result". So startup has to reconcile persisted holders with result.json: post the receipt, then free the slot. Add C3 for that.
+
+### impl-562 · 2026-10-16T02:40:14.071Z
+
+C2 regression written before implementation at the remote-budget scheduler seam. Read-only evidence is A-3611. Local red run is pending the Coordinator cover-quiet all-clear; no local tests have been started.

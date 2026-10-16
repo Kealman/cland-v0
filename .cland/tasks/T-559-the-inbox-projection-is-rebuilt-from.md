@@ -3,7 +3,7 @@ id: T-559
 kind: task
 title: The inbox projection is rebuilt from SQLite after every change, about 70% of the hub's CPU
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 3
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-351
 branch: t/T-559-the-inbox-projection-is-rebuilt-from
 created: 2026-10-16T01:14:12.317Z
-updated: 2026-10-16T01:42:38.866Z
+updated: 2026-10-16T02:44:52.566Z
 ---
 
 ## Summary
@@ -36,6 +36,7 @@ With about 20 live sessions and steady session-usage, state and announce traffic
   - verified: rev-31 [reviewer] · run rev-20261016-559-source · 2026-10-16T01:42:38.866Z · commit 60f372722471d7f44f365f697f1a5cf604018a4a
 - [x] C3. A scratch load test (20 fake sessions, each sending usage, state and announce once a second for 5 s, against retained history of about 3k messages and 300 topics) shows p95 task.hold and task.comment under 250 ms, hub CPU at least 50% lower than the recorded baseline, and the inbox rebuild count per burst bounded by the coalescing window, not by the number of changes. Before and after numbers are recorded on the item.
   - done: impl-559 · 2026-10-16T01:34:24.479Z
+  - verified: rev-31 [reviewer] · run rev-20261016-559-final · 2026-10-16T02:44:50.833Z · commit 60f372722471d7f44f365f697f1a5cf604018a4a
 
 ## Comments
 
@@ -63,3 +64,24 @@ C1/C2 verified using source and A-3574 actual query plans/protocol tests. All8 c
 Full analysis A-3575: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3575-t-559-source-clear-bounded-inbox-publication-and-indexed-candidates.md. Proceed with Coordinator482c79e8 explicit droplet/fresh verify at this exact head. No Reviewer edits/tests.
 
 Criteria: C1 verified, C2 verified.
+
+### impl-559 · 2026-10-16T02:42:43.283Z
+
+Same reviewed head60f372722471d7f44f365f697f1a5cf604018a4a remains clean. Droplet run4cff14eb-4760-4aa7-9c33-0d9366fef688 raw log is A-3605:1815 tests,1811 pass,4 platform skips,0 fail; our wait-capture load gate5/5. Only red is known T-5560/5, accepted for the gate by Coordinator decision30da93ba (duration regression notices are on known identities). Neovim did not run there, so D45 human authorization22f2b5fe allowed one quiet local package phase with identity unchanged. After T-500 paused: local:none,load1=4.07,all-node --test guard clear. `npm run test:nvim -- nvim/test/*.test.ts` retained both compatibility leases and ran Neovim only. Exit0,393/393 pass,0 skip,98.48s,peak1m load7.65,hook bridges0 before/after cleanup; raw log A-3612. Post-run git head/tree clean and unchanged, no test PIDs remain. Source verdict rev-20261016-559-source/A-3575 already clear; requesting final same-head evidence verdict on both receipts.
+
+### rev-31 · 2026-10-16T02:44:50.833Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261016-559-final
+commit: 60f372722471d7f44f365f697f1a5cf604018a4a
+scope: evidence
+
+Final evidence clear at unchanged60f37272. No high/medium Standards/Spec findings remain. C3 verified using source-reviewed scratchA-3572 CPU-87.3%,294→17rebuilds,hold/commentp95 0.501/8.014ms plus accepted same-head runtime evidence. C1/C2 remain current fromrev-20261016-559-source/A-3575.
+
+A-3605 Linux4cff14eb:free38/38,machine1815total/1811pass/4platformskip/0fail; changed wait case5/5 load repetitions. Sole redT-556timestamp0/5 accepted explicitly by Coordinator30da93ba-8b1b-4cb6-b1be-25bf9a82c52b(Agents), independently read. Known duration notices are informational; do not claim overallgreen exit. Neovim did not run there.
+A-3612 complements missing phase:393/393pass,0skip/fail,98.48s,peak7.65,bothleases,0hookbridgesaftercleanup,samecleanhead before/after reported. Human22f2b5fe explicitly allowed this one npm run test:nvim at60f37272; Coordinatorc9bb7772 relayed sessionidentity/slot/load guards, D45coverquiet7afe5ed4 and allclear27bbf763 independently confirmed. This one-time queue exception plus accepted hub receipt covers both required phases. No per-item QA criteria.
+ArtifactA-3614: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3614-t-559-final-evidence-clear-linux-hub-and-authorized-neovim.md. No Reviewer edits/tests.
+
+Criteria: C3 verified.
