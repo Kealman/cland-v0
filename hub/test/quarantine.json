@@ -1,4 +1,17 @@
 {
   "version": 1,
-  "tests": {}
+  "tests": {
+    "hub/test/suite-timeouts.test.ts::verify reports unverified fast-exit pipe cleanup once, preserves unrelated processes and admits its successor": {
+      "owner": "T-674",
+      "reason": "Load flake: red on four runs, each time as its phase's only failure (b708b845/A-4021, 6ee9b87c/A-4041, Mac census runs A-4056 and the A-4088 repeat at a8ddbb8c); isolated 5/5 green at dev 1584a838 on 2026-10-16 (evidence in T-674).",
+      "added": "2026-10-16",
+      "expires": "2026-10-23"
+    },
+    "hub/test/suite.test.ts::suite worker SIGKILL produces one crash result with its log": {
+      "owner": "T-526",
+      "reason": "Nullable worker pid read from the launch snapshot under load: red on 8130ab79/A-4045 and 2a0b0a78/A-4130; isolated 5/5 green at dev a446efc5 on 2026-10-16 (evidence in T-526, which fixes it).",
+      "added": "2026-10-16",
+      "expires": "2026-10-23"
+    }
+  }
 }
