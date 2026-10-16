@@ -15,7 +15,7 @@ regression_of: T-395
 topic: topic-331
 branch: t/T-517-suite-close-test-a-lease-is-still-active
 created: 2026-10-15T17:18:57.301Z
-updated: 2026-10-15T23:43:27.817Z
+updated: 2026-10-16T01:16:09.670Z
 ---
 
 ## Problem
