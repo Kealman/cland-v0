@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
-import { join } from 'node:path';
+import { delimiter, dirname, join, resolve } from 'node:path';
 import { projectHub, flushProjectLogs, clandWithEnv, connectUi, fakeCodex, pidAlive, startDaemon, tempProject, eventually, fakeClaude, sleep } from './harness.ts';
 
 import { serveProject } from '../src/hub/daemon.ts';
@@ -206,14 +206,35 @@ test('hub start sweeps an OpenCode server without a process-table row and preser
 });
 
 test('real OpenCode serve left behind is swept by hub start', async t => {
+  const root = await tempProject(t);
+  const home = join(root, 'opencode-home');
+  const data = join(home, 'data');
+  const config = join(home, 'config');
+  await mkdir(join(data, 'opencode'), { recursive: true });
+  await mkdir(config, { recursive: true });
+  const configFile = join(config, 'opencode.json');
+  await writeFile(configFile, '{}');
+  const env = {
+    HOME: home,
+    XDG_DATA_HOME: data,
+    XDG_CONFIG_HOME: config,
+    OPENCODE_DB: join(data, 'opencode', 'opencode.db'),
+    // Explicit config overrides must not reintroduce host settings through process.env.
+    OPENCODE_CONFIG: configFile,
+    OPENCODE_CONFIG_CONTENT: '{}',
+    // The shared fixture prepends a fake; this test must reach the installed binary.
+    PATH: (process.env.PATH ?? '').split(delimiter).filter(dir => resolve(dir) !== dirname(OPENCODE_FAKE)).join(delimiter),
+  };
+  assert.ok(env.OPENCODE_DB?.startsWith(`${root}/`), 'real OpenCode database must stay inside the temp project');
+  assert.ok(env.OPENCODE_CONFIG.startsWith(`${root}/`), 'real OpenCode config must stay inside the temp project');
+  assert.equal(env.OPENCODE_CONFIG_CONTENT, '{}', 'real OpenCode inline config must be fixture-owned');
   const version = await new Promise<boolean>(done => {
-    const child = spawn('opencode', ['--version'], { stdio: 'ignore' });
+    const child = spawn('opencode', ['--version'], { stdio: 'ignore', env: { ...process.env, ...env } });
     child.on('error', () => done(false)); child.on('exit', code => done(code === 0));
   });
   if (!version) { t.skip('OpenCode is absent or cannot run on this machine'); return; }
-  const root = await tempProject(t);
-  const pid = await leftoverOpenCode(t, root, 'opencode', {});
-  const { result } = await startDaemon(t, root, {}, { sweep: true });
+  const pid = await leftoverOpenCode(t, root, 'opencode', env);
+  const { result } = await startDaemon(t, root, env, { sweep: true });
   await eventually('background sweep ends real OpenCode', async () => !pidAlive(pid) ? true : undefined, 15_000);
   assert.match(result.stdout, /orphan cleanup runs in the background/);
 });
