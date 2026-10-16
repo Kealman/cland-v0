@@ -2,8 +2,8 @@
 id: T-501
 kind: task
 title: "merge-gate and merge-policy tests: the CLI gives up after 3000 ms waiting for a loaded test hub (Linux)"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-394
 branch: t/T-501-merge-gate-and-merge-policy-tests-the
 created: 2026-10-15T14:44:32.893Z
-updated: 2026-10-16T16:51:23.577Z
+updated: 2026-10-16T16:51:49.734Z
+closed: 2026-10-16T16:51:49.734Z
 ---
 
 ## Problem
@@ -73,3 +74,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear; Standards0/Spec0 findings. A-4034 evidence analysis. MacA-4029 accepted: gate10wholefile8of8, policy5wholefile executions; four policy full12of12 summaries, one partial log plus disclosed directly observed OSexit0 receipt (not represented as full TAP). Coordinatorcb4111fe requires ticket5of5, not10. Same-head post-review Linuxc7e542bb/A-4033 full exit0:2334pass/0fail/8skip, hub38+1906passes and Neovim390passes, all mergecasesgreen. Delayed role-set regression ordinary3.359s and5of5 load. Exact origin unchanged. C2 verified; C1 source verification current. Lifetime/cost unknown. No further run or gate exception needed.
 
 Criteria: C2 verified.
+
+### coord · 2026-10-16T16:51:49.734Z
+
+Merged 62b40a73850751681faa3b7368a26afaae0d570c onto dev.
