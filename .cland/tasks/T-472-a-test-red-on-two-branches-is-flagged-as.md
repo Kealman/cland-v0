@@ -2,8 +2,8 @@
 id: T-472
 kind: task
 title: A test red on two branches is flagged as a shared dev defect, so it is not chased per branch
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-356
 branch: t/T-472-a-test-red-on-two-branches-is-flagged-as
 created: 2026-10-15T09:13:16.499Z
-updated: 2026-10-16T05:30:43.694Z
+updated: 2026-10-16T05:31:29.869Z
+closed: 2026-10-16T05:31:29.869Z
 ---
 
 ## Summary
@@ -101,3 +102,7 @@ scope: delta
 Merge delta clear. Parents final-reviewed bde2582d and fetched dev d6af3812. All eleven task source/clause/test/fixture/shard blobs byte-identical to prior final head. Parsed manifest equals exact dev plus unchanged own5.216s reporter allowance/reason; all shared entries retained. Standards/Spec no findings, diff check clear; parse/duration lint/shards reported green. Coordinator ec8f2093 explicitly authorizes merge-only review/no new suite. Prior A-3714 source and A-3745 final/A-3742 evidence remain under independently confirmed14aa3c33 T-574 exception; historical receipt remains exit1, own five cases ordinary/5-of-5 green, accepted hub-only scope owes no Neovim phase. C1/C2/C3 reverified at merge head. Artifact A-3751: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3751-t-472-merge-delta-clear-at-c2d68bec.md. No Reviewer edits/tests.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-16T05:31:29.869Z
+
+Merged 71bf60cabbef274ca7393594f9022d023dbf4905 onto dev.
