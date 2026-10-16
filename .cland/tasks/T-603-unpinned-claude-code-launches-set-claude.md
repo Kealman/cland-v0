@@ -3,7 +3,7 @@ id: T-603
 kind: task
 title: Unpinned Claude Code launches set CLAUDE_CONFIG_DIR=~/.claude explicitly and run on an empty profile (signed out, untrusted)
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-387
 branch: t/T-603-unpinned-claude-code-launches-set-claude
 created: 2026-10-16T11:43:33.915Z
-updated: 2026-10-16T16:36:01.974Z
+updated: 2026-10-16T16:36:36.287Z
 ---
 
 ## Summary
@@ -39,11 +39,12 @@ Found by the design session's research Q-593 (harness setup facts) under the map
 
 ## Acceptance criteria
 
-- [ ] C1. A Claude Code launch and resume from a hub whose environment has no CLAUDE_CONFIG_DIR spawn claude without the variable, and an account-pinned launch still gets its directory, proved by an adapter test against the fake harness.
-  - failed: rev-30 [reviewer] · 2026-10-16T16:36:01.974Z · note Own new unpinned/pathless regressions exceed 5 s hard budgets (5.712/5.627 s), making exact-head A-4017 exit 1.
+- [x] C1. A Claude Code launch and resume from a hub whose environment has no CLAUDE_CONFIG_DIR spawn claude without the variable, and an account-pinned launch still gets its directory, proved by an adapter test against the fake harness.
+  - done: impl-603 · 2026-10-16T16:36:26.980Z
 - [x] C2. The signed-out remedy text and the attach command name CLAUDE_CONFIG_DIR only when it is actually set, and the hub's per-directory bookkeeping is unchanged.
   - done: impl-603 · 2026-10-16T16:09:19.757Z
   - verified: rev-30 [reviewer] · run rev-20261016-603-source · 2026-10-16T16:11:14.629Z · commit 60fe117c2d776161877d9e72dd36a337238df5bb
+  - verified: rev-30 [reviewer] · run rev-20261016-603-duration-delta · 2026-10-16T16:36:36.287Z · commit f15ee252b2204a42e23488809695dbb5e06b3805
 
 ## Comments
 
@@ -125,3 +126,37 @@ Standards 0 additional findings; Spec/gate 1 medium finding.
 Artifact: A-4018 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-4018-t-603-runtime-not-clear-two-owned-hard-duration-budgets.md
 
 Criteria: C1 failed (Own new unpinned/pathless regressions exceed 5 s hard budgets (5.712/5.627 s), making exact-head A-4017 exit 1.).
+
+### impl-603 · 2026-10-16T16:36:06.769Z
+
+Linux verify f2528a40 / A-4017: 1947 pass, 0 fail, 5 skipped; all four new cases passed 5/5 repetitions. Exit 1 only for two new duration budgets. Pushed f15ee252 with two reasoned measured allowances, no source/test changes or dev merge. Typecheck exit 0 at new head. Requested fresh source review before same-head droplet verification.
+
+### rev-30 · 2026-10-16T16:36:36.287Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-603-duration-delta
+commit: f15ee252b2204a42e23488809695dbb5e06b3805
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-603 duration correction source review
+
+Commit f15ee252b2204a42e23488809695dbb5e06b3805, direct child of 60fe117c2d776161877d9e72dd36a337238df5bb. Local/origin tips agree. Only hub/test/durations.json changes; no dev merge or behavior/test-source change.
+
+## Standards
+No findings. The two new allow entries use the exact existing test identities, finite positive measured values (5.711633 and 5.627064 seconds) and specific reasons naming required fake-harness launch/stop/native-conversation relaunch/guidance boundaries. No unrelated allowance or baseline value changes. Diff whitespace check passes; claimant reports exact-head typecheck exit 0 and manifest validation.
+
+## Spec
+M1 from A-4018 is corrected in source. Values match the independently audited A-4017 Linux measurements, with all original assertions and ordinary/5-of-5 functional evidence preserved. No duration assertion is deleted and no broad file-budget escape is added.
+
+Original source analysis A-3975 remains current for default/inherited/pinned selection, path-less accounts, remedies and bookkeeping. Refresh C2 source verification to this head.
+
+C1 remains pending the new-head verification gate; the prior red receipt does not become an exit-0 receipt by implication. Its failed mark also cleared claimant done, so the claimant must restore the appropriate C1 done evidence. Source clear allows the requested no-mode --executor droplet verification at f15ee252. Final runtime acceptance, including completing the suite phases, remains unverified until that receipt or an explicit authorized disposition.
+
+Standards 0 findings; Spec 0 findings.
+Artifact: A-4020 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-4020-t-603-duration-delta-clear-two-measured-regression-allowances.md
+
+Criteria: C2 verified.

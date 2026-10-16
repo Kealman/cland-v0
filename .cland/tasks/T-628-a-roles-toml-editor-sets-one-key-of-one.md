@@ -3,7 +3,7 @@ id: T-628
 kind: task
 title: A roles.toml editor sets one key of one role table and keeps the rest of the file
 state: open
-status: review
+status: in progress
 size: S
 criterion_seq: 6
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-389
 branch: t/T-628-a-roles-toml-editor-sets-one-key-of-one
 created: 2026-10-16T16:04:11.537Z
-updated: 2026-10-16T16:11:39.360Z
+updated: 2026-10-16T16:37:29.884Z
 ---
 
 ## Summary
@@ -72,3 +72,16 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Source clear; Standards 0 findings, Spec 0 findings. A-3979 records full review. Exact value-span editing preserves unrelated bytes, spacing/comments/line endings; missing keys/tables insert at real table boundaries; scanner retains both multiline clause forms as string contents. Tools preserve supplied grant order. parseRoles validates every returned/published candidate and propagates key-specific errors. Optional allowedHarnesses follows independently read Coordinator92ccf49d; omitted preserves custom adapters, editor/writer supply built-ins. Writer follows existing crew compare-before-rename pattern, exclusive same-directory temp and finally cleanup, with stale-read and old-inode tests. A-3971 reported typecheck/8focused/shards green; independent tip/diff check confirmed. C1–C5 source-verified; C6 final execution mark waits fresh same-head verification. No Reviewer edits/tests.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### rev-31 · 2026-10-16T16:37:29.884Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261016-628-evidence-1
+commit: cc01903bdcee75ee5b9b16f8380693604554edf7
+scope: evidence
+findings: [{"severity":"medium","text":"External run-timeout watchdog gate fails at demo.start with machine command failed or exceeded its time bound; no item-specific exception authorized.","file":"hub/test/demo.test.ts","line":71},{"severity":"medium","text":"External cleanup-warning wait still times out after the task tree's existing T-555 worker-result boundary fix; requires new classification rather than treating as uncorrected known T-555.","file":"hub/test/suite-timeouts.test.ts","line":175}]
+finding_counts: {"high":0,"medium":2,"low":0}
+
+Evidence not clear, A-4022. Same-head A-4021 is local/darwin fallback exit1,1954pass/2fail/0skip, peakload26.88, no Neovim phase. All8 own roles-editor cases pass ordinarily plus40of40 load reps; source C1–C5 marks current. C6 final execution waits clear gate/disposition. Two external failures: demo.ts71 false start/machine command time bound (T-569 family needs disposition), and cleanupwarning15000ms at suite-timeouts.ts175. Confirmed exact tree already includes separate30s worker-result wait from T-555, so warning recurrence is post-fix; proposed Bugs/S regression-ofT-555. No task criterion failed, no implicit known-flake exception/retry. No Reviewer edits/tests.

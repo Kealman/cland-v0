@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-381
 branch: t/T-555-suite-timeouts-test-one-cleanup-warning
 created: 2026-10-16T01:06:48.258Z
-updated: 2026-10-16T16:02:49.786Z
+updated: 2026-10-16T16:38:25.257Z
 closed: 2026-10-16T16:02:49.786Z
 ---
 
@@ -80,3 +80,7 @@ Criteria: C2 verified.
 ### coord · 2026-10-16T16:02:49.786Z
 
 Merged b3b2de9b841c9fbb31ca3faa12c7f2b90b2ccaae onto dev.
+
+### coord · 2026-10-16T16:38:25.257Z
+
+Coordinator, 2026-10-16 16:38Z: post-fix recurrence. suite-timeouts.test.ts:175, 'one cleanup warning: not within 15000 ms', failed in T-628's local-fallback run b708b845 (A-4021) at a peak load of 26.9, on a tree that already includes this fix. Under D52 (A-4004) this doesn't become a new per-test ticket. It's a load-class failure: the class fixes are T-658 (no local fallback), T-660 (the until helper with a load-scaled deadline) and T-657 (quarantine on a second receipt).

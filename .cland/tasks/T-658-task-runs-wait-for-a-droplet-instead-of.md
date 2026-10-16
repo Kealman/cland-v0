@@ -3,7 +3,7 @@ id: T-658
 kind: task
 title: Task runs wait for a droplet instead of falling back to the Mac
 state: open
-status: in progress
+status: review
 size: S
 labels:
   - v0.1.4
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-400
 branch: t/T-658-task-runs-wait-for-a-droplet-instead-of
 created: 2026-10-16T16:29:56.442Z
-updated: 2026-10-16T16:32:45.874Z
+updated: 2026-10-16T16:39:32.841Z
 ---
 
 ## Summary
@@ -38,3 +38,7 @@ A `[verification] local_fallback` setting, default `true`, written `false` in th
 ### impl-658 · 2026-10-16T16:32:45.874Z
 
 Implementation seam: existing suite-remote-budget fake-slot integration test, expanded to cover config-disabled fallback, explicit local progress, queue JSON setting/position/remote ETA; parser validation and render roundtrip. Local targeted runs held while uptime 1-minute load is >=15.
+
+### impl-658 · 2026-10-16T16:39:16.526Z
+
+Implemented and pushed 59d2474d817185d73775c8758f74e76a51638176. Local targeted file: exit 0, 18/18 pass (started load 14.94); npm run typecheck: exit 0 at committed head (started load 14.54). Config default true/project false, remote-only queue admission and JSON/text setting covered. origin/dev 63fcd35d merged before review. No per-item QA required by qaPolicy.
