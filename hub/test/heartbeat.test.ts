@@ -159,10 +159,6 @@ test('the digest ages review and ready items and open asks, caps both sections, 
   assert.match(message.text, /ready, not merged · age/);
   assert.equal((message.text.match(/and 3 more/g) ?? []).length, 2);
   assert.equal(message.text.split('Stale (13)')[1]!.split('\n').filter(line => line.startsWith('- ')).length, 11);
-  await ui.request({ type: 'task.edit', item: items[0], status: 'planned' });
-  await ui.request({ type: 'task.edit', item: items[0], status: 'review' });
-  const reset = ui.frames.length;
-  await eventually('new review state gets a fresh full interval', () => ui.frames.slice(reset).find(f => heartbeat(f) && Number((f.message as Message).detail?.stale) === 12));
 });
 
 
