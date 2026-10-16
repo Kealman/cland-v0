@@ -96,18 +96,22 @@ export async function packageShards(cwd: string, mode: SuiteMode, selection?: { 
   return [...await hubShards(cwd, mode === 'nvim-only', workers), { name: mode === 'hub-only' ? 'Neovim smoke' : 'Neovim', targets: mode === 'hub-only' ? NVIM_SMOKE : ['nvim/test/**/*.test.ts'], resource: 'machine', workers }];
 }
 
-/** Longest-processing-time placement; ties are stable so a plan is reproducible. */
+/** Longest-processing-time placement, including Neovim as one indivisible job. */
 export function balanceCloseShards(files: string[], durations: DurationManifest['files'], count: number): Array<{ files: string[]; hubSeconds: number; nvim: boolean; seconds: number }> {
   if (!Number.isSafeInteger(count) || count < 1) throw new Error('shard count must be a positive integer');
   const known = Object.values(durations).map(file => file.seconds).sort((a, b) => a - b);
   const median = known.length ? known.length % 2 ? known[Math.floor(known.length / 2)]! : (known[known.length / 2 - 1]! + known[known.length / 2]!) / 2 : 1;
   const weight = (file: string) => durations[file]?.seconds ?? median;
   const shards = Array.from({ length: count }, () => ({ files: [] as string[], hubSeconds: 0, nvim: false, seconds: 0 }));
-  const lightest = () => shards.reduce((best, shard) => shard.hubSeconds < best.hubSeconds ? shard : best);
-  for (const file of [...files].sort((a, b) => weight(b) - weight(a) || a.localeCompare(b))) {
-    const shard = lightest(); shard.files.push(file); shard.hubSeconds += weight(file); shard.seconds = shard.hubSeconds;
+  const nvimSeconds = Object.entries(durations).filter(([file]) => file.startsWith('nvim/')).reduce((sum, [, value]) => sum + value.seconds, 0);
+  const jobs: Array<{ file: string | null; seconds: number }> = [...files.map(file => ({ file, seconds: weight(file) })), { file: null, seconds: nvimSeconds }];
+  // Reserve the whole Neovim phase before smaller hub files fill its shard.
+  // File-name ties and the first lightest shard keep the plan reproducible.
+  for (const job of jobs.sort((a, b) => b.seconds - a.seconds || (a.file ?? '').localeCompare(b.file ?? ''))) {
+    const shard = shards.reduce((best, shard) => shard.seconds < best.seconds ? shard : best);
+    if (job.file === null) shard.nvim = true;
+    else { shard.files.push(job.file); shard.hubSeconds += job.seconds; }
+    shard.seconds += job.seconds;
   }
-  const nvim = lightest(); nvim.nvim = true;
-  nvim.seconds += Object.entries(durations).filter(([file]) => file.startsWith('nvim/')).reduce((sum, [, value]) => sum + value.seconds, 0);
   return shards;
 }

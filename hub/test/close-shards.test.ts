@@ -13,6 +13,26 @@ test('close shards balance largest hub files first, use median for unknowns and 
   ]);
 });
 
+test('close shards balance the combined hub and indivisible Neovim workload', () => {
+  const files = ['a', 'b', 'c', 'd'];
+  const durations = {
+    a: { seconds: 10, tests: 1 }, b: { seconds: 10, tests: 1 }, c: { seconds: 10, tests: 1 }, d: { seconds: 10, tests: 1 },
+    'nvim/test/editor.test.ts': { seconds: 12, tests: 1 },
+    'nvim/test/thread.test.ts': { seconds: 8, tests: 1 },
+  };
+  for (const count of [1, 2, 3, 6]) {
+    const result = balanceCloseShards(files, durations, count);
+    assert.equal(result.length, count);
+    assert.deepEqual(result.flatMap(shard => shard.files).sort(), files);
+    assert.equal(result.filter(shard => shard.nvim).length, 1);
+    assert.equal(result.reduce((sum, shard) => sum + shard.seconds, 0), 60);
+    assert.equal(result.reduce((sum, shard) => sum + shard.hubSeconds, 0), 40);
+    if (count === 2) assert.deepEqual(result.map(shard => shard.seconds), [30, 30]);
+    if (count === 3) assert.deepEqual(result.map(shard => shard.seconds), [20, 20, 20]);
+    assert.deepEqual(balanceCloseShards([...files].reverse(), durations, count), result);
+  }
+});
+
 test('explicit shard files retain resource classes and include Neovim only on its assigned droplet', async t => {
   const { mkdtemp, mkdir, writeFile, rm } = await import('node:fs/promises');
   const { tmpdir } = await import('node:os');
