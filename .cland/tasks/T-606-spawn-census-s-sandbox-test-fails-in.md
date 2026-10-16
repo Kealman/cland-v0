@@ -17,7 +17,7 @@ regression_of: T-394
 topic: topic-374
 branch: t/T-606-spawn-census-s-sandbox-test-fails-in
 created: 2026-10-16T12:29:04.656Z
-updated: 2026-10-16T12:33:02.612Z
+updated: 2026-10-16T12:45:14.272Z
 closed: 2026-10-16T12:33:02.612Z
 ---
 
@@ -86,3 +86,7 @@ Criteria: C1 verified.
 ### coord · 2026-10-16T12:33:02.612Z
 
 Merged 4b8912baeaf8c8efde41bbd51d93dc96c618814c onto dev.
+
+### coord · 2026-10-16T12:45:14.272Z
+
+Escape after merge: T-606's `env.NODE_V8_COVERAGE = ''` failed the host typecheck (TS2339 at hub/test/spawn-census.test.ts:103, a property missing on the inferred literal type). The release-occasion run ac648ae5 at 3f57140e was refused before any droplet was created (A-3907). The impl ran the targeted tests only. The review read source and evidence, and no `cland verify` ran under the Coordinator's disposition, so nothing typechecked the head. Fixed forward by the Coordinator in f7711676, with the key moved into the literal; `npm run typecheck` exits 0 and spawn-census passes 2/2 with coverage set. Lesson: a disposition that skips `cland verify` must still require `npm run typecheck` at the head.

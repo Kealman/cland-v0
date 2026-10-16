@@ -11,7 +11,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-16T11:26:11.049Z
-updated: 2026-10-16T12:29:57.808Z
+updated: 2026-10-16T12:43:53.005Z
 ---
 
 ## Destination
@@ -37,6 +37,8 @@ Settled before charting (grilling round 1, 2026-10-16):
 11. On an existing project the Aide studies structure, stack, tests, docs and history, finds the current tracker; the cland tracker becomes the only source; open GitHub issues are imported on confirmation (closed ones untouched); other trackers are out of scope.
 12. The Aide proposes the crew from the installed harnesses and the answers (roles, harness and model per role, pool sizes, heartbeat) and records it through `cland crew set` and a new `cland role set` for launch fields; the roles template no longer assumes three harnesses: a project on Claude Code alone is valid.
 13. The tour is a ladder: (1) the Aide, the tracker and the rules; (2) the Coordinator and an Implementer, the item → branch → review → merge → verify loop; (3) the full crew with a reviewer pool, QA, leads and epic plans; (4) remote executors, accounts, the web. The onboarding ends with a "Welcome aboard" artifact in General (crew, rules, ladder, first steps). The onboarding does not launch the Coordinator; the Aide says when and how.
+14. (During the live try, 2026-10-16.) Sessions edit project files directly: `cland init` and `cland update` write `"worktree": {"bgIsolation": "none"}` into the project's `.claude/settings.json` and the launch settings carry the same key; cland controls a session's reach at the hub and role level, never through harness isolation.
+15. (During the live try, 2026-10-16.) The onboarding teaches: the tour and the welcome note explain cland's concepts and each ladder step in plain words for a newcomer. The human never runs commands by default: the Aide or the Coordinator acts for them and asks permission when needed ("when you say ok, I will launch…"); the Aide's reach (launching the Coordinator, the import, config writes) follows in Q-600.
 
 ## Decisions so far
 

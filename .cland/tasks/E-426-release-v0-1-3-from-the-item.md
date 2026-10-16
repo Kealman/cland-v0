@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-372
 branch: null
 created: 2026-10-14T16:43:18.113Z
-updated: 2026-10-16T12:11:13.338Z
+updated: 2026-10-16T12:48:31.031Z
 ---
 
 ## Summary
@@ -90,3 +90,13 @@ The release runs on what the build shipped: the release run shards on droplets, 
 - Tickets: R-294, the release item (T-294 in the spec); Q-384, the test-speed research question; E-273, the v0.1.2 release epic and the model for this one; T-248, in Tech debt.
 - Skills: `release`, `retro`, `qa`.
 - GLOSSARY: Release, Verdict.
+
+## Comments
+
+### hub · 2026-10-16T12:46:30.162Z
+
+demo 4f5da6d0-60ae-4e43-9bcc-1af390413566 created: droplet cland-v0-4f5da6d0, commit f771167685528a3f9cefa1b1da51f19612e47d7a, deadline 2026-10-16T13:35:29.522Z.
+
+### hub · 2026-10-16T12:48:31.031Z
+
+demo 4f5da6d0-60ae-4e43-9bcc-1af390413566 destroyed: lifetime 166745 ms; cost $0.0116.
