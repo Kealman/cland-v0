@@ -2,8 +2,8 @@
 id: T-610
 kind: task
 title: reduceCoverage crashes with ENOENT when two test owner processes reuse one pid on macOS
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -17,7 +17,8 @@ regression_of: T-394
 topic: topic-380
 branch: t/T-610-reducecoverage-crashes-with-enoent-when
 created: 2026-10-16T14:24:16.825Z
-updated: 2026-10-16T16:18:53.744Z
+updated: 2026-10-16T16:19:17.523Z
+closed: 2026-10-16T16:19:17.522Z
 ---
 
 ## Summary
@@ -124,3 +125,7 @@ C1/C2 source verification remains current; C3 and final execution now verified. 
 Artifact: A-3994 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3994-t-610-final-clear-same-head-coverage-ownership-regressions-and-suite-green.md
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-16T16:19:17.522Z
+
+Merged bd25acf456537f5bc22fdb0bcfbcea7dfdb67460 onto dev.

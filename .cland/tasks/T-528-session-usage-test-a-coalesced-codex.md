@@ -15,7 +15,7 @@ regression_of: T-495
 topic: topic-393
 branch: t/T-528-session-usage-test-a-coalesced-codex
 created: 2026-10-15T20:01:03.365Z
-updated: 2026-10-16T16:17:52.791Z
+updated: 2026-10-16T16:19:13.060Z
 ---
 
 ## Problem
@@ -26,6 +26,7 @@ updated: 2026-10-16T16:17:52.791Z
 
 - [x] C1. Determine whether the duplicate row is a test boundary or a real double journal write. If it's a product bug, the coalescer journals each distinct change once, with a regression test. Otherwise the test reads the coalesced boundary it means to observe. Record which in the commit.
   - done: impl-528 · 2026-10-16T16:15:55.676Z
+  - verified: rev-31 [reviewer] · run rev-20261016-528-source · 2026-10-16T16:19:13.060Z · commit 1835e287cf9f85befc4788702648985bcaaca6a2
 - [ ] C2. session-usage.test.ts passes 5/5 serially, whole file and alone on the Mac, plus once on a droplet in the task's verify.
 
 ## Comments
@@ -37,3 +38,18 @@ Cause is a test boundary/data artefact, not an identical production double write
 ### impl-528 · 2026-10-16T16:16:32.755Z
 
 Source review requested at 1835e287cf9f85befc4788702648985bcaaca6a2 (origin/dev merged, head pushed). npm run typecheck at this head from task worktree exited 0; git diff --check exit 0. Review brief A-3988 (not A-3980; that request reference was a typo). One collected whole-file Mac pass 8/8 so far, with nine remaining gated on uptime <15 per Coordinator load notice. C2 remains incomplete until all ten collected runs and droplet evidence. No per-item QA (none/after-stage).
+
+### rev-31 · 2026-10-16T16:19:13.060Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261016-528-source
+commit: 1835e287cf9f85befc4788702648985bcaaca6a2
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear; Standards0/Spec0 findings. A-3995 records review. A-3976 exact historical projection reproduction plus source establish distinct snapshots, not identical duplicate writes: push synthesizes by-id bucket; compatibility-only authoritative read removes it; recordUsage deep-compares that map while ignoring freshness timestamp. Existing test now scripts equal compatibility/by-id data, observes push before releasing held read, then observes later freshness/map equality before retaining exact three-row journal and final usage assertions. No production edit, filtering/dedup relaxation, changed deadline, sleep or new identity. Cause in commit. Correct brief A-3988 reports typecheck/targetedgreen and initial whole-file8/8; independent ref/diffcheck confirmed. C1 verified; C2 pending completed serial Mac10file proof and post-review same-head droplet gate.
+
+Criteria: C1 verified.
