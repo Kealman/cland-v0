@@ -2,8 +2,8 @@
 id: T-469
 kind: task
 title: "Every stage-close cover carries a Linux proof: the sharded droplet run plus the Mac run, both required by the stage gate"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-316
 branch: t/T-469-every-stage-close-cover-carries-a-linux
 created: 2026-10-15T09:13:16.034Z
-updated: 2026-10-16T04:24:44.016Z
+updated: 2026-10-16T04:25:00.329Z
+closed: 2026-10-16T04:25:00.329Z
 ---
 
 ## Summary
@@ -471,3 +472,7 @@ Final delta review clear; C1–C3 refreshed at19b6fa65 under the explicit waiver
 Artifact A-3700 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3700-t-469-final-merge-delta-clear-exact-allowance-union-and-264-passing-tests.md
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-16T04:25:00.329Z
+
+Merged ee1981be7007ff18d77cd27496b86f01967a47d0 onto dev.
