@@ -2,8 +2,8 @@
 id: T-533
 kind: task
 title: "OpenCode follows 2.x with a check: doctor messages per version and a release-time range check"
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 3
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-337
 branch: t/T-533-opencode-follows-2-x-with-a-check-doctor
 created: 2026-10-15T20:59:18.770Z
-updated: 2026-10-16T03:24:49.423Z
+updated: 2026-10-16T03:25:23.615Z
+closed: 2026-10-16T03:25:23.615Z
 ---
 
 ## Summary
@@ -193,3 +194,7 @@ AllC1–C3 reverified at currenthead via unchanged source and explicit carried f
 ArtifactA-3643: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3643-t-533-landing-merge-delta-clear-at-658556ab.md.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-16T03:25:23.615Z
+
+Merged c3a04ccee67220fdde8b4a6b453ac8af0dd3c23f onto dev.
