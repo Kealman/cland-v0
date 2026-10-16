@@ -2,8 +2,8 @@
 id: T-603
 kind: task
 title: Unpinned Claude Code launches set CLAUDE_CONFIG_DIR=~/.claude explicitly and run on an empty profile (signed out, untrusted)
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-387
 branch: t/T-603-unpinned-claude-code-launches-set-claude
 created: 2026-10-16T11:43:33.915Z
-updated: 2026-10-16T17:12:09.955Z
+updated: 2026-10-16T17:13:51.197Z
+closed: 2026-10-16T17:13:51.197Z
 ---
 
 ## Summary
@@ -190,3 +191,7 @@ Five skips concern macOS sandbox/sleep facilities and absent real OpenCode binar
 Review artifact A-4050.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-16T17:13:51.197Z
+
+Merged 29aeb96d27aa85f2d11e04119f08ad596261c1a4 onto dev.
