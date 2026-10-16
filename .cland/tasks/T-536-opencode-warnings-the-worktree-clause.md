@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-379
 branch: t/T-536-opencode-warnings-the-worktree-clause
 created: 2026-10-15T20:59:19.741Z
-updated: 2026-10-16T15:48:06.464Z
+updated: 2026-10-16T15:53:52.235Z
 ---
 
 ## Summary
@@ -37,3 +37,9 @@ See E-424's "The codemode experiment", "The instructions experiment", "The warni
 - [ ] C2. The role clauses for OpenCode roles (both copies) forbid moving a session out of its item's worktree.
 - [ ] C3. The codemode measurement is an artifact on E-424 with its decision, and the default changes only where it supports it.
 - [ ] C4. The instructions option exists, off by default, its measurement is an artifact on E-424, and the adoption question is filed in Follow-ups.
+
+## Comments
+
+### impl-536 · 2026-10-16T15:53:52.234Z
+
+Implementation uses the existing E-424 seams: doctor CLI against a scratch project/fake binaries, and a real projectHub with fake OpenCode HTTP/MCP. Added warnings (free selection/known free IDs, OS sandbox), worktree guardrail in all override-capable role clauses in both copies, and default-off roleInstructions/CLAND_OPENCODE_ROLE_INSTRUCTIONS with replacement and message fallback. Targeted red→green warnings and instructions tests pass; typecheck exit 0. Real-model experiments are running in empty scratch projects with allowlisted HOME/XDG/OPENCODE_DB, no inherited provider keys.

@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-16T15:34:18.753Z
-updated: 2026-10-16T15:34:18.753Z
+updated: 2026-10-16T15:58:04.475Z
 ---
 
 ## Summary
@@ -67,3 +67,26 @@ QA reads this repository's `.agents/skills/` and a fresh scratch project's after
 - Items: map M-591, decision 4; Q-595 (the triage: what each skill does, where cland names it, which patches it carries); Q-598 (the human's decisions).
 - Research: `docs/research/skills-triage.md` on research/skills-triage (b02343a9).
 - Code: `hub/src/init/skills.ts` (the manifest and the update rules), `hub/src/init/files.ts`, `skills-lock.json`, `skills/PATCHES.md`, `.agents/skills/*/agents/openai.yaml`.
+
+## Plan
+
+```yaml
+stages:
+  - name: the set
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-620
+      - - T-621
+  - name: headers and the update rules
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-622
+      - - T-623
+        - T-624
+        - T-625
+        - T-626
+```

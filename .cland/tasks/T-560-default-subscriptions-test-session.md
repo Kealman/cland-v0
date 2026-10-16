@@ -3,7 +3,7 @@ id: T-560
 kind: task
 title: "default-subscriptions test: session.launch times out at 5 s in the older pooled Reviewer death case (Linux, loaded)"
 state: open
-status: in progress
+status: review
 size: S
 labels:
   - flaky
@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-383
 branch: t/T-560-default-subscriptions-test-session
 created: 2026-10-16T01:20:47.649Z
-updated: 2026-10-16T15:51:23.783Z
+updated: 2026-10-16T15:58:21.072Z
 ---
 
 ## Summary
@@ -28,3 +28,7 @@ In T-527's droplet verify 62859e0a at 5b89aa37 (2026-10-16 ~01:14Z; log A-3540, 
 ### impl-560 · 2026-10-16T15:51:23.783Z
 
 Diagnosis: both whole-file normal-load baselines passed (13/13, 24.10 s and 28.21 s) at a descendant of 2149fe33. The historical log A-3540 identifies only the session.launch result timeout, so its particular native step cannot be proven retrospectively. Code tracing found that ClaudeCodeAdapter.#launch awaits #agents, whose native CLI has a 15 s deadline, but FrameClient.request drops the correlated result waiter after 5 s. Controlled reproduction held the fake's existing agents probe for 5200 ms after its agents-started receipt: the exact already-dead-lead case failed with the same 5000 ms timeout (6.44 s total); changing only that launch's receipt bound to testWaitMs(30_000) passed with every recovery assertion retained (8.84 s). This demonstrates a valid slow native probe can outlive the test client, without machine-wide stress. Temporary instrumentation removed; minimal fix applies a bounded 30 s correlated completion receipt wait to both setup launches in the existing templated case. No test renamed/added.
+
+### impl-560 · 2026-10-16T15:58:10.056Z
+
+Review evidence at a3012566afb121327e616c88a0c579ce9e45f4e9 (pushed to origin/t/T-560-default-subscriptions-test-session after fetching and merging origin/dev): npm run typecheck exit 0, A-3945. Whole hub/test/default-subscriptions.test.ts passed 10/10 serially on the Mac (130/130 tests, every run exit 0), A-3944. Wall times 32.89, 34.06, 38.24, 58.13, 35.04, 32.84, 35.80, 40.14, 35.10, 31.03 seconds. Diagnosis and controlled 5200 ms native agents barrier red/green: A-3934. Working tree clean; no temporary probe code. Awaiting source review before same-head droplet verification.
