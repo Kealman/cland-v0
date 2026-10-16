@@ -2,8 +2,8 @@
 id: T-559
 kind: task
 title: The inbox projection is rebuilt from SQLite after every change, about 70% of the hub's CPU
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 3
 labels:
@@ -16,7 +16,8 @@ blocked_by: []
 topic: topic-351
 branch: t/T-559-the-inbox-projection-is-rebuilt-from
 created: 2026-10-16T01:14:12.317Z
-updated: 2026-10-16T02:44:52.566Z
+updated: 2026-10-16T02:45:08.742Z
+closed: 2026-10-16T02:45:08.742Z
 ---
 
 ## Summary
@@ -85,3 +86,7 @@ A-3612 complements missing phase:393/393pass,0skip/fail,98.48s,peak7.65,bothleas
 ArtifactA-3614: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3614-t-559-final-evidence-clear-linux-hub-and-authorized-neovim.md. No Reviewer edits/tests.
 
 Criteria: C3 verified.
+
+### coord · 2026-10-16T02:45:08.742Z
+
+Merged 50a9468878008863cbab8e620b7a246453c50bbb onto dev.
