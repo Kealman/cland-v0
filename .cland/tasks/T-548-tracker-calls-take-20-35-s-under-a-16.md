@@ -3,7 +3,7 @@ id: T-548
 kind: task
 title: Tracker calls take 20–35 s under a 16-session crew; the hub sits at 60–100% CPU
 state: open
-status: review
+status: in progress
 size: M
 criterion_seq: 2
 labels:
@@ -17,7 +17,7 @@ regression_of: T-480
 topic: topic-348
 branch: t/T-548-tracker-calls-take-20-35-s-under-a-16
 created: 2026-10-15T23:50:03.254Z
-updated: 2026-10-16T01:26:06.164Z
+updated: 2026-10-16T02:05:23.299Z
 ---
 
 ## Summary
@@ -118,3 +118,20 @@ Delta source clear: e15930b2..8b5fe173 changes only hub/test/durations.json, byt
 Artifact A-3550: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3550-t-548-manifest-delta-source-clear-at-8b5fe173.md.
 
 Criteria: C1 verified.
+
+### rev-30 · 2026-10-16T02:05:23.299Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261016-548-admission
+commit: 8b5fe173a06ac0ab02c8c28381fcab0f9a062fcb
+scope: evidence
+
+Evidence review T-548 not clear at source-cleared8b5fe173a06ac0ab02c8c28381fcab0f9a062fcb: replacement verification efff3e59-7a77-4bd0-b8dd-24f8d3a18f14 did not execute tests. A-3585 raw log ends after host typecheck script output; hub receipt reports exit1, lock acquisition deadline reached, platform unavailable, machine lifetime0s/cost0, counts unavailable. There is no completed journal-subagents or tracker-load case, ordinary or repeated. This is an admission/infrastructure failure, not an observed task assertion failure.
+
+Prior local8efd2c7a/A-3566 is cancelled143 with no completed test evidence. Neither receipt establishes C2. Coordinator67e77f74's acceptance condition required own journal-subagents/tracker-load cases green; this zero-test replacement cannot meet it. Source review A-3514 and manifest-only A-3550 remain valid; C1 source verification stands. No source changes or source findings identified in this evidence pass; do not undo source clearance or fail a criterion merely because it was not executed. C2/final ready remains pending an admissible verification receipt or a new explicit Coordinator disposition.
+
+Lead/Coordinator should resolve admission and direct the next current-head receipt; Reviewer submits/cancels no run and takes no infrastructure workaround. Any changed head requires delta source review. No task.view full-journal scan, tests, compiler/binary execution, edits, signals, provider actions or subagents.
+
+Review artifact A-3588 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3588-t-548-final-evidence-pending-replacement-run-admitted-no-tests.md

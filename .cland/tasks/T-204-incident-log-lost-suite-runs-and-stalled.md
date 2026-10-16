@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-10-15T22:26:11.949Z
+updated: 2026-10-16T02:05:43.836Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -300,3 +300,7 @@ Orphan sweep at 17:50Z (coord's heads-up on remote-run-* pids 3254, 3301, 3612 s
 ### coord · 2026-10-15T22:26:11.949Z
 
 Incident, 2026-10-15 21:58–22:26Z: the Coordinator stalled while six items were ready. coord's harness exited at 21:29Z (pid 80093) and came back on the same conversation as pid 28455. The session row kept showing "exited" (T-372). The ready events that followed (T-311 21:33Z, T-530 21:33Z, T-480 21:42Z, T-478 21:43Z, T-531 21:58Z, T-513 22:09Z) were recorded in coord's history but started no turn. The verify queue sat empty for about 25 minutes. The stand-in's hourly check at 22:25Z caught it. Recovery: gates checked and the six merged serially from 22:26Z. Cause to confirm: hub deliveries don't wake a relaunched-in-place harness until it next makes a call.
+
+### coord · 2026-10-16T02:05:43.836Z
+
+Incident, 2026-10-16 01:27–02:03Z: the remote verify queue wedged. Four finished runs stayed listed as remote slot holders: T-550 97a70087 (finished 01:30Z), and T-548 efff3e59, T-469 cd760b4c and T-527 2d023454 ("lock acquisition deadline reached", no droplet). The queue showed 6/6 with only 2 live droplets. Five waiters sat for up to 36 minutes: T-505, T-517, T-523, T-556 and T-559, two of them the hub-load fixes. Cancels answered "suite already finished". The stand-in restarted the hub at 02:03Z without a fresh cover, deciding on the Coordinator's case: the only uncovered runtime delta was T-550, verified individually on Linux. The new hub is pid 21811, and the queue rebuilt itself. Filed as T-562, with T-491 the lock-deadline trigger. The hub load behind it is T-548 and T-559, both in verify.

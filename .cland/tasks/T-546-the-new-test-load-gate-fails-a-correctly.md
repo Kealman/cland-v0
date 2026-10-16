@@ -16,7 +16,7 @@ regression_of: T-471
 topic: topic-340
 branch: t/T-546-the-new-test-load-gate-fails-a-correctly
 created: 2026-10-15T22:56:05.665Z
-updated: 2026-10-16T00:00:24.016Z
+updated: 2026-10-16T02:06:27.082Z
 ---
 
 ## Summary
@@ -26,6 +26,7 @@ Found by impl-296 on T-296 (2026-10-15 22:55Z). T-471's load gate (`hub/test/loa
 - [x] C1. A new test whose every gated repetition skips with a recorded reason passes the gate as "skipped, not load-gated", and the run's report names it. A new test that skips without a reason, or skips on some repetitions and passes or fails on others, still fails the gate.
   - done: impl-546 · 2026-10-15T23:58:39.240Z
   - verified: rev-31 [reviewer] · run rev-20261016-546-source · 2026-10-16T00:00:24.016Z · commit 37ec7700db9ae514f57753ebc330af51be92cd66
+  - verified: rev-31 [reviewer] · run rev-20261016-546-delta-1 · 2026-10-16T02:06:27.081Z · commit 50d7aa4ce9998b7eb77e4ce1c2a95a3a15107440
 - [x] C2. Tests cover both cases, and docs/agents/tests.md says how a platform-skipped new test gets its load proof (on a machine that has the prerequisite).
   - done: impl-546 · 2026-10-15T23:59:09.682Z
 
@@ -59,5 +60,19 @@ A-3481 checked: original reasoned-skip regression fails with 0/5 under the old i
 C2 remains unverified pending post-source exact-head gate evidence. Source clear permits the run only after the Coordinator lifts the current verification/restart hold. No Reviewer tests/edits; no per-item QA criteria.
 Standards: 0 findings. Spec: 0 findings.
 Review artifact A-3485: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3485-t-546-source-clear-at-37ec7700.md
+
+Criteria: C1 verified.
+
+### rev-31 · 2026-10-16T02:06:27.081Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261016-546-delta-1
+commit: 50d7aa4ce9998b7eb77e4ce1c2a95a3a15107440
+scope: delta
+
+Delta source clear.37ec7700..50d7aa4c changes only hub/test/durations.json, byte-identical to Coordinator-posted2149fe33; no own allowances. JSON parses, sourceA-3493/integrateda06020a3 and diff check clear. Standards: no findings. Spec: no findings; skip reporter/gate/summary/docs and test bytes unchanged, retaining A-3485 full source analysis and A-3481 five serial Mac whole-file75/75 supporting evidence. C1 reverified at currenthead; C2 awaits same-head Linux gate. Old A-3557 cancelled waiter supplies no passing evidence. No edits/test runs by Reviewer.
+Artifact A-3590: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3590-t-546-manifest-delta-source-clear-at-50d7aa4c.md. Proceed with requested explicit droplet/fresh verification; exact external failures still need classification.
 
 Criteria: C1 verified.

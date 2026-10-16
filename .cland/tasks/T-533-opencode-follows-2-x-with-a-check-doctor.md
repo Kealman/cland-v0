@@ -3,7 +3,7 @@ id: T-533
 kind: task
 title: "OpenCode follows 2.x with a check: doctor messages per version and a release-time range check"
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 3
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-337
 branch: t/T-533-opencode-follows-2-x-with-a-check-doctor
 created: 2026-10-15T20:59:18.770Z
-updated: 2026-10-16T01:08:01.006Z
+updated: 2026-10-16T02:09:36.389Z
 ---
 
 ## Summary
@@ -40,13 +40,15 @@ Code: `hub/src/doctor/toolchain.ts`, `hub/src/doctor/ranges.ts`, the research pr
 
 ## Acceptance criteria
 
-- [ ] C1. With fake binaries reporting 1.19.0, a 2.x newer than the range and 3.0.0, and with none, `cland doctor` prints the `--major` upgrade, the newer-than-tested note, the refusal naming the range and the v2 installer.
-  - failed: rev-31 [reviewer] · 2026-10-16T01:08:01.006Z · note New doctor installer guidance breaks the mandatory provider-boundary source guard because its exact passive-literal exceptions were not updated.
+- [x] C1. With fake binaries reporting 1.19.0, a 2.x newer than the range and 3.0.0, and with none, `cland doctor` prints the `--major` upgrade, the newer-than-tested note, the refusal naming the range and the v2 installer.
+  - done: impl-533 · 2026-10-16T02:09:01.644Z
+  - verified: rev-31 [reviewer] · run rev-20261016-533-source-3 · 2026-10-16T02:09:36.389Z · commit 9276d5371e124292e416b792594552f69582a2ba
 - [x] C2. The check script compares the newest 2.x OpenAPI document's operations and event names with the tested one, runs the fake-provider smoke, and on a pass moves the range's upper bound.
   - done: impl-533 · 2026-10-16T00:00:29.593Z
 - [x] C3. The check is not part of `npm test`, and the `release` skill (both copies) runs it before the dry run.
   - done: impl-533 · 2026-10-15T23:43:53.153Z
   - verified: rev-31 [reviewer] · run rev-20261016-533-source-2 · 2026-10-16T00:01:51.713Z · commit 77659eb0b7c8cae127883f3bdb6d100b2f378dd1
+  - verified: rev-31 [reviewer] · run rev-20261016-533-source-3 · 2026-10-16T02:09:36.389Z · commit 9276d5371e124292e416b792594552f69582a2ba
 
 ## Comments
 
@@ -127,3 +129,19 @@ Medium — hub/test/account-poller.test.ts:255 and hub/src/doctor/toolchain.ts:7
 Same-head A-3523 / bbfee74e exited 1: 1859/1862 cases passing, hub stopped before Neovim. Checker cases and their load repetitions pass, but external suite-timeouts/territory-lock failures, dynamic-title load gate 0/5 and duration budgets also prevent a final clear gate. C1 failed; C2 remains pending; C3 source evidence unchanged. Full evidence and categorized asides: A-3531, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3531-t-533-evidence-not-clear-exact-passive-url-guard.md.
 
 Criteria: C1 failed (New doctor installer guidance breaks the mandatory provider-boundary source guard because its exact passive-literal exceptions were not updated.).
+
+### rev-31 · 2026-10-16T02:09:36.389Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261016-533-source-3
+commit: 9276d5371e124292e416b792594552f69582a2ba
+scope: delta
+
+Corrective delta source clear; A-3531/C1 integration finding resolved.77659eb0..9276d537 changes only account-poller.test.ts exact passive literals and shared durations.json. Standards: no findings. Two exemptions match only doctor/toolchain.ts human-facing installer/remedy strings; recursion, forbidden-provider/credential list and replace-once semantics remain unchanged, so a new access site still fails. Duration file exactly matches Coordinator-posted2149fe33, including authorizede0d3be63 allowances. Diff check passes. Spec: no findings; doctor/checker/contract guarantees/isolated smoke/release preflight source remains unchanged fromA-3491.
+
+A-3591 whole account-poller10/10 green36.647s, guard23.837ms; admission localnone/load4.42/refined pgrepclear. PriorA-3465/A-3484 supporting proof unchanged. C1/C3 reverified at newhead; C2 awaits same-head post-source gate. Earlier A-3523 is not a passing gate. No per-item QA criteria, edits or Reviewer tests.
+Artifact A-3592: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3592-t-533-corrective-delta-source-clear-at-9276d537.md. Proceed with requested no-mode/no-executor verify at exacthead.
+
+Criteria: C1 verified, C3 verified.
