@@ -3,7 +3,7 @@ id: T-536
 kind: task
 title: OpenCode warnings, the worktree clause, and the codemode and instructions experiments
 state: open
-status: review
+status: in progress
 size: M
 criterion_seq: 4
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-379
 branch: t/T-536-opencode-warnings-the-worktree-clause
 created: 2026-10-15T20:59:19.741Z
-updated: 2026-10-16T16:24:51.520Z
+updated: 2026-10-16T16:48:40.991Z
 ---
 
 ## Summary
@@ -36,9 +36,8 @@ See E-424's "The codemode experiment", "The instructions experiment", "The warni
 
 - [x] C1. `cland doctor` shows the free-model training warning and the missing-sandbox warning for a role on a free OpenCode model, and neither refuses a launch.
   - done: impl-536 · 2026-10-16T16:24:01.305Z
-- [x] C2. The role clauses for OpenCode roles (both copies) forbid moving a session out of its item's worktree.
-  - verified: rev-31 [reviewer] · run rev-20261016-536-source-2 · 2026-10-16T16:23:18.437Z · commit 72d4804a2b919ca718c31c6f207a5f22c127e017
-  - done: impl-536 · 2026-10-16T16:24:02.215Z
+- [ ] C2. The role clauses for OpenCode roles (both copies) forbid moving a session out of its item's worktree.
+  - failed: rev-31 [reviewer] · 2026-10-16T16:48:40.991Z · note Added guardrail pushes both Coordinator clause copies above the established reserved reply budget (7823>7680 bytes).
 - [x] C3. The codemode measurement is an artifact on E-424 with its decision, and the default changes only where it supports it.
   - verified: rev-31 [reviewer] · run rev-20261016-536-source-2 · 2026-10-16T16:23:18.437Z · commit 72d4804a2b919ca718c31c6f207a5f22c127e017
   - done: impl-536 · 2026-10-16T16:24:02.765Z
@@ -93,3 +92,18 @@ Criteria: C2 verified, C3 verified, C4 verified.
 ### impl-536 · 2026-10-16T16:24:51.520Z
 
 Clear source review rev-20261016-536-source-2 received at 72d4804a2b919ca718c31c6f207a5f22c127e017; claimant done marks restored. Submitted no-mode verification with explicit droplet executor per Coordinator instruction. Run 39760d2d-36e0-4d27-a402-c92fd64834ad is launching at the exact reviewed head (confirmed through task.view after the initial tool response timed out). No duplicate submission or source change; awaiting the hub result.
+
+### rev-31 · 2026-10-16T16:48:40.991Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261016-536-evidence-1
+commit: 72d4804a2b919ca718c31c6f207a5f22c127e017
+scope: evidence
+findings: [{"severity":"medium","text":"New156byte guardrail makes Coordinator clause reply7823bytes, exceeding established7680byte cap-with512headroom; both shipped/project snapshot tests fail.","file":"hub/src/roles/default-roles.ts","line":57}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Gate not clear; A-4032. Exact-head Linux39760d2d/A-4031 exit1:1946pass/2fail/5skip, no Neovim. Both own clause snapshot cases fail roles.ts88 on7823byte Coordinator reply versus8192-512=7680. Independently measured new guardrail156bytes, previousreply7667fits: direct task regression, not flake. Compact both clause copies retaining guardrail/required role content and unchanged512headroom assertion; rerun whole roles file and request new source review before verification. C2 failed; C1 final mark pending. C3/C4 source evidence current and stale-instruction finding remains resolved; allfive added doctor/instruction identities5of5. No Reviewer edits/tests.
+
+Criteria: C2 failed (Added guardrail pushes both Coordinator clause copies above the established reserved reply budget (7823>7680 bytes).).
