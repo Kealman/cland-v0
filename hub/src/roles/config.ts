@@ -105,8 +105,10 @@ const grants = (v: unknown, role: string): string[] => {
 /** The built-in definitions once they are parsed (null while they are): what a launch table's missing keys take. */
 let BUILT_IN: RolesConfig | null = null;
 
-/** Parse the file's text. Throws with the place that is wrong; a role the file leaves out takes its default. */
-export function parseRoles(text: string, fallback: RolesConfig | null = null): RolesConfig {
+/** Parse the file's text. Throws with the place that is wrong; a role the file leaves out takes its default.
+ * Callers with a known adapter registry can restrict harness ids; omitted keeps custom adapters valid.
+ */
+export function parseRoles(text: string, fallback: RolesConfig | null = null, allowedHarnesses?: readonly string[]): RolesConfig {
   const doc = parse(text) as Record<string, unknown>;
   const unknown = Object.keys(doc).filter((k) => !ROLE_NAMES.includes(k));
   if (unknown.length) throw new Error(`unknown role ${unknown.map((k) => `[${k}]`).join(', ')} (roles: ${ROLE_NAMES.join(', ')})`);
@@ -125,7 +127,8 @@ export function parseRoles(text: string, fallback: RolesConfig | null = null): R
     if (!isRecord(launch)) throw new Error(`[${role}.launch] must be a table`);
     if (!isRecord(permissions)) throw new Error(`[${role}.permissions] must be a table`);
     if (t.exclusive !== undefined && typeof t.exclusive !== 'boolean') throw new Error(`${role}.exclusive must be true or false`);
-    const harness = optString(launch.harness, `${role}.launch.harness`);
+    const harness = allowedHarnesses === undefined ? optString(launch.harness, `${role}.launch.harness`)
+      : oneOf(launch.harness, allowedHarnesses, `${role}.launch.harness`);
     if (harness === null) throw new Error(`${role}.launch.harness is required`);
     out.set(role, {
       role,
