@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-409
 branch: t/T-680-a-droplet-run-typechecks-once-the-host
 created: 2026-10-16T19:59:27.759Z
-updated: 2026-10-16T20:09:36.634Z
+updated: 2026-10-16T21:06:38.557Z
 ---
 
 ## Summary
@@ -36,9 +36,11 @@ This is the step later tickets hang the T0 test lint on (T-682), so the "check s
 - [x] C2. A droplet run whose delivered tree differs from the host gate's runs the typecheck on the droplet, proved by a planted-difference test.
   - done: impl-680 · 2026-10-16T20:07:26.211Z
   - verified: rev-31 [reviewer] · run rev-20261016-680-source · 2026-10-16T20:09:36.634Z · commit 2394853d421e5fe26adeda6562a5d940e1005dad
+  - verified: rev-31 [reviewer] · run rev-20261016-680-source-2 · 2026-10-16T21:06:38.557Z · commit 64a5729c187403b32c3be2e1e3bcd5244c380c09
 - [x] C3. A local run executes the typecheck exactly once, proved by a suite test.
   - done: impl-680 · 2026-10-16T20:07:27.013Z
   - verified: rev-31 [reviewer] · run rev-20261016-680-source · 2026-10-16T20:09:36.634Z · commit 2394853d421e5fe26adeda6562a5d940e1005dad
+  - verified: rev-31 [reviewer] · run rev-20261016-680-source-2 · 2026-10-16T21:06:38.557Z · commit 64a5729c187403b32c3be2e1e3bcd5244c380c09
 
 ## Comments
 
@@ -66,5 +68,24 @@ findings: [{"severity":"low","text":"Modified broad T3 reuse scenario measures15
 finding_counts: {"high":0,"medium":0,"low":1}
 
 Source clear; Standards1low/Spec0 findings, A-4174. All8files and scheduler/shard/recovery/delivered-shell/local/result seams reviewed. Persisted successful receipt carries exact command/canonical tree; remote shell independently hashes clean actual candidate via private index, and absent/mismatch/unreadable/failed evidence runs typecheck normally. Shards inherit durable parent receipt; old jobs fallback safely; local scheduling remains one check with provenance. Planted committed difference preserves remote failure-stops-tests assertion. A-4172 targeted executor21of21/suite11of11/close2of2 and typecheckgreen; independent ref/diffcheck confirmed. C2/C3 source-established; C1 final execution waits exact-head task verify after explicit Coordinator hold lift, no forced full run requested. Former C4 lifetime comparison explicitly moved to epic demo. Low T3 target issue is report-only per D53; Tech debt/S follow-up to lead, no medium blocker. No Reviewer edits/tests.
+
+Criteria: C2 verified, C3 verified.
+
+### impl-680 · 2026-10-16T21:05:47.033Z
+
+Droplet e410fa45/A-4202 failed changed remote subcase: old HOME substring detector exited 3 at actual Linux host gate before remote creation. Reproduced locally by changing only fixture host HOME to a Linux-like runner path; kept it as regression and used explicit host-only fake-machine marker instead. Fixture-only fix 64a5729c pushed, no dev merge after review (rule 11). Full executor-run file 21/21 in 97.98s; committed-head typecheck green. Evidence A-4203; requesting new source review before verify retry.
+
+### rev-31 · 2026-10-16T21:06:38.557Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261016-680-source-2
+commit: 64a5729c187403b32c3be2e1e3bcd5244c380c09
+scope: full
+findings: [{"severity":"low","text":"Broad T3 reuse scenario still measures15.685s versus D53 report-only10s target; existing Tech debt/S migration follow-up remains.","file":"hub/test/executor-run.test.ts","line":49}]
+finding_counts: {"high":0,"medium":0,"low":1}
+
+Corrected source clear; Standards1low/Spec0 remaining findings, A-4204. Six-line fixture correction only, production unchanged/no devmerge. Independently inspected A-4202 Linux failure: HOME substring caused host exit3 before remote; stronger provenance assertion correctly failed. A-4203 deterministic Linux-style tempHOME red retains regression; corrected host-only fake-machine marker is present at hostgate and omitted by fakeSSH remote allowlist. Committed tree mismatch, remoteexit3, stops-tests and allprovenance assertions retained. Whole executor21of21/97.977s and exact-head typecheck reportedgreen; ref/diffcheck confirmed. C2/C3 source marks current; C1 awaits new exact-head no-mode droplet taskgate. Existing low broadT3 duration target remains report-only, not blocking. A-4202 historical exit1 not waived. No Reviewer edits/tests.
 
 Criteria: C2 verified, C3 verified.

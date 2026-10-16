@@ -3,7 +3,7 @@ id: T-685
 kind: task
 title: serveProject and createHub take a Clock, and projectHub tests advance a fake one instead of waiting real time
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 4
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-410
 branch: t/T-685-serveproject-and-createhub-take-a-clock
 created: 2026-10-16T19:59:28.353Z
-updated: 2026-10-16T20:16:26.608Z
+updated: 2026-10-16T21:00:29.835Z
 ---
 
 ## Summary
@@ -38,7 +38,9 @@ Several hub modules already take a `now` (`core`, `asks`, `budget`, `journal`, `
 - [x] C2. The same file shows a store-and-forward message dropped at its TTL and a presence expiring, each after `advance`, with no sleep.
   - verified: rev-31 [reviewer] · run rev-20261016-685-source · 2026-10-16T20:15:18.338Z · commit 247247d6fc60ac7c6ebae7c1f0cba2a800bafa4f
   - done: impl-685 · 2026-10-16T20:15:34.421Z
-- [ ] C3. With the default clock the existing heartbeat, hygiene, presence and store-and-forward test files pass unchanged, 5/5 serially as whole files on the Mac and once in the task's droplet verify.
+- [x] C3. With the default clock the existing heartbeat, hygiene, presence and store-and-forward test files pass unchanged, 5/5 serially as whole files on the Mac and once in the task's droplet verify.
+  - done: impl-685 · 2026-10-16T21:00:07.896Z
+  - verified: rev-31 [reviewer] · run rev-20261016-685-final · 2026-10-16T21:00:29.388Z · commit 247247d6fc60ac7c6ebae7c1f0cba2a800bafa4f
 - [x] C4. A source-scan test shows the hub modules behind the seam call no `setTimeout`, `setInterval` or `Date.now` directly, except the listed I/O retries.
   - verified: rev-31 [reviewer] · run rev-20261016-685-source · 2026-10-16T20:15:18.338Z · commit 247247d6fc60ac7c6ebae7c1f0cba2a800bafa4f
   - done: impl-685 · 2026-10-16T20:15:34.777Z
@@ -82,3 +84,18 @@ finding_counts: {"high":0,"medium":0,"low":0}
 C1 supplemental evidence clear; Standards0/Spec0 findings, A-4182. Independently read Coordinator6e559ea8 in topic-410 explicitly substituting Reviewer Test-levels inspection for unavailable tier lint at this base. Existing A-4181 inspection confirms T2 header, no daemon/spoke/fake harness, no literal sleep/elapsed-ms assertions, actual heartbeat frame only after fake deadline. No tier-lint execution claimed; T-679/T-690/T-682 own later tagging/lint. C1 verified under that disposition; C2/C4 source current. C3 remains pending same-head droplet2d734657. Head unchanged; no Reviewer edits/tests.
 
 Criteria: C1 verified.
+
+### rev-31 · 2026-10-16T21:00:29.388Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261016-685-final
+commit: 247247d6fc60ac7c6ebae7c1f0cba2a800bafa4f
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear; Standards0/Spec0 findings, A-4199. Independently inspected same-head2d734657/A-4198 full exit0:2386pass/0fail/8skip, complete Neovim390pass/0fail/3skip. Timing records contain all27 unchanged compatibility cases (heartbeat9/hygiene8/presence3/store-forward7), paired with previously audited A-4176 Mac5serial whole-files each/135passes. All8 new clock identities ordinary green and5of5. C3 verified; C1 under Coordinator6e559ea8/A-4182 and C2/C4 source/A-4181 current. Implementer ac7ee7ee reports C3done now submitted, others already present. Lifetime2634s/cost$0.1829 perhub. No Reviewer edits/tests.
+
+Criteria: C3 verified.

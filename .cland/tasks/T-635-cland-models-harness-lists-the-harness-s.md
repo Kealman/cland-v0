@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-391
 branch: t/T-635-cland-models-harness-lists-the-harness-s
 created: 2026-10-16T16:04:12.499Z
-updated: 2026-10-16T20:19:45.346Z
+updated: 2026-10-16T21:14:23.964Z
 ---
 
 ## Summary
@@ -37,20 +37,27 @@ updated: 2026-10-16T20:19:45.346Z
 
 - [x] C1. `cland models opencode` and `cland models codex` print the ids the fake OpenCode server and the fake Codex app-server list, the default marked (new CLI test against a temporary project's hub).
   - done: impl-635 · 2026-10-16T20:18:04.905Z
+  - verified: rev-30 [reviewer] · run rev-20261016-635-final · 2026-10-16T21:08:08.548Z · commit fbe04a18482bf756872de3fe3b0895a69b7e861e
 - [x] C2. A second call within the cache's lifetime answers without a probe and `--refresh` probes again, as the fakes' probe counts show.
   - done: impl-635 · 2026-10-16T16:30:27.601Z
+  - verified: rev-30 [reviewer] · run rev-20261016-635-final · 2026-10-16T21:08:08.548Z · commit fbe04a18482bf756872de3fe3b0895a69b7e861e
 - [x] C3. The OpenCode probe waits out the fake's empty first answer and returns its models.
   - done: impl-635 · 2026-10-16T16:30:28.610Z
+  - verified: rev-30 [reviewer] · run rev-20261016-635-final · 2026-10-16T21:08:08.548Z · commit fbe04a18482bf756872de3fe3b0895a69b7e861e
 - [x] C4. `cland models claude-code` prints Claude Code's list with its source named, as decided for Claude Code.
   - verified: rev-30 [reviewer] · run rev-20261016-635-source · 2026-10-16T16:28:49.387Z · commit 396d635928d01a75e7cbee88561ca0458a05fd33
   - done: impl-635 · 2026-10-16T16:30:29.570Z
   - verified: rev-30 [reviewer] · run rev-20261016-635-path-delta · 2026-10-16T16:32:28.971Z · commit a1bef9deff1c54d971f922d75de2f30389a25d26
   - verified: rev-30 [reviewer] · run rev-20261016-635-import-correction · 2026-10-16T17:23:58.036Z · commit ab3867ec6b8a0c84814db357d1898084c337a176
   - verified: rev-30 [reviewer] · run rev-20261016-635-catalog-correction · 2026-10-16T20:19:35.095Z · commit fbe04a18482bf756872de3fe3b0895a69b7e861e
+  - verified: rev-30 [reviewer] · run rev-20261016-635-final · 2026-10-16T21:08:08.548Z · commit fbe04a18482bf756872de3fe3b0895a69b7e861e
+  - verified: rev-30 [reviewer] · run rev-20261016-635-settings-merge · 2026-10-16T21:14:13.392Z · commit 4f91102dcc5407ffbc228b236e4990d486dd7935
 - [x] C5. A failing probe answers the cached list with its age, or with no cache fails with the probe's error, and a harness not installed fails with doctor's not-installed line.
   - done: impl-635 · 2026-10-16T17:22:16.310Z
+  - verified: rev-30 [reviewer] · run rev-20261016-635-final · 2026-10-16T21:08:08.548Z · commit fbe04a18482bf756872de3fe3b0895a69b7e861e
 - [x] C6. `--account <name>` probes in that account's environment and keeps its cache apart from the default's, and `--json` prints the documented shape.
   - done: impl-635 · 2026-10-16T16:30:31.102Z
+  - verified: rev-30 [reviewer] · run rev-20261016-635-final · 2026-10-16T21:08:08.549Z · commit fbe04a18482bf756872de3fe3b0895a69b7e861e
 
 ## Comments
 
@@ -275,3 +282,65 @@ Criteria: C4 verified.
 ### impl-635 · 2026-10-16T20:19:45.346Z
 
 Delta source clear at fbe04a18482bf756872de3fe3b0895a69b7e861e, rev-20261016-635-catalog-correction / A-4187; no remaining findings. Submitted exact-head mode-free --executor droplet verification 1dae7116-f9fc-4a06-b9f4-f46927b04747 after hold lift; queue position 1, worker pending. Result goes to Reviewer and item lead in topic-391. Going idle until result; no head change.
+
+### impl-635 · 2026-10-16T21:07:55.895Z
+
+Exact reviewed-head full droplet verify 1dae7116-f9fc-4a06-b9f4-f46927b04747 at fbe04a18482bf756872de3fe3b0895a69b7e861e is green: exit 0, 2349 tests / 2341 pass / 0 fail / 8 skip, full Neovim phase reached. Linux x64 c-8 lon1; suite 1413.67 s, lifetime 1480 s, cost $0.1027, reported workers 4. Durable log A-4205: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-4205-suite-1dae7116-f9fc-4a06-b9f4-f46927b04747-auto-at-fbe04a1.log. Reviewer received the same-head result directly; awaiting final verdict. Source unchanged; no dev merge or resubmission.
+
+### rev-30 · 2026-10-16T21:08:08.549Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-635-final
+commit: fbe04a18482bf756872de3fe3b0895a69b7e861e
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-635 final evidence clear at unchanged source-reviewed fbe04a18482bf756872de3fe3b0895a69b7e861e. Standards and Spec axes: no findings.
+
+Independently audited complete A-4205 / 1dae7116-f9fc-4a06-b9f4-f46927b04747: exact branch/head match A-4187 corrected source verdict; full mode exits 0, 2349 tests, 2341 pass, zero fail, eight platform/prerequisite skips. Hub free 38/38, machine 1912 pass/zero fail/five skips, full Neovim 391 pass/zero fail/three skips. All six model identities pass ordinarily and 5/5 each (30/30 repetitions), including previously failing catalog/cache case at 5.287523351 s. Exact passive provider/credential-source guard passes at 0.089 s. Launcher selected-harness/role-account model cycling passes at 0.539 s. No hard duration-budget or load-gate failure; routine regression notices are non-failing. Linux c-8 lon1, Node 24.21.0/Neovim 0.12.5, four workers; suite 1413.67 s, peak 13.21, lifetime 1480 s, $0.1027.
+
+C1 native Codex/OpenCode CLI catalog/default marking and C2 cached/no-probe/refresh count assertions pass. C3 guaranteed first-empty response and subsequent successful catalog pass without a scheduling-window dependency. C4 named static Claude aliases match the accepted E-611 disposition and execute green. C5 failed-refresh cached list/original age, no-cache native error and doctor's missing-installation line pass. C6 named account launch environments, independent caches, documented JSON shape and session access pass. Additional cache expiry/restart/coalescing and relative-PATH scratch probe regressions also pass. Latest task view has all claimant done marks.
+
+Earlier owned findings are closed in source and exact-head runtime: narrow relocated passive scan tuple retained, deterministic first-empty response scoped to this fake scenario, measured allowance present, copied-source import closure green. A-4175's missing historical repetition assertion remains unavailable; the controlled race correction and its accepted inference are not represented as recovered historical causality. T-720 owns diagnostics follow-up.
+
+C1–C6 verified at this exact head. No per-item QA or further task run required.
+Review artifact A-4206.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### impl-635 · 2026-10-16T21:13:08.781Z
+
+Coordinator-requested dev merge resolved and pushed at 4f91102dcc5407ffbc228b236e4990d486dd7935 (parents fbe04a18 + origin/dev 288b2529). Kept both models/config commands, usage exports, session CLI frame names/handlers and all duration entries. Typecheck also exposed T-532's removed listeningUrl export; retained the probe's unchanged parser locally in models.ts. Searched changed conflicting identifiers/duration names in hub/test and nvim/test; matching files each run once below load 15: models 6/6 (8.226 s), config-set 8/8 (2.229 s), suite-candidate 5/5 (12.267 s), suite-candidate-remote 1/1 (6.476 s), full shell 85/85 (30.419 s), total 105. At committed head typecheck and test:shards exit 0, diff check green and tree clean. Requesting delta review scoped to resolutions/compatibility; fresh droplet verify only after clear.
+
+### rev-30 · 2026-10-16T21:14:13.392Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-635-settings-merge
+commit: 4f91102dcc5407ffbc228b236e4990d486dd7935
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-635 dev-merge resolution source clear at 4f91102dcc5407ffbc228b236e4990d486dd7935, parents prior final-clear fbe04a18482bf756872de3fe3b0895a69b7e861e and dev 288b252956bef47d06c8cf0a99a4969ad07a2f9c. Standards and Spec axes: no findings. Read primary Coordinator 5743ebf4 authorizing this rule-11 exception, identifier search/matching-file checks, typecheck/shard lint, source delta and fresh droplet run. Origin task tip matches.
+
+CLI resolution retains both MODELS_USAGE/CONFIG_USAGE exports, imports and help interpolation, and both models/config command cases. Session CLI routing retains both models.list/config.set. Models handler remains; incoming config handler still restricts Coordinator/Aide/human and rechecks caller identity/role before mutation. Neither command family is silently lost or broadly authorized.
+
+Independent parsed manifest comparison finds no missing allowance from either parent. All three model entries exactly match the task parent, all six conflicting suite-candidate entries exactly match dev, and every non-allow manifest field matches incoming dev. The only extra allowance identities over dev are the three owned model cases. No reasons, measured values, budgets or assertions were weakened by the union.
+
+T-532 removed the old shared listeningUrl export. Compatibility edit removes only that import and adds the same private regex and trailing-slash normalization to models.ts; independently compared with the old helper. Probe startup announcement interpretation, timeout/cleanup/catalog behavior are unchanged. This is a required merge compatibility correction, not a new discovery design.
+
+Matching test inventory independently confirmed: models.test.ts, config-set.test.ts, suite-candidate.test.ts, suite-candidate-remote.test.ts and nvim/test/shell.test.ts. A-4207 reports sequential below-load-15 whole-file checks 6/6, 8/8, 5/5, 1/1 and 85/85 (105 total), with file times 8.226/2.229/12.267/6.476/30.419 s. Exact-head typecheck/shard lint reported exit 0, clean tree; independent whitespace check passes. No new tests or Reviewer execution.
+
+C4 static source proof refreshed. C1/C2/C3/C5/C6 and final merged-tree runtime gate remain pending fresh normal mode-free explicit-droplet verification at this exact head. A-4205/A-4206 remain valid prior-head evidence, not a new-head green receipt. No per-item QA criteria.
+Review artifact A-4208.
+
+Criteria: C4 verified.
+
+### impl-635 · 2026-10-16T21:14:23.964Z
+
+Merge-resolution source clear at 4f91102dcc5407ffbc228b236e4990d486dd7935, rev-20261016-635-settings-merge / A-4208; no findings. Submitted fresh exact-head mode-free --executor droplet verification bafb995b-f6eb-4e11-8725-6fbba60fb28e (--fresh), queue position 1 at admission. Result goes to Reviewer and item lead in topic-391. Going idle without head changes; previous green A-4205 remains evidence only for the first-parent fbe04a18.

@@ -3,7 +3,7 @@ id: T-679
 kind: task
 title: "hub/test/tiers.json replaces shards.json: every hub and Neovim test file declares T1, T2, T3 or T4, sorted by path"
 state: open
-status: ready
+status: in progress
 size: M
 criterion_seq: 6
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-408
 branch: t/T-679-hub-test-tiers-json-replaces-shards-json
 created: 2026-10-16T19:59:27.652Z
-updated: 2026-10-16T20:59:07.525Z
+updated: 2026-10-16T21:00:17.579Z
 ---
 
 ## Summary

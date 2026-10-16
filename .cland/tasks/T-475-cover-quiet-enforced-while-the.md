@@ -3,7 +3,7 @@ id: T-475
 kind: task
 title: "Cover-quiet enforced: while the Coordinator's integrated cover holds the slot, the test harness refuses to start a fixture hub"
 state: open
-status: ready
+status: review
 size: M
 criterion_seq: 3
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-401
 branch: t/T-475-cover-quiet-enforced-while-the
 created: 2026-10-15T09:13:18.684Z
-updated: 2026-10-16T20:58:35.676Z
+updated: 2026-10-16T21:01:30.557Z
 ---
 
 ## Summary
@@ -42,6 +42,7 @@ Retrospective A-2783, STOP 1: all 7 flaky red covers had other sessions' test ru
   - verified: rev-30 [reviewer] · run rev-20261016-475-watchdog-header-delta · 2026-10-16T20:08:52.284Z · commit a35e9d32e89eeef49e34d2ab7f0fe6536189c7d3
   - done: impl-475 · 2026-10-16T20:57:54.354Z
   - verified: rev-30 [reviewer] · run rev-20261016-475-final · 2026-10-16T20:58:34.879Z · commit a35e9d32e89eeef49e34d2ab7f0fe6536189c7d3
+  - verified: rev-30 [reviewer] · run rev-20261016-475-dispatch-merge · 2026-10-16T21:01:14.294Z · commit f9c6975ae32c4f22b003e2fbd59703d1433a176e
 
 ## Comments
 
@@ -353,3 +354,33 @@ Linux x64 c-8 lon1, Node 24.21.0/Neovim 0.12.5, two workers; suite wall 2467.20 
 Review artifact A-4196.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### rev-30 · 2026-10-16T21:01:14.294Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-475-dispatch-merge
+commit: f9c6975ae32c4f22b003e2fbd59703d1433a176e
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-475 dispatch/shard merge delta source clear at f9c6975ae32c4f22b003e2fbd59703d1433a176e, parents prior final-clear a35e9d32 and dev 45bb16a4463d780131d4f0797ede684057ef203b. Standards and Spec axes: no findings. Origin task tip matches.
+
+Read primary Coordinator 04ef5374 authorizing merge/conflict resolution and fresh verification, and f33640ca explicitly replacing local matching-file execution with inventory plus fresh droplet verification because the live hub's refusal still governs. No local matching-file run or permission workaround is requested.
+
+Combined merge diff shows only additive conflicts. SESSION_CLI_FRAMES is the union: incoming config.set plus owned suite.slot, all prior entries retained. Config frame handler still refuses roles other than Coordinator/Aide/human and rechecks session identity/role on resumed authorization before applying changes. Read-only suite.slot check retains its dedicated checkSlot branch; actual human slot/forced-slot paths still refuse session callers. Thus broad session-frame routing does not remove either handler's specific authorization. Relative to incoming dev, dispatch adds only reviewed suite.slot routing/check behavior, preserving incoming config editing.
+
+Parsed shard maps independently: only owned cover-quiet machine entry differs from incoming dev; no removals or changed incoming values, config-set and roles-editor entries retained. No cover-quiet test body changes. The resulting 16-file diff versus dev remains owned admission scope with the already accepted T3 header. Independent whitespace check passes. Request reports exact-head typecheck and shard lint exit 0, clean pushed tree.
+
+Independently confirmed matching whole-test inventory for SESSION_CLI_FRAMES|suite[.]slot|config[.]set across hub/test and nvim/test: config-set.test.ts, cover-quiet.test.ts, suite-human.test.ts, suite-remote-budget.test.ts; no Neovim test hit. Supporting run-suite is not a test. These files, plus preserved roles-editor coverage, must be included by the normal new-head selection as directed; previous A-4194 remains prior-head green evidence only.
+
+C3 source refreshed. C1/C2 exact-head merged runtime gate remains pending; submit fresh normal mode-free droplet verification under Coordinator direction. Primary a2c472aa's local live-hub rollout remains a separate post-merge Coordinator obligation, not an item criterion or merge blocker. No per-item QA criteria.
+Review artifact A-4201.
+
+Criteria: C3 verified.
+
+### impl-475 · 2026-10-16T21:01:30.557Z
+
+Authorized dispatch conflict resolved at f9c6975a; source clear A-4201 / rev-20261016-475-dispatch-merge. Resolution/test inventory A-4200. Typecheck+test:shards exit0; matching-file local runs explicitly prohibited by Coordinatorf33640ca, replaced by fresh normal droplet run. Submitted 2ef8e9ab-4747-4bc5-b03e-1d51206db3f3 at exact reviewed unchanged head, queue1, topic-401 Reviewer+claimant. Prior green A-4194 is prior-head proof only. Waiting hub result.
