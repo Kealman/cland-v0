@@ -3,7 +3,7 @@ id: T-466
 kind: task
 title: "In-process hub, part 2: migrate the next files to bring daemon starts per full run under 600"
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - v0.1.3
@@ -12,10 +12,10 @@ labels:
 assignee: null
 parent: E-387
 blocked_by: []
-topic: null
-branch: null
+topic: topic-359
+branch: t/T-466-in-process-hub-part-2-migrate-the-next
 created: 2026-10-15T09:03:10.279Z
-updated: 2026-10-15T19:05:29.774Z
+updated: 2026-10-16T05:32:27.028Z
 ---
 
 ## Summary

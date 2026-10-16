@@ -3,7 +3,7 @@ id: T-574
 kind: task
 title: task-prefixes "removing a planned legacy epic" test races the plan recompute and fails often on dev
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 2
 labels:
@@ -17,7 +17,7 @@ blocked_by: []
 topic: topic-358
 branch: t/T-574-task-prefixes-removing-a-planned-legacy
 created: 2026-10-16T05:25:32.740Z
-updated: 2026-10-16T05:30:47.962Z
+updated: 2026-10-16T05:34:30.143Z
 ---
 
 ## Summary
@@ -32,7 +32,10 @@ So it's a race with a high failure rate, not one breaking commit. The test reads
 - [x] C1. Find whether a removed epic's plan or candidate state outlives its file (product) or the test reads before a defined recompute point (test), fix that cause, and record it on this item. If the product serves a stale plan for a re-created id, fix the product.
   - done: impl-574 · 2026-10-16T05:28:02.337Z
   - verified: rev-30 [reviewer] · run rev-20261016-574-source · 2026-10-16T05:30:47.962Z · commit c63a8a9bff1e3c4bc003078dce0e4c98d36c12b7
-- [ ] C2. task-prefixes.test.ts passes 10/10 serially as a whole file on the Mac and once on a droplet in the task's verify; the fix is posted as a shared fix.
+  - verified: rev-30 [reviewer] · run rev-20261016-574-final · 2026-10-16T05:34:29.491Z · commit c63a8a9bff1e3c4bc003078dce0e4c98d36c12b7
+- [x] C2. task-prefixes.test.ts passes 10/10 serially as a whole file on the Mac and once on a droplet in the task's verify; the fix is posted as a shared fix.
+  - done: impl-574 · 2026-10-16T05:34:04.004Z
+  - verified: rev-30 [reviewer] · run rev-20261016-574-final · 2026-10-16T05:34:29.491Z · commit c63a8a9bff1e3c4bc003078dce0e4c98d36c12b7
 
 ## Comments
 
@@ -76,3 +79,34 @@ No Reviewer tests/compiler/binary execution, edits, signals, installs, provider 
 Artifact A-3752 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3752-t-574-source-clear-indexed-removal-boundary-and-10-whole-file-mac-passes.md
 
 Criteria: C1 verified.
+
+### impl-574 · 2026-10-16T05:33:27.234Z
+
+Fresh exact-reviewed-head droplet verification ff34e0b2-6283-48ce-84e5-d9d771cc8a82 passed at c63a8a9bff1e3c4bc003078dce0e4c98d36c12b7: auto hub-selected, 39 pass / 0 fail, whole task-prefixes.test.ts and Neovim smoke, Linux x64 6.8.0-142-generic / Node 24.21.0 / Neovim 0.12.5, c-8 lon1, 51.94s suite, lifetime/cost unknown. Durable log A-3753. Mac proof A-3747 is 10/10 whole files = 80 pass. Source clear A-3752 / rev-20261016-574-source. Coordinator asked to post shared fix, the remaining C2 publication step.
+
+### rev-30 · 2026-10-16T05:34:29.491Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-574-final
+commit: c63a8a9bff1e3c4bc003078dce0e4c98d36c12b7
+scope: evidence
+
+# T-574 final evidence clear at c63a8a9b
+
+Headc63a8a9bff1e3c4bc003078dce0e4c98d36c12b7 unchanged; origin ref matches. Source A-3752 and runtime audit A-3754 apply. No new source changes/findings.
+
+## Standards
+No high, medium or low findings (0). The bounded indexed-removal predicate preserves all strict plan/rename assertions and intentional last-valid-plan retention. No new test or product edits are involved in final settlement.
+
+## Spec
+C1 source diagnosis/fix stands: task.view ENOENT is not indexed removal; index.remove clears persisted plan and #dropFile clears candidates synchronously before publication. Bounded task.list absence before id reuse observes the actual lifecycle boundary.
+C2 Mac proof A-3747:ten serial complete task-prefixes files,8tests each=80pass,0fail/cancel/skip, quiet guarded admissions. Linux A-3753 /ff34e0b2-6283-48ce-84e5-d9d771cc8a82 at exact head:whole changed task-prefixes file included in hub-selected coverage plus baselines,hub27/27 and Neovim smoke12/12=39/39,no failures/cancellations/skips,exit0. Changed case1.274s; both typechecks/required selected phases complete. Actual Linux c-8lon1,Nodev24.21.0,Neovimv0.12.5,fourworkers;51.94s,peak1m2.17,loadextra0.03s. Provider lifetime/cost remain unknown, not inferred. No run exception is required.
+Publication clause is settled under independently read primary Coordinator65798f2f-78e9-4a33-a91f-da7f4d8bb90b: C2 claimant done note is 'shared-fix notice by the Coordinator on merge'; Coordinator merges on ready then posts merged commit to branches in the same minute. Thus final criterion verification follows this explicit sequencing disposition. It does not claim the shared notice has already been published; publication remains the Coordinator's concrete merge action. Earlier7859b20e Linux-before-sharing prerequisite is now fulfilled.
+
+Final evidence clear; C1/C2 refreshed at this exact head. No extra verification/head change needed. No per-item QA. Further source movement requires delta review; branch publication/merge is not performed by Reviewer. No Reviewer tests, compiler/binary execution, edits, signals, provider operations or subagents. Totals Standards0,Spec0 findings.
+
+Artifact A-3755 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3755-t-574-final-clear-10-mac-files-and-green-linux-publication-on-merge.md
+
+Criteria: C1 verified, C2 verified.
