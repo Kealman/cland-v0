@@ -2,8 +2,8 @@
 id: T-620
 kind: task
 title: The curated set drops 23 skills, and nothing names them any more
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 7
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-384
 branch: t/T-620-the-curated-set-drops-23-skills-and
 created: 2026-10-16T15:57:48.576Z
-updated: 2026-10-16T17:20:00.659Z
+updated: 2026-10-16T17:21:56.439Z
+closed: 2026-10-16T17:21:56.439Z
 ---
 
 ## Summary
@@ -106,3 +107,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear; Standards0/Spec0 findings, A-4053. Exact-head Linux retry9eac032f/A-4052 exit0:1956pass/0fail/5skip including Neovimsmoke12of12. Both init/doctor fullfilesgreen; literal20-name init ordinary0.909s and5of5 load, scratch update-domain1.555s, grilling doctor5.473s. Earlier A-4007 external null-PID failure remains historical; latest independently green gate needs no exception. Source/head unchanged, origin confirmed. C5/C6 verified; C1/C2/C3/C4/C7 source marks current. Latest read lacks claimant done marks; submit supported marks for ready routing. Lifetime/costunknown.
 
 Criteria: C5 verified, C6 verified.
+
+### coord · 2026-10-16T17:21:56.439Z
+
+Merged 0e0104498f209b78541c19df40bb0323504a1fb3 onto dev.
