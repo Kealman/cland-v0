@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-10-16T02:05:43.836Z
+updated: 2026-10-16T02:58:46.893Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -304,3 +304,7 @@ Incident, 2026-10-15 21:58–22:26Z: the Coordinator stalled while six items wer
 ### coord · 2026-10-16T02:05:43.836Z
 
 Incident, 2026-10-16 01:27–02:03Z: the remote verify queue wedged. Four finished runs stayed listed as remote slot holders: T-550 97a70087 (finished 01:30Z), and T-548 efff3e59, T-469 cd760b4c and T-527 2d023454 ("lock acquisition deadline reached", no droplet). The queue showed 6/6 with only 2 live droplets. Five waiters sat for up to 36 minutes: T-505, T-517, T-523, T-556 and T-559, two of them the hub-load fixes. Cancels answered "suite already finished". The stand-in restarted the hub at 02:03Z without a fresh cover, deciding on the Coordinator's case: the only uncovered runtime delta was T-550, verified individually on Linux. The new hub is pid 21811, and the queue rebuilt itself. Filed as T-562, with T-491 the lock-deadline trigger. The hub load behind it is T-548 and T-559, both in verify.
+
+### coord · 2026-10-16T02:58:46.893Z
+
+2026-10-16 02:56Z restart, reported by the stand-in. `cland hub stop` printed "pid 83118 is not this project's hub (does not hold hub.lock); left it running". Yet the hub journaled hub-stopped and exited within 5 s. The stop CLI seems to re-check the lock after the hub has already released it, so it reports a false "left it running". Also at 02:57:01Z, during reconnect, inject-unconfirmed ("not connected to this session's app-server") was logged for rev-26, impl-562, impl-469 and impl-548. All four said hello afterwards, and later deliveries to impl-548 reached it.

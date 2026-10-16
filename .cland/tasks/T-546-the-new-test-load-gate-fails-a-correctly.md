@@ -16,7 +16,7 @@ regression_of: T-471
 topic: topic-340
 branch: t/T-546-the-new-test-load-gate-fails-a-correctly
 created: 2026-10-15T22:56:05.665Z
-updated: 2026-10-16T02:06:27.082Z
+updated: 2026-10-16T03:22:42.483Z
 ---
 
 ## Summary
@@ -27,6 +27,7 @@ Found by impl-296 on T-296 (2026-10-15 22:55Z). T-471's load gate (`hub/test/loa
   - done: impl-546 · 2026-10-15T23:58:39.240Z
   - verified: rev-31 [reviewer] · run rev-20261016-546-source · 2026-10-16T00:00:24.016Z · commit 37ec7700db9ae514f57753ebc330af51be92cd66
   - verified: rev-31 [reviewer] · run rev-20261016-546-delta-1 · 2026-10-16T02:06:27.081Z · commit 50d7aa4ce9998b7eb77e4ce1c2a95a3a15107440
+  - verified: rev-31 [reviewer] · run rev-20261016-546-delta-2 · 2026-10-16T03:22:42.483Z · commit 2911f236d7b3b6324b5e5e4958d62fd435c147ce
 - [x] C2. Tests cover both cases, and docs/agents/tests.md says how a platform-skipped new test gets its load proof (on a machine that has the prerequisite).
   - done: impl-546 · 2026-10-15T23:59:09.682Z
 
@@ -74,5 +75,20 @@ scope: delta
 
 Delta source clear.37ec7700..50d7aa4c changes only hub/test/durations.json, byte-identical to Coordinator-posted2149fe33; no own allowances. JSON parses, sourceA-3493/integrateda06020a3 and diff check clear. Standards: no findings. Spec: no findings; skip reporter/gate/summary/docs and test bytes unchanged, retaining A-3485 full source analysis and A-3481 five serial Mac whole-file75/75 supporting evidence. C1 reverified at currenthead; C2 awaits same-head Linux gate. Old A-3557 cancelled waiter supplies no passing evidence. No edits/test runs by Reviewer.
 Artifact A-3590: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3590-t-546-manifest-delta-source-clear-at-50d7aa4c.md. Proceed with requested explicit droplet/fresh verification; exact external failures still need classification.
+
+Criteria: C1 verified.
+
+### rev-31 · 2026-10-16T03:22:42.483Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261016-546-delta-2
+commit: 2911f236d7b3b6324b5e5e4958d62fd435c147ce
+scope: delta
+
+Delta source clear:50d7aa4c..2911f236 changes only suite-runner.test.ts+4/-2, exact posted576404e8. Stable label/runtime ISO generation preserves assertions/bounds/cleanup. Standards/Spec:no findings; T-546 production/test/docs/manifest unchanged, retaining A-3485/A-3590 source and A-3481 fiveMacfile75/75support. Diff check clear; C1 reverified,C2 pending finalgate. No Reviewer edits/tests.
+A-3634 priorhead Linux1855pass/0fail/3skip,sixownnewcases each5/5,soleknownT-5560/5,Neovim not reached. Explicit Coordinator35141dde accepts hub evidence and requires one fresh droplet fullrun after this sourceclear reaching Neovim green; only namedT-555/T-565/T-566 hubreds waived. No finalclear from hub-only receipt.
+ArtifactA-3639: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3639-t-546-shared-stable-name-delta-source-clear-at-2911f236.md.
 
 Criteria: C1 verified.

@@ -5,6 +5,7 @@ title: Tracker calls take 20â€“35 s under a 16-session crew; the hub sits at 60â
 state: open
 status: in progress
 size: M
+rank: 3089
 criterion_seq: 2
 labels:
   - bug
@@ -17,7 +18,7 @@ regression_of: T-480
 topic: topic-348
 branch: t/T-548-tracker-calls-take-20-35-s-under-a-16
 created: 2026-10-15T23:50:03.254Z
-updated: 2026-10-16T02:05:23.299Z
+updated: 2026-10-16T02:57:37.158Z
 ---
 
 ## Summary

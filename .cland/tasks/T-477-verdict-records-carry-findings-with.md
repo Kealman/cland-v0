@@ -3,7 +3,7 @@ id: T-477
 kind: task
 title: Verdict records carry findings with severity, and lows are recorded
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 3
 labels:
@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-338
 branch: t/T-477-verdict-records-carry-findings-with
 created: 2026-10-15T09:13:19.683Z
-updated: 2026-10-16T02:30:29.936Z
+updated: 2026-10-16T03:23:21.927Z
 ---
 
 ## Summary
@@ -34,12 +34,15 @@ Retrospective A-2783, START 2 and STOP 5: severity was parsed from prose, and on
   - done: impl-477 · 2026-10-15T23:40:53.740Z
   - verified: rev-30 [reviewer] · run rev-20261016-477-source-correction · 2026-10-16T00:01:58.464Z · commit e2ec7b2c9002b35d31b33b0551444edd0bc8b527
   - verified: rev-30 [reviewer] · run rev-20261016-477-shared-delta · 2026-10-16T02:30:29.936Z · commit 9901de192e839c21a1575fcb5561495f4be4fa73
+  - verified: rev-30 [reviewer] · run rev-20261016-477-final · 2026-10-16T03:23:21.209Z · commit 9901de192e839c21a1575fcb5561495f4be4fa73
 - [x] C2. A clear verdict with only low findings is accepted and shows the lows.
   - done: impl-477 · 2026-10-15T23:59:41.329Z
+  - verified: rev-30 [reviewer] · run rev-20261016-477-final · 2026-10-16T03:23:21.209Z · commit 9901de192e839c21a1575fcb5561495f4be4fa73
 - [x] C3. The Reviewer clause (both copies) and the code-review skill require recording lows.
   - done: impl-477 · 2026-10-15T23:40:57.344Z
   - verified: rev-30 [reviewer] · run rev-20261016-477-source-correction · 2026-10-16T00:01:58.464Z · commit e2ec7b2c9002b35d31b33b0551444edd0bc8b527
   - verified: rev-30 [reviewer] · run rev-20261016-477-shared-delta · 2026-10-16T02:30:29.936Z · commit 9901de192e839c21a1575fcb5561495f4be4fa73
+  - verified: rev-30 [reviewer] · run rev-20261016-477-final · 2026-10-16T03:23:21.209Z · commit 9901de192e839c21a1575fcb5561495f4be4fa73
 
 ## Comments
 
@@ -155,3 +158,24 @@ T-477's prior A-3533 own findings3/3 and15 repeated passes remain support, but i
 Review artifact A-3598 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3598-t-477-shared-picks-delta-clear-at-9901de19.md
 
 Criteria: C1 verified, C3 verified.
+
+### rev-30 · 2026-10-16T03:23:21.209Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-477-final
+commit: 9901de192e839c21a1575fcb5561495f4be4fa73
+scope: evidence
+
+Final evidence review T-477 clear at unchanged source-cleared9901de192e839c21a1575fcb5561495f4be4fa73. Standards and Spec: no high, medium or low findings remain. A-3490 corrected full source and A-3598 exact shared-picks delta remain applicable; current origin branch ref independently matches this reviewed head.
+
+Read durable raw A-3640 for exact-head e2829b32-5634-46a9-a077-6c7433e332ab. Actual droplet c-8 lon1/Linux x64 6.8.0-142-generic, Node24.21.0, Neovim0.12.5, workers4. Host/remote typecheck completed, hub free38/38, hub machine1817tests/1814pass/3skip, Neovim393tests/390pass/3skip. Combined2248tests/2242pass/0fail/0cancel/6skip; full mode, both hub and Neovim completed, Finished exit0. Suite1462.62s, peak1m12.36, machine lifetime1540s/$0.1069 as hub receipt reports. No assertion, hard duration-budget or load-gate red; the listed known-entry duration regressions are non-failing notices.
+
+All three exact verdict-findings cases have ordinary positive timing records: headers/counts/legacy.023s, CLI/MCP severities/clear-low/explicit-empty2.750s, invalid atomicity/text-header/restart/evidence2.288s. Each exact identity independently passes5/5 load repetitions,15 total. This supplies the final runtime proof for C2 low-only clear acceptance and exposure, together with storage/count/journal validation for C1. Existing source analysis covers rejection of review clear containing high/medium, named error/record-not-clear direction, atomic refusals and unchanged QA semantics. C3 both Reviewer clause copies and code-review skill are unchanged since source verification. No new source review needed for the evidence pass.
+
+All C1/C2/C3 criteria checked across current source and green exact-head Linux full receipt; verified all. Earlier A-3533 red is historical and not used to excuse this gate. No exception, further retry, head movement or per-item QA required. Ready for normal lead/Coordinator merge gate. No Reviewer edits, tests/compiler/binary execution, installs, signals, commits, merges, provider actions, task.view journal scan or subagents.
+
+Review artifact A-3641 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3641-t-477-final-evidence-clear-exact-head-linux-full-suite-green.md
+
+Criteria: C1 verified, C2 verified, C3 verified.

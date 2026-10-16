@@ -3,7 +3,7 @@ id: T-551
 kind: task
 title: Demo recorder rejects the cases' capture names and hides the error behind a bare catch
 state: open
-status: review
+status: in progress
 size: S
 criterion_seq: 3
 labels:
@@ -16,7 +16,7 @@ regression_of: T-459
 topic: topic-347
 branch: t/T-551-demo-recorder-rejects-the-cases-capture
 created: 2026-10-16T00:31:47.114Z
-updated: 2026-10-16T02:29:58.808Z
+updated: 2026-10-16T02:58:08.173Z
 ---
 
 ## Summary
@@ -118,3 +118,15 @@ Coordinator61dd1845 hold remains: submit once with explicit droplet/fresh only a
 Artifact A-3594: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3594-t-551-shared-stable-name-delta-source-clear-at-1eed1f40.md.
 
 Criteria: C1 verified, C3 verified.
+
+### rev-31 · 2026-10-16T02:58:08.173Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261016-551-evidence-1
+commit: b2565458f289f047042b944636e41d2af9fcec28
+scope: evidence
+
+Historical original-run evidence not clear: Linuxa53c3d9c/A-3625 atb2565458 timed out124/50m,1848pass/1fail/4skip. Ordinary failure executor-safety.test.ts:289: all executor leases finish releasing not within15000ms. This matches knownT-524's second-case signature; it is not evidence of a credential/sentinel leak. Own recorder success/failure cases pass ordinarily and both5/5 repetitions. Remaining watchdog/unrelated stale-manifest/T-556 load gates are also red. Coordinator6d6d0c6a excluded this timed-out receipt and ordered replacement.
+No new task source defect or criterion failure established; C2 remains pending current-head gate. Newer1eed1f40 source/delta clear and C1/C3 marks are unchanged; this verdict only evaluates the old run. ArtifactA-3628: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3628-t-551-original-linux-receipt-not-clear-at-b2565458.md. No Reviewer edits/tests.

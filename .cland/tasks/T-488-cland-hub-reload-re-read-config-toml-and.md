@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-329
 branch: t/T-488-cland-hub-reload-re-read-config-toml-and
 created: 2026-10-15T11:30:17.553Z
-updated: 2026-10-16T02:49:54.457Z
+updated: 2026-10-16T03:10:19.209Z
 ---
 
 ## Problem
@@ -30,16 +30,19 @@ Add `cland hub reload`, which also runs on SIGHUP. It re-reads `.cland/config.to
 - [x] C1. `cland hub reload` and SIGHUP both re-read config.toml and roles.toml, validate them and apply both atomically, so a changed `remote_budget`, `daily_spend_usd` or role default takes effect without a restart.
   - done: impl-488 · 2026-10-16T02:48:53.488Z
   - verified: rev-31 [reviewer] · run rev-20261016-488-source-3 · 2026-10-16T02:49:54.457Z · commit 37c3f4efa2f781b9a76b848cac9b5e209440f8bf
+  - verified: rev-31 [reviewer] · run rev-20261016-488-delta-4 · 2026-10-16T03:10:19.209Z · commit 72faa365f61064eec819cf9cea9a48f6f71d6715
 - [x] C2. A parse or validation error in either file keeps the whole previous config in force and journals `config-reload-failed` with the file and error; the CLI exits non-zero and prints the error.
   - done: impl-488 · 2026-10-15T23:45:16.991Z
   - verified: rev-31 [reviewer] · run rev-20261016-488-source-2 · 2026-10-16T00:01:17.145Z · commit 7b8c92b36c082509ca88ced2ad5efec47b6bac51
   - verified: rev-31 [reviewer] · run rev-20261016-488-source-3 · 2026-10-16T02:49:54.457Z · commit 37c3f4efa2f781b9a76b848cac9b5e209440f8bf
+  - verified: rev-31 [reviewer] · run rev-20261016-488-delta-4 · 2026-10-16T03:10:19.209Z · commit 72faa365f61064eec819cf9cea9a48f6f71d6715
 - [x] C3. Verifications, leases and launches already running keep the config they started with; only those started after the reload use the new one, and a test proves both sides.
   - done: impl-488 · 2026-10-15T23:45:40.291Z
 - [x] C4. `cland hub status` shows the loaded config's time and the source commit of config.toml.
   - done: impl-488 · 2026-10-15T23:46:10.917Z
   - verified: rev-31 [reviewer] · run rev-20261016-488-source-2 · 2026-10-16T00:01:17.145Z · commit 7b8c92b36c082509ca88ced2ad5efec47b6bac51
   - verified: rev-31 [reviewer] · run rev-20261016-488-source-3 · 2026-10-16T02:49:54.457Z · commit 37c3f4efa2f781b9a76b848cac9b5e209440f8bf
+  - verified: rev-31 [reviewer] · run rev-20261016-488-delta-4 · 2026-10-16T03:10:19.209Z · commit 72faa365f61064eec819cf9cea9a48f6f71d6715
 
 ## Comments
 
@@ -137,5 +140,31 @@ Corrective delta source clear. A-3579/C1 fixture integration resolved. Standards
 
 Spec: no findings. Runtime assertions now observe loaded intended policy; production reload/snapshots/rollback/missing-file/provenance source unchanged from A-3488. A-3619 source audit and quiet serial supporting7/7suite-timeouts +17/17executor-prepare inspected,37.01/60.13s,localnone/guardclear/load3.91/4.32; typecheck/shards green reported. T-555 original pre-snapshot failure is not claimed fixed. C1 restored, C2/C4 reverified unchanged; C3 remains pending final exact-head gate. Source clear does not override Coordinator verification scheduling. No Reviewer edits/tests or per-item QA criteria.
 Artifact A-3621: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3621-t-488-corrective-fixture-delta-source-clear-at-37c3f4ef.md.
+
+Criteria: C1 verified, C2 verified, C4 verified.
+
+### rev-31 · 2026-10-16T03:09:19.294Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261016-488-evidence-2
+commit: 37c3f4efa2f781b9a76b848cac9b5e209440f8bf
+scope: evidence
+
+Evidence not clear yet: localDarwinA-3629/e24b58d5 exit1. All1857 ordinary hubtests and allfive config-reload5/5 repetitions pass; earlier fixture integration red is resolved. Sole red suite-runner.test.ts:343 timestamp0/5 is knownT-556. No new task source defect or criterion failure inferred; sourceC1/C2/C4 remain current. C3 stays unverified pending explicit Coordinator accepted-gate/platform disposition and missing Neovim phase evidence. This fullmode hub-only completion is neither Linux nor full hub+Neovim evidence. Known duration notices are not new budget failures. Do not run/pick again without current Coordinator scheduling; changedhead needs source review.
+ArtifactA-3630: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3630-t-488-corrected-gate-pending-known-t-556-disposition-and-neovim.md. No Reviewer edits/tests.
+
+### rev-31 · 2026-10-16T03:10:19.209Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261016-488-delta-4
+commit: 72faa365f61064eec819cf9cea9a48f6f71d6715
+scope: delta
+
+Delta source clear:37c3f4ef..72faa365 changes only suite-runner.test.ts+4/-2, exact posted576404e8. Stable label with timestamp in body retains all assertions/bounds/cleanup. Standards/Spec:no findings. Production reload/fixture/manifest bytes unchanged; A-3621 source-3 remains applicable. C1/C2/C4 reverified; C3 awaits finalgate. Shared T-556 proof A-3593 is under its explicit batch exception, not a green task Linux run; no unchanged test-only retest needed. Diff check clean, no Reviewer edits/tests.
+Coordinator453f7fb8 independently confirmed: A-3629 accepted Mac hub-phase evidence only; fullmode shared protocol still requires Neovim. After source clear submit once explicit --executor droplet --fresh; receipt must reach Neovim green. Named hub-phaseT-555/T-565 exceptions only. ArtifactA-3632: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3632-t-488-shared-stable-name-delta-source-clear-at-72faa365.md.
 
 Criteria: C1 verified, C2 verified, C4 verified.

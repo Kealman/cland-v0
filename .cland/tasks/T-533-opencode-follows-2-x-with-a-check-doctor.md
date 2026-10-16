@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-337
 branch: t/T-533-opencode-follows-2-x-with-a-check-doctor
 created: 2026-10-15T20:59:18.770Z
-updated: 2026-10-16T02:31:11.171Z
+updated: 2026-10-16T03:23:36.352Z
 ---
 
 ## Summary
@@ -45,6 +45,7 @@ Code: `hub/src/doctor/toolchain.ts`, `hub/src/doctor/ranges.ts`, the research pr
   - verified: rev-31 [reviewer] · run rev-20261016-533-source-3 · 2026-10-16T02:09:36.389Z · commit 9276d5371e124292e416b792594552f69582a2ba
 - [x] C2. The check script compares the newest 2.x OpenAPI document's operations and event names with the tested one, runs the fake-provider smoke, and on a pass moves the range's upper bound.
   - done: impl-533 · 2026-10-16T00:00:29.593Z
+  - verified: rev-31 [reviewer] · run rev-20261016-533-final · 2026-10-16T03:22:20.391Z · commit 9276d5371e124292e416b792594552f69582a2ba
 - [x] C3. The check is not part of `npm test`, and the `release` skill (both copies) runs it before the dry run.
   - done: impl-533 · 2026-10-15T23:43:53.153Z
   - verified: rev-31 [reviewer] · run rev-20261016-533-source-2 · 2026-10-16T00:01:51.713Z · commit 77659eb0b7c8cae127883f3bdb6d100b2f378dd1
@@ -159,3 +160,18 @@ Evidence not clear: same-head localDarwin72c333a4/A-3596 exit1,1861pass/1fail,Ne
 
 Task-owned source guard now passes41.249ms; checker7/7 and all seven5/5 load repetitions pass. No new task-owned source defect established and no criterion failed by this external-only evidence pass; C2 remains unverified pending acceptable gate/disposition, C1/C3 current source marks stand. Duration regression notices are not new budget failures. T-488's separate snapshot fixture integration does not apply to this head. No Reviewer edits/tests.
 Artifact A-3599: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3599-t-533-second-gate-not-clear-repeated-t-555-and-t-556.md.
+
+### rev-31 · 2026-10-16T03:22:20.391Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261016-533-final
+commit: 9276d5371e124292e416b792594552f69582a2ba
+scope: evidence
+
+Final evidence clear at unchanged9276d537 under explicit Coordinator84236741 mixed-platform gate. No high/medium findings. Linux4844575a/A-3635:1859pass/0fail/3skip; only red knownT-556timestamp0/5. T-555 cleanup-warning case passes9.551s; provider source guard passes; checker7cases and each5/5 load repetitions pass. Exacthead matches source-3/A-3592. No new duration-budget failures.
+Paired localA-3596 is samehead1861pass/1fail, only knownT-555 plusT-556, own cases/repetitions green. This is the exact pair authorized by84236741, not two droplet receipts or an overallgreen fullrun. Both stop after hub, so no Neovim completion claimed; task has no nvim code diff. Final gate uses this item-specific explicit mixed-platform disposition. C2 verified from reviewed checker/smoke source, prior isolated real2.0.30 proofA-3465/A-3484 and current ordinary/repetition evidence. C1/C3 current source marks stand; all3criteria verified. No per-item QA or Reviewer edits/tests.
+ArtifactA-3636: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3636-t-533-final-evidence-clear-under-explicit-mixed-platform-gate.md.
+
+Criteria: C2 verified.

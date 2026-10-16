@@ -17,7 +17,7 @@ blocked_by: []
 topic: topic-352
 branch: t/T-562-finished-remote-runs-stay-listed-as-slot
 created: 2026-10-16T02:03:05.929Z
-updated: 2026-10-16T02:51:13.302Z
+updated: 2026-10-16T02:53:51.933Z
 ---
 
 ## Summary
@@ -30,10 +30,12 @@ On 2026-10-16 between 01:30Z and at least 02:03Z, `cland verify queue` listed fo
 ## Acceptance criteria
 - [x] C1. A remote run's slot is released, and its waiters re-evaluated, when its result is written: normal completion, an acquisition failure (lease id null), or a release that can't be confirmed. Slot occupancy follows live leases and runs, not stale holder rows.
   - done: impl-562 · 2026-10-16T02:50:49.463Z
+  - verified: rev-30 [reviewer] · run rev-20261016-562-source · 2026-10-16T02:53:51.933Z · commit 0f42e138e8458f5782dfacbca823fb79921231e1
 - [x] C2. A test fills the remote budget, makes one holder's lease acquisition fail and another finish normally, and shows both slots freed and two waiters admitted, with no restart.
   - done: impl-562 · 2026-10-16T02:50:50.572Z
 - [x] C3. On hub startup, persisted holders that have a result.json are reconciled: their receipts are posted, their scheduler slots are freed, and waiters are re-evaluated without resubmitting the finished runs.
   - done: impl-562 · 2026-10-16T02:50:51.871Z
+  - verified: rev-30 [reviewer] · run rev-20261016-562-source · 2026-10-16T02:53:51.933Z · commit 0f42e138e8458f5782dfacbca823fb79921231e1
 
 ## Comments
 
@@ -56,3 +58,35 @@ Restart at 02:33:32Z (pid 83118) did not clear the holders. Five finished runs, 
 ### impl-562 · 2026-10-16T02:40:14.071Z
 
 C2 regression written before implementation at the remote-budget scheduler seam. Read-only evidence is A-3611. Local red run is pending the Coordinator cover-quiet all-clear; no local tests have been started.
+
+### rev-30 · 2026-10-16T02:53:51.933Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-562-source
+commit: 0f42e138e8458f5782dfacbca823fb79921231e1
+scope: full
+
+Source review T-562 clear at0f42e138e8458f5782dfacbca823fb79921231e1, fixed comparison89a1ba8c590226217800ffa1c29eddf5b106ec37 (merge-base with current origin/dev, resolved before review). Current origin task ref independently matches requested SHA. Standards and Spec reviewed directly; role forbids subagent delegation. First-source-review history includes the authorized pre-review dev merge. Nonempty net diff: suites.ts, suite-remote-budget.test.ts and durations.json only; whitespace check clear.
+
+## Standards
+No documented-standard violations or additional smell findings. AGENTS.md, test/lifecycle rules9/10/12 and docs/agents/tests.md read; no CODING_STANDARDS.md/CONTRIBUTING.md found. New helper centralizes durable-receipt restoration before remote status/relaunch, and local-executor flow remains separate. Test barriers observe actual remote completion before waiting for downstream report, preserve slot/concurrency assertions before release, and retain bounded waits. Three reasoned measured duration allowances are narrowly attached to the new integration cases.
+
+## Spec
+No high or medium findings. One low finding remains:
+- Low L1 — hub/src/hub/suites.ts:689: restored successful results set job.finished from the durable receipt, but receipt is deliberately null on that path, so #recordTiming receives recovery-time now instead of job.finished. When the crash checkpoint lacks completedAt, this inflates runMs and pollutes queue ETA metrics by the restart/reporting delay. Prefer the restored durable completion time for successful-run timing. This does not lose the actual outcome/platform/finished fields or prevent terminal reporting/admission; nonblocking follow-up.
+
+C1 established for ordinary task runs: terminal result restoration precedes remote status/log polling and relaunch, so a deleted machine cannot replace an existing completion with a lost status. Integer code, parseable finished and optional cause are validated; receipt state/outcome/platform are saved. Explicit cancel/requester-death/timeout outcomes retain priority. Release/accounting errors are logged as verification-release-deferred and do not suppress reporting/cleaned checkpoint. A null-cost unconfirmed release similarly stops reserving a phantom scheduler row. Real provider capacity is still guarded by nonreleased durable leases for explicit remote admission and executor acquisition reservations; resource cleanup is not declared confirmed by this scheduler change.
+
+C3 established within the Coordinator's ordinary-run scope: #tick checks result before the next-poll deadline or launch of restored launching jobs; #inspect also restores finished/running checkpoints before polling. Existing report/artifact checkpointing remains. The regression reconstructs a stale launching row with a future poll time and deleted machine, preserves durable outcome/platform/finished, observes original report before waiter, and counts exactly original+waiter provider creates. No sharded flow changes: primary Coordinator62854215 explicitly says ordinary runs/startup only, sharded accounting T-563 stays separate.
+
+Targeted primary evidence read: A-3613 C2 old-source red reaches both result files but normal report exceeds20s; A-3617 C3 red exceeds20s waiting persisted receipt. A-3623 corrected five targeted cases5/5,39.984s, no failures/skips/cancellations: new slot/accounting case6.927s, startup8.167s, live unconfirmed-release7.751s, plus existing capacity/failure guards. C2 fault stays active through both terminal reports and both waiter admissions; provider deletion assertion is separate from broken spend settlement. Third case keeps a real lease after403 deletion and proves waiter stays queued until sweep recovery. These cover the ownership/admission distinction rather than faking reservation counts. Hub typecheck reported green. No Reviewer test/compiler/binary execution.
+
+C1/C3 source criteria verified; leave C2 final task verification unverified until required exact-head fresh actual Linux receipt. This source clear permits Coordinator9e36be4e's one --executor droplet --fresh submission at this SHA; source clear is not final ready. New head requires delta review. No per-item QA request. No edits, signals, installs, commits, merges, provider actions or subagents. Tracker body/criteria read from actual item file under the no-task.view journal-scan guidance.
+
+Structured finding (tool schema currently lacks findings field): [{severity:low,file:hub/src/hub/suites.ts,line:689,text:Restored successful run timing uses recovery time rather than its durable finished timestamp, inflating runMs and ETA samples.}]. Counts: high0,medium0,low1. Total findings: Standards0; Spec1 low.
+
+Review artifact A-3624 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3624-t-562-source-clear-at-0f42e138-terminal-receipt-recovery-and-slot-release.md
+
+Criteria: C1 verified, C3 verified.
