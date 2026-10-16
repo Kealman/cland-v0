@@ -3,7 +3,7 @@ id: T-620
 kind: task
 title: The curated set drops 23 skills, and nothing names them any more
 state: open
-status: in progress
+status: ready
 size: S
 criterion_seq: 7
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-384
 branch: t/T-620-the-curated-set-drops-23-skills-and
 created: 2026-10-16T15:57:48.576Z
-updated: 2026-10-16T16:30:46.734Z
+updated: 2026-10-16T17:20:00.659Z
 ---
 
 ## Summary
@@ -32,18 +32,27 @@ Because `.agents/skills/` is also the copy this repository's own sessions read, 
 
 ## Acceptance criteria
 
-- [ ] C1. This repository's `.agents/skills/` holds exactly the 15 kept upstream skills and handover, merge, plan-epic, qa and release, and none of the 23 dropped folders.
+- [x] C1. This repository's `.agents/skills/` holds exactly the 15 kept upstream skills and handover, merge, plan-epic, qa and release, and none of the 23 dropped folders.
   - verified: rev-31 [reviewer] · run rev-20261016-620-source · 2026-10-16T16:04:24.454Z · commit d147e3d660d36b9e16c7a543a27c4cce49d16d79
-- [ ] C2. This repository's `.claude/skills/` holds no link to a dropped skill and no dangling link.
+  - done: impl-620 · 2026-10-16T17:19:58.153Z
+- [x] C2. This repository's `.claude/skills/` holds no link to a dropped skill and no dangling link.
   - verified: rev-31 [reviewer] · run rev-20261016-620-source · 2026-10-16T16:04:24.454Z · commit d147e3d660d36b9e16c7a543a27c4cce49d16d79
-- [ ] C3. A new test in the init tests runs `cland init` in an empty temporary project and asserts that the manifest and `.agents/skills/` list exactly the 20 names above.
+  - done: impl-620 · 2026-10-16T17:19:58.548Z
+- [x] C3. A new test in the init tests runs `cland init` in an empty temporary project and asserts that the manifest and `.agents/skills/` list exactly the 20 names above.
   - verified: rev-31 [reviewer] · run rev-20261016-620-source · 2026-10-16T16:04:24.454Z · commit d147e3d660d36b9e16c7a543a27c4cce49d16d79
-- [ ] C4. code-review, to-spec, to-tickets, triage and wayfinder point their missing-tracker fallback at `cland update`, and no kept skill names `/setup-matt-pocock-skills`.
+  - done: impl-620 · 2026-10-16T17:19:58.937Z
+- [x] C4. code-review, to-spec, to-tickets, triage and wayfinder point their missing-tracker fallback at `cland update`, and no kept skill names `/setup-matt-pocock-skills`.
   - verified: rev-31 [reviewer] · run rev-20261016-620-source · 2026-10-16T16:04:24.454Z · commit d147e3d660d36b9e16c7a543a27c4cce49d16d79
-- [ ] C5. `docs/agents/domain.md` and its template under `skills/templates/` name neither grill-with-docs nor improve-codebase-architecture, and `cland update` in a scratch project writes the new template.
-- [ ] C6. The init and doctor tests that sampled `grill-me` sample `grilling`, and both test files pass.
-- [ ] C7. A grep for each of the 23 names over the role clauses and skill lists (`hub/src/roles/default-roles.ts`, `.cland/roles.toml`), `skills/templates/`, `docs/agents/`, `AGENTS.md`, `GLOSSARY.md`, `hub/README.md`, `hub/src/` and the 20 kept skill folders finds no reference to the skill.
+  - done: impl-620 · 2026-10-16T17:19:59.268Z
+- [x] C5. `docs/agents/domain.md` and its template under `skills/templates/` name neither grill-with-docs nor improve-codebase-architecture, and `cland update` in a scratch project writes the new template.
+  - verified: rev-31 [reviewer] · run rev-20261016-620-final · 2026-10-16T17:19:38.090Z · commit d147e3d660d36b9e16c7a543a27c4cce49d16d79
+  - done: impl-620 · 2026-10-16T17:19:59.645Z
+- [x] C6. The init and doctor tests that sampled `grill-me` sample `grilling`, and both test files pass.
+  - verified: rev-31 [reviewer] · run rev-20261016-620-final · 2026-10-16T17:19:38.090Z · commit d147e3d660d36b9e16c7a543a27c4cce49d16d79
+  - done: impl-620 · 2026-10-16T17:19:59.958Z
+- [x] C7. A grep for each of the 23 names over the role clauses and skill lists (`hub/src/roles/default-roles.ts`, `.cland/roles.toml`), `skills/templates/`, `docs/agents/`, `AGENTS.md`, `GLOSSARY.md`, `hub/README.md`, `hub/src/` and the 20 kept skill folders finds no reference to the skill.
   - verified: rev-31 [reviewer] · run rev-20261016-620-source · 2026-10-16T16:04:24.454Z · commit d147e3d660d36b9e16c7a543a27c4cce49d16d79
+  - done: impl-620 · 2026-10-16T17:20:00.344Z
 
 ## Comments
 
@@ -82,3 +91,18 @@ findings: [{"severity":"medium","text":"External gate failure: process.kill rece
 finding_counts: {"high":0,"medium":1,"low":0}
 
 Evidence not clear, A-4009. Exact reviewed-head Linux7820ca68/A-4007 exit1:1943pass/1fail/5skip; sole ordinary failure suite-recovery.ts123 ERR_INVALID_ARG_TYPE pid null. Outside T-620 diff; not classified as a known exception. Task init20-name ordinary+5/5, domain-update and grilling doctor cases green. Source0findings/C1C2C3C4C7 verification remains current; final C5/C6 execution marks withheld pending gate disposition. No task criterion failed. Aside Bugs/S for lead classification, no branch-local fix or unapproved retry. Raw receipt stopped before Neovim. No Reviewer edits/tests.
+
+### rev-31 · 2026-10-16T17:19:38.090Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261016-620-final
+commit: d147e3d660d36b9e16c7a543a27c4cce49d16d79
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear; Standards0/Spec0 findings, A-4053. Exact-head Linux retry9eac032f/A-4052 exit0:1956pass/0fail/5skip including Neovimsmoke12of12. Both init/doctor fullfilesgreen; literal20-name init ordinary0.909s and5of5 load, scratch update-domain1.555s, grilling doctor5.473s. Earlier A-4007 external null-PID failure remains historical; latest independently green gate needs no exception. Source/head unchanged, origin confirmed. C5/C6 verified; C1/C2/C3/C4/C7 source marks current. Latest read lacks claimant done marks; submit supported marks for ready routing. Lifetime/costunknown.
+
+Criteria: C5 verified, C6 verified.
