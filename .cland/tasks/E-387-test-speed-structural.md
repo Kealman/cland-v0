@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-14T12:28:09.615Z
-updated: 2026-10-16T01:13:39.729Z
+updated: 2026-10-16T06:13:05.124Z
 ---
 
 ## Goal
@@ -127,6 +127,12 @@ stages:
       - - T-472
         - T-466
       - - T-557
+  - name: in-process part 3
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-575
 ```
 
 ## Comments

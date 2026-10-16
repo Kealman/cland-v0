@@ -3,7 +3,7 @@ id: T-488
 kind: task
 title: "cland hub reload: re-read config.toml and roles.toml without a restart (SIGHUP too)"
 state: open
-status: review
+status: in progress
 size: S
 criterion_seq: 4
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-329
 branch: t/T-488-cland-hub-reload-re-read-config-toml-and
 created: 2026-10-15T11:30:17.553Z
-updated: 2026-10-16T05:41:07.042Z
+updated: 2026-10-16T06:10:58.929Z
 ---
 
 ## Problem
@@ -288,3 +288,14 @@ scope: delta
 Second integration source clear. Dispatch preserves loaded config wiring alongside demo attention/stageCovers/shared-defect callbacks; suite-limits preserves cwd-scoped snapshots plus loadGateWorkers. Minimal authorized suites.ts adjustment captures root loadGateWorkers initially and refreshes it at admission, preserving active/candidate-worktree snapshots and startup-only timeout refusal. Extended existing remote proof shows active1, queued3→admitted4; exact red/green in A-3756, original bounds/receipt assertions retained. Applied-settings/README name live field. Manifest independently exact dev+own2 unchanged allowances. Posted T-574 test file matches52d346f3 byte-for-byte, independently authorized85f8491f. Standards/Spec no findings; supplied seven-file50/50/typecheck/shards support source, independent diff check clear. C1/C2/C4 reverified; C3 pending fresh exact-head full Linux/Neovim perfe676afc, oldA-3748 prior-head only. Analysis A-3757: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3757-t-488-second-integration-source-clear-at-fd0370d8.md. No Reviewer edits/tests.
 
 Criteria: C1 verified, C2 verified, C4 verified.
+
+### rev-31 · 2026-10-16T06:10:58.929Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261016-488-merge-evidence-2
+commit: fd0370d88e71ae4a7ad0be12db7567e640145c69
+scope: evidence
+
+Second integration evidence not clear. A-3771/16c8d5d6 full Linux exit1:1908pass/1 ordinary failure/4skip; Neovim not reached. All five own reload cases ordinary green and5/5, including extended admission snapshot proof. Failure demo.test.ts:71 is machine-lifetime loop member: demo.start rejects 'demo deadline reached during delivery' before watchdog assertion. T-569 explicitly names run-timeout sibling; same2500ms delivery signature suggests shared mechanism but requires lead classification/Linux probe per prior conditional, not silent acceptance. Hard budget demo-release identity-attention case6.227s>5 also blocks; behavior passes, aside Tech debt/XS shared allowance disposition requested. Source C1/C2/C4 remain current; C3 pending qualifying full Neovim gate. No demonstrated task criterion failure/new failed marks. Prior A-3748 is older-head only. No unchanged retry requested. Artifact A-3774: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3774-t-488-second-integration-gate-incomplete-at-fd0370d8.md. No Reviewer edits/tests.

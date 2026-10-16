@@ -3,7 +3,7 @@ id: T-572
 kind: task
 title: Demo droplets show no tags at release, so the hub refuses to delete a live untagged droplet
 state: open
-status: review
+status: in progress
 size: S
 criterion_seq: 3
 labels:
@@ -19,7 +19,7 @@ regression_of: T-553
 topic: topic-357
 branch: t/T-572-demo-droplets-show-no-tags-at-release-so
 created: 2026-10-16T05:01:37.265Z
-updated: 2026-10-16T05:27:14.575Z
+updated: 2026-10-16T05:58:23.645Z
 ---
 
 ## Summary
@@ -29,11 +29,14 @@ E-423 demo run qa-2026-10-16-27-17 at 3c596742, case D18 (A-3726), on the restar
 - [x] C1. Find where a demo droplet's tags go missing (the demo create request, the snapshot or create path, or provider eventual consistency on read) and record the cause with provider request evidence on this item.
   - done: impl-572 · 2026-10-16T05:14:28.518Z
   - verified: rev-30 [reviewer] · run rev-20261016-572-source · 2026-10-16T05:27:14.575Z · commit ae48c3611f860ad73201eb757f08cf613a1719aa
+  - verified: rev-30 [reviewer] · run rev-20261016-572-final · 2026-10-16T05:56:12.566Z · commit ae48c3611f860ad73201eb757f08cf613a1719aa
 - [x] C2. Every demo droplet carries both cland tags from creation, and a test with the fake provider fails if the demo create path omits them.
   - done: impl-572 · 2026-10-16T05:14:28.827Z
   - verified: rev-30 [reviewer] · run rev-20261016-572-source · 2026-10-16T05:27:14.575Z · commit ae48c3611f860ad73201eb757f08cf613a1719aa
+  - verified: rev-30 [reviewer] · run rev-20261016-572-final · 2026-10-16T05:56:12.566Z · commit ae48c3611f860ad73201eb757f08cf613a1719aa
 - [x] C3. A droplet whose name and id match its lease but whose tags read empty is still destroyed, or retried until destroyed, with the mismatch logged. A droplet whose name or id differs is still refused.
   - done: impl-572 · 2026-10-16T05:14:29.214Z
+  - verified: rev-30 [reviewer] · run rev-20261016-572-final · 2026-10-16T05:56:12.566Z · commit ae48c3611f860ad73201eb757f08cf613a1719aa
 
 ## Comments
 
@@ -86,3 +89,42 @@ Totals Standards0,Spec0 findings. Existing rule proposal for preserving identity
 Artifact A-3741 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3741-t-572-source-clear-bounded-tags-only-rereads-with-strict-ownership-refusal.md
 
 Criteria: C1 verified, C2 verified.
+
+### rev-30 · 2026-10-16T05:56:12.566Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-572-final
+commit: ae48c3611f860ad73201eb757f08cf613a1719aa
+scope: evidence
+
+# T-572 final evidence clear at ae48c361
+
+Head ae48c3611f860ad73201eb757f08cf613a1719aa; branch t/T-572-demo-droplets-show-no-tags-at-release-so. Origin ref matches exact A-3764 receipt; source A-3741 remains unchanged. No new source findings.
+
+## Standards
+No high, medium or low findings (0). Shared cleanup still requires per-id id/name agreement; missing tags only trigger bounded observation and never authorize DELETE. Persistent mismatches retain resources/attention,404 confirmation clears it, hub/watchdog diagnostics are covered. No foreign identity deletion fallback introduced.
+
+## Spec
+C3 final runtime verified; C1/C2 refreshed from source and accepted evidence.
+Actual Linux task suite A-3764 /586b8df7-8cea-404c-833f-ddcfbc8e39b8: hub-only selected package due shared cleanup infrastructure,1917tests/1913pass/0fail/cancel/4platform skips,exit0. Linux x64 6.8.0-142-generic,c-8lon1 cland-v0-eb377eb6,Nodev24.21.0,Neovimv0.12.5,fourworkers. Hub free38/38, hub machine1863pass/4skip, Neovim smoke12/12. Typechecks and all selected phases complete. Suite1609.42s,peak1m12.98,loadextra232.95s; lifetime/cost unknown as reported. No exception needed; known-entry duration notices are not hard failures.
+Own fake-provider behavior inside that actual Linux suite:
+- prior accepted DELETE → same-id/name active/tags=[] →404 confirms released4.005s and5/5 fresh repetitions (952/961);
+- persistent tags/id mismatches refuse without DELETE, then later404 clears attention3.912/3.376s and5/5 (954–955/1023/1128);
+- detached watchdog bounded reread confirms without its10s outer retry4.058s and5/5 (956/1210);
+- archived stripped-tag deletion and foreign name/tags refusal pass3.657/3.757s and5/5 (958/963/1270/1314).
+Whole demo-release file passes with retained diagnostics, attention/accounting and exact process-exit checks. Earlier quiet Mac A-3739 whole7/7 and A-3740 executor-droplet14/14 support unchanged source. The outer real droplet suite is execution evidence; the controlled deletion assertions are fake-provider regressions, not proof of actual DigitalOcean internal teardown semantics.
+
+C1 settlement remains primary Coordinatoraf678989's bounded inference from A-3726 real diagnostic/Coordinator later404 and run16 sequence plus faithful fake reproduction A-3727. Actual stripping actor/provider internal cause is unobserved. E-423 D18 rerun on the merged/restarted T-572 hub remains the real after-stage validation, and C1 reopens for live tracing if it still sticks. This per-item final verdict does not replace that QA work.
+C2 create POST guard still requires both cland and project tags; source acquires them from creation. No speculative create-path change or tagless-deletion permission is inferred.
+
+Final evidence clear; C1–C3 verified at this exact head. No per-item QA brief; container after-stage QA remains. No further suite requested; changed head requires delta review. No Reviewer tests, binaries/compiler execution, edits, signals, installs, commits, merges, provider calls or subagents. Totals Standards0,Spec0 findings.
+
+Artifact A-3765 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3765-t-572-final-clear-linux-tags-only-release-refusal-watchdog-proof-green.md
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### human · 2026-10-16T05:58:23.645Z
+
+Operator check by cland-impl, 2026-10-16 05:58Z: lease eb377eb6 (T-572's own verify 586b8df7, droplet 609588731 cland-v0-eb377eb6, deleteStarted 05:55:21Z, refused on tags mismatch with provider status active) is a 404 at DigitalOcean by 05:58:11Z; the provider lists only the tagged task droplet 609591169 (T-488) besides n8n. Nothing destroyed by hand. Third occurrence of the teardown-state reading (after 609583042 and 609583106): tags stripped and status still active for a short window after the delete call, then 404.

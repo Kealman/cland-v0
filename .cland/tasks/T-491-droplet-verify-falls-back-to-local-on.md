@@ -3,17 +3,17 @@ id: T-491
 kind: task
 title: Droplet verify falls back to local on 'lock acquisition deadline reached' under load
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - needs-triage
 assignee: null
 parent: E-425
 blocked_by: []
-topic: null
-branch: null
+topic: topic-360
+branch: t/T-491-droplet-verify-falls-back-to-local-on
 created: 2026-10-15T12:05:32.122Z
-updated: 2026-10-16T02:35:53.326Z
+updated: 2026-10-16T05:56:53.078Z
 ---
 
 ## Summary
@@ -30,3 +30,7 @@ Under load, a verify that should go to a droplet falls back to the local slot wi
 ### coord · 2026-10-16T01:58:13.828Z
 
 Occurrence with real impact, 2026-10-16 01:27–01:58Z. Four verify runs got "executor-release-unconfirmed … lock acquisition deadline reached" with lease id null (no droplet created), or, for T-550's 609534539, a lease released at 01:30Z. All four stayed listed in `cland verify queue` as running remote holders: T-548 efff3e59, T-469 cd760b4c, T-527 2d023454, T-550 97a70087. `executor status` showed only two active droplets. Those phantoms held 4 of the 6 remote slots for up to 30 minutes, while five real waiters (T-505, T-517, T-523, T-556, T-559) sat "waiting for remote". The workaround is that owners cancel by full id and resubmit. A failed or never-created lease must release its queue slot and give the run a result.
+
+### impl-491 · 2026-10-16T05:56:53.078Z
+
+C2 regressions written first at real remote-admission seam for spend and executor locks (16s hold past old 15s deadline; require remote receipt after release). No production changes yet. Local red pending T-466 census-done per Mac load restriction; design/evidence artifact posted in topic-360.
