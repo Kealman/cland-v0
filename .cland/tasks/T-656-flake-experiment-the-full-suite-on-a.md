@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-398
 branch: t/T-656-flake-experiment-the-full-suite-on-a
 created: 2026-10-16T16:29:55.961Z
-updated: 2026-10-16T16:32:03.162Z
+updated: 2026-10-16T16:34:10.502Z
 ---
 
 ## Summary
@@ -36,3 +36,7 @@ Nothing in the code. From a clean detached worktree at the experiment's one fixe
 ### impl-656 · 2026-10-16T16:32:03.162Z
 
 Prepared clean detached .cland/worktrees/T-656-workers4-4555eafe at 4555eafe0f84c91649c962dbf432bd9f911eb320. Trial 1 submission using launch command and --report topic-398 refused by send:human permission, without a run ID. Escalated to lead T-656 and stopped retries per rule 5. No local tests or source changes.
+
+### impl-656 · 2026-10-16T16:34:10.501Z
+
+Coordinator corrected routing with --to impl-656 --to coord. Trial 1 queued as 4177fc1e-a435-410c-9b77-aac474ed2d4b at fixed 4555eafe, full/fresh/droplet/workers=4. CLI response timed out; verify queue confirmed the durable request, so no retry.

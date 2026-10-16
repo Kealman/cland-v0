@@ -2,8 +2,8 @@
 id: T-520
 kind: task
 title: Two-shard stage run takes 908 s wall against T-395's 600 s target
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 2
 labels:
@@ -16,7 +16,8 @@ regression_of: T-395
 topic: topic-377
 branch: t/T-520-two-shard-stage-run-takes-908-s-wall
 created: 2026-10-15T18:12:19.748Z
-updated: 2026-10-16T16:29:28.856Z
+updated: 2026-10-16T16:34:16.104Z
+closed: 2026-10-16T16:34:16.104Z
 ---
 
 ## Summary
@@ -150,3 +151,7 @@ Final clear, C1/C2 verified, zero findings. Standards 0 findings; Spec 0 finding
 Artifact: A-4006 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-4006-t-520-final-clear-under-amended-balancing-criterion-stage-wall-assigned-to-e-578.md
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-16T16:34:16.104Z
+
+Merged c6f5e431707e7b7fbe7c7b300adc74304f387855 onto dev.
