@@ -2,8 +2,8 @@
 id: T-527
 kind: task
 title: "territory-lock test: a fixed 100 ms sleep races the first lock holder (Linux)"
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-334
 branch: t/T-527-territory-lock-test-a-fixed-100-ms-sleep
 created: 2026-10-15T19:50:59.979Z
-updated: 2026-10-16T03:44:35.050Z
+updated: 2026-10-16T03:44:56.456Z
+closed: 2026-10-16T03:44:56.456Z
 ---
 
 ## Problem
@@ -138,3 +139,7 @@ C2 verified from five complete Mac files and actual same-head Linux file complet
 Review artifact A-3656 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3656-t-527-final-evidence-clear-under-exact-accepted-linux-pair.md
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-16T03:44:56.456Z
+
+Merged b214d3d3e05b83dd9aff5cdc1984169867835adc onto dev.
