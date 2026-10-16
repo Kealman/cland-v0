@@ -3,7 +3,7 @@ id: T-679
 kind: task
 title: "hub/test/tiers.json replaces shards.json: every hub and Neovim test file declares T1, T2, T3 or T4, sorted by path"
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 6
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-408
 branch: t/T-679-hub-test-tiers-json-replaces-shards-json
 created: 2026-10-16T19:59:27.652Z
-updated: 2026-10-16T20:16:56.640Z
+updated: 2026-10-16T20:59:07.525Z
 ---
 
 ## Summary
@@ -35,17 +35,23 @@ updated: 2026-10-16T20:16:56.640Z
 
 - [x] C1. `hub/test/tiers.json` lists every hub and Neovim test file sorted by path, the seven current free files as T1 and all others as T3, and `shards.json` no longer exists, proved by the lint run over the repository.
   - done: impl-679 · 2026-10-16T20:16:55.058Z
+  - verified: rev-30 [reviewer] · run rev-20261016-679-final · 2026-10-16T20:59:06.069Z · commit f97e2ab41f44769a298f5011cba459ebb51e96f0
 - [x] C2. The lint refuses an unclassified file, a missing file, an invalid tier, an unsorted map (naming the first out-of-order path) and a T1 file that uses a process, port, timer or harness API, proved by lint tests.
   - done: impl-679 · 2026-10-16T20:16:55.340Z
+  - verified: rev-30 [reviewer] · run rev-20261016-679-final · 2026-10-16T20:59:06.069Z · commit f97e2ab41f44769a298f5011cba459ebb51e96f0
 - [x] C3. `cland verify` refuses those faults with `verify-tiers` and `cland merge` with `merge-tiers`, before queueing or changing refs, proved by admission and merge-gate tests.
   - done: impl-679 · 2026-10-16T20:16:55.726Z
+  - verified: rev-30 [reviewer] · run rev-20261016-679-final · 2026-10-16T20:59:06.069Z · commit f97e2ab41f44769a298f5011cba459ebb51e96f0
 - [x] C4. A candidate tree with only `shards.json` is admitted and planned with free as T1 and machine as T3, proved by an admission test.
   - done: impl-679 · 2026-10-16T20:16:56.012Z
+  - verified: rev-30 [reviewer] · run rev-20261016-679-final · 2026-10-16T20:59:06.069Z · commit f97e2ab41f44769a298f5011cba459ebb51e96f0
 - [x] C5. The planned phases, file sets and worker counts for a full run of this repository equal those planned from `shards.json` at the merge base, proved by a planning test.
   - done: impl-679 · 2026-10-16T20:16:56.356Z
+  - verified: rev-30 [reviewer] · run rev-20261016-679-final · 2026-10-16T20:59:06.069Z · commit f97e2ab41f44769a298f5011cba459ebb51e96f0
 - [x] C6. Every tool that writes the manifest writes it sorted, proved by a test that adds an entry, and `docs/agents/tests.md` and `hub/README.md` (Tests) describe `tiers.json`, the four tiers and where a new line goes.
   - verified: rev-30 [reviewer] · run rev-20261016-679-source · 2026-10-16T20:16:39.163Z · commit f97e2ab41f44769a298f5011cba459ebb51e96f0
   - done: impl-679 · 2026-10-16T20:16:56.640Z
+  - verified: rev-30 [reviewer] · run rev-20261016-679-final · 2026-10-16T20:59:06.069Z · commit f97e2ab41f44769a298f5011cba459ebb51e96f0
 
 ## Comments
 
@@ -80,3 +86,27 @@ A-4179 reports exact-head typecheck, tier lint and alias green, plus serial targ
 Review artifact A-4183.
 
 Criteria: C6 verified.
+
+### rev-30 · 2026-10-16T20:59:06.069Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-679-final
+commit: f97e2ab41f44769a298f5011cba459ebb51e96f0
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-679 final evidence clear at unchanged source-reviewed f97e2ab41f44769a298f5011cba459ebb51e96f0. Standards and Spec axes: no findings.
+
+Independently audited complete A-4195 / 788795fe-d7b2-4f13-869e-411edb6c8e21. Exact branch/head match A-4183 source clearance; full mode exits 0, 2394 tests, 2386 pass, zero fail, eight prerequisite/platform skips. Hub free 41/41, machine 1955 pass/zero fail/five skips, full Neovim 390 pass/zero fail/three skips. All seven suite-tiers identities pass ordinarily and 5/5 load repetitions (35/35); all six suite-admission and eight merge-gate cases have positive timing receipts. Complete log has no hard duration-budget or load-gate failure; routine regression notices are non-failing. Linux x64 c-8 lon1, Node 24.21.0/Neovim 0.12.5, two workers; suite 2374.10 s, peak load 10.16, lifetime 2445 s, $0.1698.
+
+C1: manifest lint/package admission and repository path-coverage regression execute green; source audit in A-4183 independently matched every one of 247 sorted paths, legacy file deletion and unchanged baseline resource assignments. The fetched baseline had eight free files after T-621, all retained as T1; new owned in-process lint/planner file is T2, other baseline files T3. No existing free/machine phase reclassification is hidden by the historical seven-file wording.
+
+C2: malformed/unclassified/missing/invalid/unsorted maps, strict objects, precedence and T1 hermetic-source table pass, naming tested offending paths. C3: admission/immutable merge-result fault tables pass with verify-tiers/merge-tiers, no queue/ref mutation on refusal, while old typed wire aliases stay accepted. C4: same admission case includes committed unsorted legacy-only candidate, omitted old-format Neovim map entries, explicit resource/worker plan and successful result. C5: frozen baseline plan comparison passes, preserving phases/file sets/worker counts; separate current-tree coverage assertion prevents newly added files escaping classification. C6: sorted insertion and writers/docs proof from A-4183 now has exact-head execution confirmation. Latest task view has all six claimant done marks.
+
+C1–C6 verified at this exact head. No per-item QA or further task run required.
+Review artifact A-4197.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.

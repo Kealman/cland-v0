@@ -3,7 +3,7 @@ id: T-475
 kind: task
 title: "Cover-quiet enforced: while the Coordinator's integrated cover holds the slot, the test harness refuses to start a fixture hub"
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 3
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-401
 branch: t/T-475-cover-quiet-enforced-while-the
 created: 2026-10-15T09:13:18.684Z
-updated: 2026-10-16T20:14:56.400Z
+updated: 2026-10-16T20:58:35.676Z
 ---
 
 ## Summary
@@ -28,16 +28,20 @@ Retrospective A-2783, STOP 1: all 7 flaky red covers had other sessions' test ru
 
 ## Acceptance criteria
 
-- [ ] C1. A targeted test started while an integrated cover holds the local slot exits with `cover-quiet` before starting any fixture.
-  - failed: rev-30 [reviewer] · 2026-10-16T17:58:37.003Z · note Owned integrated worker report times out ordinarily and 0/5 repetitions; final gate incomplete. A-4093 M1.
-- [ ] C2. The cover's own workers and runs without a project hub are unaffected.
-  - failed: rev-30 [reviewer] · 2026-10-16T17:58:37.003Z · note Owned integrated worker end-to-end admission/completion proof red; inspect nested durable result. A-4093 M1.
-- [ ] C3. docs/agents/tests.md and the Implementer clause describe the refusal and the human's override.
+- [x] C1. A targeted test started while an integrated cover holds the local slot exits with `cover-quiet` before starting any fixture.
+  - done: impl-475 · 2026-10-16T20:57:53.935Z
+  - verified: rev-30 [reviewer] · run rev-20261016-475-final · 2026-10-16T20:58:34.879Z · commit a35e9d32e89eeef49e34d2ab7f0fe6536189c7d3
+- [x] C2. The cover's own workers and runs without a project hub are unaffected.
+  - done: impl-475 · 2026-10-16T20:57:54.155Z
+  - verified: rev-30 [reviewer] · run rev-20261016-475-final · 2026-10-16T20:58:34.879Z · commit a35e9d32e89eeef49e34d2ab7f0fe6536189c7d3
+- [x] C3. docs/agents/tests.md and the Implementer clause describe the refusal and the human's override.
   - verified: rev-30 [reviewer] · run rev-20261016-475-owned-correction · 2026-10-16T18:02:08.189Z · commit b1570e640ffd8b2f3da1564114962d248976c788
   - verified: rev-30 [reviewer] · run rev-20261016-475-shared-duration · 2026-10-16T18:12:49.135Z · commit de96a65002699613407c62d3237a8c7ee7f71fb1
   - verified: rev-30 [reviewer] · run rev-20261016-475-dev-integration · 2026-10-16T18:39:58.556Z · commit 6ba8ce3b3e1c183f866dbbeda403e9853c8a03ba
   - verified: rev-30 [reviewer] · run rev-20261016-475-shared-dev-merge · 2026-10-16T19:07:22.802Z · commit 75390e8348e11d330ebc9d1dda15a5d80c3eb42c
   - verified: rev-30 [reviewer] · run rev-20261016-475-watchdog-header-delta · 2026-10-16T20:08:52.284Z · commit a35e9d32e89eeef49e34d2ab7f0fe6536189c7d3
+  - done: impl-475 · 2026-10-16T20:57:54.354Z
+  - verified: rev-30 [reviewer] · run rev-20261016-475-final · 2026-10-16T20:58:34.879Z · commit a35e9d32e89eeef49e34d2ab7f0fe6536189c7d3
 
 ## Comments
 
@@ -321,3 +325,31 @@ Criteria: C3 verified.
 ### impl-475 · 2026-10-16T20:14:56.400Z
 
 Hold lifted by Coordinator0df00409 after hub restart/D53 config. Unchanged source-clear head a35e9d32 (A-4173), tree clean. Submitted normal mode-free droplet verify fd0d2ca7-eb15-45a1-823a-a583e2123a2e with same topic-401/Reviewer+claimant routing; queue position1. Both shared watchdog and duration fixes present. Waiting for hub result; no head changes/local retry.
+
+### coord · 2026-10-16T20:58:19.876Z
+
+Coordinator, scope decision: C1–C3 are verified on the exact-head droplet evidence A-4194. The local check that cover-quiet.test.ts passes against a live hub carrying T-475's permission (promised in 54b041c5) is a post-merge obligation of the Coordinator, not a criterion. It runs after the next hub restart that includes T-475, and its receipt goes in topic-401. A failure there gets filed with --regression-of T-475.
+
+### rev-30 · 2026-10-16T20:58:34.879Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-475-final
+commit: a35e9d32e89eeef49e34d2ab7f0fe6536189c7d3
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-475 final evidence clear at unchanged source-reviewed a35e9d32e89eeef49e34d2ab7f0fe6536189c7d3. Standards and Spec axes: no findings.
+
+Independently audited complete A-4194 / fd0d2ca7-eb15-45a1-823a-a583e2123a2e: branch/head match A-4173 source clearance; full mode, exit 0, 2397 tests, 2389 pass, zero fail, eight platform/prerequisite skips. Hub free 40/40, machine 1959 pass/zero fail/five skips, full Neovim 390 pass/zero fail/three skips. Every one of the twelve cover-quiet identities passes ordinary execution and 5/5 load repetitions (60/60); corrected real integrated worker admission/completion/report regression passes in 5.236143141 s. Coverage closure and default-role clause invariant pass. No hard duration-budget or load-gate failure in the full log; unrelated quarantined case reports a pass. Prior A-4092 owned failures and A-4168 external watchdog red remain preserved, not relabelled as green.
+
+C1 established: hub and Neovim targeted startup and Neovim package entry refuse cover-quiet before fixtures/runner-root/target execution; read-only admission leaves queue untouched; all connected silence/close/legacy/unsupported variants fail before fixture creation. C2 established: exact inherited-worker admission, standalone/no-hub and ordinary-holder admission, borrowed integrated identity preservation, and real integrated worker own-targeted-harness execution through durable result, report and slot release all pass. C3 docs/Implementer clause proof remains A-4173; clause headroom assertion now also executes green. Latest claimant report restores all three done marks with this receipt.
+
+Read primary Coordinator a2c472aa-4743-48df-b6ce-df3c5bf5ff6d: verify C1/C2 from this exact-head droplet evidence and give final clear. The live-project/local-hub rollout receipt promised in 54b041c5 is explicitly not a T-475 criterion. It remains the Coordinator's post-merge obligation after the next hub restart carrying this code; Coordinator will post it here and file a regression if it fails. No local receipt or bypass is claimed, and merge does not wait for it.
+
+Linux x64 c-8 lon1, Node 24.21.0/Neovim 0.12.5, two workers; suite wall 2467.20 s, peak load 10.60, machine lifetime 2536 s, $0.1761. C1/C2/C3 verified at the exact reviewed head. No per-item QA or further task run required.
+Review artifact A-4196.
+
+Criteria: C1 verified, C2 verified, C3 verified.
