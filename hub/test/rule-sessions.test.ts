@@ -2,9 +2,68 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import test from 'node:test';
-import { cland, connectUi, eventually, fakeClaude, fakeCodex, spawnSpoke, startDaemon, tempProject } from './harness.ts';
+import { cland, connectUi, eventually, fakeClaude, fakeCodex, projectHub, spawnSpoke, startDaemon, tempProject } from './harness.ts';
 import type { Message } from '../src/protocol.ts';
 import type { Rule } from '../src/rules/rulebook.ts';
+
+test('rule tools and CLI preserve long titles and announce title-only edits to running sessions', async t => {
+  const root = await tempProject(t);
+  const { discovery } = await projectHub(t, root);
+  const ui = await connectUi(t, discovery);
+  await ui.request({ type: 'subscribe' });
+  const aide = await spawnSpoke({ cwd: root, discover: true, name: 'helper', role: 'aide', sessionId: 'title-aide' });
+  const impl = await spawnSpoke({ cwd: root, discover: true, name: 'impl', role: 'implementer', sessionId: 'title-impl' });
+  t.after(async () => { await aide.close(); await impl.close(); });
+  await aide.waitForPresence(['helper', 'impl']);
+  const tool = (await aide.client.listTools()).tools.find(tool => tool.name === 'rule.edit')!;
+  type Result = { ok: boolean; error?: string; rule: Rule; rules: Rule[] };
+  const title = 'The crew decides the stack, the architecture, the test strategy and every other technical question in the project.';
+  const text = `${title}\nExplain those decisions to the human.`;
+  const added = await aide.call<Result>('rule.add', { text, scope: 'implementer', reason: 'delegation' });
+  assert.equal(added.ok, true, JSON.stringify(added));
+  assert.equal(added.rule.title, title);
+  assert.equal(added.rule.text, text);
+  assert.deepEqual(tool.inputSchema.properties?.title, { type: 'string' });
+  const run = async (...args: string[]) => {
+    const result = await cland(root, 'rule', ...args, '--json');
+    assert.equal(result.code, 0, result.stderr);
+    return JSON.parse(result.stdout) as Result;
+  };
+  const shellRule = (await run('add', text, '--scope', 'implementer', '--reason', 'delegation')).rule;
+  assert.equal(shellRule.title, title);
+  assert.equal(shellRule.text, text);
+  const explicit = await aide.call<Result>('rule.add', { text: 'Keep this body.', title, scope: 'all', reason: 'explicit title' });
+  assert.equal(explicit.rule.title, title);
+  assert.equal((await run('add', 'Keep this body.', '--title', title, '--scope', 'all', '--reason', 'explicit title')).rule.title, title);
+  for (const [number, changedTitle] of [[1, `${title} Revised through the tool.`], [2, `${title} Revised through the CLI.`]] as const) {
+    const offset = ui.frames.length;
+    const edited = number === 1
+      ? await aide.call<Result>('rule.edit', { number, title: changedTitle })
+      : await run('edit', String(number), '--title', changedTitle);
+    if (number === 1) assert.equal(edited.ok, true, JSON.stringify(edited));
+    assert.equal(edited.rule.title, changedTitle);
+    assert.equal(edited.rule.text, text, 'a title-only edit preserves the body');
+    assert.equal(edited.rule.reason, 'delegation');
+    assert.equal(edited.rule.origin, number === 1 ? 'session:helper' : 'shell');
+    const notice = await ui.waitFor(f => f.type === 'message' && (f.message as Message).detail?.event === 'rule' && (f.message as Message).text.includes(changedTitle));
+    const message = notice.message as Message;
+    assert.deepEqual(message.to, ['impl']);
+    assert.equal(message.detail?.digest, 'turn');
+    assert.equal(message.layer, 'background');
+    assert.equal(ui.frames.slice(offset).filter(f => f.type === 'message' && (f.message as Message).detail?.event === 'rule').length, 1);
+    const listed = await impl.call<Result>('rule.list');
+    assert.equal(listed.rules.find(rule => rule.number === number)?.title, changedTitle);
+    assert.ok((await readFile(join(root, '.cland/RULES.md'), 'utf8')).includes(`## ${number} ${changedTitle}\n`));
+  }
+  const path = join(root, '.cland/RULES.md');
+  const before = await readFile(path, 'utf8');
+  for (const invalid of ['', '   ', 'Title\ninjection', 'Title\rinjection']) {
+    const refused = await aide.call<Result>('rule.edit', { number: 1, title: invalid });
+    assert.equal(refused.ok, false);
+    assert.match(refused.error!, /title must (not be empty|be one line)/);
+    assert.equal(await readFile(path, 'utf8'), before);
+  }
+});
 
 test('role clauses use current scoped active rules, including rules added while disconnected', async t => {
   const root = await tempProject(t);
@@ -126,6 +185,9 @@ test('shell rule changes reach fake Implementer turns, never steer, and show one
   await run('edit', '1', '--text', 'Read the queue.');
   await turn('Read edited rule.');
   assert.match(await codex.log(impl.pid), /rule 1: Read the queue/);
+  await run('edit', '1', '--title', 'Read the queue before starting a suite.');
+  await turn('Read renamed rule.');
+  assert.match(await codex.log(impl.pid), /Title: Read the queue before starting a suite\./);
   // While an approval turn is blocked, even another steered report cannot carry the rule.
   await ui.request({ type: 'topic.send', topic: 'general', to: ['impl'], text: 'needs approval' });
   await ui.waitFor(f => f.type === 'session.state' && f.session === 'impl' && f.state === 'waiting for approval');
@@ -145,7 +207,7 @@ test('shell rule changes reach fake Implementer turns, never steer, and show one
   const events = await ui.request({ type: 'events.list', filter: { kinds: ['rule'], subject: { kind: 'rule', id: '1' } } });
   assert.equal(events.ok, true, events.error);
   const rows = (events.value as { rows: Array<{ kind: string; subject: { kind: string; id: string } }> }).rows;
-  assert.equal(rows.length, 3);
+  assert.equal(rows.length, 4);
   assert.ok(rows.every(row => row.kind === 'rule' && row.subject.kind === 'rule' && row.subject.id === '1'));
 });
 

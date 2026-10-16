@@ -9,7 +9,7 @@ export async function runRule(args: string[], cwd = process.cwd()): Promise<numb
   } });
   const [sub, target, ...extra] = positionals;
   if (!sub || !['add', 'edit', 'retire', 'list', 'show'].includes(sub) || extra.length) throw new Error('usage: cland rule add|edit|retire|list|show (see cland --help)');
-  const allowed: Record<string, string[]> = { add: ['scope', 'reason', 'title', 'origin'], edit: ['text', 'scope', 'reason'], retire: ['reason'], list: ['all', 'role'], show: [] };
+  const allowed: Record<string, string[]> = { add: ['scope', 'reason', 'title', 'origin'], edit: ['title', 'text', 'scope', 'reason'], retire: ['reason'], list: ['all', 'role'], show: [] };
   for (const key of Object.keys(values)) if (key !== 'json' && !allowed[sub]!.includes(key)) throw new Error(`rule ${sub} does not take --${key}`);
   let frame: { type: string } & Record<string, unknown>;
   if (sub === 'list') {

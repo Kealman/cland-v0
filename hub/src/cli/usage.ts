@@ -175,7 +175,7 @@ export const SUBSCRIPTIONS_USAGE = `  subscribe <session|item|topic|role|subtree
 `;
 
 export const RULE_USAGE = `  rule add <text> --scope <roles>|all --reason <text> [--title t] [--origin memory:<path>]
-  rule edit <n> [--text t] [--scope s] [--reason r]
+  rule edit <n> [--title t] [--text t] [--scope s] [--reason r]
   rule retire <n> --reason <text>
   rule list [--all] [--role r]
   rule show <n>   read one rule; every rule command takes --json

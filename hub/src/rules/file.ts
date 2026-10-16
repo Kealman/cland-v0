@@ -6,7 +6,7 @@ import type { LogFn } from '../log.ts';
 import { parseRulebook, parseScope, renderRulebook, RULEBOOK_HEADER, RulebookError, type Rule, type Rulebook } from './rulebook.ts';
 
 export type RuleAdd = { text: string; scope: string; reason: string; title?: string; origin: string };
-export type RuleEdit = { text?: string; scope?: string; reason?: string; origin?: string };
+export type RuleEdit = { title?: string; text?: string; scope?: string; reason?: string; origin?: string };
 export class RulebookFile {
   readonly path: string;
   readonly #roles: () => Iterable<string>;
@@ -104,14 +104,14 @@ export class RulebookFile {
     return this.#write(book => {
       const number = book.highWater + 1;
       const text = nonempty(input.text, 'text');
-      const rule: Rule = { number, title: singleLine(input.title ?? text.split('\n')[0]!.slice(0, 80), 'title'), scope: parseScope(input.scope, this.#roles()), date: today(), status: 'active', origin: input.origin, reason: singleLine(input.reason, 'reason'), text };
+      const rule: Rule = { number, title: singleLine(input.title ?? text.split('\n')[0]!, 'title'), scope: parseScope(input.scope, this.#roles()), date: today(), status: 'active', origin: input.origin, reason: singleLine(input.reason, 'reason'), text };
       return [...book.rules, rule];
     }, resumed, authorize);
   }
   edit(number: number, input: RuleEdit, resumed: Resumed = this.#resumed, authorize = () => {}): Promise<Rule> {
     return this.#write(book => {
-      if (input.text === undefined && input.scope === undefined && input.reason === undefined) throw new Error('rule edit needs --text, --scope or --reason');
-      return replace(book, number, rule => ({ ...rule, date: today(), ...(input.text !== undefined ? { text: nonempty(input.text, 'text') } : {}), ...(input.scope !== undefined ? { scope: parseScope(input.scope, this.#roles()) } : {}), ...(input.reason !== undefined ? { reason: singleLine(input.reason, 'reason') } : {}), ...(input.origin !== undefined ? { origin: input.origin } : {}) }));
+      if (input.title === undefined && input.text === undefined && input.scope === undefined && input.reason === undefined) throw new Error('rule edit needs --title, --text, --scope or --reason');
+      return replace(book, number, rule => ({ ...rule, date: today(), ...(input.title !== undefined ? { title: singleLine(input.title, 'title') } : {}), ...(input.text !== undefined ? { text: nonempty(input.text, 'text') } : {}), ...(input.scope !== undefined ? { scope: parseScope(input.scope, this.#roles()) } : {}), ...(input.reason !== undefined ? { reason: singleLine(input.reason, 'reason') } : {}), ...(input.origin !== undefined ? { origin: input.origin } : {}) }));
     }, resumed, authorize);
   }
   retire(number: number, reason: string, resumed: Resumed = this.#resumed, authorize = () => {}, origin?: string): Promise<Rule> {

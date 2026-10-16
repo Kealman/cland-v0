@@ -1571,7 +1571,7 @@ export class Dispatcher {
               if (!workbench && request.origin !== undefined && (typeof request.origin !== 'string' || !/^memory:[^\r\n]+$/.test(request.origin))) throw new Error('--origin may name only memory:<path>');
               const origin = workbench ? 'workbench' : typeof request.origin === 'string' ? request.origin : (caller ? `session:${caller.name}` : 'shell');
               writing = rules.add({ ...request, origin }, resumed, authorize);
-            } else if (request.type === 'rule.edit') writing = rules.edit(request.number, { ...(request.text !== undefined ? { text: request.text } : {}), ...(request.scope !== undefined ? { scope: request.scope } : {}), ...(request.reason !== undefined ? { reason: request.reason } : {}), ...(workbench ? { origin: 'workbench' } : {}) }, resumed, authorize);
+            } else if (request.type === 'rule.edit') writing = rules.edit(request.number, { ...(request.title !== undefined ? { title: request.title } : {}), ...(request.text !== undefined ? { text: request.text } : {}), ...(request.scope !== undefined ? { scope: request.scope } : {}), ...(request.reason !== undefined ? { reason: request.reason } : {}), ...(workbench ? { origin: 'workbench' } : {}) }, resumed, authorize);
             else writing = rules.retire(request.number, request.reason, resumed, authorize, workbench ? 'workbench' : caller ? `session:${caller.name}` : 'shell');
             return later(request.type, writing.then(rule => resumed(() => {
               this.#guard.changed();

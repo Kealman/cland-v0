@@ -219,7 +219,7 @@ export class HubCore {
       const rule = current ?? old!;
       const scope = rule.scope === 'all' ? 'all' : rule.scope.join(', ');
       const retired = `rule ${number} retired (scope: ${scope}; reason: ${rule.reason}${current ? '' : '; removed from rulebook'})`;
-      const active = `rule ${number}: ${rule.text} (scope: ${scope}; reason: ${rule.reason})`;
+      const active = `rule ${number}: ${rule.text} (scope: ${scope}; reason: ${rule.reason})${old && old.title !== rule.title ? `\nTitle: ${rule.title}` : ''}`;
       const text = current?.status === 'active' ? active : retired;
       this.#store.transaction(() => {
         const groups = new Map<string, string[]>();

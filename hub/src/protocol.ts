@@ -527,7 +527,7 @@ export type SuiteClassify = { type: 'suite.classify'; id: string; suite: string;
 
 export type RuleRequest =
   | { type: 'rule.add'; id: string; text: string; scope: string; reason: string; title?: string; origin?: string | { topic: string; msg_id: string } }
-  | { type: 'rule.edit'; id: string; origin?: string | { topic: string; msg_id: string }; number: number; text?: string; scope?: string; reason?: string }
+  | { type: 'rule.edit'; id: string; origin?: string | { topic: string; msg_id: string }; number: number; title?: string; text?: string; scope?: string; reason?: string }
   | { type: 'rule.retire'; id: string; origin?: string | { topic: string; msg_id: string }; number: number; reason: string }
   | { type: 'rule.list'; id: string; all?: boolean; role?: string }
   | { type: 'rule.show'; id: string; number: number };
@@ -828,7 +828,7 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
     case 'rule.add':
       return typeof f.text === 'string' && typeof f.scope === 'string' && typeof f.reason === 'string' && (f.title === undefined || typeof f.title === 'string');
     case 'rule.edit':
-      return Number.isSafeInteger(f.number) && Number(f.number) > 0 && ['text', 'scope', 'reason'].every(key => f[key] === undefined || typeof f[key] === 'string');
+      return Number.isSafeInteger(f.number) && Number(f.number) > 0 && ['title', 'text', 'scope', 'reason'].every(key => f[key] === undefined || typeof f[key] === 'string');
     case 'rule.retire':
       return Number.isSafeInteger(f.number) && Number(f.number) > 0 && typeof f.reason === 'string';
     case 'rule.show':
