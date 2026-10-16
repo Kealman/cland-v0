@@ -2,8 +2,8 @@
 id: T-470
 kind: task
 title: "Queue wait as a visible metric: p50 and p90 in verify queue and hub status, with a v0.1.3 target of p90 under 20 minutes"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-361
 branch: t/T-470-queue-wait-as-a-visible-metric-p50-and
 created: 2026-10-15T09:13:16.188Z
-updated: 2026-10-16T08:24:03.576Z
+updated: 2026-10-16T10:14:24.709Z
+closed: 2026-10-16T10:14:24.709Z
 ---
 
 ## Summary
@@ -292,3 +293,7 @@ Final merge delta **clear**, C1/C2/C3 refreshed, no new droplet run. Current Coo
 Artifact A-3870 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3870-t-470-cover-merge-delta-clear-both-hook-sets-preserved-83-whole-file-passes.md
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-16T10:14:24.709Z
+
+Merged 71b4bd33868fc3fd22b82f3289cadd27493677ee onto dev.
