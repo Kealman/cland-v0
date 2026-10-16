@@ -2,8 +2,8 @@
 id: T-657
 kind: task
 title: "Quarantine manifest: a known flake still runs and is reported, but no longer fails the run"
-state: open
-status: ready
+state: closed
+status: done
 size: M
 rank: 4410
 criterion_seq: 5
@@ -18,7 +18,8 @@ blocked_by: []
 topic: topic-399
 branch: t/T-657-quarantine-manifest-a-known-flake-still
 created: 2026-10-16T16:29:56.201Z
-updated: 2026-10-16T19:02:58.739Z
+updated: 2026-10-16T19:03:21.177Z
+closed: 2026-10-16T19:03:21.177Z
 ---
 
 ## Summary
@@ -147,3 +148,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Conflict-only merge delta clear; Standards0/Spec0 findings, A-4125. Independently verified merged manifest equals complete dev parent plus exactly own two classifications, retaining both candidate entries. Old/new task diffs have identical14 paths and all added/removed lines (+375/-11); no task patch change. A-4124 reports exact-head typecheck/shard lint exit0; independent diffcheck clean. Coordinator6363c98b independently read: explicitly accepts A-4120 full green at4317d560 for unchanged content, forbids new droplet and requires immediate integrated cover after landing. C1–C5 continuity verified at5b7be7fa under that disposition, with all claimant done marks present. No exact-new-head full execution claimed; combined tree awaits Coordinator integrated cover. No Reviewer edits/tests.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-10-16T19:03:21.177Z
+
+Merged 8175a63af7f48c1d44088a9836cbb5d59b4ae0ca onto dev.
