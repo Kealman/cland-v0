@@ -2,8 +2,8 @@
 id: T-532
 kind: task
 title: OpenCode launch polls the server on a port cland chose, and a rejected approval is reported as a rejection
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-378
 branch: t/T-532-opencode-launch-polls-the-server-on-a
 created: 2026-10-15T20:59:18.648Z
-updated: 2026-10-16T16:24:51.200Z
+updated: 2026-10-16T16:26:43.858Z
+closed: 2026-10-16T16:26:43.858Z
 ---
 
 ## Summary
@@ -129,3 +130,7 @@ C1–C3 execution verified; all claimant done marks were present. Final clear wi
 Artifact: A-4001 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-4001-t-532-final-clear-readiness-and-rejection-handling-pass-linux-and-load-repetitio.md
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-16T16:26:43.858Z
+
+Merged 45f6b167356a757384e44260e16daf18c2ecbe8c onto dev.
