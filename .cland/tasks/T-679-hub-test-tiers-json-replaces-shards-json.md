@@ -3,7 +3,7 @@ id: T-679
 kind: task
 title: "hub/test/tiers.json replaces shards.json: every hub and Neovim test file declares T1, T2, T3 or T4, sorted by path"
 state: open
-status: in progress
+status: ready
 size: M
 criterion_seq: 6
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-408
 branch: t/T-679-hub-test-tiers-json-replaces-shards-json
 created: 2026-10-16T19:59:27.652Z
-updated: 2026-10-16T21:00:17.579Z
+updated: 2026-10-16T21:47:36.586Z
 ---
 
 ## Summary
@@ -36,22 +36,28 @@ updated: 2026-10-16T21:00:17.579Z
 - [x] C1. `hub/test/tiers.json` lists every hub and Neovim test file sorted by path, the seven current free files as T1 and all others as T3, and `shards.json` no longer exists, proved by the lint run over the repository.
   - done: impl-679 · 2026-10-16T20:16:55.058Z
   - verified: rev-30 [reviewer] · run rev-20261016-679-final · 2026-10-16T20:59:06.069Z · commit f97e2ab41f44769a298f5011cba459ebb51e96f0
+  - verified: rev-30 [reviewer] · run rev-20261016-679-manifest-merge · 2026-10-16T21:47:35.147Z · commit d0d8d05b3a411b425dcf879c6c253960a4428218
 - [x] C2. The lint refuses an unclassified file, a missing file, an invalid tier, an unsorted map (naming the first out-of-order path) and a T1 file that uses a process, port, timer or harness API, proved by lint tests.
   - done: impl-679 · 2026-10-16T20:16:55.340Z
   - verified: rev-30 [reviewer] · run rev-20261016-679-final · 2026-10-16T20:59:06.069Z · commit f97e2ab41f44769a298f5011cba459ebb51e96f0
+  - verified: rev-30 [reviewer] · run rev-20261016-679-manifest-merge · 2026-10-16T21:47:35.147Z · commit d0d8d05b3a411b425dcf879c6c253960a4428218
 - [x] C3. `cland verify` refuses those faults with `verify-tiers` and `cland merge` with `merge-tiers`, before queueing or changing refs, proved by admission and merge-gate tests.
   - done: impl-679 · 2026-10-16T20:16:55.726Z
   - verified: rev-30 [reviewer] · run rev-20261016-679-final · 2026-10-16T20:59:06.069Z · commit f97e2ab41f44769a298f5011cba459ebb51e96f0
+  - verified: rev-30 [reviewer] · run rev-20261016-679-manifest-merge · 2026-10-16T21:47:35.147Z · commit d0d8d05b3a411b425dcf879c6c253960a4428218
 - [x] C4. A candidate tree with only `shards.json` is admitted and planned with free as T1 and machine as T3, proved by an admission test.
   - done: impl-679 · 2026-10-16T20:16:56.012Z
   - verified: rev-30 [reviewer] · run rev-20261016-679-final · 2026-10-16T20:59:06.069Z · commit f97e2ab41f44769a298f5011cba459ebb51e96f0
+  - verified: rev-30 [reviewer] · run rev-20261016-679-manifest-merge · 2026-10-16T21:47:35.147Z · commit d0d8d05b3a411b425dcf879c6c253960a4428218
 - [x] C5. The planned phases, file sets and worker counts for a full run of this repository equal those planned from `shards.json` at the merge base, proved by a planning test.
   - done: impl-679 · 2026-10-16T20:16:56.356Z
   - verified: rev-30 [reviewer] · run rev-20261016-679-final · 2026-10-16T20:59:06.069Z · commit f97e2ab41f44769a298f5011cba459ebb51e96f0
+  - verified: rev-30 [reviewer] · run rev-20261016-679-manifest-merge · 2026-10-16T21:47:35.147Z · commit d0d8d05b3a411b425dcf879c6c253960a4428218
 - [x] C6. Every tool that writes the manifest writes it sorted, proved by a test that adds an entry, and `docs/agents/tests.md` and `hub/README.md` (Tests) describe `tiers.json`, the four tiers and where a new line goes.
   - verified: rev-30 [reviewer] · run rev-20261016-679-source · 2026-10-16T20:16:39.163Z · commit f97e2ab41f44769a298f5011cba459ebb51e96f0
   - done: impl-679 · 2026-10-16T20:16:56.640Z
   - verified: rev-30 [reviewer] · run rev-20261016-679-final · 2026-10-16T20:59:06.069Z · commit f97e2ab41f44769a298f5011cba459ebb51e96f0
+  - verified: rev-30 [reviewer] · run rev-20261016-679-manifest-merge · 2026-10-16T21:47:35.147Z · commit d0d8d05b3a411b425dcf879c6c253960a4428218
 
 ## Comments
 
@@ -108,5 +114,31 @@ C2: malformed/unclassified/missing/invalid/unsorted maps, strict objects, preced
 
 C1–C6 verified at this exact head. No per-item QA or further task run required.
 Review artifact A-4197.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### rev-30 · 2026-10-16T21:47:35.147Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-679-manifest-merge
+commit: d0d8d05b3a411b425dcf879c6c253960a4428218
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-679 manifest-entry dev-merge delta clear at d0d8d05b3a411b425dcf879c6c253960a4428218. Standards and Spec axes: no findings. Current origin task tip matches. Reviewed the integration chain from final-clear f97e2ab4 through dev merges and the final manifest correction, including fetched dev 18a280fa8ca6d41fc9698cfd9ca2f2052db01e3a.
+
+Independent JSON/Git-tree audit: exactly four entry additions relative to reviewed manifest, no removals or changed prior values: config-set and roles-editor T3; clock and project-clock T2. All 251 tracked hub/Neovim test paths are present exactly once in sorted map order, no missing/extra paths. Frozen legacy fixture has the identical reviewed blob 2547bcfeb03fe799db2a8c2269e069271f5210bd. Rename-detection additions to that frozen file were correctly removed; actual new classifications reside in tiers.json. Owned tier reader/lint/planning/writer/test logic is unchanged. Incoming clock integration, config protocol and documentation are dev changes, not new authored tier logic or a fresh claim that the whole tree is byte-unchanged.
+
+Read primary Coordinator 36c4481d directing the final dev 18a280fa integration and unchanged frozen fixture. Read primary 3c46f06c expressly approving clock.test.ts T2 despite its T1 header: conservative source scanner matches FakeClock/literal fixture patterns; T-682 fixes that distinction and T-690 retags T1 later. Project-clock declares T2. Both additions retain their previous machine phase, so this temporary classification has no scheduling reduction and is not a finding.
+
+A-4212 reports committed-head typecheck and test:tiers green plus serial below-load-15 suite-tiers 7/7 (0.148 s), close-shards 3/3 (0.110 s), verification-workers 5/5 (18.448 s). Independent whitespace check against incoming dev passes. No Reviewer tests/compiler execution.
+
+Read primary Coordinator 5d64bf5a-3212-4a4a-95e0-ad401e6d68ea: A-4195 stands for the manifest-only integration and no new droplet verification is needed. Later final-merge/clock instructions preserve that plan. Accordingly C1–C6 are refreshed from prior A-4183/A-4197 source/final proof, exact manifest-entry audit and requested local checks, under this explicit gate disposition. A-4195 was full Linux green at f97e2ab4 (2386 pass/zero fail/eight skips), including all tier/gate/legacy/planning proof. It is prior-head accepted evidence, not a new-head run or a tree-hash cache hit. No new execution at d0d8d05b is claimed.
+
+All claimant done marks present. Final delta clear; C1–C6 verified under the specified retained-receipt disposition. No new droplet run or per-item QA required.
+Review artifact A-4214.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.

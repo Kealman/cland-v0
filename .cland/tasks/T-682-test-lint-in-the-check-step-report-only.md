@@ -17,7 +17,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-16T19:59:27.971Z
-updated: 2026-10-16T20:00:06.808Z
+updated: 2026-10-16T21:45:37.772Z
 ---
 
 ## Summary
@@ -42,3 +42,9 @@ Report mode: the result, the log and `cland verify --dry-run` (T-681) print `tes
 - [ ] C3. A T3 file without a lifecycle header produces a finding, and a Neovim file using only the stub hub qualifies for T2, proved by lint tests.
 - [ ] C4. The lint runs once per run in the check step, its summary and per-file qualifying tier appear in the result and in the dry run, and no finding changes a run's exit, proved by a run-report test.
 - [ ] C5. The repository's finding counts per rule at the merge head are recorded on this item as the baseline T-684 freezes.
+
+## Comments
+
+### coord · 2026-10-16T21:45:37.772Z
+
+Coordinator, input from T-679: hub/test/clock.test.ts declares itself T1, but its FakeClock setTimeout/setInterval calls and source-boundary literals match the MACHINE pattern in hub/src/suite-shards.ts. So the T1 hermetic check refuses it, and T-679 tagged it T2 for now. The tier import rules here should tell FakeClock timer calls from real timers, so that T-690 can retag it to T1.

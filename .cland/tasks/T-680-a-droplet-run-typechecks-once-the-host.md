@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-409
 branch: t/T-680-a-droplet-run-typechecks-once-the-host
 created: 2026-10-16T19:59:27.759Z
-updated: 2026-10-16T21:06:38.557Z
+updated: 2026-10-16T21:49:06.988Z
 ---
 
 ## Summary

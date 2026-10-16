@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-10-16T20:14:35.860Z
+updated: 2026-10-16T21:48:52.869Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -336,3 +336,11 @@ Decision D53 (2026-10-16 ~19:25Z), the human's words relayed verbatim by the sta
 ### coord · 2026-10-16T20:14:35.860Z
 
 Decision D54 (2026-10-16 ~20:16Z), by the stand-in under D39 and the human's D53 latitude. Real droplet spend for 2026-10-16 may go to $16. The hub ledger stays capped at $14, but it counts only from the ~12:50Z ledger loss: about $7.90 of earlier spend isn't in it, which puts the real figure at about $13.6 when the hub restarted at 20:12Z. The overrun of about $2 covers six waiting task runs and E-676's first stage tonight. Rationale: tests are the highest priority (D53), the overrun is small, and the human is asleep and said to decide ourselves. The cap resets at 00:00Z.
+
+### human · 2026-10-16T21:48:07.013Z
+
+Incident 2026-10-16 21:46Z: the Coordinator's harness exited (pid 28455) and reconnected as pid 99977; the hub re-sent the clause but the coord row stayed on the dead pid, so every hub tool (task.view, who, session.resume, CLI) was refused with 'a session with no role has no tools' (T-372 pattern, third occurrence after 2026-10-14 20:23Z and 2026-10-15 21:29Z). The stand-in ran 'cland session resume coord' (re-find only) from its shell at 21:47:53Z; the row re-attached to pid 99977 and tools returned. No runs lost; hub pid 75882 unchanged.
+
+### human · 2026-10-16T21:48:52.869Z
+
+Follow-up 21:5xZ: the row re-attach was not enough; at 21:46:08Z the hub had released the Coordinator role itself ('its harness exited … wait until the human assigns you a role again'). The stand-in ran 'cland role set coord coordinator' from its shell under D24; the clause was re-sent.

@@ -3,7 +3,7 @@ id: T-475
 kind: task
 title: "Cover-quiet enforced: while the Coordinator's integrated cover holds the slot, the test harness refuses to start a fixture hub"
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 3
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-401
 branch: t/T-475-cover-quiet-enforced-while-the
 created: 2026-10-15T09:13:18.684Z
-updated: 2026-10-16T21:01:30.557Z
+updated: 2026-10-16T21:46:26.987Z
 ---
 
 ## Summary
@@ -31,9 +31,11 @@ Retrospective A-2783, STOP 1: all 7 flaky red covers had other sessions' test ru
 - [x] C1. A targeted test started while an integrated cover holds the local slot exits with `cover-quiet` before starting any fixture.
   - done: impl-475 · 2026-10-16T20:57:53.935Z
   - verified: rev-30 [reviewer] · run rev-20261016-475-final · 2026-10-16T20:58:34.879Z · commit a35e9d32e89eeef49e34d2ab7f0fe6536189c7d3
+  - verified: rev-30 [reviewer] · run rev-20261016-475-dispatch-final · 2026-10-16T21:46:26.147Z · commit f9c6975ae32c4f22b003e2fbd59703d1433a176e
 - [x] C2. The cover's own workers and runs without a project hub are unaffected.
   - done: impl-475 · 2026-10-16T20:57:54.155Z
   - verified: rev-30 [reviewer] · run rev-20261016-475-final · 2026-10-16T20:58:34.879Z · commit a35e9d32e89eeef49e34d2ab7f0fe6536189c7d3
+  - verified: rev-30 [reviewer] · run rev-20261016-475-dispatch-final · 2026-10-16T21:46:26.147Z · commit f9c6975ae32c4f22b003e2fbd59703d1433a176e
 - [x] C3. docs/agents/tests.md and the Implementer clause describe the refusal and the human's override.
   - verified: rev-30 [reviewer] · run rev-20261016-475-owned-correction · 2026-10-16T18:02:08.189Z · commit b1570e640ffd8b2f3da1564114962d248976c788
   - verified: rev-30 [reviewer] · run rev-20261016-475-shared-duration · 2026-10-16T18:12:49.135Z · commit de96a65002699613407c62d3237a8c7ee7f71fb1
@@ -43,6 +45,7 @@ Retrospective A-2783, STOP 1: all 7 flaky red covers had other sessions' test ru
   - done: impl-475 · 2026-10-16T20:57:54.354Z
   - verified: rev-30 [reviewer] · run rev-20261016-475-final · 2026-10-16T20:58:34.879Z · commit a35e9d32e89eeef49e34d2ab7f0fe6536189c7d3
   - verified: rev-30 [reviewer] · run rev-20261016-475-dispatch-merge · 2026-10-16T21:01:14.294Z · commit f9c6975ae32c4f22b003e2fbd59703d1433a176e
+  - verified: rev-30 [reviewer] · run rev-20261016-475-dispatch-final · 2026-10-16T21:46:26.147Z · commit f9c6975ae32c4f22b003e2fbd59703d1433a176e
 
 ## Comments
 
@@ -384,3 +387,31 @@ Criteria: C3 verified.
 ### impl-475 · 2026-10-16T21:01:30.557Z
 
 Authorized dispatch conflict resolved at f9c6975a; source clear A-4201 / rev-20261016-475-dispatch-merge. Resolution/test inventory A-4200. Typecheck+test:shards exit0; matching-file local runs explicitly prohibited by Coordinatorf33640ca, replaced by fresh normal droplet run. Submitted 2ef8e9ab-4747-4bc5-b03e-1d51206db3f3 at exact reviewed unchanged head, queue1, topic-401 Reviewer+claimant. Prior green A-4194 is prior-head proof only. Waiting hub result.
+
+### impl-475 · 2026-10-16T21:46:18.454Z
+
+Fresh exact reviewed conflict-head f9c6975a is full hub+Neovim green in2ef8e9ab / A-4211:2406pass/0fail/8skip. Matching-file receipts confirmed: cover-quiet12,config-set8,suite-human9,suite-remote-budget18,roles-editor8; all12 own load gates5/5(60/60). Linuxc-8,2workers,suite2584.25s,peak10.38,cost$0.1848. No head/source change; Reviewer asked to refresh final evidence/C1-C2 at current head. No local matching-file execution per f33640ca; remote gate supplies inventory proof. Local-live-hub rollout remains Coordinator post-merge obligation per a2c472aa, not merge blocker.
+
+### rev-30 · 2026-10-16T21:46:26.147Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-475-dispatch-final
+commit: f9c6975ae32c4f22b003e2fbd59703d1433a176e
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-475 dispatch-conflict merged-head final evidence clear at f9c6975ae32c4f22b003e2fbd59703d1433a176e. Standards and Spec axes: no findings.
+
+Independently audited complete A-4211 / 2ef8e9ab-4747-4bc5-b03e-1d51206db3f3. Branch/head match A-4201 source review; full mode exits 0: 2414 tests, 2406 pass, zero fail, eight prerequisite/platform skips. Hub free 41/41, machine 1975 pass/zero fail/five skips, full Neovim 390 pass/zero fail/three skips. No hard duration-budget or load-gate failure; unrelated quarantined case reports a pass.
+
+All matching files from the Coordinator-authorized dispatch-resolution inventory execute fully: cover-quiet 12, suite-human nine, suite-remote-budget eighteen, config-set eight, plus preserved roles-editor eight cases. Every cover-quiet identity passes ordinarily and 5/5 load repetitions (60/60), including actual integrated worker completion/admission/report at 5.272683732 s. Thus the resolved session CLI routing is now covered together with inherited worker/no-hub admission, human slot restrictions and incoming config/settings authorization. Coverage fixture and clause invariants have no failure. Prior A-4194 remains prior-head evidence, not the basis for this new-head runtime gate.
+
+C1/C2 exact-head runtime proof refreshed; C3 docs/Implementer source proof remains A-4201 and whole-suite role checks pass. All claimant done marks are present. Primary Coordinator a2c472aa still governs: local live-hub rollout receipt is a separate post-merge/restart Coordinator obligation, not an item criterion or merge blocker. No local receipt or refusal bypass is claimed.
+
+Linux c-8 lon1, Node 24.21.0/Neovim 0.12.5, two workers; suite 2584.25 s, peak 10.38, lifetime 2661 s, $0.1848. C1–C3 verified at this exact head. No per-item QA or further task run required.
+Review artifact A-4213.
+
+Criteria: C1 verified, C2 verified, C3 verified.

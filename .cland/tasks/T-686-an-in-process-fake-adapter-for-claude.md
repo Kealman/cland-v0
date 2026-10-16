@@ -3,7 +3,7 @@ id: T-686
 kind: task
 title: An in-process fake adapter for Claude Code, Codex and OpenCode that a projectHub test drives directly
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - v0.1.4
@@ -12,10 +12,10 @@ labels:
 assignee: null
 parent: E-676
 blocked_by: []
-topic: null
-branch: null
+topic: topic-411
+branch: t/T-686-an-in-process-fake-adapter-for-claude
 created: 2026-10-16T19:59:28.448Z
-updated: 2026-10-16T20:00:51.765Z
+updated: 2026-10-16T21:49:09.692Z
 ---
 
 ## Summary
@@ -36,3 +36,9 @@ updated: 2026-10-16T20:00:51.765Z
 - [ ] C3. Scripted accept, reject and uncertain injects reach the delivery states `injected`, `delivered` and `uncertain` as the real adapters' do, proved by the new test.
 - [ ] C4. `session-brief.test.ts` and `roles-session-refresh.test.ts` use the shared fake, with an audit showing their test declarations and assertion meanings unchanged.
 - [ ] C5. `docs/agents/tests.md` names the in-process fake adapter as the default for hub rules and the fake binaries as reserved for contract and scenario files.
+
+## Comments
+
+### impl-686 · 2026-10-16T21:49:09.692Z
+
+Shared fake and adapter-factory wiring implemented. Three-flavour projectHub lifecycle/delivery component proof passes (~0.15s test time); capability/clock/confirmation unit proof passes. session-brief (8 declarations) and roles-session-refresh (2 declarations) pass after replacing inline adapter objects. Preparing current-dev merge, census and review artifact.
