@@ -29,7 +29,7 @@ import { systemProcesses } from '../system-processes.ts';
 import { LaunchFiles, LaunchRecoveryPending } from './launch-files.ts';
 import type { Tracker } from '../tracker/tracker.ts';
 import type { ProjectConfig } from '../init/config.ts';
-import { namedAccount, readAccounts, selectAccount, type AccountSelection } from '../accounts/registry.ts';
+import { namedAccount, openCodeDatabase, readAccounts, selectAccount, type AccountSelection } from '../accounts/registry.ts';
 import { durationMs } from '../duration.ts';
 
 /** A signal posted from inside a session (`cland hook <event>`). */
@@ -930,7 +930,7 @@ export class Sessions {
         if (reservation) this.#core.launchSettled(request.name);
         this.#lastAt.delete(p.sessionId);
         this.#lastPush.delete(p.sessionId);
-        this.#log({ event: 'session-launched', account: p.account ?? null, session: p.name, harness: p.harness, pid: p.pid, harnessId: p.harnessId, sessionId: p.sessionId, harnessSessionId: p.harnessSessionId, model: p.model, effort, role: p.role, cwd: p.cwd, ...(p.item ? { item: p.item } : {}), early: this.#launching.get(p.name)?.length ?? 0 });
+        this.#log({ event: 'session-launched', account: p.account ?? null, ...(p.harness === 'opencode' && p.accountEnv ? { database: openCodeDatabase(p.accountEnv) } : {}), session: p.name, harness: p.harness, pid: p.pid, harnessId: p.harnessId, sessionId: p.sessionId, harnessSessionId: p.harnessSessionId, model: p.model, effort, role: p.role, cwd: p.cwd, ...(p.item ? { item: p.item } : {}), early: this.#launching.get(p.name)?.length ?? 0 });
         adapter.watch(p);
         const hit = this.#earlyLimitHits.get(p.sessionId);
         this.#earlyLimitHits.delete(p.sessionId);
@@ -1172,7 +1172,7 @@ export class Sessions {
       const current = row();
       const process: HarnessProcess = { ...found.process, name: current.name, role: current.role, item: current.item ?? null, launchBrief: current.launchBrief ?? null, effort: current.effort ?? null, pidStarted, stoppedAt: null, archivedAt: null, archivedBy: null };
       this.#table.put(process);
-      this.#log({ event: 'session-launched', account: process.account ?? null, session: process.name, sessionId: process.sessionId, harness: process.harness, harnessSessionId: process.harnessSessionId, harnessId: process.harnessId, pid: process.pid, model: process.model, effort: process.effort ?? null, role: process.role, cwd: process.cwd, ...(process.item ? { item: process.item } : {}), resumed: true });
+      this.#log({ event: 'session-launched', account: process.account ?? null, ...(process.harness === 'opencode' && process.accountEnv ? { database: openCodeDatabase(process.accountEnv) } : {}), session: process.name, sessionId: process.sessionId, harness: process.harness, harnessSessionId: process.harnessSessionId, harnessId: process.harnessId, pid: process.pid, model: process.model, effort: process.effort ?? null, role: process.role, cwd: process.cwd, ...(process.item ? { item: process.item } : {}), resumed: true });
       if (current.archivedAt) this.#log({ event: 'session-unarchived', session: process.name, sessionId: process.sessionId, by: current.archivedBy, reason: 'resume' });
       adapter.watch(process);
       this.#core.publishProcess(this.view(process));

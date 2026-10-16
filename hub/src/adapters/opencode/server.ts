@@ -10,9 +10,9 @@ import type { Resumed } from '../../hub/worktrees.ts';
 import { continueWith, wait, untimed } from '../continuations.ts';
 import { spawn } from 'node:child_process';
 import { randomBytes, randomUUID } from 'node:crypto';
-import { chmod, link, open, readFile, rm, writeFile } from 'node:fs/promises';
+import { chmod, link, mkdir, open, readFile, rm, writeFile } from 'node:fs/promises';
 import { LaunchFiles } from '../launch-files.ts';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 
 export type ServerFiles = { dir: string; config: string; password: string; log: string };
 
@@ -96,6 +96,8 @@ export async function startServer(options: { bin: string; cwd: string; env: Node
     url: string;
   }, unknown> {
     const { files, resumed = untimed } = options;
+    // The shared database outlives a launch transaction and is never rolled back with its session files.
+    if (options.env.OPENCODE_DB) yield* wait(mkdir(dirname(options.env.OPENCODE_DB), { recursive: true, mode: 0o700 }));
     const start = (yield* wait(readFile(files.log, 'utf8').catch(err => { if (err.code === 'ENOENT')
       return ''; throw err; }))).length;
     const out = yield* wait(open(files.log, 'a'));

@@ -135,6 +135,7 @@ test('OpenCode data_home and db reach serve and attach; another harness ignores 
     assert.equal(p.harness, 'opencode');
     assert.equal(p.account, account);
     assert.equal((await f.servers('opencode')).find(s => s.pid === p.pid)?.env[variable!], path);
+    if (variable === 'OPENCODE_DB') assert.equal((await f.servers('opencode')).find(s => s.pid === p.pid)?.env.XDG_DATA_HOME, undefined);
     assert.ok(p.attach?.includes(`${variable}='${path}'`));
   }
   const p = await f.launch('other-harness', { role: 'reviewer', harness: 'opencode' });
@@ -257,6 +258,27 @@ test('an OpenCode data account overrides an inherited database selection', async
   assert.equal(server.env.XDG_DATA_HOME, join(f.root, 'oc-data'));
   assert.equal(server.env.OPENCODE_DB, undefined);
   assert.ok(p.attach?.includes('env -u OPENCODE_DB'));
+});
+
+for (const xdg of [true, false]) test(`unassigned OpenCode launches retain the per-user database across restart (${xdg ? 'XDG data' : 'HOME fallback'})`, async t => {
+  const f = await fixture(t, '', false, root => ({ OPENCODE_DB: join(root, 'inherited.db'), ...(!xdg ? { HOME: root, XDG_DATA_HOME: '' } : {}) }), startDaemon);
+  const p = await f.launch('isolated', { harness: 'opencode' });
+  const database = join(f.root, ...(xdg ? ['oc-data'] : ['.local', 'share']), 'cland', 'opencode', 'opencode.db');
+  const server = (await f.servers('opencode')).find(s => s.pid === p.pid)!;
+  assert.deepEqual(server.env, { OPENCODE_DB: database });
+  assert.ok(p.attach?.includes(`OPENCODE_DB='${database}'`));
+  assert.equal(p.account, null);
+  await f.ui.request({ type: 'hub.status', flushLogs: true });
+  const journal = (await readFile(join(f.root, '.cland', 'journal.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line));
+  assert.equal(journal.find(r => r.event === 'session-launched' && r.sessionId === p.sessionId)?.database, database);
+  assert.equal((await cland(f.root, 'hub', 'stop')).code, 0);
+  const { discovery } = await startDaemon(t, f.root, { ...f.env, XDG_DATA_HOME: join(f.root, 'changed-data') });
+  const ui = await connectUi(t, discovery);
+  const resumed = await ui.request({ type: 'session.resume', session: p.name, relaunch: true }, 30000);
+  assert.equal(resumed.ok, true, resumed.error);
+  const after = (resumed.value as { process: HarnessProcessView }).process;
+  assert.equal(after.harnessSessionId, p.harnessSessionId);
+  assert.deepEqual((await f.servers('opencode')).find(s => s.pid === after.pid)?.env, { OPENCODE_DB: database });
 });
 
 test('relative XDG_CONFIG_HOME falls back inside a scratch HOME; a missing registry lists no accounts', async t => {

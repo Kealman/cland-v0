@@ -684,7 +684,7 @@ uses the harness default. The role's account applies only to its configured
 harness. `cland session launch rev-x --role reviewer --account codex-b`
 overrides the role's account and chooses the account's harness unless
 `--harness` was given. An explicit conflicting harness is refused.
-With no effective account, launches use the hub's existing environment.
+With no effective account, Claude Code and Codex use the hub's existing environment; OpenCode uses cland's separate per-user database (below).
 Both registry and role edits apply to the next launch without a restart.
 
 ### Processes and the saved environment
@@ -696,7 +696,7 @@ and its idle limit polls use the selected account's environment:
 | --- | --- |
 | Claude Code | `config_dir` → `CLAUDE_CONFIG_DIR`, for launch, relaunch (`--bg --resume`), `stop`, `agents --json` and named-account attach. Each directory owns its background supervisor, login, project trust and MCP state. |
 | Codex | `home` → `CODEX_HOME`, for the app-server, version probe and attach. |
-| OpenCode | `data_home` → `XDG_DATA_HOME`, or `db` → `OPENCODE_DB`, for the server and attach. A `data_home` selection removes an inherited `OPENCODE_DB`, which otherwise wins. |
+| OpenCode | `data_home` → `XDG_DATA_HOME`, or `db` → `OPENCODE_DB`, for the server and attach. The server drops inherited `OPENCODE_DB` and `XDG_DATA_HOME` before applying the saved selection. With no account, `OPENCODE_DB` points to cland's separate per-user database (below). |
 
 Named Claude accounts remove `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN` and
 `CLAUDE_CODE_OAUTH_TOKEN`; default sessions retain the hub's environment.
@@ -713,7 +713,7 @@ records include the account.
 An unknown name refuses the launch and lists known names. A malformed registry
 refuses named launches; unpinned launches still work. A missing directory refuses
 with its path and sign-in command (`CODEX_HOME=<dir> codex login`,
-`XDG_DATA_HOME=<dir> opencode auth login`, or `CLAUDE_CONFIG_DIR=<dir> claude auth login`).
+`OPENCODE_DB=<dir>/opencode/opencode.db opencode auth login --standalone`, or `CLAUDE_CONFIG_DIR=<dir> claude auth login`).
 For `db`, its parent directory must exist. Trust a new Claude directory once by
 running `CLAUDE_CONFIG_DIR=<dir> claude` in the project. Failed launches name the
 account, directory and remedy and are never retried automatically.
@@ -1007,7 +1007,7 @@ Sync returns `{main, dev}`. A territory failure after the local refs move return
 | `claude-code`, `codex`, `opencode` | The executable (the adapter's `CLAND_CLAUDE_BIN`, `CLAND_CODEX_BIN`, `CLAND_OPENCODE_BIN`, else `claude`, `codex`, `opencode` on the PATH) answers `--version` within the tested range: Claude Code `>=2.1.294 <2.2.0`, Codex `>=0.160.0 <0.161.0`, OpenCode `>=2.0.24 <2.1.0` (`src/doctor/ranges.ts`, the one place to widen after re-verifying an adapter). | Missing: `fail`, install it or set the variable. Outside the range: `warn` (older: upgrade; newer: it may work). |
 | `claude-code auth` | `claude auth status --json` says `"loggedIn": true`. | `fail`, `claude auth login`. |
 | `codex auth` | `codex login status` exits 0 (`Logged in using …`). | `fail`, `codex login`. |
-| `opencode auth` | `opencode auth list --standalone --format json` lists a provider with credentials (`--standalone`: a private server for the call, the background service is not started). | None: `warn` (the free models still work), `opencode auth login`; the command failing: `warn: cannot check`. |
+| `opencode auth` | `opencode auth list --standalone --format json` lists a provider with credentials (`--standalone`: a private server for the call, the background service is not started). | None: `warn` (the free default needs no login), a database-specific `opencode auth login --standalone`; the command failing: `warn: cannot check`. |
 | `gh`, `gh auth` | `gh --version`; `gh auth status` exits 0. | `fail`: install gh, `gh auth login`. |
 | `neovim` | `CLAND_NVIM`, else the pinned build in the launcher's cache (`nvim/bin/nvim-path.ts`), prints `NVIM <nvim/NVIM_VERSION>`. | Not downloaded: `fail`, run `cland open` (its launcher downloads and verifies it). `CLAND_NVIM` at another version: `warn`. |
 | `project` | Only when `.cland/` is missing: then the project checks below are this one `fail`, `cland init`. | |
@@ -1205,6 +1205,14 @@ See [Accounts and limits](#accounts-and-limits) for the registry, process enviro
 
 `src/adapters/opencode.ts`, with `opencode/client.ts` (the HTTP API and the event stream), `opencode/state.ts` (events to states) and `opencode/server.ts` (the session's server and its files). Launched with `"harness": "opencode"`.
 
+Without an account, each server uses `OPENCODE_DB=$XDG_DATA_HOME/cland/opencode/opencode.db`, or `~/.local/share/cland/opencode/opencode.db` when no absolute `XDG_DATA_HOME` is set. This database is shared by the user's cland projects and separate from OpenCode's background service: the service's boot sweep cannot resume a cland session. A registry account keeps its `data_home` (`<data_home>/opencode/opencode.db`) or explicit `db`. An account pointing at the user's default database shares the sweep hazard; `cland doctor` warns about it.
+
+The process table saves the selected database environment, and each OpenCode `session-launched` journal record names its `database`. Resume, relaunch and pool handoff retain that selection after environment or registry changes. The server removes inherited `OPENCODE_DB` and `XDG_DATA_HOME` before applying it.
+
+No login is needed for the free default `opencode/big-pickle` (confirmed on 2.0.24 with a fresh database and no credentials). Paid providers need credentials in cland's database. `cland doctor` names the database and prints its exact `OPENCODE_DB=… opencode auth login --standalone` line. Copy that line to apply the same absolute-XDG/HOME fallback as launch, including when `XDG_DATA_HOME` is relative.
+
+For an account, set `OPENCODE_DB` to that account's database instead. `--standalone` keeps the login from starting OpenCode's background service. A login in the user's default OpenCode database is separate. Existing sessions launched on that default database stay there until relaunched fresh (`cland session resume <name> --fresh`); reattaching does not migrate them. Stop or fresh-launch those sessions before relying on the isolation from the background service.
+
 The adapter follows OpenCode 2.x. Doctor passes versions in `src/doctor/ranges.ts`, warns for a newer 2.x as newer than tested, directs 1.x to `opencode upgrade --major`, and refuses compatibility with another major while naming the tested range. A missing binary points to the [v2 installer](https://opencode.ai/v2/install). Before each cland release's dry run, `npm run check:opencode` compares the newest stable 2.x tag's ten wire operations and the adapter's event names with the tested tag, downloads and integrity-checks that exact version's platform binary, and runs authenticated HTTP/SSE and a completed turn against a loopback fake provider. HOME, XDG directories and OPENCODE_DB all live in scratch space; no login or real model is used. Only a successful check and server cleanup advance the exclusive range bound to the next patch. Failures retain the bound and file a `bug` in the tracker's Bugs category; a filing failure also blocks release. This opt-in network check is never part of `npm test`. The shipped release skill includes the preflight for cland's own releases.
 
 Without an explicit model, launch polls `GET /api/model` every 200 ms: a cold catalog can list another provider before OpenCode Zen arrives. An eligible model from the known-good list (`opencode/big-pickle`) ends the wait immediately. Otherwise, a nonempty catalog must stay unchanged for 1 s before the usual free-model preference applies. The catalog wait has a 10 s budget, including HTTP requests and polling sleeps; at that deadline it uses the latest successful catalog's free choice, or the server's default when none qualifies. Empty catalogs and failed requests are retried within that budget. An explicit model or a restored session skips this wait.
@@ -1227,7 +1235,7 @@ Without an explicit model, launch polls `GET /api/model` every 200 ms: a cold ca
 | busy, idle | reliable: the server reports a turn's start and end |
 | waiting for approval, waiting for human | heuristic: the server has no waiting status, so they are derived from a pending `permission.asked` or `form.created` |
 
-`CLAND_OPENCODE_BIN` names the `opencode` executable. The server's environment drops `CLAND_*`, `OPENCODE_CONFIG`, `OPENCODE_CONFIG_CONTENT` and `OPENCODE_PASSWORD` from the hub's own. The user's global OpenCode config still applies, merged with the generated one.
+`CLAND_OPENCODE_BIN` names the `opencode` executable. The server's environment drops `CLAND_*`, `OPENCODE_CONFIG`, `OPENCODE_CONFIG_CONTENT`, `OPENCODE_PASSWORD`, `OPENCODE_DB` and `XDG_DATA_HOME` from the hub's own. The user's global OpenCode config still applies, merged with the generated one.
 
 ### The Codex adapter
 

@@ -11,6 +11,9 @@
 import { findNvim, NVIM_VERSION } from '../../../nvim/bin/nvim-path.ts';
 import { fail, firstLine, ok, run, warn, which, type Check } from './report.ts';
 import { compareVersions, formatRange, formatVersion, inRange, parseVersion, TESTED_RANGES, type HarnessId, type Version } from './ranges.ts';
+import { accountEnvironment, accountLocation, clandOpenCodeDatabase, openCodeDatabase, openCodeLogin, readAccounts } from '../accounts/registry.ts';
+import { realpath } from 'node:fs/promises';
+import { basename, dirname, join, resolve } from 'node:path';
 
 type Harness = {
   id: HarnessId;
@@ -107,7 +110,9 @@ async function checkHarness(h: Harness, env: NodeJS.ProcessEnv): Promise<Check[]
     return [fail(h.id, `not installed: ${where}`, fix), fail(authName(h.id), 'not checked: not installed', `install ${h.bin} first`)];
   }
   const out: Check[] = [];
-  const v = await run(bin, ['--version'], env);
+  const database = clandOpenCodeDatabase(env);
+  const probeEnv = h.id === 'opencode' ? accountEnvironment(env, { OPENCODE_DB: database }) : env;
+  const v = await run(bin, ['--version'], probeEnv);
   const version = v.error === undefined && v.code === 0 ? parseVersion(v.stdout || v.stderr) : null;
   if (v.error !== undefined || v.code !== 0) out.push(fail(h.id, `${bin} --version failed: ${v.error ?? (firstLine(v.stderr) || `exit ${v.code}`)}`, `reinstall ${h.bin}`));
   else if (!version) out.push(warn(h.id, `${bin}: cannot read a version from "${firstLine(v.stdout)}"; cland is tested with ${formatRange(range)}`, `check ${h.bin} --version by hand`));
@@ -119,9 +124,42 @@ async function checkHarness(h: Harness, env: NodeJS.ProcessEnv): Promise<Check[]
     const newer = version[0] > range.below[0] || (version[0] === range.below[0] && version[1] >= range.below[1]);
     out.push(warn(h.id, `${formatVersion(version)} at ${bin}, outside the tested range ${formatRange(range)}`, newer ? `it may work; if a session misbehaves, install ${formatVersion(range.min)} or report it` : `upgrade ${h.bin} to ${formatVersion(range.min)} or later`));
   } else out.push(ok(h.id, `${formatVersion(version)} at ${bin} (tested ${formatRange(range)})`));
-  const a = await run(bin, h.auth.args, env);
+  const a = await run(bin, h.auth.args, probeEnv);
   if (a.error !== undefined) out.push(warn(authName(h.id), `cannot check: ${h.bin} ${h.auth.args.join(' ')}: ${a.error}`, `run ${h.bin} ${h.auth.args.join(' ')} by hand`));
-  else out.push(h.auth.read(a));
+  else {
+    const check = h.auth.read(a);
+    if (h.id === 'opencode' && check.fix) check.fix = openCodeLogin(database);
+    out.push(check);
+  }
+  return out;
+}
+
+/** Database paths are shared with launch selection; credentials are never inspected here. */
+async function checkOpenCodeDatabases(env: NodeJS.ProcessEnv): Promise<Check[]> {
+  const database = clandOpenCodeDatabase(env);
+  const out = [ok('opencode database', `${database}; no login needed for the free default opencode/big-pickle (fresh database tested on 2.0.24); paid providers need the standalone login into cland's database: ${openCodeLogin(database)}`)];
+  const registry = await readAccounts(env);
+  if (registry.error) return [...out, warn('opencode databases', registry.error, `repair ${registry.registry}`)];
+  // Canonicalise existing parents as well, so a symlinked account still warns before its database exists.
+  const canonical = async (path: string): Promise<string> => {
+    try { return await realpath(path); }
+    catch {
+      const absolute = resolve(path);
+      const parent = dirname(absolute);
+      if (parent === absolute) return absolute;
+      return join(await canonical(parent), basename(absolute));
+    }
+  };
+  const defaults = await Promise.all([openCodeDatabase({ ...env, OPENCODE_DB: '' }), openCodeDatabase(env)].map(canonical));
+  for (const account of registry.accounts.filter(a => a.harness === 'opencode')) {
+    const { variable, path } = accountLocation(account, env);
+    const selected = openCodeDatabase({ HOME: env.HOME, [variable]: path });
+    const name = `opencode database ${account.name}`;
+    const detail = `${selected}; login: ${openCodeLogin(selected)}`;
+    out.push(defaults.includes(await canonical(selected))
+      ? warn(name, `${detail}; OpenCode's background service can resume this account's running sessions`, 'choose a separate data_home or db in the accounts registry')
+      : ok(name, detail));
+  }
   return out;
 }
 
@@ -161,6 +199,6 @@ async function checkNvim(env: NodeJS.ProcessEnv): Promise<Check> {
 
 /** Every toolchain check, run concurrently, reported in a fixed order. */
 export async function checkToolchain(env: NodeJS.ProcessEnv): Promise<Check[]> {
-  const parts = await Promise.all([...HARNESSES.map((h) => checkHarness(h, env)), checkGh(env), checkNvim(env).then((c) => [c])]);
+  const parts = await Promise.all([...HARNESSES.map((h) => checkHarness(h, env)), checkGh(env), checkNvim(env).then((c) => [c]), checkOpenCodeDatabases(env)]);
   return parts.flat();
 }

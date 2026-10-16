@@ -18,7 +18,7 @@
 //   resume   the pid alive and the server answering for the recorded session; else, with `relaunch`, a new server
 //            on the same config and password, and the same session (OpenCode keeps sessions in its own database;
 //            a session it lost is created again under its id).
-import { accountEnvironment, accountPrefix } from '../accounts/registry.ts';
+import { accountEnvironment, accountPrefix, clandOpenCodeDatabase, openCodeDatabase } from '../accounts/registry.ts';
 import { continueWith, wait, untimed } from './continuations.ts';
 import type { Resumed } from '../hub/worktrees.ts';
 import { randomUUID } from 'node:crypto';
@@ -118,7 +118,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
     this.#spawnDeadlineMs = options.spawnDeadlineMs ?? 30_000;
     const env: NodeJS.ProcessEnv = {};
     // cland's own variables stay out, and so does a password or config meant for another OpenCode server
-    for (const [k, v] of Object.entries(options.env ?? process.env)) if (!k.startsWith('CLAND_') && !['OPENCODE_CONFIG', 'OPENCODE_CONFIG_CONTENT', 'OPENCODE_PASSWORD'].includes(k)) env[k] = v;
+    for (const [k, v] of Object.entries(options.env ?? process.env)) if (!k.startsWith('CLAND_') && !['OPENCODE_CONFIG', 'OPENCODE_CONFIG_CONTENT', 'OPENCODE_PASSWORD', 'OPENCODE_DB', 'XDG_DATA_HOME'].includes(k)) env[k] = v;
     this.#env = env;
     this.#clandDir = dirname(host.discoveryFile);
   }
@@ -146,6 +146,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
   async #launch(p: Pick<HarnessProcess, 'name' | 'role' | 'model' | 'cwd' | 'sessionId' | 'harnessSessionId' | 'account' | 'accountEnv'>, relaunch: boolean, resumed: Resumed = untimed, launchToken?: string, authorize: () => void = () => {}, retainConversation = false): Promise<HarnessProcess> {
     return continueWith((function* (this: OpenCodeAdapter): Generator<Promise<unknown>, HarnessProcess, unknown> {
       this.#recoveries.assertAvailable(p.name, p.sessionId);
+      p = { ...p, accountEnv: p.accountEnv ?? { OPENCODE_DB: clandOpenCodeDatabase(this.#processEnv) } };
       const files = this.#files(p.name);
       const transaction = new LaunchFiles(resumed);
       let pid: number | undefined;
@@ -181,7 +182,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
           session = yield* wait(client.createSession({ ...(p.harnessSessionId ? { id: p.harnessSessionId } : {}), title: p.name, model, directory: p.cwd }));
         }
         const chosen = session.model ? formatModel(session.model) : model ? formatModel(model) : p.model;
-        this.#host.log({ event: 'harness-launched', harness: this.harness, session: p.name, url, pid, harnessSessionId: session.id, model: chosen, relaunch });
+        this.#host.log({ event: 'harness-launched', harness: this.harness, session: p.name, url, pid, harnessSessionId: session.id, model: chosen, database: openCodeDatabase(p.accountEnv ?? {}), relaunch });
         transaction.commit();
         return { ...p, harness: this.harness, model: chosen ?? null, pid, harnessId: url, harnessSessionId: session.id, startedAt: new Date().toISOString(), status: 'running' };
       } catch (err) {

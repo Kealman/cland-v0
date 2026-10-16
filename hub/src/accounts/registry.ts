@@ -16,6 +16,13 @@ const record = (v: unknown): v is Record<string, unknown> => typeof v === 'objec
 const home = (env: NodeJS.ProcessEnv) => env.HOME ?? homedir();
 const expand = (path: string, env: NodeJS.ProcessEnv) => path === '~' ? home(env) : path.startsWith('~/') ? join(home(env), path.slice(2)) : path;
 
+const dataHome = (env: NodeJS.ProcessEnv) => env.XDG_DATA_HOME && isAbsolute(env.XDG_DATA_HOME) ? env.XDG_DATA_HOME : join(home(env), '.local', 'share');
+/** The user's OpenCode database, including an explicit account selection. */
+export const openCodeDatabase = (env: NodeJS.ProcessEnv) => env.OPENCODE_DB || join(dataHome(env), 'opencode', 'opencode.db');
+/** Shared by this user's cland projects, separate from OpenCode's managed service. */
+export const clandOpenCodeDatabase = (env: NodeJS.ProcessEnv) => join(dataHome(env), 'cland', 'opencode', 'opencode.db');
+export const openCodeLogin = (database: string) => `OPENCODE_DB=${shellQuote(database)} opencode auth login --standalone`;
+
 export async function readAccounts(env: NodeJS.ProcessEnv = process.env): Promise<Accounts> {
   const config = env.XDG_CONFIG_HOME;
   const registry = join(config && isAbsolute(config) ? config : join(home(env), '.config'), 'cland', 'accounts.toml');
@@ -68,15 +75,22 @@ export function namedAccount(registry: Accounts, name: string): Account {
   return account;
 }
 
+/** Resolve paths without inspecting account contents, also used by doctor for its database warnings. */
+export function accountLocation(account: Account, env: NodeJS.ProcessEnv): { variable: string; path: string } {
+  const harness = account.harness;
+  const variable = account.path === null && harness === 'opencode' && env.OPENCODE_DB ? 'OPENCODE_DB' : account.variable;
+  const path = account.path ?? env[variable] ?? (harness === 'codex' ? join(home(env), '.codex') : harness === 'claude-code' ? join(home(env), '.claude') : dataHome(env));
+  return { variable, path };
+}
+
 /** Freeze the directory selected by the hub's environment, including a named harness default. */
 export async function selectAccount(account: Account, harness: string, env: NodeJS.ProcessEnv = process.env): Promise<AccountSelection> {
   if (account.harness !== harness) throw new Error(`account "${account.name}" uses ${account.harness}, but launch harness is ${harness}`);
-  const variable = account.path === null && harness === 'opencode' && env.OPENCODE_DB ? 'OPENCODE_DB' : account.variable;
-  const path = account.path ?? env[variable] ?? (harness === 'codex' ? join(home(env), '.codex') : harness === 'claude-code' ? join(home(env), '.claude') : join(home(env), '.local', 'share'));
+  const { variable, path } = accountLocation(account, env);
   const directory = variable === 'OPENCODE_DB' ? dirname(path) : path;
   if (!(await stat(directory).catch(() => null))?.isDirectory()) {
-    const login = harness === 'codex' ? 'codex login' : harness === 'claude-code' ? 'claude auth login' : 'opencode auth login';
-    throw new Error(`account "${account.name}": directory "${directory}" does not exist; sign in with ${variable}=${shellQuote(path)} ${login}`);
+    const login = harness === 'opencode' ? openCodeLogin(openCodeDatabase({ [variable]: path, HOME: home(env) })) : `${variable}=${shellQuote(path)} ${harness === 'codex' ? 'codex login' : 'claude auth login'}`;
+    throw new Error(`account "${account.name}": directory "${directory}" does not exist; sign in with ${login}`);
   }
   return { account: account.name, accountEnv: { [variable]: path } };
 }
@@ -86,8 +100,9 @@ export function accountEnvironment(base: NodeJS.ProcessEnv, overlay: Record<stri
   const env = { ...base, ...overlay };
   // OPENCODE_DB overrides XDG_DATA_HOME in OpenCode. A data account must not inherit another database.
   if (overlay?.XDG_DATA_HOME !== undefined) delete env.OPENCODE_DB;
+  if (overlay?.OPENCODE_DB !== undefined) delete env.XDG_DATA_HOME;
   return env;
 }
 export function accountPrefix(env: Record<string, string> | null | undefined): string {
-  return env ? Object.entries(env).map(([key, value]) => `${key}=${shellQuote(value)} `).join('') + (env.XDG_DATA_HOME !== undefined ? 'env -u OPENCODE_DB ' : '') : '';
+  return env ? Object.entries(env).map(([key, value]) => `${key}=${shellQuote(value)} `).join('') + (env.XDG_DATA_HOME !== undefined ? 'env -u OPENCODE_DB ' : env.OPENCODE_DB !== undefined ? 'env -u XDG_DATA_HOME ' : '') : '';
 }

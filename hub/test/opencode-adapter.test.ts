@@ -51,6 +51,7 @@ async function fakeOpenCode(t: TestContext, timings: { pollMs?: number; injectTi
   const env = {
     PATH: `${FAKE_OPENCODE_DIR}:${process.env.PATH ?? ''}`,
     FAKE_OPENCODE_HOME: home,
+    XDG_DATA_HOME: join(home, 'data'),
     FAKE_OPENCODE_TURN_MS: String(timings.turnMs ?? 30),
     CLAND_ADAPTER_POLL_MS: String(timings.pollMs ?? 50),
     CLAND_INJECT_TIMEOUT_MS: String(timings.injectTimeoutMs ?? 5000),
@@ -169,7 +170,7 @@ test('a launched OpenCode session: its own server, the spoke connects, a UI mess
   // the server open an instance there, whose MCP servers start a second spoke for the session (T-42's run).
   const attach = (await ui.request({ type: 'session.attach', session: 'impl' })).value as { command: string };
   assert.equal(attach.command, launched.attach);
-  assert.equal(attach.command, `OPENCODE_PASSWORD="$(cat '${join(root, '.cland', 'opencode', 'impl', 'password')}')" opencode --server ${launched.harnessId} --session ${launched.harnessSessionId} '${root}'`);
+  assert.equal(attach.command, `OPENCODE_DB='${join(fake.home, 'data', 'cland', 'opencode', 'opencode.db')}' env -u XDG_DATA_HOME OPENCODE_PASSWORD="$(cat '${join(root, '.cland', 'opencode', 'impl', 'password')}')" opencode --server ${launched.harnessId} --session ${launched.harnessSessionId} '${root}'`);
   const tuiOut = await new Promise<string>((resolve) => execFile('sh', ['-c', attach.command], { cwd: tmpdir(), env: { ...process.env, ...fake.env } }, (_e, stdout, stderr) => resolve(stdout + stderr)));
   assert.equal(tuiOut, `fake opencode TUI on ${launched.harnessId} session ${launched.harnessSessionId} (impl) in ${root}\n`);
 

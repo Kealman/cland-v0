@@ -39,6 +39,7 @@ async function toolchain(t: TestContext): Promise<{ env: Record<string, string>;
     PATH: path(),
     HOME: join(dir, 'home'),
     XDG_CONFIG_HOME: join(dir, 'config'),
+    XDG_DATA_HOME: '',
     CLAND_NVIM: nvim,
     FAKE_CLAUDE_HOME: join(dir, 'claude-home'),
     FAKE_CODEX_HOME: join(dir, 'codex-home'),
@@ -97,7 +98,7 @@ test('a healthy project on a healthy machine: every check ok, plain text, exit 0
     assert.doesNotMatch(r.stdout, /\x1b\[/);
     const lines = r.stdout.trimEnd().split('\n');
     assert.match(lines[0] ?? '', /^cland doctor \S+ in /);
-    assert.match(lines.at(-1) ?? '', /^21 ok, 0 warn, 0 fail$/);
+    assert.match(lines.at(-1) ?? '', /^22 ok, 0 warn, 0 fail$/);
     for (const line of lines.slice(1, -1)) assert.match(line, /^ok {4}\S/);
   });
 
@@ -212,7 +213,7 @@ test('a healthy project on a healthy machine: every check ok, plain text, exit 0
       [
         ['claude-code auth', 'fail', 'claude auth login'],
         ['codex auth', 'fail', 'codex login'],
-        ['opencode auth', 'warn', 'opencode auth login'],
+        ['opencode auth', 'warn', `OPENCODE_DB='${join(tools.env.HOME!, '.local', 'share', 'cland', 'opencode', 'opencode.db')}' opencode auth login --standalone`],
         ['gh auth', 'fail', 'gh auth login'],
       ],
     );
@@ -423,4 +424,29 @@ test('a skill entry in the project\'s own .claude/skills/ is ok only as a folder
   c = check((await report(root, tools.env)).report, 'skills');
   assert.equal(c.verdict, 'fail', 'a link to a folder without SKILL.md');
   assert.match(c.detail, /grill-me/);
+});
+
+test('doctor names isolated OpenCode databases and standalone login, and warns about default-database accounts', async t => {
+  const tools = await toolchain(t);
+  const root = await initialised(t, tools.env);
+  const data = join(root, 'data');
+  const config = join(root, 'config');
+  await mkdir(join(config, 'cland'), { recursive: true });
+  await mkdir(data, { recursive: true });
+  await writeFile(join(config, 'cland', 'accounts.toml'), `[accounts.shared]\nharness = "opencode"\ndata_home = ${JSON.stringify(data)}\n[accounts.private]\nharness = "opencode"\ndb = ${JSON.stringify(join(data, 'private.db'))}\n`);
+  const { report: r } = await report(root, { ...tools.env, XDG_CONFIG_HOME: config, XDG_DATA_HOME: data, OPENCODE_DB: join(root, 'ignored.db') });
+  const own = check(r, 'opencode database');
+  assert.equal(own.verdict, 'ok');
+  assert.ok(own.detail.includes(join(data, 'cland', 'opencode', 'opencode.db')));
+  assert.match(own.detail, /OPENCODE_DB=.*opencode auth login --standalone/);
+  assert.match(own.detail, /no login needed for the free default/i);
+  const probes = (await readFile(join(tools.env.FAKE_OPENCODE_HOME!, 'auth-probes.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line));
+  assert.deepEqual(probes.at(-1), { args: ['auth', 'list', '--standalone', '--format', 'json'], database: join(data, 'cland', 'opencode', 'opencode.db') });
+  const shared = check(r, 'opencode database shared');
+  assert.equal(shared.verdict, 'warn');
+  assert.match(shared.detail, /background service.*resume/);
+  assert.ok(shared.detail.includes(join(data, 'opencode', 'opencode.db')));
+  assert.equal(check(r, 'opencode database private').verdict, 'ok');
+  const fallback = await report(root, { ...tools.env, XDG_DATA_HOME: '' });
+  assert.ok(check(fallback.report, 'opencode database').detail.includes(join(tools.env.HOME!, '.local', 'share', 'cland', 'opencode', 'opencode.db')));
 });

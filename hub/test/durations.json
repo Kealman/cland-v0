@@ -3137,6 +3137,14 @@
       "seconds": 6.21033,
       "reason": "Launches and attaches real fake-harness processes to prove account environment isolation across harnesses."
     },
+    "hub/test/accounts.test.ts::unassigned OpenCode launches retain the per-user database across restart (HOME fallback)": {
+      "seconds": 7.26,
+      "reason": "Measured on Linux c-8 with four workers in A-3703. Starts two real hubs and a fake OpenCode server, then relaunches after a changed data home to prove the saved HOME-fallback database and native conversation survive restart; preserves every bounded lifecycle and database assertion."
+    },
+    "hub/test/accounts.test.ts::unassigned OpenCode launches retain the per-user database across restart (XDG data)": {
+      "seconds": 6.508,
+      "reason": "Measured on Linux c-8 with four workers in A-3703. Starts two real hubs and a fake OpenCode server, then relaunches under a changed XDG data home to prove the original database and native conversation are retained; preserves every bounded lifecycle and database assertion."
+    },
     "hub/test/ask-chain.test.ts::a question climbs an epic and release one level per forward, reaching each fake harness": {
       "seconds": 11.14942,
       "reason": "Delivers a question across multiple claimed hierarchy levels and fake harnesses over live hub/spoke connections."

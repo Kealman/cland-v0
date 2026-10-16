@@ -22,7 +22,7 @@ async function catalogAdapter(t: TestContext, catalog: () => ModelEntry[]) {
   syncBuiltinESMExports();
   t.mock.method(OpenCodeClient.prototype, 'models', async () => catalog());
   t.mock.method(OpenCodeClient.prototype, 'createSession', async () => ({ id: 'session-model' }));
-  const adapter = new OpenCodeAdapter({ root, discoveryFile: join(root, '.cland/hub.json'), node: process.execPath, cli: '', spoke: '', log: () => {}, signal: () => {}, recordPid: () => {}, exited: () => {} }, { bin: 'fake-harness' });
+  const adapter = new OpenCodeAdapter({ root, discoveryFile: join(root, '.cland/hub.json'), node: process.execPath, cli: '', spoke: '', log: () => {}, signal: () => {}, recordPid: () => {}, exited: () => {} }, { bin: 'fake-harness', env: { ...process.env, XDG_DATA_HOME: join(root, 'data') } });
   t.after(async () => {
     adapter.close();
     for (const child of children) if (child.exitCode === null && child.signalCode === null) { child.kill(); await once(child, 'exit'); }

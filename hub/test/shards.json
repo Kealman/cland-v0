@@ -77,6 +77,7 @@
     "hub/test/open.test.ts": "machine",
     "hub/test/opencode-adapter.test.ts": "machine",
     "hub/test/opencode-check.test.ts": "machine",
+    "hub/test/opencode-database.test.ts": "machine",
     "hub/test/orphan-servers.test.ts": "machine",
     "hub/test/orphan-sweep-lock.test.ts": "machine",
     "hub/test/permission-integrity.test.ts": "machine",
