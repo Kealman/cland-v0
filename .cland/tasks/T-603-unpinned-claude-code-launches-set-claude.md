@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-387
 branch: t/T-603-unpinned-claude-code-launches-set-claude
 created: 2026-10-16T11:43:33.915Z
-updated: 2026-10-16T16:05:13.332Z
+updated: 2026-10-16T16:05:27.908Z
 ---
 
 ## Summary
@@ -47,3 +47,7 @@ Found by the design session's research Q-593 (harness setup facts) under the map
 ### human · 2026-10-16T12:01:35.351Z
 
 A prototype copy of the fix with a test exists on prototype/onboarding at 7acc4890 (hub/src/adapters/claude-code.ts: spawn and resume pass CLAUDE_CONFIG_DIR only when the hub inherited it, an account still brings its directory through accountEnv; the signed-out notice and the launch remedy print the variable only when set; new test in hub/test/claude-code-adapter.test.ts, 10/10 pass). Not covered there: sessions recorded before the change keep the explicit default on relaunch. Cherry-pick or redo as the item's branch.
+
+### impl-603 · 2026-10-16T16:05:27.908Z
+
+Implementation started from the item's prototype reference 7acc4890. Will prove clean launch and relaunch omit the variable, explicit inherited/pinned directories remain, and remedies/attach reflect the actual launch environment. QA policy is none/after-stage.

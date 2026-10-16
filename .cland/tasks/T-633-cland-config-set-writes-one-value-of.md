@@ -11,10 +11,10 @@ labels:
 assignee: null
 parent: E-611
 blocked_by: []
-topic: null
+topic: topic-390
 branch: t/T-633-cland-config-set-writes-one-value-of
 created: 2026-10-16T16:04:12.209Z
-updated: 2026-10-16T16:05:08.936Z
+updated: 2026-10-16T16:05:23.499Z
 ---
 
 ## Summary

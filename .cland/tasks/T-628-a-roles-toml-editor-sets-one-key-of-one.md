@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-389
 branch: t/T-628-a-roles-toml-editor-sets-one-key-of-one
 created: 2026-10-16T16:04:11.537Z
-updated: 2026-10-16T16:05:18.151Z
+updated: 2026-10-16T16:06:35.430Z
 ---
 
 ## Summary
@@ -41,3 +41,9 @@ A write helper replaces the file atomically and refuses when the file changed be
 - [ ] C4. `[<role>.permissions] tools` gains grants while its other grants keep their order (unit test).
 - [ ] C5. A result the hub's roles parser refuses is never returned, and the error is the parser's message naming the key (unit tests with an unknown harness and an unknown grant).
 - [ ] C6. The write helper replaces the file atomically and refuses with "changed while setting it; retry" when the file changed after it was read (unit test).
+
+## Comments
+
+### impl-628 · 2026-10-16T16:06:35.430Z
+
+Implementation started. Public seams are the text editor and atomic write helper named by C1–C6. Tracking a C5 ambiguity with lead T-628: parseRoles permits arbitrary harness ids, including a custom test adapter, while C5 requires parser-owned unknown-harness errors.

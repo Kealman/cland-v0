@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-388
 branch: t/T-629-the-aide-launches-stops-and-resumes
 created: 2026-10-16T16:04:11.671Z
-updated: 2026-10-16T16:05:13.637Z
+updated: 2026-10-16T16:05:28.718Z
 ---
 
 ## Summary
@@ -42,3 +42,9 @@ Existing projects, whose `roles.toml` lists the Aide's tools explicitly, get the
 - [ ] C4. A Lead keeps its subtree limits and its refusal of `session.resume`, and an Aide is still refused `merge`, `ask`, `resolve`, `role.handover`, `release` and `sync` even when its roles.toml list grants them (existing permission tests extended).
 - [ ] C5. The shipped Aide clause says it launches, stops and resumes sessions only on the human's word and that the Coordinator keeps the staffing during a build, and no longer lists those three among what it cannot do.
 - [ ] C6. The hub README's Aide section and permission table list the three grants and the limit to the human's word.
+
+## Comments
+
+### impl-629 · 2026-10-16T16:05:28.718Z
+
+Implementation started. Read E-611 Coordinator decisions (2026-10-16). Testing at the specified frame-protocol seam with fake harnesses and session-identity CLI calls; existing project migration is out of scope (T-636).
