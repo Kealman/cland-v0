@@ -2,8 +2,8 @@
 id: T-526
 kind: task
 title: "suite tests: a worker's job.pid read right after launch is still null under load (suite-recovery, suite SIGKILL)"
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 rank: 4401
 criterion_seq: 2
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-405
 branch: t/T-526-suite-recovery-test-job-pid-read-right
 created: 2026-10-15T19:50:58.056Z
-updated: 2026-10-16T19:56:25.418Z
+updated: 2026-10-16T19:56:42.569Z
+closed: 2026-10-16T19:56:42.569Z
 ---
 
 ## Problem
@@ -94,3 +95,7 @@ Linux x64 c-8 lon1, Node 24.21.0/Neovim 0.12.5, four workers; suite 1557.99 s, p
 Review artifact A-4161.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-16T19:56:42.569Z
+
+Merged bfef6e5ccce5f8d730710dd775c96eb8ccf08150 onto dev.
