@@ -3,7 +3,7 @@ id: T-557
 kind: task
 title: The new-test load gate adds up to 22 minutes to a task verify
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - v0.1.3
@@ -13,10 +13,10 @@ parent: E-387
 blocked_by:
   - T-546
 regression_of: T-471
-topic: null
-branch: null
+topic: topic-354
+branch: t/T-557-the-new-test-load-gate-adds-up-to-22
 created: 2026-10-16T01:08:32.102Z
-updated: 2026-10-16T01:17:08.371Z
+updated: 2026-10-16T03:54:23.553Z
 ---
 
 ## Summary

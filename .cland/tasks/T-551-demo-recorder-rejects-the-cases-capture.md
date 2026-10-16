@@ -16,7 +16,7 @@ regression_of: T-459
 topic: topic-347
 branch: t/T-551-demo-recorder-rejects-the-cases-capture
 created: 2026-10-16T00:31:47.114Z
-updated: 2026-10-16T03:52:16.159Z
+updated: 2026-10-16T03:53:57.607Z
 ---
 
 ## Summary
@@ -31,14 +31,17 @@ Separately, the delivered `hub/bin` on the droplet has no executable named `clan
   - verified: rev-31 [reviewer] · run rev-20261016-551-source · 2026-10-16T00:56:32.267Z · commit b2565458f289f047042b944636e41d2af9fcec28
   - verified: rev-31 [reviewer] · run rev-20261016-551-delta-1 · 2026-10-16T01:19:42.904Z · commit c9ba8073f73562ddd947e5b496afb262c6958363
   - verified: rev-31 [reviewer] · run rev-20261016-551-delta-2 · 2026-10-16T02:29:58.808Z · commit 1eed1f408777792f46bb2ab2f1303da452ea53e2
+  - verified: rev-31 [reviewer] · run rev-20261016-551-merge-delta · 2026-10-16T03:53:56.887Z · commit 546c6259f4126492fcf7496654ba2d1c368aabaa
 - [x] C2. Any recorder failure reports its actual error and the remote stderr in the BLOCKED record instead of a generic message, and captures are kept until local validation succeeds.
   - done: impl-551 · 2026-10-16T00:53:23.868Z
   - verified: rev-31 [reviewer] · run rev-20261016-551-final · 2026-10-16T03:52:15.821Z · commit 1eed1f408777792f46bb2ab2f1303da452ea53e2
+  - verified: rev-31 [reviewer] · run rev-20261016-551-merge-delta · 2026-10-16T03:53:56.887Z · commit 546c6259f4126492fcf7496654ba2d1c368aabaa
 - [x] C3. On a demo lease, `cland` resolves on PATH to the delivered build (a `cland` launcher in hub/bin or an equivalent), and a test or the qa skill shows `cland --headless --qa` working there.
   - done: impl-551 · 2026-10-16T00:53:25.022Z
   - verified: rev-31 [reviewer] · run rev-20261016-551-source · 2026-10-16T00:56:32.267Z · commit b2565458f289f047042b944636e41d2af9fcec28
   - verified: rev-31 [reviewer] · run rev-20261016-551-delta-1 · 2026-10-16T01:19:42.904Z · commit c9ba8073f73562ddd947e5b496afb262c6958363
   - verified: rev-31 [reviewer] · run rev-20261016-551-delta-2 · 2026-10-16T02:29:58.808Z · commit 1eed1f408777792f46bb2ab2f1303da452ea53e2
+  - verified: rev-31 [reviewer] · run rev-20261016-551-merge-delta · 2026-10-16T03:53:56.888Z · commit 546c6259f4126492fcf7496654ba2d1c368aabaa
 
 ## Comments
 
@@ -150,3 +153,22 @@ C2 verified: recorder success8.059s andfailurediagnostic/recovery11.206s pass; n
 ArtifactA-3670: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3670-t-551-final-clear-at-1eed1f40-green-linux-gate.md.
 
 Criteria: C2 verified.
+
+### impl-551 · 2026-10-16T03:53:28.754Z
+
+Coordinator requested merge-conflict resolution after ready. Merged freshly fetched origin/dev, manifest-only conflict resolved as exact dev baseline/allowances plus unchanged own5.567s allowance. Pushed546c6259. Task implementation/test files unchanged from green/final-reviewed1eed1f40. Manifest parsing/integrity comparison and shard lint pass. Requested merge-only delta review; Coordinator explicitly requires no new suite.
+
+### rev-31 · 2026-10-16T03:53:56.888Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261016-551-merge-delta
+commit: 546c6259f4126492fcf7496654ba2d1c368aabaa
+scope: delta
+
+Landingmerge delta clearat546c6259(parents1eed1f40,dev44106b37). ExplicitCoordinator092f35a7 authorizesmerge/durationunion,no newsuite. Fourtaskimplementation/testfiles unchangedfromfinalhead; manifestvsdev exactlyoriginal5.567sallowance4lines. JSONcomparison retainsall deventries/baselines,ownallowanceunchanged;diffcheckclear,shardlintgreenreported. Standards/Spec:nofindings. Shared64390ae8inherited asauthorized.
+AllC1–C3reverifiedcurrenthead viaunchangedsource plus explicitcarriedgreenLinuxA-3669/finalA-3670(1861pass/0fail/4skip,Neovimsmoke12/12,recorderrepetitions5/5),MacA-3512/A-3578support. No newrunclaimed,no peritemQA or Reviewer edits/tests.
+ArtifactA-3672: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3672-t-551-landing-merge-delta-clear-at-546c6259.md.
+
+Criteria: C1 verified, C2 verified, C3 verified.
