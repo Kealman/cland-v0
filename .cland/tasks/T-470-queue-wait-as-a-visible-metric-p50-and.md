@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-361
 branch: t/T-470-queue-wait-as-a-visible-metric-p50-and
 created: 2026-10-15T09:13:16.188Z
-updated: 2026-10-16T07:56:27.935Z
+updated: 2026-10-16T08:13:15.970Z
 ---
 
 ## Summary
@@ -33,13 +33,16 @@ Retrospective A-2783, START 4: the run spent 6,618 queue-minutes against 3,411 m
   - done: impl-470 · 2026-10-16T06:27:03.192Z
   - verified: rev-30 [reviewer] · run rev-20261016-470-source · 2026-10-16T06:30:17.108Z · commit 311933f19e64bc56a00f21ee14407f2b4ca6533a
   - verified: rev-30 [reviewer] · run rev-20261016-470-final · 2026-10-16T07:56:27.045Z · commit 311933f19e64bc56a00f21ee14407f2b4ca6533a
+  - verified: rev-30 [reviewer] · run rev-20261016-470-merge-final · 2026-10-16T08:13:15.063Z · commit 8b70ec3ebd6781fe4da5c8a80aaed85d99862d30
 - [x] C2. An hourly `verification-wait` journal record carries the same values, proven by a test with a fake clock.
   - done: impl-470 · 2026-10-16T06:27:03.496Z
   - verified: rev-30 [reviewer] · run rev-20261016-470-final · 2026-10-16T07:56:27.045Z · commit 311933f19e64bc56a00f21ee14407f2b4ca6533a
+  - verified: rev-30 [reviewer] · run rev-20261016-470-merge-final · 2026-10-16T08:13:15.063Z · commit 8b70ec3ebd6781fe4da5c8a80aaed85d99862d30
 - [x] C3. hub/README.md describes the metric and the setting.
   - done: impl-470 · 2026-10-16T06:27:03.854Z
   - verified: rev-30 [reviewer] · run rev-20261016-470-source · 2026-10-16T06:30:17.108Z · commit 311933f19e64bc56a00f21ee14407f2b4ca6533a
   - verified: rev-30 [reviewer] · run rev-20261016-470-final · 2026-10-16T07:56:27.045Z · commit 311933f19e64bc56a00f21ee14407f2b4ca6533a
+  - verified: rev-30 [reviewer] · run rev-20261016-470-merge-final · 2026-10-16T08:13:15.063Z · commit 8b70ec3ebd6781fe4da5c8a80aaed85d99862d30
 
 ## Comments
 
@@ -197,5 +200,48 @@ Final evidence review **clear under the explicit gate disposition**; refresh **C
 Findings: Standards0; Spec0 source findings. Accepted outside-diff gate failures and missing Neovim phase are disclosed above.
 
 Artifact A-3844 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3844-t-470-final-clear-accepted-hub-receipt-pair-integrated-neovim-required-before-re.md
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### rev-30 · 2026-10-16T08:13:15.063Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-470-merge-final
+commit: 8b70ec3ebd6781fe4da5c8a80aaed85d99862d30
+scope: delta
+
+# T-470 merge delta review clear
+
+Reviewed pushed head `8b70ec3ebd6781fe4da5c8a80aaed85d99862d30` on `t/T-470-queue-wait-as-a-visible-metric-p50-and`; both local and origin refs agree. Parents are previously reviewed/final-cleared `311933f19e64bc56a00f21ee14407f2b4ca6533a` and freshly fetched dev `8f145c82`. Took hold and read current claimant/criteria once. Read-only review; no Reviewer tests, compiler, edits or provider calls.
+
+Primary Coordinator **23bcb758-ee55-45ad-8a88-d94da8ecd945**, independently read in topic history, requires this actual conflict merge, preservation of T-488 loaded-config/capture and T-491 retries, identifier-selected whole-file serial Mac proof below load10, and explicitly waives a new droplet run if proof/review clear. The prior integrated-Neovim-before-restart condition remains.
+
+## Standards
+
+Zero high, medium or low findings. Read combined merge diff, first-parent changes and resulting task delta against the dev parent. Daemon retains `projectConfig: roles.config` plus wait target fallback wiring. Suites retains dev's project-config capture, queued-following publication, worker policy and admission behavior; the only additions against that version are the wait-metrics hooks/type/field. Executor and hub lock source are byte-identical to dev, preserving T-491. No task-local unrelated fix or allowance change is hidden in resolution. Whitespace diff check passes.
+
+The mutable target stays inside the existing VerificationWait owner with a narrow configure setter. ProjectConfiguration adds the applied-field name and keeps validation/stamps/last-good pair publication unchanged. No disk-config read is introduced into metrics.
+
+## Spec
+
+Refresh C1–C3 at this head under the explicit preserved-receipt/no-new-droplet disposition. Constructor reads the loaded ProjectConfiguration snapshot; successful reload's synchronous publication reaches Dispatcher.configure → Suites.configure → VerificationWait.configure. Config-only disk edits leave the target unchanged, and invalid reload fails before apply, retaining the last good target. Both snapshot reporting and hourly journal recording read the same updated target. Hour checkpoint, percentiles/windows, executor attribution and existing metrics are unchanged from accepted A-3789/A-3844.
+
+The existing real CLI/status regression gains assertions for 15m initially, unchanged before reload, 5m after successful reload and retained 5m after invalid 0m reload. Existing assertions remain. Claimant reports the pre-fix 900000-versus300000 red; corrected committed assertions and raw green whole-file receipt independently establish the after behavior. README now explains loaded snapshot/reload/invalid retention.
+
+## Evidence audit
+
+**A-3850** durable directory contains results.json, search-map.json and all23 copied raw whole-file logs. Independently parsed every raw log: **247 tests/pass, 0 fail/cancel/skip**, each results summary matches the raw suffix, every reported exit0. Mandatory metrics/queue/config-reload/daemon/remote-budget files are present (5/5,5/5,4/4,18/18,16/16). The real fake-clock hourly test remains green in the metrics whole file.
+
+Independently searched committed hub/test and nvim/test contents with the recorded semantic pattern:27 matching paths, whose test-file subset plus five mandatory files exactly equals the23 executed files; no missing matching test or Nvim match. Helpers/manifests/runners are not misrepresented as standalone tests. Files are suite-wait-metrics, suite-queue, config-reload, daemon, suite-remote-budget, account-fixture-isolation, config-reload-remote, demo, events-quiet, events, executor-droplet, executor-prepare, executor-safety, inbox-workload, journal-async, orphan-servers, planned-stage, rule-cli, session-async-processes, task-card, territory-lock, tracker-ready and verification-workers.
+
+Results record per-file admission loads **1.8276–5.4893 (<10)**. Lead reports whole-file serial execution and no matching test PIDs before each; the bundle preserves loads and outputs, not a separate PID transcript. Root typecheck/shard lint reported green; Reviewer does not execute them. No new full local suite or droplet receipt is claimed.
+
+Prior exact-head Linux A-3815/A-3842 and explicit final gate acceptance A-3844 remain historical evidence, carried across this authorized merge only by Coordinator23bcb758. They are not relabeled as fresh Linux evidence at8b70ec3e. **Neovim still requires the next integrated dev cover before restart on T-470 code**, per primary d5f7f82d and23bcb758. No new task droplet run required. Current E-468 freeze/merge ordering stays with Coordinator; this verdict does not authorize a restart.
+
+Final merge delta **clear**, C1/C2/C3 refreshed. No per-item QA. Standards findings0; Spec findings0; no high/medium/low findings.
+
+Artifact A-3852 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3852-t-470-merge-delta-clear-loaded-config-publication-and-247-whole-file-passes.md
 
 Criteria: C1 verified, C2 verified, C3 verified.

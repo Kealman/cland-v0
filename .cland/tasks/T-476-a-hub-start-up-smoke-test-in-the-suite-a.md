@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-364
 branch: t/T-476-a-hub-start-up-smoke-test-in-the-suite-a
 created: 2026-10-15T09:13:19.071Z
-updated: 2026-10-16T07:37:07.313Z
+updated: 2026-10-16T08:18:51.895Z
 ---
 
 ## Summary
@@ -30,12 +30,15 @@ A test in hub/test starts `cland hub start` in a fresh project, waits at most 10
 
 - [x] C1. The smoke test passes on dev and fails within its bound on a planted start-up hang, naming the last log event.
   - done: impl-476 · 2026-10-16T07:35:09.038Z
+  - verified: rev-30 [reviewer] · run rev-20261016-476-final · 2026-10-16T08:17:05.652Z · commit 4dd3a151b224107827b7a868e8183e0d640aca03
 - [x] C2. It runs in every hub phase selection, including hub-only task runs.
   - done: impl-476 · 2026-10-16T07:24:33.344Z
   - verified: rev-30 [reviewer] · run rev-20261016-476-correction · 2026-10-16T07:37:07.313Z · commit 4dd3a151b224107827b7a868e8183e0d640aca03
+  - verified: rev-30 [reviewer] · run rev-20261016-476-final · 2026-10-16T08:17:05.652Z · commit 4dd3a151b224107827b7a868e8183e0d640aca03
 - [x] C3. hub/README.md lists it under Tests.
   - done: impl-476 · 2026-10-16T07:24:33.711Z
   - verified: rev-30 [reviewer] · run rev-20261016-476-correction · 2026-10-16T07:37:07.313Z · commit 4dd3a151b224107827b7a868e8183e0d640aca03
+  - verified: rev-30 [reviewer] · run rev-20261016-476-final · 2026-10-16T08:17:05.652Z · commit 4dd3a151b224107827b7a868e8183e0d640aca03
 
 ## Comments
 
@@ -126,3 +129,44 @@ Findings: Standards0 remaining (M1 resolved); Spec0.
 Artifact A-3831 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3831-t-476-correction-source-clear-detached-daemon-owned-before-discovery-with-teardo.md
 
 Criteria: C2 verified, C3 verified.
+
+### rev-30 · 2026-10-16T08:17:05.652Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-476-final
+commit: 4dd3a151b224107827b7a868e8183e0d640aca03
+scope: evidence
+
+# T-476 final evidence clear under explicit hub-phase gate disposition
+
+Reviewed unchanged pushed `4dd3a151b224107827b7a868e8183e0d640aca03`, branch `t/T-476-a-hub-start-up-smoke-test-in-the-suite-a`; local/origin refs agree. Current claimant/criteria and hold checked. Source correction **A-3831 /rev-20261016-476-correction** verified C2/C3, resolved discovery-dependent ownership M1; no later source/head change. No Reviewer test/compiler/process/provider execution or edits.
+
+## Standards
+
+No remaining high/medium/low finding. Corrected source owns actual daemon PID before discovery, exact bounded reap before directory removal and both separate hang boundaries. Original readiness/diagnostic assertions remain. This pass audits runtime evidence rather than revisiting unchanged source.
+
+## Spec / owned runtime evidence
+
+Refresh **C1–C3**. **A-3851 /9955455a-7ee4-47aa-bca2-9074a1e78d0b** actualLinux c-8 lon1/x64,fourworkers,Node24.21.0/Neovim pin0.12.5:1924tests/1916pass/3fail/5skip,exit1. Whole raw log independently read through uncapped tail.
+
+All three smoke cases pass ordinary and **5/5 fresh repetitions each (15/15)**:
+- pre-discovery hang parent12.258984937s;
+- listening-but-silent hang parent11.780349528s;
+- healthy CLI/socket/tracker/stop2.995158047s.
+The parent includes spawning/teardown/report overhead; its duration is not the single10s inner readiness bound. Committed assertions require inner bounded failure/structured-event diagnostic and PID-gone/root cleanup; the successful assertions and explicit log3054 `startup cleanup: pid206852 gone before fixture removal` retain proof of lifecycle ordering. Existing C2 selection tests and source audit establish every automatic hub selection; C3 README unchanged.
+
+## Known outside reds and missing phase
+
+Three ordinary reds: demo.test.ts:71 run-timeout/machine-lifetime watchdog cases `demo deadline reached during delivery` (T-569), and tracker-levels.test.ts:87 parent-close recheck true-vsfalse (T-584). Six hard budget lines, all outside task diff: four demo-release identities (earlier-delete lost-tags6.508s; persistent tags7.397s; persistent id5.296s; detached watchdog8.104s), tracker-load20sessions/200000events5.714s, and verdict-findings CLI/MCP severity/journal5.469s. The sixth was absent from capped hub result but is retained in the raw tail and this review. No unknown failure or own smoke budget miss is omitted.
+
+**Primary Coordinator fc3c84c5-f750-4c77-aa31-4d7ac7e4691c**, directly delivered to Reviewer, explicitly accepts this hub phase: T-569/T-584 ordinary reds and six budgets covered by posted shared5b29038c/4ffbe84f on dev. No pick/head change or further task run required.
+
+Mode full stops after hub; **Neovim was not run and is not claimed green**. Same primary disposition defers it to the **next integrated dev cover before any hub restart on T-476 code**. Carry this Coordinator-owned condition forward. No waiver is inferred merely from outside-diff status.
+
+Suite2007.73s,peak16.11,load-gate extra23.27s,lifetime/costunknown. No hard budget failure is rewritten as a green run. Final evidence **clear under explicit gate disposition**, C1/C2/C3 refreshed; no per-item QA. Current E-468 freeze/order remains Coordinator-owned. Findings: Standards0; Spec0.
+
+Artifact A-3861 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3861-t-476-final-clear-owned-smoke-15-15-integrated-neovim-required-before-restart.md
+
+Criteria: C1 verified, C2 verified, C3 verified.
