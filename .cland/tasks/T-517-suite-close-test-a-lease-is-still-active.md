@@ -2,8 +2,8 @@
 id: T-517
 kind: task
 title: "suite-close test: a lease is still active right after a successful sharded result (Linux)"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ regression_of: T-395
 topic: topic-331
 branch: t/T-517-suite-close-test-a-lease-is-still-active
 created: 2026-10-15T17:18:57.301Z
-updated: 2026-10-16T02:35:58.045Z
+updated: 2026-10-16T02:37:08.292Z
+closed: 2026-10-16T02:37:08.292Z
 ---
 
 ## Problem
@@ -153,3 +154,7 @@ Mac A-3461 raw suite-close files2–6 each7/7, total35/35 with no failures/skips
 Review artifact A-3609 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3609-t-517-final-evidence-clear-at-d7fc7424-from-recovered-linux-run.md
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-16T02:37:08.292Z
+
+Merged ac2c3641a95887cef2ab5b85343829057fc83dda onto dev.
