@@ -4426,6 +4426,10 @@
     "hub/test/suite-candidate-remote.test.ts::integrated remote delivery keeps the submitted bundle across tracker and rulebook commits": {
       "seconds": 8.023862041,
       "reason": "Runs an integrated fixture through host typecheck, fake provider acquisition, real bundle/SSH delivery and shell execution, then confirms release and advanced-head cache reuse. The administrative commit occurs during acquisition; measured on macOS for T-379."
+    },
+    "hub/test/cover-quiet.test.ts::an integrated local worker protects its cover while admitting its own targeted harness": {
+      "seconds": 15,
+      "reason": "Runs a fixture hub, git-backed integrated dev admission and real local worker; waits for its inherited harness entry, checks an unrelated subprocess refusal, then observes completion and the downstream report separately before proving admission reopens."
     }
   }
 }

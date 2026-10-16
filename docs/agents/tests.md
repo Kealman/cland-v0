@@ -230,7 +230,7 @@ The underlying package scripts remain available for humans and isolated CI:
 
 `hub/test/shards.json` classifies every hub test. In projects with that manifest, `cland verify` checks it at submission before creating a queue entry; `verify-shards` names every unclassified file and a conservative `machine` entry to add. `cland merge` applies the same lint to the branch merged onto dev, before changing refs or the root checkout, and refuses with `merge-shards`. `npm run test:shards` and package admission reject unclassified files, missing files and free files with process/port/timer APIs, process-fixture helpers, real-time waits, lock paths or Neovim. The hermetic free shard runs on one worker; hub machine files and Neovim use `[verification] workers` (default 4), with `[verification.droplet] workers` overriding it on droplets. `cland verify --workers N` overrides either policy for one durable run; `--size <slug>` overrides a droplet size with provider availability and spend checks. Use `--fresh` for timed comparisons, because cache reuse otherwise requires matching worker counts and size overrides. Only machine shards take `<lock>.machine`. Suite reports include shard durations, machine wait, total wall time, compatibility wait and hub queue wait. Local process-heavy overlap stays disabled.
 
-Every package run takes both legacy locks jointly and retains them through its phases, including smoke, so hub and Neovim suites on the same machine serialize across sessions, projects and worktrees. Runs admit only when both locks are free, under both recovery guards; they hold neither while waiting. A legacy Neovim-first waiter can therefore take the free machine lock and finish without a cycle. No other run can pass between phases and the remaining waiters keep their order. Targeted single-file `node --test <file>` runs are free.
+Every package run takes both legacy locks jointly and retains them through its phases, including smoke, so hub and Neovim suites on the same machine serialize across sessions, projects and worktrees. Runs admit only when both locks are free, under both recovery guards; they hold neither while waiting. A legacy Neovim-first waiter can therefore take the free machine lock and finish without a cycle. No other run can pass between phases and the remaining waiters keep their order. Targeted single-file `node --test <file>` runs do not take a suite lease; they still obey cover-quiet admission.
 
 Both locks use the same PID/start-time ownership, stale-holder recovery and interruption cleanup. Before polling any recovery guard, each waiter atomically publishes its PID, process start identity, monotonic queue time and worktree in `<lock>.queue/`. This persistent queue sits beside the temporary ownership directory so release and stale-holder recovery preserve waiting tickets. The oldest live ticket alone can take all required free locks, regardless of poll timing. Dead or reused-PID tickets are swept; interruption removes the waiter’s own ticket. A waiter prints its queue position, the holder, start time and holder worktree (unavailable for older holders). A dead holder is recovered after a one-second grace period, with its owned processes and temporary root cleaned before a new phase starts. Interrupting a waiter leaves the live holder's lock intact.
 
@@ -374,3 +374,19 @@ For old orphans use `cland doctor` to inspect and `cland doctor --fix` to sweep 
 the calling user's verified bridges whose explicit hub file is missing. An existing
 hub file, ambiguous argv or unverifiable identity prevents cleanup. Doctor fixtures
 scope both deleted hubs and bridges with `CLAND_TEST_ORPHAN_ROOT`.
+
+## Cover-quiet
+
+Before fixture setup, the hub and Neovim test harnesses ask the project hub for
+a read-only `suite.slot` check. When an integrated cover holds the local
+compatibility slot, an unrelated test exits with `cover-quiet` and the run id.
+Wait for that cover to release the slot. Its own workers pass with the matching
+inherited lease; remote covers do not occupy this machine's local slot. Without
+a project hub there is no refusal. A connected hub must answer: a timeout or
+disconnect fails startup before fixtures. Discovery follows `CLAND_HUB_FILE`
+and linked worktrees, as the CLI does. Only the human may set
+`CLAND_TEST_IGNORE_COVER=1` to bypass this check. The check never joins the queue
+or acquires a lease; normal full-suite queueing stays in effect.
+An older hub that refuses or does not recognize the check fails startup with
+`test admission unavailable`, naming the missing read-only `suite.slot/check`
+capability and the required hub restart. Wait for that authorized restart.

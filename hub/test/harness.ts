@@ -4,6 +4,7 @@ import type { Clock } from '../src/hub/clock.ts';
 //   2. the hub's WebSocket edge — an in-process hub on an ephemeral port
 //   3. the daemon — `cland hub …` run as its own process in a temporary project, and its Unix socket
 // Nothing here reaches into either side's state; everything goes through the seams.
+import './cover-quiet.ts';
 import './account-fixture-env.ts';
 import { execFile } from 'node:child_process';
 import assert from 'node:assert/strict';

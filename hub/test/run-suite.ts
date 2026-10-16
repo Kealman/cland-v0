@@ -19,10 +19,12 @@ import { describeSelection, selectPackageSuite, selectionFromEnv, type SuiteSele
 import { checkDurations, durationRegressions, lintDurationManifest, readDurationManifest, type DurationManifest, type DurationRegression, type TestTiming } from '../src/suite-durations.ts';
 import { reduceCoverage } from '../src/suite-coverage.ts';
 import { loadGateReporter, runLoadGate } from './load-gate.ts';
+import { assertTestAdmission } from '../src/test-admission.ts';
 import { readQuarantineManifest, type QuarantineReceipt } from '../src/suite-quarantine.ts';
 
 type Interruption = { signal: 'SIGINT' | 'SIGTERM' | null };
 export async function runSuite(suites: string[][], options: { lockDir?: string; lockDirs?: string[]; cwd?: string; interruption?: Interruption; selection?: SuiteSelection; phaseNames?: string[]; resources?: Array<'free' | 'machine'>; workers?: number[]; force?: boolean; token?: string } = {}): Promise<number> {
+  await assertTestAdmission(options.cwd);
   const interruption = options.interruption ?? { signal: null };
   let active: ReturnType<typeof spawn> | undefined;
   let runId = options.token ?? randomBytes(10).toString('base64url');

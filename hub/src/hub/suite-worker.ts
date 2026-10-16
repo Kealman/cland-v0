@@ -19,7 +19,7 @@ export function suiteCommands(job: { mode: string; selection?: SuiteSelection })
 }
 
 export async function suiteWorker(input: string): Promise<void> {
-  const job = JSON.parse(await readFile(input, 'utf8')) as { limits?: import('../suite-limits.ts').SuiteLimits; cwd: string; mode: string; gate: string; result: string; selection?: SuiteSelection; locks?: string[]; workers?: number; head?: string; queued?: string; tree?: string | null; integrated?: boolean };
+  const job = JSON.parse(await readFile(input, 'utf8')) as { id: string; limits?: import('../suite-limits.ts').SuiteLimits; cwd: string; mode: string; gate: string; result: string; selection?: SuiteSelection; locks?: string[]; workers?: number; head?: string; queued?: string; tree?: string | null; integrated?: boolean };
   let signal: NodeJS.Signals | null = null;
   for (const name of ['SIGINT', 'SIGTERM'] as const) process.on(name, () => {
     if (signal) return;
@@ -43,7 +43,7 @@ export async function suiteWorker(input: string): Promise<void> {
   try {
     const started = await processStartedAsync(process.pid);
     if (!started) throw new Error('cannot establish compatibility lease identity');
-    const holder = { pid: process.pid, started, startedUtc: await processStartedAsync(process.pid, undefined, undefined, 'UTC'), token, since: new Date().toISOString(), worktree: job.cwd };
+    const holder = { pid: process.pid, started, startedUtc: await processStartedAsync(process.pid, undefined, undefined, 'UTC'), token, since: new Date().toISOString(), worktree: job.cwd, ...(job.integrated ? { integrated: job.id } : {}) };
     if (admitted && !signal) leases.push(...await acquireBroker(dirs, () => signal !== null, holder));
     const checkHead = async () => {
       const head = await promisify(execFile)('git', ['rev-parse', 'HEAD'], { cwd: job.cwd }).then(r => r.stdout.trim(), () => 'unknown');

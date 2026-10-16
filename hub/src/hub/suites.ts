@@ -364,6 +364,16 @@ export class Suites {
     await this.#check();
     return { id, pid: job.pid, topic: job.topic, position: job.state === 'queued' ? this.#ordered().findIndex(j => j.id === id) + 1 : 1, ...(job.cached ? { cached: job.cached } : {}) };
   }
+  /** Targeted tests inspect the machine fence without joining or changing it. */
+  async checkSlot(lease?: { pid: number; started: string; token: string }): Promise<{ admitted: true }> {
+    const owner = (await this.#local.holder())?.holder;
+    const job = owner && this.#jobs.find(j => j.executor === 'local' && j.integrated && j.pid === owner.pid && j.started === owner.started && !j.cleaned && !j.reported);
+    const cover = owner?.integrated ?? job?.id;
+    if (cover && owner && !(lease && lease.pid === owner.pid && lease.started === owner.started && lease.token === owner.token)) {
+      throw new Error(`cover-quiet: integrated run ${cover} holds the local test slot; wait for it to finish (only the human may set CLAND_TEST_IGNORE_COVER=1)`);
+    }
+    return { admitted: true };
+  }
   // Connection-owned reservations have no worker or result; a restart closes their owners.
   slot(input: SuiteSlot, owner: object): SuiteSlotResult {
     let slot = this.#humans.get(owner);

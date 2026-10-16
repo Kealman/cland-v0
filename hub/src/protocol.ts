@@ -521,6 +521,8 @@ export function isVerifyOccasion(value: unknown): value is VerifyOccasion {
 }
 export type SuiteStart = { type: 'suite.start'; workers?: number; size?: string; occasion?: VerifyOccasion; id: string; mode: 'auto' | 'all' | 'hub' | 'nvim'; cwd: string; report: string; to?: string[]; fresh?: boolean; executor?: import('./executor/executor.ts').ExecutorKind };
 export type SuiteSlot = { type: 'suite.slot' | 'suite.forced'; id: string; mode: string; cwd: string; head: string; pid: number; token: string };
+/** Read-only targeted-test admission; never reserves a human queue position. */
+export type SuiteSlotCheck = { type: 'suite.slot'; id: string; check: true; lease?: { pid: number; started: string; token: string } };
 export type SuiteSlotResult = { id: string; admitted: boolean; locks: string[]; queue: VerificationQueue };
 export type SuiteCancel = { type: 'suite.cancel'; id: string; suite?: string };
 export type SuiteClassify = { type: 'suite.classify'; id: string; suite: string; cause: 'load-flake'; note: string };
@@ -548,6 +550,7 @@ export type ClientRequest =
   | { type: 'visibility.set'; id: string; surface: 'topics' | 'sessions' | 'artifacts'; target: string; mode: 'pin' | 'mute' }
   | SuiteStart
   | SuiteSlot
+  | SuiteSlotCheck
   | SuiteCancel
   | SuiteClassify
   | ReleaseRequest
@@ -795,6 +798,12 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
     case 'visibility.set':
       return typeof f.surface === 'string' && ['topics', 'sessions', 'artifacts'].includes(f.surface) && typeof f.target === 'string' && f.target.length > 0 && (f.mode === 'pin' || f.mode === 'mute');
     case 'suite.slot':
+      if (f.check !== undefined && f.check !== true) return false;
+      if (f.check === true) {
+        const lease = f.lease;
+        return lease === undefined || typeof lease === 'object' && lease !== null && 'pid' in lease && Number.isSafeInteger(lease.pid) && Number(lease.pid) > 0 && 'started' in lease && typeof lease.started === 'string' && 'token' in lease && typeof lease.token === 'string' && lease.token.length > 0;
+      }
+      // Normal package runners reserve their existing human slot.
     case 'suite.forced':
       return ['full', 'hub-only', 'hub-selected', 'nvim-only'].includes(String(f.mode)) && typeof f.cwd === 'string' && typeof f.head === 'string' && Number.isSafeInteger(f.pid) && Number(f.pid) > 0 && typeof f.token === 'string' && f.token.length > 0;
     case 'suite.start':

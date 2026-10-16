@@ -1,5 +1,6 @@
 // Every harness-importing worker owns its defaults, including in-process daemons and raw CLI spawns.
 // Explicit scratch registries, homes, PATHs and binary overrides still belong to each test.
+import './cover-quiet.ts';
 import { after } from 'node:test';
 import { mkdir, mkdtemp, realpath } from 'node:fs/promises';
 import { tmpdir } from 'node:os';

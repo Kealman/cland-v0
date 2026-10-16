@@ -8,7 +8,7 @@ import { run } from './doctor/report.ts';
 import { fileURLToPath } from 'node:url';
 import type { ProcessIdentity } from '../test/process-cleanup.ts';
 const pause = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-export type Holder = { pid: number; started: string | null; startedUtc?: string | null; since: string; token: string; root?: string; worktree?: string; queued?: string; phase?: number; device?: number; inode?: number; runner?: ProcessIdentity; records?: string };
+export type Holder = { pid: number; started: string | null; startedUtc?: string | null; since: string; token: string; root?: string; worktree?: string; queued?: string; phase?: number; device?: number; inode?: number; runner?: ProcessIdentity; records?: string; integrated?: string };
 export type Lease = { publish: () => Promise<void>; release: () => Promise<void> };
 /** Read-only view of the compatibility slot; never reap or take a lease to display it. */
 export async function compatibilityHolder(dirs: string[], env: NodeJS.ProcessEnv = process.env): Promise<{ holder: Holder | null; since: string | null } | null> {
@@ -295,6 +295,7 @@ export async function borrowLease(dirs: string[], holder: Holder): Promise<Lease
   }
   const owner = await holderAt(`${dirs[0]}.owner`);
   holder.pid = inherited.pid; holder.started = inherited.started; holder.token = inherited.token;
+  if (owner?.integrated) holder.integrated = owner.integrated;
   if (owner?.startedUtc !== undefined) holder.startedUtc = owner.startedUtc;
   else delete holder.startedUtc;
   if (owner?.records === `${dirs[0]}.runs`) holder.records = owner.records;
