@@ -38,6 +38,8 @@ import { endProcess } from '../system-processes.ts';
 
 export const OPENCODE = 'opencode';
 
+export const OPENCODE_CLAUSE_AT_SPAWN = false;
+
 export const OPENCODE_CAPABILITIES: Capabilities = {
   // the session's messages are readable (`GET /api/session/{id}/message`), but cland does not read them in v0
   history: 'none',
@@ -92,6 +94,7 @@ type Watch = { process: HarnessProcess; client: OpenCodeClient; tracker: Session
 export class OpenCodeAdapter implements HarnessAdapter {
   readonly harness = OPENCODE;
   readonly capabilities = OPENCODE_CAPABILITIES;
+  readonly clauseAtSpawn = OPENCODE_CLAUSE_AT_SPAWN;
   readonly #host: AdapterHost;
   readonly #recoveries: FailedLaunches;
   readonly #bin: string;

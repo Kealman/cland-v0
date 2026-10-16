@@ -60,6 +60,8 @@
     "hub/test/executor-run.test.ts": "T3",
     "hub/test/executor-safety.test.ts": "T3",
     "hub/test/executor.test.ts": "T3",
+    "hub/test/fake-harness-capabilities.test.ts": "T2",
+    "hub/test/fake-harness.test.ts": "T2",
     "hub/test/follows.test.ts": "T3",
     "hub/test/freshness.test.ts": "T3",
     "hub/test/handover-integrity.test.ts": "T3",

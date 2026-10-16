@@ -1526,7 +1526,10 @@ export class Sessions {
     this.#untracker?.();
     if (this.#stopRetry) realClock.clearInterval(this.#stopRetry);
     this.#stopRetry = null;
-    for (const a of this.#adapters.values()) a.close();
+    const failures: unknown[] = [];
+    for (const adapter of this.#adapters.values()) {
+      try { adapter.close(); } catch (error) { failures.push(error); }
+    }
     this.#core.onDelivered(null);
     this.#core.launchedRole(null);
     this.#core.pendingLaunch(null);
@@ -1537,5 +1540,6 @@ export class Sessions {
     for (const timer of this.#usageTimers.values()) this.#core.clock.clearTimeout(timer);
     this.#usageTimers.clear();
     this.#unrename();
+    if (failures.length) throw new AggregateError(failures, 'session adapter cleanup failed');
   }
 }

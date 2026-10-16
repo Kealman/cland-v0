@@ -26,7 +26,7 @@ import { gitIn } from '../tracker/verdict-git.ts';
 import { Tracker } from '../tracker/tracker.ts';
 import type { TipSchedule } from '../tracker/freshness.ts';
 import type { LogFn } from '../log.ts';
-import { projectSessions, type ProjectSessions } from '../adapters/index.ts';
+import { projectSessions, type ProjectSessions, type AdapterFactory } from '../adapters/index.ts';
 import { CrewFile, crewSummary } from '../crew.ts';
 import { RulebookFile } from '../rules/file.ts';
 import { ProjectConfiguration } from './configuration.ts';
@@ -61,7 +61,7 @@ export type Daemon = {
   stop: () => Promise<void>;
 };
 
-export async function serveProject(root: string, options: { clock?: Clock; log?: LogFn; flushLog?: () => Promise<void>; listen?: ListenMode; scheduleTips?: TipSchedule; journalOpen?: JournalOpen; env?: NodeJS.ProcessEnv; starter?: Starter; autostart?: boolean } = {}): Promise<Daemon> {
+export async function serveProject(root: string, options: { adapters?: AdapterFactory[]; clock?: Clock; log?: LogFn; flushLog?: () => Promise<void>; listen?: ListenMode; scheduleTips?: TipSchedule; journalOpen?: JournalOpen; env?: NodeJS.ProcessEnv; starter?: Starter; autostart?: boolean } = {}): Promise<Daemon> {
 
   const clock = options.clock ?? realClock;
   const env = options.env ?? process.env;
@@ -276,30 +276,38 @@ export async function serveProject(root: string, options: { clock?: Clock; log?:
   let sweep: Promise<void> | null = null;
   const stop = (): Promise<void> => {
     stopping ??= (async () => {
-      log({ event: 'stopping' });
-      await edge?.close();
-      await ws?.close();
-      await sweep;
-      await accountPoller?.close();
-      // Both journal and session projections depend on the adapters' open table.
-      hub.core.close();
-      await hub.dispatcher.close();
-      adapters?.close();
-      await tracker.stop();
-      await crew.stop();
-      agents.attach(null);
-      await hub.close();
-      await rules.stop();
-      await roles.stop();
-      // the discovery file and then the lock go last: a successor can only start once this hub is gone
-      removeDiscovery(l.discovery, process.pid);
-      journal.write({ event: 'hub-stopped', pid: process.pid });
-      log({ event: 'stopped' });
-      try { await closeLogs(); }
-      finally {
-        try { if (deliberateStop) markHubStop(root); }
-        finally { lock.release(); resolveStopped(); }
+      const failures: unknown[] = [];
+      const attempt = async (cleanup: () => unknown) => {
+        try { await cleanup(); } catch (error) { failures.push(error); }
+      };
+      try {
+        await attempt(() => log({ event: 'stopping' }));
+        await attempt(() => edge?.close());
+        await attempt(() => ws?.close());
+        await attempt(() => sweep);
+        await attempt(() => accountPoller?.close());
+        // Both journal and session projections depend on the adapters' open table.
+        await attempt(() => hub.core.close());
+        await attempt(() => hub.dispatcher.close());
+        await attempt(() => adapters?.close());
+        await attempt(() => tracker.stop());
+        await attempt(() => crew.stop());
+        await attempt(() => agents.attach(null));
+        await attempt(() => hub.close());
+        await attempt(() => rules.stop());
+        await attempt(() => roles.stop());
+        // Discovery and lock go last, including when an earlier disposer failed.
+        await attempt(() => removeDiscovery(l.discovery, process.pid));
+        await attempt(() => journal.write({ event: 'hub-stopped', pid: process.pid }));
+        await attempt(() => log({ event: 'stopped' }));
+        await attempt(closeLogs);
+      } finally {
+        await attempt(() => { if (deliberateStop) markHubStop(root); });
+        await attempt(() => lock.release());
+        resolveStopped();
       }
+      if (failures.length === 1) throw failures[0];
+      if (failures.length) throw new AggregateError(failures, 'hub cleanup failed', { cause: failures[0] });
     })();
     return stopping;
   };
@@ -333,9 +341,15 @@ export async function serveProject(root: string, options: { clock?: Clock; log?:
   }
 
   // the adapters: launched harness sessions, re-found after a restart once the hub is reachable again
-  adapters = projectSessions({ core: hub.core, root, db: l.db, discoveryFile: l.discovery, log, tracker, env, cleanup: config?.sessions });
-  hub.dispatcher.useSessions(adapters.sessions);
-  adapters.sessions.sweepArchive();
+  try {
+    adapters = projectSessions({ core: hub.core, root, db: l.db, discoveryFile: l.discovery, log, tracker, env, cleanup: config?.sessions, ...(options.adapters ? { adapters: options.adapters } : {}) });
+    hub.dispatcher.useSessions(adapters.sessions);
+    adapters.sessions.sweepArchive();
+  } catch (error) {
+    try { await stop(); }
+    catch (cleanup) { throw new AggregateError([error, cleanup], 'hub adapter startup failed', { cause: error }); }
+    throw error;
+  }
 
   const discovery: Discovery = { root, socket: l.socket, port: ws.port, secret, pid: process.pid, version: VERSION };
   writeDiscovery(l.discovery, discovery);

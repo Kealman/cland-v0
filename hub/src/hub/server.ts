@@ -1,5 +1,7 @@
 // The hub's network edge: one HTTP server, WebSocket upgrades gated by the per-project secret,
 // one socket per spoke, every frame handed to the shared dispatcher (`./dispatch.ts`).
+import { join } from 'node:path';
+import { projectSessions, type AdapterFactory, type ProjectSessions } from '../adapters/index.ts';
 import { createServer, type IncomingMessage, type Server as HttpServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import type { Duplex } from 'node:stream';
@@ -33,6 +35,9 @@ export type HubBaseOptions = CoreOptions & {
 };
 
 export type HubOptions = HubBaseOptions & {
+  /** Optional adapter replacements; root is required when sessions are installed. */
+  adapters?: AdapterFactory[];
+  root?: string;
   port: number;
   /** The interface to bind; loopback by default, and cland never binds anything else (ADR 0003). */
   host?: string;
@@ -239,11 +244,18 @@ export async function createWebSocketEdge(
 export async function createHub(options: HubOptions): Promise<Hub> {
   const base = createHubBase(options);
   let edge: WebSocketEdge;
+  let sessions: ProjectSessions | undefined;
   try {
+    if (options.adapters) {
+      if (!options.root) throw new Error('adapters require a project root');
+      sessions = projectSessions({ core: base.core, root: options.root, discoveryFile: join(options.root, '.cland/hub.json'), log: options.log ?? (() => {}), adapters: options.adapters, ...(options.env ? { env: options.env } : {}) });
+      base.dispatcher.useSessions(sessions.sessions);
+    }
     edge = await createWebSocketEdge(base.dispatcher, options);
   } catch (err) {
     // nothing may outlive a hub that never listened
-    await base.close();
+    try { sessions?.close(); }
+    finally { await base.close(); }
     throw err;
   }
   return {
@@ -251,8 +263,11 @@ export async function createHub(options: HubOptions): Promise<Hub> {
     url: edge.url,
     port: edge.port,
     close: async () => {
-      await edge.close();
-      await base.close();
+      try { await edge.close(); }
+      finally {
+        try { sessions?.close(); }
+        finally { await base.close(); }
+      }
     },
   };
 }

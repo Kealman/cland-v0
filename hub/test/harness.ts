@@ -1,3 +1,4 @@
+import { fakeHarness, FAKE_FLAVOURS, type FakeFlavour, type FakeHarness } from './fakes/harness.ts';
 import type { Clock } from '../src/hub/clock.ts';
 // The test harness for the two seams:
 //   1. the spoke's MCP stdio surface — the real spoke process, driven by the SDK's client
@@ -323,7 +324,7 @@ export async function isolateVerification(root: string): Promise<void> {
 
 /** Default project fixture: a fresh hub in this process, reached through production discovery and edges.
  * No process globals are changed. Process lifecycle assertions must keep startDaemon instead. */
-export async function projectHub(t: TestContext, root: string, extra: Record<string, string> = {}, options: { clock?: Clock } = {}): Promise<{ discovery: Discovery; dispatcher: Pick<Dispatcher, 'open'>; stop: () => Promise<void> }> {
+export async function projectHub(t: TestContext, root: string, extra: Record<string, string> = {}, options: { clock?: Clock; harnesses?: 'fake' } = {}): Promise<{ fakes: Partial<Record<FakeFlavour, FakeHarness>>; discovery: Discovery; dispatcher: Pick<Dispatcher, 'open'>; stop: () => Promise<void> }> {
   assert.ok(!extra.CLAND_TEST_CRASH_AT, 'process crash tests require startDaemon');
   await isolateVerification(root);
   const env: NodeJS.ProcessEnv = {};
@@ -334,9 +335,15 @@ export async function projectHub(t: TestContext, root: string, extra: Record<str
   // asynchronous sink explicitly, including its flush barrier for hub.status.
   await mkdir(join(root, '.cland/log'), { recursive: true });
   const processLog = new Journal(join(root, '.cland/log/hub.log'));
+  const fakes: Partial<Record<FakeFlavour, FakeHarness>> = {};
+  const adapters = options.harnesses === 'fake' ? FAKE_FLAVOURS.map(flavour => (host: import('../src/adapters/contract.ts').AdapterHost, clock: Clock) => {
+    const fake = fakeHarness(flavour, { host, clock });
+    fakes[flavour] = fake;
+    return fake;
+  }) : undefined;
   let daemon;
   try {
-    daemon = await resources.run(() => serveProject(root, { ...options, env, log: entry => processLog.write({ ...entry, event: String(entry.event) }), flushLog: () => processLog.flush() }));
+    daemon = await resources.run(() => serveProject(root, { ...options, ...(adapters ? { adapters } : {}), env, log: entry => processLog.write({ ...entry, event: String(entry.event) }), flushLog: () => processLog.flush() }));
     await processLog.flush();
   }
   catch (error) {
@@ -357,7 +364,7 @@ export async function projectHub(t: TestContext, root: string, extra: Record<str
       };
     }),
   };
-  return { discovery: daemon.discovery, dispatcher, stop: () => daemon.stop() };
+  return { fakes, discovery: daemon.discovery, dispatcher, stop: () => daemon.stop() };
 }
 
 /** Start a fixture without startup orphan inspection; pass { sweep: true } as the fourth argument to opt in.

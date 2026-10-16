@@ -4,6 +4,8 @@
 // long a hook's signal outranks a poll), CLAND_STOP_GRACE_MS (how long a stop waits for the process tree to go,
 // per step). CLAND_CLAUDE_BIN names the `claude` executable, CLAND_OPENCODE_BIN the `opencode` one,
 // CLAND_CODEX_BIN the `codex` one.
+import type { AdapterHost, HarnessAdapter } from './contract.ts';
+import type { Clock } from '../hub/clock.ts';
 import { fileURLToPath } from 'node:url';
 import type { HubCore } from '../hub/core.ts';
 import type { LogFn } from '../log.ts';
@@ -23,55 +25,76 @@ const positive = (raw: string | undefined): number | undefined => {
   return Number.isFinite(n) && n > 0 ? n : undefined;
 };
 
+export type AdapterFactory = (host: AdapterHost, clock: Clock) => HarnessAdapter;
+
 export type ProjectSessions = { sessions: Sessions; close: () => void };
 
-export function projectSessions(options: { core: HubCore; root: string; db: string; discoveryFile: string; log: LogFn; env?: NodeJS.ProcessEnv; tracker?: Tracker | undefined; cleanup?: ProjectConfig['sessions'] | undefined }): ProjectSessions {
+export function projectSessions(options: { core: HubCore; root: string; db?: string; adapters?: AdapterFactory[]; discoveryFile: string; log: LogFn; env?: NodeJS.ProcessEnv; tracker?: Tracker | undefined; cleanup?: ProjectConfig['sessions'] | undefined }): ProjectSessions {
   const env = options.env ?? process.env;
   const table = new ProcessTable(options.db, options.core.clock);
   const pushTrustMs = positive(env.CLAND_PUSH_TRUST_MS);
   const sessions = new Sessions({ env, core: options.core, table, root: options.root, log: options.log, tracker: options.tracker, cleanup: options.cleanup, ...(pushTrustMs ? { pushTrustMs } : {}) });
   const host = sessions.host({ discoveryFile: options.discoveryFile, node: process.execPath, cli: CLI_ENTRY, spoke: SPOKE_ENTRY });
-  const pollMs = positive(env.CLAND_ADAPTER_POLL_MS);
-  const claudeAgentsMs = positive(env.CLAND_CLAUDE_AGENTS_MS);
-  const injectTimeoutMs = positive(env.CLAND_INJECT_TIMEOUT_MS);
-  const stopGraceMs = positive(env.CLAND_STOP_GRACE_MS);
-  sessions.register(
-    new ClaudeCodeAdapter(host, {
+  // Factories may own resources before registration. Keep ownership through every failure boundary.
+  const unregistered = new Set<HarnessAdapter>();
+  const own = (adapter: HarnessAdapter) => { unregistered.add(adapter); return adapter; };
+  const register = (adapter: HarnessAdapter) => {
+    unregistered.delete(adapter);
+    sessions.register(adapter);
+  };
+  const close = () => {
+    const failures: unknown[] = [];
+    try { sessions.close(); } catch (error) { failures.push(error); }
+    for (const adapter of unregistered) {
+      try { adapter.close(); } catch (error) { failures.push(error); }
+    }
+    unregistered.clear();
+    try { table.close(); } catch (error) { failures.push(error); }
+    if (failures.length) throw new AggregateError(failures, 'adapter cleanup failed');
+  };
+  try {
+    const pollMs = positive(env.CLAND_ADAPTER_POLL_MS);
+    const claudeAgentsMs = positive(env.CLAND_CLAUDE_AGENTS_MS);
+    const injectTimeoutMs = positive(env.CLAND_INJECT_TIMEOUT_MS);
+    const stopGraceMs = positive(env.CLAND_STOP_GRACE_MS);
+    const replacements = new Map<string, HarnessAdapter>();
+    for (const factory of options.adapters ?? []) {
+      const adapter = own(factory(host, options.core.clock));
+      if (replacements.has(adapter.harness)) throw new Error(`duplicate adapter replacement: ${adapter.harness}`);
+      replacements.set(adapter.harness, adapter);
+    }
+    register(replacements.get('claude-code') ?? own(new ClaudeCodeAdapter(host, {
       ...(env.CLAND_CLAUDE_BIN ? { bin: env.CLAND_CLAUDE_BIN } : {}),
       ...(pollMs ? { pollMs } : {}),
       ...(claudeAgentsMs ? { agentsMs: claudeAgentsMs } : {}),
       ...(injectTimeoutMs ? { injectTimeoutMs } : {}),
       ...(stopGraceMs ? { stopGraceMs } : {}),
       env,
-    }),
-  );
-  sessions.register(
-    new OpenCodeAdapter(host, {
+    })));
+    register(replacements.get('opencode') ?? own(new OpenCodeAdapter(host, {
       roleInstructions: env.CLAND_OPENCODE_ROLE_INSTRUCTIONS === '1',
       ...(stopGraceMs ? { stopGraceMs } : {}),
       ...(env.CLAND_OPENCODE_BIN ? { bin: env.CLAND_OPENCODE_BIN } : {}),
       ...(pollMs ? { pollMs } : {}),
       ...(injectTimeoutMs ? { injectTimeoutMs } : {}),
       env,
-    }),
-  );
-  sessions.register(
-    new CodexAdapter(host, {
+    })));
+    register(replacements.get('codex') ?? own(new CodexAdapter(host, {
       ...(stopGraceMs ? { stopGraceMs } : {}),
       ...(env.CLAND_CODEX_BIN ? { bin: env.CLAND_CODEX_BIN } : {}),
       ...(pollMs ? { pollMs } : {}),
       ...(injectTimeoutMs ? { injectTimeoutMs } : {}),
       env,
-    }),
-  );
-  // Startup is ordered: install every adapter and core capability, then reconcile durable
-  // terminal rows/reservations. Resume/watch may emit further facts only after this factory returns.
-  sessions.releaseInterruptedLaunches();
-  return {
-    sessions,
-    close: () => {
-      sessions.close();
-      table.close();
-    },
-  };
+    })));
+    for (const adapter of replacements.values()) {
+      if (!['claude-code', 'codex', 'opencode'].includes(adapter.harness)) register(adapter);
+    }
+    // All adapters and core capabilities precede durable launch recovery.
+    sessions.releaseInterruptedLaunches();
+    return { sessions, close };
+  } catch (error) {
+    try { close(); }
+    catch (cleanup) { throw new AggregateError([error, cleanup], 'adapter construction and cleanup failed'); }
+    throw error;
+  }
 }

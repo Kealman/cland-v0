@@ -50,6 +50,8 @@ export const CODEX = 'codex';
 /** The oldest Codex whose app-server takes `turn/start` with a `toolOutput` (BCAS verified 0.153.4). */
 export const MIN_CODEX_VERSION: readonly [number, number, number] = [0, 153, 4];
 
+export const CODEX_CLAUSE_AT_SPAWN = true;
+
 export const CODEX_CAPABILITIES: Capabilities = {
   // rollouts are on disk, but `Thread.path` is marked unstable and the format is not a stable interface
   history: 'none',
@@ -304,7 +306,7 @@ type SubscriptionSnapshot = { state: SessionState; model: string | null; sequenc
 export class CodexAdapter implements HarnessAdapter {
   readonly harness = CODEX;
   readonly capabilities = CODEX_CAPABILITIES;
-  readonly clauseAtSpawn = true;
+  readonly clauseAtSpawn = CODEX_CLAUSE_AT_SPAWN;
   readonly #host: AdapterHost;
   readonly #recoveries: FailedLaunches;
   readonly #bin: string;

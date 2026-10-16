@@ -41,6 +41,31 @@ The target strategy is task verification at T0–T2, T3 once per merge batch and
 - A new file that spawns a process with no lifecycle sentence in its header, or a new wall-clock wait, is a finding of at least medium severity.
 - Don't ask for a full run on a task head. A task verify plus the integrated cover (later, the merge-queue batch) is sufficient evidence.
 
+### In-process harnesses
+
+Hub rules use `projectHub(t, root, env, { harnesses: 'fake', clock })` by default,
+with a `FakeClock`. It replaces Claude Code, Codex and OpenCode under their real
+harness names, so `roles.toml` launch choices still work. The returned `fakes`
+map exposes each adapter. For a lower-level fixture, use
+`fakeHarness(flavour, { host, clock })` from `hub/test/fakes/harness.ts`.
+Capabilities and first-clause semantics come from the production adapters.
+
+The test drives `busy(name)`, `idle(name)`, `turn(name, { afterMs, usage, model })`,
+`exit(name, code)` and `crash(name)`. No process or automatic turn starts.
+`spawns` records full launch requests (including clause, brief, cwd and policy).
+`scriptInject(name, ...outcomes)` queues `accept`, `reject`, `uncertain` or `hold`;
+`{ outcome, afterMs }` schedules an outcome on the injected clock. A held inject
+settles through `settle(name, messageId, outcome)` or the adapter's `confirm`.
+Use `feedUsage`, `model` and `scriptResume(name, 'found' | 'gone')` for reports and
+recovery. Inspect `injections`, `stops` and `resumes` for adapter receipts.
+The fake supplies the harness adapter only: connect the session's protocol peer
+in-process or over a test socket and acknowledge delivered frames as usual.
+
+The fake harness **binaries** in `hub/test/fakes/{claude-code,codex,opencode}`
+are reserved for one real-binary adapter contract file per harness and T3
+scenarios. They are not the default for routing, roles, subscriptions or tracker
+rules. Existing files migrate under E-677; new tests use the in-process adapter.
+
 ## Fixtures
 
 Use `projectHub(t, root, env?)` from `hub/test/harness.ts` for project tests by

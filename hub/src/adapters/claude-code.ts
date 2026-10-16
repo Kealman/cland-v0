@@ -46,6 +46,8 @@ export const CLAUDE_CODE = 'claude-code';
 /** The cland mod, loaded into every session the adapter launches (`--plugin-dir`). */
 export const MOD_DIR = fileURLToPath(new URL('../../mod/cland', import.meta.url));
 
+export const CLAUDE_CODE_CLAUSE_AT_SPAWN = false;
+
 export const CLAUDE_CODE_CAPABILITIES: Capabilities = {
   // the transcript format is internal to Claude Code and changes between versions
   history: 'none',
@@ -188,6 +190,7 @@ const AUTH_VARIABLES = ['ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN', 'CLAUDE_COD
 export class ClaudeCodeAdapter implements HarnessAdapter {
   readonly harness = CLAUDE_CODE;
   readonly capabilities = CLAUDE_CODE_CAPABILITIES;
+  readonly clauseAtSpawn = CLAUDE_CODE_CLAUSE_AT_SPAWN;
   readonly #host: AdapterHost;
   readonly #bin: string;
   readonly #pollMs: number;
