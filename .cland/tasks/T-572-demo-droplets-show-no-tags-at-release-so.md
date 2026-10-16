@@ -3,7 +3,7 @@ id: T-572
 kind: task
 title: Demo droplets show no tags at release, so the hub refuses to delete a live untagged droplet
 state: open
-status: in progress
+status: ready
 size: S
 criterion_seq: 3
 labels:
@@ -19,7 +19,7 @@ regression_of: T-553
 topic: topic-357
 branch: t/T-572-demo-droplets-show-no-tags-at-release-so
 created: 2026-10-16T05:01:37.265Z
-updated: 2026-10-16T05:58:23.645Z
+updated: 2026-10-16T06:19:07.014Z
 ---
 
 ## Summary
@@ -30,13 +30,16 @@ E-423 demo run qa-2026-10-16-27-17 at 3c596742, case D18 (A-3726), on the restar
   - done: impl-572 · 2026-10-16T05:14:28.518Z
   - verified: rev-30 [reviewer] · run rev-20261016-572-source · 2026-10-16T05:27:14.575Z · commit ae48c3611f860ad73201eb757f08cf613a1719aa
   - verified: rev-30 [reviewer] · run rev-20261016-572-final · 2026-10-16T05:56:12.566Z · commit ae48c3611f860ad73201eb757f08cf613a1719aa
+  - verified: rev-30 [reviewer] · run rev-20261016-572-merge-final · 2026-10-16T06:19:06.085Z · commit 4f83d56911b1d4ecef93cfaa222d0beb8b590e4c
 - [x] C2. Every demo droplet carries both cland tags from creation, and a test with the fake provider fails if the demo create path omits them.
   - done: impl-572 · 2026-10-16T05:14:28.827Z
   - verified: rev-30 [reviewer] · run rev-20261016-572-source · 2026-10-16T05:27:14.575Z · commit ae48c3611f860ad73201eb757f08cf613a1719aa
   - verified: rev-30 [reviewer] · run rev-20261016-572-final · 2026-10-16T05:56:12.566Z · commit ae48c3611f860ad73201eb757f08cf613a1719aa
+  - verified: rev-30 [reviewer] · run rev-20261016-572-merge-final · 2026-10-16T06:19:06.085Z · commit 4f83d56911b1d4ecef93cfaa222d0beb8b590e4c
 - [x] C3. A droplet whose name and id match its lease but whose tags read empty is still destroyed, or retried until destroyed, with the mismatch logged. A droplet whose name or id differs is still refused.
   - done: impl-572 · 2026-10-16T05:14:29.214Z
   - verified: rev-30 [reviewer] · run rev-20261016-572-final · 2026-10-16T05:56:12.566Z · commit ae48c3611f860ad73201eb757f08cf613a1719aa
+  - verified: rev-30 [reviewer] · run rev-20261016-572-merge-final · 2026-10-16T06:19:06.085Z · commit 4f83d56911b1d4ecef93cfaa222d0beb8b590e4c
 
 ## Comments
 
@@ -128,3 +131,50 @@ Criteria: C1 verified, C2 verified, C3 verified.
 ### human · 2026-10-16T05:58:23.645Z
 
 Operator check by cland-impl, 2026-10-16 05:58Z: lease eb377eb6 (T-572's own verify 586b8df7, droplet 609588731 cland-v0-eb377eb6, deleteStarted 05:55:21Z, refused on tags mismatch with provider status active) is a 404 at DigitalOcean by 05:58:11Z; the provider lists only the tagged task droplet 609591169 (T-488) besides n8n. Nothing destroyed by hand. Third occurrence of the teardown-state reading (after 609583042 and 609583106): tags stripped and status still active for a short window after the delete call, then 404.
+
+### impl-572 · 2026-10-16T06:16:25.379Z
+
+Authorized conflict recovery: merged fresh origin/dev a9381ef0 at 4f83d569, pushed; only conflict was watchdog imports. Both T-523 child-close/bounded-stop logic and T-572 appendFile diagnostic callback retained. Root typecheck/shards green. Coordinator c88506cc narrowed proof to seven actual watchdog-process test files (A-3770). Whole files all green: demo-release 7, executor-droplet 14, executor-safety 20, executor-run 21, demo 8, executor-prepare 17, remote-fixture-lifecycle 12 = 99 pass/0 fail/0 skip. A-3781 full log, A-3782 guard/count summary. Serial admission load2.59–4.76<10, local queue empty, only authorized T-491 cwd PID exclusions. Slot A released. Merge delta review requested; Coordinator 919306f1 requires no new droplet run for this all-green conflict proof.
+
+### rev-30 · 2026-10-16T06:19:06.085Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-572-merge-final
+commit: 4f83d56911b1d4ecef93cfaa222d0beb8b590e4c
+scope: delta
+
+# T-572 merge delta review clear
+
+Reviewed pushed head `4f83d56911b1d4ecef93cfaa222d0beb8b590e4c`, branch `t/T-572-demo-droplets-show-no-tags-at-release-so`. Parents: prior final-clear `ae48c3611f860ad73201eb757f08cf613a1719aa` and freshly merged dev `a9381ef0e213c5cfc4d2092ec24901c96c9b0c17`. Origin branch equals HEAD. task.view confirms live claimant, C1–C3 done, and prior verified marks stale only because the merge moved the head.
+
+## Standards
+
+0 high, 0 medium, 0 low findings. The only conflict was watchdog imports. Resolution retains dev/T-523 `spawn, type ChildProcess` and T-572 `appendFile`. Independent normalization removing exactly T-572's appendFile import and diagnostic callback produces watchdog.ts byte-for-byte equal to dev. All T-523 owned ChildProcess/close-receipt tracking, bounded TERM/KILL waits, restart PID/start-time revalidation and failure cleanup are preserved.
+
+The other five T-572 files (cleanup.ts, droplet.ts, lease.ts, demo-release.test.ts, fake-api.ts) are byte-identical to the prior final-clear parent. Incoming dev changes remain dev's implementation; the net task diff against dev is the previously reviewed six-file T-572 change with that mechanical watchdog resolution. Whitespace check clean. Root typecheck and shard lint are claimant-reported green; A-3768 records them, with no separate raw compiler receipt claimed here.
+
+## Spec
+
+C1–C3 refreshed. Prior source/final analysis A-3741/A-3765 remains applicable: create path preserves both tags; known ID/name mismatches refuse immediately; tags-only identity disagreement gets a bounded reread and diagnostic, not deletion authority from missing tags. Existing tagged lost-create discovery stays intact. The merge changes none of those boundaries.
+
+C1 retains Coordinator af678989's explicit bounded-inference disposition: real active/tags-empty observations plus faithful fake reproduction support the mechanism; the actor stripping tags remains unobserved. This merge does not establish provider internals or completion of the live D18 check. E-423 D18 rerun follows merge/restart and reopens live tracing if the problem persists.
+
+## Conflict proof and gate disposition
+
+Primary Coordinator **919306f1-cd98-4753-9c33-34733fc13e8f** authorizes the dev merge and explicitly waives another droplet run if the required local proof is green. Primary **c88506cc-a65e-4f7d-b73b-969d0caac514** narrows proof to the four named lifecycle files plus process-exercising watchdog matches, excluding incidental spawn/ChildProcess matches. A-3770 supersedes the earlier broad A-3769 list.
+
+Independent `rg -li watchdog hub/test nvim/test -g '*.test.ts'` returns exactly the seven selected whole files, all in hub/test: demo-release, executor-droplet, executor-safety, executor-run, demo, executor-prepare, remote-fixture-lifecycle. These cover tags-only reread/logging, strict foreign identity refusal, parent/child close behavior, after-hub-exit cleanup, failed builder cleanup, and owner signal teardown.
+
+A-3781 raw whole-file log and A-3782 per-file guard/count summary agree: **7 +14 +20 +21 +8 +17 +12 =99 pass**, zero fail/cancel/skip, serially at this merge head from 06:10:04 through 06:15:39 UTC. Per-file admissions show local holder null, loads **2.59–4.76 <10**, and either no test PIDs or only the reported authorized T-491 worktree identified by PID/cwd. No third/unknown worktree is recorded. The slot was released afterward. Raw output contains both actual count lines and repeated structured summaries; these are one execution per file, not 198 tests.
+
+Prior exact-head Linux **586b8df7 / A-3764** at ae48c361 was green (1913 pass, 0 fail, 4 permitted skips; hub plus Neovim smoke), accepted in A-3765. Carry it forward only under the Coordinator's explicit conflict-proof waiver, not as a new Linux execution at this merge head. All required current-head local proof is green, so no new droplet run is required.
+
+Final merge delta clear; refresh all C1–C3 at 4f83d569. No per-item QA. Live D18/stage QA remains Coordinator-owned after merge. Reviewer performed no tests, compiler/binary execution, edits, signals, provider actions, merges or subagents.
+
+Findings: Standards0; Spec0.
+
+Artifact A-3784 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3784-t-572-merge-delta-clear-watchdog-close-behavior-preserved-seven-whole-files-gree.md
+
+Criteria: C1 verified, C2 verified, C3 verified.
