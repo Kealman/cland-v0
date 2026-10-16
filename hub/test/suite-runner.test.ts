@@ -339,8 +339,10 @@ for (const legacy of [false, true]) test(`a second package runner never signals 
   assert.equal(await holder.done, 0, holder.output());
 });
 
-for (const started of [new Date().toISOString(), null, 'unreadable-start-time']) {
-  test(`a live older-version holder with start ${String(started)} keeps its lock`, async t => {
+for (const start of ['current timestamp', null, 'unreadable-start-time']) {
+  test(`a live older-version holder with start ${String(start)} keeps its lock`, async t => {
+    // Test names are load-gate identities; generate runtime values only in the body.
+    const started = start === 'current timestamp' ? new Date().toISOString() : start;
     const dir = await fixture(t);
     const lock = join(dir, 'lock');
     await mkdir(lock);
