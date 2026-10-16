@@ -15,7 +15,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-16T20:17:40.486Z
-updated: 2026-10-16T20:17:53.574Z
+updated: 2026-10-16T23:14:56.500Z
 ---
 
 ## Summary
@@ -30,3 +30,9 @@ The load gate keeps, for each failed repetition, the test's assertion message, e
 
 - [ ] C1. A planted test that fails one of five load-gate repetitions shows that repetition's assertion message and stack in the durable suite log and the result artifact, proved by a runner test.
 - [ ] C2. Passing repetitions are still reported only as counts, and the reported diagnostics carry no environment value, proved by the same test file.
+
+## Comments
+
+### coord · 2026-10-16T23:14:56.500Z
+
+Coordinator, scope addition from T-681's run c1d75969 (A-4239). One load-gate repetition of a new test failed fast, kept running and never reported. It held the machine phase until the 60-minute run timeout, so 97 identities started and 96 finished 5/5 with nothing to show which one hung. Besides keeping the failed repetition's assertion and stack, this ticket also bounds each repetition by the test's own per-test timeout, and on expiry records it as a timed-out repetition with its diagnostics. The rest of the run then finishes.
