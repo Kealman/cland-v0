@@ -3,7 +3,7 @@ id: T-532
 kind: task
 title: OpenCode launch polls the server on a port cland chose, and a rejected approval is reported as a rejection
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - v0.1.3
@@ -11,10 +11,10 @@ labels:
 assignee: null
 parent: E-424
 blocked_by: []
-topic: null
-branch: null
+topic: topic-378
+branch: t/T-532-opencode-launch-polls-the-server-on-a
 created: 2026-10-15T20:59:18.648Z
-updated: 2026-10-15T20:59:35.012Z
+updated: 2026-10-16T15:48:04.364Z
 ---
 
 ## Summary

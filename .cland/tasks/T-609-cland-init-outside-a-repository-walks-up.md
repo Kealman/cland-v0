@@ -10,12 +10,12 @@ labels:
   - hub
   - init
 assignee: null
-parent: R-577
+parent: E-612
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-16T14:15:41.938Z
-updated: 2026-10-16T14:15:41.938Z
+updated: 2026-10-16T15:49:42.296Z
 ---
 
 ## Summary

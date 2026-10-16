@@ -3,7 +3,7 @@ id: T-475
 kind: task
 title: "Cover-quiet enforced: while the Coordinator's integrated cover holds the slot, the test harness refuses to start a fixture hub"
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - v0.1.3
@@ -14,7 +14,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-15T09:13:18.684Z
-updated: 2026-10-16T06:36:55.235Z
+updated: 2026-10-16T15:46:13.608Z
 ---
 
 ## Summary

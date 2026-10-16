@@ -3,7 +3,7 @@ id: T-575
 kind: task
 title: "In-process hub, part 3: bring daemon starts per full run from 743 to under 600"
 state: open
-status: backlog
+status: in progress
 size: M
 labels:
   - v0.1.3
@@ -11,10 +11,10 @@ labels:
 assignee: null
 parent: E-578
 blocked_by: []
-topic: null
-branch: null
+topic: topic-376
+branch: t/T-575-in-process-hub-part-3-bring-daemon
 created: 2026-10-16T06:12:55.788Z
-updated: 2026-10-16T06:36:49.032Z
+updated: 2026-10-16T15:47:35.785Z
 ---
 
 ## Summary

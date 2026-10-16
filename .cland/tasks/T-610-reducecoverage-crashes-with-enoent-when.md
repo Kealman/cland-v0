@@ -3,7 +3,7 @@ id: T-610
 kind: task
 title: reduceCoverage crashes with ENOENT when two test owner processes reuse one pid on macOS
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - bug
@@ -13,10 +13,10 @@ assignee: null
 parent: R-577
 blocked_by: []
 regression_of: T-394
-topic: null
-branch: null
+topic: topic-380
+branch: t/T-610-reducecoverage-crashes-with-enoent-when
 created: 2026-10-16T14:24:16.825Z
-updated: 2026-10-16T14:24:16.825Z
+updated: 2026-10-16T15:48:17.034Z
 ---
 
 ## Summary

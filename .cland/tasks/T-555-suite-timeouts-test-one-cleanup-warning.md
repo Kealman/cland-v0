@@ -3,17 +3,17 @@ id: T-555
 kind: task
 title: "suite-timeouts test: 'one cleanup warning' not seen within 15000 ms under load (Mac)"
 state: open
-status: backlog
+status: in progress
 size: XS
 labels:
   - flaky
 assignee: null
 parent: E-482
 blocked_by: []
-topic: null
-branch: null
+topic: topic-381
+branch: t/T-555-suite-timeouts-test-one-cleanup-warning
 created: 2026-10-16T01:06:48.258Z
-updated: 2026-10-16T01:06:48.258Z
+updated: 2026-10-16T15:48:29.382Z
 ---
 
 ## Summary

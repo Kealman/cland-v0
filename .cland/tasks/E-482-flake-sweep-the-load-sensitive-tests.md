@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-15T09:14:14.206Z
-updated: 2026-10-16T06:35:47.920Z
+updated: 2026-10-16T15:46:08.886Z
 ---
 
 ## Goal
@@ -51,6 +51,20 @@ stages:
       - - T-446
         - T-442
       - - T-484
+  - name: the sweep, part 2
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-494
+      - - T-501
+      - - T-509
+      - - T-524
+      - - T-526
+      - - T-528
+      - - T-555
+      - - T-558
+      - - T-560
 ```
 
 ## Comments

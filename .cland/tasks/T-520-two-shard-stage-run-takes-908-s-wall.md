@@ -3,7 +3,7 @@ id: T-520
 kind: task
 title: Two-shard stage run takes 908 s wall against T-395's 600 s target
 state: open
-status: backlog
+status: in progress
 size: M
 labels:
   - ready-for-agent
@@ -12,10 +12,10 @@ parent: E-578
 blocked_by:
   - T-519
 regression_of: T-395
-topic: null
-branch: null
+topic: topic-377
+branch: t/T-520-two-shard-stage-run-takes-908-s-wall
 created: 2026-10-15T18:12:19.748Z
-updated: 2026-10-16T06:36:55.051Z
+updated: 2026-10-16T15:47:37.796Z
 ---
 
 ## Summary

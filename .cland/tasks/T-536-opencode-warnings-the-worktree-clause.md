@@ -3,7 +3,7 @@ id: T-536
 kind: task
 title: OpenCode warnings, the worktree clause, and the codemode and instructions experiments
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - v0.1.3
@@ -11,10 +11,10 @@ labels:
 assignee: null
 parent: E-424
 blocked_by: []
-topic: null
-branch: null
+topic: topic-379
+branch: t/T-536-opencode-warnings-the-worktree-clause
 created: 2026-10-15T20:59:19.741Z
-updated: 2026-10-15T20:59:38.298Z
+updated: 2026-10-16T15:48:06.464Z
 ---
 
 ## Summary

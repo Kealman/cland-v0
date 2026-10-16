@@ -11,7 +11,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-16T06:35:58.703Z
-updated: 2026-10-16T08:33:09.190Z
+updated: 2026-10-16T15:46:11.984Z
 ---
 
 ## Summary
@@ -24,3 +24,16 @@ Carried over from E-387 in v0.1.3 by the human's decision on 2026-10-16 (ask 396
 - [ ] D4. A typical hub task's `cland verify` selects by coverage and finishes in under 5 minutes, and the replay of the last 40 merges meets the human's bar, with T-394 C5–C7's results posted (from E-387).
 - [ ] D5. The worker defaults are set from a recorded measurement, locally and on c-16, with T-396's table filled in (from E-387).
 - [ ] D6. T-393's 20 migrated files run at least 20% faster than before the migration, judged after merge (T-393 C5, from E-387).
+
+## Plan
+
+```yaml
+stages:
+  - name: the measured targets
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-575
+      - - T-520
+```

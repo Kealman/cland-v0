@@ -3,7 +3,7 @@ id: T-379
 kind: task
 title: Tracker-only commits on dev must not cancel or invalidate an integrated dev run
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - hub
@@ -13,10 +13,10 @@ assignee: null
 parent: E-579
 blocked_by:
   - T-472
-topic: null
-branch: null
+topic: topic-375
+branch: t/T-379-tracker-only-commits-on-dev-must-not
 created: 2026-10-14T08:41:13.625Z
-updated: 2026-10-16T06:36:55.141Z
+updated: 2026-10-16T15:47:28.252Z
 ---
 
 ## What happened

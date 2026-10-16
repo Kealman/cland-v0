@@ -3,17 +3,17 @@ id: T-560
 kind: task
 title: "default-subscriptions test: session.launch times out at 5 s in the older pooled Reviewer death case (Linux, loaded)"
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - flaky
 assignee: null
 parent: E-482
 blocked_by: []
-topic: null
-branch: null
+topic: topic-383
+branch: t/T-560-default-subscriptions-test-session
 created: 2026-10-16T01:20:47.649Z
-updated: 2026-10-16T01:20:47.649Z
+updated: 2026-10-16T15:48:42.683Z
 ---
 
 ## Summary

@@ -3,7 +3,7 @@ id: T-558
 kind: task
 title: "suite-close test: the map-union case fails one of five load-gate repetitions after T-531"
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - flaky
@@ -11,10 +11,10 @@ assignee: null
 parent: E-482
 blocked_by: []
 regression_of: T-531
-topic: null
-branch: null
+topic: topic-382
+branch: t/T-558-suite-close-test-the-map-union-case
 created: 2026-10-16T01:13:33.534Z
-updated: 2026-10-16T01:18:40.123Z
+updated: 2026-10-16T15:48:38.208Z
 ---
 
 ## Summary
