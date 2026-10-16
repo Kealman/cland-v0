@@ -3,7 +3,7 @@ id: T-629
 kind: task
 title: The Aide launches, stops and resumes sessions of any role on the human's word
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 6
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-388
 branch: t/T-629-the-aide-launches-stops-and-resumes
 created: 2026-10-16T16:04:11.671Z
-updated: 2026-10-16T16:14:39.570Z
+updated: 2026-10-16T16:56:32.093Z
 ---
 
 ## Summary
@@ -39,18 +39,24 @@ Existing projects, whose `roles.toml` lists the Aide's tools explicitly, get the
 
 - [x] C1. An Aide launches a Coordinator through its `session.launch` tool in a scratch project with the fake harnesses, in a new frame-protocol test.
   - done: impl-629 · 2026-10-16T16:11:18.178Z
+  - verified: rev-30 [reviewer] · run rev-20261016-629-final · 2026-10-16T16:56:27.827Z · commit 4b423f2d51ef80bee6598d36356ed702b7adff4b
 - [x] C2. In the same test the Aide launches an Implementer with `cland session launch` from its shell, then stops and resumes it with `cland session stop` and `cland session resume`, each audited as the Aide.
   - done: impl-629 · 2026-10-16T16:11:18.531Z
+  - verified: rev-30 [reviewer] · run rev-20261016-629-final · 2026-10-16T16:56:27.828Z · commit 4b423f2d51ef80bee6598d36356ed702b7adff4b
 - [x] C3. An Aide may launch a Lead and stop the Coordinator, while an Implementer, Reviewer and QA are still refused `session.launch`, `session.stop` and `session.resume` from their tools and their shells (permission tests).
   - done: impl-629 · 2026-10-16T16:11:18.820Z
+  - verified: rev-30 [reviewer] · run rev-20261016-629-final · 2026-10-16T16:56:27.828Z · commit 4b423f2d51ef80bee6598d36356ed702b7adff4b
 - [x] C4. A Lead keeps its subtree limits and its refusal of `session.resume`, and an Aide is still refused `merge`, `ask`, `resolve`, `role.handover`, `release` and `sync` even when its roles.toml list grants them (existing permission tests extended).
   - done: impl-629 · 2026-10-16T16:11:19.172Z
+  - verified: rev-30 [reviewer] · run rev-20261016-629-final · 2026-10-16T16:56:27.828Z · commit 4b423f2d51ef80bee6598d36356ed702b7adff4b
 - [x] C5. The shipped Aide clause says it launches, stops and resumes sessions only on the human's word and that the Coordinator keeps the staffing during a build, and no longer lists those three among what it cannot do.
   - done: impl-629 · 2026-10-16T16:11:19.454Z
   - verified: rev-30 [reviewer] · run rev-20261016-629-source · 2026-10-16T16:14:39.570Z · commit 4b423f2d51ef80bee6598d36356ed702b7adff4b
+  - verified: rev-30 [reviewer] · run rev-20261016-629-final · 2026-10-16T16:56:27.828Z · commit 4b423f2d51ef80bee6598d36356ed702b7adff4b
 - [x] C6. The hub README's Aide section and permission table list the three grants and the limit to the human's word.
   - done: impl-629 · 2026-10-16T16:11:19.811Z
   - verified: rev-30 [reviewer] · run rev-20261016-629-source · 2026-10-16T16:14:39.570Z · commit 4b423f2d51ef80bee6598d36356ed702b7adff4b
+  - verified: rev-30 [reviewer] · run rev-20261016-629-final · 2026-10-16T16:56:27.828Z · commit 4b423f2d51ef80bee6598d36356ed702b7adff4b
 
 ## Comments
 
@@ -98,3 +104,25 @@ Standards 0 findings; Spec 0 findings.
 Artifact: A-3984 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3984-t-629-source-clear-aide-lifecycle-grants-and-retained-role-boundaries.md
 
 Criteria: C5 verified, C6 verified.
+
+### rev-30 · 2026-10-16T16:56:27.828Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-629-final
+commit: 4b423f2d51ef80bee6598d36356ed702b7adff4b
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence review clear T-629 at unchanged source-reviewed 4b423f2d51ef80bee6598d36356ed702b7adff4b. Source review A-3984 / rev-20261016-629-source remains applicable; no new findings.
+
+Independently inspected durable A-4037 for run 47be2752-0887-4c5d-a73d-d61153653200. Its header names the exact task head; host and remote typechecks complete, hub-only package phase and Neovim smoke finish with exit 0. Totals: 1962 tests, 1957 pass, zero failures, five unrelated platform/binary-prerequisite skips (two macOS sandbox cases, sleep inhibitor, two real OpenCode cases). No owned skip, hard budget failure or failed load gate.
+
+C1–C3: the real-frame/fake-harness Aide lifecycle test passes ordinarily in 22.933 s (line 519) and all five fresh load repetitions (line 651). Combined with the reviewed test assertions, this establishes tool launch of Coordinator/Lead, actual Aide shell worker launch/stop/resume and Coordinator stop, and ordered per-call Aide audits. C3/C4: the separate Implementer/Reviewer/QA tool-and-shell refusal regression passes ordinarily in 2.695 s and 5/5 repetitions (line 2073). All Aide, permissions, Lead-launch and Lead-permissions cases pass, including malicious grants, live subtree reparenting and lost-authority checks. Their reviewed assertions retain Lead resume and Aide forbidden-operation boundaries. C5/C6 shipped clause and README source proof carries forward.
+
+Linux x64 c-8 lon1, Node 24.21.0, Neovim 0.12.5, four workers; suite 1440.98 s, peak load 15.07, droplet lifetime 1517 s, cost $0.1053. Duration-regression notices are non-failing. All six criteria verified; no per-item QA required.
+Review artifact: A-4038.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.

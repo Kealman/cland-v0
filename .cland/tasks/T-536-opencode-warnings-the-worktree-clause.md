@@ -3,7 +3,7 @@ id: T-536
 kind: task
 title: OpenCode warnings, the worktree clause, and the codemode and instructions experiments
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 4
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-379
 branch: t/T-536-opencode-warnings-the-worktree-clause
 created: 2026-10-15T20:59:19.741Z
-updated: 2026-10-16T16:48:40.991Z
+updated: 2026-10-16T16:56:01.949Z
 ---
 
 ## Summary
@@ -36,14 +36,17 @@ See E-424's "The codemode experiment", "The instructions experiment", "The warni
 
 - [x] C1. `cland doctor` shows the free-model training warning and the missing-sandbox warning for a role on a free OpenCode model, and neither refuses a launch.
   - done: impl-536 · 2026-10-16T16:24:01.305Z
-- [ ] C2. The role clauses for OpenCode roles (both copies) forbid moving a session out of its item's worktree.
-  - failed: rev-31 [reviewer] · 2026-10-16T16:48:40.991Z · note Added guardrail pushes both Coordinator clause copies above the established reserved reply budget (7823>7680 bytes).
+- [x] C2. The role clauses for OpenCode roles (both copies) forbid moving a session out of its item's worktree.
+  - done: impl-536 · 2026-10-16T16:54:47.373Z
+  - verified: rev-31 [reviewer] · run rev-20261016-536-source-3 · 2026-10-16T16:55:25.681Z · commit 4f51454ed441f9c152fd2efe3f718544e1553ae7
 - [x] C3. The codemode measurement is an artifact on E-424 with its decision, and the default changes only where it supports it.
   - verified: rev-31 [reviewer] · run rev-20261016-536-source-2 · 2026-10-16T16:23:18.437Z · commit 72d4804a2b919ca718c31c6f207a5f22c127e017
   - done: impl-536 · 2026-10-16T16:24:02.765Z
+  - verified: rev-31 [reviewer] · run rev-20261016-536-source-3 · 2026-10-16T16:55:25.681Z · commit 4f51454ed441f9c152fd2efe3f718544e1553ae7
 - [x] C4. The instructions option exists, off by default, its measurement is an artifact on E-424, and the adoption question is filed in Follow-ups.
   - verified: rev-31 [reviewer] · run rev-20261016-536-source-2 · 2026-10-16T16:23:18.437Z · commit 72d4804a2b919ca718c31c6f207a5f22c127e017
   - done: impl-536 · 2026-10-16T16:24:03.552Z
+  - verified: rev-31 [reviewer] · run rev-20261016-536-source-3 · 2026-10-16T16:55:25.681Z · commit 4f51454ed441f9c152fd2efe3f718544e1553ae7
 
 ## Comments
 
@@ -107,3 +110,26 @@ finding_counts: {"high":0,"medium":1,"low":0}
 Gate not clear; A-4032. Exact-head Linux39760d2d/A-4031 exit1:1946pass/2fail/5skip, no Neovim. Both own clause snapshot cases fail roles.ts88 on7823byte Coordinator reply versus8192-512=7680. Independently measured new guardrail156bytes, previousreply7667fits: direct task regression, not flake. Compact both clause copies retaining guardrail/required role content and unchanged512headroom assertion; rerun whole roles file and request new source review before verification. C2 failed; C1 final mark pending. C3/C4 source evidence current and stale-instruction finding remains resolved; allfive added doctor/instruction identities5of5. No Reviewer edits/tests.
 
 Criteria: C2 failed (Added guardrail pushes both Coordinator clause copies above the established reserved reply budget (7823>7680 bytes).).
+
+### impl-536 · 2026-10-16T16:54:47.212Z
+
+Gate 39760d2d / A-4031 failed only task-owned Coordinator clause byte assertions (7823 > 7680 with unchanged 512-byte headroom). Corrected in pushed head 4f51454ed441f9c152fd2efe3f718544e1553ae7: compact explicit OpenCode worktree ban for all roles in both copies, remove Coordinator's illustrative cost cache/shorten daily-cap pointer, compact QA request cleanup prose after whole-file validation exposed QA's previously full budget. Same policy and metadata preserved. roles.test.ts now explicitly asserts the guardrail in every role's emitted clause. Targeted red reproduced both original failures; whole roles.test.ts 8/8 and surface.test.ts 3/3 passed, run separately under load threshold; typecheck exit 0. A-4035 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-4035-t-536-c2-correction-preserve-worktree-guardrail-and-clause-reply-headroom.md records the correction. No head merge after first review. Fresh source review requested before another no-mode droplet gate.
+
+### rev-31 · 2026-10-16T16:55:25.681Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261016-536-source-3
+commit: 4f51454ed441f9c152fd2efe3f718544e1553ae7
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Corrected source clear; Standards0/Spec0 findings. A-4036 records review. Compact categorical OpenCode worktree ban remains in allsix roles/bothcopies. Coordinator removes illustrative cost only, retains sharding/shortage fallback/cap pointer; QA shortens request prose preserving required fields, any-role permission, cleanup and report routing. Existing512byte headroom assertion unchanged; emitted-clause test additionally verifies ban for every role/bothsources. A-4035 reports old7823>7680 reproduced then whole roles8of8/surface3of3/typecheckgreen. Diff/ref confirmed; no dev merge. C2 finding resolved, C2/C3/C4 current; prior instruction correction/experiments unchanged. C1 final execution awaits fresh exact-head no-mode droplet gate; A-4031 remains historical exit1.
+
+Criteria: C2 verified, C3 verified, C4 verified.
+
+### impl-536 · 2026-10-16T16:56:01.949Z
+
+Source review clear rev-20261016-536-source-3 at 4f51454ed441f9c152fd2efe3f718544e1553ae7 received; working tree clean and HEAD confirmed unchanged. Submitted fresh no-mode verification with explicit droplet executor as 007fa789-775e-4df7-9838-105fe5ed17c2, queued in topic-379 with reports to reviewer and impl-536. Waiting for same-head result; no further source changes.
