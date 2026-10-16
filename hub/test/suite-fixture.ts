@@ -6,10 +6,12 @@ import { cland, clandWithEnv, connectUi, projectHub, startDaemon, spawnSpoke, te
 import { onCleanup, ownProcess } from './process-cleanup.ts';
 
 export type ResultMessage = { id: string; from: string; fromRole?: string; text: string; to: string[]; artifacts: Array<{ id: string; path: string; creator: string }> };
-export async function fixture(t: import('node:test').TestContext, testScript: string, typecheck = 'node -e "process.exit(0)"', config = '', daemonEnv: Record<string, string> = {}, budget = 1, cacheAgeMinutes = 1440, serve: typeof projectHub | typeof startDaemon = projectHub) {
+export async function fixture(t: import('node:test').TestContext, testScript: string, typecheck = 'node -e "process.exit(0)"', config: string | { text?: string; verification: string } = '', daemonEnv: Record<string, string> = {}, budget = 1, cacheAgeMinutes = 1440, serve: typeof projectHub | typeof startDaemon = projectHub) {
   const root = await tempProject(t, 'cland-suite-cli-');
   await mkdir(join(root, '.cland'));
-  await writeFile(join(root, '.cland', 'config.toml'), `${config}\n[verification]\nbudget = ${budget}\ncache_max_age_minutes = ${cacheAgeMinutes}\nlock_path = ${JSON.stringify(join(root, 'suite.lock'))}\n`);
+  const configText = typeof config === 'string' ? config : config.text ?? '';
+  const verification = typeof config === 'string' ? '' : config.verification;
+  await writeFile(join(root, '.cland', 'config.toml'), `${configText}\n[verification]\n${verification}\nbudget = ${budget}\ncache_max_age_minutes = ${cacheAgeMinutes}\nlock_path = ${JSON.stringify(join(root, 'suite.lock'))}\n`);
   await writeFile(join(root, 'package.json'), JSON.stringify({ scripts: { typecheck, test: testScript } }));
   const { discovery } = await serve(t, root, daemonEnv);
   const ui = await connectUi(t, discovery, 'cli');

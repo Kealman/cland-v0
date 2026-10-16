@@ -28,7 +28,7 @@ import type { LogFn } from '../log.ts';
 import { projectSessions, type ProjectSessions } from '../adapters/index.ts';
 import { CrewFile, crewSummary } from '../crew.ts';
 import { RulebookFile } from '../rules/file.ts';
-import { RolesFile } from '../roles/config.ts';
+import { ProjectConfiguration } from './configuration.ts';
 import { readProjectConfig } from '../init/config.ts';
 import { Journal, journalPath, readJournal, eventRow, type JournalOpen, type JournalRecord } from './journal.ts';
 import { agentsRecord, replayAgentsRecord } from './agents-topic.ts';
@@ -56,6 +56,7 @@ export type Daemon = {
   storageFailed: Promise<void>;
   /** The CLI must exit rather than await an abandoned native storage operation. */
   readonly storageAbandoned: boolean;
+  reload: () => Promise<import('./configuration.ts').ConfigReloadResult>;
   stop: () => Promise<void>;
 };
 
@@ -166,7 +167,7 @@ export async function serveProject(root: string, options: { log?: LogFn; flushLo
     }
   }, planHistory: readJournal(journalPath(l.dir), { kinds: ['task-plan-changed', 'task-plan-approved'] }), ...(config ? { levels: config.tracker.levels, storageFatalMs: config.tracker.fatalStallMs, qaDefault: config.plan.qaDefault, planApproval: config.plan.approval } : {}), ...(storageStallMs > 0 && Number.isFinite(storageStallMs) ? { storageStallMs } : {}), ...(storageFatalMs > 0 && storageFatalMs <= 2147483647 && Number.isFinite(storageFatalMs) ? { storageFatalMs } : {}), ...(stopTimeoutMs > 0 && Number.isFinite(stopTimeoutMs) ? { stopTimeoutMs } : {}), root, db: l.db, log, watchResumed: requestGuard.resumer('tracker.watch'), ...(writeGate ? { writeGate } : {}), ...(tipCheckMs > 0 ? { tipCheckMs } : {}), ...(options.scheduleTips ? { scheduleTips: options.scheduleTips } : {}) });
   // the role definitions: written with the defaults when the project has none, then watched
-  const roles = new RolesFile(l.roles, log, undefined, requestGuard.resumer('roles.refresh'));
+  const roles = new ProjectConfiguration(l, config, log, env, requestGuard.resumer('config.reload'), next => { hub.dispatcher.configure(next); config = next; });
   // the hygiene thresholds of `.cland/config.toml`; the built-in defaults when it is missing or unreadable
   if (config) log({ event: 'config-loaded', path: l.config, hygiene: config.hygiene });
   const rules = new RulebookFile(l.rules, () => roles.get().keys(), log, requestGuard.resumer('rules.refresh'));
@@ -208,6 +209,7 @@ export async function serveProject(root: string, options: { log?: LogFn; flushLo
       env,
       rules,
       journal,
+      projectConfig: roles.config,
       verification: { executor: config?.verification.executor ?? 'local', lifetimeMs: config?.verification.lifetimeMs ?? 6600000, runTimeoutMs: config?.verification.runTimeoutMs ?? 4500000, runTimeout: config?.verification.runTimeout ?? '75m', cacheMaxAgeMs: config?.verification.cacheMaxAgeMs ?? 86400000, budget: config?.verification.budget ?? 1, remoteBudget: config?.verification.remoteBudget ?? 4, shards: config?.verification.shards ?? 2, locks: [config?.verification.lockPath ?? '/tmp/cland-suite.lock', config?.verification.lockPath && config.verification.lockPath !== '/tmp/cland-suite.lock' ? `${config.verification.lockPath}-nvim` : '/tmp/cland-suite-nvim.lock'] },
       store: new Store(l.db),
       log,
@@ -227,6 +229,7 @@ export async function serveProject(root: string, options: { log?: LogFn; flushLo
       // tests only: how long a queued message and a remembered name last (the default is a day)
       ...(Number(env.CLAND_QUEUE_TTL_MS) > 0 ? { queueTtlMs: Number(env.CLAND_QUEUE_TTL_MS) } : {}),
       control: {
+        reload: resumed => roles.reload(resumed),
         flushLogs: async () => { await journal.flush(); await processJournal?.flush(); await options.flushLog?.(); },
         // without listeners: port 0 and no socket
         status: () => ({
@@ -236,6 +239,7 @@ export async function serveProject(root: string, options: { log?: LogFn; flushLo
           version: VERSION,
           root,
           startedAt: startedAt.toISOString(),
+          config: roles.status(),
           crew: { config: crew.get(), summary: crewSummary(crew.get()) },
           keys: config?.keys ?? { layouts: [] },
           tracker: { levels: tracker.ladder.flat, ladder: tracker.ladder.levels.map(level => [...level]) },
@@ -321,7 +325,7 @@ export async function serveProject(root: string, options: { log?: LogFn; flushLo
   if (ws === null || edge === null) {
     log({ event: 'serving', root, pid: process.pid, listeners: false });
     starting = false;
-    return { layout: l, discovery: null, hub, log, stopped, storageFailed, stop, get storageAbandoned() { return tracker.storageStatus().abandoned.length > 0; } };
+    return { layout: l, discovery: null, hub, log, stopped, storageFailed, stop, reload: () => roles.reload(), get storageAbandoned() { return tracker.storageStatus().abandoned.length > 0; } };
   }
 
   // the adapters: launched harness sessions, re-found after a restart once the hub is reachable again
@@ -346,5 +350,5 @@ export async function serveProject(root: string, options: { log?: LogFn; flushLo
     const ended = await sweepOrphans(root, log, 'harness', { pending: () => stopping !== null || adapters!.sessions.lifecyclePending() });
     log({ event: 'orphan-sweep-completed', ended: ended.map(p => p.process.pid) });
   }).catch(err => log({ event: 'orphan-sweep-failed', reason: err instanceof Error ? err.message : 'OS process inspection failed; unverified candidates were preserved' }));
-  return { layout: l, discovery, hub, log, stopped, storageFailed, stop, get storageAbandoned() { return tracker.storageStatus().abandoned.length > 0; } };
+  return { layout: l, discovery, hub, log, stopped, storageFailed, stop, reload: () => roles.reload(), get storageAbandoned() { return tracker.storageStatus().abandoned.length > 0; } };
 }

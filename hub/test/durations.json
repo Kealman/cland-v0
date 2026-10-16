@@ -3191,6 +3191,14 @@
       "seconds": 91.659909,
       "reason": "File budget: Aggregates real fake-Codex launch, delivery, resume and stop scenarios across the adapter contract."
     },
+    "hub/test/config-reload-remote.test.ts::reload preserves an active verification and lease, and new admissions use the new lifetime and spend cap": {
+      "seconds": 9.72,
+      "reason": "C3 crosses the real hub/CLI and fake-provider seam with two live droplet workers plus a queued cap refusal; waits separately for worker receipts and downstream reports."
+    },
+    "hub/test/config-reload.test.ts::role auto-refresh applies the pair only when valid, and running launches retain their defaults": {
+      "seconds": 6.631,
+      "reason": "Measured on Linux in A-3651: crosses three real fake-Claude launches, a stop, invalid-pair retention, explicit reload and role-denied CLI reload, then observes timer-driven atomic refresh while retaining active launch defaults."
+    },
     "hub/test/crew-launch.test.ts::an Implementer pool moves to the next task worktree after merge (claude-code, keep_context=false)": {
       "seconds": 6.099821,
       "reason": "Creates real task worktrees and launches a fresh fake Claude harness after a gated merge to prove a pool does not reuse stopped context."

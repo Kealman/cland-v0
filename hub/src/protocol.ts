@@ -569,6 +569,7 @@ export type ClientRequest =
   | { type: 'hub.status'; id: string; flushLogs?: boolean }
   /** Shut the hub down gracefully; the result is sent before the socket closes. */
   | { type: 'hub.stop'; id: string }
+  | { type: 'hub.reload'; id: string }
   /** The project's topics, standing ones first: `{ topics: Topic[] }`. */
   | { type: 'topic.list'; id: string }
   /** A topic's latest messages, oldest first: `{ topic: Topic, messages: TopicMessage[] }`. Agents filters precede the limit. */
@@ -684,6 +685,7 @@ export type HubStatus = {
   version: string;
   root: string;
   startedAt: string;
+  config?: import('./hub/configuration.ts').ConfigStatus;
   uptimeMs: number;
   sessions: Presence[];
   /** The live session holding the Coordinator, or null ("no coordinator"). */
@@ -826,6 +828,7 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
     case 'hub.subscriptions':
     case 'hub.status':
     case 'hub.stop':
+    case 'hub.reload':
     case 'topic.list':
     case 'subscribe':
     case 'role.list':

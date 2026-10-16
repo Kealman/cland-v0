@@ -5,7 +5,7 @@ import { endProcess, systemProcesses } from './system-processes.ts';
 import { suiteLimits } from './suite-limits.ts';
 
 export async function suiteCommand(args: string[], cwd: string, env: NodeJS.ProcessEnv = process.env): Promise<{ code: number; cause: string }> {
-  const { stallTimeoutMs } = await suiteLimits(cwd);
+  const { stallTimeoutMs } = await suiteLimits(cwd, 'local', env);
   const child = spawn('npm', args, { cwd, env, stdio: ['ignore', 'pipe', 'pipe'] });
   const identity = child.pid ? processStartedAsync(child.pid) : Promise.resolve(null);
   let cause = '';

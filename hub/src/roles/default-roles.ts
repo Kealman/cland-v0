@@ -99,7 +99,7 @@ effort = "max"
 # account = ""
 
 [coordinator.permissions]
-tools = ["rule.add", "rule.edit", "rule.retire", "send", "ask", "ask.forward", "ask.answer", "resolve", "topic.create", "task.plan", "task.create", "task.edit", "task.close", "task.claim", "task.link", "task.rank", "task.criterion", "task.comment", "session.launch", "session.stop", "session.resume", "session.archive", "session.prune", "hub.stop", "role.handover", "merge", "release", "sync", "push", "artifact.create", "artifact.keep", "artifact.move", "artifact.archive", "artifact.promote", "rename", "subscribe", "unsubscribe", "subscriptions", "who", "history", "status", "task.view", "task.list", "rule.list"]
+tools = ["rule.add", "rule.edit", "rule.retire", "send", "ask", "ask.forward", "ask.answer", "resolve", "topic.create", "task.plan", "task.create", "task.edit", "task.close", "task.claim", "task.link", "task.rank", "task.criterion", "task.comment", "session.launch", "session.stop", "session.resume", "session.archive", "session.prune", "hub.stop", "hub.reload", "role.handover", "merge", "release", "sync", "push", "artifact.create", "artifact.keep", "artifact.move", "artifact.archive", "artifact.promote", "rename", "subscribe", "unsubscribe", "subscriptions", "who", "history", "status", "task.view", "task.list", "rule.list"]
 
 [lead]
 exclusive = false

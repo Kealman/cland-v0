@@ -240,6 +240,55 @@ When the human tells an Aide to take a task, `task.claim` returns its branch and
 
 When a session becomes an Aide, pending broadcasts and explicit subscription notices from its previous role are dropped, including digest members. Deliveries addressed by name (or its claimed-item lead, including default events) survive; named progress bound to a discarded broadcast waits for the next direct delivery. Addressing provenance is recorded per delivery. Rows written before that provenance existed cannot establish a direct address and are dropped on an Aide transition, apart from the role clause.
 
+### Reloading project configuration
+
+`cland hub reload` and SIGHUP validate `.cland/config.toml` and `.cland/roles.toml`
+and publish one last-good pair. A parse, validation or restart-required error in
+either file retains both old snapshots, journals `config-reload-failed` with the
+file and error, and makes the CLI exit nonzero. Successful reloads name the applied
+settings. `cland hub status` shows the loaded time and the last commit touching
+config.toml (`config.loadedAt` and `config.sourceCommit` in JSON; null without Git
+history). Uncommitted edits may be loaded; the source commit identifies the file's
+Git history, not a claim that those edits were committed.
+
+The following settings apply live: `verification.executor`, `budget` (still capped
+at one local run), `remote_budget`, `load_gate_workers`, `shards`, `cache_max_age_minutes`, `lifetime`,
+`run_timeout`, `daily_spend_usd`, the `verification.droplet` table, `keys.layouts`,
+and role definitions. Work that has started keeps its snapshot; anything that starts after the reload
+uses the reloaded config. A queued job has not started. The scheduler persists the
+snapshot at admission, including lease lifetime, spend policy and run timeout, so
+a restart mid-run retains it. Explicit executor choices remain explicit; queued
+requests using the default executor take the reloaded default. Reloading
+capacity changes future queue admission without ending active runs. Leases already
+issued retain their deadline; existing launched harnesses retain their launch
+parameters. New launches use the loaded role defaults. Droplet cap reads now use
+the loaded snapshot too: a config-only edit takes effect after reload, including
+in `cland executor status`.
+
+The role file retains its 500 ms auto-refresh and refresh before launches. A role
+edit validates and publishes the entire pair; config-only edits wait for an
+explicit reload or SIGHUP. A failed pair stays in force until a corrected role
+edit or explicit reload succeeds. Running role clauses are delivered on the next
+assignment or reconnect as before.
+
+Startup settings require a restart: `project.name`, `tracker.levels`,
+`tracker.fatal_stall`, `inbox.idle_minutes`, `plan`, `sessions`, `artifacts`, `hygiene`, `visibility`, and
+`verification.lock_path`, `workers`, `test_timeout`, `stall_timeout`,
+`coverage_max_age`. Their owners establish storage, policies, timers, compatibility
+locks or candidate-runner settings at startup. Changing any of these refuses the
+whole pair with a restart-required error naming the field. Candidate worktrees
+retain their own worker and test limits, captured at suite submission.
+
+An absent config file at startup uses built-in defaults. If config.toml is deleted
+while the hub runs, reload and role refresh keep the last loaded config and accept
+valid role edits. They report `config.toml missing; keeping the last loaded config`
+as a warning. Absence never silently resets a running hub to defaults. An invalid
+existing file still rejects the whole pair.
+
+The human may reload through the CLI. The Coordinator's CLI also needs the
+`hub.reload` grant in `[coordinator.permissions] tools`; `cland init` includes it
+for new projects. Existing projects with an explicit tools list must add it.
+
 ### `.cland/roles.toml`
 
 One table per role: `clause` (multi-line text), `skills` (list), `exclusive` (the Coordinator), `[<role>.launch]` with `harness`, `model` and `effort` (`""` is the harness's default) and how the launched session may act (`approval`, `sandbox`, `writable_roots`, `network`: below), and `[<role>.permissions]` `tools`, the permission list the hub enforces (see Permissions below; a role table without `tools` gets the built-in list). A role the file leaves out takes its default; an unknown role or a wrong type makes the file unreadable. The defaults:

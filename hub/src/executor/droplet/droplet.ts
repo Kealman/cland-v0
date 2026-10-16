@@ -8,7 +8,7 @@ import { promisify } from 'node:util';
 import { join } from 'node:path';
 import { basename } from 'node:path';
 import { realpathSync } from 'node:fs';
-import { defaultConfig, parseConfig } from '../../init/config.ts';
+import { defaultConfig, parseConfig, type ProjectConfig } from '../../init/config.ts';
 import { DigitalOceanApi, DigitalOceanError } from './api.ts';
 import { accountRelease, leaseDir, liveLease, matchesLease, readLease, readLeases, writeLease, type DropletLease, type WatchdogReceipt } from './lease.ts';
 import { armWatchdog, pause, stopWatchdog, testTiming, watchdogAlive } from './watchdog.ts';
@@ -40,9 +40,11 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
   readonly #releases = new Map<string, Promise<Released>>();
   readonly #leaseChanges = new Map<string, Promise<unknown>>();
   readonly #env: NodeJS.ProcessEnv;
-  constructor(root: string, store?: Store, log: LogFn = () => {}, env: NodeJS.ProcessEnv = process.env) { this.root = realpathSync(root); this.store = store; this.logger = log; this.#env = env; }
+  readonly projectConfig: (() => ProjectConfig) | undefined;
+  constructor(root: string, store?: Store, log: LogFn = () => {}, env: NodeJS.ProcessEnv = process.env, projectConfig?: () => ProjectConfig) { this.projectConfig = projectConfig; this.root = realpathSync(root); this.store = store; this.logger = log; this.#env = env; }
 
   async #config() {
+    if (this.projectConfig) return this.projectConfig();
     try { return parseConfig(await readFile(join(this.root, '.cland/config.toml'), 'utf8'), basename(this.root), this.#env); }
     catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return defaultConfig(basename(this.root)); throw error; }
   }
@@ -86,8 +88,8 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
   async collectCoverage(lease: DropletLease, path: string) { return new DropletRun(this.root, this.#env).collectCoverage(lease, path); }
 
   /** Refuse an unsupported per-run size before the request enters the queue. */
-  async validateSize(size: string): Promise<void> {
-    const config = await this.#config();
+  async validateSize(size: string, snapshot?: ProjectConfig): Promise<void> {
+    const config = snapshot ?? await this.#config();
     const api = new DigitalOceanApi(this.#env);
     const selected = (await api.sizes()).find(s => s.slug === size && s.available);
     if (!selected || !Number.isFinite(selected.price_hourly) || selected.price_hourly < 0) throw new Error(`droplet size ${size} is unavailable or has no valid price`);
@@ -95,9 +97,9 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
     if (!config.verification.droplet.regions.some(region => selected.regions.includes(region) && regions.some(r => r.slug === region && r.available && r.sizes.includes(size)))) throw new Error(`droplet size ${size} unavailable in configured regions`);
   }
 
-  async reserveShards(runs: string[], overrideSize?: string): Promise<void> {
+  async reserveShards(runs: string[], overrideSize?: string, snapshot?: ProjectConfig): Promise<void> {
+    const config = snapshot ?? await this.#config();
     if (!await readSnapshot(this.root)) throw new Error('no prepared snapshot; run cland executor prepare');
-    const config = await this.#config();
     const size = overrideSize ?? config.verification.droplet.size;
     const selected = (await new DigitalOceanApi(this.#env).sizes()).find(s => s.slug === size && s.available);
     if (!selected || !Number.isFinite(selected.price_hourly) || selected.price_hourly < 0) throw new Error(`droplet size ${size} is unavailable or has no valid price`);
@@ -106,9 +108,9 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
   async releaseShardReservations(runs: string[]): Promise<void> { await releaseShardSpend(this.root, runs, this.#env); }
 
   /** Submission check only; acquire still reserves atomically against other hubs. */
-  async checkSpend(overrideSize?: string): Promise<void> {
+  async checkSpend(overrideSize?: string, snapshot?: ProjectConfig): Promise<void> {
+    const config = snapshot ?? await this.#config();
     if (!this.#env.DIGITALOCEAN_TOKEN) throw new Error('DIGITALOCEAN_TOKEN is required');
-    const config = await this.#config();
     const size = overrideSize ?? config.verification.droplet.size;
     const selected = (await new DigitalOceanApi(this.#env).sizes()).find(s => s.slug === size && s.available);
     if (!selected || !Number.isFinite(selected.price_hourly) || selected.price_hourly < 0) throw new Error(`droplet size ${size} is unavailable or has no valid price`);
@@ -118,21 +120,20 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
     if (spent + reserved + reservation > cap) throw new Error(`daily spend cap $${cap} reached`);
   }
 
-  async acquire(run: Pick<RunRef, 'id' | 'size'>, deadline: string, demo?: DropletLease['demo']): Promise<DropletLease> {
+  async acquire(run: Pick<RunRef, 'id' | 'size'>, deadline: string, demo?: DropletLease['demo'], snapshotConfig?: ProjectConfig): Promise<DropletLease> {
+    const config = snapshotConfig ?? await this.#config();
     const runDeadline = Date.parse(deadline);
     if (!Number.isFinite(runDeadline) || runDeadline <= Date.now()) throw new Error('droplet acquisition deadline reached');
     if (!this.#env.DIGITALOCEAN_TOKEN) throw new Error('DIGITALOCEAN_TOKEN is required');
     const snapshot = await readSnapshot(this.root);
     if (!snapshot) throw new Error('no prepared snapshot; run cland executor prepare');
-    const config = await this.#config();
-    const lease = await this.#acquire(run, deadline, { size: run.size ?? config.verification.droplet.size, regions: config.verification.droplet.regions.filter(region => snapshot.regions.includes(region)), image: snapshot.image, minDiskSize: snapshot.minDiskSize, ...(demo ? { demo } : {}) });
+    const lease = await this.#acquire(run, deadline, { size: run.size ?? config.verification.droplet.size, regions: config.verification.droplet.regions.filter(region => snapshot.regions.includes(region)), image: snapshot.image, minDiskSize: snapshot.minDiskSize, ...(demo ? { demo } : {}) }, config);
     try { await waitForMachine(this.root, lease, snapshot.key, undefined, undefined, this.#env); return lease; }
     catch (error) { await this.release(lease); throw error; }
   }
 
-  async #acquire(run: Pick<RunRef, 'id'>, deadline: string, input: { size: string; regions: string[]; image: string | number; minDiskSize?: number; user_data?: string; demo?: DropletLease['demo'] }): Promise<DropletLease> {
+  async #acquire(run: Pick<RunRef, 'id'>, deadline: string, input: { size: string; regions: string[]; image: string | number; minDiskSize?: number; user_data?: string; demo?: DropletLease['demo'] }, config: ProjectConfig): Promise<DropletLease> {
     const runDeadline = Date.parse(deadline);
-    const config = await this.#config();
     const api = new DigitalOceanApi(this.#env);
     const { size, regions, image } = input;
     const sizes = await api.sizes(runDeadline);
@@ -232,7 +233,7 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
     if (!builder || !run || !Number.isFinite(builder.disk) || !Number.isFinite(run.disk)) throw new Error('prepare_size and size need available disks');
     if (builder.disk! > run.disk!) throw new Error(`verification.droplet.prepare_size ${prepare_size} disk exceeds run size ${size}`);
     return prepareSnapshot({ env: this.#env, root: this.root, project: projectName(config.name), regions, tags: ['cland', projectTag(this.root, config.name)], key, maxDiskSize: run.disk!, store: this.store, log: this.logger, signal: this.#prepareAbort?.signal, step,
-      builder: user_data => this.#acquire({ id: 'executor-prepare' }, new Date(Date.now() + config.verification.lifetimeMs).toISOString(), { size: prepare_size, regions, image, user_data }), release: lease => this.release(lease) });
+      builder: user_data => this.#acquire({ id: 'executor-prepare' }, new Date(Date.now() + config.verification.lifetimeMs).toISOString(), { size: prepare_size, regions, image, user_data }, config), release: lease => this.release(lease) });
   }
 
   async close(): Promise<void> {

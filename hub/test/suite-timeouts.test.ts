@@ -63,9 +63,7 @@ test('forced ownership failure', async t => {
 });
 
 test('verify fails a named hung test at the configured per-test timeout', async t => {
-  const f = await fixture(t, `${process.execPath} package.mjs`);
-  const config = join(f.root, '.cland', 'config.toml');
-  await writeFile(config, (await readFile(config, 'utf8')) + '\ntest_timeout = "1s"\n');
+  const f = await fixture(t, `${process.execPath} package.mjs`, undefined, { verification: 'test_timeout="1s"' });
   const runner = fileURLToPath(new URL('./run-suite.ts', import.meta.url));
   await writeFile(join(f.root, 'package.mjs'), `import {runSuite} from ${JSON.stringify(runner)}; process.exitCode = await runSuite([['--test', 'hung.test.mjs']], {cwd: ${JSON.stringify(f.root)}, lockDirs: [${JSON.stringify(join(f.root, 'suite.lock'))}, ${JSON.stringify(join(f.root, 'suite.lock-nvim'))}]});`);
   await writeFile(join(f.root, 'hung.test.mjs'), `import {test} from 'node:test'; test('never resolves', async t => {const timer = setInterval(() => {}, 1000); t.after(() => clearInterval(timer)); await new Promise(() => {});});`);
@@ -78,9 +76,7 @@ test('verify fails a named hung test at the configured per-test timeout', async 
 });
 
 test('verify kills a silent test tree and spoke, names the last started test and frees admission', async t => {
-  const f = await fixture(t, `${process.execPath} package.mjs`);
-  const config = join(f.root, '.cland', 'config.toml');
-  await writeFile(config, (await readFile(config, 'utf8')) + '\nstall_timeout = "3s"\n');
+  const f = await fixture(t, `${process.execPath} package.mjs`, undefined, { verification: 'stall_timeout="3s"' });
   const runner = fileURLToPath(new URL('./run-suite.ts', import.meta.url));
   const harness = fileURLToPath(new URL('./harness.ts', import.meta.url));
   const marker = join(f.root, 'pids.json');
@@ -123,9 +119,7 @@ test('verification timeout policy defaults, validates durations and survives con
 });
 
 test('verify reaps a captured detached pipe holder after npm exits and preserves an unrelated process', async t => {
-  const f = await fixture(t, `${process.execPath} parent.mjs`);
-  const config = join(f.root, '.cland', 'config.toml');
-  await writeFile(config, (await readFile(config, 'utf8')) + '\nstall_timeout="3s"\n');
+  const f = await fixture(t, `${process.execPath} parent.mjs`, undefined, { verification: 'stall_timeout="3s"' });
   const marker = join(f.root, 'pipe-holder.json');
   await writeFile(join(f.root, 'parent.mjs'), `import {spawn} from 'node:child_process'; import {writeFile} from 'node:fs/promises';
 const child = spawn(process.execPath, ['-e', "process.on('SIGTERM',()=>{});setInterval(()=>{},1000)"], {detached: true, stdio: 'inherit'});
@@ -158,9 +152,7 @@ const result=spawnSync(${JSON.stringify(ps)}, process.argv.slice(2), {encoding:'
 process.stdout.write(result.stdout ?? ''); process.stderr.write(result.stderr ?? '');
 if (process.argv.includes('-e') && existsSync(${JSON.stringify(armed)}) && !existsSync(${JSON.stringify(snapshot)})) writeFileSync(${JSON.stringify(snapshot)},'captured');
 process.exitCode=result.status ?? 1;`, {mode:0o700});
-  const f = await fixture(t, `${process.execPath} fast-parent.mjs`, undefined, '[hygiene]\nloop_breaker_max=2\n', {PATH:`${bin}:${process.env.PATH ?? ''}`});
-  const config = join(f.root, '.cland', 'config.toml');
-  await writeFile(config, (await readFile(config, 'utf8')) + '\nstall_timeout="3s"\n');
+  const f = await fixture(t, `${process.execPath} fast-parent.mjs`, undefined, { text: '[hygiene]\nloop_breaker_max=2\n', verification: 'stall_timeout="3s"' }, {PATH:`${bin}:${process.env.PATH ?? ''}`});
   const marker = join(f.root, 'fast-pids.json');
   await writeFile(join(f.root, 'fast-parent.mjs'), `import {spawn} from 'node:child_process'; import {writeFile} from 'node:fs/promises'; import {existsSync} from 'node:fs'; import {setTimeout as pause} from 'node:timers/promises';
 const heartbeat=setInterval(()=>console.log('waiting for ownership snapshot'),100);
@@ -203,9 +195,7 @@ clearInterval(heartbeat);process.exit(0);`);
 });
 
 test('verify keeps a slow command alive while partial stderr output continues', async t => {
-  const f = await fixture(t, `node -e "let n=0;const timer=setInterval(()=>{process.stderr.write('.');if(++n===25)clearInterval(timer)},200)"`);
-  const config = join(f.root, '.cland', 'config.toml');
-  await writeFile(config, (await readFile(config, 'utf8')) + '\nstall_timeout="3s"\n');
+  const f = await fixture(t, `node -e "let n=0;const timer=setInterval(()=>{process.stderr.write('.');if(++n===25)clearInterval(timer)},200)"`, undefined, { verification: 'stall_timeout="3s"' });
   const job = await f.launch();
   const result = await eventually('partial output prevents stall', async () => (await f.results()).find(m => m.id === `suite:${job.id}`));
   assert.match(result.text, /exit 0/);

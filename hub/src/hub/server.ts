@@ -23,6 +23,7 @@ export type HubBaseOptions = CoreOptions & {
   requestGuard?: DispatcherOptions['requestGuard'];
   readArtifact?: DispatcherOptions['readArtifact'];
   verification?: DispatcherOptions['verification'];
+  projectConfig?: DispatcherOptions['projectConfig'];
   journal?: import('./journal.ts').Journal;
   artifactFiles?: DispatcherOptions['artifactFiles'];
   /** `hub.status` and `hub.stop` for clients; absent, clients are told this hub serves no project. */
@@ -91,6 +92,7 @@ export function createHubBase(options: HubBaseOptions): HubBase {
     core,
     ...(options.env ? { env: options.env } : {}),
     ...(options.journal ? { journal: options.journal } : {}),
+    ...(options.projectConfig ? { projectConfig: options.projectConfig } : {}),
     ...(options.verification ? { verification: options.verification } : {}),
     ...(options.artifactFiles ? { artifactFiles: options.artifactFiles } : {}),
     secret: options.secret,

@@ -40,6 +40,7 @@ const duration = (ms: number): string => {
 function describe(s: HubStatus): string {
   const lines = [`  pid      ${s.pid}`, `  port     ${s.port} (127.0.0.1)`, `  socket   ${s.socket}`, `  uptime   ${duration(s.uptimeMs)}`, `  version  ${s.version}`, `sessions: ${s.sessions.length}`];
   for (const p of s.sessions) lines.push(`  ${withRole(p.name, p.role)}  [${p.state ?? 'unknown'}]${p.status ? `  — ${p.status}` : ''}`);
+  if (s.config) lines.push(`config: loaded ${s.config.loadedAt} · source commit ${s.config.sourceCommit ?? 'uncommitted / no Git history'}`);
   if (s.coordinator !== undefined) lines.push(s.coordinator ? `coordinator: ${s.coordinator}` : 'no coordinator');
   if (s.requests) {
     const last = s.requests.lastSlow;
@@ -254,7 +255,7 @@ async function serve(root: string, stdio: boolean, listen: boolean, io: Io, star
   process.on('SIGTERM', onSignal);
   process.on('SIGINT', onSignal);
   // a daemon has no terminal to lose
-  process.on('SIGHUP', () => log({ event: 'signal', signal: 'SIGHUP', ignored: true }));
+  process.on('SIGHUP', () => { log({ event: 'signal', signal: 'SIGHUP' }); void daemon.reload().catch(() => {}); });
   const where = daemon.discovery ? `127.0.0.1:${daemon.discovery.port} and ${daemon.discovery.socket}${stdio ? ' and stdio' : ''}` : 'stdio only, no listeners';
   (stdio ? process.stderr : process.stdout).write(`hub serving ${root} on ${where} (pid ${process.pid})\n`);
   let fatalTimer: NodeJS.Timeout | undefined;
@@ -377,7 +378,7 @@ export async function runHub(args: string[], cwd: string = process.cwd(), io: Io
   // Start/serve own the cwd's project. Discovery records an existing hub's actual root, independent
   // of where the file lives. Older copies need a successful probe before lock checks or cleanup.
   const discovery = hubDiscovery(cwd);
-  const overridden = process.env.CLAND_HUB_FILE?.trim() && ['status', 'stop', 'unmute', 'subscriptions'].includes(sub ?? '');
+  const overridden = process.env.CLAND_HUB_FILE?.trim() && ['status', 'stop', 'reload', 'unmute', 'subscriptions'].includes(sub ?? '');
   const d = overridden ? readDiscovery(discovery) : null;
   let target = overridden ? d?.root ?? null : root;
   if (overridden && sub === 'stop' && target === null) {
@@ -393,6 +394,15 @@ export async function runHub(args: string[], cwd: string = process.cwd(), io: Io
       const result = await askHubFrame(hub, { type: 'hub.subscriptions' }) as { subscriptions: Array<Record<string, unknown>> };
       io.out(rest.includes('--json') ? `${JSON.stringify(result)}\n` : `${result.subscriptions.map(s => `${s.subscriber} · ${s.id} · ${JSON.stringify(s.subject)} · ${(s.events as string[]).join(', ')} · ${s.digest}`).join('\n') || 'no subscriptions'}\n`);
       return 0;
+    }
+    case 'reload': {
+      const d = readDiscovery(l.discovery);
+      if (!d) { io.err('cland: no hub running\n'); return 1; }
+      try {
+        const value = await askHub(d, 'hub.reload');
+        io.out(`config reloaded: ${JSON.stringify(value)}\n`);
+        return 0;
+      } catch (error) { io.err(`cland: ${error instanceof Error ? error.message : String(error)}\n`); return 1; }
     }
     case 'status':
       return status(l, rest.includes('--json'), io);

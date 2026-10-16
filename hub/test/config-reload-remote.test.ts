@@ -1,0 +1,71 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFile, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { fixture } from './remote-fixture.ts';
+import { cland, eventually, projectHub } from './harness.ts';
+
+const barrier = `node -e "const fs=require('fs');fs.mkdirSync('.cland',{recursive:true});fs.writeFileSync('.cland/started','yes');const t=setInterval(()=>{if(fs.existsSync('.cland/finish'))clearInterval(t)},25)"`;
+
+test('reload preserves an active verification and lease, and new admissions use the new lifetime and spend cap', async t => {
+  const f = await fixture(t, { hub: projectHub, test: barrier, config: 'remote_budget=1\nlifetime="15m"\nrun_timeout="5m"\nload_gate_workers=1\ndaily_spend_usd=5' });
+  const first = await f.launch('--executor', 'droplet');
+  const oldMachine = await f.remote(first.id);
+  const started = async (home: string) => eventually('candidate at barrier', async () => await readFile(join(home, 'cland/.cland/started'), 'utf8').catch(() => '') || undefined, 15000);
+  await started(oldMachine.home);
+  const inspect = async () => {
+    const result = await f.ui.request({ type: 'executor.status' });
+    assert.equal(result.ok, true, result.error);
+    const value = result.value as { leases: Array<{ name: string; deadline: string }>; spend: { cap: number } };
+    return { ...value, leases: value.leases.map(({ name, deadline }) => ({ name, deadline })) };
+  };
+  const old = (await inspect()).leases[0]!;
+  const submit = () => f.ui.request({ type: 'suite.start', cwd: f.root, mode: 'auto', executor: 'droplet', report: f.topic, to: ['impl'], fresh: true });
+  const queued = await submit();
+  assert.equal(queued.ok, true, queued.error);
+  const waitingId = (queued.value as { id: string }).id;
+  const queue = (await f.ui.request({ type: 'suite.queue' })).value as { waiters: Array<{ id: string }> };
+  assert.ok(queue.waiters.some(w => w.id === waitingId));
+  const path = join(f.root, '.cland/config.toml');
+  const source = await readFile(path, 'utf8');
+  await writeFile(path, source.replace('remote_budget=1', 'remote_budget=2').replace('"15m"', '"11m"').replace('"5m"', '"1m"').replace('load_gate_workers=1', 'load_gate_workers=3').replace('daily_spend_usd=5', 'daily_spend_usd=0'));
+  assert.equal((await inspect()).spend.cap, 5, 'disk edits alone do not change loaded admission policy');
+  const reloaded = await cland(f.root, 'hub', 'reload');
+  assert.equal(reloaded.code, 0, reloaded.stderr);
+  assert.match(reloaded.stdout, /verification.load_gate_workers/);
+  const current = await inspect();
+  assert.equal(current.spend.cap, 0);
+  assert.deepEqual(current.leases.find(l => l.name === old.name), old, 'existing lease deadline is unchanged');
+  const queuedFailure = await f.result(waitingId);
+  assert.match(queuedFailure.text, /daily spend cap \$0/);
+  const denied = await submit();
+  assert.equal(denied.ok, false);
+  assert.match(String(denied.error), /daily spend cap \$0/);
+  assert.equal(f.api.droplets.length, 1, 'a cap change neither terminates the old lease nor creates a new one');
+  await writeFile(path, (await readFile(path, 'utf8')).replace('daily_spend_usd=0', 'daily_spend_usd=5').replace('remote_budget=2', 'remote_budget=1'));
+  assert.equal((await cland(f.root, 'hub', 'reload')).code, 0);
+  const admitted = await submit();
+  assert.equal(admitted.ok, true, admitted.error);
+  const second = (admitted.value as { id: string }).id;
+  const stillQueued = (await f.ui.request({ type: 'suite.queue' })).value as { waiters: Array<{ id: string }> };
+  assert.ok(stillQueued.waiters.some(w => w.id === second));
+  await writeFile(path, (await readFile(path, 'utf8')).replace('remote_budget=1', 'remote_budget=2').replace('load_gate_workers=3', 'load_gate_workers=4'));
+  assert.equal((await cland(f.root, 'hub', 'reload')).code, 0);
+  const newMachine = await f.remote(second); await started(newMachine.home);
+  const leases = (await inspect()).leases;
+  assert.deepEqual(leases.find(l => l.name === old.name), old);
+  const next = leases.find(l => l.name !== old.name)!;
+  assert.ok(Date.parse(old.deadline) - Date.parse(next.deadline) > 180000, 'new lease uses 11 minutes; old lease retains 15');
+  assert.match(await readFile(join(oldMachine.run, 'run.sh'), 'utf8'), /seconds=300/);
+  assert.match(await readFile(join(newMachine.run, 'run.sh'), 'utf8'), /seconds=60/);
+  const oldLimits = await readFile(join(oldMachine.run, 'env'), 'utf8');
+  const newLimits = await readFile(join(newMachine.run, 'env'), 'utf8');
+  assert.match(oldLimits, /"loadGateWorkers":1/);
+  assert.match(newLimits, /"loadGateWorkers":4/);
+  for (const [id, machine] of [[first.id, oldMachine], [second, newMachine]] as const) {
+    await writeFile(join(machine.home, 'cland/.cland/finish'), 'yes');
+    await eventually('worker completion receipt', async () => (await readFile(join(machine.run, 'done'), 'utf8').catch(() => '')).trim() || undefined, 20000);
+    assert.match((await f.result(id)).text, /exit 0/);
+  }
+  assert.deepEqual(f.api.droplets, []);
+});

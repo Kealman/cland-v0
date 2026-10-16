@@ -52,6 +52,9 @@ export const JOURNALLED: ReadonlySet<string> = new Set([
   'hub-started',
   'hub-stopped',
   'config-loaded',
+  'config-reloaded',
+  'config-reload-failed',
+  'config-reload-warning',
   'config-unreadable',
   // messages (metadata only) and their deliveries
   'event-delivery',

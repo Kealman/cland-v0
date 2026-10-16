@@ -233,14 +233,17 @@ test('failed replacement releases its builder, deletes a partial image and keeps
 test('prepare refuses an oversized builder before create and reports one job while a CLI has exited', async t => {
   const { root, api, ui } = await fixture(t);
   api.sizes.push({ slug: 'big', available: true, price_hourly: 0.5, disk: 100, regions: ['lon1'] });
-  await writeFile(join(root, '.cland/config.toml'), '[verification.droplet]\nprepare_size = "big"\n');
+  const config = join(root, '.cland/config.toml');
+  await writeFile(config, (await readFile(config, 'utf8')) + '\n[verification.droplet]\nprepare_size = "big"\n');
+  assert.equal((await ui.request({ type: 'hub.reload' })).ok, true);
   assert.equal((await clandWithEnv(root, {}, 'executor', 'prepare', '--json')).code, 0);
   await eventually('oversized disk refuses', async () => {
     const value = (await ui.request({ type: 'executor.status' })).value as { prepare?: { state: string; error: string } };
     return value.prepare?.state === 'failed' && /disk exceeds/.test(value.prepare.error) ? true : undefined;
   });
   assert.equal(api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length, 0);
-  await writeFile(join(root, '.cland/config.toml'), '[verification.droplet]\nprepare_size = "c-8"\n');
+  await writeFile(config, (await readFile(config, 'utf8')).replace('prepare_size = "big"', 'prepare_size = "c-8"'));
+  assert.equal((await ui.request({ type: 'hub.reload' })).ok, true);
   let resume!: () => void;
   const blocked = new Promise<void>(resolve => { resume = resolve; }); t.after(() => resume());
   api.beforeCreate(() => blocked);

@@ -80,6 +80,7 @@ export type Peer = {
 export type Control = {
   status: () => Omit<HubStatus, 'sessions'>;
   stop: () => void;
+  reload?: (resumed?: import('./budget.ts').Resumed) => Promise<import('./configuration.ts').ConfigReloadResult>;
   flushLogs?: () => Promise<void>;
 };
 
@@ -94,6 +95,7 @@ export type DispatcherOptions = {
   env?: NodeJS.ProcessEnv;
   journal?: import('./journal.ts').Journal;
   verification?: SuiteSchedulerOptions;
+  projectConfig?: () => import('../init/config.ts').ProjectConfig;
   core: HubCore;
   secret: string;
   control?: Control;
@@ -117,7 +119,7 @@ const HUMAN_SESSION = 'human';
  * What a CLI call made as a session may send beside the permission table's tools: reading the hub's state. Any
  * other frame is the human's alone.
  */
-const SESSION_CLI_FRAMES: ReadonlySet<string> = new Set(['demo.start', 'demo.exec', 'demo.stop', 'demo.status', 'account.clear', 'account.list', 'account.poll', 'executor.status', 'executor.reap', 'executor.prepare', 'task.migrate', 'rule.add', 'rule.edit', 'rule.retire', 'rule.list', 'rule.show', 'crew.show', 'crew.set', 'artifact.list', 'hub.status', 'inbox.list', 'role.list', 'worktree.list', 'suite.start', 'suite.cancel', 'suite.queue']);
+const SESSION_CLI_FRAMES: ReadonlySet<string> = new Set(['demo.start', 'demo.exec', 'demo.stop', 'demo.status', 'account.clear', 'account.list', 'account.poll', 'executor.status', 'executor.reap', 'executor.prepare', 'task.migrate', 'rule.add', 'rule.edit', 'rule.retire', 'rule.list', 'rule.show', 'crew.show', 'crew.set', 'artifact.list', 'hub.reload', 'hub.status', 'inbox.list', 'role.list', 'worktree.list', 'suite.start', 'suite.cancel', 'suite.queue']);
 
 /** Who a call is checked and audited as: a spoke's session, or the session a CLI call acts as. */
 type Caller = Pick<Connection, 'name' | 'sessionId' | 'role'>;
@@ -163,7 +165,7 @@ export class Dispatcher {
     this.#guard = options.requestGuard ?? new RequestGuard({ ...options.guard, log: this.#log });
     this.#rolesSnapshot = options.core.roles?.get();
     const root = options.control?.status().root;
-    this.#droplets = root ? new DropletExecutor(root, options.core.store, this.#log, options.env) : null;
+    this.#droplets = root ? new DropletExecutor(root, options.core.store, this.#log, options.env, options.projectConfig) : null;
     this.#demos = root && options.tracker && this.#droplets ? new Demos(root, options.tracker, this.#droplets, options.env, (lease, text) => {
       const id = `demo-attention:${lease.lease}`;
       if (options.core.store.message(id)) return;
@@ -177,7 +179,7 @@ export class Dispatcher {
       this.#dropletWork = this.#dropletReady.then(() => this.#droplets!.sweep()).then(() => this.#demos?.reconcile()).catch(() => this.#log({ event: 'executor-reconcile-failed', reason: 'lease recovery deferred' })).finally(() => { this.#dropletWork = null; });
     }, retryMs > 0 && Number.isFinite(retryMs) ? retryMs : 600000) : null;
     this.#dropletTimer?.unref();
-    this.#suites = root ? new Suites(options.core.store, root, (job, checkpointArtifact) => this.#reportSuite(job, checkpointArtifact), { ...options.verification, ...(options.env ? { env: options.env } : {}), onShardingSkipped: (job, text) => options.core.noticeTo(job.topic, { id: `sharding-skipped:${job.id}`, kind: 'report', to: job.to, text, detail: { event: 'verification-sharding-skipped', id: job.id, item: job.item ?? null } }), onFallback: (job, cause) => options.core.noticeTo(job.topic, { id: `executor-fallback:${job.id}`, kind: 'report', to: job.to, text: cause === 'remote budget full' ? `verify ${job.id}: remote budget ${options.verification?.remoteBudget ?? 4}/${options.verification?.remoteBudget ?? 4} full; running locally` : `verify ${job.id}: droplet unavailable (${cause}); running locally`, detail: { event: 'verification-executor-fallback', id: job.id, item: job.item ?? null, cause } }), log: this.#log, onQueue: queue => options.core.publishVerification(queue), onJob: job => options.tracker?.verifyChanged(job.item ?? null, job.branch), requesterDead: actor => [...(this.#sessions?.list() ?? []), ...(this.#sessions?.list(true) ?? [])].some(p => p.sessionId === actor.sessionId && p.status !== 'running') }) : null;
+    this.#suites = root ? new Suites(options.core.store, root, (job, checkpointArtifact) => this.#reportSuite(job, checkpointArtifact), { ...options.verification, ...(options.projectConfig ? { projectConfig: options.projectConfig } : {}), ...(options.env ? { env: options.env } : {}), onShardingSkipped: (job, text) => options.core.noticeTo(job.topic, { id: `sharding-skipped:${job.id}`, kind: 'report', to: job.to, text, detail: { event: 'verification-sharding-skipped', id: job.id, item: job.item ?? null } }), onFallback: (job, cause) => options.core.noticeTo(job.topic, { id: `executor-fallback:${job.id}`, kind: 'report', to: job.to, text: cause === 'remote budget full' ? `verify ${job.id}: remote budget ${options.projectConfig?.().verification.remoteBudget ?? options.verification?.remoteBudget ?? 4}/${options.projectConfig?.().verification.remoteBudget ?? options.verification?.remoteBudget ?? 4} full; running locally` : `verify ${job.id}: droplet unavailable (${cause}); running locally`, detail: { event: 'verification-executor-fallback', id: job.id, item: job.item ?? null, cause } }), log: this.#log, onQueue: queue => options.core.publishVerification(queue), onJob: job => options.tracker?.verifyChanged(job.item ?? null, job.branch), requesterDead: actor => [...(this.#sessions?.list() ?? []), ...(this.#sessions?.list(true) ?? [])].some(p => p.sessionId === actor.sessionId && p.status !== 'running') }) : null;
     options.tracker?.useVerify((item, branch) => this.#suites?.latest(item, branch) ?? null, () => this.#suites?.stageCovers() ?? []);
     // what a read shows changed: no earlier answer is replayed
     options.core.subscribe(event => {
@@ -250,6 +252,8 @@ export class Dispatcher {
   }
 
   useAccountPoller(poller: AccountPoller): void { this.#accountPoller = poller; this.core.useAccountPoller(poller); }
+
+  configure(config: import('../init/config.ts').ProjectConfig): void { this.#suites?.configure(config); }
 
   useSessions(sessions: Sessions | undefined): void {
     this.#sessions = sessions;
@@ -442,7 +446,7 @@ export class Dispatcher {
   #leadRefusal(connection: Caller, frame: Record<string, unknown>): string | null {
     if (connection.role !== 'lead') return null;
     const type = String(frame.type);
-    if (['release', 'sync', 'push', 'hub.stop', 'rename', 'session.resume'].includes(type)) {
+    if (['release', 'sync', 'push', 'hub.stop', 'hub.reload', 'rename', 'session.resume'].includes(type)) {
       return `root level: only the Coordinator may use ${type}`;
     }
     const request = type === 'send' && frame.kind !== 'request' && typeof frame.text === 'string'
@@ -1377,6 +1381,9 @@ export class Dispatcher {
           peer.send(status());
           break;
         }
+        case 'hub.reload':
+          later('hub.reload', (control.reload ? control.reload(this.#guard.resumer(frame.type, client)) : Promise.reject(new Error('reload is unavailable'))).then(value => ({ type: 'result', id: frame.id, ok: true, value }), error => Dispatcher.#failure(frame.id, error)));
+          break;
         case 'hub.stop':
           log({ event: 'stop-requested', edge: transport.edge });
           peer.send({ type: 'result', id: frame.id, ok: true, value: { stopping: true } });

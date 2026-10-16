@@ -198,6 +198,8 @@
     "hub/test/suite-cache-recovery.test.ts": "machine",
     "hub/test/demo.test.ts": "machine",
     "hub/test/hook-bridge.test.ts": "machine",
-    "hub/test/hook-bridge-doctor.test.ts": "machine"
+    "hub/test/hook-bridge-doctor.test.ts": "machine",
+    "hub/test/config-reload.test.ts": "machine",
+    "hub/test/config-reload-remote.test.ts": "machine"
   }
 }
