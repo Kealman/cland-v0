@@ -3357,7 +3357,7 @@
     },
     "hub/test/claude-code-adapter.test.ts::Claude discovery and watch share the default 30-second schedule, and stop works before the next pid arrives": {
       "seconds": 7.395162,
-      "reason": "Exercises real Claude fake-harness launch, discovery, hook delivery and restart; the baseline includes the production discovery schedule shortened by T-389."
+      "reason": "Exercises real Claude fake-harness launch, stop with an undiscovered PID, and persisted discovery across a projectHub reopen. T-585 controls Date at the production 30-second interval; only real child startup, frame delivery and negative liveness-poll windows consume wall time."
     },
     "hub/test/claude-code-sessions.test.ts::an idle that comes while an inject waits for its confirmation retries it once that inject gave up": {
       "seconds": 5.775672,

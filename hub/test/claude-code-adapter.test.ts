@@ -323,28 +323,37 @@ test('a message for a session with no adapter stays delivered; an unknown sessio
 });
 
 
-test('Claude discovery and watch share the default 30-second schedule, and stop works before the next pid arrives', async (t) => {
+test('Claude discovery and watch share the default 30-second schedule, and stop works before the next pid arrives', { timeout: 30_000 }, async (t) => {
+  t.after(() => t.mock.timers.reset());
   const root = await tempProject(t);
   const fake = await fakeClaude(t);
-  // Prove the production default as resolved data, then exercise its schedule at a short override.
-  const defaults = await startDaemon(t, root, { ...fake.env, CLAND_CLAUDE_AGENTS_MS: '' });
-  const defaultUi = await connectUi(t, defaults.discovery);
-  assert.match(await hubLog(root, defaultUi), /"event":"claude-schedule","agentsMs":30000/);
-  defaultUi.close();
-  assert.equal((await clandWithEnv(root, fake.env, 'hub', 'stop')).code, 0);
-  // Keep the next discovery behind the stop request, so stop must work without a discovered pid.
-  const agentsMs = 3000;
-  const env = { ...fake.env, CLAND_CLAUDE_AGENTS_MS: String(agentsMs), CLAUDE_CONFIG_DIR: fake.home };
-  const { discovery } = await startDaemon(t, root, env);
-  const ui = await connectUi(t, discovery);
+  // Keep the production interval fixed while real CLI processes and hub frames run. A shortened
+  // wall-clock interval can expire during restart or --bg under load, legitimately discovering
+  // another PID and issuing a second agents call before the assertions below.
+  t.mock.timers.enable({ apis: ['Date'], now: Date.now() });
+  // eventually's wall-clock deadline must remain real while the scheduler's clock is frozen.
+  const observed = async <T>(what: string, check: () => Promise<T | undefined>): Promise<T> => {
+    const deadline = performance.now() + 15_000;
+    while (performance.now() < deadline) {
+      const value = await check();
+      if (value !== undefined) return value;
+      await sleep(50);
+    }
+    throw new Error(`${what}: not within 15000 ms`);
+  };
+  const env = { ...fake.env, CLAND_CLAUDE_AGENTS_MS: '', CLAUDE_CONFIG_DIR: fake.home };
+  const defaults = await projectHub(t, root, env);
+  const ui = await connectUi(t, defaults.discovery);
+  assert.match(await hubLog(root, ui), /"event":"claude-schedule","agentsMs":30000/);
   await sleep(6 * Number(fake.env.CLAND_ADAPTER_POLL_MS)); // Negative: an idle directory stays quiet across six polls.
   assert.equal((await fake.calls()).length, 0, 'an idle directory runs no CLI');
   await launch(ui, 'first');
   ui.close();
-  assert.equal((await clandWithEnv(root, env, 'hub', 'stop')).code, 0);
-  const restarted = await startDaemon(t, root, env);
+  await defaults.stop();
+  // Reopen the real persisted adapter state without making elapsed process startup part of the proof.
+  const restarted = await projectHub(t, root, env);
   const ui2 = await connectUi(t, restarted.discovery);
-  await eventually('first re-found from the shared snapshot', async () => (await status(ui2)).harnesses.find(p => p.name === 'first' && p.status === 'running'));
+  await observed('first re-found from the shared snapshot', async () => (await status(ui2)).harnesses.find(p => p.name === 'first' && p.status === 'running'));
   const second = await launch(ui2, 'second');
   assert.equal(second.pid, null, 'the next launch does not bypass the schedule');
   assert.equal((await ui2.request({ type: 'session.stop', session: 'second' })).ok, true);
@@ -353,13 +362,18 @@ test('Claude discovery and watch share the default 30-second schedule, and stop 
   assert.equal(polls.length, 1, 'launch discovery and watch use one call');
   assert.equal(polls[0]?.configDir, fake.home);
   assert.ok(calls.some(c => c.args[0] === 'stop' && c.args[1] === second.harnessId));
-  await eventually('the next scheduled agents call', async () => (await fake.calls()).filter(c => c.args[0] === 'agents').length >= 2 ? true : undefined);
-  const scheduled = (await fake.calls()).filter(c => c.args[0] === 'agents');
-  for (let i = 1; i < scheduled.length; i++) assert.ok(scheduled[i]!.at - scheduled[i - 1]!.at >= agentsMs, 'every agents call respects the resolved interval');
+  t.mock.timers.tick(29_999);
+  await sleep(6 * Number(fake.env.CLAND_ADAPTER_POLL_MS)); // Negative: liveness polls before the interval cannot run agents.
+  assert.equal((await fake.calls()).filter(c => c.args[0] === 'agents').length, 1, 'every agents call respects the resolved interval');
+  t.mock.timers.tick(1);
+  await observed('the next scheduled agents call', async () => (await fake.calls()).filter(c => c.args[0] === 'agents').length === 2 ? true : undefined);
   assert.equal((await ui2.request({ type: 'session.stop', session: 'first' })).ok, true);
   const count = (await fake.calls()).length;
+  t.mock.timers.tick(30_000);
   await sleep(8 * Number(fake.env.CLAND_ADAPTER_POLL_MS)); // Negative: eight liveness polls cannot run the stopped agents watch.
   assert.equal((await fake.calls()).length, count, 'no CLI after the last watch ends');
+  await restarted.stop();
+  t.mock.timers.reset();
 });
 
 
