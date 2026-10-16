@@ -165,9 +165,14 @@ export type ListFilter = {
 
 type Row = Record<string, string | number | null>;
 
-// Load lane edges with the item row: hydration must not add a query for every unrelated item.
-const ITEM_COLUMNS = `i.*, (select json_group_array(predecessor) from
-  (select predecessor from tracker_follows where item_id = i.id order by rowid)) as follows_json`;
+// Load ordered edges with the item row: hydration must not add label/blocker queries per item.
+const ITEM_COLUMNS = `i.*,
+  (select json_group_array(label) from
+    (select label from tracker_labels where item_id = i.id order by rowid)) as labels_json,
+  (select json_group_array(blocker) from
+    (select blocker from tracker_blocked_by where item_id = i.id order by rowid)) as blockers_json,
+  (select json_group_array(predecessor) from
+    (select predecessor from tracker_follows where item_id = i.id order by rowid)) as follows_json`;
 
 export class TrackerIndex {
   readonly #db: DatabaseSync;
@@ -433,10 +438,10 @@ export class TrackerIndex {
       ...(r.size !== null ? { size: r.size as Size } : {}),
       ...(typeof r.found_by === 'string' ? { found_by: r.found_by as FoundBy } : {}),
       ...(r.regression_of !== null ? { regression_of: this.#canonical(r.regression_of as string) } : {}),
-      labels: (this.#db.prepare('select label from tracker_labels where item_id = ? order by rowid').all(id) as Row[]).map((x) => x.label as string),
+      labels: JSON.parse(r.labels_json as string) as string[],
       assignee: (r.assignee as string | null) ?? null,
       parent: r.parent ? this.#canonical(r.parent as string) : null,
-      blocked_by: (this.#db.prepare('select blocker from tracker_blocked_by where item_id = ? order by rowid').all(id) as Row[]).map((x) => this.#canonical(x.blocker as string)),
+      blocked_by: (JSON.parse(r.blockers_json as string) as string[]).map(blocker => this.#canonical(blocker)),
       topic: (r.topic as string | null) ?? null,
       branch: (r.branch as string | null) ?? null,
       created: r.created as string,

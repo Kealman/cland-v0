@@ -62,7 +62,8 @@ test('a 65-row list reads no item files; a verify finishing reads one summary wi
   }
   assert.equal((await ui.request({ type: 'task.close', item: landed })).ok, true);
   tracker.recordMerge(landed!, { branch: 't/landed', tip: 'a'.repeat(40), commit: 'b'.repeat(40), base: 'dev' });
-  assert.equal((await ui.request({ type: 'task.link', item: item.id, regression_of: landed })).ok, true);
+  assert.equal((await ui.request({ type: 'task.link', item: item.id, regression_of: landed, blocked_by: [landed!] })).ok, true);
+  assert.equal((await ui.request({ type: 'task.edit', item: item.id, labels: ['z-last', 'a-first'] })).ok, true);
   const topic = (await ui.request({ type: 'topic.create', title: 'Build', item: item.id })).value as { topic: { id: string } };
   await ui.request({ type: 'subscribe' });
   let fileReads = 0, measuringList = false, observing = false;
@@ -77,10 +78,11 @@ test('a 65-row list reads no item files; a verify finishing reads one summary wi
   });
   syncBuiltinESMExports();
   t.after(() => { t.mock.restoreAll(); syncBuiltinESMExports(); });
-  let queries = 0, fullLists = 0, repeatedCriteriaReads = 0;
+  let queries = 0, fullLists = 0, repeatedCriteriaReads = 0, repeatedEdgeReads = 0;
   const prepare = DatabaseSync.prototype.prepare;
   t.mock.method(DatabaseSync.prototype, 'prepare', function (this: DatabaseSync, sql: string) {
     if ((measuringList || observing) && sql.startsWith('select criteria_summary from tracker_items')) repeatedCriteriaReads++;
+    if (measuringList && /^select (label|blocker) from tracker_/.test(sql)) repeatedEdgeReads++;
     if (observing && /tracker_/.test(sql)) queries++;
     return prepare.call(this, sql);
   });
@@ -96,7 +98,11 @@ test('a 65-row list reads no item files; a verify finishing reads one summary wi
   assert.equal((list.value as { items: ItemSummary[] }).items.length, 65);
   const indexedCard = (list.value as { items: ItemSummary[] }).items.find(i => i.id === item.id)!;
   assert.deepEqual([indexedCard.size, indexedCard.regression_of], ['S', landed]);
+  assert.deepEqual(indexedCard.labels, ['z-last', 'a-first']);
+  assert.deepEqual(indexedCard.blocked_by, [landed]);
+  assert.deepEqual((list.value as { items: ItemSummary[] }).items.find(i => i.id === landed)!.blocked_by, []);
   assert.equal(repeatedCriteriaReads, 0, 'list resolves counts from the already-selected rows');
+  assert.equal(repeatedEdgeReads, 0, 'list loads labels and blockers with the item rows');
   assert.equal(fileReads, 0);
   const run = await ui.request({ type: 'suite.start', mode: 'all', cwd: root, report: topic.topic.id, to: [] });
   assert.equal(run.ok, true, run.error);
