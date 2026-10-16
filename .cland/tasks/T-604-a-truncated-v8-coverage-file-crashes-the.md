@@ -2,8 +2,8 @@
 id: T-604
 kind: task
 title: A truncated V8 coverage file crashes the integrated runner's coverage reduction after every test passed
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -16,7 +16,8 @@ blocked_by: []
 topic: topic-373
 branch: t/T-604-a-truncated-v8-coverage-file-crashes-the
 created: 2026-10-16T11:49:13.864Z
-updated: 2026-10-16T13:02:52.926Z
+updated: 2026-10-16T13:03:17.922Z
+closed: 2026-10-16T13:03:17.922Z
 ---
 
 ## Summary
@@ -110,3 +111,7 @@ Findings: Standards0; Spec0.
 Artifact A-3914 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3914-t-604-final-clear-targeted-regression-accepted-release-covers-remain-post-merge.md
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-16T13:03:17.922Z
+
+Merged c700835876520e9d3e8a3334c123f4d61cbeff0f onto dev.
