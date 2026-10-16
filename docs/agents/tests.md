@@ -240,12 +240,20 @@ runner alone does not enable it when the running hub predates this feature;
 bootstrap uses package-runner fixtures, followed by a live task proof after the
 hub update.
 
-Each repetition must exit green and produce exactly one passing receipt for the
-named test. Skipped, TODO and pattern-missed tests cannot satisfy it. The log
-reports `load gate: <file>::<test> <passes>/5 passed`; fewer than five passes
-fails verification and appears in the failure summary. The run's `suite duration`
-line includes `load gate extra wall <seconds>s`: the sum of the tails spent
-finishing repetitions after their ordinary phase exits. It does not estimate
+Each repetition must exit green and produce exactly one receipt for the named
+test. Five passes supply load proof. If all five repetitions skip with a
+nonblank reason each time, verification accepts the prerequisite skip and the
+log and run report name it as `skipped, not load-gated`, with the reasons. This
+supplies no load proof: obtain five passing repetitions under load on a machine
+with the platform or binary prerequisite, recording that machine and its
+receipts in the item topic before claiming load proof. A skip without a reason,
+a mixture of skips and passes or failures, TODOs and pattern-missed tests still
+fail the gate.
+The log reports `load gate: <file>::<test> <passes>/5 passed` for other outcomes;
+fewer than five passes fails verification and appears in the failure summary.
+The run's `suite duration` line includes `load gate extra wall <seconds>s`: the
+sum of the tails spent finishing repetitions after their ordinary phase exits.
+It does not estimate
 contention during overlap. Repetition receipts do not refresh duration baselines
 or enter coverage maps. Missing manifests disable this gate too.
 

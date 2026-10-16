@@ -55,6 +55,8 @@ if (process.env.NODE_TEST_CONTEXT === 'child-v8') {
       if (seen.has(key) || Object.hasOwn(options.manifest.tests, key)) continue;
       seen.add(key);
       let passed = 0;
+      let skipped = 0;
+      const skipReasons = new Set<string>();
       const pattern = `^${event.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`;
       process.stderr.write(`load gate start: ${key}; five repetitions alongside phase\n`);
       for (let repetition = 0; repetition < 5 && !options.interrupted(); repetition++) {
@@ -82,14 +84,19 @@ if (process.env.NODE_TEST_CONTEXT === 'child-v8') {
           const code = await done;
           const records = await readFile(receipt, 'utf8').then(text => text.trim().split('\n').filter(Boolean).map(line => JSON.parse(line) as LoadGateEvent), error => { if (error.code === 'ENOENT') return []; throw error; });
           const results = records.filter(record => record.file === event.file && record.name === event.name && record.passed !== undefined);
-          if (code === 0 && results.length === 1 && results[0]!.passed) passed++;
+          if (code === 0 && results.length === 1) {
+            const result = results[0]!;
+            if (result.passed) passed++;
+            else if (result.skipReason) { skipped++; skipReasons.add(result.skipReason); }
+          }
         } finally {
           await cleanupOwnedProcesses([identity]);
           options.active.delete(identity);
         }
       }
-      failed ||= passed !== 5;
-      process.stderr.write(`${passed === 5 ? '' : '✖ '}load gate: ${key} ${passed}/5 passed\n`);
+      failed ||= passed !== 5 && skipped !== 5;
+      if (skipped === 5) process.stderr.write(`load gate: ${key} skipped, not load-gated; 5/5 skipped; reasons: ${JSON.stringify([...skipReasons])}\n`);
+      else process.stderr.write(`${passed === 5 ? '' : '✖ '}load gate: ${key} ${passed}/5 passed\n`);
     }
     // One final drain after the reporter's process exits catches its last names.
     if (phaseFinished !== undefined && !events.length) break;
