@@ -2,8 +2,8 @@
 id: T-584
 kind: task
 title: tracker-levels "close rechecks a child reopened during the parent temporary write" fails on a droplet since the in-process migration
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -17,7 +17,8 @@ regression_of: T-466
 topic: topic-367
 branch: t/T-584-tracker-levels-close-rechecks-a-child
 created: 2026-10-16T07:52:47.207Z
-updated: 2026-10-16T08:20:27.739Z
+updated: 2026-10-16T08:20:51.149Z
+closed: 2026-10-16T08:20:51.149Z
 ---
 
 ## Summary
@@ -70,3 +71,7 @@ scope: evidence
 Final clear at unchanged source-reviewed head. Fresh Linux A-3867/45b8a3ff selected hub34/34 plus Neovim smoke12/12, exit0/46pass/0fail/0skip. Whole tracker-levels file included; unchanged close-recheck case passes225.792ms with retained barrier/refusal/cleanup assertions. A-3859 Mac10serial wholefiles independently150passes/0fail. C2 verified, C1 current from A-3862; all2criteria verified. No findings/per-item QA/known-red exception. Receipt accurately selected, not full suite; accounting unknown not inferred. Artifact A-3868: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3868-t-584-final-clear-mac10-10-and-exact-head-linux-green.md. No Reviewer edits/tests.
 
 Criteria: C2 verified.
+
+### coord · 2026-10-16T08:20:51.149Z
+
+Merged 38de33dd8e4c928476cbef830f09fe28d0cd5aee onto dev.
