@@ -18,9 +18,9 @@ cache_max_age_minutes = 1440
 # Task runs wait for a remote slot; reserve this Mac for the hub and sessions.
 local_fallback = false
 executor = "droplet"
-# D53 (2026-10-16): droplet runs at 2 workers take about 40 min of suite wall, so the bounds keep a margin.
-lifetime = "75m"
-run_timeout = "60m"
+# D53 (2026-10-16): droplet runs at 2 workers take 40–50 min of suite wall (T-686 run 16016692: 3025 s lifetime), so the bounds keep a margin.
+lifetime = "90m"
+run_timeout = "75m"
 daily_spend_usd = 14
 
 [verification.droplet]
