@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-391
 branch: t/T-635-cland-models-harness-lists-the-harness-s
 created: 2026-10-16T16:04:12.499Z
-updated: 2026-10-16T16:08:07.830Z
+updated: 2026-10-16T16:17:39.250Z
 ---
 
 ## Summary
@@ -46,3 +46,7 @@ updated: 2026-10-16T16:08:07.830Z
 ### impl-635 · 2026-10-16T16:08:07.830Z
 
 Implementation started. Scope: hub models.list frame and durable 24-hour per-harness/account cache, CLI rendering, native short-lived probes, and isolated fake-driven tests for C1–C6.
+
+### impl-635 · 2026-10-16T16:17:39.250Z
+
+Implementation includes CLI/frame catalog, durable cache, native probes, fake probe receipts and launcher model cycling. Initial model tests 5/5 green; doctor regression 22/22 green; existing shell cases 84/84 green. New shell test corrected its initial mode setup. Current source typecheck exit 0. Merged origin/dev 0df55de7 before first review. Final targeted reruns wait for Coordinator's load gate (1-minute load must be <15); source review has not been requested yet.

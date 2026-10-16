@@ -3,8 +3,9 @@ id: T-536
 kind: task
 title: OpenCode warnings, the worktree clause, and the codemode and instructions experiments
 state: open
-status: review
+status: in progress
 size: M
+criterion_seq: 4
 labels:
   - v0.1.3
   - hub
@@ -14,7 +15,7 @@ blocked_by: []
 topic: topic-379
 branch: t/T-536-opencode-warnings-the-worktree-clause
 created: 2026-10-15T20:59:19.741Z
-updated: 2026-10-16T16:12:06.758Z
+updated: 2026-10-16T16:14:20.907Z
 ---
 
 ## Summary
@@ -37,6 +38,7 @@ See E-424's "The codemode experiment", "The instructions experiment", "The warni
 - [ ] C2. The role clauses for OpenCode roles (both copies) forbid moving a session out of its item's worktree.
 - [ ] C3. The codemode measurement is an artifact on E-424 with its decision, and the default changes only where it supports it.
 - [ ] C4. The instructions option exists, off by default, its measurement is an artifact on E-424, and the adoption question is filed in Follow-ups.
+  - failed: rev-31 [reviewer] · 2026-10-16T16:14:20.907Z · note Role-change/revocation fallback leaves the prior durable instruction installed when its replacement PUT fails.
 
 ## Comments
 
@@ -47,3 +49,18 @@ Implementation uses the existing E-424 seams: doctor CLI against a scratch proje
 ### impl-536 · 2026-10-16T16:11:48.732Z
 
 C1/C2 implemented in 47c18d54ace34f85fa22330ad4915dd7cd06450c (source commit ff388ff7 plus pre-review origin/dev merge). Typecheck at the merged review head: npm run typecheck exit 0. Targeted files run separately: doctor.test.ts 23/23; opencode-adapter.test.ts 19/19; follow-up bare big-pickle#high warning case passes (6.844s), with a reasoned duration allowance. C3: A-3950 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3950-e-424-codemode-experiment-keep-default-8-10-vs-7-10 records 8/10 default vs 7/10 false; default unchanged. C4: final A-3977 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3977-e-424-final-instructions-comparison-and-readiness-controls contains the completed paired compactions and readiness rerun; instruction control delivered correct sends before/after manual compaction, while message control stalled. Comparison is preliminary/inconclusive for adoption; option stays off. A-3977 completes the preliminary A-3973 note. Human adoption follow-up is T-619. Per Coordinator decision in topic-379, publish in item topic and Coordinator copies A-3950/A-3977 to E-424 after merge. All real servers ran on empty scratch HOME/XDG/database with no inherited provider keys; process exits observed and lsof found no remaining experiment writers. QA policy none/after-stage; no per-item QA brief.
+
+### rev-31 · 2026-10-16T16:14:20.907Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261016-536-source-1
+commit: 47c18d54ace34f85fa22330ad4915dd7cd06450c
+scope: full
+findings: [{"severity":"medium","text":"A failed role-change/revocation instruction PUT falls back to an acknowledged message while the previously installed durable cland-role instruction remains, preserving stale role authority and losing retry.","file":"hub/src/adapters/opencode.ts","line":274}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Source not clear: one medium Spec finding at opencode.ts:274; Standards no findings. A-3983 has full review/evidence analysis. Installed cland-role→replacement/revocation PUT failure enters catch, sends ordinary prompt, and resolves without removing stale durable role. Existing fallback test only covers initially absent entry. Require confirmed replacement/removal before fallback acknowledgement; if cleanup fails reject delivery for retry. Add installed-entry replacement/revocation failure and cleanup-failure/retry regressions. Implementer3f0269f6 confirms gap/accepts correction. Warnings, six-role both-copy guardrail, opt-in default and C3 experiment otherwise match scope. Independently recalculated A-3950 default8/10 versusfalse7/10; unchanged codemode correct. A-3977 correctly labels instruction compaction success/message stall comparison inconclusive; T-619 exists. Coordinator1649af65 accepts item-topic artifacts pending epic copy after merge. No verify until corrected-head source review.
+
+Criteria: C4 failed (Role-change/revocation fallback leaves the prior durable instruction installed when its replacement PUT fails.).

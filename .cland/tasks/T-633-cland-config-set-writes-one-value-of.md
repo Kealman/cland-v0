@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-390
 branch: t/T-633-cland-config-set-writes-one-value-of
 created: 2026-10-16T16:04:12.209Z
-updated: 2026-10-16T16:12:24.226Z
+updated: 2026-10-16T16:17:23.555Z
 ---
 
 ## Summary
@@ -34,21 +34,46 @@ updated: 2026-10-16T16:12:24.226Z
 
 - [x] C1. `cland config set plan.approval human` writes `[plan] approval = "human"` and keeps every other value of config.toml, read back by the hub's config parser (new CLI test against a temporary project's hub).
   - done: impl-633 · 2026-10-16T16:11:59.697Z
+  - verified: rev-31 [reviewer] · run rev-20261016-633-source · 2026-10-16T16:17:23.555Z · commit 7c42367d8f77e16a624f15f6cdaebe060c1aea89
 - [x] C2. `cland config set verification.workers 3` and `cland config set verification.droplet.regions '["lon1"]'` write a number and a list that the parser reads back.
   - done: impl-633 · 2026-10-16T16:12:00.282Z
+  - verified: rev-31 [reviewer] · run rev-20261016-633-source · 2026-10-16T16:17:23.555Z · commit 7c42367d8f77e16a624f15f6cdaebe060c1aea89
 - [x] C3. An unknown section or key is refused with the section's known keys, and an invalid value (`plan.approval maybe`, `verification.workers 0`) with the parser's reason, config.toml unchanged.
   - done: impl-633 · 2026-10-16T16:12:00.986Z
+  - verified: rev-31 [reviewer] · run rev-20261016-633-source · 2026-10-16T16:17:23.555Z · commit 7c42367d8f77e16a624f15f6cdaebe060c1aea89
 - [x] C4. A value the parser would ignore silently (`verification.budget two`) is refused, config.toml unchanged.
   - done: impl-633 · 2026-10-16T16:12:02.396Z
+  - verified: rev-31 [reviewer] · run rev-20261016-633-source · 2026-10-16T16:17:23.555Z · commit 7c42367d8f77e16a624f15f6cdaebe060c1aea89
 - [x] C5. The output says whether the value applies at once or at the next hub start, matching what `cland hub reload` applies.
   - done: impl-633 · 2026-10-16T16:12:03.553Z
 - [x] C6. The human, the Coordinator and an Aide may run it from their shells, while an Implementer, a Reviewer, QA and a Lead are refused (frame-protocol test).
   - done: impl-633 · 2026-10-16T16:12:05.203Z
+  - verified: rev-31 [reviewer] · run rev-20261016-633-source · 2026-10-16T16:17:23.555Z · commit 7c42367d8f77e16a624f15f6cdaebe060c1aea89
 - [x] C7. A config.toml without the managed mark is left byte-identical and the refusal says it is the project's own.
   - done: impl-633 · 2026-10-16T16:12:06.813Z
+  - verified: rev-31 [reviewer] · run rev-20261016-633-source · 2026-10-16T16:17:23.555Z · commit 7c42367d8f77e16a624f15f6cdaebe060c1aea89
 
 ## Comments
 
 ### impl-633 · 2026-10-16T16:08:45.060Z
 
 Implemented the CLI → config.set frame → hub settings write path. Writable keys derive from renderConfig (including optional droplet worker and visibility parser vocabulary); strict parser mode rejects legacy silently ignored values during writes. Startup-only keys report restart; reloadable writes attempt reload and report now only on success, otherwise saved/not-applied with the refusal. Initial CLI test is green; adding remaining acceptance/race/role coverage before review.
+
+### impl-633 · 2026-10-16T16:16:45.255Z
+
+Coordinator clarified no offline writes are needed (34a7456d). Added explicit no-hub refusal and byte-preservation test; pushed new head 7c42367d8f77e16a624f15f6cdaebe060c1aea89 and requested fresh source review. Typecheck exit 0; config-set tests 8/8 green. Evidence A-3989 supplements A-3981. Verification will use explicit droplet per Coordinator load-routing notice.
+
+### rev-31 · 2026-10-16T16:17:23.555Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261016-633-source
+commit: 7c42367d8f77e16a624f15f6cdaebe060c1aea89
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear; Standards0 findings, Spec0 findings. A-3991 records full review. Template-derived keys, strict candidate parser validation/normalized readback, managed template preservation, symlink/stale-source refusal, serialized atomic write and session role checks satisfy source criteria. Shared startup boundaries and actual reload success/refusal determine applies correctly. Independently read Coordinator34a7456d correcting7a6293b0: running hub required, absent hub writes nothing; final new test proves that explicit refusal/unchanged bytes. A-3981/A-3989 report exact-head typecheck, updated8/8, reload4/4 and matching init3/3; shard/ref/diff checks clear. C1/C2/C3/C4/C6/C7 source-verified. C5 final execution mark waits fresh exact-head post-review no-mode gate. No Reviewer edits/tests.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C6 verified, C7 verified.

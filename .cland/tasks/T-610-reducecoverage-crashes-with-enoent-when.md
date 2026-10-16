@@ -3,7 +3,7 @@ id: T-610
 kind: task
 title: reduceCoverage crashes with ENOENT when two test owner processes reuse one pid on macOS
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 3
 labels:
@@ -17,7 +17,7 @@ regression_of: T-394
 topic: topic-380
 branch: t/T-610-reducecoverage-crashes-with-enoent-when
 created: 2026-10-16T14:24:16.825Z
-updated: 2026-10-16T15:52:59.694Z
+updated: 2026-10-16T16:18:53.744Z
 ---
 
 ## Summary
@@ -29,11 +29,14 @@ The v0.1.3 macOS release run c7e3ba4e at 098e6f5a (A-3923) passed all 2341 tests
 - [x] C1. Receipts are assigned to a test file by an identity that survives pid reuse (owner pid together with its start time, or the receipt's timestamp window), and a receipt already claimed is never renamed twice.
   - done: impl-610 · 2026-10-16T15:51:30.911Z
   - verified: rev-30 [reviewer] · run rev-20261016-610-source · 2026-10-16T15:52:59.694Z · commit dd45206ecc0d1cf18ac9f347e64b1408bc684451
+  - verified: rev-30 [reviewer] · run rev-20261016-610-final · 2026-10-16T16:18:50.863Z · commit dd45206ecc0d1cf18ac9f347e64b1408bc684451
 - [x] C2. A missing or unclaimable receipt is logged with its name and never changes the run's exit, as T-604 did for unparsable JSON.
   - done: impl-610 · 2026-10-16T15:51:31.319Z
   - verified: rev-30 [reviewer] · run rev-20261016-610-source · 2026-10-16T15:52:59.694Z · commit dd45206ecc0d1cf18ac9f347e64b1408bc684451
+  - verified: rev-30 [reviewer] · run rev-20261016-610-final · 2026-10-16T16:18:50.863Z · commit dd45206ecc0d1cf18ac9f347e64b1408bc684451
 - [x] C3. A test plants two owner.json files with the same pid and different start times beside their receipts, and the reduction assigns each receipt to its own test file.
   - done: impl-610 · 2026-10-16T15:51:31.709Z
+  - verified: rev-30 [reviewer] · run rev-20261016-610-final · 2026-10-16T16:18:50.863Z · commit dd45206ecc0d1cf18ac9f347e64b1408bc684451
 
 ## Comments
 
@@ -87,3 +90,37 @@ Findings: Standards0; Spec0. Source clear, C1/C2 verified; C3 final pending.
 Artifact A-3936 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3936-t-610-source-clear-timestamp-ownership-and-nonfatal-receipt-diagnostics.md
 
 Criteria: C1 verified, C2 verified.
+
+### impl-610 · 2026-10-16T16:17:05.979Z
+
+Same-head verification 3ac0e804-a483-4057-8585-a50a9e90ed9b at dd45206ecc0d1cf18ac9f347e64b1408bc684451 passed (auto/hub-only, Linux c-8 droplet): exit 0; 1961 tests, 1956 pass, 5 skipped, zero failures/cancellations; load-gate repetitions included. Durable suite evidence A-3990: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3990-suite-3ac0e804-a483-4057-8585-a50a9e90ed9b-auto-at-dd45206.log. Reviewer received result directly; waiting for final same-head verdict. Source unchanged.
+
+### rev-30 · 2026-10-16T16:18:50.863Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-610-final
+commit: dd45206ecc0d1cf18ac9f347e64b1408bc684451
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-610 final evidence review
+
+Commit dd45206ecc0d1cf18ac9f347e64b1408bc684451, unchanged from rev-20261016-610-source / A-3936. Local and origin task tips agree.
+
+## Standards
+No findings. No source delta; one-pass receipt claiming, start-time attribution and named best-effort read/move diagnostics remain covered by source review.
+
+## Spec
+C3 execution established by exact-head post-source-review droplet 3ac0e804-a483-4057-8585-a50a9e90ed9b / A-3990. The reused-PID/two-owner regression passes ordinarily (52.341892 ms) and in all five fresh load repetitions. The real package capture regression also passes ordinarily (6.921464206 seconds) and 5/5 repetitions. These retain exact attribution and successful-exit checks beside missing, unclaimable, failed-move and malformed receipts.
+
+Independently checked raw phase summaries: hub free 38/38; hub machine 1906 pass, zero failures and five skips out of 1911; Neovim smoke 12/12. Overall 1961 tests, 1956 pass, zero failure/cancellation, five recorded platform/binary prerequisite skips, Finished exit 0. The skip list names two macOS sandbox cases, the macOS sleep inhibitor, absent real OpenCode P3 and absent real OpenCode orphan sweep; no owned coverage case is skipped. Host and remote typechecks complete. No hard duration or load-gate failure; existing-entry duration notices are diagnostic.
+
+Receipt records Linux x64, c-8 lon1, four workers, suite wall 1310.59 seconds, peak load 12.38. Lifetime/cost are unknown in the delivery and are not inferred.
+
+C1/C2 source verification remains current; C3 and final execution now verified. All claimant done marks were present at final read. Standards 0 findings; Spec 0 findings. Final clear, no further run required.
+Artifact: A-3994 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3994-t-610-final-clear-same-head-coverage-ownership-regressions-and-suite-green.md
+
+Criteria: C1 verified, C2 verified, C3 verified.
