@@ -9,6 +9,8 @@ If the user passes a ticket reference, fetch it from the issue tracker and state
 
 Call the Skill tool with "tdd" where possible, at pre-agreed seams.
 
+Before writing or changing a test, read "Test levels" in `docs/agents/tests.md` and put each test at the lowest tier that proves its behaviour: no new real process without a lifecycle reason, and no wall-clock waits.
+
 Run typechecking and targeted single test files while implementing. In a hub session, run the full suite only after a clear source review, as described below; outside the hub, run it once at the end.
 
 Once done, request the hub Reviewer as described below; outside a hub session, use the "code-review" skill.

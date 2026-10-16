@@ -18,9 +18,14 @@ cache_max_age_minutes = 1440
 # Task runs wait for a remote slot; reserve this Mac for the hub and sessions.
 local_fallback = false
 executor = "droplet"
-lifetime = "60m"
-run_timeout = "50m"
+# D53 (2026-10-16): droplet runs at 2 workers take about 40 min of suite wall, so the bounds keep a margin.
+lifetime = "75m"
+run_timeout = "60m"
 daily_spend_usd = 14
+
+[verification.droplet]
+# D53 (2026-10-16): 2 workers per c-8 (T-655: green at peak load 9; 4 workers peaked at 16 and went red).
+workers = 2
 
 [sessions]
 # Archive stopped crew after their item closes, otherwise after their stop. Aides are excluded.

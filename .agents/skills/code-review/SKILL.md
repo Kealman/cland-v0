@@ -20,6 +20,8 @@ Default subscriptions deliver item status/verdict and verifier death or long idl
 
 Review source first, before the full verification run. A clear source verdict at the exact reviewed head lets the Implementer run `cland verify` there. A fix or changed head needs a new source review before another run. When the post-verdict result arrives, check that it names the reviewed head and record the final verdict; a failed run is not clear. An unchanged head may reuse an earlier green run through the tree-hash cache. A source verdict alone is not final verification evidence.
 
+Review every new or changed test against "Test levels" in `docs/agents/tests.md`. A new real process without a lifecycle reason, a wall-clock wait or a missing tier is a finding. Never ask for a full run on a task head.
+
 Record every review verdict with `--scope full|delta|evidence` (MCP `task.comment`: `scope`). Use `full` for a first review or reworked design, `delta` after `dev` moved under a reviewed branch, and `evidence` for suite evidence alone. Older unscoped verdicts remain unknown; QA carries no scope.
 
 ## Process

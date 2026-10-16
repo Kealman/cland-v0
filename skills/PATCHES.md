@@ -54,3 +54,9 @@ Every patch is listed here. `skills-lock.json` keeps the upstream hash, so a re-
 - `triage/SKILL.md` PR handling (apart from the category patch above): it depends on the tracker doc's "PRs as a request surface" flag, which the cland template sets to `no`.
 - `triage/AGENT-BRIEF.md`: the example criterion "Running `gh issue list --label needs-triage` …" describes the CLI that the example brief is about. It is an illustration and is never run.
 - The skills' "If not, tell the user to run `/setup-matt-pocock-skills`": in a cland project, `cland init` (#39) provisions `docs/agents/*`, so this line never fires. `setup-matt-pocock-skills` has no cland option and would write a GitHub or local template; rerunning it in a cland project is a mistake.
+
+## implement and code-review: test levels (D53)
+
+- **Files**: `.agents/skills/implement/SKILL.md` (one paragraph before "Run typechecking…") and `.agents/skills/code-review/SKILL.md` (one paragraph in "Hub review requests").
+- **Change**: both point to "Test levels" in `docs/agents/tests.md`. Implementers put each test at the lowest tier that proves it, with no new real process without a lifecycle reason and no wall-clock waits. Reviewers record a breach as a finding and never ask for a full run on a task head. The upstream hashes are unchanged.
+- **Why**: D53 (2026-10-16). Most test time is real processes proving in-process rules (A-4143), so new tests must stop arriving at the wrong level before the hub enforces tiers.

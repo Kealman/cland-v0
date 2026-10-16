@@ -11,6 +11,38 @@ the two compilers' shared `tsc` executable name. TypeScript 5.9.3 stays installe
 not provide. T-427 records matching diagnostics on both clean projects and
 planted strict-option/import errors before the switch.
 
+## Test levels (D53)
+
+Every test has a level, and most belong lower than where they're written today. D53 (docs/spec/v0.1.4.md) makes this the project's top priority. The study is A-4143. The hub will enforce the levels through `tiers.json`, a tier lint and per-tier budgets. Until those land, Implementers and Reviewers apply the rules below by hand, and a review that finds a breach records it as a finding.
+
+| Tier | What it holds | What it may use | Budget per test |
+| --- | --- | --- | --- |
+| T0 static | typecheck, manifest and test lint | no test process | |
+| T1 unit | pure modules, tracker, store, planners, hub rules in-process | a fake clock and in-memory fakes; no sockets, child processes or real time | 0.5 s |
+| T2 component | a hub served in the test process (`projectHub`) with real socket edges; the CLI as a subprocess only when the CLI itself is the subject | an in-process fake adapter and a fake clock; no `startDaemon`, `spawnSpoke`, fake harness binaries or Neovim | 2 s |
+| T3 integration | a curated set of real-process scenarios, plus true process-lifecycle files and one real-binary contract file per harness | anything | 10 s |
+| T4 soak | load repetitions, long waits, macOS-only checks | anything | |
+
+A task verify will run T0–T2. T3 will run once per merge batch and at stage, epic and release, and T4 nightly and at occasions.
+
+**When you write or change a test (Implementer):**
+
+- Choose the lowest tier that can prove the behaviour, and state it in the file header or the test's comment. A new file is T1 or T2 unless its header names the process-lifecycle behaviour it proves.
+- Wait on an event, a frame or a journal record, never on elapsed time. Timer behaviour uses the fake clock. A new literal `sleep(n)`, a `setTimeout` used as a wait, or a `Date.now()` difference in an assertion is a finding.
+- Prove persistence by reopening the store or tracker in-process, not by stopping and restarting a hub.
+- Prove a hub rule once through one real frame per tool or refusal family. Its duplicates call the dispatcher or tracker directly. Don't repeat a hub-side rule through each harness's fake.
+- A test proves one behaviour. A title with "and" twice is a finding. Permutations over inputs are a table inside one fixture, not a fixture per cell.
+- A duration allowance carries a reason and lands with the test.
+- Before review, run typecheck and the touched files one at a time. Put each file's seconds into the review request.
+
+**When you review a test (Reviewer):**
+
+- Count `startDaemon(`, `spawnSpoke(`, `cland(` and `sleep(` in each new or changed test. For each one, ask which is the frame proof and why a lower tier can't prove the rest.
+- A new file that spawns a process with no lifecycle sentence in its header, or a new wall-clock wait, is a finding of at least medium severity.
+- Don't ask for a full run on a task head. A task verify plus the integrated cover (later, the merge-queue batch) is sufficient evidence.
+
+## Fixtures
+
 Use `projectHub(t, root, env?)` from `hub/test/harness.ts` for project tests by
 default. Each test serves its own project through `serveProject` in the test
 process, with normal discovery, Unix socket and WebSocket edges. Real CLI
