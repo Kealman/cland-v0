@@ -2,8 +2,8 @@
 id: T-562
 kind: task
 title: Finished remote runs stay listed as slot holders, and their waiters never get admitted
-state: open
-status: ready
+state: closed
+status: done
 size: M
 rank: 3080
 criterion_seq: 3
@@ -17,7 +17,8 @@ blocked_by: []
 topic: topic-352
 branch: t/T-562-finished-remote-runs-stay-listed-as-slot
 created: 2026-10-16T02:03:05.929Z
-updated: 2026-10-16T04:09:31.743Z
+updated: 2026-10-16T04:10:29.346Z
+closed: 2026-10-16T04:10:29.346Z
 ---
 
 ## Summary
@@ -134,3 +135,7 @@ Final review clear; all C1–C3 verified. Counts: high0,medium0,low1 (existing L
 Artifact: A-3685 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3685-t-562-final-evidence-clear-exact-head-green-linux-slot-recovery-suite.md
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-16T04:10:29.346Z
+
+Merged dcac1f07558ba9bdbf30780290696fbbbc3067ee onto dev.
