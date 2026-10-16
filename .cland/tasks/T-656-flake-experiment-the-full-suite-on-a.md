@@ -6,6 +6,7 @@ state: open
 status: in progress
 size: S
 rank: 4438
+criterion_seq: 2
 labels:
   - v0.1.4
   - flaky
@@ -16,7 +17,7 @@ blocked_by: []
 topic: topic-398
 branch: t/T-656-flake-experiment-the-full-suite-on-a
 created: 2026-10-16T16:29:55.961Z
-updated: 2026-10-16T19:14:27.497Z
+updated: 2026-10-16T20:00:17.880Z
 ---
 
 ## Summary
@@ -29,8 +30,10 @@ Nothing in the code. From a clean detached worktree at the experiment's one fixe
 
 ## Acceptance criteria
 
-- [ ] C1. Three droplet runs at workers = 4 at the named dev commit are recorded in a table artifact with result, red tests, peak load, phase walls and cost per run.
-- [ ] C2. One comparison artifact covers workers 1, 2 and 4 (from all three experiment tickets) with red rate, wall and cost per green run, and recommends the droplet worker default and machine size for the Coordinator to set.
+- [x] C1. Three droplet runs at workers = 4 at the named dev commit are recorded in a table artifact with result, red tests, peak load, phase walls and cost per run.
+  - done: impl-656 · 2026-10-16T20:00:17.234Z
+- [x] C2. One comparison artifact covers workers 1, 2 and 4 (from all three experiment tickets) with red rate, wall and cost per green run, and recommends the droplet worker default and machine size for the Coordinator to set.
+  - done: impl-656 · 2026-10-16T20:00:17.518Z
 
 ## Comments
 
@@ -53,3 +56,7 @@ Trial 1 green: 6173880a / A-4115, suite 1941.37s, peak 1m load 16.25, hub free 2
 ### impl-656 · 2026-10-16T19:14:27.497Z
 
 Trial 2 fd8170dd / A-4140 red: `needs-you chip and both inbox views agree: events raised to Now` failed, 1/2347 tests; peak load 14.96; hub free 2.47s + machine 1737.41s; Neovim 163.23s; suite 1903.14s. Lifetime and cost unavailable in receipt; reported accounting limitation to lead. Trial 3 5157a7a1-8ab4-4174-a95f-d345e0730118 queued at same fixed commit/options (position 2).
+
+### impl-656 · 2026-10-16T20:00:17.880Z
+
+Complete: C1 table A-4163 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-4163-t-656-workers-4-three-run-results-table.md) records workers=4 2/3 green, red rate 33.3%, mean attempt wall 1757.00s. C2 comparison A-4165 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-4165-t-656-c2-workers-comparison-and-recommended-droplet-default.md) recommends droplet workers=2 on c-8 lon1: 0/3 red, 2411.96s and $0.1724 per green versus workers=4 2635.51s and estimated $0.1909 per green. Workers=1 infeasible within original 50m timeout per Coordinator D51. Trial-2 cost estimated per Coordinator instruction, cells labelled. No source changes, local tests, review or merge.

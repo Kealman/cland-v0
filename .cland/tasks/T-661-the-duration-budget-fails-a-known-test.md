@@ -2,8 +2,8 @@
 id: T-661
 kind: task
 title: The duration budget fails a known test only when it's slower than twice its own baseline and over 5 s
-state: open
-status: backlog
+state: closed
+status: done
 size: S
 labels:
   - v0.1.4
@@ -16,7 +16,8 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-16T16:29:57.261Z
-updated: 2026-10-16T16:29:57.261Z
+updated: 2026-10-16T20:00:40.732Z
+closed: 2026-10-16T20:00:40.732Z
 ---
 
 ## Summary
@@ -32,3 +33,9 @@ The durations check compares a known test with its own baseline in hub/test/dura
 - [ ] C1. A known test at 1.9× its baseline and over 5 s produces a notice, not a failure, and one at 2.1× and over 5 s fails, proved by a durations test.
 - [ ] C2. A new test over 5 s without an allowance still fails, and passes with an allowance in the same change, proved by the same test file.
 - [ ] C3. docs/agents/tests.md and hub/README.md (Tests) describe the relative budget.
+
+## Comments
+
+### coord · 2026-10-16T20:00:40.732Z
+
+Superseded under D53 by T-683 and T-716 in the verification epics E-676/E-678 (A-4143 study; fold notes in the drafting plan). Closed by the Coordinator.

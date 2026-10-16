@@ -1,0 +1,45 @@
+---
+id: T-716
+kind: task
+title: "Duration budgets enforce: per-tier test and file budgets fail runs, the T3 ratchet and the T2 wall refuse merges"
+state: open
+status: planned
+size: S
+labels:
+  - v0.1.4
+  - verification
+  - hub
+assignee: null
+parent: E-678
+blocked_by:
+  - T-683
+  - T-679
+topic: null
+branch: null
+created: 2026-10-16T19:59:44.270Z
+updated: 2026-10-16T20:00:52.890Z
+---
+
+## Summary
+
+Decision 3: budgets report for one week after `tiers.json` lands (T-683), then refuse. This ticket is the switch. It replaces today's rule, under which only a new test over 5 s or a new file over 60 s fails, with T-683's per-tier budgets, applied to every test.
+
+## What to build
+
+- **The switch.** `durations.json` `budget.mode` is `"report"` (T-683's behaviour) or `"enforce"`. The Coordinator commits `"enforce"` no earlier than seven days after T-679 merged.
+- **Enforce.** A test or file over its tier's per-test or per-file budget without a valid allowance fails the run with a named `duration budget` diagnostic.
+- **Merge refusals.** T3 growth over the base manifest without an allowance refuses the merge (or its enqueue, with T-710) with `merge-budget`. So does a projected T2 wall over 480 s at the configured workers.
+- **The T3 wall.** It refuses only once the base manifest's projected T3 wall is itself under 900 s. Until then, the result says `T3 wall 900 s not yet enforced: base <s> s` and the ratchet alone applies, because a hard 900 s wall against today's ~2640 s would refuse every merge.
+- **Seed allowances.** In the same commit as `"enforce"`, the Coordinator adds allowances for the tests still over budget. Each names its E-677 owner ticket and expires within seven days.
+
+## Acceptance criteria
+
+- [ ] C1. In enforce mode, a planted T2 test at 2.5 s without an allowance fails the run, and with a valid allowance passes, proved by a durations-runner test.
+- [ ] C2. In enforce mode, T3 growth without an allowance and a projected T2 wall over 480 s each refuse with `merge-budget`, proved by merge-gate tests.
+- [ ] C3. The T3 wall refuses only when the base projection is under 900 s and otherwise prints the not-yet-enforced line, proved by a test with two planted manifests.
+- [ ] C4. In report mode, every existing durations and durations-runner test passes unchanged.
+- [ ] C5. `docs/agents/tests.md` describes enforce mode, `merge-budget` and the T3 wall condition.
+
+## Blocked by
+
+T-683 (per-tier budgets, report mode), T-679 merged seven days before the mode switch is committed.

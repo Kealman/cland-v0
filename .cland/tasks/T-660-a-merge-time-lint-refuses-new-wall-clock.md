@@ -2,8 +2,8 @@
 id: T-660
 kind: task
 title: A merge-time lint refuses new wall-clock waits and elapsed-ms assertions in tests
-state: open
-status: backlog
+state: closed
+status: done
 size: M
 labels:
   - v0.1.4
@@ -16,7 +16,8 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-16T16:29:57.042Z
-updated: 2026-10-16T16:29:57.042Z
+updated: 2026-10-16T20:00:40.596Z
+closed: 2026-10-16T20:00:40.596Z
 ---
 
 ## Summary
@@ -32,3 +33,9 @@ A shared test helper `until(predicate, { what })` with one deadline scaled by a 
 - [ ] C1. The lint fails a planted new numeric-sleep wait and a planted elapsed-ms assertion in a changed test file, and passes when the line uses until or carries the reasoned marker, proved by a lint test.
 - [ ] C2. Existing occurrences are recorded in a baseline the lint accepts and that can only shrink, and the host gate runs the lint for task and integrated runs.
 - [ ] C3. docs/agents/tests.md documents until with its load-scaled deadline and the marker, with one existing flaky test file converted as the example.
+
+## Comments
+
+### coord · 2026-10-16T20:00:40.596Z
+
+Superseded under D53 by T-682 and T-684 in the verification epics E-676/E-678 (A-4143 study; fold notes in the drafting plan). Closed by the Coordinator.

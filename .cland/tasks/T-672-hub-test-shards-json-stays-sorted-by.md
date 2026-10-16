@@ -2,8 +2,8 @@
 id: T-672
 kind: task
 title: hub/test/shards.json stays sorted by path, so new test files stop conflicting at merge
-state: open
-status: backlog
+state: closed
+status: done
 size: S
 labels:
   - v0.1.4
@@ -15,7 +15,8 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-16T17:38:06.779Z
-updated: 2026-10-16T17:38:06.779Z
+updated: 2026-10-16T20:00:41.297Z
+closed: 2026-10-16T20:00:41.297Z
 ---
 
 ## Summary
@@ -30,3 +31,9 @@ hub/test/shards.json is rewritten once with its `"tests"` entries sorted by path
 
 - [ ] C1. hub/test/shards.json is sorted by path, and the shard lint fails on an unsorted map, naming the first out-of-order path, proved by a lint test.
 - [ ] C2. Every tool that writes shards.json keeps it sorted, proved by a test that writes a new entry, and docs/agents/tests.md says where a new line goes.
+
+## Comments
+
+### coord · 2026-10-16T20:00:41.297Z
+
+Superseded under D53 by T-679 in the verification epics E-676/E-678 (A-4143 study; fold notes in the drafting plan). Closed by the Coordinator.
