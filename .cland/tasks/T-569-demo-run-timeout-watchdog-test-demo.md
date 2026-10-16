@@ -18,7 +18,7 @@ blocked_by: []
 topic: topic-402
 branch: t/T-569-demo-run-timeout-watchdog-test-demo
 created: 2026-10-16T04:18:06.312Z
-updated: 2026-10-16T18:12:48.228Z
+updated: 2026-10-16T19:06:22.557Z
 ---
 
 ## Summary
@@ -29,6 +29,7 @@ Seen once, on 2026-10-16 in T-488's droplet run 59571add at 72faa365 (A-3651): h
   - done: impl-569 · 2026-10-16T17:29:56.448Z
   - verified: rev-30 [reviewer] · run rev-20261016-569-source · 2026-10-16T17:31:38.466Z · commit 8c565a38ffbe73a353ea4bd95986fd6b723facdf
   - verified: rev-30 [reviewer] · run rev-20261016-569-shared-duration · 2026-10-16T18:12:48.228Z · commit 87a4cad65b1f4b16e05d86ea3c0765b2f1907179
+  - verified: rev-30 [reviewer] · run rev-20261016-569-dev-merge · 2026-10-16T19:06:22.557Z · commit 5e66218b11953c73c8d9a98719bc7cd7f8ffd6ff
 - [x] C2. demo.test.ts passes 5/5 serially as a whole file on the Mac and once on a droplet in the task's verify.
   - done: impl-569 · 2026-10-16T17:59:54.495Z
 
@@ -110,5 +111,25 @@ A-4080's five serial Mac whole-file passes (40/40) and A-4094's whole demo-file 
 
 Proceed with the Coordinator-directed mode-free exact-head droplet verification. No per-item QA criteria.
 Review artifact A-4101.
+
+Criteria: C1 verified.
+
+### rev-30 · 2026-10-16T19:06:22.557Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-569-dev-merge
+commit: 5e66218b11953c73c8d9a98719bc7cd7f8ffd6ff
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-569 dev-merge delta source clear at 5e66218b11953c73c8d9a98719bc7cd7f8ffd6ff. Standards and Spec axes: no findings; both reviewed in-session under the role's no-delegation constraint.
+
+Independently read primary Coordinator 100257e6 in topic-402: wait for T-585 merge, then merge origin/dev, typecheck, delta review and fresh droplet verification. Actual parents are reviewed 87a4cad65b1f4b16e05d86ea3c0765b2f1907179 and dev a446efc5244748bd1b2bb8b32bb78a1589049b6f; origin task tip matches requested head. No combined conflict diff or manual resolution. Against incoming dev, exactly two owned files remain (31 insertions/6 deletions): watchdog test correction and its two unchanged duration reason edits. Entire demo.test.ts is byte-unchanged from the prior reviewed head; relevant product watchdog/droplet/demo source and remote fixture are also unchanged across this merge. Prior C1 deadline semantics and exact completion/receipt assertions remain applicable. Incoming T-585 correction and shared T-603 allowances are retained.
+
+Independent whitespace check passes; request reports exact-head root typecheck and shard lint exit 0 with clean pushed tree. No Reviewer test execution. Existing A-4080 five serial Mac files remain applicable to unchanged owned source. C1 refreshed by source only; C2 and final new-head gate remain pending. A-4117's previous sole T-585 red is not converted into a green new-head receipt. Proceed with normal mode-free exact-head droplet verification per Coordinator. No per-item QA criteria.
+Review artifact A-4128.
 
 Criteria: C1 verified.

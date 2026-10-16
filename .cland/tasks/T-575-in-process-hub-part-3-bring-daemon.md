@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-376
 branch: t/T-575-in-process-hub-part-3-bring-daemon
 created: 2026-10-16T06:12:55.788Z
-updated: 2026-10-16T19:02:26.290Z
+updated: 2026-10-16T19:07:24.161Z
 ---
 
 ## Summary
@@ -28,10 +28,12 @@ T-466's full Mac census at 88a3630e (A-3775) measured 743 daemon starts per full
   - verified: rev-30 [reviewer] · run rev-20261016-575-task-evidence · 2026-10-16T16:57:51.422Z · commit a8ddbb8c39e51ce26f8aab1c925d6c189b9b2524
   - verified: rev-30 [reviewer] · run rev-20261016-575-final · 2026-10-16T17:52:37.586Z · commit a8ddbb8c39e51ce26f8aab1c925d6c189b9b2524
   - verified: rev-30 [reviewer] · run rev-20261016-575-merge-delta · 2026-10-16T17:56:42.571Z · commit dfe9af5aa54047cb03f7a1dc5f3027b9189b4de9
+  - verified: rev-30 [reviewer] · run rev-20261016-575-shared-dev-merge · 2026-10-16T19:07:23.271Z · commit 53f6f8fb5faf9572fbc0c273e31a1f43fd22d42c
 - [x] C2. A full-run spawn census after a durations refresh shows daemon starts under 600, with the per-file table recorded.
   - done: impl-575 · 2026-10-16T17:50:44.917Z
   - verified: rev-30 [reviewer] · run rev-20261016-575-final · 2026-10-16T17:52:37.586Z · commit a8ddbb8c39e51ce26f8aab1c925d6c189b9b2524
   - verified: rev-30 [reviewer] · run rev-20261016-575-merge-delta · 2026-10-16T17:56:42.571Z · commit dfe9af5aa54047cb03f7a1dc5f3027b9189b4de9
+  - verified: rev-30 [reviewer] · run rev-20261016-575-shared-dev-merge · 2026-10-16T19:07:23.271Z · commit 53f6f8fb5faf9572fbc0c273e31a1f43fd22d42c
 
 ## Comments
 
@@ -183,3 +185,29 @@ Criteria: C1 verified, C2 verified.
 ### impl-575 · 2026-10-16T19:02:26.290Z
 
 New-head gate f60699b7 at dfe9af5aa54047cb03f7a1dc5f3027b9189b4de9 failed; log A-4122 / independent Reviewer audit A-4123. 1977 tests / 1971 pass / 1 fail / 5 skip, Linux c-8 lon1, lifetime 1775s, cost $0.1233. Known T-585 schedule assertion PID !== null is the functional red; two T-603 duration budgets also fail. Changed hub cases, including integrated rule-sessions 8/8 and suite-close 7/7, are green. Full Neovim did not run after hub failure. Holding diagnosis/retry/head changes and asking Coordinator for the shared-fix/gate sequence; the conditional ad5e2c86 budget-only instruction does not cover this combined case. Historical accepted C2 census remains A-4088 at a8ddbb8c. No fresh final-ready claim.
+
+### impl-575 · 2026-10-16T19:06:35.335Z
+
+Coordinator-authorized dev-only merge (ce9518fa/050f5161) completed conflict-free and pushed as 53f6f8fb5faf9572fbc0c273e31a1f43fd22d42c; parents dfe9af5a + a446efc5. Contains both shared fixes ad5e2c86 (T-603 allowances) and a5ace666 (T-585 schedule). No cherry-pick or authored edits; prior conflict files unchanged. Root typecheck exit 0, shards exit 0; evidence A-4129. Delta review requested with scope 'dev merge only', assigned rev-30. After clear, mode-free explicit droplet verification at this head. A-4122 remains red historical evidence; accepted C2 census remains A-4088 at a8ddbb8c with split/T-555 caveats.
+
+### rev-30 · 2026-10-16T19:07:23.271Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-575-shared-dev-merge
+commit: 53f6f8fb5faf9572fbc0c273e31a1f43fd22d42c
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-575 dev-merge delta source clear at 53f6f8fb5faf9572fbc0c273e31a1f43fd22d42c, parents reviewed dfe9af5a and dev a446efc5. Standards and Spec axes: no findings, reviewed in-session under the role's no-delegation constraint.
+
+Read primary Coordinator ce9518fa in topic-376 and 050f5161-ae9c-4d3d-973b-8187dd4f7a3d in Agents directing this dev merge after T-585, not a cherry-pick, followed by typecheck/shard lint, delta review and explicit droplet verification. Combined merge diff is empty (no conflict resolution). Independent comparison of every owned migration file from the prior reviewed delta finds all byte-unchanged across this merge, including rule-sessions and suite-close. The preceding independent AST audit (220 declarations / 1791 assertion callsites retained versus its integrated base) remains applicable to those unchanged files; claimant also reports a refreshed audit against current dev. Incoming T-585 schedule correction, shared T-603 allowances and other dev work are not altered by authored edits. Independent diff whitespace check passes; request reports exact-head typecheck and shard lint exit 0 and clean pushed tree.
+
+C1 source refreshed. C2 remains verified only under the Coordinator's standing checkpoint disposition for A-4088 at a8ddbb8c, carried in prior A-4089/A-4091: 493 canonical hub starts plus 36 separately measured full Neovim starts = 529 (530 including copied fixture), split Mac census after hub T-555 failure, with recorded per-file table and recorder boundary. This is not a new measurement of the merge head, an uninterrupted green Mac full run, or a causal claim that all reduction is owned.
+
+Both criterion marks refreshed under that explicit standing C2 exception; final new-head runtime gate remains pending. Preserve A-4122 red and its A-4123 audit: owned hub cases green but T-585 and T-603 shared blockers stopped full Neovim. Source clearance does not convert that old run into a green receipt. Submit normal mode-free exact-head cland verify --executor droplet as directed. No new local targeted run or census is requested by this delta review.
+Review artifact A-4133.
+
+Criteria: C1 verified, C2 verified.

@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-398
 branch: t/T-656-flake-experiment-the-full-suite-on-a
 created: 2026-10-16T16:29:55.961Z
-updated: 2026-10-16T18:39:59.948Z
+updated: 2026-10-16T19:14:27.497Z
 ---
 
 ## Summary
@@ -49,3 +49,7 @@ Per Coordinator instruction at 17:46Z, cancelled the unstarted trial-1 request 4
 ### impl-656 · 2026-10-16T18:39:59.948Z
 
 Trial 1 green: 6173880a / A-4115, suite 1941.37s, peak 1m load 16.25, hub free 2.43s + machine 1767.51s, Neovim 171.40s, lifetime 2022s, $0.1404, 0 failed tests. Trial 2 fd8170dd-f21c-4363-9dbb-c8e41d393ec4 admitted at identical fixed head/options, queue position 1. Trial 3 held until its result.
+
+### impl-656 · 2026-10-16T19:14:27.497Z
+
+Trial 2 fd8170dd / A-4140 red: `needs-you chip and both inbox views agree: events raised to Now` failed, 1/2347 tests; peak load 14.96; hub free 2.47s + machine 1737.41s; Neovim 163.23s; suite 1903.14s. Lifetime and cost unavailable in receipt; reported accounting limitation to lead. Trial 3 5157a7a1-8ab4-4174-a95f-d345e0730118 queued at same fixed commit/options (position 2).

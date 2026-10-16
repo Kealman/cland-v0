@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-401
 branch: t/T-475-cover-quiet-enforced-while-the
 created: 2026-10-15T09:13:18.684Z
-updated: 2026-10-16T18:40:10.586Z
+updated: 2026-10-16T19:09:12.211Z
 ---
 
 ## Summary
@@ -36,6 +36,7 @@ Retrospective A-2783, STOP 1: all 7 flaky red covers had other sessions' test ru
   - verified: rev-30 [reviewer] · run rev-20261016-475-owned-correction · 2026-10-16T18:02:08.189Z · commit b1570e640ffd8b2f3da1564114962d248976c788
   - verified: rev-30 [reviewer] · run rev-20261016-475-shared-duration · 2026-10-16T18:12:49.135Z · commit de96a65002699613407c62d3237a8c7ee7f71fb1
   - verified: rev-30 [reviewer] · run rev-20261016-475-dev-integration · 2026-10-16T18:39:58.556Z · commit 6ba8ce3b3e1c183f866dbbeda403e9853c8a03ba
+  - verified: rev-30 [reviewer] · run rev-20261016-475-shared-dev-merge · 2026-10-16T19:07:22.802Z · commit 75390e8348e11d330ebc9d1dda15a5d80c3eb42c
 
 ## Comments
 
@@ -257,3 +258,33 @@ Criteria: C3 verified.
 ### impl-475 · 2026-10-16T18:40:10.586Z
 
 Clean dev integration source clear at exact head 6ba8ce3b (A-4116 / rev-20261016-475-dev-integration). Submitted normal mode-free droplet verify 1ecb8069-d1c7-44b0-932e-7871a93641de per Coordinator dd9446e8; queue position2, no worker yet, result reports to topic-401 and Reviewer/claimant. No local retry. Waiting for hub result; local-live-hub proof remains Coordinator-owned after merge/restart.
+
+### impl-475 · 2026-10-16T19:06:14.791Z
+
+Coordinator 050f5161 authorized dev integration with T-585 + shared T-603 allowances. Prior run 1ecb8069 was still running/no result before mutation. Merged a446efc5 at pushed 75390e83; two additive conflicts retain both runner imports and all shard entries. Typecheck exit0; test:shards exit0; full clause reply including staffing7513/7680 (167 margin). Requested dev-merge-only delta review at exact head; next droplet submit after source clear and prior run no longer active. No local admission refusal bypass.
+
+### rev-30 · 2026-10-16T19:07:22.802Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-475-shared-dev-merge
+commit: 75390e8348e11d330ebc9d1dda15a5d80c3eb42c
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-475 dev-merge delta source clear at 75390e8348e11d330ebc9d1dda15a5d80c3eb42c, parents reviewed 6ba8ce3b and dev a446efc5. Standards and Spec axes: no findings.
+
+Read primary Coordinator 050f5161-ae9c-4d3d-973b-8187dd4f7a3d in Agents: merge dev containing T-585 and T-603 shared fixes, typecheck/shard lint, delta review then explicit droplet verification. Combined merge diff shows only the two reported additive resolutions. run-suite.ts retains both assertTestAdmission and readQuarantineManifest/type imports; relative to dev the runner adds only the admission import and awaited call at function entry, before runner-root initialization. Parsed shard maps confirm only owned cover-quiet machine entry is added to incoming dev, no removals or changed incoming values; both quarantine entries remain. The resulting 16-file delta versus dev remains the previously reviewed cover-quiet implementation. No owned assertions, refusal rules, lease identity checks, durable completion/report boundaries or incoming quarantine behavior are discarded.
+
+C3 remains supported by unchanged docs and shipped Implementer instruction. Full reply including staffing is claimant-measured 7513/7680 bytes, 167 margin; no budget assertion weakened. Request reports exact-head typecheck and shard lint exit 0; independent whitespace check passes. No local retry or Reviewer test execution.
+
+C3 refreshed only. C1/C2 corrected runtime and Coordinator-owned post-merge/restart local-live-hub proof remain pending; no final green inferred from source review. A prior-head running request supplies no receipt yet and does not itself verify this merged tree. Proceed with normal mode-free cland verify --executor droplet at this exact head under primary 050f5161, subject to existing queue/admission policies. No local refusal bypass or per-item QA criteria.
+Review artifact A-4132.
+
+Criteria: C3 verified.
+
+### impl-475 · 2026-10-16T19:09:12.211Z
+
+Per Coordinator 0aa4426e, cancelled superseded-head run1ecb8069; cancellation completion A-4136 exit143 arrived. Only after completion, successfully submitted normal exact-head droplet verify cdfa1fd5-3486-4f49-a3e5-74e8535127e2 at source-clear75390e83 (A-4132); queue position1. Both shared fixes included. Typecheck/shard checks green; clause margin167. Waiting hub result; claim retained, no local retry.

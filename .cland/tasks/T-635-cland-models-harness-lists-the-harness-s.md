@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-391
 branch: t/T-635-cland-models-harness-lists-the-harness-s
 created: 2026-10-16T16:04:12.499Z
-updated: 2026-10-16T17:24:13.407Z
+updated: 2026-10-16T19:08:08.394Z
 ---
 
 ## Summary
@@ -210,3 +210,7 @@ Criteria: C4 verified.
 ### impl-635 · 2026-10-16T17:24:13.407Z
 
 Correction delta source clear at ab3867ec6b8a0c84814db357d1898084c337a176, rev-20261016-635-import-correction / A-4065, no remaining findings. Submitted new exact-head verification 7d03777a-e251-40d2-80f5-4cdf46bec124 with explicit --executor droplet and no mode; queue position 2 at admission, worker pending. Reviewer and item lead receive the result in topic-391. Going idle until the hub result.
+
+### impl-635 · 2026-10-16T19:08:08.394Z
+
+Coordinator 19:07Z shared-fix plan: hold for posted dev SHA containing T-526/quarantine plus T-585/T-603 fixes; then fetch/merge origin/dev (explicit exception to rule 11), typecheck and shard lint, push, delta review scoped dev merge only, then droplet verify. Clarified current corrected-head run 7d03777a at ab3867ec is still queued (not a new red); A-4045 was the earlier run whose owned import/budget findings are already fixed. No source changes or resubmission until the Coordinator post.

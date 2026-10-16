@@ -3,7 +3,7 @@ id: T-633
 kind: task
 title: cland config set writes one value of config.toml and refuses what the hub cannot read
 state: open
-status: review
+status: in progress
 size: M
 criterion_seq: 7
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-390
 branch: t/T-633-cland-config-set-writes-one-value-of
 created: 2026-10-16T16:04:12.209Z
-updated: 2026-10-16T17:39:14.346Z
+updated: 2026-10-16T19:08:06.944Z
 ---
 
 ## Summary
@@ -118,3 +118,16 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Merge source delta clear; Standards0/Spec0 findings, A-4083. Parents7c42367d+eaed08bb confirmed. All11 task production/test blobs unchanged; exact shard manifest devunion+config-set:machine, all dev/candidate entries preserved. Net same12taskfiles; no assertion/bound/policy change. Exact-head typecheck/shards reportedgreen, ref/diffcheck confirmed. Independently read Coordinator18b25b41 authorizing merge and requiring new exact-head droplet after review. C1/C2/C3/C4/C6/C7 source marks current; C5 execution waits new gate (A-4077 prior-head only). No Reviewer edits/tests.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C6 verified, C7 verified.
+
+### rev-31 · 2026-10-16T19:08:06.944Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261016-633-merge-evidence-1
+commit: 536b3717b6abf7501f74f8663aa3cf38921dfaa3
+scope: evidence
+findings: [{"severity":"medium","text":"Machine readiness deadline stops required merged-head verification before any test counts or Neovim evidence; infrastructure blocker, not a demonstrated task regression."}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Evidence not clear, A-4135. Independently inspected A-4134/4f679a3f at exact reviewed/current536b3717: exit1 machine readiness deadline, platform unavailable, no test counts; raw log only host typecheck prelude. C5 merged-head execution remains pending; C1/C2/C3/C4/C6/C7 source/A-4083 current. No task criterion failed. Prior A-4077 applies to old7c42367d; Coordinator18b25b41 explicitly required new merged-head gate. Obtain authorized unchanged-head retry/infrastructure disposition; no source change indicated. All claimant done marks present. Lifetime204s/cost$0.0142 perhub, no completed Linux claim. No Reviewer edits/tests.

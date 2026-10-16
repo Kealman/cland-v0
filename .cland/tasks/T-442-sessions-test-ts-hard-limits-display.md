@@ -5,7 +5,7 @@ title: sessions.test.ts hard-limits display test fails when the reset falls afte
 state: closed
 status: done
 size: XS
-rank: 4446
+rank: 4449
 criterion_seq: 1
 labels:
   - v0.1.3
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-286
 branch: t/T-442-sessions-test-ts-hard-limits-display
 created: 2026-10-14T22:00:11.207Z
-updated: 2026-10-16T17:26:42.371Z
+updated: 2026-10-16T19:07:07.026Z
 closed: 2026-10-15T09:52:03.531Z
 ---
 
