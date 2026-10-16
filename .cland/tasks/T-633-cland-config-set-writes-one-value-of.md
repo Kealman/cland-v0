@@ -3,8 +3,9 @@ id: T-633
 kind: task
 title: cland config set writes one value of config.toml and refuses what the hub cannot read
 state: open
-status: in progress
+status: review
 size: M
+criterion_seq: 7
 labels:
   - v0.1.4
   - hub
@@ -14,7 +15,7 @@ blocked_by: []
 topic: topic-390
 branch: t/T-633-cland-config-set-writes-one-value-of
 created: 2026-10-16T16:04:12.209Z
-updated: 2026-10-16T16:08:45.060Z
+updated: 2026-10-16T16:12:24.226Z
 ---
 
 ## Summary
@@ -31,13 +32,20 @@ updated: 2026-10-16T16:08:45.060Z
 
 ## Acceptance criteria
 
-- [ ] C1. `cland config set plan.approval human` writes `[plan] approval = "human"` and keeps every other value of config.toml, read back by the hub's config parser (new CLI test against a temporary project's hub).
-- [ ] C2. `cland config set verification.workers 3` and `cland config set verification.droplet.regions '["lon1"]'` write a number and a list that the parser reads back.
-- [ ] C3. An unknown section or key is refused with the section's known keys, and an invalid value (`plan.approval maybe`, `verification.workers 0`) with the parser's reason, config.toml unchanged.
-- [ ] C4. A value the parser would ignore silently (`verification.budget two`) is refused, config.toml unchanged.
-- [ ] C5. The output says whether the value applies at once or at the next hub start, matching what `cland hub reload` applies.
-- [ ] C6. The human, the Coordinator and an Aide may run it from their shells, while an Implementer, a Reviewer, QA and a Lead are refused (frame-protocol test).
-- [ ] C7. A config.toml without the managed mark is left byte-identical and the refusal says it is the project's own.
+- [x] C1. `cland config set plan.approval human` writes `[plan] approval = "human"` and keeps every other value of config.toml, read back by the hub's config parser (new CLI test against a temporary project's hub).
+  - done: impl-633 · 2026-10-16T16:11:59.697Z
+- [x] C2. `cland config set verification.workers 3` and `cland config set verification.droplet.regions '["lon1"]'` write a number and a list that the parser reads back.
+  - done: impl-633 · 2026-10-16T16:12:00.282Z
+- [x] C3. An unknown section or key is refused with the section's known keys, and an invalid value (`plan.approval maybe`, `verification.workers 0`) with the parser's reason, config.toml unchanged.
+  - done: impl-633 · 2026-10-16T16:12:00.986Z
+- [x] C4. A value the parser would ignore silently (`verification.budget two`) is refused, config.toml unchanged.
+  - done: impl-633 · 2026-10-16T16:12:02.396Z
+- [x] C5. The output says whether the value applies at once or at the next hub start, matching what `cland hub reload` applies.
+  - done: impl-633 · 2026-10-16T16:12:03.553Z
+- [x] C6. The human, the Coordinator and an Aide may run it from their shells, while an Implementer, a Reviewer, QA and a Lead are refused (frame-protocol test).
+  - done: impl-633 · 2026-10-16T16:12:05.203Z
+- [x] C7. A config.toml without the managed mark is left byte-identical and the refusal says it is the project's own.
+  - done: impl-633 · 2026-10-16T16:12:06.813Z
 
 ## Comments
 

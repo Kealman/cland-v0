@@ -3,8 +3,9 @@ id: T-629
 kind: task
 title: The Aide launches, stops and resumes sessions of any role on the human's word
 state: open
-status: in progress
+status: review
 size: M
+criterion_seq: 6
 labels:
   - v0.1.4
   - hub
@@ -14,7 +15,7 @@ blocked_by: []
 topic: topic-388
 branch: t/T-629-the-aide-launches-stops-and-resumes
 created: 2026-10-16T16:04:11.671Z
-updated: 2026-10-16T16:05:28.718Z
+updated: 2026-10-16T16:11:20.113Z
 ---
 
 ## Summary
@@ -36,15 +37,25 @@ Existing projects, whose `roles.toml` lists the Aide's tools explicitly, get the
 
 ## Acceptance criteria
 
-- [ ] C1. An Aide launches a Coordinator through its `session.launch` tool in a scratch project with the fake harnesses, in a new frame-protocol test.
-- [ ] C2. In the same test the Aide launches an Implementer with `cland session launch` from its shell, then stops and resumes it with `cland session stop` and `cland session resume`, each audited as the Aide.
-- [ ] C3. An Aide may launch a Lead and stop the Coordinator, while an Implementer, Reviewer and QA are still refused `session.launch`, `session.stop` and `session.resume` from their tools and their shells (permission tests).
-- [ ] C4. A Lead keeps its subtree limits and its refusal of `session.resume`, and an Aide is still refused `merge`, `ask`, `resolve`, `role.handover`, `release` and `sync` even when its roles.toml list grants them (existing permission tests extended).
-- [ ] C5. The shipped Aide clause says it launches, stops and resumes sessions only on the human's word and that the Coordinator keeps the staffing during a build, and no longer lists those three among what it cannot do.
-- [ ] C6. The hub README's Aide section and permission table list the three grants and the limit to the human's word.
+- [x] C1. An Aide launches a Coordinator through its `session.launch` tool in a scratch project with the fake harnesses, in a new frame-protocol test.
+  - done: impl-629 · 2026-10-16T16:11:18.178Z
+- [x] C2. In the same test the Aide launches an Implementer with `cland session launch` from its shell, then stops and resumes it with `cland session stop` and `cland session resume`, each audited as the Aide.
+  - done: impl-629 · 2026-10-16T16:11:18.531Z
+- [x] C3. An Aide may launch a Lead and stop the Coordinator, while an Implementer, Reviewer and QA are still refused `session.launch`, `session.stop` and `session.resume` from their tools and their shells (permission tests).
+  - done: impl-629 · 2026-10-16T16:11:18.820Z
+- [x] C4. A Lead keeps its subtree limits and its refusal of `session.resume`, and an Aide is still refused `merge`, `ask`, `resolve`, `role.handover`, `release` and `sync` even when its roles.toml list grants them (existing permission tests extended).
+  - done: impl-629 · 2026-10-16T16:11:19.172Z
+- [x] C5. The shipped Aide clause says it launches, stops and resumes sessions only on the human's word and that the Coordinator keeps the staffing during a build, and no longer lists those three among what it cannot do.
+  - done: impl-629 · 2026-10-16T16:11:19.454Z
+- [x] C6. The hub README's Aide section and permission table list the three grants and the limit to the human's word.
+  - done: impl-629 · 2026-10-16T16:11:19.811Z
 
 ## Comments
 
 ### impl-629 · 2026-10-16T16:05:28.718Z
 
 Implementation started. Read E-611 Coordinator decisions (2026-10-16). Testing at the specified frame-protocol seam with fake harnesses and session-identity CLI calls; existing project migration is out of scope (T-636).
+
+### impl-629 · 2026-10-16T16:11:20.096Z
+
+Implemented and pushed 4b423f2d51ef80bee6598d36356ed702b7adff4b. Evidence A-3974: npm run typecheck at committed head exits 0; targeted files aide (8), permissions (6), lead-launch (5), lead-permissions (5) all green; final lifecycle focused rerun green. New slow-test allowance and renamed timing recorded; shard lint passes. Merged origin/dev before first review. Source review next; inherited QA policy none/after-stage requires no per-item QA.

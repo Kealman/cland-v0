@@ -3,7 +3,7 @@ id: T-603
 kind: task
 title: Unpinned Claude Code launches set CLAUDE_CONFIG_DIR=~/.claude explicitly and run on an empty profile (signed out, untrusted)
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-387
 branch: t/T-603-unpinned-claude-code-launches-set-claude
 created: 2026-10-16T11:43:33.915Z
-updated: 2026-10-16T16:05:27.908Z
+updated: 2026-10-16T16:11:14.629Z
 ---
 
 ## Summary
@@ -39,8 +39,11 @@ Found by the design session's research Q-593 (harness setup facts) under the map
 
 ## Acceptance criteria
 
-- [ ] C1. A Claude Code launch and resume from a hub whose environment has no CLAUDE_CONFIG_DIR spawn claude without the variable, and an account-pinned launch still gets its directory, proved by an adapter test against the fake harness.
-- [ ] C2. The signed-out remedy text and the attach command name CLAUDE_CONFIG_DIR only when it is actually set, and the hub's per-directory bookkeeping is unchanged.
+- [x] C1. A Claude Code launch and resume from a hub whose environment has no CLAUDE_CONFIG_DIR spawn claude without the variable, and an account-pinned launch still gets its directory, proved by an adapter test against the fake harness.
+  - done: impl-603 · 2026-10-16T16:09:19.174Z
+- [x] C2. The signed-out remedy text and the attach command name CLAUDE_CONFIG_DIR only when it is actually set, and the hub's per-directory bookkeeping is unchanged.
+  - done: impl-603 · 2026-10-16T16:09:19.757Z
+  - verified: rev-30 [reviewer] · run rev-20261016-603-source · 2026-10-16T16:11:14.629Z · commit 60fe117c2d776161877d9e72dd36a337238df5bb
 
 ## Comments
 
@@ -51,3 +54,44 @@ A prototype copy of the fix with a test exists on prototype/onboarding at 7acc48
 ### impl-603 · 2026-10-16T16:05:27.908Z
 
 Implementation started from the item's prototype reference 7acc4890. Will prove clean launch and relaunch omit the variable, explicit inherited/pinned directories remain, and remedies/attach reflect the actual launch environment. QA policy is none/after-stage.
+
+### impl-603 · 2026-10-16T16:09:46.195Z
+
+Committed and pushed 60fe117c2d776161877d9e72dd36a337238df5bb; review requested from reviewer in topic-387. Evidence A-3970: typecheck exit 0 at committed head, adapter test file 13/13 exit 0, focused account cases 2/2 exit 0, four new tests all <5 s. QA none/after-stage. Awaiting source verdict before same-head cland verify.
+
+### rev-30 · 2026-10-16T16:11:14.629Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-603-source
+commit: 60fe117c2d776161877d9e72dd36a337238df5bb
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-603 source review
+
+Commit 60fe117c2d776161877d9e72dd36a337238df5bb; fixed point 5d086cfef2dbb3e52d74f7bf5a9fc3593f2d411b. Local and origin branch tips agree. Three files, 75 insertions and six deletions. Reviewed against T-603, docs/spec/v0.1.4.md §3.5 and the existing accounts contract. Both axes performed in-session; role delegation is disabled.
+
+## Standards
+No findings. The two private helpers centralize inherited selection and remedy formatting without changing the directory scheduler. The account registry exception is narrowly limited to path-less Claude accounts with no inherited selection; other harnesses, harness mismatch validation and explicit directory checks retain their paths. Shell quoting remains centralized and covers an apostrophe-containing pinned directory. Diff whitespace check passes.
+
+## Spec
+The launch overlay now consists of an actual inherited directory plus the account overlay, with the account taking precedence. An unset variable remains absent from the child environment; the bookkeeping fallback is no longer promoted to an explicit child setting. Resume fills only a missing accountEnv using the same inherited-selection helper. Existing saved overlays remain preserved, as the human's prototype note and v0.1.4 §3.5 explicitly permit.
+
+The path-less registry change is required by §3.5: otherwise selectAccount would synthesize ~/.claude before the adapter receives the request. Returning an empty overlay also avoids requiring an explicit-profile directory for the default profile. Named-account authentication-variable stripping remains in the existing execution path.
+
+C2 is established by source. Signed-out notices and failed-account-launch remedies prefix commands only from an actual stored or inherited selection. Existing attach behavior prefixes named account overlays: pinned accounts keep their directory; path-less accounts with an empty overlay add none. Unpinned attach behavior remains unchanged, including its existing reliance on the inherited environment. The scheduler still resolves the same account directory or #configDir fallback, with unchanged per-directory keys, persisted state, polling sharing and signed-out latching.
+
+Four new fake-harness cases exercise unpinned, path-less, pinned and inherited selections through launch, native-conversation relaunch, discovery and stop. They inspect actual recorded invocation environments, require two background launches and a --resume argument, preserve fallback-directory assertions, check applicable attach prefixes, and provoke signed-out notice/remedies. Existing account tests retain authentication stripping and shell-executed pinned attach coverage.
+
+## Validation and limits
+A-3970 is a summarized validation note: exact-head root typecheck exit 0, adapter file 13/13 and focused existing account cases 2/2. It reports old-code red→green for absent selection and path-less accounts. New cases measured 4.879, 3.015, 2.649 and 3.428 seconds in that run. These are claimant receipts, not a raw whole-file log bundle; no Reviewer execution occurred.
+
+Source clear, zero findings. C2 source verified. C1 and final runtime acceptance await normal same-head cland verify and its required new-test load repetitions. No per-item QA is required. Previously persisted explicit environments are intentionally not migrated; no claim is made that old rows can be distinguished from an intentional explicit default.
+
+Standards 0 findings; Spec 0 findings.
+Artifact: A-3975 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3975-t-603-source-clear-preserve-implicit-claude-profile-selection.md
+
+Criteria: C2 verified.

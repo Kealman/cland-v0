@@ -3,17 +3,17 @@ id: T-501
 kind: task
 title: "merge-gate and merge-policy tests: the CLI gives up after 3000 ms waiting for a loaded test hub (Linux)"
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - ready-for-agent
 assignee: null
 parent: E-482
 blocked_by: []
-topic: null
-branch: null
+topic: topic-394
+branch: t/T-501-merge-gate-and-merge-policy-tests-the
 created: 2026-10-15T14:44:32.893Z
-updated: 2026-10-15T14:44:32.893Z
+updated: 2026-10-16T16:10:10.919Z
 ---
 
 ## Problem
