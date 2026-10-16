@@ -2,8 +2,8 @@
 id: T-629
 kind: task
 title: The Aide launches, stops and resumes sessions of any role on the human's word
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 6
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-388
 branch: t/T-629-the-aide-launches-stops-and-resumes
 created: 2026-10-16T16:04:11.671Z
-updated: 2026-10-16T16:56:32.093Z
+updated: 2026-10-16T16:57:08.430Z
+closed: 2026-10-16T16:57:08.430Z
 ---
 
 ## Summary
@@ -126,3 +127,7 @@ Linux x64 c-8 lon1, Node 24.21.0, Neovim 0.12.5, four workers; suite 1440.98 s, 
 Review artifact: A-4038.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### coord · 2026-10-16T16:57:08.430Z
+
+Merged 96872df771e930567dcb499696eac5bbd6b2a70f onto dev.
