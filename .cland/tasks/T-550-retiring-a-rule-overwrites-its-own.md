@@ -2,8 +2,8 @@
 id: T-550
 kind: task
 title: Retiring a rule overwrites its own origin with the retirement's origin
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -17,7 +17,8 @@ regression_of: T-455
 topic: topic-346
 branch: t/T-550-retiring-a-rule-overwrites-its-own
 created: 2026-10-16T00:31:38.513Z
-updated: 2026-10-16T02:01:30.934Z
+updated: 2026-10-16T02:01:50.831Z
+closed: 2026-10-16T02:01:50.831Z
 ---
 
 ## Summary
@@ -115,3 +116,7 @@ C2 verified under that explicit disposition; C1 reverified/current by the unchan
 Review artifact A-3583 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3583-t-550-final-evidence-clear-at-2fba6dc6-under-accepted-linux-receipt.md
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-16T02:01:50.831Z
+
+Merged 5bbc0e8b7a4755d8957f7cc8814c178fd135b570 onto dev.
