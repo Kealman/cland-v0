@@ -2,8 +2,8 @@
 id: T-585
 kind: task
 title: claude-code-adapter "discovery and watch share the default 30-second schedule" counts 2 calls instead of 1 on a loaded droplet
-state: open
-status: ready
+state: closed
+status: done
 size: S
 rank: 4445
 criterion_seq: 2
@@ -18,7 +18,8 @@ blocked_by: []
 topic: topic-403
 branch: t/T-585-claude-code-adapter-discovery-and-watch
 created: 2026-10-16T08:50:52.161Z
-updated: 2026-10-16T19:04:35.960Z
+updated: 2026-10-16T19:04:57.761Z
+closed: 2026-10-16T19:04:57.761Z
 ---
 
 ## Summary
@@ -136,3 +137,7 @@ C1 source/cause proof from A-4074 and manifest delta A-4102 remains: observed ti
 Review artifact A-4127.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-16T19:04:57.761Z
+
+Merged a5ace6664c9ac9f38a6b51b1e0bf9675ade6c37f onto dev.
