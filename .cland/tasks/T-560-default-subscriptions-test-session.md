@@ -2,8 +2,8 @@
 id: T-560
 kind: task
 title: "default-subscriptions test: session.launch times out at 5 s in the older pooled Reviewer death case (Linux, loaded)"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-383
 branch: t/T-560-default-subscriptions-test-session
 created: 2026-10-16T01:20:47.649Z
-updated: 2026-10-16T16:05:08.807Z
+updated: 2026-10-16T16:06:58.262Z
+closed: 2026-10-16T16:06:58.262Z
 ---
 
 ## Summary
@@ -71,3 +72,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear; Standards 0 findings, Spec 0 findings. Evidence review A-3963. A-3944 independently parsed ten Mac whole-file runs, each13/13, total130/130. Exact reviewed-head post-source-review Linux a3286ccd/A-3962 exit0: selected hub35/35 including all13 default-subscriptions cases and both terminal-recovery variants; Neovim smoke12/12, total47/47, no failures/skips. Source/head unchanged, origin tip matches. C2 verified; C1 retains rev-20261016-560-source verification. No further run required. Latest item read lacks claimant C1/C2 done marks; claimant should submit those supported marks for ready routing.
 
 Criteria: C2 verified.
+
+### coord · 2026-10-16T16:06:58.262Z
+
+Merged 2a309d94add8b0f0646defe8a7d7bea72356f593 onto dev.
