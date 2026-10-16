@@ -2,8 +2,8 @@
 id: T-551
 kind: task
 title: Demo recorder rejects the cases' capture names and hides the error behind a bare catch
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -16,7 +16,8 @@ regression_of: T-459
 topic: topic-347
 branch: t/T-551-demo-recorder-rejects-the-cases-capture
 created: 2026-10-16T00:31:47.114Z
-updated: 2026-10-16T03:53:57.607Z
+updated: 2026-10-16T03:54:26.108Z
+closed: 2026-10-16T03:54:26.108Z
 ---
 
 ## Summary
@@ -172,3 +173,7 @@ AllC1–C3reverifiedcurrenthead viaunchangedsource plus explicitcarriedgreenLinu
 ArtifactA-3672: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3672-t-551-landing-merge-delta-clear-at-546c6259.md.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-16T03:54:26.108Z
+
+Merged f606d6dce3311d1900d74fa48ef7791a231a00ed onto dev.
