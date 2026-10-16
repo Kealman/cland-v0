@@ -98,9 +98,8 @@ test('a sandbox denying census log writes preserves child stdout, exit and spawn
   }
   const root = mkdtempSync(join(tmpdir(), 'cland-census-denied-'));
   t.after(() => rmSync(root, { recursive: true, force: true }));
-  const env = { ...process.env, NODE_OPTIONS: `--import=${preload}`, TEST_SPAWN_CENSUS_ROOT: root, TEST_SPAWN_CENSUS_REPO: repo };
   // Node restores a deleted coverage variable when spawning; empty disables writes.
-  env.NODE_V8_COVERAGE = '';
+  const env = { ...process.env, NODE_V8_COVERAGE: '', NODE_OPTIONS: `--import=${preload}`, TEST_SPAWN_CENSUS_ROOT: root, TEST_SPAWN_CENSUS_REPO: repo };
   const launcher = join(root, 'launcher.mjs');
   writeFileSync(launcher, `import { spawnSync } from 'node:child_process'; const child = spawnSync('/usr/bin/sandbox-exec', ['-p', '(version 1)(allow default)(deny file-write*)', process.execPath, '-e', 'const cp = require("node:child_process"); if (cp.spawnSync("/usr/bin/true").status !== 0) process.exit(2); process.stdout.write("unchanged");'], { encoding: 'utf8' }); process.stdout.write(child.stdout); process.stderr.write(child.stderr); process.exit(child.status);`);
   const result = spawnSync(process.execPath, [launcher], { env, encoding: 'utf8', timeout: 10_000 });
