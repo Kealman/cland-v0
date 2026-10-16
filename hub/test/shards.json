@@ -125,6 +125,7 @@
     "hub/test/session-model.test.ts": "machine",
     "hub/test/session-usage.test.ts": "machine",
     "hub/test/session-stop-races.test.ts": "machine",
+    "hub/test/skills-invocation.test.ts": "free",
     "hub/test/skills-qa.test.ts": "machine",
     "hub/test/skills-tracker.test.ts": "machine",
     "hub/test/spawn-census.test.ts": "machine",
