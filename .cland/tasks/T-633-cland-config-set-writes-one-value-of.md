@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-390
 branch: t/T-633-cland-config-set-writes-one-value-of
 created: 2026-10-16T16:04:12.209Z
-updated: 2026-10-16T17:38:47.841Z
+updated: 2026-10-16T17:39:14.346Z
 ---
 
 ## Summary
@@ -35,24 +35,30 @@ updated: 2026-10-16T17:38:47.841Z
 - [x] C1. `cland config set plan.approval human` writes `[plan] approval = "human"` and keeps every other value of config.toml, read back by the hub's config parser (new CLI test against a temporary project's hub).
   - done: impl-633 · 2026-10-16T16:11:59.697Z
   - verified: rev-31 [reviewer] · run rev-20261016-633-source · 2026-10-16T16:17:23.555Z · commit 7c42367d8f77e16a624f15f6cdaebe060c1aea89
+  - verified: rev-31 [reviewer] · run rev-20261016-633-merge-source · 2026-10-16T17:39:14.345Z · commit 536b3717b6abf7501f74f8663aa3cf38921dfaa3
 - [x] C2. `cland config set verification.workers 3` and `cland config set verification.droplet.regions '["lon1"]'` write a number and a list that the parser reads back.
   - done: impl-633 · 2026-10-16T16:12:00.282Z
   - verified: rev-31 [reviewer] · run rev-20261016-633-source · 2026-10-16T16:17:23.555Z · commit 7c42367d8f77e16a624f15f6cdaebe060c1aea89
+  - verified: rev-31 [reviewer] · run rev-20261016-633-merge-source · 2026-10-16T17:39:14.346Z · commit 536b3717b6abf7501f74f8663aa3cf38921dfaa3
 - [x] C3. An unknown section or key is refused with the section's known keys, and an invalid value (`plan.approval maybe`, `verification.workers 0`) with the parser's reason, config.toml unchanged.
   - done: impl-633 · 2026-10-16T16:12:00.986Z
   - verified: rev-31 [reviewer] · run rev-20261016-633-source · 2026-10-16T16:17:23.555Z · commit 7c42367d8f77e16a624f15f6cdaebe060c1aea89
+  - verified: rev-31 [reviewer] · run rev-20261016-633-merge-source · 2026-10-16T17:39:14.346Z · commit 536b3717b6abf7501f74f8663aa3cf38921dfaa3
 - [x] C4. A value the parser would ignore silently (`verification.budget two`) is refused, config.toml unchanged.
   - done: impl-633 · 2026-10-16T16:12:02.396Z
   - verified: rev-31 [reviewer] · run rev-20261016-633-source · 2026-10-16T16:17:23.555Z · commit 7c42367d8f77e16a624f15f6cdaebe060c1aea89
+  - verified: rev-31 [reviewer] · run rev-20261016-633-merge-source · 2026-10-16T17:39:14.346Z · commit 536b3717b6abf7501f74f8663aa3cf38921dfaa3
 - [x] C5. The output says whether the value applies at once or at the next hub start, matching what `cland hub reload` applies.
   - done: impl-633 · 2026-10-16T16:12:03.553Z
   - verified: rev-31 [reviewer] · run rev-20261016-633-final · 2026-10-16T17:37:18.002Z · commit 7c42367d8f77e16a624f15f6cdaebe060c1aea89
 - [x] C6. The human, the Coordinator and an Aide may run it from their shells, while an Implementer, a Reviewer, QA and a Lead are refused (frame-protocol test).
   - done: impl-633 · 2026-10-16T16:12:05.203Z
   - verified: rev-31 [reviewer] · run rev-20261016-633-source · 2026-10-16T16:17:23.555Z · commit 7c42367d8f77e16a624f15f6cdaebe060c1aea89
+  - verified: rev-31 [reviewer] · run rev-20261016-633-merge-source · 2026-10-16T17:39:14.346Z · commit 536b3717b6abf7501f74f8663aa3cf38921dfaa3
 - [x] C7. A config.toml without the managed mark is left byte-identical and the refusal says it is the project's own.
   - done: impl-633 · 2026-10-16T16:12:06.813Z
   - verified: rev-31 [reviewer] · run rev-20261016-633-source · 2026-10-16T16:17:23.555Z · commit 7c42367d8f77e16a624f15f6cdaebe060c1aea89
+  - verified: rev-31 [reviewer] · run rev-20261016-633-merge-source · 2026-10-16T17:39:14.346Z · commit 536b3717b6abf7501f74f8663aa3cf38921dfaa3
 
 ## Comments
 
@@ -97,3 +103,18 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear; Standards0/Spec0 findings, A-4078. Same-head post-review Linuxa93e7cd8/A-4077 full exit0:2341pass/0fail/8skip including fullNeovim390pass/3skip. All8 config-set cases5of5, including actual reload-now, startup-restart, saved/not-applied refusal preserving live old state and no-hub no-write clarification. C5 verified; C1/C2/C3/C4/C6/C7 source marks current, allcriteria complete. Origin unchanged. No new gate/exception/per-itemQA needed; lifetime/costunknown. No Reviewer edits/tests.
 
 Criteria: C5 verified.
+
+### rev-31 · 2026-10-16T17:39:14.346Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261016-633-merge-source
+commit: 536b3717b6abf7501f74f8663aa3cf38921dfaa3
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Merge source delta clear; Standards0/Spec0 findings, A-4083. Parents7c42367d+eaed08bb confirmed. All11 task production/test blobs unchanged; exact shard manifest devunion+config-set:machine, all dev/candidate entries preserved. Net same12taskfiles; no assertion/bound/policy change. Exact-head typecheck/shards reportedgreen, ref/diffcheck confirmed. Independently read Coordinator18b25b41 authorizing merge and requiring new exact-head droplet after review. C1/C2/C3/C4/C6/C7 source marks current; C5 execution waits new gate (A-4077 prior-head only). No Reviewer edits/tests.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C6 verified, C7 verified.

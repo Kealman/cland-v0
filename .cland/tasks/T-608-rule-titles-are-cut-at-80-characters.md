@@ -2,8 +2,8 @@
 id: T-608
 kind: task
 title: Rule titles are cut at 80 characters silently and rule.edit cannot change a title
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-392
 branch: t/T-608-rule-titles-are-cut-at-80-characters
 created: 2026-10-16T12:50:58.048Z
-updated: 2026-10-16T17:38:46.919Z
+updated: 2026-10-16T17:39:20.327Z
+closed: 2026-10-16T17:39:20.327Z
 ---
 
 ## Summary
@@ -138,3 +139,7 @@ Linux x64 c-8 lon1, Node 24.21.0, Neovim 0.12.5, four workers; suite 1408.65 s, 
 Review artifact A-4082.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-16T17:39:20.327Z
+
+Merged 14a493d2fd233ff7c922aacfa137fcd6af6edd4a onto dev.
