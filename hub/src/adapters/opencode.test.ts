@@ -15,11 +15,12 @@ async function catalogAdapter(t: TestContext, catalog: () => ModelEntry[]) {
   const spawn = cp.spawn;
   t.mock.method(cp, 'spawn', (bin: string, args: string[], options: cp.SpawnOptions) => {
     if (bin !== 'fake-harness') return spawn(bin, args, options);
-    const child = spawn(process.execPath, ['-e', "console.log('server listening on http://127.0.0.1:1');setInterval(()=>{},1000)"], options);
+    const child = spawn(process.execPath, ['-e', "setInterval(()=>{},1000)"], options);
     children.push(child);
     return child;
   });
   syncBuiltinESMExports();
+  t.mock.method(OpenCodeClient.prototype, 'request', async () => ({ data: {} }));
   t.mock.method(OpenCodeClient.prototype, 'models', async () => catalog());
   t.mock.method(OpenCodeClient.prototype, 'createSession', async () => ({ id: 'session-model' }));
   const adapter = new OpenCodeAdapter({ root, discoveryFile: join(root, '.cland/hub.json'), node: process.execPath, cli: '', spoke: '', log: () => {}, signal: () => {}, recordPid: () => {}, exited: () => {} }, { bin: 'fake-harness', env: { ...process.env, XDG_DATA_HOME: join(root, 'data') } });

@@ -42,7 +42,7 @@ type FakeOpenCode = {
   home: string;
   /** What the fake's server for `session` (ses_…) received as prompts: `prompt <delivery>[ (running)]: <text>`. */
   prompts: (session: string) => Promise<string>;
-  servers: () => Promise<Array<{ pid: number; url: string; cwd: string; config: string | null }>>;
+  servers: () => Promise<Array<{ pid: number; port: number; url: string; cwd: string; config: string | null }>>;
 };
 
 async function fakeOpenCode(t: TestContext, timings: { pollMs?: number; injectTimeoutMs?: number; turnMs?: number } = {}): Promise<FakeOpenCode> {
@@ -117,6 +117,47 @@ async function api(h: Harness, root: string, method: string, path: string, body?
   assert.equal(res.ok, true, `${method} ${path}: ${res.status}`);
   return res.json();
 }
+
+test('OpenCode launches on the port cland chose without a listening log line', async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeOpenCode(t);
+  fake.env.FAKE_OPENCODE_QUIET = '1';
+  const { discovery } = await projectHub(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  const launched = await launch(ui, 'impl', { role: 'coordinator', model: 'opencode/fake-paid' });
+  assert.equal(launched.status, 'running');
+  const [server] = await fake.servers();
+  assert.ok(server && server.port > 0, 'cland passes a nonzero port');
+  assert.equal(server.url, launched.harnessId);
+  assert.doesNotMatch(await readFile(join(root, '.cland/opencode/impl/serve.log'), 'utf8'), /listening on/);
+});
+
+test('OpenCode retries a port taken between choice and bind on a different port', async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeOpenCode(t);
+  fake.env.FAKE_OPENCODE_COLLIDE_ONCE = '1';
+  const { discovery } = await projectHub(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  const launched = await launch(ui, 'impl', { role: 'coordinator', model: 'opencode/fake-paid' });
+  const ports = (await readFile(join(fake.home, 'serve-ports.jsonl'), 'utf8')).trim().split('\n').map(Number);
+  assert.equal(ports.length, 2);
+  assert.ok(ports.every(port => port > 0));
+  assert.notEqual(ports[0], ports[1]);
+  assert.equal(new URL(launched.harnessId!).port, String(ports[1]));
+});
+
+test('OpenCode readiness bounds an unresponsive server and names its log explanation', async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeOpenCode(t);
+  const adapter = new OpenCodeAdapter({ root, discoveryFile: join(root, '.cland/hub.json'), node: process.execPath, cli: CLI_ENTRY, spoke: SPOKE_ENTRY, log: () => {}, signal: () => {}, recordPid: () => {}, exited: () => {} }, {
+    bin: join(FAKE_OPENCODE_DIR, 'opencode'), env: { ...process.env, ...fake.env, FAKE_OPENCODE_UNREADY: '1' }, spawnDeadlineMs: 1000, stopGraceMs: 50,
+  });
+  t.after(() => adapter.close());
+  const started = Date.now();
+  await assert.rejects(adapter.spawn({ name: 'impl', role: null, model: 'opencode/fake-paid', cwd: root }), /did not answer within 1000 ms:.*database unavailable/);
+  assert.ok(Date.now() - started < 3000, 'an HTTP request cannot outlive the launch deadline');
+  assert.deepEqual(await fake.servers(), [], 'failed launch stops its owned server');
+});
 
 test('a launched OpenCode session: its own server, the spoke connects, a UI message goes queued → delivered → injected, the reply comes back, the state follows the event stream', { skip: NO_PS }, async (t) => {
   const root = await tempProject(t);
@@ -253,6 +294,44 @@ test('a failed OpenCode turn is recorded in Agents and the events view and repor
   assert.ok(events.rows.some((n) => n.session === 'impl' && n.text === expected));
   await coord.waitForEvent((e) => e.params.content.includes(expected));
   assert.equal((await status(ui)).harnesses.find((h) => h.name === launched.name)?.status, 'running');
+});
+
+for (const delayedCommand of [false, true]) test(`OpenCode reports a rejected approval with its command, keeps the session alive, and treats a later bare shutdown as server death (${delayedCommand ? 'delayed command' : 'known command'})`, async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeOpenCode(t);
+  const { discovery } = await projectHub(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  await ui.request({ type: 'subscribe' });
+  const launched = await launch(ui, 'impl', { role: 'coordinator', model: 'opencode/fake-paid' });
+  await clauseAnswered(ui, 'impl');
+  await presentAs(ui, 'impl', 'idle');
+  if (delayedCommand) await api(launched, root, 'POST', '/test/message', { paused: true });
+  await sendGeneral(ui, 'needs approval: shell approval');
+  if (delayedCommand) await presentAs(ui, 'impl', 'waiting for approval');
+  else await eventually('full shell command appears', () => stateEvents(ui, 'impl').some(e => e.approvalCommand === 'touch approved && echo done') ? true : undefined);
+  const pending = await api(launched, root, 'GET', `/api/session/${launched.harnessSessionId}/permission`) as { data: Array<{ id: string }> };
+  await api(launched, root, 'POST', `/api/session/${launched.harnessSessionId}/permission/${pending.data[0]?.id}/reply`, { decision: 'reject' });
+  if (delayedCommand) {
+    await eventually('the rejection report is recovering the command', async () => {
+      const result = await api(launched, root, 'GET', '/test/message') as { data: { waiting: number } };
+      return result.data.waiting === 2 ? true : undefined;
+    });
+    await api(launched, root, 'POST', '/test/message', { paused: false });
+  }
+  const expected = 'impl [Coordinator]: its turn failed: Approval rejected: touch approved && echo done';
+  await ui.waitFor(f => f.type === 'message' && (f.message as { kind?: string; text: string }).kind === 'turn-failed' && (f.message as { text: string }).text === expected);
+  await presentAs(ui, 'impl', 'idle');
+  assert.equal((await status(ui)).harnesses.find(h => h.name === 'impl')?.status, 'running');
+  const events = (await ui.request({ type: 'events.list' })).value as { rows: Array<{ session?: string; text: string }> };
+  assert.ok(events.rows.some(e => e.session === 'impl' && e.text === expected));
+  await sendGeneral(ui, 'continue after rejection');
+  await replyTo(ui, 'impl', 'pong: continue after rejection');
+  await presentAs(ui, 'impl', 'idle');
+  await sendGeneral(ui, 'bare shutdown');
+  await eventually('bare shutdown is server death', async () => {
+    const process = (await status(ui)).harnesses.find(h => h.name === 'impl');
+    return process?.status === 'exited' ? process : undefined;
+  });
 });
 
 test('OpenCode failure attribution follows delivered inbox items when two idle admissions queue separate turns', async (t) => {

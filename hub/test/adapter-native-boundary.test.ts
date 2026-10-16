@@ -57,7 +57,7 @@ async function fixture(t: TestContext, Adapter: typeof adapters[number], pollMs 
   const resultDelay = () => { if (!delayed) { delayed = true; delay(); } };
   let claudeId = '';
   const child = (options: cp.SpawnOptions = {}) => {
-    const source = fault === 'server-exit' ? "console.error('planted server exit'); process.exit(1)" : `${fault === 'no-url' ? '' : "console.log('server listening on http://127.0.0.1:1');"} setInterval(() => {}, 1000)`;
+    const source = fault === 'server-exit' ? "console.error('planted server exit'); process.exit(1)" : "setInterval(() => {}, 1000)";
     const p = nativeSpawn(process.execPath, ['-e', source], options);
     children.push(p);
     return p;
@@ -105,6 +105,10 @@ async function fixture(t: TestContext, Adapter: typeof adapters[number], pollMs 
   t.mock.method(OpenCodeClient.prototype, 'createSession', async () => {
     if (fault === 'session') throw new Error('planted session failure');
     return { id: 'session-1', get model() { resultDelay(); return { providerID: 'test', id: 'model' }; } };
+  });
+  t.mock.method(OpenCodeClient.prototype, 'request', async () => {
+    if (['no-answer', 'read-log', 'server-exit'].includes(fault)) throw new Error('server not ready');
+    return { data: {} };
   });
   t.mock.method(OpenCodeClient.prototype, 'models', async () => [{ id: 'big-pickle', providerID: 'opencode', cost: [{ input: 0, output: 0 }], capabilities: { tools: true } }]);
   t.mock.method(OpenCodeClient.prototype, 'session', async () => ({ id: 'session-1' }));
@@ -203,7 +207,7 @@ for (const Adapter of adapters) test(`${Adapter.name}: a planted synchronous cal
 
 test('OpenCode rollback waits for its owned child exit receipt before undoing files', async t => {
   const f = await fixture(t, OpenCodeAdapter);
-  f.setFault('no-url');
+  f.setFault('no-answer');
   const receipt = Promise.withResolvers<void>();
   let held = false;
   let undoBeforeReceipt = false;
@@ -236,7 +240,7 @@ test('OpenCode rollback waits for its owned child exit receipt before undoing fi
     });
   }
   syncBuiltinESMExports();
-  const launch = assert.rejects(f.adapter.spawn(f.request), /printed no url/);
+  const launch = assert.rejects(f.adapter.spawn(f.request), /did not answer/);
   try {
     await eventually('OS confirms the owned child ended', () => f.events.some(e => e.event === 'harness-ended') ? true : undefined);
     assert.equal(held, true, 'the native exit receipt remains deliberately pending');
@@ -246,7 +250,7 @@ test('OpenCode rollback waits for its owned child exit receipt before undoing fi
 });
 
 for (const Adapter of adapters) {
-  const faults = Adapter === CodexAdapter ? ['mkdir', 'policy-dir', 'log-dir', 'rm', 'log-stat', 'open', 'close', 'spawn', 'connect', 'thread/start', 'turn/start', 'log'] : Adapter === OpenCodeAdapter ? ['mkdir', 'session-dir', 'ignore', 'ignore-partial', 'ignore-link', 'ignore-append', 'config', 'config-partial', 'password', 'password-partial', 'chmod', 'log-stat', 'open', 'close', 'spawn', 'read-log', 'server-exit', 'no-url', 'session', 'log'] : ['bg', 'log'];
+  const faults = Adapter === CodexAdapter ? ['mkdir', 'policy-dir', 'log-dir', 'rm', 'log-stat', 'open', 'close', 'spawn', 'connect', 'thread/start', 'turn/start', 'log'] : Adapter === OpenCodeAdapter ? ['mkdir', 'session-dir', 'ignore', 'ignore-partial', 'ignore-link', 'ignore-append', 'config', 'config-partial', 'password', 'password-partial', 'chmod', 'log-stat', 'open', 'close', 'spawn', 'read-log', 'server-exit', 'no-answer', 'session', 'log'] : ['bg', 'log'];
   for (const fault of faults) test(`${Adapter.name}: failure at ${fault} leaves no session files or live child`, async t => {
     const f = await fixture(t, Adapter);
     if (['mkdir', 'rm', 'chmod', 'open'].includes(fault)) {
@@ -265,9 +269,9 @@ for (const Adapter of adapters) {
       });
       syncBuiltinESMExports();
     } else if (fault === 'read-log') {
+      f.setFault(fault);
       const native = fsp.readFile;
-      let reads = 0;
-      t.mock.method(fsp, 'readFile', (...args: unknown[]) => { if (String(args[0]).endsWith('serve.log') && ++reads === 2) return Promise.reject(new Error('planted log-read failure')); return Reflect.apply(native, fsp, args); });
+      t.mock.method(fsp, 'readFile', (...args: unknown[]) => { if (String(args[0]).endsWith('serve.log')) return Promise.reject(new Error('planted log-read failure')); return Reflect.apply(native, fsp, args); });
       syncBuiltinESMExports();
     } else if (fault === 'log-stat') {
       const native = fsp.stat;
@@ -303,7 +307,7 @@ for (const Adapter of adapters) {
       });
       syncBuiltinESMExports();
     } else f.setFault(fault);
-    await guarded(async () => { await assert.rejects(f.adapter.spawn(f.request), /planted|printed no url/); });
+    await guarded(async () => { await assert.rejects(f.adapter.spawn(f.request), /planted|did not answer/); });
     assert.equal(await fsp.access(join(f.root, '.cland/log/codex-impl.log')).then(() => true, () => false), false);
     assert.equal(await fsp.access(join(f.root, '.cland/opencode/impl')).then(() => true, () => false), false);
     assert.deepEqual(await fsp.readdir(join(f.root, '.cland/run')).catch(() => []), []);

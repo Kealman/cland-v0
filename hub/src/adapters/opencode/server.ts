@@ -1,5 +1,5 @@
-// A session's own `opencode serve`: started detached in the session's cwd on 127.0.0.1 and a port the server
-// picks (`--port 0`; it prints `server listening on http://127.0.0.1:<port>`), with the spoke's MCP server added
+// A session's own `opencode serve`: started detached in the session's cwd on 127.0.0.1 and a port
+// cland picks and polls over authenticated HTTP, with the spoke's MCP server added
 // through OpenCode's own configuration (`OPENCODE_CONFIG`, a file the server process reads at its start) and a
 // password of its own (`OPENCODE_PASSWORD`: HTTP Basic, user `opencode`). The server outlives the hub.
 //
@@ -8,9 +8,11 @@
 // Nothing is written into the project's committed files.
 import type { Resumed } from '../../hub/worktrees.ts';
 import { continueWith, wait, untimed } from '../continuations.ts';
+import { createServer } from 'node:net';
+import { OpenCodeClient } from './client.ts';
 import { spawn } from 'node:child_process';
 import { randomBytes, randomUUID } from 'node:crypto';
-import { chmod, link, mkdir, open, readFile, rm, writeFile } from 'node:fs/promises';
+import { chmod, link, mkdir, open, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { LaunchFiles } from '../launch-files.ts';
 import { dirname, join } from 'node:path';
 
@@ -85,9 +87,20 @@ export async function readPassword(files: ServerFiles, resumed: Resumed = untime
   })(), resumed);
 }
 
-/** The url a starting server printed, read from its log. */
-export function listeningUrl(log: string): string | null {
-  return /listening on (https?:\/\/[^\s]+)/i.exec(log)?.[1]?.replace(/\/+$/, '') ?? null;
+/** Reserve an ephemeral loopback port long enough to choose it, then let the child bind it. */
+async function freePort(): Promise<number> {
+  const server = createServer();
+  return new Promise((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', () => {
+      const address = server.address();
+      server.close(error => {
+        if (error) reject(error);
+        else if (address && typeof address === 'object') resolve(address.port);
+        else reject(new Error('could not choose an OpenCode loopback port'));
+      });
+    });
+  });
 }
 
 export async function startServer(options: { bin: string; cwd: string; env: NodeJS.ProcessEnv; files: ServerFiles; password: string; deadlineMs: number; transaction: LaunchFiles; log: (entry: Record<string, unknown>) => void; stopGraceMs: number; resumed?: Resumed; authorize?: () => void }): Promise<{ pid: number; url: string }> {
@@ -95,40 +108,53 @@ export async function startServer(options: { bin: string; cwd: string; env: Node
     pid: number;
     url: string;
   }, unknown> {
-    const { files, resumed = untimed } = options;
+    const { files } = options;
     // The shared database outlives a launch transaction and is never rolled back with its session files.
     if (options.env.OPENCODE_DB) yield* wait(mkdir(dirname(options.env.OPENCODE_DB), { recursive: true, mode: 0o700 }));
-    const start = (yield* wait(readFile(files.log, 'utf8').catch(err => { if (err.code === 'ENOENT')
-      return ''; throw err; }))).length;
-    const out = yield* wait(open(files.log, 'a'));
-    let child;
-    let exited: string | null = null;
-    try {
-      options.authorize?.();
-      child = spawn(options.bin, ['serve', '--hostname', '127.0.0.1', '--port', '0'], {
-        cwd: options.cwd,
-        detached: true,
-        stdio: ['ignore', out.fd, out.fd],
-        env: { ...options.env, OPENCODE_CONFIG: files.config, OPENCODE_PASSWORD: options.password },
-      });
-      child.once('exit', (code, signal) => (exited = `exited ${code ?? signal}`));
-      child.once('error', (err) => (exited = err.message));
-      child.unref();
-      options.transaction.child(child, options.log, options.stopGraceMs);
-    }
-    finally {
-      yield* wait(out.close());
-    }
     const deadline = Date.now() + options.deadlineMs;
+    let start = yield* wait(stat(files.log).then(s => s.size, err => { if (err.code === 'ENOENT') return 0; throw err; }));
+    let explanation = '';
+    const attempted = new Set<number>();
     while (Date.now() < deadline) {
-      const log = (yield* wait(readFile(files.log, 'utf8'))).slice(start);
-      const url = listeningUrl(log);
-      if (url && child.pid !== undefined)
-        return { pid: child.pid, url };
-      if (exited)
-        throw new Error(`opencode serve ${exited}: ${log.trim().slice(-500)}`);
-      yield* wait(new Promise((r) => setTimeout(r, 50)));
+      const port = yield* wait(freePort());
+      if (attempted.has(port)) continue;
+      attempted.add(port);
+      const url = `http://127.0.0.1:${port}`;
+      const client = new OpenCodeClient(url, options.password);
+      const out = yield* wait(open(files.log, 'a'));
+      let child;
+      let exited: string | null = null;
+      try {
+        options.authorize?.();
+        child = spawn(options.bin, ['serve', '--hostname', '127.0.0.1', '--port', String(port)], {
+          cwd: options.cwd,
+          detached: true,
+          stdio: ['ignore', out.fd, out.fd],
+          env: { ...options.env, OPENCODE_CONFIG: files.config, OPENCODE_PASSWORD: options.password },
+        });
+        child.once('exit', (code, signal) => (exited = `exited ${code ?? signal}`));
+        child.once('error', (err) => (exited = err.message));
+        child.unref();
+        options.transaction.child(child, options.log, options.stopGraceMs);
+      } finally {
+        yield* wait(out.close());
+      }
+      while (Date.now() < deadline && !exited) {
+        const ready = yield* wait(client.request('GET', '/api/session/active', undefined, Math.max(1, Math.min(250, deadline - Date.now()))).then(() => true, () => false));
+        if (ready && !exited && child.pid !== undefined) return { pid: child.pid, url };
+        yield* wait(new Promise(r => setTimeout(r, Math.max(0, Math.min(50, deadline - Date.now())))));
+      }
+      // Output is diagnostic only, never the readiness signal. Ignore earlier launch attempts' output.
+      const log = yield* wait(readFile(files.log));
+      const attemptLog = log.subarray(start).toString('utf8');
+      explanation = attemptLog.trim().slice(-500);
+      if (exited && /EADDRINUSE|address already in use/i.test(attemptLog)) {
+        start = log.length;
+        continue;
+      }
+      if (exited) throw new Error(`opencode serve ${exited}: ${explanation}`);
+      break;
     }
-    throw new Error(`opencode serve printed no url within ${options.deadlineMs} ms: ${(yield* wait(readFile(files.log, 'utf8'))).slice(start).trim().slice(-500)}`);
+    throw new Error(`opencode serve did not answer within ${options.deadlineMs} ms: ${explanation}`);
   })(), options.resumed ?? untimed);
 }

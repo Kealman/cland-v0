@@ -1098,7 +1098,7 @@
     "hub/test/adapter-native-boundary.test.ts::OpenCodeAdapter: failure at log leaves no session files or live child": 0.172945,
     "hub/test/adapter-native-boundary.test.ts::OpenCodeAdapter: failure at log-stat leaves no session files or live child": 0.004703,
     "hub/test/adapter-native-boundary.test.ts::OpenCodeAdapter: failure at mkdir leaves no session files or live child": 0.002809,
-    "hub/test/adapter-native-boundary.test.ts::OpenCodeAdapter: failure at no-url leaves no session files or live child": 1.124727,
+    "hub/test/adapter-native-boundary.test.ts::OpenCodeAdapter: failure at no-answer leaves no session files or live child": 1.124727,
     "hub/test/adapter-native-boundary.test.ts::OpenCodeAdapter: failure at open leaves no session files or live child": 0.004901,
     "hub/test/adapter-native-boundary.test.ts::OpenCodeAdapter: failure at password leaves no session files or live child": 0.010491,
     "hub/test/adapter-native-boundary.test.ts::OpenCodeAdapter: failure at password-partial leaves no session files or live child": 0.005047,

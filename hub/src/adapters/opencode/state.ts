@@ -17,9 +17,9 @@ import { turnError } from '../turn-error.ts';
 
 export type Usage = { model?: string; inputTokens: number; outputTokens: number; reasoningTokens: number; cacheReadTokens: number; cacheWriteTokens: number; cost: number };
 
-export type Change = { limitHit?: { reason: string }; state?: SessionState; approvalCommand?: string; usage?: Usage; model?: string; ended?: true; turnError?: string };
+export type Change = { limitHit?: { reason: string }; state?: SessionState; approvalCommand?: string; usage?: Usage; model?: string; ended?: true; turnError?: string; rejection?: PendingPermission; serverShutdown?: true };
 
-type PendingPermission = { id: string; approvalCommand: string | undefined };
+type PendingPermission = { request: PermissionRequest; id: string; approvalCommand: string | undefined };
 
 const str = (v: unknown): string | undefined => (typeof v === 'string' ? v : undefined);
 const num = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
@@ -32,6 +32,7 @@ export class SessionTracker {
   model: string | undefined;
   #last: SessionState | null = null;
   #lastCommand: string | undefined;
+  #rejection: PendingPermission | undefined;
 
   constructor(sessionId: string) {
     this.sessionId = sessionId;
@@ -45,6 +46,7 @@ export class SessionTracker {
 
   /** Replace what is known with a snapshot the server gave (after the stream (re)connected). */
   reset(snapshot: { running: boolean; permissions: PermissionRequest[]; forms: string[] }): Change {
+    this.#rejection = undefined;
     this.running = snapshot.running;
     this.permissions.clear();
     this.forms.clear();
@@ -56,6 +58,7 @@ export class SessionTracker {
   /** The stream ended: nothing is known until it is back. */
   forget(): void {
     this.#last = null;
+    this.#rejection = undefined;
     this.permissions.clear();
   }
 
@@ -67,7 +70,7 @@ export class SessionTracker {
   }
 
   #permission(permission: PermissionRequest): void {
-    this.permissions.set(permission.id, { id: permission.id, approvalCommand: str(permission.action) });
+    this.permissions.set(permission.id, { request: permission, id: permission.id, approvalCommand: str(permission.action) });
   }
 
   /** Apply one event; the change it makes, if any (a state only when it differs from the last one emitted). */
@@ -78,15 +81,24 @@ export class SessionTracker {
     if (sid !== this.sessionId) return {};
     switch (e.type) {
       case 'session.execution.started':
+        this.#rejection = undefined;
         this.running = true;
         return this.#emit();
       case 'session.execution.succeeded':
       case 'session.execution.failed':
-      case 'session.execution.interrupted':
+      case 'session.execution.interrupted': {
+        const shutdown = e.type === 'session.execution.interrupted' && d.reason === 'shutdown';
+        const rejection = this.#rejection;
+        this.#rejection = undefined;
         this.running = false;
         this.permissions.clear();
         this.forms.clear();
-        return { ...this.#emit(), ended: true, ...(e.type === 'session.execution.failed' ? { turnError: turnError(d.error), ...(typeof d.error === 'object' && d.error !== null && (d.error as Record<string, unknown>).type === 'provider.quota' ? { limitHit: { reason: 'provider.quota' } } : {}) } : {}) };
+        return {
+          ...this.#emit(), ended: true,
+          ...(shutdown ? rejection ? { rejection } : { serverShutdown: true as const } : {}),
+          ...(e.type === 'session.execution.failed' ? { turnError: turnError(d.error), ...(typeof d.error === 'object' && d.error !== null && (d.error as Record<string, unknown>).type === 'provider.quota' ? { limitHit: { reason: 'provider.quota' } } : {}) } : {}),
+        };
+      }
       case 'permission.asked': {
         const id = str(d.id);
         if (id) this.#permission({ ...d, id });
@@ -94,6 +106,7 @@ export class SessionTracker {
       }
       case 'permission.replied': {
         const id = str(d.requestID) ?? str(d.id);
+        if (d.reply === 'reject') this.#rejection = (id ? this.permissions.get(id) : undefined) ?? { request: { id: id ?? '' }, id: id ?? '', approvalCommand: undefined };
         if (id) this.permissions.delete(id);
         // `reject` rejects every other pending request of the session too (OpenAPI)
         if (d.reply === 'reject') this.permissions.clear();

@@ -310,8 +310,16 @@ export class OpenCodeAdapter implements HarnessAdapter {
     if (change.ended) {
       const messages = [...w.turnMessages];
       w.turnMessages.clear();
-      if (change.turnError) this.#host.turnFailed?.(w.process.sessionId, change.turnError, messages);
+      if (change.rejection) {
+        const rejection = change.rejection;
+        // The human may reply before the waiting-state command lookup finishes. Recover it for the report too.
+        void w.client.approvalCommand(w.tracker.sessionId, rejection.request).then(command => {
+          const description = command === rejection.request.action ? rejection.approvalCommand ?? command : command ?? rejection.approvalCommand;
+          this.#host.turnFailed?.(w.process.sessionId, `Approval rejected${description ? `: ${description}` : ''}`, messages);
+        });
+      } else if (change.turnError) this.#host.turnFailed?.(w.process.sessionId, change.turnError, messages);
     }
+    if (change.serverShutdown) { this.#gone(w, 'opencode server shutdown'); return; }
     if (change.usage) {
       this.#usage.set(w.process.sessionId, addUsage(this.#usage.get(w.process.sessionId), change.usage));
       this.#host.usageChanged?.(w.process.sessionId);

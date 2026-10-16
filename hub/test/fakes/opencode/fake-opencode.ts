@@ -3,7 +3,7 @@
 //
 //   opencode --version                      `opencode v2.0.24-fake`
 //   opencode auth list --standalone --format json   one provider with credentials; FAKE_OPENCODE_NO_AUTH=1: `[]`
-//   opencode serve --hostname h --port 0    an HTTP server; prints `server listening on http://h:<port>`. HTTP Basic
+//   opencode serve --hostname h --port n    an HTTP server; prints `server listening on http://h:<port>`. HTTP Basic
 //       with the user `opencode` and OPENCODE_PASSWORD. It reads OPENCODE_CONFIG and starts its local MCP servers
 //       (`mcp.servers.<name>: {type: local, command[], environment}`) when a session is first touched, as the real
 //       server loads a location: the real spoke, which connects to the real hub.
@@ -34,12 +34,16 @@
 // servers/<pid>.json (the live servers, for the tests' cleanup), prompts/<ses>.log (each prompt and its delivery).
 // Recovery probes: hold-session publishes session-running and waits for release-session;
 // fail-session refuses creation without ending the server.
+// Readiness probes: QUIET omits the listening line, COLLIDE_ONCE occupies the chosen port before bind,
+// and UNREADY accepts sockets without answering HTTP, with a diagnostic in the serve log.
+// A rejected permission reproduces upstream #54180: an interrupted execution with reason shutdown.
 // Test fixtures set 30 ms turns (adapter polls 50 ms; Claude push trust 100 ms).
 // Direct use retains the 300 ms fallback. To stage a slow turn, pass turnMs to the
 // fixture or set FAKE_OPENCODE_TURN_MS explicitly, with a comment naming the race/behaviour.
 import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { createServer as createPortServer } from 'node:net';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { join } from 'node:path';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
@@ -113,6 +117,12 @@ async function tui(url: string, session: string | undefined, dir: string): Promi
 async function serve(args: string[]): Promise<number> {
   const hostname = flag(args, '--hostname') ?? '127.0.0.1';
   const port = Number(flag(args, '--port') ?? 0);
+  appendFileSync(join(HOME, 'serve-ports.jsonl'), `${port}\n`);
+  if (process.env.FAKE_OPENCODE_COLLIDE_ONCE === '1' && !existsSync(join(HOME, 'collided'))) {
+    const competitor = createPortServer();
+    await new Promise<void>(resolve => competitor.listen(port, hostname, resolve));
+    writeFileSync(join(HOME, 'collided'), String(port));
+  }
   const password = process.env.OPENCODE_PASSWORD ?? '';
   const config = process.env.OPENCODE_CONFIG ? readJson<{ mcp?: { servers?: Record<string, McpServer> } }>(process.env.OPENCODE_CONFIG) : null;
   const turnMs = Number(process.env.FAKE_OPENCODE_TURN_MS ?? 300);
@@ -184,6 +194,7 @@ async function serve(args: string[]): Promise<number> {
     }
     if (body.includes('hit the usage limit') || body.includes('hit a rate limit')) throw Object.assign(new Error('Provider limit'), { type: body.includes('hit the usage limit') ? 'provider.quota' : 'provider.rate-limit' });
     if (body.includes('fail this turn') || session.model.id === 'exo-free') throw new Error('Upstream request failed: Endpoint is unavailable\nupstream details');
+    if (body.includes('bare shutdown')) throw Object.assign(new Error('shutdown'), { interrupted: true });
     if (body.includes('needs approval')) {
       const id = rid('per');
       const messageID = rid('msg');
@@ -200,6 +211,7 @@ async function serve(args: string[]): Promise<number> {
       });
       log(`permission ${id} → ${reply}`);
       await sleep(turnMs);
+      if (reply === 'reject') throw Object.assign(new Error('shutdown'), { interrupted: true });
     }
     if (body.includes('needs a form')) {
       const id = rid('frm');
@@ -227,7 +239,8 @@ async function serve(args: string[]): Promise<number> {
       }
       emit('session.execution.succeeded', { sessionID: session.id });
     } catch (error) {
-      emit('session.execution.failed', { sessionID: session.id, error: { ...('type' in (error as Error) ? { type: (error as Error & { type: string }).type } : {}), name: 'APIError', data: { message: (error as Error).message } } });
+      if ((error as Error & { interrupted?: boolean }).interrupted) emit('session.execution.interrupted', { sessionID: session.id, reason: 'shutdown' });
+      else emit('session.execution.failed', { sessionID: session.id, error: { ...('type' in (error as Error) ? { type: (error as Error & { type: string }).type } : {}), name: 'APIError', data: { message: (error as Error).message } } });
     }
     if (run.queued.length) {
       run.inputs.push(run.queued.shift() as Input);
@@ -252,6 +265,7 @@ async function serve(args: string[]): Promise<number> {
     try {
       const expected = `Basic ${Buffer.from(`opencode:${password}`).toString('base64')}`;
       if (password && req.headers.authorization !== expected) return send(res, 401, { _tag: 'UnauthorizedError', message: 'Unauthorized' });
+      if (process.env.FAKE_OPENCODE_UNREADY === '1') return; // Accepted socket, no HTTP answer.
       const url = new URL(req.url ?? '/', 'http://x');
       const parts = url.pathname.split('/').filter(Boolean); // api, session, <id>, …
       const method = req.method ?? 'GET';
@@ -410,8 +424,9 @@ async function serve(args: string[]): Promise<number> {
   const address = server.address();
   const url = `http://${hostname}:${typeof address === 'object' && address ? address.port : port}`;
   const descendant = process.env.FAKE_OPENCODE_CHILD === '1' ? spawn(process.execPath, ['-e', "process.on('SIGTERM', () => {}); setInterval(() => {}, 1000)"], { stdio: 'ignore' }) : null;
-  writeFileSync(join(SERVERS, `${process.pid}.json`), JSON.stringify({ childPid: descendant?.pid ?? null, pid: process.pid, url, cwd: process.cwd(), env: Object.fromEntries(Object.entries(process.env).filter(([k]) => k === 'XDG_DATA_HOME' || k === 'OPENCODE_DB')), config: process.env.OPENCODE_CONFIG ?? null }));
-  process.stdout.write(`server listening on ${url}\n`);
+  writeFileSync(join(SERVERS, `${process.pid}.json`), JSON.stringify({ childPid: descendant?.pid ?? null, pid: process.pid, port, url, cwd: process.cwd(), env: Object.fromEntries(Object.entries(process.env).filter(([k]) => k === 'XDG_DATA_HOME' || k === 'OPENCODE_DB')), config: process.env.OPENCODE_CONFIG ?? null }));
+  if (process.env.FAKE_OPENCODE_UNREADY === '1') process.stderr.write('planted readiness failure: database unavailable\n');
+  if (process.env.FAKE_OPENCODE_QUIET !== '1') process.stdout.write(`server listening on ${url}\n`);
 
   const shutdown = async () => {
     for (const s of streams) s.end();
