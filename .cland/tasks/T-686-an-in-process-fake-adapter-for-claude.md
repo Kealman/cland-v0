@@ -3,8 +3,9 @@ id: T-686
 kind: task
 title: An in-process fake adapter for Claude Code, Codex and OpenCode that a projectHub test drives directly
 state: open
-status: in progress
+status: review
 size: M
+criterion_seq: 5
 labels:
   - v0.1.4
   - verification
@@ -15,7 +16,7 @@ blocked_by: []
 topic: topic-411
 branch: t/T-686-an-in-process-fake-adapter-for-claude
 created: 2026-10-16T19:59:28.448Z
-updated: 2026-10-16T21:49:09.692Z
+updated: 2026-10-16T21:51:18.811Z
 ---
 
 ## Summary
@@ -31,11 +32,16 @@ updated: 2026-10-16T21:49:09.692Z
 
 ## Acceptance criteria
 
-- [ ] C1. A new T2 test proves launch, role clause, inject, turn, stop and resume through `projectHub` for each of the three flavours with no child process, proved by the tier lint and the file's spawn census row.
-- [ ] C2. Each flavour's capabilities equal the real adapter's exported constant, proved by a unit test.
-- [ ] C3. Scripted accept, reject and uncertain injects reach the delivery states `injected`, `delivered` and `uncertain` as the real adapters' do, proved by the new test.
-- [ ] C4. `session-brief.test.ts` and `roles-session-refresh.test.ts` use the shared fake, with an audit showing their test declarations and assertion meanings unchanged.
-- [ ] C5. `docs/agents/tests.md` names the in-process fake adapter as the default for hub rules and the fake binaries as reserved for contract and scenario files.
+- [x] C1. A new T2 test proves launch, role clause, inject, turn, stop and resume through `projectHub` for each of the three flavours with no child process, proved by the tier lint and the file's spawn census row.
+  - done: impl-686 · 2026-10-16T21:51:10.590Z
+- [x] C2. Each flavour's capabilities equal the real adapter's exported constant, proved by a unit test.
+  - done: impl-686 · 2026-10-16T21:51:10.826Z
+- [x] C3. Scripted accept, reject and uncertain injects reach the delivery states `injected`, `delivered` and `uncertain` as the real adapters' do, proved by the new test.
+  - done: impl-686 · 2026-10-16T21:51:11.198Z
+- [x] C4. `session-brief.test.ts` and `roles-session-refresh.test.ts` use the shared fake, with an audit showing their test declarations and assertion meanings unchanged.
+  - done: impl-686 · 2026-10-16T21:51:11.399Z
+- [x] C5. `docs/agents/tests.md` names the in-process fake adapter as the default for hub rules and the fake binaries as reserved for contract and scenario files.
+  - done: impl-686 · 2026-10-16T21:51:11.613Z
 
 ## Comments
 

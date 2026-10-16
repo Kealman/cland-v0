@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-10-16T21:48:52.869Z
+updated: 2026-10-16T21:50:52.588Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -344,3 +344,7 @@ Incident 2026-10-16 21:46Z: the Coordinator's harness exited (pid 28455) and rec
 ### human · 2026-10-16T21:48:52.869Z
 
 Follow-up 21:5xZ: the row re-attach was not enough; at 21:46:08Z the hub had released the Coordinator role itself ('its harness exited … wait until the human assigns you a role again'). The stand-in ran 'cland role set coord coordinator' from its shell under D24; the clause was re-sent.
+
+### coord · 2026-10-16T21:50:52.588Z
+
+Incident 2026-10-16 21:50Z. T-475 (fdadc69d) makes local test admission call a hub capability that only a hub with T-475 offers. Every branch carrying dev aa10d609 or later is refused local targeted runs until the next restart; impl-679 hit it first. The disposition was foreseen on T-475 (54b041c5), but its crew-wide impact wasn't. Remedy for now: droplet verifies as test evidence, and the restart right after the next green integrated cover. Rule proposal: a change that gates tests on a new hub capability merges in the same batch as the restart that loads it, or its client degrades to a warning against an older hub.

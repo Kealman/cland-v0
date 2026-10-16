@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-408
 branch: t/T-679-hub-test-tiers-json-replaces-shards-json
 created: 2026-10-16T19:59:27.652Z
-updated: 2026-10-16T21:47:36.586Z
+updated: 2026-10-16T21:51:33.451Z
 ---
 
 ## Summary
@@ -37,27 +37,33 @@ updated: 2026-10-16T21:47:36.586Z
   - done: impl-679 · 2026-10-16T20:16:55.058Z
   - verified: rev-30 [reviewer] · run rev-20261016-679-final · 2026-10-16T20:59:06.069Z · commit f97e2ab41f44769a298f5011cba459ebb51e96f0
   - verified: rev-30 [reviewer] · run rev-20261016-679-manifest-merge · 2026-10-16T21:47:35.147Z · commit d0d8d05b3a411b425dcf879c6c253960a4428218
+  - verified: rev-30 [reviewer] · run rev-20261016-679-cover-manifest-merge · 2026-10-16T21:51:32.038Z · commit 40a4e6ddc539b44f44d3e3d152ea19cd749d0467
 - [x] C2. The lint refuses an unclassified file, a missing file, an invalid tier, an unsorted map (naming the first out-of-order path) and a T1 file that uses a process, port, timer or harness API, proved by lint tests.
   - done: impl-679 · 2026-10-16T20:16:55.340Z
   - verified: rev-30 [reviewer] · run rev-20261016-679-final · 2026-10-16T20:59:06.069Z · commit f97e2ab41f44769a298f5011cba459ebb51e96f0
   - verified: rev-30 [reviewer] · run rev-20261016-679-manifest-merge · 2026-10-16T21:47:35.147Z · commit d0d8d05b3a411b425dcf879c6c253960a4428218
+  - verified: rev-30 [reviewer] · run rev-20261016-679-cover-manifest-merge · 2026-10-16T21:51:32.038Z · commit 40a4e6ddc539b44f44d3e3d152ea19cd749d0467
 - [x] C3. `cland verify` refuses those faults with `verify-tiers` and `cland merge` with `merge-tiers`, before queueing or changing refs, proved by admission and merge-gate tests.
   - done: impl-679 · 2026-10-16T20:16:55.726Z
   - verified: rev-30 [reviewer] · run rev-20261016-679-final · 2026-10-16T20:59:06.069Z · commit f97e2ab41f44769a298f5011cba459ebb51e96f0
   - verified: rev-30 [reviewer] · run rev-20261016-679-manifest-merge · 2026-10-16T21:47:35.147Z · commit d0d8d05b3a411b425dcf879c6c253960a4428218
+  - verified: rev-30 [reviewer] · run rev-20261016-679-cover-manifest-merge · 2026-10-16T21:51:32.038Z · commit 40a4e6ddc539b44f44d3e3d152ea19cd749d0467
 - [x] C4. A candidate tree with only `shards.json` is admitted and planned with free as T1 and machine as T3, proved by an admission test.
   - done: impl-679 · 2026-10-16T20:16:56.012Z
   - verified: rev-30 [reviewer] · run rev-20261016-679-final · 2026-10-16T20:59:06.069Z · commit f97e2ab41f44769a298f5011cba459ebb51e96f0
   - verified: rev-30 [reviewer] · run rev-20261016-679-manifest-merge · 2026-10-16T21:47:35.147Z · commit d0d8d05b3a411b425dcf879c6c253960a4428218
+  - verified: rev-30 [reviewer] · run rev-20261016-679-cover-manifest-merge · 2026-10-16T21:51:32.038Z · commit 40a4e6ddc539b44f44d3e3d152ea19cd749d0467
 - [x] C5. The planned phases, file sets and worker counts for a full run of this repository equal those planned from `shards.json` at the merge base, proved by a planning test.
   - done: impl-679 · 2026-10-16T20:16:56.356Z
   - verified: rev-30 [reviewer] · run rev-20261016-679-final · 2026-10-16T20:59:06.069Z · commit f97e2ab41f44769a298f5011cba459ebb51e96f0
   - verified: rev-30 [reviewer] · run rev-20261016-679-manifest-merge · 2026-10-16T21:47:35.147Z · commit d0d8d05b3a411b425dcf879c6c253960a4428218
+  - verified: rev-30 [reviewer] · run rev-20261016-679-cover-manifest-merge · 2026-10-16T21:51:32.038Z · commit 40a4e6ddc539b44f44d3e3d152ea19cd749d0467
 - [x] C6. Every tool that writes the manifest writes it sorted, proved by a test that adds an entry, and `docs/agents/tests.md` and `hub/README.md` (Tests) describe `tiers.json`, the four tiers and where a new line goes.
   - verified: rev-30 [reviewer] · run rev-20261016-679-source · 2026-10-16T20:16:39.163Z · commit f97e2ab41f44769a298f5011cba459ebb51e96f0
   - done: impl-679 · 2026-10-16T20:16:56.640Z
   - verified: rev-30 [reviewer] · run rev-20261016-679-final · 2026-10-16T20:59:06.069Z · commit f97e2ab41f44769a298f5011cba459ebb51e96f0
   - verified: rev-30 [reviewer] · run rev-20261016-679-manifest-merge · 2026-10-16T21:47:35.147Z · commit d0d8d05b3a411b425dcf879c6c253960a4428218
+  - verified: rev-30 [reviewer] · run rev-20261016-679-cover-manifest-merge · 2026-10-16T21:51:32.038Z · commit 40a4e6ddc539b44f44d3e3d152ea19cd749d0467
 
 ## Comments
 
@@ -140,5 +146,31 @@ Read primary Coordinator 5d64bf5a-3212-4a4a-95e0-ad401e6d68ea: A-4195 stands for
 
 All claimant done marks present. Final delta clear; C1–C6 verified under the specified retained-receipt disposition. No new droplet run or per-item QA required.
 Review artifact A-4214.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### rev-30 · 2026-10-16T21:51:32.038Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-679-cover-manifest-merge
+commit: 40a4e6ddc539b44f44d3e3d152ea19cd749d0467
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-679 final cover-quiet manifest integration delta clear at 40a4e6ddc539b44f44d3e3d152ea19cd749d0467, reviewed from clear d0d8d05b with dev aa10d609f1b7ac7aae6b5957f2f017e5bcc6e184. Standards and Spec axes: no findings. Origin task tip matches.
+
+Independent JSON/Git-tree audit confirms exactly one owned manifest addition: hub/test/cover-quiet.test.ts = T3, in sorted path order, with every prior tier value unchanged and no removal. All 252 current tracked test files are classified exactly, with no missing/extra paths. Incoming cover-quiet header explicitly names T3 real integrated worker/CLI lifecycle, completion and slot release; unchanged 25 ms poll remains T-684's baseline. Frozen legacy fixture retains exact blob 2547bcfeb03fe799db2a8c2269e069271f5210bd, byte-identical to original reviewed f97e2ab4. Rename-induced fixture conflict is resolved without altering the historical plan reference. Owned tier/lint/planner implementation and tests remain unchanged; incoming T-475 source is integrated dev work, not a new authored tier change. Independent whitespace check passes.
+
+Read primary Coordinator bc4bf2aa directing this final manifest-only merge and expressly retaining A-4195. Read primary 3c0fa546: pre-T-475 live hub refusal governs; drop local verification-workers execution, accept completed tier/planning checks/typecheck, retain old gate coverage and run combined tree in the integrated cover after merge. This is an explicit local-check disposition, not an inferred bypass.
+
+A-4219 reports committed-head typecheck/test:tiers green, suite-tiers 7/7 in 0.153 s and close-shards 3/3 in 0.112 s, serial admission below load 15. verification-workers cases did not execute: module admission refused before them, no retry/override. They are not counted as a local pass. No Reviewer runtime execution.
+
+C1–C6 refreshed using prior source/final proof A-4183/A-4197/A-4214, unchanged implementation, exact one-entry/frozen-fixture audit, requested local checks and the Coordinator's retained A-4195 gate disposition. A-4195 was full green at f97e2ab4, including verification-workers; no task run at 40a4e6dd or tree-hash cache hit is claimed. Integrated post-merge cover remains Coordinator-owned for the combined tree. All claimant done marks present.
+
+Final delta clear, no findings. No new droplet task run or per-item QA required under this disposition.
+Review artifact A-4221.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.

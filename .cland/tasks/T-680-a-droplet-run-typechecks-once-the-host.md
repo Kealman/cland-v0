@@ -3,7 +3,7 @@ id: T-680
 kind: task
 title: "A droplet run typechecks once: the host gate's result travels with the candidate tree hash"
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 3
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-409
 branch: t/T-680-a-droplet-run-typechecks-once-the-host
 created: 2026-10-16T19:59:27.759Z
-updated: 2026-10-16T21:49:06.988Z
+updated: 2026-10-16T21:49:25.390Z
 ---
 
 ## Summary
@@ -33,6 +33,7 @@ This is the step later tickets hang the T0 test lint on (T-682), so the "check s
 
 - [x] C1. A droplet run whose host gate passed at tree X runs no typecheck on the droplet and logs the reuse line naming X, proved by a remote-fixture test.
   - done: impl-680 · 2026-10-16T20:07:25.721Z
+  - verified: rev-31 [reviewer] · run rev-20261016-680-final · 2026-10-16T21:49:25.057Z · commit 64a5729c187403b32c3be2e1e3bcd5244c380c09
 - [x] C2. A droplet run whose delivered tree differs from the host gate's runs the typecheck on the droplet, proved by a planted-difference test.
   - done: impl-680 · 2026-10-16T20:07:26.211Z
   - verified: rev-31 [reviewer] · run rev-20261016-680-source · 2026-10-16T20:09:36.634Z · commit 2394853d421e5fe26adeda6562a5d940e1005dad
@@ -89,3 +90,18 @@ finding_counts: {"high":0,"medium":0,"low":1}
 Corrected source clear; Standards1low/Spec0 remaining findings, A-4204. Six-line fixture correction only, production unchanged/no devmerge. Independently inspected A-4202 Linux failure: HOME substring caused host exit3 before remote; stronger provenance assertion correctly failed. A-4203 deterministic Linux-style tempHOME red retains regression; corrected host-only fake-machine marker is present at hostgate and omitted by fakeSSH remote allowlist. Committed tree mismatch, remoteexit3, stops-tests and allprovenance assertions retained. Whole executor21of21/97.977s and exact-head typecheck reportedgreen; ref/diffcheck confirmed. C2/C3 source marks current; C1 awaits new exact-head no-mode droplet taskgate. Existing low broadT3 duration target remains report-only, not blocking. A-4202 historical exit1 not waived. No Reviewer edits/tests.
 
 Criteria: C2 verified, C3 verified.
+
+### rev-31 · 2026-10-16T21:49:25.057Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261016-680-final
+commit: 64a5729c187403b32c3be2e1e3bcd5244c380c09
+scope: evidence
+findings: [{"severity":"low","text":"Broad T3 reuse case15.218s on Linux exceeds D53 report-only10s target; existing Tech debt/S migration follow-up remains.","file":"hub/test/executor-run.test.ts","line":49}]
+finding_counts: {"high":0,"medium":0,"low":1}
+
+Final evidence clear; Standards1low/Spec0 findings, A-4216. Independently inspected exact-head973ff557/A-4215 exit0:1999pass/0fail/5skip including Neovim smoke12of12. Candidate-code real delivered-worker reuse proof, corrected Linux-home mismatch/remoteexit3 stop-before-tests control, local exactly-one-check/provenance and sharded-close regression allgreen. C1 verified; C2/C3 source-2/A-4204 marks current, all claimant done marks present. Outer hub bootstrap still pre-T-680, not production rollout proof; former C4 lifetimegain remains epicdemo. Low broad T3 target retained/report-only; no high/medium. Lifetime2510s/cost$0.1743 perhub. No Reviewer edits/tests.
+
+Criteria: C1 verified.
