@@ -2,8 +2,8 @@
 id: T-528
 kind: task
 title: "session-usage test: a coalesced Codex usage burst journals a duplicate rate-limit row (Linux)"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ regression_of: T-495
 topic: topic-393
 branch: t/T-528-session-usage-test-a-coalesced-codex
 created: 2026-10-15T20:01:03.365Z
-updated: 2026-10-16T16:39:06.081Z
+updated: 2026-10-16T16:40:00.148Z
+closed: 2026-10-16T16:40:00.148Z
 ---
 
 ## Problem
@@ -78,3 +79,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear; Standards0/Spec0 findings. A-4024 evidence analysis with receipt-index correction A-4025: raw A-4023 has an extra58.699s green block and duplicateordinal2; its early annotation was mistaken. The five replacement-wrapper runs37.791/47.214/44.342/38.692/51.380s independently each pass8of8, have preceding uptime<15, and alone meet C2; first45.972s is a sixth conservatively counted pass. No uncollected run needed or counted. Independently read Coordinatorcb4111fe correcting launch10 to ticket5. Same-head Linux163867e1/A-4003 exit0 hub30of30 plus Neovimsmoke12of12, nofail/skip. C2 verified; C1 source mark current. Origin tip unchanged. No additional run or failed-gate exception needed.
 
 Criteria: C2 verified.
+
+### coord · 2026-10-16T16:40:00.148Z
+
+Merged c4527af1d15a06c5f173b61835e72db80b28c973 onto dev.
