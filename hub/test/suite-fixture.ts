@@ -2,8 +2,9 @@
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, clandWithEnv, connectUi, projectHub, startDaemon, spawnSpoke, tempProject } from './harness.ts';
+import { cland, clandWithEnv, connectUi, eventually, projectHub, startDaemon, spawnSpoke, tempProject } from './harness.ts';
 import { onCleanup, ownProcess } from './process-cleanup.ts';
+import type { HubStatus } from '../src/protocol.ts';
 
 export type ResultMessage = { id: string; from: string; fromRole?: string; text: string; to: string[]; artifacts: Array<{ id: string; path: string; creator: string }> };
 export async function fixture(t: import('node:test').TestContext, testScript: string, typecheck = 'node -e "process.exit(0)"', config: string | { text?: string; verification: string } = '', daemonEnv: Record<string, string> = {}, budget = 1, cacheAgeMinutes = 1440, serve: typeof projectHub | typeof startDaemon = projectHub) {
@@ -39,6 +40,17 @@ export async function fixture(t: import('node:test').TestContext, testScript: st
     if (job.pid) ownProcess(t, job.pid);
     return job;
   };
-  return { root, discovery, ui, env, topic, results, launch, spoke };
+  // Launch can return before the worker PID is published after admission.
+  // Read the current job record instead of retaining the launch response's snapshot.
+  const workerPid = async (id: string) => {
+    const pid = await eventually(`worker PID published for ${id}`, async () => {
+      const status = await ui.request({ type: 'hub.status' });
+      assert.equal(status.ok, true, status.error);
+      return (status.value as HubStatus).suites?.find(job => job.id === id)?.pid ?? undefined;
+    });
+    ownProcess(t, pid);
+    return pid;
+  };
+  return { root, discovery, ui, env, topic, results, launch, workerPid, spoke };
 }
 

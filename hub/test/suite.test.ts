@@ -45,11 +45,12 @@ test('suite worker SIGKILL produces one crash result with its log', async t => {
   // Artificial hold: this test kills or cancels the worker before the 30-second failure ceiling.
   const f = await fixture(t, 'node -e "setTimeout(()=>{},30000)"');
   const job = await f.launch();
+  const pid = await f.workerPid(job.id);
   await eventually('package test started', async () => {
     const log = await readFile(join(f.root, '.cland', 'run', 'suites', job.id, 'suite.log'), 'utf8');
     return log.includes('$ npm test') ? true : undefined;
   });
-  process.kill(job.pid!, 'SIGKILL');
+  process.kill(pid, 'SIGKILL');
   const result = await eventually('crash report', async () => (await f.results())[0]);
   assert.match(result.text, /worker killed by SIGKILL/);
   assert.equal(result.artifacts.length, 1);

@@ -155,8 +155,9 @@ process.exitCode = result.status ?? 1;
   const f = await fixture(t, 'node -e "require(\'fs\').writeFileSync(\'admitted\',\'yes\')"', undefined, '', { PATH: `${bin}:${process.env.PATH ?? ''}` });
   await writeFile(hold, 'hold');
   const job = await f.launch();
-  assert.ok(job.pid);
-  await eventually('worker paused before compatibility acquisition', async () => readFile(entered, 'utf8').then(pid => Number(pid) === job.pid ? true : undefined, () => undefined));
+  const pid = await f.workerPid(job.id);
+  assert.ok(pid);
+  await eventually('worker paused before compatibility acquisition', async () => readFile(entered, 'utf8').then(enteredPid => Number(enteredPid) === pid ? true : undefined, () => undefined));
   const lock = join(f.root, 'suite.lock');
   try { await mkdir(lock); }
   finally { await writeFile(release, 'release'); }
@@ -167,7 +168,7 @@ process.exitCode = result.status ?? 1;
   assert.match(result.text, /exit 143; cancelled/);
   assert.deepEqual(result.to.sort(), ['impl', 'rev']);
   assert.deepEqual(await readdir(`${lock}.queue`), []);
-  assert.equal(pidAlive(job.pid), false);
+  assert.equal(pidAlive(pid), false);
   assert.equal((await stat(lock)).isDirectory(), true);
   await assert.rejects(stat(join(f.root, 'admitted')), { code: 'ENOENT' });
   assert.equal((await f.results()).filter(m => m.id === `suite:${job.id}`).length, 1);
