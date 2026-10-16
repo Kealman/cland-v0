@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-352
 branch: t/T-562-finished-remote-runs-stay-listed-as-slot
 created: 2026-10-16T02:03:05.929Z
-updated: 2026-10-16T02:36:45.467Z
+updated: 2026-10-16T02:37:53.992Z
 ---
 
 ## Summary
@@ -28,6 +28,7 @@ On 2026-10-16 between 01:30Z and at least 02:03Z, `cland verify queue` listed fo
 ## Acceptance criteria
 - [ ] C1. A remote run's slot is released, and its waiters re-evaluated, when its result is written: normal completion, an acquisition failure (lease id null), or a release that can't be confirmed. Slot occupancy follows live leases and runs, not stale holder rows.
 - [ ] C2. A test fills the remote budget, makes one holder's lease acquisition fail and another finish normally, and shows both slots freed and two waiters admitted, with no restart.
+- [ ] C3. On hub startup, persisted holders that have a result.json are reconciled: their receipts are posted, their scheduler slots are freed, and waiters are re-evaluated without resubmitting the finished runs.
 
 ## Comments
 
