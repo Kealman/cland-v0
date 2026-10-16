@@ -1,6 +1,7 @@
 {
   "version": 1,
   "tests": {
+    "hub/test/remote-fixture-lifecycle.test.ts": "machine",
     "hub/src/address.test.ts": "free",
     "hub/src/adapters/opencode.test.ts": "machine",
     "hub/src/hub/hygiene.test.ts": "free",

@@ -45,6 +45,7 @@ export function captureProcess(pid: number | undefined): ProcessIdentity | null 
 const directoryProcesses = new Map<string, Set<ProcessIdentity>>();
 const contextProcesses = new WeakMap<TestContext, Set<ProcessIdentity>>();
 type CleanupStep = () => unknown | Promise<unknown>;
+const signalDirectoryCleanup = new Set<CleanupStep>();
 const contextCleanup = new WeakMap<TestContext, { resources: CleanupStep[]; directories: CleanupStep[]; hubs: CleanupStep[]; checks: CleanupStep[] }>();
 function cleanupSteps(t: TestContext) {
   let steps = contextCleanup.get(t);
@@ -65,8 +66,16 @@ function cleanupSteps(t: TestContext) {
   }
   return steps;
 }
-/** Stop served hubs after their clients, before directory fallback cleanup. */
-export function beforeDirectories(t: TestContext, step: CleanupStep): void { cleanupSteps(t).hubs.push(step); }
+/** Stop writers before directory removal, including when signals bypass after hooks. */
+export function beforeDirectories(t: TestContext, step: CleanupStep): void {
+  const steps = cleanupSteps(t);
+  let running: Promise<unknown> | undefined;
+  const run = () => running ??= Promise.resolve().then(step);
+  steps.hubs.push(run);
+  signalDirectoryCleanup.add(run);
+  steps.checks.push(() => { signalDirectoryCleanup.delete(run); });
+  installSignals();
+}
 
 /** Check fixture leaks after owned resources and directories have been disposed. */
 export function afterCleanup(t: TestContext, check: CleanupStep): void { cleanupSteps(t).checks.push(check); }
@@ -386,6 +395,7 @@ function installSignals(): void {
   for (const signal of ['SIGINT', 'SIGTERM'] as const) process.once(signal, () => {
     void (async () => {
       await cleanupOwnedProcesses([...new Map([...recorded, ...ownedPids]).values()]);
+      for (const step of signalDirectoryCleanup) await step();
       for (const [dir, identity] of directories) { if (!directoryStillOwned(dir, identity)) continue; await rm(dir, { recursive: true, force: true }); }
     })().finally(() => process.exit(signal === 'SIGINT' ? 130 : 143));
   });

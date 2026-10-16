@@ -5,18 +5,31 @@ import { promisify } from 'node:util';
 import { chmod, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { cland, clandWithEnv, connectUi, eventually, spawnSpoke, projectHub, startDaemon, tempProject } from './harness.ts';
-import { ownProcess, onCleanup } from './process-cleanup.ts';
+import { beforeDirectories, cleanupProcesses, ownProcess, onCleanup } from './process-cleanup.ts';
 import { fakeDigitalOcean } from './fakes/digitalocean/fake-api.ts';
 import { prepareKey, keyHash } from '../src/executor/droplet/prepare.ts';
 import type { HubStatus } from '../src/protocol.ts';
+import { fixtureGuard } from './fixture-guard.ts';
 
 const exec = promisify(execFile);
 const token = 'sentinel-remote-suite-token';
 export async function fixture(t: TestContext, options: { hub?: typeof projectHub | typeof startDaemon; typecheck?: string | undefined; test?: string | undefined; executor?: 'local' | 'droplet'; config?: string; env?: Record<string, string>; name?: string; api?: Awaited<ReturnType<typeof fakeDigitalOcean>> } = {}) {
   const root = await tempProject(t, 'remote-run-');
+  const guard = await fixtureGuard(t, root);
   const territory = await tempProject(t, 'remote-territory-');
+  await guard.register(territory);
   const api = options.api ?? await fakeDigitalOcean(token);
-  if (!options.api) onCleanup(t, () => api.close());
+  let stopHub = async () => {};
+  beforeDirectories(t, async () => {
+    await stopHub();
+    // Stop and observe detached watchdogs too, before deleting their lease files.
+    await cleanupProcesses(root, [], undefined, undefined, []);
+    if (!options.api) {
+      await cleanupProcesses(api.stateRoot, [], undefined, undefined, []);
+      await api.close();
+    }
+  });
+  if (!options.api) await guard.register(api.stateRoot);
   const git = async (...args: string[]) => (await exec('git', args, { cwd: root })).stdout.trim();
   await git('init', '-q', '-b', 'dev');
   await git('config', 'user.name', 'Test'); await git('config', 'user.email', 'test@example.com'); await git('config', 'commit.gpgsign', 'false');
@@ -52,6 +65,7 @@ export async function fixture(t: TestContext, options: { hub?: typeof projectHub
   await git('checkout', '-qb', 'task-candidate');
   await writeFile(join(root, 'hub/src/tracker/change.ts'), 'export const candidate = true;\n'); await git('add', 'hub/src/tracker/change.ts'); await git('commit', '-qm', 'Hub change');
   const daemon = await (options.hub ?? startDaemon)(t, root, env);
+  if ('stop' in daemon) stopHub = daemon.stop;
   const ui = await connectUi(t, daemon.discovery);
   assert.equal((await ui.request({ type: 'role.set', session: 'impl', role: 'implementer' })).ok, true);
   const spoke = await spawnSpoke({ discover: true, assignRole: false, cwd: root, name: 'impl', sessionId: 'remote-impl', role: 'implementer' });
@@ -77,5 +91,5 @@ export async function fixture(t: TestContext, options: { hub?: typeof projectHub
     const failure = (await messages(id, client))[0]; if (failure) throw new Error(failure.text);
     return;
   }, 15000);
-  return { stop: 'stop' in daemon ? daemon.stop : () => cland(root, 'hub', 'stop'), root, api, git, key, ui, spoke, discovery: daemon.discovery, env, actor, item, topic, launch, messages, result, remote };
+  return { stop: 'stop' in daemon ? daemon.stop : () => cland(root, 'hub', 'stop'), root, territory, guard, api, git, key, ui, spoke, discovery: daemon.discovery, env, actor, item, topic, launch, messages, result, remote };
 }

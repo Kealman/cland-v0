@@ -3615,6 +3615,22 @@
       "seconds": 4.843106,
       "reason": "Aggregates atomic git publication, sync and fault-recovery scenarios against fixture remotes; every failed step must preserve or recover refs."
     },
+    "hub/test/remote-fixture-lifecycle.test.ts::remote fixture cleans up after owner exit": {
+      "seconds": 5.678,
+      "reason": "Starts a real remote fixture in a subprocess, then observes hub, detached watchdog/reaper exit and directory removal across the owner lifecycle boundary."
+    },
+    "hub/test/remote-fixture-lifecycle.test.ts::remote fixture cleans up after owner timeout": {
+      "seconds": 11.127,
+      "reason": "Waits for an actual 10-second node:test timeout after starting a real subprocess fixture, then observes its teardown and guardian exit."
+    },
+    "hub/test/remote-fixture-lifecycle.test.ts::remote fixture cleans up after owner watchdog-SIGKILL": {
+      "seconds": 8.386,
+      "reason": "Starts a real remote fixture in a subprocess, then observes hub, detached watchdog/reaper exit and directory removal across the owner lifecycle boundary."
+    },
+    "hub/test/remote-fixture-lifecycle.test.ts::remote fixture cleans up after owner watchdog-teardown": {
+      "seconds": 11.125,
+      "reason": "Starts a real remote fixture in a subprocess, then observes hub, detached watchdog/reaper exit and directory removal across the owner lifecycle boundary."
+    },
     "hub/test/role-integrity.test.ts::a hub that dies between a launch reserving the Coordinator and its spawn gives the role back at its next start": {
       "seconds": 8.977389,
       "reason": "Kills a real hub between Coordinator reservation and process spawn, then restarts to prove the role becomes available."

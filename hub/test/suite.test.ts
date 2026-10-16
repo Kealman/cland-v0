@@ -13,6 +13,7 @@ import type { VerificationQueue, HubStatus } from '../src/protocol.ts';
 import type { ItemSummary, ItemView } from '../src/tracker/tracker.ts';
 import { spawn, execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { fileBarrierCommand } from './file-barrier.ts';
 import { fileURLToPath } from 'node:url';
 import { defaultConfig, parseConfig, renderConfig } from '../src/init/config.ts';
 import { cacheRepository, humanRunnerFixture } from './suite-support.ts';
@@ -98,7 +99,7 @@ test('hub restart recovers a worker that outlives it, without replaying the resu
 });
 
 test('revoked report permissions hold the result until restored, without a duplicate', async t => {
-  const f = await fixture(t, 'node -e "const fs=require(\'fs\');const p=setInterval(()=>{if(fs.existsSync(\'finish\'))clearInterval(p)},50)"');
+  const f = await fixture(t, fileBarrierCommand);
   await f.launch();
   assert.equal((await f.ui.request({ type: 'role.clear', session: 'impl' })).ok, true);
   await writeFile(join(f.root, 'finish'), 'ready');
@@ -114,7 +115,7 @@ test('revoked report permissions hold the result until restored, without a dupli
 });
 
 test('a muted named recipient keeps the single result pending across restart until all recipients can receive it', async t => {
-  const f = await fixture(t, 'node -e "const fs=require(\'fs\');const p=setInterval(()=>{if(fs.existsSync(\'finish\'))clearInterval(p)},50)"', undefined, '[hygiene]\nloop_breaker_max = 2\n', undefined, undefined, undefined, startDaemon);
+  const f = await fixture(t, fileBarrierCommand, undefined, '[hygiene]\nloop_breaker_max = 2\n', undefined, undefined, undefined, startDaemon);
   for (let n = 0; n < 3; n++) await f.spoke.call('send', { to: ['rev'], topic: f.topic, text: `seed ${n}` });
   const job = await f.launch();
   await writeFile(join(f.root, 'finish'), 'ready');
@@ -184,7 +185,7 @@ test('a muted suite report follows its moved log after unmute and publishes once
 });
 
 test('failure cleanup preserves a live worker whose recorded start identity is unavailable', async t => {
-  const f = await fixture(t, 'node -e "const fs=require(\'fs\');const p=setInterval(()=>{if(fs.existsSync(\'finish\'))clearInterval(p)},50)"', undefined, undefined, undefined, undefined, undefined, startDaemon);
+  const f = await fixture(t, fileBarrierCommand, undefined, undefined, undefined, undefined, undefined, startDaemon);
   const job = await f.launch();
   assert.equal((await cland(f.root, 'hub', 'stop')).code, 0);
   const db = new DatabaseSync(join(f.root, '.cland', 'hub.db'));
