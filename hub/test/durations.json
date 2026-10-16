@@ -3219,6 +3219,10 @@
       "seconds": 9.199263,
       "reason": "Stops real pooled Reviewer and Lead processes and waits for terminal recovery to route the pending cleanup past a stopped hierarchy owner."
     },
+    "hub/test/demo-release.test.ts::demo identity mismatch preserves the resource and exposes operator attention with an alert": {
+      "seconds": 6.3,
+      "reason": "Starts a real demo lease against the fake DigitalOcean provider, forces an identity mismatch, and waits for the refused deletion, the operator-attention state and the alert."
+    },
     "hub/test/demo.test.ts::demo authorization, shared slot refusals and verdict cleanup use the same tagged lease": {
       "seconds": 6.115824,
       "reason": "Starts real hub and QA spoke processes, exercises authorization and shared slot refusal through public frames, then waits for verdict-driven confirmed provider cleanup; observed in A-3054."
