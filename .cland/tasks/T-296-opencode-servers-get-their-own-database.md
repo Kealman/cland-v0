@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-336
 branch: t/T-296-opencode-servers-get-their-own-database
 created: 2026-10-12T16:20:56.477Z
-updated: 2026-10-16T04:00:19.576Z
+updated: 2026-10-16T04:39:26.763Z
 ---
 
 ## Summary
@@ -52,24 +52,28 @@ Code: `hub/src/adapters/opencode.ts`, `hub/src/adapters/opencode/server.ts`, `hu
   - verified: rev-30 [reviewer] · run rev-20261016-296-docs-delta · 2026-10-16T00:02:07.895Z · commit ddeb710c2119ac1e5b4cd822318e53d800a08280
   - verified: rev-30 [reviewer] · run rev-20261016-296-manifest-delta · 2026-10-16T01:25:56.291Z · commit 3f28265df73c5d2e95269fa5bd4c855af7c2f5c9
   - verified: rev-30 [reviewer] · run rev-20261016-296-merge-delta · 2026-10-16T04:00:19.575Z · commit 16d819bc6809689de73340786c7b2bd05bd1ddfd
+  - verified: rev-30 [reviewer] · run rev-20261016-296-guard-budget-correction · 2026-10-16T04:39:26.763Z · commit 991d1c86a7e599c0104d50d23bb8a56122bc9447
 - [x] C3. The launch record names the database, and resume and relaunch reuse it.
   - done: impl-296 · 2026-10-15T23:48:07.788Z
   - verified: rev-30 [reviewer] · run rev-20261016-296-source · 2026-10-16T00:00:37.200Z · commit 7f964e694492ed6312e05bc6772075f0b883564c
   - verified: rev-30 [reviewer] · run rev-20261016-296-docs-delta · 2026-10-16T00:02:07.895Z · commit ddeb710c2119ac1e5b4cd822318e53d800a08280
   - verified: rev-30 [reviewer] · run rev-20261016-296-manifest-delta · 2026-10-16T01:25:56.292Z · commit 3f28265df73c5d2e95269fa5bd4c855af7c2f5c9
   - verified: rev-30 [reviewer] · run rev-20261016-296-merge-delta · 2026-10-16T04:00:19.575Z · commit 16d819bc6809689de73340786c7b2bd05bd1ddfd
+  - verified: rev-30 [reviewer] · run rev-20261016-296-guard-budget-correction · 2026-10-16T04:39:26.763Z · commit 991d1c86a7e599c0104d50d23bb8a56122bc9447
 - [x] C4. `cland doctor` names the database and its standalone login line, warns when an account points at the default database, and says whether the free default model needs a login.
   - done: impl-296 · 2026-10-15T23:49:01.818Z
   - verified: rev-30 [reviewer] · run rev-20261016-296-source · 2026-10-16T00:00:37.200Z · commit 7f964e694492ed6312e05bc6772075f0b883564c
   - verified: rev-30 [reviewer] · run rev-20261016-296-docs-delta · 2026-10-16T00:02:07.895Z · commit ddeb710c2119ac1e5b4cd822318e53d800a08280
   - verified: rev-30 [reviewer] · run rev-20261016-296-manifest-delta · 2026-10-16T01:25:56.292Z · commit 3f28265df73c5d2e95269fa5bd4c855af7c2f5c9
   - verified: rev-30 [reviewer] · run rev-20261016-296-merge-delta · 2026-10-16T04:00:19.576Z · commit 16d819bc6809689de73340786c7b2bd05bd1ddfd
+  - verified: rev-30 [reviewer] · run rev-20261016-296-guard-budget-correction · 2026-10-16T04:39:26.763Z · commit 991d1c86a7e599c0104d50d23bb8a56122bc9447
 - [x] C5. hub/README.md (OpenCode) describes the database and the login.
   - done: impl-296 · 2026-10-15T23:49:36.050Z
   - verified: rev-30 [reviewer] · run rev-20261016-296-source · 2026-10-16T00:00:37.200Z · commit 7f964e694492ed6312e05bc6772075f0b883564c
   - verified: rev-30 [reviewer] · run rev-20261016-296-docs-delta · 2026-10-16T00:02:07.895Z · commit ddeb710c2119ac1e5b4cd822318e53d800a08280
   - verified: rev-30 [reviewer] · run rev-20261016-296-manifest-delta · 2026-10-16T01:25:56.292Z · commit 3f28265df73c5d2e95269fa5bd4c855af7c2f5c9
   - verified: rev-30 [reviewer] · run rev-20261016-296-merge-delta · 2026-10-16T04:00:19.576Z · commit 16d819bc6809689de73340786c7b2bd05bd1ddfd
+  - verified: rev-30 [reviewer] · run rev-20261016-296-guard-budget-correction · 2026-10-16T04:39:26.763Z · commit 991d1c86a7e599c0104d50d23bb8a56122bc9447
 
 ## Comments
 
@@ -179,5 +183,66 @@ Resolution identifier search against committed hub/test+nvim/test independently 
 C2/C3/C4/C5 source criteria refreshed: dedicated persistent DB selection/auth/login doctor guidance, retained process environment, default/account warning and isolation/rollout behavior remain intact with version policy. C1 final overall task gate remains pending fresh actual reviewed-head droplet verification, now unblocked by T-546. This is source clear, not final ready or a new suite waiver. Submit once per Coordinator a244d3f5; any further head change needs delta review. Rule13 retirement/old-default-session rollout check remains the Coordinator's merge step. No per-item QA change. No Reviewer edits/tests/compiler/binary execution, installs, signals, commits, merges, provider actions, task.view scan or subagents.
 
 Review artifact A-3676 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3676-t-296-authorized-dev-merge-delta-clear-at-16d819bc.md
+
+Criteria: C2 verified, C3 verified, C4 verified, C5 verified.
+
+### rev-30 · 2026-10-16T04:31:56.614Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261016-296-linux-first
+commit: 16d819bc6809689de73340786c7b2bd05bd1ddfd
+scope: evidence
+
+# T-296 Linux evidence not clear at 16d819bc
+
+A-3703 /c1acaff2-6c2f-4bfb-af56-42e7a7b8e48b names reviewed16d819bc6809689de73340786c7b2bd05bd1ddfd and actual Linux c-8 lon1, four workers. Exit1:1887pass/1ordinaryfail/5platform skips; hub phases completed, Neovim smoke not reached. No Reviewer execution.
+
+## Standards
+Medium M1 — hub/test/account-poller.test.ts:251–266 / hub/src/accounts/registry.ts:21,23: the existing architecture guard now fails on the task's two new passive opencode.db path-selection literals (raw4350–4362). These functions select paths; this receipt does not demonstrate a credential-store read or a provider request. Integrate the new passive literals with the guard's existing narrowly scoped exact-literal exceptions, retaining the scanner and forbidden content/access protection. Do not disable the test, exclude the whole registry or remove opencode.db globally from the protected vocabulary. Rerun the whole guard file and relevant owned account tests; a source correction needs delta review before another verify.
+Medium M2 — hub/test/accounts.test.ts: new unassigned OpenCode restart/relaunch cases exceed the hard new-identity duration budget: XDG6.507782s and HOME7.259932s>5. Both cases pass functionally and5/5 load repetitions, but this hard budget blocks the suite. Diagnose unnecessary work if present or add narrowly reasoned measured allowances under the existing manifest policy; do not baseline-refresh away the new-test proof. No allowance is claimed approved or implemented here.
+
+## Spec
+No runtime evidence of a new database-isolation functional failure. Own account launch/restart cases pass and5/5, doctor database/login warning passes3.962s and5/5. Real P3 skips on this Linux image for absent opencode, including five reasoned prerequisite skips; prior accepted non-skipped Mac P3 proof remains A-3474/A-3674. That permitted skip is not a failing C1 result.
+The full gate nevertheless is not clear. C1 final verification remains pending; existing source C2–C5 marks are not failed merely because other suite checks are red. Prior corrected README low is already resolved.
+
+Additional outside-task results require lead classification/disposition before an unchanged retry: tracker-load retained200000 case4/5 (ordinary passes, raw3994; full ordinary max timings remain below5s), remote-fixture-lifecycle hard budgets normal5.272s, watchdogTERM7.445s, watchdogINT9.244s and file70.135s>60. Those are not dismissed as non-failing duration-regression notices. They concern incoming/shared tests, unlike the two new owned account budgets. Do not assume a known E-482 identity solely from the file.
+Source clear A-3676 remains historical; this evidence verdict blocks final readiness. Correct own guard/budget integration, obtain classification of shared reds, request delta review at a committed new head, then follow Coordinator run direction. No automatic third/unchanged run requested. Rule13 retirement/old-default-session rollout remains Coordinator's merge action, not performed or waived.
+Findings: high0,medium2,low0; Standards2medium,Spec0 functional findings. No criterion-failure marks added because concrete isolation criteria have not been observed false.
+
+Artifact A-3705 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3705-t-296-linux-not-clear-path-literal-guard-and-owned-duration-budgets.md
+
+### rev-30 · 2026-10-16T04:39:26.763Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-296-guard-budget-correction
+commit: 991d1c86a7e599c0104d50d23bb8a56122bc9447
+scope: delta
+
+# T-296 correction delta source clear at 991d1c86
+
+Head991d1c86a7e599c0104d50d23bb8a56122bc9447; branch t/T-296-opencode-servers-get-their-own-database. Compare reviewed16d819bc6809689de73340786c7b2bd05bd1ddfd. Origin ref matches; three commits, no dev merge. Only account-poller.test.ts (+2) and durations.json (+37) changed. Source and all task launch/doctor assertions unchanged.
+
+## Standards
+No high, medium or low findings (0). A-3705 M1/M2 are addressed.
+The guard adds two exact complete passive function-definition literals, scoped to /accounts/registry.ts, with path-selection/no-content-read explanations. It removes only one occurrence of each matching definition before the unchanged source scan; the protected opencode.db term, other forbidden terms, recursive file scope and final assertions remain. Neither entire registry exclusion nor global removal of the protected word occurs. Existing negative protection outside those precise passive definitions remains.
+Owned duration entries are narrowly measured allowances for the two new restart identities: XDG6.508s, HOME7.260s, grounded in A-3703's6.507782/7.259932 Linux four-worker observations and real two-hub/server persistence work. Tests, assertion bounds and tests baseline are unchanged, so both identities still require new-test load proof. This is not a disguised baseline refresh.
+
+## Spec
+No findings (0). Original production source clear A-3486, docs correction A-3492 and authorized merge A-3676 remain valid. C2–C5 refreshed at this head; final C1 task gate remains pending, not falsely failed by the earlier permitted real-binary absence skip.
+Primary Coordinator eefc3ad2-90b3-4c46-9af9-f42a0ed3233e, read in topic-336, authorizes the two owned corrections and exact posted08e88000/b4fc313b picks, classifies tracker-load4/5 as T-570, and directs one new droplet receipt reaching Neovim green. Other named known reds T-555/T-565/T-566/T-567/T-569 remain subject to that exact disposition, not a blanket unknown-red waiver.
+Independent duplicate-rejecting manifest audit: final allow is exactly prior allow plus the two owned entries and seven additions from posted shared08e88000/b4fc313b (nine additions total). All other root fields unchanged. No task code, doctor policy, P3 behavior or runtime helper changed; shared pick history733c11e5 and991d1c86 only manifests. Whitespace clean.
+
+## Evidence
+A-3715 durable folder raw poller.log10/10 and accounts.log16/16, no fail/cancel/skip, file34.149s and30.939s. Guard passes21.496ms; owned restart cases2.741s XDG/2.683s HOME. README labels serial quiet Mac admissions local:none and starting loads2.51/3.09 with guard free. Typecheck/test:shards reported green after owned correction; subsequent picks are manifest-only.
+A-3703 remains overall red, not accepted final gate. Earlier non-skipped real Mac P3 proof A-3474/A-3674 and own Linux ordinary/5-of5 launch/login checks remain supporting evidence for unchanged product code. New Linux receipt must supply the requested complete selected phases including Neovim. No per-item QA.
+
+Source delta clear; refresh C2,C3,C4,C5 only. Honor active restart submission hold: do not submit until explicit hub-restarted/lift notice, then Coordinator's T-557 first/T-296 second one-minute spacing. Further changed head requires delta review. Rule13 retirement and old-default-session rollout checks remain Coordinator merge actions.
+Totals: Standards0,Spec0 findings. No Reviewer test/compiler/binary execution, edits, signals, installs, provider actions, commits, merges or subagents.
+
+Artifact A-3716 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3716-t-296-correction-clear-narrow-passive-guard-and-measured-restart-allowances.md
 
 Criteria: C2 verified, C3 verified, C4 verified, C5 verified.

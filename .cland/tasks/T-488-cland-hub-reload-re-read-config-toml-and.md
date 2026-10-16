@@ -3,7 +3,7 @@ id: T-488
 kind: task
 title: "cland hub reload: re-read config.toml and roles.toml without a restart (SIGHUP too)"
 state: open
-status: review
+status: in progress
 size: S
 criterion_seq: 4
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-329
 branch: t/T-488-cland-hub-reload-re-read-config-toml-and
 created: 2026-10-15T11:30:17.553Z
-updated: 2026-10-16T04:25:22.266Z
+updated: 2026-10-16T04:54:57.277Z
 ---
 
 ## Problem
@@ -32,12 +32,14 @@ Add `cland hub reload`, which also runs on SIGHUP. It re-reads `.cland/config.to
   - verified: rev-31 [reviewer] · run rev-20261016-488-source-3 · 2026-10-16T02:49:54.457Z · commit 37c3f4efa2f781b9a76b848cac9b5e209440f8bf
   - verified: rev-31 [reviewer] · run rev-20261016-488-delta-4 · 2026-10-16T03:10:19.209Z · commit 72faa365f61064eec819cf9cea9a48f6f71d6715
   - verified: rev-31 [reviewer] · run rev-20261016-488-delta-5 · 2026-10-16T03:51:12.026Z · commit bfc146576230846994be376ebbe073d2188acb92
+  - verified: rev-31 [reviewer] · run rev-20261016-488-merge-source · 2026-10-16T04:26:19.977Z · commit 3ba2b30bed4547b6b3f3c4b034aab57a665a2c00
 - [x] C2. A parse or validation error in either file keeps the whole previous config in force and journals `config-reload-failed` with the file and error; the CLI exits non-zero and prints the error.
   - done: impl-488 · 2026-10-15T23:45:16.991Z
   - verified: rev-31 [reviewer] · run rev-20261016-488-source-2 · 2026-10-16T00:01:17.145Z · commit 7b8c92b36c082509ca88ced2ad5efec47b6bac51
   - verified: rev-31 [reviewer] · run rev-20261016-488-source-3 · 2026-10-16T02:49:54.457Z · commit 37c3f4efa2f781b9a76b848cac9b5e209440f8bf
   - verified: rev-31 [reviewer] · run rev-20261016-488-delta-4 · 2026-10-16T03:10:19.209Z · commit 72faa365f61064eec819cf9cea9a48f6f71d6715
   - verified: rev-31 [reviewer] · run rev-20261016-488-delta-5 · 2026-10-16T03:51:12.026Z · commit bfc146576230846994be376ebbe073d2188acb92
+  - verified: rev-31 [reviewer] · run rev-20261016-488-merge-source · 2026-10-16T04:26:19.977Z · commit 3ba2b30bed4547b6b3f3c4b034aab57a665a2c00
 - [x] C3. Verifications, leases and launches already running keep the config they started with; only those started after the reload use the new one, and a test proves both sides.
   - done: impl-488 · 2026-10-15T23:45:40.291Z
   - verified: rev-31 [reviewer] · run rev-20261016-488-final · 2026-10-16T04:18:09.949Z · commit bfc146576230846994be376ebbe073d2188acb92
@@ -47,6 +49,7 @@ Add `cland hub reload`, which also runs on SIGHUP. It re-reads `.cland/config.to
   - verified: rev-31 [reviewer] · run rev-20261016-488-source-3 · 2026-10-16T02:49:54.457Z · commit 37c3f4efa2f781b9a76b848cac9b5e209440f8bf
   - verified: rev-31 [reviewer] · run rev-20261016-488-delta-4 · 2026-10-16T03:10:19.209Z · commit 72faa365f61064eec819cf9cea9a48f6f71d6715
   - verified: rev-31 [reviewer] · run rev-20261016-488-delta-5 · 2026-10-16T03:51:12.026Z · commit bfc146576230846994be376ebbe073d2188acb92
+  - verified: rev-31 [reviewer] · run rev-20261016-488-merge-source · 2026-10-16T04:26:19.977Z · commit 3ba2b30bed4547b6b3f3c4b034aab57a665a2c00
 
 ## Comments
 
@@ -215,3 +218,27 @@ C3verified: active/newverification/leasesnapshot12.303s androle-refresh/runningl
 ArtifactA-3692: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3692-t-488-final-clear-at-bfc14657-full-linux-and-neovim.md.
 
 Criteria: C3 verified.
+
+### rev-31 · 2026-10-16T04:26:19.977Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261016-488-merge-source
+commit: 3ba2b30bed4547b6b3f3c4b034aab57a665a2c00
+scope: delta
+
+Merged source clear against prior final bfc14657 and dev 08e88000. Standards: no findings. Spec: no findings. Admission snapshots/timeouts remain integrated with durable remote-result reconciliation; loaded-config getter and captured acquisition policy remain alongside per-lease serialization. Journal reload events, dispatcher reload/permission/configure plumbing, server forwarding, grants and README contract survive dev integration. Configuration owner, daemon, CLI/protocol, demo/run delivery, suite worker and own tests byte-identical to prior reviewed head. Independently parsed manifest is exact dev plus the unchanged two reasoned task allowances; diff check clear. A-3698 supplies both merged-head whole files 5/5 under authorized slot; reported root typecheck/shards green. C1/C2/C4 reverified. C3 remains pending the fresh full droplet gate through Neovim explicitly required by Coordinator e04b9fd5; prior A-3691 applies only to bfc14657. Analysis A-3702: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3702-t-488-merged-source-clear-at-3ba2b30b.md. No Reviewer edits/tests.
+
+Criteria: C1 verified, C2 verified, C4 verified.
+
+### rev-31 · 2026-10-16T04:54:57.277Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261016-488-merge-evidence-1
+commit: 3ba2b30bed4547b6b3f3c4b034aab57a665a2c00
+scope: evidence
+
+Evidence incomplete: A-3722/f68a979f full-mode Linux exits1 after hub,1894 pass/0 ordinary failures/4 skips. All five own reload cases pass normally and each5/5 load. Sole hard red remote-fixture-lifecycle.test.ts whole-file60.746s>60s (log6165); implementer reports posted shared allowance b4fc313b. Neovim phase was not reached, so Coordinator e04b9fd5's required merged-head gate is unmet. C3 remains pending; C1/C2/C4 source marks remain valid. No demonstrated task behavior failure and no failed criterion mark. Prior A-3691 is prior-head only. Await lead/Coordinator disposition for remaining Neovim evidence under submission/no-head-move-alone instructions; no new run authorized by this verdict. Artifact A-3723: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3723-t-488-merged-head-evidence-incomplete-neovim-not-reached.md. No Reviewer edits/tests.

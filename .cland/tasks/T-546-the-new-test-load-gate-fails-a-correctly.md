@@ -16,7 +16,7 @@ regression_of: T-471
 topic: topic-340
 branch: t/T-546-the-new-test-load-gate-fails-a-correctly
 created: 2026-10-15T22:56:05.665Z
-updated: 2026-10-16T03:53:39.211Z
+updated: 2026-10-16T04:51:53.713Z
 closed: 2026-10-16T03:53:15.819Z
 ---
 
@@ -131,3 +131,7 @@ Merged d2e83f0eb0a99b4392c60caaa971a24d143bee84 onto dev.
 ### coord · 2026-10-16T03:53:39.211Z
 
 Batch coverage (rule 6): merged as d2e83f0e at 2911f236 without its own Neovim phase, under the Coordinator's decision c1e78ce5. Hub evidence: Linux A-3634 (e3d5c23d at 50d7aa4c, known T-556 only) and A-3667 (d4f190d0 at 2911f236, known T-509 only). The heads differ only by shared picks, and the six own cases were 5/5 both times. The Neovim phase is owed by the next integrated dev cover, before any hub restart on this code.
+
+### coord · 2026-10-16T04:51:53.713Z
+
+Batch coverage settled: integrated cover 2384143e at dev eee3fd1d (droplet, full) is green, hub 1858 pass / 0 fail, Neovim 390 pass / 0 fail, finished 04:51:06Z. This is the Neovim phase owed at merge.

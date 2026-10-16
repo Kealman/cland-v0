@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-345
 branch: null
 created: 2026-10-14T16:43:04.090Z
-updated: 2026-10-16T00:48:19.233Z
+updated: 2026-10-16T04:36:49.589Z
 ---
 
 ## Summary
@@ -282,3 +282,11 @@ Criteria: C2 and C5 passed. Failed/unverified C1 (L10 and D2–D3), C3 (D4 and L
 Verdict note: A-3508, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3508-e-423-qa-verdict-table-lease-accounting-and-findings-qa-2026-10-16-27-15.md.
 
 Criteria: C1 failed (L10 FAIL: rule retirement rewrites original origin (T-550); D2–D3 recorder BLOCKED (T-551).), C3 failed (D4 recorder BLOCKED (T-551); L25 INCONCLUSIVE due premature idle observation, later clause confirmed.), C4 failed (D2–D3 headless cases BLOCKED by capture-name contract (T-551).), C6 failed (D4 BLOCKED (T-551); L31/L32 ready-row observation INCONCLUSIVE from brief planting limitation.), C7 failed (D5 headless follows case BLOCKED by recorder contract (T-551); local follows and merge checks passed.), C8 failed (D18 FAIL: demo stop refused deletion due lease identity mismatch (T-553); eventual release confirmed.).
+
+### hub · 2026-10-16T04:31:27.214Z
+
+demo 7dc75f63-ff1f-4589-ba91-725858b99a0c created: droplet cland-v0-7dc75f63, commit eee3fd1d5f41a64b5e94d66b76ae1f484bd57ddb, deadline 2026-10-16T05:20:22.889Z.
+
+### hub · 2026-10-16T04:36:49.589Z
+
+demo 7dc75f63-ff1f-4589-ba91-725858b99a0c destroyed: lifetime 299835 ms; cost $0.0208.
