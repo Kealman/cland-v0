@@ -3,7 +3,7 @@ id: T-633
 kind: task
 title: cland config set writes one value of config.toml and refuses what the hub cannot read
 state: open
-status: review
+status: in progress
 size: M
 criterion_seq: 7
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-390
 branch: t/T-633-cland-config-set-writes-one-value-of
 created: 2026-10-16T16:04:12.209Z
-updated: 2026-10-16T16:17:23.555Z
+updated: 2026-10-16T17:38:14.666Z
 ---
 
 ## Summary
@@ -46,6 +46,7 @@ updated: 2026-10-16T16:17:23.555Z
   - verified: rev-31 [reviewer] · run rev-20261016-633-source · 2026-10-16T16:17:23.555Z · commit 7c42367d8f77e16a624f15f6cdaebe060c1aea89
 - [x] C5. The output says whether the value applies at once or at the next hub start, matching what `cland hub reload` applies.
   - done: impl-633 · 2026-10-16T16:12:03.553Z
+  - verified: rev-31 [reviewer] · run rev-20261016-633-final · 2026-10-16T17:37:18.002Z · commit 7c42367d8f77e16a624f15f6cdaebe060c1aea89
 - [x] C6. The human, the Coordinator and an Aide may run it from their shells, while an Implementer, a Reviewer, QA and a Lead are refused (frame-protocol test).
   - done: impl-633 · 2026-10-16T16:12:05.203Z
   - verified: rev-31 [reviewer] · run rev-20261016-633-source · 2026-10-16T16:17:23.555Z · commit 7c42367d8f77e16a624f15f6cdaebe060c1aea89
@@ -77,3 +78,22 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Source clear; Standards0 findings, Spec0 findings. A-3991 records full review. Template-derived keys, strict candidate parser validation/normalized readback, managed template preservation, symlink/stale-source refusal, serialized atomic write and session role checks satisfy source criteria. Shared startup boundaries and actual reload success/refusal determine applies correctly. Independently read Coordinator34a7456d correcting7a6293b0: running hub required, absent hub writes nothing; final new test proves that explicit refusal/unchanged bytes. A-3981/A-3989 report exact-head typecheck, updated8/8, reload4/4 and matching init3/3; shard/ref/diff checks clear. C1/C2/C3/C4/C6/C7 source-verified. C5 final execution mark waits fresh exact-head post-review no-mode gate. No Reviewer edits/tests.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C6 verified, C7 verified.
+
+### impl-633 · 2026-10-16T17:36:59.876Z
+
+Same-head no-mode verification a93e7cd8-9460-4c5d-8e9a-bc7ca0e486f8 passed at 7c42367d8f77e16a624f15f6cdaebe060c1aea89: auto selected full; Linux droplet c-8 lon1, Node v24.21.0, Neovim v0.12.5; exit 0, tests 2349 / pass 2341 / fail 0 / skipped 8. Durable log A-4077: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-4077-suite-a93e7cd8-9460-4c5d-8e9a-bc7ca0e486f8-auto-at-7c42367.log. Reviewer received result directly; final evidence settlement pending. No head changes.
+
+### rev-31 · 2026-10-16T17:37:18.002Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261016-633-final
+commit: 7c42367d8f77e16a624f15f6cdaebe060c1aea89
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear; Standards0/Spec0 findings, A-4078. Same-head post-review Linuxa93e7cd8/A-4077 full exit0:2341pass/0fail/8skip including fullNeovim390pass/3skip. All8 config-set cases5of5, including actual reload-now, startup-restart, saved/not-applied refusal preserving live old state and no-hub no-write clarification. C5 verified; C1/C2/C3/C4/C6/C7 source marks current, allcriteria complete. Origin unchanged. No new gate/exception/per-itemQA needed; lifetime/costunknown. No Reviewer edits/tests.
+
+Criteria: C5 verified.

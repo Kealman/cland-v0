@@ -3,7 +3,7 @@ id: T-608
 kind: task
 title: Rule titles are cut at 80 characters silently and rule.edit cannot change a title
 state: open
-status: in progress
+status: review
 size: XS
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-392
 branch: t/T-608-rule-titles-are-cut-at-80-characters
 created: 2026-10-16T12:50:58.048Z
-updated: 2026-10-16T16:59:01.577Z
+updated: 2026-10-16T17:38:15.387Z
 ---
 
 ## Summary
