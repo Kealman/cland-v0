@@ -2,8 +2,8 @@
 id: T-588
 kind: task
 title: The Implementer clause names the in-process test hub and the startDaemon lifecycle-only line
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 1
 labels:
@@ -16,7 +16,8 @@ blocked_by: []
 topic: topic-370
 branch: t/T-588-the-implementer-clause-names-the-in
 created: 2026-10-16T10:49:49.485Z
-updated: 2026-10-16T11:30:13.632Z
+updated: 2026-10-16T11:31:10.806Z
+closed: 2026-10-16T11:31:10.806Z
 ---
 
 ## Summary
@@ -164,3 +165,7 @@ Findings: Standards0; Spec0. Read-only Reviewer: no edits/test/compiler/binary/p
 Artifact A-3890 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3890-t-588-final-clear-clause-tests-pass-coordinator-accepts-outside-gate-reds.md
 
 Criteria: C1 verified.
+
+### coord · 2026-10-16T11:31:10.806Z
+
+Merged 32b4c62f134cddd060045adea590dda58be81e86 onto dev.
