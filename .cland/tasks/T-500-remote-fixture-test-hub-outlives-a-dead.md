@@ -2,8 +2,8 @@
 id: T-500
 kind: task
 title: remote-fixture test hub outlives a dead or timed-out test (orphan hub serve in remote-run-* dirs)
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-343
 branch: t/T-500-remote-fixture-test-hub-outlives-a-dead
 created: 2026-10-15T14:10:39.101Z
-updated: 2026-10-16T02:50:44.036Z
+updated: 2026-10-16T02:51:09.749Z
+closed: 2026-10-16T02:51:09.749Z
 ---
 
 ## Problem
@@ -208,3 +209,7 @@ C1/C2/C3 refreshed at65cedd22 under unchanged task source plus explicit evidence
 Review artifact A-3622 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3622-t-500-final-merge-delta-clear-at-65cedd22.md
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-16T02:51:09.749Z
+
+Merged 8aff7b26a06b811d12ff28e8b4587672c15c60af onto dev.
