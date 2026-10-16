@@ -2,8 +2,8 @@
 id: T-379
 kind: task
 title: Tracker-only commits on dev must not cancel or invalidate an integrated dev run
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -17,7 +17,8 @@ blocked_by:
 topic: topic-375
 branch: t/T-379-tracker-only-commits-on-dev-must-not
 created: 2026-10-14T08:41:13.625Z
-updated: 2026-10-16T17:10:04.722Z
+updated: 2026-10-16T17:10:48.964Z
+closed: 2026-10-16T17:10:48.964Z
 ---
 
 ## What happened
@@ -158,3 +159,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Merge delta clear; Standards0/Spec0 findings, A-4048. Independently read Coordinatorcb58625d authorizing dev merge, exact union and no new run. Parents621bbf2b+68765997 confirmed. All10 task implementation/test/shard blobs unchanged; README auto-merge preserves canonical inputs/provenance docs. Manifest parsed exact dev277allow entries in order +six unchanged task entries; all other data unchanged, conflict diff insertion only. Exact-head typecheck reportedgreen; ref/diffcheck independentlyclear. C1–C3 continuity atfee0db6b under explicit no-new-run disposition using prior green A-4043/finalA-4044; no exact-merge-head suite claimed. Coordinator next batch cover before restart remains. No Reviewer edits/tests.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-16T17:10:48.964Z
+
+Merged 6123b254e0f3049be89302332b5fccd86b14f80f onto dev.
