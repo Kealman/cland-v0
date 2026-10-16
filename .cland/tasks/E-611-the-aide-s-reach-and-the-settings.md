@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-16T15:34:13.285Z
-updated: 2026-10-16T15:36:05.821Z
+updated: 2026-10-16T16:04:29.444Z
 ---
 
 ## Summary
@@ -86,8 +86,41 @@ In a scratch project, QA asks an Aide to launch a Coordinator, then to stop and 
 - Skills: `plan-epic`, `qa`.
 - GLOSSARY: Aide, Role, Role clause, Crew, Adapter.
 
+## Plan
+
+```yaml
+stages:
+  - name: reach, adapter and settings commands
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-629
+        - T-630
+      - - T-603
+        - T-631
+      - - T-628
+        - T-632
+      - - T-633
+        - T-634
+      - - T-635
+      - - T-608
+  - name: existing projects, new templates and the launcher
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-636
+        - T-637
+      - - T-638
+```
+
 ## Comments
 
 ### human · 2026-10-16T15:36:05.821Z
 
 On the flagged risk (existing roles.toml files list the Aide's tools explicitly and update never rewrites them): the design session's recommendation for the plan is a one-time migration at the first hub start of 0.1.4 that appends the new Aide tools (session.launch, session.stop, session.resume, task.import, push) to an existing [aide.permissions] tools list and reports the change in Agents, so this repository's Aide gets the reach without a hand edit; the fixed boundary in decide() widens accordingly.
+
+### coord · 2026-10-16T16:04:29.444Z
+
+Coordinator decisions on the ticket cut (D51), 2026-10-16: (1) the migration records 'once' as a comment line in roles.toml; (2) it replaces the v0.1.3 Aide clause line ('cannot launch, stop, resume or push') when verbatim; (3) Codex sandbox for the Coordinator and Leads: danger-full-access; T-630 proves the Aide's cland push under its sandbox with a test; (4) fallback harness order Claude Code, Codex, OpenCode, model empty, that harness's default effort; (5) the template is built at init and rebuilt by setup only while unedited (rebuild in E-613); (6) cland models claude-code returns a static alias list labelled static; cache per harness and account for 24 h; (7) cland role launch: human, Coordinator and Aide, not a Lead; needs a running hub; (8) cland config set refuses a config.toml without the managed mark; (9) T-634 stays in E-611; (10) T-638 stays in E-611; (11) T-603 and T-608 have criteria (T-608 keeps the whole title); (12) this repo's Aide gets its reach after T-636 merges, the hub restarts and the Aide is relaunched: on the stage-2 close checklist, before the demo.

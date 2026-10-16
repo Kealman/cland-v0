@@ -3,7 +3,7 @@ id: T-608
 kind: task
 title: Rule titles are cut at 80 characters silently and rule.edit cannot change a title
 state: open
-status: backlog
+status: planned
 size: XS
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-16T12:50:58.048Z
-updated: 2026-10-16T15:53:11.451Z
+updated: 2026-10-16T16:04:29.401Z
 ---
 
 ## Summary

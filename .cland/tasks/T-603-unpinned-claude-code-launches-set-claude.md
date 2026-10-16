@@ -3,7 +3,7 @@ id: T-603
 kind: task
 title: Unpinned Claude Code launches set CLAUDE_CONFIG_DIR=~/.claude explicitly and run on an empty profile (signed out, untrusted)
 state: open
-status: backlog
+status: in progress
 size: S
 criterion_seq: 2
 labels:
@@ -11,10 +11,10 @@ labels:
 assignee: null
 parent: E-611
 blocked_by: []
-topic: null
-branch: null
+topic: topic-387
+branch: t/T-603-unpinned-claude-code-launches-set-claude
 created: 2026-10-16T11:43:33.915Z
-updated: 2026-10-16T15:53:06.036Z
+updated: 2026-10-16T16:05:13.332Z
 ---
 
 ## Summary

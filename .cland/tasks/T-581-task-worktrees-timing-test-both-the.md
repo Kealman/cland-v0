@@ -5,6 +5,7 @@ title: 'task-worktrees timing test: "both the initial snapshot and the post-I/O 
 state: open
 status: in progress
 size: XS
+criterion_seq: 2
 labels:
   - bug
   - hub
@@ -15,14 +16,15 @@ blocked_by: []
 topic: topic-386
 branch: t/T-581-task-worktrees-timing-test-both-the
 created: 2026-10-16T07:01:00.231Z
-updated: 2026-10-16T16:01:22.873Z
+updated: 2026-10-16T16:02:57.201Z
 ---
 
 ## Summary
 In T-470's droplet run 0b939cc1 at 311933f1 (A-3815, lines 4490–4495), hub/test/task-worktrees.test.ts:379, in the case "worktree.list: its work after the Git reads is timed as phase resumed (a slow one is logged once)", failed: "both the initial snapshot and the post-I/O snapshot must run". T-470 doesn't touch worktrees. The file passed 9/9 alone on dev ac20175b on the Mac.
 
 ## Acceptance criteria
-- [ ] C1. Find why one of the two snapshots doesn't run under load (a timer or ordering assumption), fix the test or the timing seam, and record the cause on this item.
+- [x] C1. Find why one of the two snapshots doesn't run under load (a timer or ordering assumption), fix the test or the timing seam, and record the cause on this item.
+  - done: impl-581 · 2026-10-16T16:02:57.201Z
 - [ ] C2. task-worktrees.test.ts passes 10/10 serially as a whole file on the Mac and once on a droplet.
 
 ## Comments

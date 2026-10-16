@@ -3,7 +3,7 @@ id: T-560
 kind: task
 title: "default-subscriptions test: session.launch times out at 5 s in the older pooled Reviewer death case (Linux, loaded)"
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 2
 labels:
@@ -14,16 +14,19 @@ blocked_by: []
 topic: topic-383
 branch: t/T-560-default-subscriptions-test-session
 created: 2026-10-16T01:20:47.649Z
-updated: 2026-10-16T16:01:53.010Z
+updated: 2026-10-16T16:05:08.807Z
 ---
 
 ## Summary
 In T-527's droplet verify 62859e0a at 5b89aa37 (2026-10-16 ~01:14Z; log A-3540, lines 4288–4293), `hub/test/default-subscriptions.test.ts:266`, 'terminal recovery routes an older pooled Reviewer death past its already-dead lead', failed with "no result for session.launch within 5000ms" (harness.ts:493). The verified-stopped-lead variant of the same templated test passed. The run was heavily loaded: the stale manifest made the load gate repeat dozens of tests, fixed later by 2149fe33. So check for recurrence under normal load first.
 
 ## Acceptance criteria
-- [ ] C1. Reproduce under load, or close as a load artefact after two clean runs on heads that contain 2149fe33. If it's real, the case waits on the launch's own completion receipt, not a fixed 5 s frame wait, with every assertion kept.
+- [x] C1. Reproduce under load, or close as a load artefact after two clean runs on heads that contain 2149fe33. If it's real, the case waits on the launch's own completion receipt, not a fixed 5 s frame wait, with every assertion kept.
   - verified: rev-31 [reviewer] · run rev-20261016-560-source · 2026-10-16T16:01:53.010Z · commit a3012566afb121327e616c88a0c579ce9e45f4e9
-- [ ] C2. default-subscriptions.test.ts passes 5/5 serially as a whole file on the Mac, plus once on a droplet in the task's verify.
+  - done: impl-560 · 2026-10-16T16:05:04.115Z
+- [x] C2. default-subscriptions.test.ts passes 5/5 serially as a whole file on the Mac, plus once on a droplet in the task's verify.
+  - done: impl-560 · 2026-10-16T16:05:04.940Z
+  - verified: rev-31 [reviewer] · run rev-20261016-560-final · 2026-10-16T16:05:07.831Z · commit a3012566afb121327e616c88a0c579ce9e45f4e9
 
 ## Comments
 
@@ -49,3 +52,22 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Source clear; Standards 0 findings, Spec 0 findings. A-3954 records the review. The two existing terminal-recovery variants retain every lifecycle and recipient assertion; both Claude setup launches await their own correlated result for testWaitMs(30000), covering the native agents probe's 15000 ms deadline independently from later observations. A-3934 controlled 5200 ms probe barrier reproduces the original 5000 ms receipt failure and passes after the correction; historical native-step attribution remains unknown. A-3944 provides ten Mac whole-file passes (130/130), and A-3945 typecheck evidence. C1 verified; C2 awaits same-head post-review droplet evidence.
 
 Criteria: C1 verified.
+
+### impl-560 · 2026-10-16T16:05:05.490Z
+
+Same-head droplet receipt: a3286ccd-8877-4100-b01f-3e8e40ce38bc, head a3012566afb121327e616c88a0c579ce9e45f4e9, auto/hub-selected exit 0. Linux x64, c-8 lon1, 47/47 tests, zero failures/cancellations/skips, typecheck passed. A-3962 contains all 13 default-subscriptions cases, including both recovery variants passing (6.489 s, 5.731 s), plus hub/Neovim smoke. Droplet lifetime 136 s; cost $0.0094. C2's Mac 10/10 and Linux requirements are now evidenced. Reviewer received the same-head suite result directly; awaiting its final evidence verdict.
+
+### rev-31 · 2026-10-16T16:05:07.831Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261016-560-final
+commit: a3012566afb121327e616c88a0c579ce9e45f4e9
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear; Standards 0 findings, Spec 0 findings. Evidence review A-3963. A-3944 independently parsed ten Mac whole-file runs, each13/13, total130/130. Exact reviewed-head post-source-review Linux a3286ccd/A-3962 exit0: selected hub35/35 including all13 default-subscriptions cases and both terminal-recovery variants; Neovim smoke12/12, total47/47, no failures/skips. Source/head unchanged, origin tip matches. C2 verified; C1 retains rev-20261016-560-source verification. No further run required. Latest item read lacks claimant C1/C2 done marks; claimant should submit those supported marks for ready routing.
+
+Criteria: C2 verified.

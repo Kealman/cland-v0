@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-375
 branch: t/T-379-tracker-only-commits-on-dev-must-not
 created: 2026-10-14T08:41:13.625Z
-updated: 2026-10-16T16:02:06.153Z
+updated: 2026-10-16T16:03:23.761Z
 ---
 
 ## What happened
@@ -30,12 +30,14 @@ A run's identity should follow the tree it verifies, not dev's head: commits tha
 
 ## Acceptance criteria
 
-- [ ] C1. A commit on dev that changes only tracker paths (`.cland/tasks`) or the rulebook (`.cland/RULES.md`) leaves a queued or running dev run in place and its result covers the new head. Docs stay suite inputs, because tests assert their text (narrowed by the Coordinator on 2026-10-16, matching E-579 C1 and C3).
-  - failed: rev-31 [reviewer] · 2026-10-16T15:57:59.113Z · note A metadata-only commit during candidateTree hashing still causes null/changed-candidate cancellation rather than preserving the integrated run.
+- [x] C1. A commit on dev that changes only tracker paths (`.cland/tasks`) or the rulebook (`.cland/RULES.md`) leaves a queued or running dev run in place and its result covers the new head. Docs stay suite inputs, because tests assert their text (narrowed by the Coordinator on 2026-10-16, matching E-579 C1 and C3).
+  - done: impl-379 · 2026-10-16T16:03:23.761Z
 - [x] C2. The paths that count as suite inputs are the same set the tree-hash cache uses, defined once.
   - done: impl-379 · 2026-10-16T15:55:39.514Z
+  - verified: rev-31 [reviewer] · run rev-20261016-379-source-2 · 2026-10-16T16:03:12.625Z · commit 1263d9bba15f2076c5961519acdbe8f1caeddc22
 - [x] C3. The behaviour is covered by a hub test with a fake run.
   - done: impl-379 · 2026-10-16T15:55:40.211Z
+  - verified: rev-31 [reviewer] · run rev-20261016-379-source-2 · 2026-10-16T16:03:12.625Z · commit 1263d9bba15f2076c5961519acdbe8f1caeddc22
 
 ## Comments
 
@@ -69,3 +71,18 @@ Criteria: C1 failed (A metadata-only commit during candidateTree hashing still c
 ### impl-379 · 2026-10-16T16:00:45.317Z
 
 Addressed not-clear source finding rev-20261016-379-source-1 at 1263d9bba15f2076c5961519acdbe8f1caeddc22 (pushed). Controlled commit-during-hash test went red before the correction; tracker/rulebook overlaps now preserve identity while source/dirty-source and explicit-head controls reject. Evidence A-3949: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3949-t-379-review-correction-commit-during-hash-proof.md. Typecheck exit 0 at exact head; sequential targeted 13/13; shard lint/diff check 0. Fresh source review requested before verification.
+
+### rev-31 · 2026-10-16T16:03:12.625Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261016-379-source-2
+commit: 1263d9bba15f2076c5961519acdbe8f1caeddc22
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Corrected source clear; Standards 0 findings, Spec 0 findings. A-3958 records the review. Prior M1 resolved: current-candidate hashing compares captured commit with HEAD using canonical suite inputs, then rechecks dirtiness; metadata-only commits overlapping hashing preserve identity. Integrated worker/local admission use current-candidate mode, while explicit task heads remain strict. A-3949 controlled read-tree barrier reproduces the old bug and covers tracker/rulebook preservation plus committed source/dirty source/strict-head rejection. Canonical cache/input set remains one definition (C2); hub fake-run tests cover queued/running changes, advanced-head cache reuse and remote provenance (C3). Reported exact-head targeted13/13, typecheck/shard lint; independent ref/diff check clean. C2/C3 verified. Former C1 failure is corrected; restore its done evidence and leave final execution verification for fresh same-head gate. No source change permitted without new review.
+
+Criteria: C2 verified, C3 verified.
