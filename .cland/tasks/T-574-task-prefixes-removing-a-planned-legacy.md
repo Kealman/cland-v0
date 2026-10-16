@@ -2,8 +2,8 @@
 id: T-574
 kind: task
 title: task-prefixes "removing a planned legacy epic" test races the plan recompute and fails often on dev
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -17,7 +17,8 @@ blocked_by: []
 topic: topic-358
 branch: t/T-574-task-prefixes-removing-a-planned-legacy
 created: 2026-10-16T05:25:32.740Z
-updated: 2026-10-16T05:34:30.143Z
+updated: 2026-10-16T05:34:46.081Z
+closed: 2026-10-16T05:34:46.081Z
 ---
 
 ## Summary
@@ -110,3 +111,7 @@ Final evidence clear; C1/C2 refreshed at this exact head. No extra verification/
 Artifact A-3755 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3755-t-574-final-clear-10-mac-files-and-green-linux-publication-on-merge.md
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-16T05:34:46.081Z
+
+Merged 52d346f3328ebde729c1145fe541e10fd489b7f1 onto dev.
