@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-376
 branch: t/T-575-in-process-hub-part-3-bring-daemon
 created: 2026-10-16T06:12:55.788Z
-updated: 2026-10-16T16:57:51.422Z
+updated: 2026-10-16T17:22:57.839Z
 ---
 
 ## Summary
@@ -108,3 +108,7 @@ C1 remains verified. C2 remains unverified and not done: the unchanged live crit
 Review artifact A-4040.
 
 Criteria: C1 verified.
+
+### impl-575 · 2026-10-16T17:22:57.839Z
+
+C2 evidence A-4056 records 493 canonical starts / 494 including copied coverage fixture at clean a8ddbb8c, with exit 1 on the unrelated known T-555/T-657 suite-timeouts case. Durations refresh is confirmed: 60517392 (A-3877/f6045f83) is ancestral; only later manifest change is T-604's allowance rename 098e6f5a. Audit found the 38/38 block is hub free, not Neovim; the hub machine failure short-circuited run-suite.ts:189 before the full Neovim phase. No Neovim phase/duration receipt and all nvim table rows zero. Reported to Coordinator and Reviewer; requested missing recorded phase/accepted combined measurement or fresh complete census. C2 remains pending; no false full-corpus count/green census claim. Source/task-gate head unchanged; A-4039/A-4040 remain green accepted full Linux gate.

@@ -3,7 +3,7 @@ id: T-628
 kind: task
 title: A roles.toml editor sets one key of one role table and keeps the rest of the file
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 6
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-389
 branch: t/T-628-a-roles-toml-editor-sets-one-key-of-one
 created: 2026-10-16T16:04:11.537Z
-updated: 2026-10-16T16:37:29.884Z
+updated: 2026-10-16T17:26:30.738Z
 ---
 
 ## Summary
@@ -36,17 +36,29 @@ A write helper replaces the file atomically and refuses when the file changed be
 
 ## Acceptance criteria
 
-- [ ] C1. Setting an existing `[<role>.launch]` key replaces its line in place and leaves every other byte of the file, comments included, unchanged (unit test).
+- [x] C1. Setting an existing `[<role>.launch]` key replaces its line in place and leaves every other byte of the file, comments included, unchanged (unit test).
   - verified: rev-31 [reviewer] · run rev-20261016-628-source · 2026-10-16T16:11:39.359Z · commit cc01903bdcee75ee5b9b16f8380693604554edf7
-- [ ] C2. A key absent from the table is inserted inside that table, and a missing `[<role>.launch]` table is created after the role's other tables (unit tests for both).
+  - done: impl-628 · 2026-10-16T17:23:00.015Z
+  - verified: rev-31 [reviewer] · run rev-20261016-628-merge-source · 2026-10-16T17:26:30.738Z · commit 0c37c3debaf3cdb0e612c5029bdb94316524c430
+- [x] C2. A key absent from the table is inserted inside that table, and a missing `[<role>.launch]` table is created after the role's other tables (unit tests for both).
   - verified: rev-31 [reviewer] · run rev-20261016-628-source · 2026-10-16T16:11:39.360Z · commit cc01903bdcee75ee5b9b16f8380693604554edf7
-- [ ] C3. A line beginning with `[` inside a role's multi-line clause is never taken for a table header (unit test with such a clause).
+  - done: impl-628 · 2026-10-16T17:23:00.636Z
+  - verified: rev-31 [reviewer] · run rev-20261016-628-merge-source · 2026-10-16T17:26:30.738Z · commit 0c37c3debaf3cdb0e612c5029bdb94316524c430
+- [x] C3. A line beginning with `[` inside a role's multi-line clause is never taken for a table header (unit test with such a clause).
   - verified: rev-31 [reviewer] · run rev-20261016-628-source · 2026-10-16T16:11:39.360Z · commit cc01903bdcee75ee5b9b16f8380693604554edf7
-- [ ] C4. `[<role>.permissions] tools` gains grants while its other grants keep their order (unit test).
+  - done: impl-628 · 2026-10-16T17:23:00.939Z
+  - verified: rev-31 [reviewer] · run rev-20261016-628-merge-source · 2026-10-16T17:26:30.738Z · commit 0c37c3debaf3cdb0e612c5029bdb94316524c430
+- [x] C4. `[<role>.permissions] tools` gains grants while its other grants keep their order (unit test).
   - verified: rev-31 [reviewer] · run rev-20261016-628-source · 2026-10-16T16:11:39.360Z · commit cc01903bdcee75ee5b9b16f8380693604554edf7
-- [ ] C5. A result the hub's roles parser refuses is never returned, and the error is the parser's message naming the key (unit tests with an unknown harness and an unknown grant).
+  - done: impl-628 · 2026-10-16T17:23:01.347Z
+  - verified: rev-31 [reviewer] · run rev-20261016-628-merge-source · 2026-10-16T17:26:30.738Z · commit 0c37c3debaf3cdb0e612c5029bdb94316524c430
+- [x] C5. A result the hub's roles parser refuses is never returned, and the error is the parser's message naming the key (unit tests with an unknown harness and an unknown grant).
   - verified: rev-31 [reviewer] · run rev-20261016-628-source · 2026-10-16T16:11:39.360Z · commit cc01903bdcee75ee5b9b16f8380693604554edf7
-- [ ] C6. The write helper replaces the file atomically and refuses with "changed while setting it; retry" when the file changed after it was read (unit test).
+  - done: impl-628 · 2026-10-16T17:23:01.657Z
+  - verified: rev-31 [reviewer] · run rev-20261016-628-merge-source · 2026-10-16T17:26:30.738Z · commit 0c37c3debaf3cdb0e612c5029bdb94316524c430
+- [x] C6. The write helper replaces the file atomically and refuses with "changed while setting it; retry" when the file changed after it was read (unit test).
+  - verified: rev-31 [reviewer] · run rev-20261016-628-final · 2026-10-16T17:22:38.874Z · commit cc01903bdcee75ee5b9b16f8380693604554edf7
+  - done: impl-628 · 2026-10-16T17:23:02.053Z
 
 ## Comments
 
@@ -85,3 +97,33 @@ findings: [{"severity":"medium","text":"External run-timeout watchdog gate fails
 finding_counts: {"high":0,"medium":2,"low":0}
 
 Evidence not clear, A-4022. Same-head A-4021 is local/darwin fallback exit1,1954pass/2fail/0skip, peakload26.88, no Neovim phase. All8 own roles-editor cases pass ordinarily plus40of40 load reps; source C1–C5 marks current. C6 final execution waits clear gate/disposition. Two external failures: demo.ts71 false start/machine command time bound (T-569 family needs disposition), and cleanupwarning15000ms at suite-timeouts.ts175. Confirmed exact tree already includes separate30s worker-result wait from T-555, so warning recurrence is post-fix; proposed Bugs/S regression-ofT-555. No task criterion failed, no implicit known-flake exception/retry. No Reviewer edits/tests.
+
+### rev-31 · 2026-10-16T17:22:38.874Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261016-628-final
+commit: cc01903bdcee75ee5b9b16f8380693604554edf7
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear; Standards0/Spec0 findings, A-4059. Authorized same-head Linux9939d488/A-4058 exit0:1963pass/0fail/5skip including Neovimsmoke12of12. All8 own editor tests pass ordinary+5of5 (40reps), atomic writer28.408ms with stale-source/no-temp controls. C6 verified; C1–C5 source marks current. Coordinatora5f2a760 directed settlement on this green retry; earlier localA-4021 remains historicalexit1, no failed-gate exception required. Origin unchanged; lifetime/costunknown. Latest read lacks claimant done marks; submit supported C1–C6done for ready routing. No Reviewer edits/tests.
+
+Criteria: C6 verified.
+
+### rev-31 · 2026-10-16T17:26:30.738Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261016-628-merge-source
+commit: 0c37c3debaf3cdb0e612c5029bdb94316524c430
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Merge source delta clear; Standards0/Spec0 findings, A-4069. Parentscc01903b+245857c7 confirmed. Independent parsed shard union equals all dev entries plus roles-editor:machine; both candidate files retained. Editor/parser/test blobs byte-identical to prior source/finalclear; net taskdiffsame4files, no assertion/bound changes. Exact-head shards/typecheck reportedgreen; origin/diffcheck confirmed. Independently read Coordinator008f319a requiring this merge, source review then fresh exact-head droplet. C1–C5 source verification current; C6 execution awaits that new gate, prior A-4058 support only.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.

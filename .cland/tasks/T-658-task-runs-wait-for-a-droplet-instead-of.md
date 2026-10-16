@@ -5,6 +5,7 @@ title: Task runs wait for a droplet instead of falling back to the Mac
 state: open
 status: review
 size: S
+rank: 4419
 criterion_seq: 3
 labels:
   - v0.1.4
@@ -17,7 +18,7 @@ blocked_by: []
 topic: topic-400
 branch: t/T-658-task-runs-wait-for-a-droplet-instead-of
 created: 2026-10-16T16:29:56.442Z
-updated: 2026-10-16T16:43:37.746Z
+updated: 2026-10-16T17:24:39.878Z
 ---
 
 ## Summary

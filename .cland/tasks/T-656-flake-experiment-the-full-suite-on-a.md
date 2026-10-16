@@ -5,6 +5,7 @@ title: "Flake experiment: the full suite on a quiet droplet at workers = 4, thre
 state: open
 status: in progress
 size: S
+rank: 4438
 labels:
   - v0.1.4
   - flaky
@@ -15,7 +16,7 @@ blocked_by: []
 topic: topic-398
 branch: t/T-656-flake-experiment-the-full-suite-on-a
 created: 2026-10-16T16:29:55.961Z
-updated: 2026-10-16T16:34:10.502Z
+updated: 2026-10-16T17:24:42.986Z
 ---
 
 ## Summary

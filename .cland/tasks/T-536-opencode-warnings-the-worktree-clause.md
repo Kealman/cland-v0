@@ -3,7 +3,7 @@ id: T-536
 kind: task
 title: OpenCode warnings, the worktree clause, and the codemode and instructions experiments
 state: open
-status: review
+status: in progress
 size: M
 criterion_seq: 4
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-379
 branch: t/T-536-opencode-warnings-the-worktree-clause
 created: 2026-10-15T20:59:19.741Z
-updated: 2026-10-16T16:56:01.949Z
+updated: 2026-10-16T17:27:12.214Z
 ---
 
 ## Summary
@@ -133,3 +133,20 @@ Criteria: C2 verified, C3 verified, C4 verified.
 ### impl-536 · 2026-10-16T16:56:01.949Z
 
 Source review clear rev-20261016-536-source-3 at 4f51454ed441f9c152fd2efe3f718544e1553ae7 received; working tree clean and HEAD confirmed unchanged. Submitted fresh no-mode verification with explicit droplet executor as 007fa789-775e-4df7-9838-105fe5ed17c2, queued in topic-379 with reports to reviewer and impl-536. Waiting for same-head result; no further source changes.
+
+### impl-536 · 2026-10-16T17:27:03.839Z
+
+No-mode droplet gate 007fa789 / A-4068 at exact source-reviewed 4f51454ed441f9c152fd2efe3f718544e1553ae7 failed only 3 tests outside the diff. Both clause-budget cases passed. Failure 1: known T-585 Claude discovery/watch case, this time 'the next launch does not bypass the schedule' (PID vs null, claude-code-adapter.test.ts:349). Failures 2/3: T-569 demo run-timeout and machine-lifetime watchdog cases, 'demo deadline reached during delivery' / 'machine command failed or exceeded its time bound' (demo.test.ts:71). T-569 already records the shared-defect/quarantine candidate. Reported with run id to lead T-536; holding diagnosis and awaiting posted shared fix or unchanged-head retry direction. No source changes or local test runs. Linux c-8 lon1, lifetime 1784s, $0.1239, peak 1m load 14.30; 1953 tests, 1945 pass, 3 fail, 5 skip. Durable log: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-4068-suite-007fa789-775e-4df7-9838-105fe5ed17c2-auto-at-4f51454.log.
+
+### rev-31 · 2026-10-16T17:27:12.214Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261016-536-evidence-2
+commit: 4f51454ed441f9c152fd2efe3f718544e1553ae7
+scope: evidence
+findings: [{"severity":"medium","text":"External next-launch scheduling assertion returns PID21953 instead ofnull; same T-585 case but a different assertion from its recorded2vs1 count failure, requiring classification.","file":"hub/test/claude-code-adapter.test.ts","line":349},{"severity":"medium","text":"External run-timeout and machine-lifetime demo.start deadline failures keep gate exit1 (T-569 family); no item-specific gate acceptance.","file":"hub/test/demo.test.ts","line":71}]
+finding_counts: {"high":0,"medium":2,"low":0}
+
+Evidence not clear, A-4070. Same-head Linux007fa789/A-4068:1945pass/3fail/5skip, exit1, no Neovimsmoke. Both clause snapshots now pass (4.084/3.852s); prior C2budget finding resolved. Allfive new warning/instruction identities5of5, C2/C3/C4 source markscurrent; C1 pending final disposition. External failures are Claude schedule349actualPIDvsnull (T-585samecase/differentassertion) and both demo deadlines71(T-569family). Bugs/S aside for lead classification; no task criterion failed, no scope expansion/retry/known-flake exception assumed. Lifetime1784s/cost0.1239perreceipt. No Reviewer edits/tests.

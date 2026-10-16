@@ -5,6 +5,7 @@ title: "Quarantine manifest: a known flake still runs and is reported, but no lo
 state: open
 status: review
 size: M
+rank: 4410
 criterion_seq: 5
 labels:
   - v0.1.4
@@ -17,7 +18,7 @@ blocked_by: []
 topic: topic-399
 branch: t/T-657-quarantine-manifest-a-known-flake-still
 created: 2026-10-16T16:29:56.201Z
-updated: 2026-10-16T17:10:07.689Z
+updated: 2026-10-16T17:27:36.171Z
 ---
 
 ## Summary
@@ -68,3 +69,11 @@ Coordinator, quarantine candidates gathered while T-657 is built (each needs two
 ### coord · 2026-10-16T17:10:07.689Z
 
 Quarantine candidate (5): suite.test.ts 'suite worker SIGKILL produces one crash result with its log', a null pid / ERR_INVALID_ARG_TYPE, the T-526 family (job.pid read right after launch is still null). One receipt: T-635 run 8130ab79 (A-4045).
+
+### coord · 2026-10-16T17:27:36.171Z
+
+Coordinator, 17:27Z, receipts for the quarantine candidates.
+- Candidate (1): demo.test.ts 'demo run timeout destroys the machine through the watchdog even with the hub gone' has a third receipt, 007fa789 (A-4068, T-536).
+- New candidate (6): its sibling 'demo machine lifetime destroys the machine through the watchdog even with the hub gone', owner T-569, has two receipts, 9955455a (A-3851) and 007fa789 (A-4068).
+- New candidate (7): claude-code-adapter.test.ts 'Claude discovery and watch share the default 30-second schedule, and stop works before the next pid arrives', owner T-585, has two receipts, integrated cover 0000625b and 007fa789 (A-4068).
+T-569 and T-585 joined E-482 and were launched at 17:27Z (impl-569, impl-585). Quarantine entries are a stop-gap until those fixes land.

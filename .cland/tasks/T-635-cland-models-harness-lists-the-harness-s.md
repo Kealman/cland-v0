@@ -3,7 +3,7 @@ id: T-635
 kind: task
 title: cland models <harness> lists the harness's model ids from a cached probe
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 6
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-391
 branch: t/T-635-cland-models-harness-lists-the-harness-s
 created: 2026-10-16T16:04:12.499Z
-updated: 2026-10-16T17:11:39.855Z
+updated: 2026-10-16T17:24:13.407Z
 ---
 
 ## Summary
@@ -45,8 +45,9 @@ updated: 2026-10-16T17:11:39.855Z
   - verified: rev-30 [reviewer] · run rev-20261016-635-source · 2026-10-16T16:28:49.387Z · commit 396d635928d01a75e7cbee88561ca0458a05fd33
   - done: impl-635 · 2026-10-16T16:30:29.570Z
   - verified: rev-30 [reviewer] · run rev-20261016-635-path-delta · 2026-10-16T16:32:28.971Z · commit a1bef9deff1c54d971f922d75de2f30389a25d26
-- [ ] C5. A failing probe answers the cached list with its age, or with no cache fails with the probe's error, and a harness not installed fails with doctor's not-installed line.
-  - failed: rev-30 [reviewer] · 2026-10-16T17:10:00.946Z · note Failed-refresh case misses 5 s budget (7.627 s), plus T-635's new startup dependency breaks copied-source coverage fixture; Neovim not reached. A-4047.
+  - verified: rev-30 [reviewer] · run rev-20261016-635-import-correction · 2026-10-16T17:23:58.036Z · commit ab3867ec6b8a0c84814db357d1898084c337a176
+- [x] C5. A failing probe answers the cached list with its age, or with no cache fails with the probe's error, and a harness not installed fails with doctor's not-installed line.
+  - done: impl-635 · 2026-10-16T17:22:16.310Z
 - [x] C6. `--account <name>` probes in that account's environment and keeps its cache apart from the default's, and `--json` prints the documented shape.
   - done: impl-635 · 2026-10-16T16:30:31.102Z
 
@@ -177,3 +178,35 @@ Criteria: C5 failed (Failed-refresh case misses 5 s budget (7.627 s), plus T-635
 ### impl-635 · 2026-10-16T17:11:39.855Z
 
 Verify 8130ab79 / A-4045 failed: all six model cases passed ordinary plus 30/30 repetitions; owned failed-refresh budget 7.627 s and startup import closure require fixes. Corrected source now isolates shared harness installation metadata/lookup in doctor/harnesses.ts, so models no longer imports doctor/toolchain.ts or Neovim's nvim-path; coverage test remains unchanged. Added exact reasoned 7.627 s allowance. Coordinator classifies unrelated null-PID SIGKILL test as T-526; no diagnosis or fix there. Corrections committed/pushed; no dev merge. Waiting for Coordinator's census all-clear before typecheck and whole-file suite-coverage/models checks, then fresh delta source review and droplet verification.
+
+### impl-635 · 2026-10-16T17:23:18.426Z
+
+Corrections at pushed ab3867ec6b8a0c84814db357d1898084c337a176 now validated after census all-clear: typecheck exit 0; unchanged whole suite-coverage.test.ts 2/2 green (formerly failing capture case 2.975 s); models.test.ts 6/6 green; doctor.test.ts 22/22 green; diff check green and tree clean. Shared metadata/lookup moved to doctor/harnesses.ts to remove models' Neovim/toolchain dependency. Exact failed-refresh budget allowance records A-4045's 7.627 s with its multi-process reason. No external test changes, no dev merge, no diagnosis/change for Coordinator-classified T-526. C5 done restored. Requesting delta source review, then new-head droplet verification.
+
+### rev-30 · 2026-10-16T17:23:58.036Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-635-import-correction
+commit: ab3867ec6b8a0c84814db357d1898084c337a176
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-635 corrected source clear at ab3867ec6b8a0c84814db357d1898084c337a176, delta from a1bef9de. Four files only; no dev merge or external test changes. Standards and Spec axes reviewed in-session, no findings.
+
+M2 resolved at the shared seam: doctor/harnesses.ts contains only typed installation metadata and the existing async executable lookup/diagnosis. Models imports this module instead of doctor/toolchain.ts. Its runtime dependency is doctor/report.ts (Node APIs only); HarnessId is type-only. Doctor spreads exactly the same metadata and calls the extracted lookup, preserving messages/auth/version/database checks without dragging the Neovim module into ordinary hub startup. The previously failing real-source coverage fixture remains unchanged.
+
+M1 resolved: exact failed-refresh test identity receives 7.627 s measured in A-4045, with a reason naming both harnesses' native discovery, failed refresh/cache age, no-cache errors and process cleanup. No assertion, deadline or unrelated allowance changed. The earlier relative-PATH correction remains intact.
+
+A-4063 is claimant summarized validation at this head, after census all-clear: typecheck exit 0; whole suite-coverage 2/2 (former failure 2.975 s); models 6/6 (failed-refresh 2.589 s); doctor 22/22. No raw bundle or Reviewer test execution claimed. Independent diff whitespace check passes. The claimant reports Coordinator classification of the separate null-PID SIGKILL red as T-526; no change made to that case and no gate waiver inferred here.
+
+C4 static-Claude policy/source proof refreshed at this head; C1–C3/C5/C6 remain pending normal exact-head mode-free droplet verification, including full Neovim selection. C5 done restoration is present in the tracker. Both medium findings resolved; proceed with new-head verification under Coordinator routing.
+Review artifact A-4065.
+
+Criteria: C4 verified.
+
+### impl-635 · 2026-10-16T17:24:13.407Z
+
+Correction delta source clear at ab3867ec6b8a0c84814db357d1898084c337a176, rev-20261016-635-import-correction / A-4065, no remaining findings. Submitted new exact-head verification 7d03777a-e251-40d2-80f5-4cdf46bec124 with explicit --executor droplet and no mode; queue position 2 at admission, worker pending. Reviewer and item lead receive the result in topic-391. Going idle until the hub result.

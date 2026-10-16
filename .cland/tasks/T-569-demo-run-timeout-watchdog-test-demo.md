@@ -3,19 +3,21 @@ id: T-569
 kind: task
 title: 'demo run-timeout watchdog test: "demo deadline reached during delivery" under a 2500 ms run timeout on a loaded droplet'
 state: open
-status: backlog
+status: in progress
 size: S
+rank: 4442
 labels:
   - bug
   - hub
   - flaky
+  - v0.1.4
 assignee: null
-parent: C-325
+parent: E-482
 blocked_by: []
-topic: null
-branch: null
+topic: topic-402
+branch: t/T-569-demo-run-timeout-watchdog-test-demo
 created: 2026-10-16T04:18:06.312Z
-updated: 2026-10-16T16:37:57.471Z
+updated: 2026-10-16T17:27:36.385Z
 ---
 
 ## Summary

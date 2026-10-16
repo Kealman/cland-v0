@@ -3,19 +3,21 @@ id: T-585
 kind: task
 title: claude-code-adapter "discovery and watch share the default 30-second schedule" counts 2 calls instead of 1 on a loaded droplet
 state: open
-status: backlog
+status: in progress
 size: S
+rank: 4445
 labels:
   - bug
   - hub
   - flaky
+  - v0.1.4
 assignee: null
-parent: C-325
+parent: E-482
 blocked_by: []
-topic: null
-branch: null
+topic: topic-403
+branch: t/T-585-claude-code-adapter-discovery-and-watch
 created: 2026-10-16T08:50:52.161Z
-updated: 2026-10-16T08:50:52.161Z
+updated: 2026-10-16T17:27:43.877Z
 ---
 
 ## Summary
