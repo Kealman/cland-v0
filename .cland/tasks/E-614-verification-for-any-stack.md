@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-16T15:34:18.662Z
-updated: 2026-10-16T15:34:25.993Z
+updated: 2026-10-16T16:36:06.234Z
 ---
 
 ## Summary
@@ -78,3 +78,34 @@ In a scratch project in a stack other than Node, QA sets `prepare`, `check` and 
 - Code: `hub/src/hub/suite-worker.ts`, `hub/src/hub/suites.ts` (the host gate), `hub/src/executor/droplet/prepare.ts`, `hub/src/executor/droplet/run.ts`, `hub/src/executor/local.ts`, `hub/src/suite-coverage.ts`, `hub/src/suite-selection.ts`, `hub/src/init/config.ts`, `hub/src/hub/configuration.ts`.
 - Docs: `docs/agents/tests.md`, `hub/README.md`.
 - GLOSSARY: Executor, Lease.
+
+## Plan
+
+```yaml
+stages:
+  - name: commands, keys and the local run
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-663
+        - T-666
+        - T-667
+        - T-668
+      - - T-664
+        - T-665
+      - - T-669
+  - name: the droplet's prepare and the docs
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-670
+        - T-671
+```
+
+## Comments
+
+### coord · 2026-10-16T16:36:06.234Z
+
+Coordinator decisions on the ticket cut (D51), 2026-10-16, all as the drafter recommended: (1) the commands come from the candidate worktree's config.toml, else the hub root's; (2) test is required, and verify refuses without it, naming the cland config set line; check and prepare are optional; no implicit npm default; (3) a local run never runs prepare; (4) prepare runs at every droplet delivery, idempotently, with CLAND_PREPARE_KEY so it may skip work; (5) 'cland's own suite' means the candidate carries hub/test/run-suite.ts; (6) one test line for every mode, with mode and shard in CLAND_SUITE_SELECTION; (7) prepare runs as runner without root, other toolchains install at user level (root for apt: a later release); (8) T-664 stores a string key's argument verbatim, confirmed against T-633 at merge; (9) E-616's stack-step ticket gets a criterion to record prepare/check/test through cland config set, with no npm wording; (10) launch waits for D52's flake measures (T-657, T-658), not for E-611's close; (11) cland verify hub/nvim in another project is refused with the reason; (12) commands run under /bin/sh -c (POSIX sh); (13) QA's toy stack is python3 (compileall, unittest), with no test depending on prepare.

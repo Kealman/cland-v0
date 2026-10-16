@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-375
 branch: t/T-379-tracker-only-commits-on-dev-must-not
 created: 2026-10-14T08:41:13.625Z
-updated: 2026-10-16T16:03:23.761Z
+updated: 2026-10-16T16:35:40.667Z
 ---
 
 ## What happened
@@ -31,13 +31,15 @@ A run's identity should follow the tree it verifies, not dev's head: commits tha
 ## Acceptance criteria
 
 - [x] C1. A commit on dev that changes only tracker paths (`.cland/tasks`) or the rulebook (`.cland/RULES.md`) leaves a queued or running dev run in place and its result covers the new head. Docs stay suite inputs, because tests assert their text (narrowed by the Coordinator on 2026-10-16, matching E-579 C1 and C3).
-  - done: impl-379 · 2026-10-16T16:03:23.761Z
+  - done: impl-379 · 2026-10-16T16:35:40.667Z
 - [x] C2. The paths that count as suite inputs are the same set the tree-hash cache uses, defined once.
   - done: impl-379 · 2026-10-16T15:55:39.514Z
   - verified: rev-31 [reviewer] · run rev-20261016-379-source-2 · 2026-10-16T16:03:12.625Z · commit 1263d9bba15f2076c5961519acdbe8f1caeddc22
+  - verified: rev-31 [reviewer] · run rev-20261016-379-delta-1 · 2026-10-16T16:35:27.177Z · commit 621bbf2bae30c0d1e41cc9bb0f29afe52a880391
 - [x] C3. The behaviour is covered by a hub test with a fake run.
   - done: impl-379 · 2026-10-16T15:55:40.211Z
   - verified: rev-31 [reviewer] · run rev-20261016-379-source-2 · 2026-10-16T16:03:12.625Z · commit 1263d9bba15f2076c5961519acdbe8f1caeddc22
+  - verified: rev-31 [reviewer] · run rev-20261016-379-delta-1 · 2026-10-16T16:35:27.177Z · commit 621bbf2bae30c0d1e41cc9bb0f29afe52a880391
 
 ## Comments
 
@@ -84,5 +86,37 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Corrected source clear; Standards 0 findings, Spec 0 findings. A-3958 records the review. Prior M1 resolved: current-candidate hashing compares captured commit with HEAD using canonical suite inputs, then rechecks dirtiness; metadata-only commits overlapping hashing preserve identity. Integrated worker/local admission use current-candidate mode, while explicit task heads remain strict. A-3949 controlled read-tree barrier reproduces the old bug and covers tracker/rulebook preservation plus committed source/dirty source/strict-head rejection. Canonical cache/input set remains one definition (C2); hub fake-run tests cover queued/running changes, advanced-head cache reuse and remote provenance (C3). Reported exact-head targeted13/13, typecheck/shard lint; independent ref/diff check clean. C2/C3 verified. Former C1 failure is corrected; restore its done evidence and leave final execution verification for fresh same-head gate. No source change permitted without new review.
+
+Criteria: C2 verified, C3 verified.
+
+### rev-31 · 2026-10-16T16:34:36.269Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261016-379-evidence-1
+commit: 1263d9bba15f2076c5961519acdbe8f1caeddc22
+scope: evidence
+findings: [{"severity":"medium","text":"Missing measured allowances for new running tracker/rulebook/source-rejection cases:5.714s,6.789s,5.022s each exceed the5s new-test budget, making the task gate exit1.","file":"hub/test/durations.json"}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Evidence not clear; A-4014. Exact reviewed-head Linuxe30632fd/A-4013 has1955pass/0ordinaryfail/5skip and all12 new identities5of5, but exit1 from three task-owned duration budget omissions (suite-candidate running tracker5.714s, rulebook6.789s, source-rejection5.022s). Neovim smoke not reached. Add measured reasoned allowances retaining assertions/bounds, request new-head source review before verification. C2/C3 source marks remain current, C1 final mark pending; no behavior criterion failed. No implicit exception or fabricated lifetime/cost (both unknown).
+
+### impl-379 · 2026-10-16T16:35:07.908Z
+
+A-4013 Linux run had 1955 pass, 0 ordinary failures, 5 skipped and all 12 own new identities 5/5; exit 1 was three missing measured duration allowances. Pushed manifest-only correction 621bbf2bae30c0d1e41cc9bb0f29afe52a880391; no assertions, bounds or source changed. Typecheck exit 0 at new head, shard lint/diff check 0. Evidence A-4015: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-4015-t-379-linux-duration-allowance-correction.md. Fresh source review requested before explicit-droplet no-mode retry.
+
+### rev-31 · 2026-10-16T16:35:27.177Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261016-379-delta-1
+commit: 621bbf2bae30c0d1e41cc9bb0f29afe52a880391
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source delta clear, A-4016; Standards0/Spec0 findings. Only three measured A-4013 Linux allowance entries added (5.713784751/6.789143906/5.021503454s), each concrete fixture-lifecycle reason and own5of5 load evidence. Independent parsed comparison preserves every prior allow value and all other manifest data. No dev merge/source/test/assertion/bound change; A-3958 corrected design remains. Exact-head typecheck/shards reportedgreen; origin/diffcheck independently confirmed. C2/C3 source verification current at621bbf2b. C1 awaits fresh same-head gate; historical exit1 is not retroactively green.
 
 Criteria: C2 verified, C3 verified.

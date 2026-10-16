@@ -3,7 +3,7 @@ id: T-603
 kind: task
 title: Unpinned Claude Code launches set CLAUDE_CONFIG_DIR=~/.claude explicitly and run on an empty profile (signed out, untrusted)
 state: open
-status: review
+status: in progress
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-387
 branch: t/T-603-unpinned-claude-code-launches-set-claude
 created: 2026-10-16T11:43:33.915Z
-updated: 2026-10-16T16:11:14.629Z
+updated: 2026-10-16T16:36:01.974Z
 ---
 
 ## Summary
@@ -39,8 +39,8 @@ Found by the design session's research Q-593 (harness setup facts) under the map
 
 ## Acceptance criteria
 
-- [x] C1. A Claude Code launch and resume from a hub whose environment has no CLAUDE_CONFIG_DIR spawn claude without the variable, and an account-pinned launch still gets its directory, proved by an adapter test against the fake harness.
-  - done: impl-603 · 2026-10-16T16:09:19.174Z
+- [ ] C1. A Claude Code launch and resume from a hub whose environment has no CLAUDE_CONFIG_DIR spawn claude without the variable, and an account-pinned launch still gets its directory, proved by an adapter test against the fake harness.
+  - failed: rev-30 [reviewer] · 2026-10-16T16:36:01.974Z · note Own new unpinned/pathless regressions exceed 5 s hard budgets (5.712/5.627 s), making exact-head A-4017 exit 1.
 - [x] C2. The signed-out remedy text and the attach command name CLAUDE_CONFIG_DIR only when it is actually set, and the hub's per-directory bookkeeping is unchanged.
   - done: impl-603 · 2026-10-16T16:09:19.757Z
   - verified: rev-30 [reviewer] · run rev-20261016-603-source · 2026-10-16T16:11:14.629Z · commit 60fe117c2d776161877d9e72dd36a337238df5bb
@@ -95,3 +95,33 @@ Standards 0 findings; Spec 0 findings.
 Artifact: A-3975 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3975-t-603-source-clear-preserve-implicit-claude-profile-selection.md
 
 Criteria: C2 verified.
+
+### rev-30 · 2026-10-16T16:36:01.974Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261016-603-budget-red
+commit: 60fe117c2d776161877d9e72dd36a337238df5bb
+scope: evidence
+findings: [{"severity":"medium","text":"New unpinned and pathless regression cases exceed the 5 s hard budget at 5.712/5.627 s without reasoned allowances; owned exact-head verification exits 1 despite functional assertions passing.","file":"hub/test/claude-code-adapter.test.ts","line":462}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+# T-603 runtime evidence not clear: new-case duration budgets
+
+Commit 60fe117c2d776161877d9e72dd36a337238df5bb, unchanged from source review A-3975 / rev-20261016-603-source. Exact-head post-source-review droplet f2528a40-2b5c-422f-b06b-f91133ed6128 / A-4017 exits 1.
+
+## Standards
+No additional source finding. Functional environment selection, remedies and directory bookkeeping remain source-cleared.
+
+## Spec / gate
+M1 — medium — hub/test/claude-code-adapter.test.ts:462: two newly added regression identities exceed the default five-second hard budget and have no reasoned allowances: unpinned 5.711632665 seconds; pathless account 5.627064172 seconds. These are owned task failures, not unrelated known-red exceptions. Correct the measured test budgets with reasons or the demonstrated excess work while retaining the assertions; obtain a new source verdict before another verification run.
+
+Independently checked the full log tail: these are the only hard failures, and Finished is exit 1. Hub free 38/38; hub machine 1909 pass, zero functional failures and five platform/binary skips out of 1914. Overall 1947 pass, zero functional failure, five skips. All four new environment variants pass ordinary assertions and 5/5 repetitions each (20/20); pinned/inherited ordinary times are 3.946/3.806 seconds. This positive behavior evidence does not turn the failed gate green. Neovim smoke was not reached.
+
+C1 runtime acceptance failed for the owned hard-budget gate. C2's existing source verification is retained; no functional C2 defect is claimed. Final review not clear. No unchanged retry requested. Duration-manifest changes still require fresh source review and appropriately accepted execution evidence.
+
+Standards 0 additional findings; Spec/gate 1 medium finding.
+Artifact: A-4018 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-4018-t-603-runtime-not-clear-two-owned-hard-duration-budgets.md
+
+Criteria: C1 failed (Own new unpinned/pathless regressions exceed 5 s hard budgets (5.712/5.627 s), making exact-head A-4017 exit 1.).
