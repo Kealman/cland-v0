@@ -83,7 +83,7 @@ export function createHubBase(options: HubBaseOptions): HubBase {
     if (human) core.inbox.verdict(id);
     if (report) core.noticeInTopic(report.topic ?? 'agents', {
       kind: 'report', text: `${id}${v.stage ? ` stage ${v.stage}` : ''} ${v.verdict} ${v.result} · ${v.by} · run ${v.run}${report.text ? `\n\n${report.text}` : ''}`,
-      detail: { item: id, session: author, verdict: v.verdict, result: v.result, run: v.run, ...(v.stage ? { stage: v.stage } : {}) },
+      detail: { item: id, session: author, verdict: v.verdict, result: v.result, run: v.run, ...(v.stage ? { stage: v.stage } : {}), ...(v.findings !== undefined ? { findings: v.findings, findingCounts: v.findingCounts } : {}) },
       ...(report.criteria !== undefined ? { criteria: report.criteria } : {}),
     });
   });

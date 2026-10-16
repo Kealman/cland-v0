@@ -1,3 +1,4 @@
+import type { Finding, FindingCounts } from '../tracker/findings.ts';
 // The inbox (§3.7): asks/command approvals, pending plans, requests and messages.
 // Each row records when its wait began; departures persist in hub.db and reach the journal
 // through the log tap. Publications are coalesced over 250 ms; explicit reads always settle current waits.
@@ -125,7 +126,7 @@ export class InboxBoard {
           const result = messageVerdict(event.message);
           if (result) {
             const detail = event.message.detail!;
-            this.#notify('verdict', event.message.text.split('\n')[0] ?? '', { ...(typeof detail.item === 'string' ? { item: detail.item } : {}), ...(typeof detail.session === 'string' ? { session: detail.session } : {}), result });
+            this.#notify('verdict', event.message.text.split('\n')[0] ?? '', { ...(typeof detail.item === 'string' ? { item: detail.item } : {}), ...(typeof detail.session === 'string' ? { session: detail.session } : {}), result, ...(detail.findings !== undefined ? { findings: detail.findings as Finding[], findingCounts: detail.findingCounts as FindingCounts } : {}) });
           }
         }
         if (event.message.topic === 'agents' && event.message.fromKind === 'hub' && event.message.kind === 'turn-failed') {
@@ -196,7 +197,7 @@ export class InboxBoard {
     this.#notify('role', text, { session: e.session });
   }
 
-  #notify(kind: NotificationKind, text: string, extra: { item?: string; session?: string; result?: string } = {}): void {
+  #notify(kind: NotificationKind, text: string, extra: { item?: string; session?: string; result?: string; findings?: Finding[]; findingCounts?: FindingCounts } = {}): void {
     const id = `n-${randomUUID().slice(0, 8)}`;
     this.#port.log({ event: 'notification', id, kind, text, ...extra });
   }

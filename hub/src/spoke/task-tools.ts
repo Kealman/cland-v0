@@ -1,5 +1,6 @@
 // The spoke's `task.*` tools: the tracker's requests as MCP tools. Arguments name the item `id`; the frame
 // carries it as `item` (a frame's `id` is the request's). The hub validates; the spoke only reshapes.
+import { SEVERITIES } from '../tracker/findings.ts';
 import { STATUSES, SIZES, FOUND_BY } from '../tracker/item.ts';
 import type { TaskRequest } from '../tracker/requests.ts';
 import type { DistributiveOmit } from './hub-client.ts';
@@ -43,7 +44,7 @@ export const TASK_TOOLS = [
     description: 'Comment on an item. With `verdict`, `result` and `run` it is a verdict: review needs scope full, delta or evidence; QA carries none. It is recorded as by you and your role.',
     inputSchema: {
       type: 'object',
-      properties: { id: itemId, text: str, scope: { type: 'string', enum: ['full', 'delta', 'evidence'], description: 'Review only: full for a first review or reworked design, delta after dev moved under a reviewed branch, evidence for suite evidence alone' }, stage: { ...str, description: 'QA on an epic: the exact after-stage stage name; records the tested dev build and closes only that stage' }, verified: { ...str, description: 'On a clear verdict: criterion ids C1,C3 or all; Reviewer or QA only' }, failed: { type: 'array', items: { type: 'object', properties: { criterion: str, note: str }, required: ['criterion', 'note'] }, description: 'On a not-clear verdict: criteria to fail with single-line notes; Reviewer or QA only' }, verdict: { type: 'string', enum: ['review', 'qa'] }, result: { type: 'string', enum: ['clear', 'not clear'] }, commit: { type: 'string', description: 'The Git commit SHA covered by this verdict; defaults to the item branch tip' }, run: { type: 'string', description: 'The id of the review or QA run' } },
+      properties: { id: itemId, text: str, findings: { type: 'array', description: 'Every finding, lows included; [] when none', items: { type: 'object', properties: { severity: { type: 'string', enum: SEVERITIES }, text: str, file: str, line: { type: 'integer', minimum: 1 } }, required: ['severity', 'text'] } }, scope: { type: 'string', enum: ['full', 'delta', 'evidence'], description: 'Review only: full for a first review or reworked design, delta after dev moved under a reviewed branch, evidence for suite evidence alone' }, stage: { ...str, description: 'QA on an epic: the exact after-stage stage name; records the tested dev build and closes only that stage' }, verified: { ...str, description: 'On a clear verdict: criterion ids C1,C3 or all; Reviewer or QA only' }, failed: { type: 'array', items: { type: 'object', properties: { criterion: str, note: str }, required: ['criterion', 'note'] }, description: 'On a not-clear verdict: criteria to fail with single-line notes; Reviewer or QA only' }, verdict: { type: 'string', enum: ['review', 'qa'] }, result: { type: 'string', enum: ['clear', 'not clear'] }, commit: { type: 'string', description: 'The Git commit SHA covered by this verdict; defaults to the item branch tip' }, run: { type: 'string', description: 'The id of the review or QA run' } },
       required: ['id'],
     },
   },
@@ -78,7 +79,7 @@ export const TASK_TOOL_NAMES: ReadonlySet<string> = new Set(TASK_TOOLS.map((t) =
 
 /** The frame for a `task.*` tool call. */
 export function taskFrame(tool: string, args: Record<string, unknown>): DistributiveOmit<TaskRequest, 'id'> {
-  const { id, label, verdict, result, run, commit, scope, stage, verified, failed, ...rest } = args;
+  const { id, label, verdict, result, run, commit, scope, stage, verified, failed, findings, ...rest } = args;
   const item = id === undefined ? {} : { item: id };
   switch (tool) {
     case 'task.list':
@@ -86,7 +87,7 @@ export function taskFrame(tool: string, args: Record<string, unknown>): Distribu
     case 'task.criterion':
       return { type: 'task.criterion', ...rest, ...item, ...(run !== undefined ? { run } : {}) } as DistributiveOmit<TaskRequest, 'id'>;
     case 'task.comment':
-      return { type: 'task.comment', ...rest, ...item, ...(verdict !== undefined || result !== undefined || run !== undefined || commit !== undefined || scope !== undefined || stage !== undefined || verified !== undefined || failed !== undefined ? { verdict: { verdict, result, run, ...(commit !== undefined ? { commit } : {}), ...(scope !== undefined ? { scope } : {}), ...(stage !== undefined ? { stage } : {}), ...(verified !== undefined ? { verified } : {}), ...(failed !== undefined ? { failed } : {}) } } : {}) } as DistributiveOmit<TaskRequest, 'id'>;
+      return { type: 'task.comment', ...rest, ...item, ...(verdict !== undefined || result !== undefined || run !== undefined || commit !== undefined || scope !== undefined || stage !== undefined || verified !== undefined || failed !== undefined || findings !== undefined ? { verdict: { verdict, result, run, ...(findings !== undefined ? { findings } : {}), ...(commit !== undefined ? { commit } : {}), ...(scope !== undefined ? { scope } : {}), ...(stage !== undefined ? { stage } : {}), ...(verified !== undefined ? { verified } : {}), ...(failed !== undefined ? { failed } : {}) } } : {}) } as DistributiveOmit<TaskRequest, 'id'>;
     default:
       return { type: tool, ...rest, ...item } as DistributiveOmit<TaskRequest, 'id'>;
   }

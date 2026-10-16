@@ -2,6 +2,7 @@
 // item's text as the body, comments under `## Comments`, verdicts as comments with a structured header.
 // Pure: text in, text out; nothing here touches the disk.
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
+import { parseFindings, countFindings, type Finding, type FindingCounts } from './findings.ts';
 import { parseItemReference } from './prefixes.ts';
 import { validTimestamp } from './criteria.ts';
 import { DEFAULT_LEVELS, kindsFor, kindWithArticle, ladderOf, type LadderInput } from './kinds.ts';
@@ -70,7 +71,7 @@ export type GithubRef = { repo: string; number: number; url: string };
 export const REVIEW_SCOPES = ['full', 'delta', 'evidence'] as const;
 export type ReviewScope = (typeof REVIEW_SCOPES)[number];
 
-export type Verdict = { verdict: VerdictKind; result: VerdictResult; by: string; run: string; commit?: string; scope?: ReviewScope; stage?: string; stage_hash?: string };
+export type Verdict = { verdict: VerdictKind; result: VerdictResult; by: string; run: string; commit?: string; scope?: ReviewScope; stage?: string; stage_hash?: string; findings?: Finding[]; findingCounts?: FindingCounts };
 
 export type Comment = {
   author: string;
@@ -84,7 +85,7 @@ export type Item = { fm: Frontmatter; body: string; comments: Comment[] };
 
 export const COMMENTS_HEADING = '## Comments';
 const COMMENT_HEADER = /^### (.+?) · (\S+)\s*$/;
-const VERDICT_LINE = /^(verdict|result|by|run|commit|scope|stage|stage_hash):\s*(.*?)\s*$/;
+const VERDICT_LINE = /^(verdict|result|by|run|commit|scope|stage|stage_hash|findings|finding_counts):\s*(.*?)\s*$/;
 /** Stable numeric lookup key; display ids are supplied by the index, from the kind. */
 export function normalizeId(raw: string, kinds?: readonly string[]): string | null {
   const ref = parseItemReference(raw, kinds);
@@ -305,9 +306,9 @@ function parseComments(lines: string[]): Comment[] {
 
 /** A comment text whose first lines are a verdict header, split into the verdict's fields and the rest (its `by`,
  *  whatever it says, is not kept: the hub writes who recorded it). Null when it does not read as a verdict. */
-export function verdictOfText(text: string): { verdict: VerdictKind; result: VerdictResult; run: string; commit?: string; scope?: ReviewScope; stage?: string; text: string } | null {
+export function verdictOfText(text: string): { verdict: VerdictKind; result: VerdictResult; run: string; commit?: string; scope?: ReviewScope; stage?: string; findings?: Finding[]; text: string } | null {
   const c = commentOf('', '', text.trim());
-  return c.verdict ? { verdict: c.verdict.verdict, result: c.verdict.result, run: c.verdict.run, ...(c.verdict.commit ? { commit: c.verdict.commit } : {}), ...(c.verdict.scope !== undefined ? { scope: c.verdict.scope } : {}), ...(c.verdict.stage ? { stage: c.verdict.stage } : {}), text: c.text } : null;
+  return c.verdict ? { verdict: c.verdict.verdict, result: c.verdict.result, run: c.verdict.run, ...(c.verdict.commit ? { commit: c.verdict.commit } : {}), ...(c.verdict.scope !== undefined ? { scope: c.verdict.scope } : {}), ...(c.verdict.stage ? { stage: c.verdict.stage } : {}), ...(c.verdict.findings !== undefined ? { findings: c.verdict.findings } : {}), text: c.text } : null;
 }
 
 /** Whether a comment's text reads back as a verdict (its first lines a verdict header), as every reader takes it. */
@@ -326,11 +327,16 @@ function commentOf(author: string, at: string, text: string): Comment {
   const verdict = header.verdict?.toLowerCase();
   const result = header.result?.toLowerCase().replace('not-clear', 'not clear');
   if (verdict && VERDICT_KINDS.includes(verdict as VerdictKind) && result && RESULTS.includes(result as VerdictResult)) {
+    let findings: Finding[] | undefined;
+    if (header.findings !== undefined) {
+      try { findings = parseFindings(JSON.parse(header.findings)); }
+      catch (err) { throw new ItemParseError(`invalid verdict findings: ${err instanceof Error ? err.message : String(err)}`); }
+    }
     return {
       author,
       at,
       text: lines.slice(i).join('\n').trim(),
-      verdict: { verdict: verdict as VerdictKind, result: result as VerdictResult, by: header.by ?? author, run: header.run ?? '', ...(header.commit ? { commit: header.commit } : {}), ...(header.scope !== undefined ? { scope: header.scope as ReviewScope } : {}), ...(header.stage ? { stage: header.stage } : {}), ...(header.stage_hash ? { stage_hash: header.stage_hash } : {}) },
+      verdict: { verdict: verdict as VerdictKind, result: result as VerdictResult, by: header.by ?? author, run: header.run ?? '', ...(header.commit ? { commit: header.commit } : {}), ...(header.scope !== undefined ? { scope: header.scope as ReviewScope } : {}), ...(header.stage ? { stage: header.stage } : {}), ...(header.stage_hash ? { stage_hash: header.stage_hash } : {}), ...(findings !== undefined ? { findings, findingCounts: countFindings(findings) } : {}) },
     };
   }
   return { author, at, text };
@@ -382,6 +388,7 @@ export function serializeComment(c: Comment): string {
   if (c.verdict?.scope !== undefined) text += `scope: ${c.verdict.scope}\n`;
   if (c.verdict?.stage) text += `stage: ${c.verdict.stage}\n`;
   if (c.verdict?.stage_hash) text += `stage_hash: ${c.verdict.stage_hash}\n`;
+  if (c.verdict?.findings !== undefined) text += `findings: ${JSON.stringify(c.verdict.findings)}\nfinding_counts: ${JSON.stringify(countFindings(c.verdict.findings))}\n`;
   if (c.text.trim()) text += `${c.verdict ? '\n' : ''}${c.text.trim()}\n`;
   return `### ${c.author} · ${c.at}\n\n${text}`;
 }

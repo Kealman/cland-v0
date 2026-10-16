@@ -11,6 +11,7 @@ import { planYaml, type EpicPlan } from '../tracker/plan.ts';
 import { runImportGithub } from './task-import.ts';
 import type { MigrationPlan } from '../tracker/migrate.ts';
 
+import { parseFinding } from '../tracker/findings.ts';
 import { TASK_USAGE } from './usage.ts';
 export { TASK_USAGE } from './usage.ts';
 
@@ -29,7 +30,7 @@ const OPTIONS = {
   view: { ...COMMON },
   plan: { ...COMMON, file: { type: 'string' }, reason: { type: 'string' }, 'allow-large': { type: 'string', multiple: true } },
   list: { ...COMMON, under: { type: 'string' }, state: { type: 'string' }, label: { type: 'string', multiple: true }, kind: { type: 'string' }, assignee: { type: 'string' }, verdict: { type: 'string' } },
-  comment: { ...COMMON, verdict: { type: 'string' }, result: { type: 'string' }, run: { type: 'string' }, commit: { type: 'string' }, scope: { type: 'string' }, stage: { type: 'string' }, verified: { type: 'string' }, failed: { type: 'string', multiple: true }, 'body-file': { type: 'string' } },
+  comment: { ...COMMON, verdict: { type: 'string' }, result: { type: 'string' }, run: { type: 'string' }, commit: { type: 'string' }, scope: { type: 'string' }, stage: { type: 'string' }, verified: { type: 'string' }, failed: { type: 'string', multiple: true }, finding: { type: 'string', multiple: true }, 'body-file': { type: 'string' } },
   edit: { ...COMMON, 'found-by': { type: 'string' }, size: { type: 'string' }, version: { type: 'string' }, title: { type: 'string' }, body: { type: 'string' }, 'body-file': { type: 'string' }, kind: { type: 'string' }, state: { type: 'string' }, status: { type: 'string' }, label: { type: 'string', multiple: true }, 'add-label': { type: 'string', multiple: true }, 'remove-label': { type: 'string', multiple: true }, assignee: { type: 'string' } },
   close: { ...COMMON, comment: { type: 'string' }, override: { type: 'string' } },
   link: { ...COMMON, 'regression-of': { type: 'string' }, parent: { type: 'string' }, 'blocked-by': { type: 'string', multiple: true }, follows: { type: 'string', multiple: true }, unblock: { type: 'string', multiple: true }, unfollow: { type: 'string', multiple: true }, topic: { type: 'string' }, branch: { type: 'string' } },
@@ -115,9 +116,9 @@ function frameOf(sub: Sub, positionals: string[], v: Values): { type: string } &
       const item = needId();
       const text = typeof v['body-file'] === 'string' ? readBody(v) : positionals.slice(1).join(' ');
       let verdict: Record<string, unknown> | undefined;
-      if (v.verdict !== undefined || v.result !== undefined || v.run !== undefined || v.commit !== undefined || v.scope !== undefined || v.stage !== undefined || v.verified !== undefined || v.failed !== undefined) {
+      if (v.verdict !== undefined || v.result !== undefined || v.run !== undefined || v.commit !== undefined || v.scope !== undefined || v.stage !== undefined || v.verified !== undefined || v.failed !== undefined || v.finding !== undefined) {
         if (typeof v.verdict !== 'string' || typeof v.result !== 'string' || typeof v.run !== 'string') throw new UsageError('a verdict needs --verdict review|qa, --result clear|"not clear" and --run <id>');
-        verdict = { verdict: v.verdict, result: v.result === 'not-clear' ? 'not clear' : v.result, run: v.run, ...(typeof v.commit === 'string' ? { commit: v.commit } : {}), ...(typeof v.scope === 'string' ? { scope: v.scope } : {}), ...(typeof v.stage === 'string' ? { stage: v.stage } : {}), ...(v.verified !== undefined ? { verified: v.verified } : {}), ...(Array.isArray(v.failed) ? { failed: v.failed.map(f => {
+        verdict = { ...(Array.isArray(v.finding) ? { findings: v.finding.map(parseFinding) } : {}), verdict: v.verdict, result: v.result === 'not-clear' ? 'not clear' : v.result, run: v.run, ...(typeof v.commit === 'string' ? { commit: v.commit } : {}), ...(typeof v.scope === 'string' ? { scope: v.scope } : {}), ...(typeof v.stage === 'string' ? { stage: v.stage } : {}), ...(v.verified !== undefined ? { verified: v.verified } : {}), ...(Array.isArray(v.failed) ? { failed: v.failed.map(f => {
           const split = f.indexOf('=');
           if (split < 0) throw new UsageError('--failed needs C1=note (repeat for each criterion)');
           return { criterion: f.slice(0, split), note: f.slice(split + 1) };
@@ -226,6 +227,11 @@ function viewText(i: ItemView): string {
       if (c.verdict) {
         const v = i.verdicts[verdictIndex++];
         if (v) lines.push(`    ${v.commit?.slice(0, 8) ?? 'no commit'}${v.current === undefined ? '' : v.current ? ' · current' : ' · stale'} · from the ${v.source === 'hub' ? 'hub' : 'file'}`);
+      }
+      if (c.verdict?.findingCounts) {
+        const counts = c.verdict.findingCounts;
+        lines.push(`    findings: ${counts.high} high, ${counts.medium} medium, ${counts.low} low`);
+        for (const f of c.verdict.findings ?? []) lines.push(`    ${f.severity}: ${f.text}${f.file ? ` @${f.file}${f.line !== undefined ? `:${f.line}` : ''}` : ''}`);
       }
       if (c.text) lines.push(...c.text.split('\n').map((l) => `    ${l}`));
     }

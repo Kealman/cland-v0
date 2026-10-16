@@ -25,6 +25,7 @@ import type { Resumed } from '../hub/budget.ts';
 import type { SessionHold } from '../protocol.ts';
 const untimed: Resumed = work => work();
 import { basename, join } from 'node:path';
+import { parseFindings, countFindings, type Finding } from './findings.ts';
 import { commentKey, TrackerIndex, type Claim, type VerifierHold, type IndexedItem, type IndexedVerdict, type ListFilter } from './index-db.ts';
 import {
   COMMENTS_HEADING,
@@ -144,7 +145,7 @@ export type ItemSummary = IndexedItem & Pick<Partial<ItemView>, 'plan' | 'planEr
 /** An index change, as a subscribed UI hears it (the `task` event): the item as `task.list` shows it, or null when its file is gone. */
 export type ItemChange = { id: string; item: ItemSummary | null; siblings?: string[]; events?: string[]; postedVerdicts?: Verdict[]; previousAncestry?: string[] };
 
-const verdictIdentity = (v: IndexedVerdict): string => JSON.stringify([v.author, v.at, v.verdict, v.result, v.run, v.commit ?? null, v.by, v.stage ?? null, v.stage_hash ?? null, v.scope ?? null]);
+const verdictIdentity = (v: IndexedVerdict): string => JSON.stringify([v.author, v.at, v.verdict, v.result, v.run, v.commit ?? null, v.by, v.stage ?? null, v.stage_hash ?? null, v.scope ?? null, v.findings ?? null]);
 
 export type FollowStatus = { id: string; met: boolean; open: string[]; reason?: string };
 
@@ -194,7 +195,7 @@ export type LinkInput = {
 };
 
 export type VerdictReport = { topic: string | null; text: string; criteria?: MarkedCriterion[] };
-export type VerdictInput = { verdict: VerdictKind; result: VerdictResult; run: string; commit?: string; scope?: ReviewScope; stage?: string; verified?: string; failed?: { criterion: string; note: string }[] };
+export type VerdictInput = { verdict: VerdictKind; result: VerdictResult; run: string; commit?: string; scope?: ReviewScope; stage?: string; verified?: string; failed?: { criterion: string; note: string }[]; findings?: Finding[] };
 
 export class TrackerError extends Error {
   /** `git-unavailable`: Git did not answer a question the write needs (a verdict's commit, a branch tip). */
@@ -2132,6 +2133,15 @@ export class Tracker {
       if (!RESULTS.includes(verdict.result)) throw new TrackerError(`result must be ${RESULTS.map((r) => `"${r}"`).join(' or ')}`);
       if (!verdict.run?.trim() || /\n/.test(verdict.run)) throw new TrackerError('a verdict needs a run id (one line)');
       v = { verdict: verdict.verdict, result: verdict.result, by: formatVerdictBy(actor.name, actor.role), run: verdict.run.trim(), ...(verdict.scope !== undefined ? { scope: verdict.scope } : {}) };
+      if (verdict.findings !== undefined) {
+        try { v.findings = parseFindings(verdict.findings); }
+        catch (err) { throw new TrackerError(err instanceof Error ? err.message : String(err)); }
+        v.findingCounts = countFindings(v.findings);
+        if (v.verdict === 'review' && v.result === 'clear') {
+          const unresolved = v.findings.filter(f => f.severity !== 'low');
+          if (unresolved.length) throw new TrackerError(`a clear review cannot contain high or medium findings: ${unresolved.map(f => `${f.severity}: ${f.text}`).join('; ')}; record not clear instead`);
+        }
+      }
       if (verdict.commit !== undefined) {
         if (typeof verdict.commit !== 'string' || !/^[0-9a-f]{4,64}$/i.test(verdict.commit)) throw new TrackerError('commit must be a Git commit SHA');
       }

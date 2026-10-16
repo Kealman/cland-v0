@@ -408,13 +408,15 @@ export class Dispatcher {
    * as a verdict after its header is refused. Returns an error, or null.
    */
   static #verdictFromText(frame: Record<string, unknown>): string | null {
-    if (frame.type !== 'task.comment' || frame.verdict !== undefined || typeof frame.text !== 'string' || !readsAsVerdict(frame.text)) return null;
-    const v = verdictOfText(frame.text);
-    if (!v) return null;
-    if (readsAsVerdict(v.text)) return 'a verdict comment carries one verdict header: its text may not start with another';
-    frame.verdict = { verdict: v.verdict, result: v.result, run: v.run, ...(v.commit ? { commit: v.commit } : {}), ...(v.scope !== undefined ? { scope: v.scope } : {}), ...(v.stage ? { stage: v.stage } : {}) };
-    frame.text = v.text;
-    return null;
+    try {
+      if (frame.type !== 'task.comment' || frame.verdict !== undefined || typeof frame.text !== 'string' || !readsAsVerdict(frame.text)) return null;
+      const v = verdictOfText(frame.text);
+      if (!v) return null;
+      if (readsAsVerdict(v.text)) return 'a verdict comment carries one verdict header: its text may not start with another';
+      frame.verdict = { ...(v.findings !== undefined ? { findings: v.findings } : {}), verdict: v.verdict, result: v.result, run: v.run, ...(v.commit ? { commit: v.commit } : {}), ...(v.scope !== undefined ? { scope: v.scope } : {}), ...(v.stage ? { stage: v.stage } : {}) };
+      frame.text = v.text;
+      return null;
+    } catch (err) { return err instanceof Error ? err.message : String(err); }
   }
 
   /** After a task write that set an assignee: the item is bound to the assignee's session id, when the hub knows it

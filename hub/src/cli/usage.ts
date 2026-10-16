@@ -64,7 +64,7 @@ export const TASK_USAGE = `  task create <title> [--kind k] [--size XS|S|M|L] [-
   task plan migrate (retire qa-required labels, report policy fallbacks)
   task plan <set|show|approve> <epic-id> [--file plan.yaml] [--reason text] [--allow-large <id>=<reason>]…
   task list [--under <id>] [--state open|closed] [--label l]… [--kind k] [--assignee a] [--verdict review=clear]
-  task comment <id> <text> [--verdict review|qa --result clear|"not clear" --run <id> [--commit <sha>] [--scope full|delta|evidence] [--stage <name>] [--verified C1,C3|all | --failed "C1=note"]…]
+  task comment <id> <text> [--verdict review|qa --result clear|"not clear" --run <id> [--commit <sha>] [--scope full|delta|evidence] [--stage <name>] [--finding high|medium|low:text[@file:line]]… [--verified C1,C3|all | --failed "C1=note"]…]
   task edit <id> [--found-by review|cover|droplet|qa|human|none] [--version semver|none] [--title t] [--body t | --body-file f] [--kind k] [--size XS|S|M|L] [--state s] [--status s] [--label l]…
                   [--add-label l]… [--remove-label l]… [--assignee a|none]
   task close <id> [--comment t] [--override reason (human shell only)]
