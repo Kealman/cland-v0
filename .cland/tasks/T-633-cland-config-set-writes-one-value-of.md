@@ -2,8 +2,8 @@
 id: T-633
 kind: task
 title: cland config set writes one value of config.toml and refuses what the hub cannot read
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 7
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-390
 branch: t/T-633-cland-config-set-writes-one-value-of
 created: 2026-10-16T16:04:12.209Z
-updated: 2026-10-16T20:46:49.821Z
+updated: 2026-10-16T20:47:09.124Z
+closed: 2026-10-16T20:47:09.124Z
 ---
 
 ## Summary
@@ -207,3 +208,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Conflict-only delta clear; Standards0/Spec0 findings, A-4193. Parents111b4b4a+38ec6f70 confirmed; all11 task implementation/test blobs byte-unchanged and every task added/removed line matches prior patch. Exact manifest devunion+config-set:machine preserves roles-editor/quarantine/candidate entries. No dense production conflict; independent diffcheckclean, exact-head typecheck/shards reportedexit0. Coordinator5cad9402 independently read explicitly retains greenA-4190/111b4b4a and forbids new droplet for this conflict-only merge; integrated cover immediately follows landing. C1–C7 continuity verified atca5ba66d under that disposition. No exact-current-head execution claimed. No Reviewer edits/tests.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.
+
+### coord · 2026-10-16T20:47:09.124Z
+
+Merged bd34c2b9b11f0b87e751b4f7fddced7c242ceece onto dev.
