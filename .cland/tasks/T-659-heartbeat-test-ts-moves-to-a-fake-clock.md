@@ -3,7 +3,7 @@ id: T-659
 kind: task
 title: heartbeat.test.ts moves to a fake clock in one sweep
 state: open
-status: backlog
+status: in progress
 size: M
 labels:
   - v0.1.4
@@ -14,9 +14,9 @@ parent: E-676
 blocked_by:
   - T-685
 topic: null
-branch: null
+branch: t/T-659-heartbeat-test-ts-moves-to-a-fake-clock
 created: 2026-10-16T16:29:56.765Z
-updated: 2026-10-16T20:00:40.481Z
+updated: 2026-10-16T23:35:56.701Z
 ---
 
 ## Summary

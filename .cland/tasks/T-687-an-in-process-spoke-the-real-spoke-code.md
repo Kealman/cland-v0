@@ -3,7 +3,7 @@ id: T-687
 kind: task
 title: "An in-process spoke: the real spoke code over an in-memory MCP transport, connected to projectHub's real socket"
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - v0.1.4
@@ -12,10 +12,10 @@ labels:
 assignee: null
 parent: E-676
 blocked_by: []
-topic: null
-branch: null
+topic: topic-414
+branch: t/T-687-an-in-process-spoke-the-real-spoke-code
 created: 2026-10-16T19:59:28.543Z
-updated: 2026-10-16T19:59:28.543Z
+updated: 2026-10-16T23:36:00.127Z
 ---
 
 ## Summary
