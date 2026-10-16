@@ -3481,6 +3481,10 @@
       "seconds": 45.496028,
       "reason": "Runs the complete doctor command repeatedly, introducing each failure at the real filesystem/process boundary and checking its repair advice."
     },
+    "hub/test/doctor.test.ts::doctor warns about free OpenCode training and its missing OS sandbox without failing": {
+      "seconds": 6.843811,
+      "reason": "Runs doctor four times with automatic free selection, a bare free model plus variant, paid and non-OpenCode roles, and launches a real projectHub/fake OpenCode server and spoke to prove the warnings do not refuse launch. Targeted macOS run measured 6.844s."
+    },
     "hub/test/durations-runner.test.ts::task load gate bounds eight new tests with parallel lanes and five sequential repetitions each": {
       "seconds": 10.617612,
       "reason": "Runs eight new identities through the real package runner and forty fresh repetition processes on two lanes, checking bounded concurrency and all receipts. Targeted macOS T-557 probe measured 5.701s at peak 1m load 3.12; optional slow acceptance probe is excluded from routine runs."

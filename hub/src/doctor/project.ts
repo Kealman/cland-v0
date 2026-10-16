@@ -13,6 +13,7 @@ import { BLOCK_END, DOCS } from '../init/instructions.ts';
 import { MANIFEST, readManifest, SKILLS_SOURCE } from '../init/skills.ts';
 import { CLAND_DIR, layout, pidAlive, readDiscovery, type Layout } from '../project.ts';
 import type { HubStatus } from '../protocol.ts';
+import { KNOWN_GOOD_FREE_MODELS } from '../adapters/opencode/client.ts';
 import { parseRoles } from '../roles/config.ts';
 import { VERSION } from '../version.ts';
 import { fail, ok, probeTimeout, run, warn, type Check } from './report.ts';
@@ -124,6 +125,14 @@ function checkConfig(l: Layout): Check[] {
     try {
       const parsed = parseRoles(roles);
       out.push(ok('roles.toml', `parses: ${[...parsed.keys()].join(', ')}`));
+      for (const [role, { launch }] of parsed) {
+        if (launch.harness !== 'opencode') continue;
+        const model = launch.model?.split('#')[0];
+        if (!model || KNOWN_GOOD_FREE_MODELS.includes(model.includes('/') ? model : `opencode/${model}`) || /[-:]free$/.test(model)) {
+          out.push(warn(`opencode model ${role}`, `${role} uses a free OpenCode model (${model || 'automatic free selection'}), which may train on the code it sees`, 'choose a provider/model with suitable data terms before exposing private code'));
+        }
+        out.push(warn(`opencode sandbox ${role}`, `${role}: OpenCode has no OS sandbox; permission rules do not isolate its processes`, 'run only where the role may access the host files and network'));
+      }
     } catch (err) {
       out.push(fail('roles.toml', `does not parse: ${tomlError(err)}`, `fix ${CLAND_DIR}/roles.toml (until then the hub keeps the last good roles, or the defaults)`));
     }

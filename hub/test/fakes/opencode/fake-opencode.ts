@@ -56,7 +56,7 @@ const PROMPTS = join(HOME, 'prompts');
 for (const d of [SESSIONS, SERVERS, PROMPTS]) mkdirSync(d, { recursive: true });
 
 type ModelRef = { providerID: string; id: string };
-type SessionInfo = { id: string; title: string; model: ModelRef; directory: string; created: number };
+type SessionInfo = { id: string; title: string; model: ModelRef; directory: string; created: number; instructions?: Record<string, unknown> };
 type McpServer = { type: string; command?: string[]; environment?: Record<string, string> };
 
 const rid = (prefix: string) => `${prefix}_${randomBytes(10).toString('hex')}`;
@@ -344,6 +344,23 @@ async function serve(args: string[]): Promise<number> {
         writeFileSync(sessionFile(id), JSON.stringify(info));
         void loadLocation();
         return send(res, 200, { data: info });
+      }
+      if (parts[0] === 'api' && parts[1] === 'experimental' && parts[2] === 'session' && parts[3] && parts[4] === 'instructions' && parts[5] === 'entries') {
+        const session = getSession(parts[3]);
+        if (!session) return notFound(res, parts[3]);
+        if (method === 'GET') return send(res, 200, { data: Object.entries(session.instructions ?? {}).map(([key, value]) => ({ key, value })) });
+        if (method === 'DELETE' && parts[6]) {
+          if (existsSync(join(HOME, 'fail-instructions-delete'))) return send(res, 500, { message: 'instruction deletion failed' });
+          delete session.instructions?.[parts[6]];
+          writeFileSync(sessionFile(session.id), JSON.stringify(session));
+          return send(res, 204, undefined);
+        }
+        if (method === 'PUT' && parts[6]) {
+          if (existsSync(join(HOME, 'fail-instructions'))) return send(res, 404, { message: 'experimental instructions unavailable' });
+          session.instructions = { ...session.instructions, [parts[6]]: (await readBody(req)).value };
+          writeFileSync(sessionFile(session.id), JSON.stringify(session));
+          return send(res, 204, undefined);
+        }
       }
       if (parts[0] === 'api' && parts[1] === 'session' && parts[2]) {
         const sid = parts[2];

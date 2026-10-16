@@ -74,6 +74,14 @@ export class OpenCodeClient {
     return r.data;
   }
 
+  async roleInstruction(sessionId: string, value: string, timeoutMs: number): Promise<void> {
+    await this.request('PUT', `/api/experimental/session/${encodeURIComponent(sessionId)}/instructions/entries/cland-role`, { value }, timeoutMs);
+  }
+
+  async clearRoleInstruction(sessionId: string, timeoutMs: number): Promise<void> {
+    await this.request('DELETE', `/api/experimental/session/${encodeURIComponent(sessionId)}/instructions/entries/cland-role`, undefined, timeoutMs);
+  }
+
   async models(timeoutMs = 10_000): Promise<ModelEntry[]> {
     return (await this.request<{ data: ModelEntry[] }>('GET', '/api/model', undefined, timeoutMs)).data;
   }

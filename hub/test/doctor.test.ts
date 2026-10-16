@@ -9,7 +9,7 @@ import { spawn } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { clandWithEnv, startDaemon, tempProject, type CliResult } from './harness.ts';
+import { clandWithEnv, connectUi, projectHub, startDaemon, tempProject, type CliResult } from './harness.ts';
 
 const FAKES = fileURLToPath(new URL('./fakes/', import.meta.url));
 const FAKE_GH_DIR = fileURLToPath(new URL('./fixtures/fake-gh', import.meta.url));
@@ -67,10 +67,15 @@ const check = (r: Report, name: string): Check => {
 
 const notOk = (r: Report) => r.checks.filter((c) => c.verdict !== 'ok').map((c) => `${c.verdict} ${c.name}: ${c.detail} — ${c.fix ?? ''}`);
 
-async function initialised(t: TestContext, env: Record<string, string>): Promise<string> {
+async function initialised(t: TestContext, env: Record<string, string>, openCode = false): Promise<string> {
   const root = await tempProject(t, 'cland-doctor-proj-');
   const init = await clandWithEnv(root, env, 'init');
   assert.equal(init.code, 0, init.stderr);
+  // The healthy fixture uses Codex; OpenCode's safety warnings are exercised separately.
+  if (!openCode) {
+    const path = join(root, '.cland', 'roles.toml');
+    await writeFile(path, (await readFile(path, 'utf8')).replace('harness = "opencode"', 'harness = "codex"'));
+  }
   return root;
 }
 
@@ -449,4 +454,30 @@ test('doctor names isolated OpenCode databases and standalone login, and warns a
   assert.equal(check(r, 'opencode database private').verdict, 'ok');
   const fallback = await report(root, { ...tools.env, XDG_DATA_HOME: '' });
   assert.ok(check(fallback.report, 'opencode database').detail.includes(join(tools.env.HOME!, '.local', 'share', 'cland', 'opencode', 'opencode.db')));
+});
+
+test('doctor warns about free OpenCode training and its missing OS sandbox without failing', async t => {
+  const tools = await toolchain(t);
+  const root = await initialised(t, tools.env, true);
+  const { discovery } = await projectHub(t, root, tools.env);
+  const free = await report(root, tools.env);
+  assert.equal(free.code, 0);
+  const ui = await connectUi(t, discovery);
+  const launched = await ui.request({ type: 'session.launch', name: 'free-role', role: 'implementer' });
+  assert.equal(launched.ok, true, 'doctor warnings do not refuse the launch');
+  assert.equal(check(free.report, 'opencode model implementer').verdict, 'warn');
+  assert.match(check(free.report, 'opencode model implementer').detail, /free.*may.*train.*code/i);
+  assert.equal(check(free.report, 'opencode sandbox implementer').verdict, 'warn');
+  assert.match(check(free.report, 'opencode sandbox implementer').detail, /no OS sandbox.*rules/i);
+  const path = join(root, '.cland', 'roles.toml');
+  const roles = await readFile(path, 'utf8');
+  await writeFile(path, roles.replace('model = ""', 'model = "big-pickle#high"'));
+  assert.equal(check((await report(root, tools.env)).report, 'opencode model implementer').verdict, 'warn');
+  await writeFile(path, roles.replace('model = ""', 'model = "openai/paid-model"'));
+  const paid = await report(root, tools.env);
+  assert.equal(paid.code, 0);
+  assert.ok(!paid.report.checks.some(c => c.name === 'opencode model implementer'));
+  assert.equal(check(paid.report, 'opencode sandbox implementer').verdict, 'warn');
+  await writeFile(path, roles.replace('harness = "opencode"', 'harness = "codex"'));
+  assert.ok(!(await report(root, tools.env)).report.checks.some(c => /^opencode (model|sandbox) /.test(c.name)));
 });

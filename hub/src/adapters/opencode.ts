@@ -59,6 +59,8 @@ export const OPENCODE_CAPABILITIES: Capabilities = {
 };
 
 export type OpenCodeOptions = {
+  /** Experiment: deliver hub role clauses as a replaceable instruction entry. Default false. */
+  roleInstructions?: boolean;
   /** Grace before a verified process tree is killed. */
   stopGraceMs?: number;
   /** The `opencode` executable: `CLAND_OPENCODE_BIN`, else `opencode` on the PATH. */
@@ -96,6 +98,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
   readonly #pollMs: number;
   readonly #stopGraceMs: number;
   readonly #injectTimeoutMs: number;
+  readonly #roleInstructions: boolean;
   readonly #spawnDeadlineMs: number;
   readonly #env: NodeJS.ProcessEnv;
   readonly #processEnv: NodeJS.ProcessEnv;
@@ -109,6 +112,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
 
   constructor(host: AdapterHost, options: OpenCodeOptions = {}) {
     this.#host = host;
+    this.#roleInstructions = options.roleInstructions ?? false;
     this.#processEnv = options.env ?? process.env;
     this.#recoveries = new FailedLaunches(host.log, 1000, host.durableLaunchRecovery);
     this.#bin = options.bin ?? this.#processEnv.CLAND_OPENCODE_BIN ?? 'opencode';
@@ -256,10 +260,29 @@ export class OpenCodeAdapter implements HarnessAdapter {
 
   async inject(p: HarnessProcess, message: Message, topic: TopicRef | null): Promise<void> {
     if (!p.harnessSessionId) throw new Error(`no OpenCode session recorded for ${p.name}`);
+    const client = await this.#client(p);
+    if (this.#roleInstructions) {
+      const isClause = (m: Message) => m.fromKind === 'hub' && m.from === 'hub' && m.kind === 'role';
+      const clauses = [...(message.digest ?? []).filter(isClause), ...(isClause(message) ? [message] : [])];
+      if (clauses.length) {
+        try {
+          // A stable key replaces assignment, handover and revocation alike; retries cannot append stale roles.
+          const latest = clauses.at(-1)!;
+          await client.roleInstruction(p.harnessSessionId, envelope({ ...latest, digest: [] }, null), this.#injectTimeoutMs);
+          if (isClause(message)) return;
+          message = { ...message, digest: (message.digest ?? []).filter(m => !isClause(m)) };
+        } catch {
+          // A failed PUT may leave an earlier role (or an unacknowledged new write) installed.
+          // Only confirmed deletion permits message fallback; cleanup failure leaves delivery unconfirmed.
+          await client.clearRoleInstruction(p.harnessSessionId, this.#injectTimeoutMs);
+          this.#host.log({ event: 'opencode-instructions-fallback', session: p.name, id: message.id });
+        }
+      }
+    }
     const tracker = this.#watched.get(p.sessionId)?.tracker;
     // during a turn the message steers it (at the next step boundary); otherwise it is queued as the next turn
     const delivery = (message.detail?.event === 'heartbeat' || message.digest?.some(note => note.detail?.event === 'heartbeat')) ? 'queue' : tracker?.running ? 'steer' : 'queue';
-    const admitted = await (await this.#client(p)).prompt(p.harnessSessionId, envelope(message, topic), delivery, this.#injectTimeoutMs);
+    const admitted = await client.prompt(p.harnessSessionId, envelope(message, topic), delivery, this.#injectTimeoutMs);
     if (!admitted?.id) throw new Error('the server admitted no inbox item');
     this.#host.log({ event: 'opencode-prompt', session: p.name, id: message.id, inbox: admitted.id, delivery });
   }

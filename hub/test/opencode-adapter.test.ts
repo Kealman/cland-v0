@@ -689,3 +689,80 @@ test('a stopped OpenCode session whose native conversation disappeared offers fr
   assert.notEqual(after.harnessSessionId, before.harnessSessionId);
   await eventually('fresh first input carries OpenCode brief', async () => (await fake.prompts(after.harnessSessionId!)).includes('OpenCode brief') || undefined);
 });
+
+for (const fallback of [false, true]) test(`OpenCode role instructions are opt-in and replace the entry on role changes (${fallback ? 'message fallback' : 'instructions'})`, async t => {
+  const root = await tempProject(t);
+  const fake = await fakeOpenCode(t);
+  if (fallback) await writeFile(join(fake.home, 'fail-instructions'), 'unsupported');
+  const { discovery } = await projectHub(t, root, { ...fake.env, CLAND_OPENCODE_ROLE_INSTRUCTIONS: '1' });
+  const ui = await connectUi(t, discovery);
+  const h = await launch(ui, 'impl-instructions', { role: 'implementer', brief: 'Build the synthetic brief.' });
+  await eventually('brief still arrives as a prompt', async () => (await fake.prompts(h.harnessSessionId!)).includes('Build the synthetic brief.') || undefined);
+  const path = `/api/experimental/session/${h.harnessSessionId}/instructions/entries`;
+  const entries = async () => (await api(h, root, 'GET', path) as { data: Array<{ key: string; value: string }> }).data;
+  if (fallback) {
+    assert.match(await fake.prompts(h.harnessSessionId!), /you hold the role Implementer/);
+    assert.deepEqual(await entries(), []);
+    assert.match(await hubLog(root, ui), /opencode-instructions-fallback/);
+  } else {
+    assert.doesNotMatch(await fake.prompts(h.harnessSessionId!), /you hold the role Implementer/);
+    assert.equal((await entries()).length, 1);
+    assert.equal((await entries())[0]?.key, 'cland-role');
+    assert.match((await entries())[0]!.value, /you hold the role Implementer/);
+    assert.equal((await ui.request({ type: 'role.set', session: h.name, role: 'reviewer' })).ok, true);
+    await eventually('role instruction replaced', async () => (await entries())[0]?.value.includes('you hold the role Reviewer') || undefined);
+    assert.equal((await entries()).length, 1);
+    assert.equal((await ui.request({ type: 'role.clear', session: h.name })).ok, true);
+    await eventually('revocation replaces the old instruction', async () => (await entries())[0]?.value.includes('no longer holds') || undefined);
+    assert.equal((await entries()).length, 1);
+  }
+});
+
+
+test('OpenCode removes an installed instruction before message fallback on role change and revocation', async t => {
+  const root = await tempProject(t);
+  const fake = await fakeOpenCode(t);
+  const { discovery } = await projectHub(t, root, { ...fake.env, CLAND_OPENCODE_ROLE_INSTRUCTIONS: '1' });
+  const ui = await connectUi(t, discovery);
+  const h = await launch(ui, 'impl-transition', { role: 'implementer', brief: 'Build the synthetic transition brief.' });
+  const path = `/api/experimental/session/${h.harnessSessionId}/instructions/entries`;
+  const entries = async () => (await api(h, root, 'GET', path) as { data: Array<{ key: string; value: string }> }).data;
+  await eventually('initial instruction installed', async () => (await entries())[0]?.value.includes('you hold the role Implementer') || undefined);
+  await writeFile(join(fake.home, 'fail-instructions'), 'PUT unavailable');
+  assert.equal((await ui.request({ type: 'role.set', session: h.name, role: 'reviewer' })).ok, true);
+  await eventually('changed role reaches message fallback', async () => (await fake.prompts(h.harnessSessionId!)).includes('you hold the role Reviewer') || undefined);
+  assert.deepEqual(await entries(), [], 'fallback cannot retain the previous durable role');
+  await rm(join(fake.home, 'fail-instructions'));
+  assert.equal((await ui.request({ type: 'role.set', session: h.name, role: 'implementer' })).ok, true);
+  await eventually('instruction path restored', async () => (await entries())[0]?.value.includes('you hold the role Implementer') || undefined);
+  await writeFile(join(fake.home, 'fail-instructions'), 'PUT unavailable');
+  assert.equal((await ui.request({ type: 'role.clear', session: h.name })).ok, true);
+  await eventually('revocation reaches message fallback', async () => (await fake.prompts(h.harnessSessionId!)).includes('no longer holds') || undefined);
+  assert.deepEqual(await entries(), [], 'fallback cannot retain the revoked durable role');
+});
+
+test('OpenCode refuses role fallback acknowledgement until deletion of the installed instruction succeeds', async t => {
+  const root = await tempProject(t);
+  const fake = await fakeOpenCode(t);
+  const { discovery } = await projectHub(t, root, { ...fake.env, CLAND_OPENCODE_ROLE_INSTRUCTIONS: '1' });
+  const ui = await connectUi(t, discovery);
+  const h = await launch(ui, 'impl-cleanup', { role: 'implementer', brief: 'Build the synthetic cleanup brief.' });
+  const path = `/api/experimental/session/${h.harnessSessionId}/instructions/entries`;
+  const entries = async () => (await api(h, root, 'GET', path) as { data: Array<{ key: string; value: string }> }).data;
+  await eventually('initial instruction installed', async () => (await entries())[0]?.value.includes('you hold the role Implementer') || undefined);
+  await writeFile(join(fake.home, 'fail-instructions'), 'PUT unavailable');
+  await writeFile(join(fake.home, 'fail-instructions-delete'), 'DELETE unavailable');
+  assert.equal((await ui.request({ type: 'role.clear', session: h.name })).ok, true);
+  const records = async () => (await hubLog(root, ui)).trim().split('\n').map(line => JSON.parse(line) as { event: string; session?: string; id?: string });
+  const failed = await eventually('revocation injection remains unconfirmed', async () => (await records()).find(e => e.event === 'inject-unconfirmed' && e.session === h.name));
+  assert.ok(failed.id);
+  assert.ok(!(await records()).some(e => e.event === 'injected' && e.id === failed.id));
+  assert.match((await entries())[0]!.value, /you hold the role Implementer/);
+  assert.doesNotMatch(await fake.prompts(h.harnessSessionId!), /no longer holds/);
+  await rm(join(fake.home, 'fail-instructions-delete'));
+  // A completed ordinary turn supplies the idle observation that retries an unconfirmed delivery.
+  await sendGeneral(ui, 'Retry the pending cleanup after this turn.', [h.name]);
+  await eventually('revocation can fall back after cleanup recovers', async () => (await fake.prompts(h.harnessSessionId!)).includes('no longer holds') || undefined);
+  assert.deepEqual(await entries(), []);
+  await eventually('the retried revocation is acknowledged', async () => (await records()).some(e => e.event === 'injected' && e.id === failed.id) || undefined);
+});

@@ -47,6 +47,7 @@ export function projectSessions(options: { core: HubCore; root: string; db: stri
   );
   sessions.register(
     new OpenCodeAdapter(host, {
+      roleInstructions: env.CLAND_OPENCODE_ROLE_INSTRUCTIONS === '1',
       ...(stopGraceMs ? { stopGraceMs } : {}),
       ...(env.CLAND_OPENCODE_BIN ? { bin: env.CLAND_OPENCODE_BIN } : {}),
       ...(pollMs ? { pollMs } : {}),
