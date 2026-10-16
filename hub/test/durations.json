@@ -4197,6 +4197,14 @@
     "hub/test/executor-safety.test.ts::remote admission survives executor lock contention beyond the old deadline": {
       "seconds": 21.088495292,
       "reason": "Holds the real executor admission lock for 16s beyond its former 15s deadline, then observes a successful real-hub/fake-provider remote receipt; T-491 Mac A-3776."
+    },
+    "hub/test/startup-smoke.test.ts::a pre-discovery startup hang stops its daemon before removing the fixture": {
+      "seconds": 10.323,
+      "reason": "Holds the real detached daemon before discovery through the ten-second readiness deadline, then proves its PID exits before the fixture is removed."
+    },
+    "hub/test/startup-smoke.test.ts::a planted listening startup hang fails the smoke within its bound and names the last log event": {
+      "seconds": 10.372,
+      "reason": "Deliberately exhausts the real ten-second startup readiness deadline in a child test process, then confirms failure diagnostics and daemon teardown."
     }
   }
 }

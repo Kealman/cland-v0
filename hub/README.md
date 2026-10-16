@@ -2375,8 +2375,18 @@ in `src/suite-selection.ts`:
 
 - `NVIM_SMOKE`: `nvim/test/client.test.ts`, `nvim/test/sessions.test.ts`. A hub-only
   run executes the whole hub phase followed by these real-hub/spoke UI tests.
-- `HUB_SMOKE`: `hub/test/tracer.test.ts`, `hub/test/daemon.test.ts`. A Neovim-only
-  run executes these spoke/daemon tests followed by the whole Neovim phase.
+- `HUB_SMOKE`: `hub/test/tracer.test.ts`, `hub/test/daemon.test.ts`,
+  `hub/test/startup-smoke.test.ts`. A Neovim-only run executes these spoke/daemon
+  tests followed by the whole Neovim phase. The startup smoke starts the candidate
+  tree's real detached daemon with `cland hub start` in a fresh project and requires
+  `hub status --json` to answer over the Unix socket within one ten-second startup
+  budget. It then serves a tracker request and stops the hub, observing PID and
+  discovery/socket teardown. It runs in full, hub-only and coverage-selected hub
+  phases too. Planted pre-discovery and listening-but-silent daemon hangs prove
+  bounded failure naming the last structured startup log event. A test-only spawn
+  observer owns the detached daemon independently of discovery, and cleanup proves
+  its PID is gone while the fixture still exists. The hang cases' duration allowances
+  pay for their real ten-second deadlines.
 
 Per-item targeted hub tests are a possible follow-up; the fixed baseline applies
 to every Neovim-only run today.

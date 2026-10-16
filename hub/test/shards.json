@@ -36,6 +36,7 @@
     "hub/test/crew-launch.test.ts": "machine",
     "hub/test/crew.test.ts": "machine",
     "hub/test/daemon.test.ts": "machine",
+    "hub/test/startup-smoke.test.ts": "machine",
     "hub/test/default-subscriptions.test.ts": "machine",
     "hub/test/demo-release.test.ts": "machine",
     "hub/test/doctor-isolation.test.ts": "machine",
