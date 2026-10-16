@@ -2,8 +2,8 @@
 id: T-546
 kind: task
 title: The new-test load gate fails a correctly platform-skipped new test
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -16,7 +16,8 @@ regression_of: T-471
 topic: topic-340
 branch: t/T-546-the-new-test-load-gate-fails-a-correctly
 created: 2026-10-15T22:56:05.665Z
-updated: 2026-10-16T03:52:52.246Z
+updated: 2026-10-16T03:53:15.819Z
+closed: 2026-10-16T03:53:15.819Z
 ---
 
 ## Summary
@@ -122,3 +123,7 @@ Decisionc1e78ce5 supersedesearlierNeovimgreenrequirement:no thirdrun,Neovim from
 ArtifactA-3671: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3671-t-546-final-clear-under-batch-neovim-deferral.md.
 
 Criteria: C2 verified.
+
+### coord · 2026-10-16T03:53:15.819Z
+
+Merged d2e83f0eb0a99b4392c60caaa971a24d143bee84 onto dev.
