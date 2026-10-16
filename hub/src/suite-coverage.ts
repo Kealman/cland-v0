@@ -117,18 +117,36 @@ export async function reduceCoverage(cwd: string, raw: string, recording: Covera
   const map: CoverageMap = { version: 1, head: recording.head, tree: recording.tree, created: new Date().toISOString(), testFiles: [...testFiles].sort(), files: {} };
   const sources = new Map<string, string>();
   const receipts = await readdir(raw);
+  const skip = (path: string, reason: string) => process.stderr.write(`suite coverage: skipping ${path}: ${reason}\n`);
+  const owners: Array<{ test: string; dir: string; pid: number; started: number }> = [];
   for (const test of testFiles) {
     const dir = join(raw, Buffer.from(test).toString('base64url'));
-    const owner = JSON.parse(await readFile(join(dir, 'owner.json'), 'utf8')) as { pid: number };
-    if (!Number.isSafeInteger(owner.pid) || owner.pid < 1) throw new Error(`coverage owner missing for ${test}`);
-    const own = receipts.filter(name => name.startsWith(`coverage-${owner.pid}-`) && name.endsWith('.json'));
-    if (!own.length) throw new Error(`coverage test receipt missing for ${test}`);
-    for (const name of own) await rename(join(raw, name), join(dir, name));
-    const names = await readdir(dir);
-    if (!names.some(name => /^coverage-.*\.json$/.test(name))) throw new Error(`coverage missing for ${test}`);
+    try {
+      const owner = JSON.parse(await readFile(join(dir, 'owner.json'), 'utf8')) as { pid: number; started: number };
+      if (!Number.isSafeInteger(owner.pid) || owner.pid < 1 || !Number.isSafeInteger(owner.started) || owner.started < 0) throw new Error('invalid owner identity');
+      owners.push({ test, dir, pid: owner.pid, started: owner.started });
+    } catch (error) { skip(join(dir, 'owner.json'), String(error)); }
+  }
+  const claimed = new Set<string>();
+  // V8 names receipts coverage-<pid>-<write timestamp>-<thread>.json. The
+  // latest owner start before that timestamp bounds each reused PID's window.
+  // Visit each receipt once, so no later test can try to rename it again.
+  for (const name of receipts.filter(name => /^coverage-.*\.json$/.test(name))) {
+    const match = /^coverage-(\d+)-(\d+)-(\d+)\.json$/.exec(name);
+    const candidates = match ? owners.filter(owner => owner.pid === Number(match[1]) && owner.started <= Number(match[2])).sort((a, b) => b.started - a.started) : [];
+    const owner = candidates[0];
+    if (!owner || candidates[1]?.started === owner.started) { skip(join(raw, name), 'unclaimable receipt'); continue; }
+    try { await rename(join(raw, name), join(owner.dir, name)); claimed.add(owner.test); }
+    catch (error) { skip(join(raw, name), String(error)); }
+  }
+  for (const owner of owners) if (!claimed.has(owner.test)) skip(join(owner.dir, `coverage-${owner.pid}-*.json`), 'test receipt missing');
+  for (const test of testFiles) {
+    const dir = join(raw, Buffer.from(test).toString('base64url'));
+    const names = await readdir(dir).catch(error => { skip(dir, String(error)); return []; });
     for (const name of names.filter(name => /^coverage-.*\.json$/.test(name))) {
       const path = join(dir, name);
-      const content = await readFile(path);
+      const content = await readFile(path).catch(error => { skip(path, String(error)); return null; });
+      if (content === null) continue;
       let result: RawCoverage;
       try { result = JSON.parse(content.toString('utf8')) as RawCoverage; }
       catch {

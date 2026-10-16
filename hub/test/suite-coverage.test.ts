@@ -5,11 +5,34 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { dirname, join } from 'node:path';
 import { findPackageJSON } from 'node:module';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { tempProject } from './harness.ts';
+import { reduceCoverage } from '../src/suite-coverage.ts';
 
 const exec = promisify(execFile);
 const repository = fileURLToPath(new URL('../../', import.meta.url));
+
+test('coverage receipts follow owner start times when a pid is reused, independent of test order', async t => {
+  const root = await tempProject(t, 'cland-coverage-reused-pid-');
+  const raw = join(root, 'raw');
+  const first = 'hub/test/first.test.ts';
+  const second = 'hub/test/second.test.ts';
+  const source = 'hub/src/example.ts';
+  await mkdir(join(root, 'hub/src'), { recursive: true });
+  await writeFile(join(root, source), 'export function first() { return 1; }\nexport function second() { return 2; }\n');
+  for (const [file, started, timestamp, covered] of [[first, 900, 1000, 'first'], [second, 1900, 2000, 'second']] as const) {
+    const dir = join(raw, Buffer.from(file).toString('base64url'));
+    await mkdir(dir, { recursive: true });
+    await writeFile(join(dir, 'owner.json'), JSON.stringify({ pid: 42, started }));
+    await writeFile(join(raw, `coverage-42-${timestamp}-0.json`), JSON.stringify({ result: [{ url: pathToFileURL(join(root, source)).href,
+      functions: ['first', 'second'].map((functionName, i) => ({ functionName, ranges: [{ startOffset: 7 + i * 37, endOffset: 36 + i * 37, count: functionName === covered ? 1 : 0 }] })) }] }));
+  }
+  const map = await reduceCoverage(root, raw, { head: 'a'.repeat(40), tree: 'b'.repeat(40), run: 'fixture' }, [second, first]);
+  assert.deepEqual(map.files[source]!.functions.map(fn => [fn.name, fn.tests]), [['first', [first]], ['second', [second]]]);
+  for (const [file, timestamp] of [[first, 1000], [second, 2000]] as const) {
+    assert.ok(await readFile(join(raw, Buffer.from(file).toString('base64url'), `coverage-42-${timestamp}-0.json`)));
+  }
+});
 
 test('package capture retains real process coverage and a successful exit beside truncated JSON', async t => {
   const root = await tempProject(t, 'cland-coverage-processes-');
@@ -27,7 +50,7 @@ test('package capture retains real process coverage and a successful exit beside
   await writeFile(join(root, file), `
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, readFile, symlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { execFile } from 'node:child_process';
@@ -46,6 +69,12 @@ test('daemon lifecycle and descendant attribution', async t => {
   for (const name of await readdir(dir)) if (name.startsWith('coverage-') && name.endsWith('.json')) for (const script of JSON.parse(await readFile(join(dir, name), 'utf8')).result) urls.push(script.url);
   for (const suffix of ['/hub/src/cli/hub.ts', '/hub/src/hub/daemon.ts', '/hub/src/spoke/spoke.ts', '/hub/test/fakes/codex/fake-codex.ts']) assert.ok(urls.some(url => url.endsWith(suffix)), suffix + ' contributes raw coverage');
   await writeFile(join(dir, 'coverage-0-truncated.json'), '{"result":[{"url":"'.padEnd(163840, 'x'));
+  // Exercise actual receipt I/O failures without depending on a deletion race.
+  await symlink(join(dir, 'absent'), join(dir, 'coverage-0-missing.json'));
+  await writeFile(join(dir, '..', 'coverage-0-unclaimable.json'), '{"result":[]}');
+  const blocked = 'coverage-' + process.pid + '-' + Date.now() + '-999.json';
+  await writeFile(join(dir, '..', blocked), '{"result":[]}');
+  await mkdir(join(dir, blocked));
   await writeFile(${JSON.stringify(join(root, '.cland/run/contributors.json'))}, JSON.stringify(urls.filter(url => url.includes('/hub/'))));
 });`);
   const smoke = ['hub/test/tracer.test.ts', 'hub/test/daemon.test.ts', 'nvim/test/client.test.ts', 'nvim/test/sessions.test.ts'];
@@ -59,6 +88,9 @@ test('daemon lifecycle and descendant attribution', async t => {
   const result = await exec(process.execPath, ['--input-type=module', '-e', code], { cwd: root, env, maxBuffer: 8 * 1024 * 1024 }).catch(error => { throw new Error(`fixture package failed\n${error.stdout}\n${error.stderr}`); });
   assert.match(result.stdout, /suite coverage map/);
   assert.match(result.stderr, /suite coverage: skipping .*coverage-0-truncated\.json \(163840 bytes\): invalid JSON/);
+  assert.match(result.stderr, /suite coverage: skipping .*coverage-0-missing\.json: Error: ENOENT/);
+  assert.match(result.stderr, /suite coverage: skipping .*coverage-0-unclaimable\.json: unclaimable receipt/);
+  assert.match(result.stderr, /suite coverage: skipping .*coverage-\d+-\d+-999\.json: Error:/);
   const map = JSON.parse(await readFile(output, 'utf8'));
   for (const path of ['hub/src/cli/hub.ts', 'hub/src/hub/daemon.ts', 'hub/src/spoke/spoke.ts']) {
     assert.ok(map.files[path]?.functions.some((fn: { tests: string[] }) => fn.tests.includes(file)), `${path} attributed to ${file}`);
