@@ -3,6 +3,7 @@ id: E-423
 kind: epic
 title: Rules and rhythm
 state: open
+criterion_seq: 8
 labels:
   - epic
   - v0.1.3
@@ -13,7 +14,7 @@ blocked_by: []
 topic: topic-345
 branch: null
 created: 2026-10-14T16:43:04.090Z
-updated: 2026-10-16T00:32:17.243Z
+updated: 2026-10-16T00:48:19.233Z
 ---
 
 ## Summary
@@ -84,13 +85,19 @@ QA runs the demo below on `dev`, playing the human's part through the `cland` CL
 In a scratch project with the fake harnesses, QA launches a fake Claude Code Coordinator and a fake Codex Implementer. A rule added from the shell with the scope `implementer` reaches the Implementer at its next turn and appears in its clause after a reconnect, and not in the Coordinator's; an edit and a retirement reach it the same way. The Coordinator's `rule.add` from the human's message records a rule with that origin, while one with no human origin and an Implementer's are refused. In the headless workbench QA opens the rulebook with `␣R`, reads each rule's scope, status and date, unfolds one to its reason and origin, follows a thread origin to the human's message, and adds a rule from the view. With `cland crew set coordinator.heartbeat 1m`, QA plants a review item with no request, a ready item, a session idle past `idle_minutes`, a run that never reported and an unanswered ask, and reads each in the next heartbeat's digest; with the Coordinator busy, the heartbeat folds into its next turn's digest; the inbox count does not change, and the events view shows the heartbeat rows under their kind. QA links two scratch epics with `--follows`, merges the first one's last ticket and reads the follow met; a ticket of the second that touches a file the first changed is held with a refusal naming the pending demo, another merges, and the held one merges after the first epic's verdict. The demo runs at a named `dev` commit, and a commit that lands on `dev` meanwhile on other files does not block the verdict. On the live project, `cland rule list` shows the eight seeded rules with their origins.
 
 - [ ] C1. `.cland/RULES.md` holds one rule per heading with an id a plain number, a scope, the date, the reason, a status and an origin; `cland rule add`, `edit`, `retire`, `list` and `show` read and write it, and the `rule.add`, `rule.edit` and `rule.retire` tools do the same for the Coordinator, from a human message only, and for the Aide.
+  - failed: qa-27 [qa] · 2026-10-16T00:48:19.232Z · note L10 FAIL: rule retirement rewrites original origin (T-550); D2–D3 recorder BLOCKED (T-551).
 - [ ] C2. Every role's clause carries the active rules in its scope, and the brief at launch lists them; a retired rule appears in neither.
 - [ ] C3. A new, edited or retired rule reaches each running session in its scope at its next turn as an event of kind `rule`, never a needs-you, and the clause re-sent at a reconnect carries the current rules.
+  - failed: qa-27 [qa] · 2026-10-16T00:48:19.233Z · note D4 recorder BLOCKED (T-551); L25 INCONCLUSIVE due premature idle observation, later clause confirmed.
 - [ ] C4. The workbench's rulebook view lists the rules with their scope, status and date, shows each rule's reason and origin, opens a thread origin at its message, and adds, edits and retires a rule.
+  - failed: qa-27 [qa] · 2026-10-16T00:48:19.233Z · note D2–D3 headless cases BLOCKED by capture-name contract (T-551).
 - [ ] C5. The eight seed rules of §3.2 are in the rulebook with their origins, and the planning session's and the stand-in's memories name the rule each became.
 - [ ] C6. `heartbeat` per role in `crew.toml` (the Coordinator `1h` by default, the other roles off) delivers a digest the hub computes of what is in flight and what looks stale; it starts a turn only on an idle session, folds into the next turn's digest otherwise, is never a needs-you, shows in the events view under the kind `heartbeat`, and the Coordinator's clause says what to check, repair and escalate.
+  - failed: qa-27 [qa] · 2026-10-16T00:48:19.233Z · note D4 BLOCKED (T-551); L31/L32 ready-row observation INCONCLUSIVE from brief planting limitation.
 - [ ] C7. `follows` is a relation of its own beside `blocked_by` in the item file, the CLI, the tools and the workbench; a following epic may start once its predecessor's last ticket merged; the merge gate holds its tickets that touch the predecessor's surfaces until the predecessor's QA verdict; and the clause and the `to-tickets` and `plan-epic` skills prepare the next epic while the last stage is in review.
+  - failed: qa-27 [qa] · 2026-10-16T00:48:19.233Z · note D5 headless follows case BLOCKED by recorder contract (T-551); local follows and merge checks passed.
 - [ ] C8. An epic demo runs on a droplet at a named `dev` commit while `dev` moves, its verdict is accepted when the later commits touch none of the epic's surfaces, and `hub/README.md`, `nvim/README.md`, the role clauses and the `qa`, `merge`, `to-tickets` and `plan-epic` skills describe the rulebook, the heartbeat, `follows` and demos on a droplet.
+  - failed: qa-27 [qa] · 2026-10-16T00:48:19.233Z · note D18 FAIL: demo stop refused deletion due lease identity mismatch (T-553); eventual release confirmed.
 
 ## Dogfooding
 
@@ -156,6 +163,7 @@ stages:
     lanes:
       - - T-550
       - - T-551
+      - - T-553
 ```
 
 ## Comments
@@ -180,3 +188,97 @@ The stand-in may revisit any of these under D24.
 ### hub · 2026-10-16T00:24:56.101Z
 
 demo 24539655-3b81-4427-aadf-95272aa17603 created: droplet cland-v0-24539655, commit cdad9cdc964f47040aa9762aa59c58a5c822a2cc, deadline 2026-10-16T01:13:36.724Z.
+
+### hub · 2026-10-16T00:41:18.477Z
+
+demo 24539655-3b81-4427-aadf-95272aa17603 destroyed: lifetime 489110 ms; cost $0.0340.
+
+### qa-27 · 2026-10-16T00:48:19.233Z
+
+verdict: qa
+result: not clear
+by: qa-27 [qa]
+run: qa-2026-10-16-27-15
+commit: cdad9cdc964f47040aa9762aa59c58a5c822a2cc
+
+| Check | Result |
+|---|---|
+| G0 | PASS |
+| G1 | PASS |
+| G2 | PASS |
+| D0 | PASS |
+| D1 | PASS |
+| D2 | BLOCKED |
+| D3 | BLOCKED |
+| D4 | BLOCKED |
+| D5 | BLOCKED |
+| D6 | PASS |
+| D7 | PASS |
+| D8 | PASS |
+| D9 | PASS |
+| D10 | PASS |
+| D11 | PASS |
+| D12 | PASS |
+| D13 | PASS |
+| D14 | PASS |
+| D15 | PASS |
+| D16 | PASS |
+| D17 | PASS |
+| D18 | FAIL |
+| L1 | PASS |
+| L2 | PASS |
+| L3 | PASS |
+| L4 | PASS |
+| L5 | PASS |
+| L6 | PASS |
+| L7 | PASS |
+| L8 | PASS |
+| L9 | PASS |
+| L10 | FAIL |
+| L11 | PASS |
+| L12 | PASS |
+| L13 | PASS |
+| L14 | PASS |
+| L20 | PASS |
+| L21 | PASS |
+| L22 | PASS |
+| L23 | PASS |
+| L24 | PASS |
+| L25 | INCONCLUSIVE |
+| L30 | PASS |
+| L31 | INCONCLUSIVE |
+| L32 | INCONCLUSIVE |
+| L33 | PASS |
+| L34 | PASS |
+| L35 | PASS |
+| L36 | INCONCLUSIVE |
+| L37 | PASS |
+| L38 | PASS |
+| L39 | PASS |
+| L40 | PASS |
+| L41 | PASS |
+| L42 | PASS |
+| L43 | PASS |
+| R1 | PASS |
+| R2 | PASS |
+| R3 | PASS |
+| R4 | PASS |
+| R5 | PASS |
+
+Evidence: A-3507, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3507-e-423-qa-evidence-qa-2026-10-16-27-15-at-cdad9cdc-not-clear/README.md (per-case commands, captures, findings and amendments).
+
+Not clear at cdad9cdc964f47040aa9762aa59c58a5c822a2cc, run qa-2026-10-16-27-15.
+
+High: D18 / T-553 — demo stop left the lease releasing: “droplet identity differs from its lease; refusing deletion”. A-3498 preserves the log. Eventual destruction confirmed; QA made no provider calls.
+Medium: D2–D5 / T-551 — all four headless recorder calls BLOCKED on capture-name contract; no evidence captures returned. No patch or rerun.
+Medium: L10 / T-550 — Coordinator rule.retire rewrote Aide rule 5 origin from session:qa-aide to message:general/<human-id>.
+Low: delivered hub/bin is on PATH but has cland.ts, no cland executable; command -v cland exits 127, despite README/skill promise.
+
+Brief limitations: L25's idle boundary preceded clause injection by 550 ms (later read passes), classified INCONCLUSIVE by Coordinator. L31/L32 ready-row plant auto-reset without review, INCONCLUSIVE; four other stale rows passed. L36 cancellation was INCONCLUSIVE because the prescribed wait outlasted the scratch run's 10-minute stall limit; both fakes stopped. L38 original BLOCKED retained, authorized scratch-only push fixed the omitted setup step, amended merge checks passed. L42 ran while L38 awaited amendment; subsequent expected merges/freshness outcomes all held. All original outputs remain.
+
+Part D one droplet at S; D7–D16 66 tests passed, zero fails/skips/retries. Lease 24539655-3b81-4427-aadf-95272aa17603, created 00:23:44.666Z, deadline 01:13:36.724Z, released; lifetime 489110 ms, cost $0.033965972222222224. Part L local macOS scratch/fakes, Part R read-only. No full project suite. All scratch processes and directories cleaned. Final freshness current, dev unchanged at S.
+
+Criteria: C2 and C5 passed. Failed/unverified C1 (L10 and D2–D3), C3 (D4 and L25), C4 (D2–D3), C6 (D4 and ready-row limitation), C7 (D5), C8 (D18). Not-clear carries only failed marks, no verified field. Local follows/merge/freshness, size and override checks passed.
+Verdict note: A-3508, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3508-e-423-qa-verdict-table-lease-accounting-and-findings-qa-2026-10-16-27-15.md.
+
+Criteria: C1 failed (L10 FAIL: rule retirement rewrites original origin (T-550); D2–D3 recorder BLOCKED (T-551).), C3 failed (D4 recorder BLOCKED (T-551); L25 INCONCLUSIVE due premature idle observation, later clause confirmed.), C4 failed (D2–D3 headless cases BLOCKED by capture-name contract (T-551).), C6 failed (D4 BLOCKED (T-551); L31/L32 ready-row observation INCONCLUSIVE from brief planting limitation.), C7 failed (D5 headless follows case BLOCKED by recorder contract (T-551); local follows and merge checks passed.), C8 failed (D18 FAIL: demo stop refused deletion due lease identity mismatch (T-553); eventual release confirmed.).

@@ -12,10 +12,10 @@ assignee: null
 parent: E-423
 blocked_by: []
 regression_of: T-459
-topic: null
+topic: topic-347
 branch: t/T-551-demo-recorder-rejects-the-cases-capture
 created: 2026-10-16T00:31:47.114Z
-updated: 2026-10-16T00:33:02.188Z
+updated: 2026-10-16T00:37:54.203Z
 ---
 
 ## Summary
@@ -25,6 +25,12 @@ Found by qa-27 in E-423's Definition-of-done demo (run qa-2026-10-16-27-15, case
 Separately, the delivered `hub/bin` on the droplet has no executable named `cland` (only `cland.ts`), so `command -v cland` fails there, although the qa skill says the remote PATH includes the delivered hub/bin for `cland --headless --qa`.
 
 ## Acceptance criteria
-- [ ] C1. The demo recorder accepts the same capture names the local recorder accepts (it prefixes the case id itself, as the local path does), so a case that passes locally records the same captures through `cland demo exec`.
+- [ ] C1. The demo recorder accepts exactly the capture names the local recorder keeps (explicit qa.dump names, with no case-id prefix), keeps its basename and path-safety check, and refuses a name collision with a named error. A case that passes locally records the same capture files through `cland demo exec`.
 - [ ] C2. Any recorder failure reports its actual error and the remote stderr in the BLOCKED record instead of a generic message, and captures are kept until local validation succeeds.
 - [ ] C3. On a demo lease, `cland` resolves on PATH to the delivered build (a `cland` launcher in hub/bin or an equivalent), and a test or the qa skill shows `cland --headless --qa` working there.
+
+## Comments
+
+### impl-551 · 2026-10-16T00:35:29.648Z
+
+Read task and E-423 Coordinator decisions. Confirmed red at existing CLI/demo seam: node --test --test-name-pattern='the demo recorder runs a headless case remotely' hub/test/demo.test.ts. Changing fixture capture to rulebook-rows.screen.txt reproduces exit 2 BLOCKED, generic error, evidence []. Minimal naming fix pending green Mac window (load gate currently >15). Proposed rule and C1 filename ambiguity sent to item lead in topic-347.
