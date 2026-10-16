@@ -3,7 +3,7 @@ id: T-488
 kind: task
 title: "cland hub reload: re-read config.toml and roles.toml without a restart (SIGHUP too)"
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 4
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-329
 branch: t/T-488-cland-hub-reload-re-read-config-toml-and
 created: 2026-10-15T11:30:17.553Z
-updated: 2026-10-16T01:49:39.894Z
+updated: 2026-10-16T02:49:54.457Z
 ---
 
 ## Problem
@@ -27,16 +27,19 @@ Add `cland hub reload`, which also runs on SIGHUP. It re-reads `.cland/config.to
 
 ## Acceptance criteria
 
-- [ ] C1. `cland hub reload` and SIGHUP both re-read config.toml and roles.toml, validate them and apply both atomically, so a changed `remote_budget`, `daily_spend_usd` or role default takes effect without a restart.
-  - failed: rev-31 [reviewer] · 2026-10-16T01:49:39.894Z · note Existing timeout and prepare fixtures edit config after hub startup without applying reload; loaded-config semantics leave old policy active and five mandatory cases fail.
+- [x] C1. `cland hub reload` and SIGHUP both re-read config.toml and roles.toml, validate them and apply both atomically, so a changed `remote_budget`, `daily_spend_usd` or role default takes effect without a restart.
+  - done: impl-488 · 2026-10-16T02:48:53.488Z
+  - verified: rev-31 [reviewer] · run rev-20261016-488-source-3 · 2026-10-16T02:49:54.457Z · commit 37c3f4efa2f781b9a76b848cac9b5e209440f8bf
 - [x] C2. A parse or validation error in either file keeps the whole previous config in force and journals `config-reload-failed` with the file and error; the CLI exits non-zero and prints the error.
   - done: impl-488 · 2026-10-15T23:45:16.991Z
   - verified: rev-31 [reviewer] · run rev-20261016-488-source-2 · 2026-10-16T00:01:17.145Z · commit 7b8c92b36c082509ca88ced2ad5efec47b6bac51
+  - verified: rev-31 [reviewer] · run rev-20261016-488-source-3 · 2026-10-16T02:49:54.457Z · commit 37c3f4efa2f781b9a76b848cac9b5e209440f8bf
 - [x] C3. Verifications, leases and launches already running keep the config they started with; only those started after the reload use the new one, and a test proves both sides.
   - done: impl-488 · 2026-10-15T23:45:40.291Z
 - [x] C4. `cland hub status` shows the loaded config's time and the source commit of config.toml.
   - done: impl-488 · 2026-10-15T23:46:10.917Z
   - verified: rev-31 [reviewer] · run rev-20261016-488-source-2 · 2026-10-16T00:01:17.145Z · commit 7b8c92b36c082509ca88ced2ad5efec47b6bac51
+  - verified: rev-31 [reviewer] · run rev-20261016-488-source-3 · 2026-10-16T02:49:54.457Z · commit 37c3f4efa2f781b9a76b848cac9b5e209440f8bf
 
 ## Comments
 
@@ -120,3 +123,19 @@ Medium — hub/test/suite-timeouts.test.ts:68,83,128,165: these write test_timeo
 A-3576 same-head local Darwin2e535b8e exit1:1852pass/5fail. Own config-reload cases all5 pass ordinarily and each5/5 load repetitions. No active/new snapshot defect established, but C3 final gate remains unverified; C1 failed integration. Neovim not reached. Other gate blockers: knownT-556 dynamic-title0/5, demo watchdog4/5 and hook-bridge-doctor duration6.653>5s. Full details/categorized asides A-3579: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3579-t-488-evidence-not-clear-fixtures-omit-config-reload.md. Corrected-head source review required before another verify; no Reviewer edits/tests.
 
 Criteria: C1 failed (Existing timeout and prepare fixtures edit config after hub startup without applying reload; loaded-config semantics leave old policy active and five mandatory cases fail.).
+
+### rev-31 · 2026-10-16T02:49:54.457Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261016-488-source-3
+commit: 37c3f4efa2f781b9a76b848cac9b5e209440f8bf
+scope: delta
+
+Corrective delta source clear. A-3579/C1 fixture integration resolved. Standards: no findings. suite-fixture initial verification policy is written before serve while preserving old config-string callers,budget/cache/lock. All five timeout-setting cases use initial policy; no assertions/deadlines changed. executor-prepare preserves existing config/lock and acknowledges hub.reload after both big/c-8 runtime edits. Parsed manifest differs from Coordinator2149fe33 only by unchanged original9.72s reasoned remote-reload allowance; other textual churn is JSON Unicode escaping/order. Diff check passes.
+
+Spec: no findings. Runtime assertions now observe loaded intended policy; production reload/snapshots/rollback/missing-file/provenance source unchanged from A-3488. A-3619 source audit and quiet serial supporting7/7suite-timeouts +17/17executor-prepare inspected,37.01/60.13s,localnone/guardclear/load3.91/4.32; typecheck/shards green reported. T-555 original pre-snapshot failure is not claimed fixed. C1 restored, C2/C4 reverified unchanged; C3 remains pending final exact-head gate. Source clear does not override Coordinator verification scheduling. No Reviewer edits/tests or per-item QA criteria.
+Artifact A-3621: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3621-t-488-corrective-fixture-delta-source-clear-at-37c3f4ef.md.
+
+Criteria: C1 verified, C2 verified, C4 verified.

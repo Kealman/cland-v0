@@ -3,7 +3,7 @@ id: T-500
 kind: task
 title: remote-fixture test hub outlives a dead or timed-out test (orphan hub serve in remote-run-* dirs)
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 3
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-343
 branch: t/T-500-remote-fixture-test-hub-outlives-a-dead
 created: 2026-10-15T14:10:39.101Z
-updated: 2026-10-16T01:29:31.092Z
+updated: 2026-10-16T02:50:44.036Z
 ---
 
 ## Problem
@@ -28,12 +28,19 @@ updated: 2026-10-16T01:29:31.092Z
   - verified: rev-30 [reviewer] · run rev-20261016-500-source-correction · 2026-10-16T01:05:45.833Z · commit 2c7b97ee241c0061fcda14a589a70b46e7a4fbf9
   - verified: rev-30 [reviewer] · run rev-20261016-500-manifest-delta · 2026-10-16T01:25:54.134Z · commit 2c0daf88c0357f8ee90174cb0220106f40afbe1c
   - verified: rev-30 [reviewer] · run rev-20261016-500-manifest-delta · 2026-10-16T01:29:31.092Z · commit 2c0daf88c0357f8ee90174cb0220106f40afbe1c
-- [ ] C2. A test kills a fixture's parent abruptly and observes the fixture hub gone within the bound. remote-fixture users pass 5/5 serially on the Mac.
+  - verified: rev-30 [reviewer] · run rev-20261016-500-final · 2026-10-16T02:46:50.596Z · commit 2c0daf88c0357f8ee90174cb0220106f40afbe1c
+  - verified: rev-30 [reviewer] · run rev-20261016-500-merge-final · 2026-10-16T02:50:33.335Z · commit 65cedd22d3f54491b0bd3cd81b8d6911c10ee376
+- [x] C2. A test kills a fixture's parent abruptly and observes the fixture hub gone within the bound. remote-fixture users pass 5/5 serially on the Mac.
+  - done: impl-500 · 2026-10-16T02:45:42.586Z
+  - verified: rev-30 [reviewer] · run rev-20261016-500-final · 2026-10-16T02:46:50.596Z · commit 2c0daf88c0357f8ee90174cb0220106f40afbe1c
+  - verified: rev-30 [reviewer] · run rev-20261016-500-merge-final · 2026-10-16T02:50:33.335Z · commit 65cedd22d3f54491b0bd3cd81b8d6911c10ee376
 - [x] C3. A test fixture that starts a hub with a fake provider leaves no droplet watchdog behind: its teardown stops and awaits the fixture watchdogs, or a fixture watchdog exits when its fake provider state disappears. Seen 2026-10-15 23:00Z: pids 50008 and 50071 outlived fixture hub 36962. Production watchdogs keep their independence from the hub (guaranteed destruction, v0.1.2 §3.14, executor-droplet.test.ts:169) unchanged.
   - done: impl-500 · 2026-10-16T00:54:02.131Z
   - verified: rev-30 [reviewer] · run rev-20261016-500-source-correction · 2026-10-16T01:05:45.833Z · commit 2c7b97ee241c0061fcda14a589a70b46e7a4fbf9
   - verified: rev-30 [reviewer] · run rev-20261016-500-manifest-delta · 2026-10-16T01:25:54.134Z · commit 2c0daf88c0357f8ee90174cb0220106f40afbe1c
   - verified: rev-30 [reviewer] · run rev-20261016-500-manifest-delta · 2026-10-16T01:29:31.092Z · commit 2c0daf88c0357f8ee90174cb0220106f40afbe1c
+  - verified: rev-30 [reviewer] · run rev-20261016-500-final · 2026-10-16T02:46:50.596Z · commit 2c0daf88c0357f8ee90174cb0220106f40afbe1c
+  - verified: rev-30 [reviewer] · run rev-20261016-500-merge-final · 2026-10-16T02:50:33.335Z · commit 65cedd22d3f54491b0bd3cd81b8d6911c10ee376
 
 ## Comments
 
@@ -149,3 +156,55 @@ Artifact A-3560: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3560-
 Single transport retry after implementer's root-file check confirmed the first write absent, and after the two-minute cooldown.
 
 Criteria: C1 verified, C3 verified.
+
+### rev-30 · 2026-10-16T02:46:50.596Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-500-final
+commit: 2c0daf88c0357f8ee90174cb0220106f40afbe1c
+scope: evidence
+
+Final evidence review T-500 clear at unchanged pushed/source-reviewed2c0daf88c0357f8ee90174cb0220106f40afbe1c. Standards/Spec: no new findings. C1/C3 source correction A-3526 and exact shared-manifest delta A-3560 remain current; origin branch ref independently confirms this head.
+
+Mac C2 audit: read A-3615 README/receipts and programmatically parsed all55 raw whole-file logs. Every file has tests=pass, fail0/cancel0/skip0:680/680 total. Eleven files each appear exactly5 times: process-cleanup27, executor-run21, executor-safety20, suite-close7, suite-close-recovery5, suite-remote-budget13, verification-workers4, demo7, heartbeat9, suite11 and remote-fixture-lifecycle12 per run. Lifecycle covers normal, timeout, explicit exit, ownerTERM/INT/KILL, live-watchdog teardown/KILL/TERM/INT, polling child owner loss/directory loss. Five complete12/12 lifecycle runs include the signal paths previously corrected after source review. Serial whole-file admissions and quiet/loaded labels are recorded; first lifecycle receipt uses2c7b97ee, whose only difference from current head is reviewed2149fe33 durations data. Product/test source stayed unchanged throughout the sequence.
+
+Linux A-3586/e7ab10bc-82b2-466b-9868-22e62eec9979 was actual c-8 Linux x64, source head2c7b97ee, workers4. Crucial ordinary summaries independently checked: free38/38/fail0 and machine1826tests/1822pass/4skip/fail0/cancel0 complete at1696047.687ms, before timeout. All12 lifecycle identities have ordinary completions and exact load5/5. Root teardown, SIGKILL and live-watchdog TERM/INT observations therefore have completed Linux evidence. No ordinary assertion or hard duration-budget failure is printed.
+
+Whole run remains exit124 at50m; suite2997.14s, load extra1298.57s, peak14.74. Only inflated stale-manifest load lane continued after the ordinary completion. Some partial/outside load failures exist; late0/5 lines printed after Finished exit124 are not evidence of five independently completed failed assertions. Neovim was never reached. Do not relabel this as whole-suite exit0. The diff contains no nvim paths, though shared process-cleanup imported by nvim caused full selection. Current head differs from Linux source only by exact reviewed baseline refresh plus unchanged own allowances.
+
+Primary Coordinator8a10e27f-0342-4a89-9626-71f84f84a08f explicitly accepts this receipt IF the full ordinary hub phase completed green and no nvim diff exists; both conditions checked. Primary d4491e24-f7b5-4750-8d14-43934a26b07d directs final review on accepted A-3586 plus completed Mac proof, no replacement/head change. It also requires recording loaded timing observations without new allowances: lifecycle63.320s beside a local suite, signal cases7.725/6.938s, versus quiet36.8–38.9s. These are preserved as contention observations, not silently removed or converted into looser shared budgets.
+
+C2 now verified; C1/C3 reverified/current through unchanged source chain. All task criteria established under the explicit gate disposition. No further run/edit/shared pick or per-item QA requested. Reviewer performed no tests/compiler/binary execution, edits, installs, signals, commits, merges, provider actions, task.view scan or subagents.
+
+Review artifact A-3616 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3616-t-500-final-evidence-clear-55-mac-files-and-accepted-ordinary-linux-completion.md
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### rev-30 · 2026-10-16T02:50:33.335Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-500-merge-final
+commit: 65cedd22d3f54491b0bd3cd81b8d6911c10ee376
+scope: delta
+
+Merge-only delta review T-500 clear at pushed65cedd22d3f54491b0bd3cd81b8d6911c10ee376. Standards/Spec: no high, medium or low findings. This refreshes final criteria under Coordinator's explicit no-new-run disposition; it does not claim new execution at the merged head.
+
+Primary ca88c02f-6cec-41f6-ac90-9639d0b55efc read in topic-343 authorizes fresh origin/dev merge following durations.json-only merge-gate conflict, preservation of dev baseline/own allowances, shard lint and limited delta review. It explicitly waives a new suite/Mac proof because task test files are unchanged.
+
+Immutable history: merge705ee78f212e451e0379fc52728dbfad67b721f3 has parents accepted task2c0daf88c0357f8ee90174cb0220106f40afbe1c and dev89a1ba8c590226217800ffa1c29eddf5b106ec37. Follow-ups fe79c4e1 and65cedd22 change durations.json only to remove serialization formatting/key-order churn. Final origin ref equals requested SHA. Independent git diff --check passes.
+
+Strict JSON parse rejects duplicate keys. Root keys exactly version/source/budget/files/tests/allow. All five non-allow fields match dev parent exactly. Every one of231 dev allowance entries has identical value/reason in final; no drops or common-value changes. Final235 entries add exactly four prior T-500 allowances, byte-value/reason identical to accepted task head: owner exit5.678, actual10s timeout11.127, watchdog-SIGKILL8.386, watchdog-teardown11.125. The complete textual diff against dev manifest is exactly16 added lines for these four entries; no escaped Unicode, key ordering or numerical-format churn remains. This preserves dev's T-505/T-517/T-559 additions as requested.
+
+shards.json diff against dev is solely the existing remote-fixture-lifecycle.test.ts machine entry, retaining dev's full roster. Direct comparison against accepted task head shows zero changes in process-cleanup.ts, fixture-guard.ts, remote-fixture.ts, remote-fixture-parent.ts, remote-fixture-lifecycle.test.ts, file-barrier.ts or suite.test.ts. Thus the task's ownership/signal cleanup and regression assertions are untouched by resolution. Shard lint reported green; Reviewer did not run it.
+
+Retain A-3616 final assessment and its explicit limitations: A-3615 all55 whole-file Mac receipts/680passes; accepted A-3586 full ordinary Linux hub complete green and all12 own lifecycle identities ordinary+5/5. Overall run was124 after stale load lane timeout and no Neovim phase; this remains historical accepted evidence, carried across this authorized merge under ca88c02f, not relabelled new-head exit0. Loaded timings remain observations and no further allowances were added. No additional test source, product fix, suite, Mac proof or per-item QA required for this delta.
+
+C1/C2/C3 refreshed at65cedd22 under unchanged task source plus explicit evidence waiver. T-500 ready for Coordinator's normal merge gate. No Reviewer edits/tests/compiler/binary execution, installs, signals, commits, merges, provider actions, task.view journal scan or subagents.
+
+Review artifact A-3622 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3622-t-500-final-merge-delta-clear-at-65cedd22.md
+
+Criteria: C1 verified, C2 verified, C3 verified.

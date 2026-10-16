@@ -3,8 +3,10 @@ id: T-562
 kind: task
 title: Finished remote runs stay listed as slot holders, and their waiters never get admitted
 state: open
-status: in progress
+status: review
 size: M
+rank: 3080
+criterion_seq: 3
 labels:
   - v0.1.3
   - hub
@@ -15,7 +17,7 @@ blocked_by: []
 topic: topic-352
 branch: t/T-562-finished-remote-runs-stay-listed-as-slot
 created: 2026-10-16T02:03:05.929Z
-updated: 2026-10-16T02:40:14.071Z
+updated: 2026-10-16T02:50:53.193Z
 ---
 
 ## Summary
@@ -26,9 +28,12 @@ On 2026-10-16 between 01:30Z and at least 02:03Z, `cland verify queue` listed fo
 `executor status` showed two live droplets, but the queue counted 6/6. Five waiters stayed "waiting for remote", the longest for over 30 minutes, including both hub-fix tasks. The owners' `cland verify cancel` correctly answered "suite already finished", so nothing could free the slots short of a hub restart. Related: T-491 (the lock deadline) and T-561 (local fallback waiters).
 
 ## Acceptance criteria
-- [ ] C1. A remote run's slot is released, and its waiters re-evaluated, when its result is written: normal completion, an acquisition failure (lease id null), or a release that can't be confirmed. Slot occupancy follows live leases and runs, not stale holder rows.
-- [ ] C2. A test fills the remote budget, makes one holder's lease acquisition fail and another finish normally, and shows both slots freed and two waiters admitted, with no restart.
-- [ ] C3. On hub startup, persisted holders that have a result.json are reconciled: their receipts are posted, their scheduler slots are freed, and waiters are re-evaluated without resubmitting the finished runs.
+- [x] C1. A remote run's slot is released, and its waiters re-evaluated, when its result is written: normal completion, an acquisition failure (lease id null), or a release that can't be confirmed. Slot occupancy follows live leases and runs, not stale holder rows.
+  - done: impl-562 · 2026-10-16T02:50:49.463Z
+- [x] C2. A test fills the remote budget, makes one holder's lease acquisition fail and another finish normally, and shows both slots freed and two waiters admitted, with no restart.
+  - done: impl-562 · 2026-10-16T02:50:50.572Z
+- [x] C3. On hub startup, persisted holders that have a result.json are reconciled: their receipts are posted, their scheduler slots are freed, and waiters are re-evaluated without resubmitting the finished runs.
+  - done: impl-562 · 2026-10-16T02:50:51.871Z
 
 ## Comments
 
