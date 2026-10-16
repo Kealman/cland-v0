@@ -2,8 +2,8 @@
 id: T-639
 kind: task
 title: "Init tests run on a scratch machine: a temporary HOME, Git configuration and the folder kinds init meets"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 4
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-395
 branch: t/T-639-init-tests-run-on-a-scratch-machine-a
 created: 2026-10-16T16:23:56.312Z
-updated: 2026-10-16T17:35:49.138Z
+updated: 2026-10-16T17:36:29.521Z
+closed: 2026-10-16T17:36:29.521Z
 ---
 
 ## Summary
@@ -126,3 +127,7 @@ Linux x64 c-8 lon1, Node 24.21.0, Neovim 0.12.5, four workers; suite 1314.54 s, 
 Review artifact A-4076.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-16T17:36:29.521Z
+
+Merged a682a5d04da807e75f0495e7d3150d390564203e onto dev.
