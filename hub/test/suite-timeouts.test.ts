@@ -167,6 +167,10 @@ clearInterval(heartbeat);process.exit(0);`);
   const job = await f.launch();
   const pids = await eventually('fast pipe holder started after snapshot', () => readFile(marker,'utf8').then(text=>JSON.parse(text) as {parent:number;child:number},()=>undefined));
   ownProcess(t,pids.parent);ownProcess(t,pids.child);
+  // The warning follows the worker's stall watchdog and process/lease cleanup.
+  // Give that teardown its own bound so it cannot consume the warning's receipt wait.
+  await eventually('fast-exit worker cleanup receipt', () =>
+    readFile(join(f.root,'.cland/run/suites',job.id,'result.json'),'utf8').catch(() => undefined), 30000);
   const warnings = async () => ((await f.ui.request({type:'topic.history',topic:'agents'})).value as {messages:Array<{id:string;severity?:string;text:string}>}).messages.filter(m=>m.id===`suite-cleanup:${job.id}`);
   const notice = await eventually('one cleanup warning',async()=> (await warnings())[0]);
   assert.equal(notice.severity,'warn'); assert.match(notice.text,/cleanup incomplete/);
