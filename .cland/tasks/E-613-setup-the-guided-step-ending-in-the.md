@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-16T15:34:18.570Z
-updated: 2026-10-16T15:36:05.733Z
+updated: 2026-10-16T15:51:23.458Z
 ---
 
 ## Summary
@@ -95,3 +95,7 @@ With fake harnesses on the PATH, one missing and one signed out, under a scratch
 ### human · 2026-10-16T15:36:05.733Z
 
 Open point resolved by the human's amendment on Q-599 (2026-10-16): harness versions are neither pinned nor judged. Doctor shows each harness's version for information only; its tested ranges and the release-time OpenCode range check from E-424 (T-533, Q-297) become informational notes with no refusal or warning rows; behavioural API checks in the adapters (follow with a check) stay where they test behaviour rather than version numbers. setup offers no pin step.
+
+### human · 2026-10-16T15:51:23.458Z
+
+From the human's setup run (2026-10-16 16:17): the accounts step wrote three entries into ~/.config/cland/accounts.toml: a path-less `claude` (claude-code, no config_dir), `claude-work` (~/.claude-work) and `codex`; the sessions panel then showed four accounts beside the two harness defaults and the human asked to return to the defaults only (done by hand). For the plan: the default profile of a harness is never registered as an account (it is the harness default already); only profiles with their own directory or identity become entries; a path-less claude-code entry on dev makes the hub poll a signed-out profile (the T-603 family), so setup must not create one.
