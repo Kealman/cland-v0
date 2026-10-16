@@ -11,6 +11,14 @@ import { eventually, tempProject } from './harness.ts';
 
 const rolesText = (tools: string[]) => `[implementer.launch]\nharness = "codex"\n[implementer.permissions]\ntools = ${JSON.stringify(tools)}\n`;
 
+test('default and project clauses route shared-defect candidates through one Coordinator fix', async () => {
+  for (const text of [DEFAULT_ROLES_TOML, await readFile(new URL('../../.cland/roles.toml', import.meta.url), 'utf8')]) {
+    const roles = parseRoles(text);
+    assert.match(roles.get('implementer')!.clause, /On a `shared-defect` candidate, report the flagged test and run to `lead T-<n>` in your item topic and hold diagnosis/);
+    assert.match(roles.get('coordinator')!.clause, /Triage `shared-defect` candidates and post one reviewed shared fix to affected item leads/);
+  }
+});
+
 test('default and project clauses pin category filing and idle work without adding tool grants', async () => {
   const defaults = parseRoles(DEFAULT_ROLES_TOML);
   const project = parseRoles(await readFile(new URL('../../.cland/roles.toml', import.meta.url), 'utf8'));

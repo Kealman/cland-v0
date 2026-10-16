@@ -1,0 +1,15 @@
+✖ load gate: hub/test/suite-runner.test.ts::a live older-version holder with start 2026-10-16T03:39:39.205Z keeps its lock 0/5 passed
+test at ../../home/runner/cland/hub/test/verification-workers.test.ts:51:1
+✖ verify persists overrides, delivers remote workers, prices requested size and separates cached measurements (11615.893216ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+  undefined !== NaN
+
+      at TestContext.<anonymous> (file:///home/runner/cland/hub/test/verification-workers.test.ts:71:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: NaN,
+    operator: 'strictEqual',

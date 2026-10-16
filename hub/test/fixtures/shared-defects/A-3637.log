@@ -1,0 +1,14 @@
+test at ../../home/runner/cland/hub/test/verification-workers.test.ts:51:1
+✖ verify persists overrides, delivers remote workers, prices requested size and separates cached measurements (13197.167338ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+
+  + undefined
+  - '95c7e2ce-eb24-4d60-8bad-7c478d59406d'
+
+      at TestContext.<anonymous> (file:///home/runner/cland/hub/test/verification-workers.test.ts:73:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: undefined,

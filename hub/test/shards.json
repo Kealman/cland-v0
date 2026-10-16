@@ -1,6 +1,8 @@
 {
   "version": 1,
   "tests": {
+    "hub/test/shared-defects-report.test.ts": "machine",
+    "hub/test/shared-defects.test.ts": "machine",
     "hub/test/remote-fixture-lifecycle.test.ts": "machine",
     "hub/src/address.test.ts": "free",
     "hub/src/adapters/opencode.test.ts": "machine",

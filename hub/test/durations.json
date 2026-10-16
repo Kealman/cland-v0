@@ -4116,6 +4116,10 @@
     "hub/test/verification-workers.test.ts::remote completion waits for its timestamp before reporting, settling cost and caching": {
       "seconds": 7.634605064,
       "reason": "T-567: real hub and fake remote machine hold and release the completion timestamp, then observe final reporting, settled lease accounting and a same-head cache hit; Linux A-3717 measured 7.635 s, with 5/5 load-gate repetitions passing."
+    },
+    "hub/test/shared-defects-report.test.ts::only distinct task branches raise one shared-defect notice with both logs and dev file history": {
+      "seconds": 5.216,
+      "reason": "Runs four real CLI/package verifications on three task branches and observes durable reports and Coordinator notice deduplication."
     }
   }
 }

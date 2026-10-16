@@ -17,6 +17,7 @@ import { isSubscriptionRequest, subscriptionInput } from '../subscriptions.ts';
 import { randomUUID } from 'node:crypto';
 import type { SubscriptionRequest } from '../protocol.ts';
 import { Suites, SuiteAdmissionError, suiteSummary, type SuiteJob, type SuiteSchedulerOptions } from './suites.ts';
+import { reportSharedDefects } from './shared-defects.ts';
 import { describeSelection } from '../suite-selection.ts';
 import { isAbsolute, join } from 'node:path';
 import { readFile, stat, mkdir, writeFile, rename } from 'node:fs/promises';
@@ -658,6 +659,7 @@ export class Dispatcher {
     const artifact = core.store.resolveArtifact(artifactId);
     if (!artifact || artifact.fileDeleted || artifact.status === 'archived') throw new Error('suite log artifact unavailable');
     const log = await readFile(artifact.path, 'utf8');
+    await reportSharedDefects(core, job, log, artifact, callerNow);
     const caller = callerNow(); // all checks after the final file read, then synchronous publication
     const outcome = job.outcome!;
     const provenance = job.cached ? `\nCached tree ${job.cached.tree}\nOriginal run ${job.cached.run} · head ${job.cached.head}` : '';

@@ -1,0 +1,15 @@
+✖ load gate: hub/test/suite-runner.test.ts::a live older-version holder with start 2026-10-16T03:19:23.761Z keeps its lock 0/5 passed
+test at ../../home/runner/cland/hub/test/heartbeat.test.ts:130:1
+✖ the digest ages review and ready items and open asks, caps both sections, and includes claimed sessions (20259.113682ms)
+  Error: new review state gets a fresh full interval: not within 15000 ms
+      at eventually (file:///home/runner/cland/hub/test/harness.ts:687:9)
+      at async TestContext.<anonymous> (file:///home/runner/cland/hub/test/heartbeat.test.ts:165:3)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+suite skip details 3
+suite skip {"file":"hub/test/edges.test.ts","name":"in a sandbox that forbids listening, `serve --stdio` still serves the UI over stdio, holding the lock and writing no hub.json","reason":"needs macOS sandbox-exec"}
+suite skip {"file":"hub/test/executor-droplet.test.ts","name":"macOS inhibits idle sleep while the lease lives and drops the inhibitor after release","reason":"test marked skip without a reason"}
+suite skip {"file":"hub/test/spawn-census.test.ts","name":"a sandbox denying census log writes preserves child stdout, exit and spawns","reason":"needs macOS sandbox-exec"}
+suite timing {"file":"hub/src/adapters/opencode.test.ts","name":"a no-model OpenCode launch waits for big-pickle after a partial cold catalog","seconds":0.29040938899999996}
+suite timing {"file":"hub/src/adapters/opencode.test.ts","name":"a changing OpenCode catalog falls back to the latest successful list at the deadline","seconds":0.295959658}
+suite timing {"file":"hub/src/hub/worktrees.test.ts","name":"an offline Lead successor adopts its provisional claim before its first hello","seconds":0.243421538}
