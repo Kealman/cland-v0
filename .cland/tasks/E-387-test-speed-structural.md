@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-368
 branch: null
 created: 2026-10-14T12:28:09.615Z
-updated: 2026-10-16T10:42:58.158Z
+updated: 2026-10-16T10:44:20.433Z
 ---
 
 ## Goal
@@ -66,11 +66,11 @@ QA runs the demo below on `dev`, playing the human's part through the `cland` CL
 
 On an empty verify queue, QA runs one ordinary integrated full run on `dev` on one slot and reads its hub test-time and wall against the quick-wins epic's after run. QA then runs a sharded `--occasion epic` run on `dev` and reads the merged report, each shard's time and cost, and the day's spend under the cap. On a scratch branch QA changes one function in `hub/src/hub/` and one in `hub/src/tracker/`, and reads each selection and its run time. QA reads the coverage replay table on the coverage ticket, and checks that the epic's QA brief names any miss.
 
-- [ ] In the top 20 files by test-time, non-lifecycle tests run against an in-process hub and a spawned hub process remains only in lifecycle tests; the rest is filed as a follow-up with its list; and the daemon starts per full run fall from about 944 to a measured 743 (census A-3775); under 600 moved to v0.1.4, E-578 (T-575), by the human's decision of 2026-10-16 (ask 396ec11a).
-- [ ] A stage, epic or release integrated run shards across droplets within the $3/day cap and posts one merged report; a batch run, a task run and QA's task-head run never shard; a short cap gives one slot with a warn notice.
-- [ ] Each sharded close run reports every shard's time and cost in its merged report. The 10-minute wall-time target moved to v0.1.4, E-578 (T-520), by the human's decision of 2026-10-16 (ask 396ec11a).
-- [ ] Every moved test keeps its assertions' meaning, and frame proofs still go over a real socket and WebSocket to a real hub.
-- [ ] `hub/README.md` (Tests), `docs/agents/tests.md`, the Coordinator, Implementer and QA clauses and the `merge` and `qa` skills describe the in-process default, the lifecycle line, coverage selection, `--occasion` and the shard cost.
+- [ ] C1. In the top 20 files by test-time, non-lifecycle tests run against an in-process hub and a spawned hub process remains only in lifecycle tests; the rest is filed as a follow-up with its list; and the daemon starts per full run fall from about 944 to a measured 743 (census A-3775); under 600 moved to v0.1.4, E-578 (T-575), by the human's decision of 2026-10-16 (ask 396ec11a).
+- [ ] C2. A stage, epic or release integrated run shards across droplets within the $3/day cap and posts one merged report; a batch run, a task run and QA's task-head run never shard; a short cap gives one slot with a warn notice.
+- [ ] C3. Each sharded close run reports every shard's time and cost in its merged report. The 10-minute wall-time target moved to v0.1.4, E-578 (T-520), by the human's decision of 2026-10-16 (ask 396ec11a).
+- [ ] C4. Every moved test keeps its assertions' meaning, and frame proofs still go over a real socket and WebSocket to a real hub.
+- [ ] C5. `hub/README.md` (Tests), `docs/agents/tests.md`, the Coordinator, Implementer and QA clauses and the `merge` and `qa` skills describe the in-process default, the lifecycle line, coverage selection, `--occasion` and the shard cost.
 
 ## Constraints
 
