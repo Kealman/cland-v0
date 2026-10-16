@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-401
 branch: t/T-475-cover-quiet-enforced-while-the
 created: 2026-10-15T09:13:18.684Z
-updated: 2026-10-16T18:02:21.495Z
+updated: 2026-10-16T18:12:49.135Z
 ---
 
 ## Summary
@@ -34,6 +34,7 @@ Retrospective A-2783, STOP 1: all 7 flaky red covers had other sessions' test ru
   - failed: rev-30 [reviewer] · 2026-10-16T17:58:37.003Z · note Owned integrated worker end-to-end admission/completion proof red; inspect nested durable result. A-4093 M1.
 - [ ] C3. docs/agents/tests.md and the Implementer clause describe the refusal and the human's override.
   - verified: rev-30 [reviewer] · run rev-20261016-475-owned-correction · 2026-10-16T18:02:08.189Z · commit b1570e640ffd8b2f3da1564114962d248976c788
+  - verified: rev-30 [reviewer] · run rev-20261016-475-shared-duration · 2026-10-16T18:12:49.135Z · commit de96a65002699613407c62d3237a8c7ee7f71fb1
 
 ## Comments
 
@@ -201,3 +202,27 @@ Criteria: C3 verified.
 ### impl-475 · 2026-10-16T18:02:21.495Z
 
 First droplet f676f713 red analyzed in A-4096. Owned corrections committed/pushed b1570e64, source-clear A-4097 / rev-20261016-475-owned-correction. Typecheck exit0. Full clause reply including staffing =7454 bytes,226 below7680. Tiny fixture no longer falsely opts into coverage; durable result/code0 precedes report wait. Holding next verify for Coordinator-posted T-585 shared fix and requested T-536/dev integration+budget recheck; resulting head gets source review before remote verify. No local refusal bypass; local-live-hub proof remains Coordinator-owned post-restart.
+
+### rev-30 · 2026-10-16T18:12:49.135Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-475-shared-duration
+commit: de96a65002699613407c62d3237a8c7ee7f71fb1
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-475 shared-duration delta source clear at de96a65002699613407c62d3237a8c7ee7f71fb1, direct child of reviewed b1570e640ffd8b2f3da1564114962d248976c788. Standards and Spec axes: no findings.
+
+Independently read primary Coordinator cc249229-f019-40fb-be83-e680fa90f2eb in Agents: ad5e2c861fed137db7808f9ff70278e60e9549db is posted on dev, with explicit cherry-pick/typecheck/review/resubmit direction for T-569/T-585 and alongside owned corrections for T-475.
+
+Only hub/test/durations.json changes. Parsed before/after manifests independently: exactly two new allow identities, byte-equivalent values to the posted shared additions, and every other manifest value unchanged. The pinned-account/inherited-directory T-603 cases gain narrow reasons for native launch/stop/resume/guidance process costs, with observed A-4092/A-4094 timings stated. Baselines match their siblings; no assertions, deadlines, source/tests, other allowances or parent integration changed. Direct parent matches the prior head; diff whitespace check passes. No local rerun needed for this authorized manifest-only shared pick. Request reports root typecheck exit 0 at this head.
+
+Owned fixture/role corrections from A-4097 are unchanged. C3 source proof refreshed; C1/C2 and the prior owned regression's corrected execution remain pending. The measured clause margin remains claimant evidence at this intermediate head, not proof after future integration. Coordinator-required T-585 shared fix and T-536/dev integration/budget recheck are still outstanding. Local-live-hub proof remains staged after merge/restart; no live-hub refusal bypass.
+
+Keep the current verification hold. After the posted shared fix and authorized integration, request exact-head source review before the droplet run. No per-item QA criteria.
+Review artifact A-4103.
+
+Criteria: C3 verified.

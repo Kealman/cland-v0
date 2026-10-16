@@ -18,7 +18,7 @@ blocked_by: []
 topic: topic-402
 branch: t/T-569-demo-run-timeout-watchdog-test-demo
 created: 2026-10-16T04:18:06.312Z
-updated: 2026-10-16T18:00:03.852Z
+updated: 2026-10-16T18:12:48.228Z
 ---
 
 ## Summary
@@ -28,6 +28,7 @@ Seen once, on 2026-10-16 in T-488's droplet run 59571add at 72faa365 (A-3651): h
 - [x] C1. The test separates delivery time from the run-timeout window it's checking, for example by starting the timed bound after delivery or by giving delivery its own deadline, so droplet load can't fail it, and the product's deadline semantics are recorded on this item.
   - done: impl-569 · 2026-10-16T17:29:56.448Z
   - verified: rev-30 [reviewer] · run rev-20261016-569-source · 2026-10-16T17:31:38.466Z · commit 8c565a38ffbe73a353ea4bd95986fd6b723facdf
+  - verified: rev-30 [reviewer] · run rev-20261016-569-shared-duration · 2026-10-16T18:12:48.228Z · commit 87a4cad65b1f4b16e05d86ea3c0765b2f1907179
 - [x] C2. demo.test.ts passes 5/5 serially as a whole file on the Mac and once on a droplet in the task's verify.
   - done: impl-569 · 2026-10-16T17:59:54.495Z
 
@@ -87,3 +88,27 @@ C2 Mac evidence: A-4080 contains 5/5 serial whole-file `node --test hub/test/dem
 ### impl-569 · 2026-10-16T17:59:54.380Z
 
 Droplet receipt 43274e37 / A-4094 at reviewed head 8c565a38: entire demo.test.ts passed, including watchdog run timeout 4.423s and machine lifetime 4.710s. Across the hub package: 1975 tests, 1970 pass, 0 fail, 5 skipped. Verification exit 1 is solely the outside-diff T-603 Claude adapter duration budget (5.082s >5s); reported to lead T-569 and Reviewer, no unrelated changes made. C2's required Mac 5/5 and Linux whole-file pass evidence is now present, but the overall green verification gate remains blocked pending Coordinator direction/shared fix.
+
+### rev-30 · 2026-10-16T18:12:48.228Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-569-shared-duration
+commit: 87a4cad65b1f4b16e05d86ea3c0765b2f1907179
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-569 shared-duration delta source clear at 87a4cad65b1f4b16e05d86ea3c0765b2f1907179, direct child of reviewed 8c565a38ffbe73a353ea4bd95986fd6b723facdf. Standards and Spec axes: no findings.
+
+Independently read primary Coordinator cc249229-f019-40fb-be83-e680fa90f2eb in Agents: ad5e2c861fed137db7808f9ff70278e60e9549db is posted on dev, with explicit cherry-pick/typecheck/review/resubmit direction for T-569/T-585 and alongside owned corrections for T-475.
+
+Only hub/test/durations.json changes. Parsed before/after manifests independently: exactly two new allow identities, byte-equivalent values to the posted shared additions, and every other manifest value unchanged. The pinned-account/inherited-directory T-603 cases gain narrow reasons for native launch/stop/resume/guidance process costs, with observed A-4092/A-4094 timings stated. Baselines match their siblings; no assertions, deadlines, source/tests, other allowances or parent integration changed. Direct parent matches the prior head; diff whitespace check passes. No local rerun needed for this authorized manifest-only shared pick. Request reports root typecheck exit 0 at this head.
+
+A-4080's five serial Mac whole-file passes (40/40) and A-4094's whole demo-file Linux assertions remain relevant because their source bytes are unchanged. A-4094 exit 1 was solely the external pinned-profile budget; no green new-head gate is inferred. C1 refreshed; C2/final gate waits for the required new-head droplet receipt.
+
+Proceed with the Coordinator-directed mode-free exact-head droplet verification. No per-item QA criteria.
+Review artifact A-4101.
+
+Criteria: C1 verified.

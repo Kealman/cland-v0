@@ -18,7 +18,7 @@ blocked_by: []
 topic: topic-403
 branch: t/T-585-claude-code-adapter-discovery-and-watch
 created: 2026-10-16T08:50:52.161Z
-updated: 2026-10-16T18:07:58.319Z
+updated: 2026-10-16T18:12:48.683Z
 ---
 
 ## Summary
@@ -28,6 +28,7 @@ Integrated cover 0000625b at dev 3a3b4633 (droplet, 2026-10-16 08:49Z) failed hu
 - [x] C1. Find whether a real double discovery happens under load (a product issue: fix the adapter so they share one call) or the test counts across a timing boundary (a test issue), fix the cause, and record it on this item.
   - done: impl-585 · 2026-10-16T17:32:06.901Z
   - verified: rev-30 [reviewer] · run rev-20261016-585-source · 2026-10-16T17:33:04.606Z · commit eb05ad9f22af20c40fe5c4e91854c9e5e59a3a57
+  - verified: rev-30 [reviewer] · run rev-20261016-585-shared-duration · 2026-10-16T18:12:48.683Z · commit 073bb593131c51836d18d0ceef717faf4d6a9ac9
 - [ ] C2. claude-code-adapter.test.ts passes 10/10 serially as a whole file on the Mac and once on a droplet.
 
 ## Comments
@@ -78,3 +79,31 @@ C2 Mac proof complete at reviewed head eb05ad9f22af20c40fe5c4e91854c9e5e59a3a57:
 ### impl-585 · 2026-10-16T18:07:58.319Z
 
 Droplet run 7b91714c / A-4099 at eb05ad9f executed 1975 tests: 1970 passed, 5 skipped, zero test failures. The changed schedule case passed in 6.820 s and the whole Claude adapter file passed every assertion. Verification exit 1 is solely missing duration allowances on unchanged T-603 pinned-account (5.898 s) and inherited-directory (5.235 s) cases; both also passed their 5/5 load repetitions. Coordinator identified the dev defect and posted shared-fix commit ad5e2c86, to land after integrated cover ce9e3110; instructed this item to hold until the dev SHA is posted, then cherry-pick only that shared fix, typecheck, push, obtain delta review, and resubmit droplet verification. Head remains unchanged while waiting.
+
+### impl-585 · 2026-10-16T18:11:41.379Z
+
+Applied Coordinator-authorized shared duration fix ad5e2c86 via cherry-pick as 073bb593131c51836d18d0ceef717faf4d6a9ac9. Only eight duration-manifest lines changed from source-clear eb05ad9f; test source is unchanged. Root npm run typecheck passed, head pushed to origin, delta review requested from Reviewer before rerunning droplet verification.
+
+### rev-30 · 2026-10-16T18:12:48.683Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-585-shared-duration
+commit: 073bb593131c51836d18d0ceef717faf4d6a9ac9
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-585 shared-duration delta source clear at 073bb593131c51836d18d0ceef717faf4d6a9ac9, direct child of reviewed eb05ad9f22af20c40fe5c4e91854c9e5e59a3a57. Standards and Spec axes: no findings.
+
+Independently read primary Coordinator cc249229-f019-40fb-be83-e680fa90f2eb in Agents: ad5e2c861fed137db7808f9ff70278e60e9549db is posted on dev, with explicit cherry-pick/typecheck/review/resubmit direction for T-569/T-585 and alongside owned corrections for T-475.
+
+Only hub/test/durations.json changes. Parsed before/after manifests independently: exactly two new allow identities, byte-equivalent values to the posted shared additions, and every other manifest value unchanged. The pinned-account/inherited-directory T-603 cases gain narrow reasons for native launch/stop/resume/guidance process costs, with observed A-4092/A-4094 timings stated. Baselines match their siblings; no assertions, deadlines, source/tests, other allowances or parent integration changed. Direct parent matches the prior head; diff whitespace check passes. No local rerun needed for this authorized manifest-only shared pick. Request reports root typecheck exit 0 at this head.
+
+Independently inspected A-4084's ten serial Mac whole-file passes, each 13/13 (130/130), all start loads 12.38–14.94. Schedule case 3.282–5.327 s. A-4099's exact prior-head Linux whole file passes, including schedule 6.820 s; overall 1970 pass/zero fail/five skips, exit 1 solely the two external T-603 budgets. No Neovim phase was reached. These unchanged-source receipts remain relevant, but are not a green new-head gate. C1 refreshed; C2/final waits for required new-head droplet evidence.
+
+Proceed with the Coordinator-directed mode-free exact-head droplet verification. No per-item QA criteria.
+Review artifact A-4102.
+
+Criteria: C1 verified.
