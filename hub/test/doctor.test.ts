@@ -184,6 +184,27 @@ test('a healthy project on a healthy machine: every check ok, plain text, exit 0
     assert.equal(check(viaOverride.report, 'codex').verdict, 'ok');
   });
 
+  await t.test('OpenCode 1.x needs the major upgrade and 3.x refuses compatibility with the tested range', async () => {
+    const old = await doctor(root, { ...tools.env, FAKE_OPENCODE_VERSION: '1.19.0' });
+    assert.equal(old.code, 1);
+    assert.match(old.stdout, /fail\s+opencode\s+1\.19\.0 .*OpenCode v2 is required.*opencode upgrade --major/);
+    const next = await doctor(root, { ...tools.env, FAKE_OPENCODE_VERSION: '3.0.0' });
+    assert.equal(next.code, 1);
+    assert.match(next.stdout, /fail\s+opencode\s+3\.0\.0 .*unsupported major; refusing compatibility.*tested range >=2\.0\.24 <2\./);
+  });
+
+  await t.test('OpenCode follows a newer 2.x with a newer-than-tested warning', async () => {
+    const next = await doctor(root, { ...tools.env, FAKE_OPENCODE_VERSION: '2.99.0' });
+    assert.equal(next.code, 0);
+    assert.match(next.stdout, /warn\s+opencode\s+2\.99\.0 .*newer than tested.*cland follows OpenCode 2\.x/);
+  });
+
+  await t.test('a missing OpenCode binary points to the v2 installer', async () => {
+    const missing = await doctor(root, { ...tools.env, PATH: tools.path('opencode') });
+    assert.equal(missing.code, 1);
+    assert.match(missing.stdout, /fail\s+opencode\s+not installed:.*https:\/\/opencode\.ai\/v2\/install/);
+  });
+
   await t.test('a harness that is not signed in fails with its login command; OpenCode without credentials warns', async () => {
     const { code, report: r } = await report(root, { ...tools.env, FAKE_CLAUDE_LOGGED_OUT: '1', FAKE_CODEX_LOGGED_OUT: '1', FAKE_OPENCODE_NO_AUTH: '1', FAKE_GH_LOGGED_OUT: '1' });
     assert.deepEqual(

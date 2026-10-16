@@ -73,7 +73,7 @@ const readJson = <T>(file: string): T | null => {
 
 async function main(args: string[]): Promise<number> {
   if (args.includes('--version') || args.includes('-v')) {
-    process.stdout.write('opencode v2.0.24-fake\n');
+    process.stdout.write(`opencode v${process.env.FAKE_OPENCODE_VERSION ?? '2.0.24-fake'}\n`);
     return 0;
   }
   if (args[0] === 'auth' && args[1] === 'list') {

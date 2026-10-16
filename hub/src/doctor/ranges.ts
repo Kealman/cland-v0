@@ -1,6 +1,6 @@
 // The harness versions each adapter was built and tested against (spec 4.9, `cland doctor`): the one place to
-// widen when an adapter is re-verified against a newer release. A version outside its range is a warning, not a
-// failure: the harness may well work, cland has just not been run against it.
+// widen when an adapter is re-verified against a newer release. Outside-range versions warn; OpenCode's
+// other majors fail because the adapter speaks v2. `npm run check:opencode` advances its exclusive bound.
 
 export type Version = readonly [number, number, number];
 
@@ -15,7 +15,7 @@ export const TESTED_RANGES: Readonly<Record<HarnessId, TestedRange>> = {
   // hub/src/adapters/codex.ts: `codex app-server` and `codex resume --remote` as of 0.160.0 (0.x: a minor may break)
   codex: { min: [0, 160, 0], below: [0, 161, 0] },
   // hub/src/adapters/opencode.ts: `opencode serve`'s 2.x routes and events as of 2.0.24
-  opencode: { min: [2, 0, 24], below: [2, 1, 0] },
+  opencode: { min: [2, 0, 24], below: [2, 0, 31] },
 };
 
 /** The first `x.y.z` in a `--version` output (`2.1.294 (Claude Code)`, `codex-cli 0.160.0`, `opencode v2.0.24`), or null. */

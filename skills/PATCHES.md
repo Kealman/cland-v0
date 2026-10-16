@@ -43,6 +43,10 @@ Every patch is listed here. `skills-lock.json` keeps the upstream hash, so a re-
 - **Why**: T-322 keeps merge and QA guidance consistent with the clauses without changing the gate.
 - **Executors (T-348)**: both skills accept a green same-head Linux droplet result as gate suite evidence, with macOS-only skips covered by the release's final local run. QA may run a brief's full suite on a droplet, records executor/platform/lifetime/cost in verdict evidence, and requests `--executor local` for macOS checks. Droplet lifecycle controls stay with the hub, human and Coordinator; D25's review-first loop is unchanged.
 
+## release
+
+- **OpenCode release preflight (T-533)**: before cland's release dry run, run the opt-in `npm run check:opencode`; review and merge the successful range update, or resolve the filed Bug and rerun. The installed skill retains this step for cland source checkouts; other projects keep their own checks. `.claude/skills/release` points to the canonical `.agents/skills/release` folder.
+
 ## Checked and left unpatched
 
 - `to-spec`: it only says "publish to the issue tracker", which the tracker doc defines.

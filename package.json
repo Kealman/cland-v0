@@ -13,6 +13,7 @@
     "cland": "hub/bin/cland.ts"
   },
   "scripts": {
+    "check:opencode": "node hub/bin/check-opencode.ts",
     "typecheck": "npm run typecheck --workspace hub && node hub/bin/typecheck.ts -p nvim/tsconfig.json",
     "test": "node hub/test/run-suite.ts auto",
     "test:shards": "node hub/test/lint-shards.ts",

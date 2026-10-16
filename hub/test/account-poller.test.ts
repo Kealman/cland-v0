@@ -252,7 +252,8 @@ test('hub source has no provider endpoint or credential-store access', async () 
   // Exact passive literals only: a provider target elsewhere (including any new call site) fails.
   const allowedTargets = [
     { name: 'OpenCode schema metadata', file: '/adapters/opencode.ts', literal: "$schema: 'https://opencode.ai/config.json',", reason: 'editor metadata; no request is made' },
-    { name: 'OpenCode installation guidance', file: '/doctor/toolchain.ts', literal: "install: 'install OpenCode (https://opencode.ai)',", reason: 'human-facing doctor text; no request is made' },
+    { name: 'OpenCode installation guidance', file: '/doctor/toolchain.ts', literal: "install: 'install OpenCode v2 (https://opencode.ai/v2/install)',", reason: 'human-facing doctor text; no request is made' },
+    { name: 'OpenCode unsupported-major remedy', file: '/doctor/toolchain.ts', literal: '`install OpenCode ${formatVersion(range.min)} (https://opencode.ai/v2/install)`', reason: 'human-facing doctor text; no request is made' },
     { name: 'E-271 DigitalOcean client', file: '/executor/droplet/api.ts', literal: 'https://api.digitalocean.com/v2', reason: 'authorized executor lifecycle calls, not harness-account limits' },
   ];
   const scan = async (dir: URL): Promise<void> => {

@@ -10,7 +10,7 @@
 //   Neovim       `CLAND_NVIM`, else the pinned release in the launcher's cache; `<nvim> --version`
 import { findNvim, NVIM_VERSION } from '../../../nvim/bin/nvim-path.ts';
 import { fail, firstLine, ok, run, warn, which, type Check } from './report.ts';
-import { formatRange, formatVersion, inRange, parseVersion, TESTED_RANGES, type HarnessId } from './ranges.ts';
+import { compareVersions, formatRange, formatVersion, inRange, parseVersion, TESTED_RANGES, type HarnessId, type Version } from './ranges.ts';
 
 type Harness = {
   id: HarnessId;
@@ -69,7 +69,7 @@ const HARNESSES: readonly Harness[] = [
     id: 'opencode',
     bin: 'opencode',
     override: 'CLAND_OPENCODE_BIN',
-    install: 'install OpenCode (https://opencode.ai)',
+    install: 'install OpenCode v2 (https://opencode.ai/v2/install)',
     auth: {
       args: ['auth', 'list', '--standalone', '--format', 'json'],
       read: (r) => {
@@ -84,6 +84,17 @@ const HARNESSES: readonly Harness[] = [
     },
   },
 ];
+
+/** OpenCode follows 2.x; another major cannot speak the adapter's v2 API. */
+function checkOpenCodeVersion(version: Version, bin: string): Check {
+  const range = TESTED_RANGES.opencode;
+  const found = `${formatVersion(version)} at ${bin}`;
+  const tested = `tested range ${formatRange(range)}`;
+  if (version[0] < 2) return fail('opencode', `${found}: OpenCode v2 is required (${tested})`, 'opencode upgrade --major');
+  if (version[0] > 2) return fail('opencode', `${found}: unsupported major; refusing compatibility (${tested})`, `install OpenCode ${formatVersion(range.min)} (https://opencode.ai/v2/install)`);
+  if (inRange(version, range)) return ok('opencode', `${found} (tested ${formatRange(range)})`);
+  return warn('opencode', `${found}, ${compareVersions(version, range.below) >= 0 ? 'newer than tested' : 'older than tested'} (${tested}); cland follows OpenCode 2.x`, `if a session misbehaves, install ${formatVersion(range.min)} or report it`);
+}
 
 /** One harness: `<id>` (installed, version, range) and `<id> auth`. */
 async function checkHarness(h: Harness, env: NodeJS.ProcessEnv): Promise<Check[]> {
@@ -100,6 +111,10 @@ async function checkHarness(h: Harness, env: NodeJS.ProcessEnv): Promise<Check[]
   const version = v.error === undefined && v.code === 0 ? parseVersion(v.stdout || v.stderr) : null;
   if (v.error !== undefined || v.code !== 0) out.push(fail(h.id, `${bin} --version failed: ${v.error ?? (firstLine(v.stderr) || `exit ${v.code}`)}`, `reinstall ${h.bin}`));
   else if (!version) out.push(warn(h.id, `${bin}: cannot read a version from "${firstLine(v.stdout)}"; cland is tested with ${formatRange(range)}`, `check ${h.bin} --version by hand`));
+  else if (h.id === 'opencode') {
+    out.push(checkOpenCodeVersion(version, bin));
+    if (version[0] !== 2) return [...out, warn(authName(h.id), 'not checked: incompatible OpenCode major', 'install OpenCode v2 first')];
+  }
   else if (!inRange(version, range)) {
     const newer = version[0] > range.below[0] || (version[0] === range.below[0] && version[1] >= range.below[1]);
     out.push(warn(h.id, `${formatVersion(version)} at ${bin}, outside the tested range ${formatRange(range)}`, newer ? `it may work; if a session misbehaves, install ${formatVersion(range.min)} or report it` : `upgrade ${h.bin} to ${formatVersion(range.min)} or later`));
