@@ -3,7 +3,7 @@ id: T-475
 kind: task
 title: "Cover-quiet enforced: while the Coordinator's integrated cover holds the slot, the test harness refuses to start a fixture hub"
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - v0.1.3
@@ -11,10 +11,10 @@ labels:
 assignee: null
 parent: E-579
 blocked_by: []
-topic: null
-branch: null
+topic: topic-401
+branch: t/T-475-cover-quiet-enforced-while-the
 created: 2026-10-15T09:13:18.684Z
-updated: 2026-10-16T15:46:13.608Z
+updated: 2026-10-16T17:13:16.426Z
 ---
 
 ## Summary
@@ -30,3 +30,9 @@ Retrospective A-2783, STOP 1: all 7 flaky red covers had other sessions' test ru
 - [ ] C1. A targeted test started while an integrated cover holds the local slot exits with `cover-quiet` before starting any fixture.
 - [ ] C2. The cover's own workers and runs without a project hub are unaffected.
 - [ ] C3. docs/agents/tests.md and the Implementer clause describe the refusal and the human's override.
+
+## Comments
+
+### impl-475 · 2026-10-16T17:13:16.426Z
+
+Implementation seams follow C1/C2: real suite.slot read-only socket admission and fresh targeted hub/Neovim harness subprocess startup (before fixture creation). Inherited worker identity will be checked against the live compatibility lease. Holding local test execution while Coordinator confirms census-575 quiet-window status.

@@ -3,7 +3,7 @@ id: T-603
 kind: task
 title: Unpinned Claude Code launches set CLAUDE_CONFIG_DIR=~/.claude explicitly and run on an empty profile (signed out, untrusted)
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-387
 branch: t/T-603-unpinned-claude-code-launches-set-claude
 created: 2026-10-16T11:43:33.915Z
-updated: 2026-10-16T16:36:36.287Z
+updated: 2026-10-16T17:12:09.955Z
 ---
 
 ## Summary
@@ -41,10 +41,12 @@ Found by the design session's research Q-593 (harness setup facts) under the map
 
 - [x] C1. A Claude Code launch and resume from a hub whose environment has no CLAUDE_CONFIG_DIR spawn claude without the variable, and an account-pinned launch still gets its directory, proved by an adapter test against the fake harness.
   - done: impl-603 · 2026-10-16T16:36:26.980Z
+  - verified: rev-30 [reviewer] · run rev-20261016-603-final · 2026-10-16T17:12:08.473Z · commit f15ee252b2204a42e23488809695dbb5e06b3805
 - [x] C2. The signed-out remedy text and the attach command name CLAUDE_CONFIG_DIR only when it is actually set, and the hub's per-directory bookkeeping is unchanged.
   - done: impl-603 · 2026-10-16T16:09:19.757Z
   - verified: rev-30 [reviewer] · run rev-20261016-603-source · 2026-10-16T16:11:14.629Z · commit 60fe117c2d776161877d9e72dd36a337238df5bb
   - verified: rev-30 [reviewer] · run rev-20261016-603-duration-delta · 2026-10-16T16:36:36.287Z · commit f15ee252b2204a42e23488809695dbb5e06b3805
+  - verified: rev-30 [reviewer] · run rev-20261016-603-final · 2026-10-16T17:12:08.473Z · commit f15ee252b2204a42e23488809695dbb5e06b3805
 
 ## Comments
 
@@ -160,3 +162,31 @@ Standards 0 findings; Spec 0 findings.
 Artifact: A-4020 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-4020-t-603-duration-delta-clear-two-measured-regression-allowances.md
 
 Criteria: C2 verified.
+
+### impl-603 · 2026-10-16T17:11:52.955Z
+
+Same-head droplet verify 82acdb0e passed (exit 0) at f15ee252b2204a42e23488809695dbb5e06b3805. A-4049: Linux c-8 lon1, Node v24.21.0, 1964 tests / 1959 pass / 0 fail / 5 skipped; hub-only plus Neovim smoke; lifetime 1411 s, cost $0.0980. Awaiting Reviewer's final same-head evidence verdict; claim retained through merge.
+
+### rev-30 · 2026-10-16T17:12:08.473Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-603-final
+commit: f15ee252b2204a42e23488809695dbb5e06b3805
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear T-603 at unchanged delta-reviewed f15ee252b2204a42e23488809695dbb5e06b3805. A-3975 source and A-4020 duration-delta reviews remain applicable; no findings.
+
+Independently inspected durable A-4049, run 82acdb0e-69de-46c0-bce4-adc6e1216f48. Its header names the exact head. Host and remote typechecks complete; hub free 38/38, hub machine 1909 pass/zero fail/five unrelated prerequisite skips, Neovim smoke 12/12. Aggregate 1964 tests, 1959 pass, zero failures, five skips; Finished exit 0. No hard duration or load-gate failure.
+
+C1: all four fake Claude profile cases pass ordinarily and 5/5 each (20/20 repetitions, lines 691–724). Unpinned 6.172 s and pathless account 6.161 s retain actual absence of CLAUDE_CONFIG_DIR through spawn/resume. Pinned 3.827 s and inherited directory 3.804 s preserve the selected environment. The reviewed assertions observe the native fake invocation environment, relaunch/resume, and discovery/stop boundaries.
+
+C2: the same cases exercise signed-out remedies and attach prefixes against actual selected directories. Existing directory scheduling/restart/account cases pass, supporting unchanged per-directory bookkeeping. Source scope intentionally preserves already-persisted explicit account selection as specified; this is not a migration of old session rows.
+
+Five skips concern macOS sandbox/sleep facilities and absent real OpenCode binaries, not owned cases. Linux x64 c-8 lon1, Node 24.21.0, Neovim 0.12.5, four workers; suite 1339.60 s, peak load 15.84, lifetime 1411 s, cost $0.0980. The previous owned budget failures are resolved by the reviewed reasoned allowances and this successful exact-head gate. Both criteria verified; no per-item QA requirement.
+Review artifact A-4050.
+
+Criteria: C1 verified, C2 verified.

@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-391
 branch: t/T-635-cland-models-harness-lists-the-harness-s
 created: 2026-10-16T16:04:12.499Z
-updated: 2026-10-16T17:10:00.946Z
+updated: 2026-10-16T17:11:39.855Z
 ---
 
 ## Summary
@@ -173,3 +173,7 @@ C4 source policy proof remains applicable. C1–C3/C5/C6 final execution accepta
 Review artifact A-4047.
 
 Criteria: C5 failed (Failed-refresh case misses 5 s budget (7.627 s), plus T-635's new startup dependency breaks copied-source coverage fixture; Neovim not reached. A-4047.).
+
+### impl-635 · 2026-10-16T17:11:39.855Z
+
+Verify 8130ab79 / A-4045 failed: all six model cases passed ordinary plus 30/30 repetitions; owned failed-refresh budget 7.627 s and startup import closure require fixes. Corrected source now isolates shared harness installation metadata/lookup in doctor/harnesses.ts, so models no longer imports doctor/toolchain.ts or Neovim's nvim-path; coverage test remains unchanged. Added exact reasoned 7.627 s allowance. Coordinator classifies unrelated null-PID SIGKILL test as T-526; no diagnosis or fix there. Corrections committed/pushed; no dev merge. Waiting for Coordinator's census all-clear before typecheck and whole-file suite-coverage/models checks, then fresh delta source review and droplet verification.
