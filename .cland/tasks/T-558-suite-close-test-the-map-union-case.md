@@ -2,8 +2,8 @@
 id: T-558
 kind: task
 title: "suite-close test: the map-union case fails one of five load-gate repetitions after T-531"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ regression_of: T-531
 topic: topic-382
 branch: t/T-558-suite-close-test-the-map-union-case
 created: 2026-10-16T01:13:33.534Z
-updated: 2026-10-16T16:08:42.936Z
+updated: 2026-10-16T16:09:10.787Z
+closed: 2026-10-16T16:09:10.787Z
 ---
 
 ## Summary
@@ -118,3 +119,7 @@ Final clear, C1 and C2 verified. C2 claimant done mark was absent in this final 
 Artifact: A-3968 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3968-t-558-final-clear-ten-mac-passes-and-same-head-green-droplet.md
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-16T16:09:10.787Z
+
+Merged 52804fbdfbdd6adcd551adc96334539e4a0ad38b onto dev.
