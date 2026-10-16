@@ -15,7 +15,7 @@ finish() {
   trap - EXIT TERM INT
   echo "$code" >"$run/exit"
   echo "Finished: exit $code" >>"$run/suite.log"
-  date -u +%Y-%m-%dT%H:%M:%SZ >"$run/done"
+  date -u +%Y-%m-%dT%H:%M:%SZ >"$run/done.tmp" && mv "$run/done.tmp" "$run/done"
 }
 trap finish EXIT
 trap 'exit 143' TERM

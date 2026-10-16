@@ -4108,6 +4108,10 @@
     "hub/test/suite-remote-budget.test.ts::an unconfirmed release posts its receipt while the live lease still guards admission": {
       "seconds": 7.750742,
       "reason": "Runs two real fake-remote candidates across refused provider deletion and confirmed sweep recovery to prove that reporting does not bypass the live lease budget."
+    },
+    "hub/test/verification-workers.test.ts::remote completion waits for its timestamp before reporting, settling cost and caching": {
+      "seconds": 7.634605064,
+      "reason": "T-567: real hub and fake remote machine hold and release the completion timestamp, then observe final reporting, settled lease accounting and a same-head cache hit; Linux A-3717 measured 7.635 s, with 5/5 load-gate repetitions passing."
     }
   }
 }

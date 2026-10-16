@@ -6,7 +6,9 @@ import { join } from 'node:path';
 import { packageShards } from '../src/suite-shards.ts';
 import { defaultConfig, parseConfig, renderConfig } from '../src/init/config.ts';
 import { fixture } from './remote-fixture.ts';
-import { clandWithEnv, connectUi, projectHub } from './harness.ts';
+import { clandWithEnv, connectUi, eventually, projectHub } from './harness.ts';
+import { DropletRun } from '../src/executor/droplet/run.ts';
+import { readLeases } from '../src/executor/droplet/lease.ts';
 import type { SuiteSelection } from '../src/suite-selection.ts';
 import type { HubStatus } from '../src/protocol.ts';
 
@@ -93,6 +95,63 @@ test('verify persists overrides, delivers remote workers, prices requested size 
   const restoredStatus = (await restoredUi.request({ type: 'hub.status' })).value as HubStatus;
   const restored = restoredStatus.suites!.find(job => job.id === measured.id)!;
   assert.equal(restored.workers, 6); assert.equal(restored.size, 'c-16');
+});
+
+test('remote completion waits for its timestamp before reporting, settling cost and caching', async t => {
+  const f = await fixture(t, { hub: projectHub });
+  const entered = join(f.root, '.cland/date-entered');
+  const release = join(f.root, '.cland/date-release');
+  const completed = join(f.root, '.cland/date-completed');
+  // Hold the real shell's completion timestamp, after it opens the output file.
+  await writeFile(join(f.env.PATH.split(':')[0]!, 'date'), `#!${process.execPath}
+const fs=require('node:fs'),cp=require('node:child_process');
+fs.writeFileSync(${JSON.stringify(entered)},'entered');
+const deadline=Date.now()+20000;
+const timer=setInterval(()=>{
+  if(!fs.existsSync(${JSON.stringify(release)})&&Date.now()<deadline)return;
+  clearInterval(timer);
+  const result=cp.spawnSync('/bin/date',process.argv.slice(2),{stdio:'inherit'});
+  fs.writeFileSync(${JSON.stringify(completed)},'completed');
+  process.exitCode=result.status??1;
+},10);
+`, { mode: 0o700 });
+  const run = await f.launch();
+  const remote = await f.remote(run.id);
+  const marker = join(remote.run, 'done');
+  try {
+    await eventually('date reaches the completion boundary', () => readFile(entered, 'utf8').catch(() => undefined), 20000);
+    const lease = (await readLeases(f.root)).find(lease => lease.run === run.id)!;
+    const observer = new DropletRun(f.root, f.env);
+    assert.equal((await observer.status(lease)).state, 'running');
+    assert.deepEqual(await f.messages(run.id), [], 'no final report while date is held');
+    await assert.rejects(readFile(marker), { code: 'ENOENT' }, 'completion marker is not published early');
+    // An older runner may still expose an empty marker; the reader must wait too.
+    await writeFile(marker, '');
+    try {
+      assert.equal((await observer.status(lease)).state, 'running', 'empty marker is incomplete');
+      assert.deepEqual(await f.messages(run.id), []);
+    } finally { await rm(marker, { force: true }); }
+  } finally {
+    await writeFile(release, 'release');
+    // Observe the worker receipt before starting the downstream report wait.
+    await eventually('date completed', () => readFile(completed, 'utf8').catch(() => undefined), 20000);
+  }
+  const finished = await eventually('completion timestamp published', async () => (await readFile(marker, 'utf8').catch(() => '')).trim() || undefined, 20000);
+  assert.ok(Number.isFinite(Date.parse(finished)));
+  await f.result(run.id);
+  const status = (await f.ui.request({ type: 'hub.status' })).value as HubStatus;
+  const job = status.suites!.find(job => job.id === run.id)!;
+  assert.equal(job.finished, finished);
+  assert.equal(job.reported, true);
+  assert.equal(job.outcome?.code, 0);
+  const lease = (await readLeases(f.root)).find(lease => lease.run === run.id)!;
+  assert.equal(lease.state, 'released');
+  assert.ok(Number.isFinite(lease.lifetimeMs) && lease.lifetimeMs! > 0);
+  assert.ok(Number.isFinite(lease.costUsd) && lease.costUsd! > 0);
+  const cached = await f.launch();
+  assert.equal(cached.cached?.run, run.id);
+  await f.result(cached.id);
+  assert.equal((await f.messages(run.id)).length, 1, 'completion is reported once');
 });
 
 test('requested size reserves its own price before create and fallback restores local configured workers', async t => {
