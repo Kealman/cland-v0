@@ -4131,9 +4131,9 @@
       "seconds": 4.271441,
       "reason": "T-479: runs real CLI classification under five refused roles, Coordinator and human, flushes both audit records, and restarts the hub to verify persisted cover evidence and unchanged outcome; Linux A-3845 at 843a4444 measured 6.851 s with all five load repetitions passing."
     },
-    "hub/test/suite-coverage.test.ts::package capture attributes real CLI, daemon, spoke and fake processes to their test file": {
-      "seconds": 5.422324,
-      "reason": "Runs a copied real CLI, daemon, spoke and fake process with V8 recording, then reduces their receipts into the owning test-file map; startup and coverage serialization dominate. Measured 6.611 s on Linux c-8 at peak 1-minute load 12.59, run 8970a57f (A-3204)."
+    "hub/test/suite-coverage.test.ts::package capture retains real process coverage and a successful exit beside truncated JSON": {
+      "seconds": 6.631,
+      "reason": "Runs a copied real CLI, daemon, spoke and fake process with V8 recording, then reduces their receipts into the owning test-file map beside a planted truncated coverage file (T-604); startup and coverage serialization dominate. Renamed by T-604 from \"package capture attributes real CLI, daemon, spoke and fake processes to their test file\". Measured 6.631 s on Linux c-8 in release run 7d9819c9 (A-3915)."
     },
     "hub/test/suite-human.test.ts::a human slot reserves admission briefly and releases a client that never takes its lease": {
       "seconds": 11.23529,
