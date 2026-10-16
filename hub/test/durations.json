@@ -4046,6 +4046,18 @@
     "nvim/test/verification-view.test.ts::verify summary opens the ordered queue and ages locally; palette and keys expose the view": {
       "seconds": 6.332884,
       "reason": "Exercises the Neovim verification view against a real queue and waits for its local age clock while proving navigation and commands."
+    },
+    "hub/test/suite-remote-budget.test.ts::finished remote runs free both budget slots despite failed spend settlement": {
+      "seconds": 8.965201,
+      "reason": "Runs real remote-budget and provider fixtures with a held acquisition, two queued callers, and a broken spend ledger until both receipts and admissions are observed."
+    },
+    "hub/test/suite-remote-budget.test.ts::startup posts the persisted remote receipt before admitting its waiter": {
+      "seconds": 9.238324,
+      "reason": "Completes a real fake-remote run, restores its crash-window job checkpoint, and observes its durable receipt plus a real waiting run without duplicate execution."
+    },
+    "hub/test/suite-remote-budget.test.ts::an unconfirmed release posts its receipt while the live lease still guards admission": {
+      "seconds": 7.750742,
+      "reason": "Runs two real fake-remote candidates across refused provider deletion and confirmed sweep recovery to prove that reporting does not bypass the live lease budget."
     }
   }
 }

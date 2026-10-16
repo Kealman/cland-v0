@@ -96,6 +96,111 @@ async function finished(f: Fixture, topic: string, id: string) {
   }, 20000);
 }
 
+test('finished remote runs free both budget slots despite failed spend settlement', async t => {
+  const f = await fixture(t, { hub: projectHub, test: barrier, config: 'remote_budget=2\nlifetime="15m"\nrun_timeout="5m"' });
+  const normal = await caller(t, f, 'normal');
+  const failing = await caller(t, f, 'failing');
+  const waiters = [await caller(t, f, 'waiting-a'), await caller(t, f, 'waiting-b')];
+  const a = await normal.launch('droplet');
+  const machine = await f.remote(a.id); await started(join(machine.home, 'cland'));
+  const entered = Promise.withResolvers<void>(), release = Promise.withResolvers<void>();
+  onCleanup(t, () => release.resolve());
+  f.api.beforeCreate(async () => { entered.resolve(); await release.promise; });
+  const b = await failing.launch('droplet');
+  await entered.promise;
+  const pending: Awaited<ReturnType<typeof normal.launch>>[] = [];
+  for (const waiter of waiters) pending.push(await waiter.launch('droplet'));
+  const full = await queue(f);
+  assert.deepEqual(full.remote!.map(r => r.id).sort(), [a.id, b.id].sort());
+  assert.deepEqual(full.waiters.map(w => w.id), pending.map(j => j.id));
+  // Filesystem fault at the accounting boundary: deletion can be confirmed even
+  // when the shared spend ledger cannot be settled. Keep it broken until both
+  // receipts and waiter admissions have been observed, so retries cannot mask it.
+  const ledger = join(f.root, '.cland/executor-state/spend.json');
+  const saved = await readFile(ledger, 'utf8');
+  try {
+    await writeFile(ledger, '{"version":0,"entries":[]}');
+    f.api.faults.create = 422;
+    release.resolve();
+    await writeFile(join(machine.home, 'cland/.cland/finish'), 'yes');
+    await eventually('normal remote candidate exited', async () => (await readFile(join(machine.run, 'done'), 'utf8').catch(() => '')).trim() || undefined, 20000);
+    for (const job of [a, b]) await eventually('terminal result written', async () => readFile(join(f.root, '.cland/run/suites', job.id, 'result.json'), 'utf8').catch(() => undefined), 20000);
+    assert.match((await finished(f, normal.topic, a.id)).text, /exit 0/);
+    assert.match((await finished(f, failing.topic, b.id)).text, /exit 1/);
+    await eventually('both remote waiters admitted', async () => {
+      await f.ui.request({ type: 'hub.status', flushLogs: true });
+      const journal = (await readFile(join(f.root, '.cland/journal.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line));
+      return pending.every(job => journal.some(entry => entry.event === 'verification-admitted' && entry.id === job.id)) ? true : undefined;
+    }, 20000);
+    const q = await queue(f);
+    assert.ok(q.remote!.every(r => r.id !== a.id && r.id !== b.id));
+    assert.equal(q.waiters.length, 0);
+    assert.equal(f.api.droplets.length, 0, 'confirmed deletions stay separate from accounting failure');
+  } finally {
+    release.resolve();
+    await writeFile(ledger, saved);
+  }
+});
+
+test('startup posts the persisted remote receipt before admitting its waiter', async t => {
+  const f = await fixture(t, { hub: projectHub, config: 'remote_budget=1\nlifetime="15m"\nrun_timeout="5m"' });
+  const run = await f.launch('--executor', 'droplet');
+  await f.result(run.id);
+  const result = JSON.parse(await readFile(join(f.root, '.cland/run/suites', run.id, 'result.json'), 'utf8'));
+  assert.equal(result.code, 0);
+  await f.stop();
+  const store = new Store(join(f.root, '.cland/hub.db'));
+  const jobs = JSON.parse(store.meta('suite-jobs')!) as SuiteJob[];
+  const prior = jobs.find(job => job.id === run.id)!;
+  // Crash window: result.json is durable, but the job row predates completion.
+  // The machine has since been deleted; probing it cannot recover the receipt.
+  prior.state = 'launching'; prior.outcome = null; prior.reported = false;
+  delete prior.cleaned; delete prior.finished; delete prior.completedAt;
+  prior.artifact = null; prior.nextPoll = Date.now() + 60000;
+  const dir = join(f.root, '.cland/run/suites/restored-waiter');
+  await mkdir(dir, { recursive: true }); await writeFile(join(dir, 'suite.log'), '');
+  const waiter: SuiteJob = { ...prior, id: 'restored-waiter', actor: null, state: 'queued',
+    queued: new Date().toISOString(), log: join(dir, 'suite.log'), result: join(dir, 'result.json'), gate: join(dir, 'ready') };
+  delete waiter.lease; delete waiter.remoteAcquireAttempted; delete waiter.remoteLogStart; delete waiter.nextPoll;
+  store.setMeta('suite-jobs', JSON.stringify([prior, waiter]));
+  const reports: { id: string; outcome: SuiteJob['outcome']; finished: string | undefined; platform: SuiteJob['platform'] }[] = [];
+  const suites = new Suites(store, f.root, async job => { reports.push({ id: job.id, outcome: job.outcome, finished: job.finished, platform: job.platform }); }, {
+    remoteBudget: 1, env: { ...process.env, ...f.env, CLAND_EXECUTOR_STATE: join(f.root, '.cland/executor-state') },
+  });
+  try {
+    const receipt = await eventually('persisted receipt posted after startup', () => reports.find(job => job.id === run.id), 20000);
+    assert.deepEqual(receipt.outcome, { code: 0, cause: '' });
+    assert.equal(receipt.finished, result.finished);
+    assert.deepEqual(receipt.platform, result.platform);
+    await eventually('restored waiter completes', () => reports.find(job => job.id === waiter.id), 20000);
+    assert.deepEqual(reports.map(job => job.id), [run.id, waiter.id]);
+    assert.equal(suites.snapshot().remote!.length, 0);
+    assert.equal(suites.snapshot().waiters.length, 0);
+    assert.equal(f.api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length, 2, 'only the original run and its waiter create machines');
+  } finally { await suites.close(); store.close(); }
+});
+
+test('an unconfirmed release posts its receipt while the live lease still guards admission', async t => {
+  const f = await fixture(t, { hub: projectHub, test: barrier, config: 'remote_budget=1\nlifetime="15m"\nrun_timeout="5m"' });
+  const first = await caller(t, f, 'first'); const waiting = await caller(t, f, 'waiting');
+  const a = await first.launch('droplet');
+  const machine = await f.remote(a.id); await started(join(machine.home, 'cland'));
+  const b = await waiting.launch('droplet');
+  f.api.faults.deleteError = 403;
+  try {
+    await writeFile(join(machine.home, 'cland/.cland/finish'), 'yes');
+    await eventually('candidate exited before failed deletion', async () => (await readFile(join(machine.run, 'done'), 'utf8').catch(() => '')).trim() || undefined, 20000);
+    assert.match((await finished(f, first.topic, a.id)).text, /exit 0/);
+    assert.equal(f.api.droplets.length, 1);
+    assert.deepEqual((await queue(f)).waiters.map(w => w.id), [b.id], 'the durable lease still reserves provider capacity');
+  } finally { f.api.faults.deleteError = 0; }
+  const next = await f.remote(b.id); await started(join(next.home, 'cland'));
+  await writeFile(join(next.home, 'cland/.cland/finish'), 'yes');
+  await eventually('waiter candidate exited', async () => (await readFile(join(next.run, 'done'), 'utf8').catch(() => '')).trim() || undefined, 20000);
+  await finished(f, waiting.topic, b.id);
+  assert.deepEqual(f.api.droplets, []);
+});
+
 test('explicit droplet waits for remote capacity while later local requests proceed', async t => {
   const f = await fixture(t, { hub: projectHub, test: barrier, config: 'remote_budget=1\nlifetime="15m"\nrun_timeout="5m"' });
   const first = await caller(t, f, 'first');

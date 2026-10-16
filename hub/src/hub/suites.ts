@@ -539,7 +539,7 @@ export class Suites {
   }
   async #tick(): Promise<void> {
     await this.#reaping;
-    for (const job of this.#jobs) if (job.executor === 'droplet' && job.state === 'launching' && !job.outcome && Date.now() >= (job.nextPoll ?? 0) && !this.#launching.has(job.id)) this.#launchRemote(job);
+    for (const job of this.#jobs) if (job.executor === 'droplet' && job.state === 'launching' && !job.outcome && !this.#launching.has(job.id) && !await this.#restoreRemoteResult(job) && Date.now() >= (job.nextPoll ?? 0)) this.#launchRemote(job);
     await Promise.all(this.#jobs.map(job => this.#inspectJob(job)));
     if (this.#closed) return;
     // Reserve launching jobs, including their asynchronous acquires, until release
@@ -600,6 +600,23 @@ export class Suites {
     this.#inspecting.set(job.id, work);
     return work;
   }
+  async #restoreRemoteResult(job: SuiteJob): Promise<boolean> {
+    if (job.executor !== 'droplet') return false;
+    const text = await readFile(job.result, 'utf8').catch(error => {
+      if (error.code === 'ENOENT') return null;
+      throw error;
+    });
+    if (text === null) return false;
+    const result = JSON.parse(text) as { code: number; cause?: string; finished: string; platform?: Platform };
+    if (!Number.isInteger(result.code) || typeof result.finished !== 'string' || !Number.isFinite(Date.parse(result.finished)) || result.cause !== undefined && typeof result.cause !== 'string') throw new Error('invalid remote result receipt');
+    // The receipt survives deletion of the machine and can predate the last job
+    // checkpoint. Reconcile it before polling or relaunching a persisted holder.
+    if (!job.outcome || !job.cancelled && !job.requesterDied && !job.timedOut) job.outcome = { code: result.code, cause: result.cause ?? '' };
+    job.finished = result.finished;
+    if (result.platform) job.platform = result.platform;
+    job.state = 'finished'; this.#save(job);
+    return true;
+  }
   async #inspect(job: SuiteJob): Promise<void> {
     this.#announceFallback(job);
     this.#announceShardingSkip(job);
@@ -609,7 +626,8 @@ export class Suites {
       job.outcome = { code: 130, cause: 'cancelled: requester died before admission' };
     }
     try {
-      if (job.shards && !job.groupMerged && !await this.#collectShards(job)) return;
+      const restored = await this.#restoreRemoteResult(job);
+      if (!restored && job.shards && !job.groupMerged && !await this.#collectShards(job)) return;
       const remote = job.executor === 'droplet';
       if (remote && !job.outcome && Date.now() < (job.nextPoll ?? 0)) return;
       if (remote) job.nextPoll = Date.now() + testTiming('CLAND_TEST_DROPLET_RUN_POLL_MS', 10000, this.#options.env);
@@ -618,8 +636,8 @@ export class Suites {
       if (remote && !job.outcome && job.lease && startedAt && Date.now() - Date.parse(startedAt) > timeoutMs + testTiming('CLAND_TEST_EXECUTOR_TIMEOUT_GRACE_MS', 120000, this.#options.env)) {
         job.timedOut = true; job.outcome = { code: 124, cause: `run timeout ${this.#options.runTimeout ?? '75m'}` }; this.#save(job);
       }
-      const receipt = job.lease ? remote ? await this.#droplet.status(job.lease as DropletLease) : await this.#local.status(job.lease) : null;
-      if (remote && job.lease && job.remoteLogStart !== undefined) {
+      const receipt = !restored && job.lease ? remote ? await this.#droplet.status(job.lease as DropletLease) : await this.#local.status(job.lease) : null;
+      if (!restored && remote && job.lease && job.remoteLogStart !== undefined) {
         try { await this.#collectLog(job); }
         catch (error) { if (receipt?.state !== 'lost' && !job.cancelled && !job.timedOut) throw error; }
         if (receipt?.state === 'done' || receipt?.state === 'lost') await writeFile(job.result, JSON.stringify({ code: receipt.code ?? 1, cause: receipt.cause ?? '', finished: receipt.finished ?? new Date().toISOString(), ...(receipt.platform ? { platform: receipt.platform } : {}) }));
@@ -653,10 +671,15 @@ export class Suites {
               const map = parseCoverageMap(await readFile(path, 'utf8'));
               if (map.head !== job.head || map.tree !== job.tree) throw new Error('coverage map provenance mismatch');
             }
-            const released = await this.#droplet.release(lease);
+            // Resource deletion and shared spend settlement can fail independently.
+            // A terminal run must still report; the executor sweep owns retries and
+            // unreleased durable leases continue to guard remote admission.
+            const released = await this.#droplet.release(lease).catch(error => {
+              this.#options.log?.({ event: 'verification-release-deferred', id: job.id, lease: lease.lease, error: String(error) });
+              return { lifetimeMs: lease.lifetimeMs ?? null, costUsd: lease.costUsd ?? null };
+            });
             job.machine = { name: lease.name, size: lease.size, region: lease.region, ...released };
             this.#save(job);
-            if (released.costUsd === null) throw new Error('remote machine release not yet confirmed');
           } else {
             if (job.cancelled) await this.#local.cancel(job.lease, 'SIGTERM');
             await this.#local.release(job.lease);
