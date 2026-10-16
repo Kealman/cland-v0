@@ -2,7 +2,7 @@
 id: E-425
 kind: epic
 title: Hub hygiene
-state: open
+state: closed
 criterion_seq: 6
 labels:
   - epic
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-369
 branch: null
 created: 2026-10-14T16:43:13.486Z
-updated: 2026-10-16T11:23:10.232Z
+updated: 2026-10-16T11:25:14.025Z
+closed: 2026-10-16T11:25:14.025Z
 ---
 
 ## Summary
@@ -62,9 +63,13 @@ QA runs the demo below on `dev`, playing the human's part through the `cland` CL
 (The suite-input and run-identity part of this demo moved to E-579 with T-379, by the human's decision of 2026-10-16, ask 396ec11a.) In a scratch project, QA starts a fake Claude Code session whose scratch project is then removed, and reads its bridge gone within 60 seconds. With a planted orphan bridge and a live bridge whose hub file exists, `cland doctor` lists only the orphan and `cland doctor --fix` ends only the orphan. QA reads the leftovers report of the latest full suite with no bridge. QA runs `npm run typecheck`, reads the compiler in use and its time, and reads the comparison table on the TypeScript 7 task.
 
 - [ ] C3. The cause of the orphan bridges is named on T-311, and a bridge whose hub is gone exits within 60 seconds, proved by a test on a real hub stopped under it.
+  - verified: qa-27 [qa] · run qa-2026-10-16-27-22 · 2026-10-16T11:24:55.131Z · commit 133ce00862a55cd6abf246a5df248c1da9af2fc4
 - [ ] C4. A full suite run leaves no `cland hook bridge` process behind, checked by the runner's leftovers check, and `cland doctor --fix` ends only bridges whose hub file is gone.
+  - verified: qa-27 [qa] · run qa-2026-10-16-27-22 · 2026-10-16T11:24:55.131Z · commit 133ce00862a55cd6abf246a5df248c1da9af2fc4
 - [ ] C5. TypeScript 7 runs the repository's typecheck when its diagnostics match 5.9's on the clean tree and on the planted errors, with both times recorded; otherwise the differences are recorded on the task, 5.9 stays and a follow-up is filed.
+  - verified: qa-27 [qa] · run qa-2026-10-16-27-22 · 2026-10-16T11:24:55.131Z · commit 133ce00862a55cd6abf246a5df248c1da9af2fc4
 - [ ] C6. `hub/README.md` (the doctor, the typecheck) and `docs/agents/tests.md` describe the bridge sweep and the compiler in use; T-311 and the TypeScript 7 task are closed. The suite-input and run-identity lines moved to E-579 with T-379 (human decision 2026-10-16, ask 396ec11a).
+  - verified: qa-27 [qa] · run qa-2026-10-16-27-22 · 2026-10-16T11:24:55.131Z · commit 133ce00862a55cd6abf246a5df248c1da9af2fc4
 
 ## Dogfooding
 
@@ -129,3 +134,72 @@ demo 7799a2e0-38d7-4c75-986e-599f118b906d created: droplet cland-v0-7799a2e0, co
 ### hub · 2026-10-16T11:23:10.232Z
 
 demo 7799a2e0-38d7-4c75-986e-599f118b906d destroyed: lifetime 544998 ms; cost $0.0378.
+
+### qa-27 · 2026-10-16T11:24:55.131Z
+
+verdict: qa
+result: clear
+by: qa-27 [qa]
+run: qa-2026-10-16-27-22
+commit: 133ce00862a55cd6abf246a5df248c1da9af2fc4
+
+| Case | Result | Observation | Evidence |
+|---|---|---|---|
+| G0 | PASS | Clean detached S; Node 24.21.0; scratch identity stripped. | `G0.txt` |
+| G1 | PASS | 13 children closed; all landing commits ancestors of S; C3–C6 retained. | `G1-epic.json`, `G1-children.json`, `G1-ancestry.txt`, `G1-T379.json`, `G1-T475.json` |
+| G2 | PASS | QA hold taken. | `G1-epic.json` |
+| L1 | PASS | Fake Claude idle; one bridge. | `L1.txt`, `L1-queue.json`, `L1-pid-start.txt` |
+| L2 | PASS | hub-started: cli, parent PID 62118, scratch cwd; no environment values. | `L2-started.json` |
+| L3 | PASS | Project removed from active path; bridge gone after 60 s; stop marker retained. | `L3.txt`, `L3-stop-marker.json` |
+| L4 | PASS | Typecheck exit 0, no diagnostics, real 1.09 s; TS 7.0.2 and API TS 5.9.3. | `L4-typecheck.txt`, `L4-versions.txt`, `L4-queue.json` |
+| L5 | PASS | No scratch processes remain; scratch paths removed through reversible Trash move. | `L5.txt` |
+| R1 | PASS | T-311 cause and verified criteria read; A-3349 diagnosis. | `R1-T311.json`, `R1-cause.txt`, `R-artifact-paths.txt` |
+| R2 | PASS | A-3721, A-3380 and newer A-3877 each show three 0-before/0-after bridge counts; exit 0. | `R2-leftovers.txt` |
+| R3 | PASS | Clean/planted diagnostics match; TS 5.9 median 5.825657541 s versus TS 7 median 0.896489459 s. | `R3-T427.json`, `R3-comparison.txt`, `R3-receipt-check.txt`, `R-artifact-paths.txt` |
+| R4 | PASS | Both docs cover bridge sweep and compiler choice; T-311/T-427 closed. | `R4-matrix.md`, `R4-states.txt` |
+| D0-amended | PASS | Authorized retry active at S; original startup BLOCKED retained (T-589). | `D0-amended-start.json`, `D0-amended-status.json`, `D0-amended-exit.txt`, `retry-amendment.txt` |
+| D1-amended | PASS | Exact S; clean tree; Node 24.21.0; Linux x86_64. | `D1-build.txt` |
+| D2-amended | PASS | No-hub bridge exited after 61 s; one bridge-expired notice. | `D2-expire.txt`, `D2.sh` |
+| D3-amended | PASS | Doctor listed/ended orphan PID 3088 only; live PID 3089 survived. | `D3-doctor.txt`, `D3.sh` |
+| D4-amended | PASS | 1 tests pass; zero failures/skips/cancellations; no rerun. | `D4.log` |
+| D5-amended | PASS | 1 tests pass; zero failures/skips/cancellations; no rerun. | `D5.log` |
+| D6-amended | PASS | 1 tests pass; zero failures/skips/cancellations; no rerun. | `D6.log` |
+| D7-amended | PASS | 3 tests pass; zero failures/skips/cancellations; no rerun. | `D7.log` |
+| D8-amended | PASS | 4 tests pass; zero failures/skips/cancellations; no rerun. | `D8.log` |
+| D9-amended | PASS | 18 tests pass; zero failures/skips/cancellations; no rerun. | `D9.log` |
+| D10-amended | PASS | 7 tests pass; zero failures/skips/cancellations; no rerun. | `D10.log` |
+| D11-amended | PASS | 16 tests pass; zero failures/skips/cancellations; no rerun. | `D11.log` |
+| D12-amended | PASS | 21 tests pass; zero failures/skips/cancellations; no rerun. | `D12.log` |
+| D13-amended | PASS | 7 tests pass; zero failures/skips/cancellations; no rerun. | `D13.log` |
+| D14 | PASS | freshness.current=true; changes since S confined to tracker/spec. | `D14-status.json`, `D14-dev.txt` |
+| D15 | PASS | One stop issued; final released state and created/destroyed comments recorded. | `D15-stop.json`, `D15-after.json`, `D15-final.json`, `D15-comments.txt`, `D15-release-timing.txt` |
+
+Findings, ranked by severity:
+
+- Medium, bug found aside **T-589**, original D0: `cland demo start E-425 --commit 133ce00862a55cd6abf246a5df248c1da9af2fc4 --json` exited 1 with `cland: machine command failed or exceeded its time bound`. Lease df159ade stayed releasing for minutes; an authorized retry was initially refused with `cland: epic already has a demo lease`. A-3882 retains the exact outputs. The original D0–D13 BLOCKED rows remain in runs.jsonl. The Coordinator placed this finding outside E-425 and authorized the amended results to govern. D15 also showed delayed release confirmation after a successful stop: its destroyed comment arrived at 11:23:10.232Z, 565.232 s after the Coordinator-reported deleteStarted (11:13:45Z); pending snapshots are retained under the same T-589 finding. No remaining E-425 failure.
+
+Run `qa-2026-10-16-27-22`, tested full commit `133ce00862a55cd6abf246a5df248c1da9af2fc4`. All 28 final checks pass under the amendments; 42 recorder rows include the 14 superseded BLOCKED rows. Part D ran on Linux through the demo lease, Part L on local macOS, Part R read-only. The ten serial test files passed 79 tests, zero failures/skips/cancellations/retries. No full suite was run; C4 uses published full-suite receipts.
+
+Criterion marks: **C3,C4,C5,C6 verified**. C3: D2,D4,L1,L3,R1. C4: D3,D5,R2. C5: D6–D8,L4,R3. C6: R4. C1/C2 moved to E-579 and receive no mark.
+
+Deviations and brief amendments:
+
+- Coordinator authorization in topic-369 at 11:01:40Z (02cc9ea3-6d65-4d93-a51d-c7a9b8a50b01): retry only after the failed lease released. Its initial releasing refusal was kept; no lease was allocated by that refusal. After released, one retry succeeded. Decision 0e59f580-1aa7-4360-b329-c13705c3827c at 11:09:35Z states that amended D0–D13 govern final cases, with T-589 and A-3882 retained as a finding aside. This explicitly amends the one-lease/no-same-run-retry clauses for this run.
+- Recorder surface wording corrected by 0630d66e-230e-485b-8dbe-967b03870e7c: use hub-api, with executor/platform in evidence. All rows use that supported surface.
+- D15 has no release-time bound in the brief. Coordinator bef3812a-3865-419e-b071-07b1eec9eaf9 (11:19:43Z) confirms judging its terminal released state plus destroyed comment and recording the latency under T-589. The provider deletion start was 11:13:45Z according to the Coordinator; D15-release-timing.txt records the final observation.
+- Active scratch paths were removed by reversible move to Trash; original output and exact helper scripts remain. No product file was changed.
+
+Lease accounting:
+
+- Failed startup: executor `droplet`, lease `df159ade-30c3-4486-9cf1-029ea09c9dce`, commit `133ce00862a55cd6abf246a5df248c1da9af2fc4`, deadline `2026-10-16T11:44:16.592Z`, state `released`, lifetime 52884 ms, cost $0.0041666667.
+- Authorized retry: executor `droplet`, lease `7799a2e0-38d7-4c75-986e-599f118b906d`, commit `133ce00862a55cd6abf246a5df248c1da9af2fc4`, deadline `2026-10-16T11:54:39.057Z`, state `released`, lifetime 544998 ms, cost $0.0378470833.
+
+Combined lease cost $0.0420137500. The second lease was stopped once after D14; final released status and the hub destruction record are in D15. No provider calls were made.
+
+Evidence index: `brief.md`, `retry-amendment.txt`, `runs.jsonl`, exact commands in setup/local/read-only/remote scripts, case captures, and `remote-summary.json`. D14 records the final freshness read. The local typecheck time (1.09 s) is a fresh observation, not a rerun of T-427’s historical comparison experiment.
+
+Durable evidence: A-3886 — /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3886-e-425-run-22-at-133ce008-qa-evidence-and-release-accounting. Initial startup evidence: A-3882 — /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3882-e-425-run-22-startup-timeout-and-stale-releasing-lease-refusal.
+
+Verdict note A-3887: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3887-e-425-qa-run-22-clear-c3-c6-t-589-found-aside.md
+
+Criteria: C3 verified, C4 verified, C5 verified, C6 verified.
