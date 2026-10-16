@@ -2,8 +2,8 @@
 id: T-296
 kind: task
 title: "OpenCode servers get their own database: the shared database lets OpenCode's background service resume cland's sessions (#51213)"
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -17,7 +17,8 @@ blocked_by:
 topic: topic-336
 branch: t/T-296-opencode-servers-get-their-own-database
 created: 2026-10-12T16:20:56.477Z
-updated: 2026-10-16T05:54:03.286Z
+updated: 2026-10-16T05:54:34.933Z
+closed: 2026-10-16T05:54:34.933Z
 ---
 
 ## Summary
@@ -310,3 +311,7 @@ No Reviewer tests/compiler/binary execution, edits, model/API/provider calls, si
 Artifact A-3761 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3761-t-296-final-clear-linux-gate-and-neovim-smoke-green-real-mac-p3-retained.md
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-10-16T05:54:34.933Z
+
+Merged 50c9f92cf685f8f191101fa5100ad2101c6b1b58 onto dev.
