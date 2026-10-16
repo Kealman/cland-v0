@@ -2,8 +2,8 @@
 id: T-575
 kind: task
 title: "In-process hub, part 3: bring daemon starts per full run from 743 to under 600"
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-376
 branch: t/T-575-in-process-hub-part-3-bring-daemon
 created: 2026-10-16T06:12:55.788Z
-updated: 2026-10-16T19:37:59.727Z
+updated: 2026-10-16T19:51:49.372Z
+closed: 2026-10-16T19:51:49.372Z
 ---
 
 ## Summary
@@ -241,3 +242,7 @@ C1/C2 verified; final evidence clear at the exact reviewed merged head. No per-i
 Review artifact A-4153.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-16T19:51:49.372Z
+
+Merged a1752d626bbbfe45a6c0c3f00cea5dfaff3ca5eb onto dev.
