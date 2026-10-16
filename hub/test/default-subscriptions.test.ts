@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { projectHub, withDiscoveredPid, connectUi, spawnSpoke, startDaemon, tempProject, fakeClaude, eventually, killDaemon, cland, sleep } from './harness.ts';
+import { projectHub, testWaitMs, withDiscoveredPid, connectUi, spawnSpoke, startDaemon, tempProject, fakeClaude, eventually, killDaemon, cland, sleep } from './harness.ts';
 import { copyPreparedProject } from './prepared-project.ts';
 import type { Message, Subscription } from '../src/protocol.ts';
 
@@ -271,12 +271,14 @@ for (const pendingReceipt of [false, true]) test(`terminal recovery routes an ol
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
   t.after(() => coord.close());
   await coord.waitForPresence(['coord']);
-  const reviewer = await ui.request({ type: 'session.launch', name: 'rev', role: 'reviewer', harness: 'claude-code' });
+  // Await each launch's correlated completion receipt: Claude's native agents probe
+  // alone has a 15 s deadline, so the generic 5 s frame budget can expire under load.
+  const reviewer = await ui.request({ type: 'session.launch', name: 'rev', role: 'reviewer', harness: 'claude-code' }, testWaitMs(30_000));
   assert.equal(reviewer.ok, true, reviewer.error);
   const r = await withDiscoveredPid(ui, (reviewer.value as { process: { pid: number; sessionId: string } }).process);
   t.after(() => killDaemon(r.pid));
   const { item } = await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Terminal lead order', assignee: 'impl' });
-  const implementer = await ui.request({ type: 'session.launch', name: 'impl', role: 'implementer', harness: 'claude-code', item: item.id });
+  const implementer = await ui.request({ type: 'session.launch', name: 'impl', role: 'implementer', harness: 'claude-code', item: item.id }, testWaitMs(30_000));
   assert.equal(implementer.ok, true, implementer.error);
   const p = await withDiscoveredPid(ui, (implementer.value as { process: { pid: number; sessionId: string } }).process);
   t.after(() => killDaemon(p.pid));
