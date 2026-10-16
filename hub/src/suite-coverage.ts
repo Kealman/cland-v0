@@ -127,7 +127,14 @@ export async function reduceCoverage(cwd: string, raw: string, recording: Covera
     const names = await readdir(dir);
     if (!names.some(name => /^coverage-.*\.json$/.test(name))) throw new Error(`coverage missing for ${test}`);
     for (const name of names.filter(name => /^coverage-.*\.json$/.test(name))) {
-      const result = JSON.parse(await readFile(join(dir, name), 'utf8')) as RawCoverage;
+      const path = join(dir, name);
+      const content = await readFile(path);
+      let result: RawCoverage;
+      try { result = JSON.parse(content.toString('utf8')) as RawCoverage; }
+      catch {
+        process.stderr.write(`suite coverage: skipping ${path} (${content.length} bytes): invalid JSON\n`);
+        continue;
+      }
       for (const script of result.result) {
         if (!script.url.startsWith('file:')) continue;
         const file = relative(cwd, fileURLToPath(script.url)).split('\\').join('/');

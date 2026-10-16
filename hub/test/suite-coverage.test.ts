@@ -11,7 +11,7 @@ import { tempProject } from './harness.ts';
 const exec = promisify(execFile);
 const repository = fileURLToPath(new URL('../../', import.meta.url));
 
-test('package capture attributes real CLI, daemon, spoke and fake processes to their test file', async t => {
+test('package capture retains real process coverage and a successful exit beside truncated JSON', async t => {
   const root = await tempProject(t, 'cland-coverage-processes-');
   await mkdir(join(root, 'hub/test'), { recursive: true });
   await mkdir(join(root, 'nvim/test'), { recursive: true });
@@ -45,6 +45,7 @@ test('daemon lifecycle and descendant attribution', async t => {
   const urls = [];
   for (const name of await readdir(dir)) if (name.startsWith('coverage-') && name.endsWith('.json')) for (const script of JSON.parse(await readFile(join(dir, name), 'utf8')).result) urls.push(script.url);
   for (const suffix of ['/hub/src/cli/hub.ts', '/hub/src/hub/daemon.ts', '/hub/src/spoke/spoke.ts', '/hub/test/fakes/codex/fake-codex.ts']) assert.ok(urls.some(url => url.endsWith(suffix)), suffix + ' contributes raw coverage');
+  await writeFile(join(dir, 'coverage-0-truncated.json'), '{"result":[{"url":"'.padEnd(163840, 'x'));
   await writeFile(${JSON.stringify(join(root, '.cland/run/contributors.json'))}, JSON.stringify(urls.filter(url => url.includes('/hub/'))));
 });`);
   const smoke = ['hub/test/tracer.test.ts', 'hub/test/daemon.test.ts', 'nvim/test/client.test.ts', 'nvim/test/sessions.test.ts'];
@@ -57,6 +58,7 @@ test('daemon lifecycle and descendant attribution', async t => {
   const env = { ...process.env, NODE_TEST_CONTEXT: '', CLAND_SUITE_SELECTION: JSON.stringify(selection), CLAND_COVERAGE_OUTPUT: output };
   const result = await exec(process.execPath, ['--input-type=module', '-e', code], { cwd: root, env, maxBuffer: 8 * 1024 * 1024 }).catch(error => { throw new Error(`fixture package failed\n${error.stdout}\n${error.stderr}`); });
   assert.match(result.stdout, /suite coverage map/);
+  assert.match(result.stderr, /suite coverage: skipping .*coverage-0-truncated\.json \(163840 bytes\): invalid JSON/);
   const map = JSON.parse(await readFile(output, 'utf8'));
   for (const path of ['hub/src/cli/hub.ts', 'hub/src/hub/daemon.ts', 'hub/src/spoke/spoke.ts']) {
     assert.ok(map.files[path]?.functions.some((fn: { tests: string[] }) => fn.tests.includes(file)), `${path} attributed to ${file}`);
