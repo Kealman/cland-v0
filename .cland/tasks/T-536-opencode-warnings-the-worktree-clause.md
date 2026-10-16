@@ -3,7 +3,7 @@ id: T-536
 kind: task
 title: OpenCode warnings, the worktree clause, and the codemode and instructions experiments
 state: open
-status: in progress
+status: ready
 size: M
 criterion_seq: 4
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-379
 branch: t/T-536-opencode-warnings-the-worktree-clause
 created: 2026-10-15T20:59:19.741Z
-updated: 2026-10-16T17:28:39.441Z
+updated: 2026-10-16T18:35:19.238Z
 ---
 
 ## Summary
@@ -36,6 +36,7 @@ See E-424's "The codemode experiment", "The instructions experiment", "The warni
 
 - [x] C1. `cland doctor` shows the free-model training warning and the missing-sandbox warning for a role on a free OpenCode model, and neither refuses a launch.
   - done: impl-536 · 2026-10-16T16:24:01.305Z
+  - verified: rev-31 [reviewer] · run rev-20261016-536-final · 2026-10-16T18:35:18.840Z · commit 4f51454ed441f9c152fd2efe3f718544e1553ae7
 - [x] C2. The role clauses for OpenCode roles (both copies) forbid moving a session out of its item's worktree.
   - done: impl-536 · 2026-10-16T16:54:47.373Z
   - verified: rev-31 [reviewer] · run rev-20261016-536-source-3 · 2026-10-16T16:55:25.681Z · commit 4f51454ed441f9c152fd2efe3f718544e1553ae7
@@ -154,3 +155,22 @@ Evidence not clear, A-4070. Same-head Linux007fa789/A-4068:1945pass/3fail/5skip,
 ### impl-536 · 2026-10-16T17:28:39.441Z
 
 Coordinator directed one unchanged-head retry now (topic-379 decision 5c41b561-b107-4d93-b378-74d3f283807e), without waiting for T-569/T-585 fixes. Retry 66f233ea-3234-401c-9be2-d60f00afbb4b is queued with no mode, explicit droplet executor and the same report/recipients. HEAD 4f51454ed441f9c152fd2efe3f718544e1553ae7 and clean tree confirmed. If this is red only on the known flakes again, report both 007fa789 and 66f233ea to lead T-536 and hold for Coordinator disposition/quarantine decision before anything else.
+
+### impl-536 · 2026-10-16T18:35:15.194Z
+
+Authorized unchanged-head retry 66f233ea-3234-401c-9be2-d60f00afbb4b passed (auto exit 0) at source-reviewed 4f51454ed441f9c152fd2efe3f718544e1553ae7. A-4110: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-4110-suite-66f233ea-3234-401c-9be2-d60f00afbb4b-auto-at-4f51454.log. Hub package plus Neovim smoke: 1965 tests, 1960 passed, 0 failed, 5 skipped; Linux x64 c-8 lon1, lifetime 1374s, $0.0954, peak 1m load 12.48. No source changes or shared-fix cherry-picks; clean tree/HEAD confirmed. Awaiting Reviewer final same-head settlement/C1 mark.
+
+### rev-31 · 2026-10-16T18:35:18.840Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261016-536-final
+commit: 4f51454ed441f9c152fd2efe3f718544e1553ae7
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear; Standards0/Spec0 findings, A-4111. Independently inspected exact-head Linux retry66f233ea/A-4110 exit0:1960pass/0fail/5skip, including12of12 Neovim smoke. Doctor training/sandbox warnings and allfour new instruction transition/fallback cases pass ordinary execution and5of5 load repetitions each. Both clause-budget snapshots pass; prior external reds do not recur. C1 verified; C2/C3/C4 source-3/A-4036 remain current at unchanged branch head. Experiment defaults remain unchanged/off and T-619 adoption follow-up stands. All claimant done marks present. Hub-only plus Neovim smoke, not full Neovim package. Lifetime1374s/cost$0.0954 perhub. No exception, edits or Reviewer tests.
+
+Criteria: C1 verified.
