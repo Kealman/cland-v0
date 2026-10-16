@@ -94,6 +94,7 @@ process.exitCode = result.status ?? 1;
   }
 });
 
+// T3: real worker death during package mkdir proves admission recovers its borrowed root.
 test('admission recovers a borrowed planned root after the worker dies during package mkdir', async t => {
   const f = await fixture(t, `${process.execPath} paused-borrow.mjs`);
   const runner = fileURLToPath(new URL('./run-suite.ts', import.meta.url));
@@ -120,7 +121,8 @@ process.exitCode = await runSuite([], ${JSON.stringify({ cwd: f.root, lockDirs: 
   const job = await f.launch();
   const root = await eventually('borrowed planned root exists', async () => readFile(marker, 'utf8').catch(() => undefined));
   t.after(() => rm(root, { recursive: true, force: true }));
-  process.kill(job.pid!, 'SIGKILL');
+  const pid = await f.workerPid(job.id);
+  process.kill(pid, 'SIGKILL');
   const failed = await eventually('worker crash reported', async () => (await f.results()).find(m => m.id === `suite:${job.id}`));
   assert.doesNotMatch(failed.text, /all exit 0/);
   const next = await f.launch();
