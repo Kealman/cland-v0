@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-364
 branch: t/T-476-a-hub-start-up-smoke-test-in-the-suite-a
 created: 2026-10-15T09:13:19.071Z
-updated: 2026-10-16T08:19:55.794Z
+updated: 2026-10-16T10:12:47.030Z
 ---
 
 ## Summary
@@ -32,16 +32,19 @@ A test in hub/test starts `cland hub start` in a fresh project, waits at most 10
   - done: impl-476 · 2026-10-16T07:35:09.038Z
   - verified: rev-30 [reviewer] · run rev-20261016-476-final · 2026-10-16T08:17:05.652Z · commit 4dd3a151b224107827b7a868e8183e0d640aca03
   - verified: rev-30 [reviewer] · run rev-20261016-476-merge-final · 2026-10-16T08:19:54.878Z · commit 1d3d66ca3a606b75a2691567bb3f04a2cf57bbf7
+  - verified: rev-30 [reviewer] · run rev-20261016-476-final-allowance-merge · 2026-10-16T10:12:46.129Z · commit dc8d2f62276709e1494a70ee4af4aaea97ca8758
 - [x] C2. It runs in every hub phase selection, including hub-only task runs.
   - done: impl-476 · 2026-10-16T07:24:33.344Z
   - verified: rev-30 [reviewer] · run rev-20261016-476-correction · 2026-10-16T07:37:07.313Z · commit 4dd3a151b224107827b7a868e8183e0d640aca03
   - verified: rev-30 [reviewer] · run rev-20261016-476-final · 2026-10-16T08:17:05.652Z · commit 4dd3a151b224107827b7a868e8183e0d640aca03
   - verified: rev-30 [reviewer] · run rev-20261016-476-merge-final · 2026-10-16T08:19:54.878Z · commit 1d3d66ca3a606b75a2691567bb3f04a2cf57bbf7
+  - verified: rev-30 [reviewer] · run rev-20261016-476-final-allowance-merge · 2026-10-16T10:12:46.129Z · commit dc8d2f62276709e1494a70ee4af4aaea97ca8758
 - [x] C3. hub/README.md lists it under Tests.
   - done: impl-476 · 2026-10-16T07:24:33.711Z
   - verified: rev-30 [reviewer] · run rev-20261016-476-correction · 2026-10-16T07:37:07.313Z · commit 4dd3a151b224107827b7a868e8183e0d640aca03
   - verified: rev-30 [reviewer] · run rev-20261016-476-final · 2026-10-16T08:17:05.652Z · commit 4dd3a151b224107827b7a868e8183e0d640aca03
   - verified: rev-30 [reviewer] · run rev-20261016-476-merge-final · 2026-10-16T08:19:54.878Z · commit 1d3d66ca3a606b75a2691567bb3f04a2cf57bbf7
+  - verified: rev-30 [reviewer] · run rev-20261016-476-final-allowance-merge · 2026-10-16T10:12:46.129Z · commit dc8d2f62276709e1494a70ee4af4aaea97ca8758
 
 ## Comments
 
@@ -206,5 +209,40 @@ Neovim was not run in A-3851. The primary disposition still requires the **next 
 Final merge delta **clear**, C1/C2/C3 refreshed. No further task run under the explicit no-new-run decision; no per-item QA. Findings: Standards0; Spec0.
 
 Artifact A-3866 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3866-t-476-merge-delta-final-clear-unchanged-smoke-and-exact-allowance-union.md
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### rev-30 · 2026-10-16T10:12:46.129Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-476-final-allowance-merge
+commit: dc8d2f62276709e1494a70ee4af4aaea97ca8758
+scope: delta
+
+# T-476 final allowance merge delta clear
+
+Reviewed pushed `dc8d2f62276709e1494a70ee4af4aaea97ca8758` on `t/T-476-a-hub-start-up-smoke-test-in-the-suite-a`; local/origin refs agree. Parents prior clear1d3d66ca3a606b75a2691567bb3f04a2cf57bbf7 and dev81f03532d13d99dcc7fa20848a6344ee013ceeea. Took hold/read current claimant and criteria once. Prior source/final chain A-3831/A-3861/A-3866 applies.
+
+Primary **4b676dd2-f89d-4fe1-a657-68e66779f39f** explicitly requests this merge-only freshness verdict with the same durations-union/no-new-run disposition. Primary **f4ef7844-da12-49a4-8986-0f51a9b9b31b** independently confirms pushed head/clean merge. Primary correction **36504305-ae9b-43d2-b27c-13e5bb4e2ddf** is authoritative for the outstanding Neovim condition below.
+
+## Standards
+
+No high/medium/low findings. All startup-smoke, suite-selection source and both selection test files are byte-identical to prior reviewed1d3d66ca. Incoming changes are dev-owned. Against merged dev the task remains its seven-file startup addition; duration conflict resolution is exactly **8 added lines/0 removed**, appending only two unchanged hang allowances after dev's existing final entry. No dev allowance, ordering, value or formatting is removed.
+
+Independently parsed both committed parent manifests and result: old272 allow entries, dev273, result275; no unequal common identity; exact both-parent union. All non-allow root fields equal dev, including its demo-release file allowance. Whitespace diff check clean. No new task implementation or assertion change.
+
+## Spec / evidence and freshness
+
+Refresh **C1/C2/C3**. Durable **A-3873** is a check-results note (not a separately attached raw-log bundle): reports serial load<10/clear-PID-guard selection85/85, startup3/3 and demo-release12/12, zero fail/cancel/skip. Startup whole21.525s, pre-discovery10.339s/listening10.366s/healthy0.548s, PID50096 gone-before-removal receipt; JSON parse275 allowances/shards6free196machine/diff checks green. These supplemental unchanged-source checks are consistent with prior audited Linux proof; no new full suite is represented.
+
+Actual prior Linux **A-3851 /9955455a** at4dd3a151 remains the accepted ordinary3cases/15fresh-repetition proof. Its three outside functional failures and six hard budget lines, hub-only completion despite full mode, and explicit Coordinator hub-gate acceptance remain fully disclosed in A-3861. Primary no-new-run disposition carries that evidence across these data-only merge resolutions; it is not a fresh Linux exit0 atdc8d2f62.
+
+**Neovim condition NOT yet met:** the 0000625b/8e2c171a integrated pair at81f03532 predates T-476 on dev and cannot establish runtime proof of its smoke selection. Per primary correction36504305, **the next integrated dev cover after T-476 merges (the stage-close cover) must run its Neovim phase before any hub restart on T-476 code**. Preserve this exact condition; do not carry forward the Coordinator's earlier superseded claim that it was met.
+
+Final merge-only delta **clear**, all criteria refreshed, no new task run requested. Merge/restart ordering remains Coordinator-owned; verdict does not independently authorize restart or claim outstanding integrated phase completed. No per-item QA. Read-only Reviewer: no tests/compiler/edits/provider calls/subagents. Findings: Standards0; Spec0.
+
+Artifact A-3874 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3874-t-476-final-allowance-delta-clear-post-merge-neovim-condition-remains-unmet.md
 
 Criteria: C1 verified, C2 verified, C3 verified.

@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-14T12:28:09.615Z
-updated: 2026-10-16T06:37:20.529Z
+updated: 2026-10-16T08:32:51.939Z
 ---
 
 ## Goal
@@ -59,17 +59,16 @@ Choices where the research is silent:
 4. **The workers.** The re-measurement and the defaults. Demo: the measurement table on the item and the new defaults in `hub/README.md`.
 
 ## Definition of done
+(Human decision of 2026-10-16, ask 6a7185b6, answer 3ab87e56: E-387 closes on the delivered infrastructure. The targets for hub test-time down 15%, a coverage-selected verify under 5 minutes with the 40-merge replay, measured worker defaults, and T-393 C5's 20% check moved to E-578 in v0.1.4.)
+
 
 QA runs the demo below on `dev`, playing the human's part through the `cland` CLI, and records a clear verdict on this epic with each checkbox verified by its id; the epic then closes. The human does not run this demo (D16 and D19 of v0.1 §4).
 
 On an empty verify queue, QA runs one ordinary integrated full run on `dev` on one slot and reads its hub test-time and wall against the quick-wins epic's after run. QA then runs a sharded `--occasion epic` run on `dev` and reads the merged report, each shard's time and cost, and the day's spend under the cap. On a scratch branch QA changes one function in `hub/src/hub/` and one in `hub/src/tracker/`, and reads each selection and its run time. QA reads the coverage replay table on the coverage ticket, and checks that the epic's QA brief names any miss.
 
 - [ ] In the top 20 files by test-time, non-lifecycle tests run against an in-process hub and a spawned hub process remains only in lifecycle tests; the rest is filed as a follow-up with its list; and the daemon starts per full run fall from about 944 to a measured 743 (census A-3775); under 600 moved to v0.1.4, E-578 (T-575), by the human's decision of 2026-10-16 (ask 396ec11a).
-- [ ] Hub test-time on one slot falls by at least 15% against the quick-wins epic's after run on common tests (the research estimates 250–620 s from the in-process hub alone).
 - [ ] A stage, epic or release integrated run shards across droplets within the $3/day cap and posts one merged report; a batch run, a task run and QA's task-head run never shard; a short cap gives one slot with a warn notice.
-- [ ] A sharded close run's wall time is at most 10 minutes with 2 c-8 shards (model: about 8–9.5 after both epics; 6–6.5 needs 3–4 shards and a raised `remote_budget`), with each shard's time and cost in the report. The wall-time target moved to v0.1.4, E-578 (T-520), by the same decision; the shard cost and time reporting stays in this epic.
-- [ ] A typical hub task's `cland verify` selects by coverage and finishes in under 5 minutes, and the replay of the last 40 merges meets the bar the human set.
-- [ ] The worker defaults are set from a recorded measurement, locally and on c-16.
+- [ ] Each sharded close run reports every shard's time and cost in its merged report. The 10-minute wall-time target moved to v0.1.4, E-578 (T-520), by the human's decision of 2026-10-16 (ask 396ec11a).
 - [ ] Every moved test keeps its assertions' meaning, and frame proofs still go over a real socket and WebSocket to a real hub.
 - [ ] `hub/README.md` (Tests), `docs/agents/tests.md`, the Coordinator, Implementer and QA clauses and the `merge` and `qa` skills describe the in-process default, the lifecycle line, coverage selection, `--occasion` and the shard cost.
 

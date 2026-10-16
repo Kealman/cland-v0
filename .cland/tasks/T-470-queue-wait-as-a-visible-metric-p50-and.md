@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-361
 branch: t/T-470-queue-wait-as-a-visible-metric-p50-and
 created: 2026-10-15T09:13:16.188Z
-updated: 2026-10-16T08:13:15.970Z
+updated: 2026-10-16T08:24:03.576Z
 ---
 
 ## Summary
@@ -34,15 +34,18 @@ Retrospective A-2783, START 4: the run spent 6,618 queue-minutes against 3,411 m
   - verified: rev-30 [reviewer] · run rev-20261016-470-source · 2026-10-16T06:30:17.108Z · commit 311933f19e64bc56a00f21ee14407f2b4ca6533a
   - verified: rev-30 [reviewer] · run rev-20261016-470-final · 2026-10-16T07:56:27.045Z · commit 311933f19e64bc56a00f21ee14407f2b4ca6533a
   - verified: rev-30 [reviewer] · run rev-20261016-470-merge-final · 2026-10-16T08:13:15.063Z · commit 8b70ec3ebd6781fe4da5c8a80aaed85d99862d30
+  - verified: rev-30 [reviewer] · run rev-20261016-470-cover-merge-final · 2026-10-16T08:24:02.631Z · commit 41bf67b23a5dd33358edff92f99b2c41bf90de64
 - [x] C2. An hourly `verification-wait` journal record carries the same values, proven by a test with a fake clock.
   - done: impl-470 · 2026-10-16T06:27:03.496Z
   - verified: rev-30 [reviewer] · run rev-20261016-470-final · 2026-10-16T07:56:27.045Z · commit 311933f19e64bc56a00f21ee14407f2b4ca6533a
   - verified: rev-30 [reviewer] · run rev-20261016-470-merge-final · 2026-10-16T08:13:15.063Z · commit 8b70ec3ebd6781fe4da5c8a80aaed85d99862d30
+  - verified: rev-30 [reviewer] · run rev-20261016-470-cover-merge-final · 2026-10-16T08:24:02.631Z · commit 41bf67b23a5dd33358edff92f99b2c41bf90de64
 - [x] C3. hub/README.md describes the metric and the setting.
   - done: impl-470 · 2026-10-16T06:27:03.854Z
   - verified: rev-30 [reviewer] · run rev-20261016-470-source · 2026-10-16T06:30:17.108Z · commit 311933f19e64bc56a00f21ee14407f2b4ca6533a
   - verified: rev-30 [reviewer] · run rev-20261016-470-final · 2026-10-16T07:56:27.045Z · commit 311933f19e64bc56a00f21ee14407f2b4ca6533a
   - verified: rev-30 [reviewer] · run rev-20261016-470-merge-final · 2026-10-16T08:13:15.063Z · commit 8b70ec3ebd6781fe4da5c8a80aaed85d99862d30
+  - verified: rev-30 [reviewer] · run rev-20261016-470-cover-merge-final · 2026-10-16T08:24:02.631Z · commit 41bf67b23a5dd33358edff92f99b2c41bf90de64
 
 ## Comments
 
@@ -243,5 +246,49 @@ Prior exact-head Linux A-3815/A-3842 and explicit final gate acceptance A-3844 r
 Final merge delta **clear**, C1/C2/C3 refreshed. No per-item QA. Standards findings0; Spec findings0; no high/medium/low findings.
 
 Artifact A-3852 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3852-t-470-merge-delta-clear-loaded-config-publication-and-247-whole-file-passes.md
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### rev-30 · 2026-10-16T08:24:02.631Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-470-cover-merge-final
+commit: 41bf67b23a5dd33358edff92f99b2c41bf90de64
+scope: delta
+
+# T-470 second merge delta final clear
+
+Reviewed pushed `41bf67b23a5dd33358edff92f99b2c41bf90de64`, branch `t/T-470-queue-wait-as-a-visible-metric-p50-and`; local/origin refs agree. Parents previous clear8b70ec3ebd6781fe4da5c8a80aaed85d99862d30 and dev544527784826e12803b6b0111b53025faa7c211a. Hold/current claimant/C1–C3 checked once. Prior final A-3844 and first merge A-3852 apply.
+
+Primary Coordinator **dc9ae9af-24ae-4dd7-acf7-1e3593e4f28f**, independently read, requires this additional real-conflict merge with T-479 cover records, preservation of both hook sets, newly resolved identifier selection plus suite-cover/earlier mandatory five files. Primary **ab650496-c29d-4485-910b-9438c28a59bf** authorizes slot B, serial files with load<10/local suite slot free and exclusion only of T-584 cwd. Earlier23bcb758 preserved-receipt/no-new-droplet direction remains in force; no further task run requested.
+
+## Standards
+
+Zero high/medium/low findings. Combined merge hunks are actual unions:
+- suites.ts retains VerificationWait and classifyCover/deriveCover/recentCovers imports;
+- journal whitelist retains both verification-wait and verification-cover-classified;
+- README retains both complete wait-metrics/loaded-config and cover-record/classification sections.
+Read resulting diff against dev: all auto-merged cover fields/classification/persistence/recent-cover hooks remain as dev, with only the previously reviewed wait additions. Cover source/test and dispatch source are byte-identical to dev. No dropped behavior or invented manual rewrite.
+
+VerificationWait module, metric tests, loaded-config configuration/daemon/init code are byte-identical to previous clear8b70ec3e, retaining initial snapshot selection and configure publication/invalid-reload retention. Prior T-491 executor/lock behavior is inherited; no task-local change. Whitespace diff check clean.
+
+## Spec / exact merge-head receipts
+
+Refresh **all C1–C3**. **A-3869** contains semantic search map, results with per-admission guard observations and nine copied whole-file raw Mac logs. Independent committed-content search across hub/test+nvim/test exactly reproduces five identifier-match files; their union with six mandatory files equals the nine executed files, no omitted match/Nvim file.
+
+Independently parsed raw logs: **83tests/83pass/0fail/0cancel/0skip**, all summaries match raw suffix, every exit0:
+suite-wait-metrics5,suite-queue5,config-reload4,daemon18,suite-remote-budget16,suite-cover9,planned-stage11,stage-qa12,suite-stage-cover3. Fake-clock hourly Journal and loaded-config CLI target regression remain green; cover tests exercise persisted/classified records, permissions and restart alongside them. No new-test repetition run is claimed for these unchanged tests.
+
+Results record admission load2.3403–3.9893<10, local holder null, processes[] at every file start; claimant reports serial slot-B execution with unchanged tree. Typecheck/shard lint reported green; Reviewer only reads/parses, runs no tests/compiler/process probes.
+
+## Carried gate and rollout limit
+
+Old actual Linux A-3815/A-3842 and explicit acceptance A-3844 remain historical evidence carried by Coordinator's merge/no-new-droplet directions, not fresh execution at41bf67b2. Both prior task runs stopped before Neovim. **Next integrated dev cover must supply Neovim before any hub restart on T-470 code.** This condition is neither removed nor satisfied by the Mac selection.
+
+Final merge delta **clear**, C1/C2/C3 refreshed, no new droplet run. Current Coordinator hub-code merge/restart hold and release ordering remain Coordinator-owned; verdict is not merge/restart authorization. No per-item QA. Findings: Standards0; Spec0.
+
+Artifact A-3870 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3870-t-470-cover-merge-delta-clear-both-hook-sets-preserved-83-whole-file-passes.md
 
 Criteria: C1 verified, C2 verified, C3 verified.

@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-10-16T06:45:55.596Z
+updated: 2026-10-16T09:27:58.295Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -316,3 +316,11 @@ Incident, 2026-10-16 04:12Z: integrated cover b5643d32 at 34262327 (droplet, ful
 ### coord · 2026-10-16T06:45:55.596Z
 
 Incident, 2026-10-16 06:44Z: integrated cover efaa6344 at dev 4dc49979 (droplet) went red on one test, planned-stage.test.ts:249's query budget, at 10412 against the < 10000 bound. This is T-566, a known near-limit test whose count is drifting up (9.6k on a quiet Mac). The restart held. Recovery: one flaky-rule cover resubmit 1d78a0ff, and impl-566 fixing forward. Cost: about 25 min of restart delay.
+
+### coord · 2026-10-16T08:51:22.450Z
+
+Incident, 2026-10-16 08:49Z: integrated cover 0000625b at dev 3a3b4633 went red on two things. claude-code-adapter.test.ts:353 counted 2 discovery calls where 1 was expected; it passes 3/3 alone on dev on a quiet Mac, so it's filed as T-585. demo-release.test.ts ran 61.0 s against its 60 s file budget after T-572 and T-583 added a dozen demo-lease cases, fixed with allowance 81f03532. Recovery: one flaky-rule resubmit, 8e2c171a at 81f03532. The hub restart for T-583 is delayed by about 25 min.
+
+### coord · 2026-10-16T09:27:58.295Z
+
+2026-10-16 09:15Z: the resubmitted cover 8e2c171a at 81f03532 was red only in the Neovim phase: explorer-card "rapid j movement", passing 3/3 alone, filed as T-586. Hub 1897/0; Neovim 389 pass, 1 fail. The Coordinator accepted it as integrated coverage under the E-482 two-receipt gate, paired with 0000625b, whose red was T-585 plus a file budget since fixed, and asked for a manual restart. Cost: the Coordinator missed the cover's finish and sat idle from 08:51Z to 09:26Z, about 11 minutes of delay after the finish.
