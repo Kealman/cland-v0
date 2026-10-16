@@ -2,8 +2,8 @@
 id: T-685
 kind: task
 title: serveProject and createHub take a Clock, and projectHub tests advance a fake one instead of waiting real time
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 4
 labels:
@@ -16,7 +16,8 @@ blocked_by: []
 topic: topic-410
 branch: t/T-685-serveproject-and-createhub-take-a-clock
 created: 2026-10-16T19:59:28.353Z
-updated: 2026-10-16T21:00:29.835Z
+updated: 2026-10-16T21:44:11.913Z
+closed: 2026-10-16T21:44:11.913Z
 ---
 
 ## Summary
@@ -99,3 +100,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear; Standards0/Spec0 findings, A-4199. Independently inspected same-head2d734657/A-4198 full exit0:2386pass/0fail/8skip, complete Neovim390pass/0fail/3skip. Timing records contain all27 unchanged compatibility cases (heartbeat9/hygiene8/presence3/store-forward7), paired with previously audited A-4176 Mac5serial whole-files each/135passes. All8 new clock identities ordinary green and5of5. C3 verified; C1 under Coordinator6e559ea8/A-4182 and C2/C4 source/A-4181 current. Implementer ac7ee7ee reports C3done now submitted, others already present. Lifetime2634s/cost$0.1829 perhub. No Reviewer edits/tests.
 
 Criteria: C3 verified.
+
+### coord · 2026-10-16T21:44:11.913Z
+
+Merged 15abc95e9b35523a812487aa8a77ece24f688a06 onto dev.
