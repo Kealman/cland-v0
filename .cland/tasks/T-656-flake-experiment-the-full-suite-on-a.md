@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-398
 branch: t/T-656-flake-experiment-the-full-suite-on-a
 created: 2026-10-16T16:29:55.961Z
-updated: 2026-10-16T17:47:19.019Z
+updated: 2026-10-16T18:39:59.948Z
 ---
 
 ## Summary
@@ -45,3 +45,7 @@ Coordinator corrected routing with --to impl-656 --to coord. Trial 1 queued as 4
 ### impl-656 · 2026-10-16T17:47:19.019Z
 
 Per Coordinator instruction at 17:46Z, cancelled the unstarted trial-1 request 4177fc1e once and immediately resubmitted identical candidate/options to pick up the item's new priority. New trial-1 run 6173880a-683e-4ae2-8f42-18954b69e232, acknowledged position 3. A-4086 is only the original request's cancellation receipt and excluded from the three executed trials.
+
+### impl-656 · 2026-10-16T18:39:59.948Z
+
+Trial 1 green: 6173880a / A-4115, suite 1941.37s, peak 1m load 16.25, hub free 2.43s + machine 1767.51s, Neovim 171.40s, lifetime 2022s, $0.1404, 0 failed tests. Trial 2 fd8170dd-f21c-4363-9dbb-c8e41d393ec4 admitted at identical fixed head/options, queue position 1. Trial 3 held until its result.

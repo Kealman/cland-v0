@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-376
 branch: t/T-575-in-process-hub-part-3-bring-daemon
 created: 2026-10-16T06:12:55.788Z
-updated: 2026-10-16T17:56:43.181Z
+updated: 2026-10-16T19:02:26.290Z
 ---
 
 ## Summary
@@ -179,3 +179,7 @@ This is source-delta clearance, not final merge-head task evidence. The prior fu
 Review artifact A-4091.
 
 Criteria: C1 verified, C2 verified.
+
+### impl-575 · 2026-10-16T19:02:26.290Z
+
+New-head gate f60699b7 at dfe9af5aa54047cb03f7a1dc5f3027b9189b4de9 failed; log A-4122 / independent Reviewer audit A-4123. 1977 tests / 1971 pass / 1 fail / 5 skip, Linux c-8 lon1, lifetime 1775s, cost $0.1233. Known T-585 schedule assertion PID !== null is the functional red; two T-603 duration budgets also fail. Changed hub cases, including integrated rule-sessions 8/8 and suite-close 7/7, are green. Full Neovim did not run after hub failure. Holding diagnosis/retry/head changes and asking Coordinator for the shared-fix/gate sequence; the conditional ad5e2c86 budget-only instruction does not cover this combined case. Historical accepted C2 census remains A-4088 at a8ddbb8c. No fresh final-ready claim.

@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-397
 branch: t/T-655-flake-experiment-the-full-suite-on-a
 created: 2026-10-16T16:29:55.579Z
-updated: 2026-10-16T18:05:58.199Z
+updated: 2026-10-16T18:48:03.700Z
 ---
 
 ## Summary
@@ -40,3 +40,7 @@ Experiment prepared in clean detached .cland/worktrees/T-655-workers2 at 4555eaf
 ### impl-655 · 2026-10-16T18:05:58.199Z
 
 Run 1/3 green: 36ccfb54, log A-4098, fixed head 4555eafe, workers=2 on c-8 Linux. 2347 tests / 0 fail / 8 skipped; peak 1m load 9.27; hub free 1.75s, hub machine 2261.70s, Neovim 207.68s; suite 2471.16s; lifetime 2538s; cost $0.1763. Submitting run 2 only after this completed receipt.
+
+### impl-655 · 2026-10-16T18:48:03.700Z
+
+Run 2/3 green: a46448d4, log A-4119, fixed head 4555eafe, workers=2 on c-8 Linux. 2347 tests / 0 fail / 8 skipped; peak 1m load 8.90; hub free 1.63s, hub machine 2127.87s, Neovim 188.58s; suite 2318.10s; lifetime 2393s; cost $0.1662. Submitting run 3 after this completed receipt.

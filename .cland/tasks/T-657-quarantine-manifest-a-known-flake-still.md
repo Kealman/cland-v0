@@ -3,7 +3,7 @@ id: T-657
 kind: task
 title: "Quarantine manifest: a known flake still runs and is reported, but no longer fails the run"
 state: open
-status: in progress
+status: ready
 size: M
 rank: 4410
 criterion_seq: 5
@@ -18,7 +18,7 @@ blocked_by: []
 topic: topic-399
 branch: t/T-657-quarantine-manifest-a-known-flake-still
 created: 2026-10-16T16:29:56.201Z
-updated: 2026-10-16T18:35:46.496Z
+updated: 2026-10-16T19:02:58.739Z
 ---
 
 ## Summary
@@ -31,15 +31,26 @@ A committed `hub/test/quarantine.json` lists tests by file and name, each with a
 
 ## Acceptance criteria
 
-- [ ] C1. A quarantined test that fails is reported in its own section of the result and the run stays green, proved by a runner test with a planted failing quarantined test.
-- [ ] C2. A non-quarantined failure still fails the run, and a quarantined pass is reported as a pass, proved by the same runner test file.
+- [x] C1. A quarantined test that fails is reported in its own section of the result and the run stays green, proved by a runner test with a planted failing quarantined test.
+  - done: impl-657 · 2026-10-16T18:36:03.838Z
+  - verified: rev-31 [reviewer] · run rev-20261016-657-final · 2026-10-16T18:59:43.052Z · commit 4317d560a06a6c4f10243e3827fd6548ae75a7f7
+  - verified: rev-31 [reviewer] · run rev-20261016-657-merge-delta · 2026-10-16T19:02:57.321Z · commit 5b7be7fa64480641eabfe38c02ae8226c885f286
+- [x] C2. A non-quarantined failure still fails the run, and a quarantined pass is reported as a pass, proved by the same runner test file.
   - verified: rev-31 [reviewer] · run rev-20261016-657-source · 2026-10-16T16:43:43.275Z · commit 4317d560a06a6c4f10243e3827fd6548ae75a7f7
-- [ ] C3. An expired entry fails the manifest check by name, and an entry without an owner ticket or with an expiry over 7 days is refused, proved by a manifest test.
+  - done: impl-657 · 2026-10-16T18:36:04.188Z
+  - verified: rev-31 [reviewer] · run rev-20261016-657-merge-delta · 2026-10-16T19:02:57.321Z · commit 5b7be7fa64480641eabfe38c02ae8226c885f286
+- [x] C3. An expired entry fails the manifest check by name, and an entry without an owner ticket or with an expiry over 7 days is refused, proved by a manifest test.
   - verified: rev-31 [reviewer] · run rev-20261016-657-source · 2026-10-16T16:43:43.275Z · commit 4317d560a06a6c4f10243e3827fd6548ae75a7f7
-- [ ] C4. Twenty consecutive green results for a quarantined test are reported as "cleared", proved by a test on recorded results.
+  - done: impl-657 · 2026-10-16T18:36:04.682Z
+  - verified: rev-31 [reviewer] · run rev-20261016-657-merge-delta · 2026-10-16T19:02:57.321Z · commit 5b7be7fa64480641eabfe38c02ae8226c885f286
+- [x] C4. Twenty consecutive green results for a quarantined test are reported as "cleared", proved by a test on recorded results.
   - verified: rev-31 [reviewer] · run rev-20261016-657-source · 2026-10-16T16:43:43.275Z · commit 4317d560a06a6c4f10243e3827fd6548ae75a7f7
-- [ ] C5. docs/agents/tests.md and hub/README.md (Tests) describe the quarantine, its evidence bar and its expiry.
+  - done: impl-657 · 2026-10-16T18:36:05.046Z
+  - verified: rev-31 [reviewer] · run rev-20261016-657-merge-delta · 2026-10-16T19:02:57.321Z · commit 5b7be7fa64480641eabfe38c02ae8226c885f286
+- [x] C5. docs/agents/tests.md and hub/README.md (Tests) describe the quarantine, its evidence bar and its expiry.
   - verified: rev-31 [reviewer] · run rev-20261016-657-source · 2026-10-16T16:43:43.275Z · commit 4317d560a06a6c4f10243e3827fd6548ae75a7f7
+  - done: impl-657 · 2026-10-16T18:36:05.401Z
+  - verified: rev-31 [reviewer] · run rev-20261016-657-merge-delta · 2026-10-16T19:02:57.321Z · commit 5b7be7fa64480641eabfe38c02ae8226c885f286
 
 ## Comments
 
@@ -102,3 +113,37 @@ findings: [{"severity":"medium","text":"External stale tomorrow weekday/time res
 finding_counts: {"high":0,"medium":1,"low":0}
 
 Evidence not clear, A-4112. Independently inspected exact-head A-4107/84ec4964:2347pass/1fail/8skip, full Neovim reached but failed reset-string assertion273. All eight own cases ordinary green and5of5 load repetitions; no task criterion failed. C1 final verification pending authorized unchanged-head58b43dec; C2/C3/C4/C5 source marks current. No acceptance exception assumed. Current item snapshot lacks claimant done marks for C1–C5; lead should submit supported evidence-backed done marks. Lifetime2008s/cost$0.1394 perhub. No Reviewer edits/tests.
+
+### impl-657 · 2026-10-16T18:59:32.011Z
+
+Authorized unchanged-head retry 58b43dec-85a6-4b4e-8f67-a96abe5c7047 passed full explicit-droplet verification at source-reviewed 4317d560 (A-4120): typecheck/package exit 0; 2356 tests, 2348 pass, 0 failures/cancellations, 8 skips. Linux x64 c-8 lon1, Node v24.21.0, Neovim v0.12.5; lifetime 1493s, cost $0.1037; suite 1423.58s, peak load 10.88. All eight own cases pass with 5/5 load repetitions; no own new test exceeds 5s and no duration budget failure. All C1–C5 claimant marks recorded. Prior red A-4107 remains preserved under external T-673, and cancelled A-4087 remains preserved. No source change or post-review dev merge; working tree clean. Awaiting Reviewer final same-head settlement; hub ready event routes to supervising Lead.
+
+### rev-31 · 2026-10-16T18:59:43.052Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261016-657-final
+commit: 4317d560a06a6c4f10243e3827fd6548ae75a7f7
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear; Standards0/Spec0 findings, A-4121. Independently inspected same-head full Linux58b43dec/A-4120 exit0:2348pass/0fail/8skip, complete Neovim390pass/0fail/3skip. All eight new quarantine identities ordinary green and5of5 load repetitions, including planted quarantined failure reported separately with inner run green and ordinary failure remaining red. C1 verified; C2/C3/C4/C5 source/A-4030 remain current at unchanged4317d560. All claimant done marks present. Earlier external Neovim failure does not recur; no exception required. Lifetime1493s/cost$0.1037 perhub. No Reviewer edits/tests.
+
+Criteria: C1 verified.
+
+### rev-31 · 2026-10-16T19:02:57.321Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261016-657-merge-delta
+commit: 5b7be7fa64480641eabfe38c02ae8226c885f286
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Conflict-only merge delta clear; Standards0/Spec0 findings, A-4125. Independently verified merged manifest equals complete dev parent plus exactly own two classifications, retaining both candidate entries. Old/new task diffs have identical14 paths and all added/removed lines (+375/-11); no task patch change. A-4124 reports exact-head typecheck/shard lint exit0; independent diffcheck clean. Coordinator6363c98b independently read: explicitly accepts A-4120 full green at4317d560 for unchanged content, forbids new droplet and requires immediate integrated cover after landing. C1–C5 continuity verified at5b7be7fa under that disposition, with all claimant done marks present. No exact-new-head full execution claimed; combined tree awaits Coordinator integrated cover. No Reviewer edits/tests.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.

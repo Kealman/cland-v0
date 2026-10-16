@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-401
 branch: t/T-475-cover-quiet-enforced-while-the
 created: 2026-10-15T09:13:18.684Z
-updated: 2026-10-16T18:12:49.135Z
+updated: 2026-10-16T18:40:10.586Z
 ---
 
 ## Summary
@@ -35,6 +35,7 @@ Retrospective A-2783, STOP 1: all 7 flaky red covers had other sessions' test ru
 - [ ] C3. docs/agents/tests.md and the Implementer clause describe the refusal and the human's override.
   - verified: rev-30 [reviewer] · run rev-20261016-475-owned-correction · 2026-10-16T18:02:08.189Z · commit b1570e640ffd8b2f3da1564114962d248976c788
   - verified: rev-30 [reviewer] · run rev-20261016-475-shared-duration · 2026-10-16T18:12:49.135Z · commit de96a65002699613407c62d3237a8c7ee7f71fb1
+  - verified: rev-30 [reviewer] · run rev-20261016-475-dev-integration · 2026-10-16T18:39:58.556Z · commit 6ba8ce3b3e1c183f866dbbeda403e9853c8a03ba
 
 ## Comments
 
@@ -226,3 +227,33 @@ Keep the current verification hold. After the posted shared fix and authorized i
 Review artifact A-4103.
 
 Criteria: C3 verified.
+
+### impl-475 · 2026-10-16T18:37:48.115Z
+
+Coordinator-authorized origin/dev merge after T-536 is pushed at 6ba8ce3b (dev b6aaeb6f); merge clean. Root typecheck exit0, full Implementer reply including default staffing =7513 bytes /7680,167 margin. Delta source review requested. Coordinator dd9446e8 explicitly releases earlier T-585 wait: submit exact-head droplet verify once this delta clears; if sole red is shared T-585 discovery/watch, report and wait for directed dev integration. No local retry; local-live-hub proof remains Coordinator-owned after restart.
+
+### rev-30 · 2026-10-16T18:39:58.556Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-475-dev-integration
+commit: 6ba8ce3b3e1c183f866dbbeda403e9853c8a03ba
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-475 clean integration source review: clear at 6ba8ce3b3e1c183f866dbbeda403e9853c8a03ba, merge of reviewed de96a65002699613407c62d3237a8c7ee7f71fb1 with origin/dev b6aaeb6f. Standards and Spec axes: no findings.
+
+Read primary Coordinator 1e955645 authorizing this integration after T-536 and primary dd9446e8 expressly lifting the earlier T-585 verification wait. The merge has no combined conflict diff. Relative to incoming dev, changes remain the owned cover-quiet admission scope; the reviewed test-admission, cover-quiet regression/helper, suite-lock and suite-worker bytes are unchanged from de96a650. Incoming suite/config/protocol work auto-merges; no manual resolution or removal of inherited-worker identity checks, capability refusal, copied-source closure or durable-result-before-report correction is present. Independent diff whitespace check passes.
+
+C3 source proof remains: shipped Implementer clause tells agents to wait on cover-quiet, restricts CLAND_TEST_IGNORE_COVER=1 to the human, and links the complete tests.md section. Incoming T-536 OpenCode warning and other role updates are retained. Claimant's full default Implementer reply measurement including staffing is 7513/7680 bytes, 167 margin, meeting the Coordinator's required 150-byte margin; this is reported pure measurement, not a Reviewer-executed roles test. Request reports exact-head root typecheck exit 0 and a clean pushed tree.
+
+C3 refreshed only. C1/C2 and corrected integration execution remain unverified; prior A-4092 red is not cleared by source review. Proceed with normal mode-free cland verify --executor droplet at this exact head per dd9446e8, without waiting for T-585. A T-585-only red returns to the Coordinator for its stated next instruction; no future merge is authorized by this review. Local live-hub proof remains Coordinator-owned after merge/restart under 54b041c5, with local marks pending its receipt. No local refusal bypass and no per-item QA criteria.
+Review artifact A-4116.
+
+Criteria: C3 verified.
+
+### impl-475 · 2026-10-16T18:40:10.586Z
+
+Clean dev integration source clear at exact head 6ba8ce3b (A-4116 / rev-20261016-475-dev-integration). Submitted normal mode-free droplet verify 1ecb8069-d1c7-44b0-932e-7871a93641de per Coordinator dd9446e8; queue position2, no worker yet, result reports to topic-401 and Reviewer/claimant. No local retry. Waiting for hub result; local-live-hub proof remains Coordinator-owned after merge/restart.
