@@ -8,14 +8,14 @@ labels:
   - v0.1.3
   - ready-for-agent
 assignee: null
-parent: R-294
+parent: R-577
 blocked_by: []
 follows:
   - E-423
 topic: null
 branch: null
 created: 2026-10-14T16:43:08.893Z
-updated: 2026-10-15T20:59:32.791Z
+updated: 2026-10-16T06:35:47.825Z
 ---
 
 ## Summary

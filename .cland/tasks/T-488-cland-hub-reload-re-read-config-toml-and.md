@@ -3,7 +3,7 @@ id: T-488
 kind: task
 title: "cland hub reload: re-read config.toml and roles.toml without a restart (SIGHUP too)"
 state: open
-status: in progress
+status: ready
 size: S
 criterion_seq: 4
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-329
 branch: t/T-488-cland-hub-reload-re-read-config-toml-and
 created: 2026-10-15T11:30:17.553Z
-updated: 2026-10-16T06:10:58.929Z
+updated: 2026-10-16T06:56:46.247Z
 ---
 
 ## Problem
@@ -35,6 +35,8 @@ Add `cland hub reload`, which also runs on SIGHUP. It re-reads `.cland/config.to
   - verified: rev-31 [reviewer] · run rev-20261016-488-merge-source · 2026-10-16T04:26:19.977Z · commit 3ba2b30bed4547b6b3f3c4b034aab57a665a2c00
   - verified: rev-31 [reviewer] · run rev-20261016-488-delta-6 · 2026-10-16T04:55:51.782Z · commit 364c1c22af0191a69673b22b80d29ac839ef6f9b
   - verified: rev-31 [reviewer] · run rev-20261016-488-merge-source-2 · 2026-10-16T05:41:07.042Z · commit fd0370d88e71ae4a7ad0be12db7567e640145c69
+  - verified: rev-31 [reviewer] · run rev-20261016-488-delta-7 · 2026-10-16T06:23:16.286Z · commit cbffa842dc3ae0e4f93962cbd3caf82681dd6b6f
+  - verified: rev-31 [reviewer] · run rev-20261016-488-delta-8 · 2026-10-16T06:56:08.697Z · commit 16072765e074d299f44caf3a6764f226854156f9
 - [x] C2. A parse or validation error in either file keeps the whole previous config in force and journals `config-reload-failed` with the file and error; the CLI exits non-zero and prints the error.
   - done: impl-488 · 2026-10-15T23:45:16.991Z
   - verified: rev-31 [reviewer] · run rev-20261016-488-source-2 · 2026-10-16T00:01:17.145Z · commit 7b8c92b36c082509ca88ced2ad5efec47b6bac51
@@ -44,10 +46,13 @@ Add `cland hub reload`, which also runs on SIGHUP. It re-reads `.cland/config.to
   - verified: rev-31 [reviewer] · run rev-20261016-488-merge-source · 2026-10-16T04:26:19.977Z · commit 3ba2b30bed4547b6b3f3c4b034aab57a665a2c00
   - verified: rev-31 [reviewer] · run rev-20261016-488-delta-6 · 2026-10-16T04:55:51.782Z · commit 364c1c22af0191a69673b22b80d29ac839ef6f9b
   - verified: rev-31 [reviewer] · run rev-20261016-488-merge-source-2 · 2026-10-16T05:41:07.042Z · commit fd0370d88e71ae4a7ad0be12db7567e640145c69
+  - verified: rev-31 [reviewer] · run rev-20261016-488-delta-7 · 2026-10-16T06:23:16.286Z · commit cbffa842dc3ae0e4f93962cbd3caf82681dd6b6f
+  - verified: rev-31 [reviewer] · run rev-20261016-488-delta-8 · 2026-10-16T06:56:08.697Z · commit 16072765e074d299f44caf3a6764f226854156f9
 - [x] C3. Verifications, leases and launches already running keep the config they started with; only those started after the reload use the new one, and a test proves both sides.
   - done: impl-488 · 2026-10-15T23:45:40.291Z
   - verified: rev-31 [reviewer] · run rev-20261016-488-final · 2026-10-16T04:18:09.949Z · commit bfc146576230846994be376ebbe073d2188acb92
   - verified: rev-31 [reviewer] · run rev-20261016-488-merge-final · 2026-10-16T05:30:11.244Z · commit 364c1c22af0191a69673b22b80d29ac839ef6f9b
+  - verified: rev-31 [reviewer] · run rev-20261016-488-final-disposition · 2026-10-16T06:56:45.845Z · commit 16072765e074d299f44caf3a6764f226854156f9
 - [x] C4. `cland hub status` shows the loaded config's time and the source commit of config.toml.
   - done: impl-488 · 2026-10-15T23:46:10.917Z
   - verified: rev-31 [reviewer] · run rev-20261016-488-source-2 · 2026-10-16T00:01:17.145Z · commit 7b8c92b36c082509ca88ced2ad5efec47b6bac51
@@ -57,6 +62,8 @@ Add `cland hub reload`, which also runs on SIGHUP. It re-reads `.cland/config.to
   - verified: rev-31 [reviewer] · run rev-20261016-488-merge-source · 2026-10-16T04:26:19.977Z · commit 3ba2b30bed4547b6b3f3c4b034aab57a665a2c00
   - verified: rev-31 [reviewer] · run rev-20261016-488-delta-6 · 2026-10-16T04:55:51.782Z · commit 364c1c22af0191a69673b22b80d29ac839ef6f9b
   - verified: rev-31 [reviewer] · run rev-20261016-488-merge-source-2 · 2026-10-16T05:41:07.042Z · commit fd0370d88e71ae4a7ad0be12db7567e640145c69
+  - verified: rev-31 [reviewer] · run rev-20261016-488-delta-7 · 2026-10-16T06:23:16.286Z · commit cbffa842dc3ae0e4f93962cbd3caf82681dd6b6f
+  - verified: rev-31 [reviewer] · run rev-20261016-488-delta-8 · 2026-10-16T06:56:08.697Z · commit 16072765e074d299f44caf3a6764f226854156f9
 
 ## Comments
 
@@ -299,3 +306,53 @@ commit: fd0370d88e71ae4a7ad0be12db7567e640145c69
 scope: evidence
 
 Second integration evidence not clear. A-3771/16c8d5d6 full Linux exit1:1908pass/1 ordinary failure/4skip; Neovim not reached. All five own reload cases ordinary green and5/5, including extended admission snapshot proof. Failure demo.test.ts:71 is machine-lifetime loop member: demo.start rejects 'demo deadline reached during delivery' before watchdog assertion. T-569 explicitly names run-timeout sibling; same2500ms delivery signature suggests shared mechanism but requires lead classification/Linux probe per prior conditional, not silent acceptance. Hard budget demo-release identity-attention case6.227s>5 also blocks; behavior passes, aside Tech debt/XS shared allowance disposition requested. Source C1/C2/C4 remain current; C3 pending qualifying full Neovim gate. No demonstrated task criterion failure/new failed marks. Prior A-3748 is older-head only. No unchanged retry requested. Artifact A-3774: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3774-t-488-second-integration-gate-incomplete-at-fd0370d8.md. No Reviewer edits/tests.
+
+### rev-31 · 2026-10-16T06:23:16.286Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261016-488-delta-7
+commit: cbffa842dc3ae0e4f93962cbd3caf82681dd6b6f
+scope: delta
+
+Delta source clear. Only durations.json+4 lines, independently parsed exact posted97ddef60 addition: identity-attention allowance6.3s/reason, preserving every prior entry. No source/test/assertion/bound changes or probe instrumentation in immutable delta; diff check green. Standards/Spec no findings. A-3785 raw10 whole files80pass/0fail with unchanged2500ms bounds, paired actual delivery means show no added branch latency in controlled probe. Independently read Coordinator10e839cd accepts A/B and classifies deadline as knownT-569, resolving A-3774 uncertainty; requires one fresh droplet after delta clear beside coverefaa6344, merge after restart. C1/C2/C4 continuity from A-3757 reverified; C3 pending exact-head full hub+Neovim. Historical A-3771 stays exit1/noNeovim, not final gate. Artifact A-3787: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3787-t-488-shared-demo-allowance-delta-clear-at-cbffa842.md. No Reviewer edits/tests.
+
+Criteria: C1 verified, C2 verified, C4 verified.
+
+### rev-31 · 2026-10-16T06:54:31.619Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261016-488-merge-evidence-3
+commit: cbffa842dc3ae0e4f93962cbd3caf82681dd6b6f
+scope: evidence
+
+Evidence not clear. A-3808/cdf4aa50 full Linux exit1:1908pass/1 ordinary failure/4skip; Neovim not reached. All five own reload cases pass and5/5 load. Ordinary demo.test.ts:71 run-timeout deadline is exact knownT-569, already classified10e839cd. Hard budgets demo-release accepted-delete retry5.311s>5 and archived stripped-tags absence5.965s>5 remain; behavior passes, but these require shared measured allowance disposition (aside Tech debt/XS), not dismissal as regression notices. C3 remains pending current-head full Neovim gate; C1/C2/C4 source current from A-3787. No own task criterion failure/new failed marks. Prior greenA-3748 old-head only. Await Coordinator budget/Neovim route, no unchanged retry requested. Artifact A-3810: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3810-t-488-allowance-head-gate-incomplete-before-neovim.md. No Reviewer edits/tests.
+
+### rev-31 · 2026-10-16T06:56:08.697Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261016-488-delta-8
+commit: 16072765e074d299f44caf3a6764f226854156f9
+scope: delta
+
+Delta source clear. Only durations.json+8lines: independently parsed exact postedac20175b two allowances/reasons, retry6s and archived-absence6.6s, preserving every prior value. No source/test/assertion/bound changes, diff check clear. Standards/Spec no findings. C1/C2/C4 source continuity reverified; C3 final evidence pass separate. Independently confirmed Coordinator622ce850 accepts A-3808 hub+earlier A-3748 full green, explicitly defers merged-code Neovim to next integrated dev cover before restart on T-488 code and requires fix-forward within hour if red. No new droplet; merge after restart waiting on1d78a0ff. Raw current-chain receipt remains exit1/noNeovim; no current-head full green claimed. Demo-release declaration line correction8/25(previous11/24); measurements/names unchanged. Artifact A-3813: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3813-t-488-final-allowance-delta-source-clear-at-16072765.md. No Reviewer edits/tests.
+
+Criteria: C1 verified, C2 verified, C4 verified.
+
+### rev-31 · 2026-10-16T06:56:45.845Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261016-488-final-disposition
+commit: 16072765e074d299f44caf3a6764f226854156f9
+scope: evidence
+
+Final clear under independently confirmed Coordinator622ce850 explicit item-specific gate disposition. C3 verified from accepted merged-code hub A-3808/cdf4aa50 atcbffa842:allfive owncases ordinarygreen/5-of-5, retained active lease/run/launch policies and refreshed actual admission/loadGateWorkers proof; only knownT-569 plus posted shared budget gaps. Raw receipt remains exit1/1908pass/1fail/4skip. Earlier A-3748 at364c1c22 is full hub+Neovim exit0/2284pass/0fail/7skip, before second merge. Current delta8 changes only exact posted allowances, source C1/C2/C4 current; all4 criteria verified. No exact-current-head full Neovim green claimed. Coordinator explicitly defers merged-code Neovim to next integrated dev cover BEFORE any restart on T-488 code, fix forward within hour if red; no new droplet. Merge remains after restart waiting on1d78a0ff. Standards/Spec no findings,no per-item QA. Artifact A-3814: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3814-t-488-final-clear-under-integrated-cover-disposition.md. No Reviewer edits/tests.
+
+Criteria: C3 verified.

@@ -111,10 +111,11 @@ A test that deletes a fixture directory first stops every writer in it and obser
 
 ## 13 No opencode CLI inside a session until T-296
 Scope: all
-Date: 2026-10-15
-Status: active
+Date: 2026-10-16
+Status: retired 2026-10-16
 Origin: message:general/9670ff36-30f0-4b97-a0e3-6c76f7d15738
-Reason: OpenCode's background service resumes any mid-turn session it finds in the shared default database (upstream #51213), so two processes would then drive one cland session, the second without cland's spoke and with the user's global config (E-424, T-296).
+Reason: OpenCode's background service resumes any mid-turn session it finds in the shared default database (upstream #51213), so two processes would then drive one cland session, the second without cland's spoke and with the user's global config (E-424, T-296).; Its own retirement condition is met. T-296 (OpenCode's own database) merged as 50c9f92c on 2026-10-16, and the hub restarted on green cover 1d78a0ff at about 07:22Z with T-296 live. No pre-T-296 OpenCode session is in the crew: every live role session runs on Codex or Claude Code.
+Retired-origin: message:general/9670ff36-30f0-4b97-a0e3-6c76f7d15738
 
 Never run the `opencode` CLI inside a cland session against the user's default OpenCode data directory or database until T-296 (OpenCode's own database) merges. Tests and probes that need the real binary set their own scratch HOME, XDG_DATA_HOME, config and OPENCODE_DB under a temp directory and start a standalone server. T-296's merge retires this rule.
 

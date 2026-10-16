@@ -3,6 +3,7 @@ id: E-425
 kind: epic
 title: Hub hygiene
 state: open
+criterion_seq: 6
 labels:
   - epic
   - v0.1.3
@@ -14,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-14T16:43:13.486Z
-updated: 2026-10-16T03:27:31.053Z
+updated: 2026-10-16T07:12:34.053Z
 ---
 
 ## Summary
@@ -58,14 +59,12 @@ Choices where the spec is silent:
 
 QA runs the demo below on `dev`, playing the human's part through the `cland` CLI and a headless workbench (one `nvim --headless` process, keys by `nvim_input`, the screen read with `screenstring()`), on a droplet through the demo lease of "Rules and rhythm" where no macOS is needed, and records a clear verdict on this epic with each checkbox verified by its id; the epic then closes. The human does not run this demo (D16 and D19 of v0.1 §4).
 
-In a scratch project, QA queues an integrated run on `dev` with `cland verify all`, commits a tracker item change while it is queued and a docs change while it runs, and reads one green result that covers both new heads; the sessions panel's `verify:` line in the headless workbench shows the same run through both commits. A commit to `hub/src/` still cancels a queued run, naming the reason. QA starts a fake Claude Code session whose scratch project is then removed, and reads its bridge gone within 60 seconds. With a planted orphan bridge and a live bridge whose hub file exists, `cland doctor` lists only the orphan and `cland doctor --fix` ends only the orphan. QA reads the leftovers report of the latest full suite with no bridge. QA runs `npm run typecheck`, reads the compiler in use and its time, and reads the comparison table on the TypeScript 7 task.
+(The suite-input and run-identity part of this demo moved to E-579 with T-379, by the human's decision of 2026-10-16, ask 396ec11a.) In a scratch project, QA starts a fake Claude Code session whose scratch project is then removed, and reads its bridge gone within 60 seconds. With a planted orphan bridge and a live bridge whose hub file exists, `cland doctor` lists only the orphan and `cland doctor --fix` ends only the orphan. QA reads the leftovers report of the latest full suite with no bridge. QA runs `npm run typecheck`, reads the compiler in use and its time, and reads the comparison table on the TypeScript 7 task.
 
-- [ ] C1. The suite inputs are defined once, as the committed tree less `.cland/tasks/`, `.cland/RULES.md` and `docs/`, and the tree-hash cache and the run identity both use that definition.
-- [ ] C2. A commit on `dev` that changes only tracker or docs paths leaves a queued or running integrated run in place and its result covers the new head, while a commit that changes a suite input still cancels a queued run; a hub test with a fake run covers both.
 - [ ] C3. The cause of the orphan bridges is named on T-311, and a bridge whose hub is gone exits within 60 seconds, proved by a test on a real hub stopped under it.
 - [ ] C4. A full suite run leaves no `cland hook bridge` process behind, checked by the runner's leftovers check, and `cland doctor --fix` ends only bridges whose hub file is gone.
 - [ ] C5. TypeScript 7 runs the repository's typecheck when its diagnostics match 5.9's on the clean tree and on the planted errors, with both times recorded; otherwise the differences are recorded on the task, 5.9 stays and a follow-up is filed.
-- [ ] C6. `hub/README.md` (verification, the doctor, the typecheck) and `docs/agents/tests.md` describe the suite inputs, the run identity, the bridge sweep and the compiler in use; T-379, T-311 and the TypeScript 7 task are closed.
+- [ ] C6. `hub/README.md` (the doctor, the typecheck) and `docs/agents/tests.md` describe the bridge sweep and the compiler in use; T-311 and the TypeScript 7 task are closed. The suite-input and run-identity lines moved to E-579 with T-379 (human decision 2026-10-16, ask 396ec11a).
 
 ## Dogfooding
 
@@ -111,11 +110,4 @@ stages:
       - - T-562
         - T-567
         - T-491
-  - name: verify queue hygiene
-    qa:
-      scope: none
-      when: after-stage
-    lanes:
-      - - T-379
-        - T-475
 ```

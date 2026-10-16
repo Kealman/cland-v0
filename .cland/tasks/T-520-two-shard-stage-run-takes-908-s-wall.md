@@ -8,14 +8,14 @@ size: M
 labels:
   - ready-for-agent
 assignee: null
-parent: E-387
+parent: E-578
 blocked_by:
   - T-519
 regression_of: T-395
 topic: null
 branch: null
 created: 2026-10-15T18:12:19.748Z
-updated: 2026-10-15T18:12:19.748Z
+updated: 2026-10-16T06:36:55.051Z
 ---
 
 ## Summary

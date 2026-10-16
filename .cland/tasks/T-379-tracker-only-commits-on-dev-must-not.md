@@ -10,13 +10,13 @@ labels:
   - bug
   - ready-for-human
 assignee: null
-parent: E-425
+parent: E-579
 blocked_by:
   - T-472
 topic: null
 branch: null
 created: 2026-10-14T08:41:13.625Z
-updated: 2026-10-15T20:57:38.342Z
+updated: 2026-10-16T06:36:55.141Z
 ---
 
 ## What happened

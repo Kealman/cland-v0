@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-10-16T04:19:39.676Z
+updated: 2026-10-16T06:45:55.596Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -312,3 +312,7 @@ Incident, 2026-10-16 01:27–02:03Z: the remote verify queue wedged. Four finish
 ### coord · 2026-10-16T04:19:39.676Z
 
 Incident, 2026-10-16 04:12Z: integrated cover b5643d32 at 34262327 (droplet, full mode) went red, with no test failures. Hub ran 1841 pass, 0 fail, and the only red was two duration-budget failures on T-500's new tests, remote-fixture-lifecycle "watchdog-SIGTERM" and "watchdog-SIGINT", at 6.3 s against 5 s. The Neovim phase didn't run. Cause: at 02:22Z the Coordinator told impl-500 not to add allowances, reasoning that budget lines are notices. That holds only for known entries; a new test over budget fails the run. Fix forward 08e88000 at 04:20Z, within the hour. dev stays unreleasable until the next cover is green. That cover runs after the current hub-side batch (T-469, T-553, T-488, T-523) merges.
+
+### coord · 2026-10-16T06:45:55.596Z
+
+Incident, 2026-10-16 06:44Z: integrated cover efaa6344 at dev 4dc49979 (droplet) went red on one test, planned-stage.test.ts:249's query budget, at 10412 against the < 10000 bound. This is T-566, a known near-limit test whose count is drifting up (9.6k on a quiet Mac). The restart held. Recovery: one flaky-rule cover resubmit 1d78a0ff, and impl-566 fixing forward. Cost: about 25 min of restart delay.

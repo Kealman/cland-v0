@@ -11,7 +11,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-12T15:31:51.406Z
-updated: 2026-10-15T20:49:34.737Z
+updated: 2026-10-16T06:36:23.677Z
 ---
 
 ## Goal
@@ -86,3 +86,7 @@ Decision (human, ask 0727b3c8, 2026-10-15 09:30Z): the reviewer pool goes from 2
 ### human · 2026-10-15T20:49:34.737Z
 
 Decision record (recorded by the stand-in cland-impl from the human's own words): the release that follows v0.1.2 is v0.1.3 and the one after it is v0.2. Sources: 2026-10-15 ~08:20Z, human: «как закончите с 0.1.2, берите 0.1.3» (D30); 2026-10-15 ~20:35Z, human, before sleep: «если вдруг за ночь закончите 0.1.3 то переходите к 0.2» (D40). The version number 0.1.3 is therefore the human's explicit choice for this release; the release ask may be answered by the stand-in per D24 once the DoD is met. Scope stays as in docs/spec/v0.1.3.md.
+
+### human · 2026-10-16T06:36:23.677Z
+
+Decision record (human, 2026-10-16 ~06:40Z, recorded verbatim by the stand-in cland-impl): «Ок, тогда дальше 0.1.4 и потом уже 0.2». The release sequence is therefore v0.1.3 → v0.1.4 → v0.2; this supersedes the 2026-10-15 20:35Z instruction to go straight to v0.2 after v0.1.3. v0.1.4 holds the items carried over by the human's answer to ask 396ec11a (option 1): E-482's nine backlog flakes, E-387's T-575 and T-520, E-425's T-475 and T-379, E-424's T-532, T-534, T-535, T-536. v0.2 (R-377) follows v0.1.4.

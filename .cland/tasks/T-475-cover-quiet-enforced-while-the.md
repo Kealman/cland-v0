@@ -9,12 +9,12 @@ labels:
   - v0.1.3
   - hub
 assignee: null
-parent: E-425
+parent: E-579
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-15T09:13:18.684Z
-updated: 2026-10-15T09:13:18.684Z
+updated: 2026-10-16T06:36:55.235Z
 ---
 
 ## Summary
