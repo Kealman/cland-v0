@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-369
 branch: null
 created: 2026-10-14T16:43:13.486Z
-updated: 2026-10-16T11:05:36.275Z
+updated: 2026-10-16T11:23:10.232Z
 ---
 
 ## Summary
@@ -125,3 +125,7 @@ demo df159ade-30c3-4486-9cf1-029ea09c9dce destroyed: lifetime 52884 ms; cost $0.
 ### hub · 2026-10-16T11:05:36.275Z
 
 demo 7799a2e0-38d7-4c75-986e-599f118b906d created: droplet cland-v0-7799a2e0, commit 133ce00862a55cd6abf246a5df248c1da9af2fc4, deadline 2026-10-16T11:54:39.057Z.
+
+### hub · 2026-10-16T11:23:10.232Z
+
+demo 7799a2e0-38d7-4c75-986e-599f118b906d destroyed: lifetime 544998 ms; cost $0.0378.
