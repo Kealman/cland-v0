@@ -11,7 +11,7 @@
     "cland": "bin/cland.ts"
   },
   "scripts": {
-    "typecheck": "node ../node_modules/typescript7/bin/tsc -p tsconfig.json",
+    "typecheck": "node bin/typecheck.ts -p tsconfig.json",
     "test": "node test/run-suite.ts hub",
     "check": "npm run typecheck && npm test"
   },

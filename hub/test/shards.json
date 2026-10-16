@@ -149,6 +149,7 @@
     "hub/test/tracker-ready.test.ts": "machine",
     "hub/test/tracker-status.test.ts": "machine",
     "hub/test/tracker.test.ts": "machine",
+    "hub/test/typecheck.test.ts": "machine",
     "hub/test/v01-migration.test.ts": "machine",
     "hub/test/verdict-commit.test.ts": "machine",
     "hub/test/verdict-criteria.test.ts": "machine",

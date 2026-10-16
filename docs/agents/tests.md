@@ -3,8 +3,9 @@
 The root `npm run typecheck` uses native TypeScript 7.0.2 for the hub's bin, src
 and test files and Neovim's bin and test files, through their respective
 `tsconfig.json` files. `npm run typecheck --workspace hub` checks only the hub.
-The scripts explicitly invoke the pinned `typescript7` npm alias, avoiding the
-two compilers' shared `tsc` executable name. TypeScript 5.9.3 stays installed as
+The scripts use `hub/bin/typecheck.ts` to resolve the pinned `typescript7` npm
+alias, including from task worktrees that inherit the root install. This avoids
+the two compilers' shared `tsc` executable name. TypeScript 5.9.3 stays installed as
 `typescript` because `hub/test/executor.test.ts` and
 `hub/test/tracker-container-source.test.ts` use its compiler API, which 7 does
 not provide. T-427 records matching diagnostics on both clean projects and
