@@ -2,9 +2,8 @@
 import { mkdir, readFile } from 'node:fs/promises';
 import { dirname, isAbsolute, join } from 'node:path';
 import { homedir } from 'node:os';
-import { acquireLockAsync, HubLocked } from '../../hub/lock.ts';
+import { acquireLockWithRetry } from '../../hub/lock.ts';
 import { durableJson, readLeases, type DropletLease } from './lease.ts';
-const pause = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms));
 
 type Entry = { project: string; lease: string; run: string; size: string; reservation: number; cost: number | null; created: string; deadline: string; released?: string };
 type Ledger = { version: 1; entries: Entry[]; projects?: string[] };
@@ -26,14 +25,9 @@ function totals(ledger: Ledger) {
 async function locked<T>(work: (ledger: Ledger) => T, env: NodeJS.ProcessEnv): Promise<T> {
   const path = spendPath(env);
   await mkdir(dirname(path), { recursive: true, mode: 0o700 });
-  const deadline = Date.now() + 15000;
-  for (;;) {
-    let lock;
-    try { lock = await acquireLockAsync(`${path}.lock`, undefined, deadline, 'UTC'); }
-    catch (error) { if (!(error instanceof HubLocked) || Date.now() >= deadline) throw error; await pause(25); continue; }
-    try { const ledger = await read(path); const result = work(ledger); await durableJson(path, ledger); return result; }
-    finally { await lock.release(); }
-  }
+  const lock = await acquireLockWithRetry(`${path}.lock`);
+  try { const ledger = await read(path); const result = work(ledger); await durableJson(path, ledger); return result; }
+  finally { await lock.release(); }
 }
 export async function reserveSpend(project: string, lease: DropletLease, cap: number, env: NodeJS.ProcessEnv = process.env): Promise<void> {
   await locked(ledger => {

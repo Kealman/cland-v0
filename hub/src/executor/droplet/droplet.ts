@@ -1,4 +1,4 @@
-import { acquireLockAsync, HubLocked } from '../../hub/lock.ts';
+import { acquireLockWithRetry } from '../../hub/lock.ts';
 import type { Store } from '../../hub/store.ts';
 import type { LogFn } from '../../log.ts';
 import { createHash, randomUUID } from 'node:crypto';
@@ -53,16 +53,11 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
   // durable leases left by preparation, restarts or unconfirmed acquire cleanup.
   async #reserve(lease: DropletLease, budget: number, deadline: number): Promise<void> {
     const path = join(this.root, '.cland/run/executor/budget.lock');
-    for (;;) {
-      let lock;
-      try { lock = await acquireLockAsync(path, undefined, deadline, 'UTC'); }
-      catch (error) { if (!(error instanceof HubLocked) || Date.now() >= deadline) throw error; await pause(25); continue; }
-      try {
-        if ((await readLeases(this.root)).filter(l => l.state !== 'released').length >= budget) throw new RemoteBudgetFull();
-        await this.#save(lease);
-        return;
-      } finally { await lock.release(); }
-    }
+    const lock = await acquireLockWithRetry(path, deadline);
+    try {
+      if ((await readLeases(this.root)).filter(l => l.state !== 'released').length >= budget) throw new RemoteBudgetFull();
+      await this.#save(lease);
+    } finally { await lock.release(); }
   }
 
   async #save(lease: DropletLease): Promise<void> {
@@ -153,7 +148,7 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
     try {
       await exec('ssh-keygen', ['-t', 'ed25519', '-N', '', '-f', join(dir, 'key'), '-C', name], { timeout: 15000, env: machineEnv(this.#env) });
       await chmod(join(dir, 'key'), 0o600);
-      await this.#reserve(lease, config.verification.remoteBudget, Math.min(runDeadline, Date.now() + 15000));
+      await this.#reserve(lease, config.verification.remoteBudget, runDeadline);
       await reserveSpend(this.root, lease, config.verification.dailySpendUsd, this.#env);
       lease.watchdog = await armWatchdog(dir, this.#env);
       await this.#save(lease);

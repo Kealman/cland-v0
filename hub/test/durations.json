@@ -4148,6 +4148,14 @@
     "hub/test/shared-defects-report.test.ts::only distinct task branches raise one shared-defect notice with both logs and dev file history": {
       "seconds": 5.216,
       "reason": "Runs four real CLI/package verifications on three task branches and observes durable reports and Coordinator notice deduplication."
+    },
+    "hub/test/executor-safety.test.ts::remote admission survives spend lock contention beyond the old deadline": {
+      "seconds": 21.970539875,
+      "reason": "Holds the real spend admission lock for 16s beyond its former 15s deadline, then observes a successful real-hub/fake-provider remote receipt; T-491 Mac A-3776."
+    },
+    "hub/test/executor-safety.test.ts::remote admission survives executor lock contention beyond the old deadline": {
+      "seconds": 21.088495292,
+      "reason": "Holds the real executor admission lock for 16s beyond its former 15s deadline, then observes a successful real-hub/fake-provider remote receipt; T-491 Mac A-3776."
     }
   }
 }

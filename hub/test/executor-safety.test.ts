@@ -7,6 +7,9 @@ import { readFile, writeFile, rm, readdir, mkdir } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { fixture } from './remote-fixture.ts';
 import { projectHub, cland, clandWithEnv, connectUi, eventually, flushProjectLogs, startDaemon, tempProject } from './harness.ts';
+import { onCleanup } from './process-cleanup.ts';
+import { acquireLockAsync } from '../src/hub/lock.ts';
+import { setTimeout as pause } from 'node:timers/promises';
 import { projectTag } from '../src/executor/droplet/droplet.ts';
 import { warningSeverity } from '../src/hub/visibility.ts';
 import { parseConfig, renderConfig } from '../src/init/config.ts';
@@ -55,6 +58,47 @@ test('concurrent host processes share one reservation lock and recover a dead ho
   assert.equal(results.filter(r => r.stdout.trim() === 'reserved').length, 1);
   assert.equal(results.filter(r => r.stdout.includes('daily spend cap $1.001 reached')).length, 5);
   assert.equal((await ledger(state)).entries.length, 1);
+});
+
+for (const kind of ['spend', 'executor'] as const) test(`remote admission survives ${kind} lock contention beyond the old deadline`, { timeout: 120000 }, async t => {
+  const state = await tempProject(t, 'admission-lock-');
+  const f = await fixture(t, { hub: projectHub, config: 'lifetime="15m"\nrun_timeout="5m"\nremote_budget=1\ndaily_spend_usd=3', env: { CLAND_EXECUTOR_STATE: state, CLAND_TEST_DROPLET_MACHINE_MS: '10000', CLAND_TEST_EXECUTOR_SWEEP_MS: '3600000' } });
+  // Finish startup reconciliation before taking the held lock; periodic sweeps
+  // are outside this admission proof and must not race its fixture setup.
+  assert.equal((await f.ui.request({ type: 'executor.status' })).ok, true);
+  const path = kind === 'spend' ? join(state, 'spend.json.lock') : join(f.root, '.cland/run/executor/budget.lock');
+  const lock = await acquireLockAsync(path, undefined, undefined, 'UTC');
+  let held = true;
+  onCleanup(t, async () => { if (held) await lock.release(); });
+  const run = await f.launch();
+  // Key creation precedes both admission locks: the entire old 15s window
+  // below is contention, rather than fixture startup or submission time.
+  await eventually('acquisition key ready', async () => {
+    const dir = join(f.root, '.cland/run/executor/leases');
+    for (const id of await readdir(dir)) {
+      if (await readFile(join(dir, id, 'key.pub'), 'utf8').catch(() => '')) return true;
+    }
+    return;
+  });
+  await pause(16000);
+  assert.equal(f.api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length, 0);
+  const status = (await f.ui.request({ type: 'hub.status' })).value as HubStatus;
+  assert.equal(status.suites!.find(s => s.id === run.id)!.executor, 'droplet', 'contention must not send the run to the local queue');
+  assert.deepEqual(await f.messages(run.id), []);
+  await lock.release(); held = false;
+  const machine = await f.remote(run.id);
+  // Observe the worker's completion receipt before starting the separate
+  // downstream reporting deadline. Neither wait measures lock admission.
+  await eventually('contended remote worker completed', async () => {
+    const finished = await readFile(join(machine.run, 'done'), 'utf8').catch(() => '');
+    return Number.isFinite(Date.parse(finished.trim())) ? true : undefined;
+  }, 30000);
+  const result = await f.result(run.id);
+  assert.match(result.text, /Executor droplet/);
+  assert.match(result.text, /exit 0/);
+  assert.equal(f.api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length, 1);
+  const history = JSON.stringify((await f.ui.request({ type: 'topic.history', topic: f.topic })).value);
+  assert.doesNotMatch(history, /droplet unavailable/);
 });
 
 test('all remote admission refusals persist a local job, one warn notice and one journal event', async t => {

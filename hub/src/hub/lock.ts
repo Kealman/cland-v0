@@ -312,9 +312,11 @@ export function acquireLock(path: string): HubLock {
   throw new Error(`could not take ${path}: it keeps changing under this process`);
 }
 
+class LockAcquisitionTimeout extends Error {}
+
 function lockTimeout(deadline?: number): number {
   const ms = deadline === undefined ? PS_TIMEOUT_MS : deadline - Date.now();
-  if (ms <= 0) throw new Error('lock acquisition deadline reached');
+  if (ms <= 0) throw new LockAcquisitionTimeout('lock acquisition deadline reached');
   return Math.min(PS_TIMEOUT_MS, ms);
 }
 
@@ -334,7 +336,7 @@ export async function acquireLockAsync(path: string, resumed: Resumed = work => 
       if (!release) { await pauseAsync(); continue; }
       return withCleanupAsync(work, release, resumed);
     }
-    return resumed(() => { throw new Error(`could not take guard for ${path}`); });
+    return resumed(() => { throw new LockAcquisitionTimeout(`could not take guard for ${path}`); });
   };
   for (let attempt = 0; attempt < 50; attempt++) {
     lockTimeout(deadline);
@@ -368,4 +370,25 @@ export async function acquireLockAsync(path: string, resumed: Resumed = work => 
     } }));
   }
   return resumed(() => { throw new Error(`could not take ${path}: it keeps changing under this process`); });
+}
+
+/** Wait through transient executor contention, without changing the hub lock's fail-fast contract. */
+export async function acquireLockWithRetry(path: string, deadline = Date.now() + 60000): Promise<AsyncHubLock> {
+  const started = Date.now();
+  const limit = Math.min(deadline, started + 60000);
+  let backoff = 25;
+  let last: unknown;
+  while (Date.now() < limit) {
+    try { return await acquireLockAsync(path, undefined, Math.min(limit, Date.now() + 15000), 'UTC'); }
+    catch (error) {
+      // Cleanup failures keep their primary error type; they are not safe contention.
+      if (!(error instanceof HubLocked || error instanceof LockAcquisitionTimeout) || error.message.includes('; cleanup failed:')) throw error;
+      last = error;
+    }
+    const remaining = limit - Date.now();
+    if (remaining <= 0) break;
+    await new Promise(resolve => setTimeout(resolve, Math.min(backoff, remaining)));
+    backoff = Math.min(backoff * 2, 1000);
+  }
+  throw new Error(`lock ${path}: acquisition deadline reached after waiting ${Date.now() - started} ms`, { cause: last });
 }

@@ -481,3 +481,77 @@ try {
   const result = spawnSync(process.execPath, ['--input-type=module', '-e', source], { encoding: 'utf8', timeout: 10_000 });
   assert.equal(result.status, 0, result.stderr);
 });
+
+test('executor lock wait retries a probe deadline with backoff before acquiring', async t => {
+  const fs = (await import('node:fs/promises')).default;
+  const { acquireLockAsync, acquireLockWithRetry } = await import('../src/hub/lock.ts');
+  const root = await tempProject(t);
+  const path = join(root, 'executor.lock');
+  // Establish both self identities before observing retry timers, including
+  // when this test is the only case selected in a fresh load-gate process.
+  const identity = await acquireLockAsync(join(root, 'identity.lock'), undefined, undefined, 'UTC');
+  await identity.release();
+  await fs.writeFile(path, JSON.stringify({ pid: process.pid, started: 'probe required', startedUtc: 'probe required' }));
+  const read = fs.readFile, link = fs.link, timeout = globalThis.setTimeout;
+  let now = Date.now(), reads = 0, attempts = 0;
+  const waits: number[] = [];
+  t.mock.method(Date, 'now', () => now);
+  t.mock.method(globalThis, 'setTimeout', (callback: () => void, ms: number) => {
+    waits.push(ms);
+    return timeout(callback, ms);
+  });
+  t.mock.method(fs, 'link', async (source: string, destination: string) => {
+    if (destination === path) attempts++;
+    return link(source, destination);
+  });
+  t.mock.method(fs, 'readFile', async (...args: Parameters<typeof fs.readFile>) => {
+    const value = await read(...args);
+    if (args[0] === path && reads++ === 0) {
+      // Model an event-loop stall past the 15s attempt deadline. The old
+      // owner releases before the waiter resumes its identity probe.
+      now += 15001;
+      await fs.rm(path);
+    }
+    return value;
+  });
+  const lock = await acquireLockWithRetry(path);
+  try {
+    assert.equal(attempts, 2);
+    assert.deepEqual(waits, [25]);
+  } finally { await lock.release(); }
+});
+
+test('executor lock wait bounds contention and names the lock and elapsed wait', async t => {
+  const { acquireLockAsync, acquireLockWithRetry, HubLocked } = await import('../src/hub/lock.ts');
+  const root = await tempProject(t);
+  const path = join(root, 'executor.lock');
+  const owner = await acquireLockAsync(path);
+  try {
+    const started = Date.now();
+    await assert.rejects(acquireLockWithRetry(path, started + 150), error => {
+      assert.ok(error instanceof Error);
+      assert.ok(error.message.includes(`lock ${path}: acquisition deadline reached after waiting `));
+      const waited = Number(/waiting (\d+) ms$/.exec(error.message)?.[1]);
+      assert.ok(waited >= 150, `elapsed wait ${waited}`);
+      assert.ok(error.cause instanceof HubLocked || error.cause instanceof Error);
+      return true;
+    });
+    await assert.rejects(acquireLockAsync(path), HubLocked);
+  } finally { await owner.release(); }
+});
+
+test('executor lock wait preserves filesystem failures without retrying', async t => {
+  const fs = (await import('node:fs/promises')).default;
+  const { acquireLockWithRetry } = await import('../src/hub/lock.ts');
+  const root = await tempProject(t);
+  const path = join(root, 'executor.lock');
+  const link = fs.link;
+  const denied = Object.assign(new Error('exclusive creation denied'), { code: 'EACCES' });
+  let attempts = 0;
+  t.mock.method(fs, 'link', async (source: string, destination: string) => {
+    if (destination === path) { attempts++; throw denied; }
+    return link(source, destination);
+  });
+  await assert.rejects(acquireLockWithRetry(path), error => error === denied);
+  assert.equal(attempts, 1);
+});
