@@ -3,7 +3,7 @@ id: T-488
 kind: task
 title: "cland hub reload: re-read config.toml and roles.toml without a restart (SIGHUP too)"
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 4
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-329
 branch: t/T-488-cland-hub-reload-re-read-config-toml-and
 created: 2026-10-15T11:30:17.553Z
-updated: 2026-10-16T04:54:57.277Z
+updated: 2026-10-16T04:55:51.782Z
 ---
 
 ## Problem
@@ -33,6 +33,7 @@ Add `cland hub reload`, which also runs on SIGHUP. It re-reads `.cland/config.to
   - verified: rev-31 [reviewer] · run rev-20261016-488-delta-4 · 2026-10-16T03:10:19.209Z · commit 72faa365f61064eec819cf9cea9a48f6f71d6715
   - verified: rev-31 [reviewer] · run rev-20261016-488-delta-5 · 2026-10-16T03:51:12.026Z · commit bfc146576230846994be376ebbe073d2188acb92
   - verified: rev-31 [reviewer] · run rev-20261016-488-merge-source · 2026-10-16T04:26:19.977Z · commit 3ba2b30bed4547b6b3f3c4b034aab57a665a2c00
+  - verified: rev-31 [reviewer] · run rev-20261016-488-delta-6 · 2026-10-16T04:55:51.782Z · commit 364c1c22af0191a69673b22b80d29ac839ef6f9b
 - [x] C2. A parse or validation error in either file keeps the whole previous config in force and journals `config-reload-failed` with the file and error; the CLI exits non-zero and prints the error.
   - done: impl-488 · 2026-10-15T23:45:16.991Z
   - verified: rev-31 [reviewer] · run rev-20261016-488-source-2 · 2026-10-16T00:01:17.145Z · commit 7b8c92b36c082509ca88ced2ad5efec47b6bac51
@@ -40,6 +41,7 @@ Add `cland hub reload`, which also runs on SIGHUP. It re-reads `.cland/config.to
   - verified: rev-31 [reviewer] · run rev-20261016-488-delta-4 · 2026-10-16T03:10:19.209Z · commit 72faa365f61064eec819cf9cea9a48f6f71d6715
   - verified: rev-31 [reviewer] · run rev-20261016-488-delta-5 · 2026-10-16T03:51:12.026Z · commit bfc146576230846994be376ebbe073d2188acb92
   - verified: rev-31 [reviewer] · run rev-20261016-488-merge-source · 2026-10-16T04:26:19.977Z · commit 3ba2b30bed4547b6b3f3c4b034aab57a665a2c00
+  - verified: rev-31 [reviewer] · run rev-20261016-488-delta-6 · 2026-10-16T04:55:51.782Z · commit 364c1c22af0191a69673b22b80d29ac839ef6f9b
 - [x] C3. Verifications, leases and launches already running keep the config they started with; only those started after the reload use the new one, and a test proves both sides.
   - done: impl-488 · 2026-10-15T23:45:40.291Z
   - verified: rev-31 [reviewer] · run rev-20261016-488-final · 2026-10-16T04:18:09.949Z · commit bfc146576230846994be376ebbe073d2188acb92
@@ -50,6 +52,7 @@ Add `cland hub reload`, which also runs on SIGHUP. It re-reads `.cland/config.to
   - verified: rev-31 [reviewer] · run rev-20261016-488-delta-4 · 2026-10-16T03:10:19.209Z · commit 72faa365f61064eec819cf9cea9a48f6f71d6715
   - verified: rev-31 [reviewer] · run rev-20261016-488-delta-5 · 2026-10-16T03:51:12.026Z · commit bfc146576230846994be376ebbe073d2188acb92
   - verified: rev-31 [reviewer] · run rev-20261016-488-merge-source · 2026-10-16T04:26:19.977Z · commit 3ba2b30bed4547b6b3f3c4b034aab57a665a2c00
+  - verified: rev-31 [reviewer] · run rev-20261016-488-delta-6 · 2026-10-16T04:55:51.782Z · commit 364c1c22af0191a69673b22b80d29ac839ef6f9b
 
 ## Comments
 
@@ -242,3 +245,16 @@ commit: 3ba2b30bed4547b6b3f3c4b034aab57a665a2c00
 scope: evidence
 
 Evidence incomplete: A-3722/f68a979f full-mode Linux exits1 after hub,1894 pass/0 ordinary failures/4 skips. All five own reload cases pass normally and each5/5 load. Sole hard red remote-fixture-lifecycle.test.ts whole-file60.746s>60s (log6165); implementer reports posted shared allowance b4fc313b. Neovim phase was not reached, so Coordinator e04b9fd5's required merged-head gate is unmet. C3 remains pending; C1/C2/C4 source marks remain valid. No demonstrated task behavior failure and no failed criterion mark. Prior A-3691 is prior-head only. Await lead/Coordinator disposition for remaining Neovim evidence under submission/no-head-move-alone instructions; no new run authorized by this verdict. Artifact A-3723: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3723-t-488-merged-head-evidence-incomplete-neovim-not-reached.md. No Reviewer edits/tests.
+
+### rev-31 · 2026-10-16T04:55:51.782Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261016-488-delta-6
+commit: 364c1c22af0191a69673b22b80d29ac839ef6f9b
+scope: delta
+
+Delta source clear. Only durations.json+21 lines: independently parsed additions equal exactly posted b4fc313b's five lifecycle allowances/reasons; every prior entry retained. No production/test/assertion/deadline changes, diff check green. Standards/Spec: no findings. C1/C2/C4 source continuity from A-3702 reverified; C3 pending new full exact-head gate. A-3722 ordinary1894green and own/lifecycle5-of-5 behavior supports unchanged code, but Neovim was not reached and no final gate is claimed. Coordinator bf9968a3 authorizes pick and requires fresh full droplet through Neovim after restart notice in announced order; submission hold retained. Artifact A-3725: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3725-t-488-lifecycle-manifest-delta-clear-at-364c1c22.md. No Reviewer edits/tests.
+
+Criteria: C1 verified, C2 verified, C4 verified.

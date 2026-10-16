@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-345
 branch: null
 created: 2026-10-14T16:43:04.090Z
-updated: 2026-10-16T04:36:49.589Z
+updated: 2026-10-16T05:07:17.129Z
 ---
 
 ## Summary
@@ -97,7 +97,7 @@ In a scratch project with the fake harnesses, QA launches a fake Claude Code Coo
 - [ ] C7. `follows` is a relation of its own beside `blocked_by` in the item file, the CLI, the tools and the workbench; a following epic may start once its predecessor's last ticket merged; the merge gate holds its tickets that touch the predecessor's surfaces until the predecessor's QA verdict; and the clause and the `to-tickets` and `plan-epic` skills prepare the next epic while the last stage is in review.
   - failed: qa-27 [qa] · 2026-10-16T00:48:19.233Z · note D5 headless follows case BLOCKED by recorder contract (T-551); local follows and merge checks passed.
 - [ ] C8. An epic demo runs on a droplet at a named `dev` commit while `dev` moves, its verdict is accepted when the later commits touch none of the epic's surfaces, and `hub/README.md`, `nvim/README.md`, the role clauses and the `qa`, `merge`, `to-tickets` and `plan-epic` skills describe the rulebook, the heartbeat, `follows` and demos on a droplet.
-  - failed: qa-27 [qa] · 2026-10-16T00:48:19.233Z · note D18 FAIL: demo stop refused deletion due lease identity mismatch (T-553); eventual release confirmed.
+  - failed: qa-27 [qa] · 2026-10-16T05:07:17.129Z · note D18 FAIL / T-572: demo stop left releasing with empty-tag identity mismatch and operator attention; eventual destruction confirmed.
 
 ## Dogfooding
 
@@ -164,6 +164,7 @@ stages:
       - - T-550
       - - T-551
       - - T-553
+      - - T-572
 ```
 
 ## Comments
@@ -290,3 +291,106 @@ demo 7dc75f63-ff1f-4589-ba91-725858b99a0c created: droplet cland-v0-7dc75f63, co
 ### hub · 2026-10-16T04:36:49.589Z
 
 demo 7dc75f63-ff1f-4589-ba91-725858b99a0c destroyed: lifetime 299835 ms; cost $0.0208.
+
+### hub · 2026-10-16T04:57:17.571Z
+
+demo 375889a3-e67c-498b-8838-133eefde3ead created: droplet cland-v0-375889a3, commit 3c5967426ae6d22a05b0ffd10fd08fdcaa5204db, deadline 2026-10-16T05:46:18.680Z.
+
+### hub · 2026-10-16T05:00:24.400Z
+
+demo E-423 lease 375889a3-e67c-498b-8838-133eefde3ead droplet 609583042: operator attention required; identity mismatch; deletion refused. {"fields":["tags"],"expected":{"name":"cland-v0-375889a3","tags":["cland","cland-p-8a978a214ba5"]},"observed":{"name":"cland-v0-375889a3","tags":[],"status":"active"}}
+
+### hub · 2026-10-16T05:04:38.262Z
+
+demo 375889a3-e67c-498b-8838-133eefde3ead destroyed: lifetime 240659 ms; cost $0.0167.
+
+### qa-27 · 2026-10-16T05:07:17.129Z
+
+verdict: qa
+result: not clear
+by: qa-27 [qa]
+run: qa-2026-10-16-27-17
+commit: 3c5967426ae6d22a05b0ffd10fd08fdcaa5204db
+
+| Check | Result |
+|---|---|
+| G0 | PASS |
+| G1 | PASS |
+| G2 | PASS |
+| D0 | PASS |
+| RULEBOOK-001 | PASS |
+| D2 | PASS |
+| RULEBOOK-002 | PASS |
+| D3 | PASS |
+| EVENTS-001 | PASS |
+| D4 | PASS |
+| FOLLOWS-001 | PASS |
+| D5 | PASS |
+| D7 | PASS |
+| D8 | PASS |
+| D9 | PASS |
+| D10 | PASS |
+| D11 | PASS |
+| D1 | PASS |
+| D6 | PASS |
+| L1 | PASS |
+| L2 | PASS |
+| L3 | PASS |
+| L4 | PASS |
+| L5 | PASS |
+| L6 | PASS |
+| L7 | PASS |
+| L8 | PASS |
+| L9 | PASS |
+| L10 | PASS |
+| L11 | PASS |
+| D12 | PASS |
+| D13 | PASS |
+| L12 | PASS |
+| L13 | PASS |
+| L14 | PASS |
+| D14 | PASS |
+| D15 | PASS |
+| D16 | PASS |
+| D17 | PASS |
+| L20 | PASS |
+| L21 | PASS |
+| L22 | PASS |
+| L23 | PASS |
+| L24 | PASS |
+| L25 | PASS |
+| L30 | PASS |
+| L31 | PASS |
+| D18 | FAIL |
+| L32 | PASS |
+| L33 | PASS |
+| L34 | PASS |
+| L35 | PASS |
+| L36 | PASS |
+| L37 | PASS |
+| L38 | PASS |
+| L39 | PASS |
+| L40 | PASS |
+| L41 | PASS |
+| L42 | PASS |
+| L43 | PASS |
+| R1 | PASS |
+| R2 | PASS |
+| R3 | PASS |
+| R4 | PASS |
+| R5 | PASS |
+
+High — D18 / T-572 (regression of T-553): `cland demo stop E-423 --json` exits 0 but returns releasing with operator attention. At 05:00:24.391Z the live hub refused deletion: “droplet identity differs from its lease; refusing deletion (tags; provider status active)”. Lease 375889a3-e67c-498b-8838-133eefde3ead, droplet 609583042: same expected/observed name cland-v0-375889a3; expected tags [cland, cland-p-8a978a214ba5], observed []; provider status active. Exact log A-3726. No stop retry or provider calls by QA. Operator subsequently confirmed provider 404; final hub status released. Eventual release does not erase the failed stop observation. No other findings.
+
+Tested full SHA 3c5967426ae6d22a05b0ffd10fd08fdcaa5204db, run qa-2026-10-16-27-17, committed brief ca09b03c. Every case rerun fresh; no carryover. Four headless cases plus 68 targeted Linux tests passed, zero failures/skips/retries. All local macOS and read-only checks pass. No full project suite. Freshness current; dev unchanged at S.
+
+Criteria: C1–C7 pass with all mapped evidence. C8 fails solely on D18; its other checks pass. This not-clear verdict marks failed C8 only and sends no verified field. Previous failures on other criteria are not silently rewritten.
+
+One droplet lease created 04:56:20.244Z, deadline 05:46:18.680Z, final lifetime 240659 ms, cost $0.016712430555555557. Destruction comment agrees. Scratch run cancelled live at 05:03:43Z after planting at 05:00:04Z; queue empty, fakes/drivers/hub stopped, scratch directories removed. No live rulebook/crew/tracker writes beyond QA hold/verdict and normal demo controls.
+
+Applied committed amendments: $14 cap, L25 clause-boundary observation, L31 reviewer-verdict ready plant, L36 timely live cancel, L38 scratch-only push. Driver pipelines kept alive by persistent controllers, assertions unchanged. G1 records 13 closed children; four stages open with cover annotations, as returned by restarted hub. L34 needsYou 1→2→2 came only from fake role-clause pong df9ffd03 joining 9544d421, no heartbeat row; L35 stayed at one approval and two busy firings collapsed to one next-turn prompt. R2 memory roots resolve to the same folder; all eleven markers/references match. R5 required documentation cells pass.
+
+Full commands, captures and per-case evidence: A-3728, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3728-e-423-qa-run-17-at-3c596742-full-evidence-d18-not-clear/README.md.
+Verdict table/accounting note: A-3729, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3729-e-423-qa-run-17-case-table-verdict-and-final-accounting.md.
+
+Criteria: C8 failed (D18 FAIL / T-572: demo stop left releasing with empty-tag identity mismatch and operator attention; eventual destruction confirmed.).

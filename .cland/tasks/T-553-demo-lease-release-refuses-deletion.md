@@ -17,7 +17,7 @@ regression_of: T-459
 topic: topic-349
 branch: t/T-553-demo-lease-release-refuses-deletion
 created: 2026-10-16T00:37:02.839Z
-updated: 2026-10-16T04:25:52.909Z
+updated: 2026-10-16T05:01:20.040Z
 closed: 2026-10-16T04:25:52.909Z
 ---
 
@@ -134,3 +134,7 @@ Criteria: C1 verified, C2 verified, C3 verified.
 ### coord · 2026-10-16T04:25:52.909Z
 
 Merged fd1f43acc3b0c2ffc86e1d3e836745b03e624cf5 onto dev.
+
+### human · 2026-10-16T05:01:20.040Z
+
+Operator check by cland-impl, 2026-10-16 05:03Z, on the hub's attention for demo lease 375889a3 (droplet 609583042, cland-v0-375889a3, created 04:56:20Z, release refused at 05:00:24Z with 'identity mismatch (tags), provider status active'): DigitalOcean returns 404 for id 609583042, and the full droplet list holds only n8n plus the four tagged task droplets (609582984, 609583106, 609583254, 609583382), each tagged cland + cland-p-8a978a214ba5. Nothing was destroyed by hand; the droplet was already gone. The executor still shows the lease as 'releasing, watchdog alive, operator attention'. Reading: the identity check observed the droplet while DigitalOcean was tearing it down (tags already stripped, status still 'active'), so a tag mismatch on a droplet that is disappearing is not an identity change. Suggested follow-up for the fix: on a tag/identity mismatch re-read the droplet after a short delay and treat 404 (or a stripped-tags droplet that was ours by id and name) as released; the hub on this run already contains T-553's first fix (restart 04:54Z, cover 2384143e).
