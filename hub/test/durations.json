@@ -3459,7 +3459,7 @@
     },
     "hub/test/demo.test.ts::demo machine lifetime destroys the machine through the watchdog even with the hub gone": {
       "seconds": 5.96832,
-      "reason": "Delivers a real bundled fixture to the fake machine and waits for the independent 2.5-second lifetime watchdog to destroy it after stopping the hub; observed in A-3054."
+      "reason": "Delivers a real bundled fixture under a separate setup budget, checks the lease-creation lifetime deadline, stops the hub, then accelerates the persisted deadline by 250 ms and waits for the detached watchdog deletion receipt. Real hub, SSH delivery and confirmed provider cleanup justify more than 5 s under load; T-569."
     },
     "hub/test/demo.test.ts::demo recorder failures persist diagnostics and keep remote captures for recovery": {
       "seconds": 8.097793,
@@ -3467,7 +3467,7 @@
     },
     "hub/test/demo.test.ts::demo run timeout destroys the machine through the watchdog even with the hub gone": {
       "seconds": 5.147761,
-      "reason": "Delivers a real bundled fixture to the fake machine and waits for the independent 2.5-second run-timeout watchdog to destroy it after stopping the hub; observed in A-3054."
+      "reason": "Delivers a real bundled fixture under a separate setup budget, checks the pre-acquire run-timeout deadline, stops the hub, then accelerates the persisted deadline by 250 ms and waits for the detached watchdog deletion receipt. Real hub, SSH delivery and confirmed provider cleanup justify more than 5 s under load; T-569."
     },
     "hub/test/demo.test.ts::successive demo leases select the newest lease and preserve exit 255 at an explicit commit": {
       "seconds": 6.809933,

@@ -7,6 +7,7 @@ import { execFile, execFileSync } from 'node:child_process';
 import { startDaemon, projectHub, connectUi, clandWithEnv, killDaemon, spawnSpoke, eventually } from './harness.ts';
 import { ownProcess } from './process-cleanup.ts';
 import { fixture } from './remote-fixture.ts';
+import { readLease, writeLease } from '../src/executor/droplet/lease.ts';
 
 test('demo frames deliver a named dev commit, preserve command results and stop after restart', async t => {
   const { root, api, env, discovery, ui } = await fixture(t);
@@ -63,18 +64,42 @@ test('demo authorization, shared slot refusals and verdict cleanup use the same 
 });
 
 for (const bound of ['run timeout', 'machine lifetime']) test(`demo ${bound} destroys the machine through the watchdog even with the hub gone`, async t => {
-  const f = await fixture(t, { env: { [bound === 'run timeout' ? 'CLAND_TEST_EXECUTOR_RUN_TIMEOUT_MS' : 'CLAND_TEST_EXECUTOR_LIFETIME_MS']: '2500', CLAND_TEST_EXECUTOR_COLLECTION_MARGIN_MS: '1', CLAND_TEST_DROPLET_WATCHDOG_POLL_MS: '20' } });
+  // Product deadlines include acquire and delivery. Give setup its own budget;
+  // accelerate the persisted deadline only once delivery and hub shutdown finish.
+  const setupMs = 60000;
+  const f = await fixture(t, { env: { [bound === 'run timeout' ? 'CLAND_TEST_EXECUTOR_RUN_TIMEOUT_MS' : 'CLAND_TEST_EXECUTOR_LIFETIME_MS']: String(setupMs), CLAND_TEST_EXECUTOR_COLLECTION_MARGIN_MS: '1', CLAND_TEST_DROPLET_WATCHDOG_POLL_MS: '20' } });
   f.api.faults.archiveOnDelete = true; f.api.faults.deletePolls = 2;
   f.api.faults.keyDeleteFailures.push(403);
   const epic = ((await f.ui.request({ type: 'task.create', title: 'Timed demo', kind: 'epic' })).value as { item: { id: string } }).item.id;
-  const started = await f.ui.request({ type: 'demo.start', epic });
+  const beforeStart = Date.now();
+  const started = await f.ui.request({ type: 'demo.start', epic }, 20000);
   assert.equal(started.ok, true, started.error);
   const leaseId = (started.value as { lease: string }).lease;
-  const lease = JSON.parse(await readFile(join(f.root, '.cland/run/executor/leases', leaseId, 'lease.json'), 'utf8'));
-  ownProcess(t, lease.watchdog.pid);
+  const dir = join(f.root, '.cland/run/executor/leases', leaseId);
+  const lease = await readLease(dir);
+  const originalDeadline = Date.parse(lease.deadline);
+  if (bound === 'run timeout') {
+    assert.ok(originalDeadline >= beforeStart + setupMs && originalDeadline <= Date.parse(lease.created) + setupMs,
+      'demo run timeout starts before acquire and delivery');
+  } else {
+    assert.equal(originalDeadline, Date.parse(lease.created) + setupMs,
+      'machine lifetime starts at lease creation');
+  }
+  assert.equal(lease.execution?.delivered, true);
+  assert.equal(lease.demo?.ready, true);
+  ownProcess(t, lease.watchdog!.pid);
   await killDaemon(f.discovery.pid);
+  assert.equal(f.api.droplets.length, 1, 'machine remains live before the accelerated deadline');
+  const deadline = new Date(Date.now() + 250).toISOString();
+  await writeLease(f.root, { ...lease, deadline });
   await eventually('watchdog deletes expired demo without a hub', async () => f.api.droplets.length === 0 ? true : undefined);
   assert.ok(f.api.requests.some(r => r.method === 'DELETE' && r.path.startsWith('/v2/droplets/')));
+  const receipt = await eventually('detached watchdog confirms deletion', async () => {
+    try { return JSON.parse(await readFile(join(dir, 'watchdog.json'), 'utf8')) as { fired: string; confirmedAt: string }; }
+    catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return; throw error; }
+  });
+  assert.ok(Date.parse(receipt.fired) >= Date.parse(deadline), 'watchdog waits for the persisted deadline');
+  assert.ok(Date.parse(receipt.confirmedAt) >= Date.parse(receipt.fired), 'watchdog confirms provider absence after firing');
 });
 
 test('demo daily cap refuses before creating any droplet', async t => {
