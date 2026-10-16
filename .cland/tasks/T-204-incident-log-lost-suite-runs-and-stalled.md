@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-10-16T02:58:46.893Z
+updated: 2026-10-16T04:19:39.676Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -308,3 +308,7 @@ Incident, 2026-10-16 01:27–02:03Z: the remote verify queue wedged. Four finish
 ### coord · 2026-10-16T02:58:46.893Z
 
 2026-10-16 02:56Z restart, reported by the stand-in. `cland hub stop` printed "pid 83118 is not this project's hub (does not hold hub.lock); left it running". Yet the hub journaled hub-stopped and exited within 5 s. The stop CLI seems to re-check the lock after the hub has already released it, so it reports a false "left it running". Also at 02:57:01Z, during reconnect, inject-unconfirmed ("not connected to this session's app-server") was logged for rev-26, impl-562, impl-469 and impl-548. All four said hello afterwards, and later deliveries to impl-548 reached it.
+
+### coord · 2026-10-16T04:19:39.676Z
+
+Incident, 2026-10-16 04:12Z: integrated cover b5643d32 at 34262327 (droplet, full mode) went red, with no test failures. Hub ran 1841 pass, 0 fail, and the only red was two duration-budget failures on T-500's new tests, remote-fixture-lifecycle "watchdog-SIGTERM" and "watchdog-SIGINT", at 6.3 s against 5 s. The Neovim phase didn't run. Cause: at 02:22Z the Coordinator told impl-500 not to add allowances, reasoning that budget lines are notices. That holds only for known entries; a new test over budget fails the run. Fix forward 08e88000 at 04:20Z, within the hour. dev stays unreleasable until the next cover is green. That cover runs after the current hub-side batch (T-469, T-553, T-488, T-523) merges.

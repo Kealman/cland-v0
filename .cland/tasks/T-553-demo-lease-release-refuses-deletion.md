@@ -3,7 +3,7 @@ id: T-553
 kind: task
 title: "Demo lease release refuses deletion: droplet identity differs from its lease"
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 3
 labels:
@@ -17,7 +17,7 @@ regression_of: T-459
 topic: topic-349
 branch: t/T-553-demo-lease-release-refuses-deletion
 created: 2026-10-16T00:37:02.839Z
-updated: 2026-10-16T04:09:21.403Z
+updated: 2026-10-16T04:21:33.591Z
 ---
 
 ## Summary

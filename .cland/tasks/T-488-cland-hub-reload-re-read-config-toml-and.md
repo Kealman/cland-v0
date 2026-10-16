@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-329
 branch: t/T-488-cland-hub-reload-re-read-config-toml-and
 created: 2026-10-15T11:30:17.553Z
-updated: 2026-10-16T03:51:12.026Z
+updated: 2026-10-16T04:21:46.046Z
 ---
 
 ## Problem
@@ -40,6 +40,7 @@ Add `cland hub reload`, which also runs on SIGHUP. It re-reads `.cland/config.to
   - verified: rev-31 [reviewer] · run rev-20261016-488-delta-5 · 2026-10-16T03:51:12.026Z · commit bfc146576230846994be376ebbe073d2188acb92
 - [x] C3. Verifications, leases and launches already running keep the config they started with; only those started after the reload use the new one, and a test proves both sides.
   - done: impl-488 · 2026-10-15T23:45:40.291Z
+  - verified: rev-31 [reviewer] · run rev-20261016-488-final · 2026-10-16T04:18:09.949Z · commit bfc146576230846994be376ebbe073d2188acb92
 - [x] C4. `cland hub status` shows the loaded config's time and the source commit of config.toml.
   - done: impl-488 · 2026-10-15T23:46:10.917Z
   - verified: rev-31 [reviewer] · run rev-20261016-488-source-2 · 2026-10-16T00:01:17.145Z · commit 7b8c92b36c082509ca88ced2ad5efec47b6bac51
@@ -199,3 +200,18 @@ A-3661 inspected:branch5x7/7+detacheddev516cac6d5x7/7,70pass/0fail/skip,quietser
 ArtifactA-3666: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3666-t-488-allowance-and-child-order-delta-clear-at-bfc14657.md.
 
 Criteria: C1 verified, C2 verified, C4 verified.
+
+### rev-31 · 2026-10-16T04:18:09.949Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261016-488-final
+commit: bfc146576230846994be376ebbe073d2188acb92
+scope: evidence
+
+Finalclear atunchangedbfc14657. FreshLinux463f653f/A-3691 fullmodeexit0:2250tests/2244pass/0fail/6platformskip. Hubfree38/38,machine1816pass+3skip,fullNeovim390pass+3skip.4workers,Node24.21.0,Neovim0.12.5. No failingloadgate/newhardbudget or knownfailureexception needed.
+C3verified: active/newverification/leasesnapshot12.303s androle-refresh/runninglaunchdefaults7.377s pass,each5/5load. Existinglease/runpolicy retained,newactualadmissions/newlease/newlaunch useloadednewpolicy,per accepted6a91fc6badmission semantics. Allfiveownreloadcases5/5; rollback/CLI/SIGHUP/missingconfig/provenance andcorrectedtimeout/preparefixturespass. Demo:69deadlinefailuredoesnotrecur;watchdogcasepasses5.590s,so conditionalLinuxprobe nottriggered. C1/C2/C4currentfromdelta5/A-3666;all4criteria verified,nohigh/mediumfindings,no peritemQA or Reviewer edits/tests.
+ArtifactA-3692: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3692-t-488-final-clear-at-bfc14657-full-linux-and-neovim.md.
+
+Criteria: C3 verified.

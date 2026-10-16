@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-316
 branch: t/T-469-every-stage-close-cover-carries-a-linux
 created: 2026-10-15T09:13:16.034Z
-updated: 2026-10-16T04:09:30.805Z
+updated: 2026-10-16T04:24:44.016Z
 ---
 
 ## Summary
@@ -32,10 +32,12 @@ The stage gate (`#stageCurrent` and the plan's `after-stage` close) accepts the 
   - done: impl-469 · 2026-10-15T20:20:12.775Z
   - verified: rev-30 [reviewer] · run rev-20261015-469-final · 2026-10-15T22:57:32.640Z · commit c09435d4e4a337e6aec09058cd392b004df5bcd0
   - verified: rev-30 [reviewer] · run rev-20261016-469-final · 2026-10-16T04:09:30.100Z · commit 1f2abed56887e5752fe953f19b5077da04cd0e41
+  - verified: rev-30 [reviewer] · run rev-20261016-469-merge-final · 2026-10-16T04:24:43.340Z · commit 19b6fa65fc0e2c4440e9278f50eb3154fa3e7304
 - [x] C2. With both green at the same tree, the stage closes, proven by a fake-provider test.
   - done: impl-469 · 2026-10-15T20:20:13.848Z
   - verified: rev-30 [reviewer] · run rev-20261015-469-final · 2026-10-15T22:57:32.640Z · commit c09435d4e4a337e6aec09058cd392b004df5bcd0
   - verified: rev-30 [reviewer] · run rev-20261016-469-final · 2026-10-16T04:09:30.100Z · commit 1f2abed56887e5752fe953f19b5077da04cd0e41
+  - verified: rev-30 [reviewer] · run rev-20261016-469-merge-final · 2026-10-16T04:24:43.340Z · commit 19b6fa65fc0e2c4440e9278f50eb3154fa3e7304
 - [x] C3. hub/README.md and the plan-epic skill describe the two-platform stage gate.
   - done: impl-469 · 2026-10-15T20:20:15.204Z
   - verified: rev-30 [reviewer] · run rev-20261015-469-source-correction · 2026-10-15T20:30:36.543Z · commit a54d2083b7b3bf2bc80712bf0ac9162e29a45b08
@@ -47,6 +49,7 @@ The stage gate (`#stageCurrent` and the plan's `after-stage` close) accepts the 
   - verified: rev-30 [reviewer] · run rev-20261016-469-manifest-delta · 2026-10-16T01:25:59.451Z · commit 50af1e39ce719f610eeb38eb64ba7e8103e567f7
   - verified: rev-30 [reviewer] · run rev-20261016-469-shared-556-delta · 2026-10-16T03:30:35.192Z · commit 1f2abed56887e5752fe953f19b5077da04cd0e41
   - verified: rev-30 [reviewer] · run rev-20261016-469-final · 2026-10-16T04:09:30.100Z · commit 1f2abed56887e5752fe953f19b5077da04cd0e41
+  - verified: rev-30 [reviewer] · run rev-20261016-469-merge-final · 2026-10-16T04:24:43.340Z · commit 19b6fa65fc0e2c4440e9278f50eb3154fa3e7304
 
 ## Comments
 
@@ -431,5 +434,40 @@ Both typechecks and hub/Neovim phases completed; final exit0 at line7193. Suite1
 Final review clear; C1–C3 verified at this exact head. No per-item QA requirement. Do not move the head without delta review. No Reviewer tests, edits, provider operations or subagents.
 
 Artifact: A-3684 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3684-t-469-final-evidence-clear-exact-head-green-linux-full-suite.md
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### rev-30 · 2026-10-16T04:24:43.340Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-469-merge-final
+commit: 19b6fa65fc0e2c4440e9278f50eb3154fa3e7304
+scope: delta
+
+# T-469 final merge delta clear at 19b6fa65
+
+Head19b6fa65fc0e2c4440e9278f50eb3154fa3e7304, branch t/T-469-every-stage-close-cover-carries-a-linux.
+Exact merge parents: reviewed/final-clear1f2abed56887e5752fe953f19b5077da04cd0e41 and fetched dev eee17d184e8e2d182ba1f5528c55441b35cf0fa3. Origin task ref matches. Delta review only; no new Reviewer test execution.
+
+## Standards
+No high, medium or low findings (0).
+Independently parsed all three duration manifests with duplicate-key rejection. Ours234 allowances/dev236 merge to241; every common value agrees; merged allow is exactly the semantic parent union, sorted; all non-allow root fields equal both parents. No hidden root allowance, dropped entry, changed bound or invented exemption.
+Auto-merged suites.ts addition preserves reasoned skip diagnostics in suiteSummary. Dispatch retains parsed structured findings and rule-retirement origin; CLI retains parseFinding, repeated --finding and finding display/counts. Incoming code coexists with task-specific stage receipt/currentness/report recovery/cache paths. The combined remote-fixture hunk preserves T-469's territory option and incoming owned-root guard, stopHub and detached writer cleanup before deletion. No manual production conflict resolution; whitespace check clean.
+Incoming dev changes are treated as integrated reviewed work, rather than claiming a new full independent review of every unrelated feature in that parent.
+
+## Spec
+No findings (0). C1–C3 remain established by the existing source chain and A-3684's exact-parent green full Linux+Neovim proof. Stage platform/currentness, newest-attempt-before-success, report recovery and after-startup advancement logic remain present. The manifest resolution does not weaken those tests.
+Primary Coordinator39ce1aea-78cd-460f-90e3-a3bee0c5583b, read in topic-316, explicitly directs this fresh dev merge, allowance union, every identifier-matching whole test file serially at load<10, and no new droplet suite if green. The source/evidence scope satisfies that conditional waiver; this is not a claim that the old Linux receipt ran at the new merge head.
+
+## Verification audited
+A-3693 search across committed hub/test and nvim/test independently reproduced for suiteSummary|not load-gated|parseFinding|findingCounts|findings|--finding|verdictFromText|readsAsVerdict|verdictOfText|rule.retire|rules.retire. Exactly26 standalone hub test files match; no nvim test match. The set equals the26 END exit=0 whole-file receipts in raw A-3697, with no missing/extra file.
+Summed ordinary pass receipts264/264, zero failures/cancellations/skips/TODO. All files name this exact head; all successful starts record load2.30–4.21<10 and local none. Initial blocked guards start no test. A-3699 discloses the authorized two-slot T-553 overlap for the first22 files and quiet remainder, rather than describing all runs as alone. Typecheck reported green. No test assertion/bound edits in this merge resolution.
+Prior A-3682 /93f3bb50 remains the reviewed parent's actual Linux c-8 full suite exit0:2243pass/0fail/6platform skips, hub+fullNeovim, own platform/supersession/startup cases ordinary and5/5. A-3684 records its final acceptance. New full suite is explicitly waived by39ce1aea after the now-green conflict cover.
+
+Final delta review clear; C1–C3 refreshed at19b6fa65 under the explicit waiver. No further suite required by this disposition; claimant may post T-469 ready for Coordinator merge. No per-item QA. New head movement would require another delta review. No Reviewer tests, compiler/binary execution, edits, signals, commits, merges, provider operations or subagents. Totals: Standards0;Spec0.
+
+Artifact A-3700 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3700-t-469-final-merge-delta-clear-exact-allowance-union-and-264-passing-tests.md
 
 Criteria: C1 verified, C2 verified, C3 verified.
