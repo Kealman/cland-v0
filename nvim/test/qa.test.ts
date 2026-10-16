@@ -67,6 +67,8 @@ function qa(t: TestContext, args: string[], options: { prefix?: string[]; env?: 
   for (const [k, v] of Object.entries(process.env)) if (v !== undefined && !k.startsWith('CLAND_')) env[k] = v;
   if (process.env.CLAND_NVIM) env.CLAND_NVIM = process.env.CLAND_NVIM;
   Object.assign(env, options.env);
+  // Node restores a deleted coverage variable; disable writes sandbox profiles may deny.
+  if (options.prefix?.includes('/usr/bin/sandbox-exec')) env.NODE_V8_COVERAGE = '';
   const argv = [...(options.prefix ?? []), process.execPath, CLI, '--headless', '--qa', ...args];
   const child = spawn(argv[0] as string, argv.slice(1), { cwd: options.cwd ?? process.cwd(), env, stdio: ['ignore', 'pipe', 'pipe'] });
   ownProcess(t, child.pid);
