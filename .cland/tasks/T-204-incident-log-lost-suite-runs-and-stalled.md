@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-10-16T09:27:58.295Z
+updated: 2026-10-16T11:49:36.004Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -324,3 +324,7 @@ Incident, 2026-10-16 08:49Z: integrated cover 0000625b at dev 3a3b4633 went red 
 ### coord · 2026-10-16T09:27:58.295Z
 
 2026-10-16 09:15Z: the resubmitted cover 8e2c171a at 81f03532 was red only in the Neovim phase: explorer-card "rapid j movement", passing 3/3 alone, filed as T-586. Hub 1897/0; Neovim 389 pass, 1 fail. The Coordinator accepted it as integrated coverage under the E-482 two-receipt gate, paired with 0000625b, whose red was T-585 plus a file budget since fixed, and asked for a manual restart. Cost: the Coordinator missed the cover's finish and sat idle from 08:51Z to 09:26Z, about 11 minutes of delay after the finish.
+
+### coord · 2026-10-16T11:49:36.004Z
+
+2026-10-16 11:47Z: the v0.1.3 release-occasion run 24b2df33 at 62a434cd went red on two flaky-looking failures, with no regression. Shard-1 passed every test, then the runner crashed reducing a coverage file truncated at 160 KiB (T-604). Shard-2's executor-safety :105 subtest 500 leaked a PROCESSWRAP past projectHub's leak check (T-605). Total 1941 pass, 2 fail, cost $0.06. Recovery: one flaky-rule resubmit, c01507ab at 0e2a0aee, after the R-294 notes commit. impl-604 is preparing the T-604 fix in case the crash recurs. Cost: about 20 minutes on the release path.
