@@ -140,6 +140,22 @@ async function shipped(): Promise<{ names: string[]; files: string[] }> {
   return { names: names.sort(), files: files.sort() };
 }
 
+test('cland init provisions exactly the 20 curated skills in its manifest and folders', async t => {
+  const root = await tempProject(t, 'cland-init-curated-');
+  await gitRepo(root);
+  await run(root, 'init');
+  const expected = [
+    'code-review', 'codebase-design', 'diagnosing-bugs', 'domain-modeling', 'grilling',
+    'handover', 'implement', 'merge', 'plan-epic', 'prototype', 'qa', 'release',
+    'research', 'retro', 'tdd', 'to-spec', 'to-tickets', 'triage', 'wayfinder', 'writing-for-agents',
+  ];
+  const skills = join(root, '.agents', 'skills');
+  const manifest = JSON.parse(await readFile(join(skills, '.cland-manifest.json'), 'utf8')) as { skills: Record<string, string[]> };
+  assert.deepEqual(Object.keys(manifest.skills).sort(), expected);
+  assert.deepEqual((await readdir(skills)).filter(name => name !== '.cland-manifest.json').sort(), expected);
+  for (const name of expected) await lstat(join(skills, name, 'SKILL.md'));
+});
+
 test('cland init on an empty repository: git status shows exactly the committed set, with no machine path in it', async (t) => {
   const root = await tempProject(t, 'cland-init-');
   await gitRepo(root);
@@ -260,10 +276,10 @@ test('cland init on a repository with its own AGENTS.md, CLAUDE.md, settings, do
   assert.match(settings.hooks.Stop?.[1]?.hooks[0]?.command ?? '', /cland hook turn-end # managed by cland/);
   // their skills folder: kept, with one link per cland skill beside theirs; their own tdd is not replaced
   assert.equal(await readFile(join(root, '.claude', 'skills', 'mine', 'SKILL.md'), 'utf8'), 'our skill\n');
-  assert.equal(await readlink(join(root, '.claude', 'skills', 'grill-me')), '../../.agents/skills/grill-me');
+  assert.equal(await readlink(join(root, '.claude', 'skills', 'grilling')), '../../.agents/skills/grilling');
   assert.equal(await readFile(join(root, '.agents', 'skills', 'tdd', 'SKILL.md'), 'utf8'), 'our own tdd\n');
   const manifest = JSON.parse(await readFile(join(root, '.agents', 'skills', '.cland-manifest.json'), 'utf8')) as { skills: Record<string, string[]> };
-  assert.ok(!('tdd' in manifest.skills) && 'grill-me' in manifest.skills);
+  assert.ok(!('tdd' in manifest.skills) && 'grilling' in manifest.skills);
 
   // what changed: only managed paths; every file of theirs that changed is one cland adds a managed part to
   const after = await tree(root);
@@ -330,6 +346,9 @@ test('cland update after a version bump rewrites the managed parts to the new ve
     'docs/agents/triage-labels.md',
   ]);
   assert.ok(changes.every((c) => c.action !== 'created'), 'update created nothing');
+  const domain = await readFile(join(root, 'docs/agents/domain.md'), 'utf8');
+  assert.match(domain, /The `\/domain-modeling` skill creates them lazily/);
+  assert.doesNotMatch(domain, /grill-with-docs|improve-codebase-architecture/);
   for (const f of changed(before, after)) {
     const text = await readFile(join(root, f), 'utf8');
     assert.match(text, new RegExp(`managed by cland ${VERSION.replace(/\./g, '\\.')}`), f);
@@ -540,10 +559,10 @@ test('provisioning never writes through a symlink: a managed file, AGENTS.md or 
   assert.equal((await lstat(skillMd)).isSymbolicLink(), true);
 
   // a whole managed skill folder replaced by a link to a folder outside
-  await rm(join(a, '.agents', 'skills', 'grill-me'), { recursive: true });
-  await symlink(join(outside, 'dir'), join(a, '.agents', 'skills', 'grill-me'));
+  await rm(join(a, '.agents', 'skills', 'grilling'), { recursive: true });
+  await symlink(join(outside, 'dir'), join(a, '.agents', 'skills', 'grilling'));
   changes = await run(a, 'update');
-  c = changes.find((x) => x.path.startsWith('.agents/skills/grill-me'));
+  c = changes.find((x) => x.path.startsWith('.agents/skills/grilling'));
   assert.equal(c?.action, 'kept');
   assert.match(c?.note ?? '', /^symlink/);
 

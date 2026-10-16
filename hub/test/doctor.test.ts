@@ -409,13 +409,13 @@ test('a skill entry in the project\'s own .claude/skills/ is ok only as a folder
   await mkdir(join(root, '.claude', 'skills'));
   assert.equal((await clandWithEnv(root, tools.env, 'update')).code, 0);
   assert.equal(check((await report(root, tools.env)).report, 'skills').verdict, 'ok');
-  const entry = join(root, '.claude', 'skills', 'grill-me');
+  const entry = join(root, '.claude', 'skills', 'grilling');
 
   await unlink(entry);
   await writeFile(entry, 'not a skill\n');
   let c = check((await report(root, tools.env)).report, 'skills');
   assert.equal(c.verdict, 'fail', 'a regular file');
-  assert.match(c.detail, /grill-me/);
+  assert.match(c.detail, /grilling/);
 
   await unlink(entry);
   const empty = join(root, 'empty');
@@ -423,7 +423,7 @@ test('a skill entry in the project\'s own .claude/skills/ is ok only as a folder
   await symlink(empty, entry);
   c = check((await report(root, tools.env)).report, 'skills');
   assert.equal(c.verdict, 'fail', 'a link to a folder without SKILL.md');
-  assert.match(c.detail, /grill-me/);
+  assert.match(c.detail, /grilling/);
 });
 
 test('doctor names isolated OpenCode databases and standalone login, and warns about default-database accounts', async t => {
