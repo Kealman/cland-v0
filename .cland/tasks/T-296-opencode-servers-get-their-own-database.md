@@ -3,7 +3,7 @@ id: T-296
 kind: task
 title: "OpenCode servers get their own database: the shared database lets OpenCode's background service resume cland's sessions (#51213)"
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 5
 labels:
@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-336
 branch: t/T-296-opencode-servers-get-their-own-database
 created: 2026-10-12T16:20:56.477Z
-updated: 2026-10-16T05:26:08.831Z
+updated: 2026-10-16T05:54:03.286Z
 ---
 
 ## Summary
@@ -46,6 +46,7 @@ Code: `hub/src/adapters/opencode.ts`, `hub/src/adapters/opencode/server.ts`, `hu
 
 - [x] C1. A cland-launched OpenCode session is never resumed by OpenCode's background service, shown by the P3 reproduction turned into a hub test (platform skip without the real binary).
   - done: impl-296 · 2026-10-15T23:47:07.823Z
+  - verified: rev-30 [reviewer] · run rev-20261016-296-final · 2026-10-16T05:54:00.086Z · commit 991d1c86a7e599c0104d50d23bb8a56122bc9447
 - [x] C2. With no account the server runs on the per-user database under the data directory, an account keeps its registry database, and inherited OPENCODE_DB and XDG_DATA_HOME never reach the server.
   - done: impl-296 · 2026-10-15T23:47:34.138Z
   - verified: rev-30 [reviewer] · run rev-20261016-296-source · 2026-10-16T00:00:37.200Z · commit 7f964e694492ed6312e05bc6772075f0b883564c
@@ -53,6 +54,7 @@ Code: `hub/src/adapters/opencode.ts`, `hub/src/adapters/opencode/server.ts`, `hu
   - verified: rev-30 [reviewer] · run rev-20261016-296-manifest-delta · 2026-10-16T01:25:56.291Z · commit 3f28265df73c5d2e95269fa5bd4c855af7c2f5c9
   - verified: rev-30 [reviewer] · run rev-20261016-296-merge-delta · 2026-10-16T04:00:19.575Z · commit 16d819bc6809689de73340786c7b2bd05bd1ddfd
   - verified: rev-30 [reviewer] · run rev-20261016-296-guard-budget-correction · 2026-10-16T04:39:26.763Z · commit 991d1c86a7e599c0104d50d23bb8a56122bc9447
+  - verified: rev-30 [reviewer] · run rev-20261016-296-final · 2026-10-16T05:54:00.086Z · commit 991d1c86a7e599c0104d50d23bb8a56122bc9447
 - [x] C3. The launch record names the database, and resume and relaunch reuse it.
   - done: impl-296 · 2026-10-15T23:48:07.788Z
   - verified: rev-30 [reviewer] · run rev-20261016-296-source · 2026-10-16T00:00:37.200Z · commit 7f964e694492ed6312e05bc6772075f0b883564c
@@ -60,6 +62,7 @@ Code: `hub/src/adapters/opencode.ts`, `hub/src/adapters/opencode/server.ts`, `hu
   - verified: rev-30 [reviewer] · run rev-20261016-296-manifest-delta · 2026-10-16T01:25:56.292Z · commit 3f28265df73c5d2e95269fa5bd4c855af7c2f5c9
   - verified: rev-30 [reviewer] · run rev-20261016-296-merge-delta · 2026-10-16T04:00:19.575Z · commit 16d819bc6809689de73340786c7b2bd05bd1ddfd
   - verified: rev-30 [reviewer] · run rev-20261016-296-guard-budget-correction · 2026-10-16T04:39:26.763Z · commit 991d1c86a7e599c0104d50d23bb8a56122bc9447
+  - verified: rev-30 [reviewer] · run rev-20261016-296-final · 2026-10-16T05:54:00.087Z · commit 991d1c86a7e599c0104d50d23bb8a56122bc9447
 - [x] C4. `cland doctor` names the database and its standalone login line, warns when an account points at the default database, and says whether the free default model needs a login.
   - done: impl-296 · 2026-10-15T23:49:01.818Z
   - verified: rev-30 [reviewer] · run rev-20261016-296-source · 2026-10-16T00:00:37.200Z · commit 7f964e694492ed6312e05bc6772075f0b883564c
@@ -67,6 +70,7 @@ Code: `hub/src/adapters/opencode.ts`, `hub/src/adapters/opencode/server.ts`, `hu
   - verified: rev-30 [reviewer] · run rev-20261016-296-manifest-delta · 2026-10-16T01:25:56.292Z · commit 3f28265df73c5d2e95269fa5bd4c855af7c2f5c9
   - verified: rev-30 [reviewer] · run rev-20261016-296-merge-delta · 2026-10-16T04:00:19.576Z · commit 16d819bc6809689de73340786c7b2bd05bd1ddfd
   - verified: rev-30 [reviewer] · run rev-20261016-296-guard-budget-correction · 2026-10-16T04:39:26.763Z · commit 991d1c86a7e599c0104d50d23bb8a56122bc9447
+  - verified: rev-30 [reviewer] · run rev-20261016-296-final · 2026-10-16T05:54:00.087Z · commit 991d1c86a7e599c0104d50d23bb8a56122bc9447
 - [x] C5. hub/README.md (OpenCode) describes the database and the login.
   - done: impl-296 · 2026-10-15T23:49:36.050Z
   - verified: rev-30 [reviewer] · run rev-20261016-296-source · 2026-10-16T00:00:37.200Z · commit 7f964e694492ed6312e05bc6772075f0b883564c
@@ -74,6 +78,7 @@ Code: `hub/src/adapters/opencode.ts`, `hub/src/adapters/opencode/server.ts`, `hu
   - verified: rev-30 [reviewer] · run rev-20261016-296-manifest-delta · 2026-10-16T01:25:56.292Z · commit 3f28265df73c5d2e95269fa5bd4c855af7c2f5c9
   - verified: rev-30 [reviewer] · run rev-20261016-296-merge-delta · 2026-10-16T04:00:19.576Z · commit 16d819bc6809689de73340786c7b2bd05bd1ddfd
   - verified: rev-30 [reviewer] · run rev-20261016-296-guard-budget-correction · 2026-10-16T04:39:26.763Z · commit 991d1c86a7e599c0104d50d23bb8a56122bc9447
+  - verified: rev-30 [reviewer] · run rev-20261016-296-final · 2026-10-16T05:54:00.087Z · commit 991d1c86a7e599c0104d50d23bb8a56122bc9447
 
 ## Comments
 
@@ -272,3 +277,36 @@ Impl fb922068/A-3734 already escalates exact signature and missing phase to lead
 Evidence verdict not clear; no new or failed criterion marks. Counts: high0,medium1 outside runtime blocker,low0; owned Standards0/Spec0 new source findings. Provider lifetime/cost are reported unknown in the receipt rather than invented. No Reviewer execution, edits, provider operations or subagents.
 
 Artifact A-3735 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3735-t-296-corrected-linux-not-clear-outside-legacy-plan-assertion-and-missing-neovim.md
+
+### rev-30 · 2026-10-16T05:54:00.087Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-296-final
+commit: 991d1c86a7e599c0104d50d23bb8a56122bc9447
+scope: evidence
+
+# T-296 final evidence clear at 991d1c86
+
+Head991d1c86a7e599c0104d50d23bb8a56122bc9447; branch t/T-296-opencode-servers-get-their-own-database. Origin ref and fresh A-3760 receipt match exactly. Source chain A-3486/A-3492/A-3676/A-3716 applies; no further head movement or T-574 pick. Current task.view confirms all five claimant criteria done.
+
+## Standards
+No unresolved high, medium or low findings (0). Corrected passive-literal architecture guard passes (A-3760:437); owned restart budget entries preserve assertions and5/5 proof. Prior outside legacy-plan red T-574 is not recurring here. Known-entry duration-regression notices are not hard failures; final exit0. No declined/queued/cancelled receipt is counted as execution evidence.
+
+## Spec
+C1 final verification is now established with the originally accepted real-binary P3 Mac proof and qualifying task gate; C2–C5 refreshed at this head.
+C1 real P3 evidence remains A-3474 (non-skipped real2.0.24 case1/1) and A-3674 (non-skipped isolation proof1/1 after authorized merge). Source A-3486 audited its positive default-service sweep control, isolated cland provider/conversation exclusion, no duplicate cland request, retained active cland server, explicit scratch environment and writer teardown. Linux lacks real opencode and permits the criterion's explicit platform skip, including5/5 reasoned prerequisite skips at A-3760:2110. That skip is disclosed, not described as a Linux real-binary P3 pass.
+C2/C3 supporting current Linux observations: unassigned XDG/HOME restart/relaunch5.486/6.288s (450–451), both5/5 (280/330); named accounts/inherited selector/drop and saved launch environment assertions remain in the reviewed whole file. Source still selects dedicated persistent per-user database, honors explicit registry accounts and reuses recorded environment rather than current ambient settings.
+C4 doctor isolated DB/standalone login/default-db warning passes3.583s and5/5 (1108/1255); merged version policy remains the separately reviewed incoming T-533 integration. Earlier scratch free-model experiment is scoped to its recorded version/environment, not a new general promise. C5 corrected README exact-login guidance is unchanged.
+Old sessions are not silently migrated and explicit registry default-db choices retain the documented warning; those accepted rollout/spec choices remain from the source chain.
+
+A-3760 /886b41a2-3cc1-4986-823e-03db3ea5214f actual Linux x64 6.8.0-142-generic,c-8lon1 cland-v0-827cba5c,Nodev24.21.0,Neovimv0.12.5,fourworkers. Diff-selected hub-only package gate1905tests/1900pass/0fail/cancel/5platform skips. Hub free38/38, hub machine1850pass/5skip, Neovim smoke12/12. Both typechecks and all selected phases complete; requested Neovim green phase is now supplied, without falsely claiming a full Neovim package run. Suite1505.86s,peak1m15.01,extra11.86s;final exit0 at6205. Lifetime/cost remain unknown as reported.
+Primary Coordinator6d9e926d-0219-455f-9390-22d74433e1ca, independently read in topic-336, accepts previous own hub proof and authorizes this single unchanged-head retry to reach Neovim; no shared fix is required now that the receipt is green. No known-red exception or further run is needed.
+
+Final evidence clear, C1–C5 verified. No per-item QA. Rule13 retirement and checking old default-database sessions/fresh launches remain Coordinator merge/rollout actions; this verdict neither performs nor prematurely retires that rule. Further source movement requires delta review.
+No Reviewer tests/compiler/binary execution, edits, model/API/provider calls, signals, installs, commits, merges or subagents. Totals Standards0,Spec0 findings.
+
+Artifact A-3761 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3761-t-296-final-clear-linux-gate-and-neovim-smoke-green-real-mac-p3-retained.md
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.

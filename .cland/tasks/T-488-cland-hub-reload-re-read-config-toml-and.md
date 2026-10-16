@@ -3,7 +3,7 @@ id: T-488
 kind: task
 title: "cland hub reload: re-read config.toml and roles.toml without a restart (SIGHUP too)"
 state: open
-status: ready
+status: review
 size: S
 criterion_seq: 4
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-329
 branch: t/T-488-cland-hub-reload-re-read-config-toml-and
 created: 2026-10-15T11:30:17.553Z
-updated: 2026-10-16T05:30:11.713Z
+updated: 2026-10-16T05:41:07.042Z
 ---
 
 ## Problem
@@ -34,6 +34,7 @@ Add `cland hub reload`, which also runs on SIGHUP. It re-reads `.cland/config.to
   - verified: rev-31 [reviewer] · run rev-20261016-488-delta-5 · 2026-10-16T03:51:12.026Z · commit bfc146576230846994be376ebbe073d2188acb92
   - verified: rev-31 [reviewer] · run rev-20261016-488-merge-source · 2026-10-16T04:26:19.977Z · commit 3ba2b30bed4547b6b3f3c4b034aab57a665a2c00
   - verified: rev-31 [reviewer] · run rev-20261016-488-delta-6 · 2026-10-16T04:55:51.782Z · commit 364c1c22af0191a69673b22b80d29ac839ef6f9b
+  - verified: rev-31 [reviewer] · run rev-20261016-488-merge-source-2 · 2026-10-16T05:41:07.042Z · commit fd0370d88e71ae4a7ad0be12db7567e640145c69
 - [x] C2. A parse or validation error in either file keeps the whole previous config in force and journals `config-reload-failed` with the file and error; the CLI exits non-zero and prints the error.
   - done: impl-488 · 2026-10-15T23:45:16.991Z
   - verified: rev-31 [reviewer] · run rev-20261016-488-source-2 · 2026-10-16T00:01:17.145Z · commit 7b8c92b36c082509ca88ced2ad5efec47b6bac51
@@ -42,6 +43,7 @@ Add `cland hub reload`, which also runs on SIGHUP. It re-reads `.cland/config.to
   - verified: rev-31 [reviewer] · run rev-20261016-488-delta-5 · 2026-10-16T03:51:12.026Z · commit bfc146576230846994be376ebbe073d2188acb92
   - verified: rev-31 [reviewer] · run rev-20261016-488-merge-source · 2026-10-16T04:26:19.977Z · commit 3ba2b30bed4547b6b3f3c4b034aab57a665a2c00
   - verified: rev-31 [reviewer] · run rev-20261016-488-delta-6 · 2026-10-16T04:55:51.782Z · commit 364c1c22af0191a69673b22b80d29ac839ef6f9b
+  - verified: rev-31 [reviewer] · run rev-20261016-488-merge-source-2 · 2026-10-16T05:41:07.042Z · commit fd0370d88e71ae4a7ad0be12db7567e640145c69
 - [x] C3. Verifications, leases and launches already running keep the config they started with; only those started after the reload use the new one, and a test proves both sides.
   - done: impl-488 · 2026-10-15T23:45:40.291Z
   - verified: rev-31 [reviewer] · run rev-20261016-488-final · 2026-10-16T04:18:09.949Z · commit bfc146576230846994be376ebbe073d2188acb92
@@ -54,6 +56,7 @@ Add `cland hub reload`, which also runs on SIGHUP. It re-reads `.cland/config.to
   - verified: rev-31 [reviewer] · run rev-20261016-488-delta-5 · 2026-10-16T03:51:12.026Z · commit bfc146576230846994be376ebbe073d2188acb92
   - verified: rev-31 [reviewer] · run rev-20261016-488-merge-source · 2026-10-16T04:26:19.977Z · commit 3ba2b30bed4547b6b3f3c4b034aab57a665a2c00
   - verified: rev-31 [reviewer] · run rev-20261016-488-delta-6 · 2026-10-16T04:55:51.782Z · commit 364c1c22af0191a69673b22b80d29ac839ef6f9b
+  - verified: rev-31 [reviewer] · run rev-20261016-488-merge-source-2 · 2026-10-16T05:41:07.042Z · commit fd0370d88e71ae4a7ad0be12db7567e640145c69
 
 ## Comments
 
@@ -272,3 +275,16 @@ scope: evidence
 Final merged-head clear. A-3748/61aef3bf fresh exact-head full Linux exit0:2291tests/2284pass/0fail/7platformskip. Raw hub free38/38, machine1856pass+4skip, full Neovim390pass+3skip (135.51s). All five own reload cases ordinary green and5/5 load. C3 verified from active/new actual admission+lease snapshot test12.326s and role-refresh/running-launch defaults7.501s with source-reviewed preserved assertions. C1/C2/C4 current from A-3702/A-3725, all4 verified. No known-red exception/batch deferral required; satisfies bf9968a3 full Neovim gate. Lifetime/cost remain unknown, not inferred. Standards/Spec no findings; no per-item QA. Artifact A-3750: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3750-t-488-final-merged-head-full-linux-and-neovim-clear.md. No Reviewer edits/tests.
 
 Criteria: C3 verified.
+
+### rev-31 · 2026-10-16T05:41:07.042Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261016-488-merge-source-2
+commit: fd0370d88e71ae4a7ad0be12db7567e640145c69
+scope: delta
+
+Second integration source clear. Dispatch preserves loaded config wiring alongside demo attention/stageCovers/shared-defect callbacks; suite-limits preserves cwd-scoped snapshots plus loadGateWorkers. Minimal authorized suites.ts adjustment captures root loadGateWorkers initially and refreshes it at admission, preserving active/candidate-worktree snapshots and startup-only timeout refusal. Extended existing remote proof shows active1, queued3→admitted4; exact red/green in A-3756, original bounds/receipt assertions retained. Applied-settings/README name live field. Manifest independently exact dev+own2 unchanged allowances. Posted T-574 test file matches52d346f3 byte-for-byte, independently authorized85f8491f. Standards/Spec no findings; supplied seven-file50/50/typecheck/shards support source, independent diff check clear. C1/C2/C4 reverified; C3 pending fresh exact-head full Linux/Neovim perfe676afc, oldA-3748 prior-head only. Analysis A-3757: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3757-t-488-second-integration-source-clear-at-fd0370d8.md. No Reviewer edits/tests.
+
+Criteria: C1 verified, C2 verified, C4 verified.
