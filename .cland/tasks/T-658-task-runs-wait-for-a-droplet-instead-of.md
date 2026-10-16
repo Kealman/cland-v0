@@ -2,8 +2,8 @@
 id: T-658
 kind: task
 title: Task runs wait for a droplet instead of falling back to the Mac
-state: open
-status: ready
+state: closed
+status: done
 size: S
 rank: 4419
 criterion_seq: 3
@@ -18,7 +18,8 @@ blocked_by: []
 topic: topic-400
 branch: t/T-658-task-runs-wait-for-a-droplet-instead-of
 created: 2026-10-16T16:29:56.442Z
-updated: 2026-10-16T18:32:26.811Z
+updated: 2026-10-16T18:33:11.500Z
+closed: 2026-10-16T18:33:11.500Z
 ---
 
 ## Summary
@@ -101,3 +102,7 @@ Linux x64 c-8 lon1, Node 24.21.0, Neovim 0.12.5, four workers; suite 1837.66 s, 
 Review artifact A-4109.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-16T18:33:11.500Z
+
+Merged ae23d6bb4d85a3bf3dc1d7c3affa627322b79df9 onto dev.
