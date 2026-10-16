@@ -3,7 +3,7 @@ id: T-635
 kind: task
 title: cland models <harness> lists the harness's model ids from a cached probe
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 6
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-391
 branch: t/T-635-cland-models-harness-lists-the-harness-s
 created: 2026-10-16T16:04:12.499Z
-updated: 2026-10-16T20:18:04.905Z
+updated: 2026-10-16T20:19:45.346Z
 ---
 
 ## Summary
@@ -46,6 +46,7 @@ updated: 2026-10-16T20:18:04.905Z
   - done: impl-635 · 2026-10-16T16:30:29.570Z
   - verified: rev-30 [reviewer] · run rev-20261016-635-path-delta · 2026-10-16T16:32:28.971Z · commit a1bef9deff1c54d971f922d75de2f30389a25d26
   - verified: rev-30 [reviewer] · run rev-20261016-635-import-correction · 2026-10-16T17:23:58.036Z · commit ab3867ec6b8a0c84814db357d1898084c337a176
+  - verified: rev-30 [reviewer] · run rev-20261016-635-catalog-correction · 2026-10-16T20:19:35.095Z · commit fbe04a18482bf756872de3fe3b0895a69b7e861e
 - [x] C5. A failing probe answers the cached list with its age, or with no cache fails with the probe's error, and a harness not installed fails with doctor's not-installed line.
   - done: impl-635 · 2026-10-16T17:22:16.310Z
 - [x] C6. `--account <name>` probes in that account's environment and keeps its cache apart from the default's, and `--json` prints the documented shape.
@@ -240,3 +241,37 @@ C1 failed for the owned catalog gate/budget; C2/C3/C5/C6 remain unverified by fi
 Review artifact A-4180.
 
 Criteria: C1 failed (Owned native catalog/cache case fails 4/5 load repetitions and hard duration budget; relocated metadata also breaks exact provider-source guard. See A-4180.).
+
+### impl-635 · 2026-10-16T20:18:36.780Z
+
+Owned A-4175 corrections pushed at fbe04a18482bf756872de3fe3b0895a69b7e861e (no dev merge): exact passive install-URL allowlist path follows metadata to doctor/harnesses.ts; 5.399 s catalog-case allowance with native-process reason; opt-in fake first-empty model response makes retry proof independent of caller missing 400 ms startup window, with every original assertion kept. Warm-catalog experiment reproduced original assertion failure and then passed with the correction; exact remote 4/5 assertion was not retained (Coordinator filed T-720). Current D53 levels read and T3 native lifecycle/T1 static comments supplied. Whole models 6/6 (8.478 s), whole account-poller 10/10 (34.640 s), five fresh quiet catalog repetitions 5/5; typecheck at head and shard lint exit 0. C1 done restored. Requesting delta source review before a new droplet verify.
+
+### rev-30 · 2026-10-16T20:19:35.095Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-635-catalog-correction
+commit: fbe04a18482bf756872de3fe3b0895a69b7e861e
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-635 correction delta source clear at fbe04a18482bf756872de3fe3b0895a69b7e861e, direct child of reviewed ab3867ec6b8a0c84814db357d1898084c337a176. Origin task tip matches; exactly four test/fake/manifest files changed, no dev merge or production edits. Standards and Spec axes: no findings.
+
+M1 resolved narrowly: source-policy test moves only the exact passive OpenCode install-guidance tuple's allowed file from doctor/toolchain.ts to doctor/harnesses.ts. Literal and explanatory reason are unchanged; recursive scan, every forbidden target and every other exception remain. The new T1 comment describes the source-text assertion and adds no provider access.
+
+M2 source correction is appropriate to a demonstrated scheduling race: original fake emptiness depended on a caller reaching /api/model within 400 ms after server startup. New opt-in FAKE_OPENCODE_EMPTY_FIRST_MODEL_PROBE=1 guarantees the first actual response is empty, with a per-process request counter and a single computed value used for response and probe log. Only the affected catalog scenario injects it. Default 400 ms behavior, failure handling, staged/changing catalog paths and production retry logic remain. Every original catalog/default/cache/refresh/probe/environment/cleanup assertion stays. No sleeps, timeout extensions, wall-clock assertions or fake response consumed by an unrelated fixture were added. T3 file header names real CLI/native protocol process startup/teardown; static guard receives its T1 comment.
+
+A-4186 records controlled zero-cold-window original red at the empty-response assertion and corrected green with all assertions retained; committed source independently confirmed restored at 400 ms. Five extra quiet local passes are not represented as load-gate proof. Read primary Coordinator b32fc0cf-8405-45a2-b2b9-0474a86a8ed7 accepting the event-driven first-empty correction and filing missing load diagnostics as T-720. The original remote 4/5 assertion was not retained, so associating that red with this demonstrated race remains an inference, not recovered historical causality or a waived runtime gate.
+
+M3 resolved: exactly one new allowance for the catalog identity, measured A-4175 5.399 s, with reason covering real native transports, empty-catalog retry and confirmed child teardown. Existing allowances, baselines, bounds and assertions are unchanged; independent JSON comparison and whitespace checks pass.
+
+Request/A-4186 reports models whole file 6/6 in 8.478 s, account-poller 10/10 in 34.640 s, five further quiet catalog runs, exact-head typecheck and shard lint exit 0, clean pushed tree. No Reviewer tests/compiler execution. C1 claimant done restored. C4 static source proof refreshed; C1/C2/C3/C5/C6 and final full-mode gate remain pending exact-head verification including owned load repetitions and Neovim. Proceed with normal mode-free explicit droplet verify under the Coordinator's applicable hold-lift instruction. No per-item QA criteria.
+Review artifact A-4187.
+
+Criteria: C4 verified.
+
+### impl-635 · 2026-10-16T20:19:45.346Z
+
+Delta source clear at fbe04a18482bf756872de3fe3b0895a69b7e861e, rev-20261016-635-catalog-correction / A-4187; no remaining findings. Submitted exact-head mode-free --executor droplet verification 1dae7116-f9fc-4a06-b9f4-f46927b04747 after hold lift; queue position 1, worker pending. Result goes to Reviewer and item lead in topic-391. Going idle until result; no head change.

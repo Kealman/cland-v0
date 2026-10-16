@@ -3,7 +3,7 @@ id: T-628
 kind: task
 title: A roles.toml editor sets one key of one role table and keeps the rest of the file
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 6
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-389
 branch: t/T-628-a-roles-toml-editor-sets-one-key-of-one
 created: 2026-10-16T16:04:11.537Z
-updated: 2026-10-16T19:29:36.447Z
+updated: 2026-10-16T20:36:38.599Z
 ---
 
 ## Summary
@@ -38,32 +38,33 @@ A write helper replaces the file atomically and refuses when the file changed be
 
 - [x] C1. Setting an existing `[<role>.launch]` key replaces its line in place and leaves every other byte of the file, comments included, unchanged (unit test).
   - verified: rev-31 [reviewer] · run rev-20261016-628-source · 2026-10-16T16:11:39.359Z · commit cc01903bdcee75ee5b9b16f8380693604554edf7
-  - done: impl-628 · 2026-10-16T17:23:00.015Z
   - verified: rev-31 [reviewer] · run rev-20261016-628-merge-source · 2026-10-16T17:26:30.738Z · commit 0c37c3debaf3cdb0e612c5029bdb94316524c430
   - verified: rev-31 [reviewer] · run rev-20261016-628-delta-2 · 2026-10-16T19:29:36.447Z · commit 6d537da3302be8d4d4789fb335e09a3283a1ae34
+  - done: impl-628 · 2026-10-16T20:36:36.330Z
 - [x] C2. A key absent from the table is inserted inside that table, and a missing `[<role>.launch]` table is created after the role's other tables (unit tests for both).
   - verified: rev-31 [reviewer] · run rev-20261016-628-source · 2026-10-16T16:11:39.360Z · commit cc01903bdcee75ee5b9b16f8380693604554edf7
-  - done: impl-628 · 2026-10-16T17:23:00.636Z
   - verified: rev-31 [reviewer] · run rev-20261016-628-merge-source · 2026-10-16T17:26:30.738Z · commit 0c37c3debaf3cdb0e612c5029bdb94316524c430
   - verified: rev-31 [reviewer] · run rev-20261016-628-delta-2 · 2026-10-16T19:29:36.447Z · commit 6d537da3302be8d4d4789fb335e09a3283a1ae34
+  - done: impl-628 · 2026-10-16T20:36:37.072Z
 - [x] C3. A line beginning with `[` inside a role's multi-line clause is never taken for a table header (unit test with such a clause).
   - verified: rev-31 [reviewer] · run rev-20261016-628-source · 2026-10-16T16:11:39.360Z · commit cc01903bdcee75ee5b9b16f8380693604554edf7
-  - done: impl-628 · 2026-10-16T17:23:00.939Z
   - verified: rev-31 [reviewer] · run rev-20261016-628-merge-source · 2026-10-16T17:26:30.738Z · commit 0c37c3debaf3cdb0e612c5029bdb94316524c430
   - verified: rev-31 [reviewer] · run rev-20261016-628-delta-2 · 2026-10-16T19:29:36.447Z · commit 6d537da3302be8d4d4789fb335e09a3283a1ae34
+  - done: impl-628 · 2026-10-16T20:36:37.587Z
 - [x] C4. `[<role>.permissions] tools` gains grants while its other grants keep their order (unit test).
   - verified: rev-31 [reviewer] · run rev-20261016-628-source · 2026-10-16T16:11:39.360Z · commit cc01903bdcee75ee5b9b16f8380693604554edf7
-  - done: impl-628 · 2026-10-16T17:23:01.347Z
   - verified: rev-31 [reviewer] · run rev-20261016-628-merge-source · 2026-10-16T17:26:30.738Z · commit 0c37c3debaf3cdb0e612c5029bdb94316524c430
   - verified: rev-31 [reviewer] · run rev-20261016-628-delta-2 · 2026-10-16T19:29:36.447Z · commit 6d537da3302be8d4d4789fb335e09a3283a1ae34
+  - done: impl-628 · 2026-10-16T20:36:37.948Z
 - [x] C5. A result the hub's roles parser refuses is never returned, and the error is the parser's message naming the key (unit tests with an unknown harness and an unknown grant).
   - verified: rev-31 [reviewer] · run rev-20261016-628-source · 2026-10-16T16:11:39.360Z · commit cc01903bdcee75ee5b9b16f8380693604554edf7
-  - done: impl-628 · 2026-10-16T17:23:01.657Z
   - verified: rev-31 [reviewer] · run rev-20261016-628-merge-source · 2026-10-16T17:26:30.738Z · commit 0c37c3debaf3cdb0e612c5029bdb94316524c430
   - verified: rev-31 [reviewer] · run rev-20261016-628-delta-2 · 2026-10-16T19:29:36.447Z · commit 6d537da3302be8d4d4789fb335e09a3283a1ae34
+  - done: impl-628 · 2026-10-16T20:36:38.246Z
 - [x] C6. The write helper replaces the file atomically and refuses with "changed while setting it; retry" when the file changed after it was read (unit test).
   - verified: rev-31 [reviewer] · run rev-20261016-628-final · 2026-10-16T17:22:38.874Z · commit cc01903bdcee75ee5b9b16f8380693604554edf7
-  - done: impl-628 · 2026-10-16T17:23:02.053Z
+  - verified: rev-31 [reviewer] · run rev-20261016-628-merge-final · 2026-10-16T20:36:36.711Z · commit 6d537da3302be8d4d4789fb335e09a3283a1ae34
+  - done: impl-628 · 2026-10-16T20:36:38.599Z
 
 ## Comments
 
@@ -160,3 +161,18 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Dev-merge source delta clear; Standards0/Spec0 findings, A-4147. Parents0c37c3de+f63afbac confirmed, all three task parser/editor/test files byte-unchanged. Sole shard conflict resolves exact complete dev union+roles-editor:machine, quarantine/candidate entries retained. Net4files210insertions/3deletions; independent diffcheck clean, exact-head typecheck/shards reportedgreen. Coordinator f6f4264a independently read authorizes this merge and explicitly HOLDS droplet resubmit until announced lift after hub restart. C1–C5 source current; C6 awaits fresh same-head gate after that lift. Source clear does not lift submission hold; A-4144 remains historical prior-head exit1. No Reviewer edits/tests.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### rev-31 · 2026-10-16T20:36:36.711Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261016-628-merge-final
+commit: 6d537da3302be8d4d4789fb335e09a3283a1ae34
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final merged-head evidence clear; Standards0/Spec0 findings, A-4189. Independently inspected same-head77556e4a/A-4188 exit0:2007pass/0fail/5skip, including Neovim smoke12of12. All8editor cases ordinary green and5of5, including atomic writer/stale-source refusal. C6 verified; C1–C5 delta-2/A-4147 marks current at unchanged6d537da3. All6claimant done marks present. Quarantined cases pass; no special failed-run exception needed. Hub-only plus smoke, not fullNeovim; lifetime/costunknown perreceipt. No Reviewer edits/tests.
+
+Criteria: C6 verified.

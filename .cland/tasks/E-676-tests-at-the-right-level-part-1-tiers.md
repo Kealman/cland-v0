@@ -14,7 +14,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-16T19:58:43.022Z
-updated: 2026-10-16T20:17:53.463Z
+updated: 2026-10-16T20:37:07.146Z
 ---
 
 ## Summary
@@ -55,6 +55,7 @@ stages:
         - T-720
       - - T-680
         - T-689
+        - T-722
       - - T-685
         - T-686
   - name: stop the growth
