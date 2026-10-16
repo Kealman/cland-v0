@@ -1053,7 +1053,7 @@ Sync returns `{main, dev}`. A territory failure after the local refs move return
 
 | Check | `ok` when | Otherwise |
 | --- | --- | --- |
-| `claude-code`, `codex`, `opencode` | The executable (the adapter's `CLAND_CLAUDE_BIN`, `CLAND_CODEX_BIN`, `CLAND_OPENCODE_BIN`, else `claude`, `codex`, `opencode` on the PATH) answers `--version` within the tested range: Claude Code `>=2.1.294 <2.2.0`, Codex `>=0.160.0 <0.161.0`, OpenCode `>=2.0.24 <2.1.0` (`src/doctor/ranges.ts`, the one place to widen after re-verifying an adapter). | Missing: `fail`, install it or set the variable. Outside the range: `warn` (older: upgrade; newer: it may work). |
+| `claude-code`, `codex`, `opencode` | The executable (the adapter's `CLAND_CLAUDE_BIN`, `CLAND_CODEX_BIN`, `CLAND_OPENCODE_BIN`, else `claude`, `codex`, `opencode` on the PATH) answers `--version` within the tested range: Claude Code `>=2.1.294 <2.2.0`, Codex `>=0.160.0 <0.161.0`, OpenCode `>=2.0.24 <2.0.31` (`src/doctor/ranges.ts`, the one place to widen after re-verifying an adapter). | Missing: `fail`, install it or set the variable. Outside the range: `warn` (older: upgrade; newer: it may work). |
 | `claude-code auth` | `claude auth status --json` says `"loggedIn": true`. | `fail`, `claude auth login`. |
 | `codex auth` | `codex login status` exits 0 (`Logged in using …`). | `fail`, `codex login`. |
 | `opencode auth` | `opencode auth list --standalone --format json` lists a provider with credentials (`--standalone`: a private server for the call, the background service is not started). | None: `warn` (the free default needs no login), a database-specific `opencode auth login --standalone`; the command failing: `warn: cannot check`. |
