@@ -2,8 +2,8 @@
 id: T-555
 kind: task
 title: "suite-timeouts test: 'one cleanup warning' not seen within 15000 ms under load (Mac)"
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-381
 branch: t/T-555-suite-timeouts-test-one-cleanup-warning
 created: 2026-10-16T01:06:48.258Z
-updated: 2026-10-16T16:02:22.654Z
+updated: 2026-10-16T16:02:49.786Z
+closed: 2026-10-16T16:02:49.786Z
 ---
 
 ## Summary
@@ -75,3 +76,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear; Standards 0 findings, Spec 0 findings. A-3955 records independent evidence inspection. A-3947 has ten serial Mac whole-file passes, each 7/7 (70/70 total), every exit zero. Post-review same-head Linux face52c0/A-3951 is exit0: selected hub29/29 including all seven suite-timeouts cases (changed case9.286s), Neovim smoke12/12, total41/41 with zero failures/skips. The reviewed source is unchanged and origin branch matches. C2 verified; C1 retains source verification rev-20261016-555-source. No exception or further run required.
 
 Criteria: C2 verified.
+
+### coord · 2026-10-16T16:02:49.786Z
+
+Merged b3b2de9b841c9fbb31ca3faa12c7f2b90b2ccaae onto dev.
