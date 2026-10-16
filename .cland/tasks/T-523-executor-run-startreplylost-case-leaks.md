@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-342
 branch: t/T-523-executor-run-startreplylost-case-leaks
 created: 2026-10-15T18:39:08.367Z
-updated: 2026-10-16T03:46:28.205Z
+updated: 2026-10-16T03:49:38.074Z
 ---
 
 ## Problem
@@ -26,7 +26,9 @@ updated: 2026-10-16T03:46:28.205Z
 - [ ] C1. The case, or the executor code it drives, closes or awaits every pipe of the lost-reply exchange before the case ends, so projectHub sees no new handles. Keep the leak check. Record the root cause, and whether a product path leaks too, in the commit.
   - verified: rev-30 [reviewer] · run rev-20261016-523-source · 2026-10-16T01:01:48.906Z · commit fded4fb0f26902b34872910f9168f35ddcd5ebc2
   - verified: rev-30 [reviewer] · run rev-20261016-523-manifest-delta · 2026-10-16T01:30:47.870Z · commit 9a025f0192d68b436d0171d85b5999f045483b6c
+  - verified: rev-30 [reviewer] · run rev-20261016-523-final · 2026-10-16T03:49:38.074Z · commit 9a025f0192d68b436d0171d85b5999f045483b6c
 - [ ] C2. executor-run.test.ts passes 5/5 serially, whole file and alone on the Mac, plus once on a droplet in the task's verify.
+  - verified: rev-30 [reviewer] · run rev-20261016-523-final · 2026-10-16T03:49:38.074Z · commit 9a025f0192d68b436d0171d85b5999f045483b6c
 
 ## Comments
 
@@ -97,3 +99,30 @@ Mac C2 proof complete at reviewed head9a025f01: executor-run.test.ts5/5 whole-fi
 ### impl-523 · 2026-10-16T03:46:28.205Z
 
 First actual Linux verification2ec4adba/A-3655 at reviewed9a025f01 completed1852 tests:1847 pass,1 fail,4 skip,0 cancel (c-8 lon1,4workers, peak load11.34). Both changed executor files green: lost-start-reply/marker parent10.169s, failed replacement11.756s; no PROCESSWRAP leak. Sole ordinary failure suite-close:107 has active lease/watchdogAlive:true after successful sharded result and empty provider, matching documented T-517 old:82 reconcile/release race; known T-556 timestamp0/5 is only other red. No hard duration-budget failure. Mac proof A-3581 remains5/5 each. E-482 second same-head fresh droplet d9fbd7dc submitted; final gate pending its receipt.
+
+### impl-523 · 2026-10-16T03:49:01.074Z
+
+Coordinator decision b3d17f92 accepts Linux 2ec4adba/A-3655 at 9a025f01 without a second receipt: the sole ordinary failure is T-517's exact active-lease race, fixed on newer dev by ac2c3641, and T-556's 0/5 is known. Own changed cases are green without PROCESSWRAP leaks. Final evidence review requested with Mac A-3581 (5/5 both files) and Linux A-3655. Unnecessary second request d9fbd7dc was confirmed waiting and cancelled before execution; A-3659 supplies no test evidence. Head unchanged; final verdict pending.
+
+### rev-30 · 2026-10-16T03:49:38.074Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-523-final
+commit: 9a025f0192d68b436d0171d85b5999f045483b6c
+scope: evidence
+
+Final evidence review T-523 clear at unchanged source-cleared9a025f0192d68b436d0171d85b5999f045483b6c. Standards/Spec: no new findings. Original C1 source A-3522 and exact manifest-only A-3570 remain current; origin task ref independently resolves to this SHA.
+
+Primary Coordinator b3d17f92-1bf2-41b9-9f31-da5a23d3437c read directly in topic-342 explicitly accepts2ec4adba/A-3655, directs no second run, and classifies the exact suite-close:107 active lease/watchdogAlive:true as the pre-existing T-517 reconcile/release resurrection defect. T-517 fix ac2c3641 merged to dev but is absent from this held head; this is known already-fixed-on-dev evidence, not proof that T-523 fixes it. Other red is knownT-556 timestamp0/5. This explicit disposition supplies final gate authority.
+
+Raw A-3655 independently inspected: actual Linux c-8 lon1 6.8.0-142-generic, Node24.21.0, Neovim0.12.5, workers4, lifetime1365s/$0.0948;1852tests/1847pass/1fail/4skip/0cancel. Hub ordinary phase completes; suite1299.02s, peak11.34, overall exit1. Own lost-start-reply/marker-only parent completes10.169s; failed builder replacement completes11.756s. No added PROCESSWRAP/resource-leak failure. Both executor files complete without own failing cases. The ordinary outside assertion expects leases[] after integrated sharded result but sees one active lease with watchdogAlive:true, precisely the Coordinator-classified signature. No hard duration-budget error; regression notices do not fail known budgets. Neovim smoke did not run after red; task has no nvim diff and no additional phase requirement under this gate disposition.
+
+Mac A-3581 audited: ten whole-file receipt logs, executor-run21/21 five times and executor-prepare17/17 five times,190/190 total, zero fail/cancel/skip. The separate admission driver log is not counted as a test receipt. Summary records serial whole-file boundaries, quiet/loaded admissions and unchanged source blobs through the exact shared2149fe33 manifest pick. C1's ownership-aware SIGTERM/close/escalation fix, preserved leak checker and deterministic stopped-watchdog control remain established by A-3522. Linux own cases add the required actual-platform proof.
+
+The prematurely submitted second request d9fbd7dc was cancelled while waiting under Coordinator no-second-run direction; A-3659 exit143/platform/counts-unavailable is excluded from passing evidence. C2 now verified under complete Mac proof plus accepted exact-head Linux file completion; C1 unchanged source current, all criteria verified. No further run/shared fix/head change requested. Any merge conflict or source movement requires delta review. No per-item QA. No Reviewer tests/compiler/binary execution, edits, installs, signals, commits, merges, provider actions, task.view journal scan or subagents.
+
+Review artifact A-3662 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3662-t-523-final-evidence-clear-at-9a025f01-under-accepted-linux-receipt.md
+
+Criteria: C1 verified, C2 verified.

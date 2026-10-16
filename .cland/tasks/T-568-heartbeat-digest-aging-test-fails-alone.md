@@ -3,7 +3,7 @@ id: T-568
 kind: task
 title: 'heartbeat digest-aging test fails alone on dev: "new review state gets a fresh full interval" not within 15000 ms'
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 2
 labels:
@@ -17,7 +17,7 @@ blocked_by: []
 topic: topic-353
 branch: t/T-568-heartbeat-digest-aging-test-fails-alone
 created: 2026-10-16T03:29:14.808Z
-updated: 2026-10-16T03:43:43.613Z
+updated: 2026-10-16T03:50:55.454Z
 ---
 
 ## Summary
@@ -27,7 +27,10 @@ On 2026-10-16, T-469's droplet run f9f957db at 50af1e39 (A-3645) failed hub/test
 - [x] C1. Find why the review state's fresh interval is sometimes not observed within 15 s, fix the test or the heartbeat ageing, and record the cause on this item.
   - done: impl-568 · 2026-10-16T03:42:12.262Z
   - verified: rev-30 [reviewer] · run rev-20261016-568-source · 2026-10-16T03:43:43.613Z · commit 8183e1b98f2ebcca108906baec897c72f04cd206
-- [ ] C2. heartbeat.test.ts passes 10/10 serially as a whole file on the Mac and once on a droplet in the task's verify; the fix is posted as a shared fix.
+  - verified: rev-30 [reviewer] · run rev-20261016-568-final · 2026-10-16T03:50:54.926Z · commit 8183e1b98f2ebcca108906baec897c72f04cd206
+- [x] C2. heartbeat.test.ts passes 10/10 serially as a whole file on the Mac and once on a droplet in the task's verify; the fix is posted as a shared fix.
+  - done: impl-568 · 2026-10-16T03:50:26.216Z
+  - verified: rev-30 [reviewer] · run rev-20261016-568-final · 2026-10-16T03:50:54.926Z · commit 8183e1b98f2ebcca108906baec897c72f04cd206
 
 ## Comments
 
@@ -69,3 +72,34 @@ C1 verified. C2 remains pending actual droplet heartbeat whole-file pass at this
 Review artifact A-3652 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3652-t-568-source-clear-remove-unaligned-duplicate-fresh-window-assertion.md
 
 Criteria: C1 verified.
+
+### impl-568 · 2026-10-16T03:49:08.081Z
+
+Fresh requested droplet verify green at reviewed 8183e1b98f2ebcca108906baec897c72f04cd206: run 1d400332-06bc-4b00-9654-1cd74f996ac0, log A-3660; hub-selected includes the whole heartbeat file and hub/Neovim smoke, 40 passed / 0 failed. Linux x64 Node v24.21.0, c-8 lon1, 137s lifetime, $0.0095. Mac proof A-3650 remains 10/10 serial whole-file green. No head changes since source clear. Coordinator owns shared-fix publication; requesting that final C2 step and Reviewer final settlement.
+
+### impl-568 · 2026-10-16T03:50:26.436Z
+
+C2 done per Coordinator decision 6b38b0ae-1652-492b-a7f7-87af53800d75: shared-fix notice by the Coordinator on merge. Coordinator explicitly owns that clause after ready/merge and will publish the merged commit to the crew in the same minute. Runtime proof is complete at unchanged reviewed head 8183e1b98f2ebcca108906baec897c72f04cd206: Mac 10/10 whole files A-3650 and fresh droplet run 1d400332 / A-3660 (40/40, all nine heartbeat cases included).
+
+### rev-30 · 2026-10-16T03:50:54.926Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-568-final
+commit: 8183e1b98f2ebcca108906baec897c72f04cd206
+scope: evidence
+
+Final evidence review T-568 clear at unchanged source-cleared8183e1b98f2ebcca108906baec897c72f04cd206. Standards/Spec: no high, medium or low findings. Source analysis A-3652 remains current; exact origin branch head confirmed during A-3663 runtime audit.
+
+Primary Coordinator6b38b0ae-1652-492b-a7f7-87af53800d75 read directly in topic-353 disposes C2 publication sequencing: 'posted as a shared fix' is the Coordinator's step following merge; mark C2 done now with 'shared-fix notice by the Coordinator on merge', then final review on A-3660/A-3650. This is an explicit pre-merge acceptance disposition, not evidence that publication has already happened. Coordinator owns the promised merged-commit notice. It resolves A-3663's sole pending administrative condition without source/head change or another run.
+
+Runtime A-3660/1d400332-06bc-4b00-9654-1cd74f996ac0 at exact8183e1b9 is green: actual Linux c-8 lon1,Node24.21.0/Neovim0.12.5,workers4, lifetime137s/$0.0095. Function-selected hub28/28 and Neovim smoke12/12,40/40total, fail0/cancel0/skip0, exit0. Suite51.85s,peak1.98; no hard duration-budget or load red. All nine heartbeat whole-file cases completed despite selected mode, including changed digest2.378s and retained frozen-clock transition/full-interval1.058s. Known-entry duration notices do not fail this gate.
+
+A-3650 raw Mac proof remains ten serial whole-file runs9/9 each,90/90 with no failures/skips/cancellations and recorded clear guards/load1.28–2.44. A-3652 reviewed the exact four-line-only deletion against timing trace A-3649 and baseline A-3648; source/assertions outside the transient duplicate are unchanged, deterministic age-reset/full-interval coverage retained. No product or allowance changes.
+
+C1 verified/current through source cause/minimal fix; C2 verified across complete Mac sequence, actual Linux whole-file completion and explicit Coordinator publication disposition. All criteria established for ready/merge. No per-item QA, rerun or head movement required. No Reviewer tests/compiler/binary execution, edits, installs, signals, commits, merges, provider actions, task.view journal scan or subagents.
+
+Review artifact A-3665 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3665-t-568-final-evidence-clear-under-coordinator-publication-sequence.md
+
+Criteria: C1 verified, C2 verified.
