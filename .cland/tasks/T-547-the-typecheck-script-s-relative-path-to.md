@@ -16,7 +16,7 @@ regression_of: T-427
 topic: topic-341
 branch: t/T-547-the-typecheck-script-s-relative-path-to
 created: 2026-10-15T23:01:44.244Z
-updated: 2026-10-16T01:20:19.943Z
+updated: 2026-10-16T01:20:57.781Z
 closed: 2026-10-16T01:20:19.943Z
 ---
 
