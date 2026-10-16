@@ -2,8 +2,8 @@
 id: T-475
 kind: task
 title: "Cover-quiet enforced: while the Coordinator's integrated cover holds the slot, the test harness refuses to start a fixture hub"
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 3
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-401
 branch: t/T-475-cover-quiet-enforced-while-the
 created: 2026-10-15T09:13:18.684Z
-updated: 2026-10-16T21:46:26.987Z
+updated: 2026-10-16T21:49:17.030Z
+closed: 2026-10-16T21:49:17.030Z
 ---
 
 ## Summary
@@ -415,3 +416,7 @@ Linux c-8 lon1, Node 24.21.0/Neovim 0.12.5, two workers; suite 2584.25 s, peak 1
 Review artifact A-4213.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-16T21:49:17.030Z
+
+Merged fdadc69d534672fd5b60737352b7f3c93fce1511 onto dev.
