@@ -80,7 +80,7 @@ test('Lead launches and stops only sessions serving its live subtree', async t =
   }
   const newLead = await lead.call<{ ok: boolean; reason: string }>('session.launch', { name: 'lead-2', role: 'lead', item: other, harness: 'claude-code' });
   assert.equal(newLead.ok, false);
-  assert.match(newLead.reason, /root level.*Coordinator launches Leads/);
+  assert.match(newLead.reason, /root level.*Coordinator or an Aide.*launches Leads/);
   assert.equal((await ui.request({ type: 'task.claim', item: epic, release: true, force: true })).ok, true);
   const unclaimed = await launch('claimless-worker', own);
   assert.equal(unclaimed.ok, false);

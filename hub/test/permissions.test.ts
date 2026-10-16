@@ -9,7 +9,7 @@ import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { WebSocket } from 'ws';
-import { cland, connectUi, eventually, spawnSpoke, startDaemon, tempProject, type Discovery, type FrameClient, type Session } from './harness.ts';
+import { cland, clandWithEnv, connectUi, eventually, spawnSpoke, startDaemon, projectHub, tempProject, type Discovery, type FrameClient, type Session } from './harness.ts';
 import { DEFAULT_PERMISSIONS } from '../src/roles/permissions.ts';
 import { DEFAULT_ROLES_TOML } from '../src/roles/default-roles.ts';
 import { parseRoles } from '../src/roles/config.ts';
@@ -365,6 +365,28 @@ async function rawSpoke(t: TestContext, discovery: Discovery, name: string, cwd:
     },
   };
 }
+
+test('Implementer, Reviewer and QA session tools and shell calls retain their refusals', async t => {
+  const root = await tempProject(t);
+  const { discovery } = await projectHub(t, root);
+  const ui = await connectUi(t, discovery);
+  assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
+  for (const [name, role, label] of [['impl', 'implementer', 'Implementer'], ['rev', 'reviewer', 'Reviewer'], ['qa-1', 'qa', 'QA']]) {
+    assert.equal((await ui.request({ type: 'role.set', session: name, role })).ok, true);
+    const raw = await rawSpoke(t, discovery, name!, root);
+    const caller = { ...raw, role: role!, label: `${name} [${label}]` };
+    for (const tool of ['session.launch', 'session.stop', 'session.resume']) {
+      await check(root, ui, caller, { tool, args: tool === 'session.launch' ? { name: 'helper', role: 'implementer' } : { session: 'coord' }, forbidden: tool });
+      const command = tool.slice('session.'.length);
+      const result = await clandWithEnv(root, { CLAND_SESSION_NAME: name!, CLAND_SESSION_ID: raw.sessionId }, 'session', command, command === 'launch' ? 'helper' : 'coord');
+      assert.equal(result.code, 1, result.stderr);
+      assert.match(result.stderr, new RegExp(`forbidden: session\\.${command}`));
+      await flushLogs(ui);
+      const row = (await audits(root)).filter(row => row.session === name && row.tool === tool && row.client === 'cli').at(-1)!;
+      assert.deepEqual([row.session, row.sessionId, row.role, row.tool, row.client, row.outcome], [name, raw.sessionId, role, tool, 'cli', 'forbidden']);
+    }
+  }
+});
 
 test('the tools still to come are checked through the same table: one session, its role changed by the human between calls', async (t) => {
   const { root, ui, discovery } = await setup(t);

@@ -87,7 +87,7 @@ const READS = ['subscribe', 'unsubscribe', 'subscriptions', 'who', 'history', 's
 
 /** The table as the spec seeds it; `roles.toml` writes the same lists. */
 export const DEFAULT_PERMISSIONS: Readonly<Record<string, readonly string[]>> = {
-  aide: [ 'rule.add', 'rule.edit', 'rule.retire', 'rule.list', 'task.plan', 'task.create', 'task.edit', 'task.close', 'task.link', 'task.comment', 'task.claim', 'task.criterion', 'task.view', 'task.list', 'artifact.create', 'artifact.keep', 'artifact.move', 'artifact.archive', 'artifact.promote', 'send', 'topic.create', 'history', 'who', 'status'],
+  aide: [ 'rule.add', 'rule.edit', 'rule.retire', 'rule.list', 'task.plan', 'task.create', 'task.edit', 'task.close', 'task.link', 'task.comment', 'task.claim', 'task.criterion', 'task.view', 'task.list', 'artifact.create', 'artifact.keep', 'artifact.move', 'artifact.archive', 'artifact.promote', 'send', 'topic.create', 'history', 'who', 'status', 'session.launch', 'session.stop', 'session.resume'],
   coordinator: [
     'rule.add', 'rule.edit', 'rule.retire',
     'send',
@@ -195,15 +195,15 @@ export function decide(role: string | null, grants: readonly string[] | undefine
   // The hub validates the request fields before recording anything.
   if (tool === 'send' && call.request) return { ok: true };
   if (role === null) return { ok: false, permission: tool, reason: 'a session with no role has no tools' };
-  if (tool === 'session.launch' && call.launchRole === 'lead' && role !== 'coordinator') {
-    return { ok: false, permission: tool, reason: 'root level: only the Coordinator launches Leads' };
+  if (tool === 'session.launch' && call.launchRole === 'lead' && role !== 'coordinator' && role !== 'aide') {
+    return { ok: false, permission: tool, reason: 'root level: only the Coordinator or an Aide on the human’s word launches Leads' };
   }
   if (tool === 'task.plan' && role === 'lead' && call.planOp !== 'show' && call.claimed?.() !== true) return { ok: false, permission: 'task.plan:set', reason: 'a Lead sets only its claimed epic plan' };
   if (tool === 'task.plan' && call.planOp === 'approve' && role !== 'aide') return { ok: false, permission: 'task.plan:approve', reason: 'only the human or an Aide approves a plan' };
   if (role === 'lead' && call.levelRefusal) return { ok: false, permission: tool, reason: call.levelRefusal };
-  // v0.1 §3.3: an Aide's tool boundary and named addressing are fixed, even if its file grants more.
+  // v0.1.4 §3.5 (amending v0.1 §3.3): an Aide's tool boundary and named addressing are fixed, even if its file grants more.
   if (role === 'aide') {
-    if (!DEFAULT_PERMISSIONS.aide!.includes(tool)) return { ok: false, permission: tool, reason: `Aide rule (v0.1 §3.3): an Aide may not use ${tool}; its tools are limited to the tracker, artifacts, named sends, topics, history, who and status` };
+    if (!DEFAULT_PERMISSIONS.aide!.includes(tool)) return { ok: false, permission: tool, reason: `Aide rule (v0.1 §3.3): an Aide may not use ${tool}; its tools are limited to the tracker, artifacts, named sends, topics, history, who, status and sessions on the human's word` };
     if (tool === 'send' && call.to?.some(tag => { const name = tag.trim().replace(/^@/, ''); return !NAME_RE.test(name) || BUILTIN_RESERVED.has(name); })) {
       return { ok: false, permission: 'send', reason: 'Aide rule (v0.1 §3.3): an Aide sends to sessions by name only, or to topics without addressees' };
     }

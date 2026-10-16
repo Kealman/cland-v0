@@ -2,12 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, clandWithEnv, clauseAnswered, connectUi, eventually, fakeClaude, spawnSpoke, projectHub, tempProject } from './harness.ts';
+import { cland, clandWithEnv, clauseAnswered, connectUi, eventually, fakeClaude, flushProjectLogs, spawnSpoke, projectHub, tempProject } from './harness.ts';
 import { DEFAULTS, parseRoles } from '../src/roles/config.ts';
 import { DEFAULT_PERMISSIONS, decide, KNOWN_TOOLS } from '../src/roles/permissions.ts';
-import type { Artifact, Message } from '../src/protocol.ts';
+import type { Artifact, Message, HarnessProcessView } from '../src/protocol.ts';
 
-const aideTools = ['rule.add', 'rule.edit', 'rule.retire', 'rule.list', 'task.plan', 'task.create', 'task.edit', 'task.close', 'task.link', 'task.comment', 'task.claim', 'task.criterion', 'task.view', 'task.list', 'artifact.create', 'artifact.keep', 'artifact.move', 'artifact.archive', 'artifact.promote', 'send', 'topic.create', 'history', 'who', 'status'];
+const aideTools = ['rule.add', 'rule.edit', 'rule.retire', 'rule.list', 'task.plan', 'task.create', 'task.edit', 'task.close', 'task.link', 'task.comment', 'task.claim', 'task.criterion', 'task.view', 'task.list', 'artifact.create', 'artifact.keep', 'artifact.move', 'artifact.archive', 'artifact.promote', 'send', 'topic.create', 'history', 'who', 'status', 'session.launch', 'session.stop', 'session.resume'];
 
 test('Aide defaults are non-exclusive, use the human model, and grant exactly §3.3/3.4/3.10 tools', () => {
   const aide = DEFAULTS.get('aide')!;
@@ -26,6 +26,62 @@ test('Aide defaults are non-exclusive, use the human model, and grant exactly §
       else assert.match(decision.reason, /Aide rule \(v0.1 §3.3\)/);
     }
   }
+});
+
+test('an Aide launches any role through its tool and runs launch, stop and resume in its own shell', async t => {
+  const root = await tempProject(t);
+  const fake = await fakeClaude(t);
+  const { discovery } = await projectHub(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
+  const launched = await ui.request({ type: 'session.launch', name: 'aide-1', role: 'aide', harness: 'claude-code' });
+  assert.equal(launched.ok, true, launched.error);
+  const aideProcess = (launched.value as { process: HarnessProcessView }).process;
+  await clauseAnswered(ui, 'aide-1');
+  const aide = await spawnSpoke({ cwd: root, discover: true, name: 'aide-1', sessionId: aideProcess.sessionId, assignRole: false });
+  t.after(() => aide.close());
+  await aide.waitForPresence(['aide-1']);
+  const coord = await aide.call<{ ok: boolean; process: HarnessProcessView }>('session.launch', { name: 'coord', role: 'coordinator', harness: 'claude-code' });
+  assert.equal(coord.ok, true, JSON.stringify(coord));
+  await clauseAnswered(ui, 'coord');
+  const { item } = await aide.call<{ item: { id: string } }>('task.create', { title: 'Human requested Lead', kind: 'epic' });
+  const lead = await aide.call<{ ok: boolean; process: HarnessProcessView }>('session.launch', { name: 'lead-1', role: 'lead', item: item.id, harness: 'claude-code' });
+  assert.equal(lead.ok, true, JSON.stringify(lead));
+  await eventually('Lead completes its clause turn', async () => (await fake.log(lead.process.harnessId!)).includes('session.measure done') || undefined);
+
+  const run = async (args: string) => {
+    assert.equal((await ui.request({ type: 'topic.send', topic: 'general', text: `@aide-1 cland ${args}` })).ok, true);
+    const answer = await ui.waitFor(f => f.type === 'message' && (f.message as Message).from === 'aide-1' && (f.message as Message).text.startsWith(`ran: cland ${args}: `), 30_000);
+    const text = (answer.message as Message).text;
+    assert.match(text, /: exit 0\n/, text);
+    return JSON.parse(text.slice(text.indexOf('\n') + 1)) as { process: HarnessProcessView; found?: boolean };
+  };
+  const worker = await run('session launch worker --role implementer --harness claude-code --json');
+  assert.equal(worker.process.role, 'implementer');
+  await eventually('worker completes its clause turn', async () => (await fake.log(worker.process.harnessId!)).includes('session.measure done') || undefined);
+  const stopped = await run('session stop worker --json');
+  assert.equal(stopped.process.status, 'stopped');
+  const resumed = await run('session resume worker --relaunch --json');
+  assert.equal(resumed.found, true);
+  assert.equal(resumed.process.sessionId, worker.process.sessionId);
+  assert.equal(resumed.process.status, 'running');
+  await eventually('resumed worker completes its clause turn', async () => (await fake.log(resumed.process.harnessId!)).includes('session.measure done') || undefined);
+  assert.equal((await run('session stop coord --json')).process.status, 'stopped');
+  const resumedCoord = await run('session resume coord --relaunch --json');
+  assert.equal(resumedCoord.found, true);
+  await eventually('resumed Coordinator completes its clause turn', async () => (await fake.log(resumedCoord.process.harnessId!)).includes('session.measure done') || undefined);
+
+  await flushProjectLogs(t, root);
+  const records = (await readFile(join(root, '.cland/log/hub.log'), 'utf8')).split('\n').slice(0, -1)
+    .filter(line => line.includes('"event":"audit"'))
+    .map(line => JSON.parse(line) as { session: string; sessionId: string; role: string; tool: string; client?: string; outcome: string })
+    .filter(row => row.session === 'aide-1' && ['session.launch', 'session.stop', 'session.resume'].includes(row.tool));
+  assert.deepEqual(records.map(row => [row.tool, row.client, row.outcome]), [
+    ['session.launch', undefined, 'ok'], ['session.launch', undefined, 'ok'],
+    ['session.launch', 'cli', 'ok'], ['session.stop', 'cli', 'ok'], ['session.resume', 'cli', 'ok'],
+    ['session.stop', 'cli', 'ok'], ['session.resume', 'cli', 'ok'],
+  ]);
+  assert.ok(records.every(row => row.sessionId === aideProcess.sessionId && row.role === 'aide'));
 });
 
 test('cland init writes the Aide defaults and CLI launches several Aides with no model override', async t => {
@@ -121,10 +177,11 @@ test('Aide tracker, topics, artifacts and named sends work; crew operations name
     assert.equal(cli.code, 0, cli.stderr);
   }
   await call('task.close', { id });
+  // Extra file grants cannot cross the Aide's fixed boundary.
+  await writeFile(join(root, '.cland/roles.toml'), '[aide.permissions]\ntools = ["merge", "ask", "resolve", "role.handover", "release", "sync", "push", "send", "subscribe", "task.rank"]\n');
   for (const [tool, args] of [
     ['ask', { topic: opened.topic.id, question: 'Crew decision?', options: [] }],
     ['resolve', { topic: opened.topic.id }],
-    ['session.launch', { name: 'other', role: 'implementer' }],
     ['merge', { item: id }],
     ['role.handover', { to: 'coord' }],
     ['role.state', {}],
@@ -136,8 +193,9 @@ test('Aide tracker, topics, artifacts and named sends work; crew operations name
     assert.equal(refused.ok, false, tool);
     assert.equal(refused.code, 'forbidden', tool);
     assert.match(refused.reason, /Aide rule \(v0.1 §3.3\)/, tool);
+    if (tool !== 'send') assert.match(refused.reason, /sessions on the human's word/, tool);
   }
-  for (const args of [['session', 'stop', 'coord'], ['session', 'resume', 'coord'], ['release', '0.1.0'], ['sync'], ['push']]) {
+  for (const args of [['release', '0.1.0'], ['sync'], ['push']]) {
     const refused = await clandWithEnv(root, { CLAND_SESSION_NAME: 'aide-1', CLAND_SESSION_ID: 'aide-id' }, ...args);
     assert.equal(refused.code, 1, args.join(' '));
     assert.match(refused.stderr, /Aide rule \(v0.1 §3.3\)/, args.join(' '));

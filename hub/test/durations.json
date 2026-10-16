@@ -1656,7 +1656,7 @@
     "hub/test/lead-handover.test.ts::the human hands a node to an offline successor, then launches it and the next verdict reaches it": 10.700349,
     "hub/test/lead-launch.test.ts::a Lead claims a configured container kind at the project root": 3.950489,
     "hub/test/lead-launch.test.ts::Lead launch requires an open epic or release; concurrent launches take only one node claim": 8.342975,
-    "hub/test/lead-launch.test.ts::only the Coordinator launches Leads even when another role has a session.launch grant": 5.372664,
+    "hub/test/lead-launch.test.ts::an Implementer cannot launch Leads even with a session.launch grant": 5.372664,
     "hub/test/lead-launch.test.ts::the Coordinator launches a Lead on an epic and @lead addresses its claim (explicit role)": 4.696289,
     "hub/test/lead-launch.test.ts::the Coordinator launches a Lead on an epic and @lead addresses its claim (preassigned role)": 5.575731,
     "hub/test/lead-permissions.test.ts::a verifier spawned while its item leaves the Lead subtree is refused and cleaned up": 11.02178,
@@ -3245,6 +3245,14 @@
     "nvim/test/verification-view.test.ts::verify summary opens the ordered queue and ages locally; palette and keys expose the view": 6.30693
   },
   "allow": {
+    "hub/test/lead-launch.test.ts::an Implementer cannot launch Leads even with a session.launch grant": {
+      "seconds": 5.372664,
+      "reason": "Proves the fixed Lead-launch boundary after granting an Implementer session.launch, including a real permitted fake-harness launch before explicit and preassigned Lead refusals."
+    },
+    "hub/test/aide.test.ts::an Aide launches any role through its tool and runs launch, stop and resume in its own shell": {
+      "seconds": 10.418876,
+      "reason": "Proves tool and inherited-shell authority with real Aide, Coordinator, Lead and Implementer fake harness processes, including two stop/resume cycles and per-call audit identity."
+    },
     "hub/test/account-limited.test.ts": {
       "file": true,
       "seconds": 111.111273,

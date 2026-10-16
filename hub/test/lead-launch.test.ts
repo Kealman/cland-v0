@@ -110,7 +110,7 @@ test('Lead launch requires an open epic or release; concurrent launches take onl
   assert.equal(another.claim?.session, 'release-lead');
 });
 
-test('only the Coordinator launches Leads even when another role has a session.launch grant', async t => {
+test('an Implementer cannot launch Leads even with a session.launch grant', async t => {
   const root = await tempProject(t);
   const fake = await fakeClaude(t);
   const { discovery } = await startDaemon(t, root, fake.env);
@@ -134,7 +134,7 @@ test('only the Coordinator launches Leads even when another role has a session.l
     });
     assert.equal(refused.ok, false);
     assert.equal(refused.code, 'forbidden');
-    assert.match(refused.reason, /only the Coordinator launches Leads/);
+    assert.match(refused.reason, /only the Coordinator or an Aide.*launches Leads/);
   }
   assert.equal((await fake.sessions()).some(s => s.name === 'lead-denied'), false);
 });
