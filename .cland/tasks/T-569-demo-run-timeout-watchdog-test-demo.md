@@ -2,8 +2,8 @@
 id: T-569
 kind: task
 title: 'demo run-timeout watchdog test: "demo deadline reached during delivery" under a 2500 ms run timeout on a loaded droplet'
-state: open
-status: ready
+state: closed
+status: done
 size: S
 rank: 4442
 criterion_seq: 2
@@ -18,7 +18,8 @@ blocked_by: []
 topic: topic-402
 branch: t/T-569-demo-run-timeout-watchdog-test-demo
 created: 2026-10-16T04:18:06.312Z
-updated: 2026-10-16T19:42:53.413Z
+updated: 2026-10-16T19:51:55.036Z
+closed: 2026-10-16T19:51:55.036Z
 ---
 
 ## Summary
@@ -163,3 +164,7 @@ C1/C2 verified at this exact head. No per-item QA criteria or further task run r
 Review artifact A-4157.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-16T19:51:55.036Z
+
+Merged 4715d30746e75dc3b1a125a445387213e1263039 onto dev.
