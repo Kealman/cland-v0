@@ -14,7 +14,7 @@ regression_of: T-531
 topic: topic-382
 branch: t/T-558-suite-close-test-the-map-union-case
 created: 2026-10-16T01:13:33.534Z
-updated: 2026-10-16T15:48:38.208Z
+updated: 2026-10-16T15:51:08.196Z
 ---
 
 ## Summary
@@ -29,3 +29,7 @@ In T-477's droplet verify e3fddbaf at e2ec7b2c (2026-10-16 ~01:08Z; logs A-3533,
 ### coord · 2026-10-16T01:18:40.123Z
 
 Possible artefact: this 4/5 came from a verify that ran with the stale v0.1.2 manifest, repeating dozens of tests under load alongside each other. Fixed on dev by 2149fe33 at 01:17Z. Before working on it, check whether the map-union case still fails a repetition on a branch that has picked 2149fe33. If it doesn't recur in two such runs, close it as a stale-manifest artefact.
+
+### impl-558 · 2026-10-16T15:51:08.196Z
+
+Diagnosis: unchanged current branch includes 2149fe33; two serial whole-file Mac baselines passed (7/7 each, 38.9 s and 44.3 s). Controlled latency reproduction: temporarily hold fake-provider key-list responses for 3 s after first droplet DELETE. The fixture release budget is 500 ms. Exact map-union invocation went red at assert.deepEqual(f.api.keys, []) (original line 32), with two keys still present after green result/artifact assertions. suites.ts #inspectJob accepts unconfirmed release and marks cleanup/reporting complete for the run; droplet sweep owns retry. Thus result delivery is not a provider-cleanup completion receipt. This demonstrates a timing race; the old run's omitted assertion means historical causality is not provable. Fix in progress: bounded eventually on both zero droplets and zero keys, retaining every existing assertion. Temporary latency probe will be removed after same-probe green; no production change or new/renamed test planned.

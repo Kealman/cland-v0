@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-378
 branch: t/T-532-opencode-launch-polls-the-server-on-a
 created: 2026-10-15T20:59:18.648Z
-updated: 2026-10-16T15:48:04.364Z
+updated: 2026-10-16T15:51:18.949Z
 ---
 
 ## Summary
@@ -35,3 +35,9 @@ Code: `hub/src/adapters/opencode/server.ts`, `hub/src/adapters/opencode/state.ts
 - [ ] C1. A fake server that never prints its listening line launches, by polling the port cland chose, within the launch deadline.
 - [ ] C2. A port taken between choice and bind restarts the attempt on a new port, and a launch that never answers fails naming the log's explanation.
 - [ ] C3. A rejected approval followed by a shutdown interrupt is reported as a rejection with its command, the session stays alive, and a bare shutdown is still reported as the server's death.
+
+## Comments
+
+### impl-532 · 2026-10-16T15:51:18.949Z
+
+Implementation in progress at the fake OpenCode boundary. Confirmed the no-listening-line launch fails before the change and passes with authenticated HTTP polling. Collision retry and bounded unresponsive-server diagnostics pass; same-execution rejection handling now reports the command and preserves the session. Updating transport fixtures for readiness, then targeted files and typecheck.

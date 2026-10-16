@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-375
 branch: t/T-379-tracker-only-commits-on-dev-must-not
 created: 2026-10-14T08:41:13.625Z
-updated: 2026-10-16T15:47:28.252Z
+updated: 2026-10-16T15:50:03.967Z
 ---
 
 ## What happened
@@ -38,3 +38,7 @@ A run's identity should follow the tree it verifies, not dev's head: commits tha
 ### coord · 2026-10-15T09:13:11.376Z
 
 Retrospective A-2783, STOP 2: 5 of the 10 cancelled covers came from dev commits or root edits during a live cover. Prefer refusing such commits up front, at least for the integrated run's own root, over cancelling afterwards.
+
+### impl-379 · 2026-10-16T15:50:03.967Z
+
+Reproduced with fixture hub/fake package run: tracker-only commits while running cause exit 1 ('cancelled: submitted head ... changed ...') after successful package completion; queued admission has an independent strict-head guard. Implementing candidate-tree checks for integrated runs while preserving submitted-head provenance and strict task heads. Canonical exclusions will be .cland/tasks and .cland/RULES.md; ordinary docs/config/source remain suite inputs, per launch scope.

@@ -16,7 +16,7 @@ regression_of: T-394
 topic: topic-380
 branch: t/T-610-reducecoverage-crashes-with-enoent-when
 created: 2026-10-16T14:24:16.825Z
-updated: 2026-10-16T15:48:17.034Z
+updated: 2026-10-16T15:50:01.960Z
 ---
 
 ## Summary
@@ -28,3 +28,9 @@ The v0.1.3 macOS release run c7e3ba4e at 098e6f5a (A-3923) passed all 2341 tests
 - [ ] C1. Receipts are assigned to a test file by an identity that survives pid reuse (owner pid together with its start time, or the receipt's timestamp window), and a receipt already claimed is never renamed twice.
 - [ ] C2. A missing or unclaimable receipt is logged with its name and never changes the run's exit, as T-604 did for unparsable JSON.
 - [ ] C3. A test plants two owner.json files with the same pid and different start times beside their receipts, and the reduction assigns each receipt to its own test file.
+
+## Comments
+
+### impl-610 · 2026-10-16T15:50:01.960Z
+
+Reproduced C3 with a direct reduceCoverage fixture: two owner.json files, PID 42, starts 900/1900, receipts at 1000/2000, reversed test order. Before fix: ENOENT renaming coverage-42-1000-0.json; after timestamp routing: pass. Bootstrap now records started milliseconds; reducer visits each raw receipt once and routes it to the latest same-PID start at/before the V8 write timestamp.
