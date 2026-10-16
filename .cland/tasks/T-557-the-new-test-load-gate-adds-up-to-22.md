@@ -2,8 +2,8 @@
 id: T-557
 kind: task
 title: The new-test load gate adds up to 22 minutes to a task verify
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 2
 labels:
@@ -17,7 +17,8 @@ regression_of: T-471
 topic: topic-354
 branch: t/T-557-the-new-test-load-gate-adds-up-to-22
 created: 2026-10-16T01:08:32.102Z
-updated: 2026-10-16T05:25:07.163Z
+updated: 2026-10-16T05:26:33.583Z
+closed: 2026-10-16T05:26:33.583Z
 ---
 
 ## Summary
@@ -158,3 +159,7 @@ Final evidence verdict clear, all criteria refreshed. No Reviewer test/compiler/
 Artifact A-3737 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3737-t-557-final-clear-corrected-load-proof-5-5-and-full-linux-neovim-green.md
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-16T05:26:33.583Z
+
+Merged 7d12085aaa3319ba92eb20c89a40f52ca7283166 onto dev.
