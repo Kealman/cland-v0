@@ -2,8 +2,8 @@
 id: T-488
 kind: task
 title: "cland hub reload: re-read config.toml and roles.toml without a restart (SIGHUP too)"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 4
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-329
 branch: t/T-488-cland-hub-reload-re-read-config-toml-and
 created: 2026-10-15T11:30:17.553Z
-updated: 2026-10-16T06:56:46.247Z
+updated: 2026-10-16T07:23:38.969Z
+closed: 2026-10-16T07:23:38.969Z
 ---
 
 ## Problem
@@ -356,3 +357,7 @@ scope: evidence
 Final clear under independently confirmed Coordinator622ce850 explicit item-specific gate disposition. C3 verified from accepted merged-code hub A-3808/cdf4aa50 atcbffa842:allfive owncases ordinarygreen/5-of-5, retained active lease/run/launch policies and refreshed actual admission/loadGateWorkers proof; only knownT-569 plus posted shared budget gaps. Raw receipt remains exit1/1908pass/1fail/4skip. Earlier A-3748 at364c1c22 is full hub+Neovim exit0/2284pass/0fail/7skip, before second merge. Current delta8 changes only exact posted allowances, source C1/C2/C4 current; all4 criteria verified. No exact-current-head full Neovim green claimed. Coordinator explicitly defers merged-code Neovim to next integrated dev cover BEFORE any restart on T-488 code, fix forward within hour if red; no new droplet. Merge remains after restart waiting on1d78a0ff. Standards/Spec no findings,no per-item QA. Artifact A-3814: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3814-t-488-final-clear-under-integrated-cover-disposition.md. No Reviewer edits/tests.
 
 Criteria: C3 verified.
+
+### coord · 2026-10-16T07:23:38.969Z
+
+Merged df8d3155614efb16f2b57cbb6ded44e08b8745dd onto dev.
