@@ -3,7 +3,7 @@ id: T-533
 kind: task
 title: "OpenCode follows 2.x with a check: doctor messages per version and a release-time range check"
 state: open
-status: in progress
+status: ready
 size: M
 criterion_seq: 3
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-337
 branch: t/T-533-opencode-follows-2-x-with-a-check-doctor
 created: 2026-10-15T20:59:18.770Z
-updated: 2026-10-16T03:23:36.352Z
+updated: 2026-10-16T03:24:49.423Z
 ---
 
 ## Summary
@@ -43,13 +43,16 @@ Code: `hub/src/doctor/toolchain.ts`, `hub/src/doctor/ranges.ts`, the research pr
 - [x] C1. With fake binaries reporting 1.19.0, a 2.x newer than the range and 3.0.0, and with none, `cland doctor` prints the `--major` upgrade, the newer-than-tested note, the refusal naming the range and the v2 installer.
   - done: impl-533 · 2026-10-16T02:09:01.644Z
   - verified: rev-31 [reviewer] · run rev-20261016-533-source-3 · 2026-10-16T02:09:36.389Z · commit 9276d5371e124292e416b792594552f69582a2ba
+  - verified: rev-31 [reviewer] · run rev-20261016-533-merge-delta · 2026-10-16T03:24:48.698Z · commit 658556abd0ec6212b33915f37b45e8a45d722d19
 - [x] C2. The check script compares the newest 2.x OpenAPI document's operations and event names with the tested one, runs the fake-provider smoke, and on a pass moves the range's upper bound.
   - done: impl-533 · 2026-10-16T00:00:29.593Z
   - verified: rev-31 [reviewer] · run rev-20261016-533-final · 2026-10-16T03:22:20.391Z · commit 9276d5371e124292e416b792594552f69582a2ba
+  - verified: rev-31 [reviewer] · run rev-20261016-533-merge-delta · 2026-10-16T03:24:48.699Z · commit 658556abd0ec6212b33915f37b45e8a45d722d19
 - [x] C3. The check is not part of `npm test`, and the `release` skill (both copies) runs it before the dry run.
   - done: impl-533 · 2026-10-15T23:43:53.153Z
   - verified: rev-31 [reviewer] · run rev-20261016-533-source-2 · 2026-10-16T00:01:51.713Z · commit 77659eb0b7c8cae127883f3bdb6d100b2f378dd1
   - verified: rev-31 [reviewer] · run rev-20261016-533-source-3 · 2026-10-16T02:09:36.389Z · commit 9276d5371e124292e416b792594552f69582a2ba
+  - verified: rev-31 [reviewer] · run rev-20261016-533-merge-delta · 2026-10-16T03:24:48.699Z · commit 658556abd0ec6212b33915f37b45e8a45d722d19
 
 ## Comments
 
@@ -175,3 +178,18 @@ Paired localA-3596 is samehead1861pass/1fail, only knownT-555 plusT-556, own cas
 ArtifactA-3636: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3636-t-533-final-evidence-clear-under-explicit-mixed-platform-gate.md.
 
 Criteria: C2 verified.
+
+### rev-31 · 2026-10-16T03:24:48.699Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261016-533-merge-delta
+commit: 658556abd0ec6212b33915f37b45e8a45d722d19
+scope: delta
+
+Landing merge delta clear at658556ab(parents final9276d537,dev58696d945). Explicit Coordinator751bda69 authorizes merge/package union and retainingA-3596/A-3635 without new suite. Combined diff manual resolution onlypackage.json:keepscheck:opencode anddevtypecheck wrapper. Relativedev adds only opt-in check script, test unchanged. T-533 doctor/contract/smoke/checker/tests/release-skill/PATCHES blobs unchanged from9276d537; README ownparagraph/shards machineentry preserved. JSON parses,diffcheckclear; fullhub+Neovim typecheck/shardlint green reported. Standards/Spec:no findings.
+AllC1–C3 reverified at currenthead via unchanged source and explicit carried final evidenceA-3636/A-3596/A-3635. Original mixed-platform gate exception/noNeovimcompletion disclosure retained; no new green suite claimed. No Reviewer edits/tests or per-itemQA.
+ArtifactA-3643: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3643-t-533-landing-merge-delta-clear-at-658556ab.md.
+
+Criteria: C1 verified, C2 verified, C3 verified.
