@@ -3719,6 +3719,10 @@
       "seconds": 5.674142651,
       "reason": "Runs a real Git fixture and hub/CLI cancellation while the provider sizes response is held, waits 500 ms to prove no premature report, then waits for all-shard spend reservation settlement, zero reserved spend and one cancelled result. Measured on Linux droplet run e54c3004 (A-3003)."
     },
+    "hub/test/follows.test.ts::a clear hub demo verdict releases the merge hold": {
+      "seconds": 5.365,
+      "reason": "Lands a predecessor through real Git, proves the overlapping follower is held, records a clear hub demo verdict, then proves the follower can land; the sibling not-clear case is allowed at 5.297 s."
+    },
     "hub/test/follows.test.ts::a not clear hub demo verdict releases the merge hold": {
       "seconds": 5.297,
       "reason": "Lands a predecessor through real Git, proves the overlapping follower is held, records a not-clear hub demo verdict, then proves the follower can land."
@@ -3846,6 +3850,10 @@
     "hub/test/hook-bridge.test.ts::a bridge exits after its real hub stops even while its parent and stdout remain alive": {
       "seconds": 63.2,
       "reason": "Exercises the production 60-second reconnect grace against a real stopped hub; no shortened test timeout replaces the lifetime contract."
+    },
+    "hub/test/hook-bridge-doctor.test.ts::doctor lists and ends only own bridges with missing hub files, preserving existing and ambiguous paths": {
+      "seconds": 5.182,
+      "reason": "Starts real hook bridges for several temporary projects, deletes some hub files, and runs doctor --fix to prove it ends only its own orphaned bridges while existing and ambiguous paths survive."
     },
     "hub/test/hook-bridge.test.ts": {
       "file": true,
