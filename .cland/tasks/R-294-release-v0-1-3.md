@@ -3,7 +3,7 @@ id: R-294
 kind: release
 version: 0.1.3
 title: v0.1.3
-state: open
+state: closed
 labels: []
 assignee: null
 parent: null
@@ -11,7 +11,8 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-12T15:31:51.406Z
-updated: 2026-10-16T11:36:14.746Z
+updated: 2026-10-16T14:59:02.142Z
+closed: 2026-10-16T14:59:02.142Z
 ---
 
 ## Goal
@@ -200,3 +201,7 @@ Decision record (recorded by the stand-in cland-impl from the human's own words)
 ### human · 2026-10-16T06:36:23.677Z
 
 Decision record (human, 2026-10-16 ~06:40Z, recorded verbatim by the stand-in cland-impl): «Ок, тогда дальше 0.1.4 и потом уже 0.2». The release sequence is therefore v0.1.3 → v0.1.4 → v0.2; this supersedes the 2026-10-15 20:35Z instruction to go straight to v0.2 after v0.1.3. v0.1.4 holds the items carried over by the human's answer to ask 396ec11a (option 1): E-482's nine backlog flakes, E-387's T-575 and T-520, E-425's T-475 and T-379, E-424's T-532, T-534, T-535, T-536. v0.2 (R-377) follows v0.1.4.
+
+### coord · 2026-10-16T14:59:02.142Z
+
+Released v0.1.3 at d748b7eefc026ef11c76bfc7caebe2bd8977d5f6.
