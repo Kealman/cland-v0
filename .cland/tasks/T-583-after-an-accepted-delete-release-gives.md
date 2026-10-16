@@ -2,8 +2,8 @@
 id: T-583
 kind: task
 title: After an accepted delete, release gives up on a tags-only mismatch after 2 s, though DigitalOcean's teardown takes minutes
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -19,7 +19,8 @@ regression_of: T-572
 topic: topic-365
 branch: t/T-583-after-an-accepted-delete-release-gives
 created: 2026-10-16T07:35:44.274Z
-updated: 2026-10-16T08:18:51.774Z
+updated: 2026-10-16T08:19:08.029Z
+closed: 2026-10-16T08:19:08.029Z
 ---
 
 ## Summary
@@ -237,3 +238,7 @@ Final merge delta **clear**, C1/C2/C3 refreshed, no further task run required un
 Artifact A-3864 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3864-t-583-merge-delta-final-clear-exact-allowance-union-implementation-unchanged.md
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-16T08:19:08.029Z
+
+Merged b3cf4d4575d52437bf804213c602eb2dfcbbe7dd onto dev.
