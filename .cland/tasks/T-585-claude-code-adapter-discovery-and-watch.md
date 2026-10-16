@@ -3,7 +3,7 @@ id: T-585
 kind: task
 title: claude-code-adapter "discovery and watch share the default 30-second schedule" counts 2 calls instead of 1 on a loaded droplet
 state: open
-status: review
+status: ready
 size: S
 rank: 4445
 criterion_seq: 2
@@ -18,7 +18,7 @@ blocked_by: []
 topic: topic-403
 branch: t/T-585-claude-code-adapter-discovery-and-watch
 created: 2026-10-16T08:50:52.161Z
-updated: 2026-10-16T18:12:48.683Z
+updated: 2026-10-16T19:04:35.960Z
 ---
 
 ## Summary
@@ -29,7 +29,10 @@ Integrated cover 0000625b at dev 3a3b4633 (droplet, 2026-10-16 08:49Z) failed hu
   - done: impl-585 · 2026-10-16T17:32:06.901Z
   - verified: rev-30 [reviewer] · run rev-20261016-585-source · 2026-10-16T17:33:04.606Z · commit eb05ad9f22af20c40fe5c4e91854c9e5e59a3a57
   - verified: rev-30 [reviewer] · run rev-20261016-585-shared-duration · 2026-10-16T18:12:48.683Z · commit 073bb593131c51836d18d0ceef717faf4d6a9ac9
-- [ ] C2. claude-code-adapter.test.ts passes 10/10 serially as a whole file on the Mac and once on a droplet.
+  - verified: rev-30 [reviewer] · run rev-20261016-585-final · 2026-10-16T19:04:35.299Z · commit 073bb593131c51836d18d0ceef717faf4d6a9ac9
+- [x] C2. claude-code-adapter.test.ts passes 10/10 serially as a whole file on the Mac and once on a droplet.
+  - done: impl-585 · 2026-10-16T19:04:18.422Z
+  - verified: rev-30 [reviewer] · run rev-20261016-585-final · 2026-10-16T19:04:35.299Z · commit 073bb593131c51836d18d0ceef717faf4d6a9ac9
 
 ## Comments
 
@@ -107,3 +110,29 @@ Proceed with the Coordinator-directed mode-free exact-head droplet verification.
 Review artifact A-4102.
 
 Criteria: C1 verified.
+
+### impl-585 · 2026-10-16T19:04:18.712Z
+
+Final execution evidence is green at reviewed head 073bb593131c51836d18d0ceef717faf4d6a9ac9: mode-free explicit droplet run 00747641-2e72-4d02-8789-ee95978c70d5 exit 0, 1987 total / 1982 passed / zero failed / five skipped, including Neovim smoke. Whole claude-code-adapter.test.ts passed; the discovery schedule case passed in 7.521 s. All four T-603 variants passed their 5/5 load repetitions, and shared duration allowances cleared the prior external budgets. Durable receipt A-4126: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-4126-suite-00747641-2e72-4d02-8789-ee95978c70d5-auto-at-073bb59.log. C2 done with Mac A-4084 10/10 whole-file passes on unchanged test source. Clean task head remains pushed; awaiting Reviewer evidence verdict and hub readiness.
+
+### rev-30 · 2026-10-16T19:04:35.299Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-585-final
+commit: 073bb593131c51836d18d0ceef717faf4d6a9ac9
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-585 final evidence review clear at unchanged source-reviewed 073bb593131c51836d18d0ceef717faf4d6a9ac9. Standards and Spec axes: no findings.
+
+Independently audited complete A-4126 / 00747641-2e72-4d02-8789-ee95978c70d5: exact branch/head stamped in the log, exit 0; 1987 tests, 1982 pass, zero fail, five platform/prerequisite skips. Hub free 38/38, machine 1932 pass/zero fail/five skips, Neovim smoke 12/12. All thirteen claude-code-adapter whole-file cases have positive timing receipts, including changed discovery/watch schedule at 7.521161824 s. No hard duration-budget or load-gate failure. Routine regression notices are non-failing. Linux c-8 lon1, Node 24.21.0/Neovim 0.12.5, four workers; suite 1863.75 s, peak load 18.24, machine lifetime 1943 s, $0.1349.
+
+C2 Mac proof independently rechecked in A-4084: ten serial whole-file runs, thirteen passes each, zero failures/skips (130/130); load admission records were reviewed in the preceding evidence audit. These were at eb05ad9f; independent git diff confirms the entire test file is byte-unchanged through the authorized ad5e2c86 manifest-only pick to current 073bb593. Thus the Mac proof remains applicable to the current test source. Latest claimant report restores C2 done at this head.
+
+C1 source/cause proof from A-4074 and manifest delta A-4102 remains: observed timing-boundary mechanism, default 30-second Date schedule controlled while real timers/processes remain, shared discovery/cache/restart and stop assertions retained. This final runtime proof supports the correction; no new historical tracing claim or product change is inferred. C1/C2 verified at this exact head. No per-item QA criteria and no further task run required.
+Review artifact A-4127.
+
+Criteria: C1 verified, C2 verified.
