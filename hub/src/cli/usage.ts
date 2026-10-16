@@ -187,3 +187,5 @@ export const DEMO_USAGE = `  demo start <epic> [--commit <sha>] [--json]  lease 
   demo stop <epic> [--json]                  release the demo droplet
   demo status <epic> [--json]                show commit, lifetime and cost
 `;
+
+export const CONFIG_USAGE = `  config set <section.key> <value> [--json]  validate and save one managed config.toml value\n`;

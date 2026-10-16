@@ -1,6 +1,7 @@
 {
   "version": 1,
   "tests": {
+    "hub/test/config-set.test.ts": "machine",
     "hub/test/roles-editor.test.ts": "machine",
     "hub/test/quarantine.test.ts": "free",
     "hub/test/quarantine-runner.test.ts": "machine",

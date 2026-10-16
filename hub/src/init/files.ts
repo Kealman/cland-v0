@@ -117,8 +117,9 @@ function chainChanged(root: string, chain: Array<{ path: string; dev: number; in
  * What remains: Node has no `openat`/`renameat`, so a swap in the instant between the second check and the rename
  * still lands the file through the swapped folder; and a temporary file created in a folder that was then moved
  * away is left there (its name is `.<random>.cland-tmp`).
+ * When `expected` is supplied, refuse if the destination's bytes changed since the caller read them.
  */
-export function writeAtomic(root: string, path: string, data: string | Buffer): string | null {
+export function writeAtomic(root: string, path: string, data: string | Buffer, expected?: string): string | null {
   const dir = dirname(path);
   // what exists of the way down is checked before anything is created on it
   const link = symlinkOnPath(root, dir);
@@ -148,6 +149,14 @@ export function writeAtomic(root: string, path: string, data: string | Buffer): 
   if (changed !== null) {
     rmSync(tmp, { force: true });
     return changed;
+  }
+  if (expected !== undefined) {
+    try {
+      if (readFileSync(path, 'utf8') !== expected) throw new Error('file changed while setting it; retry');
+    } catch (error) {
+      rmSync(tmp, { force: true });
+      throw error;
+    }
   }
   renameSync(tmp, path);
   return null;

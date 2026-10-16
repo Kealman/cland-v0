@@ -12,6 +12,12 @@ import { DEFAULT_ROLES_TOML } from '../roles/default-roles.ts';
 import type { Layout } from '../project.ts';
 import type { LogFn } from '../log.ts';
 import type { Resumed } from './budget.ts';
+import { setConfigValue } from '../init/config-set.ts';
+
+// These owners establish timers, storage or compatibility machinery at startup.
+const STARTUP_FIELDS = ['name', 'sessions', 'visibility', 'tracker', 'plan', 'artifacts', 'hygiene'] as const;
+const STARTUP_VERIFICATION_FIELDS = [['lockPath', 'lock_path'], ['workers', 'workers'], ['testTimeoutMs', 'test_timeout'], ['stallTimeoutMs', 'stall_timeout'], ['coverageMaxAgeMs', 'coverage_max_age']] as const;
+export type ConfigSetResult = { key: string; value: unknown; applies: string };
 
 const exec = promisify(execFile);
 const idleMinutes = (text: string): number => {
@@ -82,6 +88,26 @@ export class ProjectConfiguration implements RolesSource {
     this.#work = work.catch(() => {});
     return work;
   }
+  set(key: string, value: unknown, resumed: Resumed, authorize: () => void): Promise<ConfigSetResult> {
+    const work = this.#work.then(async () => {
+      const readback = resumed(() => {
+        authorize();
+        if (this.#stopped) throw new Error('hub is stopping');
+        return setConfigValue(this.layout.root, this.layout.config, key, value, this.env);
+      });
+      const startup = STARTUP_FIELDS.some(field => key.startsWith(`${field === 'name' ? 'project' : field}.`))
+        || STARTUP_VERIFICATION_FIELDS.some(([, field]) => key === `verification.${field}`);
+      if (startup) return { key, value: readback, applies: 'restart' };
+      try {
+        await this.#reload(resumed);
+        return { key, value: readback, applies: 'now' };
+      } catch (error) {
+        return { key, value: readback, applies: `saved; not applied: ${error instanceof Error ? error.message : String(error)}; resolve the refusal and run cland hub reload, or restart the hub` };
+      }
+    });
+    this.#work = work.catch(() => {});
+    return work;
+  }
   async #reload(resumed: Resumed): Promise<ConfigReloadResult> {
     let file = this.layout.config;
     try {
@@ -91,11 +117,10 @@ export class ProjectConfiguration implements RolesSource {
       const config = configText === null ? this.#config : resumed(() => parseConfig(configText, basename(this.layout.root), this.env));
       const warnings = configText === null ? ['config.toml missing; keeping the last loaded config'] : [];
       if (configText !== null && resumed(() => idleMinutes(configText)) !== this.#idleMinutes) throw new Error('inbox.idle_minutes changed: restart required');
-      // These owners establish timers, storage or compatibility machinery at startup.
-      for (const key of ['name', 'sessions', 'visibility', 'tracker', 'plan', 'artifacts', 'hygiene'] as const) {
+      for (const key of STARTUP_FIELDS) {
         if (!isDeepStrictEqual(config[key], this.#config[key])) throw new Error(`${key === 'tracker' ? 'tracker.levels or tracker.fatal_stall' : key} changed: restart required`);
       }
-      for (const [key, field] of [['lockPath', 'lock_path'], ['workers', 'workers'], ['testTimeoutMs', 'test_timeout'], ['stallTimeoutMs', 'stall_timeout'], ['coverageMaxAgeMs', 'coverage_max_age']] as const) {
+      for (const [key, field] of STARTUP_VERIFICATION_FIELDS) {
         if (config.verification[key] !== this.#config.verification[key]) throw new Error(`verification.${field} changed: restart required`);
       }
       file = this.layout.roles;

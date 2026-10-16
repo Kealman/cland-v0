@@ -138,10 +138,14 @@ const workerCount = (value: unknown, field: string): number => {
 
 const positive = (v: unknown): number | undefined => (typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : undefined);
 
-/** The file's values over the defaults; a value of the wrong type is ignored. Throws when the TOML does not parse. */
-export function parseConfig(text: string, fallbackName: string, env: NodeJS.ProcessEnv = process.env): ProjectConfig {
+/** The file's values over the defaults. Legacy wrong types are ignored unless strict validation is requested. */
+export function parseConfig(text: string, fallbackName: string, env: NodeJS.ProcessEnv = process.env, { strict = false }: { strict?: boolean } = {}): ProjectConfig {
   const doc = parse(text) as Record<string, unknown>;
   const c = defaultConfig(fallbackName);
+  // Startup keeps legacy lenience; settings writes must never silently discard a supplied value.
+  const accepts = (key: string, value: unknown, valid: boolean, expected: string): void => {
+    if (strict && value !== undefined && !valid) throw new Error(`${key} must be ${expected}`);
+  };
   const sessions = (doc.sessions ?? {}) as Record<string, unknown>;
   for (const [key, field] of [['archive_after_item', 'archiveAfterItemMs'], ['archive_after_stop', 'archiveAfterStopMs']] as const) {
     if (sessions[key] !== undefined) {
@@ -206,11 +210,15 @@ export function parseConfig(text: string, fallbackName: string, env: NodeJS.Proc
     if (typeof verification.remote_budget !== 'number' || !Number.isSafeInteger(verification.remote_budget) || verification.remote_budget <= 0) throw new Error('verification.remote_budget must be a positive integer');
     c.verification.remoteBudget = verification.remote_budget;
   }
+  accepts('verification.budget', verification.budget, typeof verification.budget === 'number' && Number.isSafeInteger(verification.budget) && verification.budget > 0, 'a positive integer');
   if (typeof verification.budget === 'number' && Number.isSafeInteger(verification.budget) && verification.budget > 0) c.verification.budget = verification.budget;
+  accepts('verification.lock_path', verification.lock_path, Boolean(typeof verification.lock_path === 'string' && verification.lock_path.startsWith('/')), 'an absolute path string');
   if (typeof verification.lock_path === 'string' && verification.lock_path.startsWith('/')) c.verification.lockPath = verification.lock_path;
+  accepts('verification.cache_max_age_minutes', verification.cache_max_age_minutes, Boolean(typeof verification.cache_max_age_minutes === 'number' && Number.isFinite(verification.cache_max_age_minutes) && verification.cache_max_age_minutes >= 0), 'a nonnegative number');
   if (typeof verification.cache_max_age_minutes === 'number' && Number.isFinite(verification.cache_max_age_minutes) && verification.cache_max_age_minutes >= 0) c.verification.cacheMaxAgeMs = verification.cache_max_age_minutes * MINUTE;
   c.visibility = visibilityOverrides(doc.visibility);
   const project = (doc.project ?? {}) as Record<string, unknown>;
+  accepts('project.name', project.name, Boolean(typeof project.name === 'string' && project.name.trim()), 'a nonempty string');
   if (typeof project.name === 'string' && project.name.trim()) c.name = project.name;
   const tracker = (doc.tracker ?? {}) as Record<string, unknown>;
   if (tracker.levels !== undefined) c.tracker.levels = configuredLevels(tracker.levels);
@@ -228,12 +236,15 @@ export function parseConfig(text: string, fallbackName: string, env: NodeJS.Proc
   }
   if (plan.qa_default !== undefined) c.plan.qaDefault = qaPolicy(plan.qa_default, 'plan.qa_default');
   const keys = (doc.keys ?? {}) as Record<string, unknown>;
+  accepts('keys.layouts', keys.layouts, Boolean(Array.isArray(keys.layouts) && keys.layouts.every(v => typeof v === 'string')), 'a list of strings');
   if (Array.isArray(keys.layouts) && keys.layouts.every(v => typeof v === 'string')) c.keys.layouts = [...new Set(keys.layouts)];
   const a = (doc.artifacts ?? {}) as Record<string, unknown>;
+  accepts('artifacts.retention_days', a.retention_days, Boolean(typeof a.retention_days === 'number' && Number.isFinite(a.retention_days) && a.retention_days >= 0), 'a nonnegative number');
   if (typeof a.retention_days === 'number' && Number.isFinite(a.retention_days) && a.retention_days >= 0) c.artifacts.retentionDays = a.retention_days;
   const h = (doc.hygiene ?? {}) as Record<string, unknown>;
   const set = (key: string, apply: (n: number) => void, scale = 1) => {
     const n = positive(h[key]);
+    accepts(`hygiene.${key}`, h[key], n !== undefined, 'a positive number');
     if (n !== undefined) apply(n * scale);
   };
   set('rate_limit_max', (n) => (c.hygiene.rateLimit.max = Math.floor(n)));

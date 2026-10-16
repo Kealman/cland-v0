@@ -567,6 +567,7 @@ export type ClientRequest =
   | { type: 'executor.status' | 'executor.reap'; id: string }
   | { type: 'executor.prepare'; id: string; report?: string }
   | { type: 'crew.set'; id: string; key: string; value: unknown }
+  | { type: 'config.set'; id: string; key: string; value: unknown }
   | { type: 'hub.subscriptions'; id: string }
   | { type: 'hub.status'; id: string; flushLogs?: boolean }
   /** Shut the hub down gracefully; the result is sent before the socket closes. */
@@ -835,6 +836,7 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
       return Number.isSafeInteger(f.number) && Number(f.number) > 0;
     case 'rule.list':
       return (f.all === undefined || typeof f.all === 'boolean') && (f.role === undefined || typeof f.role === 'string');
+    case 'config.set':
     case 'crew.set':
       return typeof f.key === 'string' && f.value !== undefined;
     case 'task.migrate':

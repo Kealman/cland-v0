@@ -230,6 +230,7 @@ export async function serveProject(root: string, options: { log?: LogFn; flushLo
       ...(Number(env.CLAND_QUEUE_TTL_MS) > 0 ? { queueTtlMs: Number(env.CLAND_QUEUE_TTL_MS) } : {}),
       control: {
         reload: resumed => roles.reload(resumed),
+        setConfig: (key, value, resumed, authorize) => roles.set(key, value, resumed, authorize),
         flushLogs: async () => { await journal.flush(); await processJournal?.flush(); await options.flushLog?.(); },
         // without listeners: port 0 and no socket
         status: () => ({
