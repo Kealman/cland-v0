@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-356
 branch: t/T-472-a-test-red-on-two-branches-is-flagged-as
 created: 2026-10-15T09:13:16.499Z
-updated: 2026-10-16T04:38:07.041Z
+updated: 2026-10-16T05:29:38.268Z
 ---
 
 ## Summary
@@ -31,6 +31,7 @@ The hub keeps the failing test identities of each task verify result for 72 hour
 
 - [x] C1. Two task runs on different branches failing the same test produce exactly one `shared-defect` notice naming both runs, and the same branch failing twice does not.
   - done: impl-472 · 2026-10-16T04:37:09.442Z
+  - verified: rev-31 [reviewer] · run rev-20261016-472-final · 2026-10-16T05:28:35.991Z · commit bde2582d3d63da18f0364927bdba4a07c045db26
 - [x] C2. The notice names the commit that last changed the test.
   - done: impl-472 · 2026-10-16T04:37:09.659Z
   - verified: rev-31 [reviewer] · run rev-20261016-472-source · 2026-10-16T04:38:07.041Z · commit bde2582d3d63da18f0364927bdba4a07c045db26
@@ -60,3 +61,27 @@ scope: full
 Source clear against frozen dev b4fc313b. Standards: no findings. Spec: no findings. Dedicated real-receipt parser correlates normalized file::test identities; durable 72h history excludes same-branch-only/passing/cached/cancelled/integrated/unbound results. Transactional notice/history and stable IDs preserve concurrent/crash retry deduplication; core.noticeTo publishes after commit. Two-line dispatch hook renews authorization after provenance I/O. C2 verified under Coordinator 6deb0c2d's file-history-at-dev-merge-base interpretation, explicitly labelled with unavailable fallback; C3 verified in default/project clauses and targeted role checks. C1 remains pending exact-head post-source run. A-3710 targeted public reporter/core/roles evidence supports source review; no full gate claimed. Machine shard entries present, supplied typecheck/shard/diff checks green. Analysis A-3714: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3714-t-472-source-clear-at-bde2582d.md. No Reviewer edits/tests.
 
 Criteria: C2 verified, C3 verified.
+
+### rev-31 · 2026-10-16T05:27:57.825Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261016-472-evidence-1
+commit: bde2582d3d63da18f0364927bdba4a07c045db26
+scope: evidence
+
+A-3742/17f364e5 exact-head Linux gate exits1:1900 pass/1 ordinary failure/4 skips. All five new shared-defect/parser/history/role cases pass normally and each5/5 load. Sole failure task-prefixes.test.ts:200 returns old build/T-2 plan where replacement invalid epic requires null; exact existing Bugs/S T-574, confirmed against item. No own source finding or failed criterion mark. C1 execution verification remains pending qualifying gate/disposition; C2/C3 source marks remain current. No Neovim completion claimed. Await Coordinator shared-fix/disposition, no unchanged retry requested. Analysis A-3743: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3743-t-472-first-linux-gate-known-t-574-failure.md. No Reviewer edits/tests.
+
+### rev-31 · 2026-10-16T05:28:35.991Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261016-472-final
+commit: bde2582d3d63da18f0364927bdba4a07c045db26
+scope: evidence
+
+Final clear under independently confirmed Coordinator14aa3c33 item-specific disposition. Exact-head Linux A-3742/17f364e5 has1900pass/1 known T-574 failure/4skip, exit1; it is not relabelled an all-green run. Coordinator explicitly accepts this receipt: T-574 fails3/3 alone on dev, proven test-observation race/test-only fix coming, hub-only owes no Neovim phase, no new run/pick. C1 verified: public reporter assertions establish no same-branch candidate, one distinct-branch notice naming both runs/logs, no third-branch duplicate; all five own cases ordinary green and5/5 load, including persistence/expiry/concurrency/parser/clauses. C2/C3 source marks current from A-3714; all three criteria verified. No source findings or per-item QA. A-3743 gate uncertainty resolved by explicit decision. Artifact A-3745: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3745-t-472-final-clear-under-explicit-t-574-gate-disposition.md. No Reviewer edits/tests.
+
+Criteria: C1 verified.

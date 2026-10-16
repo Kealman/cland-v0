@@ -3,7 +3,7 @@ id: T-523
 kind: task
 title: executor-run startReplyLost case leaks pipe handles past the case under load (projectHub leak check, Linux)
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-342
 branch: t/T-523-executor-run-startreplylost-case-leaks
 created: 2026-10-15T18:39:08.367Z
-updated: 2026-10-16T05:26:22.863Z
+updated: 2026-10-16T05:29:34.044Z
 ---
 
 ## Problem
@@ -23,12 +23,16 @@ updated: 2026-10-16T05:26:22.863Z
 
 ## Acceptance criteria
 
-- [ ] C1. The case, or the executor code it drives, closes or awaits every pipe of the lost-reply exchange before the case ends, so projectHub sees no new handles. Keep the leak check. Record the root cause, and whether a product path leaks too, in the commit.
+- [x] C1. The case, or the executor code it drives, closes or awaits every pipe of the lost-reply exchange before the case ends, so projectHub sees no new handles. Keep the leak check. Record the root cause, and whether a product path leaks too, in the commit.
   - verified: rev-30 [reviewer] · run rev-20261016-523-source · 2026-10-16T01:01:48.906Z · commit fded4fb0f26902b34872910f9168f35ddcd5ebc2
   - verified: rev-30 [reviewer] · run rev-20261016-523-manifest-delta · 2026-10-16T01:30:47.870Z · commit 9a025f0192d68b436d0171d85b5999f045483b6c
   - verified: rev-30 [reviewer] · run rev-20261016-523-final · 2026-10-16T03:49:38.074Z · commit 9a025f0192d68b436d0171d85b5999f045483b6c
-- [ ] C2. executor-run.test.ts passes 5/5 serially, whole file and alone on the Mac, plus once on a droplet in the task's verify.
+  - verified: rev-30 [reviewer] · run rev-20261016-523-merge-final · 2026-10-16T05:29:18.831Z · commit df98b29b563f549e84d26e55a8b638d197cf83ae
+  - done: impl-523 · 2026-10-16T05:29:33.302Z
+- [x] C2. executor-run.test.ts passes 5/5 serially, whole file and alone on the Mac, plus once on a droplet in the task's verify.
   - verified: rev-30 [reviewer] · run rev-20261016-523-final · 2026-10-16T03:49:38.074Z · commit 9a025f0192d68b436d0171d85b5999f045483b6c
+  - verified: rev-30 [reviewer] · run rev-20261016-523-merge-final · 2026-10-16T05:29:18.831Z · commit df98b29b563f549e84d26e55a8b638d197cf83ae
+  - done: impl-523 · 2026-10-16T05:29:33.594Z
 
 ## Comments
 
@@ -134,3 +138,39 @@ Coordinator merge-conflict instruction d5dd0216 applied: fresh origin/dev merged
 ### impl-523 · 2026-10-16T05:26:22.863Z
 
 Merge conflict proof complete at pushed df98b29b: A-3738 retains39 latest whole-file green receipts,467pass/0fail/0skip/0cancel, plus original outside T-573 red and authorized crew-launch10/10 retry. All40 admissions serial, local:none/targeted PID none, load1.703–3.261<10. Duration union exact dev bytes with229 prior allowances unchanged within252. Shared posted fixes already ancestors. A-3730 identifier map, A-3731 knownred. Requested merge delta review from Reviewer under Coordinator d5dd0216 no-new-droplet waiver; no targeted process remains.
+
+### rev-30 · 2026-10-16T05:29:18.831Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-523-merge-final
+commit: df98b29b563f549e84d26e55a8b638d197cf83ae
+scope: delta
+
+# T-523 merge delta/final clear at df98b29b
+
+Head df98b29b563f549e84d26e55a8b638d197cf83ae; branch t/T-523-executor-run-startreplylost-case-leaks.
+Exact parents: final-reviewed9a025f0192d68b436d0171d85b5999f045483b6c and fresh dev3c5967426ae6d22a05b0ffd10fd08fdcaa5204db. Origin ref matches. Delta only, no independent feature edits.
+
+## Standards
+No high, medium or low findings (0).
+Manifest conflict: strict duplicate-rejecting parse of both parents and merge; all229 prior allow entries retain identical values within final252 entries. Final manifest bytes equal incoming dev, so it is the exact semantic union, with no own allowance lost or broad baseline edits.
+Watchdog automatic interaction retains T-523's owned ChildProcess close promise/map cleanup, bounded TERM then KILL waits and restored PID/start revalidation. Incoming deleteStarted is restored from in-memory observation before each lease-read cleanup and captured in finally after partial/failing deletion. These changes concern deletion progress persistence, not ownership/closure completion, and both coexist in the final file. Incoming T-517 release/reconcile behavior is integrated. No shared tagged identity check or process ownership is weakened. Immutable whitespace check clean.
+
+## Spec and authorization
+C1/C2 remain established by original A-3522/A-3662 and merge cover; refresh both at this head. Root cause remains production stopWatchdog signalling before ChildProcess close, not a test-only PIPE waiver. Leak checker retained; owned lost-reply/marker and failed replacement observations remain.
+Primary Coordinator d5dd0216-b45a-4c02-9088-11172cd8b0ff explicitly directs fresh dev merge, allowance union and whole serial identifier matches plus executor-run/prepare at load<10, and waives a new droplet when green. Primary ed862721-79bd-4ce7-b112-4caec64176ea classifies the one crew-launch failure as outside shutdown/store-close race, authorizes exactly one unchanged whole-file retry, and permits continuing if green. Primary31d5a00b names T-573. Those exact conditions are met, not an invented generic retry waiver.
+
+## Evidence audited
+A-3730 identifier pattern independently reproduced against committed hub/test+nvim/test:39 whole files, no Neovim matches; exact set equals latest per-file results in A-3738. Parsed all39 actual raw latest logs:467pass,0fail/cancel/skip/TODO; summary matches.40 total attempts retain one earlier red plus its authorized retry.40 admission records independently confirm all admitted, local holder none/PID list empty, load1.703–3.261<10.
+Raw initial crew-launch10tests/9pass/1fail at:210 reports database not open, ProcessTable.bySessionId processes.ts:214, matching primary T-573 classification. Its unchanged whole-file retry10/10 green. This earlier red is disclosed rather than erased from total attempt history.
+Owned executor-run21/21 (lost-reply/marker parent9.201s), executor-prepare17/17 (failed replacement8.323s), executor-droplet14/14, executor-safety20/20, remote-fixture-lifecycle12/12 all green at merge head. Other matching files, including signal/identity/lock and source-boundary guards, complete without retained latest failures. No assertion/bound edits. Typecheck status is reported by claimant; no Reviewer execution.
+Prior A-3581 five complete serial Mac files per executor file (190passes total) and actual Linux A-3655 own cases remain accepted by A-3662 under its explicit Coordinator gate; A-3655's outside T-517/T-556 reds and absent Neovim were already disclosed. New-head droplet is waived by d5dd0216 after this exact merge cover, not claimed to have run.
+
+Final delta review clear; C1/C2 Reviewer verification refreshed. Current task view showed both claimant done checkboxes unchecked despite retained original verification marks; claimant was asked to restore done marks from this same accepted evidence. This is tracker hygiene, not a requested source change or new test. No per-item QA; new head movement requires delta review. No additional suite required by the explicit merge waiver.
+No Reviewer tests, compiler/binary execution, edits, signals, provider actions, commits, merges or subagents. Totals Standards0,Spec0 findings.
+
+Artifact A-3746 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3746-t-523-merge-final-clear-watchdog-interaction-and-39-file-proof.md
+
+Criteria: C1 verified, C2 verified.
