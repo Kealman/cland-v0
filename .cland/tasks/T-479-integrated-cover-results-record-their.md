@@ -2,8 +2,8 @@
 id: T-479
 kind: task
 title: Integrated cover results record their status and cause, so incidents are data instead of T-204 prose
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-363
 branch: t/T-479-integrated-cover-results-record-their
 created: 2026-10-15T09:13:20.192Z
-updated: 2026-10-16T08:04:00.571Z
+updated: 2026-10-16T08:04:24.806Z
+closed: 2026-10-16T08:04:24.806Z
 ---
 
 ## Summary
@@ -113,3 +114,7 @@ scope: evidence
 Final clear under independently confirmed Coordinator72f6b7a3 explicit item-specific gate disposition. C1 verified from accepted A-3845/b72f595a at843a4444:allnine own cases ordinarygreen/45-of-45 load, including red identities, real-shaped merged shard failure/load-gate names, budget-only/mixed and recovered cancellation/timeout proofs. C2/C3 source current from A-3848; all3 verified. Raw receipt remains exit1/budget-only,1925pass/0functional failures/5 prerequisite skips,noNeovim. Current head changes only exact five shared allowances+measured own6.851s entry, no source/assertion changes. Coordinator explicitly accepts hub evidence/no new droplet and assigns Neovim to next integrated dev cover BEFORE any restart on this code. No exact-current-head full green or completed Neovim claimed; cover obligation remains. Standards/Spec no findings,no per-item QA. Artifact A-3849: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3849-t-479-final-clear-under-explicit-integrated-cover-disposition.md. No Reviewer edits/tests.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-16T08:04:24.806Z
+
+Merged 6b51006dd6d45d4e69c499f911605d61659d65f8 onto dev.
