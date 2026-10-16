@@ -3223,6 +3223,14 @@
       "seconds": 6.3,
       "reason": "Starts a real demo lease against the fake DigitalOcean provider, forces an identity mismatch, and waits for the refused deletion, the operator-attention state and the alert."
     },
+    "hub/test/demo-release.test.ts::demo stop confirms provider absence on retry after an accepted delete": {
+      "seconds": 6,
+      "reason": "Drives a real demo lease against the fake DigitalOcean provider through an accepted delete and a retry that must observe provider absence before release."
+    },
+    "hub/test/demo-release.test.ts::demo stop waits for an archived droplet with stripped tags to become absent": {
+      "seconds": 6.6,
+      "reason": "Drives a real demo lease against the fake DigitalOcean provider through the teardown window where tags read empty, then waits for absence within the bounded reread."
+    },
     "hub/test/demo.test.ts::demo authorization, shared slot refusals and verdict cleanup use the same tagged lease": {
       "seconds": 6.115824,
       "reason": "Starts real hub and QA spoke processes, exercises authorization and shared slot refusal through public frames, then waits for verdict-driven confirmed provider cleanup; observed in A-3054."
