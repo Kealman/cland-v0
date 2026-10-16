@@ -3,7 +3,7 @@ id: T-469
 kind: task
 title: "Every stage-close cover carries a Linux proof: the sharded droplet run plus the Mac run, both required by the stage gate"
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 3
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-316
 branch: t/T-469-every-stage-close-cover-carries-a-linux
 created: 2026-10-15T09:13:16.034Z
-updated: 2026-10-16T03:30:35.192Z
+updated: 2026-10-16T04:09:30.805Z
 ---
 
 ## Summary
@@ -31,9 +31,11 @@ The stage gate (`#stageCurrent` and the plan's `after-stage` close) accepts the 
 - [x] C1. A stage with a green Mac cover but no green Linux droplet result at the same tree stays open, and `task plan show` names the missing platform.
   - done: impl-469 · 2026-10-15T20:20:12.775Z
   - verified: rev-30 [reviewer] · run rev-20261015-469-final · 2026-10-15T22:57:32.640Z · commit c09435d4e4a337e6aec09058cd392b004df5bcd0
+  - verified: rev-30 [reviewer] · run rev-20261016-469-final · 2026-10-16T04:09:30.100Z · commit 1f2abed56887e5752fe953f19b5077da04cd0e41
 - [x] C2. With both green at the same tree, the stage closes, proven by a fake-provider test.
   - done: impl-469 · 2026-10-15T20:20:13.848Z
   - verified: rev-30 [reviewer] · run rev-20261015-469-final · 2026-10-15T22:57:32.640Z · commit c09435d4e4a337e6aec09058cd392b004df5bcd0
+  - verified: rev-30 [reviewer] · run rev-20261016-469-final · 2026-10-16T04:09:30.100Z · commit 1f2abed56887e5752fe953f19b5077da04cd0e41
 - [x] C3. hub/README.md and the plan-epic skill describe the two-platform stage gate.
   - done: impl-469 · 2026-10-15T20:20:15.204Z
   - verified: rev-30 [reviewer] · run rev-20261015-469-source-correction · 2026-10-15T20:30:36.543Z · commit a54d2083b7b3bf2bc80712bf0ac9162e29a45b08
@@ -44,6 +46,7 @@ The stage gate (`#stageCurrent` and the plan's `after-stage` close) accepts the 
   - verified: rev-30 [reviewer] · run rev-20261015-469-shared-544-delta · 2026-10-15T23:57:50.682Z · commit 5d9fe60315d42f951a571575a3dee93e04ec04e1
   - verified: rev-30 [reviewer] · run rev-20261016-469-manifest-delta · 2026-10-16T01:25:59.451Z · commit 50af1e39ce719f610eeb38eb64ba7e8103e567f7
   - verified: rev-30 [reviewer] · run rev-20261016-469-shared-556-delta · 2026-10-16T03:30:35.192Z · commit 1f2abed56887e5752fe953f19b5077da04cd0e41
+  - verified: rev-30 [reviewer] · run rev-20261016-469-final · 2026-10-16T04:09:30.100Z · commit 1f2abed56887e5752fe953f19b5077da04cd0e41
 
 ## Comments
 
@@ -401,3 +404,32 @@ C3 source documentation criterion reverified unchanged. C1/C2 final runtime sett
 Review artifact A-3647 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3647-t-469-shared-stable-name-delta-clear-at-1f2abed5.md
 
 Criteria: C3 verified.
+
+### rev-30 · 2026-10-16T04:09:30.100Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-469-final
+commit: 1f2abed56887e5752fe953f19b5077da04cd0e41
+scope: evidence
+
+# T-469 final evidence clear at 1f2abed5
+
+Head: 1f2abed56887e5752fe953f19b5077da04cd0e41
+Branch: t/T-469-every-stage-close-cover-carries-a-linux
+Evidence scope only; source chain ends at A-3647 / rev-20261016-469-shared-556-delta. Origin task ref matches this SHA. No further source review or Reviewer execution.
+
+## Standards
+No new findings; source chain has no unresolved high, medium or low findings. Raw A-3682 identifies exact reviewed head, actual Linux droplet and completed phases, rather than a queued/cancelled attempt. Duration-regression notices are retained as notices; the run finished exit 0 with no hard budget or load-gate failure.
+
+## Spec
+C1/C2 runtime requirements are now verified at the current head, and C3 documentation verification is refreshed from the unchanged source chain. A-3682 / 93f3bb50-a98c-4657-8282-6a5df360516e completes full verification: 2249 tests, 2243 pass, 0 fail/cancelled, 6 platform skips. Linux x64 6.8.0-142-generic, c-8 lon1 cland-v0-3c5971a6, Node v24.21.0, Neovim v0.12.5, four workers. Hub free 38/38, hub machine 1815 pass/3 skip, Neovim full 390 pass/3 skip. The previously missing Neovim coverage is supplied by this receipt.
+The fake-provider platform/history/next-stage case passes 16.429s (line3363) and 5/5 fresh repetitions (3454). It covers missing Linux despite green Mac, same-tree pair acceptance, stage history and advancement. Failed-stage and unreported-stage newer-attempt supersession cases pass 18.407/16.997s (3364–3365), each 5/5 (3863/4196). Late-bound after-startup platform receipt regression passes 4.241s (2184), 5/5 (2091). The unchanged landing/ten-close query-budget case passes 6.545s (2186), preserving the original assertions. Source chain records the scoped completion refresh, startup advancement and explicit executor/cache conflict resolution; no broader T-538/T-539 redesign is claimed.
+Both typechecks and hub/Neovim phases completed; final exit0 at line7193. Suite1399.74s, peak one-minute load13.16, load extra wall1.96s, machine lifetime1475s, cost$0.1025. No known-flake exception is needed for this green run. Earlier red/timeout receipts remain historical and are not substituted for current proof.
+
+Final review clear; C1–C3 verified at this exact head. No per-item QA requirement. Do not move the head without delta review. No Reviewer tests, edits, provider operations or subagents.
+
+Artifact: A-3684 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3684-t-469-final-evidence-clear-exact-head-green-linux-full-suite.md
+
+Criteria: C1 verified, C2 verified, C3 verified.

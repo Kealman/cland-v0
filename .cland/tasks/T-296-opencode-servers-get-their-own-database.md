@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-336
 branch: t/T-296-opencode-servers-get-their-own-database
 created: 2026-10-12T16:20:56.477Z
-updated: 2026-10-16T01:25:56.292Z
+updated: 2026-10-16T04:00:19.576Z
 ---
 
 ## Summary
@@ -51,21 +51,25 @@ Code: `hub/src/adapters/opencode.ts`, `hub/src/adapters/opencode/server.ts`, `hu
   - verified: rev-30 [reviewer] · run rev-20261016-296-source · 2026-10-16T00:00:37.200Z · commit 7f964e694492ed6312e05bc6772075f0b883564c
   - verified: rev-30 [reviewer] · run rev-20261016-296-docs-delta · 2026-10-16T00:02:07.895Z · commit ddeb710c2119ac1e5b4cd822318e53d800a08280
   - verified: rev-30 [reviewer] · run rev-20261016-296-manifest-delta · 2026-10-16T01:25:56.291Z · commit 3f28265df73c5d2e95269fa5bd4c855af7c2f5c9
+  - verified: rev-30 [reviewer] · run rev-20261016-296-merge-delta · 2026-10-16T04:00:19.575Z · commit 16d819bc6809689de73340786c7b2bd05bd1ddfd
 - [x] C3. The launch record names the database, and resume and relaunch reuse it.
   - done: impl-296 · 2026-10-15T23:48:07.788Z
   - verified: rev-30 [reviewer] · run rev-20261016-296-source · 2026-10-16T00:00:37.200Z · commit 7f964e694492ed6312e05bc6772075f0b883564c
   - verified: rev-30 [reviewer] · run rev-20261016-296-docs-delta · 2026-10-16T00:02:07.895Z · commit ddeb710c2119ac1e5b4cd822318e53d800a08280
   - verified: rev-30 [reviewer] · run rev-20261016-296-manifest-delta · 2026-10-16T01:25:56.292Z · commit 3f28265df73c5d2e95269fa5bd4c855af7c2f5c9
+  - verified: rev-30 [reviewer] · run rev-20261016-296-merge-delta · 2026-10-16T04:00:19.575Z · commit 16d819bc6809689de73340786c7b2bd05bd1ddfd
 - [x] C4. `cland doctor` names the database and its standalone login line, warns when an account points at the default database, and says whether the free default model needs a login.
   - done: impl-296 · 2026-10-15T23:49:01.818Z
   - verified: rev-30 [reviewer] · run rev-20261016-296-source · 2026-10-16T00:00:37.200Z · commit 7f964e694492ed6312e05bc6772075f0b883564c
   - verified: rev-30 [reviewer] · run rev-20261016-296-docs-delta · 2026-10-16T00:02:07.895Z · commit ddeb710c2119ac1e5b4cd822318e53d800a08280
   - verified: rev-30 [reviewer] · run rev-20261016-296-manifest-delta · 2026-10-16T01:25:56.292Z · commit 3f28265df73c5d2e95269fa5bd4c855af7c2f5c9
+  - verified: rev-30 [reviewer] · run rev-20261016-296-merge-delta · 2026-10-16T04:00:19.576Z · commit 16d819bc6809689de73340786c7b2bd05bd1ddfd
 - [x] C5. hub/README.md (OpenCode) describes the database and the login.
   - done: impl-296 · 2026-10-15T23:49:36.050Z
   - verified: rev-30 [reviewer] · run rev-20261016-296-source · 2026-10-16T00:00:37.200Z · commit 7f964e694492ed6312e05bc6772075f0b883564c
   - verified: rev-30 [reviewer] · run rev-20261016-296-docs-delta · 2026-10-16T00:02:07.895Z · commit ddeb710c2119ac1e5b4cd822318e53d800a08280
   - verified: rev-30 [reviewer] · run rev-20261016-296-manifest-delta · 2026-10-16T01:25:56.292Z · commit 3f28265df73c5d2e95269fa5bd4c855af7c2f5c9
+  - verified: rev-30 [reviewer] · run rev-20261016-296-merge-delta · 2026-10-16T04:00:19.576Z · commit 16d819bc6809689de73340786c7b2bd05bd1ddfd
 
 ## Comments
 
@@ -150,5 +154,30 @@ Database/P3 implementation, docs correction and A-3474 targeted55/55 remain unch
 Only source-established criteria C2,C3,C4,C5 reverified here. No final evidence/merge readiness claimed. Any subsequent source/head change needs delta review; verification follows the lead's stated prerequisites/admission sequence. No per-item QA change. Read task files/earlier review chain; no task.view full-journal scan. No Reviewer tests, binaries/compiler execution, edits, installs, signals, commits, merges or provider actions.
 
 Review artifact A-3562 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3562-t-296-shared-manifest-delta-clear-at-3f28265d.md.
+
+Criteria: C2 verified, C3 verified, C4 verified, C5 verified.
+
+### rev-30 · 2026-10-16T04:00:19.576Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-296-merge-delta
+commit: 16d819bc6809689de73340786c7b2bd05bd1ddfd
+scope: delta
+
+Delta source review T-296 clear at16d819bc6809689de73340786c7b2bd05bd1ddfd, authorized merge of prior source-cleared3f28265df73c5d2e95269fa5bd4c855af7c2f5c9 and freshly fetched devdecbab2693407424ae39a7d5eeb38fcef1ef450a. Standards/Spec: no high, medium or low findings. Origin task ref independently matches this exact head.
+
+Primary Coordinator a244d3f5-1ac5-4240-aed8-c82568c72eaa read in Agents explicitly authorizes fresh dev merge under rule11 after T-546, conflict resolution/delta review, then one droplet/fresh verify; named known reds T-555/T-565/T-566/T-567 and rule13 remains active until merge. Independent ancestor checks confirm d2e83f0e,576404e8,64390ae8,2149fe33 present. No new T-296 feature is introduced.
+
+Three resolutions checked against both parents: README keeps all isolated DB/login/default-session rollout paragraphs and incoming T-533 OpenCode2.x release-check policy. doctor/toolchain.ts combined diff is imports only: add incoming compareVersions/Version while retaining account/database/path helpers. Relative to prior task head, its new version policy body exactly follows the incoming dev feature; auth/version probes still run with accountEnvironment selecting clandOpenCodeDatabase, auth fixes still use openCodeLogin, separate account/default-path checks remain. Incompatible majors skip incompatible auth probing while independent database checks still run. No default-database probe was reintroduced. shards.json equals exact parent tests-map union (194 keys), retaining both opencode-check and opencode-database machine entries.
+
+Automatic integration checked: own launch/account/retained-environment/session/database feature source is unchanged; own-overlap files changed only README, toolchain, doctor tests, fake OpenCode version output and shards. Incoming doctor tests add1.x/3.x refusal, newer2.x warning and missing-v2-installer checks; fake version is configurable without changing its database-selection behavior. Final durations.json is byte-identical to dev parent, with no task allowances to restore. Immutable whitespace check passes.
+
+Resolution identifier search against committed hub/test+nvim/test independently finds doctor.test.ts and shards.json, with no Neovim test match; all matches are covered. A-3674 raw whole-file receipts audited: doctor22/22 (26.016s), typecheck1/1 (3.645s), opencode-check7/7 (2.413s) and non-skipped real P3/database isolation1/1 (2.462s),31/31, no failures/cancellations/skips. The extra typecheck/release-check/P3 cover supports combined import and incoming policy compatibility. README records serial local:none/refined guard/load3.04–3.74 admissions. Root typecheck and shard lint reported green; no Reviewer execution. Original55 feature receipts A-3474 remain supporting unchanged-source evidence.
+
+C2/C3/C4/C5 source criteria refreshed: dedicated persistent DB selection/auth/login doctor guidance, retained process environment, default/account warning and isolation/rollout behavior remain intact with version policy. C1 final overall task gate remains pending fresh actual reviewed-head droplet verification, now unblocked by T-546. This is source clear, not final ready or a new suite waiver. Submit once per Coordinator a244d3f5; any further head change needs delta review. Rule13 retirement/old-default-session rollout check remains the Coordinator's merge step. No per-item QA change. No Reviewer edits/tests/compiler/binary execution, installs, signals, commits, merges, provider actions, task.view scan or subagents.
+
+Review artifact A-3676 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3676-t-296-authorized-dev-merge-delta-clear-at-16d819bc.md
 
 Criteria: C2 verified, C3 verified, C4 verified, C5 verified.

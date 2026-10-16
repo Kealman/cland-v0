@@ -3,7 +3,7 @@ id: T-553
 kind: task
 title: "Demo lease release refuses deletion: droplet identity differs from its lease"
 state: open
-status: review
+status: in progress
 size: S
 criterion_seq: 3
 labels:
@@ -17,7 +17,7 @@ regression_of: T-459
 topic: topic-349
 branch: t/T-553-demo-lease-release-refuses-deletion
 created: 2026-10-16T00:37:02.839Z
-updated: 2026-10-16T02:30:35.826Z
+updated: 2026-10-16T04:09:21.403Z
 ---
 
 ## Summary
@@ -31,6 +31,7 @@ Found by qa-27 in E-423's Definition-of-done demo (run qa-2026-10-16-27-15, D18,
   - verified: rev-31 [reviewer] · run rev-20261016-553-delta-2 · 2026-10-16T02:30:35.826Z · commit 270e35c3cd2cc3d5ea9e4b2fbdd75f151bd0a427
 - [x] C2. A demo lease's release deletes its own droplet, and a demo stop ends with the lease released and no tagged droplet left. A genuine identity mismatch still refuses deletion, but marks the lease for operator attention and alerts, rather than staying `releasing` silently.
   - done: impl-553 · 2026-10-16T01:06:26.457Z
+  - verified: rev-31 [reviewer] · run rev-20261016-553-final · 2026-10-16T04:06:10.412Z · commit 270e35c3cd2cc3d5ea9e4b2fbdd75f151bd0a427
 - [x] C3. A test covers demo start, then stop, then release against the fake provider, including the mismatch case.
   - done: impl-553 · 2026-10-16T01:06:27.845Z
   - verified: rev-31 [reviewer] · run rev-20261016-553-source · 2026-10-16T01:09:57.096Z · commit f631b72207b32cdf7ca7056c21fc6c95f63f7835
@@ -97,3 +98,18 @@ Delta source clear: ae82e263..270e35c3 changes only suite-runner.test.ts+4/-2, e
 Coordinatore2e3dc70 restart hold remains before new verification, then explicit droplet/fresh once. Artifact A-3597: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3597-t-553-shared-stable-name-delta-source-clear-at-270e35c3.md.
 
 Criteria: C1 verified, C3 verified.
+
+### rev-31 · 2026-10-16T04:06:10.412Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261016-553-final
+commit: 270e35c3cd2cc3d5ea9e4b2fbdd75f151bd0a427
+scope: evidence
+
+Finalclear atunchanged270e35c3. SameheadLinux9cc3b07b/A-3679 exit0,1863pass/0fail/4platformskip,hubfree38/38,machine1813pass+4skip,Neovimsmoke12/12.4workers,c-8lon1,Node24.21.0,Neovim0.12.5; no failingloadgate/newhardbudget.
+C2verified:acceptedDELETEretry3.423s,archivetagstripabsence2.853s,genuineidentityrefusal/attention/alert/reaperpreservation3.240s;each5/5load. Hubgonewatchdogmodifiedcasesalsopass. Reviewed assertions preserve oneDELETEwhilepending,noDELETEforgenuinemismatch,durable/statusattention,onceCoordinatoralert,clearattentionafterrecovery. PriorMac23/23supports. C1/C3current fromsource/deltaA-3597;C1historicalfieldlimitationaccepted0d69dd33remains,no recoveredfieldclaim. All3criteria verified,nohigh/mediumfindings,no peritemQA or Reviewer edits/tests.
+ArtifactA-3680: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3680-t-553-final-clear-at-270e35c3-linux-release-gate.md.
+
+Criteria: C2 verified.
