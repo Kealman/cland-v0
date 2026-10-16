@@ -2,8 +2,8 @@
 id: T-536
 kind: task
 title: OpenCode warnings, the worktree clause, and the codemode and instructions experiments
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 4
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-379
 branch: t/T-536-opencode-warnings-the-worktree-clause
 created: 2026-10-15T20:59:19.741Z
-updated: 2026-10-16T18:35:19.238Z
+updated: 2026-10-16T18:35:38.921Z
+closed: 2026-10-16T18:35:38.921Z
 ---
 
 ## Summary
@@ -174,3 +175,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear; Standards0/Spec0 findings, A-4111. Independently inspected exact-head Linux retry66f233ea/A-4110 exit0:1960pass/0fail/5skip, including12of12 Neovim smoke. Doctor training/sandbox warnings and allfour new instruction transition/fallback cases pass ordinary execution and5of5 load repetitions each. Both clause-budget snapshots pass; prior external reds do not recur. C1 verified; C2/C3/C4 source-3/A-4036 remain current at unchanged branch head. Experiment defaults remain unchanged/off and T-619 adoption follow-up stands. All claimant done marks present. Hub-only plus Neovim smoke, not full Neovim package. Lifetime1374s/cost$0.0954 perhub. No exception, edits or Reviewer tests.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-16T18:35:38.921Z
+
+Merged aa60d10dce233cb8a3857159fa72c197e5cbe991 onto dev.

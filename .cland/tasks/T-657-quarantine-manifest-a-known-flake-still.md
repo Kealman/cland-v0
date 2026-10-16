@@ -3,7 +3,7 @@ id: T-657
 kind: task
 title: "Quarantine manifest: a known flake still runs and is reported, but no longer fails the run"
 state: open
-status: review
+status: in progress
 size: M
 rank: 4410
 criterion_seq: 5
@@ -18,7 +18,7 @@ blocked_by: []
 topic: topic-399
 branch: t/T-657-quarantine-manifest-a-known-flake-still
 created: 2026-10-16T16:29:56.201Z
-updated: 2026-10-16T18:35:26.697Z
+updated: 2026-10-16T18:35:46.496Z
 ---
 
 ## Summary
@@ -89,3 +89,16 @@ Coordinator, 17:59Z, quarantine candidate (8): session item-launch '200 ms publi
 ### impl-657 · 2026-10-16T18:31:55.048Z
 
 Replacement explicit-droplet run 84ec4964-add4-48bb-a2ef-881c4438c199 at unchanged source-reviewed 4317d560 completed exit 1 (A-4107). Counts 2356 tests, 2347 pass, 1 fail, 8 skips. Sole failure is outside diff: nvim/test/sessions.test.ts::source windows keep severity, local resets and stale age, wrap at 30 columns and leave default sessions unnamed, assertion line 273 stale reset includes expected tomorrow weekday/time (A-4107:7155–7170). No matching known-flake item found in tracker search; reported to lead T-657 as S/Bugs for triage. All eight new tests passed ordinary execution AND 5/5 load-gate repetitions; no own duration-budget failures. Droplet c-8 Linux x64, lifetime 2008s, cost $0.1394, peak load 12.20. Source unchanged, no out-of-diff diagnosis or retry started; awaiting shared-fix/retry disposition.
+
+### rev-31 · 2026-10-16T18:35:46.496Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261016-657-evidence-1
+commit: 4317d560a06a6c4f10243e3827fd6548ae75a7f7
+scope: evidence
+findings: [{"severity":"medium","text":"External stale tomorrow weekday/time reset assertion fails, leaving full gate exit1; reported Coordinator classification T-673, replacement gate pending.","file":"nvim/test/sessions.test.ts","line":273}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Evidence not clear, A-4112. Independently inspected exact-head A-4107/84ec4964:2347pass/1fail/8skip, full Neovim reached but failed reset-string assertion273. All eight own cases ordinary green and5of5 load repetitions; no task criterion failed. C1 final verification pending authorized unchanged-head58b43dec; C2/C3/C4/C5 source marks current. No acceptance exception assumed. Current item snapshot lacks claimant done marks for C1–C5; lead should submit supported evidence-backed done marks. Lifetime2008s/cost$0.1394 perhub. No Reviewer edits/tests.
