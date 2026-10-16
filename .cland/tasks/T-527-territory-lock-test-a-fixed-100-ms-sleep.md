@@ -3,7 +3,7 @@ id: T-527
 kind: task
 title: "territory-lock test: a fixed 100 ms sleep races the first lock holder (Linux)"
 state: open
-status: review
+status: ready
 size: XS
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-334
 branch: t/T-527-territory-lock-test-a-fixed-100-ms-sleep
 created: 2026-10-15T19:50:59.979Z
-updated: 2026-10-16T01:21:48.097Z
+updated: 2026-10-16T03:44:35.050Z
 ---
 
 ## Problem
@@ -28,8 +28,10 @@ updated: 2026-10-16T01:21:48.097Z
   - verified: rev-30 [reviewer] · run rev-20261015-527-source · 2026-10-15T23:32:46.061Z · commit d2d184f52a1f94eb5ac83bd68174f5194f9af6d8
   - verified: rev-30 [reviewer] · run rev-20261015-527-shared-544-delta · 2026-10-15T23:57:41.452Z · commit 5b89aa37ca4b8c58cd928bc248b6535a43663b31
   - verified: rev-30 [reviewer] · run rev-20261016-527-manifest-delta · 2026-10-16T01:21:48.097Z · commit b6a657563d23f92ff58daa211458f1aae773e0e1
+  - verified: rev-30 [reviewer] · run rev-20261016-527-final · 2026-10-16T03:44:34.542Z · commit b6a657563d23f92ff58daa211458f1aae773e0e1
 - [x] C2. territory-lock.test.ts passes 5/5 serially, whole file and alone on the Mac, plus once on a droplet in the task's verify.
   - done: impl-527 · 2026-10-15T23:55:36.435Z
+  - verified: rev-30 [reviewer] · run rev-20261016-527-final · 2026-10-16T03:44:34.542Z · commit b6a657563d23f92ff58daa211458f1aae773e0e1
 
 ## Comments
 
@@ -111,3 +113,28 @@ Only source-established criteria C1 reverified here. No final evidence/merge rea
 Review artifact A-3553 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3553-t-527-shared-manifest-delta-clear-at-b6a65756.md.
 
 Criteria: C1 verified.
+
+### rev-30 · 2026-10-16T03:44:34.542Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-527-final
+commit: b6a657563d23f92ff58daa211458f1aae773e0e1
+scope: evidence
+
+Final evidence review T-527 clear at unchanged source-clearedb6a657563d23f92ff58daa211458f1aae773e0e1. Standards/Spec: no new findings. C1 source chain A-3460, sharedT-544 delta and A-3553 baseline delta remain applicable; current origin task ref independently matches this SHA.
+
+Primary Coordinator e3b2c101-8dc4-402f-899a-2c9d26654f43 read in topic-334 expressly accepts the named pair when own cases are green and second reds are only T-556/T-566/T-555/T-565; typo-correction1bde3a93 confirms first receipt a679d54c/A-3633. Coordinator51769c1f separately confirms T-566 is the load-dependent gate, with T-538/T-539 query-cost work separate. This is an explicit pair disposition even though the two sets share T-556; not an invented general rule.
+
+A-3633/a679d54c at current head: actual Linux c-8 workers4,1848pass/1fail/3skip, exit1. All17 territory-lock cases completed green; changed callback-entry observation case.136s. Outside ordinary planned-stage:249 failure was landing10334queries against retained<10000, with64 unrelated items/8plans, now classifiedT-566. Other red is suite-runner dynamic timestamp identity0/5, knownT-556. No hard duration-budget failure.
+
+A-3653/bad39df8-80eb-4c88-92d6-ecbd5858f251 at same head: actual Linux c-8 lon1 6.8.0-142-generic, Node24.21.0/Neovim0.12.5, workers4, lifetime1276s/$0.0886. Raw completed free38/38 and machine1814tests/1811pass/0fail/3skip; total1849pass/0fail/3skip, no cancellation. All17 territory-lock identities again have positive completion/timing records; changed case.157575941s. Sole red line is knownT-556 current-timestamp identity0/5. Suite1203.89s, peak14.69, exit1. Duration regression notices are diagnostics on known entries, with no hard budget error. Neovim smoke did not execute after hub red; task has no nvim diff, and this pair disposition establishes the requested own-file/Linux gate rather than a full green Neovim claim.
+
+Mac A-3459 raw five whole-file logs inspected:17/17 each,85/85, zero fail/skip/cancel, exit0, serial quiet/alone admission recorded. Their buildcc400e87 territory-lock source is byte-identical to current head by immutable comparison; later reviewed changes only concern shared test fixes/baseline. C1's original replacement of100ms sleep with bounded callback-entry observation and retained exclusion/cleanup assertions is unchanged.
+
+C2 verified from five complete Mac files and actual same-head Linux file completions under the explicit accepted pair; C1 reverified/current across unchanged source. All criteria checked. Earlier cancelled/zero-lifetime/timeout admission attempts supply no extra green evidence and are not needed for this pair. No additional verify/pick/edit or per-item QA required. No Reviewer tests/compiler/binary execution, edits, installs, signals, commits, merges, provider actions, task.view journal scan or subagents.
+
+Review artifact A-3656 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3656-t-527-final-evidence-clear-under-exact-accepted-linux-pair.md
+
+Criteria: C1 verified, C2 verified.

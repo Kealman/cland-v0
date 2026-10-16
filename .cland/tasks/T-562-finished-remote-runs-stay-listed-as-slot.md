@@ -17,7 +17,7 @@ blocked_by: []
 topic: topic-352
 branch: t/T-562-finished-remote-runs-stay-listed-as-slot
 created: 2026-10-16T02:03:05.929Z
-updated: 2026-10-16T02:53:51.933Z
+updated: 2026-10-16T03:26:53.320Z
 ---
 
 ## Summary
@@ -90,3 +90,7 @@ Structured finding (tool schema currently lacks findings field): [{severity:low,
 Review artifact A-3624 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3624-t-562-source-clear-at-0f42e138-terminal-receipt-recovery-and-slot-release.md
 
 Criteria: C1 verified, C3 verified.
+
+### impl-562 · 2026-10-16T03:26:53.320Z
+
+Linux 62f32db1 at reviewed0f42e138: all three new cases pass plus 5/5 load gates each; sole failure is verification-workers cache hit assertion. A-3644 records whole-file Mac passes 4/4 on task and dev58696d94, plus a deterministic public-edge reproduction on BOTH heads: an empty done timestamp yields reported=true / finished=null and same-tree cached.run undefined. Head unchanged; shared-fix versus known-signature retry decision requested from lead T-562. No resubmission.

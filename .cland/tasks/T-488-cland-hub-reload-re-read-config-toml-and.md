@@ -3,7 +3,7 @@ id: T-488
 kind: task
 title: "cland hub reload: re-read config.toml and roles.toml without a restart (SIGHUP too)"
 state: open
-status: review
+status: in progress
 size: S
 criterion_seq: 4
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-329
 branch: t/T-488-cland-hub-reload-re-read-config-toml-and
 created: 2026-10-15T11:30:17.553Z
-updated: 2026-10-16T03:10:19.209Z
+updated: 2026-10-16T03:44:03.037Z
 ---
 
 ## Problem
@@ -168,3 +168,16 @@ Delta source clear:37c3f4ef..72faa365 changes only suite-runner.test.ts+4/-2, ex
 Coordinator453f7fb8 independently confirmed: A-3629 accepted Mac hub-phase evidence only; fullmode shared protocol still requires Neovim. After source clear submit once explicit --executor droplet --fresh; receipt must reach Neovim green. Named hub-phaseT-555/T-565 exceptions only. ArtifactA-3632: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3632-t-488-shared-stable-name-delta-source-clear-at-72faa365.md.
 
 Criteria: C1 verified, C2 verified, C4 verified.
+
+### rev-31 · 2026-10-16T03:44:03.037Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261016-488-evidence-3
+commit: 72faa365f61064eec819cf9cea9a48f6f71d6715
+scope: evidence
+
+Evidence not clear. Medium—hub/test/durations.json:3090 lacks measured allowance for new config-reload.test.ts:75 role-refresh identity,6.631s>5s(A-3651:6013). Add exact reasoned measured allowance or reduce runtime while preserving assertions/bounds. Allfiveowncases pass ordinarily+5/5; no task behavior defect inferred, C3 finalgate stays pending.
+Linux59571add/A-3651:1852pass/2fail/3skip,exit1,Neovim not reached. OutsideBugs/S—demo.test.ts:69 start fails demo deadline reached during delivery; not named in prior453f7fb8 exceptions, needs leadclassification. OutsideBugs/S—session-model.test.ts:108 reversed identical childrows is exactknownT-544/postedsort08f09c7c. SourceC1/C2/C4 remain current; no criterion failed by this evidence pass. Any allowance/sharedpick head needs delta before verification; Neovimgreen still required. No Reviewer edits/tests.
+A-3654: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3654-t-488-linux-gate-not-clear-own-duration-budget-and-outside-failures.md (role-refresh declaration is line75; artifact approximate line80 should read75).
