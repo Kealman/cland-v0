@@ -3,7 +3,7 @@ id: T-472
 kind: task
 title: A test red on two branches is flagged as a shared dev defect, so it is not chased per branch
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 3
 labels:
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-356
 branch: t/T-472-a-test-red-on-two-branches-is-flagged-as
 created: 2026-10-15T09:13:16.499Z
-updated: 2026-10-16T05:29:38.268Z
+updated: 2026-10-16T05:30:43.694Z
 ---
 
 ## Summary
@@ -32,12 +32,15 @@ The hub keeps the failing test identities of each task verify result for 72 hour
 - [x] C1. Two task runs on different branches failing the same test produce exactly one `shared-defect` notice naming both runs, and the same branch failing twice does not.
   - done: impl-472 · 2026-10-16T04:37:09.442Z
   - verified: rev-31 [reviewer] · run rev-20261016-472-final · 2026-10-16T05:28:35.991Z · commit bde2582d3d63da18f0364927bdba4a07c045db26
+  - verified: rev-31 [reviewer] · run rev-20261016-472-merge-delta · 2026-10-16T05:30:42.760Z · commit c2d68becc06cd9e4f8e7e7d6324ccf91a1427df2
 - [x] C2. The notice names the commit that last changed the test.
   - done: impl-472 · 2026-10-16T04:37:09.659Z
   - verified: rev-31 [reviewer] · run rev-20261016-472-source · 2026-10-16T04:38:07.041Z · commit bde2582d3d63da18f0364927bdba4a07c045db26
+  - verified: rev-31 [reviewer] · run rev-20261016-472-merge-delta · 2026-10-16T05:30:42.760Z · commit c2d68becc06cd9e4f8e7e7d6324ccf91a1427df2
 - [x] C3. The Implementer and Coordinator clauses describe the notice and the shared-fix path.
   - done: impl-472 · 2026-10-16T04:37:09.871Z
   - verified: rev-31 [reviewer] · run rev-20261016-472-source · 2026-10-16T04:38:07.041Z · commit bde2582d3d63da18f0364927bdba4a07c045db26
+  - verified: rev-31 [reviewer] · run rev-20261016-472-merge-delta · 2026-10-16T05:30:42.760Z · commit c2d68becc06cd9e4f8e7e7d6324ccf91a1427df2
 
 ## Comments
 
@@ -85,3 +88,16 @@ scope: evidence
 Final clear under independently confirmed Coordinator14aa3c33 item-specific disposition. Exact-head Linux A-3742/17f364e5 has1900pass/1 known T-574 failure/4skip, exit1; it is not relabelled an all-green run. Coordinator explicitly accepts this receipt: T-574 fails3/3 alone on dev, proven test-observation race/test-only fix coming, hub-only owes no Neovim phase, no new run/pick. C1 verified: public reporter assertions establish no same-branch candidate, one distinct-branch notice naming both runs/logs, no third-branch duplicate; all five own cases ordinary green and5/5 load, including persistence/expiry/concurrency/parser/clauses. C2/C3 source marks current from A-3714; all three criteria verified. No source findings or per-item QA. A-3743 gate uncertainty resolved by explicit decision. Artifact A-3745: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3745-t-472-final-clear-under-explicit-t-574-gate-disposition.md. No Reviewer edits/tests.
 
 Criteria: C1 verified.
+
+### rev-31 · 2026-10-16T05:30:42.760Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261016-472-merge-delta
+commit: c2d68becc06cd9e4f8e7e7d6324ccf91a1427df2
+scope: delta
+
+Merge delta clear. Parents final-reviewed bde2582d and fetched dev d6af3812. All eleven task source/clause/test/fixture/shard blobs byte-identical to prior final head. Parsed manifest equals exact dev plus unchanged own5.216s reporter allowance/reason; all shared entries retained. Standards/Spec no findings, diff check clear; parse/duration lint/shards reported green. Coordinator ec8f2093 explicitly authorizes merge-only review/no new suite. Prior A-3714 source and A-3745 final/A-3742 evidence remain under independently confirmed14aa3c33 T-574 exception; historical receipt remains exit1, own five cases ordinary/5-of-5 green, accepted hub-only scope owes no Neovim phase. C1/C2/C3 reverified at merge head. Artifact A-3751: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3751-t-472-merge-delta-clear-at-c2d68bec.md. No Reviewer edits/tests.
+
+Criteria: C1 verified, C2 verified, C3 verified.

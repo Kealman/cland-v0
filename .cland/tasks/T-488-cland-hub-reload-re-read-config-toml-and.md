@@ -3,7 +3,7 @@ id: T-488
 kind: task
 title: "cland hub reload: re-read config.toml and roles.toml without a restart (SIGHUP too)"
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 4
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-329
 branch: t/T-488-cland-hub-reload-re-read-config-toml-and
 created: 2026-10-15T11:30:17.553Z
-updated: 2026-10-16T05:29:54.499Z
+updated: 2026-10-16T05:30:11.713Z
 ---
 
 ## Problem
@@ -45,6 +45,7 @@ Add `cland hub reload`, which also runs on SIGHUP. It re-reads `.cland/config.to
 - [x] C3. Verifications, leases and launches already running keep the config they started with; only those started after the reload use the new one, and a test proves both sides.
   - done: impl-488 · 2026-10-15T23:45:40.291Z
   - verified: rev-31 [reviewer] · run rev-20261016-488-final · 2026-10-16T04:18:09.949Z · commit bfc146576230846994be376ebbe073d2188acb92
+  - verified: rev-31 [reviewer] · run rev-20261016-488-merge-final · 2026-10-16T05:30:11.244Z · commit 364c1c22af0191a69673b22b80d29ac839ef6f9b
 - [x] C4. `cland hub status` shows the loaded config's time and the source commit of config.toml.
   - done: impl-488 · 2026-10-15T23:46:10.917Z
   - verified: rev-31 [reviewer] · run rev-20261016-488-source-2 · 2026-10-16T00:01:17.145Z · commit 7b8c92b36c082509ca88ced2ad5efec47b6bac51
@@ -258,3 +259,16 @@ scope: delta
 Delta source clear. Only durations.json+21 lines: independently parsed additions equal exactly posted b4fc313b's five lifecycle allowances/reasons; every prior entry retained. No production/test/assertion/deadline changes, diff check green. Standards/Spec: no findings. C1/C2/C4 source continuity from A-3702 reverified; C3 pending new full exact-head gate. A-3722 ordinary1894green and own/lifecycle5-of-5 behavior supports unchanged code, but Neovim was not reached and no final gate is claimed. Coordinator bf9968a3 authorizes pick and requires fresh full droplet through Neovim after restart notice in announced order; submission hold retained. Artifact A-3725: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3725-t-488-lifecycle-manifest-delta-clear-at-364c1c22.md. No Reviewer edits/tests.
 
 Criteria: C1 verified, C2 verified, C4 verified.
+
+### rev-31 · 2026-10-16T05:30:11.244Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261016-488-merge-final
+commit: 364c1c22af0191a69673b22b80d29ac839ef6f9b
+scope: evidence
+
+Final merged-head clear. A-3748/61aef3bf fresh exact-head full Linux exit0:2291tests/2284pass/0fail/7platformskip. Raw hub free38/38, machine1856pass+4skip, full Neovim390pass+3skip (135.51s). All five own reload cases ordinary green and5/5 load. C3 verified from active/new actual admission+lease snapshot test12.326s and role-refresh/running-launch defaults7.501s with source-reviewed preserved assertions. C1/C2/C4 current from A-3702/A-3725, all4 verified. No known-red exception/batch deferral required; satisfies bf9968a3 full Neovim gate. Lifetime/cost remain unknown, not inferred. Standards/Spec no findings; no per-item QA. Artifact A-3750: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3750-t-488-final-merged-head-full-linux-and-neovim-clear.md. No Reviewer edits/tests.
+
+Criteria: C3 verified.

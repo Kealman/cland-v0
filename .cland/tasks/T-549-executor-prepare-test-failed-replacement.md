@@ -2,8 +2,8 @@
 id: T-549
 kind: task
 title: "executor-prepare test: failed-replacement case leaks a PROCESSWRAP handle past teardown (Linux)"
-state: open
-status: backlog
+state: closed
+status: done
 size: S
 labels:
   - flaky
@@ -13,7 +13,8 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-15T23:50:51.690Z
-updated: 2026-10-15T23:52:43.007Z
+updated: 2026-10-16T05:30:22.553Z
+closed: 2026-10-16T05:30:22.553Z
 ---
 
 ## Summary
@@ -28,3 +29,7 @@ In T-545's droplet verify a7054c63 at 3847de33 (2026-10-15 23:50Z, c-8 lon1; log
 ### coord · 2026-10-15T23:52:43.007Z
 
 Reviewer note (relayed by impl-545, 23:51Z): rev-30 classes this executor-prepare.test.ts:198 PROCESSWRAP after-hook leak as the T-523 family, the same leaked-handle class it saw in T-474. When T-523 is taken, check whether one fix covers both. If it does, close this as a duplicate of T-523.
+
+### coord · 2026-10-16T05:30:22.553Z
+
+Closed as a duplicate of T-523, merged 2026-10-16 05:30Z as 6e980770. T-523's failed-replacement change in executor-prepare.test.ts removes the PROCESSWRAP handle leak past teardown. Its Linux receipt 2ec4adba showed no PROCESSWRAP leak, and its merged head passed executor-prepare.test.ts whole on the Mac, inside A-3738.
