@@ -2,8 +2,8 @@
 id: T-505
 kind: task
 title: "session-events and session-model tests: 5000 ms frame waits after a launch miss on a loaded droplet"
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-344
 branch: t/T-505-session-events-and-session-model-tests
 created: 2026-10-15T15:16:05.074Z
-updated: 2026-10-16T02:36:33.940Z
+updated: 2026-10-16T02:38:15.137Z
+closed: 2026-10-16T02:38:15.137Z
 ---
 
 ## Problem
@@ -138,3 +139,7 @@ C2 verified from the complete Mac sequence plus actual accepted Linux file compl
 Review artifact A-3610 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3610-t-505-final-evidence-clear-at-9fe0b61c-with-recovered-linux-metadata.md
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-16T02:38:15.137Z
+
+Merged 13696533901293af71d70eef18595fdd8e8eb253 onto dev.
