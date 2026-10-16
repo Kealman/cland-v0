@@ -2,8 +2,8 @@
 id: T-680
 kind: task
 title: "A droplet run typechecks once: the host gate's result travels with the candidate tree hash"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -16,7 +16,8 @@ blocked_by: []
 topic: topic-409
 branch: t/T-680-a-droplet-run-typechecks-once-the-host
 created: 2026-10-16T19:59:27.759Z
-updated: 2026-10-16T21:49:25.390Z
+updated: 2026-10-16T23:28:10.646Z
+closed: 2026-10-16T23:28:10.646Z
 ---
 
 ## Summary
@@ -105,3 +106,7 @@ finding_counts: {"high":0,"medium":0,"low":1}
 Final evidence clear; Standards1low/Spec0 findings, A-4216. Independently inspected exact-head973ff557/A-4215 exit0:1999pass/0fail/5skip including Neovim smoke12of12. Candidate-code real delivered-worker reuse proof, corrected Linux-home mismatch/remoteexit3 stop-before-tests control, local exactly-one-check/provenance and sharded-close regression allgreen. C1 verified; C2/C3 source-2/A-4204 marks current, all claimant done marks present. Outer hub bootstrap still pre-T-680, not production rollout proof; former C4 lifetimegain remains epicdemo. Low broad T3 target retained/report-only; no high/medium. Lifetime2510s/cost$0.1743 perhub. No Reviewer edits/tests.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-16T23:28:10.646Z
+
+Merged 463441c8292152cc2832add2df5c3a7ad97efa32 onto dev.
