@@ -10,10 +10,10 @@ labels:
 assignee: null
 parent: R-294
 blocked_by: []
-topic: null
+topic: topic-345
 branch: null
 created: 2026-10-14T16:43:04.090Z
-updated: 2026-10-15T09:13:29.838Z
+updated: 2026-10-16T00:32:17.243Z
 ---
 
 ## Summary
@@ -149,6 +149,13 @@ stages:
     lanes:
       - - T-473
       - - T-474
+  - name: Definition-of-done demo findings
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-550
+      - - T-551
 ```
 
 ## Comments
@@ -169,3 +176,7 @@ Coordinator decisions at ticketing (2026-10-15 07:20Z). Tickets: T-454 heartbeat
 11. The demo lease (T-459) is for QA holding the epic, the Coordinator and the human. The hub creates the droplet.
 12. Clause edits go in both default-roles.ts and .cland/roles.toml.
 The stand-in may revisit any of these under D24.
+
+### hub · 2026-10-16T00:24:56.101Z
+
+demo 24539655-3b81-4427-aadf-95272aa17603 created: droplet cland-v0-24539655, commit cdad9cdc964f47040aa9762aa59c58a5c822a2cc, deadline 2026-10-16T01:13:36.724Z.

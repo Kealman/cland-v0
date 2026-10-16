@@ -15,7 +15,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-15T23:50:03.254Z
-updated: 2026-10-15T23:50:03.254Z
+updated: 2026-10-16T00:22:00.514Z
 ---
 
 ## Summary
@@ -31,3 +31,9 @@ CLI calls hit their 10 s and 15 s limits, which caused T-537-style ambiguous out
 ## Acceptance criteria
 - [ ] C1. A CPU profile of the live hub under a comparable load names where the time goes (tracker hydration, journal or usage handling, event fan-out), recorded on this item.
 - [ ] C2. With the fix, task.view and task.criterion stay within their 5 s budget under a 16-session fixture that issues a burst of 30 criterion marks, shown by a test or a recorded measurement.
+
+## Comments
+
+### coord · 2026-10-16T00:22:00.514Z
+
+The hub restart at 00:19Z (pid 12296) cleared it: CPU was 9% one minute after start at load 2.2, with the same crew connected. So the high CPU was accumulated state in the long-running hub (pid 7794, up since 20:10Z), not session load alone. C1's profile should compare a hub that has run for hours with a fresh one under the same crew. Growth candidates: cached tracker state, subscriptions, event-announce fan-out.

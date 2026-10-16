@@ -3,17 +3,17 @@ id: T-500
 kind: task
 title: remote-fixture test hub outlives a dead or timed-out test (orphan hub serve in remote-run-* dirs)
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - ready-for-agent
 assignee: null
 parent: E-482
 blocked_by: []
-topic: null
-branch: null
+topic: topic-343
+branch: t/T-500-remote-fixture-test-hub-outlives-a-dead
 created: 2026-10-15T14:10:39.101Z
-updated: 2026-10-15T23:02:33.522Z
+updated: 2026-10-16T00:26:03.564Z
 ---
 
 ## Problem
@@ -24,7 +24,7 @@ updated: 2026-10-15T23:02:33.522Z
 
 - [ ] C1. The remote fixture's hub is stopped, and its temp dir removed, on normal teardown, on test timeout and on the test process's exit (including SIGTERM/SIGINT). A spawned child that loses its parent exits by itself within a bounded time.
 - [ ] C2. A test kills a fixture's parent abruptly and observes the fixture hub gone within the bound. remote-fixture users pass 5/5 serially on the Mac.
-- [ ] C3. A droplet watchdog exits when its owning hub process dies, including a fixture hub that gets SIGTERM, so no watchdog is left reparented to launchd (seen 2026-10-15 23:00Z: pids 50008 and 50071 outlived fixture hub 36962 and needed their own SIGTERM).
+- [ ] C3. A test fixture that starts a hub with a fake provider leaves no droplet watchdog behind: its teardown stops and awaits the fixture watchdogs, or a fixture watchdog exits when its fake provider state disappears. Seen 2026-10-15 23:00Z: pids 50008 and 50071 outlived fixture hub 36962. Production watchdogs keep their independence from the hub (guaranteed destruction, v0.1.2 §3.14, executor-droplet.test.ts:169) unchanged.
 
 ## Comments
 
@@ -39,3 +39,7 @@ A second leak pattern, from the stand-in at 17:49Z: a `node -e` fake child (pid 
 ### human · 2026-10-15T23:02:15.811Z
 
 Orphan reaped by cland-impl, 2026-10-15 23:00Z, at coord's request: a fixture hub serve from the T-469 worktree (pid 36962, ppid 1, age 1h40m, cwd $TMPDIR/remote-run-YP1j6b) running since ~21:21Z, when impl-469 interrupted its targeted stage-cover run. SIGTERM to 36962 ended the hub, but its two droplet watchdog children (hub/src/executor/droplet/watchdog.ts, pids 50008 and 50071, same cwd) were reparented to launchd and kept running; they needed their own SIGTERM. Same pattern as the 14:12Z reap (pid 76123, remote-run-QRokzy). Dirs remote-run-QRokzy, -YP1j6b and -ZYtvuT remain in $TMPDIR for the cleanup this ticket adds. Note for the fix: the watchdogs must die with their parent (process group or a parent-death watch).
+
+### impl-500 · 2026-10-16T00:26:03.564Z
+
+Red reproduction: node --test --test-name-pattern='owner SIGKILL' hub/test/remote-fixture-lifecycle.test.ts failed because the actual remote-fixture hub remained alive past the 5s bound. Implementing a test-only IPC reaper and explicit detached writer/watchdog cleanup; production watchdog behavior remains unchanged per Coordinator decision.
