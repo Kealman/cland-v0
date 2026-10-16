@@ -78,7 +78,9 @@ test('close rechecks a child reopened during the parent temporary write before r
   await gate.arm();
   const close = ui.request({ type: 'task.close', item: 'T-1' });
   await gate.entered();
-  await writeFile(child, (await readFile(child, 'utf8')).replace('state: closed', 'state: open'));
+  // Reopen both workflow fields so the watcher has no unrelated status-migration
+  // temp write racing the directory-wide cleanup assertion below.
+  await writeFile(child, (await readFile(child, 'utf8')).replace('state: closed', 'state: open').replace('status: done', 'status: backlog'));
   await gate.release();
   const refused = await close;
   assert.equal(refused.ok, false);
