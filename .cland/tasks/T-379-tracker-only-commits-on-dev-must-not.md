@@ -3,7 +3,7 @@ id: T-379
 kind: task
 title: Tracker-only commits on dev must not cancel or invalidate an integrated dev run
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 3
 labels:
@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-375
 branch: t/T-379-tracker-only-commits-on-dev-must-not
 created: 2026-10-14T08:41:13.625Z
-updated: 2026-10-16T16:35:40.667Z
+updated: 2026-10-16T17:10:04.722Z
 ---
 
 ## What happened
@@ -32,14 +32,18 @@ A run's identity should follow the tree it verifies, not dev's head: commits tha
 
 - [x] C1. A commit on dev that changes only tracker paths (`.cland/tasks`) or the rulebook (`.cland/RULES.md`) leaves a queued or running dev run in place and its result covers the new head. Docs stay suite inputs, because tests assert their text (narrowed by the Coordinator on 2026-10-16, matching E-579 C1 and C3).
   - done: impl-379 · 2026-10-16T16:35:40.667Z
+  - verified: rev-31 [reviewer] · run rev-20261016-379-final · 2026-10-16T17:07:07.122Z · commit 621bbf2bae30c0d1e41cc9bb0f29afe52a880391
+  - verified: rev-31 [reviewer] · run rev-20261016-379-merge-delta · 2026-10-16T17:10:02.835Z · commit fee0db6b8c4f1dba13bc37b77744494e0c0aef81
 - [x] C2. The paths that count as suite inputs are the same set the tree-hash cache uses, defined once.
   - done: impl-379 · 2026-10-16T15:55:39.514Z
   - verified: rev-31 [reviewer] · run rev-20261016-379-source-2 · 2026-10-16T16:03:12.625Z · commit 1263d9bba15f2076c5961519acdbe8f1caeddc22
   - verified: rev-31 [reviewer] · run rev-20261016-379-delta-1 · 2026-10-16T16:35:27.177Z · commit 621bbf2bae30c0d1e41cc9bb0f29afe52a880391
+  - verified: rev-31 [reviewer] · run rev-20261016-379-merge-delta · 2026-10-16T17:10:02.835Z · commit fee0db6b8c4f1dba13bc37b77744494e0c0aef81
 - [x] C3. The behaviour is covered by a hub test with a fake run.
   - done: impl-379 · 2026-10-16T15:55:40.211Z
   - verified: rev-31 [reviewer] · run rev-20261016-379-source-2 · 2026-10-16T16:03:12.625Z · commit 1263d9bba15f2076c5961519acdbe8f1caeddc22
   - verified: rev-31 [reviewer] · run rev-20261016-379-delta-1 · 2026-10-16T16:35:27.177Z · commit 621bbf2bae30c0d1e41cc9bb0f29afe52a880391
+  - verified: rev-31 [reviewer] · run rev-20261016-379-merge-delta · 2026-10-16T17:10:02.835Z · commit fee0db6b8c4f1dba13bc37b77744494e0c0aef81
 
 ## Comments
 
@@ -120,3 +124,37 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Source delta clear, A-4016; Standards0/Spec0 findings. Only three measured A-4013 Linux allowance entries added (5.713784751/6.789143906/5.021503454s), each concrete fixture-lifecycle reason and own5of5 load evidence. Independent parsed comparison preserves every prior allow value and all other manifest data. No dev merge/source/test/assertion/bound change; A-3958 corrected design remains. Exact-head typecheck/shards reportedgreen; origin/diffcheck independently confirmed. C2/C3 source verification current at621bbf2b. C1 awaits fresh same-head gate; historical exit1 is not retroactively green.
 
 Criteria: C2 verified, C3 verified.
+
+### impl-379 · 2026-10-16T17:06:54.052Z
+
+Same-head explicit-droplet no-mode verification 697aca2b-33d3-4579-9e72-5d5cfdc60b14 passed at reviewed head 621bbf2bae30c0d1e41cc9bb0f29afe52a880391: auto exit 0, hub-only plus Neovim smoke, 1972 tests / 1967 pass / 0 fail / 5 skipped. Linux c-8, suite duration 1320.09s. Receipt A-4043: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-4043-suite-697aca2b-33d3-4579-9e72-5d5cfdc60b14-auto-at-621bbf2.log. Reviewer received the result directly and settles the final verdict; head unchanged.
+
+### rev-31 · 2026-10-16T17:07:07.122Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261016-379-final
+commit: 621bbf2bae30c0d1e41cc9bb0f29afe52a880391
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear, Standards0/Spec0 findings; A-4044. Same-head post-review Linux697aca2b/A-4043 exit0:1967pass/0fail/5skip including Neovimsmoke12of12. All12 task identities5of5 load repetitions: queued/running administrative commits/cache reuse, source cancellation, remote provenance, canonical inputs and five controlled hash-overlap modes. Former source race and missing allowance findings resolved with corrected-head execution evidence. C1 verified; C2/C3 current under delta1 at621bbf2b. Origin tip unchanged. No gate exception/further run needed; lifetime/cost explicitlyunknown.
+
+Criteria: C1 verified.
+
+### rev-31 · 2026-10-16T17:10:02.835Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261016-379-merge-delta
+commit: fee0db6b8c4f1dba13bc37b77744494e0c0aef81
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Merge delta clear; Standards0/Spec0 findings, A-4048. Independently read Coordinatorcb58625d authorizing dev merge, exact union and no new run. Parents621bbf2b+68765997 confirmed. All10 task implementation/test/shard blobs unchanged; README auto-merge preserves canonical inputs/provenance docs. Manifest parsed exact dev277allow entries in order +six unchanged task entries; all other data unchanged, conflict diff insertion only. Exact-head typecheck reportedgreen; ref/diffcheck independentlyclear. C1–C3 continuity atfee0db6b under explicit no-new-run disposition using prior green A-4043/finalA-4044; no exact-merge-head suite claimed. Coordinator next batch cover before restart remains. No Reviewer edits/tests.
+
+Criteria: C1 verified, C2 verified, C3 verified.

@@ -3,7 +3,7 @@ id: T-635
 kind: task
 title: cland models <harness> lists the harness's model ids from a cached probe
 state: open
-status: review
+status: in progress
 size: M
 criterion_seq: 6
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-391
 branch: t/T-635-cland-models-harness-lists-the-harness-s
 created: 2026-10-16T16:04:12.499Z
-updated: 2026-10-16T16:32:58.486Z
+updated: 2026-10-16T17:10:00.946Z
 ---
 
 ## Summary
@@ -45,8 +45,8 @@ updated: 2026-10-16T16:32:58.486Z
   - verified: rev-30 [reviewer] · run rev-20261016-635-source · 2026-10-16T16:28:49.387Z · commit 396d635928d01a75e7cbee88561ca0458a05fd33
   - done: impl-635 · 2026-10-16T16:30:29.570Z
   - verified: rev-30 [reviewer] · run rev-20261016-635-path-delta · 2026-10-16T16:32:28.971Z · commit a1bef9deff1c54d971f922d75de2f30389a25d26
-- [x] C5. A failing probe answers the cached list with its age, or with no cache fails with the probe's error, and a harness not installed fails with doctor's not-installed line.
-  - done: impl-635 · 2026-10-16T16:30:30.233Z
+- [ ] C5. A failing probe answers the cached list with its age, or with no cache fails with the probe's error, and a harness not installed fails with doctor's not-installed line.
+  - failed: rev-30 [reviewer] · 2026-10-16T17:10:00.946Z · note Failed-refresh case misses 5 s budget (7.627 s), plus T-635's new startup dependency breaks copied-source coverage fixture; Neovim not reached. A-4047.
 - [x] C6. `--account <name>` probes in that account's environment and keeps its cache apart from the default's, and `--json` prints the documented shape.
   - done: impl-635 · 2026-10-16T16:30:31.102Z
 
@@ -147,3 +147,29 @@ Criteria: C4 verified.
 ### impl-635 · 2026-10-16T16:32:58.486Z
 
 Delta source clear at a1bef9deff1c54d971f922d75de2f30389a25d26, rev-20261016-635-path-delta (A-4012), no remaining findings. Submitted exact-head verification 8130ab79-10d4-4fe5-abd4-7b7a9c3b5251 with --executor droplet and no mode; queue position 3 at submission, worker pending. Result routes to Reviewer and item lead in topic-391. Going idle until the hub result.
+
+### rev-30 · 2026-10-16T17:10:00.946Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261016-635-gate-red
+commit: a1bef9deff1c54d971f922d75de2f30389a25d26
+scope: evidence
+findings: [{"severity":"medium","text":"M1: New failed-refresh/cache-error case passes but takes 7.626969842 s without the required exact-identity reasoned allowance; task gate fails its duration budget.","file":"hub/test/models.test.ts","line":75},{"severity":"medium","text":"M2: New static doctor/toolchain import pulls nvim/bin/nvim-path.ts into hub startup, but the real-production-source coverage fixture copies only hub sources and lacks that file. Ordinary execution and 0/5 repetitions fail ERR_MODULE_NOT_FOUND. Fix the fixture source closure or shared dependency seam, retaining its coverage assertions.","file":"hub/src/models.ts","line":11}]
+finding_counts: {"high":0,"medium":2,"low":0}
+
+T-635 evidence not clear at a1bef9deff1c54d971f922d75de2f30389a25d26. A-4045 / 8130ab79-10d4-4fe5-abd4-7b7a9c3b5251 is exact-head Linux c-8 evidence: 1955 tests, 1948 pass, two ordinary failures, five unrelated prerequisite skips; full-mode Neovim not reached. Exit 1, suite 1447.08 s, peak load 13.59, lifetime 1518 s, $0.1054. Host/remote typechecks complete.
+
+All six models.test.ts identities pass ordinarily and each 5/5 load repetitions (30/30). Failed-refresh behavior passes in 7.626969842 s, account case 8.444470601 s (existing reasoned allowance), relative-PATH regression 0.978925524 s. This is positive owned behavior evidence, not a green overall gate.
+
+Medium M1 — hub/test/models.test.ts:75: new failed-refresh/cache-error case exceeds the 5 s budget (7.627 s) without an exact reasoned allowance. Add its measured allowance or correct a demonstrated avoidable delay; source-review the resulting head before another task run.
+
+Medium M2 — hub/src/models.ts:11: new static import of harnessInstallation from doctor/toolchain.ts introduces that module's static ../../../nvim/bin/nvim-path.ts dependency into ordinary hub startup (dispatch.ts:1 imports HarnessModels). The production-source coverage fixture copies hub/src and hub/bin but only creates nvim/test; its new import graph cannot resolve nvim/bin/nvim-path.ts. A-4045:4426 states the exact missing module, and this case fails ordinarily and 0/5 repetitions. This is an integration consequence of T-635, not an unrelated load flake. Update the fixture's required source closure or narrow the shared installation module dependency, preserving its real CLI/daemon/spoke coverage assertions and malformed-receipt checks; prove the affected whole file after correction. No Reviewer process reproduction was run.
+
+The other ordinary red is hub/test/suite.test.ts:52, process.kill(job.pid!, SIGKILL) receives null (A-4045:4472–4479). Its historical cause/classification is not established by this receipt; report to lead T-635 as an S Bugs candidate for Coordinator classification rather than assuming the missing-module cause or known status. No other hard budget line appears in the full tail.
+
+C4 source policy proof remains applicable. C1–C3/C5/C6 final execution acceptance remains pending; C5 failed for the owned budget and unresolved integration gate. No unchanged retry is appropriate while these owned fixes remain. Fresh source review is required for any corrected head, then normal verification including Neovim.
+Review artifact A-4047.
+
+Criteria: C5 failed (Failed-refresh case misses 5 s budget (7.627 s), plus T-635's new startup dependency breaks copied-source coverage fixture; Neovim not reached. A-4047.).

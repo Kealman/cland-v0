@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-376
 branch: t/T-575-in-process-hub-part-3-bring-daemon
 created: 2026-10-16T06:12:55.788Z
-updated: 2026-10-16T16:18:12.076Z
+updated: 2026-10-16T16:57:51.422Z
 ---
 
 ## Summary
@@ -25,6 +25,7 @@ T-466's full Mac census at 88a3630e (A-3775) measured 743 daemon starts per full
 - [x] C1. The next files from A-3775's ranking move to the in-process hub, with their lifecycle tests kept spawned and their assertions unchanged, and an audit posted.
   - done: impl-575 · 2026-10-16T16:15:12.948Z
   - verified: rev-30 [reviewer] · run rev-20261016-575-source · 2026-10-16T16:18:12.076Z · commit a8ddbb8c39e51ce26f8aab1c925d6c189b9b2524
+  - verified: rev-30 [reviewer] · run rev-20261016-575-task-evidence · 2026-10-16T16:57:51.422Z · commit a8ddbb8c39e51ce26f8aab1c925d6c189b9b2524
 - [ ] C2. A full-run spawn census after a durations refresh shows daemon starts under 600, with the per-file table recorded.
 
 ## Comments
@@ -79,5 +80,31 @@ Source clear, C1 verified; C2 and final evidence pending. Per request, next veri
 
 Standards 0 findings; Spec 0 findings.
 Artifact: A-3992 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3992-t-575-source-clear-27-migrations-retain-lifecycle-boundaries-and-assertions.md
+
+Criteria: C1 verified.
+
+### impl-575 · 2026-10-16T16:57:46.934Z
+
+Source-reviewed a8ddbb8c39e51ce26f8aab1c925d6c189b9b2524 now has green same-head droplet verification a1c7e5e6-19ef-499a-af54-150f3b60485d, A-4039: auto selected full for mixed hub/nvim paths; exit 0, 2341 tests / 2333 pass / 8 skipped / 0 fail. Linux c-8 lon1, lifetime 1860s, $0.1291. C1 remains source-verified; C2 still awaits the Coordinator-owned durations refresh/full Mac spawn census and per-file measured table per decision 23a58883. Coordinator notified to start that step. No head changes or new tests.
+
+### rev-30 · 2026-10-16T16:57:51.422Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-575-task-evidence
+commit: a8ddbb8c39e51ce26f8aab1c925d6c189b9b2524
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-575 task-suite evidence clear at unchanged reviewed a8ddbb8c39e51ce26f8aab1c925d6c189b9b2524. No findings; source audit A-3992 remains applicable.
+
+Independently inspected A-4039 for a1c7e5e6-19ef-499a-af54-150f3b60485d. Header ties it to the exact head. Host/remote typechecks complete; normal diff selection expands to full because both hub and Neovim paths changed. Hub free 38/38, hub machine 1905 pass/zero fail/five prerequisite skips, full Neovim 390 pass/zero fail/three macOS sandbox skips. Aggregate 2341 tests, 2333 pass, zero fail, eight skips; Finished exit 0. No hard duration or load-gate failure. This validates the migrations and retained lifecycle cases across the full package run.
+
+Linux x64 c-8 lon1, Node 24.21.0, Neovim 0.12.5, four workers; suite 1779.45 s, peak load 15.47; lifetime 1860 s, cost $0.1291. Routine duration-regression notices do not fail this receipt.
+
+C1 remains verified. C2 remains unverified and not done: the unchanged live criterion requires a full-run spawn census after durations refresh, measured daemon starts under 600 and the per-file table. A-4039 is not that macOS census and the source projection of 156 removals is not a measured count. Per recorded Coordinator ownership (23a58883), green exact-head verification now supplies the prerequisite for that measurement. No further task verification is needed unless a head change or failure requires it; final criterion settlement awaits the census.
+Review artifact A-4040.
 
 Criteria: C1 verified.
