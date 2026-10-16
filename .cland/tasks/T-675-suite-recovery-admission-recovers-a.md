@@ -2,8 +2,8 @@
 id: T-675
 kind: task
 title: suite-recovery 'admission recovers a borrowed planned root…' kills the launch snapshot's pid; use T-526's pid observer
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -17,7 +17,8 @@ blocked_by:
 topic: topic-407
 branch: t/T-675-suite-recovery-admission-recovers-a
 created: 2026-10-16T19:13:55.940Z
-updated: 2026-10-16T20:17:56.377Z
+updated: 2026-10-16T20:18:23.116Z
+closed: 2026-10-16T20:18:23.116Z
 ---
 
 ## Summary
@@ -91,3 +92,7 @@ C1/C2 verified at the exact reviewed head. No per-item QA or further task run re
 Review artifact A-4185.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-16T20:18:23.116Z
+
+Merged c42e792c60acb6ed3d578199969290df5010e898 onto dev.
