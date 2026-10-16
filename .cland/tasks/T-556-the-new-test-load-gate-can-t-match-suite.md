@@ -2,8 +2,8 @@
 id: T-556
 kind: task
 title: The new-test load gate can't match suite-runner tests with dynamic names (0/5 repetitions)
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -16,7 +16,8 @@ regression_of: T-471
 topic: topic-350
 branch: t/T-556-the-new-test-load-gate-can-t-match-suite
 created: 2026-10-16T01:06:55.783Z
-updated: 2026-10-16T02:27:02.735Z
+updated: 2026-10-16T02:27:49.110Z
+closed: 2026-10-16T02:27:49.110Z
 ---
 
 ## Summary
@@ -66,3 +67,7 @@ Explicit Coordinator decision1e88d775-2460-49e6-b762-dbbe5af1de68 read in topic 
 Full evidenceA-3593: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3593-t-556-final-evidence-clear-under-batch-linux-deferral.md. No Reviewer edits/tests.
 
 Criteria: C2 verified.
+
+### coord · 2026-10-16T02:27:49.109Z
+
+Merged 576404e85b072f233a2379a94fc8f0d8b710f04f onto dev.
