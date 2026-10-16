@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { withTerritoryLock, withTerritoryLockAsync } from '../src/territory.ts';
-import { tempProject } from './harness.ts';
+import { eventually, tempProject } from './harness.ts';
 import { ownProcess } from './process-cleanup.ts';
 
 test('an async territory operation keeps overlapping callers out until its promise settles', async (t) => {
@@ -36,12 +36,17 @@ test('a rejected async operation releases the territory lock and preserves its r
 test('the hub\'s non-blocking territory lock excludes the synchronous one both ways, breaks a stale lock and releases on rejection', async (t) => {
   const root = await tempProject(t);
   const pending = Promise.withResolvers<string>();
-  const first = withTerritoryLockAsync(root, async () => pending.promise);
-  // while the hub holds it (once its own start time is probed), init's synchronous lock and a second hub operation are refused
-  await new Promise((r) => setTimeout(r, 100));
-  assert.throws(() => withTerritoryLock(root, () => 'init'), /another territory operation holds the lock/);
-  await assert.rejects(withTerritoryLockAsync(root, async () => 'second'), /another territory operation holds the lock/);
-  pending.resolve('finished');
+  let entered = false;
+  const first = withTerritoryLockAsync(root, async () => { entered = true; return pending.promise; });
+  try {
+    // The callback starts only after acquisition completes; elapsed time cannot prove the lock is held.
+    await eventually('first territory lock holder entered', () => entered || undefined);
+    assert.throws(() => withTerritoryLock(root, () => 'init'), /another territory operation holds the lock/);
+    await assert.rejects(withTerritoryLockAsync(root, async () => 'second'), /another territory operation holds the lock/);
+  } finally {
+    pending.resolve('finished');
+    await first;
+  }
   assert.equal(await first, 'finished');
   // and the hub's is refused while the synchronous one is held
   const held = withTerritoryLock(root, async () => {
