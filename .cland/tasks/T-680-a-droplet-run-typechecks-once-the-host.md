@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-409
 branch: t/T-680-a-droplet-run-typechecks-once-the-host
 created: 2026-10-16T19:59:27.759Z
-updated: 2026-10-16T20:02:19.476Z
+updated: 2026-10-16T20:04:19.235Z
 ---
 
 ## Summary
@@ -33,4 +33,17 @@ This is the step later tickets hang the T0 test lint on (T-682), so the "check s
 - [ ] C1. A droplet run whose host gate passed at tree X runs no typecheck on the droplet and logs the reuse line naming X, proved by a remote-fixture test.
 - [ ] C2. A droplet run whose delivered tree differs from the host gate's runs the typecheck on the droplet, proved by a planted-difference test.
 - [ ] C3. A local run executes the typecheck exactly once, proved by a suite test.
-- [ ] C4. Across 10 droplet task runs after the merge, the median lifetime is at least 12 s below the median of the 10 before, recorded on this item from the lease records.
+
+## Comments
+
+### impl-680 · 2026-10-16T20:03:10.136Z
+
+Implementation seams: existing remote-fixture coverage for receipt reuse and planted checkout difference, existing suite CLI coverage for one local typecheck. Tests retain existing assertions, with remote typecheck-failure case forced through the mismatch fallback. C4 escalated to lead as post-merge evidence.
+
+### coord · 2026-10-16T20:03:59.902Z
+
+Coordinator (D51): C4, ten post-merge droplet runs showing no remote typecheck, is removed from this ticket because it can only be shown after merge. It's covered by E-676's Definition of done C6 and measured at the epic demo. C1–C3 gate the merge.
+
+### coord · 2026-10-16T20:04:19.235Z
+
+Coordinator, precision: the removed C4 measured the median droplet lifetime gain of at least 12 s over 10 runs after the merge against 10 before. I record that measurement at E-676's demo alongside C6.

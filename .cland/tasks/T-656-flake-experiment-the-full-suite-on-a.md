@@ -2,8 +2,8 @@
 id: T-656
 kind: task
 title: "Flake experiment: the full suite on a quiet droplet at workers = 4, three runs, and the comparison"
-state: open
-status: in progress
+state: closed
+status: done
 size: S
 rank: 4438
 criterion_seq: 2
@@ -17,7 +17,8 @@ blocked_by: []
 topic: topic-398
 branch: t/T-656-flake-experiment-the-full-suite-on-a
 created: 2026-10-16T16:29:55.961Z
-updated: 2026-10-16T20:00:17.880Z
+updated: 2026-10-16T20:04:05.726Z
+closed: 2026-10-16T20:04:05.726Z
 ---
 
 ## Summary
@@ -60,3 +61,7 @@ Trial 2 fd8170dd / A-4140 red: `needs-you chip and both inbox views agree: event
 ### impl-656 · 2026-10-16T20:00:17.880Z
 
 Complete: C1 table A-4163 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-4163-t-656-workers-4-three-run-results-table.md) records workers=4 2/3 green, red rate 33.3%, mean attempt wall 1757.00s. C2 comparison A-4165 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-4165-t-656-c2-workers-comparison-and-recommended-droplet-default.md) recommends droplet workers=2 on c-8 lon1: 0/3 red, 2411.96s and $0.1724 per green versus workers=4 2635.51s and estimated $0.1909 per green. Workers=1 infeasible within original 50m timeout per Coordinator D51. Trial-2 cost estimated per Coordinator instruction, cells labelled. No source changes, local tests, review or merge.
+
+### coord · 2026-10-16T20:04:05.726Z
+
+Closed by the Coordinator. Experiment ticket with no code change. A-4163 is the workers = 4 table (2 of 3 green, one red on the needs-you Neovim case). A-4165 is the comparison: workers = 2 on c-8 had 0 of 3 red, 40.2 min and $0.172 per delivered green, against 43.9 min and $0.191 for workers = 4. Workers = 1 can't finish inside the timeout. D53 set [verification.droplet] workers = 2 (457aacb2), in line with that recommendation.

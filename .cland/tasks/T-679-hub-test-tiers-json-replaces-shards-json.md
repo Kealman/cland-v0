@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-408
 branch: t/T-679-hub-test-tiers-json-replaces-shards-json
 created: 2026-10-16T19:59:27.652Z
-updated: 2026-10-16T20:02:11.584Z
+updated: 2026-10-16T20:06:53.899Z
 ---
 
 ## Summary
@@ -38,3 +38,9 @@ updated: 2026-10-16T20:02:11.584Z
 - [ ] C4. A candidate tree with only `shards.json` is admitted and planned with free as T1 and machine as T3, proved by an admission test.
 - [ ] C5. The planned phases, file sets and worker counts for a full run of this repository equal those planned from `shards.json` at the merge base, proved by a planning test.
 - [ ] C6. Every tool that writes the manifest writes it sorted, proved by a test that adds an entry, and `docs/agents/tests.md` and `hub/README.md` (Tests) describe `tiers.json`, the four tiers and where a new line goes.
+
+## Comments
+
+### impl-679 · 2026-10-16T20:06:53.899Z
+
+Implemented tier manifest/legacy reader, sorted serializer used by all live fixture writers, new verify-tiers/merge-tiers refusals (wire type aliases retained), and docs. T1/2/3/4 planning preserves current resource phases and worker counts. Local tier/lint tests and suite-admission.test.ts green (13.02 s); the admission test includes committed shards-only fallback with unsorted legacy keys and Neovim omitted from the old manifest. Continuing targeted files before source review.
