@@ -3,7 +3,7 @@ id: T-639
 kind: task
 title: "Init tests run on a scratch machine: a temporary HOME, Git configuration and the folder kinds init meets"
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 4
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-395
 branch: t/T-639-init-tests-run-on-a-scratch-machine-a
 created: 2026-10-16T16:23:56.312Z
-updated: 2026-10-16T16:32:22.294Z
+updated: 2026-10-16T17:35:49.138Z
 ---
 
 ## Summary
@@ -36,13 +36,17 @@ A test fixture gives every init test of this epic a scratch machine: a temporary
 
 - [x] C1. A `cland` process started through `initIn` sees the scratch HOME as `HOME`, and `git config user.email` run in its folders prints nothing on a machine made with `identity: false` (init-machine.test.ts).
   - done: impl-639 · 2026-10-16T16:32:19.144Z
+  - verified: rev-30 [reviewer] · run rev-20261016-639-final · 2026-10-16T17:35:46.965Z · commit faa26007c541970dc43212d5075ad852e18ddc63
 - [x] C2. Each folder builder yields its kind as Git reports it: no repository, `rev-parse --verify HEAD` failing for the repository without commits, `origin/HEAD` naming `master` for the clone, and `rev-parse --is-shallow-repository` printing `true` for the shallow clone (init-machine.test.ts).
   - done: impl-639 · 2026-10-16T16:32:20.341Z
+  - verified: rev-30 [reviewer] · run rev-20261016-639-final · 2026-10-16T17:35:46.965Z · commit faa26007c541970dc43212d5075ad852e18ddc63
 - [x] C3. `snapshot` reports a file written outside the excepted folder and ignores one written inside it (init-machine.test.ts).
   - done: impl-639 · 2026-10-16T16:32:21.216Z
+  - verified: rev-30 [reviewer] · run rev-20261016-639-final · 2026-10-16T17:35:46.965Z · commit faa26007c541970dc43212d5075ad852e18ddc63
 - [x] C4. No file under the real HOME is read or written by the self-test: the fixture never falls back to `os.homedir()` (the self-test runs with `HOME` pointing at a folder it checks is untouched).
   - verified: rev-30 [reviewer] · run rev-20261016-639-source · 2026-10-16T16:31:46.844Z · commit faa26007c541970dc43212d5075ad852e18ddc63
   - done: impl-639 · 2026-10-16T16:32:22.294Z
+  - verified: rev-30 [reviewer] · run rev-20261016-639-final · 2026-10-16T17:35:46.965Z · commit faa26007c541970dc43212d5075ad852e18ddc63
 
 ## Comments
 
@@ -94,3 +98,31 @@ Standards 0 findings; Spec 0 findings.
 Artifact: A-4011 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-4011-t-639-source-clear-isolated-init-machine-and-folder-builders.md
 
 Criteria: C4 verified.
+
+### impl-639 · 2026-10-16T17:35:29.968Z
+
+Same-head Linux droplet verification 34d59d74-02a7-41bf-93fa-55d6bacb51b8 passed at faa26007c541970dc43212d5075ad852e18ddc63: exit 0, 1,967 tests / 1,962 pass / 0 fail / 5 skip. A-4075 contains host and remote typecheck, fixture wrapper 1.779 s (line 5000), and its 5/5 load-gate repetitions (line 1536). c-8 lon1 Linux x64, lifetime 1,385 s, cost $0.0962. C1–C4 done marks already recorded; awaiting Reviewer's final evidence verdict. No source changes since review.
+
+### rev-30 · 2026-10-16T17:35:46.965Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-639-final
+commit: faa26007c541970dc43212d5075ad852e18ddc63
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-639 final evidence clear at unchanged source-reviewed faa26007c541970dc43212d5075ad852e18ddc63. A-4011 source review remains applicable; no findings.
+
+Independently inspected A-4075 / 34d59d74-02a7-41bf-93fa-55d6bacb51b8. Header names the exact task head; host/remote typechecks, hub-only package suite and Neovim smoke complete with exit 0. Totals: 1967 tests, 1962 pass, zero fail, five unrelated platform/binary-prerequisite skips. Free hub 38/38; machine hub 1912 pass/zero fail/five skips; Neovim smoke 12/12. No hard budget/load-gate failure.
+
+The new outer init-machine self-test passes ordinarily in 1.778908761 s (line 1591), then its load gate reports 5/5 (line 1536). The reviewed wrapper invokes six inner scenarios in a fresh child and requires child success before checking inherited HOME equality. Successful wrapper execution therefore covers actual CLI scratch-HOME observation and Git identity isolation (C1), real Git folder/full/shallow/upstream facts (C2), outside-change snapshot detection with excluded-subtree behavior (C3), and unchanged poisoned inherited HOME (C4). There is one outer load-gated identity; no claim that each inner scenario was independently selected as six load-gated identities.
+
+C4's limit remains explicit: source avoids homedir fallback and actual fixture commands receive scratch HOME; before/after snapshots demonstrate unchanged inherited files, not filesystem-read tracing. Ledger and initialized-subfolder extra scenarios pass inside the same required child run.
+
+Linux x64 c-8 lon1, Node 24.21.0, Neovim 0.12.5, four workers; suite 1314.54 s, peak load 14.06, lifetime 1385 s, cost $0.0962. Five skips are macOS sandbox/sleep cases and absent real OpenCode binaries, not owned cases. All C1–C4 verified; no per-item QA criteria.
+Review artifact A-4076.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.

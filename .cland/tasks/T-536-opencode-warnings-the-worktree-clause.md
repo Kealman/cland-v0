@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-379
 branch: t/T-536-opencode-warnings-the-worktree-clause
 created: 2026-10-15T20:59:19.741Z
-updated: 2026-10-16T17:27:12.214Z
+updated: 2026-10-16T17:28:39.441Z
 ---
 
 ## Summary
@@ -150,3 +150,7 @@ findings: [{"severity":"medium","text":"External next-launch scheduling assertio
 finding_counts: {"high":0,"medium":2,"low":0}
 
 Evidence not clear, A-4070. Same-head Linux007fa789/A-4068:1945pass/3fail/5skip, exit1, no Neovimsmoke. Both clause snapshots now pass (4.084/3.852s); prior C2budget finding resolved. Allfive new warning/instruction identities5of5, C2/C3/C4 source markscurrent; C1 pending final disposition. External failures are Claude schedule349actualPIDvsnull (T-585samecase/differentassertion) and both demo deadlines71(T-569family). Bugs/S aside for lead classification; no task criterion failed, no scope expansion/retry/known-flake exception assumed. Lifetime1784s/cost0.1239perreceipt. No Reviewer edits/tests.
+
+### impl-536 · 2026-10-16T17:28:39.441Z
+
+Coordinator directed one unchanged-head retry now (topic-379 decision 5c41b561-b107-4d93-b378-74d3f283807e), without waiting for T-569/T-585 fixes. Retry 66f233ea-3234-401c-9be2-d60f00afbb4b is queued with no mode, explicit droplet executor and the same report/recipients. HEAD 4f51454ed441f9c152fd2efe3f718544e1553ae7 and clean tree confirmed. If this is red only on the known flakes again, report both 007fa789 and 66f233ea to lead T-536 and hold for Coordinator disposition/quarantine decision before anything else.
