@@ -16,6 +16,13 @@ _Avoid_: credential, token, profile
 An account marked after a limit-hit signal, refusing new launches until its reset or `cland account clear`.
 _Avoid_: throttled account, signed-out account, exhausted session
 
+**Favourite harness**:
+The harness the human talks to, on which the Aide runs; the human chooses it during Setup.
+_Avoid_: default harness, main harness, preferred agent
+
+**Setup**:
+The guided step, in a terminal, that readies a project once it is initialised: the harnesses, their logins and folder trust, the accounts and the Favourite harness, then the hub and the Aide, which it opens in the workbench for the Onboarding. Each step checks first and asks only about what is missing; without a terminal it only reports what is open.
+_Avoid_: wizard, installer, onboarding (the Aide's conversation that follows)
 **Session**:
 One running interactive instance of a harness, with its own history and working state. A session has a name and at most one role.
 _Avoid_: agent, process, terminal, instance
@@ -41,15 +48,22 @@ The role that exercises the running product and returns a verdict to the Coordin
 _Avoid_: tester, verifier
 
 **Aide**:
-A session that works for the human alone: it holds no crew duty, is addressed by name only, and speaks for the human, decisions included. It can create and change items and artifacts and message any session, but never launches sessions, merges, hands over or asks.
+A session that works for the human alone: it holds no crew duty, is addressed by name only, and speaks for the human, decisions included. It can create and change items and artifacts, message any session, and launch, stop or resume sessions on the human's word; it never merges, hands over or asks.
 _Avoid_: assistant, helper, personal session, scratch session, human session
 
+**Onboarding**:
+The Aide's first conversation with the human on a project new to cland, led from a skill: who decides what, a first plan the human sees, the crew, the Welcome note and the Coordinator's start, then the Tour if the human wants it. The human decides; the Aide acts.
+_Avoid_: wizard, setup (the terminal step before it), tutorial, first run
+
+**Tour**:
+The staged walk through what cland does that the Aide offers once the work runs: one stage per round, tied to what is on the human's screen and ending with what to look at now; the human can stop after any stage.
+_Avoid_: tutorial, walkthrough, ladder (the steps by which the crew grows, one stage of the Tour)
 **Lead**:
 The session that owns a node of the item tree and receives its reports: the Coordinator for the root, a session of the role Lead for an epic or a release, the Implementer for the item it claims. One lead per node, or none.
 _Avoid_: manager, supervisor, commander, owner, parent
 
 **Crew**:
-The project's staffing policy: which roles run as one session per item, as a pool or as a singleton, how long they keep context, and which levels of the item tree get dedicated Leads. A file the Coordinator edits after talking to the human.
+The project's staffing policy: which roles run as one session per item, as a pool or as a singleton, how long they keep context, and which levels of the item tree get dedicated Leads. A file the Coordinator, or the Aide during the Onboarding, edits after talking to the human.
 _Avoid_: team (the harnesses use it for in-harness agents), staff, fleet, org chart
 
 **Pool**:
@@ -84,6 +98,9 @@ _Avoid_: picker, finder, command bar, spotlight, launcher
 The instruction text a role carries; the hub delivers it to the session that holds the role.
 _Avoid_: system prompt, role prompt, persona text
 
+**Curated skill set**:
+The skills cland ships and copies whole into every project: cland's own and the upstream ones it keeps, each recording its origin and cland's changes. A skill edited inside a project belongs to that project, and updates keep it and say so.
+_Avoid_: vendored skills, skill lock, skill pack, plugins
 **Handover note**:
 The structured note that moves with a role to its next holder: goals now, work in flight, open decisions, what is waited on.
 _Avoid_: summary, context dump, transcript
@@ -186,6 +203,9 @@ _Avoid_: priority, order, weight, position
 A file, or a folder with an entry file, that a session or the human shows to others: it has an id `A-<n>`, a kind, a status and an author. The human's and an Aide's artifacts live until deleted by hand; an agent's lives with its topic unless kept or promoted into the repository.
 _Avoid_: attachment, upload, document, file (that is a kind), output
 
+**Welcome note**:
+The short note the Onboarding leaves in General, in the human's language: who is who on the crew, the human's rules, the first release and how to reach the Aide.
+_Avoid_: welcome artifact, README, onboarding summary
 **Explorer**:
 The centre view of the item tree: a release, its epics and their tasks, with the categories and the unscheduled items as further roots; it folds in place, scopes to a node and shows the Card of the row under the cursor. It changes nothing by hand: the human steers through a message to the Coordinator.
 _Avoid_: tree view, browser, board (the side panel), item view (now the Card)

@@ -2,17 +2,18 @@
 id: Q-600
 kind: question
 title: The onboarding conversation and the crew
-state: open
+state: closed
 labels:
   - wayfinder:grilling
-assignee: null
+assignee: cland-design
 parent: M-591
 blocked_by:
   - Q-596
 topic: null
 branch: null
 created: 2026-10-16T11:26:11.971Z
-updated: 2026-10-16T12:51:47.467Z
+updated: 2026-10-16T15:06:50.449Z
+closed: 2026-10-16T15:06:50.449Z
 ---
 
 ## Question
@@ -67,3 +68,23 @@ Also observed: the hub truncates a rule's title to 80 characters and rule.edit h
 ### human · 2026-10-16T12:51:47.467Z
 
 Fact from the prototype (36c09717): every cland call from a session's shell carries that session's identity, so the hub refuses session.launch and task.import from the Aide's terminal exactly as from its tools; no role may import today, and only the workbench or a terminal that is no session's can launch. The Aide cannot relaunch itself, so permissions = "skip" applies from its next launch (setup should launch the Aide with the chosen permissions). Consequence: questions 1, 10 and 14 are hub permission changes (the Aide's tool list), not skill wording.
+
+### human · 2026-10-16T15:00:42.408Z
+
+17. A model listing per harness for the crew step (from the second run): the Aide needed several probes to find OpenCode's id for GLM 5.3 Flash (`opencode models` printed nothing); proposal: `cland models <harness>` (doctor-style probe of the harness's model list, cached) used by the onboarding and by the launcher's model field.
+
+### human · 2026-10-16T15:06:50.361Z
+
+## Resolution
+
+Decided with the human on 2026-10-16 after two live onboarding runs and the setup run ("все да" with one correction on the defaults):
+
+1. The Aide's rights: `session.launch`, `session.stop` and `session.resume` for any role on the human's word (the Coordinator first of all), `task.import`, and `push` for the onboarding's commit. During a build the Coordinator keeps the crew's staffing; the Aide launches only when the human asks.
+2. The Aide commits on dev everything init and the onboarding wrote, at the end of the onboarding, and runs `cland push`; the Coordinator's launch brief is then "work release R-n".
+3. Template defaults: `crew.toml` gives the Aide sub-agents (`aide.subagents = true`); the roles template is built from the installed harnesses (a project on one harness is valid); `cland init` seeds the four categories (Bugs, Tech debt, Follow-ups, Ideas). Permissions are NOT switched off by default: that is the human's conscious choice. Claude Code roles default to auto mode (a new `permissions = "auto"` → `--permission-mode auto`; today only "" and "skip" exist); Codex roles keep their sandbox with `approval = "never"` (the sandbox is the guard); OpenCode keeps its own settings. The onboarding's crew round offers "turn the prompts off" (skip) explicitly, with the trade-off, and records the answer; an existing roles.toml is never changed by an update.
+4. Settings through commands, never by hand for sessions that lack the tools: `cland role launch <role> --harness … --model … --effort … --account … --permissions …` (`role set` is taken), `cland config set <section.key> <value>`, `cland models <harness>` (a probe of the harness's model list, cached, for the crew step and the launcher), and `cland task import-github` without `--repo` reads the `github` remote, then `origin`.
+5. Verification for any stack: `[verification] prepare`, `check` and `test` in config.toml; the droplet executor runs the same `prepare`; coverage selection applies only to cland's own node commands; the onboarding records the commands with the stack. An epic of its own in 0.1.4.
+6. A map only when there is fog; otherwise the first release with its tasks and criteria; on an existing project the same after the study and the import (closed issues untouched); `cland init` refuses a shallow clone with the line "the territory needs the full history".
+7. WELCOME.md and TOUR.md of the prototype are the accepted wording and the spec's source for the onboarding; the tour speaks the human's language while rules, items and briefs stay in English; the answer "I approve epic plans" in the rules round sets `[plan] approval = "human"`.
+
+Observed risks for the implementation: Claude Code's auto-mode classifier refused the Aide's own `cland role list` after it set skip for its role ("self-modification"); with auto as the default, the Aide's edits of its own launch settings must go through `cland role launch` and may still be flagged, so the crew step applies the Aide's own change last and says that it takes effect at the next launch. The rule title limit is T-608.

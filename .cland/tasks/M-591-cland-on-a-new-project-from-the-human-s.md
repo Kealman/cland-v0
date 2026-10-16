@@ -2,7 +2,7 @@
 id: M-591
 kind: map
 title: "cland on a new project: from the human's direction to spec v0.1.4, a setup prototype, an onboarding prototype and the epics"
-state: open
+state: closed
 labels:
   - wayfinder:map
 assignee: null
@@ -11,12 +11,13 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-16T11:26:11.049Z
-updated: 2026-10-16T12:43:53.005Z
+updated: 2026-10-16T15:39:03.098Z
+closed: 2026-10-16T15:39:03.098Z
 ---
 
 ## Destination
 
-Spec v0.1.4 (`docs/spec/v0.1.4.md`) complete and the v0.1.4 epics published under the release item R-577 "cland on a new project": a deterministic `cland init` (cland itself installed from the checkout on the human's machine; the one-command install deferred), the interactive `cland setup` (harnesses, accounts, the favourite harness, the Aide launched in the terminal), the onboarding the Aide leads from a skill on an empty or an existing project, the curated skill set edited in place, and the welcome artifact; built after v0.1.3 ships and before v0.2.
+Spec v0.1.4 (`docs/spec/v0.1.4.md`) complete and the v0.1.4 epics published under the release item R-577 "cland on a new project": a deterministic `cland init` (cland itself installed from the checkout on the human's machine; the one-command install deferred), the interactive `cland setup` (harnesses, accounts, the favourite harness, the Aide launched into the workbench), the onboarding the Aide leads from a skill on an empty or an existing project, the curated skill set edited in place, and the welcome artifact; built after v0.1.3 ships and before v0.2.
 
 ## Notes
 
@@ -40,6 +41,8 @@ Settled before charting (grilling round 1, 2026-10-16):
 14. (During the live try, 2026-10-16.) Sessions edit project files directly: `cland init` and `cland update` write `"worktree": {"bgIsolation": "none"}` into the project's `.claude/settings.json` and the launch settings carry the same key; cland controls a session's reach at the hub and role level, never through harness isolation.
 15. (During the live try, 2026-10-16.) The onboarding teaches: the tour and the welcome note explain cland's concepts and each ladder step in plain words for a newcomer. The human never runs commands by default: the Aide or the Coordinator acts for them and asks permission when needed ("when you say ok, I will launch…"); the Aide's reach (launching the Coordinator, the import, config writes) follows in Q-600.
 
+Superseded while working the map: 6 by Q-599's decision 11 (the onboarding runs inside the workbench); 10, 12 and 13 by Q-600 (a map only with fog, `cland role launch`, the staged tour on request). The way is charted: spec docs/spec/v0.1.4.md and the epics E-611 to E-617 under R-577 (2026-10-16).
+
 ## Decisions so far
 
 - [Install from the GitHub tag: one command on a fresh machine](Q-592, .cland/tasks/Q-592-install-from-the-github-tag-one-command.md): no `npm install -g` form works today (root workspaces with an npm bug, type stripping refused under node_modules, hub dependencies never installed, no root version and a 22 MB package, the Neovim cache inside the package, a private repository, the sh wrapper); seven fixes prototyped, after which `npm install -g github:Kealman/cland-v0#vX.Y.Z` installs in 7 s; the root version equals the tag and `cland release` refuses a mismatch; today's checkout line recorded for the docs.
@@ -48,6 +51,11 @@ Settled before charting (grilling round 1, 2026-10-16):
 
 - [Harness setup facts: install, login, trust and accounts](Q-593, .cland/tasks/Q-593-harness-setup-facts-install-login-trust.md): curl installers and blocking logins for all three harnesses, `claude auth status --json` carries the identity, Codex's identity comes from the app-server's account/read, OpenCode's login is optional; trust is deterministic (Claude Code: hasTrustDialogAccepted in the profile's .claude.json under its lock; Codex: trust_level through config/batchWrite; OpenCode: none); the terminal Aide is a normal hub launch plus the harness's attach command, never a hand-started harness; T-603 stands; follow-ups: doctor's Codex range and env keys as credentials.
 - [Prior art: terminal setup wizards and first-run tours](Q-594, .cland/tasks/Q-594-prior-art-terminal-setup-wizards-and.md): ordered idempotent steps (detect, offer, confirm, run the vendor command with inherited stdio, detect again; the re-check decides); without a terminal never prompt, report open steps and exit 1, `--yes` for harmless questions only, `--json` as doctor; no library, a readline prompter with one interface per question; tests with a fake prompter and fake harnesses on the PATH.
+- [The onboarding skill, tried on an empty project and on an existing one](Q-596, .cland/tasks/Q-596-the-onboarding-skill-tried-on-an-empty.md): accepted after two live runs; the flow: role and rules (with "decisions, not keystrokes"), a visible first release with tasks and criteria (a map only with fog), the stack as a rule, categories, the crew table with direct config edits, a short welcome note, "ready to start?" with the Coordinator's brief, then an eight-stage tour on request; the skill's files are the accepted wording; the Aide's missing rights (launch, import) and verify's npm assumption go to Q-600 and the cut.
+- [cland setup in the terminal: harnesses, accounts, the favourite harness, the Aide attached](Q-597, .cland/tasks/Q-597-cland-setup-in-the-terminal-harnesses.md): accepted after the human's run; init makes an empty folder a repository with the first commit and ends with "next: cland setup"; setup's eight idempotent steps end in the workbench with the Aide in the centre (`--attach` as the fallback); open questions decided in Q-599.
+- [The onboarding conversation and the crew](Q-600, .cland/tasks/Q-600-the-onboarding-conversation-and-the-crew.md): the Aide may launch, stop and resume sessions, import issues and push on the human's word, and commits the onboarding itself; defaults: Aide sub-agents, roles from the installed harnesses, four categories seeded, permissions never off by default (Claude Code roles on auto mode, skip only as the human's explicit choice); settings through `cland role launch`, `cland config set`, `cland models`; verification commands in config for any stack (an epic); a map only with fog; WELCOME.md and TOUR.md are the spec's source.
+- [Init and setup: the decided flow](Q-599, .cland/tasks/Q-599-install-init-and-setup-the-decided-flow.md): init serves the cwd or --dir only and refuses a different root, HOME never, the hub's state directory moves to ~/.local/state/cland; unborn repositories and non-git folders get the first commit of cland's files (fallback identity); trust for every installed harness, logins per template role, declined installs remembered; accounts default No; harness versions neither pinned nor judged (doctor shows them without a verdict); bgIsolation stays managed (settings.local.json overrides); `cland` outside a project and `cland open` before setup print one line each; the package version equals the tag; the onboarding runs inside the workbench.
+- [The cut: what lands in 0.1.4, lanes, crew, DoD](Q-601, .cland/tasks/Q-601-the-cut-what-lands-in-0-1-4-lanes-crew.md): seven theme epics under R-577 beside the carried-over hygiene: hub lane E-611 The Aide's reach and the settings commands → E-612 Init → E-613 Setup, with E-614 Verification for any stack after E-611; skills lane E-615 The curated skill set and cland update → E-616 The onboarding skill and the newcomer's first page (after E-611, E-614); E-617 Release v0.1.4 from the item last; the theme first, hygiene in the gaps; crew as v0.1.3 led by the Coordinator, about 35 sessions, the human approves the plans of E-613 and E-616; DoD: two QA demos (a fresh folder and a public-repository clone with the import), a green suite, the first page; spec docs/spec/v0.1.4.md and GLOSSARY entries.
 ## Not yet specified
 
 - Verification for any stack: `cland verify` runs this project's npm scripts by name (typecheck, test, the hub and nvim modes, `npm ci` on the droplet, coverage selection over node --test); a non-Node project has no verification today. The commands belong in `[verification]` of config.toml, written by the onboarding with the stack; the shape is decided in Q-600 and the epic in the cut (raised by the human during the live try, 2026-10-16).
@@ -66,3 +74,9 @@ Settled before charting (grilling round 1, 2026-10-16):
 - Installing harnesses silently or holding harness credentials: setup shows and runs install commands on confirmation; logins are the human's own, in the terminal.
 - The web workbench's onboarding: v0.2 takes the setup result as it is.
 - A machine-wide cland configuration beyond `~/.config/cland/accounts.toml`, and several projects in one place.
+
+## Comments
+
+### human · 2026-10-16T15:39:03.098Z
+
+The way is charted: ten tickets closed, spec docs/spec/v0.1.4.md written and the seven epics E-611 to E-617 published under R-577 on 2026-10-16.
