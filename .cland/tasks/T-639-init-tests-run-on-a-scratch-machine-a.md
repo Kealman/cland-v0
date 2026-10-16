@@ -3,7 +3,7 @@ id: T-639
 kind: task
 title: "Init tests run on a scratch machine: a temporary HOME, Git configuration and the folder kinds init meets"
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - v0.1.4
@@ -11,10 +11,10 @@ labels:
 assignee: null
 parent: E-612
 blocked_by: []
-topic: null
-branch: null
+topic: topic-395
+branch: t/T-639-init-tests-run-on-a-scratch-machine-a
 created: 2026-10-16T16:23:56.312Z
-updated: 2026-10-16T16:24:32.219Z
+updated: 2026-10-16T16:25:38.610Z
 ---
 
 ## Summary

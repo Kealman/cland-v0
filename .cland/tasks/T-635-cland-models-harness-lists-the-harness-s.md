@@ -3,7 +3,7 @@ id: T-635
 kind: task
 title: cland models <harness> lists the harness's model ids from a cached probe
 state: open
-status: in progress
+status: review
 size: M
 labels:
   - v0.1.4
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-391
 branch: t/T-635-cland-models-harness-lists-the-harness-s
 created: 2026-10-16T16:04:12.499Z
-updated: 2026-10-16T16:17:39.250Z
+updated: 2026-10-16T16:25:54.651Z
 ---
 
 ## Summary
@@ -50,3 +50,7 @@ Implementation started. Scope: hub models.list frame and durable 24-hour per-har
 ### impl-635 · 2026-10-16T16:17:39.250Z
 
 Implementation includes CLI/frame catalog, durable cache, native probes, fake probe receipts and launcher model cycling. Initial model tests 5/5 green; doctor regression 22/22 green; existing shell cases 84/84 green. New shell test corrected its initial mode setup. Current source typecheck exit 0. Merged origin/dev 0df55de7 before first review. Final targeted reruns wait for Coordinator's load gate (1-minute load must be <15); source review has not been requested yet.
+
+### impl-635 · 2026-10-16T16:25:40.003Z
+
+Source ready at 396d635928d01a75e7cbee88561ca0458a05fd33, committed and pushed to origin; origin/dev 605671ea merged before first review. Typecheck exit 0 at this head. Final models.test.ts 5/5 passed; launcher-focused shell tests 6/6 passed (new catalog case 0.619 s). Shard lint and diff check exit 0. Duration allowance records the 5.362 s account-isolation case. QA policy none/after-stage; no per-item QA required. Implementation evidence artifact posted in topic-391. Requesting source review, then exact-head droplet verification.

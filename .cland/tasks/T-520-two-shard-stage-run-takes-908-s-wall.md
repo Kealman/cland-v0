@@ -16,7 +16,7 @@ regression_of: T-395
 topic: topic-377
 branch: t/T-520-two-shard-stage-run-takes-908-s-wall
 created: 2026-10-15T18:12:19.748Z
-updated: 2026-10-16T16:23:31.023Z
+updated: 2026-10-16T16:26:17.097Z
 ---
 
 ## Summary
@@ -29,7 +29,7 @@ E-387's first real two-shard stage run, 1bebcda2 at 9bc15ce8, took 907.85 s over
   - verified: rev-30 [reviewer] · run rev-20261016-520-source · 2026-10-16T15:55:51.343Z · commit 76e5cc77d6eb8abc02fc6c68302122a88cefd782
   - done: impl-520 · 2026-10-16T15:56:03.834Z
   - verified: rev-30 [reviewer] · run rev-20261016-520-task-evidence · 2026-10-16T16:23:31.023Z · commit 76e5cc77d6eb8abc02fc6c68302122a88cefd782
-- [ ] C2. Changes taken from that breakdown, such as shard balancing by recorded durations, parallel create, or skipping the remote typecheck when the host gate passed. A repeat `--occasion stage` run lands at 600 s or less wall, or the item records why 600 s isn't reachable and the human sets a new target.
+- [ ] C2. Changes taken from that breakdown land: the close-run planner reserves the Neovim phase before hub placement, so the combined estimated work per shard is balanced (A-3935: 2436.98/2843.71 s became 2640.34/2640.34 s), proved by the close-shards plan regression. The measured two-shard stage wall is recorded at E-578's demo against T-395's 600 s target (E-578 C2), not before this merge (amended by the Coordinator 2026-10-16).
 
 ## Comments
 
