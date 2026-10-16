@@ -75,7 +75,11 @@ test('Codex journals changed totals once, skips equal publications, and stops wi
 test('Codex coalesces a usage burst and journals a rate-limit-only change', async t => {
   const root = await tempProject(t);
   const fake = await fakeCodex(t);
-  const { discovery } = await startUsageDaemon(t, root, fake.env);
+  // Pushes retain a by-id bucket; full reads must agree rather than remove it.
+  const rateLimits = (usedPercent: number) => ({ limitId: 'codex', primary: { usedPercent, windowDurationMins: 10080, resetsAt: 1791955620 }, secondary: null });
+  const reading = (usedPercent: number) => ({ rateLimits: rateLimits(usedPercent), rateLimitsByLimitId: { codex: rateLimits(usedPercent) } });
+  await writeFile(join(fake.home, 'rate-limits.json'), JSON.stringify(reading(6)));
+  const { discovery } = await startUsageDaemon(t, root, { ...fake.env, CODEX_HOME: fake.home });
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const launched = await ui.request({ type: 'session.launch', name: 'burst', role: 'implementer', harness: 'codex' }, CODEX_LAUNCH_MS);
@@ -83,7 +87,16 @@ test('Codex coalesces a usage burst and journals a rate-limit-only change', asyn
   const p = (launched.value as { process: HarnessProcessView }).process;
   await ui.waitFor(f => f.type === 'session.usage' && f.sessionId === p.sessionId && (f.usage as SessionUsage).total?.totalTokens === 12);
   assert.equal((await turn(ui, p, 'usage burst', usage => usage.total?.totalTokens === 24)).total?.totalTokens, 24);
+  await writeFile(join(fake.home, 'rate-limits.json'), JSON.stringify(reading(9)));
+  // Observe the push and equal full read in separate publication windows.
+  await writeFile(join(fake.home, 'hold-rate-limits-read'), '');
   const limits = await turn(ui, p, 'rate limits only', usage => (usage.rateLimits?.primary as { usedPercent?: number } | undefined)?.usedPercent === 9);
+  assert.deepEqual(limits.rateLimitsByLimitId, reading(9).rateLimitsByLimitId);
+  const afterPush = ui.frames.length;
+  await writeFile(join(fake.home, 'release-rate-limits-read'), '');
+  const read = await ui.waitFor(f => ui.frames.indexOf(f) >= afterPush && f.type === 'session.usage' && f.sessionId === p.sessionId &&
+    (f.usage as SessionUsage).rateLimitsAt !== limits.rateLimitsAt);
+  assert.deepEqual((read.usage as SessionUsage).rateLimitsByLimitId, limits.rateLimitsByLimitId);
   const journal = await recordsWithTotals(root, ui);
   assert.deepEqual(journal.map(r => [(r.total as { totalTokens: number }).totalTokens, (r.rateLimits as { primary: { usedPercent: number } }).primary.usedPercent]),
     [[12, 6], [24, 6], [24, 9]]);
