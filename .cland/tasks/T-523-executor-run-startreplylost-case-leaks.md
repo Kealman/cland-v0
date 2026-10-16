@@ -2,8 +2,8 @@
 id: T-523
 kind: task
 title: executor-run startReplyLost case leaks pipe handles past the case under load (projectHub leak check, Linux)
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-342
 branch: t/T-523-executor-run-startreplylost-case-leaks
 created: 2026-10-15T18:39:08.367Z
-updated: 2026-10-16T05:29:34.044Z
+updated: 2026-10-16T05:29:53.505Z
+closed: 2026-10-16T05:29:53.505Z
 ---
 
 ## Problem
@@ -174,3 +175,7 @@ No Reviewer tests, compiler/binary execution, edits, signals, provider actions, 
 Artifact A-3746 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3746-t-523-merge-final-clear-watchdog-interaction-and-39-file-proof.md
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-16T05:29:53.505Z
+
+Merged 6e980770a0c284c80091ae1f7a30da7c225a5619 onto dev.
