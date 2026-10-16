@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-345
 branch: null
 created: 2026-10-14T16:43:04.090Z
-updated: 2026-10-16T07:24:44.280Z
+updated: 2026-10-16T07:41:13.541Z
 ---
 
 ## Summary
@@ -97,7 +97,7 @@ In a scratch project with the fake harnesses, QA launches a fake Claude Code Coo
 - [ ] C7. `follows` is a relation of its own beside `blocked_by` in the item file, the CLI, the tools and the workbench; a following epic may start once its predecessor's last ticket merged; the merge gate holds its tickets that touch the predecessor's surfaces until the predecessor's QA verdict; and the clause and the `to-tickets` and `plan-epic` skills prepare the next epic while the last stage is in review.
   - failed: qa-27 [qa] · 2026-10-16T00:48:19.233Z · note D5 headless follows case BLOCKED by recorder contract (T-551); local follows and merge checks passed.
 - [ ] C8. An epic demo runs on a droplet at a named `dev` commit while `dev` moves, its verdict is accepted when the later commits touch none of the epic's surfaces, and `hub/README.md`, `nvim/README.md`, the role clauses and the `qa`, `merge`, `to-tickets` and `plan-epic` skills describe the rulebook, the heartbeat, `follows` and demos on a droplet.
-  - failed: qa-27 [qa] · 2026-10-16T05:07:17.129Z · note D18 FAIL / T-572: demo stop left releasing with empty-tag identity mismatch and operator attention; eventual destruction confirmed.
+  - failed: qa-27 [qa] · 2026-10-16T07:41:10.825Z · note D18/T-583: demo stop left lease releasing with tags-only identity attention; confirmed destruction/accounting unavailable.
 
 ## Dogfooding
 
@@ -165,6 +165,7 @@ stages:
       - - T-551
       - - T-553
       - - T-572
+        - T-583
 ```
 
 ## Comments
@@ -394,3 +395,107 @@ Full commands, captures and per-case evidence: A-3728, /Users/evgeniyivanov/Proj
 Verdict table/accounting note: A-3729, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3729-e-423-qa-run-17-case-table-verdict-and-final-accounting.md.
 
 Criteria: C8 failed (D18 FAIL / T-572: demo stop left releasing with empty-tag identity mismatch and operator attention; eventual destruction confirmed.).
+
+### hub · 2026-10-16T07:30:07.964Z
+
+demo 69940187-e113-4ed5-91e4-97b26c20d840 created: droplet cland-v0-69940187, commit a36169681d2f2d5dc422622a1dc81df2d535e727, deadline 2026-10-16T08:19:05.918Z.
+
+### hub · 2026-10-16T07:33:43.045Z
+
+demo E-423 lease 69940187-e113-4ed5-91e4-97b26c20d840 droplet 609612979: operator attention required; identity mismatch; deletion refused. {"fields":["tags"],"expected":{"id":609612979,"name":"cland-v0-69940187","tags":["cland","cland-p-8a978a214ba5"]},"observed":{"id":609612979,"name":"cland-v0-69940187","tags":[],"status":"active"}}
+
+### qa-27 · 2026-10-16T07:41:10.825Z
+
+verdict: qa
+result: not clear
+by: qa-27 [qa]
+run: qa-2026-10-16-27-18
+commit: a36169681d2f2d5dc422622a1dc81df2d535e727
+
+| Case/check | Executor | Result | Evidence in A-3835 |
+|---|---|---|---|
+| G0 | macOS | PASS | G0.txt |
+| G1 | macOS | PASS | G1-epic.json |
+| G2 | macOS | PASS | G1-epic.json |
+| D0 | droplet | PASS | D0-start.json |
+| RULEBOOK-001 | droplet | PASS | rulebook-rows.screen.txt |
+| D2 | droplet | PASS | RULEBOOK-001.recorder.log |
+| RULEBOOK-002 | droplet | PASS | rulebook-added.screen.txt |
+| D3 | droplet | PASS | RULEBOOK-002.recorder.log |
+| EVENTS-001 | droplet | PASS | events-all.screen.txt |
+| D4 | droplet | PASS | EVENTS-001.recorder.log |
+| FOLLOWS-001 | droplet | PASS | follows-card.screen.txt |
+| D5 | droplet | PASS | FOLLOWS-001.recorder.log |
+| D7 | droplet | PASS | D7.txt |
+| D8 | droplet | PASS | D8.txt |
+| D9 | droplet | PASS | D9.txt |
+| D1 | droplet | PASS | D1-build.txt |
+| D6 | droplet | PASS | D6-rule-cli.txt |
+| D10 | droplet | PASS | D10.txt |
+| D11 | droplet | PASS | D11.txt |
+| L1 | macOS | PASS | L1.txt |
+| L2 | macOS | PASS | L2.txt |
+| L3 | macOS | PASS | L3.txt |
+| L4 | macOS | PASS | L4.txt |
+| L5 | macOS | PASS | L5.txt |
+| L6 | macOS | PASS | L6.txt |
+| L7 | macOS | PASS | L7-human.json |
+| L8 | macOS | PASS | L8-checks.txt |
+| L9 | macOS | PASS | L9.txt |
+| L10 | macOS | PASS | L10.txt |
+| L11 | macOS | PASS | L11.txt |
+| L12 | macOS | PASS | L12.txt |
+| L13 | macOS | PASS | L13.txt |
+| L14 | macOS | PASS | L14.txt |
+| D12 | droplet | PASS | D12.txt |
+| D13 | droplet | PASS | D13.txt |
+| D14 | droplet | PASS | D14.txt |
+| D15 | droplet | PASS | D15.txt |
+| D16 | droplet | PASS | D16.txt |
+| L20 | macOS | PASS | L20.txt |
+| L21 | macOS | PASS | L21.txt |
+| L22 | macOS | PASS | L22.txt |
+| L23 | macOS | PASS | L23.txt |
+| L24 | macOS | PASS | L24-assertions.txt |
+| L25 | macOS | PASS | L25.txt |
+| L30 | macOS | PASS | L30.txt |
+| D17 | droplet | PASS | D17-status.json |
+| D18 | droplet | FAIL | D18-stop.json |
+| L31 | macOS | PASS | L31-TR.json |
+| L32 | macOS | PASS | L32-digest.txt |
+| L33 | macOS | PASS | L33.txt |
+| L34 | macOS | PASS | L34-assertions.txt |
+| L35 | macOS | PASS | L35.txt |
+| L36 | macOS | PASS | L36.txt |
+| L37 | macOS | PASS | L37.txt |
+| L38 | macOS | PASS | L38.txt |
+| L39 | macOS | PASS | L39.txt |
+| L40 | macOS | PASS | L40-fresh.json |
+| L41 | macOS | PASS | L41-quit.json |
+| L42 | macOS | PASS | L42.txt |
+| L43 | macOS | PASS | L43-stop.txt |
+| R1 | macOS | PASS | R1-check.txt |
+| R2 | macOS | PASS | R2-check.txt |
+| R3 | macOS | PASS | R3.txt |
+| R4 | macOS | PASS | R4.txt |
+| R5 | macOS | PASS | R5-matrix.md |
+
+High — D18 / C8 / T-583: one `cland demo stop E-423 --json` after D1–D17 passed returned exit 0 but state releasing with operator attention: expected droplet 609612979 cland-v0-69940187 with tags [cland,cland-p-8a978a214ba5], observed same id/name with tags [] and status active. Exact stop and readbacks: A-3829. Coordinator filed T-583 for the provider teardown window exceeding the 2-second reread. No stop retry/provider calls. No other findings.
+
+Run qa-2026-10-16-27-18; tested full SHA a36169681d2f2d5dc422622a1dc81df2d535e727. Fresh full run, brief ca09b03c. 64 PASS, 1 FAIL. Four headless cases and 68/68 supporting tests passed, 0 skipped, no retries. All local checks and read-only R1–R5 passed. Final dev unchanged, freshness current=true.
+
+Droplet lease 69940187-e113-4ed5-91e4-97b26c20d840; created 07:29:07.546Z, deadline 08:19:05.918Z on 2026-10-16. Latest pre-verdict status remains releasing: 673756 ms, estimated $0.046788611111111114; final destruction/accounting unconfirmed. Operator cleanup escalated. Local scratch run cancelled at 07:36:41Z (200 seconds after plants); queue empty, fake sessions and hub stopped, owned drivers ended. No scratch processes remain, machine suite lock absent before/after. Scratch paths removed with guarded reversible Trash move because runtime rejected rm -f cleanup.
+
+Criteria: C1–C7 PASS by the brief mapping (full mapping and captures in A-3835); C8 FAIL solely D18. Apply failed C8 only; verified is omitted because not-clear verdicts cannot carry it. T-473/T-474 checks passed.
+
+Execution notes: G1 records all 14 closed children and four plan stages. Persistent driver controllers kept pipes alive with unchanged identities/steps/assertions. L24 auxiliary subject checker was corrected from string to subject.id against the same captures. L34 needsYou 1→2→2 is an extra fake impl role-clause pong (bc76a3a4-e88e-465d-a28d-cd6dfc508043), not a heartbeat; exact rows in L34-assertions.txt. L35 held count 2 then 3, with old firing dropped and newest queued. R2 two paths resolve to one memory folder, all eleven markers/index lines present; R5 all required cells filled. No case results carried from earlier runs.
+
+Evidence folder A-3835: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3835-e-423-run-18-at-a3616968-full-qa-evidence-d18-not-clear. Exact D18 A-3829.
+
+Verdict note A-3836: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3836-e-423-qa-run-18-case-table-and-not-clear-verdict-t-583.md
+
+Criteria: C8 failed (D18/T-583: demo stop left lease releasing with tags-only identity attention; confirmed destruction/accounting unavailable.).
+
+### hub · 2026-10-16T07:41:13.541Z
+
+demo 69940187-e113-4ed5-91e4-97b26c20d840 destroyed: lifetime 270828 ms; cost $0.0188.

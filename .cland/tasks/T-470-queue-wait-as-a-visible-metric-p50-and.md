@@ -3,7 +3,7 @@ id: T-470
 kind: task
 title: "Queue wait as a visible metric: p50 and p90 in verify queue and hub status, with a v0.1.3 target of p90 under 20 minutes"
 state: open
-status: in progress
+status: ready
 size: S
 criterion_seq: 3
 labels:
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-361
 branch: t/T-470-queue-wait-as-a-visible-metric-p50-and
 created: 2026-10-15T09:13:16.188Z
-updated: 2026-10-16T07:01:30.316Z
+updated: 2026-10-16T07:56:27.935Z
 ---
 
 ## Summary
@@ -32,11 +32,14 @@ Retrospective A-2783, START 4: the run spent 6,618 queue-minutes against 3,411 m
 - [x] C1. `cland verify queue` and `hub status --json` report wait p50 and p90 for 24 h and the last 50 runs, by executor, with the target.
   - done: impl-470 · 2026-10-16T06:27:03.192Z
   - verified: rev-30 [reviewer] · run rev-20261016-470-source · 2026-10-16T06:30:17.108Z · commit 311933f19e64bc56a00f21ee14407f2b4ca6533a
+  - verified: rev-30 [reviewer] · run rev-20261016-470-final · 2026-10-16T07:56:27.045Z · commit 311933f19e64bc56a00f21ee14407f2b4ca6533a
 - [x] C2. An hourly `verification-wait` journal record carries the same values, proven by a test with a fake clock.
   - done: impl-470 · 2026-10-16T06:27:03.496Z
+  - verified: rev-30 [reviewer] · run rev-20261016-470-final · 2026-10-16T07:56:27.045Z · commit 311933f19e64bc56a00f21ee14407f2b4ca6533a
 - [x] C3. hub/README.md describes the metric and the setting.
   - done: impl-470 · 2026-10-16T06:27:03.854Z
   - verified: rev-30 [reviewer] · run rev-20261016-470-source · 2026-10-16T06:30:17.108Z · commit 311933f19e64bc56a00f21ee14407f2b4ca6533a
+  - verified: rev-30 [reviewer] · run rev-20261016-470-final · 2026-10-16T07:56:27.045Z · commit 311933f19e64bc56a00f21ee14407f2b4ca6533a
 
 ## Comments
 
@@ -126,3 +129,73 @@ Artifact A-3816 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3816-t
 ### impl-470 · 2026-10-16T07:01:30.316Z
 
 Coordinator classified first receipt's outside-diff reds as known flakes T-580/T-581; Mac dev file checks passed roles8/8 and task-worktrees9/9. Demo-release hard budgets covered by shared allowance ac20175b. Exactly one fresh resubmit authorized at unchanged 311933f1, with no cherry-pick, after Coordinator announces the hub restart. Holding until that event.
+
+### rev-30 · 2026-10-16T07:52:41.758Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261016-470-linux-second
+commit: 311933f19e64bc56a00f21ee14407f2b4ca6533a
+scope: evidence
+
+# T-470 second Linux receipt not clear pending classification
+
+Authorized unchanged-head retry **0d25c7a0-3480-487f-abbd-71d57648d7cf / A-3842** at `311933f19e64bc56a00f21ee14407f2b4ca6533a`, actual Linuxx64 c-8 lon1/four workers/Node24.21.0/Neovim0.12.5. Exit1:1921tests,1915pass,1fail,5skip; full selection stops after hub and **does not reach Neovim**.1590.95s, peak17.39, extra load-gate35.04s; lifetime/cost unknown.
+
+## Standards
+
+No new source finding; A-3789 C1/C3 source verification stands.
+
+## Spec / owned evidence
+
+Independent raw audit again finds all five suite-wait-metrics cases passing ordinary and **5/5 each (25/25)**, including the real Journal fake-clock C2 case. Two exact-head receipts now provide50/50 owned load repetitions. No owned failure, hard duration-budget failure, roles red or task-worktrees red in this second receipt. These facts retain task evidence; they do not independently waive an unknown outside-diff failure.
+
+Sole ordinary red: **hub/test/tracker-levels.test.ts:87**, `close rechecks a child reopened during the parent temporary write before rename`: actual **true**, expected **false**. The case is outside this diff. Claimant has reported it as a Bugs/S shared-defect candidate, correctly leaving classification to the lead/Coordinator. No precise defect classification is established in the evidence currently supplied.
+
+Primary b2595997 explicitly classified the first run's T-580/T-581 signatures and known demo-release budgets and authorized exactly this retry after restart. It did not yet classify the new tracker-levels signature or authorize a third run/final exception. The retry was submitted after the reported hold-lifted event at the same head, with no picks or dev merge.
+
+Evidence verdict **not clear** pending lead classification and admissible gate disposition. No criterion is failed solely for this outside-diff assertion; C2/final verification remains pending, and no Neovim success is claimed. Do not diagnose/edit the unrelated tracker code on this branch, pick an unposted fix or submit another unchanged retry absent Coordinator direction.
+
+Findings: Standards0; Spec0 source findings; one unclassified outside-diff gate blocker. No Reviewer execution.
+
+Artifact A-3843 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3843-t-470-second-linux-receipt-not-clear-owned-proof-green-tracker-close-red-unclass.md
+
+### rev-30 · 2026-10-16T07:56:27.045Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-470-final
+commit: 311933f19e64bc56a00f21ee14407f2b4ca6533a
+scope: evidence
+
+# T-470 final evidence review clear under Coordinator gate disposition
+
+Reviewed unchanged pushed head `311933f19e64bc56a00f21ee14407f2b4ca6533a`, branch `t/T-470-queue-wait-as-a-visible-metric-p50-and`; local/origin agree, no source/pick/dev-merge changes. task.view confirms claimant, C1/C3 current source clearance and C2 done. Final evidence settlement follows A-3789 source and A-3816/A-3843 receipt audits.
+
+## Standards
+
+No high, medium or low source findings (0/0/0). Dedicated durable-fact aggregation, thin scheduler hooks, additive config/protocol/CLI/status/journal wiring and README remain as source-reviewed. No failed task criterion is concealed by an unrelated test edit or invented successful suite.
+
+## Spec / owned runtime evidence
+
+All C1–C3 verified. Both exact-head actual Linux droplet receipts independently run all five owned suite-wait-metrics cases successfully ordinarily and **5/5 load repetitions each**, yielding **50/50 owned repetitions** across the pair. The real Suites/Store/Journal fake-clock C2 test passes ordinarily and five repeats in each receipt; its journal values equal queue snapshots, hourly boundaries age the sample correctly, and ordinary same-hour restart suppresses duplicate emission. CLI/status/config cases likewise pass. Existing asynchronous journal contract limitations remain as described in A-3789; no new crash-atomic guarantee is claimed.
+
+First **0b939cc1 / A-3815**:1914pass/2fail/5skip, exit1, roles model refresh and task-worktrees snapshot count reds plus two demo-release duration budgets. Primary **b2595997-e2ce-44e5-b6f9-b8aa85cce2a1** classifies T-580/T-581 and the shared allowance ac20175b, authorizing one unchanged retry after restart.
+
+Second **0d25c7a0 / A-3842**:1915pass/1fail/5skip, exit1, sole tracker-levels:87 close-recheck true-versus-false red; no first-run reds or hard budgets. Primary **d5f7f82d-2969-4b78-bf04-f5abeefcf342** explicitly classifies this as another outside-diff load flake after3/3 isolated dev Mac passes and a filed follow-up of T-466. That same decision accepts the pair as the **E-482 hub-phase gate**, with different all-known outside reds and owned cases green. The earlier not-clear evidence dispositions are superseded by this primary classification/acceptance; they are not relabeled green runs.
+
+## Neovim limitation and final disposition
+
+Both requested mode-full runs stop before Neovim. **No Neovim task receipt exists or is claimed.** Primary d5f7f82d expressly accepts the same T-546/T-488 exception: the **next integrated dev cover must supply Neovim before any restart on T-470 code**; no further task run is authorized. Carry that Coordinator-owned condition forward with this final verdict.
+
+Both receipts are actual Linuxx64 c-8 lon1/four workers/Node24.21.0/Neovim pin0.12.5. First suite1666.32s peak15.37; second1590.95s peak17.39. Lifetime/cost unknown. Raw artifacts preserve every red and missing phase. No real provider activity by Reviewer.
+
+Final evidence review **clear under the explicit gate disposition**; refresh **C1/C2/C3** at311933f1. No additional run or branch-local unrelated fix. Any changed head needs delta review; no per-item QA (none/after-stage). The integrated-Neovim-before-restart condition remains required.
+
+Findings: Standards0; Spec0 source findings. Accepted outside-diff gate failures and missing Neovim phase are disclosed above.
+
+Artifact A-3844 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3844-t-470-final-clear-accepted-hub-receipt-pair-integrated-neovim-required-before-re.md
+
+Criteria: C1 verified, C2 verified, C3 verified.
