@@ -1,3 +1,4 @@
+import { realClock, type Clock, type ClockTimer } from './clock.ts';
 // Durable hub-owned suite jobs. A worker can outlive hub shutdown; restart watches its receipt/PID.
 import { execFile, spawn, type ChildProcess } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
@@ -58,7 +59,7 @@ export type StagePlatform = 'Linux droplet' | 'macOS';
 export type StageCover = { id: string; head: string; tree: string; platform: StagePlatform };
 const verifyResult = (job: SuiteJob): VerifyResult => ({ executor: job.executor, id: job.id, state: job.state ?? 'running', result: job.state !== 'finished' ? null : job.cancelled || job.requesterDied ? 'cancelled' : job.outcome ? job.outcome.code === 0 ? 'passed' : 'failed' : null, head: job.head, finished: job.finished ?? job.completedAt ?? null, artifact: job.artifact, ...(job.cached ? { cached: { ...job.cached } } : {}) });
 
-export type SuiteSchedulerOptions = { projectConfig?: () => ProjectConfig; env?: NodeJS.ProcessEnv; executor?: ExecutorKind; localFallback?: boolean; lifetimeMs?: number; runTimeoutMs?: number; runTimeout?: string; onFallback?: (job: Readonly<SuiteJob>, cause: string) => void; budget?: number; remoteBudget?: number; shards?: number; onShardingSkipped?: (job: Readonly<SuiteJob>, cause: string) => void; cacheMaxAgeMs?: number; waitP90TargetMs?: number; locks?: string[]; requesterDead?: (actor: SuiteActor) => boolean; log?: LogFn; onQueue?: (queue: VerificationQueue) => void; onJob?: (job: Readonly<SuiteJob>) => void };
+export type SuiteSchedulerOptions = { waitClock?: Clock; projectConfig?: () => ProjectConfig; env?: NodeJS.ProcessEnv; executor?: ExecutorKind; localFallback?: boolean; lifetimeMs?: number; runTimeoutMs?: number; runTimeout?: string; onFallback?: (job: Readonly<SuiteJob>, cause: string) => void; budget?: number; remoteBudget?: number; shards?: number; onShardingSkipped?: (job: Readonly<SuiteJob>, cause: string) => void; cacheMaxAgeMs?: number; waitP90TargetMs?: number; locks?: string[]; requesterDead?: (actor: SuiteActor) => boolean; log?: LogFn; onQueue?: (queue: VerificationQueue) => void; onJob?: (job: Readonly<SuiteJob>) => void };
 type HumanSlot = Omit<SuiteSlot, 'type'> & { queued: string; admittedAt?: string; left?: boolean };
 const HUMAN_GRACE_MS = 10_000;
 const KEY = 'suite-jobs';
@@ -110,6 +111,7 @@ export class Suites {
   readonly #report: (job: Readonly<SuiteJob>, checkpointArtifact: (id: string) => void) => Promise<void>;
   readonly #jobs: SuiteJob[];
   readonly #waitMetrics: VerificationWait;
+  readonly #waitTimer: ClockTimer;
   readonly #latestItems = new Map<number, SuiteJob>();
   readonly #latestBranches = new Map<string, SuiteJob>();
   readonly #order = new Map<string, number>();
@@ -140,7 +142,7 @@ export class Suites {
     if ((options.budget ?? 1) > 1) options.log?.({ event: 'verification-budget-capped', configured: options.budget, effective: this.#budget, reason: 'resource overlap remains disabled after T-215', reservedFor: 'T-218' });
     this.#store = store; this.#root = root; this.#report = report;
     this.#jobs = JSON.parse(store.meta(KEY) ?? '[]') as SuiteJob[];
-    this.#waitMetrics = new VerificationWait(store, this.#jobs, options.projectConfig?.().verification.waitP90TargetMs ?? options.waitP90TargetMs, options.log);
+    this.#waitMetrics = new VerificationWait(store, this.#jobs, options.projectConfig?.().verification.waitP90TargetMs ?? options.waitP90TargetMs, options.log, options.waitClock);
     this.#local = new LocalExecutor(this.#locks(), (lease, worker) => {
       if (this.#closed) return;
       const job = this.#jobs.find(job => job.id === lease.run);
@@ -172,7 +174,10 @@ export class Suites {
     for (const job of this.#jobs) this.#remember(job, false);
     this.#save();
     this.#reaping = this.#local.reap().catch(error => { this.#options.log?.({ event: 'verification-reap-blocked', error: String(error) }); });
-    this.#timer = setInterval(() => { this.#waitMetrics.record(); void this.#check(); }, 1000);
+    // Metrics use hub time; executor admission/recovery keeps real time.
+    this.#waitTimer = (options.waitClock ?? realClock).setInterval(() => this.#waitMetrics.record(), 1000);
+    this.#waitTimer.unref();
+    this.#timer = setInterval(() => { void this.#check(); }, 1000);
     this.#timer.unref();
   }
   configure(config: ProjectConfig): void {
@@ -835,7 +840,7 @@ export class Suites {
     const shim = this.#compatibility;
     const now = Date.now();
     const recent = this.#jobs.filter(j => j.completedAt).sort((a, b) => b.completedAt!.localeCompare(a.completedAt!)).slice(0, METRICS_WINDOW);
-    const metrics = { queueWait: this.#waitMetrics.snapshot(now), window: METRICS_WINDOW, count: recent.length, wait: durations(recent.map(j => j.waitMs)), run: durations(recent.map(j => j.runMs)) };
+    const metrics = { queueWait: this.#waitMetrics.snapshot(), window: METRICS_WINDOW, count: recent.length, wait: durations(recent.map(j => j.waitMs)), run: durations(recent.map(j => j.runMs)) };
     // Cache hits are already completed at submission. They count in the metrics but must
     // not bias the estimate for an actual queued execution, which missed the cache.
     const estimate = (mode: string | null, executor: ExecutorKind) => durations(recent.filter(j => j.executor === executor && !j.cached && j.outcome?.code === 0 && j.admittedAt && (mode === null || (j.selection?.mode ?? j.mode) === mode)).map(j => j.runMs)).medianMs;
@@ -882,5 +887,5 @@ export class Suites {
       }), metrics };
   }
 
-  async close(): Promise<void> { this.#closed = true; for (const owner of this.#humans.keys()) this.leave(owner, 'hub closing'); clearInterval(this.#timer); for (const id of this.#hostGates.keys()) this.#stopHostGate(id); await Promise.allSettled(this.#starting); await this.#checking; await Promise.allSettled(this.#launchWork); await this.#reaping; await Promise.allSettled(this.#inspecting.values()); }
+  async close(): Promise<void> { this.#closed = true; for (const owner of this.#humans.keys()) this.leave(owner, 'hub closing'); clearInterval(this.#timer); (this.#options.waitClock ?? realClock).clearInterval(this.#waitTimer); for (const id of this.#hostGates.keys()) this.#stopHostGate(id); await Promise.allSettled(this.#starting); await this.#checking; await Promise.allSettled(this.#launchWork); await this.#reaping; await Promise.allSettled(this.#inspecting.values()); }
 }

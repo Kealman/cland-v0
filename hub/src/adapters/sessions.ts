@@ -1,3 +1,4 @@
+import { realClock, type ClockTimer } from '../hub/clock.ts';
 import { AccountLimited, codexWindows, type AccountReading } from '../accounts/limits.ts';
 import { artifactEntry } from '../hub/artifact-folder.ts';
 // The hub's side of the adapters: launching sessions, the process table, each session's state, and the
@@ -106,20 +107,20 @@ export class Sessions {
   readonly #pendingLimits = new Map<string, AccountReading>();
   readonly #limitsPublishing = new Set<string>();
   readonly #limitsPublishedAt = new Map<string, number>();
-  readonly #usageTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  readonly #usageTimers = new Map<string, ClockTimer>();
   readonly #unprocess: () => void;
   #closed = false;
   #resuming = 0;
   readonly #pendingStops = new Map<string, PendingStop>();
   readonly #recoveryObservers = new Map<string, () => void>();
   readonly #stoppingLaunches = new Set<string>();
-  #stopRetry: ReturnType<typeof setInterval> | null = null;
+  #stopRetry: ClockTimer | null = null;
   readonly #lifecycle = new Map<string, Promise<void>>();
   readonly #crewAdmissions = new Map<string, string>();
   readonly #reusing = new Set<string>();
   readonly #tracker: Tracker | undefined;
   readonly #cleanup: ProjectConfig['sessions'];
-  #archiveTimer: ReturnType<typeof setTimeout> | null = null;
+  #archiveTimer: ClockTimer | null = null;
   #archiveTick: ReturnType<typeof setImmediate> | null = null;
   #sweeping = false;
   #untracker: (() => void) | undefined;
@@ -499,7 +500,7 @@ export class Sessions {
     const usage = p && this.#adapters.get(p.harness)?.usage?.(p);
     if (p?.harness === 'codex' && usage?.rateLimitsAt) this.#queueLimits(p, codexWindows(usage.rateLimits, usage.rateLimitsByLimitId), usage.rateLimitsAt);
     if (this.#usageTimers.has(sessionId)) return;
-    const timer = setTimeout(() => {
+    const timer = this.#core.clock.setTimeout(() => {
       this.#usageTimers.delete(sessionId);
       const p = this.#table.bySessionId(sessionId);
       const usage = p && this.#adapters.get(p.harness)?.usage?.(p);
@@ -509,13 +510,13 @@ export class Sessions {
         const account = p.account ?? `default:${p.harness}`;
         const reading = this.#pendingLimits.get(account);
         if (reading) {
-          if (this.#limitsPublishing.has(account) || Date.now() - (this.#limitsPublishedAt.get(account) ?? 0) < this.#usageEventMs) this.#usageChanged(sessionId);
+          if (this.#limitsPublishing.has(account) || this.#core.clock.now().getTime() - (this.#limitsPublishedAt.get(account) ?? 0) < this.#usageEventMs) this.#usageChanged(sessionId);
           else {
             this.#pendingLimits.delete(account);
             this.#limitsPublishing.add(account);
             void this.#core.publishAccountLimits(reading).finally(() => {
               this.#limitsPublishing.delete(account);
-              this.#limitsPublishedAt.set(account, Date.now());
+              this.#limitsPublishedAt.set(account, this.#core.clock.now().getTime());
             });
           }
         }
@@ -552,11 +553,11 @@ export class Sessions {
     if (this.#closed) return;
     if (this.#archiveTick) clearImmediate(this.#archiveTick);
     this.#archiveTick = null;
-    if (this.#archiveTimer) clearTimeout(this.#archiveTimer);
+    if (this.#archiveTimer) this.#core.clock.clearTimeout(this.#archiveTimer);
     this.#archiveTimer = null;
     this.#sweeping = true;
     try {
-      const now = Date.now(), at = new Date(now).toISOString();
+      const now = this.#core.clock.now().getTime(), at = new Date(now).toISOString();
       let next = now + 60000;
       const dated: string[] = [];
       const due: Array<{ process: HarnessProcess; rule: string }> = [];
@@ -577,7 +578,7 @@ export class Sessions {
       if (dated.length || due.length) this.#table.archiveBatch(dated, due.map(d => d.process.name), at);
       for (const { process: p, rule } of due) this.#log({ event: 'session-archived', session: p.name, sessionId: p.sessionId, by: 'rule', rule });
       this.#log({ event: 'session-archive-sweep', rows: rows.length, dated: dated.length, archived: due.length, batches: dated.length || due.length ? 1 : 0 });
-      this.#archiveTimer = setTimeout(() => { this.#archiveTimer = null; this.#scheduleArchive(); }, Math.max(1, next - now));
+      this.#archiveTimer = this.#core.clock.setTimeout(() => { this.#archiveTimer = null; this.#scheduleArchive(); }, Math.max(1, next - now));
       this.#archiveTimer.unref();
     } finally { this.#sweeping = false; }
   }
@@ -590,7 +591,7 @@ export class Sessions {
   }
 
   prune(olderThan: string, dryRun: boolean): { names: string[]; dryRun: boolean } {
-    const cutoff = Date.now() - durationMs(olderThan);
+    const cutoff = this.#core.clock.now().getTime() - durationMs(olderThan);
     const rows = this.#table.all().filter(p => p.archivedAt && p.status !== 'running' && p.stoppedAt && Date.parse(p.stoppedAt) < cutoff && !this.#pendingStops.has(p.sessionId) && !this.#lifecycle.has(p.sessionId));
     const names = rows.map(p => p.name);
     if (!dryRun && rows.length) {
@@ -599,7 +600,7 @@ export class Sessions {
         this.#core.pruneProcess(p);
         this.#adapters.get(p.harness)?.forget?.(p.sessionId);
         const timer = this.#usageTimers.get(p.sessionId);
-        if (timer) clearTimeout(timer);
+        if (timer) this.#core.clock.clearTimeout(timer);
         this.#usageTimers.delete(p.sessionId);
         this.#lastAt.delete(p.sessionId);
         this.#lastPush.delete(p.sessionId);
@@ -618,7 +619,8 @@ export class Sessions {
 
   #retryStops(): void {
     if (this.#stopRetry || !this.#pendingStops.size || this.#closed) return;
-    this.#stopRetry = setInterval(() => {
+    // Retrying native process cleanup is I/O, independent of hub time.
+    this.#stopRetry = realClock.setInterval(() => {
       for (const entry of this.#pendingStops.values()) void this.#stopFailedLaunch(entry).catch(() => {});
     }, 5000);
     this.#stopRetry.unref();
@@ -663,7 +665,7 @@ export class Sessions {
     this.#recoveryObservers.delete(process.sessionId);
     if (entry.files) this.#log({ event: 'launch-recovered', session: process.name, sessionId: process.sessionId });
     this.#core.publishCleanup(process.sessionId, false);
-    if (!this.#pendingStops.size && this.#stopRetry) { clearInterval(this.#stopRetry); this.#stopRetry = null; }
+    if (!this.#pendingStops.size && this.#stopRetry) { realClock.clearInterval(this.#stopRetry); this.#stopRetry = null; }
   }
 
   async #stopFailedLaunch(entry: PendingStop, resumed: Resumed = untimed): Promise<void> {
@@ -874,7 +876,7 @@ export class Sessions {
       authorize();
       if (!text.trim()) throw new Error('a launch brief must not be empty');
       if (!this.#core.textFits(text)) throw new Error('a launch brief exceeds the message size limit');
-      return { id: randomUUID(), from: 'hub', fromKind: 'hub', via: 'hub', to: [name], text, ts: new Date().toISOString(), topic: 'agents', kind: 'report' };
+      return { id: randomUUID(), from: 'hub', fromKind: 'hub', via: 'hub', to: [name], text, ts: this.#core.clock.now().toISOString(), topic: 'agents', kind: 'report' };
     });
   }
 
@@ -957,7 +959,7 @@ export class Sessions {
       let detail = cause instanceof Error ? cause.message : String(cause);
       if (cause instanceof LaunchRecoveryPending) {
         const child = cause.files.children[0];
-        owned = { name: request.name, harness, role, model, cwd, sessionId: cause.sessionId, pid: child?.pid ?? null, pidStarted: child?.pidStarted ?? null, harnessId: null, harnessSessionId: null, startedAt: new Date().toISOString(), status: 'stopped', item };
+        owned = { name: request.name, harness, role, model, cwd, sessionId: cause.sessionId, pid: child?.pid ?? null, pidStarted: child?.pidStarted ?? null, harnessId: null, harnessSessionId: null, startedAt: this.#core.clock.now().toISOString(), status: 'stopped', item };
         this.#recoveryObservers.set(owned.sessionId, cause.settled);
       }
       if (owned) {
@@ -1057,7 +1059,7 @@ export class Sessions {
         if (this.#pendingStops.has(identity)) throw new Error(`failed launch of "${p.name}" is still supervised; cleanup is pending`);
         if (p.status === 'running') throw new Error(`session "${p.name}" is running; stop it first`);
         if (!p.archivedAt) {
-          this.#table.update(p.name, { archivedAt: new Date().toISOString(), archivedBy: 'hand' });
+          this.#table.update(p.name, { archivedAt: this.#core.clock.now().toISOString(), archivedBy: 'hand' });
           this.#log({ event: 'session-archived', session: p.name, sessionId: identity, by: 'hand', actor });
         }
         return this.view(this.#process(p.name));
@@ -1179,7 +1181,7 @@ export class Sessions {
       if (reservation) this.#core.launchSettled(process.name);
       const work = this.#resumeWork(process, desiredRole);
       this.#log({ event: 'session-resumed', session: process.name, harness: p.harness, pid: found.process.pid, state: found.state, relaunched: relaunch && p.status !== 'running', ...work });
-      const at = Date.now();
+      const at = realClock.now().getTime();
       if (found.state !== 'unknown') this.#signal(p.sessionId, { state: found.state, source: 'resume', at }, false);
       // A reconnect can acknowledge deliveries while the row is still stopped.
       // Publication must retry them even when resume reports the same idle state.
@@ -1289,7 +1291,7 @@ export class Sessions {
     // the harness's own conversation id, as its hooks carry it (a `/clear` starts a new one)
     const harnessSessionId = typeof payload.session_id === 'string' ? payload.session_id : null;
     if (harnessSessionId && harnessSessionId !== (p.harnessSessionId ?? p.sessionId)) this.#table.update(p.name, { harnessSessionId });
-    const meaning = adapter.interpret(frame.event, payload, p, frame.at ?? Date.now());
+    const meaning = adapter.interpret(frame.event, payload, p, frame.at ?? realClock.now().getTime());
     for (const id of meaning.confirms ?? []) this.#confirm(p, id);
     this.#recordHarness(p, meaning);
     if (meaning.usage) {
@@ -1297,7 +1299,7 @@ export class Sessions {
       this.#usageChanged(p.sessionId);
     }
     if (meaning.rateLimits) {
-      this.#queueLimits(p, meaning.rateLimits.windows, meaning.rateLimits.at ?? new Date(frame.at ?? Date.now()).toISOString());
+      this.#queueLimits(p, meaning.rateLimits.windows, meaning.rateLimits.at ?? new Date(frame.at ?? realClock.now().getTime()).toISOString());
       this.#usageChanged(p.sessionId);
     }
     if (meaning.limitHit) this.#limitHit(p.sessionId, meaning.limitHit);
@@ -1308,7 +1310,7 @@ export class Sessions {
       if (meaning.failureMessages) void meaning.failureMessages.then((messages) => this.#notifyTurnSenders(p.sessionId, error, messages, meaning.failureDedupe));
     }
     if (!meaning.state) return { applied: Boolean(meaning.model || meaning.subagent || meaning.usage || meaning.rateLimits) };
-    const applied = this.#signal(p.sessionId, { state: meaning.state, source: frame.event.startsWith('mod-') ? 'mod' : 'hook', at: frame.at ?? Date.now(), ...(meaning.approvalCommand !== undefined ? { approvalCommand: meaning.approvalCommand } : {}) }, true);
+    const applied = this.#signal(p.sessionId, { state: meaning.state, source: frame.event.startsWith('mod-') ? 'mod' : 'hook', at: frame.at ?? realClock.now().getTime(), ...(meaning.approvalCommand !== undefined ? { approvalCommand: meaning.approvalCommand } : {}) }, true);
     return { applied, state: this.#core.sessionState(p.sessionId) };
   }
 
@@ -1329,7 +1331,8 @@ export class Sessions {
     if (!p || p.status !== 'running') return false;
     this.#recordHarness(p, signal);
     if (!signal.state) return Boolean(signal.model || signal.subagent);
-    const now = Date.now();
+    // Native adapter signals and injection retries stay in the transport time domain.
+    const now = realClock.now().getTime();
     const current = this.#core.sessionState(sessionId);
     if (push) {
       if (signal.at < (this.#lastAt.get(sessionId) ?? 0)) {
@@ -1480,7 +1483,7 @@ export class Sessions {
     if ((message.detail?.event === 'heartbeat' || message.digest?.some(note => note.detail?.event === 'heartbeat')) && this.#core.sessionState(sessionId) !== 'idle') return;
     const adapter = this.#adapters.get(p.harness);
     if (!adapter) return;
-    const flight = { sentAt: Date.now(), again: false };
+    const flight = { sentAt: realClock.now().getTime(), again: false };
     this.#inflight.set(key, flight);
     if (message.fromKind !== 'hub') this.#core.store.setMeta(`pool-handoff:${sessionId}`, '');
     const topic = message.topic !== undefined ? this.#core.topicRef(message.topic) : null;
@@ -1518,10 +1521,10 @@ export class Sessions {
   close(): void {
     this.#closed = true;
     this.#earlyLimitHits.clear();
-    if (this.#archiveTimer) clearTimeout(this.#archiveTimer);
+    if (this.#archiveTimer) this.#core.clock.clearTimeout(this.#archiveTimer);
     if (this.#archiveTick) clearImmediate(this.#archiveTick);
     this.#untracker?.();
-    if (this.#stopRetry) clearInterval(this.#stopRetry);
+    if (this.#stopRetry) realClock.clearInterval(this.#stopRetry);
     this.#stopRetry = null;
     for (const a of this.#adapters.values()) a.close();
     this.#core.onDelivered(null);
@@ -1531,7 +1534,7 @@ export class Sessions {
     this.#unhello();
     this.#unsubscribe();
     this.#unprocess();
-    for (const timer of this.#usageTimers.values()) clearTimeout(timer);
+    for (const timer of this.#usageTimers.values()) this.#core.clock.clearTimeout(timer);
     this.#usageTimers.clear();
     this.#unrename();
   }

@@ -1,3 +1,4 @@
+import { realClock, type Clock } from '../hub/clock.ts';
 // The hub's process table (spec 4.3): the harness processes the hub launched, kept in `hub.db` in a table of
 // its own, through a connection of its own, so a restarted hub re-finds the sessions that outlived it.
 import type { Resumed } from '../hub/worktrees.ts';
@@ -115,10 +116,12 @@ const toProcess = (r: Row): HarnessProcess => ({
 });
 
 export class ProcessTable {
+  readonly #clock: Clock;
   readonly #db: DatabaseSync;
   readonly #listeners = new Set<(process: HarnessProcess, archived: number) => void>();
 
-  constructor(path: string = ':memory:') {
+  constructor(path: string = ':memory:', clock: Clock = realClock) {
+    this.#clock = clock;
     this.#db = new DatabaseSync(path);
     this.#db.exec('pragma journal_mode = wal; pragma busy_timeout = 2000;');
     this.#db.exec(SCHEMA);
@@ -190,7 +193,7 @@ export class ProcessTable {
   }
 
   update(name: string, change: Partial<Pick<HarnessProcess, 'pid' | 'harnessId' | 'harnessSessionId' | 'model' | 'status' | 'role' | 'pidStarted' | 'stoppedAt' | 'archivedAt' | 'archivedBy' | 'cleanupItem' | 'cleanupHeldAt'>>): void {
-    if (change.status && change.status !== 'running' && change.stoppedAt === undefined) change = { ...change, stoppedAt: new Date().toISOString() };
+    if (change.status && change.status !== 'running' && change.stoppedAt === undefined) change = { ...change, stoppedAt: this.#clock.now().toISOString() };
     const sets: string[] = [];
     const values: Array<string | number | null> = [];
     const column = { pid: 'pid', harnessId: 'harness_id', harnessSessionId: 'harness_session_id', model: 'model', status: 'status', role: 'role', pidStarted: 'pid_started', stoppedAt: 'stopped_at', archivedAt: 'archived_at', archivedBy: 'archived_by', cleanupItem: 'cleanup_item', cleanupHeldAt: 'cleanup_held_at' } as const;

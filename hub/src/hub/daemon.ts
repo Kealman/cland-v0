@@ -1,3 +1,4 @@
+import { realClock, type Clock } from './clock.ts';
 // The hub as a project's daemon: the project's lock taken first, `.cland/` prepared, the store opened on
 // `hub.db`, the WebSocket edge for spokes and the Unix socket edge for the UI bound, and the discovery file
 // written last — a client that reads `hub.json` finds a hub that answers. Shutdown runs it backwards: the
@@ -60,8 +61,9 @@ export type Daemon = {
   stop: () => Promise<void>;
 };
 
-export async function serveProject(root: string, options: { log?: LogFn; flushLog?: () => Promise<void>; listen?: ListenMode; scheduleTips?: TipSchedule; journalOpen?: JournalOpen; env?: NodeJS.ProcessEnv; starter?: Starter; autostart?: boolean } = {}): Promise<Daemon> {
+export async function serveProject(root: string, options: { clock?: Clock; log?: LogFn; flushLog?: () => Promise<void>; listen?: ListenMode; scheduleTips?: TipSchedule; journalOpen?: JournalOpen; env?: NodeJS.ProcessEnv; starter?: Starter; autostart?: boolean } = {}): Promise<Daemon> {
 
+  const clock = options.clock ?? realClock;
   const env = options.env ?? process.env;
   const listen = options.listen ?? 'required';
   const l = layout(root);
@@ -93,7 +95,7 @@ export async function serveProject(root: string, options: { log?: LogFn; flushLo
   const requestGuard = new RequestGuard({ log: entry => log(entry) });
   // Node's file-backed stderr writes synchronously. Production request logs go to a separate async queue;
   // stderr is reserved for a failed logging sink, startup diagnostics and other fatal errors.
-  const processJournal = options.log ? null : new Journal(l.log, undefined, { log: fatalLog, guard: requestGuard });
+  const processJournal = options.log ? null : new Journal(l.log, () => clock.now(), { log: fatalLog, guard: requestGuard });
   let starting = true;
   const processLog: LogFn = options.log ?? (entry => {
     // A stdio parent sees startup/listener diagnostics on its stderr pipe, as before.
@@ -101,12 +103,12 @@ export async function serveProject(root: string, options: { log?: LogFn; flushLo
     if (starting || String(entry.event).startsWith('orphan-sweep-') || entry.event === 'orphan-ended' || entry.event === 'orphan-preserved') fatalLog(entry);
     else processJournal!.write(entry as { event: string } & Record<string, unknown>);
   });
-  const journal = new Journal(journalPath(l.dir), undefined, { log: processLog, guard: requestGuard, ...(options.journalOpen ? { open: options.journalOpen } : {}) });
+  const journal = new Journal(journalPath(l.dir), () => clock.now(), { log: processLog, guard: requestGuard, ...(options.journalOpen ? { open: options.journalOpen } : {}) });
   const agents = agentsRecord();
   let hub!: HubBase;
   const tapped = agents.tap(journal.tap(processLog));
   log = entry => {
-    const record: JournalRecord = { ts: new Date().toISOString(), ...entry, event: String(entry.event), eventsVersion: 1 };
+    const record: JournalRecord = { ts: clock.now().toISOString(), ...entry, event: String(entry.event), eventsVersion: 1 };
     const row = eventRow(record);
     if (row) {
       const id = randomUUID();
@@ -126,7 +128,7 @@ export async function serveProject(root: string, options: { log?: LogFn; flushLo
   };
   journal.write({ event: 'hub-started', pid: process.pid, version: VERSION, root, starter: options.starter ?? { client: 'other', parentPid: process.ppid, cwd: process.cwd() } });
 
-  const startedAt = new Date();
+  const startedAt = clock.now();
   // the tracker's index lives in the same file, in tables of its own; it is rebuilt from the item files here
   // Tests only: consume a one-shot arm, acknowledge the completed temp write, and await release.
   const gateDir = env.CLAND_TEST_TASK_WRITE_GATE;
@@ -151,7 +153,7 @@ export async function serveProject(root: string, options: { log?: LogFn; flushLo
   } catch (error) { await closeLogs(); lock.release(); throw error; }
   let failStorage!: () => void;
   const storageFailed = new Promise<void>(resolve => { failStorage = resolve; });
-  const tracker = new Tracker({ env, git: gitIn(root, env), onStorageFatal: operation => {
+  const tracker = new Tracker({ now: () => clock.now(), env, git: gitIn(root, env), onStorageFatal: operation => {
     if (starting || stopping) return;
     // Freeze admission and native/index continuations before yielding or announcing the failure.
     void tracker.stop({ stalled: operation });
@@ -186,7 +188,7 @@ export async function serveProject(root: string, options: { log?: LogFn; flushLo
     // first page. Read the tail before creating the core so startup log producers cannot
     // race restoration; the listeners and adapters start only after this cache is installed.
     const recent: import('../protocol.ts').EventRow[] = [];
-    const cutoff = Date.now() - 60000;
+    const cutoff = clock.now().getTime() - 60000;
     let before: string | undefined;
     try {
       while (true) {
@@ -205,6 +207,7 @@ export async function serveProject(root: string, options: { log?: LogFn; flushLo
       log({ event: 'events-restore-failed', error: err instanceof Error ? err.message : String(err) });
     }
     hub = createHubBase({
+      clock,
       secret,
       env,
       rules,
@@ -244,7 +247,7 @@ export async function serveProject(root: string, options: { log?: LogFn; flushLo
           crew: { config: crew.get(), summary: crewSummary(crew.get()) },
           keys: config?.keys ?? { layouts: [] },
           tracker: { levels: tracker.ladder.flat, ladder: tracker.ladder.levels.map(level => [...level]) },
-          uptimeMs: Date.now() - startedAt.getTime(),
+          uptimeMs: clock.now().getTime() - startedAt.getTime(),
           harnesses: adapters?.sessions.list() ?? [],
         }),
         stop: () => { markHubStop(root); deliberateStop = true; void stop().catch(err => processLog({ event: 'stop-failed', error: err instanceof Error ? err.message : String(err) })); },

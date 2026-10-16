@@ -1,3 +1,4 @@
+import { realClock, type Clock } from './clock.ts';
 // Artifact promotion and retention own their I/O reservations. Topic moves stay synchronous;
 // operations re-read the index after I/O, so a close/reopen is never overwritten by a stale artifact.
 import { randomUUID } from 'node:crypto';
@@ -31,13 +32,15 @@ async function run<T>(operation: IO<T>, resumed: Resumed): Promise<T> {
 }
 
 export class ArtifactLifecycle {
+  readonly #clock: Clock;
   readonly #store: Store;
   readonly #root: string | undefined;
   readonly #files: ArtifactFiles;
   readonly #changed: (a: Artifact) => void;
   readonly #busy = new Set<string>();
 
-  constructor(store: Store, root: string | undefined, changed: (a: Artifact) => void, files: ArtifactFiles = fs) {
+  constructor(store: Store, root: string | undefined, changed: (a: Artifact) => void, files: ArtifactFiles = fs, clock: Clock = realClock) {
+    this.#clock = clock;
     this.#store = store; this.#root = root; this.#changed = changed; this.#files = files;
   }
 
@@ -157,7 +160,7 @@ export class ArtifactLifecycle {
     if (kept && next.status === 'archived') {
       next.status = 'shared'; delete next.archivedAt; delete next.explicitArchive;
     } else if (!kept && this.#store.topic(next.topic)?.status === 'closed' && !this.#store.humanArtifact(next)) {
-      next.status = 'archived'; next.archivedAt = new Date().toISOString();
+      next.status = 'archived'; next.archivedAt = this.#clock.now().toISOString();
     }
     this.#store.updateArtifact(next); this.#changed(next);
     return next;
@@ -165,7 +168,7 @@ export class ArtifactLifecycle {
 
   archive(id: string): Artifact {
     const current = this.#available(id, true);
-    const next: Artifact = { ...current, status: 'archived', archivedAt: new Date().toISOString(), explicitArchive: true };
+    const next: Artifact = { ...current, status: 'archived', archivedAt: this.#clock.now().toISOString(), explicitArchive: true };
     this.#store.updateArtifact(next); this.#changed(next);
     return next;
   }
@@ -351,7 +354,7 @@ export class ArtifactLifecycle {
       typeof a.archivedAt === 'string' && Date.parse(a.archivedAt) <= cutoff;
   }
 
-  cleanup(retentionDays: number, now = Date.now(), resumed: Resumed = direct): Promise<void> {
+  cleanup(retentionDays: number, now = this.#clock.now().getTime(), resumed: Resumed = direct): Promise<void> {
     return run(this.#cleanup(now - retentionDays * 86_400_000), resumed);
   }
 

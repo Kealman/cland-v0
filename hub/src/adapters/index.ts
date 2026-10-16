@@ -27,7 +27,7 @@ export type ProjectSessions = { sessions: Sessions; close: () => void };
 
 export function projectSessions(options: { core: HubCore; root: string; db: string; discoveryFile: string; log: LogFn; env?: NodeJS.ProcessEnv; tracker?: Tracker | undefined; cleanup?: ProjectConfig['sessions'] | undefined }): ProjectSessions {
   const env = options.env ?? process.env;
-  const table = new ProcessTable(options.db);
+  const table = new ProcessTable(options.db, options.core.clock);
   const pushTrustMs = positive(env.CLAND_PUSH_TRUST_MS);
   const sessions = new Sessions({ env, core: options.core, table, root: options.root, log: options.log, tracker: options.tracker, cleanup: options.cleanup, ...(pushTrustMs ? { pushTrustMs } : {}) });
   const host = sessions.host({ discoveryFile: options.discoveryFile, node: process.execPath, cli: CLI_ENTRY, spoke: SPOKE_ENTRY });

@@ -1,3 +1,4 @@
+import { resolveClock, type Clock, type ClockOptions, type ClockTimer } from './clock.ts';
 import type { AnswerAttribution } from '../protocol.ts';
 import { heartbeatDigest } from './heartbeat.ts';
 import { defaultCrew } from '../crew.ts';
@@ -137,7 +138,7 @@ type LaunchIdentityBinding = { name: string; sessionId: string; prove: () => voi
 
 export type HelloResult = { ok: true; name: string; connection: Connection; spoke: SpokeSocket } | { ok: false; code: RefusalCode; message: string };
 
-export type CoreOptions = {
+export type CoreOptions = ClockOptions & {
   env?: NodeJS.ProcessEnv;
   heartbeatMs?: number;
   heartbeatRunTimeoutMs?: number;
@@ -153,7 +154,6 @@ export type CoreOptions = {
   eventLimit?: RateLimit;
   loopBreaker?: LoopBreaker;
   maxTextBytes?: number;
-  now?: () => Date;
   log?: LogFn;
   /**
    * The project's role definitions (`.cland/roles.toml`). With them roles are hub-held (spec 4.4, ADR 0001): a
@@ -254,7 +254,7 @@ export class HubCore {
     this.#log({ event: 'send', id: message.id, from: message.from, kind: message.kind, to: message.to, topic: message.topic, bytes: Buffer.byteLength(message.text), outcomes: [`${name}:queued`] });
     this.#send(message, name);
   }
-  readonly #heartbeatTimer: NodeJS.Timeout;
+  readonly #heartbeatTimer: ClockTimer;
   readonly #heartbeatMs: number | undefined;
   readonly #heartbeatRunTimeoutMs: number;
   readonly #idleNotifyMs: number;
@@ -292,6 +292,7 @@ export class HubCore {
 
   readonly #live = new Map<string, Connection>();
   readonly #reserved: ReadonlySet<string>;
+  readonly clock: Clock;
   readonly #now: () => Date;
   readonly #log: LogFn;
   readonly #store: Store;
@@ -331,7 +332,7 @@ export class HubCore {
   readonly #processFacts = new Map<string, Pick<HarnessProcessView, 'status' | 'role' | 'harness' | 'model' | 'account'>>();
   readonly accountLimits: AccountLimits;
   #accountPoller: AccountPoller | undefined;
-  #limitTimer: NodeJS.Timeout | undefined;
+  #limitTimer: ClockTimer | undefined;
   useAccountPoller(poller: AccountPoller): void { this.#accountPoller = poller; this.#scheduleLimits(); }
   readonly #usageRecords = new Map<string, { usage: Pick<SessionUsage, 'total' | 'rateLimits' | 'rateLimitsByLimitId'>; final: boolean }>();
   #publishedPresence = '[]';
@@ -354,7 +355,8 @@ export class HubCore {
   constructor(options: CoreOptions = {}) {
     this.#env = options.env ?? process.env;
     this.#reserved = new Set([HUMAN, ...(options.reservedNames ?? [])]);
-    this.#now = options.now ?? (() => new Date());
+    this.clock = resolveClock(options);
+    this.#now = () => this.clock.now();
     this.#log = options.log ?? (() => {});
     this.#store = options.store ?? new Store();
     this.accountLimits = new AccountLimits({ read: key => this.#store.meta(key), write: (key, value) => this.#store.setMeta(key, value) });
@@ -367,7 +369,7 @@ export class HubCore {
     this.#heartbeatMs = options.heartbeatMs;
     this.#heartbeatRunTimeoutMs = options.heartbeatRunTimeoutMs ?? 4500000;
     this.#idleNotifyMs = options.idleNotifyMs ?? IDLE_NOTIFY_MS;
-    this.#heartbeatTimer = setInterval(() => this.#heartbeatTick(), Math.min(1000, Math.max(10, (options.heartbeatMs ?? 4000) / 4)));
+    this.#heartbeatTimer = this.clock.setInterval(() => this.#heartbeatTick(), Math.min(1000, Math.max(10, (options.heartbeatMs ?? 4000) / 4)));
     this.#heartbeatTimer.unref();
     this.#items = options.items ?? null;
     this.#store.setItemResolver(id => this.#items?.resolveId?.(id) ?? null);
@@ -413,6 +415,7 @@ export class HubCore {
       },
     });
     this.inbox = new InboxBoard({
+      clock: this.clock,
       visibility: this.visibility,
       store: this.#store,
       now: this.#now,
@@ -446,14 +449,14 @@ export class HubCore {
   close(): void {
     this.#closed = true;
     this.#rulebookUiUnsubscribe?.();
-    clearInterval(this.#heartbeatTimer);
+    this.clock.clearInterval(this.#heartbeatTimer);
     this.#unsubscribeRules?.();
     if (this.#presenceImmediate) clearImmediate(this.#presenceImmediate);
     this.#presenceImmediate = null;
     if (this.#journalImmediate) clearImmediate(this.#journalImmediate);
     this.#journalImmediate = null;
     this.#journalRows = [];
-    clearTimeout(this.#limitTimer);
+    this.clock.clearTimeout(this.#limitTimer);
     this.inbox.close();
   }
 
@@ -872,20 +875,20 @@ export class HubCore {
   }
 
   #scheduleLimits(): void {
-    clearTimeout(this.#limitTimer);
+    this.clock.clearTimeout(this.#limitTimer);
     if (this.#closed) return;
     const resets = this.accountLimits.marks().flatMap(([, m]) => m.resetsAt ? [Date.parse(m.resetsAt)] : []);
     if (!resets.length) return;
-    this.#limitTimer = setTimeout(() => {
-      for (const [name, mark] of this.accountLimits.marks()) if (mark.resetsAt && Date.parse(mark.resetsAt) <= Date.now()) this.clearAccountLimit(name, 'reset');
+    this.#limitTimer = this.clock.setTimeout(() => {
+      for (const [name, mark] of this.accountLimits.marks()) if (mark.resetsAt && Date.parse(mark.resetsAt) <= this.#now().getTime()) this.clearAccountLimit(name, 'reset');
       this.#scheduleLimits();
-    }, Math.min(2 ** 31 - 1, Math.max(0, Math.min(...resets) - Date.now())));
+    }, Math.min(2 ** 31 - 1, Math.max(0, Math.min(...resets) - this.#now().getTime())));
     this.#limitTimer.unref();
   }
 
   checkAccountLimit(name: string): void {
     const mark = this.accountLimits.limited(name);
-    if (mark?.resetsAt && Date.parse(mark.resetsAt) <= Date.now()) this.clearAccountLimit(name, 'reset');
+    if (mark?.resetsAt && Date.parse(mark.resetsAt) <= this.#now().getTime()) this.clearAccountLimit(name, 'reset');
     else if (mark) throw new AccountLimited(name, mark.resetsAt);
   }
 
@@ -900,11 +903,11 @@ export class HubCore {
 
   limitAccount(name: string, harness: string, session: string, hit: { reason: string; resetsAt?: string }): void {
     const held = this.accountLimits.limited(name);
-    if (held?.resetsAt && Date.parse(held.resetsAt) <= Date.now()) this.clearAccountLimit(name, 'reset');
+    if (held?.resetsAt && Date.parse(held.resetsAt) <= this.#now().getTime()) this.clearAccountLimit(name, 'reset');
     if (this.accountLimits.limited(name)) return;
-    const reset = hit.resetsAt && Date.parse(hit.resetsAt) > Date.now() ? new Date(hit.resetsAt).toISOString() : null;
+    const reset = hit.resetsAt && Date.parse(hit.resetsAt) > this.#now().getTime() ? new Date(hit.resetsAt).toISOString() : null;
     const windows = this.accountLimits.view({ name, harness, path: null, variable: '' }).windows;
-    const mark = { since: new Date().toISOString(), reason: hit.reason, session, resetsAt: harness === 'opencode' ? null : fullWindowReset(windows) ?? reset };
+    const mark = { since: this.#now().toISOString(), reason: hit.reason, session, resetsAt: harness === 'opencode' ? null : fullWindowReset(windows) ?? reset };
     this.accountLimits.mark(name, mark);
     this.#log({ event: 'account-limited', account: name, ...mark });
     void this.#publishAccount(name, harness).catch(() => {});

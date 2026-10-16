@@ -1,3 +1,4 @@
+import type { Clock } from '../src/hub/clock.ts';
 // The test harness for the two seams:
 //   1. the spoke's MCP stdio surface — the real spoke process, driven by the SDK's client
 //   2. the hub's WebSocket edge — an in-process hub on an ephemeral port
@@ -321,7 +322,7 @@ export async function isolateVerification(root: string): Promise<void> {
 
 /** Default project fixture: a fresh hub in this process, reached through production discovery and edges.
  * No process globals are changed. Process lifecycle assertions must keep startDaemon instead. */
-export async function projectHub(t: TestContext, root: string, extra: Record<string, string> = {}): Promise<{ discovery: Discovery; dispatcher: Pick<Dispatcher, 'open'>; stop: () => Promise<void> }> {
+export async function projectHub(t: TestContext, root: string, extra: Record<string, string> = {}, options: { clock?: Clock } = {}): Promise<{ discovery: Discovery; dispatcher: Pick<Dispatcher, 'open'>; stop: () => Promise<void> }> {
   assert.ok(!extra.CLAND_TEST_CRASH_AT, 'process crash tests require startDaemon');
   await isolateVerification(root);
   const env: NodeJS.ProcessEnv = {};
@@ -334,7 +335,7 @@ export async function projectHub(t: TestContext, root: string, extra: Record<str
   const processLog = new Journal(join(root, '.cland/log/hub.log'));
   let daemon;
   try {
-    daemon = await resources.run(() => serveProject(root, { env, log: entry => processLog.write({ ...entry, event: String(entry.event) }), flushLog: () => processLog.flush() }));
+    daemon = await resources.run(() => serveProject(root, { ...options, env, log: entry => processLog.write({ ...entry, event: String(entry.event) }), flushLog: () => processLog.flush() }));
     await processLog.flush();
   }
   catch (error) {

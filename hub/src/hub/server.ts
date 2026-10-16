@@ -110,13 +110,13 @@ export function createHubBase(options: HubBaseOptions): HubBase {
   let closing = false;
   const cleanupArtifacts = () => {
     if (closing || cleanup) return;
-    cleanup = dispatcher.artifacts.cleanup(options.artifactRetentionDays ?? 30).catch(err => {
+    cleanup = dispatcher.artifacts.cleanup(options.artifactRetentionDays ?? 30, core.clock.now().getTime()).catch(err => {
       try { options.log?.({ event: 'artifact-cleanup-failed', error: err instanceof Error ? err.message : String(err) }); }
       catch { /* a failed error logger must not kill background retention or prevent retry */ }
     }).finally(() => { cleanup = null; });
   };
   const cleanupStart = setImmediate(cleanupArtifacts);
-  const pruneTimer = setInterval(() => { core.prune(); cleanupArtifacts(); }, options.pruneEveryMs ?? 24 * 60 * 60 * 1000);
+  const pruneTimer = core.clock.setInterval(() => { core.prune(); cleanupArtifacts(); }, options.pruneEveryMs ?? 24 * 60 * 60 * 1000);
   pruneTimer.unref();
   return {
     core,
@@ -127,7 +127,7 @@ export function createHubBase(options: HubBaseOptions): HubBase {
     close: async () => {
       closing = true;
       clearImmediate(cleanupStart);
-      clearInterval(pruneTimer);
+      core.clock.clearInterval(pruneTimer);
       core.close();
       await dispatcher.close();
       await cleanup;

@@ -52,6 +52,19 @@ protocols. Pass environment overrides to the fixture; never temporarily mutate
 owned processes, then fails on surviving owned handles, timers or process
 listeners, with `process.getActiveResourcesInfo()` diagnostics.
 
+Hub scheduling tests pass one complete clock at the fixture boundary:
+`projectHub(t, root, env, { clock: new FakeClock() })` (`hub/test/fake-clock.ts`).
+`await clock.advance(ms)` runs due hub timers in deadline order and yields to
+real I/O between callbacks; then await the expected frame or journal record.
+The clock covers timestamps and hub schedules together, including heartbeat,
+inbox notifications, archive/usage windows and retention. Use the same clock
+for every time-dependent collaborator in a fixture. `clock` and the legacy
+`now` override are mutually exclusive.
+
+Do not mock global timers in a `projectHub` scheduling test: sockets, journal
+flush and I/O retries, native adapter polling/reconnect, AccountPoller and suite
+execution keep real time. Verification-wait metrics alone use hub time.
+
 Keep `startDaemon` only when an assertion concerns the hub process: startup,
 shutdown, signals, crash/restart, lock/discovery/PID identity, orphan sweeping,
 watchdog behavior, or CLI behavior with the hub down or unreachable. Session

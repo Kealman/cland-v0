@@ -1,3 +1,4 @@
+import { realClock, type Clock, type ClockTimer } from './clock.ts';
 import type { Finding, FindingCounts } from '../tracker/findings.ts';
 // The inbox (§3.7): asks/command approvals, pending plans, requests and messages.
 // Each row records when its wait began; departures persist in hub.db and reach the journal
@@ -43,6 +44,7 @@ export function idleNotifyMs(configFile: string, env: NodeJS.ProcessEnv = proces
 const DEATH_REASONS = new Set(['its harness exited', 'its session was stopped']);
 
 export type InboxPort = {
+  clock?: Clock;
   store: Store;
   visibility: Visibility;
   now: () => Date;
@@ -61,19 +63,21 @@ export type InboxPort = {
 
 export class InboxBoard {
   readonly #port: InboxPort;
+  readonly #clock: Clock;
   /** The launched sessions (the adapters' process table): the approvals and their attach commands. */
   #processes: (() => HarnessProcessView[]) | null = null;
   /** When each session entered `waiting for approval`, by session id. */
   readonly #since = new Map<string, string>();
   /** One timer per idle session, by session id. */
-  readonly #idle = new Map<string, NodeJS.Timeout>();
+  readonly #idle = new Map<string, ClockTimer>();
   readonly #deaths = new Set<string>();
-  #scheduled: NodeJS.Timeout | null = null;
+  #scheduled: ClockTimer | null = null;
   #published: string | null = null;
   #closed = false;
 
   constructor(port: InboxPort) {
     this.#port = port;
+    this.#clock = port.clock ?? realClock;
   }
 
   /** Who lists the launched sessions (the adapters' side); null when the hub has none. */
@@ -89,9 +93,9 @@ export class InboxBoard {
 
   close(): void {
     this.#closed = true;
-    if (this.#scheduled) clearTimeout(this.#scheduled);
+    if (this.#scheduled) this.#clock.clearTimeout(this.#scheduled);
     this.#scheduled = null;
-    for (const t of this.#idle.values()) clearTimeout(t);
+    for (const t of this.#idle.values()) this.#clock.clearTimeout(t);
     this.#idle.clear();
   }
 
@@ -163,11 +167,11 @@ export class InboxBoard {
     } else this.#since.delete(e.sessionId);
     const timer = this.#idle.get(e.sessionId);
     if (timer) {
-      clearTimeout(timer);
+      this.#clock.clearTimeout(timer);
       this.#idle.delete(e.sessionId);
     }
     if (e.state === 'idle' && this.#port.idleNotifyMs > 0) {
-      const t = setTimeout(() => this.#idleFor(e.session, e.sessionId), this.#port.idleNotifyMs);
+      const t = this.#clock.setTimeout(() => this.#idleFor(e.session, e.sessionId), this.#port.idleNotifyMs);
       t.unref();
       this.#idle.set(e.sessionId, t);
     }
@@ -367,7 +371,7 @@ export class InboxBoard {
   /** A fixed window bounds rebuilds even when steady traffic arrives on separate event-loop turns. */
   #changed(): void {
     if (this.#scheduled || this.#closed) return;
-    this.#scheduled = setTimeout(() => {
+    this.#scheduled = this.#clock.setTimeout(() => {
       this.#scheduled = null;
       if (this.#closed) return;
       try {
