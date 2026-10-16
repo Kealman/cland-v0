@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, connectUi, readDiscovery, spawnSpoke, startDaemon, tempProject } from './harness.ts';
+import { cland, connectUi, readDiscovery, spawnSpoke, projectHub, startDaemon, tempProject } from './harness.ts';
 
 type Item = { id: string; kind: string; version?: string; body: string; path: string; ancestry: Array<{ id: string; kind: string; title: string }> };
 
@@ -42,7 +42,7 @@ test('a release version and Notes survive writes and a hub restart; CLI and MCP 
 
 test('the hub enforces the parenting rule on create, link and kind edits without partial writes', async t => {
   const root = await tempProject(t);
-  await startDaemon(t, root);
+  await projectHub(t, root);
   const ui = await connectUi(t, await readDiscovery(root));
   const create = async (kind: string, parent?: string) => {
     const r = await ui.request({ ...(['task'].includes(kind ?? 'task') ? { size: 'M' } : {}), type: 'task.create', title: kind, kind, ...(parent ? { parent } : {}) });
@@ -88,7 +88,7 @@ test('the hub enforces the parenting rule on create, link and kind edits without
 
 test('under selects descendants before other filters; CLI and MCP views return the root-to-item path', async t => {
   const root = await tempProject(t);
-  await startDaemon(t, root);
+  await projectHub(t, root);
   const ui = await connectUi(t, await readDiscovery(root));
   for (const frame of [
     { title: 'v0.1', kind: 'release', version: '0.1.0' },
@@ -139,7 +139,7 @@ test('under selects descendants before other filters; CLI and MCP views return t
 
 test('an unversioned release can be planned later; invalid version edits preserve the previous file', async t => {
   const root = await tempProject(t);
-  await startDaemon(t, root);
+  await projectHub(t, root);
   assert.equal((await cland(root, 'task', 'create', 'Later', '--kind', 'release')).code, 0);
   const edit = await cland(root, 'task', 'edit', 'T-1', '--version', '2.0.0', '--json');
   assert.equal(edit.code, 0, edit.stderr);
@@ -163,7 +163,7 @@ test('an unversioned release can be planned later; invalid version edits preserv
 
 test('converting an item to a release adds Notes and preserves existing notes', async t => {
   const root = await tempProject(t);
-  await startDaemon(t, root);
+  await projectHub(t, root);
   const ui = await connectUi(t, await readDiscovery(root));
   for (const body of ['Goal.', 'Goal.\n\n## Notes\n\nAlready prepared.']) {
     const made = await ui.request({ size: 'M', type: 'task.create', title: 'Convert', body });

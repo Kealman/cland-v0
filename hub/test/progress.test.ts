@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { withDiscoveredPid, assignRole, clandWithEnv, clauseAnswered, connectSocket, connectUi, connectWsUi, eventually, fakeClaude, fakeCodex, killDaemon, sleep, spawnSpoke, startDaemon, startHub, tempProject, TEST_SECRET, type FrameClient } from './harness.ts';
+import { withDiscoveredPid, assignRole, clandWithEnv, clauseAnswered, connectSocket, connectUi, connectWsUi, eventually, fakeClaude, fakeCodex, killDaemon, sleep, spawnSpoke, projectHub, startDaemon, startHub, tempProject, TEST_SECRET, type FrameClient } from './harness.ts';
 import { PROTOCOL_VERSION, type Message } from '../src/protocol.ts';
 import { WebSocket } from 'ws';
 
@@ -16,7 +16,7 @@ const idle = (ui: FrameClient) => eventually('coord idle', async () => {
 
 test('progress stays queued and reaches the spoke in one ordered digest with the next report', async (t) => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const sender = await spawnSpoke({ cwd: root, discover: true, name: 'impl', sessionId: 'sender' });
@@ -124,7 +124,7 @@ for (const harness of ['claude-code', 'codex', 'opencode']) {
 
 test('an unacked digest keeps its membership across reconnect while newer progress waits for another report', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   await assignRole(root, 'coord', 'coordinator');
   const connect = async () => {
     const socket = await connectSocket(discovery.socket);
@@ -163,7 +163,7 @@ test('an unacked digest keeps its membership across reconnect while newer progre
 test('an uncertain harness admission holds the whole digest; a later report cannot take it, and retry uses the same batch', async t => {
   const root = await tempProject(t);
   const fake = await fakeCodex(t, { injectTimeoutMs: 1200 });
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const launched = await ui.request({ type: 'session.launch', name: 'coord', role: 'coordinator', harness: 'codex' }, 30_000);
@@ -197,7 +197,7 @@ test('an uncertain harness admission holds the whole digest; a later report cann
 
 test('a report queued to a vacant role picks up its recipient\'s held progress when the recipient reconnects', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const sender = await spawnSpoke({ cwd: root, discover: true, name: 'impl', sessionId: 'sender' });
   const receiver = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'receiver' });

@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { withDiscoveredPid, cland, clandWithEnv, clauseAnswered, eventually, connectSocket, connectUi, fakeCodex, fakeClaude, killDaemon, spawnSpoke, startDaemon, tempProject, sleep } from './harness.ts';
+import { withDiscoveredPid, cland, clandWithEnv, clauseAnswered, eventually, connectSocket, connectUi, fakeCodex, fakeClaude, killDaemon, spawnSpoke, projectHub, startDaemon, tempProject, sleep } from './harness.ts';
 import { PROTOCOL_VERSION, type Message } from '../src/protocol.ts';
 import { taskWriteGate } from './tracker-write-gate.ts';
 
@@ -11,7 +11,7 @@ type Subscription = { id: string; subject: { item: string } | { session: string 
 
 test('caller-owned subscriptions hold task status events in the ordinary next-turn digest', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
@@ -132,7 +132,7 @@ test('an unchanged cached item emits its first committed status change after res
 
 test('adopting a provisional claim at hello does not announce another claim', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
   t.after(() => coord.close());
@@ -158,7 +158,7 @@ test('adopting a provisional claim at hello does not announce another claim', as
 test('resume --relaunch announces each transition into running once for the same session id', async t => {
   const root = await tempProject(t);
   const fake = await fakeClaude(t, { pollMs: 50 });
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
   t.after(() => coord.close());
@@ -192,7 +192,7 @@ test('resume --relaunch announces each transition into running once for the same
 test('session state and lifecycle events include death, held until the Coordinator next turns', async t => {
   const root = await tempProject(t);
   const fake = await fakeClaude(t, { pollMs: 50 });
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
@@ -234,7 +234,7 @@ test('session state and lifecycle events include death, held until the Coordinat
 
 test('task events report claims, verdicts and closes once; ordinary comments do not become events', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
@@ -352,7 +352,7 @@ for (const harness of ['claude-code', 'codex', 'opencode']) {
 
 test('fan-out preserves independent recipient digests when one subscriber disconnects', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
   const rev = await spawnSpoke({ cwd: root, discover: true, name: 'rev', role: 'reviewer', sessionId: 'rev-id' });
@@ -388,7 +388,7 @@ test('fan-out preserves independent recipient digests when one subscriber discon
 test('subscribe and unsubscribe racing an awaited task write take effect before its event is recorded', async t => {
   const root = await tempProject(t);
   const gate = await taskWriteGate(t, root);
-  const { discovery } = await startDaemon(t, root, gate.env);
+  const { discovery } = await projectHub(t, root, gate.env);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
@@ -414,7 +414,7 @@ test('subscribe and unsubscribe racing an awaited task write take effect before 
 
 test('renames preserve subscription ownership and each converging subject id', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
   const rev = await spawnSpoke({ cwd: root, discover: true, name: 'rev', role: 'reviewer', sessionId: 'rev-id' });
   t.after(async () => { await coord.close(); await rev.close(); });
@@ -430,7 +430,7 @@ test('renames preserve subscription ownership and each converging subject id', a
 
 test('invalid subjects and events are refused at the frame and MCP boundaries; CLI identities stay hub-held', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
   t.after(() => coord.close());
@@ -453,7 +453,7 @@ test('invalid subjects and events are refused at the frame and MCP boundaries; C
 test('a terminal session role update preserves a subscription created for its next launch', async t => {
   const root = await tempProject(t);
   const fake = await fakeClaude(t, { pollMs: 50 });
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });

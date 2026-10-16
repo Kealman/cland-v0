@@ -3,13 +3,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, connectUi, spawnSpoke, startDaemon, tempProject } from './harness.ts';
+import { cland, connectUi, spawnSpoke, projectHub, startDaemon, tempProject } from './harness.ts';
 
 type View = { id: string; path: string; body: string; criteria: unknown[]; criteriaWarnings: unknown[] };
 
 test('CLI and MCP views expose structured criteria and marks without writing the section', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const body = `## Acceptance criteria
 
@@ -45,7 +45,7 @@ test('CLI and MCP views expose structured criteria and marks without writing the
 
 test('orphan and wrongly indented mark lines are reported verbatim without inventing criteria', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const body = `## Acceptance criteria
   - verified: qa-2 [QA] · run q-1 · 2026-10-09T11:00Z
@@ -69,7 +69,7 @@ test('orphan and wrongly indented mark lines are reported verbatim without inven
 
 test('every criterion list sub-item is parsed or reported, including bullet whitespace and tab indentation', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const body = [
     '## Acceptance criteria',
@@ -173,7 +173,7 @@ test('hand edits re-index reworded and reordered criteria, preserve marks, and r
 
 test('legacy criteria keep checkbox state but have no ids or inferred marks; absent sections return no criteria', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   for (const [body, expected] of [
     ['## Acceptance criteria\n- [ ] Open legacy criterion\n- [X] Checked legacy criterion', [
@@ -197,7 +197,7 @@ test('legacy criteria keep checkbox state but have no ids or inferred marks; abs
 
 test('criteria parsing respects Markdown fences, section boundaries and wrapped criterion text', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const body = [
     '```markdown', '## Acceptance criteria', '- [x] C99. Example outside the section', '```',

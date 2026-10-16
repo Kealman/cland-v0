@@ -2,13 +2,13 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, writeFile, rm, readdir, mkdir, symlink } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, connectUi, eventually, spawnSpoke, startDaemon, tempProject } from './harness.ts';
+import { cland, connectUi, eventually, spawnSpoke, projectHub, startDaemon, tempProject } from './harness.ts';
 import { gitIn } from '../src/tracker/verdict-git.ts';
 import type { Artifact, TopicMessage } from '../src/protocol.ts';
 
 test('a spoke creates a persistent diagram and publishes its structured chip in the topic', async (t) => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
   t.after(() => coord.close());
@@ -49,7 +49,7 @@ test('CLI copies a file that survives source deletion and lists persistent artif
 
 test('invalid artifacts are typed refusals and leave the index unchanged', async (t) => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
   t.after(() => coord.close());
@@ -72,7 +72,7 @@ test('invalid artifacts are typed refusals and leave the index unchanged', async
 
 test('all roles can share in a delivered request topic; other topics and CLI impersonation are refused', async (t) => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const created = await ui.request({ type: 'topic.create', title: 'Work' });
   const topic = (created.value as { topic: { id: string } }).topic.id;
@@ -104,7 +104,7 @@ test('all roles can share in a delivered request topic; other topics and CLI imp
 
 test('an Implementer may share in its claimed item topic without a mention', async (t) => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const item = await cland(root, 'task', 'create', '--size', 'M', 'Own work', '--assignee', 'impl', '--json');
   const id = JSON.parse(item.stdout).item.id;
@@ -121,7 +121,7 @@ test('artifact publications use send size and rate limits, rolling back files an
   const root = await tempProject(t);
   await mkdir(join(root, '.cland'), { recursive: true });
   await writeFile(join(root, '.cland/config.toml'), '[hygiene]\nrate_limit_max = 2\nrate_limit_window_minutes = 1\nmax_text_bytes = 64\n');
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
   t.after(() => coord.close());
@@ -145,7 +145,7 @@ test('prompt drafts send text at the byte cap and attach above it, with persiste
   const root = await tempProject(t);
   await mkdir(join(root, '.cland'), { recursive: true });
   await writeFile(join(root, '.cland/config.toml'), '[hygiene]\nmax_text_bytes = 64\n');
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
   t.after(() => coord.close());
@@ -168,7 +168,7 @@ test('prompt drafts send text at the byte cap and attach above it, with persiste
 
 test('spoke send attaches several artifacts and refuses unknown, foreign and missing files', async (t) => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
   const impl = await spawnSpoke({ discover: true, cwd: root, name: 'impl', role: 'implementer' });
@@ -201,7 +201,7 @@ test('spoke send attaches several artifacts and refuses unknown, foreign and mis
 
 test('forced prompt attachment keeps the saved text in its artifact and a refused post keeps the draft', async (t) => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const created = await ui.request({ type: 'artifact.create', kind: 'prompt', title: 'Brief', topic: 'general', content: 'Short brief', status: 'draft' });
   const a = (created.value as { artifact: Artifact }).artifact;
@@ -219,7 +219,7 @@ test('automatic and explicit prompt attachment pointers fit the cap with long an
   const root = await tempProject(t);
   await mkdir(join(root, '.cland'), { recursive: true });
   await writeFile(join(root, '.cland/config.toml'), '[hygiene]\nmax_text_bytes = 33\n');
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   for (const attach of [false, true]) for (const title of ['x'.repeat(100), 'é'.repeat(100)]) {
     const a = ((await ui.request({ type: 'artifact.create', kind: 'prompt', title, topic: 'general', content: attach ? 'Short' : 'x'.repeat(34), status: 'draft' })).value as { artifact: Artifact }).artifact;
@@ -237,7 +237,7 @@ test('an attachment pointer also fits a cap smaller than its usual heading', asy
   const root = await tempProject(t);
   await mkdir(join(root, '.cland'), { recursive: true });
   await writeFile(join(root, '.cland/config.toml'), '[hygiene]\nmax_text_bytes = 1\n');
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const a = ((await ui.request({ type: 'artifact.create', kind: 'prompt', title: 'Long heading', topic: 'general', content: 'Over cap', status: 'draft' })).value as { artifact: Artifact }).artifact;
   const sent = await ui.request({ type: 'prompt.send', artifact: a.id });
@@ -257,7 +257,7 @@ test('human promotes artifact bytes into the repo without changing Git and refus
   await git(['commit', '-qm', 'base']);
   const head = await git(['rev-parse', 'HEAD']);
   const index = await git(['ls-files', '--stage']);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const made = await ui.request({ type: 'artifact.create', kind: 'note', title: 'Design', content: '# Design', topic: 'general' });
   const a = (made.value as { artifact: Artifact }).artifact;
@@ -273,7 +273,7 @@ test('human promotes artifact bytes into the repo without changing Git and refus
 
 test('closing topics or bound items archives artifacts; reopening restores files and promotion exempts them', async (t) => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const item = JSON.parse((await cland(root, 'task', 'create', '--size', 'M', 'Design', '--json')).stdout).item.id;
   const topic = ((await ui.request({ type: 'topic.create', title: 'Design', item })).value as { topic: { id: string } }).topic.id;
@@ -335,7 +335,7 @@ test('zero-day retention on restart removes only archived files and keeps delete
 test('promotion rejects existing, escaped, absolute, private and symlinked destinations without copying', async (t) => {
   const root = await tempProject(t);
   const outside = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const a = ((await ui.request({ type: 'artifact.create', kind: 'file', title: 'Bytes', content: 'bytes', topic: 'general' })).value as { artifact: Artifact }).artifact;
   await writeFile(join(root, 'exists'), 'original');
@@ -354,7 +354,7 @@ test('promotion rejects existing, escaped, absolute, private and symlinked desti
 
 test('promotion is granted to the Coordinator from its shell and refused to the other roles', async (t) => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery, 'cli');
   const a = ((await ui.request({ type: 'artifact.create', kind: 'note', title: 'Keep', content: 'bytes', topic: 'general' })).value as { artifact: Artifact }).artifact;
   for (const role of ['implementer', 'reviewer', 'qa', 'coordinator']) {

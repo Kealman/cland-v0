@@ -15,14 +15,14 @@ import { Tracker } from '../src/tracker/tracker.ts';
 import { createSocketEdge } from '../src/hub/socket.ts';
 import { fixedRoles } from '../src/roles/config.ts';
 import { join } from 'node:path';
-import { cland, connectUi, connectWsUi, spawnSpoke, startDaemon, startHub, tempProject, TEST_SECRET } from './harness.ts';
+import { cland, connectUi, connectWsUi, spawnSpoke, projectHub, startDaemon, startHub, tempProject, TEST_SECRET } from './harness.ts';
 
 type Item = { id: string; rank?: number; rank_set?: true; path: string; file: string; parent: string | null };
 
 test('lists and views distinguish default ranks from explicit ranks, including zero and the default value', async t => {
   const root = await tempProject(t);
   await fixture(root, [{ id: 'T-1' }, { id: 'T-2', rank: 20 }, { id: 'T-3', rank: 0 }]);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
   onCleanup(t, () => coord.close());
@@ -50,7 +50,7 @@ test('lists and views distinguish default ranks from explicit ranks, including z
 test('CLI views label the effective rank as default or set', async t => {
   const root = await tempProject(t);
   await fixture(root, [{ id: 'T-1' }, { id: 'T-2', rank: 0 }]);
-  await startDaemon(t, root);
+  await projectHub(t, root);
   const implicit = await cland(root, 'task', 'view', 'T-1');
   assert.equal(implicit.code, 0, implicit.stderr);
   assert.match(implicit.stdout, /^\s+rank\s+10 \(default\)$/m);
@@ -136,7 +136,7 @@ test('sparse rank moves persist, are idempotent, and CLI and MCP share rank then
 test('a dense move marks every written sibling and its task event as explicitly ranked', async t => {
   const root = await tempProject(t);
   await fixture(root, [{ id: 'T-1' }, { id: 'T-2' }, { id: 'T-3', rank: 9 }, { id: 'T-4', rank: 11 }, { id: 'T-5' }]);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const moved = await cland(root, 'task', 'rank', 'T-2', '--before', 'T-1', '--json');
@@ -161,7 +161,7 @@ test('a dense move marks every written sibling and its task event as explicitly 
 test('removing a frontmatter rank clears rank_set in the re-index event, list and view', async t => {
   const root = await tempProject(t);
   await fixture(root, [{ id: 'T-1', rank: 0 }]);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const before = await ui.request({ type: 'task.view', item: 'T-1' });
@@ -243,7 +243,7 @@ test('a dense interval changes only the moved item and one neighbor, preserving 
     { id: 'T-1', rank: 11 }, { id: 'T-2', rank: 50 }, { id: 'T-3', rank: 60 },
     { id: 'T-4', rank: 10 }, { id: 'T-5', rank: 12 }, { id: 'T-6', rank: -20 },
   ]);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const before = await ui.request({ type: 'task.list' });
@@ -274,7 +274,7 @@ test('ranking refuses different parents, self references, wrong kinds and ambigu
     { id: 'T-3', kind: 'area', parent: 'T-1' }, { id: 'T-4', parent: 'T-2' }, { id: 'T-5', parent: 'T-3' },
     { id: 'T-6', kind: 'group', parent: 'T-2' },
   ]);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const before = await readFile(join(root, '.cland', 'tasks', 'T-4-fixture.md'), 'utf8');
   for (const frame of [
@@ -353,7 +353,7 @@ test('the shared client ordering fixture matches hub lists and resolved event ra
   const root = await tempProject(t);
   const example = JSON.parse(await readFile(new URL('./fixtures/rank-order.json', import.meta.url), 'utf8')) as { items: Array<{ id: string; rank?: number }>; order: string[] };
   await fixture(root, example.items);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const list = await ui.request({ type: 'task.list' });
@@ -377,7 +377,7 @@ async function migration(root: string): Promise<{ code: number; stdout: string; 
 
 test('the high migration ranks singleton groups, including closed items, and a rerun writes nothing', async t => {
   const root = await tempProject(t);
-  await startDaemon(t, root);
+  await projectHub(t, root);
   for (const title of ['One', 'Two']) assert.equal((await cland(root, 'task', 'create', title, '--kind', 'epic')).code, 0);
   for (const parent of ['T-1', 'T-2']) {
     assert.equal((await cland(root, 'task', 'create', '--size', 'M', 'Ordinary', '--parent', parent)).code, 0);
@@ -402,7 +402,7 @@ test('the high migration ranks singleton groups, including closed items, and a r
 
 test('the high migration refuses multiple labelled siblings before any writes, counting closed items', async t => {
   const root = await tempProject(t);
-  await startDaemon(t, root);
+  await projectHub(t, root);
   for (const title of ['One', 'Two']) assert.equal((await cland(root, 'task', 'create', '--size', 'M', title, '--label', 'high')).code, 0);
   assert.equal((await cland(root, 'task', 'close', 'T-2')).code, 0);
   const listed = JSON.parse((await cland(root, 'task', 'list', '--json')).stdout) as { items: Item[] };
@@ -462,7 +462,7 @@ test('dense equal ranks make room with the fewest neighbors while preserving an 
     { id: 'T-6', kind: 'question' }, { id: 'T-1', rank: 61 }, { id: 'T-2', rank: 61 },
     { id: 'T-5', rank: 62 }, { id: 'T-3', rank: 80 },
   ]);
-  await startDaemon(t, root);
+  await projectHub(t, root);
   const result = await cland(root, 'task', 'rank', 'T-3', '--before', 'T-1', '--json');
   assert.equal(result.code, 0, result.stderr);
   const moved = JSON.parse(result.stdout) as { changed: string[]; siblings: string[] };
@@ -479,7 +479,7 @@ test('rank handles safe integer endpoints without overflow and refuses a fractio
     { id: 'T-1', rank: Number.MIN_SAFE_INTEGER }, { id: 'T-2', rank: Number.MAX_SAFE_INTEGER },
     { id: 'T-3', rank: 0 },
   ]);
-  await startDaemon(t, root);
+  await projectHub(t, root);
   for (const args of [['T-3', '--top'], ['T-1', '--after', 'T-2']]) {
     const result = await cland(root, 'task', 'rank', ...args, '--json');
     assert.equal(result.code, 0, result.stderr);
@@ -527,7 +527,7 @@ test('a failed dense batch reports its committed neighbor and a retry completes 
 test('a moved item keeps its rank when changing one neighbor alone can place it', async t => {
   const root = await tempProject(t);
   await fixture(root, [{ id: 'T-1', rank: 7 }, { id: 'T-2', rank: 7 }, { id: 'T-5', rank: 7 }]);
-  await startDaemon(t, root);
+  await projectHub(t, root);
   const before = await readFile(join(root, '.cland', 'tasks', 'T-5-fixture.md'), 'utf8');
   const result = await cland(root, 'task', 'rank', 'T-5', '--before', 'T-2', '--json');
   assert.equal(result.code, 0, result.stderr);

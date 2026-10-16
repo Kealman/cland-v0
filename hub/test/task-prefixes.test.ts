@@ -4,7 +4,7 @@ import { mkdir, writeFile, readFile, readdir, rm, rename } from 'node:fs/promise
 import { join } from 'node:path';
 import { Tracker } from '../src/tracker/tracker.ts';
 import { DEFAULT_ROLES_TOML } from '../src/roles/default-roles.ts';
-import { cland, connectUi, connectWsUi, eventually, spawnSpoke, startDaemon, startHub, tempProject, type Session } from './harness.ts';
+import { cland, connectUi, connectWsUi, eventually, spawnSpoke, projectHub, startDaemon, startHub, tempProject, type Session } from './harness.ts';
 
 const legacy = (id: string, kind: string, extra = '') => `---\nid: ${id}\nkind: ${kind}\ntitle: Legacy ${kind}\nstate: open\n${extra}---\n`;
 
@@ -17,7 +17,7 @@ test('kind prefixes resolve the same numeric identity through real hub, spoke an
   for (const [n, kind] of [[229, 'task'], [230, 'question'], [231, 'map'], [232, 'spec']] as const) {
     await writeFile(join(dir, `T-${n}-${kind}.md`), legacy(`T-${n}`, kind, kind === 'task' ? 'status: backlog\n' : ''));
   }
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const spoke = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
   t.after(() => spoke.close());
@@ -45,7 +45,7 @@ test('creation and kind edits retain a shared number and duplicate files prefer 
   await mkdir(dir, { recursive: true });
   await writeFile(join(dir, 'E-500-epic.md'), legacy('E-500', 'epic'));
   await writeFile(join(dir, 'T-500-stale.md'), legacy('T-500', 'epic'));
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const created = await ui.request({ type: 'task.create', title: 'New question', kind: 'question', parent: 'T-500' });
   assert.equal(created.ok, true, JSON.stringify(created));
@@ -127,7 +127,7 @@ test('legacy claims, topics, subscriptions and approved plans survive restart an
 
 test('mixed lane and override prefixes retain after-stage QA policy', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'task.create', title: 'Epic', kind: 'epic' })).ok, true);
   assert.equal((await ui.request({ size: 'M', type: 'task.create', title: 'Child', parent: 'T-1' })).ok, true);
@@ -145,7 +145,7 @@ test('mixed lane and override prefixes retain after-stage QA policy', async t =>
 
 test('non-task review requests keep verifier affinity across alternate prefixes', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'task.create', title: 'Epic', kind: 'epic' })).ok, true);
   const topicResult = await ui.request({ type: 'topic.create', title: 'Epic work', item: 'T-1' });
@@ -186,7 +186,7 @@ test('removing a planned legacy epic drops its candidate; prefix renames preserv
   const plan = '## Plan\n\n```yaml\nstages:\n  - name: build\n    qa: {scope: none, when: after-stage}\n    lanes: [[T-2]]\n```\n';
   await writeFile(join(dir, 'T-1-epic.md'), legacy('T-1', 'epic') + plan);
   await writeFile(join(dir, 'T-2-child.md'), legacy('T-2', 'task', 'parent: T-1\nstatus: backlog\n'));
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const view = async () => (await ui.request({ type: 'task.view', item: '1' })).value as { item: { plan: unknown; file: string; planError?: string } };
   assert.ok((await view()).item.plan);
@@ -228,7 +228,7 @@ test('removing an unclaimed child sends its terminal event to the surviving pare
   await writeFile(join(root, '.cland/roles.toml'), DEFAULT_ROLES_TOML.replace('[lead.permissions]\ntools = [', '[lead.permissions]\ntools = ["task.claim", '));
   await writeFile(join(dir, 'T-1-epic.md'), legacy('T-1', 'epic'));
   await writeFile(join(dir, 'T-2-child.md'), legacy('T-2', 'task', 'parent: T-1\nstatus: backlog\n'));
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator', sessionId: 'sess-coord' });
   const lead = await spawnSpoke({ discover: true, cwd: root, name: 'parent-lead', role: 'lead', sessionId: 'sess-lead' });

@@ -3,12 +3,12 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { connectUi, spawnSpoke, startDaemon, tempProject } from './harness.ts';
+import { connectUi, spawnSpoke, projectHub, startDaemon, tempProject } from './harness.ts';
 import type { Artifact } from '../src/protocol.ts';
 
 test('a folder has one id, a selected entry, on-demand files, and can be attached by a spoke', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
   t.after(() => coord.close());
@@ -96,7 +96,7 @@ test('human and Aide artifacts live until deleted by hand, kept reports survive,
 
 test('moving absorbs a file, redirects its old chip, and follows the destination folder lifetime', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
   t.after(() => coord.close()); await coord.waitForPresence(['coord']);
@@ -129,7 +129,7 @@ test('moving absorbs a file, redirects its old chip, and follows the destination
 
 test('folder entry defaults to the first Markdown file and invalid or symlinked trees leave no copied artifact', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const source = join(root, 'source');
   await mkdir(source);
@@ -149,7 +149,7 @@ test('folder entry defaults to the first Markdown file and invalid or symlinked 
 
 test('attaching a moved prompt preserves its redirect and agents attaching human drafts leave them editable', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
   t.after(() => coord.close()); await coord.waitForPresence(['coord']);
@@ -168,7 +168,7 @@ test('attaching a moved prompt preserves its redirect and agents attaching human
 
 test('a queued attachment resolves its absorbed file when the recipient reconnects', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator', sessionId: 'sender' });
   const reader = await spawnSpoke({ discover: true, cwd: root, name: 'reader', role: 'implementer', sessionId: 'reader' });

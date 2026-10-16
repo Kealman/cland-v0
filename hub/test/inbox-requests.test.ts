@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { cland, connectUi, spawnSpoke, startDaemon, tempProject, eventually, fakeClaude } from './harness.ts';
+import { cland, connectUi, spawnSpoke, projectHub, startDaemon, tempProject, eventually, fakeClaude } from './harness.ts';
 import type { Inbox } from '../src/protocol.ts';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -14,7 +14,7 @@ async function ok<T>(ui: Awaited<ReturnType<typeof connectUi>>, frame: { type: s
 
 test('a request from an unmentioned Implementer raises needsYou and the human reply journals its departure', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const impl = await spawnSpoke({ discover: true, cwd: root, name: 'impl', role: 'implementer', sessionId: 'sess-impl' });
   t.after(() => impl.close());
@@ -40,7 +40,7 @@ test('a request from an unmentioned Implementer raises needsYou and the human re
 
 test('request validation names the fix and accepts each known subject and request kind from any role', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const impl = await spawnSpoke({ discover: true, cwd: root, name: 'impl', role: 'implementer', sessionId: 'sess-impl' });
   t.after(() => impl.close());
@@ -114,7 +114,7 @@ test('message read marks and request replies survive stop/start, while an unansw
 
 test('now messages are counted per message, newest first, and leave individually on read or topic answer', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const aide = await spawnSpoke({ discover: true, cwd: root, name: 'aide-1', role: 'aide', sessionId: 'sess-aide' });
   t.after(() => aide.close());
@@ -141,7 +141,7 @@ test('pending valid plans count only with human approval, and approval, invalida
   const root = await tempProject(t);
   await mkdir(join(root, '.cland'), { recursive: true });
   await writeFile(join(root, '.cland/config.toml'), '[plan]\napproval = "human"\n');
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const create = async (title: string, kind: string, parent?: string) => (await ok<{ item: { id: string } }>(ui, { ...(['task'].includes(kind) ? { size: 'M' } : {}), type: 'task.create', title, kind, ...(parent ? { parent } : {}) })).item.id;
   const epic = await create('Plan', 'epic');
@@ -173,7 +173,7 @@ test('pending valid plans count only with human approval, and approval, invalida
   await ok(ui, { type: 'hub.status', flushLogs: true });
   assert.match((await cland(root, 'hub', 'journal', '--json')).stdout, /"reason":"closed"/);
   const other = await tempProject(t);
-  const none = await startDaemon(t, other);
+  const none = await projectHub(t, other);
   const otherUi = await connectUi(t, none.discovery);
   const e = (await ok<{ item: { id: string } }>(otherUi, { type: 'task.create', title: 'No approval', kind: 'epic' })).item.id;
   const w = (await ok<{ item: { id: string } }>(otherUi, { size: 'M', type: 'task.create', title: 'Work', parent: e })).item.id;
@@ -185,7 +185,7 @@ test('asks and a fake harness command approval wait with ages, then journal each
   const root = await tempProject(t);
   // Keep pushed approval and idle states authoritative throughout the inbox assertions.
   const fake = await fakeClaude(t, { pollMs: 60_000, pushTrustMs: 120_000 });
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator', sessionId: 'sess-coord' });
   t.after(() => coord.close());
@@ -223,7 +223,7 @@ test('asks and a fake harness command approval wait with ages, then journal each
 
 test('only a human review or QA verdict replies to requests on its subject item', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const aide = await spawnSpoke({ discover: true, cwd: root, name: 'aide-1', role: 'aide', sessionId: 'sess-aide' });
   const reviewer = await spawnSpoke({ discover: true, cwd: root, name: 'rev-1', role: 'reviewer', sessionId: 'sess-reviewer' });
@@ -247,7 +247,7 @@ test('only a human review or QA verdict replies to requests on its subject item'
 
 test('reading leaves requests waiting, an explicit reply settles one across topics, and request text is never parsed', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   await ok(ui, { type: 'subscribe' });
   const aide = await spawnSpoke({ discover: true, cwd: root, name: 'aide-1', role: 'aide', sessionId: 'sess-aide' });
@@ -277,7 +277,7 @@ test('progress and hub notices preserve a waiting topic report until it is read'
   fixture.setTopicStatus('waiting', 'waiting for human');
   fixture.record({ id: 'waiting-report', topic: 'waiting', from: 'coord', fromRole: 'coordinator', fromKind: 'agent', via: 'session', to: ['rev-legacy'], text: 'Needs your response', kind: 'report', ts: new Date().toISOString() }, [], Date.now());
   fixture.close();
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   await ok(ui, { type: 'subscribe' });
   const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator', sessionId: 'sess-coord' });
@@ -317,7 +317,7 @@ test('cland inbox prints all four sections, all rows with ages, plan size and fi
   await writeFile(join(root, '.cland/config.toml'), '[plan]\napproval = "human"\n');
   // Keep pushed approval and idle states authoritative throughout the inbox assertions.
   const fake = await fakeClaude(t, { pollMs: 60_000, pushTrustMs: 120_000 });
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator', sessionId: 'sess-coord' });
   const aide = await spawnSpoke({ discover: true, cwd: root, name: 'aide-1', role: 'aide', sessionId: 'sess-aide' });

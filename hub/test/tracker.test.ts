@@ -1,4 +1,4 @@
-// The tracker through its seams: `cland task …` run as its own process against a real hub daemon in a
+// The tracker through its seams: `cland task …` run as its own process against a real project hub in a
 // temporary project, the hub's Unix socket, and a spoke's MCP tools. Assertions read the item files, the
 // index (through `task list` / `task view`) and the hub's log.
 import { test, type TestContext } from 'node:test';
@@ -9,7 +9,7 @@ import { parse as parseYaml } from 'yaml';
 import { CONCURRENT_MS } from '../src/tracker/tracker.ts';
 import { PROTOCOL_VERSION } from '../src/protocol.ts';
 import { taskWriteGate } from './tracker-write-gate.ts';
-import { cland, flushProjectLogs, connectSocket, connectUi, readDiscovery, sleep, spawnSpoke, startDaemon, tempProject, type CliResult } from './harness.ts';
+import { cland, flushProjectLogs, connectSocket, connectUi, readDiscovery, sleep, spawnSpoke, projectHub, startDaemon, tempProject, type CliResult } from './harness.ts';
 
 type Summary = { id: string; title: string; state: string; status?: string; kind: string; labels: string[]; assignee: string | null; claim: { session: string; role: string | null } | null };
 type View = Summary & {
@@ -38,7 +38,7 @@ const hubLog = async (t: TestContext, root: string) => {
 
 async function project(t: TestContext): Promise<string> {
   const root = await tempProject(t);
-  await startDaemon(t, root);
+  await projectHub(t, root);
   return root;
 }
 
@@ -146,7 +146,7 @@ test('a hand edit of an item file is re-indexed within a second', async (t) => {
 
 test('a hub write and a hand edit at the same time: the last writer wins and the hub logs it', async (t) => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   ok(await cland(root, 'task', 'create', '--size', 'M', 'Contested'));
   const file = join(tasksDir(root), 'T-1-contested.md');
 
@@ -184,7 +184,7 @@ test('a hub write and a hand edit at the same time: the last writer wins and the
 test('a hand edit landing while the hub is writing the same item is overwritten, and the hub logs the conflict', async (t) => {
   const root = await tempProject(t);
   const gate = await taskWriteGate(t, root);
-  await startDaemon(t, root, gate.env);
+  await projectHub(t, root, gate.env);
   ok(await cland(root, 'task', 'create', '--size', 'M', 'Overlapped'));
   const file = join(tasksDir(root), 'T-1-overlapped.md');
 
@@ -207,7 +207,8 @@ test('a hand edit landing while the hub is writing the same item is overwritten,
 });
 
 test('task claim keeps the live hold in the hub and persists Implementer status; view shows the assignee and claim', async (t) => {
-  const root = await project(t);
+  const root = await tempProject(t);
+  await startDaemon(t, root);
   ok(await cland(root, 'task', 'create', '--size', 'M', 'Claimable', '--assignee', 'alice'));
   const file = join(tasksDir(root), 'T-1-claimable.md');
   const before = await readFile(file, 'utf8');
@@ -378,7 +379,7 @@ test('task commands with no hub running fail with a clear error and do not start
 
 test('the task frames work over the Unix socket as the CLI sends them', async (t) => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const s = await connectSocket(discovery.socket);
   t.after(() => s.close());
   s.send({ type: 'hello', protocol: PROTOCOL_VERSION, secret: discovery.secret, client: 'test' });
@@ -395,7 +396,7 @@ test('the task frames work over the Unix socket as the CLI sends them', async (t
 
 test('a subscribed UI hears a `task` event on every index change; task.list carries the verdicts', async (t) => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const s = await connectSocket(discovery.socket);
   t.after(() => s.close());
   s.send({ type: 'hello', protocol: PROTOCOL_VERSION, secret: discovery.secret, client: 'test' });
@@ -439,7 +440,7 @@ test('a subscribed UI hears a `task` event on every index change; task.list carr
 
 test('the task.* tools work through a spoke over MCP, acting as the spoke\'s session', async (t) => {
   const root = await tempProject(t);
-  await startDaemon(t, root);
+  await projectHub(t, root);
   // the Coordinator: the one role that may use every task.* tool (spec 4.4)
   const spoke = await spawnSpoke({ discover: true, cwd: root, name: 'coord-1', role: 'coordinator' });
   t.after(() => spoke.close());
@@ -474,7 +475,7 @@ test('the task.* tools work through a spoke over MCP, acting as the spoke\'s ses
 // after it started, and the hub must go on and still see what was edited by hand.
 test('where the folder cannot be watched the hub polls: a hand edit of an item and of roles.toml are still picked up', async (t) => {
   const root = await tempProject(t);
-  await startDaemon(t, root, { CLAND_TEST_WATCH_REFUSED: '1' });
+  await projectHub(t, root, { CLAND_TEST_WATCH_REFUSED: '1' });
   const fellBack = (await hubLog(t, root)).filter((e) => typeof e.polling === 'number').map((e) => e.event);
   assert.deepEqual(fellBack, ['task-watch-error'], 'only the tracker falls back: roles always use async polling');
 

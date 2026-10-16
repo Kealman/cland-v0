@@ -5,13 +5,13 @@ import { promisify } from 'node:util';
 import assert from 'node:assert/strict';
 import files, { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, connectUi, connectWsUi, spawnSpoke, startDaemon, startHub, tempProject } from './harness.ts';
+import { cland, connectUi, connectWsUi, spawnSpoke, projectHub, startDaemon, startHub, tempProject } from './harness.ts';
 import { taskWriteGate } from './tracker-write-gate.ts';
 import { Tracker, type ItemView } from '../src/tracker/tracker.ts';
 
 test('MCP done assigns legacy ids and CLI done writes the checkbox and a mark', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const made = await ui.request({ size: 'M', type: 'task.create', title: 'Write criteria', body: 'Intro\n\n## Acceptance criteria\n- [ ] First\n- [x] Second\n\n## Other\nKeep this.' });
   const item = (made.value as { item: ItemView }).item;
@@ -29,7 +29,7 @@ test('MCP done assigns legacy ids and CLI done writes the checkbox and a mark', 
 
 test('verify and fail write run and note; failure clears done and reopens the task in progress', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const item = ((await ui.request({ size: 'M', type: 'task.create', title: 'Fail criteria', body: '## Acceptance criteria\n- [ ] First' })).value as { item: ItemView }).item;
@@ -86,7 +86,7 @@ test('add edit remove retain unrelated prose and never reuse an id after restart
 
 test('each role is limited to its criterion operations and done requires a live claim', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const item = ((await ui.request({ size: 'M', type: 'task.create', title: 'Permissions', assignee: 'impl', body: '## Acceptance criteria\n- [ ] C1. First' })).value as { item: ItemView }).item;
   const sessions = [];
@@ -125,7 +125,7 @@ test('each role is limited to its criterion operations and done requires a live 
 test('a concurrent hand save refuses the criterion write and retry keeps both changes', async t => {
   const root = await tempProject(t);
   const gate = await taskWriteGate(t, root);
-  const { discovery } = await startDaemon(t, root, gate.env);
+  const { discovery } = await projectHub(t, root, gate.env);
   const ui = await connectUi(t, discovery);
   const item = ((await ui.request({ size: 'M', type: 'task.create', title: 'Concurrent', body: '## Acceptance criteria\n- [ ] First\n\n## Notes\nOriginal.' })).value as { item: ItemView }).item;
   const path = join(root, item.path);
@@ -147,7 +147,7 @@ test('a concurrent hand save refuses the criterion write and retry keeps both ch
 test('a criterion grant revoked during the write refuses without assigning ids', async t => {
   const root = await tempProject(t);
   const gate = await taskWriteGate(t, root);
-  const { discovery } = await startDaemon(t, root, gate.env);
+  const { discovery } = await projectHub(t, root, gate.env);
   const ui = await connectUi(t, discovery);
   const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
   onCleanup(t, () => coord.close());
@@ -165,7 +165,7 @@ test('a criterion grant revoked during the write refuses without assigning ids',
 
 test('marks preserve fenced examples and wrapped text and refuse malformed marks', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const body = '## Acceptance criteria\n- [ ] C1. Wrapped\n  continuation\n\n```\n- [ ] C99. Example\n```\n  - done: impl-1 · 2026-10-09T10:00Z\n\n## Other\nUntouched';
   const item = ((await ui.request({ size: 'M', type: 'task.create', title: 'Source', body })).value as { item: ItemView }).item;
@@ -260,7 +260,7 @@ test('a late in-place editor save refuses the mark and retains its recovery sour
 
 test('a named human CLI actor can mark done and manage criteria but cannot verify', async t => {
   const root = await tempProject(t);
-  await startDaemon(t, root);
+  await projectHub(t, root);
   const created = await cland(root, 'task', 'create', '--size', 'M', 'Named human', '--body', '## Acceptance criteria\n- [ ] First', '--json');
   const item = (JSON.parse(created.stdout) as { item: ItemView }).item;
   for (const args of [['done', 'C1'], ['edit', 'C1', '--text', 'Reworded'], ['add', 'Second'], ['remove', 'C2']] as const) {
@@ -275,7 +275,7 @@ test('a named human CLI actor can mark done and manage criteria but cannot verif
 
 test('add refuses insertion inside an unclosed Markdown code fence without changing the file', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   for (const body of ['## Acceptance criteria\n- [ ] First\n\n```markdown\nAn unfinished example', 'Details\n\n~~~\nAn unfinished example']) {
     const item = ((await ui.request({ size: 'M', type: 'task.create', title: 'Open fence', body })).value as { item: ItemView }).item;

@@ -1,6 +1,6 @@
 // Roles as hub-held state (spec 4.4, ADR 0001, #29): `.cland/roles.toml`, assignment by the human (UI frames and the
 // CLI), the clause delivered as a hub event on assignment and on every reconnect, Coordinator exclusivity and the
-// vacancy warning, launches with a role's defaults. Against a real daemon in a temporary project: spokes over MCP,
+// vacancy warning, launches with a role's defaults. Against a real project hub in a temporary project: spokes over MCP,
 // the UI on the Unix socket, the CLI as its own process, the fake Claude Code for launches.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -9,7 +9,7 @@ import { join } from 'node:path';
 import { parseRoles } from '../src/roles/config.ts';
 import { DEFAULT_ROLES_TOML } from '../src/roles/default-roles.ts';
 import { MAX_TEXT_BYTES } from '../src/hub/hygiene.ts';
-import { flushProjectLogs, assignRole, cland, clandWithEnv, clauseAnswered, connectUi, eventually, fakeClaude, spawnSpoke, startDaemon, tempProject, type ChannelEvent, type FrameClient } from './harness.ts';
+import { flushProjectLogs, assignRole, cland, clandWithEnv, clauseAnswered, connectUi, eventually, fakeClaude, spawnSpoke, projectHub, startDaemon, tempProject, type ChannelEvent, type FrameClient } from './harness.ts';
 
 type Presence = { name: string; role: string | null; label?: string };
 type Status = { sessions: Presence[]; coordinator: string | null; harnesses: Array<{ name: string; harnessId: string | null; role: string | null; label?: string; model: string | null }> };
@@ -32,7 +32,7 @@ const CLAUSE_REPLY_HEADROOM_BYTES = 512;
 
 test('crew clauses describe category filing and the Aide speaking for the human', async t => {
   const root = await tempProject(t);
-  await startDaemon(t, root);
+  await projectHub(t, root);
   for (const role of ['coordinator', 'lead', 'implementer', 'reviewer', 'qa', 'aide']) {
     const spoke = await spawnSpoke({ discover: true, cwd: root, name: 'crew-' + role, sessionId: 'sess-' + role, role });
     t.after(() => spoke.close());
@@ -65,7 +65,7 @@ for (const source of ['defaults', 'project'] as const) test(`${source} clause sn
   await mkdir(join(root, '.cland'), { recursive: true });
   await writeFile(join(root, '.cland', 'config.toml'), `[verification]\nlock_path = ${JSON.stringify(join(root, 'suite.lock'))}\n`);
   if (source === 'project') await writeFile(join(root, '.cland', 'roles.toml'), await readFile(new URL('../../.cland/roles.toml', import.meta.url), 'utf8'));
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   for (const role of ['coordinator', 'lead', 'implementer', 'reviewer', 'qa', 'aide']) {
     const name = 'queue-' + role;
@@ -146,7 +146,7 @@ for (const source of ['defaults', 'project'] as const) test(`${source} clause sn
 test('roles.toml is written at the first start, and an edit changes the next launch: a role launch takes its defaults', async (t) => {
   const root = await tempProject(t);
   const fake = await fakeClaude(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const file = join(root, '.cland', 'roles.toml');
   const written = await readFile(file, 'utf8');
   assert.match(written, /^# managed by cland/);
@@ -234,7 +234,7 @@ test('a session with no role is refused at hello; the role the human assigns del
 
 test('Coordinator is exclusive: a second assignment is refused with the reason; clearing the only holder raises the vacancy in one event', async (t) => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   assert.equal((await status(ui)).coordinator, null, 'no coordinator before anyone holds it');
@@ -301,7 +301,7 @@ test('Coordinator is exclusive: a second assignment is refused with the reason; 
 test('the holder leaving raises the vacancy; a launched Coordinator gets its clause as its first turn', async (t) => {
   const root = await tempProject(t);
   const fake = await fakeClaude(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
 

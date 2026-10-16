@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { connectUi, eventually, fakeCodex, killDaemon, sleep, spawnSpoke, startDaemon, tempProject, type FrameClient } from './harness.ts';
+import { connectUi, eventually, fakeCodex, killDaemon, sleep, spawnSpoke, projectHub, startDaemon, tempProject, type FrameClient } from './harness.ts';
 
 type Holder = { name: string; role: string | null; live: boolean };
 type RoleList = { roles: Array<{ role: string; holders: Holder[] }>; coordinator: string | null };
@@ -21,7 +21,7 @@ async function holders(ui: FrameClient, role: string): Promise<string[]> {
 test('a Coordinator remembered past the queue TTL that reconnects after another took the role is refused it; the UI learns', async (t) => {
   const root = await tempProject(t);
   const queueTtlMs = 300;
-  const { discovery } = await startDaemon(t, root, { CLAND_QUEUE_TTL_MS: String(queueTtlMs) });
+  const { discovery } = await projectHub(t, root, { CLAND_QUEUE_TTL_MS: String(queueTtlMs) });
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
 
@@ -73,7 +73,7 @@ test('two launches for the Coordinator at once: the role is reserved before the 
   const root = await tempProject(t);
   // Force a completed first turn before launch acceptance, as a loaded hub's receive batch can do.
   const fake = await fakeCodex(t, { env: { FAKE_CODEX_COMPLETE_FIRST_TURN_BEFORE_RESPONSE: '1' } });
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   const [one, two] = await Promise.all([launchCodex(ui, 'coord-1', { role: 'coordinator' }), launchCodex(ui, 'coord-2', { role: 'coordinator' })]);
   assert.equal(one.ok, true, one.error);
@@ -90,7 +90,7 @@ test('two launches for the Coordinator at once: the role is reserved before the 
 test('a launch that fails after its spoke connected gives the role back: no Coordinator is left reserved offline', async (t) => {
   const root = await tempProject(t);
   const fake = await fakeCodex(t, { env: { FAKE_CODEX_FAIL_FIRST_TURN: '1' } });
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const failed = await launchCodex(ui, 'coord', { role: 'coordinator' });
@@ -108,7 +108,7 @@ test('a launch that fails after its spoke connected gives the role back: no Coor
 test('a launch for the role the name already holds carries the clause once: in the first turn, never injected again', async (t) => {
   const root = await tempProject(t);
   const fake = await fakeCodex(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'role.set', session: 'rev-1', role: 'reviewer' })).ok, true);
   const launched = await launchCodex(ui, 'rev-1', { role: 'reviewer' });
@@ -132,7 +132,7 @@ test('a launch for the role the name already holds carries the clause once: in t
 test('a role changed while a relaunch is under way stays changed: resume never writes back the role it started from', async (t) => {
   const root = await tempProject(t);
   const fake = await fakeCodex(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   const launched = await launchCodex(ui, 'coord', { role: 'coordinator' });
   assert.equal(launched.ok, true, launched.error);
@@ -152,7 +152,7 @@ test('a role changed while a relaunch is under way stays changed: resume never w
 test('a renamed session keeps its revocation: its process-table row follows the rename, and a relaunch is not granted the old role', async (t) => {
   const root = await tempProject(t);
   const fake = await fakeCodex(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const launched = await launchCodex(ui, 'coord', { role: 'coordinator' });

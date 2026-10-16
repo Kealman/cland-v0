@@ -1,4 +1,4 @@
-// Epic plans through the real daemon, socket frames, CLI and MCP process boundary.
+// Epic plans through the real project hub, socket frames, CLI and MCP process boundary.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
@@ -6,17 +6,17 @@ import { join } from 'node:path';
 import { stringify } from 'yaml';
 import type { ItemView } from '../src/tracker/tracker.ts';
 import { withPlan, type EpicPlan } from '../src/tracker/plan.ts';
-import { cland, connectUi, eventually, spawnSpoke, startDaemon, tempProject } from './harness.ts';
+import { cland, connectUi, eventually, spawnSpoke, projectHub, startDaemon, tempProject } from './harness.ts';
 
 type Result = { ok: boolean; error?: string; id: string; plan: EpicPlan | null; planError?: string };
 
-async function setup(t: test.TestContext, levels?: string[]) {
+async function setup(t: test.TestContext, levels?: string[], spawned = false) {
   const root = await tempProject(t);
   if (levels) {
     await mkdir(join(root, '.cland'), { recursive: true });
     await writeFile(join(root, '.cland/config.toml'), `[tracker]\nlevels = ${JSON.stringify(levels)}\n`);
   }
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await (spawned ? startDaemon : projectHub)(t, root);
   const ui = await connectUi(t, discovery);
   const create = async (title: string, kind = 'task', parent?: string) => {
     const result = await ui.request({ ...(['task'].includes(kind) ? { size: 'M' } : {}), type: 'task.create', title, kind, parent, body: '## Acceptance criteria\n- [ ] C1. Works\n\n## Notes\nKeep this prose.' });
@@ -37,7 +37,7 @@ async function setup(t: test.TestContext, levels?: string[]) {
 }
 
 test('a two-stage plan is written by CLI, shown by MCP and view JSON, changed and journalled', async t => {
-  const { root, ui, epic, a, b, c, plan } = await setup(t);
+  const { root, ui, epic, a, b, c, plan } = await setup(t, undefined, true);
   const planFile = join(root, 'plan.yaml');
   await writeFile(planFile, stringify(plan));
   assert.equal((await ui.request({ type: 'task.comment', item: epic.id, text: 'Keep this comment.' })).ok, true);
@@ -186,7 +186,7 @@ test('invalid schema and references are refused without changing the previous ep
 });
 
 test('invalid hand edits keep the accepted plan across restart, and valid hand edits replace it', async t => {
-  const { root, epic, ui, plan, set } = await setup(t);
+  const { root, epic, ui, plan, set } = await setup(t, undefined, true);
   assert.equal((await set(stringify(plan))).ok, true);
   const file = join(root, epic.path);
   const original = await readFile(file, 'utf8');
@@ -297,7 +297,7 @@ test('plan reads are available to sessions but writes require a set grant', asyn
 });
 
 test('a new project indexes file plans after all their lane items, and absent plans show null', async t => {
-  const { root, epic, ui, plan, set } = await setup(t);
+  const { root, epic, ui, plan, set } = await setup(t, undefined, true);
   const empty = await ui.request({ type: 'task.plan', item: epic.id, op: 'show' });
   assert.equal(empty.ok, true);
   assert.equal((empty.value as Result).plan, null);

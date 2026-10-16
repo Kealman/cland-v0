@@ -7,7 +7,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { execFileSync } from 'node:child_process';
 import files, { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, connectUi, connectWsUi, spawnSpoke, startDaemon, startHub, tempProject } from './harness.ts';
+import { cland, connectUi, connectWsUi, spawnSpoke, projectHub, startDaemon, startHub, tempProject } from './harness.ts';
 import { copyPreparedProject } from './prepared-project.ts';
 
 import { Tracker } from '../src/tracker/tracker.ts';
@@ -42,7 +42,7 @@ test('new tasks persist backlog across writes and restart; other kinds have no s
 
 test('only human, Coordinator and the claiming Implementer can set status; done and reopen keep state consistent', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
@@ -146,7 +146,7 @@ test('legacy tasks gain status on index, preserve claims through restart, and re
 
 test('a not-clear review or QA verdict returns a handed-over task to in progress in view and task events', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const made = await ui.request({ size: 'M', type: 'task.create', title: 'Fix findings' });
@@ -174,7 +174,7 @@ test('merge preserves its gate and publishes done with closed state', async t =>
   const root = await tempProject(t);
   const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
   await copyPreparedProject(root);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const made = await ui.request({ size: 'M', type: 'task.create', title: 'Merge status' });

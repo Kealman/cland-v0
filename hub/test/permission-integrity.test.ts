@@ -1,14 +1,14 @@
 // Permissions that hold under every way in (Codex review of #28/#30/#32/#39/#33/#34/#41): a session gets no human
 // privileges through the CLI or a client hello on the spokes' WebSocket; ownership and the mention grant are bound
 // to session ids, so a rename or a reused name inherits nothing; a verdict's provenance is the hub's, never the
-// text's; a reply in Agents finds its sender after a rename. Against a real daemon in a temporary project: spokes
+// text's; a reply in Agents finds its sender after a rename. Against a real project hub in a temporary project: spokes
 // over MCP, the UI on the Unix socket, the CLI as its own process.
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { WebSocket } from 'ws';
-import { cland, flushProjectLogs, clandWithEnv, connectUi, eventually, fakeClaude, spawnSpoke, startDaemon, tempProject, waitForAbsence, type Session } from './harness.ts';
+import { cland, flushProjectLogs, clandWithEnv, connectUi, eventually, fakeClaude, spawnSpoke, projectHub, tempProject, waitForAbsence, type Session } from './harness.ts';
 
 type Result = { ok: boolean; error?: string; code?: string; permission?: string; reason?: string };
 type Audit = { session: string; sessionId: string | null; role: string | null; tool: string; outcome: string; client?: string };
@@ -28,7 +28,7 @@ const ok = (r: { code: number | null; stdout: string; stderr: string }) => {
 
 async function setup(t: TestContext) {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const spoke = async (name: string, sessionId: string, role?: string): Promise<Session> => {
@@ -79,7 +79,7 @@ test('a launched session running `cland task` is checked against its role and au
 test('a launched session cannot borrow another identity with `--as`: neither the human nor the Coordinator, it stays itself', async (t) => {
   const root = await tempProject(t);
   const fake = await fakeClaude(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', sessionId: 'sess-coord', role: 'coordinator' });

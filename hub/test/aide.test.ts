@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, clandWithEnv, clauseAnswered, connectUi, eventually, fakeClaude, spawnSpoke, startDaemon, tempProject } from './harness.ts';
+import { cland, clandWithEnv, clauseAnswered, connectUi, eventually, fakeClaude, spawnSpoke, projectHub, tempProject } from './harness.ts';
 import { DEFAULTS, parseRoles } from '../src/roles/config.ts';
 import { DEFAULT_PERMISSIONS, decide, KNOWN_TOOLS } from '../src/roles/permissions.ts';
 import type { Artifact, Message } from '../src/protocol.ts';
@@ -35,7 +35,7 @@ test('cland init writes the Aide defaults and CLI launches several Aides with no
   assert.equal(init.code, 0, init.stderr);
   const roles = parseRoles(await readFile(join(root, '.cland', 'roles.toml'), 'utf8'));
   assert.deepEqual(roles.get('aide'), DEFAULTS.get('aide'));
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   for (const name of ['aide-1', 'aide-2']) {
@@ -60,7 +60,7 @@ test('a fake Claude Aide keeps answering when a settings hook exits without read
   await writeFile(join(root, '.claude/settings.json'), JSON.stringify({ hooks: {
     UserPromptSubmit: [{ hooks: [{ type: 'command', command: 'exec 0<&-; exit 23' }] }],
   } }));
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const launch = await cland(root, 'session', 'launch', 'aide-1', '--role', 'aide', '--json');
@@ -78,7 +78,7 @@ test('a fake Claude Aide keeps answering when a settings hook exits without read
 
 test('Aide tracker, topics, artifacts and named sends work; crew operations name the refusing rule', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const aide = await spawnSpoke({ cwd: root, discover: true, name: 'aide-1', role: 'aide', sessionId: 'aide-id' });
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
@@ -148,7 +148,7 @@ test('Aide tracker, topics, artifacts and named sends work; crew operations name
 
 test('live and offline Aides receive names and clauses only, with no role placeholders, broadcasts or asks', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
   const aide = await spawnSpoke({ cwd: root, discover: true, name: 'aide-1', role: 'aide', sessionId: 'aide-id' });
@@ -183,7 +183,7 @@ test('live and offline Aides receive names and clauses only, with no role placeh
 
 test('retained subscriptions cannot deliver Agents events to an Aide, and lead selects it only for its claim', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
   let aide = await spawnSpoke({ cwd: root, discover: true, name: 'aide-1', role: 'reviewer', sessionId: 'aide-id' });
@@ -217,7 +217,7 @@ test('retained subscriptions cannot deliver Agents events to an Aide, and lead s
 
 test('a Reviewer becoming an Aide drops queued broadcasts and their digest members but keeps named deliveries', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
   let aide = await spawnSpoke({ cwd: root, discover: true, name: 'future-aide', role: 'reviewer', sessionId: 'future-id' });

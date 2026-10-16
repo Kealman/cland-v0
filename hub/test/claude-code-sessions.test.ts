@@ -8,7 +8,7 @@ import { execFile, spawn } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { withDiscoveredPid, CLI_ENTRY, FAKE_CLAUDE_DIR, clandWithEnv, clauseAnswered, connectUi, eventually, fakeClaude, killDaemon, pidAlive, sleep, spawnSpoke, startDaemon, tempProject, type FrameClient, NO_PS } from './harness.ts';
+import { withDiscoveredPid, CLI_ENTRY, FAKE_CLAUDE_DIR, clandWithEnv, clauseAnswered, connectUi, eventually, fakeClaude, killDaemon, pidAlive, sleep, spawnSpoke, projectHub, startDaemon, tempProject, type FrameClient, NO_PS } from './harness.ts';
 
 type Presence = { name: string; sessionId: string; state: string };
 type Harness = { name: string; pid: number | null; harnessId: string | null; sessionId: string; harnessSessionId: string | null; status: string; state: string };
@@ -97,7 +97,7 @@ test('signal order is the order the harness fired them: a Stop whose hook proces
   const root = await tempProject(t);
   // Suppress fallback polls so delayed hook ordering alone controls the staged state.
   const fake = await fakeClaude(t, { pollMs: 10_000, awaitSignals: true });
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const mark = ui.frames.length;
@@ -120,7 +120,7 @@ test('late Claude start and StopFailure hooks keep failure notes with their own 
   const root = await tempProject(t);
   // Suppress fallback polls so delayed hook ordering alone controls the staged state.
   const fake = await fakeClaude(t, { pollMs: 600_000, awaitSignals: true });
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const mark = ui.frames.length;
@@ -178,7 +178,7 @@ test('a signal from an earlier launch under the same name changes nothing of the
   const root = await tempProject(t);
   // Trust pushed states while keeping process discovery/exit polling active for the crash below.
   const fake = await fakeClaude(t, { pushTrustMs: 600_000, awaitSignals: true });
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   // the Coordinator: the fake answers its clause to the human, which only the Coordinator may (#30)
   const first = await launch(ui, 'impl-1', { role: 'coordinator', harness: 'claude-code' });
@@ -206,7 +206,7 @@ test('a signal from an earlier launch under the same name changes nothing of the
 test('a late SessionStart does not revive a session whose process is gone', async (t) => {
   const root = await tempProject(t);
   const fake = await fakeClaude(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   const launched = await launch(ui, 'impl-1', { role: 'implementer', harness: 'claude-code' });
   await presentAs(ui, 'impl-1', 'idle');
@@ -223,7 +223,7 @@ test("a message the spoke accepted during the launch is injected once the launch
   const root = await tempProject(t);
   // `--bg` returns only after the SessionStart hook ran and the mod's bridge was answered: both wait for the row
   const fake = await fakeClaude(t, { lateBg: 'bridged' });
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   // no coordinator yet: the message waits for the role, and the launching session's spoke takes it
@@ -238,7 +238,7 @@ test("a message the spoke accepted during the launch is injected once the launch
 test('an idle that comes while an inject waits for its confirmation retries it once that inject gave up', async (t) => {
   const root = await tempProject(t);
   const fake = await fakeClaude(t, { injectTimeoutMs: 3000, dropFirst: true, awaitSignals: true });
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   await launch(ui, 'coord', { role: 'coordinator' });
@@ -256,7 +256,7 @@ test('an idle that comes while an inject waits for its confirmation retries it o
 test('a session renamed while a message waits for its inject still gets it, and its confirmation counts', async (t) => {
   const root = await tempProject(t);
   const fake = await fakeClaude(t, { injectTimeoutMs: 1000, dropFirst: true, awaitSignals: true });
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   await launch(ui, 'coord', { role: 'coordinator' });
@@ -311,7 +311,7 @@ test('resume never adopts another session that reuses the pid: no identity match
 test('a stop whose `claude stop` fails falls back to SIGTERM and stops the session', { skip: NO_PS }, async (t) => {
   const root = await tempProject(t);
   const fake = await fakeClaude(t, { stopCrash: true, stopGraceMs: 1000 });
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   const launched = await launch(ui, 'coord', { role: 'coordinator' });
   await presentAs(ui, 'coord', 'idle');
@@ -328,7 +328,7 @@ test('a stop whose `claude stop` fails falls back to SIGTERM and stops the sessi
 test('stop kills a Claude Code process that ignores SIGTERM and waits for its exit', async (t) => {
   const root = await tempProject(t);
   const fake = await fakeClaude(t, { stopCrash: true, ignoreTerm: true, stopGraceMs: 500 });
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   const launched = await launch(ui, 'coord', { role: 'coordinator' });
   await presentAs(ui, 'coord', 'idle');

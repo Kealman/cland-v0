@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { cland, connectUi, spawnSpoke, startDaemon, tempProject } from './harness.ts';
+import { cland, connectUi, spawnSpoke, projectHub, startDaemon, tempProject } from './harness.ts';
 import { Store } from '../src/hub/store.ts';
 import { decide } from '../src/roles/permissions.ts';
 import { isClientRequest, type Inbox } from '../src/protocol.ts';
@@ -15,7 +15,7 @@ async function ok<T>(ui: Awaited<ReturnType<typeof connectUi>>, frame: Record<st
 }
 
 test('declining a request tells its real spoke once, drops the chip and archives it through the CLI', async t => {
-  const root = await tempProject(t), { discovery } = await startDaemon(t, root);
+  const root = await tempProject(t), { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   await ok(ui, { type: 'subscribe' });
   const sender = await spawnSpoke({ discover: true, cwd: root, name: 'impl', role: 'implementer', sessionId: 'sess-impl' });
@@ -87,7 +87,7 @@ test('individual message read and queued offline decline survive a hub restart',
 });
 
 test('human-only row actions refuse session CLI frames and remain forbidden even with explicit role grants', async t => {
-  const root = await tempProject(t), { discovery } = await startDaemon(t, root);
+  const root = await tempProject(t), { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const sender = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator', sessionId: 'sess-coord' });
   t.after(() => sender.close()); await sender.waitForPresence(['coord']);
@@ -120,14 +120,14 @@ test('archive time ranges use the timestamp index, retain first lines, and exclu
   const plan = db.prepare('explain query plan select * from inbox_departures where ts >= ? order by ts desc, number desc').all(new Date(now - 7 * 86400000).toISOString());
   assert.match(JSON.stringify(plan), /SEARCH.*inbox_departures.*inbox_departures_time.*ts>/);
   db.close();
-  const { discovery } = await startDaemon(t, root), ui = await connectUi(t, discovery);
+  const { discovery } = await projectHub(t, root), ui = await connectUi(t, discovery);
   const frame = await ok<Inbox>(ui, { type: 'inbox.list', archive: true });
   assert.deepEqual(frame.archive?.map(r => r.id), ['recent']); assert.equal(frame.archiveToday, 1);
   assert.equal((await ok<Inbox>(ui, { type: 'inbox.list' })).archive, undefined);
 });
 
 test('a row reply reaches its original sender and archives request and message first lines', async t => {
-  const root = await tempProject(t), { discovery } = await startDaemon(t, root), ui = await connectUi(t, discovery);
+  const root = await tempProject(t), { discovery } = await projectHub(t, root), ui = await connectUi(t, discovery);
   const sender = await spawnSpoke({ discover: true, cwd: root, name: 'aide-1', role: 'aide', sessionId: 'sess-aide' });
   t.after(() => sender.close()); await sender.waitForPresence(['aide-1']);
   for (const kind of ['request', 'report']) {

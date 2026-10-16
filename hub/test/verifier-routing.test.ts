@@ -2,13 +2,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { withDiscoveredPid, cland, connectUi, eventually, fakeClaude, fakeCodex, spawnSpoke, startDaemon, tempProject } from './harness.ts';
+import { withDiscoveredPid, cland, connectUi, eventually, fakeClaude, fakeCodex, spawnSpoke, projectHub, startDaemon, tempProject } from './harness.ts';
 import type { HarnessProcessView, Message, SendOutcome } from '../src/protocol.ts';
 
 test('Codex relaunch injects an early accepted clause and frees the queued QA request without a nudge', async t => {
   const root = await tempProject(t);
   const fake = await fakeCodex(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
@@ -66,7 +66,7 @@ for (const relaunch of [false, true]) {
   test(`queued QA request starts an idle verifier with held progress${relaunch ? ' after relaunch' : ''}`, async t => {
     const root = await tempProject(t);
     const fake = await fakeClaude(t);
-    const { discovery } = await startDaemon(t, root, fake.env);
+    const { discovery } = await projectHub(t, root, fake.env);
     const ui = await connectUi(t, discovery);
     assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
     const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
@@ -121,7 +121,7 @@ for (const relaunch of [false, true]) {
 
 test('a free bare Reviewer can receive its first role request after accepting its clause', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
   t.after(() => coord.close());
   const rev = await spawnSpoke({ cwd: root, discover: true, name: 'rev-d', role: 'reviewer', sessionId: 'rev-id' });
@@ -139,7 +139,7 @@ test('a free bare Reviewer can receive its first role request after accepting it
 test('three live Reviewers receive one request, and a repeat returns to the same reviewer', async t => {
   const root = await tempProject(t);
   const fake = await fakeClaude(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   assert.equal((await ui.request({ type: 'crew.set', key: 'reviewer.size', value: 3 })).ok, true);
@@ -255,7 +255,7 @@ test('queued QA requests survive sender rename and hub restart, and closed items
 test('QA affinity survives copied and reordered verdict headers, including stage requests', async t => {
   const root = await tempProject(t);
   const fake = await fakeClaude(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   assert.equal((await ui.request({ type: 'crew.set', key: 'qa.policy', value: 'pool' })).ok, true);

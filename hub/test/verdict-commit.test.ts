@@ -6,7 +6,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { DatabaseSync } from 'node:sqlite';
 import { join } from 'node:path';
-import { cland, connectUi, spawnSpoke, startDaemon, tempProject } from './harness.ts';
+import { cland, connectUi, spawnSpoke, projectHub, startDaemon, tempProject } from './harness.ts';
 import { startFreshnessDaemon } from './freshness-harness.ts';
 import { parseItem, serializeItem, verdictOfText, type ReviewScope } from '../src/tracker/item.ts';
 import type { ItemView, ItemSummary } from '../src/tracker/tracker.ts';
@@ -45,7 +45,7 @@ async function repository(root: string) {
 test('a verdict pins an explicit commit and CLI view returns the full SHA', async (t) => {
   const root = await tempProject(t);
   const sha = await repository(root);
-  await startDaemon(t, root);
+  await projectHub(t, root);
   const { item } = await task(root, 'create', '--size', 'M', 'Reviewed', '--branch', 't/test');
   const result = await task(root, 'comment', item.id, 'ok', '--verdict', 'review', '--scope', 'full', '--result', 'clear', '--run', 'r-1', '--commit', sha.slice(0, 12));
   assert.equal(result.item.verdicts[0]?.commit, sha);
@@ -56,7 +56,7 @@ test('a verdict pins an explicit commit and CLI view returns the full SHA', asyn
 test('branch-tip defaults and absent branches are explained in the comment result', async (t) => {
   const root = await tempProject(t);
   const sha = await repository(root);
-  await startDaemon(t, root);
+  await projectHub(t, root);
   await task(root, 'create', '--size', 'M', 'Reviewed', '--branch', 't/test');
   let r = await task(root, 'comment', 'T-1', 'ok', '--verdict', 'review', '--scope', 'full', '--result', 'clear', '--run', 'r-1');
   assert.equal(r.item.verdicts[0]?.commit, sha);
@@ -162,7 +162,7 @@ test('an existing hub database upgrades additively and legacy verdicts remain fi
     primary key (item_id, seq));`);
   db.close();
   await writeFile(join(dir, 'tasks', 'T-1-legacy.md'), '---\nid: T-1\ntitle: Legacy\nbranch: t/test\n---\n\n## Comments\n\n### rev-1 · 2026-10-09T08:00:00.000Z\n\nverdict: review\nresult: clear\nby: rev-1 [reviewer]\nrun: legacy\n');
-  await startDaemon(t, root);
+  await projectHub(t, root);
   assert.equal((await task(root, 'list')).items[0]?.verdicts[0]?.source, 'file');
   assert.equal((await viewed(root, 'T-1', (i) => i.verdicts[0]?.current !== undefined)).verdicts[0]?.current, false);
   const r = await task(root, 'comment', 'T-1', 'checked', '--verdict', 'review', '--scope', 'full', '--result', 'clear', '--run', 'new');
@@ -323,7 +323,7 @@ test('scope migration preserves authenticated legacy reviews and scope edits los
   const key = createHash('sha256').update(JSON.stringify(['rev', at, 'review', 'clear', 'rev [reviewer]', 'old', sha, 'Checked.'])).digest('hex');
   db.prepare('insert into tracker_written_verdicts values (?, ?, ?, ?, ?, ?, ?, ?, ?)').run('T-1', key, 'review', 'clear', 'old', sha, 'legacy-reviewer', 'reviewer', at);
   db.close();
-  await startDaemon(t, root);
+  await projectHub(t, root);
   for (const verdict of [(await task(root, 'view', 'T-1')).item.verdicts[0]!, (await task(root, 'list')).items[0]!.verdicts[0]!]) {
     assert.equal(verdict.scope, undefined);
     assert.equal(verdict.source, 'hub');

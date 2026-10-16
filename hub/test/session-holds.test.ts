@@ -3,14 +3,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { withDiscoveredPid, cland, connectUi, connectWsUi, eventually, fakeClaude, fakeCodex, spawnSpoke, startDaemon, startHub, tempProject } from './harness.ts';
+import { withDiscoveredPid, cland, connectUi, connectWsUi, eventually, fakeClaude, fakeCodex, spawnSpoke, projectHub, startDaemon, startHub, tempProject } from './harness.ts';
 import type { HarnessProcessView, Presence } from '../src/protocol.ts';
 import { Tracker } from '../src/tracker/tracker.ts';
 
 test('session frames show review and QA holds as they are taken and released', async t => {
   const root = await tempProject(t);
   const fake = await fakeClaude(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const made = await ui.request({ size: 'M', type: 'task.create', title: 'Verify session holds' });
@@ -48,7 +48,7 @@ test('session frames show review and QA holds as they are taken and released', a
 
 test('unknown-id Reviewer holds appear in session frames and remain isolated by name', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const made = await ui.request({ size: 'M', type: 'task.create', title: 'Unknown Reviewer hold' });
@@ -75,7 +75,7 @@ test('unknown-id Reviewer holds appear in session frames and remain isolated by 
 
 test('removing an indexed item clears its claim and verifier hold from session work', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const made = await ui.request({ size: 'M', type: 'task.create', title: 'Removed work', assignee: 'impl' });
@@ -133,7 +133,7 @@ test('session work is empty after tracker shutdown while sessions still disconne
 test('session.list orders verifier holds newest first with their durable timestamps', async t => {
   const root = await tempProject(t);
   const fake = await fakeClaude(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const ids: string[] = [];
@@ -236,7 +236,7 @@ test('delivered verifier requests persist across restart and clear on hold, verd
 test('a native first-turn verifier request counts as delivered pending work', async t => {
   const root = await tempProject(t);
   const fake = await fakeCodex(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   const made = await ui.request({ size: 'M', type: 'task.create', title: 'Native first-turn review' });
   const item = (made.value as { item: { id: string } }).item.id;

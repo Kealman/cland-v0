@@ -2,12 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { connectUi, connectWsUi, fakeClaude, spawnSpoke, startHub, startDaemon, tempProject, eventually, killDaemon } from './harness.ts';
+import { connectUi, connectWsUi, fakeClaude, spawnSpoke, startHub, projectHub, startDaemon, tempProject, eventually, killDaemon } from './harness.ts';
 import type { TopicMessage, Inbox, Topic } from '../src/protocol.ts';
 
 test('an unseen Coordinator successor adopts pending asks before rename and another handover', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
   const impl = await spawnSpoke({ cwd: root, discover: true, name: 'impl', role: 'implementer', sessionId: 'impl-id' });
@@ -80,7 +80,7 @@ test('pending agent asks follow the Coordinator handover durably and return afte
 test('a former receiving Lead cannot forward downward after the task is reparented', async t => {
   const root = await tempProject(t);
   const fake = await fakeClaude(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
@@ -111,7 +111,7 @@ test('a former receiving Lead cannot forward downward after the task is reparent
 
 test('a named question to an Aide remains an ordinary send rather than an unanswerable ask', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const aide = await spawnSpoke({ cwd: root, discover: true, name: 'aide-1', role: 'aide', sessionId: 'aide-id' });
   const impl = await spawnSpoke({ cwd: root, discover: true, name: 'impl', role: 'implementer', sessionId: 'impl-id' });
@@ -132,7 +132,7 @@ test('a named question to an Aide remains an ordinary send rather than an unansw
 
 test('an upstream answer returns to the actionable asker after its role handover', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const roles = join(root, '.cland', 'roles.toml');
   const text = await readFile(roles, 'utf8');
   const section = text.indexOf('[implementer.permissions]');
@@ -158,7 +158,7 @@ test('an upstream answer returns to the actionable asker after its role handover
 
 test('the return endpoint adopts an unseen successor identity when the human combines and hands over roles', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
   const impl = await spawnSpoke({ cwd: root, discover: true, name: 'impl', role: 'implementer', sessionId: 'impl-id' });
@@ -213,7 +213,7 @@ test('an open agent ask follows both parties when their session names change', a
 test('a Lead answers locally or forwards an unchanged question to the root, which alone asks the human', async t => {
   const root = await tempProject(t);
   const fake = await fakeClaude(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
@@ -289,7 +289,7 @@ test('a Lead answers locally or forwards an unchanged question to the root, whic
 test('a question climbs an epic and release one level per forward, reaching each fake harness', async t => {
   const root = await tempProject(t);
   const fake = await fakeClaude(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });

@@ -2,13 +2,13 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { withDiscoveredPid, connectUi, eventually, fakeClaude, startDaemon, tempProject } from './harness.ts';
+import { withDiscoveredPid, connectUi, eventually, fakeClaude, projectHub, startDaemon, tempProject } from './harness.ts';
 import type { Inbox, EventsPage } from '../src/protocol.ts';
 
 test('layout saves and human choices serialize through the shared UI lock', async t => {
   const { readFile, rm } = await import('node:fs/promises');
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const path = join(root, '.cland/ui.json');
   await writeFile(path, JSON.stringify({ layout: 'latest', visibility: {} }));
@@ -31,7 +31,7 @@ test('concurrent human choices safely recover a dead UI writer and preserve both
   const deadPid = dead.pid!;
   await new Promise<void>(resolve => dead.once('exit', () => resolve()));
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const a = await connectUi(t, discovery), b = await connectUi(t, discovery);
   const path = join(root, '.cland/ui.json');
   await writeFile(path, JSON.stringify({ layout: 'preserved', visibility: {} }));
@@ -51,7 +51,7 @@ test('a preference disk wait leaves the serving path responsive', { skip: proces
   const { execFile } = await import('node:child_process');
   const { promisify } = await import('node:util');
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery), observer = await connectUi(t, discovery);
   const path = join(root, '.cland/ui.json');
   await promisify(execFile)('mkfifo', [path]);
@@ -70,7 +70,7 @@ test('a preference disk wait leaves the serving path responsive', { skip: proces
 
 test('topic history pages retained messages beyond the latest 200, including equal timestamps', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   const ids: string[] = [];
   for (let i = 0; i < 205; i++) {
@@ -147,7 +147,7 @@ for (const [terminal, role, expected] of [['stopped', 'implementer', 'background
     await mkdir(join(root, '.cland'), { recursive: true });
     await writeFile(join(root, '.cland/config.toml'), '[visibility]\nsessions.idle = "now"\n');
     const fake = await fakeClaude(t, { pollMs: 50 });
-    const { discovery } = await startDaemon(t, root, fake.env);
+    const { discovery } = await projectHub(t, root, fake.env);
     const ui = await connectUi(t, discovery);
     await ui.request({ type: 'subscribe' });
     const launched = await ui.request({ type: 'session.launch', name: 'worker', role, harness: 'claude-code' }, 30_000);
@@ -168,7 +168,7 @@ test('project visibility raises an idle event to a warning without changing need
   await writeFile(join(root, '.cland/config.toml'), '[visibility]\ninbox.idle = "now"\n');
   // Keep pushed idle states authoritative while testing notification visibility.
   const fake = await fakeClaude(t, { pollMs: 60_000, pushTrustMs: 120_000 });
-  const { discovery } = await startDaemon(t, root, { ...fake.env, CLAND_IDLE_NOTIFY_MS: '100' });
+  const { discovery } = await projectHub(t, root, { ...fake.env, CLAND_IDLE_NOTIFY_MS: '100' });
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const launch = await ui.request({ type: 'session.launch', name: 'impl-1', role: 'implementer', harness: 'claude-code' }, 30_000);
@@ -185,7 +185,7 @@ test('project visibility raises an idle event to a warning without changing need
 
 test('the hub places messages, sessions, items and artifacts by the default table on snapshots and live frames', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const { spawnSpoke } = await import('./harness.ts');
@@ -284,7 +284,7 @@ test('hundreds of default verdict, death and idle events leave needsYou zero', a
   const root = await tempProject(t);
   // Keep pushed idle states authoritative while testing notification visibility.
   const fake = await fakeClaude(t, { pollMs: 50, pushTrustMs: 120_000 });
-  const { discovery } = await startDaemon(t, root, { ...fake.env, CLAND_IDLE_NOTIFY_MS: '40' });
+  const { discovery } = await projectHub(t, root, { ...fake.env, CLAND_IDLE_NOTIFY_MS: '40' });
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const created = await ui.request({ size: 'M', type: 'task.create', title: 'Repeated verdict evidence' });
@@ -420,7 +420,7 @@ test('D17 verdicts and deaths carry warn severity in events and the event log, n
   await mkdir(join(root, '.cland'), { recursive: true });
   await writeFile(join(root, '.cland/config.toml'), '[visibility]\ninbox.not_clear = "now"\ninbox.death = "now"\nmessages.not_clear = "now"\n');
   const fake = await fakeClaude(t, { pollMs: 50 });
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const item = ((await ui.request({ size: 'M', type: 'task.create', title: 'Warning evidence' })).value as { item: { id: string } }).item.id;

@@ -1,4 +1,4 @@
-// Plan policy through the daemon's frame protocol, CLI and real verifier spokes.
+// Plan policy through the project hub's frame protocol, CLI and real verifier spokes.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -7,17 +7,17 @@ import { join } from 'node:path';
 import { stringify } from 'yaml';
 import type { ItemView } from '../src/tracker/tracker.ts';
 import type { QaPolicy, EpicPlan } from '../src/tracker/plan.ts';
-import { cland, connectUi, eventually, spawnSpoke, startDaemon, tempProject } from './harness.ts';
+import { cland, connectUi, eventually, spawnSpoke, projectHub, startDaemon, tempProject } from './harness.ts';
 import { copyPreparedProject } from './prepared-project.ts';
 import { taskWriteGate } from './tracker-write-gate.ts';
 
 const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
-async function setup(t: test.TestContext, fallback: QaPolicy = { scope: 'none', when: 'per-item' }, options: { levels?: string[]; gate?: boolean } = {}) {
+async function setup(t: test.TestContext, fallback: QaPolicy = { scope: 'none', when: 'per-item' }, options: { levels?: string[]; gate?: boolean; spawned?: boolean } = {}) {
   const root = await tempProject(t);
   await copyPreparedProject(root);
   await writeFile(join(root, '.cland/config.toml'), `${options.levels ? `[tracker]\nlevels = ${JSON.stringify(options.levels)}\n` : ''}[plan]\nqa_default = {scope = "${fallback.scope}", when = "${fallback.when}"}\n`);
   const gate = options.gate ? await taskWriteGate(t, root) : undefined;
-  const { discovery } = await startDaemon(t, root, gate?.env);
+  const { discovery } = await (options.spawned ? startDaemon : projectHub)(t, root, gate?.env);
   const ui = await connectUi(t, discovery);
   const rev = await spawnSpoke({ discover: true, cwd: root, name: 'rev', role: 'reviewer' });
   const qa = await spawnSpoke({ discover: true, cwd: root, name: 'qa-one', role: 'qa' });
@@ -160,7 +160,7 @@ test('tool and hand-edited ancestor moves recheck descendant ready under the new
 });
 
 test('interrupted migration keeps retired fallback warnings in files, retry response and journal across restart', async t => {
-  const { root, ui, rev, qa, item, create, gate } = await setup(t, undefined, { gate: true });
+  const { root, ui, rev, qa, item, create, gate } = await setup(t, undefined, { gate: true, spawned: true });
   const outside = await create('Second outside', 'task', undefined, ['qa-required']);
   assert.equal((await ui.request({ type: 'task.edit', item: item.id, add_labels: ['qa-required'] })).ok, true);
   await gate!.arm();

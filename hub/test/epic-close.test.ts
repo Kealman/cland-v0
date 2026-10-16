@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, flushProjectLogs, connectUi, eventually, spawnSpoke, startDaemon, tempProject } from './harness.ts';
+import { cland, flushProjectLogs, connectUi, eventually, spawnSpoke, projectHub, tempProject } from './harness.ts';
 import type { ItemView } from '../src/tracker/tracker.ts';
 import { taskWriteGate } from './tracker-write-gate.ts';
 
@@ -22,7 +22,7 @@ async function project(t: TestContext, gated = false, levels = ['release', 'epic
   await mkdir(join(root, '.cland'), { recursive: true });
   await writeFile(join(root, '.cland/config.toml'), `[tracker]\nlevels = ${JSON.stringify(levels)}\n`);
   const gate = gated ? await taskWriteGate(t, root) : null;
-  const { discovery } = await startDaemon(t, root, gate?.env);
+  const { discovery } = await projectHub(t, root, gate?.env);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const qa = await spawnSpoke({ discover: true, cwd: root, name: 'qa-demo', sessionId: 'qa-id', role: 'qa' });

@@ -1,8 +1,8 @@
-// Journal contracts through a daemon, launched fake harness and the frame/CLI protocol.
+// Journal contracts through a project hub, launched fake harness and the frame/CLI protocol.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
-import { cland, connectUi, eventually, fakeClaude, fakeCodex, projectHub, startDaemon, tempProject, type FrameClient } from './harness.ts';
+import { cland, connectUi, eventually, fakeClaude, fakeCodex, projectHub, tempProject, type FrameClient } from './harness.ts';
 import { copyPreparedProject } from './prepared-project.ts';
 import type { HarnessProcessView } from '../src/protocol.ts';
 
@@ -16,7 +16,7 @@ async function records(root: string, ui: FrameClient): Promise<Array<Record<stri
 test('harness model reports journal only changes and retain launch identity', async t => {
   const root = await tempProject(t);
   const fake = await fakeClaude(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   const launched = await ui.request({ type: 'session.launch', name: 'model', harness: 'claude-code', model: 'original' });
   assert.equal(launched.ok, true, launched.error);
@@ -36,7 +36,7 @@ test('harness model reports journal only changes and retain launch identity', as
 for (const explicit of [false, true]) test(`Claude journals the first turn model once (${explicit ? 'explicit model' : 'harness default'})`, async t => {
   const root = await tempProject(t);
   const fake = await fakeClaude(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const launched = await ui.request({ type: 'session.launch', name: 'impl', role: 'implementer', harness: 'claude-code', ...(explicit ? { model: 'claude-fake-1' } : {}) });
@@ -129,7 +129,7 @@ for (const harness of ['codex', 'opencode']) test(`${harness} journals its selec
     FAKE_OPENCODE_HOME: home, FAKE_OPENCODE_TURN_MS: '30',
     CLAND_ADAPTER_POLL_MS: '50',
   };
-  const { discovery } = await startDaemon(t, root, env);
+  const { discovery } = await projectHub(t, root, env);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const launched = await ui.request({ type: 'session.launch', name: 'parent', harness, role: 'implementer' }, 30_000);
@@ -164,7 +164,7 @@ for (const harness of ['codex', 'opencode']) test(`${harness} journals its selec
 for (const fresh of [null, false, true]) test(`${fresh === null ? 'live resume' : fresh ? 'fresh resume' : 'native relaunch'} journals its own launch model`, async t => {
   const root = await tempProject(t);
   const fake = await fakeClaude(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const launched = await ui.request({ type: 'session.launch', name: 'impl', harness: 'claude-code', role: 'implementer' });
@@ -191,7 +191,7 @@ for (const fresh of [null, false, true]) test(`${fresh === null ? 'live resume' 
 test('a Codex child reported before launch admission is retained after its parent launch record', async t => {
   const root = await tempProject(t);
   const fake = await fakeCodex(t, { env: { FAKE_CODEX_SUBAGENT_AT_LAUNCH: '1' } });
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   const launched = await ui.request({ type: 'session.launch', name: 'impl', role: 'implementer', harness: 'codex' }, 30_000);
   assert.equal(launched.ok, true, launched.error);
