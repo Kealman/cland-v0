@@ -18,7 +18,7 @@ blocked_by: []
 topic: topic-399
 branch: t/T-657-quarantine-manifest-a-known-flake-still
 created: 2026-10-16T16:29:56.201Z
-updated: 2026-10-16T17:27:36.171Z
+updated: 2026-10-16T17:59:21.788Z
 ---
 
 ## Summary
@@ -77,3 +77,11 @@ Coordinator, 17:27Z, receipts for the quarantine candidates.
 - New candidate (6): its sibling 'demo machine lifetime destroys the machine through the watchdog even with the hub gone', owner T-569, has two receipts, 9955455a (A-3851) and 007fa789 (A-4068).
 - New candidate (7): claude-code-adapter.test.ts 'Claude discovery and watch share the default 30-second schedule, and stop works before the next pid arrives', owner T-585, has two receipts, integrated cover 0000625b and 007fa789 (A-4068).
 T-569 and T-585 joined E-482 and were launched at 17:27Z (impl-569, impl-585). Quarantine entries are a stop-gap until those fixes land.
+
+### coord · 2026-10-16T17:50:17.572Z
+
+Coordinator, 17:50Z: candidate (2), suite-timeouts 'verify reports unverified fast-exit pipe cleanup once, preserves unrelated processes and admits its successor' (owner T-555), has two more receipts. Both are Mac census runs at a8ddbb8c (A-4056, A-4088), and the test failed in each, alone in its phase (1909/1910). It now has four receipts on four runs, so it has the strongest case for the first quarantine entry.
+
+### coord · 2026-10-16T17:59:21.788Z
+
+Coordinator, 17:59Z, quarantine candidate (8): session item-launch '200 ms publication plus 200 ms lifecycle work after an adapter await is timed once as resumed', a wall-time assertion. One receipt so far: f676f713 (A-4092, T-475). That path never calls T-475's admission check (impl-475 traced it).

@@ -3,7 +3,7 @@ id: T-575
 kind: task
 title: "In-process hub, part 3: bring daemon starts per full run from 743 to under 600"
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 2
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-376
 branch: t/T-575-in-process-hub-part-3-bring-daemon
 created: 2026-10-16T06:12:55.788Z
-updated: 2026-10-16T17:22:57.839Z
+updated: 2026-10-16T17:56:43.181Z
 ---
 
 ## Summary
@@ -26,7 +26,12 @@ T-466's full Mac census at 88a3630e (A-3775) measured 743 daemon starts per full
   - done: impl-575 · 2026-10-16T16:15:12.948Z
   - verified: rev-30 [reviewer] · run rev-20261016-575-source · 2026-10-16T16:18:12.076Z · commit a8ddbb8c39e51ce26f8aab1c925d6c189b9b2524
   - verified: rev-30 [reviewer] · run rev-20261016-575-task-evidence · 2026-10-16T16:57:51.422Z · commit a8ddbb8c39e51ce26f8aab1c925d6c189b9b2524
-- [ ] C2. A full-run spawn census after a durations refresh shows daemon starts under 600, with the per-file table recorded.
+  - verified: rev-30 [reviewer] · run rev-20261016-575-final · 2026-10-16T17:52:37.586Z · commit a8ddbb8c39e51ce26f8aab1c925d6c189b9b2524
+  - verified: rev-30 [reviewer] · run rev-20261016-575-merge-delta · 2026-10-16T17:56:42.571Z · commit dfe9af5aa54047cb03f7a1dc5f3027b9189b4de9
+- [x] C2. A full-run spawn census after a durations refresh shows daemon starts under 600, with the per-file table recorded.
+  - done: impl-575 · 2026-10-16T17:50:44.917Z
+  - verified: rev-30 [reviewer] · run rev-20261016-575-final · 2026-10-16T17:52:37.586Z · commit a8ddbb8c39e51ce26f8aab1c925d6c189b9b2524
+  - verified: rev-30 [reviewer] · run rev-20261016-575-merge-delta · 2026-10-16T17:56:42.571Z · commit dfe9af5aa54047cb03f7a1dc5f3027b9189b4de9
 
 ## Comments
 
@@ -112,3 +117,65 @@ Criteria: C1 verified.
 ### impl-575 · 2026-10-16T17:22:57.839Z
 
 C2 evidence A-4056 records 493 canonical starts / 494 including copied coverage fixture at clean a8ddbb8c, with exit 1 on the unrelated known T-555/T-657 suite-timeouts case. Durations refresh is confirmed: 60517392 (A-3877/f6045f83) is ancestral; only later manifest change is T-604's allowance rename 098e6f5a. Audit found the 38/38 block is hub free, not Neovim; the hub machine failure short-circuited run-suite.ts:189 before the full Neovim phase. No Neovim phase/duration receipt and all nvim table rows zero. Reported to Coordinator and Reviewer; requested missing recorded phase/accepted combined measurement or fresh complete census. C2 remains pending; no false full-corpus count/green census claim. Source/task-gate head unchanged; A-4039/A-4040 remain green accepted full Linux gate.
+
+### impl-575 · 2026-10-16T17:51:15.747Z
+
+C2 DONE — evidence and qualifications for the 2026-10-16T17:50:44Z mark: A-4088 (addendum/combined per-file table) plus A-4056 (hub aggregate/log). At unchanged reviewed a8ddbb8c39e51ce26f8aab1c925d6c189b9b2524, Coordinator-accepted split measurement (decision 2d9f2ec4): hub 493 canonical starts + full Neovim 36 = 529 canonical / 530 including copied coverage fixture, under 600. Both full attempts stopped before Neovim on known unrelated T-555/T-657 suite-timeouts flake (exit 1); both hub counts were 493. Neovim was measured separately at the same clean head: all 37 files / 393 tests passed, exit 0. This is a combined same-head corpus census, not a claim that a single Mac full run was green. Refreshed durations provenance is 60517392/A-3877, ancestral to this head (only later manifest delta T-604 allowance rename 098e6f5a), documented in A-4062. Green full Linux task gate remains A-4039/A-4040. Requesting final Reviewer C2 evidence verdict; branch/source unchanged. Merge waits for integrated cover ce9e3110.
+
+### rev-30 · 2026-10-16T17:52:37.586Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-575-final
+commit: a8ddbb8c39e51ce26f8aab1c925d6c189b9b2524
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-575 final evidence clear at unchanged reviewed a8ddbb8c39e51ce26f8aab1c925d6c189b9b2524. Source A-3992 and green full Linux task gate A-4039/A-4040 remain applicable. No findings.
+
+C2: independently audited Coordinator-produced A-4056 and A-4088, including raw phase logs, aggregate JSON and merged per-file table. Both aggregates identify this exact head, clean tree, darwin, Node v24.21.0, and zero truncated recorder lines. Filtering command=node source rows whose helper is exactly hub/src/cli/hub.ts start reproduces hub 493 plus Neovim 36 = 529 canonical starts. One copied-coverage-fixture start yields 530 including it. The per-file table independently sums to 529 (before table sums 742); 529 and 530 are below 600. Canonical hub phase includes legitimate nested fixture test rows, not just paths prefixed hub/.
+
+The Neovim explicit selection names all 37 tracked nvim/test/*.test.ts files at this head (set comparison has no omissions/extras). Its raw log records 393/393 pass, zero failures/skips, exit 0, suite 100.85 s, peak load 9.42. The hub corpus log records free 38/38 and machine 1909/1910 with one suite-timeouts cleanup-warning failure. Both attempted full Mac runs stop after hub on that same external T-555/T-657 quarantine-candidate failure; neither reaches Neovim. The first hub census peak is 13.82; the repeat log peak is 25.24. The repeat 493 count is Coordinator-reported in the addendum; its raw suite log independently confirms the same phase completion/failure but a separate repeat aggregate is not attached.
+
+This is an accepted combined same-head corpus measurement, not a single green Mac full-suite run. Primary Coordinator decision 2d9f2ec4 explicitly accepts hub + separate Neovim measurement for C2; primary 954a905f confirms the final addendum and directs settlement with split/failure qualifications. Both were read in topic history. No waiver is inferred from the claimant alone.
+
+Durations refresh requirement independently checked: 60517392 is ancestral to the task head; pinned durations.json retains A-3877 / f6045f838f55902c0224473512e82c1ff0121e72 metadata. A-4062 documents the later T-604 identity allowance rename. Source projection of 156 removals is not used as measurement.
+
+Counting retains the recorder's stated boundary: preloaded Node child_process calls, one record per outer call, same method as A-3775. Non-Node descendants and stripped-preload/write-denied subtrees have documented gaps; no claim of an exhaustive OS process census or causal attribution of all 213 fewer canonical starts is made. C2's specified recorded daemon-start metric is satisfied under the Coordinator's explicit split disposition.
+
+C1/C2 verified, zero findings, no per-item QA. Coordinator's integrated cover ce9e3110 merge hold remains separate and unchanged.
+Review artifact A-4089.
+
+Criteria: C1 verified, C2 verified.
+
+### impl-575 · 2026-10-16T17:55:31.533Z
+
+Coordinator-authorized conflict integration c5b7e4d2 committed/pushed as dfe9af5aa54047cb03f7a1dc5f3027b9189b4de9 (merge origin/dev 702320f6 into reviewed a8ddbb8c). Conflicts were only imports in rule-sessions/suite-close: retain T-608 title cases/native turn + T-558 bounded remote cleanup wait, all assertions exactly as integrated dev, and T-575 projectHub selections. T-608's new title case introduces zero spawned hub starts. All requested checks green: root typecheck 0, test:shards 0, rule-sessions once alone 8/8, suite-close once alone 7/7, loads ~2.0/2.1. AST audit vs merged dev: 220 declarations / 1,791 assertion callsites unchanged. C2 stands on accepted A-4088/a8ddbb8c per Coordinator: 529 canonical / 530 with fixture, split hub + full Neovim; T-555-aborted full attempts retained. No claim of fresh census at merge head. Requesting delta review, then same-head mode-free --executor droplet verify.
+
+### rev-30 · 2026-10-16T17:56:42.571Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-575-merge-delta
+commit: dfe9af5aa54047cb03f7a1dc5f3027b9189b4de9
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-575 merge delta source clear at dfe9af5aa54047cb03f7a1dc5f3027b9189b4de9. Parents are prior reviewed a8ddbb8c and dev 702320f60b2619d98e8bdc6f775a7e77dbc12dc9. Primary Coordinator c5b7e4d2 explicitly requires this merge after gate conflicts, the two whole-file checks and fresh droplet verification; it explicitly carries C2 forward from A-4088/a8ddbb8c. No findings on either Standards or Spec axis.
+
+Read the combined merge diff and comparison with the dev parent. Conflict resolutions retain the union of required imports: rule-sessions keeps projectHub and T-608 title cases/native title-turn/event-count changes; suite-close keeps eventually and projectHub with T-558's bounded droplets+keys cleanup observation and final assertions. Existing task in-process fixture choices remain. T-608's new title case already uses projectHub; it adds zero spawned hub starts. The merge folds in other tickets' changes, with no authored assertion edits in resolution.
+
+Independently parsed both pinned dev/task source versions using TypeScript AST, without executing tests or the claimant's writing audit script: all 28 task-diff .ts files have identical 220 test declarations' name/options arguments and 1791 complete assertion call texts. No differences. Counts rose from the original review due to incoming T-608 coverage.
+
+A-4090 raw whole-file summaries show rule-sessions 8/8 and suite-close 7/7, zero failures/skips; build.json ties those exit-0 results to this merge head, with root typecheck/shard lint exit 0 and the logs present. Admissions are reported load 2.04 and 2.11. Independent whitespace check passes.
+
+C1 source/audit refreshed. C2 refreshed only under primary c5b7e4d2's explicit standing-evidence instruction: A-4088/A-4056 measured accepted split 493 hub +36 full Neovim =529 canonical starts (530 with copied fixture) at a8ddbb8c, not this new merge head. Both attempted full Mac runs stopped after hub on T-555; the separate full 37-file Neovim phase passed 393/393. A-4089's recorder boundary/gap and duration-refresh qualifications remain. No new merge-head census or single green Mac full run is claimed.
+
+This is source-delta clearance, not final merge-head task evidence. The prior full Linux A-4039 belongs to a8ddbb8c. Per the Coordinator, next submit normal mode-free explicit-droplet verification at dfe9af5a; final new-head evidence verdict awaits that receipt. No per-item QA criteria.
+Review artifact A-4091.
+
+Criteria: C1 verified, C2 verified.

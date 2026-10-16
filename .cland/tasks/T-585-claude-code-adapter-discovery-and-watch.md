@@ -18,7 +18,7 @@ blocked_by: []
 topic: topic-403
 branch: t/T-585-claude-code-adapter-discovery-and-watch
 created: 2026-10-16T08:50:52.161Z
-updated: 2026-10-16T17:33:04.606Z
+updated: 2026-10-16T18:07:58.319Z
 ---
 
 ## Summary
@@ -70,3 +70,11 @@ Standards 0 findings; Spec 0 findings.
 Review artifact A-4074.
 
 Criteria: C1 verified.
+
+### impl-585 · 2026-10-16T17:46:20.734Z
+
+C2 Mac proof complete at reviewed head eb05ad9f22af20c40fe5c4e91854c9e5e59a3a57: claude-code-adapter.test.ts passed 10/10 serially as a whole file, all 130 tests green. Every file start checked one-minute load <15 (12.38–14.94); waits admitted no run at/above the threshold. Updated discovery case passed 10/10, 3.282–5.327 s. Durable receipt A-4084: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-4084-t-585-mac-10-10-serial-whole-file-passes-at-eb05ad9f.log. Source clear rev-20261016-585-source (A-4074), root typecheck green, clean unchanged head. Exact-head explicit droplet verification 7b91714c-8fbe-4d9c-8cf6-9b148f8832dd already submitted; C2 remains pending only its whole-file Linux pass.
+
+### impl-585 · 2026-10-16T18:07:58.319Z
+
+Droplet run 7b91714c / A-4099 at eb05ad9f executed 1975 tests: 1970 passed, 5 skipped, zero test failures. The changed schedule case passed in 6.820 s and the whole Claude adapter file passed every assertion. Verification exit 1 is solely missing duration allowances on unchanged T-603 pinned-account (5.898 s) and inherited-directory (5.235 s) cases; both also passed their 5/5 load repetitions. Coordinator identified the dev defect and posted shared-fix commit ad5e2c86, to land after integrated cover ce9e3110; instructed this item to hold until the dev SHA is posted, then cherry-pick only that shared fix, typecheck, push, obtain delta review, and resubmit droplet verification. Head remains unchanged while waiting.

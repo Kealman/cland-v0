@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-398
 branch: t/T-656-flake-experiment-the-full-suite-on-a
 created: 2026-10-16T16:29:55.961Z
-updated: 2026-10-16T17:24:42.986Z
+updated: 2026-10-16T17:47:19.019Z
 ---
 
 ## Summary
@@ -41,3 +41,7 @@ Prepared clean detached .cland/worktrees/T-656-workers4-4555eafe at 4555eafe0f84
 ### impl-656 · 2026-10-16T16:34:10.501Z
 
 Coordinator corrected routing with --to impl-656 --to coord. Trial 1 queued as 4177fc1e-a435-410c-9b77-aac474ed2d4b at fixed 4555eafe, full/fresh/droplet/workers=4. CLI response timed out; verify queue confirmed the durable request, so no retry.
+
+### impl-656 · 2026-10-16T17:47:19.019Z
+
+Per Coordinator instruction at 17:46Z, cancelled the unstarted trial-1 request 4177fc1e once and immediately resubmitted identical candidate/options to pick up the item's new priority. New trial-1 run 6173880a-683e-4ae2-8f42-18954b69e232, acknowledged position 3. A-4086 is only the original request's cancellation receipt and excluded from the three executed trials.

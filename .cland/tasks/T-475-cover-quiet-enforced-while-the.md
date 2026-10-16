@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-401
 branch: t/T-475-cover-quiet-enforced-while-the
 created: 2026-10-15T09:13:18.684Z
-updated: 2026-10-16T17:24:56.427Z
+updated: 2026-10-16T18:02:21.495Z
 ---
 
 ## Summary
@@ -29,12 +29,11 @@ Retrospective A-2783, STOP 1: all 7 flaky red covers had other sessions' test ru
 ## Acceptance criteria
 
 - [ ] C1. A targeted test started while an integrated cover holds the local slot exits with `cover-quiet` before starting any fixture.
-  - failed: rev-30 [reviewer] · 2026-10-16T17:20:02.362Z · note Connected-hub timeout/close is treated as admission, so a busy integrated cover can be bypassed. A-4055 M2.
+  - failed: rev-30 [reviewer] · 2026-10-16T17:58:37.003Z · note Owned integrated worker report times out ordinarily and 0/5 repetitions; final gate incomplete. A-4093 M1.
 - [ ] C2. The cover's own workers and runs without a project hub are unaffected.
-  - failed: rev-30 [reviewer] · 2026-10-16T17:20:02.362Z · note Copied-source coverage fixture lacks the newly imported cover-quiet.ts helper, breaking harness startup. A-4055 M1.
+  - failed: rev-30 [reviewer] · 2026-10-16T17:58:37.003Z · note Owned integrated worker end-to-end admission/completion proof red; inspect nested durable result. A-4093 M1.
 - [ ] C3. docs/agents/tests.md and the Implementer clause describe the refusal and the human's override.
-  - verified: rev-30 [reviewer] · run rev-20261016-475-correction · 2026-10-16T17:22:51.722Z · commit 8d39a241e8c7c144eafa211b52d71c09e0650c15
-  - verified: rev-30 [reviewer] · run rev-20261016-475-capability-delta · 2026-10-16T17:24:34.251Z · commit de7d1927ee8ed91fc648b857d585628cb81f1fcb
+  - verified: rev-30 [reviewer] · run rev-20261016-475-owned-correction · 2026-10-16T18:02:08.189Z · commit b1570e640ffd8b2f3da1564114962d248976c788
 
 ## Comments
 
@@ -143,3 +142,62 @@ Criteria: C3 verified.
 ### impl-475 · 2026-10-16T17:24:56.427Z
 
 Source review clear at de7d1927 (A-4066 / rev-20261016-475-capability-delta). Submitted exact-head normal droplet verify f676f713-8d0f-4868-b789-1e7102f62d08 with no mode, topic-401, Reviewer + claimant recipients; worker pending, queue position 1. Following Coordinator disposition 54b041c5: no local retry after pre-feature hub refusal A-4057. Coordinator owns post-merge/restart local targeted receipt; C1/C2 local-live-hub evidence stays unverified until that receipt. Claim retained; waiting for hub result.
+
+### rev-30 · 2026-10-16T17:58:37.003Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261016-475-droplet-red
+commit: de7d1927ee8ed91fc648b857d585628cb81f1fcb
+scope: evidence
+findings: [{"severity":"medium","text":"M1: Owned integrated-worker regression times out waiting for its report and fails ordinary +0/5 repetitions. Inspect nested worker result/log; separate actual durable worker completion from bounded downstream report delivery while retaining cover assertions.","file":"hub/test/cover-quiet.test.ts","line":153},{"severity":"medium","text":"M2: Added default Implementer clause produces a 7800-byte reply, exceeding the existing 7680-byte reply budget/headroom assertion. Shorten wording without weakening C3 or the budget test.","file":"hub/src/roles/default-roles.ts","line":151}]
+finding_counts: {"high":0,"medium":2,"low":0}
+
+T-475 final evidence not clear at reviewed de7d1927ee8ed91fc648b857d585628cb81f1fcb. Independently inspected complete A-4092 / f676f713-8d0f-4868-b789-1e7102f62d08: Linux c-8, 1986 tests, 1977 pass, four failures, five prerequisite skips, exit 1. Full-mode Neovim was not reached. Suite 1804.22 s, peak load 19.77, lifetime 1885 s, $0.1309.
+
+Medium M1 — hub/test/cover-quiet.test.ts:153: owned integrated-worker regression fails ordinarily at "integrated cover report: not within 15000 ms" and fails 0/5 load repetitions. Earlier assertions reach the post-program marker, but that marker is written inside cover.mjs before npm/suite-worker cleanup and durable result publication. Inspect the nested worker's suite log/result state to determine why completion is not reported; retain the cover/own-worker assertions and use an exact durable worker-completion observation before a separately bounded downstream report wait. Do not merely label this unknown owned failure as a load flake or spend an unchanged retry.
+
+Medium M2 — hub/src/roles/default-roles.ts:151: the added Implementer clause makes the shipped-default reply 7800 bytes, exceeding the existing 8192 minus 512 headroom assertion (7680). roles.test.ts:88 fails on the default Implementer clause (A-4092:4594–4606). Shorten the added wording while preserving C3 and the existing role meaning/headroom; do not increase the cap or weaken its assertion. This is a consequence of the owned clause edit, despite the test file being outside the diff.
+
+Positive evidence: other eleven cover-quiet identities pass ordinarily and all 5/5 repetitions (55/55). This includes targeted hub/Neovim refusal, package pre-root refusal, inherited/override admission, standalone/ordinary-holder admission, silent/closed/legacy/unsupported connection checks and borrowed integrated metadata. The copied-source coverage fixture passes, so the original missing-helper finding is resolved.
+
+Remaining outside-diff failures for lead/Coordinator classification:
+- Claude schedule actual 2 versus 1, claude-code-adapter.test.ts:353, matching the T-585 signature now under separate correction.
+- request-guard.test.ts:279, item-launch 200+200ms case gets two resumed slow-request rows (403 ms and 849 ms), expected one. Report as S Bugs candidate unless already tracked; no causal diagnosis from this receipt.
+- Two new external hard-budget lines at full tail: T-603 pinned-profile 7.603 s and inherited-profile 5.916 s without allowances on this held head. No other hard budget lines.
+
+C1/C2 remain failed/unverified because owned integration proof is red, and C3 source verification is invalidated pending clause-budget correction. Coordinator 54b041c5 still owns local proof after merge/restart; no bypass of the explicit live-hub refusal is authorized. Corrected-head source review is required before another droplet task run. No per-item QA criteria.
+Review artifact A-4093.
+
+Criteria: C1 failed (Owned integrated worker report times out ordinarily and 0/5 repetitions; final gate incomplete. A-4093 M1.), C2 failed (Owned integrated worker end-to-end admission/completion proof red; inspect nested durable result. A-4093 M1.), C3 failed (Default Implementer clause reply grows to 7800 bytes, violating existing 7680-byte reply/headroom limit. A-4093 M2.).
+
+### rev-30 · 2026-10-16T18:02:08.189Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-475-owned-correction
+commit: b1570e640ffd8b2f3da1564114962d248976c788
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-475 owned-correction source clear at b1570e640ffd8b2f3da1564114962d248976c788, delta from de7d1927. Standards and Spec axes: no findings.
+
+M1 source correction established: the tiny fixture no longer copies real run-suite.ts. suites.ts:320 enables integrated V8 map publication only when that file advertises reduceCoverage; the tiny cover.mjs does not emit a map. Removing the false capability leaves the existing suite-worker no-runner borrowability path enabled, so the integrated lease and own-targeted-harness proof remain. All original refusal, inheritance, post-cover admission and report assertions stay. After body completion, the regression now observes durable suite result.json and asserts code 0 before starting a separate bounded report wait. This removes the fictitious map dependency and makes worker failure diagnostic rather than an unexplained downstream timeout. Corrected execution is still pending; no reproduced post-fix pass is claimed.
+
+M2 source correction established: the new Implementer instruction is reduced to waiting on cover-quiet, the human-only override and docs/agents/tests.md#cover-quiet. Only obsolete targeted-tests-are-free wording is removed from the neighboring instruction. The complete admission, inheritance, missing/old-hub behavior and restart action move unchanged under the named docs section. C3 meaning is retained and budget assertions are untouched. A-4096 reports pure full-clause measurement including staffing at 7454 bytes against 7680 (226 margin), meeting the Coordinator's 150-byte-margin direction; not a claimed whole roles test pass.
+
+Primary Coordinator b5117ec1 was read in topic history and approves the owned correction, with item-launch timing left as its single-receipt load flake. Primary 0787662f requires a later dev merge and budget recheck after T-536 lands. The request also holds new verification for the Coordinator-posted T-585 shared fix; no pick, future merge or gate exception is inferred beyond those explicit directions.
+
+Request/A-4096 report root typecheck exit 0; independent diff whitespace check passes. No local runtime retry occurred after the live hub's refusal. Coordinator's 54b041c5 staged local-live-hub proof after merge/restart remains outstanding.
+
+C3 source refreshed; C1/C2 runtime marks remain unverified. Source correction clear does not clear A-4092's red gate. Do not spend a verify at this intermediate head: after posted shared integration/final budget check, request review of the resulting exact head before the authorized droplet run. No per-item QA criteria.
+Review artifact A-4097.
+
+Criteria: C3 verified.
+
+### impl-475 · 2026-10-16T18:02:21.495Z
+
+First droplet f676f713 red analyzed in A-4096. Owned corrections committed/pushed b1570e64, source-clear A-4097 / rev-20261016-475-owned-correction. Typecheck exit0. Full clause reply including staffing =7454 bytes,226 below7680. Tiny fixture no longer falsely opts into coverage; durable result/code0 precedes report wait. Holding next verify for Coordinator-posted T-585 shared fix and requested T-536/dev integration+budget recheck; resulting head gets source review before remote verify. No local refusal bypass; local-live-hub proof remains Coordinator-owned post-restart.
