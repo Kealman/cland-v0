@@ -3,7 +3,7 @@ id: T-635
 kind: task
 title: cland models <harness> lists the harness's model ids from a cached probe
 state: open
-status: review
+status: in progress
 size: M
 criterion_seq: 6
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-391
 branch: t/T-635-cland-models-harness-lists-the-harness-s
 created: 2026-10-16T16:04:12.499Z
-updated: 2026-10-16T19:08:08.394Z
+updated: 2026-10-16T20:18:04.905Z
 ---
 
 ## Summary
@@ -36,7 +36,7 @@ updated: 2026-10-16T19:08:08.394Z
 ## Acceptance criteria
 
 - [x] C1. `cland models opencode` and `cland models codex` print the ids the fake OpenCode server and the fake Codex app-server list, the default marked (new CLI test against a temporary project's hub).
-  - done: impl-635 · 2026-10-16T16:30:26.722Z
+  - done: impl-635 · 2026-10-16T20:18:04.905Z
 - [x] C2. A second call within the cache's lifetime answers without a probe and `--refresh` probes again, as the fakes' probe counts show.
   - done: impl-635 · 2026-10-16T16:30:27.601Z
 - [x] C3. The OpenCode probe waits out the fake's empty first answer and returns its models.
@@ -214,3 +214,29 @@ Correction delta source clear at ab3867ec6b8a0c84814db357d1898084c337a176, rev-2
 ### impl-635 · 2026-10-16T19:08:08.394Z
 
 Coordinator 19:07Z shared-fix plan: hold for posted dev SHA containing T-526/quarantine plus T-585/T-603 fixes; then fetch/merge origin/dev (explicit exception to rule 11), typecheck and shard lint, push, delta review scoped dev merge only, then droplet verify. Clarified current corrected-head run 7d03777a at ab3867ec is still queued (not a new red); A-4045 was the earlier run whose owned import/budget findings are already fixed. No source changes or resubmission until the Coordinator post.
+
+### rev-30 · 2026-10-16T20:13:52.751Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261016-635-second-gate-red
+commit: ab3867ec6b8a0c84814db357d1898084c337a176
+scope: evidence
+findings: [{"severity":"medium","text":"M1: Moved passive OpenCode install URL breaks account-poller.test.ts's exact path/literal source guard, which still permits that unchanged guidance only in doctor/toolchain.ts. Update the narrow passive metadata allowance with the relocation while preserving provider/credential scanning.","file":"hub/src/doctor/harnesses.ts","line":18},{"severity":"medium","text":"M2: Owned native-catalog/cache regression fails 4/5 load repetitions. Receipt omits assertion detail; diagnose the exact repetition failure and correct the demonstrated cause while retaining catalog/cache/wait/cleanup assertions before another gate run.","file":"hub/test/models.test.ts","line":31},{"severity":"medium","text":"M3: Same owned catalog case takes 5.399 s and has no reasoned duration allowance, producing an explicit hard-budget failure. Add measured narrowly scoped allowance with a reason under project policy; do not treat this as a regression warning.","file":"hub/test/models.test.ts","line":31}]
+finding_counts: {"high":0,"medium":3,"low":0}
+
+T-635 final evidence not clear at source-reviewed ab3867ec6b8a0c84814db357d1898084c337a176. Independently audited complete A-4175 / 7d03777a-e251-40d2-80f5-4cdf46bec124: 1955 tests, 1949 pass, one ordinary failure, five prerequisite skips, exit 1. Full-mode Neovim was not reached. Linux c-8 four workers; suite 1760.79 s, peak 14.90, lifetime 1846 s, $0.1282.
+
+Medium M1 — hub/src/doctor/harnesses.ts:18: the import-closure correction moved passive OpenCode installation guidance to the new metadata module. account-poller.test.ts:255 still allows exactly that literal only in doctor/toolchain.ts; its recursive source guard now fails on harnesses.ts containing opencode.ai. Source inspection confirms a human-facing install string, not an actual provider connection or credential access. Move/update the narrow file-plus-exact-literal exception with the metadata relocation, preserving every other forbidden endpoint/credential check; do not broadly exclude the module or remove the provider boundary assertion. This is an owned deterministic integration consequence, not an unrelated account-poller flake.
+
+Medium M2 — hub/test/models.test.ts:31: owned native catalog/OpenCode wait/cache/refresh case passes ordinary execution but only 4/5 load repetitions. Raw log reports the aggregate failure without the failed assertion, so no specific cause is established. Diagnose that repetition path and correct the demonstrated cause while retaining the original catalog, default marking, empty-first-answer, cache counts, refresh and process-root cleanup assertions. Do not spend an unchanged retry or relabel this unknown owned failure as a shared flake.
+
+Medium M3 — same case: ordinary execution is 5.399 s with no allowance, and the complete log has exactly this hard duration-budget line. Add an appropriately reasoned measured allowance under project policy as part of the correction; routine regression notices are different and are not blockers here.
+
+Positive evidence: other five models identities each pass 5/5 (25/25), including failed refresh/native errors, accounts, cache restart/expiry/coalescing and relative PATH. Previous copied-source Neovim-import failure is absent after the harness-metadata split, but its replacement guard mismatch above remains. No other load-gate or hard-budget failures found.
+
+C1 failed for the owned catalog gate/budget; C2/C3/C5/C6 remain unverified by final review, C4 static-source proof remains recorded but does not clear this run. Restore any failed claimant done marks only with corrected accepted evidence. Corrected-head source review is required before another task verification; new test-source edits must follow the current Test levels guidance. No per-item QA criteria. Standards: two medium integration/budget findings. Spec/runtime: one medium unresolved owned repetition failure.
+Review artifact A-4180.
+
+Criteria: C1 failed (Owned native catalog/cache case fails 4/5 load repetitions and hard duration budget; relocated metadata also breaks exact provider-source guard. See A-4180.).

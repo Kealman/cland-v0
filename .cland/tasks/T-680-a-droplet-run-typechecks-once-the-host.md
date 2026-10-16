@@ -3,8 +3,9 @@ id: T-680
 kind: task
 title: "A droplet run typechecks once: the host gate's result travels with the candidate tree hash"
 state: open
-status: in progress
+status: review
 size: S
+criterion_seq: 3
 labels:
   - v0.1.4
   - verification
@@ -15,7 +16,7 @@ blocked_by: []
 topic: topic-409
 branch: t/T-680-a-droplet-run-typechecks-once-the-host
 created: 2026-10-16T19:59:27.759Z
-updated: 2026-10-16T20:04:19.235Z
+updated: 2026-10-16T20:09:36.634Z
 ---
 
 ## Summary
@@ -30,9 +31,14 @@ This is the step later tickets hang the T0 test lint on (T-682), so the "check s
 
 ## Acceptance criteria
 
-- [ ] C1. A droplet run whose host gate passed at tree X runs no typecheck on the droplet and logs the reuse line naming X, proved by a remote-fixture test.
-- [ ] C2. A droplet run whose delivered tree differs from the host gate's runs the typecheck on the droplet, proved by a planted-difference test.
-- [ ] C3. A local run executes the typecheck exactly once, proved by a suite test.
+- [x] C1. A droplet run whose host gate passed at tree X runs no typecheck on the droplet and logs the reuse line naming X, proved by a remote-fixture test.
+  - done: impl-680 · 2026-10-16T20:07:25.721Z
+- [x] C2. A droplet run whose delivered tree differs from the host gate's runs the typecheck on the droplet, proved by a planted-difference test.
+  - done: impl-680 · 2026-10-16T20:07:26.211Z
+  - verified: rev-31 [reviewer] · run rev-20261016-680-source · 2026-10-16T20:09:36.634Z · commit 2394853d421e5fe26adeda6562a5d940e1005dad
+- [x] C3. A local run executes the typecheck exactly once, proved by a suite test.
+  - done: impl-680 · 2026-10-16T20:07:27.013Z
+  - verified: rev-31 [reviewer] · run rev-20261016-680-source · 2026-10-16T20:09:36.634Z · commit 2394853d421e5fe26adeda6562a5d940e1005dad
 
 ## Comments
 
@@ -47,3 +53,18 @@ Coordinator (D51): C4, ten post-merge droplet runs showing no remote typecheck, 
 ### coord · 2026-10-16T20:04:19.235Z
 
 Coordinator, precision: the removed C4 measured the median droplet lifetime gain of at least 12 s over 10 runs after the merge against 10 before. I record that measurement at E-676's demo alongside C6.
+
+### rev-31 · 2026-10-16T20:09:36.634Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261016-680-source
+commit: 2394853d421e5fe26adeda6562a5d940e1005dad
+scope: full
+findings: [{"severity":"low","text":"Modified broad T3 reuse scenario measures15.872s against D53 target10s; report-only tier budget migration follow-up, existing allowance14.986s.","file":"hub/test/executor-run.test.ts","line":49}]
+finding_counts: {"high":0,"medium":0,"low":1}
+
+Source clear; Standards1low/Spec0 findings, A-4174. All8files and scheduler/shard/recovery/delivered-shell/local/result seams reviewed. Persisted successful receipt carries exact command/canonical tree; remote shell independently hashes clean actual candidate via private index, and absent/mismatch/unreadable/failed evidence runs typecheck normally. Shards inherit durable parent receipt; old jobs fallback safely; local scheduling remains one check with provenance. Planted committed difference preserves remote failure-stops-tests assertion. A-4172 targeted executor21of21/suite11of11/close2of2 and typecheckgreen; independent ref/diffcheck confirmed. C2/C3 source-established; C1 final execution waits exact-head task verify after explicit Coordinator hold lift, no forced full run requested. Former C4 lifetime comparison explicitly moved to epic demo. Low T3 target issue is report-only per D53; Tech debt/S follow-up to lead, no medium blocker. No Reviewer edits/tests.
+
+Criteria: C2 verified, C3 verified.

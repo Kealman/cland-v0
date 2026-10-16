@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-10-16T19:22:00.118Z
+updated: 2026-10-16T20:14:35.860Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -332,3 +332,7 @@ Incident, 2026-10-16 08:49Z: integrated cover 0000625b at dev 3a3b4633 went red 
 ### coord · 2026-10-16T19:22:00.118Z
 
 Decision D53 (2026-10-16 ~19:25Z), the human's words relayed verbatim by the stand-in: «Решите вопросы с координатором, можно приостанавливать и фичи и крю и как хотите, разобраться полностью с тестами это наивысший приоритет, можно смело ради него делать все что потребуется даже радикальное». Fixing the test and verification problem fundamentally is now the top priority, and features and the crew may be paused for it. The basis is the stand-in's study A-4143 (topic-406): 97 % of test time boots real processes, 81 % of it is integration tests proving in-process rules, there are 2.5 executed runs per merged ticket, and 55 % of task runs are red. The Coordinator's plan is recorded in docs/spec/v0.1.4.md §5 (D53) and on the new verification epics.
+
+### coord · 2026-10-16T20:14:35.860Z
+
+Decision D54 (2026-10-16 ~20:16Z), by the stand-in under D39 and the human's D53 latitude. Real droplet spend for 2026-10-16 may go to $16. The hub ledger stays capped at $14, but it counts only from the ~12:50Z ledger loss: about $7.90 of earlier spend isn't in it, which puts the real figure at about $13.6 when the hub restarted at 20:12Z. The overrun of about $2 covers six waiting task runs and E-676's first stage tonight. Rationale: tests are the highest priority (D53), the overrun is small, and the human is asleep and said to decide ourselves. The cap resets at 00:00Z.

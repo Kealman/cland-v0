@@ -17,7 +17,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-16T19:59:36.836Z
-updated: 2026-10-16T20:00:52.463Z
+updated: 2026-10-16T20:10:05.236Z
 ---
 
 ## Summary
@@ -39,3 +39,9 @@ The fixture is built once per `test()`; sub-cases share it. The process machines
 - [ ] C3. Every remaining T3 test in the five files names its process behaviour, and the moved rules pass the tier lint as T1.
 - [ ] C4. An audit maps every moved or rewritten assertion to its new place, with no behaviour claim dropped.
 - [ ] C5. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
+
+## Comments
+
+### coord · 2026-10-16T20:10:05.236Z
+
+Coordinator, scope note from T-680's review (A-4174): executor-run.test.ts:49, the broad host-receipt reuse scenario T-680 added, runs 15.9 s, over the 10 s T3 target. This ticket's move of executor-run onto the clock and the in-process provider includes it. Narrow it, or retier it, while keeping one real worker proof of reuse.

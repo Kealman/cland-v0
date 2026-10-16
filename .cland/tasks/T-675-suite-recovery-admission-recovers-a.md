@@ -3,7 +3,7 @@ id: T-675
 kind: task
 title: suite-recovery 'admission recovers a borrowed planned root…' kills the launch snapshot's pid; use T-526's pid observer
 state: open
-status: review
+status: ready
 size: XS
 criterion_seq: 2
 labels:
@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-407
 branch: t/T-675-suite-recovery-admission-recovers-a
 created: 2026-10-16T19:13:55.940Z
-updated: 2026-10-16T20:00:32.701Z
+updated: 2026-10-16T20:17:56.377Z
 ---
 
 ## Summary
@@ -33,7 +33,10 @@ The case uses the shared PID observer T-526 added (aeaf3dec) to read the publish
 - [x] C1. The case reads the worker pid through T-526's observer before signalling, with its assertions unchanged in meaning, proved by the file's own run.
   - done: impl-675 · 2026-10-16T19:59:46.288Z
   - verified: rev-30 [reviewer] · run rev-20261016-675-source · 2026-10-16T20:00:32.701Z · commit 7e5fe5ecdecacad1a200e8d0c77597fcf866b5eb
-- [ ] C2. suite-recovery.test.ts passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
+  - verified: rev-30 [reviewer] · run rev-20261016-675-final · 2026-10-16T20:17:55.585Z · commit 7e5fe5ecdecacad1a200e8d0c77597fcf866b5eb
+- [x] C2. suite-recovery.test.ts passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
+  - done: impl-675 · 2026-10-16T20:17:34.068Z
+  - verified: rev-30 [reviewer] · run rev-20261016-675-final · 2026-10-16T20:17:55.585Z · commit 7e5fe5ecdecacad1a200e8d0c77597fcf866b5eb
 
 ## Comments
 
@@ -66,3 +69,25 @@ C1 verified; C2 local portion accepted, final droplet portion remains pending. S
 Review artifact A-4166.
 
 Criteria: C1 verified.
+
+### rev-30 · 2026-10-16T20:17:55.585Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-675-final
+commit: 7e5fe5ecdecacad1a200e8d0c77597fcf866b5eb
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-675 final evidence clear at unchanged source-reviewed 7e5fe5ecdecacad1a200e8d0c77597fcf866b5eb. Standards and Spec axes: no findings.
+
+Independently inspected complete A-4184 / d365804f-0ec6-4f29-87e7-473a74540280. Log branch/head match source verdict A-4166; hub-selected mode names the changed whole suite-recovery file using coverage A-4159. Exit 0, 40/40 tests, zero failures/skips: selected hub phase 28/28 and Neovim smoke 12/12. All six suite-recovery identities have positive timings; corrected borrowed-root crash/recovery passes in 5.192833294 s. No hard budget or load-gate failure; printed duration regression is non-failing. Linux x64 c-8 lon1, two workers; suite 68.59 s, peak load 1.37, machine lifetime 141 s and cost $0.0098 per hub receipt metadata.
+
+C2 Mac proof remains independently audited A-4164: five serial whole-file six-case runs, total 30/30 with zero failures/skips, 16.017–17.107 s per file, sampled peak load at most 3.322. No source changes after that proof or source review. C1 bounded matching published PID observer before SIGKILL, real mkdir/death recovery and retained assertions remain established by A-4166 and now exact-head Linux execution. Latest task view has both claimant done marks.
+
+C1/C2 verified at the exact reviewed head. No per-item QA or further task run required.
+Review artifact A-4185.
+
+Criteria: C1 verified, C2 verified.

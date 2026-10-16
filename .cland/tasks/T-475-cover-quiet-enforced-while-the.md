@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-401
 branch: t/T-475-cover-quiet-enforced-while-the
 created: 2026-10-15T09:13:18.684Z
-updated: 2026-10-16T20:07:13.564Z
+updated: 2026-10-16T20:14:56.400Z
 ---
 
 ## Summary
@@ -37,6 +37,7 @@ Retrospective A-2783, STOP 1: all 7 flaky red covers had other sessions' test ru
   - verified: rev-30 [reviewer] · run rev-20261016-475-shared-duration · 2026-10-16T18:12:49.135Z · commit de96a65002699613407c62d3237a8c7ee7f71fb1
   - verified: rev-30 [reviewer] · run rev-20261016-475-dev-integration · 2026-10-16T18:39:58.556Z · commit 6ba8ce3b3e1c183f866dbbeda403e9853c8a03ba
   - verified: rev-30 [reviewer] · run rev-20261016-475-shared-dev-merge · 2026-10-16T19:07:22.802Z · commit 75390e8348e11d330ebc9d1dda15a5d80c3eb42c
+  - verified: rev-30 [reviewer] · run rev-20261016-475-watchdog-header-delta · 2026-10-16T20:08:52.284Z · commit a35e9d32e89eeef49e34d2ab7f0fe6536189c7d3
 
 ## Comments
 
@@ -292,3 +293,31 @@ Per Coordinator 0aa4426e, cancelled superseded-head run1ecb8069; cancellation co
 ### impl-475 · 2026-10-16T20:07:13.564Z
 
 A-4168 at75390e83:1998pass/1external T-569fail/5skip; all12 own cases pass+60/60load; worker7.071s,coverage/default clause pass. Per Coordinator f5b56419 merged origin/dev25edc246 with T-569fix4715d307 at pushed fb42911c (clean/no own edits). Typecheck+test:shards exit0; clause incl staffing7513/7680,167margin. Dev-merge-only review requested; wait explicit hold lifted before normal exact-head droplet verify. No local retry; local-live-hub proof remains Coordinator-owned post-merge/restart.
+
+### rev-30 · 2026-10-16T20:08:52.284Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-475-watchdog-header-delta
+commit: a35e9d32e89eeef49e34d2ab7f0fe6536189c7d3
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-475 pending dev-merge plus header delta source clear at a35e9d32e89eeef49e34d2ab7f0fe6536189c7d3. Standards and Spec axes: no findings.
+
+Reviewed merge fb42911cb97c0e4d6447e1cedb014719978b03b0 from preceding reviewed 75390e83 and dev 25edc246, then its sole child/header change at this exact head. Primary Coordinator f5b56419 authorizes the dev integration bringing T-569 shared fix 4715d307, with typecheck/shards/clause recheck. Merge is clean with no combined conflict diff. All owned admission implementation, harness and regression bytes are unchanged across the merge; changes in previously owned paths are incoming Test levels documentation and T-569 duration-reason updates. Against dev the 16-file cover-quiet scope remains unchanged. Incoming watchdog fix addresses A-4168's sole external red; this review does not turn that old receipt into a green new-head run.
+
+Read newly merged docs/agents/tests.md Test levels (D53). Primary Coordinator 83d5a0fd expressly applies the lifecycle-header requirement to this unmerged new file, directs exactly the added header, and assigns its unchanged 25 ms barrier poll to T-684's lint baseline. Actual child diff is exactly four comment lines: T3 integration, real integrated worker/CLI lifecycle from pre-fixture startup through completion/slot release, existing poll unchanged and T-684 ownership. No executable source, timing, assertions or allowances change in that child. No finding for the unchanged baseline poll per this primary disposition. Counted startDaemon/spawnSpoke/cland/sleep calls in the new test file: zero; its execFile/real-worker use is named by the lifecycle header. No broader retrospective tier migration is inferred from this merge-only pass.
+
+C3 docs and Implementer clause remain intact. Full clause including staffing is claimant-measured 7513/7680 bytes, 167 margin. Merge-head typecheck/shard lint and child-head typecheck are reported exit 0; independent whitespace check passes, origin task tip matches requested head. No Reviewer runtime execution or local refusal bypass.
+
+C3 refreshed only. A-4168 already proves all twelve owned identities ordinarily and 60/60 load repetitions, corrected worker 7.071 s, but final exact-head gate and Coordinator-owned post-merge/restart local-live-hub evidence remain pending. Keep explicit verification hold until Coordinator posts hold lifted, then submit normal mode-free exact-head droplet verification. No further source changes or local retry directed; no per-item QA criteria.
+Review artifact A-4173.
+
+Criteria: C3 verified.
+
+### impl-475 · 2026-10-16T20:14:56.400Z
+
+Hold lifted by Coordinator0df00409 after hub restart/D53 config. Unchanged source-clear head a35e9d32 (A-4173), tree clean. Submitted normal mode-free droplet verify fd0d2ca7-eb15-45a1-823a-a583e2123a2e with same topic-401/Reviewer+claimant routing; queue position1. Both shared watchdog and duration fixes present. Waiting for hub result; no head changes/local retry.

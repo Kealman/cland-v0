@@ -3,8 +3,9 @@ id: T-679
 kind: task
 title: "hub/test/tiers.json replaces shards.json: every hub and Neovim test file declares T1, T2, T3 or T4, sorted by path"
 state: open
-status: in progress
+status: review
 size: M
+criterion_seq: 6
 labels:
   - v0.1.4
   - verification
@@ -15,7 +16,7 @@ blocked_by: []
 topic: topic-408
 branch: t/T-679-hub-test-tiers-json-replaces-shards-json
 created: 2026-10-16T19:59:27.652Z
-updated: 2026-10-16T20:06:53.899Z
+updated: 2026-10-16T20:16:56.640Z
 ---
 
 ## Summary
@@ -32,15 +33,50 @@ updated: 2026-10-16T20:06:53.899Z
 
 ## Acceptance criteria
 
-- [ ] C1. `hub/test/tiers.json` lists every hub and Neovim test file sorted by path, the seven current free files as T1 and all others as T3, and `shards.json` no longer exists, proved by the lint run over the repository.
-- [ ] C2. The lint refuses an unclassified file, a missing file, an invalid tier, an unsorted map (naming the first out-of-order path) and a T1 file that uses a process, port, timer or harness API, proved by lint tests.
-- [ ] C3. `cland verify` refuses those faults with `verify-tiers` and `cland merge` with `merge-tiers`, before queueing or changing refs, proved by admission and merge-gate tests.
-- [ ] C4. A candidate tree with only `shards.json` is admitted and planned with free as T1 and machine as T3, proved by an admission test.
-- [ ] C5. The planned phases, file sets and worker counts for a full run of this repository equal those planned from `shards.json` at the merge base, proved by a planning test.
-- [ ] C6. Every tool that writes the manifest writes it sorted, proved by a test that adds an entry, and `docs/agents/tests.md` and `hub/README.md` (Tests) describe `tiers.json`, the four tiers and where a new line goes.
+- [x] C1. `hub/test/tiers.json` lists every hub and Neovim test file sorted by path, the seven current free files as T1 and all others as T3, and `shards.json` no longer exists, proved by the lint run over the repository.
+  - done: impl-679 · 2026-10-16T20:16:55.058Z
+- [x] C2. The lint refuses an unclassified file, a missing file, an invalid tier, an unsorted map (naming the first out-of-order path) and a T1 file that uses a process, port, timer or harness API, proved by lint tests.
+  - done: impl-679 · 2026-10-16T20:16:55.340Z
+- [x] C3. `cland verify` refuses those faults with `verify-tiers` and `cland merge` with `merge-tiers`, before queueing or changing refs, proved by admission and merge-gate tests.
+  - done: impl-679 · 2026-10-16T20:16:55.726Z
+- [x] C4. A candidate tree with only `shards.json` is admitted and planned with free as T1 and machine as T3, proved by an admission test.
+  - done: impl-679 · 2026-10-16T20:16:56.012Z
+- [x] C5. The planned phases, file sets and worker counts for a full run of this repository equal those planned from `shards.json` at the merge base, proved by a planning test.
+  - done: impl-679 · 2026-10-16T20:16:56.356Z
+- [x] C6. Every tool that writes the manifest writes it sorted, proved by a test that adds an entry, and `docs/agents/tests.md` and `hub/README.md` (Tests) describe `tiers.json`, the four tiers and where a new line goes.
+  - verified: rev-30 [reviewer] · run rev-20261016-679-source · 2026-10-16T20:16:39.163Z · commit f97e2ab41f44769a298f5011cba459ebb51e96f0
+  - done: impl-679 · 2026-10-16T20:16:56.640Z
 
 ## Comments
 
 ### impl-679 · 2026-10-16T20:06:53.899Z
 
 Implemented tier manifest/legacy reader, sorted serializer used by all live fixture writers, new verify-tiers/merge-tiers refusals (wire type aliases retained), and docs. T1/2/3/4 planning preserves current resource phases and worker counts. Local tier/lint tests and suite-admission.test.ts green (13.02 s); the admission test includes committed shards-only fallback with unsorted legacy keys and Neovim omitted from the old manifest. Continuing targeted files before source review.
+
+### rev-30 · 2026-10-16T20:16:39.163Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-679-source
+commit: f97e2ab41f44769a298f5011cba459ebb51e96f0
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-679 full source review clear at f97e2ab41f44769a298f5011cba459ebb51e96f0, fixed point freshly merged origin/dev 528a2109555ab4833ff0336e50b59f22486f06a6. Diff: git diff 528a2109...f97e2ab4; task implementation, dev merge and classification-refresh commits inspected. Both axes reviewed in-session under the role's no-delegation constraint.
+
+Standards: no findings. Tier schema and sorted serializer share the existing suite-shards module seam; resource planning remains explicit. T1 uses the unchanged conservative MACHINE check, one free worker; T2–T4 retain machine grouping and configured workers. Neovim is validated in the common manifest but retains its existing package phase. New suite-tiers file states T2 and starts no hub/process or real-time wait; literal process/timer fixtures are data in JSON. Existing integration fixture changes are manifest substitutions and a single refusal-family table, not duplicated harness permutations. No removed lifecycle assertions, new execution sleeps or broadened skips found. Independent whitespace check passes.
+
+Spec: no findings. Static Git-tree/JSON audit independently finds exactly 247 tracked test paths and 247 sorted entries, no missing/extra paths, shards.json removed. Current fetched base has eight free files (including incoming T-621), all preserved as T1; every baseline machine file stays T3. New owned planner/lint test is T2; totals eight T1/one T2/238 T3. Frozen legacy-shards fixture is JSON-identical to the fetched base. C1's historical seven-file count therefore does not describe an eighth resource reclassification.
+
+Reader validates strict tier strings or two-field T3 contract/scenario descriptors, missing/extra paths, malformed maps/JSON, first out-of-order key, and T1 source violations. Tiers take precedence without masking malformed tiers behind legacy. Legacy-only unsorted resource maps preserve hub-only classification coverage and free=T1/machine=T3 behavior; candidate-tree lint also includes Neovim only for the tier format. Admission binds lint to committed head plus working files before durable job/queue creation; merge checks the immutable merged tree before ref/index/worktree changes. New verify-tiers/merge-tiers outputs coexist with old typed wire aliases.
+
+Tests cover the refusal table through one fixture, unchanged refs/queue on refusal, a committed unsorted legacy-only candidate with omitted Neovim classifications and successful run, all four tier groupings, no-manifest Neovim planning, strict descriptors, invalid top-level structures and T1 source cases in both packages. Baseline plan comparison preserves every frozen file/phase/worker count, filtering only added later test paths while separately checking full current manifest coverage. Close balancing itself is unchanged.
+
+C6 source established: all normal fixture writers found use serializeTierManifest; deliberate malformed/legacy compatibility inputs bypass it explicitly. Sorted insertion regression remains, and both required docs explain path order, tiers, object forms, new-file placement, transition scheduling and legacy aliases. test:tiers is the new entry; test:shards forwards for one release.
+
+A-4179 reports exact-head typecheck, tier lint and alias green, plus serial targeted whole-file results and timings; seven new in-process cases each below 0.03 s. No Reviewer tests/compiler execution. C6 verified by source; C1–C5 run-dependent lint/gate/legacy/planning proof remains unverified until the normal exact-head droplet receipt. Claimant done marks should be recorded for supported evidence before final settlement. Source clearance does not itself lift submission holds: use the Coordinator's applicable explicit hold-lift instruction, then normal mode-free cland verify --executor droplet at this head. No full local suite or per-item QA requested.
+Review artifact A-4183.
+
+Criteria: C6 verified.
