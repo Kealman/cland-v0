@@ -60,6 +60,7 @@
     "hub/test/human-routing.test.ts": "machine",
     "hub/test/hygiene.test.ts": "machine",
     "hub/test/import-github.test.ts": "machine",
+    "hub/test/init-machine.test.ts": "machine",
     "hub/test/init.test.ts": "machine",
     "hub/test/item-lead.test.ts": "machine",
     "hub/test/journal-async.test.ts": "machine",
