@@ -3088,6 +3088,10 @@
     "nvim/test/verification-view.test.ts::verify summary opens the ordered queue and ages locally; palette and keys expose the view": 6.332884
   },
   "allow": {
+    "hub/test/suite-cover.test.ts::classification keeps derived evidence, requires Coordinator or human, and survives restart": {
+      "seconds": 6.851,
+      "reason": "T-479: runs real CLI classification under five refused roles, Coordinator and human, flushes both audit records, and restarts the hub to verify persisted cover evidence and unchanged outcome; Linux A-3845 at 843a4444 measured 6.851 s with all five load repetitions passing."
+    },
     "hub/test/account-limited.test.ts": {
       "file": true,
       "seconds": 117.438069,

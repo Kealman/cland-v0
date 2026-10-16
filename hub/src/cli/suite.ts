@@ -9,7 +9,7 @@ export { SUITE_USAGE } from './usage.ts';
 
 export async function runSuiteCommand(args: string[], cwd = process.cwd()): Promise<number> {
   const { values, positionals } = parseArgs({ args, allowPositionals: true, options: {
-    workers: { type: 'string' }, size: { type: 'string' }, occasion: { type: 'string' }, executor: { type: 'string' }, report: { type: 'string' }, to: { type: 'string', multiple: true }, all: { type: 'boolean' }, fresh: { type: 'boolean' }, json: { type: 'boolean' }, help: { type: 'boolean', short: 'h' },
+    note: { type: 'string' }, workers: { type: 'string' }, size: { type: 'string' }, occasion: { type: 'string' }, executor: { type: 'string' }, report: { type: 'string' }, to: { type: 'string', multiple: true }, all: { type: 'boolean' }, fresh: { type: 'boolean' }, json: { type: 'boolean' }, help: { type: 'boolean', short: 'h' },
   } });
   const workers = values.workers === undefined ? undefined : Number(values.workers);
   if (workers !== undefined && (!/^[1-9][0-9]*$/.test(values.workers!) || !Number.isSafeInteger(workers))) throw new Error('--workers must be a positive integer');
@@ -17,6 +17,15 @@ export async function runSuiteCommand(args: string[], cwd = process.cwd()): Prom
   if (values.executor !== undefined && values.executor !== 'local' && values.executor !== 'droplet') throw new Error('--executor must be local or droplet');
   if (values.occasion !== undefined && !isVerifyOccasion(values.occasion)) throw new Error('--occasion must be stage, epic or release');
   if (values.help) { process.stdout.write(SUITE_USAGE); return 0; }
+  if (positionals[0] === 'classify') {
+    if (positionals.length !== 3 || !positionals[1]?.trim() || positionals[2] !== 'load-flake' || !values.note?.trim() || values.report !== undefined || values.to !== undefined || values.all !== undefined || values.fresh !== undefined || values.executor !== undefined || values.occasion !== undefined || values.workers !== undefined || values.size !== undefined) throw new Error(SUITE_USAGE.trim());
+    const d = readDiscovery(hubDiscovery(cwd));
+    if (!d) throw new Error('no hub runs for this project — run `cland hub start`');
+    const result = await askHubFrame(d, { type: 'suite.classify', suite: positionals[1], cause: 'load-flake', note: values.note }) as { id: string; cover: import('../protocol.ts').CoverRecord };
+    process.stdout.write((values.json ? JSON.stringify(result) : `cover ${result.id}: ${result.cover.status} · ${result.cover.cause} (derived ${result.cover.derivedCause}); ${result.cover.classification!.note}`) + '\n');
+    return 0;
+  }
+  if (values.note !== undefined) throw new Error('--note requires verify classify');
   if (positionals[0] === 'queue') {
     if (positionals.length !== 1 || values.report !== undefined || values.to !== undefined || values.all !== undefined || values.fresh !== undefined || values.executor !== undefined || values.occasion !== undefined || values.workers !== undefined || values.size !== undefined) throw new Error(SUITE_USAGE.trim());
     const d = readDiscovery(hubDiscovery(cwd));

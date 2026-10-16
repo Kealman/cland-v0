@@ -2252,6 +2252,40 @@ once per measured request. Existing T-232 receipt/start records seed estimates a
 second resolution and are labelled `timingEstimated` in status (`estimated` in the
 journal); unavailable timestamps remain null.
 
+Integrated dev runs completed from the cover-record rollout onwards persist
+`cover: {status, cause, tests}` in their hub run record, expose it as
+`hub status --json`'s `suites[].cover`, and include it in the journal's
+`suite-result` event. Task runs and child shards have no `cover`; a sharded
+integrated run records one cover from its merged outcome and log. Historical
+already-reported runs are not backfilled or scanned at startup.
+
+`status` is `green`, `red` or `cancelled`. `cause` is always present: `null`
+for green, `test-failure` for failed tests (also the fallback for an otherwise
+unclassified failed outcome), `budget` for duration-budget diagnostics without
+test failures, `timeout` for test/run timeouts or the silent-output watchdog,
+`cancel-head` for a changed submitted head/candidate, or `cancel-requester` for
+explicit cancellation or a queued requester's death. A run with both test and
+budget failures is `test-failure`. `tests` holds deduplicated repository-relative
+`file::test` identities from failure receipts and duration-budget diagnostics;
+a file-wide budget uses the file path. It is `[]` for green or when no test
+identity is available. Cancellation and timeout retain any observed failures.
+
+`cland verify classify <run> load-flake --note <text> [--json]` lets only the
+Coordinator or the human shell reclassify a finished red integrated cover.
+The nonblank note is required. The command changes `cover.cause` to
+`load-flake`, preserves the original derived cause as `cover.derivedCause`, and
+adds `cover.classification: {note, by, at}` (`by` is the session name or
+`human`; `at` is an ISO timestamp). Repeating classification retains the first
+derived cause and replaces the annotation. Tests and the original process
+outcome remain intact. The update persists across restart and is journalled as
+`verification-cover-classified` with `id`, `head` and the updated `cover`.
+
+`hub status --json` also returns `covers`, at most ten recorded covers, newest
+completion first: `[{id, head, branch, completedAt, cover}]`. `completedAt` is
+an ISO timestamp (or `null` when unavailable). `cland hub status` lists their
+run ids, status, cause and head; green's null cause displays as `none`, and a
+classification also shows its derived cause and note.
+
 `metrics` reports median and nearest-rank p90 wait/run durations over the last 20
 completed requests, including hits and failures, with counts of available values.
 ETAs use successful executed runs in that window matching the effective mode,

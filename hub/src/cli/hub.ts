@@ -42,6 +42,10 @@ function describe(s: HubStatus): string {
   for (const p of s.sessions) lines.push(`  ${withRole(p.name, p.role)}  [${p.state ?? 'unknown'}]${p.status ? `  — ${p.status}` : ''}`);
   if (s.config) lines.push(`config: loaded ${s.config.loadedAt} · source commit ${s.config.sourceCommit ?? 'uncommitted / no Git history'}`);
   if (s.coordinator !== undefined) lines.push(s.coordinator ? `coordinator: ${s.coordinator}` : 'no coordinator');
+  if (s.covers) {
+    lines.push(`covers: ${s.covers.length}`);
+    for (const run of s.covers) lines.push(`  ${run.id} · ${run.cover.status} · ${run.cover.cause ?? 'none'} · head ${run.head}${run.cover.classification ? ` · derived ${run.cover.derivedCause}; ${run.cover.classification.note}` : ''}`);
+  }
   if (s.requests) {
     const last = s.requests.lastSlow;
     lines.push(`requests: ${s.requests.slow} slow${last ? ` (latest ${last.tool} from ${last.client}, ${last.ms} ms at ${last.at})` : ''} · ${s.requests.slowAnswers ?? 0} slow answers · ${s.requests.replayed} answered again (too fast)`);

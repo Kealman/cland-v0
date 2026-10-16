@@ -16,6 +16,8 @@ export const SUITE_USAGE = `  verify [all|hub|nvim] [--all] [--fresh] [--executo
                   cancel your active suite (human: any explicit id); post its cancelled result
   verify queue [--json]
                   show local holder, remote runs, executor waiters, waits, admission ETA and recent timing metrics
+  verify classify <run> load-flake --note <text> [--json]
+                  Coordinator or human: reclassify a red cover, retaining its derived cause and tests
 `;
 
 export const EXECUTOR_USAGE = `  executor status [--json]  token presence, live droplet leases and today's cost

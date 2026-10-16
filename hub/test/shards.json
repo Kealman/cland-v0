@@ -1,6 +1,7 @@
 {
   "version": 1,
   "tests": {
+    "hub/test/suite-cover.test.ts": "machine",
     "hub/test/shared-defects-report.test.ts": "machine",
     "hub/test/shared-defects.test.ts": "machine",
     "hub/test/remote-fixture-lifecycle.test.ts": "machine",

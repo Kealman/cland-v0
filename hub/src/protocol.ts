@@ -523,6 +523,7 @@ export type SuiteStart = { type: 'suite.start'; workers?: number; size?: string;
 export type SuiteSlot = { type: 'suite.slot' | 'suite.forced'; id: string; mode: string; cwd: string; head: string; pid: number; token: string };
 export type SuiteSlotResult = { id: string; admitted: boolean; locks: string[]; queue: VerificationQueue };
 export type SuiteCancel = { type: 'suite.cancel'; id: string; suite?: string };
+export type SuiteClassify = { type: 'suite.classify'; id: string; suite: string; cause: 'load-flake'; note: string };
 
 export type RuleRequest =
   | { type: 'rule.add'; id: string; text: string; scope: string; reason: string; title?: string; origin?: string | { topic: string; msg_id: string } }
@@ -548,6 +549,7 @@ export type ClientRequest =
   | SuiteStart
   | SuiteSlot
   | SuiteCancel
+  | SuiteClassify
   | ReleaseRequest
   | { type: 'sync'; id: string }
   | { type: 'push'; id: string }
@@ -634,8 +636,14 @@ export type RoleList = {
   coordinator: string | null;
 };
 
+export type CoverCause = 'test-failure' | 'budget' | 'load-flake' | 'cancel-head' | 'cancel-requester' | 'timeout';
+export type CoverRecord = { status: 'green' | 'red' | 'cancelled'; cause: CoverCause | null; tests: string[];
+  derivedCause?: CoverCause | null; classification?: { note: string; by: string; at: string } };
+export type CoverStatus = { id: string; head: string; branch: string; completedAt: string | null; cover: CoverRecord };
+
 /** Admission and completion facts; extra fields are absent on pre-V1 hubs. */
 export type SuiteStatus = {
+  cover?: CoverRecord;
   workers?: number; size?: string;
   occasion?: VerifyOccasion;
   executor: import('./executor/executor.ts').ExecutorKind;
@@ -672,6 +680,7 @@ export type VerificationQueue = {
 };
 
 export type HubStatus = {
+  covers?: CoverStatus[];
   verification?: VerificationQueue;
   suites?: SuiteStatus[];
   crew?: { config: import('./crew.ts').CrewConfig; summary: string };
@@ -785,6 +794,8 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
       return (f.workers === undefined || typeof f.workers === 'number' && Number.isSafeInteger(f.workers) && f.workers > 0) && (f.size === undefined || typeof f.size === 'string' && /^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(f.size)) && (f.occasion === undefined || isVerifyOccasion(f.occasion)) && (f.executor === undefined || ['local', 'droplet'].includes(String(f.executor))) && (f.fresh === undefined || typeof f.fresh === 'boolean') && ['auto', 'all', 'hub', 'nvim'].includes(String(f.mode)) && typeof f.cwd === 'string' && typeof f.report === 'string' && (f.to === undefined || (Array.isArray(f.to) && f.to.every(v => typeof v === 'string')));
     case 'suite.cancel':
       return f.suite === undefined || (typeof f.suite === 'string' && f.suite.trim().length > 0);
+    case 'suite.classify':
+      return typeof f.suite === 'string' && f.suite.trim().length > 0 && f.cause === 'load-flake' && typeof f.note === 'string' && f.note.trim().length > 0;
     case 'account.clear':
       return typeof f.account === 'string' && f.account.length > 0;
     case 'account.poll':

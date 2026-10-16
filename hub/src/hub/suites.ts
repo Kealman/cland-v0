@@ -21,9 +21,11 @@ import type { ExecutorKind, Lease, Platform, RunRef } from '../executor/executor
 import { idNumber } from '../tracker/item.ts';
 import { selectPackageSuite, describeSelection, type SuiteSelection, type SuiteRequest } from '../suite-selection.ts';
 import { parseCoverageMap, type CoverageMap } from '../suite-coverage.ts';
+import { classifyCover, deriveCover, recentCovers } from './suite-cover.ts';
 
 export type SuiteActor = { name: string; sessionId: string; shell: true };
 export type SuiteJob = {
+  cover?: import('../protocol.ts').CoverRecord;
   limits?: import('../suite-limits.ts').SuiteLimits;
   config?: ProjectConfig;
   followsConfig?: boolean;
@@ -257,6 +259,16 @@ export class Suites {
     }
     void this.#inspectJob(job);
     return { id: job.id, topic: job.topic, cancelled: true };
+  }
+  classify(id: string, cause: string, note: string, by: string, authorize: () => void): { id: string; cover: import('../protocol.ts').CoverRecord } {
+    if (this.#closed) throw new Error('hub is closing');
+    authorize();
+    const job = this.#jobs.find(job => job.id === id);
+    if (!job) throw new Error(`no suite named ${id}`);
+    job.cover = classifyCover(job, cause, note, by);
+    this.#save(job);
+    this.#options.log?.({ event: 'verification-cover-classified', id, head: job.head, cover: job.cover });
+    return { id, cover: job.cover };
   }
   start(input: Pick<SuiteJob, 'mode' | 'cwd' | 'topic' | 'to' | 'actor'> & { priority?: number; item?: string | null; integrated?: boolean; fresh?: boolean; executor?: ExecutorKind; workers?: number; size?: string; occasion?: VerifyOccasion }, authorize: () => void): Promise<{ id: string; pid: number | null; topic: string; position: number; cached?: SuiteJob['cached'] }> {
     if (this.#closed) return Promise.reject(new Error('hub is closing'));
@@ -754,6 +766,10 @@ export class Suites {
         job.cleaned = true; this.#save(job);
       }
       this.#recordTiming(job, !job.cached && job.outcome.code === 0 && receipt?.finished ? receipt.finished : new Date().toISOString());
+      if (job.integrated && !job.parentRun && !job.cover) {
+        const cover = deriveCover(job, await readFile(job.log, 'utf8'));
+        if (cover) job.cover = cover;
+      }
       this.#save(job);
       if (job.parentRun) { job.reported = true; job.error = null; this.#save(job); return; }
       await this.#report(job, id => {
@@ -783,8 +799,10 @@ export class Suites {
     }
     this.#save(); void this.#check();
   }
+  covers(): import('../protocol.ts').CoverStatus[] { return recentCovers(this.#jobs); }
   status(): SuiteStatus[] {
     return this.#jobs.map(job => ({
+      ...(job.cover ? { cover: job.cover } : {}),
       ...(job.occasion ? { occasion: job.occasion } : {}),
       ...(job.workers === undefined ? {} : { workers: job.workers }), ...(job.size ? { size: job.size } : {}),
       executor: job.executor, ...(job.platform ? { platform: job.platform } : {}),
