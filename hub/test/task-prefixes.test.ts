@@ -194,7 +194,11 @@ test('removing a planned legacy epic drops its candidate; prefix renames preserv
   await eventually('prefix rename is indexed', async () => (await view()).item.file === 'E-1-epic.md' || undefined);
   assert.ok((await view()).item.plan);
   await rm(join(dir, 'E-1-epic.md'));
-  await eventually('epic removal is indexed', async () => (await ui.request({ type: 'task.view', item: '1' })).ok === false || undefined);
+  // task.view can fail on ENOENT before the watcher has removed the indexed item and its plan.
+  await eventually('epic removal is indexed', async () => {
+    const result = await ui.request({ type: 'task.list' });
+    return !(result.value as { items: Array<{ id: string }> }).items.some(item => item.id === 'E-1') || undefined;
+  });
   await writeFile(join(dir, 'E-1-epic.md'), legacy('E-1', 'epic') + '## Plan\n\ninvalid plan\n');
   await eventually('replacement epic is indexed', async () => (await ui.request({ type: 'task.view', item: '1' })).ok || undefined);
   assert.equal((await view()).item.plan, null);
