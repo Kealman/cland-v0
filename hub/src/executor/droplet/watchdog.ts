@@ -1,4 +1,5 @@
 import { spawn, type ChildProcess } from 'node:child_process';
+import { appendFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { processStartedAsync } from '../../hub/lock.ts';
@@ -106,7 +107,7 @@ async function watchdog(dir: string): Promise<void> {
       if (deleteStarted) lease.deleteStarted ??= deleteStarted;
       if (lease.state === 'released') return;
       try {
-        const result = await deleteLeaseResources(api, lease);
+        const result = await deleteLeaseResources(api, lease, undefined, attention => appendFile(join(dir, 'watchdog.log'), `${JSON.stringify({ ts: new Date().toISOString(), event: 'executor-release-identity-recheck', attention })}\n`, { mode: 0o600 }));
         deleteStarted ??= lease.deleteStarted;
         for (const id of result.deleted) deleted.add(id);
         if (result.confirmed) {

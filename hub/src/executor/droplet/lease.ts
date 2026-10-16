@@ -5,9 +5,9 @@ import type { Droplet } from './api.ts';
 import type { Lease } from '../executor.ts';
 
 export type ReleaseAttention = {
-  fields: Array<'name' | 'tags'>;
-  expected: { name: string; tags: string[] };
-  observed: { name: string; tags: string[]; status: string };
+  fields: Array<'id' | 'name' | 'tags'>;
+  expected: { id?: number | null; name: string; tags: string[] };
+  observed: { id?: number; name: string; tags: string[]; status: string };
 };
 
 export type DropletLease = Lease & {

@@ -39,8 +39,18 @@ export async function fakeDigitalOcean(token: string) {
   };
   const polls = new Map<number, number>();
   const deleting = new Map<number, number>();
+  const advanceDeletion = (id: number) => {
+    const left = deleting.get(id);
+    if (left === undefined) return;
+    if (left <= 0) {
+      const index = droplets.findIndex(d => d.id === id);
+      if (index >= 0) droplets.splice(index, 1);
+      deleting.delete(id);
+    }
+    else deleting.set(id, left - 1);
+  };
   const account = { status: 'active' };
-  const faults = { create: 0, delayMs: 0, delayPath: '', activeAfter: 2, deletePolls: 0, archiveOnDelete: false, keyDeletePolls: 0, keyDeleteFailures: [] as number[], deleteError: 0, deleteFailures: [] as Array<number | 'timeout'>, echoToken: false, actionAfter: 2, failAction: '', deleteSnapshot: 0, visibilityPolls: 0, snapshotAfter: 0, snapshotHiddenPolls: 0, catalogueError: 0, loseDeleteSnapshot: 0, failCatalogueAfterDelete: false };
+  const faults = { create: 0, delayMs: 0, delayPath: '', activeAfter: 2, deletePolls: 0, archiveOnDelete: false, stripTagsOnDelete: false, dropletResponseId: 0, keyDeletePolls: 0, keyDeleteFailures: [] as number[], deleteError: 0, deleteFailures: [] as Array<number | 'timeout'>, echoToken: false, actionAfter: 2, failAction: '', deleteSnapshot: 0, visibilityPolls: 0, snapshotAfter: 0, snapshotHiddenPolls: 0, catalogueError: 0, loseDeleteSnapshot: 0, failCatalogueAfterDelete: false };
   let beforeDropletList: (() => Promise<void>) | undefined;
   let beforeKeyList: (() => Promise<void>) | undefined;
   let beforeCreate: (() => Promise<void>) | undefined;
@@ -154,15 +164,13 @@ export async function fakeDigitalOcean(token: string) {
     if (method === 'GET' && path === '/droplets') {
       await beforeDropletList?.();
       const tag = url.searchParams.get('tag_name');
-      for (const [id, left] of deleting) {
-        if (left <= 0) { droplets.splice(droplets.findIndex(d => d.id === id), 1); deleting.delete(id); }
-        else deleting.set(id, left - 1);
-      }
+      for (const id of deleting.keys()) advanceDeletion(id);
       return answer(200, { droplets: droplets.filter(d => !tag || d.tags.includes(tag)) });
     }
     const dropletId = /^\/droplets\/(\d+)$/.exec(path);
     if (dropletId) {
       const id = Number(dropletId[1]);
+      if (method === 'GET') advanceDeletion(id);
       const droplet = droplets.find(d => d.id === id);
       if (!droplet) return answer(404, { id: 'not_found', message: 'absent' });
       if (method === 'DELETE') {
@@ -176,13 +184,14 @@ export async function fakeDigitalOcean(token: string) {
         if (faults.deleteError) return answer(faults.deleteError, { id: 'delete_failed', message: 'try later' });
         if (!deleting.has(id)) deleting.set(id, faults.deletePolls);
         if (faults.archiveOnDelete) { droplet.status = 'archive'; droplet.tags = []; }
+        if (faults.stripTagsOnDelete) droplet.tags = [];
         return answer(204);
       }
       const n = (polls.get(id) ?? 0) + 1;
       polls.set(id, n);
       if (n >= faults.activeAfter && droplet.status !== 'archive') droplet.status = 'active';
       if (n > faults.activeAfter) droplet.networks.v4 = [{ type: 'public', ip_address: dropletAddresses.get(id)! }];
-      return answer(200, { droplet });
+      return answer(200, { droplet: faults.dropletResponseId ? { ...droplet, id: faults.dropletResponseId } : droplet });
     }
     if (path === '/account/keys') {
       if (method === 'POST') { await beforeImport?.(); const ssh_key = { id: nextId++, name: String(body!.name), public_key: String(body!.public_key) }; keys.push(ssh_key); publicKeys.set(ssh_key.id, ssh_key.public_key); return answer(201, { ssh_key }); }

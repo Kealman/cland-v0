@@ -262,7 +262,9 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
     let cause: { status?: number; id?: string; message: string } | undefined;
     do {
       try {
-        const result = await deleteLeaseResources(new DigitalOceanApi(this.#env), lease, limit);
+        const result = await deleteLeaseResources(new DigitalOceanApi(this.#env), lease, limit, attention => {
+          this.logger({ event: 'executor-release-identity-recheck', lease: lease.lease, id: lease.resource, attention });
+        });
         delete lease.attention;
         if (result.confirmed) {
           accountRelease(lease, lease.deleteStarted ?? new Date().toISOString());
