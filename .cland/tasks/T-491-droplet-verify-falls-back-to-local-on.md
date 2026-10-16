@@ -3,7 +3,7 @@ id: T-491
 kind: task
 title: Droplet verify falls back to local on 'lock acquisition deadline reached' under load
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - needs-triage
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-15T12:05:32.122Z
-updated: 2026-10-16T01:58:23.891Z
+updated: 2026-10-16T02:35:53.326Z
 ---
 
 ## Summary

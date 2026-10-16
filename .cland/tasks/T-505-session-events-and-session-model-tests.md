@@ -3,7 +3,7 @@ id: T-505
 kind: task
 title: "session-events and session-model tests: 5000 ms frame waits after a launch miss on a loaded droplet"
 state: open
-status: review
+status: ready
 size: XS
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-344
 branch: t/T-505-session-events-and-session-model-tests
 created: 2026-10-15T15:16:05.074Z
-updated: 2026-10-16T01:32:34.759Z
+updated: 2026-10-16T02:36:33.940Z
 ---
 
 ## Problem
@@ -30,7 +30,10 @@ Both wait on a hub frame after a fake-session launch. A 4-worker c-8 under load 
   - done: impl-505 · 2026-10-16T00:58:55.784Z
   - verified: rev-30 [reviewer] · run rev-20261016-505-source-correction · 2026-10-16T00:59:44.371Z · commit 383321846c7916d84937bb242c88f94683df0c3a
   - verified: rev-30 [reviewer] · run rev-20261016-505-manifest-delta · 2026-10-16T01:30:00.006Z · commit 9fe0b61cf827e296a15eda5ed7b712a0b798015e
-- [ ] C2. Both files pass 5/5 serially, whole file and alone on the Mac, plus once on a droplet in the task's verify.
+  - verified: rev-30 [reviewer] · run rev-20261016-505-final · 2026-10-16T02:36:28.135Z · commit 9fe0b61cf827e296a15eda5ed7b712a0b798015e
+- [x] C2. Both files pass 5/5 serially, whole file and alone on the Mac, plus once on a droplet in the task's verify.
+  - done: impl-505 · 2026-10-16T02:33:38.750Z
+  - verified: rev-30 [reviewer] · run rev-20261016-505-final · 2026-10-16T02:36:28.135Z · commit 9fe0b61cf827e296a15eda5ed7b712a0b798015e
 
 ## Comments
 
@@ -110,3 +113,28 @@ Criteria: C1 verified.
 ### impl-505 · 2026-10-16T01:32:34.759Z
 
 Mac evidence complete: both whole files pass5/5 serially, all labelled loaded, normal fake timings. A-3571 contains every receipt and duration: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3571-t-505-mac-whole-file-evidence-both-files-5-5-green.md. Corrected model runs only; earlier uncorrected model runs excluded. Source clear at9fe0b61c via A-3564, task test files unchanged by shared2149fe33 manifest pick. Explicit fresh droplet3df8e38c-6296-49c7-942e-9fc14ae7148c accepted and waiting remote, confirmed queue after CLI timeout; no duplicate submitted. C2 remains open pending Linux receipt. Old7b2702da cancelled without tests.
+
+### rev-30 · 2026-10-16T02:36:28.135Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-505-final
+commit: 9fe0b61cf827e296a15eda5ed7b712a0b798015e
+scope: evidence
+
+Final evidence review T-505 clear at unchanged source-cleared9fe0b61cf827e296a15eda5ed7b712a0b798015e (A-3520 corrected source/A-3564 manifest delta). Standards/Spec: no new findings. Origin branch ref and git bundle list-heads for3df8e38c independently resolve to this exact SHA.
+
+Primary Coordinator decision30da93ba-8b1b-4cb6-b1be-25bf9a82c52b read in Agents explicitly accepts completed3df8e38c-6296-49c7-942e-9fc14ae7148c at its reviewed head under known-flake rule. Only red is knownT-556 dynamic timestamp0/5; known duration-regression notices do not fail the budget. No second run/head movement required. Additional Neovim run in that decision applies T-559 only; T-505 has no nvim diff.
+
+Read raw A-3603: free38/38 and machine1814 tests/1810pass/0fail/4skip/0cancel completed; suite1322.10s, peak13.12, Finished exit1. Extracted positive completion/timing records for all3 session-events and all11 session-model cases, including process rows12.169s, live resume5.170s, native relaunch6.887s and fresh resume8.896s. No ordinary assertion or hard duration-budget failure appears. Exactly one red line: unrelated suite-runner current timestamp identity0/5. Neovim smoke did not execute after hub red; do not call this a green whole suite.
+
+Metadata reconciliation matters: A-3604 captured an earlier hub recovery record {code:1,cause:remote machine lost,finished:02:33:09.833Z}, without platform. It does not itself establish the Linux metadata claimed in the request. The current original suite-directory result.json was independently read and now contains {code:1,cause:empty,finished:02:27:42Z,platform:linux/x64/6.8.0-142-generic,Node24.21.0,Neovim0.12.5}, matching the completed raw log and Coordinator recovery disposition. Preserved that final platform/completion result as A-3608 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3608-t-505-recovered-final-linux-platform-completion-result.json. A-3604 is superseded metadata, not a newly observed task failure or reason to rerun.
+
+A-3571 read in full: both required whole files pass5/5 serially, events3/3 each and corrected model11/11 each,70 total passes, zero failures/skips; runs labelled loaded with admission checks/priority boundaries. Earlier uncorrected model runs are explicitly excluded. Events source remains identical from cca6ef6f; corrected model1–3 at38332184 and4–5 at9fe0b61c differ only by the reviewed manifest pick. All assertions/frame deadlines remain. Source review already established exact returned process completion anchors, including fresh-resume's own newly launched process, and delayed-turn red/green A-3519; no new source assessment needed.
+
+C2 verified from the complete Mac sequence plus actual accepted Linux file completions; C1 unchanged source chain current. All criteria verified here. No further run/edit/pick or per-item QA required. No Reviewer tests, compiler/binary execution, installs, signals, commits, merges, provider actions, task.view scan or subagents.
+
+Review artifact A-3610 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3610-t-505-final-evidence-clear-at-9fe0b61c-with-recovered-linux-metadata.md
+
+Criteria: C1 verified, C2 verified.

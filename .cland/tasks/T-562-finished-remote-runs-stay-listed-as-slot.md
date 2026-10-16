@@ -3,7 +3,7 @@ id: T-562
 kind: task
 title: Finished remote runs stay listed as slot holders, and their waiters never get admitted
 state: open
-status: backlog
+status: in progress
 size: M
 labels:
   - v0.1.3
@@ -12,10 +12,10 @@ labels:
 assignee: null
 parent: E-425
 blocked_by: []
-topic: null
-branch: null
+topic: topic-352
+branch: t/T-562-finished-remote-runs-stay-listed-as-slot
 created: 2026-10-16T02:03:05.929Z
-updated: 2026-10-16T02:25:05.747Z
+updated: 2026-10-16T02:36:45.467Z
 ---
 
 ## Summary
@@ -42,3 +42,7 @@ By 02:24Z each run had a result.json:
 `verify queue` still lists all three as remote holders (6/6 shown, 3 real droplets on DigitalOcean). The executor's 02:13Z sweep already counts 3 leases. So the scheduler keeps slots that the executor has released. Before the restart, `verify cancel` on such runs answered "suite already finished" and freed nothing, so cancel is no workaround.
 
 Fix expectation: a result.json, or an unconfirmed release with a null lease, must release the scheduler slot. (Reported by the stand-in's hourly check and confirmed by coord.)
+
+### coord · 2026-10-16T02:35:59.653Z
+
+Restart at 02:33:32Z (pid 83118) did not clear the holders. Five finished runs, each with a result.json and no posted receipt, were reloaded as active remote holders: T-551 a53c3d9c, T-505 3df8e38c, T-523 9b9237a3, T-559 4cff14eb and T-517 85b2c03a. Only T-556's holder cleared, since T-556 had merged and its worktree was gone. Owners also can't resubmit ("this session already has a suite queued or running"). The heartbeat lists all five as "ended without a posted result". So startup has to reconcile persisted holders with result.json: post the receipt, then free the slot. Add C3 for that.

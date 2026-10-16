@@ -3,7 +3,7 @@ id: T-517
 kind: task
 title: "suite-close test: a lease is still active right after a successful sharded result (Linux)"
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,7 @@ regression_of: T-395
 topic: topic-331
 branch: t/T-517-suite-close-test-a-lease-is-still-active
 created: 2026-10-15T17:18:57.301Z
-updated: 2026-10-16T01:50:12.940Z
+updated: 2026-10-16T02:35:58.045Z
 ---
 
 ## Problem
@@ -29,8 +29,10 @@ updated: 2026-10-16T01:50:12.940Z
   - done: impl-517 · 2026-10-15T23:43:27.817Z
   - verified: rev-30 [reviewer] · run rev-20261016-517-manifest-delta · 2026-10-16T01:23:43.411Z · commit 0e2301e7eb738fd4e7d1366e5ac7b1004f31659a
   - verified: rev-30 [reviewer] · run rev-20261016-517-repetition-correction · 2026-10-16T01:50:12.940Z · commit d7fc7424e07571e1f4da90abd0ca2da3d86b5fa8
+  - verified: rev-30 [reviewer] · run rev-20261016-517-final · 2026-10-16T02:35:54.204Z · commit d7fc7424e07571e1f4da90abd0ca2da3d86b5fa8
 - [x] C2. suite-close.test.ts passes 5/5 serially, whole file and alone on the Mac, plus once on a droplet in the task's verify.
   - done: impl-517 · 2026-10-16T01:18:40.164Z
+  - verified: rev-30 [reviewer] · run rev-20261016-517-final · 2026-10-16T02:35:54.204Z · commit d7fc7424e07571e1f4da90abd0ca2da3d86b5fa8
 
 ## Comments
 
@@ -124,3 +126,30 @@ Read tracker file under overload guidance, no task.view scan. No edits, signals,
 Review artifact A-3580 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3580-t-517-repetition-path-correction-source-clear-at-d7fc7424.md
 
 Criteria: C1 verified.
+
+### impl-517 · 2026-10-16T02:34:42.218Z
+
+Recovered final Linux evidence at unchanged reviewed d7fc7424 per Coordinator decision 30da93ba (Agents, 2026-10-16 02:32Z). Run 85b2c03a completed 02:25:32Z; git bundle list-heads on its delivered tree independently confirms d7fc7424e07571e1f4da90abd0ca2da3d86b5fa8. Published raw log A-3606 and result/platform A-3607. linux x64 6.8.0-142-generic, Node v24.21.0, Neovim v0.12.5, 4 workers. Own regression ordinary 0.979s AND load gate 5/5; all suite-close cases pass, affected sharded release case 7.062s. Hub machine 1815 tests/1812 pass/0 fail/3 platform skips; free phase38/38. Runtime1191.38s, peak load12.61, load-gate extra0.04s. The sole red is T-556's dynamic timestamp test0/5; five known-entry duration-regression lines are notices. Exit1 reported honestly; Coordinator explicitly accepts this one receipt at the reviewed head under the known-flake gate. No nvim diff; Coordinator's additional Neovim run applies to T-559 only. Read own durable lease accounting: cland-v0-40502454 released02:25:46Z, lifetime1288.059s, cost$0.08944854. Requested Reviewer evidence verdict with A-3606/A-3607; keeping head unchanged and claim held.
+
+### rev-30 · 2026-10-16T02:35:54.204Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-517-final
+commit: d7fc7424e07571e1f4da90abd0ca2da3d86b5fa8
+scope: evidence
+
+Final evidence review T-517 clear at unchanged source-cleared d7fc7424e07571e1f4da90abd0ca2da3d86b5fa8 (A-3580). Standards/Spec: no new findings. Current origin branch ref and git bundle list-heads for85b2c03a both independently match this exact SHA.
+
+Coordinator30da93ba-8b1b-4cb6-b1be-25bf9a82c52b, read directly in Agents, accepts recovered85b2c03a-4734-4aa5-b1bf-ef1b998f7f03 at its reviewed head: only red is knownT-556 timestamp identity0/5; known duration-regression lines are notices. Automatic receipt delivery failed underT-562, but recovered files are inspectable. This is explicit known-flake gate acceptance; the whole process did exit1.
+
+Raw A-3606 and result A-3607 checked against .cland/run/suites/85b2c03a-4734-4aa5-b1bf-ef1b998f7f03/result.json: code1, empty cause, finished02:25:32Z, linux x64 6.8.0-142-generic, Node24.21.0, Neovim0.12.5. Free38/38 and machine1815 tests/1812pass/0fail/3skip/0cancel completed. Suite1191.38s, peak12.61; no hard duration-budget failure or ordinary assertion red.
+
+Own corrected watchdog-rearm regression passes ordinary0.979474529s and exact load identity5/5. All seven suite-close cases complete; affected occasion/release case7.062286891s and map-union6.220260147s. Thus the prior own repetition-path hang is replaced by actual successful Linux completion at the corrected head, not inferred merely from an ordinary earlier pass. Sole red line is suite-runner dynamic timestamp0/5, outside this diff. Neovim smoke was not reached; preserve that limitation. Coordinator's additional local Neovim requirement in30da93ba applies T-559 only, and T-517 has no nvim diff.
+
+Mac A-3461 raw suite-close files2–6 each7/7, total35/35 with no failures/skips, five serial whole files. Suite-close source is unchanged through corrected head. Other required executor/close validation in that folder remains support. A-3577 corrected harness has five fresh exact gate-reporter passes, whole executor-droplet14/14, and promptly failing old-product control at the unchanged empty-lease assertion; A-3580 source review remains current. C1/C2 both established across source and accepted evidence; all verified here. No new run, shared pick or source change needed under Coordinator decision. No per-item QA requirement. No Reviewer edits/tests/compiler/binary execution, signals, provider actions, task.view journal scan or subagents.
+
+Review artifact A-3609 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3609-t-517-final-evidence-clear-at-d7fc7424-from-recovered-linux-run.md
+
+Criteria: C1 verified, C2 verified.

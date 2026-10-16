@@ -3,7 +3,7 @@ id: T-477
 kind: task
 title: Verdict records carry findings with severity, and lows are recorded
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 3
 labels:
@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-338
 branch: t/T-477-verdict-records-carry-findings-with
 created: 2026-10-15T09:13:19.683Z
-updated: 2026-10-16T01:10:34.882Z
+updated: 2026-10-16T02:30:29.936Z
 ---
 
 ## Summary
@@ -33,11 +33,13 @@ Retrospective A-2783, START 2 and STOP 5: severity was parsed from prose, and on
 - [x] C1. A verdict with findings of each severity stores them, and `task view --json` returns them with the counts.
   - done: impl-477 · 2026-10-15T23:40:53.740Z
   - verified: rev-30 [reviewer] · run rev-20261016-477-source-correction · 2026-10-16T00:01:58.464Z · commit e2ec7b2c9002b35d31b33b0551444edd0bc8b527
+  - verified: rev-30 [reviewer] · run rev-20261016-477-shared-delta · 2026-10-16T02:30:29.936Z · commit 9901de192e839c21a1575fcb5561495f4be4fa73
 - [x] C2. A clear verdict with only low findings is accepted and shows the lows.
   - done: impl-477 · 2026-10-15T23:59:41.329Z
 - [x] C3. The Reviewer clause (both copies) and the code-review skill require recording lows.
   - done: impl-477 · 2026-10-15T23:40:57.344Z
   - verified: rev-30 [reviewer] · run rev-20261016-477-source-correction · 2026-10-16T00:01:58.464Z · commit e2ec7b2c9002b35d31b33b0551444edd0bc8b527
+  - verified: rev-30 [reviewer] · run rev-20261016-477-shared-delta · 2026-10-16T02:30:29.936Z · commit 9901de192e839c21a1575fcb5561495f4be4fa73
 
 ## Comments
 
@@ -128,3 +130,28 @@ Outside failures:
 This is the first current-head Linux receipt, not a green full verify. C1/C3 source marks stand and C2 final gate remains pending. Do not retry or move head merely to seek green without lead direction; a Coordinator-posted shared pick needs delta source review. No per-item QA. No Reviewer tests, compiler/binary execution, edits, installs, signals, merges or provider actions.
 
 Review artifact A-3535 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3535-t-477-first-linux-gate-not-clear-findings-green-outside-load-failure-unclassifie.md.
+
+### rev-30 · 2026-10-16T02:30:29.936Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-477-shared-delta
+commit: 9901de192e839c21a1575fcb5561495f4be4fa73
+scope: delta
+
+Delta source review T-477 clear at9901de192e839c21a1575fcb5561495f4be4fa73, fixed point/source-clear e2ec7b2c9002b35d31b33b0551444edd0bc8b527 (A-3490). Standards and Spec: no high, medium or low findings in this delta.
+
+Independent immutable audit finds exactly three linear shared picks and three changed files, with no merge:01b43d96 (T-544),9c849795 (2149fe33 duration refresh),9901de19 (T-556). Remote branch ref matches the requested full SHA. git diff --check passes.
+
+The session-model one-line sort patch is byte-identical to posted08f09c7c's patch: observed usage rows are sorted by agentId before the unchanged full tuple assertion; provenance/model assertions remain. The suite-runner six-line patch is byte-identical to576404e8's patch: current timestamp becomes a stable descriptive test-name parameter and new Date is evaluated inside the body; null/unreadable variants and lock behavior assertions remain unchanged. This removes runtime-generated identity changes rather than weakening the lock test. The duration manifest blob is e07267e679a2286f987d6afd4b59ed7f3cb2577a, exactly the posted2149fe33 blob, with no task allowances restored or stale payload retained. This shared payload was already strictly audited with2177 baseline identities and229 shared allowances.
+
+No production findings pipeline, verdict-findings task tests, Reviewer clauses, role snapshots or skill wording changed. A-3490's clear-write high/medium rejection, atomicity, low-only/legacy acceptance and unchanged QA policy remain applicable. C1/C3 source criteria reverified at the current head. C2 final evidence stays pending.
+
+Shared evidence: A-3493 is the green integrated baseline refresh cover; T-544's accepted shared sort evidence remains upstream. T-556 was source/final reviewed by rev-31: A-3561 whole suite-runner52/52 and A-3567 five exact-name fresh repetitions, each one matching passing receipt. Read primary hub final record rev-20261016-556-final and A-3593 summary: Coordinator1e88d775 explicitly deferred its per-item Linux gate to next integrated dev under batch rule6. Do not describe phantom/cancelled T-556 requests as Linux passes. No extra local run is needed for these exact shared test-only picks under launch instructions.
+
+T-477's prior A-3533 own findings3/3 and15 repeated passes remain support, but it was overall red on outside T-544/T-556 and suite-close map-union repetition; no final gate is claimed from it here. Coordinator c47fd721's next-gate sequence and subsequent stale-manifest handling remain item-specific. Submit a new actual reviewed-head droplet verification only after the Coordinator's next restart post, as requested. Further head changes require delta review. No per-item QA change or Reviewer tests, binaries/compiler execution, edits, installs, signals, commits, merges, provider actions or subagents. Tracker file read instead of task.view scan under overload guidance.
+
+Review artifact A-3598 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3598-t-477-shared-picks-delta-clear-at-9901de19.md
+
+Criteria: C1 verified, C3 verified.

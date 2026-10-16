@@ -3,7 +3,7 @@ id: T-533
 kind: task
 title: "OpenCode follows 2.x with a check: doctor messages per version and a release-time range check"
 state: open
-status: review
+status: in progress
 size: M
 criterion_seq: 3
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-337
 branch: t/T-533-opencode-follows-2-x-with-a-check-doctor
 created: 2026-10-15T20:59:18.770Z
-updated: 2026-10-16T02:09:36.389Z
+updated: 2026-10-16T02:31:11.171Z
 ---
 
 ## Summary
@@ -145,3 +145,17 @@ A-3591 whole account-poller10/10 green36.647s, guard23.837ms; admission localnon
 Artifact A-3592: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3592-t-533-corrective-delta-source-clear-at-9276d537.md. Proceed with requested no-mode/no-executor verify at exacthead.
 
 Criteria: C1 verified, C3 verified.
+
+### rev-31 · 2026-10-16T02:31:11.171Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261016-533-evidence-2
+commit: 9276d5371e124292e416b792594552f69582a2ba
+scope: evidence
+
+Evidence not clear: same-head localDarwin72c333a4/A-3596 exit1,1861pass/1fail,Neovim not reached. Medium gate blocker—suite-timeouts.test.ts:179 one cleanup warning not within15000ms, sameT-555 signature as firstA-3523. Same-test repeat requires explicit Coordinator disposition, not classification alone or blind retry. Known sharedsuite-runner timestamp0/5 remains(T-556; posted576404e8).
+
+Task-owned source guard now passes41.249ms; checker7/7 and all seven5/5 load repetitions pass. No new task-owned source defect established and no criterion failed by this external-only evidence pass; C2 remains unverified pending acceptable gate/disposition, C1/C3 current source marks stand. Duration regression notices are not new budget failures. T-488's separate snapshot fixture integration does not apply to this head. No Reviewer edits/tests.
+Artifact A-3599: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3599-t-533-second-gate-not-clear-repeated-t-555-and-t-556.md.

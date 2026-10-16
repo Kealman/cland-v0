@@ -17,7 +17,7 @@ regression_of: T-459
 topic: topic-349
 branch: t/T-553-demo-lease-release-refuses-deletion
 created: 2026-10-16T00:37:02.839Z
-updated: 2026-10-16T01:20:29.054Z
+updated: 2026-10-16T02:30:35.826Z
 ---
 
 ## Summary
@@ -28,12 +28,14 @@ Found by qa-27 in E-423's Definition-of-done demo (run qa-2026-10-16-27-15, D18,
   - done: impl-553 · 2026-10-16T01:06:25.229Z
   - verified: rev-31 [reviewer] · run rev-20261016-553-source · 2026-10-16T01:09:57.096Z · commit f631b72207b32cdf7ca7056c21fc6c95f63f7835
   - verified: rev-31 [reviewer] · run rev-20261016-553-delta-1 · 2026-10-16T01:20:29.054Z · commit ae82e2636cc90c01d028173893ce48805b18096c
+  - verified: rev-31 [reviewer] · run rev-20261016-553-delta-2 · 2026-10-16T02:30:35.826Z · commit 270e35c3cd2cc3d5ea9e4b2fbdd75f151bd0a427
 - [x] C2. A demo lease's release deletes its own droplet, and a demo stop ends with the lease released and no tagged droplet left. A genuine identity mismatch still refuses deletion, but marks the lease for operator attention and alerts, rather than staying `releasing` silently.
   - done: impl-553 · 2026-10-16T01:06:26.457Z
 - [x] C3. A test covers demo start, then stop, then release against the fake provider, including the mismatch case.
   - done: impl-553 · 2026-10-16T01:06:27.845Z
   - verified: rev-31 [reviewer] · run rev-20261016-553-source · 2026-10-16T01:09:57.096Z · commit f631b72207b32cdf7ca7056c21fc6c95f63f7835
   - verified: rev-31 [reviewer] · run rev-20261016-553-delta-1 · 2026-10-16T01:20:29.054Z · commit ae82e2636cc90c01d028173893ce48805b18096c
+  - verified: rev-31 [reviewer] · run rev-20261016-553-delta-2 · 2026-10-16T02:30:35.826Z · commit 270e35c3cd2cc3d5ea9e4b2fbdd75f151bd0a427
 
 ## Comments
 
@@ -79,5 +81,19 @@ scope: delta
 
 Delta source clear: f631b722..ae82e263 changes only hub/test/durations.json, exactly matching Coordinator-posted 2149fe33 (A-3493 / integrated a06020a3), without task allowances. Diff check passes. Standards: no findings. Spec: no findings. Original implementation/test inputs unchanged; A-3534 full source analysis and targeted23/23 supporting evidence remain applicable. C1/C3 reverified, including C1's explicitly accepted historical-evidence limitation; C2 remains pending same-head gate. Obsolete run0473500f exit143/cancelled/A-3547 supplies no passing gate evidence. Preserve Coordinator T-556 hold before any selected suite-runner run. No Reviewer edits/tests.
 Artifact A-3552: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3552-t-553-manifest-delta-source-clear-at-ae82e263.md.
+
+Criteria: C1 verified, C3 verified.
+
+### rev-31 · 2026-10-16T02:30:35.826Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261016-553-delta-2
+commit: 270e35c3cd2cc3d5ea9e4b2fbdd75f151bd0a427
+scope: delta
+
+Delta source clear: ae82e263..270e35c3 changes only suite-runner.test.ts+4/-2, exact posted576404e8 file. Stable label/runtime timestamp change retains assertions/bounds/cleanup. Standards/Spec: no findings. No T-553 implementation/own-test changes, preserving A-3534/A-3552 analysis and targeted23/23 support. C1/C3 reverified; C2 pending final same-head gate. T-556 Mac52/52/exact5/5 proof has explicit batch Linux deferral(A-3593); no green task Linux gate claimed. Shared2149fe33 manifest retained, diff check clear; no Reviewer edits/tests.
+Coordinatore2e3dc70 restart hold remains before new verification, then explicit droplet/fresh once. Artifact A-3597: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3597-t-553-shared-stable-name-delta-source-clear-at-270e35c3.md.
 
 Criteria: C1 verified, C3 verified.

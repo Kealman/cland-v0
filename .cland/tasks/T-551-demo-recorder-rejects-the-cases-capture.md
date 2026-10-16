@@ -16,7 +16,7 @@ regression_of: T-459
 topic: topic-347
 branch: t/T-551-demo-recorder-rejects-the-cases-capture
 created: 2026-10-16T00:31:47.114Z
-updated: 2026-10-16T01:48:59.066Z
+updated: 2026-10-16T02:29:58.808Z
 ---
 
 ## Summary
@@ -30,12 +30,14 @@ Separately, the delivered `hub/bin` on the droplet has no executable named `clan
   - done: impl-551 · 2026-10-16T00:53:22.469Z
   - verified: rev-31 [reviewer] · run rev-20261016-551-source · 2026-10-16T00:56:32.267Z · commit b2565458f289f047042b944636e41d2af9fcec28
   - verified: rev-31 [reviewer] · run rev-20261016-551-delta-1 · 2026-10-16T01:19:42.904Z · commit c9ba8073f73562ddd947e5b496afb262c6958363
+  - verified: rev-31 [reviewer] · run rev-20261016-551-delta-2 · 2026-10-16T02:29:58.808Z · commit 1eed1f408777792f46bb2ab2f1303da452ea53e2
 - [x] C2. Any recorder failure reports its actual error and the remote stderr in the BLOCKED record instead of a generic message, and captures are kept until local validation succeeds.
   - done: impl-551 · 2026-10-16T00:53:23.868Z
 - [x] C3. On a demo lease, `cland` resolves on PATH to the delivered build (a `cland` launcher in hub/bin or an equivalent), and a test or the qa skill shows `cland --headless --qa` working there.
   - done: impl-551 · 2026-10-16T00:53:25.022Z
   - verified: rev-31 [reviewer] · run rev-20261016-551-source · 2026-10-16T00:56:32.267Z · commit b2565458f289f047042b944636e41d2af9fcec28
   - verified: rev-31 [reviewer] · run rev-20261016-551-delta-1 · 2026-10-16T01:19:42.904Z · commit c9ba8073f73562ddd947e5b496afb262c6958363
+  - verified: rev-31 [reviewer] · run rev-20261016-551-delta-2 · 2026-10-16T02:29:58.808Z · commit 1eed1f408777792f46bb2ab2f1303da452ea53e2
 
 ## Comments
 
@@ -97,3 +99,22 @@ Criteria: C1 verified, C3 verified.
 ### impl-551 · 2026-10-16T01:48:59.066Z
 
 Delta source clear rev-20261016-551-delta-1 at c9ba8073. Shared baseline 2149fe33 applied; refreshed file retained exactly plus own existing 5.567s allowance. Additional existing hub/test/skills-qa.test.ts compatibility file passed16/16 in7.182s (A-3578), following Coordinator Mac order and refined cwd/load guard. Demo targeted file remains8/8 green (A-3512). Current queue shows original a53c3d9c still running remotely at b2565458; holding replacement verification for T-556 shared fix. No implementation/test changes since initial source clear.
+
+### impl-551 · 2026-10-16T02:29:05.740Z
+
+Picked posted shared fix576404e8 as1eed1f40; only delta is suite-runner stable test names (+4/-2). Pushed and requested delta source review. No implementation changes or additional local test runs. Coordinator's phantom-holder restart hold remains; no verify submission until restart release.
+
+### rev-31 · 2026-10-16T02:29:58.808Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261016-551-delta-2
+commit: 1eed1f408777792f46bb2ab2f1303da452ea53e2
+scope: delta
+
+Delta source clear: c9ba8073..1eed1f40 changes only suite-runner.test.ts+4/-2, exactly matching posted576404e8. Standards/Spec: no findings. Stable timestamp scenario name with ISO runtime value in body preserves prior assertions/bounds/cleanup. No T-551 implementation/test changes. Prior source A-3515/A-3551 remains; demo8/8 A-3512 and skills-qa16/16 A-3578 inspected. T-556 proof A-3593 is Mac52/52 plus exact-name5/5 under explicit batch Linux deferral; no green task Linux gate claimed. C1/C3 reverified, C2 pending same-head final gate.
+Coordinator61dd1845 hold remains: submit once with explicit droplet/fresh only after next hub restart notice. Olda53c3d9c timeout/phantom is not evidence. Diff check clear; no Reviewer edits/tests.
+Artifact A-3594: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3594-t-551-shared-stable-name-delta-source-clear-at-1eed1f40.md.
+
+Criteria: C1 verified, C3 verified.
