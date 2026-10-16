@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-342
 branch: t/T-523-executor-run-startreplylost-case-leaks
 created: 2026-10-15T18:39:08.367Z
-updated: 2026-10-16T01:56:35.612Z
+updated: 2026-10-16T03:46:28.205Z
 ---
 
 ## Problem
@@ -93,3 +93,7 @@ Criteria: C1 verified.
 ### impl-523 · 2026-10-16T01:56:35.612Z
 
 Mac C2 proof complete at reviewed head9a025f01: executor-run.test.ts5/5 whole-file passes (21/21 each), executor-prepare.test.ts5/5 (17/17 each),190 tests across10 green receipts. Artifact A-3581 contains all logs, per-file Node durations, loaded/quiet admission history and source blob hashes. Product/test bytes unchanged from2dbc45e5 through shared manifest pick; source+delta review clear. No leak assertions weakened. Released Mac boundary with 'T-523 slot done' to lead T-500. Linux verification9b9237a3 pending; cancelled63995ea2 provided no execution evidence.
+
+### impl-523 · 2026-10-16T03:46:28.205Z
+
+First actual Linux verification2ec4adba/A-3655 at reviewed9a025f01 completed1852 tests:1847 pass,1 fail,4 skip,0 cancel (c-8 lon1,4workers, peak load11.34). Both changed executor files green: lost-start-reply/marker parent10.169s, failed replacement11.756s; no PROCESSWRAP leak. Sole ordinary failure suite-close:107 has active lease/watchdogAlive:true after successful sharded result and empty provider, matching documented T-517 old:82 reconcile/release race; known T-556 timestamp0/5 is only other red. No hard duration-budget failure. Mac proof A-3581 remains5/5 each. E-482 second same-head fresh droplet d9fbd7dc submitted; final gate pending its receipt.

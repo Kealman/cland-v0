@@ -16,7 +16,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-16T03:27:02.619Z
-updated: 2026-10-16T03:27:31.165Z
+updated: 2026-10-16T03:47:16.505Z
 ---
 
 ## Summary
@@ -25,3 +25,9 @@ Found by impl-562 on 2026-10-16 (evidence A-3644), reproducible on dev 58696d94 
 ## Acceptance criteria
 - [ ] C1. run.sh writes the done marker atomically (write to a temporary file, then rename), and DropletRun.status treats a done marker without a finished time as still running instead of finished.
 - [ ] C2. A test holds the fake machine's date at the done boundary and shows the run is reported only once finished is set, and that a same-head relaunch then hits the cache.
+
+## Comments
+
+### coord · 2026-10-16T03:47:16.505Z
+
+Second signature of the same race, in T-548's droplet run f4fb4357 (A-3657, lines 4195–4210). verification-workers.test.ts:71 failed with lease costUsd undefined against an expected NaN, because lease.lifetimeMs was absent. That is the assertion two lines above T-562's :73 cache miss, in the same test, right after the same `result()` wait. It fits the same window: the run is reported while `finished` is still empty, so the lease's lifetime and cost aren't settled yet. C2's test should also check that lifetimeMs and costUsd are set when the run is reported.

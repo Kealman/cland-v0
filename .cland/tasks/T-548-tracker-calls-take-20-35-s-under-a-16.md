@@ -3,7 +3,7 @@ id: T-548
 kind: task
 title: Tracker calls take 20–35 s under a 16-session crew; the hub sits at 60–100% CPU
 state: open
-status: in progress
+status: ready
 size: M
 rank: 3089
 criterion_seq: 2
@@ -18,7 +18,7 @@ regression_of: T-480
 topic: topic-348
 branch: t/T-548-tracker-calls-take-20-35-s-under-a-16
 created: 2026-10-15T23:50:03.254Z
-updated: 2026-10-16T02:57:37.158Z
+updated: 2026-10-16T03:48:32.457Z
 ---
 
 ## Summary
@@ -36,8 +36,10 @@ CLI calls hit their 10 s and 15 s limits, which caused T-537-style ambiguous out
   - done: impl-548 · 2026-10-16T00:46:06.972Z
   - verified: rev-31 [reviewer] · run rev-20261016-548-source · 2026-10-16T00:54:08.262Z · commit e15930b216f616aa469df33248674c03e7a9cc4b
   - verified: rev-31 [reviewer] · run rev-20261016-548-delta-1 · 2026-10-16T01:19:16.330Z · commit 8b5fe173a06ac0ab02c8c28381fcab0f9a062fcb
+  - verified: rev-30 [reviewer] · run rev-20261016-548-final · 2026-10-16T03:48:31.912Z · commit 8b5fe173a06ac0ab02c8c28381fcab0f9a062fcb
 - [x] C2. With the fix, task.view and task.criterion stay within their 5 s budget under a 16-session fixture that issues a burst of 30 criterion marks, shown by a test or a recorded measurement.
   - done: impl-548 · 2026-10-16T00:46:09.093Z
+  - verified: rev-30 [reviewer] · run rev-20261016-548-final · 2026-10-16T03:48:31.912Z · commit 8b5fe173a06ac0ab02c8c28381fcab0f9a062fcb
 
 ## Comments
 
@@ -136,3 +138,26 @@ Prior local8efd2c7a/A-3566 is cancelled143 with no completed test evidence. Neit
 Lead/Coordinator should resolve admission and direct the next current-head receipt; Reviewer submits/cancels no run and takes no infrastructure workaround. Any changed head requires delta source review. No task.view full-journal scan, tests, compiler/binary execution, edits, signals, provider actions or subagents.
 
 Review artifact A-3588 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3588-t-548-final-evidence-pending-replacement-run-admitted-no-tests.md
+
+### rev-30 · 2026-10-16T03:48:31.912Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-548-final
+commit: 8b5fe173a06ac0ab02c8c28381fcab0f9a062fcb
+scope: evidence
+
+Final evidence review T-548 clear at unchanged source-cleared8b5fe173a06ac0ab02c8c28381fcab0f9a062fcb. Standards/Spec: no new findings. rev-31's full source A-3514 and manifest delta A-3550 remain current; current origin task ref independently matches the exact reviewed head. Handover assigned this evidence pass to rev-30; no duplicate source review.
+
+Primary Coordinator946b57e0-1aa4-4d22-9315-a3ba54915b33, read directly in topic-348, explicitly accepts f4fb4357-028c-444e-a9dc-f082449c666e at8b5fe173 with no second run/no Neovim supplement. It classifies the exact verification-workers:71 missing costUsd/lifetimeMs signature as T-567 and records it there; T-556 dynamic-name0/5 is also known. This is the actual gate authority, not an inference from a shared test title. Earlier empty/cancelled/lock-deadline runs never supplied passing evidence and are not used in this final pass.
+
+Raw A-3657 audited: actual c-8 lon1/Linux x64 6.8.0-142-generic, Node24.21.0, Neovim0.12.5, workers4. Free38/38 and machine1817tests/1812pass/1fail/4skip; combined1855tests/1850pass/1fail/4skip/0cancel, exit1. Ordinary outside failure at verification-workers:71 is undefined costUsd versus computedNaN due absent lifetimeMs. The only other red is suite-runner current timestamp load identity0/5. No hard duration-budget error; listed known-entry regressions are notices. Neovim smoke not reached, and no nvim diff. Keep these limitations explicit; this was not a whole-suite exit0.
+
+All three own identities pass ordinary execution and5/5 each: restored/incrementally appended journal rows without reopening (.030s), tracker-load with20 sessions/0retained events (1.676s), and20sessions/200000retained events (4.366s). Primary measurement lines show max task.view836.313ms/criterion759.921ms fresh, and view1975.321ms/criterion1908.373ms with200000events/54906762bytes. Every measured request type is below the required5000ms bound under the fixture's publication/criterion burst. Fifteen own repeated passes additionally complete green.
+
+C1 remains established by A-3514 profiles and before/after scratch evidence: historical journal scans moved to one restoration plus indexed incremental appends; both tool attribution and concurrency/flush semantics checked there. C2 now verified by actual same-head Linux performance/repetition proof and accepted gate disposition. Source writes/own test inputs have not changed since handover. All task criteria current; Coordinator may proceed through normal merge gate, without another run/head move. No per-item QA change. No Reviewer tests/compiler/binary execution, edits, installs, signals, commits, merges, provider actions, task.view journal scan or subagents.
+
+Review artifact A-3658 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3658-t-548-final-evidence-clear-linux-performance-bounds-and-accepted-gate.md
+
+Criteria: C1 verified, C2 verified.
