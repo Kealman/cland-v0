@@ -3,7 +3,7 @@ id: T-620
 kind: task
 title: The curated set drops 23 skills, and nothing names them any more
 state: open
-status: in progress
+status: review
 size: S
 labels:
   - v0.1.4
@@ -11,10 +11,10 @@ labels:
 assignee: null
 parent: E-615
 blocked_by: []
-topic: null
+topic: topic-384
 branch: t/T-620-the-curated-set-drops-23-skills-and
 created: 2026-10-16T15:57:48.576Z
-updated: 2026-10-16T15:58:35.711Z
+updated: 2026-10-16T16:01:32.011Z
 ---
 
 ## Summary
@@ -38,3 +38,13 @@ Because `.agents/skills/` is also the copy this repository's own sessions read, 
 - [ ] C5. `docs/agents/domain.md` and its template under `skills/templates/` name neither grill-with-docs nor improve-codebase-architecture, and `cland update` in a scratch project writes the new template.
 - [ ] C6. The init and doctor tests that sampled `grill-me` sample `grilling`, and both test files pass.
 - [ ] C7. A grep for each of the 23 names over the role clauses and skill lists (`hub/src/roles/default-roles.ts`, `.cland/roles.toml`), `skills/templates/`, `docs/agents/`, `AGENTS.md`, `GLOSSARY.md`, `hub/README.md`, `hub/src/` and the 20 kept skill folders finds no reference to the skill.
+
+## Comments
+
+### impl-620 · 2026-10-16T15:59:11.593Z
+
+Implementation started: using the ticket's public CLI seam for a literal 20-name fresh-init regression, then updating active skill/domain pointers and init/doctor samples. Exempt record documents and the repository's per-skill Claude link layout remain preserved.
+
+### impl-620 · 2026-10-16T16:01:32.011Z
+
+Source committed and pushed at d147e3d660d36b9e16c7a543a27c4cce49d16d79 after fetching/merging origin/dev. Typecheck exit 0; targeted init.test.ts 17/17 and doctor.test.ts 22/22 passed, one file at a time. Literal 20-name init and update domain assertions proved red before edits and green after. C1/C2 inventory and C7 skill-pointer audit clear; no per-item QA required (scope none / after-stage). Evidence published in this item's topic.

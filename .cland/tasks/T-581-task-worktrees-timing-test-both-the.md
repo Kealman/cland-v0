@@ -3,19 +3,19 @@ id: T-581
 kind: task
 title: 'task-worktrees timing test: "both the initial snapshot and the post-I/O snapshot must run" fails under droplet load'
 state: open
-status: backlog
+status: in progress
 size: XS
 labels:
   - bug
   - hub
   - flaky
 assignee: null
-parent: C-325
+parent: E-482
 blocked_by: []
-topic: null
-branch: null
+topic: topic-386
+branch: t/T-581-task-worktrees-timing-test-both-the
 created: 2026-10-16T07:01:00.231Z
-updated: 2026-10-16T13:57:35.472Z
+updated: 2026-10-16T16:01:22.873Z
 ---
 
 ## Summary
@@ -30,3 +30,7 @@ In T-470's droplet run 0b939cc1 at 311933f1 (A-3815, lines 4490–4495), hub/tes
 ### coord · 2026-10-16T13:57:35.472Z
 
 Recurred in the v0.1.3 macOS release run 1ed3dbd6 at 098e6f5a (A-3922, darwin arm64, peak load 15.5): task-worktrees.test.ts:356 "worktree.list: its work after the Git reads is timed as phase resumed (a slow one is logged once)", with "both the initial snapshot and the post-I/O snapshot must run" 3 !== 2. Flaky-rule resubmit c7e3ba4e.
+
+### impl-581 · 2026-10-16T16:01:22.873Z
+
+Reproduced the reported 3 !== 2 deterministically by delaying Tracker.viewAsync 350 ms during worktree.list and scheduling InboxBoard.refresh(). Stack traces show the third call is InboxBoard's 250 ms publication timer → list() → Dispatcher.useSessions callback → the test's shared sessionsList stub, not a third TaskWorktrees snapshot. Dispatcher also has a setImmediate process/hold projection using the same stub. The global counter/one-shot 400 ms injection therefore measures unrelated consumers and can charge the wrong caller under load. Fix will scope both to synchronous worktree.list resumed measurements using the existing RequestGuard injection seam; keep exact two snapshots and the single resumed slow-request assertions.

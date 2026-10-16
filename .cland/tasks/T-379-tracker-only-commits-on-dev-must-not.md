@@ -3,7 +3,7 @@ id: T-379
 kind: task
 title: Tracker-only commits on dev must not cancel or invalidate an integrated dev run
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 3
 labels:
@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-375
 branch: t/T-379-tracker-only-commits-on-dev-must-not
 created: 2026-10-14T08:41:13.625Z
-updated: 2026-10-16T15:57:59.113Z
+updated: 2026-10-16T16:02:06.153Z
 ---
 
 ## What happened
@@ -65,3 +65,7 @@ finding_counts: {"high":0,"medium":1,"low":0}
 Source not clear. Spec M1 verification-tree.ts:21: captureA→hash canonicalA→tracker/rulebook commitB→finalHEAD B returnsnull although canonicalA==canonicalB. Integrated admission/completion treats null as changed/dirty and cancels. Worker also passes captured current head, so fix integrated mode/callers consistently while retaining task exact-head rejection. Add controlled commit-during-hash regression and source/docs/config/dirty rejection controls. Existing new tests finish commits before releasing work/admission, missing overlap. Standards no findings; one medium Spec finding, no highs/lows. C1 failed; C2/C3 otherwise appear implemented but unmarked. Canonical paths/provenance/task strictness/allowances reviewed; A-3938 targeted17+2/typecheck/shards support only. No verify until corrected-head source clear. Artifact A-3943: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3943-t-379-source-not-clear-administrative-commit-during-identity-hashing.md. No Reviewer edits/tests.
 
 Criteria: C1 failed (A metadata-only commit during candidateTree hashing still causes null/changed-candidate cancellation rather than preserving the integrated run.).
+
+### impl-379 · 2026-10-16T16:00:45.317Z
+
+Addressed not-clear source finding rev-20261016-379-source-1 at 1263d9bba15f2076c5961519acdbe8f1caeddc22 (pushed). Controlled commit-during-hash test went red before the correction; tracker/rulebook overlaps now preserve identity while source/dirty-source and explicit-head controls reject. Evidence A-3949: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3949-t-379-review-correction-commit-during-hash-proof.md. Typecheck exit 0 at exact head; sequential targeted 13/13; shard lint/diff check 0. Fresh source review requested before verification.

@@ -5,6 +5,7 @@ title: Each kept upstream skill records its origin and changes in its header; sk
 state: open
 status: backlog
 size: S
+criterion_seq: 7
 labels:
   - v0.1.4
   - skills
@@ -16,7 +17,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-16T15:57:48.844Z
-updated: 2026-10-16T15:57:50.001Z
+updated: 2026-10-16T16:00:48.514Z
 ---
 
 ## Summary
@@ -36,5 +37,10 @@ Each kept upstream skill's `SKILL.md` frontmatter gains a `metadata` block with 
 - [ ] C3. The changes lines of code-review, to-spec, to-tickets, triage and wayfinder name the fallback pointing at `cland update`.
 - [ ] C4. A new test parses the frontmatter of every kept upstream skill and fails when `metadata.origin` lacks a commit hash or the MIT notice, or when `metadata.changes` is empty.
 - [ ] C5. `skills-lock.json` and `skills/PATCHES.md` no longer exist, and neither `skills/README.md` nor `docs/agents/` names them (the comment in the init code that names them is rewritten by the manifest ticket, 04).
-- [ ] C6. Demo: after `cland init` in a fresh scratch project, a Claude Code session and a Codex session each list every kept skill, and `head` of each kept upstream `SKILL.md` shows its header.
 - [ ] C7. Each kept upstream skill folder also carries the upstream LICENSE file, so the full MIT notice travels with the copies, and the C4 test checks it is present.
+
+## Comments
+
+### coord · 2026-10-16T16:00:48.514Z
+
+Coordinator, 2026-10-16: C6 (Claude Code and Codex sessions listing every kept skill after a fresh init) was removed from this ticket. It's verified at E-615's epic demo (DoD C2/C3, read by QA). This ticket's C4 test guards the headers.

@@ -3,7 +3,7 @@ id: T-555
 kind: task
 title: "suite-timeouts test: 'one cleanup warning' not seen within 15000 ms under load (Mac)"
 state: open
-status: review
+status: ready
 size: XS
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-381
 branch: t/T-555-suite-timeouts-test-one-cleanup-warning
 created: 2026-10-16T01:06:48.258Z
-updated: 2026-10-16T15:58:39.081Z
+updated: 2026-10-16T16:02:22.654Z
 ---
 
 ## Summary
@@ -24,7 +24,9 @@ In T-533's local verify bbfee74e at 77659eb0 (2026-10-16 ~01:05Z, Mac, peak load
 - [x] C1. The case waits on the cleanup warning's own receipt, not a fixed 15 s window shared with slow teardown, or records why 15 s is the contract. The root cause goes in the commit, and every assertion stays.
   - done: impl-555 · 2026-10-16T15:55:17.781Z
   - verified: rev-31 [reviewer] · run rev-20261016-555-source · 2026-10-16T15:56:05.235Z · commit 27b5325f80c231412983a72e314ba8840f44e859
-- [ ] C2. suite-timeouts.test.ts passes 5/5 serially as a whole file on the Mac, plus once on a droplet in the task's verify.
+- [x] C2. suite-timeouts.test.ts passes 5/5 serially as a whole file on the Mac, plus once on a droplet in the task's verify.
+  - done: impl-555 · 2026-10-16T16:01:02.127Z
+  - verified: rev-31 [reviewer] · run rev-20261016-555-final · 2026-10-16T16:02:22.191Z · commit 27b5325f80c231412983a72e314ba8840f44e859
 
 ## Comments
 
@@ -54,3 +56,22 @@ Criteria: C1 verified.
 ### impl-555 · 2026-10-16T15:58:39.081Z
 
 Mac serial proof COMPLETE at reviewed head 27b5325f80c231412983a72e314ba8840f44e859: whole hub/test/suite-timeouts.test.ts passed 10/10 serially, 7/7 tests each (70/70), all exit 0. Durations: 38.674, 41.425, 41.864, 47.401, 48.393, 44.108, 41.244, 46.970, 42.672, 41.831 seconds. Total 434.582 seconds. Durable full logs, machine identity, summary, typecheck exit-0 log and delay probe logs: A-3947 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3947-t-555-mac-10-of-10-serial-proof-and-typecheck-logs (entry summary.json). Source review rev-20261016-555-source is clear with C1 verified. Submitted no-mode cland verify at this exact unchanged head; Linux receipt remains pending for C2.
+
+### impl-555 · 2026-10-16T16:01:03.037Z
+
+C2 complete: same-reviewed-head Linux droplet verification face52c0-685a-40ff-b087-d861caf86c6e passed exit 0 at 27b5325f80c231412983a72e314ba8840f44e859. Selected target file plus hub/Neovim smoke: 41/41 tests, zero failures; target cleanup-warning case passed in 9.286s. Executor Linux x64, c-8 lon1, lifetime 123s, cost $0.0085. Log A-3951: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3951-suite-face52c0-685a-40ff-b087-d861caf86c6e-auto-at-27b5325.log. Combined with A-3947 Mac 10/10 serial whole-file proof and typecheck exit 0, all requested evidence is present. Awaiting Reviewer's final same-head verdict; claim retained.
+
+### rev-31 · 2026-10-16T16:02:22.191Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261016-555-final
+commit: 27b5325f80c231412983a72e314ba8840f44e859
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear; Standards 0 findings, Spec 0 findings. A-3955 records independent evidence inspection. A-3947 has ten serial Mac whole-file passes, each 7/7 (70/70 total), every exit zero. Post-review same-head Linux face52c0/A-3951 is exit0: selected hub29/29 including all seven suite-timeouts cases (changed case9.286s), Neovim smoke12/12, total41/41 with zero failures/skips. The reviewed source is unchanged and origin branch matches. C2 verified; C1 retains source verification rev-20261016-555-source. No exception or further run required.
+
+Criteria: C2 verified.
