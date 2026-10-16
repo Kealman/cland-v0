@@ -3,7 +3,7 @@ id: T-532
 kind: task
 title: OpenCode launch polls the server on a port cland chose, and a rejected approval is reported as a rejection
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 3
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-378
 branch: t/T-532-opencode-launch-polls-the-server-on-a
 created: 2026-10-15T20:59:18.648Z
-updated: 2026-10-16T15:58:02.393Z
+updated: 2026-10-16T16:24:51.200Z
 ---
 
 ## Summary
@@ -35,10 +35,13 @@ Code: `hub/src/adapters/opencode/server.ts`, `hub/src/adapters/opencode/state.ts
 
 - [x] C1. A fake server that never prints its listening line launches, by polling the port cland chose, within the launch deadline.
   - done: impl-532 · 2026-10-16T15:55:37.037Z
+  - verified: rev-30 [reviewer] · run rev-20261016-532-final · 2026-10-16T16:24:47.904Z · commit dc6fe58907374be337f5baa9e8e82ab366c116ca
 - [x] C2. A port taken between choice and bind restarts the attempt on a new port, and a launch that never answers fails naming the log's explanation.
   - done: impl-532 · 2026-10-16T15:55:37.664Z
+  - verified: rev-30 [reviewer] · run rev-20261016-532-final · 2026-10-16T16:24:47.904Z · commit dc6fe58907374be337f5baa9e8e82ab366c116ca
 - [x] C3. A rejected approval followed by a shutdown interrupt is reported as a rejection with its command, the session stays alive, and a bare shutdown is still reported as the server's death.
   - done: impl-532 · 2026-10-16T15:55:38.261Z
+  - verified: rev-30 [reviewer] · run rev-20261016-532-final · 2026-10-16T16:24:47.904Z · commit dc6fe58907374be337f5baa9e8e82ab366c116ca
 
 ## Comments
 
@@ -90,3 +93,39 @@ Source **clear**, no failed criterion. C1–C3 are behavioral runtime criteria; 
 Findings: Standards0; Spec0. Source clear; C1/C2/C3 final runtime pending.
 
 Artifact A-3946 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3946-t-532-source-clear-authenticated-readiness-collision-retry-and-execution-scoped-.md
+
+### rev-30 · 2026-10-16T16:24:47.904Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-532-final
+commit: dc6fe58907374be337f5baa9e8e82ab366c116ca
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-532 final evidence review
+
+Commit dc6fe58907374be337f5baa9e8e82ab366c116ca, unchanged from source clear rev-20261016-532-source / A-3946. Local and origin task tips agree.
+
+## Standards
+No findings. No source delta; chosen-port authenticated readiness, bounded collision retries/cleanup and execution-scoped rejection handling remain covered by source review.
+
+## Spec
+Post-source-review droplet 35b3763e-afc1-4b42-9c5d-0815da6cd44f / A-4000 names the exact reviewed head and exits 0.
+
+C1: no-listening-line fake launch passes ordinarily in 1.120 seconds and 5/5 fresh repetitions. The readiness signal is the authenticated HTTP response on the port cland chose, not a log line.
+
+C2: controlled choice-to-bind collision/new-port retry passes in 1.521 seconds and 5/5 repetitions. Unresponsive-server deadline/log-explanation proof passes in 1.187 seconds and 5/5 repetitions, retaining its cleanup assertions.
+
+C3: known-command and delayed-command rejection/shutdown-interrupt cases pass ordinarily in 2.124 and 2.130 seconds and each 5/5 repetitions. Their session-alive/continued-turn and later bare-shutdown server-death checks remain intact. Total five new identities, 25/25 repetitions; no owned case is skipped.
+
+Independently checked raw phase summaries: hub free 38/38, hub machine 1910 pass/zero failure/five skips out of 1915, Neovim smoke 12/12. Overall 1965 tests, 1960 pass, zero failure/cancellation, five platform/binary prerequisite skips. The skip list is the two macOS sandbox cases, macOS sleep inhibitor and two absent-real-OpenCode cases; it does not substitute for or omit the owned fake-harness regressions. Host and remote typechecks complete. No hard duration or load-gate failure.
+
+Delivery records Linux x64, c-8 lon1, four workers, peak load 13.02, suite wall 1462.35 seconds, lifetime 1536 seconds, cost $0.1067. Existing-entry duration notices are diagnostic.
+
+C1–C3 execution verified; all claimant done marks were present. Final clear with no additional run or per-item QA required. Standards 0 findings; Spec 0 findings.
+Artifact: A-4001 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-4001-t-532-final-clear-readiness-and-rejection-handling-pass-linux-and-load-repetitio.md
+
+Criteria: C1 verified, C2 verified, C3 verified.

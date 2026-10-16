@@ -16,7 +16,7 @@ regression_of: T-395
 topic: topic-377
 branch: t/T-520-two-shard-stage-run-takes-908-s-wall
 created: 2026-10-15T18:12:19.748Z
-updated: 2026-10-16T15:56:03.834Z
+updated: 2026-10-16T16:23:31.023Z
 ---
 
 ## Summary
@@ -28,6 +28,7 @@ E-387's first real two-shard stage run, 1bebcda2 at 9bc15ce8, took 907.85 s over
 - [x] C1. A breakdown per shard, from run 1bebcda2's logs and lease receipts, of droplet create, bundle transfer, install or snapshot, typecheck, the hub phase, the Neovim phase and collection, posted on the item.
   - verified: rev-30 [reviewer] · run rev-20261016-520-source · 2026-10-16T15:55:51.343Z · commit 76e5cc77d6eb8abc02fc6c68302122a88cefd782
   - done: impl-520 · 2026-10-16T15:56:03.834Z
+  - verified: rev-30 [reviewer] · run rev-20261016-520-task-evidence · 2026-10-16T16:23:31.023Z · commit 76e5cc77d6eb8abc02fc6c68302122a88cefd782
 - [ ] C2. Changes taken from that breakdown, such as shard balancing by recorded durations, parallel create, or skipping the remote typecheck when the host gate passed. A repeat `--occasion stage` run lands at 600 s or less wall, or the item records why 600 s isn't reachable and the human sets a new target.
 
 ## Comments
@@ -78,5 +79,39 @@ Source **clear**, C1 verified. **C2 remains unverified**: first fresh no-mode ex
 Reviewer only reads/parses source/evidence; no tests/compiler/provider calls/edits/subagents. Findings: Standards0; Spec0. Source clear; C2 timing/runtime pending.
 
 Artifact A-3940 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3940-t-520-source-clear-combined-lpt-workload-actual-stage-wall-still-pending.md
+
+Criteria: C1 verified.
+
+### rev-30 · 2026-10-16T16:23:31.023Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-520-task-evidence
+commit: 76e5cc77d6eb8abc02fc6c68302122a88cefd782
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-520 task-suite evidence clear; stage timing criterion still pending
+
+Commit 76e5cc77d6eb8abc02fc6c68302122a88cefd782, unchanged from source verdict rev-20261016-520-source / A-3940. Origin task tip agrees.
+
+## Standards
+No findings and no source delta. Combined LPT planning, one indivisible Neovim job and explicit resource ownership remain covered by source review.
+
+## Spec and execution
+Independently audited A-3997, post-source-review droplet b20c1e9d-fd40-43a2-ab17-8d27b541ea34 at this exact head. Full suite exits 0: hub free 38/38; hub machine 1906 pass, zero failure and five skips; full Neovim 390 pass, zero failure and three skips. Overall 2342 tests, 2334 pass, zero failure/cancellation, eight skips. Both typecheck gates complete.
+
+All three close-shards cases pass ordinarily. The new combined hub/Neovim regression passes in 1.142926 ms and 5/5 fresh load repetitions. No hard duration or load-gate failure. Receipt records Linux x64, c-8 lon1, four workers, peak load 14.20, suite wall 1513.47 seconds, droplet lifetime 1579 seconds and cost $0.1097.
+
+This is one full task verification run, not a repeated two-shard integrated --occasion stage comparison. Its wall time must not be compared directly with the historical 907.85-second stage receipt as proof of the target or balancing effect.
+
+C1 source verification remains current. C2 implementation and task-suite execution are green, but C2's literal measured stage target/limit disposition remains unverified. Primary Coordinator 1aab3506 assigns that actual run post-merge; no such receipt is available in this pass. The earlier 7.15% estimated work reduction is not measured wall improvement. Final performance acceptance must retain the actual stage/per-shard record and the delegated target disposition if above 600 seconds.
+
+Evidence clear for the task suite, zero findings. C2 pending; no failed criterion is asserted because the required measurement has not happened. Do not treat this pass as all-criteria final acceptance or request an extra task suite to substitute for the missing stage measurement.
+
+Standards 0 findings; Spec 0 findings.
+Artifact: A-3999 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3999-t-520-task-suite-green-stage-timing-measurement-remains-pending.md
 
 Criteria: C1 verified.

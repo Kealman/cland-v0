@@ -3,7 +3,7 @@ id: T-536
 kind: task
 title: OpenCode warnings, the worktree clause, and the codemode and instructions experiments
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 4
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-379
 branch: t/T-536-opencode-warnings-the-worktree-clause
 created: 2026-10-15T20:59:19.741Z
-updated: 2026-10-16T16:14:20.907Z
+updated: 2026-10-16T16:24:51.520Z
 ---
 
 ## Summary
@@ -34,11 +34,17 @@ See E-424's "The codemode experiment", "The instructions experiment", "The warni
 
 ## Acceptance criteria
 
-- [ ] C1. `cland doctor` shows the free-model training warning and the missing-sandbox warning for a role on a free OpenCode model, and neither refuses a launch.
-- [ ] C2. The role clauses for OpenCode roles (both copies) forbid moving a session out of its item's worktree.
-- [ ] C3. The codemode measurement is an artifact on E-424 with its decision, and the default changes only where it supports it.
-- [ ] C4. The instructions option exists, off by default, its measurement is an artifact on E-424, and the adoption question is filed in Follow-ups.
-  - failed: rev-31 [reviewer] · 2026-10-16T16:14:20.907Z · note Role-change/revocation fallback leaves the prior durable instruction installed when its replacement PUT fails.
+- [x] C1. `cland doctor` shows the free-model training warning and the missing-sandbox warning for a role on a free OpenCode model, and neither refuses a launch.
+  - done: impl-536 · 2026-10-16T16:24:01.305Z
+- [x] C2. The role clauses for OpenCode roles (both copies) forbid moving a session out of its item's worktree.
+  - verified: rev-31 [reviewer] · run rev-20261016-536-source-2 · 2026-10-16T16:23:18.437Z · commit 72d4804a2b919ca718c31c6f207a5f22c127e017
+  - done: impl-536 · 2026-10-16T16:24:02.215Z
+- [x] C3. The codemode measurement is an artifact on E-424 with its decision, and the default changes only where it supports it.
+  - verified: rev-31 [reviewer] · run rev-20261016-536-source-2 · 2026-10-16T16:23:18.437Z · commit 72d4804a2b919ca718c31c6f207a5f22c127e017
+  - done: impl-536 · 2026-10-16T16:24:02.765Z
+- [x] C4. The instructions option exists, off by default, its measurement is an artifact on E-424, and the adoption question is filed in Follow-ups.
+  - verified: rev-31 [reviewer] · run rev-20261016-536-source-2 · 2026-10-16T16:23:18.437Z · commit 72d4804a2b919ca718c31c6f207a5f22c127e017
+  - done: impl-536 · 2026-10-16T16:24:03.552Z
 
 ## Comments
 
@@ -64,3 +70,26 @@ finding_counts: {"high":0,"medium":1,"low":0}
 Source not clear: one medium Spec finding at opencode.ts:274; Standards no findings. A-3983 has full review/evidence analysis. Installed cland-role→replacement/revocation PUT failure enters catch, sends ordinary prompt, and resolves without removing stale durable role. Existing fallback test only covers initially absent entry. Require confirmed replacement/removal before fallback acknowledgement; if cleanup fails reject delivery for retry. Add installed-entry replacement/revocation failure and cleanup-failure/retry regressions. Implementer3f0269f6 confirms gap/accepts correction. Warnings, six-role both-copy guardrail, opt-in default and C3 experiment otherwise match scope. Independently recalculated A-3950 default8/10 versusfalse7/10; unchanged codemode correct. A-3977 correctly labels instruction compaction success/message stall comparison inconclusive; T-619 exists. Coordinator1649af65 accepts item-topic artifacts pending epic copy after merge. No verify until corrected-head source review.
 
 Criteria: C4 failed (Role-change/revocation fallback leaves the prior durable instruction installed when its replacement PUT fails.).
+
+### impl-536 · 2026-10-16T16:22:21.054Z
+
+Corrected not-clear source finding A-3983 in pushed head 72d4804a2b919ca718c31c6f207a5f22c127e017. Failed PUT must now confirm DELETE of cland-role before message fallback; failed DELETE rejects injection and leaves acknowledgement pending. Installed-entry replacement/revocation and failed-delete/unconfirmed/retry regressions pass. Targeted red at intended old-entry assertion; full touched opencode-adapter.test.ts now 21/21, new tests 2.994s and 2.607s; typecheck exit 0. Evidence A-3996 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3996-t-536-c4-correction-remove-durable-role-before-fallback.md. No dev merge after first source review. C3/C4 experiment conclusions A-3950/A-3977 unchanged; T-619 adoption remains off. Fresh source review requested before verification; executor will be explicitly droplet per Coordinator's load notice.
+
+### rev-31 · 2026-10-16T16:23:18.437Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261016-536-source-2
+commit: 72d4804a2b919ca718c31c6f207a5f22c127e017
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Corrected source clear; Standards0/Spec0 findings. A-3998 records M1 resolution. Failed PUT must confirm DELETE before message fallback; DELETE failure rejects injection, so existing Sessions path logs unconfirmed and does not mark injected. New public transition tests cover installed-entry replacement/revocation, failed cleanup with no fallback prompt/ack, then retry and acknowledgement of that exact revocation after cleanup recovers. A-3996 old-code red/corrected21of21 adapter cases and typecheckgreen; origin/diffcheck confirmed. Prior C2 guardrails and independently assessed C3/C4 experiments remain current: A-3950 default8/10false7/10 preserves codemode default; A-3977 inconclusive compaction comparison preserves instructions-off, T-619 filed. Coordinator1649af65 authorizes item artifacts/epic copy after merge. C2/C3/C4 verified; restore claimant done marks after prior C4failure. C1 final execution waits fresh exact-head droplet no-mode verification.
+
+Criteria: C2 verified, C3 verified, C4 verified.
+
+### impl-536 · 2026-10-16T16:24:51.520Z
+
+Clear source review rev-20261016-536-source-2 received at 72d4804a2b919ca718c31c6f207a5f22c127e017; claimant done marks restored. Submitted no-mode verification with explicit droplet executor per Coordinator instruction. Run 39760d2d-36e0-4d27-a402-c92fd64834ad is launching at the exact reviewed head (confirmed through task.view after the initial tool response timed out). No duplicate submission or source change; awaiting the hub result.

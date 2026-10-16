@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-16T15:34:18.478Z
-updated: 2026-10-16T15:34:18.478Z
+updated: 2026-10-16T16:24:51.547Z
 ---
 
 ## Summary
@@ -81,3 +81,41 @@ Under a scratch HOME holding the hub's state directory, QA runs `cland init` in 
 - Research: `docs/research/install-from-github.md` on research/install-from-github (87b77611).
 - Code: `hub/src/cli/init.ts`, `hub/src/init/provision.ts`, `hub/src/init/claude-settings.ts`, `hub/src/project.ts` (`projectRoot`), `hub/src/territory.ts`, `hub/src/executor/droplet/spend.ts` (`spendPath`), `hub/src/version.ts`, `hub/src/spoke/spoke.ts`, `hub/src/release.ts`, `hub/src/cli/open.ts`, `hub/bin/cland.ts`.
 - GLOSSARY: Hub, Territory, Category.
+
+## Plan
+
+```yaml
+stages:
+  - name: roots, the state directory, the closing line, the managed key and the version
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-639
+        - T-609
+        - T-640
+        - T-641
+      - - T-642
+        - T-643
+      - - T-644
+        - T-645
+  - name: the first commit, the categories, any default branch and the lines outside a project
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-646
+        - T-647
+        - T-648
+      - - T-649
+      - - T-652
+        - T-653
+      - - T-650
+        - T-651
+```
+
+## Comments
+
+### coord · 2026-10-16T16:24:51.547Z
+
+Coordinator decisions on the ticket cut (D51), 2026-10-16: (1) 'set up' = setup's CHOSEN mark on [aide.launch] harness (this repo prints the line until setup runs once); (2) the first commit takes only the paths init created in this run, never a pre-existing file it merged into; (3) 'clean dev' for a folder with the human's files = cland's files committed, the human's untracked or staged as before; (4) only an explicit Git identity counts; the first commit runs without hooks or signing; (5) T-653 stays in E-612; default-branch order origin/HEAD, main, master, the only branch, else refuse; (6) the root version stays 0.1.3 until E-617's bump, hub/package.json drops its version; (7) the release-version check covers any project whose dev package.json declares a version; (8) the ledger move honours XDG_STATE_HOME, and all hubs restart together; (9) cland outside a project exits 1, cland hub start unchanged; (10) init --undo after the first commit keeps the repo, the commit and dev; (11) T-609 is M and blocked by T-639; (12) T-643 also reads settings.local.json; (13) T-652's implementer writes the ADR 0004 amendment line in the same change.
