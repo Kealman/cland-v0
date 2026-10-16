@@ -2342,10 +2342,13 @@ serial absent/present whole-file comparisons also check the added reporter cost.
 
 Task-branch verification also applies a **load gate** to each top-level test
 whose exact `file::test` identity is absent from the manifest's `tests` baseline.
-The phase reporter discovers names while the ordinary phase is running. One
-extra lane repeats each new name five times in fresh Node processes, using an
-escaped, anchored `--test-name-pattern` on its file alongside the phase's normal
-work. A reasoned duration allowance does not make a test known to the load gate;
+The phase reporter discovers names while the ordinary phase is running.
+`[verification] load_gate_workers` parallel lanes (default 2) repeat each new name
+five times in fresh Node processes, using an escaped, anchored `--test-name-pattern` on its file alongside the phase's normal
+work. Each identity stays on one lane with sequential repetitions; no repetitions
+are dropped to meet a deadline. The log and run report include the lane count.
+Increasing it trades wall time for load independently of ordinary phase workers.
+A reasoned duration allowance does not make a test known to the load gate;
 the Coordinator's stage-close manifest refresh does.
 
 Every repetition needs a green process exit and exactly one passing receipt for

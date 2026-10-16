@@ -15,7 +15,7 @@ import { isManagedFile, readText, writeIfChanged, type Report } from './files.ts
 
 export type ProjectConfig = {
   name: string;
-  verification: { executor: 'local' | 'droplet'; workers: number; budget: number; remoteBudget: number; shards: number; lockPath: string; cacheMaxAgeMs: number; coverageMaxAgeMs: number; testTimeoutMs: number; stallTimeoutMs: number; lifetimeMs: number; runTimeoutMs: number; runTimeout: string; dailySpendUsd: number; droplet: { workers?: number; size: string; prepare_size: string; regions: string[]; image: string } };
+  verification: { executor: 'local' | 'droplet'; workers: number; loadGateWorkers: number; budget: number; remoteBudget: number; shards: number; lockPath: string; cacheMaxAgeMs: number; coverageMaxAgeMs: number; testTimeoutMs: number; stallTimeoutMs: number; lifetimeMs: number; runTimeoutMs: number; runTimeout: string; dailySpendUsd: number; droplet: { workers?: number; size: string; prepare_size: string; regions: string[]; image: string } };
   sessions: { archiveAfterItemMs: number; archiveAfterStopMs: number };
   visibility: VisibilityOverrides;
   tracker: { levels: Levels; fatalStallMs: number };
@@ -29,7 +29,7 @@ const MINUTE = 60_000;
 
 export const defaultConfig = (name: string): ProjectConfig => ({
   name,
-  verification: { executor: 'local', workers: 4, budget: 1, remoteBudget: 4, shards: 2, lockPath: '/tmp/cland-suite.lock', cacheMaxAgeMs: 86400000, coverageMaxAgeMs: 172800000, testTimeoutMs: 120000, stallTimeoutMs: 600000, lifetimeMs: 6600000, runTimeoutMs: 4500000, runTimeout: '75m', dailySpendUsd: 5, droplet: { size: 'c-8', prepare_size: 'c-8', regions: ['lon1', 'nyc1', 'sfo2'], image: 'ubuntu-24-04-x64' } },
+  verification: { executor: 'local', workers: 4, loadGateWorkers: 2, budget: 1, remoteBudget: 4, shards: 2, lockPath: '/tmp/cland-suite.lock', cacheMaxAgeMs: 86400000, coverageMaxAgeMs: 172800000, testTimeoutMs: 120000, stallTimeoutMs: 600000, lifetimeMs: 6600000, runTimeoutMs: 4500000, runTimeout: '75m', dailySpendUsd: 5, droplet: { size: 'c-8', prepare_size: 'c-8', regions: ['lon1', 'nyc1', 'sfo2'], image: 'ubuntu-24-04-x64' } },
   sessions: { archiveAfterItemMs: 3600000, archiveAfterStopMs: 86400000 },
   visibility: {},
   tracker: { levels: [...DEFAULT_LEVELS], fatalStallMs: 60000 },
@@ -53,6 +53,8 @@ name = ${JSON.stringify(c.name)}
 executor = ${JSON.stringify(c.verification.executor)}
 # Concurrent machine test files; the free shard always uses one worker.
 workers = ${c.verification.workers}
+# Extra load-gate lanes; repetitions of one new test stay sequential.
+load_gate_workers = ${c.verification.loadGateWorkers}
 # Local admission stays capped at one, behind the compatibility leases.
 budget = ${c.verification.budget}
 # Parallel droplet runs beside the local slot.
@@ -151,6 +153,7 @@ export function parseConfig(text: string, fallbackName: string, env: NodeJS.Proc
       c.verification[field] = durationMs(verification[key]);
     } catch { throw new Error(`verification.${key} must be a positive duration (s, m, h or d)`); }
   }
+  if (verification.load_gate_workers !== undefined) c.verification.loadGateWorkers = workerCount(verification.load_gate_workers, 'verification.load_gate_workers');
   if (verification.workers !== undefined) c.verification.workers = workerCount(verification.workers, 'verification.workers');
   if (verification.executor !== undefined) {
     if (verification.executor !== 'local' && verification.executor !== 'droplet') throw new Error('verification.executor must be local or droplet');

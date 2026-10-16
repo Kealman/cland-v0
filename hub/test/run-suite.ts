@@ -131,8 +131,9 @@ process.chdir(cwd);`);
         return existsSync(path) || arg.includes('*') ? path : arg;
       });
       if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
+      const limits = await suiteLimits(cwd);
       const reporters = args.includes('--test') ? [
-        `--test-timeout=${(await suiteLimits(cwd)).testTimeoutMs}`,
+        `--test-timeout=${limits.testTimeoutMs}`,
         '--test-reporter=spec', '--test-reporter-destination=stdout',
         `--test-reporter=${fileURLToPath(new URL('./skip-reporter.ts', import.meta.url))}`, '--test-reporter-destination=stdout',
       ] : [];
@@ -153,7 +154,7 @@ process.chdir(cwd);`);
       if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
       const repeats = loadGate ? runLoadGate({
         discovery: loadDiscovery, root, cwd, env, manifest: durationManifest!,
-        timeoutMs: (await suiteLimits(cwd)).testTimeoutMs, phase: done,
+        timeoutMs: limits.testTimeoutMs, workers: limits.loadGateWorkers, phase: done,
         interrupted: () => interruption.signal !== null, active: loadRunners,
       }) : Promise.resolve({ failed: false, extraWallMs: 0 });
       const [phaseOutcome, gateOutcome] = await Promise.allSettled([done, repeats]);

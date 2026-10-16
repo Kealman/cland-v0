@@ -232,11 +232,14 @@ Keep artifact ids and the source head in `source` so timings remain traceable.
 
 Task-branch verifies have a **load gate** for each top-level `file::test` identity
 missing from the duration manifest's `tests` baseline. As the phase discovers
-new names, one extra lane repeats them five times in fresh Node processes with
-an escaped, exact `--test-name-pattern` on the file, alongside the ordinary
+new names, `[verification] load_gate_workers` parallel lanes (default 2) repeat
+each identity five times in fresh Node processes with an escaped, exact `--test-name-pattern` on the file, alongside the ordinary
 phase. Known names and integrated `dev` runs, including sharded close runs,
-receive no repetitions. An `allow` entry permits duration; only the stage-close
-baseline refresh makes a test known to this gate.
+receive no repetitions. Each lane finishes all five repetitions of one identity
+sequentially before taking another; the gate never drops repetitions to meet a
+wall deadline. Its worker count is included in the log and run report. Increasing
+it trades wall time for load, independently of ordinary phase workers.
+An `allow` entry permits duration; only the stage-close baseline refresh makes a test known to this gate.
 The live hub sets the task flag in the selection JSON. Updating a candidate
 runner alone does not enable it when the running hub predates this feature;
 bootstrap uses package-runner fixtures, followed by a live task proof after the
@@ -258,6 +261,17 @@ sum of the tails spent finishing repetitions after their ordinary phase exits.
 It does not estimate
 contention during overlap. Repetition receipts do not refresh duration baselines
 or enter coverage maps. Missing manifests disable this gate too.
+
+The eight-new-test wall probe uses the same package-runner regression with 20s
+per fixture test (normally 0.1s). It reports extra wall and peak one-minute load:
+
+```sh
+CLAND_LOAD_GATE_SLOW_PROBE=1 node --test --test-name-pattern='task load gate bounds eight' hub/test/durations-runner.test.ts
+```
+
+At the default two lanes this takes about seven minutes overall: the acceptance
+bound is under five minutes of extra wall after the ordinary phase, with all
+forty fresh repetitions retained.
 
 See [the runner and process-fixture notes](../../hub/README.md#tests) when adding tests that spawn processes.
 

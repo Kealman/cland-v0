@@ -3243,6 +3243,10 @@
       "seconds": 49.863217,
       "reason": "Runs the complete doctor command repeatedly, introducing each failure at the real filesystem/process boundary and checking its repair advice."
     },
+    "hub/test/durations-runner.test.ts::task load gate bounds eight new tests with parallel lanes and five sequential repetitions each": {
+      "seconds": 5.700772,
+      "reason": "Runs eight new identities through the real package runner and forty fresh repetition processes on two lanes, checking bounded concurrency and all receipts. Targeted macOS T-557 probe measured 5.701s at peak 1m load 3.12; optional slow acceptance probe is excluded from routine runs."
+    },
     "hub/test/durations-runner.test.ts::task load gate catches a one-in-three flake and repeats a stable new name five times alongside the phase": {
       "seconds": 5.629615,
       "reason": "Runs the real package runner and ten fresh name-filtered Node processes alongside a held phase, proving stable 5/5 repetitions and deterministic flaky rejection. Linux c-8 task verify c96ff9f9 (A-3328), peak 1m load 12.19."

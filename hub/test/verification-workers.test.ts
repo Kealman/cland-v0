@@ -39,7 +39,10 @@ test('candidate worker config controls hub and Neovim machine shards while free 
 
 test('worker settings validate positive integers and survive managed config rendering', () => {
   assert.equal(defaultConfig('fixture').verification.workers, 4);
-  for (const source of ['', '[verification]\nworkers=5', '[verification]\nworkers=5\n[verification.droplet]\nworkers=8']) {
+  assert.equal(defaultConfig('fixture').verification.loadGateWorkers, 2);
+  assert.equal(parseConfig('[verification]\nload_gate_workers=3', 'fixture').verification.loadGateWorkers, 3);
+  for (const value of ['0', '-1', '1.5', '"6"', 'true']) assert.throws(() => parseConfig(`[verification]\nload_gate_workers=${value}`, 'fixture'), /load_gate_workers must be a positive integer/);
+  for (const source of ['', '[verification]\nworkers=5\nload_gate_workers=3', '[verification]\nworkers=5\n[verification.droplet]\nworkers=8']) {
     const config = parseConfig(source, 'fixture');
     assert.deepEqual(parseConfig(renderConfig(config), 'fixture'), config);
   }

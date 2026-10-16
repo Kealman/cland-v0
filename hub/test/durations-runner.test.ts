@@ -69,6 +69,80 @@ test('known load', async () => { writeFileSync(journal + '.running', 'yes'); con
   assert.ok(entries.indexOf('load done') > entries.indexOf('stable', entries.indexOf('stable') + 1), 'a repetition ran before the ordinary phase finished');
 });
 
+test('task load gate bounds eight new tests with parallel lanes and five sequential repetitions each', { timeout: process.env.CLAND_LOAD_GATE_SLOW_PROBE === '1' ? 600_000 : 30_000 }, async t => {
+  const { run, manifest, path, cwd, file } = await fixture(t, true);
+  // The optional slow probe measures T-557's eight-by-20-second acceptance case
+  // through the same package boundary; ordinary regression runs stay short.
+  const seconds = process.env.CLAND_LOAD_GATE_SLOW_PROBE === '1' ? 20 : 0.1;
+  const journal = join(cwd, 'parallel-journal');
+  await writeFile(file, `import test from 'node:test'; import { appendFileSync, existsSync, writeFileSync } from 'node:fs';
+const phase = ${JSON.stringify(journal + '.phase')};
+const ordinary = !existsSync(phase);
+if (ordinary) writeFileSync(phase, 'started');
+for (let identity = 0; identity < 8; identity++) test('new ' + identity, async () => {
+  appendFileSync(${JSON.stringify(journal)}, JSON.stringify({ identity, pid: process.pid, state: 'start' }) + '\\n');
+  if (!ordinary && identity < 2) {
+    // Hold the first two identities until both lanes have started. This proves
+    // overlap independently of ordinary-phase duration or process startup speed.
+    writeFileSync(${JSON.stringify(journal)} + '.ready-' + identity, 'ready');
+    const peer = ${JSON.stringify(journal)} + '.ready-' + (1 - identity);
+    const deadline = Date.now() + 15000;
+    while (!existsSync(peer) && Date.now() < deadline) await new Promise(r => setTimeout(r, 20));
+    if (!existsSync(peer)) throw new Error('second repetition lane did not reach the barrier');
+  }
+  await new Promise(r => setTimeout(r, ${seconds * 1000}));
+  appendFileSync(${JSON.stringify(journal)}, JSON.stringify({ identity, pid: process.pid, state: 'done' }) + '\\n');
+});`);
+  await writeFile(path, JSON.stringify({ ...manifest, budget: { testSeconds: 30, fileSeconds: 200 } }));
+  const result = await run(true);
+  assert.equal(result.code, 0, result.output);
+  assert.match(result.output, /load gate workers 2;/);
+  const { suiteSummary } = await import('../src/hub/suites.ts');
+  assert.match(suiteSummary(result.output), /load gate workers 2;/);
+  const extraWall = Number(result.output.match(/load gate extra wall ([\d.]+)s/)?.[1]);
+  assert.ok(extraWall < 300, result.output);
+  t.diagnostic(`eight new tests, ${seconds}s each; ${result.output.split('\n').find(line => line.startsWith('suite duration '))}`);
+  const entries = (await readFile(journal, 'utf8')).trim().split('\n').map(line => JSON.parse(line) as { identity: number; pid: number; state: string });
+  const phasePid = entries.find(entry => entries.some(other => other.pid === entry.pid && other.identity !== entry.identity))!.pid;
+  let active = 0;
+  let peak = 0;
+  let activeRepetitions = 0;
+  let peakRepetitions = 0;
+  const activeByIdentity = new Map<number, number>();
+  for (const entry of entries) {
+    active += entry.state === 'start' ? 1 : -1;
+    peak = Math.max(peak, active);
+    if (entry.pid !== phasePid) {
+      activeRepetitions += entry.state === 'start' ? 1 : -1;
+      peakRepetitions = Math.max(peakRepetitions, activeRepetitions);
+      const count = (activeByIdentity.get(entry.identity) ?? 0) + (entry.state === 'start' ? 1 : -1);
+      activeByIdentity.set(entry.identity, count);
+      assert.ok(count <= 1, 'repetitions of one identity stay sequential');
+    }
+  }
+  assert.equal(peakRepetitions, 2, 'both repetition lanes overlap independently of the ordinary phase');
+  assert.equal(activeRepetitions, 0);
+  assert.ok(peak <= 3, `at most two repetition lanes plus ordinary phase, observed ${peak}`);
+  assert.equal(active, 0);
+  for (let identity = 0; identity < 8; identity++) {
+    assert.equal(entries.filter(entry => entry.identity === identity && entry.state === 'done').length, 6);
+    assert.equal(new Set(entries.filter(entry => entry.identity === identity).map(entry => entry.pid)).size, 6, 'ordinary phase and five fresh processes');
+    assert.ok(result.output.includes(`load gate: hub/test/fixture.test.ts::new ${identity} 5/5 passed`), result.output);
+  }
+});
+
+test('task load gate honors a configured single lane', async t => {
+  const { run, manifest, path, cwd, file } = await fixture(t);
+  await mkdir(join(cwd, '.cland'));
+  await writeFile(join(cwd, '.cland/config.toml'), '[verification]\nload_gate_workers=1\n');
+  await writeFile(file, `import test from 'node:test'; test('new', () => {});`);
+  await writeFile(path, JSON.stringify(manifest));
+  const result = await run(true);
+  assert.equal(result.code, 0, result.output);
+  assert.match(result.output, /load gate workers 1;/);
+  assert.match(result.output, /load gate: hub\/test\/fixture.test.ts::new 5\/5 passed/);
+});
+
 test('task load gate leaves known tests alone and integrated runs add no repetitions', async t => {
   const { run, manifest, path, cwd, file } = await fixture(t);
   const journal = join(cwd, 'journal');
@@ -146,8 +220,10 @@ for (const signal of ['SIGTERM', 'SIGKILL'] as const) {
     const { run, start, manifest, path, cwd, file } = await fixture(t);
     const marker = join(cwd, 'repeat.json');
     await writeFile(file, `import test from 'node:test'; import { existsSync, writeFileSync } from 'node:fs';
-test('held repetition', async () => { if (!existsSync(${JSON.stringify(marker + '.first')})) { writeFileSync(${JSON.stringify(marker + '.first')}, 'yes'); return; }
-writeFileSync(${JSON.stringify(marker)}, JSON.stringify({pid: process.pid, root: process.env.TMPDIR})); await new Promise(r => setTimeout(r, 60000)); });`);
+for (let identity = 0; identity < 2; identity++) test('held repetition ' + identity, async () => {
+const marker = ${JSON.stringify(marker)} + identity;
+if (!existsSync(marker + '.first')) { writeFileSync(marker + '.first', 'yes'); return; }
+writeFileSync(marker, JSON.stringify({pid: process.pid, root: process.env.TMPDIR})); await new Promise(r => setTimeout(r, 60000)); });`);
     await writeFile(path, JSON.stringify(manifest));
     const suite = start(true);
     const until = async (condition: () => Promise<boolean> | boolean) => {
@@ -155,9 +231,9 @@ writeFileSync(${JSON.stringify(marker)}, JSON.stringify({pid: process.pid, root:
       while (!await condition() && Date.now() < deadline) await pause(20);
       assert.ok(await condition(), 'bounded lifecycle observation');
     };
-    await until(async () => !!await readFile(marker, 'utf8').catch(() => ''));
-    const repeated = JSON.parse(await readFile(marker, 'utf8')) as { pid: number; root: string };
-    ownProcess(t, repeated.pid);
+    await until(async () => (await Promise.all([0, 1].map(identity => readFile(marker + identity, 'utf8').catch(() => '')))).every(Boolean));
+    const repeated = await Promise.all([0, 1].map(async identity => JSON.parse(await readFile(marker + identity, 'utf8')) as { pid: number; root: string }));
+    for (const worker of repeated) ownProcess(t, worker.pid);
     const exited = new Promise<void>(resolve => suite.child.once('exit', () => resolve()));
     suite.child.kill(signal);
     await exited;
@@ -172,10 +248,10 @@ writeFileSync(${JSON.stringify(marker)}, JSON.stringify({pid: process.pid, root:
       assert.match(successor.output, /taking over stale suite lock/);
     }
     await suite.result;
-    const gone = () => { try { process.kill(repeated.pid, 0); return false; } catch (error) { return (error as NodeJS.ErrnoException).code === 'ESRCH'; } };
+    const gone = () => repeated.every(worker => { try { process.kill(worker.pid, 0); return false; } catch (error) { return (error as NodeJS.ErrnoException).code === 'ESRCH'; } });
     await until(gone);
-    assert.ok(gone(), 'the exact repeat worker is gone');
-    assert.equal(await stat(repeated.root).catch(error => { if (error.code === 'ENOENT') return null; throw error; }), null);
+    assert.ok(gone(), 'both exact repeat workers are gone');
+    assert.equal(await stat(repeated[0]!.root).catch(error => { if (error.code === 'ENOENT') return null; throw error; }), null);
   });
 }
 
