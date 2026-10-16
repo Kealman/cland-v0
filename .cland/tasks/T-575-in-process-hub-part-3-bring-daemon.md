@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-376
 branch: t/T-575-in-process-hub-part-3-bring-daemon
 created: 2026-10-16T06:12:55.788Z
-updated: 2026-10-16T19:07:24.161Z
+updated: 2026-10-16T19:37:59.727Z
 ---
 
 ## Summary
@@ -29,11 +29,13 @@ T-466's full Mac census at 88a3630e (A-3775) measured 743 daemon starts per full
   - verified: rev-30 [reviewer] · run rev-20261016-575-final · 2026-10-16T17:52:37.586Z · commit a8ddbb8c39e51ce26f8aab1c925d6c189b9b2524
   - verified: rev-30 [reviewer] · run rev-20261016-575-merge-delta · 2026-10-16T17:56:42.571Z · commit dfe9af5aa54047cb03f7a1dc5f3027b9189b4de9
   - verified: rev-30 [reviewer] · run rev-20261016-575-shared-dev-merge · 2026-10-16T19:07:23.271Z · commit 53f6f8fb5faf9572fbc0c273e31a1f43fd22d42c
+  - verified: rev-30 [reviewer] · run rev-20261016-575-merged-final · 2026-10-16T19:37:59.727Z · commit 53f6f8fb5faf9572fbc0c273e31a1f43fd22d42c
 - [x] C2. A full-run spawn census after a durations refresh shows daemon starts under 600, with the per-file table recorded.
   - done: impl-575 · 2026-10-16T17:50:44.917Z
   - verified: rev-30 [reviewer] · run rev-20261016-575-final · 2026-10-16T17:52:37.586Z · commit a8ddbb8c39e51ce26f8aab1c925d6c189b9b2524
   - verified: rev-30 [reviewer] · run rev-20261016-575-merge-delta · 2026-10-16T17:56:42.571Z · commit dfe9af5aa54047cb03f7a1dc5f3027b9189b4de9
   - verified: rev-30 [reviewer] · run rev-20261016-575-shared-dev-merge · 2026-10-16T19:07:23.271Z · commit 53f6f8fb5faf9572fbc0c273e31a1f43fd22d42c
+  - verified: rev-30 [reviewer] · run rev-20261016-575-merged-final · 2026-10-16T19:37:59.727Z · commit 53f6f8fb5faf9572fbc0c273e31a1f43fd22d42c
 
 ## Comments
 
@@ -209,5 +211,33 @@ C1 source refreshed. C2 remains verified only under the Coordinator's standing c
 
 Both criterion marks refreshed under that explicit standing C2 exception; final new-head runtime gate remains pending. Preserve A-4122 red and its A-4123 audit: owned hub cases green but T-585 and T-603 shared blockers stopped full Neovim. Source clearance does not convert that old run into a green receipt. Submit normal mode-free exact-head cland verify --executor droplet as directed. No new local targeted run or census is requested by this delta review.
 Review artifact A-4133.
+
+Criteria: C1 verified, C2 verified.
+
+### impl-575 · 2026-10-16T19:37:50.929Z
+
+New-head verification 7eb5ceef-1cf7-4404-9747-414d2dbf8447 GREEN at unchanged source-reviewed 53f6f8fb5faf9572fbc0c273e31a1f43fd22d42c; A-4152. Auto selected full for mixed hub/nvim diff; exit 0, 2385 tests / 2377 pass / 8 prerequisite skips / 0 fail / 0 cancelled. Full Neovim phase completed. Linux c-8 lon1, four workers, lifetime 1772s, cost $0.1230; suite 1696.17s. Both imported shared fixes and owned migrations are covered. No branch/head change or new local tests. Reviewer receives the same-head result for final evidence settlement. C2 retains standing accepted A-4088/a8ddbb8c split census, 529 canonical / 530 with fixture, with T-555-aborted full attempts stated; no fresh census at merge head claimed. Merge remains subject to Coordinator's integrated-cover hold.
+
+### rev-30 · 2026-10-16T19:37:59.727Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-575-merged-final
+commit: 53f6f8fb5faf9572fbc0c273e31a1f43fd22d42c
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-575 final merged-head evidence review clear at 53f6f8fb5faf9572fbc0c273e31a1f43fd22d42c. Standards and Spec axes: no findings.
+
+Independently inspected complete A-4152 / 7eb5ceef-1cf7-4404-9747-414d2dbf8447. Branch/head match the latest source verdict A-4133. Full suite exits 0: 2385 tests, 2377 pass, zero fail, eight prerequisite/platform skips. Hub free 40/40, machine 1947 pass/zero fail/five skips, full Neovim 390 pass/zero fail/three skips. Both merge-related whole files have all fifteen cases positive, including T-608 title editing at 2.281 s and T-558 map union at 9.739 s. Complete log has no hard duration-budget or load-gate failure; routine regression notices are non-failing. Linux c-8 lon1, Node 24.21.0/Neovim 0.12.5, four workers, suite 1696.17 s, peak load 16.67, lifetime 1772 s, $0.1230.
+
+C1 migration/assertion proof remains A-3992/A-4091/A-4133: owned migration bytes unchanged across this shared dev merge, lifecycle tests stay spawned, and the independent assertion/declaration audit is retained. Latest task view has both claimant done marks and both source verifications current. This green full Linux receipt settles the merged-tree runtime gate left pending after A-4122's shared reds; it does not discard that earlier receipt.
+
+C2 remains accepted under the Coordinator's explicit standing checkpoint exception for A-4088 at a8ddbb8c, as recorded in A-4089/A-4091/A-4133: 493 canonical hub starts plus 36 separately recorded full Neovim starts = 529 (530 counting the copied fixture). The split Mac measurement followed hub T-555 failures and includes the durable per-file table and recorder coverage limits. It is not a fresh census at this merged head, not an uninterrupted green Mac full run and not proof that every reduction was caused by this task. Current Linux green is execution evidence, not a replacement spawn measurement.
+
+C1/C2 verified; final evidence clear at the exact reviewed merged head. No per-item QA criteria or further task run required.
+Review artifact A-4153.
 
 Criteria: C1 verified, C2 verified.

@@ -3,7 +3,7 @@ id: T-633
 kind: task
 title: cland config set writes one value of config.toml and refuses what the hub cannot read
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 7
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-390
 branch: t/T-633-cland-config-set-writes-one-value-of
 created: 2026-10-16T16:04:12.209Z
-updated: 2026-10-16T19:08:06.944Z
+updated: 2026-10-16T19:35:17.395Z
 ---
 
 ## Summary
@@ -36,18 +36,22 @@ updated: 2026-10-16T19:08:06.944Z
   - done: impl-633 · 2026-10-16T16:11:59.697Z
   - verified: rev-31 [reviewer] · run rev-20261016-633-source · 2026-10-16T16:17:23.555Z · commit 7c42367d8f77e16a624f15f6cdaebe060c1aea89
   - verified: rev-31 [reviewer] · run rev-20261016-633-merge-source · 2026-10-16T17:39:14.345Z · commit 536b3717b6abf7501f74f8663aa3cf38921dfaa3
+  - verified: rev-31 [reviewer] · run rev-20261016-633-delta-2 · 2026-10-16T19:35:17.395Z · commit 111b4b4a09cbdb1f1b63714b777fffc01e3549ad
 - [x] C2. `cland config set verification.workers 3` and `cland config set verification.droplet.regions '["lon1"]'` write a number and a list that the parser reads back.
   - done: impl-633 · 2026-10-16T16:12:00.282Z
   - verified: rev-31 [reviewer] · run rev-20261016-633-source · 2026-10-16T16:17:23.555Z · commit 7c42367d8f77e16a624f15f6cdaebe060c1aea89
   - verified: rev-31 [reviewer] · run rev-20261016-633-merge-source · 2026-10-16T17:39:14.346Z · commit 536b3717b6abf7501f74f8663aa3cf38921dfaa3
+  - verified: rev-31 [reviewer] · run rev-20261016-633-delta-2 · 2026-10-16T19:35:17.395Z · commit 111b4b4a09cbdb1f1b63714b777fffc01e3549ad
 - [x] C3. An unknown section or key is refused with the section's known keys, and an invalid value (`plan.approval maybe`, `verification.workers 0`) with the parser's reason, config.toml unchanged.
   - done: impl-633 · 2026-10-16T16:12:00.986Z
   - verified: rev-31 [reviewer] · run rev-20261016-633-source · 2026-10-16T16:17:23.555Z · commit 7c42367d8f77e16a624f15f6cdaebe060c1aea89
   - verified: rev-31 [reviewer] · run rev-20261016-633-merge-source · 2026-10-16T17:39:14.346Z · commit 536b3717b6abf7501f74f8663aa3cf38921dfaa3
+  - verified: rev-31 [reviewer] · run rev-20261016-633-delta-2 · 2026-10-16T19:35:17.395Z · commit 111b4b4a09cbdb1f1b63714b777fffc01e3549ad
 - [x] C4. A value the parser would ignore silently (`verification.budget two`) is refused, config.toml unchanged.
   - done: impl-633 · 2026-10-16T16:12:02.396Z
   - verified: rev-31 [reviewer] · run rev-20261016-633-source · 2026-10-16T16:17:23.555Z · commit 7c42367d8f77e16a624f15f6cdaebe060c1aea89
   - verified: rev-31 [reviewer] · run rev-20261016-633-merge-source · 2026-10-16T17:39:14.346Z · commit 536b3717b6abf7501f74f8663aa3cf38921dfaa3
+  - verified: rev-31 [reviewer] · run rev-20261016-633-delta-2 · 2026-10-16T19:35:17.395Z · commit 111b4b4a09cbdb1f1b63714b777fffc01e3549ad
 - [x] C5. The output says whether the value applies at once or at the next hub start, matching what `cland hub reload` applies.
   - done: impl-633 · 2026-10-16T16:12:03.553Z
   - verified: rev-31 [reviewer] · run rev-20261016-633-final · 2026-10-16T17:37:18.002Z · commit 7c42367d8f77e16a624f15f6cdaebe060c1aea89
@@ -55,10 +59,12 @@ updated: 2026-10-16T19:08:06.944Z
   - done: impl-633 · 2026-10-16T16:12:05.203Z
   - verified: rev-31 [reviewer] · run rev-20261016-633-source · 2026-10-16T16:17:23.555Z · commit 7c42367d8f77e16a624f15f6cdaebe060c1aea89
   - verified: rev-31 [reviewer] · run rev-20261016-633-merge-source · 2026-10-16T17:39:14.346Z · commit 536b3717b6abf7501f74f8663aa3cf38921dfaa3
+  - verified: rev-31 [reviewer] · run rev-20261016-633-delta-2 · 2026-10-16T19:35:17.395Z · commit 111b4b4a09cbdb1f1b63714b777fffc01e3549ad
 - [x] C7. A config.toml without the managed mark is left byte-identical and the refusal says it is the project's own.
   - done: impl-633 · 2026-10-16T16:12:06.813Z
   - verified: rev-31 [reviewer] · run rev-20261016-633-source · 2026-10-16T16:17:23.555Z · commit 7c42367d8f77e16a624f15f6cdaebe060c1aea89
   - verified: rev-31 [reviewer] · run rev-20261016-633-merge-source · 2026-10-16T17:39:14.346Z · commit 536b3717b6abf7501f74f8663aa3cf38921dfaa3
+  - verified: rev-31 [reviewer] · run rev-20261016-633-delta-2 · 2026-10-16T19:35:17.395Z · commit 111b4b4a09cbdb1f1b63714b777fffc01e3549ad
 
 ## Comments
 
@@ -131,3 +137,31 @@ findings: [{"severity":"medium","text":"Machine readiness deadline stops require
 finding_counts: {"high":0,"medium":1,"low":0}
 
 Evidence not clear, A-4135. Independently inspected A-4134/4f679a3f at exact reviewed/current536b3717: exit1 machine readiness deadline, platform unavailable, no test counts; raw log only host typecheck prelude. C5 merged-head execution remains pending; C1/C2/C3/C4/C6/C7 source/A-4083 current. No task criterion failed. Prior A-4077 applies to old7c42367d; Coordinator18b25b41 explicitly required new merged-head gate. Obtain authorized unchanged-head retry/infrastructure disposition; no source change indicated. All claimant done marks present. Lifetime204s/cost$0.0142 perhub, no completed Linux claim. No Reviewer edits/tests.
+
+### rev-31 · 2026-10-16T19:34:08.718Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261016-633-merge-evidence-2
+commit: 536b3717b6abf7501f74f8663aa3cf38921dfaa3
+scope: evidence
+findings: [{"severity":"medium","text":"External T-603 pinned-account case passes behavior but exceeds unlisted5s duration budget at5.750s, stopping full gate before Neovim.","file":"hub/test/claude-code-adapter.test.ts"}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Evidence not clear, A-4149. Independently inspected exact-head dee1fe37/A-4148:1979pass/0fail/5skip but exit1 solely T-603 pinned-account duration5.750s>5s; Neovim not reached. All8 config-set cases5of5, no own regression. C1/C2/C3/C4/C6/C7 merge-source current; C5 final full gate pending. Tech debt/XS aside existing shared T-603 allowance gap; obtain Coordinator shared-fix/merge or explicit disposition, no task criterion failed and no waiver inferred. Earlier infrastructure blocker no longer describes this retry. Lifetime1472s/cost$0.1022 perhub. No Reviewer edits/tests.
+
+### rev-31 · 2026-10-16T19:35:17.395Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261016-633-delta-2
+commit: 111b4b4a09cbdb1f1b63714b777fffc01e3549ad
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Dev-merge source delta clear; Standards0/Spec0 findings, A-4151. Same12 task paths and every added/removed task line identical to prior reviewed parent delta. Exact shard union dev+config-set:machine preserves quarantine/candidates; durations byte-identicaldev so preliminary posted allowance pick has no extra delta. Inherited local_fallback render/default/boolean parser/reload integration composes with template-derived config setter. No dense source conflict, diffcheckclean; exact-head typecheck/shards reportedgreen. Independently read Coordinator b78f6217 authorizing merge after pick and requiring submission HOLD until explicit lift after restart. C1/C2/C3/C4/C6/C7 current; C5 awaits fresh exact-head full gate after lift. No gate waiver or new-head full-green claim. No Reviewer edits/tests.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C6 verified, C7 verified.

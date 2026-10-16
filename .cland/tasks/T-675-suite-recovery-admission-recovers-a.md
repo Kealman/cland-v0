@@ -16,12 +16,12 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-16T19:13:55.940Z
-updated: 2026-10-16T19:13:55.940Z
+updated: 2026-10-16T19:15:37.767Z
 ---
 
 ## Summary
 
-hub/test/suite-recovery.test.ts:129 ('admission recovers a borrowed planned root after the worker dies during package mkdir') calls `process.kill(job.pid!)` on the launch response snapshot after waiting for its marker. It has the same nullable-PID race that T-526 fixed in two other cases: the marker doesn't refresh the snapshot, and the worker pid is published later on the job record. The source review of T-526 (A-4139) found it by inspection, with no observed failure yet.
+hub/test/suite-recovery.test.ts:123 (at aeaf3dec) ('admission recovers a borrowed planned root after the worker dies during package mkdir') calls `process.kill(job.pid!)` on the launch response snapshot after waiting for its marker. It has the same nullable-PID race that T-526 fixed in two other cases: the marker doesn't refresh the snapshot, and the worker pid is published later on the job record. The source review of T-526 (A-4139) found it by inspection, with no observed failure yet.
 
 ## What to build
 

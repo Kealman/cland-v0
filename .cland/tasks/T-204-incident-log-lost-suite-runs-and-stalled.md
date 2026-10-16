@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-10-16T11:49:36.004Z
+updated: 2026-10-16T19:22:00.118Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -328,3 +328,7 @@ Incident, 2026-10-16 08:49Z: integrated cover 0000625b at dev 3a3b4633 went red 
 ### coord · 2026-10-16T11:49:36.004Z
 
 2026-10-16 11:47Z: the v0.1.3 release-occasion run 24b2df33 at 62a434cd went red on two flaky-looking failures, with no regression. Shard-1 passed every test, then the runner crashed reducing a coverage file truncated at 160 KiB (T-604). Shard-2's executor-safety :105 subtest 500 leaked a PROCESSWRAP past projectHub's leak check (T-605). Total 1941 pass, 2 fail, cost $0.06. Recovery: one flaky-rule resubmit, c01507ab at 0e2a0aee, after the R-294 notes commit. impl-604 is preparing the T-604 fix in case the crash recurs. Cost: about 20 minutes on the release path.
+
+### coord · 2026-10-16T19:22:00.118Z
+
+Decision D53 (2026-10-16 ~19:25Z), the human's words relayed verbatim by the stand-in: «Решите вопросы с координатором, можно приостанавливать и фичи и крю и как хотите, разобраться полностью с тестами это наивысший приоритет, можно смело ради него делать все что потребуется даже радикальное». Fixing the test and verification problem fundamentally is now the top priority, and features and the crew may be paused for it. The basis is the stand-in's study A-4143 (topic-406): 97 % of test time boots real processes, 81 % of it is integration tests proving in-process rules, there are 2.5 executed runs per merged ticket, and 55 % of task runs are red. The Coordinator's plan is recorded in docs/spec/v0.1.4.md §5 (D53) and on the new verification epics.

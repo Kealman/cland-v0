@@ -3,7 +3,7 @@ id: T-569
 kind: task
 title: 'demo run-timeout watchdog test: "demo deadline reached during delivery" under a 2500 ms run timeout on a loaded droplet'
 state: open
-status: review
+status: ready
 size: S
 rank: 4442
 criterion_seq: 2
@@ -18,7 +18,7 @@ blocked_by: []
 topic: topic-402
 branch: t/T-569-demo-run-timeout-watchdog-test-demo
 created: 2026-10-16T04:18:06.312Z
-updated: 2026-10-16T19:06:22.557Z
+updated: 2026-10-16T19:42:53.413Z
 ---
 
 ## Summary
@@ -30,8 +30,10 @@ Seen once, on 2026-10-16 in T-488's droplet run 59571add at 72faa365 (A-3651): h
   - verified: rev-30 [reviewer] · run rev-20261016-569-source · 2026-10-16T17:31:38.466Z · commit 8c565a38ffbe73a353ea4bd95986fd6b723facdf
   - verified: rev-30 [reviewer] · run rev-20261016-569-shared-duration · 2026-10-16T18:12:48.228Z · commit 87a4cad65b1f4b16e05d86ea3c0765b2f1907179
   - verified: rev-30 [reviewer] · run rev-20261016-569-dev-merge · 2026-10-16T19:06:22.557Z · commit 5e66218b11953c73c8d9a98719bc7cd7f8ffd6ff
+  - verified: rev-30 [reviewer] · run rev-20261016-569-final · 2026-10-16T19:42:52.582Z · commit 5e66218b11953c73c8d9a98719bc7cd7f8ffd6ff
 - [x] C2. demo.test.ts passes 5/5 serially as a whole file on the Mac and once on a droplet in the task's verify.
   - done: impl-569 · 2026-10-16T17:59:54.495Z
+  - verified: rev-30 [reviewer] · run rev-20261016-569-final · 2026-10-16T19:42:52.582Z · commit 5e66218b11953c73c8d9a98719bc7cd7f8ffd6ff
 
 ## Comments
 
@@ -133,3 +135,31 @@ Independent whitespace check passes; request reports exact-head root typecheck a
 Review artifact A-4128.
 
 Criteria: C1 verified.
+
+### impl-569 · 2026-10-16T19:42:32.748Z
+
+Final exact-reviewed-head verification is green: 57fe66cf-de15-470d-9579-b5b72157c726 / A-4154 at 5e66218b11953c73c8d9a98719bc7cd7f8ffd6ff, exit 0, 2004 tests / 1999 pass / 0 fail / 5 skipped, including Neovim smoke. All eight demo cases passed; run-timeout watchdog 5.839s, machine-lifetime watchdog 6.394s. Mac 5/5 serial whole-file proof A-4080 remains applicable to unchanged owned test source after the Coordinator-directed dev merge. Typecheck and test:shards passed before review. Reviewer requested to settle final C2/verdict; no changes after source-clear. Droplet c-8 Linux lifetime 2029s, cost $0.1409.
+
+### rev-30 · 2026-10-16T19:42:52.582Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-569-final
+commit: 5e66218b11953c73c8d9a98719bc7cd7f8ffd6ff
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-569 final evidence clear at unchanged reviewed merge head 5e66218b11953c73c8d9a98719bc7cd7f8ffd6ff. Standards and Spec axes: no findings.
+
+Independently audited complete A-4154 / 57fe66cf-de15-470d-9579-b5b72157c726: branch/head match A-4128 source clearance; exit 0. Total 2004 tests, 1999 pass, zero fail, five prerequisite/platform skips. Hub free 40/40, machine 1947 pass/zero fail/five skips, Neovim smoke 12/12. All eight demo.test.ts whole-file cases have positive timing receipts, including run-timeout watchdog 5.839244063 s and machine-lifetime watchdog 6.394362273 s. No hard duration-budget or load-gate failure in the complete log; routine regression notices are non-failing. Four workers, suite wall 1943.21 s, peak load 18.65.
+
+C2 Mac proof rechecked in A-4080: five serial whole-file runs, eight passes each, zero failures/skips (40/40). Previously audited admission records all below 15 with high-load waits respected. Independent git comparison confirms demo.test.ts is byte-unchanged from measured 8c565a38 through current head, so the five Mac files remain applicable despite the authorized shared allowance/dev integration. Both claimant done marks are present in task.view.
+
+C1 source proof remains A-4072/A-4101/A-4128: delivery has a separate setup budget; test asserts original product deadline semantics, delivery/ready state, hub shutdown, accelerated durable expiry, provider absence and watchdog firing/confirmation receipt in separate bounded observations. Product deadline behavior itself is unchanged; the recorded mechanism and commit remain. This green task receipt settles the new-head runtime gate without reclassifying prior T-603/T-585 red receipts as green.
+
+C1/C2 verified at this exact head. No per-item QA criteria or further task run required.
+Review artifact A-4157.
+
+Criteria: C1 verified, C2 verified.

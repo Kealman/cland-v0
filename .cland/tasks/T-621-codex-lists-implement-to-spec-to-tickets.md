@@ -3,7 +3,7 @@ id: T-621
 kind: task
 title: Codex lists implement, to-spec, to-tickets, triage and wayfinder
 state: open
-status: in progress
+status: review
 size: XS
 criterion_seq: 4
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-385
 branch: t/T-621-codex-lists-implement-to-spec-to-tickets
 created: 2026-10-16T15:57:48.700Z
-updated: 2026-10-16T19:07:22.450Z
+updated: 2026-10-16T19:16:14.261Z
 ---
 
 ## Summary
@@ -33,9 +33,11 @@ A test pins the rule for the whole set, so a later edit cannot let the two flags
 - [x] C1. The `agents/openai.yaml` of implement, to-spec, to-tickets, triage, wayfinder and retro no longer sets `allow_implicit_invocation: false`, and their `interface` block is unchanged.
   - verified: rev-31 [reviewer] · run rev-20261016-621-source · 2026-10-16T17:23:29.930Z · commit 41ada2ca649539af7d810f49555aed299dc94652
   - done: impl-621 · 2026-10-16T19:07:21.369Z
+  - verified: rev-31 [reviewer] · run rev-20261016-621-delta-1 · 2026-10-16T19:16:14.261Z · commit 51477db174f6af0901f220063d2cc1d31a00865d
 - [x] C2. handover keeps both `disable-model-invocation: true` and `allow_implicit_invocation: false`.
   - verified: rev-31 [reviewer] · run rev-20261016-621-source · 2026-10-16T17:23:29.930Z · commit 41ada2ca649539af7d810f49555aed299dc94652
   - done: impl-621 · 2026-10-16T19:07:22.065Z
+  - verified: rev-31 [reviewer] · run rev-20261016-621-delta-1 · 2026-10-16T19:16:14.261Z · commit 51477db174f6af0901f220063d2cc1d31a00865d
 - [x] C3. A new test reads every skill folder of the shipped set and fails when a skill's `allow_implicit_invocation: false` and its `disable-model-invocation: true` are not both present or both absent.
   - done: impl-621 · 2026-10-16T19:07:22.450Z
 
@@ -84,3 +86,22 @@ findings: [{"severity":"medium","text":"External T-585 next-launch scheduling as
 finding_counts: {"high":0,"medium":3,"low":0}
 
 Evidence not clear, A-4131. Independently inspected exact-head2a0b0a78/A-4130 exit1:1969pass/2fail/5skip, Neovim smoke not reached. Own parity test ordinary green and5of5 load repetitions; C1/C2 source marks remain current, C3 pending final gate/disposition. Three external blockers recorded, no passing task criterion failed. Bugs/S aside for existing T-585 and T-526 signatures; Tech debt/XS for existing T-603 allowance gaps. No scope expansion or exception assumed; await lead/Coordinator direction. Current claimant C1–C3 done marks absent; submit supported marks with evidence. Lifetime1594s/cost$0.1107 perhub. No Reviewer edits/tests.
+
+### impl-621 · 2026-10-16T19:15:39.269Z
+
+Coordinator-authorized origin/dev merge only: new head 51477db174f6af0901f220063d2cc1d31a00865d merges reviewed 41ada2ca + dev f63afbac. No conflicts/manual resolution; all six owned YAML files and parity test byte-unchanged. Includes shared T-585/T-603 fixes and T-526/T-674 quarantine. npm run typecheck exit 0; test:shards exit 0; diff check exit 0; pushed clean. Requesting dev-merge-only delta review before no-mode droplet retry.
+
+### rev-31 · 2026-10-16T19:16:14.261Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261016-621-delta-1
+commit: 51477db174f6af0901f220063d2cc1d31a00865d
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Dev-merge source delta clear; Standards0/Spec0 findings, A-4142. Parents41ada2ca+f63afbac confirmed; six YAML files and parity test byte-unchanged, handover unchanged with both explicit-only flags. Exact shard union dev+own free test; net8files29insertions/12deletions, no task change. Typecheck/shards reportedgreen and independent diffcheck clean. Independently read Coordinator c4170ebf/2302f4bb authorizing this merge and requesting fresh droplet after delta review; inherited posted T-585/T-603 corrections and T-674/T-526 quarantine confirmed. C1/C2 current; C3 final execution waits new exact-head no-mode droplet. A-4130 remains prior-head exit1, no gate waiver claimed. Former C4 remains epic QA. No Reviewer edits/tests.
+
+Criteria: C1 verified, C2 verified.

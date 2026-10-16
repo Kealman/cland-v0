@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-389
 branch: t/T-628-a-roles-toml-editor-sets-one-key-of-one
 created: 2026-10-16T16:04:11.537Z
-updated: 2026-10-16T17:26:30.738Z
+updated: 2026-10-16T19:29:36.447Z
 ---
 
 ## Summary
@@ -40,22 +40,27 @@ A write helper replaces the file atomically and refuses when the file changed be
   - verified: rev-31 [reviewer] · run rev-20261016-628-source · 2026-10-16T16:11:39.359Z · commit cc01903bdcee75ee5b9b16f8380693604554edf7
   - done: impl-628 · 2026-10-16T17:23:00.015Z
   - verified: rev-31 [reviewer] · run rev-20261016-628-merge-source · 2026-10-16T17:26:30.738Z · commit 0c37c3debaf3cdb0e612c5029bdb94316524c430
+  - verified: rev-31 [reviewer] · run rev-20261016-628-delta-2 · 2026-10-16T19:29:36.447Z · commit 6d537da3302be8d4d4789fb335e09a3283a1ae34
 - [x] C2. A key absent from the table is inserted inside that table, and a missing `[<role>.launch]` table is created after the role's other tables (unit tests for both).
   - verified: rev-31 [reviewer] · run rev-20261016-628-source · 2026-10-16T16:11:39.360Z · commit cc01903bdcee75ee5b9b16f8380693604554edf7
   - done: impl-628 · 2026-10-16T17:23:00.636Z
   - verified: rev-31 [reviewer] · run rev-20261016-628-merge-source · 2026-10-16T17:26:30.738Z · commit 0c37c3debaf3cdb0e612c5029bdb94316524c430
+  - verified: rev-31 [reviewer] · run rev-20261016-628-delta-2 · 2026-10-16T19:29:36.447Z · commit 6d537da3302be8d4d4789fb335e09a3283a1ae34
 - [x] C3. A line beginning with `[` inside a role's multi-line clause is never taken for a table header (unit test with such a clause).
   - verified: rev-31 [reviewer] · run rev-20261016-628-source · 2026-10-16T16:11:39.360Z · commit cc01903bdcee75ee5b9b16f8380693604554edf7
   - done: impl-628 · 2026-10-16T17:23:00.939Z
   - verified: rev-31 [reviewer] · run rev-20261016-628-merge-source · 2026-10-16T17:26:30.738Z · commit 0c37c3debaf3cdb0e612c5029bdb94316524c430
+  - verified: rev-31 [reviewer] · run rev-20261016-628-delta-2 · 2026-10-16T19:29:36.447Z · commit 6d537da3302be8d4d4789fb335e09a3283a1ae34
 - [x] C4. `[<role>.permissions] tools` gains grants while its other grants keep their order (unit test).
   - verified: rev-31 [reviewer] · run rev-20261016-628-source · 2026-10-16T16:11:39.360Z · commit cc01903bdcee75ee5b9b16f8380693604554edf7
   - done: impl-628 · 2026-10-16T17:23:01.347Z
   - verified: rev-31 [reviewer] · run rev-20261016-628-merge-source · 2026-10-16T17:26:30.738Z · commit 0c37c3debaf3cdb0e612c5029bdb94316524c430
+  - verified: rev-31 [reviewer] · run rev-20261016-628-delta-2 · 2026-10-16T19:29:36.447Z · commit 6d537da3302be8d4d4789fb335e09a3283a1ae34
 - [x] C5. A result the hub's roles parser refuses is never returned, and the error is the parser's message naming the key (unit tests with an unknown harness and an unknown grant).
   - verified: rev-31 [reviewer] · run rev-20261016-628-source · 2026-10-16T16:11:39.360Z · commit cc01903bdcee75ee5b9b16f8380693604554edf7
   - done: impl-628 · 2026-10-16T17:23:01.657Z
   - verified: rev-31 [reviewer] · run rev-20261016-628-merge-source · 2026-10-16T17:26:30.738Z · commit 0c37c3debaf3cdb0e612c5029bdb94316524c430
+  - verified: rev-31 [reviewer] · run rev-20261016-628-delta-2 · 2026-10-16T19:29:36.447Z · commit 6d537da3302be8d4d4789fb335e09a3283a1ae34
 - [x] C6. The write helper replaces the file atomically and refuses with "changed while setting it; retry" when the file changed after it was read (unit test).
   - verified: rev-31 [reviewer] · run rev-20261016-628-final · 2026-10-16T17:22:38.874Z · commit cc01903bdcee75ee5b9b16f8380693604554edf7
   - done: impl-628 · 2026-10-16T17:23:02.053Z
@@ -125,5 +130,33 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Merge source delta clear; Standards0/Spec0 findings, A-4069. Parentscc01903b+245857c7 confirmed. Independent parsed shard union equals all dev entries plus roles-editor:machine; both candidate files retained. Editor/parser/test blobs byte-identical to prior source/finalclear; net taskdiffsame4files, no assertion/bound changes. Exact-head shards/typecheck reportedgreen; origin/diffcheck confirmed. Independently read Coordinator008f319a requiring this merge, source review then fresh exact-head droplet. C1–C5 source verification current; C6 execution awaits that new gate, prior A-4058 support only.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### rev-31 · 2026-10-16T19:28:41.608Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261016-628-merge-evidence-1
+commit: 0c37c3debaf3cdb0e612c5029bdb94316524c430
+scope: evidence
+findings: [{"severity":"medium","text":"External T-585 discovery/watch count2vs1 fails required merged-head gate.","file":"hub/test/claude-code-adapter.test.ts","line":353},{"severity":"medium","text":"External T-603 cases pass behavior but fail5s duration budgets at6.562s and5.795s.","file":"hub/test/claude-code-adapter.test.ts"}]
+finding_counts: {"high":0,"medium":2,"low":0}
+
+Evidence not clear, A-4145. Independently inspected exact-head f0f8087b/A-4144 exit1:1977pass/1fail/5skip, Neovim smoke not reached. All eight editor cases ordinary green and5of5 including atomic writer; C1–C5 merge-source/A-4069 current. C6 final merged-head gate pending; no task criterion failed. Bugs/S aside existing T-585 signature and Tech debt/XS aside existing T-603 shared allowance gaps; obtain Coordinator shared-fix/retry disposition. Prior A-4058 is old-head only, no waiver assumed. All claimant done marks present. Lifetime1572s/cost$0.1092 perhub. No Reviewer edits/tests.
+
+### rev-31 · 2026-10-16T19:29:36.447Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261016-628-delta-2
+commit: 6d537da3302be8d4d4789fb335e09a3283a1ae34
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Dev-merge source delta clear; Standards0/Spec0 findings, A-4147. Parents0c37c3de+f63afbac confirmed, all three task parser/editor/test files byte-unchanged. Sole shard conflict resolves exact complete dev union+roles-editor:machine, quarantine/candidate entries retained. Net4files210insertions/3deletions; independent diffcheck clean, exact-head typecheck/shards reportedgreen. Coordinator f6f4264a independently read authorizes this merge and explicitly HOLDS droplet resubmit until announced lift after hub restart. C1–C5 source current; C6 awaits fresh same-head gate after that lift. Source clear does not lift submission hold; A-4144 remains historical prior-head exit1. No Reviewer edits/tests.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
