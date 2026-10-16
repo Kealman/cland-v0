@@ -2,8 +2,8 @@
 id: T-548
 kind: task
 title: Tracker calls take 20–35 s under a 16-session crew; the hub sits at 60–100% CPU
-state: open
-status: ready
+state: closed
+status: done
 size: M
 rank: 3089
 criterion_seq: 2
@@ -18,7 +18,8 @@ regression_of: T-480
 topic: topic-348
 branch: t/T-548-tracker-calls-take-20-35-s-under-a-16
 created: 2026-10-15T23:50:03.254Z
-updated: 2026-10-16T03:48:32.457Z
+updated: 2026-10-16T03:48:45.596Z
+closed: 2026-10-16T03:48:45.596Z
 ---
 
 ## Summary
@@ -161,3 +162,7 @@ C1 remains established by A-3514 profiles and before/after scratch evidence: his
 Review artifact A-3658 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3658-t-548-final-evidence-clear-linux-performance-bounds-and-accepted-gate.md
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-16T03:48:45.596Z
+
+Merged f57aeb18e3d6963f26edf12841082f32a35668ee onto dev.
