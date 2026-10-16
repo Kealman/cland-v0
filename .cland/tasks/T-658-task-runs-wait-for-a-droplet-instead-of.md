@@ -3,7 +3,7 @@ id: T-658
 kind: task
 title: Task runs wait for a droplet instead of falling back to the Mac
 state: open
-status: review
+status: ready
 size: S
 rank: 4419
 criterion_seq: 3
@@ -18,7 +18,7 @@ blocked_by: []
 topic: topic-400
 branch: t/T-658-task-runs-wait-for-a-droplet-instead-of
 created: 2026-10-16T16:29:56.442Z
-updated: 2026-10-16T17:24:39.878Z
+updated: 2026-10-16T18:32:26.811Z
 ---
 
 ## Summary
@@ -33,11 +33,14 @@ A `[verification] local_fallback` setting, default `true`, written `false` in th
 
 - [x] C1. With local_fallback = false, a task verify submitted while every remote slot is busy stays queued and runs on the next free droplet, never locally, proved by a suite-queue test with fake slots.
   - done: impl-658 · 2026-10-16T16:43:34.362Z
+  - verified: rev-30 [reviewer] · run rev-20261016-658-final · 2026-10-16T18:32:25.730Z · commit 59d2474d817185d73775c8758f74e76a51638176
 - [x] C2. With local_fallback = true (the default) today's fallback behaviour is unchanged, and `--executor local` always runs locally, proved by the same test file.
   - done: impl-658 · 2026-10-16T16:43:36.556Z
+  - verified: rev-30 [reviewer] · run rev-20261016-658-final · 2026-10-16T18:32:25.730Z · commit 59d2474d817185d73775c8758f74e76a51638176
 - [x] C3. `cland verify queue --json` reports the setting, and docs/agents/tests.md describes it.
   - verified: rev-30 [reviewer] · run rev-20261016-658-source · 2026-10-16T16:43:15.104Z · commit 59d2474d817185d73775c8758f74e76a51638176
   - done: impl-658 · 2026-10-16T16:43:37.746Z
+  - verified: rev-30 [reviewer] · run rev-20261016-658-final · 2026-10-16T18:32:25.730Z · commit 59d2474d817185d73775c8758f74e76a51638176
 
 ## Comments
 
@@ -70,3 +73,31 @@ A-4026 reports the whole remote-budget file 18/18 green and exact-head typecheck
 Evidence: A-4028.
 
 Criteria: C3 verified.
+
+### impl-658 · 2026-10-16T18:32:19.015Z
+
+Exact reviewed head 59d2474d817185d73775c8758f74e76a51638176 passed droplet verify f63bcaef-9eb9-4308-9a32-152f2ca66a51, exit 0: 2350 tests, 2342 pass, 0 fail, 8 skipped. Log A-4108 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-4108-suite-f63bcaef-9eb9-4308-9a32-152f2ca66a51-auto-at-59d2474.log. Checked both new tests passed base execution and load-gate repetitions 5/5 each (log lines 3145 and 3323). Linux c-8 lon1 lifetime 1925s, cost $0.1337. Tree/head unchanged; awaiting Reviewer final evidence verdict.
+
+### rev-30 · 2026-10-16T18:32:25.730Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-658-final
+commit: 59d2474d817185d73775c8758f74e76a51638176
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-658 final evidence clear at unchanged source-reviewed 59d2474d817185d73775c8758f74e76a51638176. A-4028 source review applies; no findings.
+
+Independently inspected A-4108 / f63bcaef-9eb9-4308-9a32-152f2ca66a51. Header names the exact reviewed head. Host/remote typechecks, full hub and full Neovim phases complete with exit 0: hub free 38/38, hub machine 1914 pass/zero fail/five prerequisite skips, Neovim 390 pass/zero fail/three sandbox skips. Aggregate 2350 tests, 2342 pass, zero failures, eight skips. No hard budget or failed load-gate line.
+
+C1: disabled-fallback fake-slot case passes ordinarily in 21.552 s and 5/5 fresh repetitions (line 3323). Reviewed assertions require free local holder untouched, waiter remote/position/ETA, no over-budget droplet creation, next remote admission and independent explicit local progress. C2: default-true/strict-boolean/render case passes ordinarily and 5/5 (line 3145); existing both fallback-slot variants pass in 20.937/19.198 s, explicit-droplet wait plus explicit-local progress in 21.586 s, and human-slot independence cases pass. All eighteen remote-budget file cases are green. C3 queue JSON/text assertions execute in the same cases; source documentation remains current.
+
+The earlier run 9f4ba11f/A-4085 was cancelled before execution under the Coordinator's one-time priority refresh; it is not counted as evidence. This replacement executes at the same head. Eight skips concern platform/binary prerequisites, not owned cases.
+
+Linux x64 c-8 lon1, Node 24.21.0, Neovim 0.12.5, four workers; suite 1837.66 s, peak load 13.85, lifetime 1925 s, cost $0.1337. All C1–C3 verified; no per-item QA criteria.
+Review artifact A-4109.
+
+Criteria: C1 verified, C2 verified, C3 verified.

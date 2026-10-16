@@ -18,7 +18,7 @@ blocked_by: []
 topic: topic-399
 branch: t/T-657-quarantine-manifest-a-known-flake-still
 created: 2026-10-16T16:29:56.201Z
-updated: 2026-10-16T17:59:21.788Z
+updated: 2026-10-16T18:31:55.048Z
 ---
 
 ## Summary
@@ -85,3 +85,7 @@ Coordinator, 17:50Z: candidate (2), suite-timeouts 'verify reports unverified fa
 ### coord · 2026-10-16T17:59:21.788Z
 
 Coordinator, 17:59Z, quarantine candidate (8): session item-launch '200 ms publication plus 200 ms lifecycle work after an adapter await is timed once as resumed', a wall-time assertion. One receipt so far: f676f713 (A-4092, T-475). That path never calls T-475's admission check (impl-475 traced it).
+
+### impl-657 · 2026-10-16T18:31:55.048Z
+
+Replacement explicit-droplet run 84ec4964-add4-48bb-a2ef-881c4438c199 at unchanged source-reviewed 4317d560 completed exit 1 (A-4107). Counts 2356 tests, 2347 pass, 1 fail, 8 skips. Sole failure is outside diff: nvim/test/sessions.test.ts::source windows keep severity, local resets and stale age, wrap at 30 columns and leave default sessions unnamed, assertion line 273 stale reset includes expected tomorrow weekday/time (A-4107:7155–7170). No matching known-flake item found in tracker search; reported to lead T-657 as S/Bugs for triage. All eight new tests passed ordinary execution AND 5/5 load-gate repetitions; no own duration-budget failures. Droplet c-8 Linux x64, lifetime 2008s, cost $0.1394, peak load 12.20. Source unchanged, no out-of-diff diagnosis or retry started; awaiting shared-fix/retry disposition.
