@@ -5,7 +5,7 @@ import { promisify } from 'node:util';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { integrated } from './close-run-fixture.ts';
-import { cland, clandWithEnv } from './harness.ts';
+import { cland, clandWithEnv, eventually } from './harness.ts';
 
 const exec = promisify(execFile);
 
@@ -29,6 +29,9 @@ test('integrated remote close collects each map before release and publishes the
   assert.equal(map.head, await f.git('rev-parse', 'HEAD'));
   assert.deepEqual(map.testFiles, ['hub/test/one.test.ts', 'hub/test/two.test.ts']);
   assert.deepEqual(map.files['hub/src/covered.ts'].functions[0].tests, map.testFiles);
+  // A result can precede cleanup when release reaches its bound and the sweep
+  // takes over. Observe both resources before asserting their final absence.
+  await eventually('shard droplets and keys deleted', () => f.api.droplets.length === 0 && f.api.keys.length === 0 ? true : undefined);
   assert.deepEqual(f.api.droplets, []); assert.deepEqual(f.api.keys, []);
   const calls = await readFile(join(f.api.stateRoot, 'machine-calls.jsonl'), 'utf8');
   // Coverage runs put coverage-map.json.raw in the logged environment, so match
