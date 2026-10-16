@@ -3,7 +3,7 @@ id: T-520
 kind: task
 title: Two-shard stage run takes 908 s wall against T-395's 600 s target
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 2
 labels:
@@ -16,7 +16,7 @@ regression_of: T-395
 topic: topic-377
 branch: t/T-520-two-shard-stage-run-takes-908-s-wall
 created: 2026-10-15T18:12:19.748Z
-updated: 2026-10-16T16:26:17.097Z
+updated: 2026-10-16T16:29:28.856Z
 ---
 
 ## Summary
@@ -29,7 +29,10 @@ E-387's first real two-shard stage run, 1bebcda2 at 9bc15ce8, took 907.85 s over
   - verified: rev-30 [reviewer] · run rev-20261016-520-source · 2026-10-16T15:55:51.343Z · commit 76e5cc77d6eb8abc02fc6c68302122a88cefd782
   - done: impl-520 · 2026-10-16T15:56:03.834Z
   - verified: rev-30 [reviewer] · run rev-20261016-520-task-evidence · 2026-10-16T16:23:31.023Z · commit 76e5cc77d6eb8abc02fc6c68302122a88cefd782
-- [ ] C2. Changes taken from that breakdown land: the close-run planner reserves the Neovim phase before hub placement, so the combined estimated work per shard is balanced (A-3935: 2436.98/2843.71 s became 2640.34/2640.34 s), proved by the close-shards plan regression. The measured two-shard stage wall is recorded at E-578's demo against T-395's 600 s target (E-578 C2), not before this merge (amended by the Coordinator 2026-10-16).
+  - verified: rev-30 [reviewer] · run rev-20261016-520-final · 2026-10-16T16:29:27.665Z · commit 76e5cc77d6eb8abc02fc6c68302122a88cefd782
+- [x] C2. Changes taken from that breakdown land: the close-run planner reserves the Neovim phase before hub placement, so the combined estimated work per shard is balanced (A-3935: 2436.98/2843.71 s became 2640.34/2640.34 s), proved by the close-shards plan regression. The measured two-shard stage wall is recorded at E-578's demo against T-395's 600 s target (E-578 C2), not before this merge (amended by the Coordinator 2026-10-16).
+  - done: impl-520 · 2026-10-16T16:27:11.790Z
+  - verified: rev-30 [reviewer] · run rev-20261016-520-final · 2026-10-16T16:29:27.665Z · commit 76e5cc77d6eb8abc02fc6c68302122a88cefd782
 
 ## Comments
 
@@ -115,3 +118,35 @@ Standards 0 findings; Spec 0 findings.
 Artifact: A-3999 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3999-t-520-task-suite-green-stage-timing-measurement-remains-pending.md
 
 Criteria: C1 verified.
+
+### rev-30 · 2026-10-16T16:29:27.665Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-520-final
+commit: 76e5cc77d6eb8abc02fc6c68302122a88cefd782
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-520 final review under amended C2
+
+Commit 76e5cc77d6eb8abc02fc6c68302122a88cefd782, unchanged from source A-3940 and task-suite evidence A-3999. No source or runtime evidence changed.
+
+## Standards
+No findings. Source review and full green task suite remain current.
+
+## Spec
+Coordinator decision bf5af396-e6d5-4917-9968-c0aaa3095295, delivered through the item's question-answer chain in 5af4e3cf, resolves the sequencing question. Independently read the amended live T-520 criterion: C2 now accepts combined estimated-work balancing proved by the close-shards regression, and assigns measured two-shard stage wall to E-578's demo/C2 after this merge. C2 claimant done is present.
+
+C2 is established by A-3935's recorded-duration plan and reviewed implementation: the indivisible Neovim phase participates in the combined LPT placement and, on this manifest, is reserved before the smaller hub jobs. Estimated shard totals change from 2436.975652/2843.710041 to 2640.342900/2640.342793 test-seconds. Those remain work estimates, not measured wall times. Public-plan regression retains work/file conservation, one Neovim owner, deterministic order and 1/2/3/6-shard checks.
+
+Exact-head post-source-review droplet b20c1e9d/A-3997 passes the new balancing regression ordinarily and 5/5 fresh repetitions. All three close-shards cases pass. Full hub and full Neovim suite exits 0: 2334 pass, zero failures/cancellations, eight skips out of 2342. Host/remote typechecks complete. The earlier evidence audit A-3999 records phase counts, platform and timing; it is superseded here only for the now-amended C2 disposition.
+
+C1 remains verified from the historical breakdown. C2 is now verified under its actual amended wording. No claim is made that 600 seconds has been achieved or that the integrated stage measurement has happened. That obligation remains explicitly with E-578's post-merge demo/C2 against T-395's target; no further task-suite retry is needed.
+
+Final clear, C1/C2 verified, zero findings. Standards 0 findings; Spec 0 findings.
+Artifact: A-4006 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-4006-t-520-final-clear-under-amended-balancing-criterion-stage-wall-assigned-to-e-578.md
+
+Criteria: C1 verified, C2 verified.

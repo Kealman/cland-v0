@@ -3,7 +3,7 @@ id: T-620
 kind: task
 title: The curated set drops 23 skills, and nothing names them any more
 state: open
-status: review
+status: in progress
 size: S
 criterion_seq: 7
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-384
 branch: t/T-620-the-curated-set-drops-23-skills-and
 created: 2026-10-16T15:57:48.576Z
-updated: 2026-10-16T16:04:24.454Z
+updated: 2026-10-16T16:30:46.734Z
 ---
 
 ## Summary
@@ -69,3 +69,16 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Source clear; Standards 0 findings, Spec 0 findings. A-3961 records independent committed-tree inventory and token audit. Exactly20 required source folders/SKILL.md and20 resolving unchanged-layout Claude links remain; all23 dropped sets removed. Public init regression asserts literal20 manifest/folder identities. Five fallback pointers and to-tickets tracker wording are correct. Domain doc/template and update output assertion use domain-modeling; grilling samples preserve existing safety assertions. C7 active-path audit has only existing handoff/wizard domain homonyms, no dropped skill references. Historical records preserved, no hub/src edits. A-3953 reports typecheck and sequential init17/17 doctor22/22, new case<1s. C1/C2/C3/C4/C7 source-verified; C5/C6 execution portions await fresh same-head post-review verification. Origin tip/diff check confirmed.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C7 verified.
+
+### rev-31 · 2026-10-16T16:30:46.734Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261016-620-evidence-1
+commit: d147e3d660d36b9e16c7a543a27c4cce49d16d79
+scope: evidence
+findings: [{"severity":"medium","text":"External gate failure: process.kill receives null job.pid in borrowed-planned-root recovery; task tests pass but the Linux gate is exit1 and Neovim is not reached.","file":"hub/test/suite-recovery.test.ts","line":123}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Evidence not clear, A-4009. Exact reviewed-head Linux7820ca68/A-4007 exit1:1943pass/1fail/5skip; sole ordinary failure suite-recovery.ts123 ERR_INVALID_ARG_TYPE pid null. Outside T-620 diff; not classified as a known exception. Task init20-name ordinary+5/5, domain-update and grilling doctor cases green. Source0findings/C1C2C3C4C7 verification remains current; final C5/C6 execution marks withheld pending gate disposition. No task criterion failed. Aside Bugs/S for lead classification, no branch-local fix or unapproved retry. Raw receipt stopped before Neovim. No Reviewer edits/tests.
