@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-336
 branch: t/T-296-opencode-servers-get-their-own-database
 created: 2026-10-12T16:20:56.477Z
-updated: 2026-10-16T01:20:13.482Z
+updated: 2026-10-16T01:25:56.292Z
 ---
 
 ## Summary
@@ -50,18 +50,22 @@ Code: `hub/src/adapters/opencode.ts`, `hub/src/adapters/opencode/server.ts`, `hu
   - done: impl-296 · 2026-10-15T23:47:34.138Z
   - verified: rev-30 [reviewer] · run rev-20261016-296-source · 2026-10-16T00:00:37.200Z · commit 7f964e694492ed6312e05bc6772075f0b883564c
   - verified: rev-30 [reviewer] · run rev-20261016-296-docs-delta · 2026-10-16T00:02:07.895Z · commit ddeb710c2119ac1e5b4cd822318e53d800a08280
+  - verified: rev-30 [reviewer] · run rev-20261016-296-manifest-delta · 2026-10-16T01:25:56.291Z · commit 3f28265df73c5d2e95269fa5bd4c855af7c2f5c9
 - [x] C3. The launch record names the database, and resume and relaunch reuse it.
   - done: impl-296 · 2026-10-15T23:48:07.788Z
   - verified: rev-30 [reviewer] · run rev-20261016-296-source · 2026-10-16T00:00:37.200Z · commit 7f964e694492ed6312e05bc6772075f0b883564c
   - verified: rev-30 [reviewer] · run rev-20261016-296-docs-delta · 2026-10-16T00:02:07.895Z · commit ddeb710c2119ac1e5b4cd822318e53d800a08280
+  - verified: rev-30 [reviewer] · run rev-20261016-296-manifest-delta · 2026-10-16T01:25:56.292Z · commit 3f28265df73c5d2e95269fa5bd4c855af7c2f5c9
 - [x] C4. `cland doctor` names the database and its standalone login line, warns when an account points at the default database, and says whether the free default model needs a login.
   - done: impl-296 · 2026-10-15T23:49:01.818Z
   - verified: rev-30 [reviewer] · run rev-20261016-296-source · 2026-10-16T00:00:37.200Z · commit 7f964e694492ed6312e05bc6772075f0b883564c
   - verified: rev-30 [reviewer] · run rev-20261016-296-docs-delta · 2026-10-16T00:02:07.895Z · commit ddeb710c2119ac1e5b4cd822318e53d800a08280
+  - verified: rev-30 [reviewer] · run rev-20261016-296-manifest-delta · 2026-10-16T01:25:56.292Z · commit 3f28265df73c5d2e95269fa5bd4c855af7c2f5c9
 - [x] C5. hub/README.md (OpenCode) describes the database and the login.
   - done: impl-296 · 2026-10-15T23:49:36.050Z
   - verified: rev-30 [reviewer] · run rev-20261016-296-source · 2026-10-16T00:00:37.200Z · commit 7f964e694492ed6312e05bc6772075f0b883564c
   - verified: rev-30 [reviewer] · run rev-20261016-296-docs-delta · 2026-10-16T00:02:07.895Z · commit ddeb710c2119ac1e5b4cd822318e53d800a08280
+  - verified: rev-30 [reviewer] · run rev-20261016-296-manifest-delta · 2026-10-16T01:25:56.292Z · commit 3f28265df73c5d2e95269fa5bd4c855af7c2f5c9
 
 ## Comments
 
@@ -123,5 +127,28 @@ Standards: no findings. Spec: no findings. Entire immutable diff is hub/README.m
 C1 final evidence remains pending the required post-source task verification. Both Coordinator explicit hold lifted and T-546 merge are prerequisites to submission. Rule 13 stays active until Coordinator's live default-database session check and merge retirement. No per-item QA. No Reviewer tests, binaries, models/network, edits, installs, merges or provider actions. Verdict posted once without read-back under overload guidance.
 
 Review artifact A-3492 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3492-t-296-docs-delta-clear-at-ddeb710c-exact-database-login-command.md.
+
+Criteria: C2 verified, C3 verified, C4 verified, C5 verified.
+
+### rev-30 · 2026-10-16T01:25:56.292Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-296-manifest-delta
+commit: 3f28265df73c5d2e95269fa5bd4c855af7c2f5c9
+scope: delta
+
+Delta source review T-296 clear at 3f28265df73c5d2e95269fa5bd4c855af7c2f5c9, direct parent/source-reviewed ddeb710c2119ac1e5b4cd822318e53d800a08280. Standards: no findings. Spec: no findings in this data-only delta.
+
+Independent immutable audit: only hub/test/durations.json changes. Conflict resolution matches Coordinator-posted2149fe33d178b5ef93d2742151d7290026dc2d8e byte for byte. Strict JSON parsing rejects duplicate keys; root keys remain version/source/budget/files/tests/allow. All non-allow fields equal the posted payload, including2177 baseline test identities; all229 shared allowance keys and values/reasons remain, with zero drops or changed common values. No extra task allowances. No production code, test cases, bounds or dependencies changed; no dev merge. Immutable diff whitespace checks clear.
+
+Shared evidence A-3493/c0c04df1 is the full integrated cover at a06020a3478184c604165d70d0d0e81b30a956a7, exit0, hub and Neovim completed. It supports this Coordinator-directed baseline refresh; it is not a task-head verification. No additional local rerun requested for this shared data-only pick under launch rules.
+
+Database/P3 implementation, docs correction and A-3474 targeted55/55 remain unchanged. Prior A-3492 source marks carry. C1 final gate remains pending; T-546 merge and its exact posted shared fix plus delta review remain prerequisites. Rule13 stays active until Coordinator rollout check/merge retirement.
+
+Only source-established criteria C2,C3,C4,C5 reverified here. No final evidence/merge readiness claimed. Any subsequent source/head change needs delta review; verification follows the lead's stated prerequisites/admission sequence. No per-item QA change. Read task files/earlier review chain; no task.view full-journal scan. No Reviewer tests, binaries/compiler execution, edits, installs, signals, commits, merges or provider actions.
+
+Review artifact A-3562 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3562-t-296-shared-manifest-delta-clear-at-3f28265d.md.
 
 Criteria: C2 verified, C3 verified, C4 verified, C5 verified.

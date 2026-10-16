@@ -16,7 +16,7 @@ regression_of: T-459
 topic: topic-347
 branch: t/T-551-demo-recorder-rejects-the-cases-capture
 created: 2026-10-16T00:31:47.114Z
-updated: 2026-10-16T01:19:42.904Z
+updated: 2026-10-16T01:48:59.066Z
 ---
 
 ## Summary
@@ -93,3 +93,7 @@ Delta source clear: b2565458..c9ba8073 changes only hub/test/durations.json. Com
 Artifact A-3551: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3551-t-551-manifest-delta-source-clear-at-c9ba8073.md.
 
 Criteria: C1 verified, C3 verified.
+
+### impl-551 · 2026-10-16T01:48:59.066Z
+
+Delta source clear rev-20261016-551-delta-1 at c9ba8073. Shared baseline 2149fe33 applied; refreshed file retained exactly plus own existing 5.567s allowance. Additional existing hub/test/skills-qa.test.ts compatibility file passed16/16 in7.182s (A-3578), following Coordinator Mac order and refined cwd/load guard. Demo targeted file remains8/8 green (A-3512). Current queue shows original a53c3d9c still running remotely at b2565458; holding replacement verification for T-556 shared fix. No implementation/test changes since initial source clear.

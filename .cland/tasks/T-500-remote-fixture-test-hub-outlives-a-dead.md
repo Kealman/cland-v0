@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-343
 branch: t/T-500-remote-fixture-test-hub-outlives-a-dead
 created: 2026-10-15T14:10:39.101Z
-updated: 2026-10-16T01:20:12.277Z
+updated: 2026-10-16T01:29:31.092Z
 ---
 
 ## Problem
@@ -26,10 +26,14 @@ updated: 2026-10-16T01:20:12.277Z
 - [x] C1. The remote fixture's hub is stopped, and its temp dir removed, on normal teardown, on test timeout and on the test process's exit (including SIGTERM/SIGINT). A spawned child that loses its parent exits by itself within a bounded time.
   - done: impl-500 · 2026-10-16T01:04:43.964Z
   - verified: rev-30 [reviewer] · run rev-20261016-500-source-correction · 2026-10-16T01:05:45.833Z · commit 2c7b97ee241c0061fcda14a589a70b46e7a4fbf9
+  - verified: rev-30 [reviewer] · run rev-20261016-500-manifest-delta · 2026-10-16T01:25:54.134Z · commit 2c0daf88c0357f8ee90174cb0220106f40afbe1c
+  - verified: rev-30 [reviewer] · run rev-20261016-500-manifest-delta · 2026-10-16T01:29:31.092Z · commit 2c0daf88c0357f8ee90174cb0220106f40afbe1c
 - [ ] C2. A test kills a fixture's parent abruptly and observes the fixture hub gone within the bound. remote-fixture users pass 5/5 serially on the Mac.
 - [x] C3. A test fixture that starts a hub with a fake provider leaves no droplet watchdog behind: its teardown stops and awaits the fixture watchdogs, or a fixture watchdog exits when its fake provider state disappears. Seen 2026-10-15 23:00Z: pids 50008 and 50071 outlived fixture hub 36962. Production watchdogs keep their independence from the hub (guaranteed destruction, v0.1.2 §3.14, executor-droplet.test.ts:169) unchanged.
   - done: impl-500 · 2026-10-16T00:54:02.131Z
   - verified: rev-30 [reviewer] · run rev-20261016-500-source-correction · 2026-10-16T01:05:45.833Z · commit 2c7b97ee241c0061fcda14a589a70b46e7a4fbf9
+  - verified: rev-30 [reviewer] · run rev-20261016-500-manifest-delta · 2026-10-16T01:25:54.134Z · commit 2c0daf88c0357f8ee90174cb0220106f40afbe1c
+  - verified: rev-30 [reviewer] · run rev-20261016-500-manifest-delta · 2026-10-16T01:29:31.092Z · commit 2c0daf88c0357f8ee90174cb0220106f40afbe1c
 
 ## Comments
 
@@ -96,5 +100,52 @@ C1 source and targeted lifecycle proof verified: ordinary, timeout, explicit exi
 C2 remains pending five serial whole-file passes at the final reviewed source for all required direct/indirect remote-fixture users, lifecycle and suite, followed by required actual Linux task verification. Source clear is not final gate or merge readiness. Continue Coordinator's evidence/admission sequence; changed head needs source review. No per-item QA. No task.view scan under current T-548 guidance. No Reviewer tests, binaries/compiler execution, edits, installs, signals, commits, merges or provider actions.
 
 Review artifact A-3526 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3526-t-500-corrected-source-clear-at-2c7b97ee-shared-signal-writer-cleanup.md.
+
+Criteria: C1 verified, C3 verified.
+
+### rev-30 · 2026-10-16T01:25:54.134Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-500-manifest-delta
+commit: 2c0daf88c0357f8ee90174cb0220106f40afbe1c
+scope: delta
+
+Delta source review T-500 clear at 2c0daf88c0357f8ee90174cb0220106f40afbe1c, direct parent/source-reviewed 2c7b97ee241c0061fcda14a589a70b46e7a4fbf9. Standards: no findings. Spec: no findings in this data-only delta.
+
+Independent immutable audit: only hub/test/durations.json changes. Conflict resolution matches Coordinator-posted2149fe33d178b5ef93d2742151d7290026dc2d8e plus exactly4 unchanged task allowance entries, sorted within allow. Strict JSON parsing rejects duplicate keys; root keys remain version/source/budget/files/tests/allow. All non-allow fields equal the posted payload, including2177 baseline test identities; all229 shared allowance keys and values/reasons remain, with zero drops or changed common values. Extra allowance values match the old reviewed head exactly. No production code, test cases, bounds or dependencies changed; no dev merge. Immutable diff whitespace checks clear.
+
+Shared evidence A-3493/c0c04df1 is the full integrated cover at a06020a3478184c604165d70d0d0e81b30a956a7, exit0, hub and Neovim completed. It supports this Coordinator-directed baseline refresh; it is not a task-head verification. No additional local rerun requested for this shared data-only pick under launch rules.
+
+Fixture/signal cleanup source A-3526 and12/12 corrected lifecycle proof remain unchanged. Four extras are exactly the previously reviewed owner exit, timeout, watchdog-SIGKILL and watchdog-teardown allowances, with original values/reasons. C2 five-file sequences/required full task evidence remain pending; earlier Linux e7ab10bc is not a completed current-head gate claim here.
+
+Only source-established criteria C1,C3 reverified here. No final evidence/merge readiness claimed. Any subsequent source/head change needs delta review; verification follows the lead's stated prerequisites/admission sequence. No per-item QA change. Read task files/earlier review chain; no task.view full-journal scan. No Reviewer tests, binaries/compiler execution, edits, installs, signals, commits, merges or provider actions.
+
+Review artifact A-3560 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3560-t-500-shared-manifest-delta-clear-at-2c0daf88.md.
+
+Criteria: C1 verified, C3 verified.
+
+### rev-30 · 2026-10-16T01:29:31.092Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-500-manifest-delta
+commit: 2c0daf88c0357f8ee90174cb0220106f40afbe1c
+scope: delta
+
+Delta source review T-500 clear at 2c0daf88c0357f8ee90174cb0220106f40afbe1c, direct parent/source-reviewed 2c7b97ee241c0061fcda14a589a70b46e7a4fbf9. Standards: no findings. Spec: no findings in this data-only delta.
+
+Independent immutable audit: only hub/test/durations.json changes. Conflict resolution matches Coordinator-posted2149fe33d178b5ef93d2742151d7290026dc2d8e plus exactly4 unchanged task allowance entries, sorted within allow. Strict JSON parsing rejects duplicate keys; root keys remain version/source/budget/files/tests/allow. All non-allow fields equal the posted payload, including2177 baseline test identities; all229 shared allowance keys and values/reasons remain, with zero drops or changed common values. Extra allowance values match the old reviewed head exactly. No production code, test cases, bounds or dependencies changed; no dev merge. Immutable diff whitespace checks clear.
+
+Shared evidence A-3493/c0c04df1 is the full integrated cover at a06020a3478184c604165d70d0d0e81b30a956a7, exit0, hub and Neovim completed. It supports this Coordinator-directed baseline refresh; it is not a task-head verification. No additional local rerun requested for this shared data-only pick under launch rules.
+
+Fixture/signal cleanup source A-3526 and12/12 corrected lifecycle proof remain unchanged. Four extras are exactly the previously reviewed owner exit, timeout, watchdog-SIGKILL and watchdog-teardown allowances, with original values/reasons. C2 five-file sequences/required full task evidence remain pending; earlier Linux e7ab10bc is not a completed current-head gate claim here.
+
+Only source-established criteria C1,C3 reverified here. No final evidence/merge readiness claimed. Any subsequent source/head change needs delta review; verification follows the lead's stated prerequisites/admission sequence. No per-item QA change. Read task files/earlier review chain; no task.view full-journal scan. No Reviewer tests, binaries/compiler execution, edits, installs, signals, commits, merges or provider actions.
+
+Artifact A-3560: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3560-t-500-shared-manifest-delta-clear-at-2c0daf88.md
+Single transport retry after implementer's root-file check confirmed the first write absent, and after the two-minute cooldown.
 
 Criteria: C1 verified, C3 verified.

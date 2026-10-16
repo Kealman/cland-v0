@@ -17,7 +17,7 @@ regression_of: T-480
 topic: topic-348
 branch: t/T-548-tracker-calls-take-20-35-s-under-a-16
 created: 2026-10-15T23:50:03.254Z
-updated: 2026-10-16T01:19:16.330Z
+updated: 2026-10-16T01:26:06.164Z
 ---
 
 ## Summary

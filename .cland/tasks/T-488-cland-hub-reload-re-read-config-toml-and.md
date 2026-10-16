@@ -3,7 +3,7 @@ id: T-488
 kind: task
 title: "cland hub reload: re-read config.toml and roles.toml without a restart (SIGHUP too)"
 state: open
-status: review
+status: in progress
 size: S
 criterion_seq: 4
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-329
 branch: t/T-488-cland-hub-reload-re-read-config-toml-and
 created: 2026-10-15T11:30:17.553Z
-updated: 2026-10-16T00:01:17.145Z
+updated: 2026-10-16T01:49:39.894Z
 ---
 
 ## Problem
@@ -27,9 +27,8 @@ Add `cland hub reload`, which also runs on SIGHUP. It re-reads `.cland/config.to
 
 ## Acceptance criteria
 
-- [x] C1. `cland hub reload` and SIGHUP both re-read config.toml and roles.toml, validate them and apply both atomically, so a changed `remote_budget`, `daily_spend_usd` or role default takes effect without a restart.
-  - done: impl-488 · 2026-10-15T23:59:38.775Z
-  - verified: rev-31 [reviewer] · run rev-20261016-488-source-2 · 2026-10-16T00:01:17.145Z · commit 7b8c92b36c082509ca88ced2ad5efec47b6bac51
+- [ ] C1. `cland hub reload` and SIGHUP both re-read config.toml and roles.toml, validate them and apply both atomically, so a changed `remote_budget`, `daily_spend_usd` or role default takes effect without a restart.
+  - failed: rev-31 [reviewer] · 2026-10-16T01:49:39.894Z · note Existing timeout and prepare fixtures edit config after hub startup without applying reload; loaded-config semantics leave old policy active and five mandatory cases fail.
 - [x] C2. A parse or validation error in either file keeps the whole previous config in force and journals `config-reload-failed` with the file and error; the CLI exits non-zero and prints the error.
   - done: impl-488 · 2026-10-15T23:45:16.991Z
   - verified: rev-31 [reviewer] · run rev-20261016-488-source-2 · 2026-10-16T00:01:17.145Z · commit 7b8c92b36c082509ca88ced2ad5efec47b6bac51
@@ -106,3 +105,18 @@ Standards: 0 findings. Spec: 0 findings.
 Review artifact A-3488: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3488-t-488-corrected-source-clear-at-7b8c92b3.md
 
 Criteria: C1 verified, C2 verified, C4 verified.
+
+### rev-31 · 2026-10-16T01:49:39.894Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261016-488-evidence-1
+commit: 7b8c92b36c082509ca88ced2ad5efec47b6bac51
+scope: evidence
+
+Medium — hub/test/suite-timeouts.test.ts:68,83,128,165: these write test_timeout/stall_timeout after suite-fixture.ts:17 starts the hub, then launch without reload. T-488's loaded policy retains defaults/previous values, so the four shortened-deadline assertions fail at:73,:98,:141,:179. Medium — hub/test/executor-prepare.test.ts:232: writes prepare_size=big after fixture starts the hub and calls prepare without reload; c-8 remains loaded, so oversized refusal at:234 never arrives. Update the real fixtures to set policy before startup or explicitly reload/acknowledge after changes, including later restoration; retain assertions/bounds and audit other post-start config writes. These are task integration failures, not external merely because test files are unchanged.
+
+A-3576 same-head local Darwin2e535b8e exit1:1852pass/5fail. Own config-reload cases all5 pass ordinarily and each5/5 load repetitions. No active/new snapshot defect established, but C3 final gate remains unverified; C1 failed integration. Neovim not reached. Other gate blockers: knownT-556 dynamic-title0/5, demo watchdog4/5 and hook-bridge-doctor duration6.653>5s. Full details/categorized asides A-3579: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3579-t-488-evidence-not-clear-fixtures-omit-config-reload.md. Corrected-head source review required before another verify; no Reviewer edits/tests.
+
+Criteria: C1 failed (Existing timeout and prepare fixtures edit config after hub startup without applying reload; loaded-config semantics leave old policy active and five mandatory cases fail.).

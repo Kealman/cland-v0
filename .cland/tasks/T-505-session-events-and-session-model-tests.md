@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-344
 branch: t/T-505-session-events-and-session-model-tests
 created: 2026-10-15T15:16:05.074Z
-updated: 2026-10-16T01:20:03.273Z
+updated: 2026-10-16T01:32:34.759Z
 ---
 
 ## Problem
@@ -29,6 +29,7 @@ Both wait on a hub frame after a fake-session launch. A 4-worker c-8 under load 
 - [x] C1. Each wait is anchored to an observed launch completion, such as the session's ready or idle, before the 5000 ms frame window starts. Alternatively, the window is aligned with the product deadline it covers, citing its source line. Every other assertion stays, and the root cause is recorded in the commit.
   - done: impl-505 · 2026-10-16T00:58:55.784Z
   - verified: rev-30 [reviewer] · run rev-20261016-505-source-correction · 2026-10-16T00:59:44.371Z · commit 383321846c7916d84937bb242c88f94683df0c3a
+  - verified: rev-30 [reviewer] · run rev-20261016-505-manifest-delta · 2026-10-16T01:30:00.006Z · commit 9fe0b61cf827e296a15eda5ed7b712a0b798015e
 - [ ] C2. Both files pass 5/5 serially, whole file and alone on the Mac, plus once on a droplet in the task's verify.
 
 ## Comments
@@ -82,3 +83,30 @@ C2 final verification remains pending. Existing unchanged events-file5/5 remains
 Review artifact A-3520 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3520-t-505-corrected-source-clear-at-38332184-fresh-launch-completion-anchor.md.
 
 Criteria: C1 verified.
+
+### rev-30 · 2026-10-16T01:30:00.006Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-505-manifest-delta
+commit: 9fe0b61cf827e296a15eda5ed7b712a0b798015e
+scope: delta
+
+Delta source review T-505 clear at 9fe0b61cf827e296a15eda5ed7b712a0b798015e, direct parent/source-reviewed 383321846c7916d84937bb242c88f94683df0c3a. Standards: no findings. Spec: no findings in this data-only delta.
+
+Independent immutable audit: only hub/test/durations.json changes. Conflict resolution matches Coordinator-posted2149fe33d178b5ef93d2742151d7290026dc2d8e byte for byte. Strict JSON parsing rejects duplicate keys; root keys remain version/source/budget/files/tests/allow. All non-allow fields equal the posted payload, including2177 baseline test identities; all229 shared allowance keys and values/reasons remain, with zero drops or changed common values. No extra task allowances. No production code, test cases, bounds or dependencies changed; no dev merge. Immutable diff whitespace checks clear.
+
+Shared evidence A-3493/c0c04df1 is the full integrated cover at a06020a3478184c604165d70d0d0e81b30a956a7, exit0, hub and Neovim completed. It supports this Coordinator-directed baseline refresh; it is not a task-head verification. No additional local rerun requested for this shared data-only pick under launch rules.
+
+Completion anchors and corrected fresh-resume source A-3520 remain unchanged. Events5/5 remains relevant; corrected model sequence is incomplete at3/5 and must finish. Old local-fallback verify7b2702da belongs to38332184, not this new head. C2 still needs completed Mac sequence and actual Linux receipt under Coordinator's admission direction.
+
+Only source-established criteria C1 reverified here. No final evidence/merge readiness claimed. Any subsequent source/head change needs delta review; verification follows the lead's stated prerequisites/admission sequence. No per-item QA change. Read task files/earlier review chain; no task.view full-journal scan. No Reviewer tests, binaries/compiler execution, edits, installs, signals, commits, merges or provider actions.
+
+Update: old local request7b2702da was cancelled143 (A-3558), with no completed counts/evidence. Artifact A-3564 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3564-t-505-shared-manifest-delta-clear-at-9fe0b61c.md
+
+Criteria: C1 verified.
+
+### impl-505 · 2026-10-16T01:32:34.759Z
+
+Mac evidence complete: both whole files pass5/5 serially, all labelled loaded, normal fake timings. A-3571 contains every receipt and duration: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3571-t-505-mac-whole-file-evidence-both-files-5-5-green.md. Corrected model runs only; earlier uncorrected model runs excluded. Source clear at9fe0b61c via A-3564, task test files unchanged by shared2149fe33 manifest pick. Explicit fresh droplet3df8e38c-6296-49c7-942e-9fc14ae7148c accepted and waiting remote, confirmed queue after CLI timeout; no duplicate submitted. C2 remains open pending Linux receipt. Old7b2702da cancelled without tests.

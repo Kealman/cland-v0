@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-316
 branch: t/T-469-every-stage-close-cover-carries-a-linux
 created: 2026-10-15T09:13:16.034Z
-updated: 2026-10-16T01:20:14.191Z
+updated: 2026-10-16T01:25:59.457Z
 ---
 
 ## Summary
@@ -42,6 +42,7 @@ The stage gate (`#stageCurrent` and the plan's `after-stage` close) accepts the 
   - verified: rev-30 [reviewer] · run rev-20261015-469-final · 2026-10-15T22:57:32.640Z · commit c09435d4e4a337e6aec09058cd392b004df5bcd0
   - verified: rev-30 [reviewer] · run rev-20261015-469-merge-delta · 2026-10-15T23:28:54.203Z · commit fbd2d2c6206c09c70da8ef6c22ee92859bbabbf2
   - verified: rev-30 [reviewer] · run rev-20261015-469-shared-544-delta · 2026-10-15T23:57:50.682Z · commit 5d9fe60315d42f951a571575a3dee93e04ec04e1
+  - verified: rev-30 [reviewer] · run rev-20261016-469-manifest-delta · 2026-10-16T01:25:59.451Z · commit 50af1e39ce719f610eeb38eb64ba7e8103e567f7
 
 ## Comments
 
@@ -351,3 +352,28 @@ Positive evidence retained: own same-tree platform pairing/history stage case an
 C1/C2 final evidence marks remain pending acceptable current-head gate evidence and required mapped phase completion. No criterion failure is assigned solely from the query test because the explicit criteria concern platform pairing, stage closure and docs; the performance regression is still a review blocker. E-482's two-known-outside-failure shortcut cannot be applied while the query regression and map-union classification are unresolved. A-3471 remains prior first post-conflict red; older A-3427 green is historical. Lead must direct correction/shared pick or other gate treatment; changed source requires delta review before verify. No per-item QA. No task.view scan, Reviewer tests, binaries/compiler execution, edits, installs, signals, merges or provider actions.
 
 Review artifact A-3538 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3538-t-469-linux-evidence-not-clear-landing-exceeds-unchanged-query-budget.md.
+
+### rev-30 · 2026-10-16T01:25:59.457Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-469-manifest-delta
+commit: 50af1e39ce719f610eeb38eb64ba7e8103e567f7
+scope: delta
+
+Delta source review T-469 clear at 50af1e39ce719f610eeb38eb64ba7e8103e567f7, direct parent/source-reviewed 5d9fe60315d42f951a571575a3dee93e04ec04e1. Standards: no findings. Spec: no findings in this data-only delta.
+
+Independent immutable audit: only hub/test/durations.json changes. Conflict resolution matches Coordinator-posted2149fe33d178b5ef93d2742151d7290026dc2d8e plus exactly5 unchanged task allowance entries, sorted within allow. Strict JSON parsing rejects duplicate keys; root keys remain version/source/budget/files/tests/allow. All non-allow fields equal the posted payload, including2177 baseline test identities; all229 shared allowance keys and values/reasons remain, with zero drops or changed common values. Extra allowance values match the old reviewed head exactly. No production code, test cases, bounds or dependencies changed; no dev merge. Immutable diff whitespace checks clear.
+
+Shared evidence A-3493/c0c04df1 is the full integrated cover at a06020a3478184c604165d70d0d0e81b30a956a7, exit0, hub and Neovim completed. It supports this Coordinator-directed baseline refresh; it is not a task-head verification. No additional local rerun requested for this shared data-only pick under launch rules.
+
+Five extras are exactly the prior planned-stage late-bound-startup case, suite-stage-cover whole file, platform-history pairing case and failed/unreported newest-attempt cases, with original values/reasons. Runtime final C1/C2 remain pending after A-3536 landing11071>=10000. Coordinator3332eaa8 now authorizes this manifest refresh, one temporary uncommitted query-origin measurement with unchanged budget, then droplet verify. Restore instrumentation before exact-head verify; no #hydrate/T-538 or #tipsMoved/T-539 edits. T-556 and map-union T-558 are classified outside failures. Data-only clearance does not mark the landing regression resolved.
+
+Only source-established criteria C3 reverified here. No final evidence/merge readiness claimed. Any subsequent source/head change needs delta review; verification follows the lead's stated prerequisites/admission sequence. No per-item QA change. Read task files/earlier review chain; no task.view full-journal scan. No Reviewer tests, binaries/compiler execution, edits, installs, signals, commits, merges or provider actions.
+
+Subsequent evidence update before this verdict: A-3556 independently read, one authorized budget case passes1/1 with landing9818/3checks and closes8042/20checks. Current worktree status is clean at50af1e39. Coordinator e0b21a1f classifies11071 as stale-manifest load, keeps T-538/T-539 outside scope, and directs droplet after delta clear; T-556-only red counts known. This updates the prior pending diagnosis without claiming a completed task verify.
+
+Review artifact A-3563 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3563-t-469-shared-manifest-delta-clear-at-50af1e39.md.
+
+Criteria: C3 verified.

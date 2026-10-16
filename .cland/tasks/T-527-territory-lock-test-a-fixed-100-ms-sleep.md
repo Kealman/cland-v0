@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-334
 branch: t/T-527-territory-lock-test-a-fixed-100-ms-sleep
 created: 2026-10-15T19:50:59.979Z
-updated: 2026-10-16T01:19:47.424Z
+updated: 2026-10-16T01:21:48.097Z
 ---
 
 ## Problem
@@ -27,6 +27,7 @@ updated: 2026-10-16T01:19:47.424Z
   - done: impl-527 · 2026-10-15T23:31:58.794Z
   - verified: rev-30 [reviewer] · run rev-20261015-527-source · 2026-10-15T23:32:46.061Z · commit d2d184f52a1f94eb5ac83bd68174f5194f9af6d8
   - verified: rev-30 [reviewer] · run rev-20261015-527-shared-544-delta · 2026-10-15T23:57:41.452Z · commit 5b89aa37ca4b8c58cd928bc248b6535a43663b31
+  - verified: rev-30 [reviewer] · run rev-20261016-527-manifest-delta · 2026-10-16T01:21:48.097Z · commit b6a657563d23f92ff58daa211458f1aae773e0e1
 - [x] C2. territory-lock.test.ts passes 5/5 serially, whole file and alone on the Mac, plus once on a droplet in the task's verify.
   - done: impl-527 · 2026-10-15T23:55:36.435Z
 
@@ -85,5 +86,28 @@ A-3476 / f524f59b is the first actual Linux receipt: 1847 pass, 2 fail, 3 platfo
 Only C1 is reverified by this source delta. This is not the final task evidence verdict and does not assert the earlier red receipt is green. Verification submission waits for explicit Coordinator 'hold lifted'; no local tests during hold. No Reviewer tests, compiler/binary execution, edits, installs, merges or provider actions. One verdict post, no item read-back, under overload guidance.
 
 Review artifact A-3479 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3479-t-527-shared-t-544-delta-source-clear-at-5b89aa37.md.
+
+Criteria: C1 verified.
+
+### rev-30 · 2026-10-16T01:21:48.097Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-527-manifest-delta
+commit: b6a657563d23f92ff58daa211458f1aae773e0e1
+scope: delta
+
+Delta source review T-527 clear at b6a657563d23f92ff58daa211458f1aae773e0e1, direct parent/source-reviewed 5b89aa37ca4b8c58cd928bc248b6535a43663b31. Standards: no findings. Spec: no findings in this data-only delta.
+
+Independent immutable audit: only hub/test/durations.json changes. Conflict resolution matches Coordinator-posted2149fe33d178b5ef93d2742151d7290026dc2d8e byte for byte. Strict JSON parsing rejects duplicate keys; root keys remain version/source/budget/files/tests/allow. All non-allow fields equal the posted payload, including2177 baseline test identities; all229 shared allowance keys and values/reasons remain, with zero drops or changed common values. No extra task allowances. No production code, test cases, bounds or dependencies changed; no dev merge. Immutable diff whitespace checks clear.
+
+Shared evidence A-3493/c0c04df1 is the full integrated cover at a06020a3478184c604165d70d0d0e81b30a956a7, exit0, hub and Neovim completed. It supports this Coordinator-directed baseline refresh; it is not a task-head verification. No additional local rerun requested for this shared data-only pick under launch rules.
+
+A-3540 remains a 50-minute timeout, not a qualifying second receipt. Coordinator9cf06209 classifies its unrelated load-gate failures as stale-manifest artifacts and directs this pick/delta/one droplet sequence; ordinary default-subscriptions:266 session.launch timeout still needs its new-ticket classification. Own territory-lock ordinary17/17 changed0.188s plus A-3459 Mac5/5 remain supporting evidence. C2 final gate pending.
+
+Only source-established criteria C1 reverified here. No final evidence/merge readiness claimed. Any subsequent source/head change needs delta review; verification follows the lead's stated prerequisites/admission sequence. No per-item QA change. Read task files/earlier review chain; no task.view full-journal scan. No Reviewer tests, binaries/compiler execution, edits, installs, signals, commits, merges or provider actions.
+
+Review artifact A-3553 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3553-t-527-shared-manifest-delta-clear-at-b6a65756.md.
 
 Criteria: C1 verified.
