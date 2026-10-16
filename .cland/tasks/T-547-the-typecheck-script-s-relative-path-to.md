@@ -16,7 +16,7 @@ regression_of: T-427
 topic: topic-341
 branch: t/T-547-the-typecheck-script-s-relative-path-to
 created: 2026-10-15T23:01:44.244Z
-updated: 2026-10-15T23:43:55.351Z
+updated: 2026-10-15T23:57:35.386Z
 ---
 
 ## Summary
@@ -26,6 +26,7 @@ T-427 (merged 21:28Z) set the hub's and Neovim's typecheck scripts to `node ../n
 - [x] C1. The typecheck scripts in hub/package.json (and nvim's, if it has the same form) find the TypeScript 7 compiler by package resolution, for example through its bin on the npm-run PATH or `require.resolve('typescript7/package.json')`. So they work in the root, in a worktree with no `node_modules` and in a worktree with its own, and the 5.9 API imports still bind to `typescript`.
   - verified: rev-30 [reviewer] · run rev-20261015-547-source · 2026-10-15T23:31:46.544Z · commit 5d18c219cbfafbacd1f53b6abcf4f6720270c38f
   - done: impl-547 · 2026-10-15T23:43:35.977Z
+  - verified: rev-30 [reviewer] · run rev-20261015-547-shared-544-delta · 2026-10-15T23:57:35.386Z · commit 6381a9d92358e093521c35174c16b113e7ef2304
 - [x] C2. A test runs the typecheck script from a git worktree that has no `node_modules` and sees it exit 0, and T-427's parity receipt still holds.
   - done: impl-547 · 2026-10-15T23:43:55.351Z
 
@@ -69,5 +70,28 @@ Evidence: A-3449 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3449-
 Standards: 0 findings; Spec: 0 findings, final run evidence pending.
 
 Review artifact A-3458 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3458-t-547-source-clear-at-5d18c219-package-resolved-compiler-and-real-worktree-regre.md.
+
+Criteria: C1 verified.
+
+### rev-30 · 2026-10-15T23:57:35.386Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-547-shared-544-delta
+commit: 6381a9d92358e093521c35174c16b113e7ef2304
+scope: delta
+
+Delta source review T-547 clear at 6381a9d92358e093521c35174c16b113e7ef2304, direct parent 5d18c219cbfafbacd1f53b6abcf4f6720270c38f.
+
+Standards: no high, medium or low findings. Spec: no findings in this source delta. Read immutable parent-to-head diff and commit parent. The entire delta is one assertion line in hub/test/session-model.test.ts:108, sorting usage.subagents by agentId before the existing five-field mapping and deep equality. This preserves row count, duplicates, identities and all compared fields; it only removes nondeterministic row arrival order. No production code, task fixture, bounds, manifest or dependency changes. All three independently requested shared picks have exactly the same raw diff SHA-256 as posted 08f09c7c49f9dcaf5912d1701af5a99c9492b405: 9759e96446c9eb311eb6ae3bc06d5437e48b75480273609c6eadf13981f26e6f.
+
+Accepted upstream evidence: T-544 A-3420 five Mac whole files and A-3441 actual green Linux receipt, final review A-3442 / rev-20261015-544-final. Shared test-only pick needs no additional local run under Coordinator rule 11.
+
+A-3475 / 3727fae7 is the first actual Linux receipt: 1849 pass, 1 fail, 3 platform skips, typecheck and actual-worktree regression green (11.637s); Neovim not reached. Sole red is exact T-544 reversed usage rows. A-3450 five Mac files, A-3451 compiler parity and A-3458 source review remain applicable. C2 final settlement awaits the next qualifying receipt. Coordinator e8ad49f7 authorizes this pick and post-hold retry.
+
+Only C1 is reverified by this source delta. This is not the final task evidence verdict and does not assert the earlier red receipt is green. Verification submission waits for explicit Coordinator 'hold lifted'; no local tests during hold. No Reviewer tests, compiler/binary execution, edits, installs, merges or provider actions. One verdict post, no item read-back, under overload guidance.
+
+Review artifact A-3478 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3478-t-547-shared-t-544-delta-source-clear-at-6381a9d9.md.
 
 Criteria: C1 verified.

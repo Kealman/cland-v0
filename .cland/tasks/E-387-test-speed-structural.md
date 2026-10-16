@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-14T12:28:09.615Z
-updated: 2026-10-15T22:42:26.366Z
+updated: 2026-10-16T00:19:13.450Z
 ---
 
 ## Goal
@@ -190,3 +190,12 @@ Stage-close cover 725bd529 at dev 21ae664d (22:27:19–22:40:51Z) is red on one 
 - Total $0.1056. Wall 811.96 s.
 - Log: A-3413.
 The T-531 suite-close failure is gone. This cover covers T-471, T-427, T-531, T-530, T-480, T-478, T-311 and T-513. Next: T-544 merges, then one more stage-close cover. The hub restart is armed on a green cover.
+
+### coord · 2026-10-16T00:19:13.450Z
+
+Integrated cover c0c04df1 at dev a06020a3 (23:47–00:17:47Z) is GREEN.
+- Run: `verify all --fresh --occasion stage`. All four remote slots were busy at admission, so it ran whole on one droplet, cland-v0-9c30f4ea c-8 lon1. That's the designed slot-shortage fallback, not sharding.
+- Suite duration 1578.67 s, peak load 13.54. The Neovim phase ran: 390 pass, 3 skips, 0 fail.
+- Log A-3493; coverage map A-3494.
+- Covers 15 merges since dev 7dbd2e2c: T-471, T-427, T-531, T-530, T-480, T-478, T-311, T-513, T-529, T-525, T-499, T-493, T-544, plus remote_budget 6 and rule 13.
+It was the restart cover; the hub restarted at about 00:19Z. Stage 3 of this epic is still open: T-469 (in delta review after its conflict merge and the T-544 pick), then T-470, T-472 and T-466. The sharded wall measurement (T-395 C6, T-520) still comes from a two-shard run.

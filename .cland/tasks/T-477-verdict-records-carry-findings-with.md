@@ -3,7 +3,7 @@ id: T-477
 kind: task
 title: Verdict records carry findings with severity, and lows are recorded
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 3
 labels:
@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-338
 branch: t/T-477-verdict-records-carry-findings-with
 created: 2026-10-15T09:13:19.683Z
-updated: 2026-10-15T23:44:45.668Z
+updated: 2026-10-16T00:01:58.464Z
 ---
 
 ## Summary
@@ -32,10 +32,12 @@ Retrospective A-2783, START 2 and STOP 5: severity was parsed from prose, and on
 
 - [x] C1. A verdict with findings of each severity stores them, and `task view --json` returns them with the counts.
   - done: impl-477 · 2026-10-15T23:40:53.740Z
-- [ ] C2. A clear verdict with only low findings is accepted and shows the lows.
-  - failed: rev-30 [reviewer] · 2026-10-15T23:44:45.668Z · note Clear review writes accept high/medium structured findings; Coordinator7edf4b29 requires atomic CLI/MCP refusal naming findings and directing not clear.
+  - verified: rev-30 [reviewer] · run rev-20261016-477-source-correction · 2026-10-16T00:01:58.464Z · commit e2ec7b2c9002b35d31b33b0551444edd0bc8b527
+- [x] C2. A clear verdict with only low findings is accepted and shows the lows.
+  - done: impl-477 · 2026-10-15T23:59:41.329Z
 - [x] C3. The Reviewer clause (both copies) and the code-review skill require recording lows.
   - done: impl-477 · 2026-10-15T23:40:57.344Z
+  - verified: rev-30 [reviewer] · run rev-20261016-477-source-correction · 2026-10-16T00:01:58.464Z · commit e2ec7b2c9002b35d31b33b0551444edd0bc8b527
 
 ## Comments
 
@@ -81,3 +83,26 @@ Standards:0 findings; Spec:1 medium, contradictory clear-review acceptance.
 Review artifact A-3467 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3467-t-477-source-not-clear-refuse-clear-reviews-with-blocking-findings.md.
 
 Criteria: C2 failed (Clear review writes accept high/medium structured findings; Coordinator7edf4b29 requires atomic CLI/MCP refusal naming findings and directing not clear.).
+
+### rev-30 · 2026-10-16T00:01:58.464Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-477-source-correction
+commit: e2ec7b2c9002b35d31b33b0551444edd0bc8b527
+scope: delta
+
+Corrected source review T-477 clear at e2ec7b2c9002b35d31b33b0551444edd0bc8b527, direct parent 5fa2a34df8ee2818632ed1009b6ad7d5dea5e44e, original fixed point c30b2666a6d07be66053f930bafb6032361510ea. Standards: zero findings. Spec: zero remaining high, medium or low findings in the reviewed source. Prior A-3467 medium finding is resolved.
+
+Read all three changed files and shared write context. Tracker.#comment parses and validates findings, derives counts, then rejects only review+clear with any non-low entry, naming every high/medium entry and directing 'record not clear instead'. This runs before commit resolution, criterion application, item write or journal publication. CLI, MCP and parsed text verdict headers converge here. No client-only refusal or partial verdict append. Omitted legacy findings and explicit empty lists retain existing behavior; low-only clear remains accepted. QA validation is deliberately unchanged per Coordinator 7edf4b29, including clear+high, and the README states that boundary.
+
+The existing full public-flow test now exercises both high and medium through CLI and MCP, checks actionable error text, and compares exact item bytes after each pair. Its notification count remains three before the later QA-preservation check, establishing no rejected review notification was appended. Existing assertions still cover all severity counts through view/list/journal, lows, empty list, malformed inputs, text headers, restart/index reconstruction and edited-findings provenance. New QA assertion confirms preserved behavior. No production change beyond the shared four-line guard; no dev merge.
+
+Original A-3467 source assessment of entry validation, serialization, derived counts, legacy fingerprint compatibility, notification plumbing and both Reviewer clauses/skill remains applicable. A-3483 reports corrected whole-file 3/3, 3.742s, longest1.784s, load10.38/free beside non-Coordinator local verify; typecheck/diff check green. Earlier A-3463 roles-snapshot9/9 and shard lint remain relevant because those surfaces are unchanged. These are targeted implementer receipts, not the post-source task suite gate. Immutable diff whitespace check clear.
+
+C1 and C3 verified at corrected head. C2's source defect is fixed, but final criterion/evidence settlement remains pending the required exact-head task verification. Source clear does not make the task merge-ready. Submit only after Coordinator explicitly lifts verification hold and under its admission direction; no additional local rerun requested for unchanged surfaces. No per-item QA criteria. No Reviewer tests, compiler/binary execution, edits, installs, signals, merges or provider actions. One verdict post, no read-back under T-548 overload guidance.
+
+Review artifact A-3490 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3490-t-477-corrected-source-clear-at-e2ec7b2c-atomic-blocking-finding-refusal.md.
+
+Criteria: C1 verified, C3 verified.

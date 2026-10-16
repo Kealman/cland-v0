@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-334
 branch: t/T-527-territory-lock-test-a-fixed-100-ms-sleep
 created: 2026-10-15T19:50:59.979Z
-updated: 2026-10-15T23:32:46.062Z
+updated: 2026-10-15T23:57:41.452Z
 ---
 
 ## Problem
@@ -26,7 +26,9 @@ updated: 2026-10-15T23:32:46.062Z
 - [x] C1. The case observes the first holder actually holding the lock (a file or receipt signal) instead of sleeping 100 ms, then asserts the second operation's refusal message. Every assertion stays.
   - done: impl-527 · 2026-10-15T23:31:58.794Z
   - verified: rev-30 [reviewer] · run rev-20261015-527-source · 2026-10-15T23:32:46.061Z · commit d2d184f52a1f94eb5ac83bd68174f5194f9af6d8
-- [ ] C2. territory-lock.test.ts passes 5/5 serially, whole file and alone on the Mac, plus once on a droplet in the task's verify.
+  - verified: rev-30 [reviewer] · run rev-20261015-527-shared-544-delta · 2026-10-15T23:57:41.452Z · commit 5b89aa37ca4b8c58cd928bc248b6535a43663b31
+- [x] C2. territory-lock.test.ts passes 5/5 serially, whole file and alone on the Mac, plus once on a droplet in the task's verify.
+  - done: impl-527 · 2026-10-15T23:55:36.435Z
 
 ## Comments
 
@@ -60,5 +62,28 @@ One exact-head no-mode/no-executor cland verify may follow source clearance unde
 Evidence A-3459 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3459-t-527-five-serial-quiet-mac-whole-file-passes/README.md and adjacent mac-pass-1..5 logs. Standards:0 findings; Spec:0 findings, Linux runtime evidence pending.
 
 Review artifact A-3460 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3460-t-527-source-clear-at-d2d184f5-observed-acquisition-with-failure-safe-release-an.md.
+
+Criteria: C1 verified.
+
+### rev-30 · 2026-10-15T23:57:41.452Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-527-shared-544-delta
+commit: 5b89aa37ca4b8c58cd928bc248b6535a43663b31
+scope: delta
+
+Delta source review T-527 clear at 5b89aa37ca4b8c58cd928bc248b6535a43663b31, direct parent d2d184f52a1f94eb5ac83bd68174f5194f9af6d8.
+
+Standards: no high, medium or low findings. Spec: no findings in this source delta. Read immutable parent-to-head diff and commit parent. The entire delta is one assertion line in hub/test/session-model.test.ts:108, sorting usage.subagents by agentId before the existing five-field mapping and deep equality. This preserves row count, duplicates, identities and all compared fields; it only removes nondeterministic row arrival order. No production code, task fixture, bounds, manifest or dependency changes. All three independently requested shared picks have exactly the same raw diff SHA-256 as posted 08f09c7c49f9dcaf5912d1701af5a99c9492b405: 9759e96446c9eb311eb6ae3bc06d5437e48b75480273609c6eadf13981f26e6f.
+
+Accepted upstream evidence: T-544 A-3420 five Mac whole files and A-3441 actual green Linux receipt, final review A-3442 / rev-20261015-544-final. Shared test-only pick needs no additional local run under Coordinator rule 11.
+
+A-3476 / f524f59b is the first actual Linux receipt: 1847 pass, 2 fail, 3 platform skips; all territory-lock cases pass, changed case 0.1345s. Outside failures are T-493 recent-poll count and T-544 reversed usage rows. Neovim smoke not reached. A-3459 five Mac files and A-3460 source review remain applicable. C2 final settlement awaits the second qualifying receipt. Coordinator 6d227ab4 specifically authorizes only this shared pick; it also explicitly allows a second known-only T-493 red to qualify the pair.
+
+Only C1 is reverified by this source delta. This is not the final task evidence verdict and does not assert the earlier red receipt is green. Verification submission waits for explicit Coordinator 'hold lifted'; no local tests during hold. No Reviewer tests, compiler/binary execution, edits, installs, merges or provider actions. One verdict post, no item read-back, under overload guidance.
+
+Review artifact A-3479 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3479-t-527-shared-t-544-delta-source-clear-at-5b89aa37.md.
 
 Criteria: C1 verified.

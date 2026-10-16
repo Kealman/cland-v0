@@ -3,7 +3,7 @@ id: T-488
 kind: task
 title: "cland hub reload: re-read config.toml and roles.toml without a restart (SIGHUP too)"
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 4
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-329
 branch: t/T-488-cland-hub-reload-re-read-config-toml-and
 created: 2026-10-15T11:30:17.553Z
-updated: 2026-10-15T23:46:10.917Z
+updated: 2026-10-16T00:01:17.145Z
 ---
 
 ## Problem
@@ -27,14 +27,17 @@ Add `cland hub reload`, which also runs on SIGHUP. It re-reads `.cland/config.to
 
 ## Acceptance criteria
 
-- [ ] C1. `cland hub reload` and SIGHUP both re-read config.toml and roles.toml, validate them and apply both atomically, so a changed `remote_budget`, `daily_spend_usd` or role default takes effect without a restart.
-  - failed: rev-31 [reviewer] · 2026-10-15T23:42:49.955Z · note An absent config.toml is supported at startup, but configuration.ts:89 makes every later roles refresh fail ENOENT before applying edited role defaults.
+- [x] C1. `cland hub reload` and SIGHUP both re-read config.toml and roles.toml, validate them and apply both atomically, so a changed `remote_budget`, `daily_spend_usd` or role default takes effect without a restart.
+  - done: impl-488 · 2026-10-15T23:59:38.775Z
+  - verified: rev-31 [reviewer] · run rev-20261016-488-source-2 · 2026-10-16T00:01:17.145Z · commit 7b8c92b36c082509ca88ced2ad5efec47b6bac51
 - [x] C2. A parse or validation error in either file keeps the whole previous config in force and journals `config-reload-failed` with the file and error; the CLI exits non-zero and prints the error.
   - done: impl-488 · 2026-10-15T23:45:16.991Z
+  - verified: rev-31 [reviewer] · run rev-20261016-488-source-2 · 2026-10-16T00:01:17.145Z · commit 7b8c92b36c082509ca88ced2ad5efec47b6bac51
 - [x] C3. Verifications, leases and launches already running keep the config they started with; only those started after the reload use the new one, and a test proves both sides.
   - done: impl-488 · 2026-10-15T23:45:40.291Z
 - [x] C4. `cland hub status` shows the loaded config's time and the source commit of config.toml.
   - done: impl-488 · 2026-10-15T23:46:10.917Z
+  - verified: rev-31 [reviewer] · run rev-20261016-488-source-2 · 2026-10-16T00:01:17.145Z · commit 7b8c92b36c082509ca88ced2ad5efec47b6bac51
 
 ## Comments
 
@@ -76,3 +79,30 @@ Standards: 0 findings. Spec: 1 medium finding.
 Review artifact A-3466: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3466-t-488-source-not-clear-missing-config-prevents-role-refresh.md
 
 Criteria: C1 failed (An absent config.toml is supported at startup, but configuration.ts:89 makes every later roles refresh fail ENOENT before applying edited role defaults.).
+
+### rev-31 · 2026-10-16T00:01:17.145Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261016-488-source-2
+commit: 7b8c92b36c082509ca88ced2ad5efec47b6bac51
+scope: full
+
+Corrective source review clear at 7b8c92b36c082509ca88ced2ad5efec47b6bac51, run rev-20261016-488-source-2, scope full. Rechecked the single correction from 7caccc10 with the original full review; no dev merge or unrelated picks. Prior medium finding A-3466 resolved. No high, medium or low findings remain.
+
+## Standards
+No additional documented-standard or smell-baseline findings. Missing-file handling catches only ENOENT, preserving parse/permission/I/O errors for rollback; it does not write either input file. Result types and journal event registration cover warnings. Diff check passes. Both axes reviewed within this session under the no-delegation role.
+
+## Spec
+C1 verified: configuration.ts:90-93 now retains the loaded immutable config when the file is absent; initial startup's loaded config is the built-in defaults. Valid role edits still reach staged publication. C2 verified: an existing invalid config or roles file still fails before either publication; earlier atomically validated snapshot stays in effect, CLI returns error and journals file/error. C4 verified: retained config preserves loadedAt/sourceCommit; successful new-config loads report their time and last config-file Git commit.
+
+Coordinator policy 2eeff3e2-19e8-4f25-8687-98b54cf9d859 explicitly requires this distinction. Missing-file CLI results and auto-refresh journal config-reload-warning contain the exact warning; README documents initial absence, deletion and invalid-file behavior. Stamps still reject inputs that change during reload.
+
+The added real frame/CLI regression removes a loaded config, edits roles, observes automatic publication, checks retained budget and provenance/time, checks explicit reload/journal warning, then recreates an invalid file and verifies both prior role and config survive. A-3482 checked: config-reload whole file 4/4, typecheck/shard lint green reported; labelled loaded Mac alongside local T-517 verify, admission load 11.04 and no other targeted process. A-3462 unchanged remote admission/lease and roles lifecycle receipts stand.
+
+C3's source snapshot paths remain reviewed: actual scheduler admission captures/persists policy, queued work uses new policy, active jobs/leases and launched harnesses retain old settings, per Coordinator 6a91fc6b. C3 remains unverified until exact-head verification confirms the runtime tests. Source clear does not lift the Coordinator's current verification hold; submit only after its release. No Reviewer edits/tests; no per-item QA criteria.
+Standards: 0 findings. Spec: 0 findings.
+Review artifact A-3488: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3488-t-488-corrected-source-clear-at-7b8c92b3.md
+
+Criteria: C1 verified, C2 verified, C4 verified.

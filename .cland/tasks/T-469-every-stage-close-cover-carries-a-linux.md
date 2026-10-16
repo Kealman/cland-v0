@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-316
 branch: t/T-469-every-stage-close-cover-carries-a-linux
 created: 2026-10-15T09:13:16.034Z
-updated: 2026-10-15T23:29:49.405Z
+updated: 2026-10-15T23:57:50.682Z
 ---
 
 ## Summary
@@ -41,6 +41,7 @@ The stage gate (`#stageCurrent` and the plan's `after-stage` close) accepts the 
   - verified: rev-30 [reviewer] · run rev-20261015-469-startup-delta · 2026-10-15T22:28:52.919Z · commit c09435d4e4a337e6aec09058cd392b004df5bcd0
   - verified: rev-30 [reviewer] · run rev-20261015-469-final · 2026-10-15T22:57:32.640Z · commit c09435d4e4a337e6aec09058cd392b004df5bcd0
   - verified: rev-30 [reviewer] · run rev-20261015-469-merge-delta · 2026-10-15T23:28:54.203Z · commit fbd2d2c6206c09c70da8ef6c22ee92859bbabbf2
+  - verified: rev-30 [reviewer] · run rev-20261015-469-shared-544-delta · 2026-10-15T23:57:50.682Z · commit 5d9fe60315d42f951a571575a3dee93e04ec04e1
 
 ## Comments
 
@@ -283,3 +284,49 @@ Criteria: C3 verified.
 ### impl-469 · 2026-10-15T23:29:49.405Z
 
 Merge-delta source clear at fbd2d2c6 / A-3453. Required fresh actual droplet verification 88507100-8dc5-4f77-87e0-17e7a1dee778 submitted with no mode and --executor droplet --fresh, queued position1; reports topic-316 to Reviewer rev-30 and item lead impl-469. Head is clean/unchanged; normal host typecheck is unblocked by the Coordinator-prescribed dependency install. Awaiting receipt before final evidence verdict and merge. Earlier A-3427 is historical only.
+
+### rev-30 · 2026-10-15T23:53:00.213Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261015-469-merge-linux-first
+commit: fbd2d2c6206c09c70da8ef6c22ee92859bbabbf2
+scope: evidence
+
+Post-conflict Linux evidence review T-469 not clear at source-cleared fbd2d2c6206c09c70da8ef6c22ee92859bbabbf2. A-3471 / 88507100-8dc5-4f77-87e0-17e7a1dee778 is actual Linux c-8 lon1,workers4,full mode,exit1:1852 pass/1 fail/3 platform skips,zero cancellations. Hub complete; required full Neovim phase was NOT reached. Suite1215.43s,peak load11.72,lifetime1296s/$0.0900. No hard duration-budget failure.
+
+Medium gate blocker — hub/test/session-model.test.ts:108: exact known T-544 reversed known-child/unknown-child usage rows. Outside T-469 diff. No new task-source failure or failed criterion inferred.
+
+Own stage/platform/history test passes18.057s; failed/unreported newest-attempt cache supersession regressions pass14.977/13.891s; restored receipt late-binding startup passes4.049s. Original query protections remain green: landing9598/2 stage checks, ten closes8309/20; task completion46 queries/zero full lists/zero item-file reads. Explicit remote-cache conflict cover A-3445 remains accepted as targeted evidence. Source A-3453 and C3 current verification stand.
+
+C1/C2 final runtime marks remain pending acceptable post-conflict gate evidence, including the required mapped phase completion. This is the FIRST Linux receipt at the new merge head. Prior green A-3427 belongs to c09435d4 and is historical, not a qualifying second receipt for this integration; prior own-failure A-3351/A-3400 remain excluded. Do not combine incompatible heads or describe A-3471 as green.
+
+Await Coordinator gate/retry/shared-fix direction under the active hold; this verdict does not authorize another submission. A changed head requires delta source review. No per-item QA criteria. One current item read and one verdict post only, consistent with Coordinator3caf1d03 overload guidance; no read-back polling. No Reviewer tests, compiler/binary execution, edits, signals, merges or provider actions.
+
+Evidence /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3471-suite-88507100-8dc5-4f77-87e0-17e7a1dee778-auto-at-fbd2d2c.log.
+
+Review artifact A-3473 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3473-t-469-post-conflict-linux-gate-not-clear-t-544-red-neovim-not-reached.md.
+
+### rev-30 · 2026-10-15T23:57:50.682Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-469-shared-544-delta
+commit: 5d9fe60315d42f951a571575a3dee93e04ec04e1
+scope: delta
+
+Delta source review T-469 clear at 5d9fe60315d42f951a571575a3dee93e04ec04e1, direct parent fbd2d2c6206c09c70da8ef6c22ee92859bbabbf2.
+
+Standards: no high, medium or low findings. Spec: no findings in this source delta. Read immutable parent-to-head diff and commit parent. The entire delta is one assertion line in hub/test/session-model.test.ts:108, sorting usage.subagents by agentId before the existing five-field mapping and deep equality. This preserves row count, duplicates, identities and all compared fields; it only removes nondeterministic row arrival order. No production code, task fixture, bounds, manifest or dependency changes. All three independently requested shared picks have exactly the same raw diff SHA-256 as posted 08f09c7c49f9dcaf5912d1701af5a99c9492b405: 9759e96446c9eb311eb6ae3bc06d5437e48b75480273609c6eadf13981f26e6f.
+
+Accepted upstream evidence: T-544 A-3420 five Mac whole files and A-3441 actual green Linux receipt, final review A-3442 / rev-20261015-544-final. Shared test-only pick needs no additional local run under Coordinator rule 11.
+
+A-3471 remains the first post-conflict Linux receipt, red solely on T-544; own stage/cache/startup/query proofs pass, full Neovim not reached. A-3473's final evidence blocker remains unresolved by source review alone. A-3445's 119 targeted cases and A-3453 merge source review remain applicable. C1/C2 final runtime marks await fresh current-head evidence including required Neovim completion. Earlier A-3427 is historical. Coordinator 64ce7e93 authorizes this pick and requires the new-head droplet verification after hold lifted.
+
+Only C3 is reverified by this source delta. This is not the final task evidence verdict and does not assert the earlier red receipt is green. Verification submission waits for explicit Coordinator 'hold lifted'; no local tests during hold. No Reviewer tests, compiler/binary execution, edits, installs, merges or provider actions. One verdict post, no item read-back, under overload guidance.
+
+Review artifact A-3480 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3480-t-469-shared-t-544-delta-source-clear-at-5d9fe603.md.
+
+Criteria: C3 verified.

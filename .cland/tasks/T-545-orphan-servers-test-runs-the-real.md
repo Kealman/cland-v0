@@ -3,7 +3,7 @@ id: T-545
 kind: task
 title: orphan-servers test runs the real opencode serve against the user's default OpenCode data (rule 13)
 state: open
-status: in progress
+status: ready
 size: XS
 criterion_seq: 2
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-339
 branch: t/T-545-orphan-servers-test-runs-the-real
 created: 2026-10-15T22:54:35.623Z
-updated: 2026-10-15T23:30:11.486Z
+updated: 2026-10-15T23:52:06.969Z
 ---
 
 ## Summary
@@ -25,9 +25,11 @@ Found by rev-30 on T-499 (2026-10-15 22:53Z). `hub/test/orphan-servers.test.ts`,
 - [x] C1. The test gives both the version probe and the leftover serve a scratch HOME, XDG_DATA_HOME, XDG_CONFIG_HOME and OPENCODE_DB under its temp project, and asserts the serve's database path is inside it. Its sweep assertions are unchanged.
   - done: impl-545 · 2026-10-15T23:00:46.301Z
   - verified: rev-30 [reviewer] · run rev-20261015-545-source-correction · 2026-10-15T23:01:25.386Z · commit 3847de333f92437fb78af6e873d2702f0ab05630
+  - verified: rev-30 [reviewer] · run rev-20261015-545-final · 2026-10-15T23:52:03.797Z · commit 3847de333f92437fb78af6e873d2702f0ab05630
 - [x] C2. A grep of hub/test and nvim/test for every other spawn of the real `opencode` binary finds none left without the same isolation, and the list of call sites goes in the review request.
   - done: impl-545 · 2026-10-15T22:58:45.616Z
   - verified: rev-30 [reviewer] · run rev-20261015-545-source-correction · 2026-10-15T23:01:25.386Z · commit 3847de333f92437fb78af6e873d2702f0ab05630
+  - verified: rev-30 [reviewer] · run rev-20261015-545-final · 2026-10-15T23:52:03.797Z · commit 3847de333f92437fb78af6e873d2702f0ab05630
 
 ## Comments
 
@@ -117,3 +119,63 @@ Coordinator a5b0015f explicitly authorized one subsequent same-head --executor d
 Evidence A-3438 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3438-t-545-corrected-head-five-serial-quiet-mac-passes-planted-config-overrides.md; A-3447 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3447-suite-bcba6e73-64b2-49fe-8a96-2bec61929ef8-auto-at-3847de3.log. No Reviewer tests, binary/compiler execution, edits, signals, merges or provider actions.
 
 Review artifact A-3455 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3455-t-545-corrected-mac-evidence-green-final-linux-receipt-pending.md.
+
+### coord · 2026-10-15T23:51:03.360Z
+
+Gate exception (Coordinator, 23:51Z): mixed-platform pair at 3847de33.
+- Mac local bcba6e73 (A-3447) passed 1864/1864. It's the only receipt where the changed real-OpenCode case can execute, since the binary is installed only on the Mac.
+- Linux a7054c63 (A-3469) ran every other orphan-servers case green and skipped the changed case cleanly for the absent binary.
+- Linux failed only on T-544 (session-model ordering; fixed on dev, not in this head) and T-549 (executor-prepare PROCESSWRAP leak, new, filed). Both are outside the diff.
+No further run.
+
+### rev-30 · 2026-10-15T23:51:14.730Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261015-545-linux-first
+commit: 3847de333f92437fb78af6e873d2702f0ab05630
+scope: evidence
+
+T-545 first actual Linux evidence review not clear at source-reviewed 3847de333f92437fb78af6e873d2702f0ab05630. A-3469 / a7054c63-e84a-4ac4-aa6d-c52324f81864 is actual Linux c-8 lon1, workers4, exit1:1846 pass/2 fail/4 skipped, zero cancellations; hub complete, Neovim smoke not reached. Duration1219.78s, peak load13.07, lifetime1307s/$0.0908. No hard duration-budget failure.
+
+Outside gate failures, both known:
+- Medium — hub/test/executor-prepare.test.ts:198, after-hook hub-resources.ts:30 PROCESSWRAP leak. Independently matched T-523's Coordinator20:01Z comment, which explicitly adds this exact failed-replacement case to the executor handle-leak family (T-474 A-3313). Not T-481's lifetime publication assertion.
+- Medium — hub/test/session-model.test.ts:108, exact reversed known-child/unknown-child usage rows, T-544.
+
+Own orphan-server file has no failure:23 pass and the real OpenCode case correctly skips because the installed binary is absent/unrunnable. The skip is preserved intended behavior, not a non-skipped Linux real-binary proof. A-3438 already establishes five corrected-head real-binary Mac whole-file passes with safely planted invalid ambient config overrides; A-3447 is a completed green Mac suite. Source C1/C2 A-3435 stand with no new implementation finding or failed criterion.
+
+Final gate disposition remains pending Coordinator direction on these known outside failures and the accepted Mac/Linux evidence; no further run is authorized by this review during the current hold. Implementer already escalated and is holding unchanged head. Preserve actual platforms; do not describe A-3469 as green. No additional unisolated real-binary test.
+
+Under Coordinator3caf1d03 hub-overload guidance, hold/view calls each timed out once; no repeated read-back or duplicate mutation is attempted. This verdict is posted once with batched criteria handling (no new marks). No per-item QA criteria. No Reviewer tests, compiler/binary execution, edits, signals, merges or provider actions.
+
+Evidence /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3469-suite-a7054c63-e84a-4ac4-aa6d-c52324f81864-auto-at-3847de3.log. Known T-523 exact signature confirmed in .cland/tasks/T-523-executor-run-startreplylost-case-leaks.md Coordinator comment.
+
+Review artifact A-3470 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3470-t-545-first-linux-evidence-own-file-green-with-optional-skip-t-523-and-t-544-gat.md.
+
+### rev-30 · 2026-10-15T23:52:03.797Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261015-545-final
+commit: 3847de333f92437fb78af6e873d2702f0ab05630
+scope: evidence
+
+Final evidence review T-545 clear at unchanged 3847de333f92437fb78af6e873d2702f0ab05630 under Coordinator20bc76fe-e417-4e66-8e54-61b829321731, which explicitly accepts the mixed-platform pair and requires no further run. No high or medium task-source finding remains. Source A-3435 stands and immutable branch tip matches. This does not claim a green overall Linux suite or real-binary execution on Linux.
+
+C1 verified across source and corrected-head Mac evidence: HOME, XDG_DATA_HOME, XDG_CONFIG_HOME and database/file-config paths are fixture-owned; inline config is '{}'; config overrides merge after process.env at both child boundaries; containment assertions precede commands. Original sweep assertions and cleanup are retained. A-3438 has five complete quiet serial Mac files,24/24 each,120 passes,zero failures/cancellations/skips,78.064/75.077/77.519/74.323/73.253s. Every run safely planted invalid ambient OPENCODE_CONFIG/OPENCODE_CONFIG_CONTENT and the installed real-binary case passed without skip. Earlier pre-correction repetitions remain superseded.
+
+A-3447 / bcba6e73-64b2-49fe-8a96-2bec61929ef8 is actual local Darwin arm64, workers4, GREEN exit0:1864/1864,zero failures/skips/cancellations; host typecheck, hub and Neovim smoke complete. All24 orphan cases green; actual real-binary case1.873s. Suite1085.72s,peak load19.53.
+
+A-3469 / a7054c63-e84a-4ac4-aa6d-c52324f81864 is actual Linux c-8 lon1,workers4,RED exit1:1846 pass/2 fail/4 skip,zero cancellations; hub complete, Neovim smoke not reached. Own file23 pass/1 intended absent-or-unrunnable-real-binary skip, no failure. No hard duration-budget failure. Outside failures: exact T-544 session-model:108 reversed usage rows and executor-prepare:198 after-hook PROCESSWRAP. Coordinator files/routes the latter as T-549 in this decision; prior A-3470 also identified the previously documented T-523 family. Gate acceptance follows the explicit current decision, not an automatic different-failure pair rule.
+
+C2 reverified: the call-site audit/request and source A-3435 identify this isolated probe/serve as the only direct installed-binary candidates; other execution families use repository fakes, controlled child substitutions or an absent binary. No source change since audit. Source, Mac runtime and intended Linux optional skip collectively satisfy this item's accepted evidence scope. No additional run or head change; no per-item QA criteria.
+
+Under Coordinator3caf1d03 overload guidance, no repeated task-view read-back was made; final verdict is posted once with all checked criterion marks batched. No Reviewer tests, compiler/binary execution, edits, signals, merges or provider actions. Changed integration heads require delta review.
+
+Evidence A-3447 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3447-suite-bcba6e73-64b2-49fe-8a96-2bec61929ef8-auto-at-3847de3.log; A-3469 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3469-suite-a7054c63-e84a-4ac4-aa6d-c52324f81864-auto-at-3847de3.log; A-3438 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3438-t-545-corrected-head-five-serial-quiet-mac-passes-planted-config-overrides.md.
+
+Review artifact A-3472 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3472-t-545-final-clear-at-3847de33-under-explicit-mac-linux-evidence-acceptance.md.
+
+Criteria: C1 verified, C2 verified.
