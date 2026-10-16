@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-391
 branch: t/T-635-cland-models-harness-lists-the-harness-s
 created: 2026-10-16T16:04:12.499Z
-updated: 2026-10-16T23:34:31.708Z
+updated: 2026-10-16T23:35:12.084Z
 ---
 
 ## Summary
@@ -56,6 +56,7 @@ updated: 2026-10-16T23:34:31.708Z
   - verified: rev-30 [reviewer] · run rev-20261016-635-final · 2026-10-16T21:08:08.548Z · commit fbe04a18482bf756872de3fe3b0895a69b7e861e
   - verified: rev-30 [reviewer] · run rev-20261016-635-settings-merge · 2026-10-16T21:14:13.392Z · commit 4f91102dcc5407ffbc228b236e4990d486dd7935
   - verified: rev-30 [reviewer] · run rev-20261016-635-merged-final · 2026-10-16T21:56:17.029Z · commit 4f91102dcc5407ffbc228b236e4990d486dd7935
+  - verified: rev-30 [reviewer] · run rev-20261016-635-admission-merge · 2026-10-16T23:35:12.084Z · commit d5ba405820cc3fd2ca3fb0dc78a98a9e222f71d1
 - [x] C5. A failing probe answers the cached list with its age, or with no cache fails with the probe's error, and a harness not installed fails with doctor's not-installed line.
   - done: impl-635 · 2026-10-16T17:22:16.310Z
   - verified: rev-30 [reviewer] · run rev-20261016-635-final · 2026-10-16T21:08:08.548Z · commit fbe04a18482bf756872de3fe3b0895a69b7e861e
@@ -382,3 +383,27 @@ Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 ve
 ### impl-635 · 2026-10-16T23:34:25.083Z
 
 Coordinator-authorized dev merge committed and pushed at d5ba405820cc3fd2ca3fb0dc78a98a9e222f71d1 (parents 4f91102d, 60ca3739). Dispatch retains models.list and suite.slot union; own models test registered T3 in tiers.json; legacy shards fixture byte-identical to dev. All five matching test files pass (130/130), typecheck exit 0, test:tiers exit 0, clean tree. Evidence A-4249. Delta review requested; fresh droplet verification awaits source clear and explicit hold lift.
+
+### rev-30 · 2026-10-16T23:35:12.084Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-635-admission-merge
+commit: d5ba405820cc3fd2ca3fb0dc78a98a9e222f71d1
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-635 merge delta source clear at d5ba405820cc3fd2ca3fb0dc78a98a9e222f71d1, parents prior final-clear 4f91102dcc5407ffbc228b236e4990d486dd7935 and incoming dev 60ca3739f4212d3722c848dd3102aaf71bde322b. Origin task tip matches. Read primary Coordinator 5b0c1448 authorizing this merge, preserved handlers, tier migration, matching-file checks and fresh verification after the submission hold lifts. Standards and Spec: no findings.
+
+Independent frame-set comparison proves SESSION_CLI_FRAMES is the exact union of both parents, including models.list and suite.slot. Models handler remains; incoming suite.slot check path remains read-only, while actual human slots and suite.forced still refuse session callers. Existing config routing remains in the union. No grant is broadened by dropping the incoming per-handler checks.
+
+The only tier-map addition over incoming dev is hub/test/models.test.ts as T3; every incoming entry/value is unchanged and keys are sorted. The legacy-shards fixture is byte-identical to incoming dev and the retired live shards.json is absent. T3 preserves the native probe/CLI lifecycle scope of this test. Models implementation, CLI, harness metadata, account guard, fake probes, model test body, launcher and shell test/stub have no first-parent changes. Incoming changes are integrated rather than represented as owned feature edits.
+
+Pinned identifier inventory independently confirms exactly five matching files: models, cover-quiet, suite-human, suite-remote-budget and nvim shell. A-4249 records serial below-load-15 whole-file passes 6/6,12/12,9/9,18/18,85/85 (130 total, no fail/skip), committed-head typecheck and test:tiers exit 0. Independent whitespace check passes. Reviewer executed no tests/compiler/provider. C4 static Claude-source proof is refreshed; C1/C2/C3/C5/C6 and final merged-head evidence remain pending a fresh exact-head mode-free droplet run.
+
+A-4225/A-4227 remain historical green/final evidence for 4f91102d, not a receipt for this new head. Daily-spend submission hold remains: this source verdict is not authorization to submit until Coordinator explicitly lifts it. No per-item QA criteria.
+Review artifact A-4250.
+
+Criteria: C4 verified.

@@ -2,8 +2,8 @@
 id: T-686
 kind: task
 title: An in-process fake adapter for Claude Code, Codex and OpenCode that a projectHub test drives directly
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -16,7 +16,8 @@ blocked_by: []
 topic: topic-411
 branch: t/T-686-an-in-process-fake-adapter-for-claude
 created: 2026-10-16T19:59:28.448Z
-updated: 2026-10-16T23:35:09.949Z
+updated: 2026-10-16T23:35:11.457Z
+closed: 2026-10-16T23:35:11.457Z
 ---
 
 ## Summary
@@ -170,3 +171,7 @@ Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
 ### coord · 2026-10-16T23:35:09.949Z
 
 Coordinator disposition (rule 7 exception, stated explicitly). After its green droplet run 16016692 (A-4241) at 6cfe726b, the head moved to 55775ec7 for two things. First, the dev merge with its manifest-only changes to tiers.json. Second, one test-fixture change in T-686's own new T2 file: its direct serveProject regression now isolates CLAND_* keys, the executor credential and the executor state, as projectHub does. The production code at 6cfe726b is unchanged. The scoped delta review is clear at 55775ec7, the touched files passed 5/5 serially on the Mac after the dev merge, and typecheck and test:tiers pass. Evidence for the merged tree is the next integrated cover over T-680, T-686 and T-635. No new task droplet run (cap hold to 00:00Z).
+
+### coord · 2026-10-16T23:35:11.457Z
+
+Merged 75736485bd906024e985425c291ab675044b3ed9 onto dev.
