@@ -5,6 +5,7 @@ title: Unpinned Claude Code launches set CLAUDE_CONFIG_DIR=~/.claude explicitly 
 state: open
 status: backlog
 size: S
+criterion_seq: 2
 labels:
   - needs-triage
 assignee: null
@@ -13,7 +14,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-16T11:43:33.915Z
-updated: 2026-10-16T15:49:42.027Z
+updated: 2026-10-16T15:53:06.036Z
 ---
 
 ## Summary
@@ -35,6 +36,11 @@ Every Claude Code launch without `account` runs on an empty profile unless the h
 Pass `CLAUDE_CONFIG_DIR` to the child only when the hub inherited it (`env.CLAUDE_CONFIG_DIR`) or `request.accountEnv` carries the account's directory; keep `#configDir` for the hub's own bookkeeping (polling schedule per directory, the attach command, the signed-out remedy text), and make the remedy text print the variable only when it is actually set. A test: a launch with a clean hub environment spawns `claude` with no `CLAUDE_CONFIG_DIR`; a pinned account still gets its directory.
 
 Found by the design session's research Q-593 (harness setup facts) under the map M-591.
+
+## Acceptance criteria
+
+- [ ] C1. A Claude Code launch and resume from a hub whose environment has no CLAUDE_CONFIG_DIR spawn claude without the variable, and an account-pinned launch still gets its directory, proved by an adapter test against the fake harness.
+- [ ] C2. The signed-out remedy text and the attach command name CLAUDE_CONFIG_DIR only when it is actually set, and the hub's per-directory bookkeeping is unchanged.
 
 ## Comments
 

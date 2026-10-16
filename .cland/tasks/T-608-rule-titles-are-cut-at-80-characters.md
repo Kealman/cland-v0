@@ -5,6 +5,7 @@ title: Rule titles are cut at 80 characters silently and rule.edit cannot change
 state: open
 status: backlog
 size: XS
+criterion_seq: 2
 labels:
   - needs-triage
 assignee: null
@@ -13,7 +14,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-16T12:50:58.048Z
-updated: 2026-10-16T15:49:42.150Z
+updated: 2026-10-16T15:53:11.451Z
 ---
 
 ## Summary
@@ -23,3 +24,8 @@ updated: 2026-10-16T15:49:42.150Z
 ## Expected
 
 Either the title limit is announced in the tool's description and the add result (and the full text stays in the body), or the limit is lifted; `rule.edit` can change a title.
+
+## Acceptance criteria
+
+- [ ] C1. rule.add and cland rule add keep the whole title, or refuse a title over the documented limit with the limit named, never truncating silently, proved by a test.
+- [ ] C2. rule.edit and cland rule edit can change a rule's title, and the change reaches running sessions as a rule event, proved by a test.

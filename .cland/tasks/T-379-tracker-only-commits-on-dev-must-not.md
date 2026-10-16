@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-375
 branch: t/T-379-tracker-only-commits-on-dev-must-not
 created: 2026-10-14T08:41:13.625Z
-updated: 2026-10-16T15:50:03.967Z
+updated: 2026-10-16T15:52:20.388Z
 ---
 
 ## What happened
@@ -29,9 +29,9 @@ A run's identity should follow the tree it verifies, not dev's head: commits tha
 
 ## Acceptance criteria
 
-- [ ] A commit on dev that changes only tracker or docs paths leaves a queued or running dev run in place and its result covers the new head.
-- [ ] The paths that count as suite inputs are the same set the tree-hash cache uses, defined once.
-- [ ] The behaviour is covered by a hub test with a fake run.
+- [ ] C1. A commit on dev that changes only tracker paths (`.cland/tasks`) or the rulebook (`.cland/RULES.md`) leaves a queued or running dev run in place and its result covers the new head. Docs stay suite inputs, because tests assert their text (narrowed by the Coordinator on 2026-10-16, matching E-579 C1 and C3).
+- [ ] C2. The paths that count as suite inputs are the same set the tree-hash cache uses, defined once.
+- [ ] C3. The behaviour is covered by a hub test with a fake run.
 
 ## Comments
 

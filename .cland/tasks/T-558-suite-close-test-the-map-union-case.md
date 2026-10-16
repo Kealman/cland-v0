@@ -5,6 +5,7 @@ title: "suite-close test: the map-union case fails one of five load-gate repetit
 state: open
 status: in progress
 size: S
+criterion_seq: 2
 labels:
   - flaky
 assignee: null
@@ -14,7 +15,7 @@ regression_of: T-531
 topic: topic-382
 branch: t/T-558-suite-close-test-the-map-union-case
 created: 2026-10-16T01:13:33.534Z
-updated: 2026-10-16T15:51:08.196Z
+updated: 2026-10-16T15:52:17.970Z
 ---
 
 ## Summary
@@ -22,7 +23,7 @@ In T-477's droplet verify e3fddbaf at e2ec7b2c (2026-10-16 ~01:08Z; logs A-3533,
 
 ## Acceptance criteria
 - [ ] C1. Reproduce the failing repetition under load, record which assertion fails and why, and fix it, keeping every assertion.
-- [ ] C2. suite-close.test.ts passes 5/5 serially as a whole file on the Mac, plus the load gate's five repetitions on a droplet in the task's verify.
+- [ ] C2. suite-close.test.ts passes 10/10 serially as a whole file on the Mac, and the task's droplet verify passes (the map-union case is a known manifest entry since 2149fe33, so the load gate no longer repeats it; amended by the Coordinator 2026-10-16).
 
 ## Comments
 
