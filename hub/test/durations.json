@@ -3231,13 +3231,29 @@
       "seconds": 6.3,
       "reason": "Starts a real demo lease against the fake DigitalOcean provider, forces an identity mismatch, and waits for the refused deletion, the operator-attention state and the alert."
     },
+    "hub/test/demo-release.test.ts::demo stop confirms an earlier delete whose active droplet has lost its tags": {
+      "seconds": 6.2,
+      "reason": "Drives a real demo lease against the fake DigitalOcean provider through the delete and teardown window, waiting for the reread, absence or attention outcome."
+    },
     "hub/test/demo-release.test.ts::demo stop confirms provider absence on retry after an accepted delete": {
       "seconds": 6,
       "reason": "Drives a real demo lease against the fake DigitalOcean provider through an accepted delete and a retry that must observe provider absence before release."
     },
+    "hub/test/demo-release.test.ts::demo stop refuses a persistent id mismatch and clears attention after a later 404": {
+      "seconds": 5.8,
+      "reason": "Drives a real demo lease against the fake DigitalOcean provider through the delete and teardown window, waiting for the reread, absence or attention outcome."
+    },
+    "hub/test/demo-release.test.ts::demo stop refuses a persistent tags mismatch and clears attention after a later 404": {
+      "seconds": 6.6,
+      "reason": "Drives a real demo lease against the fake DigitalOcean provider through the delete and teardown window, waiting for the reread, absence or attention outcome."
+    },
     "hub/test/demo-release.test.ts::demo stop waits for an archived droplet with stripped tags to become absent": {
       "seconds": 6.6,
       "reason": "Drives a real demo lease against the fake DigitalOcean provider through the teardown window where tags read empty, then waits for absence within the bounded reread."
+    },
+    "hub/test/demo-release.test.ts::the detached demo watchdog confirms an active droplet losing tags during its delete": {
+      "seconds": 6.5,
+      "reason": "Runs the detached demo watchdog process against the fake provider through a delete whose droplet loses its tags before absence."
     },
     "hub/test/demo.test.ts::demo authorization, shared slot refusals and verdict cleanup use the same tagged lease": {
       "seconds": 6.115824,
@@ -4068,6 +4084,10 @@
     "hub/test/tracker-async.test.ts::a six-second tracker write warns, completes and leaves the hub serving": {
       "seconds": 7.417277,
       "reason": "T-483 regression holds real tracker I/O for six seconds to cross the production five-second warning threshold and prove the serving hub recovers without exiting."
+    },
+    "hub/test/tracker-load.test.ts::tracker requests stay within 5 s with 20 sessions and 200000 retained events": {
+      "seconds": 5.6,
+      "reason": "Seeds 200000 retained journal events and 20 live fixture sessions, then times concurrent tracker requests against their 5 s bound."
     },
     "hub/test/tracker-ready.test.ts::ready and the merge gate agree on one fixture: stale patch, unchanged rebase, qa_default per-item=false": {
       "seconds": 6.005568,
