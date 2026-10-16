@@ -227,7 +227,22 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     if (env.CLAUDE_CONFIG_DIR) this.#env.CLAUDE_CONFIG_DIR = this.#configDir;
   }
 
-  /** A row freezes its effective directory, including the hub's default at launch. */
+  /**
+   * The CLAUDE_CONFIG_DIR a launch passes: the hub's own when it inherited one, else none, so an unpinned session
+   * runs on the human's default profile. Claude Code treats any explicit value, even ~/.claude, as a separate
+   * profile: signed out and without the project's trust (T-603). An account's directory comes in its accountEnv.
+   */
+  #inheritedEnv(): Record<string, string> {
+    return this.#env.CLAUDE_CONFIG_DIR ? { CLAUDE_CONFIG_DIR: this.#configDir } : {};
+  }
+
+  /** `CLAUDE_CONFIG_DIR=<dir> ` when the row's commands run with the variable set, else nothing: the remedies' prefix. */
+  #dirPrefix(p: Pick<HarnessProcess, 'accountEnv'>): string {
+    const dir = p.accountEnv?.CLAUDE_CONFIG_DIR || this.#env.CLAUDE_CONFIG_DIR;
+    return dir ? `CLAUDE_CONFIG_DIR=${sq(resolve(dir))} ` : '';
+  }
+
+  /** A row freezes its effective directory: an account's, or the hub's inherited one; the default is the bookkeeping fallback. */
   #directory(p: Pick<HarnessProcess, 'accountEnv'>): DirectorySchedule {
     const configDir = resolve(p.accountEnv?.CLAUDE_CONFIG_DIR || this.#configDir);
     let schedule = this.#directories.get(configDir);
@@ -274,7 +289,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     d.entries = null;
     this.#saveSchedule(d);
     for (const watched of this.#watched.values()) if (this.#directory(watched) === d) this.#host.signal(watched.sessionId, { state: 'unknown', source: 'signed-out', at });
-    this.#host.log({ event: 'claude-signed-out', configDir: d.configDir, account: p.account ?? null, login: `CLAUDE_CONFIG_DIR=${sq(d.configDir)} claude auth login` });
+    this.#host.log({ event: 'claude-signed-out', configDir: d.configDir, account: p.account ?? null, login: `${this.#dirPrefix(p)}claude auth login` });
   }
 
   #recovered(d: DirectorySchedule, at = Date.now()): void {
@@ -384,7 +399,8 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
       authorize();
       const d = this.#directory(p);
       const warning = d.signedOut ? `Claude config directory ${d.configDir} is latched signed out; this explicit launch is a recovery attempt.` : undefined;
-      const remedy = p.account ? `\nAccount ${p.account}, directory ${d.configDir}: sign in with CLAUDE_CONFIG_DIR=${sq(d.configDir)} claude auth login, or trust the project once with CLAUDE_CONFIG_DIR=${sq(d.configDir)} claude in ${p.cwd}.` : '';
+      const prefix = this.#dirPrefix(p);
+      const remedy = p.account ? `\nAccount ${p.account}, directory ${d.configDir}: sign in with ${prefix}claude auth login, or trust the project once with ${prefix}claude in ${p.cwd}.` : '';
       const r = yield* wait(this.#run(args, p.cwd, p, undefined, resumed, launchToken).catch(error => {
         throw new Error(`${error instanceof Error ? error.message : String(error)}${remedy}`);
       }));
@@ -415,7 +431,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
   }
 
   spawn(request: SpawnRequest, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<HarnessProcess> {
-    return this.#launch({ account: request.account ?? null, accountEnv: { CLAUDE_CONFIG_DIR: this.#configDir, ...request.accountEnv }, name: request.name, harness: this.harness, role: request.role, model: request.model, cwd: request.cwd, sessionId: request.sessionId ?? randomUUID(), harnessSessionId: request.resumeConversation ?? null, item: request.item ?? null }, request.resumeConversation !== undefined, request.effort ?? null, resumed, request.launchToken, authorize, request.permissions ?? null);
+    return this.#launch({ account: request.account ?? null, accountEnv: { ...this.#inheritedEnv(), ...request.accountEnv }, name: request.name, harness: this.harness, role: request.role, model: request.model, cwd: request.cwd, sessionId: request.sessionId ?? randomUUID(), harnessSessionId: request.resumeConversation ?? null, item: request.item ?? null }, request.resumeConversation !== undefined, request.effort ?? null, resumed, request.launchToken, authorize, request.permissions ?? null);
   }
 
   attachCommand(p: HarnessProcess): string {
@@ -608,7 +624,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
   async resume(p: HarnessProcess, options: { relaunch?: boolean; authorize?: () => void; policy?: LaunchPolicy; resumed?: Resumed } = {}): Promise<ResumeResult> {
     return continueWith((function* (this: ClaudeCodeAdapter): Generator<Promise<unknown>, ResumeResult, unknown> {
       const resumed = options.resumed ?? untimed;
-      p.accountEnv ??= { CLAUDE_CONFIG_DIR: this.#configDir };
+      p.accountEnv ??= this.#inheritedEnv();
       const d = this.#directory(p);
       this.watch(p);
       if (d.signedOut && !options.relaunch) {

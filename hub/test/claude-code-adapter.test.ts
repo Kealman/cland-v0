@@ -5,7 +5,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { readFile, writeFile, unlink } from 'node:fs/promises';
+import { mkdir, readFile, writeFile, unlink } from 'node:fs/promises';
 import { join } from 'node:path';
 import { projectHub, withDiscoveredPid, assertFirstLaunchClause, clandWithEnv, clauseAnswered, connectUi, eventually, fakeClaude, flushProjectLogs, killDaemon, sleep, spawnSpoke, startDaemon, tempProject, type FrameClient } from './harness.ts';
 
@@ -457,3 +457,53 @@ test('an expired --bg launch latches a directory once without any discovery or r
   const journal = await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8');
   assert.equal(journal.split('\n').filter(line => line.includes('"event":"claude-signed-out"')).length, 1);
 });
+
+for (const selection of ['unpinned', 'pathless account', 'pinned account', 'inherited directory']) {
+  test(`Claude ${selection} launch, resume and remedies preserve whether CLAUDE_CONFIG_DIR is set (T-603)`, async (t) => {
+    const root = await tempProject(t);
+    const fake = await fakeClaude(t);
+    const config = join(root, 'registry');
+    const pinned = join(root, "account's directory");
+    await mkdir(join(config, 'cland'), { recursive: true });
+    await mkdir(pinned);
+    await writeFile(join(config, 'cland', 'accounts.toml'), `[accounts.pathless]\nharness = "claude-code"\n[accounts.pinned]\nharness = "claude-code"\nconfig_dir = ${JSON.stringify(pinned)}\n`);
+    const explicit = selection === 'pinned account' ? pinned : selection === 'inherited directory' ? fake.home : null;
+    // Override the harness's scratch selection with undefined to model an unset variable in the hub.
+    // projectHub's overrides are typed as strings, but Node omits undefined values from child environments.
+    const env = Object.assign({ ...fake.env, HOME: fake.home, XDG_CONFIG_HOME: config }, { CLAUDE_CONFIG_DIR: selection === 'inherited directory' ? explicit : undefined }) as Record<string, string>;
+    const { discovery } = await projectHub(t, root, env);
+    const ui = await connectUi(t, discovery);
+    const extra = selection === 'pinned account' ? { account: 'pinned' } : selection === 'pathless account' ? { account: 'pathless' } : {};
+    const p = await launch(ui, 'plain', extra);
+    assert.equal(p.status, 'running');
+    if (selection !== 'inherited directory') assert.equal(p.attach?.includes('CLAUDE_CONFIG_DIR='), explicit !== null);
+    assert.equal((await ui.request({ type: 'session.stop', session: p.name })).ok, true);
+    const resumed = await ui.request({ type: 'session.resume', session: p.name, relaunch: true }, 30_000);
+    assert.equal(resumed.ok, true, resumed.error);
+    assert.equal((resumed.value as { found: boolean }).found, true);
+    assert.equal((await ui.request({ type: 'session.stop', session: p.name })).ok, true);
+
+    const calls = (await readFile(join(fake.home, 'invocations.jsonl'), 'utf8')).trim().split('\n').map((line) => JSON.parse(line) as { args: string[]; configDir: string; CLAUDE_CONFIG_DIR: string | null });
+    const commands = calls.filter(c => c.args.includes('--bg') || c.args[0] === 'agents' || c.args[0] === 'stop');
+    const bg = commands.filter(c => c.args.includes('--bg'));
+    assert.equal(bg.length, 2, 'launch and relaunch both reach the harness');
+    assert.ok(bg[1]?.args.includes('--resume'), 'relaunch resumes the native conversation');
+    assert.ok(calls.some(c => c.args[0] === 'agents'), 'discovery reaches the harness');
+    assert.ok(commands.every(c => c.CLAUDE_CONFIG_DIR === explicit), 'launch, resume, discovery and stop preserve the explicit selection');
+    assert.ok(commands.every(c => c.configDir === (explicit ?? join(fake.home, '.claude'))), 'directory bookkeeping retains its fallback');
+
+    await writeFile(join(fake.home, 'logged-out'), '');
+    const failed = await ui.request({ type: 'session.launch', harness: 'claude-code', name: 'failed', ...extra });
+    assert.equal(failed.ok, false);
+    if ('account' in extra) {
+      assert.ok(failed.error?.includes('claude auth login'));
+      assert.ok(failed.error?.includes('trust the project'));
+      assert.equal(failed.error?.includes('CLAUDE_CONFIG_DIR='), explicit !== null);
+    }
+    const history = (await ui.request({ type: 'topic.history', topic: 'agents' })).value as { messages: Array<{ kind?: string; text: string }> };
+    const notice = history.messages.find(m => m.kind === 'claude-signed-out');
+    assert.ok(notice);
+    assert.ok(notice.text.includes('claude auth login'));
+    assert.equal(notice.text.includes('CLAUDE_CONFIG_DIR='), explicit !== null);
+  });
+}

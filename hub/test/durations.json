@@ -3327,6 +3327,14 @@
       "seconds": 56.219873,
       "reason": "File budget: Exercises real Claude fake-harness launch, discovery, hook delivery and restart; the baseline includes the production discovery schedule shortened by T-389."
     },
+    "hub/test/claude-code-adapter.test.ts::Claude pathless account launch, resume and remedies preserve whether CLAUDE_CONFIG_DIR is set (T-603)": {
+      "seconds": 5.627064,
+      "reason": "Proves a path-less account keeps the implicit Claude login through real fake-harness launch, stop and native-conversation relaunch, then checks failed-launch guidance. These process boundaries are the regression seam; Linux run A-4017 measured 5.627 s with all five load repetitions passing."
+    },
+    "hub/test/claude-code-adapter.test.ts::Claude unpinned launch, resume and remedies preserve whether CLAUDE_CONFIG_DIR is set (T-603)": {
+      "seconds": 5.711633,
+      "reason": "Proves an unpinned session keeps the implicit Claude login through real fake-harness launch, stop and native-conversation relaunch, then checks signed-out guidance. These process boundaries are the regression seam; Linux run A-4017 measured 5.712 s with all five load repetitions passing."
+    },
     "hub/test/claude-code-adapter.test.ts::a launched Claude Code session: the spoke connects, a UI message goes queued → delivered → injected, the reply comes back, and the state follows the hooks and the mod": {
       "seconds": 11.564467,
       "reason": "Exercises real Claude fake-harness launch, discovery, hook delivery and restart; the baseline includes the production discovery schedule shortened by T-389."

@@ -86,6 +86,9 @@ export function accountLocation(account: Account, env: NodeJS.ProcessEnv): { var
 /** Freeze the directory selected by the hub's environment, including a named harness default. */
 export async function selectAccount(account: Account, harness: string, env: NodeJS.ProcessEnv = process.env): Promise<AccountSelection> {
   if (account.harness !== harness) throw new Error(`account "${account.name}" uses ${account.harness}, but launch harness is ${harness}`);
+  // An explicit default directory selects a different Claude login. A path-less account inherits the default
+  // profile unless the hub itself selected a directory; the default profile need not have a ~/.claude directory.
+  if (harness === 'claude-code' && account.path === null && !env.CLAUDE_CONFIG_DIR) return { account: account.name, accountEnv: {} };
   const { variable, path } = accountLocation(account, env);
   const directory = variable === 'OPENCODE_DB' ? dirname(path) : path;
   if (!(await stat(directory).catch(() => null))?.isDirectory()) {
