@@ -2,8 +2,8 @@
 id: T-628
 kind: task
 title: A roles.toml editor sets one key of one role table and keeps the rest of the file
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 6
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-389
 branch: t/T-628-a-roles-toml-editor-sets-one-key-of-one
 created: 2026-10-16T16:04:11.537Z
-updated: 2026-10-16T20:36:38.599Z
+updated: 2026-10-16T20:37:54.677Z
+closed: 2026-10-16T20:37:54.677Z
 ---
 
 ## Summary
@@ -176,3 +177,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final merged-head evidence clear; Standards0/Spec0 findings, A-4189. Independently inspected same-head77556e4a/A-4188 exit0:2007pass/0fail/5skip, including Neovim smoke12of12. All8editor cases ordinary green and5of5, including atomic writer/stale-source refusal. C6 verified; C1–C5 delta-2/A-4147 marks current at unchanged6d537da3. All6claimant done marks present. Quarantined cases pass; no special failed-run exception needed. Hub-only plus smoke, not fullNeovim; lifetime/costunknown perreceipt. No Reviewer edits/tests.
 
 Criteria: C6 verified.
+
+### coord · 2026-10-16T20:37:54.677Z
+
+Merged 96140750c4e07ac14e6833fcd910fd28f7c61db2 onto dev.
