@@ -2,8 +2,8 @@
 id: T-606
 kind: task
 title: "spawn-census's sandbox test fails in integrated macOS runs: the sandboxed child inherits NODE_V8_COVERAGE"
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 1
 labels:
@@ -17,7 +17,8 @@ regression_of: T-394
 topic: topic-374
 branch: t/T-606-spawn-census-s-sandbox-test-fails-in
 created: 2026-10-16T12:29:04.656Z
-updated: 2026-10-16T12:32:45.203Z
+updated: 2026-10-16T12:33:02.612Z
+closed: 2026-10-16T12:33:02.612Z
 ---
 
 ## Summary
@@ -81,3 +82,7 @@ Findings: Standards0; Spec0.
 Artifact A-3906 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3906-t-606-full-review-clear-sandbox-only-coverage-disable-with-targeted-macos-proof.md
 
 Criteria: C1 verified.
+
+### coord · 2026-10-16T12:33:02.612Z
+
+Merged 4b8912baeaf8c8efde41bbd51d93dc96c618814c onto dev.
