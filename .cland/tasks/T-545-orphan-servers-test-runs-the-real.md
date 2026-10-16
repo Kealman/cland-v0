@@ -2,8 +2,8 @@
 id: T-545
 kind: task
 title: orphan-servers test runs the real opencode serve against the user's default OpenCode data (rule 13)
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-339
 branch: t/T-545-orphan-servers-test-runs-the-real
 created: 2026-10-15T22:54:35.623Z
-updated: 2026-10-15T23:52:06.969Z
+updated: 2026-10-16T00:20:27.008Z
+closed: 2026-10-16T00:20:27.008Z
 ---
 
 ## Summary
@@ -179,3 +180,7 @@ Evidence A-3447 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3447-s
 Review artifact A-3472 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3472-t-545-final-clear-at-3847de33-under-explicit-mac-linux-evidence-acceptance.md.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-16T00:20:27.008Z
+
+Merged bfe652638c8a9f53cc41f1efc1c0d7e03460604f onto dev.
