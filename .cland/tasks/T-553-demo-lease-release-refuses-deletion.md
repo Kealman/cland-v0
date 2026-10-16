@@ -2,8 +2,8 @@
 id: T-553
 kind: task
 title: "Demo lease release refuses deletion: droplet identity differs from its lease"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -17,7 +17,8 @@ regression_of: T-459
 topic: topic-349
 branch: t/T-553-demo-lease-release-refuses-deletion
 created: 2026-10-16T00:37:02.839Z
-updated: 2026-10-16T04:25:16.755Z
+updated: 2026-10-16T04:25:52.909Z
+closed: 2026-10-16T04:25:52.909Z
 ---
 
 ## Summary
@@ -129,3 +130,7 @@ scope: delta
 Merge delta clear against prior final 270e35c3 and dev eee17d18. Standards: no findings. Spec: no findings. Integrated per-lease release/reconcile serialization preserves identity guards, durable attention, orphan protection and once-per-lease Coordinator alert; dispatch verdict/rule changes preserve demo alert. Core cleanup/lease/watchdog/demo-release test blobs unchanged; recorder integration retains watchdog injections. Manifest equals dev exactly. A-3694/A-3695 independently total 25 whole files / 320 passes / zero failures, skips or cancellations; quiet/authorized loaded admissions disclosed. Coordinator 4c573805 explicitly accepts this merged-head targeted cover with prior green Linux A-3679 and requires no new droplet suite. C1/C2/C3 reverified; C1 retains accepted historical-field limitation 0d69dd33. No Reviewer edits/tests. Analysis A-3701: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3701-t-553-merge-delta-clear-at-2deee89e.md.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-16T04:25:52.909Z
+
+Merged fd1f43acc3b0c2ffc86e1d3e836745b03e624cf5 onto dev.
