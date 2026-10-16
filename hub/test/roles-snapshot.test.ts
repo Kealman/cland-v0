@@ -6,10 +6,38 @@ import { parseRoles, RolesFile, ROLES_REFRESH_MS } from '../src/roles/config.ts'
 import { DEFAULT_ROLES_TOML } from '../src/roles/default-roles.ts';
 import { decide } from '../src/roles/permissions.ts';
 import { createHubBase } from '../src/hub/server.ts';
+import { createSocketEdge } from '../src/hub/socket.ts';
+import { writeDiscovery } from '../src/project.ts';
 import { RequestGuard } from '../src/hub/budget.ts';
-import { eventually, tempProject } from './harness.ts';
+import { cland, eventually, sleep, tempProject } from './harness.ts';
 
 const rolesText = (tools: string[]) => `[implementer.launch]\nharness = "codex"\n[implementer.permissions]\ntools = ${JSON.stringify(tools)}\n`;
+
+test('role set CLI waits for a configuration read beyond the short socket probe budget', async t => {
+  const root = await tempProject(t);
+  const path = join(root, '.cland', 'roles.toml');
+  await mkdir(join(root, '.cland'), { recursive: true });
+  await writeFile(path, DEFAULT_ROLES_TOML);
+  // Keep refresh on the assignment path, rather than a background interval.
+  t.mock.timers.enable({ apis: ['setInterval'] });
+  let slow = false;
+  const roles = new RolesFile(path, () => {}, async file => {
+    if (slow) await sleep(3100);
+    return readFile(file, 'utf8');
+  });
+  await roles.start();
+  const hub = createHubBase({ secret: 'test', roles });
+  const socket = join(root, 'hub.sock');
+  const edge = await createSocketEdge({ path: socket, dispatcher: hub.dispatcher });
+  t.after(async () => { await edge.close(); await hub.close(); await roles.stop(); });
+  writeDiscovery(join(root, '.cland', 'hub.json'), { root, socket, port: 0, secret: 'test', pid: process.pid, version: 'test' });
+  slow = true;
+
+  const result = await cland(root, 'role', 'set', 'rev', 'reviewer');
+  assert.equal(result.code, 0, result.stderr);
+  assert.match(result.stdout, /^rev \[Reviewer\] \(offline\): role set/);
+  assert.equal(hub.core.roleList().roles.find(role => role.role === 'reviewer')?.holders[0]?.name, 'rev');
+});
 
 test('default and project clauses route shared-defect candidates through one Coordinator fix', async () => {
   for (const text of [DEFAULT_ROLES_TOML, await readFile(new URL('../../.cland/roles.toml', import.meta.url), 'utf8')]) {

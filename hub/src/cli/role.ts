@@ -45,7 +45,9 @@ export async function runRole(args: string[], cwd: string = process.cwd()): Prom
       const note = noteFile !== undefined ? readFileSync(noteFile, 'utf8') : undefined;
       const move = rest.includes('--move');
       if (item && (second !== 'lead' || (!move && note === undefined))) throw new Error('--item requires role lead and --move or --note-file');
-      const v = (await askHubFrame(d, { type: 'role.set', session: first, role: second, ...(note !== undefined ? { note } : {}), ...(move ? { move } : {}), ...(item ? { item } : {}) })) as { session: RoleHolder };
+      // Assignment awaits configuration freshness before persisting the role and publishing its clause
+      // (dispatch.ts, role.set). Like task mutations, allow 10 s for that work plus the socket handshake.
+      const v = (await askHubFrame(d, { type: 'role.set', session: first, role: second, ...(note !== undefined ? { note } : {}), ...(move ? { move } : {}), ...(item ? { item } : {}) }, 10_000)) as { session: RoleHolder };
       out(v, `${holderLine(v.session)}: role set${note !== undefined ? ', with the handover note' : ''}`);
       return 0;
     }
