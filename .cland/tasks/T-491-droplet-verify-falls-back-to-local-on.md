@@ -2,8 +2,8 @@
 id: T-491
 kind: task
 title: Droplet verify falls back to local on 'lock acquisition deadline reached' under load
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-360
 branch: t/T-491-droplet-verify-falls-back-to-local-on
 created: 2026-10-15T12:05:32.122Z
-updated: 2026-10-16T07:23:20.035Z
+updated: 2026-10-16T07:24:55.603Z
+closed: 2026-10-16T07:24:55.603Z
 ---
 
 ## Summary
@@ -202,3 +203,7 @@ Findings: Standards0; Spec0; M1 resolved.
 Artifact A-3823 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3823-t-491-final-clear-corrected-linux-gate-and-all-five-owned-load-proofs-green.md
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-16T07:24:55.603Z
+
+Merged c09f84332c033aea4fc86e746474fa91ed28867d onto dev.
