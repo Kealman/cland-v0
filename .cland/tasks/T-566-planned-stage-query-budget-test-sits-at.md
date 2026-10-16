@@ -2,8 +2,8 @@
 id: T-566
 kind: task
 title: planned-stage query-budget test sits at 94–95% of its 10,000-query limit and fails under droplet load
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -16,7 +16,8 @@ blocked_by: []
 topic: topic-362
 branch: t/T-566-planned-stage-query-budget-test-sits-at
 created: 2026-10-16T03:20:19.880Z
-updated: 2026-10-16T07:19:06.168Z
+updated: 2026-10-16T07:23:43.826Z
+closed: 2026-10-16T07:23:43.826Z
 ---
 
 ## Summary
@@ -130,3 +131,7 @@ Findings: Standards0; Spec0.
 Artifact A-3820 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3820-t-566-final-clear-linux-6064-query-landing-has-39-36-margin.md
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-16T07:23:43.826Z
+
+Merged 70eb4bb80758bdd1830457aa9bcb46ec3e222472 onto dev.
