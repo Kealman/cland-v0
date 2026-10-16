@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-401
 branch: t/T-475-cover-quiet-enforced-while-the
 created: 2026-10-15T09:13:18.684Z
-updated: 2026-10-16T21:49:17.030Z
+updated: 2026-10-16T23:28:52.298Z
 closed: 2026-10-16T21:49:17.030Z
 ---
 
@@ -420,3 +420,7 @@ Criteria: C1 verified, C2 verified, C3 verified.
 ### coord · 2026-10-16T21:49:17.030Z
 
 Merged fdadc69d534672fd5b60737352b7f3c93fce1511 onto dev.
+
+### coord · 2026-10-16T23:28:52.298Z
+
+Coordinator, post-merge obligation from 54b041c5, done. cover-quiet.test.ts passed 12/12 locally (exit 0, 18.2 s, load 2.7) against the live hub pid 78936, restarted at 23:26Z onto T-475 (fdadc69d). It ran from a clean detached worktree at dev e119422d. Local test admission works on current dev. The receipt is in topic-406.

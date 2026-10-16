@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-411
 branch: t/T-686-an-in-process-fake-adapter-for-claude
 created: 2026-10-16T19:59:28.448Z
-updated: 2026-10-16T23:27:18.091Z
+updated: 2026-10-16T23:35:09.949Z
 ---
 
 ## Summary
@@ -35,21 +35,26 @@ updated: 2026-10-16T23:27:18.091Z
 - [x] C1. A new T2 test proves launch, role clause, inject, turn, stop and resume through `projectHub` for each of the three flavours with no child process, proved by the tier lint and the file's spawn census row.
   - done: impl-686 · 2026-10-16T22:35:45.068Z
   - verified: rev-31 [reviewer] · run rev-20261016-686-final · 2026-10-16T23:27:17.470Z · commit 6cfe726b35dd450c822fa9ed848b1695d66c49dc
+  - verified: rev-31 [reviewer] · run rev-20261016-686-merge-delta · 2026-10-16T23:34:32.954Z · commit 55775ec78b7409cd3ff005989e917b82b338b756
 - [x] C2. Each flavour's capabilities equal the real adapter's exported constant, proved by a unit test.
   - done: impl-686 · 2026-10-16T21:51:10.826Z
   - verified: rev-31 [reviewer] · run rev-20261016-686-source-3 · 2026-10-16T21:57:22.842Z · commit dd966639b7b316456a8eec019ab0852b2c2811ee
   - verified: rev-31 [reviewer] · run rev-20261016-686-source-4 · 2026-10-16T22:35:38.413Z · commit 6cfe726b35dd450c822fa9ed848b1695d66c49dc
+  - verified: rev-31 [reviewer] · run rev-20261016-686-merge-delta · 2026-10-16T23:34:32.954Z · commit 55775ec78b7409cd3ff005989e917b82b338b756
 - [x] C3. Scripted accept, reject and uncertain injects reach the delivery states `injected`, `delivered` and `uncertain` as the real adapters' do, proved by the new test.
   - done: impl-686 · 2026-10-16T21:51:11.198Z
   - verified: rev-31 [reviewer] · run rev-20261016-686-final · 2026-10-16T23:27:17.470Z · commit 6cfe726b35dd450c822fa9ed848b1695d66c49dc
+  - verified: rev-31 [reviewer] · run rev-20261016-686-merge-delta · 2026-10-16T23:34:32.954Z · commit 55775ec78b7409cd3ff005989e917b82b338b756
 - [x] C4. `session-brief.test.ts` and `roles-session-refresh.test.ts` use the shared fake, with an audit showing their test declarations and assertion meanings unchanged.
   - done: impl-686 · 2026-10-16T21:51:11.399Z
   - verified: rev-31 [reviewer] · run rev-20261016-686-source-3 · 2026-10-16T21:57:22.842Z · commit dd966639b7b316456a8eec019ab0852b2c2811ee
   - verified: rev-31 [reviewer] · run rev-20261016-686-source-4 · 2026-10-16T22:35:38.413Z · commit 6cfe726b35dd450c822fa9ed848b1695d66c49dc
+  - verified: rev-31 [reviewer] · run rev-20261016-686-merge-delta · 2026-10-16T23:34:32.954Z · commit 55775ec78b7409cd3ff005989e917b82b338b756
 - [x] C5. `docs/agents/tests.md` names the in-process fake adapter as the default for hub rules and the fake binaries as reserved for contract and scenario files.
   - done: impl-686 · 2026-10-16T21:51:11.613Z
   - verified: rev-31 [reviewer] · run rev-20261016-686-source-3 · 2026-10-16T21:57:22.842Z · commit dd966639b7b316456a8eec019ab0852b2c2811ee
   - verified: rev-31 [reviewer] · run rev-20261016-686-source-4 · 2026-10-16T22:35:38.413Z · commit 6cfe726b35dd450c822fa9ed848b1695d66c49dc
+  - verified: rev-31 [reviewer] · run rev-20261016-686-merge-delta · 2026-10-16T23:34:32.955Z · commit 55775ec78b7409cd3ff005989e917b82b338b756
 
 ## Comments
 
@@ -146,3 +151,22 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear; Standards0/Spec0 findings, A-4242. Independently inspected same-head16016692/A-4241 full exit0:2421pass/0fail/8skip including complete Neovim390pass/0fail/3skip. All7new identities ordinarygreen/5of5, including rename/identity and construction/daemon cleanup regressions. Both previously failing journal error contracts pass unchanged; migrated brief8/refresh2 cases complete. C1/C3 verified, with C1 manual tier/census substitution per independently read Coordinatorf3bf3a41; C2/C4/C5 source-4 current. All5claimant done marks present. No gate exception needed; historical failed receipt retained. Lifetime3025s/cost$0.2101 perhub. No Reviewer edits/tests.
 
 Criteria: C1 verified, C3 verified.
+
+### rev-31 · 2026-10-16T23:34:32.955Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261016-686-merge-delta
+commit: 55775ec78b7409cd3ff005989e917b82b338b756
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Delta clear; Standards0/Spec0 findings, A-4248. Independently checked exact dev+two sorted T2 entries and byte-identical legacy fixture. Temporary capabilities T2 explicitly authorized by Coordinator2ce439c1 pending T-682/T-690. Task production/fake/consumer behavior retained; direct serveProject fixture now mirrors projectHub environment/state/fence isolation, preserving all resource/error assertions. A-4247 supplies five serial 4/4 component and five serial 3/3 capability passes; exact-head typecheck/tier lint reported green. C1-C5 current. Prior full-green Linux A-4241 remains accepted per Coordinatorb20d562c; 0db94e10 authorized this fixture correction and scoped review. Next integrated cover covers combined tree; no exact-current-head full-suite claim or new task run. Submission hold preserved. No Reviewer edits/tests.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-10-16T23:35:09.949Z
+
+Coordinator disposition (rule 7 exception, stated explicitly). After its green droplet run 16016692 (A-4241) at 6cfe726b, the head moved to 55775ec7 for two things. First, the dev merge with its manifest-only changes to tiers.json. Second, one test-fixture change in T-686's own new T2 file: its direct serveProject regression now isolates CLAND_* keys, the executor credential and the executor state, as projectHub does. The production code at 6cfe726b is unchanged. The scoped delta review is clear at 55775ec7, the touched files passed 5/5 serially on the Mac after the dev merge, and typecheck and test:tiers pass. Evidence for the merged tree is the next integrated cover over T-680, T-686 and T-635. No new task droplet run (cap hold to 00:00Z).

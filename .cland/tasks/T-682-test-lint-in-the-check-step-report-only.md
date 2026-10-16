@@ -17,7 +17,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-16T19:59:27.971Z
-updated: 2026-10-16T21:45:37.772Z
+updated: 2026-10-16T23:29:37.487Z
 ---
 
 ## Summary
@@ -48,3 +48,7 @@ Report mode: the result, the log and `cland verify --dry-run` (T-681) print `tes
 ### coord · 2026-10-16T21:45:37.772Z
 
 Coordinator, input from T-679: hub/test/clock.test.ts declares itself T1, but its FakeClock setTimeout/setInterval calls and source-boundary literals match the MACHINE pattern in hub/src/suite-shards.ts. So the T1 hermetic check refuses it, and T-679 tagged it T2 for now. The tier import rules here should tell FakeClock timer calls from real timers, so that T-690 can retag it to T1.
+
+### coord · 2026-10-16T23:29:37.487Z
+
+Coordinator, second scanner false positive, from T-686. The MACHINE pattern in hub/src/suite-shards.ts matches any import path containing 'harness', including the in-process ./fakes/harness.ts. That makes T-686's unit file (fake-harness-capabilities.test.ts) fail T1, so it's tagged T2 for now. The tier import rules here should tell in-process fakes from process helpers by module, not by a substring of the path. T-690 then retags it, and clock.test.ts, to T1.

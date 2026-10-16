@@ -3,7 +3,7 @@ id: T-635
 kind: task
 title: cland models <harness> lists the harness's model ids from a cached probe
 state: open
-status: ready
+status: review
 size: M
 criterion_seq: 6
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-391
 branch: t/T-635-cland-models-harness-lists-the-harness-s
 created: 2026-10-16T16:04:12.499Z
-updated: 2026-10-16T21:56:18.458Z
+updated: 2026-10-16T23:34:31.708Z
 ---
 
 ## Summary
@@ -378,3 +378,7 @@ Linux x64 c-8 lon1, Node 24.21.0/Neovim 0.12.5, two workers; suite 2401.99 s, pe
 Review artifact A-4227.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### impl-635 · 2026-10-16T23:34:25.083Z
+
+Coordinator-authorized dev merge committed and pushed at d5ba405820cc3fd2ca3fb0dc78a98a9e222f71d1 (parents 4f91102d, 60ca3739). Dispatch retains models.list and suite.slot union; own models test registered T3 in tiers.json; legacy shards fixture byte-identical to dev. All five matching test files pass (130/130), typecheck exit 0, test:tiers exit 0, clean tree. Evidence A-4249. Delta review requested; fresh droplet verification awaits source clear and explicit hold lift.

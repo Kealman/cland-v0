@@ -3,7 +3,7 @@ id: T-681
 kind: task
 title: Run results show one line per tier, and cland verify --dry-run prints the admission report without queueing
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 5
 labels:
@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-412
 branch: t/T-681-run-results-show-one-line-per-tier-and
 created: 2026-10-16T19:59:27.868Z
-updated: 2026-10-16T23:27:13.782Z
+updated: 2026-10-16T23:30:35.650Z
 ---
 
 ## Summary
@@ -32,13 +32,14 @@ Nobody can see the tiers until a run says what each one cost. Week 0 adds tier-w
 
 ## Acceptance criteria
 
-- [ ] C1. A task run's result shows one line per planned tier with files, tests, observed seconds, projected wall at the run's workers and the tier's wall budget, proved by a run-report test.
-  - failed: rev-30 [reviewer] · 2026-10-16T22:04:34.595Z · note Legacy-only planned Neovim files are silently filtered out of tier rows, including counts/observed seconds/projection. See A-4230.
-- [ ] C2. The result shows the T1+T2 share of the planned files' manifest seconds, proved by the same test.
-  - failed: rev-30 [reviewer] · 2026-10-16T22:04:34.595Z · note Legacy full-run tier share omits planned Neovim manifest seconds from its denominator. See A-4230.
-- [ ] C3. `cland verify --dry-run` prints the selection and tier lines and leaves no queue entry, lease, droplet or spend reservation, proved by a CLI test against `projectHub`.
-  - failed: rev-30 [reviewer] · 2026-10-16T23:27:13.782Z · note Owned CLI dry-run proof fails ordinarily in A-4239; full gate times out without assertion detail. See A-4243.
-- [ ] C4. A tier over its wall budget prints a report-only notice and the run's exit is unchanged, proved by a test with a planted manifest.
+- [x] C1. A task run's result shows one line per planned tier with files, tests, observed seconds, projected wall at the run's workers and the tier's wall budget, proved by a run-report test.
+  - done: impl-681 · 2026-10-16T23:29:59.002Z
+- [x] C2. The result shows the T1+T2 share of the planned files' manifest seconds, proved by the same test.
+  - done: impl-681 · 2026-10-16T23:29:59.371Z
+- [x] C3. `cland verify --dry-run` prints the selection and tier lines and leaves no queue entry, lease, droplet or spend reservation, proved by a CLI test against `projectHub`.
+  - done: impl-681 · 2026-10-16T23:29:59.587Z
+- [x] C4. A tier over its wall budget prints a report-only notice and the run's exit is unchanged, proved by a test with a planted manifest.
+  - done: impl-681 · 2026-10-16T23:29:59.797Z
 - [ ] C5. The share of a full run at the merge head is recorded on this item as the tier baseline.
 
 ## Comments
@@ -128,3 +129,31 @@ Fail C3 for the owned ordinary CLI proof failure. No criterion verified in this 
 Review artifact A-4243.
 
 Criteria: C3 failed (Owned CLI dry-run proof fails ordinarily in A-4239; full gate times out without assertion detail. See A-4243.).
+
+### impl-681 · 2026-10-16T23:30:00.112Z
+
+Corrected source head 27a74fdccd63774eda41a4a8a0ef5bb9ef3e8ba2 (pushed). Exact local red TAP trace showed startup ledger registration race plus failure-path provider leak. Cleanup-only change preserved the failure but made runner exit normally in 0.83s; registering startup ledger before the unchanged byte-equality assertion made original case green. Whole T2 file 5/5 serial: 2.153,2.157,2.125,2.283,2.178s; T1 file 3/3 in 0.142s. Typecheck/test:tiers/diff-check pass. A-4240 holds machine timing analysis; correction proof artifact posted. Fresh source review requested; droplet retry waits for explicit hold lift. C5 full-run evidence remains pending.
+
+### rev-30 · 2026-10-16T23:30:35.650Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-681-fixture-correction
+commit: 27a74fdccd63774eda41a4a8a0ef5bb9ef3e8ba2
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-681 delta source review clear at 27a74fdccd63774eda41a4a8a0ef5bb9ef3e8ba2, compared with c93466646f45158b88a6c004c616799ba8e6b446. Only suite-dry-run.test.ts changes (6 insertions, 2 deletions); product code and every existing assertion are unchanged. Both Standards and Spec reviewed in-session; findings [].
+
+E1 correction: before projectHub starts, the fixture awaits rememberProject against exactly the isolated .cland/executor-state ledger that projectHub uses. Production rememberProject adds project registration without a reservation. The original before/after byte equality, provider GET-only assertion, empty droplets/leases/jobs/queue assertions and invalid-manifest refusal remain intact. This establishes the startup baseline without weakening the no-spend-mutation test.
+
+The fake provider now registers with onCleanup, so an earlier failing teardown step cannot skip its disposal: the ownership cleanup loop catches individual errors and continues through resources, hubs and directories. The restored scheduler/store cleanup uses beforeDirectories, including signal cleanup, to stop writers before removing their root. No sleep, deadline relaxation, allowance or execution bypass is added.
+
+A-4245 records an authorized bounded local TAP reproduction: actual ledger contained the registered fixture root while expected was null; the process then remained alive after its fast failure. Its cleanup-only experiment retained the same failed byte-equality assertion but exited normally in 0.83 seconds, isolating failure-path disposal from the ledger race. With registration added, the exact case passed, followed by five serial whole T2 files (20/20 cases, 2.125–2.283 seconds per file) and the pure T1 file (3/3). These are claimant-recorded targeted receipts, inspected read-only; Reviewer ran no tests/compiler/provider. Static typecheck/test:tiers green is also recorded; pinned diff whitespace check passed.
+
+The correction addresses the observed local failure and leak. It is consistent with the remote gate's unfinished CLI identity; it does not establish a precise attribution of the entire 60-minute remote wall. A-4240 correctly distinguishes summed emitted test times from unavailable completed file wall times; T-720 owns runner deadline/diagnostic work.
+
+C1-C4 claimant done marks are restored with targeted proof. No Reviewer criterion marks added on this source pass: accepted exact-head droplet evidence and C5's recorded completed full-plan baseline remain pending. The preliminary census remains 0.02% of 5281.23 seconds, not completed final evidence. This source clearance does not lift the Coordinator's daily-spend submission hold. Wait for an explicit lift before new mode-free droplet verification; no dev merge or unchanged-head retry is directed.
+Review artifact A-4246.
