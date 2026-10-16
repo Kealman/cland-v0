@@ -1,7 +1,7 @@
 ---
 id: Q-599
 kind: question
-title: "Install, init and setup: the decided flow"
+title: "Init and setup: the decided flow"
 state: open
 labels:
   - wayfinder:grilling
@@ -15,9 +15,9 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-16T11:26:11.880Z
-updated: 2026-10-16T11:26:11.880Z
+updated: 2026-10-16T12:07:08.488Z
 ---
 
 ## Question
 
-Install, init and setup as the decided flow, on the install research, the harness research, the prior-art research and the setup prototype: the one install line and the first page of the docs; `cland init` on an empty folder and on a project whose default branch is not main; the setup steps in order, the accounts registration, doctor's strictness; the Aide in the terminal and the answer to the trust prompts; what `cland` prints in a folder without `.cland/`; the package version at release.
+Init and setup as the decided flow, on the harness research, the prior-art research and the setup prototype: `cland init` on an empty folder and on a project whose default branch is not main; the setup steps in order, the accounts registration, doctor's strictness; the Aide in the terminal and the answer to the trust prompts (T-603); what `cland` prints in a folder without `.cland/`; the package version at release. The install command on a fresh machine is deferred (the human, 2026-10-16): 0.1.4 assumes cland installed from the checkout on the human's machine; Q-592's findings stand for later.

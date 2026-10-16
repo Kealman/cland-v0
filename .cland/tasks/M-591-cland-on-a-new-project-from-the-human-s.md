@@ -11,12 +11,12 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-16T11:26:11.049Z
-updated: 2026-10-16T11:26:11.049Z
+updated: 2026-10-16T12:29:57.808Z
 ---
 
 ## Destination
 
-Spec v0.1.4 (`docs/spec/v0.1.4.md`) complete and the v0.1.4 epics published under the release item R-577 "cland on a new project": one install command on a fresh machine, a deterministic `cland init`, the interactive `cland setup` (harnesses, accounts, the favourite harness, the Aide launched in the terminal), the onboarding the Aide leads from a skill on an empty or an existing project, the curated skill set edited in place, and the welcome artifact; built after v0.1.3 ships and before v0.2.
+Spec v0.1.4 (`docs/spec/v0.1.4.md`) complete and the v0.1.4 epics published under the release item R-577 "cland on a new project": a deterministic `cland init` (cland itself installed from the checkout on the human's machine; the one-command install deferred), the interactive `cland setup` (harnesses, accounts, the favourite harness, the Aide launched in the terminal), the onboarding the Aide leads from a skill on an empty or an existing project, the curated skill set edited in place, and the welcome artifact; built after v0.1.3 ships and before v0.2.
 
 ## Notes
 
@@ -40,10 +40,15 @@ Settled before charting (grilling round 1, 2026-10-16):
 
 ## Decisions so far
 
-(none yet)
+- [Install from the GitHub tag: one command on a fresh machine](Q-592, .cland/tasks/Q-592-install-from-the-github-tag-one-command.md): no `npm install -g` form works today (root workspaces with an npm bug, type stripping refused under node_modules, hub dependencies never installed, no root version and a 22 MB package, the Neovim cache inside the package, a private repository, the sh wrapper); seven fixes prototyped, after which `npm install -g github:Kealman/cland-v0#vX.Y.Z` installs in 7 s; the root version equals the tag and `cland release` refuses a mismatch; today's checkout line recorded for the docs.
+- [The skill set: keep or drop each of the 38 vendored skills](Q-595, .cland/tasks/Q-595-the-skill-set-keep-or-drop-each-of-the.md): keep 17 (three weak), drop 21 with a reason each; 16 copies differ from upstream while PATCHES.md records 4, so each kept skill gets a metadata header with its origin and changes; `cland update` cannot detect an edit today (no hashes in the manifest): record SHA-256 per file and refresh untouched, keep edited, add new, remove dropped-untouched; the human decides in Q-598.
+- [The skill set and the skills policy](Q-598, .cland/tasks/Q-598-the-skill-set-and-the-skills-policy.md): keep 15 vendored skills (21 with cland's own and onboarding), drop 23; lock and PATCHES.md deleted, a metadata header per kept skill, the Codex listing fixed; `cland update` keeps SHA-256 per file: untouched refreshed, edited kept and reported, new added, dropped removed when untouched; old manifests get one last overwrite with a warning.
 
+- [Harness setup facts: install, login, trust and accounts](Q-593, .cland/tasks/Q-593-harness-setup-facts-install-login-trust.md): curl installers and blocking logins for all three harnesses, `claude auth status --json` carries the identity, Codex's identity comes from the app-server's account/read, OpenCode's login is optional; trust is deterministic (Claude Code: hasTrustDialogAccepted in the profile's .claude.json under its lock; Codex: trust_level through config/batchWrite; OpenCode: none); the terminal Aide is a normal hub launch plus the harness's attach command, never a hand-started harness; T-603 stands; follow-ups: doctor's Codex range and env keys as credentials.
+- [Prior art: terminal setup wizards and first-run tours](Q-594, .cland/tasks/Q-594-prior-art-terminal-setup-wizards-and.md): ordered idempotent steps (detect, offer, confirm, run the vendor command with inherited stdio, detect again; the re-check decides); without a terminal never prompt, report open steps and exit 1, `--yes` for harmless questions only, `--json` as doctor; no library, a readline prompter with one interface per question; tests with a fake prompter and fake harnesses on the PATH.
 ## Not yet specified
 
+- Verification for any stack: `cland verify` runs this project's npm scripts by name (typecheck, test, the hub and nvim modes, `npm ci` on the droplet, coverage selection over node --test); a non-Node project has no verification today. The commands belong in `[verification]` of config.toml, written by the onboarding with the stack; the shape is decided in Q-600 and the epic in the cut (raised by the human during the live try, 2026-10-16).
 - The onboarding questions per human role (developer-architect, designer, product owner, mixed) and how the Aide picks them; waits on the onboarding prototype.
 - What `cland update` does to a project's skills when cland's set changes (new skills added, dropped ones retired?) and how an edited skill is detected; waits on the skills triage.
 - The welcome artifact's content and whether the workbench's empty state points at it; waits on the prototype.
@@ -53,6 +58,7 @@ Settled before charting (grilling round 1, 2026-10-16):
 
 ## Out of scope
 
+- The one-command install on a fresh machine (Q-592's seven fixes, the public repository question): deferred by the human on 2026-10-16; 0.1.4 assumes cland installed from the checkout on the human's machine, who tests there first; the research stands for a later release.
 - Trackers other than GitHub Issues (Linear, Jira): no import; the cland tracker is the only source.
 - Publishing cland to the npm registry: later; 0.1.4 installs from the GitHub tag.
 - Installing harnesses silently or holding harness credentials: setup shows and runs install commands on confirmation; logins are the human's own, in the terminal.

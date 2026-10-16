@@ -5,7 +5,7 @@ title: "cland setup in the terminal: harnesses, accounts, the favourite harness,
 state: open
 labels:
   - wayfinder:prototype
-assignee: null
+assignee: cland-design
 parent: M-591
 blocked_by:
   - Q-593
@@ -13,7 +13,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-16T11:26:11.633Z
-updated: 2026-10-16T11:26:11.633Z
+updated: 2026-10-16T12:17:26.090Z
 ---
 
 ## Question

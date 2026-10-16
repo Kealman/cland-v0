@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-16T11:43:33.915Z
-updated: 2026-10-16T11:43:33.915Z
+updated: 2026-10-16T12:01:35.351Z
 ---
 
 ## Summary
@@ -35,3 +35,9 @@ Every Claude Code launch without `account` runs on an empty profile unless the h
 Pass `CLAUDE_CONFIG_DIR` to the child only when the hub inherited it (`env.CLAUDE_CONFIG_DIR`) or `request.accountEnv` carries the account's directory; keep `#configDir` for the hub's own bookkeeping (polling schedule per directory, the attach command, the signed-out remedy text), and make the remedy text print the variable only when it is actually set. A test: a launch with a clean hub environment spawns `claude` with no `CLAUDE_CONFIG_DIR`; a pinned account still gets its directory.
 
 Found by the design session's research Q-593 (harness setup facts) under the map M-591.
+
+## Comments
+
+### human · 2026-10-16T12:01:35.351Z
+
+A prototype copy of the fix with a test exists on prototype/onboarding at 7acc4890 (hub/src/adapters/claude-code.ts: spawn and resume pass CLAUDE_CONFIG_DIR only when the hub inherited it, an account still brings its directory through accountEnv; the signed-out notice and the launch remedy print the variable only when set; new test in hub/test/claude-code-adapter.test.ts, 10/10 pass). Not covered there: sessions recorded before the change keep the explicit default on relaunch. Cherry-pick or redo as the item's branch.
