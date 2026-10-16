@@ -16,6 +16,7 @@ import { Tracker } from '../src/tracker/tracker.ts';
 import { provisionTerritory } from '../src/territory.ts';
 import { Report } from '../src/init/files.ts';
 import { manualTips } from './freshness-harness.ts';
+import { RequestGuard } from '../src/hub/budget.ts';
 
 const git = (cwd: string, ...args: string[]): string => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
 const ok = (r: CliResult): CliResult => {
@@ -325,11 +326,12 @@ async function guardedHub(t: TestContext, options: { clock?: { now: number }; se
   const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db'), log, scheduleTips: tips.scheduleTips });
   tracker.start();
   onCleanup(t, () => tracker.stop());
-  const hub = await startHub({ log, tracker, ...(options.clock ? { guard: { now: () => options.clock!.now } } : {}) });
+  const guard = new RequestGuard({ log, ...(options.clock ? { now: () => options.clock!.now } : {}) });
+  const hub = await startHub({ log, tracker, requestGuard: guard });
   onCleanup(t, () => hub.close());
   const process = { name: 'impl-1', harness: 'claude-code', role: 'implementer', sessionId: 'sess-impl-1', cwd: join(root, '.cland', 'worktrees', 'T-1'), item: 'T-1', status: 'running' } as HarnessProcessView;
   hub.dispatcher.useSessions({ retainedPool: () => false, launch: async () => process, list: options.sessionsList ?? (() => []), pendingStops: () => [] } as unknown as Sessions);
-  return { root, records, tracker, hub };
+  return { root, records, tracker, hub, guard };
 }
 
 test("session.launch with an item: a synchronous branch-link subscriber after Git is timed once as resumed", async (t) => {
@@ -357,20 +359,37 @@ test('worktree.list: its work after the Git reads is timed as phase resumed (a s
   const clock = { now: 0 };
   let slowSessions = false;
   let snapshots = 0;
-  const { records, hub } = await guardedHub(t, {
+  let inListContinuation = false;
+  const { records, tracker, hub, guard } = await guardedHub(t, {
     clock,
     sessionsList: () => {
+      // Inbox publication and hold projection also list sessions; only count this request's snapshots.
+      if (!inListContinuation) return [];
       snapshots++;
       // Initial and final snapshots now surround async item/path reads: charge one continuation.
       if (slowSessions) { slowSessions = false; clock.now += 400; }
       return [];
     },
   });
+  const measure = guard.measure.bind(guard);
+  t.mock.method(guard, 'measure', <T>(tool: string, client: string, work: () => T, phase?: 'resumed' | 'answer'): T => {
+    const previous = inListContinuation;
+    inListContinuation = tool === 'worktree.list' && client === 'list-ui' && phase === 'resumed';
+    try { return measure(tool, client, work, phase); }
+    finally { inListContinuation = previous; }
+  });
   const ui = await connectWsUi(t, hub, 'list-ui');
   assert.equal((await ui.request({ size: 'M', type: 'task.create', title: 'Listed', kind: 'task' })).ok, true);
   assert.equal(((await ui.request({ type: 'task.claim', item: 'T-1' })).value as Claimed).worktree?.item, 'T-1');
   records.length = 0;
   snapshots = 0;
+  const viewAsync = tracker.viewAsync.bind(tracker);
+  t.mock.method(tracker, 'viewAsync', async (...args: Parameters<typeof viewAsync>) => {
+    const value = await viewAsync(...args);
+    // Deterministically interleave the projection that the 250 ms inbox timer can run during these reads.
+    hub.core.inbox.list();
+    return value;
+  });
   slowSessions = true;
   const r = await ui.request({ type: 'worktree.list' }, 30_000);
   slowSessions = false;
