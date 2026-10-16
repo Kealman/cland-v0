@@ -30,5 +30,5 @@ export async function runRule(args: string[], cwd = process.cwd()): Promise<numb
   return 0;
 }
 function printRule(rule: Rule): string {
-  return `rule ${rule.number}: ${rule.title}\nScope: ${rule.scope === 'all' ? 'all' : rule.scope.join(', ')}\nDate: ${rule.date}\nStatus: ${rule.status}${rule.retired ? ` ${rule.retired}` : ''}\nOrigin: ${rule.origin}\nReason: ${rule.reason}\n\n${rule.text}\n\n`;
+  return `rule ${rule.number}: ${rule.title}\nScope: ${rule.scope === 'all' ? 'all' : rule.scope.join(', ')}\nDate: ${rule.date}\nStatus: ${rule.status}${rule.retired ? ` ${rule.retired}` : ''}\nOrigin: ${rule.origin}\nReason: ${rule.reason}\n${rule.retired_origin !== undefined ? `Retired-origin: ${rule.retired_origin}\n` : ''}\n${rule.text}\n\n`;
 }

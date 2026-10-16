@@ -117,7 +117,7 @@ export class RulebookFile {
   retire(number: number, reason: string, resumed: Resumed = this.#resumed, authorize = () => {}, origin?: string): Promise<Rule> {
     return this.#write(book => replace(book, number, rule => {
       if (rule.status === 'retired') throw new Error(`rule ${number} is already retired`);
-      return { ...rule, date: today(), status: 'retired', retired: today(), reason: `${rule.reason}; ${singleLine(reason, 'reason')}`, ...(origin !== undefined ? { origin } : {}) };
+      return { ...rule, date: today(), status: 'retired', retired: today(), reason: `${rule.reason}; ${singleLine(reason, 'reason')}`, ...(origin !== undefined ? { retired_origin: origin } : {}) };
     }), resumed, authorize);
   }
 }

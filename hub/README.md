@@ -495,8 +495,12 @@ cland rule show 1
 
 Every command accepts `--json`. Listing returns active rules by default;
 `--all` includes retired entries. `--role` includes `all` and rules naming that
-role. An edit preserves the number and origin and updates `Date`. Retirement
-also records its date and appends its reason to `Reason`.
+role. A shell edit preserves the number and origin and updates `Date`; session
+tools and workbench edits keep their existing origin-update behaviour. Retirement
+keeps `Origin`, records its date and appends its reason to `Reason`. Its own origin
+is stored separately as an optional `Retired-origin:` line after `Reason` (the
+`retired_origin` field in JSON). Show and list display both origins. Older retired
+entries without this field remain readable.
 
 The CLI acts as the calling shell's session, using the hub's held role rather
 than a claimed role in its environment. The human's shell writes `Origin: shell`;

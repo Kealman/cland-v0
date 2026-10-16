@@ -25,3 +25,19 @@ test('rulebook rejects malformed rules with a line and reason', () => {
     [source.replace('Reason: avoid contention', 'Reason: '), /line 8.*reason/],
   ] as const) assert.throws(() => parseRulebook(bad), reason);
 });
+
+test('rulebook round-trips separate retirement provenance and rejects invalid origins', () => {
+  const retired = source.replace('Reason: replaced\r\n', 'Reason: replaced\r\nRetired-origin: message:general/human-retirement\r\n');
+  const book = parseRulebook(retired);
+  assert.equal(book.rules[1]?.origin, 'shell');
+  assert.equal(book.rules[1]?.retired_origin, 'message:general/human-retirement');
+  assert.equal(renderRulebook(book), retired);
+  const changed = renderRulebook(book, [book.rules[0]!, { ...book.rules[1]!, text: 'Archived text.' }]);
+  const reparsed = parseRulebook(changed).rules[1]!;
+  assert.equal(reparsed.origin, 'shell');
+  assert.equal(reparsed.retired_origin, 'message:general/human-retirement');
+  for (const invalid of ['', 'invented']) {
+    assert.throws(() => parseRulebook(retired.replace('Retired-origin: message:general/human-retirement', `Retired-origin: ${invalid}`)), /line 18.*retirement origin/);
+  }
+  assert.throws(() => parseRulebook(retired.replace('Status: retired 2026-10-15', 'Status: active')), /line 18.*retired status/);
+});

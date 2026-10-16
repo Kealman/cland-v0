@@ -66,12 +66,28 @@ test('rule tools record human-message and Aide origins, refuse invented origins,
   assert.equal(aideRule.rule.origin, 'session:helper');
   const edited = await aide.call<Result>('rule.edit', { number: 1, scope: 'aide', reason: 'delegated' });
   assert.equal(edited.rule.origin, 'session:helper');
-  const retired = await coord.call<Result>('rule.retire', { number: 1, reason: 'finished', origin });
-  assert.equal(retired.rule.origin, `message:general/${message.id}`);
+  const retired = await coord.call<Result>('rule.retire', { number: 2, reason: 'finished', origin });
+  assert.equal(retired.rule.origin, 'session:helper');
+  assert.equal(retired.rule.retired_origin, `message:general/${message.id}`);
   for (const spoke of [coord, aide, impl]) {
-    assert.deepEqual((await spoke.call<Result>('rule.list')).rules.map(r => r.number), [2]);
+    assert.deepEqual((await spoke.call<Result>('rule.list')).rules.map(r => r.number), [1]);
     assert.equal((await spoke.call<Result>('rule.list', { role: 'coordinator' })).rules.length, 0);
     assert.deepEqual((await spoke.call<Result>('rule.list', { all: true, role: 'aide' })).rules.map(r => r.number), [1]);
+    const listed = (await spoke.call<Result>('rule.list', { all: true })).rules.find(r => r.number === 2)!;
+    assert.equal(listed.origin, 'session:helper');
+    assert.equal(listed.retired_origin, `message:general/${message.id}`);
+  }
+  for (const args of [['show', '2'], ['list', '--all']]) {
+    const result = await cland(root, 'rule', ...args);
+    assert.equal(result.code, 0, result.stderr);
+    assert.match(result.stdout, /Origin: session:helper\n/);
+    assert.ok(result.stdout.includes(`Retired-origin: message:general/${message.id}\n`));
+    const json = await cland(root, 'rule', ...args, '--json');
+    assert.equal(json.code, 0, json.stderr);
+    const value = JSON.parse(json.stdout) as Result;
+    const rule = value.rule ?? value.rules.find(r => r.number === 2)!;
+    assert.equal(rule.origin, 'session:helper');
+    assert.equal(rule.retired_origin, `message:general/${message.id}`);
   }
 });
 

@@ -10,6 +10,7 @@ export type Rule = {
   status: 'active' | 'retired';
   retired?: string;
   origin: string;
+  retired_origin?: string;
   reason: string;
   text: string;
 };
@@ -76,17 +77,25 @@ export function parseRulebook(source: string, roles: Iterable<string> = ROLE_NAM
     const status = /^(active|retired (\d{4}-\d{2}-\d{2}))$/.exec(values.Status!);
     if (!status || (status[2] && !dateValid(status[2]))) throw new RulebookError(start + 4, 'invalid status (expected active or retired YYYY-MM-DD)');
     if (!originValid(values.Origin!)) throw new RulebookError(start + 5, 'invalid origin');
-    if (clean[start + 6] !== '') throw new RulebookError(start + 7, 'expected a blank line before rule text');
-    const text = clean.slice(start + 7, end).join('\n').trim();
-    if (!text) throw new RulebookError(start + 8, 'expected rule text');
-    rules.push({ number, title: heading[2]!.trim(), scope, date: values.Date!, status: values.Status === 'active' ? 'active' : 'retired', ...(status[2] ? { retired: status[2] } : {}), origin: values.Origin!, reason: values.Reason!, text });
+    let blank = start + 6;
+    let retiredOrigin: string | undefined;
+    if (clean[blank]?.startsWith('Retired-origin:')) {
+      retiredOrigin = clean[blank]!.slice('Retired-origin:'.length).trim();
+      if (!originValid(retiredOrigin)) throw new RulebookError(blank + 1, 'invalid retirement origin');
+      if (!status[2]) throw new RulebookError(blank + 1, 'retirement origin requires retired status');
+      blank++;
+    }
+    if (clean[blank] !== '') throw new RulebookError(blank + 1, 'expected a blank line before rule text');
+    const text = clean.slice(blank + 1, end).join('\n').trim();
+    if (!text) throw new RulebookError(blank + 2, 'expected rule text');
+    rules.push({ number, title: heading[2]!.trim(), scope, date: values.Date!, status: values.Status === 'active' ? 'active' : 'retired', ...(status[2] ? { retired: status[2] } : {}), origin: values.Origin!, ...(retiredOrigin !== undefined ? { retired_origin: retiredOrigin } : {}), reason: values.Reason!, text });
     spans.push({ start: offsets[start]!, end: starts[index + 1] === undefined ? source.length : offsets[end]! });
   }
   return { source, rules, spans, highWater: Math.max(recordedHighWater ?? 0, previous), recordedHighWater, counterSpan };
 }
 
 export function renderRule(rule: Rule): string {
-  return `## ${rule.number} ${rule.title}\nScope: ${rule.scope === 'all' ? 'all' : rule.scope.join(', ')}\nDate: ${rule.date}\nStatus: ${rule.status === 'active' ? 'active' : `retired ${rule.retired}`}\nOrigin: ${rule.origin}\nReason: ${rule.reason}\n\n${rule.text}\n\n`;
+  return `## ${rule.number} ${rule.title}\nScope: ${rule.scope === 'all' ? 'all' : rule.scope.join(', ')}\nDate: ${rule.date}\nStatus: ${rule.status === 'active' ? 'active' : `retired ${rule.retired}`}\nOrigin: ${rule.origin}\nReason: ${rule.reason}\n${rule.retired_origin !== undefined ? `Retired-origin: ${rule.retired_origin}\n` : ''}\n${rule.text}\n\n`;
 }
 export function renderRulebook(book: Rulebook, rules: readonly Rule[] = book.rules): string {
   let out = book.source.slice(0, book.spans[0]?.start ?? book.source.length);

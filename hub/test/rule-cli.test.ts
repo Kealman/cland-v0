@@ -26,6 +26,7 @@ test('human rule CLI adds numbered rules, edits and retires without changing ano
   await run('edit', '1', '--scope', 'all', '--text', 'Run serially.');
   const retired = (await run('retire', '1', '--reason', 'superseded')).rule;
   assert.equal(retired.origin, 'shell');
+  assert.equal(retired.retired_origin, 'shell');
   assert.equal(retired.status, 'retired');
   assert.equal(retired.reason, 'contention; superseded');
   assert.equal(retired.retired, retired.date);
@@ -75,7 +76,10 @@ test('rule shell writes use the held identity: only human and Aide write, with r
     assert.match(refused.stderr, /origin.*memory/);
   }
   assert.equal(await readFile(path, 'utf8'), before);
-  assert.equal((await aide('retire', '1', '--reason', 'finished')).code, 0);
+  const retired = await aide('retire', '1', '--reason', 'finished');
+  assert.equal(retired.code, 0, retired.stderr);
+  assert.equal(JSON.parse(retired.stdout).rule.origin, 'memory:/planning/rules.md');
+  assert.equal(JSON.parse(retired.stdout).rule.retired_origin, 'session:assistant');
 });
 
 test('rulebook reloads atomic hand edits, logs invalid source with its line, and keeps the last good rules', async t => {
@@ -221,6 +225,7 @@ test('workbench writes record their own origin and push full rules, while sessio
   const retired = await ui.request({ type: 'rule.retire', number: 1, reason: 'replaced' });
   assert.equal(retired.ok, true, retired.error);
   assert.equal((retired.value as { rule: Rule }).rule.origin, 'workbench');
+  assert.equal((retired.value as { rule: Rule }).rule.retired_origin, 'workbench');
   const lastPush = ui.frames.filter(f => f.type === 'rules.changed').at(-1);
   assert.deepEqual((lastPush?.rules as Rule[]).map(r => [r.number, r.status]), [[1, 'retired'], [2, 'active']]);
   await ui.request({ type: 'role.set', session: 'impl', role: 'implementer' });

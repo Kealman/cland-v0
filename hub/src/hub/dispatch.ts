@@ -1554,7 +1554,7 @@ export class Dispatcher {
               const origin = workbench ? 'workbench' : typeof request.origin === 'string' ? request.origin : (caller ? `session:${caller.name}` : 'shell');
               writing = rules.add({ ...request, origin }, resumed, authorize);
             } else if (request.type === 'rule.edit') writing = rules.edit(request.number, { ...(request.text !== undefined ? { text: request.text } : {}), ...(request.scope !== undefined ? { scope: request.scope } : {}), ...(request.reason !== undefined ? { reason: request.reason } : {}), ...(workbench ? { origin: 'workbench' } : {}) }, resumed, authorize);
-            else writing = rules.retire(request.number, request.reason, resumed, authorize, workbench ? 'workbench' : undefined);
+            else writing = rules.retire(request.number, request.reason, resumed, authorize, workbench ? 'workbench' : caller ? `session:${caller.name}` : 'shell');
             return later(request.type, writing.then(rule => resumed(() => {
               this.#guard.changed();
               return { type: 'result' as const, id: request.id, ok: true, value: { rule } };
