@@ -3,7 +3,7 @@ id: T-526
 kind: task
 title: "suite tests: a worker's job.pid read right after launch is still null under load (suite-recovery, suite SIGKILL)"
 state: open
-status: review
+status: ready
 size: XS
 rank: 4401
 criterion_seq: 2
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-405
 branch: t/T-526-suite-recovery-test-job-pid-read-right
 created: 2026-10-15T19:50:58.056Z
-updated: 2026-10-16T19:13:53.554Z
+updated: 2026-10-16T19:56:25.418Z
 ---
 
 ## Problem
@@ -30,7 +30,10 @@ Two suite tests read a worker's `job.pid` right after launch, and under load on 
 - [x] C1. Both cases wait for the observed worker pid, with a bounded wait on the job record, before using or asserting on it. Every assertion stays, the root cause is recorded in the commit, and a shared helper is used if one fits both.
   - done: impl-526 · 2026-10-16T19:10:22.327Z
   - verified: rev-30 [reviewer] · run rev-20261016-526-source · 2026-10-16T19:13:34.264Z · commit aeaf3dec05633330639c0c3258615c6a47b50f4b
-- [ ] C2. suite-recovery.test.ts and suite.test.ts each pass 5/5 serially, whole file and alone on the Mac, plus once on a droplet in the task's verify.
+  - verified: rev-30 [reviewer] · run rev-20261016-526-final · 2026-10-16T19:56:24.771Z · commit aeaf3dec05633330639c0c3258615c6a47b50f4b
+- [x] C2. suite-recovery.test.ts and suite.test.ts each pass 5/5 serially, whole file and alone on the Mac, plus once on a droplet in the task's verify.
+  - done: impl-526 · 2026-10-16T19:56:01.056Z
+  - verified: rev-30 [reviewer] · run rev-20261016-526-final · 2026-10-16T19:56:24.772Z · commit aeaf3dec05633330639c0c3258615c6a47b50f4b
 
 ## Comments
 
@@ -69,3 +72,25 @@ Criteria: C1 verified.
 ### impl-526 · 2026-10-16T19:13:53.554Z
 
 Source review clear at aeaf3dec (rev-20261016-526-source, A-4139), C1 verified. Exact-head explicit droplet verification submitted as e90a4fd5-e439-46f0-bdbe-45b8575ed314, queue position 1. C2 awaits its Linux result. Reviewer aside (Bugs/XS) for the analogous planned-root crash case at suite-recovery.test.ts:129 reported to lead T-526 for classification; no change to reviewed head.
+
+### rev-30 · 2026-10-16T19:56:24.772Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261016-526-final
+commit: aeaf3dec05633330639c0c3258615c6a47b50f4b
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-526 final evidence clear at unchanged source-reviewed aeaf3dec05633330639c0c3258615c6a47b50f4b. Standards and Spec axes: no findings.
+
+Independently audited complete A-4160 / e90a4fd5-e439-46f0-bdbe-45b8575ed314. Branch/head match source verdict A-4139; exit 0, 2004 tests, 1999 pass, zero fail, five unrelated prerequisite/platform skips. Hub free 40/40, machine 1947 pass/zero fail/five skips, Neovim smoke 12/12. Required whole files contain all seventeen positive timing receipts (suite-recovery six, suite eleven), no skipped required cases. Changed FIFO cancellation passes in 2.871139157 s; SIGKILL crash/log case passes in 3.133490427 s. No hard duration-budget or load-gate failure in complete log; routine regression notices are non-failing.
+
+C2 Mac proof remains audited A-4138 at the same head: each file five serial whole-file passes below load 15, six and eleven cases respectively, 85 total passes/zero failures/zero skips. C1 bounded matching job-record observation, cleanup registration, retained assertions and recorded commit root cause remain established by A-4139. Latest task view confirms both claimant done marks and unchanged exact-head gate receipt.
+
+Linux x64 c-8 lon1, Node 24.21.0/Neovim 0.12.5, four workers; suite 1557.99 s, peak load 18.38. Machine lifetime 1626 s and cost $0.1129 are supplied by the hub/claimant receipt metadata. C1/C2 verified; no further task run or per-item QA required. The separately reported pre-existing borrowed-root PID candidate is outside the two requested fixes and is not represented as resolved.
+Review artifact A-4161.
+
+Criteria: C1 verified, C2 verified.
