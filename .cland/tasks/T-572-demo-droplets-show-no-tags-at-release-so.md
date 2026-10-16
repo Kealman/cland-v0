@@ -2,8 +2,8 @@
 id: T-572
 kind: task
 title: Demo droplets show no tags at release, so the hub refuses to delete a live untagged droplet
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -19,7 +19,8 @@ regression_of: T-553
 topic: topic-357
 branch: t/T-572-demo-droplets-show-no-tags-at-release-so
 created: 2026-10-16T05:01:37.265Z
-updated: 2026-10-16T06:19:07.014Z
+updated: 2026-10-16T06:19:19.141Z
+closed: 2026-10-16T06:19:19.141Z
 ---
 
 ## Summary
@@ -178,3 +179,7 @@ Findings: Standards0; Spec0.
 Artifact A-3784 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3784-t-572-merge-delta-clear-watchdog-close-behavior-preserved-seven-whole-files-gree.md
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-16T06:19:19.141Z
+
+Merged accfc6e5fa7b5a22bd4a0f9baf36ae6f801561a5 onto dev.
