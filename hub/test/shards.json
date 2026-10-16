@@ -1,6 +1,8 @@
 {
   "version": 1,
   "tests": {
+    "hub/test/quarantine.test.ts": "free",
+    "hub/test/quarantine-runner.test.ts": "machine",
     "hub/test/suite-candidate-remote.test.ts": "machine",
     "hub/test/suite-candidate.test.ts": "machine",
     "hub/test/suite-cover.test.ts": "machine",

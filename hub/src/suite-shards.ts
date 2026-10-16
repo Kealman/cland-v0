@@ -7,6 +7,7 @@ import { suiteLimits } from './suite-limits.ts';
 import type { SuiteMode, SuiteSelection } from './suite-selection.ts';
 import { HUB_SMOKE, NVIM_SMOKE } from './suite-selection.ts';
 import { DURATION_MANIFEST, lintDurationManifest, readDurationManifest, type DurationManifest } from './suite-durations.ts';
+import { QUARANTINE_MANIFEST, lintQuarantineManifest, readQuarantineManifest } from './suite-quarantine.ts';
 
 export type Shard = 'free' | 'machine';
 export type SuiteShard = { name: string; targets: string[]; resource: Shard; workers: number };
@@ -64,6 +65,10 @@ export async function lintHubShardTree(cwd: string, tree: string, env: NodeJS.Pr
     try { lintDurationManifest(JSON.parse(await source(DURATION_MANIFEST)) as DurationManifest); }
     catch (error) { throw new ShardManifestError(error instanceof Error ? error.message : String(error), [DURATION_MANIFEST]); }
   }
+  if (paths.includes(QUARANTINE_MANIFEST)) {
+    try { lintQuarantineManifest(JSON.parse(await source(QUARANTINE_MANIFEST))); }
+    catch (error) { throw new ShardManifestError(error instanceof Error ? error.message : String(error), [QUARANTINE_MANIFEST]); }
+  }
   if (!paths.includes(MANIFEST)) return;
   await classify(paths.filter(path => PATTERNS.some(pattern => matchesGlob(path, pattern))), JSON.parse(await source(MANIFEST)) as Manifest, source, false);
 }
@@ -73,6 +78,8 @@ async function lintDurations(cwd: string): Promise<void> {
     const manifest = await readDurationManifest(cwd);
     if (manifest) lintDurationManifest(manifest);
   } catch (error) { throw new ShardManifestError(error instanceof Error ? error.message : String(error), [DURATION_MANIFEST]); }
+  try { await readQuarantineManifest(cwd); }
+  catch (error) { throw new ShardManifestError(error instanceof Error ? error.message : String(error), [QUARANTINE_MANIFEST]); }
 }
 
 export async function packageShards(cwd: string, mode: SuiteMode, selection?: { files: string[]; nvim: boolean }, coverage?: SuiteSelection, options: { executor?: 'local' | 'droplet'; workers?: number } = {}): Promise<SuiteShard[]> {

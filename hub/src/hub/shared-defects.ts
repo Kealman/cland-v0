@@ -3,18 +3,22 @@ import { promisify } from 'node:util';
 import { createHash } from 'node:crypto';
 import { AGENTS, type HubCore } from './core.ts';
 import type { SuiteJob } from './suites.ts';
+import { suiteTestFailures } from '../suite-quarantine.ts';
 
 /** Stable file::test identities from package-runner failure receipts.
  * Node's final spec summary pairs a declaration location with a failure title;
  * assertion stack locations deliberately do not participate in identity.
  */
 export function failingTests(log: string): string[] {
+  const structured = suiteTestFailures(log);
   const failures = new Set<string>();
   let file: string | undefined;
   const add = (file: string, name: string) => failures.add(`${file}::${name.replace(/\b\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z\b/g, '<timestamp>')}`);
+  for (const failure of structured ?? []) add(failure.file, failure.name);
   for (const line of log.replace(/\x1b\[[0-9;]*m/g, '').split('\n')) {
     const gate = /^✖ load gate: (.+?)::(.+) ([0-4])\/5 passed\s*$/.exec(line);
     if (gate) { add(gate[1]!, gate[2]!); continue; }
+    if (structured !== null) continue;
     const location = /^test at (.+):\d+:\d+\s*$/.exec(line);
     if (location) {
       // Runners execute in scratch roots; absolute and ../ paths carry the

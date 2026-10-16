@@ -6,6 +6,7 @@ import { StringDecoder } from 'node:string_decoder';
 import { timingKey, type DurationManifest } from '../src/suite-durations.ts';
 import { captureProcess, cleanupOwnedProcesses, pause, type ProcessIdentity } from './process-cleanup.ts';
 import type { LoadGateEvent } from './load-gate-reporter.ts';
+import type { QuarantineManifest, QuarantineReceipt } from '../src/suite-quarantine.ts';
 
 export const loadGateReporter = fileURLToPath(new URL('./load-gate-reporter.ts', import.meta.url));
 
@@ -15,6 +16,7 @@ export const loadGateReporter = fileURLToPath(new URL('./load-gate-reporter.ts',
 export async function runLoadGate(options: {
   discovery: string; root: string; cwd: string; env: NodeJS.ProcessEnv;
   manifest: DurationManifest; timeoutMs: number; workers: number; phase: Promise<number>;
+  quarantine?: QuarantineManifest | null;
   interrupted: () => boolean; active: Set<ProcessIdentity>;
 }): Promise<{ failed: boolean; extraWallMs: number }> {
   if (!Number.isSafeInteger(options.workers) || options.workers < 1) throw new Error('load gate workers must be a positive integer');
@@ -57,16 +59,20 @@ if (process.env.NODE_TEST_CONTEXT === 'child-v8') {
     const key = timingKey({ ...event, seconds: 0 });
     let passed = 0;
     let skipped = 0;
+    let excused = 0;
+    const quarantine = options.quarantine?.tests[key];
     const skipReasons = new Set<string>();
     const pattern = `^${event.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`;
     process.stderr.write(`load gate start: ${key}; five repetitions alongside phase\n`);
     for (let repetition = 0; repetition < 5 && !options.interrupted(); repetition++) {
       const receipt = join(options.root, `load-${sequence++}.jsonl`);
+      const quarantinePath = `${receipt}.quarantine`;
       const gate = `${receipt}.start`;
       const env: NodeJS.ProcessEnv = { ...options.env, CLAND_LOAD_GATE_START: gate };
       delete env.NODE_V8_COVERAGE;
       delete env.CLAND_SUITE_SELECTION;
-      const child = spawn(process.execPath, ['--import', bootstrap, '--test', `--test-timeout=${options.timeoutMs}`, `--test-name-pattern=${pattern}`, `--test-reporter=${loadGateReporter}`, `--test-reporter-destination=${receipt}`, resolve(options.cwd, event.file)], { cwd: options.root, env, detached: true, stdio: ['ignore', 'inherit', 'inherit'] });
+      const reporters = quarantine ? [`--test-reporter=${fileURLToPath(new URL('./quarantine-reporter.ts', import.meta.url))}`, `--test-reporter-destination=${quarantinePath}`] : [];
+      const child = spawn(process.execPath, ['--import', bootstrap, '--test', `--test-timeout=${options.timeoutMs}`, `--test-name-pattern=${pattern}`, `--test-reporter=${loadGateReporter}`, `--test-reporter-destination=${receipt}`, ...reporters, resolve(options.cwd, event.file)], { cwd: options.root, env, detached: true, stdio: ['ignore', 'inherit', 'inherit'] });
       const done = new Promise<number>((resolve, reject) => {
         child.once('error', reject);
         child.once('exit', (code) => resolve(code ?? 1));
@@ -90,13 +96,21 @@ if (process.env.NODE_TEST_CONTEXT === 'child-v8') {
           if (result.passed) passed++;
           else if (result.skipReason) { skipped++; skipReasons.add(result.skipReason); }
         }
+        if (code === 1 && quarantine && results.length === 1) {
+          const checked = JSON.parse(await readFile(quarantinePath, 'utf8')) as QuarantineReceipt;
+          if (checked.complete && checked.cancelled === 0 && !checked.failures.length && checked.excused > 0) {
+            excused++;
+            for (const result of checked.results) if (result.outcome === 'fail') process.stdout.write(`suite quarantine ${JSON.stringify(result)}\n`);
+          }
+        }
       } finally {
         await cleanupOwnedProcesses([identity]);
         options.active.delete(identity);
       }
     }
-    failed ||= passed !== 5 && skipped !== 5;
+    failed ||= passed + excused !== 5 && skipped !== 5;
     if (skipped === 5) process.stderr.write(`load gate: ${key} skipped, not load-gated; 5/5 skipped; reasons: ${JSON.stringify([...skipReasons])}\n`);
+    else if (excused && passed + excused === 5) process.stderr.write(`quarantine load gate: ${key} ${passed}/5 passed; ${excused}/5 quarantined failures\n`);
     else process.stderr.write(`${passed === 5 ? '' : '✖ '}load gate: ${key} ${passed}/5 passed\n`);
   };
   try {

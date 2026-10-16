@@ -193,6 +193,44 @@ New lease records retain the legacy local `started` field and add `startedUtc`, 
 
 An ownerless manual lock stays held. The wait message names the lock's `rmdir` command; use it only after verifying that no suite using that lock is running. `CLAND_TEST_SKIP_LOCK=1` is for isolated CI jobs.
 
+`hub/test/quarantine.json` quarantines an exact top-level `file::test` identity
+(including its subtests), without skipping it. Task, integrated, close and release
+runs execute it normally. The result's **Quarantine** section lists passes,
+failures and skips with the owner and expiry. Raw Node counts and diagnostics
+stay in the log; an accounted quarantined test failure does not make the run red
+or become a shared-defect candidate. Other failures, process crashes, cancellation,
+duration budgets and incomplete reporter receipts still fail normally. New-test
+load repetitions also run, with quarantined failures reported separately.
+
+Only the Coordinator adds an entry, after two known-flake failure receipts from
+different runs and five isolated green repetitions. Record those run/artifact
+references and the isolated proof in the owner ticket. The manifest starts empty:
+
+```json
+{
+  "version": 1,
+  "tests": {
+    "hub/test/example.test.ts::known flake": {
+      "owner": "T-123",
+      "reason": "Two independent flaky runs; isolated 5/5 green (evidence in T-123).",
+      "added": "2026-10-16",
+      "expires": "2026-10-23"
+    }
+  }
+}
+```
+
+Dates are UTC dates; expiry is exclusive at midnight and must be after `added`
+and at most seven days later. Admission and the runner refuse expired entries by
+name, missing owner tickets, invalid dates and empty or TODO reasons. The owner
+fixes the test before expiry. The hub records one outcome per test and executed
+run, across task and integrated runs; duplicate smoke observations use the worst
+outcome. Twenty consecutive passes report **cleared**, so the Coordinator can
+remove the committed entry. Skips and failures reset the streak; absent tests,
+cache hits and report retries add no green observations. Renewed entries start
+a new streak. The hub persists streaks and publishes their update atomically
+with the result, including after restart; it never edits the manifest itself.
+
 `hub/test/durations.json` sets a 5-second test budget and a 60-second file budget
 for hub and Neovim. Files sum top-level test-time; nested durations are included
 in their parent. Only a new over-budget test or file fails its run with a named

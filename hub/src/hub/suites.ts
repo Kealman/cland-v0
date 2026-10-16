@@ -23,6 +23,7 @@ import { selectPackageSuite, describeSelection, type SuiteSelection, type SuiteR
 import { parseCoverageMap, type CoverageMap } from '../suite-coverage.ts';
 import { VerificationWait } from './verification-wait.ts';
 import { classifyCover, deriveCover, recentCovers } from './suite-cover.ts';
+import { quarantineResults, quarantineSummary, suiteTestFailures } from '../suite-quarantine.ts';
 
 export type SuiteActor = { name: string; sessionId: string; shell: true };
 export type SuiteJob = {
@@ -73,11 +74,13 @@ function durations(values: Array<number | null | undefined>): DurationStats {
   const n = sorted.length;
   return { count: n, medianMs: n ? n % 2 ? sorted[Math.floor(n / 2)]! : (sorted[n / 2 - 1]! + sorted[n / 2]!) / 2 : null, p90Ms: n ? sorted[Math.ceil(n * 0.9) - 1]! : null };
 }
-export function suiteSummary(log: string): string {
+export function suiteSummary(log: string, quarantineStatus?: string[]): string {
   const text = log.replace(/\x1b\[[0-9;]*m/g, '');
   const counts = new Map<string, number>();
   for (const match of text.matchAll(/^(?:#|ℹ) (tests|pass|fail|cancelled|skipped|todo) (\d+)\s*$/gm)) counts.set(match[1]!, (counts.get(match[1]!) ?? 0) + Number(match[2]));
-  const failures = text.split('\n').filter(line => /^(?:\s*not ok \d+|✖ |duration budget: |shard failure )/.test(line)).slice(0, 12).map(line => line.slice(0, 200));
+  const structured = suiteTestFailures(text);
+  const failures = (structured === null ? text.split('\n').filter(line => /^(?:\s*not ok \d+|✖ |duration budget: |shard failure )/.test(line))
+    : [...structured.map(f => `${f.file}::${f.name}`), ...text.split('\n').filter(line => /^(?:✖ load gate: |duration budget: |shard failure )/.test(line))]).slice(0, 12).map(line => line.slice(0, 200));
   const merged = text.includes('\n--- close shards ---\n');
   const timings = merged
     ? text.split('\n--- close shards ---\n')[1]!.split('\n').filter(line => /^(?:shard duration shard-\d+ |total cost |occasion |suite duration .*overall wall)/.test(line)).map(line => line.slice(0, 300))
@@ -86,7 +89,9 @@ export function suiteSummary(log: string): string {
   timings.push(...text.split('\n').filter(line => /^suite budget overhead /.test(line)).slice(-1));
   timings.push(...text.split('\n').filter(line => /^load gate workers /.test(line)));
   timings.push(...text.split('\n').filter(line => /^load gate: .* skipped, not load-gated;/.test(line)));
-  return `${counts.size ? [...counts].map(([k, v]) => `${k} ${v}`).join('; ') : 'counts unavailable (suite did not finish)'}${timings.length ? `\n${timings.join('\n')}` : ''}${failures.length ? `\nFailures:\n${failures.join('\n')}` : ''}`;
+  timings.push(...text.split('\n').filter(line => /^quarantine load gate: /.test(line)));
+  const quarantined = quarantineStatus ?? quarantineSummary(quarantineResults(text));
+  return `${counts.size ? [...counts].map(([k, v]) => `${k} ${v}`).join('; ') : 'counts unavailable (suite did not finish)'}${timings.length ? `\n${timings.join('\n')}` : ''}${failures.length ? `\nFailures:\n${failures.join('\n')}` : ''}${quarantined.length ? `\nQuarantine:\n${quarantined.join('\n')}` : ''}`;
 }
 
 export class SuiteAdmissionError extends Error {

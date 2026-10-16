@@ -19,6 +19,7 @@ import { describeSelection, selectPackageSuite, selectionFromEnv, type SuiteSele
 import { checkDurations, durationRegressions, lintDurationManifest, readDurationManifest, type DurationManifest, type DurationRegression, type TestTiming } from '../src/suite-durations.ts';
 import { reduceCoverage } from '../src/suite-coverage.ts';
 import { loadGateReporter, runLoadGate } from './load-gate.ts';
+import { readQuarantineManifest, type QuarantineReceipt } from '../src/suite-quarantine.ts';
 
 type Interruption = { signal: 'SIGINT' | 'SIGTERM' | null };
 export async function runSuite(suites: string[][], options: { lockDir?: string; lockDirs?: string[]; cwd?: string; interruption?: Interruption; selection?: SuiteSelection; phaseNames?: string[]; resources?: Array<'free' | 'machine'>; workers?: number[]; force?: boolean; token?: string } = {}): Promise<number> {
@@ -58,6 +59,7 @@ export async function runSuite(suites: string[][], options: { lockDir?: string; 
     const budgetStarted = performance.now();
     durationManifest = await readDurationManifest(options.cwd ?? process.cwd());
     if (durationManifest) lintDurationManifest(durationManifest);
+    const quarantine = await readQuarantineManifest(options.cwd ?? process.cwd());
     budgetOverheadMs += performance.now() - budgetStarted;
     if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
     if (!options.force && process.env.CLAND_TEST_SKIP_LOCK !== '1') {
@@ -109,6 +111,7 @@ export async function runSuite(suites: string[][], options: { lockDir?: string; 
       delete env.CLAND_COVERAGE_OUTPUT;
       delete env.DIGITALOCEAN_TOKEN;
       delete env.NODE_TEST_CONTEXT;
+      delete env.CLAND_TEST_QUARANTINE;
       if (!root) throw new Error('suite phase root is missing');
       const gate = join(root, `start-${index}`);
       const bootstrap = join(root, `bootstrap-${index}.mjs`);
@@ -142,6 +145,12 @@ process.chdir(cwd);`);
       const loadDiscovery = join(root, `load-discovery-${index}.jsonl`);
       const loadGate = options.selection?.loadGate === true && durationManifest && args.includes('--test');
       if (loadGate) reporters.push(`--test-reporter=${loadGateReporter}`, `--test-reporter-destination=${loadDiscovery}`);
+      const quarantinePath = join(root, `quarantine-${index}.json`);
+      const checkQuarantine = quarantine && Object.keys(quarantine.tests).length > 0 && args.includes('--test');
+      if (checkQuarantine) {
+        env.CLAND_TEST_QUARANTINE = JSON.stringify(quarantine);
+        reporters.push(`--test-reporter=${fileURLToPath(new URL('./quarantine-reporter.ts', import.meta.url))}`, `--test-reporter-destination=${quarantinePath}`);
+      }
       active = spawn(process.execPath, ['--import', bootstrap, ...(capture ? ['--import', fileURLToPath(new URL('./coverage-bootstrap.mjs', import.meta.url))] : []), ...reporters, ...absoluteArgs], { cwd: root, env, detached: true, stdio: 'inherit' });
       // Install exit listeners before publication awaits; the bootstrap cannot start tests yet.
       const done = new Promise<number>((resolve, reject) => { active!.once('error', reject); active!.once('exit', (value, signal) => resolve(value ?? (signal === 'SIGINT' ? 130 : 143))); });
@@ -154,15 +163,22 @@ process.chdir(cwd);`);
       if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
       const repeats = loadGate ? runLoadGate({
         discovery: loadDiscovery, root, cwd, env, manifest: durationManifest!,
+        quarantine,
         timeoutMs: limits.testTimeoutMs, workers: limits.loadGateWorkers, phase: done,
         interrupted: () => interruption.signal !== null, active: loadRunners,
       }) : Promise.resolve({ failed: false, extraWallMs: 0 });
       const [phaseOutcome, gateOutcome] = await Promise.allSettled([done, repeats]);
       if (phaseOutcome.status === 'rejected') throw phaseOutcome.reason;
       if (gateOutcome.status === 'rejected') throw gateOutcome.reason;
-      const code = phaseOutcome.value;
+      let code = phaseOutcome.value;
       const loadResult = gateOutcome.value;
       loadExtraWallMs += loadResult.extraWallMs;
+      if (checkQuarantine) {
+        const receipt = JSON.parse(await readFile(quarantinePath, 'utf8')) as QuarantineReceipt;
+        for (const result of receipt.results) process.stdout.write(`suite quarantine ${JSON.stringify(result)}\n`);
+        process.stdout.write(`suite test failures ${JSON.stringify(receipt.failures)}\n`);
+        if (code === 1 && receipt.complete && receipt.cancelled === 0 && receipt.failures.length === 0 && receipt.excused > 0) code = 0;
+      }
       let budgetFailed = false;
       if (durationManifest && args.includes('--test')) {
         const budgetStarted = performance.now();

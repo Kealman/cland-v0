@@ -2446,6 +2446,26 @@ pre-V1 exclusion; it does not enable production free-shard overlap yet.
 Logs and suite reports include each shard's wall time, resource, workers and
 machine wait, plus the hub queue wait and total suite/compatibility wait.
 
+`hub/test/quarantine.json` lists exact top-level `file::test` identities (including
+their subtests) with `owner` (`T-n`), a non-TODO `reason`, and UTC `added` and
+`expires` dates. Expiry is exclusive at midnight, after addition and no more than
+seven days later. Verify/merge admission and package runners refuse expired or
+invalid entries by name. Only the Coordinator adds entries after two known-flake
+failure receipts from different runs and 5/5 isolated green repetitions, recorded
+in the owner ticket. See [the manifest example and evidence rule](../docs/agents/tests.md).
+
+Quarantined tests still execute in task, integrated, close and release runs,
+including new-test load repetitions. A complete, accounted test failure is
+reported in the result's **Quarantine** section with passes and skips, without
+failing the run or generating a shared-defect candidate. Raw Node counts and
+diagnostics remain in the log. Crashes, cancellation, other failures, incomplete
+receipts and duration budgets still fail. The hub records one outcome per real
+run, uses the worst duplicate smoke outcome, and reports **cleared** after twenty
+consecutive passes. Skips/failures reset the streak; cache hits, report retries
+and absent tests add no pass. Streaks persist across restart and update atomically
+with publication. Renewing an entry resets its streak. The Coordinator removes
+cleared entries from the committed manifest; the hub never rewrites it.
+
 `hub/test/durations.json` records each hub and Neovim test's median time and each
 file's summed top-level test-time. A run fails only when a new test exceeds
 5 seconds or a new file exceeds 60 seconds. Tests are known by their exact
