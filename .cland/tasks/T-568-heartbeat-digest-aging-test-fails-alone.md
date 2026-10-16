@@ -2,8 +2,8 @@
 id: T-568
 kind: task
 title: 'heartbeat digest-aging test fails alone on dev: "new review state gets a fresh full interval" not within 15000 ms'
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -17,7 +17,8 @@ blocked_by: []
 topic: topic-353
 branch: t/T-568-heartbeat-digest-aging-test-fails-alone
 created: 2026-10-16T03:29:14.808Z
-updated: 2026-10-16T03:50:55.454Z
+updated: 2026-10-16T03:51:07.644Z
+closed: 2026-10-16T03:51:07.644Z
 ---
 
 ## Summary
@@ -103,3 +104,7 @@ C1 verified/current through source cause/minimal fix; C2 verified across complet
 Review artifact A-3665 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3665-t-568-final-evidence-clear-under-coordinator-publication-sequence.md
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-16T03:51:07.644Z
+
+Merged 64390ae842f08e1fd8e3c624cde8c210cc7aa9c6 onto dev.
