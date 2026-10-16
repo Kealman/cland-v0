@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
-import test from 'node:test';
+import test, { type TestContext } from 'node:test';
 import { chmod, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { promisify } from 'node:util';
 import { execFile, execFileSync } from 'node:child_process';
-import { startDaemon, connectUi, clandWithEnv, killDaemon, spawnSpoke, eventually } from './harness.ts';
+import { startDaemon, projectHub, connectUi, clandWithEnv, killDaemon, spawnSpoke, eventually } from './harness.ts';
 import { ownProcess } from './process-cleanup.ts';
 import { fixture } from './remote-fixture.ts';
 
@@ -83,31 +83,78 @@ test('demo daily cap refuses before creating any droplet', async t => {
   assert.equal(f.api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length, 0);
 });
 
-test('the demo recorder runs a headless case remotely and retains captures and executor accounting locally', async t => {
-  const f = await fixture(t);
+async function recorderFixture(t: TestContext) {
+  const f = await fixture(t, { hub: projectHub });
   await mkdir(join(f.root, 'hub/bin'), { recursive: true });
   const stub = join(f.root, 'hub/bin/cland.ts');
+  await writeFile(join(f.root, 'hub/bin/cland'), await readFile(resolve('hub/bin/cland')));
+  await chmod(join(f.root, 'hub/bin/cland'), 0o755);
   await writeFile(stub, `#!/usr/bin/env node
 const fs=require('fs'),path=require('path');
 if(process.argv[2]!=='--headless'||process.argv[3]!=='--qa')process.exit(3);
 const out=process.argv[process.argv.indexOf('--out')+1];
-fs.mkdirSync(out,{recursive:true});const capture=path.join(out,'DEMO-001.screen.txt');
-fs.writeFileSync(capture,'remote grid');console.log(JSON.stringify({result:'PASS',evidence:[capture]}));
+fs.mkdirSync(out,{recursive:true});const capture=path.join(out,'rulebook-rows.screen.txt');
+fs.writeFileSync(capture,'remote grid');const evidence=[capture];
+console.error('remote headless stderr');
+if(process.argv.includes('qa/cases/BROKEN-001.lua')){console.log('invalid case JSON');process.exit(2);}
+if(process.argv.includes('qa/cases/COLLISION-001.lua'))evidence.push(capture);
+const final=path.join(out,'DEMO-001.screen.txt');fs.writeFileSync(final,'final grid');evidence.push(final);
+console.log(JSON.stringify({result:'PASS',evidence,message:out}));
 `);
   await chmod(stub, 0o755);
-  await f.git('add', 'hub/bin/cland.ts'); await f.git('commit', '-qm', 'Demo headless fixture');
+  await f.git('add', 'hub/bin'); await f.git('commit', '-qm', 'Demo headless fixture');
   await f.git('update-ref', 'refs/heads/dev', await f.git('rev-parse', 'HEAD'));
   const epic = ((await f.ui.request({ type: 'task.create', title: 'Recorded demo', kind: 'epic' })).value as { item: { id: string } }).item.id;
   const start = await f.ui.request({ type: 'demo.start', epic }); assert.equal(start.ok, true, start.error);
-  const recorded = await promisify(execFile)('sh', [resolve('.agents/skills/qa/qa-record.sh'), 'run', epic, 'demo-recorder', 'DEMO-001'], {
+  const record = (run: string, id: string) => promisify(execFile)('sh', [resolve('.agents/skills/qa/qa-record.sh'), 'run', epic, run, id], {
     cwd: f.root, env: { ...process.env, CLAND_SESSION_NAME: '', CLAND_SESSION_ID: '', CLAND_HUB_FILE: join(f.root, '.cland/hub.json'), CLAND: resolve('hub/bin/cland.ts'), QA_DEMO_EPIC: epic }, maxBuffer: 1024 * 1024 });
+  return { ...f, epic, record };
+}
+
+test('the demo recorder runs a headless case remotely and retains captures and executor accounting locally', async t => {
+  const f = await recorderFixture(t);
+  const { epic } = f;
+  const launcher = await f.ui.request({ type: 'demo.exec', epic, command: ['sh', '-c', 'command -v cland; cland --headless --qa qa/cases/DEMO-001.lua --out "$HOME/launcher-check"'] });
+  assert.equal(launcher.ok, true, launcher.error);
+  const output = launcher.value as { code: number; stdout: string; stderr: string };
+  assert.equal(output.code, 0, output.stderr);
+  assert.match(output.stdout.split('\n')[0]!, /\/cland\/hub\/bin\/cland$/);
+  assert.equal(JSON.parse(output.stdout.trim().split('\n').at(-1)!).result, 'PASS');
+  const recorded = await f.record('demo-recorder', 'DEMO-001');
   const line = JSON.parse(recorded.stdout);
   assert.equal(line.item, epic);
   assert.equal(line.result, 'PASS'); assert.equal(line.executor, 'droplet');
-  assert.equal(line.evidence[0], `.cland/qa/${epic}/demo-recorder/DEMO-001.screen.txt`);
+  assert.deepEqual(line.evidence, [`.cland/qa/${epic}/demo-recorder/rulebook-rows.screen.txt`, `.cland/qa/${epic}/demo-recorder/DEMO-001.screen.txt`]);
   assert.equal(line.build, await f.git('rev-parse', 'dev'));
   assert.equal(typeof line.lifetime_ms, 'number'); assert.equal(typeof line.cost_usd, 'number');
   assert.equal(await readFile(join(f.root, line.evidence[0]), 'utf8'), 'remote grid');
+  assert.equal(await readFile(join(f.root, line.evidence[1]), 'utf8'), 'final grid');
+  const cleaned = await f.ui.request({ type: 'demo.exec', epic, command: ['node', '-e', "process.stdout.write(String(require('fs').existsSync(process.argv[1])))", line.message] });
+  assert.equal(cleaned.ok, true, cleaned.error);
+  assert.equal((cleaned.value as { stdout: string }).stdout, 'false', 'validated captures are removed remotely');
+  const stopped = await f.ui.request({ type: 'demo.stop', epic }); assert.equal(stopped.ok, true, stopped.error);
+});
+
+test('demo recorder failures persist diagnostics and keep remote captures for recovery', async t => {
+  const f = await recorderFixture(t);
+  const { epic } = f;
+  for (const [run, id, error] of [['local-copy', 'DEMO-001', /EEXIST/], ['malformed-result', 'BROKEN-001', /JSON/], ['collision', 'COLLISION-001', /duplicate capture name: rulebook-rows.screen.txt/]] as const) {
+    if (run === 'local-copy') await mkdir(join(f.root, '.cland/qa', epic, run, 'rulebook-rows.screen.txt'), { recursive: true });
+    const recorded = await f.record(run, id).then(() => assert.fail('recorder should fail'), error => error);
+    assert.equal(recorded.code, 2, recorded.stderr);
+    const line = JSON.parse(recorded.stdout);
+    assert.equal(line.result, 'BLOCKED'); assert.deepEqual(line.evidence, []);
+    assert.match(line.message, error);
+    assert.match(line.stderr, /remote headless stderr/);
+    assert.match(line.remote_output, /cland-demo-case-/);
+    const retained = await f.ui.request({ type: 'demo.exec', epic, command: ['node', '-e', "process.stdout.write(require('fs').readFileSync(require('path').join(process.argv[1],'rulebook-rows.screen.txt'),'utf8'))", line.remote_output] });
+    assert.equal(retained.ok, true, retained.error);
+    assert.equal((retained.value as { stdout: string }).stdout, 'remote grid');
+    const lines = (await readFile(join(f.root, '.cland/qa/runs.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line));
+    assert.deepEqual(lines.at(-1), line, 'diagnostics are persisted, not only printed');
+    const cleanup = await f.ui.request({ type: 'demo.exec', epic, command: ['node', '-e', "require('fs').rmSync(process.argv[1],{recursive:true,force:true})", line.remote_output] });
+    assert.equal(cleanup.ok, true, cleanup.error);
+  }
   const stopped = await f.ui.request({ type: 'demo.stop', epic }); assert.equal(stopped.ok, true, stopped.error);
 });
 

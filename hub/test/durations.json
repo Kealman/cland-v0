@@ -3223,6 +3223,10 @@
       "seconds": 5.475623,
       "reason": "Delivers a real bundled fixture to the fake machine and waits for the independent 2.5-second lifetime watchdog to destroy it after stopping the hub; observed in A-3054."
     },
+    "hub/test/demo.test.ts::demo recorder failures persist diagnostics and keep remote captures for recovery": {
+      "seconds": 5.567,
+      "reason": "Delivers a committed fixture through the demo lease and runs three real shell-recorder failures, checking persisted diagnostics and remote capture recovery after each. Measured on macOS in T-551."
+    },
     "hub/test/demo.test.ts::demo run timeout destroys the machine through the watchdog even with the hub gone": {
       "seconds": 4.998453,
       "reason": "Delivers a real bundled fixture to the fake machine and waits for the independent 2.5-second run-timeout watchdog to destroy it after stopping the hub; observed in A-3054."

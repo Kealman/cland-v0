@@ -52,6 +52,7 @@ ts=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 executor=local
 lifetime=null
 cost=null
+diagnostics='{}'
 if [ -n "${QA_DEMO_EPIC:-}" ]; then
   demo=$("${CLAND:-cland}" demo status "$QA_DEMO_EPIC" --json) || die "cannot read demo lease"
   build=$(printf '%s\n' "$demo" | jq -er '.commit') || die "demo has no commit"
@@ -133,6 +134,9 @@ case $mode in
     result=$(printf '%s\n' "$printed" | tail -n 1 | jq -r '.result // empty' 2>/dev/null)
     if [ -z "$result" ]; then result=BLOCKED; [ "$code" -ge 2 ] || code=2; printed='{"evidence":[]}'; fi
     evidence=$(printf '%s\n' "$printed" | tail -n 1 | jq -c '(.evidence // []) | if type == "array" then . else [] end' 2>/dev/null)
+    if [ -n "${QA_DEMO_EPIC:-}" ]; then
+      diagnostics=$(printf '%s\n' "$printed" | tail -n 1 | jq -c '{message, stderr, remote_output} | with_entries(select(.value != null))' 2>/dev/null) || diagnostics='{}'
+    fi
     ;;
   note)
     surface=${5:-}; method=${6:-}; result=${7:-}
@@ -148,9 +152,9 @@ esac
 line=$(jq -cn --arg ts "$ts" --arg item "$item" --arg run "$run" --arg case "$case_id" --arg build "$build" \
   --arg surface "$surface" --arg method "$method" --arg result "$result" --argjson code "$code" \
   --arg executor "$executor" --argjson lifetime "$lifetime" --argjson cost "$cost" \
-  --argjson evidence "${evidence:-null}" --arg root "$root/" --arg session "$session" \
+  --argjson evidence "${evidence:-null}" --argjson diagnostics "$diagnostics" --arg root "$root/" --arg session "$session" \
   '{ts: $ts, item: $item, run: $run, case: $case, build: $build, surface: $surface, method: $method, result: $result,
-    exit_code: $code, executor: $executor, lifetime_ms: $lifetime, cost_usd: $cost, evidence: ($evidence | map(ltrimstr($root))), session: $session}' 2>/dev/null)
+    exit_code: $code, executor: $executor, lifetime_ms: $lifetime, cost_usd: $cost, evidence: ($evidence | map(ltrimstr($root))), session: $session} + $diagnostics' 2>/dev/null)
 # never append what is not one JSON object: keep the outcome and the captures, say where, and stop
 if [ -z "$line" ] || ! printf '%s\n' "$line" | jq -e 'type == "object"' >/dev/null 2>&1; then
   echo "qa-record: could not serialize the runs.jsonl line, nothing appended. Outcome: $item $run $case_id $result (exit $code); captures: ${evidence_dir:-none}" >&2
