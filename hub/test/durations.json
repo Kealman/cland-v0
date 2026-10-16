@@ -3623,6 +3623,27 @@
       "seconds": 4.843106,
       "reason": "Aggregates atomic git publication, sync and fault-recovery scenarios against fixture remotes; every failed step must preserve or recover refs."
     },
+    "hub/test/remote-fixture-lifecycle.test.ts": {
+      "file": true,
+      "seconds": 70.2,
+      "reason": "File budget: ten owner-lifecycle modes each start a real remote fixture in a subprocess and observe hub, detached watchdog/reaper exit and directory removal across the boundary."
+    },
+    "hub/test/remote-fixture-lifecycle.test.ts::remote fixture cleans up after owner normal": {
+      "seconds": 9.3,
+      "reason": "Starts a real remote fixture in a subprocess, then observes hub, detached watchdog/reaper exit and directory removal across the owner lifecycle boundary."
+    },
+    "hub/test/remote-fixture-lifecycle.test.ts::remote fixture cleans up after owner SIGINT": {
+      "seconds": 9.3,
+      "reason": "Starts a real remote fixture in a subprocess, then observes hub, detached watchdog/reaper exit and directory removal across the owner lifecycle boundary."
+    },
+    "hub/test/remote-fixture-lifecycle.test.ts::remote fixture cleans up after owner SIGKILL": {
+      "seconds": 9.3,
+      "reason": "Starts a real remote fixture in a subprocess, then observes hub, detached watchdog/reaper exit and directory removal across the owner lifecycle boundary."
+    },
+    "hub/test/remote-fixture-lifecycle.test.ts::remote fixture cleans up after owner SIGTERM": {
+      "seconds": 9.3,
+      "reason": "Starts a real remote fixture in a subprocess, then observes hub, detached watchdog/reaper exit and directory removal across the owner lifecycle boundary."
+    },
     "hub/test/remote-fixture-lifecycle.test.ts::remote fixture cleans up after owner exit": {
       "seconds": 5.678,
       "reason": "Starts a real remote fixture in a subprocess, then observes hub, detached watchdog/reaper exit and directory removal across the owner lifecycle boundary."
