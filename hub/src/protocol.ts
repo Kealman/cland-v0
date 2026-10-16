@@ -681,7 +681,7 @@ export type QueueWaitMetrics = {
   last50Runs: Record<'local' | 'droplet', QueueWaitStats>;
 };
 export type VerificationQueue = {
-  version: 1; at: string; holder: VerificationHolder | null; remote?: VerificationHolder[]; remoteBudget?: number; waiters: VerificationWaiter[];
+  version: 1; at: string; holder: VerificationHolder | null; remote?: VerificationHolder[]; remoteBudget?: number; localFallback?: boolean; waiters: VerificationWaiter[];
   metrics: { window: number; count: number; wait: DurationStats; run: DurationStats; queueWait?: QueueWaitMetrics };
 };
 

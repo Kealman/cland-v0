@@ -254,7 +254,7 @@ history). Uncommitted edits may be loaded; the source commit identifies the file
 Git history, not a claim that those edits were committed.
 
 The following settings apply live: `verification.executor`, `budget` (still capped
-at one local run), `remote_budget`, `load_gate_workers`, `shards`, `cache_max_age_minutes`, `lifetime`,
+at one local run), `remote_budget`, `local_fallback`, `load_gate_workers`, `shards`, `cache_max_age_minutes`, `lifetime`,
 `run_timeout`, `daily_spend_usd`, the `verification.droplet` table, `keys.layouts`,
 and role definitions. Work that has started keeps its snapshot; anything that starts after the reload
 uses the reloaded config. A queued job has not started. The scheduler persists the
@@ -1738,6 +1738,7 @@ provisioning and cleanup add to billed lifetime. Read measured costs in each run
 | `[verification] executor` | `local` | `local` during the build; `droplet` after E-271 closes |
 | `budget` | `1` (local cap) | `1` |
 | `remote_budget` | `4` | `2` |
+| `local_fallback` | `true` | `false` |
 | `shards` | `2` (positive integer) | default |
 | `lock_path` | `/tmp/cland-suite.lock` | default |
 | `cache_max_age_minutes` | `1440` | default |
@@ -1755,11 +1756,13 @@ again at each acquire; invalid values name their config key. The first available
 configured region offering the size and holding the prepared image wins.
 
 One local run uses the host's compatibility leases. Up to `remote_budget` droplet
-runs proceed beside it, using their own machines' locks. A full remote budget
+runs proceed beside it, using their own machines' locks. A full remote budget with `local_fallback = true` (the default)
 may send a default droplet request to a free local slot with a warning; with both budgets full,
 it waits. `cland verify queue` shows `local:`, a `remote <used>/<budget>:` line per
 remote run with session, item, machine, size, region and ETA, and waiters naming
-their executor. Explicit `--executor droplet` requests stay queued for remote
+their executor and the `local fallback: true|false` policy (`localFallback` in JSON).
+With `local_fallback = false`, default droplet requests follow the same remote-only
+policy as explicit `--executor droplet` requests: they stay queued for remote
 capacity (including durable leases pending cleanup), labelled `waiting for remote`
 with their position; later local requests can pass them. Their admission ETA
 uses remote capacity only. JSON waiters include `waitingFor: "remote"`. A machine
@@ -1913,10 +1916,11 @@ dirty candidate sends a requested droplet run to the local queue with
 receive `verify <id>: droplet unavailable (<cause>); running locally`, projected
 with warn severity on messages and inbox warning surfaces. The journal records
 `verification-executor-fallback` with id, item, requested, effective and cause.
-The fallback applies when the executor flag is omitted. An explicit
-`--executor droplet` never falls back: it waits for remote capacity and refuses
-submission when the daily spend cap cannot cover its lifetime reservation, naming
-the cap. Other remote failures refuse submission or fail the run without
+The fallback applies when the executor flag is omitted and `local_fallback = true`
+(the default). With `local_fallback = false`, default droplet requests use the
+same remote-only policy as explicit `--executor droplet`: requests wait for remote
+capacity and refuse submission when the daily spend cap cannot cover their lifetime
+reservation, naming the cap. Other remote failures refuse submission or fail the run without
 running locally. Acquisition
 still reserves spend atomically; a cap reached after submission fails that run
 instead of moving it to the local queue.
@@ -2134,7 +2138,7 @@ is a positive integer, defaulting to 4, beside the local slot of one. The schedu
 walks the same ordered queue, admitting droplet runs into free remote slots without
 checking the host's compatibility leases. A blocked local waiter does not hold up
 remote waiters behind it. When all remote slots are reserved and the local slot is
-free, a droplet request runs locally with one warn notice
+free, a default droplet request with `local_fallback = true` runs locally with one warn notice
 `verify <id>: remote budget <n>/<n> full; running locally` and a
 `verification-executor-fallback` journal record with cause `remote budget full`.
 `--executor local` always uses the local slot. Launching/acquiring jobs reserve

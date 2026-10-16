@@ -15,6 +15,8 @@ cache_max_age_minutes = 1440
 # D27 build values (stand-in under D24, 2026-10-13): the hub enforces these for droplet runs.
 # The documented defaults are 110m, 75m and $5.
 # D28 (human, 2026-10-14): verification runs on droplets from the hub restart after T-347.
+# Task runs wait for a remote slot; reserve this Mac for the hub and sessions.
+local_fallback = false
 executor = "droplet"
 lifetime = "60m"
 run_timeout = "50m"

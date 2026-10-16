@@ -15,7 +15,7 @@ import { isManagedFile, readText, writeIfChanged, type Report } from './files.ts
 
 export type ProjectConfig = {
   name: string;
-  verification: { executor: 'local' | 'droplet'; workers: number; loadGateWorkers: number; budget: number; remoteBudget: number; shards: number; lockPath: string; cacheMaxAgeMs: number; waitP90TargetMs: number; coverageMaxAgeMs: number; testTimeoutMs: number; stallTimeoutMs: number; lifetimeMs: number; runTimeoutMs: number; runTimeout: string; dailySpendUsd: number; droplet: { workers?: number; size: string; prepare_size: string; regions: string[]; image: string } };
+  verification: { executor: 'local' | 'droplet'; localFallback: boolean; workers: number; loadGateWorkers: number; budget: number; remoteBudget: number; shards: number; lockPath: string; cacheMaxAgeMs: number; waitP90TargetMs: number; coverageMaxAgeMs: number; testTimeoutMs: number; stallTimeoutMs: number; lifetimeMs: number; runTimeoutMs: number; runTimeout: string; dailySpendUsd: number; droplet: { workers?: number; size: string; prepare_size: string; regions: string[]; image: string } };
   sessions: { archiveAfterItemMs: number; archiveAfterStopMs: number };
   visibility: VisibilityOverrides;
   tracker: { levels: Levels; fatalStallMs: number };
@@ -29,7 +29,7 @@ const MINUTE = 60_000;
 
 export const defaultConfig = (name: string): ProjectConfig => ({
   name,
-  verification: { executor: 'local', workers: 4, loadGateWorkers: 2, budget: 1, remoteBudget: 4, shards: 2, lockPath: '/tmp/cland-suite.lock', cacheMaxAgeMs: 86400000, waitP90TargetMs: 1200000, coverageMaxAgeMs: 172800000, testTimeoutMs: 120000, stallTimeoutMs: 600000, lifetimeMs: 6600000, runTimeoutMs: 4500000, runTimeout: '75m', dailySpendUsd: 5, droplet: { size: 'c-8', prepare_size: 'c-8', regions: ['lon1', 'nyc1', 'sfo2'], image: 'ubuntu-24-04-x64' } },
+  verification: { executor: 'local', localFallback: true, workers: 4, loadGateWorkers: 2, budget: 1, remoteBudget: 4, shards: 2, lockPath: '/tmp/cland-suite.lock', cacheMaxAgeMs: 86400000, waitP90TargetMs: 1200000, coverageMaxAgeMs: 172800000, testTimeoutMs: 120000, stallTimeoutMs: 600000, lifetimeMs: 6600000, runTimeoutMs: 4500000, runTimeout: '75m', dailySpendUsd: 5, droplet: { size: 'c-8', prepare_size: 'c-8', regions: ['lon1', 'nyc1', 'sfo2'], image: 'ubuntu-24-04-x64' } },
   sessions: { archiveAfterItemMs: 3600000, archiveAfterStopMs: 86400000 },
   visibility: {},
   tracker: { levels: [...DEFAULT_LEVELS], fatalStallMs: 60000 },
@@ -51,6 +51,8 @@ name = ${JSON.stringify(c.name)}
 
 [verification]
 executor = ${JSON.stringify(c.verification.executor)}
+# Allow default droplet requests to use the local slot when remote is unavailable.
+local_fallback = ${c.verification.localFallback}
 # Concurrent machine test files; the free shard always uses one worker.
 workers = ${c.verification.workers}
 # Extra load-gate lanes; repetitions of one new test stay sequential.
@@ -195,6 +197,10 @@ export function parseConfig(text: string, fallbackName: string, env: NodeJS.Proc
   if (verification.shards !== undefined) {
     if (typeof verification.shards !== 'number' || !Number.isSafeInteger(verification.shards) || verification.shards <= 0) throw new Error('verification.shards must be a positive integer');
     c.verification.shards = verification.shards;
+  }
+  if (verification.local_fallback !== undefined) {
+    if (typeof verification.local_fallback !== 'boolean') throw new Error('verification.local_fallback must be a boolean');
+    c.verification.localFallback = verification.local_fallback;
   }
   if (verification.remote_budget !== undefined) {
     if (typeof verification.remote_budget !== 'number' || !Number.isSafeInteger(verification.remote_budget) || verification.remote_budget <= 0) throw new Error('verification.remote_budget must be a positive integer');

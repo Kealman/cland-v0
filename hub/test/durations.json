@@ -4216,6 +4216,10 @@
       "seconds": 16.005993,
       "reason": "Runs several nested fixture verification workers and fake remote acquisitions to prove shared spend reservations, slot arbitration and ETA accounting."
     },
+    "hub/test/suite-remote-budget.test.ts::local_fallback=false waits for remote capacity while later local requests proceed": {
+      "seconds": 20.165,
+      "reason": "Runs two real candidate workers on fake remote slots and one explicit local worker to prove disabled fallback waits for remote admission with queue JSON and independent local progress."
+    },
     "hub/test/suite-remote-budget.test.ts::parallel acquires each reserve shared spend; cap refusals stay local without holding remote slots": {
       "seconds": 11.905654,
       "reason": "Runs several nested fixture verification workers and fake remote acquisitions to prove shared spend reservations, slot arbitration and ETA accounting."

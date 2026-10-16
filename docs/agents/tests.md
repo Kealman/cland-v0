@@ -88,7 +88,7 @@ Close runs on integrated `dev` use `cland verify all --occasion stage|epic|relea
 
 Every `after-stage` stage, even with `qa.scope: none`, needs green integrated full-suite receipts at one verification tree from a Linux droplet `--occasion stage` run and a macOS local run. Non-none scopes additionally need a clear stage QA verdict on that tree. Per-item stage gates are unchanged. `task plan show` and stage-run results name missing platforms and the expected tree. Submit the missing run separately: the usual stage request for Linux and `cland verify all --occasion stage --executor local --report <topic>` on the Mac. Stage-request cache reuse preserves executor/platform; Linux stage evidence must come from a stage run (sharded, or the documented one-slot fallback). A completed stage retains its tested tree across later descendant builds while its plan and landing evidence remain valid.
 
-A remote close run uses the free remote slots up to `[verification] shards` (default 2), balances hub files largest-first by `hub/test/durations.json` (unknown files use its median), and places Neovim on the lightest hub shard. Each droplet preserves the free/machine resource classes. Before creating any droplet, the hub atomically reserves every shard's lifetime cost in the shared spend ledger against the project's daily cap ($3 here). Fewer than two free slots or an insufficient cap gives one whole run on one slot and one warn notice, `sharding skipped: fewer than 2 remote slots free` or `sharding skipped: daily spend cap $3 would be exceeded`. Other executor unavailability follows the normal local fallback.
+A remote close run uses the free remote slots up to `[verification] shards` (default 2), balances hub files largest-first by `hub/test/durations.json` (unknown files use its median), and places Neovim on the lightest hub shard. Each droplet preserves the free/machine resource classes. Before creating any droplet, the hub atomically reserves every shard's lifetime cost in the shared spend ledger against the project's daily cap ($3 here). Fewer than two free slots or an insufficient cap gives one whole run on one slot and one warn notice, `sharding skipped: fewer than 2 remote slots free` or `sharding skipped: daily spend cap $3 would be exceeded`. Other executor unavailability follows the configured local fallback.
 
 One result sums counts, labels failures by shard, and includes each machine, size, duration and cost, total cost, and wall time from admission through final collection. Each shard has a log artifact beside the merged log. A failed or lost shard fails the run without an automatic retry; cleanup must be confirmed before its slot is released. At $0.25/hour per c-8, two ten-minute droplet lifetimes estimate $0.0833 total (provisioning and cleanup count too); read the measured cost in the result. The identical tree/mode cache serves both ordinary and occasion requests; stage requests additionally match executor/platform and require stage provenance for Linux cache hits.
 
@@ -116,7 +116,11 @@ When droplets are unavailable (missing token, refused create, no prepared snapsh
 unavailable size, daily cap or dirty candidate), the hub posts a warning:
 `verify <id>: droplet unavailable (<cause>); running locally`. The requested run
 still happens, through the local queue; wait for its result rather than resubmitting
-or handling a droplet yourself. This fallback applies when the executor flag is omitted.
+or handling a droplet yourself. This fallback applies when the executor flag is omitted and
+`[verification].local_fallback` is `true` (the default). This project sets it to
+`false`: default droplet requests wait for remote capacity and never run locally.
+Other acquisition failures are reported without local execution. An explicit
+`--executor local` still uses the local slot, and human `npm test` is unchanged.
 An explicit `--executor droplet` never falls back: it waits for remote capacity,
 refuses submission if the daily spend cap cannot cover its reservation (naming
 the cap), and reports other remote acquisition failures without running locally.
@@ -133,21 +137,24 @@ The hub persists the request, exact head, item, diff selection, enqueue time and
 droplet runs beside it (a positive integer, 4 by default; this project's D27 build value is 2). The scheduler walks the
 ordered queue past waiters whose slot is busy. Remote acquisition reserves a slot
 through confirmed release and each acquire checks the shared daily spend cap.
-When remote slots are full and the local slot is free, a default droplet request falls back
+When remote slots are full and the local slot is free, a default droplet request with
+`local_fallback = true` falls back
 locally with a warn notice naming `remote budget <n>/<n> full` and a
 `verification-executor-fallback` record with cause `remote budget full`.
-An explicit droplet request remains a remote waiter, including when preparation
+An explicit droplet request, or a default droplet request with `local_fallback = false`,
+remains a remote waiter, including when preparation
 or unconfirmed cleanup holds the remote budget; later local requests can proceed.
 `--executor local` and human hand runs use the local slot behind compatibility leases. The queue and its order survive restart; a known dead requester's queued run becomes one hub cancellation note to its original recipients. A disconnected spoke alone is not evidence of death.
 
 `cland verify queue [--json]` prints `local: <holder or none>`, then one
 `remote <active>/<budget>: <session> · <item> · droplet <name> <size> <region> ·
 since <t> · ETA <d>` line per remote run, then ordered waiters with their requested
-executor, elapsed wait and admission ETA. Explicit remote waiters are labelled
+executor, elapsed wait and admission ETA. Remote-only waiters are labelled
 `waiting for remote` with their queue position; their ETA uses remote capacity only.
 JSON identifies them with `waitingFor: "remote"`. Acquiring machines are labelled
 `acquiring` until their lease is available. JSON keeps `holder` as the local
-holder and adds `remote`, `remoteBudget` and each waiter's `executor`. The sessions panel follows hub queue events live.
+holder and adds `remote`, `remoteBudget`, `localFallback` and each waiter's `executor`.
+The text queue also prints `local fallback: true|false`. The sessions panel follows hub queue events live.
 `hub status --json` includes per-run wait/run timings and median/p90 over the last
 20 completions. Cache hits record zero timing; executed-run estimates use recent
 successful durations for the effective mode and executor. Remote durations

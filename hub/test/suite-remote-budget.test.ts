@@ -201,19 +201,23 @@ test('an unconfirmed release posts its receipt while the live lease still guards
   assert.deepEqual(f.api.droplets, []);
 });
 
-test('explicit droplet waits for remote capacity while later local requests proceed', async t => {
-  const f = await fixture(t, { hub: projectHub, test: barrier, config: 'remote_budget=1\nlifetime="15m"\nrun_timeout="5m"' });
+for (const remoteOnly of ['explicit droplet', 'local_fallback=false'] as const) test(`${remoteOnly} waits for remote capacity while later local requests proceed`, async t => {
+  const f = await fixture(t, { hub: projectHub, test: barrier, config: `remote_budget=1\nlifetime="15m"\nrun_timeout="5m"${remoteOnly === 'local_fallback=false' ? '\nlocal_fallback=false' : ''}` });
   const first = await caller(t, f, 'first');
   const waiting = await caller(t, f, 'waiting');
   const local = await caller(t, f, 'local');
   const a = await first.launch('droplet');
   const machine = await f.remote(a.id); await started(join(machine.home, 'cland'));
-  const b = await waiting.launch('droplet');
-  const q = await queue(f);
-  assert.equal(q.holder, null, 'explicit droplet must leave the free local slot alone');
+  const b = await waiting.launch(remoteOnly === 'explicit droplet' ? 'droplet' : undefined);
+  const q = JSON.parse((await cland(f.root, 'verify', 'queue', '--json')).stdout) as VerificationQueue;
+  assert.equal(q.localFallback, remoteOnly !== 'local_fallback=false');
+  assert.equal(q.holder, null, 'remote-only request must leave the free local slot alone');
+  assert.equal(q.waiters[0]!.waitingFor, 'remote');
+  assert.equal(q.waiters[0]!.etaMs, q.remote![0]!.etaMs, 'waiter ETA uses the occupied remote slot');
   assert.deepEqual(q.waiters.map(w => [w.id, w.executor, w.position]), [[b.id, 'droplet', 1]]);
   const text = (await cland(f.root, 'verify', 'queue')).stdout;
   assert.match(text, /1\. waiting .* · droplet .*waiting for remote/);
+  assert.ok(text.includes(`local fallback: ${remoteOnly !== 'local_fallback=false'}`));
   const c = await local.launch('local'); await started(local.cwd);
   assert.equal((await queue(f)).holder?.id, c.id);
   assert.equal(f.api.droplets.length, 1, 'waiting request must not create over budget');
@@ -226,6 +230,7 @@ test('explicit droplet waits for remote capacity while later local requests proc
   await eventually('waiting remote candidate exited', async () => (await readFile(join(next.run, 'done'), 'utf8').catch(() => '')).trim() || undefined, 20000);
   assert.match((await finished(f, waiting.topic, b.id)).text, /Executor droplet/);
   await writeFile(join(local.cwd, '.cland/finish'), 'yes');
+  await eventually('local worker completion receipt', () => readFile(join(f.root, '.cland/run/suites', c.id, 'result.json'), 'utf8').catch(() => undefined), 20000);
   await finished(f, local.topic, c.id);
   assert.deepEqual(f.api.droplets, []);
 });
@@ -246,6 +251,16 @@ for (const budget of [1, 2]) test(`explicit droplet refuses an uncovered reserva
   await writeFile(join(machine.home, 'cland/.cland/finish'), 'yes');
   await eventually('funded remote candidate exited', async () => (await readFile(join(machine.run, 'done'), 'utf8').catch(() => '')).trim() || undefined, 20000);
   await finished(f, first.topic, a.id);
+});
+
+test('local_fallback defaults to true, validates booleans and survives rendering', () => {
+  assert.equal(parseConfig('', 'test').verification.localFallback, true);
+  for (const value of ['0', '"false"', '[]']) assert.throws(() => parseConfig(`[verification]\nlocal_fallback=${value}`, 'test'), /local_fallback.*boolean/);
+  for (const value of [false, true]) {
+    const c = parseConfig(`[verification]\nlocal_fallback=${value}`, 'test');
+    assert.equal(c.verification.localFallback, value);
+    assert.deepEqual(parseConfig(renderConfig(c), 'test'), c);
+  }
 });
 
 test('remote_budget defaults to four, validates positive integers and survives rendering', () => {
@@ -299,6 +314,7 @@ for (const frees of ['remote', 'local'] as const) test(`a full remote budget fal
   const fallback = callers[2]!; const localJob = await fallback.launch(); await started(fallback.cwd);
   const waiting = callers[3]!; const waitingJob = await waiting.launch();
   const q = JSON.parse((await cland(f.root, 'verify', 'queue', '--json')).stdout) as VerificationQueue;
+  assert.equal(q.localFallback, true, 'default fallback policy remains enabled');
   assert.equal(q.holder?.id, localJob.id);
   assert.equal(q.holder.executor, 'local');
   assert.deepEqual(q.remote!.map(r => r.id).sort(), jobs.map(j => j.id).sort());

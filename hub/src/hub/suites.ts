@@ -57,7 +57,7 @@ export type StagePlatform = 'Linux droplet' | 'macOS';
 export type StageCover = { id: string; head: string; tree: string; platform: StagePlatform };
 const verifyResult = (job: SuiteJob): VerifyResult => ({ executor: job.executor, id: job.id, state: job.state ?? 'running', result: job.state !== 'finished' ? null : job.cancelled || job.requesterDied ? 'cancelled' : job.outcome ? job.outcome.code === 0 ? 'passed' : 'failed' : null, head: job.head, finished: job.finished ?? job.completedAt ?? null, artifact: job.artifact, ...(job.cached ? { cached: { ...job.cached } } : {}) });
 
-export type SuiteSchedulerOptions = { projectConfig?: () => ProjectConfig; env?: NodeJS.ProcessEnv; executor?: ExecutorKind; lifetimeMs?: number; runTimeoutMs?: number; runTimeout?: string; onFallback?: (job: Readonly<SuiteJob>, cause: string) => void; budget?: number; remoteBudget?: number; shards?: number; onShardingSkipped?: (job: Readonly<SuiteJob>, cause: string) => void; cacheMaxAgeMs?: number; waitP90TargetMs?: number; locks?: string[]; requesterDead?: (actor: SuiteActor) => boolean; log?: LogFn; onQueue?: (queue: VerificationQueue) => void; onJob?: (job: Readonly<SuiteJob>) => void };
+export type SuiteSchedulerOptions = { projectConfig?: () => ProjectConfig; env?: NodeJS.ProcessEnv; executor?: ExecutorKind; localFallback?: boolean; lifetimeMs?: number; runTimeoutMs?: number; runTimeout?: string; onFallback?: (job: Readonly<SuiteJob>, cause: string) => void; budget?: number; remoteBudget?: number; shards?: number; onShardingSkipped?: (job: Readonly<SuiteJob>, cause: string) => void; cacheMaxAgeMs?: number; waitP90TargetMs?: number; locks?: string[]; requesterDead?: (actor: SuiteActor) => boolean; log?: LogFn; onQueue?: (queue: VerificationQueue) => void; onJob?: (job: Readonly<SuiteJob>) => void };
 type HumanSlot = Omit<SuiteSlot, 'type'> & { queued: string; admittedAt?: string; left?: boolean };
 const HUMAN_GRACE_MS = 10_000;
 const KEY = 'suite-jobs';
@@ -174,7 +174,7 @@ export class Suites {
     this.#options = { ...this.#options, ...config.verification };
     this.#remoteBudget = config.verification.remoteBudget;
     this.#waitMetrics.configure(config.verification.waitP90TargetMs);
-    for (const job of this.#jobs) if (job.state === 'queued' && !job.config && job.followsConfig) { job.executor = config.verification.executor; job.requestedExecutor = job.executor; }
+    for (const job of this.#jobs) if (job.state === 'queued' && !job.config && job.followsConfig) { job.executor = config.verification.executor; job.requestedExecutor = job.executor; job.requireRemote = job.executor === 'droplet' && !config.verification.localFallback; }
     this.#save();
   }
   #captureConfig(job: SuiteJob): void {
@@ -323,7 +323,7 @@ export class Suites {
     if (this.#jobs.some(job => this.#active(job) && (job.actor?.sessionId ?? 'human') === identity)) throw new Error('this session already has a suite queued or running');
     const workerPolicy = config && input.cwd === this.#root ? { local: config.verification.workers, droplet: config.verification.droplet.workers ?? config.verification.workers } : { local: (await suiteLimits(input.cwd, 'local', this.#env)).workers, droplet: (await suiteLimits(input.cwd, 'droplet', this.#env)).workers };
     const fallbackWorkers = input.workers ?? workerPolicy.local;
-    const job: SuiteJob = { ...input, limits, workerPolicy, ...(input.workers !== undefined ? { workersOverride: input.workers } : {}), followsConfig: input.executor === undefined, workers, fallbackWorkers, executor, requestedExecutor: executor, requireRemote: input.executor === 'droplet', integrated: input.integrated === true && branch === 'dev', queued: new Date().toISOString(), priority: input.priority ?? Number.MAX_SAFE_INTEGER, state: 'queued', locks: settings.locks ?? ['/tmp/cland-suite.lock', '/tmp/cland-suite-nvim.lock'], selection, tree, id, head, branch, log: join(dir, 'suite.log'), result: join(dir, 'result.json'), gate: join(dir, 'ready'), pid: null, started: null, outcome: null, artifact: null, reported: false, error: null };
+    const job: SuiteJob = { ...input, limits, workerPolicy, ...(input.workers !== undefined ? { workersOverride: input.workers } : {}), followsConfig: input.executor === undefined, workers, fallbackWorkers, executor, requestedExecutor: executor, requireRemote: executor === 'droplet' && (input.executor === 'droplet' || !(config?.verification.localFallback ?? settings.localFallback ?? true)), integrated: input.integrated === true && branch === 'dev', queued: new Date().toISOString(), priority: input.priority ?? Number.MAX_SAFE_INTEGER, state: 'queued', locks: settings.locks ?? ['/tmp/cland-suite.lock', '/tmp/cland-suite-nvim.lock'], selection, tree, id, head, branch, log: join(dir, 'suite.log'), result: join(dir, 'result.json'), gate: join(dir, 'ready'), pid: null, started: null, outcome: null, artifact: null, reported: false, error: null };
     if (cacheBypass) job.cacheBypass = cacheBypass;
     // Persist the complete request before acknowledging it. No waiting worker exists.
     await writeFile(job.log, `Suite ${id} · ${input.mode}\n${describeSelection(selection)}\nWorktree ${input.cwd}\nBranch ${branch}\nHead ${head}\nWorkers ${workers}${input.size ? ` · size ${input.size}` : ''}\nQueued ${job.queued}\n`, { mode: 0o600 });
@@ -638,10 +638,11 @@ export class Suites {
       if (job?.followsConfig && !job.config) {
         job.executor = this.#options.projectConfig?.().verification.executor ?? this.#options.executor ?? 'local';
         job.requestedExecutor = job.executor;
+        job.requireRemote = job.executor === 'droplet' && !(this.#options.projectConfig?.().verification.localFallback ?? this.#options.localFallback ?? true);
       }
       const chosenExecutor = job?.executor;
       // Preparation and unconfirmed cleanup can occupy durable slots without a
-      // running suite. Explicit remote requests wait for those releases too.
+      // running suite. Remote-only requests wait for those releases too.
       if (job?.requireRemote && (await readLeases(this.#root)).filter(lease => lease.state !== 'released').length >= this.#remoteBudget) continue;
       if (job && (job.state !== 'queued' || job.outcome)) continue;
       if (job?.executor === 'droplet' && remoteActive < this.#remoteBudget) {
@@ -857,7 +858,7 @@ export class Suites {
     const queued = this.#ordered();
     // A racing hand run can own the shim while the admitted worker waits for it.
     if (active && holder?.kind === 'hand run') queued.unshift(active);
-    return { version: 1, at: new Date(now).toISOString(), holder, remote, remoteBudget: this.#remoteBudget,
+    return { version: 1, at: new Date(now).toISOString(), holder, remote, remoteBudget: this.#remoteBudget, localFallback: this.#options.projectConfig?.().verification.localFallback ?? this.#options.localFallback ?? true,
       waiters: queued.map((j, i) => {
         const job = 'actor' in j ? j : null;
         const mode = job?.selection?.mode ?? j.mode;
