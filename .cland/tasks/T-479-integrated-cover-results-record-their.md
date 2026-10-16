@@ -3,7 +3,7 @@ id: T-479
 kind: task
 title: Integrated cover results record their status and cause, so incidents are data instead of T-204 prose
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - v0.1.3
@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-15T09:13:20.192Z
-updated: 2026-10-15T20:56:48.331Z
+updated: 2026-10-16T03:23:48.980Z
 ---
 
 ## Summary

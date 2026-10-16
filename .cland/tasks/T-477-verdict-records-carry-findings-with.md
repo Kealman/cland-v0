@@ -2,8 +2,8 @@
 id: T-477
 kind: task
 title: Verdict records carry findings with severity, and lows are recorded
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 3
 labels:
@@ -17,7 +17,8 @@ blocked_by:
 topic: topic-338
 branch: t/T-477-verdict-records-carry-findings-with
 created: 2026-10-15T09:13:19.683Z
-updated: 2026-10-16T03:23:21.927Z
+updated: 2026-10-16T03:23:48.927Z
+closed: 2026-10-16T03:23:48.927Z
 ---
 
 ## Summary
@@ -179,3 +180,7 @@ All C1/C2/C3 criteria checked across current source and green exact-head Linux f
 Review artifact A-3641 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3641-t-477-final-evidence-clear-exact-head-linux-full-suite-green.md
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-16T03:23:48.927Z
+
+Merged d8e436449df754dd717c5319372e08d174ef1017 onto dev.
