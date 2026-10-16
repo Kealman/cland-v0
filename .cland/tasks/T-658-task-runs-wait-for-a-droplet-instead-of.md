@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-400
 branch: t/T-658-task-runs-wait-for-a-droplet-instead-of
 created: 2026-10-16T16:29:56.442Z
-updated: 2026-10-16T16:31:49.946Z
+updated: 2026-10-16T16:32:45.874Z
 ---
 
 ## Summary
@@ -32,3 +32,9 @@ A `[verification] local_fallback` setting, default `true`, written `false` in th
 - [ ] C1. With local_fallback = false, a task verify submitted while every remote slot is busy stays queued and runs on the next free droplet, never locally, proved by a suite-queue test with fake slots.
 - [ ] C2. With local_fallback = true (the default) today's fallback behaviour is unchanged, and `--executor local` always runs locally, proved by the same test file.
 - [ ] C3. `cland verify queue --json` reports the setting, and docs/agents/tests.md describes it.
+
+## Comments
+
+### impl-658 · 2026-10-16T16:32:45.874Z
+
+Implementation seam: existing suite-remote-budget fake-slot integration test, expanded to cover config-disabled fallback, explicit local progress, queue JSON setting/position/remote ETA; parser validation and render roundtrip. Local targeted runs held while uptime 1-minute load is >=15.

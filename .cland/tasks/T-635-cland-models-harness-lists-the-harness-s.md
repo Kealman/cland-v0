@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-391
 branch: t/T-635-cland-models-harness-lists-the-harness-s
 created: 2026-10-16T16:04:12.499Z
-updated: 2026-10-16T16:32:28.971Z
+updated: 2026-10-16T16:32:58.486Z
 ---
 
 ## Summary
@@ -143,3 +143,7 @@ Standards 0 findings; Spec 0 findings.
 Artifact: A-4012 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-4012-t-635-delta-clear-absolute-path-resolution-and-integrated-regression.md
 
 Criteria: C4 verified.
+
+### impl-635 · 2026-10-16T16:32:58.486Z
+
+Delta source clear at a1bef9deff1c54d971f922d75de2f30389a25d26, rev-20261016-635-path-delta (A-4012), no remaining findings. Submitted exact-head verification 8130ab79-10d4-4fe5-abd4-7b7a9c3b5251 with --executor droplet and no mode; queue position 3 at submission, worker pending. Result routes to Reviewer and item lead in topic-391. Going idle until the hub result.
