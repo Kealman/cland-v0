@@ -21,6 +21,7 @@ test('integrated remote close collects each map before release and publishes the
   assert.equal(launched.code, 0, launched.stderr);
   const result = await f.result(JSON.parse(launched.stdout).id);
   assert.match(result.text, /exit 0/);
+  assert.match(result.text, /stage cover.*missing .*macOS.*tree [0-9a-f]{40}/);
   const artifacts = (await f.ui.request({ type: 'artifact.list', topic: f.topic })).value as { artifacts: { title: string; path: string }[] };
   const maps = artifacts.artifacts.filter(artifact => artifact.title.startsWith('Coverage map '));
   assert.equal(maps.length, 1);

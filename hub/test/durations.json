@@ -3093,6 +3093,10 @@
       "seconds": 117.438069,
       "reason": "File budget: Runs real hub/account processes through limit-hit, poll exclusion, reset and restart transitions; the test must observe the timed recovery rather than infer it from state."
     },
+    "hub/test/account-limited.test.ts::Claude hard StopFailure and OpenCode quota mark; overloaded and the two retryable throttles do not": {
+      "seconds": 8.211456,
+      "reason": "Runs real hub/account processes through limit-hit, poll exclusion, reset and restart transitions; the test must observe the timed recovery rather than infer it from state."
+    },
     "hub/test/account-limited.test.ts::account.clear permits human and Coordinator shells only, with typed inline role refusals": {
       "seconds": 10.151227,
       "reason": "Runs real hub/account processes through limit-hit, poll exclusion, reset and restart transitions; the test must observe the timed recovery rather than infer it from state."
@@ -3107,10 +3111,6 @@
     },
     "hub/test/account-limited.test.ts::an expired full reading cannot lift a new hard hit while its after-hit poll is delayed": {
       "seconds": 10.527058,
-      "reason": "Runs real hub/account processes through limit-hit, poll exclusion, reset and restart transitions; the test must observe the timed recovery rather than infer it from state."
-    },
-    "hub/test/account-limited.test.ts::Claude hard StopFailure and OpenCode quota mark; overloaded and the two retryable throttles do not": {
-      "seconds": 8.211456,
       "reason": "Runs real hub/account processes through limit-hit, poll exclusion, reset and restart transitions; the test must observe the timed recovery rather than infer it from state."
     },
     "hub/test/account-limited.test.ts::mark survives restart; live re-find succeeds, reset lifts the mark, and the next launch succeeds": {
@@ -3154,6 +3154,10 @@
       "seconds": 60.656424,
       "reason": "File budget: Exercises real Claude fake-harness launch, discovery, hook delivery and restart; the baseline includes the production discovery schedule shortened by T-389."
     },
+    "hub/test/claude-code-adapter.test.ts::Claude discovery and watch share the default 30-second schedule, and stop works before the next pid arrives": {
+      "seconds": 8.340469,
+      "reason": "Exercises real Claude fake-harness launch, discovery, hook delivery and restart; the baseline includes the production discovery schedule shortened by T-389."
+    },
     "hub/test/claude-code-adapter.test.ts::a launched Claude Code session: the spoke connects, a UI message goes queued → delivered → injected, the reply comes back, and the state follows the hooks and the mod": {
       "seconds": 12.46505,
       "reason": "Exercises real Claude fake-harness launch, discovery, hook delivery and restart; the baseline includes the production discovery schedule shortened by T-389."
@@ -3164,10 +3168,6 @@
     },
     "hub/test/claude-code-adapter.test.ts::after a hub restart, resume re-finds the running session through the process table and state reporting continues": {
       "seconds": 8.915654,
-      "reason": "Exercises real Claude fake-harness launch, discovery, hook delivery and restart; the baseline includes the production discovery schedule shortened by T-389."
-    },
-    "hub/test/claude-code-adapter.test.ts::Claude discovery and watch share the default 30-second schedule, and stop works before the next pid arrives": {
-      "seconds": 8.340469,
       "reason": "Exercises real Claude fake-harness launch, discovery, hook delivery and restart; the baseline includes the production discovery schedule shortened by T-389."
     },
     "hub/test/claude-code-sessions.test.ts::an idle that comes while an inject waits for its confirmation retries it once that inject gave up": {
@@ -3459,12 +3459,12 @@
       "seconds": 12.920075,
       "reason": "Moves claims and questions between live Leads, including crash recovery and an initially offline successor."
     },
-    "hub/test/lead-permissions.test.ts::a verifier spawned while its item leaves the Lead subtree is refused and cleaned up": {
-      "seconds": 12.630576,
-      "reason": "Exercises Lead launch/stop/review/merge authority against real hubs, task branches and fake harnesses across hierarchy levels."
-    },
     "hub/test/lead-permissions.test.ts::Lead launches and stops only sessions serving its live subtree": {
       "seconds": 19.276753,
+      "reason": "Exercises Lead launch/stop/review/merge authority against real hubs, task branches and fake harnesses across hierarchy levels."
+    },
+    "hub/test/lead-permissions.test.ts::a verifier spawned while its item leaves the Lead subtree is refused and cleaned up": {
+      "seconds": 12.630576,
       "reason": "Exercises Lead launch/stop/review/merge authority against real hubs, task branches and fake harnesses across hierarchy levels."
     },
     "hub/test/lead-permissions.test.ts::lead-1 requests verifiers and merges its scheduled item through the ordinary gate; other levels refuse": {
@@ -3569,6 +3569,10 @@
     "hub/test/planned-stage.test.ts::landing stage one advances stage two only after clear stage QA": {
       "seconds": 4.739346,
       "reason": "Lands task branches through real git/verification gates and proves stage advancement and stage-QA blocking."
+    },
+    "hub/test/planned-stage.test.ts::landing stage one advances stage two only after clear stage QA with platform receipts bound after startup checks": {
+      "seconds": 3.200989,
+      "reason": "Real Git landing, reviewer/QA spokes, hub stop and late restored-receipt binding prove restart advancement after startup tree checks have settled. Quiet Mac focused measurement 3.200989 s; allowance ahead of the 5 s line for the same process/Git lifecycle under package load."
     },
     "hub/test/progress.test.ts::claude-code: three progress notes start no turn, one ordered digest reaches the next report, including across restart": {
       "seconds": 7.762271,
@@ -3719,20 +3723,20 @@
       "seconds": 4.354111,
       "reason": "Performs a real task merge during a fake Claude harness lifecycle and observes forced-stop delivery to prove it cannot be misreported as death."
     },
-    "hub/test/session-usage.test.ts::a harness exit and a relaunch stop each leave exactly one final record": {
-      "seconds": 7.976735,
-      "reason": "Runs real fake-harness turns and relaunches to prove per-model usage coalescing, totals and exactly-once final records."
-    },
-    "hub/test/session-usage.test.ts::claude-code journals totals and cost, and final records sum per launch item and current role": {
-      "seconds": 10.464639,
-      "reason": "Runs real fake-harness turns and relaunches to prove per-model usage coalescing, totals and exactly-once final records."
-    },
     "hub/test/session-usage.test.ts::Codex coalesces a usage burst and journals a rate-limit-only change": {
       "seconds": 3.164029,
       "reason": "Runs real fake-harness turns and relaunches to prove per-model usage coalescing, totals and exactly-once final records."
     },
     "hub/test/session-usage.test.ts::Codex journals changed totals once, skips equal publications, and stops with final usage": {
       "seconds": 3.445462,
+      "reason": "Runs real fake-harness turns and relaunches to prove per-model usage coalescing, totals and exactly-once final records."
+    },
+    "hub/test/session-usage.test.ts::a harness exit and a relaunch stop each leave exactly one final record": {
+      "seconds": 7.976735,
+      "reason": "Runs real fake-harness turns and relaunches to prove per-model usage coalescing, totals and exactly-once final records."
+    },
+    "hub/test/session-usage.test.ts::claude-code journals totals and cost, and final records sum per launch item and current role": {
+      "seconds": 10.464639,
       "reason": "Runs real fake-harness turns and relaunches to prove per-model usage coalescing, totals and exactly-once final records."
     },
     "hub/test/session-usage.test.ts::opencode journals totals and cost, and final records sum per launch item and current role": {
@@ -3840,6 +3844,10 @@
       "seconds": 3.516942,
       "reason": "Runs a real Git fixture and hub/CLI cancellation while the provider sizes response is held, waits 500 ms to prove no premature report, then waits for all-shard spend reservation settlement, zero reserved spend and one cancelled result. Measured on Linux droplet run e54c3004 (A-3003)."
     },
+    "hub/test/suite-close.test.ts::QA can request epic through MCP but stage, release, task heads and non-full occasions are refused": {
+      "seconds": 5.67501,
+      "reason": "Runs real hub and CLI/MCP requests through fake-provider provisioning, detached package execution, artifact collection and confirmed cleanup; the batch/cache case verifies two requests."
+    },
     "hub/test/suite-close.test.ts::close run falls back whole with one warning when limited by cap": {
       "seconds": 6.871267,
       "reason": "Runs real hub and CLI/MCP requests through fake-provider provisioning, detached package execution, artifact collection and confirmed cleanup; the batch/cache case verifies two requests."
@@ -3858,10 +3866,6 @@
     },
     "hub/test/suite-close.test.ts::ordinary integrated batch uses one slot and its green tree serves a later release occasion cache hit": {
       "seconds": 5.740928,
-      "reason": "Runs real hub and CLI/MCP requests through fake-provider provisioning, detached package execution, artifact collection and confirmed cleanup; the batch/cache case verifies two requests."
-    },
-    "hub/test/suite-close.test.ts::QA can request epic through MCP but stage, release, task heads and non-full occasions are refused": {
-      "seconds": 5.67501,
       "reason": "Runs real hub and CLI/MCP requests through fake-provider provisioning, detached package execution, artifact collection and confirmed cleanup; the batch/cache case verifies two requests."
     },
     "hub/test/suite-coverage.test.ts::package capture attributes real CLI, daemon, spoke and fake processes to their test file": {
@@ -3945,6 +3949,23 @@
     "hub/test/suite-selection-report.test.ts::integrated dev verify publishes a portable function map once; task verify never captures": {
       "seconds": 7.389044,
       "reason": "Runs two real fixture verifications through the queue and package runner, publishes an integrated V8 map, and proves the selected task run catches a regression without recapturing."
+    },
+    "hub/test/suite-stage-cover.test.ts": {
+      "file": true,
+      "seconds": 69.595432,
+      "reason": "Three serial real-worker/fake-provider lifecycle cases cover platform pairing, report recovery, rollback and two cache-supersession histories. Measured test sum69.595432s (70.22s wall) on the Mac beside the implementer full suite under the permitted one-file/load guard; quiet Mac34.71s and Linux A-3351 about48s."
+    },
+    "hub/test/suite-stage-cover.test.ts::a fresh failed stage attempt supersedes its older green cache": {
+      "seconds": 11.125388,
+      "reason": "Quiet Mac whole-file measurement: three real sharded stage requests through the fake provider prove a newer failed receipt blocks stale-green cache reuse and all workers are collected."
+    },
+    "hub/test/suite-stage-cover.test.ts::a fresh unreported stage attempt supersedes its older green cache": {
+      "seconds": 11.121699,
+      "reason": "Quiet Mac whole-file measurement: three real sharded stage requests through the fake provider prove a newer unreported receipt blocks stale-green cache reuse and all workers are collected."
+    },
+    "hub/test/suite-stage-cover.test.ts::after-stage gates require Mac and sharded Linux at one tree, retain history and advance the next stage": {
+      "seconds": 15.600598,
+      "reason": "Quiet Mac whole-file measurement: real local full workers, two fake-provider droplets, Git landing, cache separation, report-delivery recovery, QA and bounded rollback/restoration prove the two-platform stage gate end to end."
     },
     "hub/test/suite-timeouts.test.ts::verify keeps a slow command alive while partial stderr output continues": {
       "seconds": 7.286179,

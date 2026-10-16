@@ -4,7 +4,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { candidateTree } from '../src/verification-tree.ts';
+import { candidateTree, committedTree } from '../src/verification-tree.ts';
 import { tempProject } from './harness.ts';
 
 test('candidate provenance keeps Git environments separate and never rewrites their index', async t => {
@@ -28,6 +28,7 @@ test('candidate provenance keeps Git environments separate and never rewrites th
     return { ...process.env, GIT_CONFIG_COUNT: '1', GIT_CONFIG_KEY_0: 'core.excludesFile', GIT_CONFIG_VALUE_0: excludes, GIT_INDEX_FILE: indexPath };
   }));
   assert.deepEqual(await Promise.all(environments.map(env => candidateTree(root, head, env))), [tree, null]);
+  assert.deepEqual(await Promise.all(environments.map(env => committedTree(root, head, env))), [tree, tree], 'historical stage evidence resolves the committed tree even with an untracked file');
   assert.deepEqual(await readFile(indexPath), index, 'the caller-provided index is unchanged');
   assert.deepEqual(await readFile(join(root, '.git/index')), index, 'the repository index is unchanged');
 });

@@ -9,7 +9,8 @@ import { epicDemoFreshness, type DemoFreshness } from './epic-surfaces.ts';
 
 import { parseDocument } from 'yaml';
 import { ToolForbidden } from '../roles/permissions.ts';
-import type { VerifyResult } from '../hub/suites.ts';
+import type { VerifyResult, StageCover, StagePlatform } from '../hub/suites.ts';
+import { committedTree } from '../verification-tree.ts';
 import { planMigration, type MigrationPlan, type ClosingTimes, type SizeAssignments } from './migrate.ts';
 import { PlanError, parsePlan, planInBody, planOverride, planOverrideKey, withPlan, type QaPolicy, type EpicPlan } from './plan.ts';
 import { compareRank, effectiveRank, rankChanges } from './rank.ts';
@@ -122,7 +123,7 @@ export type ItemView = IndexedItem & {
   merged?: boolean;
   warnings?: string[];
   planError?: string;
-  stages?: Array<{ name: string; state: 'open' | 'closed'; qa: QaPolicy; items: string[]; verdict?: IndexedVerdict }>;
+  stages?: Array<{ name: string; state: 'open' | 'closed'; qa: QaPolicy; items: string[]; verdict?: IndexedVerdict; cover?: { tree: string | null; missing: StagePlatform[]; linux?: string; macos?: string } }>;
   planHistory?: PlanHistoryEntry[];
   approval?: { required: boolean; state: 'pending' | 'approved' | 'not required'; by?: string; at?: string };
   criteria: Criterion[];
@@ -300,6 +301,13 @@ export class Tracker {
   #identityAdopted: (name: string, id: string) => void = () => {};
   readonly #announced = new Map<string, ItemSummary>();
   #verify: (item: string, branch: string | null) => VerifyResult | null = () => null;
+  #stageCovers: () => StageCover[] = () => [];
+  #stageCoverKey = '[]';
+  readonly #stageCoverDependents = new Set<string>();
+  readonly #stageTrees = new Map<string, string | null>();
+  readonly #stageTreePending = new Set<string>();
+  readonly #stageTreeWaiters = new Map<string, Set<string>>();
+  readonly #stageTreeRetries = new Map<string, NodeJS.Timeout>();
   readonly #verifyChanges = new Map<string, { item: string | null; branch: string }>();
   #verifyImmediate: NodeJS.Immediate | null = null;
   readonly #shown = new Map<string, string>();
@@ -722,6 +730,8 @@ export class Tracker {
     if (this.#verifyImmediate) clearImmediate(this.#verifyImmediate);
     this.#verifyImmediate = null;
     this.#verifyChanges.clear();
+    for (const timer of this.#stageTreeRetries.values()) clearTimeout(timer);
+    this.#stageTreeRetries.clear();
     this.#watcher?.close();
     this.#watcher = null;
     for (const t of this.#pending.values()) clearTimeout(t);
@@ -958,6 +968,7 @@ export class Tracker {
     const affected = new Set(this.#index.plansContaining(id));
     for (const child of this.#index.list({ under: id })) for (const epic of this.#index.plansContaining(child.id)) affected.add(epic);
     this.#index.remove(id);
+    this.#stageCoverDependents.delete(id);
     this.#planCandidates.delete(id);
     this.#planErrors.delete(id);
     if (!this.#bootstrapping) this.#retryPlans(id, [...affected]);
@@ -1056,6 +1067,7 @@ export class Tracker {
     }
     if (changed) {
       this.#index.rememberPlan(id, state.plan);
+      this.#stageCoverDependents.delete(id);
       this.#schedulePlanned(id);
       // A changed epic policy invalidates prepared readiness writes for its tasks too.
       for (const child of this.#index.list({ under: id })) {
@@ -1598,7 +1610,53 @@ export class Tracker {
     const independent = !claim || !['implementer', 'aide'].includes(claim.role ?? '') || !v.writer || !this.sameSession(claim.sessionId, v.writer.sessionId);
     return independent && v.source === 'hub' && v.writer?.role === 'qa' && v.writer.sessionId !== 'human' && !v.writer.sessionId.startsWith('cli:')
       && !!v.commit && !!snapshot?.merged && snapshot.qa.when === 'after-stage' && snapshot.qa.scope !== 'none' && snapshot.hash === v.stage_hash
-      && this.#fresh.ancestor(id, v.commit) === true;
+      && this.#fresh.ancestor(id, v.commit) === true && this.#stageCover(id, snapshot, v.commit).missing.length === 0;
+  }
+
+  #stageTree(id: string, head: string | null): string | null {
+    if (!head) return null;
+    if (!this.#stageTrees.has(head)) {
+      const waiters = this.#stageTreeWaiters.get(head) ?? new Set<string>();
+      waiters.add(id); this.#stageTreeWaiters.set(head, waiters);
+    }
+    if (!this.#stageTrees.has(head) && !this.#stageTreePending.has(head) && !this.#stopping) {
+      this.#stageTreePending.add(head);
+      this.#runBackground(async () => {
+        // The request only schedules work; Git and its private index run off-path.
+        await new Promise<void>(resolve => setImmediate(resolve));
+        const tree = await committedTree(this.#root, head, this.#env).catch(() => null);
+        this.#stageTrees.set(head, tree); this.#stageTreePending.delete(head);
+        const ids = [...(this.#stageTreeWaiters.get(head) ?? [])];
+        this.#stageTreeWaiters.delete(head);
+        const settled = () => {
+          if (!this.#stopping) for (const id of ids) { this.#announce(id, true); this.#schedulePlannedFor(id); }
+        };
+        if (tree === null && !this.#stopping) {
+          const retry = setTimeout(() => {
+            this.#stageTreeRetries.delete(head); this.#stageTrees.delete(head);
+            settled();
+          }, 2000);
+          retry.unref(); this.#stageTreeRetries.set(head, retry);
+        }
+        settled();
+      });
+    }
+    return this.#stageTrees.get(head) ?? null;
+  }
+
+  #stageCover(id: string, snapshot: { items: string[] }, build?: string): NonNullable<NonNullable<ItemView['stages']>[number]['cover']> {
+    this.#stageCoverDependents.add(id);
+    const covers = this.#stageCovers();
+    const expected = this.#stageTree(id, build ?? this.#fresh.tip('dev'));
+    const landings = snapshot.items.flatMap(child => this.#index.mergeReceipt(child)?.commit ?? []);
+    const eligible = covers.filter(cover => cover.platform === 'Linux droplet' && (!build || cover.tree === expected)
+      && this.#fresh.ancestor(id, cover.head) === true && landings.every(landing => this.#fresh.contains(id, landing, cover.head) === true));
+    // A completed stage keeps its tested build across later descendant work.
+    const pair = eligible.findLast(linux => covers.some(mac => mac.platform === 'macOS' && mac.tree === linux.tree));
+    const tree = pair?.tree ?? expected;
+    const linux = pair ?? eligible.findLast(cover => cover.tree === tree);
+    const mac = covers.findLast(cover => cover.platform === 'macOS' && cover.tree === tree);
+    return { tree, missing: [...(!linux ? ['Linux droplet' as const] : []), ...(!mac ? ['macOS' as const] : [])], ...(linux ? { linux: linux.id } : {}), ...(mac ? { macos: mac.id } : {}) };
   }
 
   #stagesOf(item: Item): NonNullable<ItemView['stages']> {
@@ -1609,8 +1667,10 @@ export class Tracker {
       const snapshot = this.#stageSnapshot(item.fm.id, stage.name)!;
       const verdict = evidence.missing ? undefined : evidence.verdicts.filter(v => v.stage === stage.name).at(-1);
       const needsQa = snapshot.qa.when === 'after-stage' && snapshot.qa.scope !== 'none';
-      const closed = item.fm.state === 'closed' || snapshot.merged && (!needsQa || !!verdict && verdict.result === 'clear' && this.#stageCurrent(item.fm.id, verdict));
+      const cover = snapshot.qa.when === 'after-stage' ? this.#stageCover(item.fm.id, snapshot, needsQa ? verdict?.commit : undefined) : undefined;
+      const closed = item.fm.state === 'closed' || snapshot.merged && (!cover || cover.missing.length === 0) && (!needsQa || !!verdict && verdict.result === 'clear' && this.#stageCurrent(item.fm.id, verdict));
       return { name: stage.name, state: closed ? 'closed' : 'open', qa: snapshot.qa, items: snapshot.items,
+        ...(cover ? { cover } : {}),
         ...(verdict ? { verdict: { ...verdict, current: this.#stageCurrent(item.fm.id, verdict) } } : {}) };
     });
   }
@@ -1738,7 +1798,19 @@ export class Tracker {
       verdicts: this.#annotateVerdicts(item.id, item.kind, item.branch, this.#index.verdicts(item.id).get(item.id) ?? []) } : null;
   }
 
-  useVerify(lookup: (item: string, branch: string | null) => VerifyResult | null): void { this.#verify = lookup; }
+  useVerify(lookup: (item: string, branch: string | null) => VerifyResult | null, stageCovers: () => StageCover[] = () => []): void {
+    this.#verify = lookup; this.#stageCovers = stageCovers;
+    this.#stageCoversChanged();
+  }
+
+  #stageCoversChanged(): void {
+    const key = JSON.stringify(this.#stageCovers());
+    if (key === this.#stageCoverKey) return;
+    this.#stageCoverKey = key;
+    // Startup may bind restored receipts after tree/ancestry checks settled.
+    // Notify those same dependents on binding and later receipt changes alike.
+    for (const id of this.#stageCoverDependents) { this.#announce(id, true); this.#schedulePlanned(id); }
+  }
 
   #verifyOf(item: IndexedItem): { verify?: VerifyResult | null } {
     return item.kind === 'task' ? { verify: this.#verify(item.id, item.branch) } : {};
@@ -1752,8 +1824,10 @@ export class Tracker {
       this.#verifyImmediate = null;
       const ids = new Set<string>();
       for (const change of this.#verifyChanges.values()) for (const id of this.#index.verifyItems(change.item, change.branch)) ids.add(id);
+      const integrated = [...this.#verifyChanges.values()].some(change => change.branch === 'dev');
       this.#verifyChanges.clear();
       for (const id of ids) this.#announce(id, false, undefined, true);
+      if (integrated && this.#stageCoverDependents.size) this.#stageCoversChanged();
     });
   }
 

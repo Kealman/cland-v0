@@ -286,7 +286,9 @@ function humanOf(sub: Sub, value: Record<string, unknown>): string {
       if (typeof value.report === 'string') return value.report + '\n';
       const approval = value.approval as { state?: string; by?: string; at?: string } | undefined;
       const approvalLine = approval ? `# approval: ${approval.state}${approval.by ? ` by ${approval.by} at ${approval.at}` : ''}\n` : '';
-      return approvalLine + (value.plan ? planYaml(value.plan as EpicPlan) : `${String(value.id)} has no plan\n`) + (value.planError ? `plan refused: ${String(value.planError)}; showing the last valid plan\n` : '');
+      const stages = (value.stages as ItemView['stages']) ?? [];
+      const covers = stages.filter(stage => stage.cover).map(stage => `# ${stage.name}: ${stage.state}; stage cover ${stage.cover!.missing.length ? `missing ${stage.cover!.missing.join(', ')}` : 'complete (Linux droplet, macOS)'}; tree ${stage.cover!.tree ?? 'pending'}\n`).join('');
+      return approvalLine + covers + (value.plan ? planYaml(value.plan as EpicPlan) : `${String(value.id)} has no plan\n`) + (value.planError ? `plan refused: ${String(value.planError)}; showing the last valid plan\n` : '');
     case 'list':
       return listText(value.items as ItemSummary[]);
     case 'hold':

@@ -172,6 +172,19 @@ export class Freshness {
     return this.#current(id, 'dev', commit, false, tasks);
   }
 
+  /** Immutable ancestry between a landing and a tested build, computed off the request path. */
+  contains(id: string, commit: string, tip: string): boolean | undefined {
+    if (commit === tip) return true;
+    const key = `${commit} ${tip}   fixed`;
+    const known = this.#results.get(key);
+    if (known !== undefined) return known;
+    if (!this.#stopped) {
+      const want = this.#wants.get(key) ?? { commit, tip, base: null, ancestry: true, ids: new Set<string>() };
+      want.ids.add(id); this.#wants.set(key, want); this.#startWork();
+    }
+    return undefined;
+  }
+
   #current(id: string, branch: string | null, commit: string | undefined, ancestry = false, demoTasks?: string[]): boolean | undefined {
     if (!commit || !branch || !/^[0-9a-f]{4,64}$/i.test(commit)) return false;
     const tips = this.#tips;
@@ -271,6 +284,7 @@ export class Freshness {
     const baseKey = `${base ?? ''} ${base ? (tips.get(base) ?? '') : ''}`;
     const alive = (key: string) => {
       const [, tip, b, bt, mode] = key.split(' ');
+      if (mode === 'fixed') return true;
       return live.has(tip!) && (mode === 'ancestor' || mode === 'demo' || `${b} ${bt}` === baseKey);
     };
     for (const key of [...this.#results.keys()]) if (!alive(key)) this.#results.delete(key);

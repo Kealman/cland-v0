@@ -44,6 +44,8 @@ export type SuiteJob = {
   locks?: string[]; requesterDied?: boolean;
 };
 export type VerifyResult = { executor: ExecutorKind; id: string; state: NonNullable<SuiteJob['state']>; result: 'passed' | 'failed' | 'cancelled' | null; head: string; finished: string | null; artifact: string | null; cached?: SuiteJob['cached'] };
+export type StagePlatform = 'Linux droplet' | 'macOS';
+export type StageCover = { id: string; head: string; tree: string; platform: StagePlatform };
 const verifyResult = (job: SuiteJob): VerifyResult => ({ executor: job.executor, id: job.id, state: job.state ?? 'running', result: job.state !== 'finished' ? null : job.cancelled || job.requesterDied ? 'cancelled' : job.outcome ? job.outcome.code === 0 ? 'passed' : 'failed' : null, head: job.head, finished: job.finished ?? job.completedAt ?? null, artifact: job.artifact, ...(job.cached ? { cached: { ...job.cached } } : {}) });
 
 export type SuiteSchedulerOptions = { env?: NodeJS.ProcessEnv; executor?: ExecutorKind; lifetimeMs?: number; runTimeoutMs?: number; runTimeout?: string; onFallback?: (job: Readonly<SuiteJob>, cause: string) => void; budget?: number; remoteBudget?: number; shards?: number; onShardingSkipped?: (job: Readonly<SuiteJob>, cause: string) => void; cacheMaxAgeMs?: number; locks?: string[]; requesterDead?: (actor: SuiteActor) => boolean; log?: LogFn; onQueue?: (queue: VerificationQueue) => void; onJob?: (job: Readonly<SuiteJob>) => void };
@@ -167,7 +169,9 @@ export class Suites {
     // A successful report checkpoints the log artifact across async I/O. Publish its
     // terminal card once with that artifact, or immediately if reporting is blocked.
     if (announce && job.state === 'finished' && !job.reported && !job.error) return;
-    const card = JSON.stringify(verifyResult(job));
+    // Report recovery makes a finished result eligible for stage evidence even
+    // when its public result card was already published with a delivery error.
+    const card = JSON.stringify([verifyResult(job), job.reported]);
     const moved = this.#cards.get(job.id) !== card;
     this.#cards.set(job.id, card);
     if (announce && moved) this.#options.onJob?.(job);
@@ -177,6 +181,24 @@ export class Suites {
     const byItem = this.#latestItems.get(idNumber(item)), byBranch = branch ? this.#latestBranches.get(branch) : undefined;
     const job = !byItem ? byBranch : !byBranch ? byItem : this.#order.get(byItem.id)! > this.#order.get(byBranch.id)! ? byItem : byBranch;
     return job ? verifyResult(job) : null;
+  }
+  /** Completed integrated full receipts, never a cache label borrowed from another platform. */
+  stageCovers(include?: Readonly<SuiteJob>): StageCover[] {
+    const originals = new Map(this.#jobs.map(job => [job.id, job]));
+    return [...this.#jobs.filter(job => job.id !== include?.id), ...(include ? [include] : [])].flatMap<StageCover>(job => {
+      if (!job.integrated || job.branch !== 'dev' || !job.tree || job.selection?.mode !== 'full' || job.outcome?.code !== 0 || job.cancelled || job.requesterDied || !job.reported && job !== include) return [];
+      if (job.executor === 'local' && job.platform?.os === 'darwin') return [{ id: job.id, head: job.head, tree: job.tree, platform: 'macOS' as const }];
+      const source = job.cached ? originals.get(job.cached.run) : job;
+      if (job.executor === 'droplet' && source?.occasion === 'stage' && job.platform?.os === 'linux'
+        && (source.shards ? source.shards.length >= 2 && source.shards.every(shard => shard.outcome?.code === 0 && shard.platform?.os === 'linux') : !!source.shardingSkipped)) {
+        return [{ id: job.id, head: job.head, tree: job.tree, platform: 'Linux droplet' as const }];
+      }
+      return [];
+    });
+  }
+  stageMissing(tree: string | null | undefined, include?: Readonly<SuiteJob>): StagePlatform[] {
+    const covers = this.stageCovers(include).filter(cover => cover.tree === tree);
+    return (['Linux droplet', 'macOS'] as const).filter(platform => !covers.some(cover => cover.platform === platform));
   }
   #active = (job: SuiteJob) => !job.reported && (!job.outcome || (job.outcome.code !== 0 && !job.cleaned));
   #recordTiming(job: SuiteJob, completedAt: string): void {
@@ -242,7 +264,8 @@ export class Suites {
       await lintHubShards(input.cwd);
     } catch (error) { throw new SuiteAdmissionError(error); }
     await mkdir(dir, { recursive: true, mode: 0o700 });
-    const cached = !input.fresh && tree ? this.#cached(tree, selection, workers, input.size, input.executor === 'droplet' ? 'droplet' : undefined) : undefined;
+    const cacheExecutor = input.occasion === 'stage' ? executor : input.executor === 'droplet' ? 'droplet' : undefined;
+    const cached = !input.fresh && tree ? this.#cached(tree, selection, workers, input.size, cacheExecutor, input.occasion) : undefined;
     const cacheBypass = !input.fresh && tree && input.executor === 'droplet' && !cached && this.#cached(tree, selection, workers, input.size)?.executor === 'local'
       ? 'explicit --executor droplet requires a droplet green; cached green ran locally' : undefined;
 
@@ -319,11 +342,15 @@ export class Suites {
       return Number(integrated(b)) - Number(integrated(a)) || Number('actor' in a) - Number('actor' in b) || rank(a) - rank(b) || a.queued!.localeCompare(b.queued!);
     });
   }
-  #cached(tree: string, selection: SuiteSelection, workers: number, size?: string, requiredExecutor?: ExecutorKind): SuiteJob | undefined {
+  #cached(tree: string, selection: SuiteSelection, workers: number, size?: string, requiredExecutor?: ExecutorKind, occasion?: VerifyOccasion): SuiteJob | undefined {
     // Cancellations say nothing about the tree; failed or pending attempts still supersede green evidence.
     // Pre-admission head changes carry their cancellation in the outcome rather than a flag.
-    const job = this.#jobs.findLast(j => (!requiredExecutor || j.executor === requiredExecutor) && !j.cached && !j.cancelled && !j.requesterDied && !j.outcome?.cause.startsWith('cancelled: queued head changed') && j.tree === tree && j.selection?.mode === selection.mode && (selection.mode !== 'hub-selected' || JSON.stringify([j.selection.tests, j.selection.nvimFull]) === JSON.stringify([selection.tests, selection.nvimFull])) && (j.workers ?? 4) === workers && j.size === size);
+    const job = this.#jobs.findLast(j => (!requiredExecutor || j.executor === requiredExecutor) && !j.cached && !j.cancelled && !j.requesterDied && !j.outcome?.cause.startsWith('cancelled: queued head changed') && j.tree === tree && j.selection?.mode === selection.mode && (selection.mode !== 'hub-selected' || JSON.stringify([j.selection.tests, j.selection.nvimFull]) === JSON.stringify([selection.tests, selection.nvimFull])) && (j.workers ?? 4) === workers && j.size === size
+      && (occasion !== 'stage' || requiredExecutor === 'local' || j.occasion === 'stage'));
     if (!job || job.outcome?.code !== 0 || !job.reported || !job.finished || !job.artifact) return undefined;
+    // Choose the newest compatible attempt before checking platform/success;
+    // otherwise a failed or unreported fresh stage run resurrects an older green.
+    if (occasion === 'stage' && !this.stageCovers().some(cover => cover.id === job.id && cover.platform === (requiredExecutor === 'local' ? 'macOS' : 'Linux droplet'))) return undefined;
     const age = Date.now() - Date.parse(job.finished);
     const artifact = this.#store.resolveArtifact(job.artifact);
     return age >= 0 && age < (this.#options.cacheMaxAgeMs ?? 86400000) && artifact && artifact.status !== 'archived' && !artifact.fileDeleted ? job : undefined;

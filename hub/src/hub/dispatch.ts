@@ -172,7 +172,7 @@ export class Dispatcher {
     }, retryMs > 0 && Number.isFinite(retryMs) ? retryMs : 600000) : null;
     this.#dropletTimer?.unref();
     this.#suites = root ? new Suites(options.core.store, root, (job, checkpointArtifact) => this.#reportSuite(job, checkpointArtifact), { ...options.verification, ...(options.env ? { env: options.env } : {}), onShardingSkipped: (job, text) => options.core.noticeTo(job.topic, { id: `sharding-skipped:${job.id}`, kind: 'report', to: job.to, text, detail: { event: 'verification-sharding-skipped', id: job.id, item: job.item ?? null } }), onFallback: (job, cause) => options.core.noticeTo(job.topic, { id: `executor-fallback:${job.id}`, kind: 'report', to: job.to, text: cause === 'remote budget full' ? `verify ${job.id}: remote budget ${options.verification?.remoteBudget ?? 4}/${options.verification?.remoteBudget ?? 4} full; running locally` : `verify ${job.id}: droplet unavailable (${cause}); running locally`, detail: { event: 'verification-executor-fallback', id: job.id, item: job.item ?? null, cause } }), log: this.#log, onQueue: queue => options.core.publishVerification(queue), onJob: job => options.tracker?.verifyChanged(job.item ?? null, job.branch), requesterDead: actor => [...(this.#sessions?.list() ?? []), ...(this.#sessions?.list(true) ?? [])].some(p => p.sessionId === actor.sessionId && p.status !== 'running') }) : null;
-    options.tracker?.useVerify((item, branch) => this.#suites?.latest(item, branch) ?? null);
+    options.tracker?.useVerify((item, branch) => this.#suites?.latest(item, branch) ?? null, () => this.#suites?.stageCovers() ?? []);
     // what a read shows changed: no earlier answer is replayed
     options.core.subscribe(event => {
       this.#guard.changed();
@@ -656,7 +656,9 @@ export class Dispatcher {
     const caller = callerNow(); // all checks after the final file read, then synchronous publication
     const outcome = job.outcome!;
     const provenance = job.cached ? `\nCached tree ${job.cached.tree}\nOriginal run ${job.cached.run} · head ${job.cached.head}` : '';
-    const report = (filesBytes: number) => `suite result ${job.id}\n${job.mode} exit ${outcome.code}${outcome.cause ? `; ${outcome.cause}` : ''}\n${job.selection ? describeSelection(job.selection, filesBytes) : 'mode full; legacy run (selection unavailable)'}\nBranch ${job.branch} · head ${job.head}\n${execution}\n${suiteSummary(log)}${provenance}\nLog ${artifact.id}: ${artifact.path}`;
+    const missing = job.occasion === 'stage' ? this.#suites!.stageMissing(job.tree, job) : [];
+    const stageCover = job.occasion === 'stage' ? `\nstage cover ${missing.length ? `missing ${missing.join(', ')}` : 'complete (Linux droplet, macOS)'} · tree ${job.tree ?? 'unknown'}` : '';
+    const report = (filesBytes: number) => `suite result ${job.id}\n${job.mode} exit ${outcome.code}${outcome.cause ? `; ${outcome.cause}` : ''}\n${job.selection ? describeSelection(job.selection, filesBytes) : 'mode full; legacy run (selection unavailable)'}\nBranch ${job.branch} · head ${job.head}\n${execution}\n${suiteSummary(log)}${provenance}${stageCover}\nLog ${artifact.id}: ${artifact.path}`;
     let text = report(2048);
     // File counts and the artifact retain the complete decision when a broad diff
     // or a smaller configured cap cannot fit every path in the topic message.
@@ -664,7 +666,7 @@ export class Dispatcher {
     if (!core.textFits(text)) {
       // Long branch names, failures or log paths can exhaust even the no-files
       // report. Keep the result/mode/log pointer first and respect any byte cap.
-      text = job.cached ? core.boundedText(`suite result ${job.id}\n${job.mode} exit ${outcome.code}; cached\n${execution}\nhead ${job.head}\nOriginal run ${job.cached.run} · head ${job.cached.head}\nTree ${job.cached.tree}\nLog ${artifact.id}`) : core.boundedText(`suite result ${job.id}\n${job.mode} exit ${outcome.code}${job.cancelled ? '; cancelled' : ''}; mode ${job.selection?.mode ?? 'full'}\nBranch ${job.branch.slice(0, 64)} · head ${job.head}\n${execution}\nDeciding files ${job.selection?.files.length ?? 'unknown'}; full list in log ${artifact.id}\n${job.selection?.reason ?? 'legacy run (selection unavailable)'}\n${suiteSummary(log)}\n${outcome.cause}${provenance}\nLog ${artifact.id}: ${artifact.path}`);
+      text = job.cached ? core.boundedText(`suite result ${job.id}\n${job.mode} exit ${outcome.code}; cached${stageCover}\n${execution}\nhead ${job.head}\nOriginal run ${job.cached.run} · head ${job.cached.head}\nTree ${job.cached.tree}\nLog ${artifact.id}`) : core.boundedText(`suite result ${job.id}\n${job.mode} exit ${outcome.code}${job.cancelled ? '; cancelled' : ''}; mode ${job.selection?.mode ?? 'full'}${stageCover}\nBranch ${job.branch.slice(0, 64)} · head ${job.head}\n${execution}\nDeciding files ${job.selection?.files.length ?? 'unknown'}; full list in log ${artifact.id}\n${job.selection?.reason ?? 'legacy run (selection unavailable)'}\n${suiteSummary(log)}\n${outcome.cause}${provenance}\nLog ${artifact.id}: ${artifact.path}`);
     }
     const result = caller ? core.sendFromSession(caller.name, job.to, text, undefined, job.topic, undefined, caller, [artifact], 'report', messageId, true)
       : core.sendFromHuman(job.topic, text, job.to, undefined, undefined, undefined, [artifact], messageId);

@@ -10,6 +10,7 @@ import type { EpicPlan } from '../src/tracker/plan.ts';
 import { projectHub, cland, clandWithEnv, connectUi, eventually, fakeClaude, spawnSpoke, startDaemon, tempProject } from './harness.ts';
 import { copyPreparedProject } from './prepared-project.ts';
 import { taskWriteGate } from './tracker-write-gate.ts';
+import { seedStageCover } from './stage-cover-fixture.ts';
 
 const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
 async function fixture(t: test.TestContext, gated = false, count = 3, launchLead = false, ancestryFailure = false, serve: typeof projectHub | typeof startDaemon = projectHub) {
@@ -23,11 +24,12 @@ async function fixture(t: test.TestContext, gated = false, count = 3, launchLead
     await mkdir(bin);
     await writeFile(join(bin, 'git'), '#!/bin/sh\nif [ "$1" = "merge-base" ] && [ "$2" = "--is-ancestor" ] && [ -f "$CLAND_TEST_ANCESTRY_FAIL" ]; then kill -TERM "$$"; fi\nexec /usr/bin/git "$@"\n', { mode: 0o755 });
   }
-  const { discovery } = await serve(t, root, { ...gate?.env, ...fake?.env,
-    ...(ancestryFailure ? { PATH: `${bin}:${process.env.PATH}`, CLAND_TEST_ANCESTRY_FAIL: failAncestry } : {}) });
-  const ui = await connectUi(t, discovery);
-  const rev = await spawnSpoke({ discover: true, cwd: root, name: 'rev', role: 'reviewer', sessionId: 'review-session' });
-  const qa = await spawnSpoke({ discover: true, cwd: root, name: 'qa-one', role: 'qa', sessionId: 'qa-session' });
+  const env = { ...gate?.env, ...fake?.env,
+    ...(ancestryFailure ? { PATH: `${bin}:${process.env.PATH}`, CLAND_TEST_ANCESTRY_FAIL: failAncestry } : {}) };
+  let hub = await serve(t, root, env);
+  let ui = await connectUi(t, hub.discovery);
+  let rev = await spawnSpoke({ discover: true, cwd: root, name: 'rev', role: 'reviewer', sessionId: 'review-session' });
+  let qa = await spawnSpoke({ discover: true, cwd: root, name: 'qa-one', role: 'qa', sessionId: 'qa-session' });
   t.after(async () => { await rev.close(); await qa.close(); });
   const create = async (title: string, kind = 'task', parent?: string, body?: string) => {
     const r = await ui.request({ ...(['task'].includes(kind) ? { size: 'M' } : {}), type: 'task.create', title, kind, parent, body }); assert.equal(r.ok, true, r.error);
@@ -49,9 +51,20 @@ async function fixture(t: test.TestContext, gated = false, count = 3, launchLead
       const merged = await ui.request({ type: 'merge', item: item.id }, 30_000); assert.equal(merged.ok, true, merged.error);
       assert.equal((await read(item.id)).verdicts.some(v => v.verdict === 'qa'), false);
     }
+    // These tests exercise QA/plan provenance with completed platform receipts
+    // already present, as they would be before the stage QA request.
+    await rev.close(); await qa.close(); ui.close();
+    if ('stop' in hub) await hub.stop();
+    else assert.equal((await cland(root, 'hub', 'stop')).code, 0);
+    await seedStageCover(root);
+    hub = await serve(t, root, env);
+    ui = await connectUi(t, hub.discovery);
+    rev = await spawnSpoke({ discover: true, cwd: root, name: 'rev', role: 'reviewer', sessionId: 'review-session' });
+    qa = await spawnSpoke({ discover: true, cwd: root, name: 'qa-one', role: 'qa', sessionId: 'qa-session' });
+    await eventually('platform tree resolved before stage QA', async () => (await read()).stages?.[0]?.cover?.missing.length === 0 ? true : undefined);
   };
   const verdict = (result = 'clear', extra: Record<string, unknown> = {}) => qa.call<{ ok: boolean; error?: string; item?: ItemView }>('task.comment', { id: epic.id, verdict: 'qa', result, stage: 'Stage 1', run: `stage-${result}`, ...extra });
-  return { root, ui, rev, qa, epic, items, plan, set, read, land, verdict, gate, failAncestry };
+  return { root, get ui() { return ui; }, get rev() { return rev; }, get qa() { return qa; }, epic, items, plan, set, read, land, verdict, gate, failAncestry };
 }
 
 test('three review-only merges, one stage QA on dev, not-clear/retry, restart and separate epic demo', async t => {

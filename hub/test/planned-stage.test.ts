@@ -3,6 +3,7 @@ import test from 'node:test';
 import { execFileSync } from 'node:child_process';
 import { copyPreparedProject } from './prepared-project.ts';
 import { taskWriteGate } from './tracker-write-gate.ts';
+import { seedStageCover } from './stage-cover-fixture.ts';
 import { withPlan } from '../src/tracker/plan.ts';
 import { parseItem, serializeItem } from '../src/tracker/item.ts';
 import assert from 'node:assert/strict';
@@ -10,8 +11,10 @@ import files, { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { stringify } from 'yaml';
 import { Tracker, type ItemView } from '../src/tracker/tracker.ts';
+import { Store } from '../src/hub/store.ts';
+import { createSocketEdge } from '../src/hub/socket.ts';
 import type { EpicPlan } from '../src/tracker/plan.ts';
-import { cland, connectUi, connectWsUi, eventually, spawnSpoke, startDaemon, startHub, tempProject } from './harness.ts';
+import { cland, connectUi, connectWsUi, eventually, spawnSpoke, startDaemon, startHub, tempProject, TEST_SECRET } from './harness.ts';
 
 async function fixture(t: test.TestContext, approval = false, territory = false, gated = false) {
   const root = await tempProject(t);
@@ -22,7 +25,7 @@ async function fixture(t: test.TestContext, approval = false, territory = false,
   }
   const gate = gated ? await taskWriteGate(t, root) : undefined;
   const { discovery } = await startDaemon(t, root, gate?.env);
-  const ui = await connectUi(t, discovery);
+  let ui = await connectUi(t, discovery);
   const create = async (title: string, kind = 'task', parent?: string) => {
     const r = await ui.request({ ...(['task'].includes(kind) ? { size: 'M' } : {}), type: 'task.create', title, kind, parent });
     assert.equal(r.ok, true, r.error);
@@ -41,7 +44,36 @@ async function fixture(t: test.TestContext, approval = false, territory = false,
   };
   const read = async (id: string) => ((await ui.request({ type: 'task.view', item: id })).value as { item: ItemView }).item;
   const status = (id: string, expected: string) => eventually(`${id} becomes ${expected}`, async () => (await read(id)).status === expected ? true : undefined);
-  return { root, ui, create, epic, a, b, c, plan, set, read, status, gate };
+  const cover = async (settleBeforeHub = false) => {
+    ui.close();
+    assert.equal((await cland(root, 'hub', 'stop')).code, 0);
+    await seedStageCover(root);
+    if (settleBeforeHub) {
+      const db = join(root, '.cland/hub.db');
+      const tracker = new Tracker({ root, db });
+      tracker.start(); t.after(() => tracker.stop());
+      await eventually('restart tree checks finish before persisted suites bind', async () =>
+        (await tracker.viewAsync(epic.id)).stages?.[0]?.cover?.tree ? true : undefined);
+      // The tree callback queues a planned check. Admit the next read behind it
+      // so a later tree completion cannot accidentally supply the missing wakeup.
+      await new Promise<void>(resolve => setImmediate(resolve));
+      const before = await tracker.viewAsync(epic.id);
+      assert.deepEqual(before.stages?.[0]?.cover?.missing, ['Linux droplet', 'macOS']);
+      assert.equal((await tracker.viewAsync(c.id)).status, 'backlog');
+      const hub = await startHub({ tracker, store: new Store(db), control: {
+        status: () => ({ root, pid: process.pid, port: 0, socket: '', version: 'test', startedAt: '', uptimeMs: 0 }), stop() {},
+      } });
+      t.after(() => hub.close());
+      const socket = join(root, 'late-cover.sock');
+      const edge = await createSocketEdge({ path: socket, dispatcher: hub.dispatcher });
+      t.after(() => edge.close());
+      ui = await connectUi(t, { root, socket, secret: TEST_SECRET });
+      return;
+    }
+    const restarted = await startDaemon(t, root, gate?.env);
+    ui = await connectUi(t, restarted.discovery);
+  };
+  return { root, get ui() { return ui; }, create, epic, a, b, c, plan, set, read, status, gate, cover };
 }
 
 test('CLI plan sets only current backlog tasks, preserves hand statuses, and remembers moves across restart', async t => {
@@ -109,9 +141,10 @@ test('closed epic stages read closed without task writes; reopening restores der
   assert.equal((await f.read(f.a.id)).status, 'backlog');
 });
 
-for (const qa of [false, true]) test(`landing stage one advances stage two${qa ? ' only after clear stage QA' : ''}`, async t => {
+for (const [qa, settleBeforeHub] of [[false, false], [true, false], [true, true]] as const) test(`landing stage one advances stage two${qa ? ' only after clear stage QA' : ''}${settleBeforeHub ? ' with platform receipts bound after startup checks' : ''}`, async t => {
   const f = await fixture(t, false, true);
   if (qa) f.plan.stages[0]!.qa = { scope: 'affected', when: 'after-stage' };
+  if (settleBeforeHub) f.plan.stages[0]!.lanes = [[f.a.id]];
   const active = await f.create('Already in progress', 'task', f.epic.id);
   f.plan.stages[1]!.lanes[0]!.push(active.id);
   assert.equal((await f.ui.request({ type: 'task.edit', item: active.id, status: 'in progress' })).ok, true);
@@ -120,7 +153,7 @@ for (const qa of [false, true]) test(`landing stage one advances stage two${qa ?
   t.after(() => rev.close());
   const verifier = await spawnSpoke({ discover: true, cwd: f.root, name: 'qa-stage', role: 'qa' });
   t.after(() => verifier.close());
-  for (const item of [f.a, f.b]) {
+  for (const item of settleBeforeHub ? [f.a] : [f.a, f.b]) {
     const claim = await f.ui.request({ type: 'task.claim', item: item.id });
     assert.equal(claim.ok, true, claim.error);
     const work = (claim.value as { worktree: { path: string } }).worktree.path;
@@ -137,6 +170,9 @@ for (const qa of [false, true]) test(`landing stage one advances stage two${qa ?
     assert.equal((await f.read(f.epic.id)).stages?.[0]?.state, 'open');
     const verdict = await verifier.call<{ ok: boolean; error?: string }>('task.comment', { id: f.epic.id, verdict: 'qa', result: 'clear', stage: 'first', run: 'stage-qa' });
     assert.equal(verdict.ok, true, verdict.error);
+    assert.equal((await f.read(f.epic.id)).stages?.[0]?.state, 'open', 'QA alone cannot replace both platform receipts');
+    assert.equal((await f.read(f.c.id)).status, 'backlog');
+    await rev.close(); await verifier.close(); await f.cover(settleBeforeHub);
   }
   await f.status(f.c.id, 'planned');
   assert.equal((await f.read(active.id)).status, 'in progress');

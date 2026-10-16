@@ -1636,6 +1636,18 @@ fetched `origin/dev`. Other roles and task heads are refused. The MCP `verify`
 tool takes the same `occasion` field. Batch and task runs stay on one slot;
 `--executor local` keeps a close run local.
 
+Every `after-stage` gate, including a stage with `qa.scope: none`, requires green
+integrated full-suite receipts at the same verification tree on **Linux droplets
+and macOS**. The Linux receipt comes from `--occasion stage` (normally sharded);
+the Mac receipt comes from a local full run on macOS. A stage with a QA scope also
+needs its clear stage QA verdict on that tree. Per-item stages keep their existing
+gate. `task plan show` names each missing platform and the expected tree. A stage
+request runs the chosen executor and its result names the other platform still
+missing; the Coordinator submits that run separately, using `--executor local` on
+the Mac. Cache reuse for stage requests preserves the executor and platform, so a
+Linux cache hit cannot stand in for a Mac run. Completed stages remain closed
+across later descendant builds, while their plan and landing evidence stay valid.
+
 At admission, free remote slots up to `[verification] shards` (default 2) set the
 shard count. Hub files are placed largest-first on the lightest shard using
 `hub/test/durations.json` `files[*].seconds`; unknown files use the manifest
@@ -1654,7 +1666,9 @@ One merged result sums counts, labels failed/lost shards, lists each machine,
 size, duration and cost, total cost, and wall from admission to final collection.
 The merged log and one log per shard are durable artifacts. Leases and child
 receipts survive hub restart, and confirmed deletion precedes slot release.
-An identical green tree/mode cache entry serves a later occasion request.
+An identical green tree/mode cache entry serves a later occasion request. Stage
+requests also match the requested executor/platform; a stage's Linux cache must
+itself cover a stage close.
 Two c-8 machines with ten-minute lifetimes estimate $0.0833 total at $0.25/hour;
 provisioning and cleanup add to billed lifetime. Read measured costs in each run.
 

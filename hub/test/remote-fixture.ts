@@ -13,7 +13,7 @@ import { fixtureGuard } from './fixture-guard.ts';
 
 const exec = promisify(execFile);
 const token = 'sentinel-remote-suite-token';
-export async function fixture(t: TestContext, options: { hub?: typeof projectHub | typeof startDaemon; typecheck?: string | undefined; test?: string | undefined; executor?: 'local' | 'droplet'; config?: string; env?: Record<string, string>; name?: string; api?: Awaited<ReturnType<typeof fakeDigitalOcean>> } = {}) {
+export async function fixture(t: TestContext, options: { territory?: boolean; hub?: typeof projectHub | typeof startDaemon; typecheck?: string | undefined; test?: string | undefined; executor?: 'local' | 'droplet'; config?: string; env?: Record<string, string>; name?: string; api?: Awaited<ReturnType<typeof fakeDigitalOcean>> } = {}) {
   const root = await tempProject(t, 'remote-run-');
   const guard = await fixtureGuard(t, root);
   const territory = await tempProject(t, 'remote-territory-');
@@ -62,6 +62,10 @@ export async function fixture(t: TestContext, options: { hub?: typeof projectHub
   await writeFile(join(bin, 'flock'), '#!/usr/bin/env python3\nimport fcntl,sys\ntry: fcntl.flock(int(sys.argv[-1]),fcntl.LOCK_EX|fcntl.LOCK_NB)\nexcept BlockingIOError: sys.exit(1)\n');
   for (const file of ['setsid', 'timeout', 'sha256sum', 'flock']) await chmod(join(bin, file), 0o700);
   const env = { DIGITALOCEAN_TOKEN: token, CLAND_DIGITALOCEAN_API: api.url, CLAND_SSH_BIN: resolve('hub/test/fakes/digitalocean/ssh'), CLAND_SCP_BIN: resolve('hub/test/fakes/digitalocean/scp'), CLAND_TEST_FAKE_MACHINE_ROOT: api.stateRoot, PATH: `${bin}:${process.env.PATH}`, CLAND_TEST_DROPLET_POLL_MS: '20', CLAND_TEST_DROPLET_MACHINE_MS: '2000', CLAND_TEST_DROPLET_RUN_POLL_MS: '50', CLAND_TEST_DROPLET_CANCEL_MS: '500', CLAND_TEST_DROPLET_RELEASE_MS: '500', CLAND_TEST_EXECUTOR_SWEEP_MS: '200', CLAND_TEST_DROPLET_WATCHDOG_POLL_MS: '50', ...options.env };
+  if (options.territory) {
+    const initialized = await cland(root, 'init');
+    assert.equal(initialized.code, 0, initialized.stderr);
+  }
   await git('checkout', '-qb', 'task-candidate');
   await writeFile(join(root, 'hub/src/tracker/change.ts'), 'export const candidate = true;\n'); await git('add', 'hub/src/tracker/change.ts'); await git('commit', '-qm', 'Hub change');
   const daemon = await (options.hub ?? startDaemon)(t, root, env);
