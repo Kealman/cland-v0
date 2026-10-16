@@ -2,8 +2,8 @@
 id: T-476
 kind: task
 title: "A hub start-up smoke test in the suite: a built tree starts, serves a request and stops within a bound"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-364
 branch: t/T-476-a-hub-start-up-smoke-test-in-the-suite-a
 created: 2026-10-15T09:13:19.071Z
-updated: 2026-10-16T10:12:47.030Z
+updated: 2026-10-16T10:14:43.564Z
+closed: 2026-10-16T10:14:43.564Z
 ---
 
 ## Summary
@@ -246,3 +247,7 @@ Final merge-only delta **clear**, all criteria refreshed, no new task run reques
 Artifact A-3874 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3874-t-476-final-allowance-delta-clear-post-merge-neovim-condition-remains-unmet.md
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-16T10:14:43.564Z
+
+Merged a4bb22cd67a2e938a9cbd4c88add7285c9badcb5 onto dev.
