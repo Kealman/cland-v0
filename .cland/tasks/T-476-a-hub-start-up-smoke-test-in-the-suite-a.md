@@ -3,8 +3,9 @@ id: T-476
 kind: task
 title: "A hub start-up smoke test in the suite: a built tree starts, serves a request and stops within a bound"
 state: open
-status: in progress
+status: review
 size: S
+criterion_seq: 3
 labels:
   - v0.1.3
   - hub
@@ -14,7 +15,7 @@ blocked_by: []
 topic: topic-364
 branch: t/T-476-a-hub-start-up-smoke-test-in-the-suite-a
 created: 2026-10-15T09:13:19.071Z
-updated: 2026-10-16T07:17:24.269Z
+updated: 2026-10-16T07:24:40.923Z
 ---
 
 ## Summary
@@ -27,9 +28,12 @@ A test in hub/test starts `cland hub start` in a fresh project, waits at most 10
 
 ## Acceptance criteria
 
-- [ ] C1. The smoke test passes on dev and fails within its bound on a planted start-up hang, naming the last log event.
-- [ ] C2. It runs in every hub phase selection, including hub-only task runs.
-- [ ] C3. hub/README.md lists it under Tests.
+- [x] C1. The smoke test passes on dev and fails within its bound on a planted start-up hang, naming the last log event.
+  - done: impl-476 · 2026-10-16T07:24:33.056Z
+- [x] C2. It runs in every hub phase selection, including hub-only task runs.
+  - done: impl-476 · 2026-10-16T07:24:33.344Z
+- [x] C3. hub/README.md lists it under Tests.
+  - done: impl-476 · 2026-10-16T07:24:33.711Z
 
 ## Comments
 
