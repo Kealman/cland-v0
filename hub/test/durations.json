@@ -3631,6 +3631,14 @@
       "seconds": 8.386,
       "reason": "Starts a real remote fixture in a subprocess, then observes hub, detached watchdog/reaper exit and directory removal across the owner lifecycle boundary."
     },
+    "hub/test/remote-fixture-lifecycle.test.ts::remote fixture cleans up after owner watchdog-SIGTERM": {
+      "seconds": 7.72,
+      "reason": "Starts a real remote fixture in a subprocess, then observes hub, detached watchdog/reaper exit and directory removal across the owner lifecycle boundary."
+    },
+    "hub/test/remote-fixture-lifecycle.test.ts::remote fixture cleans up after owner watchdog-SIGINT": {
+      "seconds": 7.72,
+      "reason": "Starts a real remote fixture in a subprocess, then observes hub, detached watchdog/reaper exit and directory removal across the owner lifecycle boundary."
+    },
     "hub/test/remote-fixture-lifecycle.test.ts::remote fixture cleans up after owner watchdog-teardown": {
       "seconds": 11.125,
       "reason": "Starts a real remote fixture in a subprocess, then observes hub, detached watchdog/reaper exit and directory removal across the owner lifecycle boundary."
