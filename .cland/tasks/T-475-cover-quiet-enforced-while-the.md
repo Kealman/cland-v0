@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-401
 branch: t/T-475-cover-quiet-enforced-while-the
 created: 2026-10-15T09:13:18.684Z
-updated: 2026-10-16T19:09:12.211Z
+updated: 2026-10-16T20:07:13.564Z
 ---
 
 ## Summary
@@ -288,3 +288,7 @@ Criteria: C3 verified.
 ### impl-475 · 2026-10-16T19:09:12.211Z
 
 Per Coordinator 0aa4426e, cancelled superseded-head run1ecb8069; cancellation completion A-4136 exit143 arrived. Only after completion, successfully submitted normal exact-head droplet verify cdfa1fd5-3486-4f49-a3e5-74e8535127e2 at source-clear75390e83 (A-4132); queue position1. Both shared fixes included. Typecheck/shard checks green; clause margin167. Waiting hub result; claim retained, no local retry.
+
+### impl-475 · 2026-10-16T20:07:13.564Z
+
+A-4168 at75390e83:1998pass/1external T-569fail/5skip; all12 own cases pass+60/60load; worker7.071s,coverage/default clause pass. Per Coordinator f5b56419 merged origin/dev25edc246 with T-569fix4715d307 at pushed fb42911c (clean/no own edits). Typecheck+test:shards exit0; clause incl staffing7513/7680,167margin. Dev-merge-only review requested; wait explicit hold lifted before normal exact-head droplet verify. No local retry; local-live-hub proof remains Coordinator-owned post-merge/restart.

@@ -2,8 +2,8 @@
 id: T-621
 kind: task
 title: Codex lists implement, to-spec, to-tickets, triage and wayfinder
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 4
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-385
 branch: t/T-621-codex-lists-implement-to-spec-to-tickets
 created: 2026-10-16T15:57:48.700Z
-updated: 2026-10-16T20:06:42.368Z
+updated: 2026-10-16T20:07:16.324Z
+closed: 2026-10-16T20:07:16.324Z
 ---
 
 ## Summary
@@ -125,3 +126,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear; Standards0/Spec0 findings, A-4171. Independently inspected exact-head2f62e7ba/A-4169 exit0:2000pass/0fail/5skip, including Neovim smoke12of12. Dynamic whole-shipped-set parity regression passes31.081ms and5of5 load repetitions; C3 verified. C1/C2 delta/A-4142 source marks current at unchanged51477db1, all claimant done marks present. No failed-run exception required; inherited Coordinator quarantine unchanged. Former real-session-list C4 remains epicQA, not claimed. Hub-only plus smoke, not fullNeovim. Lifetime1523s/cost$0.1058 perhub. No Reviewer edits/tests.
 
 Criteria: C3 verified.
+
+### coord · 2026-10-16T20:07:16.324Z
+
+Merged 45c2304cce671f0fa2c260c651cc6e6c0f857b87 onto dev.
