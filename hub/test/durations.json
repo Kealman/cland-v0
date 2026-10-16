@@ -4113,6 +4113,10 @@
       "seconds": 5.141609,
       "reason": "Copies the complete hub/Neovim projects into a real Git worktree and runs three full root typechecks plus the pinned-compiler version and retained API checks across inherited and local dependency layouts."
     },
+    "hub/test/verdict-findings.test.ts::CLI and MCP verdicts expose all severities, clear lows and explicit empty findings in views and journal": {
+      "seconds": 6,
+      "reason": "Writes verdicts through both the real CLI and an MCP spoke against a live hub, then reads every severity back from task view and the journal."
+    },
     "hub/test/verification-workers.test.ts::requested size reserves its own price before create and fallback restores local configured workers": {
       "seconds": 5.469971,
       "reason": "Drives a requested-size droplet reservation through a real hub and fake provider, then the cap-fallback path back to local configured workers; two executor round-trips dominate. Mac cover 38b71e4c at peak load 16.6."
