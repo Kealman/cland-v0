@@ -2,8 +2,8 @@
 id: T-547
 kind: task
 title: The typecheck script's relative path to typescript7 fails in task worktrees without their own node_modules
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -16,7 +16,8 @@ regression_of: T-427
 topic: topic-341
 branch: t/T-547-the-typecheck-script-s-relative-path-to
 created: 2026-10-15T23:01:44.244Z
-updated: 2026-10-16T01:09:28.210Z
+updated: 2026-10-16T01:20:19.943Z
+closed: 2026-10-16T01:20:19.943Z
 ---
 
 ## Summary
@@ -124,3 +125,7 @@ Evidence: A-3475 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3475-
 Review artifact A-3532 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3532-t-547-final-gate-clear-at-6381a9d9-two-known-outside-failure-linux-receipts.md.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-16T01:20:19.943Z
+
+Merged 75309d6787e3f3e537d3fc18efa276e9739d5051 onto dev.

@@ -16,7 +16,7 @@ regression_of: T-459
 topic: topic-347
 branch: t/T-551-demo-recorder-rejects-the-cases-capture
 created: 2026-10-16T00:31:47.114Z
-updated: 2026-10-16T00:56:32.267Z
+updated: 2026-10-16T01:19:42.904Z
 ---
 
 ## Summary
@@ -29,11 +29,13 @@ Separately, the delivered `hub/bin` on the droplet has no executable named `clan
 - [x] C1. The demo recorder accepts exactly the capture names the local recorder keeps (explicit qa.dump names, with no case-id prefix), keeps its basename and path-safety check, and refuses a name collision with a named error. A case that passes locally records the same capture files through `cland demo exec`.
   - done: impl-551 · 2026-10-16T00:53:22.469Z
   - verified: rev-31 [reviewer] · run rev-20261016-551-source · 2026-10-16T00:56:32.267Z · commit b2565458f289f047042b944636e41d2af9fcec28
+  - verified: rev-31 [reviewer] · run rev-20261016-551-delta-1 · 2026-10-16T01:19:42.904Z · commit c9ba8073f73562ddd947e5b496afb262c6958363
 - [x] C2. Any recorder failure reports its actual error and the remote stderr in the BLOCKED record instead of a generic message, and captures are kept until local validation succeeds.
   - done: impl-551 · 2026-10-16T00:53:23.868Z
 - [x] C3. On a demo lease, `cland` resolves on PATH to the delivered build (a `cland` launcher in hub/bin or an equivalent), and a test or the qa skill shows `cland --headless --qa` working there.
   - done: impl-551 · 2026-10-16T00:53:25.022Z
   - verified: rev-31 [reviewer] · run rev-20261016-551-source · 2026-10-16T00:56:32.267Z · commit b2565458f289f047042b944636e41d2af9fcec28
+  - verified: rev-31 [reviewer] · run rev-20261016-551-delta-1 · 2026-10-16T01:19:42.904Z · commit c9ba8073f73562ddd947e5b496afb262c6958363
 
 ## Comments
 
@@ -71,5 +73,23 @@ A-3512 checked: whole demo.test.ts 8/8 pass, no skips/cancellations, 31.404 s; c
 No source changes beyond the requested scope; no Reviewer edits/tests or real remote actions. Source clear permits the requested no-flag same-head verification subject to current Coordinator admission instructions. No per-item QA criteria.
 Standards: 0 findings. Spec: 0 findings.
 Review artifact A-3515: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3515-t-551-source-clear-at-b2565458.md
+
+Criteria: C1 verified, C3 verified.
+
+### impl-551 · 2026-10-16T01:18:59.484Z
+
+Coordinator shared baseline 2149fe33 applied after source review per rule 11. New head c9ba8073 (pushed) differs from source-cleared b2565458 only in hub/test/durations.json. Refreshed baseline retained exactly plus own measured allowance; net file delta against shared commit is four lines. Requested delta review; no implementation/test changes or local rerun. Await clear before new verify.
+
+### rev-31 · 2026-10-16T01:19:42.904Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261016-551-delta-1
+commit: c9ba8073f73562ddd947e5b496afb262c6958363
+scope: delta
+
+Delta source clear: b2565458..c9ba8073 changes only hub/test/durations.json. Compared with Coordinator-posted 2149fe33 (A-3493 / integrated a06020a3), exactly the original sorted four-line 5.567s allowance remains. Its parsed value equals b2565458; removing it yields equality with shared manifest. JSON parsing and diff check pass. Standards: no findings. Spec: no findings. Implementation/test inputs unchanged, preserving A-3515 source analysis and A-3512 supporting proof. C1/C3 reverified at this head; C2 remains pending same-head gate. Initial hold attempt timed out and was not retried during backoff. No Reviewer edits/test execution.
+Artifact A-3551: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3551-t-551-manifest-delta-source-clear-at-c9ba8073.md.
 
 Criteria: C1 verified, C3 verified.

@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-336
 branch: t/T-296-opencode-servers-get-their-own-database
 created: 2026-10-12T16:20:56.477Z
-updated: 2026-10-16T00:02:07.895Z
+updated: 2026-10-16T01:20:13.482Z
 ---
 
 ## Summary

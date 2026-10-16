@@ -17,7 +17,7 @@ regression_of: T-480
 topic: topic-348
 branch: t/T-548-tracker-calls-take-20-35-s-under-a-16
 created: 2026-10-15T23:50:03.254Z
-updated: 2026-10-16T01:12:34.795Z
+updated: 2026-10-16T01:19:16.330Z
 ---
 
 ## Summary
@@ -34,6 +34,7 @@ CLI calls hit their 10 s and 15 s limits, which caused T-537-style ambiguous out
 - [x] C1. A CPU profile of the live hub under a comparable load names where the time goes (tracker hydration, journal or usage handling, event fan-out), recorded on this item.
   - done: impl-548 · 2026-10-16T00:46:06.972Z
   - verified: rev-31 [reviewer] · run rev-20261016-548-source · 2026-10-16T00:54:08.262Z · commit e15930b216f616aa469df33248674c03e7a9cc4b
+  - verified: rev-31 [reviewer] · run rev-20261016-548-delta-1 · 2026-10-16T01:19:16.330Z · commit 8b5fe173a06ac0ab02c8c28381fcab0f9a062fcb
 - [x] C2. With the fix, task.view and task.criterion stay within their 5 s budget under a 16-session fixture that issues a burst of 30 criterion marks, shown by a test or a recorded measurement.
   - done: impl-548 · 2026-10-16T00:46:09.093Z
 
@@ -103,3 +104,17 @@ Criteria: C1 verified.
 ### impl-548 · 2026-10-16T01:12:34.795Z
 
 Scope qualification A-3537: the CPU profiles prove repeated task.view journal scans and their removal, but do not measure ProjectSessions archive sweeps, accumulated offline-recipient fan-out or workbench journal.events polling. The Coordinator's 01:11Z evidence of residual CPU despite suppressed task.view was reported separately as M/Bugs for filing; no hotspot attribution claimed from this narrower fixture. Reviewed source remains unchanged at e15930b2. Verify8efd2c7a has started via hub-authorized local fallback because remote budget6/6 is full.
+
+### rev-31 · 2026-10-16T01:19:16.330Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261016-548-delta-1
+commit: 8b5fe173a06ac0ab02c8c28381fcab0f9a062fcb
+scope: delta
+
+Delta source clear: e15930b2..8b5fe173 changes only hub/test/durations.json, byte-identical to Coordinator-posted 2149fe33 (A-3493 / integrated a06020a3). JSON parsing and diff check pass. Standards: no findings. Spec: no findings; original implementation and test inputs unchanged, preserving A-3514 source analysis and profile evidence. C1 reverified at this head; C2 remains pending same-head post-source gate. No Reviewer test run. Prior 8efd2c7a is not final evidence at this head. Initial hold attempt timed out and was not retried under saturation guidance.
+Artifact A-3550: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3550-t-548-manifest-delta-source-clear-at-8b5fe173.md.
+
+Criteria: C1 verified.

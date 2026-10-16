@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-351
 branch: t/T-559-the-inbox-projection-is-rebuilt-from
 created: 2026-10-16T01:14:12.317Z
-updated: 2026-10-16T01:15:41.540Z
+updated: 2026-10-16T01:19:42.831Z
 ---
 
 ## Summary
@@ -30,3 +30,9 @@ With about 20 live sessions and steady session-usage, state and announce traffic
 - [ ] C1. Inbox changes are coalesced, so a burst of N changes causes at most one rebuild per short interval (for example 250 ms), or the projection updates incrementally from the changed rows. The inbox the human sees, and its ordering and counts, stay identical.
 - [ ] C2. `store.inboxMessages` and `store.topics` don't rescan all rows per rebuild: an index, a bounded query or a cached topic list, with the query plan recorded.
 - [ ] C3. A load test with about 20 fake sessions emitting usage, state and announce events at live rates shows hub CPU and the p95 of task.hold and task.comment within budget, with before and after numbers recorded on the item.
+
+## Comments
+
+### impl-559 · 2026-10-16T01:19:42.831Z
+
+Read task/epic/spec and A-3539. Profile replay: Inbox.list 17.379336 s / 25.192084 s (68.99%). Coordinator approved C3 bars in topic-351: 20 sessions, usage/state/announcements once per second for five seconds, ~3k retained messages/300 topics, hold/comment p95 <250 ms, CPU >=50% lower, record rebuild count. C1 cross-turn protocol regression prepared; Mac window currently free but 1-min load 15.61 >15, so baseline deferred.

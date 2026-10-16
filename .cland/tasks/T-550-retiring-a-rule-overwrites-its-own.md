@@ -17,7 +17,7 @@ regression_of: T-455
 topic: topic-346
 branch: t/T-550-retiring-a-rule-overwrites-its-own
 created: 2026-10-16T00:31:38.513Z
-updated: 2026-10-16T00:46:54.016Z
+updated: 2026-10-16T01:19:47.465Z
 ---
 
 ## Summary

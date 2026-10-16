@@ -15,7 +15,7 @@ regression_of: T-395
 topic: topic-331
 branch: t/T-517-suite-close-test-a-lease-is-still-active
 created: 2026-10-15T17:18:57.301Z
-updated: 2026-10-16T01:16:09.670Z
+updated: 2026-10-16T01:20:04.746Z
 ---
 
 ## Problem
@@ -27,7 +27,8 @@ updated: 2026-10-16T01:16:09.670Z
 - [x] C1. The product race is fixed: reconcile revalidates the current lease and watchdog after its asynchronous liveness probe, under a per-lease mutation queue shared with release, so a completed release is never resurrected as active (A-3407); a deterministic executor regression that fails on the old code proves it, and suite-close assertions stay unchanged.
   - verified: rev-30 [reviewer] · run rev-20261015-517-source · 2026-10-15T23:41:48.406Z · commit f7e0c0313d1b9a4e5d145a2858accf1f3dbc7a8a
   - done: impl-517 · 2026-10-15T23:43:27.817Z
-- [ ] C2. suite-close.test.ts passes 5/5 serially, whole file and alone on the Mac, plus once on a droplet in the task's verify.
+- [x] C2. suite-close.test.ts passes 5/5 serially, whole file and alone on the Mac, plus once on a droplet in the task's verify.
+  - done: impl-517 · 2026-10-16T01:18:40.164Z
 
 ## Comments
 

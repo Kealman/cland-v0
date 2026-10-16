@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-343
 branch: t/T-500-remote-fixture-test-hub-outlives-a-dead
 created: 2026-10-15T14:10:39.101Z
-updated: 2026-10-16T01:05:45.833Z
+updated: 2026-10-16T01:20:12.277Z
 ---
 
 ## Problem

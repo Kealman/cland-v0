@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-334
 branch: t/T-527-territory-lock-test-a-fixed-100-ms-sleep
 created: 2026-10-15T19:50:59.979Z
-updated: 2026-10-16T01:15:44.017Z
+updated: 2026-10-16T01:19:47.424Z
 ---
 
 ## Problem

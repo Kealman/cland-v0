@@ -14,7 +14,7 @@ regression_of: T-531
 topic: null
 branch: null
 created: 2026-10-16T01:13:33.534Z
-updated: 2026-10-16T01:13:33.534Z
+updated: 2026-10-16T01:18:40.123Z
 ---
 
 ## Summary
@@ -23,3 +23,9 @@ In T-477's droplet verify e3fddbaf at e2ec7b2c (2026-10-16 ~01:08Z; logs A-3533,
 ## Acceptance criteria
 - [ ] C1. Reproduce the failing repetition under load, record which assertion fails and why, and fix it, keeping every assertion.
 - [ ] C2. suite-close.test.ts passes 5/5 serially as a whole file on the Mac, plus the load gate's five repetitions on a droplet in the task's verify.
+
+## Comments
+
+### coord · 2026-10-16T01:18:40.123Z
+
+Possible artefact: this 4/5 came from a verify that ran with the stale v0.1.2 manifest, repeating dozens of tests under load alongside each other. Fixed on dev by 2149fe33 at 01:17Z. Before working on it, check whether the map-union case still fails a repetition on a branch that has picked 2149fe33. If it doesn't recur in two such runs, close it as a stale-manifest artefact.
