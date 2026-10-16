@@ -11,7 +11,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-12T15:31:51.406Z
-updated: 2026-10-16T14:59:02.142Z
+updated: 2026-10-16T15:25:16.900Z
 closed: 2026-10-16T14:59:02.142Z
 ---
 
@@ -205,3 +205,45 @@ Decision record (human, 2026-10-16 ~06:40Z, recorded verbatim by the stand-in cl
 ### coord · 2026-10-16T14:59:02.142Z
 
 Released v0.1.3 at d748b7eefc026ef11c76bfc7caebe2bd8977d5f6.
+
+### qa-27 · 2026-10-16T15:01:37.103Z
+
+verdict: qa
+result: clear
+by: qa-27 [qa]
+run: qa-2026-10-16-27-25
+commit: d748b7eefc026ef11c76bfc7caebe2bd8977d5f6
+
+| Case | Surface | Result | Evidence |
+| --- | --- | --- | --- |
+| P1 | hub-api / local macOS, read-only GitHub refs | PASS | P1-assertions.json and the captured commands, refs, tag, preview, item and journal below |
+
+No high, medium or low findings.
+
+Run: `qa-2026-10-16-27-25`. Tested release: `d748b7eefc026ef11c76bfc7caebe2bd8977d5f6`. Appendix P1 only; no criterion marks (R-294 has no criteria).
+
+`git ls-remote github refs/heads/main refs/tags/v0.1.3 'refs/tags/v0.1.3^{}'` exited 0. Remote main and peeled tag, local main and peeled tag all equal the requested release. Local and remote annotated tag object is `940362db1722c745c97da8a41775289e526678a4`; `git cat-file -t v0.1.3` returned `tag`.
+
+The tag notes equal approved preview A-3926 after removing its command header/ref footer and terminal formatting newlines; they also equal the released journal notes. No internal whitespace or content normalization was applied. Approval: ask 7d510b1b / answer 123d6da9, as named in the request.
+
+`git merge-base --is-ancestor v0.1.3 dev` exited 0. The diff outside `.cland` is empty. Dev at observation is `c87c13a51c5ace79df7f49b615d5d14b7fca6631`. Its only post-release commit, at 2026-10-16T14:59:30Z, is “Tracker: R-294 released as v0.1.3 (tag 940362db, main d748b7ee)”; only `.cland/tasks/R-294-release-v0-1-3.md` changed. This follows the released event at 14:59:02.140Z and is expected under P1.
+
+`cland task view R-294 --json` reports closed and comment “Released v0.1.3 at d748b7eefc026ef11c76bfc7caebe2bd8977d5f6.” The last released event names R-294, v0.1.3, the same commit, and contains no followUp. `.cland/release.tmp` is absent.
+
+All 15 assertions pass. Local read-only check: no suite, session, provider operation or demo lease; no droplet cost. A temporary detached worktree at the released commit is used only to give qa-record.sh the correct build SHA and was removed after recording.
+
+Evidence: A-3927, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3927-r-294-post-release-tag-check-p1-qa-run25 (README.md).
+
+Published note: A-3928, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3928-r-294-p1-clear-v0-1-3-matches-approved-release-d748b7ee.md
+
+### coord · 2026-10-16T15:25:16.900Z
+
+The retrospective of the v0.1.3 run is A-3929 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-3929-v0-1-3-retrospective-report-retro-py-and-csvs): retrospective.md, report.txt, retro.py and the CSVs. It covers 2026-10-15 07:20Z to the release at 14:59:02Z on 2026-10-16, 31.7 h.
+- Throughput: 93 merges, 2.9/h, against 1.2/h in v0.1.2.
+- First-pass yield: 78%, against 56%.
+- Per-task wait: 28.9 min, against Q-384's baseline of 39.
+- Two-shard release run: 16.6 min.
+- Droplet spend: $18.11 from hub.log.
+- Heartbeats: 25 fired.
+- Covers: 10 of 20 red, with no product cause.
+The QA tag check is clear (run qa-2026-10-16-27-25, A-3928).
