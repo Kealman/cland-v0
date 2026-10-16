@@ -9,6 +9,69 @@ import { readLease, writeLease } from '../src/executor/droplet/lease.ts';
 import { armWatchdog, stopWatchdog } from '../src/executor/droplet/watchdog.ts';
 import { ownProcess } from './process-cleanup.ts';
 
+test('demo stop keeps an accepted active deletion pending beyond two seconds and confirms a later 404', async t => {
+  const f = await fixture(t, { hub: projectHub, env: { CLAND_TEST_EXECUTOR_SWEEP_MS: '600000', CLAND_TEST_DROPLET_RELEASE_MS: '100' } });
+  const epic = ((await f.ui.request({ type: 'task.create', title: 'Slow deleting demo', kind: 'epic' })).value as { item: { id: string } }).item.id;
+  const started = await f.ui.request({ type: 'demo.start', epic }); assert.equal(started.ok, true, started.error);
+  const dir = join(f.root, '.cland/run/executor/leases', (started.value as { lease: string }).lease);
+  f.api.faults.deletePolls = Number.MAX_SAFE_INTEGER; f.api.faults.stripTagsOnDelete = true;
+  const stopped = await f.ui.request({ type: 'demo.stop', epic }); assert.equal(stopped.ok, true, stopped.error);
+  assert.equal((stopped.value as { state: string }).state, 'releasing');
+  assert.equal((stopped.value as { attention?: unknown }).attention, undefined);
+  const pending = await readLease(dir);
+  assert.ok(pending.deleteStarted); assert.equal(pending.attention, undefined);
+  await eventually('accepted deletion remains active beyond the old two-second cap', () => {
+    if (Date.now() - Date.parse(pending.deleteStarted!) <= 2100) return undefined;
+    assert.equal(f.api.droplets[0]!.status, 'active'); assert.deepEqual(f.api.droplets[0]!.tags, []);
+    return true;
+  }, 4000);
+  const stillPending = await f.ui.request({ type: 'demo.stop', epic }); assert.equal(stillPending.ok, true, stillPending.error);
+  assert.equal((stillPending.value as { state: string }).state, 'releasing');
+  assert.equal((stillPending.value as { attention?: unknown }).attention, undefined);
+  f.api.droplets.splice(0);
+  const confirmed = await f.ui.request({ type: 'demo.stop', epic }); assert.equal(confirmed.ok, true, confirmed.error);
+  assert.equal((confirmed.value as { state: string }).state, 'released');
+  assert.equal((confirmed.value as { attention?: unknown }).attention, undefined);
+  assert.equal((await readLease(dir)).state, 'released');
+  assert.equal(f.api.requests.filter(r => r.method === 'DELETE' && r.path.startsWith('/v2/droplets/')).length, 1);
+});
+
+for (const stripTags of [true, false]) test(stripTags ? 'demo stop raises attention and an alert when an accepted active deletion exceeds its bound' : 'demo stop reports a deletion timeout when an accepted active deletion retains its tags past the bound', async t => {
+  const f = await fixture(t, { hub: projectHub, env: { CLAND_TEST_EXECUTOR_SWEEP_MS: '600000', CLAND_TEST_DROPLET_RELEASE_MS: '100', CLAND_TEST_DROPLET_DELETE_MS: '500' } });
+  assert.equal((await f.ui.request({ type: 'role.set', session: 'demo-coord', role: 'coordinator' })).ok, true);
+  const epic = ((await f.ui.request({ type: 'task.create', title: 'Stuck deleting demo', kind: 'epic' })).value as { item: { id: string } }).item.id;
+  const topic = ((await f.ui.request({ type: 'topic.create', item: epic, title: 'Stuck deleting demo' })).value as { topic: { id: string } }).topic.id;
+  const started = await f.ui.request({ type: 'demo.start', epic }); assert.equal(started.ok, true, started.error);
+  const dir = join(f.root, '.cland/run/executor/leases', (started.value as { lease: string }).lease);
+  f.api.faults.deletePolls = Number.MAX_SAFE_INTEGER; f.api.faults.stripTagsOnDelete = stripTags;
+  try {
+    const pending = await f.ui.request({ type: 'demo.stop', epic }); assert.equal(pending.ok, true, pending.error);
+    assert.equal((pending.value as { state: string }).state, 'releasing');
+    assert.equal((pending.value as { attention?: unknown }).attention, undefined);
+    const accepted = (await readLease(dir)).deleteStarted!; assert.ok(accepted);
+    await eventually('accepted deletion exceeds its configured bound', () => Date.now() - Date.parse(accepted) > 500 ? true : undefined);
+    const expired = await f.ui.request({ type: 'demo.stop', epic }); assert.equal(expired.ok, true, expired.error);
+    assert.equal((expired.value as { state: string }).state, 'releasing');
+    assert.ok((expired.value as { attention?: unknown }).attention, 'a live resource past the accepted deletion bound needs attention');
+    assert.deepEqual((expired.value as { attention: { fields: string[] } }).attention.fields, stripTags ? ['tags'] : []);
+    assert.equal((expired.value as { attention: { reason?: string } }).attention.reason, 'deletion-timeout');
+    assert.match((expired.value as { summary: string }).summary, /deletion confirmation timed out/);
+    assert.doesNotMatch((expired.value as { summary: string }).summary, /identity mismatch/);
+    const persisted = await readLease(dir);
+    assert.equal(persisted.deleteStarted, accepted); assert.deepEqual(persisted.attention?.fields, stripTags ? ['tags'] : []);
+    const status = await f.ui.request({ type: 'executor.status' }); assert.equal(status.ok, true, status.error);
+    assert.match((status.value as { summary: string }).summary, /deletion confirmation timed out/);
+    const history = await f.ui.request({ type: 'topic.history', topic }); assert.equal(history.ok, true, history.error);
+    const alerts = (history.value as { messages: { text: string }[] }).messages.filter(m => /operator attention/.test(m.text));
+    assert.equal(alerts.length, 1);
+    assert.match(alerts[0]!.text, /deletion confirmation timed out/); assert.doesNotMatch(alerts[0]!.text, /identity mismatch|deletion refused/);
+    assert.equal(f.api.requests.filter(r => r.method === 'DELETE' && r.path.startsWith('/v2/droplets/')).length, 1);
+  } finally {
+    f.api.droplets.splice(0);
+    await f.ui.request({ type: 'demo.stop', epic });
+  }
+});
+
 test('demo stop confirms an earlier delete whose active droplet has lost its tags', async t => {
   const f = await fixture(t, { hub: projectHub, env: { CLAND_TEST_EXECUTOR_SWEEP_MS: '600000' } });
   const epic = ((await f.ui.request({ type: 'task.create', title: 'Already deleting demo', kind: 'epic' })).value as { item: { id: string } }).item.id;
@@ -34,6 +97,27 @@ test('demo stop confirms an earlier delete whose active droplet has lost its tag
   assert.equal(persisted.state, 'released'); assert.equal(persisted.attention, undefined);
   await flushProjectLogs(t, f.root);
   assert.match(await readFile(join(f.root, '.cland/log/hub.log'), 'utf8'), /executor-release-identity-recheck/);
+});
+
+for (const field of ['id', 'name'] as const) test(`demo stop refuses a ${field} mismatch even after an accepted delete`, async t => {
+  const f = await fixture(t, { hub: projectHub, env: { CLAND_TEST_EXECUTOR_SWEEP_MS: '600000', CLAND_TEST_DROPLET_RELEASE_MS: '100' } });
+  const epic = ((await f.ui.request({ type: 'task.create', title: 'Changed deleting demo', kind: 'epic' })).value as { item: { id: string } }).item.id;
+  assert.equal((await f.ui.request({ type: 'demo.start', epic })).ok, true);
+  const droplet = f.api.droplets[0]!;
+  f.api.faults.deletePolls = Number.MAX_SAFE_INTEGER; f.api.faults.stripTagsOnDelete = true;
+  try {
+    const pending = await f.ui.request({ type: 'demo.stop', epic }); assert.equal(pending.ok, true, pending.error);
+    assert.equal((pending.value as { attention?: unknown }).attention, undefined);
+    if (field === 'id') f.api.faults.dropletResponseId = droplet.id + 1;
+    else droplet.name = 'foreign-resource';
+    const refused = await f.ui.request({ type: 'demo.stop', epic }); assert.equal(refused.ok, true, refused.error);
+    assert.equal((refused.value as { state: string }).state, 'releasing');
+    assert.deepEqual((refused.value as { attention: { fields: string[] } }).attention.fields, [field, 'tags']);
+    assert.equal(f.api.requests.filter(r => r.method === 'DELETE' && r.path.startsWith('/v2/droplets/')).length, 1);
+  } finally {
+    f.api.droplets.splice(0); f.api.faults.dropletResponseId = 0;
+    await f.ui.request({ type: 'demo.stop', epic });
+  }
 });
 
 for (const field of ['tags', 'id'] as const) test(`demo stop refuses a persistent ${field} mismatch and clears attention after a later 404`, async t => {

@@ -3239,6 +3239,14 @@
       "seconds": 6.2,
       "reason": "Drives a real demo lease against the fake DigitalOcean provider through the delete and teardown window, waiting for the reread, absence or attention outcome."
     },
+    "hub/test/demo-release.test.ts::demo stop keeps an accepted active deletion pending beyond two seconds and confirms a later 404": {
+      "seconds": 7.012069511,
+      "reason": "Starts a real demo lease against the fake provider, deliberately holds accepted deletion active for more than 2.1 seconds, retries without attention, then confirms a later 404. Linux c-8 timing from T-583 A-3853; all five load repetitions passed."
+    },
+    "hub/test/demo-release.test.ts::demo stop reports a deletion timeout when an accepted active deletion retains its tags past the bound": {
+      "seconds": 5.689618495,
+      "reason": "Starts a real demo lease against the fake provider, holds accepted deletion beyond its configured bound with tags retained, and checks timeout attention, demo alert, executor status and cleanup. Linux c-8 timing from T-583 A-3853; all five load repetitions passed."
+    },
     "hub/test/demo-release.test.ts::demo stop confirms provider absence on retry after an accepted delete": {
       "seconds": 6,
       "reason": "Drives a real demo lease against the fake DigitalOcean provider through an accepted delete and a retry that must observe provider absence before release."

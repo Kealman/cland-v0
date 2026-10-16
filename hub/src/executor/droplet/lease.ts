@@ -5,6 +5,7 @@ import type { Droplet } from './api.ts';
 import type { Lease } from '../executor.ts';
 
 export type ReleaseAttention = {
+  reason?: 'deletion-timeout';
   fields: Array<'id' | 'name' | 'tags'>;
   expected: { id?: number | null; name: string; tags: string[] };
   observed: { id?: number; name: string; tags: string[]; status: string };

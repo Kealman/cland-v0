@@ -12,7 +12,7 @@ import { defaultConfig, parseConfig, type ProjectConfig } from '../../init/confi
 import { DigitalOceanApi, DigitalOceanError } from './api.ts';
 import { accountRelease, leaseDir, liveLease, matchesLease, readLease, readLeases, writeLease, type DropletLease, type WatchdogReceipt } from './lease.ts';
 import { armWatchdog, pause, stopWatchdog, testTiming, watchdogAlive } from './watchdog.ts';
-import { deleteLeaseResources, DropletIdentityMismatch } from './cleanup.ts';
+import { deleteLeaseResources, DropletIdentityMismatch, DropletDeletionTimeout } from './cleanup.ts';
 import { readRecoveries, recoverSnapshots } from './snapshot-recovery.ts';
 import { machineEnv } from './machine.ts';
 import { prepareKey, prepareSnapshot, readSnapshot, staleParts, sameKey, waitForMachine, type PrepareKey, type Prepared } from './prepare.ts';
@@ -260,7 +260,7 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
       try {
         const result = await deleteLeaseResources(new DigitalOceanApi(this.#env), lease, limit, attention => {
           this.logger({ event: 'executor-release-identity-recheck', lease: lease.lease, id: lease.resource, attention });
-        });
+        }, testTiming('CLAND_TEST_DROPLET_DELETE_MS', 300000, this.#env));
         delete lease.attention;
         if (result.confirmed) {
           accountRelease(lease, lease.deleteStarted ?? new Date().toISOString());
@@ -272,8 +272,10 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
           this.logger({ event: 'executor-lease-released', lease: lease.lease, id: lease.resource, lifetimeMs: lease.lifetimeMs, costUsd: lease.costUsd });
           return { lifetimeMs: lease.lifetimeMs!, costUsd: lease.costUsd! };
         }
+        // Retain the first accepted DELETE across short attempts and restarts.
+        await this.#save(lease);
       } catch (error) {
-        if (error instanceof DropletIdentityMismatch) lease.attention = error.attention;
+        if (error instanceof DropletIdentityMismatch || error instanceof DropletDeletionTimeout) lease.attention = error.attention;
         cause = error instanceof DigitalOceanError ? { status: error.status, id: error.id, message: error.message }
           : { message: error instanceof Error ? error.message : 'resource cleanup failed' };
         // Identity refusals and permanent provider errors remain for recovery;
@@ -307,7 +309,7 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
       // A job may replace/restore the record while provider and Git reads yield.
       // Return a coherent snapshot and terminal job state from the same observation.
       if (job !== this.#prepareJob || jobState !== job?.state) continue;
-      const summary = [snapshot ? `snapshot: ${snapshot.name} image=${snapshot.image} ${freshness.length ? `stale: ${freshness.join('|')}` : 'current'} key=${JSON.stringify(snapshot.key)}` : 'snapshot: none', ...(prepare ? [`prepare: ${prepare.state} ${prepare.step} elapsed=${Math.round(prepare.elapsedMs / 1000)}s`] : []), ...snapshotRecovery.map(record => `snapshot recovery: ${record.name} ${record.phase}`), `token: ${token ? 'present' : 'absent (DIGITALOCEAN_TOKEN)'}`, ...(!leases.length ? ['leases: none'] : leases.map(l => `${l.name} id=${l.id ?? 'pending'} ${l.region} ${l.size} ${l.state} age=${Math.round(l.ageMs / 1000)}s deadline=${l.deadline} watchdog=${l.watchdogAlive ? 'alive' : 'dead'}${l.attention ? `; operator attention: identity mismatch (${l.attention.fields.join(', ')}), provider status ${l.attention.observed.status}` : ''}`)), `ledger: ${spend.path}`, `today: spent $${spend.spent.toFixed(4)} + reserved $${spend.reserved.toFixed(4)} / cap $${spend.cap}`, `tagged droplets: ${taggedDroplets ?? providerError ?? 'unavailable'}`].join('\n');
+      const summary = [snapshot ? `snapshot: ${snapshot.name} image=${snapshot.image} ${freshness.length ? `stale: ${freshness.join('|')}` : 'current'} key=${JSON.stringify(snapshot.key)}` : 'snapshot: none', ...(prepare ? [`prepare: ${prepare.state} ${prepare.step} elapsed=${Math.round(prepare.elapsedMs / 1000)}s`] : []), ...snapshotRecovery.map(record => `snapshot recovery: ${record.name} ${record.phase}`), `token: ${token ? 'present' : 'absent (DIGITALOCEAN_TOKEN)'}`, ...(!leases.length ? ['leases: none'] : leases.map(l => `${l.name} id=${l.id ?? 'pending'} ${l.region} ${l.size} ${l.state} age=${Math.round(l.ageMs / 1000)}s deadline=${l.deadline} watchdog=${l.watchdogAlive ? 'alive' : 'dead'}${l.attention ? `; operator attention: ${l.attention.reason === 'deletion-timeout' ? 'deletion confirmation timed out' : `identity mismatch (${l.attention.fields.join(', ')})`}, provider status ${l.attention.observed.status}` : ''}`)), `ledger: ${spend.path}`, `today: spent $${spend.spent.toFixed(4)} + reserved $${spend.reserved.toFixed(4)} / cap $${spend.cap}`, `tagged droplets: ${taggedDroplets ?? providerError ?? 'unavailable'}`].join('\n');
       return { spend, snapshotRecovery, snapshot: snapshot ? { ...snapshot, freshness: freshness.length ? `stale: ${freshness.join('|')}` : 'current' } : null, prepare, token, leases, todayCostUsd, taggedDroplets, ...(providerError ? { providerError } : {}), summary };
     }
   }
