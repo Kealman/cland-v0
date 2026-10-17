@@ -3,6 +3,7 @@ import { open, readFile, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { StringDecoder } from 'node:string_decoder';
+import { redactLoadDiagnostic } from '../src/suite-load-diagnostics.ts';
 import { timingKey, type DurationManifest } from '../src/suite-durations.ts';
 import { captureProcess, cleanupOwnedProcesses, pause, type ProcessIdentity } from './process-cleanup.ts';
 import type { LoadGateEvent } from './load-gate-reporter.ts';
@@ -85,25 +86,47 @@ if (process.env.NODE_TEST_CONTEXT === 'child-v8') {
         throw new Error('cannot establish load gate runner identity');
       }
       options.active.add(identity);
+      let timer: NodeJS.Timeout | undefined;
+      let timedOut = false;
       try {
         if (options.interrupted()) await cleanupOwnedProcesses([identity]);
         else await writeFile(gate, 'ready');
+        // Node's timeout cannot force a coordinator with leaked handles to exit.
+        // Give its own timeout a small reporting grace, then reap the owned tree.
+        const deadline = new Promise<null>(resolve => {
+          timer = setTimeout(() => resolve(null), options.timeoutMs + 250);
+        });
+        const outcome = await Promise.race([done, deadline]);
+        timedOut = outcome === null;
+        clearTimeout(timer);
+        if (timedOut) await cleanupOwnedProcesses([identity]);
         const code = await done;
-        const records = await readFile(receipt, 'utf8').then(text => text.trim().split('\n').filter(Boolean).map(line => JSON.parse(line) as LoadGateEvent), error => { if (error.code === 'ENOENT') return []; throw error; });
+        const records = await readFile(receipt, 'utf8').then(text => text.split('\n').slice(0, -1).filter(Boolean).map(line => JSON.parse(line) as LoadGateEvent), error => { if (error.code === 'ENOENT') return []; throw error; });
         const results = records.filter(record => record.file === event.file && record.name === event.name && record.passed !== undefined);
-        if (code === 0 && results.length === 1) {
+        if (!timedOut && code === 0 && results.length === 1) {
           const result = results[0]!;
           if (result.passed) passed++;
           else if (result.skipReason) { skipped++; skipReasons.add(result.skipReason); }
         }
-        if (code === 1 && quarantine && results.length === 1) {
+        if (!timedOut && code === 1 && quarantine && results.length === 1) {
           const checked = JSON.parse(await readFile(quarantinePath, 'utf8')) as QuarantineReceipt;
           if (checked.complete && checked.cancelled === 0 && !checked.failures.length && checked.excused > 0) {
             excused++;
             for (const result of checked.results) if (result.outcome === 'fail') process.stdout.write(`suite quarantine ${JSON.stringify(result)}\n`);
           }
         }
+        const success = !timedOut && code === 0 && results.length === 1 && (results[0]!.passed || results[0]!.skipReason);
+        if (!success) {
+          const diagnostics = records.filter(record => record.diagnostic).map(record => ({ name: record.name, error: record.diagnostic }));
+          const failure = redactLoadDiagnostic({ file: event.file, name: event.name, repetition: repetition + 1,
+            status: timedOut ? 'timed out (outer deadline)' : 'failed',
+            ...(timedOut ? { timeoutMs: options.timeoutMs, graceMs: 250 } : {}),
+            diagnostics: diagnostics.length ? diagnostics : [{ name: event.name, error: { message: `runner exit ${code}; expected one passing receipt, received ${results.length}` } }],
+          }, options.env);
+          process.stderr.write(`load gate failure ${JSON.stringify(failure)}\n`);
+        }
       } finally {
+        clearTimeout(timer);
         await cleanupOwnedProcesses([identity]);
         options.active.delete(identity);
       }
@@ -117,6 +140,8 @@ if (process.env.NODE_TEST_CONTEXT === 'child-v8') {
     while (!options.interrupted() && error === undefined) {
       const events = await discover();
       for (const event of events) {
+        // Only enqueue records discover identities; nested failures are diagnostics.
+        if (event.passed !== undefined || event.diagnostic) continue;
         const key = timingKey({ ...event, seconds: 0 });
         if (seen.has(key) || Object.hasOwn(options.manifest.tests, key)) continue;
         seen.add(key);

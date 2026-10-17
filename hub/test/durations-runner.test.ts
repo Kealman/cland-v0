@@ -1,4 +1,5 @@
-// T3: real Node reporter and runner boundary, with fixture-local admission leases.
+// T3: real Node runner lifecycle: deadlines and signals reap repetitions before phase-root removal.
+// Real reporter contract uses fixture-local admission leases.
 import { serializeTierManifest } from '../src/suite-shards.ts';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
@@ -32,7 +33,7 @@ test('skipped', {skip: 'fixture platform'}, () => {});`);
     const code = packageRun
       ? `import {runPackageSuite} from ${JSON.stringify(runner)}; process.exitCode = await runPackageSuite('auto', [], ${JSON.stringify({ cwd, lockDirs: { hub: join(cwd, 'lock'), nvim: join(cwd, 'nvim-lock') } })});`
       : `import {runSuite} from ${JSON.stringify(runner)}; process.exitCode = await runSuite([['--test', ${JSON.stringify(file)}]], ${JSON.stringify({ cwd, lockDir: join(cwd, 'lock'), selection })});`;
-    const execution = exec(process.execPath, ['--input-type=module', '-e', code], { cwd, env: { ...process.env, NODE_TEST_CONTEXT: '', CLAND_TEST_SKIP_LOCK: '0', CLAND_SUITE_SELECTION: JSON.stringify(selection) } });
+    const execution = exec(process.execPath, ['--input-type=module', '-e', code], { cwd, env: { ...process.env, NODE_TEST_CONTEXT: '', CLAND_TEST_SKIP_LOCK: '0', CLAND_DIAGNOSTIC_FIXTURE: 'private-fixture-value-720\nprivate-fixture-second-line-720', CLAND_DIAGNOSTIC_COLLISION: 'test', CLAND_SUITE_SELECTION: JSON.stringify(selection) } });
     ownProcess(t, execution.child.pid);
     const result = execution.then(
       r => ({ code: 0, output: r.stdout + r.stderr }),
@@ -70,6 +71,84 @@ test('known load', async () => { writeFileSync(journal + '.running', 'yes'); con
   assert.equal(entries.filter(line => line === 'flaky').length, 6);
   assert.equal(entries.filter(line => line === 'load done').length, 1);
   assert.ok(entries.indexOf('load done') > entries.indexOf('stable', entries.indexOf('stable') + 1), 'a repetition ran before the ordinary phase finished');
+});
+
+test('load-gate failure diagnostics survive in the suite log and result summary', async t => {
+  const { run, manifest, path, cwd, file } = await fixture(t, true);
+  const attempts = join(cwd, 'diagnostic-attempts');
+  await writeFile(file, `import test from 'node:test'; import assert from 'node:assert/strict'; import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+const journal = ${JSON.stringify(attempts)};
+test('diagnostic failure', async t => {
+  const attempt = existsSync(journal) ? Number(readFileSync(journal, 'utf8')) : 0;
+  writeFileSync(journal, String(attempt + 1));
+  if (attempt === 2) await t.test('nested assertion', () => assert.fail('planted assertion ' + JSON.stringify(process.env.CLAND_DIAGNOSTIC_FIXTURE) + '\\nCommand failed: fixture invocation\\nprivate-command-continuation-720'));
+});
+test('stable diagnostic control', t => t.diagnostic('passing detail must stay out of repetitions'));`);
+  await writeFile(path, JSON.stringify({ ...manifest, budget: { testSeconds: 5, fileSeconds: 60 } }));
+  const result = await run(true);
+  assert.equal(result.code, 1, result.output);
+  assert.match(result.output, /diagnostic failure 4\/5 passed/);
+  assert.match(result.output, /stable diagnostic control 5\/5 passed/);
+  const records = result.output.split('\n').filter(line => line.startsWith('load gate failure '));
+  assert.equal(records.length, 1, result.output);
+  const failure = JSON.parse(records[0]!.slice('load gate failure '.length));
+  assert.equal(failure.repetition, 2);
+  assert.equal(failure.name, 'diagnostic failure');
+  assert.match(JSON.stringify(failure), /planted assertion/);
+  assert.match(JSON.stringify(failure), /AssertionError/);
+  // The fixture deliberately supplies an env value matching the filename's
+  // middle segment. Retain the source-frame proof after required redaction.
+  assert.match(JSON.stringify(failure), /at .*fixture\.\[redacted\]\.ts:/);
+  assert.doesNotMatch(result.output, /private-fixture-value-720|private-fixture-second-line-720|private-command-continuation-720|fixture invocation/);
+  const { suiteSummary } = await import('../src/hub/suites.ts');
+  const summary = suiteSummary(result.output);
+  assert.ok(summary.includes(records[0]!), summary);
+  assert.match(summary, /diagnostic failure 4\/5 passed/);
+  assert.equal(await readFile(attempts, 'utf8'), '6');
+});
+
+test('an outer repetition deadline reaps a failed worker with a live socket before continuing', { timeout: 30_000 }, async t => {
+  // Exercise the suite runner directly: package admission and phase planning
+  // are covered above and are unrelated to this lifecycle proof.
+  const { run, manifest, path, cwd, file } = await fixture(t);
+  const attempts = join(cwd, 'hung-attempts');
+  const worker = join(cwd, 'hung-worker');
+  await writeFile(join(cwd, '.cland/config.toml'), '[verification]\ntest_timeout="1s"\nload_gate_workers=1\n');
+  await writeFile(file, `import test from 'node:test'; import assert from 'node:assert/strict'; import { createServer } from 'node:net'; import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+const journal = ${JSON.stringify(attempts)};
+test('hung after assertion', async () => {
+  const attempt = existsSync(journal) ? Number(readFileSync(journal, 'utf8')) : 0;
+  writeFileSync(journal, String(attempt + 1));
+  if (attempt === 1) {
+    const server = createServer();
+    await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+    writeFileSync(${JSON.stringify(worker)}, String(process.pid));
+    assert.fail('assertion before leaked socket');
+  }
+});
+test('after hung identity', () => {});`);
+  await writeFile(path, JSON.stringify({ ...manifest, budget: { testSeconds: 5, fileSeconds: 60 } }));
+  // The socket holds the failed repetition open unconditionally until reaped.
+  // The enclosing watchdog allows startup/teardown of all ten fresh processes
+  // on a loaded machine; the subject's independent bound remains 1s + 250ms.
+  const result = await run(true);
+  assert.equal(result.code, 1, result.output);
+  assert.match(result.output, /hung after assertion 4\/5 passed/);
+  assert.match(result.output, /after hung identity 5\/5 passed/);
+  const failure = result.output.split('\n').find(line => line.startsWith('load gate failure '));
+  assert.ok(failure, result.output);
+  assert.match(failure, /timed out \(outer deadline\)/);
+  const timeout = JSON.parse(failure.slice('load gate failure '.length));
+  assert.equal(timeout.repetition, 1);
+  assert.equal(timeout.timeoutMs, 1000);
+  assert.equal(timeout.graceMs, 250);
+  assert.match(failure, /assertion before leaked socket/);
+  assert.match(failure, /at .*fixture\.\[redacted\]\.ts:/);
+  const { suiteSummary } = await import('../src/hub/suites.ts');
+  assert.ok(suiteSummary(result.output).includes(failure));
+  assert.equal(await readFile(attempts, 'utf8'), '6', 'all five repetitions finished');
+  const pid = Number(await readFile(worker, 'utf8'));
+  assert.throws(() => process.kill(pid, 0), { code: 'ESRCH' }, 'completion includes reaping the exact worker');
 });
 
 test('task load gate bounds eight new tests with parallel lanes and five sequential repetitions each', { timeout: process.env.CLAND_LOAD_GATE_SLOW_PROBE === '1' ? 600_000 : 30_000 }, async t => {

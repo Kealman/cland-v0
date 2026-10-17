@@ -98,6 +98,9 @@ export function suiteSummary(log: string, quarantineStatus?: string[]): string {
   timings.push(...text.split('\n').filter(line => /^load gate workers /.test(line)));
   timings.push(...text.split('\n').filter(line => /^load gate: .* skipped, not load-gated;/.test(line)));
   timings.push(...text.split('\n').filter(line => /^quarantine load gate: /.test(line)));
+  // Keep every failed repetition's full error/stack next to the count summary.
+  const loadDiagnostics = text.split('\n').filter(line => line.startsWith('load gate failure '));
+  timings.push(...loadDiagnostics);
   const tierLines = text.split('\n').filter(line => /^tier (?:T[1-4]:|share:)/.test(line));
   const lastTiers = new Map<string, string>();
   for (const line of tierLines) lastTiers.set(line.split(':')[0]!, line);
