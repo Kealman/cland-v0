@@ -14,7 +14,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-16T19:58:43.022Z
-updated: 2026-10-17T15:18:16.949Z
+updated: 2026-10-17T16:00:31.694Z
 ---
 
 ## Summary
@@ -69,6 +69,7 @@ stages:
       - - T-682
         - T-730
         - T-735
+        - T-743
         - T-741
         - T-684
       - - T-690

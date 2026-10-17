@@ -3,7 +3,7 @@ id: T-695
 kind: task
 title: Hub rules proven once per harness through three binaries collapse to one in-process table and one real frame proof
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - v0.1.4
@@ -18,10 +18,10 @@ blocked_by:
   - T-693
   - T-686
   - T-687
-topic: null
-branch: null
+topic: topic-449
+branch: t/T-695-hub-rules-proven-once-per-harness
 created: 2026-10-16T19:59:36.269Z
-updated: 2026-10-16T20:00:52.076Z
+updated: 2026-10-17T15:58:58.417Z
 ---
 
 ## Summary

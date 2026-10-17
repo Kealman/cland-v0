@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-442
 branch: t/T-694-session-resume-launch-and-stop-race
 created: 2026-10-16T19:59:36.176Z
-updated: 2026-10-17T15:20:30.446Z
+updated: 2026-10-17T16:00:30.786Z
 ---
 
 ## Summary
@@ -38,23 +38,28 @@ Three files prove hub bookkeeping through fake harness binaries (memo §2.2 win 
 ## Acceptance criteria
 
 - [x] C1. The three files' manifest seconds fall from 144.1 s (A-3877) to 55 s or less, T2 and T3 parts together.
-  - done: impl-694 · 2026-10-17T15:19:25.350Z
   - verified: rev-31 [reviewer] · run rev-20261017-694-final · 2026-10-17T15:20:29.490Z · commit 6467a6143396591e37ad5439c98d6e958258c682
+  - done: impl-694 · 2026-10-17T15:59:34.538Z
+  - verified: rev-31 [reviewer] · run rev-20261017-694-conflict-delta · 2026-10-17T16:00:28.744Z · commit ba704356e65a0fa952e76ec2b677503b06790a72
 - [x] C2. Their fake-binary call sites fall from 13 to 6 or less and their `startDaemon` sites from 7 to 0.
-  - done: impl-694 · 2026-10-17T14:40:50.862Z
   - verified: rev-31 [reviewer] · run rev-20261017-694-source-3 · 2026-10-17T14:41:35.247Z · commit 9215c35e9e53d0eeb639b316df05e2efb3ec7ce5
   - verified: rev-31 [reviewer] · run rev-20261017-694-allowance-delta · 2026-10-17T15:18:54.059Z · commit 6467a6143396591e37ad5439c98d6e958258c682
+  - done: impl-694 · 2026-10-17T15:59:34.964Z
+  - verified: rev-31 [reviewer] · run rev-20261017-694-conflict-delta · 2026-10-17T16:00:28.744Z · commit ba704356e65a0fa952e76ec2b677503b06790a72
 - [x] C3. The moved cases are in T2 files that pass the tier lint, and the remaining T3 tests each name the harness behaviour they prove.
-  - done: impl-694 · 2026-10-17T14:40:51.168Z
   - verified: rev-31 [reviewer] · run rev-20261017-694-source-3 · 2026-10-17T14:41:35.247Z · commit 9215c35e9e53d0eeb639b316df05e2efb3ec7ce5
   - verified: rev-31 [reviewer] · run rev-20261017-694-allowance-delta · 2026-10-17T15:18:54.059Z · commit 6467a6143396591e37ad5439c98d6e958258c682
+  - done: impl-694 · 2026-10-17T15:59:35.648Z
+  - verified: rev-31 [reviewer] · run rev-20261017-694-conflict-delta · 2026-10-17T16:00:28.744Z · commit ba704356e65a0fa952e76ec2b677503b06790a72
 - [x] C4. An audit maps every moved or rewritten assertion to its new place, with no behaviour claim dropped.
-  - done: impl-694 · 2026-10-17T14:40:51.548Z
   - verified: rev-31 [reviewer] · run rev-20261017-694-source-3 · 2026-10-17T14:41:35.247Z · commit 9215c35e9e53d0eeb639b316df05e2efb3ec7ce5
   - verified: rev-31 [reviewer] · run rev-20261017-694-allowance-delta · 2026-10-17T15:18:54.059Z · commit 6467a6143396591e37ad5439c98d6e958258c682
+  - done: impl-694 · 2026-10-17T15:59:36.089Z
+  - verified: rev-31 [reviewer] · run rev-20261017-694-conflict-delta · 2026-10-17T16:00:28.744Z · commit ba704356e65a0fa952e76ec2b677503b06790a72
 - [x] C5. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
-  - done: impl-694 · 2026-10-17T15:19:25.829Z
   - verified: rev-31 [reviewer] · run rev-20261017-694-final · 2026-10-17T15:20:29.490Z · commit 6467a6143396591e37ad5439c98d6e958258c682
+  - done: impl-694 · 2026-10-17T15:59:37.139Z
+  - verified: rev-31 [reviewer] · run rev-20261017-694-conflict-delta · 2026-10-17T16:00:28.744Z · commit ba704356e65a0fa952e76ec2b677503b06790a72
 
 ## Blocked by
 
@@ -159,3 +164,18 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear under explicit receipt reuse; Standards 0 / Spec 0 remaining findings, A-4583. Independently read c1dcd8e0 accepting external T-740, and f2a66cd4 requiring the owned allowance-only delta then expressly reusing code-identical A-4572 / 46d9eea8 with no rerun. Current delta A-4579 addresses 5.118139835 s cleanup line with measured 6.5 s/seven-day allowance; executable files/assertions unchanged. Audited all nineteen owned cases and ten 5/5 load gates, Linux sum 48.496184123 s; Mac seven-file 5/5 median sum 31.861885787 s, both <55. C1/C5 verified; C2/C3/C4 current. Raw A-4572 remains exit 1 with one external ordinary failure, owned budget line and no Neovim phase; this verdict does not relabel it green or claim a new-head run. All five criteria supported under named item disposition. No additional run or per-item QA needed. No Reviewer edits/tests.
 
 Criteria: C1 verified, C5 verified.
+
+### rev-31 · 2026-10-17T16:00:28.744Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261017-694-conflict-delta
+commit: ba704356e65a0fa952e76ec2b677503b06790a72
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Conflict-only integration clear; Standards 0 / Spec 0 findings, A-4605. Independently read Coordinator a3842524 authorizing exact-dev resolution and no rerun, expressly retaining A-4572/46d9eea8 with T-740 disposition. Independently reconstructed durations as exact b5cd8b4f plus exactly three own allowance changes and tiers as exact dev plus four own additions. All metadata/baselines/unrelated allowances equal dev; seven task tests byte-identical to prior final-clear 6467a614; diff from dev has only original nine task files, no manual production edit. Origin/whitespace exact; A-4604 static checks green. Previous source/audit/registered cleanup and final A-4583 evidence carried forward: Mac 31.861885787 s, Linux nineteen owned cases 48.496184123 s, ten 5/5 gates. C1–C5 refreshed under explicit no-rerun disposition. Raw receipt remains exit 1/no Neovim; no new-head green execution claimed. No Reviewer edits/tests.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.

@@ -3,7 +3,7 @@ id: T-690
 kind: task
 title: Retag every file the lint already qualifies as T1 or T2, and record the tier share baseline
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - v0.1.4
@@ -14,10 +14,10 @@ assignee: null
 parent: E-676
 blocked_by:
   - T-682
-topic: null
-branch: null
+topic: topic-450
+branch: t/T-690-retag-every-file-the-lint-already
 created: 2026-10-16T19:59:28.837Z
-updated: 2026-10-16T20:00:05.859Z
+updated: 2026-10-17T16:00:30.903Z
 ---
 
 ## Summary
@@ -33,3 +33,9 @@ Retag every hub file T-682 reports as T1- or T2-qualifying, and every Neovim stu
 - [ ] C1. Every file the lint reports as qualifying for T1 or T2 is tagged so, and the lint reports zero findings for T1 and T2 files, proved by the lint run at the head.
 - [ ] C2. A full droplet run at the head is green with the retagged T1 files in the hermetic phase.
 - [ ] C3. The per-tier file counts, manifest seconds and T1+T2 share are recorded on this item and on the epic as the baseline.
+
+## Comments
+
+### impl-690 · 2026-10-17T16:00:30.903Z
+
+Baseline dev b5cd8b4f merged. Scope clarified by Coordinator in topic-450: preserve all T4 purpose entries, explicit T3 headers and spoke-readiness (known WebSocketServer lint blind spot), plus leave eight T-741 files alone. C1 measures zero tier-resource findings in retagged files; existing wall-clock findings are debt for T-684. 46 files retagged (24 to T1, 22 to T2); local checks in progress. Test code remains unchanged.
