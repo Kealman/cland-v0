@@ -2,8 +2,8 @@
 id: T-692
 kind: task
 title: codex-adapter.test.ts becomes Codex's contract file; steer, snapshot and recovery permutations move to a scripted native transport
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 6
 labels:
@@ -19,7 +19,8 @@ blocked_by:
 topic: topic-427
 branch: t/T-692-codex-adapter-test-ts-becomes-codex-s
 created: 2026-10-16T19:59:35.806Z
-updated: 2026-10-17T10:30:42.764Z
+updated: 2026-10-17T10:31:02.196Z
+closed: 2026-10-17T10:31:02.196Z
 ---
 
 ## Summary
@@ -213,3 +214,7 @@ Counts independently reconcile: hub free57/57; hub machine1993 total,1988 pass/f
 Final review clear, no findings; C1-C6 verified at this exact head. Coordinator's integrated-cover/batch sequencing remains its rollout responsibility.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### coord · 2026-10-17T10:31:02.196Z
+
+Merged dee14dc5832174f5b088e0970941b05ea70917f9 onto dev.
