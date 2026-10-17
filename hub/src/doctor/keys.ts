@@ -36,11 +36,11 @@ async function ghostty(env: NodeJS.ProcessEnv): Promise<Check[]> {
   return [warn('Ghostty Shift+Enter', `${binding.path}:${binding.line}: Shift+Enter sends LF, the same key as Ctrl+J (focus down)`, `remove the shift+enter=text:\\n keybind from ${binding.path} and reload Ghostty config (Cmd+Shift+, on macOS; Ctrl+Shift+, on Linux)`)];
 }
 
-async function tty(env: NodeJS.ProcessEnv): Promise<Check[]> {
+async function tty(env: NodeJS.ProcessEnv, probe: typeof run): Promise<Check[]> {
   const stty = which('stty', env);
   if (!stty) return [];
   // Inspect the invoking tty, not a fresh PTY or /dev/null. A pipe/non-tty produces no warning.
-  const result = await run(stty, ['-a'], env, probeTimeout(env, 2000), true);
+  const result = await probe(stty, ['-a'], env, probeTimeout(env, 2000), true);
   if (result.code === 0 && /(?:^|[;\s])erase\s*=\s*\^H(?:[;\s]|$)/.test(result.stdout)) {
     return [warn('tty erase', 'erase = ^H makes legacy Ctrl+H decode as Backspace instead of focus left', "run stty erase '^?' in this tty (and remove any stty erase '^H' from shell startup files)")];
   }
@@ -48,6 +48,6 @@ async function tty(env: NodeJS.ProcessEnv): Promise<Check[]> {
 }
 
 /** Absent settings are quiet; these are warnings, never failures. */
-export async function checkKeys(env: NodeJS.ProcessEnv): Promise<Check[]> {
-  return (await Promise.all([ghostty(env), tty(env)])).flat();
+export async function checkKeys(env: NodeJS.ProcessEnv, probe: typeof run = run): Promise<Check[]> {
+  return (await Promise.all([ghostty(env), tty(env, probe)])).flat();
 }

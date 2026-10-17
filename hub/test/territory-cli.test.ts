@@ -1,10 +1,15 @@
-// Territory provisioning at the CLI-process seam, with real Git and an on-disk GitHub stand-in.
+// T2: territory provisioning/refusal matrices call init/update in-process with real Git.
+// Three CLI invocations prove JSON init/undo and text idempotence; Git hook execution is the protection contract.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { chmod, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { clandWithEnv, tempProject, type CliResult } from './harness.ts';
+
+import { runInit, runUpdate } from '../src/cli/init.ts';
+import { runDoctor } from '../src/cli/doctor.ts';
+import { captureCli } from './cli-in-process.ts';
 
 const git = (root: string, ...args: string[]): string => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
 const ok = (r: CliResult): CliResult => {
@@ -13,6 +18,8 @@ const ok = (r: CliResult): CliResult => {
 };
 type Change = { path: string; action: string; note?: string };
 const init = async (root: string, ...args: string[]): Promise<Change[]> =>
+  JSON.parse(ok(await captureCli(write => runInit([...args, '--json'], root, write))).stdout).changes;
+const initCli = async (root: string, ...args: string[]): Promise<Change[]> =>
   JSON.parse(ok(await clandWithEnv(root, {}, 'init', ...args, '--json')).stdout).changes;
 
 async function fixture(t: Parameters<typeof tempProject>[0], remote = true) {
@@ -36,7 +43,7 @@ async function fixture(t: Parameters<typeof tempProject>[0], remote = true) {
 test('init redirects origin locally, preserves GitHub and upstreams, seeds main/dev and switches the clean root', async (t) => {
   const { root, github, territory } = await fixture(t);
   const before = git(github, 'show-ref');
-  const changes = await init(root);
+  const changes = await initCli(root);
   assert.ok(changes.some((c) => c.path === '.cland/territory.git' && c.action === 'created'));
   assert.equal(git(root, 'remote', 'get-url', 'origin'), territory);
   assert.equal(git(root, 'remote', 'get-url', 'github'), github);
@@ -76,7 +83,7 @@ test('the territory refuses updates and deletion of main/dev while task pushes a
 test('undo restores the remotes, upstream and main, keeps dev, and reinstates the non-territory instructions', async (t) => {
   const { root, github, territory } = await fixture(t);
   await init(root);
-  await init(root, '--undo');
+  await initCli(root, '--undo');
   assert.equal(git(root, 'branch', '--show-current'), 'main');
   assert.equal(git(root, 'remote'), 'origin');
   assert.equal(git(root, 'remote', 'get-url', 'origin'), github);
@@ -92,7 +99,7 @@ test('undo names territory-only refs and differing tips, mutates nothing on refu
   await init(root);
   const unique = git(root, 'commit-tree', 'HEAD^{tree}', '-p', 'HEAD', '-m', 'Only the territory holds this work');
   git(root, 'push', '-q', 'origin', `${unique}:refs/heads/t/T-99-only`);
-  const denied = await clandWithEnv(root, {}, 'init', '--undo');
+  const denied = await captureCli(write => runInit(['--undo'], root, write));
   assert.equal(denied.code, 1);
   assert.match(denied.stderr, /refs\/heads\/t\/T-99-only.*--force/);
   assert.equal(git(root, 'remote', 'get-url', 'origin'), territory);
@@ -101,7 +108,7 @@ test('undo names territory-only refs and differing tips, mutates nothing on refu
   git(root, 'update-ref', '-d', 'refs/remotes/origin/t/T-99-only');
   git(root, 'commit', '--allow-empty', '-qm', 'New local dev');
   git(territory, 'update-ref', 'refs/heads/dev', unique);
-  const different = await clandWithEnv(root, {}, 'init', '--undo');
+  const different = await captureCli(write => runInit(['--undo'], root, write));
   assert.equal(different.code, 1);
   assert.match(different.stderr, /refs\/heads\/dev/);
   await init(root, '--undo', '--force');
@@ -116,7 +123,7 @@ test('undo refuses refs preserved only by origin tracking refs, then permits the
   git(root, 'update-ref', name, oid);
   git(root, 'push', '-q', 'origin', `${name}:${name}`);
   const before = git(root, 'for-each-ref', '--format=%(refname) %(objectname)');
-  const denied = await clandWithEnv(root, {}, 'init', '--undo');
+  const denied = await captureCli(write => runInit(['--undo'], root, write));
   assert.equal(denied.code, 1, 'undo must refuse before deleting both copies');
   assert.match(denied.stderr, /refs\/remotes\/origin\/review-copy.*--force/);
   assert.equal(git(root, 'for-each-ref', '--format=%(refname) %(objectname)'), before);
@@ -139,7 +146,7 @@ test('undo refuses unique work under every custom origin fetch destination befor
     git(root, 'update-ref', name, oid);
     git(root, 'push', '-q', 'origin', `${name}:${name}`);
     const before = git(root, 'for-each-ref', '--format=%(refname) %(objectname)');
-    const denied = await clandWithEnv(root, {}, 'init', '--undo');
+    const denied = await captureCli(write => runInit(['--undo'], root, write));
     assert.equal(denied.code, 1, mapping);
     assert.match(denied.stderr, /refs\/remotes\/cache\/review-copy.*--force/);
     assert.equal(git(root, 'for-each-ref', '--format=%(refname) %(objectname)'), before);
@@ -158,7 +165,7 @@ test('undo refuses unique commits held only by root tracking refs even without a
   const name = 'refs/remotes/origin/review-copy';
   git(root, 'update-ref', name, oid);
   const before = git(root, 'for-each-ref', '--format=%(refname) %(objectname)');
-  const denied = await clandWithEnv(root, {}, 'init', '--undo');
+  const denied = await captureCli(write => runInit(['--undo'], root, write));
   assert.equal(denied.code, 1);
   assert.match(denied.stderr, /refs\/remotes\/origin\/review-copy.*--force/);
   assert.equal(git(root, 'for-each-ref', '--format=%(refname) %(objectname)'), before);
@@ -206,7 +213,7 @@ test('projects without a remote get only origin; non-Git folders get a note and 
   assert.match(report.find((c) => c.path === '.cland/territory.git')?.note ?? '', /not a git repository/);
   const agents = await readFile(join(folder, 'AGENTS.md'), 'utf8');
   assert.match(agents, /Push to GitHub only on the Coordinator/);
-  ok(await clandWithEnv(folder, {}, 'update'));
+  ok(await captureCli(write => runUpdate([], folder, write)));
   assert.equal(await readFile(join(folder, 'AGENTS.md'), 'utf8'), agents);
 });
 
@@ -215,10 +222,10 @@ test('update refreshes territory instructions but leaves a Git project without a
   await init(root);
   const agentsPath = join(root, 'AGENTS.md');
   await writeFile(agentsPath, (await readFile(agentsPath, 'utf8')).replace('only `cland release` pushes to `github`', 'old rule'));
-  ok(await clandWithEnv(root, {}, 'update'));
+  ok(await captureCli(write => runUpdate([], root, write)));
   assert.match(await readFile(agentsPath, 'utf8'), /only `cland release` pushes to `github`/);
   await init(root, '--undo');
-  ok(await clandWithEnv(root, {}, 'update'));
+  ok(await captureCli(write => runUpdate([], root, write)));
   assert.match(await readFile(agentsPath, 'utf8'), /Push to GitHub only on the Coordinator/);
   assert.equal(git(root, 'remote'), 'origin');
 });
@@ -228,7 +235,7 @@ test('doctor checks the territory and names corrupted origin, missing dev, HEAD 
   await init(root);
   const check = async () => {
     // Exercise project checks without invoking any installed harness or network-facing gh.
-    const r = await clandWithEnv(root, { PATH: '/usr/bin:/bin', CLAND_NVIM: '/missing-nvim', CLAND_CLAUDE_BIN: '/missing-claude', CLAND_CODEX_BIN: '/missing-codex', CLAND_OPENCODE_BIN: '/missing-opencode' }, 'doctor', '--json');
+    const r = await captureCli(write => runDoctor(['--json'], root, { PATH: '/usr/bin:/bin', CLAND_NVIM: '/missing-nvim', CLAND_CLAUDE_BIN: '/missing-claude', CLAND_CODEX_BIN: '/missing-codex', CLAND_OPENCODE_BIN: '/missing-opencode' }, write));
     return JSON.parse(r.stdout).checks.find((c: { name: string }) => c.name === 'territory') as { verdict: string; detail: string; fix?: string };
   };
   assert.equal((await check()).verdict, 'ok');
@@ -257,7 +264,7 @@ test('doctor checks the territory and names corrupted origin, missing dev, HEAD 
 test('an origin/github name collision refuses before modifying remotes or creating a territory', async (t) => {
   const { root, github, territory } = await fixture(t);
   git(root, 'remote', 'add', 'github', github);
-  const r = await clandWithEnv(root, {}, 'init');
+  const r = await captureCli(write => runInit([], root, write));
   assert.equal(r.code, 1);
   assert.match(r.stderr, /origin and github both exist/);
   assert.equal(git(root, 'remote', 'get-url', 'origin'), github);

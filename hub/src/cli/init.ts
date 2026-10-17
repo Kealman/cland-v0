@@ -37,7 +37,7 @@ function describe(changes: Change[], root: string, command: string): string {
   return lines.join('\n');
 }
 
-async function run(command: 'init' | 'update', args: string[], cwd: string): Promise<number> {
+async function run(command: 'init' | 'update', args: string[], cwd: string, write: (text: string) => void): Promise<number> {
   const json = args.includes('--json');
   const undo = args.includes('--undo');
   const force = args.includes('--force');
@@ -50,9 +50,9 @@ async function run(command: 'init' | 'update', args: string[], cwd: string): Pro
   const report = undo ? undoTerritory(root, force) : null;
   if (report && existsSync(resolve(root, CLAND_DIR))) provisionAgentsMd(report, root);
   const changes = report?.changes ?? (await import('../init/provision.ts')).provision(root, { territory: command === 'init' || existsSync(territoryPath(root)) });
-  process.stdout.write(json ? `${JSON.stringify({ root, version: VERSION, changes })}\n` : `${describe(changes, root, command)}\n`);
+  write(json ? `${JSON.stringify({ root, version: VERSION, changes })}\n` : `${describe(changes, root, command)}\n`);
   return 0;
 }
 
-export const runInit = (args: string[], cwd: string = process.cwd()): Promise<number> => run('init', args, cwd);
-export const runUpdate = (args: string[], cwd: string = process.cwd()): Promise<number> => run('update', args, cwd);
+export const runInit = (args: string[], cwd: string = process.cwd(), write: (text: string) => void = text => { process.stdout.write(text); }): Promise<number> => run('init', args, cwd, write);
+export const runUpdate = (args: string[], cwd: string = process.cwd(), write: (text: string) => void = text => { process.stdout.write(text); }): Promise<number> => run('update', args, cwd, write);

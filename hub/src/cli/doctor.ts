@@ -4,7 +4,7 @@
 import { existsSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { journalPath, readJournal } from '../hub/journal.ts';
-import { render, summarise, warn, ok, type Check } from '../doctor/report.ts';
+import { run, render, summarise, warn, ok, type Check } from '../doctor/report.ts';
 import { checkToolchain } from '../doctor/toolchain.ts';
 import { checkKeys } from '../doctor/keys.ts';
 import { projectRoot } from '../project.ts';
@@ -12,7 +12,8 @@ import { VERSION } from '../version.ts';
 
 export { DOCTOR_USAGE } from './usage.ts';
 
-export async function runDoctor(args: string[], cwd: string = process.cwd(), env: NodeJS.ProcessEnv = process.env): Promise<number> {
+/** Local output/probe boundaries let embedders inspect the same report without replacing process globals. */
+export async function runDoctor(args: string[], cwd: string = process.cwd(), env: NodeJS.ProcessEnv = process.env, write: (text: string) => void = text => { process.stdout.write(text); }, probe: typeof run = run): Promise<number> {
   const json = args.includes('--json');
   const [dir, extra] = args.filter((a) => !a.startsWith('--'));
   if (extra !== undefined || args.some((a) => a.startsWith('--') && a !== '--json' && a !== '--fix')) throw new Error('usage: cland doctor [dir] [--json] [--fix]');
@@ -20,7 +21,7 @@ export async function runDoctor(args: string[], cwd: string = process.cwd(), env
   if (!existsSync(root) || !statSync(root).isDirectory()) throw new Error(`${root} is not a directory`);
   const { findOrphans, sweepOrphans, SweepBusy } = await import('../orphans.ts');
   const { checkProject } = await import('../doctor/project.ts');
-  const [toolchain, project, keys] = await Promise.all([checkToolchain(env), checkProject(root), checkKeys(env)]);
+  const [toolchain, project, keys] = await Promise.all([checkToolchain(env, probe), checkProject(root), checkKeys(env, probe)]);
   const orphanChecks: Check[] = [];
   // Test fixtures opt out of machine-wide deleted-project discovery; production keeps the default.
   const hubScopeRoot = env.CLAND_TEST_ORPHAN_ROOT;
@@ -38,10 +39,10 @@ export async function runDoctor(args: string[], cwd: string = process.cwd(), env
   }
   const checks = [...toolchain, ...project, ...keys, ...orphanChecks];
   const summary = summarise(checks);
-  if (json) process.stdout.write(`${JSON.stringify({ root, version: VERSION, checks, summary })}\n`);
+  if (json) write(`${JSON.stringify({ root, version: VERSION, checks, summary })}\n`);
   else {
     const colour = Boolean(process.stdout.isTTY) && env.NO_COLOR === undefined && env.TERM !== 'dumb';
-    process.stdout.write(render(checks, `cland doctor ${VERSION} in ${root}`, colour));
+    write(render(checks, `cland doctor ${VERSION} in ${root}`, colour));
   }
   return summary.fail > 0 ? 1 : 0;
 }

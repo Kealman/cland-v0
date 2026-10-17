@@ -87,14 +87,14 @@ function checkOpenCodeVersion(version: Version, bin: string): Check {
 }
 
 /** One harness: `<id>` (installed, version, range) and `<id> auth`. */
-async function checkHarness(h: Harness, env: NodeJS.ProcessEnv): Promise<Check[]> {
+async function checkHarness(h: Harness, env: NodeJS.ProcessEnv, probe: typeof run): Promise<Check[]> {
   const range = TESTED_RANGES[h.id];
   const { bin, missing } = await harnessInstallation(h.id, env);
   if (!bin) return [missing!, fail(authName(h.id), 'not checked: not installed', `install ${h.bin} first`)];
   const out: Check[] = [];
   const database = clandOpenCodeDatabase(env);
   const probeEnv = h.id === 'opencode' ? accountEnvironment(env, { OPENCODE_DB: database }) : env;
-  const v = await run(bin, ['--version'], probeEnv);
+  const v = await probe(bin, ['--version'], probeEnv);
   const version = v.error === undefined && v.code === 0 ? parseVersion(v.stdout || v.stderr) : null;
   if (v.error !== undefined || v.code !== 0) out.push(fail(h.id, `${bin} --version failed: ${v.error ?? (firstLine(v.stderr) || `exit ${v.code}`)}`, `reinstall ${h.bin}`));
   else if (!version) out.push(warn(h.id, `${bin}: cannot read a version from "${firstLine(v.stdout)}"; cland is tested with ${formatRange(range)}`, `check ${h.bin} --version by hand`));
@@ -106,7 +106,7 @@ async function checkHarness(h: Harness, env: NodeJS.ProcessEnv): Promise<Check[]
     const newer = version[0] > range.below[0] || (version[0] === range.below[0] && version[1] >= range.below[1]);
     out.push(warn(h.id, `${formatVersion(version)} at ${bin}, outside the tested range ${formatRange(range)}`, newer ? `it may work; if a session misbehaves, install ${formatVersion(range.min)} or report it` : `upgrade ${h.bin} to ${formatVersion(range.min)} or later`));
   } else out.push(ok(h.id, `${formatVersion(version)} at ${bin} (tested ${formatRange(range)})`));
-  const a = await run(bin, h.auth.args, probeEnv);
+  const a = await probe(bin, h.auth.args, probeEnv);
   if (a.error !== undefined) out.push(warn(authName(h.id), `cannot check: ${h.bin} ${h.auth.args.join(' ')}: ${a.error}`, `run ${h.bin} ${h.auth.args.join(' ')} by hand`));
   else {
     const check = h.auth.read(a);
@@ -145,13 +145,13 @@ async function checkOpenCodeDatabases(env: NodeJS.ProcessEnv): Promise<Check[]> 
   return out;
 }
 
-async function checkGh(env: NodeJS.ProcessEnv): Promise<Check[]> {
+async function checkGh(env: NodeJS.ProcessEnv, probe: typeof run): Promise<Check[]> {
   const bin = which('gh', env);
   if (!bin) return [fail('gh', '`gh` is not on the PATH', 'install the GitHub CLI (https://cli.github.com)'), fail('gh auth', 'not checked: gh is not installed', 'install gh first')];
-  const v = await run(bin, ['--version'], env);
+  const v = await probe(bin, ['--version'], env);
   const version = parseVersion(v.stdout);
   const out: Check[] = [v.code === 0 && version ? ok('gh', `${formatVersion(version)} at ${bin}`) : fail('gh', `${bin} --version failed: ${v.error ?? (firstLine(v.stderr) || `exit ${v.code}`)}`, 'reinstall gh')];
-  const a = await run(bin, ['auth', 'status'], env);
+  const a = await probe(bin, ['auth', 'status'], env);
   // gh writes its status to stdout or stderr depending on the version
   const said = `${a.stdout}\n${a.stderr}`;
   const account = /Logged in to (\S+) account (\S+)/.exec(said);
@@ -160,14 +160,14 @@ async function checkGh(env: NodeJS.ProcessEnv): Promise<Check[]> {
   return out;
 }
 
-async function checkNvim(env: NodeJS.ProcessEnv): Promise<Check> {
+async function checkNvim(env: NodeJS.ProcessEnv, probe: typeof run): Promise<Check> {
   const fetch = 'run `cland open` (its launcher downloads and verifies the pinned build), or set CLAND_NVIM to a Neovim binary';
   const bin = findNvim(env);
   if (!bin) {
     if (env.CLAND_NVIM) return fail('neovim', `CLAND_NVIM names ${env.CLAND_NVIM}, which does not exist`, `point CLAND_NVIM at a Neovim ${NVIM_VERSION} binary, or unset it to use the pinned build`);
     return fail('neovim', `the pinned standalone build ${NVIM_VERSION} is not downloaded`, fetch);
   }
-  const v = await run(bin, ['--version'], env);
+  const v = await probe(bin, ['--version'], env);
   const said = firstLine(v.stdout);
   if (v.code !== 0 || v.error !== undefined) return fail('neovim', `${bin} --version failed: ${v.error ?? (firstLine(v.stderr) || `exit ${v.code}`)}`, env.CLAND_NVIM ? 'fix or unset CLAND_NVIM' : `remove ${bin}'s folder, then ${fetch}`);
   const found = /NVIM\s+(v\S+)/.exec(said)?.[1] ?? said;
@@ -180,7 +180,7 @@ async function checkNvim(env: NodeJS.ProcessEnv): Promise<Check> {
 }
 
 /** Every toolchain check, run concurrently, reported in a fixed order. */
-export async function checkToolchain(env: NodeJS.ProcessEnv): Promise<Check[]> {
-  const parts = await Promise.all([...HARNESSES.map((h) => checkHarness(h, env)), checkGh(env), checkNvim(env).then((c) => [c]), checkOpenCodeDatabases(env)]);
+export async function checkToolchain(env: NodeJS.ProcessEnv, probe: typeof run = run): Promise<Check[]> {
+  const parts = await Promise.all([...HARNESSES.map((h) => checkHarness(h, env, probe)), checkGh(env, probe), checkNvim(env, probe).then((c) => [c]), checkOpenCodeDatabases(env)]);
   return parts.flat();
 }

@@ -3416,18 +3416,6 @@
       "owner": "E-677",
       "legacy": true
     },
-    "hub/test/doctor.test.ts::a healthy project on a healthy machine: every check ok, plain text, exit 0; then each failure faked names itself and its fix": {
-      "seconds": 45.496028,
-      "reason": "Runs the complete doctor command repeatedly, introducing each failure at the real filesystem/process boundary and checking its repair advice.",
-      "owner": "E-677",
-      "legacy": true
-    },
-    "hub/test/doctor.test.ts::doctor warns about free OpenCode training and its missing OS sandbox without failing": {
-      "seconds": 6.843811,
-      "reason": "Runs doctor four times with automatic free selection, a bare free model plus variant, paid and non-OpenCode roles, and launches a real projectHub/fake OpenCode server and spoke to prove the warnings do not refuse launch. Targeted macOS run measured 6.844s.",
-      "owner": "E-677",
-      "legacy": true
-    },
     "hub/test/durations-runner.test.ts::task load gate bounds eight new tests with parallel lanes and five sequential repetitions each": {
       "seconds": 8.4,
       "reason": "Runs eight new identities through the real package runner and forty fresh repetition processes on two lanes, checking bounded concurrency and all receipts. Targeted macOS T-557 probe measured 5.701s at peak 1m load 3.12; optional slow acceptance probe is excluded from routine runs.",
@@ -3704,18 +3692,6 @@
     "hub/test/inbox-workload.test.ts::durable wait capture retains the original timestamp and archives a request resolved within its publication window": {
       "seconds": 0.944511,
       "reason": "Checks original wait timestamps and single durable departures across coalesced publication on a real scratch project hub; measured 16.24 s including project setup and teardown on the Mac.",
-      "owner": "E-677",
-      "legacy": true
-    },
-    "hub/test/init.test.ts::a manifest that is not cland's, malformed, or names a path outside its skill is reported, and update deletes nothing": {
-      "seconds": 5.335328,
-      "reason": "Invokes init/update over multiple filesystem configurations to prove preserved user edits and safe refusal of foreign manifests.",
-      "owner": "E-677",
-      "legacy": true
-    },
-    "hub/test/init.test.ts::init writes tracker levels and update preserves a changed or empty ladder": {
-      "seconds": 3.902886,
-      "reason": "Invokes init/update over multiple filesystem configurations to prove preserved user edits and safe refusal of foreign manifests.",
       "owner": "E-677",
       "legacy": true
     },
@@ -4089,12 +4065,6 @@
       "owner": "E-677",
       "legacy": true
     },
-    "hub/test/skills-tracker.test.ts::every `cland task` command the template names parses and reaches its hub or offline preflight": {
-      "seconds": 9.310565,
-      "reason": "Invokes every documented task CLI command against hub/offline preflight so generated skill instructions remain executable.",
-      "owner": "E-677",
-      "legacy": true
-    },
     "hub/test/stage-qa.test.ts": {
       "file": true,
       "seconds": 62.674307,
@@ -4444,12 +4414,6 @@
     "hub/test/verification-workers.test.ts::verify persists overrides, delivers remote workers, prices requested size and separates cached measurements": {
       "seconds": 15.184183,
       "reason": "T-396: serial real CLI/frame runs cover remote and local worker delivery, c-16 pricing, cache separation and durable settings after hub restart; measured 12.034 s on the Mac at starting load 3.54.",
-      "owner": "E-677",
-      "legacy": true
-    },
-    "hub/test/worktree-cli.test.ts::CLI commands from linked worktrees find the main project hub and write only its tracker": {
-      "seconds": 17.809066,
-      "reason": "Creates linked git worktrees and invokes the CLI from each, proving shared hub discovery and writes only to the authoritative tracker.",
       "owner": "E-677",
       "legacy": true
     },

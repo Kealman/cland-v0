@@ -15,7 +15,7 @@ import { parseFinding } from '../tracker/findings.ts';
 import { TASK_USAGE } from './usage.ts';
 export { TASK_USAGE } from './usage.ts';
 
-type Io = { out: (s: string) => void; err: (s: string) => void };
+type Io = { out: (s: string) => void; err: (s: string) => void; stdin?: () => string };
 const stdio: Io = { out: (s) => process.stdout.write(s), err: (s) => process.stderr.write(s) };
 
 const COMMON = {
@@ -48,15 +48,16 @@ class UsageError extends Error {}
 /** `none` (or an empty value) clears a single-valued field. */
 const clearable = (v: string | undefined): string | null | undefined => (v === undefined ? undefined : v === '' || v === 'none' ? null : v);
 
-const readBody = (v: Values): string | undefined => {
+const readBody = (v: Values, stdin?: Io['stdin']): string | undefined => {
   const file = v['body-file'];
+  if (file === '-' && stdin) return stdin();
   if (typeof file === 'string') return readFileSync(file === '-' ? 0 : file, 'utf8');
   return typeof v.body === 'string' ? v.body : undefined;
 };
 
 const defined = (o: Record<string, unknown>): Record<string, unknown> => Object.fromEntries(Object.entries(o).filter(([, x]) => x !== undefined));
 
-function frameOf(sub: Sub, positionals: string[], v: Values): { type: string } & Record<string, unknown> {
+function frameOf(sub: Sub, positionals: string[], v: Values, stdin?: Io['stdin']): { type: string } & Record<string, unknown> {
   const needId = (): string => {
     const id = positionals[0];
     if (!id) throw new UsageError(`task ${sub} needs an item id (any kind prefix and number, or a bare number)`);
@@ -76,7 +77,7 @@ function frameOf(sub: Sub, positionals: string[], v: Values): { type: string } &
         size: v.size,
         found_by: v['found-by'],
         version: v.version,
-        body: readBody(v),
+        body: readBody(v, stdin),
         labels: v.label,
         assignee: v.assignee,
         parent: v.parent,
@@ -114,7 +115,7 @@ function frameOf(sub: Sub, positionals: string[], v: Values): { type: string } &
       return defined({ type: 'task.list', under: v.under, state: v.state, labels: v.label, kind: v.kind, assignee: v.assignee, verdict: v.verdict }) as { type: string };
     case 'comment': {
       const item = needId();
-      const text = typeof v['body-file'] === 'string' ? readBody(v) : positionals.slice(1).join(' ');
+      const text = typeof v['body-file'] === 'string' ? readBody(v, stdin) : positionals.slice(1).join(' ');
       let verdict: Record<string, unknown> | undefined;
       if (v.verdict !== undefined || v.result !== undefined || v.run !== undefined || v.commit !== undefined || v.scope !== undefined || v.stage !== undefined || v.verified !== undefined || v.failed !== undefined || v.finding !== undefined) {
         if (typeof v.verdict !== 'string' || typeof v.result !== 'string' || typeof v.run !== 'string') throw new UsageError('a verdict needs --verdict review|qa, --result clear|"not clear" and --run <id>');
@@ -133,7 +134,7 @@ function frameOf(sub: Sub, positionals: string[], v: Values): { type: string } &
         version: clearable(v.version as string | undefined),
         item: needId(),
         title: v.title,
-        body: readBody(v),
+        body: readBody(v, stdin),
         kind: v.kind,
         size: v.size,
         found_by: clearable(v['found-by'] as string | undefined),
@@ -328,7 +329,7 @@ export async function runTask(args: string[], cwd: string = process.cwd(), io: I
   try {
     const parsed = parseArgs({ args: rest, options: OPTIONS[s], allowPositionals: true, strict: true });
     values = parsed.values as Values;
-    frame = frameOf(s, parsed.positionals, values);
+    frame = frameOf(s, parsed.positionals, values, io.stdin);
   } catch (err) {
     io.err(`cland: ${err instanceof Error ? err.message : String(err)}\n\nusage:\n${TASK_USAGE}`);
     return 2;
@@ -355,7 +356,7 @@ export async function runTask(args: string[], cwd: string = process.cwd(), io: I
   }
   let value: Record<string, unknown>;
   try {
-    value = (await askHubFrame(d, frame, 10_000)) as Record<string, unknown>;
+    value = (await askHubFrame(d, frame, 10_000, env)) as Record<string, unknown>;
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     const unreachable = (err as NodeJS.ErrnoException).code !== undefined;

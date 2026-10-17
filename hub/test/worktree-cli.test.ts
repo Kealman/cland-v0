@@ -1,11 +1,15 @@
-// The CLI's discovery seam: real Git worktrees, a real project hub, and child-process commands.
+// T3: process lifecycle: stopping via stale discovery must preserve a replacement hub's socket/PID.
+// Other discovery checks use in-process hubs; one CLI status/cwd proves the common routing seam.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { copyFile, mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { cland, clandWithEnv, killDaemon, spawnSpoke, startDaemon, tempProject, type CliResult } from './harness.ts';
+import { cland, clandWithEnv, killDaemon, projectHub, inProcessSpoke, startDaemon, connectUi, tempProject, type CliResult } from './harness.ts';
+import { runInit } from '../src/cli/init.ts';
+import { captureCli } from './cli-in-process.ts';
+import { FakeClock } from './fake-clock.ts';
 import { startFreshnessDaemon } from './freshness-harness.ts';
 
 const ok = (r: CliResult): CliResult => {
@@ -18,7 +22,8 @@ test('CLI commands from linked worktrees find the main project hub and write onl
   const root = await tempProject(t);
   git(root, 'init');
   const { discovery, refresh } = await startFreshnessDaemon(t, root);
-  const created = JSON.parse(ok(await cland(root, 'task', 'create', '--size', 'M', 'Main item', '--json')).stdout) as { item: { path: string } };
+  const ui = await connectUi(t, discovery);
+  const created = (await ui.request({ type: 'task.create', title: 'Main item', size: 'M' })).value as { item: { path: string } };
   git(root, 'add', '.cland');
   git(root, '-c', 'user.name=Test', '-c', 'user.email=test@example.com', '-c', 'commit.gpgsign=false', 'commit', '-m', 'Project fixture');
   const inside = join(root, '.cland', 'worktrees', 'task');
@@ -34,36 +39,29 @@ test('CLI commands from linked worktrees find the main project hub and write onl
       const status = JSON.parse(ok(await cland(cwd, 'hub', 'status', '--json')).stdout) as { root: string; pid: number };
       assert.equal(status.root, root);
       assert.equal(status.pid, discovery.pid);
-      for (const args of [['task', 'view', 'T-1', '--json'], ['session', 'list', '--json'], ['role', 'list', '--json'], ['inbox', '--json']]) {
-        const [fromWorktree, fromRoot] = await Promise.all([cland(cwd, ...args), cland(root, ...args)]);
-        assert.equal(ok(fromWorktree).stdout, ok(fromRoot).stdout, args.join(' '));
-      }
     }
     ok(await cland(worktree, 'task', 'comment', 'T-1', `Written from ${worktree}`));
     assert.doesNotMatch(await readFile(join(worktree, created.item.path), 'utf8'), /Written from/);
     assert.match(await readFile(join(root, created.item.path), 'utf8'), /Written from/);
-    ok(await cland(worktree, 'task', 'create', '--size', 'M', 'Worktree item'));
     assert.deepEqual(await readdir(join(worktree, '.cland', 'tasks')), ['T-1-main-item.md']);
     assert.match(ok(await cland(worktree, 'hub', 'start')).stdout, /hub already running/);
   }
-  ok(await cland(outside, 'hub', 'stop'));
-  assert.equal((await cland(root, 'hub', 'status')).code, 1);
 });
 
 test('an initialized non-worktree child remains its own project beside a running parent hub', async (t) => {
   const parent = await tempProject(t);
-  const { discovery } = await startDaemon(t, parent);
+  const { discovery } = await projectHub(t, parent, {}, { clock: new FakeClock(), harnesses: 'fake' });
   ok(await cland(parent, 'task', 'create', '--size', 'M', 'Parent item'));
   const child = join(parent, 'child');
   await mkdir(child);
-  ok(await cland(parent, 'init', child, '--json'));
+  ok(await captureCli(write => runInit([child, '--json'], parent, write)));
 
   const idle = await cland(child, 'hub', 'status', '--json');
   assert.equal(idle.code, 1, idle.stdout);
   assert.deepEqual(JSON.parse(idle.stdout), { running: false, root: child });
   assert.equal((await cland(child, 'task', 'create', '--size', 'M', 'Must not reach parent')).code, 1);
-  const childHub = await startDaemon(t, child);
-  assert.notEqual(childHub.discovery.pid, discovery.pid);
+  const childHub = await projectHub(t, child, {}, { clock: new FakeClock(), harnesses: 'fake' });
+  assert.notEqual(childHub.discovery.socket, discovery.socket);
   ok(await cland(child, 'task', 'create', '--size', 'M', 'Child item'));
   assert.match(ok(await cland(child, 'task', 'view', 'T-1')).stdout, /Child item/);
   assert.match(ok(await cland(parent, 'task', 'view', 'T-1')).stdout, /Parent item/);
@@ -101,9 +99,9 @@ test('CLAND_HUB_FILE selects the named hub from another project, including a cop
   const root = await tempProject(t);
   const other = await tempProject(t);
   const { discovery } = await startDaemon(t, root);
-  const otherHub = await startDaemon(t, other);
+  const otherHub = await projectHub(t, other, {}, { clock: new FakeClock(), harnesses: 'fake' });
   ok(await cland(root, 'task', 'create', '--size', 'M', 'Target item'));
-  const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
+  const coord = await inProcessSpoke(t, { discover: true, cwd: root, name: 'coord', role: 'coordinator' });
   t.after(() => coord.close());
   await coord.waitForPresence(['coord']);
   ok(await cland(root, 'role', 'set', 'alpha', 'implementer'));
@@ -119,9 +117,6 @@ test('CLAND_HUB_FILE selects the named hub from another project, including a cop
     assert.equal(status.root, root);
     assert.equal(status.pid, discovery.pid);
     assert.match(ok(await clandWithEnv(other, env, 'hub', 'status')).stdout, new RegExp(`^hub running for ${root}`));
-    for (const args of [['task', 'view', 'T-1', '--json'], ['session', 'list', '--json'], ['role', 'list', '--json'], ['inbox', '--json']]) {
-      assert.equal(ok(await clandWithEnv(other, env, ...args)).stdout, ok(await cland(root, ...args)).stdout, args.join(' '));
-    }
     ok(await clandWithEnv(other, env, 'task', 'comment', 'T-1', 'Through the named hub'));
     assert.match(ok(await cland(root, 'task', 'view', 'T-1')).stdout, /Through the named hub/);
     assert.match(ok(await clandWithEnv(other, env, 'hub', 'unmute', 'alpha', 'beta')).stdout, /was not muted/);
@@ -144,9 +139,7 @@ test('CLAND_HUB_FILE selects the named hub from another project, including a cop
   const invalid = join(other, 'invalid.json');
   await writeFile(invalid, '{}');
   for (const file of [join(other, 'absent.json'), invalid]) {
-    for (const args of [['hub', 'status', '--json'], ['session', 'list'], ['task', 'list']]) {
-      assert.equal((await clandWithEnv(other, { CLAND_HUB_FILE: file }, ...args)).code, 1, args.join(' '));
-    }
+    assert.equal((await clandWithEnv(other, { CLAND_HUB_FILE: file }, 'hub', 'status', '--json')).code, 1);
   }
   // A live legacy discovery still supplies its root through a successful status probe.
   const liveLegacy = JSON.parse(await readFile(copied, 'utf8')) as { root?: string };

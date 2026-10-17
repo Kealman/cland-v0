@@ -1,30 +1,19 @@
-// `cland init` and `cland update` (spec 4.9, #39) run as the CLI against fixture repositories in temporary folders;
-// the results are read back from disk and `git status`, never from inside cland. A hub started in the initialised
-// project and a fake Claude Code launched there check that what was provisioned is what they use.
+// T2: init/update filesystem matrices use their module entry points and real Git.
+// Three CLI runs keep the committed-set, idempotent text and old-version contracts.
+// Process races, shell hooks and the real Claude binary contract live in init-process.test.ts.
+import fs from 'node:fs';
+import { syncBuiltinESMExports } from 'node:module';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { execFile, spawn } from 'node:child_process';
-import { createHash } from 'node:crypto';
-import { chmod, lstat, mkdir, readdir, readFile, readlink, rename, rm, symlink, writeFile } from 'node:fs/promises';
+import { chmod, lstat, mkdir, readdir, readFile, readlink, rm, symlink, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
-import { DatabaseSync } from 'node:sqlite';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { configuredLevels, Ladder } from '../src/tracker/kinds.ts';
-import { parseConfig } from '../src/init/config.ts';
+import { join } from 'node:path';
 import { HOOK_EVENTS } from '../src/adapters/claude-code.ts';
-import { CLI_ENTRY, clandWithEnv, connectUi, eventually, fakeClaude, startDaemon, tempProject, type CliResult } from './harness.ts';
-
-const REPO = fileURLToPath(new URL('../../', import.meta.url));
-const SOURCE_SKILLS = join(REPO, '.agents', 'skills');
-const VERSION = (JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8')) as { version: string }).version;
-
-function assertNoMachinePath(text: string, machine: string, file: string): void {
-  const escaped = machine.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  // An absolute path starts outside another path and ends at a component boundary (including a child slash).
-  const path = new RegExp(`(?:^|[^\\w./~-])${escaped}(?=$|[^\\w.~-])`);
-  assert.ok(!path.test(text), `${file} names ${machine}`);
-}
+import { runUpdate } from '../src/cli/init.ts';
+import { clandWithEnv, connectUi, projectHub, tempProject } from './harness.ts';
+import { captureCli } from './cli-in-process.ts';
+import { FakeClock } from './fake-clock.ts';
+import { REPO, VERSION, run, runCli, gitRepo, gitStatus, tree, changed, shipped, sh, assertNoMachinePath } from './init-fixture.ts';
 
 test('init writes tracker levels and update preserves a changed or empty ladder', async t => {
   const root = await tempProject(t);
@@ -79,67 +68,6 @@ test('init adds qa_default and update keeps a configured QA policy', async t => 
   assert.equal(await readFile(path, 'utf8'), updated);
 });
 
-type Change = { path: string; action: string; note?: string };
-
-const sh = (cwd: string, command: string, env: Record<string, string> = {}): Promise<{ code: number; stdout: string; stderr: string }> =>
-  new Promise((resolve) =>
-    execFile('sh', ['-c', command], { cwd, env: { ...process.env, ...env }, encoding: 'utf8' }, (err, stdout, stderr) => resolve({ code: err ? Number(err.code ?? 1) : 0, stdout, stderr })),
-  );
-
-async function gitRepo(root: string): Promise<void> {
-  const r = await sh(root, 'git init -q && git config user.email t@example.com && git config user.name t');
-  assert.equal(r.code, 0, r.stderr);
-}
-
-async function run(root: string, command: 'init' | 'update', env: Record<string, string> = {}): Promise<Change[]> {
-  const r: CliResult = await clandWithEnv(root, env, command, '--json');
-  assert.equal(r.code, 0, `cland ${command}: ${r.stderr}`);
-  return (JSON.parse(r.stdout) as { changes: Change[] }).changes;
-}
-
-/** What `git status` shows as new or changed, one path per file (untracked folders expanded). */
-async function gitStatus(root: string): Promise<string[]> {
-  const r = await sh(root, 'git status --porcelain -uall');
-  return r.stdout
-    .split('\n')
-    .filter(Boolean)
-    .map((l) => l.slice(3))
-    .sort();
-}
-
-/** Every file and symlink under `root` but `.git/` and the hub's volatile state, by its content hash (a link: its target). */
-async function tree(root: string): Promise<Map<string, string>> {
-  const out = new Map<string, string>();
-  const walk = async (rel: string) => {
-    for (const e of await readdir(join(root, rel), { withFileTypes: true })) {
-      const path = rel ? `${rel}/${e.name}` : e.name;
-      if (path === '.git' || /^\.cland\/(hub\.db|hub\.json|hub\.lock|hub\.sock|secret|log)/.test(path)) continue;
-      if (e.isSymbolicLink()) out.set(path, `-> ${await readlink(join(root, path))}`);
-      else if (e.isDirectory()) await walk(path);
-      else out.set(path, createHash('sha256').update(await readFile(join(root, path))).digest('hex'));
-    }
-  };
-  await walk('');
-  return out;
-}
-
-const changed = (a: Map<string, string>, b: Map<string, string>): string[] =>
-  [...new Set([...a.keys(), ...b.keys()])].filter((k) => a.get(k) !== b.get(k)).sort();
-
-/** The skills cland ships, and every file of theirs as a project path. */
-async function shipped(): Promise<{ names: string[]; files: string[] }> {
-  const names: string[] = [];
-  const files: string[] = [];
-  for (const e of await readdir(SOURCE_SKILLS, { withFileTypes: true })) {
-    if (!e.isDirectory()) continue;
-    names.push(e.name);
-    for (const f of await readdir(join(SOURCE_SKILLS, e.name), { recursive: true, withFileTypes: true })) {
-      if (f.isFile()) files.push(`.agents/skills/${join(f.parentPath, f.name).slice(SOURCE_SKILLS.length + 1)}`);
-    }
-  }
-  return { names: names.sort(), files: files.sort() };
-}
-
 test('cland init provisions exactly the 20 curated skills in its manifest and folders', async t => {
   const root = await tempProject(t, 'cland-init-curated-');
   await gitRepo(root);
@@ -160,7 +88,8 @@ test('cland init on an empty repository: git status shows exactly the committed 
   const root = await tempProject(t, 'cland-init-');
   await gitRepo(root);
   const configHome = join(root, 'user-config');
-  const changes = await run(root, 'init', { XDG_CONFIG_HOME: configHome });
+  // CLI contract: argv, JSON output and git status of the committed set.
+  const changes = await runCli(root, 'init', { XDG_CONFIG_HOME: configHome });
   assert.equal(await readFile(join(root, '.cland/RULES.md'), 'utf8'), '# Project rules\n<!-- cland: rule high-water 0 -->\n');
   assert.match(await readFile(join(root, '.cland/.gitignore'), 'utf8'), /committed.*RULES\.md|RULES\.md.*are/);
   const roles = await readFile(join(root, '.cland', 'roles.toml'), 'utf8');
@@ -378,7 +307,7 @@ test('cland update after a version bump rewrites the managed parts to the new ve
 
   // and a project cland never initialised is refused
   const bare = await tempProject(t, 'cland-update-bare-');
-  const refused = await clandWithEnv(bare, {}, 'update');
+  const refused = await captureCli(write => runUpdate([], bare, write));
   assert.equal(refused.code, 1);
   assert.match(refused.stderr, /run `cland init` first/);
 });
@@ -389,7 +318,7 @@ test('a hub started in an initialised project has General and Agents, serves the
   await run(root, 'init');
   const configPath = join(root, '.cland', 'config.toml');
   await writeFile(configPath, (await readFile(configPath, 'utf8')).replace('max_text_bytes = 8192', 'max_text_bytes = 4096').replace('layouts = []', 'layouts = ["ru"]').replace(/levels = \[[^\n]+\]/, 'levels = ["initiative", "feature"]'));
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root, {}, { clock: new FakeClock(), harnesses: 'fake' });
   const ui = await connectUi(t, discovery);
   const statusReply = await ui.request({ type: 'hub.status' });
   assert.deepEqual((statusReply.value as { keys: { layouts: string[] } }).keys, { layouts: ['ru'] });
@@ -417,87 +346,6 @@ test('a hub started in an initialised project has General and Agents, serves the
     assert.ok(!(await readFile(join(root, f), 'utf8')).includes(secret), `${f} holds the secret`);
   }
 });
-
-test('the project hook runs `cland hook` from the PATH for a session started by hand, and stands aside in a session the hub launched', async (t) => {
-  const root = await tempProject(t, 'cland-init-hook-');
-  await gitRepo(root);
-  await run(root, 'init');
-  const settings = JSON.parse(await readFile(join(root, '.claude', 'settings.json'), 'utf8')) as { hooks: Record<string, Array<{ hooks: Array<{ command: string }> }>> };
-  const command = settings.hooks.SessionStart?.[0]?.hooks[0]?.command ?? '';
-  // a `cland` on the PATH that records how it was called
-  const bin = join(root, '.tmp-bin');
-  await mkdir(bin);
-  const calls = join(root, '.tmp-calls');
-  await writeFile(join(bin, 'cland'), `#!/bin/sh\necho "$@" >> '${calls}'\n`);
-  await chmod(join(bin, 'cland'), 0o755);
-  const path = `${bin}:${dirname(process.execPath)}:/usr/bin:/bin`;
-
-  const byHand = await sh(root, command, { PATH: path, CLAND_SESSION_NAME: '' });
-  assert.equal(byHand.code, 0, byHand.stderr);
-  assert.equal(await readFile(calls, 'utf8'), 'hook session-start\n');
-
-  const launched = await sh(root, command, { PATH: path, CLAND_SESSION_NAME: 'coord' });
-  assert.equal(launched.code, 0);
-  assert.equal(await readFile(calls, 'utf8'), 'hook session-start\n', 'the launch injected its own hooks: the project one does nothing');
-
-  const noCland = await sh(root, command, { PATH: '/usr/bin:/bin', CLAND_SESSION_NAME: '' });
-  assert.equal(noCland.code, 0, 'cland not installed: the hook does nothing and fails nothing');
-  assert.equal(noCland.stderr, '');
-});
-
-test('a Claude Code session launched in the initialised project gets the project hooks and reads AGENTS.md: directly, and through the import once CLAUDE.md exists', async (t) => {
-  const root = await tempProject(t, 'cland-init-cc-');
-  await gitRepo(root);
-  await run(root, 'init');
-  const fake = await fakeClaude(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
-  const ui = await connectUi(t, discovery);
-  const block = (await readFile(join(root, 'AGENTS.md'), 'utf8')).trim();
-
-  type Context = { instructions: Array<{ file: string; text: string }>; hooks: Record<string, string[]> };
-  const launch = async (name: string): Promise<Context> => {
-    const r = await ui.request({ type: 'session.launch', name, harness: 'claude-code' }, 30_000);
-    assert.equal(r.ok, true, r.error);
-    const id = (r.value as { process: { harnessId: string } }).process.harnessId;
-    return eventually(`${name}'s context`, async () => JSON.parse(await readFile(join(fake.home, 'jobs', `${id}.context.json`), 'utf8')) as Context);
-  };
-
-  const first = await launch('cc-1');
-  assert.deepEqual(first.instructions.map((i) => i.file), ['AGENTS.md']);
-  assert.equal(first.instructions[0]?.text.trim(), block);
-  // each hook event runs the project's hook and the one the launch injected (naming the session and the hub)
-  for (const [hookEvent, event] of Object.entries(HOOK_EVENTS)) {
-    const commands = first.hooks[hookEvent] ?? [];
-    assert.equal(commands.length, 2, hookEvent);
-    assert.match(commands[0] ?? '', new RegExp(`cland hook ${event} # managed by cland`));
-    assert.match(commands[1] ?? '', new RegExp(`'hook' '${event}' '--session' 'cc-1'`));
-  }
-
-  // a CLAUDE.md appears: init adds the import, and the next session reads AGENTS.md through it
-  await writeFile(join(root, 'CLAUDE.md'), '# ours\n');
-  await run(root, 'init');
-  const second = await launch('cc-2');
-  assert.deepEqual(second.instructions.map((i) => i.file), ['CLAUDE.md', 'AGENTS.md']);
-  assert.equal(second.instructions[1]?.text.trim(), block);
-});
-
-test('init waits for an overlapping hub database writer', async t => {
-  const root = await tempProject(t, 'cland-init-writer-');
-  await gitRepo(root);
-  await run(root, 'init');
-  const writer = new DatabaseSync(join(root, '.cland', 'hub.db'));
-  writer.exec('begin immediate');
-  // Keep the writer through CLI startup, then let init finish against the same store.
-  const release = setTimeout(() => writer.exec('commit'), 2000);
-  try {
-    await run(root, 'init');
-  } finally {
-    clearTimeout(release);
-    writer.close();
-  }
-});
-
-// ------------------------------------------------------------------ the manifest, symlinks and ownership (review of #39)
 
 test('a manifest that is not cland\'s, malformed, or names a path outside its skill is reported, and update deletes nothing', async (t) => {
   const root = await tempProject(t, 'cland-update-manifest-');
@@ -589,41 +437,6 @@ test('provisioning never writes through a symlink: a managed file, AGENTS.md or 
   assert.deepEqual(changed(was, await tree(outside)), [], 'nothing outside the projects changed');
 });
 
-test('a parent folder replaced by a symlink between the check and the write: the write is refused, nothing lands outside', async (t) => {
-  const outside = await tempProject(t, 'cland-outside-');
-  await mkdir(join(outside, 'dir'));
-  await writeFile(join(outside, 'dir', 'keep'), 'external\n');
-  const was = await tree(outside);
-  const root = await tempProject(t, 'cland-link-race-');
-  await mkdir(join(root, '.claude'));
-
-  // the write of .claude/settings.json holds still after its checks, before its temporary file exists; meanwhile the
-  // folder is swapped for a link to a folder outside
-  const child = spawn(process.execPath, [CLI_ENTRY, 'init', '--json'], {
-    cwd: root,
-    env: { ...process.env, CLAND_TEST_INIT_WRITE_PAUSE_MS: '1500', CLAND_TEST_INIT_WRITE_PAUSE_PATH: join('.claude', 'settings.json') },
-  });
-  let stdout = '';
-  let stderr = '';
-  child.stdout.on('data', (c: Buffer) => (stdout += String(c)));
-  const paused = new Promise<void>((resolve) =>
-    child.stderr.on('data', (c: Buffer) => {
-      stderr += String(c);
-      if (stderr.includes('test pause before writing')) resolve();
-    }),
-  );
-  const exited = new Promise<number | null>((resolve) => child.on('close', resolve));
-  await paused;
-  await rename(join(root, '.claude'), join(root, '.claude-moved'));
-  await symlink(join(outside, 'dir'), join(root, '.claude'));
-  assert.equal(await exited, 0, stderr);
-
-  const c = (JSON.parse(stdout) as { changes: Change[] }).changes.find((x) => x.path === '.claude/settings.json');
-  assert.equal(c?.action, 'kept', JSON.stringify(c));
-  assert.match(c?.note ?? '', /^symlink: \.claude /);
-  assert.deepEqual(changed(was, await tree(outside)), [], 'nothing outside the project changed');
-});
-
 test('a file of the human\'s inside a managed skill is never adopted: a later release shipping that path reports a conflict and keeps it', async (t) => {
   const root = await tempProject(t, 'cland-update-conflict-');
   const v1 = await tempProject(t, 'cland-skills-v1-');
@@ -655,20 +468,6 @@ test('a file of the human\'s inside a managed skill is never adopted: a later re
 });
 
 
-test('tracker config accepts peer levels and rejects malformed, duplicate and colliding kind names', () => {
-  for (const levels of [['release', 'epic'], [['release', 'category'], 'epic']]) {
-    assert.deepEqual(parseConfig(`[tracker]\nlevels = ${JSON.stringify(levels)}`, 'scratch').tracker.levels, levels);
-    const ladder = new Ladder(levels);
-    assert.equal(ladder.top, 'release');
-    assert.deepEqual(ladder.flat, ['release', 'epic']);
-  }
-  for (const levels of [['release', ['category', 'release']], [['release', 'task']], [['release', 'question']], [['release', 'spec']], [['release', 'map']], [[]], [1], [[['release']]], ['Release']]) {
-    assert.throws(() => configuredLevels(levels), /levels/);
-  }
-  assert.throws(() => configuredLevels([['release', 'roadmap'], 'epic']), /release and roadmap both use R/);
-  assert.throws(() => configuredLevels(['release', ['epic', 'effort']]), /epic and effort both use E/);
-});
-
 test('init and update merge async sub-agent hooks while keeping user hooks', async t => {
   const root = await tempProject(t);
   await gitRepo(root);
@@ -686,4 +485,33 @@ test('init and update merge async sub-agent hooks while keeping user hooks', asy
       assert.ok(added?.command.includes(`cland hook ${signal} # managed by cland`));
     }
   }
+});
+
+test('a parent folder replaced by a symlink between the check and the write: the write is refused, nothing lands outside', async (t) => {
+  const outside = await tempProject(t, 'cland-outside-');
+  await mkdir(join(outside, 'dir'));
+  await writeFile(join(outside, 'dir', 'keep'), 'external\n');
+  const was = await tree(outside);
+  const root = await tempProject(t, 'cland-link-race-');
+  await mkdir(join(root, '.claude'));
+
+  const nativeOpen = fs.openSync;
+  let swapped = false;
+  const mock = t.mock.method(fs, 'openSync', (...args: Parameters<typeof fs.openSync>) => {
+    if (!swapped && String(args[0]).startsWith(join(root, '.claude', '.')) && String(args[0]).endsWith('.cland-tmp')) {
+      swapped = true;
+      fs.renameSync(join(root, '.claude'), join(root, '.claude-moved'));
+      fs.symlinkSync(join(outside, 'dir'), join(root, '.claude'));
+    }
+    return nativeOpen(...args);
+  });
+  syncBuiltinESMExports();
+  let changes: Awaited<ReturnType<typeof run>>;
+  try { changes = await run(root, 'init'); }
+  finally { mock.mock.restore(); syncBuiltinESMExports(); }
+  assert.ok(swapped, 'the parent is replaced after validation, before the temporary write');
+  const c = changes.find((x) => x.path === '.claude/settings.json');
+  assert.equal(c?.action, 'kept', JSON.stringify(c));
+  assert.match(c?.note ?? '', /^symlink: \.claude /);
+  assert.deepEqual(changed(was, await tree(outside)), [], 'nothing outside the project changed');
 });

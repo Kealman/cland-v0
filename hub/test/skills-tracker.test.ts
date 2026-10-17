@@ -1,18 +1,18 @@
-// The skills on the own tracker (#37): the `docs/agents/issue-tracker.md` template cland projects get
-// (`skills/templates/docs/agents/`) prescribes `cland task` command sequences for what the skills do. These
-// tests run those sequences — `/to-tickets`, `/wayfinder`, `/triage` — as their own processes against a real
-// hub in a temporary project, the frontier query with the very jq program the template prints, and
-// assert on the item files and `task list --json`. No LLM runs; the template's text is the contract.
+// T2: template commands use the production runTask argv parser and real hub frames in-process.
+// The jq frontier query remains an executable contract. Parent variants share one delivery scenario.
+// One real CLI proves --body-file - reads unchanged stdin bytes.
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
 import { readdir, readFile, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse as parseYaml } from 'yaml';
 import { projectHub, tempProject, type CliResult } from './harness.ts';
 
-const CLI_ENTRY = fileURLToPath(new URL('../bin/cland.ts', import.meta.url));
+import { runTask } from '../src/cli/task.ts';
+import { ownProcess, onCleanup } from './process-cleanup.ts';
+import { FakeClock } from './fake-clock.ts';
 const TEMPLATE = fileURLToPath(new URL('../../skills/templates/docs/agents/issue-tracker.md', import.meta.url));
 
 test('tracker and vendored skills defer category filing to the Categories contract', async () => {
@@ -49,23 +49,14 @@ test('ticket and plan skills require size, Summary and landed rework links', asy
 const hasJq = spawnSync('jq', ['--version']).status === 0;
 
 /** `cland <args>` in `cwd` with `input` on stdin (for `--body-file -`), with no `CLAND_*` variable from the test's environment. */
-function cland(cwd: string, input: string, ...args: string[]): Promise<CliResult> {
-  const env: Record<string, string> = {};
-  for (const [k, v] of Object.entries(process.env)) if (v !== undefined && !k.startsWith('CLAND_')) env[k] = v;
-  return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, [CLI_ENTRY, ...args], { cwd, env, stdio: ['pipe', 'pipe', 'pipe'] });
-    let stdout = '';
-    let stderr = '';
-    child.stdout.on('data', (c: Buffer) => (stdout += String(c)));
-    child.stderr.on('data', (c: Buffer) => (stderr += String(c)));
-    const timer = setTimeout(() => child.kill('SIGKILL'), 30_000);
-    child.on('error', reject);
-    child.on('close', (code) => {
-      clearTimeout(timer);
-      resolve({ code, stdout, stderr });
-    });
-    child.stdin.end(input);
-  });
+async function cland(cwd: string, input: string, ...args: string[]): Promise<CliResult> {
+  assert.equal(args.shift(), 'task');
+  args = args.map((arg, i) => args[i - 1] === '--body-file' && arg !== '-' ? resolve(cwd, arg) : arg);
+  let stdout = '';
+  let stderr = '';
+  const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('CLAND_')));
+  const code = await runTask(args, cwd, { out: text => { stdout += text; }, err: text => { stderr += text; }, stdin: () => input }, env);
+  return { code, stdout, stderr };
 }
 
 const ok = (r: CliResult): CliResult => {
@@ -103,7 +94,7 @@ async function itemFile(root: string, id: string): Promise<{ fm: Record<string, 
 
 async function project(t: TestContext): Promise<string> {
   const root = await tempProject(t, 'cland-skills-');
-  await projectHub(t, root);
+  await projectHub(t, root, {}, { clock: new FakeClock(), harnesses: 'fake' });
   return root;
 }
 
@@ -155,45 +146,59 @@ test('every `cland task` command the template names parses and reaches its hub o
 
 // ------------------------------------------------------------------ /to-spec and /to-tickets
 
-for (const parentKind of ['epic', 'release', 'category', null]) {
-  test(`to-spec and to-tickets: source spec stays a leaf; tickets use ${parentKind ?? 'Ideas for an unscheduled source'} and blocking edges`, async (t) => {
-    const root = await project(t);
-    const parent = parentKind ? await create(root, ['Login delivery', '--kind', parentKind], '## Goal\n\nMagic links.\n') : null;
-    const parentArgs = parent ? ['--parent', parent] : [];
+test('to-spec and to-tickets keep the source spec a leaf while wiring ticket blocking edges', async (t) => {
+  const root = await project(t);
+  const parent = await create(root, ['Login delivery', '--kind', 'epic'], '## Goal\n\nMagic links.\n');
+  const parentArgs = parent ? ['--parent', parent] : [];
+  const ticketParent = parent ?? await create(root, ['Ideas', '--kind', 'category']);
+  const ticketArgs = ['--parent', ticketParent];
+  // to-spec: publish the spec under the planned container, or unscheduled.
+  const spec = await create(root, ['Login with a magic link', '--kind', 'spec', ...parentArgs, '--label', 'ready-for-agent'], '## Problem Statement\n\nUsers forget passwords.\n');
+  const specBefore = (await itemFile(root, spec)).text;
+  const source = `## Parent\n\n${spec}: Login with a magic link\n\n`;
+  // to-tickets: the source spec is context in the body. Native parent edges point to its container.
+  const schema = await create(root, ['--size', 'M', 'Store one-time login tokens', '--kind', 'task', ...ticketArgs, '--label', 'ready-for-agent'], source + '## What to build\n\nTokens.\n');
+  const send = await create(root, ['--size', 'M', 'Send the magic link by email', '--kind', 'task', ...ticketArgs, '--blocked-by', schema, '--label', 'ready-for-agent'], source + '## What to build\n\nThe email.\n');
+  const land = await create(root, ['--size', 'M', 'Log in from the link', '--kind', 'task', ...ticketArgs, '--blocked-by', schema, '--blocked-by', send, '--label', 'ready-for-agent'], source + '## What to build\n\nThe landing.\n');
+
+  const specFile = await itemFile(root, spec);
+  assert.equal(specFile.fm.kind, 'spec');
+  assert.deepEqual(specFile.fm.labels, ['ready-for-agent']);
+  assert.equal(specFile.fm.parent, parent);
+  assert.match(specFile.text, /## Problem Statement\n\nUsers forget passwords\./);
+  const landFile = await itemFile(root, land);
+  assert.equal(landFile.fm.parent, ticketParent);
+  assert.deepEqual(landFile.fm.blocked_by, [schema, send]);
+  assert.deepEqual((await itemFile(root, send)).fm.blocked_by, [schema]);
+  assert.deepEqual((await itemFile(root, schema)).fm.blocked_by, []);
+  for (const id of [schema, send, land]) assert.equal((await view(root, id)).body.split('\n\n')[1], `${spec}: Login with a magic link`);
+
+  const listed = await list(root);
+  assert.deepEqual(listed.filter(i => i.parent === spec), [], 'a spec has no native children');
+  assert.deepEqual(
+    listed.filter(i => [schema, send, land].includes(i.id)).map(i => [i.parent, i.blocked_by]),
+    [[ticketParent, []], [ticketParent, [schema]], [ticketParent, [schema, send]]],
+  );
+  assert.deepEqual((await list(root, '--state', 'open', '--label', 'ready-for-agent')).map(i => i.id), [spec, schema, send, land]);
+  assert.equal((await view(root, spec)).state, 'open');
+  assert.equal((await itemFile(root, spec)).text, specBefore, 'to-tickets never modifies its source spec');
+});
+
+test('ticket parent resolution preserves each source container or uses Ideas for an unscheduled spec', async t => {
+  const root = await project(t);
+  for (const kind of ['epic', 'release', 'category', null]) {
+    const parent = kind ? await create(root, ['Delivery', '--kind', kind]) : null;
+    const spec = await create(root, ['Source', '--kind', 'spec', '--label', 'ready-for-agent', ...(parent ? ['--parent', parent] : [])], '## Problem Statement\n\nUsers forget passwords.\n');
+    const before = (await itemFile(root, spec)).text;
     const ticketParent = parent ?? await create(root, ['Ideas', '--kind', 'category']);
-    const ticketArgs = ['--parent', ticketParent];
-    // to-spec: publish the spec under the planned container, or unscheduled.
-    const spec = await create(root, ['Login with a magic link', '--kind', 'spec', ...parentArgs, '--label', 'ready-for-agent'], '## Problem Statement\n\nUsers forget passwords.\n');
-    const specBefore = (await itemFile(root, spec)).text;
-    const source = `## Parent\n\n${spec}: Login with a magic link\n\n`;
-    // to-tickets: the source spec is context in the body. Native parent edges point to its container.
-    const schema = await create(root, ['--size', 'M', 'Store one-time login tokens', '--kind', 'task', ...ticketArgs, '--label', 'ready-for-agent'], source + '## What to build\n\nTokens.\n');
-    const send = await create(root, ['--size', 'M', 'Send the magic link by email', '--kind', 'task', ...ticketArgs, '--blocked-by', schema, '--label', 'ready-for-agent'], source + '## What to build\n\nThe email.\n');
-    const land = await create(root, ['--size', 'M', 'Log in from the link', '--kind', 'task', ...ticketArgs, '--blocked-by', schema, '--blocked-by', send, '--label', 'ready-for-agent'], source + '## What to build\n\nThe landing.\n');
-
-    const specFile = await itemFile(root, spec);
-    assert.equal(specFile.fm.kind, 'spec');
-    assert.deepEqual(specFile.fm.labels, ['ready-for-agent']);
-    assert.equal(specFile.fm.parent, parent);
-    assert.match(specFile.text, /## Problem Statement\n\nUsers forget passwords\./);
-    const landFile = await itemFile(root, land);
-    assert.equal(landFile.fm.parent, ticketParent);
-    assert.deepEqual(landFile.fm.blocked_by, [schema, send]);
-    assert.deepEqual((await itemFile(root, send)).fm.blocked_by, [schema]);
-    assert.deepEqual((await itemFile(root, schema)).fm.blocked_by, []);
-    for (const id of [schema, send, land]) assert.equal((await view(root, id)).body.split('\n\n')[1], `${spec}: Login with a magic link`);
-
-    const listed = await list(root);
-    assert.deepEqual(listed.filter(i => i.parent === spec), [], 'a spec has no native children');
-    assert.deepEqual(
-      listed.filter(i => [schema, send, land].includes(i.id)).map(i => [i.parent, i.blocked_by]),
-      [[ticketParent, []], [ticketParent, [schema]], [ticketParent, [schema, send]]],
-    );
-    assert.deepEqual((await list(root, '--state', 'open', '--label', 'ready-for-agent')).map(i => i.id), [spec, schema, send, land]);
+    const task = await create(root, ['Ticket', '--size', 'M', '--parent', ticketParent], `## Parent\n\n${spec}: Source\n\n`);
+    assert.equal((await itemFile(root, spec)).fm.parent, parent, kind ?? 'unscheduled');
+    assert.equal((await itemFile(root, task)).fm.parent, ticketParent);
+    assert.deepEqual((await list(root)).filter(item => item.parent === spec), []);
     assert.equal((await view(root, spec)).state, 'open');
-    assert.equal((await itemFile(root, spec)).text, specBefore, 'to-tickets never modifies its source spec');
-  });
-}
+    assert.equal((await itemFile(root, spec)).text, before);
+  }
+});
 
 // ------------------------------------------------------------------ /wayfinder
 
@@ -301,4 +306,38 @@ test('triage: the attention buckets through `task list`, the roles applied throu
   assert.deepEqual((await list(root, '--state', 'open', '--label', 'ready-for-agent')).map((i) => i.id), [evaluating]);
   assert.deepEqual((await list(root, '--state', 'open', '--label', 'needs-triage')).map((i) => i.id), [fresh, waiting]);
   assert.deepEqual((await list(root, '--state', 'closed', '--label', 'wontfix')).map((i) => i.id), [rejected]);
+});
+
+
+test('runTask uses its supplied environment for socket attribution', async t => {
+  const root = await project(t);
+  const saved = process.env.CLAND_SESSION_NAME;
+  process.env.CLAND_SESSION_NAME = 'unrelated-shell';
+  try {
+    // The explicit fixture env is a human shell. A socket fallback to process.env
+    // would instead act as the unknown session and refuse task.create.
+    const id = await create(root, ['Environment boundary', '--kind', 'spec']);
+    assert.equal((await view(root, id)).title, 'Environment boundary');
+  } finally {
+    if (saved === undefined) delete process.env.CLAND_SESSION_NAME;
+    else process.env.CLAND_SESSION_NAME = saved;
+  }
+});
+
+test('task CLI reads --body-file - from real stdin without changing its UTF-8 body', async t => {
+  const root = await project(t);
+  const input = '## Summary\n\nπ, quotes "here", and literal $HOME.\nA second line.';
+  const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('CLAND_')));
+  const child = spawn(process.execPath, [fileURLToPath(new URL('../bin/cland.ts', import.meta.url)), 'task', 'create', 'Stdin spec', '--kind', 'spec', '--body-file', '-', '--json'], { cwd: root, env, timeout: 10_000, signal: t.signal, stdio: ['pipe', 'pipe', 'pipe'] });
+  let stdout = '';
+  let stderr = '';
+  child.stdout.on('data', chunk => { stdout += String(chunk); });
+  child.stderr.on('data', chunk => { stderr += String(chunk); });
+  const exited = new Promise<number | null>((resolve, reject) => { child.once('error', reject); child.once('close', resolve); });
+  const closed = new Promise<void>(resolve => child.once('close', () => resolve()));
+  const stop = ownProcess(t, child.pid);
+  onCleanup(t, async () => { await stop(); await closed; });
+  child.stdin.end(input);
+  assert.equal(await exited, 0, stderr);
+  assert.equal((JSON.parse(stdout) as { item: View }).item.body, input);
 });
