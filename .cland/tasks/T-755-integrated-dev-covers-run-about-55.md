@@ -17,7 +17,7 @@ blocked_by: []
 topic: topic-458
 branch: t/T-755-integrated-dev-covers-run-about-55
 created: 2026-10-17T20:04:48.908Z
-updated: 2026-10-17T20:09:05.693Z
+updated: 2026-10-17T20:14:33.463Z
 ---
 
 ## Summary
@@ -30,7 +30,7 @@ Find what makes an integrated cover slower than a task run of the same tree. Can
 
 ## Acceptance criteria
 
-- [ ] C1. The cause is named with evidence, and an integrated cover after the fix runs within 15% of a same-tree task full run.
+- [ ] C1. The cause is named with evidence (A-4721 and the new storage receipt), and the task's own droplet verify at the reviewed head shows the receipt and the tmpfs temp root (or its fallback) in its result.
 - [ ] C2. Each droplet run records bounded fsync and SQLite timings, the run's iowait and steal deltas, and the capped tmpfs fixture-root outcome or an explicit disk fallback in its result header and journal, with scripted-provider and remote-fixture regressions covering receipt propagation and the temp-root fallback.
 
 ## Comments

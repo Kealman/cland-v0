@@ -1,0 +1,33 @@
+---
+id: T-756
+kind: task
+title: "Post-merge check: an integrated cover after T-755 runs within 15% of a same-tree task full run"
+state: open
+status: backlog
+size: XS
+labels:
+  - v0.1.4
+  - verification
+  - hub
+  - ready-for-agent
+assignee: null
+parent: E-482
+blocked_by:
+  - T-755
+topic: null
+branch: null
+created: 2026-10-17T20:14:33.860Z
+updated: 2026-10-17T20:14:33.860Z
+---
+
+## Summary
+
+T-755 adds a storage health receipt and moves droplet test temp roots onto tmpfs, after two integrated covers ran about 55% slower than task runs because of disk-backed SQLite and filesystem latency (A-4721). This check confirms the effect on dev once T-755 has merged.
+
+## What to build
+
+No code. The Coordinator runs the first integrated cover after T-755 merges, then compares its suite duration and the disk-bound files (store migration, inbox-workload) with a same-tree task full run, citing both storage receipts.
+
+## Acceptance criteria
+
+- [ ] C1. The first integrated cover after T-755 runs within 15% of a same-tree task full run, or its storage receipt explains the gap, recorded here with both run ids.
