@@ -515,8 +515,13 @@ See [the runner and process-fixture notes](../../hub/README.md#tests) when addin
 
 Hook bridges retry missing or unreachable hubs for 60 seconds, including a silent
 handshake. Their expiry stops the mod's restart loop too. The real-hub lifecycle
-test intentionally waits through that production grace and has a measured duration
-allowance. Each phase's existing discovery sweep reports bridge counts before and
+test uses `CLAND_TEST_BRIDGE_GRACE_MS=2000`; a T1 test pins the production default
+to 60 000 ms and the mod's expiry decision has an in-process no-retry proof.
+`CLAND_TEST_SMOKE_BUDGET_MS` shortens readiness only for planted startup hangs.
+The thread differential oracle uses 2 seeds × 12 renders on the merge path and
+4 × 25 with `CLAND_TEST_SOAK=1`. The shipped QA walk, orphan performance cases,
+and hub harness self-tests are T4; any `hub/test` helper diff retains the full
+hub selection, including those self-tests. Each phase's existing discovery sweep reports bridge counts before and
 after cleanup and fails if a phase candidate survives, preserving ambiguous processes.
 For old orphans use `cland doctor` to inspect and `cland doctor --fix` to sweep only
 the calling user's verified bridges whose explicit hub file is missing. An existing

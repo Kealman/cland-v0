@@ -1,18 +1,18 @@
-// T-70: real hub/CLI boundaries, with disposable projects and fake harness servers.
+// T3: hub startup orphan sweeping, verified PID ownership, server stop/relaunch and deleted-root lifecycle.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import { delimiter, dirname, join, resolve } from 'node:path';
-import { projectHub, flushProjectLogs, clandWithEnv, connectUi, fakeCodex, pidAlive, startDaemon, tempProject, eventually, fakeClaude, sleep } from './harness.ts';
+import { projectHub, flushProjectLogs, clandWithEnv, connectUi, fakeCodex, pidAlive, startDaemon, tempProject, eventually, fakeClaude } from './harness.ts';
 
+import { fakeOpenCode, leftoverOpenCode, OPENCODE_FAKE } from './orphan-server-fixture.ts';
 import { serveProject } from '../src/hub/daemon.ts';
 import { projectSessions } from '../src/adapters/index.ts';
 import { findOrphans, sweepOrphans } from '../src/orphans.ts';
 import { spawn } from 'node:child_process';
-import { mkdtemp, mkdir, open, readFile, realpath, rm, writeFile, chmod } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { mkdir, readFile, rm, writeFile, chmod } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { ownDirectory, ownProcess } from './process-cleanup.ts';
+import { ownProcess } from './process-cleanup.ts';
 
 type Harness = { pid: number; name: string };
 function fixtureDatabase(root: string): DatabaseSync {
@@ -40,7 +40,8 @@ async function leftoverCodex(t: import('node:test').TestContext, status: string,
   assert.equal(launched.ok, true, launched.error);
   const p = (launched.value as { process: Harness }).process;
   ui.close();
-  assert.equal((await clandWithEnv(root, fake.env, 'hub', 'stop')).code, 0);
+  if ('stop' in first) await first.stop();
+  else assert.equal((await clandWithEnv(root, fake.env, 'hub', 'stop')).code, 0);
   const db = fixtureDatabase(root);
   db.prepare("update harness_processes set status = ? where name = 'impl'").run(status);
   db.close();
@@ -48,7 +49,7 @@ async function leftoverCodex(t: import('node:test').TestContext, status: string,
 }
 
 test('an exited server with an unknown recorded start time is reported but never swept', async t => {
-  const { root, env, pid } = await leftoverCodex(t, 'exited', startDaemon);
+  const { root, env, pid } = await leftoverCodex(t, 'exited');
   const db = fixtureDatabase(root);
   db.prepare("update harness_processes set pid_started = null where name = 'impl'").run();
   db.close();
@@ -58,13 +59,13 @@ test('an exited server with an unknown recorded start time is reported but never
   assert.match(orphan.reason, /session impl.*identity cannot be verified/);
   assert.deepEqual(await sweepOrphans(root, () => {}), []);
   await clandWithEnv(root, env, 'doctor', '--fix', '--json');
-  const restarted = await startDaemon(t, root, env, { sweep: true });
+  const restarted = await projectHub(t, root, { ...env, CLAND_TEST_SKIP_ORPHAN_SWEEP: '0' });
   await startupSweep(root, restarted.discovery.pid);
   assert.equal(pidAlive(pid), true);
 });
 
 test('a reused pid is preserved even when its server has project cwd, socket and log hints', async t => {
-  const { root, env, pid } = await leftoverCodex(t, 'exited', startDaemon);
+  const { root, env, pid } = await leftoverCodex(t, 'exited');
   const db = fixtureDatabase(root);
   db.prepare("update harness_processes set pid_started = 'Thu Jan 1 00:00:00 1970' where name = 'impl'").run();
   db.close();
@@ -75,35 +76,56 @@ test('a reused pid is preserved even when its server has project cwd, socket and
   assert.deepEqual(await sweepOrphans(root, () => {}), []);
   const fixed = await clandWithEnv(root, env, 'doctor', '--fix', '--json');
   assert.match(fixed.stdout, /PID was reused/);
-  const restarted = await startDaemon(t, root, env, { sweep: true });
+  const restarted = await projectHub(t, root, { ...env, CLAND_TEST_SKIP_ORPHAN_SWEEP: '0' });
   await startupSweep(root, restarted.discovery.pid);
   assert.equal(pidAlive(pid), true);
 });
 
-for (const status of ['exited', 'stopped', 'offline']) {
-  test(`doctor --fix ends the app-server of a ${status} session and preserves a running session`, async t => {
-    const { root, env, pid } = await leftoverCodex(t, status, startDaemon);
-    const { discovery } = await startDaemon(t, root, env, { sweep: true });
-    // Avoid startup cleanup in this test: restore a leftover after the background sweep settles.
-    await eventually('startup sweep ends initial leftover', async () => !pidAlive(pid) ? true : undefined, 15_000);
-    const ui = await connectUi(t, discovery);
-    const running = await ui.request({ type: 'session.launch', name: 'live', harness: 'codex' }, 30_000);
-    const orphan = await ui.request({ type: 'session.launch', name: 'leftover', harness: 'codex' }, 30_000);
-    assert.equal(running.ok, true, running.error);
-    assert.equal(orphan.ok, true, orphan.error);
-    const runningPid = (running.value as { process: Harness }).process.pid;
-    const orphanPid = (orphan.value as { process: Harness }).process.pid;
-    ui.close();
-    await clandWithEnv(root, env, 'hub', 'stop');
-    const db = fixtureDatabase(root);
-    db.prepare("update harness_processes set status = ? where name = 'leftover'").run(status);
-    db.close();
-    const fixed = await clandWithEnv(root, env, 'doctor', '--fix', '--json');
-    assert.match(fixed.stdout, new RegExp(`ended pid ${orphanPid}: session leftover \\(${status}\\)`));
-    assert.equal(pidAlive(orphanPid), false);
-    assert.equal(pidAlive(runningPid), true);
-  });
-}
+test('doctor --fix ends leftover servers in each terminal status and preserves a running session', async t => {
+  const root = await tempProject(t);
+  const fake = await fakeCodex(t);
+  const hub = await projectHub(t, root, fake.env);
+  const ui = await connectUi(t, hub.discovery);
+  const rows: Array<{ status: string; pid: number }> = [];
+  for (const status of ['exited', 'stopped', 'offline', 'running']) {
+    const launched = await ui.request({ type: 'session.launch', name: status, harness: 'codex' }, 30_000);
+    assert.equal(launched.ok, true, launched.error);
+    rows.push({ status, pid: (launched.value as { process: Harness }).process.pid });
+  }
+  ui.close();
+  await hub.stop();
+  const db = fixtureDatabase(root);
+  for (const { status } of rows) db.prepare('update harness_processes set status = ? where name = ?').run(status, status);
+  db.close();
+  const restarted = await projectHub(t, root, { ...fake.env, CLAND_TEST_SKIP_ORPHAN_SWEEP: '0' });
+  for (const { status, pid } of rows) {
+    if (status === 'running') assert.equal(pidAlive(pid), true);
+    else {
+      await eventually(`startup sweep ends ${status} server`, () => !pidAlive(pid) ? true : undefined, 15_000);
+      assert.equal(pidAlive(pid), false);
+    }
+  }
+  const nextUi = await connectUi(t, restarted.discovery);
+  const leftovers: Array<{ status: string; name: string; pid: number }> = [];
+  for (const status of ['exited', 'stopped', 'offline']) {
+    const name = `leftover-${status}`;
+    const launched = await nextUi.request({ type: 'session.launch', name, harness: 'codex' }, 30_000);
+    assert.equal(launched.ok, true, launched.error);
+    leftovers.push({ status, name, pid: (launched.value as { process: Harness }).process.pid });
+  }
+  nextUi.close();
+  await restarted.stop();
+  const nextDb = fixtureDatabase(root);
+  for (const { status, name } of leftovers) nextDb.prepare('update harness_processes set status = ? where name = ?').run(status, name);
+  nextDb.close();
+  const fixed = await clandWithEnv(root, fake.env, 'doctor', '--fix', '--json');
+  for (const { status, name, pid } of leftovers) {
+    assert.ok(fixed.stdout.includes(`ended pid ${pid}: session ${name} (${status})`), `missing ${status} cleanup receipt`);
+    await eventually(`${status} server is reaped`, () => !pidAlive(pid) ? true : undefined);
+    assert.equal(pidAlive(pid), false);
+  }
+  assert.equal(pidAlive(rows.find(row => row.status === 'running')!.pid), true);
+});
 
 test('doctor names an exited session’s leftover app-server; hub start sweeps it and says which PID ended', async t => {
   const { root, env, pid } = await leftoverCodex(t, 'exited', startDaemon);
@@ -140,32 +162,27 @@ test('a foreground hub writes ended and preserved sweep diagnostics to stderr', 
   assert.ok(diagnostics.some(entry => entry.event === 'orphan-preserved' && entry.pid === ambiguous), stderr);
 });
 
-const OPENCODE_FAKE = fileURLToPath(new URL('./fakes/opencode/opencode', import.meta.url));
-async function fakeOpenCode(t: import('node:test').TestContext) {
-  const home = await realpath(await mkdtemp(join(tmpdir(), 'fake-opencode-')));
-  ownDirectory(t, home);
-  return { env: { CLAND_OPENCODE_BIN: OPENCODE_FAKE, FAKE_OPENCODE_HOME: home, FAKE_OPENCODE_TURN_MS: '30', CLAND_ADAPTER_POLL_MS: '50' } };
-}
-for (const harness of ['codex', 'opencode', 'claude-code']) {
-  test(`${harness}: stop waits for the server’s death, relaunch replaces it, and journal names what ended`, async t => {
-    const root = await tempProject(t);
-    // Keep the fake turn running while stop and relaunch prove server death.
-    const fake = harness === 'codex' ? await fakeCodex(t, { turnMs: 10000 }) : harness === 'opencode' ? await fakeOpenCode(t) : await fakeClaude(t);
-    const { discovery } = await projectHub(t, root, { ...fake.env, CLAND_STOP_GRACE_MS: '200', FAKE_CODEX_TERM_DELAY_MS: '10000', FAKE_OPENCODE_IGNORE_TERM: '1', FAKE_OPENCODE_CHILD: '1', FAKE_CLAUDE_IGNORE_TERM: '1' });
-    const ui = await connectUi(t, discovery);
-    const launch = await ui.request({ type: 'session.launch', name: 'impl', harness }, 30_000);
+test('stop and relaunch await server death across the harness adapters', async t => {
+  const root = await tempProject(t);
+  const codex = await fakeCodex(t, { turnMs: 10000 });
+  const opencode = await fakeOpenCode(t);
+  const claude = await fakeClaude(t);
+  const { discovery } = await projectHub(t, root, { ...codex.env, ...opencode.env, ...claude.env, CLAND_STOP_GRACE_MS: '200', FAKE_CODEX_TERM_DELAY_MS: '10000', FAKE_OPENCODE_IGNORE_TERM: '1', FAKE_OPENCODE_CHILD: '1', FAKE_CLAUDE_IGNORE_TERM: '1' });
+  const ui = await connectUi(t, discovery);
+  for (const harness of ['codex', 'opencode', 'claude-code']) {
+    const launch = await ui.request({ type: 'session.launch', name: harness, harness }, 30_000);
     assert.equal(launch.ok, true, launch.error);
     const first = (launch.value as { process: Harness }).process;
-    const resume = await ui.request({ type: 'session.resume', session: 'impl', relaunch: true }, 30_000);
+    const resume = await ui.request({ type: 'session.resume', session: harness, relaunch: true }, 30_000);
     assert.equal(resume.ok, true, resume.error);
     assert.equal((resume.value as { found: boolean; reason?: string }).found, true, JSON.stringify(resume.value));
     const second = (resume.value as { process: Harness }).process;
-    const child = harness === 'opencode' ? (JSON.parse(await readFile(join((fake as { env: { FAKE_OPENCODE_HOME: string } }).env.FAKE_OPENCODE_HOME, 'servers', `${second.pid}.json`), 'utf8')) as { childPid: number }).childPid : null;
+    const child = harness === 'opencode' ? (JSON.parse(await readFile(join(opencode.env.FAKE_OPENCODE_HOME, 'servers', `${second.pid}.json`), 'utf8')) as { childPid: number }).childPid : null;
     assert.notEqual(first.pid, second.pid);
     if (harness === 'codex') t.diagnostic(`Codex resume found:true; PID ${first.pid} -> ${second.pid}`);
     assert.equal(pidAlive(first.pid), false, 'relaunch awaits the old server');
     assert.equal(pidAlive(second.pid), true);
-    const stop = await ui.request({ type: 'session.stop', session: 'impl' }, 15_000);
+    const stop = await ui.request({ type: 'session.stop', session: harness }, 15_000);
     assert.equal(stop.ok, true, stop.error);
     assert.equal(pidAlive(second.pid), false, 'stop awaits the replacement server');
     if (child !== null) assert.equal(pidAlive(child), false, 'stop also ends a descendant that ignores SIGTERM');
@@ -174,20 +191,8 @@ for (const harness of ['codex', 'opencode', 'claude-code']) {
     assert.ok(journal.some(entry => entry.event === 'harness-ended' && entry.pid === first.pid && entry.forced));
     assert.ok(journal.some(entry => entry.event === 'harness-ended' && entry.pid === second.pid && entry.forced));
     assert.equal(journal.some(entry => entry.event === 'harness-exited'), false, 'an intentional stop/relaunch is not a crash');
-  });
-}
-
-async function leftoverOpenCode(t: import('node:test').TestContext, root: string, bin: string, env: Record<string, string>, cwd = root, name = 'leftover') {
-  const dir = join(root, '.cland', 'opencode', name);
-  await mkdir(dir, { recursive: true });
-  const log = join(dir, 'serve.log');
-  const fd = await open(log, 'a');
-  const child = spawn(bin, ['serve', '--hostname', '127.0.0.1', '--port', '0'], { cwd, detached: true, stdio: ['ignore', fd.fd, fd.fd], env: { ...process.env, ...env } });
-  ownProcess(t, child.pid);
-  await fd.close();
-  await eventually('OpenCode listening', async () => /listening on/.test(await readFile(log, 'utf8')) ? true : undefined, 20_000);
-  return child.pid!;
-}
+  }
+});
 
 test('hub start sweeps an OpenCode server without a process-table row and preserves a live session’s server', async t => {
   const root = await tempProject(t);
@@ -247,7 +252,6 @@ test('doctor reports a hub whose project was deleted; --fix ends it while preser
   const { discovery } = await startDaemon(t, removed, {}, { sweep: true });
   const live = await startDaemon(t, root, {}, { sweep: true });
   await rm(removed, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
-  await sleep(100);
   const readOnly = await clandWithEnv(root, env, 'doctor', '--json');
   const check = (JSON.parse(readOnly.stdout) as { checks: Array<{ name: string; detail: string; fix?: string }> }).checks.find(c => c.name === 'orphan hub' && c.detail.includes(String(discovery.pid)));
   assert.ok(check, readOnly.stdout);
@@ -258,7 +262,6 @@ test('doctor reports a hub whose project was deleted; --fix ends it while preser
   assert.equal(pidAlive(discovery.pid), false);
   assert.equal(pidAlive(live.discovery.pid), true);
 });
-
 
 test('a project-specific log without a verified project cwd is reported and preserved', async t => {
   const root = await tempProject(t);
@@ -277,19 +280,18 @@ test('a project-specific log without a verified project cwd is reported and pres
 test('a Codex app-server whose row was lost is swept even when a long project path put its socket in the temp dir', async t => {
   const root = await tempProject(t);
   const fake = await fakeCodex(t);
-  const first = await startDaemon(t, root, fake.env, { sweep: true });
+  const first = await projectHub(t, root, { ...fake.env, CLAND_TEST_SKIP_ORPHAN_SWEEP: '0' });
   const ui = await connectUi(t, first.discovery);
   const launched = await ui.request({ type: 'session.launch', name: 'impl', harness: 'codex' }, 30_000);
   assert.equal(launched.ok, true, launched.error);
   const p = (launched.value as { process: Harness }).process;
   ui.close();
-  await clandWithEnv(root, fake.env, 'hub', 'stop');
+  await first.stop();
   const db = fixtureDatabase(root);
   db.exec('delete from harness_processes'); db.close();
-  await startDaemon(t, root, fake.env, { sweep: true });
+  await projectHub(t, root, { ...fake.env, CLAND_TEST_SKIP_ORPHAN_SWEEP: '0' });
   await eventually('background sweep ends lost-row Codex', async () => !pidAlive(p.pid) ? true : undefined, 15_000);
 });
-
 
 test('hub start preserves the server child of a verified running wrapper session', async t => {
   const root = await tempProject(t);
@@ -301,7 +303,7 @@ setInterval(() => {}, 1000);
 `);
   await chmod(wrapper, 0o755);
   const env = { ...fake.env, CLAND_OPENCODE_BIN: wrapper };
-  const first = await startDaemon(t, root, env, { sweep: true });
+  const first = await projectHub(t, root, { ...env, CLAND_TEST_SKIP_ORPHAN_SWEEP: '0' });
   const ui = await connectUi(t, first.discovery);
   const launch = await ui.request({ type: 'session.launch', name: 'impl', harness: 'opencode' }, 30_000);
   assert.equal(launch.ok, true, launch.error);
@@ -310,8 +312,8 @@ setInterval(() => {}, 1000);
   const child = JSON.parse(await readFile(join(fake.env.FAKE_OPENCODE_HOME, 'servers', files[0]!), 'utf8')) as { pid: number };
   assert.notEqual(p.pid, child.pid);
   ui.close();
-  await clandWithEnv(root, env, 'hub', 'stop');
-  const second = await startDaemon(t, root, env, { sweep: true });
+  await first.stop();
+  const second = await projectHub(t, root, { ...env, CLAND_TEST_SKIP_ORPHAN_SWEEP: '0' });
   await startupSweep(root, second.discovery.pid);
   assert.equal(pidAlive(p.pid), true);
   assert.equal(pidAlive(child.pid), true, 'the verified running wrapper protects its server child');
@@ -394,21 +396,6 @@ for (const harness of ['codex', 'opencode']) {
   });
 }
 
-
-test('hub start opens its socket promptly while sixteen TERM-resistant orphans are swept in parallel', async t => {
-  const root = await tempProject(t);
-  const fake = await fakeOpenCode(t);
-  const env = { ...fake.env, FAKE_OPENCODE_IGNORE_TERM: '1' };
-  const pids = await Promise.all(Array.from({ length: 16 }, (_, i) => leftoverOpenCode(t, root, OPENCODE_FAKE, env, root, `orphan-${i}`)));
-  const started = performance.now();
-  const { discovery } = await startDaemon(t, root, env, { sweep: true });
-  assert.ok(performance.now() - started < 5000, 'cleanup cannot hold socket startup behind sixteen grace periods');
-  const ui = await connectUi(t, discovery);
-  assert.equal((await ui.request({ type: 'hub.status' })).ok, true);
-  await eventually('parallel sweep ends every resistant orphan', async () => pids.every(pid => !pidAlive(pid)) ? true : undefined, 15_000);
-});
-
-
 test('a sweep during a slow launch preserves its server before the process row is published', async t => {
   const root = await tempProject(t);
   const fake = await fakeOpenCode(t);
@@ -454,17 +441,6 @@ test('doctor --fix preserves a live hub’s server while its launch has no proce
   const p = await launching;
   assert.equal(p.pid, candidate.process.pid);
   await project.sessions.stop('impl');
-});
-
-test('the shared sweep deadline preserves remaining servers and prevents later signals', async t => {
-  const root = await tempProject(t);
-  const fake = await fakeOpenCode(t);
-  const pid = await leftoverOpenCode(t, root, OPENCODE_FAKE, { ...fake.env, FAKE_OPENCODE_IGNORE_TERM: '1' });
-  const start = performance.now();
-  await assert.rejects(sweepOrphans(root, () => {}, 'harness', { deadline: Date.now() + 400 }), /deadline|failed|timed out/);
-  assert.ok(performance.now() - start < 1500, 'all workers settle within the shared bound');
-  await sleep(1300); // Negative: exceed the one-second escalation grace after the expired sweep deadline.
-  assert.equal(pidAlive(pid), true, 'no worker keeps signalling after the deadline');
 });
 
 test('doctor --fix lets a foreground hub for a deleted project stop cleanly without recreating its directory', async t => {

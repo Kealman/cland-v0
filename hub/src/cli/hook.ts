@@ -16,6 +16,7 @@
 import { createConnection, type Socket } from 'node:net';
 import { PROTOCOL_VERSION, parseFrame, type ClientHello } from '../protocol.ts';
 import { hubDiscovery, readDiscovery } from '../project.ts';
+import { bridgeGraceMs } from './hook-timing.ts';
 import { askHubFrame } from './socket-client.ts';
 
 export { HOOK_USAGE } from './usage.ts';
@@ -127,7 +128,7 @@ async function bridge(args: string[]): Promise<number> {
   const retryGrace = () => { unavailable ??= setTimeout(() => {
     process.stdout.write(`${JSON.stringify({ type: 'bridge-expired' })}\n`);
     stop();
-  }, 60_000); };
+  }, bridgeGraceMs(process.env)); };
   const connected = () => { clearTimeout(unavailable); unavailable = undefined; };
   retryGrace();
   process.stdout.on('error', stop);

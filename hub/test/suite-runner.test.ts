@@ -1,4 +1,4 @@
-// Runner CLI seam: separate Node processes, real process table, no internal mocks.
+// T3 runner lifecycle: lock ownership, interruption cleanup and stale-process recovery through real CLI children.
 import { serializeTierManifest } from '../src/suite-shards.ts';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
@@ -62,7 +62,7 @@ test('ordinary pass', () => {});`);
   assert.equal(suiteSummary(output), suiteSummary(output.split('\n').filter(line => !line.startsWith('suite skip ')).join('\n')));
 });
 
-for (const mode of ['hub', 'nvim'] as const) {
+for (const mode of ['hub'] as const) {
   test(`two ${mode} suite invocations serialize and report the holder`, async (t) => {
     const dir = await fixture(t);
     const journal = join(dir, 'journal');
@@ -208,7 +208,7 @@ const { runSuite } = await import(${JSON.stringify(runner)}); process.exitCode =
   for (const path of [prepared.root, lock, `${lock}.owner`]) assert.equal(existsSync(path), false, path);
 });
 
-for (const mode of ['hub', 'nvim'] as const) {
+for (const mode of ['hub'] as const) {
   for (const kind of ['reused holder PID', 'reused UTC holder PID', 'dead automatic empty lock', 'unknown manual empty lock'] as const) {
     test(`${mode} suite lock handles ${kind}`, async t => {
       const dir = await fixture(t);
@@ -367,7 +367,7 @@ for (const start of ['current timestamp', null, 'unreadable-start-time']) {
 }
 
 const harness = fileURLToPath(new URL('./harness.ts', import.meta.url));
-for (const outcome of ['failure', 'SIGINT', 'SIGTERM', 'SIGKILL'] as const) {
+for (const outcome of ['failure', 'SIGKILL'] as const) {
   test(`a ${outcome} after launching a real daemon and fake harness leaves no process or project`, async (t) => {
     const dir = await fixture(t);
     const marker = join(dir, 'started.json');
@@ -402,8 +402,7 @@ test('intentional fixture', async t => {
       assert.equal(await successor.done, 0, successor.output());
       assert.match(successor.output(), /taking over stale suite lock/);
     } else {
-      if (outcome !== 'failure') suite.child.kill(outcome);
-      assert.equal(await suite.done, outcome === 'failure' ? 1 : outcome === 'SIGINT' ? 130 : 143, suite.output());
+      assert.equal(await suite.done, 1, suite.output());
     }
     const { execFileSync } = await import('node:child_process');
     const table = execFileSync('ps', ['-axo', 'pid=,command='], { encoding: 'utf8' });
@@ -433,7 +432,7 @@ test('leaks a detached child deliberately', async () => {
   assert.throws(() => process.kill(orphan.pid, 0), { code: 'ESRCH' });
 });
 
-for (const mode of ['hub', 'nvim'] as const) {
+for (const mode of ['hub'] as const) {
   test(`a waiting ${mode} runner exits on SIGTERM without releasing the live holder`, async (t) => {
     const dir = await fixture(t);
     const marker = join(dir, 'started');

@@ -9,6 +9,7 @@ import { createConnection } from 'node:net';
 import { ownDirectory } from '../../hub/test/process-cleanup.ts';
 import { eventually, spawnSpoke, startDaemon, tempProject } from '../../hub/test/harness.ts';
 import { nvimOrSkip, startClient } from './harness.ts';
+import { threadSeedPlan } from './thread-seed-plan.ts';
 import { waitInitialSnapshots } from './readiness.ts';
 import type { Scenario } from './stub-hub.ts';
 
@@ -779,7 +780,9 @@ test('generated live appends, ask evictions and delivery changes equal a full re
   };
   const markKey = (m: Record<string, unknown>) => JSON.stringify(canonical(m));
   const normalise = (s: Snapshot) => ({ ...s, marks: s.marks.sort((a, b) => markKey(a).localeCompare(markKey(b))) });
-  for (let seed = 1; seed <= 4; seed++) {
+  const plan = threadSeedPlan(process.env.CLAND_TEST_SOAK === '1');
+  t.diagnostic(`thread oracle: ${plan.seeds.length} seeds x ${plan.renders} renders`);
+  for (const seed of plan.seeds) {
     const messages: Array<Record<string, unknown>> = [];
     let number = 0;
     for (let day = 8; day <= 10; day++) {
@@ -835,7 +838,7 @@ test('generated live appends, ask evictions and delivery changes equal a full re
       t:_build_folds(require('cland.layout').centre(),states)
     `);
     await compare(`seed ${seed}: initial history and trimming equal full render`);
-    for (let step = 0; step < 24; step++) {
+    for (let step = 0; step < plan.renders - 1; step++) {
       const day = 11 + Math.floor(step / 8);
       const phase = step % 8;
       const isAsk = phase === 1 || phase === 4 || phase === 6;

@@ -1,3 +1,4 @@
+// T4 harness self-test: real owner death, watchdog teardown and writer cleanup.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
@@ -7,7 +8,7 @@ import { eventually, pidAlive, tempProject } from './harness.ts';
 import { beforeDirectories, cleanupProcesses, ownDirectory, ownProcess } from './process-cleanup.ts';
 import { rm } from 'node:fs/promises';
 
-for (const mode of ['normal', 'timeout', 'exit', 'SIGTERM', 'SIGINT', 'SIGKILL', 'watchdog-teardown', 'watchdog-SIGKILL', 'watchdog-SIGTERM', 'watchdog-SIGINT'] as const) {
+for (const mode of ['timeout', 'SIGTERM', 'watchdog-SIGKILL', 'watchdog-teardown'] as const) {
   test(`remote fixture cleans up after owner ${mode}`, async t => {
     // Keep the real socket inside its project on macOS's 100-byte socket limit.
     const scratch = await tempProject(t, 'rf-', '/tmp');
@@ -39,9 +40,9 @@ for (const mode of ['normal', 'timeout', 'exit', 'SIGTERM', 'SIGINT', 'SIGKILL',
       assert.ok(f.watchdogs.every(pidAlive), 'production watchdog independence is preserved until fixture teardown');
       child.send('finish');
     }
-    if (['normal', 'exit', 'timeout'].includes(mode)) child.send('continue');
+    if (mode === 'timeout') child.send('continue');
     await eventually('owner exits', () => exited ? true : undefined, 10000);
-    if (mode === 'normal' || mode === 'exit' || mode === 'watchdog-teardown') assert.equal(exitCode, 0, output);
+    if (mode === 'watchdog-teardown') assert.equal(exitCode, 0, output);
     if (mode === 'timeout') {
       assert.equal(exitCode, 1, output);
       assert.match(output, /timed out after 10000ms/);

@@ -240,62 +240,50 @@ test('task load gate leaves known tests alone and integrated runs add no repetit
   assert.equal(await readFile(journal, 'utf8'), 'ran\nran\n');
 });
 
-for (const kind of ['static', 'runtime']) {
-  test(`a ${kind} prerequisite-skipped new test is reported as skipped, not load-gated`, async t => {
-    const { run, manifest, path, file } = await fixture(t);
-    await writeFile(file, kind === 'static'
-      ? `import test from 'node:test'; test('requires binary', {skip: 'fixture binary unavailable'}, () => {});`
-      : `import test from 'node:test'; test('requires binary', t => t.skip('fixture binary unavailable'));`);
-    await writeFile(path, JSON.stringify(manifest));
-    const result = await run(true);
-    assert.equal(result.code, 0, result.output);
-    assert.match(result.output, /load gate: hub\/test\/fixture.test.ts::requires binary skipped, not load-gated; 5\/5 skipped; reasons: \["fixture binary unavailable"\]/);
-    assert.doesNotMatch(result.output, /requires binary 5\/5 passed/);
+test('one load-gate fixture distinguishes all seven prerequisite receipt shapes', async t => {
+  const { run, manifest, path, file, cwd } = await fixture(t);
+  const journal = join(cwd, 'attempts');
+  // Positive-only run: rejection rows must not mask a bad suite exit for valid skips.
+  await writeFile(file, `import test from 'node:test';
+  test('static prerequisite', {skip: 'fixture binary unavailable'}, () => {});
+  test('runtime prerequisite', t => t.skip('fixture binary unavailable'));`);
+  await writeFile(path, JSON.stringify(manifest));
+  const positive = await run(true);
+  assert.equal(positive.code, 0, positive.output);
+  for (const name of ['static prerequisite', 'runtime prerequisite']) {
+    assert.ok(positive.output.includes(`load gate: hub/test/fixture.test.ts::${name} skipped, not load-gated; 5/5 skipped; reasons: ["fixture binary unavailable"]`), positive.output);
+    assert.ok(!positive.output.includes(`${name} 5/5 passed`), positive.output);
     const { suiteSummary } = await import('../src/hub/suites.ts');
-    assert.match(suiteSummary(result.output), /requires binary skipped, not load-gated/);
-  });
-}
-
-test('a skipped new test cannot satisfy the load gate with a green process exit', async t => {
-  const { run, manifest, path, file } = await fixture(t);
-  await writeFile(file, `import test from 'node:test'; test('not executed', {skip: true}, () => {});`);
+    assert.ok(suiteSummary(positive.output).includes(`${name} skipped, not load-gated`), positive.output);
+  }
+  await writeFile(file, `import test from 'node:test'; import assert from 'node:assert/strict'; import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+  test('static prerequisite', {skip: 'fixture binary unavailable'}, () => {});
+  test('runtime prerequisite', t => t.skip('fixture binary unavailable'));
+  test('boolean skip', {skip: true}, () => {});
+  test('whitespace skip', {skip: '  '}, () => {});
+  test('TODO', {todo: 'not implemented'}, () => {});
+  for (const outcome of ['pass', 'fail']) test('mixed ' + outcome, t => {
+    const journal = ${JSON.stringify(journal)} + outcome;
+    const attempt = existsSync(journal) ? Number(readFileSync(journal, 'utf8')) : 0;
+    writeFileSync(journal, String(attempt + 1));
+    if (attempt % 2 === 0) t.skip('fixture prerequisite absent');
+    else if (outcome === 'fail') assert.fail('fixture failure');
+  });`);
   await writeFile(path, JSON.stringify(manifest));
   const result = await run(true);
   assert.equal(result.code, 1, result.output);
-  assert.match(result.output, /✖ load gate: hub\/test\/fixture.test.ts::not executed 0\/5 passed/);
+  for (const name of ['static prerequisite', 'runtime prerequisite']) {
+    assert.ok(result.output.includes(`load gate: hub/test/fixture.test.ts::${name} skipped, not load-gated; 5/5 skipped; reasons: ["fixture binary unavailable"]`), result.output);
+    assert.ok(!result.output.includes(`${name} 5/5 passed`), result.output);
+    const { suiteSummary } = await import('../src/hub/suites.ts');
+    assert.ok(suiteSummary(result.output).includes(`${name} skipped, not load-gated`), result.output);
+  }
+  for (const name of ['boolean skip', 'whitespace skip', 'TODO', 'mixed pass', 'mixed fail']) {
+    assert.match(result.output, new RegExp(`✖ load gate: hub/test/fixture.test.ts::${name} [0-4]/5 passed`));
+    assert.ok(!result.output.includes(`${name} skipped, not load-gated`), result.output);
+  }
+  for (const outcome of ['pass', 'fail']) assert.equal(await readFile(journal + outcome, 'utf8'), '6', 'ordinary phase and all five gated repetitions ran');
 });
-
-for (const scenario of [
-  { name: 'a whitespace skip reason', options: { skip: '  ' } },
-  { name: 'a TODO', options: { todo: 'not implemented' } },
-]) {
-  test(`the load gate rejects ${scenario.name}`, async t => {
-    const { run, manifest, path, file } = await fixture(t);
-    await writeFile(file, `import test from 'node:test'; test('not executed', ${JSON.stringify(scenario.options)}, () => {});`);
-    await writeFile(path, JSON.stringify(manifest));
-    const result = await run(true);
-    assert.equal(result.code, 1, result.output);
-    assert.match(result.output, /✖ load gate: hub\/test\/fixture.test.ts::not executed 0\/5 passed/);
-    assert.doesNotMatch(result.output, /skipped, not load-gated/);
-  });
-}
-
-for (const outcome of ['pass', 'fail']) {
-  test(`the load gate rejects reasoned skips mixed with ${outcome} receipts`, async t => {
-    const { run, manifest, path, file, cwd } = await fixture(t);
-    const journal = join(cwd, 'attempts');
-    await writeFile(file, `import test from 'node:test'; import assert from 'node:assert/strict'; import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-const journal = ${JSON.stringify(journal)};
-test('mixed prerequisite', t => { const attempt = existsSync(journal) ? Number(readFileSync(journal, 'utf8')) : 0; writeFileSync(journal, String(attempt + 1));
-if (attempt % 2 === 0) t.skip('fixture prerequisite absent'); else if (${JSON.stringify(outcome)} === 'fail') assert.fail('fixture failure'); });`);
-    await writeFile(path, JSON.stringify(manifest));
-    const result = await run(true);
-    assert.equal(result.code, 1, result.output);
-    assert.match(result.output, /✖ load gate: hub\/test\/fixture.test.ts::mixed prerequisite [0-4]\/5 passed/);
-    assert.doesNotMatch(result.output, /skipped, not load-gated/);
-    assert.equal(await readFile(journal, 'utf8'), '6', 'ordinary phase and all five gated repetitions ran');
-  });
-}
 
 for (const signal of ['SIGTERM', 'SIGKILL'] as const) {
   test(`${signal} during a load repetition reaps it before removing the phase root`, { timeout: 10_000 }, async t => {

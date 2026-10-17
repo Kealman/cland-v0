@@ -222,6 +222,7 @@ async function runSession(id: string): Promise<number> {
   const logFile = join(JOBS, `${id}.log`);
   const log = (line: string) => appendFileSync(logFile, `${new Date().toISOString()} ${line}\n`);
   const env: Record<string, string> = { ...(process.env as Record<string, string>), ...(job.settings.env ?? {}) };
+  if (env.FAKE_CLAUDE_BRIDGE_GRACE_MS) env.CLAND_TEST_BRIDGE_GRACE_MS = env.FAKE_CLAUDE_BRIDGE_GRACE_MS;
   const file = join(SESSIONS, `${id}.json`);
   const state: SessionFile = { configDir: job.configDir, pid: process.pid, id, sessionId: job.sessionId, cwd: job.cwd, kind: 'background', startedAt: Date.now(), name: job.name, status: 'idle' };
   const setStatus = (status: SessionFile['status'], waitingFor?: string) => {

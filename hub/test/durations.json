@@ -3519,14 +3519,8 @@
       "legacy": true
     },
     "hub/test/durations-runner.test.ts::task load gate bounds eight new tests with parallel lanes and five sequential repetitions each": {
-      "seconds": 10.617612,
+      "seconds": 8.4,
       "reason": "Runs eight new identities through the real package runner and forty fresh repetition processes on two lanes, checking bounded concurrency and all receipts. Targeted macOS T-557 probe measured 5.701s at peak 1m load 3.12; optional slow acceptance probe is excluded from routine runs.",
-      "owner": "E-677",
-      "legacy": true
-    },
-    "hub/test/durations-runner.test.ts::task load gate catches a one-in-three flake and repeats a stable new name five times alongside the phase": {
-      "seconds": 3.217073,
-      "reason": "Runs the real package runner and ten fresh name-filtered Node processes alongside a held phase, proving stable 5/5 repetitions and deterministic flaky rejection. Linux c-8 task verify c96ff9f9 (A-3328), peak 1m load 12.19.",
       "owner": "E-677",
       "legacy": true
     },
@@ -3797,19 +3791,6 @@
       "owner": "E-677",
       "legacy": true
     },
-    "hub/test/hook-bridge.test.ts": {
-      "file": true,
-      "seconds": 64.157569,
-      "reason": "Real bridge lifecycle proof waits through the production 60-second reconnect grace.",
-      "owner": "E-677",
-      "legacy": true
-    },
-    "hub/test/hook-bridge.test.ts::a bridge exits after its real hub stops even while its parent and stdout remain alive": {
-      "seconds": 64.157569,
-      "reason": "Exercises the production 60-second reconnect grace against a real stopped hub; no shortened test timeout replaces the lifetime contract.",
-      "owner": "E-677",
-      "legacy": true
-    },
     "hub/test/inbox-workload.test.ts::archive startup batches hundreds of stops; item and stop bursts schedule one sweep per tick with thousands of retained items and messages": {
       "seconds": 27.216155,
       "reason": "Creates thousands of retained items/messages and hundreds of stops to prove bounded inbox batching through the live dispatch seam.",
@@ -3976,7 +3957,7 @@
     },
     "hub/test/orphan-servers.test.ts": {
       "file": true,
-      "seconds": 111.506427,
+      "seconds": 86.6,
       "reason": "File budget: Starts real wrappers and hub server children, including TERM-resistant orphans, to prove ownership-aware startup and doctor cleanup.",
       "owner": "E-677",
       "legacy": true
@@ -3987,14 +3968,8 @@
       "owner": "E-677",
       "legacy": true
     },
-    "hub/test/orphan-servers.test.ts::hub start opens its socket promptly while sixteen TERM-resistant orphans are swept in parallel": {
-      "seconds": 5.992128,
-      "reason": "Starts real wrappers and hub server children, including TERM-resistant orphans, to prove ownership-aware startup and doctor cleanup.",
-      "owner": "E-677",
-      "legacy": true
-    },
     "hub/test/orphan-servers.test.ts::hub start preserves the server child of a verified running wrapper session": {
-      "seconds": 9.702593,
+      "seconds": 8.6,
       "reason": "Starts real wrappers and hub server children, including TERM-resistant orphans, to prove ownership-aware startup and doctor cleanup.",
       "owner": "E-677",
       "legacy": true
@@ -4047,12 +4022,6 @@
       "owner": "E-677",
       "legacy": true
     },
-    "hub/test/project-hub.test.ts::two project hubs keep their adapter timing environments independent": {
-      "seconds": 5.525695,
-      "reason": "Launches two real fake-Claude harnesses in independently served project hubs and observes three additional fast polls while the slow instance retains its own schedule. Native process startup and independent polling make this a fixture integration proof; the serial targeted run under 28–30 one-minute load took 5.29 seconds.",
-      "owner": "E-677",
-      "legacy": true
-    },
     "hub/test/release-item.test.ts::a published item release retries its pinned build after tracker closure fails and refuses a different or missing item": {
       "seconds": 4.904127,
       "reason": "Publishes a fixture release and retries tracker failure using the pinned git build, proving changed/missing release items are refused.",
@@ -4102,63 +4071,14 @@
       "owner": "E-677",
       "legacy": true
     },
-    "hub/test/remote-fixture-lifecycle.test.ts": {
-      "file": true,
-      "seconds": 52.328758,
-      "reason": "File budget: ten owner-lifecycle modes each start a real remote fixture in a subprocess and observe hub, detached watchdog/reaper exit and directory removal across the boundary.",
-      "owner": "E-677",
-      "legacy": true
-    },
-    "hub/test/remote-fixture-lifecycle.test.ts::remote fixture cleans up after owner exit": {
-      "seconds": 3.145565,
-      "reason": "Starts a real remote fixture in a subprocess, then observes hub, detached watchdog/reaper exit and directory removal across the owner lifecycle boundary.",
-      "owner": "E-677",
-      "legacy": true
-    },
-    "hub/test/remote-fixture-lifecycle.test.ts::remote fixture cleans up after owner normal": {
-      "seconds": 3.389088,
-      "reason": "Starts a real remote fixture in a subprocess, then observes hub, detached watchdog/reaper exit and directory removal across the owner lifecycle boundary.",
-      "owner": "E-677",
-      "legacy": true
-    },
-    "hub/test/remote-fixture-lifecycle.test.ts::remote fixture cleans up after owner SIGINT": {
-      "seconds": 3.245636,
-      "reason": "Starts a real remote fixture in a subprocess, then observes hub, detached watchdog/reaper exit and directory removal across the owner lifecycle boundary.",
-      "owner": "E-677",
-      "legacy": true
-    },
-    "hub/test/remote-fixture-lifecycle.test.ts::remote fixture cleans up after owner SIGKILL": {
-      "seconds": 3.216941,
-      "reason": "Starts a real remote fixture in a subprocess, then observes hub, detached watchdog/reaper exit and directory removal across the owner lifecycle boundary.",
-      "owner": "E-677",
-      "legacy": true
-    },
-    "hub/test/remote-fixture-lifecycle.test.ts::remote fixture cleans up after owner SIGTERM": {
-      "seconds": 3.139103,
-      "reason": "Starts a real remote fixture in a subprocess, then observes hub, detached watchdog/reaper exit and directory removal across the owner lifecycle boundary.",
-      "owner": "E-677",
-      "legacy": true
-    },
     "hub/test/remote-fixture-lifecycle.test.ts::remote fixture cleans up after owner timeout": {
       "seconds": 11.135876,
       "reason": "Waits for an actual 10-second node:test timeout after starting a real subprocess fixture, then observes its teardown and guardian exit.",
       "owner": "E-677",
       "legacy": true
     },
-    "hub/test/remote-fixture-lifecycle.test.ts::remote fixture cleans up after owner watchdog-SIGINT": {
-      "seconds": 5.633087,
-      "reason": "Starts a real remote fixture in a subprocess, then observes hub, detached watchdog/reaper exit and directory removal across the owner lifecycle boundary.",
-      "owner": "E-677",
-      "legacy": true
-    },
     "hub/test/remote-fixture-lifecycle.test.ts::remote fixture cleans up after owner watchdog-SIGKILL": {
       "seconds": 5.176441,
-      "reason": "Starts a real remote fixture in a subprocess, then observes hub, detached watchdog/reaper exit and directory removal across the owner lifecycle boundary.",
-      "owner": "E-677",
-      "legacy": true
-    },
-    "hub/test/remote-fixture-lifecycle.test.ts::remote fixture cleans up after owner watchdog-SIGTERM": {
-      "seconds": 6.406999,
       "reason": "Starts a real remote fixture in a subprocess, then observes hub, detached watchdog/reaper exit and directory removal across the owner lifecycle boundary.",
       "owner": "E-677",
       "legacy": true
@@ -4371,18 +4291,6 @@
     "hub/test/stage-qa.test.ts::three review-only merges, one stage QA on dev, not-clear/retry, restart and separate epic demo": {
       "seconds": 11.444077,
       "reason": "Aggregates real stage merges and QA publication/restart races to prove closure only at the tested build and unchanged plan.",
-      "owner": "E-677",
-      "legacy": true
-    },
-    "hub/test/startup-smoke.test.ts::a planted listening startup hang fails the smoke within its bound and names the last log event": {
-      "seconds": 11.087885,
-      "reason": "Deliberately exhausts the real ten-second startup readiness deadline in a child test process, then confirms failure diagnostics and daemon teardown.",
-      "owner": "E-677",
-      "legacy": true
-    },
-    "hub/test/startup-smoke.test.ts::a pre-discovery startup hang stops its daemon before removing the fixture": {
-      "seconds": 11.435791,
-      "reason": "Holds the real detached daemon before discovery through the ten-second readiness deadline, then proves its PID exits before the fixture is removed.",
       "owner": "E-677",
       "legacy": true
     },
@@ -4641,7 +4549,7 @@
     },
     "hub/test/suite-runner.test.ts": {
       "file": true,
-      "seconds": 101.921043,
+      "seconds": 72.5,
       "reason": "File budget: Exercises actual process/lease crash recovery and serialized runner admission; ownership tests include the one-second stale grace and TERM escalation.",
       "owner": "E-677",
       "legacy": true
@@ -4865,7 +4773,7 @@
       "legacy": true
     },
     "nvim/test/thread.test.ts::generated live appends, ask evictions and delivery changes equal a full render": {
-      "seconds": 47.795502,
+      "seconds": 30.4,
       "reason": "Iterates generated live appends, ask evictions and delivery changes against a real Neovim buffer, comparing every incremental result to a complete render.",
       "owner": "E-677",
       "legacy": true
@@ -4942,6 +4850,34 @@
       "owner": "E-676",
       "added": "2026-10-17",
       "expires": "2026-10-24"
+    },
+    "hub/test/durations-runner.test.ts::one load-gate fixture distinguishes all seven prerequisite receipt shapes": {
+      "seconds": 10.0,
+      "owner": "E-677",
+      "added": "2026-10-17",
+      "expires": "2026-10-24",
+      "reason": "T-706 retains positive-only exit-zero skips plus seven real Node reporter receipt shapes in one fixture with two invocations. T-720 diagnostic retention adds failed-repetition formatting; post-merge Mac 5/5 peak is 7.957 s."
+    },
+    "hub/test/orphan-servers-perf.test.ts::hub start opens its socket promptly while sixteen TERM-resistant orphans are swept in parallel": {
+      "seconds": 7.1,
+      "owner": "E-677",
+      "added": "2026-10-17",
+      "expires": "2026-10-24",
+      "reason": "T-706 moves the existing sixteen-process startup and parallel teardown measurement to T4; real resistant-server teardown remains part of its duration."
+    },
+    "hub/test/orphan-servers.test.ts::doctor --fix ends leftover servers in each terminal status and preserves a running session": {
+      "seconds": 8.7,
+      "owner": "E-677",
+      "added": "2026-10-17",
+      "expires": "2026-10-24",
+      "reason": "T-706 retains startup sweeping plus doctor cleanup for three terminal states in one shared real-server lifecycle fixture."
+    },
+    "hub/test/orphan-servers.test.ts::stop and relaunch await server death across the harness adapters": {
+      "seconds": 10.7,
+      "owner": "E-677",
+      "added": "2026-10-17",
+      "expires": "2026-10-24",
+      "reason": "T-706 retains forced stop, relaunch, descendant death and journal assertions for all three real adapter processes in one fixture."
     }
   }
 }

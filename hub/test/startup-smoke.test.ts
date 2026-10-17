@@ -9,7 +9,7 @@ import { CLI_ENTRY, eventually, isolateVerification, pidAlive, readDiscovery, te
 import { beforeDirectories, ownProcess } from './process-cleanup.ts';
 
 const smokeName = 'hub startup serves status within 10 seconds, serves a tracker request and stops';
-const startupMs = 10_000;
+const startupMs = Number(process.env.CLAND_TEST_SMOKE_BUDGET_MS) || 10_000;
 
 test('a pre-discovery startup hang stops its daemon before removing the fixture', async t => {
   const root = await tempProject(t);
@@ -24,7 +24,7 @@ test('a pre-discovery startup hang stops its daemon before removing the fixture'
       await new Promise(() => {}); // Hold before importing the daemon or publishing discovery.
     }
   `);
-  const env: NodeJS.ProcessEnv = { ...process.env, TMPDIR: root, NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --import=${pathToFileURL(preload).href}` };
+  const env: NodeJS.ProcessEnv = { ...process.env, CLAND_TEST_SMOKE_BUDGET_MS: '2000', TMPDIR: root, NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --import=${pathToFileURL(preload).href}` };
   delete env.NODE_TEST_CONTEXT;
   const running = new Promise<{ code: number | null; stdout: string; stderr: string }>((resolve, reject) => {
     const child = execFile(process.execPath, ['--test', '--test-reporter=tap', `--test-name-pattern=^${smokeName}$`, fileURLToPath(import.meta.url)], { env, timeout: 20_000 }, (error, stdout, stderr) => {
@@ -38,13 +38,13 @@ test('a pre-discovery startup hang stops its daemon before removing the fixture'
   ownProcess(t, daemon.pid); // Capture the live fixture identity even when the regression is red.
   const result = await running;
   assert.equal(result.code, 1, result.stdout + result.stderr);
-  assert.match(result.stdout, /hub startup smoke failed within 10000 ms; last startup log event: planted-pre-discovery-hang/);
+  assert.match(result.stdout, /hub startup smoke failed within 2000 ms; last startup log event: planted-pre-discovery-hang/);
   assert.equal(pidAlive(daemon.pid), false, 'a pre-discovery daemon must be gone when its smoke exits');
   assert.match(result.stdout, new RegExp(`startup cleanup: pid ${daemon.pid} gone before fixture removal`));
   await assert.rejects(stat(daemon.root), { code: 'ENOENT' });
   const duration = /duration_ms: ([\d.]+)/.exec(result.stdout);
   assert.ok(duration, result.stdout);
-  assert.ok(Number(duration[1]) < 12_000, result.stdout);
+  assert.ok(Number(duration[1]) < 4000, result.stdout);
 });
 
 test('a planted listening startup hang fails the smoke within its bound and names the last log event', async t => {
@@ -58,13 +58,16 @@ test('a planted listening startup hang fails the smoke within its bound and name
         if (event === 'connection') {
           process.stderr.write(JSON.stringify({ event: 'planted-startup-hang' }) + '\\n');
           process.stderr.write('unstructured diagnostic after the last event\\n');
-          return true; // Accept the connection, but never welcome it or serve a request.
+          // A genuine blocked event loop cannot welcome the client or emit later
+          // metrics over the planted last event. The smoke must kill this daemon.
+          Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0);
+          return true;
         }
         return emit.call(this, event, ...args);
       };
     }
   `);
-  const env: NodeJS.ProcessEnv = { ...process.env, NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --import=${pathToFileURL(preload).href}` };
+  const env: NodeJS.ProcessEnv = { ...process.env, CLAND_TEST_SMOKE_BUDGET_MS: '2000', NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --import=${pathToFileURL(preload).href}` };
   delete env.NODE_TEST_CONTEXT;
   const result = await new Promise<{ code: number | null; stdout: string; stderr: string }>((resolve, reject) => {
     execFile(process.execPath, ['--test', '--test-reporter=tap', `--test-name-pattern=^${smokeName}$`, fileURLToPath(import.meta.url)], { env, timeout: 20_000 }, (error, stdout, stderr) => {
@@ -73,11 +76,11 @@ test('a planted listening startup hang fails the smoke within its bound and name
     });
   });
   assert.equal(result.code, 1, result.stdout + result.stderr);
-  assert.match(result.stdout, /hub startup smoke failed within 10000 ms; last startup log event: planted-startup-hang/);
-  // Allow two seconds for fixture teardown/reporting beyond the ten-second readiness budget.
+  assert.match(result.stdout, /hub startup smoke failed within 2000 ms; last startup log event: planted-startup-hang/);
+  // Allow two seconds for fixture teardown/reporting beyond the two-second test readiness budget.
   const duration = /duration_ms: ([\d.]+)/.exec(result.stdout);
   assert.ok(duration, result.stdout);
-  assert.ok(Number(duration[1]) < 12_000, result.stdout);
+  assert.ok(Number(duration[1]) < 4000, result.stdout);
 });
 
 test(smokeName, async t => {

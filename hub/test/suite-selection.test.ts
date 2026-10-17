@@ -562,3 +562,22 @@ test('coverage replay includes own tests, reports time share and failures, and n
   assert.match(missing.stdout, /100.0%/);
   assert.match(missing.stdout, /0 misses/);
 });
+
+
+test('a remote fixture diff retains the T4 harness self-tests', async t => {
+  const { root } = await gitFixture(t);
+  await mkdir(join(root, 'hub/test'), { recursive: true });
+  await writeFile(join(root, 'hub/test/remote-fixture.ts'), '// fixture change');
+  const selected = await selectPackageSuite(root);
+  assert.equal(selected.mode, 'hub-only');
+  assert.match(selected.reason, /coverage unsupported path hub\/test\/remote-fixture.ts/);
+  const manifest = JSON.parse(await readFile(new URL('./tiers.json', import.meta.url), 'utf8'));
+  const { suitePhases } = await import('../src/suite-selection.ts');
+  assert.ok(suitePhases(selected.mode)[0]!.targets.includes('hub/test/**/*.test.ts'));
+  const plan = await packageShards(fileURLToPath(new URL('../../', import.meta.url)), selected.mode);
+  for (const name of ['remote-fixture-lifecycle', 'project-hub', 'prepared-project', 'account-fixture-isolation']) {
+    const file = `hub/test/${name}.test.ts`;
+    assert.equal(manifest.tests[file], 'T4');
+    assert.ok(plan.some(phase => phase.targets.includes(file)), `${file} stays in fixture verification`);
+  }
+});

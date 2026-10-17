@@ -1,14 +1,15 @@
-import { ownDirectory, ownProcess } from '../../hub/test/process-cleanup.ts';
+import { ownDirectory } from '../../hub/test/process-cleanup.ts';
 // `cland --headless --qa <case.lua>` as a process (#57): the exit code, the one JSON line and the dump
 // files, against the stdio hub and the stub hub, also under sandbox-exec profiles.
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
-import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
+import { spawnSync, type ChildProcess } from 'node:child_process';
 import { existsSync, realpathSync } from 'node:fs';
 import { chmod, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { qa } from './qa-runner.ts';
 import { nvimOrSkip, startClient } from './harness.ts';
 
 const nvim = await nvimOrSkip();
@@ -57,54 +58,6 @@ async function tempDir(t: TestContext, prefix: string): Promise<string> {
   ownDirectory(t, dir);
   return dir;
 }
-
-type Line = { case: string; result: string; duration_ms: number; build: string; hub: string; message?: string; evidence: unknown };
-type Run = { code: number | null; stdout: string; stderr: string; line: Line };
-
-/** Run `cland --headless --qa …`, optionally under a command prefix (a sandbox); the one JSON line parsed. */
-function qa(t: TestContext, args: string[], options: { prefix?: string[]; env?: Record<string, string>; cwd?: string; started?: (child: ChildProcess) => void } = {}): Promise<Run> {
-  const env: Record<string, string> = {};
-  for (const [k, v] of Object.entries(process.env)) if (v !== undefined && !k.startsWith('CLAND_')) env[k] = v;
-  if (process.env.CLAND_NVIM) env.CLAND_NVIM = process.env.CLAND_NVIM;
-  Object.assign(env, options.env);
-  // Node restores a deleted coverage variable; disable writes sandbox profiles may deny.
-  if (options.prefix?.includes('/usr/bin/sandbox-exec')) env.NODE_V8_COVERAGE = '';
-  const argv = [...(options.prefix ?? []), process.execPath, CLI, '--headless', '--qa', ...args];
-  const child = spawn(argv[0] as string, argv.slice(1), { cwd: options.cwd ?? process.cwd(), env, stdio: ['ignore', 'pipe', 'pipe'] });
-  ownProcess(t, child.pid);
-  t.after(() => void child.kill('SIGKILL'));
-  options.started?.(child);
-  let stdout = '';
-  let stderr = '';
-  child.stdout.setEncoding('utf8').on('data', (c: string) => (stdout += c));
-  child.stderr.setEncoding('utf8').on('data', (c: string) => (stderr += c));
-  return new Promise((resolve, reject) => {
-    child.on('error', reject);
-    child.on('close', (code) => {
-      const lines = stdout.split('\n').filter(Boolean);
-      try {
-        assert.equal(lines.length, 1, `one JSON line on stdout, got:\n${stdout}\nstderr:\n${stderr}`);
-        resolve({ code, stdout, stderr, line: JSON.parse(lines[0] as string) as Line });
-      } catch (err) {
-        reject(err);
-      }
-    });
-  });
-}
-
-for (const name of ['GRAPH-001', 'ITEMS-002', 'PANELS-005', 'PANELS-006', 'PANELS-007', 'PANELS-008', 'PANELS-009', 'PANELS-010', 'PANELS-011', 'PANELS-012', 'PANELS-013', 'PANELS-014', 'PANELS-015', 'PANELS-016', 'THREAD-001', 'THREAD-002', 'THREAD-003', 'THREAD-004', 'THREAD-005', 'THREAD-006', 'THREAD-007', 'THREAD-008', 'THREAD-009', 'THREAD-010']) {
-  test(`${name} passes through the headless QA runner`, { skip }, async (t) => {
-    const run = await qa(t, [`${SHIPPED}${name}.lua`]);
-    assert.equal(run.line.result, 'PASS', JSON.stringify(run.line));
-    assert.equal(run.code, 0);
-  });
-}
-
-test('EXPLORER-002 passes through the headless QA runner', { skip }, async t => {
-  const run = await qa(t, [`${SHIPPED}EXPLORER-002.lua`]);
-  assert.equal(run.line.result, 'PASS', JSON.stringify(run.line));
-  assert.equal(run.code, 0);
-});
 
 test('SHELL-001 passes against its own stdio hub: exit 0 and one JSON line with the result, the duration, the build and the evidence inline', { skip }, async (t) => {
   const run = await qa(t, [`${SHIPPED}SHELL-001.lua`]);
