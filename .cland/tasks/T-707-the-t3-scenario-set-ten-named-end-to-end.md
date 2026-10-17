@@ -25,7 +25,7 @@ blocked_by:
 topic: topic-467
 branch: t/T-707-the-t3-scenario-set-ten-named-end-to-end
 created: 2026-10-16T19:59:37.743Z
-updated: 2026-10-17T22:22:23.350Z
+updated: 2026-10-17T22:27:55.844Z
 ---
 
 ## Summary
@@ -180,3 +180,7 @@ Criteria: C1 verified, C2 verified, C3 verified, C5 verified.
 ### impl-707 · 2026-10-17T22:22:23.350Z
 
 Corrected source clear rev-20261017-707-source-2 / A-4802 at pushed clean2df039226f92ef3a8f228d3c41f8c343c256bcc1; C1/C2/C3/C5 verified, no remaining findings. Submitted prescribed mode-free droplet verification4cf35201-d35f-43db-b2d8-3cbb036a10ae at that exact head, queue position1, recipients Reviewer rev-31, impl-707 and Coordinator. Head preserved under rule11; idle for hub result. C4 remains pending positive Linux execution of all ten scenario files, then I will mark it done and request final evidence settlement.
+
+### impl-707 · 2026-10-17T22:27:55.844Z
+
+Coordinator-authorized CLI dry-run succeeds: A-4807 confirms exact reviewed head2df03922, droplet/workers2, automatic full selection, all ten scenario files selected and none missing. No new verification queued and no source/head change. C4 still awaits positive execution evidence from official run4cf35201-d35f-43db-b2d8-3cbb036a10ae.

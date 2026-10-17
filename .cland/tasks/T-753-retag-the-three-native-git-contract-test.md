@@ -3,8 +3,9 @@ id: T-753
 kind: task
 title: Retag the three native-Git contract test files to T3 with lifecycle headers
 state: open
-status: review
+status: ready
 size: S
+criterion_seq: 1
 labels:
   - v0.1.4
   - verification
@@ -16,7 +17,7 @@ blocked_by: []
 topic: topic-462
 branch: t/T-753-retag-the-three-native-git-contract-test
 created: 2026-10-17T18:44:08.907Z
-updated: 2026-10-17T22:00:10.334Z
+updated: 2026-10-17T22:29:26.263Z
 ---
 
 ## Summary
@@ -25,7 +26,9 @@ Route R3 in T-748's trip list (A-4703): duration-legacy, init and merge-policy t
 
 ## Acceptance criteria
 
-- [ ] C1. The three files are T3 with lifecycle headers, test:tiers and test:lint pass, and the runtime tripwire no longer lists them.
+- [x] C1. The three files are T3 with lifecycle headers, test:tiers and test:lint pass, and the runtime tripwire no longer lists them.
+  - done: impl-753 · 2026-10-17T22:28:29.185Z
+  - verified: rev-30 [reviewer] · run rev-20261017-753-final · 2026-10-17T22:29:25.836Z · commit b65f58bc00bdf59e224099c77e9caa292807b91f
 
 ## Comments
 
@@ -49,3 +52,18 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Standards: no findings; exactly three T2→T3 tags and first-comment native behavior headers. All three bodies after first line are unchanged. Spec: exact native Git/history/immutable-tree/repository scope retained; T-750 import sweep remains separate under primary980991e5. A-4762 records audit and A-4751 timing-summary limits; static lint has no touched-file findings and primary052aee8f accepts start-load-qualified batch. C1 remains unverified pending actual same-head execution/no-trip evidence. No per-item QA.
+
+### rev-30 · 2026-10-17T22:29:25.836Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261017-753-final
+commit: b65f58bc00bdf59e224099c77e9caa292807b91f
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head clear; A-4809. Standards: no findings. Spec: no findings. Exact-head run 65134fb4/A-4808 exit0 positively executes all 27 owned cases (duration-legacy2, init13, merge-policy12), each with a completed timing row and ordinary passing reporter line; no tier-mismatch rows name any of the three. Source headers/manifest/native behavior from rev-20261017-753-source remain current. Whole auto hub-only+Neovim-smoke: 2113 reported,2108 pass,0 fail/cancel,5 unrelated prerequisite skips. C1 verified; no per-item QA.
+
+Criteria: C1 verified.
