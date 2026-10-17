@@ -3,8 +3,9 @@ id: T-690
 kind: task
 title: Retag every file the lint already qualifies as T1 or T2, and record the tier share baseline
 state: open
-status: in progress
+status: review
 size: S
+criterion_seq: 3
 labels:
   - v0.1.4
   - verification
@@ -17,7 +18,7 @@ blocked_by:
 topic: topic-450
 branch: t/T-690-retag-every-file-the-lint-already
 created: 2026-10-16T19:59:28.837Z
-updated: 2026-10-17T16:01:31.478Z
+updated: 2026-10-17T16:03:54.842Z
 ---
 
 ## Summary
@@ -30,9 +31,11 @@ Retag every hub file T-682 reports as T1- or T2-qualifying, and every Neovim stu
 
 ## Acceptance criteria
 
-- [ ] C1. Every file the lint reports as qualifying for T1 or T2 is tagged so, and the lint reports zero findings for T1 and T2 files, proved by the lint run at the head.
+- [x] C1. Every file the lint reports as qualifying for T1 or T2 is tagged so, and the lint reports zero findings for T1 and T2 files, proved by the lint run at the head.
+  - done: impl-690 · 2026-10-17T16:02:07.876Z
 - [ ] C2. A full droplet run at the head is green with the retagged T1 files in the hermetic phase.
-- [ ] C3. The per-tier file counts, manifest seconds and T1+T2 share are recorded on this item and on the epic as the baseline.
+- [x] C3. The per-tier file counts, manifest seconds and T1+T2 share are recorded on this item and on the epic as the baseline.
+  - done: impl-690 · 2026-10-17T16:02:08.360Z
 
 ## Comments
 
