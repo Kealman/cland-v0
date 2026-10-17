@@ -3,7 +3,7 @@ id: T-702
 kind: task
 title: Subscriptions, digests and session archive move to T2 on the fake clock, with restarts as projectHub stop and serve
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 5
 labels:
@@ -20,7 +20,7 @@ blocked_by:
 topic: topic-465
 branch: t/T-702-subscriptions-digests-and-session
 created: 2026-10-16T19:59:37.198Z
-updated: 2026-10-17T23:14:41.524Z
+updated: 2026-10-17T23:39:57.173Z
 ---
 
 ## Summary
@@ -51,27 +51,32 @@ These files prove hub rules (digest ordering, steering, usage thresholds, archiv
   - verified: rev-30 [reviewer] · run rev-20261017-702-allowance-delta · 2026-10-17T22:42:38.262Z · commit cee099e645c970aaaf4891531ab3a3a8c0c91f18
   - verified: rev-30 [reviewer] · run rev-20261017-702-final · 2026-10-17T23:12:35.124Z · commit cee099e645c970aaaf4891531ab3a3a8c0c91f18
   - verified: rev-30 [reviewer] · run rev-20261017-702-dev-delta · 2026-10-17T23:14:41.523Z · commit 67d98e0fee59541e1b74931abc7ea4c84006d2ab
+  - verified: rev-30 [reviewer] · run rev-20261017-702-merged-final · 2026-10-17T23:39:55.737Z · commit 67d98e0fee59541e1b74931abc7ea4c84006d2ab
 - [x] C2. Their fake-binary call sites fall from 22 to 5 or less, `startDaemon` sites from 37 to 6 or less, and numeric sleeps from 8 to 0.
   - done: impl-702 · 2026-10-17T22:08:35.721Z
   - verified: rev-30 [reviewer] · run rev-20261017-702-source · 2026-10-17T22:13:04.553Z · commit c14def9938ad21371a98d15761ba430ed31391dd
   - verified: rev-30 [reviewer] · run rev-20261017-702-allowance-delta · 2026-10-17T22:42:38.262Z · commit cee099e645c970aaaf4891531ab3a3a8c0c91f18
   - verified: rev-30 [reviewer] · run rev-20261017-702-final · 2026-10-17T23:12:35.124Z · commit cee099e645c970aaaf4891531ab3a3a8c0c91f18
   - verified: rev-30 [reviewer] · run rev-20261017-702-dev-delta · 2026-10-17T23:14:41.524Z · commit 67d98e0fee59541e1b74931abc7ea4c84006d2ab
+  - verified: rev-30 [reviewer] · run rev-20261017-702-merged-final · 2026-10-17T23:39:55.737Z · commit 67d98e0fee59541e1b74931abc7ea4c84006d2ab
 - [x] C3. The moved rules pass the tier lint as T1 or T2, and the remaining T3 tests each name their process behaviour.
   - done: impl-702 · 2026-10-17T22:08:38.462Z
   - verified: rev-30 [reviewer] · run rev-20261017-702-source · 2026-10-17T22:13:04.553Z · commit c14def9938ad21371a98d15761ba430ed31391dd
   - verified: rev-30 [reviewer] · run rev-20261017-702-allowance-delta · 2026-10-17T22:42:38.262Z · commit cee099e645c970aaaf4891531ab3a3a8c0c91f18
   - verified: rev-30 [reviewer] · run rev-20261017-702-final · 2026-10-17T23:12:35.124Z · commit cee099e645c970aaaf4891531ab3a3a8c0c91f18
   - verified: rev-30 [reviewer] · run rev-20261017-702-dev-delta · 2026-10-17T23:14:41.524Z · commit 67d98e0fee59541e1b74931abc7ea4c84006d2ab
+  - verified: rev-30 [reviewer] · run rev-20261017-702-merged-final · 2026-10-17T23:39:55.737Z · commit 67d98e0fee59541e1b74931abc7ea4c84006d2ab
 - [x] C4. An audit maps every moved or rewritten assertion to its new place, with no behaviour claim dropped.
   - done: impl-702 · 2026-10-17T22:08:38.995Z
   - verified: rev-30 [reviewer] · run rev-20261017-702-source · 2026-10-17T22:13:04.553Z · commit c14def9938ad21371a98d15761ba430ed31391dd
   - verified: rev-30 [reviewer] · run rev-20261017-702-allowance-delta · 2026-10-17T22:42:38.262Z · commit cee099e645c970aaaf4891531ab3a3a8c0c91f18
   - verified: rev-30 [reviewer] · run rev-20261017-702-final · 2026-10-17T23:12:35.124Z · commit cee099e645c970aaaf4891531ab3a3a8c0c91f18
   - verified: rev-30 [reviewer] · run rev-20261017-702-dev-delta · 2026-10-17T23:14:41.524Z · commit 67d98e0fee59541e1b74931abc7ea4c84006d2ab
+  - verified: rev-30 [reviewer] · run rev-20261017-702-merged-final · 2026-10-17T23:39:55.737Z · commit 67d98e0fee59541e1b74931abc7ea4c84006d2ab
 - [x] C5. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
-  - done: impl-702 · 2026-10-17T23:10:35.707Z
   - verified: rev-30 [reviewer] · run rev-20261017-702-final · 2026-10-17T23:12:35.124Z · commit cee099e645c970aaaf4891531ab3a3a8c0c91f18
+  - done: impl-702 · 2026-10-17T23:39:39.558Z
+  - verified: rev-30 [reviewer] · run rev-20261017-702-merged-final · 2026-10-17T23:39:55.738Z · commit 67d98e0fee59541e1b74931abc7ea4c84006d2ab
 
 ## Blocked by
 
@@ -161,3 +166,18 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Standards/Spec source clear; no findings. Coordinator ebdec614 explicitly authorizes this dev merge. Independently reconstructed tiers.json: exact incoming-dev map plus nine reviewed task entries; upstream scenarios/T-753 classifications preserved. Durations is exact dev plus five unchanged E-677 task allowances, with all incoming baseline fields and ownership corrections retained. All ten destination tests, shared helper and evidence docs are byte-identical to cee099e6; remaining 58 changed paths outside manifests match incoming dev verbatim. Prior Mac/source census and 525-assertion mapping remain applicable; C1–C4 refreshed. A-4841 reports required static checks passing. A-4842 records independent audit. C5 remains unverified until fresh normal mode-free droplet receipt at this head; parent A-4838 remains historical. Honor any hub restart hold. No per-item QA.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### rev-30 · 2026-10-17T23:39:55.738Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261017-702-merged-final
+commit: 67d98e0fee59541e1b74931abc7ea4c84006d2ab
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final merged-head evidence clear; A-4853. Independently audited A-4852 exact-head run d6dcef3c: all ten owned files/62 ordinary cases have completed timings and passing reporter lines, all 13 owned new identities pass 5/5 gates (65/65). No scoped skips or hard duration-budget failures. Whole selected hub-only + current Neovim smoke run exits zero: 2,106 passes, zero failures/cancellations, five unrelated prerequisite skips; smoke 5/5 completed. Linux owned sum 67.920059750s disclosed beside accepted Mac median sum 41.580233420s, meeting C1. A-4842 source delta remains current and task tests/helper match A-4779 Mac source; original 525 assertion mapping/native boundaries retained. C5 done refreshed in c5b26701. No findings; C1–C5 verified at current merge head. No per-item QA.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
