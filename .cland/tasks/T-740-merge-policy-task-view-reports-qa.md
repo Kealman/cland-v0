@@ -3,7 +3,7 @@ id: T-740
 kind: task
 title: "merge-policy: 'task view reports QA satisfaction…' saw 'lane or gate inputs changed during lookup' on a loaded droplet"
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - v0.1.4
@@ -14,10 +14,10 @@ labels:
 assignee: null
 parent: E-482
 blocked_by: []
-topic: null
-branch: null
+topic: topic-448
+branch: t/T-740-merge-policy-task-view-reports-qa
 created: 2026-10-17T15:12:22.689Z
-updated: 2026-10-17T15:15:11.962Z
+updated: 2026-10-17T15:15:39.827Z
 ---
 
 ## Summary

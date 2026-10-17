@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-442
 branch: t/T-694-session-resume-launch-and-stop-race
 created: 2026-10-16T19:59:36.176Z
-updated: 2026-10-17T14:42:08.266Z
+updated: 2026-10-17T15:18:02.197Z
 ---
 
 ## Summary
@@ -38,7 +38,7 @@ Three files prove hub bookkeeping through fake harness binaries (memo §2.2 win 
 ## Acceptance criteria
 
 - [x] C1. The three files' manifest seconds fall from 144.1 s (A-3877) to 55 s or less, T2 and T3 parts together.
-  - done: impl-694 · 2026-10-17T14:40:50.255Z
+  - done: impl-694 · 2026-10-17T15:16:22.612Z
 - [x] C2. Their fake-binary call sites fall from 13 to 6 or less and their `startDaemon` sites from 7 to 0.
   - done: impl-694 · 2026-10-17T14:40:50.862Z
   - verified: rev-31 [reviewer] · run rev-20261017-694-source-3 · 2026-10-17T14:41:35.247Z · commit 9215c35e9e53d0eeb639b316df05e2efb3ec7ce5
@@ -48,7 +48,8 @@ Three files prove hub bookkeeping through fake harness binaries (memo §2.2 win 
 - [x] C4. An audit maps every moved or rewritten assertion to its new place, with no behaviour claim dropped.
   - done: impl-694 · 2026-10-17T14:40:51.548Z
   - verified: rev-31 [reviewer] · run rev-20261017-694-source-3 · 2026-10-17T14:41:35.247Z · commit 9215c35e9e53d0eeb639b316df05e2efb3ec7ce5
-- [ ] C5. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
+- [x] C5. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
+  - done: impl-694 · 2026-10-17T15:16:23.140Z
 
 ## Blocked by
 
@@ -108,3 +109,18 @@ Criteria: C2 verified, C3 verified, C4 verified.
 ### impl-694 · 2026-10-17T14:42:08.266Z
 
 Source clear at 9215c35e (rev-20261017-694-source-3, A-4555); C2/C3/C4 verified. Assertion audit A-4547, cleanup/failure/cancellation proof A-4552, final owned-child close join and 5/5 receipts A-4554. All seven coverage files have Mac serial 5/5 proof; summed medians 31.861885787 s vs 144.174984 baseline (≤55 s target). Mode-free diff-selected droplet verify submitted at this exact head: 46d9eea8-50b6-4089-b0be-a9bd494ffcd5, reports topic-442 to Reviewer, Coordinator and Implementer. C1/C5 await Linux result and timing disclosure. No source changes while waiting.
+
+### rev-31 · 2026-10-17T15:15:46.930Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261017-694-evidence-1
+commit: 9215c35e9e53d0eeb639b316df05e2efb3ec7ce5
+scope: evidence
+findings: [{"severity":"medium","text":"Behavior and repetitions pass, but new lifecycle proof triggers duration budget 5.118139835 s >5 s without allowance; preserve assertions/ownership and resolve measured budget before fresh review.","file":"hub/test/session-stop-races-cleanup.test.ts","line":13},{"severity":"medium","text":"External gate blocker: QA-satisfaction merge case fails merge-changed (lane/gate inputs changed during lookup); outside task diff, reported Bugs/S to lead for classification.","file":"hub/test/merge-policy.test.ts","line":105}]
+finding_counts: {"high":0,"medium":2,"low":0}
+
+Evidence not clear, A-4573. Exact-head A-4572 / 46d9eea8 exits 1: 2065 passes, one ordinary failure, five skips; Neovim smoke not reached. Independently audited all nineteen owned cases and ten owned new identities 5/5, seven-file Linux sum 48.496184123 s (<55), Mac median sum 31.861885787 s. No owned behavioral failure, but cleanup duration gate remains red; outside merge-policy ordinary failure also blocks acceptance. C5 failed for own budget only; C1 final mark pending, C2/C3/C4 source continuity retained. Origin unchanged. No unchanged-head retry or branch-local external fix before lead disposition; changed head needs source review. No Reviewer edits/tests.
+
+Criteria: C5 failed (Owned cleanup lifecycle proof triggers a failing unallowed five-second duration budget; accepted verification remains pending correction.).

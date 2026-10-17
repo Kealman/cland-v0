@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-446
 branch: t/T-735-test-lint-misses-child-processes-started
 created: 2026-10-17T11:42:54.922Z
-updated: 2026-10-17T15:13:55.602Z
+updated: 2026-10-17T15:17:50.347Z
 ---
 
 ## Summary
@@ -31,3 +31,9 @@ The lint follows `node:child_process` imports through common wrappers: `promisif
 
 - [ ] C1. Planted files that start a child through `promisify(execFile)`, a renamed import and a destructured import each produce the process-use finding, proved by lint tests, and tracker-criterion-crash.test.ts no longer qualifies below T3.
 - [ ] C2. The review request lists every dev file whose "qualifies" tier changes, with the reason.
+
+## Comments
+
+### impl-735 · 2026-10-17T15:17:50.347Z
+
+Implementation extends lexical binding analysis through promisify, aliases, destructuring and exported local aliases. Static checks pass; tracker-criterion-crash qualifies T3. Full dev qualifier census is A-4576: 43 T2-to-T3 changes, including 8 declared T2 files left for a Coordinator-owned follow-up. Required serial 5/5 checks are underway.
