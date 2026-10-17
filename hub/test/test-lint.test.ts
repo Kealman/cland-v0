@@ -43,6 +43,63 @@ test('resource imports and helper calls still prevent T1 admission', () => {
   }
 });
 
+test('servers bound at construction require socket admission', () => {
+  for (const source of [
+    'new WebSocketServer({ port: 0 });',
+    "import { WebSocketServer } from 'ws';\nnew WebSocketServer({ port: 0 });",
+    "import { WebSocketServer as Server } from 'ws'; new Server({ server: httpServer });",
+    "import * as ws from 'ws'; new ws.WebSocketServer({ port: 0 });",
+    "import ws from 'ws'; new ws.Server({ server });",
+    "const { WebSocketServer: Server } = require('ws'); const options = { port: 0 }; new Server(options);",
+    "const ws = await import('ws'); const Server = ws.WebSocketServer; new Server({ 'port': 0 });",
+    "import { WebSocketServer } from 'ws'; const base = { port: 0 }; const options = ({ ...base } as Options) satisfies Options; new WebSocketServer(options);",
+  ]) {
+    const result = lintTestSource(file, source, 'T1');
+    assert.equal(result.qualifies, 'T2', source);
+    assert.ok(result.findings.some(f => f.rule === 'tier-import' && f.message === 'socket server requires T2'), source);
+    assert.equal(touchesMachineResources(file, source), true, source);
+    assert.deepEqual(lintTestSource(file, source, 'T2').findings, [], source);
+  }
+  const located = lintTestSource(file, "import { WebSocketServer } from 'ws';\nnew WebSocketServer({ port: 0 });", 'T1');
+  assert.equal(located.findings[0]?.line, 2);
+});
+
+test('unbound server constructors and inert socket text stay T1', () => {
+  for (const source of [
+    "import { WebSocketServer } from 'ws'; new WebSocketServer({ noServer: true });",
+    "import { WebSocketServer } from 'ws';",
+    "import { WebSocketServer } from './memory-server.ts'; new WebSocketServer({ port: 0 });",
+    'class WebSocketServer {} new WebSocketServer({ port: 0 });',
+    "import { WebSocketServer } from 'ws'; function check(WebSocketServer) { new WebSocketServer({ port: 0 }); }",
+    "import { WebSocketServer } from 'ws'; const first = second; const second = first; new WebSocketServer(first);",
+    'const text = "new WebSocketServer({ port: 0 }); net.createServer().listen(0);";',
+    'const text = `new WebSocketServer({ server }); https.createServer().listen(0);`;',
+    '// new WebSocketServer({ port: 0 });\n/* http.createServer().listen(0); */',
+  ]) {
+    assert.deepEqual(lintTestSource(file, source, 'T1').findings, [], source);
+    assert.equal(touchesMachineResources(file, source), false, source);
+  }
+});
+
+test('createServer listen chains keep their socket findings', () => {
+  for (const module of ['net', 'http', 'https']) {
+    const source = `import * as server from 'node:${module}'; server.createServer(() => {}).listen(0);`;
+    const result = lintTestSource(file, source, 'T1');
+    assert.equal(result.qualifies, 'T2', module);
+    assert.ok(result.findings.some(f => f.message === 'socket listen requires T2'), module);
+    assert.equal(touchesMachineResources(file, source), true, module);
+  }
+});
+
+test('spoke readiness source qualifies for T2 because its WebSocketServer binds a port', async () => {
+  const path = 'hub/test/spoke-readiness.test.ts';
+  const source = await readFile(new URL('./spoke-readiness.test.ts', import.meta.url), 'utf8');
+  const result = lintTestSource(path, source, 'T1');
+  assert.equal(result.qualifies, 'T2');
+  assert.ok(result.findings.some(f => f.message === 'socket server requires T2'));
+  assert.equal(touchesMachineResources(path, source), true);
+});
+
 test('filesystem calls on shared suite locks require T2', () => {
   for (const source of [
     "import { existsSync } from 'node:fs'; existsSync('/tmp/cland-suite.lock');",

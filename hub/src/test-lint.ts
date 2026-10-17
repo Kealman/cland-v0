@@ -200,6 +200,26 @@ export function lintTestSource(file: string, text: string, entry: TierEntry): Te
     const executable = node.arguments[0], args = node.arguments[1];
     return !!executable && (executable.getText(source) === 'process.execPath' || ts.isStringLiteralLike(executable) && executable.text === 'node') && !!args && ts.isArrayLiteralExpression(args) && cliEntry(args.elements[0]);
   };
+  const socketOptions = (node: ts.Node | undefined, seen = new Set<ts.Node>()): boolean => {
+    if (!node || seen.has(node)) return false;
+    seen.add(node);
+    if (ts.isIdentifier(node)) {
+      const declaration = declarationOf(node)?.parent;
+      return !!declaration && ts.isVariableDeclaration(declaration) && ts.isVariableDeclarationList(declaration.parent) && !!(declaration.parent.flags & ts.NodeFlags.Const) && socketOptions(declaration.initializer, seen);
+    }
+    if (ts.isParenthesizedExpression(node) || ts.isAsExpression(node) || ts.isSatisfiesExpression(node) || ts.isNonNullExpression(node)) return socketOptions(node.expression, seen);
+    return ts.isObjectLiteralExpression(node) && node.properties.some(property => {
+      if (ts.isSpreadAssignment(property)) return socketOptions(property.expression, seen);
+      const name = property.name && (ts.isStringLiteralLike(property.name) ? property.name.text : nameOf(property.name));
+      return name === 'port' || name === 'server';
+    });
+  };
+  for (const node of nodes) if (ts.isNewExpression(node)) {
+    const binding = bindingOf(node.expression);
+    const wsServer = binding?.module === 'ws' && ['WebSocketServer', 'Server'].includes(binding.name)
+      || !binding && ts.isIdentifier(node.expression) && node.expression.text === 'WebSocketServer' && !declarationOf(node.expression);
+    if (wsServer && socketOptions(node.arguments?.[0])) resource(node, 2, 'socket server');
+  }
   for (const node of nodes) if (ts.isCallExpression(node)) {
     const b = bindingOf(node.expression);
     const name = b?.name ?? nameOf(node.expression);
