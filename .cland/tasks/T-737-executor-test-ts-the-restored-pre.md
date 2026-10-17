@@ -2,8 +2,8 @@
 id: T-737
 kind: task
 title: "executor.test.ts: the restored pre-executor job case reads job.pid before the launched worker reports it (load)"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 1
 labels:
@@ -18,7 +18,8 @@ blocked_by: []
 topic: topic-440
 branch: t/T-737-executor-test-ts-the-restored-pre
 created: 2026-10-17T14:18:58.698Z
-updated: 2026-10-17T14:25:52.027Z
+updated: 2026-10-17T15:08:33.103Z
+closed: 2026-10-17T15:08:33.103Z
 ---
 
 ## Summary
@@ -72,3 +73,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear; Standards 0 / Spec 0 findings, A-4540. A-4535 independently audited five complete Mac whole-file transcripts, each 3/3 with no failures/skips or asynchronous-activity diagnostics. Exact-head A-4539 / d119d24e finishes exit 0: selected hub 25/25 and Neovim smoke 12/12, total 37 passes, zero failures/skips. Affected legacy restore case runs and passes at 5.351512243 s; duration regression notice disclosed, no sub-five-second claim or C1 ceiling. Source A-4533 remains current at unchanged origin head: exact running+PID observation replaces admission timing inference, assertions preserved. C1 verified, no further run or per-item QA needed. No Reviewer edits/tests.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-17T15:08:33.103Z
+
+Merged dfce1db91e8bd43270208d33114b4112630a6513 onto dev.
