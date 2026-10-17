@@ -1,14 +1,10 @@
-// Role handover with a note (spec 4.4, ADR 0001, decision #10, #31): the Coordinator hands its role over with
-// `role.handover` and a four-section note; the human reassigns with `role.set` and an optional note; the new holder
-// gets clause and note in one event, the old one a revocation; the Agents topic records both; the claims move with
-// the role; the new holder pulls the role's state (`role.state`) and reads the waiting topics with `history`.
-// Against a real daemon in a temporary project: spokes over MCP, the UI on the Unix socket, the CLI as its own
-// process, the fake Claude Code for a holder that is busy in a turn.
+// T2: role transfer, notes, claims and reopened state through component edges.
+import { FakeClock } from './fake-clock.ts';
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, clauseAnswered, connectUi, eventually, fakeClaude, spawnSpoke, startDaemon, tempProject, type ChannelEvent, type FrameClient, type Session } from './harness.ts';
+import { cland, connectUi, eventually, inProcessSpoke, projectHub, tempProject, type ChannelEvent, type FrameClient, type Session } from './harness.ts';
 import type { RoleState } from '../src/protocol.ts';
 
 type Result = { ok: boolean; error?: string; code?: string; missing?: string[]; permission?: string; role?: string | null; reason?: string };
@@ -57,25 +53,28 @@ const coordinator = async (ui: FrameClient) => ((await ui.request({ type: 'hub.s
 
 async function setup(t: TestContext, env: Record<string, string> = {}) {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root, env);
+  const served = await projectHub(t, root, env, { clock: new FakeClock() });
+  const { discovery } = served;
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const spawn = async (name: string, role: string): Promise<Session> => {
-    const s = await spawnSpoke({ discover: true, cwd: root, name, sessionId: `sess-${name}`, role });
+    const s = await inProcessSpoke(t, { discover: true, cwd: root, name, sessionId: `sess-${name}`, role });
     t.after(() => s.close());
     await s.waitForEvent((e) => isRole(e) && e.params.meta?.role === role, 30_000);
     return s;
   };
-  return { root, ui, spawn };
+  return { root, ui, spawn, served };
 }
 
 test('the Coordinator hands over with a note: B gets clause and note in one event, A the revocation, Agents both; the claims move; B pulls the role state', async (t) => {
-  const { root, ui, spawn } = await setup(t);
+  const { root, ui, spawn, served } = await setup(t);
   const a = await spawn('coord', 'coordinator');
   const b = await spawn('next', 'implementer');
   await a.waitForPresence(['coord', 'next']);
-  ok(await cland(root, 'task', 'create', '--size', 'M', 'Tracker import'));
-  ok(await cland(root, 'task', 'create', '--size', 'M', 'Someone else'));
+  for (const title of ['Tracker import', 'Someone else']) {
+    const created = await ui.request({ type: 'task.create', size: 'M', title });
+    assert.equal(created.ok, true, created.error);
+  }
 
   // before: A claims T-1, and the human asks the Coordinator something in General that A has not answered
   assert.equal((await a.call<Result>('task.claim', { id: 'T-1' })).ok, true);
@@ -177,8 +176,8 @@ test('the Coordinator hands over with a note: B gets clause and note in one even
   assert.equal((await a.call<Result>('role.state')).code, 'forbidden');
 
   // a reconnect of B brings the clause with the note again
-  ok(await cland(root, 'hub', 'stop'));
-  await startDaemon(t, root);
+  await served.stop();
+  await projectHub(t, root, {}, { clock: new FakeClock() });
   const again = await eventually('the clause again', () => b.events.filter((e) => isRole(e) && e.params.meta?.role === 'coordinator')[1], 30_000);
   assert.equal(again.params.meta?.handover_from, 'coord');
   assert.match(again.params.content, /Handover note from coord:/);
@@ -282,40 +281,4 @@ test('the human reassigns with role.set: without a note (move), with a note (CLI
   );
   // an Implementer now: its next Coordinator call is refused
   assert.equal((await c.call<Result>('send', { text: 'to the human' })).code, 'forbidden');
-});
-
-test('revocation mid-turn: the human reassigns while the launched Coordinator is busy; its next call is refused and the revocation reaches it', async (t) => {
-  // Keep the Coordinator mid-turn while the human revokes its role.
-  const fake = await fakeClaude(t, { turnMs: 2500 });
-  const { root, ui, spawn } = await setup(t, fake.env);
-  const launched = (await ui.request({ type: 'session.launch', name: 'coord', role: 'coordinator', model: 'claude-fake-1' }, 30_000)) as { ok: boolean; error?: string; value?: { process: { harnessId: string } } };
-  assert.equal(launched.ok, true, launched.error);
-  const job = launched.value?.process.harnessId as string;
-  await clauseAnswered(ui, 'coord', 30_000);
-  const b = await spawn('next', 'implementer');
-
-  // a turn: the human asks the Coordinator; the fake thinks for 2.5 s, then answers with `send`
-  const asked = await ui.request({ type: 'topic.send', topic: 'general', text: 'Plan the week' });
-  assert.equal(asked.ok, true, asked.error);
-  await eventually('the turn started', async () => ((await fake.log(job)).includes('submitted: <channel') && (await fake.log(job)).includes('Plan the week') ? true : undefined));
-  await ui.waitFor((f) => f.type === 'session.state' && f.session === 'coord' && f.state === 'busy');
-
-  // mid-turn, the human hands the role to B with a note
-  const moved = await ui.request({ type: 'role.set', session: 'next', role: 'coordinator', note: NOTE });
-  assert.equal(moved.ok, true, moved.error);
-  const clause = await b.waitForEvent((e) => isRole(e) && e.params.meta?.role === 'coordinator', 15_000);
-  assert.equal(clause.params.meta?.handover_from, 'human');
-  assert.equal(await coordinator(ui), 'next');
-
-  // the turn ends: A's answer (a `send` to the human) is refused, it no longer holds a role
-  await eventually('the answer refused', async () => (/tool send → .*"code":"forbidden"/.test(await fake.log(job)) ? true : undefined), 20_000);
-  assert.match(await fake.log(job), /tool send → .*"role":null,"reason":"a session with no role has no tools"/);
-  await agentsNotice(ui, 'coord tried send to the human: forbidden (a session with no role has no tools)');
-  const refused = (await audits(root, ui)).find((r) => r.session === 'coord' && r.tool === 'send' && r.outcome === 'forbidden');
-  assert.equal(refused?.role, null);
-  // and the revocation reached the session, injected as its next turn
-  await eventually('the revocation injected', async () => (/submitted: <channel [^\n]*from="hub"[^\n]*>\ncland hub: coord no longer holds the role Coordinator \(handed over to next\)/.test(await fake.log(job)) ? true : undefined), 20_000);
-  // the process table follows: the relaunch would start roleless
-  const list = (await ui.request({ type: 'session.list' })).value as { processes: Array<{ name: string; role: string | null }>; coordinator: string | null };
-  assert.deepEqual([list.processes.find((p) => p.name === 'coord')?.role, list.coordinator], [null, 'next']);
 });

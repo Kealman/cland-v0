@@ -1,8 +1,10 @@
+// T2: Lead handover rules, recipients and persistence use fake adapters and in-process spokes.
+import { FakeClock } from './fake-clock.ts';
 import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, connectUi, eventually, fakeClaude, spawnSpoke, startDaemon, tempProject, type Session } from './harness.ts';
+import { cland, connectUi, eventually, inProcessSpoke, projectHub, tempProject, type Session } from './harness.ts';
 import { DEFAULT_ROLES_TOML } from '../src/roles/default-roles.ts';
 import type { Message, RoleState, Subscription } from '../src/protocol.ts';
 
@@ -10,19 +12,18 @@ type Result = { ok: boolean; error?: string; code?: string };
 type Claim = { session: string; sessionId: string; claimedAt: string };
 const note = (goal: string) => ({ goals_now: goal, work_in_flight: 'Review is in flight.', open_decisions: 'No open decisions.', waiting_on: 'The next verdict.' });
 
-async function setup(t: TestContext, crash = false, direct = false) {
+async function setup(t: TestContext, direct = false) {
   const root = await tempProject(t);
   if (direct) {
     const path = join(root, '.cland', 'roles.toml');
     await mkdir(join(root, '.cland'), { recursive: true });
     await writeFile(path, DEFAULT_ROLES_TOML.replace('[lead.permissions]\ntools = [', '[lead.permissions]\ntools = ["task.claim", '));
   }
-  const fake = await fakeClaude(t);
-  const daemon = await startDaemon(t, root, { ...fake.env, ...(crash ? { CLAND_TEST_CRASH_AT: 'handover-committed' } : {}) });
+  const daemon = await projectHub(t, root, {}, { clock: new FakeClock(), harnesses: 'fake' });
   const ui = await connectUi(t, daemon.discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const spoke = async (name: string, role?: string, sessionId = `id-${name}`): Promise<Session> => {
-    const s = await spawnSpoke({ cwd: root, discover: true, name, sessionId, ...(role ? { role } : { assignRole: false }) });
+    const s = await inProcessSpoke(t, { cwd: root, discover: true, name, sessionId, ...(role ? { role } : { assignRole: false }) });
     t.after(() => s.close());
     if (role) await s.waitForEvent(e => e.params.meta?.kind === 'role');
     return s;
@@ -40,18 +41,16 @@ async function setup(t: TestContext, crash = false, direct = false) {
     }
     const r = await coord.call<Result & { process: { sessionId: string; harnessId: string } }>('session.launch', { name, role: item ? 'lead' : 'implementer', harness: 'claude-code', ...(item ? { item } : {}) });
     assert.equal(r.ok, true, r.error);
-    // A completed native turn makes our observer the newest delivery endpoint.
-    await ui.waitFor(f => f.type === 'session.usage' && f.sessionId === r.process.sessionId);
     const s = await spoke(name, undefined, r.process.sessionId);
     return { s, ...r.process };
   };
   const claim = async (id: string) => (await coord.call<{ item: { claim: Claim } }>('task.view', { id })).item.claim;
   const subjects = async (s: Session) => (await s.call<{ subscriptions: Subscription[] }>('subscriptions')).subscriptions.filter(x => x.default).map(x => x.subject);
-  return { root, fake, daemon, ui, spoke, coord, create, launch, claim, subjects };
+  return { root, daemon, ui, spoke, coord, create, launch, claim, subjects };
 }
 
-test('lead-1 hands its node and question to lead-2; the next verdict reaches the new Lead through the fake harness', async t => {
-  const { fake, ui, coord, create, launch, claim, subjects, spoke } = await setup(t);
+test('lead-1 hands its node and question to lead-2; the next verdict reaches the new Lead on the hub record', async t => {
+  const { ui, coord, create, launch, claim, subjects, spoke } = await setup(t);
   const epic = await create('Mid-flight epic', 'epic');
   const task = await create('Unclaimed work under review', 'task', epic);
   const otherEpic = await create('Other epic', 'epic');
@@ -107,7 +106,8 @@ test('lead-1 hands its node and question to lead-2; the next verdict reaches the
   assert.equal((await rev.call<Result>('task.comment', { id: task, verdict: 'review', scope: 'full', result: 'not clear', run: 'after-handover' })).ok, true);
   // Progress events fold into the successor's next turn, which this ordinary report starts.
   await rev.call('send', { to: [`lead ${task}`], text: 'Inspect the next verdict.' });
-  await eventually('the next verdict reaches lead-2 harness', async () => (await fake.log(b.harnessId)).includes(`${task} verdict posted review not clear`) || undefined);
+  const received = await b.s.waitForEvent(e => e.params.content.includes('Inspect the next verdict.'));
+  assert.ok(received.params.content.includes(`${task} verdict posted review not clear`));
   const history = await ui.request({ type: 'topic.history', topic: 'agents', limit: 200 });
   const events = (history.value as { messages: Message[] }).messages.filter(m => m.kind === 'event' && m.text.includes(`${task} verdict posted`));
   assert.deepEqual(events.map(m => m.to), [['lead-2']]);
@@ -115,7 +115,7 @@ test('lead-1 hands its node and question to lead-2; the next verdict reaches the
 });
 
 test('independent node notes survive a rename, a second handover and a hub restart', async t => {
-  const { root, fake, ui, coord, create, launch, claim } = await setup(t, false, true);
+  const { root, daemon, ui, coord, create, launch, claim } = await setup(t, true);
   const epic = await create('First epic', 'epic');
   const second = await create('Second epic', 'epic');
   const a = await launch('lead-1', epic);
@@ -137,8 +137,8 @@ test('independent node notes survive a rename, a second handover and a hub resta
   assert.equal((await claim(second)).session, 'other-2');
   const cBefore = c.s.events.length;
   const yBefore = y.s.events.length;
-  assert.equal((await cland(root, 'hub', 'stop')).code, 0);
-  await startDaemon(t, root, fake.env);
+  await daemon.stop();
+  await projectHub(t, root, {}, { clock: new FakeClock(), harnesses: 'fake' });
   await eventually('first Lead reconnects with its own note', () => c.s.events.slice(cBefore).find(e => e.params.meta?.role === 'lead' && e.params.content.includes('First node continued')), 30_000);
   await eventually('second Lead reconnects with its own note', () => y.s.events.slice(yBefore).find(e => e.params.meta?.role === 'lead' && e.params.content.includes('Second node')), 30_000);
   const firstState = await c.s.call<Result & RoleState>('role.state');
@@ -149,29 +149,8 @@ test('independent node notes survive a rename, a second handover and a hub resta
   assert.equal(secondState.note?.sections.goals_now, 'Second node', JSON.stringify(secondState));
 });
 
-test('a committed Lead handover recovers its node claim after a crash without touching another Lead', async t => {
-  const { root, fake, daemon, create, launch } = await setup(t, true);
-  const epic = await create('Crash epic', 'epic');
-  const second = await create('Untouched epic', 'epic');
-  const a = await launch('lead-1', epic);
-  const b = await launch('lead-2');
-  const other = await launch('other', second);
-  await a.s.call<Result>('role.handover', { to: 'lead-2', note: note('Recovered node') }).catch(() => undefined);
-  await eventually('the hub crashed', () => { try { process.kill(daemon.discovery.pid, 0); return undefined; } catch { return true; } });
-  const restarted = await startDaemon(t, root, fake.env);
-  const ui = await connectUi(t, restarted.discovery);
-  const view = async (id: string) => ((await ui.request({ type: 'task.view', item: id })).value as { item: { claim: Claim } }).item.claim;
-  const recovered = await view(epic);
-  assert.deepEqual([recovered.session, recovered.sessionId], ['lead-2', b.sessionId]);
-  assert.equal((await view(second)).sessionId, other.sessionId);
-  const state = await ui.request({ type: 'role.state', role: 'lead', session: 'lead-2' });
-  assert.equal((state.value as RoleState).note?.sections.goals_now, 'Recovered node');
-  const history = await ui.request({ type: 'topic.history', topic: 'agents', limit: 200 });
-  assert.equal((history.value as { messages: Message[] }).messages.filter(m => m.kind === 'handover').length, 1);
-});
-
 test('the human hands a node to an offline successor, then launches it and the next verdict reaches it', async t => {
-  const { root, fake, coord, create, launch, claim, spoke, subjects } = await setup(t);
+  const { root, ui, coord, create, launch, claim, spoke, subjects } = await setup(t);
   const epic = await create('Human move', 'epic');
   const task = await create('Work awaiting review', 'task', epic);
   await launch('lead-1', epic);
@@ -199,5 +178,8 @@ test('the human hands a node to an offline successor, then launches it and the n
   const rev = await spoke('rev', 'reviewer');
   assert.equal((await rev.call<Result>('task.comment', { id: task, verdict: 'review', scope: 'full', result: 'not clear', run: 'after-offline-handover' })).ok, true);
   await rev.call('send', { to: [`lead ${task}`], text: 'Inspect the successor verdict.' });
-  await eventually('the next verdict reaches the launched successor', async () => (await fake.log(later.harnessId)).includes(`${task} verdict posted review not clear`) || undefined);
+  const received = await later.s.waitForEvent(e => e.params.content.includes('Inspect the successor verdict.'));
+  assert.ok(received.params.content.includes(`${task} verdict posted review not clear`));
+  const history = (await ui.request({ type: 'topic.history', topic: 'agents', limit: 200 })).value as { messages: Message[] };
+  assert.deepEqual(history.messages.filter(m => m.kind === 'event' && m.text.includes(`${task} verdict posted`)).map(m => m.to), [['later']]);
 });

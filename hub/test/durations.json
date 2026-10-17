@@ -2,9 +2,11 @@
   "version": 1,
   "source": {
     "artifacts": [
-      "A-3877"
+      "A-3877",
+      "A-4324",
+      "A-4331"
     ],
-    "commit": "f6045f838f55902c0224473512e82c1ff0121e72"
+    "commit": "3d1de868c5bd2be4b60aa208387197ad14694a91"
   },
   "budget": {
     "testSeconds": 5,
@@ -272,8 +274,8 @@
       "tests": 4
     },
     "hub/test/handover.test.ts": {
-      "seconds": 18.395231,
-      "tests": 4
+      "seconds": 0.667127,
+      "tests": 3
     },
     "hub/test/heartbeat.test.ts": {
       "seconds": 25.689483,
@@ -316,7 +318,7 @@
       "tests": 16
     },
     "hub/test/item-lead.test.ts": {
-      "seconds": 22.063643,
+      "seconds": 4.028622,
       "tests": 10
     },
     "hub/test/journal-async.test.ts": {
@@ -340,20 +342,20 @@
       "tests": 4
     },
     "hub/test/lead-handover.test.ts": {
-      "seconds": 51.932648,
-      "tests": 4
+      "seconds": 0.871365,
+      "tests": 3
     },
     "hub/test/lead-launch.test.ts": {
-      "seconds": 27.938148,
-      "tests": 5
+      "seconds": 1.014714,
+      "tests": 4
     },
     "hub/test/lead-permissions.test.ts": {
-      "seconds": 57.473333,
-      "tests": 5
+      "seconds": 7.322891,
+      "tests": 6
     },
     "hub/test/lead-routing.test.ts": {
-      "seconds": 26.376618,
-      "tests": 3
+      "seconds": 0.739007,
+      "tests": 2
     },
     "hub/test/lifecycle-serialization.test.ts": {
       "seconds": 0.346641,
@@ -836,8 +838,8 @@
       "tests": 5
     },
     "hub/test/verifier-routing.test.ts": {
-      "seconds": 40.527533,
-      "tests": 7
+      "seconds": 0.55508,
+      "tests": 4
     },
     "hub/test/visibility.test.ts": {
       "seconds": 33.12995,
@@ -993,6 +995,30 @@
     },
     "nvim/test/verification-view.test.ts": {
       "seconds": 6.30693,
+      "tests": 1
+    },
+    "hub/test/verifier-resolver.test.ts": {
+      "seconds": 0.143408,
+      "tests": 2
+    },
+    "hub/test/lead-routing-process.test.ts": {
+      "seconds": 3.833925,
+      "tests": 1
+    },
+    "hub/test/verifier-routing-process.test.ts": {
+      "seconds": 3.479838,
+      "tests": 1
+    },
+    "hub/test/handover-process.test.ts": {
+      "seconds": 6.727962,
+      "tests": 1
+    },
+    "hub/test/lead-permissions-process.test.ts": {
+      "seconds": 5.478158,
+      "tests": 1
+    },
+    "hub/test/lead-handover-process.test.ts": {
+      "seconds": 8.624474,
       "tests": 1
     },
     "hub/test/claude-code-environment.test.ts": {
@@ -3282,12 +3308,6 @@
     "hub/test/claude-code-sessions.test.ts::a held Claude hook is reaped before fixture removal after a pre-release failure": 0.049518
   },
   "allow": {
-    "hub/test/lead-launch.test.ts::an Implementer cannot launch Leads even with a session.launch grant": {
-      "seconds": 5.372664,
-      "reason": "Proves the fixed Lead-launch boundary after granting an Implementer session.launch, including a real permitted fake-harness launch before explicit and preassigned Lead refusals.",
-      "owner": "E-677",
-      "legacy": true
-    },
     "hub/test/aide.test.ts::an Aide launches any role through its tool and runs launch, stop and resume in its own shell": {
       "seconds": 10.418876,
       "reason": "Proves tool and inherited-shell authority with real Aide, Coordinator, Lead and Implementer fake harness processes, including two stop/resume cycles and per-call audit identity.",
@@ -3646,12 +3666,6 @@
       "owner": "E-677",
       "legacy": true
     },
-    "hub/test/handover.test.ts::revocation mid-turn: the human reassigns while the launched Coordinator is busy; its next call is refused and the revocation reaches it": {
-      "seconds": 8.452588,
-      "reason": "Revokes a role during a live fake-harness turn and waits for the replacement role delivery and refusal.",
-      "owner": "E-677",
-      "legacy": true
-    },
     "hub/test/heartbeat.test.ts::a missed heartbeat survives hub restart and fires once rather than replaying missed intervals": {
       "seconds": 0.577222,
       "reason": "Restarts a real hub across a missed heartbeat interval and waits for exactly one fire; 4.89 s on Linux under load (A-3109), allowed ahead of the 5 s line. Its flaky timing assertion is T-514.",
@@ -3724,51 +3738,9 @@
       "owner": "E-677",
       "legacy": true
     },
-    "hub/test/lead-handover.test.ts::a committed Lead handover recovers its node claim after a crash without touching another Lead": {
-      "seconds": 15.737525,
-      "reason": "Moves claims and questions between live Leads, including crash recovery and an initially offline successor.",
-      "owner": "E-677",
-      "legacy": true
-    },
-    "hub/test/lead-handover.test.ts::lead-1 hands its node and question to lead-2; the next verdict reaches the new Lead through the fake harness": {
-      "seconds": 15.960275,
-      "reason": "Moves claims and questions between live Leads, including crash recovery and an initially offline successor.",
-      "owner": "E-677",
-      "legacy": true
-    },
-    "hub/test/lead-handover.test.ts::the human hands a node to an offline successor, then launches it and the next verdict reaches it": {
-      "seconds": 10.700349,
-      "reason": "Moves claims and questions between live Leads, including crash recovery and an initially offline successor.",
-      "owner": "E-677",
-      "legacy": true
-    },
-    "hub/test/lead-permissions.test.ts::a verifier spawned while its item leaves the Lead subtree is refused and cleaned up": {
-      "seconds": 11.02178,
-      "reason": "Exercises Lead launch/stop/review/merge authority against real hubs, task branches and fake harnesses across hierarchy levels.",
-      "owner": "E-677",
-      "legacy": true
-    },
-    "hub/test/lead-permissions.test.ts::Lead launches and stops only sessions serving its live subtree": {
-      "seconds": 18.614453,
-      "reason": "Exercises Lead launch/stop/review/merge authority against real hubs, task branches and fake harnesses across hierarchy levels.",
-      "owner": "E-677",
-      "legacy": true
-    },
     "hub/test/lead-permissions.test.ts::lead-1 requests verifiers and merges its scheduled item through the ordinary gate; other levels refuse": {
-      "seconds": 15.323038,
-      "reason": "Exercises Lead launch/stop/review/merge authority against real hubs, task branches and fake harnesses across hierarchy levels.",
-      "owner": "E-677",
-      "legacy": true
-    },
-    "hub/test/lead-routing.test.ts::an Implementer reports blocked up its item chain; unclaimed descendants use the nearest Lead": {
-      "seconds": 8.502318,
-      "reason": "Routes reports and lifecycle events across multiple live hierarchy claims and verifies delivery to the surviving Lead.",
-      "owner": "E-677",
-      "legacy": true
-    },
-    "hub/test/lead-routing.test.ts::long idle and death climb from item to epic to release; stopped Leads leave inherited routing": {
-      "seconds": 9.895701,
-      "reason": "Routes reports and lifecycle events across multiple live hierarchy claims and verifies delivery to the surviving Lead.",
+      "seconds": 7.7,
+      "reason": "Preserves real Git preparation, landing rollback, and interrupted close recovery while the Lead subtree changes across gated callbacks.",
       "owner": "E-677",
       "legacy": true
     },
@@ -4639,24 +4611,6 @@
       "owner": "E-677",
       "legacy": true
     },
-    "hub/test/verifier-routing.test.ts::QA affinity survives copied and reordered verdict headers, including stage requests": {
-      "seconds": 7.169185,
-      "reason": "Launches multiple live verifier fixtures and routes QA/review requests across holds, relaunch and copied verdict histories.",
-      "owner": "E-677",
-      "legacy": true
-    },
-    "hub/test/verifier-routing.test.ts::queued QA request starts an idle verifier with held progress after relaunch": {
-      "seconds": 7.769881,
-      "reason": "Launches multiple live verifier fixtures and routes QA/review requests across holds, relaunch and copied verdict histories.",
-      "owner": "E-677",
-      "legacy": true
-    },
-    "hub/test/verifier-routing.test.ts::three live Reviewers receive one request, and a repeat returns to the same reviewer": {
-      "seconds": 12.921266,
-      "reason": "Launches multiple live verifier fixtures and routes QA/review requests across holds, relaunch and copied verdict histories.",
-      "owner": "E-677",
-      "legacy": true
-    },
     "hub/test/worktree-cli.test.ts::CLI commands from linked worktrees find the main project hub and write only its tracker": {
       "seconds": 17.809066,
       "reason": "Creates linked git worktrees and invokes the CLI from each, proving shared hub discovery and writes only to the authoritative tracker.",
@@ -4746,6 +4700,34 @@
       "reason": "Runs a fixture hub, git-backed integrated dev admission and real local worker; waits for its inherited harness entry, checks an unrelated subprocess refusal, then observes completion and the downstream report separately before proving admission reopens.",
       "owner": "E-677",
       "legacy": true
+    },
+    "hub/test/handover-process.test.ts::revocation mid-turn: the human reassigns while the launched Coordinator is busy; its next call is refused and the revocation reaches it": {
+      "seconds": 7.7,
+      "owner": "E-677",
+      "added": "2026-10-17",
+      "expires": "2026-10-24",
+      "reason": "Retains a real busy harness turn, mid-turn role revocation, refused native reply, and delivery of the revocation."
+    },
+    "hub/test/lead-permissions-process.test.ts::Lead launches and stops only sessions serving its live subtree": {
+      "seconds": 6.6,
+      "owner": "E-677",
+      "added": "2026-10-17",
+      "expires": "2026-10-24",
+      "reason": "Retains real own/foreign worker launches, Lead CLI stop authority, and confirmed OS disappearance of the stopped worker PID."
+    },
+    "hub/test/lead-handover-process.test.ts::a committed Lead handover recovers its node claim after a crash without touching another Lead": {
+      "seconds": 10,
+      "owner": "E-677",
+      "added": "2026-10-17",
+      "expires": "2026-10-24",
+      "reason": "Retains a real hub crash after the durable Lead handover commit, restarts it, and checks isolated node-claim recovery."
+    },
+    "hub/test/lead-routing-process.test.ts::long idle and death climb from item to epic to release; stopped Leads leave inherited routing": {
+      "seconds": 8.5,
+      "owner": "E-677",
+      "added": "2026-10-17",
+      "expires": "2026-10-24",
+      "reason": "Retains three real harness sessions, SIGKILL death notification, confirmed stops and inherited hierarchy routing. Linux droplet run 83b8bc38 (A-4357) observed 7.387011 seconds; Mac 5/5 medians were below five seconds."
     },
     "hub/test/durations-runner.test.ts::an outer repetition deadline reaps a failed worker with a live socket before continuing": {
       "seconds": 20,

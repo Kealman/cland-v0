@@ -1,10 +1,12 @@
+// T2: item identities, authority and persistence use in-process hubs and spokes.
+import { FakeClock } from './fake-clock.ts';
 import { onCleanup } from './process-cleanup.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { cland, connectUi, connectWsUi, spawnSpoke, startDaemon, startHub, tempProject, TEST_SECRET } from './harness.ts';
+import { connectUi, connectWsUi, inProcessSpoke, projectHub, startHub, tempProject, TEST_SECRET } from './harness.ts';
 import type { Artifact, Message } from '../src/protocol.ts';
 import { Tracker } from '../src/tracker/tracker.ts';
 import { fixedRoles } from '../src/roles/config.ts';
@@ -13,11 +15,11 @@ import { Store } from '../src/hub/store.ts';
 
 test('Reviewer reports resolve to the item claimant; unclaimed reports resolve to the Coordinator', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root, {}, { clock: new FakeClock() });
   const ui = await connectUi(t, discovery);
-  const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
-  const impl = await spawnSpoke({ cwd: root, discover: true, name: 'impl', role: 'implementer', sessionId: 'impl-id' });
-  const rev = await spawnSpoke({ cwd: root, discover: true, name: 'rev', role: 'reviewer', sessionId: 'rev-id' });
+  const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
+  const impl = await inProcessSpoke(t, { cwd: root, discover: true, name: 'impl', role: 'implementer', sessionId: 'impl-id' });
+  const rev = await inProcessSpoke(t, { cwd: root, discover: true, name: 'rev', role: 'reviewer', sessionId: 'rev-id' });
   onCleanup(t, () => coord.close()); onCleanup(t, () => impl.close()); onCleanup(t, () => rev.close());
   await coord.waitForPresence(['coord', 'impl', 'rev']);
   await rev.waitForEvent(e => e.params.meta?.kind === 'role' && e.params.content.includes('`to: ["lead T-<n>"]`'));
@@ -43,11 +45,11 @@ test('Reviewer reports resolve to the item claimant; unclaimed reports resolve t
 
 test('verdict events use the lead explicit subscription and QA reports use the same item address', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root, {}, { clock: new FakeClock() });
   const ui = await connectUi(t, discovery);
-  const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
-  const impl = await spawnSpoke({ cwd: root, discover: true, name: 'impl', role: 'implementer', sessionId: 'impl-id' });
-  const qa = await spawnSpoke({ cwd: root, discover: true, name: 'qa-one', role: 'qa', sessionId: 'qa-id' });
+  const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
+  const impl = await inProcessSpoke(t, { cwd: root, discover: true, name: 'impl', role: 'implementer', sessionId: 'impl-id' });
+  const qa = await inProcessSpoke(t, { cwd: root, discover: true, name: 'qa-one', role: 'qa', sessionId: 'qa-id' });
   onCleanup(t, () => coord.close()); onCleanup(t, () => impl.close()); onCleanup(t, () => qa.close());
   await qa.waitForPresence(['coord', 'impl', 'qa-one']);
   await qa.waitForEvent(e => e.params.meta?.kind === 'role' && e.params.content.includes('`to: ["lead T-<n>"]`'));
@@ -77,8 +79,8 @@ test('a human claim falls back to Coordinator and item addressing preserves ordi
   const ui = await connectWsUi(t, hub);
   await ui.request({ type: 'role.set', session: 'coord', role: 'coordinator' });
   await ui.request({ type: 'role.set', session: 'rev', role: 'reviewer' });
-  const coord = await spawnSpoke({ hub, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
-  const rev = await spawnSpoke({ hub, name: 'rev', role: 'reviewer', sessionId: 'rev-id' });
+  const coord = await inProcessSpoke(t, { hub, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
+  const rev = await inProcessSpoke(t, { hub, name: 'rev', role: 'reviewer', sessionId: 'rev-id' });
   onCleanup(t, () => coord.close()); onCleanup(t, () => rev.close());
   await coord.waitForPresence(['coord', 'rev']);
   const made = await ui.request({ size: 'M', type: 'task.create', title: 'Human claim' });
@@ -121,7 +123,7 @@ for (const change of ['claim', 'identity', 'close'] as const) {
     const opened = await ui.request({ type: 'topic.create', title: 'Deferred review' });
     const topic = (opened.value as { topic: { id: string } }).topic.id;
     assert.equal((await ui.request({ type: 'task.claim', item: item.id, as: { name: 'first' } })).ok, true);
-    const rev = await spawnSpoke({ hub, name: 'rev', role: 'reviewer', sessionId: 'rev-id' });
+    const rev = await inProcessSpoke(t, { hub, name: 'rev', role: 'reviewer', sessionId: 'rev-id' });
     onCleanup(t, () => rev.close());
     await rev.waitForPresence(['rev']);
     const madeArtifact = await ui.request({ type: 'artifact.create', kind: 'note', title: 'Review', topic, content: 'Review evidence' });
@@ -136,7 +138,7 @@ for (const change of ['claim', 'identity', 'close'] as const) {
       assert.equal((await ui.request({ type: 'task.claim', item: item.id, as: { name: 'second' } })).ok, true);
     }
     if (change === 'close') assert.equal((await ui.request({ type: 'task.close', item: item.id })).ok, true);
-    const recipient = await spawnSpoke({ hub, name: change === 'claim' ? 'second' : 'first', role: 'implementer', sessionId: 'recipient-real' });
+    const recipient = await inProcessSpoke(t, { hub, name: change === 'claim' ? 'second' : 'first', role: 'implementer', sessionId: 'recipient-real' });
     onCleanup(t, () => recipient.close());
     await recipient.waitForPresence([change === 'claim' ? 'second' : 'first', 'rev']);
     release();
@@ -181,8 +183,8 @@ for (const cleanup of ['normal', 'interrupted'] as const) {
       }
       return prepare.call(this, sql);
     });
-    let impl = await spawnSpoke({ hub, name: 'impl', role: 'implementer', sessionId: 'impl-real' });
-    let rev = await spawnSpoke({ hub, name: 'rev', role: 'reviewer', sessionId: 'rev-real' });
+    let impl = await inProcessSpoke(t, { hub, name: 'impl', role: 'implementer', sessionId: 'impl-real' });
+    let rev = await inProcessSpoke(t, { hub, name: 'rev', role: 'reviewer', sessionId: 'rev-real' });
     onCleanup(t, () => blocked = false); onCleanup(t, () => impl.close()); onCleanup(t, () => rev.close());
     await rev.waitForPresence(['impl', 'rev']);
     assert.ok(failures > 0);
@@ -214,8 +216,8 @@ for (const cleanup of ['normal', 'interrupted'] as const) {
     tracker.start();
     hub = await startHub({ tracker, store: new Store(db), roles: fixedRoles() });
     ui = await connectWsUi(t, hub);
-    impl = await spawnSpoke({ hub, name: 'renamed', role: 'coordinator', sessionId: 'impl-real' });
-    rev = await spawnSpoke({ hub, name: 'rev', role: 'reviewer', sessionId: 'rev-real' });
+    impl = await inProcessSpoke(t, { hub, name: 'renamed', role: 'coordinator', sessionId: 'impl-real' });
+    rev = await inProcessSpoke(t, { hub, name: 'rev', role: 'reviewer', sessionId: 'rev-real' });
     await rev.waitForPresence(['renamed', 'rev']);
     const stillFenced = await impl.call<{ ok: boolean; error: string }>('task.comment', { id: item.id, text: 'Before retry.' });
     assert.equal(stillFenced.ok, false);
@@ -239,8 +241,8 @@ for (const cleanup of ['normal', 'interrupted'] as const) {
       tracker.start();
       hub = await startHub({ tracker, store: new Store(db), roles: fixedRoles() });
       ui = await connectWsUi(t, hub);
-      impl = await spawnSpoke({ hub, name: 'renamed', role: 'coordinator', sessionId: 'impl-real' });
-      rev = await spawnSpoke({ hub, name: 'rev', role: 'reviewer', sessionId: 'rev-real' });
+      impl = await inProcessSpoke(t, { hub, name: 'renamed', role: 'coordinator', sessionId: 'impl-real' });
+      rev = await inProcessSpoke(t, { hub, name: 'rev', role: 'reviewer', sessionId: 'rev-real' });
       await rev.waitForPresence(['renamed', 'rev']);
     }
     const after = await ui.request({ type: 'task.view', item: item.id });
@@ -257,7 +259,7 @@ for (const cleanup of ['normal', 'interrupted'] as const) {
     assert.equal((await ui.request({ type: 'task.claim', item: second.id, as: { name: 'impl' } })).ok, true);
     const secondView = await ui.request({ type: 'task.view', item: second.id });
     assert.equal((secondView.value as { item: { claim: { sessionId: string } } }).item.claim.sessionId, 'name:impl', 'the recycled name cannot adopt the previous claimant identity');
-    const recycled = await spawnSpoke({ hub, name: 'impl', role: 'implementer', sessionId: 'recycled-real' });
+    const recycled = await inProcessSpoke(t, { hub, name: 'impl', role: 'implementer', sessionId: 'recycled-real' });
     onCleanup(t, () => recycled.close());
     await recycled.waitForPresence(['impl', 'final', 'rev']);
     await rev.call('send', { to: [`lead ${second.id}`], text: 'for the new claimant' });
@@ -268,11 +270,12 @@ for (const cleanup of ['normal', 'interrupted'] as const) {
 
 test('a recorded lead recipient survives claim replacement and hub restart', async t => {
   const root = await tempProject(t);
-  let { discovery } = await startDaemon(t, root);
+  let served = await projectHub(t, root, {}, { clock: new FakeClock() });
+  let { discovery } = served;
   let ui = await connectUi(t, discovery);
-  const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
-  const first = await spawnSpoke({ cwd: root, discover: true, name: 'first', role: 'implementer', sessionId: 'first-id' });
-  const second = await spawnSpoke({ cwd: root, discover: true, name: 'second', role: 'implementer', sessionId: 'second-id' });
+  const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
+  const first = await inProcessSpoke(t, { cwd: root, discover: true, name: 'first', role: 'implementer', sessionId: 'first-id' });
+  const second = await inProcessSpoke(t, { cwd: root, discover: true, name: 'second', role: 'implementer', sessionId: 'second-id' });
   onCleanup(t, () => coord.close()); onCleanup(t, () => first.close()); onCleanup(t, () => second.close());
   await coord.waitForPresence(['coord', 'first', 'second']);
   const { item } = await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Fixed recipient', assignee: 'first' });
@@ -283,8 +286,9 @@ test('a recorded lead recipient survives claim replacement and hub restart', asy
   await coord.call('task.edit', { id: item.id, assignee: 'second' });
   assert.equal((await second.call<{ ok: boolean }>('task.claim', { id: item.id })).ok, true);
   ui.close();
-  assert.equal((await cland(root, 'hub', 'stop')).code, 0);
-  ({ discovery } = await startDaemon(t, root));
+  await served.stop();
+  served = await projectHub(t, root, {}, { clock: new FakeClock() });
+  ({ discovery } = served);
   ui = await connectUi(t, discovery);
   await coord.waitForPresence(['coord', 'first', 'second']);
   await coord.call('send', { to: ['first'], text: 'first next turn' });
@@ -301,10 +305,10 @@ test('a recorded lead recipient survives claim replacement and hub restart', asy
 
 test('human @lead mentions reach the claimant, with explicit errors for closed, unknown and malformed items', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root, {}, { clock: new FakeClock() });
   const ui = await connectUi(t, discovery);
-  const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
-  const impl = await spawnSpoke({ cwd: root, discover: true, name: 'impl', role: 'implementer', sessionId: 'impl-id' });
+  const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
+  const impl = await inProcessSpoke(t, { cwd: root, discover: true, name: 'impl', role: 'implementer', sessionId: 'impl-id' });
   onCleanup(t, () => coord.close()); onCleanup(t, () => impl.close());
   await coord.waitForPresence(['coord', 'impl']);
   const { item } = await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Human routing', assignee: 'impl' });
