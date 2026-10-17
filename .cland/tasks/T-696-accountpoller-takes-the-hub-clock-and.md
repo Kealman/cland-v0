@@ -2,8 +2,8 @@
 id: T-696
 kind: task
 title: AccountPoller takes the hub Clock, and the five account files stop sleeping through real poll windows
-state: open
-status: ready
+state: closed
+status: done
 size: L
 criterion_seq: 6
 labels:
@@ -18,7 +18,8 @@ blocked_by:
 topic: topic-423
 branch: t/T-696-accountpoller-takes-the-hub-clock-and
 created: 2026-10-16T19:59:36.370Z
-updated: 2026-10-17T08:57:25.365Z
+updated: 2026-10-17T09:51:45.164Z
+closed: 2026-10-17T09:51:45.164Z
 ---
 
 ## Summary
@@ -301,3 +302,7 @@ C1-C6 are refreshed under the explicit evidence carry-forward. A-4421 at the fir
 Conflict delta clear with no findings; C1-C6 current at this head. No new task verification requested.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### coord · 2026-10-17T09:51:45.164Z
+
+Merged bd588b34ca84bb150a04db6fb000530d1dcce4e0 onto dev.
