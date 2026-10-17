@@ -3,7 +3,7 @@ id: T-697
 kind: task
 title: Suites and the droplet executor take the hub Clock, and an in-process fake provider and scripted machine replace HTTP, ssh and the worker in T2
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 4
 labels:
@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-420
 branch: t/T-697-suites-and-the-droplet-executor-take-the
 created: 2026-10-16T19:59:36.515Z
-updated: 2026-10-17T07:56:04.670Z
+updated: 2026-10-17T08:43:35.786Z
 ---
 
 ## Summary
@@ -39,8 +39,12 @@ The executor and suite files are the heaviest class: `suite-remote-budget` 143.9
   - done: impl-697 · 2026-10-17T07:03:00.533Z
   - verified: rev-31 [reviewer] · run rev-20261017-697-source-2 · 2026-10-17T07:21:24.688Z · commit 87077ecbce2427a5b17a07705b3807362bfdaa9c
   - verified: rev-31 [reviewer] · run rev-20261017-697-merge-delta · 2026-10-17T07:56:04.670Z · commit 989e5dc04ceda552e360241d7339cef1ac8ab957
-- [ ] C2. With the default clock and process machines, `executor-run.test.ts` and `suite-close-recovery.test.ts` pass unchanged, 5/5 serially as whole files on the Mac and once in the task's droplet verify.
-- [ ] C3. `demo-release.test.ts` falls from 44.9 s (A-3877) to 15 s or less, and `executor-droplet.test.ts` from 20.1 s to 14 s or less.
+- [x] C2. With the default clock and process machines, `executor-run.test.ts` and `suite-close-recovery.test.ts` pass unchanged, 5/5 serially as whole files on the Mac and once in the task's droplet verify.
+  - done: impl-697 · 2026-10-17T08:43:15.676Z
+  - verified: rev-31 [reviewer] · run rev-20261017-697-final · 2026-10-17T08:43:35.142Z · commit 989e5dc04ceda552e360241d7339cef1ac8ab957
+- [x] C3. `demo-release.test.ts` falls from 44.9 s (A-3877) to 15 s or less, and `executor-droplet.test.ts` from 20.1 s to 14 s or less.
+  - done: impl-697 · 2026-10-17T08:43:16.092Z
+  - verified: rev-31 [reviewer] · run rev-20261017-697-final · 2026-10-17T08:43:35.142Z · commit 989e5dc04ceda552e360241d7339cef1ac8ab957
 - [x] C4. An audit of the two converted files maps every moved or rewritten assertion to its new place, with no behaviour claim dropped.
   - done: impl-697 · 2026-10-17T07:20:34.371Z
   - verified: rev-31 [reviewer] · run rev-20261017-697-source-2 · 2026-10-17T07:21:24.688Z · commit 87077ecbce2427a5b17a07705b3807362bfdaa9c
@@ -112,3 +116,22 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Authorized merge delta clear; Standards0/Spec0 findings, A-4373. Independently read Coordinator92e2b69a/739a7333; actual legacy allowance lint refusal documented A-4371, merge conflict-free. Parsed durations exactdev minus10own removals; tiers exactdev+3ownentries. All task code except suiteSummary unchanged; its incoming3line sanitized load-diagnostics append reviewed. C2 sources unchanged vsdev. Tip/diffcheck clean; typecheck/tierlint and scripted2/2/diagnostics4/4 reportedgreen. C1/C4 continuity verified; C2/C3 pending new exact-head diff-selected taskdroplet. Parent35Mac receipts A-4352 support unchanged controls but are not merge-head rerun; cancelled e92e/A-4370 is nongating. No final waiver or Reviewer edits/tests.
 
 Criteria: C1 verified, C4 verified.
+
+### coord · 2026-10-17T08:42:44.168Z
+
+Coordinator decision, 08:43Z, C3: the acceptance comparison is the serial Mac median (demo 8.72 s ≤ 15 s, executor 10.24 s ≤ 14 s). Linux at 2 workers is disclosed, not gating: demo 14.47 s, executor 15.01 s against peak load 9.49, which is within run-to-run variance and dominated by the retained T3 lifecycle part (14.63 s). If the stage-close durations refresh lands the executor file above 14 s, T-698–T-700 take another look at the remaining T3 part.
+
+### rev-31 · 2026-10-17T08:43:35.142Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261017-697-final
+commit: 989e5dc04ceda552e360241d7339cef1ac8ab957
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear; Standards0/Spec0 findings, A-4404. Independently inspected exact-head18ad587c/A-4402 full exit0:2472pass/0fail/8skip, fullNeovim391pass/3skip197.56s. C2 unchanged executor-run12pass98.326s and suite-close-recovery5pass33.767s, parentMac5/5 each accepted via mergechain. Whole scripted/heldI/O/rolecontrols each5/5 loadgreen. C3 independently read Coordinator4b6f43c3 uses Maccombined medians8.722demo<=15/10.242executor<=14; disclose Linux14.473demo/15.009executor (retainedT3executor14.629), explicitly nongating under variance disposition, not Linuxthresholdpass. Integratedrefresh>14 follow-up staysT698/T699/T700. C2/C3 verified; C1/C4 current. ClaimantC2/C3done pending readback, reconcile supportedmarks. Lifetime2718s/cost$0.1888 perhub. No newrun/headchange/Reviewer edits/tests.
+
+Criteria: C2 verified, C3 verified.

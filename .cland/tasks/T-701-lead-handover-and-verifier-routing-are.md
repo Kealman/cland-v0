@@ -19,7 +19,7 @@ blocked_by:
 topic: topic-421
 branch: t/T-701-lead-handover-and-verifier-routing-are
 created: 2026-10-16T19:59:36.941Z
-updated: 2026-10-17T08:16:35.377Z
+updated: 2026-10-17T08:29:36.361Z
 ---
 
 ## Summary
@@ -54,20 +54,25 @@ Routing to a Lead or a verifier is a hub rule, but these files launch two to fiv
   - verified: rev-30 [reviewer] · run rev-20261017-701-cleanup-correction · 2026-10-17T06:51:23.978Z · commit 14f2d8e4ec7b6640767f0f6a0627da24bbea2c95
   - verified: rev-30 [reviewer] · run rev-20261017-701-allowance-merge · 2026-10-17T07:35:13.415Z · commit 4cafa46bf0f96e88ff1f1de0c1499f6c992293fa
   - verified: rev-30 [reviewer] · run rev-20261017-701-final · 2026-10-17T08:16:35.377Z · commit 4cafa46bf0f96e88ff1f1de0c1499f6c992293fa
+  - verified: rev-30 [reviewer] · run rev-20261017-701-conflict-delta · 2026-10-17T08:29:36.361Z · commit 4232c43047e5a9a7e7b3e4fbf3a4c72b9dd4f0fc
 - [ ] C2. Their fake-binary call sites fall from 18 to 5 or less, `spawnSpoke` sites from 57 to 10 or less, and `startDaemon` sites from 23 to 4 or less.
   - verified: rev-30 [reviewer] · run rev-20261017-701-cleanup-correction · 2026-10-17T06:51:23.978Z · commit 14f2d8e4ec7b6640767f0f6a0627da24bbea2c95
   - verified: rev-30 [reviewer] · run rev-20261017-701-allowance-merge · 2026-10-17T07:35:13.415Z · commit 4cafa46bf0f96e88ff1f1de0c1499f6c992293fa
   - verified: rev-30 [reviewer] · run rev-20261017-701-final · 2026-10-17T08:16:35.377Z · commit 4cafa46bf0f96e88ff1f1de0c1499f6c992293fa
+  - verified: rev-30 [reviewer] · run rev-20261017-701-conflict-delta · 2026-10-17T08:29:36.361Z · commit 4232c43047e5a9a7e7b3e4fbf3a4c72b9dd4f0fc
 - [ ] C3. Routing assertions read the hub's recorded messages, and no test outside the kept T3 proofs reads a fake harness log, proved by a source check.
   - verified: rev-30 [reviewer] · run rev-20261017-701-cleanup-correction · 2026-10-17T06:51:23.978Z · commit 14f2d8e4ec7b6640767f0f6a0627da24bbea2c95
   - verified: rev-30 [reviewer] · run rev-20261017-701-allowance-merge · 2026-10-17T07:35:13.415Z · commit 4cafa46bf0f96e88ff1f1de0c1499f6c992293fa
   - verified: rev-30 [reviewer] · run rev-20261017-701-final · 2026-10-17T08:16:35.377Z · commit 4cafa46bf0f96e88ff1f1de0c1499f6c992293fa
+  - verified: rev-30 [reviewer] · run rev-20261017-701-conflict-delta · 2026-10-17T08:29:36.361Z · commit 4232c43047e5a9a7e7b3e4fbf3a4c72b9dd4f0fc
 - [ ] C4. An audit maps every moved or rewritten assertion to its new place, with no behaviour claim dropped.
   - verified: rev-30 [reviewer] · run rev-20261017-701-cleanup-correction · 2026-10-17T06:51:23.978Z · commit 14f2d8e4ec7b6640767f0f6a0627da24bbea2c95
   - verified: rev-30 [reviewer] · run rev-20261017-701-allowance-merge · 2026-10-17T07:35:13.415Z · commit 4cafa46bf0f96e88ff1f1de0c1499f6c992293fa
   - verified: rev-30 [reviewer] · run rev-20261017-701-final · 2026-10-17T08:16:35.377Z · commit 4cafa46bf0f96e88ff1f1de0c1499f6c992293fa
+  - verified: rev-30 [reviewer] · run rev-20261017-701-conflict-delta · 2026-10-17T08:29:36.361Z · commit 4232c43047e5a9a7e7b3e4fbf3a4c72b9dd4f0fc
 - [ ] C5. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
   - verified: rev-30 [reviewer] · run rev-20261017-701-final · 2026-10-17T08:16:35.377Z · commit 4cafa46bf0f96e88ff1f1de0c1499f6c992293fa
+  - verified: rev-30 [reviewer] · run rev-20261017-701-conflict-delta · 2026-10-17T08:29:36.361Z · commit 4232c43047e5a9a7e7b3e4fbf3a4c72b9dd4f0fc
 
 ## Blocked by
 
@@ -214,5 +219,30 @@ C1-C4 source verification stands and is refreshed with the final pass: complete 
 Totals independently sum to 2092 tests, 2087 pass, zero failures/cancellations, five skips: free 54/54; machine 2021 pass/5 skip; Neovim smoke 12/12. Host typecheck completes with candidate-tree receipt 343f1922208b3f2a6cd64def722ef38b61b7e4b3 reused remotely. Linux x64 c-8 lon1, Node 24.21.0/Neovim 0.12.5, two workers; suite wall 2353.35 s, peak one-minute load 12.45, lifetime 2427 s, cost $0.1685.
 
 Final review clear, all C1-C5 verified at this exact head; no remaining findings.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### rev-30 · 2026-10-17T08:29:36.361Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261017-701-conflict-delta
+commit: 4232c43047e5a9a7e7b3e4fbf3a4c72b9dd4f0fc
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Conflict-only delta review T-701 at 4232c43047e5a9a7e7b3e4fbf3a4c72b9dd4f0fc, merge parents green 4cafa46bf0f96e88ff1f1de0c1499f6c992293fa and dev 6485162f464067cb6addc93a61bbd25d3cfa6cfc. Origin matches. Primary Coordinator 2cc2a889 explicitly authorizes the allowance-only conflict resolution, preserves A-4394 as evidence and requires no new task droplet run; the next integrated cover supplies combined-tree execution. Read-only review, no Reviewer execution.
+
+## Standards
+No findings. Independently parsed durations.json equals the structured union of incoming dev and all T-701 changes against common base a1f26b98, including additions/removals and unchanged limits/reasons/owners/dates. All sections match the expected union, not merely the appended block: source, budget, files, tests and allowances. Thus T-701 lifecycle entries and incoming T-720/T-725 allowances are retained without unrelated value changes. Claimant reports typecheck, tier lint and working/staged whitespace checks exit zero.
+
+## Spec and freshness
+No findings. Normalized zero-context task patch outside durations.json is independently identical before and after merge, excluding only Git index/hunk-location metadata. All thirteen task test Git blobs are identical to green 4cafa46b; tier delta is preserved. The original migration census, hub-record routing assertions, declaration audit and failure-path ownership controls remain current. C1-C4 are refreshed at this head; original migration timing sum remains unchanged.
+
+C5 is carried forward under the explicit primary disposition, not represented as a fresh merged-head execution. A-4394 at parent 4cafa46b passed hub plus Neovim smoke (2087 pass, zero fail, five skips), all thirteen task files and 65/65 owned repetitions. Accepted Mac whole-file evidence A-4324/A-4331/A-4332 applies to the identical task test blobs. Final review A-4395 remains the detailed receipt audit. The next integrated cover, rather than a new task run, covers interactions in the combined dev tree as directed.
+
+Conflict delta clear, no findings; C1-C5 verified/current at 4232c430 under the accepted evidence carry-forward. No new task verification requested.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.

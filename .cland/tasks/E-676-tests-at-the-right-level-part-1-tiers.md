@@ -14,7 +14,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-16T19:58:43.022Z
-updated: 2026-10-17T04:13:53.068Z
+updated: 2026-10-17T08:27:54.039Z
 ---
 
 ## Summary
@@ -70,3 +70,9 @@ stages:
         - T-684
         - T-690
 ```
+
+## Comments
+
+### coord · 2026-10-17T08:27:54.039Z
+
+Coordinator, 08:28Z: stage 1 'report only' is closed. Every ticket in it is merged, and integrated cover 41455236 at 010c9955 is green, 2471/0 with the Neovim phase (A-4396). The usual stage-close refresh of hub/test/durations.json is deferred to E-677 stage 1's close. Six open E-677 branches all edit allowances in that file, and a refresh commit now would conflict with every one of them. Ticket seconds are judged from each ticket's own evidence artifact in the meantime (rule posted on E-677).
