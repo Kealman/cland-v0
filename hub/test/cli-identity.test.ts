@@ -1,12 +1,11 @@
-// The CLI run in a launched session's shell (T-49): `$CLAND_SESSION_ID` and `$CLAND_SESSION_NAME` are what the
-// adapters put there, and with them every `cland` call is that session's: the hub refuses what only the human may
-// do and audits the call under the session's name. A real daemon in a temporary project, real spokes, and the
-// commands as child processes.
+// T3: SIGSTOP hub-down CLI fallback proves no signal is sent without acknowledgement; confirmed hub.stop reaps its PID.
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, flushProjectLogs, clandWithEnv, fakeCodex, NO_PS, pidAlive, readDiscovery, spawnSpoke, startDaemon, tempProject, type Session } from './harness.ts';
+import { cland, flushProjectLogs, clandWithEnv, fakeCodex, NO_PS, pidAlive, readDiscovery, inProcessSpoke, projectHub, connectUi, dispatcherUi, eventually, fakeClaude, startDaemon, tempProject, type Session } from './harness.ts';
+
+import { value } from './validation-support.ts';
 
 type Audit = { event: string; session: string; sessionId: string | null; role: string | null; tool: string; client?: string; outcome: string; permission?: string };
 
@@ -20,7 +19,7 @@ const audits = async (t: TestContext, root: string, tool: string): Promise<Audit
 };
 
 async function session(t: TestContext, root: string, name: string, role: string, sessionId: string): Promise<Session> {
-  const s = await spawnSpoke({ discover: true, cwd: root, name, role, sessionId });
+  const s = await inProcessSpoke(t, { discover: true, cwd: root, name, role, sessionId });
   t.after(() => s.close());
   await s.waitForPresence([name]);
   return s;
@@ -29,113 +28,97 @@ async function session(t: TestContext, root: string, name: string, role: string,
 /** The environment of a launched session's shell. */
 const shellOf = (name: string, sessionId: string) => ({ CLAND_SESSION_ID: sessionId, CLAND_SESSION_NAME: name });
 
-test('cland topic answer from a session\'s shell is refused with the typed error: the ask stays open and the audit names the session', async (t) => {
+async function fixture(t: TestContext) {
   const root = await tempProject(t);
-  await startDaemon(t, root);
+  const hub = await projectHub(t, root);
+  const ui = await dispatcherUi(t, hub.dispatcher, root);
+  const cli = await connectUi(t, hub.discovery, 'cli');
   const coord = await session(t, root, 'coord', 'coordinator', 'sess-coord');
   await session(t, root, 'impl-1', 'implementer', 'sess-impl');
-  const asked = await coord.call<{ ok: boolean; ask: string }>('ask', { topic: 'general', question: 'Which port?', options: ['a fixed one', 'a free one'] });
-  assert.equal(asked.ok, true, JSON.stringify(asked));
-  const impl = shellOf('impl-1', 'sess-impl');
+  return { root, ui, cli, coord };
+}
 
-  const refused = await clandWithEnv(root, impl, 'topic', 'answer', asked.ask, '1');
+test('cland topic answer from a session\'s shell retains its typed refusal and identity', async t => {
+  const { root, ui, cli, coord } = await fixture(t);
+  const asked = await coord.call<{ ok: boolean; ask: string }>('ask', { topic: 'general', question: 'Which port?', options: ['a fixed one', 'a free one'] });
+  assert.equal(asked.ok, true);
+  const refused = await clandWithEnv(root, shellOf('impl-1', 'sess-impl'), 'topic', 'answer', asked.ask, '1');
   assert.notEqual(refused.code, 0);
   assert.match(refused.stderr, /forbidden: topic\.answer \(only the human may do this; this call is impl-1 \[Implementer\]'s, by \$CLAND_SESSION_ID\)/);
   assert.equal(refused.stdout, '');
-  assert.match((await cland(root, 'inbox')).stdout, new RegExp(`^ask ${asked.ask} `, 'm'), 'the ask is still open');
   const [audit] = (await audits(t, root, 'topic.answer')).slice(-1);
   assert.deepEqual([audit?.session, audit?.sessionId, audit?.role, audit?.client, audit?.outcome, audit?.permission], ['impl-1', 'sess-impl', 'implementer', 'cli', 'forbidden', 'topic.answer']);
-
-  // the asker itself is no more the human than anyone: the Coordinator's shell is refused its own ask too
-  const own = await clandWithEnv(root, shellOf('coord', 'sess-coord'), 'topic', 'answer', asked.ask, '1');
-  assert.match(own.stderr, /forbidden: topic\.answer \(only the human may do this; this call is coord \[Coordinator\]'s/);
-
-  // an identity the hub does not know is a session all the same, never the human
-  const stranger = await clandWithEnv(root, shellOf('ghost', 'sess-nobody'), 'topic', 'answer', asked.ask, '1');
-  assert.match(stranger.stderr, /forbidden: topic\.answer \(only the human may do this; this call is ghost's/);
-
-  // ... and so is a name alone that the hub never heard of (a stale or made-up $CLAND_SESSION_NAME, no id): refused,
-  // never promoted to the human
+  for (const as of [{ name: 'coord', sessionId: 'sess-coord', shell: true }, { name: 'ghost', sessionId: 'sess-nobody', shell: true }, { name: 'ghost', shell: true }]) {
+    const own = await cli.request({ type: 'topic.answer', ask: asked.ask, option: 1, as });
+    assert.equal(own.ok, false);
+    assert.match(own.error ?? '', new RegExp(`only the human may do this; this call is ${as.name}${as.name === 'coord' ? ' \\[Coordinator\\]' : ''}'s`));
+  }
   const nameOnly = await clandWithEnv(root, { CLAND_SESSION_NAME: 'ghost' }, 'topic', 'answer', asked.ask, '1');
   assert.notEqual(nameOnly.code, 0);
   assert.match(nameOnly.stderr, /forbidden: topic\.answer \(only the human may do this; this call is ghost's/);
   const [ghost] = (await audits(t, root, 'topic.answer')).slice(-1);
   assert.deepEqual([ghost?.session, ghost?.role, ghost?.outcome], ['ghost', null, 'forbidden']);
-  const ghostTask = await clandWithEnv(root, { CLAND_SESSION_NAME: 'ghost' }, 'task', 'create', '--size', 'M', 'From nobody');
-  assert.notEqual(ghostTask.code, 0);
-  assert.match(ghostTask.stderr, /forbidden: task\.create \(a session with no role has no tools\)/);
-  assert.match((await cland(root, 'inbox')).stdout, new RegExp(`^ask ${asked.ask} `, 'm'), 'the ask is still open');
-
-  // without the variables it is the human's, as before
-  const answered = await cland(root, 'topic', 'answer', asked.ask, '1');
-  assert.equal(answered.code, 0, answered.stderr);
-  assert.doesNotMatch((await cland(root, 'inbox')).stdout, /^ask /m);
+  const ghostTask = await cli.request({ type: 'task.create', size: 'M', title: 'From nobody', as: { name: 'ghost', shell: true } });
+  assert.equal(ghostTask.ok, false);
+  assert.match(ghostTask.error ?? '', /forbidden: task\.create \(a session with no role has no tools\)/);
+  const inboxCli = await cland(root, 'inbox');
+  assert.equal(inboxCli.code, 0, inboxCli.stderr);
+  assert.match(inboxCli.stdout, new RegExp(`^ask ${asked.ask} `, 'm'));
+  const inbox = await value<{ asks: Array<{ id: string }> }>(ui, { type: 'inbox.list' });
+  assert.ok(inbox.asks.some(ask => ask.id === asked.ask), 'the ask is still open');
+  await value(ui, { type: 'topic.answer', ask: asked.ask, option: 1 });
+  assert.equal((await value<{ asks: unknown[] }>(ui, { type: 'inbox.list' })).asks.length, 0);
   const [human] = (await audits(t, root, 'topic.answer')).slice(-1);
   assert.deepEqual([human?.session, human?.role, human?.outcome], ['human', 'human', 'ok']);
 });
 
-test('the other human-only commands are refused from a session\'s shell, the Coordinator\'s included, and reading is not: role set and clear, session attach and retry, hub unmute; inbox, role list', async (t) => {
-  const root = await tempProject(t);
-  await startDaemon(t, root);
-  await session(t, root, 'coord', 'coordinator', 'sess-coord');
-  await session(t, root, 'impl-1', 'implementer', 'sess-impl');
-  const impl = shellOf('impl-1', 'sess-impl');
-  const coord = shellOf('coord', 'sess-coord');
-
-  for (const [env, who, args, tool] of [
-    [impl, 'impl-1 \\[Implementer\\]', ['role', 'set', 'impl-1', 'reviewer'], 'role.set'],
-    [coord, 'coord \\[Coordinator\\]', ['role', 'set', 'impl-1', 'reviewer'], 'role.set'],
-    [impl, 'impl-1 \\[Implementer\\]', ['role', 'clear', 'coord'], 'role.clear'],
-    [coord, 'coord \\[Coordinator\\]', ['session', 'attach', 'impl-1'], 'session.attach'],
-    [coord, 'coord \\[Coordinator\\]', ['session', 'retry', 'impl-1', 'no-such-message'], 'session.retry'],
-    [impl, 'impl-1 \\[Implementer\\]', ['hub', 'unmute', 'coord', 'impl-1'], 'hygiene.unmute'],
+test('human-only shell commands enforce the held role while reads remain allowed', async t => {
+  const { root, ui, cli } = await fixture(t);
+  for (const [name, sessionId, frame] of [
+    ['impl-1', 'sess-impl', { type: 'role.set', session: 'impl-1', role: 'reviewer' }],
+    ['coord', 'sess-coord', { type: 'role.set', session: 'impl-1', role: 'reviewer' }],
+    ['impl-1', 'sess-impl', { type: 'role.clear', session: 'coord' }],
+    ['coord', 'sess-coord', { type: 'session.attach', session: 'impl-1' }],
+    ['coord', 'sess-coord', { type: 'session.retry', session: 'impl-1', message: 'no-such-message' }],
+    ['impl-1', 'sess-impl', { type: 'hygiene.unmute', a: 'coord', b: 'impl-1' }],
   ] as const) {
-    const r = await clandWithEnv(root, env, ...args);
-    assert.notEqual(r.code, 0, `${args.join(' ')} is refused`);
-    assert.match(r.stderr, new RegExp(`forbidden: ${tool.replace('.', '\\.')} \\(only the human may do this; this call is ${who}'s`), args.join(' '));
-    const [audit] = (await audits(t, root, tool)).slice(-1);
-    assert.deepEqual([audit?.session, audit?.outcome], [env.CLAND_SESSION_NAME, 'forbidden'], args.join(' '));
+    const r = await cli.request({ ...frame, as: { name, sessionId, shell: true } });
+    assert.equal(r.ok, false, frame.type);
+    assert.match(r.error ?? '', /forbidden: .*only the human may do this/);
+    const [audit] = (await audits(t, root, frame.type)).slice(-1);
+    assert.deepEqual([audit?.session, audit?.outcome], [name, 'forbidden']);
   }
-  // nothing moved
-  assert.match((await cland(root, 'role', 'list')).stdout, /Implementer .*\n {2}impl-1 \[Implementer\]\n/);
-
-  // reading is the session's too, and allowed
-  for (const [args, tool] of [[['inbox'], 'inbox.list'], [['role', 'list'], 'role.list']] as const) {
-    const r = await clandWithEnv(root, impl, ...args);
-    assert.equal(r.code, 0, r.stderr);
-    const [audit] = (await audits(t, root, tool)).slice(-1);
-    assert.deepEqual([audit?.session, audit?.sessionId, audit?.role, audit?.outcome], ['impl-1', 'sess-impl', 'implementer', 'ok'], args.join(' '));
+  const roles = await value<{ roles: Array<{ role: string; holders: Array<{ name: string }> }> }>(ui, { type: 'role.list' });
+  assert.ok(roles.roles.find(row => row.role === 'implementer')?.holders.some(holder => holder.name === 'impl-1'), 'nothing moved');
+  for (const type of ['inbox.list', 'role.list']) {
+    await value(cli, { type, as: { name: 'impl-1', sessionId: 'sess-impl', shell: true } });
+    const [audit] = (await audits(t, root, type)).slice(-1);
+    assert.deepEqual([audit?.session, audit?.sessionId, audit?.role, audit?.outcome], ['impl-1', 'sess-impl', 'implementer', 'ok']);
   }
-  // what the permission table knows is decided by the table: the Coordinator may list the launched sessions, an Implementer may not
-  assert.equal((await clandWithEnv(root, coord, 'session', 'list')).code, 0);
-  const listed = await clandWithEnv(root, impl, 'session', 'list');
-  assert.match(listed.stderr, /forbidden: session\.launch \(Implementer may not/);
-
-  // the human's own calls are untouched
+  await value(cli, { type: 'session.list', as: { name: 'coord', sessionId: 'sess-coord', shell: true } });
+  const listed = await cli.request({ type: 'session.list', as: { name: 'impl-1', sessionId: 'sess-impl', shell: true } });
+  assert.match(listed.error ?? '', /forbidden: session\.launch \(Implementer may not/);
   const set = await cland(root, 'role', 'set', 'impl-1', 'reviewer');
   assert.equal(set.code, 0, set.stderr);
 });
 
-test('cland task view and task comment from a session\'s shell work as the session: the comment\'s author is the session, within its role\'s scope', async (t) => {
-  const root = await tempProject(t);
-  await startDaemon(t, root);
-  await session(t, root, 'impl-1', 'implementer', 'sess-impl');
+test('cland task view and comment use the shell identity and preserve ownership', async t => {
+  const { root, ui } = await fixture(t);
+  await value(ui, { type: 'task.create', size: 'M', title: 'Mine', assignee: 'impl-1' });
+  await value(ui, { type: 'task.create', size: 'M', title: 'Not mine' });
   const impl = shellOf('impl-1', 'sess-impl');
-  assert.equal((await cland(root, 'task', 'create', '--size', 'M', 'Mine', '--assignee', 'impl-1')).code, 0);
-  assert.equal((await cland(root, 'task', 'create', '--size', 'M', 'Not mine')).code, 0);
-
   const viewed = await clandWithEnv(root, impl, 'task', 'view', 'T-1', '--json');
   assert.equal(viewed.code, 0, viewed.stderr);
-  assert.equal((JSON.parse(viewed.stdout) as { item: { title: string } }).item.title, 'Mine');
-
+  assert.equal(JSON.parse(viewed.stdout).item.title, 'Mine');
   const commented = await clandWithEnv(root, impl, 'task', 'comment', 'T-1', 'from my shell');
   assert.equal(commented.code, 0, commented.stderr);
-  const after = JSON.parse((await cland(root, 'task', 'view', 'T-1', '--json')).stdout) as { item: { comments: Array<{ author: string; text: string }> } };
-  assert.deepEqual(after.item.comments.map((c) => [c.author, c.text]), [['impl-1', 'from my shell']]);
+  const after = await value<{ item: { comments: Array<{ author: string; text: string }> } }>(ui, { type: 'task.view', item: 'T-1' });
+  assert.deepEqual(after.item.comments.map(c => [c.author, c.text]), [['impl-1', 'from my shell']]);
   const [audit] = (await audits(t, root, 'task.comment')).slice(-1);
   assert.deepEqual([audit?.session, audit?.sessionId, audit?.role, audit?.outcome], ['impl-1', 'sess-impl', 'implementer', 'ok']);
-
-  // an Implementer comments on its own item only
+  const forgedRole = await clandWithEnv(root, { ...impl, CLAND_ROLE: 'coordinator' }, 'task', 'close', 'T-1');
+  assert.equal(forgedRole.code, 1);
+  assert.match(forgedRole.stderr, /forbidden: task\.close \(Implementer may not use task\.close\)/);
   const other = await clandWithEnv(root, impl, 'task', 'comment', 'T-2', 'not my item');
   assert.notEqual(other.code, 0);
   assert.match(other.stderr, /forbidden: task\.comment/);
@@ -156,16 +139,17 @@ test('the Coordinator manages the sessions and the hub from its shell, by the pe
   const [server] = await fake.servers();
   assert.ok(server, 'the launched session runs');
 
-  for (const [args, permission] of [
-    [['session', 'launch', 'worker-2', '--harness', 'codex'], 'session.launch'],
-    [['session', 'list'], 'session.launch'],
-    [['session', 'stop', 'worker-1'], 'session.stop'],
-    [['session', 'resume', 'worker-1', '--relaunch'], 'session.resume'],
-    [['hub', 'stop'], 'hub.stop'],
+  const cli = await connectUi(t, await readDiscovery(root), 'cli');
+  for (const [type, fields, permission] of [
+    ['session.launch', { name: 'worker-2', harness: 'codex' }, 'session.launch'],
+    ['session.list', {}, 'session.launch'],
+    ['session.stop', { session: 'worker-1' }, 'session.stop'],
+    ['session.resume', { session: 'worker-1', relaunch: true }, 'session.resume'],
+    ['hub.stop', {}, 'hub.stop'],
   ] as const) {
-    const r = await clandWithEnv(root, impl, ...args);
-    assert.notEqual(r.code, 0, `${args.join(' ')} is refused`);
-    assert.match(r.stderr, new RegExp(`forbidden: ${permission.replace('.', '\\.')} \\(Implementer may not use ${permission.replace('.', '\\.')}\\)`), args.join(' '));
+    const r = await cli.request({ type, ...fields, as: { name: 'impl-1', sessionId: 'sess-impl', shell: true } });
+    assert.equal(r.ok, false, `${type} is refused`);
+    assert.match(r.error ?? '', new RegExp(`forbidden: ${permission.replace('.', '\\.')} \\(Implementer may not use ${permission.replace('.', '\\.')}\\)`));
   }
   assert.equal(pidAlive(server.pid), true, 'nothing was stopped');
 
@@ -174,6 +158,7 @@ test('the Coordinator manages the sessions and the hub from its shell, by the pe
   assert.match(list.stdout, /^worker-1 .*codex {2}running/);
   const stopped = await clandWithEnv(root, coord, 'session', 'stop', 'worker-1');
   assert.equal(stopped.code, 0, stopped.stderr);
+  await eventually('worker PID reaped', () => !pidAlive(server.pid) ? true : undefined);
   assert.equal(pidAlive(server.pid), false);
   const [stopAudit] = (await audits(t, root, 'session.stop')).slice(-1);
   assert.deepEqual([stopAudit?.session, stopAudit?.role, stopAudit?.client, stopAudit?.outcome], ['coord', 'coordinator', 'cli', 'ok']);
@@ -186,6 +171,7 @@ test('the Coordinator manages the sessions and the hub from its shell, by the pe
   const hub = await readDiscovery(root);
   const hubStopped = await clandWithEnv(root, coord, 'hub', 'stop');
   assert.equal(hubStopped.code, 0, hubStopped.stderr);
+  await eventually('hub PID reaped', () => !pidAlive(hub.pid) ? true : undefined);
   assert.equal(pidAlive(hub.pid), false);
 });
 
@@ -213,4 +199,44 @@ test('cland hub stop from a session\'s shell signals nothing when the hub does n
   const status = await cland(root, 'hub', 'status');
   assert.equal(status.code, 0, status.stderr);
   assert.equal(pidAlive(hub.pid), true);
+});
+
+test('a launched session cannot borrow another identity with `--as`: neither the human nor the Coordinator, it stays itself', async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeClaude(t);
+  const { discovery } = await projectHub(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
+  const coord = await inProcessSpoke(t, { discover: true, cwd: root, name: 'coord', sessionId: 'sess-coord', role: 'coordinator' });
+  t.after(() => coord.close());
+  await coord.waitForPresence(['coord']);
+  const launched = await ui.request({ type: 'session.launch', name: 'impl-1', role: 'implementer', harness: 'claude-code' }, 30_000);
+  assert.equal(launched.ok, true, launched.error);
+  const implId = (launched.value as { process: { sessionId: string } }).process.sessionId;
+  await value(ui, { type: 'task.create', size: 'M', title: 'Ship it', assignee: 'impl-1' });
+
+  // the session's own shell runs the CLI, as its Bash tool would
+  const run = async (args: string): Promise<string> => {
+    assert.equal((await ui.request({ type: 'topic.send', topic: 'general', text: `@impl-1 cland ${args}` })).ok, true);
+    const answer = await ui.waitFor((f) => f.type === 'message' && (f.message as { from: string }).from === 'impl-1' && (f.message as { text: string }).text.startsWith(`ran: cland ${args}: `), 30_000);
+    return (answer.message as { text: string }).text;
+  };
+  for (const as of ['human', 'coord']) {
+    const out = await run(`task close T-1 --as ${as}`);
+    assert.match(out, /: exit 1\n/, out);
+    assert.match(out, /forbidden: task\.close \(Implementer may not use task\.close\)/, out);
+    const record = (await audits(t, root, 'task.close')).filter((a) => a.tool === 'task.close').at(-1);
+    assert.deepEqual([record?.session, record?.sessionId, record?.role, record?.outcome, record?.client], ['impl-1', implId, 'implementer', 'forbidden', 'cli']);
+  }
+  // on the wire the session id decides, before any name: a frame naming the human with the session's id is the session
+  const wire = await ui.request({ type: 'task.close', item: 'T-1', as: { name: 'human', sessionId: implId } });
+  assert.equal(wire.ok, false);
+  assert.match(wire.error ?? '', /forbidden: task\.close/);
+  // what the Implementer may do, it does as itself whatever `--as` says: the claim is held by its own session id
+  const claimed = await run('task claim T-1 --as coord --json');
+  assert.match(claimed, /: exit 0\n/, claimed);
+  const claim = (JSON.parse(claimed.split('\n').find((l) => l.startsWith('{')) as string) as { claim: { session: string; sessionId: string } }).claim;
+  assert.deepEqual([claim.session, claim.sessionId], ['impl-1', implId]);
+  const view = await value<{ item: { state: string } }>(ui, { type: 'task.view', item: 'T-1' });
+  assert.equal(view.item.state, 'open');
 });

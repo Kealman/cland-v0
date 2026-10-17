@@ -1,6 +1,7 @@
 // One hub-owned write queue also orders refreshes, so an older read cannot replace a new write.
 import { randomUUID } from 'node:crypto';
 import { readFile, rename, unlink, writeFile } from 'node:fs/promises';
+import { realClock, type Clock, type ClockTimer } from '../hub/clock.ts';
 import type { Resumed } from '../hub/budget.ts';
 import type { LogFn } from '../log.ts';
 import { parseRulebook, parseScope, renderRulebook, RULEBOOK_HEADER, RulebookError, type Rule, type Rulebook } from './rulebook.ts';
@@ -9,6 +10,7 @@ export type RuleAdd = { text: string; scope: string; reason: string; title?: str
 export type RuleEdit = { title?: string; text?: string; scope?: string; reason?: string; origin?: string };
 export class RulebookFile {
   readonly path: string;
+  readonly #clock: Clock;
   readonly #roles: () => Iterable<string>;
   readonly #log: LogFn;
   readonly #resumed: Resumed;
@@ -16,9 +18,10 @@ export class RulebookFile {
   #book = parseRulebook(RULEBOOK_HEADER);
   #seen: string | null = null;
   #tail: Promise<unknown> = Promise.resolve();
-  #timer: NodeJS.Timeout | null = null;
+  #timer: ClockTimer | null = null;
   #stopped = false;
-  constructor(path: string, roles: () => Iterable<string>, log: LogFn = () => {}, resumed: Resumed = work => work()) {
+  constructor(path: string, roles: () => Iterable<string>, log: LogFn = () => {}, resumed: Resumed = work => work(), clock: Clock = realClock) {
+    this.#clock = clock;
     this.path = path; this.#roles = roles; this.#log = log; this.#resumed = resumed;
   }
   get(): readonly Rule[] { return this.#book.rules; }
@@ -30,12 +33,12 @@ export class RulebookFile {
     try { await writeFile(this.path, RULEBOOK_HEADER, { flag: 'wx' }); }
     catch (error) { if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error; }
     await this.#refresh();
-    this.#timer = setInterval(() => { void this.#refresh(); }, 500);
+    this.#timer = this.#clock.setInterval(() => { void this.#refresh(); }, 500);
     this.#timer.unref();
   }
   async stop(): Promise<void> {
     this.#stopped = true;
-    if (this.#timer) clearInterval(this.#timer);
+    if (this.#timer) this.#clock.clearInterval(this.#timer);
     await this.#tail;
   }
   #enqueue<T>(work: () => Promise<T>): Promise<T> {
@@ -104,20 +107,20 @@ export class RulebookFile {
     return this.#write(book => {
       const number = book.highWater + 1;
       const text = nonempty(input.text, 'text');
-      const rule: Rule = { number, title: singleLine(input.title ?? text.split('\n')[0]!, 'title'), scope: parseScope(input.scope, this.#roles()), date: today(), status: 'active', origin: input.origin, reason: singleLine(input.reason, 'reason'), text };
+      const rule: Rule = { number, title: singleLine(input.title ?? text.split('\n')[0]!, 'title'), scope: parseScope(input.scope, this.#roles()), date: this.#clock.now().toISOString().slice(0, 10), status: 'active', origin: input.origin, reason: singleLine(input.reason, 'reason'), text };
       return [...book.rules, rule];
     }, resumed, authorize);
   }
   edit(number: number, input: RuleEdit, resumed: Resumed = this.#resumed, authorize = () => {}): Promise<Rule> {
     return this.#write(book => {
       if (input.title === undefined && input.text === undefined && input.scope === undefined && input.reason === undefined) throw new Error('rule edit needs --title, --text, --scope or --reason');
-      return replace(book, number, rule => ({ ...rule, date: today(), ...(input.title !== undefined ? { title: singleLine(input.title, 'title') } : {}), ...(input.text !== undefined ? { text: nonempty(input.text, 'text') } : {}), ...(input.scope !== undefined ? { scope: parseScope(input.scope, this.#roles()) } : {}), ...(input.reason !== undefined ? { reason: singleLine(input.reason, 'reason') } : {}), ...(input.origin !== undefined ? { origin: input.origin } : {}) }));
+      return replace(book, number, rule => ({ ...rule, date: this.#clock.now().toISOString().slice(0, 10), ...(input.title !== undefined ? { title: singleLine(input.title, 'title') } : {}), ...(input.text !== undefined ? { text: nonempty(input.text, 'text') } : {}), ...(input.scope !== undefined ? { scope: parseScope(input.scope, this.#roles()) } : {}), ...(input.reason !== undefined ? { reason: singleLine(input.reason, 'reason') } : {}), ...(input.origin !== undefined ? { origin: input.origin } : {}) }));
     }, resumed, authorize);
   }
   retire(number: number, reason: string, resumed: Resumed = this.#resumed, authorize = () => {}, origin?: string): Promise<Rule> {
     return this.#write(book => replace(book, number, rule => {
       if (rule.status === 'retired') throw new Error(`rule ${number} is already retired`);
-      return { ...rule, date: today(), status: 'retired', retired: today(), reason: `${rule.reason}; ${singleLine(reason, 'reason')}`, ...(origin !== undefined ? { retired_origin: origin } : {}) };
+      return { ...rule, date: this.#clock.now().toISOString().slice(0, 10), status: 'retired', retired: this.#clock.now().toISOString().slice(0, 10), reason: `${rule.reason}; ${singleLine(reason, 'reason')}`, ...(origin !== undefined ? { retired_origin: origin } : {}) };
     }), resumed, authorize);
   }
 }
@@ -125,7 +128,6 @@ function replace(book: Rulebook, number: number, update: (rule: Rule) => Rule): 
   if (!book.rules.some(rule => rule.number === number)) throw new Error(`no rule ${number}`);
   return book.rules.map(rule => rule.number === number ? update(rule) : rule);
 }
-const today = () => new Date().toISOString().slice(0, 10);
 function nonempty(text: string, name: string): string {
   if (name === 'text' && /^## /m.test(text)) throw new Error('rule text cannot contain a rule heading (##)');
   if (!text.trim()) throw new Error(`rule ${name} must not be empty`);

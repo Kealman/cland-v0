@@ -6,7 +6,7 @@ import { existsSync } from 'node:fs';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { DatabaseSync } from 'node:sqlite';
 import { join } from 'node:path';
-import { projectHub, dispatcherUi, cland, flushProjectLogs, clandWithEnv, connectUi, connectWsUi, eventually, fakeClaude, killDaemon, sleep, spawnSpoke, startDaemon, startHub, tempProject, type CliResult } from './harness.ts';
+import { projectHub, dispatcherUi, cland, flushProjectLogs, clandWithEnv, connectUi, connectWsUi, eventually, fakeClaude, killDaemon, sleep, spawnSpoke, inProcessSpoke, startDaemon, startHub, tempProject, type CliResult } from './harness.ts';
 import { preparedProject, copyPreparedProject } from './prepared-project.ts';
 import { Store } from '../src/hub/store.ts';
 import { parseItem, serializeItem } from '../src/tracker/item.ts';
@@ -106,7 +106,7 @@ export async function observableProject(t: TestContext, run?: (real: Git) => Git
   git(worktree.path, 'add', 'parser.txt');
   git(worktree.path, 'commit', '-qm', 'Parser');
   assert.equal((await ui.request({ type: 'role.set', session: 'rev', role: 'reviewer' })).ok, true);
-  const rev = await spawnSpoke({ hub, cwd: root, name: 'rev', sessionId: 'observed-rev', role: 'reviewer' });
+  const rev = await inProcessSpoke(t, { hub, cwd: root, name: 'rev', sessionId: 'observed-rev', role: 'reviewer' });
   onCleanup(t, () => rev.close());
   await rev.waitForPresence(['rev']);
   return { root, tracker, hub, ui, rev, records, work: { id, ...worktree } };

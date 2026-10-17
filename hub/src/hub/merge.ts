@@ -1,5 +1,6 @@
 // The Coordinator's merge gate: one queued territory operation, provenance and cached freshness, then Git and
 // the tracker's close. No check command runs here (D16); conflicts go back to the Implementer (D9).
+import { refusedOverridePaths } from '../merge-override.ts';
 import type { LogFn } from '../log.ts';
 import { access } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -12,13 +13,6 @@ import type { Resumed, TaskWorktrees } from './worktrees.ts';
 import { ToolForbidden } from '../roles/permissions.ts';
 
 type MergeResult = { item: string; commit: string; base: string; cleanup: string; followUp?: { step: string; error: string } };
-
-// Human override covers tracker and documentation only; configuration and executable skill instructions need review.
-const MERGE_OVERRIDE_PATHS = {
-  directories: ['.cland/tasks/', 'docs/', 'qa/briefs/'],
-  files: ['.cland/RULES.md', 'GLOSSARY.md'],
-  basenames: ['README.md'],
-};
 
 export class TaskMerges {
   readonly #env: NodeJS.ProcessEnv;
@@ -164,9 +158,7 @@ export class TaskMerges {
             const result = await squashTask(this.tracker.root, view.branch!, async (tip, base, baseTip, files) => {
               resumed(() => {
                 if (override === undefined) return;
-                const refused = files.filter(file => !MERGE_OVERRIDE_PATHS.directories.some(dir => file.startsWith(dir))
-                  && !MERGE_OVERRIDE_PATHS.files.includes(file)
-                  && !MERGE_OVERRIDE_PATHS.basenames.some(name => file === name || file.endsWith('/' + name)));
+                const refused = refusedOverridePaths(files);
                 if (refused.length) throw new MergeError('merge-override-scope', `override is limited to tracker and documentation changes; review required for: ${refused.join(', ')}`, refused);
               });
               await this.tracker.refreshFreshness(resumed);

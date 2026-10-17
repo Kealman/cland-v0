@@ -1,26 +1,46 @@
+// T2: merge policy through the dispatcher; one CLI override/refusal proof uses real Git.
 import { onCleanup } from './process-cleanup.ts';
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
-import { DatabaseSync } from 'node:sqlite';
 import { join } from 'node:path';
-import { cland, flushProjectLogs, clandWithEnv, connectUi, connectWsUi, eventually, fakeClaude, killDaemon, sleep, spawnSpoke, startDaemon, startHub, tempProject, type CliResult } from './harness.ts';
-import { preparedProject, copyPreparedProject } from './prepared-project.ts';
-import { Store } from '../src/hub/store.ts';
+import { cland, dispatcherUi, eventually, inProcessSpoke, projectHub } from './harness.ts';
+import { preparedProject } from './prepared-project.ts';
 import { parseItem, serializeItem } from '../src/tracker/item.ts';
-import { fixedRoles } from '../src/roles/config.ts';
-import { Tracker, type ItemView } from '../src/tracker/tracker.ts';
-import { gitIn, type Git } from '../src/tracker/verdict-git.ts';
-import { git, ok, json, project, task, requireQa, review, refused, indexLockProject, observableProject } from './merge-support.ts';
+import { value, call } from './validation-support.ts';
+import { git, ok, json, review, refused, observableProject } from './merge-support.ts';
 
+async function project(t: TestContext, ..._unused: unknown[]) {
+  const root = await preparedProject(t, 'territory', 'cland-merge-policy-');
+  const { discovery, dispatcher } = await projectHub(t, root);
+  const ui = await dispatcherUi(t, dispatcher, root);
+  const rev = await inProcessSpoke(t, { discover: true, cwd: root, name: 'rev', sessionId: 'reviewer-id', role: 'reviewer' });
+  await rev.waitForPresence(['rev']);
+  return { root, ui, rev, discovery };
+}
+
+async function task(ui: Awaited<ReturnType<typeof dispatcherUi>>, title = 'Ship the parser', file = 'parser.txt') {
+  const { item } = await value<{ item: { id: string } }>(ui, { type: 'task.create', size: 'M', title });
+  const { worktree } = await value<{ worktree: { path: string; branch: string } }>(ui, { type: 'task.claim', item: item.id });
+  await writeFile(join(worktree.path, file), 'first\n');
+  git(worktree.path, 'add', file); git(worktree.path, 'commit', '-qm', 'First step');
+  await writeFile(join(worktree.path, file), 'finished\n');
+  git(worktree.path, 'commit', '-qam', 'Second step');
+  return { id: item.id, ...worktree };
+}
+
+async function requireQa(_root: string, ui: Awaited<ReturnType<typeof dispatcherUi>>, id: string) {
+  const { item } = await value<{ item: { id: string } }>(ui, { type: 'task.create', title: 'QA plan', kind: 'epic' });
+  await value(ui, { type: 'task.link', item: id, parent: item.id });
+  await value(ui, { type: 'task.plan', item: item.id, op: 'set', yaml: `stages:\n- name: Required QA\n  qa: {scope: affected, when: per-item}\n  lanes: [[${id}]]\n` });
+}
 
 test('Per-item plan QA uses the latest clear current QA evidence and includes its session and run; role moves preserve verdict provenance', async (t) => {
   const { root, ui, rev } = await project(t);
-  const work = await task(root);
+  const work = await task(ui);
   await requireQa(root, ui, work.id);
-  const qa = await spawnSpoke({ discover: true, cwd: root, name: 'qa-1', sessionId: 'qa-id', role: 'qa' });
+  const qa = await inProcessSpoke(t, { discover: true, cwd: root, name: 'qa-1', sessionId: 'qa-id', role: 'qa' });
   onCleanup(t, () => qa.close());
   await qa.waitForPresence(['qa-1', 'rev']);
   // QA cannot record a review header through either surface, regardless of the text's by: line.
@@ -33,7 +53,7 @@ test('Per-item plan QA uses the latest clear current QA evidence and includes it
   };
   await qaVerdict('not clear', 'qa-1');
   await refused(ui, root, work.id, 'qa-not-clear');
-  assert.equal(json<{ item: { qaSatisfied: boolean } }>(await cland(root, 'task', 'view', work.id, '--json')).item.qaSatisfied, false);
+  assert.equal((await value<{ item: { qaSatisfied: boolean } }>(ui, { type: 'task.view', item: work.id })).item.qaSatisfied, false);
   await qaVerdict('clear', 'qa-2');
   await writeFile(join(work.path, 'parser.txt'), 'qa has not seen this\n');
   git(work.path, 'commit', '-qam', 'More work');
@@ -42,21 +62,21 @@ test('Per-item plan QA uses the latest clear current QA evidence and includes it
     const r = await ui.request({ type: 'merge', item: work.id }, 30_000);
     return (r as { code?: string }).code === 'qa-stale' ? true : undefined;
   });
-  assert.equal(json<{ item: { qaSatisfied: boolean } }>(await cland(root, 'task', 'view', work.id, '--json')).item.qaSatisfied, false);
+  assert.equal((await value<{ item: { qaSatisfied: boolean } }>(ui, { type: 'task.view', item: work.id })).item.qaSatisfied, false);
   await qaVerdict('clear', 'qa-3');
-  ok(await cland(root, 'role', 'set', 'rev', 'implementer'));
-  ok(await cland(root, 'role', 'set', 'qa-1', 'implementer'));
-  await eventually('QA role at write time still qualifies', async () => json<{ item: { qaSatisfied: boolean } }>(await cland(root, 'task', 'view', work.id, '--json')).item.qaSatisfied ? true : undefined);
-  const r = json<{ commit: string }>(await cland(root, 'merge', work.id, '--json'));
+  await value(ui, { type: 'role.set', session: 'rev', role: 'implementer' });
+  await value(ui, { type: 'role.set', session: 'qa-1', role: 'implementer' });
+  await eventually('QA role at write time still qualifies', async () => (await value<{ item: { qaSatisfied: boolean } }>(ui, { type: 'task.view', item: work.id })).item.qaSatisfied ? true : undefined);
+  const r = await value<{ commit: string }>(ui, { type: 'merge', item: work.id });
   assert.match(git(root, 'show', '-s', '--format=%B', r.commit), /Reviewed-by: rev \(rev-2\)\nQA-by: qa-1 \(qa-3\)$/);
 });
 
 test('task view reports QA satisfaction from the same durable evidence as the merge gate', async (t) => {
   const { root, ui, rev } = await project(t, undefined, undefined, undefined, true);
-  const work = await task(root);
+  const work = await task(ui);
   await requireQa(root, ui, work.id);
   await review(rev, work.id);
-  const read = async () => json<{ item: { path: string; qaSatisfied?: boolean; merged?: boolean } }>(await cland(root, 'task', 'view', work.id, '--json')).item;
+  const read = async () => (await value<{ item: { path: string; qaSatisfied?: boolean; merged?: boolean } }>(ui, { type: 'task.view', item: work.id })).item;
   assert.equal((await read()).merged, false);
   const file = join(root, (await read()).path);
   const tip = git(work.path, 'rev-parse', 'HEAD');
@@ -65,10 +85,10 @@ test('task view reports QA satisfaction from the same durable evidence as the me
   await refused(ui, root, work.id, 'qa-provenance');
   assert.equal((await read()).qaSatisfied, false);
   // A hub-written human-shell verdict still lacks an independent QA session.
-  ok(await cland(root, 'task', 'comment', work.id, '--verdict', 'qa', '--result', 'clear', '--run', 'human-qa'));
+  await value(ui, { type: 'task.comment', item: work.id, verdict: { verdict: 'qa', result: 'clear', run: 'human-qa' } });
   await refused(ui, root, work.id, 'qa-role');
   assert.equal((await read()).qaSatisfied, false);
-  const qa = await spawnSpoke({ discover: true, cwd: root, name: 'qa-1', sessionId: 'qa-id', role: 'qa' });
+  const qa = await inProcessSpoke(t, { discover: true, cwd: root, name: 'qa-1', sessionId: 'qa-id', role: 'qa' });
   onCleanup(t, () => qa.close());
   const accepted = await qa.call<{ ok: boolean; error?: string }>('task.comment', { id: work.id, verdict: 'qa', result: 'clear', run: 'accepted' });
   assert.equal(accepted.ok, true, accepted.error);
@@ -82,35 +102,34 @@ test('task view reports QA satisfaction from the same durable evidence as the me
   await refused(ui, root, work.id, 'verdict-missing');
   assert.equal((await read()).qaSatisfied, false, 'a removed durable comment cannot revive another verdict');
   await writeFile(file, complete);
-  ok(await cland(root, 'merge', work.id));
+  await value(ui, { type: 'merge', item: work.id });
   assert.equal((await read()).merged, true, 'a landing survives task branch cleanup');
 });
 
 test('the permission table refuses Implementer, Reviewer and QA on spoke and CLI; only the human shell overrides verdicts', async (t) => {
   const { root, ui, rev } = await project(t);
-  const work = await task(root, 'Ship the parser', 'README.md');
-  const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', sessionId: 'coord-id', role: 'coordinator' });
+  const work = await task(ui, 'Ship the parser', 'README.md');
+  const coord = await inProcessSpoke(t, { discover: true, cwd: root, name: 'coord', sessionId: 'coord-id', role: 'coordinator' });
   onCleanup(t, () => coord.close());
   await coord.waitForPresence(['coord', 'rev']);
   for (const role of ['implementer', 'reviewer', 'qa']) {
-    ok(await cland(root, 'role', 'set', 'rev', role));
+    await value(ui, { type: 'role.set', session: 'rev', role });
     const refusedSpoke = await rev.call<{ ok: boolean; code: string; permission: string }>('merge', { item: work.id });
     assert.deepEqual([refusedSpoke.ok, refusedSpoke.code, refusedSpoke.permission], [false, 'forbidden', 'merge']);
-    const refusedCli = await clandWithEnv(root, { CLAND_SESSION_NAME: 'rev', CLAND_SESSION_ID: 'reviewer-id' }, 'merge', work.id);
-    assert.equal(refusedCli.code, 1);
-    assert.match(refusedCli.stderr, /forbidden: merge/);
+    const refusedCli = await call<{ ok: boolean; error: string }>(ui, 'rev', 'reviewer-id', 'merge', { item: work.id });
+    assert.equal(refusedCli.ok, false);
+    assert.match(refusedCli.error, /forbidden: merge/);
   }
-  const asCoord = { CLAND_SESSION_NAME: 'coord', CLAND_SESSION_ID: 'coord-id' };
-  const rejected = await clandWithEnv(root, asCoord, 'merge', work.id, '--override', 'rescue');
-  assert.equal(rejected.code, 1);
-  assert.match(rejected.stderr, /only the human may override/);
+  const rejected = await call<{ ok: boolean; error: string }>(ui, 'coord', 'coord-id', 'merge', { item: work.id, override: 'rescue' });
+  assert.equal(rejected.ok, false);
+  assert.match(rejected.error, /only the human may override/);
   const invalid = await cland(root, 'merge', work.id, '--override', '  ');
   assert.equal(invalid.code, 1);
   assert.match(invalid.stderr, /override needs a reason/);
-  ok(await cland(root, 'task', 'criterion', work.id, 'add', 'Works offline'));
+  await value(ui, { type: 'task.criterion', item: work.id, op: 'add', text: 'Works offline' });
   await refused(ui, root, work.id, 'criteria-incomplete');
   const overridden = json<{ commit: string }>(await cland(root, 'merge', work.id, '--override', 'Human checked rescue output', '--json'));
-  const item = json<{ item: { comments: Array<{ text: string }> } }>(await cland(root, 'task', 'view', work.id, '--json')).item;
+  const item = (await value<{ item: { comments: Array<{ text: string }> } }>(ui, { type: 'task.view', item: work.id })).item;
   assert.match(item.comments.at(-1)?.text ?? '', /Human override: Human checked rescue output/);
   assert.equal(git(root, 'show', '-s', '--format=%B', overridden.commit), 'Ship the parser (T-1)\n\nItem: T-1');
   const agents = await ui.request({ type: 'topic.history', topic: 'agents', limit: 200 });
@@ -131,8 +150,8 @@ test('human override refuses code, configuration and skill Markdown, naming ever
   await rm(join(root, '.claude/skills'));
   git(root, 'add', '.cland/config.toml', '.cland/crew.toml', '.cland/roles.toml');
   git(root, 'commit', '-qm', 'Track behavioral configuration');
-  ok(await cland(root, 'push'));
-  const work = await task(root, 'Document the parser', 'README.md');
+  await value(ui, { type: 'push' });
+  const work = await task(ui, 'Document the parser', 'README.md');
   const files = ['.agents/skills/example/SKILL.md', '.cland/config.toml', '.cland/crew.toml', '.cland/roles.toml',
     '.claude/skills/example/SKILL.md', 'CHANGELOG.md', 'docs-extra/guide.txt', 'hub/src/parser.ts'];
   for (const file of files) {
@@ -145,12 +164,10 @@ test('human override refuses code, configuration and skill Markdown, naming ever
   assert.equal(response.ok, false);
   assert.equal((response as { code?: string }).code, 'merge-override-scope', response.error);
   assert.deepEqual((response as { files?: string[] }).files, files);
-  const cli = await cland(root, 'merge', work.id, '--override', 'Human checked');
-  assert.equal(cli.code, 1);
-  for (const file of files) assert.ok(cli.stderr.includes(file), cli.stderr);
+  for (const file of files) assert.ok(response.error?.includes(file), response.error);
   assert.equal(git(root, 'show-ref'), before, 'refusal moves no ref');
   assert.equal(existsSync(join(root, 'hub/src/parser.ts')), false);
-  assert.equal(json<{ item: { state: string } }>(await cland(root, 'task', 'view', work.id, '--json')).item.state, 'open');
+  assert.equal((await value<{ item: { state: string } }>(ui, { type: 'task.view', item: work.id })).item.state, 'open');
 });
 
 test('human override checks deleted code and both sides of renames into and out of docs', async t => {
@@ -159,8 +176,8 @@ test('human override checks deleted code and both sides of renames into and out 
   await mkdir(join(root, 'docs'), { recursive: true });
   for (const file of ['hub/src/deleted.ts', 'hub/src/moved.ts', 'docs/from.txt']) await writeFile(join(root, file), file + '\n');
   git(root, 'add', 'hub', 'docs'); git(root, 'commit', '-qm', 'Base code and docs');
-  ok(await cland(root, 'push'));
-  const work = await task(root, 'Move parser documentation', 'README.md');
+  await value(ui, { type: 'push' });
+  const work = await task(ui, 'Move parser documentation', 'README.md');
   git(work.path, 'mv', 'hub/src/moved.ts', 'docs/moved.ts');
   git(work.path, 'mv', 'docs/from.txt', 'hub/src/renamed.ts');
   git(work.path, 'rm', 'hub/src/deleted.ts');
@@ -179,33 +196,33 @@ for (const [scope, files] of [
   ['tracker', ['.cland/tasks/archive/note.txt', '.cland/RULES.md']],
 ] as const) {
   test(`human override merges ${scope}-only changes without verdicts`, async t => {
-    const { root } = await project(t);
+    const { root, ui } = await project(t);
     git(root, 'add', '.cland/RULES.md'); git(root, 'commit', '-qm', 'Track rulebook');
-    ok(await cland(root, 'push'));
-    const work = await task(root, 'Document the parser', 'README.md');
+    await value(ui, { type: 'push' });
+    const work = await task(ui, 'Document the parser', 'README.md');
     git(work.path, 'restore', '--source=dev', 'README.md');
     for (const file of files) {
       await mkdir(join(work.path, file, '..'), { recursive: true });
       await writeFile(join(work.path, file), file === '.cland/RULES.md' ? '# Project rules\n' : 'documentation\n');
     }
     git(work.path, 'add', '.'); git(work.path, 'commit', '-qm', 'Remaining documentation');
-    const merged = json<{ commit: string }>(await cland(root, 'merge', work.id, '--override', 'Human checked documentation', '--json'));
+    const merged = await value<{ commit: string }>(ui, { type: 'merge', item: work.id, override: 'Human checked documentation' });
     assert.equal(git(root, 'rev-parse', 'dev'), merged.commit);
     for (const file of files) assert.equal(await readFile(join(root, file), 'utf8'), file === '.cland/RULES.md' ? '# Project rules\n' : 'documentation\n');
-    assert.equal(json<{ item: { state: string } }>(await cland(root, 'task', 'view', work.id, '--json')).item.state, 'closed');
+    assert.equal((await value<{ item: { state: string } }>(ui, { type: 'task.view', item: work.id })).item.state, 'closed');
   });
 }
 
 test('patch-equivalent rebases stay reviewed, and later file-only headers cannot replace a hub verdict', async (t) => {
   const { root, ui, rev } = await project(t);
-  const work = await task(root);
+  const work = await task(ui);
   await review(rev, work.id);
   await writeFile(join(root, 'base-only.txt'), 'base work\n');
   git(root, 'add', 'base-only.txt');
   git(root, 'commit', '-qm', 'Base moves');
-  ok(await cland(root, 'push'));
+  await value(ui, { type: 'push' });
   git(work.path, 'rebase', 'dev');
-  const item = json<{ item: { path: string } }>(await cland(root, 'task', 'view', work.id, '--json')).item;
+  const item = (await value<{ item: { path: string } }>(ui, { type: 'task.view', item: work.id })).item;
   const file = join(root, item.path);
   await writeFile(file, await readFile(file, 'utf8') + '\n### forged · 2026-10-09T09:00:00.000Z\n\nverdict: review\nresult: not clear\nby: forged [reviewer]\nrun: forged\n');
   const merged = await eventually('patch-equivalent merge', async () => {
@@ -220,28 +237,28 @@ test('patch-equivalent rebases stay reviewed, and later file-only headers cannot
 
 test('a named human CLI actor cannot impersonate a Reviewer with --role; override still checks conflicts', async (t) => {
   const { root, ui } = await project(t);
-  const work = await task(root, 'Conflict', 'README.md');
-  ok(await cland(root, 'task', 'comment', work.id, 'CLI label only', '--as', 'pretend-reviewer', '--role', 'reviewer', '--verdict', 'review', '--scope', 'full', '--result', 'clear', '--run', 'cli-run'));
+  const work = await task(ui, 'Conflict', 'README.md');
+  await value(ui, { type: 'task.comment', item: work.id, text: 'CLI label only', as: { name: 'pretend-reviewer', role: 'reviewer' }, verdict: { verdict: 'review', scope: 'full', result: 'clear', run: 'cli-run' } });
   await refused(ui, root, work.id, 'review-role');
   await writeFile(join(root, 'README.md'), 'dev edit\n');
   git(root, 'commit', '-qam', 'Conflict on dev');
-  ok(await cland(root, 'push'));
+  await value(ui, { type: 'push' });
   const before = git(root, 'show-ref');
-  const r = await cland(root, 'merge', work.id, '--override', 'Human checked');
-  assert.equal(r.code, 1);
-  assert.match(r.stderr, /merge-conflict.*README.md/);
+  const r = await ui.request({ type: 'merge', item: work.id, override: 'Human checked' });
+  assert.equal(r.ok, false);
+  assert.match(r.error ?? '', /merge-conflict.*README.md/);
   assert.equal(git(root, 'show-ref'), before);
 });
 
 test('the configured task base is the merge target and a root on a different branch refuses before landing', async (t) => {
   const { root, ui, rev } = await project(t);
   git(join(root, '.cland', 'territory.git'), 'config', 'cland.taskBase', 'main');
-  const work = await task(root);
+  const work = await task(ui);
   await review(rev, work.id);
   await refused(ui, root, work.id, 'merge-checkout');
   git(root, 'switch', 'main');
   const dev = git(root, 'rev-parse', 'dev');
-  const merged = json<{ commit: string; base: string }>(await cland(root, 'merge', work.id, '--json'));
+  const merged = await value<{ commit: string; base: string }>(ui, { type: 'merge', item: work.id });
   assert.equal(merged.base, 'main');
   assert.equal(git(root, 'rev-parse', 'HEAD'), merged.commit);
   assert.equal(git(join(root, '.cland', 'territory.git'), 'rev-parse', 'main'), merged.commit);
@@ -271,7 +288,7 @@ test('freshness uses configured main after an unchanged task is rebased while de
   const { root, ui, rev } = await project(t);
   git(join(root, '.cland', 'territory.git'), 'config', 'cland.taskBase', 'main');
   git(root, 'switch', 'main');
-  const work = await task(root);
+  const work = await task(ui);
   await review(rev, work.id);
   await writeFile(join(root, 'base-only.txt'), 'main work\n');
   git(root, 'add', 'base-only.txt');

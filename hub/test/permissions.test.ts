@@ -1,15 +1,11 @@
-// Hub permissions by role and the audit log (spec 4.4 and 4.2, #30): every row of the permission table for every
-// role, with a permitted and a refused variant where a scope exists; the typed `forbidden` error the model gets,
-// the hub notice in the Agents topic, the audit record of every call; `role.set` changing permissions on the next
-// call without a reconnect; the human unrestricted but audited; `cland hub audit`; roles.toml overriding the table.
-// Against a real daemon in a temporary project: spokes over MCP, raw spoke frames over the WebSocket for the tools
-// that have no MCP tool yet, the UI on the Unix socket, the CLI as its own process.
+// T2: dispatcher permission tables; MCP/socket proofs retain real edges and in-process spokes.
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile, writeFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { WebSocket } from 'ws';
-import { cland, clandWithEnv, connectUi, eventually, spawnSpoke, startDaemon, projectHub, tempProject, type Discovery, type FrameClient, type Session } from './harness.ts';
+import { cland, connectUi, dispatcherUi, eventually, inProcessSpoke, projectHub, tempProject, waitForAbsence, type Discovery, type FrameClient, type Session } from './harness.ts';
+import { value, dispatcherSpoke } from './validation-support.ts';
 import { DEFAULT_PERMISSIONS } from '../src/roles/permissions.ts';
 import { DEFAULT_ROLES_TOML } from '../src/roles/default-roles.ts';
 import { parseRoles } from '../src/roles/config.ts';
@@ -17,21 +13,9 @@ import { parseRoles } from '../src/roles/config.ts';
 type Audit = { ts: string; event: 'audit'; session: string; sessionId: string | null; role: string | null; tool: string; args: Record<string, unknown>; outcome: string; permission?: string; reason?: string; error?: string; client?: string };
 type ToolResult = { ok: boolean; error?: string; code?: string; permission?: string; role?: string | null; reason?: string };
 
-const audits = async (root: string): Promise<Audit[]> => {
-  const text = await readFile(join(root, '.cland', 'log', 'hub.log'), 'utf8');
-  // A flush drains earlier entries; the live hub can append again during this read.
-  // Only newline-terminated records are complete. Keep parsing those strictly.
-  return text
-    .slice(0, text.lastIndexOf('\n') + 1)
-    .split('\n')
-    .filter((l) => l.includes('"event":"audit"'))
-    .map((l) => JSON.parse(l) as Audit);
-};
-
-async function flushLogs(ui: FrameClient): Promise<void> {
-  const result = await ui.request({ type: 'hub.status', flushLogs: true });
-  assert.equal(result.ok, true, result.error);
-}
+// Observe the logger boundary once, rather than flushing and rereading hub.log per row.
+const auditRows = new Map<string, Audit[]>();
+const audits = async (root: string): Promise<Audit[]> => auditRows.get(root) ?? [];
 
 const ok = (r: { code: number | null; stdout: string; stderr: string }) => {
   assert.equal(r.code, 0, `exit ${r.code}\nstdout: ${r.stdout}\nstderr: ${r.stderr}`);
@@ -52,9 +36,12 @@ type Caller = { name: string; sessionId: string; role: string | null; label: str
 
 const mcp = (s: Session, name: string, sessionId: string, role: string | null, label: string): Caller => ({ name, sessionId, role, label, call: (tool, args) => s.call<ToolResult>(tool, args) });
 
+const direct = (_ui: FrameClient, s: { call: Session['call'] }, name: string, sessionId: string, role: string | null, label: string): Caller => ({
+  name, sessionId, role, label, call: (tool, args) => s.call<ToolResult>(tool, args),
+});
+
 /** Make the call; check its answer, its audit record, and for a refusal the typed error and the Agents notice. */
 async function check(root: string, ui: FrameClient, who: Caller, c: Case): Promise<void> {
-  await flushLogs(ui);
   const before = (await audits(root)).length;
   const r = await who.call(c.tool, c.args ?? {});
   const what = `${who.label} ${c.tool} ${JSON.stringify(c.args ?? {})}`;
@@ -74,7 +61,6 @@ async function check(root: string, ui: FrameClient, who: Caller, c: Case): Promi
     assert.equal(r.code, c.errorCode, `${what} is not refused by the table: ${JSON.stringify(r)}`);
     assert.match(r.error ?? '', c.error, what);
   } else assert.equal(r.ok, true, `${what}: ${JSON.stringify(r)}`);
-  await flushLogs(ui);
   const records = (await audits(root)).slice(before).filter((a) => a.session === who.name);
   assert.equal(records.length, 1, `${what}: one audit record, got ${JSON.stringify(records)}`);
   const [a] = records as [Audit];
@@ -86,35 +72,36 @@ async function check(root: string, ui: FrameClient, who: Caller, c: Case): Promi
 
 async function setup(t: TestContext) {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
-  const ui = await connectUi(t, discovery);
+  const rows: Audit[] = [];
+  const loaded: Record<string, unknown>[] = [];
+  auditRows.set(root, rows);
+  t.after(() => { auditRows.delete(root); });
+  const { discovery, dispatcher, fakes } = await projectHub(t, root, {}, { harnesses: 'fake', log: entry => { if (entry.event === 'audit') rows.push(entry as Audit); if (entry.event === 'roles-loaded') loaded.push(entry); } });
+  const ui = await dispatcherUi(t, dispatcher, root);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
-  return { root, discovery, ui };
+  return { root, discovery, ui, loaded, fakes, dispatcher };
 }
 
-test('every row of the permission table, for every role, over MCP: allowed calls answer, refused ones are typed, shown in Agents, and all are audited', async (t) => {
-  const { root, ui } = await setup(t);
+test('permission rows preserve typed refusals, notices and audit provenance through the dispatcher', async (t) => {
+  const { root, ui, dispatcher } = await setup(t);
   const spawn = async (name: string, role: string) => {
-    const s = await spawnSpoke({ discover: true, cwd: root, name, sessionId: `sess-${name}`, role });
-    t.after(() => s.close());
-    await s.waitForPresence([name]);
-    return s;
+    await value(ui, { type: 'role.set', session: name, role });
+    return dispatcherSpoke(t, dispatcher, root, name, `sess-${name}`);
   };
   const coordS = await spawn('coord', 'coordinator');
   const implS = await spawn('impl', 'implementer');
   const revS = await spawn('rev', 'reviewer');
   const qaS = await spawn('qa-1', 'qa');
   const goneS = await spawn('gone', 'implementer');
-  await coordS.waitForPresence(['coord', 'impl', 'rev', 'qa-1', 'gone']);
   // the items, by the human: T-1 is impl's (assigned), T-2 nobody's, T-3 for the Coordinator to close
-  ok(await cland(root, 'task', 'create', '--size', 'M', 'Own item', '--assignee', 'impl'));
-  ok(await cland(root, 'task', 'create', '--size', 'M', 'Other item'));
-  ok(await cland(root, 'task', 'create', '--size', 'M', 'To close'));
+  await value(ui, { type: 'task.create', size: 'M', title: 'Own item', assignee: 'impl' });
+  await value(ui, { type: 'task.create', size: 'M', title: 'Other item' });
+  await value(ui, { type: 'task.create', size: 'M', title: 'To close' });
 
-  const coord = mcp(coordS, 'coord', 'sess-coord', 'coordinator', 'coord [Coordinator]');
-  const impl = mcp(implS, 'impl', 'sess-impl', 'implementer', 'impl [Implementer]');
-  const rev = mcp(revS, 'rev', 'sess-rev', 'reviewer', 'rev [Reviewer]');
-  const qa = mcp(qaS, 'qa-1', 'sess-qa-1', 'qa', 'qa-1 [QA]');
+  const coord = direct(ui, coordS, 'coord', 'sess-coord', 'coordinator', 'coord [Coordinator]');
+  const impl = direct(ui, implS, 'impl', 'sess-impl', 'implementer', 'impl [Implementer]');
+  const rev = direct(ui, revS, 'rev', 'sess-rev', 'reviewer', 'rev [Reviewer]');
+  const qa = direct(ui, qaS, 'qa-1', 'sess-qa-1', 'qa', 'qa-1 [QA]');
   const text = 'secret words';
   const verdict = (kind: string) => ({ id: 'T-2', text: 'Looked.', verdict: kind, ...(kind === 'review' ? { scope: 'full' } : {}), result: 'clear', run: `r-${kind}` });
   const toHuman: Case = { tool: 'send', args: { text }, target: ' to the human' };
@@ -204,7 +191,7 @@ test('every row of the permission table, for every role, over MCP: allowed calls
 
   // a session with no role (its role revoked while it is connected): every tool refused
   assert.equal((await ui.request({ type: 'role.clear', session: 'gone' })).ok, true);
-  const gone = mcp(goneS, 'gone', 'sess-gone', null, 'gone');
+  const gone = direct(ui, goneS, 'gone', 'sess-gone', null, 'gone');
   for (const tool of ['who', 'history', 'status', 'send', 'task.view', 'task.list', 'task.comment', 'task.claim', 'rename', 'session.launch']) {
     const args = tool === 'send' || tool === 'status' ? { text } : tool === 'rename' ? { name: 'gone-2' } : tool === 'session.launch' ? { name: 'x' } : tool.startsWith('task.') && tool !== 'task.list' ? { id: 'T-1', text } : {};
     await check(root, ui, gone, { tool, args, forbidden: tool, reason: /^a session with no role has no tools$/, ...(tool === 'send' ? { target: ' to the human' } : 'id' in args ? { target: ' T-1' } : {}) });
@@ -219,10 +206,22 @@ test('every row of the permission table, for every role, over MCP: allowed calls
   assert.ok(!all.some((a) => JSON.stringify(a).includes(text)), 'no message text in the audit');
 });
 
+test('role-bearing MCP callers preserve the permission frame contract', async t => {
+  const { root, ui } = await setup(t);
+  await value(ui, { type: 'task.create', size: 'M', title: 'MCP frame proof' });
+  for (const [name, role] of [['coord', 'coordinator'], ['impl', 'implementer'], ['rev', 'reviewer'], ['qa-1', 'qa']] as const) {
+    const peer = await inProcessSpoke(t, { discover: true, cwd: root, name, role, sessionId: `mcp-${name}` });
+    assert.equal((await peer.call<ToolResult>('who')).ok, true, role);
+    const result = await peer.call<ToolResult>('task.close', { id: 'T-1' });
+    if (role === 'coordinator') assert.equal(result.ok, true);
+    else assert.deepEqual([result.ok, result.code, result.permission, result.role], [false, 'forbidden', 'task.close', role]);
+  }
+});
+
 test('a session the human @mentioned in a topic may reply to the human there, while the human\'s latest message there addresses it', async (t) => {
   const { root, ui } = await setup(t);
   const spawn = async (name: string, role: string) => {
-    const s = await spawnSpoke({ discover: true, cwd: root, name, sessionId: `sess-${name}`, role });
+    const s = await inProcessSpoke(t, { discover: true, cwd: root, name, sessionId: `sess-${name}`, role });
     t.after(() => s.close());
     await s.waitForPresence([name]);
     return s;
@@ -230,7 +229,7 @@ test('a session the human @mentioned in a topic may reply to the human there, wh
   const coordS = await spawn('coord', 'coordinator');
   const revS = await spawn('rev', 'reviewer');
   await coordS.waitForPresence(['coord', 'rev']);
-  const rev = mcp(revS, 'rev', 'sess-rev', 'reviewer', 'rev [Reviewer]');
+  const rev = direct(ui, revS, 'rev', 'sess-rev', 'reviewer', 'rev [Reviewer]');
   const topic = async (title: string) => {
     const r = await ui.request({ type: 'topic.create', title });
     assert.equal(r.ok, true, r.error);
@@ -259,7 +258,7 @@ test('a session the human @mentioned in a topic may reply to the human there, wh
 
 test('role.set changes what a session may do on its next call, without a reconnect; the human is unrestricted and audited', async (t) => {
   const { root, ui } = await setup(t);
-  const s = await spawnSpoke({ discover: true, cwd: root, name: 'impl', sessionId: 'sess-impl', role: 'implementer' });
+  const s = await inProcessSpoke(t, { discover: true, cwd: root, name: 'impl', sessionId: 'sess-impl', role: 'implementer' });
   t.after(() => s.close());
   await s.waitForPresence(['impl']);
   const connectedAt = async () => ((await ui.request({ type: 'hub.status' })).value as { sessions: Array<{ name: string; connectedAt: string; role: string | null }> }).sessions.find((p) => p.name === 'impl');
@@ -292,7 +291,6 @@ test('role.set changes what a session may do on its next call, without a reconne
     const r = await ui.request(frame);
     assert.equal(r.ok, true, `${frame.type}: ${r.error}`);
   }
-  await flushLogs(ui);
   const human = (await audits(root)).filter((a) => a.session === 'human' && a.client === 'ui');
   const byTool = (tool: string) => human.find((a) => a.tool === tool);
   for (const tool of ['task.create', 'role.set', 'task.close', 'topic.send', 'role.list']) {
@@ -301,7 +299,6 @@ test('role.set changes what a session may do on its next call, without a reconne
   assert.deepEqual(byTool('topic.send')?.args, { to: ['impl'], topic: 'general', textChars: 'secret words'.length });
   // a human call that fails is audited as an error
   assert.equal((await ui.request({ type: 'task.view', item: 'T-9' })).ok, false);
-  await flushLogs(ui);
   assert.equal((await audits(root)).filter((a) => a.session === 'human' && a.tool === 'task.view').at(-1)?.outcome, 'error');
 
   // cland hub audit: filtered by session, by time, as JSON or lines
@@ -367,35 +364,32 @@ async function rawSpoke(t: TestContext, discovery: Discovery, name: string, cwd:
 }
 
 test('Implementer, Reviewer and QA session tools and shell calls retain their refusals', async t => {
-  const root = await tempProject(t);
-  const { discovery } = await projectHub(t, root);
-  const ui = await connectUi(t, discovery);
-  assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
+  const { root, discovery, ui } = await setup(t);
+  const cli = await connectUi(t, discovery, 'cli');
   for (const [name, role, label] of [['impl', 'implementer', 'Implementer'], ['rev', 'reviewer', 'Reviewer'], ['qa-1', 'qa', 'QA']]) {
     assert.equal((await ui.request({ type: 'role.set', session: name, role })).ok, true);
     const raw = await rawSpoke(t, discovery, name!, root);
     const caller = { ...raw, role: role!, label: `${name} [${label}]` };
     for (const tool of ['session.launch', 'session.stop', 'session.resume']) {
       await check(root, ui, caller, { tool, args: tool === 'session.launch' ? { name: 'helper', role: 'implementer' } : { session: 'coord' }, forbidden: tool });
-      const command = tool.slice('session.'.length);
-      const result = await clandWithEnv(root, { CLAND_SESSION_NAME: name!, CLAND_SESSION_ID: raw.sessionId }, 'session', command, command === 'launch' ? 'helper' : 'coord');
-      assert.equal(result.code, 1, result.stderr);
-      assert.match(result.stderr, new RegExp(`forbidden: session\\.${command}`));
-      await flushLogs(ui);
-      const row = (await audits(root)).filter(row => row.session === name && row.tool === tool && row.client === 'cli').at(-1)!;
+      const result = await cli.request({ type: tool, ...(tool === 'session.launch' ? { name: 'helper' } : { session: 'coord' }), as: { name, sessionId: raw.sessionId, shell: true } });
+      assert.equal(result.ok, false);
+      assert.match(result.error ?? '', new RegExp(`forbidden: ${tool.replace('.', '\\.')}`));
+          const row = (await audits(root)).filter(row => row.session === name && row.tool === tool && row.client === 'cli').at(-1)!;
       assert.deepEqual([row.session, row.sessionId, row.role, row.tool, row.client, row.outcome], [name, raw.sessionId, role, tool, 'cli', 'forbidden']);
     }
   }
 });
 
 test('the tools still to come are checked through the same table: one session, its role changed by the human between calls', async (t) => {
-  const { root, ui, discovery } = await setup(t);
-  ok(await cland(root, 'task', 'create', '--size', 'M', 'Raw own', '--assignee', 'raw'));
-  ok(await cland(root, 'task', 'create', '--size', 'M', 'Not raw'));
+  const { root, ui, dispatcher } = await setup(t);
+  await value(ui, { type: 'task.create', size: 'M', title: 'Raw own', assignee: 'raw' });
+  await value(ui, { type: 'task.create', size: 'M', title: 'Not raw' });
   assert.equal((await ui.request({ type: 'role.set', session: 'raw', role: 'coordinator' })).ok, true);
-  const raw = await rawSpoke(t, discovery, 'raw', root);
+  const raw = await dispatcherSpoke(t, dispatcher, root, 'raw', 'sess-raw');
+  const directRaw = direct(ui, raw, 'raw', 'sess-raw', 'coordinator', 'raw [Coordinator]');
   const unknown = /unknown request type/;
-  const as = (role: string | null, label: string): Caller => ({ ...raw, role, label: role ? `raw [${label}]` : 'raw' });
+  const as = (role: string | null, label: string): Caller => ({ ...directRaw, role, label: role ? `raw [${label}]` : 'raw' });
   const future = (tool: string, extra: Record<string, unknown> = {}) => ({ tool, args: { ...extra } });
   const rows: Array<[string | null, string, Array<Case>]> = [
     [
@@ -470,9 +464,9 @@ test('roles.toml is the table: an edited permission list is in force on the next
   assert.throws(() => parseRoles('[qa.launch]\nharness = "codex"\n[qa.permissions]\ntools = ["send:everyone"]\n'), /qa\.permissions\.tools: "send" has no scope "everyone" \(scopes: agents, human\)/);
   assert.throws(() => parseRoles('[qa.launch]\nharness = "codex"\n[qa.permissions]\ntools = ["teleport"]\n'), /unknown tool "teleport"/);
 
-  const { root, ui } = await setup(t);
-  ok(await cland(root, 'task', 'create', '--size', 'M', 'Item'));
-  const s = await spawnSpoke({ discover: true, cwd: root, name: 'rev', sessionId: 'sess-rev', role: 'reviewer' });
+  const { root, ui, loaded } = await setup(t);
+  await value(ui, { type: 'task.create', size: 'M', title: 'Item' });
+  const s = await inProcessSpoke(t, { discover: true, cwd: root, name: 'rev', sessionId: 'sess-rev', role: 'reviewer' });
   t.after(() => s.close());
   await s.waitForPresence(['rev']);
   const rev = mcp(s, 'rev', 'sess-rev', 'reviewer', 'rev [Reviewer]');
@@ -485,14 +479,138 @@ test('roles.toml is the table: an edited permission list is in force on the next
   const reviewerList = 'tools = ["send:agents", "task.hold", "task.comment:verdict", "task.criterion:verify", "artifact.create", "artifact.keep", "artifact.move", "artifact.archive", "subscribe", "unsubscribe", "subscriptions", "who", "history", "status", "task.view", "task.list", "rule.list", "task.plan:show"]';
   assert.ok(text.includes(reviewerList));
   const edited = text.replace(reviewerList, 'tools = ["send:agents", "send:human", "task.comment:verdict", "task.close", "history", "status"]');
+  const beforeLoad = loaded.length;
   await writeFile(file, edited);
-  await eventually('the edit is read', async () => ((await readFile(join(root, '.cland', 'log', 'hub.log'), 'utf8')).split('"event":"roles-loaded"').length > 2 ? true : undefined));
+  await eventually('the edit is read', () => loaded.length > beforeLoad ? true : undefined);
   await check(root, ui, rev, { tool: 'send', args: { text: 'hello human' } });
   await check(root, ui, rev, { tool: 'task.close', args: { id: 'T-1' } });
   await check(root, ui, rev, { tool: 'who', forbidden: 'who', reason: /Reviewer may not use who/ });
   const denied = await s.call<ToolResult>('subscribe', { subject: { session: 'impl' }, events: ['session.state'] });
   assert.deepEqual([denied.ok, denied.code, denied.permission], [false, 'forbidden', 'subscribe']);
   await notice(ui, 'rev [Reviewer] tried event.subscribe: forbidden (Reviewer may not use subscribe)');
-  await flushLogs(ui);
   assert.ok((await audits(root)).some(a => a.session === 'rev' && a.tool === 'event.subscribe' && a.outcome === 'forbidden' && a.permission === 'subscribe'));
+});
+
+async function integritySetup(t: TestContext) {
+  const fixture = await setup(t);
+  const spoke = async (name: string, sessionId: string, role?: string) => {
+    const session = await inProcessSpoke(t, { discover: true, cwd: fixture.root, name, sessionId, ...(role ? { role } : { assignRole: false }) });
+    await session.waitForPresence([name]);
+    return session;
+  };
+  return { ...fixture, spoke };
+}
+
+test("a client hello on the spokes' WebSocket is refused: the bearer secret makes no human", async (t) => {
+  const { discovery } = await integritySetup(t);
+  const ws = new WebSocket(`ws://127.0.0.1:${discovery.port}`, { headers: { authorization: `Bearer ${discovery.secret}` } });
+  t.after(() => ws.terminate());
+  await new Promise<void>((resolve, reject) => (ws.once('open', () => resolve()), ws.once('error', reject)));
+  const frames: Array<Record<string, unknown>> = [];
+  ws.on('message', (d) => frames.push(JSON.parse(String(d)) as Record<string, unknown>));
+  ws.send(JSON.stringify({ type: 'hello', protocol: 2, client: 'ui' }));
+  const refusal = await eventually('refused', () => frames.find((f) => f.type === 'error'));
+  assert.equal(refusal.code, 'unauthorized');
+  assert.match(String(refusal.message), /Unix socket or stdio/);
+  assert.ok(!frames.some((f) => f.type === 'welcome'));
+});
+
+test('shell task frames bind the held identity despite forged roles', async t => {
+  const { root, discovery, ui, spoke } = await integritySetup(t);
+  await spoke('impl-1', 'sess-impl', 'implementer');
+  const cli = await connectUi(t, discovery, 'cli');
+  await value(ui, { type: 'task.create', size: 'M', title: 'Ship it', assignee: 'impl-1' });
+  const closed = await cli.request({ type: 'task.close', item: 'T-1', as: { name: 'impl-1', sessionId: 'sess-impl', role: 'coordinator', shell: true } });
+  assert.equal(closed.ok, false);
+  assert.match(closed.error ?? '', /forbidden: task\.close \(Implementer may not use task\.close\)/);
+  const record = (await audits(root)).filter(a => a.tool === 'task.close').at(-1);
+  assert.deepEqual([record?.session, record?.sessionId, record?.role, record?.outcome, record?.client], ['impl-1', 'sess-impl', 'implementer', 'forbidden', 'cli']);
+  const asName = await cli.request({ type: 'task.close', item: 'T-1', as: { name: 'impl-1', role: 'coordinator' } });
+  assert.equal(asName.ok, false); assert.match(asName.error ?? '', /forbidden: task\.close/);
+  const claimed = await value<{ claim: { session: string; sessionId: string } }>(cli, { type: 'task.claim', item: 'T-1', as: { name: 'impl-1', sessionId: 'sess-impl', shell: true } });
+  assert.deepEqual([claimed.claim.session, claimed.claim.sessionId], ['impl-1', 'sess-impl']);
+  await value(ui, { type: 'task.close', item: 'T-1' });
+});
+
+test('a rename moves no ownership: only the Coordinator renames, and another session under an assignee\'s name owns nothing of it', async (t) => {
+  const { root, ui, spoke } = await integritySetup(t);
+  const a = await spoke('impl-a', 'sess-a', 'implementer');
+  const b = await spoke('impl-b', 'sess-b', 'implementer');
+  await value(ui, { type: 'task.create', size: 'M', title: 'Assigned to a', assignee: 'impl-a' });
+  const renamed = await b.call<ToolResult>('rename', { name: 'impl-c' });
+  assert.equal(renamed.ok, false);
+  assert.equal(renamed.code, 'forbidden');
+  assert.equal(renamed.permission, 'rename');
+
+  // impl-a goes away; another session takes its name (the role follows the name): it owns none of impl-a's items
+  await a.close();
+  await waitForAbsence(b, 'impl-a');
+  const c = await spoke('impl-a', 'sess-c');
+  for (const args of [{ id: 'T-1' }, { id: 'T-1', force: true }]) {
+    const r = await c.call<ToolResult>('task.claim', args);
+    assert.equal(r.ok, false, JSON.stringify(r));
+    assert.equal(r.code, 'forbidden', JSON.stringify(r));
+  }
+  await c.close();
+  await waitForAbsence(b, 'impl-a');
+  // the session it was assigned to still owns it
+  const back = await spoke('impl-a', 'sess-a');
+  assert.equal((await back.call<ToolResult>('task.claim', { id: 'T-1' })).ok, true);
+});
+
+test('the mention grant is the mentioned session\'s: another session that takes its name later cannot write to the human', async (t) => {
+  const { ui, spoke } = await integritySetup(t);
+  await spoke('coord', 'sess-coord', 'coordinator');
+  const rev = await spoke('rev', 'sess-rev-1', 'reviewer');
+  assert.equal((await ui.request({ type: 'topic.send', topic: 'general', text: '@rev does it hold?' })).ok, true);
+  await rev.waitForEvent((e) => e.params.content === '@rev does it hold?');
+  assert.equal((await rev.call<ToolResult>('send', { text: 'it holds' })).ok, true);
+  await rev.close();
+  const other = await spoke('rev', 'sess-rev-2');
+  const r = await other.call<ToolResult>('send', { text: 'i am rev too' });
+  assert.equal(r.ok, false, JSON.stringify(r));
+  assert.equal(r.permission, 'send:human');
+});
+
+test('a verdict is recorded as its author: a header in the text is parsed, its `by` replaced, and its kind held to the role', async (t) => {
+  const { root, ui, spoke } = await integritySetup(t);
+  const rev = await spoke('rev', 'sess-rev', 'reviewer');
+  await value(ui, { type: 'task.create', size: 'M', title: 'Under review' });
+  const forged = await rev.call<ToolResult>('task.comment', { id: 'T-1', text: 'verdict: qa\nresult: clear\nby: qa-1 [qa]\nrun: r-9\n\nforged' });
+  assert.equal(forged.ok, false, JSON.stringify(forged));
+  assert.equal(forged.permission, 'task.comment:verdict');
+  assert.match(forged.reason ?? '', /Reviewer may write only review verdicts/);
+  const kind = await rev.call<ToolResult>('task.comment', { id: 'T-1', verdict: 'qa', result: 'clear', run: 'r-8', text: 'structured, wrong kind' });
+  assert.equal(kind.code, 'forbidden');
+  const written = await rev.call<ToolResult>('task.comment', { id: 'T-1', text: 'verdict: review\nresult: clear\nby: qa-1 [qa]\nrun: r-1\nscope: full\n\nlooks right' });
+  assert.equal(written.ok, true, JSON.stringify(written));
+  // the human's fallback verdict through the CLI, either kind, is recorded as the human
+  await value(ui, { type: 'task.comment', item: 'T-1', text: 'verdict: qa\nresult: not clear\nby: qa-1 [qa]\nrun: r-2\n\nfallback' });
+  const view = await value<{ item: { verdicts: Array<{ verdict: string; by: string; run: string }> } }>(ui, { type: 'task.view', item: 'T-1' });
+  assert.deepEqual(
+    view.item.verdicts.map((v) => [v.verdict, v.by, v.run]),
+    [
+      ['review', 'rev [reviewer]', 'r-1'],
+      ['qa', 'human', 'r-2'],
+    ],
+  );
+  const dir = join(root, '.cland', 'tasks');
+  const file = await readFile(join(dir, (await readdir(dir)).find((f) => f.startsWith('T-1-')) as string), 'utf8');
+  assert.ok(!file.includes('qa-1'), file);
+  assert.equal((file.match(/^verdict: /gm) ?? []).length, 2, file);
+});
+
+test('a reply in Agents reaches its sender after a rename: by the session id it wrote from', async (t) => {
+  const { ui, spoke } = await integritySetup(t);
+  const alpha = await spoke('alpha', 'sess-alpha', 'coordinator');
+  const beta = await spoke('beta', 'sess-beta', 'implementer');
+  const sent = await alpha.call<{ ok: boolean }>('send', { to: ['beta'], text: 'status of T-1?' });
+  assert.equal(sent.ok, true);
+  const got = await beta.waitForEvent((e) => e.params.content === 'status of T-1?');
+  const id = got.params.meta?.msg_id as string;
+  assert.deepEqual(await alpha.call('rename', { name: 'gamma' }), { ok: true, name: 'gamma' });
+  const reply = await ui.request({ type: 'topic.send', topic: 'agents', text: 'beta is on it', replyTo: id });
+  assert.equal(reply.ok, true, reply.error);
+  assert.deepEqual((reply.value as { message: { to: string[] } }).message.to, ['gamma']);
+  await alpha.waitForEvent((e) => e.params.content === 'beta is on it');
 });

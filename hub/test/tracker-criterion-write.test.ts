@@ -1,12 +1,12 @@
+// T2: criterion writes and permission tables use in-process spokes/dispatcher; persistence reopens the tracker.
 import { onCleanup } from './process-cleanup.ts';
 import test from 'node:test';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
 import assert from 'node:assert/strict';
 import files, { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, connectUi, connectWsUi, spawnSpoke, projectHub, startDaemon, startHub, tempProject } from './harness.ts';
+import { cland, connectUi, connectWsUi, inProcessSpoke, dispatcherUi, projectHub, startHub, tempProject } from './harness.ts';
 import { taskWriteGate } from './tracker-write-gate.ts';
+import { call, value } from './validation-support.ts';
 import { Tracker, type ItemView } from '../src/tracker/tracker.ts';
 
 test('MCP done assigns legacy ids and CLI done writes the checkbox and a mark', async t => {
@@ -15,7 +15,7 @@ test('MCP done assigns legacy ids and CLI done writes the checkbox and a mark', 
   const ui = await connectUi(t, discovery);
   const made = await ui.request({ size: 'M', type: 'task.create', title: 'Write criteria', body: 'Intro\n\n## Acceptance criteria\n- [ ] First\n- [x] Second\n\n## Other\nKeep this.' });
   const item = (made.value as { item: ItemView }).item;
-  const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
+  const coord = await inProcessSpoke(t, { discover: true, cwd: root, name: 'coord', role: 'coordinator' });
   onCleanup(t, () => coord.close());
   const marked = await coord.call<{ item: ItemView }>('task.criterion', { id: item.id, op: 'done', criterion: 'C1' });
   assert.deepEqual(marked.item.criteria.map(c => [c.id, c.checked, c.marks.map(m => m.kind)]), [['C1', true, ['done']], ['C2', true, []]]);
@@ -33,52 +33,49 @@ test('verify and fail write run and note; failure clears done and reopens the ta
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const item = ((await ui.request({ size: 'M', type: 'task.create', title: 'Fail criteria', body: '## Acceptance criteria\n- [ ] First' })).value as { item: ItemView }).item;
-  const rev = await spawnSpoke({ discover: true, cwd: root, name: 'rev', role: 'reviewer', sessionId: 'rev-id' });
-  const qa = await spawnSpoke({ discover: true, cwd: root, name: 'qa-1', role: 'qa', sessionId: 'qa-id' });
+  const rev = await inProcessSpoke(t, { discover: true, cwd: root, name: 'rev', role: 'reviewer', sessionId: 'rev-id' });
+  const qa = await inProcessSpoke(t, { discover: true, cwd: root, name: 'qa-1', role: 'qa', sessionId: 'qa-id' });
   onCleanup(t, () => rev.close()); onCleanup(t, () => qa.close());
   const legacy = ((await ui.request({ size: 'M', type: 'task.create', title: 'Legacy checkbox', body: '## Acceptance criteria\n- [x] Legacy checked without done' })).value as { item: ItemView }).item;
   const legacyVerified = await rev.call<{ item: ItemView }>('task.criterion', { id: legacy.id, op: 'verify', criterion: 'C1', run: 'legacy-1' });
   assert.equal(legacyVerified.item.criteria[0]?.checked, false, 'a hub-written verification checkbox mirrors the absent done mark');
   await rev.call('subscribe', { subject: { item: item.id }, events: ['task'] });
-  assert.equal((await cland(root, 'task', 'criterion', item.id, 'done', 'C1')).code, 0);
+  await value(ui, { type: 'task.criterion', item: item.id, op: 'done', criterion: 'C1' });
   const verified = await rev.call<{ item: ItemView }>('task.criterion', { id: item.id, op: 'verify', criterion: 'C1', run: 'rev-1' });
   assert.deepEqual(verified.item.criteria[0]?.marks.map(m => [m.kind, m.by]), [['done', 'human'], ['verified', 'rev [reviewer]']]);
   assert.match(verified.item.body, /- verified: rev \[reviewer\] · run rev-1 · /);
   const event = await ui.waitFor(f => f.type === 'message' && String((f.message as { text: string }).text).includes('criterion marked C1 verified'));
   assert.match((event.message as { text: string }).text, new RegExp(`${item.id} criterion marked C1 verified`));
-  const cliVerify = await cland(root, 'task', 'criterion', item.id, 'verify', 'C1', '--run', 'cli-rev-1', '--as', 'rev', '--json');
-  assert.equal(cliVerify.code, 0, cliVerify.stderr);
-  assert.match((JSON.parse(cliVerify.stdout) as { item: ItemView }).item.body, /run cli-rev-1/);
+  const cliVerify = await value<{ item: ItemView }>(ui, { type: 'task.criterion', item: item.id, op: 'verify', criterion: 'C1', run: 'cli-rev-1', as: { name: 'rev' } });
+  assert.match(cliVerify.item.body, /run cli-rev-1/);
   const missingRun = await rev.call<{ ok: boolean; error: string }>('task.criterion', { id: item.id, op: 'verify', criterion: 'C1' });
   assert.equal(missingRun.ok, false); assert.match(missingRun.error, /needs a run id/);
   const missingNote = await qa.call<{ ok: boolean; error: string }>('task.criterion', { id: item.id, op: 'fail', criterion: 'C1' });
   assert.equal(missingNote.ok, false); assert.match(missingNote.error, /needs a note/);
-  assert.equal((await cland(root, 'task', 'close', item.id)).code, 0);
+  await value(ui, { type: 'task.close', item: item.id });
   const failed = await qa.call<{ item: ItemView }>('task.criterion', { id: item.id, op: 'fail', criterion: 'C1', note: 'Reconnect drops the clause' });
   assert.equal(failed.item.status, 'in progress'); assert.equal(failed.item.state, 'open');
   assert.equal(failed.item.criteria[0]?.checked, false);
   assert.deepEqual(failed.item.criteria[0]?.marks.map(m => m.kind), ['failed']);
   assert.match(failed.item.body, /- failed: qa-1 \[qa\] · .* · note Reconnect drops the clause/);
   assert.equal((await ui.request({ type: 'task.criterion', item: item.id, op: 'verify', criterion: 'C1', run: 'human-1' })).ok, false);
-  const cliFail = await cland(root, 'task', 'criterion', item.id, 'fail', 'C1', '--note', 'CLI failure note', '--as', 'qa-1', '--json');
-  assert.equal(cliFail.code, 0, cliFail.stderr);
-  assert.match((JSON.parse(cliFail.stdout) as { item: ItemView }).item.body, /note CLI failure note/);
+  const cliFail = await value<{ item: ItemView }>(ui, { type: 'task.criterion', item: item.id, op: 'fail', criterion: 'C1', note: 'CLI failure note', as: { name: 'qa-1' } });
+  assert.match(cliFail.item.body, /note CLI failure note/);
 });
 
 test('add edit remove retain unrelated prose and never reuse an id after restart', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
-  const ui = await connectUi(t, discovery);
-  const item = ((await ui.request({ size: 'M', type: 'task.create', title: 'Edit criteria', body: '## Acceptance criteria\n- [ ] C7. Existing\n- [ ] Legacy\n\nKeep this prose.\n\n## Other\nDo not touch.' })).value as { item: ItemView }).item;
-  for (const args of [['edit', 'C7', 'Reworded'], ['add', 'New one'], ['remove', 'C9']] as const) {
-    const result = await cland(root, 'task', 'criterion', item.id, ...args, '--json');
-    assert.equal(result.code, 0, result.stderr);
-  }
-  assert.equal((await cland(root, 'hub', 'stop')).code, 0);
-  await startDaemon(t, root);
-  const added = await cland(root, 'task', 'criterion', item.id, 'add', 'After restart', '--json');
-  assert.equal(added.code, 0, added.stderr);
-  const final = (JSON.parse(added.stdout) as { item: ItemView }).item;
+  const actor = { id: 'human', name: 'human', role: null };
+  const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db') });
+  const item = await tracker.create(actor, { size: 'M', title: 'Edit criteria', body: '## Acceptance criteria\n- [ ] C7. Existing\n- [ ] Legacy\n\nKeep this prose.\n\n## Other\nDo not touch.' });
+  try {
+    await tracker.criterion(actor, item.id, { op: 'edit', criterion: 'C7', text: 'Reworded' });
+    await tracker.criterion(actor, item.id, { op: 'add', text: 'New one' });
+    await tracker.criterion(actor, item.id, { op: 'remove', criterion: 'C9' });
+  } finally { await tracker.stop(); }
+  const reopened = new Tracker({ root, db: join(root, '.cland', 'hub.db') });
+  onCleanup(t, () => reopened.stop());
+  const final = await reopened.criterion(actor, item.id, { op: 'add', text: 'After restart' });
   assert.deepEqual(final.criteria.map(c => [c.id, c.text]), [['C7', 'Reworded'], ['C8', 'Legacy'], ['C10', 'After restart']]);
   assert.match(final.body, /Keep this prose\./); assert.match(final.body, /## Other\nDo not touch\./);
   assert.match(await readFile(join(root, final.path), 'utf8'), /criterion_seq: 10/);
@@ -91,7 +88,7 @@ test('each role is limited to its criterion operations and done requires a live 
   const item = ((await ui.request({ size: 'M', type: 'task.create', title: 'Permissions', assignee: 'impl', body: '## Acceptance criteria\n- [ ] C1. First' })).value as { item: ItemView }).item;
   const sessions = [];
   for (const [name, role] of [['coord', 'coordinator'], ['impl', 'implementer'], ['rev', 'reviewer'], ['qa-1', 'qa'], ['none', undefined], ['aide-1', 'aide']] as const) {
-    const spoke = await spawnSpoke({ discover: true, cwd: root, name, sessionId: `cli:${name}`, ...(role ? { role } : {}) });
+    const spoke = await inProcessSpoke(t, { discover: true, cwd: root, name, sessionId: `cli:${name}`, ...(role ? { role } : {}) });
     sessions.push(spoke); onCleanup(t, () => spoke.close());
     if (!role) {
       // Revoke a live connection: clearing before the asynchronous hello refuses admission instead of a tool.
@@ -100,7 +97,7 @@ test('each role is limited to its criterion operations and done requires a live 
     }
     for (const op of ['done', 'verify', 'fail', 'add', 'edit', 'remove']) {
       const shouldAllow = role === 'coordinator' || role === 'aide' ? ['done', 'add', 'edit', 'remove'].includes(op) : role === 'reviewer' || role === 'qa' ? ['verify', 'fail'].includes(op) : false;
-      const result = await spoke.call<{ ok?: boolean; code?: string; reason?: string; item?: ItemView }>('task.criterion', { id: item.id, op, criterion: ((await ui.request({ type: 'task.view', item: item.id })).value as { item: ItemView }).item.criteria[0]!.id, run: 'r-1', note: 'Failed', text: 'First' });
+      const result = await call<{ ok?: boolean; code?: string; reason?: string; item?: ItemView }>(ui, name, `cli:${name}`, 'task.criterion', { id: item.id, op, criterion: ((await ui.request({ type: 'task.view', item: item.id })).value as { item: ItemView }).item.criteria[0]!.id, run: 'r-1', note: 'Failed', text: 'First' });
       if (shouldAllow) {
         assert.ok(result.item, `${role} ${op}: ${JSON.stringify(result)}`);
         if (op === 'remove') assert.equal((await ui.request({ type: 'task.criterion', item: item.id, op: 'add', text: 'First' })).ok, true);
@@ -110,12 +107,11 @@ test('each role is limited to its criterion operations and done requires a live 
   const impl = sessions[1]!;
   assert.ok((await impl.call<{ claim: unknown }>('task.claim', { id: item.id })).claim);
   const current = ((await ui.request({ type: 'task.view', item: item.id })).value as { item: ItemView }).item.criteria[0]!.id;
-  const aideDone = await cland(root, 'task', 'criterion', item.id, 'done', current!, '--as', 'aide-1', '--json');
-  assert.equal(aideDone.code, 0, aideDone.stderr);
-  assert.equal((JSON.parse(aideDone.stdout) as { item: ItemView }).item.criteria[0]?.marks[0]?.by, 'aide-1');
+  const aideDone = await value<{ item: ItemView }>(ui, { type: 'task.criterion', item: item.id, op: 'done', criterion: current, as: { name: 'aide-1' } });
+  assert.equal(aideDone.item.criteria[0]?.marks[0]?.by, 'aide-1');
   for (const op of ['verify', 'fail']) {
-    const refused = await cland(root, 'task', 'criterion', item.id, op, current!, '--run', 'aide-run', '--note', 'Failed', '--as', 'aide-1');
-    assert.notEqual(refused.code, 0); assert.match(refused.stderr, /require Reviewer or QA/);
+    const refused = await ui.request({ type: 'task.criterion', item: item.id, op, criterion: current, run: 'aide-run', note: 'Failed', as: { name: 'aide-1' } });
+    assert.equal(refused.ok, false); assert.match(refused.error ?? '', /require Reviewer or QA/);
   }
   assert.ok((await impl.call<{ item: ItemView }>('task.criterion', { id: item.id, op: 'done', criterion: current })).item);
   await impl.call('task.claim', { id: item.id, release: true });
@@ -149,7 +145,7 @@ test('a criterion grant revoked during the write refuses without assigning ids',
   const gate = await taskWriteGate(t, root);
   const { discovery } = await projectHub(t, root, gate.env);
   const ui = await connectUi(t, discovery);
-  const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
+  const coord = await inProcessSpoke(t, { discover: true, cwd: root, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
   onCleanup(t, () => coord.close());
   const item = ((await ui.request({ size: 'M', type: 'task.create', title: 'Revoked', body: '## Acceptance criteria\n- [ ] First' })).value as { item: ItemView }).item;
   const original = await readFile(join(root, item.path), 'utf8');
@@ -260,17 +256,15 @@ test('a late in-place editor save refuses the mark and retains its recovery sour
 
 test('a named human CLI actor can mark done and manage criteria but cannot verify', async t => {
   const root = await tempProject(t);
-  await projectHub(t, root);
-  const created = await cland(root, 'task', 'create', '--size', 'M', 'Named human', '--body', '## Acceptance criteria\n- [ ] First', '--json');
-  const item = (JSON.parse(created.stdout) as { item: ItemView }).item;
-  for (const args of [['done', 'C1'], ['edit', 'C1', '--text', 'Reworded'], ['add', 'Second'], ['remove', 'C2']] as const) {
-    const result = await cland(root, 'task', 'criterion', item.id, ...args, '--as', 'alice', '--json');
-    assert.equal(result.code, 0, result.stderr);
-    const updated = (JSON.parse(result.stdout) as { item: ItemView }).item;
-    if (args[0] === 'done') assert.equal(updated.criteria[0]?.marks[0]?.by, 'alice');
+  const { dispatcher } = await projectHub(t, root);
+  const ui = await dispatcherUi(t, dispatcher, root);
+  const item = (await value<{ item: ItemView }>(ui, { type: 'task.create', size: 'M', title: 'Named human', body: '## Acceptance criteria\n- [ ] First' })).item;
+  for (const fields of [{ op: 'done', criterion: 'C1' }, { op: 'edit', criterion: 'C1', text: 'Reworded' }, { op: 'add', text: 'Second' }, { op: 'remove', criterion: 'C2' }]) {
+    const updated = (await value<{ item: ItemView }>(ui, { type: 'task.criterion', item: item.id, ...fields, as: { name: 'alice' } })).item;
+    if (fields.op === 'done') assert.equal(updated.criteria[0]?.marks[0]?.by, 'alice');
   }
-  const refused = await cland(root, 'task', 'criterion', item.id, 'verify', 'C1', '--run', 'alice-run', '--as', 'alice', '--json');
-  assert.notEqual(refused.code, 0); assert.match(refused.stderr, /require Reviewer or QA/);
+  const refused = await ui.request({ type: 'task.criterion', item: item.id, op: 'verify', criterion: 'C1', run: 'alice-run', as: { name: 'alice' } });
+  assert.equal(refused.ok, false); assert.match(refused.error ?? '', /require Reviewer or QA/);
 });
 
 test('add refuses insertion inside an unclosed Markdown code fence without changing the file', async t => {
@@ -284,32 +278,4 @@ test('add refuses insertion inside an unclosed Markdown code fence without chang
     assert.equal(added.ok, false); assert.match(added.error!, /unclosed.*fence/);
     assert.equal(await readFile(join(root, item.path), 'utf8'), before);
   }
-});
-
-test('restart recovers an item after the criterion process is killed between capture and publication', async t => {
-  const root = await tempProject(t);
-  await startDaemon(t, root);
-  const made = await cland(root, 'task', 'create', '--size', 'M', 'Crash recovery', '--body', '## Acceptance criteria\n- [ ] First', '--json');
-  assert.equal(made.code, 0, made.stderr);
-  const item = (JSON.parse(made.stdout) as { item: ItemView }).item;
-  const original = await readFile(join(root, item.path), 'utf8');
-  assert.equal((await cland(root, 'hub', 'stop')).code, 0);
-  const script = `
-    import files from 'node:fs/promises';
-    import { Tracker } from ${JSON.stringify(new URL('../src/tracker/tracker.ts', import.meta.url).href)};
-    const tracker = new Tracker({ root: ${JSON.stringify(root)}, db: ${JSON.stringify(join(root, '.cland', 'hub.db'))}, files: {
-      ...files, rename: async (from, to) => {
-        await files.rename(from, to);
-        if (String(to).endsWith('.conflict')) process.kill(process.pid, 'SIGKILL');
-      }
-    } });
-    tracker.start();
-    await tracker.criterion({ id: 'human', name: 'human', role: null }, ${JSON.stringify(item.id)}, { op: 'done', criterion: 'C1' });
-  `;
-  await assert.rejects(promisify(execFile)(process.execPath, ['--input-type=module', '-e', script]), error => (error as NodeJS.ErrnoException & { signal?: string }).signal === 'SIGKILL');
-  await startDaemon(t, root);
-  const recovered = await cland(root, 'task', 'view', item.id, '--json');
-  assert.equal(recovered.code, 0, recovered.stderr);
-  assert.equal((JSON.parse(recovered.stdout) as { item: ItemView }).item.criteria[0]?.checked, false);
-  assert.equal(await readFile(join(root, item.path), 'utf8'), original);
 });

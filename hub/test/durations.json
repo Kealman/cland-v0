@@ -3320,9 +3320,16 @@
       "owner": "E-677",
       "legacy": true
     },
+    "hub/test/cli-identity.test.ts::a launched session cannot borrow another identity with `--as`: neither the human nor the Coordinator, it stays itself": {
+      "seconds": 6.5,
+      "owner": "E-677",
+      "added": "2026-10-17",
+      "expires": "2026-10-24",
+      "reason": "Retains the real launched Claude Bash-shell identity/--as proof with three CLI invocations and audited launch identity. Linux x64 c-8, workers 2: 5.457659001 s in run 9012d29f (A-4514), behavior and all five load repetitions passed; cap includes process-start variance under suite load."
+    },
     "hub/test/cli-identity.test.ts::cland hub stop from a session's shell signals nothing when the hub does not answer: only a confirmed request, or the human, may fall back to the signal": {
-      "seconds": 11.580439,
-      "reason": "Uses isolated real hubs and CLI shells to prove that an unanswered stop request never grants signal authority.",
+      "seconds": 11,
+      "reason": "Uses isolated real hubs and CLI shells to prove that an unanswered stop request never grants signal authority. T-704 shrinks the legacy cap after five serial Mac receipts at 9.870–10.244 s.",
       "owner": "E-677",
       "legacy": true
     },
@@ -3798,12 +3805,6 @@
       "owner": "E-677",
       "legacy": true
     },
-    "hub/test/release-item.test.ts::a published item release retries its pinned build after tracker closure fails and refuses a different or missing item": {
-      "seconds": 4.904127,
-      "reason": "Publishes a fixture release and retries tracker failure using the pinned git build, proving changed/missing release items are refused.",
-      "owner": "E-677",
-      "legacy": true
-    },
     "hub/test/release.test.ts": {
       "file": true,
       "seconds": 44.690335,
@@ -3868,18 +3869,6 @@
     "hub/test/role-integrity.test.ts::a hub that dies between a launch reserving the Coordinator and its spawn gives the role back at its next start": {
       "seconds": 8.256795,
       "reason": "Kills a real hub between Coordinator reservation and process spawn, then restarts to prove the role becomes available.",
-      "owner": "E-677",
-      "legacy": true
-    },
-    "hub/test/rule-cli.test.ts::concurrent rule CLI writes serialize numbers without losing rules; invalid input leaves the file intact": {
-      "seconds": 2.86506,
-      "reason": "Runs concurrent rule CLI processes against a real hub and checks numbering and file integrity; 4.73 s on Linux under load (A-3109), allowed ahead of the 5 s line.",
-      "owner": "E-677",
-      "legacy": true
-    },
-    "hub/test/rule-cli.test.ts::rule shell writes use the held identity: only human and Aide write, with restricted origins": {
-      "seconds": 4.835628,
-      "reason": "Runs a real hub and separate CLI processes for Aide origins, origin spoofing, and all three write refusals under three caller identities, preserving the full actor authorization matrix. Observed on the c-8 executor in A-2777 at a0ec44ea.",
       "owner": "E-677",
       "legacy": true
     },
