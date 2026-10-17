@@ -3,7 +3,7 @@ id: T-730
 kind: task
 title: Tier lint reads resource use from code, not words in string literals
 state: open
-status: in progress
+status: ready
 size: S
 criterion_seq: 2
 labels:
@@ -17,7 +17,7 @@ blocked_by: []
 topic: topic-439
 branch: t/T-730-tier-lint-reads-resource-use-from-code
 created: 2026-10-17T08:58:32.895Z
-updated: 2026-10-17T14:58:53.147Z
+updated: 2026-10-17T15:06:59.053Z
 ---
 
 ## Summary
@@ -33,8 +33,10 @@ The tier lint decides a file's resource use from code: imports, and calls of the
 - [x] C1. A T1 test file that only names `nvim/test/x.test.ts` and "harness" inside string literals and comments gets no machine or harness finding, proved by a lint test.
   - done: impl-730 · 2026-10-17T11:31:08.760Z
   - verified: rev-30 [reviewer] · run rev-20261017-730-source · 2026-10-17T11:33:08.360Z · commit e1ebf77b02ab5233f7071bb35510269dab4bcfe4
-- [ ] C2. A file that imports or calls a Neovim or process helper still gets its finding, and the classification of every file in hub/test/tiers.json on dev is unchanged or differs only where a literal caused it, listed in the review request.
-  - failed: rev-30 [reviewer] · 2026-10-17T14:58:53.147Z · note Existing package shared-resource refusal fixtures are admitted by the new predicate and both hit120s timeouts; correct code-aware policy/fixtures and preserve boundary coverage before re-review.
+  - verified: rev-30 [reviewer] · run rev-20261017-730-lock-correction · 2026-10-17T15:06:58.391Z · commit 733193450009713abf324d2a6b47910fcb98aadb
+- [x] C2. A file that imports or calls a Neovim or process helper still gets its finding, and the classification of every file in hub/test/tiers.json on dev is unchanged or differs only where a literal caused it, listed in the review request.
+  - done: impl-730 · 2026-10-17T15:01:59.928Z
+  - verified: rev-30 [reviewer] · run rev-20261017-730-lock-correction · 2026-10-17T15:06:58.391Z · commit 733193450009713abf324d2a6b47910fcb98aadb
 
 ## Notes
 
@@ -93,3 +95,47 @@ finding_counts: {"high":0,"medium":1,"low":0}
 Runtime not clear on A-4557/6569987b exit124. M1 suite-runner.test.ts:755–756: executed existsSync(shared-lock-path) fixtures still expect exit1/resource refusal, but the new sole AST qualification predicate admits them; both package cases run into120s timeouts. Fix package-boundary compatibility while retaining inert reporter-data acceptance and genuine resource-refusal meaning, then focused evidence/new-head source review. I missed this caller compatibility in prior source review. Raw log also shows out-of-diff ask-chain forward case red9.731s; classification belongs to lead.84/84 is only completed free phase, not a zero-failure whole run; machine incomplete, Neovim not reached. C2 failed, C1 source support retained. No unchanged-head retry or full task run requested.
 
 Criteria: C2 failed (Existing package shared-resource refusal fixtures are admitted by the new predicate and both hit120s timeouts; correct code-aware policy/fixtures and preserve boundary coverage before re-review.).
+
+### impl-730 · 2026-10-17T15:02:41.037Z
+
+Corrected M1 and pushed 733193450009713abf324d2a6b47910fcb98aadb. Differential lint replay and the two unchanged package cases were observed red on e1ebf77b (actual exit0, expected1). New T1 regression covers actual fs/fs-promises calls on shared suite locks, import aliases/namespaces and const path bindings; unused lock strings/report contents/local functions remain inert. The scanner now emits T2 only for the filesystem call/path use. Both original package-refusal assertions remain unchanged and passed5/5; complete suite-runner.test.ts passed43/43 in71.091s. Typecheck, test:tiers, test:lint pass; touched test-lint and suite-tiers files pass5/5 serially below load15. A-4561 contains logs/audit at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-4561-t-730-m1-fix-t1-lock-call-regression-package-refusal-and-tier-audit.md. Merged origin/dev26f6ad11 under the Coordinator's T-698 shared-fix authorization, no conflicts. All304 dev tier declarations unchanged; only inert nvim-property resource booleans drop in close-shards and executor-admission, with their declared tiers unchanged. C2 marked done again; requesting fresh delta source review before droplet verification.
+
+### rev-30 · 2026-10-17T15:06:58.391Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261017-730-lock-correction
+commit: 733193450009713abf324d2a6b47910fcb98aadb
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-730 source correction and authorized merge review
+
+Reviewed commit: 733193450009713abf324d2a6b47910fcb98aadb.
+Fixed points: prior reviewed e1ebf77b02ab5233f7071bb35510269dab4bcfe4 and incoming dev 26f6ad11824010727aac413dfc1de2a2876a7d5a.
+Scope: delta. Read-only review; no Reviewer test execution.
+
+## Standards
+No findings. The new sharedLockPath analysis resolves string/no-interpolation-template literals and const identifier bindings through the existing lexical binder, with a cycle guard. It applies only to calls bound to fs/fs-promises and their first path argument. Aliased and namespace imports are handled by the existing binding analysis. It adds no process, socket, real-time wait or test execution to the T1 regression.
+
+The three-file task delta retains the existing lint module's import/process/socket/Neovim detection. Admission and report use the same qualifying tier. The new pure table proves executable shared-lock access and keeps negative controls for unused strings, private paths, report contents passed as data, unrelated modules and local functions. Existing suite-runner.test.ts is byte-identical to incoming dev; the actual package refusal assertions were not relaxed.
+
+## Spec and M1 correction
+C1 source support remains intact: reporter paths and harness names in strings, template data, comments and object data produce neither machine admission nor lint findings. C2 source support is restored: genuine Neovim/process helper controls retain findings, and actual fs.existsSync access to either global suite lock now requires T2.
+
+A-4561 records the pre-correction differential and package failure (exit 0 versus expected 1), followed by green corrected results. I independently audited its embedded metadata/raw summaries: test-lint 8/8 five times, suite-tiers 8/8 five times, both unchanged package-refusal cases 2/2 five times, and whole suite-runner 43/43, zero failures/cancellations/skips, 71.090546417 seconds. Fifteen serial admissions show loads 5.2861328125–5.5556640625. The new lock-call identity appears in the whole-file lint receipts. Typecheck, tier lint and report lint outputs are included; report lint remains non-failing (341 findings in 198 files). Read-only diff check is clean.
+
+tiers.json is independently byte-identical to incoming dev. A-4561's 304-file differential lists no qualifying-tier or manifest changes. Its only admission-boolean reductions are close-shards and executor-admission data-only nvim properties; the files' declared T3/T2 tiers are unchanged. Source inspection agrees with that exception.
+
+## Merge authority and evidence limits
+Coordinator primary confirmation 027fb8b7-9b15-4104-9a59-fbfd831ee6f5 confirms the merge of dev 26f6ad11 under e7f715e7/rule 11 to take T-698's frozen-legacy/live-plan proof. The final task delta versus that dev is limited to test-lint.ts and the two test files. No manual merge conflict occurred.
+
+Correction to A-4561's description: the Coordinator states no durations-baseline refresh has yet been posted; that refresh is deferred to the next green integrated cover. This review does not claim such a refresh was imported.
+
+Source clear; M1 resolved, no remaining findings. Refresh C1/C2 source verification. A fresh normal mode-free exact-head droplet verification is still required before final evidence clearance. A-4557 remains the failed prior-head receipt (84/84 was only its completed free phase; machine phase was incomplete and Neovim was not reached). Out-of-diff ask-chain failure is tracked as T-739; no final acceptance is inferred from it.
+
+Durable review: A-4562.
+
+Criteria: C1 verified, C2 verified.
