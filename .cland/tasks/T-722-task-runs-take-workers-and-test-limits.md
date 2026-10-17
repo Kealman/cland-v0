@@ -3,7 +3,7 @@ id: T-722
 kind: task
 title: Task runs take workers and test limits from the hub's config, not the candidate tree's
 state: open
-status: planned
+status: in progress
 size: S
 rank: 6899
 labels:
@@ -13,10 +13,10 @@ labels:
 assignee: null
 parent: E-676
 blocked_by: []
-topic: null
-branch: null
+topic: topic-417
+branch: t/T-722-task-runs-take-workers-and-test-limits
 created: 2026-10-16T20:36:58.759Z
-updated: 2026-10-16T20:37:08.132Z
+updated: 2026-10-17T03:26:37.185Z
 ---
 
 ## Summary
