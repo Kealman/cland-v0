@@ -20,7 +20,8 @@ import { delimiter, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse as parseToml } from 'smol-toml';
 import { AppServerClient } from '../src/adapters/codex/app-server.ts';
-import { projectHub, clandWithEnv, connectUi, eventually, killDaemon, pidAlive, spawnSpoke, startDaemon, tempProject, type FrameClient, NO_PS } from './harness.ts';
+import { projectHub, clandWithEnv, connectUi, eventually, killDaemon, pidAlive, spawnSpoke, startDaemon, tempProject, type FrameClient } from './harness.ts';
+import { NO_PS } from './native-process.ts';
 
 const FAKE_CODEX_DIR = fileURLToPath(new URL('./fakes/codex', import.meta.url));
 

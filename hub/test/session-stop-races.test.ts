@@ -4,7 +4,8 @@ import { execFileSync } from 'node:child_process';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { projectHub, withDiscoveredPid, cland, connectUi, eventually, fakeClaude, fakeCodex, NO_PS, pidAlive, startDaemon, tempProject } from './harness.ts';
+import { projectHub, withDiscoveredPid, cland, connectUi, eventually, fakeClaude, fakeCodex, pidAlive, startDaemon, tempProject } from './harness.ts';
+import { NO_PS } from './native-process.ts';
 import { copyPreparedProject } from './prepared-project.ts';
 import type { HarnessProcessView, EventsPage } from '../src/protocol.ts';
 

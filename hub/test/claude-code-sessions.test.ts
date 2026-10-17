@@ -12,7 +12,8 @@ import { existsSync } from 'node:fs';
 import { afterCleanup, beforeDirectories, ownProcess } from './process-cleanup.ts';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { withDiscoveredPid, CLI_ENTRY, FAKE_CLAUDE_DIR, clauseAnswered, connectUi, eventually, fakeClaude, killDaemon, pidAlive, spawnSpoke, projectHub, tempProject, type FrameClient, NO_PS } from './harness.ts';
+import { withDiscoveredPid, CLI_ENTRY, FAKE_CLAUDE_DIR, clauseAnswered, connectUi, eventually, fakeClaude, killDaemon, pidAlive, spawnSpoke, projectHub, tempProject, type FrameClient } from './harness.ts';
+import { NO_PS } from './native-process.ts';
 
 type Presence = { name: string; sessionId: string; state: string };
 type Harness = { name: string; pid: number | null; harnessId: string | null; sessionId: string; harnessSessionId: string | null; status: string; state: string };

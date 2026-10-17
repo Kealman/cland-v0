@@ -154,6 +154,7 @@
     "hub/test/progress.test.ts": "T3",
     "hub/test/project-clock.test.ts": "T2",
     "hub/test/project-hub.test.ts": "T4",
+    "hub/test/project-probes.test.ts": "T2",
     "hub/test/prompt-races.test.ts": "T3",
     "hub/test/push.test.ts": "T3",
     "hub/test/quarantine-runner.test.ts": "T3",

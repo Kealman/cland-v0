@@ -125,10 +125,17 @@ export function sameProcess(holder: LockHolder, now: string | null): boolean {
   return Number.isFinite(before) && Number.isFinite(current) && Math.abs(before - current) <= 26 * 60 * 60 * 1000;
 }
 
+/** The native facts needed to verify synchronous hub-lock ownership. */
+export type LockProcessTable = {
+  alive: (pid: number) => boolean;
+  started: (pid: number, timezone?: 'UTC') => string | null;
+};
+const nativeProcesses: LockProcessTable = { alive: pidAlive, started: processStarted };
+
 /** Whether the process the lock names is still the one that took it. */
-export function holderAlive(holder: LockHolder): boolean {
-  if (!pidAlive(holder.pid)) return false;
-  return holder.started === null || sameProcess(holder, processStarted(holder.pid, holder.startedUtc === undefined ? undefined : 'UTC'));
+export function holderAlive(holder: LockHolder, processes: LockProcessTable = nativeProcesses): boolean {
+  if (!processes.alive(holder.pid)) return false;
+  return holder.started === null || sameProcess(holder, processes.started(holder.pid, holder.startedUtc === undefined ? undefined : 'UTC'));
 }
 
 /** The live holder of the lock at `path`, or null when nobody (live) holds it. */
@@ -182,7 +189,7 @@ async function emptyGuardAsync(path: string, resumed: Resumed): Promise<void> {
   catch (err) { resumed(() => { if (!absent(err) && !occupied(err)) throw err; }); }
 }
 
-function recoverGuardSync(path: string): void {
+function recoverGuardSync(path: string, processes: LockProcessTable): void {
   let names: string[];
   try {
     if (!lstatSync(path).isDirectory()) throw new Error(`lock guard ${path} is not a directory; preserve it and remove it after its owner stops`);
@@ -193,7 +200,7 @@ function recoverGuardSync(path: string): void {
     const record = recordSync(`${path}/${name}`);
     if (!record.exists) continue;
     if (!record.holder) throw new Error(`unreadable lock guard owner ${path}/${name}`);
-    if (holderAlive(record.holder)) return;
+    if (holderAlive(record.holder, processes)) return;
     rmSync(`${path}/${name}`, { force: true });
   }
   emptyGuardSync(path);
@@ -222,14 +229,14 @@ async function recoverGuardAsync(path: string, resumed: Resumed, deadline?: numb
   await emptyGuardAsync(path, resumed);
 }
 
-function takeGuardSync(path: string, me: LockHolder): (() => void) | null {
+function takeGuardSync(path: string, me: LockHolder, processes: LockProcessTable): (() => void) | null {
   const name = `${randomUUID()}.owner`;
   const tmp = `${path}.${name}.tmp`;
   mkdirSync(tmp, { mode: 0o700 });
   return withCleanup(() => {
     writeFileSync(`${tmp}/${name}`, JSON.stringify(me), { mode: 0o600, flag: 'wx' });
     try { renameSync(tmp, path); }
-    catch (err) { if (!occupied(err)) throw err; recoverGuardSync(path); return null; }
+    catch (err) { if (!occupied(err)) throw err; recoverGuardSync(path, processes); return null; }
     return () => { rmSync(`${path}/${name}`, { force: true }); emptyGuardSync(path); };
   }, () => rmSync(tmp, { recursive: true, force: true }));
 }
@@ -276,15 +283,15 @@ export type AsyncHubLock = { holder: LockHolder; release: () => Promise<void> };
 const pauseSync = () => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 20);
 const pauseAsync = () => new Promise(resolve => setTimeout(resolve, 20));
 
-export function acquireLock(path: string): HubLock {
+export function acquireLock(path: string, processes: LockProcessTable = nativeProcesses): HubLock {
   // Only this process's own lock identity is immutable while it lives. Null is
   // retried; processStarted and every inspection of another PID remain fresh.
-  ownSynchronousStarted ??= processStarted(process.pid);
-  const me = { pid: process.pid, started: ownSynchronousStarted, token: randomUUID() };
+  const started = processes === nativeProcesses ? (ownSynchronousStarted ??= processStarted(process.pid)) : processes.started(process.pid);
+  const me = { pid: process.pid, started, token: randomUUID() };
   const text = `${JSON.stringify(me)}\n`;
   const guarded = <T>(work: () => T): T => {
     for (let attempt = 0; attempt < 250; attempt++) {
-      const release = takeGuardSync(`${path}.break`, me);
+      const release = takeGuardSync(`${path}.break`, me, processes);
       if (!release) { pauseSync(); continue; }
       return withCleanup(work, release);
     }
@@ -295,7 +302,7 @@ export function acquireLock(path: string): HubLock {
       if (createExclusive(path, text)) return true;
       const record = recordSync(path);
       if (!record.exists) return false; // absent means retry creation, never unlink
-      if (record.holder && holderAlive(record.holder)) throw new HubLocked(record.holder);
+      if (record.holder && holderAlive(record.holder, processes)) throw new HubLocked(record.holder);
       rmSync(path, { force: true }); // creators and releasers are excluded until this guard is released
       return false;
     });

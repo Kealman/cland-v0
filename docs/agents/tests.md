@@ -68,10 +68,17 @@ in the file, and never automatically retags it.
 
 ### In-process harnesses
 
-Hub rules use `projectHub(t, root, env, { harnesses: 'fake', clock })` by default,
+Hub rules use `projectHub(t, root, env, { harnesses: 'fake', probes: 'fake', clock })` by default,
 with a `FakeClock`. It replaces Claude Code, Codex and OpenCode under their real
 harness names, so `roles.toml` launch choices still work. The returned `fakes`
-map exposes each adapter. For a lower-level fixture, use
+map exposes each adapter. `probes: 'fake'` supplies no-repository Git answers and
+an in-process lock identity, so startup and teardown spawn no infrastructure
+processes either. A test needing branch/provenance facts may override `git` and
+`readBase`; a lock test may override `processes` (`alive` and `started`).
+`serveProject` and legacy `projectHub` calls without this option keep native Git
+and ps defaults, covered by the T3 lifecycle files. Import `NO_PS` only from
+`hub/test/native-process.ts` in native tests; importing the generic harness never
+probes the OS. For a lower-level fixture, use
 `fakeHarness(flavour, { host, clock })` from `hub/test/fakes/harness.ts`.
 Capabilities and first-clause semantics come from the production adapters.
 

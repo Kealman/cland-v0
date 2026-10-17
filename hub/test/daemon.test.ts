@@ -10,7 +10,8 @@ import { promisify } from 'node:util';
 import { pathToFileURL } from 'node:url';
 import WebSocket from 'ws';
 import { PROTOCOL_VERSION } from '../src/protocol.ts';
-import { assignRole, cland, clandWithEnv, CLI_ENTRY, connectSocket, killDaemon, pidAlive, projectHub, readDiscovery, eventually, sleep, spawnSpoke, startDaemon, tempProject, NO_PS } from './harness.ts';
+import { assignRole, cland, clandWithEnv, CLI_ENTRY, connectSocket, killDaemon, pidAlive, projectHub, readDiscovery, eventually, sleep, spawnSpoke, startDaemon, tempProject } from './harness.ts';
+import { NO_PS } from './native-process.ts';
 
 test('cland hub start creates the .cland skeleton and the discovery file', async (t) => {
   const root = await tempProject(t);

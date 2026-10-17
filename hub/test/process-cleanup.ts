@@ -165,7 +165,14 @@ function runMarkers(rows: ProcessRow[]): Map<number, string> {
 }
 
 const directories = new Map<string, { device: number; inode: number }>();
-const self = processes([process.pid]).find(row => row.pid === process.pid);
+let self: ProcessRow | undefined;
+let inspectedSelf = false;
+// A worker with no children needs no OS identity. Native cleanup still captures
+// its immutable identity before inspecting or signalling any owned process.
+function selfProcess(): ProcessRow | undefined {
+  if (!inspectedSelf) { self = processes([process.pid]).find(row => row.pid === process.pid); inspectedSelf = true; }
+  return self;
+}
 function directoryStillOwned(path: string, identity: { device: number; inode: number }): boolean {
   try { const info = statSync(path); return info.dev === identity.device && info.ino === identity.inode; }
   catch { return false; }
@@ -188,12 +195,12 @@ function ownership(rows: ProcessRow[], cwd: Map<number, string>, roots: string[]
  * Environment markers are hints only: macOS flattens other values into marker-looking text.
  * `root` must be verified by the caller; helper-registered roots also retain device/inode proof.
  */
-export async function cleanupProcesses(root?: string, seeds: ProcessIdentity[] = [], report?: (line: string) => void, runId = RUN_ID, anchors: ProcessIdentity[] = self ? [self] : [], options: { discover?: boolean } = {}): Promise<number> {
+export async function cleanupProcesses(root?: string, seeds: ProcessIdentity[] = [], report?: (line: string) => void, runId = RUN_ID, anchors: ProcessIdentity[] = selfProcess() ? [selfProcess()!] : [], options: { discover?: boolean } = {}): Promise<number> {
   if (seeds.length && !options.discover) return cleanupRecordedProcesses(seeds, report, anchors, root, runId);
   return cleanupDiscoveredProcesses(root, seeds, report, runId, anchors);
 }
 
-async function cleanupDiscoveredProcesses(root?: string, seeds: ProcessIdentity[] = [], report?: (line: string) => void, runId = RUN_ID, anchors: ProcessIdentity[] = self ? [self] : []): Promise<number> {
+async function cleanupDiscoveredProcesses(root?: string, seeds: ProcessIdentity[] = [], report?: (line: string) => void, runId = RUN_ID, anchors: ProcessIdentity[] = selfProcess() ? [selfProcess()!] : []): Promise<number> {
   const rows = processes();
   const markers = report ? runMarkers(rows) : new Map<number, string>();
   // Seed cleanup needs cwd proof only for the seeds and their descendants. Root
@@ -301,8 +308,7 @@ async function cleanupDiscoveredProcesses(root?: string, seeds: ProcessIdentity[
 /** Kill registered identities and verified descendants in their captured groups, without a machine scan.
  * Non-leaders receive positive-PID signals only. An unrelated group member prevents a group signal.
  */
-const selfStarted = self ? Date.parse(self.started) : -Infinity;
-const newerThanSelf = (row: ProcessIdentity) => Date.parse(row.started) >= selfStarted;
+const newerThanSelf = (row: ProcessIdentity) => Date.parse(row.started) >= (selfProcess() ? Date.parse(selfProcess()!.started) : -Infinity);
 let protectedPids: Set<number> | undefined;
 export async function cleanupOwnedProcesses(seeds: ProcessIdentity[]): Promise<void> {
   await cleanupRecordedProcesses(seeds);
@@ -313,13 +319,13 @@ async function cleanupRecordedProcesses(seeds: ProcessIdentity[], report?: (line
     if (settled.has(seed)) return false;
     // An exited leader can leave its captured group alive. Absence settles only
     // non-leaders; groups require a targeted membership probe before settling.
-    if (alive(seed.pid) || seed.group === seed.pid && seed.pid !== self?.group) return true;
+    if (alive(seed.pid) || seed.group === seed.pid && seed.pid !== selfProcess()?.group) return true;
     settled.add(seed); return false;
   });
   if (!seeds.length) return 0;
   if (!protectedPids) {
     protectedPids = new Set([process.pid]);
-    for (let pid = self?.parent; pid && !protectedPids.has(pid);) {
+    for (let pid = selfProcess()?.parent; pid && !protectedPids.has(pid);) {
       protectedPids.add(pid);
       const ancestor = processes([pid])[0];
       if (!ancestor) break;
@@ -327,7 +333,7 @@ async function cleanupRecordedProcesses(seeds: ProcessIdentity[], report?: (line
     }
   }
   const protectedForCleanup = protectedPids;
-  const groups = seeds.filter(seed => seed.group === seed.pid && seed.pid !== self?.group && !protectedForCleanup.has(seed.pid) && newerThanSelf(seed)).map(seed => seed.pid);
+  const groups = seeds.filter(seed => seed.group === seed.pid && seed.pid !== selfProcess()?.group && !protectedForCleanup.has(seed.pid) && newerThanSelf(seed)).map(seed => seed.pid);
   const rows = processes([...seeds.filter(seed => alive(seed.pid)).map(seed => seed.pid), ...anchors.map(anchor => anchor.pid)], groups);
   // A live PID whose original identity cannot be verified needs the full proof.
   // A gone leader may still have selected survivors: retain the targeted cwd path.

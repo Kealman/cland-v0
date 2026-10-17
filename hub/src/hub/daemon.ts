@@ -20,10 +20,10 @@ import { Store } from './store.ts';
 import { createHubBase, createWebSocketEdge, type HubBase, type WebSocketEdge } from './server.ts';
 import { createSocketEdge, type SocketEdge } from './socket.ts';
 import { ensureSkeleton, layout, removeDiscovery, writeDiscovery, type Discovery, type Layout } from '../project.ts';
-import { acquireLock, HubLocked } from './lock.ts';
+import { acquireLock, HubLocked, type LockProcessTable } from './lock.ts';
 import { VERSION } from '../version.ts';
 import { AGENTS } from './core.ts';
-import { gitIn } from '../tracker/verdict-git.ts';
+import { gitIn, type Git } from '../tracker/verdict-git.ts';
 import { Tracker } from '../tracker/tracker.ts';
 import type { TipSchedule } from '../tracker/freshness.ts';
 import type { LogFn } from '../log.ts';
@@ -62,7 +62,7 @@ export type Daemon = {
   stop: () => Promise<void>;
 };
 
-export async function serveProject(root: string, options: { droplet?: DropletDependencies; adapters?: AdapterFactory[]; clock?: Clock; log?: LogFn; flushLog?: () => Promise<void>; listen?: ListenMode; scheduleTips?: TipSchedule; journalOpen?: JournalOpen; env?: NodeJS.ProcessEnv; starter?: Starter; autostart?: boolean } = {}): Promise<Daemon> {
+export async function serveProject(root: string, options: { git?: Git; readBase?: (tips: ReadonlyMap<string, string>) => Promise<string | null>; processes?: LockProcessTable; droplet?: DropletDependencies; adapters?: AdapterFactory[]; clock?: Clock; log?: LogFn; flushLog?: () => Promise<void>; listen?: ListenMode; scheduleTips?: TipSchedule; journalOpen?: JournalOpen; env?: NodeJS.ProcessEnv; starter?: Starter; autostart?: boolean } = {}): Promise<Daemon> {
 
   const clock = options.clock ?? realClock;
   const env = options.env ?? process.env;
@@ -72,7 +72,7 @@ export async function serveProject(root: string, options: { droplet?: DropletDep
   // before anything is prepared: a second hub must not even write the secret
   let lock;
   try {
-    lock = acquireLock(l.lock);
+    lock = acquireLock(l.lock, options.processes);
   } catch (err) {
     if (err instanceof HubLocked) {
       throw new Error(`a hub already runs for ${root} (pid ${err.holder.pid} holds ${l.lock}); talk to it over its socket, or stop it first with \`cland hub stop\``);
@@ -154,7 +154,7 @@ export async function serveProject(root: string, options: { droplet?: DropletDep
   } catch (error) { await closeLogs(); lock.release(); throw error; }
   let failStorage!: () => void;
   const storageFailed = new Promise<void>(resolve => { failStorage = resolve; });
-  const tracker = new Tracker({ now: () => clock.now(), env, git: gitIn(root, env), onStorageFatal: operation => {
+  const tracker = new Tracker({ now: () => clock.now(), env, git: options.git ?? gitIn(root, env), ...(options.readBase ? { readBase: options.readBase } : {}), onStorageFatal: operation => {
     if (starting || stopping) return;
     // Freeze admission and native/index continuations before yielding or announcing the failure.
     void tracker.stop({ stalled: operation });
@@ -170,7 +170,7 @@ export async function serveProject(root: string, options: { droplet?: DropletDep
     }
   }, planHistory: readJournal(journalPath(l.dir), { kinds: ['task-plan-changed', 'task-plan-approved'] }), ...(config ? { levels: config.tracker.levels, storageFatalMs: config.tracker.fatalStallMs, qaDefault: config.plan.qaDefault, planApproval: config.plan.approval } : {}), ...(storageStallMs > 0 && Number.isFinite(storageStallMs) ? { storageStallMs } : {}), ...(storageFatalMs > 0 && storageFatalMs <= 2147483647 && Number.isFinite(storageFatalMs) ? { storageFatalMs } : {}), ...(stopTimeoutMs > 0 && Number.isFinite(stopTimeoutMs) ? { stopTimeoutMs } : {}), root, db: l.db, log, watchResumed: requestGuard.resumer('tracker.watch'), ...(writeGate ? { writeGate } : {}), ...(tipCheckMs > 0 ? { tipCheckMs } : {}), ...(options.scheduleTips ? { scheduleTips: options.scheduleTips } : {}) });
   // the role definitions: written with the defaults when the project has none, then watched
-  const roles = new ProjectConfiguration(l, config, log, env, requestGuard.resumer('config.reload'), next => { hub.dispatcher.configure(next); config = next; });
+  const roles = new ProjectConfiguration(l, config, log, env, requestGuard.resumer('config.reload'), next => { hub.dispatcher.configure(next); config = next; }, options.git ? () => options.git!(['log', '-1', '--format=%H', '--', '.cland/config.toml']) : undefined);
   // the hygiene thresholds of `.cland/config.toml`; the built-in defaults when it is missing or unreadable
   if (config) log({ event: 'config-loaded', path: l.config, hygiene: config.hygiene });
   const rules = new RulebookFile(l.rules, () => roles.get().keys(), log, requestGuard.resumer('rules.refresh'));

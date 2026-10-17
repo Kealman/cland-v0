@@ -29,7 +29,6 @@ import { Journal } from '../src/hub/journal.ts';
 import { hubResources } from './hub-resources.ts';
 import { createHub, type Hub, type HubOptions } from '../src/hub/server.ts';
 import { findDiscovery, readDiscovery as readDiscoveryFile } from '../src/project.ts';
-import { processStarted } from '../src/hub/lock.ts';
 import type { HarnessProcessView } from '../src/protocol.ts';
 import { beforeDirectories, afterCleanup, onCleanup, cleanupOwnedProcesses, ownDirectory, ownProcess, recordedProcess, rememberProcess, rememberResultProcesses } from './process-cleanup.ts';
 
@@ -331,13 +330,6 @@ export async function clandWithEnv(cwd: string, extra: Record<string, string>, .
   });
 }
 
-/**
- * A test option for the tests that need a process's start time, which is how the hub knows a pid is still the
- * process it started before it signals it: `{ skip: NO_PS }`. `ps` is setuid, and a sandbox that refuses setuid
- * binaries (Codex's seatbelt, where a sandboxed session runs this suite) leaves the hub unable to stop anything.
- */
-export const NO_PS: string | false = processStarted(process.pid) === null ? 'needs `ps` for pid identity, and this sandbox refuses it' : false;
-
 /** A fresh project folder under the system temp dir, removed when the test ends (after its daemon is gone). */
 export async function tempProject(t: TestContext, prefix = 'cland-proj-', parent = tmpdir()): Promise<string> {
   const root = await realpath(await mkdtemp(join(parent, prefix)));
@@ -380,7 +372,7 @@ export async function isolateVerification(root: string): Promise<void> {
 
 /** Default project fixture: a fresh hub in this process, reached through production discovery and edges.
  * No process globals are changed. Process lifecycle assertions must keep startDaemon instead. */
-export async function projectHub(t: TestContext, root: string, extra: Record<string, string> = {}, options: { log?: (entry: Record<string, unknown>) => void; droplet?: DropletDependencies; clock?: Clock; harnesses?: 'fake'; adapters?: import('../src/adapters/index.ts').AdapterFactory[] } = {}): Promise<{ fakes: Partial<Record<FakeFlavour, FakeHarness>>; discovery: Discovery; dispatcher: Pick<Dispatcher, 'open'>; stop: () => Promise<void> }> {
+export async function projectHub(t: TestContext, root: string, extra: Record<string, string> = {}, options: { probes?: 'fake'; git?: import('../src/tracker/verdict-git.ts').Git; readBase?: (tips: ReadonlyMap<string, string>) => Promise<string | null>; processes?: import('../src/hub/lock.ts').LockProcessTable; log?: (entry: Record<string, unknown>) => void; droplet?: DropletDependencies; clock?: Clock; harnesses?: 'fake'; adapters?: import('../src/adapters/index.ts').AdapterFactory[] } = {}): Promise<{ fakes: Partial<Record<FakeFlavour, FakeHarness>>; discovery: Discovery; dispatcher: Pick<Dispatcher, 'open'>; stop: () => Promise<void> }> {
   assert.ok(!extra.CLAND_TEST_CRASH_AT, 'process crash tests require startDaemon');
   await isolateVerification(root);
   const env: NodeJS.ProcessEnv = {};
@@ -397,9 +389,18 @@ export async function projectHub(t: TestContext, root: string, extra: Record<str
     fakes[flavour] = fake;
     return fake;
   }) : undefined;
+  // No Git repository or child process exists in this T2 fixture. Real Git/ps
+  // remain the default for legacy native fixtures; callers may supply richer answers.
+  const probes = options.probes === 'fake' ? {
+    git: async () => null,
+    readBase: async () => null,
+    // Unknown start identity keeps a live native holder conservative too; an
+    // invented stamp could make another reader mistake this fixture for PID reuse.
+    processes: { alive: pidAlive, started: () => null },
+  } : {};
   let daemon;
   try {
-    daemon = await resources.run(() => serveProject(root, { ...options, ...(adapters ? { adapters } : {}), env, log: entry => { options.log?.(entry); processLog.write({ ...entry, event: String(entry.event) }); }, flushLog: () => processLog.flush() }));
+    daemon = await resources.run(() => serveProject(root, { ...probes, ...options, ...(adapters ? { adapters } : {}), env, log: entry => { options.log?.(entry); processLog.write({ ...entry, event: String(entry.event) }); }, flushLog: () => processLog.flush() }));
     await processLog.flush();
   }
   catch (error) {

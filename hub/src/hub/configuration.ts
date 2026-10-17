@@ -47,7 +47,9 @@ export class ProjectConfiguration implements RolesSource {
   readonly env: NodeJS.ProcessEnv;
   readonly resumed: Resumed;
   readonly apply: (config: ProjectConfig) => void;
-  constructor(layout: Layout, config: ProjectConfig | null, log: LogFn, env: NodeJS.ProcessEnv, resumed: Resumed, apply: (config: ProjectConfig) => void) {
+  readonly readSourceCommit: (() => Promise<string | null>) | undefined;
+  constructor(layout: Layout, config: ProjectConfig | null, log: LogFn, env: NodeJS.ProcessEnv, resumed: Resumed, apply: (config: ProjectConfig) => void, readSourceCommit?: () => Promise<string | null>) {
+    this.readSourceCommit = readSourceCommit;
     this.layout = layout; this.log = log; this.env = env; this.resumed = resumed; this.apply = apply;
     this.#config = config ?? defaultConfig(basename(layout.root));
   }
@@ -69,6 +71,7 @@ export class ProjectConfiguration implements RolesSource {
   }
   async stop(): Promise<void> { this.#stopped = true; clearInterval(this.#timer); await this.#work; }
   async #sourceCommit(): Promise<string | null> {
+    if (this.readSourceCommit) return this.readSourceCommit();
     return exec('git', ['log', '-1', '--format=%H', '--', '.cland/config.toml'], { cwd: this.layout.root, env: this.env }).then(r => r.stdout.trim() || null, () => null);
   }
   async #fileStamp(path: string): Promise<string> {

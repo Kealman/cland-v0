@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { chmod, mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { clandWithEnv, connectUi, eventually, fakeCodex, NO_PS, pidAlive, startDaemon, tempProject } from './harness.ts';
+import { clandWithEnv, connectUi, eventually, fakeCodex, pidAlive, startDaemon, tempProject } from './harness.ts';
+import { NO_PS } from './native-process.ts';
 import type { HarnessProcessView } from '../src/protocol.ts';
 import { ownProcess } from './process-cleanup.ts';
 

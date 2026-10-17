@@ -312,7 +312,7 @@ export class Tracker {
   #verifyImmediate: NodeJS.Immediate | null = null;
   readonly #shown = new Map<string, string>();
 
-  constructor(options: { env?: NodeJS.ProcessEnv; onStorageFatal?: (operation: StorageOperation) => void; storageStallMs?: number; storageFatalMs?: number; stopTimeoutMs?: number; planHistory?: ReadonlyArray<Record<string, unknown>>; planApproval?: 'none' | 'human'; qaDefault?: QaPolicy; levels?: Levels; watchResumed?: Resumed; files?: TrackerFiles; root: string; db: string; log?: LogFn; now?: () => Date; writeGate?: () => Promise<void>; git?: Git; tipCheckMs?: number; scheduleTips?: TipSchedule }) {
+  constructor(options: { env?: NodeJS.ProcessEnv; onStorageFatal?: (operation: StorageOperation) => void; storageStallMs?: number; storageFatalMs?: number; stopTimeoutMs?: number; planHistory?: ReadonlyArray<Record<string, unknown>>; planApproval?: 'none' | 'human'; qaDefault?: QaPolicy; levels?: Levels; watchResumed?: Resumed; files?: TrackerFiles; root: string; db: string; log?: LogFn; now?: () => Date; writeGate?: () => Promise<void>; git?: Git; readBase?: (tips: ReadonlyMap<string, string>) => Promise<string | null>; tipCheckMs?: number; scheduleTips?: TipSchedule }) {
     this.#env = options.env ?? process.env;
     for (const entry of options.planHistory ?? []) {
       if ((entry.event !== 'task-plan-changed' && entry.event !== 'task-plan-approved') || typeof entry.id !== 'string' || typeof entry.ts !== 'string' || typeof entry.by !== 'string') continue;
@@ -358,7 +358,7 @@ export class Tracker {
     this.#git = options.git ?? gitIn(options.root);
     this.#fresh = new Freshness({
       git: this.#git,
-      readBase: async (tips) => await this.#files.stat(territoryPath(this.#root)).then(() => true, () => false) ? await taskBase(this.#root, tips, this.#env) : tips.has('dev') ? 'dev' : tips.has('main') ? 'main' : null,
+      readBase: options.readBase ?? (async (tips) => await this.#files.stat(territoryPath(this.#root)).then(() => true, () => false) ? await taskBase(this.#root, tips, this.#env) : tips.has('dev') ? 'dev' : tips.has('main') ? 'main' : null),
       log: this.#log,
       ...(options.tipCheckMs !== undefined ? { intervalMs: options.tipCheckMs } : {}),
       ...(options.scheduleTips ? { scheduleTips: options.scheduleTips } : {}),
