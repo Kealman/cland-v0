@@ -2,13 +2,16 @@
 // driven over msgpack-RPC with `nvim_input` and read back with `screenstring()`, against a real hub.
 import { isolateVerification } from '../../hub/test/harness.ts';
 import { spawn, type ChildProcess } from 'node:child_process';
+import { once } from 'node:events';
 import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import type { TestContext } from 'node:test';
 import { ensureNvim, NVIM_DIR, NVIM_VERSION } from '../bin/nvim-path.ts';
 import { connectRpc, type Rpc } from './rpc.ts';
-import { ownDirectory, ownProcess } from '../../hub/test/process-cleanup.ts';
+import { beforeDirectories, ownDirectory, ownProcess } from '../../hub/test/process-cleanup.ts';
+import { headlessNvimLaunch } from '../../hub/test/tier-nvim.ts';
 
 export const INIT_LUA = join(NVIM_DIR, 'init.lua');
 
@@ -54,6 +57,43 @@ export const centreOf = (text: string): string =>
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/** Stub clients never restart or launch real sessions in T2. Their live handle
+ * owns the detached group, so teardown needs neither a PID snapshot nor ps.
+ * Restarted servers below still capture an OS identity at their first RPC observation.
+ */
+function ownStubClient(t: TestContext, child: ChildProcess): void {
+  let closed = false;
+  child.once('close', () => { closed = true; });
+  beforeDirectories(t, async () => {
+    if (!closed) {
+      const close = once(child, 'close', { signal: AbortSignal.timeout(5000) });
+      // Never signal a remembered PID after its child handle has observed exit.
+      if (child.pid !== undefined && child.exitCode === null && child.signalCode === null) {
+        try { process.kill(-child.pid, 'SIGKILL'); }
+        catch (error) {
+          // macOS can report EPERM for a group being reaped. The close receipt
+          // and bounded disappearance check below must still both complete.
+          if (!['ESRCH', 'EPERM'].includes((error as NodeJS.ErrnoException).code ?? '')) throw error;
+        }
+      }
+      await close;
+    }
+    // An interrupted Neovim can exit before its stdio stub. Observe the whole
+    // group's disappearance before removing any fixture directory (bounded 5 s).
+    const until = Date.now() + 5000;
+    while (child.pid !== undefined) {
+      try { process.kill(-child.pid, 0); }
+      catch (error) {
+        const code = (error as NodeJS.ErrnoException).code;
+        if (code === 'ESRCH') return;
+        if (code !== 'EPERM') throw error;
+      }
+      if (Date.now() >= until) throw new Error('stub Neovim process group did not exit');
+      await sleep(25);
+    }
+  });
+}
+
 const SCREEN_LUA = `
 local rows = {}
 for r = 1, vim.o.lines do
@@ -68,6 +108,8 @@ return rows`;
  * attach a UI of COLUMNS×LINES over the RPC channel, as a terminal UI would (redraws are ignored).
  */
 export async function startClient(t: TestContext, bin: string, root: string, env: Record<string, string> = {}, opts: { centre?: 'general' | 'explorer' } = {}): Promise<Client> {
+  const stubOnly = env.CLAND_HUB_TRANSPORT === 'stdio'
+    && env.CLAND_COMMAND === JSON.stringify([process.execPath, fileURLToPath(new URL('./stub-hub.ts', import.meta.url))]);
   if (!env.CLAND_COMMAND) await isolateVerification(root);
   const dir = await mkdtemp(join(tmpdir(), 'cland-nv-'));
   ownDirectory(t, dir);
@@ -80,8 +122,10 @@ export async function startClient(t: TestContext, bin: string, root: string, env
   for (const key of ['CLAND_STUB_SNAPSHOT_DELAY_MS', 'CLAND_STUB_ROLE_DELAY_MS']) {
     if (env.CLAND_COMMAND && process.env[key]) childEnv[key] = process.env[key];
   }
-  const child = spawn(bin, ['--clean', '-u', INIT_LUA, '--headless', '--listen', sock], { cwd: root, env: childEnv, detached: true, stdio: ['ignore', 'ignore', 'pipe'] });
-  ownProcess(t, child.pid);
+  const launch = () => spawn(bin, ['--clean', '-u', INIT_LUA, '--headless', '--listen', sock], { cwd: root, env: childEnv, detached: true, stdio: ['ignore', 'ignore', 'pipe'] });
+  const child = stubOnly ? headlessNvimLaunch(bin, sock, launch) : launch();
+  if (stubOnly) ownStubClient(t, child);
+  else ownProcess(t, child.pid);
   let stderr = '';
   child.stderr?.setEncoding('utf8');
   child.stderr?.on('data', (c: string) => (stderr += c));
@@ -113,7 +157,7 @@ export async function startClient(t: TestContext, bin: string, root: string, env
       }
     });
     await rpc.request('nvim_ui_attach', COLUMNS, LINES, { rgb: true, ext_linegrid: true });
-    ownProcess(t, await rpc.request<number>('nvim_call_function', 'getpid', []));
+    if (!stubOnly || rpc !== initialRpc) ownProcess(t, await rpc.request<number>('nvim_call_function', 'getpid', []));
     return rpc;
   };
   const client: Client = {

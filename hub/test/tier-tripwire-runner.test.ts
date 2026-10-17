@@ -9,25 +9,27 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ownDirectory, ownProcess } from './process-cleanup.ts';
+import { findNvim } from '../../nvim/bin/nvim-path.ts';
 
 const exec = promisify(execFile);
 const runner = fileURLToPath(new URL('./run-suite.ts', import.meta.url));
 const harness = fileURLToPath(new URL('./harness.ts', import.meta.url));
 const cliBoundary = fileURLToPath(new URL('./tier-cli.ts', import.meta.url));
-async function fixture(t: TestContext, tests: Record<string, { tier: string; source: string }>) {
+async function fixture(t: TestContext, tests: Record<string, { tier: string; source: string }>, pkg: 'hub' | 'nvim' = 'hub') {
   const cwd = await mkdtemp(join(tmpdir(), 'cland-tier-runner-'));
   ownDirectory(t, cwd);
+  await mkdir(join(cwd, `${pkg}/test`), { recursive: true });
   await mkdir(join(cwd, 'hub/test'), { recursive: true });
-  for (const [name, entry] of Object.entries(tests)) await writeFile(join(cwd, `hub/test/${name}.test.ts`), entry.source);
-  await writeFile(join(cwd, 'hub/test/tiers.json'), JSON.stringify({ version: 1, tests: Object.fromEntries(Object.entries(tests).map(([name, entry]) => [`hub/test/${name}.test.ts`, entry.tier])) }));
+  for (const [name, entry] of Object.entries(tests)) await writeFile(join(cwd, `${pkg}/test/${name}.test.ts`), entry.source);
+  await writeFile(join(cwd, 'hub/test/tiers.json'), JSON.stringify({ version: 1, tests: Object.fromEntries(Object.entries(tests).map(([name, entry]) => [`${pkg}/test/${name}.test.ts`, entry.tier])) }));
   return async (mode = 'report-only', loadGate = false, quarantine = false) => {
     if (loadGate) await writeFile(join(cwd, 'hub/test/durations.json'), JSON.stringify({ version: 1, source: {artifacts: [], commit: 'fixture'}, budget: {testSeconds: 60, fileSeconds: 60}, files: {}, tests: {}, allow: {} }));
     if (quarantine) {
       const added = new Date().toISOString().slice(0, 10);
       const expires = new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 10);
-      await writeFile(join(cwd, 'hub/test/quarantine.json'), JSON.stringify({ version: 1, tests: Object.fromEntries(Object.keys(tests).map(name => [`hub/test/${name}.test.ts::known flake`, { owner: 'T-748', reason: 'Planted tier violation quarantine.', added, expires }])) }));
+      await writeFile(join(cwd, 'hub/test/quarantine.json'), JSON.stringify({ version: 1, tests: Object.fromEntries(Object.keys(tests).map(name => [`${pkg}/test/${name}.test.ts::known flake`, { owner: 'T-748', reason: 'Planted tier violation quarantine.', added, expires }])) }));
     }
-    const code = `import {runSuite} from ${JSON.stringify(runner)}; process.exitCode = await runSuite([['--test', '--test-concurrency=1', ${Object.keys(tests).map(name => JSON.stringify(`hub/test/${name}.test.ts`)).join(',')}]], ${JSON.stringify({ cwd, lockDir: join(cwd, 'lock'), selection: {mode: 'hub-only', files: [], reason: 'fixture', loadGate} })});`;
+    const code = `import {runSuite} from ${JSON.stringify(runner)}; process.exitCode = await runSuite([['--test', '--test-concurrency=1', ${Object.keys(tests).map(name => JSON.stringify(`${pkg}/test/${name}.test.ts`)).join(',')}]], ${JSON.stringify({ cwd, lockDir: join(cwd, 'lock'), selection: {mode: 'hub-only', files: [], reason: 'fixture', loadGate} })});`;
     const child = exec(process.execPath, ['--input-type=module', '-e', code], { cwd, env: { ...process.env, NODE_TEST_CONTEXT: '', CLAND_TEST_TIER_MODE: mode }, maxBuffer: 4 * 1024 * 1024 });
     ownProcess(t, child.child.pid);
     return child.then(r => ({ code: 0, output: r.stdout + r.stderr }), (e: { code: number; stdout: string; stderr: string }) => ({ code: e.code, output: e.stdout + e.stderr }));
@@ -204,3 +206,141 @@ for (const caught of [false, true]) for (const mode of ['report-only', 'enforce'
     assert.equal(trips(result.output)[0]?.name, 'known flake');
   });
 }
+
+// T3 worker contract: the actual T2 client and its teardown must survive enforcement.
+test('documented stub-hub Neovim client stays clean under T2 enforcement', async t => {
+  const { nvimOrSkip } = await import('../../nvim/test/harness.ts');
+  const nvim = await nvimOrSkip();
+  if ('skip' in nvim) return t.skip(nvim.skip);
+  const client = fileURLToPath(new URL('../../nvim/test/harness.ts', import.meta.url));
+  const stub = fileURLToPath(new URL('../../nvim/test/stub-hub.ts', import.meta.url));
+  const run = await fixture(t, { client: { tier: 'T2', source: `
+import test from 'node:test'; import { startClient } from ${JSON.stringify(client)};
+import { tempProject } from ${JSON.stringify(harness)};
+test('headless client', async t => {
+  const root = await tempProject(t);
+  const c = await startClient(t, ${JSON.stringify(nvim.bin)}, root, { CLAND_HUB_TRANSPORT: 'stdio', CLAND_COMMAND: ${JSON.stringify(JSON.stringify([process.execPath, stub]))} });
+  await c.waitScreen(s => s.includes('hub: connected'), 'stub connection');
+});` } }, 'nvim');
+  const result = await run('enforce');
+  assert.equal(result.code, 0, result.output);
+  assert.deepEqual(trips(result.output), []);
+  assert.match(result.output, /pass 1/);
+});
+
+// T3 runner contract: a Neovim path must not grant general child-process permission.
+test('an unrelated child in a planted Neovim T2 worker still trips', async t => {
+  const run = await fixture(t, { unrelated: { tier: 'T2', source: `
+import test from 'node:test'; import { spawnSync } from 'node:child_process';
+test('unrelated child', () => spawnSync(process.execPath, ['-e', '']));` } }, 'nvim');
+  for (const mode of ['report-only', 'enforce']) {
+    const result = await run(mode);
+    assert.equal(result.code, mode === 'enforce' ? 1 : 0, result.output);
+    assert.deepEqual(trips(result.output).map(({ file, name, resource }) => ({ file, name, resource })), [
+      { file: 'nvim/test/unrelated.test.ts', name: 'unrelated child', resource: 'child_process.spawnSync' },
+    ]);
+  }
+});
+
+test('the Neovim launch exception rejects direct and altered lookalikes', async t => {
+  const bin = findNvim();
+  if (!bin) return t.skip('pinned Neovim is unavailable for the exact executable contract');
+  const boundary = fileURLToPath(new URL('./tier-nvim.ts', import.meta.url));
+  const init = fileURLToPath(new URL('../../nvim/init.lua', import.meta.url));
+  const run = await fixture(t, { lookalikes: { tier: 'T2', source: `
+import test from 'node:test'; import assert from 'node:assert/strict';
+import { spawn, spawnSync } from 'node:child_process';
+import { headlessNvimLaunch } from ${JSON.stringify(boundary)};
+const bin = ${JSON.stringify(bin)}; const socket = '/fixture/nvim.sock';
+const args = ['--clean', '-u', ${JSON.stringify(init)}, '--headless', '--listen', socket];
+test('lookalikes', async t => {
+  const calls = {
+    direct: () => spawn(bin, args),
+    executable: () => headlessNvimLaunch(bin, socket, () => spawn(process.execPath, args)),
+    impostor: () => headlessNvimLaunch(process.execPath, socket, () => spawn(process.execPath, args)),
+    arguments: () => headlessNvimLaunch(bin, socket, () => spawn(bin, [...args, '-c', 'qa!'])),
+    socket: () => headlessNvimLaunch(bin, socket, () => spawn(bin, [...args.slice(0, -1), '/other.sock'])),
+    API: () => headlessNvimLaunch(bin, socket, () => spawnSync(bin, args)),
+    async: () => headlessNvimLaunch(bin, socket, async () => { await Promise.resolve(); spawn(bin, args); }),
+  };
+  for (const [name, call] of Object.entries(calls)) await t.test(name, async () => {
+    if (name === 'async') await assert.rejects(call, /T2 forbids/);
+    else assert.throws(call, /T2 forbids/);
+  });
+  process.exitCode = 0;
+});` } }, 'nvim');
+  const result = await run('enforce');
+  assert.equal(result.code, 1, result.output);
+  const rows = trips(result.output);
+  assert.deepEqual(rows.map(row => row.name), ['direct', 'executable', 'impostor', 'arguments', 'socket', 'API', 'async'].map(name => `lookalikes > ${name}`));
+  assert.deepEqual(rows.map(row => row.resource), ['spawn', 'spawn', 'spawn', 'spawn', 'spawn', 'spawnSync', 'spawn'].map(name => `child_process.${name}`));
+  assert.match(result.output, /pass 8/);
+});
+
+test('the headless Neovim exception stays limited to Neovim T2 workers', async t => {
+  const bin = findNvim();
+  if (!bin) return t.skip('pinned Neovim is unavailable for the exact executable contract');
+  const boundary = fileURLToPath(new URL('./tier-nvim.ts', import.meta.url));
+  const init = fileURLToPath(new URL('../../nvim/init.lua', import.meta.url));
+  for (const [pkg, tier] of [['nvim', 'T1'], ['hub', 'T2']] as const) {
+    const run = await fixture(t, { limited: { tier, source: `
+import test from 'node:test'; import assert from 'node:assert/strict'; import { spawn } from 'node:child_process';
+import { headlessNvimLaunch } from ${JSON.stringify(boundary)};
+test('wrong worker', () => {
+  assert.throws(() => headlessNvimLaunch(${JSON.stringify(bin)}, '/fixture/nvim.sock', () => spawn(${JSON.stringify(bin)}, ['--clean', '-u', ${JSON.stringify(init)}, '--headless', '--listen', '/fixture/nvim.sock'])), /${tier} forbids/);
+  process.exitCode = 0;
+});` } }, pkg);
+    const result = await run('enforce');
+    assert.equal(result.code, 1, result.output);
+    assert.equal(trips(result.output)[0]?.tier, tier);
+    assert.equal(trips(result.output).length, 1, result.output);
+  }
+});
+
+// T3 runner contract: non-stub startClient calls must trip at spawn itself.
+test('non-stub Neovim T2 clients cannot borrow the stub launch exception', async t => {
+  const bin = findNvim();
+  if (!bin) return t.skip('pinned Neovim is unavailable for the exact executable contract');
+  const client = fileURLToPath(new URL('../../nvim/test/harness.ts', import.meta.url));
+  const stub = fileURLToPath(new URL('../../nvim/test/stub-hub.ts', import.meta.url));
+  const run = await fixture(t, { nonstub: { tier: 'T2', source: `
+import test from 'node:test'; import assert from 'node:assert/strict';
+import cp from 'node:child_process'; import { syncBuiltinESMExports } from 'node:module'; import { once } from 'node:events';
+import { startClient } from ${JSON.stringify(client)}; import { tempProject } from ${JSON.stringify(harness)};
+// Observe the OS boundary without replacing the tripwire. If a regression
+// admits spawn then fails at ps, dispose that live child before fixture removal.
+const guardedSpawn = cp.spawn;
+let launched, closed;
+cp.spawn = (...args) => {
+  launched = guardedSpawn(...args); closed = false;
+  launched.once('close', () => { closed = true; });
+  return launched;
+};
+syncBuiltinESMExports();
+test('non-stub launch', async t => {
+  t.after(() => { cp.spawn = guardedSpawn; syncBuiltinESMExports(); });
+  const cases = {
+    socket: { CLAND_HUB_TRANSPORT: 'socket', CLAND_COMMAND: ${JSON.stringify(JSON.stringify([process.execPath, stub]))} },
+    command: { CLAND_HUB_TRANSPORT: 'stdio', CLAND_COMMAND: ${JSON.stringify(JSON.stringify([process.execPath, '-e', '']))} },
+    default: {},
+  };
+  for (const [name, env] of Object.entries(cases)) await t.test(name, async t => {
+    launched = undefined;
+    try {
+      const root = await tempProject(t);
+      await assert.rejects(startClient(t, ${JSON.stringify(bin)}, root, env), /T2 forbids child_process.spawn:/);
+    } finally {
+      if (launched && !closed) {
+        const close = once(launched, 'close', { signal: AbortSignal.timeout(5000) });
+        if (launched.exitCode === null && launched.signalCode === null) process.kill(-launched.pid, 'SIGKILL');
+        await close;
+      }
+    }
+  });
+  process.exitCode = 0;
+});` } }, 'nvim');
+  const result = await run('enforce');
+  assert.equal(result.code, 1, result.output);
+  assert.deepEqual(trips(result.output).map(({ name, resource }) => ({ name, resource })), ['socket', 'command', 'default'].map(name => ({ name: `non-stub launch > ${name}`, resource: 'child_process.spawn' })));
+  assert.match(result.output, /pass 4/);
+});

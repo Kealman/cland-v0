@@ -19,7 +19,7 @@ Every test has a level, and most belong lower than where they're written today. 
 | --- | --- | --- | --- |
 | T0 static | typecheck, manifest and test lint | no test process | |
 | T1 unit | pure modules, tracker, store, planners, hub rules in-process | a fake clock and in-memory fakes; no sockets, child processes or real time | 0.5 s |
-| T2 component | a hub served in the test process (`projectHub`) with real socket edges; the CLI as a subprocess only when the CLI itself is the subject | an in-process fake adapter and a fake clock; no `startDaemon`, `spawnSpoke`, fake harness binaries or Neovim | 2 s |
+| T2 component | a hub served in the test process (`projectHub`) with real socket edges; the CLI as a subprocess only when the CLI itself is the subject | an in-process fake adapter and a fake clock; no `startDaemon`, `spawnSpoke`, fake harness binaries or Neovim (except the stub-hub client below) | 2 s |
 | T3 integration | a curated set of real-process scenarios, plus true process-lifecycle files and one real-binary contract file per harness | anything | 10 s |
 | T4 soak | load repetitions, long waits, macOS-only checks | anything | |
 
@@ -102,6 +102,13 @@ change the direct-source `qualifies` value or policy findings used by admission
 and the tier lint gate. The qualifying tier never automatically retags a file.
 The legacy hermetic manifest admission still checks each test's own source only.
 
+Neovim files that use only `nvim/test/stub-hub.ts` may use the documented
+`startClient` headless Neovim launch at T2. This exception covers that client
+boundary only, not real hubs, sessions, arbitrary children or native process
+probes. Stub-client teardown uses the owned child handle and observes its
+process group's exit before directory removal; a restarted server retains
+identity-based cleanup and belongs at T3.
+
 ### Runtime tier resource report
 
 The suite runner preloads a resource tripwire in each manifest-declared T1/T2
@@ -110,8 +117,11 @@ manifest test targets and load-gate repetitions. T3/T4 workers retain their nati
 APIs. T1 reports child-process starts and socket listen/connect
 entry points (including HTTP, HTTPS, TLS and fetch through the shared net boundary); T2 reports child-process starts. The documented `cland` and
 `clandWithEnv` helpers exempt only their synchronous CLI launch in T2. Calling the
-same CLI directly is still a mismatch; native Git/ps probes and fake harness
-binaries are not exempt.
+same CLI directly is still a mismatch. In Neovim T2 workers, `startClient` also
+exempts only its synchronous `spawn` with the exact headless client arguments.
+A direct lookalike, altered arguments, a different process API or async work
+outside that launch still trips; native Git/ps probes and fake harness binaries
+are not exempt.
 
 Each `tier-mismatch {…}` line carries file, full test name, declared tier,
 resource, mode and the first stack for that test/resource pair. It never includes

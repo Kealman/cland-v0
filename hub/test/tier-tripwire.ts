@@ -6,6 +6,7 @@ import { syncBuiltinESMExports } from 'node:module';
 import { promisify } from 'node:util';
 import { tierTestName, type TierTestContext } from './tier-context.ts';
 import { isClandCliLaunch } from './tier-cli.ts';
+import { isHeadlessNvimLaunch } from './tier-nvim.ts';
 
 export type TierResourceMode = 'report-only' | 'enforce';
 export function installTierTripwire(file: string, tier: 'T1' | 'T2', mode: TierResourceMode, report: (line: string) => void): void {
@@ -18,7 +19,9 @@ export function installTierTripwire(file: string, tier: 'T1' | 'T2', mode: TierR
     const original = Reflect.get(owner, method) as Function;
     const invoke = (fn: Function, self: unknown, args: unknown[]) => {
       if (delegating) return Reflect.apply(fn, self, args);
-      if (!(cli && tier === 'T2' && isClandCliLaunch(args[0], args[1]))) {
+      const allowed = tier === 'T2' && (cli && isClandCliLaunch(args[0], args[1])
+        || owner === cp && method === 'spawn' && file.startsWith('nvim/test/') && isHeadlessNvimLaunch(args[0], args[1]));
+      if (!allowed) {
         const name = testName();
         const key = JSON.stringify([name, resource]);
         if (!seen.has(key) || mode === 'enforce') {
