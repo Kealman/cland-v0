@@ -1,0 +1,118 @@
+---
+title: Web and phone
+description: Open the web workbench with cland web, sign in on your phone with a QR code, install it as an app, and know what stays in the terminal.
+sidebar:
+  order: 6
+---
+
+The hub serves a web workbench: everything the terminal workbench shows, in a browser. It is a second client of the same hub, not a separate service. Open it beside Neovim, in several browsers, and on your phone at once: every client sees the same state, live.
+
+There is no cloud service. The hub serves the page from your machine. It is reachable on your machine by default, on your local network when you allow it, and anywhere else only through your own tunnel or VPN.
+
+## Open it
+
+```sh
+cland web
+```
+
+`cland web` prints a one-time sign-in link and opens it in your browser. The browser trades the link's token for a cookie that lasts 30 days, so you sign in once per browser. Run `cland web` again for a new link.
+
+The cookie is `HttpOnly` and `SameSite=Strict`. Every connection checks its `Host` and `Origin`, and the page can only connect as you, never as a session.
+
+## The layout
+
+- **The rail** on the left lists the areas: **Inbox**, **Items**, **Sessions**, **Topics**, **Events**, **Artifacts**, **Accounts**. Counts appear only where something asks for attention. The rail collapses to icons.
+- **The top strip** holds the release switcher, the palette, the Coordinator and its state, the **needs you** pill and the hub's connection dot.
+- **The main area** shows the selected area. `⌘\` splits it into two panes.
+- **The drawer** on the right shows the card of the selected item, or the thread of the selected session, topic or inbox row.
+
+**Items** has four views of the same items, with one switcher that keeps your scope, filter and selection: the tree (the explorer), **Board**, **Graph** and **Plan** (the plan of the selected epic).
+
+The keyboard comes first, as in the terminal:
+
+| Key | What it does |
+| --- | --- |
+| `⌘K` | The palette. Works in the composer too. |
+| `?` | The keys of the current view. |
+| `⌘\` | Split the main area. |
+| `1`–`9` | Answer an ask with that option. |
+| `Enter` | In the composer: send a one-line message. |
+| `Shift+Enter` | A new line. |
+| `⌘Enter` | Always send. |
+
+Keys match by physical position, so they work in any keyboard layout.
+
+## Threads and asks
+
+A thread shows each message with its sender, role colour and delivery state. Runs of agent-to-agent messages fold into one line built from facts: who, how many messages, the latest step, the age. Artifacts show inline; HTML artifacts render in a sandboxed frame.
+
+An ask is a card with numbered options and a free answer. The same ask shows in the inbox and in its thread, with one state: answer it in either place, or in Neovim, and every client sees the outcome. The first answer from any client wins. Answered asks fold to one line with the option, who answered and when.
+
+**Declining** an ask is an answer too: you give a reason, the asker receives it, and it may ask again later.
+
+A message to a busy session is queued and shown as queued, with **Withdraw** to take it back into the composer. Drafts are kept per topic in the browser and survive a reload.
+
+## On your phone
+
+### Sign in with a QR code
+
+```sh
+cland web --qr
+```
+
+prints the sign-in link as a QR code in your terminal. Scan it with the phone's camera.
+
+The link points at your tunnel's address when you have configured one, and at your machine's local network address otherwise. Your phone must be able to reach it: on the same network, or through your tunnel or VPN. The local network needs to be allowed explicitly in `.cland/config.toml`:
+
+```toml
+[web]
+# Listen beyond this machine, on your local network.
+bind = "0.0.0.0"
+# Your own tunnel's HTTPS address, used in sign-in links.
+url = "https://cland.my-tunnel.example"
+```
+
+### Install it as an app
+
+The web workbench is a PWA. In the phone's browser, use **Add to Home Screen** (Safari) or **Install app** (Chrome). It then opens full screen like an app.
+
+:::note
+On iOS an installed app keeps its cookies apart from Safari. Open the sign-in link in the installed app, or scan the QR code again from it.
+:::
+
+### What the phone shows
+
+At phone width the rail becomes a bottom bar: **Inbox**, **Topics**, **Sessions**, **Events** and **More**. More opens Items, Artifacts and Accounts, read-only.
+
+- **The inbox is home.** Its sections fold under large headers. With nothing waiting it says "Nothing needs you".
+- **An ask opens as a bottom sheet** that rides on the keyboard: large option buttons, a free answer field, and **Decline** beside the field's label.
+- **A topic** opens full screen with a back control. You can read and write to the Coordinator or any session.
+- **Sessions** are two-line rows. Stop, Resume and Archive live on the session's own page, behind a confirmation.
+- **Accounts** is a strip of cells, one per account, showing its fullest usage window.
+- **An HTML artifact** is a chip that opens full screen.
+
+When the connection drops, a strip says since when and when the next retry runs. The last state stays on screen with its time. Answers, approvals and Send are disabled until the phone reconnects, and nothing is queued behind your back. On reconnect the page catches up from where it left off.
+
+## Notifications
+
+- The tab title carries the **needs you** count.
+- While the page is open, the browser notifies you about what needs you now. A notification names the session, the item and what it waits on; tapping it opens the inbox row.
+- Two switches: **needs you** and **finished**. They sit beside your profile in **Accounts** on the desktop, and under **More** on the phone.
+- Notifications never fire while you are looking at the page.
+
+On a phone, notifications need HTTPS through your own tunnel. iOS also requires you to tap the subscribe button in **More** once.
+
+## What stays in the terminal
+
+The web workbench watches, plans and steers through messages. A few things stay in the terminal:
+
+| What | Where |
+| --- | --- |
+| **Claude Code's command approvals.** Claude Code asks in its own TUI. The web shows these rows marked **answer in Neovim** and notifies you; attach to the session to answer. Codex and OpenCode approvals are answered from the web. | Neovim, attached to the session |
+| **The harness terminal.** In the browser a session is its thread: what the hub knows. To watch or type into the harness itself, attach from Neovim. | Neovim, or `cland session attach` |
+| **Plan approval on a phone.** Approving needs the plan view. The phone shows a waiting plan as a row and notifies you. | The web on a desktop, or Neovim |
+| **Stopping or restarting the hub, releasing, and creating artifacts from arbitrary files on your machine.** These keep the CLI's authority. | The CLI or Neovim |
+
+## Several clients at once
+
+Neovim and any number of browsers connect to the same hub. Read marks, the "last look" at the events view and unread counts are kept by the hub for you, not per client, so the phone and the terminal agree on what you have seen. Each browser keeps its own layout, folds and drafts.
