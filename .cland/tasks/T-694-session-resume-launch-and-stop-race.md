@@ -3,7 +3,7 @@ id: T-694
 kind: task
 title: Session resume, launch and stop-race matrices run on the in-process fake adapter, with one real proof per harness
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 5
 labels:
@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-442
 branch: t/T-694-session-resume-launch-and-stop-race
 created: 2026-10-16T19:59:36.176Z
-updated: 2026-10-17T17:14:23.312Z
+updated: 2026-10-17T17:14:55.998Z
 ---
 
 ## Summary
@@ -40,8 +40,8 @@ Three files prove hub bookkeeping through fake harness binaries (memo §2.2 win 
 - [x] C1. The three files' manifest seconds fall from 144.1 s (A-3877) to 55 s or less, T2 and T3 parts together.
   - verified: rev-31 [reviewer] · run rev-20261017-694-final · 2026-10-17T15:20:29.490Z · commit 6467a6143396591e37ad5439c98d6e958258c682
   - verified: rev-31 [reviewer] · run rev-20261017-694-conflict-delta · 2026-10-17T16:00:28.744Z · commit ba704356e65a0fa952e76ec2b677503b06790a72
-  - done: impl-694 · 2026-10-17T16:43:01.412Z
   - verified: rev-31 [reviewer] · run rev-20261017-694-fresh-final · 2026-10-17T17:14:23.312Z · commit c5b897226f20d75f18df82987a5f4135f0379d21
+  - done: impl-694 · 2026-10-17T17:14:54.744Z
 - [x] C2. Their fake-binary call sites fall from 13 to 6 or less and their `startDaemon` sites from 7 to 0.
   - verified: rev-31 [reviewer] · run rev-20261017-694-source-3 · 2026-10-17T14:41:35.247Z · commit 9215c35e9e53d0eeb639b316df05e2efb3ec7ce5
   - verified: rev-31 [reviewer] · run rev-20261017-694-allowance-delta · 2026-10-17T15:18:54.059Z · commit 6467a6143396591e37ad5439c98d6e958258c682
@@ -60,8 +60,9 @@ Three files prove hub bookkeeping through fake harness binaries (memo §2.2 win 
   - verified: rev-31 [reviewer] · run rev-20261017-694-conflict-delta · 2026-10-17T16:00:28.744Z · commit ba704356e65a0fa952e76ec2b677503b06790a72
   - done: impl-694 · 2026-10-17T16:43:03.357Z
   - verified: rev-31 [reviewer] · run rev-20261017-694-probe-delta-2 · 2026-10-17T16:43:28.034Z · commit c5b897226f20d75f18df82987a5f4135f0379d21
-- [ ] C5. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
+- [x] C5. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
   - verified: rev-31 [reviewer] · run rev-20261017-694-fresh-final · 2026-10-17T17:14:23.312Z · commit c5b897226f20d75f18df82987a5f4135f0379d21
+  - done: impl-694 · 2026-10-17T17:14:55.121Z
 
 ## Blocked by
 

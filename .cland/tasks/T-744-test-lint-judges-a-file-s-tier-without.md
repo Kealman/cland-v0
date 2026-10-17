@@ -13,10 +13,10 @@ labels:
 assignee: null
 parent: E-676
 blocked_by: []
-topic: null
+topic: topic-454
 branch: t/T-744-test-lint-judges-a-file-s-tier-without
 created: 2026-10-17T16:06:54.285Z
-updated: 2026-10-17T17:12:46.352Z
+updated: 2026-10-17T17:15:17.134Z
 ---
 
 ## Summary
@@ -31,3 +31,9 @@ The lint resolves a test file's local imports (hub/test helpers and fixtures, tr
 
 - [ ] C1. A planted T1 test importing a helper that calls projectHub, and one importing a helper that spawns a child, each get the resource finding with the import path named; a helper that only exports pure functions adds none, proved by lint tests.
 - [ ] C2. The review request lists every dev file whose qualification changes, and `npm run test:lint` stays under 10 s on the Mac.
+
+## Comments
+
+### impl-744 · 2026-10-17T17:15:17.134Z
+
+Merged origin/dev f0036591 before implementation. Read T-690 M1–M3. C1 is tested at the public lintTests seam using planted repo files (T1, filesystem only); resource source text is never executed. Whole-module graph analysis will conservatively charge every imported module resource, including unused helper exports; inert strings/comments and declaration-only type imports remain negative cases.

@@ -3,7 +3,7 @@ id: T-742
 kind: task
 title: Some droplet results print 'lifetime unknown · cost $unknown'
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - v0.1.4
@@ -13,10 +13,10 @@ labels:
 assignee: null
 parent: C-325
 blocked_by: []
-topic: null
-branch: null
+topic: topic-455
+branch: t/T-742-some-droplet-results-print-lifetime
 created: 2026-10-17T15:49:20.649Z
-updated: 2026-10-17T17:14:31.801Z
+updated: 2026-10-17T17:15:35.933Z
 ---
 
 ## Summary
@@ -36,3 +36,7 @@ Find out when the result is written without the lease's lifetime and cost. One c
 ### coord · 2026-10-17T17:14:31.708Z
 
 Third case, and this one fails the run: T-695's run e9bd92a9 (A-4644) on the restarted hub (pid 9780, T-738 live) ended with outcome code 1 and an empty cause. It had 2077 passed and 0 failed, but no "Neovim smoke" shard line, and the header shows lifetime unknown and cost $unknown. The journal has executor-lease-active (lease 661a4c68) at 16:35:34Z, then verification-timing and suite-result at 17:13:09Z, with no lease-close event between them. So the run's Neovim smoke phase result and the lease accounting are both missing, and the missing phase turned a green hub run red. Raising priority: this now costs reruns.
+
+### coord · 2026-10-17T17:15:35.933Z
+
+Correction to the third case: e9bd92a9's exit 1 came from T-695's own new-test budget lines (five identities over 5 s), not from this defect. What remains for T-742 there is the missing Neovim smoke shard line and lifetime/cost "unknown". T-694's run bf76cf3d on the same hub reported both normally, so the gap is intermittent.
