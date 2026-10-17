@@ -3,7 +3,7 @@ id: T-682
 kind: task
 title: "Test lint in the check step, report only: tier import rules, wall-clock waits and the T3 lifecycle header"
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 5
 labels:
@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-426
 branch: t/T-682-test-lint-in-the-check-step-report-only
 created: 2026-10-16T19:59:27.971Z
-updated: 2026-10-17T08:46:43.580Z
+updated: 2026-10-17T08:50:50.393Z
 ---
 
 ## Summary
@@ -50,12 +50,12 @@ Report mode: the result, the log and `cland verify --dry-run` (T-681) print `tes
   - verified: rev-31 [reviewer] · run rev-20261017-682-source-3 · 2026-10-17T08:00:48.097Z · commit 1ad9664e9413e50961aa36a196efffff651dd567
   - done: impl-682 · 2026-10-17T08:03:55.162Z
   - verified: rev-31 [reviewer] · run rev-20261017-682-source-4 · 2026-10-17T08:04:48.897Z · commit 292296cec13f3826a48e380f47c2cd7fd4053c97
-- [ ] C4. The lint runs once per run in the check step, its summary and per-file qualifying tier appear in the result and in the dry run, and no finding changes a run's exit, proved by a run-report test.
-  - failed: rev-31 [reviewer] · 2026-10-17T08:46:43.580Z · note New interrupted-check fixture fails ordinary phase and0/5Linux repetitions because SIGKILL cleanup does not guarantee a writer SIGTERM receipt.
+- [x] C4. The lint runs once per run in the check step, its summary and per-file qualifying tier appear in the result and in the dry run, and no finding changes a run's exit, proved by a run-report test.
+  - done: impl-682 · 2026-10-17T08:50:39.453Z
 - [x] C5. The repository's finding counts per rule at the merge head are recorded on this item as the baseline T-684 freezes.
   - verified: rev-31 [reviewer] · run rev-20261017-682-source-3 · 2026-10-17T08:00:48.097Z · commit 1ad9664e9413e50961aa36a196efffff651dd567
-  - done: impl-682 · 2026-10-17T08:03:48.291Z
   - verified: rev-31 [reviewer] · run rev-20261017-682-source-4 · 2026-10-17T08:04:48.898Z · commit 292296cec13f3826a48e380f47c2cd7fd4053c97
+  - done: impl-682 · 2026-10-17T08:50:39.812Z
 
 ## Comments
 
@@ -169,3 +169,9 @@ finding_counts: {"high":0,"medium":1,"low":0}
 Evidence not clear; Standards0additional/Spec1medium own fixture regression, A-4408. Independently inspected exact-head4c0d16e5/A-4406 exit1:2086pass/1fail/5skip,noNeovim. Sole ordinary failure/newcontrol0/5 is ENOENTstopped afterPIDgone. ownProcess process-cleanup:373SIGKILLs, so descendantSIGTERMreceipt is not guaranteed. Implementer28152164 accepts deterministic bounded writer/cleanup receipt while retaining root-before-removal/PIDgone; no cleanupweakening/sleep/budgetretry. C4 failed; C1/C2/C3/C5 sourcecurrent. Fresh source review before replacementgate. Lifetime2424s/cost$0.1684 perhub. No Reviewer edits/tests.
 
 Criteria: C4 failed (New interrupted-check fixture fails ordinary phase and0/5Linux repetitions because SIGKILL cleanup does not guarantee a writer SIGTERM receipt.).
+
+### impl-682 · 2026-10-17T08:50:39.439Z
+
+M4/A-4408 corrected in 57740c18; Coordinator-authorized dev merge 8c90f61d completed cleanly at pushed head dca244d35be5fbeeadf2d155e42892a5fc9f9a7d. Registered cleanup remains intentionally SIGKILL. Test now holds writer with fs.watch, signals exact writer PID, observes separately bounded completed-handler stdout receipt after its root write, then aborts npm and invokes registered cleanup. Original nonzero command/PID-gone/stopped-file/root-removal assertions retained. No sleeps or duration allowance. A cleanup-before-npm-abort control reproduced exact ENOENT red on old test, now passes; probes removed. A-4418 diagnosis/red-green and A-4416 five serial passes.
+Dev durations.json adopted unchanged (diff origin/dev empty), so typecheck, test:tiers and npm check now pass. Integration check/lint code remains intact in merged suite-shards/suites/worker/droplet runner. At load4.29 merged serial files pass: suite-check 1.229s, test-lint 0.279s, suite-tiers 0.667s, suite-dry-run 3.483s, suite-tier-report 0.214s.
+C5 refreshed merged baseline A-4414 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-4414-t-682-merged-lint-baseline-at-dca244d3.json): 408 findings/236 affected of270 files; tier-import0, tier-process0, waits125, elapsed50, T3header233. Fresh complete check A-4415. Source review requested covering writer correction plus authorized dev merge before replacement verification.
