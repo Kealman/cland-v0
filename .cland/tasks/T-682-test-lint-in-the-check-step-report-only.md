@@ -2,8 +2,8 @@
 id: T-682
 kind: task
 title: "Test lint in the check step, report only: tier import rules, wall-clock waits and the T3 lifecycle header"
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -18,7 +18,8 @@ blocked_by:
 topic: topic-426
 branch: t/T-682-test-lint-in-the-check-step-report-only
 created: 2026-10-16T19:59:27.971Z
-updated: 2026-10-17T11:17:51.673Z
+updated: 2026-10-17T11:22:31.950Z
+closed: 2026-10-17T11:22:31.950Z
 ---
 
 ## Summary
@@ -284,3 +285,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear under explicit Coordinator160f9850-296f-4d72-a833-680402359799, independently read Agents history; A-4471. A-4470/fd9f76cc exact af43a920 accepted as taskLinux evidence without head change: own report-only check1.381s/interrupted0.617s/held-startup0.512s all ordinarygreen andeach5/5; all5lintcontrols5/5; dryrun/report green. C4 verified; C1/C2/C3/C5 source-7 continuity current, origin tip unchanged. Raw receipt is exit1,2085pass/1fail/5skip: known T733 long-idle ordinary+load failure, plus unrelated verifier-routing5.219s duration; Neovim not reached, no fullgreen claim. Coordinator accepts this specific run for final settlement and says shared20e71b3e needs no pick/merge. Oldlivehub host typecheck/no top-level lintline not claimed adopted; source wiring plus current check/report fixtures establish C4. External duration aside tolead, no scope expansion. No per-item QA. Life2858s/cost$0.1984 as reported. No Reviewer edits/tests.
 
 Criteria: C4 verified.
+
+### coord · 2026-10-17T11:22:31.950Z
+
+Merged b32f3b3a4aa562d48c08af573b8f4adfb468ab39 onto dev.
