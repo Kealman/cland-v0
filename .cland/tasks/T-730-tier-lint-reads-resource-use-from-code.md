@@ -17,7 +17,7 @@ blocked_by: []
 topic: topic-439
 branch: t/T-730-tier-lint-reads-resource-use-from-code
 created: 2026-10-17T08:58:32.895Z
-updated: 2026-10-17T15:12:59.976Z
+updated: 2026-10-17T15:13:24.566Z
 closed: 2026-10-17T15:12:59.976Z
 ---
 
@@ -35,9 +35,11 @@ The tier lint decides a file's resource use from code: imports, and calls of the
   - done: impl-730 · 2026-10-17T11:31:08.760Z
   - verified: rev-30 [reviewer] · run rev-20261017-730-source · 2026-10-17T11:33:08.360Z · commit e1ebf77b02ab5233f7071bb35510269dab4bcfe4
   - verified: rev-30 [reviewer] · run rev-20261017-730-lock-correction · 2026-10-17T15:06:58.391Z · commit 733193450009713abf324d2a6b47910fcb98aadb
+  - verified: rev-30 [reviewer] · run rev-20261017-730-final · 2026-10-17T15:13:24.566Z · commit 733193450009713abf324d2a6b47910fcb98aadb
 - [x] C2. A file that imports or calls a Neovim or process helper still gets its finding, and the classification of every file in hub/test/tiers.json on dev is unchanged or differs only where a literal caused it, listed in the review request.
   - done: impl-730 · 2026-10-17T15:01:59.928Z
   - verified: rev-30 [reviewer] · run rev-20261017-730-lock-correction · 2026-10-17T15:06:58.391Z · commit 733193450009713abf324d2a6b47910fcb98aadb
+  - verified: rev-30 [reviewer] · run rev-20261017-730-final · 2026-10-17T15:13:24.566Z · commit 733193450009713abf324d2a6b47910fcb98aadb
 
 ## Notes
 
@@ -148,3 +150,43 @@ Same-head droplet verification ff69cf52-32fa-424a-a6b2-45323f6c1ffb passed at re
 ### coord · 2026-10-17T15:12:59.976Z
 
 Merged 3381a1ec86cb87565b3ab05c6129ca6a0bf6cb6d onto dev.
+
+### rev-30 · 2026-10-17T15:13:24.566Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261017-730-final
+commit: 733193450009713abf324d2a6b47910fcb98aadb
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-730 final same-head evidence — clear
+
+Commit: 733193450009713abf324d2a6b47910fcb98aadb, independently still the branch tip.
+Source correction: A-4562 / rev-20261017-730-lock-correction; no intervening source change.
+Receipt: A-4570, run ff69cf52-32fa-424a-a6b2-45323f6c1ffb.
+Read-only review; no Reviewer execution.
+
+## Standards
+No new findings. The source correction and authorized dev merge remain clear. The earlier M1 package-boundary regression is exercised by the actual unchanged suite-runner fixtures in this receipt, rather than inferred solely from a lint unit test.
+
+## Spec and runtime evidence
+The automatic selection is hub-selected, widened by covering tests for the changed lint source, using coverage A-4523 at c2026e30021b58366602f23b44ee9e6bd76a9129. It is not a full repository run. Selected hub free 8/8, hub machine 210/210, and Neovim smoke 12/12 complete: 230 total, 230 pass, zero failures/cancellations/skips/todo; Finished exit 0.
+
+Both touched whole files pass 8/8. C1's inert reporter-data identity passes ordinarily (0.252402950s), and C2's executable resource helper and shared-lock call identities pass (0.028921414s and 0.022913600s). Each of these three task-added identities has five fresh positive load repetitions, 15/15. All eight test-lint identities and all eight suite-tiers identities separately show 5/5 results. All 36 load-gate rows in the receipt are positive.
+
+The complete suite-runner file passes 43/43. The two previously failing package shared machine/Neovim lock refusals pass at 0.464255999s and 0.460779563s (log781/783). Both final exit-1/resource assertions remain unchanged from dev, as established in A-4562. The previous timeout receipt A-4557 is retained as historical failure; this fresh green receipt supplies the replacement final evidence.
+
+C1 and C2 verified across the source review, unchanged 304-file manifest audit, targeted Mac receipts and this exact-head Linux run. The documented data-only exceptions remain the close-shards/executor-admission nvim properties, with no manifest retagging. No outstanding findings or per-item QA requirement.
+
+Host npm run check includes both typechecks and report lint, 341 findings in198 files. Droplet typecheck explicitly reuses host gate e78f783d1f874fd0addf27203085b089804e92d3. Budget would-fail, missing-baseline, ratchet and slowdown notices are report-only; no hard duration-budget error or failed repetition appears.
+
+Platform: Linux x64 6.8.0-142, Node24.21.0, Neovim0.12.5; c-8 lon1, two workers. Suite201.14s; peak1mload5.12; load tail18.16s; lifetime272s; cost$0.0189.
+
+Final evidence clear at the exact reviewed commit; all criteria verified. No further run requested.
+
+Durable final review A-4571.
+
+Criteria: C1 verified, C2 verified.

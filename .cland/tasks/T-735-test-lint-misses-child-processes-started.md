@@ -3,7 +3,7 @@ id: T-735
 kind: task
 title: Test lint misses child processes started through wrapped calls such as promisify(execFile)
 state: open
-status: backlog
+status: in progress
 size: XS
 labels:
   - v0.1.4
@@ -13,10 +13,10 @@ labels:
 assignee: null
 parent: E-676
 blocked_by: []
-topic: null
-branch: null
+topic: topic-446
+branch: t/T-735-test-lint-misses-child-processes-started
 created: 2026-10-17T11:42:54.922Z
-updated: 2026-10-17T11:42:54.922Z
+updated: 2026-10-17T15:13:55.602Z
 ---
 
 ## Summary

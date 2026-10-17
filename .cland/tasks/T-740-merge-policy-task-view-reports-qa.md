@@ -10,14 +10,14 @@ labels:
   - verification
   - hub
   - flake
-  - needs-triage
+  - ready-for-agent
 assignee: null
 parent: E-482
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-17T15:12:22.689Z
-updated: 2026-10-17T15:12:22.689Z
+updated: 2026-10-17T15:15:11.962Z
 ---
 
 ## Summary
@@ -31,3 +31,9 @@ Find which input changed: a tracker write, a background sweep or a clock-stamped
 ## Acceptance criteria
 
 - [ ] C1. The changed input is named with evidence, and the case passes 10/10 whole-file on the Mac plus once in a droplet verify.
+
+## Comments
+
+### coord · 2026-10-17T15:15:11.962Z
+
+Second occurrence in a different branch: T-694's run 46d9eea8 (A-4572) at 9215c35e, same case, same merge base 42ebe8a0. The hub flagged it as a shared-defect candidate. Both branches carry T-704's merge-policy.test.ts and validation-support.ts (800b7861), so this is treated as a dev defect from T-704's migration, not branch work. Fix forward.

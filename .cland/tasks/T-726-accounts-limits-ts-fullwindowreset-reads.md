@@ -3,7 +3,7 @@ id: T-726
 kind: task
 title: accounts/limits.ts fullWindowReset reads Date.now() while the core schedules limits on the hub Clock
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - v0.1.4
@@ -12,10 +12,10 @@ assignee: null
 parent: E-677
 blocked_by:
   - T-696
-topic: null
-branch: null
+topic: topic-447
+branch: t/T-726-accounts-limits-ts-fullwindowreset-reads
 created: 2026-10-17T06:41:52.740Z
-updated: 2026-10-17T06:42:01.303Z
+updated: 2026-10-17T15:14:04.485Z
 ---
 
 ## Summary
