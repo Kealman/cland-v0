@@ -63,6 +63,7 @@
     "hub/test/demo.test.ts": "T3",
     "hub/test/doctor-isolation.test.ts": "T3",
     "hub/test/doctor.test.ts": "T3",
+    "hub/test/duration-legacy.test.ts": "T2",
     "hub/test/durations-runner.test.ts": "T3",
     "hub/test/durations.test.ts": "T3",
     "hub/test/edges.test.ts": "T3",

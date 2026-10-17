@@ -15,10 +15,18 @@ import { fixedRoles } from '../src/roles/config.ts';
 import { Tracker, type ItemView } from '../src/tracker/tracker.ts';
 import { gitIn, type Git } from '../src/tracker/verdict-git.ts';
 import { git, ok, json, project, task, requireQa, review, refused, indexLockProject, observableProject } from './merge-support.ts';
+import { durationFixture, durationOwner } from './duration-fixture.ts';
 
 
 test('merge refuses every unclassified hub test in the merged candidate, then accepts explicit classifications', async t => {
+  // T2 behaviour: the in-process hub checks an immutable scratch-repository merge.
   const { root, ui, rev } = await project(t);
+  const baseline = durationFixture();
+  await mkdir(join(root, 'hub/test'), { recursive: true });
+  await writeFile(join(root, '.cland/tasks/E-677-fixture.md'), durationOwner);
+  await writeFile(join(root, 'hub/test/durations.json'), JSON.stringify(baseline.manifest, null, 2));
+  git(root, 'add', 'hub'); git(root, 'commit', '-qm', 'Migrated duration baseline');
+  ok(await cland(root, 'push'));
   const work = await task(root);
   // This task predates the manifest. Only dev has it, so checking the task tree misses the gap.
   await mkdir(join(root, 'hub/test'), { recursive: true });
@@ -66,10 +74,31 @@ test('merge refuses every unclassified hub test in the merged candidate, then ac
     'hub/test/base.test.ts': 'T1', 'hub/src/new.test.ts': 'T3', 'hub/test/new.test.ts': 'T3',
   } }));
   git(work.path, 'commit', '-qam', 'Classify new tests');
+  for (const key of ['hub/test/new.test.ts::new', baseline.expiringKey]) {
+    const invalid = structuredClone(baseline.manifest);
+    invalid.allow[key] = baseline.legacy;
+    await writeFile(join(work.path, 'hub/test/durations.json'), JSON.stringify(invalid, null, 2));
+    git(work.path, 'commit', '-qam', 'Plant invalid legacy allowance');
+    await review(rev, work.id, 'clear', `invalid-legacy-${key}`);
+    const refusal = await refused(ui, root, work.id, 'merge-tiers', ['hub/test/durations.json']);
+    assert.ok(refusal.error!.includes(`new duration allowance cannot be legacy: ${key}`));
+  }
+  // Restore the branch's untouched baseline, then retire only on dev.
+  await writeFile(join(work.path, 'hub/test/durations.json'), JSON.stringify(baseline.manifest, null, 2));
+  git(work.path, 'commit', '-qam', 'Keep untouched duration allowances');
+  const retired = structuredClone(baseline.manifest);
+  delete retired.allow[baseline.legacyKey];
+  await writeFile(join(root, 'hub/test/durations.json'), JSON.stringify(retired, null, 2));
+  git(root, 'commit', '-qam', 'Retire a legacy allowance on dev');
+  ok(await cland(root, 'push'));
+  // Keep the divergent history: dev's retirement must not force another merge.
   await review(rev, work.id, 'clear', 'classified');
   const merged = json<{ commit: string }>(await cland(root, 'merge', work.id, '--json'));
   assert.equal(git(root, 'rev-parse', 'dev'), merged.commit);
   assert.equal(await readFile(join(root, 'hub/test/new.test.ts'), 'utf8'), 'setTimeout(() => {}, 1);\n');
+  const landedDurations = JSON.parse(await readFile(join(root, 'hub/test/durations.json'), 'utf8'));
+  assert.equal(landedDurations.allow[baseline.legacyKey], undefined, 'dev retirement survives the merge');
+  assert.deepEqual(landedDurations.allow[baseline.expiringKey], baseline.manifest.allow[baseline.expiringKey]);
 });
 
 test('an in-flight legacy item reaches ready and merge only after every criterion is done and verified', async (t) => {

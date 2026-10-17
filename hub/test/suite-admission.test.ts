@@ -17,6 +17,7 @@ import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { defaultConfig, parseConfig, renderConfig } from '../src/init/config.ts';
 import { cacheRepository, humanRunnerFixture } from './suite-support.ts';
+import { durationFixture, durationOwner } from './duration-fixture.ts';
 
 
 test('verify card follows branch jobs through finish and cache, updates the UI silently and survives restart', async t => {
@@ -149,7 +150,7 @@ test('verify refuses every unclassified hub test before reserving a queue slot, 
   await writeFile(join(f.root, 'hub/test/shards.json'), JSON.stringify({ version: 1, tests: {
     'hub/test/new.test.ts': 'machine', 'hub/src/new.test.ts': 'free',
   } }));
-  await cacheRepository(f);
+  const git = await cacheRepository(f);
   assert.deepEqual(await packageShards(f.root, 'full', undefined, undefined, { workers: 3 }), [
     { name: 'hub free', resource: 'free', workers: 1, targets: ['hub/src/new.test.ts'] },
     { name: 'hub machine', resource: 'machine', workers: 3, targets: ['hub/test/new.test.ts'] },
@@ -158,6 +159,39 @@ test('verify refuses every unclassified hub test before reserving a queue slot, 
   const legacy = await f.launch();
   const legacyResult = await eventually('legacy-only candidate result', async () => (await f.results()).find(message => message.id === `suite:${legacy.id}`));
   assert.match(legacyResult.text, /exit 0/);
+  // Duration admission uses the candidate's history after dev retires a legacy key.
+  const durations = join(f.root, 'hub/test/durations.json');
+  const baseline = durationFixture();
+  await writeFile(join(f.root, '.cland/tasks/E-677-fixture.md'), durationOwner);
+  await writeFile(durations, JSON.stringify(baseline.manifest));
+  await git('add', 'hub'); await git('commit', '-m', 'migrated duration baseline');
+  await git('branch', '-f', 'dev', 'HEAD');
+  await writeFile(join(f.root, 'branch.txt'), 'unrelated work');
+  await git('add', 'branch.txt'); await git('commit', '-m', 'branch work');
+  await git('checkout', 'dev');
+  const retired = structuredClone(baseline.manifest);
+  delete retired.allow[baseline.legacyKey];
+  await writeFile(durations, JSON.stringify(retired));
+  await git('commit', '-am', 'dev retires legacy allowance');
+  await git('push', 'origin', 'dev');
+  await git('checkout', 'candidate');
+  await mkdir(join(f.root, 'suite.lock'));
+  const admitted = await f.ui.request({ type: 'suite.start', mode: 'auto', cwd: f.root, report: f.topic, to: ['rev', 'impl'] });
+  assert.equal(admitted.ok, true, JSON.stringify(admitted));
+  const queued = (await f.ui.request({ type: 'suite.queue' })).value as VerificationQueue;
+  assert.equal(queued.waiters.length, 1, 'untouched legacy allowance admits the branch');
+  assert.equal((await f.ui.request({ type: 'suite.cancel', suite: queued.waiters[0]!.id })).ok, true);
+  for (const key of ['hub/test/new.test.ts::new', baseline.expiringKey]) {
+    const invalid = structuredClone(baseline.manifest);
+    invalid.allow[key] = baseline.legacy;
+    await writeFile(durations, JSON.stringify(invalid));
+    await git('commit', '-am', 'plant invalid legacy allowance');
+    const refusal = await f.ui.request({ type: 'suite.start', mode: 'auto', cwd: f.root, report: f.topic, to: ['rev', 'impl'] });
+    assert.equal(refusal.ok, false, JSON.stringify(refusal));
+    assert.equal((refusal as { code?: string }).code, 'verify-tiers');
+    assert.ok(refusal.error!.includes(`new duration allowance cannot be legacy: ${key}`));
+    assert.deepEqual(((await f.ui.request({ type: 'suite.queue' })).value as VerificationQueue).waiters, [], 'refused legacy entries reserve no slot');
+  }
 });
 
 for (const capture of ['before change', 'after change'] as const) test(`verify classifies the submitted head without a queue slot when HEAD is captured ${capture}`, async t => {

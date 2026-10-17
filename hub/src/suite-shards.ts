@@ -109,21 +109,28 @@ export async function lintHubShards(cwd: string): Promise<void> {
   if (await readManifest(cwd)) await hubShards(cwd);
 }
 
-/** Only allowances present before the migration may use the legacy exception. */
-async function legacyDurationKeys(git: (args: string[]) => Promise<string>): Promise<Set<string> | undefined> {
-  for (const ref of ['origin/dev', 'HEAD']) {
+/** Judge the branch's additions, independent of allowances retired later on dev. */
+async function legacyDurationKeys(git: (args: string[]) => Promise<string>, head = 'HEAD', base = 'origin/dev'): Promise<Set<string> | undefined> {
+  let ref: string;
+  try { ref = (await git(['merge-base', base, head])).trim(); }
+  catch { ref = head; } // Standalone repositories may not have origin/dev.
+  try {
+    const manifest = JSON.parse(await git(['show', `${ref}:${DURATION_MANIFEST}`])) as DurationManifest;
+    // The original schema predates the one-time migration. Thereafter only
+    // explicitly legacy keys survive; new expiring entries cannot convert.
+    return new Set(Object.entries(manifest.allow).filter(([, entry]) => !manifest.budget.T1 || entry.legacy).map(([key]) => key));
+  } catch {
+    // A baseline without durations grants no legacy exceptions. An uncommitted
+    // standalone repository has no history to judge yet.
     try {
-      const manifest = JSON.parse(await git(['show', `${ref}:${DURATION_MANIFEST}`])) as DurationManifest;
-      // The original schema predates the one-time migration. Thereafter only
-      // explicitly legacy keys survive; new expiring entries cannot convert.
-      return new Set(Object.entries(manifest.allow).filter(([, entry]) => !manifest.budget.T1 || entry.legacy).map(([key]) => key));
-    } catch { /* A new repository may not have a committed baseline yet. */ }
+      await git(['rev-parse', '--verify', ref]);
+      return new Set();
+    } catch { return undefined; }
   }
-  return undefined;
 }
 
 /** Inspect the immutable merge result, including dev-only files, without touching any checkout. */
-export async function lintHubShardTree(cwd: string, tree: string, env: NodeJS.ProcessEnv = process.env): Promise<void> {
+export async function lintHubShardTree(cwd: string, tree: string, env: NodeJS.ProcessEnv = process.env, history: { head: string; base?: string } = { head: tree }): Promise<void> {
   const exec = promisify(execFile);
   const git = async (args: string[]) => (await exec('git', args, { cwd, env, timeout: 30_000, maxBuffer: 16 * 1024 * 1024 })).stdout;
   const paths = (await git(['ls-tree', '-r', '--name-only', '-z', tree, '--', 'hub/src', 'hub/test', 'nvim/test'])).split('\0').filter(Boolean);
@@ -133,7 +140,7 @@ export async function lintHubShardTree(cwd: string, tree: string, env: NodeJS.Pr
       const manifest = JSON.parse(await source(DURATION_MANIFEST)) as DurationManifest;
       lintDurationManifest(manifest);
       const ownerCwd = (await git(['rev-parse', '--show-toplevel'])).trim();
-      const legacyKeys = await legacyDurationKeys(git);
+      const legacyKeys = await legacyDurationKeys(git, history.head, history.base);
       lintDurationManifest(manifest, { owners: await durationOwners(ownerCwd, manifest), ...(legacyKeys ? { legacyKeys } : {}) });
     }
     catch (error) { throw new ShardManifestError(error instanceof Error ? error.message : String(error), [DURATION_MANIFEST]); }
