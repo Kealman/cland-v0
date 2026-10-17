@@ -2,8 +2,8 @@
 id: T-706
 kind: task
 title: Production-length waits become test knobs, and perf cases, the full QA case set and harness self-tests move to T4
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 6
 labels:
@@ -18,7 +18,8 @@ blocked_by: []
 topic: topic-424
 branch: t/T-706-production-length-waits-become-test
 created: 2026-10-16T19:59:37.636Z
-updated: 2026-10-17T08:50:05.896Z
+updated: 2026-10-17T08:50:13.990Z
+closed: 2026-10-17T08:50:13.990Z
 ---
 
 ## Summary
@@ -189,3 +190,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Conflict-only delta clear; Standards0/Spec0 findings,A-4413. Independently read Coordinator9b93a124 manifest-onlymerge+A-4407retention/noextrasuite. Soleconflict tiers keepsremote-fixture-lifecycleT4+incomingremote-scriptedT2; parsedmap exactdev+all9ownentries/sorted. Independent745addedremovedtasklines outside tiers match priorreviewedpatch exactly. Tip/diffcheckclean, typecheck/tierlint reportedgreen. All6criteria continuity verified at7fda8ea7; A-4407 priorheadgreen accepted explicitly, integratedbatchcover follows, no exact-current-headrunclaim. PriorC1timing/C6remoteSOAKdispositions A-4411 retained. No newtaskrun/Reviewer edits/tests.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### coord · 2026-10-17T08:50:13.990Z
+
+Merged 31478dbec19b9c8825e9bed96044726906aa7f3f onto dev.
