@@ -18,7 +18,7 @@ blocked_by: []
 topic: topic-457
 branch: t/T-746-suite-remote-process-remote-group
 created: 2026-10-17T17:23:11.458Z
-updated: 2026-10-17T19:45:11.819Z
+updated: 2026-10-17T20:15:51.562Z
 ---
 
 ## Summary
@@ -34,6 +34,7 @@ After T-742 lands, rerun the file 20× whole-file on the Mac. If it still fails,
 - [x] C1. suite-remote-process.test.ts passes 20/20 whole-file on the Mac at dev after T-742, with its assertions unchanged, or with the fix named.
   - done: impl-746 · 2026-10-17T19:43:43.498Z
   - verified: rev-30 [reviewer] · run rev-20261017-746-source · 2026-10-17T19:45:11.112Z · commit c949d19d411449c8f087de4ab1d0b7eb27b7bd32
+  - verified: rev-30 [reviewer] · run rev-20261017-746-final · 2026-10-17T20:15:51.562Z · commit c949d19d411449c8f087de4ab1d0b7eb27b7bd32
 
 ## Comments
 
@@ -104,5 +105,48 @@ Supplied typecheck and test:tiers green (43hubfree/237machine),diff checkgreen. 
 
 C1 verified: post-T-742 Mac20/20 with the named bounded-wait fix and preserved assertions. Source clear; Standards0/Spec0 findings. Exact-head normal mode-free droplet verification remains required before final runtime verdict. No per-item QA.
 Durable review A-4715.
+
+Criteria: C1 verified.
+
+### impl-746 · 2026-10-17T20:15:20.436Z
+
+Exact reviewed-head droplet verification e60108dc-ed25-4613-a3ff-db4df4a3d93e passed at c949d19d. A-4722: mode-free auto selected hub-only; 2083 passed, 0 failed/cancelled, 5 skipped; all four target files green, accounting FakeClock load gates 5/5 and Neovim smoke green. Linux x64 c-8 lon1, peak load 13.31, suite 1689.98 s, lifetime 1760 s, cost USD 0.1222. Head unchanged; final runtime verdict requested from Reviewer.
+
+### rev-30 · 2026-10-17T20:15:51.562Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261017-746-final
+commit: c949d19d411449c8f087de4ab1d0b7eb27b7bd32
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-746 final evidence — clear
+
+Exact source-reviewed headc949d19d411449c8f087de4ab1d0b7eb27b7bd32 remains branch tip. Source verdict rev-20261017-746-source/A-4715 and C1 verification current; no source/head change. Final evidence scope; no Reviewer execution.
+
+## Standards and Spec
+No remaining findings. C1 satisfied by A-4714 post-T-742 Mac20/20 whole-file remote-process evidence with the named receipt-wait fix, preserved assertions and current exact-head Linux execution. Prior source audit independently compared all assertion-bearing lines in four target files and confirmed bounded exact observations remain; real SSH readiness/cancel/release and group/downstream receipt bounds scale with sampled work per available CPU. Successful receipts return immediately. Scripted200/500ms product deadlines remain virtual, env overrides remain authoritative, and T-742 accounting window stays unchanged.
+
+A-4714 raw accepted52serial invocations/275passes,zero failures/cancellations/skips remain applicable: remote-process20,close10,recovery10,executor10 plus two adjacent whole-file smoke checks. Baseline red afterT-742 was explicitly retained; no assertion that T-742 alone solved the old timeout or that these samples guarantee absence of future flakes.
+
+## Exact-head Linux
+Run e60108dc-ed25-4613-a3ff-db4df4a3d93e/A-4722 is green exit0, normal mode-free hub-only selection due shared-helper unsupported coverage plus Neovim smoke.2088total/2083pass/0fail/0cancelled/5prerequisite skips. Hermetic188/188; machine1888total/1883pass5skip; smoke12/12. No full-Neovim claim; source import census found no Neovim reader of the changed fixture.
+
+All four target files have positive timing receipts: executor9top-level cases,close4,recovery3,remote-process1,17top-level cases total (nested executor fault cases are additional). Specifically:
+- required remote-process receipt/slot proof9.846003118s;
+- restart recovery10.910530378s;
+- integrated two-droplet occasion7.787066000s;
+- lost-reply/marker-only parent7.916824284s; both nested startReplyLost3.595315722s and startMarkerOnly3.519789795s explicitly pass.
+File test-second sums executor63.683899070,close23.081670089,recovery25.128255315,remote-process9.846003118. Values describe this run, not strict speed targets or causal load-normalized performance.
+
+Existing within-window and past-window accounting FakeClock cases each5/5 load repetitions, supporting preservation of separate virtual policy tests. No new test identities were authored by T-746; no invented owned load gate is claimed. No hard budget or load-gate failure; existing report-only duration/lint/baseline notices remain separate.
+
+Supplied executor linuxx64 6.8.0-142-generic,c-8lon1,Node24.21.0/Neovim0.12.5,2workers,lifetime1760s/cost0.1222. Suite1689.98s,peak1mload13.31,load-gate extra11.48s; phases40.60/1627.53/21.83s; host typecheck gate reusedb8e06b4e09583e79a53ac27d823d9ea6041db6a7. No Reviewer execution, provider or stress operation.
+
+Standards0/Spec0 findings. Final clear; verify all(C1) atc949d19d. No per-item QA or further task run required.
+Durable review A-4724.
 
 Criteria: C1 verified.
