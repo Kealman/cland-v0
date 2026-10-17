@@ -5,6 +5,7 @@ title: Test lint judges a file's tier without following its fixture and helper i
 state: open
 status: in progress
 size: M
+criterion_seq: 2
 labels:
   - v0.1.4
   - verification
@@ -16,7 +17,7 @@ blocked_by: []
 topic: topic-454
 branch: t/T-744-test-lint-judges-a-file-s-tier-without
 created: 2026-10-17T16:06:54.285Z
-updated: 2026-10-17T17:15:17.134Z
+updated: 2026-10-17T17:31:05.230Z
 ---
 
 ## Summary
@@ -29,8 +30,8 @@ The lint resolves a test file's local imports (hub/test helpers and fixtures, tr
 
 ## Acceptance criteria
 
-- [ ] C1. A planted T1 test importing a helper that calls projectHub, and one importing a helper that spawns a child, each get the resource finding with the import path named; a helper that only exports pure functions adds none, proved by lint tests.
-- [ ] C2. The review request lists every dev file whose qualification changes, and `npm run test:lint` stays under 10 s on the Mac.
+- [ ] C1. Planted T1 tests importing a projectHub helper and a child-spawning helper each get a reachable-resource diagnostic naming the import path, a pure helper adds none, and the direct qualifies result and findings used by admission are unchanged, proved by lint tests.
+- [ ] C2. The review request lists every dev file whose reachable tier differs from its direct qualification, names the harness-initialization-only subset separately, and shows npm run test:lint under 10 s on the Mac.
 
 ## Comments
 

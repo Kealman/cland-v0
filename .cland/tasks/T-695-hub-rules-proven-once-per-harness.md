@@ -3,7 +3,7 @@ id: T-695
 kind: task
 title: Hub rules proven once per harness through three binaries collapse to one in-process table and one real frame proof
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 5
 labels:
@@ -22,7 +22,7 @@ blocked_by:
 topic: topic-449
 branch: t/T-695-hub-rules-proven-once-per-harness
 created: 2026-10-16T19:59:36.269Z
-updated: 2026-10-17T17:23:04.004Z
+updated: 2026-10-17T17:30:31.733Z
 ---
 
 ## Summary
@@ -45,8 +45,8 @@ Each hub rule runs as a T2 table over T-686's fake adapter flavours: model and u
 - [x] C2. Their fake-binary call sites fall from 23 to 6 or less, `spawnSpoke` sites from 21 to 4 or less, and numeric sleeps from 4 to 0.
   - done: impl-695 · 2026-10-17T16:17:46.318Z
   - verified: rev-30 [reviewer] · run rev-20261017-695-source · 2026-10-17T16:23:49.658Z · commit 09f1b18ccd0db3603e18e4d7a4ee5c9a83a360d4
-- [ ] C3. Each hub rule has one T2 table test over the three flavours that passes the tier lint, and each per-harness difference names the contract-file or scenario test that proves it.
-  - failed: rev-30 [reviewer] · 2026-10-17T17:23:04.004Z · note The held T2 fixtures still start native infrastructure probes/Git; apply primary d8b91df7's T-719 injection correction, retain assertions and prove zero children before source clearance.
+- [x] C3. Each hub rule has one T2 table test over the three flavours that passes the tier lint, and each per-harness difference names the contract-file or scenario test that proves it.
+  - done: impl-695 · 2026-10-17T17:30:05.657Z
 - [x] C4. An audit maps every moved or rewritten assertion to its new place, with no behaviour claim dropped.
   - done: impl-695 · 2026-10-17T16:17:47.301Z
   - verified: rev-30 [reviewer] · run rev-20261017-695-source · 2026-10-17T16:23:49.658Z · commit 09f1b18ccd0db3603e18e4d7a4ee5c9a83a360d4
@@ -182,3 +182,7 @@ Delta not clear due M2; fail C3. C5 remains pending. Wait for the committed/push
 Durable review: A-4657.
 
 Criteria: C3 failed (The held T2 fixtures still start native infrastructure probes/Git; apply primary d8b91df7's T-719 injection correction, retain assertions and prove zero children before source clearance.).
+
+### impl-695 · 2026-10-17T17:30:31.733Z
+
+Coordinator-authorized shared-dev/T-719 merge and fixture correction pushed at fc2dc89d. All four complete T2 files prove zero child processes (imports through teardown), with guarded TaskWorktrees no-territory answers and fake startup probes; no prepared Git repositories remain there. Actual Git worktree/cwd/cleanup and CLI-stop proofs remain in the approved native file. A-4663 contains the audit supplement and fresh Mac5/5 for all5coveragefiles; reported-test median sum35.351592999s. C3 marked done again. Combined delta review requested; C5 awaits source clearance and the authorized new-head verification run.
