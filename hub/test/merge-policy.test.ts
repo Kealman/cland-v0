@@ -72,11 +72,14 @@ test('Per-item plan QA uses the latest clear current QA evidence and includes it
 });
 
 test('task view reports QA satisfaction from the same durable evidence as the merge gate', async (t) => {
-  const { root, ui, rev } = await project(t, undefined, undefined, undefined, true);
+  const { root, ui, rev } = await project(t);
+  await value(ui, { type: 'subscribe' });
   const work = await task(ui);
   await requireQa(root, ui, work.id);
   await review(rev, work.id);
   const read = async () => (await value<{ item: { path: string; qaSatisfied?: boolean; merged?: boolean } }>(ui, { type: 'task.view', item: work.id })).item;
+  const statusReceipt = (status: string, from: number) => ui.waitFor(frame => ui.frames.indexOf(frame) >= from
+    && frame.type === 'task' && frame.id === work.id && (frame.item as { status?: string } | null)?.status === status);
   assert.equal((await read()).merged, false);
   const file = join(root, (await read()).path);
   const tip = git(work.path, 'rev-parse', 'HEAD');
@@ -93,15 +96,21 @@ test('task view reports QA satisfaction from the same durable evidence as the me
   const accepted = await qa.call<{ ok: boolean; error?: string }>('task.comment', { id: work.id, verdict: 'qa', result: 'clear', run: 'accepted' });
   assert.equal(accepted.ok, true, accepted.error);
   await eventually('accepted QA is reported', async () => (await read()).qaSatisfied === true ? true : undefined);
+  // Detail reads see hand saves immediately; status frames acknowledge the queued index/write.
+  await statusReceipt('ready', 0);
   await writeFile(file, await readFile(file, 'utf8') + header('not clear', 'later-file'));
   assert.equal((await read()).qaSatisfied, true, 'a later file header cannot replace accepted hub evidence');
   const complete = await readFile(file, 'utf8');
   const altered = parseItem(complete, file, ['release', 'epic']);
   altered.comments = altered.comments.filter(comment => comment.verdict?.run !== 'accepted');
+  const removedFrom = ui.frames.length;
   await writeFile(file, serializeItem(altered));
+  await statusReceipt('in progress', removedFrom);
   await refused(ui, root, work.id, 'verdict-missing');
   assert.equal((await read()).qaSatisfied, false, 'a removed durable comment cannot revive another verdict');
+  const restoredFrom = ui.frames.length;
   await writeFile(file, complete);
+  await statusReceipt('ready', restoredFrom);
   await value(ui, { type: 'merge', item: work.id });
   assert.equal((await read()).merged, true, 'a landing survives task branch cleanup');
 });
