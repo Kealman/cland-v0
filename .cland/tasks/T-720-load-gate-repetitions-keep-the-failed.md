@@ -3,7 +3,7 @@ id: T-720
 kind: task
 title: Load-gate repetitions keep the failed repetition's assertion and stack in the suite log
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - v0.1.4
@@ -12,10 +12,10 @@ labels:
 assignee: null
 parent: E-676
 blocked_by: []
-topic: null
-branch: null
+topic: topic-418
+branch: t/T-720-load-gate-repetitions-keep-the-failed
 created: 2026-10-16T20:17:40.486Z
-updated: 2026-10-16T23:14:56.500Z
+updated: 2026-10-17T04:13:33.284Z
 ---
 
 ## Summary
