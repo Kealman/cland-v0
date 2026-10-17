@@ -44,6 +44,7 @@ export function scriptedMachine(root: string, clock: FakeClock, key: PrepareKey,
     },
     async status(lease): Promise<RunStatus> {
       record('status', lease);
+      if (!executions.has(lease.run)) return { state: 'lost', code: 1, cause: 'remote machine lost' };
       const execution = state(lease);
       if (Date.parse(lease.deadline) <= clock.now().getTime()) return { state: 'lost', code: 1, cause: 'remote machine lifetime expired' };
       if (execution.started === undefined) return { state: 'pending' };
@@ -87,5 +88,11 @@ export function scriptedMachine(root: string, clock: FakeClock, key: PrepareKey,
     async put() { throw new Error('scripted transport does not copy files'); },
     async get() { throw new Error('scripted transport does not copy files'); },
   };
-  return { calls, waits, started: (id: string) => startReceipt(id).promise, script: (...next: MachineScript[]) => scripts.push(...next), dependencies: { clock, wait: waits.wait, run, host, machine, prepareKey: async () => key } satisfies DropletDependencies };
+  function finish(id: string, code = 0, log?: string) {
+    const execution = executions.get(id);
+    if (execution?.started === undefined) throw new Error('observe machine start before completing a scripted run');
+    execution.script = { outcome: code ? 'red' : 'green', afterMs: 0, ...(log === undefined ? {} : { log }) };
+    execution.finished = clock.now().getTime();
+  }
+  return { calls, waits, finish, started: (id: string) => startReceipt(id).promise, script: (...next: MachineScript[]) => scripts.push(...next), dependencies: { clock, wait: waits.wait, run, host, machine, prepareKey: async () => key } satisfies DropletDependencies };
 }

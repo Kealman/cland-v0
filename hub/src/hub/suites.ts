@@ -1,21 +1,20 @@
+import { suiteCandidate, type SuiteCandidate } from './suite-candidate.ts';
 import type { DropletDependencies } from '../executor/droplet/dependencies.ts';
 import { realClock, type Clock, type ClockTimer } from './clock.ts';
 // Durable hub-owned suite jobs. A worker can outlive hub shutdown; restart watches its receipt/PID.
-import { execFile, spawn, type ChildProcess } from 'node:child_process';
+import { spawn, type ChildProcess } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { appendFile, mkdir, readFile, writeFile, stat, open } from 'node:fs/promises';
 import { join } from 'node:path';
-import { lintHubShards, lintHubShardTree, ShardManifestError, hubShards, balanceCloseShards } from '../suite-shards.ts';
+import { hubShards, balanceCloseShards } from '../suite-shards.ts';
 import { lintTests, testLintReport } from '../test-lint.ts';
 import { suiteCheckCommand } from '../suite-check.ts';
 import { planTierReport, tierReport, tierPlanWorkers, timingReceipts, type TierPlan, type SuiteDryRun } from '../suite-tier-report.ts';
 import { durationBudgetReport, durationBudgetSummary } from '../suite-duration-budget.ts';
-import { baselineTimings, durationBase, durationBudgetContext } from '../suite-duration-context.ts';
+import { baselineTimings, durationBudgetContext } from '../suite-duration-context.ts';
 import { readDurationManifest } from '../suite-durations.ts';
 import type { ProjectConfig } from '../init/config.ts';
 import { suiteLimits } from '../suite-limits.ts';
-import { candidateTree } from '../verification-tree.ts';
-import { promisify } from 'node:util';
 import type { VerifyOccasion, SuiteStatus, VerificationQueue, VerificationHolder, DurationStats, SuiteSlot, SuiteSlotResult } from '../protocol.ts';
 import type { LogFn } from '../log.ts';
 import type { Store } from './store.ts';
@@ -26,7 +25,7 @@ import { machineEnv } from '../executor/droplet/machine.ts';
 import { testTiming } from '../executor/droplet/watchdog.ts';
 import type { ExecutorKind, HostGate, Lease, Platform, RunRef } from '../executor/executor.ts';
 import { idNumber } from '../tracker/item.ts';
-import { selectPackageSuite, describeSelection, sameSuiteSelection, type SuiteSelection, type SuiteRequest } from '../suite-selection.ts';
+import { describeSelection, sameSuiteSelection, type SuiteSelection, type SuiteRequest } from '../suite-selection.ts';
 import { parseCoverageMap, type CoverageMap } from '../suite-coverage.ts';
 import { VerificationWait } from './verification-wait.ts';
 import { classifyCover, deriveCover, recentCovers } from './suite-cover.ts';
@@ -67,11 +66,10 @@ export type StagePlatform = 'Linux droplet' | 'macOS';
 export type StageCover = { id: string; head: string; tree: string; platform: StagePlatform };
 const verifyResult = (job: SuiteJob): VerifyResult => ({ executor: job.executor, id: job.id, state: job.state ?? 'running', result: job.state !== 'finished' ? null : job.cancelled || job.requesterDied ? 'cancelled' : job.outcome ? job.outcome.code === 0 ? 'passed' : 'failed' : null, head: job.head, finished: job.finished ?? job.completedAt ?? null, artifact: job.artifact, ...(job.cached ? { cached: { ...job.cached } } : {}) });
 
-export type SuiteSchedulerOptions = { clock?: Clock; dropletServices?: DropletDependencies; waitClock?: Clock; projectConfig?: () => ProjectConfig; env?: NodeJS.ProcessEnv; executor?: ExecutorKind; localFallback?: boolean; lifetimeMs?: number; runTimeoutMs?: number; runTimeout?: string; onFallback?: (job: Readonly<SuiteJob>, cause: string) => void; budget?: number; remoteBudget?: number; shards?: number; onShardingSkipped?: (job: Readonly<SuiteJob>, cause: string) => void; cacheMaxAgeMs?: number; waitP90TargetMs?: number; locks?: string[]; requesterDead?: (actor: SuiteActor) => boolean; log?: LogFn; onQueue?: (queue: VerificationQueue) => void; onJob?: (job: Readonly<SuiteJob>) => void };
+export type SuiteSchedulerOptions = { candidate?: SuiteCandidate; clock?: Clock; dropletServices?: DropletDependencies; waitClock?: Clock; projectConfig?: () => ProjectConfig; env?: NodeJS.ProcessEnv; executor?: ExecutorKind; localFallback?: boolean; lifetimeMs?: number; runTimeoutMs?: number; runTimeout?: string; onFallback?: (job: Readonly<SuiteJob>, cause: string) => void; budget?: number; remoteBudget?: number; shards?: number; onShardingSkipped?: (job: Readonly<SuiteJob>, cause: string) => void; cacheMaxAgeMs?: number; waitP90TargetMs?: number; locks?: string[]; requesterDead?: (actor: SuiteActor) => boolean; log?: LogFn; onQueue?: (queue: VerificationQueue) => void; onJob?: (job: Readonly<SuiteJob>) => void };
 type HumanSlot = Omit<SuiteSlot, 'type'> & { queued: string; admittedAt?: string; left?: boolean };
 const HUMAN_GRACE_MS = 10_000;
 const KEY = 'suite-jobs';
-const exec = promisify(execFile);
 const METRICS_WINDOW = 20;
 const runRef = (job: SuiteJob): RunRef => ({ ...(job.hostGate ? { hostGate: job.hostGate } : {}), ...(job.limits ? { limits: job.limits } : {}), ...(job.config ? { config: job.config } : {}), id: job.id, cwd: job.cwd, head: job.head, ...(job.integrated ? { integrated: true } : {}), mode: job.mode, log: job.log, result: job.result, gate: job.gate, ...(job.workers !== undefined ? { workers: job.workers } : {}), ...(job.size ? { size: job.size } : {}), ...(job.tree !== undefined ? { tree: job.tree } : {}), ...(job.selection ? { selection: job.selection } : {}), ...(job.queued ? { queued: job.queued } : {}), ...(job.locks ? { locks: job.locks } : {}) });
 function elapsed(since: string | undefined | null, now: number): number | null {
@@ -112,16 +110,10 @@ export function suiteSummary(log: string, quarantineStatus?: string[]): string {
   return `${counts.size ? [...counts].map(([k, v]) => `${k} ${v}`).join('; ') : 'counts unavailable (suite did not finish)'}${timings.length ? `\n${timings.join('\n')}` : ''}${failures.length ? `\nFailures:\n${failures.join('\n')}` : ''}${quarantined.length ? `\nQuarantine:\n${quarantined.join('\n')}` : ''}${lastTiers.size ? `\n${['tier T1', 'tier T2', 'tier T3', 'tier T4', 'tier share'].flatMap(key => lastTiers.has(key) ? [lastTiers.get(key)!] : []).join('\n')}` : ''}`;
 }
 
-export class SuiteAdmissionError extends Error {
-  readonly code = 'verify-tiers';
-  readonly files: string[];
-  constructor(error: unknown) {
-    super(`verify-tiers: ${error instanceof Error ? error.message : String(error)}`);
-    this.files = error instanceof ShardManifestError ? error.files : [];
-  }
-}
+export { SuiteAdmissionError } from './suite-candidate.ts';
 
 export class Suites {
+  readonly #candidate: SuiteCandidate;
   readonly #env: NodeJS.ProcessEnv;
   readonly #store: Store;
   readonly #root: string;
@@ -156,6 +148,7 @@ export class Suites {
     this.#options = options;
     this.#clock = options.clock ?? realClock;
     this.#env = options.env ?? process.env;
+    this.#candidate = options.candidate ?? suiteCandidate(this.#env);
     this.#budget = Math.min(options.budget ?? 1, 1);
     this.#remoteBudget = options.remoteBudget ?? 4;
     if ((options.budget ?? 1) > 1) options.log?.({ event: 'verification-budget-capped', configured: options.budget, effective: this.#budget, reason: 'resource overlap remains disabled after T-215', reservedFor: 'T-218' });
@@ -295,7 +288,7 @@ export class Suites {
     authorize();
     const job = this.#jobs.find(job => job.id === id);
     if (!job) throw new Error(`no suite named ${id}`);
-    job.cover = classifyCover(job, cause, note, by);
+    job.cover = classifyCover(job, cause, note, by, this.#clock.now().toISOString());
     this.#save(job);
     this.#options.log?.({ event: 'verification-cover-classified', id, head: job.head, cover: job.cover });
     return { id, cover: job.cover };
@@ -327,18 +320,9 @@ export class Suites {
     if (!input.dryRun && this.#jobs.some(job => this.#active(job) && (job.actor?.sessionId ?? 'human') === identity)) throw new Error('this session already has a suite queued or running');
     const id = randomUUID();
     const dir = join(this.#root, '.cland', 'run', 'suites', id);
-    const git = async (args: string[]) => exec('git', args, { cwd: input.cwd, env: this.#options.env }).then(r => r.stdout.trim(), () => 'unknown');
-    const [head, branch, selection] = await Promise.all([git(['rev-parse', 'HEAD']), git(['branch', '--show-current']), selectPackageSuite(input.cwd, input.mode as SuiteRequest, this.#options.env)]);
-    const tree = await candidateTree(input.cwd, head, this.#env);
+    const { head, branch, selection, tree, tierPlan, budgetBase } = await this.#candidate.inspect(input.cwd, input.mode as SuiteRequest, workers);
     if (input.occasion && (!input.integrated || branch !== 'dev' || !tree || selection.fetchedDev !== head || input.mode !== 'all')) throw new Error('occasion requires an integrated dev full request (verify all) with fresh origin/dev fetch proof at its head');
 
-    // Bind lint to the captured committed build as well as the files a dirty package will execute.
-    try {
-      if (head !== 'unknown') await lintHubShardTree(input.cwd, head, this.#env);
-      await lintHubShards(input.cwd);
-    } catch (error) { throw new SuiteAdmissionError(error); }
-    const tierPlan = await planTierReport(input.cwd, selection, workers);
-    const budgetBase = await durationBase(input.cwd, head, this.#env);
     if (input.dryRun) {
       const context = await durationBudgetContext(input.cwd, { ...(budgetBase ? { base: budgetBase } : {}), env: this.#env });
       const budgetLines = context ? durationBudgetSummary(durationBudgetReport(context.manifest, context.tiers, baselineTimings(context, tierPlan.flatMap(row => row.files)), context.base)) : [];
@@ -346,7 +330,7 @@ export class Suites {
         if (!tree) throw new Error('dirty worktree cannot be bundled for droplet');
         await this.#droplet.checkSpend(input.size, config);
       }
-      if (head !== 'unknown' && await git(['rev-parse', 'HEAD']) !== head) throw new Error('head changed during admission; try dry-run again');
+      if (head !== 'unknown' && await this.#candidate.head(input.cwd) !== head) throw new Error('head changed during admission; try dry-run again');
       authorize();
       return { dryRun: true, head, executor, workers, selection, tiers: tierPlan,
         lines: [describeSelection(selection), `planned tiers: ${tierPlan.map(row => row.tier).join(', ') || 'unavailable (no tier manifest)'}`, ...tierReport(tierPlan), ...budgetLines, ...testLintReport(await lintTests(input.cwd))] };
@@ -373,7 +357,7 @@ export class Suites {
     if (cached) {
       const artifact = this.#store.resolveArtifact(cached.artifact!)!;
       const originalLog = await readFile(artifact.path, 'utf8').catch(() => null);
-      if (originalLog !== null && await candidateTree(input.cwd, head, this.#env) === tree) {
+      if (originalLog !== null && await this.#candidate.tree(input.cwd, head) === tree) {
         job.executor = cached.executor;
         if (cached.platform) job.platform = { ...cached.platform };
         if (cached.machine) job.machine = { ...cached.machine };
@@ -387,7 +371,7 @@ export class Suites {
       if (!tree) throw new Error('dirty worktree cannot be bundled for droplet');
       await this.#droplet.checkSpend(input.size, config);
     }
-    if (head !== 'unknown' && await git(['rev-parse', 'HEAD']) !== head) throw new Error('head changed during submission; submit verification again');
+    if (head !== 'unknown' && await this.#candidate.head(input.cwd) !== head) throw new Error('head changed during submission; submit verification again');
     authorize();
     if (this.#closed) throw new Error('hub is closing');
     if (this.#jobs.some(j => this.#active(j) && (j.actor?.sessionId ?? 'human') === identity)) throw new Error('this session already has a suite queued or running');
@@ -472,12 +456,12 @@ export class Suites {
         }
         if (job.lease && Date.parse(job.lease.deadline) <= this.#clock.now().getTime()) throw new Error('remote machine lifetime expired');
         if (!(job.lease as DropletLease | undefined)?.execution?.delivered) {
-          if (!job.lease && (!job.tree || await candidateTree(job.cwd, job.integrated ? undefined : job.head, this.#env) !== job.tree)) { this.#fallback(job, 'dirty or changed worktree cannot be bundled for droplet'); return; }
+          if (!job.lease && (!job.tree || await this.#candidate.tree(job.cwd, job.integrated ? undefined : job.head) !== job.tree)) { this.#fallback(job, 'dirty or changed worktree cannot be bundled for droplet'); return; }
           if (!job.lease) {
             if (!job.parentRun) await this.#hostGate(job);
             if (job.hostGate) run.hostGate = job.hostGate;
             if (job.cancelled) throw new Error('cancelled');
-            if (await candidateTree(job.cwd, job.integrated ? undefined : job.head, this.#env) !== job.tree) { this.#fallback(job, 'dirty or changed worktree cannot be bundled for droplet'); return; }
+            if (await this.#candidate.tree(job.cwd, job.integrated ? undefined : job.head) !== job.tree) { this.#fallback(job, 'dirty or changed worktree cannot be bundled for droplet'); return; }
             if (job.remoteAcquireAttempted) { this.#fallback(job, 'previous droplet acquisition was interrupted'); return; }
             job.remoteAcquireAttempted = true; this.#save(job);
             try { job.lease = await this.#droplet.acquire(run, new Date(this.#clock.now().getTime() + (job.config?.verification.lifetimeMs ?? this.#options.lifetimeMs ?? 6600000)).toISOString(), undefined, job.config); }
@@ -503,8 +487,8 @@ export class Suites {
         if (!lease.execution?.started) await this.#droplet.start(lease, run);
         if (!lease.execution?.started) { job.nextPoll = this.#clock.now().getTime() + testTiming('CLAND_TEST_DROPLET_RUN_POLL_MS', 10000, this.#options.env); this.#save(job); return; }
       } else {
-        const head = await exec('git', ['rev-parse', 'HEAD'], { cwd: job.cwd, env: this.#options.env }).then(r => r.stdout.trim(), () => 'unknown');
-        if (head !== job.head && !(job.integrated && job.tree && await candidateTree(job.cwd, undefined, this.#env) === job.tree)) throw new Error(`cancelled: queued head changed from ${job.head} to ${head}; submit verification again`);
+        const head = await this.#candidate.head(job.cwd);
+        if (head !== job.head && !(job.integrated && job.tree && await this.#candidate.tree(job.cwd) === job.tree)) throw new Error(`cancelled: queued head changed from ${job.head} to ${head}; submit verification again`);
         job.lease = await this.#local.acquire(run, new Date(Date.now() + 15000).toISOString());
         this.#save(job);
         await this.#local.prepare(job.tree ?? job.head);
@@ -568,7 +552,7 @@ export class Suites {
     }
     // Repeat only an interrupted host gate; provider acquisition is reconciled per child.
     if (!shards.some(shard => shard.remoteAcquireAttempted)) await this.#hostGate(job);
-    if (await candidateTree(job.cwd, job.integrated ? undefined : job.head, this.#env) !== job.tree) throw new Error('dirty or changed integrated dev candidate');
+    if (await this.#candidate.tree(job.cwd, job.integrated ? undefined : job.head) !== job.tree) throw new Error('dirty or changed integrated dev candidate');
     if (job.cancelled || job.outcome) throw new Error(job.outcome?.cause ?? 'cancelled');
     if (job.hostGate) for (const shard of shards) shard.hostGate = job.hostGate;
     this.#save(job);
@@ -648,7 +632,7 @@ export class Suites {
       if (job.hostGate.code !== 0) throw new Error(`host typecheck failed (exit ${job.hostGate.code}); no droplet created`);
       return;
     }
-    const tree = await candidateTree(job.cwd, job.integrated ? undefined : job.head, this.#env);
+    const tree = await this.#candidate.tree(job.cwd, job.integrated ? undefined : job.head);
     const command = await suiteCheckCommand(job.cwd);
     await appendFile(job.log, `\nHost gate: npm ${command.join(' ')}\n`);
     const env = machineEnv(this.#options.env); delete env.NODE_TEST_CONTEXT; delete env.CLAND_SUITE_LEASE;
@@ -797,7 +781,7 @@ export class Suites {
       if (receipt && (receipt.finished || !job.outcome) && (receipt.state === 'done' || receipt.state === 'lost') && !job.cancelled && !job.requesterDied && !job.timedOut) {
         job.outcome = { code: receipt.code ?? 1, cause: receipt.code === 124 ? `run timeout ${job.config?.verification.runTimeout ?? this.#options.runTimeout ?? '75m'}` : receipt.cause ?? '' };
       }
-      if (job.cached && !this.#store.message(`suite:${job.id}`) && await candidateTree(job.cwd, job.integrated ? undefined : job.head, this.#env) !== job.tree) {
+      if (job.cached && !this.#store.message(`suite:${job.id}`) && await this.#candidate.tree(job.cwd, job.integrated ? undefined : job.head) !== job.tree) {
         delete job.cached; job.outcome = { code: 1, cause: 'cached candidate changed; submit verification again' };
       }
       if (!job.outcome) {
@@ -958,6 +942,13 @@ export class Suites {
         else localEta = nextEta;
         return waiter;
       }), metrics };
+  }
+
+  /** Observe completion of already admitted I/O; does not tick or advance time. */
+  async settled(): Promise<void> {
+    await this.#checking;
+    await Promise.allSettled(this.#launchWork);
+    await Promise.allSettled(this.#inspecting.values());
   }
 
   async close(): Promise<void> { this.#closed = true; for (const owner of this.#humans.keys()) this.leave(owner, 'hub closing'); this.#clock.clearInterval(this.#timer); (this.#options.waitClock ?? this.#clock).clearInterval(this.#waitTimer); for (const id of this.#hostGates.keys()) this.#stopHostGate(id); await Promise.allSettled(this.#starting); await this.#checking; await Promise.allSettled(this.#launchWork); await this.#reaping; await Promise.allSettled(this.#inspecting.values()); }

@@ -95,23 +95,38 @@ test('manifest serialization sorts a newly added path before existing paths', as
   await lintHubShards(root);
 });
 
-test('repository full plan preserves the legacy manifest phases, targets and worker counts', async () => {
-  const root = fileURLToPath(new URL('../../', import.meta.url));
-  // Captured from shards.json at the task merge base; this fixed input outlives its deletion.
+test('legacy manifest preserves its recorded phases, targets and worker counts', async t => {
+  // This fixed input proves legacy runner compatibility after live tier migrations.
   const legacy = JSON.parse(await readFile(new URL('./fixtures/legacy-shards.json', import.meta.url), 'utf8')) as { tests: Record<string, string> };
-  const expected = [
+  const root = await mkdtemp(join(tmpdir(), 'cland-legacy-plan-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await Promise.all(Object.keys(legacy.tests).map(async path => {
+    await mkdir(join(root, path, '..'), { recursive: true });
+    await writeFile(join(root, path), '');
+  }));
+  await writeFile(join(root, 'hub/test/shards.json'), JSON.stringify(legacy));
+  assert.deepEqual(await packageShards(root, 'full', undefined, undefined, { workers: 4 }), [
     { name: 'hub free', resource: 'free', workers: 1, targets: Object.keys(legacy.tests).filter(path => legacy.tests[path] === 'free').sort() },
     { name: 'hub machine', resource: 'machine', workers: 4, targets: Object.keys(legacy.tests).filter(path => legacy.tests[path] === 'machine').sort() },
     { name: 'Neovim', resource: 'machine', workers: 4, targets: ['nvim/test/**/*.test.ts'] },
-  ];
-  const actual = await packageShards(root, 'full', undefined, undefined, { workers: 4 });
-  // Later tasks add files: compare the frozen baseline file set, and lint the whole live tree.
-  const baseline = new Set(Object.keys(legacy.tests));
-  assert.deepEqual(actual.map(phase => ({ ...phase, targets: phase.targets.filter(path => !path.startsWith('hub/') || baseline.has(path)) })), expected);
-  const tiers = JSON.parse(await readFile(join(root, 'hub/test/tiers.json'), 'utf8'));
+  ]);
+});
+
+test('repository full plan places current test files in their declared tier phases', async () => {
+  const root = fileURLToPath(new URL('../../', import.meta.url));
+  const tiers = JSON.parse(await readFile(join(root, 'hub/test/tiers.json'), 'utf8')) as TierManifest;
   const paths = [];
   for await (const path of glob(['hub/src/**/*.test.ts', 'hub/test/**/*.test.ts', 'nvim/test/**/*.test.ts'], { cwd: root })) paths.push(path);
   assert.deepEqual(Object.keys(tiers.tests), paths.sort());
+  // Retagged and added files follow today's manifest; removed files do not run.
+  // T1 alone is hermetic; T2/T3/T4 retain the machine phase, and Neovim stays one package phase.
+  const hub = Object.keys(tiers.tests).filter(path => path.startsWith('hub/'));
+  const hermetic = (path: string) => { const value = tiers.tests[path]!; return (typeof value === 'string' ? value : value.tier) === 'T1'; };
+  assert.deepEqual(await packageShards(root, 'full', undefined, undefined, { workers: 4 }), [
+    { name: 'hub free', resource: 'free', workers: 1, targets: hub.filter(hermetic) },
+    { name: 'hub machine', resource: 'machine', workers: 4, targets: hub.filter(path => !hermetic(path)) },
+    { name: 'Neovim', resource: 'machine', workers: 4, targets: ['nvim/test/**/*.test.ts'] },
+  ]);
 });
 
 test('tiers take priority over a leftover legacy manifest without masking tier faults', async t => {

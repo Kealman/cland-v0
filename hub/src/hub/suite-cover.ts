@@ -18,12 +18,12 @@ export function deriveCover(job: Readonly<SuiteJob>, log: string): CoverRecord |
   return { status: 'red', cause: budgets.length && !hasFailure ? 'budget' : 'test-failure', tests: [...new Set([...failed, ...budgets])] };
 }
 
-export function classifyCover(job: Readonly<SuiteJob>, cause: string, note: string, by: string): CoverRecord {
+export function classifyCover(job: Readonly<SuiteJob>, cause: string, note: string, by: string, at = new Date().toISOString()): CoverRecord {
   if (cause !== 'load-flake') throw new Error('cover classification must be load-flake');
   if (!note.trim()) throw new Error('cover classification requires a nonblank note');
   if (!job.integrated || job.parentRun || job.state !== 'finished' || job.cover?.status !== 'red') throw new Error('only a finished red integrated cover can be classified');
   return { ...job.cover, derivedCause: job.cover.derivedCause ?? job.cover.cause, cause,
-    classification: { note: note.trim(), by, at: new Date().toISOString() } };
+    classification: { note: note.trim(), by, at } };
 }
 
 export function recentCovers(jobs: readonly SuiteJob[]): CoverStatus[] {
