@@ -1,4 +1,4 @@
-// T2: the check CLI is the subprocess under test; scanner inputs are fixture files.
+// T3: npm check completion and cancellation reap retained writers before fixture removal.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';

@@ -1,11 +1,10 @@
-// T2: the suite queue hands policy to in-process executor fakes. Git is fixture
-// infrastructure; the host typecheck subprocess is faked and no worker is spawned.
+// T2: the queue hands hub policy to in-process executors and an injected SuiteCandidate.
+// Candidate validation still reads its own config; no Git or package worker is spawned.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import childProcess, { execFile, type ChildProcess } from 'node:child_process';
+import childProcess, { type ChildProcess } from 'node:child_process';
 import { EventEmitter } from 'node:events';
 import { syncBuiltinESMExports } from 'node:module';
-import { promisify } from 'node:util';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tempProject, eventually } from './harness.ts';
@@ -26,14 +25,8 @@ test('task queue executes the hub policy with explicit worker overrides', async 
   const root = await tempProject(t, 'cland-queue-policy-');
   const cwd = join(root, 'candidate');
   await mkdir(join(root, '.cland'));
-  await writeFile(join(root, '.cland/config.toml'), candidateConfig);
-  await writeFile(join(root, '.gitignore'), 'candidate/\n');
-  const git = (...args: string[]) => promisify(execFile)('git', args, { cwd: root });
-  await git('init', '-qb', 'dev');
-  await git('config', 'user.name', 'Queue policy fixture');
-  await git('config', 'user.email', 'fixture@example.invalid');
-  await git('add', '.'); await git('commit', '-qm', 'candidate policy');
-  await git('worktree', 'add', '-qb', 't/policy', cwd);
+  await mkdir(join(cwd, '.cland'), { recursive: true });
+  await writeFile(join(cwd, '.cland/config.toml'), candidateConfig);
   await writeFile(join(root, '.cland/config.toml'), hubConfig);
   let config = parseConfig(await readFile(join(root, '.cland/config.toml'), 'utf8'), 'queue-policy', {});
   const delivered = new Map<string, RunRef>();
@@ -63,6 +56,14 @@ test('task queue executes the hub policy with explicit worker overrides', async 
   syncBuiltinESMExports();
   const store = new Store(join(root, 'hub.db'));
   const suites = new Suites(store, root, async () => assert.fail('fake executor stays running'), {
+    // Git/tree selection is not the scheduler policy under test. Supply the same
+    // clean task candidate through its existing interface; native inspection is T3.
+    candidate: {
+      head: async () => 'fixture-head',
+      tree: async () => 'fixture-tree',
+      inspect: async () => ({ head: 'fixture-head', branch: 't/policy', tree: 'fixture-tree',
+        selection: { mode: 'hub-only', files: [], reason: 'queue policy fixture' }, tierPlan: [], budgetBase: undefined }),
+    },
     projectConfig: () => config, waitClock: new FakeClock(),
     env: { ...process.env, DIGITALOCEAN_TOKEN: 'fixture' }, locks: [join(root, 'lock')],
   });

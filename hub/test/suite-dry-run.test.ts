@@ -1,5 +1,4 @@
-// T2: admission and report collection run in-process. The CLI subprocess is the
-// subject of the dry-run contract; no hub, spoke, harness or executor is spawned.
+// T3: the real verify CLI reads a native Git candidate and previews admission without starting an executor.
 import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';

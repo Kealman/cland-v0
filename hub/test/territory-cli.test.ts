@@ -1,5 +1,4 @@
-// T2: territory provisioning/refusal matrices call init/update in-process with real Git.
-// Three CLI invocations prove JSON init/undo and text idempotence; Git hook execution is the protection contract.
+// T3: native Git init/undo and protection hooks guard territory refs during real pushes.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';

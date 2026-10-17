@@ -1,18 +1,14 @@
-// T2: template commands use the production runTask argv parser and real hub frames in-process.
-// The jq frontier query remains an executable contract. Parent variants share one delivery scenario.
-// One real CLI proves --body-file - reads unchanged stdin bytes.
-import { test, type TestContext } from 'node:test';
+// T2: template commands use the production runTask parser and real hub frames in-process.
+// One real task CLI proves unchanged stdin bytes; the jq executable contract lives in T3.
+import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { spawn, spawnSync } from 'node:child_process';
-import { readdir, readFile, writeFile } from 'node:fs/promises';
-import { join, resolve } from 'node:path';
+import { spawn } from 'node:child_process';
+import { readFile, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parse as parseYaml } from 'yaml';
-import { projectHub, tempProject, type CliResult } from './harness.ts';
-
-import { runTask } from '../src/cli/task.ts';
-import { ownProcess, onCleanup } from './process-cleanup.ts';
-import { FakeClock } from './fake-clock.ts';
+import { tempProject } from './harness.ts';
+import { onCleanup } from './process-cleanup.ts';
+import { cland, create, itemFile, list, ok, project, view, type View } from './skills-tracker-support.ts';
 const TEMPLATE = fileURLToPath(new URL('../../skills/templates/docs/agents/issue-tracker.md', import.meta.url));
 
 test('tracker and vendored skills defer category filing to the Categories contract', async () => {
@@ -45,79 +41,6 @@ test('ticket and plan skills require size, Summary and landed rework links', asy
     assert.match(text, /landed tasks/);
   }
 });
-
-const hasJq = spawnSync('jq', ['--version']).status === 0;
-
-/** `cland <args>` in `cwd` with `input` on stdin (for `--body-file -`), with no `CLAND_*` variable from the test's environment. */
-async function cland(cwd: string, input: string, ...args: string[]): Promise<CliResult> {
-  assert.equal(args.shift(), 'task');
-  args = args.map((arg, i) => args[i - 1] === '--body-file' && arg !== '-' ? resolve(cwd, arg) : arg);
-  let stdout = '';
-  let stderr = '';
-  const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('CLAND_')));
-  const code = await runTask(args, cwd, { out: text => { stdout += text; }, err: text => { stderr += text; }, stdin: () => input }, env);
-  return { code, stdout, stderr };
-}
-
-const ok = (r: CliResult): CliResult => {
-  assert.equal(r.code, 0, `exit ${r.code}\nstdout: ${r.stdout}\nstderr: ${r.stderr}`);
-  return r;
-};
-
-type Item = {
-  id: string;
-  kind: string;
-  title: string;
-  state: string;
-  labels: string[];
-  assignee: string | null;
-  parent: string | null;
-  blocked_by: string[];
-  claim: { session: string } | null;
-};
-type View = Item & { path: string; body: string; comments: Array<{ author: string; text: string }> };
-
-/** `cland task <args> --json`, parsed. */
-const task = async <T>(root: string, args: string[], input = ''): Promise<T> => JSON.parse(ok(await cland(root, input, 'task', ...args, '--json')).stdout) as T;
-const create = async (root: string, args: string[], body = ''): Promise<string> => (await task<{ item: View }>(root, ['create', ...args, '--body-file', '-'], body)).item.id;
-const list = async (root: string, ...args: string[]): Promise<Item[]> => (await task<{ items: Item[] }>(root, ['list', ...args])).items;
-const view = async (root: string, id: string): Promise<View> => (await task<{ item: View }>(root, ['view', id])).item;
-
-const frontmatter = (text: string): Record<string, unknown> => parseYaml(/^---\n([\s\S]*?)\n---\n/.exec(text)?.[1] ?? '') as Record<string, unknown>;
-async function itemFile(root: string, id: string): Promise<{ fm: Record<string, unknown>; text: string }> {
-  const dir = join(root, '.cland', 'tasks');
-  const name = (await readdir(dir)).find((n) => n.startsWith(`${id}-`) && n.endsWith('.md'));
-  assert.ok(name, `no file for ${id} in .cland/tasks`);
-  const text = await readFile(join(dir, name), 'utf8');
-  return { fm: frontmatter(text), text };
-}
-
-async function project(t: TestContext): Promise<string> {
-  const root = await tempProject(t, 'cland-skills-');
-  await projectHub(t, root, {}, { clock: new FakeClock(), harnesses: 'fake' });
-  return root;
-}
-
-/** The jq program of the template's frontier query, exactly as the template prints it. */
-async function frontierProgram(): Promise<string> {
-  const text = await readFile(TEMPLATE, 'utf8');
-  const block = /\*\*Frontier query\*\*[\s\S]*?```sh\n([\s\S]*?)```/.exec(text)?.[1];
-  assert.ok(block, 'the template has no frontier query block');
-  const program = /jq -r --arg map T-<map> '([\s\S]*)'/.exec(block)?.[1];
-  assert.ok(program, `the frontier block has no jq program:\n${block}`);
-  return program;
-}
-
-/** The template's frontier query for `map`: `cland task list --json | jq …`; the ids in the order it prints them. */
-async function frontier(root: string, map: string): Promise<string[]> {
-  const listed = ok(await cland(root, '', 'task', 'list', '--json')).stdout;
-  const jq = spawnSync('jq', ['-r', '--arg', 'map', map, await frontierProgram()], { input: listed, encoding: 'utf8' });
-  assert.equal(jq.status, 0, jq.stderr);
-  return jq.stdout
-    .split('\n')
-    .filter(Boolean)
-    .map((line) => line.split('\t')[0] as string);
-}
 
 // ------------------------------------------------------------------ the template's commands are real
 
@@ -200,75 +123,6 @@ test('ticket parent resolution preserves each source container or uses Ideas for
   }
 });
 
-// ------------------------------------------------------------------ /wayfinder
-
-const MAP_BODY = `## Destination
-
-A spec for magic-link login.
-
-## Notes
-
-Consult /domain-modeling.
-
-## Decisions so far
-
-## Not yet specified
-
-- Rate limits on link requests
-
-## Out of scope
-`;
-
-test('wayfinder: a map item, child tickets wired in a second pass, claim by assignee, the frontier through the CLI', { skip: !hasJq && 'jq is not installed' }, async (t) => {
-  const root = await project(t);
-  const map = await create(root, ['Magic-link login', '--kind', 'map', '--label', 'wayfinder:map'], MAP_BODY);
-  // an item outside the map never reaches its frontier
-  await create(root, ['--size', 'M', 'Unrelated chore']);
-  // chart: the tickets first…
-  const provider = await create(root, ['Which email provider sends the link?', '--kind', 'question', '--parent', map, '--label', 'wayfinder:research'], '## Question\n\nProvider?\n');
-  const lifetime = await create(root, ['How long does a link live?', '--kind', 'question', '--parent', map, '--label', 'wayfinder:grilling'], '## Question\n\nLifetime?\n');
-  const template = await create(root, ['What does the email say?', '--kind', 'question', '--parent', map, '--label', 'wayfinder:grilling'], '## Question\n\nCopy?\n');
-  const account = await create(root, ['--size', 'M', 'Open a sandbox account with the provider', '--kind', 'task', '--parent', map, '--label', 'wayfinder:task'], '## Question\n\nSandbox.\n');
-  // …then the blocking edges, once every ticket has its id
-  ok(await cland(root, '', 'task', 'link', template, '--blocked-by', provider));
-  ok(await cland(root, '', 'task', 'link', account, '--blocked-by', provider, '--blocked-by', lifetime));
-
-  assert.deepEqual((await list(root, '--kind', 'map')).map((i) => i.id), [map]);
-  assert.deepEqual((await itemFile(root, account)).fm.blocked_by, [provider, lifetime]);
-  assert.deepEqual(await frontier(root, map), [provider, lifetime]);
-
-  // claim: the hub's live hold first, then the assignee the frontier reads
-  ok(await cland(root, '', 'task', 'claim', provider, '--as', 'wf-1'));
-  ok(await cland(root, '', 'task', 'edit', provider, '--assignee', 'wf-1', '--as', 'wf-1'));
-  assert.equal((await itemFile(root, provider)).fm.assignee, 'wf-1');
-  assert.deepEqual(await frontier(root, map), [lifetime]);
-  // a concurrent session cannot take the same ticket
-  const refused = await cland(root, '', 'task', 'claim', provider, '--as', 'wf-2');
-  assert.notEqual(refused.code, 0, refused.stdout);
-
-  // resolve: comment, close, then a context pointer in the map's Decisions so far
-  ok(await cland(root, 'Postmark: it has a sandbox and a Node client.\n', 'task', 'comment', provider, '--body-file', '-', '--as', 'wf-1'));
-  ok(await cland(root, '', 'task', 'close', provider, '--as', 'wf-1'));
-  const body = ok(await cland(root, '', 'task', 'view', map, '--json')).stdout;
-  const current = (JSON.parse(body) as { item: View }).item.body;
-  const pointer = `- [Which email provider sends the link?](${(await view(root, provider)).path}) (${provider}): Postmark`;
-  const updated = current.replace('## Decisions so far\n', `## Decisions so far\n\n${pointer}\n`);
-  const bodyFile = join(root, 'map-body.md');
-  await writeFile(bodyFile, updated);
-  ok(await cland(root, '', 'task', 'edit', map, '--body-file', bodyFile, '--as', 'wf-1'));
-
-  const resolved = await view(root, provider);
-  assert.equal(resolved.state, 'closed');
-  assert.equal(resolved.claim, null, 'closing releases the claim');
-  assert.deepEqual(
-    resolved.comments.map((c) => [c.author, c.text]),
-    [['wf-1', 'Postmark: it has a sandbox and a Node client.']],
-  );
-  assert.ok((await itemFile(root, map)).text.includes(pointer), 'the map file holds the pointer');
-  // the closed blocker unblocks the email-copy ticket; the sandbox still waits on the lifetime
-  assert.deepEqual(await frontier(root, map), [lifetime, template]);
-});
-
 // ------------------------------------------------------------------ /triage
 
 test('triage: the attention buckets through `task list`, the roles applied through `task edit`', async (t) => {
@@ -335,8 +189,11 @@ test('task CLI reads --body-file - from real stdin without changing its UTF-8 bo
   child.stderr.on('data', chunk => { stderr += String(chunk); });
   const exited = new Promise<number | null>((resolve, reject) => { child.once('error', reject); child.once('close', resolve); });
   const closed = new Promise<void>(resolve => child.once('close', () => resolve()));
-  const stop = ownProcess(t, child.pid);
-  onCleanup(t, async () => { await stop(); await closed; });
+  // The ChildProcess handle owns this CLI directly; no process-table probe is needed.
+  onCleanup(t, async () => {
+    if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL');
+    await closed;
+  });
   child.stdin.end(input);
   assert.equal(await exited, 0, stderr);
   assert.equal((JSON.parse(stdout) as { item: View }).item.body, input);

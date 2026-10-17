@@ -1,4 +1,4 @@
-// T2 component: verification admission through session frames and the CLI; no suite workers run.
+// T3: native Git diff admission through the real verify CLI reserves all before queue or worker startup.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';

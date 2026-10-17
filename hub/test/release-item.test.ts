@@ -1,4 +1,4 @@
-// T2: release item rules through the dispatcher; one CLI preview/publication proof.
+// T3: native Git publication, rejection hooks and pinned retry receipts preserve release refs and item closure.
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
