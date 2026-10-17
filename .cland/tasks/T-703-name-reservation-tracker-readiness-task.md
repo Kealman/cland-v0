@@ -3,8 +3,9 @@ id: T-703
 kind: task
 title: Name reservation, tracker readiness, task migration, inbox load and the ask chain run in T1 and T2 with shared fixtures
 state: open
-status: planned
+status: in progress
 size: M
+criterion_seq: 5
 labels:
   - v0.1.4
   - verification
@@ -16,10 +17,10 @@ blocked_by:
   - T-685
   - T-686
   - T-687
-topic: null
-branch: null
+topic: topic-466
+branch: t/T-703-name-reservation-tracker-readiness-task
 created: 2026-10-16T19:59:37.302Z
-updated: 2026-10-17T21:48:43.015Z
+updated: 2026-10-17T22:05:23.051Z
 ---
 
 ## Summary
@@ -46,11 +47,20 @@ Tracker and hub rules dominate these files, at the cost of fixture rebuilds, ove
 ## Acceptance criteria
 
 - [ ] C1. The six files' manifest seconds fall from 234.7 s (A-3877) to 120 s or less on the merge path (T1–T3), with the large-seed run in T4.
-- [ ] C2. Their `startDaemon` call sites fall from 19 to 3 or less and `spawnSpoke` sites from 61 to 12 or less.
-- [ ] C3. No test in the six files mocks a builtin prototype, proved by a source check, and the moved rules pass the tier lint as T1 or T2.
-- [ ] C4. An audit maps every moved or rewritten assertion to its new place, with no behaviour claim dropped.
+- [x] C2. Their `startDaemon` call sites fall from 19 to 3 or less and `spawnSpoke` sites from 61 to 12 or less.
+  - done: impl-703 · 2026-10-17T22:05:21.412Z
+- [x] C3. No test in the six files mocks a builtin prototype, proved by a source check, and the moved rules pass the tier lint as T1 or T2.
+  - done: impl-703 · 2026-10-17T22:05:23.051Z
+- [x] C4. An audit maps every moved or rewritten assertion to its new place, with no behaviour claim dropped.
+  - done: impl-703 · 2026-10-17T22:04:51.834Z
 - [ ] C5. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
 
 ## Blocked by
 
 T-685, T-686, T-687.
+
+## Comments
+
+### impl-703 · 2026-10-17T21:58:47.285Z
+
+Implementation progress: ask-chain absorbs attribution (13 tests, 3.7 s); reservation peers now in-process and 12 permutations share four fixtures; inbox query invariants use 300-message transactions and a 300-item fixture, sharing the assertion body with a new 2000-item/3000-message T4 run. Readiness component rules split from native crash/Git coverage. SQLite faults/tracing now use fixture-owned openers; readiness retry scheduling and parse timing have injected seams. origin/dev remains current. Whole-file repetition and assertion audit next.

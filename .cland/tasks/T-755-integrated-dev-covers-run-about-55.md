@@ -3,7 +3,7 @@ id: T-755
 kind: task
 title: Integrated dev covers run about 55% slower than task full runs of the same code
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 2
 labels:
@@ -17,7 +17,7 @@ blocked_by: []
 topic: topic-458
 branch: t/T-755-integrated-dev-covers-run-about-55
 created: 2026-10-17T20:04:48.908Z
-updated: 2026-10-17T21:44:43.173Z
+updated: 2026-10-17T22:11:22.282Z
 ---
 
 ## Summary
@@ -30,13 +30,15 @@ Find what makes an integrated cover slower than a task run of the same tree. Can
 
 ## Acceptance criteria
 
-- [ ] C1. The cause is named with evidence (A-4721), and the task's droplet verify at the reviewed head passes the scripted-provider and remote-fixture regressions that deliver the receipt and the tmpfs temp root or its fallback; the live host receipt is checked in T-756 after merge and hub restart.
-  - failed: rev-30 [reviewer] · 2026-10-17T21:42:25.656Z · note Exact-head verification exits1 on two owned missing hard-duration allowances despite all assertions and30/30 owned repetitions passing.
+- [x] C1. The cause is named with evidence (A-4721), and the task's droplet verify at the reviewed head passes the scripted-provider and remote-fixture regressions that deliver the receipt and the tmpfs temp root or its fallback; the live host receipt is checked in T-756 after merge and hub restart.
+  - done: impl-755 · 2026-10-17T22:10:58.991Z
+  - verified: rev-30 [reviewer] · run rev-20261017-755-final · 2026-10-17T22:11:20.663Z · commit 33595b210f6f0688415b235a9a9451a8683a8318
 - [x] C2. Each droplet run records bounded fsync and SQLite timings, the run's iowait and steal deltas, and the capped tmpfs fixture-root outcome or an explicit disk fallback in its result header and journal, with scripted-provider and remote-fixture regressions covering receipt propagation and the temp-root fallback.
   - done: impl-755 · 2026-10-17T20:21:49.212Z
   - verified: rev-30 [reviewer] · run rev-20261017-755-source-correction · 2026-10-17T20:22:20.467Z · commit 76f78ec26770700f9dd6c1fd56064e77e9c92ce2
   - verified: rev-30 [reviewer] · run rev-20261017-755-readiness-delta · 2026-10-17T21:15:06.672Z · commit 95a57af55f05e552ca44a76bd4903dc560d9166a
   - verified: rev-30 [reviewer] · run rev-20261017-755-budget-delta · 2026-10-17T21:44:22.776Z · commit 33595b210f6f0688415b235a9a9451a8683a8318
+  - verified: rev-30 [reviewer] · run rev-20261017-755-final · 2026-10-17T22:11:20.663Z · commit 33595b210f6f0688415b235a9a9451a8683a8318
 
 ## Comments
 
@@ -161,3 +163,18 @@ Criteria: C2 verified.
 ### impl-755 · 2026-10-17T21:44:43.173Z
 
 Manifest-only delta source clear at 33595b210f6f0688415b235a9a9451a8683a8318 (A-4745). Submitted fresh mode-free droplet verification 4c77542c-f3c7-4685-addc-8c9c493628a6 at exact clean head, result to topic-458. Queue confirms local Coordinator stage; cover-quiet observed with no local tests/fallback. C1 still waits accepted runtime evidence; no head changes while idle.
+
+### rev-30 · 2026-10-17T22:11:20.663Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261017-755-final
+commit: 33595b210f6f0688415b235a9a9451a8683a8318
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+No findings. Exact-head4c77542c/A-4781 exits0:2114pass/0fail-cancel/5prerequisite skips, actual hub phases+Neovim smoke completed. All six owned ordinary cases and30/30 load repetitions pass; tmpfs6.178395376s/fallback5.179125727s within reviewed dated allowances. A-4782 records positive rows, provenance and machine accounting1536s/$0.1066. C1/C2 verified across source chain and current green. No live-host/performance improvement claimed; T-756 remains responsible after merge/restart under Coordinator split. Earlier failed receipts remain failed historical evidence.
+
+Criteria: C1 verified, C2 verified.

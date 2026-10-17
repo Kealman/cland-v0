@@ -3,8 +3,9 @@ id: T-707
 kind: task
 title: "The T3 scenario set: ten named end-to-end flows, each one file with one real hub and at most 120 s"
 state: open
-status: planned
+status: in progress
 size: M
+criterion_seq: 5
 labels:
   - v0.1.4
   - verification
@@ -21,10 +22,10 @@ blocked_by:
   - T-700
   - T-706
   - T-679
-topic: null
-branch: null
+topic: topic-467
+branch: t/T-707-the-t3-scenario-set-ten-named-end-to-end
 created: 2026-10-16T19:59:37.743Z
-updated: 2026-10-17T21:48:43.044Z
+updated: 2026-10-17T22:08:28.135Z
 ---
 
 ## Summary
@@ -52,12 +53,22 @@ Once rules are proven in T1 and T2, T3 must still prove the seams end to end wit
 
 ## Acceptance criteria
 
-- [ ] C1. `tiers.json` names exactly the ten scenarios, each one file under `hub/test/scenarios/` or `nvim/test/scenarios/`, with the header naming its flow and covering T1/T2 files.
-- [ ] C2. Each scenario's manifest seconds are 120 s or less, and its spawn census row shows no hub process start beyond those its header names (the restarts of scenario 1, none where it uses `projectHub`).
-- [ ] C3. An audit maps every moved test to its scenario step, with its assertions unchanged in meaning.
+- [x] C1. `tiers.json` names exactly the ten scenarios, each one file under `hub/test/scenarios/` or `nvim/test/scenarios/`, with the header naming its flow and covering T1/T2 files.
+  - done: impl-707 · 2026-10-17T21:59:52.778Z
+- [x] C2. Each scenario's manifest seconds are 120 s or less, and its spawn census row shows no hub process start beyond those its header names (the restarts of scenario 1, none where it uses `projectHub`).
+  - done: impl-707 · 2026-10-17T22:08:28.135Z
+- [x] C3. An audit maps every moved test to its scenario step, with its assertions unchanged in meaning.
+  - done: impl-707 · 2026-10-17T21:58:44.315Z
 - [ ] C4. Each scenario passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
-- [ ] C5. `docs/agents/tests.md` lists the scenario set, what each proves, and the rule for adding one.
+- [x] C5. `docs/agents/tests.md` lists the scenario set, what each proves, and the rule for adding one.
+  - done: impl-707 · 2026-10-17T21:59:53.790Z
 
 ## Blocked by
 
 T-679 (scenario entries).
+
+## Comments
+
+### impl-707 · 2026-10-17T22:03:33.824Z
+
+Drafted ten named T3 files, extracted existing core assertions, shared release/stage/plan fixture helpers, and routed smoke baselines to scenarios 1/2/9/10. C1/C3/C5 done; C3 assertion audit A-4755. Mac serial results: crew, droplet, hook bridge, hub lifecycle, tracer and release each 5/5. Stage-close passed 4 then failed at module-level shared suite.slot admission before its body (A-4764), so validation paused and reported to lead T-707 pending recovery/retry disposition. Census observer is being corrected for lifecycle tests replacing NODE_OPTIONS; its complete five-run rerun and startup/ticket/workbench samples remain. No source review or official verification requested yet.
