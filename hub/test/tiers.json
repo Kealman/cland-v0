@@ -42,6 +42,7 @@
       "contract": "claude-code"
     },
     "hub/test/claude-code-environment.test.ts": "T2",
+    "hub/test/claude-code-schedule.test.ts": "T2",
     "hub/test/claude-code-sessions.test.ts": "T3",
     "hub/test/cli-identity.test.ts": "T3",
     "hub/test/cli-imports.test.ts": "T3",

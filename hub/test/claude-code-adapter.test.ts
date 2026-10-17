@@ -7,14 +7,13 @@
 // - "Claude Code mod confirmation timeout": missing native confirmation and retry.
 // - "after a hub restart": resume across a real hub-process restart, with hooks/mod reconnected.
 // - "Claude unpinned binary launch": stop, native-conversation relaunch and environment frame.
-// Schedule and signed-out-latch cases temporarily remain until T-696's Clock seam lands
-// (Coordinator decision in topic-422); their negative waits migrate with that seam.
+// Scheduler and signed-out-latch negatives live in claude-code-schedule.test.ts on FakeClock.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { readFile, writeFile, unlink } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { projectHub, withDiscoveredPid, assertFirstLaunchClause, clandWithEnv, clauseAnswered, connectUi, eventually, fakeClaude, flushProjectLogs, killDaemon, sleep, spawnSpoke, startDaemon, tempProject, type FrameClient } from './harness.ts';
+import { projectHub, withDiscoveredPid, assertFirstLaunchClause, clandWithEnv, clauseAnswered, connectUi, eventually, fakeClaude, killDaemon, spawnSpoke, startDaemon, tempProject, type FrameClient } from './harness.ts';
 
 type Presence = { name: string; sessionId: string; state: string; status: string | null; role: string | null };
 type Harness = { name: string; harness: string; pid: number | null; harnessId: string | null; sessionId: string; harnessSessionId: string | null; status: string; state: string; attach: string | null; model: string | null; usage?: Record<string, unknown> };
@@ -297,155 +296,6 @@ test('after a hub restart, resume re-finds the running session through the proce
   await ui2.waitFor((f) => f.type === 'message' && (f.message as { text: string }).text === 'pong: still there?', 15_000);
   await aTurn(ui2, 'coord', mark); // busy pushed after the restart, then idle
   await presentAs(ui2, 'coord', 'idle');
-});
-
-test('Claude discovery and watch share the default 30-second schedule, and stop works before the next pid arrives', { timeout: 30_000 }, async (t) => {
-  t.after(() => t.mock.timers.reset());
-  const root = await tempProject(t);
-  const fake = await fakeClaude(t);
-  // Keep the production interval fixed while real CLI processes and hub frames run. A shortened
-  // wall-clock interval can expire during restart or --bg under load, legitimately discovering
-  // another PID and issuing a second agents call before the assertions below.
-  t.mock.timers.enable({ apis: ['Date'], now: Date.now() });
-  // eventually's wall-clock deadline must remain real while the scheduler's clock is frozen.
-  const observed = async <T>(what: string, check: () => Promise<T | undefined>): Promise<T> => {
-    const deadline = performance.now() + 15_000;
-    while (performance.now() < deadline) {
-      const value = await check();
-      if (value !== undefined) return value;
-      await sleep(50);
-    }
-    throw new Error(`${what}: not within 15000 ms`);
-  };
-  const env = { ...fake.env, CLAND_CLAUDE_AGENTS_MS: '', CLAUDE_CONFIG_DIR: fake.home };
-  const defaults = await projectHub(t, root, env);
-  const ui = await connectUi(t, defaults.discovery);
-  assert.match(await hubLog(root, ui), /"event":"claude-schedule","agentsMs":30000/);
-  await sleep(6 * Number(fake.env.CLAND_ADAPTER_POLL_MS)); // Negative: an idle directory stays quiet across six polls.
-  assert.equal((await fake.calls()).length, 0, 'an idle directory runs no CLI');
-  await launch(ui, 'first');
-  ui.close();
-  await defaults.stop();
-  // Reopen the real persisted adapter state without making elapsed process startup part of the proof.
-  const restarted = await projectHub(t, root, env);
-  const ui2 = await connectUi(t, restarted.discovery);
-  await observed('first re-found from the shared snapshot', async () => (await status(ui2)).harnesses.find(p => p.name === 'first' && p.status === 'running'));
-  const second = await launch(ui2, 'second');
-  assert.equal(second.pid, null, 'the next launch does not bypass the schedule');
-  assert.equal((await ui2.request({ type: 'session.stop', session: 'second' })).ok, true);
-  const calls = await fake.calls();
-  const polls = calls.filter(c => c.args[0] === 'agents');
-  assert.equal(polls.length, 1, 'launch discovery and watch use one call');
-  assert.equal(polls[0]?.configDir, fake.home);
-  assert.ok(calls.some(c => c.args[0] === 'stop' && c.args[1] === second.harnessId));
-  t.mock.timers.tick(29_999);
-  await sleep(6 * Number(fake.env.CLAND_ADAPTER_POLL_MS)); // Negative: liveness polls before the interval cannot run agents.
-  assert.equal((await fake.calls()).filter(c => c.args[0] === 'agents').length, 1, 'every agents call respects the resolved interval');
-  t.mock.timers.tick(1);
-  await observed('the next scheduled agents call', async () => (await fake.calls()).filter(c => c.args[0] === 'agents').length === 2 ? true : undefined);
-  assert.equal((await ui2.request({ type: 'session.stop', session: 'first' })).ok, true);
-  const count = (await fake.calls()).length;
-  t.mock.timers.tick(30_000);
-  await sleep(8 * Number(fake.env.CLAND_ADAPTER_POLL_MS)); // Negative: eight liveness polls cannot run the stopped agents watch.
-  assert.equal((await fake.calls()).length, count, 'no CLI after the last watch ends');
-  await restarted.stop();
-  t.mock.timers.reset();
-});
-
-
-test('a signed-out Claude directory is reported once, remains quiet across restart, and recovers only on explicit success', async (t) => {
-  const root = await tempProject(t);
-  const fake = await fakeClaude(t, { lateBg: true });
-  const env = { ...fake.env, CLAUDE_CONFIG_DIR: fake.home };
-  const { discovery } = await startDaemon(t, root, env);
-  const ui = await connectUi(t, discovery);
-  await ui.request({ type: 'subscribe' });
-  const sender = await spawnSpoke({ cwd: root, discover: true, name: 'sender', role: 'coordinator' });
-  t.after(() => sender.close());
-  await sender.waitForPresence(['sender']);
-  const running = await launch(ui, 'running');
-  await writeFile(join(fake.home, 'agents-hold'), '');
-  const inFlight = await eventually('a poll is in flight before the signed-out latch', () =>
-    readFile(join(fake.home, 'agents-started'), 'utf8').catch(() => undefined));
-  await sender.call('send', { to: ['running'], kind: 'progress', text: 'waiting input' });
-  const input = await ui.waitFor(f => f.type === 'message' && (f.message as { from: string; text: string }).from === 'sender' && (f.message as { text: string }).text === 'waiting input');
-  const inputId = (input.message as { id: string }).id;
-  await ui.request({ type: 'session.signal', session: 'running', launch: running.sessionId, event: 'turn-start', payload: { prompt_id: 'auth-turn', ids: [inputId] } });
-  await writeFile(join(fake.home, 'logged-out'), '');
-  const signal = { type: 'session.signal', session: 'running', launch: running.sessionId, event: 'turn-end', payload: { prompt_id: 'auth-turn', hook_event_name: 'StopFailure', error: 'authentication_failed' } };
-  assert.equal((await ui.request(signal)).ok, true);
-  assert.equal((await ui.request(signal)).ok, true);
-  await ui.waitFor(f => f.type === 'message' && (f.message as { kind?: string }).kind === 'claude-signed-out');
-  await sender.waitForEvent(e => e.params.content.includes(`signed out: ${fake.home}; see the Agents notice`));
-  await sleep(100);
-  assert.equal(sender.events.filter(e => e.params.content.includes(`signed out: ${fake.home}; see the Agents notice`)).length, 1, 'one sender delivery per latched directory');
-  // The latch prevents new polls; a child admitted before it can log its call later.
-  // Drain that observed child before counting, including across the hub restart.
-  await writeFile(join(fake.home, 'agents-release'), '');
-  await eventually('the pre-latch child finishes', () =>
-    readFile(join(fake.home, 'agents-finished'), 'utf8').catch(() => undefined));
-  const count = (await fake.calls()).length;
-  await sleep(4 * Number(fake.env.CLAND_ADAPTER_POLL_MS)); // Negative: a latched watch stays silent for four polls.
-  assert.equal((await fake.calls()).length, count, 'the latched watch makes no CLI calls');
-  assert.equal(await readFile(join(fake.home, 'agents-started'), 'utf8'), inFlight, 'the latch admits no new poll child');
-  ui.close();
-  assert.equal((await clandWithEnv(root, env, 'hub', 'stop')).code, 0);
-  const restarted = await startDaemon(t, root, env);
-  const ui2 = await connectUi(t, restarted.discovery);
-  await sleep(3 * Number(fake.env.CLAND_ADAPTER_POLL_MS)); // Negative: three idle polls cannot lift the signed-out latch.
-  assert.equal((await fake.calls()).length, count, 'latched startup resume makes no CLI calls');
-  assert.equal(await readFile(join(fake.home, 'agents-started'), 'utf8'), inFlight, 'restart admits no new poll child');
-  await ui2.request({ ...signal, event: 'turn-start', payload: { prompt_id: 'auth-turn', ids: [inputId] } });
-  await ui2.request(signal);
-  await sleep(100);
-  assert.equal(sender.events.filter(e => e.params.content.includes(`signed out: ${fake.home}; see the Agents notice`)).length, 1, 'sender deduplication survives restart');
-  const rows = (await ui2.request({ type: 'session.list' })).value as { processes: Array<{ name: string; status: string; state: string; stateReason?: string }> };
-  assert.ok(rows.processes.some(p => p.name === 'running' && p.status === 'running' && p.state === 'unknown' && p.stateReason === 'signed-out'));
-  for (const name of ['failed-one', 'failed-two']) {
-    const failed = await ui2.request({ type: 'session.launch', harness: 'claude-code', name });
-    assert.equal(failed.ok, false);
-    assert.match(failed.error ?? '', /expired/);
-  }
-  await flushProjectLogs(t, root);
-  const records = (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line));
-  assert.equal(records.filter(r => r.event === 'claude-signed-out').length, 1);
-  const history = (await ui2.request({ type: 'topic.history', topic: 'agents' })).value as { messages: Array<{ kind?: string; text: string }> };
-  const notices = history.messages.filter(m => m.kind === 'claude-signed-out');
-  assert.equal(notices.length, 1);
-  assert.equal(history.messages.filter(m => m.kind === 'turn-failed').length, 0, 'no generic human failure duplicate');
-  assert.ok(notices[0]?.text.includes(fake.home));
-  assert.ok(notices[0]?.text.includes('CLAUDE_CONFIG_DIR='));
-  assert.ok(notices[0]?.text.includes('claude auth login'));
-  await unlink(join(fake.home, 'logged-out'));
-  const recovered = await ui2.request({ type: 'session.launch', harness: 'claude-code', name: 'recovered' });
-  assert.equal(recovered.ok, true, recovered.error);
-  assert.match((recovered.value as { process: { warning: string } }).process.warning, /latched signed out/);
-  const before = (await fake.calls()).filter(c => c.args[0] === 'agents').length;
-  await eventually('polling resumes after the explicit success', async () => (await fake.calls()).filter(c => c.args[0] === 'agents').length > before ? true : undefined);
-  assert.ok(!(await fake.calls()).some(c => ['auth', 'doctor'].includes(c.args[0] ?? '')));
-  const recoveredProcess = (recovered.value as { process: Harness }).process;
-  const again = { ...signal, session: 'recovered', launch: recoveredProcess.sessionId };
-  await ui2.request(again);
-  const latched = (await fake.calls()).filter(c => c.args[0] === 'agents').length;
-  await ui2.request({ ...again, payload: { hook_event_name: 'StopFailure', error: 'server_error' } });
-  await sleep(3 * Number(fake.env.CLAND_ADAPTER_POLL_MS)); // Negative: three idle polls cannot lift the signed-out latch.
-  assert.equal((await fake.calls()).filter(c => c.args[0] === 'agents').length, latched, 'another StopFailure never lifts the latch');
-  await ui2.request({ ...again, payload: { hook_event_name: 'Stop' } });
-  await eventually('a pushed success resumes polling', async () => (await fake.calls()).filter(c => c.args[0] === 'agents').length > latched ? true : undefined);
-});
-
-test('an expired --bg launch latches a directory once without any discovery or retry calls', async (t) => {
-  const root = await tempProject(t);
-  const fake = await fakeClaude(t);
-  await writeFile(join(fake.home, 'logged-out'), '');
-  const { discovery } = await projectHub(t, root, { ...fake.env, CLAUDE_CONFIG_DIR: fake.home });
-  const ui = await connectUi(t, discovery);
-  for (const name of ['one', 'two']) assert.equal((await ui.request({ type: 'session.launch', harness: 'claude-code', name })).ok, false);
-  await sleep(3 * Number(fake.env.CLAND_ADAPTER_POLL_MS)); // Negative: a failed launch never starts discovery.
-  assert.deepEqual((await fake.calls()).map(c => c.args[0]), ['--bg', '--bg']);
-  await flushProjectLogs(t, root);
-  const journal = await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8');
-  assert.equal(journal.split('\n').filter(line => line.includes('"event":"claude-signed-out"')).length, 1);
 });
 
 // One real environment frame proof; the four-way table lives in claude-code-environment.test.ts.
