@@ -19,7 +19,7 @@ blocked_by:
 topic: topic-452
 branch: t/T-741-eight-t2-tagged-tests-that-start-git-jq
 created: 2026-10-17T15:18:07.293Z
-updated: 2026-10-17T17:32:24.433Z
+updated: 2026-10-17T17:51:35.764Z
 ---
 
 ## Summary
@@ -36,9 +36,11 @@ For each file, either replace the child with T-719's injected reader or an in-pr
   - done: impl-741 · 2026-10-17T16:43:05.882Z
   - verified: rev-30 [reviewer] · run rev-20261017-741-source · 2026-10-17T16:51:43.578Z · commit 578ed3439e99f00432ac7b5b985a939bc1a6b44d
   - verified: rev-30 [reviewer] · run rev-20261017-741-final · 2026-10-17T17:32:22.850Z · commit 578ed3439e99f00432ac7b5b985a939bc1a6b44d
+  - verified: rev-30 [reviewer] · run rev-20261017-741-merge-delta · 2026-10-17T17:51:35.044Z · commit 49c0ef7e998d5a260a9f77661390e1f7a4a546a1
 - [x] C2. An audit maps every moved assertion, and each touched file passes 5/5 on the Mac and once in the task's droplet verify.
   - done: impl-741 · 2026-10-17T17:31:36.121Z
   - verified: rev-30 [reviewer] · run rev-20261017-741-final · 2026-10-17T17:32:22.850Z · commit 578ed3439e99f00432ac7b5b985a939bc1a6b44d
+  - verified: rev-30 [reviewer] · run rev-20261017-741-merge-delta · 2026-10-17T17:51:35.044Z · commit 49c0ef7e998d5a260a9f77661390e1f7a4a546a1
 
 ## Comments
 
@@ -129,3 +131,39 @@ Criteria: C1 verified, C2 verified.
 ### impl-741 · 2026-10-17T17:32:24.433Z
 
 Exact reviewed head 578ed343 verified green by droplet run 5a82d710-55ca-47cc-8da5-cccd309ec90e (A-4664): 2103 pass, 0 failures, 5 unrelated skips; Linux x64, c-8 lon1, workers 2, lifetime 1600s, $0.1111. A-4667 confirms all 46 scoped declarations in all ten destination files passed without skips; all five moved declarations also passed load gate 5/5. C2 now done. Expected report-only T3 increase +22.660s is exactly the observed seconds of six promoted native files plus the extracted jq contract, broken down in A-4667; Coordinator will refresh T3 base at E-677 stage close before hard budgets. Awaiting final same-head evidence verdict.
+
+### impl-741 · 2026-10-17T17:50:45.900Z
+
+Coordinator-authorized conflict-only dev merge pushed at 49c0ef7e998d5a260a9f77661390e1f7a4a546a1. Only conflict tiers.json; preserved all dev entries outside the ten owned tags, all ten reviewed tags and sorted order. T-690 retag overlap is empty; all twelve task test/support sources are byte-identical to 578ed343. Requested tier/lint checks pass and suite-tiers.test.ts 5/5 serial (40 passing declarations, no skips). Proof/receipts A-4679. Delta review delivered through reviewer. Per Coordinator decision 0b7bafd0-dbea-4826-b0ba-3df1b66366c8, no verify rerun: 5a82d710 remains the execution receipt.
+
+### rev-30 · 2026-10-17T17:51:35.044Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261017-741-merge-delta
+commit: 49c0ef7e998d5a260a9f77661390e1f7a4a546a1
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-741 conflict-only delta — clear
+
+Reviewed head49c0ef7e998d5a260a9f77661390e1f7a4a546a1, parents prior final578ed3439e99f00432ac7b5b985a939bc1a6b44d and incoming dev7ae2053ac52cadb75637d3207d1ff364b3cbf2f4. Primary Coordinator0b7bafd0-dbea-4826-b0ba-3df1b66366c8 read directly: authorized rule11 conflict-only merge, preserve ten tags/all outside dev entries, requested lint/tier/five serial checks, no verify rerun; prior5a82d710 stands.
+
+## Standards
+No findings. Independent JSON comparison proves the merged manifest is exactly the complete incoming dev map overlaid with ten prior reviewed task tags, sorted. All outside entries and all other manifest fields equal incoming dev. Ten retained tags: T2 lead-permissions-component, skills-tracker, suite-queue-policy; T3 lead-permissions, release-item, skills-tracker-jq, suite-check, suite-dry-run, territory-cli, verify-all. Independent comparison of T-690a1fb7a24 with its parent finds no overlap with those ten paths, so no silent tag override occurred.
+
+All twelve task test/support files independently byte-identical to reviewed578ed343. Own diff against incoming dev remains those twelve and tiers.json only; no own production/fixture edit from conflict resolution. Other source changes are inherited dev.
+
+## Spec/evidence
+C1/C2 refreshed with no new assertion mapping or execution claim. Prior A-4635 source and A-4668 final analysis retain all46 declarations and behavior. Linux5a82d710/A-4664 actually ran at578ed343, not at this merge head; its continued acceptance here is the explicit Coordinator disposition above. That receipt has2103pass/zero failures/five unrelated skips, all ten destination files46cases and25/25moved-identity repetitions, Neovim smoke complete. Original accepted Mac5/5 remains unchanged-source evidence.
+
+A-4679 requested checks audited: test:tiers reports43hubfree/236machine; supplied report lint declares all ten at their exact qualifying tiers. Five raw suite-tiers TAP files each8pass/0fail/0cancel/0skip,40passes total. timings.json reports all code0, maximum sampled one-minute load3.78759765625, reported-test median0.716674125s and process-wall median0.872428541s. No Reviewer execution or new task run.
+
+A-4667's expected report-only T3 increase22.660s/0.52% remains disclosed; it reflects promoted native carriers rather than a speed-compliance claim. Primary e73f2be1 assigns the E-677 stage-close base refresh to the Coordinator before hard budgets. No per-item QA.
+
+Standards0/Spec0 findings. Delta clear; verify all C1/C2 at49c0ef7e under the explicit retained-receipt disposition. No verification rerun requested.
+Durable review A-4681.
+
+Criteria: C1 verified, C2 verified.

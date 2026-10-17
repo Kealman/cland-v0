@@ -17,7 +17,7 @@ blocked_by: []
 topic: topic-455
 branch: t/T-742-some-droplet-results-print-lifetime
 created: 2026-10-17T15:49:20.649Z
-updated: 2026-10-17T17:31:32.127Z
+updated: 2026-10-17T17:58:26.285Z
 ---
 
 ## Summary

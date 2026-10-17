@@ -3,7 +3,7 @@ id: T-744
 kind: task
 title: Test lint judges a file's tier without following its fixture and helper imports
 state: open
-status: in progress
+status: ready
 size: M
 criterion_seq: 2
 labels:
@@ -17,7 +17,7 @@ blocked_by: []
 topic: topic-454
 branch: t/T-744-test-lint-judges-a-file-s-tier-without
 created: 2026-10-17T16:06:54.285Z
-updated: 2026-10-17T17:48:08.113Z
+updated: 2026-10-17T17:56:30.916Z
 ---
 
 ## Summary
@@ -30,10 +30,12 @@ The lint resolves a test file's local imports (hub/test helpers and fixtures, tr
 
 ## Acceptance criteria
 
-- [ ] C1. Planted T1 tests importing a projectHub helper and a child-spawning helper each get a reachable-resource diagnostic naming the import path, a pure helper adds none, and the direct qualifies result and findings used by admission are unchanged, proved by lint tests.
-  - failed: rev-30 [reviewer] · 2026-10-17T17:48:08.113Z · note Pure-helper reachability includes native module initialization from uncalled dynamic import/require; separate hoisted static initialization from reached dynamic calls and re-review the committed correction.
+- [x] C1. Planted T1 tests importing a projectHub helper and a child-spawning helper each get a reachable-resource diagnostic naming the import path, a pure helper adds none, and the direct qualifies result and findings used by admission are unchanged, proved by lint tests.
+  - done: impl-744 · 2026-10-17T17:51:18.052Z
+  - verified: rev-30 [reviewer] · run rev-20261017-744-source-correction · 2026-10-17T17:55:58.861Z · commit ef549ee569621999de02b0d2adab84b55f5f8303
 - [x] C2. The review request lists every dev file whose reachable tier differs from its direct qualification, names the harness-initialization-only subset separately, and shows npm run test:lint under 10 s on the Mac.
   - done: impl-744 · 2026-10-17T17:46:05.425Z
+  - verified: rev-30 [reviewer] · run rev-20261017-744-source-correction · 2026-10-17T17:55:58.861Z · commit ef549ee569621999de02b0d2adab84b55f5f8303
 
 ## Comments
 
@@ -90,3 +92,46 @@ Not clear; one medium Spec finding, no separate Standards findings. FailC1. No c
 Durable review A-4676.
 
 Criteria: C1 failed (Pure-helper reachability includes native module initialization from uncalled dynamic import/require; separate hoisted static initialization from reached dynamic calls and re-review the committed correction.).
+
+### impl-744 · 2026-10-17T17:55:08.715Z
+
+M1 correction committed/pushed as ef549ee569621999de02b0d2adab84b55f5f8303, no dev merge. Red→green regression proves uncalled/CLI-guard dynamic import and require do not initialize native modules; called/top-level positives still report resources. Corrected evidence A-4683 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-4683-t-744-m1-correction-at-ef549ee5-refreshed-census-and-serial-5-5-evidence):25 lint tests, typecheck/tiers pass, Mac lint6.79s, allthree files5/5 serially at this head (380 passes,0 failure/cancellation/skip, maxload5.562),314 direct results unchanged, refreshed91-difference census with zero harness-init-only subset, dry-run314 lines/205726bytes. C1 re-marked done; C2 remains done. Replacement source review requested via Reviewer role; verification held for clear verdict.
+
+### rev-30 · 2026-10-17T17:55:58.861Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261017-744-source-correction
+commit: ef549ee569621999de02b0d2adab84b55f5f8303
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-744 source correction — clear
+
+Exact head ef549ee569621999de02b0d2adab84b55f5f8303, direct child of reviewed d4900339. Fixed base remains incoming dev41fa374226b8ce67644eb1af2fa52d7916679e4c; no dev merge after source review. Scope delta, read-only review with no Reviewer execution or delegation.
+
+## Standards
+No findings. Production delta is one logical line: dynamic/require call edges remain solely in runtimeCalls instead of being inserted into the hoisted static imports array. Added focused test uses planted source/temporary files only, without executing child/socket resource text; T1 boundary unchanged. No admission, manifest, gate, branch-evaluation or unrelated source changes.
+
+## Spec
+M1/A-4676 resolved. select('$init') now takes only static import/re-export initialization globally; dynamic edges come from walking their reached call node. Held function bodies and excluded process.argv/fileURLToPath CLI branches remain unexecuted in initialization slices. A selected called function/top-level dynamic call still yields its dependency initialization and resources. Both import() and require() have eight planted caller cases covering the two negatives/two positives, resource path presence/absence, and unchanged directT1/empty findings.
+
+Prior full source analysis A-4676 applies to unchanged graph resolution, per-module/export caches, named/local/re-export dependencies, static/registered initialization, namespace/star fallbacks, type/data/external/repo-boundary exclusions, and cycle handling. Primary383d1b85/29ff668c/4725ee1c/76d04cad scope remains diagnostic-only: no branch, DI or method-override evaluation and no reachable-tier admission enforcement. Direct-source result/policy logic is unchanged by this correction. Supplied full314-file comparison again reports identical direct qualifies and findings arrays versus T-743.
+
+C1 verified from source plus corrected targeted proof. C2 verified from corrected complete census and supplied Mac timing: all91 differing dev paths are listed in request/A-4683, with representative reasons;7T1→T2,28T1→T3,56T2→T3 independently counted from differences.json. Direct57/58/199 and reachable22/9/283; paths refreshed although ceilings unchanged. Harness-initialization-only existing subset explicitly0 after controlled removal of just the two preload imports; supplied comparison not rerun by Reviewer. Synthetic initialization effect and T-747/T-748 ownership remain disclosed.
+
+## Corrected evidence
+A-4683 raw15 logs independently parsed: lint25×5, tiers8×5, runner43×5=380passes,zero failure/cancellation/skips. serial.json binds all15 to ef549ee5 and max sampled load5.56201171875. Reported process wall ranges lint0.328–0.417s, tiers0.696–0.887s, runner63.518–69.427s. Static typecheck/tiers supplied green. Final Mac test:lint6.79s real under10s is supplied; no Reviewer timing run.
+
+Dry-run integration JSON independently has314 reachable summaries and compact encoded size205726bytes<1048576, with no candidate/worker execution claimed. CLI keeps detailed paths while dry run keeps kinds/highest-tier representative; report bounds do not rely on dropping file summaries. Earlier A-4671 source/diagnostic context remains historical, not substituted for these corrected raw runs.
+
+Standards0/Spec0 remaining findings. Source clear; verify C1/C2. This is a source verdict, not a passing task-verification receipt. Implementer may submit normal mode-free exact-head droplet verification and await final same-head evidence review. No per-item QA.
+Durable review A-4685.
+
+Criteria: C1 verified, C2 verified.
+
+### impl-744 · 2026-10-17T17:56:30.916Z
+
+Source correction clear (A-4685, rev-20261017-744-source-correction) at ef549ee569621999de02b0d2adab84b55f5f8303; C1/C2 verified. Submitted exact-head mode-free droplet verify8758bf4f-f4ca-44d6-a28a-df6280fe7f12, topic-454, to impl-744/coord, queue position1. Clean tree confirmed; no new dev merge or source changes. Going idle until hub result; final same-head evidence verdict remains pending.
