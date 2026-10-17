@@ -30,6 +30,7 @@ export async function fixture(t: TestContext, options: { machine?: 'scripted' | 
   let stopHub = async () => {};
   beforeDirectories(t, async () => {
     await stopHub();
+    if (process.env.CLAND_TEST_REMOTE_CENSUS) t.diagnostic(`remote census: ${api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length} droplets; ${scripted || options.hub === projectHub ? 0 : 1} initial daemon starts`);
     // Stop and observe detached watchdogs too, before deleting their lease files.
     if (!scripted) await cleanupProcesses(root, [], undefined, undefined, []);
     if (!options.api) {
@@ -74,7 +75,7 @@ export async function fixture(t: TestContext, options: { machine?: 'scripted' | 
     for (const file of ['setsid', 'timeout', 'sha256sum', 'flock']) await chmod(join(bin, file), 0o700);
   }
   const bin = join(api.stateRoot, 'bin');
-  const env = { CLAND_EXECUTOR_STATE: join(root, '.cland/executor-state'), DIGITALOCEAN_TOKEN: token, CLAND_DIGITALOCEAN_API: api.url, CLAND_SSH_BIN: resolve('hub/test/fakes/digitalocean/ssh'), CLAND_SCP_BIN: resolve('hub/test/fakes/digitalocean/scp'), CLAND_TEST_FAKE_MACHINE_ROOT: api.stateRoot, PATH: `${bin}:${process.env.PATH}`, CLAND_TEST_DROPLET_POLL_MS: '20', CLAND_TEST_DROPLET_MACHINE_MS: '2000', CLAND_TEST_DROPLET_RUN_POLL_MS: '50', CLAND_TEST_DROPLET_CANCEL_MS: '500', CLAND_TEST_DROPLET_RELEASE_MS: '500', CLAND_TEST_EXECUTOR_SWEEP_MS: '200', CLAND_TEST_DROPLET_WATCHDOG_POLL_MS: '50', ...options.env };
+  const env = { CLAND_EXECUTOR_STATE: join(root, '.cland/executor-state'), DIGITALOCEAN_TOKEN: token, CLAND_DIGITALOCEAN_API: api.url, CLAND_SSH_BIN: resolve('hub/test/fakes/digitalocean/ssh'), CLAND_SCP_BIN: resolve('hub/test/fakes/digitalocean/scp'), CLAND_TEST_FAKE_MACHINE_ROOT: api.stateRoot, PATH: `${bin}:${process.env.PATH}`, CLAND_TEST_DROPLET_POLL_MS: '20', CLAND_TEST_DROPLET_MACHINE_MS: '200', CLAND_TEST_DROPLET_RUN_POLL_MS: '50', CLAND_TEST_DROPLET_CANCEL_MS: '500', CLAND_TEST_DROPLET_RELEASE_MS: '500', CLAND_TEST_EXECUTOR_SWEEP_MS: '200', CLAND_TEST_DROPLET_WATCHDOG_POLL_MS: '50', ...options.env };
   if (options.territory) {
     const initialized = await cland(root, 'init');
     assert.equal(initialized.code, 0, initialized.stderr);
@@ -87,7 +88,7 @@ export async function fixture(t: TestContext, options: { machine?: 'scripted' | 
   if ('stop' in daemon) stopHub = daemon.stop;
   const ui = await connectUi(t, daemon.discovery);
   assert.equal((await ui.request({ type: 'role.set', session: 'impl', role: 'implementer' })).ok, true);
-  const spoke = scripted ? await inProcessSpoke(t, { discover: true, assignRole: false, cwd: root, name: 'impl', sessionId: 'remote-impl', role: 'implementer' }) : await spawnSpoke({ discover: true, assignRole: false, cwd: root, name: 'impl', sessionId: 'remote-impl', role: 'implementer' });
+  const spoke = scripted || options.hub === projectHub ? await inProcessSpoke(t, { discover: true, assignRole: false, cwd: root, name: 'impl', sessionId: 'remote-impl', role: 'implementer' }) : await spawnSpoke({ discover: true, assignRole: false, cwd: root, name: 'impl', sessionId: 'remote-impl', role: 'implementer' });
   onCleanup(t, () => spoke.close()); await spoke.waitForPresence(['impl']);
   const actor = { CLAND_SESSION_NAME: 'impl', CLAND_SESSION_ID: 'remote-impl', CLAND_ROLE: 'implementer' };
   const item = scripted ? ((await ui.request({ type: 'task.create', size: 'M', title: 'Remote fixture', assignee: 'impl' })).value as { item: { id: string } }).item.id : JSON.parse((await cland(root, 'task', 'create', '--size', 'M', 'Remote fixture', '--assignee', 'impl', '--json')).stdout).item.id as string;

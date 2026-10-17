@@ -1,3 +1,4 @@
+import { watch } from 'node:fs';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { appendFile, copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
@@ -8,7 +9,7 @@ const run = promisify(execFile);
 const [mode, ...args] = process.argv.slice(2);
 const state = process.env.CLAND_TEST_FAKE_MACHINE_ROOT!;
 const mapping = JSON.parse(await readFile(join(state, 'addresses.json'), 'utf8')) as Record<string, string>;
-const faults = JSON.parse(await readFile(join(state, 'machine-faults.json'), 'utf8')) as { ssh?: boolean; sshFailures?: number; startReplyLost?: number; startMarkerOnly?: number; checkoutDifference?: boolean; install?: boolean; marker?: boolean; delayMs?: number; delayCommand?: string };
+const faults = JSON.parse(await readFile(join(state, 'machine-faults.json'), 'utf8')) as { ssh?: boolean; sshFailures?: number; startReplyLost?: number; startMarkerOnly?: number; checkoutDifference?: boolean; install?: boolean; marker?: boolean; delayMs?: number; delayCommand?: string; blockFile?: string; blockCommand?: string };
 await appendFile(join(state, 'machine-calls.jsonl'), `${JSON.stringify({ mode, args, faults, env: process.env })}\n`);
 // Options in the driver's fixed vector always occur in pairs.
 let index = 0;
@@ -47,6 +48,14 @@ if (mode === 'scp') {
     faults.startMarkerOnly--; await writeFile(join(state, 'machine-faults.json'), JSON.stringify(faults));
     const runId = /runs\/([a-zA-Z0-9-]+)/.exec(command)![1]!;
     await writeFile(join(home, 'runs', runId, 'started'), ''); process.exit(255);
+  }
+  if (faults.blockFile && faults.blockCommand && command.includes(faults.blockCommand)) {
+    // Install the watcher before checking the receipt, so an early release is never lost.
+    await new Promise<void>((resolve, reject) => {
+      const watcher = watch(state, () => { void readFile(faults.blockFile!).then(() => { watcher.close(); resolve(); }, () => {}); });
+      watcher.on('error', reject);
+      void readFile(faults.blockFile!).then(() => { watcher.close(); resolve(); }, () => {});
+    });
   }
   if (faults.delayMs && (!faults.delayCommand || command.includes(faults.delayCommand))) await new Promise(r => setTimeout(r, faults.delayMs));
   if (faults.install && command.includes('npm ci')) process.exit(1);

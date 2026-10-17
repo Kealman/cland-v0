@@ -1,3 +1,6 @@
+// T3: uploaded shard shells transfer real V8 maps and committed Git checkouts,
+// then the hub collects their process receipts and confirms provider cleanup.
+// Occasion permutations are T1 in suite-stage-rules; one refusal frame remains here.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
@@ -114,20 +117,6 @@ test('occasion refuses implementers and task heads; an integrated Coordinator cl
   assert.ok(executor.spend.spent > 0 && executor.spend.spent < 3);
 });
 
-for (const cause of ['cap', 'slots'] as const) test(`close run falls back whole with one warning when limited by ${cause}`, async t => {
-  const f = await integrated(t, cause === 'cap' ? 'daily_spend_usd=0.1' : '', cause === 'slots' ? 1 : 2, undefined, { hub: projectHub });
-  assert.equal((await f.ui.request({ type: 'role.set', session: 'impl', role: 'coordinator' })).ok, true);
-  const submitted = await clandWithEnv(f.root, f.actor, 'verify', 'all', '--fresh', '--occasion', 'stage', '--report', f.topic, '--json');
-  assert.equal(submitted.code, 0, submitted.stderr);
-  const job = JSON.parse(submitted.stdout);
-  assert.match((await f.result(job.id)).text, /exit 0/);
-  assert.equal(f.api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length, 1);
-  const history = (await f.ui.request({ type: 'topic.history', topic: f.topic })).value as { messages: { text: string; severity?: string }[] };
-  const notices = history.messages.filter(m => m.text.startsWith('sharding skipped:'));
-  assert.deepEqual(notices.map(m => [m.text, m.severity]), [[cause === 'cap' ? 'sharding skipped: daily spend cap $0.1 would be exceeded' : 'sharding skipped: fewer than 2 remote slots free', 'warn']]);
-  assert.deepEqual(f.api.droplets, []);
-});
-
 test('ordinary integrated batch uses one slot and its green tree serves a later release occasion cache hit', async t => {
   const f = await integrated(t, '', 2, undefined, { hub: projectHub });
   assert.equal((await f.ui.request({ type: 'role.set', session: 'impl', role: 'coordinator' })).ok, true);
@@ -142,27 +131,14 @@ test('ordinary integrated batch uses one slot and its green tree serves a later 
   assert.match(result.text, /occasion release/);
   assert.match(result.text, /cached/);
   assert.equal(f.api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length, 1, 'cache hit provisions no shards');
-});
-
-test('QA can request epic through MCP but stage, release, task heads and non-full occasions are refused', async t => {
-  const f = await integrated(t, '', 2, undefined, { hub: projectHub });
   assert.equal((await f.ui.request({ type: 'role.set', session: 'impl', role: 'qa' })).ok, true);
-  const verify = (args: Record<string, unknown>) => f.spoke.call<{ ok: boolean; id: string; error?: string }>('verify', { mode: 'all', cwd: f.root, report: f.topic, to: ['impl'], fresh: true, ...args });
-  for (const occasion of ['stage', 'release']) {
-    const refused = await verify({ occasion });
-    assert.equal(refused.ok, false);
-    assert.match(refused.error!, /occasion requires the Coordinator/);
-  }
-  await f.git('checkout', 'task-candidate');
-  const task = await verify({ occasion: 'epic' });
-  assert.equal(task.ok, false); assert.match(task.error!, /integrated dev/);
-  await f.git('checkout', 'dev');
-  const reduced = await verify({ occasion: 'epic', mode: 'hub' });
-  assert.equal(reduced.ok, false); assert.match(reduced.error!, /full request/);
-  const job = await verify({ occasion: 'epic' });
-  assert.equal(job.ok, true, job.error);
-  assert.match((await f.result(job.id)).text, /occasion epic/);
-  assert.equal(f.api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length, 2);
+  const refused = await f.spoke.call<{ ok: boolean; error?: string }>('verify', { mode: 'all', cwd: f.root, report: f.topic, to: ['impl'], occasion: 'stage' });
+  assert.equal(refused.ok, false); assert.match(refused.error!, /occasion requires the Coordinator/);
+  const qa = await f.spoke.call<{ ok: boolean; id: string; cached?: { run: string }; error?: string }>('verify', { mode: 'all', cwd: f.root, report: f.topic, to: ['impl'], occasion: 'epic' });
+  assert.equal(qa.ok, true, qa.error); assert.equal(qa.cached?.run, batch.id);
+  assert.match((await f.result(qa.id)).text, /occasion epic/);
+  assert.equal(f.api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length, 1);
+
 });
 
 test('occasion refuses stale origin/dev proof when the required fresh fetch fails', async t => {

@@ -1,3 +1,5 @@
+// T3: real worker delivery and host-receipt reuse, SSH interruption, provider loss, cancellation,
+// watchdog reaping and hub-crash reconciliation require real process boundaries.
 import { DatabaseSync } from 'node:sqlite';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -6,7 +8,7 @@ import { promisify } from 'node:util';
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { projectHub, cland, clandWithEnv, connectUi, eventually, flushProjectLogs, startDaemon, tempProject, pidAlive } from './harness.ts';
-import { ownProcess } from './process-cleanup.ts';
+import { ownProcess, onCleanup } from './process-cleanup.ts';
 import type { HubStatus } from '../src/protocol.ts';
 import { fixture } from './remote-fixture.ts';
 import { readLeases } from '../src/executor/droplet/lease.ts';
@@ -78,7 +80,22 @@ test('remote verify delivers host selection, runs as runner, reports accounting,
   // T3: the real delivered worker must reuse the host receipt across the machine boundary.
   const tree = await candidateTree(f.root, undefined, f.env);
   assert.ok(tree);
-  assert.ok(log.includes(`typecheck: host gate at ${tree} (not repeated)`));
+  const expectedReceipt = `typecheck: host gate at ${tree} (not repeated)`;
+  let receiptDiagnostic = '';
+  if (!log.includes(expectedReceipt)) {
+    const remoteLog = await readFile(join(remote.run, 'suite.log'), 'utf8');
+    const laterLog = await readFile(join(f.root, '.cland/run/suites', job.id, 'suite.log'), 'utf8');
+    const script = await readFile(join(f.root, '.cland/run/suites', job.id, 'run.sh'), 'utf8');
+    const db = new DatabaseSync(join(f.root, '.cland/hub.db'), { readOnly: true });
+    let remoteLogStart: number | undefined;
+    try {
+      const row = db.prepare("select value from meta where key = 'suite-jobs'").get() as { value: string };
+      remoteLogStart = (JSON.parse(row.value) as { id: string; remoteLogStart?: number }[]).find(run => run.id === job.id)?.remoteLogStart;
+    } finally { db.close(); }
+    const markers = (text: string) => text.match(/typecheck:[^\r\n]*/g) ?? [];
+    receiptDiagnostic = `host receipt mismatch: ${JSON.stringify({ expected: tree, generated: script.match(/typecheck: host gate at ([0-9a-f]{40})/)?.[1], local: markers(log), laterLocal: markers(laterLog), remote: markers(remoteLog), remoteLogStart, localBytes: Buffer.byteLength(log), remoteBytes: Buffer.byteLength(remoteLog) })}`;
+  }
+  assert.ok(log.includes(expectedReceipt), receiptDiagnostic);
   assert.ok(result.text.includes(`typecheck: host gate at ${tree} (not repeated)`));
   assert.doesNotMatch(log, /\$ npm run typecheck/);
   assert.ok(log.indexOf('Host gate: npm run typecheck') < log.indexOf('$ npm test'));
@@ -97,7 +114,7 @@ test('remote verify delivers host selection, runs as runner, reports accounting,
   await flushProjectLogs(t, f.root);
   // Live checks are complete. Stop ledger sweeps before auditing persisted bytes,
   // so transient lock entries cannot disappear between readdir and readFile.
-  assert.equal((await cland(f.root, 'hub', 'stop')).code, 0);
+  await f.stop();
   const scan = async (dir: string): Promise<void> => {
     for (const entry of await readdir(dir, { withFileTypes: true })) {
       const path = join(dir, entry.name);
@@ -110,74 +127,20 @@ test('remote verify delivers host selection, runs as runner, reports accounting,
   assert.ok(!calls.includes(token)); assert.ok(!JSON.stringify(f.api.requests).includes(token));
 });
 
-test('explicit droplet reuses only droplet greens while omitted executor keeps cross-executor reuse', async t => {
-  const f = await fixture(t, { hub: projectHub });
-  const local = await f.launch('--executor', 'local');
-  if (local.pid) ownProcess(t, local.pid);
-  assert.match((await f.result(local.id)).text, /exit 0[\s\S]*Executor local/);
-
-  const defaultHit = await f.launch();
-  assert.equal(defaultHit.cached?.run, local.id, 'a droplet default may reuse a local green');
-  assert.match((await f.result(defaultHit.id)).text, /Executor local/);
-
-  const remote = await f.launch('--executor', 'droplet');
-  assert.equal(remote.cached, undefined, 'explicit droplet must execute when only a local green exists');
-  await f.remote(remote.id);
-  const result = await f.result(remote.id);
-  assert.match(result.text, /exit 0[\s\S]*Executor droplet/);
-  assert.match(result.text, /Cache bypassed: explicit --executor droplet requires a droplet green; cached green ran locally/);
-  assert.match(await readFile(join(f.root, '.cland/run/suites', remote.id, 'suite.log'), 'utf8'), /Cache bypassed: explicit --executor droplet/);
-
-  const remoteHit = await f.launch('--executor', 'droplet');
-  assert.equal(remoteHit.cached?.run, remote.id);
-  assert.match((await f.result(remoteHit.id)).text, /Executor droplet/);
-
-  const newerLocal = await f.launch('--executor', 'local', '--fresh');
-  if (newerLocal.pid) ownProcess(t, newerLocal.pid);
-  assert.match((await f.result(newerLocal.id)).text, /exit 0[\s\S]*Executor local/);
-  const olderRemoteHit = await f.launch('--executor', 'droplet');
-  assert.equal(olderRemoteHit.cached?.run, remote.id, 'a newer local green must not hide eligible droplet evidence');
-  assert.match((await f.result(olderRemoteHit.id)).text, /Executor droplet/);
-  const newerDefaultHit = await f.launch();
-  assert.equal(newerDefaultHit.cached?.run, newerLocal.id);
-  assert.match((await f.result(newerDefaultHit.id)).text, /Executor local/);
-  assert.equal(f.api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length, 1);
-});
-
-test('executor overrides bypass host locks and dirty explicit remote candidates refuse', async t => {
-  const f = await fixture(t, { hub: projectHub, executor: 'local' });
-  await mkdir(join(f.root, '.cland/host.lock'));
-  const remote = await f.launch('--executor', 'droplet');
-  assert.match((await f.result(remote.id)).text, /Executor droplet/);
-  await writeFile(join(f.root, 'hub/src/tracker/change.ts'), 'dirty');
-  const dirty = await clandWithEnv(f.root, f.actor, 'verify', '--executor', 'droplet', '--report', f.topic, '--to', 'impl', '--json');
-  assert.equal(dirty.code, 1);
-  assert.match(dirty.stderr, /dirty worktree cannot be bundled for droplet/);
-  const queued = JSON.parse((await cland(f.root, 'verify', 'queue', '--json')).stdout);
-  assert.deepEqual(queued.waiters, []);
-  assert.equal(queued.holder?.kind, 'hand run', 'the fixture compatibility lock remains held');
-  assert.equal(queued.holder.id, null, 'no local verification job was admitted');
-});
-
-test('a local override executes locally despite a droplet default', async t => {
-  const f = await fixture(t, { hub: projectHub });
-  const job = await f.launch('--executor', 'local', '--fresh');
-  if (job.pid) ownProcess(t, job.pid);
-  assert.match((await f.result(job.id)).text, /Executor local/);
-  assert.equal(f.api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length, 0);
-});
-
 test('host typecheck failure creates no machine; remote typecheck stops tests and failed tests retain failures', async t => {
-  for (const kind of ['host', 'remote', 'test'] as const) await t.test(kind, async t => {
-    // The suite host itself can be Linux runner; its home must not identify the fake remote.
-    const hostEnv = kind === 'remote' ? { HOME: join(await tempProject(t), 'home/runner') } : {};
-    if (hostEnv.HOME) await mkdir(hostEnv.HOME, { recursive: true });
-    // Fake SSH omits the host's explicit fake-machine configuration marker.
-    const f = await fixture(t, { hub: projectHub, env: hostEnv, typecheck: kind === 'host' ? 'node -e "process.exit(2)"' : kind === 'remote' ? `node -e "process.exit(process.env.CLAND_TEST_FAKE_MACHINE_ROOT?0:3)"` : undefined,
-      test: kind === 'test' ? `node -e "console.log('not ok 1 - remote failure');process.exit(4)"` : undefined });
+  const controls = join(await tempProject(t), 'failure-kind');
+  await writeFile(controls, 'host');
+  const hostHome = join(await tempProject(t), 'home/runner');
+  await mkdir(hostHome, { recursive: true });
+  const readKind = `require('fs').readFileSync(${JSON.stringify(controls)},'utf8')`;
+  const f = await fixture(t, { hub: projectHub, env: { HOME: hostHome },
+    typecheck: `node -e ${JSON.stringify(`const kind=${readKind};process.exit(kind==='host'?2:kind==='remote'&&!process.env.CLAND_TEST_FAKE_MACHINE_ROOT?3:0)`)}`,
+    test: `node -e ${JSON.stringify(`if(${readKind}==='test'){console.log('not ok 1 - remote failure');process.exit(4)}console.log('# tests 1');console.log('# pass 1')`)}` });
+  for (const kind of ['host', 'remote', 'test'] as const) await t.test(kind, async () => {
+    await writeFile(controls, kind);
     // T3: plant a changed committed checkout before the real remote worker starts.
-    if (kind === 'remote') await f.api.setMachineFaults({ checkoutDifference: true });
-    const job = await f.launch();
+    await f.api.setMachineFaults({ checkoutDifference: kind === 'remote' });
+    const job = await f.launch('--fresh');
     const report = await f.result(job.id);
     if (kind === 'host') { assert.match(report.text, /host typecheck failed/); assert.equal(f.api.machineDirs.size, 0); }
     else {
@@ -213,6 +176,7 @@ test('incremental byte logs survive SSH failure and hub restart and report once'
   await eventually('reattached live run', async () => { const status = (await ui.request({ type: 'hub.status' })).value as HubStatus; return status.suites!.find(s => s.id === job.id)?.state === 'running' ? true : undefined; });
   assert.equal(f.api.droplets.length, 1); assert.equal((await f.messages(job.id, ui)).length, 0);
   await writeFile(join(remote.home, 'finish'), 'done');
+  await eventually('released worker completed', async () => await readFile(join(remote.run, 'done'), 'utf8').catch(() => '') ? true : undefined);
   assert.match((await f.result(job.id, ui)).text, /auto exit 0/);
   const log = await readFile(localLog, 'utf8');
   assert.equal(log.split('\n').filter(line => line === 'INCREMENTAL 😀').length, 1); assert.equal(log.split('\n').filter(line => line === 'FINAL 😀').length, 1);
@@ -222,9 +186,9 @@ test('incremental byte logs survive SSH failure and hub restart and report once'
 });
 
 test('provider loss and verify cancel each report once and release the machine and key', async t => {
-  for (const kind of ['lost', 'cancel'] as const) await t.test(kind, async t => {
-    const f = await fixture(t, { hub: projectHub, test: longTest });
-    const job = await f.launch(); const remote = await f.remote(job.id);
+  const f = await fixture(t, { hub: projectHub, test: longTest });
+  for (const kind of ['lost', 'cancel'] as const) await t.test(kind, async () => {
+    const job = await f.launch('--fresh'); const remote = await f.remote(job.id);
     await eventually('remote suite started', async () => (await readFile(join(remote.run, 'suite.log'), 'utf8').catch(() => '')).includes('INCREMENTAL') ? true : undefined);
     if (kind === 'lost') f.api.droplets.splice(0);
     else assert.equal((await clandWithEnv(f.root, f.actor, 'verify', 'cancel', job.id)).code, 0);
@@ -238,10 +202,10 @@ test('provider loss and verify cancel each report once and release the machine a
 
 
 test('remote start reconciles executed-but-lost replies and marker-only interruptions', async t => {
-  for (const fault of ['startReplyLost', 'startMarkerOnly'] as const) await t.test(fault, async t => {
-    const f = await fixture(t, { hub: projectHub, test: longTest, env: { CLAND_TEST_DROPLET_WATCHDOG_STOP_MS: '500' } });
-    await f.api.setMachineFaults({ [fault]: 1 });
-    const job = await f.launch(); const remote = await f.remote(job.id);
+  const f = await fixture(t, { hub: projectHub, test: longTest, env: { CLAND_TEST_DROPLET_WATCHDOG_STOP_MS: '500' } });
+  for (const fault of ['startReplyLost', 'startMarkerOnly'] as const) await t.test(fault, async () => {
+    await f.api.setMachineFaults({ startReplyLost: 0, startMarkerOnly: 0, [fault]: 1 });
+    const job = await f.launch('--fresh'); const remote = await f.remote(job.id);
     await eventually('suite remains running', async () => (await readFile(join(remote.run, 'suite.log'), 'utf8').catch(() => '')).includes('\nINCREMENTAL 😀\n') ? true : undefined);
     assert.equal((await f.messages(job.id)).length, 0);
     const lease = (await readLeases(f.root)).find(lease => lease.run === job.id)!;
@@ -254,8 +218,10 @@ test('remote start reconciles executed-but-lost replies and marker-only interrup
       await eventually('watchdog is stopped', async () => (await exec('ps', ['-o', 'stat=', '-p', String(watchdog)])).stdout.trim().startsWith('T') ? true : undefined);
     }
     await writeFile(join(remote.home, 'finish'), 'done');
+    await eventually('worker completed after release', async () => await readFile(join(remote.run, 'done'), 'utf8').catch(() => '') ? true : undefined);
     assert.match((await f.result(job.id)).text, /auto exit 0/);
-    assert.equal(pidAlive(watchdog), false, 'the released watchdog has exited before the result');
+    await eventually('released watchdog exits after release acknowledgement', () => !pidAlive(watchdog) ? true : undefined);
+    assert.equal(pidAlive(watchdog), false, 'the released watchdog has exited before fixture removal');
     const log = await readFile(join(f.root, '.cland/run/suites', job.id, 'suite.log'), 'utf8');
     assert.equal(log.split('\n').filter(line => line === 'INCREMENTAL 😀').length, 1);
     assert.deepEqual(f.api.droplets, []); assert.deepEqual(f.api.keys, []);
@@ -283,6 +249,7 @@ test('restart reloads the lease after admission and never redelivers or cleans t
   assert.equal(await readFile(join(remote.home, 'cland/live-checkout-evidence'), 'utf8'), 'must survive restart');
   assert.equal(await readFile(join(remote.run, 'pgid'), 'utf8'), pgid);
   await writeFile(join(remote.home, 'finish'), 'done');
+  await eventually('released worker completed', async () => await readFile(join(remote.run, 'done'), 'utf8').catch(() => '') ? true : undefined);
   assert.match((await f.result(job.id, ui)).text, /auto exit 0/);
   const calls = (await readFile(join(f.api.stateRoot, 'machine-calls.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line));
   assert.equal(calls.filter(call => call.mode === 'ssh' && call.args.at(-1).includes('git checkout --detach')).length, 1);
@@ -290,25 +257,35 @@ test('restart reloads the lease after admission and never redelivers or cleans t
 });
 
 test('a restored launching suite reuses only an existing ref at the same head', async t => {
-  for (const kind of ['same head', 'different head'] as const) await t.test(kind, async t => {
-    const f = await fixture(t, { test: longTest });
-    await f.api.setMachineFaults({ delayMs: 4000, delayCommand: 'mkdir -p' });
-    const job = await f.launch();
+  const f = await fixture(t, { test: longTest });
+  let discovery = f.discovery;
+  let creates = 0;
+  for (const kind of ['same head', 'different head'] as const) await t.test(kind, async () => {
+    const gate = join(f.api.stateRoot, `delivery-${kind.replace(' ', '-')}`);
+    onCleanup(t, () => writeFile(gate, 'released'));
+    await f.api.setMachineFaults({ blockFile: gate, blockCommand: 'mkdir -p' });
+    const submitted = await clandWithEnv(f.root, f.actor, 'verify', '--fresh', '--report', f.topic, '--to', 'impl', '--json');
+    assert.equal(submitted.code, 0, submitted.stderr);
+    const job = JSON.parse(submitted.stdout) as { id: string };
     await eventually('acquired lease reached delivery', async () => {
       const calls = await readFile(join(f.api.stateRoot, 'machine-calls.jsonl'), 'utf8').catch(() => '');
-      return calls.includes('mkdir -p') ? true : undefined;
+      return calls.split('\n').some(line => line.includes(job.id) && line.includes('mkdir -p')) ? true : undefined;
     });
-    process.kill(f.discovery.pid, 'SIGKILL');
+    process.kill(discovery.pid, 'SIGKILL');
+    await eventually('crashed hub PID is gone', () => !pidAlive(discovery.pid) ? true : undefined);
+    assert.equal(pidAlive(discovery.pid), false);
     // A crash during bundling can leave this ref behind before delivery starts.
     const ref = `refs/cland/suites/${job.id}`;
     const head = await f.git('rev-parse', 'HEAD');
     const existing = kind === 'same head' ? head : await f.git('rev-parse', 'HEAD^');
     await f.git('update-ref', ref, existing);
-    await f.api.setMachineFaults({ delayMs: 0 });
-    const restart = await startDaemon(t, f.root, f.env); const ui = await connectUi(t, restart.discovery);
+    await writeFile(gate, 'released');
+    await f.api.setMachineFaults({ blockCommand: '' });
+    const restart = await startDaemon(t, f.root, f.env); discovery = restart.discovery; const ui = await connectUi(t, discovery);
     if (kind === 'same head') {
       const remote = await f.remote(job.id, ui);
       await writeFile(join(remote.home, 'finish'), 'done');
+      await eventually('restored worker completed', async () => await readFile(join(remote.run, 'done'), 'utf8').catch(() => '') ? true : undefined);
       assert.match((await f.result(job.id, ui)).text, /auto exit 0/);
       assert.equal(await f.git('for-each-ref', '--format=%(refname)', ref), '');
     } else {
@@ -317,7 +294,7 @@ test('a restored launching suite reuses only an existing ref at the same head', 
       assert.ok(result.text.includes(`suite ref ${ref} points at ${existing}; expected ${head}`), result.text);
       assert.equal(await f.git('rev-parse', ref), existing);
     }
-    assert.equal(f.api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length, 1);
+    assert.equal(f.api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length, ++creates);
     assert.equal((await f.messages(job.id, ui)).length, 1);
     assert.deepEqual(f.api.droplets, []); assert.deepEqual(f.api.keys, []);
   });

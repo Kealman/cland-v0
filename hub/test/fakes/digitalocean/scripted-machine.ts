@@ -51,7 +51,7 @@ export function scriptedMachine(root: string, clock: FakeClock, key: PrepareKey,
       if (execution.script.outcome === 'lost') return { state: 'lost', code: 1, cause: 'remote machine lost' };
       if (!execution.cancelled && (execution.script.outcome === 'slow' || clock.now().getTime() < execution.started + (execution.script.afterMs ?? 100))) return { state: 'running' };
       execution.finished ??= execution.started + (execution.script.afterMs ?? 100);
-      return { state: 'done', code: execution.cancelled || execution.script.outcome === 'red' ? 1 : 0, finished: new Date(execution.finished).toISOString(), platform: { os: 'Linux', arch: 'x64', release: 'scripted', node: key.node, nvim: key.nvim.tag } };
+      return { state: 'done', code: execution.cancelled || execution.script.outcome === 'red' ? 1 : 0, finished: new Date(execution.finished).toISOString(), platform: { os: 'linux', arch: 'x64', release: 'scripted', node: key.node, nvim: key.nvim.tag } };
     },
     async log(lease, offset) {
       record('log', lease);

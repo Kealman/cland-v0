@@ -19,7 +19,7 @@ export async function fakeDigitalOcean(token: string, options: { machine?: 'scri
   let nextAddress = 10;
   const dropletAddresses = new Map<number, string>();
   const addresses: Record<string, string> = {};
-  const machineFaults = { ssh: false, sshFailures: 0, startReplyLost: 0, startMarkerOnly: 0, checkoutDifference: false, install: false, marker: false, delayMs: 0, delayCommand: '' };
+  const machineFaults = { ssh: false, sshFailures: 0, startReplyLost: 0, startMarkerOnly: 0, checkoutDifference: false, install: false, marker: false, delayMs: 0, delayCommand: '', blockFile: '', blockCommand: '' };
   await writeFile(join(stateRoot, 'addresses.json'), '{}');
   await writeFile(join(stateRoot, 'machine-faults.json'), JSON.stringify(machineFaults));
   const images: SnapshotImage[] = [];

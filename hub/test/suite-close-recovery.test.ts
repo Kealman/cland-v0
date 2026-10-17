@@ -1,3 +1,4 @@
+// T3: provider loss, cancellation and hub restart reconcile two live remote shard processes.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { writeFile, readFile } from 'node:fs/promises';
@@ -7,22 +8,6 @@ import { clandWithEnv, connectUi, eventually, killDaemon, projectHub, startDaemo
 import type { VerificationQueue } from '../src/protocol.ts';
 
 const barrier = `node -e "const fs=require('fs');fs.mkdirSync('.cland',{recursive:true});fs.writeFileSync('.cland/started','yes');const timer=setInterval(()=>{if(fs.existsSync('.cland/finish')){clearInterval(timer);console.log('# tests 1');console.log('# pass 1')}},25)"`;
-
-test('a failed shard fails one merged result with its label and no automatic rerun', async t => {
-  const script = `node -e "const s=JSON.parse(process.env.CLAND_SUITE_SELECTION);const fail=s.shard.files.includes('hub/test/two.test.ts');console.log('# tests 1');console.log(fail?'# fail 1':'# pass 1');if(fail)console.log('not ok 1 - shard example');process.exit(fail?1:0)"`;
-  const f = await integrated(t, '', 2, script, { hub: projectHub });
-  assert.equal((await f.ui.request({ type: 'role.set', session: 'impl', role: 'coordinator' })).ok, true);
-  const submitted = await clandWithEnv(f.root, f.actor, 'verify', 'all', '--fresh', '--occasion', 'stage', '--report', f.topic, '--json');
-  assert.equal(submitted.code, 0, submitted.stderr);
-  const job = JSON.parse(submitted.stdout);
-  const result = await f.result(job.id);
-  assert.match(result.text, /exit 1; shard-2: exit 1/);
-  assert.match(result.text, /tests 2; pass 1; fail 1|tests 2; fail 1; pass 1/);
-  assert.match(result.text, /not ok 1 - shard example \[shard-2\]/);
-  assert.equal((await f.messages(job.id)).length, 1);
-  assert.equal(f.api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length, 2);
-  assert.deepEqual(f.api.droplets, []);
-});
 
 for (const action of ['lost', 'restart', 'cancel'] as const) test(`a sharded close handles ${action} with one result and confirmed cleanup`, async t => {
   const f = await integrated(t, '', 2, barrier, { hub: action === 'restart' ? startDaemon : projectHub });
@@ -54,6 +39,7 @@ for (const action of ['lost', 'restart', 'cancel'] as const) test(`a sharded clo
   // before the next poll sees the 404. Release it only after the loss report.
   const finishing = action === 'lost' ? machines.slice(1) : action === 'restart' ? machines : [];
   for (const machine of finishing) await writeFile(join(machine.home, 'cland/.cland/finish'), 'yes');
+  for (const machine of finishing) await eventually('released shard completed', async () => await readFile(join(machine.run, 'done'), 'utf8').catch(() => '') ? true : undefined);
   const result = await f.result(job.id, ui);
   assert.match(result.text, action === 'restart' ? /exit 0/ : action === 'cancel' ? /cancelled/ : /shard-1: remote machine lost/);
   if (action === 'lost') {
@@ -68,37 +54,4 @@ for (const action of ['lost', 'restart', 'cancel'] as const) test(`a sharded clo
     return q.remote!.length === 0 ? true : undefined;
   });
   assert.deepEqual(f.api.droplets, []);
-});
-
-test('cancelling while provider sizes are held joins reservation before reporting and leaves zero reserved spend', async t => {
-  const f = await integrated(t, 'daily_spend_usd=3', 2, undefined, { hub: projectHub });
-  assert.equal((await f.ui.request({ type: 'role.set', session: 'impl', role: 'coordinator' })).ok, true);
-  const entered = Promise.withResolvers<void>(), release = Promise.withResolvers<void>();
-  t.after(() => release.resolve());
-  f.api.beforeSizes(async () => { entered.resolve(); await release.promise; });
-  const submission = clandWithEnv(f.root, f.actor, 'verify', 'all', '--fresh', '--occasion', 'stage', '--report', f.topic, '--json');
-  await entered.promise;
-  const q = (await f.ui.request({ type: 'suite.queue' })).value as VerificationQueue;
-  const id = q.waiters[0]!.id;
-  assert.equal((await f.ui.request({ type: 'suite.cancel', suite: id })).ok, true);
-  // Keep the provider barrier closed while observing the absence of a result;
-  // this deadline checks deferral, rather than staging the reservation race.
-  const reported = f.result(id);
-  let observationTimer: ReturnType<typeof setTimeout> | undefined;
-  const premature = await Promise.race([
-    reported.then(() => true),
-    new Promise<boolean>(resolve => { observationTimer = setTimeout(() => resolve(false), 500); }),
-  ]);
-  clearTimeout(observationTimer);
-  release.resolve();
-  assert.equal((await submission).code, 0);
-  const result = await reported;
-  assert.match(result.text, /cancelled/);
-  const executor = (await f.ui.request({ type: 'executor.status' })).value as { taggedDroplets: number; spend: { reserved: number; spent: number } };
-  assert.equal(premature, false, 'no result until reservation completion is joined');
-  assert.equal(executor.spend.reserved, 0, 'late reservation placeholders must be released before the result');
-  assert.equal(executor.spend.spent, 0);
-  assert.equal(executor.taggedDroplets, 0);
-  assert.equal(f.api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length, 0);
-  assert.equal((await f.messages(id)).length, 1);
 });

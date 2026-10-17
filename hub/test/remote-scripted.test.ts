@@ -20,7 +20,7 @@ test('scripted remote verification acquires, delivers, starts, collects and rele
   await f.clock.advance(1000);
   const report = await reported;
   assert.match(report.text, /exit 0/);
-  assert.match(report.text, /Linux/);
+  assert.match(report.text, /linux/);
   assert.match(report.text, /tests 1; pass 1/);
   const steps = f.machine.calls.filter(call => call.run === submitted.id).map(call => call.step);
   for (const step of ['ready', 'deliver', 'start', 'status', 'log', 'release']) assert.ok(steps.includes(step), `${step} crossed its boundary`);

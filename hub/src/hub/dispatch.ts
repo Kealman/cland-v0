@@ -1,5 +1,6 @@
 import type { DropletDependencies } from '../executor/droplet/dependencies.ts';
 import type { ClockTimer } from './clock.ts';
+import { authorizeVerifyOccasion } from '../verification-occasion.ts';
 import { HarnessModels } from '../models.ts';
 import { AccountLimited } from '../accounts/limits.ts';
 import { prefixOf } from '../tracker/prefixes.ts';
@@ -1427,8 +1428,7 @@ export class Dispatcher {
         if (!request.dryRun || request.report) this.#suitePermissions(actor, topic, to);
         if (request.mode === 'all' && actor && callerNow()?.role !== 'coordinator' && !request.occasion) throw new VerifyAllReserved();
         if (request.occasion) {
-          const role = callerNow()?.role;
-          if (role !== 'coordinator' && !(role === 'qa' && request.occasion === VERIFY_OCCASIONS.epic)) throw new Error('occasion requires the Coordinator, or QA with occasion epic');
+          authorizeVerifyOccasion(callerNow()?.role, request.occasion);
         }
       };
       const failure = async (error: unknown): Promise<HubFrame> => {

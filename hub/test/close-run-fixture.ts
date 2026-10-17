@@ -5,7 +5,7 @@ import { fixture } from './remote-fixture.ts';
 import { cland, projectHub, startDaemon } from './harness.ts';
 import assert from 'node:assert/strict';
 
-export async function integrated(t: Parameters<typeof fixture>[0], config = '', remoteBudget = 2, script?: string, options: { hub?: typeof projectHub | typeof startDaemon; territory?: boolean; env?: Record<string, string> } = {}) {
+export async function integrated(t: Parameters<typeof fixture>[0], config = '', remoteBudget = 2, script?: string, options: Pick<NonNullable<Parameters<typeof fixture>[1]>, 'machine' | 'clock' | 'script' | 'hub' | 'territory' | 'env'> = {}) {
   const f = await fixture(t, { ...options, ...(script ? { test: script } : {}), config: `remote_budget=${remoteBudget}\nshards=2\nlifetime="15m"\nrun_timeout="5m"\n${config}` });
   await f.git('checkout', 'dev');
   await mkdir(join(f.root, 'hub/test'), { recursive: true });

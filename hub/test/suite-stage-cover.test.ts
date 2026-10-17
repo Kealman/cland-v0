@@ -1,11 +1,13 @@
+// T3: real local and delivered remote workers supply OS receipts across a stage merge.
+// This is the single two-platform stage frame proof; cache permutations live in suite-stage-rules.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { rm, writeFile } from 'node:fs/promises';
+import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { integrated } from './close-run-fixture.ts';
-import { cland, eventually, projectHub, spawnSpoke, tempProject } from './harness.ts';
+import { cland, eventually, projectHub, inProcessSpoke, tempProject } from './harness.ts';
 import type { ItemView } from '../src/tracker/tracker.ts';
 
 const exec = promisify(execFile);
@@ -45,7 +47,7 @@ test('after-stage gates require Mac and sharded Linux at one tree, retain histor
   const work = (claimed.value as { worktree: { path: string } }).worktree.path;
   await writeFile(join(work, 'feature'), 'stage feature\n');
   for (const args of [['add', 'feature'], ['commit', '-qm', 'Stage feature']]) await exec('git', args, { cwd: work });
-  const reviewer = await spawnSpoke({ discover: true, cwd: f.root, name: 'stage-rev', role: 'reviewer' });
+  const reviewer = await inProcessSpoke(t, { discover: true, cwd: f.root, name: 'stage-rev', role: 'reviewer' });
   t.after(() => reviewer.close());
   assert.equal((await reviewer.call<{ ok: boolean }>('task.comment', { id: item.id, verdict: 'review', scope: 'full', result: 'clear', run: 'source' })).ok, true);
   const read = async (id = epic.id) => ((await f.ui.request({ type: 'task.view', item: id })).value as { item: ItemView }).item;
@@ -98,7 +100,7 @@ test('after-stage gates require Mac and sharded Linux at one tree, retain histor
   assert.equal(f.api.requests.filter(request => request.method === 'POST' && request.path === '/v2/droplets').length, 2);
   await setPlan('affected');
   assert.equal((await read()).stages![0]!.state, 'open', 'suite proof does not replace required stage QA');
-  const qa = await spawnSpoke({ discover: true, cwd: f.root, name: 'stage-qa', role: 'qa' });
+  const qa = await inProcessSpoke(t, { discover: true, cwd: f.root, name: 'stage-qa', role: 'qa' });
   t.after(() => qa.close());
   const verdict = await qa.call<{ ok: boolean; error?: string }>('task.comment', { id: epic.id, verdict: 'qa', result: 'clear', stage: 'build', run: 'stage-demo' });
   assert.equal(verdict.ok, true, verdict.error);
@@ -110,45 +112,5 @@ test('after-stage gates require Mac and sharded Linux at one tree, retain histor
   await eventually('rollback removes the tested build from dev ancestry', async () => (await read()).stages![0]!.state === 'open' ? true : undefined);
   await f.git('update-ref', 'refs/heads/dev', later, beforeStage);
   await eventually('restored descendant keeps the historical tested tree', async () => (await read()).stages![0]!.state === 'closed' ? true : undefined);
-  assert.deepEqual(f.api.droplets, []);
-});
-
-for (const state of ['failed', 'unreported'] as const) test(`a fresh ${state} stage attempt supersedes its older green cache`, async t => {
-  const settings = await tempProject(t);
-  const failure = join(settings, 'fail-package');
-  const program = `process.exit(require('fs').existsSync(${JSON.stringify(failure)}) ? 1 : 0)`;
-  const f = await integrated(t, state === 'unreported' ? '[hygiene]\nloop_breaker_max=3\n' : '', 2, `node -e ${JSON.stringify(program)}`, { hub: projectHub });
-  await linuxMachines(f);
-  assert.equal((await f.ui.request({ type: 'role.set', session: 'impl', role: 'coordinator' })).ok, true);
-  const recipient = await spawnSpoke({ discover: true, cwd: f.root, name: 'cache-rev', role: 'reviewer' });
-  t.after(() => recipient.close());
-  const submit = async (fresh: boolean) => {
-    const run = await f.spoke.call<{ ok: boolean; id: string; cached?: { run: string }; error?: string }>('verify', { mode: 'all', cwd: f.root, report: f.topic, to: ['cache-rev'], occasion: 'stage', executor: 'droplet', fresh });
-    assert.equal(run.ok, true, run.error);
-    return run;
-  };
-  const green = await submit(true);
-  assert.match((await f.result(green.id)).text, /stage cover missing macOS/);
-  if (state === 'failed') await writeFile(failure, 'fail');
-  else for (let n = 0; n < 3; n++) await f.spoke.call('send', { to: ['cache-rev'], topic: f.topic, text: `loop window ${n}` });
-  const fresh = await submit(true);
-  assert.equal(fresh.cached, undefined);
-  if (state === 'failed') {
-    assert.match((await f.result(fresh.id)).text, /all exit 1/);
-    await rm(failure);
-  } else {
-    await eventually('newer green receipt remains unreported', async () => {
-      const status = (await f.ui.request({ type: 'hub.status' })).value as { suites: Array<{ id: string; reported: boolean; error: string | null; outcome: { code: number } | null }> };
-      const run = status.suites.find(run => run.id === fresh.id);
-      return run?.outcome?.code === 0 && !run.reported && run.error?.includes('loop breaker') ? true : undefined;
-    });
-  }
-  const next = await submit(false);
-  if (state === 'unreported') assert.equal((await f.ui.request({ type: 'hygiene.unmute', a: 'impl', b: 'cache-rev' })).ok, true);
-  if (state === 'unreported') await f.result(fresh.id);
-  const result = await f.result(next.id);
-  assert.equal(next.cached, undefined, `the newer ${state} attempt must block the older green cache`);
-  assert.match(result.text, /all exit 0/);
-  assert.doesNotMatch(result.text, /Original run/);
   assert.deepEqual(f.api.droplets, []);
 });

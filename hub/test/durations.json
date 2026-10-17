@@ -2792,13 +2792,13 @@
     "hub/test/suite-selection-report.test.ts::a broad deciding-file list publishes once below the 768-byte cap and stays complete in the log": 3.499279,
     "hub/test/suite-selection-report.test.ts::auto suite reports the fetched diff decision and transports it to the package; --all forces full": 4.673337,
     "hub/test/suite-selection-report.test.ts::integrated dev verify publishes a portable function map once; task verify never captures": 7.650449,
-    "hub/test/suite-selection.test.ts::.agents/skills/qa/SKILL.md selects hub-only by the non-nvim rule": 0.000049,
-    "hub/test/suite-selection.test.ts::.cland/crew.toml selects hub-only by the non-nvim rule": 0.000047,
-    "hub/test/suite-selection.test.ts::.cland/roles.toml selects hub-only by the non-nvim rule": 0.000046,
-    "hub/test/suite-selection.test.ts::.cland/tasks/T-214.md selects hub-only by the non-nvim rule": 0.000049,
+    "hub/test/suite-selection.test.ts::.agents/skills/qa/SKILL.md selects hub-only by the non-nvim rule": 4.9e-05,
+    "hub/test/suite-selection.test.ts::.cland/crew.toml selects hub-only by the non-nvim rule": 4.7e-05,
+    "hub/test/suite-selection.test.ts::.cland/roles.toml selects hub-only by the non-nvim rule": 4.6e-05,
+    "hub/test/suite-selection.test.ts::.cland/tasks/T-214.md selects hub-only by the non-nvim rule": 4.9e-05,
     "hub/test/suite-selection.test.ts::a missing map explicitly falls back to the package rule": 0.098052,
     "hub/test/suite-selection.test.ts::a remote fixture diff retains the T4 harness self-tests": 2.326561,
-    "hub/test/suite-selection.test.ts::adapter event contract runs full": 0.000077,
+    "hub/test/suite-selection.test.ts::adapter event contract runs full": 7.7e-05,
     "hub/test/suite-selection.test.ts::adding a literal template hub import in a nested Neovim test widens selection at admission": 0.185869,
     "hub/test/suite-selection.test.ts::adding a static hub import in a nested Neovim test widens selection at admission": 0.1846,
     "hub/test/suite-selection.test.ts::both packages runs full": 0.000114,
@@ -2822,8 +2822,8 @@
     "hub/test/suite-selection.test.ts::crew CLI runs full": 0.000142,
     "hub/test/suite-selection.test.ts::criteria changes plan only Neovim runtime importers plus smoke and coverage-selected hub tests": 0.219921,
     "hub/test/suite-selection.test.ts::dependency parser reads literal template imports and helper re-exports": 0.000608,
-    "hub/test/suite-selection.test.ts::docs/agents/tests.md selects hub-only by the non-nvim rule": 0.000055,
-    "hub/test/suite-selection.test.ts::dot segment runs full": 0.000059,
+    "hub/test/suite-selection.test.ts::docs/agents/tests.md selects hub-only by the non-nvim rule": 5.5e-05,
+    "hub/test/suite-selection.test.ts::dot segment runs full": 5.9e-05,
     "hub/test/suite-selection.test.ts::empty diff runs full": 0.000124,
     "hub/test/suite-selection.test.ts::empty diffs and failed fetches run full with their reason, never using a stale dev ref": 0.093878,
     "hub/test/suite-selection.test.ts::fetched dev selects committed and working changes, all forces full, and integrated dev stays full": 0.173643,
@@ -2835,20 +2835,20 @@
     "hub/test/suite-selection.test.ts::hub-only admission retains both locks through smoke, omits the other package's remaining tests, and all widens the run": 3.887179,
     "hub/test/suite-selection.test.ts::hub-selected executes covering tests and both smoke baselines, omitting unrelated tests": 1.724313,
     "hub/test/suite-selection.test.ts::hub/package.json is shared infrastructure and forces full": 0.000191,
-    "hub/test/suite-selection.test.ts::hub/src/cli/role.ts is shared infrastructure and forces full": 0.000065,
-    "hub/test/suite-selection.test.ts::hub/src/cli/roles.ts is shared infrastructure and forces full": 0.000091,
-    "hub/test/suite-selection.test.ts::hub/src/crew.ts selects hub-only by the non-nvim rule": 0.000062,
-    "hub/test/suite-selection.test.ts::hub/src/hub/core.ts selects hub-only by the non-nvim rule": 0.000083,
-    "hub/test/suite-selection.test.ts::hub/src/hub/dispatch.ts selects hub-only by the non-nvim rule": 0.000077,
-    "hub/test/suite-selection.test.ts::hub/src/hub/server.ts selects hub-only by the non-nvim rule": 0.000067,
+    "hub/test/suite-selection.test.ts::hub/src/cli/role.ts is shared infrastructure and forces full": 6.5e-05,
+    "hub/test/suite-selection.test.ts::hub/src/cli/roles.ts is shared infrastructure and forces full": 9.1e-05,
+    "hub/test/suite-selection.test.ts::hub/src/crew.ts selects hub-only by the non-nvim rule": 6.2e-05,
+    "hub/test/suite-selection.test.ts::hub/src/hub/core.ts selects hub-only by the non-nvim rule": 8.3e-05,
+    "hub/test/suite-selection.test.ts::hub/src/hub/dispatch.ts selects hub-only by the non-nvim rule": 7.7e-05,
+    "hub/test/suite-selection.test.ts::hub/src/hub/server.ts selects hub-only by the non-nvim rule": 6.7e-05,
     "hub/test/suite-selection.test.ts::hub/src/hub/store.ts is shared infrastructure and forces full": 0.000128,
-    "hub/test/suite-selection.test.ts::hub/src/hub/suites.ts selects hub-only by the non-nvim rule": 0.000051,
+    "hub/test/suite-selection.test.ts::hub/src/hub/suites.ts selects hub-only by the non-nvim rule": 5.1e-05,
     "hub/test/suite-selection.test.ts::hub/src/hub/visibility.ts is shared infrastructure and forces full": 0.000133,
-    "hub/test/suite-selection.test.ts::hub/src/new-event.ts selects hub-only by the non-nvim rule": 0.000048,
+    "hub/test/suite-selection.test.ts::hub/src/new-event.ts selects hub-only by the non-nvim rule": 4.8e-05,
     "hub/test/suite-selection.test.ts::hub/src/protocol.ts is shared infrastructure and forces full": 0.000236,
-    "hub/test/suite-selection.test.ts::hub/src/roles.ts selects hub-only by the non-nvim rule": 0.000064,
-    "hub/test/suite-selection.test.ts::hub/src/spoke/server.ts selects hub-only by the non-nvim rule": 0.000095,
-    "hub/test/suite-selection.test.ts::hub/src/subscriptions.ts selects hub-only by the non-nvim rule": 0.00009,
+    "hub/test/suite-selection.test.ts::hub/src/roles.ts selects hub-only by the non-nvim rule": 6.4e-05,
+    "hub/test/suite-selection.test.ts::hub/src/spoke/server.ts selects hub-only by the non-nvim rule": 9.5e-05,
+    "hub/test/suite-selection.test.ts::hub/src/subscriptions.ts selects hub-only by the non-nvim rule": 9e-05,
     "hub/test/suite-selection.test.ts::hub/src/suite-selection.ts is shared infrastructure and forces full": 0.000146,
     "hub/test/suite-selection.test.ts::hub/src/suite-shards.ts is shared infrastructure and forces full": 0.000143,
     "hub/test/suite-selection.test.ts::hub/src/tracker/tracker.ts is shared infrastructure and forces full": 0.000103,
@@ -2863,24 +2863,24 @@
     "hub/test/suite-selection.test.ts::import parser reads static, side-effect and literal dynamic imports, ignoring comments and strings": 0.001409,
     "hub/test/suite-selection.test.ts::interpolated dynamic imports fail closed to full admission": 0.121181,
     "hub/test/suite-selection.test.ts::invalid map maps fall back conservatively": 0.20928,
-    "hub/test/suite-selection.test.ts::Neovim event state runs full": 0.000069,
+    "hub/test/suite-selection.test.ts::Neovim event state runs full": 6.9e-05,
     "hub/test/suite-selection.test.ts::Neovim implementation changes select Neovim plus hub smoke": 0.000258,
     "hub/test/suite-selection.test.ts::Neovim importer graph follows shared helpers through cycles": 0.006575,
-    "hub/test/suite-selection.test.ts::Neovim transport runs full": 0.00006,
+    "hub/test/suite-selection.test.ts::Neovim transport runs full": 6e-05,
     "hub/test/suite-selection.test.ts::Neovim type-only imports and helper re-exports do not reach hub sources": 0.047443,
-    "hub/test/suite-selection.test.ts::nvim and docs runs full": 0.000067,
+    "hub/test/suite-selection.test.ts::nvim and docs runs full": 6.7e-05,
     "hub/test/suite-selection.test.ts::nvim-only admission retains both locks through smoke, omits the other package's remaining tests, and all widens the run": 4.697589,
-    "hub/test/suite-selection.test.ts::nvim/new-file selects nvim-only by the nvim rule": 0.000047,
-    "hub/test/suite-selection.test.ts::nvim/README.md selects nvim-only by the nvim rule": 0.000047,
-    "hub/test/suite-selection.test.ts::nvim/test/harness.ts selects nvim-only by the nvim rule": 0.000096,
-    "hub/test/suite-selection.test.ts::nvim/test/rpc.ts selects nvim-only by the nvim rule": 0.000054,
-    "hub/test/suite-selection.test.ts::nvim/test/stub-hub.ts selects nvim-only by the nvim rule": 0.000073,
-    "hub/test/suite-selection.test.ts::nvim/tsconfig.json is shared infrastructure and forces full": 0.000085,
-    "hub/test/suite-selection.test.ts::path traversal runs full": 0.000087,
-    "hub/test/suite-selection.test.ts::README.md selects hub-only by the non-nvim rule": 0.000045,
-    "hub/test/suite-selection.test.ts::root tooling runs full": 0.000062,
-    "hub/test/suite-selection.test.ts::scripts/check.sh selects hub-only by the non-nvim rule": 0.000047,
-    "hub/test/suite-selection.test.ts::skills/qa/SKILL.md selects hub-only by the non-nvim rule": 0.000048,
+    "hub/test/suite-selection.test.ts::nvim/new-file selects nvim-only by the nvim rule": 4.7e-05,
+    "hub/test/suite-selection.test.ts::nvim/README.md selects nvim-only by the nvim rule": 4.7e-05,
+    "hub/test/suite-selection.test.ts::nvim/test/harness.ts selects nvim-only by the nvim rule": 9.6e-05,
+    "hub/test/suite-selection.test.ts::nvim/test/rpc.ts selects nvim-only by the nvim rule": 5.4e-05,
+    "hub/test/suite-selection.test.ts::nvim/test/stub-hub.ts selects nvim-only by the nvim rule": 7.3e-05,
+    "hub/test/suite-selection.test.ts::nvim/tsconfig.json is shared infrastructure and forces full": 8.5e-05,
+    "hub/test/suite-selection.test.ts::path traversal runs full": 8.7e-05,
+    "hub/test/suite-selection.test.ts::README.md selects hub-only by the non-nvim rule": 4.5e-05,
+    "hub/test/suite-selection.test.ts::root tooling runs full": 6.2e-05,
+    "hub/test/suite-selection.test.ts::scripts/check.sh selects hub-only by the non-nvim rule": 4.7e-05,
+    "hub/test/suite-selection.test.ts::skills/qa/SKILL.md selects hub-only by the non-nvim rule": 4.8e-05,
     "hub/test/suite-selection.test.ts::type-only declarations are erased while inline type specifiers retain module execution": 0.000242,
     "hub/test/suite-selection.test.ts::unrelated head maps fall back conservatively": 0.160077,
     "hub/test/suite-stage-cover.test.ts::a fresh failed stage attempt supersedes its older green cache": 17.223982,
@@ -3521,8 +3521,8 @@
     "nvim/test/qa.test.ts::qa.state() holds the stub scenario: the sessions with their states, the roles, and the topics, asks and items the screen shows": 0.668569,
     "nvim/test/qa.test.ts::SHELL-001 passes against its own stdio hub: exit 0 and one JSON line with the result, the duration, the build and the evidence inline": 1.41236,
     "nvim/test/qa.test.ts::the fixture's roles.toml and config.toml are the stdio hub's: the launcher fills in the fixture role's defaults": 1.436101,
-    "nvim/test/qa.test.ts::with every file write denied, as in a read-only rescue run, a stub-hub case without --out passes; one that needs the stdio hub is BLOCKED and says why": 0.000049,
-    "nvim/test/qa.test.ts::with file writes also denied outside the temp dir, both cases pass and dump their evidence there": 0.000073,
+    "nvim/test/qa.test.ts::with every file write denied, as in a read-only rescue run, a stub-hub case without --out passes; one that needs the stdio hub is BLOCKED and says why": 4.9e-05,
+    "nvim/test/qa.test.ts::with file writes also denied outside the temp dir, both cases pass and dump their evidence there": 7.3e-05,
     "nvim/test/qa.test.ts::with the network denied (no socket to bind or reach), both cases pass": 0.000203,
     "nvim/test/rulebook.test.ts::a push during the initial snapshot stays current, and Enter on a rule event selects that rule": 0.45104,
     "nvim/test/rulebook.test.ts::Rulebook keys and palette show sorted rule rows, unfold origins and list help": 1.379081,
@@ -3753,45 +3753,15 @@
       "owner": "E-677",
       "legacy": true
     },
-    "hub/test/demo.test.ts::demo authorization, shared slot refusals and verdict cleanup use the same tagged lease": {
-      "seconds": 5.575271,
-      "reason": "Starts real hub and QA spoke processes, exercises authorization and shared slot refusal through public frames, then waits for verdict-driven confirmed provider cleanup; observed in A-3054.",
-      "owner": "E-677",
-      "legacy": true
-    },
     "hub/test/demo.test.ts::demo frames deliver a named dev commit, preserve command results and stop after restart": {
-      "seconds": 6.335101,
-      "reason": "Starts a real fixture hub and fake SSH machine, delivers Git objects, executes commands, restarts the hub and confirms tagged resource teardown; observed on Linux c-8 in A-3054.",
-      "owner": "E-677",
-      "legacy": true
-    },
-    "hub/test/demo.test.ts::demo machine lifetime destroys the machine through the watchdog even with the hub gone": {
-      "seconds": 4.992138,
-      "reason": "Delivers a real bundled fixture under a separate setup budget, checks the lease-creation lifetime deadline, stops the hub, then accelerates the persisted deadline by 250 ms and waits for the detached watchdog deletion receipt. Real hub, SSH delivery and confirmed provider cleanup justify more than 5 s under load; T-569.",
+      "seconds": 5.358,
+      "reason": "Starts a real fixture hub and fake SSH machine, delivers Git objects, executes commands, restarts the hub, then proves a successive explicit-commit lease preserves exit 255 and newest-lease teardown. T-700 Mac whole-file median is recorded in its evidence.",
       "owner": "E-677",
       "legacy": true
     },
     "hub/test/demo.test.ts::demo recorder failures persist diagnostics and keep remote captures for recovery": {
-      "seconds": 8.266026,
+      "seconds": 5.199,
       "reason": "Delivers a committed fixture through the demo lease and runs three real shell-recorder failures, checking persisted diagnostics and remote capture recovery after each. Measured on macOS in T-551.",
-      "owner": "E-677",
-      "legacy": true
-    },
-    "hub/test/demo.test.ts::demo run timeout destroys the machine through the watchdog even with the hub gone": {
-      "seconds": 4.660519,
-      "reason": "Delivers a real bundled fixture under a separate setup budget, checks the pre-acquire run-timeout deadline, stops the hub, then accelerates the persisted deadline by 250 ms and waits for the detached watchdog deletion receipt. Real hub, SSH delivery and confirmed provider cleanup justify more than 5 s under load; T-569.",
-      "owner": "E-677",
-      "legacy": true
-    },
-    "hub/test/demo.test.ts::successive demo leases select the newest lease and preserve exit 255 at an explicit commit": {
-      "seconds": 5.457943,
-      "reason": "Acquires, delivers, executes and confirms release twice through real hub/SSH processes to guard repeated lease selection and command status 255; observed in A-3054.",
-      "owner": "E-677",
-      "legacy": true
-    },
-    "hub/test/demo.test.ts::the demo recorder runs a headless case remotely and retains captures and executor accounting locally": {
-      "seconds": 5.642317,
-      "reason": "Runs the shell recorder and CLI through a real hub and fake SSH machine, collects remote headless captures and confirms lease cleanup; observed on Linux c-8 in A-3054.",
       "owner": "E-677",
       "legacy": true
     },
@@ -3847,73 +3817,55 @@
     },
     "hub/test/executor-run.test.ts": {
       "file": true,
-      "seconds": 126.573341,
+      "seconds": 74.751,
       "reason": "File budget: Runs nested verification workers through fake provider/SSH processes, logs, cancellation and restart to prove durable executor recovery.",
       "owner": "E-677",
       "legacy": true
     },
     "hub/test/executor-run.test.ts::a restored launching suite reuses only an existing ref at the same head": {
-      "seconds": 16.600349,
-      "reason": "T-433 expands the prior allowed crash-after-acquire case into same-head and different-head restoration scenarios. Each uses an artificial 4000 ms bundling fault, hub death/restart and real fixture-provider cleanup to prove ref reuse/refusal. Its green gate A-2649 at 2c9f932 records 13.621351 s.",
-      "owner": "E-677",
-      "legacy": true
-    },
-    "hub/test/executor-run.test.ts::executor overrides bypass host locks and dirty explicit remote candidates refuse": {
-      "seconds": 5.950081,
-      "reason": "Runs a real verification worker through fake provider/SSH processes beside a host compatibility lock, then proves dirty explicit-remote submission refuses without admitting a local job.",
-      "owner": "E-677",
-      "legacy": true
-    },
-    "hub/test/executor-run.test.ts::explicit droplet reuses only droplet greens while omitted executor keeps cross-executor reuse": {
-      "seconds": 10.995008,
-      "reason": "T-518 exercises three real verification executions (two local and one through fake provider/SSH), plus four public CLI cache-hit submissions, proving explicit-droplet filtering and omitted-flag cross-executor reuse.",
+      "seconds": 12.846,
+      "reason": "Shares one Git/provider fixture across same-head and different-head cases, each proving a real hub crash/restart, ref reuse or refusal, and confirmed provider cleanup. Delivery uses a filesystem notification gate instead of a fixed delay; T-700 Mac whole-file median is recorded in its evidence.",
       "owner": "E-677",
       "legacy": true
     },
     "hub/test/executor-run.test.ts::host typecheck failure creates no machine; remote typecheck stops tests and failed tests retain failures": {
-      "seconds": 14.243753,
+      "seconds": 9.026,
       "reason": "Runs nested verification workers through fake provider/SSH processes, logs, cancellation and restart to prove durable executor recovery.",
       "owner": "E-677",
       "legacy": true
     },
     "hub/test/executor-run.test.ts::incremental byte logs survive SSH failure and hub restart and report once": {
-      "seconds": 11.126624,
+      "seconds": 9.06,
       "reason": "Runs nested verification workers through fake provider/SSH processes, logs, cancellation and restart to prove durable executor recovery.",
       "owner": "E-677",
       "legacy": true
     },
     "hub/test/executor-run.test.ts::provider loss and verify cancel each report once and release the machine and key": {
-      "seconds": 11.944531,
+      "seconds": 8.461,
       "reason": "Runs nested verification workers through fake provider/SSH processes, logs, cancellation and restart to prove durable executor recovery.",
       "owner": "E-677",
       "legacy": true
     },
     "hub/test/executor-run.test.ts::remote delivery bundles committed tracker state despite later tracker writes": {
-      "seconds": 6.738541,
+      "seconds": 6.179,
       "reason": "Runs the complete fake-provider delivery and remote suite lifecycle, then checks the remote checkout contains only committed tracker bytes despite staged host writes.",
       "owner": "E-677",
       "legacy": true
     },
-    "hub/test/executor-run.test.ts::remote delivery refuses and names source changes after submission": {
-      "seconds": 4.623876,
-      "reason": "Acquires a real fixture lease through fake provider/SSH processes, injects a staged source edit after host typecheck, and waits for refusal and confirmed provider cleanup.",
-      "owner": "E-677",
-      "legacy": true
-    },
     "hub/test/executor-run.test.ts::remote start reconciles executed-but-lost replies and marker-only interruptions": {
-      "seconds": 12.8937,
+      "seconds": 9.08,
       "reason": "Runs nested verification workers through fake provider/SSH processes, logs, cancellation and restart to prove durable executor recovery.",
       "owner": "E-677",
       "legacy": true
     },
     "hub/test/executor-run.test.ts::remote verify delivers host selection, runs as runner, reports accounting, contains the token and caches across executors": {
-      "seconds": 16.924037,
+      "seconds": 6.041,
       "reason": "Runs nested verification workers through fake provider/SSH processes, logs, cancellation and restart to prove durable executor recovery.",
       "owner": "E-677",
       "legacy": true
     },
     "hub/test/executor-run.test.ts::restart reloads the lease after admission and never redelivers or cleans the live checkout": {
-      "seconds": 10.384317,
+      "seconds": 8.364,
       "reason": "Runs nested verification workers through fake provider/SSH processes, logs, cancellation and restart to prove durable executor recovery.",
       "owner": "E-677",
       "legacy": true
@@ -4145,15 +4097,15 @@
       "owner": "E-677",
       "legacy": true
     },
-    "hub/test/models.test.ts::models account probes use launch environments and have independent caches, also readable by sessions": {
-      "seconds": 5.917332,
-      "reason": "Checks three named account selections through real CLI calls and a hub: Codex home, OpenCode data_home and explicit db, each with independent default/cache receipts. The OpenCode probes each wait for the native fake catalog to load.",
-      "owner": "E-677",
-      "legacy": true
-    },
     "hub/test/models.test.ts::models CLI lists native catalogs, waits for OpenCode and caches each harness until refresh": {
       "seconds": 4.099238,
       "reason": "Runs initial, cached and refreshed model discovery through the real CLI for both native transports, including OpenCode empty-catalog retry and confirmed short-lived child teardown. Measured on the Linux droplet in A-4175; assertions and timeout bounds are retained.",
+      "owner": "E-677",
+      "legacy": true
+    },
+    "hub/test/models.test.ts::models account probes use launch environments and have independent caches, also readable by sessions": {
+      "seconds": 5.917332,
+      "reason": "Checks three named account selections through real CLI calls and a hub: Codex home, OpenCode data_home and explicit db, each with independent default/cache receipts. The OpenCode probes each wait for the native fake catalog to load.",
       "owner": "E-677",
       "legacy": true
     },
@@ -4421,18 +4373,6 @@
       "owner": "E-677",
       "legacy": true
     },
-    "hub/test/session-usage.test.ts::a harness exit and a relaunch stop each leave exactly one final record": {
-      "seconds": 6.581378,
-      "reason": "Runs real fake-harness turns and relaunches to prove per-model usage coalescing, totals and exactly-once final records.",
-      "owner": "E-677",
-      "legacy": true
-    },
-    "hub/test/session-usage.test.ts::claude-code journals totals and cost, and final records sum per launch item and current role": {
-      "seconds": 8.807462,
-      "reason": "Runs real fake-harness turns and relaunches to prove per-model usage coalescing, totals and exactly-once final records.",
-      "owner": "E-677",
-      "legacy": true
-    },
     "hub/test/session-usage.test.ts::Codex coalesces a usage burst and journals a rate-limit-only change": {
       "seconds": 2.765128,
       "reason": "Runs real fake-harness turns and relaunches to prove per-model usage coalescing, totals and exactly-once final records.",
@@ -4441,6 +4381,18 @@
     },
     "hub/test/session-usage.test.ts::Codex journals changed totals once, skips equal publications, and stops with final usage": {
       "seconds": 3.795223,
+      "reason": "Runs real fake-harness turns and relaunches to prove per-model usage coalescing, totals and exactly-once final records.",
+      "owner": "E-677",
+      "legacy": true
+    },
+    "hub/test/session-usage.test.ts::a harness exit and a relaunch stop each leave exactly one final record": {
+      "seconds": 6.581378,
+      "reason": "Runs real fake-harness turns and relaunches to prove per-model usage coalescing, totals and exactly-once final records.",
+      "owner": "E-677",
+      "legacy": true
+    },
+    "hub/test/session-usage.test.ts::claude-code journals totals and cost, and final records sum per launch item and current role": {
+      "seconds": 8.807462,
       "reason": "Runs real fake-harness turns and relaunches to prove per-model usage coalescing, totals and exactly-once final records.",
       "owner": "E-677",
       "legacy": true
@@ -4578,14 +4530,8 @@
       "owner": "E-677",
       "legacy": true
     },
-    "hub/test/suite-close-recovery.test.ts::a failed shard fails one merged result with its label and no automatic rerun": {
-      "seconds": 7.290476,
-      "reason": "Exercises two real detached fake-provider machine runners and real hub collection/cleanup across failure, loss, restart or cancellation.",
-      "owner": "E-677",
-      "legacy": true
-    },
     "hub/test/suite-close-recovery.test.ts::a sharded close handles cancel with one result and confirmed cleanup": {
-      "seconds": 8.103446,
+      "seconds": 5.97,
       "reason": "Exercises two real detached fake-provider machine runners and real hub collection/cleanup across failure, loss, restart or cancellation.",
       "owner": "E-677",
       "legacy": true
@@ -4597,31 +4543,13 @@
       "legacy": true
     },
     "hub/test/suite-close-recovery.test.ts::a sharded close handles restart with one result and confirmed cleanup": {
-      "seconds": 10.632108,
+      "seconds": 7.918,
       "reason": "Exercises two real detached fake-provider machine runners and real hub collection/cleanup across failure, loss, restart or cancellation.",
       "owner": "E-677",
       "legacy": true
     },
-    "hub/test/suite-close-recovery.test.ts::cancelling while provider sizes are held joins reservation before reporting and leaves zero reserved spend": {
-      "seconds": 3.391406,
-      "reason": "Runs a real Git fixture and hub/CLI cancellation while the provider sizes response is held, waits 500 ms to prove no premature report, then waits for all-shard spend reservation settlement, zero reserved spend and one cancelled result. Measured on Linux droplet run e54c3004 (A-3003).",
-      "owner": "E-677",
-      "legacy": true
-    },
-    "hub/test/suite-close.test.ts::close run falls back whole with one warning when limited by cap": {
-      "seconds": 5.706998,
-      "reason": "Runs real hub and CLI/MCP requests through fake-provider provisioning, detached package execution, artifact collection and confirmed cleanup; the batch/cache case verifies two requests.",
-      "owner": "E-677",
-      "legacy": true
-    },
-    "hub/test/suite-close.test.ts::close run falls back whole with one warning when limited by slots": {
-      "seconds": 6.674898,
-      "reason": "Runs real hub and CLI/MCP requests through fake-provider provisioning, detached package execution, artifact collection and confirmed cleanup; the batch/cache case verifies two requests.",
-      "owner": "E-677",
-      "legacy": true
-    },
     "hub/test/suite-close.test.ts::integrated remote close collects each map before release and publishes their function union": {
-      "seconds": 8.389961,
+      "seconds": 6.436,
       "reason": "Runs two fixture droplets through delivery, collection and confirmed release, then checks one artifact merges both function-to-test maps.",
       "owner": "E-677",
       "legacy": true
@@ -4633,14 +4561,8 @@
       "legacy": true
     },
     "hub/test/suite-close.test.ts::ordinary integrated batch uses one slot and its green tree serves a later release occasion cache hit": {
-      "seconds": 5.949736,
-      "reason": "Runs real hub and CLI/MCP requests through fake-provider provisioning, detached package execution, artifact collection and confirmed cleanup; the batch/cache case verifies two requests.",
-      "owner": "E-677",
-      "legacy": true
-    },
-    "hub/test/suite-close.test.ts::QA can request epic through MCP but stage, release, task heads and non-full occasions are refused": {
-      "seconds": 7.000187,
-      "reason": "Runs real hub and CLI/MCP requests through fake-provider provisioning, detached package execution, artifact collection and confirmed cleanup; the batch/cache case verifies two requests.",
+      "seconds": 4.948041,
+      "reason": "Runs one real fake-provider worker and public MCP requests; the green batch supplies release and authorized QA epic cache evidence without creating additional shards. T-700 keeps the shared role-refusal frame and confirms provider cleanup.",
       "owner": "E-677",
       "legacy": true
     },
@@ -4704,16 +4626,16 @@
       "added": "2026-10-17",
       "expires": "2026-10-24"
     },
-    "hub/test/suite-runner-contract.test.ts::verify queue preserves a live legacy package holder across observer timezones": {
-      "seconds": 4.483164,
-      "reason": "Unchanged native lease contract: a live real package PID and legacy owner records without startedUtc remain authoritative across observer timezones through CLI JSON/text and subscription checks. Exact-head Linux run 98ee3395 measured 5.527962421 s at workers 2; Mac 5/5 is green. Preserve this process proof with bounded allowance rather than dropping its cross-process assertions.",
+    "hub/test/suite-runner-contract.test.ts::verify queue preserves a live UTC package holder across observer timezones": {
+      "seconds": 4.518921,
+      "reason": "Unchanged native lease contract: a live real package PID and UTC owner record remain authoritative across observer timezones through CLI JSON/text and subscription checks. Exact-head Linux run 98ee3395 measured 5.59139393 s at workers 2; Mac 5/5 is green. Preserve this process proof with bounded allowance rather than dropping its cross-process assertions.",
       "owner": "E-677",
       "added": "2026-10-17",
       "expires": "2026-10-24"
     },
-    "hub/test/suite-runner-contract.test.ts::verify queue preserves a live UTC package holder across observer timezones": {
-      "seconds": 4.518921,
-      "reason": "Unchanged native lease contract: a live real package PID and UTC owner record remain authoritative across observer timezones through CLI JSON/text and subscription checks. Exact-head Linux run 98ee3395 measured 5.59139393 s at workers 2; Mac 5/5 is green. Preserve this process proof with bounded allowance rather than dropping its cross-process assertions.",
+    "hub/test/suite-runner-contract.test.ts::verify queue preserves a live legacy package holder across observer timezones": {
+      "seconds": 4.483164,
+      "reason": "Unchanged native lease contract: a live real package PID and legacy owner records without startedUtc remain authoritative across observer timezones through CLI JSON/text and subscription checks. Exact-head Linux run 98ee3395 measured 5.527962421 s at workers 2; Mac 5/5 is green. Preserve this process proof with bounded allowance rather than dropping its cross-process assertions.",
       "owner": "E-677",
       "added": "2026-10-17",
       "expires": "2026-10-24"
@@ -4740,25 +4662,6 @@
     "hub/test/suite-selection-report.test.ts::integrated dev verify publishes a portable function map once; task verify never captures": {
       "seconds": 7.650449,
       "reason": "Runs two real fixture verifications through the queue and package runner, publishes an integrated V8 map, and proves the selected task run catches a regression without recapturing.",
-      "owner": "E-677",
-      "legacy": true
-    },
-    "hub/test/suite-stage-cover.test.ts": {
-      "file": true,
-      "seconds": 53.092838,
-      "reason": "Three serial real-worker/fake-provider lifecycle cases cover platform pairing, report recovery, rollback and two cache-supersession histories. Measured test sum69.595432s (70.22s wall) on the Mac beside the implementer full suite under the permitted one-file/load guard; quiet Mac34.71s and Linux A-3351 about48s.",
-      "owner": "E-677",
-      "legacy": true
-    },
-    "hub/test/suite-stage-cover.test.ts::a fresh failed stage attempt supersedes its older green cache": {
-      "seconds": 17.223982,
-      "reason": "Quiet Mac whole-file measurement: three real sharded stage requests through the fake provider prove a newer failed receipt blocks stale-green cache reuse and all workers are collected.",
-      "owner": "E-677",
-      "legacy": true
-    },
-    "hub/test/suite-stage-cover.test.ts::a fresh unreported stage attempt supersedes its older green cache": {
-      "seconds": 18.912387,
-      "reason": "Quiet Mac whole-file measurement: three real sharded stage requests through the fake provider prove a newer unreported receipt blocks stale-green cache reuse and all workers are collected.",
       "owner": "E-677",
       "legacy": true
     },
