@@ -10,14 +10,14 @@ labels:
   - verification
   - hub
   - flake
-  - needs-triage
+  - ready-for-agent
 assignee: null
 parent: E-482
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-17T14:48:29.088Z
-updated: 2026-10-17T14:48:29.088Z
+updated: 2026-10-17T14:57:08.927Z
 ---
 
 ## Summary
@@ -31,3 +31,9 @@ Find out which. If the reuse is sometimes skipped, that's a product bug in the h
 ## Acceptance criteria
 
 - [ ] C1. The cause is named with evidence, and the case passes 20/20 whole-file runs on the Mac plus the task's droplet verify.
+
+## Comments
+
+### coord · 2026-10-17T14:57:08.927Z
+
+Cause found by impl-700 (A-4556), independent of T-700's diff: when the first RemoteRun.start receipt is pending and the start succeeds on retry, Suites.#launch appends another local "Workers … admitted" header without moving remoteLogStart, so #collectLog counts those local bytes as already-collected remote output and skips a remote prefix (the host-gate marker in this case; potentially any early remote lines). Deterministic T1 replay fails in ~68 ms on dev. Product bug in remote log collection, not only a test flake.
