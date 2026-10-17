@@ -3,7 +3,7 @@ id: T-698
 kind: task
 title: Suite slot arbitration, ETAs, cache keys and cover classification are tested on Suites directly, with two real-fixture proofs kept
 state: open
-status: ready
+status: review
 size: M
 criterion_seq: 5
 labels:
@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-428
 branch: t/T-698-suite-slot-arbitration-etas-cache-keys
 created: 2026-10-16T19:59:36.616Z
-updated: 2026-10-17T10:56:46.521Z
+updated: 2026-10-17T11:27:14.326Z
 ---
 
 ## Summary
@@ -45,16 +45,19 @@ These rules run as T1 tests on `Suites` with a fake executor (T-697) and a `Fake
   - verified: rev-30 [reviewer] · run rev-20261017-698-m1-correction · 2026-10-17T09:10:15.019Z · commit 5922850e3b7f9404aca3c1bde5b71b11423b08c8
   - verified: rev-30 [reviewer] · run rev-20261017-698-phase-merge · 2026-10-17T10:07:14.312Z · commit 87aa55d71340b2efd11c9bad9202533eb036de9d
   - verified: rev-30 [reviewer] · run rev-20261017-698-final · 2026-10-17T10:56:45.074Z · commit 87aa55d71340b2efd11c9bad9202533eb036de9d
+  - verified: rev-30 [reviewer] · run rev-20261017-698-check-merge · 2026-10-17T11:27:14.326Z · commit 5139daac886c1270942cf1dbd5ff62d59de52de3
 - [x] C3. Fake droplets started by these files fall from the count recorded before (from the fake provider's request log) to 4 or less.
   - done: impl-698 · 2026-10-17T09:00:41.297Z
   - verified: rev-30 [reviewer] · run rev-20261017-698-m1-correction · 2026-10-17T09:10:15.019Z · commit 5922850e3b7f9404aca3c1bde5b71b11423b08c8
   - verified: rev-30 [reviewer] · run rev-20261017-698-phase-merge · 2026-10-17T10:07:14.312Z · commit 87aa55d71340b2efd11c9bad9202533eb036de9d
   - verified: rev-30 [reviewer] · run rev-20261017-698-final · 2026-10-17T10:56:45.074Z · commit 87aa55d71340b2efd11c9bad9202533eb036de9d
+  - verified: rev-30 [reviewer] · run rev-20261017-698-check-merge · 2026-10-17T11:27:14.326Z · commit 5139daac886c1270942cf1dbd5ff62d59de52de3
 - [x] C4. An audit maps every moved or rewritten assertion to its new place, with no behaviour claim dropped.
   - done: impl-698 · 2026-10-17T09:00:41.616Z
   - verified: rev-30 [reviewer] · run rev-20261017-698-m1-correction · 2026-10-17T09:10:15.019Z · commit 5922850e3b7f9404aca3c1bde5b71b11423b08c8
   - verified: rev-30 [reviewer] · run rev-20261017-698-phase-merge · 2026-10-17T10:07:14.312Z · commit 87aa55d71340b2efd11c9bad9202533eb036de9d
   - verified: rev-30 [reviewer] · run rev-20261017-698-final · 2026-10-17T10:56:45.075Z · commit 87aa55d71340b2efd11c9bad9202533eb036de9d
+  - verified: rev-30 [reviewer] · run rev-20261017-698-check-merge · 2026-10-17T11:27:14.326Z · commit 5139daac886c1270942cf1dbd5ff62d59de52de3
 - [x] C5. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
   - done: impl-698 · 2026-10-17T10:55:25.693Z
   - verified: rev-30 [reviewer] · run rev-20261017-698-final · 2026-10-17T10:56:45.075Z · commit 87aa55d71340b2efd11c9bad9202533eb036de9d
@@ -211,3 +214,36 @@ Hub free117/117 and machine1979 total/1973 pass/one fail/five skips reconcile to
 Final review clear under primary9fdd9730, no task findings; C1-C5 verified at this exact head. No new task run or head change requested.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### impl-698 · 2026-10-17T11:25:50.788Z
+
+Authorized conflict merge pushed at5139daac886c1270942cf1dbd5ff62d59de52de3 (parents87aa55d7 and dev6111e325), per Coordinator8fd9f1d4 and52c22ed8. Resolved suites.ts overlap with candidate.tree + dev suiteCheckCommand/log and lint report imports; manifests exactly equal incoming dev plus unchanged reviewed task changes (24 removals/five additions in allowances; ten tier key changes, sorted). No other manual changes. Typecheck/test:tiers/whitespace pass; suite-check, scheduling, cover, candidate, candidate-remote, dry-run and tiers whole-file5/5 serial,35 green logs, max observed load4.973145. A-4477 raw evidence and structured manifest audit. Delta source review requested; new exact-head droplet run follows clear verdict per52c22ed8, superseding manifest-only no-rerun disposition.
+
+### rev-30 · 2026-10-17T11:27:14.326Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261017-698-check-merge
+commit: 5139daac886c1270942cf1dbd5ff62d59de52de3
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Conflict/code-integration delta review T-698 at 5139daac886c1270942cf1dbd5ff62d59de52de3, merge parents prior final-clear87aa55d71340b2efd11c9bad9202533eb036de9d and incoming dev6111e325. Origin matches. Primary8fd9f1d4 authorizes conflict merge; primary52c22ed8 explicitly extends it to suites.ts, supersedes the manifest-only no-rerun disposition, prescribes serial checks and requires fresh exact-head droplet verification. Reviewed A-4477. Read-only audit; no Reviewer execution.
+
+Standards
+No findings. The suites.ts resolution composes the previously reviewed candidate seam with incoming test-check integration. #hostGate still obtains the candidate tree through #candidate.tree, then selects the command with incoming suiteCheckCommand, logs the actual npm command and records that same command/code/tree after child close. Old candidate packages retain run typecheck; candidates exposing test:lint/check use run check. Existing failure/cancellation and before-droplet gate behavior remains. Dry-run retains incoming lintTests/testLintReport output, and suiteSummary retains incoming report-lint lines. The obsolete direct exec/Git/candidate/lint imports remain removed because unchanged SuiteCandidate owns committed/worktree tier inspection and candidate facts. Both tier lint calls and every previously reviewed head/tree fence remain.
+
+Relative to prior reviewed suites.ts, additions are exactly incoming lint/check imports, summary lines, dry-run report and host-command/log selection. Relative to incoming dev, the remaining changes are the already reviewed candidate/clock/settled migration. Independent normalized-zero-context comparison confirms every other own patch outside the two manifests unchanged relative to old/new incoming dev. M1 gate-release/draining ownership, assertion map, phase correction and native process contracts are intact.
+
+Independent structured manifest audit: durations.json equals incoming dev plus exactly the same29 task-key changes (24 removals,five additions), with all retained dev values and all non-allow fields preserved. tiers.json equals incoming dev plus exactly the same10 task-key changes (nine additions/modifications,one removal), with both complete entry sets and sorted keys. No new allowance or partial timing-baseline refresh is introduced by the merge.
+
+Spec/evidence
+A-4477 independently contains35 raw zero-failure/cancellation/skip Mac logs: suite-check,suite-scheduling,suite-cover,suite-candidate,suite-candidate-remote,suite-dry-run,suite-tiers each5/5. Its head.txt pins5139daac; reported maximum load4.973145<15. The checks exercise candidate tree/admission, check CLI and old-package fallback, report summaries, dry-run and phase composition. Static typecheck and tier-lint logs are green; clean tree/whitespace check is reported. These are the serial matching-file proofs prescribed by52c22ed8.
+
+C2/C3/C4 source freshness is refreshed: lower-tier scheduling/cache/cover policies and headed native proofs, successful-machine census<=4 under primary79089639, and the complete preserved assertion map plus corrected phase/cleanup controls. C1 timing and C5 runtime are pending the new exact-head Linux run. A-4467/A-4469 remain accepted prior-head measurements under9fdd9730; they are not execution of this code merge and the no-rerun exception does not carry forward.
+
+Delta source clear, no findings. C2/C3/C4 verified. Submit the required normal mode-free exact-head droplet verification; final C1/C5 settlement awaits its receipt.
+
+Criteria: C2 verified, C3 verified, C4 verified.

@@ -15,7 +15,7 @@ follows: []
 topic: null
 branch: null
 created: 2026-10-16T19:58:43.121Z
-updated: 2026-10-17T07:54:54.042Z
+updated: 2026-10-17T11:27:45.028Z
 ---
 
 ## Summary
@@ -58,14 +58,17 @@ stages:
         - T-699
         - T-700
       - - T-696
+        - T-728
         - T-726
         - T-727
-        - T-728
       - - T-701
       - - T-704
       - - T-705
       - - T-706
+        - T-731
       - - T-719
+      - - T-733
+      - - T-734
   - name: the tail and the scenarios
     qa:
       scope: none
