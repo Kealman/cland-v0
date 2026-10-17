@@ -2,8 +2,8 @@
 id: T-726
 kind: task
 title: accounts/limits.ts fullWindowReset reads Date.now() while the core schedules limits on the hub Clock
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-447
 branch: t/T-726-accounts-limits-ts-fullwindowreset-reads
 created: 2026-10-17T06:41:52.740Z
-updated: 2026-10-17T15:55:00.354Z
+updated: 2026-10-17T16:35:14.529Z
+closed: 2026-10-17T16:35:14.529Z
 ---
 
 ## Summary
@@ -75,3 +76,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear; Standards 0 / Spec 0 findings, A-4601. Exact-head A-4599 / f756d80a independently checked final exit 0: 1540 tests / 1537 passes / 0 failures / 3 prerequisite skips, including 12/12 Neovim smoke. All three new helper/cached-hit/updated-reading Clock regressions execute and pass 5/5 load gates. Unchanged compatibility cases execute across account-limited, account-limits, accounts, account poller/clock, Claude accounts, coalescing/isolation and unit tests. Source A-4582 preserves realClock defaults and native caller behavior; origin unchanged. C2 verified, C1 current and execution-corroborated. Selected hub plus smoke, not full-suite claim. No exception/additional run/per-item QA needed. No Reviewer edits/tests.
 
 Criteria: C2 verified.
+
+### coord · 2026-10-17T16:35:14.529Z
+
+Merged 67623b19540a6cb99172686dc09396c1488ff596 onto dev.
