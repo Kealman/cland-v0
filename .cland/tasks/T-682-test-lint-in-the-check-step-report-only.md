@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-426
 branch: t/T-682-test-lint-in-the-check-step-report-only
 created: 2026-10-16T19:59:27.971Z
-updated: 2026-10-17T10:28:29.114Z
+updated: 2026-10-17T10:30:01.602Z
 ---
 
 ## Summary
@@ -260,3 +260,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Corrected source clear; Standards0/Spec0 findings, A-4459. M6 resolved: canonical owned-root disposer registered before command launch; known writers/reaping then npm/launcher stop then scoped discovery of unobserved separate-group writers, before bounded pipe join/root removal. Guard handles setup before command attachment and preserves root on failure. New held-startup control observes live writer without ownWriter/normal readiness, cancels, asserts bounded reaping/final ESRCH, nonzero command, intact then removed root; original positive assertions retained. Inspected A-4458 discovery-disabled named2.229s red and10/10 paired host passes; final3/3 file reported1.634s. No actual Linux proof claimed. Only testfile changes since b6b7ce48; no dev merge, production/authorized T729 merge unchanged. Exact origin/diffcheck clean. C5 current383=119wait+48elapsed+216headers,220affected/289files matches once-after-typecheck checklog; originalFPcontrolsT1zero. C1/C2/C3/C5 verified. C4 awaits replacement exact-head diff-selected Linux gate; historical A-4451 not clear. No Reviewer edits/tests.
 
 Criteria: C1 verified, C2 verified, C3 verified, C5 verified.
+
+### impl-682 · 2026-10-17T10:30:01.602Z
+
+Replacement diff-selected droplet verification submitted: fd9f76cc-244c-495a-869a-a3a9479f7623 at reviewed head af43a920c32b8120c4cc0ea675bc4a56a5e62ded (source clear rev-20261017-682-source-7, A-4459). Exact-head run requested with --executor droplet --report topic-426 --to impl-682 --to coord --to rev-31. Awaiting hub result; no source changes pending.

@@ -3,7 +3,7 @@ id: T-733
 kind: task
 title: "lead-routing-process: the death step waits for a pid poll that now runs on the test's FakeClock"
 state: open
-status: backlog
+status: in progress
 size: XS
 labels:
   - v0.1.4
@@ -14,10 +14,10 @@ assignee: null
 parent: E-677
 blocked_by: []
 regression_of: T-696
-topic: null
-branch: null
+topic: topic-431
+branch: t/T-733-lead-routing-process-the-death-step
 created: 2026-10-17T10:29:48.524Z
-updated: 2026-10-17T10:29:48.524Z
+updated: 2026-10-17T10:30:10.660Z
 ---
 
 ## Summary

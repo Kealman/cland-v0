@@ -3,7 +3,7 @@ id: T-731
 kind: task
 title: "startup-smoke listening-hang case: the 2 s test budget ends before a loaded Linux hub reaches its first connection"
 state: open
-status: review
+status: ready
 size: XS
 criterion_seq: 2
 labels:
@@ -18,7 +18,7 @@ regression_of: T-706
 topic: topic-430
 branch: t/T-731-startup-smoke-listening-hang-case-the-2
 created: 2026-10-17T09:52:07.766Z
-updated: 2026-10-17T09:59:42.961Z
+updated: 2026-10-17T10:30:35.315Z
 ---
 
 ## Summary
@@ -31,11 +31,13 @@ Give the listening-hang case a budget that a loaded Linux runner reaches the fir
 
 ## Acceptance criteria
 
-- [ ] C1. The listening-hang case still asserts the planted event is named as the last startup event, and passes 5/5 on the Mac and in the task's droplet verify.
+- [x] C1. The listening-hang case still asserts the planted event is named as the last startup event, and passes 5/5 on the Mac and in the task's droplet verify.
   - verified: rev-30 [reviewer] · run rev-20261017-731-final · 2026-10-17T09:59:42.961Z · commit 589f036c7f96f44b8e7f69b06907ff4e6a249e66
-- [ ] C2. The case's wall time stays under its old 12 s bound, and the header comment says why its budget differs from the pre-discovery case.
+  - done: impl-731 · 2026-10-17T10:30:34.590Z
+- [x] C2. The case's wall time stays under its old 12 s bound, and the header comment says why its budget differs from the pre-discovery case.
   - verified: rev-30 [reviewer] · run rev-20261017-731-source · 2026-10-17T09:55:46.877Z · commit 589f036c7f96f44b8e7f69b06907ff4e6a249e66
   - verified: rev-30 [reviewer] · run rev-20261017-731-final · 2026-10-17T09:59:42.961Z · commit 589f036c7f96f44b8e7f69b06907ff4e6a249e66
+  - done: impl-731 · 2026-10-17T10:30:35.024Z
 
 ## Comments
 
