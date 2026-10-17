@@ -5,6 +5,7 @@ title: projectHub defaults to fake harnesses and fake probes; native probes beco
 state: open
 status: review
 size: M
+criterion_seq: 2
 labels:
   - v0.1.4
   - verification
@@ -16,7 +17,7 @@ blocked_by: []
 topic: topic-459
 branch: t/T-750-projecthub-defaults-to-fake-harnesses
 created: 2026-10-17T18:44:08.555Z
-updated: 2026-10-17T23:04:20.506Z
+updated: 2026-10-17T23:44:04.731Z
 ---
 
 ## Summary
@@ -29,8 +30,10 @@ projectHub (and the fixtures built on it) default to `harnesses: 'fake'` and `pr
 
 ## Acceptance criteria
 
-- [ ] C1. The runtime tripwire (T-748) reports no child_process trip in the R1 projectHub files listed in A-4703 (session-*, lead-*, heartbeat, handover, item-lead, permissions, rule-cli, project-clock, in-process-spoke, fake-harness, adapter-composition, codex-*/opencode-native, skills-tracker, suite-protocol, suite-close-component), proved by a full droplet run's trip report.
-- [ ] C2. Every test that relied on native defaults either opts in explicitly in a T3 file or is rewritten with injected facts; the review request maps each, with Mac 5/5 medians before and after.
+- [x] C1. The runtime tripwire (T-748) reports no child_process trip in the R1 projectHub files listed in A-4703 (session-*, lead-*, heartbeat, handover, item-lead, permissions, rule-cli, project-clock, in-process-spoke, fake-harness, adapter-composition, codex-*/opencode-native, skills-tracker, suite-protocol, suite-close-component), proved by a full droplet run's trip report.
+  - done: impl-750 · 2026-10-17T23:43:59.643Z
+- [x] C2. Every test that relied on native defaults either opts in explicitly in a T3 file or is rewritten with injected facts; the review request maps each, with Mac 5/5 medians before and after.
+  - done: impl-750 · 2026-10-17T23:44:00.259Z
 
 ## Comments
 

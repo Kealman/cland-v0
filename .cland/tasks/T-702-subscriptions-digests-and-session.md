@@ -2,8 +2,8 @@
 id: T-702
 kind: task
 title: Subscriptions, digests and session archive move to T2 on the fake clock, with restarts as projectHub stop and serve
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -20,7 +20,8 @@ blocked_by:
 topic: topic-465
 branch: t/T-702-subscriptions-digests-and-session
 created: 2026-10-16T19:59:37.198Z
-updated: 2026-10-17T23:39:57.173Z
+updated: 2026-10-17T23:44:00.003Z
+closed: 2026-10-17T23:44:00.003Z
 ---
 
 ## Summary
@@ -181,3 +182,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final merged-head evidence clear; A-4853. Independently audited A-4852 exact-head run d6dcef3c: all ten owned files/62 ordinary cases have completed timings and passing reporter lines, all 13 owned new identities pass 5/5 gates (65/65). No scoped skips or hard duration-budget failures. Whole selected hub-only + current Neovim smoke run exits zero: 2,106 passes, zero failures/cancellations, five unrelated prerequisite skips; smoke 5/5 completed. Linux owned sum 67.920059750s disclosed beside accepted Mac median sum 41.580233420s, meeting C1. A-4842 source delta remains current and task tests/helper match A-4779 Mac source; original 525 assertion mapping/native boundaries retained. C5 done refreshed in c5b26701. No findings; C1–C5 verified at current merge head. No per-item QA.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-10-17T23:44:00.003Z
+
+Merged 88882dde0a0db31a14888435331e63f281b14cde onto dev.
