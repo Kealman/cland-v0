@@ -5,6 +5,7 @@ import { randomUUID } from 'node:crypto';
 import { appendFile, mkdir, readFile, writeFile, stat, open } from 'node:fs/promises';
 import { join } from 'node:path';
 import { lintHubShards, lintHubShardTree, ShardManifestError, hubShards, balanceCloseShards } from '../suite-shards.ts';
+import { planTierReport, tierReport, tierPlanWorkers, timingReceipts, type TierPlan, type SuiteDryRun } from '../suite-tier-report.ts';
 import { readDurationManifest } from '../suite-durations.ts';
 import type { ProjectConfig } from '../init/config.ts';
 import { suiteLimits } from '../suite-limits.ts';
@@ -49,6 +50,7 @@ export type SuiteJob = {
   cacheBypass?: string;
   admittedAt?: string; completedAt?: string; waitMs?: number | null; runMs?: number | null;
   timingEstimated?: boolean;
+  tierPlan?: TierPlan; tierReported?: boolean;
   selection?: SuiteSelection;
   integrated?: boolean;
   queued?: string; priority?: number; item?: string | null;
@@ -93,8 +95,11 @@ export function suiteSummary(log: string, quarantineStatus?: string[]): string {
   timings.push(...text.split('\n').filter(line => /^load gate workers /.test(line)));
   timings.push(...text.split('\n').filter(line => /^load gate: .* skipped, not load-gated;/.test(line)));
   timings.push(...text.split('\n').filter(line => /^quarantine load gate: /.test(line)));
+  const tierLines = text.split('\n').filter(line => /^tier (?:T[1-4]:|share:)/.test(line));
+  const lastTiers = new Map<string, string>();
+  for (const line of tierLines) lastTiers.set(line.split(':')[0]!, line);
   const quarantined = quarantineStatus ?? quarantineSummary(quarantineResults(text));
-  return `${counts.size ? [...counts].map(([k, v]) => `${k} ${v}`).join('; ') : 'counts unavailable (suite did not finish)'}${timings.length ? `\n${timings.join('\n')}` : ''}${failures.length ? `\nFailures:\n${failures.join('\n')}` : ''}${quarantined.length ? `\nQuarantine:\n${quarantined.join('\n')}` : ''}`;
+  return `${counts.size ? [...counts].map(([k, v]) => `${k} ${v}`).join('; ') : 'counts unavailable (suite did not finish)'}${timings.length ? `\n${timings.join('\n')}` : ''}${failures.length ? `\nFailures:\n${failures.join('\n')}` : ''}${quarantined.length ? `\nQuarantine:\n${quarantined.join('\n')}` : ''}${lastTiers.size ? `\n${['tier T1', 'tier T2', 'tier T3', 'tier T4', 'tier share'].flatMap(key => lastTiers.has(key) ? [lastTiers.get(key)!] : []).join('\n')}` : ''}`;
 }
 
 export class SuiteAdmissionError extends Error {
@@ -286,14 +291,14 @@ export class Suites {
     this.#options.log?.({ event: 'verification-cover-classified', id, head: job.head, cover: job.cover });
     return { id, cover: job.cover };
   }
-  start(input: Pick<SuiteJob, 'mode' | 'cwd' | 'topic' | 'to' | 'actor'> & { priority?: number; item?: string | null; integrated?: boolean; fresh?: boolean; executor?: ExecutorKind; workers?: number; size?: string; occasion?: VerifyOccasion }, authorize: () => void): Promise<{ id: string; pid: number | null; topic: string; position: number; cached?: SuiteJob['cached'] }> {
+  start(input: Pick<SuiteJob, 'mode' | 'cwd' | 'topic' | 'to' | 'actor'> & { priority?: number; item?: string | null; integrated?: boolean; fresh?: boolean; dryRun?: boolean; executor?: ExecutorKind; workers?: number; size?: string; occasion?: VerifyOccasion }, authorize: () => void): Promise<{ id: string; pid: number | null; topic: string; position: number; cached?: SuiteJob['cached'] } | SuiteDryRun> {
     if (this.#closed) return Promise.reject(new Error('hub is closing'));
     const work = this.#start(input, authorize);
     this.#starting.add(work);
     void work.finally(() => this.#starting.delete(work)).catch(() => {});
     return work;
   }
-  async #start(input: Pick<SuiteJob, 'mode' | 'cwd' | 'topic' | 'to' | 'actor'> & { priority?: number; item?: string | null; integrated?: boolean; fresh?: boolean; executor?: ExecutorKind; workers?: number; size?: string; occasion?: VerifyOccasion }, authorize: () => void): Promise<{ id: string; pid: number | null; topic: string; position: number; cached?: SuiteJob['cached'] }> {
+  async #start(input: Pick<SuiteJob, 'mode' | 'cwd' | 'topic' | 'to' | 'actor'> & { priority?: number; item?: string | null; integrated?: boolean; fresh?: boolean; dryRun?: boolean; executor?: ExecutorKind; workers?: number; size?: string; occasion?: VerifyOccasion }, authorize: () => void): Promise<{ id: string; pid: number | null; topic: string; position: number; cached?: SuiteJob['cached'] } | SuiteDryRun> {
     const config = this.#options.projectConfig?.();
     const settings = { ...this.#options };
     const executor = input.executor ?? settings.executor ?? 'local';
@@ -308,7 +313,7 @@ export class Suites {
     const limits = config && input.cwd === this.#root ? { testTimeoutMs: config.verification.testTimeoutMs, stallTimeoutMs: config.verification.stallTimeoutMs, loadGateWorkers: config.verification.loadGateWorkers, workers: executor === 'droplet' ? config.verification.droplet.workers ?? config.verification.workers : config.verification.workers } : await suiteLimits(input.cwd, executor, this.#env);
     const workers = input.workers ?? limits.workers;
     const identity = input.actor?.sessionId ?? 'human';
-    if (this.#jobs.some(job => this.#active(job) && (job.actor?.sessionId ?? 'human') === identity)) throw new Error('this session already has a suite queued or running');
+    if (!input.dryRun && this.#jobs.some(job => this.#active(job) && (job.actor?.sessionId ?? 'human') === identity)) throw new Error('this session already has a suite queued or running');
     const id = randomUUID();
     const dir = join(this.#root, '.cland', 'run', 'suites', id);
     const git = async (args: string[]) => exec('git', args, { cwd: input.cwd, env: this.#options.env }).then(r => r.stdout.trim(), () => 'unknown');
@@ -321,6 +326,17 @@ export class Suites {
       if (head !== 'unknown') await lintHubShardTree(input.cwd, head, this.#env);
       await lintHubShards(input.cwd);
     } catch (error) { throw new SuiteAdmissionError(error); }
+    const tierPlan = await planTierReport(input.cwd, selection, workers);
+    if (input.dryRun) {
+      if (executor === 'droplet' && input.executor === 'droplet') {
+        if (!tree) throw new Error('dirty worktree cannot be bundled for droplet');
+        await this.#droplet.checkSpend(input.size, config);
+      }
+      if (head !== 'unknown' && await git(['rev-parse', 'HEAD']) !== head) throw new Error('head changed during admission; try dry-run again');
+      authorize();
+      return { dryRun: true, head, executor, workers, selection, tiers: tierPlan,
+        lines: [describeSelection(selection), `planned tiers: ${tierPlan.map(row => row.tier).join(', ') || 'unavailable (no tier manifest)'}`, ...tierReport(tierPlan)] };
+    }
     await mkdir(dir, { recursive: true, mode: 0o700 });
     const cacheExecutor = input.occasion === 'stage' ? executor : input.executor === 'droplet' ? 'droplet' : undefined;
     const cached = !input.fresh && tree ? this.#cached(tree, selection, workers, input.size, cacheExecutor, input.occasion) : undefined;
@@ -335,7 +351,7 @@ export class Suites {
     if (this.#jobs.some(job => this.#active(job) && (job.actor?.sessionId ?? 'human') === identity)) throw new Error('this session already has a suite queued or running');
     const workerPolicy = config && input.cwd === this.#root ? { local: config.verification.workers, droplet: config.verification.droplet.workers ?? config.verification.workers } : { local: (await suiteLimits(input.cwd, 'local', this.#env)).workers, droplet: (await suiteLimits(input.cwd, 'droplet', this.#env)).workers };
     const fallbackWorkers = input.workers ?? workerPolicy.local;
-    const job: SuiteJob = { ...input, limits, workerPolicy, ...(input.workers !== undefined ? { workersOverride: input.workers } : {}), followsConfig: input.executor === undefined, workers, fallbackWorkers, executor, requestedExecutor: executor, requireRemote: executor === 'droplet' && (input.executor === 'droplet' || !(config?.verification.localFallback ?? settings.localFallback ?? true)), integrated: input.integrated === true && branch === 'dev', queued: new Date().toISOString(), priority: input.priority ?? Number.MAX_SAFE_INTEGER, state: 'queued', locks: settings.locks ?? ['/tmp/cland-suite.lock', '/tmp/cland-suite-nvim.lock'], selection, tree, id, head, branch, log: join(dir, 'suite.log'), result: join(dir, 'result.json'), gate: join(dir, 'ready'), pid: null, started: null, outcome: null, artifact: null, reported: false, error: null };
+    const job: SuiteJob = { ...input, tierPlan, limits, workerPolicy, ...(input.workers !== undefined ? { workersOverride: input.workers } : {}), followsConfig: input.executor === undefined, workers, fallbackWorkers, executor, requestedExecutor: executor, requireRemote: executor === 'droplet' && (input.executor === 'droplet' || !(config?.verification.localFallback ?? settings.localFallback ?? true)), integrated: input.integrated === true && branch === 'dev', queued: new Date().toISOString(), priority: input.priority ?? Number.MAX_SAFE_INTEGER, state: 'queued', locks: settings.locks ?? ['/tmp/cland-suite.lock', '/tmp/cland-suite-nvim.lock'], selection, tree, id, head, branch, log: join(dir, 'suite.log'), result: join(dir, 'result.json'), gate: join(dir, 'ready'), pid: null, started: null, outcome: null, artifact: null, reported: false, error: null };
     if (cacheBypass) job.cacheBypass = cacheBypass;
     // Persist the complete request before acknowledging it. No waiting worker exists.
     await writeFile(job.log, `Suite ${id} · ${input.mode}\n${describeSelection(selection)}\nWorktree ${input.cwd}\nBranch ${branch}\nHead ${head}\nWorkers ${workers}${input.size ? ` · size ${input.size}` : ''}\nQueued ${job.queued}\n`, { mode: 0o600 });
@@ -509,6 +525,7 @@ export class Suites {
             selection: { mode: 'full', files: plan.files, reason: `close run shard ${i + 1}/${count}`, shard: { files: plan.files, nvim: plan.nvim }, ...(job.selection?.recordCoverage ? { recordCoverage: job.selection.recordCoverage } : {}) },
             log: join(dir, 'suite.log'), result: join(dir, 'result.json'), gate: join(dir, 'ready') };
         });
+        for (const shard of job.shards) shard.tierPlan = await planTierReport(job.cwd, shard.selection!, job.workers ?? 4);
         this.#save(job);
         try { await this.#droplet.reserveShards(job.shards!.map(shard => shard.id), job.size, job.config); }
         catch (error) { cause = error instanceof Error ? error.message : String(error); }
@@ -798,6 +815,12 @@ export class Suites {
           }
         }
         job.cleaned = true; this.#save(job);
+      }
+      if (job.tierPlan?.length && !job.tierReported && !job.cached) {
+        const log = await readFile(job.log, 'utf8');
+        const lines = tierReport(tierPlanWorkers(job.tierPlan, job.workers ?? 4), timingReceipts(log));
+        if (!log.includes('\n' + lines.join('\n') + '\n')) await appendFile(job.log, lines.join('\n') + '\n');
+        job.tierReported = true; this.#save(job);
       }
       this.#recordTiming(job, !job.cached && job.outcome.code === 0 && receipt?.finished ? receipt.finished : new Date().toISOString());
       if (job.integrated && !job.parentRun && !job.cover) {

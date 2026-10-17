@@ -677,7 +677,7 @@ export class Dispatcher {
     const provenance = job.cached ? `\nCached tree ${job.cached.tree}\nOriginal run ${job.cached.run} · head ${job.cached.head}` : '';
     const missing = job.occasion === 'stage' ? this.#suites!.stageMissing(job.tree, job) : [];
     const stageCover = job.occasion === 'stage' ? `\nstage cover ${missing.length ? `missing ${missing.join(', ')}` : 'complete (Linux droplet, macOS)'} · tree ${job.tree ?? 'unknown'}` : '';
-    const report = (filesBytes: number) => `suite result ${job.id}\n${job.mode} exit ${outcome.code}${outcome.cause ? `; ${outcome.cause}` : ''}\n${job.selection ? describeSelection(job.selection, filesBytes) : 'mode full; legacy run (selection unavailable)'}\nBranch ${job.branch} · head ${job.head}\n${execution}\n${summary}${provenance}${stageCover}\nLog ${artifact.id}: ${artifact.path}`;
+    const report = (filesBytes: number) => `suite result ${job.id}\n${job.mode} exit ${outcome.code}${outcome.cause ? `; ${outcome.cause}` : ''}\n${job.selection ? describeSelection(job.selection, filesBytes) : 'mode full; legacy run (selection unavailable)'}\nBranch ${job.branch} · head ${job.head}\n${execution}${provenance}${stageCover}\nLog ${artifact.id}: ${artifact.path}\n${summary}`;
     let text = report(2048);
     // File counts and the artifact retain the complete decision when a broad diff
     // or a smaller configured cap cannot fit every path in the topic message.
@@ -1413,20 +1413,21 @@ export class Dispatcher {
       if (!isClientRequest(frame) || frame.type !== 'suite.start') return peer.send(Dispatcher.#failure(String(frame.id), new Error('invalid verify request')));
       const request = frame, caller = callerNow();
       if (!isAbsolute(request.cwd)) return peer.send(Dispatcher.#failure(request.id, new Error('suite cwd must be absolute')));
-      const topic = core.store.topic(request.report)?.id ?? (caller ? this.#options.tracker?.list().find(i => i.claim?.sessionId === caller.sessionId)?.topic : GENERAL.id);
+      const topic = core.store.topic(request.report ?? '')?.id ?? (caller ? this.#options.tracker?.list().find(i => i.claim?.sessionId === caller.sessionId)?.topic ?? (request.dryRun ? GENERAL.id : undefined) : GENERAL.id);
       if (!topic) return peer.send(Dispatcher.#failure(request.id, new Error('a session report needs your claimed item topic; use --report <topic>')));
-      const to = core.store.topic(request.report) ? request.to ?? [] : request.to ?? [request.report];
+      const to = core.store.topic(request.report ?? '') ? request.to ?? [] : request.to ?? (request.report ? [request.report] : []);
       const actor = caller ? { name: caller.name, sessionId: caller.sessionId, shell: true as const } : null;
       const authorize = () => {
         if (actor && callerNow()?.sessionId !== actor.sessionId) throw new Error('suite caller identity is unavailable');
-        this.#suitePermissions(actor, topic, to);
+        // A report-free preview has no artifact or send side effects to authorize.
+        if (!request.dryRun || request.report) this.#suitePermissions(actor, topic, to);
         if (request.occasion) {
           const role = callerNow()?.role;
           if (role !== 'coordinator' && !(role === 'qa' && request.occasion === VERIFY_OCCASIONS.epic)) throw new Error('occasion requires the Coordinator, or QA with occasion epic');
         }
       };
       try { authorize(); } catch (error) { return peer.send(Dispatcher.#failure(request.id, error)); }
-      later('suite.start', this.#suites.start({ mode: request.mode, ...(request.workers !== undefined ? { workers: request.workers } : {}), ...(request.size ? { size: request.size } : {}), ...(request.occasion ? { occasion: request.occasion } : {}), ...(request.executor ? { executor: request.executor } : {}), fresh: request.fresh ?? false, cwd: request.cwd, topic, to, actor, item: core.store.topic(topic)?.item ?? null, integrated: (caller?.role === 'coordinator' || caller?.role === 'qa' && request.occasion === VERIFY_OCCASIONS.epic) && request.cwd === this.#options.control?.status().root, priority: this.#suiteRank(core.store.topic(topic)?.item ?? null) }, authorize).then(value => ({ type: 'result', id: request.id, ok: true, value }), error => Dispatcher.#failure(request.id, error)));
+      later('suite.start', this.#suites.start({ mode: request.mode, dryRun: request.dryRun ?? false, ...(request.workers !== undefined ? { workers: request.workers } : {}), ...(request.size ? { size: request.size } : {}), ...(request.occasion ? { occasion: request.occasion } : {}), ...(request.executor ? { executor: request.executor } : {}), fresh: request.fresh ?? false, cwd: request.cwd, topic, to, actor, item: core.store.topic(topic)?.item ?? null, integrated: (caller?.role === 'coordinator' || caller?.role === 'qa' && request.occasion === VERIFY_OCCASIONS.epic) && request.cwd === this.#options.control?.status().root, priority: this.#suiteRank(core.store.topic(topic)?.item ?? null) }, authorize).then(value => ({ type: 'result', id: request.id, ok: true, value }), error => Dispatcher.#failure(request.id, error)));
     };
 
     /** A read repeated too fast reuses its last answer without another audit. */

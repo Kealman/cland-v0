@@ -83,6 +83,18 @@ async function readManifest(cwd: string): Promise<{ manifest: Manifest; legacy: 
   }
 }
 
+/** Report readers share the validated manifest's current/legacy tier interpretation. */
+export async function readTierAssignments(cwd: string): Promise<Map<string, Tier> | null> {
+  const entry = await readManifest(cwd);
+  if (!entry) return null;
+  const tiers = new Map<string, Tier>(Object.entries(entry.manifest.tests ?? {}).map(([path, value]) => [path,
+    entry.legacy ? value === 'free' ? 'T1' : 'T3' : tierOf(value)!]));
+  // Legacy admission classified only hub tests, but its package plan still runs
+  // Neovim. Give those files the same conservative tier as the machine phase.
+  if (entry.legacy) for await (const path of glob('nvim/test/**/*.test.ts', { cwd })) tiers.set(path, 'T3');
+  return tiers;
+}
+
 export async function hubShards(cwd: string, smoke = false, workers?: number): Promise<SuiteShard[]> {
   await lintDurations(cwd);
   const entry = await readManifest(cwd);

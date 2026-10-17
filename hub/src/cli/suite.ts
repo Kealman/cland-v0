@@ -9,7 +9,7 @@ export { SUITE_USAGE } from './usage.ts';
 
 export async function runSuiteCommand(args: string[], cwd = process.cwd()): Promise<number> {
   const { values, positionals } = parseArgs({ args, allowPositionals: true, options: {
-    note: { type: 'string' }, workers: { type: 'string' }, size: { type: 'string' }, occasion: { type: 'string' }, executor: { type: 'string' }, report: { type: 'string' }, to: { type: 'string', multiple: true }, all: { type: 'boolean' }, fresh: { type: 'boolean' }, json: { type: 'boolean' }, help: { type: 'boolean', short: 'h' },
+    'dry-run': { type: 'boolean' }, note: { type: 'string' }, workers: { type: 'string' }, size: { type: 'string' }, occasion: { type: 'string' }, executor: { type: 'string' }, report: { type: 'string' }, to: { type: 'string', multiple: true }, all: { type: 'boolean' }, fresh: { type: 'boolean' }, json: { type: 'boolean' }, help: { type: 'boolean', short: 'h' },
   } });
   const workers = values.workers === undefined ? undefined : Number(values.workers);
   if (workers !== undefined && (!/^[1-9][0-9]*$/.test(values.workers!) || !Number.isSafeInteger(workers))) throw new Error('--workers must be a positive integer');
@@ -18,7 +18,7 @@ export async function runSuiteCommand(args: string[], cwd = process.cwd()): Prom
   if (values.occasion !== undefined && !isVerifyOccasion(values.occasion)) throw new Error('--occasion must be stage, epic or release');
   if (values.help) { process.stdout.write(SUITE_USAGE); return 0; }
   if (positionals[0] === 'classify') {
-    if (positionals.length !== 3 || !positionals[1]?.trim() || positionals[2] !== 'load-flake' || !values.note?.trim() || values.report !== undefined || values.to !== undefined || values.all !== undefined || values.fresh !== undefined || values.executor !== undefined || values.occasion !== undefined || values.workers !== undefined || values.size !== undefined) throw new Error(SUITE_USAGE.trim());
+    if (positionals.length !== 3 || !positionals[1]?.trim() || positionals[2] !== 'load-flake' || !values.note?.trim() || values['dry-run'] !== undefined || values.report !== undefined || values.to !== undefined || values.all !== undefined || values.fresh !== undefined || values.executor !== undefined || values.occasion !== undefined || values.workers !== undefined || values.size !== undefined) throw new Error(SUITE_USAGE.trim());
     const d = readDiscovery(hubDiscovery(cwd));
     if (!d) throw new Error('no hub runs for this project — run `cland hub start`');
     const result = await askHubFrame(d, { type: 'suite.classify', suite: positionals[1], cause: 'load-flake', note: values.note }) as { id: string; cover: import('../protocol.ts').CoverRecord };
@@ -27,7 +27,7 @@ export async function runSuiteCommand(args: string[], cwd = process.cwd()): Prom
   }
   if (values.note !== undefined) throw new Error('--note requires verify classify');
   if (positionals[0] === 'queue') {
-    if (positionals.length !== 1 || values.report !== undefined || values.to !== undefined || values.all !== undefined || values.fresh !== undefined || values.executor !== undefined || values.occasion !== undefined || values.workers !== undefined || values.size !== undefined) throw new Error(SUITE_USAGE.trim());
+    if (positionals.length !== 1 || values['dry-run'] !== undefined || values.report !== undefined || values.to !== undefined || values.all !== undefined || values.fresh !== undefined || values.executor !== undefined || values.occasion !== undefined || values.workers !== undefined || values.size !== undefined) throw new Error(SUITE_USAGE.trim());
     const d = readDiscovery(hubDiscovery(cwd));
     if (!d) throw new Error('no hub runs for this project — run `cland hub start`');
     const q = await askHubFrame(d, { type: 'suite.queue' }, 15000) as VerificationQueue;
@@ -51,7 +51,7 @@ export async function runSuiteCommand(args: string[], cwd = process.cwd()): Prom
     return 0;
   }
   if (positionals[0] === 'cancel') {
-    if (positionals.length > 2 || values.report !== undefined || values.to !== undefined || values.all !== undefined || values.fresh !== undefined || values.executor !== undefined || values.occasion !== undefined || values.workers !== undefined || values.size !== undefined) throw new Error(SUITE_USAGE.trim());
+    if (positionals.length > 2 || values['dry-run'] !== undefined || values.report !== undefined || values.to !== undefined || values.all !== undefined || values.fresh !== undefined || values.executor !== undefined || values.occasion !== undefined || values.workers !== undefined || values.size !== undefined) throw new Error(SUITE_USAGE.trim());
     const d = readDiscovery(hubDiscovery(cwd));
     if (!d) throw new Error('no hub runs for this project — run `cland hub start`');
     const result = await askHubFrame(d, { type: 'suite.cancel', ...(positionals[1] ? { suite: positionals[1] } : {}) }, 15000) as { id: string; topic: string; cancelled: true };
@@ -59,11 +59,15 @@ export async function runSuiteCommand(args: string[], cwd = process.cwd()): Prom
     return 0;
   }
   const requested = positionals[0] ?? 'auto';
-  if (positionals.length > 1 || !['auto', 'all', 'hub', 'nvim'].includes(requested) || !values.report?.trim()) throw new Error(SUITE_USAGE.trim());
+  if (positionals.length > 1 || !['auto', 'all', 'hub', 'nvim'].includes(requested) || (!values['dry-run'] && !values.report?.trim())) throw new Error(SUITE_USAGE.trim());
   const mode = values.all ? 'all' : requested;
   const d = readDiscovery(hubDiscovery(cwd));
   if (!d) throw new Error('no hub runs for this project — run `cland hub start`');
-  const result = await askHubFrame(d, { type: 'suite.start', mode, cwd, ...(workers !== undefined ? { workers } : {}), ...(values.size ? { size: values.size } : {}), ...(values.occasion ? { occasion: values.occasion } : {}), fresh: values.fresh ?? false, ...(values.executor ? { executor: values.executor } : {}), report: values.report, ...(values.to ? { to: values.to } : {}) }, 15000) as { id: string; pid: number | null; topic: string; position: number; cached?: { run: string; head: string; tree: string } };
+  const result = await askHubFrame(d, { type: 'suite.start', mode, cwd, dryRun: values['dry-run'] ?? false, ...(workers !== undefined ? { workers } : {}), ...(values.size ? { size: values.size } : {}), ...(values.occasion ? { occasion: values.occasion } : {}), fresh: values.fresh ?? false, ...(values.executor ? { executor: values.executor } : {}), report: values.report, ...(values.to ? { to: values.to } : {}) }, 15000) as { id: string; pid: number | null; topic: string; position: number; cached?: { run: string; head: string; tree: string } } | import('../suite-tier-report.ts').SuiteDryRun;
+  if ('dryRun' in result) {
+    process.stdout.write((values.json ? JSON.stringify(result) : `verification dry-run · head ${result.head} · ${result.executor} · ${result.workers} workers\n${result.lines.join('\n')}`) + '\n');
+    return 0;
+  }
   process.stdout.write((values.json ? JSON.stringify(result) : `suite ${result.id}${result.cached ? ` cached from ${result.cached.run} at ${result.cached.head} tree ${result.cached.tree};` : ' submitted;'} worker pid ${result.pid}; project queue position ${result.position}; result in ${result.topic}`) + '\n');
   return 0;
 }

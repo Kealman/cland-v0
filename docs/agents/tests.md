@@ -267,6 +267,26 @@ The underlying package scripts remain available for humans and isolated CI:
 
 Run `npm run test:tiers`; `test:shards` remains an alias for one release. The lint rejects unclassified files, entries for missing files, invalid tier strings/objects and unsorted maps (naming the first out-of-order path). T1 still rejects process/port/timer APIs, process-fixture helpers, real-time waits, lock paths or Neovim in the source. In projects carrying the manifest, `cland verify` checks both the working files and immutable submitted head before queueing (`verify-tiers`), and `cland merge` checks the merged candidate before changing refs or the root checkout (`merge-tiers`). The old wire codes `verify-shards` and `merge-shards` remain accepted aliases. An in-flight candidate with only `hub/test/shards.json` still verifies: `free` reads as T1 and `machine` as T3, with its original hub-only classification coverage and no sorted-map requirement. When both manifests exist, `tiers.json` wins.
 
+`cland verify --dry-run` (MCP `verify` with `dryRun: true`) runs the same
+selection and manifest admission without submitting a job, taking a lease,
+creating a droplet or reserving spend. `--report` is optional for a preview.
+It prints the mode, reason, deciding files, planned tiers and tier projections;
+`--json` returns the structured selection, tier plan and report lines. Executor,
+worker and size overrides apply to the preview too.
+
+Run logs and results show each planned tier's file count, observed top-level
+test count and test-seconds, and projected wall from the duration baseline at
+the run's workers. T1's serial phase stays at one worker. Projection uses the
+close planner's longest-processing-time placement, summed across sequential
+package phases. Missing duration baselines are named and use the known-file
+median for projection; their missing seconds do not enter the manifest share.
+Dry runs show baseline test counts as planned and observations as unavailable.
+Wall budgets are T1 120 s, T2 480 s and T3 900 s; T4 has no wall budget.
+An overage says `over wall (report only)` and does not change the run's exit.
+The final `tier share: T1+T2 …` line counts manifest seconds for the unique
+planned files, including the applicable smoke files. Load-gate repetitions
+supply no extra census seconds or tier observations.
+
 The hermetic T1 phase runs on one worker; hub T2–T4 and Neovim use `[verification] workers` (default 4), with `[verification.droplet] workers` overriding it on droplets. T4 currently runs wherever T3 does, and close-run balancing still treats each hub file as one job. `cland verify --workers N` overrides either policy for one durable run; `--size <slug>` overrides a droplet size with provider availability and spend checks. Use `--fresh` for timed comparisons, because cache reuse otherwise requires matching worker counts and size overrides. Only machine phases take `<lock>.machine`. Suite reports include shard durations, machine wait, total wall time, compatibility wait and hub queue wait. Local process-heavy overlap stays disabled.
 
 Every package run takes both legacy locks jointly and retains them through its phases, including smoke, so hub and Neovim suites on the same machine serialize across sessions, projects and worktrees. Runs admit only when both locks are free, under both recovery guards; they hold neither while waiting. A legacy Neovim-first waiter can therefore take the free machine lock and finish without a cycle. No other run can pass between phases and the remaining waiters keep their order. Targeted single-file `node --test <file>` runs do not take a suite lease; they still obey cover-quiet admission.

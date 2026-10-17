@@ -14,6 +14,7 @@ import { captureProcess, cleanupOwnedProcesses, pause, type ProcessIdentity } fr
 import { processStarted } from '../src/hub/lock.ts';
 import { acquire, acquireBroker, borrowLease, inheritedLease, sweep, type Holder, type Lease } from '../src/suite-lock.ts';
 import { packageShards, type SuiteShard } from '../src/suite-shards.ts';
+import { planTierReport, tierReport, type TierPlan } from '../src/suite-tier-report.ts';
 import { suiteLimits } from '../src/suite-limits.ts';
 import { describeSelection, selectPackageSuite, selectionFromEnv, type SuiteSelection, type SuiteRequest } from '../src/suite-selection.ts';
 import { checkDurations, durationRegressions, lintDurationManifest, readDurationManifest, type DurationManifest, type DurationRegression, type TestTiming } from '../src/suite-durations.ts';
@@ -23,7 +24,7 @@ import { assertTestAdmission } from '../src/test-admission.ts';
 import { readQuarantineManifest, type QuarantineReceipt } from '../src/suite-quarantine.ts';
 
 type Interruption = { signal: 'SIGINT' | 'SIGTERM' | null };
-export async function runSuite(suites: string[][], options: { lockDir?: string; lockDirs?: string[]; cwd?: string; interruption?: Interruption; selection?: SuiteSelection; phaseNames?: string[]; resources?: Array<'free' | 'machine'>; workers?: number[]; force?: boolean; token?: string } = {}): Promise<number> {
+export async function runSuite(suites: string[][], options: { lockDir?: string; lockDirs?: string[]; cwd?: string; interruption?: Interruption; selection?: SuiteSelection; phaseNames?: string[]; resources?: Array<'free' | 'machine'>; workers?: number[]; force?: boolean; token?: string; tierPlan?: TierPlan } = {}): Promise<number> {
   await assertTestAdmission(options.cwd);
   const interruption = options.interruption ?? { signal: null };
   let active: ReturnType<typeof spawn> | undefined;
@@ -53,6 +54,7 @@ export async function runSuite(suites: string[][], options: { lockDir?: string; 
   let budgetOverheadMs = 0;
   let loadExtraWallMs = 0;
   const regressions: DurationRegression[] = [];
+  const observed: TestTiming[] = [];
   const recording = options.selection?.recordCoverage;
   const output = process.env.CLAND_COVERAGE_OUTPUT;
   const coverageFiles = new Set<string>();
@@ -189,7 +191,7 @@ process.chdir(cwd);`);
           const tests: TestTiming[] = [];
           for (const record of records) {
             if ('overheadMs' in record) budgetOverheadMs += record.overheadMs;
-            else { tests.push(record); process.stdout.write(`suite timing ${JSON.stringify(record)}\n`); }
+            else { tests.push(record); observed.push(record); process.stdout.write(`suite timing ${JSON.stringify(record)}\n`); }
           }
           const checked = checkDurations(tests, durationManifest);
           regressions.push(...checked.regressions);
@@ -234,6 +236,7 @@ process.chdir(cwd);`);
         process.stderr.write(`suite budget overhead ${budgetOverheadMs.toFixed(2)} ms\n`);
       }
       process.stderr.write(`suite duration ${((Date.now() - started) / 1000).toFixed(2)}s; lock wait ${((started - invoked) / 1000).toFixed(2)}s; peak 1m load ${peak.toFixed(2)}${options.selection?.loadGate ? `; load gate extra wall ${(loadExtraWallMs / 1000).toFixed(2)}s` : ''}${options.selection ? `; ${describeSelection(options.selection)}` : ''}\n`);
+      for (const line of tierReport(options.tierPlan ?? [], observed)) process.stderr.write(line + '\n');
     }
   }
 }
@@ -331,6 +334,7 @@ export async function runPackageSuite(mode: string, extra: string[] = [], option
   const workers = process.env.CLAND_SUITE_WORKERS === undefined ? (await suiteLimits(cwd, executor)).workers : Number(process.env.CLAND_SUITE_WORKERS);
   if (!Number.isSafeInteger(workers) || workers < 1) throw new Error('workers must be a positive integer');
   const phases: SuiteShard[] = extra.length ? (mode === 'all' || mode === 'auto' ? ['hub', 'Neovim'] : [mode]).map(name => ({ name, targets: extra, resource: 'machine', workers })) : await packageShards(cwd, selection.mode, selection.shard, selection, { executor, workers });
+  const tierPlan = await planTierReport(cwd, selection, workers, phases);
   const suites = phases.map(phase => ['--test', `--test-concurrency=${phase.workers}`, ...phase.targets]);
   // Reserve both locks jointly before a full run starts. Taking Neovim later
   // while holding machine would deadlock a live legacy Neovim-first waiter.
@@ -350,7 +354,7 @@ export async function runPackageSuite(mode: string, extra: string[] = [], option
       queue = await humanQueue(cwd, selection, token, force, () => interruption.signal !== null);
       if (queue?.locks && !options.lockDirs) lockDirs = queue.locks;
     }
-    const code = await runSuite(suites, { cwd, lockDirs, interruption, selection, force, token, phaseNames: phases.map(phase => phase.name), workers: phases.map(phase => phase.workers), ...(!extra.length ? { resources: phases.map(phase => phase.resource) } : {}) });
+    const code = await runSuite(suites, { cwd, lockDirs, interruption, selection, force, token, tierPlan, phaseNames: phases.map(phase => phase.name), workers: phases.map(phase => phase.workers), ...(!extra.length ? { resources: phases.map(phase => phase.resource) } : {}) });
     return interruption.signal ? (interruption.signal === 'SIGINT' ? 130 : 143) : code;
   } catch (error) {
     if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
