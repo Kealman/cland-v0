@@ -201,13 +201,10 @@ export class Suites {
     if (job.config || !this.#options.projectConfig) return;
     job.config = this.#options.projectConfig();
     const v = job.config.verification;
-    if (job.cwd === this.#root && job.limits) job.limits = { ...job.limits, loadGateWorkers: v.loadGateWorkers };
-    const policy = job.cwd === this.#root ? { local: v.workers, droplet: v.droplet.workers ?? v.workers } : job.workerPolicy;
-    if (policy) {
-      job.workers = job.workersOverride ?? policy[job.executor];
-      job.fallbackWorkers = job.workersOverride ?? policy.local;
-      if (job.limits) job.limits = { ...job.limits, workers: job.workers };
-    }
+    job.workerPolicy = { local: v.workers, droplet: v.droplet.workers ?? v.workers };
+    job.workers = job.workersOverride ?? job.workerPolicy[job.executor];
+    job.fallbackWorkers = job.workersOverride ?? job.workerPolicy.local;
+    job.limits = { testTimeoutMs: v.testTimeoutMs, stallTimeoutMs: v.stallTimeoutMs, loadGateWorkers: v.loadGateWorkers, workers: job.workers };
     this.#save(job);
   }
   #save = (job?: SuiteJob) => {
@@ -313,7 +310,9 @@ export class Suites {
       authorize();
       await this.#droplet.validateSize(input.size, config);
     }
-    const limits = config && input.cwd === this.#root ? { testTimeoutMs: config.verification.testTimeoutMs, stallTimeoutMs: config.verification.stallTimeoutMs, loadGateWorkers: config.verification.loadGateWorkers, workers: executor === 'droplet' ? config.verification.droplet.workers ?? config.verification.workers : config.verification.workers } : await suiteLimits(input.cwd, executor, this.#env);
+    // Validate the candidate as before; only the hub owns execution policy.
+    if (input.cwd !== this.#root) await suiteLimits(input.cwd, executor, this.#env);
+    const limits = config ? { testTimeoutMs: config.verification.testTimeoutMs, stallTimeoutMs: config.verification.stallTimeoutMs, loadGateWorkers: config.verification.loadGateWorkers, workers: executor === 'droplet' ? config.verification.droplet.workers ?? config.verification.workers : config.verification.workers } : await suiteLimits(this.#root, executor, this.#env);
     const workers = input.workers ?? limits.workers;
     const identity = input.actor?.sessionId ?? 'human';
     if (!input.dryRun && this.#jobs.some(job => this.#active(job) && (job.actor?.sessionId ?? 'human') === identity)) throw new Error('this session already has a suite queued or running');
@@ -355,12 +354,12 @@ export class Suites {
     authorize();
     // Recheck after I/O: concurrent submissions cannot both reserve a session.
     if (this.#jobs.some(job => this.#active(job) && (job.actor?.sessionId ?? 'human') === identity)) throw new Error('this session already has a suite queued or running');
-    const workerPolicy = config && input.cwd === this.#root ? { local: config.verification.workers, droplet: config.verification.droplet.workers ?? config.verification.workers } : { local: (await suiteLimits(input.cwd, 'local', this.#env)).workers, droplet: (await suiteLimits(input.cwd, 'droplet', this.#env)).workers };
+    const workerPolicy = config ? { local: config.verification.workers, droplet: config.verification.droplet.workers ?? config.verification.workers } : { local: (await suiteLimits(this.#root, 'local', this.#env)).workers, droplet: (await suiteLimits(this.#root, 'droplet', this.#env)).workers };
     const fallbackWorkers = input.workers ?? workerPolicy.local;
     const job: SuiteJob = { ...input, tierPlan, ...(budgetBase ? { durationBase: budgetBase } : {}), limits, workerPolicy, ...(input.workers !== undefined ? { workersOverride: input.workers } : {}), followsConfig: input.executor === undefined, workers, fallbackWorkers, executor, requestedExecutor: executor, requireRemote: executor === 'droplet' && (input.executor === 'droplet' || !(config?.verification.localFallback ?? settings.localFallback ?? true)), integrated: input.integrated === true && branch === 'dev', queued: new Date().toISOString(), priority: input.priority ?? Number.MAX_SAFE_INTEGER, state: 'queued', locks: settings.locks ?? ['/tmp/cland-suite.lock', '/tmp/cland-suite-nvim.lock'], selection, tree, id, head, branch, log: join(dir, 'suite.log'), result: join(dir, 'result.json'), gate: join(dir, 'ready'), pid: null, started: null, outcome: null, artifact: null, reported: false, error: null };
     if (cacheBypass) job.cacheBypass = cacheBypass;
     // Persist the complete request before acknowledging it. No waiting worker exists.
-    await writeFile(job.log, `Suite ${id} · ${input.mode}\n${describeSelection(selection)}\nWorktree ${input.cwd}\nBranch ${branch}\nHead ${head}\nWorkers ${workers}${input.size ? ` · size ${input.size}` : ''}\nQueued ${job.queued}\n`, { mode: 0o600 });
+    await writeFile(job.log, `Suite ${id} · ${input.mode}\n${describeSelection(selection)}\nWorktree ${input.cwd}\nBranch ${branch}\nHead ${head}\nWorkers ${workers} · source ${input.workers !== undefined ? 'explicit --workers' : 'hub config'}${input.size ? ` · size ${input.size}` : ''}\nQueued ${job.queued}\n`, { mode: 0o600 });
     if (cacheBypass) await appendFile(job.log, `Cache bypassed: ${cacheBypass}\n`);
     if (cached) {
       const artifact = this.#store.resolveArtifact(cached.artifact!)!;
@@ -453,6 +452,7 @@ export class Suites {
     job.state = 'launching'; job.admittedAt ??= new Date().toISOString(); this.#launching.add(job.id); this.#save(job);
     try {
       if (job.shards) { await this.#launchShards(job); return; }
+      await appendFile(job.log, `Workers ${job.workers} · source ${job.workersOverride !== undefined ? 'explicit --workers' : 'hub config'} · admitted\n`);
       const run = runRef(job);
       if (job.executor === 'droplet') {
         // lease.json owns delivery/admission facts; hub.db may predate the SSH reply.
