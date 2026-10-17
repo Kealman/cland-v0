@@ -19,7 +19,7 @@ blocked_by:
 topic: topic-434
 branch: t/T-693-opencode-adapter-test-ts-becomes
 created: 2026-10-16T19:59:35.909Z
-updated: 2026-10-17T11:39:32.082Z
+updated: 2026-10-17T12:27:13.106Z
 ---
 
 ## Summary
@@ -40,7 +40,8 @@ updated: 2026-10-17T11:39:32.082Z
 - [x] C3. An audit maps every removed duplicate to the test that proves the same behaviour and every moved assertion to its new place, with no behaviour claim dropped.
   - done: impl-693 · 2026-10-17T11:36:44.013Z
   - verified: rev-30 [reviewer] · run rev-20261017-693-source · 2026-10-17T11:39:32.082Z · commit 8c1e3e849d8af85d1b746b35a3d9008e91b1e2c5
-- [ ] C4. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
+- [x] C4. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
+  - done: impl-693 · 2026-10-17T12:27:13.106Z
 
 ## Blocked by
 

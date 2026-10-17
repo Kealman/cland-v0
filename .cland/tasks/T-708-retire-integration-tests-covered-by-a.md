@@ -28,7 +28,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-16T19:59:37.845Z
-updated: 2026-10-17T06:32:40.112Z
+updated: 2026-10-17T12:27:15.613Z
 ---
 
 ## Summary
@@ -61,3 +61,7 @@ After the class moves (T-691 to T-706) and the scenario set (T-707), many T3 tes
 ### coord · 2026-10-17T06:32:40.112Z
 
 Coordinator input from T-696: the account files hold native-contract assertions that the generic in-process fake can't prove. They cover the Claude auth hook and mod behaviour, Codex sparse-read ordering, attach execution, native conversation and pool handoff, PID discovery and network-preload propagation. T-696 keeps them as T3 cases with contract headers and lists them per harness as candidates for the contract files (T-691, T-692, T-693). Before retiring account-file T3 cases, this ticket decides for each one whether it moves into its harness's contract file or stays.
+
+### coord · 2026-10-17T12:27:15.613Z
+
+Candidates from T-699's C1 exception (A-4508): executor sentinel lifecycle/redaction (15.1 s Mac), remote shell/host deadline (12.3 s) and failed replacement table (12.0 s). Retire or shrink each once a T-707 scenario plus a T2 equivalent covers it.

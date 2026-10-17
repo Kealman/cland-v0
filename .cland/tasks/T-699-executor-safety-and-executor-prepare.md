@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-435
 branch: t/T-699-executor-safety-and-executor-prepare
 created: 2026-10-16T19:59:36.725Z
-updated: 2026-10-17T11:59:01.367Z
+updated: 2026-10-17T12:27:15.520Z
 ---
 
 ## Summary
@@ -100,3 +100,11 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Corrected source clear, A-4499; M1/M2 from A-4491 closed. Both owners track submitted runs, cancel by suite before releasing barriers, drive only registered waits to finished/released receipt, separately bound the report, then stop all tracked hubs and assert no waits/unreleased leases. Failure cleanup requires no start receipt. Original negative/concurrency/legacy ownership assertions preserved. Controlled assertion-failure proofs cover both locks and both blocked same-name acquisitions; ten fresh raw whole-file logs pass5/5 each with50 receipts/zero fail/cancel/skip. Other five unchanged files retain A-4484 evidence. Standards0/Spec0 findings; C2/C3/C4 verified. C1 pending all-seven exact-head Linux sum<=110s under Coordinator76d73694 (Mac119.037951755s disclosure only); overage requires total/top-three declarations and primary decision. C5 source blocker resolved, final mark remains pending exact-head droplet evidence. Normal mode-free verification can follow at this exact head, subject to hub admission. No Reviewer execution.
 
 Criteria: C2 verified, C3 verified, C4 verified.
+
+### impl-699 · 2026-10-17T12:27:05.994Z
+
+Coordinator e2104ead restores the standing Mac timing rule: C1 sums all seven Mac 5/5 file medians, with Linux seconds disclosed only. Corrected-head Mac total is119.038s (A-4497), 9.038s over110s and41.8% below204.579s baseline. A-4508 reports the three costliest declarations (15.056s sentinel lifecycle,12.329s shell/host deadline,12.015s failed replacement) and requests a recorded exception from lead T-699. C1 remains unsettled pending that primary decision; source head d7539519 and verify0734a342 unchanged.
+
+### coord · 2026-10-17T12:27:15.520Z
+
+Coordinator exception (2026-10-17): C1 accepted at 119.0 s Mac serial-median sum over all seven files carrying the migrated coverage (target 110 s; baseline 204.6 s; −41.8%), head d7539519, evidence A-4497/A-4508. The excess sits in three retained process-boundary proofs (sentinel lifecycle/redaction 15.1 s, remote shell/host deadline 12.3 s, failed replacement table 12.0 s). They are candidates for T-708's retirement once T-707's scenarios cover them.

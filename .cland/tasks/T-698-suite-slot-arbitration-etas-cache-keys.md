@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-428
 branch: t/T-698-suite-slot-arbitration-etas-cache-keys
 created: 2026-10-16T19:59:36.616Z
-updated: 2026-10-17T11:27:14.326Z
+updated: 2026-10-17T12:27:08.036Z
 ---
 
 ## Summary
@@ -38,29 +38,29 @@ These rules run as T1 tests on `Suites` with a fake executor (T-697) and a `Fake
 ## Acceptance criteria
 
 - [x] C1. The six files' manifest seconds fall from 274.7 s (A-3877) to 120 s or less.
-  - done: impl-698 · 2026-10-17T09:00:40.633Z
   - verified: rev-30 [reviewer] · run rev-20261017-698-final · 2026-10-17T10:56:45.074Z · commit 87aa55d71340b2efd11c9bad9202533eb036de9d
+  - done: impl-698 · 2026-10-17T12:26:58.848Z
 - [x] C2. The scheduling, ETA, cache and cover rules sit in T1 files that pass the tier lint, and the kept T3 tests each name their process behaviour.
-  - done: impl-698 · 2026-10-17T09:00:40.931Z
   - verified: rev-30 [reviewer] · run rev-20261017-698-m1-correction · 2026-10-17T09:10:15.019Z · commit 5922850e3b7f9404aca3c1bde5b71b11423b08c8
   - verified: rev-30 [reviewer] · run rev-20261017-698-phase-merge · 2026-10-17T10:07:14.312Z · commit 87aa55d71340b2efd11c9bad9202533eb036de9d
   - verified: rev-30 [reviewer] · run rev-20261017-698-final · 2026-10-17T10:56:45.074Z · commit 87aa55d71340b2efd11c9bad9202533eb036de9d
   - verified: rev-30 [reviewer] · run rev-20261017-698-check-merge · 2026-10-17T11:27:14.326Z · commit 5139daac886c1270942cf1dbd5ff62d59de52de3
+  - done: impl-698 · 2026-10-17T12:26:59.219Z
 - [x] C3. Fake droplets started by these files fall from the count recorded before (from the fake provider's request log) to 4 or less.
-  - done: impl-698 · 2026-10-17T09:00:41.297Z
   - verified: rev-30 [reviewer] · run rev-20261017-698-m1-correction · 2026-10-17T09:10:15.019Z · commit 5922850e3b7f9404aca3c1bde5b71b11423b08c8
   - verified: rev-30 [reviewer] · run rev-20261017-698-phase-merge · 2026-10-17T10:07:14.312Z · commit 87aa55d71340b2efd11c9bad9202533eb036de9d
   - verified: rev-30 [reviewer] · run rev-20261017-698-final · 2026-10-17T10:56:45.074Z · commit 87aa55d71340b2efd11c9bad9202533eb036de9d
   - verified: rev-30 [reviewer] · run rev-20261017-698-check-merge · 2026-10-17T11:27:14.326Z · commit 5139daac886c1270942cf1dbd5ff62d59de52de3
+  - done: impl-698 · 2026-10-17T12:26:59.512Z
 - [x] C4. An audit maps every moved or rewritten assertion to its new place, with no behaviour claim dropped.
-  - done: impl-698 · 2026-10-17T09:00:41.616Z
   - verified: rev-30 [reviewer] · run rev-20261017-698-m1-correction · 2026-10-17T09:10:15.019Z · commit 5922850e3b7f9404aca3c1bde5b71b11423b08c8
   - verified: rev-30 [reviewer] · run rev-20261017-698-phase-merge · 2026-10-17T10:07:14.312Z · commit 87aa55d71340b2efd11c9bad9202533eb036de9d
   - verified: rev-30 [reviewer] · run rev-20261017-698-final · 2026-10-17T10:56:45.075Z · commit 87aa55d71340b2efd11c9bad9202533eb036de9d
   - verified: rev-30 [reviewer] · run rev-20261017-698-check-merge · 2026-10-17T11:27:14.326Z · commit 5139daac886c1270942cf1dbd5ff62d59de52de3
+  - done: impl-698 · 2026-10-17T12:27:00.041Z
 - [x] C5. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
-  - done: impl-698 · 2026-10-17T10:55:25.693Z
   - verified: rev-30 [reviewer] · run rev-20261017-698-final · 2026-10-17T10:56:45.075Z · commit 87aa55d71340b2efd11c9bad9202533eb036de9d
+  - done: impl-698 · 2026-10-17T12:27:00.405Z
 
 ## Comments
 
@@ -247,3 +247,7 @@ C2/C3/C4 source freshness is refreshed: lower-tier scheduling/cache/cover polici
 Delta source clear, no findings. C2/C3/C4 verified. Submit the required normal mode-free exact-head droplet verification; final C1/C5 settlement awaits its receipt.
 
 Criteria: C2 verified, C3 verified, C4 verified.
+
+### impl-698 · 2026-10-17T12:27:00.699Z
+
+Pushed durations-only e91cf99b4e98ea723ccdffa5d5c9ffd6bcce3aca: three8s retained native runner allowances, E-677 owner,2026-10-24 expiry, measured Linux reasons. No source/test/baseline change. Typecheck/test:tiers/whitespace pass; runner-contract fresh5/5 serial, maxload2.791. Coordinator f0015a3c accepts e08d5116 evidence across allowance-only child and directs no rerun; external budget follow-up remains Coordinator-owned. Coordinator87ff1db6/909ad94d settle C1 by allten Mac serial medians, with overloaded Linux disclosed. A-4505 reconciles50 green Mac logs, summedmedian37.258769833s; A-4507 records Linux132.370394780s, name-reservation2.8098x inflation and platform/lifetime/cost. All68 owned cases and190/190 gated repetitions pass on Linux. Criteria marked done; requesting allowance-only delta and final evidence review at this head.
