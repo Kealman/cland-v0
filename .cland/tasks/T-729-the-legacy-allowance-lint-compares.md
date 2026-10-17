@@ -3,7 +3,7 @@ id: T-729
 kind: task
 title: The legacy-allowance lint compares against the branch's merge base, not current dev
 state: open
-status: backlog
+status: in progress
 size: S
 rank: 6580
 labels:
@@ -13,10 +13,10 @@ labels:
 assignee: null
 parent: E-676
 blocked_by: []
-topic: null
-branch: null
+topic: topic-429
+branch: t/T-729-the-legacy-allowance-lint-compares
 created: 2026-10-17T08:49:03.786Z
-updated: 2026-10-17T08:49:16.241Z
+updated: 2026-10-17T08:49:35.044Z
 ---
 
 ## Summary

@@ -3,7 +3,7 @@ id: T-706
 kind: task
 title: Production-length waits become test knobs, and perf cases, the full QA case set and harness self-tests move to T4
 state: open
-status: in progress
+status: ready
 size: M
 criterion_seq: 6
 labels:
@@ -18,7 +18,7 @@ blocked_by: []
 topic: topic-424
 branch: t/T-706-production-length-waits-become-test
 created: 2026-10-16T19:59:37.636Z
-updated: 2026-10-17T08:49:13.250Z
+updated: 2026-10-17T08:50:05.896Z
 ---
 
 ## Summary
@@ -59,25 +59,31 @@ T4 is the soak tier: it runs at occasions and nightly (E-678) and, until then, w
 - [x] C1. The eight files' manifest seconds on the merge path (T1–T3) fall from 499.5 s (A-3877) to 220 s or less, with the moved parts tagged T4.
   - done: impl-706 · 2026-10-17T08:47:55.535Z
   - verified: rev-31 [reviewer] · run rev-20261017-706-final · 2026-10-17T08:48:15.715Z · commit 259706fa3e1e8bacc72ef5f7f540c1f56803670a
+  - verified: rev-31 [reviewer] · run rev-20261017-706-conflict-delta · 2026-10-17T08:50:04.032Z · commit 7fda8ea7c03af305d31eff379082f980f70e7bc9
 - [x] C2. `hook-bridge.test.ts` still proves exit after the grace with no restart loop, under the knob, and a T1 test fixes the production grace at 60 000 ms.
   - verified: rev-31 [reviewer] · run rev-20261017-706-source-2 · 2026-10-17T07:16:21.458Z · commit 9cf59d5930edc7e6d427d59719150a4e1161c993
   - done: impl-706 · 2026-10-17T07:17:00.195Z
   - verified: rev-31 [reviewer] · run rev-20261017-706-merge-delta · 2026-10-17T08:04:17.834Z · commit 259706fa3e1e8bacc72ef5f7f540c1f56803670a
+  - verified: rev-31 [reviewer] · run rev-20261017-706-conflict-delta · 2026-10-17T08:50:04.032Z · commit 7fda8ea7c03af305d31eff379082f980f70e7bc9
 - [x] C3. With `CLAND_TEST_SOAK=1` the differential oracle runs 4 seeds × 25 renders, and without it 2 × 12, proved by a test of the seed plan.
   - verified: rev-31 [reviewer] · run rev-20261017-706-source-2 · 2026-10-17T07:16:21.458Z · commit 9cf59d5930edc7e6d427d59719150a4e1161c993
   - done: impl-706 · 2026-10-17T07:17:00.498Z
   - verified: rev-31 [reviewer] · run rev-20261017-706-merge-delta · 2026-10-17T08:04:17.834Z · commit 259706fa3e1e8bacc72ef5f7f540c1f56803670a
+  - verified: rev-31 [reviewer] · run rev-20261017-706-conflict-delta · 2026-10-17T08:50:04.032Z · commit 7fda8ea7c03af305d31eff379082f980f70e7bc9
 - [x] C4. A task diff touching `hub/test/remote-fixture.ts` selects the T4 harness self-tests, proved by a selection test.
   - verified: rev-31 [reviewer] · run rev-20261017-706-source-2 · 2026-10-17T07:16:21.458Z · commit 9cf59d5930edc7e6d427d59719150a4e1161c993
   - done: impl-706 · 2026-10-17T07:17:01.012Z
   - verified: rev-31 [reviewer] · run rev-20261017-706-merge-delta · 2026-10-17T08:04:17.834Z · commit 259706fa3e1e8bacc72ef5f7f540c1f56803670a
+  - verified: rev-31 [reviewer] · run rev-20261017-706-conflict-delta · 2026-10-17T08:50:04.032Z · commit 7fda8ea7c03af305d31eff379082f980f70e7bc9
 - [x] C5. An audit maps every moved or merged assertion to its new place and tier, with no behaviour claim dropped.
   - verified: rev-31 [reviewer] · run rev-20261017-706-source-2 · 2026-10-17T07:16:21.458Z · commit 9cf59d5930edc7e6d427d59719150a4e1161c993
   - done: impl-706 · 2026-10-17T07:17:01.296Z
   - verified: rev-31 [reviewer] · run rev-20261017-706-merge-delta · 2026-10-17T08:04:17.834Z · commit 259706fa3e1e8bacc72ef5f7f540c1f56803670a
+  - verified: rev-31 [reviewer] · run rev-20261017-706-conflict-delta · 2026-10-17T08:50:04.032Z · commit 7fda8ea7c03af305d31eff379082f980f70e7bc9
 - [x] C6. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify, the T4 files under `CLAND_TEST_SOAK=1`.
   - done: impl-706 · 2026-10-17T08:47:56.122Z
   - verified: rev-31 [reviewer] · run rev-20261017-706-final · 2026-10-17T08:48:15.715Z · commit 259706fa3e1e8bacc72ef5f7f540c1f56803670a
+  - verified: rev-31 [reviewer] · run rev-20261017-706-conflict-delta · 2026-10-17T08:50:04.032Z · commit 7fda8ea7c03af305d31eff379082f980f70e7bc9
 
 ## Comments
 
@@ -168,3 +174,18 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear; Standards0/Spec0 findings,A-4411. Independently inspected exacthead3348c2d8/A-4407 full exit0:2450pass/0fail/8skip,completeNeovim198.18s. All ownkeycontrols5/5, allT4filesruntimepresent, threaddefault2x12 plus acceptedlocal4x25. C1 independently read Coordinator3cc77500 accepts Mac209.881<=220 and Linux273.681 (not<=220) against corrected599.431baseline/~264proportionaltarget+variance; top-leveltestseconds recomputed like-for-like, T4excluded. Integratedrefreshheavyorphan85/runner79 followups stayE677. C6 accepted17fileMac5/5A-4350/A-4383+sameheadLinux; expandedremoteSOAK remains E678/T714/T715 per e8f1d837/itemcomment, notclaimedforwarded. C1/C6verified; C2-C5current. Reconcile supportedclaimantmarks. Lifetime2479s/cost$0.1722 perhub. No newrun/Reviewer edits/tests.
 
 Criteria: C1 verified, C6 verified.
+
+### rev-31 · 2026-10-17T08:50:04.032Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261017-706-conflict-delta
+commit: 7fda8ea7c03af305d31eff379082f980f70e7bc9
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Conflict-only delta clear; Standards0/Spec0 findings,A-4413. Independently read Coordinator9b93a124 manifest-onlymerge+A-4407retention/noextrasuite. Soleconflict tiers keepsremote-fixture-lifecycleT4+incomingremote-scriptedT2; parsedmap exactdev+all9ownentries/sorted. Independent745addedremovedtasklines outside tiers match priorreviewedpatch exactly. Tip/diffcheckclean, typecheck/tierlint reportedgreen. All6criteria continuity verified at7fda8ea7; A-4407 priorheadgreen accepted explicitly, integratedbatchcover follows, no exact-current-headrunclaim. PriorC1timing/C6remoteSOAKdispositions A-4411 retained. No newtaskrun/Reviewer edits/tests.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
