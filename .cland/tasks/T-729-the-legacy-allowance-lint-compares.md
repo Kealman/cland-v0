@@ -2,8 +2,8 @@
 id: T-729
 kind: task
 title: The legacy-allowance lint compares against the branch's merge base, not current dev
-state: open
-status: ready
+state: closed
+status: done
 size: S
 rank: 6580
 criterion_seq: 2
@@ -17,7 +17,8 @@ blocked_by: []
 topic: topic-429
 branch: t/T-729-the-legacy-allowance-lint-compares
 created: 2026-10-17T08:49:03.786Z
-updated: 2026-10-17T09:52:54.518Z
+updated: 2026-10-17T09:53:04.792Z
+closed: 2026-10-17T09:53:04.792Z
 ---
 
 ## Summary
@@ -87,3 +88,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final same-head evidence clear; Standards0/Spec0 findings, A-4442. Independently inspected A-4441/7172def2 exact source-reviewed c6fafe03 and unchanged origin tip: automatic full selection, Linux c-8 lon1/workers2, 2453pass/0fail/8skip, exit0, full Neovim green391pass/3skip in239.50s. C2 admission and merge-gate tables both pass (log2053/3457), proving retained-key acceptance and new/conversion legacy refusals without queue/ref effects; merge retains dev retirement. C1 source remains current, both scratch-history cases pass and each load gate5/5 (1258/1263), observed0.470358561s combined. Supporting Mac A-4428/A-4425 unchanged. All criteria supported; no waiver or per-item QA required. Life3120s/cost$0.2167 as reported. No Reviewer edits/tests.
 
 Criteria: C2 verified.
+
+### coord · 2026-10-17T09:53:04.792Z
+
+Merged e2df1e1943a9a2545a0065807bdadf4c2c4092d5 onto dev.
