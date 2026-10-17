@@ -2,8 +2,8 @@
 id: T-733
 kind: task
 title: "lead-routing-process: the death step waits for a pid poll that now runs on the test's FakeClock"
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -18,7 +18,8 @@ regression_of: T-696
 topic: topic-431
 branch: t/T-733-lead-routing-process-the-death-step
 created: 2026-10-17T10:29:48.524Z
-updated: 2026-10-17T10:37:37.792Z
+updated: 2026-10-17T10:37:42.986Z
+closed: 2026-10-17T10:37:42.986Z
 ---
 
 ## Summary
@@ -94,3 +95,7 @@ Counts independently reconcile: selected hub23/23 and Neovim smoke12/12, total35
 Final review clear, no findings; C1/C2 verified at this exact head. QA scope none.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-17T10:37:42.986Z
+
+Merged 20e71b3e76e3db73f11bafacdc3cd1232ab74862 onto dev.
