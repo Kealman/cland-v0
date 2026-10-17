@@ -445,7 +445,9 @@ export class Suites {
     job.state = 'launching'; job.admittedAt ??= this.#clock.now().toISOString(); this.#launching.add(job.id); this.#save(job);
     try {
       if (job.shards) { await this.#launchShards(job); return; }
-      await appendFile(job.log, `Workers ${job.workers} · source ${job.workersOverride !== undefined ? 'explicit --workers' : 'hub config'} · admitted\n`);
+      // Once remote collection starts, local bytes would count as remote output.
+      // Pending delivery/start receipts can re-enter launch with that boundary set.
+      if (job.remoteLogStart === undefined) await appendFile(job.log, `Workers ${job.workers} · source ${job.workersOverride !== undefined ? 'explicit --workers' : 'hub config'} · admitted\n`);
       const run = runRef(job);
       if (job.executor === 'droplet') {
         // lease.json owns delivery/admission facts; hub.db may predate the SSH reply.
