@@ -3,7 +3,7 @@ id: T-725
 kind: task
 title: fake-claude awaitSignals posts PermissionRequest before arming its approval resolver, so an immediate SIGUSR1 can be lost
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - v0.1.4
@@ -14,9 +14,9 @@ parent: E-677
 blocked_by:
   - T-691
 topic: null
-branch: null
+branch: t/T-725-fake-claude-awaitsignals-posts
 created: 2026-10-17T06:33:35.124Z
-updated: 2026-10-17T06:33:44.144Z
+updated: 2026-10-17T07:27:48.475Z
 ---
 
 ## Summary
