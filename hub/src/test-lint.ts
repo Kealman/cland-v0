@@ -151,9 +151,20 @@ export function lintTestSource(file: string, text: string, entry: TierEntry): Te
     const command = node.properties.findLast(property => ts.isPropertyAssignment(property) && nameOf(property.name) === 'CLAND_COMMAND');
     return !!command && ts.isPropertyAssignment(command) && explicitStub(command.initializer);
   };
+  const sharedLockPath = (node: ts.Node | undefined, seen = new Set<ts.Node>()): boolean => {
+    if (!node || seen.has(node)) return false;
+    seen.add(node);
+    if (ts.isStringLiteralLike(node)) return /^\/tmp\/cland-suite(?:-nvim)?\.lock$/.test(node.text);
+    if (ts.isIdentifier(node)) {
+      const declaration = declarationOf(node)?.parent;
+      return !!declaration && ts.isVariableDeclaration(declaration) && ts.isVariableDeclarationList(declaration.parent) && !!(declaration.parent.flags & ts.NodeFlags.Const) && sharedLockPath(declaration.initializer, seen);
+    }
+    return false;
+  };
   for (const node of nodes) if (ts.isCallExpression(node)) {
     const b = bindingOf(node.expression);
     const name = b?.name ?? nameOf(node.expression);
+    if (b && ['fs', 'fs/promises'].includes(b.module) && sharedLockPath(node.arguments[0])) resource(node, 2, 'shared suite lock');
     if ((!b || harness(b.module)) && processHelpers.has(name)) resource(node, 3, name);
     if ((!b || harness(b.module)) && socketHelpers.has(name)) resource(node, 2, name);
     if (b?.module === 'nvim/test/harness.ts' && name === 'startClient' && !stubEnvironment(node.arguments[3])) resource(node, 3, 'Neovim without an explicit stub hub command');
@@ -184,14 +195,9 @@ export function lintTestSource(file: string, text: string, entry: TierEntry): Te
   return { file, tier, qualifies: `T${minimum}` as Tier, findings: findings.sort((a, b) => a.line - b.line || a.rule.localeCompare(b.rule)) };
 }
 
-/** Preserve the existing hermetic refusals, ignoring text in comments and test-source literals. */
+/** Hermetic admission uses the same import/call analysis as the tier report. */
 export function touchesMachineResources(file: string, text: string): boolean {
-  const ts = syntax();
-  const result = lintTestSource(file, text, 'T1');
-  if (result.qualifies !== 'T1') return true;
-  const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
-  const machine = (node: ts.Node): boolean => ts.isIdentifier(node) && node.text === 'nvim' || ts.isStringLiteralLike(node) && /^\/tmp\/cland-suite(?:-nvim)?\.lock$/.test(node.text) || !!ts.forEachChild(node, n => machine(n) || undefined);
-  return machine(source);
+  return lintTestSource(file, text, 'T1').qualifies !== 'T1';
 }
 
 export async function lintTests(cwd: string): Promise<TestLintFile[]> {

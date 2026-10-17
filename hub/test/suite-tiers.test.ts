@@ -75,9 +75,11 @@ test('T1 retains the hermetic source check in each package', async t => {
   const sources = JSON.parse(await readFile(new URL('./fixtures/tier-sources.json', import.meta.url), 'utf8')) as Record<string, string>;
   for (const path of ['hub/test/a.test.ts', 'nvim/test/z.test.ts']) {
     await write({ 'hub/test/a.test.ts': 'T1', 'nvim/test/z.test.ts': 'T1' });
-    for (const source of Object.values(sources)) {
+    for (const [name, source] of Object.entries(sources)) {
       await writeFile(join(root, path), source);
-      await assert.rejects(lintHubShards(root), /T1 test touches machine resources/);
+      // Legacy word-only cases are inert data; actual imports/calls still refuse.
+      if (name === 'lock' || name === 'editor') await lintHubShards(root);
+      else await assert.rejects(lintHubShards(root), /T1 test touches machine resources/);
     }
     await writeFile(join(root, path), path.startsWith('hub/') ? "import { FakeClock } from './fake-clock.ts'; import { fakeHarness } from './fakes/harness.ts'; const clock = new FakeClock(); clock.setTimeout(() => {}, 5);" : "import { FakeClock } from '../../hub/test/fake-clock.ts'; const clock = new FakeClock(); clock.setInterval(() => {}, 5);");
     await lintHubShards(root);

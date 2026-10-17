@@ -4,12 +4,70 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { lintTestSource, testLintReport, touchesMachineResources } from '../src/test-lint.ts';
 
-// External planted inputs keep pre-migration hub admission compatible with T1.
-// JSON fixtures are data, outside the test-file patterns and manifest.
+// Shared planted source inputs are data, never executed by these tests.
 const sources = JSON.parse(await readFile(new URL('./fixtures/test-lint-sources.json', import.meta.url), 'utf8')) as Record<string, string>;
 const input = (name: string): string => { assert.equal(typeof sources[name], 'string', name); return sources[name]!; };
 
 const file = 'hub/test/planted.test.ts';
+test('resource words in reporter data stay T1', () => {
+  for (const source of [
+    'const log = "nvim/test/x.test.ts harness startDaemon()";',
+    "const log = 'nvim/test/x.test.ts harness';",
+    'const log = `nvim/test/x.test.ts harness ${"startDaemon()"}`;',
+    '// nvim/test/x.test.ts harness startDaemon()\n/* import { spawn } from "node:child_process"; */',
+    'const nvim = { harness: "nvim/test/x.test.ts" };',
+    'const path = "/tmp/cland-suite.lock";',
+    'const path = `/tmp/cland-suite-nvim.lock`;',
+  ]) {
+    assert.equal(touchesMachineResources(file, source), false, source);
+    const result = lintTestSource(file, source, 'T1');
+    assert.equal(result.qualifies, 'T1', source);
+    assert.deepEqual(result.findings, [], source);
+  }
+});
+
+test('resource imports and helper calls still prevent T1 admission', () => {
+  for (const [source, tier, message] of [
+    ["import { startClient as editor } from '../../nvim/test/harness.ts';", 'T2', 'nvim/test/harness.ts requires T2'],
+    ["import * as editor from '../../nvim/test/harness.ts'; editor.startClient(t, bin, root);", 'T3', 'Neovim without an explicit stub hub command requires T3'],
+    ["await import('../../nvim/test/harness.ts');", 'T2', 'nvim/test/harness.ts requires T2'],
+    ["import { startDaemon as boot } from './harness.ts';", 'T3', 'startDaemon requires T3'],
+    ['spawnSpoke(t, root);', 'T3', 'spawnSpoke requires T3'],
+    ['projectHub(t, root);', 'T2', 'projectHub requires T2'],
+    ['const log = `daemon ${startDaemon(t, root)}`;', 'T3', 'startDaemon requires T3'],
+  ] as const) {
+    assert.equal(touchesMachineResources(file, source), true, source);
+    const result = lintTestSource(file, source, 'T1');
+    assert.equal(result.qualifies, tier, source);
+    assert.ok(result.findings.some(finding => finding.message === message), source);
+  }
+});
+
+test('filesystem calls on shared suite locks require T2', () => {
+  for (const source of [
+    "import { existsSync } from 'node:fs'; existsSync('/tmp/cland-suite.lock');",
+    "import { existsSync } from 'node:fs'; existsSync('/tmp/cland-suite-nvim.lock');",
+    "import { existsSync as present } from 'node:fs'; present('/tmp/cland-suite.lock');",
+    "import * as fs from 'node:fs'; fs.statSync(`/tmp/cland-suite-nvim.lock`);",
+    "import { stat } from 'node:fs/promises'; const lock = '/tmp/cland-suite.lock'; await stat(lock);",
+  ]) {
+    assert.equal(touchesMachineResources(file, source), true, source);
+    const result = lintTestSource(file, source, 'T1');
+    assert.equal(result.qualifies, 'T2', source);
+    assert.ok(result.findings.some(finding => finding.message === 'shared suite lock requires T2'), source);
+  }
+  for (const source of [
+    "import { existsSync } from 'node:fs'; const lock = '/tmp/cland-suite.lock';",
+    "import { existsSync } from 'node:fs'; existsSync('private.lock');",
+    "import { writeFileSync } from 'node:fs'; writeFileSync('report.txt', '/tmp/cland-suite.lock');",
+    "import { existsSync } from './memory-fs.ts'; existsSync('/tmp/cland-suite.lock');",
+    "const existsSync = () => false; existsSync('/tmp/cland-suite.lock');",
+  ]) {
+    assert.equal(touchesMachineResources(file, source), false, source);
+    assert.deepEqual(lintTestSource(file, source, 'T1').findings, [], source);
+  }
+});
+
 test('tier rules locate process imports and calls while accepting in-process collaborators', () => {
   assert.deepEqual(lintTestSource(file, input('processImport'), 'T1').findings,
     [{ file, line: 2, rule: 'tier-import', message: 'child_process requires T2' }]);
