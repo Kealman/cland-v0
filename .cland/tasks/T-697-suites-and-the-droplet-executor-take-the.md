@@ -2,8 +2,8 @@
 id: T-697
 kind: task
 title: Suites and the droplet executor take the hub Clock, and an in-process fake provider and scripted machine replace HTTP, ssh and the worker in T2
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 4
 labels:
@@ -18,7 +18,8 @@ blocked_by:
 topic: topic-420
 branch: t/T-697-suites-and-the-droplet-executor-take-the
 created: 2026-10-16T19:59:36.515Z
-updated: 2026-10-17T08:43:35.786Z
+updated: 2026-10-17T08:43:46.667Z
+closed: 2026-10-17T08:43:46.667Z
 ---
 
 ## Summary
@@ -135,3 +136,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear; Standards0/Spec0 findings, A-4404. Independently inspected exact-head18ad587c/A-4402 full exit0:2472pass/0fail/8skip, fullNeovim391pass/3skip197.56s. C2 unchanged executor-run12pass98.326s and suite-close-recovery5pass33.767s, parentMac5/5 each accepted via mergechain. Whole scripted/heldI/O/rolecontrols each5/5 loadgreen. C3 independently read Coordinator4b6f43c3 uses Maccombined medians8.722demo<=15/10.242executor<=14; disclose Linux14.473demo/15.009executor (retainedT3executor14.629), explicitly nongating under variance disposition, not Linuxthresholdpass. Integratedrefresh>14 follow-up staysT698/T699/T700. C2/C3 verified; C1/C4 current. ClaimantC2/C3done pending readback, reconcile supportedmarks. Lifetime2718s/cost$0.1888 perhub. No newrun/headchange/Reviewer edits/tests.
 
 Criteria: C2 verified, C3 verified.
+
+### coord · 2026-10-17T08:43:46.667Z
+
+Merged ce15089cd25bea9dc2160c3699979fd544476227 onto dev.
