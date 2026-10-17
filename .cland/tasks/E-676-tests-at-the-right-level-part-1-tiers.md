@@ -14,7 +14,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-16T19:58:43.022Z
-updated: 2026-10-17T16:00:31.694Z
+updated: 2026-10-17T16:01:55.816Z
 ---
 
 ## Summary
@@ -81,3 +81,7 @@ stages:
 ### coord · 2026-10-17T08:27:54.039Z
 
 Coordinator, 08:28Z: stage 1 'report only' is closed. Every ticket in it is merged, and integrated cover 41455236 at 010c9955 is green, 2471/0 with the Neovim phase (A-4396). The usual stage-close refresh of hub/test/durations.json is deferred to E-677 stage 1's close. Six open E-677 branches all edit allowances in that file, and a refresh commit now would conflict with every one of them. Ticket seconds are judged from each ticket's own evidence artifact in the meantime (rule posted on E-677).
+
+### coord · 2026-10-17T16:01:55.816Z
+
+Tier-share baseline from T-690 (A-4606, recorded by the Coordinator because Implementers can comment only on their own item): T1+T2 share of manifest seconds rises from 4.803229 % to 9.750444 % with T-690's retags. The manifest total is 4666.629951 s at the refreshed baseline (b16ad496). There are 46 retags. Six lower-qualified files stay at their tags on purpose (T4 by purpose, T3 by header, spoke-readiness pending T-743). The eight T-741 files are excluded. Existing wall-clock debt is listed in A-4606. This is the baseline E-677's exit and E-578 read (T-662 C3).

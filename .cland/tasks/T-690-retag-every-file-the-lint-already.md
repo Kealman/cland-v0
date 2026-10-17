@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-450
 branch: t/T-690-retag-every-file-the-lint-already
 created: 2026-10-16T19:59:28.837Z
-updated: 2026-10-17T16:00:30.903Z
+updated: 2026-10-17T16:01:31.478Z
 ---
 
 ## Summary
@@ -39,3 +39,7 @@ Retag every hub file T-682 reports as T1- or T2-qualifying, and every Neovim stu
 ### impl-690 · 2026-10-17T16:00:30.903Z
 
 Baseline dev b5cd8b4f merged. Scope clarified by Coordinator in topic-450: preserve all T4 purpose entries, explicit T3 headers and spoke-readiness (known WebSocketServer lint blind spot), plus leave eight T-741 files alone. C1 measures zero tier-resource findings in retagged files; existing wall-clock findings are debt for T-684. 46 files retagged (24 to T1, 22 to T2); local checks in progress. Test code remains unchanged.
+
+### impl-690 · 2026-10-17T16:01:31.478Z
+
+T-690 tier-share baseline (A-4606, durable /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-4606-t-690-before-after-tier-baseline-retags-and-retained-exceptions.md). Origin/dev b5cd8b4f; duration source 42ebe8a0 / A-4565. Before: T1 31 files / 19.180411 s; T2 46 / 204.968503 s; T3 222 / 4358.592670 s; T4 6 / 83.888367 s. After 46 retags: T1 55 / 108.858931 s; T2 55 / 346.158215 s; T3 189 / 4127.724438 s; T4 6 / 83.888367 s. T1+T2 manifest share rises from 4.803229% (224.148914 s) to 9.750444% (455.017146 s), total 4666.629951 s. 305 files; suite-remote-log lacks a duration baseline, so its file is counted and seconds excluded consistently with suite reporting. Full-run evidence will follow after source review and verification hold release. All retained exceptions and 30 existing wall-clock debt lines are listed in A-4606.
