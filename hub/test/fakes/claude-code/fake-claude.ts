@@ -515,9 +515,12 @@ async function runSession(id: string): Promise<number> {
     if (rename) await callTool('rename', { name: rename[1] });
     if (actionable && body.includes('needs approval')) {
       await callTool('status', { text: 'idle' });
+      // The waiting frame can trigger SIGUSR1 before PermissionRequest's hooks return.
+      // Arm the resolver before publishing either the polled status or the hook.
+      const approved = new Promise<void>((r) => (approve = r));
       setStatus('waiting', 'permission prompt');
       await runHooks('PermissionRequest', { tool_name: body.includes('needs approval for Edit') ? 'Edit' : 'Bash', tool_input: { command: 'touch approved', content: 'PRIVATE-TOOL-INPUT' } });
-      await new Promise<void>((r) => (approve = r));
+      await approved;
       setStatus('busy');
       await runHooks('PostToolUse', { tool_name: 'Bash' });
       await new Promise((r) => setTimeout(r, turnMs));

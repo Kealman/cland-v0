@@ -89,8 +89,8 @@ test('Claude Code binary contract: launch, attach, first clause, mod injection, 
   // the polled fallback out of the way (a loaded machine runs a hook's process late, and a poll would beat it): every
   // state asserted here must come from a push (a hook, the mod)
   // and `--bg` returns after the session's SessionStart hook already posted (seen with the real harness)
-  // A one-second fake turn keeps busy observable while real hook processes start.
-  const fake = await fakeClaude(t, { pollMs: 600_000, lateBg: true, turnMs: 1000 });
+  // Drain hook/mod posts at each boundary so even a fast turn keeps its pushed states observable.
+  const fake = await fakeClaude(t, { pollMs: 600_000, lateBg: true, awaitSignals: true });
   const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
@@ -171,8 +171,7 @@ test('Claude Code binary contract: launch, attach, first clause, mod injection, 
   const pending = (await ui.request({ type: 'session.list' })).value as { processes: Array<{ name: string; approvalCommand?: string }> };
   assert.equal(pending.processes.find(p => p.name === 'coord')?.approvalCommand, 'touch approved');
   assert.ok(!stateEvents(ui, 'coord').some((e) => e.source === 'status'), 'no state ever came from the status tool');
-  const [session] = await fake.sessions();
-  process.kill(session?.pid as number, 'SIGUSR1'); // the human approves in the harness's TUI
+  process.kill(discovered.pid, 'SIGUSR1'); // the human approves in the harness's TUI
   await ui.waitFor((f) => f.type === 'message' && (f.message as { text: string }).text === 'pong: this one needs approval', 15_000);
   await presentAs(ui, 'coord', 'idle');
   const after = stateEvents(ui, 'coord').map((e) => e.state);
@@ -183,9 +182,10 @@ test('Claude Code binary contract: launch, attach, first clause, mod injection, 
   const editMark = ui.frames.length;
   await ui.request({ type: 'topic.send', topic: 'general', text: 'needs approval for Edit' });
   const edit = await ui.waitFor(f => f.type === 'session.state' && f.approvalCommand === 'Edit');
+  // T3 signal boundary (T-725): approve immediately on the waiting frame, with no intervening I/O.
+  process.kill(discovered.pid, 'SIGUSR1');
   assert.equal(edit.state, 'waiting for approval');
   assert.ok(!JSON.stringify(ui.frames.slice(editMark)).includes('PRIVATE-TOOL-INPUT'));
-  process.kill(session?.pid as number, 'SIGUSR1');
   await presentAs(ui, 'coord', 'idle');
 
   // the capability table declares what the adapter cannot do
