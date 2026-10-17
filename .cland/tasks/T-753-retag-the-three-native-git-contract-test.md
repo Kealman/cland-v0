@@ -2,8 +2,8 @@
 id: T-753
 kind: task
 title: Retag the three native-Git contract test files to T3 with lifecycle headers
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 1
 labels:
@@ -17,7 +17,8 @@ blocked_by: []
 topic: topic-462
 branch: t/T-753-retag-the-three-native-git-contract-test
 created: 2026-10-17T18:44:08.907Z
-updated: 2026-10-17T22:29:26.263Z
+updated: 2026-10-17T22:29:34.919Z
+closed: 2026-10-17T22:29:34.919Z
 ---
 
 ## Summary
@@ -67,3 +68,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final same-head clear; A-4809. Standards: no findings. Spec: no findings. Exact-head run 65134fb4/A-4808 exit0 positively executes all 27 owned cases (duration-legacy2, init13, merge-policy12), each with a completed timing row and ordinary passing reporter line; no tier-mismatch rows name any of the three. Source headers/manifest/native behavior from rev-20261017-753-source remain current. Whole auto hub-only+Neovim-smoke: 2113 reported,2108 pass,0 fail/cancel,5 unrelated prerequisite skips. C1 verified; no per-item QA.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-17T22:29:34.919Z
+
+Merged 6a010c7eafe0858e71be09e12766c7aeb31f123e onto dev.
