@@ -14,10 +14,10 @@ labels:
 assignee: null
 parent: E-677
 blocked_by: []
-topic: null
+topic: topic-424
 branch: t/T-706-production-length-waits-become-test
 created: 2026-10-16T19:59:37.636Z
-updated: 2026-10-17T06:27:35.769Z
+updated: 2026-10-17T06:28:39.530Z
 ---
 
 ## Summary
@@ -61,3 +61,9 @@ T4 is the soak tier: it runs at occasions and nightly (E-678) and, until then, w
 - [ ] C4. A task diff touching `hub/test/remote-fixture.ts` selects the T4 harness self-tests, proved by a selection test.
 - [ ] C5. An audit maps every moved or merged assertion to its new place and tier, with no behaviour claim dropped.
 - [ ] C6. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify, the T4 files under `CLAND_TEST_SOAK=1`.
+
+## Comments
+
+### coord · 2026-10-17T06:28:39.530Z
+
+Coordinator: if droplet runs can't carry CLAND_TEST_SOAK=1, C6's droplet half is met by one local Mac T4 run with the flag (load below 15) plus E-678's soak occasion (T-714 and T-715), which runs T4 on droplets. No new environment channel in this ticket.

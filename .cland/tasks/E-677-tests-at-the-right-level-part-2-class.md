@@ -15,7 +15,7 @@ follows: []
 topic: null
 branch: null
 created: 2026-10-16T19:58:43.121Z
-updated: 2026-10-17T06:27:06.041Z
+updated: 2026-10-17T06:33:43.967Z
 ---
 
 ## Summary
@@ -48,6 +48,7 @@ stages:
       when: after-stage
     lanes:
       - - T-691
+        - T-725
         - T-692
         - T-693
         - T-695

@@ -14,10 +14,10 @@ assignee: null
 parent: E-677
 blocked_by:
   - T-685
-topic: null
+topic: topic-423
 branch: t/T-696-accountpoller-takes-the-hub-clock-and
 created: 2026-10-16T19:59:36.370Z
-updated: 2026-10-17T06:27:33.381Z
+updated: 2026-10-17T06:32:22.009Z
 ---
 
 ## Summary
@@ -50,3 +50,9 @@ Size L because one seam, the clock in `hub/src/accounts/poller.ts`, and one fixt
 ## Blocked by
 
 T-685 (hub Clock seam). Starts after T-575 merges (it touches the same five files).
+
+## Comments
+
+### impl-696 · 2026-10-17T06:32:22.009Z
+
+Implementation in progress: poller now receives Clock from serveProject; a separately committed Claude directory schedule Clock seam was approved by the Coordinator (45efb437). Added direct T1 coverage for minimum/floor/capped backoff/latch/newer-push, registry refusals/relative XDG/process migration, reading ordering/reopen and account.clear permissions; added T2 fake-adapter publication coalescing. Initial targeted runs green for these and the migrated Claude and poller files. Building assertion audit and serial repetition evidence before source review.

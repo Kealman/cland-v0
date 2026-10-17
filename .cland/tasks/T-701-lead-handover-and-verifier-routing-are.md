@@ -15,10 +15,10 @@ parent: E-677
 blocked_by:
   - T-686
   - T-687
-topic: null
+topic: topic-421
 branch: t/T-701-lead-handover-and-verifier-routing-are
 created: 2026-10-16T19:59:36.941Z
-updated: 2026-10-17T06:27:34.626Z
+updated: 2026-10-17T06:27:44.366Z
 ---
 
 ## Summary

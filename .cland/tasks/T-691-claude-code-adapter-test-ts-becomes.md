@@ -15,10 +15,10 @@ parent: E-677
 blocked_by:
   - T-686
   - T-679
-topic: null
+topic: topic-422
 branch: t/T-691-claude-code-adapter-test-ts-becomes
 created: 2026-10-16T19:59:35.709Z
-updated: 2026-10-17T06:27:31.120Z
+updated: 2026-10-17T06:32:23.401Z
 ---
 
 ## Summary
@@ -45,3 +45,9 @@ Decision 5: one real-binary contract file per harness, plus the T3 scenarios, ca
 ## Blocked by
 
 T-686 (in-process fake adapter), T-679 (`tiers.json` object entries).
+
+## Comments
+
+### impl-691 · 2026-10-17T06:32:23.401Z
+
+Implemented shared three-flavour T2 composition (brief order for explicit/preassigned roles, artifact envelope, Lead claim/clause), adapterless refusals and idle retry policy. Added memory-only production-adapter environment table (T2 due child_process import false-positive); retained one unset-directory binary frame. Replaced hook startup sleep/spin with fd-3 release barrier and converted PID-reuse reopen to projectHub. Per Coordinator decision 2a1f74fe in topic-422, scheduler/signed-out waits stay pending T-696 Clock at first review; source untouched.

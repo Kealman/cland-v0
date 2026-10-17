@@ -28,7 +28,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-16T19:59:37.845Z
-updated: 2026-10-16T20:00:09.254Z
+updated: 2026-10-17T06:32:40.112Z
 ---
 
 ## Summary
@@ -55,3 +55,9 @@ After the class moves (T-691 to T-706) and the scenario set (T-707), many T3 tes
 - [ ] C3. A durations refresh from a green integrated run after the merge shows T3 manifest seconds of 1800 s or less, recorded on this item with the per-tier totals.
 - [ ] C4. A spawn census of a full run after the merge shows 150 hub process starts or fewer, with the per-file table recorded on this item.
 - [ ] C5. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
+
+## Comments
+
+### coord · 2026-10-17T06:32:40.112Z
+
+Coordinator input from T-696: the account files hold native-contract assertions that the generic in-process fake can't prove. They cover the Claude auth hook and mod behaviour, Codex sparse-read ordering, attach execution, native conversation and pool handoff, PID discovery and network-preload propagation. T-696 keeps them as T3 cases with contract headers and lists them per harness as candidates for the contract files (T-691, T-692, T-693). Before retiring account-file T3 cases, this ticket decides for each one whether it moves into its harness's contract file or stays.

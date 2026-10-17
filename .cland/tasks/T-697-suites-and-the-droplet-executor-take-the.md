@@ -14,10 +14,10 @@ assignee: null
 parent: E-677
 blocked_by:
   - T-685
-topic: null
+topic: topic-420
 branch: t/T-697-suites-and-the-droplet-executor-take-the
 created: 2026-10-16T19:59:36.515Z
-updated: 2026-10-17T06:27:32.228Z
+updated: 2026-10-17T06:27:44.260Z
 ---
 
 ## Summary
