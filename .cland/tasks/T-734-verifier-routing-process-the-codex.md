@@ -3,7 +3,7 @@ id: T-734
 kind: task
 title: "verifier-routing-process: the Codex relaunch case runs 5.2–5.35 s on Linux, over the 5 s per-test budget"
 state: open
-status: backlog
+status: in progress
 size: XS
 labels:
   - v0.1.4
@@ -14,9 +14,9 @@ assignee: null
 parent: E-677
 blocked_by: []
 topic: null
-branch: null
+branch: t/T-734-verifier-routing-process-the-codex
 created: 2026-10-17T11:18:11.052Z
-updated: 2026-10-17T11:18:11.052Z
+updated: 2026-10-17T11:22:22.593Z
 ---
 
 ## Summary
