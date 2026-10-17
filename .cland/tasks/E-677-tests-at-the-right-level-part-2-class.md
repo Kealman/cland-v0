@@ -15,7 +15,7 @@ follows: []
 topic: null
 branch: null
 created: 2026-10-16T19:58:43.121Z
-updated: 2026-10-17T18:22:30.242Z
+updated: 2026-10-17T18:44:25.193Z
 ---
 
 ## Summary
@@ -78,6 +78,10 @@ stages:
       - - T-703
       - - T-707
       - - T-745
+      - - T-750
+      - - T-751
+      - - T-752
+      - - T-753
   - name: retirement and Neovim
     qa:
       scope: none

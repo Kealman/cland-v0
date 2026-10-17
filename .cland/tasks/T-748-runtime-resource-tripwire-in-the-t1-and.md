@@ -3,7 +3,7 @@ id: T-748
 kind: task
 title: "Runtime resource tripwire in the T1 and T2 phases: a test that really spawns, binds or opens a socket fails by name"
 state: open
-status: review
+status: in progress
 size: M
 criterion_seq: 2
 labels:
@@ -17,7 +17,7 @@ blocked_by: []
 topic: topic-456
 branch: t/T-748-runtime-resource-tripwire-in-the-t1-and
 created: 2026-10-17T17:29:45.529Z
-updated: 2026-10-17T18:39:02.527Z
+updated: 2026-10-17T18:40:07.232Z
 ---
 
 ## Summary
@@ -37,6 +37,7 @@ Tripped calls fail the test with file, test name, resource and stack, and the ru
   - done: impl-748 · 2026-10-17T18:01:08.766Z
   - verified: rev-30 [reviewer] · run rev-20261017-748-source-correction · 2026-10-17T18:02:21.251Z · commit 34ecdf01cfe76d020a85ee06e5ab3985c78f8f25
 - [ ] C2. An integrated cover at the merge head lists every current T1/T2 file that trips. The review request lists them, each routed to a fix or a retag.
+  - failed: rev-30 [reviewer] · 2026-10-17T18:40:07.232Z · note A-4699 fails two functional cases and two hard budgets, stops before Neovim, and supplies only a partial hub trip census without complete fix/retag routing; await owned fixes and accepted complete evidence.
 
 ## Comments
 
@@ -142,3 +143,43 @@ Standards0/Spec0 remaining findings. Source clear; Implementer may submit normal
 Durable review A-4691.
 
 Criteria: C1 verified.
+
+### rev-30 · 2026-10-17T18:40:07.232Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261017-748-runtime
+commit: 34ecdf01cfe76d020a85ee06e5ab3985c78f8f25
+scope: evidence
+findings: [{"severity":"medium","text":"M2: copied-harness coverage fixture omits new tier-cli.ts; A-4699:5354 ERR_MODULE_NOT_FOUND prevents its package coverage proof from running.","file":"hub/test/suite-coverage.test.ts","line":46},{"severity":"medium","text":"M3: new quarantined-repetition-only runtime contract takes12.436150763s>5s and lacks a hard legacy allowance (A-4699:7686); ordinary/assertion/load passes do not clear the budget.","file":"hub/test/durations.json"},{"severity":"medium","text":"M4: restart case fails remote-group startup within15000ms (A-4699:5334–5338); causality/known-defect disposition unresolved, so not accepted passing evidence.","file":"hub/test/suite-close-recovery.test.ts","line":19},{"severity":"medium","text":"M5: shared native/fresh resume unavailable-claims case takes6.303s>5s, a second hard legacy duration failure (A-4699:7685); lead/shared-fix disposition pending.","file":"hub/test/session-resume-component.test.ts"}]
+finding_counts: {"high":0,"medium":4,"low":0}
+
+# T-748 runtime evidence — not clear
+
+Exact reviewed head34ecdf01cfe76d020a85ee06e5ab3985c78f8f25 remains branch tip. Source correction rev-20261017-748-source-correction/A-4691 covers unchanged implementation; this is evidence scope, no Reviewer execution.
+
+## Standards / execution findings
+M2 medium — hub/test/suite-coverage.test.ts:46. Fixture copies harness.ts plus a fixed support list but omits the newly imported tier-cli.ts. A-4699:5354 explicitly fails ERR_MODULE_NOT_FOUND at that copied harness dependency; the package capture proof at:38 cannot start its native fixture. This is caused by the new harness import. Add the helper to fixture population (and audit other copied-harness consumers), retaining all real coverage/descendant/truncated-receipt assertions; request changed-head source review.
+
+M3 medium — hub/test/durations.json, A-4699:7686. New owned identity tier-tripwire-runner::quarantined repetition-only trips remain hard in the load gate takes12.436150763s (formatted12.436)>5s and lacks a hard legacy allowance. Passing assertions and5/5 repetitions do not excuse this hard admission failure. Use the observed Linux value for a reasoned bounded allowance or reduce cost without weakening quarantine/caught-error/repetition proofs; then source re-review before another run.
+
+M4 medium — hub/test/suite-close-recovery.test.ts:19. The restart case fails remote group started: not within15000ms (A-4699:5334–5338). Not classified by this review as caused by the patch or as an accepted known red. Item lead must diagnose/classify through the Coordinator/shared-fix chain before any final clearance or retry. Bugs/S candidate if not already tracked.
+
+M5 medium — hub/test/session-resume-component.test.ts, A-4699:7685. Shared native/fresh resume unavailable-claims case takes6.303s>5s without a hard allowance. Distinct from report-only T2 overage; lead disposition/shared fix required. No speculative task-side edit or retry authorization is inferred.
+
+## Spec / partial positive evidence
+Run f6262d9d-8921-4c79-9da5-3adcc6edfaeb/A-4699 exits1, modefull due runner infrastructure.2095total/2088pass/2fail/0cancelled/5prerequisite skips; hermetic157tests then machine1938. Hub phases finish but fail, so Neovim is not reached. A modefull label does not supply complete Neovim T1/T2 coverage.
+
+All nine new runtime runner cases and both context cases pass ordinary/load proofs; all11 owned identities5/5=55/55 repetitions. Thus prior M1 quarantine/caught-error enforce fix remains positively supported; C1 source verification stays current. The run is nevertheless not final-clear evidence.
+
+Independently parsed424 top-level tier-mismatch JSON receipts across52 distinct hub files:40T1 rows and384T2 rows, all report-only. They are runtime diagnostics, not the two functional failures or hard budgets. This is a partial current-head hub census; no full Neovim trip list or complete fix/retag routing table is present yet. Primary6fa5c798 allows C2 settlement from the exact-head full receipt/routing table; it does not authorize ignoring these reds or claiming unexecuted phases.
+
+## Accounting / limits
+Supplied Linuxx64 6.8.0-142-generic,c-8lon1,Node24.21.0/Neovim0.12.5,2workers,lifetime2150s/cost0.1493,suite2068.53s,peak1mload9.03,load-gate extra23.18s; free56.40s,machine2012.12s. Host typecheck gate reused c0115e85daa0ee36ff4665c1f2f0ee5b33c47a20. Report-only T3 ratchet4388.559 vs4358.593 and missing baselines are disclosed separately; they are not the two legacy hard budget failures.
+
+Evidence not clear. C2 failed/pending complete accepted execution/routing; C1 remains source-current and positively exercised. No source change or retry by Reviewer. Implementer has been sent exact owned failure paths and other reds for lead disposition; changed head needs fresh source review. No per-item QA.
+This note supersedes A-4700 solely to correct the raw numeric precision of M3; the formatted12.436s observation and verdict are unchanged.
+Durable review A-4701.
+
+Criteria: C2 failed (A-4699 fails two functional cases and two hard budgets, stops before Neovim, and supplies only a partial hub trip census without complete fix/retag routing; await owned fixes and accepted complete evidence.).
