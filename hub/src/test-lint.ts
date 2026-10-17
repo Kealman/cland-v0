@@ -70,11 +70,33 @@ export function lintTestSource(file: string, text: string, entry: TierEntry): Te
     if (named && ts.isNamespaceImport(named)) { bindings.set(named.name, { module, name: '*' }); }
     if (named && ts.isNamedImports(named)) for (const binding of named.elements) { bindings.set(binding.name, { module, name: binding.propertyName?.text ?? binding.name.text }); }
   }
-  const bindingOf = (node: ts.Node): { module: string; name: string } | undefined => {
-    if (ts.isIdentifier(node)) { const declaration = declarationOf(node); return declaration ? bindings.get(declaration) : undefined; }
+  const bindingOf = (node: ts.Node, seen = new Set<ts.Node>()): { module: string; name: string } | undefined => {
+    if (seen.has(node)) return;
+    seen.add(node);
+    if (ts.isIdentifier(node)) {
+      const declaration = declarationOf(node);
+      if (!declaration) return;
+      const imported = bindings.get(declaration);
+      if (imported) return imported;
+      const parent = declaration.parent;
+      if (ts.isVariableDeclaration(parent) && parent.initializer) return bindingOf(parent.initializer, seen);
+      if (ts.isBindingElement(parent) && ts.isObjectBindingPattern(parent.parent) && !parent.dotDotDotToken) {
+        const owner = parent.parent.parent;
+        if (ts.isVariableDeclaration(owner) && owner.initializer) {
+          const base = bindingOf(owner.initializer, seen);
+          if (base?.name === '*' || base?.name === 'default') return { module: base.module, name: nameOf(parent.propertyName ?? parent.name) };
+        }
+      }
+    }
+    if (ts.isParenthesizedExpression(node) || ts.isAsExpression(node) || ts.isNonNullExpression(node) || ts.isAwaitExpression(node)) return bindingOf(node.expression, seen);
     if (ts.isPropertyAccessExpression(node)) {
-      const base = bindingOf(node.expression);
+      const base = bindingOf(node.expression, seen);
       if (base?.name === '*' || base?.name === 'default') return { module: base.module, name: node.name.text };
+    }
+    if (ts.isCallExpression(node)) {
+      if ((node.expression.kind === ts.SyntaxKind.ImportKeyword || ts.isIdentifier(node.expression) && node.expression.text === 'require' && !declarationOf(node.expression)) && node.arguments[0] && ts.isStringLiteral(node.arguments[0])) return { module: modulePath(file, node.arguments[0].text), name: '*' };
+      const wrapper = bindingOf(node.expression, seen);
+      if (wrapper?.module === 'util' && wrapper.name === 'promisify' && node.arguments[0]) return bindingOf(node.arguments[0], seen);
     }
   };
   const harness = (module: string) => module === 'hub/test/harness.ts';
@@ -161,6 +183,23 @@ export function lintTestSource(file: string, text: string, entry: TierEntry): Te
     }
     return false;
   };
+  const cliEntry = (node: ts.Node | undefined, seen = new Set<ts.Node>()): boolean => {
+    if (!node || seen.has(node)) return false;
+    seen.add(node);
+    if (ts.isStringLiteralLike(node)) return /(?:^|\/)hub\/bin\/cland\.ts$/.test(node.text);
+    if (ts.isIdentifier(node)) {
+      const binding = bindingOf(node);
+      if (binding && harness(binding.module) && binding.name === 'CLI_ENTRY') return true;
+      const declaration = declarationOf(node)?.parent;
+      return !!declaration && ts.isVariableDeclaration(declaration) && ts.isVariableDeclarationList(declaration.parent) && !!(declaration.parent.flags & ts.NodeFlags.Const) && cliEntry(declaration.initializer, seen);
+    }
+    // The test-local CLI constant normally uses this exact URL construction.
+    return ts.isCallExpression(node) && nameOf(node.expression) === 'fileURLToPath' && !!node.arguments[0] && ts.isNewExpression(node.arguments[0]) && nameOf(node.arguments[0].expression) === 'URL' && !!node.arguments[0].arguments?.[0] && ts.isStringLiteralLike(node.arguments[0].arguments[0]) && /^(?:\.\.\/)+(?:hub\/)?bin\/cland\.ts$/.test(node.arguments[0].arguments[0].text);
+  };
+  const cliCall = (node: ts.CallExpression): boolean => {
+    const executable = node.arguments[0], args = node.arguments[1];
+    return !!executable && (executable.getText(source) === 'process.execPath' || ts.isStringLiteralLike(executable) && executable.text === 'node') && !!args && ts.isArrayLiteralExpression(args) && cliEntry(args.elements[0]);
+  };
   for (const node of nodes) if (ts.isCallExpression(node)) {
     const b = bindingOf(node.expression);
     const name = b?.name ?? nameOf(node.expression);
@@ -170,7 +209,8 @@ export function lintTestSource(file: string, text: string, entry: TierEntry): Te
     if (b?.module === 'nvim/test/harness.ts' && name === 'startClient' && !stubEnvironment(node.arguments[3])) resource(node, 3, 'Neovim without an explicit stub hub command');
     if (name === 'listen') resource(node, 2, 'socket listen');
     if (['spawn', 'spawnSync', 'execFile', 'execFileSync', 'exec', 'execSync'].includes(name) && (b?.module === 'child_process' || !b && ts.isIdentifier(node.expression))) {
-      resource(node, 2, 'child process');
+      const localHelper = !b && ts.isIdentifier(node.expression) && !!declarationOf(node.expression);
+      resource(node, localHelper || cliCall(node) ? 2 : 3, 'child process');
       if (node.arguments.some(arg => contains(arg, n => ts.isStringLiteralLike(n) && (/^(?:hub|startDaemon)$/.test(n.text) || /(?:hub\/bin\/cland|hub\/src\/hub\/daemon|fakes\/(?:codex|claude-code|opencode))/.test(n.text))))) resource(node, 3, 'spawned hub or harness binary');
     }
     if (['sleep', 'pause', 'delay', 'setTimeout', 'setInterval'].includes(name) && !fakeTimer(node)) {

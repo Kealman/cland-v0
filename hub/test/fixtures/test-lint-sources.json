@@ -52,5 +52,21 @@
   "unknownEnvironment": ", unknownEnv",
   "realEnvironment": ", { CLAND_COMMAND: 'cland' }",
   "reasonedAssertionSuffix": " // lint-allow-wall-clock: process deadline contract",
-  "emptySource": ""
+  "emptySource": "",
+  "promisifiedProcess": "import { execFile } from 'node:child_process'; import { promisify } from 'node:util'; promisify(execFile)('node', ['hub/bin/cland.ts']);",
+  "aliasedPromisifiedProcess": "import { execFile as execute } from 'child_process'; import { promisify as wrap } from 'util'; const run = wrap(execute); run('node', ['hub/bin/cland.ts']);",
+  "namespacePromisifiedProcess": "import * as cp from 'node:child_process'; import * as util from 'node:util'; const run = util.promisify(cp.execFile); run('node', ['hub/bin/cland.ts']);",
+  "destructuredProcess": "import cp from 'node:child_process'; import util from 'node:util'; const { execFile: execute } = cp; const { promisify: wrap } = util; const run = wrap(execute); run('node', ['hub/bin/cland.ts']);",
+  "dynamicDestructuredProcess": "const { execFile: execute } = await import('node:child_process'); const { promisify: wrap } = await import('node:util'); wrap(execute)('node', ['hub/bin/cland.ts']);",
+  "exportedProcessAlias": "import { execFile } from 'node:child_process'; import { promisify } from 'node:util'; export const execute = promisify(execFile); const run = execute; export { run as helper }; run('node', ['hub/bin/cland.ts']);",
+  "unusedProcessWrapper": "import { execFile } from 'node:child_process'; import { promisify } from 'node:util'; export const run = promisify(execFile);",
+  "foreignProcessWrapper": "import { execFile } from './memory-process.ts'; import { promisify } from 'node:util'; const run = promisify(execFile); run('node', ['hub/bin/cland.ts']);",
+  "shadowedProcessWrapper": "import { execFile } from 'node:child_process'; import { promisify } from 'node:util'; const run = promisify(execFile); function check(run) { run('node', ['hub/bin/cland.ts']); }",
+  "cyclicProcessAlias": "const first = second; const second = first; first('node', ['hub/bin/cland.ts']);",
+  "genericChild": "import { execFile } from 'node:child_process'; execFile(process.execPath, ['--input-type=module', '-e', script]);",
+  "wrappedGenericChild": "import { execFile } from 'node:child_process'; import { promisify } from 'node:util'; const run = promisify(execFile); run(process.execPath, ['--input-type=module', '-e', script]);",
+  "clandCliChild": "import { execFile } from 'node:child_process'; import { promisify } from 'node:util'; const CLI = fileURLToPath(new URL('../bin/cland.ts', import.meta.url)); promisify(execFile)(process.execPath, [CLI, 'task', 'list']);",
+  "harnessCliChild": "import { spawn } from 'node:child_process'; import { CLI_ENTRY as cli } from './harness.ts'; spawn(process.execPath, [cli, 'task', 'list']);",
+  "unknownCliChild": "import { spawn } from 'node:child_process'; const CLI = otherPath; spawn(process.execPath, [CLI, 'task', 'list']);",
+  "clandMentionInScript": "import { spawn } from 'node:child_process'; spawn(process.execPath, ['-e', \"console.log('hub/bin/cland.ts')\"]);"
 }

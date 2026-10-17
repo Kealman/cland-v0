@@ -85,6 +85,41 @@ test('tier rules locate process imports and calls while accepting in-process col
   ]) assert.ok(lintTestSource(file, source, 'T1').findings.length, source);
 });
 
+test('wrapped child calls retain process findings and hub target classification', () => {
+  for (const name of [
+    'promisifiedProcess', 'aliasedPromisifiedProcess', 'namespacePromisifiedProcess',
+    'destructuredProcess', 'dynamicDestructuredProcess', 'exportedProcessAlias',
+  ]) {
+    const source = input(name);
+    const result = lintTestSource(file, source, 'T1');
+    assert.equal(result.qualifies, 'T3', name);
+    assert.ok(result.findings.some(f => f.message === 'child process requires T2'), name);
+    assert.ok(result.findings.some(f => f.message === 'spawned hub or harness binary requires T3'), name);
+    assert.equal(touchesMachineResources(file, source), true, name);
+  }
+  for (const [name, tier] of [
+    ['unusedProcessWrapper', 'T2'], ['foreignProcessWrapper', 'T1'],
+    ['shadowedProcessWrapper', 'T2'], ['cyclicProcessAlias', 'T1'],
+  ] as const) {
+    const result = lintTestSource(file, input(name), tier);
+    assert.equal(result.qualifies, tier, name);
+    assert.deepEqual(result.findings, [], name);
+  }
+});
+
+test('generic child processes require T3 while the cland CLI retains T2', () => {
+  for (const name of ['genericChild', 'wrappedGenericChild', 'unknownCliChild', 'clandMentionInScript']) {
+    const result = lintTestSource(file, input(name), 'T2');
+    assert.equal(result.qualifies, 'T3', name);
+    assert.ok(result.findings.some(f => f.rule === 'tier-process' && f.message === 'child process requires T3'), name);
+  }
+  for (const name of ['clandCliChild', 'harnessCliChild']) {
+    const result = lintTestSource(file, input(name), 'T2');
+    assert.equal(result.qualifies, 'T2', name);
+    assert.deepEqual(result.findings, [], name);
+  }
+});
+
 test('wall-clock waits and elapsed assertions require a reason on their line', () => {
   for (const wait of [input('sleepWait'), input('pauseWait'), input('delayWait'), input('timeoutWait'), input('promiseTimerWait')]) {
     assert.ok(lintTestSource(file, wait, 'T2').findings.some(f => f.rule === 'wall-clock-wait'), wait);
