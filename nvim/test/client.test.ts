@@ -8,7 +8,7 @@ import { spawnSync } from 'node:child_process';
 import { join } from 'node:path';
 import { cland, killDaemon, readDiscovery, projectHub, spawnSpoke, startDaemon, tempProject } from '../../hub/test/harness.ts';
 import { NVIM_DIR } from '../bin/nvim-path.ts';
-import { centreOf, clock, nvimOrSkip, startClient } from './harness.ts';
+import { centreOf, nvimOrSkip, startClient } from './harness.ts';
 
 const nvim = await nvimOrSkip();
 const skip = 'skip' in nvim ? nvim.skip : false;
@@ -19,36 +19,6 @@ const composerLines = (c: { lua: <T>(code: string) => Promise<T> }) => c.lua<str
 
 /** The thread's one-line notice (` ▲ …` under the messages) is on screen; the header's `▲ no coordinator` is not one. */
 const notice = (s: string): boolean => /^   ▲ /m.test(centreOf(s));
-
-test('a message typed in the composer shows queued, reaches a coordinator with the topic, and turns delivered; the reply shows with sender and time', { skip }, async (t) => {
-  const root = await tempProject(t);
-  await projectHub(t, root);
-  const c = await startClient(t, bin, root);
-  await c.waitScreen((s) => centreOf(s).includes('No messages in General yet.') && !notice(s), 'the empty General thread, connected');
-
-  await c.input('hello<CR>');
-  const queued = await c.waitScreen((s) => /^[▎▌] you → coordinator {2}\d\d:\d\d · message +⌁ queued $/m.test(centreOf(s)) && /^[▎▌] hello +$/m.test(centreOf(s)), 'hello, queued');
-  assert.equal(notice(queued), false, 'no notice: the client is connected');
-  assert.deepEqual(await composerLines(c), ['› '], 'the composer is empty again');
-
-  const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator', sessionId: 'sess-coord' });
-  t.after(() => coord.close());
-  const event = await coord.waitForEvent((e) => e.params.content === 'hello', 15_000);
-  assert.equal(event.params.meta?.topic, 'general');
-  assert.equal(event.params.meta?.topic_title, 'General');
-  assert.equal(event.params.meta?.from_kind, 'human');
-  await c.waitScreen((s) => /^[▎▌] you → coordinator {2}\d\d:\d\d · message +✓ delivered $/m.test(centreOf(s)), 'hello, delivered');
-
-  const reply = await coord.call<{ ok: boolean }>('send', { text: 'hello, human' });
-  assert.equal(reply.ok, true);
-  const [last] = (await coord.call<{ messages: Array<{ ts: string; text: string }> }>('history', { limit: 1 })).messages;
-  assert.equal(last?.text, 'hello, human');
-  const screen = await c.waitScreen((s) => centreOf(s).includes('hello, human'), 'the reply');
-  assert.match(centreOf(screen), new RegExp(`^[▎▌] coord \\[Coordinator\\] → you {2}${clock(last?.ts ?? '')} · report *$`, 'm'), 'sender [Role], local time and kind');
-  assert.match(centreOf(screen), /^[▎▌] hello, human *$/m);
-  // the human's message keeps its stage; the agent's has none
-  assert.match(centreOf(screen), /^[▎▌] you → coordinator {2}\d\d:\d\d · message +✓ delivered $/m);
-});
 
 test('Shift+Enter inserts a newline in the composer; Enter sends both lines as one message', { skip }, async (t) => {
   const root = await tempProject(t);

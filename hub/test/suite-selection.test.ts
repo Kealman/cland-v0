@@ -172,14 +172,14 @@ test('coverage selects the changed function and changed tests with both smoke ba
   await writeFile(join(root, 'hub/test/changed.test.ts'), '// changed test\n');
   const selected = await selectPackageSuite(root);
   assert.equal(selected.mode, 'hub-selected');
-  assert.deepEqual(selected.tests, ['hub/test/changed.test.ts', 'hub/test/daemon.test.ts', 'hub/test/second.test.ts', 'hub/test/startup-smoke.test.ts', 'hub/test/tracer.test.ts']);
+  assert.deepEqual(selected.tests, ['hub/test/changed.test.ts', 'hub/test/scenarios/hub-lifecycle.test.ts', 'hub/test/scenarios/message-tracer.test.ts', 'hub/test/scenarios/startup-smoke.test.ts', 'hub/test/second.test.ts']);
   assert.match(selected.reason, /coverage/);
   assert.match(JSON.stringify(selected), /second/);
   assert.doesNotMatch(JSON.stringify(selected.tests), /first.test/);
 });
 
 async function packageShardsForSelection(root: string, selection: Awaited<ReturnType<typeof selectPackageSuite>>) {
-  for (const file of [...HUB_SMOKE, ...NVIM_SMOKE]) await writeFile(join(root, file), '// smoke');
+  for (const file of [...HUB_SMOKE, ...NVIM_SMOKE]) { await mkdir(join(root, file, '..'), { recursive: true }); await writeFile(join(root, file), '// smoke'); }
   const paths = [];
   for await (const file of glob(['hub/test/**/*.test.ts', 'nvim/test/**/*.test.ts'], { cwd: root })) paths.push(file);
   await writeFile(join(root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: Object.fromEntries(paths.map(file => [file, 'T3'])) }));
@@ -311,7 +311,7 @@ test(`${mode} admission retains both locks through smoke, omits the other packag
   const { root, git } = await gitFixture(t);
   const journal = join(root, 'journal.jsonl');
   const locks = { hub: join(root, 'machine.lock'), nvim: join(root, 'nvim.lock') };
-  const files = ['hub/test/local.test.ts', 'hub/test/tracer.test.ts', 'hub/test/daemon.test.ts', 'hub/test/startup-smoke.test.ts', 'nvim/test/client.test.ts', 'nvim/test/sessions.test.ts', 'nvim/test/other.test.ts'];
+  const files = ['hub/test/local.test.ts', 'hub/test/scenarios/hub-lifecycle.test.ts', 'hub/test/scenarios/message-tracer.test.ts', 'hub/test/scenarios/startup-smoke.test.ts', 'nvim/test/other.test.ts', 'nvim/test/scenarios/workbench.test.ts'];
   for (const path of files) {
     await mkdir(join(root, path, '..'), { recursive: true });
     await writeFile(join(root, path), `import test from 'node:test'; import assert from 'node:assert/strict'; import { readFileSync, appendFileSync, existsSync } from 'node:fs'; test('phase', () => {
@@ -334,21 +334,20 @@ test(`${mode} admission retains both locks through smoke, omits the other packag
   const code = `import { runPackageSuite } from ${JSON.stringify(runner)}; process.exitCode = await runPackageSuite('auto', [], ${JSON.stringify({ cwd: root, lockDirs: locks })});`;
   const reduced = await exec(process.execPath, ['--input-type=module', '-e', code], { env });
   const rows = (await readFile(journal, 'utf8')).trim().split('\n').map(line => JSON.parse(line) as { file: string; token: string });
-  assert.deepEqual(rows.map(row => row.file).sort(), mode === 'hub-only' ? ['hub/test/daemon.test.ts', 'hub/test/local.test.ts', 'hub/test/startup-smoke.test.ts', 'hub/test/tracer.test.ts', 'nvim/test/client.test.ts', 'nvim/test/sessions.test.ts'] : ['hub/test/daemon.test.ts', 'hub/test/startup-smoke.test.ts', 'hub/test/tracer.test.ts', 'nvim/test/client.test.ts', 'nvim/test/other.test.ts', 'nvim/test/sessions.test.ts']);
+  assert.deepEqual(rows.map(row => row.file).sort(), mode === 'hub-only' ? ['hub/test/local.test.ts', 'hub/test/scenarios/hub-lifecycle.test.ts', 'hub/test/scenarios/message-tracer.test.ts', 'hub/test/scenarios/startup-smoke.test.ts', 'nvim/test/scenarios/workbench.test.ts'] : ['hub/test/scenarios/hub-lifecycle.test.ts', 'hub/test/scenarios/message-tracer.test.ts', 'hub/test/scenarios/startup-smoke.test.ts', 'nvim/test/other.test.ts', 'nvim/test/scenarios/workbench.test.ts']);
   assert.equal(new Set(rows.map(row => row.token)).size, 1, 'one admission spans hub and smoke');
   assert.ok(reduced.stderr.split('\n').some(line => line.startsWith('suite duration ') && line.includes(`mode ${mode}`) && line.includes(changed)), reduced.stderr);
   assert.ok(reduced.stderr.includes(`suite phase ${mode === 'hub-only' ? 'Neovim smoke' : 'hub machine smoke'}; locks held`), reduced.stderr);
   // Both force-full CLI spellings override targets and transported selections.
   for (const force of ['--all', 'all']) {
     await writeFile(journal, '');
-    const full = await exec(process.execPath, [runner, force, 'hub/test/tracer.test.ts'], { cwd: root, env: { ...env, CLAND_TEST_SKIP_LOCK: '1', CLAND_SUITE_SELECTION: JSON.stringify({ mode, files: [changed], reason: 'transported decision' }) } });
+    const full = await exec(process.execPath, [runner, force, 'hub/test/scenarios/message-tracer.test.ts'], { cwd: root, env: { ...env, CLAND_TEST_SKIP_LOCK: '1', CLAND_SUITE_SELECTION: JSON.stringify({ mode, files: [changed], reason: 'transported decision' }) } });
     assert.match(full.stderr, /mode full/);
     assert.match(await readFile(journal, 'utf8'), /nvim\/test\/other.test.ts/);
     assert.match(await readFile(journal, 'utf8'), /hub\/test\/local.test.ts/);
   }
 });
 }
-
 
 for (const [name, path, reason] of [
   ['protocol', 'hub/src/protocol.ts', /shared contract/],
@@ -493,10 +492,10 @@ test('a missing map explicitly falls back to the package rule', async t => {
 test('hub-selected executes covering tests and both smoke baselines, omitting unrelated tests', async t => {
   const { root, git, source } = await coverageFixture(t);
   const journal = join(root, '.cland/run/executed');
-  const hub = ['first', 'second', 'changed', 'daemon', 'tracer', 'startup-smoke'].map(name => `hub/test/${name}.test.ts`);
-  const nvim = ['client', 'sessions', 'importer', 'other'].map(name => `nvim/test/${name}.test.ts`);
+  const hub = [...['first', 'second', 'changed'].map(name => `hub/test/${name}.test.ts`), ...HUB_SMOKE];
+  const nvim = [...['importer', 'other'].map(name => `nvim/test/${name}.test.ts`), ...NVIM_SMOKE];
   await mkdir(join(root, 'nvim/test'), { recursive: true });
-  for (const file of [...hub, ...nvim]) await writeFile(join(root, file), `import test from 'node:test'; import { appendFileSync } from 'node:fs'; test('execution marker', () => appendFileSync(${JSON.stringify(journal)}, ${JSON.stringify(file + '\n')}));\n`);
+  for (const file of [...hub, ...nvim]) { await mkdir(join(root, file, '..'), { recursive: true }); await writeFile(join(root, file), `import test from 'node:test'; import { appendFileSync } from 'node:fs'; test('execution marker', () => appendFileSync(${JSON.stringify(journal)}, ${JSON.stringify(file + '\n')}));\n`); }
   await writeFile(join(root, 'nvim/test/importer.test.ts'), "import '../../hub/src/hub/example.ts';\n" + await readFile(join(root, 'nvim/test/importer.test.ts'), 'utf8'));
   await writeFile(join(root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: Object.fromEntries([...hub, ...nvim].map(file => [file, 'T3'])) }));
   await git('add', '.'); await git('commit', '-m', 'executable baselines'); await git('push', 'origin', 'HEAD:dev');
@@ -508,7 +507,7 @@ test('hub-selected executes covering tests and both smoke baselines, omitting un
   const env: NodeJS.ProcessEnv = { ...process.env, NODE_TEST_CONTEXT: '', CLAND_SUITE_SELECTION: JSON.stringify(selection) };
   delete env.CLAND_SUITE_LEASE;
   const result = await exec(process.execPath, ['--input-type=module', '-e', code], { cwd: root, env });
-  assert.deepEqual((await readFile(journal, 'utf8')).trim().split('\n').sort(), ['hub/test/daemon.test.ts', 'hub/test/second.test.ts', 'hub/test/startup-smoke.test.ts', 'hub/test/tracer.test.ts', 'nvim/test/client.test.ts', 'nvim/test/importer.test.ts', 'nvim/test/sessions.test.ts']);
+  assert.deepEqual((await readFile(journal, 'utf8')).trim().split('\n').sort(), ['hub/test/scenarios/hub-lifecycle.test.ts', 'hub/test/scenarios/message-tracer.test.ts', 'hub/test/scenarios/startup-smoke.test.ts', 'hub/test/second.test.ts', 'nvim/test/importer.test.ts', 'nvim/test/scenarios/workbench.test.ts']);
   assert.match(result.stderr, /suite phase Neovim selected/);
   const duration = result.stderr.split('\n').find(line => line.startsWith('suite duration '));
   assert.match(duration ?? '', /mode hub-selected.*deciding functions.*second/);
@@ -518,7 +517,7 @@ test('hub-selected executes covering tests and both smoke baselines, omitting un
 test('coverage replay includes own tests, reports time share and failures, and names missing-map fallback', async t => {
   const { root, git, source } = await coverageFixture(t);
   await writeFile(join(root, 'hub/test/durations.json'), JSON.stringify({ version: 1, source: { commit: 'fixture', artifacts: [] }, budget: { testSeconds: 5, fileSeconds: 60 }, tests: {}, allow: {}, files: Object.fromEntries([
-    ['hub/test/first.test.ts', { seconds: 30, tests: 1 }], ['hub/test/second.test.ts', { seconds: 10, tests: 1 }], ['hub/test/changed.test.ts', { seconds: 2, tests: 1 }], ['hub/test/daemon.test.ts', { seconds: 1, tests: 1 }], ['hub/test/tracer.test.ts', { seconds: 1, tests: 1 }], ['hub/test/startup-smoke.test.ts', { seconds: 0, tests: 1 }],
+    ['hub/test/first.test.ts', { seconds: 30, tests: 1 }], ['hub/test/second.test.ts', { seconds: 10, tests: 1 }], ['hub/test/changed.test.ts', { seconds: 2, tests: 1 }], ['hub/test/scenarios/hub-lifecycle.test.ts', { seconds: 1, tests: 1 }], ['hub/test/scenarios/message-tracer.test.ts', { seconds: 1, tests: 1 }], ['hub/test/scenarios/startup-smoke.test.ts', { seconds: 0, tests: 1 }],
   ]) }));
   await git('add', '.'); await git('commit', '-m', 'timing baseline'); await git('push', 'origin', 'HEAD:dev');
   const base = await git('rev-parse', 'HEAD');
@@ -548,7 +547,7 @@ test('coverage replay includes own tests, reports time share and failures, and n
     return true;
   });
   await rm(join(root, '.cland/run/suites/old-run'), { recursive: true });
-  await writeFile(failures, JSON.stringify({ [head]: ['nvim/test/sessions.test.ts'] }));
+  await writeFile(failures, JSON.stringify({ [head]: ['nvim/test/scenarios/workbench.test.ts'] }));
   assert.match((await exec(process.execPath, [...args, '--failures', failures], { cwd: root })).stdout, /0 own misses; 0 historical misses/);
   await writeFile(failures, JSON.stringify({ [head]: ['nvim/test/other.test.ts'] }));
   await assert.rejects(exec(process.execPath, [...args, '--failures', failures], { cwd: root }), error => {
@@ -562,7 +561,6 @@ test('coverage replay includes own tests, reports time share and failures, and n
   assert.match(missing.stdout, /100.0%/);
   assert.match(missing.stdout, /0 misses/);
 });
-
 
 test('a remote fixture diff retains the T4 harness self-tests', async t => {
   const { root } = await gitFixture(t);

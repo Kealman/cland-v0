@@ -24,9 +24,9 @@ async function fixture(t: TestContext, packageRun = false) {
 test('parent', async t => { await t.test('child', () => new Promise(r => setTimeout(r, 100))); });
 test('skipped', {skip: 'fixture platform'}, () => {});`);
   if (packageRun) {
-    await writeFile(join(cwd, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: { 'hub/test/fixture.test.ts': 'T3', 'nvim/test/client.test.ts': 'T3', 'nvim/test/sessions.test.ts': 'T3' } }));
-    await mkdir(join(cwd, 'nvim/test'), { recursive: true });
-    for (const name of ['client', 'sessions']) await writeFile(join(cwd, `nvim/test/${name}.test.ts`), '// empty cross-package smoke fixture\n');
+    await writeFile(join(cwd, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: { 'hub/test/fixture.test.ts': 'T3', 'nvim/test/scenarios/workbench.test.ts': 'T3' } }));
+    await mkdir(join(cwd, 'nvim/test/scenarios'), { recursive: true });
+    await writeFile(join(cwd, 'nvim/test/scenarios/workbench.test.ts'), '// empty cross-package smoke fixture\n');
   }
   const start = (loadGate = false) => {
     const selection = { mode: 'hub-only', files: ['hub/test/fixture.test.ts'], reason: 'fixture task selection from hub', loadGate };

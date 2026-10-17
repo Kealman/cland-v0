@@ -2407,16 +2407,18 @@ result and log-artifact pointer before other details when the configured cap is 
 Reduced runs retain a cross-package smoke baseline. Both lists are named constants
 in `src/suite-selection.ts`:
 
-- `NVIM_SMOKE`: `nvim/test/client.test.ts`, `nvim/test/sessions.test.ts`. A hub-only
-  run executes the whole hub phase followed by these real-hub/spoke UI tests.
-- `HUB_SMOKE`: `hub/test/tracer.test.ts`, `hub/test/daemon.test.ts`,
-  `hub/test/startup-smoke.test.ts`. A Neovim-only run executes these spoke/daemon
+- `NVIM_SMOKE`: `nvim/test/scenarios/workbench.test.ts`. A hub-only run executes
+  the whole hub phase followed by the real-hub Neovim attach and main-view scenario.
+- `HUB_SMOKE`: `hub/test/scenarios/message-tracer.test.ts`,
+  `hub/test/scenarios/hub-lifecycle.test.ts`, `hub/test/scenarios/startup-smoke.test.ts`.
+  A Neovim-only run executes these spoke/daemon
   tests followed by the whole Neovim phase. The startup smoke starts the candidate
   tree's real detached daemon with `cland hub start` in a fresh project and requires
   `hub status --json` to answer over the Unix socket within one ten-second startup
   budget. It then serves a tracker request and stops the hub, observing PID and
   discovery/socket teardown. It runs in full, hub-only and coverage-selected hub
-  phases too. Planted pre-discovery and listening-but-silent daemon hangs prove
+  phases too. The separate `hub/test/startup-smoke.test.ts` regressions plant
+  pre-discovery and listening-but-silent daemon hangs to prove
   bounded failure naming the last structured startup log event. A test-only spawn
   observer owns the detached daemon independently of discovery, and cleanup proves
   its PID is gone while the fixture still exists. The hang cases' duration allowances

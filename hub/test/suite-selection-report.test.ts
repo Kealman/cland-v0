@@ -2,23 +2,18 @@
 import { serializeTierManifest } from '../src/suite-shards.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile, writeFile, mkdir, stat, rm, readdir } from 'node:fs/promises';
+import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, clandWithEnv, connectUi, eventually, startDaemon, spawnSpoke, tempProject, pidAlive, fakeCodex } from './harness.ts';
-import { fixture, type ResultMessage } from './suite-fixture.ts';
-import { suiteSummary } from '../src/hub/suites.ts';
-import { DatabaseSync } from 'node:sqlite';
+import { clandWithEnv, eventually, spawnSpoke } from './harness.ts';
+import { fixture } from './suite-fixture.ts';
 import { ownProcess } from './process-cleanup.ts';
 import type { Artifact } from '../src/protocol.ts';
 import type { VerificationQueue, HubStatus } from '../src/protocol.ts';
-import type { ItemSummary, ItemView } from '../src/tracker/tracker.ts';
-import { spawn, execFile } from 'node:child_process';
+import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
-import { defaultConfig, parseConfig, renderConfig } from '../src/init/config.ts';
-import { cacheRepository, humanRunnerFixture } from './suite-support.ts';
+import { cacheRepository } from './suite-support.ts';
 import { onCleanup } from './process-cleanup.ts';
-
 
 test('auto suite reports the fetched diff decision and transports it to the package; --all forces full', async t => {
   const f = await fixture(t, 'node -e "console.log(process.env.CLAND_SUITE_SELECTION)"');
@@ -96,8 +91,8 @@ test('integrated dev verify publishes a portable function map once; task verify 
   await writeFile(join(f.root, 'hub/test/run-suite.ts'), `// inheritedLease and reduceCoverage supplied by the imported package runner\nimport { runPackageSuite } from ${JSON.stringify(runner)}; process.exitCode = await runPackageSuite('auto', [], { cwd: process.cwd() });`);
   await writeFile(join(f.root, 'hub/src/hub/covered.ts'), 'export function called() { return 42; }\nexport function never() { return 0; }\n');
   await writeFile(join(f.root, 'hub/test/covered.test.ts'), "import test from 'node:test'; import assert from 'node:assert/strict'; import { called } from '../src/hub/covered.ts'; test('fixture calls function', () => assert.equal(called(), 42));\n");
-  for (const file of ['hub/test/tracer.test.ts', 'hub/test/daemon.test.ts', 'hub/test/startup-smoke.test.ts', 'nvim/test/client.test.ts', 'nvim/test/sessions.test.ts']) await writeFile(join(f.root, file), "import test from 'node:test'; test('smoke', () => {});\n");
-  await writeFile(join(f.root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: Object.fromEntries([...['covered', 'tracer', 'daemon', 'startup-smoke'].map(file => `hub/test/${file}.test.ts`), 'nvim/test/client.test.ts', 'nvim/test/sessions.test.ts'].map(file => [file, 'T3'])) }));
+  for (const file of ['hub/test/scenarios/hub-lifecycle.test.ts', 'hub/test/scenarios/message-tracer.test.ts', 'hub/test/scenarios/startup-smoke.test.ts', 'nvim/test/scenarios/workbench.test.ts']) { await mkdir(join(f.root, file, '..'), { recursive: true }); await writeFile(join(f.root, file), "import test from 'node:test'; test('smoke', () => {});\n"); }
+  await writeFile(join(f.root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: Object.fromEntries(['hub/test/covered.test.ts', 'hub/test/scenarios/hub-lifecycle.test.ts', 'hub/test/scenarios/message-tracer.test.ts', 'hub/test/scenarios/startup-smoke.test.ts', 'nvim/test/scenarios/workbench.test.ts'].map(file => [file, 'T3'])) }));
   await git('add', '.'); await git('commit', '-m', 'coverage fixture'); await git('push', 'origin', 'dev');
   const head = await git('rev-parse', 'HEAD');
   const coord = await spawnSpoke({ discover: true, cwd: f.root, name: 'coord', sessionId: 'coverage-coord', role: 'coordinator' });
@@ -118,7 +113,7 @@ test('integrated dev verify publishes a portable function map once; task verify 
   const map = JSON.parse(await readFile(maps[0]!.path, 'utf8'));
   assert.equal(map.head, head);
   assert.equal(map.tree, ((await f.ui.request({ type: 'hub.status' })).value as HubStatus).suites!.find(job => job.id === JSON.parse(launched.stdout).id)!.tree);
-  assert.deepEqual(map.testFiles, ['hub/test/covered.test.ts', 'hub/test/daemon.test.ts', 'hub/test/startup-smoke.test.ts', 'hub/test/tracer.test.ts']);
+  assert.deepEqual(map.testFiles, ['hub/test/covered.test.ts', 'hub/test/scenarios/hub-lifecycle.test.ts', 'hub/test/scenarios/message-tracer.test.ts', 'hub/test/scenarios/startup-smoke.test.ts']);
   const functions = map.files['hub/src/hub/covered.ts'].functions;
   assert.deepEqual(functions.find((fn: { name: string }) => fn.name === 'called').tests, ['hub/test/covered.test.ts']);
   assert.deepEqual(functions.find((fn: { name: string }) => fn.name === 'never').tests, []);

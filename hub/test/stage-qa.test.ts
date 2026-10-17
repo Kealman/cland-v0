@@ -1,103 +1,12 @@
-// Stage QA through the daemon, real verifier spokes, CLI and local-territory merges.
+// T3: residual stage QA rules: native Git ancestry failures and daemon receipt recovery remain here; the end-to-end core is scenarios/stage-close.test.ts.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { stringify } from 'yaml';
 import type { ItemView } from '../src/tracker/tracker.ts';
-import type { EpicPlan } from '../src/tracker/plan.ts';
-import { projectHub, cland, clandWithEnv, connectUi, eventually, fakeClaude, spawnSpoke, startDaemon, tempProject } from './harness.ts';
-import { copyPreparedProject } from './prepared-project.ts';
-import { taskWriteGate } from './tracker-write-gate.ts';
-import { seedStageCover } from './stage-cover-fixture.ts';
-
-const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
-async function fixture(t: test.TestContext, gated = false, count = 3, launchLead = false, ancestryFailure = false, serve: typeof projectHub | typeof startDaemon = projectHub) {
-  const root = await tempProject(t);
-  await copyPreparedProject(root);
-  const gate = gated ? await taskWriteGate(t, root) : undefined;
-  const fake = launchLead ? await fakeClaude(t) : undefined;
-  const failAncestry = join(root, '.cland', 'fail-ancestry');
-  const bin = join(root, '.cland', 'ancestry-bin');
-  if (ancestryFailure) {
-    await mkdir(bin);
-    await writeFile(join(bin, 'git'), '#!/bin/sh\nif [ "$1" = "merge-base" ] && [ "$2" = "--is-ancestor" ] && [ -f "$CLAND_TEST_ANCESTRY_FAIL" ]; then kill -TERM "$$"; fi\nexec /usr/bin/git "$@"\n', { mode: 0o755 });
-  }
-  const env = { ...gate?.env, ...fake?.env,
-    ...(ancestryFailure ? { PATH: `${bin}:${process.env.PATH}`, CLAND_TEST_ANCESTRY_FAIL: failAncestry } : {}) };
-  let hub = await serve(t, root, env);
-  let ui = await connectUi(t, hub.discovery);
-  let rev = await spawnSpoke({ discover: true, cwd: root, name: 'rev', role: 'reviewer', sessionId: 'review-session' });
-  let qa = await spawnSpoke({ discover: true, cwd: root, name: 'qa-one', role: 'qa', sessionId: 'qa-session' });
-  t.after(async () => { await rev.close(); await qa.close(); });
-  const create = async (title: string, kind = 'task', parent?: string, body?: string) => {
-    const r = await ui.request({ ...(['task'].includes(kind) ? { size: 'M' } : {}), type: 'task.create', title, kind, parent, body }); assert.equal(r.ok, true, r.error);
-    return (r.value as { item: ItemView }).item;
-  };
-  const epic = await create('Stage demo', 'epic', undefined, '## Definition of done\n- [ ] C1. The integrated demo works');
-  const items = await Promise.all(['First', 'Second', 'Third'].slice(0, count).map(title => create(title, 'task', epic.id)));
-  const plan: EpicPlan = { stages: [{ name: 'Stage 1', qa: { scope: 'affected', when: 'after-stage' }, lanes: count === 1 ? [[items[0]!.id]] : [[items[0]!.id, items[1]!.id], [items[2]!.id]] }] };
-  const set = async () => { const r = await ui.request({ type: 'task.plan', item: epic.id, op: 'set', yaml: stringify(plan) }); assert.equal(r.ok, true, r.error); };
-  await set();
-  const read = async (id = epic.id) => ((await ui.request({ type: 'task.view', item: id })).value as { item: ItemView }).item;
-  const land = async () => {
-    for (const [i, item] of items.entries()) {
-      const r = await ui.request({ type: 'task.claim', item: item.id }); assert.equal(r.ok, true, r.error);
-      const work = (r.value as { worktree: { path: string } }).worktree.path;
-      await writeFile(join(work, `feature-${i}`), `feature ${i}\n`); git(work, 'add', `feature-${i}`); git(work, 'commit', '-qm', `Feature ${i}`);
-      assert.equal((await rev.call<{ ok: boolean }>('task.comment', { id: item.id, verdict: 'review', scope: 'full', result: 'clear', run: `review-${i}` })).ok, true);
-      await eventually('review makes after-stage item ready', async () => (await read(item.id)).status === 'ready' ? true : undefined);
-      const merged = await ui.request({ type: 'merge', item: item.id }, 30_000); assert.equal(merged.ok, true, merged.error);
-      assert.equal((await read(item.id)).verdicts.some(v => v.verdict === 'qa'), false);
-    }
-    // These tests exercise QA/plan provenance with completed platform receipts
-    // already present, as they would be before the stage QA request.
-    await rev.close(); await qa.close(); ui.close();
-    if ('stop' in hub) await hub.stop();
-    else assert.equal((await cland(root, 'hub', 'stop')).code, 0);
-    await seedStageCover(root);
-    hub = await serve(t, root, env);
-    ui = await connectUi(t, hub.discovery);
-    rev = await spawnSpoke({ discover: true, cwd: root, name: 'rev', role: 'reviewer', sessionId: 'review-session' });
-    qa = await spawnSpoke({ discover: true, cwd: root, name: 'qa-one', role: 'qa', sessionId: 'qa-session' });
-    await eventually('platform tree resolved before stage QA', async () => (await read()).stages?.[0]?.cover?.missing.length === 0 ? true : undefined);
-  };
-  const verdict = (result = 'clear', extra: Record<string, unknown> = {}) => qa.call<{ ok: boolean; error?: string; item?: ItemView }>('task.comment', { id: epic.id, verdict: 'qa', result, stage: 'Stage 1', run: `stage-${result}`, ...extra });
-  return { root, get ui() { return ui; }, get rev() { return rev; }, get qa() { return qa; }, epic, items, plan, set, read, land, verdict, gate, failAncestry };
-}
-
-test('three review-only merges, one stage QA on dev, not-clear/retry, restart and separate epic demo', async t => {
-  const f = await fixture(t, undefined, undefined, undefined, undefined, startDaemon);
-  await f.land();
-  assert.equal((await f.read()).stages?.[0]?.state, 'open');
-  const clear = await f.verdict(); assert.equal(clear.ok, true, clear.error);
-  const view = await f.read();
-  assert.equal(view.stages?.[0]?.state, 'closed'); assert.equal(view.state, 'open');
-  assert.equal(view.criteria[0]?.marks.length, 0, 'stage evidence cannot verify the separate epic demo');
-  assert.equal(view.stages?.[0]?.verdict?.commit, git(f.root, 'rev-parse', 'dev'));
-  const shown = JSON.parse((await cland(f.root, 'task', 'plan', 'show', f.epic.id, '--json')).stdout);
-  assert.equal(shown.stages[0].state, 'closed');
-  const close = await f.ui.request({ type: 'task.close', item: f.epic.id });
-  assert.equal(close.ok, false); assert.match(close.error ?? '', /no hub-written qa verdict/);
-  assert.equal((await f.verdict('not clear')).ok, true);
-  assert.equal((await f.read()).stages?.[0]?.state, 'open');
-  // The CLI carries stage as a verdict field and uses a real connected QA session's identity.
-  const retry = await clandWithEnv(f.root, { CLAND_SESSION_NAME: 'qa-one', CLAND_ROLE: 'qa' }, 'task', 'comment', f.epic.id, 'Stage cases pass', '--verdict', 'qa', '--result', 'clear', '--run', 'stage-retry', '--stage', 'Stage 1', '--json');
-  assert.equal(retry.code, 0, retry.stderr);
-  git(f.root, 'commit', '--allow-empty', '-qm', 'Later stage work');
-  await eventually('later dev builds preserve completed stage evidence', async () => (await f.read()).stages?.[0]?.state === 'closed' ? true : undefined);
-  await f.rev.close(); await f.qa.close(); f.ui.close(); assert.equal((await cland(f.root, 'hub', 'stop')).code, 0);
-  const { discovery } = await startDaemon(t, f.root); const ui = await connectUi(t, discovery);
-  const persisted = await eventually('restarted hub checks stage build ancestry', async () => {
-    const item = ((await ui.request({ type: 'task.view', item: f.epic.id })).value as { item: ItemView }).item;
-    return item.stages?.[0]?.state === 'closed' ? item : undefined;
-  });
-  assert.equal(persisted.stages?.[0]?.state, 'closed'); assert.equal(persisted.stages?.[0]?.verdict?.run, 'stage-retry');
-  const qa = await spawnSpoke({ discover: true, cwd: f.root, name: 'qa-two', role: 'qa', sessionId: 'qa-session-two' }); t.after(() => qa.close());
-  assert.equal((await qa.call<{ ok: boolean }>('task.comment', { id: f.epic.id, verdict: 'qa', result: 'clear', run: 'epic-demo', verified: 'all' })).ok, true);
-  assert.equal((await ui.request({ type: 'task.close', item: f.epic.id })).ok, true);
-});
+import { cland, connectUi, eventually, spawnSpoke, startDaemon } from './harness.ts';
+import { git, fixture } from './stage-qa-support.ts';
 
 test('stage verdict refuses premature QA, wrong roles, stale builds, unknown stages and epic criterion marks', async t => {
   const f = await fixture(t);
@@ -166,7 +75,6 @@ for (const change of ['dev', 'plan', 'item', 'format'] as const) test(`publicati
   assert.equal(result.ok, false); assert.match(result.error ?? '', /changed while writing|all stage items must merge/);
   assert.equal((await f.read()).comments.length, 0);
 });
-
 
 test('stage QA accepts valid hand formatting without weakening publication checks', async t => {
   const f = await fixture(t, false, 1); await f.land();

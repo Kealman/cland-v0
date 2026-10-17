@@ -1,87 +1,16 @@
+// T3: native Git lifecycle regressions: rejected atomic pushes, restart recovery and conflicting sync.
+// The atomic release/sync core lives in scenarios/release.test.ts.
 import { onCleanup } from './process-cleanup.ts';
-import { test, type TestContext } from 'node:test';
+import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { chmod, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { dispatcherUi, projectHub, cland, clandWithEnv, connectUi, connectWsUi, spawnSpoke, startDaemon, startHub, tempProject, type CliResult } from './harness.ts';
-import { preparedReleaseProject } from './prepared-project.ts';
+import { cland, clandWithEnv, connectWsUi, spawnSpoke, startDaemon, startHub, tempProject } from './harness.ts';
 import { Store } from '../src/hub/store.ts';
 import { Tracker } from '../src/tracker/tracker.ts';
 import { fixedRoles } from '../src/roles/config.ts';
-
-const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
-const ok = (r: CliResult) => { assert.equal(r.code, 0, r.stderr || r.stdout); return r; };
-const json = <T>(r: CliResult): T => JSON.parse(ok(r).stdout) as T;
-
-async function project(t: TestContext, env: Record<string, string> = {}, serve: typeof projectHub | typeof startDaemon = projectHub, validation = false) {
-  const { root, github } = await preparedReleaseProject(t, 'cland-release-');
-  const served = await serve(t, root, env);
-  const { discovery } = served;
-  const ui = validation && 'dispatcher' in served ? await dispatcherUi(t, served.dispatcher, root) : await connectUi(t, discovery);
-  return { root, github, ui, discovery, territory: join(root, '.cland', 'territory.git') };
-}
-
-async function merged(root: string, title: string, file: string) {
-  const { item } = json<{ item: { id: string } }>(await cland(root, 'task', 'create', '--size', 'M', title, '--json'));
-  const { worktree } = json<{ worktree: { path: string } }>(await cland(root, 'task', 'claim', item.id, '--json'));
-  await writeFile(join(worktree.path, file), 'finished\n');
-  git(worktree.path, 'add', file);
-  git(worktree.path, 'commit', '-qm', title);
-  ok(await cland(root, 'merge', item.id, '--override', 'test fixture'));
-  return item.id;
-}
-
-test('release atomically publishes dev and an annotated tag with item titles, then advances local and territory main', async (t) => {
-  const { root, github, territory } = await project(t);
-  await merged(root, 'Ship the parser', 'GLOSSARY.md');
-  await merged(root, 'Ship the renderer', 'README.md');
-  git(root, 'commit', '--allow-empty', '-qm', 'Record release metadata');
-  const dev = git(root, 'rev-parse', 'dev');
-  ok(await cland(root, 'release', 'v0.1.0'));
-  for (const repo of [root, github, territory]) assert.equal(git(repo, 'rev-parse', 'main'), dev);
-  assert.equal(git(github, 'cat-file', '-t', 'v0.1.0'), 'tag');
-  assert.equal(git(github, 'rev-parse', 'v0.1.0^{}'), dev);
-  assert.equal(git(github, 'for-each-ref', '--format=%(contents)', 'refs/tags/v0.1.0'), 'T-1 Ship the parser\nT-2 Ship the renderer\nRecord release metadata');
-  assert.equal(git(root, 'rev-parse', 'v0.1.0'), git(github, 'rev-parse', 'v0.1.0'));
-});
-
-async function clean(root: string) {
-  git(root, 'add', '.');
-  git(root, 'commit', '--allow-empty', '-qm', 'Commit tracker and project setup');
-}
-
-async function collaborator(t: TestContext, github: string, file: string, content: string) {
-  const clone = await tempProject(t, 'cland-collaborator-');
-  git(clone, 'clone', '-q', github, '.');
-  git(clone, 'config', 'user.name', 'Collaborator');
-  git(clone, 'config', 'user.email', 'collaborator@example.com');
-  await writeFile(join(clone, file), content);
-  git(clone, 'add', file);
-  git(clone, 'commit', '-qm', 'Work on GitHub');
-  git(clone, 'push', '-q', 'origin', 'main');
-  return git(clone, 'rev-parse', 'HEAD');
-}
-
-test('sync imports GitHub main and replays unreleased dev commits, updating the root and territory without a GitHub push', async (t) => {
-  const { root, github, territory } = await project(t);
-  await merged(root, 'Ship the parser', 'GLOSSARY.md');
-  await clean(root);
-  const oldDev = git(root, 'rev-parse', 'dev');
-  const remote = await collaborator(t, github, 'collaborator.txt', 'from github\n');
-  ok(await cland(root, 'sync'));
-  assert.equal(git(root, 'rev-parse', 'main'), remote);
-  assert.equal(git(territory, 'rev-parse', 'main'), remote);
-  assert.equal(git(github, 'rev-parse', 'main'), remote);
-  assert.notEqual(git(root, 'rev-parse', 'dev'), oldDev);
-  assert.equal(git(root, 'rev-parse', 'HEAD'), git(root, 'rev-parse', 'dev'));
-  assert.equal(git(territory, 'rev-parse', 'dev'), git(root, 'rev-parse', 'dev'));
-  assert.equal(git(root, 'show', 'dev:collaborator.txt'), 'from github');
-  assert.equal(await readFile(join(root, 'collaborator.txt'), 'utf8'), 'from github\n');
-  assert.equal(await readFile(join(root, 'GLOSSARY.md'), 'utf8'), 'finished\n');
-  assert.match(git(root, 'log', '--format=%B', 'main..dev'), /Item: T-1/);
-  assert.equal(git(root, 'status', '--porcelain'), '');
-});
+import { git, ok, json, project, merged, clean, collaborator } from './release-support.ts';
 
 const snapshot = (...repos: string[]) => repos.map(repo => git(repo, 'show-ref')).join('\n---\n');
 

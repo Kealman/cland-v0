@@ -1,6 +1,9 @@
+// T3 scenario: spoke to hub to spoke channel metadata and correlated reply.
+// Rule coverage (T1/T2): hub/test/routing.test.ts, hub/test/in-process-spoke.test.ts.
+// Hub process starts: 0; startHub serves in-process. Only one hub is live at a time.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { startHub, spawnSpoke } from './harness.ts';
+import { startHub, spawnSpoke } from '../harness.ts';
 
 test('a message from one session arrives in the other session as a channel event', async () => {
   const hub = await startHub();

@@ -1,44 +1,12 @@
 // Explorer behavior across the hub frame boundary and the headless screen.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { connectUi, startDaemon, tempProject } from '../../hub/test/harness.ts';
+import { tempProject } from '../../hub/test/harness.ts';
 import { nvimOrSkip, startClient } from './harness.ts';
 import { waitInitialSnapshots } from './readiness.ts';
 const nvim = await nvimOrSkip();
 const skip = 'skip' in nvim ? nvim.skip : false;
 const bin = 'bin' in nvim ? nvim.bin : '';
-
-test('Space e and the explorer command open a release tree on real hub summaries', { skip }, async t => {
-  const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
-  const ui = await connectUi(t, discovery);
-  const create = async (kind: string, title: string, parent?: string) => {
-    const result = await ui.request({ type:'task.create', kind, title, parent, ...(kind === 'task' ? { size:'S' } : {}) });
-    assert.equal(result.ok, true, result.error);
-    return (result.value as {item:{id:string}}).item.id;
-  };
-  const release = await create('release', 'Working with items');
-  const epic = await create('epic', 'The explorer', release);
-  const task = await create('task', 'Draw the tree', epic);
-  await ui.request({type:'task.edit',item:task,status:'planned'});
-  const c = await startClient(t, bin, root, {}, {centre:'explorer'});
-  await c.rpc.request('nvim_ui_try_resize', 200, 50);
-  await waitInitialSnapshots(c);
-  await c.input('<Esc><Space>e');
-  await c.waitScreen(s => s.includes('EXPLORER') && s.includes('The explorer') && s.includes('Categories (0)'), 'release explorer');
-  assert.equal(await c.lua("return vim.b.cland_role"), 'explorer');
-  await c.input(`:Cland explorer T-${epic.split('-')[1]}<CR>`);
-  await c.waitScreen(s => s.includes('Draw the tree'), 'epic scoped using any prefix');
-  assert.equal(await c.lua("return require('cland.state').S.ui.view.id"), epic);
-  await select(c,task); await c.input('<CR>h');
-  assert.equal((await ui.request({type:'task.edit',item:task,status:'in progress'})).ok,true);
-  await c.lua("local id=...;assert(vim.wait(5000,function() return require('cland.state').item(id).status=='in progress' end))",task);
-  assert.equal(await cursor(c),task,'real task frames preserve cursor identity');
-  assert.equal(await c.lua("return require('cland.explorer').card.key"),task);
-  assert.deepEqual(await c.lua("return require('cland.actions').audit()"), []);
-  await c.input('<Space>?');
-  await c.waitScreen(s => s.includes('Open explorer') && s.includes('␣e'), 'explorer key in registry help');
-});
 
 import { createConnection } from 'node:net';
 import { fileURLToPath } from 'node:url';
@@ -480,7 +448,6 @@ test('cold startup shows loading then selects the release without entering the c
   await at(c,'R-1');
   assert.equal(await c.lua("return vim.b.cland_role"),'explorer');
 });
-
 
 test('the harness default opens General while a preset and a restart snapshot keep their centre', {skip}, async t => {
   const {c,root}=await stub(t,fixture,undefined,'general');

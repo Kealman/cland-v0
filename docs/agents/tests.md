@@ -41,6 +41,27 @@ The target strategy is task verification at T0–T2, T3 once per merge batch and
 - A new file that spawns a process with no lifecycle sentence in its header, or a new wall-clock wait, is a finding of at least medium severity.
 - Don't ask for a full run on a task head. A task verify plus the integrated cover (later, the merge-queue batch) is sufficient evidence.
 
+### Named T3 scenarios
+
+The ten scenarios below prove process seams once the rules are covered in T1/T2. Each is one manifest entry with tier T3 and a unique scenario name, one whole-file scheduling unit, at most 120 seconds of manifest test time, and at most one live hub. Headers name the flow, lower-tier rule coverage and the expected hub process starts. Other T3 lifecycle regressions and the three harness contracts remain separate. The target cadence is T3 once per merge batch and at stage, epic and release; this inventory does not change task admission policy.
+
+| Scenario | File | Seam proved |
+| --- | --- | --- |
+| hub-lifecycle | [hub/test/scenarios/hub-lifecycle.test.ts](../../hub/test/scenarios/hub-lifecycle.test.ts) | Start, discovery, graceful stop, explicit restart and startup orphan sweep |
+| startup-smoke | [hub/test/scenarios/startup-smoke.test.ts](../../hub/test/scenarios/startup-smoke.test.ts) | Detached CLI startup serves status and tracker, then stops and reaps its PID |
+| crew-launch | [hub/test/scenarios/crew-launch.test.ts](../../hub/test/scenarios/crew-launch.test.ts) | Coordinator launches Claude Code, Codex and OpenCode; native role clauses and correlated replies cross each bridge |
+| ticket-flow | [hub/test/scenarios/ticket-flow.test.ts](../../hub/test/scenarios/ticket-flow.test.ts) | Claim, criteria, review, real verify/cache evidence and verdict-gated merge |
+| stage-close | [hub/test/scenarios/stage-close.test.ts](../../hub/test/scenarios/stage-close.test.ts) | Three review-only merges, stage QA retry, persisted stage evidence and separate epic demo |
+| release | [hub/test/scenarios/release.test.ts](../../hub/test/scenarios/release.test.ts) | Atomic push to a bare GitHub remote and sync/replay into the local territory |
+| droplet-verify | [hub/test/scenarios/droplet-verify.test.ts](../../hub/test/scenarios/droplet-verify.test.ts) | HTTP fake provider with real process machines: acquire, deliver, execute, collect, release and watchdog reaping |
+| hook-bridge | [hub/test/scenarios/hook-bridge.test.ts](../../hub/test/scenarios/hook-bridge.test.ts) | A native mod bridge reconnects across hub replacement and expires while its parent stays alive |
+| workbench | [nvim/test/scenarios/workbench.test.ts](../../nvim/test/scenarios/workbench.test.ts) | Real Neovim attaches, sends and receives, answers an ask, opens an artifact, explorer, graph and plan approval |
+| message-tracer | [hub/test/scenarios/message-tracer.test.ts](../../hub/test/scenarios/message-tracer.test.ts) | Real spokes carry message metadata and a correlated reply through the hub |
+
+Add a scenario only for a new flow across processes whose rules are already covered in T1/T2. Reuse existing steps and assertion meanings; add a header with those rule files and expected hub starts, a unique scenario manifest entry, measured duration and reasoned dated allowances. Record a declaration-to-step assertion audit and a spawn census; an extra hub start needs a lifecycle reason in the header. Run the entire file five times serially on the Mac at one-minute load below 15 and once through task droplet verification. Input and refusal permutations stay in the lower tiers.
+
+HUB_SMOKE selects hub-lifecycle, startup-smoke and message-tracer. NVIM_SMOKE selects workbench, covering attach and the main views in one file.
+
 ### Test lint reports
 
 `npm run check` runs typecheck, then `npm run test:lint` once. Verification uses

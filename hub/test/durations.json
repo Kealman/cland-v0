@@ -240,8 +240,8 @@
       "tests": 8
     },
     "hub/test/daemon.test.ts": {
-      "seconds": 33.628224,
-      "tests": 18
+      "seconds": 18.871443,
+      "tests": 12
     },
     "hub/test/default-subscriptions.test.ts": {
       "seconds": 53.131975,
@@ -332,8 +332,8 @@
       "tests": 3
     },
     "hub/test/executor-run.test.ts": {
-      "seconds": 70.772176,
-      "tests": 9
+      "seconds": 56.35845,
+      "tests": 7
     },
     "hub/test/executor-safety-component.test.ts": {
       "seconds": 4.978701,
@@ -385,10 +385,6 @@
     },
     "hub/test/hook-bridge-doctor.test.ts": {
       "seconds": 3.127177,
-      "tests": 1
-    },
-    "hub/test/hook-bridge.test.ts": {
-      "seconds": 4.611807,
       "tests": 1
     },
     "hub/test/human-routing.test.ts": {
@@ -500,8 +496,8 @@
       "tests": 6
     },
     "hub/test/merge-gate.test.ts": {
-      "seconds": 37.877528,
-      "tests": 8
+      "seconds": 22.872599,
+      "tests": 6
     },
     "hub/test/merge-override.test.ts": {
       "seconds": 0.002206,
@@ -644,8 +640,8 @@
       "tests": 8
     },
     "hub/test/release.test.ts": {
-      "seconds": 40.750673,
-      "tests": 18
+      "seconds": 35.44535,
+      "tests": 16
     },
     "hub/test/remote-fixture-lifecycle.test.ts": {
       "seconds": 27.768812,
@@ -710,6 +706,42 @@
     "hub/test/rulebook.test.ts": {
       "seconds": 0.005989,
       "tests": 3
+    },
+    "hub/test/scenarios/crew-launch.test.ts": {
+      "seconds": 9.335265,
+      "tests": 1
+    },
+    "hub/test/scenarios/droplet-verify.test.ts": {
+      "seconds": 18.37098,
+      "tests": 2
+    },
+    "hub/test/scenarios/hook-bridge.test.ts": {
+      "seconds": 4.161595,
+      "tests": 1
+    },
+    "hub/test/scenarios/hub-lifecycle.test.ts": {
+      "seconds": 11.139395,
+      "tests": 6
+    },
+    "hub/test/scenarios/message-tracer.test.ts": {
+      "seconds": 0.712579,
+      "tests": 1
+    },
+    "hub/test/scenarios/release.test.ts": {
+      "seconds": 11.432274,
+      "tests": 2
+    },
+    "hub/test/scenarios/stage-close.test.ts": {
+      "seconds": 9.829848,
+      "tests": 1
+    },
+    "hub/test/scenarios/startup-smoke.test.ts": {
+      "seconds": 1.312507,
+      "tests": 1
+    },
+    "hub/test/scenarios/ticket-flow.test.ts": {
+      "seconds": 17.789136,
+      "tests": 2
     },
     "hub/test/session-archive.test.ts": {
       "seconds": 41.552349,
@@ -808,12 +840,12 @@
       "tests": 7
     },
     "hub/test/stage-qa.test.ts": {
-      "seconds": 62.02804,
-      "tests": 12
+      "seconds": 52.468267,
+      "tests": 11
     },
     "hub/test/startup-smoke.test.ts": {
-      "seconds": 16.030032,
-      "tests": 3
+      "seconds": 14.362395,
+      "tests": 2
     },
     "hub/test/store-and-forward.test.ts": {
       "seconds": 8.84642,
@@ -1047,10 +1079,6 @@
       "seconds": 7.95211,
       "tests": 5
     },
-    "hub/test/tracer.test.ts": {
-      "seconds": 0.96214,
-      "tests": 1
-    },
     "hub/test/tracker-async.test.ts": {
       "seconds": 20.66411,
       "tests": 39
@@ -1172,8 +1200,8 @@
       "tests": 9
     },
     "nvim/test/client.test.ts": {
-      "seconds": 12.893535,
-      "tests": 7
+      "seconds": 11.951318,
+      "tests": 6
     },
     "nvim/test/crew.test.ts": {
       "seconds": 2.370683,
@@ -1208,8 +1236,8 @@
       "tests": 1
     },
     "nvim/test/explorer.test.ts": {
-      "seconds": 11.488408,
-      "tests": 19
+      "seconds": 10.178248,
+      "tests": 18
     },
     "nvim/test/graph-layout.test.ts": {
       "seconds": 0.853412,
@@ -1256,8 +1284,8 @@
       "tests": 18
     },
     "nvim/test/plan.test.ts": {
-      "seconds": 6.882695,
-      "tests": 11
+      "seconds": 5.471755,
+      "tests": 9
     },
     "nvim/test/qa-shipped.test.ts": {
       "seconds": 17.803602,
@@ -1270,6 +1298,10 @@
     "nvim/test/rulebook.test.ts": {
       "seconds": 5.888461,
       "tests": 4
+    },
+    "nvim/test/scenarios/workbench.test.ts": {
+      "seconds": 1.650163,
+      "tests": 5
     },
     "nvim/test/session-archive.test.ts": {
       "seconds": 1.08738,
@@ -1288,8 +1320,8 @@
       "tests": 82
     },
     "nvim/test/thread.test.ts": {
-      "seconds": 23.637848,
-      "tests": 24
+      "seconds": 21.814418,
+      "tests": 23
     },
     "nvim/test/ui.test.ts": {
       "seconds": 12.565702,
@@ -1697,22 +1729,16 @@
     "hub/test/crew.test.ts::invalid idle categories are refused on set and ignored individually on hand reload": 1.10555,
     "hub/test/crew.test.ts::non-table crew values are refused and cannot replace the last good staffing": 6.114476,
     "hub/test/crew.test.ts::role heartbeats default visibly, validate a one-minute floor and round trip through the CLI": 0.629326,
-    "hub/test/daemon.test.ts::a deliberate stop defers an attached Neovim autostarter so the CLI restart serves first": 2.761685,
     "hub/test/daemon.test.ts::a late stop continuation cannot recreate grace after an explicit successor starts": 2.987657,
     "hub/test/daemon.test.ts::a project path too long for a Unix socket puts the socket under the temp dir": 1.490056,
     "hub/test/daemon.test.ts::a second cland hub start reports the running daemon instead of starting another": 1.114411,
-    "hub/test/daemon.test.ts::a spoke follows its hub through a restart: the discovery file is read again on reconnect": 3.443379,
-    "hub/test/daemon.test.ts::a spoke started in the project with no hub environment connects through the discovery file; status shows it from another process": 1.220917,
     "hub/test/daemon.test.ts::a stale hub.json, whose pid is gone, is replaced by a fresh hub": 1.116839,
     "hub/test/daemon.test.ts::a stale hub.lock — its hub was killed, or its pid now belongs to another process — does not stop a start": 3.471867,
     "hub/test/daemon.test.ts::a stopping hub leaves alone a socket that is no longer the one it bound, and hub.json goes only at the end": 1.17752,
     "hub/test/daemon.test.ts::a wrong secret is refused on the WebSocket and on the Unix socket; the right one is welcomed": 0.176813,
     "hub/test/daemon.test.ts::autostart recovers after grace expires and after a crash, recording only starter provenance": 3.409543,
     "hub/test/daemon.test.ts::both edges speak one protocol: a spoke hello over the Unix socket; a client hello over the WebSocket is refused (the human side is the socket)": 0.15319,
-    "hub/test/daemon.test.ts::cland hub start creates the .cland skeleton and the discovery file": 1.042489,
-    "hub/test/daemon.test.ts::cland hub stop ends the daemon and removes hub.json and the socket": 1.551337,
     "hub/test/daemon.test.ts::cland hub stop never signals a process that is not the project's hub: it only removes the hub.json naming it": 2.284175,
-    "hub/test/daemon.test.ts::fixture startup skips orphan inspection by default; opt-in and production startup still sweep": 4.736974,
     "hub/test/daemon.test.ts::git sees only what is meant to be committed under .cland/ while a hub runs": 0.139544,
     "hub/test/daemon.test.ts::two cland hub start at the same instant leave exactly one hub, and both report it": 1.349828,
     "hub/test/default-subscriptions.test.ts::a claim before hello already belongs to its lead and adopts that lead identity once": 1.266774,
@@ -1873,8 +1899,6 @@
     "hub/test/executor-run.test.ts::provider loss and verify cancel each report once and release the machine and key": 7.992848,
     "hub/test/executor-run.test.ts::remote delivery bundles committed tracker state despite later tracker writes": 5.145923,
     "hub/test/executor-run.test.ts::remote delivery refuses and names source changes after submission": 2.997127,
-    "hub/test/executor-run.test.ts::remote start reconciles executed-but-lost replies and marker-only interruptions": 9.202015,
-    "hub/test/executor-run.test.ts::remote verify delivers host selection, runs as runner, reports accounting, contains the token and caches across executors": 5.211711,
     "hub/test/executor-run.test.ts::restart reloads the lease after admission and never redelivers or cleans the live checkout": 9.452058,
     "hub/test/executor-safety-component.test.ts::a pre-start assertion failure drains both same-name acquisitions without start receipts": 1.100485,
     "hub/test/executor-safety-component.test.ts::a short-lived hub preserves a foreign live lease beyond its own lifetime threshold": 0.922598,
@@ -1935,7 +1959,6 @@
     "hub/test/heartbeat.test.ts::the digest includes running and queued runs and ages timeouts and ended runs without results": 0.067288,
     "hub/test/heartbeat.test.ts::watched review and ready transitions wait a full interval even when a hand edit retains an old updated date": 0.350882,
     "hub/test/hook-bridge-doctor.test.ts::doctor lists and ends only own bridges with missing hub files, preserving existing and ambiguous paths": 3.127177,
-    "hub/test/hook-bridge.test.ts::a bridge exits after its real hub stops even while its parent and stdout remain alive": 4.611807,
     "hub/test/human-routing.test.ts::a delivery dropped past the TTL moves the stage, and the UI hears it": 2.223891,
     "hub/test/human-routing.test.ts::a known roleless session addressed beside the vacant coordinator role, back as coordinator, clears both deliveries with one ack": 1.54986,
     "hub/test/human-routing.test.ts::a replacement coordinator gets the human message alone: the offline previous holder is not an addressee": 1.510964,
@@ -2074,10 +2097,8 @@
     "hub/test/merge-checkout.test.ts::a root switched during real merge-tree preparation is refused without changing the checkout or refs": 1.818622,
     "hub/test/merge-checkout.test.ts::an index lock during post-checkout write-tree restores the staged tree, file bytes and status before refusing": 4.275331,
     "hub/test/merge-checkout.test.ts::conflicts name the files, touched local edits refuse, and unrelated edits survive a merge": 3.780726,
-    "hub/test/merge-gate.test.ts::a cached green suite at a new identical tree never revives a stale criterion mark": 7.646339,
     "hub/test/merge-gate.test.ts::a task moving during a batched freshness read is rejected at the merge decision; the next operation sees its fresh review": 0.837475,
     "hub/test/merge-gate.test.ts::adding or failing a criterion revokes ready; done and separate verification restore it": 3.986601,
-    "hub/test/merge-gate.test.ts::an in-flight legacy item reaches ready and merge only after every criterion is done and verified": 7.35859,
     "hub/test/merge-gate.test.ts::criterion verification follows the exact branch head even when the review patch is unchanged": 6.424362,
     "hub/test/merge-gate.test.ts::deleting any durable hub verdict refuses with the missing run and commit, without reviving an older clear": 1.660144,
     "hub/test/merge-gate.test.ts::merge refuses every unclassified hub test in the merged candidate, then accepts explicit classifications": 5.530759,
@@ -2388,11 +2409,9 @@
     "hub/test/release.test.ts::notes read Git trailers, not Item lines in prose, and retain subjects for removed items": 0.584271,
     "hub/test/release.test.ts::only the human and the Coordinator shell release; Implementer, Reviewer and QA shells cannot impersonate them": 3.700934,
     "hub/test/release.test.ts::post-merge topic discussion permits CLI sync without reviving the task or its worktree": 2.139916,
-    "hub/test/release.test.ts::release atomically publishes dev and an annotated tag with item titles, then advances local and territory main": 3.50958,
     "hub/test/release.test.ts::release refusals and dry-run keep every local, territory and GitHub ref, with named GitHub commits": 3.236215,
     "hub/test/release.test.ts::release refuses multiple GitHub push destinations because their refs cannot form one atomic push": 0.339053,
     "hub/test/release.test.ts::release territory failure is recoverable without publishing later dev work": 1.906697,
-    "hub/test/release.test.ts::sync imports GitHub main and replays unreleased dev commits, updating the root and territory without a GitHub push": 1.795743,
     "hub/test/release.test.ts::sync refuses a dirty root, and a replay conflict names its files while preserving every ref and root file": 1.413367,
     "hub/test/release.test.ts::sync refuses a landed merge with pending tracker completion, preserving its retry identity": 2.239718,
     "hub/test/release.test.ts::sync success-record failure prevents a later merge until its same-replay retry completes": 3.685782,
@@ -2493,6 +2512,23 @@
     "hub/test/rulebook.test.ts::rulebook parses every field and preserves untouched rule bytes while rendering an edit": 0.003976,
     "hub/test/rulebook.test.ts::rulebook rejects malformed rules with a line and reason": 0.00116,
     "hub/test/rulebook.test.ts::rulebook round-trips separate retirement provenance and rejects invalid origins": 0.000853,
+    "hub/test/scenarios/crew-launch.test.ts::Coordinator launches the three harnesses with clauses and a correlated native reply": 9.335265,
+    "hub/test/scenarios/droplet-verify.test.ts::remote start reconciles executed-but-lost replies and marker-only interruptions": 11.602723,
+    "hub/test/scenarios/droplet-verify.test.ts::remote verify delivers host selection, runs as runner, reports accounting, contains the token and caches across executors": 6.768257,
+    "hub/test/scenarios/hook-bridge.test.ts::a bridge exits after its real hub stops even while its parent and stdout remain alive": 4.161595,
+    "hub/test/scenarios/hub-lifecycle.test.ts::a deliberate stop defers an attached Neovim autostarter so the CLI restart serves first": 2.116783,
+    "hub/test/scenarios/hub-lifecycle.test.ts::a spoke follows its hub through a restart: the discovery file is read again on reconnect": 2.197629,
+    "hub/test/scenarios/hub-lifecycle.test.ts::a spoke started in the project with no hub environment connects through the discovery file; status shows it from another process": 0.755834,
+    "hub/test/scenarios/hub-lifecycle.test.ts::cland hub start creates the .cland skeleton and the discovery file": 0.892563,
+    "hub/test/scenarios/hub-lifecycle.test.ts::cland hub stop ends the daemon and removes hub.json and the socket": 1.718747,
+    "hub/test/scenarios/hub-lifecycle.test.ts::fixture startup skips orphan inspection by default; opt-in and production startup still sweep": 3.457839,
+    "hub/test/scenarios/message-tracer.test.ts::a message from one session arrives in the other session as a channel event": 0.712579,
+    "hub/test/scenarios/release.test.ts::release atomically publishes dev and an annotated tag with item titles, then advances local and territory main": 7.081738,
+    "hub/test/scenarios/release.test.ts::sync imports GitHub main and replays unreleased dev commits, updating the root and territory without a GitHub push": 4.350536,
+    "hub/test/scenarios/stage-close.test.ts::three review-only merges, one stage QA on dev, not-clear/retry, restart and separate epic demo": 9.829848,
+    "hub/test/scenarios/startup-smoke.test.ts::hub startup serves status within 10 seconds, serves a tracker request and stops": 1.312507,
+    "hub/test/scenarios/ticket-flow.test.ts::a cached green suite at a new identical tree never revives a stale criterion mark": 10.022165,
+    "hub/test/scenarios/ticket-flow.test.ts::an in-flight legacy item reaches ready and merge only after every criterion is done and verified": 7.766971,
     "hub/test/session-archive.test.ts::a real task merge starts the stopped Implementer item window": 4.958659,
     "hub/test/session-archive.test.ts::archive refuses live and unlaunched rows, hides stopped rows, retains their journal, and resume restores them": 6.300554,
     "hub/test/session-archive.test.ts::configured stop window archives crew at startup and on the timer, never Aides": 4.648031,
@@ -2616,10 +2652,8 @@
     "hub/test/stage-qa.test.ts::stage QA requests obey the same Lead subtree boundary as ordinary QA requests": 4.622925,
     "hub/test/stage-qa.test.ts::stage receipt hashes remain compatible with legacy parent ids": 6.727594,
     "hub/test/stage-qa.test.ts::stage verdict refuses premature QA, wrong roles, stale builds, unknown stages and epic criterion marks": 4.620049,
-    "hub/test/stage-qa.test.ts::three review-only merges, one stage QA on dev, not-clear/retry, restart and separate epic demo": 9.559773,
     "hub/test/startup-smoke.test.ts::a planted listening startup hang fails the smoke within its bound and names the last log event": 11.083474,
     "hub/test/startup-smoke.test.ts::a pre-discovery startup hang stops its daemon before removing the fixture": 3.278921,
-    "hub/test/startup-smoke.test.ts::hub startup serves status within 10 seconds, serves a tracker request and stops": 1.667637,
     "hub/test/store-and-forward.test.ts::a delivery stays queued until the spoke acks it: an unacked message is sent again on the next connect, an acked one never": 0.819277,
     "hub/test/store-and-forward.test.ts::a message to an offline session waits for it and arrives on its next hello, once and in order": 2.457736,
     "hub/test/store-and-forward.test.ts::a queued message older than the TTL is dropped, and the session never sees it": 0.068167,
@@ -3132,7 +3166,6 @@
     "hub/test/topics.test.ts::a spoke's send appears to the subscribed UI as a message event with sender name, kind and time; General is the default topic": 1.509673,
     "hub/test/topics.test.ts::General and Agents exist after the first start, survive a restart once each, and cannot be renamed or deleted": 2.359025,
     "hub/test/topics.test.ts::the same frames over stdio: a UI spawning `cland hub serve --stdio` as its child": 1.318296,
-    "hub/test/tracer.test.ts::a message from one session arrives in the other session as a channel event": 0.96214,
     "hub/test/tracker-async.test.ts::a comment racing a claim loses neither operation": 0.050791,
     "hub/test/tracker-async.test.ts::a comment racing a close loses neither operation": 0.060988,
     "hub/test/tracker-async.test.ts::a comment racing a verdict loses neither operation": 0.060095,
@@ -3388,7 +3421,6 @@
     "nvim/test/artifacts.test.ts::p in a topic artifact list promotes it and updates the list and picker marks": 0.477701,
     "nvim/test/artifacts.test.ts::prompt drafts are editable full buffers, survive hub events, reopen, and send saved text": 0.841884,
     "nvim/test/artifacts.test.ts::topic lists follow archive events and lists and pickers mark retained entries whose files were deleted": 2.720014,
-    "nvim/test/client.test.ts::a message typed in the composer shows queued, reaches a coordinator with the topic, and turns delivered; the reply shows with sender and time": 0.942217,
     "nvim/test/client.test.ts::a stale hub.json (its hub killed, its socket gone) makes the client start a hub after a few failed connects": 4.918938,
     "nvim/test/client.test.ts::nothing loads from the user configuration: every sourced script is the bundled runtime or nvim/": 0.2368,
     "nvim/test/client.test.ts::Shift+Enter inserts a newline in the composer; Enter sends both lines as one message": 0.319059,
@@ -3455,7 +3487,6 @@
     "nvim/test/explorer.test.ts::outline keys skip detail and stage labels, respect counts and fold the leaf parent": 0.404516,
     "nvim/test/explorer.test.ts::release rows, derived glyphs, rank then close order, folded roots and za cursor identity": 0.356189,
     "nvim/test/explorer.test.ts::scopes carry breadcrumbs and back restores the originating row and preceding centre view": 0.432553,
-    "nvim/test/explorer.test.ts::Space e and the explorer command open a release tree on real hub summaries": 1.31016,
     "nvim/test/explorer.test.ts::status and stage changes move a row while its cursor and cached card keep the item": 0.510604,
     "nvim/test/explorer.test.ts::the explorer registry, key help and status hint advertise every outline action": 0.314447,
     "nvim/test/explorer.test.ts::the harness default opens General while a preset and a restart snapshot keep their centre": 0.583324,
@@ -3551,8 +3582,6 @@
     "nvim/test/plan.test.ts::done status without a merge receipt cannot close a stage in the view": 0.447375,
     "nvim/test/plan.test.ts::equal-time plan history keeps later moves after the saved receipt": 0.324766,
     "nvim/test/plan.test.ts::future per-item QA excludes only evidence accepted by the hub gate": 0.321342,
-    "nvim/test/plan.test.ts::gp shows stages, lanes, overrides, gates and scoped stage tags; a approves through the real hub": 0.608915,
-    "nvim/test/plan.test.ts::graph nodes show stages from a plan accepted by the real hub": 0.802025,
     "nvim/test/plan.test.ts::mid-way plan preserves stage QA marks, outlines active lanes and dims planned stages": 0.36776,
     "nvim/test/plan.test.ts::plan changes refresh both view and stage tags; d composes to the epic Lead and e opens ## Plan": 1.187419,
     "nvim/test/plan.test.ts::the plan shows Lead metadata and lane claim/verdict marks, including role labels and long source fences": 0.326515,
@@ -3607,6 +3636,11 @@
     "nvim/test/rulebook.test.ts::Rulebook keys and palette show sorted rule rows, unfold origins and list help": 1.119625,
     "nvim/test/rulebook.test.ts::thread origins show topic and message time, and gt reaches an older human message": 1.987117,
     "nvim/test/rulebook.test.ts::workbench drafts add and edit rules, retain refused text, retire, and follow shell changes live": 2.421009,
+    "nvim/test/scenarios/workbench.test.ts::a digit in the thread answers through the real hub with answer_to; the ask and next chip share a header": 0.441884,
+    "nvim/test/scenarios/workbench.test.ts::a message typed in the composer shows queued, reaches a coordinator with the topic, and turns delivered; the reply shows with sender and time": 0.554267,
+    "nvim/test/scenarios/workbench.test.ts::gp shows stages, lanes, overrides, gates and scoped stage tags; a approves through the real hub": 0.264172,
+    "nvim/test/scenarios/workbench.test.ts::graph nodes show stages from a plan accepted by the real hub": 0.209181,
+    "nvim/test/scenarios/workbench.test.ts::Space e and the explorer command open a release tree on real hub summaries": 0.180659,
     "nvim/test/session-archive.test.ts::d archives a stopped Aide, A fetches its archive, r restores it, and live/unlaunched rows refuse d": 0.574494,
     "nvim/test/session-archive.test.ts::more shows the latest 20 stopped rows by stop time and the archived count without fetching the archive": 0.512886,
     "nvim/test/session-resume.test.ts::r resumes stopped rows with an outcome, offers f/n/Esc, and Resume session is in the palette and Keys": 0.704452,
@@ -3698,7 +3732,6 @@
     "nvim/test/shell.test.ts::with no coordinator the chip warns": 0.35997,
     "nvim/test/shell.test.ts::x asks on a line in the panel; n keeps the session, y sends session.stop and the row turns unknown · stopped": 0.441065,
     "nvim/test/thread.test.ts::200 message rewrites and steady-state appends retain cached parsing and incremental cost": 1.559817,
-    "nvim/test/thread.test.ts::a digit in the thread answers through the real hub with answer_to; the ask and next chip share a header": 1.82343,
     "nvim/test/thread.test.ts::a retained answer becomes standalone when its older ask leaves the 200-message window": 0.350468,
     "nvim/test/thread.test.ts::Aide headers speak for you with blue dashed gutters and never-fold boundaries": 0.3452,
     "nvim/test/thread.test.ts::an agent ask waits on its named lead, survives inbox reconciliation and offers no human answer keys": 0.299254,
@@ -3922,18 +3955,6 @@
       "owner": "E-677",
       "legacy": true
     },
-    "hub/test/executor-run.test.ts::remote start reconciles executed-but-lost replies and marker-only interruptions": {
-      "seconds": 9.202015,
-      "reason": "Runs nested verification workers through fake provider/SSH processes, logs, cancellation and restart to prove durable executor recovery.",
-      "owner": "E-677",
-      "legacy": true
-    },
-    "hub/test/executor-run.test.ts::remote verify delivers host selection, runs as runner, reports accounting, contains the token and caches across executors": {
-      "seconds": 5.211711,
-      "reason": "Runs nested verification workers through fake provider/SSH processes, logs, cancellation and restart to prove durable executor recovery.",
-      "owner": "E-677",
-      "legacy": true
-    },
     "hub/test/executor-run.test.ts::restart reloads the lease after admission and never redelivers or cleans the live checkout": {
       "seconds": 9.452058,
       "reason": "Runs nested verification workers through fake provider/SSH processes, logs, cancellation and restart to prove durable executor recovery.",
@@ -4112,18 +4133,6 @@
       "owner": "E-677",
       "legacy": true
     },
-    "hub/test/merge-gate.test.ts::a cached green suite at a new identical tree never revives a stale criterion mark": {
-      "seconds": 7.646339,
-      "reason": "Aggregates real git repositories, nested verification and recovery faults to prove the merge gate preserves refs, checkout state and tracker completion.",
-      "owner": "E-677",
-      "legacy": true
-    },
-    "hub/test/merge-gate.test.ts::an in-flight legacy item reaches ready and merge only after every criterion is done and verified": {
-      "seconds": 7.35859,
-      "reason": "Aggregates real git repositories, nested verification and recovery faults to prove the merge gate preserves refs, checkout state and tracker completion.",
-      "owner": "E-677",
-      "legacy": true
-    },
     "hub/test/merge-gate.test.ts::criterion verification follows the exact branch head even when the review patch is unchanged": {
       "seconds": 6.424362,
       "reason": "Aggregates real git repositories, nested verification and recovery faults to prove the merge gate preserves refs, checkout state and tracker completion.",
@@ -4281,12 +4290,6 @@
       "owner": "E-677",
       "legacy": true
     },
-    "hub/test/release.test.ts::release atomically publishes dev and an annotated tag with item titles, then advances local and territory main": {
-      "seconds": 3.50958,
-      "reason": "Aggregates atomic git publication, sync and fault-recovery scenarios against fixture remotes; every failed step must preserve or recover refs.",
-      "owner": "E-677",
-      "legacy": true
-    },
     "hub/test/release.test.ts::release refusals and dry-run keep every local, territory and GitHub ref, with named GitHub commits": {
       "seconds": 3.236215,
       "reason": "Aggregates atomic git publication, sync and fault-recovery scenarios against fixture remotes; every failed step must preserve or recover refs.",
@@ -4364,6 +4367,69 @@
       "reason": "Stops one fake session and keeps another live against a real hub, then proves a rule change reaches only the live one; process stop and the delivery round-trip dominate. Linux c-8 run fb064818 (A-3184).",
       "owner": "E-677",
       "legacy": true
+    },
+    "hub/test/scenarios/crew-launch.test.ts::Coordinator launches the three harnesses with clauses and a correlated native reply": {
+      "seconds": 10.280204,
+      "owner": "T-707",
+      "added": "2026-10-17",
+      "expires": "2026-10-24",
+      "reason": "Observed 8.699832–10.280204 s across serial Mac whole-file receipts in A-4778; allowance equals the observed maximum rounded up to 1 microsecond. A real Coordinator spoke starts and stops Claude Code, Codex and OpenCode sequentially, observes each native clause and first-turn usage, and checks a correlated native reply."
+    },
+    "hub/test/scenarios/droplet-verify.test.ts::remote start reconciles executed-but-lost replies and marker-only interruptions": {
+      "seconds": 14.171859,
+      "owner": "T-707",
+      "added": "2026-10-17",
+      "expires": "2026-10-24",
+      "reason": "Observed 9.047177–14.171858 s across serial Mac whole-file receipts in A-4778 and the post-dev-merge receipts in A-4793; allowance equals the observed maximum rounded up to 1 microsecond. The real HTTP fake provider and process machines deliver/run/collect the worker and release keys and droplets; the watchdog case also suspends and reaps a real watchdog across both start faults."
+    },
+    "hub/test/scenarios/droplet-verify.test.ts::remote verify delivers host selection, runs as runner, reports accounting, contains the token and caches across executors": {
+      "seconds": 8.855992,
+      "owner": "T-707",
+      "added": "2026-10-17",
+      "expires": "2026-10-24",
+      "reason": "Observed 5.965037–8.855992 s across serial Mac whole-file receipts in A-4778 and the post-dev-merge receipts in A-4793; allowance equals the observed maximum rounded up to 1 microsecond. The real HTTP fake provider and process machines deliver/run/collect the worker and release keys and droplets; the watchdog case also suspends and reaps a real watchdog across both start faults."
+    },
+    "hub/test/scenarios/hub-lifecycle.test.ts::fixture startup skips orphan inspection by default; opt-in and production startup still sweep": {
+      "seconds": 5.117699,
+      "owner": "T-707",
+      "added": "2026-10-17",
+      "expires": "2026-10-24",
+      "reason": "Observed 2.729968–5.117698 s across serial Mac whole-file receipts in A-4778; allowance equals the observed maximum rounded up to 1 microsecond. Four sequential real daemon startups prove fixture, opt-in, production and override orphan-sweep decisions and stop each owned PID."
+    },
+    "hub/test/scenarios/release.test.ts::release atomically publishes dev and an annotated tag with item titles, then advances local and territory main": {
+      "seconds": 8.877118,
+      "owner": "T-707",
+      "added": "2026-10-17",
+      "expires": "2026-10-24",
+      "reason": "Observed 6.817013–8.877118 s across serial Mac whole-file receipts in A-4778; allowance equals the observed maximum rounded up to 1 microsecond. Real Git repositories, CLI subprocesses, task merges and a bare GitHub remote prove atomic annotated release publication or sync/replay with every ref and file assertion."
+    },
+    "hub/test/scenarios/release.test.ts::sync imports GitHub main and replays unreleased dev commits, updating the root and territory without a GitHub push": {
+      "seconds": 5.157982,
+      "owner": "T-707",
+      "added": "2026-10-17",
+      "expires": "2026-10-24",
+      "reason": "Observed 3.986329–5.157981 s across serial Mac whole-file receipts in A-4778; allowance equals the observed maximum rounded up to 1 microsecond. Real Git repositories, CLI subprocesses, task merges and a bare GitHub remote prove atomic annotated release publication or sync/replay with every ref and file assertion."
+    },
+    "hub/test/scenarios/stage-close.test.ts::three review-only merges, one stage QA on dev, not-clear/retry, restart and separate epic demo": {
+      "seconds": 12.124693,
+      "owner": "T-707",
+      "added": "2026-10-17",
+      "expires": "2026-10-24",
+      "reason": "Observed 8.436448–12.124692 s across serial Mac whole-file receipts in A-4778; allowance equals the observed maximum rounded up to 1 microsecond. Three native Git merges, real verifier spokes, stage-cover fixture reopening, QA retry and the separate epic demo cross the stage-close seams."
+    },
+    "hub/test/scenarios/ticket-flow.test.ts::a cached green suite at a new identical tree never revives a stale criterion mark": {
+      "seconds": 11.960486,
+      "owner": "T-707",
+      "added": "2026-10-17",
+      "expires": "2026-10-24",
+      "reason": "Observed 8.740475–11.960485 s across serial Mac whole-file receipts in A-4778; allowance equals the observed maximum rounded up to 1 microsecond. Real CLI claims, criteria/refusal frames, Git worktrees, verification/cache receipts and the final merge preserve the complete exact-head verdict-gate flow."
+    },
+    "hub/test/scenarios/ticket-flow.test.ts::an in-flight legacy item reaches ready and merge only after every criterion is done and verified": {
+      "seconds": 9.477424,
+      "owner": "T-707",
+      "added": "2026-10-17",
+      "expires": "2026-10-24",
+      "reason": "Observed 6.276371–9.477424 s across serial Mac whole-file receipts in A-4778; allowance equals the observed maximum rounded up to 1 microsecond. Real CLI claims, criteria/refusal frames, Git worktrees, verification/cache receipts and the final merge preserve the complete exact-head verdict-gate flow."
     },
     "hub/test/session-archive.test.ts::a real task merge starts the stopped Implementer item window": {
       "seconds": 4.958659,
@@ -4536,12 +4602,6 @@
     },
     "hub/test/stage-qa.test.ts::stage verdict refuses premature QA, wrong roles, stale builds, unknown stages and epic criterion marks": {
       "seconds": 4.620049,
-      "reason": "Aggregates real stage merges and QA publication/restart races to prove closure only at the tested build and unchanged plan.",
-      "owner": "E-677",
-      "legacy": true
-    },
-    "hub/test/stage-qa.test.ts::three review-only merges, one stage QA on dev, not-clear/retry, restart and separate epic demo": {
-      "seconds": 9.559773,
       "reason": "Aggregates real stage merges and QA publication/restart races to prove closure only at the tested build and unchanged plan.",
       "owner": "E-677",
       "legacy": true

@@ -10,8 +10,8 @@ export type SuiteSelection = { mode: SuiteMode; files: string[]; reason: string;
 export type SuiteRequest = 'auto' | 'all' | 'hub' | 'nvim';
 
 // Cross-package baselines, kept together so widening smoke coverage is one edit.
-export const HUB_SMOKE = ['hub/test/tracer.test.ts', 'hub/test/daemon.test.ts', 'hub/test/startup-smoke.test.ts'];
-export const NVIM_SMOKE = ['nvim/test/client.test.ts', 'nvim/test/sessions.test.ts'];
+export const HUB_SMOKE = ['hub/test/scenarios/message-tracer.test.ts', 'hub/test/scenarios/hub-lifecycle.test.ts', 'hub/test/scenarios/startup-smoke.test.ts'];
+export const NVIM_SMOKE = ['nvim/test/scenarios/workbench.test.ts'];
 const HUB_TARGETS = ['hub/src/**/*.test.ts', 'hub/test/**/*.test.ts'];
 const NVIM_TARGETS = ['nvim/test/**/*.test.ts'];
 

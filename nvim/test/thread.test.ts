@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createConnection } from 'node:net';
 import { ownDirectory } from '../../hub/test/process-cleanup.ts';
-import { eventually, spawnSpoke, startDaemon, tempProject } from '../../hub/test/harness.ts';
+import { eventually } from '../../hub/test/harness.ts';
 import { nvimOrSkip, startClient } from './harness.ts';
 import { threadSeedPlan } from './thread-seed-plan.ts';
 import { waitInitialSnapshots } from './readiness.ts';
@@ -22,42 +22,6 @@ const msg = (id: string, role = 'coordinator', text = 'Taking T-58.') => ({
   id, from: role === 'human' ? 'human' : role, fromKind: role === 'human' ? 'human' : 'agent',
   fromRole: role === 'human' ? null : role, to: role === 'human' ? ['coordinator'] : ['human'],
   text, ts, topic: 'general', stage: role === 'human' ? 'queued' : null,
-});
-
-test('a digit in the thread answers through the real hub with answer_to; the ask and next chip share a header', { skip }, async t => {
-  const root = await tempProject(t);
-  await startDaemon(t, root);
-  const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
-  t.after(() => coord.close());
-  await coord.waitForPresence(['coord']);
-  const asked = await coord.call<{ok: boolean; ask: string}>('ask', { topic: 'general', question: 'Which scope?', options: ['Whole diff', 'Fix only'] });
-  assert.equal(asked.ok, true);
-  await coord.call('artifact.create', { topic: 'general', kind: 'note', title: 'Review evidence', content: 'Evidence for the choice.' });
-  const c = await startClient(t, bin, root);
-  await c.waitScreen(s => s.includes('Review evidence') && s.includes('Which scope?'), 'real ask and chip');
-  await c.input('<Esc>');
-  await c.lua(`
-    local t=require('cland.views').topic('general').thread
-    vim.api.nvim_set_current_win(require('cland.layout').centre())
-    for row in ipairs(t.info) do if t:ask_at(row) then vim.api.nvim_win_set_cursor(0,{row,0}); break end end
-  `);
-  await c.input('2');
-  await coord.waitForEvent(e => e.params.meta?.from_kind === 'human' && e.params.content === 'Fix only' && e.params.meta.answer_to === asked.ask);
-  await c.waitScreen(s => s.includes('┃ ✓ 2  Fix only') && s.includes('ask · ✓ answered'), 'answer in place');
-  assert.deepEqual(await c.lua(`
-    local t=require('cland.views').topic('general').thread
-    local ask=t.by_id[...]
-    local b=t.block_of[ask.id]
-    local headers,targets=0,0
-    for _,i in ipairs(b.info) do if i.head then headers=headers+1 end; if i.ask then targets=targets+1 end end
-    return {messages=#b.msgs,headers=headers,open_targets=targets,artifact=b.msgs[2].artifact.id}
-  `, asked.ask), {messages: 3, headers: 2, open_targets: 0, artifact: 'A-1'});
-  await c.lua(`
-    local t=require('cland.views').topic('general').thread
-    for row,i in ipairs(t.info) do if i.artifact then vim.api.nvim_win_set_cursor(0,{row,0}); break end end
-  `);
-  await c.input('<CR>');
-  await c.waitScreen(s => s.includes('Evidence for the choice.'), 'grouped chip opens its durable source');
 });
 
 test('live chip grouping rewrites only its ask, and unrelated senders, intervening messages and days keep headers', { skip }, async t => {
@@ -865,7 +829,6 @@ test('generated live appends, ask evictions and delivery changes equal a full re
     }
   }
 });
-
 
 test('one message layer rule covers the Messages table and every never-fold boundary', { skip }, async t => {
   const cases: Array<[Record<string, unknown>, string]> = [

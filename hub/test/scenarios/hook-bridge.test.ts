@@ -1,11 +1,14 @@
+// T3 scenario: bridge reattaches then expires while its native mod parent remains alive.
+// Rule coverage (T1/T2): hub/test/bridge-grace.test.ts, hub/test/mod-bridge.test.ts.
+// Hub process starts: 0; two sequential projectHub instances. Only one hub is live at a time.
 // CLI lifecycle seam: a real bridge, real project hub, and OS process exit.
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { join } from 'node:path';
 import test from 'node:test';
-import { CLI_ENTRY, connectUi, eventually, fakeClaude, pidAlive, projectHub, tempProject, withDiscoveredPid } from './harness.ts';
-import { systemProcesses } from '../src/system-processes.ts';
-import { ownProcess } from './process-cleanup.ts';
+import { CLI_ENTRY, connectUi, eventually, fakeClaude, pidAlive, projectHub, tempProject, withDiscoveredPid } from '../harness.ts';
+import { systemProcesses } from '../../src/system-processes.ts';
+import { ownProcess } from '../process-cleanup.ts';
 
 test('a bridge exits after its real hub stops even while its parent and stdout remain alive', { timeout: 20_000 }, async t => {
   const root = await tempProject(t);

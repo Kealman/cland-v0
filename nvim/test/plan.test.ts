@@ -5,107 +5,12 @@ import { mkdir, readFile, writeFile, unlink } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { stringify } from 'yaml';
-import { connectUi, projectHub, tempProject } from '../../hub/test/harness.ts';
-import type { ItemView } from '../../hub/src/tracker/tracker.ts';
+import { tempProject } from '../../hub/test/harness.ts';
+
 import type { EpicPlan } from '../../hub/src/tracker/plan.ts';
-import { nvimOrSkip, startClient, type Client } from './harness.ts';
-import { waitInitialSnapshots } from './readiness.ts';
-const nvim = await nvimOrSkip();
-const skip = 'skip' in nvim ? nvim.skip : false;
-const bin = 'bin' in nvim ? nvim.bin : '';
-async function setup(t: test.TestContext) {
-  const root = await tempProject(t);
-  await mkdir(join(root, '.cland'), { recursive: true });
-  await writeFile(join(root, '.cland/config.toml'), '[plan]\napproval = "human"\n');
-  const { discovery } = await projectHub(t, root);
-  const ui = await connectUi(t, discovery);
-  const create = async (title: string, kind: string, parent?: string) => {
-    const result = await ui.request({ ...(['task'].includes(kind) ? { size: 'M' } : {}), type: 'task.create', title, kind, parent, body: '## Acceptance criteria\n- [ ] C1. Works' });
-    assert.equal(result.ok, true, result.error);
-    const item = (result.value as { item: ItemView }).item;
-    if (kind === 'task') assert.equal((await ui.request({ type: 'task.edit', item: item.id, status: 'planned' })).ok, true);
-    return item;
-  };
-  const release = await create('Release', 'release');
-  const epic = await create('Panels', 'epic', release.id);
-  const a = await create('Registry', 'task', epic.id), b = await create('Sessions', 'task', epic.id), c = await create('Plan UI', 'task', epic.id);
-  const outside = await create('External blocker', 'task', release.id);
-  assert.equal((await ui.request({ type: 'task.link', item: a.id, blocked_by: [outside.id] })).ok, true);
-  const plan: EpicPlan = {
-    stages: [
-      { name: 'registry and sessions', qa: { scope: 'affected', when: 'after-stage' }, lanes: [[a.id], [b.id]] },
-      { name: 'plan view', qa: { scope: 'full', when: 'per-item' }, lanes: [[c.id]] },
-    ],
-    items: { [b.id]: { qa: { scope: 'none', when: 'per-item' } }, [c.id]: { qa_criteria: ['C1'] } },
-  };
-  assert.equal((await ui.request({ type: 'task.plan', item: epic.id, op: 'set', yaml: stringify(plan) })).ok, true);
-  const client = await startClient(t, bin, root);
-  await client.waitScreen(s => s.includes('hub: connected'), 'connected');
-  await waitInitialSnapshots(client);
-  await client.input(`<Esc>:Cland view item ${epic.id}<CR>`);
-  await client.waitScreen(s => s.includes('Panels'), 'epic item');
-  return { root, ui, epic, a, b, c, outside, plan, client };
-}
-async function planText(client: Client, id: string) {
-  return client.lua<string>("return table.concat(vim.api.nvim_buf_get_lines(require('cland.plan').bufs[...],0,-1,false),'\\n')", id);
-}
-async function waitFor(predicate: () => Promise<boolean>, what: string) {
-  // Yield to Neovim between lookups so queued navigation and receipt frames can run.
-  const until = Date.now() + 5000;
-  let ready = false;
-  while (Date.now() < until) {
-    ready = await predicate();
-    if (ready) break;
-    await new Promise(resolve => setTimeout(resolve, 20));
-  }
-  assert.ok(ready, `${what} not ready within 5000 ms`);
-}
-async function openPlan(client: Client, id: string) {
-  // Connected precedes the task/ladder snapshots. An early command is refused,
-  // so waiting for plan text after issuing it cannot recover that navigation.
-  await waitFor(() => client.lua<boolean>("local id=...; return require('cland.plan').owner(id) == id", id), `epic ${id} from task and tracker snapshots`);
-  await client.input(`<Esc>:Cland view plan ${id}<CR>`);
-}
-async function waitPlan(client: Client, id: string, text: string) {
-  await waitFor(() => client.lua<boolean>("local id,text=...; local view=require('cland.state').S.ui.view; local p=require('cland.plan'); local b,v=p.bufs[id],p.visits[id]; return view.kind == 'plan' and view.id == id and v ~= nil and not v.acknowledge and b ~= nil and vim.api.nvim_buf_is_valid(b) and table.concat(vim.api.nvim_buf_get_lines(b,0,-1,false),'\\n'):find(text,1,true) ~= nil", id, text), `plan showing ${text}`);
-  assert.ok((await planText(client, id)).includes(text), text);
-}
+import { startClient } from './harness.ts';
 
-test('graph nodes show stages from a plan accepted by the real hub', { skip }, async t => {
-  const { client, epic, a, b, c } = await setup(t);
-  await client.input(`<Esc>:Cland graph ${epic.id}<CR>`);
-  await client.waitScreen(s => s.includes(`${a.id} S1`) && s.includes(`${b.id} S1`) && s.includes(`${c.id} S2`), 'real plan stage tags');
-});
-
-test('gp shows stages, lanes, overrides, gates and scoped stage tags; a approves through the real hub', { skip }, async t => {
-  const { root, ui, client, epic, a, b, c, outside } = await setup(t);
-  await client.input('gp');
-  await client.waitScreen(s => s.includes('Plan of') && s.includes('registry and sessions'), 'plan opened by gp');
-  await waitPlan(client, epic.id, 'QA criteria: C1');
-  const text = await planText(client, epic.id);
-  assert.ok(!text.includes('· in work ·'), 'before-start stages stay planned');
-  for (const expected of ['S1 · registry and sessions', 'lane 1', 'lane 2', 'QA: affected · after stage', 'override: QA none · review only', 'Gate:', 'starts when S1 closes', 'full · per item', 'QA runs: 2 planned', 'Estimated QA cost: [cost]', 'External blocker', 'stages:']) assert.ok(text.includes(expected), expected);
-  const panel = await client.lua<string>("return table.concat(vim.api.nvim_buf_get_lines(require('cland.panels').buf('items'),0,-1,false),'\\n')");
-  assert.match(panel, new RegExp(`${a.id} S1 ›`));
-  assert.match(panel, new RegExp(`${b.id} S1 ›`));
-  assert.match(panel, new RegExp(`${c.id} S2 ›`));
-  assert.ok(!panel.includes(outside.id), 'external task stays outside the filtered panel');
-  // The two first-stage lanes occupy columns on the same line, not a flattened list.
-  assert.ok(text.split('\n').some(line => line.includes(a.id) && line.includes(b.id)));
-  const sourceBefore = await readFile(join(root, epic.path), 'utf8');
-  await client.input('a');
-  await waitPlan(client, epic.id, '✓ approved by human');
-  assert.ok(text.includes('awaiting your approval'));
-  assert.notEqual(await readFile(join(root, epic.path), 'utf8'), sourceBefore);
-  const approved = (await ui.request({ type: 'task.plan', op: 'show', item: epic.id })).value as { approval: { state: string } };
-  assert.equal(approved.approval.state, 'approved');
-  assert.deepEqual(await client.lua("return require('cland.actions').audit()"), []);
-  for (const columns of [80, 120, 200]) {
-    await client.rpc.request('nvim_ui_try_resize', columns, 45);
-    const fits = await client.lua<boolean>(`local b=require('cland.plan').bufs[...]; local w=vim.api.nvim_win_get_width(vim.fn.bufwinid(b)); for _,line in ipairs(vim.api.nvim_buf_get_lines(b,0,-1,false)) do if vim.api.nvim_strwidth(line)>w then return false end end; return true`, epic.id);
-    assert.ok(fits, `plan fits ${columns} columns`);
-  }
-});
+import { setup, planText, waitFor, openPlan, waitPlan, bin, skip } from './plan-support.ts';
 
 test('plan changes refresh both view and stage tags; d composes to the epic Lead and e opens ## Plan', { skip }, async t => {
   const { root, ui, epic, a, b, plan, client } = await setup(t);
@@ -144,7 +49,6 @@ test('plan changes refresh both view and stage tags; d composes to the epic Lead
   await client.input('<Space>p>Open its epic plan<CR>');
   await client.waitScreen(s => s.includes('Plan of'), 'plan from palette');
 });
-
 
 test('a planned child leaving the epic invalidates its former plan on reparent and removal', { skip }, async t => {
   const { root, epic, a, client } = await setup(t);
