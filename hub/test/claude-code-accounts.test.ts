@@ -225,15 +225,27 @@ test('a signed-out account has one directory notice and event while another acco
   await eventually('the pre-latch child finishes', async () => {
     return await readFile(join(f.dirs.b, 'agents-finished'), 'utf8').catch(() => undefined);
   });
+  // T3: resume joins the adapter's native snapshot, whose completion starts the
+  // next eligibility period. Keep hub time moving if resume needs the next slot.
+  const completePoll = async () => {
+    let settled = false;
+    const receipt = f.ui.request({ type: 'session.resume', session: a.name }, 15000);
+    void receipt.then(() => { settled = true; }, () => { settled = true; });
+    await eventually('claude-a native snapshot completes', async () => {
+      await f.clock.advance(2 * Number(f.env.CLAND_CLAUDE_AGENTS_MS));
+      return settled || undefined;
+    }, 15000); // One native agents child's transport deadline.
+    assert.equal((await receipt).ok, true);
+  };
+  // Drain the startup snapshot before taking the per-period baseline.
+  await completePoll();
   const before = (await f.calls()).filter(c => c.args[0] === 'agents');
   for (let period = 1; period <= 2; period++) {
     await f.clock.advance(2 * Number(f.env.CLAND_CLAUDE_AGENTS_MS));
-    // Resume joins any in-flight native snapshot; observe completion before the next tick.
-    assert.equal((await f.ui.request({ type: 'session.resume', session: a.name })).ok, true);
-    await eventually('claude-a keeps polling while claude-b is signed out', async () => {
-      const polls = (await f.calls()).filter(c => c.args[0] === 'agents' && c.configDir === f.dirs.a);
-      return polls.length >= before.filter(c => c.configDir === f.dirs.a).length + period ? true : undefined;
-    });
+    await completePoll();
+    const polls = (await f.calls()).filter(c => c.args[0] === 'agents' && c.configDir === f.dirs.a);
+    assert.ok(polls.length >= before.filter(c => c.configDir === f.dirs.a).length + period,
+      'claude-a keeps polling while claude-b is signed out');
   }
   const after = (await f.calls()).filter(c => c.args[0] === 'agents');
   assert.equal(after.filter(c => c.configDir === f.dirs.b).length, before.filter(c => c.configDir === f.dirs.b).length);
