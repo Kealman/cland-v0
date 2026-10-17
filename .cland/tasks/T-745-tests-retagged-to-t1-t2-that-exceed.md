@@ -17,7 +17,7 @@ blocked_by: []
 topic: topic-464
 branch: t/T-745-tests-retagged-to-t1-t2-that-exceed
 created: 2026-10-17T17:06:00.092Z
-updated: 2026-10-17T22:08:07.025Z
+updated: 2026-10-17T22:55:34.825Z
 ---
 
 ## Summary
@@ -83,3 +83,20 @@ Standards: M1 resolved under primary b389d513; both deterministic repository gua
 ### impl-745 · 2026-10-17T22:08:07.025Z
 
 Source review is clear at 90e5b430 (A-4773). Coordinator decision 28105f6d: no dry-run is needed now; CLI timeout is hub load/T-758 and malformed verify payload is not a rule-5 refusal. Final selection comes after first owners land; obtain structured payload shape from T-752 if needed. Coordinator will submit verify all from its own session at the final reviewed task head. No run queued now. Awaiting first-owner landings, then the T-745-owned Suites/planTierReport legacy-key residual, dev integration/delta review and final budget audit.
+
+### impl-745 · 2026-10-17T22:54:30.143Z
+
+Authorized dev integration: merged origin/dev 315af806 at b62c25035ddbcdeceb8b5661228c42877ef8d581 and pushed. Resolved only tests.md conflict by keeping T0 guard policy plus landed T3 scenario inventory. npm check and test:tiers pass. No T-745-owned or task-added allowance; T-707’s landed allowances use E-677. Delta review requested; inventory A-4826, delta note A-4827. No local targeted test run or suite submitted during integrated cover 09be3e0d. C1 still awaits first-owner integration, final legacy-key residual and Coordinator-submitted final verification.
+
+### rev-30 · 2026-10-17T22:55:34.825Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261017-745-dev-delta
+commit: b62c25035ddbcdeceb8b5661228c42877ef8d581
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Delta source clear; A-4830. Standards/Spec no findings. Primary94178a14 authorizes tiers.json integration; only manual docs resolution keeps T0 static gates plus landed T3 inventory. Authored source/test/package blobs are unchanged; task host check still includes both T0 guards. Incoming duration manifest exactly matches315af806 and all scenario allowance owners areE-677 perfc084b8a; no T-745 allowance added. A-4826 retains historical53-warning inventory, not final-budget proof. C1 stays unverified/pending first-owner integrations, legacy-key propagation, final-head review and Coordinator-owned full evidence per28105f6d. No preliminary dry-run or Implementer all submission requested.

@@ -3,8 +3,9 @@ id: T-752
 kind: task
 title: In-memory Suites policy fixtures inject the duration-budget context instead of reading native Git
 state: open
-status: review
+status: ready
 size: M
+criterion_seq: 1
 labels:
   - v0.1.4
   - verification
@@ -16,7 +17,7 @@ blocked_by: []
 topic: topic-461
 branch: t/T-752-in-memory-suites-policy-fixtures-inject
 created: 2026-10-17T18:44:08.769Z
-updated: 2026-10-17T22:01:43.375Z
+updated: 2026-10-17T23:25:21.938Z
 ---
 
 ## Summary
@@ -29,7 +30,9 @@ The Suites fixture seam takes a complete duration-budget and history context (ma
 
 ## Acceptance criteria
 
-- [ ] C1. The runtime tripwire reports no child_process trip in the nine R2 files, proved by a full droplet run's trip report, with every policy assertion unchanged.
+- [x] C1. The runtime tripwire reports no child_process trip in the nine R2 files, proved by a full droplet run's trip report, with every policy assertion unchanged.
+  - done: impl-752 · 2026-10-17T22:54:40.971Z
+  - verified: rev-30 [reviewer] · run rev-20261017-752-final · 2026-10-17T23:25:21.475Z · commit 9096e2b4c7fe67025877f6364f9bc198ba4235f0
 
 ## Comments
 
@@ -65,3 +68,22 @@ Order revised (coord, 22:01Z): this supersedes the 21:53Z note. T-751 already co
 ### impl-752 · 2026-10-17T22:01:43.375Z
 
 Coordinator changed merge order at 22:01Z: T-752 lands first; accounting/stage spend-lock ps rows become explicitly T-751-owned residuals. Attempted authorized full droplet verify at exact clean reviewed head 9096e2b4, but hub refused verify-all-reserved. Stopped without retries/workarounds under rule 5 and escalated to lead T-752 for permitted run/capability resolution. No history rewrite.
+
+### impl-752 · 2026-10-17T23:24:36.535Z
+
+Unchanged reviewed head 9096e2b4 now has green droplet receipt aaebabd7-726a-4284-a05a-750c2d19da1b / A-4843: 2114 tests, 2109 pass, 0 fail, 5 skips; Linux x64 c-8 lon1, 2 workers, lifetime 1555s, $0.1080. All nine R2 files supply 55 timing receipts; zero duration-context execFile trips. Only two lock ps spawn trips remain, explicitly T-751-owned residuals under Coordinator 22:01Z decision (accounting first confirmation test; stage whole fallback test). New supplied-history regression 0.078s and load-gate 5/5. C1 already marked done; requesting final same-head evidence review. No source changes or extra verification runs.
+
+### rev-30 · 2026-10-17T23:25:21.475Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261017-752-final
+commit: 9096e2b4c7fe67025877f6364f9bc198ba4235f0
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear under primary Coordinator dbe1b72f's scoped C1 disposition. Independently audited A-4843 run aaebabd7: all nine R2 files/55 cases have completed timings and ordinary passing reporter lines. Zero duration-context execFile trips. Exactly two report-only spawn rows remain through doctor/report -> lock process-list probing: suite-stage-rules close whole fallback (line 25616) and suite-accounting confirmed lease accounting (30329); both explicitly remain T-751-owned residuals, not a zero-total-trip claim. Supplied-history regression passes and load gate 5/5. Whole mode-free hub-only + Neovim-smoke run exits zero: 2,109 pass, zero fail/cancel, five unrelated skips; smoke 12/12. Primary 49f964f4 authorized the unchanged retry after filing T-762/T-763. Prior source/policy assertion audit remains current; branch unchanged. No findings. C1 verified. Audit A-4845; no per-item QA.
+
+Criteria: C1 verified.

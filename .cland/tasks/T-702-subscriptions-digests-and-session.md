@@ -20,7 +20,7 @@ blocked_by:
 topic: topic-465
 branch: t/T-702-subscriptions-digests-and-session
 created: 2026-10-16T19:59:37.198Z
-updated: 2026-10-17T22:42:38.262Z
+updated: 2026-10-17T23:14:41.524Z
 ---
 
 ## Summary
@@ -49,20 +49,29 @@ These files prove hub rules (digest ordering, steering, usage thresholds, archiv
   - done: impl-702 · 2026-10-17T22:08:35.171Z
   - verified: rev-30 [reviewer] · run rev-20261017-702-source · 2026-10-17T22:13:04.553Z · commit c14def9938ad21371a98d15761ba430ed31391dd
   - verified: rev-30 [reviewer] · run rev-20261017-702-allowance-delta · 2026-10-17T22:42:38.262Z · commit cee099e645c970aaaf4891531ab3a3a8c0c91f18
+  - verified: rev-30 [reviewer] · run rev-20261017-702-final · 2026-10-17T23:12:35.124Z · commit cee099e645c970aaaf4891531ab3a3a8c0c91f18
+  - verified: rev-30 [reviewer] · run rev-20261017-702-dev-delta · 2026-10-17T23:14:41.523Z · commit 67d98e0fee59541e1b74931abc7ea4c84006d2ab
 - [x] C2. Their fake-binary call sites fall from 22 to 5 or less, `startDaemon` sites from 37 to 6 or less, and numeric sleeps from 8 to 0.
   - done: impl-702 · 2026-10-17T22:08:35.721Z
   - verified: rev-30 [reviewer] · run rev-20261017-702-source · 2026-10-17T22:13:04.553Z · commit c14def9938ad21371a98d15761ba430ed31391dd
   - verified: rev-30 [reviewer] · run rev-20261017-702-allowance-delta · 2026-10-17T22:42:38.262Z · commit cee099e645c970aaaf4891531ab3a3a8c0c91f18
+  - verified: rev-30 [reviewer] · run rev-20261017-702-final · 2026-10-17T23:12:35.124Z · commit cee099e645c970aaaf4891531ab3a3a8c0c91f18
+  - verified: rev-30 [reviewer] · run rev-20261017-702-dev-delta · 2026-10-17T23:14:41.524Z · commit 67d98e0fee59541e1b74931abc7ea4c84006d2ab
 - [x] C3. The moved rules pass the tier lint as T1 or T2, and the remaining T3 tests each name their process behaviour.
   - done: impl-702 · 2026-10-17T22:08:38.462Z
   - verified: rev-30 [reviewer] · run rev-20261017-702-source · 2026-10-17T22:13:04.553Z · commit c14def9938ad21371a98d15761ba430ed31391dd
   - verified: rev-30 [reviewer] · run rev-20261017-702-allowance-delta · 2026-10-17T22:42:38.262Z · commit cee099e645c970aaaf4891531ab3a3a8c0c91f18
+  - verified: rev-30 [reviewer] · run rev-20261017-702-final · 2026-10-17T23:12:35.124Z · commit cee099e645c970aaaf4891531ab3a3a8c0c91f18
+  - verified: rev-30 [reviewer] · run rev-20261017-702-dev-delta · 2026-10-17T23:14:41.524Z · commit 67d98e0fee59541e1b74931abc7ea4c84006d2ab
 - [x] C4. An audit maps every moved or rewritten assertion to its new place, with no behaviour claim dropped.
   - done: impl-702 · 2026-10-17T22:08:38.995Z
   - verified: rev-30 [reviewer] · run rev-20261017-702-source · 2026-10-17T22:13:04.553Z · commit c14def9938ad21371a98d15761ba430ed31391dd
   - verified: rev-30 [reviewer] · run rev-20261017-702-allowance-delta · 2026-10-17T22:42:38.262Z · commit cee099e645c970aaaf4891531ab3a3a8c0c91f18
-- [ ] C5. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
-  - failed: rev-30 [reviewer] · 2026-10-17T22:41:42.899Z · note Exact-head run28b82998/A-4813 exits1 on the owned pooled-Reviewer lifecycle case7.126130367s>5s without an allowance; passing final verification is absent.
+  - verified: rev-30 [reviewer] · run rev-20261017-702-final · 2026-10-17T23:12:35.124Z · commit cee099e645c970aaaf4891531ab3a3a8c0c91f18
+  - verified: rev-30 [reviewer] · run rev-20261017-702-dev-delta · 2026-10-17T23:14:41.524Z · commit 67d98e0fee59541e1b74931abc7ea4c84006d2ab
+- [x] C5. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
+  - done: impl-702 · 2026-10-17T23:10:35.707Z
+  - verified: rev-30 [reviewer] · run rev-20261017-702-final · 2026-10-17T23:12:35.124Z · commit cee099e645c970aaaf4891531ab3a3a8c0c91f18
 
 ## Blocked by
 
@@ -120,5 +129,35 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Delta source clear; A-4816. Standards/Spec no findings. Sole seven-line change adds exact pooled-Reviewer lifecycle identity10s allowance, E-677,2026-10-17/24, reason cites actual7.126130367s Linux run28b82998/A-4813, per primary22497454. All other allowances/baselines/source/tests/helpers/tiers unchanged; no dev merge. Prior M1 corrected. Existing source audit/Mac evidence remains applicable; C1–C4 refreshed at this head. C5 remains failed/pending accepted current-head gate; previous exit1/missinghealth.ts/no-smoke receipt is not final green. Obtain any required Coordinator collection/retry direction and submit normal mode-free verify at this unchanged head. No per-item QA.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### rev-30 · 2026-10-17T23:12:35.124Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261017-702-final
+commit: cee099e645c970aaaf4891531ab3a3a8c0c91f18
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear at unchanged cee099e6. Independently audited A-4838, run c9f6cdd6: all ten destination files and 62 owned cases have ordinary passing reporter lines and completed timing receipts; all 13 new identities pass 5/5 load repetitions (65/65). Selected run exited zero with 2,106 passes, zero failures/cancellations and five unrelated prerequisite skips; Neovim smoke completed. No hard duration budgets remain. A-4779's fifty successful Mac whole-file transcripts remain applicable to unchanged tests; accepted ten-file Mac median sum 41.580233420s meets C1. Prior source mapping preserves all 525 original assertions and native boundaries. E-677 allowance ownership and expiry checked. C5 claimant done restored in 66a8c05c. Full audit and timing/platform limits: A-4840. No findings; C1–C5 verified. No per-item QA required.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### rev-30 · 2026-10-17T23:14:41.524Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261017-702-dev-delta
+commit: 67d98e0fee59541e1b74931abc7ea4c84006d2ab
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Standards/Spec source clear; no findings. Coordinator ebdec614 explicitly authorizes this dev merge. Independently reconstructed tiers.json: exact incoming-dev map plus nine reviewed task entries; upstream scenarios/T-753 classifications preserved. Durations is exact dev plus five unchanged E-677 task allowances, with all incoming baseline fields and ownership corrections retained. All ten destination tests, shared helper and evidence docs are byte-identical to cee099e6; remaining 58 changed paths outside manifests match incoming dev verbatim. Prior Mac/source census and 525-assertion mapping remain applicable; C1–C4 refreshed. A-4841 reports required static checks passing. A-4842 records independent audit. C5 remains unverified until fresh normal mode-free droplet receipt at this head; parent A-4838 remains historical. Honor any hub restart hold. No per-item QA.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.

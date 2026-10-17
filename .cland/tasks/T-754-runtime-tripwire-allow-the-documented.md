@@ -3,7 +3,7 @@ id: T-754
 kind: task
 title: "Runtime tripwire: allow the documented headless Neovim spawn in Neovim T2 files, and remove the ps probe from their fixture"
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 1
 labels:
@@ -17,7 +17,7 @@ blocked_by: []
 topic: topic-463
 branch: t/T-754-runtime-tripwire-allow-the-documented
 created: 2026-10-17T19:53:12.953Z
-updated: 2026-10-17T22:14:16.675Z
+updated: 2026-10-17T22:54:06.424Z
 ---
 
 ## Summary
@@ -32,8 +32,9 @@ The T2 tripwire allows the documented headless-Neovim spawn from the Neovim test
 
 ## Acceptance criteria
 
-- [ ] C1. A full droplet run's trip report shows none of the 12 files, while a planted Neovim T2 test that spawns anything other than the headless client still trips, proved by runner tests.
-  - failed: rev-30 [reviewer] · 2026-10-17T22:08:37.236Z · note Headless spawn exemption also covers non-stub/real-hub startClient calls; restrict scope and prove non-stub spawn rejection before runtime census.
+- [x] C1. A full droplet run's trip report shows none of the 12 files, while a planted Neovim T2 test that spawns anything other than the headless client still trips, proved by runner tests.
+  - done: impl-754 · 2026-10-17T22:53:10.195Z
+  - verified: rev-30 [reviewer] · run rev-20261017-754-final · 2026-10-17T22:54:06.064Z · commit 61c00d6efb45f62c881e07997a91dfd97d1f2ac9
 
 ## Comments
 
@@ -76,3 +77,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 No remaining findings. M1 fixed: launch scope is conditional on exactstubOnly; actual-startClient controls require spawn refusal for socket/alternate-command/default real-hub setups. Original positive stub/cleanup path and narrow synchronous/API/argv/tier guards unchanged. A-4787 audited120passes across runner/client5/5 each; A-4790 records full Standards/Spec review and unchanged-path fixture evidence limits. C1 remains unverified. Permitted mode-free dry-run must cover all twelve named files; omissions go upstream for Coordinator submission, no Implementer forced-full exception. No per-item QA.
+
+### impl-754 · 2026-10-17T22:53:42.574Z
+
+C1 done from green exact-reviewed-head full droplet b2535cbe/A-4821. All12 scoped Neovim files positively execute63tests with zero Neovim trip rows; runner17tests pass,5newcontrols load-gate25/25. Scoped census A-4822, final evidence A-4823. Whole run2492pass0fail8outside-scope skips; no owned skips or new hard-duration failures. Head remains61c00d6e. Final evidence settlement requested from Reviewer; no allowances/quarantine/baseline changes.
+
+### rev-30 · 2026-10-17T22:54:06.064Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261017-754-final
+commit: 61c00d6efb45f62c881e07997a91dfd97d1f2ac9
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head clear; A-4825. Standards/Spec no findings. Independently parsed A-4821 exact-head full exit0: all12 scoped Neovim files positively execute63passing cases,zero Neovim tier-mismatch rows anywhere. All17runner cases pass; five new stub-positive/unrelated-child/lookalike/tier-boundary/non-stub controls each5/5,25/25load. Prior source M1 is corrected and protected at actual startClient. Whole2500reported2492pass0fail/cancel8outside-scope skips; full Neovim completes. Host check reused; no new allowances. C1 verified; no per-item QA.
+
+Criteria: C1 verified.

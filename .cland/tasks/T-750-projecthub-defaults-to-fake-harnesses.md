@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-459
 branch: t/T-750-projecthub-defaults-to-fake-harnesses
 created: 2026-10-17T18:44:08.555Z
-updated: 2026-10-17T22:33:21.370Z
+updated: 2026-10-17T23:04:20.506Z
 ---
 
 ## Summary
@@ -79,3 +79,20 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Delta source clear; A-4810. Standards: no findings. Spec: no findings. Coordinator 05fc14b7-authorized integration adds exactly T-753's three T3 lifecycle headers and three manifest retags; bodies after headers and all native caller/production seam code remain unchanged. merge-policy classification is now T3. Previous low evidence discrepancy is resolved by audited A-4804 (item-lead after1.213s). Prior Mac evidence remains applicable; C1/C2 await current T-750 head runtime evidence. Old-head b12077e4 is historical for this final gate. Normal mode-free droplet verify may proceed at unchanged3430d758; no per-item QA.
+
+### impl-750 · 2026-10-17T23:03:25.164Z
+
+d9c6d298/A-4834 failed because the cleanup self-test still planted source assertions in the old combined component file after extraction. Reproduced on Mac; fixed only the cleanup guard to plant into stop-classification-fixture and use the current component driver. Both real runner failure/cancellation cleanup contracts retained. Pushed d3fda4f3; A-4835 contains raw 5/5 before (red, median0.329s) / after (green, median0.972s), load1<15. typecheck/tiers/lint pass; fresh delta review before new verification. Linux old-head owned R1 rows have zero trips, named external residuals remain, Neovim phase was not reached.
+
+### rev-30 · 2026-10-17T23:04:20.506Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261017-750-cleanup-delta
+commit: d3fda4f3c40dd3bc24776570a843a54a4844184c
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Cleanup-guard delta source clear; A-4836. Standards/Spec no findings. Sole changed file plants the same assertion/cancellation contract into extracted stop-classification-fixture, runs it through current manual driver and proves helper/signal wiring. All held-work/finally distinction/fake-stop restoration/pending-wait/child-close/result/root-removal assertions remain. A-4835 five original failures→five corrected whole-file passes, median0.972s,maxadmission1.8955. No production/defaults/native-caller/allowance/baseline change. Parent A-4834 remains red historical evidence, not final green. C1/C2 await current-head full-population droplet proof; normal mode-free verify may proceed at this unchanged head.

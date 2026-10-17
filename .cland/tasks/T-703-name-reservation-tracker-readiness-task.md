@@ -3,7 +3,7 @@ id: T-703
 kind: task
 title: Name reservation, tracker readiness, task migration, inbox load and the ask chain run in T1 and T2 with shared fixtures
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 5
 labels:
@@ -20,7 +20,7 @@ blocked_by:
 topic: topic-466
 branch: t/T-703-name-reservation-tracker-readiness-task
 created: 2026-10-16T19:59:37.302Z
-updated: 2026-10-17T22:49:26.022Z
+updated: 2026-10-17T23:36:07.365Z
 ---
 
 ## Summary
@@ -47,19 +47,27 @@ Tracker and hub rules dominate these files, at the cost of fixture rebuilds, ove
 ## Acceptance criteria
 
 - [x] C1. The six files' manifest seconds fall from 234.7 s (A-3877) to 120 s or less on the merge path (T1–T3), with the large-seed run in T4.
-  - done: impl-703 · 2026-10-17T22:12:59.436Z
   - verified: rev-30 [reviewer] · run rev-20261017-703-source · 2026-10-17T22:19:14.924Z · commit 81d65861baa96fc019453da9a506184231310fb3
+  - verified: rev-30 [reviewer] · run rev-20261017-703-runtime-correction · 2026-10-17T22:56:32.497Z · commit 7479109815247dfd587dafb1be7dba6654363ef7
+  - done: impl-703 · 2026-10-17T23:35:13.196Z
+  - verified: rev-30 [reviewer] · run rev-20261017-703-workload-delta · 2026-10-17T23:36:07.365Z · commit 229bdf2b09432807cf7aff54b4be6cbe7f42914e
 - [x] C2. Their `startDaemon` call sites fall from 19 to 3 or less and `spawnSpoke` sites from 61 to 12 or less.
   - done: impl-703 · 2026-10-17T22:05:21.412Z
   - verified: rev-30 [reviewer] · run rev-20261017-703-source · 2026-10-17T22:19:14.924Z · commit 81d65861baa96fc019453da9a506184231310fb3
+  - verified: rev-30 [reviewer] · run rev-20261017-703-runtime-correction · 2026-10-17T22:56:32.497Z · commit 7479109815247dfd587dafb1be7dba6654363ef7
+  - verified: rev-30 [reviewer] · run rev-20261017-703-workload-delta · 2026-10-17T23:36:07.365Z · commit 229bdf2b09432807cf7aff54b4be6cbe7f42914e
 - [x] C3. No test in the six files mocks a builtin prototype, proved by a source check, and the moved rules pass the tier lint as T1 or T2.
   - done: impl-703 · 2026-10-17T22:05:23.051Z
   - verified: rev-30 [reviewer] · run rev-20261017-703-source · 2026-10-17T22:19:14.924Z · commit 81d65861baa96fc019453da9a506184231310fb3
+  - verified: rev-30 [reviewer] · run rev-20261017-703-runtime-correction · 2026-10-17T22:56:32.497Z · commit 7479109815247dfd587dafb1be7dba6654363ef7
+  - verified: rev-30 [reviewer] · run rev-20261017-703-workload-delta · 2026-10-17T23:36:07.365Z · commit 229bdf2b09432807cf7aff54b4be6cbe7f42914e
 - [x] C4. An audit maps every moved or rewritten assertion to its new place, with no behaviour claim dropped.
-  - done: impl-703 · 2026-10-17T22:04:51.834Z
   - verified: rev-30 [reviewer] · run rev-20261017-703-source · 2026-10-17T22:19:14.925Z · commit 81d65861baa96fc019453da9a506184231310fb3
+  - verified: rev-30 [reviewer] · run rev-20261017-703-runtime-correction · 2026-10-17T22:56:32.497Z · commit 7479109815247dfd587dafb1be7dba6654363ef7
+  - done: impl-703 · 2026-10-17T23:35:13.497Z
+  - verified: rev-30 [reviewer] · run rev-20261017-703-workload-delta · 2026-10-17T23:36:07.365Z · commit 229bdf2b09432807cf7aff54b4be6cbe7f42914e
 - [ ] C5. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
-  - failed: rev-30 [reviewer] · 2026-10-17T22:49:26.022Z · note Exact-head run83db1195/A-4817 exits1 with four assertions failing: three async-native guards from new existsSync and one owned offline migration lock-boundary failure.
+  - failed: rev-30 [reviewer] · 2026-10-17T23:32:48.425Z · note Exact-head run 2c0e0ead/A-4846 exits one on two owned inbox-workload hard budgets (8.922707492s and 5.165830640s >5s); Neovim completion is absent.
 
 ## Blocked by
 
@@ -104,3 +112,56 @@ finding_counts: {"high":0,"medium":2,"low":0}
 Runtime not clear; A-4818. M1 new sync existsSync in async hasTerritory causes three tracker-native-boundary guard failures; prior source review missed this. M2 owned task-migrate container-edit=true fails at279 because offline hub lock remains held after killDaemon; exact cleanup/lock cause needs diagnosis and retained assertion proof. All seven owned files execute,26owned gates130/130pass,no hard budget errors. Whole hub2103pass/4fail/5skip,exit1; Neovim phase does not complete. Missinghealth.ts is harmless per primaryb9d49bcf, not a finding. C1–C4 source marks remain; C5 fails. Correct source, validate matching async-boundary readers/owned migration, and request fresh source review before another exact-head gate.
 
 Criteria: C5 failed (Exact-head run83db1195/A-4817 exits1 with four assertions failing: three async-native guards from new existsSync and one owned offline migration lock-boundary failure.).
+
+### impl-703 · 2026-10-17T22:55:00.767Z
+
+Runtime correction 7479109815247dfd587dafb1be7dba6654363ef7 pushed. M1: awaited access preserves absent-territory optimization/native async signature and T-750 seam; three native guard failures reproduce before and pass after individually. M2: bound PID-gone observation plus explicit assertion before offline migration, keeping SIGKILL/restart and migration-success assertions. Whole native-boundary + task-migrate files each 5/5, peak Mac load 3.193; typecheck/tiers/lint green. Six allowances re-owned to E-677 per Coordinator, manifest rechecked. A-4829 contains reproduction logs, 10 full-file receipts and updated 884-original-assertion map. C1–C4 unchanged; C5 awaits new exact-head Linux evidence after source review.
+
+### rev-30 · 2026-10-17T22:56:32.497Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261017-703-runtime-correction
+commit: 7479109815247dfd587dafb1be7dba6654363ef7
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Corrected source clear; A-4831. Standards/Spec no findings. M1 uses awaited async access, preserves native signature/Git path; three guard cases red→green. M2 adds bounded PID-gone observation and final assertion before one offline migration attempt, preserving original success/restart assertions. Linux gap is not claimed reproduced on Mac. A-4829 two files5/5 raw185pass/0fail/cancel/skip, matching hashes,maxload3.193. Six allowances change owner only toE-677 perfc084b8a; limits/reasons/dates/baselines unchanged.884original map retained plus new PID assertion. C1–C4 refreshed. C5 remains failed/pending normal exact-head droplet result; positively cover all seven carriers and native-boundary guards.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### rev-30 · 2026-10-17T23:32:48.425Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261017-703-runtime-2
+commit: 7479109815247dfd587dafb1be7dba6654363ef7
+scope: evidence
+findings: [{"severity":"medium","text":"Owned archive startup identity takes 8.922707492s without a hard duration allowance; A-4846 rejects it against 5s and verification exits one.","file":"hub/test/inbox-workload.test.ts","line":122},{"severity":"medium","text":"Owned 256-process/burst startup identity takes 5.165830640s without a hard duration allowance; A-4846 rejects it against 5s and verification exits one.","file":"hub/test/inbox-workload.test.ts","line":124}]
+finding_counts: {"high":0,"medium":2,"low":0}
+
+Runtime not clear; A-4847. Exact-head A-4846 run 2c0e0ead exits one solely on two owned missing hard-duration allowances: inbox archive startup 8.922707492s and 256-process/burst startup 5.165830640s, each >5s (raw rejection lines 32642–32643). Independently confirmed all seven owned files/109 top-level cases have passing ordinary lines and timing receipts; all 26 owned new identities pass 5/5 gates (130/130). Prior native-guard and offline-migration assertion failures are absent. Hub reports 2,107 passes, zero assertion failures/cancellations, five prerequisite skips; no completed Neovim phase/smoke receipt. Known guarded health.ts diagnostics are not a finding or exit cause. C1–C4 source review remains current; C5 fails pending corrected/accepted passing gate. Any head change needs source review before another run. No per-item QA.
+
+Criteria: C5 failed (Exact-head run 2c0e0ead/A-4846 exits one on two owned inbox-workload hard budgets (8.922707492s and 5.165830640s >5s); Neovim completion is absent.).
+
+### impl-703 · 2026-10-17T23:35:13.721Z
+
+229bdf2b09432807cf7aff54b4be6cbe7f42914e pushed: two hard-budget T2 identities now use representative seeds with the same assertions, while original volume is retained by shared T4 carriers. Whole inbox + soak each 5/5 serially; peak load 2.401. Revised T2 archive max0.181s, startup max0.045s; T2 total median1.367369s, T4 median4.885388s. Typecheck/tiers/lint green; no T2 tripwire mismatches. E-677-owned T4 allowance added; no T2 allowance or known-test baseline escape. A-4848 updates full 884-assertion map. C1/C4 done refreshed; C5 remains failed/pending new exact-head evidence after delta review and restart hold release.
+
+### rev-30 · 2026-10-17T23:36:07.365Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261017-703-workload-delta
+commit: 229bdf2b09432807cf7aff54b4be6cbe7f42914e
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Standards/Spec source clear, no findings; A-4851. Primary b0ee48e7/aa6416b1 authorize representative T2 seeds with shared T4 carriers. All batching, query-count/plan, reply completion and coalescing assertions are retained in shared functions; T4 keeps original startup volumes and broader 2000/3000 archive volumes. No production change/dev merge, new processes/sleeps or T2 allowance. Both T4 allowances are measured, E-677-owned and expire 2026-10-24; only affected file timings/counts change. Independently audited ten raw A-4848 logs: 50 passes, zero fail/cancel/skip, committed test hashes match; T2 median 1.367368791s, T4 4.885388041s, all T2 cases <2s. Original 884 assertion mappings remain, prior native guard/PID fixes unchanged. Merge-path manifest total 59.308244s meets C1. C1–C4 refreshed. C5 remains failed/pending accepted exact-head Linux gate; source correction does not replace prior exit-one receipt. Submission hold remains until Coordinator says hub restarted. No per-item QA.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
