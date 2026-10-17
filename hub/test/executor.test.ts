@@ -50,10 +50,18 @@ async function fixture(t: import('node:test').TestContext, script: string, alter
   const item = created.item.id as string;
   const made = await ui.request({ type: 'topic.create', title: 'Executor fixture', item });
   const topic = (made.value as { topic: { id: string } }).topic.id;
-  const launch = async () => {
+  const launch = async ({ waitForRunning = false } = {}) => {
     const response = await clandWithEnv(root, env, 'verify', 'auto', '--report', topic, '--to', 'impl', '--json');
     assert.equal(response.code, 0, response.stderr);
     const job = JSON.parse(response.stdout) as { id: string; pid: number | null };
+    if (waitForRunning) {
+      // Admission can reply before the worker starts; observe the hub's receipt.
+      job.pid = await eventually('executor worker running with pid', async () => {
+        const status = (await ui.request({ type: 'hub.status' })).value as HubStatus;
+        const run = status.suites?.find(run => run.id === job.id);
+        return run?.state === 'running' && run.pid ? run.pid : undefined;
+      });
+    }
     if (job.pid) ownProcess(t, job.pid);
     return job;
   };
@@ -91,8 +99,9 @@ test('verify reports the worker PATH Node, candidate Neovim pin and platform in 
 });
 
 test('a pre-executor running job restored from hub.db reports as local exactly once', async t => {
+  // T3: recovery of a live suite worker across hub-process restarts.
   const f = await fixture(t, `node -e "const fs=require('fs');const p=setInterval(()=>{if(fs.existsSync('finish'))clearInterval(p)},50)"`);
-  const job = await f.launch();
+  const job = await f.launch({ waitForRunning: true });
   assert.ok(job.pid);
   assert.equal((await cland(f.root, 'hub', 'stop')).code, 0);
   const db = new DatabaseSync(join(f.root, '.cland', 'hub.db'));
