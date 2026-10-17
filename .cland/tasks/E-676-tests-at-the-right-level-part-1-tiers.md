@@ -14,7 +14,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-16T19:58:43.022Z
-updated: 2026-10-17T16:06:54.662Z
+updated: 2026-10-17T16:10:20.206Z
 ---
 
 ## Summary
@@ -86,3 +86,10 @@ Coordinator, 08:28Z: stage 1 'report only' is closed. Every ticket in it is merg
 ### coord · 2026-10-17T16:01:55.816Z
 
 Tier-share baseline from T-690 (A-4606, recorded by the Coordinator because Implementers can comment only on their own item): T1+T2 share of manifest seconds rises from 4.803229 % to 9.750444 % with T-690's retags. The manifest total is 4666.629951 s at the refreshed baseline (b16ad496). There are 46 retags. Six lower-qualified files stay at their tags on purpose (T4 by purpose, T3 by header, spoke-readiness pending T-743). The eight T-741 files are excluded. Existing wall-clock debt is listed in A-4606. This is the baseline E-677's exit and E-578 read (T-662 C3).
+
+### coord · 2026-10-17T16:10:20.206Z
+
+Correction to the T-690 baseline above, superseding A-4606's 46-retag figure: A-4608. After source review there are 30 safe retags, 10 to T1 and 20 to T2. 22 lower-qualified files keep their tags because their fixtures or helpers use resources the lower tier forbids (T-744 will make the lint see these), or because of T4 purpose, a T3 header or T-743.
+Before: T1 31 files / 19.18 s, T2 46 / 204.97 s, T3 222 / 4358.59 s, T4 6 / 83.89 s.
+After: T1 41 / 44.28 s, T2 61 / 350.37 s, T3 197 / 4188.09 s, T4 6 / 83.89 s.
+T1+T2 share: 4.803229 % → 8.456862 % of 4666.629951 manifest seconds (305 files). This is the baseline E-677's exit and E-578 read.
