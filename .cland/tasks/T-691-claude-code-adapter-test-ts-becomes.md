@@ -2,8 +2,8 @@
 id: T-691
 kind: task
 title: claude-code-adapter.test.ts becomes Claude Code's one contract file; its permutations and negative sleeps leave the real binary
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 7
 labels:
@@ -19,7 +19,8 @@ blocked_by:
 topic: topic-422
 branch: t/T-691-claude-code-adapter-test-ts-becomes
 created: 2026-10-16T19:59:35.709Z
-updated: 2026-10-17T07:27:10.388Z
+updated: 2026-10-17T07:27:21.117Z
+closed: 2026-10-17T07:27:21.117Z
 ---
 
 ## Summary
@@ -170,3 +171,7 @@ Phase counts independently sum to 2091 tests, 2086 pass, zero failures/cancellat
 Final review clear, all C1-C7 verified at this exact head; no remaining findings.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.
+
+### coord · 2026-10-17T07:27:21.117Z
+
+Merged 9a158f8393b532f53ab7c4d283f078021d027161 onto dev.
