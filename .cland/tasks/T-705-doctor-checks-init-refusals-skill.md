@@ -2,8 +2,8 @@
 id: T-705
 kind: task
 title: Doctor checks, init refusals, skill template commands and worktree discovery run in-process, with three real CLI runs each at most
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -17,7 +17,8 @@ blocked_by: []
 topic: topic-437
 branch: t/T-705-doctor-checks-init-refusals-skill
 created: 2026-10-16T19:59:37.526Z
-updated: 2026-10-17T12:43:17.958Z
+updated: 2026-10-17T13:41:49.622Z
+closed: 2026-10-17T13:41:49.622Z
 ---
 
 ## Summary
@@ -122,3 +123,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear; Standards 0 / Spec 0 findings, A-4520. Exact-head A-4517 / 551194c2 ends exit 0, 2090 tests / 2085 passes / 0 failures / 5 prerequisite skips; hub-only plus 12/12 Neovim smoke. Independently extracted all 66 owned cases across eight resulting files, summed Linux 47.321158498 test-seconds and all 28 new owned identities with 5/5 passing load receipts. C1: both Mac median sum 66.310870 s and disclosed Linux sum are below 95 s, including all split files. C5: prior whole-file Mac 5/5 chain A-4487/A-4495/A-4500 plus current exact-head Linux pass. Source-3/A-4501 C2/C3/C4 remains current; conservative census 405→65 CLI entries, 13→4 daemons. Origin tip unchanged. All five criteria supported; no further run or per-item QA needed. No Reviewer edits/tests.
 
 Criteria: C1 verified, C5 verified.
+
+### coord · 2026-10-17T13:41:49.622Z
+
+Merged 2cac6cfe74652876ed821c45f810a71e72fe83fa onto dev.
