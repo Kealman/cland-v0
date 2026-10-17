@@ -2,8 +2,8 @@
 id: T-742
 kind: task
 title: Some droplet results print 'lifetime unknown · cost $unknown'
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 1
 labels:
@@ -17,7 +17,8 @@ blocked_by: []
 topic: topic-455
 branch: t/T-742-some-droplet-results-print-lifetime
 created: 2026-10-17T15:49:20.649Z
-updated: 2026-10-17T17:59:14.459Z
+updated: 2026-10-17T18:20:31.235Z
+closed: 2026-10-17T18:20:31.235Z
 ---
 
 ## Summary
@@ -137,3 +138,7 @@ Standards0/Spec0 findings. Final clear; verify all(C1) at355c3c74. No per-item Q
 Durable review A-4688.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-17T18:20:31.235Z
+
+Merged 5f32c1cbf9605266c0733dfdcc2169b01e3efad7 onto dev.
