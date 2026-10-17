@@ -2,8 +2,8 @@
 id: T-719
 kind: task
 title: "T2 projectHub tests start no git or ps probe: injected tracker reader and process table"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -17,7 +17,8 @@ blocked_by:
 topic: topic-444
 branch: t/T-719-t2-projecthub-tests-start-no-git-or-ps
 created: 2026-10-16T20:09:33.790Z
-updated: 2026-10-17T15:49:20.318Z
+updated: 2026-10-17T16:35:06.275Z
+closed: 2026-10-17T16:35:06.275Z
 ---
 
 ## Summary
@@ -105,3 +106,7 @@ Final evidence clear, Standards0/Spec0 findings; C1/C2 verified at the exact sou
 Durable final review A-4596.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-17T16:35:06.275Z
+
+Merged 6812b9406875b285b6ce07dcadb92ec4454e8727 onto dev.
