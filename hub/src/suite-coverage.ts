@@ -57,7 +57,7 @@ function mapLine(line: number, changes: Hunk[]): number | null {
   return line - delta;
 }
 
-export async function coverageSelection(cwd: string, files: string[], mergeBase: string, git: Git, maxAgeMs: number, replay?: { maps: Awaited<ReturnType<typeof coverageMaps>>; at: number; nearest: boolean }): Promise<{ tests: string[]; functions: string[]; map: CoveragePointer & { head: string; retrospective?: boolean }; nvimFull: boolean } | { fallback: string }> {
+export async function coverageSelection(cwd: string, files: string[], mergeBase: string, git: Git, maxAgeMs: number, replay?: { maps: Awaited<ReturnType<typeof coverageMaps>>; at: number; nearest: boolean }): Promise<{ tests: string[]; functions: string[]; map: CoveragePointer & { head: string; retrospective?: boolean }; nvimFull: boolean; notes: string[] } | { fallback: string }> {
   for (const file of files) {
     if (/\.test\.ts$/.test(file) && /^hub\/(?:src|test)\//.test(file)) continue;
     if (!/^hub\/src\/.+\.ts$/.test(file)) return { fallback: `coverage unsupported path ${file}` };
@@ -79,7 +79,9 @@ export async function coverageSelection(cwd: string, files: string[], mergeBase:
   if (!chosen) return { fallback: 'coverage map has no ancestor of task merge base' };
   const { map, pointer } = chosen;
   const age = retrospective ? 0 : (replay?.at ?? Date.now()) - Date.parse(map.created);
-  if (age < 0 || age > maxAgeMs) return { fallback: `coverage map stale (age ${Math.floor(age / 1000)}s; limit ${maxAgeMs / 1000}s)` };
+  if (age < 0) return { fallback: `coverage map stale (age ${Math.floor(age / 1000)}s; limit ${maxAgeMs / 1000}s)` };
+  const notes = new Set<string>();
+  if (age > maxAgeMs) notes.add(`coverage map age ${Math.floor(age / 1000)}s exceeds limit ${maxAgeMs / 1000}s; all hunks map`);
   const tests = new Set<string>();
   const functions = new Set<string>();
   for (const file of files) {
@@ -93,22 +95,29 @@ export async function coverageSelection(cwd: string, files: string[], mergeBase:
     if (!changes.length) return { fallback: `coverage has no mappable hunks: ${file}` };
     const intervening = hunks(await git('diff', '--no-ext-diff', '--no-textconv', '--no-renames', '--unified=0', map.head, mergeBase, '--', file));
     for (const h of changes) {
-      if (!h.removed && h.old === 0) return { fallback: `coverage top-level insertion: ${file}:1` };
       const start = mapLine(Math.max(1, h.old), intervening);
       const end = mapLine(Math.max(1, h.old + Math.max(1, h.removed) - 1), intervening);
       if (start === null || end === null || intervening.some(i => i.added && i.next > h.old && i.next <= h.old + h.removed - 1)) return { fallback: `coverage hunk changed since map: ${file}:${h.old}` };
       // Insertion anchors must be inside a function, rather than its final line:
       // adding a new top-level function cannot borrow its neighbour's coverage.
       const deciding = entry.functions.filter(fn => h.removed ? fn.startLine <= end && fn.endLine >= start : fn.startLine <= start && fn.endLine > start);
-      // Every removed line needs function coverage; a hunk spanning import or
-      // top-level code cannot be justified by a neighbouring function alone.
-      for (let line = start; line <= end; line++) if (!deciding.some(fn => fn.startLine <= line && fn.endLine >= line)) return { fallback: `coverage top-level or unknown function: ${file}:${line}` };
-      if (!deciding.length || deciding.some(fn => !fn.tests.length)) return { fallback: `coverage function untested: ${file}:${start}` };
+      // A top-level or untested edit widens to all evidence for this file.
+      // Coordinate failures above still require the package fallback.
+      let topLevel = !h.removed && h.old === 0 || !deciding.length;
+      for (let line = start; line <= end && !topLevel; line++) topLevel = !deciding.some(fn => fn.startLine <= line && fn.endLine >= line);
+      const untested = deciding.some(fn => !fn.tests.length);
+      if (topLevel || untested) {
+        const covering = entry.functions.flatMap(fn => fn.tests);
+        if (!covering.length) return { fallback: `coverage file has no covering tests: ${file}` };
+        for (const test of covering) tests.add(test);
+        notes.add(`file covering tests widened: ${file}:${h.old} (${topLevel ? 'top-level or unknown function' : 'untested function'})`);
+        continue;
+      }
       for (const fn of deciding) { functions.add(`${file}:${fn.startLine}-${fn.endLine} ${fn.name || '(anonymous)'}`); for (const test of fn.tests) tests.add(test); }
     }
   }
   for (const test of tests) if (!await readFile(join(cwd, test)).then(() => true, () => false)) return { fallback: `coverage test missing: ${test}` };
-  return { tests: [...tests].sort(), functions: [...functions].sort(), map: { ...pointer, head: map.head, ...(retrospective ? { retrospective: true } : {}) }, nvimFull: false };
+  return { tests: [...tests].sort(), functions: [...functions].sort(), map: { ...pointer, head: map.head, ...(retrospective ? { retrospective: true } : {}) }, nvimFull: false, notes: [...notes].sort() };
 }
 
 type RawCoverage = { result: Array<{ url: string; functions: Array<{ functionName: string; ranges: Array<{ startOffset: number; endOffset: number; count: number }> }> }> };

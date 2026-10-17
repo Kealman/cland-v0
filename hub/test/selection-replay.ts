@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { findPackageJSON } from 'node:module';
 import { pathToFileURL } from 'node:url';
-import { chooseSuiteMode, nvimHubImports, HUB_SMOKE, NVIM_SMOKE, type SuiteMode } from '../src/suite-selection.ts';
+import { chooseSuiteMode, nvimHubImports, nvimHubImporters, HUB_SMOKE, NVIM_SMOKE, type SuiteMode } from '../src/suite-selection.ts';
 
 import { coverageMaps, coverageSelection } from '../src/suite-coverage.ts';
 import { readDurationManifest } from '../src/suite-durations.ts';
@@ -27,17 +27,24 @@ const [range, selectorRef] = options.filter(arg => !['--coverage', '--nearest'].
 if (!range) throw new Error('usage: selection-replay.ts <first-parent-range> [selector-ref] [--coverage [--nearest] [--count 40] [--failures json]]');
 const git = (...args: string[]) => execFileSync('git', args, { encoding: 'utf8', maxBuffer: 8 * 1024 * 1024 });
 let scratch: string | undefined;
+let choose = chooseSuiteMode;
+let readImports = nvimHubImports;
+let readImporters: typeof nvimHubImporters | undefined = nvimHubImporters;
+let selectCoverage = coverageSelection;
 try {
-  let choose = chooseSuiteMode;
   if (selectorRef) {
     scratch = await mkdtemp(join(tmpdir(), 'cland-selection-replay-'));
     const archive = execFileSync('git', ['archive', selectorRef, 'hub/src', 'hub/package.json'], { maxBuffer: 32 * 1024 * 1024 });
     execFileSync('tar', ['-x', '-C', scratch], { input: archive });
     await symlink(dirname(dirname(findPackageJSON('smol-toml', import.meta.url)!)), join(scratch, 'node_modules'), 'dir');
     const module = join(scratch, 'hub/src/suite-selection.ts');
-    choose = (await import(pathToFileURL(module).href)).chooseSuiteMode;
+    const selector = await import(pathToFileURL(module).href);
+    choose = selector.chooseSuiteMode;
+    readImports = selector.nvimHubImports;
+    readImporters = selector.nvimHubImporters;
+    selectCoverage = (await import(pathToFileURL(join(scratch, 'hub/src/suite-coverage.ts')).href)).coverageSelection;
   }
-  const imports = await nvimHubImports(process.cwd());
+  const imports = await readImports(process.cwd());
   const counts: Record<SuiteMode, number> = { full: 0, 'hub-only': 0, 'hub-selected': 0, 'nvim-only': 0 };
   const commits = git('log', '--first-parent', '--format=%H%x09%s', range).trim().split('\n')
     .filter(line => /\(T-\d+\)$/.test(line) && !line.includes('\tTracker:'));
@@ -65,7 +72,7 @@ try {
 
 
 // --nearest labels retrospective evidence explicitly; live admission always
-// requires an ancestor map and enforces its age. No source is altered for replay.
+// requires an ancestor map and maps every hunk, reporting old-map age. No source is altered for replay.
 async function replayCoverage(commits: string[], range: string): Promise<void> {
   const root = projectRoot(process.cwd());
   const maps = await coverageMaps(root);
@@ -74,9 +81,10 @@ async function replayCoverage(commits: string[], range: string): Promise<void> {
   const failures: Record<string, string[]> = failedPath ? JSON.parse(await readFile(resolve(failedPath), 'utf8')) : {};
   const total = Object.entries(durations).filter(([file]) => file.startsWith('hub/')).reduce((sum, [, value]) => sum + value.seconds, 0);
   const rows = commits.slice(0, count);
+  let selectedCount = 0;
   let ownMissed = 0;
   let historicalMissed = 0;
-  console.log(`Coverage replay: ${range}; ${rows.length} task landings; ${maps.length} maps; ${nearest ? 'nearest map (retrospective, may postdate merge)' : 'ancestor maps at merge time'}; failure history ${history.logs} retained run logs${failedPath ? ' plus ' + failedPath : ''}`);
+  console.log(`Coverage replay: selector ${selectorRef ?? 'working source'}; ${range}; ${rows.length} task landings; ${maps.length} maps; ${nearest ? 'nearest map (retrospective, may postdate merge)' : 'ancestor maps at merge time'}; failure history ${history.logs} retained run logs${failedPath ? ' plus ' + failedPath : ''}`);
   console.log('| Commit | Item | Mode | Map | Hub test-time share | Own tests missed | Historical failures missed | Cause / deciding functions |');
   console.log('| --- | --- | --- | --- | --- | --- | --- | --- |');
   for (const row of rows) {
@@ -93,30 +101,34 @@ async function replayCoverage(commits: string[], range: string): Promise<void> {
         if (args[0] === 'diff' && args[5] === `${sha}^1` && args[6] === '--') args.splice(6, 0, sha);
         return execFileSync('git', args, { cwd: dir, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 });
       };
-      const imports = await nvimHubImports(dir);
-      const mode = chooseSuiteMode(changed, imports);
+      const imports = await readImports(dir);
+      const mode = choose(changed, imports);
       const at = Number(git('show', '-s', '--format=%ct', sha).trim()) * 1000;
-      const localOnly = mode === 'hub-only' || mode === 'full' && chooseSuiteMode(changed, []) === 'hub-only';
-      const result = localOnly ? await coverageSelection(dir, changed, `${sha}^1`, runGit, 172800000, { maps, at, nearest }) : { fallback: 'shared package rule' };
+      const localOnly = mode === 'hub-only' || mode === 'full' && choose(changed, []) === 'hub-only';
+      const result = localOnly ? await selectCoverage(dir, changed, `${sha}^1`, runGit, 172800000, { maps, at, nearest }) : { fallback: `shared package rule: ${changed.filter(file => choose([file], imports) === 'full').join(', ') || 'mixed nvim and non-nvim paths'}` };
+      const importers = readImporters && localOnly && mode === 'full' && !('fallback' in result && result.fallback.startsWith('coverage shared infrastructure')) ? await readImporters(dir) : undefined;
+      const nvimSelected = importers ? new Set([...changed.flatMap(file => importers[file] ?? []), ...NVIM_SMOKE]) : undefined;
       const selected = 'fallback' in result ? null : new Set([...result.tests, ...HUB_SMOKE]);
+      if (selected) selectedCount++;
       const own = changed.filter(file => /^(?:hub\/(?:src|test)|nvim\/test)\/.+\.test\.ts$/.test(file) && !git('diff', '--diff-filter=D', '--name-only', `${sha}^1`, sha).split('\n').includes(file));
       const item = subject.match(/\((T-\d+)\)$/)?.[1];
       const historyFiles = [...new Set([...(failures[sha] ?? failures[sha.slice(0, 8)] ?? []), ...(history.byItem.get(item ?? '') ?? [])])];
       const includes = (file: string) => file.startsWith('hub/')
         ? selected ? selected.has(file) : mode !== 'nvim-only' || HUB_SMOKE.includes(file)
-        : mode === 'full' || mode === 'nvim-only' || NVIM_SMOKE.includes(file);
+        : nvimSelected ? nvimSelected.has(file) : mode === 'full' || mode === 'nvim-only' || NVIM_SMOKE.includes(file);
       const ownMisses = own.filter(file => !includes(file));
       const historyMisses = historyFiles.filter(file => !includes(file));
       ownMissed += ownMisses.length; historicalMissed += historyMisses.length;
       const seconds = selected ? [...selected].reduce((sum, file) => sum + (durations[file]?.seconds ?? 0), 0) : mode === 'nvim-only' ? HUB_SMOKE.reduce((sum, file) => sum + (durations[file]?.seconds ?? 0), 0) : total;
       const missingTimings = selected ? [...selected].filter(file => !durations[file]).length : 0;
       const share = !total ? 'unknown (no timings)' : missingTimings ? `unknown (${missingTimings} selected files lack timings)` : (100 * seconds / total).toFixed(1) + '%';
-      let detail = 'fallback' in result ? result.fallback : result.functions.join('; ') || 'changed tests only';
+      let detail = 'fallback' in result ? result.fallback : [...result.functions, ...result.notes ?? []].join('; ') || 'changed tests only';
+      if (nvimSelected) detail += `; Neovim importers plus smoke: ${[...nvimSelected].sort().join(', ')}`;
       if (historyMisses.length) detail += `; historical failures outside ${historyMisses.some(file => file.startsWith('nvim/')) ? 'package Neovim smoke' : selected ? 'changed-function coverage' : 'package hub smoke'}`;
       console.log(`| ${sha.slice(0, 8)} | ${subject.match(/\((T-\d+)\)$/)?.[1]} | ${selected ? 'hub-selected' : mode} | ${'map' in result ? `${result.map.artifact} at ${result.map.head.slice(0, 8)}${result.map.retrospective ? ' (nearest)' : ''}` : 'none'} | ${share} | ${ownMisses.join(', ') || '0'} | ${historyMisses.join(', ') || '0'} | ${detail.replaceAll('|', '/')} |`);
     } finally { git('worktree', 'remove', '--force', dir); }
   }
-  console.log(`Replay bar: ${rows.length}/${count} landings; ${ownMissed} own misses; ${historicalMissed} historical misses; ${ownMissed + historicalMissed} misses total. Missing maps use package fallback. Shares use the current duration manifest; missing selected timings are unknown, and shares are not a wall-time claim.`);
+  console.log(`Replay bar: ${rows.length}/${count} landings; ${selectedCount} hub-selected; ${ownMissed} own misses; ${historicalMissed} historical misses; ${ownMissed + historicalMissed} misses total. Missing maps use package fallback. Shares use the current duration manifest; missing selected timings are unknown, and shares are not a wall-time claim.`);
   if (ownMissed || historicalMissed) process.exitCode = 1;
   else if (rows.length < count) { console.log(`Incomplete replay: ${count - rows.length} more task landings required.`); process.exitCode = 2; }
 }

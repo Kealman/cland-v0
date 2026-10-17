@@ -130,8 +130,14 @@ cland verify --report <item-topic> --to <reviewer-name> --to <your-name>
 D29: task runs use the diff selection with no mode: hub-only, Neovim-only or full. Use `all` only when the selection or the Coordinator asks for a full run. Full suites are the Coordinator's integrated `dev` runs per batch of about three merges, at stage and epic close, and before release.
 
 Task runs may report `hub-selected`: changed hub tests, tests covering the changed
-functions, and `HUB_SMOKE`/`NVIM_SMOKE`. A hub source imported by Neovim keeps the
-full Neovim phase. The report names the deciding functions and coverage artifact.
+functions, and `HUB_SMOKE`/`NVIM_SMOKE`. A changed hub source imported by Neovim
+selects only the Neovim test files reaching it directly or through `nvim/test`
+helpers, plus `NVIM_SMOKE`. Declaration-level `import type` and `export type` do
+not create runtime dependencies. Inline type specifiers retain module execution
+under Node type stripping, so those imports and re-exports still count.
+Changes to `hub/test/harness.ts` or `hub/test/process-cleanup.ts` retain the full
+Neovim phase. The report names the deciding functions, selected Neovim tests and
+coverage artifact.
 Clean integrated `dev` full runs record per-test-file V8 coverage, including the
 CLI, lifecycle daemons, spokes and fake harness descendants, and publish a
 function-range map with their head and canonical candidate tree. Close-run shard
@@ -139,24 +145,32 @@ maps merge into one artifact. Task runs never refresh the map.
 
 Admission reads the newest artifact whose head is an ancestor of the task's merge
 base. `[verification].coverage_max_age` is a positive duration, default `"2d"`.
-Missing, invalid, stale or unrelated maps keep the package rules and name the
-reason. Protocol/contract, package, harness, fixture, runner and executor changes,
-unsupported paths, unknown source/functions, untested functions, top-level edits,
-missing covering tests and hunks changed since the map also keep those rules.
+This is a reporting threshold: an older ancestor map still selects when every
+hunk maps through the intervening diff, with its age and the limit in the report.
+Missing, invalid, future-dated or unrelated maps keep the package rules and name
+the reason. Protocol/contract, package, harness, fixture, runner and executor changes,
+unsupported paths, unknown source files, missing covering tests and hunks changed
+since the map also keep those rules. A top-level insertion or edit, or a hunk in
+an untested function of a mapped `hub/src` file, instead selects all tests covering
+any function of that file, plus `HUB_SMOKE`; the report names this widening. A
+file with no covering tests still falls back.
 Unchanged lines are translated from the merge base back to the map across the
 intervening diff. Integrated full runs remain the regression backstop; a selected
 run can miss a regression which the next batch detects.
 
 Coverage artifacts remain the source of truth; `.cland/run/coverage-maps/` holds
 rebuildable pointers shared by linked task worktrees. Cache reuse for
-`hub-selected` also requires the same selected tests and Neovim phase.
+`hub-selected` also requires the same selected tests and Neovim phase, including
+its explicit importer subset.
 `node hub/test/selection-replay.ts <first-parent-range> --coverage` prints the last
-40 task landings, missing-map fallbacks, deciding functions and each selected share
+40 task landings, the selecting count, missing-map fallbacks, deciding functions and each selected share
 of hub test-time. `--nearest` explicitly labels retrospective maps that may postdate
-the merge; live admission always requires an ancestor and enforces age. Supply
+the merge; live admission always requires an ancestor and mappable hunks. Supply
 `--failures <json>` to include historical failed test paths keyed by full/short
 merge SHA. The replay also reads retained suite logs by item and names their count; old logs
 without source identities remain unavailable rather than guessed.
+An optional positional selector git ref loads both its package and coverage selectors
+for before/after comparisons on the same range and maps.
 `--count N` changes the replay window (default 40); an incomplete window exits 2.
 Exit 1 reports own or historical misses for inspection; the agreed own-test bar
 and historical miss causes are reported separately.

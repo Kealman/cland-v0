@@ -6,7 +6,7 @@ import { coverageSelection, type CoverageRecording } from './suite-coverage.ts';
 import { defaultConfig, parseConfig } from './init/config.ts';
 
 export type SuiteMode = 'hub-only' | 'hub-selected' | 'nvim-only' | 'full';
-export type SuiteSelection = { mode: SuiteMode; files: string[]; reason: string; loadGate?: boolean; fetchedDev?: string; tests?: string[]; functions?: string[]; coverage?: { artifact: string; path: string; head: string }; nvimFull?: boolean; recordCoverage?: CoverageRecording; shard?: { files: string[]; nvim: boolean } };
+export type SuiteSelection = { mode: SuiteMode; files: string[]; reason: string; loadGate?: boolean; fetchedDev?: string; tests?: string[]; functions?: string[]; coverage?: { artifact: string; path: string; head: string }; nvimFull?: boolean; nvimTests?: string[]; recordCoverage?: CoverageRecording; shard?: { files: string[]; nvim: boolean } };
 export type SuiteRequest = 'auto' | 'all' | 'hub' | 'nvim';
 
 // Cross-package baselines, kept together so widening smoke coverage is one edit.
@@ -37,7 +37,14 @@ export function describeSelection(selection: SuiteSelection, filesBytes = Infini
     const omitted = items.length - shown.length;
     return `${JSON.stringify(shown)}${omitted ? `; ${omitted} more (${items.length} total; full list in log)` : ''}`;
   };
-  return `mode ${selection.mode}; ${selection.reason}; deciding files ${list(selection.files)}${selection.functions ? `; deciding functions ${list(selection.functions)}` : ''}${selection.coverage ? `; coverage ${selection.coverage.artifact} at ${selection.coverage.head}` : ''}`;
+  return `mode ${selection.mode}; ${selection.reason}; deciding files ${list(selection.files)}${selection.functions ? `; deciding functions ${list(selection.functions)}` : ''}${selection.nvimTests ? `; Neovim tests ${list(selection.nvimTests)}` : ''}${selection.coverage ? `; coverage ${selection.coverage.artifact} at ${selection.coverage.head}` : ''}`;
+}
+
+/** Cache receipts are reusable only for identical effective package/test sets. */
+export function sameSuiteSelection(previous: SuiteSelection | undefined, selection: SuiteSelection): boolean {
+  return previous?.mode === selection.mode
+    && (selection.mode !== 'hub-selected' || JSON.stringify([previous.tests, previous.nvimFull]) === JSON.stringify([selection.tests, selection.nvimFull]))
+    && JSON.stringify(previous.nvimTests) === JSON.stringify(selection.nvimTests);
 }
 
 // Default for pure callers; package admission replaces it with imports read from source.
@@ -56,11 +63,12 @@ function chooseSuite(paths: readonly string[], nvimHubImports: readonly string[]
   for (const path of paths) {
     if (/^(?:hub\/src\/cli\/(?:crew|roles?)\.ts|hub\/src\/adapters\/contract\.ts|nvim\/lua\/cland\/(?:hub|state)\.lua|hub\/src\/protocol\.ts)$/.test(path)) return full(`shared contract ${path}`);
     if (/(?:^|\/)(?:package(?:-lock)?\.json|tsconfig[^/]*\.json)$/.test(path)) return full(`package configuration ${path}`);
-    if (['hub/test/run-suite.ts', 'hub/test/load-gate.ts', 'hub/test/load-gate-reporter.ts', 'hub/src/suite-selection.ts', 'hub/src/suite-shards.ts', 'hub/src/suite-durations.ts', 'hub/src/suite-duration-budget.ts', 'hub/src/suite-duration-context.ts', 'hub/test/duration-reporter.ts'].includes(path)) return full(`suite infrastructure ${path}`);
-    if (nvimHubImports.includes(path)) return full(`nvim test import ${path}`);
+    if (['hub/test/harness.ts', 'hub/test/process-cleanup.ts', 'hub/test/run-suite.ts', 'hub/test/load-gate.ts', 'hub/test/load-gate-reporter.ts', 'hub/src/suite-selection.ts', 'hub/src/suite-shards.ts', 'hub/src/suite-durations.ts', 'hub/src/suite-duration-budget.ts', 'hub/src/suite-duration-context.ts', 'hub/test/duration-reporter.ts'].includes(path)) return full(`suite infrastructure ${path}`);
   }
   const nvim = paths.filter(path => path.startsWith('nvim/')).length;
   if (nvim && nvim !== paths.length) return full('mixed nvim and non-nvim paths');
+  const imported = paths.find(path => !path.startsWith('hub/src/') && nvimHubImports.includes(path)) ?? paths.find(path => nvimHubImports.includes(path));
+  if (imported) return full(`nvim test import ${imported}`);
   if (nvim) return { mode: 'nvim-only', reason: 'all paths under nvim/' };
   return { mode: 'hub-only', reason: 'all paths outside nvim/' };
 }
@@ -83,6 +91,9 @@ export function importSpecifiers(source: string): string[] {
   for (let i = 0; i < tokens.length; i++) {
     const reexport = tokens[i] === 'export' && ['*', '{', 'type'].includes(tokens[i + 1] ?? '');
     if ((tokens[i] !== 'import' && !reexport) || tokens[i - 1] === '.') continue;
+    // A default binding named `type` is a value (`import type from ...`).
+    if (tokens[i + 1] === 'type' && tokens[i + 2] !== 'from' && tokens[i + 2] !== '=') continue;
+    // Inline type specifiers leave an empty import/export that executes the module.
     let specifier = literal(tokens[i + 1]);
     if (tokens[i + 1] === '(') specifier = literal(tokens[i + 2]);
     else if (!specifier && tokens[i + 1] !== '.') {
@@ -95,23 +106,36 @@ export function importSpecifiers(source: string): string[] {
   return specifiers;
 }
 
-export async function nvimHubImports(cwd: string): Promise<string[]> {
-  const paths = new Set<string>();
-  const visited = new Set<string>();
-  const pending: string[] = [];
-  for await (const test of glob('nvim/test/**/*.test.ts', { cwd })) pending.push(test);
-  while (pending.length) {
-    const test = pending.pop()!;
-    if (visited.has(test)) continue;
-    visited.add(test);
-    for (const specifier of importSpecifiers(await readFile(resolve(cwd, test), 'utf8'))) {
-      if (!specifier.startsWith('.')) continue;
-      const path = relative(cwd, resolve(cwd, dirname(test), specifier)).split('\\').join(posix.sep);
-      if (path.startsWith('hub/')) paths.add(path);
-      else if (path.startsWith('nvim/test/')) pending.push(path);
+/** Runtime hub dependencies, attributed to each Neovim test through its helpers. */
+export async function nvimHubImporters(cwd: string): Promise<Record<string, string[]>> {
+  const importers = new Map<string, Set<string>>();
+  const dependencies = new Map<string, string[]>();
+  for await (const test of glob('nvim/test/**/*.test.ts', { cwd })) {
+    const visited = new Set<string>();
+    const pending = [test];
+    while (pending.length) {
+      const source = pending.pop()!;
+      if (visited.has(source)) continue;
+      visited.add(source);
+      let paths = dependencies.get(source);
+      if (!paths) {
+        paths = importSpecifiers(await readFile(resolve(cwd, source), 'utf8')).filter(specifier => specifier.startsWith('.'))
+          .map(specifier => relative(cwd, resolve(cwd, dirname(source), specifier)).split('\\').join(posix.sep));
+        dependencies.set(source, paths);
+      }
+      for (const path of paths) {
+        if (path.startsWith('hub/')) {
+          const tests = importers.get(path) ?? new Set<string>();
+          tests.add(test); importers.set(path, tests);
+        } else if (path.startsWith('nvim/test/')) pending.push(path);
+      }
     }
   }
-  return [...paths].sort();
+  return Object.fromEntries([...importers].sort(([a], [b]) => a.localeCompare(b)).map(([path, tests]) => [path, [...tests].sort()]));
+}
+
+export async function nvimHubImports(cwd: string): Promise<string[]> {
+  return Object.keys(await nvimHubImporters(cwd)).sort();
 }
 
 const exec = promisify(execFile);
@@ -133,16 +157,19 @@ export async function selectPackageSuite(cwd: string, requested: SuiteRequest = 
       files = [...new Set(paths.flatMap(output => output.split('\0').filter(Boolean)))].sort();
       if (branch === 'dev') return { mode: 'full', files, reason: 'integrated dev always runs full', fetchedDev: (await git('rev-parse', 'origin/dev')).trim() };
       if (requested === 'all') return { mode: 'full', files, reason: '--all / all forces full' };
-      const { mode, reason } = chooseSuite(files, await nvimHubImports(cwd));
+      const importers = await nvimHubImporters(cwd);
+      const { mode, reason } = chooseSuite(files, Object.keys(importers));
       if (requested !== 'auto' && mode !== `${requested}-only`) return { mode: 'full', files, reason: `diff does not qualify for requested ${requested} phase` };
-      // Shared contracts keep their package fallback. A hub source imported by
-      // Neovim may narrow only the hub side; its Neovim phase remains full.
+      // Shared contracts and test infrastructure keep both package fallbacks.
       if (mode === 'hub-only' || mode === 'full' && reason.startsWith('nvim test import hub/src/')) {
+        const nvimTests = reason.startsWith('nvim test import hub/src/') ? [...new Set([...files.flatMap(file => importers[file] ?? []), ...NVIM_SMOKE])].sort() : undefined;
+        const nvimReason = nvimTests ? '; Neovim importers plus smoke' : '';
         const text = await readFile(resolve(cwd, '.cland/config.toml'), 'utf8').catch(error => { if (error.code === 'ENOENT') return null; throw error; });
         const config = text === null ? defaultConfig('suite') : parseConfig(text, 'suite', env);
         const selected = await coverageSelection(cwd, files, (await git('merge-base', 'origin/dev', 'HEAD')).trim(), git, config.verification.coverageMaxAgeMs);
-        if ('fallback' in selected) return { mode, files, reason: `${reason}; ${selected.fallback}` };
-        return { mode: 'hub-selected', files, reason: 'function coverage selects hub tests', tests: [...new Set([...selected.tests, ...HUB_SMOKE])].sort(), functions: selected.functions, coverage: selected.map, nvimFull: mode === 'full' };
+        if ('fallback' in selected && selected.fallback.startsWith('coverage shared infrastructure')) return { mode, files, reason: `${reason}; ${selected.fallback}` };
+        if ('fallback' in selected) return { mode, files, reason: `${reason}; ${selected.fallback}${nvimReason}`, ...(nvimTests ? { nvimTests } : {}) };
+        return { mode: 'hub-selected', files, reason: `function coverage selects hub tests${selected.notes.length ? '; ' + selected.notes.join('; ') : ''}${nvimReason}`, tests: [...new Set([...selected.tests, ...HUB_SMOKE])].sort(), functions: selected.functions, coverage: selected.map, nvimFull: false, ...(nvimTests ? { nvimTests } : {}) };
       }
       return { mode, files, reason };
     } catch (error) {
@@ -160,6 +187,7 @@ export function selectionFromEnv(): SuiteSelection | undefined {
   const value: unknown = JSON.parse(text);
   if (!value || typeof value !== 'object' || !('mode' in value) || !['full', 'hub-only', 'hub-selected', 'nvim-only'].includes(String(value.mode)) || !('files' in value) || !Array.isArray(value.files) || !value.files.every(path => typeof path === 'string') || !('reason' in value) || typeof value.reason !== 'string') throw new Error('invalid suite selection');
   if (value.mode === 'hub-selected' && (!('tests' in value) || !Array.isArray(value.tests) || !value.tests.length || !value.tests.every(file => typeof file === 'string' && /^hub\/(?:src|test)\/.+\.test\.ts$/.test(file) && !file.split('/').some(part => part === '..' || part === '.')))) throw new Error('invalid selected hub tests');
+  if ('nvimTests' in value && (!Array.isArray(value.nvimTests) || !value.nvimTests.length || !value.nvimTests.every(file => typeof file === 'string' && /^nvim\/test\/.+\.test\.ts$/.test(file) && !file.split('/').some(part => part === '..' || part === '.')))) throw new Error('invalid selected Neovim tests');
   if ('shard' in value) {
     const shard = value.shard;
     if (!shard || typeof shard !== 'object' || !('files' in shard) || !Array.isArray(shard.files) || !shard.files.every(file => typeof file === 'string') || !('nvim' in shard) || typeof shard.nvim !== 'boolean') throw new Error('invalid suite shard selection');

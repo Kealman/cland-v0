@@ -1,10 +1,11 @@
-import { serializeTierManifest } from '../src/suite-shards.ts';
+// T3: package-runner admission and CLI subprocess contracts; pure selection cases are T1.
+import { packageShards, serializeTierManifest } from '../src/suite-shards.ts';
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { chooseSuiteMode, importSpecifiers, nvimHubImports, selectPackageSuite } from '../src/suite-selection.ts';
+import { sameSuiteSelection, chooseSuiteMode, importSpecifiers, nvimHubImports, nvimHubImporters, HUB_SMOKE, NVIM_SMOKE, selectPackageSuite } from '../src/suite-selection.ts';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { mkdtemp, mkdir, readFile, writeFile, rm } from 'node:fs/promises';
+import { glob, mkdtemp, mkdir, readFile, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -45,7 +46,7 @@ for (const path of ['nvim/test/harness.ts', 'nvim/test/stub-hub.ts', 'nvim/test/
   test(`${path} selects nvim-only by the nvim rule`, () => assert.equal(chooseSuiteMode([path]), 'nvim-only'));
 }
 
-test('import parser reads static, type, side-effect and literal dynamic imports, ignoring comments and strings', () => {
+test('import parser reads static, side-effect and literal dynamic imports, ignoring comments and strings', () => {
   assert.deepEqual(importSpecifiers(`
     // import { fake } from '../../hub/comment.ts';
     /* import '../../hub/block.ts'; */
@@ -55,7 +56,7 @@ test('import parser reads static, type, side-effect and literal dynamic imports,
     import '../../hub/side-effect.ts';
     const lazy = await import('../../hub/dynamic.ts');
     import.meta.url;
-  `), ['../../hub/static.ts', '../../hub/type.ts', '../../hub/side-effect.ts', '../../hub/dynamic.ts']);
+  `), ['../../hub/static.ts', '../../hub/side-effect.ts', '../../hub/dynamic.ts']);
 });
 
 test('dependency parser reads literal template imports and helper re-exports', () => {
@@ -64,8 +65,62 @@ test('dependency parser reads literal template imports and helper re-exports', (
     "export { X } from '../../hub/src/named.ts';",
     "export * from '../../hub/src/star.ts';",
     "export type { X } from '../../hub/src/type.ts';",
-  ].join('\n')), ['../../hub/src/template.ts', '../../hub/src/named.ts', '../../hub/src/star.ts', '../../hub/src/type.ts']);
+  ].join('\n')), ['../../hub/src/template.ts', '../../hub/src/named.ts', '../../hub/src/star.ts']);
   assert.throws(() => importSpecifiers('import(`../../hub/src/${name}.ts`)'), /interpolated dynamic import/);
+});
+
+// T1 behavior: type-stripped dependencies never widen runtime selection.
+test('type-only declarations are erased while inline type specifiers retain module execution', () => {
+  assert.deepEqual(importSpecifiers(`
+    import type Default from './default.ts';
+    import type * as Types from './namespace.ts';
+    export type * from './star-types.ts';
+    import { type A, type B as C } from './named-types.ts';
+    export { type A, type B as C } from './export-types.ts';
+    import { type A, value } from './mixed.ts';
+    export { type A, value } from './mixed-export.ts';
+    import type from './value-called-type.ts';
+    import { type as renamed } from './value-specifier.ts';
+    import {} from './empty.ts';
+  `), ['./named-types.ts', './export-types.ts', './mixed.ts', './mixed-export.ts', './value-called-type.ts', './value-specifier.ts', './empty.ts']);
+});
+
+// T1 behavior through the source dependency graph; no child processes.
+test('Neovim type-only imports and helper re-exports do not reach hub sources', async t => {
+  const root = await mkdtemp(join(tmpdir(), 'cland-type-imports-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await mkdir(join(root, 'nvim/test'), { recursive: true });
+  await writeFile(join(root, 'nvim/test/types.test.ts'), "import type { Event } from '../../hub/src/protocol.ts'; import './helper.ts';");
+  await writeFile(join(root, 'nvim/test/helper.ts'), "export type { Plan } from '../../hub/src/tracker/plan.ts';");
+  assert.deepEqual(await nvimHubImports(root), []);
+});
+
+// T1 behavior: helper traversal attributes a dependency to each importing test.
+test('Neovim importer graph follows shared helpers through cycles', async t => {
+  const root = await mkdtemp(join(tmpdir(), 'cland-importer-graph-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await mkdir(join(root, 'nvim/test/nested'), { recursive: true });
+  await writeFile(join(root, 'nvim/test/a.test.ts'), "import './helper.ts';");
+  await writeFile(join(root, 'nvim/test/nested/b.test.ts'), "import '../helper.ts';");
+  await writeFile(join(root, 'nvim/test/other.test.ts'), "import type { Criterion } from '../../hub/src/tracker/criteria.ts';");
+  await writeFile(join(root, 'nvim/test/helper.ts'), "export * from './cycle.ts';");
+  await writeFile(join(root, 'nvim/test/cycle.ts'), "import './helper.ts'; export { parse } from '../../hub/src/tracker/criteria.ts';");
+  assert.deepEqual(await nvimHubImporters(root), { 'hub/src/tracker/criteria.ts': ['nvim/test/a.test.ts', 'nvim/test/nested/b.test.ts'] });
+});
+
+// T1 behavior: cached receipts must represent the same planned test sets.
+test('cache selection equivalence includes Neovim subsets even on hub fallback', () => {
+  for (const mode of ['hub-selected', 'full'] as const) {
+    const smoke = { mode, files: [], reason: 'smoke', tests: [...HUB_SMOKE] };
+    const selected = { ...smoke, nvimTests: [...NVIM_SMOKE, 'nvim/test/importer.test.ts'] };
+    assert.equal(sameSuiteSelection(smoke, selected), false);
+    assert.equal(sameSuiteSelection(selected, smoke), false);
+    assert.equal(sameSuiteSelection(selected, { ...selected, reason: 'same files, different explanation' }), true);
+    assert.equal(sameSuiteSelection(selected, { ...selected, nvimTests: [...NVIM_SMOKE, 'nvim/test/other.test.ts'] }), false);
+  }
+  const first = { mode: 'hub-selected' as const, files: [], reason: 'first', tests: ['hub/test/first.test.ts'] };
+  assert.equal(sameSuiteSelection(first, { ...first, tests: ['hub/test/second.test.ts'] }), false);
+  assert.equal(sameSuiteSelection(first, { ...first, nvimFull: true }), false);
 });
 
 const exec = promisify(execFile);
@@ -87,21 +142,21 @@ async function gitFixture(t: import('node:test').TestContext) {
   return { root, git };
 }
 
-async function coverageFixture(t: import('node:test').TestContext, prefix = '') {
+async function coverageFixture(t: import('node:test').TestContext, prefix = '', sourceFile = 'hub/src/hub/example.ts') {
   const { root, git } = await gitFixture(t);
   const source = prefix + 'export function first() {\n  return 1;\n}\nexport function second() {\n  return 2;\n}\n';
   const shift = prefix.split('\n').length - 1;
-  await mkdir(join(root, 'hub/src/hub'), { recursive: true });
+  await mkdir(join(root, sourceFile, '..'), { recursive: true });
   await mkdir(join(root, 'hub/test'), { recursive: true });
   await mkdir(join(root, '.cland/run/coverage-maps'), { recursive: true });
   await writeFile(join(root, '.gitignore'), '.cland/\n');
-  await writeFile(join(root, 'hub/src/hub/example.ts'), source);
+  await writeFile(join(root, sourceFile), source);
   for (const file of ['first', 'second', 'changed']) await writeFile(join(root, `hub/test/${file}.test.ts`), '// test\n');
   await git('add', '.'); await git('commit', '-m', 'covered baseline'); await git('push', 'origin', 'HEAD:dev');
   const head = await git('rev-parse', 'HEAD');
   const map = { version: 1, head, tree: await git('rev-parse', 'HEAD^{tree}'), created: new Date(Date.now() - 1000).toISOString(),
     testFiles: ['hub/test/first.test.ts', 'hub/test/second.test.ts', 'hub/test/changed.test.ts'],
-    files: { 'hub/src/hub/example.ts': { functions: [
+    files: { [sourceFile]: { functions: [
       { name: 'first', start: prefix.length, end: prefix.length + 38, startLine: 1 + shift, endLine: 3 + shift, tests: ['hub/test/first.test.ts'] },
       { name: 'second', start: prefix.length + 39, end: source.length, startLine: 4 + shift, endLine: 6 + shift, tests: ['hub/test/second.test.ts'] },
     ] } } };
@@ -121,6 +176,38 @@ test('coverage selects the changed function and changed tests with both smoke ba
   assert.match(selected.reason, /coverage/);
   assert.match(JSON.stringify(selected), /second/);
   assert.doesNotMatch(JSON.stringify(selected.tests), /first.test/);
+});
+
+async function packageShardsForSelection(root: string, selection: Awaited<ReturnType<typeof selectPackageSuite>>) {
+  for (const file of [...HUB_SMOKE, ...NVIM_SMOKE]) await writeFile(join(root, file), '// smoke');
+  const paths = [];
+  for await (const file of glob(['hub/test/**/*.test.ts', 'nvim/test/**/*.test.ts'], { cwd: root })) paths.push(file);
+  await writeFile(join(root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: Object.fromEntries(paths.map(file => [file, 'T3'])) }));
+  return packageShards(root, selection.mode, undefined, selection, { workers: 1 });
+}
+
+test('criteria changes plan only Neovim runtime importers plus smoke and coverage-selected hub tests', async t => {
+  const { root, source, git } = await coverageFixture(t, '', 'hub/src/tracker/criteria.ts');
+  await mkdir(join(root, 'nvim/test'), { recursive: true });
+  await writeFile(join(root, 'nvim/test/direct.test.ts'), "import { first } from '../../hub/src/tracker/criteria.ts';");
+  await writeFile(join(root, 'nvim/test/indirect.test.ts'), "import './helper.ts';");
+  await writeFile(join(root, 'nvim/test/helper.ts'), "export * from '../../hub/src/tracker/criteria.ts';");
+  await writeFile(join(root, 'nvim/test/types.test.ts'), "import type { Criterion } from '../../hub/src/tracker/criteria.ts';");
+  await git('add', '.'); await git('commit', '-m', 'importers'); await git('push', 'origin', 'HEAD:dev');
+  await writeFile(join(root, 'hub/src/tracker/criteria.ts'), source.replace('return 2', 'return 4'));
+  const selection = await selectPackageSuite(root);
+  assert.equal(selection.mode, 'hub-selected');
+  assert.deepEqual(selection.tests, ['hub/test/second.test.ts', ...HUB_SMOKE].sort());
+  assert.deepEqual(selection.nvimTests, [...NVIM_SMOKE, 'nvim/test/direct.test.ts', 'nvim/test/indirect.test.ts'].sort());
+  assert.match(selection.reason, /Neovim importers/);
+  const phases = await packageShardsForSelection(root, selection);
+  assert.deepEqual(phases.at(-1)?.targets, selection.nvimTests);
+  await mkdir(join(root, 'hub/test'), { recursive: true });
+  await writeFile(join(root, 'hub/test/harness.ts'), '// changed shared harness');
+  const shared = await selectPackageSuite(root);
+  assert.equal(shared.mode, 'full');
+  assert.equal(shared.nvimTests, undefined);
+  assert.deepEqual((await packageShardsForSelection(root, shared)).at(-1)?.targets, ['nvim/test/**/*.test.ts']);
 });
 
 test('fetched dev selects committed and working changes, all forces full, and integrated dev stays full', async t => {
@@ -145,7 +232,7 @@ test('fetched dev selects committed and working changes, all forces full, and in
 });
 
 for (const [form, source] of [
-  ['a static hub import', "import type { New } from '../../../hub/src/new-shared.ts';"],
+  ['a static hub import', "import { New } from '../../../hub/src/new-shared.ts';"],
   ['a literal template hub import', 'const lazy = import(`../../../hub/src/new-shared.ts`);'],
 ] as const) {
 test(`adding ${form} in a nested Neovim test widens selection at admission`, async t => {
@@ -165,7 +252,8 @@ test(`adding ${form} in a nested Neovim test widens selection at admission`, asy
   const selection = await selectPackageSuite(root);
   assert.deepEqual(selection.files, ['hub/src/new-shared.ts']);
   assert.equal(selection.mode, 'full');
-  assert.match(selection.reason, /^nvim test import hub\/src\/new-shared.ts; coverage map missing$/);
+  assert.match(selection.reason, /^nvim test import hub\/src\/new-shared.ts; coverage map missing; Neovim importers plus smoke$/);
+  assert.deepEqual(selection.nvimTests, [...NVIM_SMOKE, 'nvim/test/nested/new.test.ts'].sort());
 });
 
 }
@@ -192,7 +280,7 @@ test(`helper ${form} widens full selection, handles cycles and stops at the hub 
   assert.equal(chooseSuiteMode(['hub/src/internal.ts'], imports), 'hub-only');
   const selection = await selectPackageSuite(root);
   assert.equal(selection.mode, 'full');
-  assert.match(selection.reason, /^nvim test import hub\/src\/shared.ts; coverage map missing$/);
+  assert.match(selection.reason, /^nvim test import hub\/src\/shared.ts; coverage map missing; Neovim importers plus smoke$/);
 });
 
 }
@@ -266,24 +354,32 @@ for (const [name, path, reason] of [
   ['protocol', 'hub/src/protocol.ts', /shared contract/],
   ['contract', 'hub/src/adapters/contract.ts', /shared contract/],
   ['package', 'hub/package.json', /package configuration/],
-  ['harness', 'hub/test/harness.ts', /nvim test import|coverage unsupported path/],
+  ['harness', 'hub/test/harness.ts', /suite infrastructure/],
   ['fixture', 'hub/test/new-fixture.ts', /coverage unsupported path/],
   ['runner', 'hub/test/run-suite.ts', /suite infrastructure/],
   ['executor', 'hub/src/executor/new.ts', /coverage shared infrastructure/],
   ['unknown', 'hub/src/new.ts', /coverage source absent from map/],
 ] as const) {
   test(`coverage falls back for ${name} changes and names the cause`, async t => {
-    const { root } = await coverageFixture(t);
+    const { root, git } = await coverageFixture(t);
     await mkdir(join(root, path, '..'), { recursive: true });
     await writeFile(join(root, path), '// new shared or unknown code');
+    if (name === 'executor') {
+      await mkdir(join(root, 'nvim/test'), { recursive: true });
+      await writeFile(join(root, 'nvim/test/importer.test.ts'), `import '../../${path}';`);
+      await git('add', 'nvim'); await git('commit', '-m', 'shared infrastructure importer'); await git('push', 'origin', 'HEAD:dev');
+    }
     const selection = await selectPackageSuite(root);
+    if (name === 'executor') {
+      assert.equal(selection.mode, 'full');
+      assert.equal(selection.nvimTests, undefined, 'shared infrastructure keeps the full Neovim fallback');
+    }
     assert.notEqual(selection.mode, 'hub-selected');
     assert.match(selection.reason, reason);
   });
 }
 
 for (const [name, change, reason] of [
-  ['stale', (map: Awaited<ReturnType<typeof coverageFixture>>['map']) => { map.created = new Date(Date.now() - 172800001).toISOString(); }, /coverage map stale/],
   ['future timestamp', (map: Awaited<ReturnType<typeof coverageFixture>>['map']) => { map.created = new Date(Date.now() + 60000).toISOString(); }, /coverage map stale/],
   ['unrelated head', (map: Awaited<ReturnType<typeof coverageFixture>>['map']) => { map.head = 'f'.repeat(40); }, /coverage map has no ancestor/],
   ['invalid map', (map: Awaited<ReturnType<typeof coverageFixture>>['map']) => { map.files['hub/src/hub/example.ts']!.functions[0]!.startLine = -1; }, /coverage map missing/],
@@ -297,12 +393,14 @@ for (const [name, change, reason] of [
   });
 }
 
-test('coverage age configuration narrows the validity window', async t => {
+test('coverage age configuration reports an old map that still maps', async t => {
   const { root, map, source, save } = await coverageFixture(t);
   map.created = new Date(Date.now() - 60000).toISOString(); await save();
   await writeFile(join(root, '.cland/config.toml'), '[verification]\ncoverage_max_age = "30s"\n');
   await writeFile(join(root, 'hub/src/hub/example.ts'), source.replace('return 2', 'return 3'));
-  assert.match((await selectPackageSuite(root)).reason, /coverage map stale.*limit 30s/);
+  const selected = await selectPackageSuite(root);
+  assert.equal(selected.mode, 'hub-selected');
+  assert.match(selected.reason, /coverage map age.*limit 30s.*hunks map/);
 });
 
 test('coverage config parsing uses the owning environment without changing the host', async t => {
@@ -336,19 +434,25 @@ test('coverage translates function hunks across unrelated insertions and deletio
 test('coverage widens for top-level edits, new top-level functions, untested functions and intervening edits', async t => {
   const { root, git, map, source, save } = await coverageFixture(t);
   await writeFile(join(root, 'hub/src/hub/example.ts'), '// top level\n' + source);
-  assert.match((await selectPackageSuite(root)).reason, /coverage top-level|coverage function untested/);
+  const top = await selectPackageSuite(root);
+  assert.equal(top.mode, 'hub-selected');
+  assert.deepEqual(top.tests, [...HUB_SMOKE, 'hub/test/first.test.ts', 'hub/test/second.test.ts'].sort());
+  assert.match(top.reason, /file covering tests.*top-level/);
   await writeFile(join(root, 'hub/src/hub/example.ts'), source + 'export function newFunction() { return 3; }\n');
-  assert.notEqual((await selectPackageSuite(root)).mode, 'hub-selected');
+  assert.equal((await selectPackageSuite(root)).mode, 'hub-selected');
   map.files['hub/src/hub/example.ts']!.functions[1]!.tests = []; await save();
   await writeFile(join(root, 'hub/src/hub/example.ts'), source.replace('return 2', 'return 3'));
-  assert.match((await selectPackageSuite(root)).reason, /coverage function untested/);
+  const untested = await selectPackageSuite(root);
+  assert.equal(untested.mode, 'hub-selected');
+  assert.deepEqual(untested.tests, [...HUB_SMOKE, 'hub/test/first.test.ts'].sort());
+  assert.match(untested.reason, /file covering tests.*untested function/);
   map.files['hub/src/hub/example.ts']!.functions[1]!.tests = ['hub/test/second.test.ts']; await save();
   await git('add', '.'); await git('commit', '-m', 'intervening function edit'); await git('push', 'origin', 'HEAD:dev');
   await writeFile(join(root, 'hub/src/hub/example.ts'), source.replace('return 2', 'return 4'));
   assert.match((await selectPackageSuite(root)).reason, /coverage hunk changed since map/);
 });
 
-test('coverage ignores newer unrelated maps and retains the package Neovim phase', async t => {
+test('coverage ignores newer unrelated maps and selects Neovim importers', async t => {
   const { root, git, source, map } = await coverageFixture(t);
   const path = join(root, '.cland/run/unrelated.json');
   await writeFile(path, JSON.stringify({ ...map, head: 'f'.repeat(40), created: new Date(Date.now() + 1000).toISOString() }));
@@ -360,7 +464,8 @@ test('coverage ignores newer unrelated maps and retains the package Neovim phase
   const selected = await selectPackageSuite(root);
   assert.equal(selected.mode, 'hub-selected');
   assert.equal(selected.coverage?.artifact, 'A-fixture');
-  assert.equal(selected.nvimFull, true);
+  assert.equal(selected.nvimFull, false);
+  assert.deepEqual(selected.nvimTests, [...NVIM_SMOKE, 'nvim/test/example.test.ts'].sort());
   assert.ok(selected.tests!.includes('hub/test/second.test.ts'));
 });
 
@@ -389,9 +494,10 @@ test('hub-selected executes covering tests and both smoke baselines, omitting un
   const { root, git, source } = await coverageFixture(t);
   const journal = join(root, '.cland/run/executed');
   const hub = ['first', 'second', 'changed', 'daemon', 'tracer', 'startup-smoke'].map(name => `hub/test/${name}.test.ts`);
-  const nvim = ['client', 'sessions', 'other'].map(name => `nvim/test/${name}.test.ts`);
+  const nvim = ['client', 'sessions', 'importer', 'other'].map(name => `nvim/test/${name}.test.ts`);
   await mkdir(join(root, 'nvim/test'), { recursive: true });
   for (const file of [...hub, ...nvim]) await writeFile(join(root, file), `import test from 'node:test'; import { appendFileSync } from 'node:fs'; test('execution marker', () => appendFileSync(${JSON.stringify(journal)}, ${JSON.stringify(file + '\n')}));\n`);
+  await writeFile(join(root, 'nvim/test/importer.test.ts'), "import '../../hub/src/hub/example.ts';\n" + await readFile(join(root, 'nvim/test/importer.test.ts'), 'utf8'));
   await writeFile(join(root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: Object.fromEntries([...hub, ...nvim].map(file => [file, 'T3'])) }));
   await git('add', '.'); await git('commit', '-m', 'executable baselines'); await git('push', 'origin', 'HEAD:dev');
   await writeFile(join(root, 'hub/src/hub/example.ts'), source.replace('return 2', 'return 3'));
@@ -402,8 +508,8 @@ test('hub-selected executes covering tests and both smoke baselines, omitting un
   const env: NodeJS.ProcessEnv = { ...process.env, NODE_TEST_CONTEXT: '', CLAND_SUITE_SELECTION: JSON.stringify(selection) };
   delete env.CLAND_SUITE_LEASE;
   const result = await exec(process.execPath, ['--input-type=module', '-e', code], { cwd: root, env });
-  assert.deepEqual((await readFile(journal, 'utf8')).trim().split('\n').sort(), ['hub/test/daemon.test.ts', 'hub/test/second.test.ts', 'hub/test/startup-smoke.test.ts', 'hub/test/tracer.test.ts', 'nvim/test/client.test.ts', 'nvim/test/sessions.test.ts']);
-  assert.match(result.stderr, /suite phase Neovim smoke/);
+  assert.deepEqual((await readFile(journal, 'utf8')).trim().split('\n').sort(), ['hub/test/daemon.test.ts', 'hub/test/second.test.ts', 'hub/test/startup-smoke.test.ts', 'hub/test/tracer.test.ts', 'nvim/test/client.test.ts', 'nvim/test/importer.test.ts', 'nvim/test/sessions.test.ts']);
+  assert.match(result.stderr, /suite phase Neovim selected/);
   const duration = result.stderr.split('\n').find(line => line.startsWith('suite duration '));
   assert.match(duration ?? '', /mode hub-selected.*deciding functions.*second/);
   console.log(`one-function fixture: ${duration}`);

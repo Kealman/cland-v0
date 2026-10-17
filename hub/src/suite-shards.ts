@@ -178,9 +178,9 @@ export async function packageShards(cwd: string, mode: SuiteMode, selection?: { 
     if (!coverage?.tests?.length) throw new ShardManifestError('selected hub tests missing');
     for (const test of coverage.tests) if (!known.has(test)) throw new ShardManifestError(`unknown selected hub test: ${test}`, [test]);
     return [...shards.map(shard => ({ ...shard, name: `${shard.name} selected`, targets: shard.targets.filter(file => coverage.tests!.includes(file)) })).filter(shard => shard.targets.length),
-      { name: coverage.nvimFull ? 'Neovim' : 'Neovim smoke', targets: coverage.nvimFull ? ['nvim/test/**/*.test.ts'] : NVIM_SMOKE, resource: 'machine', workers }];
+      { name: coverage.nvimFull ? 'Neovim' : coverage.nvimTests ? 'Neovim selected' : 'Neovim smoke', targets: coverage.nvimFull ? ['nvim/test/**/*.test.ts'] : coverage.nvimTests ?? NVIM_SMOKE, resource: 'machine', workers }];
   }
-  return [...await hubShards(cwd, mode === 'nvim-only', workers), { name: mode === 'hub-only' ? 'Neovim smoke' : 'Neovim', targets: mode === 'hub-only' ? NVIM_SMOKE : ['nvim/test/**/*.test.ts'], resource: 'machine', workers }];
+  return [...await hubShards(cwd, mode === 'nvim-only', workers), { name: coverage?.nvimTests ? 'Neovim selected' : mode === 'hub-only' ? 'Neovim smoke' : 'Neovim', targets: coverage?.nvimTests ?? (mode === 'hub-only' ? NVIM_SMOKE : ['nvim/test/**/*.test.ts']), resource: 'machine', workers }];
 }
 
 /** Longest-processing-time placement, including Neovim as one indivisible job. */

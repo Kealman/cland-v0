@@ -23,7 +23,7 @@ import { machineEnv } from '../executor/droplet/machine.ts';
 import { testTiming } from '../executor/droplet/watchdog.ts';
 import type { ExecutorKind, HostGate, Lease, Platform, RunRef } from '../executor/executor.ts';
 import { idNumber } from '../tracker/item.ts';
-import { selectPackageSuite, describeSelection, type SuiteSelection, type SuiteRequest } from '../suite-selection.ts';
+import { selectPackageSuite, describeSelection, sameSuiteSelection, type SuiteSelection, type SuiteRequest } from '../suite-selection.ts';
 import { parseCoverageMap, type CoverageMap } from '../suite-coverage.ts';
 import { VerificationWait } from './verification-wait.ts';
 import { classifyCover, deriveCover, recentCovers } from './suite-cover.ts';
@@ -435,7 +435,7 @@ export class Suites {
   #cached(tree: string, selection: SuiteSelection, workers: number, size?: string, requiredExecutor?: ExecutorKind, occasion?: VerifyOccasion): SuiteJob | undefined {
     // Cancellations say nothing about the tree; failed or pending attempts still supersede green evidence.
     // Pre-admission head changes carry their cancellation in the outcome rather than a flag.
-    const job = this.#jobs.findLast(j => (!requiredExecutor || j.executor === requiredExecutor) && !j.cached && !j.cancelled && !j.requesterDied && !j.outcome?.cause.startsWith('cancelled: queued head changed') && j.tree === tree && j.selection?.mode === selection.mode && (selection.mode !== 'hub-selected' || JSON.stringify([j.selection.tests, j.selection.nvimFull]) === JSON.stringify([selection.tests, selection.nvimFull])) && (j.workers ?? 4) === workers && j.size === size
+    const job = this.#jobs.findLast(j => (!requiredExecutor || j.executor === requiredExecutor) && !j.cached && !j.cancelled && !j.requesterDied && !j.outcome?.cause.startsWith('cancelled: queued head changed') && j.tree === tree && sameSuiteSelection(j.selection, selection) && (j.workers ?? 4) === workers && j.size === size
       && (occasion !== 'stage' || requiredExecutor === 'local' || j.occasion === 'stage'));
     if (!job || job.outcome?.code !== 0 || !job.reported || !job.finished || !job.artifact) return undefined;
     // Choose the newest compatible attempt before checking platform/success;
