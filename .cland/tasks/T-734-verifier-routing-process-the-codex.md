@@ -2,8 +2,8 @@
 id: T-734
 kind: task
 title: "verifier-routing-process: the Codex relaunch case runs 5.2–5.35 s on Linux, over the 5 s per-test budget"
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 1
 labels:
@@ -17,7 +17,8 @@ blocked_by: []
 topic: topic-433
 branch: t/T-734-verifier-routing-process-the-codex
 created: 2026-10-17T11:18:11.052Z
-updated: 2026-10-17T12:13:59.014Z
+updated: 2026-10-17T12:14:07.776Z
+closed: 2026-10-17T12:14:07.776Z
 ---
 
 ## Summary
@@ -71,3 +72,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear; Standards 0 / Spec 0 findings, A-4503. Independently checked exact-head A-4502 / f2e4c5ad final exit 0, subject 5.195318658 s under its owned seven-second allowance, and subject load repetitions 5/5. Phase totals sum to 2088 tests / 2083 passes / 0 failures / 5 skips, including 12/12 Neovim smoke; hub-only mode, not full Neovim. Current branch tip remains reviewed 3902069a and sole diff is the exact allowance. A-4473 Mac 5/5 and A-4475 source review remain applicable. C1 verified through its owned seven-day allowance alternative; no claim of sub-five-second Linux runtime. No Reviewer edits or tests.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-17T12:14:07.776Z
+
+Merged b170e855a8a82d6ed583765b1e5572ccd5153b13 onto dev.
