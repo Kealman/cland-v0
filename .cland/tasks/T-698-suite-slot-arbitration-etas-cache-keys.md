@@ -3,7 +3,7 @@ id: T-698
 kind: task
 title: Suite slot arbitration, ETAs, cache keys and cover classification are tested on Suites directly, with two real-fixture proofs kept
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 5
 labels:
@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-428
 branch: t/T-698-suite-slot-arbitration-etas-cache-keys
 created: 2026-10-16T19:59:36.616Z
-updated: 2026-10-17T10:07:14.312Z
+updated: 2026-10-17T10:56:46.521Z
 ---
 
 ## Summary
@@ -39,20 +39,25 @@ These rules run as T1 tests on `Suites` with a fake executor (T-697) and a `Fake
 
 - [x] C1. The six files' manifest seconds fall from 274.7 s (A-3877) to 120 s or less.
   - done: impl-698 · 2026-10-17T09:00:40.633Z
+  - verified: rev-30 [reviewer] · run rev-20261017-698-final · 2026-10-17T10:56:45.074Z · commit 87aa55d71340b2efd11c9bad9202533eb036de9d
 - [x] C2. The scheduling, ETA, cache and cover rules sit in T1 files that pass the tier lint, and the kept T3 tests each name their process behaviour.
   - done: impl-698 · 2026-10-17T09:00:40.931Z
   - verified: rev-30 [reviewer] · run rev-20261017-698-m1-correction · 2026-10-17T09:10:15.019Z · commit 5922850e3b7f9404aca3c1bde5b71b11423b08c8
   - verified: rev-30 [reviewer] · run rev-20261017-698-phase-merge · 2026-10-17T10:07:14.312Z · commit 87aa55d71340b2efd11c9bad9202533eb036de9d
+  - verified: rev-30 [reviewer] · run rev-20261017-698-final · 2026-10-17T10:56:45.074Z · commit 87aa55d71340b2efd11c9bad9202533eb036de9d
 - [x] C3. Fake droplets started by these files fall from the count recorded before (from the fake provider's request log) to 4 or less.
   - done: impl-698 · 2026-10-17T09:00:41.297Z
   - verified: rev-30 [reviewer] · run rev-20261017-698-m1-correction · 2026-10-17T09:10:15.019Z · commit 5922850e3b7f9404aca3c1bde5b71b11423b08c8
   - verified: rev-30 [reviewer] · run rev-20261017-698-phase-merge · 2026-10-17T10:07:14.312Z · commit 87aa55d71340b2efd11c9bad9202533eb036de9d
+  - verified: rev-30 [reviewer] · run rev-20261017-698-final · 2026-10-17T10:56:45.074Z · commit 87aa55d71340b2efd11c9bad9202533eb036de9d
 - [x] C4. An audit maps every moved or rewritten assertion to its new place, with no behaviour claim dropped.
   - done: impl-698 · 2026-10-17T09:00:41.616Z
   - verified: rev-30 [reviewer] · run rev-20261017-698-m1-correction · 2026-10-17T09:10:15.019Z · commit 5922850e3b7f9404aca3c1bde5b71b11423b08c8
   - verified: rev-30 [reviewer] · run rev-20261017-698-phase-merge · 2026-10-17T10:07:14.312Z · commit 87aa55d71340b2efd11c9bad9202533eb036de9d
-- [ ] C5. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
-  - failed: rev-30 [reviewer] · 2026-10-17T09:06:09.654Z · note M1: Held candidate/provider I/O can block the fixture's first teardown hook before later release hooks run; own release/drain before Suites.close and prove pre-release failure cleanup.
+  - verified: rev-30 [reviewer] · run rev-20261017-698-final · 2026-10-17T10:56:45.075Z · commit 87aa55d71340b2efd11c9bad9202533eb036de9d
+- [x] C5. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
+  - done: impl-698 · 2026-10-17T10:55:25.693Z
+  - verified: rev-30 [reviewer] · run rev-20261017-698-final · 2026-10-17T10:56:45.075Z · commit 87aa55d71340b2efd11c9bad9202533eb036de9d
 
 ## Comments
 
@@ -169,3 +174,40 @@ C2/C3/C4 source verification refreshed: lower-tier policy and headed native proo
 Delta source clear, no findings. Required mode-free exact-head droplet verification may proceed.
 
 Criteria: C2 verified, C3 verified, C4 verified.
+
+### impl-698 · 2026-10-17T10:55:45.213Z
+
+Run 3e7b9f43 at unchanged reviewed 87aa55d7 is accepted as exact-head Linux evidence by Coordinator disposition9fdd9730. All ten task files passed (68 tests, total82.925098850 test-seconds <=120). Overall receipt A-4467 is red solely for the known out-of-diff T-733 behavioral defect; the T-701 verifier-routing budget line is report-only. Coordinator directs retaining head and batch integration after cover23e61e03. C5 now done; all criteria checked. A-4468 records exact per-file Linux timings, platform/lifetime/cost and disposition. Requesting Reviewer final same-head evidence verdict; no source/head change or new verification.
+
+### rev-30 · 2026-10-17T10:56:45.075Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261017-698-final
+commit: 87aa55d71340b2efd11c9bad9202533eb036de9d
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence review T-698 at unchanged source-clear 87aa55d71340b2efd11c9bad9202533eb036de9d (A-4450 / rev-20261017-698-phase-merge). Origin and hub record match. Reviewed exact-head droplet3e7b9f43-7266-4fb7-a05e-2654456e9cc0 / A-4467 and A-4468. Read-only audit; no Reviewer execution.
+
+Gate disposition
+The overall receipt is red, exit1:2090 pass,one fail,five skips. Its sole behavioral failure and0/5 load identity are lead-routing-process's unchanged “long idle and death climb…” native FakeClock death wait. Primary Coordinator decision9fdd9730-c17d-442e-99e3-3664f1f281ca explicitly accepts this receipt as T-698's exact-head Linux evidence, classifies that failure as the known T-696×T-701 defect fixed on dev by T-733/20e71b3e, directs keeping this head and obtaining the final verdict, and assigns the combined tree to batch cover after23e61e03. The additional verifier-routing-process5.351s budget line is outside this diff and is explicitly accepted as report-only in that disposition. These are accepted external exceptions, not a claim that this run is green.
+
+Standards
+No task findings. All ten owned files pass ordinarily (68 cases), and every one of their38 load-gated identities passes5/5,190/190 repetitions. This includes M1's two controlled pre-release cleanup proofs, the separate frozen-legacy/current-live phase proofs, cache/ETA/reload/accounting/cover semantics and unchanged native worker/PID contracts. The first red98ee3395/A-4446 remains the historical deterministic phase/budget diagnosis; this is the corrected-head execution.
+
+Spec and criteria
+C1 verified under E-677's primary timing policy. Independent exact-head ordinary Linux sums:
+cache4.776763394; cover2.641544746; queue1.115568441; scheduling1.697939196; remote-budget4.982158219; accounting3.745529770; protocol7.661804917; runner-contract26.647888028; remote-process29.058091198; tiers0.597810941 seconds.
+All ten files total82.925098850 (<120), conservatively including every extracted companion plus the newly touched tier file. Accepted A-4448's fifty serial whole-file Mac logs total36.004694419 median test-seconds /38.106870625 wall, all ten files x5, zero failures/cancellations/skips; independently audited in A-4450 with maximum recorded boundary load2.55517578125. No partial duration baseline rewrite is claimed.
+
+C5 verified from those fifty current-source Mac logs and all ten files' passing exact-head Linux execution under the primary gate exception. Linux case counts are10cache,9cover,2queue,5scheduling,14remote-budget,5accounting,7protocol,6runner-contract,2remote-process,8tiers=68; no owned case skips. C2/C3/C4 remain source-current and are refreshed: T1 policy with real shared lock/spend/protocol T2 and headed native T3; accepted process census six POST attempts/three successful process-machine starts<=4; complete48-declaration assertion map plus M1 and phase controls. The three measured8s and two20s E-677-owned seven-day native allowances retain all process assertions; baseline fields remain unchanged.
+
+Execution limits
+Hub free117/117 and machine1979 total/1973 pass/one fail/five skips reconcile to2096 tests,2090 pass,one fail,five skips. Neovim smoke did not execute because the hub phase stopped; it is not claimed complete. The explicit batch-cover disposition supplies combined-tree follow-through. Host typecheck succeeds/reuses candidate-tree receipt4a739f209795f111b0e66f86dd674c2ea3e93ed3. Linux x64 c-8 lon1,Node24.21.0/Neovim0.12.5,two workers; suite2747.82s,peak1m load10.53,load-gate extra wall55.32s,lifetime2823s,cost$0.1960.
+
+Final review clear under primary9fdd9730, no task findings; C1-C5 verified at this exact head. No new task run or head change requested.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.

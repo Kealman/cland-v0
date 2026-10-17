@@ -3,7 +3,7 @@ id: T-682
 kind: task
 title: "Test lint in the check step, report only: tier import rules, wall-clock waits and the T3 lifecycle header"
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 5
 labels:
@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-426
 branch: t/T-682-test-lint-in-the-check-step-report-only
 created: 2026-10-16T19:59:27.971Z
-updated: 2026-10-17T10:30:01.602Z
+updated: 2026-10-17T11:17:51.673Z
 ---
 
 ## Summary
@@ -57,7 +57,8 @@ Report mode: the result, the log and `cland verify --dry-run` (T-681) print `tes
   - verified: rev-31 [reviewer] · run rev-20261017-682-source-5 · 2026-10-17T08:53:52.436Z · commit dca244d35be5fbeeadf2d155e42892a5fc9f9a7d
   - verified: rev-31 [reviewer] · run rev-20261017-682-source-7 · 2026-10-17T10:28:29.114Z · commit af43a920c32b8120c4cc0ea675bc4a56a5e62ded
 - [x] C4. The lint runs once per run in the check step, its summary and per-file qualifying tier appear in the result and in the dry run, and no finding changes a run's exit, proved by a run-report test.
-  - done: impl-682 · 2026-10-17T10:27:30.815Z
+  - done: impl-682 · 2026-10-17T11:17:13.678Z
+  - verified: rev-31 [reviewer] · run rev-20261017-682-final · 2026-10-17T11:17:51.173Z · commit af43a920c32b8120c4cc0ea675bc4a56a5e62ded
 - [x] C5. The repository's finding counts per rule at the merge head are recorded on this item as the baseline T-684 freezes.
   - verified: rev-31 [reviewer] · run rev-20261017-682-source-3 · 2026-10-17T08:00:48.097Z · commit 1ad9664e9413e50961aa36a196efffff651dd567
   - verified: rev-31 [reviewer] · run rev-20261017-682-source-4 · 2026-10-17T08:04:48.898Z · commit 292296cec13f3826a48e380f47c2cd7fd4053c97
@@ -264,3 +265,22 @@ Criteria: C1 verified, C2 verified, C3 verified, C5 verified.
 ### impl-682 · 2026-10-17T10:30:01.602Z
 
 Replacement diff-selected droplet verification submitted: fd9f76cc-244c-495a-869a-a3a9479f7623 at reviewed head af43a920c32b8120c4cc0ea675bc4a56a5e62ded (source clear rev-20261017-682-source-7, A-4459). Exact-head run requested with --executor droplet --report topic-426 --to impl-682 --to coord --to rev-31. Awaiting hub result; no source changes pending.
+
+### impl-682 · 2026-10-17T11:17:14.027Z
+
+Exact-head Linux evidence fd9f76cc-244c-495a-869a-a3a9479f7623 at af43a920 completed, A-4470. Sole ordinary failure: known shared T-733 lead-routing-process long-idle case, also0/5. Coordinator decision160f9850-296f-4d72-a833-680402359799 accepts this as T-682 evidence, directs no head change/dev merge and final same-head review. Own interrupted writer616.9ms, startup cancellation512.2ms; all3 suite-check cases5/5 load gate; scanner controls5/5. Log also reports unrelated verifier-routing-process duration5.219s>5s; no allowance added. Runtime remains exit1, not a raw green claim. Linux c-8 lon1,2858s,$0.1984, peak10.19. C4 done; C1/C2/C3/C5 current source-verified. Requesting Reviewer final evidence verdict at same af43a920; claim/head retained.
+
+### rev-31 · 2026-10-17T11:17:51.173Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261017-682-final
+commit: af43a920c32b8120c4cc0ea675bc4a56a5e62ded
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear under explicit Coordinator160f9850-296f-4d72-a833-680402359799, independently read Agents history; A-4471. A-4470/fd9f76cc exact af43a920 accepted as taskLinux evidence without head change: own report-only check1.381s/interrupted0.617s/held-startup0.512s all ordinarygreen andeach5/5; all5lintcontrols5/5; dryrun/report green. C4 verified; C1/C2/C3/C5 source-7 continuity current, origin tip unchanged. Raw receipt is exit1,2085pass/1fail/5skip: known T733 long-idle ordinary+load failure, plus unrelated verifier-routing5.219s duration; Neovim not reached, no fullgreen claim. Coordinator accepts this specific run for final settlement and says shared20e71b3e needs no pick/merge. Oldlivehub host typecheck/no top-level lintline not claimed adopted; source wiring plus current check/report fixtures establish C4. External duration aside tolead, no scope expansion. No per-item QA. Life2858s/cost$0.1984 as reported. No Reviewer edits/tests.
+
+Criteria: C4 verified.
