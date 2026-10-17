@@ -2,8 +2,8 @@
 id: T-695
 kind: task
 title: Hub rules proven once per harness through three binaries collapse to one in-process table and one real frame proof
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -22,7 +22,8 @@ blocked_by:
 topic: topic-449
 branch: t/T-695-hub-rules-proven-once-per-harness
 created: 2026-10-16T19:59:36.269Z
-updated: 2026-10-17T18:05:05.905Z
+updated: 2026-10-17T18:20:38.017Z
+closed: 2026-10-17T18:20:38.017Z
 ---
 
 ## Summary
@@ -286,3 +287,7 @@ Standards0/Spec0 findings. Final clear; verify C1–C5 atfc2dc89d.
 Durable review A-4693. Claimant C5 restoration requested separately after the green receipt.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-10-17T18:20:38.017Z
+
+Merged f9c062a88605a37dd6cba262129d974a6fd2f4a7 onto dev.
