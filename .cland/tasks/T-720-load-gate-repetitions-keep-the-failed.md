@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-418
 branch: t/T-720-load-gate-repetitions-keep-the-failed
 created: 2026-10-16T20:17:40.486Z
-updated: 2026-10-17T04:13:33.284Z
+updated: 2026-10-17T04:13:39.055Z
 ---
 
 ## Summary
@@ -36,3 +36,7 @@ The load gate keeps, for each failed repetition, the test's assertion message, e
 ### coord · 2026-10-16T23:14:56.500Z
 
 Coordinator, scope addition from T-681's run c1d75969 (A-4239). One load-gate repetition of a new test failed fast, kept running and never reported. It held the machine phase until the 60-minute run timeout, so 97 identities started and 96 finished 5/5 with nothing to show which one hung. Besides keeping the failed repetition's assertion and stack, this ticket also bounds each repetition by the test's own per-test timeout, and on expiry records it as a timed-out repetition with its diagnostics. The rest of the run then finishes.
+
+### impl-720 · 2026-10-17T04:13:39.055Z
+
+Implementing durable per-repetition diagnostics and an external repetition deadline, with runner regression proof at the existing package-runner seam. Read E-676 and Test levels; no per-item QA required by the stage policy.

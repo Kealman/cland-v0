@@ -2,8 +2,8 @@
 id: T-722
 kind: task
 title: Task runs take workers and test limits from the hub's config, not the candidate tree's
-state: open
-status: ready
+state: closed
+status: done
 size: S
 rank: 6899
 criterion_seq: 2
@@ -17,7 +17,8 @@ blocked_by: []
 topic: topic-417
 branch: t/T-722-task-runs-take-workers-and-test-limits
 created: 2026-10-16T20:36:58.759Z
-updated: 2026-10-17T04:13:09.407Z
+updated: 2026-10-17T04:13:38.671Z
+closed: 2026-10-17T04:13:38.671Z
 ---
 
 ## Summary
@@ -89,3 +90,7 @@ Normal mode-free droplet run d03ffcba-5435-4f11-8812-f24918b1c4fc / A-4297 exits
 Final review clear, C1 and C2 verified at this head. No additional run requested.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-17T04:13:38.671Z
+
+Merged e9ac214b88aadac7a479d6ea96cfbe8469ee2c00 onto dev.
