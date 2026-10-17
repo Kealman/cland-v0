@@ -3,7 +3,7 @@ id: T-689
 kind: task
 title: cland verify all is reserved to the Coordinator, the human and occasions; task runs use the diff selection
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 3
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-413
 branch: t/T-689-cland-verify-all-is-reserved-to-the
 created: 2026-10-16T19:59:28.743Z
-updated: 2026-10-17T01:50:48.080Z
+updated: 2026-10-17T01:51:08.768Z
 ---
 
 ## Summary
@@ -31,12 +31,15 @@ A `verify` request with mode `all` (CLI `all` or `--all`, MCP `mode: "all"`) fro
 
 - [x] C1. An Implementer's `cland verify all` and MCP `verify` with mode `all` are refused with `verify-all-reserved` and leave no queue entry, proved by CLI and frame tests.
   - done: impl-689 · 2026-10-16T23:43:09.841Z
+  - verified: rev-30 [reviewer] · run rev-20261017-689-final · 2026-10-17T01:51:07.713Z · commit 2e2015bec656fda4ff9a5abb7356ca5a17b4f3a3
 - [x] C2. The Coordinator's and the human shell's `all` and any `--occasion` request are admitted, proved by the same tests.
   - done: impl-689 · 2026-10-16T23:43:10.056Z
+  - verified: rev-30 [reviewer] · run rev-20261017-689-final · 2026-10-17T01:51:07.713Z · commit 2e2015bec656fda4ff9a5abb7356ca5a17b4f3a3
 - [x] C3. `docs/agents/tests.md`, the role clauses and `docs/spec/v0.1.4.md` describe the reserved mode and the diff-selected second receipt, and `roles.test.ts` passes its byte headroom.
   - done: impl-689 · 2026-10-16T23:43:10.329Z
   - verified: rev-30 [reviewer] · run rev-20261016-689-source · 2026-10-16T23:44:50.171Z · commit 19be0a95a8303ecca6ffef474a2d4790a920c5b2
   - verified: rev-30 [reviewer] · run rev-20261017-689-executor-correction · 2026-10-17T01:08:48.123Z · commit 2e2015bec656fda4ff9a5abb7356ca5a17b4f3a3
+  - verified: rev-30 [reviewer] · run rev-20261017-689-final · 2026-10-17T01:51:07.713Z · commit 2e2015bec656fda4ff9a5abb7356ca5a17b4f3a3
 
 ## Comments
 
@@ -113,3 +116,31 @@ C3 refreshed because its docs/clauses and previously audited headroom proof are 
 Review artifact A-4263.
 
 Criteria: C3 verified.
+
+### rev-30 · 2026-10-17T01:51:07.713Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261017-689-final
+commit: 2e2015bec656fda4ff9a5abb7356ca5a17b4f3a3
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-689 final evidence clear at unchanged source-reviewed 2e2015bec656fda4ff9a5abb7356ca5a17b4f3a3. Audited durable A-4270 / 9019fe48-7838-4465-b99f-1944f3da65c4 and matching passed task verification record.
+
+Normal mode-free request selected full because of the shared protocol change. Full hub plus Neovim exits 0: 2438 total, 2430 pass, zero fail, eight prerequisite/platform skips. Hub free 41 pass; machine 1999 pass/5 skips; Neovim 390 pass/3 skips. No hard duration-budget or load-gate failure.
+
+C1: the new T2 explicit-all admission case passes ordinarily (1.775591280 seconds) and 5/5 repetitions. Its real CLI all/--all and session-frame checks retain typed verify-all-reserved, automatic diff reason/deciding path and empty queue/suite state. The existing selection-report MCP contract also passes (4.285789447 seconds), including the actual verify tool refusal and no extra suite.
+
+C2: the same T2 case proves current hub-held Coordinator role admission despite stale shell hints, Coordinator CLI/frame all, and human CLI/frame all. All seven suite-close cases pass, retaining authorized Coordinator/QA epic occasions, one-slot ordinary integrated batches, cache behavior and unauthorized/task-head/non-full/fresh-fetch refusals. Existing occasion policy is preserved rather than permitting arbitrary occasion flags.
+
+The missed private executor fixture is corrected in this exact run: all three executor cases pass, including worker PATH/platform receipt/journal evidence (3.126728492 seconds) and exactly-once restored legacy result (4.400131891 seconds). Prior A-4259's two owned verify-all-reserved failures therefore do not recur. This does not recast A-4259 as green or establish unrelated historical SQLite causality.
+
+C3: source/docs and role-clause evidence A-4258/A-4263 remain unchanged; both default/project snapshot cases pass again (2.307/2.349 seconds), including the existing clause byte-headroom assertions and new reserved-all/diff-second-receipt wording. The touched automatic cache/admission/queue/recovery/scheduling fixture paths execute in the completed full run.
+
+All C1-C3 claimant done marks are present. Verify all; Standards and Spec have no findings. Linux x64 c-8 lon1, two workers, suite 2397.04 seconds, peak load 10.09, reported lifetime 2472 seconds/cost $0.1717. No further task run or per-item QA required. Reviewer performed only read-only evidence inspection.
+Review artifact A-4273.
+
+Criteria: C1 verified, C2 verified, C3 verified.

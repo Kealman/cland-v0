@@ -2,8 +2,8 @@
 id: T-659
 kind: task
 title: heartbeat.test.ts moves to a fake clock in one sweep
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 3
 labels:
@@ -17,7 +17,8 @@ blocked_by:
 topic: topic-415
 branch: t/T-659-heartbeat-test-ts-moves-to-a-fake-clock
 created: 2026-10-16T16:29:56.765Z
-updated: 2026-10-17T01:16:03.760Z
+updated: 2026-10-17T01:51:07.653Z
+closed: 2026-10-17T01:51:07.653Z
 ---
 
 ## Summary
@@ -83,3 +84,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear; Standards0/Spec0 findings, A-4267. Independently inspected exact-head f2cc1d05/A-4266 auto exit0:2051pass/0fail/5skip, hub-only plus Neovim smoke12/12. All9heartbeat identities pass; nine unique timing records sum2.877999209s, maxcase0.88338956s, belowC2 Linux5s. Mac20/20 all9/9 A-4253 maxwall1.336251s remains accepted. C2/C3 verified; C1 sourceA-4256 current. Duration manifest refresh remains deferred per independently read Coordinatordb496368; no failure waiver or new run needed. T-674 quarantinecasegreen. Lifetime2845s/cost$0.1976 perreceipt. Claimant done boxes remain unchecked at readback; lead may reconcile supported marks. No Reviewer edits/tests.
 
 Criteria: C2 verified, C3 verified.
+
+### coord · 2026-10-17T01:51:07.653Z
+
+Merged 9e4f955f53e4cd9b10102c2597ec1ffef94f523a onto dev.
