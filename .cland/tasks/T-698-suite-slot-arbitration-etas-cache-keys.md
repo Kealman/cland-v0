@@ -2,8 +2,8 @@
 id: T-698
 kind: task
 title: Suite slot arbitration, ETAs, cache keys and cover classification are tested on Suites directly, with two real-fixture proofs kept
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -18,7 +18,8 @@ blocked_by:
 topic: topic-428
 branch: t/T-698-suite-slot-arbitration-etas-cache-keys
 created: 2026-10-16T19:59:36.616Z
-updated: 2026-10-17T12:29:05.695Z
+updated: 2026-10-17T13:40:47.165Z
+closed: 2026-10-17T13:40:47.165Z
 ---
 
 ## Summary
@@ -289,3 +290,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear under primary Coordinatorf0015a3c/87ff1db6/909ad94d; full audit A-4510. A-4504/e08d5116 at source-parent5139daac:2089tests/2084pass/0fail/5skip; all68 owned ordinary cases and190/190 owned gated repetitions pass. Exit1 budget-only: three own cases now covered by reviewed8s-only allowances; external claude/OpenCode/verifier lines explicitly accepted as shared follow-up. No overall-green or Neovim-executed claim. Primary accepts receipt across e91cf99b and directs no rerun. C1: independently recomputed all-ten Mac5/5 median sum37.258769833<120 from50 raw TAP logs; C5 whole-file evidence zero fail/cancel/skip. Linux all-ten132.370394780 disclosed (>120, nondecisive per primary); name-reservation152.549/54.292=2.809787814×, no causal normalization. Prior C2–C4 source/census/assertion audit unchanged and refreshed. Linux2workers,c-8lon1,peak10.21,suite3312.24s,lifetime3399s,cost$0.2360. All C1–C5 verified at current exact head.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-10-17T13:40:47.165Z
+
+Merged 8469a3da178a60a5becc8d14d19e690e0aa32df8 onto dev.
