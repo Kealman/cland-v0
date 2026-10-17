@@ -17,7 +17,7 @@ blocked_by: []
 topic: topic-456
 branch: t/T-748-runtime-resource-tripwire-in-the-t1-and
 created: 2026-10-17T17:29:45.529Z
-updated: 2026-10-17T19:20:20.092Z
+updated: 2026-10-17T19:52:34.139Z
 ---
 
 ## Summary
@@ -37,8 +37,8 @@ Tripped calls fail the test with file, test name, resource and stack, and the ru
   - verified: rev-30 [reviewer] · run rev-20261017-748-source-correction · 2026-10-17T18:02:21.251Z · commit 34ecdf01cfe76d020a85ee06e5ab3985c78f8f25
   - done: impl-748 · 2026-10-17T18:51:55.677Z
   - verified: rev-30 [reviewer] · run rev-20261017-748-runtime-fix-delta · 2026-10-17T18:53:26.376Z · commit 2ef020dc38bbf45b5b79b6ed5467e305209e4e87
-- [ ] C2. An integrated cover at the merge head lists every current T1/T2 file that trips. The review request lists them, each routed to a fix or a retag.
-  - failed: rev-30 [reviewer] · 2026-10-17T18:40:07.232Z · note A-4699 fails two functional cases and two hard budgets, stops before Neovim, and supplies only a partial hub trip census without complete fix/retag routing; await owned fixes and accepted complete evidence.
+- [x] C2. An integrated cover at the merge head lists every current T1/T2 file that trips. The review request lists them, each routed to a fix or a retag.
+  - done: impl-748 · 2026-10-17T19:22:58.228Z
 
 ## Comments
 
@@ -229,3 +229,45 @@ Standards0/Spec0 findings. Source delta clear; verify C1 at2ef020dc, leave C2 pe
 Durable review A-4708.
 
 Criteria: C1 verified.
+
+### rev-30 · 2026-10-17T19:21:11.955Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261017-748-runtime-2
+commit: 2ef020dc38bbf45b5b79b6ed5467e305209e4e87
+scope: evidence
+findings: [{"severity":"medium","text":"M6: A-4710 sole failure expects exit0 but shard-2 reaches machine readiness deadline (log5441–5466); exact-case shared/accepted-evidence disposition is pending. Full-mode run stops before Neovim; C2 complete accepted trip/routing coverage is not yet established.","file":"hub/test/suite-close.test.ts","line":80}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+# T-748 corrected-head runtime — not clear pending disposition/complete coverage
+
+Exact reviewed head2ef020dc38bbf45b5b79b6ed5467e305209e4e87 remains branch tip. Source delta rev-20261017-748-runtime-fix-delta/A-4708 current. Evidence-only review; no Reviewer execution or edits.
+
+## Findings
+M6 medium — hub/test/suite-close.test.ts:80. Run29716dcc-c7cc-4d41-acbe-be8e11d3e81c/A-4710 fails the integrated occasion/two-droplet assertion: expected /exit0/, actual all exit1; shard-2: machine readiness deadline reached (log5441–5466). This differs from the earlier restart remote-group-start timeout already assignedT-746; this review does not assume the new case is covered by that disposition. Lead/Coordinator must classify the exact failure or provide accepted-run disposition. No task-side retry/allowance/assertion change is inferred.
+
+C2 remains failed/unverified: full-mode run stops after hub, no Neovim receipt; accepted complete census/routing is not yet supplied. No new source defect or failed owned regression inferred. C1 source verification remains current.
+
+## Owned runtime fixes and positive evidence
+Prior M2 copied-harness issue resolved in actual Linux: package coverage test passes4.557065612s with new tier-cli.ts dependency. Prior M3 concentration resolved: four split mode/catch cases2.543655425/2.244535798/2.493607479/2.232835905s, each below hard5s. No hard duration-budget failure line exists. Earlier shared restart and resume-budget reds are absent. All12runtime runner and2context identities pass5/5,70/70 owned load repetitions, including quarantine/caught-reset enforce and report-only controls.
+
+A-4706 current Mac5/5 and337accepted passes remain useful; they do not convert this failed Linux run to green. No change to source/fixtures/allowances after source clearance.
+
+## Current partial census
+Independently parsed364report-only rows across49hub files:42T1 rows/10files and322T2 rows/39files; no enforce row. Compared with initial A-4702/A-4703 inventory:
+- All six R0 nowT3 files absent: lead-permissions,release-item,suite-check,suite-dry-run,territory-cli,verify-all.
+- suite-queue-policy also no longer trips.
+- Four added hub paths require explicit final routing: claude-code-schedule,config-set,inbox-workload,suite-wait-metrics. Representative stacks reach doctor/process facts or startup PID/Git probes. They fit fixture-fact categories in principle, but final named ownership must be supplied by the lead rather than assumed.
+- Other existing routes remain T-750/T-751 fixture facts,T-752 duration context,T-753 native-Git retags per primary8d7d3100. Historical routing must be refreshed to this49-file population, and Neovim remains unobserved.
+
+This is an observed hub snapshot, not a full final current-tree census. Modefull is configuration, not proof all selected phases ran. Primary6fa5c798's task-run C2 substitution still requires accepted execution and complete routing or a newer explicit disposition.
+
+## Receipt limits
+A-4710 exit1:2090total/2084pass/1fail/0cancelled/5prerequisite skips. Full mode selected by harness infrastructure; hermetic36.78s and machine1467.15s, suite1503.95s,peak1mload9.75,load-gate extra11.68s. Linuxx64 6.8.0-142-generic,c-8lon1,Node24.21.0/Neovim0.12.5,2workers,lifetime1576s/cost0.1095. Host typecheck gate reused6b5097f19ba2ce335e2c451c520413e47634ff79. Report-only tier budgets/ratchet and missing baselines are not the failing assertion or hard gates.
+
+Evidence not clear; failC2 pending exact failure disposition and complete accepted census/routing. Preserve current source clearance and C1; no retry authorization requested or inferred. No per-item QA.
+Durable review A-4711.
+
+Criteria: C2 failed (A-4710 exits1 on suite-close shard-2 readiness and does not reach Neovim; await exact-case disposition and updated complete accepted trip list/routing, including four added hub files.).
