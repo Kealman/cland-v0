@@ -17,7 +17,7 @@ blocked_by: []
 topic: topic-454
 branch: t/T-744-test-lint-judges-a-file-s-tier-without
 created: 2026-10-17T16:06:54.285Z
-updated: 2026-10-17T17:59:12.629Z
+updated: 2026-10-17T18:27:20.995Z
 ---
 
 ## Summary
@@ -33,9 +33,11 @@ The lint resolves a test file's local imports (hub/test helpers and fixtures, tr
 - [x] C1. Planted T1 tests importing a projectHub helper and a child-spawning helper each get a reachable-resource diagnostic naming the import path, a pure helper adds none, and the direct qualifies result and findings used by admission are unchanged, proved by lint tests.
   - done: impl-744 · 2026-10-17T17:51:18.052Z
   - verified: rev-30 [reviewer] · run rev-20261017-744-source-correction · 2026-10-17T17:55:58.861Z · commit ef549ee569621999de02b0d2adab84b55f5f8303
+  - verified: rev-30 [reviewer] · run rev-20261017-744-final · 2026-10-17T18:27:20.995Z · commit ef549ee569621999de02b0d2adab84b55f5f8303
 - [x] C2. The review request lists every dev file whose reachable tier differs from its direct qualification, names the harness-initialization-only subset separately, and shows npm run test:lint under 10 s on the Mac.
   - done: impl-744 · 2026-10-17T17:46:05.425Z
   - verified: rev-30 [reviewer] · run rev-20261017-744-source-correction · 2026-10-17T17:55:58.861Z · commit ef549ee569621999de02b0d2adab84b55f5f8303
+  - verified: rev-30 [reviewer] · run rev-20261017-744-final · 2026-10-17T18:27:20.995Z · commit ef549ee569621999de02b0d2adab84b55f5f8303
 
 ## Comments
 
@@ -139,3 +141,43 @@ Source correction clear (A-4685, rev-20261017-744-source-correction) at ef549ee5
 ### impl-744 · 2026-10-17T17:59:12.629Z
 
 First droplet verify8758bf4f failed before counts/remote output (A-4686), executor platform/lifetime/cost unavailable. Coordinator decision95b873f0 classifies infrastructure failure T-749, not this diff, and authorizes one resubmit. Queued retry4cbda8d4-b9cd-4fd4-8569-aa3ceabfa0c2 at unchanged clean ef549ee569621999de02b0d2adab84b55f5f8303, mode-free droplet/topic-454/to impl-744+coord. No code changes/dev merge; source clear remains current; await retry/final evidence verdict.
+
+### impl-744 · 2026-10-17T18:26:39.264Z
+
+Authorized retry4cbda8d4 passed at exact source-reviewed ef549ee569621999de02b0d2adab84b55f5f8303 (A-4697). Mode-free hub-only:2107 tests/2102 passes/0 failures/cancellations/5 platform or absent-real-OpenCode skips; new dynamic import regression executed. Linux x64 6.8.0-142-generic,Node24.21.0/Neovim0.12.5,c-8 lon1,2 workers,lifetime1569s,cost$0.1090;suite1499.11s,peakload7.97. First8758bf4f was executor infrastructure T-749 and retained separately. Clean reviewed head unchanged; final evidence review requested via Reviewer role. Coordinator holds merge until armed restart on coverdfcc6b36.
+
+### rev-30 · 2026-10-17T18:27:20.995Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261017-744-final
+commit: ef549ee569621999de02b0d2adab84b55f5f8303
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-744 final evidence — clear
+
+Exact reviewed head ef549ee569621999de02b0d2adab84b55f5f8303 remains branch tip. Current source correction rev-20261017-744-source-correction/A-4685 and C1/C2 marks are unchanged. Final evidence scope, no Reviewer execution or edits.
+
+## Standards and Spec
+No remaining findings. C1/C2 verified across current source and accepted execution. M1's dynamic import/require initialization false positive is fixed at reached call nodes; held functions and excluded CLI branches stay negative while called/top-level imports remain positive. Named/local/re-export reachability, module initialization/registered callbacks, explicit namespace/star fallback and graph limitations remain diagnostic only. Direct qualifies/policy findings are unchanged; no runtime resource enforcement or retag is credited to T-744.
+
+Corrected Mac evidence A-4683 remains current:25lint/8tier/43runner tests each5/5,380passes,zero fail/cancel/skip; supplied final Mac test:lint6.79s real<10s. Complete314-file comparison reports identical direct qualifiers/findings against T-743. All91 differing dev paths/reasons are listed:7T1→T2,28T1→T3,56T2→T3; direct57/58/199 vs reachable22/9/283. Harness-initialization-only existing subset explicitly0; synthetic pure-harness initialization effect is separately disclosed. Static analysis does not evaluate option branches, DI or method overrides. Prior in-process dry-run integration has314 summaries/205726bytes<1MiB with no worker execution.
+
+## Exact-head Linux receipt
+Coordinator-authorized retry4cbda8d4-b9cd-4fd4-8569-aa3ceabfa0c2/A-4697 passes exit0:2107total/2102pass/0fail/0cancelled/5prerequisite skips. Normal hub-only selection due docs coverage fallback plus Neovim smoke.166/166 hermetic,1929machine/1924pass5skip,12/12smoke. No full-Neovim claim.
+
+Actual timing receipts confirm all25lint,8suite-tier and43suite-runner cases executed,76required-file cases total. The M1 correction has an ordinary passing reporter receipt0.044347333s and5/5 load repetitions. All11 new T-744 identities pass55/55 repetitions; all20 lint identities repeated in this selection pass100/100. No hard duration-budget or load-gate failure.
+
+Skips are outside task scope: two macOS sandbox-exec cases, one macOS inhibitor case (reporter supplies no reason), and two real OpenCode prerequisites absent on Linux. Report-only budget notices on unchanged files are not hard failures. Host report has350direct findings/203files and314reachable summaries, consistent with separate report-only diagnostics.
+
+Supplied executor linuxx64 6.8.0-142-generic,c-8lon1,Node24.21.0/Neovim0.12.5,2workers,lifetime1569s/cost0.1090. Suite1499.11s,peak1mload7.97,load-gate extra30.10s,free46.49s,machine1432.76s,smoke19.84s. Host typecheck/check reused canonical treef910345b813575f8bf97b20dbc0019feccf36791,not repeated remotely.
+
+Primary Coordinator95b873f0 was read directly: first run8758bf4f/A-4686 was executor infrastructure T-749, no remote test output/counts, and exactly one unchanged-head retry was authorized. The first run is not represented as passing evidence. Primary9eb4b050 accepts green resubmit and requests final verdict, with merge ordered after armed hub restart on coverdfcc6b36; this review does not bypass that sequencing.
+
+Standards0/Spec0 findings. Final clear; verify all C1/C2 at ef549ee5. No per-item QA or further task run required.
+Durable review A-4698.
+
+Criteria: C1 verified, C2 verified.

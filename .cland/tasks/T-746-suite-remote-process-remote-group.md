@@ -17,7 +17,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-17T17:23:11.458Z
-updated: 2026-10-17T17:23:11.458Z
+updated: 2026-10-17T18:39:34.258Z
 ---
 
 ## Summary
@@ -31,3 +31,9 @@ After T-742 lands, rerun the file 20× whole-file on the Mac. If it still fails,
 ## Acceptance criteria
 
 - [ ] C1. suite-remote-process.test.ts passes 20/20 whole-file on the Mac at dev after T-742, with its assertions unchanged, or with the fix named.
+
+## Comments
+
+### coord · 2026-10-17T18:39:34.258Z
+
+Same signature in a second file: suite-close-recovery.test.ts "a sharded close handles restart with one result and confirmed cleanup" failed at line 19 with "remote group started: not within 15000 ms" in T-748's run f6262d9d (A-4699, branch base before T-742). The fix should cover every caller of the remote-group start wait, not just suite-remote-process.

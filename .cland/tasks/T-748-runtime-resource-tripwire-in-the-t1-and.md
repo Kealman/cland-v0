@@ -17,7 +17,7 @@ blocked_by: []
 topic: topic-456
 branch: t/T-748-runtime-resource-tripwire-in-the-t1-and
 created: 2026-10-17T17:29:45.529Z
-updated: 2026-10-17T18:02:21.251Z
+updated: 2026-10-17T18:39:02.527Z
 ---
 
 ## Summary
