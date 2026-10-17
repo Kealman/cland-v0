@@ -2,8 +2,8 @@
 id: T-728
 kind: task
 title: resolveClock stops combining a bare now callback with native timers; fixtures pass a complete Clock
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -17,7 +17,8 @@ blocked_by:
 topic: topic-438
 branch: t/T-728-resolveclock-stops-combining-a-bare-now
 created: 2026-10-17T07:54:46.590Z
-updated: 2026-10-17T14:23:25.048Z
+updated: 2026-10-17T14:23:49.910Z
+closed: 2026-10-17T14:23:49.910Z
 ---
 
 ## Summary
@@ -89,3 +90,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final same-head clear; source A-4494 unchanged. A-4529/86e454cf green2089tests/2084pass/0fail/cancel/5skip, actualNeovim12/12. All158 touched top-level cases pass, six clock identities30/30 load repetitions, native renamed approval5.752s. Host check/typecheck/report-only lint receipt reused0ffe1bea0170a0ce9d319fb77b6c6c7e63484611. A-4532 independently hashed60raw transcripts:50whole-file logs tenfiles×5,790pass/zero fail/cancel/skip, plus isolatedapproval10/10. Whole-file median sum105.613008709s; Linux per-case sum195.963132199s distinct metrics. Provenance explicitly limited: six Mac groups pre-commit without contemporaneous per-run hashes; recorded work sequence/unchanged33fe8adc→4bf57a1c blobs support equivalence, no retroactive exact-SHA claim. Final four groups/isolated logs use completedab7acd96; subsequent4bf57a1c tier-only retag changes no executed source. Exact-head Linux independently backs execution. Historical race cause remains unproven, disclosed. C2 now verified; C1/C3 source-current refreshed. Linux2workers,c-8lon1,suite2211.30s,peak10.25,lifetime2283s,$0.1586. No findings/new run/head change.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-17T14:23:49.910Z
+
+Merged 6c0ad1187b0066b5e0d5b47acb403b1c0bc804a9 onto dev.
