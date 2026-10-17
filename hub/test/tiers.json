@@ -95,6 +95,7 @@
     "hub/test/merge-recovery.test.ts": "T3",
     "hub/test/merge.test.ts": "T3",
     "hub/test/migrate-plan.test.ts": "T1",
+    "hub/test/models.test.ts": "T3",
     "hub/test/name-reservation.test.ts": "T3",
     "hub/test/names.test.ts": "T3",
     "hub/test/open.test.ts": "T3",

@@ -10,17 +10,13 @@
 //   Neovim       `CLAND_NVIM`, else the pinned release in the launcher's cache; `<nvim> --version`
 import { findNvim, NVIM_VERSION } from '../../../nvim/bin/nvim-path.ts';
 import { fail, firstLine, ok, run, warn, which, type Check } from './report.ts';
-import { compareVersions, formatRange, formatVersion, inRange, parseVersion, TESTED_RANGES, type HarnessId, type Version } from './ranges.ts';
+import { compareVersions, formatRange, formatVersion, inRange, parseVersion, TESTED_RANGES, type Version } from './ranges.ts';
 import { accountEnvironment, accountLocation, clandOpenCodeDatabase, openCodeDatabase, openCodeLogin, readAccounts } from '../accounts/registry.ts';
 import { realpath } from 'node:fs/promises';
+import { HARNESS_INSTALLATIONS, harnessInstallation, type HarnessInstallation } from './harnesses.ts';
 import { basename, dirname, join, resolve } from 'node:path';
 
-type Harness = {
-  id: HarnessId;
-  /** The executable's name on the PATH, and the variable that overrides it (the adapter's own). */
-  bin: string;
-  override: string;
-  install: string;
+type Harness = HarnessInstallation & {
   /** The auth probe: its arguments and how to read its result. */
   auth: { args: string[]; read: (r: { code: number | null; stdout: string; stderr: string }) => Check; };
 };
@@ -37,10 +33,7 @@ const parseJson = (text: string): unknown => {
 
 const HARNESSES: readonly Harness[] = [
   {
-    id: 'claude-code',
-    bin: 'claude',
-    override: 'CLAND_CLAUDE_BIN',
-    install: 'install Claude Code (https://docs.claude.com/en/docs/claude-code)',
+    ...HARNESS_INSTALLATIONS['claude-code'],
     auth: {
       args: ['auth', 'status', '--json'],
       read: (r) => {
@@ -56,10 +49,7 @@ const HARNESSES: readonly Harness[] = [
     },
   },
   {
-    id: 'codex',
-    bin: 'codex',
-    override: 'CLAND_CODEX_BIN',
-    install: 'install Codex (npm install -g @openai/codex)',
+    ...HARNESS_INSTALLATIONS['codex'],
     auth: {
       args: ['login', 'status'],
       read: (r) => {
@@ -69,10 +59,7 @@ const HARNESSES: readonly Harness[] = [
     },
   },
   {
-    id: 'opencode',
-    bin: 'opencode',
-    override: 'CLAND_OPENCODE_BIN',
-    install: 'install OpenCode v2 (https://opencode.ai/v2/install)',
+    ...HARNESS_INSTALLATIONS['opencode'],
     auth: {
       args: ['auth', 'list', '--standalone', '--format', 'json'],
       read: (r) => {
@@ -102,13 +89,8 @@ function checkOpenCodeVersion(version: Version, bin: string): Check {
 /** One harness: `<id>` (installed, version, range) and `<id> auth`. */
 async function checkHarness(h: Harness, env: NodeJS.ProcessEnv): Promise<Check[]> {
   const range = TESTED_RANGES[h.id];
-  const wanted = env[h.override] || h.bin;
-  const bin = which(wanted, env);
-  if (!bin) {
-    const where = env[h.override] ? `${h.override} names ${env[h.override]}, which is not an executable` : `\`${h.bin}\` is not on the PATH`;
-    const fix = env[h.override] ? `point ${h.override} at the ${h.bin} executable, or unset it` : `${h.install}, or set ${h.override} to its path`;
-    return [fail(h.id, `not installed: ${where}`, fix), fail(authName(h.id), 'not checked: not installed', `install ${h.bin} first`)];
-  }
+  const { bin, missing } = await harnessInstallation(h.id, env);
+  if (!bin) return [missing!, fail(authName(h.id), 'not checked: not installed', `install ${h.bin} first`)];
   const out: Check[] = [];
   const database = clandOpenCodeDatabase(env);
   const probeEnv = h.id === 'opencode' ? accountEnvironment(env, { OPENCODE_DB: database }) : env;

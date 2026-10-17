@@ -188,4 +188,6 @@ export const DEMO_USAGE = `  demo start <epic> [--commit <sha>] [--json]  lease 
   demo status <epic> [--json]                show commit, lifetime and cost
 `;
 
+export const MODELS_USAGE = `  models claude-code|codex|opencode [--account <name>] [--refresh] [--json]\n                  list model ids and the default; hub cache lasts 24 hours\n`;
+
 export const CONFIG_USAGE = `  config set <section.key> <value> [--json]  validate and save one managed config.toml value\n`;

@@ -245,6 +245,7 @@ test('a complete idle poll cycle makes no non-loopback connection and runs only 
   assert.deepEqual(polls.map(c => c.args), [['app-server']]);
 });
 
+// T1 unit: source-text policy assertions, with no harness processes or provider requests.
 test('hub source has no provider endpoint or credential-store access', async () => {
   const { readdir } = await import('node:fs/promises');
   const root = new URL('../src/', import.meta.url);
@@ -252,7 +253,7 @@ test('hub source has no provider endpoint or credential-store access', async () 
   // Exact passive literals only: a provider target elsewhere (including any new call site) fails.
   const allowedTargets = [
     { name: 'OpenCode schema metadata', file: '/adapters/opencode.ts', literal: "$schema: 'https://opencode.ai/config.json',", reason: 'editor metadata; no request is made' },
-    { name: 'OpenCode installation guidance', file: '/doctor/toolchain.ts', literal: "install: 'install OpenCode v2 (https://opencode.ai/v2/install)',", reason: 'human-facing doctor text; no request is made' },
+    { name: 'OpenCode installation guidance', file: '/doctor/harnesses.ts', literal: "install: 'install OpenCode v2 (https://opencode.ai/v2/install)',", reason: 'human-facing doctor text; no request is made' },
     { name: 'OpenCode unsupported-major remedy', file: '/doctor/toolchain.ts', literal: '`install OpenCode ${formatVersion(range.min)} (https://opencode.ai/v2/install)`', reason: 'human-facing doctor text; no request is made' },
     { name: 'OpenCode selected database path', file: '/accounts/registry.ts', literal: "export const openCodeDatabase = (env: NodeJS.ProcessEnv) => env.OPENCODE_DB || join(dataHome(env), 'opencode', 'opencode.db');", reason: 'pure saved/default database path selection for launch and doctor; no database contents are read' },
     { name: 'cland OpenCode database path', file: '/accounts/registry.ts', literal: "export const clandOpenCodeDatabase = (env: NodeJS.ProcessEnv) => join(dataHome(env), 'cland', 'opencode', 'opencode.db');", reason: 'pure isolated database path construction; no database contents are read' },

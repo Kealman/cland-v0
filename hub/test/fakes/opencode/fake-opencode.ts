@@ -15,6 +15,8 @@
 //       GET  /api/session/{id}/form, POST …/form/{frm}/reply, DELETE …/form/{frm}
 //       GET  /api/model                         one paid model and one free (`opencode/fake-free`); none in the
 //                                               first 400 ms, as a real server's catalog loads after it listens
+//                                               FAKE_OPENCODE_EMPTY_FIRST_MODEL_PROBE=1 also guarantees the first
+//                                               response is empty when a slow caller misses that cold window
 //                                               FAKE_OPENCODE_STAGED_CATALOG=1: three partial OpenRouter lists,
 //                                               then the full catalog with OpenCode Zen's big-pickle
 //                                               FAKE_OPENCODE_CHANGING_CATALOG=1: a changing list without Zen
@@ -261,6 +263,7 @@ async function serve(args: string[]): Promise<number> {
   const notFound = (res: ServerResponse, id: string) => send(res, 404, { _tag: 'SessionNotFoundError', sessionID: id, message: `Session not found: ${id}` });
 
   const started = Date.now();
+  let modelProbeRequests = 0;
   const server = createServer(async (req, res) => {
     try {
       const expected = `Basic ${Buffer.from(`opencode:${password}`).toString('base64')}`;
@@ -293,8 +296,13 @@ async function serve(args: string[]): Promise<number> {
         });
         return;
       }
-      // like the real one, a fresh server lists no model until its catalog has loaded
-      if (url.pathname === '/api/model' && method === 'GET' && Date.now() - started < 400) return send(res, 200, { data: [] });
+      if (url.pathname === '/api/model' && method === 'GET') {
+        const first = modelProbeRequests++ === 0;
+        const empty = Date.now() - started < 400 || process.env.FAKE_OPENCODE_EMPTY_FIRST_MODEL_PROBE === '1' && first;
+        appendFileSync(join(HOME, 'model-probes.jsonl'), JSON.stringify({ pid: process.pid, OPENCODE_DB: process.env.OPENCODE_DB ?? null, XDG_DATA_HOME: process.env.XDG_DATA_HOME ?? null, empty }) + '\n');
+        if (existsSync(join(HOME, 'fail-models'))) return send(res, 503, { message: 'fake OpenCode model probe failed' });
+        if (empty) return send(res, 200, { data: [] });
+      }
       if (url.pathname === '/api/model' && method === 'GET' && process.env.FAKE_OPENCODE_CHANGING_CATALOG) {
         const request = ++catalogRequests;
         send(res, 200, { data: [

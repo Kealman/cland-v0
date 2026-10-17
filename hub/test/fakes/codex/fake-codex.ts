@@ -453,6 +453,11 @@ async function appServer(args: string[]): Promise<number> {
       case 'initialize':
         c.initialized = true;
         return { result: { userAgent: `fake-codex/${VERSION}`, platformFamily: 'unix' } };
+      case 'model/list': {
+        appendFileSync(join(HOME, 'model-probes.jsonl'), JSON.stringify({ CODEX_HOME: process.env.CODEX_HOME ?? null, cursor: params.cursor ?? null }) + '\n');
+        if (existsSync(join(HOME, 'fail-models'))) return { error: { code: -32603, message: 'fake Codex model probe failed' } };
+        return { result: { data: [{ id: 'catalog-entry', model: 'fake-codex-default', isDefault: true }, { id: 'other-entry', model: 'fake-codex-other', isDefault: false }], nextCursor: null } };
+      }
       case 'thread/start': {
         log(`thread/start ${JSON.stringify(params)}`);
         if (existsSync(join(HOME, 'hold-thread-start'))) {

@@ -2,6 +2,7 @@
 // Plain text by default (pasteable into an item comment); colour only on a terminal; JSON for scripts and tests.
 import { spawn } from 'node:child_process';
 import { accessSync, constants, statSync } from 'node:fs';
+import { access, stat } from 'node:fs/promises';
 import { delimiter, isAbsolute, join, resolve } from 'node:path';
 
 export type Verdict = 'ok' | 'warn' | 'fail';
@@ -116,6 +117,16 @@ export function which(name: string, env: NodeJS.ProcessEnv, cwd: string = proces
     if (!dir) continue;
     const path = join(dir, name);
     if (executable(path)) return path;
+  }
+  return null;
+}
+
+/** The same lookup for request handlers, without synchronous filesystem calls. */
+export async function whichAsync(name: string, env: NodeJS.ProcessEnv, cwd = process.cwd()): Promise<string | null> {
+  const candidates = name.includes('/') ? [isAbsolute(name) ? name : resolve(cwd, name)] : (env.PATH ?? '').split(delimiter).filter(Boolean).map(dir => resolve(cwd, dir, name));
+  for (const path of candidates) {
+    try { if ((await stat(path)).isFile()) { await access(path, constants.X_OK); return path; } }
+    catch { /* Try the next PATH entry. */ }
   }
   return null;
 }

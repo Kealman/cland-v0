@@ -842,6 +842,28 @@ test('the launcher: ␣l opens the form, a role fills its launch defaults, typed
   assert.equal((await requestsOf(c, 'session.launch')).length, 2, 'Esc launches nothing');
 });
 
+test('the launcher cycles model ids from the hub for its selected harness and role account', { skip }, async t => {
+  const c = await startShell(t, s => {
+    s.roles = [{ role: 'reviewer', label: 'Reviewer', exclusive: false, skills: [], launch: { harness: 'codex', model: null, effort: null, account: 'work' }, holders: [] }];
+  });
+  await c.input('<Esc><Space>l');
+  await c.waitScreen(x => x.includes('launch a session'), 'launcher');
+  await c.input('rev-model<Tab>reviewer<Tab><Tab><C-n>');
+  await c.waitScreen(x => /model +codex-listed-default/.test(x), 'the catalog default');
+  await c.input('<C-n>');
+  await c.waitScreen(x => /model +codex-listed-other/.test(x), 'the next catalog model');
+  const frames = await requestsOf(c, 'models.list');
+  assert.equal(frames.length, 2);
+  assert.equal(frames[0]?.harness, 'codex');
+  assert.equal(frames[0]?.account, 'work');
+  await c.input('<S-Tab><C-u>opencode<Tab><C-n>');
+  await c.waitScreen(x => /model +opencode-listed-default/.test(x), 'the new harness catalog');
+  const changed = (await requestsOf(c, 'models.list')).at(-1);
+  assert.equal(changed?.harness, 'opencode');
+  assert.equal(changed?.account, undefined);
+  await c.input('<Esc>');
+});
+
 test("the launcher's item line sends `item` instead of the directory: the hub starts the Implementer in the item's worktree", { skip }, async (t) => {
   const c = await startShell(t);
   await c.input('<Esc><Space>l');

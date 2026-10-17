@@ -769,6 +769,24 @@ For `db`, its parent directory must exist. Trust a new Claude directory once by
 running `CLAUDE_CONFIG_DIR=<dir> claude` in the project. Failed launches name the
 account, directory and remedy and are never retried automatically.
 
+### Listing models
+
+`cland models claude-code|codex|opencode [--account <name>] [--refresh] [--json]`
+is open to every role's shell. The hub probes with the launch account environment,
+using cland's own OpenCode database for an unpinned account. OpenCode uses the
+server catalog, retrying its initially empty list for up to 10 seconds; Codex
+uses a short-lived app-server's `model/list`. Claude Code returns the static
+aliases `default`, `sonnet`, `opus` and `haiku`, labelled as static.
+
+Text prints one id per line, marks the default, and names the source and age.
+JSON returns `{harness, account, models: [{id, default}], source, probedAt}`
+(`account` is null without a selection). The durable hub cache lasts 24 hours
+per harness and account; `--refresh` probes again. A failed probe preserves the
+cached list and its original age, or fails with the probe error when no cache
+exists. An unavailable executable uses doctor's not-installed diagnosis.
+In the launcher, C-n/C-p on the model field cycles the same hub catalog for the
+selected harness and its role's account; an empty model keeps the launch default.
+
 ### Listing accounts and reading limits
 
 `cland account list [--json]` reads the registry through the hub and is open

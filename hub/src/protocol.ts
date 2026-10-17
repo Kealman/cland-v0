@@ -543,6 +543,7 @@ export type ClientRequest =
   | DemoRequest
   | RuleRequest
   | { type: 'account.clear'; id: string; account: string }
+  | { type: 'models.list'; id: string; harness: 'claude-code' | 'codex' | 'opencode'; account?: string; refresh?: boolean }
   | { type: 'account.list'; id: string }
   | { type: 'account.poll'; id: string }
   | { type: 'task.migrate'; id: string; dryRun: true }
@@ -812,6 +813,8 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
       return f.suite === undefined || (typeof f.suite === 'string' && f.suite.trim().length > 0);
     case 'suite.classify':
       return typeof f.suite === 'string' && f.suite.trim().length > 0 && f.cause === 'load-flake' && typeof f.note === 'string' && f.note.trim().length > 0;
+    case 'models.list':
+      return ['claude-code', 'codex', 'opencode'].includes(String(f.harness)) && (f.account === undefined || typeof f.account === 'string' && f.account.length > 0) && (f.refresh === undefined || typeof f.refresh === 'boolean');
     case 'account.clear':
       return typeof f.account === 'string' && f.account.length > 0;
     case 'account.poll':

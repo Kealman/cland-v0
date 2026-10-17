@@ -4403,6 +4403,18 @@
       "seconds": 6.30693,
       "reason": "Exercises the Neovim verification view against a real queue and waits for its local age clock while proving navigation and commands."
     },
+    "hub/test/models.test.ts::models account probes use launch environments and have independent caches, also readable by sessions": {
+      "seconds": 6.567,
+      "reason": "Checks three named account selections through real CLI calls and a hub: Codex home, OpenCode data_home and explicit db, each with independent default/cache receipts. The OpenCode probes each wait for the native fake catalog to load."
+    },
+    "hub/test/models.test.ts::models failed refresh keeps the cached list and original age; no cache returns the native probe error": {
+      "seconds": 7.627,
+      "reason": "Exercises successful native discovery, repeated failed refreshes with unchanged cached timestamps, and no-cache account errors through real CLI calls for both Codex and OpenCode. Multiple short-lived app/server processes retain cleanup and failure assertions under droplet load (A-4045)."
+    },
+    "hub/test/models.test.ts::models CLI lists native catalogs, waits for OpenCode and caches each harness until refresh": {
+      "seconds": 5.399,
+      "reason": "Runs initial, cached and refreshed model discovery through the real CLI for both native transports, including OpenCode empty-catalog retry and confirmed short-lived child teardown. Measured on the Linux droplet in A-4175; assertions and timeout bounds are retained."
+    },
     "hub/test/suite-candidate.test.ts::integrated running run covers a new head after committing .cland/tasks/note.md": {
       "seconds": 5.713784751,
       "reason": "Runs a real fixture hub, CLI and local worker; waits for package entry, commits tracker state during execution, observes worker completion and verifies advanced-head cache reuse. Linux c-8 run e30632fd (A-4013) measured 5.714s and all five load-gate repetitions passed."

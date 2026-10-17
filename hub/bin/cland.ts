@@ -2,6 +2,7 @@
 // The cland CLI.
 import {
   ACCOUNT_USAGE,
+  MODELS_USAGE,
   OPEN_USAGE,
   SUITE_USAGE,
   EXECUTOR_USAGE,
@@ -34,7 +35,7 @@ usage: cland [<command>]
 
 With no command on a terminal, cland opens the workbench (cland open).
 
-${ACCOUNT_USAGE}${OPEN_USAGE}${SUITE_USAGE}${EXECUTOR_USAGE}${DEMO_USAGE}${QA_USAGE}${INIT_USAGE}${DOCTOR_USAGE}${HUB_USAGE}${TASK_USAGE}${SESSION_USAGE}${WORKTREE_USAGE}${MERGE_USAGE}${PUSH_USAGE}${RELEASE_USAGE}${ROLE_USAGE}${CREW_USAGE}${CONFIG_USAGE}${RULE_USAGE}${INBOX_USAGE}${TOPIC_USAGE}${HOOK_USAGE}${ARTIFACT_USAGE}${SUBSCRIPTIONS_USAGE}  --version, -v   print the version
+${MODELS_USAGE}${ACCOUNT_USAGE}${OPEN_USAGE}${SUITE_USAGE}${EXECUTOR_USAGE}${DEMO_USAGE}${QA_USAGE}${INIT_USAGE}${DOCTOR_USAGE}${HUB_USAGE}${TASK_USAGE}${SESSION_USAGE}${WORKTREE_USAGE}${MERGE_USAGE}${PUSH_USAGE}${RELEASE_USAGE}${ROLE_USAGE}${CREW_USAGE}${CONFIG_USAGE}${RULE_USAGE}${INBOX_USAGE}${TOPIC_USAGE}${HOOK_USAGE}${ARTIFACT_USAGE}${SUBSCRIPTIONS_USAGE}  --version, -v   print the version
   --help, -h      print this help
 `;
 
@@ -43,6 +44,12 @@ const interactive = Boolean(process.stdin.isTTY && process.stdout.isTTY);
 const [command = interactive ? 'open' : '--help', ...rest] = process.argv.slice(2);
 
 switch (command) {
+  case 'models':
+    try {
+      const { runModels } = await import('../src/cli/models.ts');
+      process.exitCode = await runModels(rest);
+    } catch (err) { process.stderr.write(`cland: ${err instanceof Error ? err.message : String(err)}\n`); process.exitCode = 1; }
+    break;
   case 'account':
     try {
       const { runAccount } = await import('../src/cli/account.ts');

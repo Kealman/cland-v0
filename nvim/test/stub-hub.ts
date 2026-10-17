@@ -355,6 +355,8 @@ function answer(f: Frame) {
       write({ type: 'session.process', process: p, archived: (scenario.processes ?? []).filter(p => p.archived).length });
       return ok(f.id, { found: true, process: p, role: p.role, claim: null, notes: scenario.resumeNotes ?? [] });
     }
+    case 'models.list':
+      return ok(f.id, { harness: f.harness, account: f.account ?? null, models: [{ id: `${f.harness}-listed-default`, default: true }, { id: `${f.harness}-listed-other`, default: false }], source: 'stub catalog', probedAt: now(), cached: false });
     case 'role.list':
       return ok(f.id, { roles: scenario.roles ?? DEFAULT_ROLES, coordinator: scenario.coordinator ?? null });
     case 'hub.status': {

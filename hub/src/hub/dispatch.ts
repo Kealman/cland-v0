@@ -1,3 +1,4 @@
+import { HarnessModels } from '../models.ts';
 import { AccountLimited } from '../accounts/limits.ts';
 import { prefixOf } from '../tracker/prefixes.ts';
 import { Demos } from './demos.ts';
@@ -121,7 +122,7 @@ const HUMAN_SESSION = 'human';
  * What a CLI call made as a session may send beside the permission table's tools: reading the hub's state. Any
  * other frame is the human's alone.
  */
-const SESSION_CLI_FRAMES: ReadonlySet<string> = new Set(['demo.start', 'demo.exec', 'demo.stop', 'demo.status', 'account.clear', 'account.list', 'account.poll', 'executor.status', 'executor.reap', 'executor.prepare', 'task.migrate', 'rule.add', 'rule.edit', 'rule.retire', 'rule.list', 'rule.show', 'crew.show', 'crew.set', 'config.set', 'artifact.list', 'hub.reload', 'hub.status', 'inbox.list', 'role.list', 'worktree.list', 'suite.start', 'suite.cancel', 'suite.classify', 'suite.queue', 'suite.slot']);
+const SESSION_CLI_FRAMES: ReadonlySet<string> = new Set(['demo.start', 'demo.exec', 'demo.stop', 'demo.status', 'models.list', 'account.clear', 'account.list', 'account.poll', 'executor.status', 'executor.reap', 'executor.prepare', 'task.migrate', 'rule.add', 'rule.edit', 'rule.retire', 'rule.list', 'rule.show', 'crew.show', 'crew.set', 'config.set', 'artifact.list', 'hub.reload', 'hub.status', 'inbox.list', 'role.list', 'worktree.list', 'suite.start', 'suite.cancel', 'suite.classify', 'suite.queue', 'suite.slot']);
 
 /** Who a call is checked and audited as: a spoke's session, or the session a CLI call acts as. */
 type Caller = Pick<Connection, 'name' | 'sessionId' | 'role'>;
@@ -138,6 +139,7 @@ export class Dispatcher {
   /** The adapters' side of the hub (`session.*`); set by the daemon once the hub runs. */
   #sessions: Sessions | undefined;
   #accountPoller: AccountPoller | undefined;
+  readonly #models: HarnessModels | null;
   /** The task worktrees (T-58): made at a task's claim and by a launch with an item; a hub with a tracker only. */
   readonly #worktrees: TaskWorktrees | null;
   readonly #merges: TaskMerges | null;
@@ -167,6 +169,7 @@ export class Dispatcher {
     this.#guard = options.requestGuard ?? new RequestGuard({ ...options.guard, log: this.#log });
     this.#rolesSnapshot = options.core.roles?.get();
     const root = options.control?.status().root;
+    this.#models = root ? new HarnessModels(options.core.store, root, options.env) : null;
     this.#droplets = root ? new DropletExecutor(root, options.core.store, this.#log, options.env, options.projectConfig) : null;
     this.#demos = root && options.tracker && this.#droplets ? new Demos(root, options.tracker, this.#droplets, options.env, (lease, text) => {
       const id = `demo-attention:${lease.lease}`;
@@ -236,6 +239,7 @@ export class Dispatcher {
     if (this.#workImmediate) clearImmediate(this.#workImmediate);
     this.#workImmediate = null;
     this.#merges?.stop();
+    await this.#models?.close();
     await this.#suites?.close();
   }
 
@@ -1359,6 +1363,9 @@ export class Dispatcher {
         return;
       }
       switch (frame.type) {
+        case 'models.list':
+          later('models.list', this.#models!.list(frame.harness, frame.account, frame.refresh).then(value => ({ type: 'result', id: frame.id, ok: true, value }), error => Dispatcher.#failure(frame.id, error)));
+          break;
         case 'account.poll':
           later('account.poll', (this.#accountPoller?.refresh() ?? readAccounts(this.#options.env).then(registry => core.accountLimits.list(registry))).then(value => ({ type: 'result', id: frame.id, ok: true, value }), error => Dispatcher.#failure(frame.id, error)));
           break;

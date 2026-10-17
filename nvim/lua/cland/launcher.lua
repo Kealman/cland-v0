@@ -8,7 +8,7 @@
 -- starts the session in the item's task worktree, made first when missing, and gives it the item's claim.
 --
 -- Insert mode throughout: Tab and Shift+Tab move between fields, C-n and C-p cycle the choices of the role
--- and harness fields, Enter launches, Esc or C-c cancels.
+-- and harness fields and fetch the model choices from the hub, Enter launches, Esc or C-c cancels.
 local api = vim.api
 local state = require('cland.state')
 
@@ -19,7 +19,7 @@ M.FIELDS = {
   { key = 'name', label = 'name', hint = 'a-z 0-9 -' },
   { key = 'role', label = 'role', hint = 'aide · coordinator · implementer · reviewer · qa · C-n' },
   { key = 'harness', label = 'harness', hint = 'claude-code · codex · opencode · C-n' },
-  { key = 'model', label = 'model', hint = "empty: the harness's default" },
+  { key = 'model', label = 'model', hint = "empty: the harness's default · C-n choices" },
   { key = 'cwd', label = 'directory', hint = '' },
   { key = 'effort', label = 'effort', hint = "empty: the harness's default" },
   { key = 'item', label = 'item', hint = "T-<n>: an Implementer in the item's worktree" },
@@ -115,6 +115,7 @@ local function draw(f)
   end
   api.nvim_buf_clear_namespace(f.buf, ns, 0, -1)
   local row = api.nvim_win_is_valid(f.win) and api.nvim_win_get_cursor(f.win)[1] or 1
+  local v = values(f)
   for i, field in ipairs(M.FIELDS) do
     local label = field.label .. (' '):rep(LABEL_W - #field.label)
     api.nvim_buf_set_extmark(f.buf, ns, i - 1, 0, {
@@ -122,11 +123,10 @@ local function draw(f)
       virt_text_pos = 'inline',
       right_gravity = false,
     })
-    if field.hint ~= '' then
+    if field.hint ~= '' and (field.key ~= 'model' or v.model == '') then
       api.nvim_buf_set_extmark(f.buf, ns, i - 1, 0, { virt_text = { { field.hint .. ' ', 'ClandFaint' } }, virt_text_pos = 'right_align' })
     end
   end
-  local v = values(f)
   local lines = { { { '', 'ClandDim' } } }
   local msg = f.message
   if not msg and v.role == '' then
@@ -270,28 +270,59 @@ local function move(f, d)
   draw(f)
 end
 
+local function model_frame(f)
+  local v = values(f)
+  local def = state.role_def(v.role)
+  local launch = def and def.launch or {}
+  local harness = v.harness ~= '' and v.harness or launch.harness or 'claude-code'
+  local frame = { type = 'models.list', harness = harness }
+  if launch.harness == harness and str(launch.account) ~= '' then
+    frame.account = launch.account
+  end
+  return frame
+end
+
 local function cycle(f, d)
   local row = api.nvim_win_get_cursor(f.win)[1]
   local key = M.FIELDS[row].key
-  local choices = key == 'role' and role_choices() or (key == 'harness' and M.HARNESSES or nil)
-  if not choices then
+  local function choose(choices)
+    local cur = values(f)[key]
+    local at = 0
+    for i, c in ipairs(choices) do
+      if c == cur then at = i end
+    end
+    local nxt = choices[(at - 1 + d) % #choices + 1]
+    if at == 0 and d < 0 then nxt = choices[#choices] end
+    set_value(f, key, nxt)
+    api.nvim_win_set_cursor(f.win, { row, #nxt })
+    sync(f)
+    draw(f)
+  end
+  if key == 'model' then
+    if f.models_loading then return end
+    local client = require('cland').client
+    if not client then return end
+    local frame = model_frame(f)
+    local original = values(f).model
+    f.models_loading = true
+    client:request(frame, function(err, value)
+      f.models_loading = false
+      if M.cur ~= f or not vim.deep_equal(frame, model_frame(f)) then return end
+      if err then
+        f.message = { text = tostring(err):gsub('\n', ' '), group = 'ClandRed' }
+        return draw(f)
+      end
+      if api.nvim_win_get_cursor(f.win)[1] ~= row or values(f).model ~= original then return end
+      local choices = {}
+      for _, model in ipairs(value and value.models or {}) do choices[#choices + 1] = model.id end
+      choices[#choices + 1] = ''
+      f.message = nil
+      choose(choices)
+    end)
     return
   end
-  local cur = values(f)[key]
-  local at = 0
-  for i, c in ipairs(choices) do
-    if c == cur then
-      at = i
-    end
-  end
-  local nxt = choices[(at - 1 + d) % #choices + 1]
-  if at == 0 and d < 0 then
-    nxt = choices[#choices]
-  end
-  set_value(f, key, nxt)
-  api.nvim_win_set_cursor(f.win, { row, #nxt })
-  sync(f)
-  draw(f)
+  local choices = key == 'role' and role_choices() or (key == 'harness' and M.HARNESSES or nil)
+  if choices then choose(choices) end
 end
 
 --- Open the Aide form on its brief; reserve names already known to the hub, including stopped ones.
