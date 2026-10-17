@@ -1,3 +1,4 @@
+import type { DropletDependencies } from '../executor/droplet/dependencies.ts';
 // The hub's network edge: one HTTP server, WebSocket upgrades gated by the per-project secret,
 // one socket per spoke, every frame handed to the shared dispatcher (`./dispatch.ts`).
 import { join } from 'node:path';
@@ -24,6 +25,7 @@ export type HubBaseOptions = CoreOptions & {
   guard?: DispatcherOptions['guard'];
   requestGuard?: DispatcherOptions['requestGuard'];
   readArtifact?: DispatcherOptions['readArtifact'];
+  droplet?: DropletDependencies;
   verification?: DispatcherOptions['verification'];
   projectConfig?: DispatcherOptions['projectConfig'];
   journal?: import('./journal.ts').Journal;
@@ -98,6 +100,7 @@ export function createHubBase(options: HubBaseOptions): HubBase {
     ...(options.env ? { env: options.env } : {}),
     ...(options.journal ? { journal: options.journal } : {}),
     ...(options.projectConfig ? { projectConfig: options.projectConfig } : {}),
+    ...(options.droplet ? { droplet: options.droplet } : {}),
     ...(options.verification ? { verification: options.verification } : {}),
     ...(options.artifactFiles ? { artifactFiles: options.artifactFiles } : {}),
     secret: options.secret,

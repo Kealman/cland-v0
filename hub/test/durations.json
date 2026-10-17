@@ -3464,67 +3464,6 @@
       "owner": "E-677",
       "legacy": true
     },
-    "hub/test/demo-release.test.ts": {
-      "file": true,
-      "seconds": 44.906462,
-      "reason": "File budget: each case drives a real demo lease against the fake DigitalOcean provider through delete, the teardown window and the bounded reread or watchdog, so the file sums a dozen multi-second lifecycle cases.",
-      "owner": "E-677",
-      "legacy": true
-    },
-    "hub/test/demo-release.test.ts::demo identity mismatch preserves the resource and exposes operator attention with an alert": {
-      "seconds": 3.529847,
-      "reason": "Starts a real demo lease against the fake DigitalOcean provider, forces an identity mismatch, and waits for the refused deletion, the operator-attention state and the alert.",
-      "owner": "E-677",
-      "legacy": true
-    },
-    "hub/test/demo-release.test.ts::demo stop confirms an earlier delete whose active droplet has lost its tags": {
-      "seconds": 3.22285,
-      "reason": "Drives a real demo lease against the fake DigitalOcean provider through the delete and teardown window, waiting for the reread, absence or attention outcome.",
-      "owner": "E-677",
-      "legacy": true
-    },
-    "hub/test/demo-release.test.ts::demo stop confirms provider absence on retry after an accepted delete": {
-      "seconds": 3.436419,
-      "reason": "Drives a real demo lease against the fake DigitalOcean provider through an accepted delete and a retry that must observe provider absence before release.",
-      "owner": "E-677",
-      "legacy": true
-    },
-    "hub/test/demo-release.test.ts::demo stop keeps an accepted active deletion pending beyond two seconds and confirms a later 404": {
-      "seconds": 5.367672,
-      "reason": "Starts a real demo lease against the fake provider, deliberately holds accepted deletion active for more than 2.1 seconds, retries without attention, then confirms a later 404. Linux c-8 timing from T-583 A-3853; all five load repetitions passed.",
-      "owner": "E-677",
-      "legacy": true
-    },
-    "hub/test/demo-release.test.ts::demo stop refuses a persistent id mismatch and clears attention after a later 404": {
-      "seconds": 3.33751,
-      "reason": "Drives a real demo lease against the fake DigitalOcean provider through the delete and teardown window, waiting for the reread, absence or attention outcome.",
-      "owner": "E-677",
-      "legacy": true
-    },
-    "hub/test/demo-release.test.ts::demo stop refuses a persistent tags mismatch and clears attention after a later 404": {
-      "seconds": 4.035934,
-      "reason": "Drives a real demo lease against the fake DigitalOcean provider through the delete and teardown window, waiting for the reread, absence or attention outcome.",
-      "owner": "E-677",
-      "legacy": true
-    },
-    "hub/test/demo-release.test.ts::demo stop reports a deletion timeout when an accepted active deletion retains its tags past the bound": {
-      "seconds": 4.096981,
-      "reason": "Starts a real demo lease against the fake provider, holds accepted deletion beyond its configured bound with tags retained, and checks timeout attention, demo alert, executor status and cleanup. Linux c-8 timing from T-583 A-3853; all five load repetitions passed.",
-      "owner": "E-677",
-      "legacy": true
-    },
-    "hub/test/demo-release.test.ts::demo stop waits for an archived droplet with stripped tags to become absent": {
-      "seconds": 3.376352,
-      "reason": "Drives a real demo lease against the fake DigitalOcean provider through the teardown window where tags read empty, then waits for absence within the bounded reread.",
-      "owner": "E-677",
-      "legacy": true
-    },
-    "hub/test/demo-release.test.ts::the detached demo watchdog confirms an active droplet losing tags during its delete": {
-      "seconds": 4.10843,
-      "reason": "Runs the detached demo watchdog process against the fake provider through a delete whose droplet loses its tags before absence.",
-      "owner": "E-677",
-      "legacy": true
-    },
     "hub/test/demo.test.ts::demo authorization, shared slot refusals and verdict cleanup use the same tagged lease": {
       "seconds": 5.392691,
       "reason": "Starts real hub and QA spoke processes, exercises authorization and shared slot refusal through public frames, then waits for verdict-driven confirmed provider cleanup; observed in A-3054.",

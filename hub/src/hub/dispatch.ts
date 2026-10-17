@@ -1,3 +1,5 @@
+import type { DropletDependencies } from '../executor/droplet/dependencies.ts';
+import type { ClockTimer } from './clock.ts';
 import { HarnessModels } from '../models.ts';
 import { AccountLimited } from '../accounts/limits.ts';
 import { prefixOf } from '../tracker/prefixes.ts';
@@ -97,6 +99,7 @@ export type Conversation = {
 export type DispatcherOptions = {
   env?: NodeJS.ProcessEnv;
   journal?: import('./journal.ts').Journal;
+  droplet?: DropletDependencies;
   verification?: SuiteSchedulerOptions;
   projectConfig?: () => import('../init/config.ts').ProjectConfig;
   core: HubCore;
@@ -157,7 +160,7 @@ export class Dispatcher {
   readonly #droplets: DropletExecutor | null;
   readonly #demos: Demos | null;
   readonly #dropletReady: Promise<void>;
-  readonly #dropletTimer: ReturnType<typeof setInterval> | null;
+  readonly #dropletTimer: ClockTimer | null;
   #dropletWork: Promise<void> | null = null;
 
   constructor(options: DispatcherOptions) {
@@ -171,7 +174,7 @@ export class Dispatcher {
     this.#rolesSnapshot = options.core.roles?.get();
     const root = options.control?.status().root;
     this.#models = root ? new HarnessModels(options.core.store, root, options.env) : null;
-    this.#droplets = root ? new DropletExecutor(root, options.core.store, this.#log, options.env, options.projectConfig) : null;
+    this.#droplets = root ? new DropletExecutor(root, options.core.store, this.#log, options.env, options.projectConfig, { ...options.droplet, clock: options.core.clock }) : null;
     this.#demos = root && options.tracker && this.#droplets ? new Demos(root, options.tracker, this.#droplets, options.env, (lease, text) => {
       const id = `demo-attention:${lease.lease}`;
       if (options.core.store.message(id)) return;
@@ -180,12 +183,12 @@ export class Dispatcher {
     }) : null;
     this.#dropletReady = this.#droplets?.sweep(true).then(() => this.#demos?.reconcile()).catch(() => this.#log({ event: 'executor-reconcile-failed', reason: 'lease recovery deferred' })) ?? Promise.resolve();
     const retryMs = Number((options.env ?? process.env).CLAND_TEST_EXECUTOR_SWEEP_MS);
-    this.#dropletTimer = this.#droplets ? setInterval(() => {
+    this.#dropletTimer = this.#droplets ? options.core.clock.setInterval(() => {
       if (this.#closed || this.#dropletWork) return;
       this.#dropletWork = this.#dropletReady.then(() => this.#droplets!.sweep()).then(() => this.#demos?.reconcile()).catch(() => this.#log({ event: 'executor-reconcile-failed', reason: 'lease recovery deferred' })).finally(() => { this.#dropletWork = null; });
     }, retryMs > 0 && Number.isFinite(retryMs) ? retryMs : 600000) : null;
     this.#dropletTimer?.unref();
-    this.#suites = root ? new Suites(options.core.store, root, (job, checkpointArtifact) => this.#reportSuite(job, checkpointArtifact), { ...options.verification, waitClock: options.core.clock, ...(options.projectConfig ? { projectConfig: options.projectConfig } : {}), ...(options.env ? { env: options.env } : {}), onShardingSkipped: (job, text) => options.core.noticeTo(job.topic, { id: `sharding-skipped:${job.id}`, kind: 'report', to: job.to, text, detail: { event: 'verification-sharding-skipped', id: job.id, item: job.item ?? null } }), onFallback: (job, cause) => options.core.noticeTo(job.topic, { id: `executor-fallback:${job.id}`, kind: 'report', to: job.to, text: cause === 'remote budget full' ? `verify ${job.id}: remote budget ${options.projectConfig?.().verification.remoteBudget ?? options.verification?.remoteBudget ?? 4}/${options.projectConfig?.().verification.remoteBudget ?? options.verification?.remoteBudget ?? 4} full; running locally` : `verify ${job.id}: droplet unavailable (${cause}); running locally`, detail: { event: 'verification-executor-fallback', id: job.id, item: job.item ?? null, cause } }), log: this.#log, onQueue: queue => options.core.publishVerification(queue), onJob: job => options.tracker?.verifyChanged(job.item ?? null, job.branch), requesterDead: actor => [...(this.#sessions?.list() ?? []), ...(this.#sessions?.list(true) ?? [])].some(p => p.sessionId === actor.sessionId && p.status !== 'running') }) : null;
+    this.#suites = root ? new Suites(options.core.store, root, (job, checkpointArtifact) => this.#reportSuite(job, checkpointArtifact), { ...options.verification, clock: options.core.clock, waitClock: options.core.clock, ...(options.droplet ? { dropletServices: options.droplet } : {}), ...(options.projectConfig ? { projectConfig: options.projectConfig } : {}), ...(options.env ? { env: options.env } : {}), onShardingSkipped: (job, text) => options.core.noticeTo(job.topic, { id: `sharding-skipped:${job.id}`, kind: 'report', to: job.to, text, detail: { event: 'verification-sharding-skipped', id: job.id, item: job.item ?? null } }), onFallback: (job, cause) => options.core.noticeTo(job.topic, { id: `executor-fallback:${job.id}`, kind: 'report', to: job.to, text: cause === 'remote budget full' ? `verify ${job.id}: remote budget ${options.projectConfig?.().verification.remoteBudget ?? options.verification?.remoteBudget ?? 4}/${options.projectConfig?.().verification.remoteBudget ?? options.verification?.remoteBudget ?? 4} full; running locally` : `verify ${job.id}: droplet unavailable (${cause}); running locally`, detail: { event: 'verification-executor-fallback', id: job.id, item: job.item ?? null, cause } }), log: this.#log, onQueue: queue => options.core.publishVerification(queue), onJob: job => options.tracker?.verifyChanged(job.item ?? null, job.branch), requesterDead: actor => [...(this.#sessions?.list() ?? []), ...(this.#sessions?.list(true) ?? [])].some(p => p.sessionId === actor.sessionId && p.status !== 'running') }) : null;
     options.tracker?.useVerify((item, branch) => this.#suites?.latest(item, branch) ?? null, () => this.#suites?.stageCovers() ?? []);
     // what a read shows changed: no earlier answer is replayed
     options.core.subscribe(event => {
@@ -232,7 +235,7 @@ export class Dispatcher {
 
   async close(): Promise<void> {
     this.#closed = true;
-    if (this.#dropletTimer) clearInterval(this.#dropletTimer);
+    if (this.#dropletTimer) this.#options.core.clock.clearInterval(this.#dropletTimer);
     await this.#dropletReady;
     await this.#dropletWork;
     await this.#demos?.close();

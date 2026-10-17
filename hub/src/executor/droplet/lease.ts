@@ -1,3 +1,4 @@
+import { realClock, type Clock } from '../../hub/clock.ts';
 import { randomUUID } from 'node:crypto';
 import { open, mkdir, readFile, readdir, rename, rm } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
@@ -61,12 +62,12 @@ export async function readLeases(root: string): Promise<DropletLease[]> {
   return leases;
 }
 export const matchesLease = (droplet: Droplet, lease: DropletLease): boolean => droplet.name === lease.name && lease.tags.every(tag => droplet.tags.includes(tag));
-export const liveLease = (lease: DropletLease): boolean => lease.state !== 'released' && Date.parse(lease.deadline) > Date.now();
-export function accountRelease(lease: DropletLease, deletedAt: string): void {
+export const liveLease = (lease: DropletLease, clock: Clock = realClock): boolean => lease.state !== 'released' && Date.parse(lease.deadline) > clock.now().getTime();
+export function accountRelease(lease: DropletLease, deletedAt: string, clock: Clock = realClock): void {
   delete lease.attention;
   lease.deleteStarted ??= deletedAt;
   const billable = lease.createStarted && lease.resource !== null;
   lease.lifetimeMs = billable ? Math.max(0, Date.parse(lease.deleteStarted) - Date.parse(lease.createStarted!)) : 0;
   lease.costUsd = billable ? Math.max(60000, lease.lifetimeMs) / 3600000 * lease.priceHourly : 0;
-  lease.state = 'released'; lease.released = new Date().toISOString();
+  lease.state = 'released'; lease.released = clock.now().toISOString();
 }

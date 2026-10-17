@@ -1,3 +1,6 @@
+import { realClock, type Clock } from '../../../src/hub/clock.ts';
+import { pause } from '../../../src/executor/droplet/watchdog.ts';
+import { DigitalOceanApi, DigitalOceanError } from '../../../src/executor/droplet/api.ts';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { createServer } from 'node:http';
@@ -7,7 +10,9 @@ import { join } from 'node:path';
 import type { Action, SnapshotImage, Droplet, Key, Region, Size } from '../../../src/executor/droplet/api.ts';
 
 /** Provider boundary: never retains Authorization in its request log. */
-export async function fakeDigitalOcean(token: string) {
+export async function fakeDigitalOcean(token: string, options: { machine?: 'scripted' | 'process'; clock?: Clock } = {}) {
+  const clock = options.clock ?? realClock;
+  const scripted = options.machine === 'scripted';
   const stateRoot = await mkdtemp(join(tmpdir(), 'cland-fake-do-'));
   const run = promisify(execFile);
   const publicKeys = new Map<number, string>();
@@ -30,6 +35,7 @@ export async function fakeDigitalOcean(token: string) {
   const requests: { method: string; path: string; body: Record<string, unknown> | null }[] = [];
   const auth = { token };
   const seedSnapshot = async (image: SnapshotImage, key: unknown): Promise<void> => {
+    if (scripted) { images.push(image); return; }
     const directory = join(stateRoot, `image-${image.id}`);
     await mkdir(join(directory, 'home/runner'), { recursive: true });
     await writeFile(join(directory, 'home/runner/.cland-image.json'), JSON.stringify(key));
@@ -58,48 +64,44 @@ export async function fakeDigitalOcean(token: string) {
   let beforeImport: (() => Promise<void>) | undefined;
   let beforeSnapshotDelete: ((id: number) => Promise<void>) | undefined;
   let nextId = 100;
-  const server = createServer(async (req, res) => {
-    if (req.headers.authorization !== `Bearer ${auth.token}`) { res.writeHead(401); res.end(JSON.stringify({ id: 'unauthorized', message: 'bad authorization' })); return; }
-    const url = new URL(req.url!, 'http://fake');
-    const method = req.method!;
+  const handle = async (method: string, url: URL, body: Record<string, unknown> | null): Promise<{ status: number; value?: unknown }> => {
     const path = url.pathname.replace(/^\/v2/, '');
-    let source = '';
-    for await (const chunk of req) source += String(chunk);
-    const body = source ? JSON.parse(source) as Record<string, unknown> : null;
-    requests.push({ method, path: req.url!, body });
-    if (faults.delayMs && (!faults.delayPath || path === faults.delayPath && method === 'POST')) await new Promise(r => setTimeout(r, faults.delayMs));
-    const answer = (status: number, value?: unknown) => { res.writeHead(status, { 'Content-Type': 'application/json' }); res.end(value === undefined ? '' : JSON.stringify(value)); };
+    requests.push({ method, path: `${url.pathname}${url.search}`, body });
+    if (faults.delayMs && (!faults.delayPath || path === faults.delayPath && method === 'POST')) await pause(faults.delayMs, clock);
+    const answer = (status: number, value?: unknown) => ({ status, value });
     if (method === 'GET' && path === '/account') return answer(200, { account });
     if (method === 'GET' && path === '/sizes') { await beforeSizes?.(); return answer(200, { sizes }); }
     if (method === 'GET' && path === '/regions') return answer(200, { regions });
     if (method === 'POST' && path === '/droplets') {
       try { await beforeCreate?.(); } catch { return answer(500, { id: 'lease-missing', message: 'lease not armed before create' }); }
       if (faults.create) return answer(faults.create, { id: 'refused', message: faults.echoToken ? token : 'create refused' });
-      const droplet: Droplet = { id: nextId++, name: String(body!.name), tags: body!.tags as string[], created_at: new Date().toISOString(), status: 'new', networks: { v4: [] } };
-      const directory = join(stateRoot, `droplet-${droplet.id}`);
-      const snapshotDir = imageDirs.get(Number(body!.image));
-      if (snapshotDir) await cp(snapshotDir, directory, { recursive: true });
-      else await mkdir(join(directory, 'home/runner'), { recursive: true });
-      await mkdir(join(directory, 'var/lib'), { recursive: true });
-      await writeFile(join(directory, 'var/lib/cland-ready'), '');
-      // DO injects each create's new key for root. A snapshot must carry its own
-      // surviving per-boot hook to authorize runner; the provider never does it.
-      const keysForCreate = (body!.ssh_keys as number[]).map(id => publicKeys.get(id) ?? '').join('\n');
-      await mkdir(join(directory, 'root/.ssh'), { recursive: true });
-      await writeFile(join(directory, 'root/.ssh/authorized_keys'), keysForCreate);
-      if (snapshotDir) {
-        const hook = await readFile(join(directory, 'var/lib/cloud/scripts/per-boot/cland-runner-keys.sh'), 'utf8').catch(() => null);
-        if (hook) await run('bash', ['-c', hook.replaceAll('/home/runner', join(directory, 'home/runner')).replaceAll('/root/.ssh', join(directory, 'root/.ssh')).replaceAll('-o runner -g runner', '')], { env: { PATH: process.env.PATH, HOME: join(directory, 'home/runner') } });
-      } else {
-        // Provisioning creates runner and copies the builder's initial key.
-        await mkdir(join(directory, 'home/runner/.ssh'), { recursive: true });
-        await copyFile(join(directory, 'root/.ssh/authorized_keys'), join(directory, 'home/runner/.ssh/authorized_keys'));
-      }
-      if (body!.user_data) await writeFile(join(directory, 'user-data.sh'), String(body!.user_data));
-      machineDirs.set(droplet.id, directory);
-      const address = `203.0.113.${nextAddress++}`;
-      addresses[address] = directory; dropletAddresses.set(droplet.id, address);
-      await writeFile(join(stateRoot, 'addresses.json'), JSON.stringify(addresses));
+      const droplet: Droplet = { id: nextId++, name: String(body!.name), tags: body!.tags as string[], created_at: clock.now().toISOString(), status: 'new', networks: { v4: [] } };
+      if (!scripted) {
+        const directory = join(stateRoot, `droplet-${droplet.id}`);
+        const snapshotDir = imageDirs.get(Number(body!.image));
+        if (snapshotDir) await cp(snapshotDir, directory, { recursive: true });
+        else await mkdir(join(directory, 'home/runner'), { recursive: true });
+        await mkdir(join(directory, 'var/lib'), { recursive: true });
+        await writeFile(join(directory, 'var/lib/cland-ready'), '');
+        // DO injects each create's new key for root. A snapshot must carry its own
+        // surviving per-boot hook to authorize runner; the provider never does it.
+        const keysForCreate = (body!.ssh_keys as number[]).map(id => publicKeys.get(id) ?? '').join('\n');
+        await mkdir(join(directory, 'root/.ssh'), { recursive: true });
+        await writeFile(join(directory, 'root/.ssh/authorized_keys'), keysForCreate);
+        if (snapshotDir) {
+          const hook = await readFile(join(directory, 'var/lib/cloud/scripts/per-boot/cland-runner-keys.sh'), 'utf8').catch(() => null);
+          if (hook) await run('bash', ['-c', hook.replaceAll('/home/runner', join(directory, 'home/runner')).replaceAll('/root/.ssh', join(directory, 'root/.ssh')).replaceAll('-o runner -g runner', '')], { env: { PATH: process.env.PATH, HOME: join(directory, 'home/runner') } });
+        } else {
+          // Provisioning creates runner and copies the builder's initial key.
+          await mkdir(join(directory, 'home/runner/.ssh'), { recursive: true });
+          await copyFile(join(directory, 'root/.ssh/authorized_keys'), join(directory, 'home/runner/.ssh/authorized_keys'));
+        }
+        if (body!.user_data) await writeFile(join(directory, 'user-data.sh'), String(body!.user_data));
+        machineDirs.set(droplet.id, directory);
+        const address = `203.0.113.${nextAddress++}`;
+        addresses[address] = directory; dropletAddresses.set(droplet.id, address);
+        await writeFile(join(stateRoot, 'addresses.json'), JSON.stringify(addresses));
+      } else dropletAddresses.set(droplet.id, `203.0.113.${nextAddress++}`);
       droplets.push(droplet);
       return answer(202, { droplet });
     }
@@ -123,7 +125,7 @@ export async function fakeDigitalOcean(token: string) {
       const index = images.findIndex(i => i.id === Number(snapshotId[1])); if (index >= 0) images.splice(index, 1);
       if (Number(snapshotId[1]) === faults.loseDeleteSnapshot) {
         if (faults.failCatalogueAfterDelete) faults.catalogueError = 503;
-        req.socket.destroy(); return;
+        throw new DigitalOceanError(0, 'transport', 'request failed or exceeded its time bound');
       }
       return answer(204);
     }
@@ -137,9 +139,9 @@ export async function fakeDigitalOcean(token: string) {
       actions.set(action.id, { action, type, polls: 0, complete: async () => {
         if (type === 'snapshot') {
           const create = requests.find(r => r.method === 'POST' && r.path === '/v2/droplets' && r.body?.name === droplets.find(d => d.id === resource)?.name)?.body;
-          const image: SnapshotImage = { id: nextId++, name: String(body!.name), resource_id: String(resource), regions: [String(create?.region)], size_gigabytes: 1.5, min_disk_size: 50, created_at: new Date().toISOString() };
+          const image: SnapshotImage = { id: nextId++, name: String(body!.name), resource_id: String(resource), regions: [String(create?.region)], size_gigabytes: 1.5, min_disk_size: 50, created_at: clock.now().toISOString() };
           const directory = join(stateRoot, `image-${image.id}`);
-          await cp(machineDirs.get(resource)!, directory, { recursive: true });
+          if (!scripted) await cp(machineDirs.get(resource)!, directory, { recursive: true });
           imageDirs.set(image.id, directory); images.push(image);
           hidden.set(image.id, faults.snapshotHiddenPolls);
         } else if (type === 'transfer') {
@@ -177,7 +179,7 @@ export async function fakeDigitalOcean(token: string) {
         const failure = faults.deleteFailures.shift();
         if (failure === 'timeout') {
           // Fault injection: exceed the caller's API deadline before returning the delete failure.
-          await new Promise(resolve => setTimeout(resolve, 2000));
+          await pause(2000, clock);
           return answer(503, { id: 'unavailable', message: 'delete transport delayed' });
         }
         if (failure !== undefined) return answer(failure, { id: 'delete_failed', message: faults.echoToken ? token : 'droplet busy or provider unavailable; try later' });
@@ -207,12 +209,39 @@ export async function fakeDigitalOcean(token: string) {
       if (faults.keyDeletePolls > 0) faults.keyDeletePolls--; else keys.splice(i, 1);
       return answer(204);
     }
-    answer(404, { id: 'not_found', message: 'unknown endpoint' });
+    return answer(404, { id: 'not_found', message: 'unknown endpoint' });
+  };
+  const provider = new DigitalOceanApi({ DIGITALOCEAN_TOKEN: token }, clock, async (method, path, body, deadline) => {
+    const remaining = (deadline ?? Infinity) - clock.now().getTime();
+    if (remaining <= 0) throw new DigitalOceanError(0, 'deadline', 'request deadline reached');
+    const bound = Math.min(15000, remaining);
+    let timer: ReturnType<Clock['setTimeout']> | undefined;
+    try {
+      const result = await Promise.race([
+        handle(method, new URL(`/v2${path}`, 'http://fake'), body === undefined ? null : structuredClone(body) as Record<string, unknown>),
+        new Promise<never>((_, reject) => { timer = clock.setTimeout(() => reject(new DigitalOceanError(0, remaining <= 15000 ? 'deadline' : 'transport', 'request failed or exceeded its time bound')), bound); }),
+      ]);
+      if (result.status >= 400) {
+        const value = result.value as { id: string; message: string };
+        throw new DigitalOceanError(result.status, value.id, value.message.split(token).join('[redacted]'));
+      }
+      return structuredClone(result.value);
+    } finally { clock.clearTimeout(timer); }
   });
-  await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
-  const address = server.address();
-  if (!address || typeof address === 'string') throw new Error('fake did not bind');
-  return { url: `http://127.0.0.1:${address.port}/v2`, account, droplets, keys, sizes, regions, requests, faults, auth, images, stateRoot, machineDirs, imageDirs, machineFaults, seedSnapshot,
+  const server = scripted ? null : createServer(async (req, res) => {
+    if (req.headers.authorization !== `Bearer ${auth.token}`) { res.writeHead(401); res.end(JSON.stringify({ id: 'unauthorized', message: 'bad authorization' })); return; }
+    let source = '';
+    for await (const chunk of req) source += String(chunk);
+    try {
+      const result = await handle(req.method!, new URL(req.url!, 'http://fake'), source ? JSON.parse(source) : null);
+      res.writeHead(result.status, { 'Content-Type': 'application/json' });
+      res.end(result.value === undefined ? '' : JSON.stringify(result.value));
+    } catch { req.socket.destroy(); }
+  });
+  if (server) await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
+  const address = server?.address();
+  const url = address && typeof address !== 'string' ? `http://127.0.0.1:${address.port}/v2` : '';
+  return { provider, url, account, droplets, keys, sizes, regions, requests, faults, auth, images, stateRoot, machineDirs, imageDirs, machineFaults, seedSnapshot,
     setMachineFaults: async (value: Partial<typeof machineFaults>) => { Object.assign(machineFaults, value); await writeFile(join(stateRoot, 'machine-faults.json'), JSON.stringify(machineFaults)); },
     beforeDropletList: (check: () => Promise<void>) => { beforeDropletList = check; },
     beforeKeyList: (check: () => Promise<void>) => { beforeKeyList = check; },
@@ -220,6 +249,6 @@ export async function fakeDigitalOcean(token: string) {
     beforeCreate: (check: () => Promise<void>) => { beforeCreate = check; },
     beforeImport: (check: () => Promise<void>) => { beforeImport = check; },
     beforeSnapshotDelete: (check: (id: number) => Promise<void>) => { beforeSnapshotDelete = check; },
-    close: async () => { server.closeAllConnections(); await new Promise<void>(r => server.close(() => r())); await rm(stateRoot, { recursive: true, force: true }); },
+    close: async () => { if (server) { server.closeAllConnections(); await new Promise<void>(r => server.close(() => r())); } await rm(stateRoot, { recursive: true, force: true }); },
   };
 }

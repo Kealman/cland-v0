@@ -1,3 +1,4 @@
+import type { Provider } from './dependencies.ts';
 import { mkdir, readFile, readdir, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { Store } from '../../hub/store.ts';
@@ -40,8 +41,8 @@ const belongs = (image: SnapshotImage, record: SnapshotRecovery): boolean => ima
  * Final actions with no visible image keep a tombstone: a delayed catalogue may
  * still reveal a partial image. Ownership uses the builder id, so a later prepare
  * of the same key cannot be mistaken for the failed attempt. */
-export async function recoverSnapshot(root: string, record: SnapshotRecovery, store?: Store, env: NodeJS.ProcessEnv = process.env): Promise<boolean> {
-  const api = new DigitalOceanApi(env);
+export async function recoverSnapshot(root: string, record: SnapshotRecovery, store?: Store, env: NodeJS.ProcessEnv = process.env, provider?: Provider): Promise<boolean> {
+  const api = provider ?? new DigitalOceanApi(env);
   if (record.phase === 'retire' && record.candidate) {
     let images = await api.snapshots(); // A failed read leaves publication intact.
     const canRollback = record.retirement === 'unstarted' || record.retirement === 'rejected';
@@ -88,10 +89,10 @@ export async function recoverSnapshot(root: string, record: SnapshotRecovery, st
   }
   return false;
 }
-export async function recoverSnapshots(root: string, store: Store | undefined, log: LogFn, env: NodeJS.ProcessEnv = process.env): Promise<void> {
+export async function recoverSnapshots(root: string, store: Store | undefined, log: LogFn, env: NodeJS.ProcessEnv = process.env, provider?: Provider): Promise<void> {
   for (const record of await readRecoveries(root)) {
     try {
-      if (await recoverSnapshot(root, record, store, env)) log({ event: 'executor-snapshot-recovered', recovery: record.id, image: record.candidate?.image ?? null });
+      if (await recoverSnapshot(root, record, store, env, provider)) log({ event: 'executor-snapshot-recovered', recovery: record.id, image: record.candidate?.image ?? null });
     } catch { /* Durable ownership survives catalogue, action and deletion refusals. */ }
   }
 }

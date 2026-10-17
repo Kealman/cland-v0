@@ -1,3 +1,5 @@
+import { realClock, type Clock } from '../../hub/clock.ts';
+import type { DropletDependencies, Provider } from './dependencies.ts';
 import { createHash, randomUUID } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -46,35 +48,38 @@ export function staleParts(snapshot: Snapshot, current: PrepareKey): string[] {
   return (['base', 'lock', 'node', 'nvim'] as const).filter(part => JSON.stringify(snapshot.key[part]) !== JSON.stringify(current[part]));
 }
 
-export async function waitForMachine(root: string, lease: DropletLease, key?: PrepareKey, boundMs = 180000, signal?: AbortSignal, env: NodeJS.ProcessEnv = process.env): Promise<void> {
-  const limit = Math.min(Date.parse(lease.deadline), Date.now() + testTiming('CLAND_TEST_DROPLET_MACHINE_MS', boundMs, env));
-  const machine = new Machine(root, env);
+export async function waitForMachine(root: string, lease: DropletLease, key?: PrepareKey, boundMs = 180000, signal?: AbortSignal, env: NodeJS.ProcessEnv = process.env, dependencies: DropletDependencies = {}): Promise<void> {
+  const clock = dependencies.clock ?? realClock;
+  const wait = dependencies.wait ?? (ms => pause(ms, clock));
+  const limit = Math.min(Date.parse(lease.deadline), clock.now().getTime() + testTiming('CLAND_TEST_DROPLET_MACHINE_MS', boundMs, env));
+  const machine = dependencies.machine ?? new Machine(root, env);
   for (;;) {
     signal?.throwIfAborted();
-    if (Date.now() >= limit) throw new Error('machine readiness deadline reached');
+    if (clock.now().getTime() >= limit) throw new Error('machine readiness deadline reached');
     let marker: string;
-    try { marker = await machine.exec(lease, key ? 'true && cat "$HOME/.cland-image.json"' : 'test -f /var/lib/cland-ready && true', { timeoutMs: Math.min(10000, limit - Date.now()), signal }); }
-    catch { await pause(Math.min(testTiming('CLAND_TEST_DROPLET_POLL_MS', 2000, env), Math.max(0, limit - Date.now()))); continue; }
+    try { marker = await machine.exec(lease, key ? 'true && cat "$HOME/.cland-image.json"' : 'test -f /var/lib/cland-ready && true', { timeoutMs: Math.min(10000, limit - clock.now().getTime()), signal }); }
+    catch { await wait(Math.min(testTiming('CLAND_TEST_DROPLET_POLL_MS', 2000, env), Math.max(0, limit - clock.now().getTime()))); continue; }
     if (!key) return;
     try { if (sameKey(JSON.parse(marker) as PrepareKey, key)) return; } catch { /* mismatch refuses */ }
     throw new Error('prepared image marker mismatch');
   }
 }
 
-export async function pollAction(api: DigitalOceanApi, action: Action, limit: number, signal?: AbortSignal, env: NodeJS.ProcessEnv = process.env): Promise<void> {
+export async function pollAction(api: Provider, action: Action, limit: number, signal?: AbortSignal, env: NodeJS.ProcessEnv = process.env, clock: Clock = realClock, wait: (ms: number) => Promise<void> = ms => pause(ms, clock)): Promise<void> {
   let current = action;
   for (;;) {
     signal?.throwIfAborted();
     if (current.status === 'completed') return;
     if (current.status === 'errored') throw new Error(`DigitalOcean action ${current.id} failed`);
-    if (Date.now() >= limit) throw new Error('snapshot action deadline reached');
-    await pause(Math.min(testTiming('CLAND_TEST_DROPLET_POLL_MS', 2000, env), Math.max(0, limit - Date.now())));
+    if (clock.now().getTime() >= limit) throw new Error('snapshot action deadline reached');
+    await wait(Math.min(testTiming('CLAND_TEST_DROPLET_POLL_MS', 2000, env), Math.max(0, limit - clock.now().getTime())));
     current = await api.action(current.id, limit);
   }
 }
 
 export type Prepared = { state: 'current' | 'prepared'; snapshot: Snapshot; durationMs: number; lifetimeMs: number | null; costUsd: number | null; summary: string };
 type PrepareOptions = {
+  dependencies?: DropletDependencies;
   env?: NodeJS.ProcessEnv;
   root: string; project: string; regions: string[]; tags: string[]; key: PrepareKey; maxDiskSize?: number; store?: Store | undefined; log: LogFn; signal?: AbortSignal | undefined;
   builder: (userData: string) => Promise<DropletLease>; release: (lease: DropletLease) => Promise<Released>; step: (step: string) => void;
@@ -83,15 +88,18 @@ type PrepareOptions = {
 /** A replacement is published only after delivery, actions and builder release succeed. */
 export async function prepareSnapshot(options: PrepareOptions): Promise<Prepared> {
   const { root, key, log } = options;
+  const dependencies = options.dependencies ?? {};
+  const clock = dependencies.clock ?? realClock;
+  const wait = dependencies.wait ?? (ms => pause(ms, clock));
   const env = options.env ?? process.env;
   let stage = 'key';
   const step = (value: string) => { stage = value; options.step(value); };
-  const started = Date.now();
+  const started = clock.now().getTime();
   const old = await readSnapshot(root);
-  if (old && sameKey(old.key, key)) return prepared('current', old, started, { lifetimeMs: 0, costUsd: 0 });
-  const api = new DigitalOceanApi(env);
+  if (old && sameKey(old.key, key)) return prepared('current', old, started, { lifetimeMs: 0, costUsd: 0 }, clock);
+  const api = dependencies.api ?? new DigitalOceanApi(env, clock);
   const name = `cland-${options.project}-${keyHash(key)}`;
-  const recovery: SnapshotRecovery = { id: randomUUID(), name, started: new Date().toISOString(), phase: 'build', previous: old, requested: false, seen: [] };
+  const recovery: SnapshotRecovery = { id: randomUUID(), name, started: clock.now().toISOString(), phase: 'build', previous: old, requested: false, seen: [] };
   await saveRecovery(root, recovery);
   let builder: DropletLease | undefined;
   let image: SnapshotImage | undefined;
@@ -102,10 +110,10 @@ export async function prepareSnapshot(options: PrepareOptions): Promise<Prepared
     const template = await readFile(fileURLToPath(new URL('./provision.sh', import.meta.url)), 'utf8');
     builder = await options.builder(template.replace('__NODE_VERSION__', key.node).replace('__NVIM_VERSION__', key.nvim.tag).replace('__NVIM_SHA256__', key.nvim.digest));
     recovery.builder = builder.resource!; await saveRecovery(root, recovery);
-    await waitForMachine(root, builder, undefined, 900000, options.signal, env);
-    const machine = new Machine(root, env);
+    await waitForMachine(root, builder, undefined, 900000, options.signal, env, dependencies);
+    const machine = dependencies.machine ?? new Machine(root, env);
     const dir = leaseDir(root, builder);
-    const timeout = () => Math.max(1, Math.min(1200000, Date.parse(builder!.deadline) - Date.now()));
+    const timeout = () => Math.max(1, Math.min(1200000, Date.parse(builder!.deadline) - clock.now().getTime()));
     step('deliver');
     const origin = (await exec('git', ['remote', 'get-url', 'origin'], { cwd: root, env: machineEnv(env), timeout: 10000 })).stdout.trim();
     if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(origin)) throw new Error('prepare requires a local territory');
@@ -127,9 +135,9 @@ export async function prepareSnapshot(options: PrepareOptions): Promise<Prepared
     await machine.put(builder, keys, 'cland-runner-keys.sh', { timeoutMs: timeout(), signal: options.signal });
     await machine.exec(builder, 'set -eu; cloud-init clean --logs; install -d /var/lib/cloud/scripts/per-boot; install -m 755 /home/runner/cland-runner-keys.sh /var/lib/cloud/scripts/per-boot/cland-runner-keys.sh; rm /home/runner/cland-runner-keys.sh; rm -f /root/.ssh/authorized_keys /home/runner/.ssh/authorized_keys /etc/ssh/ssh_host_*', { user: 'root', timeoutMs: timeout(), signal: options.signal });
     await rm(keys, { force: true });
-    const limit = Math.min(Date.parse(builder.deadline), Date.now() + testTiming('CLAND_TEST_DROPLET_ACTION_MS', 1200000, env));
+    const limit = Math.min(Date.parse(builder.deadline), clock.now().getTime() + testTiming('CLAND_TEST_DROPLET_ACTION_MS', 1200000, env));
     step('power off');
-    await pollAction(api, await api.dropletAction(builder.resource!, 'power_off', undefined, limit), limit, options.signal, env);
+    await pollAction(api, await api.dropletAction(builder.resource!, 'power_off', undefined, limit), limit, options.signal, env, clock, dependencies.wait);
     step('snapshot');
     recovery.phase = 'snapshot'; recovery.requested = true; await saveRecovery(root, recovery);
     let action: Action;
@@ -139,12 +147,12 @@ export async function prepareSnapshot(options: PrepareOptions): Promise<Prepared
       throw error;
     }
     recovery.action = action.id; await saveRecovery(root, recovery);
-    await pollAction(api, action, limit, options.signal, env);
+    await pollAction(api, action, limit, options.signal, env, clock, dependencies.wait);
     recovery.actionState = 'completed'; await saveRecovery(root, recovery);
     image = (await api.snapshots(limit)).find(candidate => candidate.name === name);
     if (!image) throw new Error('completed snapshot image missing');
     step('transfer');
-    for (const region of options.regions) if (!image.regions.includes(region)) await pollAction(api, await api.transferImage(image.id, region, limit), limit, options.signal, env);
+    for (const region of options.regions) if (!image.regions.includes(region)) await pollAction(api, await api.transferImage(image.id, region, limit), limit, options.signal, env, clock, dependencies.wait);
     for (const tag of options.tags) await api.tagImage(image.id, tag);
     const imageId = image.id;
     for (;;) {
@@ -152,8 +160,8 @@ export async function prepareSnapshot(options: PrepareOptions): Promise<Prepared
       image = (await api.snapshots(limit)).find(candidate => candidate.id === imageId);
       if (image && options.regions.every(region => image!.regions.includes(region))) break;
       // An action can complete before the snapshot catalogue reflects the copy.
-      if (Date.now() >= limit) throw new Error('snapshot regions visibility deadline reached');
-      await pause(Math.min(testTiming('CLAND_TEST_DROPLET_POLL_MS', 2000, env), Math.max(0, limit - Date.now())));
+      if (clock.now().getTime() >= limit) throw new Error('snapshot regions visibility deadline reached');
+      await wait(Math.min(testTiming('CLAND_TEST_DROPLET_POLL_MS', 2000, env), Math.max(0, limit - clock.now().getTime())));
     }
     if (options.maxDiskSize !== undefined && image.min_disk_size > options.maxDiskSize) throw new Error('snapshot minimum disk exceeds run size');
     step('release');
@@ -181,8 +189,8 @@ export async function prepareSnapshot(options: PrepareOptions): Promise<Prepared
     }
     committed = true;
     // Retain ownership if accepted retirement has not reached catalogue absence.
-    await recoverSnapshot(root, recovery, options.store, env);
-    const result = prepared('prepared', snapshot, started, released);
+    await recoverSnapshot(root, recovery, options.store, env, dependencies.api);
+    const result = prepared('prepared', snapshot, started, released, clock);
     log({ event: 'executor-prepared', key, image: image.id, regions: snapshot.regions, durationMs: result.durationMs, ...released });
     return result;
   } catch (error) {
@@ -191,14 +199,14 @@ export async function prepareSnapshot(options: PrepareOptions): Promise<Prepared
       // Retiring uncertainty must be resolved before restoring either pointer.
       // Every other failure becomes durable cleanup of this builder's image.
       if (recovery.phase !== 'retire') { recovery.phase = 'cleanup'; await saveRecovery(root, recovery); }
-      try { await recoverSnapshot(root, recovery, options.store, env); } catch { /* retained for restart/timer retries */ }
+      try { await recoverSnapshot(root, recovery, options.store, env, dependencies.api); } catch { /* retained for restart/timer retries */ }
     }
     const cause = `${stage}: ${error instanceof Error ? error.message : 'snapshot preparation failed'}`;
-    log({ event: 'executor-prepare-failed', key, image: image?.id ?? null, regions: options.regions, durationMs: Date.now() - started, ...released, cause });
-    throw new Error(`${cause}; image ${image?.id ?? 'none'}; regions ${options.regions.join(', ')}; duration ${Date.now() - started}ms; builder lifetime ${released.lifetimeMs ?? 'unconfirmed'}ms, cost $${released.costUsd ?? 'unconfirmed'}`);
+    log({ event: 'executor-prepare-failed', key, image: image?.id ?? null, regions: options.regions, durationMs: clock.now().getTime() - started, ...released, cause });
+    throw new Error(`${cause}; image ${image?.id ?? 'none'}; regions ${options.regions.join(', ')}; duration ${clock.now().getTime() - started}ms; builder lifetime ${released.lifetimeMs ?? 'unconfirmed'}ms, cost $${released.costUsd ?? 'unconfirmed'}`);
   }
 }
-function prepared(state: Prepared['state'], snapshot: Snapshot, started: number, released: Released): Prepared {
-  const durationMs = Date.now() - started;
+function prepared(state: Prepared['state'], snapshot: Snapshot, started: number, released: Released, clock: Clock): Prepared {
+  const durationMs = clock.now().getTime() - started;
   return { state, snapshot, durationMs, ...released, summary: `snapshot ${state}: ${snapshot.name} image=${snapshot.image}\nkey ${JSON.stringify(snapshot.key)}\nregions ${snapshot.regions.join(', ')}; duration ${Math.round(durationMs / 1000)}s; builder lifetime ${released.lifetimeMs ?? 'unconfirmed'}ms; cost $${released.costUsd?.toFixed(4) ?? 'unconfirmed'}` };
 }

@@ -1,3 +1,4 @@
+import type { DropletDependencies } from '../executor/droplet/dependencies.ts';
 import { realClock, type Clock, type ClockTimer } from './clock.ts';
 // Durable hub-owned suite jobs. A worker can outlive hub shutdown; restart watches its receipt/PID.
 import { execFile, spawn, type ChildProcess } from 'node:child_process';
@@ -64,7 +65,7 @@ export type StagePlatform = 'Linux droplet' | 'macOS';
 export type StageCover = { id: string; head: string; tree: string; platform: StagePlatform };
 const verifyResult = (job: SuiteJob): VerifyResult => ({ executor: job.executor, id: job.id, state: job.state ?? 'running', result: job.state !== 'finished' ? null : job.cancelled || job.requesterDied ? 'cancelled' : job.outcome ? job.outcome.code === 0 ? 'passed' : 'failed' : null, head: job.head, finished: job.finished ?? job.completedAt ?? null, artifact: job.artifact, ...(job.cached ? { cached: { ...job.cached } } : {}) });
 
-export type SuiteSchedulerOptions = { waitClock?: Clock; projectConfig?: () => ProjectConfig; env?: NodeJS.ProcessEnv; executor?: ExecutorKind; localFallback?: boolean; lifetimeMs?: number; runTimeoutMs?: number; runTimeout?: string; onFallback?: (job: Readonly<SuiteJob>, cause: string) => void; budget?: number; remoteBudget?: number; shards?: number; onShardingSkipped?: (job: Readonly<SuiteJob>, cause: string) => void; cacheMaxAgeMs?: number; waitP90TargetMs?: number; locks?: string[]; requesterDead?: (actor: SuiteActor) => boolean; log?: LogFn; onQueue?: (queue: VerificationQueue) => void; onJob?: (job: Readonly<SuiteJob>) => void };
+export type SuiteSchedulerOptions = { clock?: Clock; dropletServices?: DropletDependencies; waitClock?: Clock; projectConfig?: () => ProjectConfig; env?: NodeJS.ProcessEnv; executor?: ExecutorKind; localFallback?: boolean; lifetimeMs?: number; runTimeoutMs?: number; runTimeout?: string; onFallback?: (job: Readonly<SuiteJob>, cause: string) => void; budget?: number; remoteBudget?: number; shards?: number; onShardingSkipped?: (job: Readonly<SuiteJob>, cause: string) => void; cacheMaxAgeMs?: number; waitP90TargetMs?: number; locks?: string[]; requesterDead?: (actor: SuiteActor) => boolean; log?: LogFn; onQueue?: (queue: VerificationQueue) => void; onJob?: (job: Readonly<SuiteJob>) => void };
 type HumanSlot = Omit<SuiteSlot, 'type'> & { queued: string; admittedAt?: string; left?: boolean };
 const HUMAN_GRACE_MS = 10_000;
 const KEY = 'suite-jobs';
@@ -129,7 +130,8 @@ export class Suites {
   readonly #latestBranches = new Map<string, SuiteJob>();
   readonly #order = new Map<string, number>();
   readonly #cards = new Map<string, string>();
-  readonly #timer: ReturnType<typeof setInterval>;
+  readonly #clock: Clock;
+  readonly #timer: ClockTimer;
   #checking: Promise<void> | null = null;
   readonly #inspecting = new Map<string, Promise<void>>();
   readonly #starting = new Set<Promise<unknown>>();
@@ -149,13 +151,14 @@ export class Suites {
   #compatibility: Awaited<ReturnType<LocalExecutor['holder']>> = null;
   constructor(store: Store, root: string, report: (job: Readonly<SuiteJob>, checkpointArtifact: (id: string) => void) => Promise<void>, options: SuiteSchedulerOptions = {}) {
     this.#options = options;
+    this.#clock = options.clock ?? realClock;
     this.#env = options.env ?? process.env;
     this.#budget = Math.min(options.budget ?? 1, 1);
     this.#remoteBudget = options.remoteBudget ?? 4;
     if ((options.budget ?? 1) > 1) options.log?.({ event: 'verification-budget-capped', configured: options.budget, effective: this.#budget, reason: 'resource overlap remains disabled after T-215', reservedFor: 'T-218' });
     this.#store = store; this.#root = root; this.#report = report;
     this.#jobs = JSON.parse(store.meta(KEY) ?? '[]') as SuiteJob[];
-    this.#waitMetrics = new VerificationWait(store, this.#jobs, options.projectConfig?.().verification.waitP90TargetMs ?? options.waitP90TargetMs, options.log, options.waitClock);
+    this.#waitMetrics = new VerificationWait(store, this.#jobs, options.projectConfig?.().verification.waitP90TargetMs ?? options.waitP90TargetMs, options.log, options.waitClock ?? this.#clock);
     this.#local = new LocalExecutor(this.#locks(), (lease, worker) => {
       if (this.#closed) return;
       const job = this.#jobs.find(job => job.id === lease.run);
@@ -164,7 +167,7 @@ export class Suites {
       job.outcome ??= worker.outcome;
       this.#save(job);
     }, id => { if (this.#jobs.find(job => job.id === id)?.outcome) throw new Error('suite cancelled before worker admission'); }, options.env);
-    this.#droplet = new DropletExecutor(root, store, options.log, options.env, options.projectConfig);
+    this.#droplet = new DropletExecutor(root, store, options.log, options.env, options.projectConfig, { ...options.dropletServices, clock: this.#clock });
     for (const [index, job] of this.#jobs.entries()) {
       this.#order.set(job.id, index);
       job.executor ??= 'local';
@@ -187,10 +190,10 @@ export class Suites {
     for (const job of this.#jobs) this.#remember(job, false);
     this.#save();
     this.#reaping = this.#local.reap().catch(error => { this.#options.log?.({ event: 'verification-reap-blocked', error: String(error) }); });
-    // Metrics use hub time; executor admission/recovery keeps real time.
-    this.#waitTimer = (options.waitClock ?? realClock).setInterval(() => this.#waitMetrics.record(), 1000);
+    // Scheduling and metrics share hub time; local workers retain OS deadlines.
+    this.#waitTimer = (options.waitClock ?? this.#clock).setInterval(() => this.#waitMetrics.record(), 1000);
     this.#waitTimer.unref();
-    this.#timer = setInterval(() => { void this.#check(); }, 1000);
+    this.#timer = this.#clock.setInterval(() => { void this.#check(); }, 1000);
     this.#timer.unref();
   }
   configure(config: ProjectConfig): void {
@@ -359,7 +362,7 @@ export class Suites {
     if (this.#jobs.some(job => this.#active(job) && (job.actor?.sessionId ?? 'human') === identity)) throw new Error('this session already has a suite queued or running');
     const workerPolicy = config ? { local: config.verification.workers, droplet: config.verification.droplet.workers ?? config.verification.workers } : { local: (await suiteLimits(this.#root, 'local', this.#env)).workers, droplet: (await suiteLimits(this.#root, 'droplet', this.#env)).workers };
     const fallbackWorkers = input.workers ?? workerPolicy.local;
-    const job: SuiteJob = { ...input, tierPlan, ...(budgetBase ? { durationBase: budgetBase } : {}), limits, workerPolicy, ...(input.workers !== undefined ? { workersOverride: input.workers } : {}), followsConfig: input.executor === undefined, workers, fallbackWorkers, executor, requestedExecutor: executor, requireRemote: executor === 'droplet' && (input.executor === 'droplet' || !(config?.verification.localFallback ?? settings.localFallback ?? true)), integrated: input.integrated === true && branch === 'dev', queued: new Date().toISOString(), priority: input.priority ?? Number.MAX_SAFE_INTEGER, state: 'queued', locks: settings.locks ?? ['/tmp/cland-suite.lock', '/tmp/cland-suite-nvim.lock'], selection, tree, id, head, branch, log: join(dir, 'suite.log'), result: join(dir, 'result.json'), gate: join(dir, 'ready'), pid: null, started: null, outcome: null, artifact: null, reported: false, error: null };
+    const job: SuiteJob = { ...input, tierPlan, ...(budgetBase ? { durationBase: budgetBase } : {}), limits, workerPolicy, ...(input.workers !== undefined ? { workersOverride: input.workers } : {}), followsConfig: input.executor === undefined, workers, fallbackWorkers, executor, requestedExecutor: executor, requireRemote: executor === 'droplet' && (input.executor === 'droplet' || !(config?.verification.localFallback ?? settings.localFallback ?? true)), integrated: input.integrated === true && branch === 'dev', queued: this.#clock.now().toISOString(), priority: input.priority ?? Number.MAX_SAFE_INTEGER, state: 'queued', locks: settings.locks ?? ['/tmp/cland-suite.lock', '/tmp/cland-suite-nvim.lock'], selection, tree, id, head, branch, log: join(dir, 'suite.log'), result: join(dir, 'result.json'), gate: join(dir, 'ready'), pid: null, started: null, outcome: null, artifact: null, reported: false, error: null };
     if (cacheBypass) job.cacheBypass = cacheBypass;
     // Persist the complete request before acknowledging it. No waiting worker exists.
     await writeFile(job.log, `Suite ${id} · ${input.mode}\n${describeSelection(selection)}\nWorktree ${input.cwd}\nBranch ${branch}\nHead ${head}\nWorkers ${workers} · source ${input.workers !== undefined ? 'explicit --workers' : 'hub config'}${input.size ? ` · size ${input.size}` : ''}\nQueued ${job.queued}\n`, { mode: 0o600 });
@@ -404,7 +407,7 @@ export class Suites {
   slot(input: SuiteSlot, owner: object): SuiteSlotResult {
     let slot = this.#humans.get(owner);
     if (!slot) {
-      slot = { ...input, id: randomUUID(), queued: new Date().toISOString() };
+      slot = { ...input, id: randomUUID(), queued: this.#clock.now().toISOString() };
       this.#humans.set(owner, slot);
       this.#options.log?.({ event: 'verification-human-queued', ...slot, session: 'human' });
       void this.#check();
@@ -417,7 +420,7 @@ export class Suites {
     if (!slot) return;
     if (!slot.left) {
       slot.left = true;
-      this.#options.log?.({ event: 'verification-human-left', id: slot.id, session: 'human', cwd: slot.cwd, head: slot.head, mode: slot.mode, reason, waitMs: elapsed(slot.queued, Date.parse(slot.admittedAt ?? new Date().toISOString())) });
+      this.#options.log?.({ event: 'verification-human-left', id: slot.id, session: 'human', cwd: slot.cwd, head: slot.head, mode: slot.mode, reason, waitMs: elapsed(slot.queued, Date.parse(slot.admittedAt ?? this.#clock.now().toISOString())) });
     }
     if (reason === 'connection closed' || reason === 'hub closing') this.#humans.delete(owner);
     void this.#check();
@@ -444,7 +447,7 @@ export class Suites {
     // Choose the newest compatible attempt before checking platform/success;
     // otherwise a failed or unreported fresh stage run resurrects an older green.
     if (occasion === 'stage' && !this.stageCovers().some(cover => cover.id === job.id && cover.platform === (requiredExecutor === 'local' ? 'macOS' : 'Linux droplet'))) return undefined;
-    const age = Date.now() - Date.parse(job.finished);
+    const age = this.#clock.now().getTime() - Date.parse(job.finished);
     const artifact = this.#store.resolveArtifact(job.artifact);
     return age >= 0 && age < (this.#options.cacheMaxAgeMs ?? 86400000) && artifact && artifact.status !== 'archived' && !artifact.fileDeleted ? job : undefined;
   }
@@ -452,7 +455,7 @@ export class Suites {
     return this.#jobs.filter(j => j.state === 'queued' && !j.outcome).sort((a, b) => Number(b.integrated === true) - Number(a.integrated === true) || (a.priority ?? Number.MAX_SAFE_INTEGER) - (b.priority ?? Number.MAX_SAFE_INTEGER) || (a.queued ?? '').localeCompare(b.queued ?? ''));
   }
   async #launch(job: SuiteJob): Promise<void> {
-    job.state = 'launching'; job.admittedAt ??= new Date().toISOString(); this.#launching.add(job.id); this.#save(job);
+    job.state = 'launching'; job.admittedAt ??= this.#clock.now().toISOString(); this.#launching.add(job.id); this.#save(job);
     try {
       if (job.shards) { await this.#launchShards(job); return; }
       await appendFile(job.log, `Workers ${job.workers} · source ${job.workersOverride !== undefined ? 'explicit --workers' : 'hub config'} · admitted\n`);
@@ -464,7 +467,7 @@ export class Suites {
           const restored = (await readLeases(this.#root)).find(lease => lease.run === job.id && lease.state !== 'released');
           if (restored) job.lease = restored;
         }
-        if (job.lease && Date.parse(job.lease.deadline) <= Date.now()) throw new Error('remote machine lifetime expired');
+        if (job.lease && Date.parse(job.lease.deadline) <= this.#clock.now().getTime()) throw new Error('remote machine lifetime expired');
         if (!(job.lease as DropletLease | undefined)?.execution?.delivered) {
           if (!job.lease && (!job.tree || await candidateTree(job.cwd, job.integrated ? undefined : job.head, this.#env) !== job.tree)) { this.#fallback(job, 'dirty or changed worktree cannot be bundled for droplet'); return; }
           if (!job.lease) {
@@ -474,7 +477,7 @@ export class Suites {
             if (await candidateTree(job.cwd, job.integrated ? undefined : job.head, this.#env) !== job.tree) { this.#fallback(job, 'dirty or changed worktree cannot be bundled for droplet'); return; }
             if (job.remoteAcquireAttempted) { this.#fallback(job, 'previous droplet acquisition was interrupted'); return; }
             job.remoteAcquireAttempted = true; this.#save(job);
-            try { job.lease = await this.#droplet.acquire(run, new Date(Date.now() + (job.config?.verification.lifetimeMs ?? this.#options.lifetimeMs ?? 6600000)).toISOString(), undefined, job.config); }
+            try { job.lease = await this.#droplet.acquire(run, new Date(this.#clock.now().getTime() + (job.config?.verification.lifetimeMs ?? this.#options.lifetimeMs ?? 6600000)).toISOString(), undefined, job.config); }
             catch (error) {
               if (job.cancelled) throw error;
               if (job.requireRemote && !job.parentRun && error instanceof RemoteBudgetFull) {
@@ -495,7 +498,7 @@ export class Suites {
         this.#save(job);
         if (job.cancelled) throw new Error('cancelled');
         if (!lease.execution?.started) await this.#droplet.start(lease, run);
-        if (!lease.execution?.started) { job.nextPoll = Date.now() + testTiming('CLAND_TEST_DROPLET_RUN_POLL_MS', 10000, this.#options.env); this.#save(job); return; }
+        if (!lease.execution?.started) { job.nextPoll = this.#clock.now().getTime() + testTiming('CLAND_TEST_DROPLET_RUN_POLL_MS', 10000, this.#options.env); this.#save(job); return; }
       } else {
         const head = await exec('git', ['rev-parse', 'HEAD'], { cwd: job.cwd, env: this.#options.env }).then(r => r.stdout.trim(), () => 'unknown');
         if (head !== job.head && !(job.integrated && job.tree && await candidateTree(job.cwd, undefined, this.#env) === job.tree)) throw new Error(`cancelled: queued head changed from ${job.head} to ${head}; submit verification again`);
@@ -578,7 +581,7 @@ export class Suites {
       shard.cancelled = true; shard.outcome ??= job.outcome;
       this.#stopHostGate(shard.id);
     }
-    for (const shard of shards) if (shard.state === 'launching' && !shard.outcome && !this.#launching.has(shard.id) && Date.now() >= (shard.nextPoll ?? 0)) this.#launchRemote(shard);
+    for (const shard of shards) if (shard.state === 'launching' && !shard.outcome && !this.#launching.has(shard.id) && this.#clock.now().getTime() >= (shard.nextPoll ?? 0)) this.#launchRemote(shard);
     await Promise.all(shards.map(shard => this.#inspectJob(shard)));
     if (shards.some(shard => !shard.reported)) return false;
     await this.#droplet.releaseShardReservations(shards.map(shard => shard.id));
@@ -586,10 +589,10 @@ export class Suites {
     job.outcome ??= { code: failures.length ? 1 : 0, cause: failures.map(shard => `${shard.shardName}: ${shard.outcome?.cause || `exit ${shard.outcome?.code}`}`).join('; ') };
     const platform = shards.find(shard => shard.platform)?.platform;
     if (platform) job.platform = platform;
-    job.finished = new Date().toISOString();
+    job.finished = this.#clock.now().toISOString();
     if (!failures.length && job.selection?.recordCoverage) {
       const maps = await Promise.all(shards.map(shard => readFile(join(this.#root, '.cland/run/suites', shard.id, 'coverage-map.json'), 'utf8').then(parseCoverageMap)));
-      const merged: CoverageMap = { version: 1, head: job.head, tree: job.tree!, created: new Date().toISOString(), testFiles: [], files: {} };
+      const merged: CoverageMap = { version: 1, head: job.head, tree: job.tree!, created: this.#clock.now().toISOString(), testFiles: [], files: {} };
       for (const map of maps) {
         if (map.head !== merged.head || map.tree !== merged.tree) throw new Error('shard coverage provenance mismatch');
         merged.testFiles.push(...map.testFiles);
@@ -612,7 +615,7 @@ export class Suites {
     }));
     const lines = shards.map(shard => `shard duration ${shard.shardName} · ${shard.machine?.name ?? 'unavailable'} · ${shard.machine?.size ?? 'unknown'} ${shard.machine?.region ?? ''} · ${((shard.runMs ?? 0) / 1000).toFixed(2)}s · cost $${(shard.machine?.costUsd ?? 0).toFixed(4)}`);
     const prefix = (await readFile(job.log, 'utf8')).split('\n--- close shards ---\n')[0];
-    await writeFile(job.log, `${prefix}\n--- close shards ---\noccasion ${job.occasion}\n${logs.join('\n')}\n${failures.map(shard => `shard failure ${shard.shardName}: ${shard.outcome?.cause || `exit ${shard.outcome?.code}`}`).join('\n')}\n${lines.join('\n')}\ntotal cost $${shards.reduce((sum, shard) => sum + (shard.machine?.costUsd ?? 0), 0).toFixed(4)}\nsuite duration ${((Date.now() - Date.parse(job.admittedAt!)) / 1000).toFixed(2)}s; overall wall from admission through collection\n`);
+    await writeFile(job.log, `${prefix}\n--- close shards ---\noccasion ${job.occasion}\n${logs.join('\n')}\n${failures.map(shard => `shard failure ${shard.shardName}: ${shard.outcome?.cause || `exit ${shard.outcome?.code}`}`).join('\n')}\n${lines.join('\n')}\ntotal cost $${shards.reduce((sum, shard) => sum + (shard.machine?.costUsd ?? 0), 0).toFixed(4)}\nsuite duration ${((this.#clock.now().getTime() - Date.parse(job.admittedAt!)) / 1000).toFixed(2)}s; overall wall from admission through collection\n`);
     job.groupMerged = true; job.cleaned = true; this.#save(job);
     return true;
   }
@@ -636,6 +639,12 @@ export class Suites {
     if (child?.pid && child.exitCode === null && child.signalCode === null) try { process.kill(-child.pid, 'SIGTERM'); } catch {}
   }
   async #hostGate(job: SuiteJob): Promise<void> {
+    if (this.#options.dropletServices?.hostGate) {
+      job.hostGate = await this.#options.dropletServices.hostGate(runRef(job));
+      this.#save(job);
+      if (job.hostGate.code !== 0) throw new Error(`host typecheck failed (exit ${job.hostGate.code}); no droplet created`);
+      return;
+    }
     const tree = await candidateTree(job.cwd, job.integrated ? undefined : job.head, this.#env);
     const command = ['run', 'typecheck'];
     await appendFile(job.log, '\nHost gate: npm run typecheck\n');
@@ -668,7 +677,7 @@ export class Suites {
   }
   async #tick(): Promise<void> {
     await this.#reaping;
-    for (const job of this.#jobs) if (job.executor === 'droplet' && job.state === 'launching' && !job.outcome && !this.#launching.has(job.id) && !await this.#restoreRemoteResult(job) && Date.now() >= (job.nextPoll ?? 0)) this.#launchRemote(job);
+    for (const job of this.#jobs) if (job.executor === 'droplet' && job.state === 'launching' && !job.outcome && !this.#launching.has(job.id) && !await this.#restoreRemoteResult(job) && this.#clock.now().getTime() >= (job.nextPoll ?? 0)) this.#launchRemote(job);
     await Promise.all(this.#jobs.map(job => this.#inspectJob(job)));
     if (this.#closed) return;
     // Reserve launching jobs, including their asynchronous acquires, until release
@@ -681,7 +690,7 @@ export class Suites {
       this.#compatibility = await this.#local.holder();
       for (const [owner, slot] of this.#humans) {
         if (slot.left || !slot.admittedAt) continue;
-        if (this.#compatibility?.holder?.token === slot.token || Date.now() - Date.parse(slot.admittedAt) < HUMAN_GRACE_MS) localActive++;
+        if (this.#compatibility?.holder?.token === slot.token || this.#clock.now().getTime() - Date.parse(slot.admittedAt) < HUMAN_GRACE_MS) localActive++;
         else this.leave(owner, 'admission grace expired');
       }
     }
@@ -724,8 +733,8 @@ export class Suites {
         }
         await this.#launch(job);
       } else if (!('actor' in next) && !next.left && !next.admittedAt && [...this.#humans.values()].includes(next)) {
-        next.admittedAt = new Date().toISOString();
-        this.#options.log?.({ event: 'verification-human-admitted', id: next.id, session: 'human', cwd: next.cwd, head: next.head, mode: next.mode, waitMs: elapsed(next.queued, Date.now()), graceMs: HUMAN_GRACE_MS });
+        next.admittedAt = this.#clock.now().toISOString();
+        this.#options.log?.({ event: 'verification-human-admitted', id: next.id, session: 'human', cwd: next.cwd, head: next.head, mode: next.mode, waitMs: elapsed(next.queued, this.#clock.now().getTime()), graceMs: HUMAN_GRACE_MS });
       }
     }
   }
@@ -767,18 +776,18 @@ export class Suites {
       const restored = await this.#restoreRemoteResult(job);
       if (!restored && job.shards && !job.groupMerged && !await this.#collectShards(job)) return;
       const remote = job.executor === 'droplet';
-      if (remote && !job.outcome && Date.now() < (job.nextPoll ?? 0)) return;
-      if (remote) job.nextPoll = Date.now() + testTiming('CLAND_TEST_DROPLET_RUN_POLL_MS', 10000, this.#options.env);
+      if (remote && !job.outcome && this.#clock.now().getTime() < (job.nextPoll ?? 0)) return;
+      if (remote) job.nextPoll = this.#clock.now().getTime() + testTiming('CLAND_TEST_DROPLET_RUN_POLL_MS', 10000, this.#options.env);
       const timeoutMs = testTiming('CLAND_TEST_EXECUTOR_RUN_TIMEOUT_MS', job.config?.verification.runTimeoutMs ?? this.#options.runTimeoutMs ?? 4500000, this.#options.env);
       const startedAt = (job.lease as DropletLease | undefined)?.execution?.startedAt ?? job.admittedAt;
-      if (remote && !job.outcome && job.lease && startedAt && Date.now() - Date.parse(startedAt) > timeoutMs + testTiming('CLAND_TEST_EXECUTOR_TIMEOUT_GRACE_MS', 120000, this.#options.env)) {
+      if (remote && !job.outcome && job.lease && startedAt && this.#clock.now().getTime() - Date.parse(startedAt) > timeoutMs + testTiming('CLAND_TEST_EXECUTOR_TIMEOUT_GRACE_MS', 120000, this.#options.env)) {
         job.timedOut = true; job.outcome = { code: 124, cause: `run timeout ${job.config?.verification.runTimeout ?? this.#options.runTimeout ?? '75m'}` }; this.#save(job);
       }
       const receipt = !restored && job.lease ? remote ? await this.#droplet.status(job.lease as DropletLease) : await this.#local.status(job.lease) : null;
       if (!restored && remote && job.lease && job.remoteLogStart !== undefined) {
         try { await this.#collectLog(job); }
         catch (error) { if (receipt?.state !== 'lost' && !job.cancelled && !job.timedOut) throw error; }
-        if (receipt?.state === 'done' || receipt?.state === 'lost') await writeFile(job.result, JSON.stringify({ code: receipt.code ?? 1, cause: receipt.cause ?? '', finished: receipt.finished ?? new Date().toISOString(), ...(receipt.platform ? { platform: receipt.platform } : {}) }));
+        if (receipt?.state === 'done' || receipt?.state === 'lost') await writeFile(job.result, JSON.stringify({ code: receipt.code ?? 1, cause: receipt.cause ?? '', finished: receipt.finished ?? this.#clock.now().toISOString(), ...(receipt.platform ? { platform: receipt.platform } : {}) }));
       }
       if (receipt?.platform) job.platform = receipt.platform;
       if (receipt?.finished) job.finished = receipt.finished;
@@ -792,7 +801,7 @@ export class Suites {
         if (receipt && ['pending', 'running', 'paused', 'unknown'].includes(receipt.state)) return;
         job.outcome = { code: 1, cause: 'worker disappeared (killed or crashed without an exit receipt)' };
       }
-      if (remote) await writeFile(job.result, JSON.stringify({ ...job.outcome, finished: job.finished ?? new Date().toISOString(), ...(job.platform ? { platform: job.platform } : {}) }));
+      if (remote) await writeFile(job.result, JSON.stringify({ ...job.outcome, finished: job.finished ?? this.#clock.now().toISOString(), ...(job.platform ? { platform: job.platform } : {}) }));
       job.state = 'finished';
       this.#save(job);
       if (!job.cleaned) {
@@ -841,7 +850,7 @@ export class Suites {
         } catch { await appendFile(job.log, 'budget (report only): unavailable (report read failed)\n'); }
         job.budgetReported = true; this.#save(job);
       }
-      this.#recordTiming(job, !job.cached && job.outcome.code === 0 && receipt?.finished ? receipt.finished : new Date().toISOString());
+      this.#recordTiming(job, !job.cached && job.outcome.code === 0 && receipt?.finished ? receipt.finished : this.#clock.now().toISOString());
       if (job.integrated && !job.parentRun && !job.cover) {
         const cover = deriveCover(job, await readFile(job.log, 'utf8'));
         if (cover) job.cover = cover;
@@ -899,7 +908,7 @@ export class Suites {
    * refreshes ownership each tick; explicit queue reads inspect it immediately. */
   snapshot(): VerificationQueue {
     const shim = this.#compatibility;
-    const now = Date.now();
+    const now = this.#clock.now().getTime();
     const recent = this.#jobs.filter(j => j.completedAt).sort((a, b) => b.completedAt!.localeCompare(a.completedAt!)).slice(0, METRICS_WINDOW);
     const metrics = { queueWait: this.#waitMetrics.snapshot(), window: METRICS_WINDOW, count: recent.length, wait: durations(recent.map(j => j.waitMs)), run: durations(recent.map(j => j.runMs)) };
     // Cache hits are already completed at submission. They count in the metrics but must
@@ -948,5 +957,5 @@ export class Suites {
       }), metrics };
   }
 
-  async close(): Promise<void> { this.#closed = true; for (const owner of this.#humans.keys()) this.leave(owner, 'hub closing'); clearInterval(this.#timer); (this.#options.waitClock ?? realClock).clearInterval(this.#waitTimer); for (const id of this.#hostGates.keys()) this.#stopHostGate(id); await Promise.allSettled(this.#starting); await this.#checking; await Promise.allSettled(this.#launchWork); await this.#reaping; await Promise.allSettled(this.#inspecting.values()); }
+  async close(): Promise<void> { this.#closed = true; for (const owner of this.#humans.keys()) this.leave(owner, 'hub closing'); this.#clock.clearInterval(this.#timer); (this.#options.waitClock ?? this.#clock).clearInterval(this.#waitTimer); for (const id of this.#hostGates.keys()) this.#stopHostGate(id); await Promise.allSettled(this.#starting); await this.#checking; await Promise.allSettled(this.#launchWork); await this.#reaping; await Promise.allSettled(this.#inspecting.values()); }
 }

@@ -1,3 +1,4 @@
+import { realClock, type Clock } from '../../hub/clock.ts';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { appendFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -9,7 +10,7 @@ import { settleSpend } from './spend.ts';
 import { deleteLeaseResources } from './cleanup.ts';
 import { accountRelease, durableJson, readLease, type DropletLease, type WatchdogReceipt } from './lease.ts';
 
-export const pause = (ms: number): Promise<void> => new Promise(r => setTimeout(r, ms));
+export const pause = (ms: number, clock: Clock = realClock): Promise<void> => new Promise(r => clock.setTimeout(r, ms));
 export const testTiming = (key: string, fallback: number, env: NodeJS.ProcessEnv = process.env): number => {
   const value = Number(env[key]);
   return value > 0 && Number.isFinite(value) ? value : fallback;
@@ -80,7 +81,7 @@ export async function armWatchdog(dir: string, env: NodeJS.ProcessEnv = process.
   return { pid, startedUtc };
 }
 
-async function watchdog(dir: string): Promise<void> {
+export async function watchdog(dir: string, clock: Clock = realClock): Promise<void> {
   const inhibitor = process.platform === 'darwin' ? spawn('caffeinate', ['-i', '-w', String(process.pid)], { stdio: 'ignore' }) : null;
   inhibitor?.on('error', () => { process.exitCode = 1; });
   const stop = () => { inhibitor?.kill(); process.exit(0); };
@@ -90,12 +91,12 @@ async function watchdog(dir: string): Promise<void> {
     for (;;) {
       const lease = await readLease(dir);
       if (lease.state === 'released') return;
-      const remaining = Date.parse(lease.deadline) - Date.now();
+      const remaining = Date.parse(lease.deadline) - clock.now().getTime();
       if (remaining <= 0) break;
-      await pause(Math.min(interval, remaining));
+      await pause(Math.min(interval, remaining), clock);
     }
-    const api = new DigitalOceanApi();
-    const fired = new Date().toISOString();
+    const api = new DigitalOceanApi(process.env, clock);
+    const fired = clock.now().toISOString();
     let deleteStarted: string | undefined;
     let discoveredResource: number | null = null;
     let discoveredKey: number | null = null;
@@ -107,19 +108,19 @@ async function watchdog(dir: string): Promise<void> {
       if (deleteStarted) lease.deleteStarted ??= deleteStarted;
       if (lease.state === 'released') return;
       try {
-        const result = await deleteLeaseResources(api, lease, undefined, attention => appendFile(join(dir, 'watchdog.log'), `${JSON.stringify({ ts: new Date().toISOString(), event: 'executor-release-identity-recheck', attention })}\n`, { mode: 0o600 }));
+        const result = await deleteLeaseResources(api, lease, undefined, attention => appendFile(join(dir, 'watchdog.log'), `${JSON.stringify({ ts: clock.now().toISOString(), event: 'executor-release-identity-recheck', attention })}\n`, { mode: 0o600 }), 300000, clock);
         deleteStarted ??= lease.deleteStarted;
         for (const id of result.deleted) deleted.add(id);
         if (result.confirmed) {
-          const receipt: WatchdogReceipt = { fired, deleted: [...deleted], confirmedAt: new Date().toISOString(), deleteStarted: deleteStarted ?? new Date().toISOString() };
+          const receipt: WatchdogReceipt = { fired, deleted: [...deleted], confirmedAt: clock.now().toISOString(), deleteStarted: deleteStarted ?? clock.now().toISOString() };
           await durableJson(join(dir, 'watchdog.json'), receipt);
-          accountRelease(lease, receipt.deleteStarted); lease.released = receipt.confirmedAt;
+          accountRelease(lease, receipt.deleteStarted, clock); lease.released = receipt.confirmedAt;
           await settleSpend(lease);
           return;
         }
       } catch { /* the lease remains the recovery record; secrets never enter a receipt */ }
       finally { deleteStarted ??= lease.deleteStarted; discoveredResource ??= lease.resource; discoveredKey ??= lease.keyId; }
-      await pause(interval);
+      await pause(interval, clock);
     }
   } finally { inhibitor?.kill(); }
 }

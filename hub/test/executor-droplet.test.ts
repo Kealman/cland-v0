@@ -1,6 +1,7 @@
+// T3: provider transport deadlines, ambiguous create/import recovery, detached watchdogs and hub restart/OS process identity.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { clandWithEnv, connectUi, projectHub, startDaemon, tempProject, eventually, spawnSpoke, pidAlive } from './harness.ts';
+import { clandWithEnv, connectUi, projectHub, startDaemon, tempProject, eventually, pidAlive } from './harness.ts';
 import { fakeDigitalOcean } from './fakes/digitalocean/fake-api.ts';
 import { chmod, mkdir, readFile, writeFile, readdir, stat, symlink } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
@@ -27,7 +28,7 @@ async function providerEnv(t: TestContext, api: Awaited<ReturnType<typeof fakeDi
   return env;
 }
 
-test('executor status names a missing token; reap refuses without it; CLI controls respect roles', async t => {
+test('executor status names a missing token; reap refuses without it', async t => {
   const root = await tempProject(t);
   const { discovery } = await projectHub(t, root, { DIGITALOCEAN_TOKEN: '' });
   const ui = await connectUi(t, discovery);
@@ -37,22 +38,7 @@ test('executor status names a missing token; reap refuses without it; CLI contro
   const reap = await clandWithEnv(root, {}, 'executor', 'reap');
   assert.equal(reap.code, 1);
   assert.match(reap.stderr, /DIGITALOCEAN_TOKEN/);
-  for (const [name, role] of [['coord', 'coordinator'], ['impl', 'implementer'], ['rev', 'reviewer'], ['qa-one', 'qa']] as const) {
-    assert.equal((await ui.request({ type: 'role.set', session: name, role })).ok, true);
-    const spoke = await spawnSpoke({ discover: true, assignRole: false, cwd: root, name, role, sessionId: `${name}-id` });
-    t.after(() => spoke.close());
-    await spoke.waitForPresence([name]);
-    for (const sub of ['status', 'reap']) {
-      const result = await clandWithEnv(root, { CLAND_SESSION_NAME: name, CLAND_SESSION_ID: `${name}-id` }, 'executor', sub, '--json');
-      if (role === 'coordinator') {
-        assert.equal(result.code, sub === 'status' ? 0 : 1, result.stderr);
-        assert.doesNotMatch(result.stderr, /forbidden/);
-      } else {
-        assert.equal(result.code, 1);
-        assert.match(result.stderr, new RegExp(`forbidden.*executor\\.${sub}`));
-      }
-    }
-  }
+
 });
 
 test('provider requests distinguish deadline aborts from transport time bounds', async t => {

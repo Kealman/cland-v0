@@ -1,3 +1,5 @@
+import { realClock, type Clock } from '../../hub/clock.ts';
+import type { DropletDependencies, MachineTransport } from './dependencies.ts';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { dirname, join } from 'node:path';
@@ -23,9 +25,11 @@ const remoteDir = (lease: DropletLease): string => {
 /** Suite delivery and observation; lifecycle and provider accounting stay in DropletExecutor. */
 export class DropletRun {
   readonly #root: string;
-  readonly #machine: Machine;
+  readonly #machine: MachineTransport;
+  readonly #clock: Clock;
+  readonly #dependencies: DropletDependencies;
   readonly #env: NodeJS.ProcessEnv;
-  constructor(root: string, env: NodeJS.ProcessEnv = process.env) { this.#root = root; this.#env = env; this.#machine = new Machine(root, env); }
+  constructor(root: string, env: NodeJS.ProcessEnv = process.env, dependencies: DropletDependencies = {}) { this.#dependencies = dependencies; this.#clock = dependencies.clock ?? realClock; this.#root = root; this.#env = env; this.#machine = dependencies.machine ?? new Machine(root, env); }
   async deliver(lease: DropletLease, run: RunRef, committedOnly = false): Promise<void> {
     const git = async (...args: string[]) => (await exec('git', args, { cwd: run.cwd, env: machineEnv(this.#env), timeout: 30000, maxBuffer: 16 * 1024 * 1024 })).stdout.trim();
     const checkWorktree = async () => {
@@ -86,7 +90,7 @@ git write-tree
     const lock = quote(snapshot.key.lock);
     const pin = quote(snapshot.key.nvim.tag);
     const command = `set -e\ncd "$HOME/cland"\ngit fetch ${dir}/tree.bundle ${quote(run.head)}\ngit checkout --detach ${quote(run.head)}\ngit clean -fdx -e node_modules -e .cache\ntest "$(git rev-parse HEAD)" = ${quote(run.head)}\ntest -z "$(git status --porcelain)"\nif test "$(sha256sum package-lock.json | cut -d ' ' -f 1)" != ${lock}; then echo 'dependencies changed: npm ci'; npm ci; else echo 'dependencies match snapshot'; fi\nif test "$(cat nvim/NVIM_VERSION 2>/dev/null || echo none)" != ${pin}; then echo 'Neovim pin changed: seed'; node nvim/bin/nvim-path.ts; else echo 'Neovim pin matches snapshot'; fi\ntest "$(git rev-parse HEAD)" = ${quote(run.head)}\ntest -z "$(git status --porcelain)"`;
-    const output = await this.#machine.exec(lease, command, { timeoutMs: Math.max(1, Date.parse(lease.deadline) - Date.now() - testTiming('CLAND_TEST_EXECUTOR_COLLECTION_MARGIN_MS', 120000, this.#env)) });
+    const output = await this.#machine.exec(lease, command, { timeoutMs: Math.max(1, Date.parse(lease.deadline) - this.#clock.now().getTime() - testTiming('CLAND_TEST_EXECUTOR_COLLECTION_MARGIN_MS', 120000, this.#env)) });
     await writeFile(join(local, 'delivery.log'), output);
     await this.#machine.put(lease, join(local, 'delivery.log'), `runs/${lease.run}/delivery.log`);
     lease.execution = { head: run.head, delivered: true };
@@ -101,15 +105,15 @@ git write-tree
     const status = await this.status(lease);
     if (status.state === 'lost') throw new Error(status.cause ?? 'remote machine lost');
     if (status.state === 'running' || status.state === 'done') {
-      lease.execution.started = true; lease.execution.startedAt ??= new Date().toISOString();
+      lease.execution.started = true; lease.execution.startedAt ??= this.#clock.now().toISOString();
       await writeLease(this.#root, lease);
     }
   }
   async status(lease: DropletLease): Promise<RunStatus> {
-    if (Date.parse(lease.deadline) <= Date.now()) return { state: 'lost', code: 1, cause: 'remote machine lifetime expired' };
+    if (Date.parse(lease.deadline) <= this.#clock.now().getTime()) return { state: 'lost', code: 1, cause: 'remote machine lifetime expired' };
     try {
       if (lease.resource === null) return { state: 'lost', code: 1, cause: 'remote machine lost' };
-      await new DigitalOceanApi(this.#env).droplet(lease.resource);
+      await (this.#dependencies.api ?? new DigitalOceanApi(this.#env, this.#clock)).droplet(lease.resource);
     } catch (error) { if (error instanceof DigitalOceanError && error.status === 404) return { state: 'lost', code: 1, cause: 'remote machine lost' }; }
     try {
       const program = `const fs=require('fs'),p=process.argv[1];const platform=fs.existsSync(p+'/platform')?JSON.parse(fs.readFileSync(p+'/platform','utf8')):undefined;let status={state:'pending',platform};if(fs.existsSync(p+'/done')){const finished=fs.readFileSync(p+'/done','utf8').trim();status=finished?{state:'done',code:Number(fs.readFileSync(p+'/exit','utf8')),finished,platform}:{state:'running',platform};}else if(fs.existsSync(p+'/pgid')){let alive=true;try{process.kill(-Number(fs.readFileSync(p+'/pgid','utf8')),0)}catch{alive=false}status=alive?{state:'running',platform}:{state:'done',code:1,cause:'remote runner disappeared without a done marker',finished:new Date().toISOString(),platform};}console.log(JSON.stringify(status));`;
@@ -119,11 +123,11 @@ git write-tree
     } catch {
       try {
         if (lease.resource === null) return { state: 'lost', code: 1, cause: 'remote machine lost' };
-        const droplet = await new DigitalOceanApi(this.#env).droplet(lease.resource);
+        const droplet = await (this.#dependencies.api ?? new DigitalOceanApi(this.#env, this.#clock)).droplet(lease.resource);
         if (droplet.status === 'active' && lease.execution) {
-          lease.execution.unreachableSince ??= new Date().toISOString();
+          lease.execution.unreachableSince ??= this.#clock.now().toISOString();
           await writeLease(this.#root, lease);
-          if (Date.now() - Date.parse(lease.execution.unreachableSince) >= testTiming('CLAND_TEST_DROPLET_LOST_MS', 300000, this.#env)) return { state: 'lost', code: 1, cause: 'remote machine lost' };
+          if (this.#clock.now().getTime() - Date.parse(lease.execution.unreachableSince) >= testTiming('CLAND_TEST_DROPLET_LOST_MS', 300000, this.#env)) return { state: 'lost', code: 1, cause: 'remote machine lost' };
         }
       } catch (error) { if (error instanceof DigitalOceanError && error.status === 404) return { state: 'lost', code: 1, cause: 'remote machine lost' }; }
       return { state: 'unknown' };
@@ -139,8 +143,8 @@ git write-tree
     const dir = remoteDir(lease);
     try {
       await this.#machine.exec(lease, `if test -f ${dir}/pgid && ! test -f ${dir}/done; then pgid=$(cat ${dir}/pgid); case "$pgid" in ''|*[!0-9]*) exit 1;; esac; kill -TERM -- -"$pgid" 2>/dev/null || true; fi`, { timeoutMs: 10000 });
-      const limit = Date.now() + testTiming('CLAND_TEST_DROPLET_CANCEL_MS', 10000, this.#env);
-      do { if ((await this.status(lease)).state === 'done') break; await pause(100); } while (Date.now() < limit);
+      const limit = this.#clock.now().getTime() + testTiming('CLAND_TEST_DROPLET_CANCEL_MS', 10000, this.#env);
+      do { if ((await this.status(lease)).state === 'done') break; await (this.#dependencies.wait?.(100) ?? pause(100, this.#clock)); } while (this.#clock.now().getTime() < limit);
     } catch { /* release destroys the machine even when its group cannot be reached */ }
   }
   async collectCoverage(lease: DropletLease, path: string): Promise<void> {

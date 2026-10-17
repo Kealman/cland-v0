@@ -1,3 +1,4 @@
+import { realClock, type Clock } from '../../hub/clock.ts';
 // The first per-user cland state: all project hubs reserve against the same ledger.
 import { mkdir, readFile } from 'node:fs/promises';
 import { dirname, isAbsolute, join } from 'node:path';
@@ -15,8 +16,8 @@ async function read(path: string): Promise<Ledger> {
     return ledger;
   } catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return { version: 1, entries: [] }; throw error; }
 }
-function totals(ledger: Ledger) {
-  const day = new Date().toISOString().slice(0, 10);
+function totals(ledger: Ledger, clock: Clock) {
+  const day = clock.now().toISOString().slice(0, 10);
   // Unconfirmed reservations carry across midnight; a crash must not reset admission.
   const reserved = ledger.entries.filter(e => e.cost === null).reduce((sum, e) => sum + e.reservation, 0);
   const spent = ledger.entries.filter(e => e.released?.startsWith(day)).reduce((sum, e) => sum + (e.cost ?? 0), 0);
@@ -29,12 +30,12 @@ async function locked<T>(work: (ledger: Ledger) => T, env: NodeJS.ProcessEnv): P
   try { const ledger = await read(path); const result = work(ledger); await durableJson(path, ledger); return result; }
   finally { await lock.release(); }
 }
-export async function reserveSpend(project: string, lease: DropletLease, cap: number, env: NodeJS.ProcessEnv = process.env): Promise<void> {
+export async function reserveSpend(project: string, lease: DropletLease, cap: number, env: NodeJS.ProcessEnv = process.env, clock: Clock = realClock): Promise<void> {
   await locked(ledger => {
     if (ledger.entries.some(e => e.lease === lease.lease)) return;
     const reservation = Math.max(60000, Date.parse(lease.deadline) - Date.parse(lease.created)) / 3600000 * lease.priceHourly;
     const group = ledger.entries.find(e => e.project === project && e.run === lease.run && e.lease === `reserved:${lease.run}` && e.cost === null);
-    const { spent, reserved } = totals(ledger);
+    const { spent, reserved } = totals(ledger, clock);
     if (spent + reserved - (group?.reservation ?? 0) + reservation > cap) throw new Error(`daily spend cap $${cap} reached`);
     if (group) ledger.entries.splice(ledger.entries.indexOf(group), 1);
     ledger.entries.push({ project, lease: lease.lease, run: lease.run, size: lease.size, reservation, cost: null, created: lease.created, deadline: lease.deadline });
@@ -47,8 +48,8 @@ export async function settleSpend(lease: DropletLease, env: NodeJS.ProcessEnv = 
     if (entry && entry.cost === null) { entry.cost = lease.costUsd!; entry.released = lease.released!; }
   }, env);
 }
-export async function inspectSpend(cap: number, env: NodeJS.ProcessEnv = process.env) {
-  return { path: spendPath(env), ...totals(await read(spendPath(env))), cap };
+export async function inspectSpend(cap: number, env: NodeJS.ProcessEnv = process.env, clock: Clock = realClock) {
+  return { path: spendPath(env), ...totals(await read(spendPath(env)), clock), cap };
 }
 
 /** Register hubs, including pre-ledger leases, before their first automatic sweep. */
@@ -63,20 +64,20 @@ export async function hostLeases(project: string, env: NodeJS.ProcessEnv = proce
 }
 
 /** Atomic group admission: no provider resources exist when this can refuse. */
-export async function reserveShardSpend(project: string, runs: string[], size: string, priceHourly: number, lifetimeMs: number, cap: number, env: NodeJS.ProcessEnv = process.env): Promise<void> {
+export async function reserveShardSpend(project: string, runs: string[], size: string, priceHourly: number, lifetimeMs: number, cap: number, env: NodeJS.ProcessEnv = process.env, clock: Clock = realClock): Promise<void> {
   await locked(ledger => {
     const missing = runs.filter(run => !ledger.entries.some(e => e.project === project && e.run === run));
     const reservation = Math.max(60000, lifetimeMs) / 3600000 * priceHourly;
-    const { spent, reserved } = totals(ledger);
+    const { spent, reserved } = totals(ledger, clock);
     if (spent + reserved + missing.length * reservation > cap) throw new Error(`daily spend cap $${cap} would be exceeded`);
-    const created = new Date().toISOString(), deadline = new Date(Date.now() + lifetimeMs).toISOString();
+    const created = clock.now().toISOString(), deadline = new Date(clock.now().getTime() + lifetimeMs).toISOString();
     for (const run of missing) ledger.entries.push({ project, lease: `reserved:${run}`, run, size, reservation, cost: null, created, deadline });
   }, env);
 }
-export async function releaseShardSpend(project: string, runs: string[], env: NodeJS.ProcessEnv = process.env): Promise<void> {
+export async function releaseShardSpend(project: string, runs: string[], env: NodeJS.ProcessEnv = process.env, clock: Clock = realClock): Promise<void> {
   await locked(ledger => {
     for (const e of ledger.entries) if (e.project === project && runs.includes(e.run) && e.lease === `reserved:${e.run}` && e.cost === null) {
-      e.cost = 0; e.released = new Date().toISOString();
+      e.cost = 0; e.released = clock.now().toISOString();
     }
   }, env);
 }

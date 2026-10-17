@@ -1,3 +1,4 @@
+import { realClock, type Clock } from '../../hub/clock.ts';
 export type Size = { slug: string; available: boolean; price_hourly: number; regions: string[]; disk?: number };
 export type Region = { slug: string; available: boolean; sizes: string[] };
 export type Key = { id: number; name: string; public_key: string };
@@ -18,17 +19,22 @@ export class DigitalOceanError extends Error {
   constructor(status: number, id: string, message: string) { super(`DigitalOcean ${status} ${id}: ${message}`); this.status = status; this.id = id; }
 }
 
+export type ProviderCall = (method: string, path: string, body: unknown, deadline?: number) => Promise<unknown>;
+
 /** Only this call scope holds the token. Transport failures never expose fetch's request. */
 export class DigitalOceanApi {
   readonly #env: NodeJS.ProcessEnv;
-  constructor(env: NodeJS.ProcessEnv = process.env) { this.#env = env; }
+  readonly #clock: Clock;
+  readonly #callProvider: ProviderCall | undefined;
+  constructor(env: NodeJS.ProcessEnv = process.env, clock: Clock = realClock, callProvider?: ProviderCall) { this.#callProvider = callProvider; this.#clock = clock; this.#env = env; }
   async #call<T>(method: string, path: string, body?: unknown, deadline?: number): Promise<T> {
     const token = this.#env.DIGITALOCEAN_TOKEN;
     if (!token) throw new Error('DIGITALOCEAN_TOKEN is required');
+    if (this.#callProvider) return await this.#callProvider(method, path, body, deadline) as T;
     const base = this.#env.CLAND_DIGITALOCEAN_API ?? 'https://api.digitalocean.com/v2';
     const url = new URL(`${base.replace(/\/$/, '')}${path}`);
     const redact = (value: unknown): string => String(value ?? '').split(token).join('[redacted]');
-    const remaining = deadline === undefined ? Infinity : deadline - Date.now();
+    const remaining = deadline === undefined ? Infinity : deadline - this.#clock.now().getTime();
     const transportTimeout = apiTimeoutMs(this.#env);
     const timeout = Math.ceil(Math.min(transportTimeout, remaining));
     if (timeout <= 0) throw new DigitalOceanError(0, 'deadline', 'request deadline reached');
