@@ -2,8 +2,8 @@
 id: T-754
 kind: task
 title: "Runtime tripwire: allow the documented headless Neovim spawn in Neovim T2 files, and remove the ps probe from their fixture"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 1
 labels:
@@ -17,7 +17,8 @@ blocked_by: []
 topic: topic-463
 branch: t/T-754-runtime-tripwire-allow-the-documented
 created: 2026-10-17T19:53:12.953Z
-updated: 2026-10-17T22:54:06.424Z
+updated: 2026-10-17T23:43:51.070Z
+closed: 2026-10-17T23:43:51.070Z
 ---
 
 ## Summary
@@ -96,3 +97,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final same-head clear; A-4825. Standards/Spec no findings. Independently parsed A-4821 exact-head full exit0: all12 scoped Neovim files positively execute63passing cases,zero Neovim tier-mismatch rows anywhere. All17runner cases pass; five new stub-positive/unrelated-child/lookalike/tier-boundary/non-stub controls each5/5,25/25load. Prior source M1 is corrected and protected at actual startClient. Whole2500reported2492pass0fail/cancel8outside-scope skips; full Neovim completes. Host check reused; no new allowances. C1 verified; no per-item QA.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-17T23:43:51.070Z
+
+Merged 97d32a3171b07777afc491cc524c80e8c5cf1238 onto dev.
