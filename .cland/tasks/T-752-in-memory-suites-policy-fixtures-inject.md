@@ -2,8 +2,8 @@
 id: T-752
 kind: task
 title: In-memory Suites policy fixtures inject the duration-budget context instead of reading native Git
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 1
 labels:
@@ -17,7 +17,8 @@ blocked_by: []
 topic: topic-461
 branch: t/T-752-in-memory-suites-policy-fixtures-inject
 created: 2026-10-17T18:44:08.769Z
-updated: 2026-10-17T23:25:21.938Z
+updated: 2026-10-17T23:43:42.418Z
+closed: 2026-10-17T23:43:42.418Z
 ---
 
 ## Summary
@@ -87,3 +88,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear under primary Coordinator dbe1b72f's scoped C1 disposition. Independently audited A-4843 run aaebabd7: all nine R2 files/55 cases have completed timings and ordinary passing reporter lines. Zero duration-context execFile trips. Exactly two report-only spawn rows remain through doctor/report -> lock process-list probing: suite-stage-rules close whole fallback (line 25616) and suite-accounting confirmed lease accounting (30329); both explicitly remain T-751-owned residuals, not a zero-total-trip claim. Supplied-history regression passes and load gate 5/5. Whole mode-free hub-only + Neovim-smoke run exits zero: 2,109 pass, zero fail/cancel, five unrelated skips; smoke 12/12. Primary 49f964f4 authorized the unchanged retry after filing T-762/T-763. Prior source/policy assertion audit remains current; branch unchanged. No findings. C1 verified. Audit A-4845; no per-item QA.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-17T23:43:42.418Z
+
+Merged baa2ba754c68d6d13e063596375403c09879956e onto dev.
