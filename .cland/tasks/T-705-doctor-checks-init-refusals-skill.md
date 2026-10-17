@@ -3,7 +3,7 @@ id: T-705
 kind: task
 title: Doctor checks, init refusals, skill template commands and worktree discovery run in-process, with three real CLI runs each at most
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 5
 labels:
@@ -17,7 +17,7 @@ blocked_by: []
 topic: topic-437
 branch: t/T-705-doctor-checks-init-refusals-skill
 created: 2026-10-16T19:59:37.526Z
-updated: 2026-10-17T12:05:10.197Z
+updated: 2026-10-17T12:43:17.958Z
 ---
 
 ## Summary
@@ -42,7 +42,8 @@ These files spawn the CLI once per matrix cell, for logic that their modules exp
 ## Acceptance criteria
 
 - [x] C1. The five files' manifest seconds fall from 193.8 s (A-3877) to 95 s or less.
-  - done: impl-705 · 2026-10-17T12:02:02.881Z
+  - done: impl-705 · 2026-10-17T12:42:49.854Z
+  - verified: rev-31 [reviewer] · run rev-20261017-705-final · 2026-10-17T12:43:17.168Z · commit 83db6bc3a40526c6a209f3bd96773630119feefb
 - [x] C2. CLI subprocesses started by the five files fall by at least two thirds, counted by the spawn census's per-file row before and after.
   - done: impl-705 · 2026-10-17T11:57:38.561Z
   - verified: rev-31 [reviewer] · run rev-20261017-705-source-3 · 2026-10-17T12:05:10.197Z · commit 83db6bc3a40526c6a209f3bd96773630119feefb
@@ -52,7 +53,9 @@ These files spawn the CLI once per matrix cell, for logic that their modules exp
 - [x] C4. An audit maps every moved or rewritten assertion to its new place, with no behaviour claim dropped.
   - done: impl-705 · 2026-10-17T12:02:03.403Z
   - verified: rev-31 [reviewer] · run rev-20261017-705-source-3 · 2026-10-17T12:05:10.197Z · commit 83db6bc3a40526c6a209f3bd96773630119feefb
-- [ ] C5. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
+- [x] C5. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
+  - done: impl-705 · 2026-10-17T12:42:50.211Z
+  - verified: rev-31 [reviewer] · run rev-20261017-705-final · 2026-10-17T12:43:17.168Z · commit 83db6bc3a40526c6a209f3bd96773630119feefb
 
 ## Comments
 
@@ -104,3 +107,18 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Corrected source clear; Standards 0 findings / Spec 0 findings, A-4501. Registered idempotent writer/Worker cleanup now precedes fixture directory disposal, including cancellation without a completed body finally. A-4500 negative registration control fails both receipt fields; restored held-worker proof and all five four-test whole-file receipts pass without asynchronous-activity diagnostics. Prior frozen launch clock, owned stdin and actual SQLite BUSY/observed 5000 ms policy corrections remain intact. Production and earlier assertion audit unchanged. Origin tip and whitespace checked at this exact head. Updated combined Mac median 66.310870 s; conservative CLI census 405→65 (84.0%), daemons 13→4. C2/C3/C4 source verified; C1 Linux timing and C5 exact-head droplet execution remain pending. No Reviewer edits, tests or delegation.
 
 Criteria: C2 verified, C3 verified, C4 verified.
+
+### rev-31 · 2026-10-17T12:43:17.168Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261017-705-final
+commit: 83db6bc3a40526c6a209f3bd96773630119feefb
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear; Standards 0 / Spec 0 findings, A-4520. Exact-head A-4517 / 551194c2 ends exit 0, 2090 tests / 2085 passes / 0 failures / 5 prerequisite skips; hub-only plus 12/12 Neovim smoke. Independently extracted all 66 owned cases across eight resulting files, summed Linux 47.321158498 test-seconds and all 28 new owned identities with 5/5 passing load receipts. C1: both Mac median sum 66.310870 s and disclosed Linux sum are below 95 s, including all split files. C5: prior whole-file Mac 5/5 chain A-4487/A-4495/A-4500 plus current exact-head Linux pass. Source-3/A-4501 C2/C3/C4 remains current; conservative census 405→65 CLI entries, 13→4 daemons. Origin tip unchanged. All five criteria supported; no further run or per-item QA needed. No Reviewer edits/tests.
+
+Criteria: C1 verified, C5 verified.

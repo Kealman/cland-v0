@@ -3,7 +3,7 @@ id: T-693
 kind: task
 title: opencode-adapter.test.ts becomes OpenCode's contract file without the cross-adapter duplicates
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 4
 labels:
@@ -19,7 +19,7 @@ blocked_by:
 topic: topic-434
 branch: t/T-693-opencode-adapter-test-ts-becomes
 created: 2026-10-16T19:59:35.909Z
-updated: 2026-10-17T12:27:13.106Z
+updated: 2026-10-17T12:30:47.928Z
 ---
 
 ## Summary
@@ -35,13 +35,17 @@ updated: 2026-10-17T12:27:13.106Z
 - [x] C1. `opencode-adapter.test.ts` is the `opencode` contract entry, with its header mapping each checklist step to one test.
   - done: impl-693 · 2026-10-17T11:36:43.044Z
   - verified: rev-30 [reviewer] · run rev-20261017-693-source · 2026-10-17T11:39:32.082Z · commit 8c1e3e849d8af85d1b746b35a3d9008e91b1e2c5
+  - verified: rev-30 [reviewer] · run rev-20261017-693-final · 2026-10-17T12:30:46.567Z · commit 8c1e3e849d8af85d1b746b35a3d9008e91b1e2c5
 - [x] C2. Manifest seconds of the touched and new files fall from 62.3 s (A-3877) to 45 s or less, and fake-binary call sites from 24 to 14 or less.
   - done: impl-693 · 2026-10-17T11:36:43.471Z
+  - verified: rev-30 [reviewer] · run rev-20261017-693-final · 2026-10-17T12:30:46.567Z · commit 8c1e3e849d8af85d1b746b35a3d9008e91b1e2c5
 - [x] C3. An audit maps every removed duplicate to the test that proves the same behaviour and every moved assertion to its new place, with no behaviour claim dropped.
   - done: impl-693 · 2026-10-17T11:36:44.013Z
   - verified: rev-30 [reviewer] · run rev-20261017-693-source · 2026-10-17T11:39:32.082Z · commit 8c1e3e849d8af85d1b746b35a3d9008e91b1e2c5
+  - verified: rev-30 [reviewer] · run rev-20261017-693-final · 2026-10-17T12:30:46.567Z · commit 8c1e3e849d8af85d1b746b35a3d9008e91b1e2c5
 - [x] C4. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
   - done: impl-693 · 2026-10-17T12:27:13.106Z
+  - verified: rev-30 [reviewer] · run rev-20261017-693-final · 2026-10-17T12:30:46.567Z · commit 8c1e3e849d8af85d1b746b35a3d9008e91b1e2c5
 
 ## Blocked by
 
@@ -83,3 +87,22 @@ A-4482 independently audited ten raw logs: native contract14/14 five times, scri
 Source clear, no findings. C1/C3 verified at this head. Submit normal mode-free exact-head droplet verification; final C2/C4 settlement awaits its per-file timing and result. QA scope none.
 
 Criteria: C1 verified, C3 verified.
+
+### impl-693 · 2026-10-17T12:28:06.702Z
+
+Final evidence at unchanged 8c1e3e84: A-4509 summarizes A-4506 exact-head Linux run ef1934ff (2067 pass /0 fail /5 skip; all14 contract +8 native cases and their selected load gates green). Only exit1 is known out-of-diff T-734 verifier-routing duration allowance, accepted by Coordinator disposition f2856399. Mac median test-seconds31.117505877+1.563123500=32.680629377≤45s settles C2 per Coordinator decision5ee61bcf; Linux48.220389073+8.830077555=57.050466628s disclosed, peak1m load10.32, load-gate extra wall49.51s. C4 marked done; all criteria done. Final same-head evidence review requested from Reviewer. No source change or dev merge.
+
+### rev-30 · 2026-10-17T12:30:46.567Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261017-693-final
+commit: 8c1e3e849d8af85d1b746b35a3d9008e91b1e2c5
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear under primaryf2856399/5ee61bcf; source A-4483 unchanged. A-4506/ef1934ff exact head:2072tests/2067pass/0fail/5skip; all22 owned cases and14new identities5/5 (70/70) pass. Only hard red is external verifier-routing Codex relaunch5.254s, known T-734 allowanceb170e855 on dev; primary explicitly accepts receipt and directs keep head/final verdict. No overall-green or Neovim-executed claim. C2: independently recomputed ten A-4482 raw Mac logs, all5/5 whole files zero fail/cancel/skip; median test-seconds31.117505877+1.563123500=32.680629377<=45, native call census24→14 unchanged. Distinct whole-file sum33.576109458. Primary5ee61bcf makes Mac decisive; Linux48.220389073+8.830077555=57.050466628 disclosed (>45), peak10.32/extra gate49.51s, no causal normalization. C1/C3 source-current refreshed; C2/C4 now verified. Linux2workers,suite2720.47s,reported lifetime2805s/cost$0.1948. No new run or source change requested.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.

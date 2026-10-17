@@ -3,7 +3,7 @@ id: T-704
 kind: task
 title: Permission and validation tables run through the dispatcher, with one CLI proof per command family
 state: open
-status: review
+status: in progress
 size: M
 criterion_seq: 5
 labels:
@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-436
 branch: t/T-704-permission-and-validation-tables-run
 created: 2026-10-16T19:59:37.407Z
-updated: 2026-10-17T11:51:36.796Z
+updated: 2026-10-17T12:41:01.547Z
 ---
 
 ## Summary
@@ -55,6 +55,7 @@ updated: 2026-10-17T11:51:36.796Z
   - done: impl-704 · 2026-10-17T11:50:50.299Z
   - verified: rev-31 [reviewer] · run rev-20261017-704-source-2 · 2026-10-17T11:51:36.796Z · commit 17ea9073f0f81e3b8f38be3481cd0dd057457f16
 - [ ] C5. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
+  - failed: rev-31 [reviewer] · 2026-10-17T12:41:01.547Z · note Task verification fails the deterministic frozen legacy-path comparison after retiring permission-integrity.test.ts, plus an owned CLI duration budget; Neovim is not reached.
 
 ## Blocked by
 
@@ -95,3 +96,18 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Corrected source clear; Standards 0 / Spec 0 findings, A-4490. Both prior mediums resolved: crash writer immediately owned, bounded and follows test signal, close joined before recovery/removal; flushed capture plus killed===false distinguishes real self-SIGKILL from timeout. Rulebook release now precedes stop, body finally releases/joins/restores export. All original assertions retained. A-4489 ten fresh whole-file passes and four intentional failure/cancellation probes inspected; probes finish under1s with removed roots/no live writer. Only these two tests change, no dev merge; A-4488 full 18-path audit, unchanged seven-file Mac evidence and source seams remain current. Census 30 CLI / 2 daemon / 0 spoke; refreshed Mac median sum 65.332644s. C2/C3/C4 verified. C1 Linux timing and C5 same-head execution await mode-free diff-selected droplet. Exact origin/diff whitespace checked; static checks reported green; no item QA. No Reviewer edits/tests/delegation.
 
 Criteria: C2 verified, C3 verified, C4 verified.
+
+### rev-31 · 2026-10-17T12:41:01.547Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261017-704-evidence-1
+commit: 17ea9073f0f81e3b8f38be3481cd0dd057457f16
+scope: evidence
+findings: [{"severity":"medium","text":"Frozen legacy comparison still expects permission-integrity.test.ts deleted by this migration; ordinary failure and 0/5 show deterministic incompatibility. Preserve phase/worker assertions while accounting for deliberately retired baseline paths.","file":"hub/test/suite-tiers.test.ts","line":110},{"severity":"medium","text":"Retained real-Claude --as case passes behavior at 5.457659001 s but fails its unallowed five-second duration budget; preserve assertions and resolve the measured budget.","file":"hub/test/cli-identity.test.ts","line":204}]
+finding_counts: {"high":0,"medium":2,"low":0}
+
+Evidence not clear; Standards 1 medium / Spec 1 medium, A-4516. Exact-head A-4514 / 9012d29f exits 1 with 2073 passes, one failure, five skips; Neovim not reached. Missing baseline path is the file deliberately deleted by T-704, not an external flake. All 61 owned behavioral cases pass; their summed recorded Linux seconds are 81.518842465, versus established Mac median 65.332644. Twenty owned identities pass 5/5 load repetitions (corrects A-4516's count of twenty-one). External verifier-routing budget is separately addressed by T-734. C5 failed; C1 remains pending final evidence, C2/C3/C4 source continuity retained. Corrected head requires new source review before verification; no unchanged-head retry. No Reviewer edits/tests.
+
+Criteria: C5 failed (Task verification fails the deterministic frozen legacy-path comparison after retiring permission-integrity.test.ts, plus an owned CLI duration budget; Neovim is not reached.).

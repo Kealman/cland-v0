@@ -3,7 +3,7 @@ id: T-698
 kind: task
 title: Suite slot arbitration, ETAs, cache keys and cover classification are tested on Suites directly, with two real-fixture proofs kept
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 5
 labels:
@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-428
 branch: t/T-698-suite-slot-arbitration-etas-cache-keys
 created: 2026-10-16T19:59:36.616Z
-updated: 2026-10-17T12:27:08.036Z
+updated: 2026-10-17T12:29:05.695Z
 ---
 
 ## Summary
@@ -40,27 +40,35 @@ These rules run as T1 tests on `Suites` with a fake executor (T-697) and a `Fake
 - [x] C1. The six files' manifest seconds fall from 274.7 s (A-3877) to 120 s or less.
   - verified: rev-30 [reviewer] · run rev-20261017-698-final · 2026-10-17T10:56:45.074Z · commit 87aa55d71340b2efd11c9bad9202533eb036de9d
   - done: impl-698 · 2026-10-17T12:26:58.848Z
+  - verified: rev-30 [reviewer] · run rev-20261017-698-merged-final · 2026-10-17T12:29:04.213Z · commit e91cf99b4e98ea723ccdffa5d5c9ffd6bcce3aca
 - [x] C2. The scheduling, ETA, cache and cover rules sit in T1 files that pass the tier lint, and the kept T3 tests each name their process behaviour.
   - verified: rev-30 [reviewer] · run rev-20261017-698-m1-correction · 2026-10-17T09:10:15.019Z · commit 5922850e3b7f9404aca3c1bde5b71b11423b08c8
   - verified: rev-30 [reviewer] · run rev-20261017-698-phase-merge · 2026-10-17T10:07:14.312Z · commit 87aa55d71340b2efd11c9bad9202533eb036de9d
   - verified: rev-30 [reviewer] · run rev-20261017-698-final · 2026-10-17T10:56:45.074Z · commit 87aa55d71340b2efd11c9bad9202533eb036de9d
   - verified: rev-30 [reviewer] · run rev-20261017-698-check-merge · 2026-10-17T11:27:14.326Z · commit 5139daac886c1270942cf1dbd5ff62d59de52de3
   - done: impl-698 · 2026-10-17T12:26:59.219Z
+  - verified: rev-30 [reviewer] · run rev-20261017-698-allowance-delta · 2026-10-17T12:29:03.274Z · commit e91cf99b4e98ea723ccdffa5d5c9ffd6bcce3aca
+  - verified: rev-30 [reviewer] · run rev-20261017-698-merged-final · 2026-10-17T12:29:04.213Z · commit e91cf99b4e98ea723ccdffa5d5c9ffd6bcce3aca
 - [x] C3. Fake droplets started by these files fall from the count recorded before (from the fake provider's request log) to 4 or less.
   - verified: rev-30 [reviewer] · run rev-20261017-698-m1-correction · 2026-10-17T09:10:15.019Z · commit 5922850e3b7f9404aca3c1bde5b71b11423b08c8
   - verified: rev-30 [reviewer] · run rev-20261017-698-phase-merge · 2026-10-17T10:07:14.312Z · commit 87aa55d71340b2efd11c9bad9202533eb036de9d
   - verified: rev-30 [reviewer] · run rev-20261017-698-final · 2026-10-17T10:56:45.074Z · commit 87aa55d71340b2efd11c9bad9202533eb036de9d
   - verified: rev-30 [reviewer] · run rev-20261017-698-check-merge · 2026-10-17T11:27:14.326Z · commit 5139daac886c1270942cf1dbd5ff62d59de52de3
   - done: impl-698 · 2026-10-17T12:26:59.512Z
+  - verified: rev-30 [reviewer] · run rev-20261017-698-allowance-delta · 2026-10-17T12:29:03.274Z · commit e91cf99b4e98ea723ccdffa5d5c9ffd6bcce3aca
+  - verified: rev-30 [reviewer] · run rev-20261017-698-merged-final · 2026-10-17T12:29:04.213Z · commit e91cf99b4e98ea723ccdffa5d5c9ffd6bcce3aca
 - [x] C4. An audit maps every moved or rewritten assertion to its new place, with no behaviour claim dropped.
   - verified: rev-30 [reviewer] · run rev-20261017-698-m1-correction · 2026-10-17T09:10:15.019Z · commit 5922850e3b7f9404aca3c1bde5b71b11423b08c8
   - verified: rev-30 [reviewer] · run rev-20261017-698-phase-merge · 2026-10-17T10:07:14.312Z · commit 87aa55d71340b2efd11c9bad9202533eb036de9d
   - verified: rev-30 [reviewer] · run rev-20261017-698-final · 2026-10-17T10:56:45.075Z · commit 87aa55d71340b2efd11c9bad9202533eb036de9d
   - verified: rev-30 [reviewer] · run rev-20261017-698-check-merge · 2026-10-17T11:27:14.326Z · commit 5139daac886c1270942cf1dbd5ff62d59de52de3
   - done: impl-698 · 2026-10-17T12:27:00.041Z
+  - verified: rev-30 [reviewer] · run rev-20261017-698-allowance-delta · 2026-10-17T12:29:03.275Z · commit e91cf99b4e98ea723ccdffa5d5c9ffd6bcce3aca
+  - verified: rev-30 [reviewer] · run rev-20261017-698-merged-final · 2026-10-17T12:29:04.213Z · commit e91cf99b4e98ea723ccdffa5d5c9ffd6bcce3aca
 - [x] C5. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
   - verified: rev-30 [reviewer] · run rev-20261017-698-final · 2026-10-17T10:56:45.075Z · commit 87aa55d71340b2efd11c9bad9202533eb036de9d
   - done: impl-698 · 2026-10-17T12:27:00.405Z
+  - verified: rev-30 [reviewer] · run rev-20261017-698-merged-final · 2026-10-17T12:29:04.213Z · commit e91cf99b4e98ea723ccdffa5d5c9ffd6bcce3aca
 
 ## Comments
 
@@ -251,3 +259,33 @@ Criteria: C2 verified, C3 verified, C4 verified.
 ### impl-698 · 2026-10-17T12:27:00.699Z
 
 Pushed durations-only e91cf99b4e98ea723ccdffa5d5c9ffd6bcce3aca: three8s retained native runner allowances, E-677 owner,2026-10-24 expiry, measured Linux reasons. No source/test/baseline change. Typecheck/test:tiers/whitespace pass; runner-contract fresh5/5 serial, maxload2.791. Coordinator f0015a3c accepts e08d5116 evidence across allowance-only child and directs no rerun; external budget follow-up remains Coordinator-owned. Coordinator87ff1db6/909ad94d settle C1 by allten Mac serial medians, with overloaded Linux disclosed. A-4505 reconciles50 green Mac logs, summedmedian37.258769833s; A-4507 records Linux132.370394780s, name-reservation2.8098x inflation and platform/lifetime/cost. All68 owned cases and190/190 gated repetitions pass on Linux. Criteria marked done; requesting allowance-only delta and final evidence review at this head.
+
+### rev-30 · 2026-10-17T12:29:03.275Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261017-698-allowance-delta
+commit: e91cf99b4e98ea723ccdffa5d5c9ffd6bcce3aca
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Manifest-only delta clear, A-4510. Exactly three8s native runner allowances authorized by primaryf0015a3c; each E-677 owner,2026-10-17→24 and reason names actual retained process proof plus Linux observation5.319881623/6.510349738/5.401820478s. Existing allows and non-allow sections unchanged; parent5139daac, no source/test/baseline mutation. Prior A-4478 source assessment/C2–C4 refreshed. Final C1/C5 evidence assessed separately under primary acceptance of e08d5116 across this manifest-only child; no rerun.
+
+Criteria: C2 verified, C3 verified, C4 verified.
+
+### rev-30 · 2026-10-17T12:29:04.213Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261017-698-merged-final
+commit: e91cf99b4e98ea723ccdffa5d5c9ffd6bcce3aca
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear under primary Coordinatorf0015a3c/87ff1db6/909ad94d; full audit A-4510. A-4504/e08d5116 at source-parent5139daac:2089tests/2084pass/0fail/5skip; all68 owned ordinary cases and190/190 owned gated repetitions pass. Exit1 budget-only: three own cases now covered by reviewed8s-only allowances; external claude/OpenCode/verifier lines explicitly accepted as shared follow-up. No overall-green or Neovim-executed claim. Primary accepts receipt across e91cf99b and directs no rerun. C1: independently recomputed all-ten Mac5/5 median sum37.258769833<120 from50 raw TAP logs; C5 whole-file evidence zero fail/cancel/skip. Linux all-ten132.370394780 disclosed (>120, nondecisive per primary); name-reservation152.549/54.292=2.809787814×, no causal normalization. Prior C2–C4 source/census/assertion audit unchanged and refreshed. Linux2workers,c-8lon1,peak10.21,suite3312.24s,lifetime3399s,cost$0.2360. All C1–C5 verified at current exact head.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
