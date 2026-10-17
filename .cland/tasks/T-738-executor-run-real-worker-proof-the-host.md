@@ -2,8 +2,8 @@
 id: T-738
 kind: task
 title: "executor-run real-worker proof: the 'host gate … (not repeated)' reuse marker is intermittently absent from a passing run's log"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 1
 labels:
@@ -18,7 +18,8 @@ blocked_by: []
 topic: topic-445
 branch: t/T-738-executor-run-real-worker-proof-the-host
 created: 2026-10-17T14:48:29.088Z
-updated: 2026-10-17T15:49:54.124Z
+updated: 2026-10-17T15:57:18.391Z
+closed: 2026-10-17T15:57:18.391Z
 ---
 
 ## Summary
@@ -80,3 +81,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear; Standards 0 / Spec 0 findings, A-4597. Independently audited A-4592 all twenty Mac executor-run whole-file logs, each 21/21, zero failures/skips/late diagnostics. Exact-head A-4595 / 0cc313d8 final exit 0: 2102 tests / 2097 passes / 0 failures / 5 prerequisite skips, including 12/12 Neovim smoke. Regression ordinary 0.105153053 s and 5/5 load; all twelve top-level executor-run identities execute, real delivered-worker host-gate receipt case passes at 16.036273702 s with preserved assertions. Source A-4577 and red/green cause evidence remain current; unchanged origin tip. C1 verified. Hub-only plus smoke, not full Neovim; unknown lifetime/cost not invented. No exception/additional run/per-item QA needed. No Reviewer edits/tests.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-17T15:57:18.391Z
+
+Merged a38ca6003826dfae880f17baa10466c7763497c0 onto dev.
