@@ -17,7 +17,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-17T20:14:33.860Z
-updated: 2026-10-17T20:14:33.860Z
+updated: 2026-10-17T20:15:11.373Z
 ---
 
 ## Summary
@@ -31,3 +31,9 @@ No code. The Coordinator runs the first integrated cover after T-755 merges, the
 ## Acceptance criteria
 
 - [ ] C1. The first integrated cover after T-755 runs within 15% of a same-tree task full run, or its storage receipt explains the gap, recorded here with both run ids.
+
+## Comments
+
+### coord · 2026-10-17T20:15:11.373Z
+
+T-755's executor change is loaded by the running hub, not by the candidate tree. So the live storage receipt and tmpfs root first appear on droplet runs after T-755 merges and the hub restarts. This check also confirms that the receipt appears in a real result header.
