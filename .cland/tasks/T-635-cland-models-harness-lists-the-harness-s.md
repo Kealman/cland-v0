@@ -3,7 +3,7 @@ id: T-635
 kind: task
 title: cland models <harness> lists the harness's model ids from a cached probe
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 6
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-391
 branch: t/T-635-cland-models-harness-lists-the-harness-s
 created: 2026-10-16T16:04:12.499Z
-updated: 2026-10-17T00:27:27.656Z
+updated: 2026-10-17T01:13:07.235Z
 ---
 
 ## Summary
@@ -39,14 +39,17 @@ updated: 2026-10-17T00:27:27.656Z
   - done: impl-635 · 2026-10-16T20:18:04.905Z
   - verified: rev-30 [reviewer] · run rev-20261016-635-final · 2026-10-16T21:08:08.548Z · commit fbe04a18482bf756872de3fe3b0895a69b7e861e
   - verified: rev-30 [reviewer] · run rev-20261016-635-merged-final · 2026-10-16T21:56:17.029Z · commit 4f91102dcc5407ffbc228b236e4990d486dd7935
+  - verified: rev-30 [reviewer] · run rev-20261017-635-admission-final · 2026-10-17T01:13:05.818Z · commit d5ba405820cc3fd2ca3fb0dc78a98a9e222f71d1
 - [x] C2. A second call within the cache's lifetime answers without a probe and `--refresh` probes again, as the fakes' probe counts show.
   - done: impl-635 · 2026-10-16T16:30:27.601Z
   - verified: rev-30 [reviewer] · run rev-20261016-635-final · 2026-10-16T21:08:08.548Z · commit fbe04a18482bf756872de3fe3b0895a69b7e861e
   - verified: rev-30 [reviewer] · run rev-20261016-635-merged-final · 2026-10-16T21:56:17.029Z · commit 4f91102dcc5407ffbc228b236e4990d486dd7935
+  - verified: rev-30 [reviewer] · run rev-20261017-635-admission-final · 2026-10-17T01:13:05.818Z · commit d5ba405820cc3fd2ca3fb0dc78a98a9e222f71d1
 - [x] C3. The OpenCode probe waits out the fake's empty first answer and returns its models.
   - done: impl-635 · 2026-10-16T16:30:28.610Z
   - verified: rev-30 [reviewer] · run rev-20261016-635-final · 2026-10-16T21:08:08.548Z · commit fbe04a18482bf756872de3fe3b0895a69b7e861e
   - verified: rev-30 [reviewer] · run rev-20261016-635-merged-final · 2026-10-16T21:56:17.029Z · commit 4f91102dcc5407ffbc228b236e4990d486dd7935
+  - verified: rev-30 [reviewer] · run rev-20261017-635-admission-final · 2026-10-17T01:13:05.818Z · commit d5ba405820cc3fd2ca3fb0dc78a98a9e222f71d1
 - [x] C4. `cland models claude-code` prints Claude Code's list with its source named, as decided for Claude Code.
   - verified: rev-30 [reviewer] · run rev-20261016-635-source · 2026-10-16T16:28:49.387Z · commit 396d635928d01a75e7cbee88561ca0458a05fd33
   - done: impl-635 · 2026-10-16T16:30:29.570Z
@@ -57,14 +60,17 @@ updated: 2026-10-17T00:27:27.656Z
   - verified: rev-30 [reviewer] · run rev-20261016-635-settings-merge · 2026-10-16T21:14:13.392Z · commit 4f91102dcc5407ffbc228b236e4990d486dd7935
   - verified: rev-30 [reviewer] · run rev-20261016-635-merged-final · 2026-10-16T21:56:17.029Z · commit 4f91102dcc5407ffbc228b236e4990d486dd7935
   - verified: rev-30 [reviewer] · run rev-20261016-635-admission-merge · 2026-10-16T23:35:12.084Z · commit d5ba405820cc3fd2ca3fb0dc78a98a9e222f71d1
+  - verified: rev-30 [reviewer] · run rev-20261017-635-admission-final · 2026-10-17T01:13:05.819Z · commit d5ba405820cc3fd2ca3fb0dc78a98a9e222f71d1
 - [x] C5. A failing probe answers the cached list with its age, or with no cache fails with the probe's error, and a harness not installed fails with doctor's not-installed line.
   - done: impl-635 · 2026-10-16T17:22:16.310Z
   - verified: rev-30 [reviewer] · run rev-20261016-635-final · 2026-10-16T21:08:08.548Z · commit fbe04a18482bf756872de3fe3b0895a69b7e861e
   - verified: rev-30 [reviewer] · run rev-20261016-635-merged-final · 2026-10-16T21:56:17.029Z · commit 4f91102dcc5407ffbc228b236e4990d486dd7935
+  - verified: rev-30 [reviewer] · run rev-20261017-635-admission-final · 2026-10-17T01:13:05.819Z · commit d5ba405820cc3fd2ca3fb0dc78a98a9e222f71d1
 - [x] C6. `--account <name>` probes in that account's environment and keeps its cache apart from the default's, and `--json` prints the documented shape.
   - done: impl-635 · 2026-10-16T16:30:31.102Z
   - verified: rev-30 [reviewer] · run rev-20261016-635-final · 2026-10-16T21:08:08.549Z · commit fbe04a18482bf756872de3fe3b0895a69b7e861e
   - verified: rev-30 [reviewer] · run rev-20261016-635-merged-final · 2026-10-16T21:56:17.029Z · commit 4f91102dcc5407ffbc228b236e4990d486dd7935
+  - verified: rev-30 [reviewer] · run rev-20261017-635-admission-final · 2026-10-17T01:13:05.819Z · commit d5ba405820cc3fd2ca3fb0dc78a98a9e222f71d1
 
 ## Comments
 
@@ -411,3 +417,33 @@ Criteria: C4 verified.
 ### impl-635 · 2026-10-17T00:27:27.656Z
 
 Following explicit 00:27Z Coordinator hold lift, submitted fresh mode-free droplet verify 868658b3-bed1-4983-8db6-cab6eafe3e83 at unchanged reviewed d5ba405820cc3fd2ca3fb0dc78a98a9e222f71d1, clean tree. Queue read first; submission position 1. Reports to topic-391, rev-30 and impl-635. Awaiting hub result; no head changes.
+
+### impl-635 · 2026-10-17T01:12:52.807Z
+
+Fresh verification 868658b3-bed1-4983-8db6-cab6eafe3e83 passed at unchanged d5ba405820cc3fd2ca3fb0dc78a98a9e222f71d1, A-4264. Full hub+Neovim: 2437 tests, 2429 pass, 8 skip, 0 fail/cancel. All six owned model cases pass 5/5 repetitions each and launcher model case passes 5/5 (35/35 owned repetitions). Droplet linux x64 c-8 lon1, workers 2, suite 2623.69 s, lifetime 2697 s, cost $0.1873. Working tree clean. Hub records verify passed; awaiting Reviewer same-head final verdict.
+
+### rev-30 · 2026-10-17T01:13:05.819Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261017-635-admission-final
+commit: d5ba405820cc3fd2ca3fb0dc78a98a9e222f71d1
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-635 final merged-head evidence clear at d5ba405820cc3fd2ca3fb0dc78a98a9e222f71d1. Inspected complete A-4264 / 868658b3-bed1-4983-8db6-cab6eafe3e83 and matching task verification record. Exact branch/head matches source delta A-4250; no later source change.
+
+Full hub plus Neovim exits 0: 2437 tests, 2429 pass, zero fail, eight prerequisite/platform skips. Hub free 41 pass; machine 1997 pass/5 skips; Neovim 391 pass/3 skips. No hard duration-budget or load-gate failure; quarantined unrelated case reports a pass.
+
+All six models cases pass ordinarily and 5/5 each (30/30 load repetitions). These cover native catalogs/defaults, empty-first OpenCode readiness, per-harness refresh/cache behavior, static labelled Claude aliases and unavailable/invalid requests, failed-refresh cached age/native errors, independent account environments/caches/JSON, restart/24-hour expiry/coalescing and relative PATH execution. The catalogue/failed-refresh/account ordinary times are 4.016/5.321/6.526 seconds respectively, with accepted allowances intact.
+
+All five matching merge-review files execute: models (6 timing records), cover-quiet (12), suite-human (9), suite-remote-budget (18), and full Neovim shell. Source/account guard passes (0.060837256 s); launcher harness/role-account model picker passes (0.466484244 s). Together with source A-4250 this verifies the exact parent frame union, retained slot authorization, model handler and T3 manifest migration in the integrated tree.
+
+Current task view has all six claimant done marks. Verify C1-C6 from unchanged approved implementation/source proof plus this exact-head run. Prior-head A-4225/A-4227 remain historical; they are not substituted for this receipt. No remaining Standards or Spec findings. The old missing repetition diagnostic remains T-720; historical assertion causality is not reconstructed or claimed.
+
+Linux x64 c-8 lon1, Node 24.21.0/Neovim 0.12.5, two workers; suite 2623.69 seconds, peak 11.08, lifetime 2697 seconds, cost $0.1873. No further task run or per-item QA required. Reviewer performed only read-only evidence inspection.
+Review artifact A-4265.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.

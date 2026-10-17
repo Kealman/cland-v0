@@ -3,7 +3,7 @@ id: T-681
 kind: task
 title: Run results show one line per tier, and cland verify --dry-run prints the admission report without queueing
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 5
 labels:
@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-412
 branch: t/T-681-run-results-show-one-line-per-tier-and
 created: 2026-10-16T19:59:27.868Z
-updated: 2026-10-16T23:30:35.650Z
+updated: 2026-10-17T01:20:16.594Z
 ---
 
 ## Summary
@@ -34,13 +34,19 @@ Nobody can see the tiers until a run says what each one cost. Week 0 adds tier-w
 
 - [x] C1. A task run's result shows one line per planned tier with files, tests, observed seconds, projected wall at the run's workers and the tier's wall budget, proved by a run-report test.
   - done: impl-681 · 2026-10-16T23:29:59.002Z
+  - verified: rev-30 [reviewer] · run rev-20261017-681-final · 2026-10-17T01:20:15.533Z · commit 27a74fdccd63774eda41a4a8a0ef5bb9ef3e8ba2
 - [x] C2. The result shows the T1+T2 share of the planned files' manifest seconds, proved by the same test.
   - done: impl-681 · 2026-10-16T23:29:59.371Z
+  - verified: rev-30 [reviewer] · run rev-20261017-681-final · 2026-10-17T01:20:15.533Z · commit 27a74fdccd63774eda41a4a8a0ef5bb9ef3e8ba2
 - [x] C3. `cland verify --dry-run` prints the selection and tier lines and leaves no queue entry, lease, droplet or spend reservation, proved by a CLI test against `projectHub`.
   - done: impl-681 · 2026-10-16T23:29:59.587Z
+  - verified: rev-30 [reviewer] · run rev-20261017-681-final · 2026-10-17T01:20:15.534Z · commit 27a74fdccd63774eda41a4a8a0ef5bb9ef3e8ba2
 - [x] C4. A tier over its wall budget prints a report-only notice and the run's exit is unchanged, proved by a test with a planted manifest.
   - done: impl-681 · 2026-10-16T23:29:59.797Z
-- [ ] C5. The share of a full run at the merge head is recorded on this item as the tier baseline.
+  - verified: rev-30 [reviewer] · run rev-20261017-681-final · 2026-10-17T01:20:15.534Z · commit 27a74fdccd63774eda41a4a8a0ef5bb9ef3e8ba2
+- [x] C5. The share of a full run at the merge head is recorded on this item as the tier baseline.
+  - done: impl-681 · 2026-10-17T01:19:26.368Z
+  - verified: rev-30 [reviewer] · run rev-20261017-681-final · 2026-10-17T01:20:15.534Z · commit 27a74fdccd63774eda41a4a8a0ef5bb9ef3e8ba2
 
 ## Comments
 
@@ -157,3 +163,40 @@ The correction addresses the observed local failure and leak. It is consistent w
 
 C1-C4 claimant done marks are restored with targeted proof. No Reviewer criterion marks added on this source pass: accepted exact-head droplet evidence and C5's recorded completed full-plan baseline remain pending. The preliminary census remains 0.02% of 5281.23 seconds, not completed final evidence. This source clearance does not lift the Coordinator's daily-spend submission hold. Wait for an explicit lift before new mode-free droplet verification; no dev merge or unchanged-head retry is directed.
 Review artifact A-4246.
+
+### impl-681 · 2026-10-17T01:19:26.347Z
+
+C5 confirmed full-run tier baseline at unchanged source-reviewed head 27a74fdccd63774eda41a4a8a0ef5bb9ef3e8ba2: tier share: T1+T2 0.02 % of 5281.23 s (T3 5280.19 s, T4 0 s). Completed mode-full droplet run fca3a564-9f9e-4e60-a0c3-5979ad322aea, exit 0; A-4268 lines 7971–7974. T1: 9 files, 44 tests, 1.138 observed s, 39.515 projected s at 1 worker. T2: 4 files, 19 tests, 6.493 observed s, 13.477 projected s at 2 workers. T3: 241 files, 2303 tests, 5777.789 observed s, 2685.709 projected s at 2 workers, over wall (report only); exit remains green. Share uses known planned-file manifest seconds, with 12 missing baselines explicitly reported. All seven new T1/T2 identities passed ordinary execution and 5/5 load repetitions, including corrected CLI proof (A-4268:3430). Full result: 2437 tests, 2429 passes, 8 skips, 0 failures; Linux c-8 lon1, workers 2, 3005.80 s suite wall, 3080 s machine lifetime, $0.2139. No source changes since clear verdict; final evidence review requested. Live hub report formatter predates T-681, while candidate package log contains complete tier lines and same-head report tests prove new formatter behavior.
+
+### rev-30 · 2026-10-17T01:20:15.534Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261017-681-final
+commit: 27a74fdccd63774eda41a4a8a0ef5bb9ef3e8ba2
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-681 final evidence clear at unchanged source-reviewed 27a74fdccd63774eda41a4a8a0ef5bb9ef3e8ba2. Origin tip and task verification record match. Audited complete A-4268 / fca3a564-9f9e-4e60-a0c3-5979ad322aea: full hub plus Neovim exits 0, 2437 tests/2429 pass/0 fail/8 prerequisite skips. Hub free 44 pass, machine 1995 pass/5 skips, Neovim 390 pass/3 skips. No hard budget or load-gate failure.
+
+All seven new identities pass ordinarily and 5/5 each (35/35 load repetitions): three pure reporting/summary cases and four T2 dry-run/report/projection/legacy cases. Corrected CLI admission/no-mutation proof passes at 1.549986139 seconds and its formerly unfinished gate now completes 5/5 (line 3430). Restored report case is 1.699943431 seconds; legacy preview is 0.564071542 seconds. M1 legacy omission and E1 fixture registration/cleanup correction remain resolved.
+
+C1/C2: same-head run-summary and restored-result tests pass, including counts, observed seconds, phase-weighted wall, worker policy, complete legacy hub+Neovim accounting, aggregate row ordering and planned-file share denominator. Completed candidate log contains observed tier lines:
+- T1: 9 files, 44 timing receipts, observed 1.138 s; projected 39.515 s at 1 worker; budget 120 s.
+- T2: 4 files, 19 timing receipts, observed 6.493 s; projected 13.477 s at 2 workers; budget 480 s.
+- T3: 241 files, 2303 timing receipts, observed 5777.789 s; projected 2685.709 s at 2 workers; budget 900 s.
+
+C3: real CLI/projectHub dry-run contract completes normally and 5/5; original byte-equality spend, empty queue/jobs/lease/provider state, GET-only and invalid-manifest refusal assertions were retained in source A-4246. No test bypass or weakened deadline/assertion was used.
+
+C4: planted over-wall restored-result proof completes normally and 5/5. Actual full log also prints T3 “over wall (report only)” and then Finished: exit 0. Projected wall and summed observed test-seconds remain distinct from actual suite wall.
+
+C5: claimant recorded the completed reviewed-head full-plan baseline in the item comment at 01:19:26Z: tier share T1+T2 0.02% of 5281.23 s (T3 5280.19 s, T4 0 s). Independently parsed committed manifests: T1 known 0.495366 s, T2 0.544 s, T3 5280.190327 s; 254 files and 12 explicitly reported missing baselines (3/2/7). Known manifest seconds determine share; missing-file median estimates affect projections only. A-4268:7971–7974 confirms the recorded rounded line.
+
+The currently serving hub's old formatter does not display these new tier rows in its topic receipt; the candidate log and same-head production summary/restored-result tests do. This review does not claim the live hub has already rolled out T-681. Prior A-4239 remains an interrupted failed receipt; T-720 diagnostic/deadline follow-up and historical full-wall causality are unchanged.
+
+All C1-C5 claimant done marks present; verify all. No remaining Standards/Spec findings, no per-item QA or further task run needed. Linux c-8 lon1, two workers, suite 3005.80 s, peak load 12.13, reported machine lifetime 3080 s/cost $0.2139. Reviewer performed read-only inspection only.
+Review artifact A-4269.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.

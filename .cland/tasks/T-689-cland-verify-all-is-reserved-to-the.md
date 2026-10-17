@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-413
 branch: t/T-689-cland-verify-all-is-reserved-to-the
 created: 2026-10-16T19:59:28.743Z
-updated: 2026-10-17T01:08:10.381Z
+updated: 2026-10-17T01:50:48.080Z
 ---
 
 ## Summary
@@ -36,6 +36,7 @@ A `verify` request with mode `all` (CLI `all` or `--all`, MCP `mode: "all"`) fro
 - [x] C3. `docs/agents/tests.md`, the role clauses and `docs/spec/v0.1.4.md` describe the reserved mode and the diff-selected second receipt, and `roles.test.ts` passes its byte headroom.
   - done: impl-689 · 2026-10-16T23:43:10.329Z
   - verified: rev-30 [reviewer] · run rev-20261016-689-source · 2026-10-16T23:44:50.171Z · commit 19be0a95a8303ecca6ffef474a2d4790a920c5b2
+  - verified: rev-30 [reviewer] · run rev-20261017-689-executor-correction · 2026-10-17T01:08:48.123Z · commit 2e2015bec656fda4ff9a5abb7356ca5a17b4f3a3
 
 ## Comments
 
@@ -86,3 +87,29 @@ Criteria: C3 verified.
 ### impl-689 · 2026-10-17T01:07:25.412Z
 
 Fixed the missed private executor fixture after red run a4c094d5/A-4259. Pushed 2e2015be: two-line auto-mode migration, existing assertion meaning retained. Red repro confirmed both policy refusals; full executor.test.ts now 3/3 green (5.60s), typecheck and tier lint pass. No dev merge per rule 11. Coordinator confirmed pid-identity database lock is an existing E-482 flake; left unchanged. Requesting new source review before retry.
+
+### rev-30 · 2026-10-17T01:08:48.123Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261017-689-executor-correction
+commit: 2e2015bec656fda4ff9a5abb7356ca5a17b4f3a3
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-689 delta source clear at 2e2015bec656fda4ff9a5abb7356ca5a17b4f3a3, compared with source-reviewed 19be0a95a8303ecca6ffef474a2d4790a920c5b2. Origin tip matches. Only two lines in hub/test/executor.test.ts change; no production edit or dev merge. Standards and Spec: no remaining findings in this delta.
+
+A-4259 / a4c094d5-7056-467b-87d5-21034e291760 remains a failed prior-head receipt. Its detailed executor failures explicitly say verify-all-reserved at the private fixture's launch helper, before platform/legacy-recovery assertions could run. The separate pid-identity failure says SQLite database is locked. The Implementer reports Coordinator classifying that as existing E-482; this source review neither needs nor substitutes a known-red gate exception.
+
+The corrected fixture keeps its Implementer caller and requests auto instead of all. This fixture has no Git selection baseline, so its existing conservative full fallback still executes the same package scripts. The recovered legacy result assertion changes only the request-mode label to auto; it still requires exit 0. Platform evidence, worker PATH Node/candidate pin, receipt and journal comparisons, exactly-once recovery across restarts, local executor fallback and cleanup assertions remain unchanged.
+
+Inspected remaining explicit-all CLI/frame/fixture sites: intentional refusal proofs; human UI/shell requests; Coordinator-promoted cache, cover and selection fixtures; authorized occasions and their deliberate refusal tests; stored historical result/job records. No additional session caller migration issue found in this audit.
+
+A-4260 reports bounded reproduction of the two executor policy failures, then the whole corrected executor.test.ts 3/3 green (5.60 seconds) with typecheck/tier lint green at this head. Independent whitespace check passes. Prior A-4257 and A-4258 source/docs evidence remain applicable to unchanged feature bytes; Reviewer executed no test/compiler/provider.
+
+C3 refreshed because its docs/clauses and previously audited headroom proof are unchanged by these two lines. C1/C2 and final gate remain pending a fresh accepted exact-head mode-free droplet result. A-4259 is retained as red evidence, not promoted to a pass. No per-item QA. New verification must respect the Coordinator's current submission disposition.
+Review artifact A-4263.
+
+Criteria: C3 verified.
