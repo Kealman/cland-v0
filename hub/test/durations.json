@@ -3800,20 +3800,8 @@
     },
     "hub/test/opencode-adapter.test.ts": {
       "file": true,
-      "seconds": 62.340098,
-      "reason": "File budget: Runs live OpenCode fake-harness/SSE delivery and reconnect scenarios to prove failure attribution and forgotten execution inputs.",
-      "owner": "E-677",
-      "legacy": true
-    },
-    "hub/test/opencode-adapter.test.ts::OpenCode failure attribution follows delivered inbox items when two idle admissions queue separate turns": {
-      "seconds": 7.131808,
-      "reason": "Runs live OpenCode fake-harness/SSE delivery and reconnect scenarios to prove failure attribution and forgotten execution inputs.",
-      "owner": "E-677",
-      "legacy": true
-    },
-    "hub/test/opencode-adapter.test.ts::OpenCode forgets prior execution inputs when completion is missed during an SSE outage": {
-      "seconds": 7.204996,
-      "reason": "Runs live OpenCode fake-harness/SSE delivery and reconnect scenarios to prove failure attribution and forgotten execution inputs.",
+      "seconds": 40,
+      "reason": "File budget: OpenCode real-binary contract retains native launch/attach, delivery, signals and hub-process restart; approval and attribution permutations moved to T2 (T-693).",
       "owner": "E-677",
       "legacy": true
     },

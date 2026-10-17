@@ -1,8 +1,15 @@
+// T3 OpenCode real-binary contract: the fake HTTP/SSE server starts the production spoke.
+// Checklist, one native proof per family (titles below):
+// - launch/attach: "a launched OpenCode session" (config, private password, TUI cwd);
+// - first role clause: "the first OpenCode native prompt" (one input, clause before brief);
+// - injected/reply correlation: "a launched OpenCode session" (queue, stages, replyTo);
+// - signals/model/usage: "a launched OpenCode session", "a pending permission" and "a failed OpenCode turn";
+// - stop: "a launched OpenCode session"; hub-process restart: "after a hub restart";
+// - native-conversation relaunch: "a killed OpenCode server" and "a stopped OpenCode session".
+// Port binding/readiness and opt-in instruction endpoints retain their native process/frame proofs.
+// Hub composition is proven once in adapter-composition.test.ts. Approval snapshots, rejection,
+// input attribution and instruction-cleanup permutations live in opencode-native.test.ts (T2).
 import { ownDirectory } from './process-cleanup.ts';
-// The OpenCode adapter (spec 4.2, 4.3; #27) against a fake OpenCode server at the harness boundary, HTTP plus SSE:
-// a real daemon in a temporary project launches the fake (`test/fakes/opencode/opencode`, first on the PATH) as
-// `opencode serve`; the fake reads the config the adapter generated and starts the real spoke, which connects to
-// the real hub. The UI side is a scripted client on the daemon's Unix socket. Nothing inside the hub is mocked.
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
@@ -11,18 +18,17 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { OpenCodeAdapter } from '../src/adapters/opencode.ts';
-import { projectHub, assertFirstLaunchClause, sleep, clandWithEnv, clauseAnswered, connectUi, eventually, killDaemon, spawnSpoke, startDaemon, tempProject, type FrameClient, NO_PS, SPOKE_ENTRY, CLI_ENTRY } from './harness.ts';
+import { projectHub, assertFirstLaunchClause, clandWithEnv, clauseAnswered, connectUi, eventually, killDaemon, spawnSpoke, startDaemon, tempProject, type FrameClient, NO_PS, SPOKE_ENTRY, CLI_ENTRY } from './harness.ts';
 
 const FAKE_OPENCODE_DIR = fileURLToPath(new URL('./fakes/opencode', import.meta.url));
 
-for (const preassigned of [false, true]) test(`an Implementer begins on its launch brief after the OpenCode role clause without another send (${preassigned ? 'preassigned role' : 'explicit role'})`, async (t) => {
+test('the first OpenCode native prompt carries the role clause before the launch brief', async (t) => {
   const root = await tempProject(t);
   const fake = await fakeOpenCode(t);
   const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   const brief = 'Build from this OpenCode launch brief.';
-  if (preassigned) assert.equal((await ui.request({ type: 'role.set', session: 'impl-brief', role: 'implementer' })).ok, true);
-  const launched = await launch(ui, 'impl-brief', { ...(preassigned ? {} : { role: 'implementer' }), brief });
+  const launched = await launch(ui, 'impl-brief', { role: 'implementer', brief });
   const prompts = await eventually('brief reaches the native harness', async () => {
     const log = await fake.prompts(launched.harnessSessionId!);
     return log.includes(brief) ? log : undefined;
@@ -146,16 +152,15 @@ test('OpenCode retries a port taken between choice and bind on a different port'
   assert.equal(new URL(launched.harnessId!).port, String(ports[1]));
 });
 
-test('OpenCode readiness bounds an unresponsive server and names its log explanation', async (t) => {
+test('OpenCode readiness bounds an unresponsive server and names its log explanation', { timeout: 3000 }, async (t) => {
   const root = await tempProject(t);
   const fake = await fakeOpenCode(t);
   const adapter = new OpenCodeAdapter({ root, discoveryFile: join(root, '.cland/hub.json'), node: process.execPath, cli: CLI_ENTRY, spoke: SPOKE_ENTRY, log: () => {}, signal: () => {}, recordPid: () => {}, exited: () => {} }, {
     bin: join(FAKE_OPENCODE_DIR, 'opencode'), env: { ...process.env, ...fake.env, FAKE_OPENCODE_UNREADY: '1' }, spawnDeadlineMs: 1000, stopGraceMs: 50,
   });
   t.after(() => adapter.close());
-  const started = Date.now();
   await assert.rejects(adapter.spawn({ name: 'impl', role: null, model: 'opencode/fake-paid', cwd: root }), /did not answer within 1000 ms:.*database unavailable/);
-  assert.ok(Date.now() - started < 3000, 'an HTTP request cannot outlive the launch deadline');
+  // The whole-test deadline bounds the rejected HTTP launch as well as its cleanup.
   assert.deepEqual(await fake.servers(), [], 'failed launch stops its owned server');
 });
 
@@ -230,8 +235,6 @@ test('a launched OpenCode session: its own server, the spoke connects, a UI mess
   assert.match(prompts, /^prompt queue: <channel source="cland" from="hub" from_kind="hub"[^\n]*>\ncland hub: you hold the role Coordinator/);
   assert.match(prompts, /\nprompt queue: <channel source="cland" from="human" from_kind="human"[^\n]* msg_id="[^"]+"[^\n]* topic="general" topic_title="General">\nReply with the single word pong\n<\/channel>\nTo answer, call the cland `send` tool/);
 
-
-
   // busy during the turn, idle after, from the event stream
   await presentAs(ui, 'impl', 'idle');
   const turn = stateEvents(ui, 'impl').map((e) => `${e.state}/${e.source}`);
@@ -296,98 +299,6 @@ test('a failed OpenCode turn is recorded in Agents and the events view and repor
   assert.equal((await status(ui)).harnesses.find((h) => h.name === launched.name)?.status, 'running');
 });
 
-for (const delayedCommand of [false, true]) test(`OpenCode reports a rejected approval with its command, keeps the session alive, and treats a later bare shutdown as server death (${delayedCommand ? 'delayed command' : 'known command'})`, async (t) => {
-  const root = await tempProject(t);
-  const fake = await fakeOpenCode(t);
-  const { discovery } = await projectHub(t, root, fake.env);
-  const ui = await connectUi(t, discovery);
-  await ui.request({ type: 'subscribe' });
-  const launched = await launch(ui, 'impl', { role: 'coordinator', model: 'opencode/fake-paid' });
-  await clauseAnswered(ui, 'impl');
-  await presentAs(ui, 'impl', 'idle');
-  if (delayedCommand) await api(launched, root, 'POST', '/test/message', { paused: true });
-  await sendGeneral(ui, 'needs approval: shell approval');
-  if (delayedCommand) await presentAs(ui, 'impl', 'waiting for approval');
-  else await eventually('full shell command appears', () => stateEvents(ui, 'impl').some(e => e.approvalCommand === 'touch approved && echo done') ? true : undefined);
-  const pending = await api(launched, root, 'GET', `/api/session/${launched.harnessSessionId}/permission`) as { data: Array<{ id: string }> };
-  await api(launched, root, 'POST', `/api/session/${launched.harnessSessionId}/permission/${pending.data[0]?.id}/reply`, { decision: 'reject' });
-  if (delayedCommand) {
-    await eventually('the rejection report is recovering the command', async () => {
-      const result = await api(launched, root, 'GET', '/test/message') as { data: { waiting: number } };
-      return result.data.waiting === 2 ? true : undefined;
-    });
-    await api(launched, root, 'POST', '/test/message', { paused: false });
-  }
-  const expected = 'impl [Coordinator]: its turn failed: Approval rejected: touch approved && echo done';
-  await ui.waitFor(f => f.type === 'message' && (f.message as { kind?: string; text: string }).kind === 'turn-failed' && (f.message as { text: string }).text === expected);
-  await presentAs(ui, 'impl', 'idle');
-  assert.equal((await status(ui)).harnesses.find(h => h.name === 'impl')?.status, 'running');
-  const events = (await ui.request({ type: 'events.list' })).value as { rows: Array<{ session?: string; text: string }> };
-  assert.ok(events.rows.some(e => e.session === 'impl' && e.text === expected));
-  await sendGeneral(ui, 'continue after rejection');
-  await replyTo(ui, 'impl', 'pong: continue after rejection');
-  await presentAs(ui, 'impl', 'idle');
-  await sendGeneral(ui, 'bare shutdown');
-  await eventually('bare shutdown is server death', async () => {
-    const process = (await status(ui)).harnesses.find(h => h.name === 'impl');
-    return process?.status === 'exited' ? process : undefined;
-  });
-});
-
-test('OpenCode failure attribution follows delivered inbox items when two idle admissions queue separate turns', async (t) => {
-  const root = await tempProject(t);
-  const fake = await fakeOpenCode(t);
-  const { discovery } = await projectHub(t, root, { ...fake.env, FAKE_OPENCODE_START_DELAY_MS: '1000' });
-  const ui = await connectUi(t, discovery);
-  await ui.request({ type: 'subscribe' });
-  const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator' });
-  const sender = await spawnSpoke({ cwd: root, discover: true, name: 'sender', role: 'reviewer' });
-  t.after(async () => { await coord.close(); await sender.close(); });
-  await coord.waitForPresence(['coord']);
-  await sender.waitForPresence(['sender']);
-  await coord.waitForEvent((e) => e.params.meta?.kind === 'role');
-  await sender.waitForEvent((e) => e.params.meta?.kind === 'role');
-  const launched = await launch(ui, 'impl', { role: 'implementer' });
-  await eventually('clause turn ended', () => stateEvents(ui, 'impl').some((e) => e.state === 'busy') && stateEvents(ui, 'impl').at(-1)?.state === 'idle' ? true : undefined);
-  await coord.call('send', { to: ['impl'], text: 'first queued turn succeeds' });
-  await sender.call('send', { to: ['impl'], text: 'fail this turn' });
-  const expected = 'impl [Implementer]: its turn failed: Upstream request failed: Endpoint is unavailable';
-  await sender.waitForEvent((e) => e.params.content.includes(expected));
-  assert.equal(coord.events.some((e) => e.params.content.includes(expected)), false, 'the sender of the successful first turn gets no failure note');
-  const prompts = (await fake.prompts(launched.harnessSessionId as string)).split('\n').filter((line) => line.startsWith('prompt '));
-  assert.match(prompts[1] as string, /^prompt queue:/);
-  assert.match(prompts[2] as string, /^prompt queue \(running\):/);
-});
-
-test('OpenCode forgets prior execution inputs when completion is missed during an SSE outage', async (t) => {
-  const root = await tempProject(t);
-  // Keep the turn running while the test disconnects SSE, so only recovery discovers its completion.
-  const fake = await fakeOpenCode(t, { turnMs: 1000 });
-  const { discovery } = await projectHub(t, root, fake.env);
-  const ui = await connectUi(t, discovery);
-  await ui.request({ type: 'subscribe' });
-  const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator' });
-  const sender = await spawnSpoke({ cwd: root, discover: true, name: 'sender', role: 'reviewer' });
-  t.after(async () => { await coord.close(); await sender.close(); });
-  await coord.waitForPresence(['coord']);
-  await sender.waitForPresence(['sender']);
-  const launched = await launch(ui, 'impl', { role: 'implementer' });
-  await eventually('clause turn ended', () => stateEvents(ui, 'impl').some((e) => e.state === 'busy') && stateEvents(ui, 'impl').at(-1)?.state === 'idle' ? true : undefined);
-  await coord.call('send', { to: ['impl'], text: 'successful turn before outage' });
-  await presentAs(ui, 'impl', 'busy');
-  await api(launched, root, 'POST', '/test/stream', { paused: true });
-  await eventually('execution completed while stream paused', async () => {
-    const active = await api(launched, root, 'GET', '/api/session/active') as { data: Record<string, unknown> };
-    return Object.keys(active.data).length === 0 ? true : undefined;
-  });
-  await api(launched, root, 'POST', '/test/stream', { paused: false });
-  await presentAs(ui, 'impl', 'idle'); // reconnect snapshot, not the missed completion
-  await sender.call('send', { to: ['impl'], text: 'fail this turn' });
-  const expected = 'impl [Implementer]: its turn failed: Upstream request failed: Endpoint is unavailable';
-  await sender.waitForEvent((e) => e.params.content.includes(expected));
-  assert.equal(coord.events.some((e) => e.params.content.includes(expected)), false);
-});
-
 test('a message sent while the session works steers the running turn; one sent while idle is queued', async (t) => {
   const root = await tempProject(t);
   // Suppress polling while SSE outage and stream recovery determine the observed state.
@@ -416,96 +327,6 @@ test('a message sent while the session works steers the running turn; one sent w
   // one turn answered both: busy once, then idle
   const states = stateEvents(ui, 'impl').slice(clauseTurn).map((e) => e.state);
   assert.deepEqual(states.slice(states.indexOf('busy')), ['busy', 'idle']);
-});
-
-test('OpenCode shell approval displays only the referenced command and clears it after the reply', async (t) => {
-  const root = await tempProject(t);
-  const fake = await fakeOpenCode(t);
-  const { discovery } = await projectHub(t, root, fake.env);
-  const ui = await connectUi(t, discovery);
-  await ui.request({ type: 'subscribe' });
-  const launched = await launch(ui, 'impl', { role: 'coordinator' });
-  await clauseAnswered(ui, 'impl');
-  await presentAs(ui, 'impl', 'idle');
-  await sendGeneral(ui, 'this one needs approval: shell approval');
-  await presentAs(ui, 'impl', 'waiting for approval');
-  const event = await ui.waitFor(f => f.type === 'session.state' && f.session === 'impl' && f.approvalCommand === 'touch approved && echo done');
-  assert.equal(event.state, 'waiting for approval');
-  const rows = (await ui.request({ type: 'session.list' })).value as { processes: Array<{ name: string; approvalCommand?: string }> };
-  assert.equal(rows.processes.find(p => p.name === 'impl')?.approvalCommand, 'touch approved && echo done');
-  assert.doesNotMatch(JSON.stringify(stateEvents(ui, 'impl')), /private-|wrong command/);
-  const pending = await api(launched, root, 'GET', `/api/session/${launched.harnessSessionId}/permission`) as { data: Array<{ id: string }> };
-  await api(launched, root, 'POST', `/api/session/${launched.harnessSessionId}/permission/${pending.data[0]?.id}/reply`, { decision: 'once' });
-  await presentAs(ui, 'impl', 'idle');
-  const cleared = (await ui.request({ type: 'session.list' })).value as { processes: Array<{ approvalCommand?: string }> };
-  assert.equal(cleared.processes[0]?.approvalCommand, undefined);
-  assert.ok(stateEvents(ui, 'impl').filter(e => e.state !== 'waiting for approval').every(e => e.approvalCommand === undefined));
-
-  const nextEpisode = stateEvents(ui, 'impl').length;
-  await sendGeneral(ui, 'this one needs approval: shell approval without source');
-  await presentAs(ui, 'impl', 'waiting for approval');
-  const fallback = (await ui.request({ type: 'session.list' })).value as { processes: Array<{ approvalCommand?: string }> };
-  assert.equal(fallback.processes[0]?.approvalCommand, 'shell', 'missing command data falls back to the tool name');
-  assert.ok(stateEvents(ui, 'impl').slice(nextEpisode).every(e => e.approvalCommand !== 'touch approved && echo done'));
-  const next = await api(launched, root, 'GET', `/api/session/${launched.harnessSessionId}/permission`) as { data: Array<{ id: string }> };
-  await api(launched, root, 'POST', `/api/session/${launched.harnessSessionId}/permission/${next.data[0]?.id}/reply`, { decision: 'once' });
-  await presentAs(ui, 'impl', 'idle');
-});
-
-test('OpenCode restores a pending shell command from the permission snapshot after SSE misses its request', async (t) => {
-  const root = await tempProject(t);
-  const fake = await fakeOpenCode(t);
-  const { discovery } = await projectHub(t, root, fake.env);
-  const ui = await connectUi(t, discovery);
-  await ui.request({ type: 'subscribe' });
-  const launched = await launch(ui, 'impl', { role: 'coordinator' });
-  await clauseAnswered(ui, 'impl');
-  await presentAs(ui, 'impl', 'idle');
-  await api(launched, root, 'POST', '/test/stream', { paused: true });
-  await sendGeneral(ui, 'this one needs approval: shell approval');
-  const pending = await eventually('permission raised while stream is down', async () => {
-    const result = await api(launched, root, 'GET', `/api/session/${launched.harnessSessionId}/permission`) as { data: Array<{ id: string }> };
-    return result.data[0];
-  });
-  await api(launched, root, 'POST', '/test/stream', { paused: false });
-  await ui.waitFor(f => f.type === 'session.state' && f.session === 'impl' && f.approvalCommand === 'touch approved && echo done');
-  const rows = (await ui.request({ type: 'session.list' })).value as { processes: Array<{ approvalCommand?: string }> };
-  assert.equal(rows.processes[0]?.approvalCommand, 'touch approved && echo done');
-  assert.doesNotMatch(JSON.stringify(stateEvents(ui, 'impl')), /private-|wrong command/);
-  await api(launched, root, 'POST', `/api/session/${launched.harnessSessionId}/permission/${pending.id}/reply`, { decision: 'once' });
-  await presentAs(ui, 'impl', 'idle');
-});
-
-test('OpenCode ignores a late command lookup after its approval ends and another approval begins', async (t) => {
-  const root = await tempProject(t);
-  const fake = await fakeOpenCode(t);
-  const { discovery } = await projectHub(t, root, fake.env);
-  const ui = await connectUi(t, discovery);
-  await ui.request({ type: 'subscribe' });
-  const launched = await launch(ui, 'impl', { role: 'coordinator' });
-  await clauseAnswered(ui, 'impl');
-  await presentAs(ui, 'impl', 'idle');
-  await api(launched, root, 'POST', '/test/message', { paused: true });
-  await sendGeneral(ui, 'this one needs approval: shell approval');
-  await presentAs(ui, 'impl', 'waiting for approval');
-  await eventually('command lookup held', async () => {
-    const result = await api(launched, root, 'GET', '/test/message') as { data: { waiting: number } };
-    return result.data.waiting > 0 ? true : undefined;
-  });
-  const pending = await api(launched, root, 'GET', `/api/session/${launched.harnessSessionId}/permission`) as { data: Array<{ id: string }> };
-  await api(launched, root, 'POST', `/api/session/${launched.harnessSessionId}/permission/${pending.data[0]?.id}/reply`, { decision: 'once' });
-  await presentAs(ui, 'impl', 'idle');
-  await sendGeneral(ui, 'this edit needs approval');
-  await presentAs(ui, 'impl', 'waiting for approval');
-  await eventually('both lookups held', async () => {
-    const result = await api(launched, root, 'GET', '/test/message') as { data: { waiting: number } };
-    return result.data.waiting === 2 ? true : undefined;
-  });
-  await api(launched, root, 'POST', '/test/message', { paused: false });
-  const edit = await api(launched, root, 'GET', `/api/session/${launched.harnessSessionId}/permission`) as { data: Array<{ id: string }> };
-  await api(launched, root, 'POST', `/api/session/${launched.harnessSessionId}/permission/${edit.data[0]?.id}/reply`, { decision: 'once' });
-  await presentAs(ui, 'impl', 'idle');
-  assert.ok(stateEvents(ui, 'impl').every(e => e.approvalCommand !== 'touch approved && echo done'), 'the answered shell command must not reach the next waiting episode');
 });
 
 test('a pending permission is waiting for approval within one event, and the reply brings the turn back; a form is waiting for human', async (t) => {
@@ -573,8 +394,6 @@ test('a killed OpenCode server: the state turns unknown and the hub logs it once
   const logged = await exitLogLines();
   assert.equal(logged.length, 1, 'one log event for the crash');
   assert.match(logged[0] as string, /"session":"impl"/);
-  await sleep(100);
-  assert.equal((await exitLogLines()).length, 1, 'still one log event after settling');
 
   // resume with relaunch: a new server on the same session, which the old messages reach
   const resumed = (await ui.request({ type: 'session.resume', session: 'impl', relaunch: true }, 30_000)).value as { found: boolean; process: Harness };
@@ -585,6 +404,7 @@ test('a killed OpenCode server: the state turns unknown and the hub logs it once
   const id = await sendGeneral(ui, 'are you back?');
   await ui.waitFor((f) => f.type === 'delivery' && f.message === id && f.stage === 'injected', 15_000);
   await replyTo(ui, 'impl', 'pong: are you back?');
+  assert.equal((await exitLogLines()).length, 1, 'one crash event after the relaunched server replies');
 });
 
 test('after a hub restart, resume re-finds the OpenCode server and session through the process table and the event stream goes on', async (t) => {
@@ -617,47 +437,6 @@ test('after a hub restart, resume re-finds the OpenCode server and session throu
   await replyTo(ui2, 'impl', 'pong: still there?');
   await presentAs(ui2, 'impl', 'idle');
   assert.ok(stateEvents(ui2, 'impl').some((e) => e.state === 'busy' && e.source === 'sse'), 'busy from the stream after the restart');
-});
-
-
-test('a shared artifact injected into OpenCode names its id and durable path in the envelope', async (t) => {
-  const root = await tempProject(t);
-  const fake = await fakeOpenCode(t);
-  const { discovery } = await projectHub(t, root, fake.env);
-  const ui = await connectUi(t, discovery);
-  await ui.request({ type: 'subscribe' });
-  const launched = await launch(ui, 'impl', { role: 'coordinator' });
-  await clauseAnswered(ui, 'impl');
-  await presentAs(ui, 'impl', 'idle');
-  const artifactResult = await ui.request({ type: 'artifact.create', kind: 'diagram', title: 'Merge flow', content: 'graph TD; A-->B', topic: 'general' });
-  assert.equal(artifactResult.ok, true, artifactResult.error);
-  const artifact = (artifactResult.value as { artifact: { id: string; path: string } }).artifact;
-  await eventually('artifact envelope in OpenCode', async () => {
-    const log = await fake.prompts(launched.harnessSessionId as string);
-    return log.includes(`artifact_id="${artifact.id}"`) && log.includes(`artifact_path="${artifact.path}"`) ? true : undefined;
-  });
-});
-
-
-test('a opencode Lead receives its epic claim, role clause and direct node address', async t => {
-  const root = await tempProject(t);
-  const fake = await fakeOpenCode(t);
-  const { discovery } = await projectHub(t, root, fake.env);
-  const ui = await connectUi(t, discovery);
-  const created = await ui.request({ type: 'task.create', title: 'Led epic', kind: 'epic' });
-  assert.equal(created.ok, true, created.error);
-  const id = (created.value as { item: { id: string } }).item.id;
-  const launched = await launch(ui, 'lead-1', { role: 'lead', item: id });
-  const sent = await ui.request({ type: 'topic.send', topic: 'general', text: `@lead ${id} explain the epic` });
-  assert.equal(sent.ok, true, sent.error);
-  const log = await eventually('Lead clause and node message reach the native harness', async () => {
-    const log = await fake.prompts(launched.harnessSessionId!);
-    return log.includes('you hold the role Lead') && log.includes('explain the epic') ? log : undefined;
-  });
-  assert.match(log, /you hold the role Lead/);
-  const viewed = await ui.request({ type: 'task.view', item: id });
-  assert.equal(viewed.ok, true, viewed.error);
-  assert.equal((viewed.value as { item: { claim: { session: string } } }).item.claim.session, 'lead-1');
 });
 
 // T-304: a missing native conversation needs explicit consent to launch fresh.
@@ -716,53 +495,4 @@ for (const fallback of [false, true]) test(`OpenCode role instructions are opt-i
     await eventually('revocation replaces the old instruction', async () => (await entries())[0]?.value.includes('no longer holds') || undefined);
     assert.equal((await entries()).length, 1);
   }
-});
-
-
-test('OpenCode removes an installed instruction before message fallback on role change and revocation', async t => {
-  const root = await tempProject(t);
-  const fake = await fakeOpenCode(t);
-  const { discovery } = await projectHub(t, root, { ...fake.env, CLAND_OPENCODE_ROLE_INSTRUCTIONS: '1' });
-  const ui = await connectUi(t, discovery);
-  const h = await launch(ui, 'impl-transition', { role: 'implementer', brief: 'Build the synthetic transition brief.' });
-  const path = `/api/experimental/session/${h.harnessSessionId}/instructions/entries`;
-  const entries = async () => (await api(h, root, 'GET', path) as { data: Array<{ key: string; value: string }> }).data;
-  await eventually('initial instruction installed', async () => (await entries())[0]?.value.includes('you hold the role Implementer') || undefined);
-  await writeFile(join(fake.home, 'fail-instructions'), 'PUT unavailable');
-  assert.equal((await ui.request({ type: 'role.set', session: h.name, role: 'reviewer' })).ok, true);
-  await eventually('changed role reaches message fallback', async () => (await fake.prompts(h.harnessSessionId!)).includes('you hold the role Reviewer') || undefined);
-  assert.deepEqual(await entries(), [], 'fallback cannot retain the previous durable role');
-  await rm(join(fake.home, 'fail-instructions'));
-  assert.equal((await ui.request({ type: 'role.set', session: h.name, role: 'implementer' })).ok, true);
-  await eventually('instruction path restored', async () => (await entries())[0]?.value.includes('you hold the role Implementer') || undefined);
-  await writeFile(join(fake.home, 'fail-instructions'), 'PUT unavailable');
-  assert.equal((await ui.request({ type: 'role.clear', session: h.name })).ok, true);
-  await eventually('revocation reaches message fallback', async () => (await fake.prompts(h.harnessSessionId!)).includes('no longer holds') || undefined);
-  assert.deepEqual(await entries(), [], 'fallback cannot retain the revoked durable role');
-});
-
-test('OpenCode refuses role fallback acknowledgement until deletion of the installed instruction succeeds', async t => {
-  const root = await tempProject(t);
-  const fake = await fakeOpenCode(t);
-  const { discovery } = await projectHub(t, root, { ...fake.env, CLAND_OPENCODE_ROLE_INSTRUCTIONS: '1' });
-  const ui = await connectUi(t, discovery);
-  const h = await launch(ui, 'impl-cleanup', { role: 'implementer', brief: 'Build the synthetic cleanup brief.' });
-  const path = `/api/experimental/session/${h.harnessSessionId}/instructions/entries`;
-  const entries = async () => (await api(h, root, 'GET', path) as { data: Array<{ key: string; value: string }> }).data;
-  await eventually('initial instruction installed', async () => (await entries())[0]?.value.includes('you hold the role Implementer') || undefined);
-  await writeFile(join(fake.home, 'fail-instructions'), 'PUT unavailable');
-  await writeFile(join(fake.home, 'fail-instructions-delete'), 'DELETE unavailable');
-  assert.equal((await ui.request({ type: 'role.clear', session: h.name })).ok, true);
-  const records = async () => (await hubLog(root, ui)).trim().split('\n').map(line => JSON.parse(line) as { event: string; session?: string; id?: string });
-  const failed = await eventually('revocation injection remains unconfirmed', async () => (await records()).find(e => e.event === 'inject-unconfirmed' && e.session === h.name));
-  assert.ok(failed.id);
-  assert.ok(!(await records()).some(e => e.event === 'injected' && e.id === failed.id));
-  assert.match((await entries())[0]!.value, /you hold the role Implementer/);
-  assert.doesNotMatch(await fake.prompts(h.harnessSessionId!), /no longer holds/);
-  await rm(join(fake.home, 'fail-instructions-delete'));
-  // A completed ordinary turn supplies the idle observation that retries an unconfirmed delivery.
-  await sendGeneral(ui, 'Retry the pending cleanup after this turn.', [h.name]);
-  await eventually('revocation can fall back after cleanup recovers', async () => (await fake.prompts(h.harnessSessionId!)).includes('no longer holds') || undefined);
-  assert.deepEqual(await entries(), []);
-  await eventually('the retried revocation is acknowledged', async () => (await records()).some(e => e.event === 'injected' && e.id === failed.id) || undefined);
 });

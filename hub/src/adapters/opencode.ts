@@ -30,6 +30,7 @@ import { addUsage } from './usage.ts';
 import { envelope, envelopeIds, type AdapterHost, type Capabilities, type HarnessAdapter, type HarnessProcess, type Interpretation, type ResumeResult, type SpawnRequest } from './contract.ts';
 import { formatModel, KNOWN_GOOD_FREE_MODELS, OpenCodeClient, parseModel, pickFreeModel, type ModelRef, type PermissionRequest } from './opencode/client.ts';
 import { prepareFiles, readPassword, serverFiles, startServer, type ServerFiles } from './opencode/server.ts';
+import { realClock, type Clock, type ClockTimer } from '../hub/clock.ts';
 import { SessionTracker, type Change } from './opencode/state.ts';
 import { processAlive } from './processes.ts';
 import { endProcess } from '../system-processes.ts';
@@ -61,6 +62,8 @@ export const OPENCODE_CAPABILITIES: Capabilities = {
 };
 
 export type OpenCodeOptions = {
+  /** Watch scheduling; native HTTP and process-lifecycle deadlines remain real. */
+  clock?: Clock;
   /** Experiment: deliver hub role clauses as a replaceable instruction entry. Default false. */
   roleInstructions?: boolean;
   /** Grace before a verified process tree is killed. */
@@ -96,6 +99,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
   readonly capabilities = OPENCODE_CAPABILITIES;
   readonly clauseAtSpawn = OPENCODE_CLAUSE_AT_SPAWN;
   readonly #host: AdapterHost;
+  readonly #clock: Clock;
   readonly #recoveries: FailedLaunches;
   readonly #bin: string;
   readonly #pollMs: number;
@@ -109,12 +113,13 @@ export class OpenCodeAdapter implements HarnessAdapter {
   readonly #watched = new Map<string, Watch>();
   readonly #watching = new Map<string, object>();
   readonly #usage = new Map<string, SessionUsage>();
-  #timer: NodeJS.Timeout | null = null;
+  #timer: ClockTimer | null = null;
   #closed = false;
   readonly #stopping = new Set<string>();
 
   constructor(host: AdapterHost, options: OpenCodeOptions = {}) {
     this.#host = host;
+    this.#clock = options.clock ?? realClock;
     this.#roleInstructions = options.roleInstructions ?? false;
     this.#processEnv = options.env ?? process.env;
     this.#recoveries = new FailedLaunches(host.log, 1000, host.durableLaunchRecovery);
@@ -325,7 +330,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
     this.#watched.set(p.sessionId, w);
     void this.#subscribe(w);
     if (!this.#timer) {
-      this.#timer = setInterval(() => this.#checkPids(), this.#pollMs);
+      this.#timer = this.#clock.setInterval(() => this.#checkPids(), this.#pollMs);
       this.#timer.unref();
     }
   }
@@ -422,7 +427,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
         this.#gone(w, `pid ${w.process.pid} is gone`);
         return;
       }
-      await new Promise((r) => setTimeout(r, Math.min(2000, 100 * 2 ** Math.min(failures, 5))));
+      await new Promise<void>((r) => this.#clock.setTimeout(r, Math.min(2000, 100 * 2 ** Math.min(failures, 5))));
     }
   }
 
@@ -445,7 +450,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
       this.#watched.delete(sessionId);
     }
     if (this.#watched.size === 0 && this.#timer) {
-      clearInterval(this.#timer);
+      this.#clock.clearInterval(this.#timer);
       this.#timer = null;
     }
   }
@@ -509,7 +514,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
     this.#recoveries.close();
     this.#closed = true;
     this.#watching.clear();
-    if (this.#timer) clearInterval(this.#timer);
+    if (this.#timer) this.#clock.clearInterval(this.#timer);
     this.#timer = null;
     for (const w of this.#watched.values()) w.abort.abort();
     this.#watched.clear();

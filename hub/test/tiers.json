@@ -123,9 +123,13 @@
     "hub/test/name-reservation.test.ts": "T3",
     "hub/test/names.test.ts": "T3",
     "hub/test/open.test.ts": "T3",
-    "hub/test/opencode-adapter.test.ts": "T3",
+    "hub/test/opencode-adapter.test.ts": {
+      "tier": "T3",
+      "contract": "opencode"
+    },
     "hub/test/opencode-check.test.ts": "T3",
     "hub/test/opencode-database.test.ts": "T3",
+    "hub/test/opencode-native.test.ts": "T2",
     "hub/test/orphan-servers-perf.test.ts": "T4",
     "hub/test/orphan-servers.test.ts": "T3",
     "hub/test/orphan-sweep-lock.test.ts": "T3",
