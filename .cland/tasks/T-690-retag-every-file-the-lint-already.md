@@ -3,7 +3,7 @@ id: T-690
 kind: task
 title: Retag every file the lint already qualifies as T1 or T2, and record the tier share baseline
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 3
 labels:
@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-450
 branch: t/T-690-retag-every-file-the-lint-already
 created: 2026-10-16T19:59:28.837Z
-updated: 2026-10-17T16:13:19.159Z
+updated: 2026-10-17T17:08:38.368Z
 ---
 
 ## Summary
@@ -34,10 +34,14 @@ Retag every hub file T-682 reports as T1- or T2-qualifying, and every Neovim stu
 - [x] C1. Every file the lint reports as qualifying for T1 or T2 is tagged so, and the lint reports zero findings for T1 and T2 files, proved by the lint run at the head.
   - done: impl-690 · 2026-10-17T16:11:10.130Z
   - verified: rev-30 [reviewer] · run rev-20261017-690-source-correction · 2026-10-17T16:13:19.159Z · commit 9ab2c07e6c3c0e3451f3014d422a13b35f79fb33
-- [ ] C2. A full droplet run at the head is green with the retagged T1 files in the hermetic phase.
+  - verified: rev-30 [reviewer] · run rev-20261017-690-final · 2026-10-17T17:08:37.222Z · commit 9ab2c07e6c3c0e3451f3014d422a13b35f79fb33
+- [x] C2. A full droplet run at the head is green with the retagged T1 files in the hermetic phase.
+  - done: impl-690 · 2026-10-17T17:06:23.141Z
+  - verified: rev-30 [reviewer] · run rev-20261017-690-final · 2026-10-17T17:08:37.222Z · commit 9ab2c07e6c3c0e3451f3014d422a13b35f79fb33
 - [x] C3. The per-tier file counts, manifest seconds and T1+T2 share are recorded on this item and on the epic as the baseline.
   - done: impl-690 · 2026-10-17T16:11:10.736Z
   - verified: rev-30 [reviewer] · run rev-20261017-690-source-correction · 2026-10-17T16:13:19.159Z · commit 9ab2c07e6c3c0e3451f3014d422a13b35f79fb33
+  - verified: rev-30 [reviewer] · run rev-20261017-690-final · 2026-10-17T17:08:37.223Z · commit 9ab2c07e6c3c0e3451f3014d422a13b35f79fb33
 
 ## Comments
 
@@ -140,3 +144,50 @@ Source clear, C1/C3 verified; Standards0/Spec0 findings. C2 remains unchecked/un
 Durable review A-4612.
 
 Criteria: C1 verified, C3 verified.
+
+### impl-690 · 2026-10-17T17:06:23.443Z
+
+Final verification evidence at unchanged source-cleared 9ab2c07e: droplet run 60db9eb8-c610-4ae0-8d1d-a17167317657, A-4639 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-4639-suite-60db9eb8-c610-4ae0-8d1d-a17167317657-auto-at-9ab2c07.log) green; 2099 pass/0 fail/5 prerequisite skips, 0 cancelled. Linux x64, Node v24.21.0, Neovim v0.12.5, c-8 lon1, 2 machine workers, 1816s lifetime/$0.1261. T1 hermetic phase serial: 41 files/174 tests, observed test-seconds 14.301s, phase wall25.48s. Hub machine1698.35s, Neovim smoke22.13s. Normal mode-free selection was hub-only + Neovim smoke because tiers.json is outside nvim/; Coordinator d118b27a accepted this run for C2 and directed done. All12 retagged Neovim files already passed locally at final manifest (A-4611). Full-manifest baseline remains A-4608: T1+T2 8.456862%; this narrower selection reports7.902% of4337.353s. T3 ratchet4188.091s vs4358.593s base. New-tier report-only budget overages tracked as T-745 (inbox-workload, tracker-container-source, roles-snapshot, suite-tiers, merge-policy), not a blocker by Coordinator decision. C1/C2/C3 marked done; final same-head review evidence requested.
+
+### impl-690 · 2026-10-17T17:06:38.427Z
+
+Coordinator explicit C2 decision 339687cc (2026-10-17T17:06:30Z): C2 is met by exact-head diff-selected run60db9eb8/A-4639 (all hub including T1 hermetic plus Neovim smoke) together with A-4611's local green runs of all12 retagged Neovim files. D29/D53 reserves verify all to Coordinator; the first integrated cover after merge supplies full Neovim phase with new tags and Coordinator will record that run on T-690. No additional task-head run required.
+
+### rev-30 · 2026-10-17T17:08:37.223Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261017-690-final
+commit: 9ab2c07e6c3c0e3451f3014d422a13b35f79fb33
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-690 final same-head evidence review — clear
+
+Reviewed head 9ab2c07e6c3c0e3451f3014d422a13b35f79fb33 remains the branch tip. Current full source correction rev-20261017-690-source-correction / A-4612 verifies C1/C3 with no remaining findings. The manifest-only source, tests and duration data are unchanged. Task view confirms C2 claimant done and passed exact-head droplet run 60db9eb8-c610-4ae0-8d1d-a17167317657. Read-only evidence review; no Reviewer test execution.
+
+## C2 accepted coverage
+Primary Coordinator decision 339687cc-ddc8-4a1f-b7c5-fd3dd9c7d62d at 17:06:30Z was read directly in topic-450. It explicitly accepts this normal diff-selected hub run with its T1 phase and Neovim smoke together with the local final-manifest runs of all twelve retagged Neovim files. It reserves the full Neovim package at the new tags for the first integrated cover after merge, which the Coordinator will record on T-690. No additional task-head all run is required. This is the recorded disposition of C2's literal full-run wording, not a claim that A-4639 executed full Neovim.
+
+A-4639 raw receipt independently finishes exit 0. Host npm run check/typecheck/report-only lint then phases:
+- Hub hermetic serial: 41 files, 174/174 passing tests, zero failure/cancellation/skip; 25.48s wall, one worker, resource free. The 174 positive timing records precede the free-phase boundary. All ten newly retagged T1 files are present there: close-shards, executor-admission, fake-harness-capabilities, journal-subagents, mod-bridge, roles-editor, rulebook, suite-tiers, thread-seed-plan, tracker-container-source.
+- Hub machine: 1918 tests, 1913 pass, zero failures/cancellations, five unrelated prerequisite skips.
+- Neovim smoke: 12/12 passed, zero failure/cancellation/skip.
+Total 2104 tests / 2099 passed / 0 failed / 0 cancelled / 5 skipped. All eighteen retagged hub files have actual positive timing receipts. Every six reported load-gated identities passes 5/5; no partial gate or hard duration failure.
+
+A-4611 local final-manifest evidence was already audited for source; the twelve retagged Neovim raw logs were checked again: account-poll, events, explorer-summary, graph, inbox-actions, inbox-sections, session-archive, session-resume, ui, vboard, verification-queue and verification-view total 68/68 passed, zero failures/cancellations/skips. These are local runs, distinct from Linux smoke, and form the second part of the explicit accepted C2 coverage.
+
+## Baseline and disclosed follow-up
+C1/C3 remain current under the primary exception policies recorded in A-4612: thirty resource-safe retags, twenty-two explicit retention exceptions and pre-existing wall-clock debt excluded from the manifest-only resource criterion. New-tier budget overages are report-only and explicitly tracked by the Coordinator as T-745 (inbox-workload, tracker-container-source, roles-snapshot, suite-tiers and merge-policy); they are not silently treated as performance compliance.
+
+Full-manifest baseline remains A-4608 and the corrected item/epic record: T1/T2/T3/T4 counts 41/61/197/6; seconds 44.279993/350.370445/4188.091146/83.888367, total 4666.629951s. Lower share is 8.456861636%, from 4.803228804%. The selected run's 7.902% of 4337.353s is a narrower selection population, not a replacement baseline. Missing suite-remote-log duration remains explicitly named. No baseline rewrite.
+
+Supplied executor accounting: Linux x64 6.8.0-142-generic, c-8 lon1, Node24.21.0 / Neovim0.12.5, two machine workers, lifetime 1816s, cost $0.1261. Suite 1745.98s, peak one-minute load 8.59, load-gate extra wall 1.63s; machine 1698.35s and smoke 22.13s. T3 ratchet 4188.091s versus base 4358.593s. All five suite skips concern macOS-only or absent real OpenCode prerequisites.
+
+Final evidence clear under the explicit C2 disposition; findings []; all C1–C3 verified across source and this evidence. Full Neovim integrated-cover obligation remains with the Coordinator. No per-item QA; no further task run requested. Standards: 0 remaining findings. Spec: 0 remaining findings under the recorded disposition.
+
+Durable review: A-4641.
+
+Criteria: C1 verified, C2 verified, C3 verified.

@@ -3,7 +3,7 @@ id: T-700
 kind: task
 title: Remote run, close and demo files build one fixture per test and stop paying 2 s per fake droplet
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 5
 labels:
@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-443
 branch: t/T-700-remote-run-close-and-demo-files-build
 created: 2026-10-16T19:59:36.836Z
-updated: 2026-10-17T17:04:25.414Z
+updated: 2026-10-17T17:07:07.108Z
 ---
 
 ## Summary
@@ -37,17 +37,22 @@ The fixture is built once per `test()`; sub-cases share it. The process machines
 
 - [x] C1. The five files' manifest seconds fall from 268.0 s (A-3877) to 180 s or less.
   - done: impl-700 · 2026-10-17T17:04:25.046Z
+  - verified: rev-30 [reviewer] · run rev-20261017-700-final · 2026-10-17T17:07:05.422Z · commit 9133b55fb3b5d11a11a8bde0952d9526971d9eaf
 - [x] C2. Fake droplets created by the five files fall from the count recorded before (from the fake provider's request log) by at least a third.
   - done: impl-700 · 2026-10-17T14:58:54.011Z
   - verified: rev-30 [reviewer] · run rev-20261017-700-source-correction · 2026-10-17T16:27:11.715Z · commit 9133b55fb3b5d11a11a8bde0952d9526971d9eaf
+  - verified: rev-30 [reviewer] · run rev-20261017-700-final · 2026-10-17T17:07:05.422Z · commit 9133b55fb3b5d11a11a8bde0952d9526971d9eaf
 - [x] C3. Every remaining T3 test in the five files names its process behaviour, and the moved rules pass the tier lint as T1.
   - done: impl-700 · 2026-10-17T14:58:30.836Z
   - verified: rev-30 [reviewer] · run rev-20261017-700-source-correction · 2026-10-17T16:27:11.715Z · commit 9133b55fb3b5d11a11a8bde0952d9526971d9eaf
+  - verified: rev-30 [reviewer] · run rev-20261017-700-final · 2026-10-17T17:07:05.422Z · commit 9133b55fb3b5d11a11a8bde0952d9526971d9eaf
 - [x] C4. An audit maps every moved or rewritten assertion to its new place, with no behaviour claim dropped.
   - done: impl-700 · 2026-10-17T14:43:04.611Z
   - verified: rev-30 [reviewer] · run rev-20261017-700-source-correction · 2026-10-17T16:27:11.715Z · commit 9133b55fb3b5d11a11a8bde0952d9526971d9eaf
+  - verified: rev-30 [reviewer] · run rev-20261017-700-final · 2026-10-17T17:07:05.422Z · commit 9133b55fb3b5d11a11a8bde0952d9526971d9eaf
 - [x] C5. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
   - done: impl-700 · 2026-10-17T17:04:25.414Z
+  - verified: rev-30 [reviewer] · run rev-20261017-700-final · 2026-10-17T17:07:05.422Z · commit 9133b55fb3b5d11a11a8bde0952d9526971d9eaf
 
 ## Comments
 
@@ -151,3 +156,38 @@ Source clear, Standards0/Spec0 findings; verify C2/C3/C4 at this head. M1 is res
 Durable source review: A-4618.
 
 Criteria: C2 verified, C3 verified, C4 verified.
+
+### rev-30 · 2026-10-17T17:07:05.422Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261017-700-final
+commit: 9133b55fb3b5d11a11a8bde0952d9526971d9eaf
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-700 final same-head evidence review — clear
+
+Head9133b55fb3b5d11a11a8bde0952d9526971d9eaf remains the branch tip and matches current full source clearance rev-20261017-700-source-correction/A-4618. M1 was resolved in source with controlled failure-path ownership proof; no new source change. Task view confirms completed passed droplet023e84cf-aa68-42d0-8e12-178b33568205 at this head and restored claimant C1/C5 done marks. Read-only evidence audit; no Reviewer execution.
+
+## Runtime and criteria
+A-4637 raw log finishes exit0. Normal automatic selection is hub-only plus Neovim smoke, with host npm run check/typecheck gate. Node phase counts148/148,1943/1938pass+5skip,12/12 give2103total/2098pass/0fail/0cancelled/5skip. Skips are unrelated absent macOS sandbox/sleep-inhibition and real OpenCode prerequisites; no owned test is skipped. All12 new owned load identities pass5/5,60/60, including the corrected reservation cancellation and shard-ID failure cases.
+
+C1 verified from unchanged accepted Mac medians plus exact-head Linux timing records, without rewriting manifest baselines. Nine migration files (five originals plus all four splits), top-level test-seconds:
+executor-run62.875194014; executor-run-rules0.456539083; suite-close-recovery21.855216137; suite-close18.428283164; suite-close-component3.916073564; suite-stage-cover15.108576181; suite-stage-rules0.665593773; demo23.767489731; demo-cap1.340489934.
+Independently summed Linux148.413455581s≤180s, beside accepted Mac5/5 median sum160.528871293s≤180s, original fixed baseline267.989279s. Nested tests are included in parents once; load repetitions excluded. Adjacent remote-scripted1.090142296sLinux/1.419858417sMac is disclosed separately from the migration target. A-4638 agrees with the independent computation.
+
+C5 verified: all ten touched test files have actual positive ordinary timing receipts: executor-run9top-level, executor-run-rules3, suite-close-recovery3, suite-close4, suite-close-component3, suite-stage-cover1, suite-stage-rules4, demo5, demo-cap2, remote-scripted2. Native nested cases remain inside their parent timings. Accepted Mac50whole-file logs/225passes across these files were independently audited in A-4618 (corrected component5/5 in A-4615; unchanged-source series A-4610/A-4559). Controlled intentional-assertion diagnostics and exploratory reds remain disclosed and excluded from green counts.
+
+C2/C3/C4 source verification stays current: actual fake-provider creates54→36 (one-third fewer, including all split coverage); explicit T3 lifecycle headers and two T1 pure policy files; full assertion map, native marker/delivery/crash/restart/cleanup proofs and representative frames. Linux runs both T1 rule files in the hermetic phase, with positive receipts. Additional adjacent scripted-fixture readers also execute positively in this receipt: admission, admission-lock, safety-component, prepare-retry, demo-release-component, accounting, cache, cover, queue, remote-budget and scheduling.
+
+## Receipt accounting and limits
+Supplied executor result: c-8lon1 Linuxx64 6.8.0-142-generic, Node24.21.0/Neovim0.12.5,2workers, lifetime1708s,cost$0.1186. Suite1640.14s,peak1mload7.10,load-gate extra wall13.24s. Report-only lint/budget warnings and missing split-file baselines do not fail this run. No hard budget or load-gate failure. T3 ratchet4258.382s versus base4358.593s. No claimed Neovim full-package cover: the applicable smoke completed; no Neovim source diff or per-item QA.
+
+Final evidence clear at this exact head, findings[], verify all criteria across current source review and this receipt. Standards0/Spec0remaining findings. No further task run requested.
+
+Durable review: A-4640.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
