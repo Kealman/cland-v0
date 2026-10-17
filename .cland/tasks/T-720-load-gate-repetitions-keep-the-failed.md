@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-418
 branch: t/T-720-load-gate-repetitions-keep-the-failed
 created: 2026-10-16T20:17:40.486Z
-updated: 2026-10-17T06:15:04.926Z
+updated: 2026-10-17T07:01:57.045Z
 ---
 
 ## Summary
@@ -31,8 +31,10 @@ The load gate keeps, for each failed repetition, the test's assertion message, e
 
 - [x] C1. A planted test that fails one of five load-gate repetitions shows that repetition's assertion message and stack in the durable suite log and the result artifact, proved by a runner test.
   - done: impl-720 · 2026-10-17T06:14:44.458Z
+  - verified: rev-30 [reviewer] · run rev-20261017-720-final · 2026-10-17T06:57:43.127Z · commit 7c117ff93c46fc968496c150d2fc88399315d55f
 - [x] C2. Passing repetitions are still reported only as counts, and the reported diagnostics carry no environment value, proved by the same test file.
   - done: impl-720 · 2026-10-17T05:12:13.290Z
+  - verified: rev-30 [reviewer] · run rev-20261017-720-final · 2026-10-17T06:57:43.127Z · commit 7c117ff93c46fc968496c150d2fc88399315d55f
 
 ## Comments
 
@@ -210,3 +212,59 @@ Earlier assertion, actual sanitized source frame, result summary, remaining repe
 Claimant reports typecheck/tier/allowance lint green and whole runner 20/20 in 26.253 s, including lifecycle 2.904 s at load below 2. This supports the correction; A-4318 remains a failed old-head receipt, not final evidence.
 
 Source clear, no remaining findings. C1/C2 remain unverified pending normal mode-free exact-head droplet verification.
+
+### rev-30 · 2026-10-17T06:57:43.127Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261017-720-final
+commit: 7c117ff93c46fc968496c150d2fc88399315d55f
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence review T-720 at 7c117ff93c46fc968496c150d2fc88399315d55f, unchanged from source correction A-4321 / rev-20261017-720-watchdog-correction. Origin branch and hub verification record match. Completed mode-free droplet 6addb8fc-e546-4f46-bc55-c0f17015e733 / A-4334 exits zero, full hub plus Neovim.
+
+## Standards
+No remaining findings. Source and all four prior finding corrections stand. Read-only receipt audit; no Reviewer execution.
+
+## Spec
+C1 verified: the planted one-of-five nested assertion runner case passes ordinarily (2.933 s) and 5/5 fresh repetitions. Its reviewed assertions retain repetition number, assertion/error/real sanitized source frame, exact diagnostic survival in suiteSummary and all six attempts.
+C2 verified: the same runner case retains count-only passing controls and asserts raw/escaped environment values plus multiline invocation contents are absent. All four pure/reporter tests pass ordinary and 5/5, including receipt-level multiline/escaped redaction while retaining actual frames.
+Coordinator-added timeout scope verified: the live socket case passes ordinary (5.932 s) and 5/5. Its unchanged assertions require timeout status, repetition 1, numeric configured timeout 1000 ms and grace 250 ms, prior assertion/source frame, summary retention, four remaining repetitions and following identity, six attempts and exact worker PID gone. The enclosing fixture bound/allowance no longer substitutes for or relaxes that subject deadline. Both complete touched test files pass.
+
+All six task additions have ordinary passes and 30/30 load repetitions. No owned failure, hard duration-budget failure or emitted outer-suite load failure remains. Prior A-4313/A-4318 remain failed receipts and measurements; neither is substituted for this current green.
+
+Phase totals independently sum to 2471 tests, 2463 passed, zero failed/cancelled, eight skips: free 53/53, machine 2019 pass/5 skip, Neovim 391 pass/3 skip. Host typecheck completes and its candidate-tree receipt is reused remotely. Two machine workers, suite wall 2439.11 s, peak one-minute load 9.12; tier wall and duration-regression notices are report-only. Machine metadata in the hub receipt: Linux x64 c-8 lon1, lifetime 2511 s, cost $0.1744.
+
+Final review clear, C1/C2 verified at this exact head.
+
+Criteria: C1 verified, C2 verified.
+
+### impl-720 · 2026-10-17T07:00:24.966Z
+
+Coordinator-authorized origin/dev merge resolved and pushed as 672630985e22b5d4656b3f10eecc1e6fe8c43a73. Sole selector conflict resolved as T-688 source plus T-720 diagnostic helper in infrastructure forcers; four narrowings preserved. Searched conflicting function identifiers in both test trees; ran matching durations 17/17 (2.314s) and selection 90/90 (23.953s) files once, plus fixed-map narrowing 3/3 (0.081s), serially at load below 6. Typecheck/tier lint pass. Replay A-4337 preserves T-688's ordered 40 landings and modes: nine selected, zero own/historical misses. Requesting resolution-scoped delta review before a fresh exact-head droplet run.
+
+### rev-30 · 2026-10-17T07:01:57.045Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261017-720-merge-delta
+commit: 672630985e22b5d4656b3f10eecc1e6fe8c43a73
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Delta source review T-720 at 672630985e22b5d4656b3f10eecc1e6fe8c43a73, merge parents 7c117ff93c46fc968496c150d2fc88399315d55f and caf9fc074de23025fac90beb9c5415015aa6d7bc. Origin branch matches. Primary Coordinator a5fb58cf authorizes this conflict merge and requires a fresh droplet run after source clearance. Read-only review; no Reviewer execution.
+
+## Standards
+No findings. Sole conflict resolution changes the incoming dev selector by exactly one infrastructure-list entry, hub/src/suite-load-diagnostics.ts. No new tests or waits were authored in the merge. Pinned identifier search independently matches durations.test.ts, suite-selection.test.ts and the replay script, with no Neovim test matches. A-4338 records serial below-6-load matching whole-file checks: durations 17/17, selection 90/90, plus fixed-map selection 3/3, typecheck and tier lint green.
+
+## Spec
+No findings. All T-688 selector code is byte-identical to incoming dev except that diagnostic infrastructure forcer. Harness/process-cleanup forcers and relocated importer handling remain intact; erased declaration-only imports, Neovim importer subsets/cache selection identity, file-covering widening and old-but-mappable coverage remain unchanged. Incoming suite cache and shard transport changes are preserved. Comparing zero-context edits against the shared merge-base independently confirms every other T-720 file retains exactly its previously reviewed changes, including summary retention, serializer/redaction, reporter, external deadline/cleanup and runner/pure regressions.
+
+A-4337 pins this committed selector and replays the same ordered 40 landing identities and modes as accepted T-688 A-4309: nine hub-selected, zero own and zero historical misses. Both use nine ancestral maps; retained history is now 625 logs versus 620, so this is not an identical historical-corpus claim or a measured runtime saving.
+
+Source delta clear with no remaining findings. Parent-head full green A-4334/A-4335 remains valid historical evidence, not a current-head runtime verdict. C1/C2 require the requested fresh normal mode-free exact-head droplet receipt before final verification at this merged head.

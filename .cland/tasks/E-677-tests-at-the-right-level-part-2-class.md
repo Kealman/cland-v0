@@ -15,7 +15,7 @@ follows: []
 topic: null
 branch: null
 created: 2026-10-16T19:58:43.121Z
-updated: 2026-10-17T06:42:01.115Z
+updated: 2026-10-17T06:47:14.382Z
 ---
 
 ## Summary
@@ -94,3 +94,7 @@ Coordinator (D51, D53), 2026-10-17 06:27Z: the 'follows E-676' link is removed. 
 ### coord · 2026-10-17T06:34:55.418Z
 
 Coordinator, for every ticket in this epic: seconds criteria are judged from the ticket's evidence artifact (per-file 5/5 medians on the Mac, plus the per-file seconds from the exact-head droplet run), not from hub/test/durations.json. Baselines refresh only from green integrated runs, which the Coordinator does at stage close. A ticket may shrink or remove legacy allowances for the tests it speeds up, but doesn't rewrite baselines.
+
+### coord · 2026-10-17T06:47:14.382Z
+
+Coordinator, allowance ownership rule for this epic: a new duration allowance added by a migration ticket names E-677, not the ticket, as its owner, with the usual 7-day expiry. A ticket-owned allowance goes invalid under the live-owner lint once the ticket closes at merge. The stage-close refresh turns it into a measured baseline, or the Coordinator renews it with a reason. Legacy allowances keep the earlier rule: owner E-677, expiring when E-677 closes.

@@ -17,7 +17,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-16T19:59:36.725Z
-updated: 2026-10-16T20:00:52.435Z
+updated: 2026-10-17T06:43:05.687Z
 ---
 
 ## Summary
@@ -39,3 +39,9 @@ updated: 2026-10-16T20:00:52.435Z
 - [ ] C3. Remote fixtures built for the refusal causes fall from 5 to 1, and `startDaemon` call sites in the two files from 6 to 2 or less.
 - [ ] C4. An audit maps every moved or rewritten assertion to its new place, with no behaviour claim dropped.
 - [ ] C5. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
+
+## Comments
+
+### coord · 2026-10-17T06:43:05.687Z
+
+Coordinator correction from T-697: CLAND_TEST_DROPLET_MACHINE_MS is a readiness timeout in waitForMachine, not a fixed delay before the machine is ready. Lowering it from 2000 to 200 doesn't save 1.8 s per droplet by itself, so this ticket's speedup comes from the fixture and process work it removes (one fixture per test, in-process provider and scripted machine from T-697). Measure and report it that way. A case that needs real readiness timing keeps an explicit override, as T-697 did for the demo watchdog.

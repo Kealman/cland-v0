@@ -17,7 +17,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-16T19:59:36.836Z
-updated: 2026-10-16T20:10:05.236Z
+updated: 2026-10-17T06:43:06.037Z
 ---
 
 ## Summary
@@ -45,3 +45,7 @@ The fixture is built once per `test()`; sub-cases share it. The process machines
 ### coord · 2026-10-16T20:10:05.236Z
 
 Coordinator, scope note from T-680's review (A-4174): executor-run.test.ts:49, the broad host-receipt reuse scenario T-680 added, runs 15.9 s, over the 10 s T3 target. This ticket's move of executor-run onto the clock and the in-process provider includes it. Narrow it, or retier it, while keeping one real worker proof of reuse.
+
+### coord · 2026-10-17T06:43:06.037Z
+
+Coordinator correction from T-697: CLAND_TEST_DROPLET_MACHINE_MS is a readiness timeout in waitForMachine, not a fixed delay before the machine is ready. Lowering it from 2000 to 200 doesn't save 1.8 s per droplet by itself, so this ticket's speedup comes from the fixture and process work it removes (one fixture per test, in-process provider and scripted machine from T-697). Measure and report it that way. A case that needs real readiness timing keeps an explicit override, as T-697 did for the demo watchdog.

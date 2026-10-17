@@ -3,8 +3,9 @@ id: T-706
 kind: task
 title: Production-length waits become test knobs, and perf cases, the full QA case set and harness self-tests move to T4
 state: open
-status: in progress
+status: review
 size: M
+criterion_seq: 6
 labels:
   - v0.1.4
   - verification
@@ -17,7 +18,7 @@ blocked_by: []
 topic: topic-424
 branch: t/T-706-production-length-waits-become-test
 created: 2026-10-16T19:59:37.636Z
-updated: 2026-10-17T06:34:10.460Z
+updated: 2026-10-17T07:17:01.296Z
 ---
 
 ## Summary
@@ -56,10 +57,18 @@ T4 is the soak tier: it runs at occasions and nightly (E-678) and, until then, w
 ## Acceptance criteria
 
 - [ ] C1. The eight files' manifest seconds on the merge path (T1–T3) fall from 499.5 s (A-3877) to 220 s or less, with the moved parts tagged T4.
-- [ ] C2. `hook-bridge.test.ts` still proves exit after the grace with no restart loop, under the knob, and a T1 test fixes the production grace at 60 000 ms.
-- [ ] C3. With `CLAND_TEST_SOAK=1` the differential oracle runs 4 seeds × 25 renders, and without it 2 × 12, proved by a test of the seed plan.
-- [ ] C4. A task diff touching `hub/test/remote-fixture.ts` selects the T4 harness self-tests, proved by a selection test.
-- [ ] C5. An audit maps every moved or merged assertion to its new place and tier, with no behaviour claim dropped.
+- [x] C2. `hook-bridge.test.ts` still proves exit after the grace with no restart loop, under the knob, and a T1 test fixes the production grace at 60 000 ms.
+  - verified: rev-31 [reviewer] · run rev-20261017-706-source-2 · 2026-10-17T07:16:21.458Z · commit 9cf59d5930edc7e6d427d59719150a4e1161c993
+  - done: impl-706 · 2026-10-17T07:17:00.195Z
+- [x] C3. With `CLAND_TEST_SOAK=1` the differential oracle runs 4 seeds × 25 renders, and without it 2 × 12, proved by a test of the seed plan.
+  - verified: rev-31 [reviewer] · run rev-20261017-706-source-2 · 2026-10-17T07:16:21.458Z · commit 9cf59d5930edc7e6d427d59719150a4e1161c993
+  - done: impl-706 · 2026-10-17T07:17:00.498Z
+- [x] C4. A task diff touching `hub/test/remote-fixture.ts` selects the T4 harness self-tests, proved by a selection test.
+  - verified: rev-31 [reviewer] · run rev-20261017-706-source-2 · 2026-10-17T07:16:21.458Z · commit 9cf59d5930edc7e6d427d59719150a4e1161c993
+  - done: impl-706 · 2026-10-17T07:17:01.012Z
+- [x] C5. An audit maps every moved or merged assertion to its new place and tier, with no behaviour claim dropped.
+  - verified: rev-31 [reviewer] · run rev-20261017-706-source-2 · 2026-10-17T07:16:21.458Z · commit 9cf59d5930edc7e6d427d59719150a4e1161c993
+  - done: impl-706 · 2026-10-17T07:17:01.296Z
 - [ ] C6. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify, the T4 files under `CLAND_TEST_SOAK=1`.
 
 ## Comments
@@ -71,3 +80,41 @@ Coordinator: if droplet runs can't carry CLAND_TEST_SOAK=1, C6's droplet half is
 ### impl-706 · 2026-10-17T06:34:10.460Z
 
 Implementation in progress: bridge uses a validated 2s test grace with a T1 60000ms production-default assertion; no-retry mod branch has an in-process proof. Planted smoke hangs use a 2s budget. Orphan status/harness matrices share fixtures, load-gate prerequisite shapes share one file, suite locks use hub plus existing Neovim joint-lock smoke, and owner cleanup retains four mechanism classes. Perf/shipped-QA splits and four T4 self-test tags are implemented. Whole-file serial 5/5 Mac evidence is running; audit will map every old test declaration. Existing T1 lint false-positives conservatively put mod/seed-plan checks at T2. The eight duration baselines total 599.431s; <=220s target retained.
+
+### impl-706 · 2026-10-17T07:09:45.138Z
+
+Review requested at b5f3364375326d6d7ced2df67a7f2ec809511783; Reviewer routing resolved to rev-31. A-4345 is the declaration-by-declaration assertion audit and before/after table; A-4346 holds 85 serial Mac whole-file receipts plus the expanded oracle receipt. All 17 files passed 5/5 without skips, load below 15; T4 files used SOAK=1. Merge-path median subtotal is 201.229s versus the actual old eight-file sum 599.431s. Orphan detached starts 27→12 plus 1 moved to T4; runner real-daemon matrix 4→2; remote owner fixtures 10→4 (T4). Legacy allowance count 293→278 and seconds 3710.347→3389.224; four new seven-day nonlegacy allowances use open E-677 ownership. Baselines are unchanged. Expanded oracle reports 4×25; defaults report 2×12. Typecheck, tier lint and whitespace checks pass. Exact-head droplet verification waits for clear source review; expanded remote soak follows the Coordinator's E-678 adjustment.
+
+### rev-31 · 2026-10-17T07:10:54.792Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261017-706-source-1
+commit: b5f3364375326d6d7ced2df67a7f2ec809511783
+scope: full
+findings: [{"severity":"medium","text":"Combined expected-exit1 fixture masks reasoned skips erroneously failing the run; restore their standalone exit0 proof alongside exact skipped receipts.","file":"hub/test/durations-runner.test.ts","line":164}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Source not clear; Standards0substantive/Spec1medium finding, A-4348. All23paths and corresponding old assertions reviewed. C5 failed: positive skip exit semantics missing despite retained receipt text; implementer7db98cad accepts a positive run plus combined negative shapes, fresh5/5 and new review. Other bridge60000default/2s lifecycle, smoke hangs, pure no-retry, shared orphan matrices, runner mechanism reductions, QA/perf/T4 moves, exact seed plans and actual package selection reviewed. A-4346 has85serialgreenfiles plus expanded4x25oracle; C1 localmedian201.229s supports target. Coordinator8085e84c/e8f1d837 independently confirm timing/baseline and remote-soak dispositions. Independent diffcheck flags3new EOFblanklines, routine tooling cleanup. No verify until corrected-head source clear; no Reviewer edits/tests.
+
+Criteria: C5 failed (Merged prerequisite fixture drops the original exit-zero behavior claim for reasoned static/runtime skips.).
+
+### impl-706 · 2026-10-17T07:15:52.602Z
+
+Corrected/pushed head 9cf59d5930edc7e6d427d59719150a4e1161c993 addresses A-4348's C5 finding: positive-only reasoned static/runtime skips now prove exit0, exact skipped receipts and summary; the shared seven-shape negative run still proves exit1 and per-name rejection/counters. Three EOF blank lines fixed. Fresh duration-runner and shipped-QA whole-file Mac repetitions are 5/5; updated merge-path subtotal196.794s. A-4349 is the corrected declaration audit; A-4350 the corrected85-receipt set plus expanded oracle. Static checks and cumulative whitespace checks pass. Fresh source review requested; no dev merge after first review, no verification before source clear.
+
+### rev-31 · 2026-10-17T07:16:21.458Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261017-706-source-2
+commit: 9cf59d5930edc7e6d427d59719150a4e1161c993
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Corrected source clear; Standards0/Spec0 remaining findings, A-4351. M1 resolved: positive-only static/runtime skip run now requires exit0, exact5/5skip receipts/no passed classification/summary entries; seven-shape exit1 and every negative/counter assertion retained. Only other changes trim3EOFblanklines; cumulativediffcheck clean, typecheck/tierlint reportedgreen, no devmerge. A-4350 inspected85records allcode0/maxload12.1, correctedrunner5/5 median20.554s; unchanged expanded4x25oracle and original assertion mapping apply. C2/C3/C4/C5 verified, restore C5claimantdone. C1 localmedian196.794s supports<=220 but Linux timing pending; C6 exact-head no-mode taskdroplet pending under Coordinator8085e84c/e8f1d837 deferredbaseline/remote-soak dispositions. Source clear is not final execution clear. No Reviewer edits/tests.
+
+Criteria: C2 verified, C3 verified, C4 verified, C5 verified.

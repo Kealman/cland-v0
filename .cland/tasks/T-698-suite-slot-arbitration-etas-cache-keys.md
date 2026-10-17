@@ -17,7 +17,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-16T19:59:36.616Z
-updated: 2026-10-16T20:00:52.407Z
+updated: 2026-10-17T06:43:05.504Z
 ---
 
 ## Summary
@@ -41,3 +41,9 @@ These rules run as T1 tests on `Suites` with a fake executor (T-697) and a `Fake
 - [ ] C3. Fake droplets started by these files fall from the count recorded before (from the fake provider's request log) to 4 or less.
 - [ ] C4. An audit maps every moved or rewritten assertion to its new place, with no behaviour claim dropped.
 - [ ] C5. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
+
+## Comments
+
+### coord · 2026-10-17T06:43:05.504Z
+
+Coordinator correction from T-697: CLAND_TEST_DROPLET_MACHINE_MS is a readiness timeout in waitForMachine, not a fixed delay before the machine is ready. Lowering it from 2000 to 200 doesn't save 1.8 s per droplet by itself, so this ticket's speedup comes from the fixture and process work it removes (one fixture per test, in-process provider and scripted machine from T-697). Measure and report it that way. A case that needs real readiness timing keeps an explicit override, as T-697 did for the demo watchdog.
