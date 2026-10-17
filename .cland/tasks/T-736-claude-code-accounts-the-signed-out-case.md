@@ -3,7 +3,7 @@ id: T-736
 kind: task
 title: "claude-code-accounts: the signed-out case's 'claude-a keeps polling' wait misses its 15 s bound under load"
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - v0.1.4
@@ -14,10 +14,10 @@ labels:
 assignee: null
 parent: E-482
 blocked_by: []
-topic: null
-branch: null
+topic: topic-441
+branch: t/T-736-claude-code-accounts-the-signed-out-case
 created: 2026-10-17T13:01:36.552Z
-updated: 2026-10-17T13:01:36.552Z
+updated: 2026-10-17T14:22:51.984Z
 ---
 
 ## Summary
@@ -31,3 +31,9 @@ Make each period's poll observable as a receipt: advance the FakeClock, then wai
 ## Acceptance criteria
 
 - [ ] C1. The case passes 5/5 on the Mac and in the task's droplet verify, with its assertions unchanged, and no real-time wait in it exceeds the bound of a single native child's completion.
+
+## Comments
+
+### impl-736 · 2026-10-17T14:22:51.984Z
+
+Implementation: preserve the T3 native-directory contract and all assertions. Observe session.resume completion with a bounded receipt loop that advances the hub FakeClock while pending, drain startup before the period baseline, and assert each period's call count directly. Production adapter and FakeClock unchanged. Baseline targeted case passed (2.291 s total); the supplied integrated receipt A-4521 is the load-failure evidence, so no artificial stress load was introduced. Typecheck and tier manifest lint pass; 5 serial full-file Mac runs underway below load 15.

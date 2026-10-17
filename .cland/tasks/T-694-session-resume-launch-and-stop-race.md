@@ -3,7 +3,7 @@ id: T-694
 kind: task
 title: Session resume, launch and stop-race matrices run on the in-process fake adapter, with one real proof per harness
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - v0.1.4
@@ -14,10 +14,10 @@ assignee: null
 parent: E-677
 blocked_by:
   - T-686
-topic: null
-branch: null
+topic: topic-442
+branch: t/T-694-session-resume-launch-and-stop-race
 created: 2026-10-16T19:59:36.176Z
-updated: 2026-10-16T20:00:52.108Z
+updated: 2026-10-17T14:20:16.458Z
 ---
 
 ## Summary

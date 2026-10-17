@@ -3,7 +3,7 @@ id: T-719
 kind: task
 title: "T2 projectHub tests start no git or ps probe: injected tracker reader and process table"
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - v0.1.4
@@ -13,10 +13,10 @@ assignee: null
 parent: E-677
 blocked_by:
   - T-685
-topic: null
-branch: null
+topic: topic-444
+branch: t/T-719-t2-projecthub-tests-start-no-git-or-ps
 created: 2026-10-16T20:09:33.790Z
-updated: 2026-10-16T20:09:42.765Z
+updated: 2026-10-17T14:20:34.506Z
 ---
 
 ## Summary

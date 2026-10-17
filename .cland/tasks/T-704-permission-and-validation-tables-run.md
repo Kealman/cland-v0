@@ -3,7 +3,7 @@ id: T-704
 kind: task
 title: Permission and validation tables run through the dispatcher, with one CLI proof per command family
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 5
 labels:
@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-436
 branch: t/T-704-permission-and-validation-tables-run
 created: 2026-10-16T19:59:37.407Z
-updated: 2026-10-17T13:43:58.131Z
+updated: 2026-10-17T14:23:17.826Z
 ---
 
 ## Summary
@@ -45,6 +45,7 @@ updated: 2026-10-17T13:43:58.131Z
 
 - [x] C1. The seven files' manifest seconds fall from 153.4 s (A-3877) to 85 s or less.
   - done: impl-704 · 2026-10-17T11:46:58.321Z
+  - verified: rev-31 [reviewer] · run rev-20261017-704-final · 2026-10-17T14:23:16.856Z · commit 4f2f5362f25de64a4761c215b843b45eda4dea6d
 - [x] C2. Their CLI call sites fall from 142 to 50 or less, and `startDaemon` sites from 18 to 3 or less.
   - done: impl-704 · 2026-10-17T11:46:58.792Z
   - verified: rev-31 [reviewer] · run rev-20261017-704-source-2 · 2026-10-17T11:51:36.795Z · commit 17ea9073f0f81e3b8f38be3481cd0dd057457f16
@@ -57,8 +58,9 @@ updated: 2026-10-17T13:43:58.131Z
   - done: impl-704 · 2026-10-17T11:50:50.299Z
   - verified: rev-31 [reviewer] · run rev-20261017-704-source-2 · 2026-10-17T11:51:36.796Z · commit 17ea9073f0f81e3b8f38be3481cd0dd057457f16
   - verified: rev-31 [reviewer] · run rev-20261017-704-merge-delta · 2026-10-17T13:43:58.131Z · commit 4f2f5362f25de64a4761c215b843b45eda4dea6d
-- [ ] C5. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
-  - failed: rev-31 [reviewer] · 2026-10-17T12:41:01.547Z · note Task verification fails the deterministic frozen legacy-path comparison after retiring permission-integrity.test.ts, plus an owned CLI duration budget; Neovim is not reached.
+- [x] C5. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
+  - done: impl-704 · 2026-10-17T14:22:43.255Z
+  - verified: rev-31 [reviewer] · run rev-20261017-704-final · 2026-10-17T14:23:16.856Z · commit 4f2f5362f25de64a4761c215b843b45eda4dea6d
 
 ## Blocked by
 
@@ -129,3 +131,22 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Merged source delta clear; Standards 0 / Spec 0 findings, A-4526. Independently read Coordinator 62381646 authorization and checked exact merge parents/tip. Sixteen own source paths/deletions unchanged; reconstructed durations as dev plus five own allowance changes and tiers as dev plus nine own changes, with other timing sections exactly dev. Shared T-698 planner fix separates frozen legacy compatibility from exact live manifest phase/worker/target assertions; five eight-test whole-file receipts pass. Inherited suite-candidate/suites/cover production matches dev, preserving native defaults and admission/freshness checks. New exact --as allowance 6.5 s, E-677, seven days through 2026-10-24, reason cites measured Linux native work; assertions unchanged. T-734 external allowance inherited. Prior audit/Mac/cleanup evidence remains applicable. C2/C3/C4 refreshed. C1 timing and C5 require new exact-head verification; historical A-4514 is not a green gate. No Reviewer edits/tests.
 
 Criteria: C2 verified, C3 verified, C4 verified.
+
+### impl-704 · 2026-10-17T14:22:43.728Z
+
+Exact-head green verification at 4f2f5362: afd920d9-2b40-4f21-a7ac-d27389b888d4 / A-4531 exits 0, including Neovim, 2486 total /2478 pass /0 fail /0 cancelled /8 prerequisite skips. All 61 owned cases pass; twenty owned new identities each 5/5. Independently summed nine owned file timings 55.090634503 s (<85, from historical153.4); Mac current-source summed5/5 medians65.332644 s in A-4485/A-4489. C5 marked done; all five criteria now done. A-4534 reconciles file counts/timings and final evidence. Linux x64 c-8 lon1,Node24.21.0/Neovim0.12.5,two workers; lifetime2221s,cost$0.1542,wall2152.98s,peak1m10.52. Source head unchanged since A-4526 delta clearance. Awaiting Reviewer final same-head verdict; no separate item QA under none/after-stage policy.
+
+### rev-31 · 2026-10-17T14:23:16.856Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261017-704-final
+commit: 4f2f5362f25de64a4761c215b843b45eda4dea6d
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear; Standards 0 / Spec 0 findings, A-4536. Independently audited exact-head A-4531 / afd920d9 final exit 0: full Linux run, 2486 tests / 2478 passes / 0 failures / 8 prerequisite skips, including 391-pass/3-skip full Neovim phase. All 61 owned cases across nine resulting files pass, twenty owned new identities pass 5/5, summed Linux test time 55.090634503 s. C1: current Mac median sum 65.332644 s and disclosed Linux sum both meet 85 s including all splits. C5: Mac whole-file 5/5 chain A-4485/A-4489, planner 5/5 A-4524, and current exact-head green Linux receipt. Planner incompatibility now ordinary/load green; --as case 3.951085672 s and 5/5. Current source delta A-4526 retains C2/C3/C4; all five criteria supported. Origin head unchanged. Earlier failed A-4514 is historical, no exception needed. No per-item QA or further run needed; no Reviewer edits/tests.
+
+Criteria: C1 verified, C5 verified.

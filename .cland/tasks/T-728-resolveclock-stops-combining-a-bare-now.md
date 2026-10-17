@@ -3,7 +3,7 @@ id: T-728
 kind: task
 title: resolveClock stops combining a bare now callback with native timers; fixtures pass a complete Clock
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 3
 labels:
@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-438
 branch: t/T-728-resolveclock-stops-combining-a-bare-now
 created: 2026-10-17T07:54:46.590Z
-updated: 2026-10-17T11:57:01.737Z
+updated: 2026-10-17T14:23:25.048Z
 ---
 
 ## Summary
@@ -33,10 +33,14 @@ updated: 2026-10-17T11:57:01.737Z
 - [x] C1. Passing a bare `now` callback to a hub or adapter fixture is refused or explicitly wrapped, proved by a T1 test, and no fixture in hub/test still passes one.
   - done: impl-728 · 2026-10-17T11:53:48.656Z
   - verified: rev-30 [reviewer] · run rev-20261017-728-source · 2026-10-17T11:55:56.397Z · commit 4bf57a1ce8324166788b803f1a18bbd848c8ca34
-- [ ] C2. Every migrated fixture's tests keep their assertions' meaning, and the touched files pass 5/5 serially on the Mac and in the task's droplet verify.
+  - verified: rev-30 [reviewer] · run rev-20261017-728-final · 2026-10-17T14:23:23.399Z · commit 4bf57a1ce8324166788b803f1a18bbd848c8ca34
+- [x] C2. Every migrated fixture's tests keep their assertions' meaning, and the touched files pass 5/5 serially on the Mac and in the task's droplet verify.
+  - done: impl-728 · 2026-10-17T14:22:05.191Z
+  - verified: rev-30 [reviewer] · run rev-20261017-728-final · 2026-10-17T14:23:23.399Z · commit 4bf57a1ce8324166788b803f1a18bbd848c8ca34
 - [x] C3. "Test levels" in docs/agents/tests.md says a test injects one complete Clock, never a bare now callback.
   - done: impl-728 · 2026-10-17T11:53:49.020Z
   - verified: rev-30 [reviewer] · run rev-20261017-728-source · 2026-10-17T11:55:56.397Z · commit 4bf57a1ce8324166788b803f1a18bbd848c8ca34
+  - verified: rev-30 [reviewer] · run rev-20261017-728-final · 2026-10-17T14:23:23.399Z · commit 4bf57a1ce8324166788b803f1a18bbd848c8ca34
 
 ## Comments
 
@@ -66,3 +70,22 @@ Criteria: C1 verified, C3 verified.
 ### impl-728 · 2026-10-17T11:57:01.737Z
 
 Source clear: rev-20261017-728-source / A-4494 at 4bf57a1ce8324166788b803f1a18bbd848c8ca34, no findings, C1/C3 verified. Exact-head droplet submit was refused before queue/run creation: verify-tiers classified T1 clock.test.ts as touching machine resources. Coordinator decision c2c9ea1c-f1c1-4d1d-82ba-011e5386c3ca identifies the stale live word-matching scanner, also seen by T-730, and directs no source split or head change. Holding this reviewed head until the Coordinator's explicit “hub restarted, verify open” notice, then resubmitting the same mode-free droplet command with impl-728/coord/rev-30 recipients. C2 pending; no execution evidence created by the refusal.
+
+### impl-728 · 2026-10-17T14:22:19.457Z
+
+Exact source-reviewed head 4bf57a1ce8324166788b803f1a18bbd848c8ca34 verified green in droplet run 86e454cf-dc33-42fc-a0f2-284ec837e169 / A-4529: 2084 pass, zero fail, five skip; all 158 touched top-level cases pass and six clock cases pass 30/30 load repetitions, with Neovim smoke 12/12. Platform linux x64 6.8.0-142-generic / Node v24.21.0, c-8 lon1, lifetime 2283s, cost $0.1586. C2 marked done. At the Reviewer's request, retained raw Mac 50 whole-file plus 10 isolated approval transcripts are published with hashes/measurement/source-equivalence metadata in A-4532 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-4532-t-728-raw-mac-50-file-and-10-isolated-transcripts-with-source-metadata. No new runs or head changes; final same-head evidence verdict requested from the Reviewer role.
+
+### rev-30 · 2026-10-17T14:23:23.399Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261017-728-final
+commit: 4bf57a1ce8324166788b803f1a18bbd848c8ca34
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head clear; source A-4494 unchanged. A-4529/86e454cf green2089tests/2084pass/0fail/cancel/5skip, actualNeovim12/12. All158 touched top-level cases pass, six clock identities30/30 load repetitions, native renamed approval5.752s. Host check/typecheck/report-only lint receipt reused0ffe1bea0170a0ce9d319fb77b6c6c7e63484611. A-4532 independently hashed60raw transcripts:50whole-file logs tenfiles×5,790pass/zero fail/cancel/skip, plus isolatedapproval10/10. Whole-file median sum105.613008709s; Linux per-case sum195.963132199s distinct metrics. Provenance explicitly limited: six Mac groups pre-commit without contemporaneous per-run hashes; recorded work sequence/unchanged33fe8adc→4bf57a1c blobs support equivalence, no retroactive exact-SHA claim. Final four groups/isolated logs use completedab7acd96; subsequent4bf57a1c tier-only retag changes no executed source. Exact-head Linux independently backs execution. Historical race cause remains unproven, disclosed. C2 now verified; C1/C3 source-current refreshed. Linux2workers,c-8lon1,suite2211.30s,peak10.25,lifetime2283s,$0.1586. No findings/new run/head change.
+
+Criteria: C1 verified, C2 verified, C3 verified.

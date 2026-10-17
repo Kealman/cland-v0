@@ -3,7 +3,7 @@ id: T-700
 kind: task
 title: Remote run, close and demo files build one fixture per test and stop paying 2 s per fake droplet
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - v0.1.4
@@ -14,10 +14,10 @@ assignee: null
 parent: E-677
 blocked_by:
   - T-697
-topic: null
-branch: null
+topic: topic-443
+branch: t/T-700-remote-run-close-and-demo-files-build
 created: 2026-10-16T19:59:36.836Z
-updated: 2026-10-17T06:43:06.037Z
+updated: 2026-10-17T14:20:29.564Z
 ---
 
 ## Summary
