@@ -3,7 +3,7 @@ id: T-727
 kind: task
 title: claude-code-adapter scheduler and latch negatives move onto the adapter Clock
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 2
 labels:
@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-451
 branch: t/T-727-claude-code-adapter-scheduler-and-latch
 created: 2026-10-17T07:27:42.323Z
-updated: 2026-10-17T16:46:48.722Z
+updated: 2026-10-17T17:21:49.845Z
 ---
 
 ## Summary
@@ -33,7 +33,10 @@ The scheduler and latch negatives in claude-code-adapter.test.ts drive the produ
 - [x] C1. Every scheduler and latch negative in claude-code-adapter.test.ts runs on the FakeClock with no real-time sleep left, with assertions unchanged in meaning, shown in an audit.
   - done: impl-727 · 2026-10-17T16:45:41.764Z
   - verified: rev-30 [reviewer] · run rev-20261017-727-source-correction · 2026-10-17T16:46:48.722Z · commit ff0b67d9606bc205d9d0edfacb0137e071c65ed3
-- [ ] C2. claude-code-adapter.test.ts passes 5/5 serially on the Mac and in the task's droplet verify, with its seconds before and after recorded.
+  - verified: rev-30 [reviewer] · run rev-20261017-727-final · 2026-10-17T17:21:48.840Z · commit ff0b67d9606bc205d9d0edfacb0137e071c65ed3
+- [x] C2. claude-code-adapter.test.ts passes 5/5 serially on the Mac and in the task's droplet verify, with its seconds before and after recorded.
+  - done: impl-727 · 2026-10-17T17:21:03.727Z
+  - verified: rev-30 [reviewer] · run rev-20261017-727-final · 2026-10-17T17:21:48.840Z · commit ff0b67d9606bc205d9d0edfacb0137e071c65ed3
 
 ## Comments
 
@@ -109,3 +112,34 @@ Standards: 0 remaining findings. Spec: 0 remaining findings.
 Durable review: A-4631.
 
 Criteria: C1 verified.
+
+### rev-30 · 2026-10-17T17:21:48.840Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261017-727-final
+commit: ff0b67d9606bc205d9d0edfacb0137e071c65ed3
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-727 final evidence review — clear
+
+Exact head ff0b67d9606bc205d9d0edfacb0137e071c65ed3 matches the branch tip, current source correction rev-20261017-727-source-correction / A-4631 and the finished passed droplet f887da99-3c3e-493a-8bf1-d1dc1e2714ef. Both claimant criteria are done; C1 source verification remains current. Read-only evidence review; no Reviewer execution.
+
+A-4654 raw receipt ends Finished: exit 0. Automatic hub-only plus Neovim smoke selection runs host npm run check/typecheck/report-only lint and actual phase tests. Phase counts 144/144,1952/1947pass+5skip,12/12 give2108total/2103pass/0fail/0cancelled/5 unrelated prerequisite skips. No hard duration-budget or load-gate failures.
+
+All six retained native contract declarations have positive timing records totaling29.337965379 test-seconds. All three moved component declarations execute positively: scheduler0.049484900, signed-out/reopen/recovery0.905221020, expired-background-launch0.332854033, sum1.287559953s. Their gates each pass5/5,15/15. Combined Linux coverage30.625525332 test-seconds; no owned case is skipped. Actual timing records, not tier-report listings, establish whole-file execution.
+
+C2 verified: source-unchanged native file's five serial Mac6/6 passes and corrected component's five serial3/3 passes remain A-4629, independently audited at source review. Before five9/9 passes are also retained. Mac subprocess-wall medians26.045s before versus17.947+0.533=18.480s after (29.0% lower), disclosed separately from Linux test-seconds. No duration baseline or allowance was changed.
+
+C1 remains verified: the production ClaudeCodeAdapter and shared FakeClock prove scheduler/latch negatives with preserved assertion meaning; the M1 pumping finding was resolved before this run. Native socket/MCP waits keep fake time fixed, chosen scheduler advances precede observed receipts, and all six original native bodies remain unchanged. A-4631 and the A-4629 assertion map apply without source changes.
+
+Supplied accounting: c-8 lon1 Linuxx64 6.8.0-142-generic, Node24.21.0/Neovim0.12.5,2workers,lifetime1757s,cost$0.1220. Suite1684.79s,peak1mload9.02,load-gate extra wall6.80s; smoke21.03s completed. Report-only tier/baseline warnings do not alter this green result. A-4655 agrees with independently recomputed per-file sums.
+
+Final evidence clear; findings[]; verify both C1/C2 at this exact head. No per-item QA and no further task run requested. Standards0/Spec0 remaining findings.
+
+Durable review: A-4656.
+
+Criteria: C1 verified, C2 verified.

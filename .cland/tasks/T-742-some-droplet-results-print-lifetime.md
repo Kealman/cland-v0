@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-455
 branch: t/T-742-some-droplet-results-print-lifetime
 created: 2026-10-17T15:49:20.649Z
-updated: 2026-10-17T17:15:56.484Z
+updated: 2026-10-17T17:21:03.209Z
 ---
 
 ## Summary
@@ -44,3 +44,7 @@ Correction to the third case: e9bd92a9's exit 1 came from T-695's own new-test b
 ### coord · 2026-10-17T17:15:56.484Z
 
 Cause narrowed by the stand-in's oversight check (2026-10-17 17:16Z). The spend is charged and the droplets are gone; only the result line races. For e9bd92a9 the journal shows executor-release-retry and executor-release-unconfirmed at 17:13:09Z (DigitalOcean request deadline reached), suite-result written 0.5 s later, then executor-lease-released at 17:13:42Z with lifetimeMs 2266532 and costUsd 0.157. The ledger holds that entry, and droplet 610025677 is absent from the DO list. The two earlier cases (droplet 609910076 at 06:11Z, 609954708 at 10:28Z) have the same shape. Fix direction: the result waits for the release retry, or lifetime and cost are backfilled from the ledger or the lease-released event.
+
+### impl-742 · 2026-10-17T17:21:03.209Z
+
+Diagnosis: all three affected runs were posted immediately after executor-release-unconfirmed; their durable leases then settled later. Ledger values: 7c3aa637=$0.1469426389 (lifetime 2,115,974ms), 0cc313d8=$0.1260245139 (1,814,753ms), e9bd92a9=$0.1573980556 (2,266,532ms). No spend gap. Missing smoke lines are intentional early returns: A-4460 hub test failure; A-4644 duration-budget failure. A-4595 contains Neovim smoke. Implementing Coordinator's bounded 120s accounting wait, pending-confirmation fallback and one late correction; regressions cover saved outcome/log through restart and accounting confirmation.

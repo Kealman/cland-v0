@@ -3,7 +3,7 @@ id: T-690
 kind: task
 title: Retag every file the lint already qualifies as T1 or T2, and record the tier share baseline
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 3
 labels:
@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-450
 branch: t/T-690-retag-every-file-the-lint-already
 created: 2026-10-16T19:59:28.837Z
-updated: 2026-10-17T17:15:58.862Z
+updated: 2026-10-17T17:18:06.656Z
 ---
 
 ## Summary
@@ -35,13 +35,16 @@ Retag every hub file T-682 reports as T1- or T2-qualifying, and every Neovim stu
   - done: impl-690 · 2026-10-17T16:11:10.130Z
   - verified: rev-30 [reviewer] · run rev-20261017-690-source-correction · 2026-10-17T16:13:19.159Z · commit 9ab2c07e6c3c0e3451f3014d422a13b35f79fb33
   - verified: rev-30 [reviewer] · run rev-20261017-690-final · 2026-10-17T17:08:37.222Z · commit 9ab2c07e6c3c0e3451f3014d422a13b35f79fb33
+  - verified: rev-30 [reviewer] · run rev-20261017-690-merge-delta · 2026-10-17T17:18:05.748Z · commit fb072ca422ba587c1f0634ae0051913c84d52a63
 - [x] C2. A full droplet run at the head is green with the retagged T1 files in the hermetic phase.
   - done: impl-690 · 2026-10-17T17:06:23.141Z
   - verified: rev-30 [reviewer] · run rev-20261017-690-final · 2026-10-17T17:08:37.222Z · commit 9ab2c07e6c3c0e3451f3014d422a13b35f79fb33
+  - verified: rev-30 [reviewer] · run rev-20261017-690-merge-delta · 2026-10-17T17:18:05.748Z · commit fb072ca422ba587c1f0634ae0051913c84d52a63
 - [x] C3. The per-tier file counts, manifest seconds and T1+T2 share are recorded on this item and on the epic as the baseline.
   - done: impl-690 · 2026-10-17T16:11:10.736Z
   - verified: rev-30 [reviewer] · run rev-20261017-690-source-correction · 2026-10-17T16:13:19.159Z · commit 9ab2c07e6c3c0e3451f3014d422a13b35f79fb33
   - verified: rev-30 [reviewer] · run rev-20261017-690-final · 2026-10-17T17:08:37.223Z · commit 9ab2c07e6c3c0e3451f3014d422a13b35f79fb33
+  - verified: rev-30 [reviewer] · run rev-20261017-690-merge-delta · 2026-10-17T17:18:05.748Z · commit fb072ca422ba587c1f0634ae0051913c84d52a63
 
 ## Comments
 
@@ -195,3 +198,42 @@ Criteria: C1 verified, C2 verified, C3 verified.
 ### impl-690 · 2026-10-17T17:14:10.417Z
 
 Authorized conflict-only dev merge a038ae0b completed/pushed asfb072ca422ba587c1f0634ae0051913c84d52a63 (reviewed parent9ab2c07e, incoming dev55fde1ac). Only conflict tiers.json; all30 own retags exactly preserved, all other entries/tags verbatim dev, sorted; no retagged test source changed on dev. test:tiers/test:lint passed; suite-tiers5/5 (0.633/0.596/0.618/0.659/0.555s). A-4646 durable evidence /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-4646-t-690-conflict-only-dev-merge-exact-30-retags-and-phase-checks. A-4608 share8.456862% and seconds unchanged; new dev5 files without duration data make counts43/64/197/6,310 total. Conflict-only delta review requested. Coordinator explicitly preserves verification60db9eb8 and requires no task verify rerun; first integrated cover after merge supplies full phases. Budget follow-up T-745.
+
+### rev-30 · 2026-10-17T17:18:05.748Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261017-690-merge-delta
+commit: fb072ca422ba587c1f0634ae0051913c84d52a63
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-690 conflict-only merge delta — clear
+
+New head fb072ca422ba587c1f0634ae0051913c84d52a63, parents reviewed 9ab2c07e6c3c0e3451f3014d422a13b35f79fb33 and incoming dev 55fde1ac66c63962a0a371402d946e414618d0d4. Branch tip confirmed. Primary Coordinator a038ae0b-c32e-43de-b8ee-aac45055f459 was read directly: this rule11 conflict merge is authorized, exactly thirty retags must be retained, all other incoming entries preserved, and no verify rerun is required. Earlier exact-source receipt 60db9eb8 stands; integrated cover follows merge.
+
+## Standards
+No findings. Independent three-way structural comparison proves:
+- relative to incoming dev, the only changed file is hub/test/tiers.json;
+- same entry population, exactly thirty reviewed value substitutions and no additions/removals;
+- every non-retagged entry and descriptor equals incoming dev;
+- every retag equals reviewed 9ab2c07e and entries remain sorted;
+- all thirty retagged test bodies are byte-identical to reviewed 9ab2c07e.
+Inherited source/fixture changes are verbatim dev; no manual implementation change exists outside the manifest. Incoming configuration/process-cleanup seams improve injected/native probe separation; suite-unit's default provider behavior remains unchanged when its new receipt-only option is omitted. Earlier C1 exception/resource review remains applicable; this is not a new syntax-only automatic downgrade.
+
+A-4646 supplies green test:tiers (43 free hub /229 machine), report-only lint (323 findings /182 files), and five whole suite-tiers logs independently showing 8/8 each, forty passes, zero failures/cancellations/skips. All ten new T1 paths still qualify T1 in the supplied lint. No retagged body was changed by dev, matching the Coordinator's conditional reader-run requirement. The incoming native-process.ts blank EOF is inherited byte-for-byte, outside the own resolution; no own whitespace change.
+
+## Spec / freshness
+C1 refreshed at this merged head: the exact thirty eligible retags and twenty-two retained resource/purpose exceptions are preserved. T-744 remains the transitive-lint follow-up; no resources are waived by a clean syntax qualifier.
+
+C2 refreshed under the explicit no-rerun merge disposition, carrying A-4639 and final A-4641 rather than falsely claiming a new merged-head Linux receipt. Original exact-source green run had all ten new T1 files in 41-file/174-test hermetic phase, all eighteen retagged hub files executed, and Neovim smoke green. A-4611's twelve local Neovim files total68/68 green. Primary339687cc's full-Neovim integrated-cover obligation remains with the Coordinator; a038ae0b explicitly retains these receipts across this conflict-only merge.
+
+C3 arithmetic independently recomputed from merged manifest and duration data. Incoming dev adds five untimed files, so final population310 and counts T1/T2/T3/T4=43/64/197/6, versus incoming33/49/222/6. Seconds remain44.279993/350.370445/4188.091146/83.888367, total4666.629951s. Lower share8.456861636% remains unchanged from A-4608; it is not a new observed runtime metric. Timing source/files/tests are structurally unchanged from the reviewed branch. Six missing duration files are explicitly named in A-4646 and independently reproduced: demo-cap, executor-run-rules, project-probes, suite-close-component, suite-remote-log and suite-stage-rules. Original A-4608 item/epic baseline is historical at305files; A-4646 records the incoming-dev and merged population increment with unchanged share.
+
+Earlier final A-4641 and source A-4612 still support all unchanged behavior/resource claims. Budget debt remains T-745. No per-item QA. Delta clear, findings[], all C1–C3 freshness verified at fb072ca4 under the primary retained-evidence disposition. No additional task verification requested. Standards0/Spec0 findings.
+
+Durable review: A-4653.
+
+Criteria: C1 verified, C2 verified, C3 verified.

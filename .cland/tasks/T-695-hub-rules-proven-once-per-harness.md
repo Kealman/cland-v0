@@ -22,7 +22,7 @@ blocked_by:
 topic: topic-449
 branch: t/T-695-hub-rules-proven-once-per-harness
 created: 2026-10-16T19:59:36.269Z
-updated: 2026-10-17T17:15:41.264Z
+updated: 2026-10-17T17:23:04.004Z
 ---
 
 ## Summary
@@ -45,9 +45,8 @@ Each hub rule runs as a T2 table over T-686's fake adapter flavours: model and u
 - [x] C2. Their fake-binary call sites fall from 23 to 6 or less, `spawnSpoke` sites from 21 to 4 or less, and numeric sleeps from 4 to 0.
   - done: impl-695 · 2026-10-17T16:17:46.318Z
   - verified: rev-30 [reviewer] · run rev-20261017-695-source · 2026-10-17T16:23:49.658Z · commit 09f1b18ccd0db3603e18e4d7a4ee5c9a83a360d4
-- [x] C3. Each hub rule has one T2 table test over the three flavours that passes the tier lint, and each per-harness difference names the contract-file or scenario test that proves it.
-  - done: impl-695 · 2026-10-17T16:17:46.688Z
-  - verified: rev-30 [reviewer] · run rev-20261017-695-source · 2026-10-17T16:23:49.658Z · commit 09f1b18ccd0db3603e18e4d7a4ee5c9a83a360d4
+- [ ] C3. Each hub rule has one T2 table test over the three flavours that passes the tier lint, and each per-harness difference names the contract-file or scenario test that proves it.
+  - failed: rev-30 [reviewer] · 2026-10-17T17:23:04.004Z · note The held T2 fixtures still start native infrastructure probes/Git; apply primary d8b91df7's T-719 injection correction, retain assertions and prove zero children before source clearance.
 - [x] C4. An audit maps every moved or rewritten assertion to its new place, with no behaviour claim dropped.
   - done: impl-695 · 2026-10-17T16:17:47.301Z
   - verified: rev-30 [reviewer] · run rev-20261017-695-source · 2026-10-17T16:23:49.658Z · commit 09f1b18ccd0db3603e18e4d7a4ee5c9a83a360d4
@@ -149,3 +148,37 @@ Evidence not clear; fail C5 for the five hard budgets. C1 remains unverified; C2
 Durable receipt audit: A-4649; later execution disposition and paired timing evidence: A-4650.
 
 Criteria: C5 failed (A-4644 exits1 with five owned hard duration budgets and no Neovim smoke receipt; await the explicitly authorized unchanged-head retry before final evidence clearance.).
+
+### rev-30 · 2026-10-17T17:23:04.004Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261017-695-allowance-delta
+commit: 45cb9d5e4e19d41fe2817de0c2526406004e6991
+scope: delta
+findings: [{"severity":"medium","text":"M2: the newly T2 rule fixtures retain the pre-T-719 projectHub/native process probes (harness.ts339/383; process-cleanup.ts32/168), and crew/usage reach real Git/TaskWorktrees infrastructure. Fake adapters alone do not make these T2-only process boundaries in-process. Primary d8b91df7 authorizes taking T-719, injecting fake probes/git/readBase, retaining native proofs in T3, zero-child census and fresh medians before one new-head delta review. Five allowance edits themselves are valid.","file":"hub/test/crew-launch.test.ts","line":18}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+# T-695 allowance delta review — not clear pending fixture correction
+
+Head45cb9d5e4e19d41fe2817de0c2526406004e6991, direct child of reviewed09f1b18ccd0db3603e18e4d7a4ee5c9a83a360d4. Only durations.json changes. No Reviewer execution.
+
+## Standards
+The five allowance edits resolve the manifest portion of runtime M1. Independent structural comparison confirms all non-allowance sections and all pre-existing allowances unchanged, exactly five additions. Exact raw A-4644 timing records match:
+crew handoff5.044089440→7s; usage aggregation5.114194657→7s; native OpenCode retain6.967526643→9s/reset5.906562081→8s; native whole file65.366899003→85s with file:true. Each is owned by E-677, added2026-10-17/expires2026-10-24, non-legacy, with a reason identifying Linux/run/head/observed value and retained behavior. Primary7fb08b6f explicitly authorizes these entries; 30f6f0be supersedes the original unchanged-head retry. A-4652 supplies static/17-case duration checks and replay of the old timing records from five hard failures to zero. Replay is not a new execution receipt.
+
+Medium M2 — hub/test/crew-launch.test.ts:18 and the other newly T2 rule fixtures. I missed the inherited native-infrastructure boundary in the original full source review. This held branch still has the pre-T-719 harness: projectHub at harness.ts:383 has no injected probes option; harness.ts:339 eagerly calls processStarted; process-cleanup.ts:168 eagerly calls processes, which executes ps at:32. The T2 rule files instantiate that native-default projectHub; crew/usage also prepare real Git roots and TaskWorktrees reaches hasTerritory (:102) → territory.ts:326–328's native Git reader. Replacing adapters alone does not remove these non-cland process edges from T2. The issue is the newly claimed component-tier boundary, not a functional failure or a change in the five allowance values.
+
+Primary Coordinator d8b91df7-846e-43be-bbb7-c75dd35ca251 was read directly and authorizes the required correction: merge origin/dev under rule11 to take T-719 and posted shared fixes; all four T2 files use fake harnesses and fake probes, crew/usage replace infrastructure-only Git roots with injected git/readBase answers, truly native cases remain T3, every assertion is kept, all four files get a zero-child census and fresh Mac medians. Bundle those changes with these five allowances into one new-head delta review before the single authorized run. Implementer confirms this plan. Thus no verification is cleared at45cb9d5e.
+
+## Spec and remaining evidence
+C3 fails pending the concrete resource-boundary correction above; C2/C4 source assertion/binary-count analysis remains useful but must be refreshed at the eventual merged head. No additional assertion loss is found in this manifest-only delta. C1's existing Mac35.083453878s versus85s and disclosed Linux99.738860237s remain paired historical evidence; new Mac medians will replace them after fixture correction. No source/fixture simplification is credited as observed savings in advance.
+
+C5 remains failed/pending a passing reviewed-head run. Old e9bd92a9/A-4644 had2077passes,0assertion failures,5prerequisite skips and115/115owned repetitions but failed the five hard budgets; old retry01bb9319/A-4651 was cancelled under primary30f6f0be and supplies no passing runtime evidence. Missing lifetime/cost in A-4644 are not invented. The later primary correction explicitly acknowledges that the hard-budget lines caused exit1; known-entry duration regressions are report-only and tracked by T-745/E-677.
+
+Delta not clear due M2; fail C3. C5 remains pending. Wait for the committed/pushed fixture correction, census, assertion map and fresh Mac evidence for one delta review, then use the one authorized new-head mode-free droplet run. No per-item QA. Standards: one medium resource finding; Spec: C3 is not yet established, no extra assertion-mapping finding.
+
+Durable review: A-4657.
+
+Criteria: C3 failed (The held T2 fixtures still start native infrastructure probes/Git; apply primary d8b91df7's T-719 injection correction, retain assertions and prove zero children before source clearance.).
