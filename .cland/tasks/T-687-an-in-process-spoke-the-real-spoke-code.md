@@ -2,8 +2,8 @@
 id: T-687
 kind: task
 title: "An in-process spoke: the real spoke code over an in-memory MCP transport, connected to projectHub's real socket"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 4
 labels:
@@ -16,7 +16,8 @@ blocked_by: []
 topic: topic-414
 branch: t/T-687-an-in-process-spoke-the-real-spoke-code
 created: 2026-10-16T19:59:28.543Z
-updated: 2026-10-17T01:08:05.046Z
+updated: 2026-10-17T01:08:23.445Z
+closed: 2026-10-17T01:08:23.445Z
 ---
 
 ## Summary
@@ -113,3 +114,7 @@ All four claimant done marks are present. Verify C1-C4; Standards and Spec have 
 Review artifact A-4262.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-17T01:08:23.445Z
+
+Merged 9e82575ae2350ce81f0fb95d9aab04659221cb5d onto dev.
