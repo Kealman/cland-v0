@@ -2,8 +2,8 @@
 id: T-736
 kind: task
 title: "claude-code-accounts: the signed-out case's 'claude-a keeps polling' wait misses its 15 s bound under load"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 1
 labels:
@@ -18,7 +18,8 @@ blocked_by: []
 topic: topic-441
 branch: t/T-736-claude-code-accounts-the-signed-out-case
 created: 2026-10-17T13:01:36.552Z
-updated: 2026-10-17T14:29:37.851Z
+updated: 2026-10-17T15:08:44.515Z
+closed: 2026-10-17T15:08:44.515Z
 ---
 
 ## Summary
@@ -72,3 +73,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final exact-head clear; source A-4542 unchanged and origin matches. A-4543 raw five whole-file Mac transcripts independently audited:8/8 each,40pass/0fail/cancel/skip, startloads7.67–11.34; signed-out case1.993–2.844s. A-4544/915dce68 green42/42, hub-selected30+Neovim12, all8account-file cases pass; subject3.678220399s. Subject existing identity has ordinary receipt, no new subject5/5 gate claim. All original assertions and two15s native request/completion bounds remain source-current. C1 verified; no findings. Host check/typecheck/report-only lint reusedbfc5fad0d7f4d45e213cab37b38a047f3fb40be5. Linux2workers,c-8lon1,suite67.59s,peak2.42,lifetime134s,$0.0093. No new run/head change or per-item QA.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-17T15:08:44.515Z
+
+Merged ae3bcd296b00129a91546c1bb7a78b5fe7c514f9 onto dev.
