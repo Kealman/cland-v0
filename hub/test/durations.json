@@ -3326,13 +3326,6 @@
       "owner": "E-677",
       "legacy": true
     },
-    "hub/test/codex-adapter.test.ts": {
-      "file": true,
-      "seconds": 79.959893,
-      "reason": "File budget: Aggregates real fake-Codex launch, delivery, resume and stop scenarios across the adapter contract.",
-      "owner": "E-677",
-      "legacy": true
-    },
     "hub/test/config-reload-remote.test.ts::reload preserves an active verification and lease, and new admissions use the new lifetime and spend cap": {
       "seconds": 11.097186,
       "reason": "C3 crosses the real hub/CLI and fake-provider seam with two live droplet workers plus a queued cap refusal; waits separately for worker receipts and downstream reports.",

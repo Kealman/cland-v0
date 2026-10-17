@@ -42,6 +42,7 @@ import { envelope, envelopeIds, InjectUncertain, type AdapterHost, type Capabili
 import { AppServerClient, RpcError, RpcNoAnswer, type ServerRequest } from './codex/app-server.ts';
 import { processAlive } from './processes.ts';
 import { endProcess } from '../system-processes.ts';
+import { realClock, type Clock, type ClockTimer } from '../hub/clock.ts';
 
 
 
@@ -243,6 +244,10 @@ export async function threadPolicy(host: Pick<AdapterHost, 'discoveryFile'>, cwd
 }
 
 export type CodexOptions = {
+  /** Native connection boundary; process creation and identity checks remain real. */
+  connect?: (socket: string) => Promise<AppServerConnection>;
+  /** Connection supervision schedule, independent of native RPC deadlines. */
+  clock?: Clock;
   /** Grace before a verified process tree is killed. */
   stopGraceMs?: number;
   /** The `codex` executable: `CLAND_CODEX_BIN`, else `codex` on the PATH. */
@@ -255,6 +260,13 @@ export type CodexOptions = {
   spawnDeadlineMs?: number;
   /** The environment the app-server is started in (cland's own variables are removed). */
   env?: NodeJS.ProcessEnv;
+};
+
+/** The app-server surface consumed by the adapter, independent of its wire transport. */
+export type AppServerConnection = Pick<AppServerClient, 'request' | 'close' | 'closed'> & {
+  on(event: 'notification', listener: (method: string, params: Record<string, unknown>) => void): unknown;
+  on(event: 'serverRequest', listener: (request: ServerRequest) => void): unknown;
+  on(event: 'close', listener: () => void): unknown;
 };
 
 const sq = (s: string): string => (/^[\w@%+=:,./-]+$/.test(s) ? s : `'${s.replace(/'/g, `'\\''`)}'`);
@@ -273,7 +285,7 @@ const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve,
 /** What the hub knows of one session's app-server. */
 type Live = {
   p: HarnessProcess;
-  client: AppServerClient | null;
+  client: AppServerConnection | null;
   connecting: Promise<void> | null;
   /** The last state the app-server reported for the thread (kept so a signal that came before the
    *  process-table row was written is not lost). */
@@ -316,6 +328,8 @@ export class CodexAdapter implements HarnessAdapter {
   readonly #spawnDeadlineMs: number;
   readonly #env: NodeJS.ProcessEnv;
   readonly #processEnv: NodeJS.ProcessEnv;
+  readonly #connect: (socket: string) => Promise<AppServerConnection>;
+  readonly #clock: Clock;
   /** By cland session id. */
   readonly #live = new Map<string, Live>();
   /** Keep terminal totals after the app-server connection is released, until resume or prune. */
@@ -331,7 +345,7 @@ export class CodexAdapter implements HarnessAdapter {
    *  message id with its envelope and recovery count. A turn that ends with one left gets it again (`#redeliver`). */
   readonly #steers = new Map<string, Map<string, OwedInput>>();
   readonly #earlyFailures = new Map<string, string[]>();
-  #timer: NodeJS.Timeout | null = null;
+  #timer: ClockTimer | null = null;
   #versionChecked = new Set<string>();
   #tmpRun = join(tmpdir(), 'cland-run');
   #closed = false;
@@ -339,6 +353,8 @@ export class CodexAdapter implements HarnessAdapter {
 
   constructor(host: AdapterHost, options: CodexOptions = {}) {
     this.#host = host;
+    this.#clock = options.clock ?? realClock;
+    this.#connect = options.connect ?? (socket => AppServerClient.connect(socket, { client: { name: 'cland_hub', title: 'cland hub', version: VERSION }, timeoutMs: this.#spawnDeadlineMs, connectTimeoutMs: 3000 }));
     this.#processEnv = options.env ?? process.env;
     this.#recoveries = new FailedLaunches(host.log, 1000, host.durableLaunchRecovery);
     this.#bin = options.bin ?? this.#processEnv.CLAND_CODEX_BIN ?? 'codex';
@@ -378,10 +394,10 @@ export class CodexAdapter implements HarnessAdapter {
   }
 
   /** Start an app-server on the socket; resolves with its pid once it answers there. */
-  async #startServer(p: Pick<HarnessProcess, 'name' | 'role' | 'sessionId' | 'cwd' | 'accountEnv'>, socket: string, overrides: string[], files: LaunchFiles, resumed: Resumed = untimed, launchToken?: string, authorize: () => void = () => {}): Promise<{ pid: number; client: AppServerClient }> {
+  async #startServer(p: Pick<HarnessProcess, 'name' | 'role' | 'sessionId' | 'cwd' | 'accountEnv'>, socket: string, overrides: string[], files: LaunchFiles, resumed: Resumed = untimed, launchToken?: string, authorize: () => void = () => {}): Promise<{ pid: number; client: AppServerConnection }> {
     return continueWith((function* (this: CodexAdapter): Generator<Promise<unknown>, {
       pid: number;
-      client: AppServerClient;
+      client: AppServerConnection;
     }, unknown> {
       yield* wait(files.directory(dirname(socket), 0o700));
       yield* wait(rm(socket, { force: true }));
@@ -435,12 +451,12 @@ export class CodexAdapter implements HarnessAdapter {
     }).call(this), resumed);
   }
 
-  #connectTo(socket: string): Promise<AppServerClient> {
-    return AppServerClient.connect(socket, { client: { name: 'cland_hub', title: 'cland hub', version: VERSION }, timeoutMs: this.#spawnDeadlineMs, connectTimeoutMs: 3000 });
+  #connectTo(socket: string): Promise<AppServerConnection> {
+    return this.#connect(socket);
   }
 
   /** Listen to one app-server connection for one session's thread. */
-  #attach(live: Live, client: AppServerClient): void {
+  #attach(live: Live, client: AppServerConnection): void {
     live.client = client;
     const mine = (params: Record<string, unknown>) => params.threadId === live.p.harnessSessionId;
     client.on('notification', (method: string, params: Record<string, unknown>) => {
@@ -621,7 +637,7 @@ export class CodexAdapter implements HarnessAdapter {
   }
 
   /** Subscribe a fresh connection to the thread: `thread/resume` (which needs a rollout), else `thread/read`. */
-  async #subscribe(live: Live, client: AppServerClient, extra: Record<string, unknown> = {}, resumed: Resumed = untimed): Promise<SubscriptionSnapshot> {
+  async #subscribe(live: Live, client: AppServerConnection, extra: Record<string, unknown> = {}, resumed: Resumed = untimed): Promise<SubscriptionSnapshot> {
     return continueWith((function* (this: CodexAdapter): Generator<Promise<unknown>, SubscriptionSnapshot, unknown> {
       const threadId = live.p.harnessSessionId as string;
       const sequence = live.eventSequence;
@@ -665,7 +681,7 @@ export class CodexAdapter implements HarnessAdapter {
       const socket = this.#socketPath(sessionId);
       const base = { account: request.account ?? null, accountEnv: request.accountEnv ?? null, name: request.name, role: request.role, sessionId, cwd: request.cwd };
       let pid: number | undefined;
-      let client: AppServerClient | undefined;
+      let client: AppServerConnection | undefined;
       try {
         const policy = yield* wait(this.#threadPolicy(request.cwd, request, files, resumed));
         ({ pid, client } = yield* wait(this.#startServer(base, socket, policy.overrides, files, resumed, request.launchToken, authorize)));
@@ -943,7 +959,7 @@ export class CodexAdapter implements HarnessAdapter {
     if (live.state !== 'unknown') this.#host.signal(p.sessionId, { state: live.state, source: 'app-server', at: Date.now(), ...(live.approvalCommand !== undefined ? { approvalCommand: live.approvalCommand } : {}) });
     if (!live.client) void this.#reconnect(live);
     if (!this.#timer) {
-      this.#timer = setInterval(() => this.#poll(), this.#pollMs);
+      this.#timer = this.#clock.setInterval(() => this.#poll(), this.#pollMs);
       this.#timer.unref();
     }
   }
@@ -957,7 +973,7 @@ export class CodexAdapter implements HarnessAdapter {
     for (const key of this.#steers.keys()) if (key.startsWith(`${sessionId}:`)) this.#steers.delete(key);
     this.#watched.delete(sessionId);
     if (this.#watched.size === 0 && this.#timer) {
-      clearInterval(this.#timer);
+      this.#clock.clearInterval(this.#timer);
       this.#timer = null;
     }
   }
@@ -986,7 +1002,7 @@ export class CodexAdapter implements HarnessAdapter {
     const socket = live.p.harnessId;
     if (!socket) return Promise.resolve();
     live.connecting = (async () => {
-      let client: AppServerClient | null = null;
+      let client: AppServerConnection | null = null;
       try {
         client = await this.#connectTo(socket);
         if (this.#closed || this.#live.get(live.p.sessionId) !== live) { client.close(); return; }
@@ -1045,7 +1061,7 @@ export class CodexAdapter implements HarnessAdapter {
       live.p = p;
       this.#live.set(p.sessionId, live);
       if ((yield* wait(processAlive(p, options.resumed, this.#processEnv))) && (yield* wait(access(socket).then(() => true, () => false)))) {
-        let client: AppServerClient | null = null;
+        let client: AppServerConnection | null = null;
         try {
           client = yield* wait(this.#connectTo(socket));
           live.client?.close();
@@ -1068,7 +1084,7 @@ export class CodexAdapter implements HarnessAdapter {
       // a new app-server on the same socket, resuming the thread from its rollout
       const files = new LaunchFiles(resumed);
       let pid: number | undefined;
-      let client: AppServerClient | undefined;
+      let client: AppServerConnection | undefined;
       try {
         yield* wait(this.#checkVersion(p.cwd, p.accountEnv, resumed));
         const policy = yield* wait(this.#threadPolicy(p.cwd, options.policy ?? {}, files, resumed));
@@ -1098,7 +1114,7 @@ export class CodexAdapter implements HarnessAdapter {
     this.#steers.clear();
     this.#earlyFailures.clear();
     this.#closed = true;
-    if (this.#timer) clearInterval(this.#timer);
+    if (this.#timer) this.#clock.clearInterval(this.#timer);
     this.#timer = null;
     this.#watched.clear();
     // the app-servers keep running: a restarted hub re-finds them
