@@ -19,7 +19,7 @@ blocked_by:
 topic: topic-421
 branch: t/T-701-lead-handover-and-verifier-routing-are
 created: 2026-10-16T19:59:36.941Z
-updated: 2026-10-17T06:51:23.978Z
+updated: 2026-10-17T07:35:13.415Z
 ---
 
 ## Summary
@@ -52,14 +52,18 @@ Routing to a Lead or a verifier is a hub rule, but these files launch two to fiv
 
 - [ ] C1. The seven files' manifest seconds fall from 244.7 s (A-3877) to 115 s or less.
   - verified: rev-30 [reviewer] · run rev-20261017-701-cleanup-correction · 2026-10-17T06:51:23.978Z · commit 14f2d8e4ec7b6640767f0f6a0627da24bbea2c95
+  - verified: rev-30 [reviewer] · run rev-20261017-701-allowance-merge · 2026-10-17T07:35:13.415Z · commit 4cafa46bf0f96e88ff1f1de0c1499f6c992293fa
 - [ ] C2. Their fake-binary call sites fall from 18 to 5 or less, `spawnSpoke` sites from 57 to 10 or less, and `startDaemon` sites from 23 to 4 or less.
   - verified: rev-30 [reviewer] · run rev-20261017-701-cleanup-correction · 2026-10-17T06:51:23.978Z · commit 14f2d8e4ec7b6640767f0f6a0627da24bbea2c95
+  - verified: rev-30 [reviewer] · run rev-20261017-701-allowance-merge · 2026-10-17T07:35:13.415Z · commit 4cafa46bf0f96e88ff1f1de0c1499f6c992293fa
 - [ ] C3. Routing assertions read the hub's recorded messages, and no test outside the kept T3 proofs reads a fake harness log, proved by a source check.
   - verified: rev-30 [reviewer] · run rev-20261017-701-cleanup-correction · 2026-10-17T06:51:23.978Z · commit 14f2d8e4ec7b6640767f0f6a0627da24bbea2c95
+  - verified: rev-30 [reviewer] · run rev-20261017-701-allowance-merge · 2026-10-17T07:35:13.415Z · commit 4cafa46bf0f96e88ff1f1de0c1499f6c992293fa
 - [ ] C4. An audit maps every moved or rewritten assertion to its new place, with no behaviour claim dropped.
   - verified: rev-30 [reviewer] · run rev-20261017-701-cleanup-correction · 2026-10-17T06:51:23.978Z · commit 14f2d8e4ec7b6640767f0f6a0627da24bbea2c95
+  - verified: rev-30 [reviewer] · run rev-20261017-701-allowance-merge · 2026-10-17T07:35:13.415Z · commit 4cafa46bf0f96e88ff1f1de0c1499f6c992293fa
 - [ ] C5. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
-  - failed: rev-30 [reviewer] · 2026-10-17T06:46:59.535Z · note M1/M2: New allowances become invalid on task closure, and held-operation failure cleanup is not safe; source corrections and new-head evidence required.
+  - failed: rev-30 [reviewer] · 2026-10-17T07:33:15.292Z · note M3: Exact-head Linux exits one solely for the new lead-routing-process death case at 7.387 s exceeding its unallowed 5 s hard budget; Neovim smoke is not reached.
 
 ## Blocked by
 
@@ -127,5 +131,55 @@ C4 verified: revised audit A-4332 maps moved original declarations, both paramet
 C5 partial: unchanged twelve files retain 5/5 Mac receipts from A-4324; affected permissions file is refreshed 5/5 in A-4331 on source 3d1de868, whose test source is identical to submitted head (only timing metadata follows). A-4324 also preserves a separately named failed diagnostic probe; that is not counted among the 65 passing evidence receipts. No task droplet receipt yet. Claimant reports current typecheck/tier lint/diff checks green.
 
 Source clear; verify C1-C4. C5 remains unverified pending normal mode-free same-head droplet verification. No remaining findings.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### rev-30 · 2026-10-17T07:33:15.292Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261017-701-first-gate
+commit: 14f2d8e4ec7b6640767f0f6a0627da24bbea2c95
+scope: evidence
+findings: [{"severity":"medium","text":"M3: The new native routing/death identity in lead-routing-process.test.ts takes 7.387010927 s in A-4357 and has no allowance, causing the sole hard five-second budget failure despite ordinary and 5/5 repetition passes. Add a measured, lifecycle-reasoned allowance with open owner and UTC dates or reduce cost without weakening proof, then obtain new-head source review before verification.","file":"hub/test/durations.json"}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Evidence review T-701 at unchanged source-cleared 14f2d8e4ec7b6640767f0f6a0627da24bbea2c95, A-4333 / rev-20261017-701-cleanup-correction. Origin branch and hub record match. Mode-free droplet 83b8bc38-4d20-4cae-b7d1-ccbb5e860f7c / A-4357 exits one. Read-only audit, no Reviewer execution.
+
+## Standards
+Medium M3 — hub/test/durations.json: the newly introduced T3 identity hub/test/lead-routing-process.test.ts::long idle and death climb from item to epic to release; stopped Leads leave inherited routing has no allowance and takes 7.387010927 s, exceeding the existing hard five-second new-test budget. The durable log contains exactly this one hard duration-budget line (6941). The T3 tier-ten-second notices are separately report-only and do not waive this gate. Add a measured, reasoned allowance with an open owner and required UTC dates, or reduce the demonstrated cost while preserving the native death/routing assertions. Primary E-677 migration allowance disposition can supply an open parent owner; do not restore a task-owned allowance that becomes invalid on closure. A head change requires source review before verification.
+
+## Spec
+No functional or load-repetition finding. All thirteen touched test files execute successfully in Linux, including seven migrated routing files, five native lifecycle companions and the resolver file. All thirteen task-added load identities pass 5/5 (65/65), including the controlled pre-release failure cleanup case and this native death case. Its ordinary assertion passes; the failure is its duration budget, not a routing assertion or missing repeat. M1/M2 ownership/allowance corrections remain resolved and C1-C4 source verification remains current. Mac evidence A-4331/A-4332 remains applicable to unchanged source, but cannot make an exit-one task gate final clear.
+
+Totals: 2079 tests, 2074 pass, zero functional failures/cancellations, five skips; free 54/54, machine 2020 pass/5 skip. The hub stops before Neovim smoke. Linux x64 c-8 lon1, two workers, suite wall 2378.77 s, peak one-minute load 10.56, lifetime 2447 s, cost $0.1699. Host typecheck completes with candidate-tree receipt 912580597026595476dabb97a0af080d0c0683ab reused remotely.
+
+Final evidence not clear due M3. C5 remains failed/pending a qualifying corrected-head task gate; preserve this receipt as positive functional evidence and the exact allowance measurement, not a green run. Correct and request fresh source review before another verification.
+
+Criteria: C5 failed (M3: Exact-head Linux exits one solely for the new lead-routing-process death case at 7.387 s exceeding its unallowed 5 s hard budget; Neovim smoke is not reached.).
+
+### rev-30 · 2026-10-17T07:35:13.415Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261017-701-allowance-merge
+commit: 4cafa46bf0f96e88ff1f1de0c1499f6c992293fa
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Delta source review T-701 at 4cafa46bf0f96e88ff1f1de0c1499f6c992293fa, following failed A-4357 / evidence verdict A-4358. Scope is the reasoned lead-routing allowance plus primary Coordinator ae616032-authorized merge of dev a1f26b988a982817d10471a5843ec71da3799b82. Origin matches; pre-merge authored commit d83c023a changes durations.json only. Read-only review; no Reviewer execution.
+
+## Standards
+M3 resolved in source. New allowance is 8.5 s for the exact extracted long-idle/death identity measured at 7.387010927 s in A-4357. Its reason identifies three native harness sessions, SIGKILL death observation, confirmed stops and inherited hierarchy routing. Owner is open parent E-677, added UTC 2026-10-17 and expires 2026-10-24, matching primary Coordinator 44457c1e and the stage migration allowance policy. No global budget, test timeout or identity baseline is changed by this correction. The old source's missing allowance is not recast as a shared flake.
+
+The duration conflict resolution independently equals the structured three-way union: incoming dev content plus all prior T-701 additions/removals, and only this newly authorized allowance. All source/budget/file/test timing fields match that expected union. Every Claude Code allowance/file/test entry equals incoming dev exactly. tiers.json is also the expected union, retaining T-701 and T-691 entries. No unexplained resolution edits found.
+
+## Spec
+No findings. All thirteen T-701 test files are byte-identical to reviewed 14f2d8e4, so the source assertion audit, held-work failure cleanup correction and Mac receipts retain scope. Their combined manifest seconds remain independently 43.486571 (including the extracted native companions), below 115. C1-C4 source evidence is refreshed at this merged head. Imported T-691 composition/environment/native-session tests and docs equal incoming dev byte-for-byte and retain that task's accepted review; no production changes were imported or authored here. Claimant reports merged-head typecheck, tier lint and whitespace checks green.
+
+A-4357 remains failed historical gate evidence despite all thirteen files and 65/65 owned load repetitions being functionally green. Source correction clear with no remaining findings. C5 remains unverified pending the fresh normal mode-free exact-head droplet receipt, including the Neovim smoke not reached in A-4357. Verification may proceed at this head.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.

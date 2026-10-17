@@ -3,7 +3,7 @@ id: T-727
 kind: task
 title: claude-code-adapter scheduler and latch negatives move onto the adapter Clock
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - v0.1.4
@@ -16,7 +16,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-17T07:27:42.323Z
-updated: 2026-10-17T07:27:42.323Z
+updated: 2026-10-17T07:27:56.534Z
 ---
 
 ## Summary

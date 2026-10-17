@@ -3,7 +3,7 @@ id: T-720
 kind: task
 title: Load-gate repetitions keep the failed repetition's assertion and stack in the suite log
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 2
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-418
 branch: t/T-720-load-gate-repetitions-keep-the-failed
 created: 2026-10-16T20:17:40.486Z
-updated: 2026-10-17T07:01:57.045Z
+updated: 2026-10-17T07:45:28.699Z
 ---
 
 ## Summary
@@ -32,9 +32,11 @@ The load gate keeps, for each failed repetition, the test's assertion message, e
 - [x] C1. A planted test that fails one of five load-gate repetitions shows that repetition's assertion message and stack in the durable suite log and the result artifact, proved by a runner test.
   - done: impl-720 · 2026-10-17T06:14:44.458Z
   - verified: rev-30 [reviewer] · run rev-20261017-720-final · 2026-10-17T06:57:43.127Z · commit 7c117ff93c46fc968496c150d2fc88399315d55f
+  - verified: rev-30 [reviewer] · run rev-20261017-720-merge-final · 2026-10-17T07:45:28.034Z · commit 672630985e22b5d4656b3f10eecc1e6fe8c43a73
 - [x] C2. Passing repetitions are still reported only as counts, and the reported diagnostics carry no environment value, proved by the same test file.
   - done: impl-720 · 2026-10-17T05:12:13.290Z
   - verified: rev-30 [reviewer] · run rev-20261017-720-final · 2026-10-17T06:57:43.127Z · commit 7c117ff93c46fc968496c150d2fc88399315d55f
+  - verified: rev-30 [reviewer] · run rev-20261017-720-merge-final · 2026-10-17T07:45:28.034Z · commit 672630985e22b5d4656b3f10eecc1e6fe8c43a73
 
 ## Comments
 
@@ -268,3 +270,30 @@ No findings. All T-688 selector code is byte-identical to incoming dev except th
 A-4337 pins this committed selector and replays the same ordered 40 landing identities and modes as accepted T-688 A-4309: nine hub-selected, zero own and zero historical misses. Both use nine ancestral maps; retained history is now 625 logs versus 620, so this is not an identical historical-corpus claim or a measured runtime saving.
 
 Source delta clear with no remaining findings. Parent-head full green A-4334/A-4335 remains valid historical evidence, not a current-head runtime verdict. C1/C2 require the requested fresh normal mode-free exact-head droplet receipt before final verification at this merged head.
+
+### rev-30 · 2026-10-17T07:45:28.034Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261017-720-merge-final
+commit: 672630985e22b5d4656b3f10eecc1e6fe8c43a73
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final merged-head evidence review T-720 at 672630985e22b5d4656b3f10eecc1e6fe8c43a73, unchanged from merge source clearance A-4339 / rev-20261017-720-merge-delta. Origin branch and hub verify record match. Coordinator-required mode-free droplet f28d1f3a-05df-4a6b-8390-41deb965d5c8 / A-4363 exits zero, full hub plus Neovim. Read-only receipt audit; no Reviewer execution.
+
+## Standards
+No remaining findings. The merge-resolution audit preserved T-688 selector behavior and T-720 diagnostic/deadline implementation; current runtime supplies the required fresh proof rather than borrowing parent A-4334. No hard duration-budget or failing load gate remains; T3 tier/legacy duration notices remain report-only.
+
+## Spec
+C1/C2 verified at this merged head. The runner diagnostic/log/result-summary regression passes ordinarily in 3.600593113 s and 5/5 load repetitions. Reviewed assertions require the failed repetition's index, nested assertion/error and actual sanitized source frame in durable log and suiteSummary, count-only passing controls, and no raw/escaped environment or multiline command contents. All four pure/reporter tests also pass ordinarily and 5/5 each, covering safe property selection/causes, raw/escaped env redaction, multiline command tails and retained frames.
+
+Coordinator-added deadline scope is green: the live-socket timeout regression passes ordinarily in 5.786709339 s and 5/5. Its unchanged assertions retain numeric subject timeout 1000 ms plus 250 ms grace, timeout identity/status, earlier diagnostic and source frame, summary retention, remaining repetitions and following identity, all six attempts and exact PID disappearance. The separate 30 s enclosing fixture watchdog and measured allowance do not replace that subject bound. All six T-720 additions have ordinary passes plus 30/30 fresh load repetitions. The complete touched files execute; incoming T-688 selection tests run in the full cover, with the source resolution/replay audit retained in A-4339.
+
+Counts independently sum to 2478 tests, 2470 passed, zero failures/cancellations, eight skips: free 56/56; machine 2023 pass/5 skip; Neovim 391 pass/3 skip. Host typecheck completes and candidate-tree receipt 3584309c585b876a1d76ab06b14bf9d8a7b7f5b4 is reused remotely. Linux x64 c-8 lon1, Node 24.21.0/Neovim 0.12.5, two workers; suite wall 2497.99 s, peak one-minute load 11.73, lifetime 2562 s, cost $0.1779.
+
+Final review clear, C1/C2 current and verified. Earlier failed receipts and findings remain historical; their corrections stand, with no findings reopened by the authorized merge.
+
+Criteria: C1 verified, C2 verified.
