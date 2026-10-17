@@ -2,8 +2,8 @@
 id: T-720
 kind: task
 title: Load-gate repetitions keep the failed repetition's assertion and stack in the suite log
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -16,7 +16,8 @@ blocked_by: []
 topic: topic-418
 branch: t/T-720-load-gate-repetitions-keep-the-failed
 created: 2026-10-16T20:17:40.486Z
-updated: 2026-10-17T07:45:28.699Z
+updated: 2026-10-17T07:45:38.640Z
+closed: 2026-10-17T07:45:38.640Z
 ---
 
 ## Summary
@@ -297,3 +298,7 @@ Counts independently sum to 2478 tests, 2470 passed, zero failures/cancellations
 Final review clear, C1/C2 current and verified. Earlier failed receipts and findings remain historical; their corrections stand, with no findings reopened by the authorized merge.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-17T07:45:38.640Z
+
+Merged 7accac51dd11b650db7d1a449c409b1801efa611 onto dev.
