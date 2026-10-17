@@ -3,8 +3,9 @@ id: T-742
 kind: task
 title: Some droplet results print 'lifetime unknown · cost $unknown'
 state: open
-status: in progress
+status: review
 size: S
+criterion_seq: 1
 labels:
   - v0.1.4
   - hub
@@ -16,7 +17,7 @@ blocked_by: []
 topic: topic-455
 branch: t/T-742-some-droplet-results-print-lifetime
 created: 2026-10-17T15:49:20.649Z
-updated: 2026-10-17T17:21:03.209Z
+updated: 2026-10-17T17:24:28.151Z
 ---
 
 ## Summary
@@ -29,7 +30,8 @@ Find out when the result is written without the lease's lifetime and cost. One c
 
 ## Acceptance criteria
 
-- [ ] C1. The cause is named, both runs' spend is accounted for in the ledger or the gap is quantified, and a regression shows a finished run always reports its lifetime and cost.
+- [x] C1. The cause is named, both runs' spend is accounted for in the ledger or the gap is quantified, and a regression shows a finished run always reports its lifetime and cost.
+  - done: impl-742 · 2026-10-17T17:24:23.440Z
 
 ## Comments
 
