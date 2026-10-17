@@ -3,7 +3,7 @@ id: T-688
 kind: task
 title: "Coverage selection narrows instead of falling back: Neovim importers only, a file's covering tests for top-level edits, old maps that still map"
 state: open
-status: backlog
+status: in progress
 size: M
 labels:
   - v0.1.4
@@ -15,9 +15,9 @@ parent: E-676
 blocked_by:
   - T-679
 topic: null
-branch: null
+branch: t/T-688-coverage-selection-narrows-instead-of
 created: 2026-10-16T19:59:28.645Z
-updated: 2026-10-16T19:59:29.496Z
+updated: 2026-10-17T04:13:59.141Z
 ---
 
 ## Summary

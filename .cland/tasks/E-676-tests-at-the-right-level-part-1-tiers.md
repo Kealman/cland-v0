@@ -14,7 +14,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-16T19:58:43.022Z
-updated: 2026-10-16T23:35:32.947Z
+updated: 2026-10-17T04:13:53.068Z
 ---
 
 ## Summary
@@ -60,6 +60,7 @@ stages:
         - T-686
         - T-687
       - - T-659
+      - - T-688
   - name: stop the growth
     qa:
       scope: none
@@ -68,5 +69,4 @@ stages:
       - - T-682
         - T-684
         - T-690
-      - - T-688
 ```
