@@ -10,7 +10,7 @@ import { hubShards, balanceCloseShards } from '../suite-shards.ts';
 import { lintTests, testLintReport } from '../test-lint.ts';
 import { suiteCheckCommand } from '../suite-check.ts';
 import { planTierReport, tierReport, tierPlanWorkers, timingReceipts, type TierPlan, type SuiteDryRun } from '../suite-tier-report.ts';
-import { durationBudgetReport, durationBudgetSummary } from '../suite-duration-budget.ts';
+import { durationBudgetReport, durationBudgetSummary, type DurationBudgetContext } from '../suite-duration-budget.ts';
 import { baselineTimings, durationBudgetContext } from '../suite-duration-context.ts';
 import { readDurationManifest } from '../suite-durations.ts';
 import type { ProjectConfig } from '../init/config.ts';
@@ -70,7 +70,8 @@ export type StagePlatform = 'Linux droplet' | 'macOS';
 export type StageCover = { id: string; head: string; tree: string; platform: StagePlatform };
 const verifyResult = (job: SuiteJob): VerifyResult => ({ executor: job.executor, id: job.id, state: job.state ?? 'running', result: job.state !== 'finished' ? null : job.cancelled || job.requesterDied ? 'cancelled' : job.outcome ? job.outcome.code === 0 ? 'passed' : 'failed' : null, head: job.head, finished: job.finished ?? job.completedAt ?? null, artifact: job.artifact, ...(job.cached ? { cached: { ...job.cached } } : {}) });
 
-export type SuiteSchedulerOptions = { candidate?: SuiteCandidate; clock?: Clock; dropletServices?: DropletDependencies; waitClock?: Clock; projectConfig?: () => ProjectConfig; env?: NodeJS.ProcessEnv; executor?: ExecutorKind; localFallback?: boolean; lifetimeMs?: number; runTimeoutMs?: number; runTimeout?: string; onAccountingConfirmed?: (job: Readonly<SuiteJob>) => void | Promise<void>; onFallback?: (job: Readonly<SuiteJob>, cause: string) => void; budget?: number; remoteBudget?: number; shards?: number; onShardingSkipped?: (job: Readonly<SuiteJob>, cause: string) => void; cacheMaxAgeMs?: number; waitP90TargetMs?: number; locks?: string[]; requesterDead?: (actor: SuiteActor) => boolean; log?: LogFn; onQueue?: (queue: VerificationQueue) => void; onJob?: (job: Readonly<SuiteJob>) => void };
+// A supplied context is a complete snapshot; undefined reads Git, null omits budget reporting.
+export type SuiteSchedulerOptions = { durationContext?: DurationBudgetContext | null; candidate?: SuiteCandidate; clock?: Clock; dropletServices?: DropletDependencies; waitClock?: Clock; projectConfig?: () => ProjectConfig; env?: NodeJS.ProcessEnv; executor?: ExecutorKind; localFallback?: boolean; lifetimeMs?: number; runTimeoutMs?: number; runTimeout?: string; onAccountingConfirmed?: (job: Readonly<SuiteJob>) => void | Promise<void>; onFallback?: (job: Readonly<SuiteJob>, cause: string) => void; budget?: number; remoteBudget?: number; shards?: number; onShardingSkipped?: (job: Readonly<SuiteJob>, cause: string) => void; cacheMaxAgeMs?: number; waitP90TargetMs?: number; locks?: string[]; requesterDead?: (actor: SuiteActor) => boolean; log?: LogFn; onQueue?: (queue: VerificationQueue) => void; onJob?: (job: Readonly<SuiteJob>) => void };
 type HumanSlot = Omit<SuiteSlot, 'type'> & { queued: string; admittedAt?: string; left?: boolean };
 const HUMAN_GRACE_MS = 10_000;
 const ACCOUNTING_WAIT_MS = 120_000;
@@ -332,7 +333,7 @@ export class Suites {
     if (input.occasion && (!input.integrated || branch !== 'dev' || !tree || selection.fetchedDev !== head || input.mode !== 'all')) throw new Error('occasion requires an integrated dev full request (verify all) with fresh origin/dev fetch proof at its head');
 
     if (input.dryRun) {
-      const context = await durationBudgetContext(input.cwd, { ...(budgetBase ? { base: budgetBase } : {}), env: this.#env });
+      const context = this.#options.durationContext !== undefined ? this.#options.durationContext : await durationBudgetContext(input.cwd, { ...(budgetBase ? { base: budgetBase } : {}), env: this.#env });
       const budgetLines = context ? durationBudgetSummary(durationBudgetReport(context.manifest, context.tiers, baselineTimings(context, tierPlan.flatMap(row => row.files)), context.base)) : [];
       if (executor === 'droplet' && input.executor === 'droplet') {
         if (!tree) throw new Error('dirty worktree cannot be bundled for droplet');
@@ -885,10 +886,10 @@ export class Suites {
       }
       if (!job.budgetReported && !job.cached && !job.parentRun) {
         try {
-          const context = await durationBudgetContext(job.cwd, { head: job.head, ...(job.durationBase ? { base: job.durationBase } : {}), env: this.#env });
+          const context = this.#options.durationContext !== undefined ? this.#options.durationContext : await durationBudgetContext(job.cwd, { head: job.head, ...(job.durationBase ? { base: job.durationBase } : {}), env: this.#env });
           if (context) {
             const log = await readFile(job.log, 'utf8');
-            await appendFile(job.log, durationBudgetReport(context.manifest, context.tiers, timingReceipts(log), context.base).join('\n') + '\n');
+            await appendFile(job.log, (log.endsWith('\n') ? '' : '\n') + durationBudgetReport(context.manifest, context.tiers, timingReceipts(log), context.base).join('\n') + '\n');
           }
         } catch { await appendFile(job.log, 'budget (report only): unavailable (report read failed)\n'); }
         job.budgetReported = true; this.#save(job);

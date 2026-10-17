@@ -4,7 +4,8 @@ import assert from 'node:assert/strict';
 import { suiteUnit } from './suite-unit-fixture.ts';
 
 test('pending remote start retains the entire collected receipt log', async t => {
-  const f = await suiteUnit(t, { executor: 'droplet' });
+  // This receipt-only scenario has no budget manifest or trailing report section.
+  const f = await suiteUnit(t, { executor: 'droplet', durationContext: null });
   const entered = Promise.withResolvers<void>();
   const start = f.machine.dependencies.run.start.bind(f.machine.dependencies.run);
   let attempts = 0;

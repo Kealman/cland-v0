@@ -1,10 +1,33 @@
-// T1: pure planted timing manifests; no processes or wall-clock waits.
+// T1: planted timing manifests and Suites reports on semantic worker receipts; no processes or wall-clock waits.
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { durationBudgetReport } from '../src/suite-duration-budget.ts';
+import { durationBudgetReport, type DurationBudgetContext } from '../src/suite-duration-budget.ts';
 import type { DurationManifest } from '../src/suite-durations.ts';
+import { suiteUnit } from './suite-unit-fixture.ts';
 
 const manifest = (): DurationManifest => ({ version: 1, source: { artifacts: [], commit: 'base' }, budget: { testSeconds: 5, fileSeconds: 60 }, files: {}, tests: {}, allow: {} });
+
+test('Suites budget reports use supplied history without a repository', async t => {
+  const before = manifest(), current = manifest();
+  const file = 'hub/test/history.test.ts';
+  before.files[file] = { seconds: 8, tests: 2 };
+  before.tests = { [`${file}::keep`]: 5, [`${file}::removed`]: 3 };
+  current.allow[`${file}::keep`] = { seconds: 6, legacy: true, owner: 'E-677', reason: 'Planted existing allowance.' };
+  const tiers = { [file]: 'T3' } as const;
+  const durationContext: DurationBudgetContext = { manifest: current, tiers, base: {
+    manifest: before, tiers, retained: [`${file}::keep`], sources: { [file]: { patterns: ['^keep$', '^removed$'], dynamic: false } },
+  } };
+  const f = await suiteUnit(t, { durationContext });
+  const preview = await f.suites.start({ mode: 'auto', cwd: f.root, topic: 'unit-topic', to: [], actor: null, dryRun: true }, () => {});
+  assert.ok('dryRun' in preview);
+  assert.ok(preview.lines.includes('T3 ratchet (report only): 5 s vs base 8 s'));
+  assert.ok(preview.lines.includes('budget legacy allowances: 1; 6 s; owner E-677'));
+  const job = await f.launch();
+  await f.finish(job.id, 0, `# tests 1\n# pass 1\nsuite timing ${JSON.stringify({ file, name: 'new', seconds: 2 })}\n`);
+  const log = await f.log(job.id);
+  assert.match(log, /T3 ratchet \(report only\): 7 s vs base 8 s/);
+  assert.match(log, /budget legacy allowances: 1; 6 s; owner E-677/);
+});
 
 test('tier budgets rank all observed identities, naming missing baselines', () => {
   const head = manifest();

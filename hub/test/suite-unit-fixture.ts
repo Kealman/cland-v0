@@ -12,6 +12,7 @@ import { writeLease, type DropletLease } from '../src/executor/droplet/lease.ts'
 import { LocalExecutor } from '../src/executor/local.ts';
 import type { Lease, RunRef, RunStatus } from '../src/executor/executor.ts';
 import { parseConfig } from '../src/init/config.ts';
+import type { DurationBudgetContext } from '../src/suite-duration-budget.ts';
 import type { SuiteSelection } from '../src/suite-selection.ts';
 import { keyHash } from '../src/executor/droplet/prepare.ts';
 import { FakeClock } from './fake-clock.ts';
@@ -82,11 +83,13 @@ export async function suiteUnit(t: TestContext, options: SuiteSchedulerOptions &
   watchStore();
   let inspectBarrier = async () => {};
   let beforeReport = async (_job: Readonly<SuiteJob>) => {};
+  const manifest = { version: 1 as const, source: { artifacts: [], commit: candidate.head }, budget: { testSeconds: 5, fileSeconds: 60 }, files: {}, tests: {}, allow: {} };
+  const durationContext: DurationBudgetContext = { manifest, tiers: {}, base: { manifest, tiers: {}, retained: [], sources: {} } };
   const make = () => new Suites(store, root, async (job, checkpoint) => {
     await beforeReport(job);
     const artifact = store.registerArtifact(id => ({ id, title: job.id, kind: 'file', path: job.log, creator: 'hub', time: clock.now().toISOString(), topic: job.topic, status: 'shared' }), () => {});
     checkpoint(artifact.id); reports.push(structuredClone(job)); publish();
-  }, { clock, candidate: {
+  }, { clock, durationContext, candidate: {
     head: async () => candidate.head,
     tree: async () => candidate.tree,
     inspect: async () => { await inspectBarrier(); return { ...structuredClone(candidate), tierPlan: [], budgetBase: undefined }; },
