@@ -3,7 +3,7 @@ id: T-722
 kind: task
 title: Task runs take workers and test limits from the hub's config, not the candidate tree's
 state: open
-status: review
+status: ready
 size: S
 rank: 6899
 criterion_seq: 2
@@ -17,7 +17,7 @@ blocked_by: []
 topic: topic-417
 branch: t/T-722-task-runs-take-workers-and-test-limits
 created: 2026-10-16T20:36:58.759Z
-updated: 2026-10-17T04:12:56.779Z
+updated: 2026-10-17T04:13:09.407Z
 ---
 
 ## Summary
@@ -32,8 +32,10 @@ Task runs take workers, the load-gate workers and the test and stall timeouts fr
 
 - [x] C1. A task run from a worktree whose config says 4 droplet workers runs at the hub config's 2, and an explicit `--workers 3` still runs at 3, proved by a suite-queue test with two configs.
   - done: impl-722 · 2026-10-17T03:30:27.250Z
+  - verified: rev-30 [reviewer] · run rev-20261017-722-final · 2026-10-17T04:13:08.871Z · commit 52cd201f061838738460071b91ed9c487d35897c
 - [x] C2. Test and stall timeouts and load-gate workers for a task run come from the hub's config, and the run log names the policy source, proved by the same test file.
   - done: impl-722 · 2026-10-17T03:30:27.577Z
+  - verified: rev-30 [reviewer] · run rev-20261017-722-final · 2026-10-17T04:13:08.871Z · commit 52cd201f061838738460071b91ed9c487d35897c
 
 ## Comments
 
@@ -61,3 +63,29 @@ No findings. The new suite-queue-policy test is declared T2 in its header and so
 No findings. Submission validates candidate config but derives execution workers, load-gate workers and test/stall timeouts from the loaded hub config. Admission refreshes those fields for task worktrees as for root runs. Explicit workers remain authoritative; the persisted fallback count retains the hub local policy. Worker log entries identify the source and admitted count. The new table proves hub droplet 2 against candidate 4, explicit 3, local preview 1 followed by reload to 5, refreshed timeouts/load-gate workers, and invalid candidate rejection.
 
 A-4291 reports causal red/green, queue-policy 1/1, dry-run 4/4, timeouts 7/7, typecheck and tier lint. These are claimant targeted receipts, not a completed task verification run. Both C1 and C2 remain unverified pending same-head normal diff-selected verification; source is clear to submit that run.
+
+### rev-30 · 2026-10-17T04:13:08.871Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261017-722-final
+commit: 52cd201f061838738460071b91ed9c487d35897c
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence review T-722 at 52cd201f061838738460071b91ed9c487d35897c, unchanged from source clearance A-4292 / rev-20261017-722-source. The origin task branch and hub verification record both identify this exact head.
+
+## Standards
+No findings. Source standards review stands; this pass audits the completed receipt read-only.
+
+## Spec
+C1 verified: A-4297 records the queue-policy regression passing ordinarily in 0.760 s and all five fresh load repetitions. Its reviewed assertions prove candidate droplet workers 4 executes with hub workers 2 and explicit workers 3 remains effective.
+C2 verified: the same executed regression checks hub test/stall timeouts and load-gate workers, the source-labelled admitted Workers line, refreshed policy after a queued config reload, and preserved invalid-candidate refusal. Existing dry-run (4 cases) and timeout (7 cases) compatibility files all have passing timing receipts.
+
+Normal mode-free droplet run d03ffcba-5435-4f11-8812-f24918b1c4fc / A-4297 exits zero in hub-only mode plus Neovim smoke. Phase totals independently sum to 2073 tests: 2068 passed, zero failed/cancelled, five skipped (free 44/44; machine 2012 pass/5 skip; smoke 12/12). Both typechecks complete. Two workers, suite wall 2261.21 s, peak one-minute load 10.26. Duration-regression notices are non-failing; no hard budget failure appears. The serving hub's outer Workers line remains its older format; source attribution is proven by the candidate's executed queue regression, not claimed as a live-hub rollout observation.
+
+Final review clear, C1 and C2 verified at this head. No additional run requested.
+
+Criteria: C1 verified, C2 verified.

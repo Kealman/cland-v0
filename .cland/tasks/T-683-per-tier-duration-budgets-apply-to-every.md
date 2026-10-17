@@ -2,8 +2,8 @@
 id: T-683
 kind: task
 title: Per-tier duration budgets apply to every test, with expiring allowances and a T3 ratchet, report only
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 6
 labels:
@@ -18,7 +18,8 @@ blocked_by:
 topic: topic-416
 branch: t/T-683-per-tier-duration-budgets-apply-to-every
 created: 2026-10-16T19:59:28.090Z
-updated: 2026-10-17T03:35:46.202Z
+updated: 2026-10-17T04:13:10.211Z
+closed: 2026-10-17T04:13:10.211Z
 ---
 
 ## Summary
@@ -206,3 +207,7 @@ Evidence limit: A-4293's outer ratchet line says unavailable (no base manifest),
 Final review clear; verify C1-C6 at this head.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### coord · 2026-10-17T04:13:10.211Z
+
+Merged 087b4afe1efc77526c7f4019291c909d0a433a84 onto dev.
