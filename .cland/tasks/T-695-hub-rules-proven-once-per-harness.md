@@ -3,7 +3,7 @@ id: T-695
 kind: task
 title: Hub rules proven once per harness through three binaries collapse to one in-process table and one real frame proof
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 5
 labels:
@@ -22,7 +22,7 @@ blocked_by:
 topic: topic-449
 branch: t/T-695-hub-rules-proven-once-per-harness
 created: 2026-10-16T19:59:36.269Z
-updated: 2026-10-17T17:36:25.913Z
+updated: 2026-10-17T18:05:05.905Z
 ---
 
 ## Summary
@@ -41,20 +41,25 @@ Each hub rule runs as a T2 table over T-686's fake adapter flavours: model and u
 ## Acceptance criteria
 
 - [x] C1. The four files' manifest seconds fall from 164.9 s (A-3877) to 85 s or less.
-  - done: impl-695 · 2026-10-17T16:17:45.515Z
+  - done: impl-695 · 2026-10-17T18:04:57.055Z
+  - verified: rev-30 [reviewer] · run rev-20261017-695-final · 2026-10-17T18:05:04.197Z · commit fc2dc89d27711234c77772a6401da7be02ef5fc8
 - [x] C2. Their fake-binary call sites fall from 23 to 6 or less, `spawnSpoke` sites from 21 to 4 or less, and numeric sleeps from 4 to 0.
   - done: impl-695 · 2026-10-17T16:17:46.318Z
   - verified: rev-30 [reviewer] · run rev-20261017-695-source · 2026-10-17T16:23:49.658Z · commit 09f1b18ccd0db3603e18e4d7a4ee5c9a83a360d4
   - verified: rev-30 [reviewer] · run rev-20261017-695-combined-delta · 2026-10-17T17:36:25.913Z · commit fc2dc89d27711234c77772a6401da7be02ef5fc8
+  - verified: rev-30 [reviewer] · run rev-20261017-695-final · 2026-10-17T18:05:04.197Z · commit fc2dc89d27711234c77772a6401da7be02ef5fc8
 - [x] C3. Each hub rule has one T2 table test over the three flavours that passes the tier lint, and each per-harness difference names the contract-file or scenario test that proves it.
   - done: impl-695 · 2026-10-17T17:30:05.657Z
   - verified: rev-30 [reviewer] · run rev-20261017-695-combined-delta · 2026-10-17T17:36:25.913Z · commit fc2dc89d27711234c77772a6401da7be02ef5fc8
+  - verified: rev-30 [reviewer] · run rev-20261017-695-final · 2026-10-17T18:05:04.197Z · commit fc2dc89d27711234c77772a6401da7be02ef5fc8
 - [x] C4. An audit maps every moved or rewritten assertion to its new place, with no behaviour claim dropped.
   - done: impl-695 · 2026-10-17T16:17:47.301Z
   - verified: rev-30 [reviewer] · run rev-20261017-695-source · 2026-10-17T16:23:49.658Z · commit 09f1b18ccd0db3603e18e4d7a4ee5c9a83a360d4
   - verified: rev-30 [reviewer] · run rev-20261017-695-combined-delta · 2026-10-17T17:36:25.913Z · commit fc2dc89d27711234c77772a6401da7be02ef5fc8
-- [ ] C5. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
-  - failed: rev-30 [reviewer] · 2026-10-17T17:15:41.264Z · note A-4644 exits1 with five owned hard duration budgets and no Neovim smoke receipt; await the explicitly authorized unchanged-head retry before final evidence clearance.
+  - verified: rev-30 [reviewer] · run rev-20261017-695-final · 2026-10-17T18:05:04.197Z · commit fc2dc89d27711234c77772a6401da7be02ef5fc8
+- [x] C5. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
+  - done: impl-695 · 2026-10-17T18:04:57.434Z
+  - verified: rev-30 [reviewer] · run rev-20261017-695-final · 2026-10-17T18:05:04.197Z · commit fc2dc89d27711234c77772a6401da7be02ef5fc8
 
 ## Blocked by
 
@@ -235,3 +240,49 @@ Source clear; Standards0/Spec0 findings. Verify C2/C3/C4 at fc2dc89d; leave C1/C
 Durable review A-4670.
 
 Criteria: C2 verified, C3 verified, C4 verified.
+
+### rev-30 · 2026-10-17T18:05:04.197Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261017-695-final
+commit: fc2dc89d27711234c77772a6401da7be02ef5fc8
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-695 final evidence — clear
+
+Exact headfc2dc89d27711234c77772a6401da7be02ef5fc8 remains branch tip and reviewed source. Current source verdict rev-20261017-695-combined-delta/A-4670 verifies C2/C3/C4; no head/source change since it. Final evidence scope; no Reviewer execution or edits.
+
+## Standards and Spec
+No remaining findings. C1/C5 established by current source, accepted Mac5/5 and exact-head Linux receipt. C2/C3/C4 retain the current source mapping: four fake-adapter/FakeClock/fake-probe rule files, guarded no-territory TaskWorktrees reader, no native Git/ps children in their complete-file censuses, and all true worktree/CLI-stop/native thread/history/process claims retained in the approved T3 split. Original README canonical jq expression and in-process latest-final/grouping/null aggregation remain explicit. No assertion is credited solely to future T-707/T-708 work.
+
+C1 follows the launch brief's explicit Mac5/5 reported-test median comparison across every coverage carrier, including the native split. A-4663 raw25 final-source whole-file logs were independently checked during A-4670:150passes,zero failures/cancellations/skips; native accepted repeats3–7 and excluded preliminaries1–2 clearly labeled. Mac reported-test median sum35.351592999≤85s; Node file-wall36.938744333 and subprocess-wall37.116 are separate metrics. Historical164.9manifest baseline and106.348same-Mac subprocess before value are not mislabeled as current comparable measured test seconds.
+
+## Exact-head Linux receipt
+Run e4827d9a-896f-41b9-8d2b-2ae5e9511751/A-4692 passes exit0. Normal diff-selected hub-only due unsupported duration-manifest coverage plus Neovim smoke; no full-Neovim claim.2086total/2081pass/0fail/0cancelled/5prerequisite skips:155/155 hermetic,1919machine/1914pass5skip,12/12smoke.
+
+Every coverage file has positive ordinary top-level receipts,30cases total. All23 owned new identities pass5/5 load gate,115/115, including nine retained native identities. No owned skip, hard duration-budget line or load-gate failure. The five former hard failures from A-4644 are absent; current crew handoff0.715827123s, usage grouping1.183831054s, OpenCode retain4.427071137s/reset4.546591254s, native whole-file50.184087882s. Existing bounded E-677 allowances remain historical/expiring source configuration; no automatic baseline rewrite or claim that those old costs still characterize corrected fixtures.
+
+Paired coverage test-seconds:
+| File | Mac5/5 median | Exact-head Linux |
+| --- | ---: | ---: |
+| session-model |0.248010792|1.622480206|
+| session-usage |0.456595541|2.697438558|
+| progress |1.359060583|2.693272656|
+| crew-launch |0.924129541|2.842407452|
+| retained session-native-lifecycle |32.363796542|50.184087882|
+| Total |35.351592999|60.039686754|
+
+Linux includes native coverage and is independently summed from A-4692; it is disclosure/correctness evidence, not substituted for the Mac criterion platform. Prior09f1b18c Linux99.738860237 was historical before resource-boundary correction, not a current-head value. No causal load inflation multiplier or cross-run performance guarantee is claimed.
+
+Supplied executor linuxx64 6.8.0-142-generic,c-8lon1,Node24.21.0/Neovim0.12.5,2workers,lifetime1619s/cost0.1125. Suite1548.15s,lockwait0.04s,peak1mload10.52,load-gate extra17.07s,smoke20.22s. Host typecheck gate reused at3cc02ce21cd0aadc7194ff92be4a8f8d00e4bace,not repeated remotely. Report-only tier-budget/baseline diagnostics, including untimed native split, do not imply hard-budget compliance or a refreshed T3 base.
+
+Old failed A-4644 and cancelled A-4651 remain historical failed/cancelled evidence, not overwritten; the current reviewed-head receipt resolves C5. All five current source criteria are established across source and execution. No per-item QA or further task run required.
+
+Standards0/Spec0 findings. Final clear; verify C1–C5 atfc2dc89d.
+Durable review A-4693. Claimant C5 restoration requested separately after the green receipt.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.

@@ -3,7 +3,7 @@ id: T-748
 kind: task
 title: "Runtime resource tripwire in the T1 and T2 phases: a test that really spawns, binds or opens a socket fails by name"
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 2
 labels:
@@ -17,7 +17,7 @@ blocked_by: []
 topic: topic-456
 branch: t/T-748-runtime-resource-tripwire-in-the-t1-and
 created: 2026-10-17T17:29:45.529Z
-updated: 2026-10-17T17:58:33.706Z
+updated: 2026-10-17T18:02:21.251Z
 ---
 
 ## Summary
@@ -33,8 +33,9 @@ Tripped calls fail the test with file, test name, resource and stack, and the ru
 
 ## Acceptance criteria
 
-- [ ] C1. A planted T1 test that spawns `node -e` and a planted T2 test that does the same are each named in the run's tier-mismatch report, while a T2 test using projectHub with fake probes and the cland CLI helper passes clean, proved by runner tests.
-  - failed: rev-30 [reviewer] · 2026-10-17T17:50:35.632Z · note The shipped enforce branch can return success for quarantined runtime-resource trips; preserve hard failure across phase/repetition quarantine normalization and refresh runner proofs before source clearance.
+- [x] C1. A planted T1 test that spawns `node -e` and a planted T2 test that does the same are each named in the run's tier-mismatch report, while a T2 test using projectHub with fake probes and the cland CLI helper passes clean, proved by runner tests.
+  - done: impl-748 · 2026-10-17T18:01:08.766Z
+  - verified: rev-30 [reviewer] · run rev-20261017-748-source-correction · 2026-10-17T18:02:21.251Z · commit 34ecdf01cfe76d020a85ee06e5ab3985c78f8f25
 - [ ] C2. An integrated cover at the merge head lists every current T1/T2 file that trips. The review request lists them, each routed to a fix or a retag.
 
 ## Comments
@@ -96,3 +97,48 @@ Criteria: C1 failed (The shipped enforce branch can return success for quarantin
 ### impl-748 · 2026-10-17T17:58:33.706Z
 
 M1 corrected in 34ecdf01cfe76d020a85ee06e5ab3985c78f8f25, pushed to origin without merging dev after first review. Red reproduction A-4682; correction patch A-4684. Phase receipts now preserve enforce-mode failures after assertion quarantine and caught/reset worker exits. Load repetitions inspect isolated receipts before pass/quarantine accounting, then forward them to the phase report. New tests include quarantined T1/T2 ordinary trips, caught/reset cases with/without quarantine, and caught/uncaught repetition-only trips with report-only controls. Typecheck/test:tiers pass; required final-head serial runner checks are underway before re-review.
+
+### rev-30 · 2026-10-17T18:02:21.251Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261017-748-source-correction
+commit: 34ecdf01cfe76d020a85ee06e5ab3985c78f8f25
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-748 corrected source — clear
+
+Exact head34ecdf01cfe76d020a85ee06e5ab3985c78f8f25, direct child of reviewed1384bdc582f5db02cd2654e999e8be00a64406c1. No dev merge after first review. Delta scope; read-only source/receipt audit, no Reviewer execution or delegation.
+
+## Standards
+No remaining findings. Correction touches only phase/load receipt handling, preload output routing, focused runner tests and its documentation. No resource trapping boundary, engine floor, clock, admission, tier population or unrelated production change. New tests remain actual worker/quarantine contracts under the existing T3 lifecycle header; ownership/close-before-cleanup is unchanged. Existing report-only and normal assertion-quarantine behavior is retained.
+
+## Spec — M1 resolved
+runSuite now records whether any phase receipt has mode=enforce, then forces code1 after assertion-quarantine normalization. The phase decision uses persisted resource evidence independently of test success/worker exit-code mutation. Report-only rows do not set this flag.
+
+Each fresh load repetition has a unique tier side receipt, selected by CLAND_TEST_TIER_REPORT in the worker preload. After observing worker completion, the gate reads that receipt before accepting a pass, skip or quarantine excuse. Any enforced resource row blocks all three success/excuse counters and yields a policy diagnostic. Its rows append into the phase receipt, which is consumed after phase and all load lanes complete; parent reporting still deduplicates file/test/resource and retains first stack. Fresh receipt names avoid cross-repetition contamination. The outer runner clears inherited assignment/report paths and owns the new phase paths; nested fixture runs cannot borrow the parent's sink accidentally.
+
+A-4682 independently confirms all three prior defects with expected red runner assertions: ordinary quarantine green, caught/reset green, and quarantined repetition-only green on the old implementation. Expanded corrected contracts cover:
+- ordinary quarantined T1/T2 resource trips stay exit1;
+- caught trip plus worker exit reset stays exit1, both with/without quarantine;
+- uncaught and caught/reset repetition-only quarantined T2 trips are0/5 passed with no quarantine excuse;
+- ordinary/repetition report-only controls remain green.
+Thus M1/A-4680 resolved; sourceclear C1.
+
+Prior full design/source analysis A-4680 remains applicable to pre-import canonical worker matching, CP/custom-promisifier/direct ChildProcess traps, T1 net/HTTP(S)/TLS boundaries, T2 exact synchronous documented CLI exception, argument-free receipt fields, older-Node file-only warning fallback, T3/T4 isolation and load-only reporting. Primary1ad321b8's no-engine-floor/no-async-hooks decision remains satisfied. No additional high/medium/low finding.
+
+## Corrected evidence
+A-4689 exact committed-source log independently parsed: five full9-case tripwire runs, five43-case suite-runner runs and five6-case runner-contract runs,290passes. Supplemental duration14, quarantine6 and context2 all pass;312accepted top-level passes total,zero failures/cancellations/skips. Logs identify strict serial invocations; sampled peak1mload5.56<15. Wall ranges tripwire13.145–16.640s, runner59.582–69.021s, contract14.312–17.394s; supplemental26.020/3.324/0.104s. Static typecheck/tiers/diff check supplied green.
+
+A-4677 remains an earlier exact-parent five-pair T1 overhead control: overlapping baseline/instrumented medians134.13/131.25ms, no visible single-file slowdown. It is not a new corrected-head full-phase measurement. Correction adds receipt-result handling, not per-async-operation instrumentation. Actual T1 phase wall remains pending task verification.
+
+## Criteria and execution boundary
+C1 verified at34ecdf01. C2 remains unverified: no complete current-tree T1/T2 trip list or fix/retag routing table is claimed before the run. Primary6fa5c798 read directly during full review authorizes sourceclear→exact-head normal-mode droplet verify; runner changes should select full. Settle C2 from that full receipt/routing table, followed by Coordinator's next integrated dev cover. If selection is not full, report to Coordinator for the authorized census cover instead of forcing a task mode.
+
+Standards0/Spec0 remaining findings. Source clear; Implementer may submit normal mode-free exact-head droplet verification and await final evidence review. No per-item QA.
+Durable review A-4691.
+
+Criteria: C1 verified.

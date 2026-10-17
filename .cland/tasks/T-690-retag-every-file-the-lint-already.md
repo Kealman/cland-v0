@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-450
 branch: t/T-690-retag-every-file-the-lint-already
 created: 2026-10-16T19:59:28.837Z
-updated: 2026-10-17T17:48:08.859Z
+updated: 2026-10-17T18:20:07.595Z
 closed: 2026-10-17T17:48:08.859Z
 ---
 
@@ -242,3 +242,7 @@ Criteria: C1 verified, C2 verified, C3 verified.
 ### coord · 2026-10-17T17:48:08.859Z
 
 Merged a1fb7a242913baba0ba4db9105779570a96820e0 onto dev.
+
+### coord · 2026-10-17T18:20:07.595Z
+
+Integrated cover a190eaf9 (A-4695) at dev 7ae2053a, the first after T-690 merged: 2470 passed, 0 failed, including the full Neovim phase (159 s) at the new tags. This completes C2's full-Neovim coverage as decided (339687cc).

@@ -3,7 +3,7 @@ id: T-742
 kind: task
 title: Some droplet results print 'lifetime unknown · cost $unknown'
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 1
 labels:
@@ -17,7 +17,7 @@ blocked_by: []
 topic: topic-455
 branch: t/T-742-some-droplet-results-print-lifetime
 created: 2026-10-17T15:49:20.649Z
-updated: 2026-10-17T17:58:26.285Z
+updated: 2026-10-17T17:59:14.459Z
 ---
 
 ## Summary
@@ -32,6 +32,7 @@ Find out when the result is written without the lease's lifetime and cost. One c
 
 - [x] C1. The cause is named, both runs' spend is accounted for in the ledger or the gap is quantified, and a regression shows a finished run always reports its lifetime and cost.
   - done: impl-742 · 2026-10-17T17:24:23.440Z
+  - verified: rev-30 [reviewer] · run rev-20261017-742-final · 2026-10-17T17:59:13.928Z · commit 355c3c743e9521ff498555d5e4c82a771836d1be
 
 ## Comments
 
@@ -96,3 +97,43 @@ A-4658 final accounting5/5 (7cases each) and original protocol5/5 (8each) are gr
 C1 cause/ledger/source-regression support is established; final C1/runtime verification remains unmarked until normal diff-selected exact-head droplet evidence arrives. This source clearance allows that run when Coordinator holds permit. No per-item QA. Full source clear; findings[]. Standards0/Spec0remaining findings.
 
 Durable review: A-4665.
+
+### rev-30 · 2026-10-17T17:59:13.928Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261017-742-final
+commit: 355c3c743e9521ff498555d5e4c82a771836d1be
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-742 final evidence — clear
+
+Exact reviewed head355c3c743e9521ff498555d5e4c82a771836d1be remains branch tip. Source verdict rev-20261017-742-source/A-4665 unchanged. Final evidence scope; no Reviewer execution, provider operations or source changes.
+
+## Standards and Spec
+No remaining findings. C1 verified across the prior source/ledger audit and this accepted exact-head execution. Cause is an unconfirmed release returning without settled accounting, allowing the result to publish before a later retry/sweep supplied lifetime/cost. Prior read-only ledger/journal audit confirms both named runs are charged:7c3aa637 cost0.1469426388888889/lifetime2115974ms;0cc313d8 cost0.12602451388888888/lifetime1814753ms. No spend-ledger gap was found. Original missing result fields were publication ordering, not fabricated zero charges.
+
+Primary Coordinator0ccb3426 was read directly again: bounded120s hub-Clock confirmation window, pending-confirmation result after the bound, then one durable correction in the original topic; never an unbounded verdict/merge/queue hold. Source retains this explicit pending exception rather than claiming a deletion that never confirms already has final accounting. Direct identity-matched lease/ledger data supplies correction values. Callback/idempotent notice and persisted state preserve restart behavior.
+
+The source review also distinguished missing Neovim phases in historical failed hub runs from accounting: one old run stopped on a functional failure and T-695 stopped on hard duration budgets; the0cc313d8 successful receipt contained smoke. This change is not credited with retroactively supplying unexecuted phases.
+
+## Exact-head Linux
+Run d31d3bee-b48a-4a38-aa22-ae519f107563/A-4687 exits0, normal diff-selected hub-only plus Neovim smoke.2098total/2093pass/0fail/0cancelled/5prerequisite skips. Phase counts155/155 hermetic,1931total/1926pass5skip machine,12/12 smoke. Mode reason docs unsupported coverage is disclosed; no full-Neovim claim.
+
+All16 top-level cases in the three touched test files have positive timing receipts: accounting7, protocol8, remote-process1. All three new regression identities have positive ordinary reporter lines and each passes5/5 load repetitions,15/15:
+- within-window confirmed accounting before publication0.388291543s;
+- past-window pending result/durable later correction0.211457459s;
+- original-topic exactly-once correction0.163651477s.
+The retained native two-slot/failed-spend-settlement proof passes8.945839080s. No scoped skip or hard budget failure. Report-only tier/baseline/regression notices remain distinct from gate failures.
+
+Supplied executor Linuxx64 6.8.0-142-generic,c-8lon1,Node24.21.0/Neovim0.12.5,2workers; confirmed lifetime1560s/cost0.1083, suite1484.78s,peak1mload8.54,load-gate extra16.01s,smoke19.84s. Host typecheck gate reused at0fb0acc53459b7c54505c91e987b3c58c3fef884,not repeated remotely. Receipt accounting is a real observed result; no claim that every existing deployed hub already runs this candidate.
+
+Prior supplied Mac5/5 accounting/protocol/native evidence A-4658/A-4659 and corrected zero-child protocol census A-4661 remain applicable; source355c3c74 only hardened fake-probe fixture after5860bbc1. Primary0a4cfe68 filed comparison flakeT-746 after alternating native comparison (candidate5/5/dev4/5); no claim of causally fixing that separate flake.
+
+Standards0/Spec0 findings. Final clear; verify all(C1) at355c3c74. No per-item QA or further task run required.
+Durable review A-4688.
+
+Criteria: C1 verified.

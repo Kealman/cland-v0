@@ -17,7 +17,7 @@ blocked_by: []
 topic: topic-454
 branch: t/T-744-test-lint-judges-a-file-s-tier-without
 created: 2026-10-17T16:06:54.285Z
-updated: 2026-10-17T17:56:30.916Z
+updated: 2026-10-17T17:59:12.629Z
 ---
 
 ## Summary
@@ -135,3 +135,7 @@ Criteria: C1 verified, C2 verified.
 ### impl-744 · 2026-10-17T17:56:30.916Z
 
 Source correction clear (A-4685, rev-20261017-744-source-correction) at ef549ee569621999de02b0d2adab84b55f5f8303; C1/C2 verified. Submitted exact-head mode-free droplet verify8758bf4f-f4ca-44d6-a28a-df6280fe7f12, topic-454, to impl-744/coord, queue position1. Clean tree confirmed; no new dev merge or source changes. Going idle until hub result; final same-head evidence verdict remains pending.
+
+### impl-744 · 2026-10-17T17:59:12.629Z
+
+First droplet verify8758bf4f failed before counts/remote output (A-4686), executor platform/lifetime/cost unavailable. Coordinator decision95b873f0 classifies infrastructure failure T-749, not this diff, and authorizes one resubmit. Queued retry4cbda8d4-b9cd-4fd4-8569-aa3ceabfa0c2 at unchanged clean ef549ee569621999de02b0d2adab84b55f5f8303, mode-free droplet/topic-454/to impl-744+coord. No code changes/dev merge; source clear remains current; await retry/final evidence verdict.
